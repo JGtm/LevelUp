@@ -6,7 +6,7 @@
  * prennent la couleur de leur palier (`perf-tier-N`) ; une colonne sans match noté laisse un trou dans la courbe.
  */
 import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { barLabel } from '@/components/charts/barLabel'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -162,7 +162,7 @@ export function buildOutcomesOption(
   labels: OutcomeLabels,
   yAxisLabel: string,
   perfLabel: string,
-): EChartsCoreOption {
+): ChartOption {
   if (entries.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -253,7 +253,7 @@ export function SynthesisOutcomesByGroupChart({ entries, title, info, height }: 
     <ChartCard
       title={title && info ? titleWithInfo(<p>{info}</p>)(title) : title}
       series={series}
-      buildOption={buildOption as (s: ChartSeries<Pt>[]) => EChartsCoreOption}
+      buildOption={buildOption as (s: ChartSeries<Pt>[]) => ChartOption}
       height={height ?? DEFAULT_HEIGHT}
     />
   )

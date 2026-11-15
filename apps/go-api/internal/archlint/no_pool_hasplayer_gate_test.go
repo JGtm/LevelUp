@@ -7,7 +7,7 @@ package archlint
 // vie privée exigent le token du joueur (PolicyPinnedPlayer). Trois appelants faisaient
 // pourtant `if !pool.HasPlayer(gt) { skip }` et sautaient EN BLOC un profil suivi sans token
 // propre : la CLI `sync-delta --all`, la CLI `sync-full --all` et le cycle d'auto-sync
-// (`checkSyncPreconditions`). Mesure du jour : Nuzzles, profil suivi depuis des mois, n'avait
+// (`checkSyncPreconditions`). Mesure du jour : J900004, profil suivi depuis des mois, n'avait
 // jamais été synchronisé — alors que seul son rang de carrière lui est inaccessible.
 //
 // LA RÈGLE. Hors du paquet `pool` (qui l'implémente) et des tests, `HasPlayer(` n'apparaît que

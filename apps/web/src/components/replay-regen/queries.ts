@@ -19,6 +19,8 @@ export interface ReplayRegenStatus {
   checked: boolean
   /** Rejeux en retard et régénérables ; pendant la file : ce qu'il en reste. */
   stale: number
+  /** Rejeux encore en JSON brut, à compresser ; la passe de l'utilisateur les compresse même sans rejeu à refaire. */
+  raw: number
   /** La file est active (en pause comprise). */
   running: boolean
   /** Rejeux traités par la file courante ou la dernière. */
@@ -31,6 +33,12 @@ export interface ReplayRegenStatus {
   waiting_for_game: boolean
   /** Rejeux que la file n'a pas pu régénérer. */
   failed: number
+  /** La file compresse, à sa fin, les rejeux bruts qu'elle n'a pas pu refaire (film absent de l'archive). */
+  compressing: boolean
+  /** Rejeux bruts compressés par la file courante ou la dernière. */
+  compressed: number
+  /** Rejeux bruts que la compression n'a pas pu convertir (ils restent lisibles). */
+  compress_failed: number
 }
 
 /** Périodes de relecture, en ms. */

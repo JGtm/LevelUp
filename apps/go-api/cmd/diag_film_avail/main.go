@@ -21,10 +21,10 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	gosync "levelup/go-api/internal/sync"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -42,7 +42,7 @@ func voiesDeFilm() string {
 }
 
 // startTimeCanon : le fragment canonique (regle 8). Jamais `start_time` brut.
-var startTimeCanon = analysis.SQLStartTimeCanonical("r")
+var startTimeCanon = sqlfrag.SQLStartTimeCanonical("r")
 
 type candidat struct {
 	mois    string
@@ -59,7 +59,7 @@ func main() {
 	dbPath := flag.String("db", "../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb", "shared DB")
 	envFile := flag.String("env-file", "../../.env.local", "chemin .env.local")
 	authFile := flag.String("auth-file", "../../data/auth/watcher_tokens.json", "watcher_tokens.json")
-	gamertag := flag.String("gamertag", "Chocoboflor", "gamertag porteur des tokens")
+	gamertag := flag.String("gamertag", "Joueur90001", "gamertag porteur des tokens")
 	perMonth := flag.Int("per-month", 5, "echantillon par mois")
 	since := flag.String("since", "2026-01", "premier mois inclus")
 	flag.Parse()

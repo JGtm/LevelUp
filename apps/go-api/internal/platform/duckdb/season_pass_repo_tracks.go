@@ -255,8 +255,8 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 // 2026-04-21, donc antérieure à la bascule) et la graine de production
 // `metadata-prebuilt.zip` : 30 lignes 'track-def' de part et d'autre, toutes des
 // chemins `RewardTracks/...`, aucun chemin d'item. Le repli ne pouvait donc plus
-// apparier quoi que ce soit. `cmd/backfill_bp_items` reste, lui, capable de lire les
-// deux kinds : c'est l'outil de migration d'une base qui en porterait encore.
+// apparier quoi que ce soit. Une base qui porterait encore des items sous les
+// deux kinds relève d'une migration, pas de ce repli.
 //
 // Best-effort : toute erreur est silencieusement ignorée.
 func (r *SeasonPassRepo) fillItemsFromAssetIndex(

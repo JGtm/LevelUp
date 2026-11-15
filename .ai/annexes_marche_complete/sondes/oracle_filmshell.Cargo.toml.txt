@@ -1,0 +1,16 @@
+[package]
+name = "oracle"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[features]
+default = ["patched"]
+# Actif : s'appuie sur filmshell-patch (positions de blocs et de messages de controle exposees).
+patched = []
+
+[dependencies]
+filmshell = { path = "filmshell-patch", features = ["research"] }
+
+[profile.release]
+opt-level = 3

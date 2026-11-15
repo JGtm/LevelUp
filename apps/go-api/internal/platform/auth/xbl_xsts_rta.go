@@ -11,7 +11,7 @@ import (
 
 	"levelup/go-api/internal/observability/logging"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // XSTSResult contient le token XSTS + userhash nécessaires pour la connexion RTA.

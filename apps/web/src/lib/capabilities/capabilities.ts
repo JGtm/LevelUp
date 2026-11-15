@@ -37,16 +37,16 @@ export const TITLE_CAPABILITIES = [
   // Synthèse). Absente ⇒ la section est masquée. Miroir de title.CapWeaponRange
   // (registry.go), qui documente pourquoi Halo 5 ne l'obtient pas.
   'weapon_range',
-  // Probabilité de victoire attendue (LUSR TrueSkill 2). REMISÉE 2026-09-07 :
-  // non accordée par aucun titre. Absente ⇒ carte / colonnes « Prob. vic. »
-  // masquées. Miroir de title.CapExpectedWinProb (registry.go).
-  'expected_win_prob',
   // Citations CALCULÉES par LevelUp (moteur dérivé : page Citations, tuiles de la home).
   // Absente ⇒ le titre sert des commendations NATIVES (Halo 5) : la page career/citations
   // est remplacée par FeatureUnavailable, et la nav comme la home basculent sur
   // Commendations. Miroir de title.CapCitations (registry.go), pendant title-level de la
   // capability data-level `citations.engine`.
   'citations',
+  // Apparitions du joueur dans les fichiers tactiques : bascule « Toutes les vies » de la Tactique
+  // (le serveur refuse `vies=toutes` sans elle). Miroir de title.CapSpawnForecast (registry.go), pendant
+  // title-level de la capability de donnée `film.spawn_forecast` : le bootstrap ne sert que celles-ci.
+  'spawn_forecast',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

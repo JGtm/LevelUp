@@ -15,16 +15,16 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // BootstrapHandler gère GET /api/v1/bootstrap.
 type BootstrapHandler struct {
-	svc *service.BootstrapService
+	svc port.BootstrapService
 }
 
 // NewBootstrapHandler crée un BootstrapHandler.
-func NewBootstrapHandler(svc *service.BootstrapService) *BootstrapHandler {
+func NewBootstrapHandler(svc port.BootstrapService) *BootstrapHandler {
 	return &BootstrapHandler{svc: svc}
 }
 
@@ -51,11 +51,11 @@ func (h *BootstrapHandler) handleBootstrap(ctx context.Context, _ *struct{}) (*b
 
 // PlayersHandler gère GET /api/v1/players.
 type PlayersHandler struct {
-	svc *service.BootstrapService
+	svc port.BootstrapService
 }
 
 // NewPlayersHandler crée un PlayersHandler.
-func NewPlayersHandler(svc *service.BootstrapService) *PlayersHandler {
+func NewPlayersHandler(svc port.BootstrapService) *PlayersHandler {
 	return &PlayersHandler{svc: svc}
 }
 

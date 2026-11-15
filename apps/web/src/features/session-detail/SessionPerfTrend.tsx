@@ -8,7 +8,7 @@
  * sur le graphe FDA. Couleurs via `resolveToken` (valeurs hex pour le canvas ECharts).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -17,6 +17,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { perfTierFromScore, sessionMatchAxisLabel, useSessionT } from './_shared'
+import { meanOfValid } from '@/lib/charts/stats'
 
 interface Props {
   title: string
@@ -39,14 +40,14 @@ interface PerfOpts {
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: PerfOpts): EChartsCoreOption {
+export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: PerfOpts): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  const mean = round1(points.reduce((acc, p) => acc + p.score, 0) / points.length)
+  const mean = round1(meanOfValid(points.map((p) => p.score)) ?? 0)
   // Moyenne colorée par SA propre couleur de grading (cf. demande utilisateur) :
   // distincte des barres et indique directement le tier moyen de la session.
   const meanColor = resolveToken(`perf-tier-${perfTierFromScore(mean)}` as SemanticToken)

@@ -1,104 +1,15 @@
-// Package service — match_view_radar.go : builder radar 6 axes pour MatchView
-// (chunk MV4.B).
-//
-// Consomme les awards (personal_score_awards) chargés via
-// port.PersonalScoreAwardsRepository et les agrège sur les 6 axes canoniques
-// via narrative.ComputeParticipationProfile.
-//
-// Mapping award_name -> ParticipationAxis : table inline pour Halo Infinite
-// (Phase 1 pilote). Les awards non-mappés sont ignorés. Les définitions
-// title-specific viendront d'un TOML mappings (config/titles/{slug}/mappings/
-// awards.toml) en Phase 2 ou 3.
+// Package service — match_view_radar.go : radar de participation du joueur actif pour MatchView,
+// calculé depuis la feuille de match (colonnes match_participants + bloc objectif de la ligne Q12,
+// déjà chargés dans ScoreboardRaw — zéro requête en plus), sur les axes canoniques de
+// narrative.ComputeParticipationProfile.
 package service
 
 import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
 )
-
-// haloAwardToAxis mappe les award_name connus de Halo Infinite vers les 6
-// axes canoniques. Couverture initiale Phase 1 pilote (MV4.B).
-//
-// Audit Python (apps/api/app/services/match_view_service.py) : les awards
-// sont historiquement groupés par catégorie. Le portage Go reprend les
-// catégories classiques :
-//
-//	combat    : kills, double_kills, triple_kills, etc.
-//	survival  : avoided_kills, escapes
-//	support   : assists, ally_protections, revives
-//	score     : personal_score, scoring streaks
-//	objective : flag_caps, hill_captures, oddball_kills, neutralizations
-//	impact    : multi-kills, sprees, MVP-equivalents
-//
-// Awards non listés ici sont ignorés (Phase 1 — UX dégradée mais lisible).
-// Phase 2 : passer par config/titles/halo_infinite/mappings/awards.toml.
-var haloAwardToAxis = map[string]narrative.ParticipationAxis{
-	// Combat (kills divers)
-	analysis.StatLabelKills: narrative.AxisCombat,
-	"double_kill":           narrative.AxisCombat,
-	"triple_kill":           narrative.AxisCombat,
-	"overkill":              narrative.AxisCombat,
-	"killtacular":           narrative.AxisCombat,
-	"killtrocity":           narrative.AxisCombat,
-	"killimanjaro":          narrative.AxisCombat,
-	"killtastrophe":         narrative.AxisCombat,
-	"killpocalypse":         narrative.AxisCombat,
-	"killionaire":           narrative.AxisCombat,
-	"power_kill":            narrative.AxisCombat,
-	"power_combo":           narrative.AxisCombat,
-	"perfect_kill":          narrative.AxisCombat,
-	"headshot":              narrative.AxisCombat,
-	"melee_kill":            narrative.AxisCombat,
-	"grenade_kill":          narrative.AxisCombat,
-	"sniper_kill":           narrative.AxisCombat,
-	"close_call":            narrative.AxisCombat,
-	"highest_kills":         narrative.AxisCombat,
-
-	// Survival (évitement / longévité)
-	"avoided_kill":     narrative.AxisSurvival,
-	"escape":           narrative.AxisSurvival,
-	"survived":         narrative.AxisSurvival,
-	"longest_lifespan": narrative.AxisSurvival,
-	"avg_lifespan":     narrative.AxisSurvival,
-
-	// Support (aide aux alliés)
-	"assist":          narrative.AxisSupport,
-	"emp_assist":      narrative.AxisSupport,
-	"savior_kill":     narrative.AxisSupport,
-	"protection":      narrative.AxisSupport,
-	"protector":       narrative.AxisSupport,
-	"highest_assists": narrative.AxisSupport,
-	"team_player":     narrative.AxisSupport,
-
-	// Score (objectif personnel)
-	"personal_score": narrative.AxisScore,
-	"highest_score":  narrative.AxisScore,
-	"score_streak":   narrative.AxisScore,
-
-	// Objective (mode-specific)
-	"flag_capture":      narrative.AxisObjective,
-	"flag_kill":         narrative.AxisObjective,
-	"flag_return":       narrative.AxisObjective,
-	"hill_capture":      narrative.AxisObjective,
-	"hill_score":        narrative.AxisObjective,
-	"oddball_score":     narrative.AxisObjective,
-	"oddball_kill":      narrative.AxisObjective,
-	"neutralization":    narrative.AxisObjective,
-	"strongholds_score": narrative.AxisObjective,
-
-	// Impact (multi-kills hauts ou MVP-equivalents)
-	"killing_spree":  narrative.AxisImpact,
-	"killing_frenzy": narrative.AxisImpact,
-	"running_riot":   narrative.AxisImpact,
-	"rampage":        narrative.AxisImpact,
-	"untouchable":    narrative.AxisImpact,
-	"invincible":     narrative.AxisImpact,
-	"mvp":            narrative.AxisImpact,
-	"top_score":      narrative.AxisImpact,
-}
 
 // MatchViewRadarSeries est la série radar exposée dans le DTO MatchView.
 //
@@ -114,71 +25,6 @@ type MatchViewRadarSeries struct {
 	ModeFamily string `json:"mode_family,omitempty"`
 }
 
-// BuildMatchRadar construit les séries radar pour les joueurs du scoreboard
-// à partir des awards chargés via port.PersonalScoreAwardsRepository.
-//
-//	awards     : []PersonalScoreAwardRow déjà filtré sur le match courant.
-//	scoreboard : utilisé pour résoudre xuid -> gamertag dans le payload.
-//	modeFamily : "slayer" / "ctf" / "strongholds" / "oddball" / "".
-//
-// Retourne 1 série par xuid présent dans awards (l'ordre suit le scoreboard).
-// Joueurs sans aucun award : skippés (pas de bruit dans le radar).
-func BuildMatchRadar(
-	awards []port.PersonalScoreAwardRow,
-	scoreboard []domain.ScoreboardRaw,
-	modeFamily string,
-) []MatchViewRadarSeries {
-	if len(awards) == 0 {
-		return nil
-	}
-
-	// Aggréger awards par (xuid, axis).
-	byXUIDAxis := make(map[string]map[narrative.ParticipationAxis]float64)
-	for _, a := range awards {
-		axis, ok := haloAwardToAxis[a.AwardName]
-		if !ok {
-			continue
-		}
-		if byXUIDAxis[a.XUID] == nil {
-			byXUIDAxis[a.XUID] = make(map[narrative.ParticipationAxis]float64)
-		}
-		byXUIDAxis[a.XUID][axis] += float64(a.Total)
-	}
-	if len(byXUIDAxis) == 0 {
-		return nil
-	}
-
-	// Résoudre xuid -> gamertag via scoreboard pour stabilité d'affichage.
-	gtByXUID := make(map[string]string, len(scoreboard))
-	xuidOrder := make([]string, 0, len(scoreboard))
-	for _, row := range scoreboard {
-		if row.XUID == "" {
-			continue
-		}
-		if _, exists := gtByXUID[row.XUID]; !exists {
-			gtByXUID[row.XUID] = row.Gamertag
-			xuidOrder = append(xuidOrder, row.XUID)
-		}
-	}
-
-	thresholds := narrative.DefaultThresholds(modeFamily)
-	out := make([]MatchViewRadarSeries, 0, len(byXUIDAxis))
-	for _, xuid := range xuidOrder {
-		raw, ok := byXUIDAxis[xuid]
-		if !ok {
-			continue
-		}
-		axes := narrative.ComputeParticipationProfile(raw, thresholds)
-		out = append(out, MatchViewRadarSeries{
-			XUID:       xuid,
-			Gamertag:   gtByXUID[xuid],
-			Axes:       axes,
-			ModeFamily: modeFamily,
-		})
-	}
-	return out
-}
-
 // BuildMatchRadarFromScoreboard construit la série radar pour le JOUEUR ACTIF
 // uniquement (myXUID). Calculée depuis les colonnes match_participants + le bloc
 // objectif de la ligne Q12 (déjà chargés dans ScoreboardRaw — zéro requête en
@@ -187,9 +33,11 @@ func BuildMatchRadar(
 //
 // objectiveScore : somme des award_score PSA catégorie 'objective'. Conservé
 // UNIQUEMENT pour le résiduel de l'axe Score (décision 1 du plan
-// PLAN_AXE_OBJECTIFS_INDEX) — l'axe Objectif lui-même vient de l'index par
-// opportunité (narrative.ComputeObjectiveIndex sur row.Obj) et est RETIRÉ si le
-// match n'a aucun bloc objectif (Slayer…).
+// PLAN_AXE_OBJECTIFS_INDEX). L'axe Objectif est la note d'objectif DU MATCH SEUL
+// (matchObjectiveScore) : la part du joueur dans l'objectif de son équipe, calculée sur
+// les lignes de TOUTE la feuille de match, sans comparaison à l'historique du joueur. Il
+// est RETIRÉ (jamais 0) quand le match n'a aucune donnée d'objectif mesurable : Slayer,
+// titre sans match.objective.stats (Halo 5), joueur sans ligne ni camp.
 //
 // Retourne une slice de 1 élément (ou nil si myXUID absent du scoreboard).
 func BuildMatchRadarFromScoreboard(
@@ -222,16 +70,17 @@ func BuildMatchRadarFromScoreboard(
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0,
 		Score:     350.0,
-		Objective: narrative.ObjectiveIndexThreshold,
+		Objective: narrative.ObjectiveScoreMax,
 		Impact:    offensiveConversionP80 * 1.25,
 	}
 
 	raw := computeMatchRadarRawAxes(*me, objectiveScore, effectiveHpToKill)
-	if objRaw, objN := narrative.ComputeObjectiveIndex(objectiveIndexInputFromScoreboard(*me)); objN > 0 {
-		raw[narrative.AxisObjective] = objRaw
+	objScore, objMeasured := matchObjectiveScore(scoreboard, myXUID)
+	if objMeasured {
+		raw[narrative.AxisObjective] = objScore
 	}
 	axes := narrative.ComputeParticipationProfile(raw, thresholds)
-	axes = dropUncomputableRadarAxes(axes, *me)
+	axes = dropUncomputableRadarAxes(axes, *me, objMeasured)
 	return []MatchViewRadarSeries{{
 		XUID:       me.XUID,
 		Gamertag:   me.Gamertag,
@@ -241,7 +90,7 @@ func BuildMatchRadarFromScoreboard(
 }
 
 // computeMatchRadarRawAxes calcule les valeurs brutes par axe pour 1 joueur
-// sur 1 match (hors axe Objectif — index par opportunité posé par le caller).
+// sur 1 match (hors axe Objectif — note d'objectif du match posée par le caller).
 // objectiveScore : score PSA catégorie 'objective' (0 si non disponible) —
 // consommé UNIQUEMENT par le résiduel de l'axe Score.
 func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effectiveHpToKill float64) map[narrative.ParticipationAxis]float64 {
@@ -285,118 +134,6 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effe
 	return raw
 }
 
-// objectiveIndexInputFromScoreboard convertit le bloc objectif de la ligne Q12
-// (domain.ObjectiveRaw, 1 match) en entrée de narrative.ComputeObjectiveIndex.
-// nil si le match n'a aucun bloc objectif (Slayer…) → axe retiré. Clés de
-// colonnes ⊆ narrative.ObjectiveFamilyActionWeights (garde-rail :
-// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights). Split KOTH/Strongholds
-// par zone_scoring_ticks > 0 (décision 3), même précédence que le repo.
-func objectiveIndexInputFromScoreboard(row domain.ScoreboardRaw) narrative.ObjectiveIndexInput {
-	o := row.Obj
-	if !o.HasObjective() {
-		return nil
-	}
-	fam, ok := objectiveFamilyFromRaw(o)
-	if !ok {
-		return nil
-	}
-	st := objectiveFamilySumsFromRaw(fam, o)
-	st.Matches = 1
-	if row.TimePlayed != nil {
-		st.TimePlayedSeconds = *row.TimePlayed
-	}
-	return narrative.ObjectiveIndexInput{fam: st}
-}
-
-// objectiveFamilyFromRaw classe une ligne objectif (1 match, 1 joueur) dans sa
-// famille de mode. Même précédence de blocs et même split KOTH/Strongholds
-// (zone_scoring_ticks > 0, décision 3) que objectiveFamilyCaseSQL côté repo.
-// false = aucun bloc reconnu (Slayer, titre sans match.objective.stats).
-func objectiveFamilyFromRaw(o domain.ObjectiveRaw) (narrative.ObjectiveFamily, bool) {
-	switch {
-	case o.HasZones():
-		if derefInt(o.ZoneScoringTicks) > 0 {
-			return narrative.FamilyZonesKOTH, true
-		}
-		return narrative.FamilyZonesStrongholds, true
-	case o.HasCTF():
-		return narrative.FamilyCTF, true
-	case o.HasOddball():
-		return narrative.FamilyOddball, true
-	case o.HasStockpile():
-		return narrative.FamilyStockpile, true
-	case o.HasExtraction():
-		return narrative.FamilyExtraction, true
-	case o.HasVip():
-		return narrative.FamilyVIP, true
-	}
-	return "", false
-}
-
-// objectiveFamilySumsFromRaw remplit les sommes 1-match de la famille donnée :
-// ColumnSums ⊆ narrative.ObjectiveFamilyActionWeights[fam], HoldSeconds = Σ des
-// colonnes de durée de la famille, TimesSelectedAsVIP (dénominateur de
-// kills_as_vip) pour la seule famille VIP. Matches / TimePlayedSeconds restent
-// à la charge du caller.
-func objectiveFamilySumsFromRaw(fam narrative.ObjectiveFamily, o domain.ObjectiveRaw) narrative.ObjectiveFamilyStats {
-	fi := func(p *int) float64 { return float64(derefInt(p)) }
-	var st narrative.ObjectiveFamilyStats
-	switch fam {
-	case narrative.FamilyZonesKOTH, narrative.FamilyZonesStrongholds:
-		st.ColumnSums = map[string]float64{
-			"zone_captures":        fi(o.ZoneCaptures),
-			"zone_secures":         fi(o.ZoneSecures),
-			"zone_offensive_kills": fi(o.ZoneOffensiveKills),
-			"zone_defensive_kills": fi(o.ZoneDefensiveKills),
-		}
-		if fam == narrative.FamilyZonesKOTH {
-			st.ColumnSums["zone_scoring_ticks"] = fi(o.ZoneScoringTicks)
-		}
-		st.HoldSeconds = derefFloat64(o.TimeInZonesSeconds)
-	case narrative.FamilyCTF:
-		st.ColumnSums = map[string]float64{
-			"flag_captures":         fi(o.FlagCaptures),
-			"flag_capture_assists":  fi(o.FlagCaptureAssists),
-			"flag_steals":           fi(o.FlagSteals),
-			"flag_secures":          fi(o.FlagSecures),
-			"flag_returns":          fi(o.FlagReturns),
-			"flag_carriers_killed":  fi(o.FlagCarriersKilled),
-			"flag_returners_killed": fi(o.FlagReturnersKilled),
-		}
-		st.HoldSeconds = derefFloat64(o.TimeAsFlagCarrierSeconds)
-	case narrative.FamilyOddball:
-		st.ColumnSums = map[string]float64{
-			"skull_grabs":           fi(o.SkullGrabs),
-			"skull_carriers_killed": fi(o.SkullCarriersKilled),
-			"skull_scoring_ticks":   fi(o.SkullScoringTicks),
-		}
-		st.HoldSeconds = derefFloat64(o.TimeAsSkullCarrierSeconds)
-	case narrative.FamilyStockpile:
-		st.ColumnSums = map[string]float64{
-			"power_seeds_deposited":      fi(o.PowerSeedsDeposited),
-			"power_seeds_stolen":         fi(o.PowerSeedsStolen),
-			"power_seed_carriers_killed": fi(o.PowerSeedCarriersKilled),
-		}
-		st.HoldSeconds = derefFloat64(o.TimeAsPowerSeedCarrierSeconds) + derefFloat64(o.TimeAsPowerSeedDriverSeconds)
-	case narrative.FamilyExtraction:
-		st.ColumnSums = map[string]float64{
-			"extraction_conversions_completed": fi(o.ExtractionConversionsCompleted),
-			"successful_extractions":           fi(o.SuccessfulExtractions),
-			"extraction_initiations_completed": fi(o.ExtractionInitiationsCompleted),
-			"extraction_conversions_denied":    fi(o.ExtractionConversionsDenied),
-		}
-	case narrative.FamilyVIP:
-		st.ColumnSums = map[string]float64{
-			"vip_kills":                      fi(o.VipKills),
-			"vip_assists":                    fi(o.VipAssists),
-			narrative.ObjectiveColKillsAsVIP: fi(o.KillsAsVip),
-		}
-		st.HoldSeconds = derefFloat64(o.TimeAsVipSeconds)
-		st.TimesSelectedAsVIP = fi(o.TimesSelectedAsVip)
-	}
-	return st
-}
-
 // dropUncomputableRadarAxes retire les axes structurellement non calculables
 // faute de donnée source, pour éviter d'afficher un axe trompeur figé à 0 (le
 // front rend dynamiquement la liste reçue : N axes au lieu de 6). Règle
@@ -404,9 +141,9 @@ func objectiveFamilySumsFromRaw(fam narrative.ObjectiveFamily, o domain.Objectiv
 //   - Survie (résistance défensive) sans damage_taken → cas Halo 5, qui ne
 //     fournit pas les dégâts subis ;
 //   - Impact (rendement offensif) sans damage_dealt ;
-//   - Objectif sans bloc objectif Q12 (match Slayer, titre sans
-//     match.objective.stats) → l'index par opportunité n'est pas calculable.
-func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.ScoreboardRaw) []narrative.ParticipationScore {
+//   - Objectif non mesuré (match Slayer, titre sans match.objective.stats, joueur sans
+//     ligne d'objectif ni camp dans la feuille) → la note d'objectif n'est pas calculable.
+func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.ScoreboardRaw, objectiveMeasured bool) []narrative.ParticipationScore {
 	drop := map[narrative.ParticipationAxis]bool{}
 	if me.DamageTaken == nil {
 		drop[narrative.AxisSurvival] = true
@@ -414,7 +151,7 @@ func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.Sc
 	if me.DamageDealt == nil {
 		drop[narrative.AxisImpact] = true
 	}
-	if !me.Obj.HasObjective() {
+	if !objectiveMeasured {
 		drop[narrative.AxisObjective] = true
 	}
 	if len(drop) == 0 {

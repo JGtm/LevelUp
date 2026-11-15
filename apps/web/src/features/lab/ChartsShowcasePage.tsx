@@ -22,7 +22,7 @@ import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { DonutChart } from '@/components/charts/DonutChart'
 import {
   FirstBloodLanes,
-  type FirstBloodPlayerSeries,
+  type FirstBloodLaneSeries,
 } from '@/components/charts/FirstBloodLanes'
 import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
 import { HistogramChart } from '@/components/charts/HistogramChart'
@@ -238,7 +238,7 @@ const KDA_ROWS: TimeseriesMatchRow[] = KDA_ROW_STATS.map((s, i) => ({
 function firstBloodMatches(
   kills: (number | null)[],
   deaths: (number | null)[],
-): FirstBloodPlayerSeries['matches'] {
+): FirstBloodLaneSeries['matches'] {
   return kills.map((k, i) => ({
     matchId: `m${i + 1}`,
     firstKillSec: k,
@@ -246,7 +246,7 @@ function firstBloodMatches(
   }))
 }
 
-const FIRST_BLOOD_SERIES: FirstBloodPlayerSeries[] = [
+const FIRST_BLOOD_SERIES: FirstBloodLaneSeries[] = [
   {
     player: 'Rusher',
     matches: firstBloodMatches(

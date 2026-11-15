@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/platform/duckdb"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 )
@@ -299,7 +299,7 @@ func checkSharedViews(ctx context.Context, dbPath string) (bool, string) {
 	defer db.Close()
 
 	// La vue derivee n est exigee que si sa table est la (cf. l en-tete).
-	if analysis.WeaponEvidenceTable(ctx, db) == "weapon_kills" {
+	if duckdb.WeaponEvidenceTable(ctx, db) == "weapon_kills" {
 		requiredViews = append(requiredViews, "v_weapon_kills")
 	}
 	missing := checkViewsExist(ctx, db, requiredViews)

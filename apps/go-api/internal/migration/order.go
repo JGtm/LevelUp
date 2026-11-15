@@ -94,6 +94,7 @@ var canonicalOrder = []string{
 	"msr_written_at_default_now_repair_v1",           // player
 	"player_append_only_personal_score_awards_v1",    // player
 	"create_streak_history_append_only",              // player
+	"drop_streak_legacy_v1",                          // player (retrait de la table streak héritée, après la recopie vers streak_history)
 	"add_player_assists_model",                       // player
 	"create_coach_proposal_player_schema",            // player
 	"dedup_record_history_v1",                        // player
@@ -230,6 +231,8 @@ var canonicalOrder = []string{
 	"shared_match_kill_summaries_v1", // shared (resumes par match du journal des morts S0-S2, append-only + vues _latest decidees par la tete)
 	// steps_shared_kv_drop_legacy_indexes.go trie entre steps_shared_kill_events_sans_killfeed.go et steps_shared_match_lives.go.
 	"shared_killer_victim_pairs_drop_legacy_indexes_v1", // shared (index ART herites de killer_victim_pairs retires : la table se reecrit par DELETE + INSERT)
+	// steps_shared_lead_share.go trie entre steps_shared_kv_drop_legacy_indexes.go et steps_shared_match_lives.go.
+	"shared_match_lead_share_v1", // shared (Mainmise : temps en tête du score par camp, append-only + vue _latest par passe)
 	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
 	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
@@ -380,6 +383,10 @@ var canonicalOrder = []string{
 	// changement de CLASSE sur une clé déjà semée n'atteint jamais une base de production
 	// sans ce step. Title-owned Halo Infinite (2026-09-01).
 	"metadata_reclass_sword_hammer_heavy_v1", // metadata
+	// Records de précision rangés en pourcentage (échelle fausse corrigée à la lecture) : une ligne
+	// neuve en ratio par dernier record, APRÈS les steps qui créent player_records_history et sa
+	// vue. Title-owned Halo Infinite (2026-11-14).
+	"records_accuracy_to_ratio_v1", // shared_social
 }
 
 var canonicalIndex = func() map[string]int {

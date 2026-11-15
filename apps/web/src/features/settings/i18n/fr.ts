@@ -279,7 +279,7 @@ export const FR_TEXT = {
   rendementExcludeAssistsHint:
     "Par défaut, le rendement (conversion offensive) compte chaque assistance comme 1/3 " +
     "d'élimination (convention Halo). Activez cette option pour ignorer totalement les " +
-    "assistances : le rendement devient 225 × éliminations / dégâts. S'applique partout " +
+    "assistances : le rendement devient {{HP}} × éliminations / dégâts. S'applique partout " +
     "(Accueil, Timeseries, Sessions, Explorer, Escouade, Match view). Désactivé par défaut.",
 
 

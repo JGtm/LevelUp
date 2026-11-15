@@ -28,7 +28,7 @@ import (
 	haloinfinite "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/medalname"
+	"github.com/JGtm/halo-infinite-film-decoder/medalname"
 )
 
 // buildBatchFromFetchedMatch convertit un fetchedMatch en MatchBatch.

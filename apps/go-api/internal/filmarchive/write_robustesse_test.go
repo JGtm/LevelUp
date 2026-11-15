@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 func cheminChunk(root, short string, index int) string {

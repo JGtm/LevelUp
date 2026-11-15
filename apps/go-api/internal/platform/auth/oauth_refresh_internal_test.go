@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // withMockTokenEndpoint redirige msalTokenURL vers un httptest.Server le temps

@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	xuidJoueur = "2533274823110022"
-	xuidAutre  = "2535469190789936"
+	xuidJoueur = "2603225103667623"
+	xuidAutre  = "2547408409520575"
 )
 
 func openMem(t *testing.T) *sql.DB {

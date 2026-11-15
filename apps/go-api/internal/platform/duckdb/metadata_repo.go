@@ -318,7 +318,7 @@ func (r *MetadataRepo) GetAssistsCoef(ctx context.Context, gameVariantName strin
 
 	row := r.meta.QueryRow(ctx, q, gameVariantName)
 	if scanErr := row.Scan(&slope, &intercept); scanErr != nil {
-		return 0, 0, fmt.Errorf("GetAssistsCoef: %w", scanErr)
+		return 0, 0, fmt.Errorf("GetAssistsCoef: %w", NotFound(scanErr))
 	}
 	return slope, intercept, nil
 }

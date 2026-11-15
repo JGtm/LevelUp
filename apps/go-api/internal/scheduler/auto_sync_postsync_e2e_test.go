@@ -71,9 +71,9 @@ func TestAutoSync_InvokesProgressionPipeline(t *testing.T) {
 		gamertag string
 		xuid     string
 	}{
-		{"JGtm", "2533274823110022"},
-		{"Chocoboflor", "2535469190789936"},
-		{"Madina97294", "2533274858283686"},
+		{"JGtm", "2603225103667623"},
+		{"Joueur90001", "2547408409520575"},
+		{"Joueur90002", "2623439693412443"},
 	}
 
 	for _, tc := range testCases {
@@ -110,7 +110,7 @@ func TestAutoSync_NoRunner_FactoryWorksWithoutRunner(t *testing.T) {
 		t.Error("nil par défaut")
 	}
 
-	dr := scheduler.defaultRunnerFactory(context.Background(), "JGtm", "2533274823110022")
+	dr := scheduler.defaultRunnerFactory(context.Background(), "JGtm", "2603225103667623")
 	if dr == nil {
 		t.Fatal("factory sans runner doit quand même créer un engine")
 	}
@@ -130,7 +130,7 @@ func TestAutoSync_RunnerCallableViaSimulation(t *testing.T) {
 	//   ... sync work ...
 	//   if syncOK && finalizer != nil { finalizer(ctx) }
 	ctx := context.Background()
-	finalizer := runner.BeforeSync(ctx, "Madina97294")
+	finalizer := runner.BeforeSync(ctx, "Joueur90002")
 	if finalizer != nil {
 		finalizer(ctx)
 	}
@@ -142,7 +142,7 @@ func TestAutoSync_RunnerCallableViaSimulation(t *testing.T) {
 	if finalCalls != 1 {
 		t.Errorf("finalizer calls : got %d, want 1", finalCalls)
 	}
-	if slug != "Madina97294" {
-		t.Errorf("slug : got %q, want Madina97294", slug)
+	if slug != "Joueur90002" {
+		t.Errorf("slug : got %q, want Joueur90002", slug)
 	}
 }

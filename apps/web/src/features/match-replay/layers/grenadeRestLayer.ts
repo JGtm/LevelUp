@@ -50,6 +50,7 @@ export function drawGrenadeRestLayer(
   style: GrenadeRestStyle,
 ): void {
   for (const e of fx) {
+    if (e.owner && style.shownAtSlot && !style.shownAtSlot(e.owner.slot, e.owner.frame)) continue
     // Un projectile de tir (`e.tint`) explose toujours ; une grenade suit son type.
     const kind = e.tint ? 'explosion' : restKindOf(e.rank)
     const hold = kind === 'nappe' ? win.holdDynamo : win.holdHalo
@@ -108,6 +109,12 @@ export interface GrenadeRestStyle {
   /** Densité du canevas. */
   k: number
   reducedMotion: boolean
+  /**
+   * Seul et Masquer : l'effet d'un lanceur que le filtre écarte ne se dessine pas. Interrogé à
+   * l'image du LANCER (`GrenadeRestFx.owner`), pas à celle de l'explosion : le slot est celui de
+   * la vie qui a lancé. Un effet sans auteur connu se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /** Halo discret : un anneau qui s'éteint sur place — il ne s'ouvre pas, il n'affirme rien. */

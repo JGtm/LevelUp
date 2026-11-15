@@ -107,9 +107,10 @@ export const WALL_MIN_RADIUS_PX = 6
 /**
  * DÉPLACEMENT MINIMAL, en mètres monde, pour qu'un segment de trajectoire dise une DIRECTION.
  *
- * 0,5 m N'EST PAS UN CHOIX DE CONFORT : les trajectoires sont échantillonnées à 100 ms, et un
- * joueur qui vise sans bouger produit des points séparés de quelques centimètres — du bruit de
- * position, dont l'angle tourne à chaque image. Sous ce seuil, la direction ne serait pas
+ * 0,5 m N'EST PAS UN CHOIX DE CONFORT : les trajectoires sont échantillonnées à la cadence du
+ * document (100 ms à l'origine), et un joueur qui vise sans bouger produit des points séparés de
+ * quelques centimètres — du bruit de position, dont l'angle tourne à chaque image. Le seuil est une
+ * DISTANCE au dernier point (on remonte jusqu'à la trouver), donc il ne dépend pas du pas. Sous ce seuil, la direction ne serait pas
  * mesurée, elle serait tirée au sort. Les 8 murs sans cap du corpus atteignent 0,50 à 0,74 m
  * de déplacement maximal avant la pose : le seuil est exactement au bord, et le relever les
  * perdrait tous.

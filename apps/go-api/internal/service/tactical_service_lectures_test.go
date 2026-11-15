@@ -15,11 +15,11 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaytext"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // mockCallouts double le lecteur de zones nommees.
@@ -350,7 +350,7 @@ func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
 	}
 	// Les grappes ne sont PAS calculees hors filtre sur une lecture SQL : elles couteraient
 	// un chargement de sidecars que la lecture n'a pas besoin de faire.
-	grappes := grappesDeLUnivers(i18n.LocaleFR, store.sidecars, tsMoi, nil)
+	grappes := grappesDeLUnivers(i18n.LocaleFR, store.sidecars, tsMoi, nil, domain.TacticalViesDepart)
 	if len(grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", grappes)
 	}
@@ -439,9 +439,9 @@ func TestCallouts_ErreurNonAvalee(t *testing.T) {
 // encore tout le vocabulaire Forge).
 func TestZonesNommees_LesDeuxLanguesEtLeurRepli(t *testing.T) {
 	out := zonesNommees([]replay.CalloutZone{
-		{Name: "design_a", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Red base", i18n.LocaleFR: "Base rouge"}), X: 1, Y: 2},
-		{Name: "design_b", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Ramp"}), X: 3, Y: 4},  // FR manquant
-		{Name: "design_c", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleFR: "Rampe"}), X: 5, Y: 6}, // EN manquant
+		{Name: "design_a", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Red base", i18n.LocaleFR: "Base rouge"}), X: 1, Y: 2},
+		{Name: "design_b", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Ramp"}), X: 3, Y: 4},  // FR manquant
+		{Name: "design_c", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleFR: "Rampe"}), X: 5, Y: 6}, // EN manquant
 		{Name: "design_d", X: 7, Y: 8}, // les deux manquants
 		{X: 9, Y: 10},                  // muette des trois cotes
 	})

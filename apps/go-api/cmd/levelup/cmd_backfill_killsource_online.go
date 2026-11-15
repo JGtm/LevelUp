@@ -40,9 +40,9 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
@@ -166,7 +166,7 @@ func matchsSansPasseDeFilm(ctx context.Context, db *sql.DB, o killsourceOptions)
 		SELECT match_id
 		FROM match_registry
 		WHERE COALESCE(backfill_completed, 0) & ? = 0
-		ORDER BY `+analysis.SQLStartTimeCanonical("")+` DESC, match_id`, filtreNoFilm)
+		ORDER BY `+sqlfrag.SQLStartTimeCanonical("")+` DESC, match_id`, filtreNoFilm)
 	if err != nil {
 		return nil, fmt.Errorf("registre par recence: %w", err)
 	}

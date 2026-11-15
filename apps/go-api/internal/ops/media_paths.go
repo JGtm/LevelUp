@@ -10,7 +10,7 @@ import (
 //
 // Format de stockage : {owner_slug}/{rel_in_owner_dir}
 // Exemples :
-//   - "Madina97294/Halo Infinite 2026-04-19 17-43-35.mp4"
+//   - "Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4"
 //   - "JGtm/thumbs/Halo Infinite 2025-12-21 17-02-11_dd7e39ab8543.webp"
 //
 // Avantages vs un chemin absolu :

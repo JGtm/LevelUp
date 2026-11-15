@@ -16,7 +16,7 @@
  * briques de courbe sont celles de la section Objectif (`objectif/objectifCharts.ts`).
  * Toutes les couleurs arrivent résolues (jetons) : aucune valeur en dur ici.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
 import {
@@ -250,7 +250,7 @@ export function buildResourceFilOption(
   c: EmpriseFilColors,
   t: EmpriseFilText,
   axe: FilAxe = { kind: 'match' },
-): EChartsCoreOption {
+): ChartOption {
   const tc = c.theme
   const { matches } = fil
   const categories = matches.map((m) => m.matchId)

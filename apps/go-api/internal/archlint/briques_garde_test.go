@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	resolveur "levelup/go-api/internal/briques"
 )
 
 // TestBriquesImports_ParcoursRecursifEtFrontiere : un import vers l'arbre d'une brique récursive
@@ -27,23 +29,23 @@ func TestBriquesImports_ParcoursRecursifEtFrontiere(t *testing.T) {
 		nom:      "x",
 		paquets:  []string{"libs/film"},
 		recursif: true,
-		permis:   []string{"libs/y/q"},
+		permis:   []string{"libs/himap/himap"},
 	}
 	for imp, attendu := range map[string]bool{
-		prefixeBriques + "film":                                       true,
-		prefixeBriques + "film/internal/source":                       true,
-		prefixeBriques + "filmprofile":                                false,
+		moduleBrique("film"):                                          true,
+		moduleBrique("film") + "/internal/source":                     true,
+		moduleBrique("film") + "profile":                              false,
 		prefixeModuleAPI + "internal/games/halo_infinite/film":        false,
 		prefixeModuleAPI + "internal/games/halo_infinite/filmprofile": false,
-		"github.com/JGtm/LevelUp/libs/y/q":                            true,
-		"github.com/JGtm/LevelUp/libs/y/q/sous":                       false,
+		moduleBrique("himap") + "/himap":                              true,
+		moduleBrique("himap") + "/himap/sous":                         false,
 	} {
 		if got := b.interne(imp); got != attendu {
 			t.Errorf("interne(%q) = %v, attendu %v", imp, got, attendu)
 		}
 	}
-	exact := brique{nom: "e", paquets: []string{"libs/x/p"}}
-	if exact.interne("github.com/JGtm/LevelUp/libs/x/p/sous") {
+	exact := brique{nom: "e", paquets: []string{"libs/gamefiles/ooz"}}
+	if exact.interne(moduleBrique("gamefiles") + "/ooz/sous") {
 		t.Error("une brique non récursive ne couvre pas ses sous-répertoires")
 	}
 }
@@ -69,32 +71,41 @@ func dossiersHorsTable(dossiers []string, table []brique) []string {
 	return hors
 }
 
-// dossiersGoDeLibs liste les dossiers de `libs/` qui portent au moins un `.go` (tests compris),
-// hors ceux que l'outil Go n'ouvre jamais (`testdata`, `vendor`, `.x`, `_x`).
+// dossiersGoDeLibs liste les dossiers des briques (dossier tiré de l'outil Go par [resolveur.Dir], rendus en
+// chemins de garde-rail `libs/<brique>/...`) qui portent au moins un `.go` (tests compris), hors ceux que
+// l'outil Go n'ouvre jamais (`testdata`, `vendor`, `.x`, `_x`).
 func dossiersGoDeLibs(t *testing.T) []string {
 	t.Helper()
 	depot := workspaceRoot(t)
-	base := filepath.Join(depot, "libs")
 	vus := map[string]bool{}
-	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
+	for _, nom := range resolveur.Noms() {
+		base, err := resolveur.Dir(nom)
 		if err != nil {
-			return err
+			t.Fatalf("brique %s : %v", nom, err)
 		}
-		nom := d.Name()
-		if d.IsDir() {
-			if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
-				return fs.SkipDir
+		err = filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			entree := d.Name()
+			if d.IsDir() {
+				if chemin != base && (dossiersInvisiblesAuGo[entree] || strings.HasPrefix(entree, ".") || strings.HasPrefix(entree, "_")) {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if strings.HasSuffix(entree, ".go") {
+				rel, errRel := relDuDepot(depot, filepath.Dir(chemin))
+				if errRel != nil {
+					return errRel
+				}
+				vus[rel] = true
 			}
 			return nil
+		})
+		if err != nil {
+			t.Fatalf("parcours de la brique %s : %v", nom, err)
 		}
-		if strings.HasSuffix(nom, ".go") {
-			rel, _ := filepath.Rel(depot, filepath.Dir(chemin))
-			vus[filepath.ToSlash(rel)] = true
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("parcours de libs/ : %v", err)
 	}
 	out := make([]string, 0, len(vus))
 	for d := range vus {

@@ -1,0 +1,48 @@
+use filmshell::research::{payload, components, container, header, levels, inflate};
+use std::collections::BTreeMap;
+fn main() {
+    for dir in std::env::args().skip(1) {
+        let id = std::path::Path::new(&dir).file_name().unwrap().to_string_lossy().to_string();
+        let mut v: Vec<(u32, Vec<u8>)> = Vec::new();
+        for e in std::fs::read_dir(&dir).unwrap() {
+            let p = e.unwrap().path();
+            let name = p.file_name().unwrap().to_str().unwrap().to_string();
+            let Some(n) = name.strip_prefix("chunk_").and_then(|s| s.strip_suffix(".bin")).and_then(|s| s.parse::<u32>().ok()) else { continue };
+            let b = std::fs::read(&p).unwrap();
+            let b = if b.len() > 2 && b[0] == 0x78 { match inflate::zlib(&b, 1 << 28) { Ok(x) => x, Err(_) => b } } else { b };
+            v.push((n, b));
+        }
+        v.sort_by_key(|x| x.0);
+        let mut chunks: Vec<Vec<u8>> = v.into_iter().map(|x| x.1).collect();
+        chunks.pop(); // highlights
+        let film = container::Film::new(chunks, container::Framing::Packets);
+        let Some(level) = header::read(&film.chunks[0]).level.and_then(levels::level) else { println!("{id}: level unknown"); continue };
+        let mut params = components::Params::new(level.widths);
+        params.set_level(Some(level));
+        let mut w = payload::Walker::new(&film.chunks[0], params);
+        let (mut n, mut clean, mut ev_ok, mut ent_end, mut ctl_ok, mut ops, mut skipped) = (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64);
+        let mut stops: BTreeMap<String, u64> = BTreeMap::new();
+        let ends: Vec<usize> = film.frames().map(|f| f.end).collect();
+        let mut exact = 0u64;
+        payload::for_each_payload_in(&film, &mut w, |fi, c, p| {
+            n += 1;
+            ops += p.ops.len() as u64;
+            skipped += p.skipped.len() as u64;
+            if p.event_stop.is_none() { ev_ok += 1 }
+            for s in p.skipped.iter().map(|s| s.0).chain(p.stop) { *stops.entry(format!("{s:?}")).or_default() += 1 }
+            if p.stop.is_none() {
+                ent_end += 1;
+                if p.skipped.is_empty() && p.event_stop.is_none() { clean += 1 }
+                let (_, e) = components::control_view(c, p.end, &params);
+                if e.is_some() { ctl_ok += 1 }
+                if e.is_some_and(|e| (0..8).contains(&(8 * ends[fi] as i64 - e))) { exact += 1 }
+            }
+        });
+        let pct = |a: u64| 100.0 * a as f64 / n.max(1) as f64;
+        println!("   packets read to their LAST BYTE (events+entities+control): {:.2}%", pct(exact));
+        println!("{id}: payloads {n} | event view walked {:.2}% | entity view to its end {:.2}% | fully clean (no skip) {:.2}% | control view read {:.2}% | ops {ops} skips {skipped}", pct(ev_ok), pct(ent_end), pct(clean), pct(ctl_ok));
+        let mut s: Vec<_> = stops.into_iter().collect();
+        s.sort_by_key(|x| std::cmp::Reverse(x.1));
+        println!("   stops: {:?}", &s[..s.len().min(8)]);
+    }
+}

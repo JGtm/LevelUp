@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // registreArmesMinimal : deux armes et un inconnu, au format du titre.
@@ -68,7 +68,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 	ecrire(t, filepath.Join(title.NewPathResolver(root).TitleMappingsDir(title.DefaultSlug),
 		vehicleWeaponsFile), registreArmesMinimal)
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, nil).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -95,7 +95,7 @@ func TestVehicleWeapons_PoseLesArmesEmployees(t *testing.T) {
 func TestVehicleWeapons_TitreSansRegistre(t *testing.T) {
 	root := t.TempDir()
 	artefactTirsVehicule(t, root)
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, nil).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}

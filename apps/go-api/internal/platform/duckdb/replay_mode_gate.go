@@ -4,7 +4,7 @@ package duckdb
 // du 2026-10-15). Implemente [port.ReplayModeGate] sur le meme repo que la resolution de carte :
 // le service de rejeu n'a qu'une dependance base, et elle lit le meme registre partage.
 //
-// Le predicat est `analysis.SQLModeNonGere`, jamais un nom de mode ni un slug.
+// Le predicat est `sqlfrag.SQLModeNonGere`, jamais un nom de mode ni un slug.
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ModeNonGere dit si le registre classe ce match (identifiant complet) dans un mode non gere.
@@ -29,7 +29,7 @@ func (r *ReplayMapRepo) ModeNonGere(ctx context.Context, matchID string) (bool, 
 	defer release()
 	var nonGere bool
 	err = db.QueryRowContext(ctx,
-		`SELECT `+analysis.SQLModeNonGere("")+` FROM match_registry WHERE match_id = ?`, matchID,
+		`SELECT `+sqlfrag.SQLModeNonGere("")+` FROM match_registry WHERE match_id = ?`, matchID,
 	).Scan(&nonGere)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
@@ -53,7 +53,7 @@ func (r *ReplayMapRepo) ModesNonGeresShortIDs(ctx context.Context) (map[string]s
 	}
 	defer release()
 	rows, err := db.QueryContext(ctx,
-		`SELECT match_id FROM match_registry WHERE `+analysis.SQLModeNonGere(""))
+		`SELECT match_id FROM match_registry WHERE `+sqlfrag.SQLModeNonGere(""))
 	if err != nil {
 		return nil, fmt.Errorf("replay mode: lecture match_registry: %w", err)
 	}

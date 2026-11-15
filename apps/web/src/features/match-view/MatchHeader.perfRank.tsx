@@ -11,6 +11,8 @@ import { formatRankDelta } from '@/lib/formatters'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 import { nextTierLabel, displayTierLabel } from './MatchHeader.utils'
+import { LeadShareBlock } from './MatchLeadShare'
+import { showsLeadShare } from './matchLeadShare.logic'
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
@@ -76,9 +78,16 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
         ? tokenCssVar('divergent-neg')
         : tokenCssVar('divergent-neutral')
 
+  const hasPerformance = Boolean(header.performance_display && header.performance_display !== '-')
+  const leadShare = {
+    leadShare: header.lead_share,
+    leadChanges: header.lead_changes,
+    replayAvailable: header.replay_available === true,
+  }
+
   return (
     <div className="mt-auto flex flex-wrap items-start gap-y-3 border-t pt-3">
-      {header.performance_display && header.performance_display !== '-' && (
+      {hasPerformance && (
         <div className="flex flex-col items-center">
           <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
             {t.performance}
@@ -92,7 +101,15 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
         </div>
       )}
 
-      {header.performance_display && header.performance_display !== '-' && rank.rating_type !== 'none' && (
+      {/* La Mainmise s'intercale entre Performance et Rang : un filet de chaque côté. */}
+      {showsLeadShare(leadShare) && (
+        <>
+          {hasPerformance && <div className="mx-6 w-px self-stretch bg-border" />}
+          <LeadShareBlock {...leadShare} locale={locale} />
+        </>
+      )}
+
+      {(hasPerformance || showsLeadShare(leadShare)) && rank.rating_type !== 'none' && (
         <div className="mx-6 w-px self-stretch bg-border" />
       )}
 

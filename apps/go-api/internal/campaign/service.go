@@ -46,6 +46,11 @@ type Repo interface {
 	ListEnded(ctx context.Context, userID, titleSlug string) ([]ImprovementCampaign, error)
 	UpdateStatus(ctx context.Context, id string, status CampaignStatus, endedAt *time.Time) error
 	UpdateEvaluation(ctx context.Context, id string, eval Evaluation) error
+	// ListOpen liste les campagnes en cours (active ou paused) d'un joueur sur un titre.
+	ListOpen(ctx context.Context, userID, titleSlug string) ([]ImprovementCampaign, error)
+	// RestartMeasure remplace le point de départ d'une campagne en cours et remet son évaluation à
+	// vide (cf. MeasureStart). Sans effet sur une campagne close.
+	RestartMeasure(ctx context.Context, id string, start MeasureStart) error
 	LinkedChallengeIDs(ctx context.Context, campaignID string) ([]string, error)
 	LinkChallenge(ctx context.Context, challengeID, campaignID string) error
 }
@@ -132,13 +137,9 @@ func (s *Service) StartCampaign(ctx context.Context, p StartParams, now time.Tim
 		return ImprovementCampaign{}, ErrAlreadyActive
 	}
 	// Snapshot : moyenne des 100 derniers matchs avant 'now' sur la playlist.
-	since := now.AddDate(0, 0, -180) // fenêtre élargie ; samples capera à 100
-	samples, err := s.samples.LoadAxisSamples(ctx, p.UserID, p.TitleSlug, p.Axis, p.AxisKind, p.PlaylistGroup, since, now)
+	samples, err := s.loadStartSamples(ctx, p, now)
 	if err != nil {
 		return ImprovementCampaign{}, fmt.Errorf("load snapshot samples: %w", err)
-	}
-	if len(samples) > 100 {
-		samples = samples[len(samples)-100:]
 	}
 	snapshot, sample := mean(samples), len(samples)
 
@@ -270,15 +271,39 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 	return s.repo.UpdateEvaluation(ctx, c.ID, eval)
 }
 
-// loadCampaignSnapshots charge pre (180j cappé 100) + post (depuis StartedAt).
+// loadCampaignSnapshots charge pre (fenêtre de départ, cf. loadStartSamples) + post (depuis StartedAt).
 func (s *Service) loadCampaignSnapshots(ctx context.Context, c ImprovementCampaign, now time.Time) ([]float64, []float64) {
-	preStart := c.StartedAt.AddDate(0, 0, -180)
-	pre, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, preStart, c.StartedAt)
-	if len(pre) > 100 {
-		pre = pre[len(pre)-100:]
+	pre, err := s.loadStartSamples(ctx, c.startParams(), c.StartedAt)
+	if err != nil {
+		slog.WarnContext(ctx, "campaign: échantillons de départ illisibles (évaluation sans test de progression)",
+			"campaign_id", c.ID, "axis", c.Axis, "err", err)
 	}
 	post, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, c.StartedAt, now)
 	return pre, post
+}
+
+// Fenêtre qui fonde le point de départ d'une campagne : les startSampleCap derniers échantillons de
+// l'axe parmi les startWindowDays jours qui précèdent le départ.
+const (
+	startWindowDays = 180
+	startSampleCap  = 100
+)
+
+// loadStartSamples charge, chronologiquement, les échantillons de l'axe de `p` qui fondent le point de
+// départ d'une campagne démarrée à `startedAt` : fenêtre élargie de startWindowDays jours, plafonnée
+// aux startSampleCap derniers. Définition unique du départ : StartCampaign (valeur de départ),
+// l'évaluation (population « avant » du test de progression) et le recalage d'un départ mesuré
+// avec une ancienne mesure de l'axe la lisent ici.
+func (s *Service) loadStartSamples(ctx context.Context, p StartParams, startedAt time.Time) ([]float64, error) {
+	since := startedAt.AddDate(0, 0, -startWindowDays)
+	samples, err := s.samples.LoadAxisSamples(ctx, p.UserID, p.TitleSlug, p.Axis, p.AxisKind, p.PlaylistGroup, since, startedAt)
+	if err != nil {
+		return nil, err
+	}
+	if len(samples) > startSampleCap {
+		samples = samples[len(samples)-startSampleCap:]
+	}
+	return samples, nil
 }
 
 // applyCampaignAggregateStats renseigne CurrentRaw + CurrentLOWESS depuis post.

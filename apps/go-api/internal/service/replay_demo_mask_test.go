@@ -88,3 +88,44 @@ func TestDemoReplayAllowlist_ServesIndexedMatchesOnly(t *testing.T) {
 		t.Error("l'index d'un titre ne vaut pas pour un autre")
 	}
 }
+
+// TestMaskReplayIdentities_MasqueLaDestructionDeVehicule : le destructeur, l'occupant et les
+// occupants tues d'une destruction de vehicule sont des xuid reels comme les autres, et se masquent
+// comme eux ; un destructeur bot (sans xuid) traverse.
+func TestMaskReplayIdentities_MasqueLaDestructionDeVehicule(t *testing.T) {
+	cause := uint32(2899431412)
+	doc := documentAvecJoueurReel()
+	doc.Vehicles = []replaydoc.VehicleTrack{
+		{Slot: 7, End: "destroyed", Destruction: &replaydoc.VehicleDestruction{
+			By:       &replaydoc.VehicleDestroyer{I: 0, XUID: maskXUIDReel},
+			Cause:    &cause,
+			Occupant: maskXUIDReel,
+			Killed:   []string{maskXUIDReel},
+		}},
+		{Slot: 8, End: "destroyed", Destruction: &replaydoc.VehicleDestruction{
+			By: &replaydoc.VehicleDestroyer{I: 1, Bot: true},
+		}},
+	}
+	masked, err := maskReplayIdentities(doc, []domain.DemoReplayIdentity{
+		{XUID: maskXUIDReel, DemoXUID: "0000000000000002", DemoGamertag: "DemoPlayer3"},
+	})
+	if err != nil {
+		t.Fatalf("maskReplayIdentities : %v", err)
+	}
+	raw, _ := json.Marshal(masked)
+	if strings.Contains(string(raw), maskXUIDReel) {
+		t.Errorf("xuid reel encore present : %s", raw)
+	}
+	d := masked.Vehicles[0].Destruction
+	if d == nil || d.By == nil || d.By.XUID != "0000000000000002" || d.Occupant != "0000000000000002" ||
+		len(d.Killed) != 1 || d.Killed[0] != "0000000000000002" {
+		t.Errorf("destruction masquee = %+v", d)
+	}
+	if d.Cause == nil || *d.Cause != cause {
+		t.Errorf("la cause n'est pas une identite et doit traverser : %+v", d.Cause)
+	}
+	bot := masked.Vehicles[1].Destruction
+	if bot == nil || bot.By == nil || !bot.By.Bot || bot.By.XUID != "" || bot.By.I != 1 {
+		t.Errorf("le destructeur bot doit traverser intact : %+v", bot)
+	}
+}

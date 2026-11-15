@@ -17,7 +17,7 @@ const (
 	dispenseEnsembleFourni = "ensemble fourni par l'appelant"
 	dispenseCallSite       = "exclu au call site"
 	dispenseSemantique     = "sémantique"
-	// dispenseOperateur : cmd/diag_*, cmd/audit_* et les
+	// dispenseOperateur : cmd/diag_* et les
 	// backfills qui réécrivent le match lu lui-même (la Campagne n'y change aucun agrégat).
 	// Réservée à cmd/ (décision du superviseur du 2026-10-15) : un lecteur de internal/sync ou
 	// internal/ops est corrigé ou classé mono-match / ensemble fourni / sémantique, jamais ici.
@@ -55,15 +55,15 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"contrôle croisé référence des playlists classées <-> CSR par match (alerte A3) : la Campagne n'a ni playlist de la référence ni CSR, elle ne contribue à aucun des deux compteurs. Diagnostic de couverture, pas un affichage."},
 	"internal/platform/duckdb/media_repo_filters.go:MediaRepo.LoadMatchCandidatesForMedia": {dispenseSemantique, "2026-09-27",
 		"appariement clip → match par fenêtre de capture (media_repo_filters.go:255) : un clip tourné en Campagne doit pouvoir se rattacher à son match."},
-	"internal/api/wire/registry_monitoring_freshness.go:ServiceRegistry.lastMatchByXUID": {dispenseSemantique, "2026-09-27",
-		"fraîcheur admin, dernier match persisté par joueur (registry_monitoring_freshness.go:173) : la Campagne est une activité réelle du compte."},
-	"internal/analysis/match_filter.go:BuildNeighborsWhereClause": {dispenseCallSite, "2026-09-27",
-		"faux positif : fragment WithPlayerXuid (match_filter.go:196) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
+	"internal/platform/duckdb/last_match_reader.go:LastMatchReader.LastMatchByXUID": {dispenseSemantique, "2026-09-27",
+		"fraîcheur admin, dernier match persisté par joueur (last_match_reader.go, déplacé depuis api/wire/registry_monitoring_freshness.go le 2026-11-12) : la Campagne est une activité réelle du compte."},
+	"internal/platform/duckdb/sqlfrag/match_filter.go:neighborsBuilder.withPlayer": {dispenseCallSite, "2026-09-27",
+		"faux positif : fragment WithPlayerXuid (match_filter.go, withPlayer ; extrait de BuildNeighborsWhereClause le 2026-11-12) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
 			"(platform/duckdb/match_view_repo_neighbors_skill.go:72)."},
 
 	// ── B4.5 : autres entrants révélés par le balayage ──
 	"internal/platform/duckdb/player_matches_repo.go:playerMatchesSharedBaseSelect": {dispenseCallSite, "2026-09-27",
-		"SELECT de base de PlayerMatchesRepo : le seul appelant buildSharedQuery pose analysis.SQLExcludeCampaignVariants (player_matches_repo.go:124)."},
+		"SELECT de base de PlayerMatchesRepo : le seul appelant buildSharedQuery pose sqlfrag.SQLExcludeCampaignVariants (player_matches_repo.go:124)."},
 	"internal/platform/duckdb/player_matches_repo.go:appendPlayerMatchSetFilters": {dispenseSemantique, "2026-09-27",
 		"anti-filtre ExcludeFriendsXUIDs (player_matches_repo.go:207) : l'ensemble des matchs à RETIRER ; le seul appelant buildSharedQuery " +
 			"exclut la Campagne de la lecture (player_matches_repo.go:124)."},
@@ -120,7 +120,7 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"borné à matchsDeLHistorique (career_repo_rivals.go:106-116), qui résout la Campagne (career_repo_encounters.go:194-195)."},
 	"internal/platform/duckdb/queries_match.go:Q14MatchMedals": {dispenseMonoMatch, "2026-10-15",
 		"médailles d'UN match (WHERE me.xuid = ? AND me.match_id = ?, queries_match.go:162) : aucun agrégat d'historique."},
-	"internal/analysis/identity_annuaire.go:AnnuaireKillFeedLocaliserSQL": {dispenseSemantique, "2026-10-15",
+	"internal/platform/duckdb/sqlfrag/annuaire.go:AnnuaireKillFeedLocaliserSQL": {dispenseSemantique, "2026-10-15",
 		"localise les matchs où un xuid est NOMMÉ dans le kill-feed pour résoudre un nom (annuaire, squad_repo_annuaire.go:354-358) : même population que la vue des noms, aucun agrégat de matchs (cf. qResolveParParticipant)."},
 
 	// internal/sync : lecteurs d'UN match
@@ -179,45 +179,16 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/ops/seed_demo_replay_picks.go:loadDemoReplayCandidates": {dispenseSemantique, "2026-10-15",
 		"candidats au rejeu démo : seuls les matchs dont le cache porte un film (seed_demo_replay_picks.go:248) ; Halo 5 n'a aucun décodeur de film (config/titles/halo_5/mappings/capabilities.toml:65), donc aucune ligne de Campagne."},
 
-	// cmd : outils opérateur (D-2) — diag_*, audit_*, backfills et reconstruction de la ligne lue
-	"cmd/audit_coverage/main.go:auditPlayer": {dispenseOperateur, "2026-10-15",
-		"cmd/audit_* : audit de couverture, lecture seule."},
+	// cmd : outils opérateur (D-2) — diag_*, backfills et reconstruction de la ligne lue
 	"cmd/backfill_all/main.go:loadMissingPSAMatches": {dispenseOperateur, "2026-10-15",
 		"backfill : sélectionne les matchs sans PSA, puis les réécrit (main.go:115-129)."},
-	"cmd/backfill_kda_accuracy/main.go:main": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE match_participants SET kda, accuracy sur le match lu (main.go:111)."},
-	"cmd/backfill_participation_info/main.go:updateParticipationInfo": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE ciblé des colonnes de participation du match lu (main.go:220)."},
-	"cmd/backfill_quit_timestamps/main.go:updateQuitTimestamps": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE des horodatages de départ du match lu (main.go:223)."},
 	"cmd/backfill_time_played/main.go:commitUpdates": {dispenseOperateur, "2026-10-15",
 		"backfill : UPDATE time_played_seconds du match lu (main.go:197)."},
-	"cmd/diag_backfill_dryrun/main.go:countMatchParticipants": {dispenseOperateur, "2026-10-15", "cmd/diag_* : essai à blanc d'un backfill, lecture seule."},
-	"cmd/diag_backfill_dryrun/main.go:countRankedForPlayer":   {dispenseOperateur, "2026-10-15", "cmd/diag_* : essai à blanc d'un backfill, lecture seule."},
-	"cmd/diag_csr/main.go:diagUnrankedDates":                  {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic CSR, lecture seule."},
-	"cmd/diag_csr/main.go:diagUnrankedDatesXUID":              {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic CSR, lecture seule."},
-	"cmd/diag_expected_kd/main.go:main":                       {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_highlight_match/main.go:main":                   {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic d'UN match, lecture seule."},
-	"cmd/diag_kpm/main.go:main":                               {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_lusr_player/loaders.go:loadMatches":             {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
-	"cmd/diag_lusr_volatility/main.go:loadTrajectory":         {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de volatilité, lecture seule."},
-	"cmd/diag_lusr_volatility/main.go:printPlayerCoverage":    {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de couverture, lecture seule."},
-	"cmd/diag_medals/main.go:main":                            {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic des médailles, lecture seule."},
-	"cmd/diag_orphan_session/main.go:main":                    {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de sessions orphelines, lecture seule."},
-	"cmd/diag_perfsim/load.go:universeSQL":                    {dispenseOperateur, "2026-10-15", "cmd/diag_* : simulation du score de performance, lecture seule."},
-	"cmd/diag_recent_match_sync/main.go:inspectMatch":         {dispenseOperateur, "2026-10-15", "cmd/diag_* : inspection d'UN match, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:computeSquad":       {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:findSessionsOnDate": {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:loadHistory":        {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:matchHasAllXUIDs":   {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
+	"cmd/diag_lusr_player/loaders.go:loadMatches": {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
 	"cmd/h5-roster-refetch/insert.go:insertParticipant": {dispenseOperateur, "2026-10-15",
 		"reconstruit les participants manquants du match lu (INSERT, insert.go:66) ; réécrit le match lui-même."},
-	"cmd/h5-roster-topup/main.go:insertParticipant": {dispenseOperateur, "2026-10-15",
-		"complète les participants manquants du match lu (INSERT, main.go:387) ; réécrit le match lui-même."},
 	"cmd/levelup/cmd_backfill_h5_kill_mechanics.go:applyMechanicUpdates": {dispenseOperateur, "2026-10-15",
 		"backfill : UPDATE des mécaniques de frag du match lu (cmd_backfill_h5_kill_mechanics.go:376)."},
-	"cmd/seed-medal/main.go:main": {dispenseOperateur, "2026-10-15",
-		"script de développement (//go:build ignore) qui pose un badge sur le dernier match lu (main.go:1-14) : réécrit le match lui-même."},
 
 	// ── E5.6 (plan backlog 2026-10-16) : lecteurs du registre sur fenêtre de temps, sans `xuid = ?` ──
 	"cmd/diag_film_avail/main.go:lireCandidats": {dispenseOperateur, "2026-10-17",

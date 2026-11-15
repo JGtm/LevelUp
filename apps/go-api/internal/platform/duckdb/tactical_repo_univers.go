@@ -8,7 +8,7 @@
 //
 // ─── LE PERIMETRE EST UNE LISTE BLANCHE, PLUS UN JEU D'AXES ────────────────────
 //
-// Jusqu'a la phase 4, l'univers etait filtre par `analysis.BuildNeighborsWhereClause`
+// Jusqu'a la phase 4, l'univers etait filtre par `sqlfrag.BuildNeighborsWhereClause`
 // (playlist, mode, dates, issue). Ce vocabulaire-la ne sait pas lire les SESSIONS :
 // elles vivent dans la base JOUEUR (`player_match_enrichment`), que ces requetes
 // shared ne joignent pas — le filtre de session etait donc range dans les filtres
@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -59,7 +59,7 @@ import (
 // d'artefact ventile ses matchs non retenus entre « la file les reprendra » et « rien ne
 // les cuira », et cette question ne se resout qu'au registre — l'artefact, par definition,
 // n'existe pas pour eux. Le predicat est celui de la file elle-meme
-// (`analysis.SQLEligibleALaCuisson`).
+// (`sqlfrag.SQLEligibleALaCuisson`).
 //
 // LE DRAPEAU `mesure` (ajout 2026-09-06, correction G2) dit si le journal des morts
 // de ce match est LISIBLE : la tete de resume de sa passe courante
@@ -121,7 +121,7 @@ func clauseCartes(q domain.TacticalQuery) (string, []any) {
 const journalPerimetre = "%PERIMETRE_JOURNAL%"
 
 // colonneEligible : le jeton que `universSQL` remplace par le predicat d'eligibilite a la
-// cuisson (`analysis.SQLEligibleALaCuisson`).
+// cuisson (`sqlfrag.SQLEligibleALaCuisson`).
 //
 // UN JETON PLUTOT QU'UN ASSEMBLAGE EN GO : le garde-rail structurel de l'epoque ne
 // balayait QUE des constantes `Q<...>`, et QTacticalUnivers devait rester une constante
@@ -229,14 +229,14 @@ func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	// SELECT (juste apres le defaut d'outcome). Un `?` ajoute sans son argument au bon rang
 	// decalerait silencieusement tous les suivants — le xuid deviendrait la carte.
 	//
-	// LE PREDICAT VIENT DE `analysis.SQLEligibleALaCuisson`, LE MEME QUE LA FILE : c'est
+	// LE PREDICAT VIENT DE `sqlfrag.SQLEligibleALaCuisson`, LE MEME QUE LA FILE : c'est
 	// lui qui garantit que « en attente » veut dire « la file le reprendra », et non « il
 	// n'a pas d'artefact ». Il ne vaut jamais NULL (cf. sa doc), donc il se scanne dans un
 	// `bool` nu.
 	//
 	// LA LISTE DU EXISTS SUIT LE MEME ORDRE TEXTUEL : elle vit dans le SELECT, donc AVANT
 	// le xuid, la carte et la liste blanche du WHERE.
-	predicat, predArgs := analysis.SQLEligibleALaCuisson("mr", q.RetentionMois, int64(matchflags.MBitFilmAbsent))
+	predicat, predArgs := sqlfrag.SQLEligibleALaCuisson("mr", q.RetentionMois, int64(matchflags.MBitFilmAbsent))
 	args := make([]any, 0, 4+len(predArgs)+len(journalArgs)+len(perimArgs))
 	args = append(args, domain.OutcomeUnknown)
 	args = append(args, predArgs...)

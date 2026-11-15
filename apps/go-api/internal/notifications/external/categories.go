@@ -23,10 +23,6 @@ func DefaultForwardedCategories() []notifications.Category {
 		notifications.CategoryComebackWelcome,
 		notifications.CategoryThresholdCrossed,
 		notifications.CategoryTrendConsolidate,
-		notifications.CategoryPatternStrength,
-		notifications.CategoryPatternWeakness,
-		notifications.CategoryPatternBehavior,
-		notifications.CategoryPatternLever,
 		notifications.CategoryCombatPattern,
 	}
 }

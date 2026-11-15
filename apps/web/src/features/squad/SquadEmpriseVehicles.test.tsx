@@ -36,7 +36,7 @@ const ROW = (gamertag: string): TeammateRow =>
   ({ gamertag, xuid: 'x', encounter_count: 7, with_kpis: { match_count: 7, wins: 3 } }) as unknown as TeammateRow
 
 function mount(block: SquadEmpriseBlock = VEHICLES_2209) {
-  const gamertags = ['Chocoboflor', 'Madina97294']
+  const gamertags = ['Joueur90001', 'Joueur90002']
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: gamertags.map(ROW),
     confirmedGamertags: gamertags,
@@ -95,7 +95,7 @@ describe('Véhicules — fiches (D3 : pastilles pleines)', () => {
     expect(screen.queryByTestId(`emprise-sheet-line-${XUID.jgtm}-tourelle_fixe`)).toBeNull()
     expect(within(screen.getByTestId('emprise-sheets')).queryByText('Tourelle fixe')).toBeNull()
     for (const dot of screen.getAllByTestId('emprise-sheets')[0].querySelectorAll('[data-dot="lost"]')) {
-      // Seuls les bonus perdus (Madina97294, Camouflage) ont une pastille vide.
+      // Seuls les bonus perdus (Joueur90002, Camouflage) ont une pastille vide.
       expect(dot.closest('[data-testid^="emprise-sheet-line-"]')?.getAttribute('data-testid')).toContain('powerup')
     }
   })

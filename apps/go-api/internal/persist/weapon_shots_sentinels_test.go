@@ -13,7 +13,7 @@ package persist
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 func TestSentinellesArmesAlignees(t *testing.T) {

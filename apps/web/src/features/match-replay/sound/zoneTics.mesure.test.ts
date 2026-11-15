@@ -30,12 +30,13 @@
  * Lecture seule sur des documents DÉJÀ CUITS : aucun décodage de film, aucune base ouverte.
  * Sans `ZONE_MESURE`, la suite est ignorée — même porte que `tourelleVisee.mesure.test.ts`.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument } from '@/lib/api/types'
 
+import { lireArtefact, listerArtefacts } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -55,14 +56,12 @@ function documentsAZones(): { court: string; doc: ReplayDocumentReady }[] {
   const dir = dossier()
   if (!existsSync(dir)) return []
   const out: { court: string; doc: ReplayDocumentReady }[] = []
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.json') || f.includes('.derived.')) continue
-    const brut = JSON.parse(readFileSync(join(dir, f), 'utf8')) as Partial<ReplayDocument>
-    const doc = testReplayDoc(brut)
+  for (const { court, chemin } of listerArtefacts(dir)) {
+    const doc = testReplayDoc(lireArtefact<Partial<ReplayDocument>>(chemin))
     const zones = doc.zoneStates ?? []
     if (zones.length < 2) continue
     if (zones.some((z) => z.spans.some((s) => s.active))) continue
-    out.push({ court: f.replace('.json', ''), doc })
+    out.push({ court, doc })
   }
   return out.sort((a, b) => a.court.localeCompare(b.court))
 }

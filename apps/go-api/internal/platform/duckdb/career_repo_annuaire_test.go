@@ -90,7 +90,7 @@ func TestCareerRepo_Annuaire_Q27MemeNomsQueLaVue(t *testing.T) {
 // L'annuaire lit les participants sur les matchs de l'historique du joueur, la vue sur toute la
 // base : un croisé SANS alias, sans nom dans les matchs du joueur mais nommé AILLEURS, reçoit le
 // libellé masqué là où la jointure rendait ce nom. Copie de production du 2026-09-23 : 8 cas sur
-// 58 353 joueurs croisés ou affrontés par les cinq joueurs suivis (tous chez Nuzzles, dont les
+// 58 353 joueurs croisés ou affrontés par les cinq joueurs suivis (tous chez J900004, dont les
 // participants n'ont pas de gamertag), aucun dans une ligne servie.
 func TestCareerRepo_Annuaire_EcartNomme_NomHorsHistorique(t *testing.T) {
 	pdb := newTestPlayerDB(t)

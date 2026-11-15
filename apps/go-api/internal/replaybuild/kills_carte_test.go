@@ -13,25 +13,19 @@ package replaybuild
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // bobineKillsource000d5950 : la mini-bobine versionnee du paquet `killsource` (film 000d5950, Cliffhanger).
 func bobineKillsource000d5950(t *testing.T) *decfilm.Film {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	dir := filepath.Join(racine, "libs", "film",
-		"internal", "facts", "killsource", "testdata", "minibobine_000d5950")
+	dir := testutil.CheminBriqueFilm(t, "internal", "facts", "killsource", "testdata", "minibobine_000d5950")
 	film, err := decfilm.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible sous %s : %v", dir, err)
@@ -58,7 +52,7 @@ func entreeDuCatalogue(t *testing.T, nom string) decfilm.MapQuantEntry {
 
 func TestDecodeKillSource_DecodeSousLaCarteResolue(t *testing.T) {
 	b := &Builder{}
-	res := b.decodeKillSource(context.Background(), "000d5950", entreeDuCatalogue(t, "Cliffhanger"), bobineKillsource000d5950(t))
+	res, _ := b.decodeKillSource(context.Background(), "000d5950", entreeDuCatalogue(t, "Cliffhanger"), bobineKillsource000d5950(t))
 	if res == nil {
 		t.Fatal("source de degat non decodee sous la carte resolue par la cuisson")
 	}
@@ -71,7 +65,7 @@ func TestDecodeKillSource_DecodeSousLaCarteResolue(t *testing.T) {
 // (sans largeurs) n ouvre pas les largeurs par defaut : la source de degat n est pas decodee.
 func TestDecodeKillSource_EntreeSansLargeursNEstPasDecodee(t *testing.T) {
 	b := &Builder{}
-	if res := b.decodeKillSource(context.Background(), "000d5950", decfilm.MapQuantEntry{Module: "vide"}, bobineKillsource000d5950(t)); res != nil {
+	if res, _ := b.decodeKillSource(context.Background(), "000d5950", decfilm.MapQuantEntry{Module: "vide"}, bobineKillsource000d5950(t)); res != nil {
 		t.Errorf("source de degat decodee sans carte (%d ligne(s)) : repli aux largeurs par defaut", len(res.Kills))
 	}
 }

@@ -1,7 +1,7 @@
 /**
  * Largeur occupée par le volet des référentiels ancré (application de bureau), en pixels : 0 tant
- * qu'il est fermé. Les éléments posés par rapport à la fenêtre (toasts) s'en servent pour rester dans
- * la colonne du contenu au lieu de couvrir le volet.
+ * qu'il est fermé ou superposé (non épinglé). Les éléments posés par rapport à la fenêtre (toasts)
+ * s'en servent pour rester dans la colonne du contenu au lieu de couvrir le volet.
  */
 import { useEffect, useState } from 'react'
 import { useSidebarWidthStore } from '@/lib/layout/sidebarWidth'
@@ -19,10 +19,13 @@ export function useViewportWidth(): number {
   return width
 }
 
-/** Largeur effective du volet (même bornes que `AssetDockedPanel`), 0 s'il est fermé. */
+/**
+ * Largeur effective du volet (même bornes que `AssetDockedPanel`), 0 s'il est fermé ou superposé :
+ * seul un volet épinglé prend sa place au contenu.
+ */
 export function useDockedPanelInset(): number {
-  const { isOpen, panelWidth } = useAssetDrawerStore()
+  const { isOpen, pinned, panelWidth } = useAssetDrawerStore()
   const viewport = useViewportWidth()
   const sidebarWidth = useSidebarWidthStore((s) => s.width)
-  return isOpen ? clampPanelWidth(panelWidth, viewport, sidebarWidth) : 0
+  return isOpen && pinned ? clampPanelWidth(panelWidth, viewport, sidebarWidth) : 0
 }

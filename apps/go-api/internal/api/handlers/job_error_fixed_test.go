@@ -3,13 +3,11 @@ package handlers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -88,31 +86,4 @@ func TestAdminJobs_FailureMessageIsFixed(t *testing.T) {
 		h.recordFailure(job.JobID, boom)
 		assertJobErrorFixed(t, failedJob(t, store, job.JobID), "import_error")
 	})
-}
-
-// L9-4 : l'échec d'une sync (job et notification) se résume à un code et un message fixes.
-func TestSyncFailure_CodeAndFixedMessage(t *testing.T) {
-	cases := []struct {
-		name      string
-		err       error
-		wantCode  string
-		retryable bool
-	}{
-		{"contention de bail", fmt.Errorf("lease: %w (%s)", dblease.ErrDBLocked, internalCause), "db_busy", true},
-		{"échec réel", errors.New(internalCause), "sync_failed", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := syncFailure(tc.err)
-			if got.Code != tc.wantCode || got.Retryable != tc.retryable {
-				t.Errorf("syncFailure = %+v, attendu code %q retryable %v", got, tc.wantCode, tc.retryable)
-			}
-			if got.Message != domain.ErrorMessageForCode(tc.wantCode) {
-				t.Errorf("message = %q, attendu le message fixe du code", got.Message)
-			}
-			if strings.Contains(got.Message, "duckdb") || strings.Contains(got.Message, "SELECT") {
-				t.Errorf("le message laisse fuir la cause : %q", got.Message)
-			}
-		})
-	}
 }

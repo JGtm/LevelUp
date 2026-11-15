@@ -35,6 +35,7 @@ export type SessionSectionKey =
   | 'netscore_fda'
   | 'fda_gap'
   | 'net_lives'
+  | 'lead_share'
   | 'intensity'
   | 'first_blood'
   | 'coordination'
@@ -57,6 +58,7 @@ export const SESSION_SECTION_ORDER: readonly SessionSectionKey[] = [
   'netscore_fda',
   'fda_gap',
   'net_lives',
+  'lead_share',
   'intensity',
   'first_blood',
   'coordination',
@@ -126,6 +128,7 @@ const SESSION_SECTION_GROUPS: Partial<Record<SessionSectionKey, SessionSectionGr
   netscore_fda: 'match_by_match',
   fda_gap: 'match_by_match',
   net_lives: 'match_by_match',
+  lead_share: 'match_by_match',
   intensity: 'match_by_match',
   first_blood: 'match_by_match',
   coordination: 'match_by_match',
@@ -248,13 +251,24 @@ export function pairSessionKeys(keys: readonly SessionSectionKey[]): SessionSect
   return runsBy(keys, (k) => SESSION_SECTION_PAIRS[k] ?? null).map((r) => r.items)
 }
 
-/** Les cles optionnelles d'une colonne : ses cartes, la Coordination et la Portee. */
-export type SessionSectionPresence = SessionCardsPresence & { coordination: boolean; range: boolean }
+/**
+ * Les cles optionnelles d'une colonne : ses cartes, la Coordination, la Portee et la Mainmise. La
+ * Mainmise (`lead_share`) n'existe que sur un titre qui decode le film (capability `replay`) : sans
+ * presence dite, la cle est ABSENTE, alors que toutes les autres cles restent presentes par defaut.
+ */
+export type SessionSectionPresence = SessionCardsPresence & {
+  coordination: boolean
+  range: boolean
+  lead_share?: boolean
+}
+
+/** Les cles absentes tant que la presence ne les pose pas. */
+const ABSENT_UNLESS_SET: ReadonlySet<SessionSectionKey> = new Set<SessionSectionKey>(['lead_share'])
 
 /** Cles effectivement presentes pour une colonne, dans l'ordre canonique. */
 export function sessionSectionKeys(presence: SessionSectionPresence): SessionSectionKey[] {
   const optional: Partial<Record<SessionSectionKey, boolean>> = presence
-  return SESSION_SECTION_ORDER.filter((key) => optional[key] ?? true)
+  return SESSION_SECTION_ORDER.filter((key) => optional[key] ?? !ABSENT_UNLESS_SET.has(key))
 }
 
 /**
@@ -269,7 +283,7 @@ export function mergeSessionSectionKeys(
 }
 
 /** sessionRowKeys — les rangees partagees de la comparaison : l'union des cles des deux colonnes. */
-export function sessionRowKeys(data: SessionPageResponse): SessionSectionKey[] {
+export function sessionRowKeys(data: SessionPageResponse, leadShare = false): SessionSectionKey[] {
   const keysOf = (side: 'current' | 'compare') => {
     const col = sessionColumnBlocks(data, side)
     return sessionSectionKeys({
@@ -277,6 +291,8 @@ export function sessionRowKeys(data: SessionPageResponse): SessionSectionKey[] {
       coordination: col.coordination != null,
       // La portée garde sa carte quand le film n'est pas lu (titre et état) : même lecture que le corps de colonne.
       range: col.rangeProfiles != null || sessionFilmGap(col) != null,
+      // La Mainmise : la carte existe des deux cotes des qu'un titre decode le film.
+      lead_share: leadShare,
     })
   }
   return mergeSessionSectionKeys(keysOf('current'), keysOf('compare'))

@@ -29,13 +29,14 @@ import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 import { getPalmaresText, type PalmaresText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 import { useRelationsMoments, useRelationsPage } from './queries'
-import { assistVolumeMax as computeAssistVolumeMax } from '@/features/_shared/assists/assistExchange'
+import { assistVolumeMax as computeAssistVolumeMax } from '@/components/assists/assistExchange'
 import { BinomeAssistsBlock, CoreRankingList } from './RelationAssistsCards'
 import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
 import { RelationWinRateDonut } from './RelationWinRateDonut'
+import { meanOfValid } from '@/lib/charts/stats'
 import {
   coreRelations,
   filterRelations,
@@ -367,10 +368,7 @@ function CoreSummaryCard({
   assistVolumeMax: number
 }) {
   const count = coreRows.length
-  const wrs = coreRows
-    .map((r) => r.teammate_win_rate)
-    .filter((v): v is number => v != null && Number.isFinite(v))
-  const avgWr = wrs.length > 0 ? wrs.reduce((a, b) => a + b, 0) / wrs.length : null
+  const avgWr = meanOfValid(coreRows.map((r) => r.teammate_win_rate))
   // Vus cette semaine : fidèles avec un last_seen_at de moins de 7 jours.
   const seenThisWeek = countSeenThisWeek(coreRows)
   // Classement des fidèles par WR ensemble (desc), nuls relégués, tiebreak volume.

@@ -11,7 +11,7 @@ import "testing"
 const skillBodyWithRankRecap = `{
   "Value": [
     {
-      "Id": "xuid(2533274823110022)",
+      "Id": "xuid(2603225103667623)",
       "ResultCode": 0,
       "Result": {
         "TeamMmr": 1234.5,
@@ -29,7 +29,7 @@ func TestParseMatchSkillResponseJSON_RankRecap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseMatchSkillResponseJSON: %v", err)
 	}
-	sd, ok := m["2533274823110022"]
+	sd, ok := m["2603225103667623"]
 	if !ok {
 		t.Fatalf("xuid manquant dans la map (clés: %v)", skillMapKeys(m))
 	}

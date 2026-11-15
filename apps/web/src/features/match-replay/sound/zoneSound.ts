@@ -51,7 +51,7 @@
  * colline sonne quand même, elle n'affirme rien.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { covers } from '../model/replaySpans'
 
@@ -192,6 +192,7 @@ export function zoneSoundEvents(
   const zones: readonly ZoneStateLike[] = doc.zoneStates ?? []
   if (zones.length === 0) return []
   const out: ReplaySoundEvent[] = []
+  const toleranceFrames = durationToFrames(TOLERANCE_MS, doc)
   const cote = (owner: number | null | undefined): ZoneSide | undefined => {
     if (allyTeam === null || owner === null || owner === undefined) return undefined
     return owner === allyTeam ? 'ally' : 'enemy'
@@ -201,7 +202,7 @@ export function zoneSoundEvents(
     // UNE COLLINE NE SONNE PAS SA JAUGE : sa grammaire est la sécurisation (ci-dessous).
     if (z.spans.some((s) => s.active)) continue
     for (const r of rampesDeJauge(z.gauge ?? [])) {
-      const arrivee = proprietaireApres(z.spans, r.fin)
+      const arrivee = proprietaireApres(z.spans, r.fin, toleranceFrames)
       if (arrivee === undefined) {
         // LA RAMPE N'A RIEN CHANGÉ : la capture était en cours et a été interrompue. C'est la
         // CONTESTATION, et elle sonne à l'instant où la jauge cesse de monter — pas au début de
@@ -329,19 +330,23 @@ function campDeLaRampe(
  * d'une rampe — c'est-à-dire celui que la capture a installé. Rend `undefined` quand aucun
  * intervalle ne s'ouvre là : la rampe n'a rien changé, et le rejeu se tait.
  */
-function proprietaireApres(spans: readonly SpanLike[], fin: number): number | null | undefined {
+function proprietaireApres(
+  spans: readonly SpanLike[],
+  fin: number,
+  toleranceFrames: number,
+): number | null | undefined {
   for (const s of spans) {
-    if (s.t0 >= fin && s.t0 <= fin + TOLERANCE_FRAMES) return s.owner ?? null
+    if (s.t0 >= fin && s.t0 <= fin + toleranceFrames) return s.owner ?? null
   }
   return undefined
 }
 
 /**
- * TOLERANCE_FRAMES — l'écart admis entre la fin d'une rampe et l'ouverture de l'intervalle
- * qu'elle produit. La jauge est ALLÉGÉE à la publication (un point par variation >= 0,02 ou par
- * seconde), donc son dernier point précède la bascule de quelques frames.
+ * TOLERANCE_MS — l'écart admis, en millisecondes, entre la fin d'une rampe et l'ouverture de
+ * l'intervalle qu'elle produit. La jauge est ALLÉGÉE à la publication (un point par variation
+ * >= 0,02 ou par seconde), donc son dernier point précède la bascule de quelques instants.
  */
-const TOLERANCE_FRAMES = 20
+const TOLERANCE_MS = 2000
 
 /**
  * ticsDeDomination rend un tic par seconde tant qu'un camp tient TOUTES les zones.

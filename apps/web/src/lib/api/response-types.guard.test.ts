@@ -51,33 +51,18 @@ const TYPE_ALIAS_RE = /export\s+type\s+(\w*Response)\s*=\s*(.*)/g
 // NE PAS ajouter d'entrée sans justification ; retirer l'entrée dès la migration.
 const ALLOWLIST = new Set<string>([
   // --- lib/api/types.ts : view-models / endpoints hors OpenAPI Huma ---
-  'SessionContextResponse',     // POST /session/context — non migré Huma
-  'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
-  'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias
   'BrowserLoginStartResponse',  // GET /auth/xbox/login (2026-11-02, L21.00) — route montée sous la capacité LoginViaBrowser seulement, donc hors du document généré (comme /desktop/strings) ; à migrer si le générateur monte un jour les routes de bureau
-  'SettingsResponse',           // GET /settings — large struct settings, non migrée
-  'CareerPageResponse',         // sous-types view-model (CareerSummary/LusrSection) hors schéma
-  'CareerHighlightMatchesResponse', // agrégat composite ExplorerMatchRow + cascade counts
+  'CareerHighlightMatchesResponse', // porte ExplorerMatchRow, view-model du tableau de matchs (null → '' pour les libellés)
   'PaginatedResponse',          // générique <T> — wrapper de pagination
   'HomePageResponse',           // page composite — sous-types view-model locaux
-  'TeammatesPageResponse',      // page composite squad — sous-types view-model locaux
   'SynthesisPageResponse',      // page composite — sous-types view-model locaux
-  'MediaPageResponse',          // page composite média
+  'MediaPageResponse',          // porte NormalizedMediaItem, view-model normalisé fabriqué par normalizeMediaItem
   'MediaUploadResponse',        // POST /media/upload — non migré Huma
-  'MatchViewResponse',          // page composite Match View — nombreux tabs view-model
-  'CompareResponse',            // POST /pages/compare — NormalizedPlayerStats live-fetch
-  'BackupStatusResponse',       // GET /settings/backup/status — pkg duckdbbackup hors Huma
-  'AdminSchedulerStatusResponse', // GET /admin/monitoring/scheduler — types pkg scheduler
-  'AdminJobsResponse',          // GET /admin/monitoring/jobs — wrapper AsyncJobStatus[]
   // --- fichiers feature-locaux ---
   'StreaksResponse',            // features/ascension/types.ts — Ascension V2
   'RecordsResponse',            // features/ascension/types.ts
-  'MilestonesResponse',         // features/ascension/types.ts
-  'AdminTitlesListResponse',    // features/admin/titles/queries.ts
   'ProposalsListResponse',      // features/coach/types.ts — coach proactif
-  'AcceptResponse',             // features/coach/types.ts
-  'DismissResponse',            // features/coach/types.ts
   'NotificationsListResponse',  // features/notifications/queries.ts — alias NotificationListResult
   'ImportStartResponse',        // features/onboarding/queries.ts — OpenSpartan import
   'FieldMappingsResponse',      // lib/i18n/fieldMappings.ts — mappings TOML backend-driven
@@ -120,6 +105,18 @@ const CRITICAL_CONTRACT_TYPES = [
   'DeviceFlowStatusResponse',
   'WatcherStatusResponse',
   'LoginResponse',
+  // Entrées le 2026-11-13 (étape 7.4, complément A1) : ré-exports du contrat.
+  'AdminJobsResponse',
+  'AdminSchedulerStatusResponse',
+  'BackupStatusResponse',
+  'CareerPageResponse',
+  'CompareResponse',
+  'DeviceFlowStartResponse',
+  'HealthResponse',
+  'MatchViewResponse',
+  'SessionContextResponse',
+  'SettingsResponse',
+  'TeammatesPageResponse',
   // Sorti de l'ALLOWLIST le 2026-08-03 : le type manuel déclarait `total_likers`
   // optionnel alors que le DTO Go l'émet toujours (compteur de likers lu à
   // l'écran) — exactement la classe de bug A2.
@@ -158,7 +155,7 @@ function collectHandWrittenResponses(files: string[]): Set<string> {
       const name = m[1]
       const rhs = (m[2] ?? '').trim()
       // Un ré-export du contrat généré est la forme AUTORISÉE : on ne le compte pas.
-      if (rhs.startsWith("components['schemas']") || rhs.startsWith('components["schemas"]')) {
+      if (rhs.includes("components['schemas']") || rhs.includes('components["schemas"]')) {
         continue
       }
       found.add(name)
@@ -183,6 +180,74 @@ function collectSchemaRefs(files: string[]): Map<string, Set<string>> {
 function collectContractReexports(typesTs: string): Map<string, string> {
   const out = new Map<string, string>()
   for (const m of typesTs.matchAll(CONTRACT_REEXPORT_RE)) out.set(m[1], m[2])
+  return out
+}
+
+// --- Extension (plan architecture, étape 7.4) : TOUS les schémas, pas seulement les *Response ---
+//
+// Un type écrit à la main sous le nom d'un schéma du contrat dit une chose que le contrat dit autrement :
+// c'est la classe de bug A2 (champ lu côté front, absent côté Go), pour chaque nom et pas seulement pour
+// les réponses. Dans `lib/api/types.ts`, toute déclaration manuelle homonyme d'un schéma est donc interdite
+// hors de l'ALLOWLIST des réponses (ci-dessus) et de KEPT_MANUAL_HOMONYMS (ci-dessous). Une déclaration
+// dérivée du contrat (`components['schemas'][…]`, y compris `Omit<…> & { … }`) n'est pas manuelle. Hors de
+// `types.ts`, même règle (plafond 0) avec sa propre liste datée, KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES, qui ne peut que
+// rétrécir.
+const DECLARATION_RE = /^(?:export\s+)?(interface|type)\s+(\w+)/gm
+const NEXT_DECLARATION_RE = /\n(?:export\s+|type\s|interface\s|const\s|function\s)/
+
+// Déclarations manuelles homonymes d'un schéma, HORS `lib/api/types.ts`, laissées à la main (2026-11-13). Plafond 0 hors de
+// cette liste, qui ne peut que rétrécir : chaque entrée (`fichier:Nom`) dit pourquoi le contrat ne peut pas être
+// réexporté tel quel.
+const KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES: Readonly<Record<string, string>> = {
+  'features/ascension/types.ts:StreaksResponse':
+    "porte Streak, view-model dont type et statut sont des unions de littéraux que le contrat sert en chaînes",
+  'features/ascension/types.ts:RecordsResponse':
+    "porte PersonalBest et RecordHistory, view-models à période en union de littéraux",
+  'features/ascension/types.ts:PatternReport':
+    "porte ContextualPattern, BehavioralPattern et PatternLever, view-models à unions de littéraux",
+  'features/coach/types.ts:ProposalsListResponse':
+    "porte Proposal, view-model à genre et origine en unions de littéraux",
+  'features/media/queries.ts:PlayerMediaAudioConfig':
+    "corps du PUT : le front n'envoie ni updated_at (fixé par le serveur) ni les rôles hors mode manuel, le contrat les exige",
+}
+
+// Types NON *Response de `lib/api/types.ts` laissés à la main (étape 7.4, 2026-11-13). Liste décroissante :
+// chaque entrée dit pourquoi le contrat généré ne peut pas être ré-exporté tel quel, et reste tant que la cause tient.
+const KEPT_MANUAL_HOMONYMS: Readonly<Record<string, string>> = {
+  PeriodInput:
+    "producteur : le contrat décrit la forme de RÉPONSE (champs requis, DTO Go sans omitempty) ; le store et le lien ?f= portent des fenêtres partielles",
+  SessionsInput: "producteur, même cause que PeriodInput (picked_* absents tant que rien n'est choisi)",
+  FilterContextInput:
+    "producteur : period, sessions et cascade facultatifs côté front, requis dans le contrat ; les rendre requis change les corps envoyés et le format du lien ?f=",
+  EngagementTimeseriesRequest: 'porte FilterContextInput (producteur)',
+}
+
+interface ManualDeclaration {
+  file: string
+  name: string
+}
+
+/** Déclarations manuelles (interface, ou alias qui ne dérive pas du contrat) dont le nom est un schéma. */
+function manualSchemaHomonyms(
+  files: string[],
+  schemaNames: ReadonlySet<string>,
+  root: string,
+): ManualDeclaration[] {
+  const out: ManualDeclaration[] = []
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8')
+    for (const m of src.matchAll(DECLARATION_RE)) {
+      const [, kind, name] = m
+      if (!schemaNames.has(name)) continue
+      if (kind === 'type') {
+        const rest = src.slice(m.index + m[0].length)
+        const stop = rest.search(NEXT_DECLARATION_RE)
+        const body = stop === -1 ? rest : rest.slice(0, stop)
+        if (body.includes("components['schemas']") || !body.includes('{')) continue
+      }
+      out.push({ file: file.slice(root.length + 1).replaceAll('\\', '/'), name })
+    }
+  }
   return out
 }
 
@@ -266,5 +331,82 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
         `(champ lu côté front, absent côté Go). Rétablir ` +
         `\`export type X = components['schemas']['X']\` dans lib/api/types.ts.`,
     ).toEqual([])
+  })
+
+  // --- Extension 7.4 : tous les noms de schéma ------------------------------------------
+  const typesFile = join(srcRoot, 'lib/api/types.ts')
+  const homonymsInTypes = manualSchemaHomonyms([typesFile], schemas, srcRoot).map((d) => d.name)
+
+  it('lib/api/types.ts : aucune déclaration manuelle homonyme d’un schéma hors des deux listes', () => {
+    const unexpected = homonymsInTypes.filter((n) => !ALLOWLIST.has(n) && !(n in KEPT_MANUAL_HOMONYMS)).sort()
+    expect(
+      unexpected,
+      `Déclaration(s) manuelle(s) homonyme(s) d'un schéma du contrat : ${unexpected.join(', ')}. ` +
+        `Ré-exporter le schéma (type X = components['schemas']['X']), ou le dériver d'un schéma qui le porte ` +
+        `réellement ; sinon l'ajouter à KEPT_MANUAL_HOMONYMS avec la cause écrite.`,
+    ).toEqual([])
+  })
+
+  it('KEPT_MANUAL_HOMONYMS décroissante : aucune entrée périmée', () => {
+    const stale = Object.keys(KEPT_MANUAL_HOMONYMS)
+      .filter((n) => !homonymsInTypes.includes(n))
+      .sort()
+    expect(
+      stale,
+      `Entrée(s) de KEPT_MANUAL_HOMONYMS sans déclaration manuelle correspondante dans types.ts : ${stale.join(', ')}. ` +
+        `Retirer la ligne.`,
+    ).toEqual([])
+  })
+
+  it('hors lib/api/types.ts : aucune déclaration manuelle homonyme d’un schéma hors de la liste datée', () => {
+    const outside = manualSchemaHomonyms(
+      files.filter((f) => f !== typesFile && !f.endsWith(join('lib', 'api', 'generated.ts'))),
+      schemas,
+      srcRoot,
+    ).map((d) => `${d.file}:${d.name}`)
+    const unexpected = outside.filter((k) => !(k in KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES)).sort()
+    expect(
+      unexpected,
+      `Déclaration(s) manuelle(s) homonyme(s) d'un schéma du contrat : ${unexpected.join(', ')}. Dériver du contrat ` +
+        `(type X = components['schemas']['X'], ou Omit<…> & { … } pour une union de littéraux), renommer le view-model, ou l'ajouter ` +
+        `à KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES avec la cause écrite.`,
+    ).toEqual([])
+  })
+
+  it('KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES décroissante : aucune entrée périmée', () => {
+    const outside = new Set(
+      manualSchemaHomonyms(
+        files.filter((f) => f !== typesFile && !f.endsWith(join('lib', 'api', 'generated.ts'))),
+        schemas,
+        srcRoot,
+      ).map((d) => `${d.file}:${d.name}`),
+    )
+    const stale = Object.keys(KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES).filter((k) => !outside.has(k)).sort()
+    expect(stale, `Entrée(s) sans déclaration manuelle correspondante : ${stale.join(', ')}. Retirer la ligne.`).toEqual([])
+  })
+
+  it('auto-preuve : la détection voit interface et alias manuels, ignore les dérivations du contrat', () => {
+    const detect = (code: string): string[] => {
+      const names = new Set(['Foo'])
+      const found: string[] = []
+      for (const m of code.matchAll(DECLARATION_RE)) {
+        const [, kind, name] = m
+        if (!names.has(name)) continue
+        if (kind === 'type') {
+          const rest = code.slice(m.index + m[0].length)
+          const stop = rest.search(NEXT_DECLARATION_RE)
+          const body = stop === -1 ? rest : rest.slice(0, stop)
+          if (body.includes("components['schemas']") || !body.includes('{')) continue
+        }
+        found.push(name)
+      }
+      return found
+    }
+    expect(detect('export interface Foo { a: 1 }')).toEqual(['Foo'])
+    expect(detect('export type Foo = { a: 1 }')).toEqual(['Foo'])
+    expect(detect("export type Foo = components['schemas']['Foo']")).toEqual([])
+    expect(detect("export type Foo = Omit<components['schemas']['Foo'], 'a'> & { b: 1 }")).toEqual([])
+    expect(detect("export type Foo =\n  components['schemas']['Bar']\n\nexport interface Baz {}")).toEqual([])
+    expect(detect('export interface Other { a: 1 }')).toEqual([])
   })
 })

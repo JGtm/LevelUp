@@ -406,6 +406,33 @@ describe('MatchHeaderCard', () => {
   })
 })
 
+describe('MatchHeaderCard — la Mainmise', () => {
+  function renderHeader(header: MatchViewHeader, rank: MatchViewRank = baseRank) {
+    return renderWithQueryClient(
+      <MatchHeaderCard header={header} rank={rank} matchId="m1" playerSlug="MonGT" matchTitle="Slayer sur Aquarius" locale="fr" />,
+    )
+  }
+
+  it('s’affiche ENTRE Performance et Rang, avec le pourcentage entier et les retournements', () => {
+    const { container } = renderHeader({ ...baseHeader, replay_available: true, lead_share: 0.62, lead_changes: 3 })
+    expect(screen.getByTestId('match-lead-share-value').textContent).toBe('62 %')
+    expect(screen.getByText('3 retournements')).toBeInTheDocument()
+    const text = container.textContent ?? ''
+    expect(text.indexOf('Performance')).toBeLessThan(text.indexOf('Mainmise'))
+    expect(text.indexOf('Mainmise')).toBeLessThan(text.indexOf('Rang'))
+  })
+
+  it('un match avec film mais non mesuré (drapeau, colline, bombe) : tiret, jamais 0 %', () => {
+    renderHeader({ ...baseHeader, replay_available: true })
+    expect(screen.getByTestId('match-lead-share-value').textContent).toBe('—')
+  })
+
+  it('un match sans film et sans mesure : aucun bloc', () => {
+    renderHeader({ ...baseHeader, replay_available: false })
+    expect(screen.queryByTestId('match-lead-share')).toBeNull()
+  })
+})
+
 describe('MatchHeaderCard — lien Halo Waypoint', () => {
   function renderHeader(locale: 'fr' | 'en' = 'fr') {
     return renderWithQueryClient(

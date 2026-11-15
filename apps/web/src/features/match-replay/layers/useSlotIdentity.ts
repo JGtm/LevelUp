@@ -11,7 +11,7 @@
  * TOUT EST RÉSOLU PAR SLOT ET PAR IMAGE, jamais par rang de trace ni par une valeur figée pour
  * tout le match : un slot de biped est une VIE, et son propriétaire est la vie qui l'occupe À
  * L'IMAGE lue. Une valeur figée par slot montrait un seul joueur pour tout le match dès qu'un
- * slot était réattribué entre manches (« deux DinoR00 et pas de SHROOM » — le bug que ce
+ * slot était réattribué entre manches (« deux J900001 et pas de SHROOM » — le bug que ce
  * chantier corrige).
  *
  * UNE VIE SANS PROPRIÉTAIRE — OU UN SLOT LIBRE À CETTE IMAGE — NE SE DESSINE PAS. `buildPlayers`

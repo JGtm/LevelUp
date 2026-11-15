@@ -10,7 +10,9 @@
 //    poses. En developpement, un serveur absent est remplace par un fichier vide (le lancement
 //    echoue alors proprement, ecran d'arret) pour que `cargo build` et `cargo test` ne dependent
 //    pas de la compilation du serveur Go.
-// 3. tauri-build (ressources Windows, sidecar, schemas).
+// 3. tauri-build (ressources Windows, sidecar, schemas, permissions). La seule commande que la page du
+//    serveur appelle, `pick_folder`, est declaree ici : tauri-build en tire la permission `allow-pick-folder`
+//    que `capabilities/pick-folder.json` accorde a `http://127.0.0.1:*`.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -30,7 +32,11 @@ fn main() {
     let repo = manifest.join(REPO_ROOT);
     generate_catalogue(&repo);
     release_guards(&manifest);
-    tauri_build::build();
+    let attributes =
+        tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&["pick_folder"]));
+    if let Err(error) = tauri_build::try_build(attributes) {
+        panic!("tauri-build : {error:#}");
+    }
 }
 
 /// Lit `locales.toml` et `desktop.toml`, verifie la completude et ecrit le catalogue Rust.

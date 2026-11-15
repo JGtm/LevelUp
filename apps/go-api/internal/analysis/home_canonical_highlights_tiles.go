@@ -83,11 +83,10 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 	if n == 0 || totalSecs <= 0 {
 		return nil
 	}
-	minutes := totalSecs / 60.0
 	slides := []domain.HighlightSlide{
-		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", float64(kills)/minutes), ValueColor: homeColorNeutral},
-		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", float64(deaths)/minutes), ValueColor: homeColorNeutral},
-		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", float64(assists)/minutes), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", PerMinute(float64(kills), totalSecs)), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", PerMinute(float64(deaths), totalSecs)), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", PerMinute(float64(assists), totalSecs)), ValueColor: homeColorNeutral},
 	}
 	first := slides[0]
 	return &domain.HighlightItem{

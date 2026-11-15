@@ -15,7 +15,7 @@
  * l'option suit donc le thème et la palette d'accessibilité (ChartCard reconstruit l'option à
  * chaque changement). Rien n'est résolu au chargement du module.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -229,7 +229,7 @@ function tooltipFormatter(input: TendancesLinesInput) {
  * Construit l'option ECharts des courbes d'un graphique d'« Évolution ». Sans courbe :
  * option vide (le cadre affiche alors son état vide).
  */
-export function buildTendancesLinesOption(input: TendancesLinesInput): EChartsCoreOption {
+export function buildTendancesLinesOption(input: TendancesLinesInput): ChartOption {
   if (input.curves.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()

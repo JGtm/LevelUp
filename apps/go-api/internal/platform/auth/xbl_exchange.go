@@ -16,8 +16,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	haloapi "github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // xblExchangeTimeout borne chaque appel HTTP de la chaîne d'échange (échange Halo, XSTS RTA,

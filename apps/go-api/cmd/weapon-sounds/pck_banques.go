@@ -38,7 +38,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // PackBanque est le rattachement d'un `.pck` a sa banque.

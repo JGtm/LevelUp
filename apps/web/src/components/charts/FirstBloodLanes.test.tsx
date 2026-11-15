@@ -8,7 +8,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FirstBloodLanes } from './FirstBloodLanes'
-import type { FirstBloodPlayerSeries } from './firstBloodLanesModel'
+import type { FirstBloodLaneSeries } from './firstBloodLanesModel'
 
 // Couleurs déterministes : en jsdom les CSS vars de palette ne sont pas résolues.
 vi.mock('@/lib/accessibility', async (importOriginal) => ({
@@ -47,7 +47,7 @@ interface OptionLike {
   tooltip: { trigger: string }
 }
 
-const DATA: FirstBloodPlayerSeries[] = [
+const DATA: FirstBloodLaneSeries[] = [
   {
     player: 'Slow',
     matches: [

@@ -192,7 +192,20 @@ schema_version = 1
 # l'EXPOSITION de cette ressource, rien d'autre des vehicules.
 # ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun calque vehicules.
 "film.vehicle_usage"     = "supported"
-# L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json) : trame de
+
+# film.lead_share — LA MAINMISE : part de la durée jouée pendant laquelle chaque camp est seul en
+# tête du score, et nombre de retournements, par match -> shared.match_lead_share (append-only +
+# vue _latest).
+#
+# La mesure vient de la courbe de score de l'artefact (scoreTimeline.teams[].total) ; un mode à
+# peu de points (drapeau, colline, bombe), un score non couvert ou une horloge sans origine est
+# « non mesuré » avec sa raison, jamais zéro.
+#
+# ⚠ Clé FINE, même doctrine que les film.* ci-dessus : elle gouverne la PRODUCTION et
+# l'EXPOSITION de cette mesure, rien d'autre du score.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc aucune courbe de score.
+"film.lead_share"        = "supported"
+# L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json.gz) : trame de
 # positions, kill-feed recalé, score, roster, calques d'objectif. C'est la SOURCE dont les
 # quatre dérivés du film sont les projections (film.usage_summary, film.bomb_stats, la
 # timeline d'objectif et les positions keyframe de la Match View).
@@ -207,6 +220,12 @@ schema_version = 1
 # ⚠ Clé FINE, même doctrine que les cinq film.* ci-dessus : elle gouverne l'ARTEFACT, pas ce
 # que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
 "film.replay_artifact"   = "supported"
+# film.spawn_forecast — la PREVISION DE REAPPARITION : où un joueur réapparaît d'après la position des
+# autres (modèle de choix du point de réapparition, poids versionnés sous reference/). Elle se mesure sur
+# les artefacts de rejeu mais s'arme à part de film.replay_artifact.
+# ABSENTE pour Halo 5 : aucun artefact, donc aucune mesure — silence propre.
+# Clé FINE, même doctrine que les film.* ci-dessus : elle gouverne le modèle et ses lectures, rien d'autre.
+"film.spawn_forecast"    = "supported"
 # map.forge_callouts — les ZONES NOMMEES (callouts) des cartes Forge, lues dans la variante
 # .mvar de l asset UGC de la carte, et rangees au catalogue GENERE des zones
 # (reference/generated/map_callouts.json, non versionne). Elle gouverne la PRODUCTION : le

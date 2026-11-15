@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // relier resout arme -> `snd!` -> evenements a partir du rapport JSON du mode `map`.

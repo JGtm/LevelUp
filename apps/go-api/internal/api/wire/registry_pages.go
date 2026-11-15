@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/snapshot"
@@ -210,7 +211,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		if !config.PlayerDBFileExists(cfg, titleSlug, gamertag) {
 			return nil, service.ErrFriendWithoutPlayerDB
 		}
-		pdb, perr := config.ResolvePlayer(ctx, cfg, slug, titleSlug)
+		pdb, perr := playerresolve.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		if perr != nil {
 			return nil, perr
 		}
@@ -225,7 +226,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 // Le PlayerMatchesRepo est injecte pour que GetTimeseries (POST
 // /engagement/timeseries) puisse honorer le FilterContextInput de la page
 // Timeseries Mock 11, comme POST /pages/timeseries.
-func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
+func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (port.PlayerEngagementService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -281,11 +282,11 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		// « Analyse du film en cours » de l'Emprise : MÊME règle et MÊME porte de titre que l'accueil, la
 		// vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
 		WithAnalysisPending(r.analysisPendingFor(pdb))
-	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
+	// Axe « Objectif » (profil de participation Session : note d'objectif du match) : gated par
 	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
 	// retiré). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
+		svc = svc.WithObjectiveTeamRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
 	}
 	svc = r.cablerBlocsSessions(svc, pdb) // blocs du film : registry_pages_sessions.go
 	// Bloc « Coordination » (appui reçu) de la session, lot N1 : gated par la
@@ -374,7 +375,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente pour
 	// Halo 5 → l'Emprise dit film_unsupported). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())
 		// Bloc « Les formes retenues », contexte SOLO (migré de l'Escouade le
 		// 2026-09-19) : MÊME repo d'usage, plus les colonnes d'objectif quand le titre
 		// les publie — deux gates indépendantes, la seconde ne retirant que les cartes

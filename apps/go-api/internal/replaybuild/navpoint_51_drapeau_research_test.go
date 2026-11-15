@@ -51,7 +51,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -59,8 +58,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestNavpoint51DrapeauSurFilm(t *testing.T) {
@@ -69,7 +68,7 @@ func TestNavpoint51DrapeauSurFilm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine repo : %v", err)
 	}
-	factsPath := filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence", court+".facts.json")
+	factsPath := testutil.CheminBriqueFilm(t, "replay", "testdata", "equivalence", court+".facts.json")
 	faits, err := ReadFactsFile(factsPath)
 	if err != nil {
 		t.Fatalf("faits %s : %v", factsPath, err)

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // cmdAssemble fond un chassis parent (`mode`) et un ou plusieurs objets-enfants (tourelle,

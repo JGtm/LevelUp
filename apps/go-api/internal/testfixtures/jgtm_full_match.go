@@ -41,7 +41,7 @@ type FilmChunk struct {
 // JGtmFullMatch regroupe toutes les donnees du fixture E2E JGtm.
 //
 // Match : b71d39db-e3af-40e4-b7f9-e7c34c367981 (Arena, 8 participants, ~9 min,
-// joue le 2026-05-19, JGtm xuid 2533274823110022).
+// joue le 2026-05-19, JGtm xuid 2603225103667623).
 type JGtmFullMatch struct {
 	// Manifest film decode depuis manifest_raw.json.
 	Manifest FilmManifest

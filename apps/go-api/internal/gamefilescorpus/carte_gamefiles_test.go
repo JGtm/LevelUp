@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestCarteCliffhanger produit l ARTEFACT DE REVUE de la carte (gate visuel de la piste B).

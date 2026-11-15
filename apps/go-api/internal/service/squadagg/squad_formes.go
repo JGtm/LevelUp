@@ -24,9 +24,9 @@ import (
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaytext"
 )
 
 // SquadFormesQuery — ce que la page fournit à l'assemblage.
@@ -190,22 +190,17 @@ func joindrePrisesNettes(
 // WeaponCatalog — clé de famille d'arme -> nom du titre (langue de la requête) et clé canonique du
 // registre. Map vide (jamais nil-panic) quand le catalogue manque : les armes gardent alors leur
 // clé à l'écran, jamais un nom approchant. Lu par l'Emprise (Escouade, Séries temporelles).
-func WeaponCatalog(ctx context.Context, repoRoot, titleSlug, locale string) map[string]squadformes.WeaponInfo {
+func WeaponCatalog(ctx context.Context, labels port.ReplayLabelSource, titleSlug, locale string) map[string]squadformes.WeaponInfo {
 	out := map[string]squadformes.WeaponInfo{}
-	if repoRoot == "" || titleSlug == "" {
-		return out
-	}
-	cat, err := replaylabels.Catalogue(repoRoot, titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "escouade: catalogue d'armes illisible — socles non nommés",
-			"err", err, "titleSlug", titleSlug)
+	cat, ok := labelCatalogue(ctx, labels, titleSlug, "escouade: catalogue d'armes illisible — socles non nommes")
+	if !ok {
 		return out
 	}
 	loc := i18n.Parse(locale)
 	for family, key := range cat.Keys {
 		info := squadformes.WeaponInfo{WeaponKey: key}
 		if label, ok := cat.Weapons[family]; ok {
-			info.Label = replaylabels.TexteDepuisFilm(label.Text).Pick(loc)
+			info.Label = replaytext.TexteDepuisFilm(label.Text).Pick(loc)
 		}
 		out[formesWeaponFamilyKey(family)] = info
 	}

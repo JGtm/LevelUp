@@ -3,7 +3,7 @@
  *
  * CE QU'ILS PROTÈGENT : rien n'apparaît pour un non-admin (pas même un élément vide) ; le
  * libellé dit « à jour » quand l'artefact porte déjà la version courante du producteur,
- * « à recuire (dernier : N) » sinon, se limite à la version lue quand aucune comparaison
+ * « à régénérer (dernier : N) » sinon, se limite à la version lue quand aucune comparaison
  * n'est possible (en-tête absent — artefact antérieur à ce lot), et NOMME le manquement quand
  * le document ne respecte pas le contrat (lot 0.B, 2026-09-13).
  *
@@ -46,7 +46,7 @@ describe('ReplaySchemaBadge', () => {
     expect(screen.getByText(`Schéma ${PRODUCTEUR} · à jour`)).toBeInTheDocument()
   })
 
-  it('dit "à recuire (dernier : N)" quand l\'artefact est en retard', () => {
+  it('dit "à régénérer (dernier : N)" quand l\'artefact est en retard', () => {
     render(
       <ReplaySchemaBadge
         isAdmin
@@ -56,7 +56,7 @@ describe('ReplaySchemaBadge', () => {
       />,
     )
     expect(
-      screen.getByText(`Schéma ${EN_RETARD} · à recuire (dernier : ${PRODUCTEUR})`),
+      screen.getByText(`Schéma ${EN_RETARD} · à régénérer (dernier : ${PRODUCTEUR})`),
     ).toBeInTheDocument()
   })
 
@@ -72,7 +72,7 @@ describe('ReplaySchemaBadge', () => {
     expect(screen.getByText(`Schéma ${EN_RETARD}`)).toBeInTheDocument()
   })
 
-  it('dit "à recuire" SANS cible sous le seuil d\'affichage, en-tête absent', () => {
+  it('dit "à régénérer" SANS cible sous le seuil d\'affichage, en-tête absent', () => {
     render(
       <ReplaySchemaBadge
         isAdmin
@@ -82,7 +82,7 @@ describe('ReplaySchemaBadge', () => {
       />,
     )
     expect(
-      screen.getByText(`Schéma ${MIN_RENDERABLE_SCHEMA_VERSION - 1} · à recuire`),
+      screen.getByText(`Schéma ${MIN_RENDERABLE_SCHEMA_VERSION - 1} · à régénérer`),
     ).toBeInTheDocument()
   })
   it('NOMME le manquement quand le document ne respecte pas le contrat', () => {
@@ -221,7 +221,7 @@ describe('ReplaySchemaBadge — la couche de publication', () => {
     )
     expect(screen.queryByText(/publication/)).not.toBeInTheDocument()
     expect(
-      screen.getByText(`Schéma ${EN_RETARD} · à recuire (dernier : ${PRODUCTEUR})`),
+      screen.getByText(`Schéma ${EN_RETARD} · à régénérer (dernier : ${PRODUCTEUR})`),
     ).toBeInTheDocument()
   })
 
@@ -237,5 +237,38 @@ describe('ReplaySchemaBadge — la couche de publication', () => {
     )
     expect(screen.queryByText(/publication/)).not.toBeInTheDocument()
     expect(screen.getByText(/à jour/)).toBeInTheDocument()
+  })
+})
+
+describe('ReplaySchemaBadge — la cadence périmée, dite par le serveur', () => {
+  it('garde le libellé « à régénérer » existant, en FR et en EN, pour un artefact au schéma courant', () => {
+    const layers = { tracks: `publication-${PRODUCTEUR}` }
+    const { unmount } = render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        cadenceStale
+        layers={layers}
+        locale="fr"
+      />,
+    )
+    expect(
+      screen.getByText(`Schéma ${PRODUCTEUR} · à régénérer (dernier : ${PRODUCTEUR}) — seule la publication a changé`),
+    ).toBeInTheDocument()
+    unmount()
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        cadenceStale
+        layers={layers}
+        locale="en"
+      />,
+    )
+    expect(
+      screen.getByText(`Schema ${PRODUCTEUR} · rebuild needed (latest: ${PRODUCTEUR}) — publication layer only`),
+    ).toBeInTheDocument()
   })
 })

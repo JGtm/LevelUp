@@ -12,8 +12,17 @@ import { type CanvasView, projectTo } from '../model/replayView'
 
 const PROJECTILE_ALPHA = 0.5
 const PROJECTILE_WIDTH = 1.2
-/** Le vol reste visible brièvement après son dernier point répliqué, puis s'efface. */
-const PROJECTILE_TAIL_FRAMES = 7
+/**
+ * Le vol reste visible 700 ms après son dernier point répliqué, puis s'efface. Le tracé reçoit la
+ * durée en images (`ProjectileWindow.tailFrames`), convertie avec le pas du document.
+ */
+export const PROJECTILE_TAIL_MS = 700
+
+/** Fenêtre d'affichage : l'image courante et la durée de la traînée, en images. */
+export interface ProjectileWindow {
+  frame: number
+  tailFrames: number
+}
 
 /**
  * drawProjectilesLayer dessine les vols de projectile en cours.
@@ -21,22 +30,27 @@ const PROJECTILE_TAIL_FRAMES = 7
  * LE DERNIER POINT N'EST PAS UN IMPACT : le film ne porte aucun événement de détonation. C'est
  * la dernière position RÉPLIQUÉE — pour une grenade, la réplication cesse ~1,4 s après le
  * lancer alors que la mèche court jusqu'à ~3 s. Le vol s'efface donc, il n'explose pas.
+ *
+ * `shown` (Seul, Masquer) : faux pour l'index d'un projectile = le vol n'est pas tracé.
  */
 export function drawProjectilesLayer(
   ctx: CanvasRenderingContext2D,
   projectiles: ReplayProjectileReady[],
   view: CanvasView,
-  frame: number,
+  win: ProjectileWindow,
   color: string,
+  shown?: (index: number) => boolean,
 ): void {
+  const { frame, tailFrames } = win
   ctx.strokeStyle = color
   ctx.lineWidth = PROJECTILE_WIDTH
-  for (const pr of projectiles) {
+  for (const [index, pr] of projectiles.entries()) {
+    if (shown && !shown(index)) continue
     const pts = pr.p
     if (pts.length < 2) continue
     const end = pr.t0 + pts[pts.length - 1][0]
-    if (frame < pr.t0 || frame > end + PROJECTILE_TAIL_FRAMES) continue
-    const fade = frame > end ? 1 - (frame - end) / PROJECTILE_TAIL_FRAMES : 1
+    if (frame < pr.t0 || frame > end + tailFrames) continue
+    const fade = frame > end ? 1 - (frame - end) / tailFrames : 1
     ctx.globalAlpha = PROJECTILE_ALPHA * fade
     ctx.beginPath()
     let started = false

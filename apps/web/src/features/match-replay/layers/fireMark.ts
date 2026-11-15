@@ -83,6 +83,11 @@ export interface FireMarkStyle {
    * part du véhicule. Absent = aucun tireur embarqué.
    */
   embarkedAtSlot?: (slot: number, frame: number) => boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand ce que porte ce slot à cette image est
+   * retiré de la carte. Le « ! » est celui du tireur : il part avec son pion. Absent = tout se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
   /** Encre du glyphe (contour des étiquettes ; l'appelant fournit son repli). */
   ink: string
   /** Densité du canevas. */
@@ -110,6 +115,7 @@ export function drawFireMarks(
     // le propriétaire de CETTE vie, jamais celui d'une autre manche.
     if (!style.colorOfSlot(e.track.slot, style.frame)) continue
     if (style.embarkedAtSlot?.(e.track.slot, style.frame)) continue
+    if (style.shownAtSlot && !style.shownAtSlot(e.track.slot, style.frame)) continue
     const head = positionAt(e.track.points, style.frame)
     if (!head) continue
     const c = projectTo(view, head)

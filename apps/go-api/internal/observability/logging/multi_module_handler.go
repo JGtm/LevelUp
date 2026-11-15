@@ -11,8 +11,8 @@ import (
 )
 
 // MultiModuleHandler dispatche chaque slog.Record vers :
-//  1. Un handler "console" (typiquement os.Stderr, format texte ou JSON
-//     selon LEVELUP_LOG_JSON) — comportement pre-sprint inchangé.
+//  1. Un handler "console" (typiquement os.Stderr, format compact, texte ou JSON
+//     selon LEVELUP_LOG_FORMAT) — comportement pre-sprint inchangé.
 //  2. Un handler "fichier" spécifique au module du record, sous
 //     `{LogsDir}/{module}.log` (format JSON, append-only).
 //

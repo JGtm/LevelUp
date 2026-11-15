@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // Racines des deux registres, relatives a la racine du depot : un site de la brique est relatif a

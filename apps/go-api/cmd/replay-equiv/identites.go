@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/identitefictive"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -105,10 +106,14 @@ func chargerRetraducteur(chemin string) (retraducteur, error) {
 	return inv, nil
 }
 
-// registreFictifs lit le registre versionne des xuids fictifs (`libs/film/testdata/IDENTITES.tsv`).
-func registreFictifs(repoRoot string) (map[uint64]bool, error) {
-	chemin := filepath.Join(repoRoot, "libs", "film", "testdata", "IDENTITES.tsv")
-	f, err := os.Open(chemin) //nolint:gosec // chemin fixe sous la racine du depot
+// registreFictifs lit le registre versionne des xuids fictifs (`testdata/IDENTITES.tsv` de la brique du
+// decodeur, dossier rendu par le resolveur des briques).
+func registreFictifs() (map[uint64]bool, error) {
+	chemin, err := briques.Chemin("film", "testdata", "IDENTITES.tsv")
+	if err != nil {
+		return nil, fmt.Errorf("registre des identifiants fictifs : %w", err)
+	}
+	f, err := os.Open(chemin) //nolint:gosec // chemin rendu par le resolveur des briques
 	if err != nil {
 		return nil, fmt.Errorf("registre des identifiants fictifs : %w", err)
 	}
@@ -165,7 +170,7 @@ func retraduireLesFaits(faits *replaybuild.FactsFile, o options) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	fictifs, err := registreFictifs(o.repoRoot)
+	fictifs, err := registreFictifs()
 	if err != nil {
 		return 0, err
 	}

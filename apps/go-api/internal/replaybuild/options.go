@@ -4,8 +4,8 @@ import (
 	"context"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // buildReplayOptions assemble replay.Options a partir de ce que BuildBytes a deja resolu
@@ -15,7 +15,7 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
 	return replay.Options{
-		FrameIntervalMS: b.interval,
+		FrameIntervalMS: b.frameInterval(),
 		Geometry:        b.geometryFor(ctx, entry.Module),
 		Structure:       b.structureFor(ctx, entry.Module),
 		Labels:          b.labels,
@@ -59,6 +59,9 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		// LE PROFIL DE BALAYAGE QUE `killsource` A RETENU SUR CE FILM (lot 2.3, condition D1 du
 		// lot 2.2.a) : il voyage par les options au lieu de fuir par l'etat du processus.
 		ProfilDeBalayage: profilDeBalayageDeLaCuisson(cat.killsource),
+		// LE CONTEXTE DE FILM DE CE DÉCODAGE, quand il a abouti : la cuisson y relit la marche des
+		// trames faite pour les deux au lieu de remarcher le film.
+		Contexte: cat.contexte,
 		// LES COMPTES DE REPLIS QUE LA CUISSON APPORTE (lot J8.7, decisions 1 et 2) : ceux du kill-feed
 		// (son resultat, decode ou RELU dans les faits), ceux des objectifs (section statborg et pont),
 		// et le rapport de la construction. Ils sont recalcules a chaque cuisson et l ASSEMBLAGE les

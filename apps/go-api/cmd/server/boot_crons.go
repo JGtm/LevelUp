@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/duckdb/worldrepo"
 	"levelup/go-api/internal/scheduler"
-	"levelup/go-api/internal/worldenrich"
 )
 
 // launchMonitoring ouvre le store monitoring puis lance les boucles de détection, de surveillance
@@ -194,21 +195,20 @@ func launchWorldLeaderboardCron(st *bootState) {
 	// manuelle ; garde-fou fraîcheur 20h → pas de
 	// re-scrape à chaque hot-reload. Gardé par cfg.SharedProvider != nil : en mode
 	// legacy (RO direct), une 2e connexion RW sur shared entrerait en conflit
-	// "different configuration" — on désactive donc le cron in-process (le CLI
-	// snapshot-world-leaderboard reste la voie manuelle, serveur arrêté).
+	// "different configuration" — on désactive donc le cron in-process.
 	if cfg.SharedProvider != nil {
 		lbScraper := haloadapter.NewLeaderboardScraper(800 * time.Millisecond)
-		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
+		worldLbCron := scheduler.NewWorldLeaderboardCron(worldrepo.ForProvider(cfg.SharedProvider), lbScraper, 0)
 		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
 			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
-			// round-robin — même chemin d'auth que le reste de l'app et que le CLI
-			// -all-tokens, store-first ADR 0023). Construit ICI, dans la goroutine (hors
+			// round-robin — même chemin d'auth que le reste de l'app,
+			// store-first ADR 0023). Construit ICI, dans la goroutine (hors
 			// chemin de démarrage → boot non bloqué), en Eager:true : résout les tokens et
 			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
 			// round-robin taperait des sources mortes et raterait des fetchs. Un build en
 			// échec (aucun compte résolu) dégrade en scrape-only sans paniquer.
-			enr, gts, eerr := worldenrich.BuildEnricher(sctx, cfg, worldenrich.EnricherOptions{
+			enr, gts, eerr := buildWorldEnricher(sctx, cfg, enricherOptions{
 				RPS:   5,
 				Eager: true, // filtre les comptes db_profiles dont le RT ne résout pas
 			})
@@ -255,7 +255,7 @@ func launchReplayPurgeCron(st *bootState) {
 				return s.ReplayRetentionMonths
 			}
 			return 0
-		}, 0)
+		}, 0, cronstore.New(nil))
 		if boot.launch(loopTask(taskReplayPurge, true, schedulerCtx, replayPurgeCron.Run)) {
 			slog.InfoContext(ctx, "replay_purge_cron: scheduled",
 				"interval", scheduler.DefaultReplayPurgeInterval)

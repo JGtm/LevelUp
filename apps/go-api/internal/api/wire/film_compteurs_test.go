@@ -6,7 +6,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
 )
 
 // Les compteurs du film doivent atteindre `/debug/vars` sous leur nom d'origine : sans le puits,

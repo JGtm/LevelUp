@@ -4,9 +4,9 @@
  * limite D2 du plan). Table dense, cellules à 0 en muted, erreurs fatales en
  * destructive.
  */
-import { useMemo, useState } from 'react'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SortableTh } from '@/components/ui/sortable-th'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { SchedulerPlayerOutcome } from '@/lib/api/types'
 import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
@@ -33,29 +33,19 @@ const COLUMNS: PostSyncColumn[] = [
   { labelKey: 'admin.convergence.ps_achievements', value: (ps) => Number(ps.achievements_synced), boolean: true },
 ]
 
-// I16 : clé de tri — colonne joueur (texte), une des COLUMNS dynamiques
-// (index — value() est toujours numérique, y compris les colonnes booléennes
-// qui renvoient Number(bool)), ou la colonne fatale (fixe).
-type PostSyncSortKey = { kind: 'gamertag' } | { kind: 'col'; index: number } | { kind: 'fatal' }
+// I16 : colonnes triables — joueur (texte), une des COLUMNS dynamiques (`col:<index>` ; value() est toujours
+// numérique, y compris les colonnes booléennes qui renvoient Number(bool)), ou la colonne fatale (fixe).
+type PostSyncSortKey = 'gamertag' | 'fatal' | `col:${number}`
 
-function postSyncSortKeyEq(a: PostSyncSortKey | null, b: PostSyncSortKey): boolean {
-  if (!a) return false
-  if (a.kind !== b.kind) return false
-  return a.kind === 'col' && b.kind === 'col' ? a.index === b.index : true
-}
-
-function postSyncRawValue(p: SchedulerPlayerOutcome, key: PostSyncSortKey): string | number {
-  if (key.kind === 'gamertag') return p.gamertag
-  if (key.kind === 'fatal') return p.post_sync?.fatal_errors?.length ?? 0
-  const ps = p.post_sync
-  return ps ? COLUMNS[key.index].value(ps) : 0
-}
-
-function comparePostSync(a: SchedulerPlayerOutcome, b: SchedulerPlayerOutcome, key: PostSyncSortKey, dir: 'asc' | 'desc'): number {
-  const va = postSyncRawValue(a, key)
-  const vb = postSyncRawValue(b, key)
-  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+const SORT_COLUMNS: Record<PostSyncSortKey, SortColumn<SchedulerPlayerOutcome>> = {
+  gamertag: { value: (p) => p.gamertag, firstDir: 'asc' },
+  fatal: { value: (p) => p.post_sync?.fatal_errors?.length ?? 0 },
+  ...Object.fromEntries(
+    COLUMNS.map((c, index) => [
+      `col:${index}`,
+      { value: (p: SchedulerPlayerOutcome) => (p.post_sync ? c.value(p.post_sync) : 0) } satisfies SortColumn<SchedulerPlayerOutcome>,
+    ]),
+  ),
 }
 
 export function PostSyncMatrix({ players }: { players: SchedulerPlayerOutcome[] }) {
@@ -63,21 +53,8 @@ export function PostSyncMatrix({ players }: { players: SchedulerPlayerOutcome[] 
   const withPostSync = players.filter((p) => p.post_sync)
   // Aucun tri actif par défaut → l'ordre serveur (dernier RunDelta) reste
   // affiché tant qu'aucun en-tête n'a été cliqué.
-  const [sortKey, setSortKey] = useState<PostSyncSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  function toggleSort(key: PostSyncSortKey) {
-    if (postSyncSortKeyEq(sortKey, key)) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key.kind === 'gamertag' ? 'asc' : 'desc')
-    }
-  }
-  const sortedPlayers = useMemo(() => {
-    if (!sortKey) return withPostSync
-    return [...withPostSync].sort((a, b) => comparePostSync(a, b, sortKey, sortDir))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withPostSync, sortKey, sortDir])
+  const sort = useColumnSort(withPostSync, SORT_COLUMNS)
+  const sortedPlayers = sort.rows
 
   if (!withPostSync.length) {
     return <EmptyStateNotice title={tA('admin.convergence.postsync_empty')} description="" />
@@ -88,23 +65,20 @@ export function PostSyncMatrix({ players }: { players: SchedulerPlayerOutcome[] 
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <SortableTh label={tA('admin.convergence.col_player')} active={postSyncSortKeyEq(sortKey, { kind: 'gamertag' })} dir={sortDir} onClick={() => toggleSort({ kind: 'gamertag' })} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.convergence.col_player')} {...sort.header('gamertag')} className="px-3 py-2 font-medium" />
             {/* Sparkline : pas de valeur scalaire triable — jamais triable. */}
             <th className="px-2 py-2 font-medium">{tA('admin.convergence.ps_trend')}</th>
             {COLUMNS.map((c, index) => {
-              const key: PostSyncSortKey = { kind: 'col', index }
               return (
                 <SortableTh
                   key={c.labelKey}
                   label={tA(c.labelKey)}
-                  active={postSyncSortKeyEq(sortKey, key)}
-                  dir={sortDir}
-                  onClick={() => toggleSort(key)}
+                  {...sort.header(`col:${index}`)}
                   className="px-2 py-2 text-right font-medium"
                 />
               )
             })}
-            <SortableTh label={tA('admin.convergence.ps_fatal')} active={postSyncSortKeyEq(sortKey, { kind: 'fatal' })} dir={sortDir} onClick={() => toggleSort({ kind: 'fatal' })} className="px-2 py-2 text-right font-medium" />
+            <SortableTh label={tA('admin.convergence.ps_fatal')} {...sort.header('fatal')} className="px-2 py-2 text-right font-medium" />
           </tr>
         </thead>
         <tbody>

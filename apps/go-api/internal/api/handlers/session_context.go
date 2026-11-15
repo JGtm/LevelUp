@@ -30,12 +30,13 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/platform/userstore"
-	"levelup/go-api/internal/service"
 )
 
 // SessionHandler gère les endpoints de session.
 type SessionHandler struct {
 	store *session.Store
+	// availableTitles : les titres que le sélecteur de titre propose, rendus avec le contexte de session.
+	availableTitles AvailableTitlesFunc
 	// canSelectPlayer dit si la session peut LIRE le profil du slug demandé comme
 	// joueur courant (même décision que la garde de propriété du groupe
 	// /players/{player_slug}). nil : non câblé (mono-utilisateur, tests), tout slug
@@ -47,6 +48,10 @@ type SessionHandler struct {
 	// locale reste alors purement par session, comportement d'origine.
 	users *userstore.Store
 }
+
+// AvailableTitlesFunc rend les titres que le sélecteur de titre propose (en production
+// service.BuildAvailableTitles : les titres jouables et ceux annoncés du registre partagé).
+type AvailableTitlesFunc func() []domain.TitleSummary
 
 // PlayerSelectionCheck dit si la session de ctx peut choisir le profil `slug`
 // comme joueur courant.
@@ -65,8 +70,8 @@ func (h *SessionHandler) WithUserStore(users *userstore.Store) *SessionHandler {
 }
 
 // NewSessionHandler crée un SessionHandler.
-func NewSessionHandler(store *session.Store) *SessionHandler {
-	return &SessionHandler{store: store}
+func NewSessionHandler(store *session.Store, availableTitles AvailableTitlesFunc) *SessionHandler {
+	return &SessionHandler{store: store, availableTitles: availableTitles}
 }
 
 // Mount enregistre la route via Huma au même point de montage que le routeur
@@ -144,7 +149,7 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	return &sessionContextOutput{Body: domain.SessionContextResponse{
 		CurrentPlayerSlug: sess.CurrentPlayerSlug,
 		CurrentTitleSlug:  sess.CurrentTitleSlug,
-		AvailableTitles:   service.BuildAvailableTitles(),
+		AvailableTitles:   h.availableTitles(),
 		Locale:            sess.Locale,
 		HintsVisible:      sess.HintsVisible,
 		AuthReady:         sess.AuthReady,

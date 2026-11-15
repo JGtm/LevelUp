@@ -28,7 +28,7 @@ import (
 const racineBriqueFilm = "libs/film"
 
 // importBriqueFilm : le chemin d import de la racine du meme module.
-const importBriqueFilm = "github.com/JGtm/LevelUp/libs/film"
+const importBriqueFilm = "github.com/JGtm/halo-infinite-film-decoder"
 
 // motifsDeViolationDeCouche rend les motifs pour lesquels l arete `de -> vers` sort des regles,
 // ou nil. Les deux regles sont independantes : une arete peut violer les deux.
@@ -84,7 +84,7 @@ func balayerPaquetsDuDecodeur(t *testing.T) (map[string][]string, int) {
 // `film/`, en chemin relatif a la racine du depot.
 func repertoiresDeProductionSousFilm(t *testing.T, racineAPI string) []string {
 	t.Helper()
-	base := filepath.Join(racineAPI, filepath.FromSlash(racineDecodeurFilm))
+	base := cheminDuDepotOuFatal(t, racineAPI, racineDecodeurFilm)
 	vus := map[string]bool{}
 	err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -100,11 +100,11 @@ func repertoiresDeProductionSousFilm(t *testing.T, racineAPI string) []string {
 		if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
 			return nil
 		}
-		rel, rerr := filepath.Rel(racineAPI, filepath.Dir(chemin))
+		rel, rerr := relDuDepot(racineAPI, filepath.Dir(chemin))
 		if rerr != nil {
 			return rerr
 		}
-		vus[filepath.ToSlash(rel)] = true
+		vus[rel] = true
 		return nil
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func repertoiresDeProductionSousFilm(t *testing.T, racineAPI string) []string {
 // ferait tromper par les chemins de paquet cites en commentaire, qui abondent ici.
 func importsDeProductionDuPaquet(t *testing.T, racineAPI, rel string) ([]string, int) {
 	t.Helper()
-	dir := filepath.Join(racineAPI, filepath.FromSlash(rel))
+	dir := cheminDuDepotOuFatal(t, racineAPI, rel)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("paquet %s introuvable (%v) : s il a DEMENAGE, corriger `couchesDuDecodeur` "+
@@ -166,7 +166,7 @@ type siteDeChargement struct {
 // â et un grep rougirait sur la documentation de la regle.
 func chargementsDeSourceDansReplay(t *testing.T) []siteDeChargement {
 	t.Helper()
-	dir := filepath.Join(workspaceRoot(t), filepath.FromSlash(coucheQuiNeChargePas))
+	dir := cheminDuDepotOuFatal(t, workspaceRoot(t), coucheQuiNeChargePas)
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v â si la couche a DEMENAGE, deplacer `coucheQuiNeChargePas` "+

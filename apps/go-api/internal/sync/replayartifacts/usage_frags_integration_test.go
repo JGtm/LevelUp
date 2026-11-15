@@ -17,7 +17,7 @@ import (
 
 	"levelup/go-api/internal/domain/killscope"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func artefactBouclier(t *testing.T, dir, matchID string) string {

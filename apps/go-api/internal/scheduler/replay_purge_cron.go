@@ -2,7 +2,7 @@
 // hors fenêtre de rétention (lot 6 v7.5).
 //
 // CE CRON SUPPRIME DES ARTEFACTS, JAMAIS DES FILMS. Les artefacts
-// (data/cache/replays/{title}/{short8}.json) se re-cuisent en une commande depuis le
+// (data/cache/replays/{title}/{short8}.json.gz) se re-cuisent en une commande depuis le
 // cache film (levelup backfill-replay) ; les films, eux, sont IRREMPLAÇABLES une fois
 // expirés côté serveur Halo — le cron ne touche ni film_chunks/ ni film_manifests/.
 //
@@ -23,19 +23,18 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -52,6 +51,8 @@ type ReplayPurgeCron struct {
 	retention func() int
 	registry  *titlePkg.Registry
 	interval  time.Duration
+	// dates lit l'âge des matchs (début canonique du registre partagé).
+	dates port.MatchDatesReader
 	// now rend l'instant de référence du cycle. NIL EN PRODUCTION (= time.Now) ;
 	// injecté par les tests — sans cette couture, la FRONTIÈRE de la fenêtre de
 	// rétention n'est pas testable : un test ne peut que fabriquer des matchs très
@@ -60,8 +61,8 @@ type ReplayPurgeCron struct {
 	now func() time.Time
 }
 
-// NewReplayPurgeCron construit le cron. retention requis (nil → noop).
-func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Duration) *ReplayPurgeCron {
+// NewReplayPurgeCron construit le cron. retention requis (nil → noop) ; dates lit les dates des matchs.
+func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Duration, dates port.MatchDatesReader) *ReplayPurgeCron {
 	if interval <= 0 {
 		interval = DefaultReplayPurgeInterval
 	}
@@ -70,6 +71,7 @@ func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Dur
 		retention: retention,
 		registry:  titlePkg.DefaultRegistry(),
 		interval:  interval,
+		dates:     dates,
 	}
 }
 
@@ -121,7 +123,7 @@ func (c *ReplayPurgeCron) RunOnce(ctx context.Context) {
 		if desc == nil {
 			continue
 		}
-		purged, kept, unknown, err := purgeReplayArtifactsForTitle(ctx,
+		purged, kept, unknown, err := purgeReplayArtifactsForTitle(ctx, c.dates,
 			pr.SharedDBPath(desc.Slug), pr.ReplayArtifactsDir(desc.Slug), cutoff)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
@@ -152,7 +154,7 @@ func (c *ReplayPurgeCron) nowUTC() time.Time {
 // (purgés, conservés, sans-registre). Un dossier d'artefacts absent est nominal (aucun
 // artefact construit pour ce titre) : (0, 0, 0, nil).
 func purgeReplayArtifactsForTitle(
-	ctx context.Context, sharedPath, artifactsDir string, cutoff time.Time,
+	ctx context.Context, dates port.MatchDatesReader, sharedPath, artifactsDir string, cutoff time.Time,
 ) (purged, kept, unknown int, err error) {
 	entries, rerr := os.ReadDir(artifactsDir)
 	if os.IsNotExist(rerr) {
@@ -168,26 +170,27 @@ func purgeReplayArtifactsForTitle(
 	if !contientUnArtefact(entries) {
 		return 0, 0, 0, nil
 	}
-	dates, derr := matchDatesByShortID(ctx, sharedPath)
+	matchDates, derr := dates.MatchDatesByShortID(ctx, sharedPath)
 	if derr != nil {
 		return 0, 0, 0, derr
 	}
+	// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
+	// `<short8>.derived.json` vit dans le MÊME dossier : le prédicat de nom des artefacts
+	// (title.IsReplayArtifactFile) l'écarte, donc elle n'entre dans AUCUNE des trois catégories du
+	// bilan ; celle d'un artefact vivant se traite avec lui, plus bas. Seules les orphelines se
+	// retirent ici.
 	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".json") {
-			continue // on ne touche QUE des artefacts {short8}.json
+		if !e.IsDir() && replaybuild.EstMarqueDerivations(e.Name()) {
+			supprimerMarqueOrpheline(ctx, artifactsDir, e.Name())
 		}
-		// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
-		// `<short8>.derived.json` vit dans le MÊME dossier et finit par `.json` : elle donnait
-		// `short = "<short8>.derived"`, absent du registre, donc `unknown++` — une ligne INFO à
-		// CHAQUE passage dès qu'une dérivation existait. Elle n'entre donc dans AUCUNE des trois
-		// catégories du bilan ; celle d'un artefact vivant se traite avec lui, plus bas.
-		if replaybuild.EstMarqueDerivations(name) {
-			supprimerMarqueOrpheline(ctx, artifactsDir, name)
-			continue
-		}
-		short := strings.TrimSuffix(name, ".json")
-		at, ok := dates[short]
+	}
+	artefacts, lerr := replayartifact.List(artifactsDir)
+	if lerr != nil {
+		return 0, 0, 0, fmt.Errorf("listage des artefacts %s: %w", artifactsDir, lerr)
+	}
+	for _, a := range artefacts {
+		name, short := a.Name, a.Short
+		at, ok := matchDates[short]
 		if !ok || at.IsZero() {
 			unknown++ // indatable : on ne détruit pas ce qu'on ne sait pas dater
 			continue
@@ -197,7 +200,7 @@ func purgeReplayArtifactsForTitle(
 			continue
 		}
 		chemin := filepath.Join(artifactsDir, name)
-		if rmErr := os.Remove(chemin); rmErr != nil {
+		if rmErr := replayartifact.Remove(chemin); rmErr != nil {
 			slog.WarnContext(ctx, "replay_purge_cron: suppression échouée",
 				"artifact", name, "err", rmErr)
 			continue
@@ -224,11 +227,11 @@ func purgeReplayArtifactsForTitle(
 	return purged, kept, unknown, nil
 }
 
-// contientUnArtefact dit si le dossier porte au moins un `{short8}.json` de PREMIER
-// NIVEAU. Les répertoires — dont `rasters/` — n'en sont pas.
+// contientUnArtefact dit si le dossier porte au moins un artefact de PREMIER NIVEAU
+// (title.IsReplayArtifactFile). Les répertoires — dont `rasters/` — n'en sont pas.
 func contientUnArtefact(entries []os.DirEntry) bool {
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+		if !e.IsDir() && titlePkg.IsReplayArtifactFile(e.Name()) {
 			return true
 		}
 	}
@@ -241,7 +244,7 @@ func contientUnArtefact(entries []os.DirEntry) bool {
 // artefacts n'ont pas encore été projetés), et toute autre erreur est un WARN — la purge
 // de l'artefact, elle, a déjà réussi, et la rejouer n'est pas possible.
 func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
-	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+".json")
+	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+titlePkg.ReplaySidecarExt)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		slog.WarnContext(ctx, "replay_purge_cron: sidecar de raster non supprimé",
 			"sidecar", path, "err", err)
@@ -263,7 +266,7 @@ func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
 // vérifiable (« chacun tombe dans exactement une catégorie ») ne doit pas être diluée. Le
 // journal, lui, la nomme — un fichier supprimé ne part jamais en silence.
 func supprimerMarqueOrpheline(ctx context.Context, artifactsDir, name string) {
-	if _, err := os.Stat(filepath.Join(artifactsDir, replaybuild.ArtefactDeLaMarque(name))); err == nil {
+	if replayartifact.Exists(filepath.Join(artifactsDir, replaybuild.ArtefactDeLaMarque(name))) {
 		return // l'artefact est là : la marque le décrit toujours, elle partira avec lui
 	}
 	if err := os.Remove(filepath.Join(artifactsDir, name)); err != nil {
@@ -273,36 +276,4 @@ func supprimerMarqueOrpheline(ctx context.Context, artifactsDir, name string) {
 	}
 	slog.InfoContext(ctx, "replay_purge_cron: marque de dérivation orpheline supprimée",
 		"marque", name, "raison", "son artefact n'existe plus")
-}
-
-// matchDatesByShortID lit (forme courte -> start_time canonique) de tout le registre.
-// OpenReadForQuery : la shared peut être tenue par le serveur (RO ou fenêtre RW B-swap),
-// le handle process-wide est réutilisé — jamais un second open concurrent.
-func matchDatesByShortID(ctx context.Context, sharedPath string) (map[string]time.Time, error) {
-	if _, err := os.Stat(sharedPath); err != nil {
-		return nil, fmt.Errorf("shared introuvable: %w", err)
-	}
-	db, release, err := duckdb.OpenReadForQuery(sharedPath)
-	if err != nil {
-		return nil, fmt.Errorf("open shared (lecture): %w", err)
-	}
-	defer release()
-	q := `SELECT match_id, ` + analysis.SQLStartTimeCanonical("match_registry") + ` FROM match_registry`
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		return nil, fmt.Errorf("lecture match_registry: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	out := map[string]time.Time{}
-	for rows.Next() {
-		var id string
-		var at sql.NullTime
-		if err := rows.Scan(&id, &at); err != nil {
-			return nil, fmt.Errorf("lecture match_registry (scan): %w", err)
-		}
-		if at.Valid {
-			out[titlePkg.FilmShortMatchID(id)] = at.Time
-		}
-	}
-	return out, rows.Err()
 }

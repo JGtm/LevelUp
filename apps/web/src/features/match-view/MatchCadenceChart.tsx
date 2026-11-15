@@ -14,7 +14,7 @@
  * l'HABILLAGE — les couleurs, qui dépendent de la palette d'accessibilité au moment du
  * rendu, l'ordre de superposition et les libellés d'axe.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, type EChartsThemeColors } from '@/components/charts/_utils'
@@ -35,14 +35,15 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
   // La cadence ne se peuple qu'avec des kills (components = xuid→nb de frags par
   // phase). Des datapoints sans aucun kill → EmptyState plutôt qu'un canvas vide
   // titré (cas des matchs sans données de combat exploitables).
+  const datapoints = cadence?.datapoints ?? []
   const hasKills =
     !!cadence &&
-    cadence.datapoints.some((dp) =>
+    datapoints.some((dp) =>
       Object.values(dp.components ?? {}).some((c) => c > 0),
     )
   const series: ChartSeries<unknown>[] =
-    cadence && cadence.datapoints.length > 0 && hasKills
-      ? [{ key: cadence.key, datapoints: cadence.datapoints }]
+    cadence && datapoints.length > 0 && hasKills
+      ? [{ key: cadence.key, datapoints }]
       : []
 
   // Cascade « allié = même camp que moi » : source unique (xuidMeta.ts).
@@ -52,7 +53,7 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<unknown>[]): EChartsCoreOption => {
+    (s: ChartSeries<unknown>[]): ChartOption => {
       if (s.length === 0 || !model) return { backgroundColor: CHART_BG }
       return cadenceOption(model, getEChartsThemeColors(), t)
     },
@@ -82,7 +83,7 @@ const MA_INNER_WIDTH = 3
  * LES COULEURS SE RÉSOLVENT ICI, dans le builder : leur valeur calculée change avec la
  * palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard).
  */
-function cadenceOption(model: Cadence, tc: EChartsThemeColors, t: MatchViewText): EChartsCoreOption {
+function cadenceOption(model: Cadence, tc: EChartsThemeColors, t: MatchViewText): ChartOption {
   const axis = getAxisBase(tc)
   return {
     backgroundColor: CHART_BG,
@@ -173,7 +174,7 @@ function cadenceSeries(
           position: 'top',
           color: colorPic,
           fontSize: 10,
-          backgroundColor: 'rgba(0,0,0,0.5)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+          backgroundColor: 'rgba(0,0,0,0.5)', // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
           padding: [2, 4],
         },
         data: model.peak.total > 0 ? [{ coord: [model.peak.index, model.peak.total] }] : [],

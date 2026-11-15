@@ -9,6 +9,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { matchViewPollInterval, matchViewStaleTime } from './matchPartial.logic'
 import type { MatchObjectiveEvent, MatchPlayerPosition, MatchViewResponse } from '@/lib/api/types'
 
+import type { components } from '@/lib/api/generated'
 export function useMatchView(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   // La locale scope la clé : noms de cartes, modes, armes... servis dans la langue de la requête.
@@ -95,11 +96,7 @@ export function useMatchPositions(playerSlug: string, matchId: string, enabled =
   })
 }
 
-interface MatchFavoriteResponse {
-  player_slug: string
-  match_id: string
-  favorited: boolean
-}
+export type MatchFavoriteResponse = components['schemas']['MatchFavoriteResponse']
 
 /**
  * useToggleMatchFavorite — bascule l'état favori d'un match.

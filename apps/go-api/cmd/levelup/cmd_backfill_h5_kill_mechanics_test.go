@@ -2,13 +2,13 @@ package main
 
 // cmd_backfill_h5_kill_mechanics_test.go — logique PURE du backfill : projection carnage
 // -> verite par gamertag, plan de correction (update/unchanged/unmatched) et idempotence.
-// Aucune DB ni reseau : les helpers testes sont stateless (modele cmd/h5-roster-refetch).
+// Aucune DB ni reseau : les helpers testes sont stateless.
 
 import (
 	"testing"
 	"time"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 func TestCarnageMechByGamertag(t *testing.T) {

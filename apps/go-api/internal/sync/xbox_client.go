@@ -16,8 +16,8 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
+	haloapi "github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/xboxlive"
 )
 
 // XboxAchievementsClient abstrait les appels à l'API Xbox Achievements.

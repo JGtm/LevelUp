@@ -11,6 +11,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/platform/dbfault"
 	"levelup/go-api/internal/platform/dblease"
 )
 
@@ -28,6 +29,12 @@ const (
 
 	// Codes d'erreur partagés (device-code flow SISU).
 	errCodeDeviceFlowAcquire = "device_flow_acquire_error"
+
+	// errCodeHaloExchange : l'échange Halo est refusé pour le compte (pas de profil Xbox, mauvais
+	// compte). errCodeHaloUnreachable : les services Halo ne répondent pas (délai, réseau, 5xx),
+	// réessayer plus tard.
+	errCodeHaloExchange    = "halo_exchange_error"
+	errCodeHaloUnreachable = "halo_unreachable"
 
 	// Modes auth.
 	authModeXbox = "xbox"
@@ -116,9 +123,9 @@ func isClientClosed(ctx context.Context) bool {
 
 // isDBBusy : l'erreur signale une base momentanément indisponible — verrou d'écriture
 // non obtenu (dblease.ErrDBLocked) ou bascule RO/RW du provider partagé pendant une
-// synchronisation (isSharedSwapContention, home.go : un seul prédicat pour le paquet).
+// synchronisation (dbfault.IsSharedSwapContention : un seul prédicat pour le paquet).
 func isDBBusy(err error) bool {
-	return errors.Is(err, dblease.ErrDBLocked) || isSharedSwapContention(err)
+	return errors.Is(err, dblease.ErrDBLocked) || dbfault.IsSharedSwapContention(err)
 }
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.

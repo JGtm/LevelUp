@@ -471,6 +471,7 @@ describe('TacticalAnalysisView — la zone choisie', () => {
   it.each([
     ['« Joueurs »', () => fireEvent.click(screen.getByRole('button', { name: t.whoOpponents }))],
     ['« Réapparition »', () => fireEvent.change(screen.getByRole('combobox', { name: t.pillRespawn }), { target: { value: 'g1' } })],
+    ['« Vies »', () => fireEvent.click(screen.getByRole('button', { name: t.livesAll }))],
   ])('changer %s revient à la zone la plus chaude', (_reglage, changer) => {
     mockRaster({ data: RASTER_NOMINAL })
     const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)

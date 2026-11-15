@@ -1,10 +1,7 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
-import {
-  DEFAULT_EFFECTIVE_HP_TO_KILL,
-  getHelpText,
-  type HelpTab,
-} from './i18n'
+import { useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
+import { getHelpText, type HelpTab } from './i18n'
 import { GlossaryTab } from './GlossaryTab'
 import { ReleaseNotesTab } from './ReleaseNotesTab'
 
@@ -14,13 +11,9 @@ export function HelpPage() {
   const navigate = useNavigate()
   const routerState = useRouterState()
   const locale = useAppShellStore((s) => s.locale)
-  // Barème PV-pour-tuer du titre courant : rend le copy combat (rendement /
-  // résistance) title-aware (225 Infinite, 115 Halo 5). Repli sur le défaut Infinite.
-  const effectiveHpToKill = useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
-        ?.effective_hp_to_kill ?? DEFAULT_EFFECTIVE_HP_TO_KILL,
-  )
+  // Barème PV-pour-tuer du titre courant (bootstrap) : rend le copy combat (rendement /
+  // résistance) title-aware ; absent tant que le bootstrap n'est pas chargé.
+  const effectiveHpToKill = useEffectiveHpToKill()
   const text = getHelpText(locale, effectiveHpToKill)
 
   const rawTab = new URLSearchParams(routerState.location.search).get('tab')

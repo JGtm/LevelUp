@@ -30,7 +30,6 @@ var bodyLimitExceptions = map[string]int64{
 
 func TestEveryOperationHasBodyLimit(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	_, doc := buildTestRouterWithDoc(t)
 	if doc == nil {

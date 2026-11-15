@@ -33,6 +33,13 @@
  * détruire pour uniformiser aurait coûté leurs tests sans rien apporter à la composition.
  */
 
+/** Un booléen par calque des vies. */
+export interface LivesFlags {
+  spawns: boolean
+  deaths: boolean
+  killers: boolean
+}
+
 /** Le contrat de calque, celui que portent déjà les `paint` des hooks du rejeu. */
 export type LayerPaint = (ctx: CanvasRenderingContext2D, frame: number, dpr: number) => void
 
@@ -45,6 +52,9 @@ export const LAYER_ORDER = [
   // Forge — 3,4 % du terrain, et c'est mieux qu'un fond vide.
   'fond-carte',
   'sol-forge',
+  // LE PLAN DES MURS, en vecteurs par-dessus l'image du fond : il se lit comme un trait de
+  // dessin sur la carte, donc au-dessus d'elle et sous tout ce que le terrain porte.
+  'plan-murs',
   // LE TERRAIN LU. La chaleur sous tout ce qui nomme ou se déplace ; les zones nommées sous
   // ce qui bouge (du vocabulaire, pas un événement) ; les objectifs par-dessus le
   // vocabulaire, l'enjeu primant sur les noms de lieux.
@@ -57,6 +67,11 @@ export const LAYER_ORDER = [
   'armes-au-sol',
   'poses-equipement',
   'vehicules',
+  // LES TRACES DES VIES (apparitions, morts, tueurs) : creuses et fines, SOUS les pions qu'elles ne
+  // doivent jamais recouvrir ni se laisser prendre pour (ce qui vit est plein, une trace est creuse).
+  'vies-apparitions',
+  'vies-morts',
+  'vies-tueurs',
   // LES JOUEURS, puis ce qui se lit SUR eux.
   'trajectoires',
   // LES FAILLES DU TRANSLOCATEUR, AU-DESSUS DES PISTES : une faille est un événement, pas un
@@ -76,8 +91,13 @@ export const LAYER_ORDER = [
   'bombe-portee',
   'deflagration',
   'pulses-objectif',
-  // LES MORTS EN DERNIER : l'événement le plus lourd de sens du calque.
+  // LES MORTS : l'événement le plus lourd de sens du calque.
   'morts',
+  // LA MISE EN VALEUR D'UNE ÉLIMINATION (clic sur une ligne de frag du fil), tout en haut : le
+  // voile et les équerres au-dessus des pions et des événements, puis les étiquettes de nom
+  // au-dessus de tout — un nom de tueur ne passe jamais sous une équerre ni sous le voile.
+  'mise-en-valeur',
+  'etiquettes-mise-en-valeur',
 ] as const
 
 export type ReplayLayerId = (typeof LAYER_ORDER)[number]
@@ -100,6 +120,10 @@ export interface SceneToggles {
    * crâne, bombe) restent hors de cette bascule : ils ont la leur.
    */
   modeObjectives: boolean
+  /** « Plan des murs » (clé `replay-show-wall-plan`) — le trait fin des murs sur le fond. */
+  wallPlan: boolean
+  /** « Apparitions », « Morts », « Tueurs » (groupe « Vies ») : trois calques, trois interrupteurs. */
+  lives: LivesFlags
 }
 
 /**
@@ -112,6 +136,8 @@ export interface SceneMatter {
   background: boolean
   /** Le repli Forge : la carte n'a pas de sol figé mais le document porte des props. */
   floor: boolean
+  /** Le fond retenu porte un plan des murs et il est cuit (`useReplayStaticLayers`). */
+  wallPlan: boolean
   heat: boolean
   zoneNames: boolean
   objectivesCooked: boolean
@@ -124,6 +150,8 @@ export interface SceneMatter {
   zoneStates: boolean
   objectivePulses: boolean
   killFx: boolean
+  /** Les marques de chaque calque des vies : sans marque, le calque ne s'ouvre pas. */
+  lives: LivesFlags
 }
 
 /** La scène : ce qu'il y a à peindre, ce qui est allumé, et comment peindre chaque calque. */
@@ -191,6 +219,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
   const on: Record<ReplayLayerId, boolean> = {
     'fond-carte': h.background,
     'sol-forge': !h.background && h.floor,
+    'plan-murs': t.wallPlan && h.wallPlan,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,
     'objectifs-cuits': t.modeObjectives && h.objectivesCooked,
@@ -199,6 +228,9 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'armes-au-sol': true,
     'poses-equipement': t.placements && h.placements,
     vehicules: true,
+    'vies-apparitions': t.lives.spawns && h.lives.spawns,
+    'vies-morts': t.lives.deaths && h.lives.deaths,
+    'vies-tueurs': t.lives.killers && h.lives.killers,
     trajectoires: true,
     failles: t.placements && h.rifts,
     'marques-de-tir': t.shotFx && h.fireMarks,
@@ -214,6 +246,9 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     deflagration: true,
     'pulses-objectif': t.modeObjectives && h.objectivePulses,
     morts: t.killFx && h.killFx,
+    // Sans condition : le peintre ne pose rien tant qu'aucune élimination n'est mise en valeur.
+    'mise-en-valeur': true,
+    'etiquettes-mise-en-valeur': true,
   }
   return LAYER_ORDER.map((id) => ({ id, on: on[id], paint: paint[id] }))
 }

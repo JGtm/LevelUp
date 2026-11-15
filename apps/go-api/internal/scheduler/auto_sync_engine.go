@@ -47,9 +47,8 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Fallback DefaultSlug si le ctx ne porte pas de titre → byte-identique halo.
 	titleSlug := ctxkeys.TitleSlug(ctx)
 	engine := sync.NewSyncEngineForTitle(s.cfg.RepoRoot, titleSlug, gamertag, xuid, &domain.HaloTokens{}, s.provider)
-	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
-	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
-	// direct (le provider arbitre seul lectures et écriture, ADR 0016).
+	// Router les ouvertures RW de shared via Provider.AcquireWriter au lieu
+	// d'OpenSharedDB direct (le provider arbitre seul lectures et écriture, ADR 0016).
 	// Le provider est celui du titre du moteur (SharedProviderForTitle) : le provider du
 	// boot ne sert que le titre par défaut. nil = moteur sans provider (mode legacy).
 	if p := s.cfg.SharedProviderForTitle(titleSlug); p != nil {

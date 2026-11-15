@@ -124,3 +124,34 @@ describe('buildSquadSynergyRadarOption', () => {
     expect(series[0].data[0].itemStyle.color).toBe('#888')
   })
 })
+
+describe('buildSquadSynergyRadarOption : axe Objectif absent', () => {
+  const FIVE = ['combat', 'survival', 'support', 'score', 'impact']
+  const noObjective = (player: string, base: number): SquadSynergyRadarSeries => ({
+    player,
+    axes: FIVE.map((axis, i) => ({ axis, value: base + i, raw: base + i })),
+  })
+  type Opt = {
+    radar: { indicator: { name: string }[] }
+    series: { data: { name: string; value: number[] }[] }[]
+  }
+
+  it('5 axes : aucun indicateur ni étiquette orpheline, aucun point à 0', () => {
+    const opt = buildSquadSynergyRadarOption([noObjective('Me', 40), noObjective('F1', 60)], OPTS) as unknown as Opt
+    expect(opt.radar.indicator.map((i) => i.name)).toEqual(['Combat', 'Survie', 'Support', 'Score', 'Impact'])
+    expect(opt.radar.indicator.some((i) => i.name === 'Objectif')).toBe(false)
+    for (const d of opt.series[0].data) {
+      expect(d.value).toHaveLength(5)
+      expect(d.value).not.toContain(0)
+    }
+  })
+
+  it('un joueur sans l\'axe Objectif le retire pour tous (indicateurs non dérivés de series[0] seul)', () => {
+    const mixed = [profile('Me'), noObjective('F1', 60)]
+    for (const order of [mixed, [...mixed].reverse()]) {
+      const opt = buildSquadSynergyRadarOption(order, OPTS) as unknown as Opt
+      expect(opt.radar.indicator.map((i) => i.name)).toEqual(['Combat', 'Survie', 'Support', 'Score', 'Impact'])
+      for (const d of opt.series[0].data) expect(d.value).toHaveLength(5)
+    }
+  })
+})

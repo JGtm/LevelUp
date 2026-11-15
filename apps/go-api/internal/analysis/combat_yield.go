@@ -6,9 +6,9 @@
 // offensive_finishing   = effectiveHpToKill * kills / damage_dealt  (diagnostic uniquement)
 //
 // effectiveHpToKill = PV effectifs pour tuer un joueur (baseline title-spécifique,
-// 225 Halo Infinite). PARAMÈTRE : la fonction reste pure ; le caller résout la
+// 229 Halo Infinite). PARAMÈTRE : la fonction reste pure ; le caller résout la
 // valeur du titre via games.EffectiveHpToKill(slug) et l'injecte (cf.
-// PLAN_DAMAGE_MODEL_PER_TITLE.md). Externalise le littéral 225 câblé.
+// PLAN_DAMAGE_MODEL_PER_TITLE.md). Externalise le littéral câblé.
 package analysis
 
 import (
@@ -18,7 +18,7 @@ import (
 )
 
 // excludeAssistsFromYield : reglage global Settings (rendement_exclude_assists).
-// Quand true, OffensiveConversion = 225*kills/damage (assists ignores) sur TOUS
+// Quand true, OffensiveConversion = 229*kills/damage (assists ignores) sur TOUS
 // les composants rendement (Home, Timeseries, Sessions, Explorer, Escouade,
 // Match view). C'est un reglage app UNIQUE (pas par-user) ; on le porte donc en
 // variable globale atomique volontaire, mise a jour au boot et a chaque PATCH
@@ -118,7 +118,7 @@ func DamagePerFragEquivalent(damageDealt, kills, assists float64) float64 {
 
 // ComputeCombatYield calcule le rendement combat depuis les stats brutes d'un match.
 //
-// effectiveHpToKill = PV effectifs pour tuer (baseline title-spécifique, 225 Infinite ;
+// effectiveHpToKill = PV effectifs pour tuer (baseline title-spécifique, 229 Infinite ;
 // le caller résout via games.EffectiveHpToKill(slug)). Cas limites : retourne 0 si les
 // dénominateurs sont nuls ou négatifs. Le coefficient 1/3 pour les assists est la
 // convention officielle Halo Infinite.
@@ -128,7 +128,7 @@ func ComputeCombatYield(kills, assists int, damageDlt, damageTkn float64, deaths
 
 // ComputeCombatYieldFloat est la variante en flottants des mêmes formules, pour
 // des entrées déjà agrégées (ex. moyennes par partie d'un service record / des
-// stats normalisées). effectiveHpToKill = baseline title-spécifique (225 Infinite).
+// stats normalisées). effectiveHpToKill = baseline title-spécifique (229 Infinite).
 // Mêmes garde-fous : dénominateurs nuls/négatifs → 0.
 func ComputeCombatYieldFloat(kills, assists, damageDlt, damageTkn, deaths, effectiveHpToKill float64) CombatYield {
 	var cy CombatYield

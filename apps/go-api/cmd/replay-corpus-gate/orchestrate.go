@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
 )
@@ -24,14 +25,17 @@ var errAbsentDuParc = errors.New("absent du parc")
 // temoinContexte regroupe tout ce qu'un traitement de temoin a besoin de connaitre — une
 // signature a plus de 5 parametres serait une violation directe (CLAUDE.md n°5).
 type temoinContexte struct {
-	ParcRoot     string
-	WorkRoot     string // racine de cuisson HEAD
-	WorkRootBase string // racine de cuisson BASE ; vide si Reference == "parc"
-	BinHead      string // binaire replay-build compile au HEAD
-	BinBase      string // binaire replay-build compile a la base ; vide si Reference == "parc"
-	LockRoot     string
-	TitleSlug    string
-	FactsDir     string
+	// Decisions et DecisionsVues : les FAUX acceptés du manifeste, et ce que chacune a requalifié.
+	Decisions     []Decision
+	DecisionsVues decisionsAppliquees
+	ParcRoot      string
+	WorkRoot      string // racine de cuisson HEAD
+	WorkRootBase  string // racine de cuisson BASE ; vide si Reference == "parc"
+	BinHead       string // binaire replay-build compile au HEAD
+	BinBase       string // binaire replay-build compile a la base ; vide si Reference == "parc"
+	LockRoot      string
+	TitleSlug     string
+	FactsDir      string
 	// MemGiB : le plafond souple transmis a `replay-build`, LE MEME des deux cotes (D6).
 	MemGiB    int
 	Reference string // "base" (defaut) ou "parc"
@@ -123,7 +127,9 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 		base.Erreur = err
 		return base
 	}
+	appliquerLesDecisions(base.Verite, t.ID, tc.Decisions, tc.DecisionsVues)
 	base.remplirBilan(rap)
+	accepterLesFilets(&base, tc.Decisions, tc.DecisionsVues)
 	return base
 }
 
@@ -134,7 +140,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts replaybuild.FactsFile) (baseResolue, error) {
 	if tc.Reference == referenceParc {
 		refPath := referenceArtifactPath(tc.ParcRoot, tc.TitleSlug, facts.MatchID)
-		if _, err := os.Stat(refPath); err != nil {
+		if _, err := replayartifact.Locate(refPath); err != nil {
 			return baseResolue{}, fmt.Errorf("%w : %s (%v)", errAbsentDuParc, refPath, err)
 		}
 		return baseResolue{Artefact: refPath}, nil

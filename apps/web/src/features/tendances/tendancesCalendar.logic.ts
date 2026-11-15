@@ -13,7 +13,7 @@
  * TOUTES LES CASES SONT ÉMISES, colonne par colonne : le wrapper déduit ses axes de l'ordre
  * d'apparition des points, en omettre une décalerait les catégories.
  */
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import { escapeHtml } from '@/components/charts/_utils'
 import { intlLocale } from '@/lib/formatters'
 import type { TrendsCalendarDay } from '@/lib/api/types'
@@ -38,7 +38,7 @@ export interface CalendarInput {
 }
 
 export interface CalendarGrid {
-  points: ChartPointHeatmap[]
+  points: HeatmapCellPoint[]
   /** Nombre de colonnes (semaines). */
   columns: number
   /** Jours joués dans la fenêtre : 0 = rien à tracer. */
@@ -147,7 +147,7 @@ export function buildCalendarGrid(input: CalendarInput): CalendarGrid {
   const labels = columnLabels(mondays, input.locale)
   const rows = weekdayNames(input.locale)
 
-  const points: ChartPointHeatmap[] = []
+  const points: HeatmapCellPoint[] = []
   mondays.forEach((monday, c) => {
     rows.forEach((row, r) => {
       const date = shiftDay(monday, r)
@@ -176,7 +176,7 @@ export function buildCalendarGrid(input: CalendarInput): CalendarGrid {
 }
 
 /** Infobulle d'une case jouée (texte échappé) ; vide pour une case sans match. */
-export function formatCalendarTooltip(point: ChartPointHeatmap, locale: Locale): string {
+export function formatCalendarTooltip(point: HeatmapCellPoint, locale: Locale): string {
   const d = point.detail as CalendarCellDetail | undefined
   if (!d || !d.played) return ''
   const t = getTendancesText(locale)

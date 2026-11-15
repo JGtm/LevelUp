@@ -62,7 +62,7 @@ export function IdentitySection({ profile }: IdentitySectionProps) {
         <p className="text-sm text-muted-foreground">{t('profile.section.identity.empty')}</p>
       )}
 
-      <InsightsRow strengths={profile.strengths} improvements={profile.improvement_areas} />
+      <InsightsRow strengths={profile.strengths ?? undefined} improvements={profile.improvement_areas ?? undefined} />
     </section>
   )
 }

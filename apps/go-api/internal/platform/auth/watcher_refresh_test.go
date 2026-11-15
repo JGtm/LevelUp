@@ -94,7 +94,7 @@ func TestEnsureWatcherAccessToken_NoRefreshTokenAvailable(t *testing.T) {
 // echoue, on retourne ("", nil) — pas d'erreur — pour permettre au caller de
 // continuer en mode degrade (ex: XSTS deja stocke encore valide).
 func TestEnsureWatcherAccessToken_ProviderRefreshFails(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-revoked")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-revoked")
 	store := newStoreWithTokens(t, &StoredTokens{
 		AccessToken:    "old",
 		OAuthExpiresAt: time.Now().Add(-1 * time.Hour),

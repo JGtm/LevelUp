@@ -17,7 +17,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -508,13 +507,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 	// Cache fetch intermédiaire (cf. REFACTOR_COLLECT_PERSIST §3.5 / §10 Q7).
 	// Wrap le client avec un cache fichier sous data/sync_cache/{cycle_id}/.
-	// Désactivable via LEVELUP_PERSIST_NO_FETCH_CACHE=1. cycle_id = eventID
-	// du run (créé via logging.WithEvent en début de run).
+	// Actif dès que syncCacheDir est renseigné. cycle_id = eventID du run (créé
+	// via logging.WithEvent en début de run).
 	//
 	// L'eventID contient `:` (format `sync.RunDelta:abc123`) qui est interdit
 	// dans les noms de fichier/dossier sur Windows. On normalise `:` → `_`
 	// pour le nom du dossier de cache.
-	if os.Getenv("LEVELUP_PERSIST_NO_FETCH_CACHE") != "1" && e.syncCacheDir != "" {
+	if e.syncCacheDir != "" {
 		safeCycleID := strings.ReplaceAll(eventID, ":", "_")
 		cacheDir := filepath.Join(e.syncCacheDir, safeCycleID)
 		client = NewCachedHaloClient(client, FetchCacheConfig{CacheDir: cacheDir})
@@ -591,8 +590,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		} else {
 			defer postPH.Close()
 			playerDB = postPH.SQLDb()
-			if PostSyncBurstEnabled() && e.sharedProvider != nil {
-				// Étape 1 contention (défaut) : PAS d'acquisition writer upfront —
+			if e.sharedProvider != nil {
+				// Avec provider : PAS d'acquisition writer upfront —
 				// le pipeline post-sync ouvre des segments Read RO et des bursts
 				// Write courts (labels sync_v1_postsync/<étape>). Fenêtre RW ~0 en
 				// stationnaire ; fin de la sérialisation post-sync inter-joueurs.
@@ -607,8 +606,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 						"gamertag", e.gamertag, "err", wpErr)
 				}
 			} else {
-				// ROLLBACK (LEVELUP_POSTSYNC_BURST=0) ou mode legacy sans provider :
-				// chemin pinned historique (writer tenu pendant tout le post-sync).
+				// Sans provider (outils en ligne de commande, tests) : chemin pinned
+				// (writer tenu pendant tout le post-sync).
 				leaseStart := time.Now()
 				// Étape 0 attribution : détenteur LONG identifié — label dédié.
 				postSDB, postRls, sErr := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_postsync"))
@@ -671,9 +670,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
-	// Étape 1 contention : postShared est posé par le post-drain (bursts par
-	// défaut, pinned en rollback/legacy). Chemin non-batch : le writer primaire
-	// est encore tenu → pinned (byte-identique).
+	// postShared est posé par le post-drain (bursts avec provider, pinned sans).
+	// Chemin non-batch : le writer primaire est encore tenu → pinned.
 	if postShared == nil && sharedDB != nil {
 		postShared = NewPinnedSharedAccess(sharedDB)
 	}
@@ -708,7 +706,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 	// ─── Hook Prestige (post-sync) ──────────────────────────────────────────────
 	// Best-effort : ré-évalue les défis Prestige actifs après ingestion.
-	// No-op si feature flag PRESTIGE_ENABLED off ou si le hook n'est pas câblé.
+	// No-op si le réglage prestige_enabled est off ou si le hook n'est pas câblé.
 	// Le hook ne propage jamais d'erreur pour ne pas casser le sync.
 	if e.prestigeHook != nil {
 		e.prestigeHook(ctx, e.gamertag, e.titleSlug)

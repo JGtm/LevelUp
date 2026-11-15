@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { tipNumber } from '@/components/charts/tipNumber'
-import { buildSquadPerMinuteOption } from './squadPerMinuteChart'
+import { buildSquadPerMinuteOption, squadHasDamagePerMinute } from './squadPerMinuteChart'
 import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
@@ -24,7 +24,14 @@ const PLAYER_COLOR = '#818cf8' // indigo — couleur positive du joueur "Me"
 
 const OPTS = {
   colorByPlayer: { Me: PLAYER_COLOR, F1: '#00dc82', F2: '#f59e0b' },
-  metricLabels: { frags: 'Frags/min', deaths: 'Morts/min', assists: 'Assists/min' },
+  metricLabels: {
+    frags: 'Frags/min',
+    deaths: 'Morts/min',
+    assists: 'Assists/min',
+    dealt: 'Dégâts infligés/min',
+    taken: 'Dégâts subis/min',
+  },
+  damageAxisName: 'Dégâts / min',
   perMinuteSuffix: ' /min',
 }
 
@@ -112,5 +119,130 @@ describe('buildSquadPerMinuteOption', () => {
     const xAxis = opt.xAxis as { axisLine: { lineStyle: { color: string; width: number } } }
     expect(xAxis.axisLine.lineStyle.width).toBe(2)
     expect(xAxis.axisLine.lineStyle.color).toBeTruthy()
+  })
+})
+
+function damageEntry(name: string, dealt?: number, taken?: number): SquadPerMinuteEntry {
+  return {
+    ...entry(name, 1, 1, 1),
+    ...(dealt == null ? {} : { damage_dealt_per_minute: dealt }),
+    ...(taken == null ? {} : { damage_taken_per_minute: taken }),
+  }
+}
+
+interface BarSeries {
+  name: string
+  yAxisIndex: number
+  stack?: string
+  data: Array<{ value: number; itemStyle: { color: string } } | null>
+  label: { fontSize?: number; formatter: (p: { value: unknown; dataIndex: number }) => string }
+}
+
+interface AxisShape {
+  min?: number
+  max?: number
+  position?: string
+  splitLine?: { show: boolean }
+  axisLabel: { formatter: (v: number) => string }
+}
+
+describe('buildSquadPerMinuteOption : étiquettes', () => {
+  it("étiquette de barre en 10 px, comme avant l'ajout des dégâts", () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([entry('Me', 1, 1, 1)]), OPTS)
+    const [me] = opt.series as unknown as BarSeries[]
+    expect(me.label.fontSize).toBe(10)
+  })
+})
+
+describe("buildSquadPerMinuteOption : dégâts sur l'axe de droite", () => {
+  it('sans dégâts : trois catégories, une série par joueur, un seul axe', () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([entry('Me', 1, 1, 1)]), OPTS)
+    expect((opt.xAxis as { data: string[] }).data).toHaveLength(3)
+    expect(opt.series as unknown[]).toHaveLength(1)
+    expect(opt.yAxis as unknown[]).toHaveLength(1)
+  })
+
+  it('avec dégâts : deux catégories de plus dans la même grille, une série par axe et par joueur', () => {
+    const opt = buildSquadPerMinuteOption(
+      makeSeries([damageEntry('Me', 312.6, 240.4), damageEntry('F1', 200, 150)]),
+      OPTS,
+    )
+    expect((opt.xAxis as { data: string[] }).data).toEqual([
+      'Frags/min',
+      'Morts/min',
+      'Assists/min',
+      'Dégâts infligés/min',
+      'Dégâts subis/min',
+    ])
+    const series = opt.series as unknown as BarSeries[]
+    expect(series.map((s) => [s.name, s.yAxisIndex])).toEqual([
+      ['Me', 0],
+      ['Me', 1],
+      ['F1', 0],
+      ['F1', 1],
+    ])
+    // Les deux séries d'un joueur partagent une colonne (même pile) ; deux joueurs, deux colonnes.
+    expect(series[0].stack).toBe('Me')
+    expect(series[1].stack).toBe('Me')
+    expect(series[2].stack).toBe('F1')
+  })
+
+  it("dégâts infligés au-dessus (couleur joueur), subis sous le zéro (complément), trous de l'autre axe", () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 312.6, 240.4)]), OPTS)
+    const [left, right] = opt.series as unknown as BarSeries[]
+    expect(left.data.map((d) => d?.value ?? null)).toEqual([1, -1, 1, null, null])
+    expect(right.data.map((d) => d?.value ?? null)).toEqual([null, null, null, 312.6, -240.4])
+    expect(right.data[3]).toMatchObject({ itemStyle: { color: PLAYER_COLOR } })
+    expect(right.data[4]).toMatchObject({ itemStyle: { color: hexComplement(PLAYER_COLOR) } })
+  })
+
+  it('zéros alignés, axe de droite sans grille', () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 312.6, 240.4)]), OPTS)
+    const [l, r] = opt.yAxis as unknown as AxisShape[]
+    expect(r.position).toBe('right')
+    expect(r.splitLine).toEqual({ show: false })
+    const share = (a: AxisShape) => -a.min! / (a.max! - a.min!)
+    expect(share(l)).toBeCloseTo(share(r), 10)
+    expect(r.max!).toBeGreaterThanOrEqual(312.6)
+    expect(r.min!).toBeLessThanOrEqual(-240.4)
+  })
+
+  it('sans dégâts subis (titre qui ne les fournit pas) : une seule catégorie de dégâts', () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 300)]), OPTS)
+    expect((opt.xAxis as { data: string[] }).data).toEqual([
+      'Frags/min',
+      'Morts/min',
+      'Assists/min',
+      'Dégâts infligés/min',
+    ])
+  })
+
+  it('un joueur sans dégâts connus laisse un trou, pas un zéro', () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 300, 100), damageEntry('F1')]), OPTS)
+    const series = opt.series as unknown as BarSeries[]
+    const f1Right = series[3]
+    expect(f1Right.name).toBe('F1')
+    expect(f1Right.data.map((d) => d?.value ?? null)).toEqual([null, null, null, null, null])
+    expect(f1Right.label.formatter({ value: null, dataIndex: 3 })).toBe('')
+  })
+
+  it('décimales : entier pour les dégâts, deux pour les comptes (étiquette et axe)', () => {
+    const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 312.6, 240.4)]), OPTS)
+    const [left, right] = opt.series as unknown as BarSeries[]
+    expect(left.label.formatter({ value: -1.234, dataIndex: 1 })).toBe(tipNumber(1.234, 2))
+    expect(right.label.formatter({ value: -240.4, dataIndex: 4 })).toBe(tipNumber(240.4, 0))
+    const [l, r] = opt.yAxis as unknown as AxisShape[]
+    expect(l.axisLabel.formatter(-1.5)).toBe(tipNumber(1.5, 2))
+    expect(r.axisLabel.formatter(-300)).toBe(tipNumber(300, 0))
+  })
+})
+
+describe('squadHasDamagePerMinute', () => {
+  it('vrai dès qu un joueur porte une cadence de dégâts', () => {
+    expect(squadHasDamagePerMinute([damageEntry('Me'), damageEntry('F1', undefined, 100)])).toBe(true)
+  })
+  it('faux sans dégâts', () => {
+    expect(squadHasDamagePerMinute([damageEntry('Me')])).toBe(false)
+    expect(squadHasDamagePerMinute([])).toBe(false)
   })
 })

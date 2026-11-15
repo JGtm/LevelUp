@@ -13,8 +13,8 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film, publiable depuis 2026-11-08 ; `libs/haloapi` : API Halo) ; copies publiées dans quatre dépôts dédiés `JGtm/{halo-infinite-files-reader,halo-infinite-map-images,halo-api,halo-infinite-film-decoder}` depuis le 2026-11-09, produites depuis `libs/` par la recette du plan, jamais éditées sur place (ADR 0043, amendement du 2026-11-09) |
-| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
+| Briques Go (ADR 0041 ; publication, ADR 0043) | **Go**, dépendances publiées de `apps/go-api/go.mod` (aucun `go.work` versionné ; espace de travail local : `scripts/briques-workspace.sh` + `GOWORK`) | dépôts dédiés `github.com/JGtm/halo-infinite-files-reader` (lecteurs de fichiers du jeu), `halo-infinite-map-images` (images de carte), `halo-infinite-film-decoder` (décodeur de film), `halo-api` (API Halo) ; plus de `libs/` dans ce dépôt depuis la bascule de la 8.1.2 : le code d'une brique se modifie dans son dépôt dédié, jamais ici ; nouvelle version = un tag là-bas, puis une montée du `require` (ADR 0043, amendement du 2026-11-12) |
+| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | brique `github.com/JGtm/halo-api` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Coquille Windows (ADR 0045) | **Rust / Tauri 2** : fenêtre, sidecar Go, updater ; aucune logique métier | `apps/desktop/` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
@@ -134,7 +134,11 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
    documenté ADR 0026). Recette d'ajout d'une table : ADR 0026 +
    `internal/migration/append_only_rebuild.go`.
 3. **Garde-rails** : `internal/sync/no_art_patterns_test.go` (allowlist explicite) — ne
-   jamais allowlister sans justification datée.
+   jamais allowlister sans justification datée. Toute entrée d'allowlist d'écriture ou de
+   lecture brute commence par une date (`sync` : `TestAllowlistsEcritureDatees` ;
+   `platform/duckdb` : `TestAllowlistLecturesBrutesDatee`) ; `duckdb.OpenReadWrite` n'est
+   appelé que depuis l'allowlist datée de l'ADR 0030 D-3
+   (`archlint/no_bare_duckdb_rw_open_test.go`).
 4. **Un seul process writer par DB** (ADR 0013 dblease + ADR 0016 B-swap) : RO et RW sur
    le même fichier dans deux process = interdit. Pour lire une DB potentiellement tenue
    RW : `OpenReadForQuery` (jamais `OpenReadOnly` forcé). Écritures `sync_meta` : sous
@@ -144,9 +148,10 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 6. Piège : `CREATE TABLE IF NOT EXISTS` n'ajoute jamais une PK à une table existante →
    `ON CONFLICT` échoue. Player DBs legacy sans contraintes : pattern
    `SELECT-then-UPDATE-or-INSERT`.
-7. **Ajout d'un enrichment local** sur `player_match_enrichment` : 3 étapes (migration
-   ALTER + champ pointer dans `EnrichmentRow` + if-block dans `enrichmentFields()`) —
-   ADR 0019 + `internal/persist/doc.go`.
+7. **Ajout d'un enrichment local** sur `player_match_enrichment` : la recette de
+   `internal/persist/doc.go` (huit étapes : migration ALTER, champ pointer dans
+   `EnrichmentRow`, if-block dans `enrichmentFields()`, projection dans la vue ; les deux
+   tables de stages sont liées par `TestEnrichmentColumnStage_LieALaVueMergeOnRead`) — ADR 0019.
 
 ## Règle auth tokens (ADR 0023)
 
@@ -157,7 +162,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
   access_token + XSTS). Un joueur absent du store n'a pas de token.
 - **Chaîne d'échange (ADR 0042)** : jeton d'accès Microsoft -> XBL -> XSTS -> Spartan vit dans
-  `libs/haloapi/xblauth`, qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
+  `xblauth` (brique `halo-api`), qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
   titre passés par l'appelant) ; le magasin, la mise en commun et la politique de rafraîchissement restent dans
   `platform/auth`, helper canonique et ratchets inchangés. Cache de jetons par joueur :
   `platform/auth/tokencache`.
@@ -188,7 +193,41 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   — jamais de label FR/EN en dur côté Go.
 - Dégradation gracieuse : `ErrCapabilityNotSupported` → réponse partielle/503 propre,
   jamais de panic ni de données d'un autre titre.
+- Aucun import d'un paquet de titre (`internal/games/<titre>/...`) dans `analysis/`, `service/`
+  ni `api/handlers` : ce qui dépend du titre arrive par un port que `api/wire` ou `cmd/` injecte.
+  Les gardes lisent les titres sur `internal/games/` (hors `paquetsInterTitres`) : un titre ajouté
+  est refusé sans éditer un test (`TestAnalysisImporteAucunPaquetDeTitre`,
+  `TestServiceImporteAucunPaquetDeTitre`, `TestHandlersSansMoteurDeSync`).
 - Détail : skill `arch-rules` (adapters, PathResolver, TitleRegistry).
+
+## Frontières de couches — garde-rails (plafond 0)
+
+Une règle de couche est tenue par un test, allowlist vide ou datée. Gardes Go dans
+`apps/go-api/internal/archlint/` (`frontieres_imports_test.go`, `frontieres_sql_test.go`) :
+
+| Règle | Garde-rail |
+|---|---|
+| `api/handlers` sans `sync`, `persist` ni paquet de titre ; sans `platform/duckdb` (une panne de lecture se classe par `platform/dbfault`) ; sans type concret de `service` (interfaces de `port/`) | `TestHandlersSansMoteurDeSync`, `TestHandlersSansStockageDuckDB`, `TestHandlersSansTypeConcretDeService` |
+| `scheduler/` sans `platform/duckdb` ; `analysis/` sans `database/sql` ni stockage ; `worldenrich` sans `service` | `TestSchedulerSansStockageDuckDB`, `TestAnalysisSansStockage`, `TestWorldenrichSansService` |
+| ni SQL ni `database/sql` dans `api/` (racine, `wire/`, `handlers/`, `middleware/`), `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/` | `TestApiSansSQL`, `TestMetierSansSQL`, `TestPortSansTypeSQL` |
+| `os.Getenv` / `os.LookupEnv` seulement dans `internal/config`, `cmd/` et l'allowlist datée de données de déploiement | `TestAucuneLectureEnvHorsConfig` |
+
+Où va le code : une lecture SQL vit sous `platform/duckdb/` (`profilerepo`, `worldrepo`, `sqlfrag`
+pour les fragments dont le fuseau canonique) ou dans `importstore` (services d'import) et
+`cronstore` (tâches de fond du scheduler), derrière un port de `port/` ; une absence de ligne se
+rend par `platform/duckdb.NotFound` et se reconnaît par `errors.Is(err, port.ErrNotFound)`
+(`domain.ErrRecordNotFound`), jamais par `sql.ErrNoRows` ; `playerresolve` ouvre le PlayerDB d'un
+joueur (câblage, que `config` n'importe plus) ; `replaytext` convertit les libellés du rejeu entre
+`i18n.Text` et le décodeur ; `api/wire` et la racine `api/` assemblent, sans SQL ni logique métier.
+
+Front (`apps/web`) : `node tools/lint-cross-feature-imports.mjs` (imports entre features, `_shared`
+sans dépendance vers une feature, `components/` sans `features/`) ; gardes `*.guard.test.ts` :
+`echarts` et `<LazyECharts` seulement sous `components/charts/`
+(`chartsImportBoundary`, `lazyEchartsMount`), `fetch` seulement dans `lib/api/` et `lib/desktop/`
+(`rawFetch`, liste datée), types de contrat réexportés de `generated.ts`
+(`response-types`), aucun `useQuery` dans un `.tsx` de `features/` (`featureTsxNoQuery`), aucun
+`toggleSort` local (`noLocalSortToggle`), une seule lecture du bootstrap (`bootstrap`), aucune
+feature qui importe `@/routes` (`noRouteImport`).
 
 ## i18n — N langues (ADR 0040)
 
@@ -219,13 +258,16 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
-make go-api-test-gamefiles  # corpus cartes libs/himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
+make go-api-test-gamefiles  # corpus cartes (paquet himap de la brique images de carte, par chemin d import) + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
-make libs-test              # vet + tests des modules libs/ (ADR 0041 ; `./...` de go-api ne les couvre pas)
-make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
+make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies briques et DuckDB en parallèle ; GOWORK=off) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
+
+# Briques (dépôts dédiés ; détail : docs/COMMANDS.md § « Développer une brique »)
+bash scripts/briques-workspace.sh ../<clone-de-brique>     # engendre levelup-briques.work (LOCAL, jamais versionné) ; puis GOWORK="$PWD/levelup-briques.work"
+cd apps/go-api && go get github.com/JGtm/<brique>@vX.Y.Z && make tidy   # monter le require après le tag posé sur le dépôt dédié
 
 # Frontend
 make check-types            # tsc
@@ -244,11 +286,11 @@ go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys6
 go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
 
-**Tag `gamefiles` (2026-09-05)** : les 34 `*_gamefiles_test.go` de `libs/himap/himap/` (module `libs/himap`) lisent
+**Tag `gamefiles` (2026-09-05)** : les 34 `*_gamefiles_test.go` du paquet `himap` de la brique des cartes lisent
 l'installation locale de Halo Infinite et coûtent des dizaines de minutes
 (`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
  de modules en projection mémoire le 2026-09-05). Ils sont derrière
-`//go:build gamefiles` — sans quoi `go test ./himap/` (depuis `libs/himap`) ne terminait jamais sur un
+`//go:build gamefiles` — sans quoi le `go test` du paquet ne terminait jamais sur un
 poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
 qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans
 `internal/archlint/gamefiles_tag_test.go` (ratchet sur tout l'espace de travail Go, 2026-09-06 ; remplace l'ancien `corpus_tag_test.go` de la brique).
@@ -294,11 +336,13 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
 11. **Feature flags** : pas de flag qui laisse une feature OFF « pour plus tard » —
     corriger la cause et livrer actif. Tout kill-switch porte en commentaire : date du
     basculement de défaut + date cible de retrait + critère mesurable (modèle :
-    `platform/duckdb/shared_reader_legacy.go`).
+    `scheduler/auto_sync_convergence.go`). Une variable d'environnement se lit UNE fois,
+    dans `internal/config`.
 12. **Couleurs web** : aucune valeur hex ni classe Tailwind couleur dans `features/` /
     `components/` — tokens sémantiques uniquement (skill `color-tokens`).
-13. **Tableaux interactifs** : TanStack Table. **Query keys** : `lib/query/keys.ts`,
-    jamais inline. **Routes** : file-based, ne jamais éditer `routeTree.gen.ts`.
+13. **Tableaux interactifs** : TanStack Table (tri : `lib/table/useColumnSort`). **Query keys** :
+    `lib/query/keys.ts`, jamais inline ni dérivées sur place ; **bootstrap** : `lib/query/bootstrap.ts`.
+    **Graphes** : `components/charts/` seul importe `echarts`. **Routes** : file-based, ne jamais éditer `routeTree.gen.ts`.
 14. **Vérifier l'existant avant d'implémenter** : `internal/analysis/` + skill
     `go-features` + grep des exports. Beaucoup d'algos existent déjà.
 15. **docs/FR — politique** : guides majeurs (`FOUNDATIONS_GUIDE`, `COMMANDS`,
@@ -380,8 +424,8 @@ git commit -m "refactor(phase2): ..."
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
   2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
-  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `libs/film/internal/`,
-  fermées par le compilateur ; hors du module `libs/film`, on passe par la façade `libs/film/decfilm`, dont la
+  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `internal/` du dépôt du décodeur (`halo-infinite-film-decoder`),
+  fermées par le compilateur ; hors du module du décodeur, on passe par sa façade `decfilm`, dont la
   surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
   identifiants `replay.X` hors du décodeur au 2026-09-30 ; réduction non retenue, V25) ;
   porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
@@ -409,24 +453,26 @@ git commit -m "refactor(phase2): ..."
   `internal/i18n/locales_gen.go` ; un `normalizeLocale` / `i18n.Parse` par côté, jamais de repli binaire
   fr/en ; le serveur renvoie le libellé résolu ; langue complète ou refusée, repli `en` admis pour les
   noms de jeu seulement ; compteurs gelés à garde-rail ; amende 0003). ·
-  `0041` **modules Go sous `libs/`** (une brique = un module `github.com/JGtm/LevelUp/libs/<brique>`, paquets au
-  premier niveau, relié à `apps/go-api` par `go.work` sans `replace` ni `require` ; critère d'autonomie =
-  `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; ratchets à règle générale
-  racinés sur l'espace de travail ; aucun fichier extrait du jeu dans une brique ; `./...` ne franchit pas un
-  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; modules au rang
-  `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe aucune brique ; le décodeur de film garde ses
-  empreintes de couche par un cadre historique) ·
+  `0041` **briques Go = modules à part** (une brique = un module, paquets au premier niveau ; critère
+  d'autonomie = `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; aucun fichier
+  extrait du jeu dans une brique ; modules au rang `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe
+  aucune brique ; le décodeur de film garde ses empreintes de couche par un cadre historique ; amendé le
+  2026-11-12 : les briques vivent dans leurs dépôts dédiés, `libs/` et `go.work` ont quitté ce dépôt, `./...` de
+  `apps/go-api` ne couvre que LevelUp, un espace de travail LOCAL non versionné `levelup-briques.work` désigné par
+  `GOWORK` sert au développement) ·
   `0042` **API Halo : protocole et exploitation** (paquets `xblauth`, `infinite`, `halo5` et
-  `xboxlive` de `libs/haloapi`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
+  `xboxlive` de la brique `halo-api`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
   `Doer` gardé par surface `netguard` et consulté avant le limiteur, `Retry` en valeur — trois politiques
   conservées —, `Endpoints`, `ClientAzure`, `Descriptor`, jetons et langue en paramètres ; octets de film
   COMPRESSÉS, `filmfetch` décompresse ; conversions DTO -> domaine dans `games/halo_infinite/haloadapter` et `games/halo_5` ;
-  ligne `haloapi` de `archlint/briques_imports_test.go` (module `libs/haloapi` depuis le 2026-11-01, avec
+  ligne `haloapi` de `archlint/briques_imports_test.go` (brique `halo-api` depuis le 2026-11-01, avec
   `halo5`, `xboxlive`, et les services UGC cartes et fichiers GameCMS dans `infinite`) ; amende 0031 D-1,
   précise 0023) ·
-  `0043` **publication des briques** (quatre modules publiables, `libs/gamefiles`, `libs/himap`, `libs/film` et `libs/haloapi`,
-  depuis le dépôt unique, `libs/film` ajouté par l'amendement du 2026-11-08 (README, exemple compilé, `NOTICE.md`, `require` sur les tags de `gamefiles` et `himap`) ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
-  `v0.x` sans promesse de stabilité, un numéro par module ; un README modèle unique par brique, exemple compilé
+  `0043` **publication des briques** (quatre modules publiables, `halo-infinite-files-reader`, `halo-infinite-map-images`,
+  `halo-infinite-film-decoder` et `halo-api` (`github.com/JGtm/<dépôt>`), d'abord depuis le dépôt unique (`libs/`), depuis la bascule du
+  2026-11-12 depuis leurs seuls dépôts dédiés, que LevelUp exige à `v1.0.1` (`halo-api` retire `v0.1.0` et `v1.0.0`) ; une nouvelle version = un tag sur le dépôt dédié, posé par l'utilisateur seul,
+  puis une montée du `require` dans `apps/go-api/go.mod` ; pseudo-version permise sur une branche de travail, tag obligatoire avant `main` (amendement du 2026-11-13 : premier usage, ADR 0048) ;
+  `v1.0.0` depuis le 2026-11-09 (promesse de compatibilité semver, changement cassant = `/v2`), un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
   l'utilisateur exécutée ensemble pour les quatre (dépôt du décodeur : `JGtm/halo-infinite-film-decoder`) ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042) ·
@@ -448,7 +494,13 @@ git commit -m "refactor(phase2): ..."
   `0047` **révision des formules de notation et rejeu au démarrage** (deux constantes de révision dans `sync/skill` ;
   une valeur par joueur dans `sync_meta`, comparée sur « différent » ; rien n'est noté avant un recalcul réussi ; rejeu
   au démarrage joueur par joueur ; garde-rail par empreinte des paramètres, qui ne voit pas un changement de logique sans
-  changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée).
+  changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée) ·
+  `0048` **fonds de carte tenus par le maillage de navigation** (même décodeur pour le natif, module `any`, et le Forge,
+  `navmesh.blob` ; le fond riche reste la base, le maillage cadre par rognage et arbitre par la référence de sol ; plan des
+  murs = vecteur `plan` du sidecar, jamais une seconde image ; orientation par quarts de tour horaires dans la projection
+  unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
+  nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
+  `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

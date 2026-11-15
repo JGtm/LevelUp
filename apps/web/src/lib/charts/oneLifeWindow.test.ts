@@ -5,7 +5,6 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@/lib/accessibility', () => ({ resolveToken: (token: string) => token }))
 
 import {
-  ONE_LIFE_DAMAGE,
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,
   ONE_LIFE_WINDOW_FACTOR,
@@ -37,8 +36,7 @@ describe('oneLifeWindowBounds — fenêtre FIXE autour du pivot', () => {
     // Unité de TOUTES les surfaces (pivot 100 %) : la fenêtre 50…200 %.
     expect(oneLifeWindowBounds(100)).toEqual({ min: 50, max: 200 })
   })
-  it('défaut = barème Infinite', () => {
-    expect(oneLifeWindowBounds()).toEqual(oneLifeWindowBounds(ONE_LIFE_DAMAGE))
+  it('le facteur de fenêtre est 2', () => {
     expect(ONE_LIFE_WINDOW_FACTOR).toBe(2)
   })
   it('fenêtre multiplicativement symétrique : le pivot est au centre géométrique', () => {
@@ -114,15 +112,15 @@ describe('conversion brut → taux « une vie » (%)', () => {
     expect(gaspilleur).toBeLessThan(100)
   })
   it('valeur absente / non calculable → null (jamais 0 % ni Infinity)', () => {
-    expect(oneLifeOffensiveRatePct(null)).toBeNull()
-    expect(oneLifeOffensiveRatePct(undefined)).toBeNull()
-    expect(oneLifeOffensiveRatePct(0)).toBeNull()
-    expect(oneLifeDefensiveRatePct(null)).toBeNull()
+    expect(oneLifeOffensiveRatePct(null, 229)).toBeNull()
+    expect(oneLifeOffensiveRatePct(undefined, 229)).toBeNull()
+    expect(oneLifeOffensiveRatePct(0, 229)).toBeNull()
+    expect(oneLifeDefensiveRatePct(null, 229)).toBeNull()
     expect(oneLifeDefensiveRatePct(300, 0)).toBeNull()
   })
-  it('défaut = barème Infinite pour les deux conversions', () => {
-    expect(oneLifeOffensiveRatePct(225)).toBe(oneLifeOffensiveRatePct(225, ONE_LIFE_DAMAGE))
-    expect(oneLifeDefensiveRatePct(225)).toBe(oneLifeDefensiveRatePct(225, ONE_LIFE_DAMAGE))
+  it('la vie du titre est un paramètre : une vie par frag / par mort = 100 %', () => {
+    expect(oneLifeOffensiveRatePct(115, 115)).toBe(100)
+    expect(oneLifeDefensiveRatePct(115, 115)).toBe(100)
   })
 })
 

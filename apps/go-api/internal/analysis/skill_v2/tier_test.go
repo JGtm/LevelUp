@@ -30,9 +30,9 @@ func TestInferTier_ReferencePlayers(t *testing.T) {
 		{"Madina BTB", 26.17, "Diamond"},                  // cible Diamant ✓ (CSR Diamant 4-5)
 		{"Madina arena_slayer", 26.12, "Diamond"},         // cible Diamant ✓
 		{"Madina arena_objectif", 25.75, "Platinum"},      // proche Diamant, dans Platine étroit
-		{"Chocoboflor arena_slayer", 23.81, "Gold"},       // cible Or ✓
+		{"Joueur90001 arena_slayer", 23.81, "Gold"},       // cible Or ✓
 		{"JGtm arena_slayer", 23.52, "Gold"},              // cible Or ✓
-		{"XxDaemonGamerxX arena_slayer", 20.38, "Bronze"}, // cible Bronze ✓
+		{"Joueur90000000f arena_slayer", 20.38, "Bronze"}, // cible Bronze ✓
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

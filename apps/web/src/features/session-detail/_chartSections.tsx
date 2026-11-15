@@ -48,6 +48,7 @@ import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
 import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
+import { SessionLeadShareChart } from './SessionLeadShareChart'
 import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 import { SessionIntensityProfile } from './SessionIntensityProfile'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
@@ -57,6 +58,8 @@ import { SessionEngagementCumulative } from './SessionEngagementCumulative'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
+import { sessionPerMinuteRates } from './sessionPerMinute.logic'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { SessionOcdrBars } from './SessionOcdrBars'
 import { SessionCareerXP } from './SessionCareerXP'
 
@@ -122,6 +125,8 @@ export function useSessionChartSections({
   // Masquage par capability (décision produit : retrait silencieux, pas de carte vide).
   // team_mmr absent (Halo 5) → la carte « challenge MMR » disparaît entièrement.
   const hasTeamMmr = useCapability('team_mmr')
+  // La Mainmise vient du score du film : la carte n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
 
   const outcomeDonut = (
     <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
@@ -151,12 +156,27 @@ export function useSessionChartSections({
   )
   const fdaRadar = <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={matches} />
   const fragsRadar = <SessionFragsRadar title={t('session.detail.chart_frags_radar_title')} entry={entry} />
+  // « Stats par minute » : les dégâts par minute s'ajoutent au graphe (axe de droite) quand la
+  // session en porte ; son titre les nomme alors, avec une aide qui dit comment la cadence est
+  // calculée.
+  const perMinute = sessionPerMinuteRates(matches, useProvidesDamageTaken())
+  const perMinuteHasDamage = perMinute?.damageDealt != null || perMinute?.damageTaken != null
   const fdaBars = (
     <SessionFdaBars
-      title={t('session.detail.chart_fda_per_minute_title')}
+      title={
+        perMinuteHasDamage ? (
+          <span className="flex items-center gap-1.5">
+            {t('session.detail.chart_fda_damage_per_minute_title')}
+            <InfoTooltip content={t('session.detail.chart_fda_damage_info')} />
+          </span>
+        ) : (
+          t('session.detail.chart_fda_per_minute_title')
+        )
+      }
       matches={matches}
       mode="minute"
       yDomain={scale?.fdaMinute}
+      yDomainRight={scale?.damageMinute}
     />
   )
   const participation = (
@@ -290,6 +310,9 @@ export function useSessionChartSections({
     ),
     fda_gap: fdaGap,
     ...(netLives ? { net_lives: netLives } : {}),
+    ...(hasFilmDecoder
+      ? { lead_share: <SessionLeadShareChart matches={matches} entry={entry} compact={compact} /> }
+      : {}),
     intensity,
     first_blood: firstBlood,
     participation,

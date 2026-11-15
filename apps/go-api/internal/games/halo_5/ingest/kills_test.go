@@ -22,20 +22,20 @@ func kill(killerGT, victimGT, weaponID string, timeMs int) canonical.MatchEvent 
 
 func TestMapKillEvents_PairsAndWeapons(t *testing.T) {
 	events := []canonical.MatchEvent{
-		kill("Madina97294", "JGtm", "12345", 5000),
-		kill("JGtm", "Madina97294", "", 8000),   // pas d'arme → pas de weapon_kill
-		kill("", "Madina97294", "999", 10000),   // sans attaquant (env) → ignoré
-		kill("Madina97294", "", "12345", 11000), // sans victime → ignoré
-		medal("Madina97294", "100", 1000),       // non-kill → ignoré
+		kill("Joueur90002", "JGtm", "12345", 5000),
+		kill("JGtm", "Joueur90002", "", 8000),   // pas d'arme → pas de weapon_kill
+		kill("", "Joueur90002", "999", 10000),   // sans attaquant (env) → ignoré
+		kill("Joueur90002", "", "12345", 11000), // sans victime → ignoré
+		medal("Joueur90002", "100", 1000),       // non-kill → ignoré
 	}
-	resolve := fakeResolver(map[string]string{"Madina97294": "xA", "JGtm": "xB"})
+	resolve := fakeResolver(map[string]string{"Joueur90002": "xA", "JGtm": "xB"})
 
 	pairs, weapons := MapKillEvents("m1", events, resolve)
 
 	if len(pairs) != 2 {
 		t.Fatalf("paires: %d, attendu 2 — %+v", len(pairs), pairs)
 	}
-	if pairs[0].KillerXUID != "xA" || pairs[0].VictimXUID != "xB" || pairs[0].KillerGamertag != "Madina97294" {
+	if pairs[0].KillerXUID != "xA" || pairs[0].VictimXUID != "xB" || pairs[0].KillerGamertag != "Joueur90002" {
 		t.Errorf("1re paire mal mappée: %+v", pairs[0])
 	}
 	if pairs[0].Count != 1 || pairs[0].TimeMS != 5000 {

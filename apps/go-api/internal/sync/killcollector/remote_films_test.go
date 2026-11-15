@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 const matchRemote = "aabbccdd-1111-2222-3333-444455556666"

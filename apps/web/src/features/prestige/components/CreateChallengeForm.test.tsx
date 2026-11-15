@@ -46,6 +46,7 @@ function makeTemplate(over: Partial<Template>): Template {
     heroic_target: 1.5,
     legendary_target: 2,
     mythic_target: 3,
+    is_long_term: false,
     schema_version: 1,
     updated_at: '2026-01-01T00:00:00Z',
     ...over,

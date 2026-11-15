@@ -2,7 +2,7 @@
  * Helpers purs de résolution chronologique sur la liste des saisons.
  *
  * Aucune dépendance React → testables sans renderer. Utilisés par
- * useActiveSeason (squad) et par les boutons prev/next du PeriodSessionRail
+ * useActiveSeason et par les boutons prev/next du PeriodSessionRail
  * en mode "season".
  */
 

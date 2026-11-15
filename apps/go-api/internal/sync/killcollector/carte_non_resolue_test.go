@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // carteDeLaBobine : la carte du film dont la bobine de reference est tiree (PROVENANCE.txt).

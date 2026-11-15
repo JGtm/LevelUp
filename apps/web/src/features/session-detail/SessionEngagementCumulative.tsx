@@ -15,7 +15,7 @@
  * (trié par index) ↔ `matches` (triés par start_time), comme SessionEngagementChart.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -76,7 +76,7 @@ export interface EngagementGapLabels {
 export function buildSessionEngagementGapOption(
   series: ChartSeries<EngagementGapPoint>[],
   opts: EngagementGapLabels,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

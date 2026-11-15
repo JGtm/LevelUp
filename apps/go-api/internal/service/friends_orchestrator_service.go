@@ -30,11 +30,6 @@ import (
 	"levelup/go-api/internal/sync"
 )
 
-// FriendsNotifierFactory construit un emitter de notifications pour un slug
-// (par-joueur). Optionnel : si nil sur le service, aucune notification n'est
-// émise. Pattern miroir de api/handlers.NotificationsEmitterFactory.
-type FriendsNotifierFactory func(ctx context.Context, slug string) (notifications.Emitter, error)
-
 // FriendsOrchestratorResult agrège les résultats du recompute multi-DB.
 type FriendsOrchestratorResult struct {
 	Processed       int               // nombre de player DBs traitées avec succès
@@ -53,7 +48,7 @@ type FriendsGamertagsLoader func(xuid string) ([]string, error)
 type FriendsOrchestratorService struct {
 	cfg         *config.AppConfig
 	loadFriends FriendsGamertagsLoader
-	notifierFor FriendsNotifierFactory // optionnel — §6 notif friend_sync_completed
+	notifierFor notifications.EmitterFactory // optionnel — §6 notif friend_sync_completed
 	// recomputeDB recalcule is_with_friends d'une base joueur ; remplacé par les tests.
 	recomputeDB friendsDBRecompute
 	// playerRuns sérialise et absorbe les recalculs de RecomputeForPlayer, par xuid.
@@ -80,7 +75,7 @@ func NewFriendsOrchestratorService(
 // WithNotifier branche une factory de notifier pour émettre `friend_sync_completed`
 // par-joueur quand un recompute promeut au moins 1 match. Best-effort : tout
 // échec d'émission est loggé en Warn et n'arrête pas l'orchestration.
-func (s *FriendsOrchestratorService) WithNotifier(f FriendsNotifierFactory) *FriendsOrchestratorService {
+func (s *FriendsOrchestratorService) WithNotifier(f notifications.EmitterFactory) *FriendsOrchestratorService {
 	s.notifierFor = f
 	return s
 }

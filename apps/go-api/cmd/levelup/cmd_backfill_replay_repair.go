@@ -35,12 +35,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"sort"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -77,7 +77,7 @@ const (
 func classerReparation(path string, joueursEnBase func() int) etatReparation {
 	d, ok := replaybuild.ArtifactDigest(path)
 	if !ok {
-		if _, err := os.Stat(path); err != nil {
+		if !replayartifact.Exists(path) {
 			return reparationSansArtefact
 		}
 		return reparationHorsSchema

@@ -5,12 +5,12 @@
  * Affichage décomposé brut/bonus/total selon Axe 5 du plan conceptuel.
  *
  * Phase 5 : structure complète avec composant LeaderboardPP. La récupération
- * du leaderboard cross-amis dépend du wiring backend (PRESTIGE_ENABLED + sources
+ * du leaderboard cross-amis dépend du wiring backend (prestige_enabled + sources
  * amis dérivées de squad_member + Relations DB).
  */
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { LeaderboardPP, type LeaderboardEntry } from './components/LeaderboardPP'
+import { LeaderboardPP, type PrestigeLeaderboardEntry } from './components/LeaderboardPP'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -37,7 +37,7 @@ export function LeaderboardPPPage() {
 
   // Phase 5 minimale : pas de fetch backend tant que le leaderboard cross-amis
   // n'est pas exposé. Le composant LeaderboardPP gère l'état vide proprement.
-  const entries: LeaderboardEntry[] = []
+  const entries: PrestigeLeaderboardEntry[] = []
 
   return (
     <div className="space-y-4 p-4">

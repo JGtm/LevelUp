@@ -16,7 +16,8 @@
  * dernière valeur cumulée.
  */
 
-import { cumulativeSigned, finiteOrNull, meanOfValid } from './cumulativeSeries'
+import { cumulativeSigned, finiteOrNull } from './cumulativeSeries'
+import { meanOfValid } from './stats'
 
 const round2 = (v: number): number => Math.round(v * 100) / 100
 

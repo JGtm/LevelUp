@@ -8,7 +8,7 @@
  * Sorti de `objectifCharts.ts` (seuil de 500 lignes) à la revue L6.1 ; mêmes briques (axe en %,
  * courbe, colonne de ce soir). Toutes les couleurs arrivent résolues (jetons).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { CHART_BG, getTooltipBase } from '@/components/charts/_utils'
 import { footLabelStyle, layoutAxisFoot, lineHeightFor, type AxisFootSpec, type FootLabels } from '@/components/charts/axisFoot'
@@ -168,7 +168,7 @@ export function buildEveningsOption(
   medians: Record<ObjectiveRole, number | null>,
   c: ObjectifChartColors,
   t: EveningsChartText,
-): EChartsCoreOption {
+): ChartOption {
   const tc = c.theme
   const foot = layoutAxisFoot(EVENING_FOOT_SPEC)
   const categories = points.map((_, i) => String(i))

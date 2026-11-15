@@ -69,12 +69,11 @@ func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
 		return nil
 	}
 	snap := canonical.SkillSnapshot{
-		RatingType:      canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
-		RatingValue:     nullFloatPtr(s.skillRatingValue),
-		Delta:           nullFloatPtr(s.skillDelta),
-		PlaylistGroup:   nullStringPtr(s.skillPlaylistGroup),
-		SeasonID:        nullStringPtr(s.skillSeasonID),
-		ExpectedWinProb: nullFloatPtr(s.skillExpectedWinProb),
+		RatingType:    canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
+		RatingValue:   nullFloatPtr(s.skillRatingValue),
+		Delta:         nullFloatPtr(s.skillDelta),
+		PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
+		SeasonID:      nullStringPtr(s.skillSeasonID),
 	}
 	if s.skillMeasurementRemaining.Valid {
 		mr := int(s.skillMeasurementRemaining.Int64)

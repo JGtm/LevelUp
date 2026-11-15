@@ -9,8 +9,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+	"levelup/go-api/internal/sync/objectiveblend"
 )
 
 func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[string][]float64) *float64 {
@@ -25,21 +29,49 @@ func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[str
 	return &p
 }
 
-// applyPerfEnrichments complète les rows chargées depuis la shared DB avec ce
-// qu'elle ne porte pas : le score d'exploitation des médailles (calculé en amont
-// par l'appelant du batch) et les points d'objectif (lus ici sur la DB joueur, sans
-// changement de signature du batch — ses 5 call-sites en héritent).
-//
-// Une clé absente rend la zéro-value, et c'est VOULU dans les deux cas : 0 pour le
-// score médailles (métrique dont 0 est le neutre), nil pour ObjectiveScore — nil
-// signifiant « match sans couverture personal_score_awards », ce qui fait
-// redistribuer le poids d'ospm au lieu de noter le match 0 à l'objectif (D-J).
-func applyPerfEnrichments(ctx context.Context, playerDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) {
-	objectiveByMatch := loadObjectiveParticipation(ctx, playerDB, xuid)
+// applyPerfEnrichments complète les rows de l'historique : score d'exploitation des médailles (calculé
+// en amont) et faits d'objectif et de soutien de l'équipe (paquet objectiveblend), lus en UNE requête
+// pour tous les matchs du joueur, rejeu complet compris. Un match sans ligne d'objectif, ou un titre
+// sans match_objective_stats (Halo 5), n'a pas de faits : la métrique est absente et la note est le
+// combat. Une panne de lecture est une ERREUR : des notes stockées sans objectif fausseraient toutes
+// les notes à objectif.
+func applyPerfEnrichments(ctx context.Context, sharedDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) error {
+	rows, err := duckdbpkg.LoadObjectiveTeamRowsForPlayer(ctx, sharedDB, xuid)
+	if err != nil {
+		return fmt.Errorf("applyPerfEnrichments: lignes d'objectif: %w", err)
+	}
 	for i := range matches {
 		matches[i].MedalExploitScore = medalExploitByMatch[matches[i].MatchID]
-		matches[i].ObjectiveScore = objectiveByMatch[matches[i].MatchID]
+		matches[i].ObjectiveBlend = objectiveFactsOf(rows[matches[i].MatchID], xuid, matches[i].TimePlayedSeconds)
 	}
+	return nil
+}
+
+// effectivePlayedSeconds : la durée jouée de TOUS les calculs par minute d'un match, ou
+// perfFallbackDurationSeconds quand elle est inconnue ou nulle (jamais 600 s ici et 0 là).
+func effectivePlayedSeconds(seconds float64) float64 {
+	if seconds <= 0 {
+		return perfFallbackDurationSeconds
+	}
+	return seconds
+}
+
+// objectiveFactsOf rend les faits d'un match pour xuid depuis les lignes de tous les joueurs ; nil
+// sans faits. La durée du joueur (tenue de l'indice, soutien par minute) suit effectivePlayedSeconds.
+func objectiveFactsOf(rows []narrative.ObjectiveTeamRow, xuid string, playedSeconds float64) *objectiveblend.Facts {
+	seconds := effectivePlayedSeconds(playedSeconds)
+	own := make([]narrative.ObjectiveTeamRow, len(rows))
+	copy(own, rows)
+	for i := range own {
+		if own[i].XUID == xuid {
+			own[i].TimePlayedSeconds = seconds
+		}
+	}
+	share, ok := narrative.ComputeObjectiveTeamShare(own, xuid)
+	if !ok {
+		return nil
+	}
+	return objectiveblend.FactsOf(share, seconds)
 }
 
 // addStandardPercentile classe une métrique « plus = mieux » (percentile direct)
@@ -123,11 +155,6 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 			return *m.MedalExploit, true
 		}
 		return 0, false
-	case MetricKeyObjectiveParticipation:
-		if m.OSPM != nil {
-			return *m.OSPM, true
-		}
-		return 0, false
 	}
 	return 0, false
 }
@@ -149,10 +176,6 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		MetricKeyOffensiveConv:    make([]float64, 0, n),
 		MetricKeyDefensiveResist:  make([]float64, 0, n),
 		MetricKeyMedalExploit:     make([]float64, 0, n),
-		// ospm : la série ne reçoit QUE les matchs à couverture PSA. Un match non
-		// couvert n'y entre pas (il ne vaut pas 0), la population de référence de la
-		// métrique est donc celle des matchs réellement mesurés.
-		MetricKeyObjectiveParticipation: make([]float64, 0, n),
 	}
 
 	for _, row := range history {
@@ -193,9 +216,6 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		if m.MedalExploit != nil {
 			result[MetricKeyMedalExploit] = append(result[MetricKeyMedalExploit], *m.MedalExploit)
 		}
-		if m.OSPM != nil {
-			result[MetricKeyObjectiveParticipation] = append(result[MetricKeyObjectiveParticipation], *m.OSPM)
-		}
 	}
 
 	// Trier chaque série pour les calculs de percentile.
@@ -218,7 +238,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 			COALESCE(mp.kills, 0), COALESCE(mp.deaths, 0),
 			COALESCE(mp.assists, 0), COALESCE(mp.kda, 0),
 			COALESCE(mp.accuracy, 0),
-			COALESCE(mp.time_played_seconds, 600),
+			COALESCE(mp.time_played_seconds, ?),
 			COALESCE(mp.personal_score, 0), COALESCE(mp.damage_dealt, 0),
 			COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.rank, 0),
@@ -230,8 +250,8 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
 		  AND COALESCE(mp.outcome, 0) != 4`+
-		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
-		ORDER BY mr.start_time ASC`, xuid)
+		sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		ORDER BY mr.start_time ASC`, perfFallbackDurationSeconds, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadHistoryForPerf: %w", err)
 	}
@@ -278,24 +298,6 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 	}
 	return history, rows.Err()
 }
-
-// batchComputePerformanceScores calcule les performance_score manquants ou tous si force=true.
-// medalExploitByMatch : match_id → score médailles (nil = pas de données médailles).
-// force : recalcule même si performance_score est déjà présent dans la même chaîne.
-// Retourne le nombre de matchs mis à jour.
-//
-// Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
-// (7 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
-// matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
-// du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
-// global, préservation de la sémantique "relatif à ta chaîne").
-// BatchComputePerformanceScores is the public entry point that recomputes
-// the relative performance score for every match of a player. Exposed so
-// that external callers (e.g. the OpenSpartan post-import service) can run
-// the same recompute pass as the sync engine after a bulk import.
-//
-// medalExploit override is set to nil — callers that need the exploit-aware
-// variant (sync engine) still use the unexported helper.
 
 // ── Hygiène des notes orphelines (lot 2 — décisions D-D / D-E) ──────────────
 //

@@ -197,7 +197,7 @@ WHERE mp.xuid = ? ` + campaignExclusionToken
 // FILTRE PAR XUID (?1) : career_progression est dans la player DB mais peut, en cas
 // de contamination de sync historique, contenir des rows d'un AUTRE joueur. Sans ce
 // filtre, ARG_MAX remontait l'identité (emblème/bannière/rang) du mauvais xuid si sa
-// row était plus récente — symptôme observé (Chocoboflor affichait l'identité de JGtm).
+// row était plus récente — symptôme observé (Joueur90001 affichait l'identité de JGtm).
 // Concaténer xuid à une chaîne vide défait le pushdown sur l'index PK (cf.
 // career_live_repo.go : index DuckDB connu corrompu, table-scan complet, < 1k rows/joueur).
 // Paramètre : ?1 = xuid du joueur.

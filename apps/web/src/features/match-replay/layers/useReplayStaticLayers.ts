@@ -1,8 +1,8 @@
 /**
  * useReplayStaticLayers — LES CALQUES QUI NE BOUGENT PAS, cuits hors écran une fois.
  *
- * POURQUOI ILS SONT ENSEMBLE. Les zones nommées, la carte de chaleur et les objectifs statiques
- * ne dépendent NI de l'image courante NI de la lecture : ils ne changent que si leur donnée, le
+ * POURQUOI ILS SONT ENSEMBLE. Le plan des murs, les zones nommées, la carte de chaleur et les
+ * objectifs statiques ne dépendent NI de l'image courante NI de la lecture : ils ne changent que si leur donnée, le
  * cadrage ou leurs encres changent. Chacun se peint donc sur un canvas hors écran, que la boucle
  * d'animation se contente de RECOPIER.
  *
@@ -20,13 +20,16 @@
  * CE QUE LE HOOK NE FAIT PAS : dessiner à l'image. Il rend trois références de canvas ; c'est
  * l'appelant qui les recopie dans son ordre de calques.
  */
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
-import { projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { drawWallPlanLayer } from './wallPlanLayer'
+import type { WallPlanReady } from '@/lib/replay/wallPlan'
+import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { orientHeatGrid } from '@/lib/replay/orientation'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */
@@ -46,6 +49,14 @@ export interface StaticLayersInput {
    * plus à replacer une image cuite pour une autre échelle.
    */
   frozen?: boolean
+  /**
+   * SUIVRE (panneau de joueur) : le cadrage suit un joueur à chaque image, en translation pure tant
+   * que le palier ne change pas. Même gel que le glisser — le calque déjà cuit se recopie décalé —
+   * mais BORNÉ par une marge (`cookIsReusable`) : un suivi dure, la bande non peinte du bord
+   * d'attaque ne doit pas grandir. La cuisson reprend dès que le décalage sort de la marge, dès
+   * que l'échelle change (zoom) et à l'arrêt du suivi.
+   */
+  follow?: boolean
   zones: {
     zones: readonly CalloutZoneReady[]
     bigColors: string[]
@@ -53,6 +64,8 @@ export interface StaticLayersInput {
     locale: ReplayLocale
   }
   heat: { grid: HeatGrid | null; ramp: string[] }
+  /** Le plan des murs du fond retenu (`null` = pas de plan) et son encre. */
+  wallPlan: { plan: WallPlanReady | null; ink: string }
   objectives: {
     elements: readonly ObjectiveElementReady[]
     colorOfTeam: (team: number) => string
@@ -67,7 +80,7 @@ export interface StaticLayersInput {
   }
 }
 
-/** Les TROIS canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03). */
+/** Les QUATRE canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03). */
 export interface StaticLayers {
   /**
    * LE CADRAGE AVEC LEQUEL LES CALQUES ONT ÉTÉ CUITS — `null` tant qu'aucune cuisson n'a eu
@@ -76,6 +89,7 @@ export interface StaticLayers {
    * décor resterait immobile pendant que les joueurs se déplacent.
    */
   cookedRef: RefObject<CanvasView | null>
+  wallPlanRef: RefObject<HTMLCanvasElement | null>
   zonesRef: RefObject<HTMLCanvasElement | null>
   heatRef: RefObject<HTMLCanvasElement | null>
   objectivesRef: RefObject<HTMLCanvasElement | null>
@@ -106,36 +120,57 @@ export function useReplayStaticLayers({
   redraw,
   zones,
   heat,
+  wallPlan,
   objectives,
   frozen = false,
+  follow = false,
 }: StaticLayersInput): StaticLayers {
   const cookedRef = useRef<CanvasView | null>(null)
-  // Le cadrage de la DERNIÈRE cuisson. Il ne bouge pas tant que le gel dure : c'est ce qui
-  // permet de calculer le décalage de recopie, et c'est aussi ce qui le rend juste.
+  // LE CADRAGE CONTRE LEQUEL ON CUIT. C'est le cadrage courant, sauf pendant un gel (glisser) ou un
+  // suivi dans sa marge : il reste alors celui de la dernière cuisson. Les cuissons se relancent
+  // quand il change — ou quand leur donnée change, contre le même cadrage gardé. Il ne bouge pas
+  // tant que le gel dure : c'est ce qui permet de calculer le décalage de recopie, et ce qui le
+  // rend juste.
+  const [kept, setKept] = useState(view)
+  const hold = frozen || (follow && cookIsReusable(kept, view))
+  if (!hold && kept !== view) setKept(view)
+  const cookView = hold ? kept : view
   useEffect(() => {
-    if (!frozen) cookedRef.current = view
-  }, [view, frozen])
+    cookedRef.current = cookView
+  }, [cookView])
+  const wallPlanRef = useRef<HTMLCanvasElement | null>(null)
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
   const heatRef = useRef<HTMLCanvasElement | null>(null)
   const objectivesRef = useRef<HTMLCanvasElement | null>(null)
 
+  const { plan, ink: wallInk } = wallPlan
+  useEffect(() => {
+    if (!plan || cookView.width === 0) {
+      wallPlanRef.current = null
+      redraw()
+      return
+    }
+    wallPlanRef.current = cookLayer(cookView, (ctx) =>
+      drawWallPlanLayer(ctx, plan, cookView, { ink: wallInk }),
+    )
+    redraw()
+  }, [plan, wallInk, cookView, redraw])
+
   const { zones: zoneList, bigColors, fineInk, locale } = zones
   useEffect(() => {
-    if (frozen) return
-    if (zoneList.length === 0 || view.width === 0) {
+    if (zoneList.length === 0 || cookView.width === 0) {
       zonesRef.current = null
       return
     }
-    zonesRef.current = cookLayer(view, (ctx) =>
-      drawCalloutsLayer(ctx, zoneList, (p) => projectTo(view, p), { bigColors, fineInk, locale }),
+    zonesRef.current = cookLayer(cookView, (ctx) =>
+      drawCalloutsLayer(ctx, zoneList, (p) => projectTo(cookView, p), { bigColors, fineInk, locale }),
     )
     redraw()
-  }, [zoneList, bigColors, fineInk, locale, view, redraw, frozen])
+  }, [zoneList, bigColors, fineInk, locale, cookView, redraw])
 
   const { grid: heatGrid, ramp } = heat
   useEffect(() => {
-    if (frozen) return
-    if (!heatGrid || view.width === 0 || ramp.length === 0) {
+    if (!heatGrid || cookView.width === 0 || ramp.length === 0) {
       heatRef.current = null
       // REPEINDRE APRÈS AVOIR ÉTEINT : à l'arrêt, rien d'autre ne déclenche de redessin
       // (contrairement au calque des zones, dont la bascule figure dans les dépendances de
@@ -143,30 +178,33 @@ export function useReplayStaticLayers({
       redraw()
       return
     }
-    heatRef.current = cookLayer(view, (ctx, dpr) => {
+    heatRef.current = cookLayer(cookView, (ctx, dpr) => {
       // Le noyau partagé (`lib/replay/heatPaint`) ne connaît pas `CanvasView` (une feature) :
       // c'est cet adaptateur qui projette le coin de la grille et son pas en pixels canvas.
+      // LA GRILLE TOURNE AVEC LA CARTE (`orientHeatGrid`) : ses cellules restent alignées sur les
+      // axes de la toile, et son coin se projette dans le repère déjà tourné (`projectFrameTo`).
+      const o = cookView.orient
+      const grid = o ? orientHeatGrid(heatGrid, o.turns, o.pivot) : heatGrid
       const heatView = {
-        topLeft: projectTo(view, { x: heatGrid.minX, y: heatGrid.minY + heatGrid.ny * heatGrid.cell }),
-        step: heatGrid.cell * viewScale(view),
+        topLeft: projectFrameTo(cookView, { x: grid.minX, y: grid.minY + grid.ny * grid.cell }),
+        step: grid.cell * viewScale(cookView),
       }
-      drawHeatmapLayer(ctx, heatGrid, heatView, { ramp, k: dpr })
+      drawHeatmapLayer(ctx, grid, heatView, { ramp, k: dpr })
     })
     redraw()
-  }, [heatGrid, ramp, view, redraw, frozen])
+  }, [heatGrid, ramp, cookView, redraw])
 
   const { elements, colorOfTeam, neutralOutline, z } = objectives
   useEffect(() => {
-    if (frozen) return
-    if (elements.length === 0 || view.width === 0) {
+    if (elements.length === 0 || cookView.width === 0) {
       objectivesRef.current = null
       return
     }
-    objectivesRef.current = cookLayer(view, (ctx) =>
-      drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam, neutralOutline, z }),
+    objectivesRef.current = cookLayer(cookView, (ctx) =>
+      drawObjectivesLayer(ctx, [...elements], cookView, { colorOfTeam, neutralOutline, z }),
     )
     redraw()
-  }, [elements, colorOfTeam, neutralOutline, z, view, redraw, frozen])
+  }, [elements, colorOfTeam, neutralOutline, z, cookView, redraw])
 
-  return { zonesRef, heatRef, objectivesRef, cookedRef }
+  return { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef }
 }

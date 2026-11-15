@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"levelup/go-api/internal/importstore"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 )
 
 // writerSpy compte les prises du writer partagé ; elle le refuse pour ne rien écrire.
@@ -48,8 +50,8 @@ func TestOpenSpartanImport_SharedWriterOnlyAfterFileValidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			spy := &writerSpy{}
-			svc := NewOpenSpartanImportService(spy, "")
-			_, err := svc.Import(context.Background(), testOwnerXUID, tc.path, ImportOptions{StashDir: dir})
+			svc := NewOpenSpartanImportService(importstore.NewSharedAcquirer(spy, ""))
+			_, err := svc.Import(context.Background(), testOwnerXUID, tc.path, port.OpenSpartanImportOptions{StashDir: dir})
 			if err == nil {
 				t.Fatal("l'import devait échouer (writer refusé ou fichier rejeté)")
 			}

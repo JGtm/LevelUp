@@ -43,7 +43,6 @@ var identityParamAllowlist = map[string]string{
 }
 
 func TestIdentityParamsRequireOwnershipOrAdmin(t *testing.T) {
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	router, doc := buildTestRouterWithDoc(t)
 	r, ok := router.(chi.Router)
 	if !ok {

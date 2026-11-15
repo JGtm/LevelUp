@@ -64,16 +64,7 @@ func Comparer(avant, apres Bulletin, registreAvant RegistreReplis) Comparaison {
 	cs = append(cs, comparerPreuves(avant.Preuves, apres.Preuves)...)
 	cs = append(cs, comparerViolations(avant.Violations, apres.Violations)...)
 	cs = append(cs, comparerReplis(avant.Replis, apres.Replis, registreAvant)...)
-	c := Comparaison{Statut: StatutOK, Constats: cs, Avant: avant, Apres: apres}
-	for _, x := range cs {
-		switch {
-		case x.Sens == StatutFaux:
-			c.Statut = StatutFaux
-		case x.Sens == StatutManque && c.Statut == StatutOK:
-			c.Statut = StatutManque
-		}
-	}
-	return c
+	return Comparaison{Statut: statutDes(cs), Constats: cs, Avant: avant, Apres: apres}
 }
 
 // Bloquants rend les constats FAUX puis MANQUE.

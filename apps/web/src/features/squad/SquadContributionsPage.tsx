@@ -12,17 +12,20 @@
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { withoutNullRows } from './withoutNullRows'
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { substituteHpToken, useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
 import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { useSquadContext } from './SquadContext'
 import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
+import { squadHasDamagePerMinute } from './charts/squadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
@@ -43,10 +46,13 @@ export function SquadContributionsPage() {
   // est la même. Les `?? []` / `?? {}` écrits à la volée en fabriquaient une
   // neuve à chaque rendu.
   const perMinuteRows = useMemo(() => pageData?.per_minute_stats ?? [], [pageData?.per_minute_stats])
+  // « Stats par minute » : les dégâts par minute s'ajoutent au graphe (axe de droite) quand un joueur en
+  // porte ; le titre les nomme alors, avec une aide sur le calcul.
+  const hasDamagePerMinute = useMemo(() => squadHasDamagePerMinute(perMinuteRows), [perMinuteRows])
   const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
-  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
-  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  const perfSeriesByPlayer = useMemo(() => withoutNullRows(performanceSeries), [performanceSeries])
+  // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des SquadPerMinuteEntry.player
   // / SquadSynergyRadarSeries.player etc.
@@ -60,7 +66,7 @@ export function SquadContributionsPage() {
   // Frags et armes : joueurs ayant des classes de frags OU une série de performance
   // (même prédicat que l'onglet Usages qui les montait jusqu'au lot L2).
   const fragClasses = pageData?.frag_classes
-  const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
+  const fragClassesByPlayer = useMemo(() => withoutNullRows(fragClasses), [fragClasses])
   const fragPlayerOrder = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
     [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
@@ -84,7 +90,16 @@ export function SquadContributionsPage() {
           (titre + message) au lieu de disparaître quand sa source est vide. */}
       <div className="grid gap-4 lg:grid-cols-2">
         <SquadPerMinuteChart
-          title={t.perMinute.title}
+          title={
+            hasDamagePerMinute ? (
+              <span className="flex items-center gap-1.5">
+                {t.perMinute.titleWithDamage}
+                <InfoTooltip content={t.perMinute.damageInfo} />
+              </span>
+            ) : (
+              t.perMinute.title
+            )
+          }
           emptyMessage={t.empty.noBlockData}
           rows={perMinuteRows}
           colorByPlayer={playerColors}
@@ -92,7 +107,10 @@ export function SquadContributionsPage() {
             frags: t.perMinute.frags,
             deaths: t.perMinute.deaths,
             assists: t.perMinute.assists,
+            dealt: t.perMinute.damageDealt,
+            taken: t.perMinute.damageTaken,
           }}
+          damageAxisName={t.perMinute.damageAxis}
           perMinuteSuffix={t.perMinute.suffix}
         />
 
@@ -149,15 +167,16 @@ export function SquadContributionsPage() {
 
 /** Le titre du radar synergie, avec l'aide de ses six axes et le lien vers le glossaire. */
 function SynergyRadarTitle({ t }: { t: SquadText }) {
+  const hp = useEffectiveHpToKill()
   return (
     <span className="flex items-center gap-1.5">
       {t.synergyRadar.title}
       <InfoTooltip
         content={
           <div className="space-y-1">
-            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {substituteHpToken(t.synergyRadar.tooltip.impact, hp)}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {substituteHpToken(t.synergyRadar.tooltip.survival, hp)}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>

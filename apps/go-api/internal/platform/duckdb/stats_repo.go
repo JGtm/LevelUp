@@ -38,7 +38,7 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: shared reader: %w", err)
 	}
 	defer release()
-	// Baseline rendement/résistance title-aware (225 Infinite, 115 h5) — liée 2×
+	// Baseline rendement/résistance title-aware (valeur du titre) — liée 2×
 	// (offensive_conversion + defensive_resistance) AVANT le xuid de la clause WHERE.
 	hp := games.EffectiveHpToKill(r.pdb.TitleSlug)
 	statsQ := resolveCampaignExclusion(Q23StatsMatchesShared, r.pdb.TitleSlug, "r")

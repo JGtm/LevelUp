@@ -24,8 +24,8 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
 		XSTSToken:      "xsts_initial",
 		XSTSUserHash:   "uhs_initial",
-		XSTSGamertag:   "Madina97294",
-		XSTSXUID:       "2533274858283686",
+		XSTSGamertag:   "Joueur90002",
+		XSTSXUID:       "2623439693412443",
 		XSTSExpiresAt:  time.Now().Add(1 * time.Hour),
 	}
 	if err := store.Save(initial); err != nil {
@@ -37,8 +37,8 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 	mockXSTS := &XSTSResult{
 		Token:    "xsts_refreshed",
 		UserHash: "uhs_refreshed",
-		Gamertag: "Madina97294",
-		XUID:     "2533274858283686",
+		Gamertag: "Joueur90002",
+		XUID:     "2623439693412443",
 		NotAfter: time.Now().Add(2 * time.Hour),
 	}
 	r := NewRefreshLoop(store, nil).WithMultiUserMirror(multi)
@@ -55,7 +55,7 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 	r.refreshXSTS(context.Background(), tokens)
 
 	// Vérifier : multi-user store a la nouvelle row pour le xuid.
-	mirrored, err := multi.Load("2533274858283686")
+	mirrored, err := multi.Load("2623439693412443")
 	if err != nil {
 		t.Fatalf("multi.Load: %v", err)
 	}
@@ -65,8 +65,8 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 	if mirrored.XSTSUserHash != "uhs_refreshed" {
 		t.Errorf("mirrored XSTSUserHash = %q, want uhs_refreshed", mirrored.XSTSUserHash)
 	}
-	if mirrored.Gamertag != "Madina97294" {
-		t.Errorf("mirrored Gamertag = %q, want Madina97294", mirrored.Gamertag)
+	if mirrored.Gamertag != "Joueur90002" {
+		t.Errorf("mirrored Gamertag = %q, want Joueur90002", mirrored.Gamertag)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestRefreshLoop_MultiUserMirror_PreservesRefreshToken(t *testing.T) {
 	store := NewTokenStore(filepath.Join(dir, "watcher_tokens.json"))
 	multi := NewMultiUserTokenStore(filepath.Join(dir, "watcher_tokens"))
 
-	const xuid = "2533274823110022"
+	const xuid = "2603225103667623"
 	// Pré-seed le multi-user store comme le ferait le callback SSO : RT + MSAL frais.
 	if err := multi.Upsert(&UserTokens{
 		XUID:              xuid,

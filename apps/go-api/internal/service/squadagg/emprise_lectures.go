@@ -33,8 +33,8 @@ type EmpriseLecteur struct {
 	Page string
 	// Player : le gamertag du joueur de la page (journaux seulement).
 	Player string
-	// RepoRoot / TitleSlug : la résolution des noms de véhicules qualifiés (VehicleFamilyLabels).
-	RepoRoot  string
+	// Labels / TitleSlug : la résolution des noms de véhicules qualifiés (VehicleFamilyLabels).
+	Labels    port.ReplayLabelSource
 	TitleSlug string
 }
 
@@ -189,7 +189,7 @@ func (l EmpriseLecteur) Vehicules(
 	slog.DebugContext(ctx, "emprise_vehicules",
 		"page", l.Page, "player", l.Player, "matchs", len(ids), "passes", len(read.Passes),
 		"prises", len(read.Rows), "matchs_avec_frags", len(read.EventsRead))
-	return &read, VehicleFamilyLabels(ctx, l.RepoRoot, l.TitleSlug, locale)
+	return &read, VehicleFamilyLabels(ctx, l.Labels, l.TitleSlug, locale)
 }
 
 // EmpriseMatchIDs — les identifiants d'une liste de matchs de l'Emprise, dans l'ordre.

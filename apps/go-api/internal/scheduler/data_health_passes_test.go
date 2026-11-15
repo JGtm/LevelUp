@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
@@ -65,7 +66,7 @@ func lireJauge(t *testing.T, repoRoot string) string {
 
 // lecteurCompte : lecteur de la base partagée qui compte ses appels (preuve que la jauge passe
 // par le lecteur injecté, une lecture courte par table) et ouvre en lecture.
-func lecteurCompte(repoRoot string, n *atomic.Int32) scheduler.SharedReaderFunc {
+func lecteurCompte(repoRoot string, n *atomic.Int32) cronstore.SharedReaderFunc {
 	pr := title.NewPathResolver(repoRoot)
 	return func(_ context.Context, slug string) (*sql.DB, func(), error) {
 		n.Add(1)
@@ -80,8 +81,7 @@ func TestJaugePasses_FichierEtExpvar(t *testing.T) {
 	sharedPath := seedTitleSharedDB(t, repoRoot, "halo_infinite")
 	seedBombStatsVersions(t, sharedPath)
 	var lectures atomic.Int32
-	sched := scheduler.NewDataHealthScheduler(repoRoot).
-		WithSharedReader(lecteurCompte(repoRoot, &lectures)).
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(lecteurCompte(repoRoot, &lectures))).
 		WithClock(func() time.Time { return horlogeJauge })
 
 	res := sched.RunOnce(context.Background())
@@ -124,10 +124,9 @@ func TestJaugePasses_FichierEtExpvar(t *testing.T) {
 func TestJaugePasses_MesurePartielleNePublieRien(t *testing.T) {
 	repoRoot := t.TempDir()
 	seedTitleSharedDB(t, repoRoot, "halo_infinite")
-	sched := scheduler.NewDataHealthScheduler(repoRoot).
-		WithSharedReader(func(context.Context, string) (*sql.DB, func(), error) {
-			return nil, nil, errors.New("swap en cours")
-		})
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(func(context.Context, string) (*sql.DB, func(), error) {
+		return nil, nil, errors.New("swap en cours")
+	}))
 	res := sched.RunOnce(context.Background())
 	if res.PassesUnmeasured != len(migration.CompactableTables()) || res.ProbeErrors < res.PassesUnmeasured {
 		t.Fatalf("non mesurées=%d sondes en échec=%d, attendu %d tables non mesurées comptées en sondes",
@@ -155,7 +154,7 @@ func TestJaugePasses_TitreIllisibleNePublieRien(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := scheduler.NewDataHealthScheduler(repoRoot).
+	res := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil)).
 		WithClock(func() time.Time { return horlogeJauge }).
 		RunOnce(context.Background())
 	if res.PassesUnmeasured == 0 {

@@ -3,8 +3,9 @@
 //! La fenetre ne montre que deux choses : ses ecrans embarques et le serveur local de ce
 //! lancement (`http://127.0.0.1:<port>`). Tout lien vers le web s'ouvre dans le navigateur par
 //! defaut, jamais dans la fenetre ; le reste (fichiers, scripts, schemas du systeme) est refuse.
-//! La page du serveur n'a aucun acces aux commandes de la coquille (aucune capacite n'est
-//! accordee), ce filtre garde en plus la fenetre sur le serveur.
+//! La page du serveur n'a acces qu'a une commande de la coquille, `pick_folder` (capacite
+//! `capabilities/pick-folder.json`, `http://127.0.0.1:*` seulement) ; ce filtre garde en plus la
+//! fenetre sur le serveur.
 //!
 //! Une demande de NOUVELLE fenetre (`target="_blank"`, `window.open`) suit la meme politique,
 //! mais la coquille n'ouvre jamais une seconde fenetre : voir [`decide_new_window`].

@@ -15,7 +15,7 @@
 //	  SpartanToken + ClearanceToken requis (via env ou flags).
 //	  Usage : gen_test_fixtures download-full-match \
 //	            -match-id b71d39db-... \
-//	            -xuid 2533274823110022 \
+//	            -xuid 2603225103667623 \
 //	            -spartan "$SPARTAN" \
 //	            -clearance "$CLEARANCE" \
 //	            -dest internal/sync/testdata/jgtm_full_match
@@ -42,7 +42,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 func main() {

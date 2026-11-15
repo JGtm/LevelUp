@@ -1,5 +1,8 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { EN_FEED_LINES } from './feedLines.i18n'
+import { EN_LIVES } from './lives.i18n'
+import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -28,7 +31,7 @@ export const EN_TEXT = {
   offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
   openAtNoOriginTitle: 'Instant not calibrated on this artifact',
   openAtNoOriginDescription:
-    'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Recook needed — the replay opens from the start.',
+    'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Regeneration needed — the replay opens from the start.',
   speed: 'Speed',
   time: 'Match time',
   skipBackFmt: (seconds) => `Back ${seconds} s`,
@@ -36,14 +39,53 @@ export const EN_TEXT = {
   speedNormal: 'normal',
   speedMuted: 'sound off',
   keySpace: 'Space',
-  killFeedTitle: 'Kills',
+  feedFilterLabel: {
+    tout: 'All',
+    kills: 'Kills',
+    objectives: 'Objectives',
+    pickups: 'Weapons and power-ups',
+    vehicles: 'Vehicles',
+    medals: 'Medals',
+    assists: 'Assists',
+  },
+  feedFilterMenuLabel: 'Filter the feed',
+  feedFilterMoreHeading: 'Also available',
   killFeedEmpty: 'Nothing at this point of the match.',
+  killFeedEmptyHint: 'This filter has lines later in the match: they appear as the replay plays.',
+  feedEmptyMatch: 'No entry for this match',
+  feedEmptyMatchHint: 'This match has no line for this filter.',
+  feedObjectiveAction: {
+    flag_captures: 'captured the flag',
+    flag_capture_assists: 'helped capture the flag',
+    flag_grabs: 'grabbed the flag',
+    flag_secures: 'secured the flag',
+    flag_returns: 'returned the flag',
+    flag_steals: 'stole the flag',
+    flag_carriers_killed: 'killed a flag carrier',
+    zone_captures: 'captured a stronghold',
+    zone_secures: 'secured a stronghold',
+    vip_selected: 'was selected as VIP',
+    bomb_detonations: 'detonated the bomb',
+  },
+  feedPickupAction: (name) => `picked up: ${name}`,
+  feedVehicleAction: (name) => `boarded: ${name}`,
+  feedGroundPickupAction: (name) => `picked up off the ground: ${name}`,
+  feedVehicleDestroyedBy: (name) => `destroyed: ${name}`,
+  feedVehicleDestroyed: (name) => `${name} destroyed`,
+  feedVehicleKilledWho: (who) => `(${who} killed with the vehicle)`,
+  feedVehicleKilledOne: '({n} killed with the vehicle)',
+  feedVehicleKilledOther: '({n} killed with the vehicle)',
   killFeedUnknownWeapon: 'Unidentified weapon',
+  killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
+  playerPanel: EN_PLAYER_PANEL,
+  lives: EN_LIVES,
+  feedLines: EN_FEED_LINES,
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',
   killFeedAssistHint:
     'Assist read from the film, with its damage share. Shares are not capped at 100%.',
   killFeedKillerShare: (pct) => `killer ${pct}%`,
+  killFeedKillerZone: (zone) => `Killer's zone: ${zone}`,
   killFeedAssistMark: 'Assist',
   killFeedAssistShare: (pct) => `${pct}%`,
   killFeedDeathLabel: 'died',
@@ -83,8 +125,23 @@ export const EN_TEXT = {
   stopRecording: 'Stop recording',
   recordHint:
     'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
-  settingsButton: 'Settings',
-  settingsClose: 'Close settings',
+  viewButton: 'View',
+  viewClose: 'Close view',
+  viewPresetsTitle: 'Presets',
+  viewPreset: {
+    complet: 'Full',
+    combat: 'Combat',
+    deplacements: 'Movement',
+    objectif: 'Objective',
+    personnalise: 'Custom',
+  },
+  viewPresetHint: {
+    complet: 'All layers, except the Lives group',
+    combat: 'Aim, trails, vehicles, objectives, deaths and killers',
+    deplacements: 'Trails, zones and spawns',
+    objectif: 'Trails, zones, objectives',
+  },
+  viewCustomNote: 'The layers match none of the presets.',
   fullscreenEnter: 'Full screen',
   fullscreenExit: 'Exit full screen',
   autoPlay: 'Auto-play',
@@ -109,6 +166,19 @@ export const EN_TEXT = {
   layerZones: 'Zones',
   layerZonesHint:
     'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
+  layerWallPlan: 'Wall plan',
+  layerWallPlanHint:
+    'The exact outline of the map walls, as thin lines over its image. Available for maps whose plan could be extracted from the game.',
+  layerWallPlanInPlanHint: 'Already in the plan',
+  layerBackground: 'Background',
+  layerBackgroundRender: 'Render',
+  layerBackgroundRenderHint: 'The map background, as a rendered image.',
+  layerBackgroundPlan: 'Plan',
+  layerBackgroundPlanHint:
+    'The height plan view: floor silhouette tinted by altitude, walls, covered floors dashed. The choice applies to every map and every 2D view.',
+  orientationTitle: 'Orientation',
+  orientationHint:
+    'Rotates the map in quarter turns, clockwise. The choice is remembered for this map.',
   layerTrail: 'Trail',
   layerTrailHint:
     'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
@@ -201,7 +271,7 @@ export const EN_TEXT = {
     `≈ ${mag} in the magazine and ${res} in reserve, read ${age} before the drop`,
   layerVehicles: 'Vehicles',
   layerVehiclesHint:
-    "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the film dates no destruction — the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
+    "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. When the film dates a vehicle's destruction, the sprite stops at that moment, an explosion plays at its position and a line is added to the feed (Vehicles filter). Without that date, THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
   padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
   padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
   padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
@@ -323,7 +393,7 @@ export const EN_TEXT = {
   grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
   grenadeSelectedRead:
     'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',
-  grenadeSelUnknown: 'sel. ?',
+  grenadeSelUnknown: 'Grenade in hand: unknown',
   grenadeAge: 'Grenades read',
   grenadeAhead: 'Grenades read in',
   abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,

@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/ooz"
+	"github.com/JGtm/halo-infinite-files-reader/ooz"
 )
 
 type hmHeader struct {

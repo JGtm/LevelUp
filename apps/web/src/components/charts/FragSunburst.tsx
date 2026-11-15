@@ -268,9 +268,7 @@ export function FragSunburst({
                 onMouseEnter={(e) => showTip(e, a)}
                 onMouseMove={(e) => setTip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))}
                 onMouseLeave={clearTip}
-              >
-                <title>{`${a.tipTitle} — ${a.tipSub}`}</title>
-              </path>
+              />
             ))}
             {model.callouts.map((co) => (
               <g key={co.key} data-testid="frag-callout">

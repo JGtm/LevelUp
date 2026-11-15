@@ -7,7 +7,7 @@
  *   - Line MMR moyen équipe sur axe Y2 (pointillé) si team_mmr_avg dispo
  *   - tooltip trigger='axis' (hover unifié par session)
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { resolveToken } from '@/lib/accessibility'
 import { perfSessionScale } from '@/lib/accessibility/scales'
 import {
@@ -38,7 +38,7 @@ function round1(v: number): number {
 export function buildSquadSessionTimelineOption(
   series: ChartSeries<SquadSessionPoint>[],
   opts: SquadSessionTimelineOpts,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

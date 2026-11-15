@@ -13,7 +13,7 @@ import (
 
 // Une page vide = fin de l'historique : le résultat le dit ; une page perdue ne le dit pas.
 func TestPaginateAndPersistHistory_PageVide_HistoriqueEpuise(t *testing.T) {
-	e := &SyncEngine{gamertag: "Nuzzles", xuid: "2533274873954866"}
+	e := &SyncEngine{gamertag: "J900004", xuid: "2601461636236373"}
 	in := historyPaginationInputs{
 		client: &mockHaloClient{history: nil},
 		opts:   domain.SyncOptions{MaxMatches: 25, MatchType: "matchmaking"},
@@ -41,7 +41,7 @@ func TestHistoryComplete_AbsentePuisRangee(t *testing.T) {
 	if historyComplete(ctx, db) {
 		t.Fatal("base neuve : l'historique ne doit pas être réputé complet (un delta se joue en full)")
 	}
-	markHistoryComplete(ctx, db, "Nuzzles")
+	markHistoryComplete(ctx, db, "J900004")
 	if !historyComplete(ctx, db) {
 		t.Fatal("après markHistoryComplete, l'historique doit être réputé complet")
 	}

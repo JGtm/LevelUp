@@ -37,9 +37,11 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (
@@ -75,8 +77,9 @@ func transportStack(t *testing.T) (*httptest.Server, *ServiceRegistry, string) {
 func transportDoc(matchID string) replay.ReplayDocument {
 	courantes := replay.RevisionsCourantesDesCouches()
 	return replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: replaybuild.CookFrameIntervalMS(),
+		MatchID:         matchID,
 		// LES COUCHES SONT DECLAREES (lot 4.4.1) : le garde de fraicheur de la file juge desormais
 		// AUSSI les revisions, et un artefact muet sur les siennes se lit « a redecoder » — le job
 		// se faisait alors reprendre, et le compte rendu tombait en 409.
@@ -168,22 +171,27 @@ func TestTransport_DeBoutEnBout(t *testing.T) {
 	if err := json.Unmarshal(payload, &receipt); err != nil {
 		t.Fatalf("décodage de l'accusé: %v (body=%s)", err, payload)
 	}
-	if receipt.Bytes != len(sent) || receipt.SchemaVersion != replay.SchemaVersion {
-		t.Fatalf("accusé = %+v, attendu %d octets / schéma %d", receipt, len(sent), replay.SchemaVersion)
-	}
-
-	// ── À L'OCTET IDENTIQUE, à la place canonique ────────────────────────────
+	// ── À L'OCTET IDENTIQUE APRÈS DÉCOMPRESSION, à la place canonique ────────
+	// Le transport reste du JSON brut ; seul le disque compresse. « bytes » de l'accusé est la taille
+	// STOCKÉE (celle du fichier).
 	path := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, transportMatchID)
-	onDisk, err := os.ReadFile(path)
+	st, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("artefact absent du disque (%s): %v", path, err)
+	}
+	if receipt.Bytes != int(st.Size()) || receipt.SchemaVersion != replay.SchemaVersion {
+		t.Fatalf("accusé = %+v, attendu %d octets stockés / schéma %d", receipt, st.Size(), replay.SchemaVersion)
+	}
+	onDisk, err := replayartifact.ReadBytes(path)
+	if err != nil {
+		t.Fatalf("artefact illisible (%s): %v", path, err)
 	}
 	if !bytes.Equal(onDisk, sent) {
 		t.Fatalf("artefact rangé ≠ artefact envoyé (%d octets vs %d)", len(onDisk), len(sent))
 	}
 
 	// ── Le service de rejeu le sert ──────────────────────────────────────────
-	doc, err := service.NewReplayService(titlePkg.DefaultSlug, repoRoot, nil).GetReplay(context.Background(), transportMatchID)
+	doc, err := service.NewReplayService(titlePkg.DefaultSlug, repoRoot, nil, nil).GetReplay(context.Background(), transportMatchID)
 	if err != nil {
 		t.Fatalf("le service de rejeu ne lit pas l'artefact reçu: %v", err)
 	}

@@ -24,7 +24,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // mockMediaIndexer est un MediaIndexer instantané qui marque le job 100% succeed.
@@ -76,8 +76,8 @@ func (m *mockMediaIndexer) ScanAllMedia(
 	return nil
 }
 
-// Vérification compile-time que mockMediaIndexer implémente service.MediaIndexer.
-var _ service.MediaIndexer = (*mockMediaIndexer)(nil)
+// Vérification compile-time que mockMediaIndexer implémente port.MediaIndexer.
+var _ port.MediaIndexer = (*mockMediaIndexer)(nil)
 
 // mediaIndexError est une erreur de test.
 type mediaIndexError struct{ msg string }
@@ -119,17 +119,17 @@ func (m *titleCapturingIndexer) capturedScan() string {
 	return m.scan
 }
 
-var _ service.MediaIndexer = (*titleCapturingIndexer)(nil)
+var _ port.MediaIndexer = (*titleCapturingIndexer)(nil)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-func newSettingsRouterWithIndexer(t *testing.T, indexer service.MediaIndexer) (*chi.Mux, *jobs.Store) {
+func newSettingsRouterWithIndexer(t *testing.T, indexer port.MediaIndexer) (*chi.Mux, *jobs.Store) {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{DemoMode: false, RepoRoot: dir}
 	settingsStore := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, indexer)
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, indexer)
 
 	r := chi.NewRouter()
 	h.Mount(r)
@@ -302,7 +302,7 @@ func getSettingsDeleteSource(t *testing.T, environment string, storeVal *bool) b
 	}
 	settingsStore := settings_platform.NewStore(settingsPath)
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 
@@ -361,7 +361,7 @@ func getSettingsWebhookPresent(t *testing.T, storeURL string) bool {
 	}
 	settingsStore := settings_platform.NewStore(settingsPath)
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 

@@ -332,7 +332,7 @@ export function GamertagCombobox({
             title={leadingPill.label}
             onClick={(e) => e.stopPropagation()}
             className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
-            style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow: blanc structurel pour contraste sur fond coloré du pill
+            style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow(hex): blanc structurel pour contraste sur fond coloré du pill
           >
             <span className="max-w-[7rem] truncate">{leadingPill.label}</span>
           </span>
@@ -346,7 +346,7 @@ export function GamertagCombobox({
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
               style={
                 color
-                  ? { backgroundColor: color, color: '#fff', border: 'none' } // color-allow: blanc structurel pour contraste sur fond coloré du pill
+                  ? { backgroundColor: color, color: '#fff', border: 'none' } // color-allow(hex): blanc structurel pour contraste sur fond coloré du pill
                   : undefined
               }
               data-pill={!color ? 'neutral' : undefined}

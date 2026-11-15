@@ -18,6 +18,7 @@ import type { MatchViewCadence } from '@/lib/api/types'
 
 import { formatBinSeconds } from './_chartSeries'
 import type { XuidMeta } from './xuidMeta'
+import { movingMean } from '@/lib/charts/stats'
 
 /** Durée d'une phase, en secondes, quand le serveur ne la déclare pas. */
 export const CADENCE_PHASE_SECONDS_DEFAULT = 30
@@ -64,7 +65,8 @@ export interface CadenceInput {
  */
 export function buildCadence(input: CadenceInput): Cadence | null {
   const { cadence, meXUID, xuidMeta } = input
-  if (!cadence || cadence.datapoints.length === 0) return null
+  const datapoints = cadence?.datapoints ?? []
+  if (!cadence || datapoints.length === 0) return null
 
   // Le `xuid === meXUID` est conservé pour le cas — anormal — où le joueur de la page n'a
   // pas de ligne au scoreboard : il reste son propre allié.
@@ -74,7 +76,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
 
   const ally: number[] = []
   const enemy: number[] = []
-  for (const dp of cadence.datapoints) {
+  for (const dp of datapoints) {
     let amis = 0
     let adverses = 0
     for (const [xuid, count] of Object.entries(dp.components)) {
@@ -86,7 +88,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
   }
 
   return {
-    categories: cadence.datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds)),
+    categories: datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds)),
     ally,
     enemy,
     allyMA: movingAverage(ally, CADENCE_MA_WINDOW),
@@ -103,12 +105,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
  * Arrondi au dixième — la moyenne d'un compte entier n'a pas plus de précision que ça.
  */
 export function movingAverage(values: readonly number[], window = CADENCE_MA_WINDOW): number[] {
-  return values.map((_, i) => {
-    const start = Math.max(0, i - (window - 1))
-    let sum = 0
-    for (let j = start; j <= i; j++) sum += values[j]
-    return Math.round((sum / (i - start + 1)) * 10) / 10
-  })
+  return movingMean(values, window).map((mean) => (mean == null ? Number.NaN : Math.round(mean * 10) / 10))
 }
 
 /**

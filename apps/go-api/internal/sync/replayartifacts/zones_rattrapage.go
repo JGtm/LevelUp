@@ -58,7 +58,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/verrous"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // entreeZonesFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel porteur

@@ -10,7 +10,7 @@
  *
  * Couleurs via tokens sémantiques uniquement (resolveToken).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { resolveToken } from '@/lib/accessibility'
 import {
@@ -41,7 +41,7 @@ export function buildCadenceBarsOption(
   values: CadenceBarsValues,
   labels: CadenceBarsLabels,
   fractionDigits: number,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const fragsColor = resolveToken('stat-kills')

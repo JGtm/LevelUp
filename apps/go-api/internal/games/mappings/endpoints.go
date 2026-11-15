@@ -80,9 +80,6 @@ type EngagementConstants struct {
 // rendement/résistance. Zéro-value (0) = non déclaré → le caller applique son défaut.
 type DamageModelConstants struct {
 	EffectiveHpToKill float64
-	// NoNativeKDA = true → le titre ne fournit pas de KDA per-match via son API
-	// (Halo 5 ; forme native = FDA NET). Défaut false (KDA natif, Infinite).
-	NoNativeKDA bool
 	// NoDamageTaken = true → le titre ne fournit PAS damage_taken (Halo 5). La
 	// résistance défensive (DR = dégâts_subis/(hp×morts)) et tout ce qui en dépend
 	// (profil de combat axe défensif, coaching « fragile », milestones endurance/

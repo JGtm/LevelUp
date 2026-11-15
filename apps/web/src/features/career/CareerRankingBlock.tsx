@@ -74,14 +74,14 @@ function shortPlaylistName(name: string): string {
     .trim() || name
 }
 
-type LusrCheckpoint = CareerLusrSection['checkpoints'][number]
+type LusrCheckpoint = NonNullable<CareerLusrSection['checkpoints']>[number]
 
 function deriveLatestLUSRByGroup(
-  checkpoints: CareerLusrSection['checkpoints'],
+  checkpoints: CareerLusrSection['checkpoints'] | undefined,
 ): Map<string, LusrCheckpoint> {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i
   const byGroup = new Map<string, LusrCheckpoint>()
-  for (const cp of checkpoints) {
+  for (const cp of checkpoints ?? []) {
     if (UUID_RE.test(cp.playlist_name)) continue
     const group = cp.playlist_group ?? cp.playlist_name
     if (!byGroup.has(group)) byGroup.set(group, cp)

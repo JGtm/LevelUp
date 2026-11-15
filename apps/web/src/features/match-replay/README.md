@@ -13,7 +13,7 @@ Un fichier a **une** place, décidée par le PREMIER critère qui s'applique, da
 | 1 | `i18n/` | le dictionnaire FR/EN, son contrat de champs, la lecture d'un libellé du document | il porte du TEXTE affiché, ou décide de la langue |
 | 2 | `sound/` | manifeste des sons, tirage de variante, mixage, moteurs de véhicule, contrôles de son | il décide, choisit ou joue un SON |
 | 3 | `export/` | dialogue d'export, plan d'images, conteneur vidéo, encodeur, capture PNG, panneaux repeints pour la vidéo | il sert à produire un FICHIER (image ou vidéo) |
-| 4 | `settings/` | tiroir de réglages, bascules de calques, préférences persistées, ancrage du panneau | il appartient au TIROIR ou aux préférences |
+| 4 | `settings/` | bouton « Vue » et son panneau, préréglages de calques, bascules de calques, préférences persistées, ancrage du panneau | il appartient au PANNEAU DE LA VUE ou aux préférences |
 | 5 | `layers/` | calques, effets, glyphes, marques, encres du canvas, réglages du canvas, et les hooks qui ne câblent QUE leur calque | **une de ses fonctions exportées reçoit un `CanvasRenderingContext2D`** — il PEINT |
 | 6 | `ui/` | composants React de la page : toile, fil, fiches, frise, barre de lecture, surimpressions | c'est un composant React (`.tsx`) que la page monte |
 | 7 | `hooks/` | lecture, cadrage, zoom, glisser, molette, clavier, frise, durées, cascades de camp | c'est un hook React qui pilote le LECTEUR, pas un calque |

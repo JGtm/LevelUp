@@ -42,6 +42,7 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import type { FocusFilter } from '../model/focusFilter'
 import { drawRift, type RiftInk } from './placementRift'
 import { placementIsDroppedPower } from '../model/placementDropped'
 import {
@@ -278,6 +279,14 @@ export interface PlacementScene {
    * (poseur lu à sa pose, cible au ping — cf. threatSensor).
    */
   campOfSlot: (slot: number, frame: number) => number | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : une pose est à son poseur ; une marque de révélation est au poseur ET
+   * au joueur révélé. Un capteur dont la pose est retirée ne se dessine pas mais reste candidat à la révélation :
+   * seule sa marque est jugée, sur ses deux parties (Seul la garde si le joueur est le poseur ou le révélé,
+   * Masquer la retire dans l'un ou l'autre cas), avant le choix de la marque la plus fraîche par vie révélée.
+   * Absent = tout se dessine.
+   */
+  shown?: Pick<FocusFilter, 'placement' | 'reveal'>
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
@@ -470,8 +479,9 @@ export function drawEquipmentPlacementsLayer(
   for (const p of scene.placements) {
     const kind = placementKind(p, time)
     if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
-    drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
+    if (scene.shown && !scene.shown.placement(p)) continue
+    drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
   }
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {

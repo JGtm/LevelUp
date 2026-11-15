@@ -10,7 +10,7 @@
 // La CI default skip ces tests pour ne pas etre rouge sur des bugs documentes.
 //
 // Cible critique : reproduire le bug #1 de PLAN_FIX_SYNC_RELIABILITY_2026-05-24,
-// observe en production le 2026-05-24 sur Chocoboflor + XxDaemonGamerxX :
+// observe en production le 2026-05-24 sur Joueur90001 + Joueur90000000f :
 //
 //	"CombinedPersister: open player <gamertag>:
 //	 Connection Error: Can't open a connection to same database file

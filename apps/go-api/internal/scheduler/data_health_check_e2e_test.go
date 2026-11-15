@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/scheduler"
@@ -86,7 +87,7 @@ func seedOrphanParticipant(t *testing.T, sharedPath string) {
 func TestHealthScheduler_E2E_NoWarnings(t *testing.T) {
 	repoRoot := healthE2ESetup(t)
 
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 	res := sched.RunOnce(context.Background())
 
 	if res == nil {
@@ -105,7 +106,7 @@ func TestHealthScheduler_E2E_WithAnomaly_DetectsAndLogs(t *testing.T) {
 		"warehouse", "shared_matches_v2.duckdb")
 	seedRawUUIDMapName(t, sharedPath)
 
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 
 	// Cycle 1 : doit détecter l'anomalie et l'inclure dans le total.
 	res := sched.RunOnce(context.Background())
@@ -135,7 +136,7 @@ func TestHealthScheduler_E2E_OrphanXUIDs_Counted(t *testing.T) {
 		"warehouse", "shared_matches_v2.duckdb")
 	seedOrphanParticipant(t, sharedPath)
 
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 	res := sched.RunOnce(context.Background())
 	if res == nil {
 		t.Fatal("RunOnce a retourné nil")

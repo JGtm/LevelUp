@@ -91,6 +91,11 @@ describe('formatTrendValue', () => {
     expect(formatTrendValue(12.25, 'hours', 1, 'fr')).toBe('12,3\u00a0h')
   })
 
+  it('par minute : suffixe « /min » collé à la valeur, séparateurs de la locale', () => {
+    expect(formatTrendValue(0.4567, 'per_minute', 2, 'fr')).toBe('0,46/min')
+    expect(formatTrendValue(1234.5, 'per_minute', 0, 'en')).toBe('1,235/min')
+  })
+
   it('nombre : tel quel, avec le moins typographique pour un négatif', () => {
     expect(formatTrendValue(3.14159, 'number', 2, 'fr')).toBe('3,14')
     expect(formatTrendValue(-12.5, 'number', 1, 'en')).toBe('−12.5')
@@ -131,6 +136,11 @@ describe('gameTypeOptions', () => {
 })
 
 describe('formatTrendDelta', () => {
+  it('par minute : écart signé suivi de « /min »', () => {
+    expect(formatTrendDelta(0.052, 'per_minute', 2, 'fr')).toBe('+0,05/min')
+    expect(formatTrendDelta(-12.4, 'per_minute', 0, 'en')).toBe('−12/min')
+  })
+
   it('ratio : points de pourcentage signés', () => {
     expect(formatTrendDelta(0.021, 'ratio', 3, 'fr')).toBe('+2,1\u00a0pts')
     expect(formatTrendDelta(-0.021, 'ratio', 3, 'en')).toBe('−2.1\u00a0pts')

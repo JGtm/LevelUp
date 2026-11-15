@@ -27,7 +27,7 @@
  * module reste la relecture DU BIPÈDE, écrite une fois — il ne connaît aucun véhicule.
  */
 
-import { isAliveAt, msToFrames, positionAt, trackWindow, type XY } from '../../../lib/replay/replayLogic'
+import { altitudeAt, isAliveAt, msToFrames, positionAt, trackWindow, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -45,22 +45,23 @@ export const KILLPOS_WINDOW_MS = 1_500
 export type PlayerPosAt = (xuid: string, frame: number) => XY | null
 
 /**
- * posOfPlayerAt — position d'un joueur à une frame, relue dans ses trajectoires.
- *
- * Patron `posOfNameAt` du POC : une vie VIVANTE à cette frame rend sa position ; sinon on
- * accepte la DERNIÈRE position d'une vie close depuis moins de `deathFrames` — c'est le cas
- * de la victime, par construction. Au-delà : null, aucune position inventée.
+ * readAtPlayer — LA RÈGLE DE RELECTURE d'une grandeur du joueur à une frame, écrite UNE fois : une
+ * vie VIVANTE à cette frame répond ; sinon la DERNIÈRE lecture d'une vie close depuis moins de
+ * `deathFrames` (la victime vient de mourir, par construction). Au-delà : null, rien d'inventé.
+ * La position et l'altitude s'y branchent — deux grandeurs, une seule règle de vie.
  */
-export function posOfPlayerAt(
+function readAtPlayer<T>(
   lives: ReplayTrackReady[] | undefined,
   frame: number,
   deathFrames: number,
-): XY | null {
+  atFrame: (life: ReplayTrackReady) => T | null,
+  atEnd: (life: ReplayTrackReady) => T | null,
+): T | null {
   if (!lives || lives.length === 0) return null
   for (const l of lives) {
     if (isAliveAt(l, frame)) {
-      const p = positionAt(l.points, frame)
-      if (p) return p
+      const v = atFrame(l)
+      if (v !== null) return v
     }
   }
   let best: ReplayTrackReady | null = null
@@ -72,9 +73,54 @@ export function posOfPlayerAt(
       best = l
     }
   }
-  if (!best) return null
-  const last = best.points[best.points.length - 1]
-  return last ? { x: last.x, y: last.y } : null
+  return best ? atEnd(best) : null
+}
+
+/**
+ * posOfPlayerAt — position d'un joueur à une frame, relue dans ses trajectoires.
+ *
+ * Patron `posOfNameAt` du POC : une vie VIVANTE à cette frame rend sa position ; sinon on
+ * accepte la DERNIÈRE position d'une vie close depuis moins de `deathFrames` — c'est le cas
+ * de la victime, par construction. Au-delà : null, aucune position inventée.
+ */
+export function posOfPlayerAt(
+  lives: ReplayTrackReady[] | undefined,
+  frame: number,
+  deathFrames: number,
+): XY | null {
+  return readAtPlayer(
+    lives,
+    frame,
+    deathFrames,
+    (l) => positionAt(l.points, frame),
+    (l) => {
+      const last = l.points[l.points.length - 1]
+      return last ? { x: last.x, y: last.y } : null
+    },
+  )
+}
+
+/**
+ * altitudeOfPlayerAt — l'altitude du joueur à une frame, sous la MÊME règle de vie que sa position.
+ * Une vie dont AUCUN point ne porte de z (artefact sans altitude) rend null : `altitudeAt` rendrait 0,
+ * et un 0 inventé nommerait un étage — l'absence est la donnée.
+ */
+export function altitudeOfPlayerAt(
+  lives: ReplayTrackReady[] | undefined,
+  frame: number,
+  deathFrames: number,
+): number | null {
+  const withZ = (l: ReplayTrackReady) => l.points.some((p) => p.z !== undefined)
+  return readAtPlayer(
+    lives,
+    frame,
+    deathFrames,
+    (l) => (withZ(l) ? altitudeAt(l.points, frame) : null),
+    (l) => {
+      const last = l.points[l.points.length - 1]
+      return last && withZ(l) ? (last.z ?? 0) : null
+    },
+  )
 }
 
 /** buildLivesByXuid — l'index des vies par joueur, construit UNE fois par document. */
@@ -136,4 +182,14 @@ export function buildPlayerPosAt(doc: ReplayDocumentReady): PlayerPosAt {
   const lives = buildLivesByXuid(doc.tracks)
   const window = deathWindowFrames(doc)
   return (xuid, frame) => posOfPlayerAt(lives.get(xuid), frame, window)
+}
+
+/** L'altitude relue, telle que `altitudeOfPlayerAt` la rend (null = inconnue). */
+export type PlayerAltAt = (xuid: string, frame: number) => number | null
+
+/** buildPlayerAltAt — l'altitude du bipède, sous la même règle de vie que `buildPlayerPosAt`. */
+export function buildPlayerAltAt(doc: ReplayDocumentReady): PlayerAltAt {
+  const lives = buildLivesByXuid(doc.tracks)
+  const window = deathWindowFrames(doc)
+  return (xuid, frame) => altitudeOfPlayerAt(lives.get(xuid), frame, window)
 }

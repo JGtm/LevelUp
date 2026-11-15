@@ -20,7 +20,7 @@ vi.mock('./planPaint', () => ({ peindreLePlan: vi.fn() }))
 vi.mock('./tueursPaint', () => ({ peindreLaCouche: vi.fn() }))
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>()
-  return { ...actual, useTacticalMapBackgroundFrame: () => null, useTacticalMapBackgroundUrl: () => null }
+  return { ...actual, useTacticalMapBackgroundFrame: () => null, useTacticalMapBackgroundPlan: () => null, useTacticalMapBackgroundImage: () => ({ url: null, variante: 'rendu' }), useTacticalMapPlanImage: () => ({ planImage: undefined, pending: false }) }
 })
 
 const t = getTacticalText('fr')
@@ -51,6 +51,8 @@ const REGLAGES: ReglagesDuPlan = {
   escouadeEnAttente: false,
   spawn: '',
   onSpawnChange: () => {},
+  vies: 'depart',
+  onViesChange: () => {},
   zonesVisibles: true,
   onZonesVisiblesChange: () => {},
   grappes: [],

@@ -105,7 +105,7 @@ func makeMinimalBatch() *MatchBatch {
 		BatchID:   "test-batch-001",
 		TitleSlug: "halo_infinite",
 		Player:    "TestPlayer",
-		XUID:      "2533274823110022",
+		XUID:      "2603225103667623",
 		CreatedAt: time.Date(2026, 5, 24, 12, 0, 0, 0, time.UTC),
 		Source:    "test_synthetic",
 		Shared: SharedBatch{

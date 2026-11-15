@@ -88,7 +88,7 @@ export function AnalysisPendingBadge({ locale, inProgress, parts }: { locale: Lo
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
-        className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-info/60 bg-black/55 px-2 py-1 text-2xs font-semibold leading-none text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info"
+        className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-info/60 bg-scrim/55 px-2 py-1 text-2xs font-semibold leading-none text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info"
       >
         <span aria-hidden="true" className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 motion-safe:animate-ping" />

@@ -186,6 +186,14 @@ export type SemanticToken =
   | 'objective-role-defend'
   | 'objective-role-hold'
 
+  // ── Rôles de portée (3) — Ligne de front / Polyvalent / Tireur d'élite (2026-11-14) ──
+  // Rampe ORDINALE chaude -> neutre -> froide du ruban « Rôles de portée » (Escouade ›
+  // Synergies) : du tiers bas au tiers haut de l'écart au lobby. Elle ordonne, elle ne juge pas
+  // (aucune teinte n'est « bonne »). Garde-fou : rangeRoleTokens.test.ts.
+  | 'range-role-front'
+  | 'range-role-mid'
+  | 'range-role-far'
+
   // ── Rôles d'impact (7) — « Points d'impact par soirée et par rôle » (Escouade) ──
   // Deux RAMPES ORDINALES : `impact-gain-1..4` pour les rôles qui ajoutent des points (1 = le
   // plus fort barème, posé contre l'axe zéro, le plus contrasté sur la carte), `impact-loss-1..3`
@@ -262,6 +270,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'frag-environmental', 'frag-unattributed',
   'resource-powerup', 'resource-power-weapon', 'resource-vehicle', 'resource-rack',
   'objective-role-take', 'objective-role-defend', 'objective-role-hold',
+  'range-role-front', 'range-role-mid', 'range-role-far',
   'impact-gain-1', 'impact-gain-2', 'impact-gain-3', 'impact-gain-4',
   'impact-loss-1', 'impact-loss-2', 'impact-loss-3',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',

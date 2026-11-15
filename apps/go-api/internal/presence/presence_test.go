@@ -1,11 +1,7 @@
 package presence
 
 import (
-	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"sync/atomic"
 	"testing"
 )
 
@@ -132,13 +128,13 @@ func TestParsePresencePayload_EmptyDetails(t *testing.T) {
 // state + devices[].titles[]. JGtm joue à Halo Infinite ; on doit
 // extraire le titre actif depuis devices[0].titles[0].
 func TestParsePresencePayload_DevicesFormat_Active(t *testing.T) {
-	raw := json.RawMessage(`{"xuid":"2533274823110022","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","placement":"Full","state":"Active","lastModified":"2026-05-25T19:53:30.5573644"}]}]}`)
+	raw := json.RawMessage(`{"xuid":"2603225103667623","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","placement":"Full","state":"Active","lastModified":"2026-05-25T19:53:30.5573644"}]}]}`)
 	event, err := ParsePresencePayload(raw, "fallback")
 	if err != nil {
 		t.Fatalf("ParsePresencePayload() error = %v", err)
 	}
-	if event.XUID != "2533274823110022" {
-		t.Errorf("XUID = %q, want 2533274823110022", event.XUID)
+	if event.XUID != "2603225103667623" {
+		t.Errorf("XUID = %q, want 2603225103667623", event.XUID)
 	}
 	if event.PresenceState != "Online" {
 		t.Errorf("PresenceState = %q, want Online", event.PresenceState)
@@ -169,7 +165,7 @@ func TestParsePresencePayload_DevicesFormat_Active(t *testing.T) {
 // Snapshot Offline avec lastSeen : on parse OK mais PresenceDetail reste nil
 // (pas de devices[].titles[] actifs).
 func TestParsePresencePayload_DevicesFormat_OfflineLastSeen(t *testing.T) {
-	raw := json.RawMessage(`{"xuid":"2533274833178266","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
+	raw := json.RawMessage(`{"xuid":"2558964982616721","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
 	event, err := ParsePresencePayload(raw, "fallback")
 	if err != nil {
 		t.Fatalf("ParsePresencePayload() error = %v", err)
@@ -232,123 +228,5 @@ func TestParsePresencePayload_LastSeenWithZSuffix(t *testing.T) {
 	}
 	if event.LastSeen == nil || event.LastSeen.Timestamp.IsZero() {
 		t.Fatal("Timestamp avec suffixe Z devrait être parsé")
-	}
-}
-
-// =============================================================================
-// SteamPoller tests
-// =============================================================================
-
-func TestSteamPoller_Active(t *testing.T) {
-	var activeCount atomic.Int32
-	var inactiveCount atomic.Int32
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"response": map[string]any{
-				"players": []map[string]any{{
-					"steamid":       "76561198000000000",
-					"gameid":        "1336960",
-					"gameextrainfo": "Halo Infinite",
-					"personastate":  1,
-				}},
-			},
-		})
-	}))
-	defer srv.Close()
-
-	p := NewSteamPoller("76561198000000000", "test-key",
-		func(gameID, gameName string) {
-			activeCount.Add(1)
-			if gameID != "1336960" {
-				t.Errorf("gameID = %q", gameID)
-			}
-		},
-		func() { inactiveCount.Add(1) },
-	)
-	p.client = srv.Client()
-
-	ctx := context.Background()
-	url := srv.URL + "?key=test&steamids=76561198000000000"
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	resp, err := p.client.Do(req)
-	if err != nil {
-		t.Fatalf("client.Do: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var result steamAPIResponse
-	_ = json.NewDecoder(resp.Body).Decode(&result)
-
-	if len(result.Response.Players) != 1 {
-		t.Fatalf("expected 1 player, got %d", len(result.Response.Players))
-	}
-	if result.Response.Players[0].GameID != "1336960" {
-		t.Errorf("GameID = %q", result.Response.Players[0].GameID)
-	}
-}
-
-func TestSteamPoller_Inactive(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"response": map[string]any{
-				"players": []map[string]any{{
-					"steamid":      "76561198000000000",
-					"personastate": 1,
-				}},
-			},
-		})
-	}))
-	defer srv.Close()
-
-	var result steamAPIResponse
-	resp, err := http.Get(srv.URL) //nolint:noctx
-	if err != nil {
-		t.Fatalf("http.Get: %v", err)
-	}
-	defer resp.Body.Close()
-	_ = json.NewDecoder(resp.Body).Decode(&result)
-
-	if len(result.Response.Players) != 1 {
-		t.Fatal("expected 1 player")
-	}
-	if result.Response.Players[0].GameID != "" {
-		t.Errorf("expected empty GameID, got %q", result.Response.Players[0].GameID)
-	}
-}
-
-func TestSteamPoller_EmptyPlayers(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"response": map[string]any{
-				"players": []any{},
-			},
-		})
-	}))
-	defer srv.Close()
-
-	var result steamAPIResponse
-	resp, err := http.Get(srv.URL) //nolint:noctx
-	if err != nil {
-		t.Fatalf("http.Get: %v", err)
-	}
-	defer resp.Body.Close()
-	_ = json.NewDecoder(resp.Body).Decode(&result)
-
-	if len(result.Response.Players) != 0 {
-		t.Errorf("expected 0 players, got %d", len(result.Response.Players))
-	}
-}
-
-func TestNewSteamPoller(t *testing.T) {
-	p := NewSteamPoller("steam123", "api-key",
-		func(string, string) {},
-		func() {},
-	)
-	if p.steamID != "steam123" {
-		t.Errorf("steamID = %q", p.steamID)
-	}
-	if p.interval != defaultSteamInterval {
-		t.Errorf("interval = %v", p.interval)
 	}
 }

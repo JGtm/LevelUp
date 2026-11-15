@@ -1,5 +1,3 @@
-// cross-feature-allow: tab Réalisations Ascension — agrège StatsGlobales,
-// MomentCard et useChallenges depuis features/prestige.
 /**
  * AscensionRealisationsTab — tab "Réalisations" (refonte 2026-05-26).
  *
@@ -77,7 +75,7 @@ export function AscensionRealisationsTab() {
         <ActivityCalendarChart
           since={activity.since}
           until={activity.until}
-          days={activity.days}
+          days={activity.days ?? []}
         />
       ) : (
         activityFailed && <ActivityCalendarUnavailable />

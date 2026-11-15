@@ -28,6 +28,7 @@ import { BOMB_DETONATION_STAT } from './bombBlastFx'
 import { drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
+import { durationFrameMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 interface UseReplayBombCarrierArgs {
@@ -40,6 +41,8 @@ interface UseReplayBombCarrierArgs {
   /** L'encre du FOND : le liseré, comme celui du crâne (déjà résolue par l'appelant). */
   outline: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand la bombe de ce porteur est retirée de la carte, portée ou libre faute de position. Absent = tout se dessine. */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 export interface ReplayBombCarrier {
@@ -62,6 +65,7 @@ export function useReplayBombCarrier({
   ink,
   outline,
   reducedMotion,
+  shownCarrier,
 }: UseReplayBombCarrierArgs): ReplayBombCarrier {
   const carries = doc.bombCarries
 
@@ -83,8 +87,8 @@ export function useReplayBombCarrier({
   }, [doc])
 
   const layer = useMemo<BombCarrierInput>(
-    () => ({ style: { ink, outline, reducedMotion }, posOf }),
-    [ink, outline, reducedMotion, posOf],
+    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf, shownCarrier }),
+    [ink, outline, reducedMotion, posOf, doc, shownCarrier],
   )
 
   const paint = useCallback(

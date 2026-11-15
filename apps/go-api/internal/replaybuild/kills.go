@@ -10,11 +10,12 @@ package replaybuild
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
@@ -22,14 +23,21 @@ import (
 // second appel aurait payé une DEUXIÈME fois le décodage du film pour le même fait (le verrou
 // de paquet qui le rendait coûteux a disparu au lot 2.3 ; le décodage, lui, coûte toujours).
 // nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
-// les deux appelants n'ont qu'à tester le nil.
+// les deux appelants n'ont qu'à tester le nil. Un film sans kill-feed qui déclare des bots rend le
+// résultat minimal de [botsSansKillFeed] (roster seul), jamais nil.
 //
 // LE FILM EST CELUI QUE `BuildBytes` A DÉJÀ CHARGÉ (lot 1, PLAN_CUISSON_PERF item 1.4) : ce
 // décodage ouvrait et redécompressait le film ENTIER pour son propre compte, en plus des
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `decfilm.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry decfilm.MapQuantEntry, film *decfilm.Film) *decfilm.Result {
+//
+// IL REND AUSSI LE CONTEXTE DE FILM sous lequel le décodage a marché les trames quand il a abouti : la
+// cuisson du rejeu le reprend (`replay.Options.Contexte`) et relit la marche qu'il garde au lieu de
+// remarcher le film. nil quand le décodage est refusé : la cuisson ouvre alors son propre contexte,
+// sous le profil de départ.
+func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry decfilm.MapQuantEntry,
+	film *decfilm.Film) (*decfilm.Result, *decfilm.FilmContext) {
 	opts := decfilm.DefaultOptions()
 	// LA CARTE DU MATCH DESCEND DANS LE DECODAGE DES MORTS (lot 3.4.1). Les largeurs d'axe du
 	// chemin absolu de position sont une constante PAR CARTE ; jusqu'à ce lot `killsource` les
@@ -43,6 +51,9 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	// branche « largeurs par défaut », ont disparu avec le repli — « le flux du film est la seule
 	// source fiable. Pas de repli. »
 	opts.Carte = &entry
+	if film != nil {
+		opts.Contexte = decfilm.NewFilmContextForMap(film, &entry, nil)
+	}
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
 	if res != nil {
 		replay.JournaliserDiagnostics(ctx, res.Diagnostics) // lot J12.3, ADR 0034 D-4
@@ -50,8 +61,26 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	if err != nil {
 		slog.InfoContext(ctx, "replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
+		return botsSansKillFeed(ctx, matchID, film, err), nil
+	}
+	return res, opts.Contexte
+}
+
+// botsSansKillFeed rend le résultat minimal d'un film que le décodage refuse faute de kill-feed : le
+// roster de bots que BOT_METADATA déclare, sans mort ni bijection. Un match sans aucun frag n'a pas de
+// kill-feed et pourtant des bots, dont les vies ne se nommeraient pas sans lui. Ce résultat voyage
+// comme celui d'un décodage abouti : il se range dans les faits, que la cuisson suivante relit sans
+// rouvrir le film. nil pour tout autre refus et pour un film sans bot déclaré.
+func botsSansKillFeed(ctx context.Context, matchID string, film *decfilm.Film, cause error) *decfilm.Result {
+	if !errors.Is(cause, decfilm.ErrNoKillFeed) {
 		return nil
 	}
+	res := decfilm.ResultatDeBotsSansKillFeed(film)
+	if res == nil {
+		return nil
+	}
+	slog.InfoContext(ctx, "replaybuild: film sans kill-feed — roster de bots lu dans BOT_METADATA",
+		"match_id", matchID, "bots", len(res.Roster.Bots), "non_epingles", len(res.Roster.UnpinnedBots))
 	return res
 }
 

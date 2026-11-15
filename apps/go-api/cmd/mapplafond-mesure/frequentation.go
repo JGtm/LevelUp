@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"path/filepath"
-	"sort"
-	"strings"
+
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // filmMesure resume un document de rejeu.
@@ -53,20 +53,13 @@ type frequentation struct {
 // mesureFrequentation lit tous les documents de rejeu d'un repertoire et rend, par carte, la
 // distribution des altitudes jouees.
 func mesureFrequentation(ctx context.Context, dir string, cartes []carte) (*frequentation, error) {
-	entrees, err := os.ReadDir(dir)
+	entrees, err := replayartifact.List(dir)
 	if err != nil {
 		return nil, fmt.Errorf("documents de rejeu illisibles (%s) : %w", dir, err)
 	}
-	noms := make([]string, 0, len(entrees))
-	for _, e := range entrees {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-			noms = append(noms, e.Name())
-		}
-	}
-	sort.Strings(noms)
 	f := &frequentation{parCarte: map[string]*histogramme{}}
-	for _, nom := range noms {
-		f.ajouteFilm(ctx, filepath.Join(dir, nom), cartes)
+	for _, e := range entrees {
+		f.ajouteFilm(ctx, filepath.Join(dir, e.Name), cartes)
 	}
 	slog.InfoContext(ctx, "corpus de rejeux resume", "documents", f.lus,
 		"rattaches", f.rattaches, "cartes", len(f.parCarte), "dir", dir)
@@ -88,7 +81,7 @@ func (f *frequentation) ajouteFilm(ctx context.Context, chemin string, cartes []
 		return
 	}
 	f.lus++
-	id := strings.TrimSuffix(filepath.Base(chemin), ".json")
+	id := title.ReplayArtifactStem(filepath.Base(chemin))
 	module, ecart := reconnait(cartes, pts)
 	m := filmMesure{id: id, module: module, ecart: ecart, hist: nouvelHistogramme()}
 	if module == "" {
@@ -115,7 +108,7 @@ func (f *frequentation) ajouteFilm(ctx context.Context, chemin string, cartes []
 // ce dont l'instrument a besoin : un artefact porte des dizaines de calques, les charger tous
 // ne ferait que consommer de la memoire.
 func litPositions(chemin string) ([][3]float64, error) {
-	blob, err := os.ReadFile(chemin) //nolint:gosec // corpus hors ligne, lecture seule
+	blob, err := replayartifact.ReadBytes(chemin)
 	if err != nil {
 		return nil, err
 	}

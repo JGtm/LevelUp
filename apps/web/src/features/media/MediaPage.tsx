@@ -1,11 +1,11 @@
 /**
  * MediaPage — Galerie de médias (Slice 8).
- * Types ref: MediaItemRow, MediaQueryRequest, MediaPageResponse
+ * Types ref: NormalizedMediaItem, MediaQueryRequest, MediaPageResponse
  */
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
-import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
+import type { LabelValue, NormalizedMediaItem, MediaQueryRequest } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
@@ -37,10 +37,10 @@ const SESSION_GAP_MS = 30 * 60 * 1000
 interface MediaGroup {
   key: string
   label: string
-  items: MediaItemRow[]
+  items: NormalizedMediaItem[]
 }
 
-function buildFallbackOptions(items: MediaItemRow[], key: 'map_name' | 'mode_name'): LabelValue[] {
+function buildFallbackOptions(items: NormalizedMediaItem[], key: 'map_name' | 'mode_name'): LabelValue[] {
   const labels = Array.from(new Set(
     items
       .map((item) => item[key]?.trim())
@@ -68,14 +68,14 @@ function extractErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function itemTimestamp(item: MediaItemRow): number | null {
+function itemTimestamp(item: NormalizedMediaItem): number | null {
   const raw = item.capture_end_utc ?? item.match_start_time
   if (!raw) return null
   const t = new Date(raw).getTime()
   return Number.isNaN(t) ? null : t
 }
 
-function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: ManifestLocale): MediaGroup[] {
+function buildSessionGroups(items: NormalizedMediaItem[], text: MediaText, locale: ManifestLocale): MediaGroup[] {
   if (items.length === 0) return []
   const formatter = new Intl.DateTimeFormat(intlLocale(locale), {
     day: '2-digit',
@@ -118,7 +118,7 @@ function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: Mani
   return groups
 }
 
-function buildSimpleGroups(items: MediaItemRow[], groupBy: string, text: MediaText): MediaGroup[] {
+function buildSimpleGroups(items: NormalizedMediaItem[], groupBy: string, text: MediaText): MediaGroup[] {
   if (items.length === 0) return []
   const order: string[] = []
   const map = new Map<string, MediaGroup>()
@@ -158,7 +158,7 @@ function buildSimpleGroups(items: MediaItemRow[], groupBy: string, text: MediaTe
   return order.map((key) => map.get(key) as MediaGroup)
 }
 
-function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, locale: ManifestLocale): MediaGroup[] {
+function buildGroups(items: NormalizedMediaItem[], groupBy: string, text: MediaText, locale: ManifestLocale): MediaGroup[] {
   if (!groupBy || items.length === 0) {
     return [{ key: '__all__', label: '', items }]
   }
@@ -217,7 +217,7 @@ export function MediaPage() {
   const reveal = useRevealMedia(playerSlug)
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
-  const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
+  const mediaItems = useMemo<NormalizedMediaItem[]>(() => data?.items?.items ?? [], [data])
   const playlistOptions = data?.available_filters.playlists ?? []
   const mapOptions = data?.available_filters.maps?.length
     ? data.available_filters.maps

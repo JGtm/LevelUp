@@ -193,7 +193,7 @@ func TestQ7XPHistory_MixedRanksOnlyAndRealXP(t *testing.T) {
 }
 
 // TestQ7XPHistory_MadinaRegressionScenario reproduit le bug originel reporté
-// pour Madina97294 : une row le 25 mai avec rank=300 et xp_total=0/NULL.
+// pour Joueur90002 : une row le 25 mai avec rank=300 et xp_total=0/NULL.
 // Pré-fix : Q7 renvoyait rank*1000 = 300_000 → régression visuelle de 5M à 300k.
 // Post-fix : la row est filtrée, projection préservée car xp_total monotone.
 func TestQ7XPHistory_MadinaRegressionScenario(t *testing.T) {

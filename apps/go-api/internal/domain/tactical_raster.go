@@ -23,11 +23,13 @@ import "levelup/go-api/internal/i18n"
 //
 // # CE QUI N'EST PAS DEDANS
 //
-// Aucun nom, aucune equipe, aucun resultat de match : le sidecar est ANONYME (xuid seul)
-// et sans contexte. L'axe « qui » (moi / escouade / adversaires), l'univers des matchs
-// retenus et le denominateur « par match » sont resolus a la LECTURE, par la base. Un
-// sidecar qui porterait des equipes serait perime des qu'un joueur change de camp, et il
-// faudrait le re-cuire pour une raison qui n'a rien a voir avec le film.
+// Aucun nom, aucun resultat de match : le sidecar est ANONYME (xuid seul) et sans contexte.
+// L'axe « qui » (moi / escouade / adversaires), l'univers des matchs retenus et le
+// denominateur « par match » sont resolus a la LECTURE, par la base.
+//
+// L'EQUIPE, DEPUIS LE SCHEMA 7, EST CELLE QUE LE FILM ECRIT (designateur de la piste), pas une
+// equipe de la base : elle ne sert qu'a distinguer coequipiers et adversaires dans l'instantane
+// d'une reapparition, et elle est connue du film seul.
 
 // TacticalRasterSchemaVersion est la version du FORMAT du sidecar. Un sidecar d'une autre
 // version est ignore a la lecture et re-ecrit par le rattrapage.
@@ -57,6 +59,12 @@ import "levelup/go-api/internal/i18n"
 // `pas_echantillon_ms`. Un sidecar v5 n'est plus exploitable et se recuit (meme regle
 // qu'aux schemas precedents).
 //
+// SCHEMA 6 -> 7 : le sidecar porte de quoi PREVOIR UNE REAPPARITION — l'equipe de chaque
+// joueur, et, par spawn, sa hauteur, le fait d'etre une reapparition apres mort (avec la source de
+// cette decision), la mort qui la precede et l'instantane des autres joueurs vivants. `reapparitions`
+// compte les decisions par source. Un sidecar v6 n'est plus courant et se regenere depuis son
+// artefact (`levelup tactical-rasters --backfill`), sans relire aucun film.
+//
 // # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
 //
 // Les distances calculees a la lecture sont des `math.Hypot(dx, dy)` : Z est ignore. Un
@@ -68,14 +76,14 @@ import "levelup/go-api/internal/i18n"
 // # LA LACUNE RESIDUELLE, ECRITE PLUTOT QUE TUE
 //
 // Le temps passe en VEHICULE est attribue par les episodes d'occupation du document
-// (`replay.VehicleRide`), et cette primitive n'attribue que **15,6 a 21,1 % des vies de
-// vehicule** (limite mesuree et publiee dans `games/halo_infinite/film/replay/document_vehicles.go`, doc
-// de `VehicleTrack.Rides`). Le reste du temps embarque n'est donc PAS mesure : il
+// (`replay.VehicleRide`), et cette primitive n'attribue qu'une PARTIE des vies de vehicule : la
+// part qui porte au moins un episode est publiee par le document (`coverage.vehicles.vehiclesRidden`)
+// et bouge avec le decodeur, d'ou l'absence de chiffre ici. Le reste du temps embarque n'est donc PAS mesure : il
 // n'apparait ni dans les cellules, ni au denominateur. Une lecture « ou je passe mon
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 6
+const TacticalRasterSchemaVersion = 7
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -122,11 +130,27 @@ type TacticalRasterSidecar struct {
 	// nommee : le fichier existe, donc le match est MESURE et il est mesure a zero — ce
 	// qui ne se confond pas avec « pas de sidecar », qui veut dire non mesure.
 	Joueurs []TacticalRasterJoueur `json:"joueurs"`
+
+	// Reapparitions compte les spawns du match par SOURCE de la decision « reapparition »
+	// (cf. TacticalRasterSources) : c'est ce qui dit, par match, si la mesure repose sur le film ou
+	// sur le repli. Nul quand le titre ne declare pas `film.spawn_forecast`.
+	Reapparitions TacticalRasterSources `json:"reapparitions"`
+}
+
+// TacticalRasterSources : les reapparitions d'un match par source de la decision, et les spawns
+// de debut de manche (jamais des reapparitions).
+type TacticalRasterSources struct {
+	Film           int `json:"film"`
+	RepliEcart     int `json:"repli_ecart"`
+	DebutsDeManche int `json:"debuts_de_manche"`
 }
 
 // TacticalRasterJoueur est ce qu'un joueur a produit sur ce match.
 type TacticalRasterJoueur struct {
 	XUID string `json:"xuid"`
+
+	// Equipe est le designateur d'equipe que le film ecrit pour ce joueur (-1 : aucune).
+	Equipe int `json:"equipe"`
 
 	// Cellules : par cellule atteinte, le nombre d'echantillons — donc le temps passe,
 	// en unites de PasEchantillonMs. Trie par colonne puis ligne.
@@ -158,11 +182,44 @@ type TacticalRasterSpawn struct {
 	Frame int     `json:"frame"`
 	X     float64 `json:"x"`
 	Y     float64 `json:"y"`
+	Z     float64 `json:"z"`
 
 	// PremiereVie marque le SPAWN DE DEPART — le seul que la lecture des grappes regarde
 	// (decision produit du plan : les reapparitions suivantes dependent de l'endroit ou
 	// l'on vient de mourir, pas du placement d'ouverture).
 	PremiereVie bool `json:"premiere_vie,omitempty"`
+
+	// Reapparition : la vie commence apres une MORT du joueur ; Source dit comment on l'a decide
+	// (`film` ou `repli_ecart`). DebutDeManche : la vie precedente a ete close par une fin de
+	// manche, ce n'est pas une reapparition. Ces champs, Mort et Instantane ne sont portes que si le
+	// titre declare `film.spawn_forecast`.
+	Reapparition  bool   `json:"reapparition,omitempty"`
+	Source        string `json:"source,omitempty"`
+	DebutDeManche bool   `json:"debut_de_manche,omitempty"`
+
+	// Mort : la fin de la vie precedente. Instantane : les AUTRES joueurs vivants a la frame de la
+	// reapparition, ceux apparus dans la meme seconde exclus. Portes par une reapparition dont
+	// l'equipe est connue.
+	Mort       *TacticalRasterMort    `json:"mort,omitempty"`
+	Instantane []TacticalRasterVivant `json:"instantane,omitempty"`
+}
+
+// TacticalRasterMort est l'endroit et l'instant ou la vie precedente s'est arretee (metres monde).
+type TacticalRasterMort struct {
+	Frame int     `json:"frame"`
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Z     float64 `json:"z"`
+}
+
+// TacticalRasterVivant est un joueur vivant a l'instant d'une reapparition (xuid vide : vie non
+// nommee par le film).
+type TacticalRasterVivant struct {
+	XUID   string  `json:"xuid,omitempty"`
+	Equipe int     `json:"equipe"`
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Z      float64 `json:"z"`
 }
 
 // TacticalRasterRoute est la sortie de spawn d'une vie : le CHEMIN des 15 premieres

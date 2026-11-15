@@ -1,4 +1,5 @@
-// no_title_package_in_analysis_test.go — `internal/analysis/` N'IMPORTE PAS `internal/games/{slug}/`.
+// no_title_package_in_analysis_test.go — `internal/analysis/` ET `internal/service/` N'IMPORTENT PAS
+// `internal/games/{slug}/` (le second garde est en fin de fichier : `TestServiceImporteAucunPaquetDeTitre`).
 //
 // # POURQUOI CE GARDE-RAIL, ET POURQUOI MAINTENANT (2026-09-12)
 //
@@ -40,7 +41,7 @@
 // importe aucun paquet, directement (même parcours, tests compris, SANS allowlist) ni par la
 // fermeture (`TestFermetureDeAnalysisSansDecodeurDeFilm`, `go list -deps -test`, allowlist datée
 // des fuites qui ne peut que descendre). Mutation : ajouter à un fichier d'`analysis/` un import
-// de `github.com/JGtm/LevelUp/libs/film/types` (direct), ou faire importer
+// de `github.com/JGtm/halo-infinite-film-decoder/types` (direct), ou faire importer
 // `games/weapons/filmshell` par un paquet que la fermeture d'`analysis` contient (transitif).
 package archlint
 
@@ -52,6 +53,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -350,34 +352,34 @@ func TestFermetureDeAnalysisSansDecodeurDeFilm(t *testing.T) {
 func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 	sortie := "levelup/go-api/internal/analysis\n" +
 		"levelup/go-api/internal/games/weapons [levelup/go-api/internal/games/weapons.test]\n" +
-		"github.com/JGtm/LevelUp/libs/film/types\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/types\n" +
 		"levelup/go-api/internal/games/halo_infinite/filmprofile\n" +
-		"github.com/JGtm/LevelUp/libs/film/filmshell\n" +
-		"github.com/JGtm/LevelUp/libs/film/replay\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/replay\n" +
 		"levelup/go-api/internal/analysis.test\n"
 	paquets := paquetsDeFermeture(sortie)
 	if !contientChaine(paquets, "levelup/go-api/internal/games/weapons") || contientChaine(paquets, "levelup/go-api/internal/analysis.test") {
 		t.Fatalf("variantes de test mal ramenées : %v", paquets)
 	}
 	fuites, mortes := fuitesDeFermeture(paquets, nil)
-	attendu := "github.com/JGtm/LevelUp/libs/film/filmshell,github.com/JGtm/LevelUp/libs/film/replay,github.com/JGtm/LevelUp/libs/film/types"
+	attendu := "github.com/JGtm/halo-infinite-film-decoder/filmshell,github.com/JGtm/halo-infinite-film-decoder/replay,github.com/JGtm/halo-infinite-film-decoder/types"
 	if strings.Join(fuites, ",") != attendu || len(mortes) != 0 {
 		t.Fatalf("fuites = %v, mortes = %v ; attendu %s et aucune morte", fuites, mortes, attendu)
 	}
 	fuites, mortes = fuitesDeFermeture(paquets, map[string]string{
-		"github.com/JGtm/LevelUp/libs/film/filmshell": "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/types":     "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/replay":    "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/absent":    "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell": "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/types":     "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/replay":    "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/absent":    "2026-10-29 test",
 	})
-	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film/absent") {
+	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film-decoder/absent") {
 		t.Fatalf("allowlist honorée et entrée morte signalée attendues ; fuites = %v, mortes = %v", fuites, mortes)
 	}
 	for imp, attendu := range map[string]bool{
-		"github.com/JGtm/LevelUp/libs/film/replay":                true,
-		"github.com/JGtm/LevelUp/libs/film/filmshell":             true,
-		"github.com/JGtm/LevelUp/libs/film/equipenergy":           true,
-		"github.com/JGtm/LevelUp/libs/film/decfilm":               true,
+		"github.com/JGtm/halo-infinite-film-decoder/replay":       true,
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell":    true,
+		"github.com/JGtm/halo-infinite-film-decoder/equipenergy":  true,
+		"github.com/JGtm/halo-infinite-film-decoder/decfilm":      true,
 		"levelup/go-api/internal/games/halo_infinite/film":        false,
 		"levelup/go-api/internal/games/halo_infinite/filmprofile": false,
 		"levelup/go-api/internal/games/weapons":                   false,
@@ -385,5 +387,113 @@ func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 		if got := estPaquetDeLaBriqueFilm(imp); got != attendu {
 			t.Errorf("estPaquetDeLaBriqueFilm(%q) = %v, attendu %v", imp, got, attendu)
 		}
+	}
+}
+
+// titresImportesPar rend, triés et sans doublon, les chemins d'import du fichier qui visent un paquet de
+// titre (`internal/games/<titre>/...`, hors paquets inter-titres).
+func titresImportesPar(src goSource) []string {
+	var out []string
+	vus := map[string]bool{}
+	for _, imp := range src.File.Imports {
+		chemin, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		if _, ok := titreDuPaquetGames(chemin); ok && !vus[chemin] {
+			vus[chemin] = true
+			out = append(out, chemin)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// TestOutilTitresImportesPar : auto-preuve de l'outil, sur une source de test.
+func TestOutilTitresImportesPar(t *testing.T) {
+	src := parseGoSnippet(t, "x.go", `package x
+
+import (
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/games/halo_5/livesync"
+	rp "levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/gamesbis"
+)
+
+// "levelup/go-api/internal/games/halo_infinite/replaylabels" cité en commentaire
+`)
+	got := titresImportesPar(src)
+	want := []string{
+		"levelup/go-api/internal/games/halo_5/livesync",
+		"levelup/go-api/internal/games/halo_infinite/haloadapter",
+		"levelup/go-api/internal/games/halo_infinite/rankedplaylists",
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("imports de titre détectés %v, attendu %v (ni games, ni canonical, ni weapons, ni gamesbis, ni un commentaire)", got, want)
+	}
+}
+
+// plancherFichiersService : le nombre minimal de `.go` de production que le parcours doit voir sous
+// `internal/service/`. Mesuré à 316 le 2026-11-13 ; plancher à 75 %. Un garde qui ne scanne rien passe en
+// silence.
+const plancherFichiersService = 240
+
+// servicesAvecPaquetDeTitreAutorises : fichiers de `internal/service/` (sous-paquets compris) qui
+// importent encore un paquet de titre, avec la date et la raison. Vide : une entrée ne s'ajoute pas, elle se
+// supprime avec le code qui la justifiait. Une entrée sans violation est périmée et fait rougir le test.
+var servicesAvecPaquetDeTitreAutorises = map[string]string{}
+
+// TestServiceImporteAucunPaquetDeTitre : `internal/service/` n'importe aucun paquet de titre
+// (`internal/games/<titre>/...`), ni halo_infinite, ni halo_5, ni un titre à venir : seuls les paquets
+// inter-titres de `paquetsInterTitres` y passent. Ce qui dépend du titre arrive par un port de
+// `internal/port` que le câblage injecte (`api/wire`, `cmd/`) : un fournisseur, un adapter, une source de
+// catalogue. C'est la frontière que `analysis/` tient déjà (`TestAnalysisImporteAucunPaquetDeTitre`).
+//
+// PÉRIMÈTRE : les fichiers de production, comme les gardes d'imports de `internal/api/handlers`. Les
+// fichiers `_test.go` de `service` ouvrent de vraies bases Halo (migrations, chaîne de notation) pour
+// exercer le service : ils importent le titre qu'ils sèment, et ne sont pas le code que la frontière
+// protège.
+//
+// API/HANDLERS : `internal/api/handlers` est déjà tenu à zéro par `TestHandlersSansMoteurDeSync`
+// (`frontieres_imports_test.go`, allowlist vide), qui interdit `games/halo_infinite` et `games/halo_5` :
+// il n'est pas redoublé ici.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : ajouter `_ "levelup/go-api/internal/games/halo_infinite/rankedplaylists"`
+// à n'importe quel fichier de production de `internal/service/` (sous-paquets compris).
+func TestServiceImporteAucunPaquetDeTitre(t *testing.T) {
+	sources := goSourcesUnder(t, "internal/service")
+	if len(sources) < plancherFichiersService {
+		t.Fatalf("%d fichiers de production parcourus sous internal/service, au moins %d attendus : le parcours "+
+			"ne voit plus l'arborescence", len(sources), plancherFichiersService)
+	}
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range sources {
+		trouves := titresImportesPar(src)
+		if len(trouves) == 0 {
+			continue
+		}
+		vus[src.Rel] = true
+		motif, autorise := servicesAvecPaquetDeTitreAutorises[src.Rel]
+		switch {
+		case autorise && strings.TrimSpace(motif) == "":
+			violations = append(violations, src.Rel+" : autorisé SANS justification datée")
+		case !autorise:
+			violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+		}
+	}
+	for rel := range servicesAvecPaquetDeTitreAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans violation — la retirer de servicesAvecPaquetDeTitreAutorises")
+		}
+	}
+	if len(violations) > 0 {
+		sort.Strings(violations)
+		t.Errorf("internal/service importe un paquet de titre (ADR 0012 / ADR 0025) : ce qui dépend du titre "+
+			"arrive par un port de internal/port que le câblage injecte (adapter, fournisseur, source de "+
+			"catalogue), jamais par un import :\n  %s", strings.Join(violations, "\n  "))
 	}
 }

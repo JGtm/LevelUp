@@ -11,7 +11,7 @@
  */
 import { useMemo } from 'react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -53,7 +53,7 @@ export function TendancesCalendar({ locale, data, horizon }: TendancesCalendarPr
   const series = useMemo(() => [{ key: 'calendar', datapoints: grid.points }], [grid.points])
   const axisTuning = useMemo(() => ({ xLabelInterval: grid.labelInterval }), [grid.labelInterval])
   const formatTooltip = useMemo(
-    () => (point: ChartPointHeatmap) => formatCalendarTooltip(point, locale),
+    () => (point: HeatmapCellPoint) => formatCalendarTooltip(point, locale),
     [locale],
   )
   const formatLegend = useMemo(

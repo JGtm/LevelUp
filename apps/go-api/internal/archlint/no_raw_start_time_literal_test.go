@@ -3,14 +3,14 @@
 //
 // Interdit toute NOUVELLE occurrence du littéral SQL brut du timestamp de début
 // de match canonique — `COALESCE(<alias>.start_time_utc, <alias>.start_time AT
-// TIME ZONE 'UTC')`. La source unique est analysis.SQLStartTimeCanonical(alias)
+// TIME ZONE 'UTC')`. La source unique est sqlfrag.SQLStartTimeCanonical(alias)
 // (délégué local platform/duckdb.StartTimeCanonicalSQL). Toute divergence de
 // cette expression a causé des décalages de fuseau (DETTE first_joined_time).
 //
 // Le motif est PRÉCIS : il n'attrape ni `real_start_time AT TIME ZONE 'UTC'`
 // (colonne distincte, calcul d'epoch/durée), ni la forme diagnostique d'offset
 // `epoch_ms(r.start_time AT TIME ZONE 'UTC') - epoch_ms(r.start_time_utc)`
-// (cmd/backfill_first_joined_tz, mesure volontairement le décalage), ni la
+// (mesure volontairement le décalage), ni la
 // définition elle-même (`"COALESCE(" + prefix + "start_time_utc, "...` — coupée
 // par la concaténation). L'allowlist est donc VIDE.
 package archlint
@@ -102,12 +102,7 @@ var rawManualStartTimeUTCExprRE = regexp.MustCompile(`start_time_utc[\s\S]*AT TI
 var manualStartTimeUTCAllowlist = map[string]bool{
 	// 2026-08-03 — DÉFINITION du fragment canonique (source unique). Exemptée par
 	// construction : c'est elle que tous les autres sites doivent appeler.
-	"internal/analysis/sql_fragments.go": true,
-	// 2026-08-03 — MESURE du décalage, pas une lecture de date : l'outil calcule
-	// `epoch_ms(r.start_time AT TIME ZONE 'UTC') - epoch_ms(r.start_time_utc)` pour
-	// quantifier la dette TZ historique. Le fragment canonique masquerait justement
-	// l'écart qu'on cherche à mesurer. Outil one-shot (cmd/), hors serveur.
-	"cmd/backfill_first_joined_tz/main.go": true,
+	"internal/platform/duckdb/sqlfrag/sql_fragments.go": true,
 }
 
 // rawOrderByStartTimeAllowlist : dette PRÉEXISTANTE gelée (règle CLAUDE.md n°5 —
@@ -128,22 +123,9 @@ var rawOrderByStartTimeAllowlist = map[string]bool{
 	"internal/sync/engagement.go":                                     true,
 	"internal/sync/performance_helpers.go":                            true,
 	"internal/sync/session_recalc.go":                                 true,
-	"cmd/analyze_media_tz/main.go":                                    true,
-	"cmd/audit_coverage/main.go":                                      true,
 	"cmd/backfill_all/main.go":                                        true,
-	"cmd/backfill_participation_info/main.go":                         true,
-	"cmd/backfill_quit_timestamps/main.go":                            true,
-	"cmd/diag_citation_counters/main.go":                              true,
 	"cmd/diag_lusr_player/loaders.go":                                 true,
-	// diag_perfsim (2026-08-27, lot 0 du plan PLAN_PERF_NOTE_OBJECTIFS) : oracle de
-	// concordance qui REPLIQUE VERBATIM le SQL de sync/performance_helpers.go
-	// (lui-même dans cette allowlist) — adopter le fragment canonique ici seul
-	// casserait la propriété de réplique. À migrer ENSEMBLE si
-	// performance_helpers.go passe à StartTimeCanonicalSQL.
-	"cmd/diag_perfsim/load.go":        true,
-	"cmd/diag_orphan_session/main.go": true,
-	"cmd/levelup/cmd_backfill.go":     true,
-	"cmd/seed-medal/main.go":          true,
+	"cmd/levelup/cmd_backfill.go":                                     true,
 }
 
 func TestNoNewRawStartTimeLiteral(t *testing.T) {
@@ -183,7 +165,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 			}
 			// La définition canonique du fragment (source unique) est exemptée du
 			// ratchet COALESCE ; le ratchet ORDER BY a son propre allowlist fichier.
-			coalesceExempt := rel == "internal/analysis/sql_fragments.go" || rawStartTimeAllowlist[rel]
+			coalesceExempt := rel == "internal/platform/duckdb/sqlfrag/sql_fragments.go" || rawStartTimeAllowlist[rel]
 			orderByExempt := rawOrderByStartTimeAllowlist[rel]
 			castDateExempt := rawCastStartTimeDateAllowlist[rel]
 			manualExprExempt := manualStartTimeUTCAllowlist[rel]
@@ -218,7 +200,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("littéral SQL brut du start_time canonique interdit (H1, règle CLAUDE.md n°8) — "+
-			"utiliser analysis.SQLStartTimeCanonical(alias) (ou le délégué local "+
+			"utiliser sqlfrag.SQLStartTimeCanonical(alias) (ou le délégué local "+
 			"duckdb.StartTimeCanonicalSQL) :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
@@ -237,7 +219,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 	if len(manualExprViolations) > 0 {
 		t.Errorf("expression SQL composée À LA MAIN autour de start_time_utc interdite "+
 			"(V7.3 item 1.3, règle CLAUDE.md n°8) — construire l'expression via "+
-			"analysis.SQLStartTimeCanonical(alias) (ou duckdb.StartTimeCanonicalSQL). "+
+			"sqlfrag.SQLStartTimeCanonical(alias) (ou duckdb.StartTimeCanonicalSQL). "+
 			"Piège documenté : `COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'` "+
 			"place le AT TIME ZONE HORS de la parenthèse — le fuseau de session est annulé "+
 			"et l'écran affiche des heures UTC. Le AT TIME ZONE va À L'INTÉRIEUR du COALESCE :\n  %s",

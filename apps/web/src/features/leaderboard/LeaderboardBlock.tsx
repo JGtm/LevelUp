@@ -22,7 +22,7 @@ import {
   dmgPerDeath,
   type ColumnExtremes,
 } from './LeaderboardBlock.highlight'
-import { pickEffectiveOption, showEnrichedColumns, playlistsForSeason, resolveSort } from './LeaderboardBlock.logic'
+import { DEFAULT_SORT, pickEffectiveOption, showEnrichedColumns, playlistsForSeason, resolveSort } from './LeaderboardBlock.logic'
 import { LeaderboardNotes } from './LeaderboardNotes'
 import { Selector } from './LeaderboardSelector'
 import { Spinner } from '@/components/ui/spinner'
@@ -35,6 +35,7 @@ import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { csrRankImageURL } from '@/lib/staticAssets'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -87,7 +88,25 @@ interface LeaderboardBlockProps {
   onHoverEntry?: (gamertag: string) => void
 }
 
-type SortDir = 'asc' | 'desc'
+/**
+ * Colonnes triables : toutes numériques sauf le rang, croissant au premier clic. Les moyennes par match
+ * (FDA, précision) sont rapportées au nombre de matchs.
+ */
+const SORT_COLUMNS: Record<string, SortColumn<LeaderboardEntry>> = {
+  rank: { value: (e) => e.rank, firstDir: 'asc' },
+  csr: { value: (e) => e.csr_value },
+  value: { value: (e) => e.value ?? 0 },
+  matches: { value: (e) => e.matches_played ?? 0 },
+  world_matches: { value: (e) => e.cumulative_match_count ?? e.match_count ?? 0 },
+  kills: { value: (e) => e.kills ?? 0 },
+  deaths: { value: (e) => e.deaths ?? 0 },
+  assists: { value: (e) => e.assists ?? 0 },
+  win_rate: { value: (e) => e.win_rate ?? 0 },
+  kda: { value: (e) => (e.kda ?? 0) / (e.match_count || 1) },
+  accuracy: { value: (e) => (e.accuracy ?? 0) / (e.match_count || 1) },
+  dmg_per_kill: { value: (e) => dmgPerKill(e) ?? 0 },
+  dmg_per_death: { value: (e) => dmgPerDeath(e) ?? 0 },
+}
 
 /** Formate la valeur d'une catégorie de stat. */
 function formatStatValue(entry: LeaderboardEntry, locale: ManifestLocale): string {
@@ -112,8 +131,6 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const [category, setCategory] = useState(CSR_WORLD)
   const [playlist, setPlaylist] = useState(PLAYLISTS[0].id)
   const [season, setSeason] = useState(SEASONS[0].id)
-  const [sortKey, setSortKey] = useState('rank')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const isWorld = category === CSR_WORLD
 
@@ -191,15 +208,6 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     })
   }
 
-  function toggleSort(key: string) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'rank' ? 'asc' : 'desc')
-    }
-  }
-
   const rows = useMemo(() => data?.entries ?? [], [data?.entries])
 
   // Colonnes détaillées (décision D2, seuil dans LeaderboardBlock.logic) : sous le seuil, masquées
@@ -207,43 +215,14 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const enrichedColumns = useMemo(() => showEnrichedColumns(rows), [rows])
   const hasEnrichment = isWorld && enrichedColumns
   // Tri EFFECTIF : une colonne enrichie masquée ne doit pas continuer à trier la table
-  // (ordre invisible, inannulable) → repli sur le rang ; l'état choisi est conservé.
-  const { key: activeSortKey, dir: activeSortDir } = resolveSort(sortKey, sortDir, hasEnrichment)
-
-  const entries = useMemo(() => {
-    const sortValue = (e: LeaderboardEntry): number => {
-      switch (activeSortKey) {
-        case 'csr':
-          return e.csr_value
-        case 'value':
-          return e.value ?? 0
-        case 'matches':
-          return e.matches_played ?? 0
-        case 'world_matches':
-          return e.cumulative_match_count ?? e.match_count ?? 0
-        case 'kills':
-          return e.kills ?? 0
-        case 'deaths':
-          return e.deaths ?? 0
-        case 'assists':
-          return e.assists ?? 0
-        case 'win_rate':
-          return e.win_rate ?? 0
-        case 'kda':
-          return (e.kda ?? 0) / (e.match_count || 1)
-        case 'accuracy':
-          return (e.accuracy ?? 0) / (e.match_count || 1)
-        case 'dmg_per_kill':
-          return dmgPerKill(e) ?? 0
-        case 'dmg_per_death':
-          return dmgPerDeath(e) ?? 0
-        default:
-          return e.rank
-      }
-    }
-    const sorted = [...rows].sort((a, b) => sortValue(a) - sortValue(b))
-    return activeSortDir === 'asc' ? sorted : sorted.reverse()
-  }, [rows, activeSortKey, activeSortDir])
+  // (ordre invisible, inannulable) → repli sur le rang ; le tri choisi est conservé. Un tri descendant
+  // renverse aussi l'ordre des égaux (rang croissant puis inversion).
+  const sort = useColumnSort(rows, SORT_COLUMNS, {
+    initial: DEFAULT_SORT,
+    resolve: (chosen) => (chosen ? resolveSort(chosen.key, chosen.dir, hasEnrichment) : null),
+    reverseTies: true,
+  })
+  const entries = sort.rows
 
   // Extrêmes {min,max} par colonne pour la mise en valeur best/worst (parité
   // scoreboard : meilleur en vert, pire en rouge ; cf. LeaderboardBlock.highlight).
@@ -321,31 +300,31 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
             <table className="w-full">
             <thead>
               <tr className="border-b bg-muted text-[11px] uppercase tracking-wide text-muted-foreground divide-x divide-border">
-                <SortableTh label="#" active={activeSortKey === 'rank'} dir={activeSortDir} onClick={() => toggleSort('rank')} className="px-3 py-2 font-medium w-12 text-center" />
+                <SortableTh label="#" {...sort.header('rank')} className="px-3 py-2 font-medium w-12 text-center" />
                 <th className="px-3 py-2 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
                     <th className="px-3 py-2 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
-                    <SortableTh label={t('common.leaderboard.col_csr')} active={activeSortKey === 'csr'} dir={activeSortDir} onClick={() => toggleSort('csr')} className="px-3 py-2 font-medium text-center" />
+                    <SortableTh label={t('common.leaderboard.col_csr')} {...sort.header('csr')} className="px-3 py-2 font-medium text-center" />
                     {hasEnrichment && (
                       <>
-                        <SortableTh label={t('common.leaderboard.col_kda')} active={activeSortKey === 'kda'} dir={activeSortDir} onClick={() => toggleSort('kda')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
-                        <SortableTh label={t('common.leaderboard.col_frags')} active={activeSortKey === 'kills'} dir={activeSortDir} onClick={() => toggleSort('kills')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
-                        <SortableTh label={t('common.leaderboard.col_deaths')} active={activeSortKey === 'deaths'} dir={activeSortDir} onClick={() => toggleSort('deaths')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
-                        <SortableTh label={t('common.leaderboard.col_assists')} active={activeSortKey === 'assists'} dir={activeSortDir} onClick={() => toggleSort('assists')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
-                        <SortableTh label={t('common.leaderboard.col_win_rate')} active={activeSortKey === 'win_rate'} dir={activeSortDir} onClick={() => toggleSort('win_rate')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
-                        <SortableTh label={t('common.leaderboard.col_matches')} active={activeSortKey === 'world_matches'} dir={activeSortDir} onClick={() => toggleSort('world_matches')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
-                        <SortableTh label={t('common.leaderboard.col_accuracy')} active={activeSortKey === 'accuracy'} dir={activeSortDir} onClick={() => toggleSort('accuracy')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
-                        <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} active={activeSortKey === 'dmg_per_kill'} dir={activeSortDir} onClick={() => toggleSort('dmg_per_kill')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
-                        <SortableTh label={t('common.leaderboard.col_dmg_per_death')} active={activeSortKey === 'dmg_per_death'} dir={activeSortDir} onClick={() => toggleSort('dmg_per_death')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} {...sort.header('kda')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_frags')} {...sort.header('kills')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_deaths')} {...sort.header('deaths')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_assists')} {...sort.header('assists')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} {...sort.header('win_rate')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_SM}`} />
+                        <SortableTh label={t('common.leaderboard.col_matches')} {...sort.header('world_matches')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} {...sort.header('accuracy')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} {...sort.header('dmg_per_kill')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_death')} {...sort.header('dmg_per_death')} className={`px-3 py-2 font-medium text-center ${COL_HIDE_LG}`} />
                         <th className={`px-3 py-2 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
                   </>
                 ) : (
                   <>
-                    <SortableTh label={t('common.leaderboard.col_matches')} active={activeSortKey === 'matches'} dir={activeSortDir} onClick={() => toggleSort('matches')} className="px-3 py-2 font-medium text-center" />
-                    <SortableTh label={t('common.leaderboard.col_value')} active={activeSortKey === 'value'} dir={activeSortDir} onClick={() => toggleSort('value')} className="px-3 py-2 font-medium text-right" />
+                    <SortableTh label={t('common.leaderboard.col_matches')} {...sort.header('matches')} className="px-3 py-2 font-medium text-center" />
+                    <SortableTh label={t('common.leaderboard.col_value')} {...sort.header('value')} className="px-3 py-2 font-medium text-right" />
                   </>
                 )}
               </tr>

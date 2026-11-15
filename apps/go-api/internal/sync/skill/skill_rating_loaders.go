@@ -10,7 +10,7 @@ import (
 	"math"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ── Structs de données ───────────────────────────────────────────────────────
@@ -74,8 +74,8 @@ func queryLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid, matchID str
 		  -- title-generic : titres canoniques (Halo 5) → start_time_utc, start_time NULL.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
 		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+filter+
-		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
-		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` ASC`, args...)
+		sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		ORDER BY `+sqlfrag.SQLStartTimeCanonical("mr")+` ASC`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("loadLUSRMatchData: %w", err)
 	}

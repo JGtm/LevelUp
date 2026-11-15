@@ -84,12 +84,12 @@ func TestBuildBriefingWeapons_FiltersPassedToRepo(t *testing.T) {
 		{WeaponID: 1, Label: i18n.Text{i18n.LocaleFR: "Fusil de combat"}, Kills: 10},
 	}}
 	scope := briefingWeaponsScope(3, 4)
-	if got := buildBriefingWeapons(context.Background(), repo, "halo_5", "2533274823110022", scope); got == nil {
+	if got := buildBriefingWeapons(context.Background(), repo, "halo_5", "2603225103667623", scope); got == nil {
 		t.Fatal("bloc nil alors qu'une arme est mesurée")
 	}
 	f := repo.got
-	if len(f.XUIDs) != 1 || f.XUIDs[0] != "2533274823110022" {
-		t.Errorf("XUIDs = %v, want [2533274823110022]", f.XUIDs)
+	if len(f.XUIDs) != 1 || f.XUIDs[0] != "2603225103667623" {
+		t.Errorf("XUIDs = %v, want [2603225103667623]", f.XUIDs)
 	}
 	if f.Gamertag != "" {
 		t.Errorf("Gamertag = %q, want vide : le filtre gamertag passe par une jointure d'alias", f.Gamertag)

@@ -58,6 +58,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // oracleJoueur est une ligne de `facts.players[]` du fixture, RECOPIÉE À LA MAIN.
@@ -81,14 +82,14 @@ type oracleJoueur struct {
 // déplacer l'attendu en silence. Sans cette confrontation, lire l'oracle du fichier au moment du
 // test rendrait l'assertion auto-validante côté oracle.
 var oracleAPI = []oracleJoueur{
-	{XUID: "2533274823110022", Kills: 2, Deaths: 3, Assists: 1, TeamID: 1},
-	{XUID: "2533275001554469", Kills: 1, Deaths: 4, Assists: 2, TeamID: 1},
-	{XUID: "2535429692041611", Kills: 1, Deaths: 3, Assists: 0, TeamID: 1},
-	{XUID: "2535432531943478", Kills: 2, Deaths: 4, Assists: 0, TeamID: 1},
-	{XUID: "2535458702376288", Kills: 5, Deaths: 0, Assists: 0, TeamID: 0},
-	{XUID: "2535463878425995", Kills: 7, Deaths: 2, Assists: 1, TeamID: 0},
-	{XUID: "2535465632069522", Kills: 0, Deaths: 1, Assists: 1, TeamID: 0},
-	{XUID: "2535465779546251", Kills: 2, Deaths: 3, Assists: 1, TeamID: 0},
+	{XUID: "2603225103667623", Kills: 2, Deaths: 3, Assists: 1, TeamID: 1},
+	{XUID: "2630521749790773", Kills: 1, Deaths: 4, Assists: 2, TeamID: 1},
+	{XUID: "2588623217004373", Kills: 1, Deaths: 3, Assists: 0, TeamID: 1},
+	{XUID: "2639041738602226", Kills: 2, Deaths: 4, Assists: 0, TeamID: 1},
+	{XUID: "2643148600905879", Kills: 5, Deaths: 0, Assists: 0, TeamID: 0},
+	{XUID: "2569104772637498", Kills: 7, Deaths: 2, Assists: 1, TeamID: 0},
+	{XUID: "2805158871119453", Kills: 0, Deaths: 1, Assists: 1, TeamID: 0},
+	{XUID: "2715607967843624", Kills: 2, Deaths: 3, Assists: 1, TeamID: 0},
 }
 
 // oracleScoresCamps : `facts.teamScores` du fixture — 3 captures à 0.
@@ -96,14 +97,11 @@ var oracleScoresCamps = [2]int{3, 0}
 
 // Mesures du film, relevées le 2026-09-05 sur ce fixture (cf. en-tête).
 const (
-	valeurFrameCount   = 781
-	valeurIntervalleMS = 100
-	valeurDureeMS      = 78100
 	// valeurNbTracks : 22 -> 21 au schema 60 (lot 1.9.13, fusionne le 2026-09-17) : une vie finit a une
 	// MORT ECRITE, une fin de manche ou la fin du film — plus a un trou de replication de 5 s. Sur ce
 	// fixture, une des 22 pistes etait la seconde moitie d une vie coupee par un tel trou sans mort
 	// entre les deux ; elle est recollee a la premiere, le trou devient une LACUNE comptee
-	// (`coverage.tracks.gaps`). Le joueur concerne est `2533275001554469` (cf. valeurViesParXUID).
+	// (`coverage.tracks.gaps`). Le joueur concerne est `2630521749790773` (cf. valeurViesParXUID).
 	valeurNbTracks = 21
 	// valeurNbAnonymes : les vies que MEME le nommage final ne resout pas.
 	//
@@ -115,7 +113,7 @@ const (
 	//
 	// 1 -> 0 au schema 50 (lot E2, fusionne le 2026-09-09) : le registre d'identite lit le
 	// LIEN DIRECT corps -> joueur dans le record de creation du bipede (ti=35). La derniere vie
-	// anonyme du fixture est celle de `2535458702376288`, le seul joueur a 0 mort a l'API — que
+	// anonyme du fixture est celle de `2643148600905879`, le seul joueur a 0 mort a l'API — que
 	// le fil des morts ne pouvait par construction jamais nommer. C'est exactement le gain
 	// attendu d'E2 ; la mesure est refigee telle quelle (CI rouge du 2026-09-09, run 34374373099).
 	valeurNbAnonymes = 0
@@ -123,9 +121,6 @@ const (
 	// C'EST LA VALEUR QUE TOUT LE RECALAGE CLIENT SOUSTRAIT (`replayMs = event_time_ms +
 	// t0_ms − originMs`) : la décaler d'une seule milliseconde décale tout le rejeu.
 	valeurOriginMS int64 = 34870
-	// valeurT0FilmMS : le coup d'envoi mesuré dans le film, sur la même horloge — 300 ms
-	// (3 frames) après l'origine sur ce match.
-	valeurT0FilmMS int64 = 35170
 )
 
 // valeurViesParXUID : combien de VIES NOMMÉES le film attribue à chaque joueur.
@@ -134,47 +129,71 @@ const (
 // nomme une vie que par la mort qui la FERME (`lives.go`), donc une vie ouverte avant le début de
 // la grille ou close par la fin de partie n'en reçoit pas d'identité par cette voie.
 //
-// `2533275001554469` PASSE DE 4 À 5 au schéma 47 (2026-09-07) : le nommage final
+// `2630521749790773` PASSE DE 4 À 5 au schéma 47 (2026-09-07) : le nommage final
 // (unnamed_lives.go) lui rend la vie que le fil des morts ne fermait pas, par l'occupation de son
 // slot dans le temps. C'est le gain attendu de la décision « les vies anonymes n'existent pas »,
 // et c'est le SEUL joueur du fixture qu'il concerne. La mesure reste figée telle quelle.
 //
-// `2535458702376288` ENTRE au schema 50 (lot E2, 2026-09-09) avec UNE vie : 0 mort a l'API, donc
+// `2643148600905879` ENTRE au schema 50 (lot E2, 2026-09-09) avec UNE vie : 0 mort a l'API, donc
 // jamais nomme par le fil des morts ; nomme par le record de creation de son bipede.
 var valeurViesParXUID = map[string]int{
-	"2533274823110022": 3,
-	"2535458702376288": 1,
+	"2603225103667623": 3,
+	"2643148600905879": 1,
 	// 5 -> 4 au schema 60 (lot 1.9.13, 2026-09-17) : ce joueur a 4 morts a l API (oracle ci-dessus),
 	// donc au plus 5 vies ; sa 5e « vie » etait le morceau d une vie coupee par un trou de
 	// replication SANS mort ecrite — recollee, avec sa lacune, a la vie qui la precede.
-	"2533275001554469": 4,
-	"2535429692041611": 3,
-	"2535432531943478": 2,
-	"2535463878425995": 3,
-	"2535465632069522": 2,
-	"2535465779546251": 3,
+	"2630521749790773": 4,
+	"2588623217004373": 3,
+	"2639041738602226": 2,
+	"2569104772637498": 3,
+	"2805158871119453": 2,
+	"2715607967843624": 3,
 }
 
 // valeurJoueursApparies : les xuids que le pont d'identité rattache à un slot d'entité, donc les
 // seuls dont le document publie des compteurs vivants.
 //
-// 2026-09-11 (vague 6) : `2535458702376288` (5 frags, 0 mort, 0 assistance) entre dans la liste.
+// 2026-09-11 (vague 6) : `2643148600905879` (5 frags, 0 mort, 0 assistance) entre dans la liste.
 // Il occupait le slot 12, illisible jusque-là : 0 mort le mettait hors du pont par morts, et son
 // compteur d'assistances DEROULE a 60 (deroulage aberrant) le mettait hors du triplet. Borne de
 // deroulage a 16 (lot 6.7-B1 item 6) et domaine des compteurs au niveau de l'enregistrement
 // (lot 6.11 item 3) : son triplet vaut (5, 0, 0), sa ligne de feuille, et le pont le nomme.
 var valeurJoueursApparies = []string{
-	"2533275001554469",
-	"2535429692041611",
-	"2535432531943478",
-	"2535458702376288",
-	"2535463878425995",
-	"2535465632069522",
+	"2630521749790773",
+	"2588623217004373",
+	"2639041738602226",
+	"2643148600905879",
+	"2569104772637498",
+	"2805158871119453",
 }
 
-// valeurCourbeCamp : la SEULE courbe d'équipe publiée sur ce film, frame par frame — les trois
-// captures. Son dernier point vaut le score du vainqueur à l'API (3).
-var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}
+// valeursDeGrille : ce que la grille du document change sur ce film, mesuré à chaque pas de cuisson que LevelUp a
+// pratiqué. FrameCount et DurationMS suivent le pas ; T0FilmMS est le coup d envoi mesuré dans le film (le premier
+// mouvement, daté à l image du pas) ; Courbe est la SEULE courbe d équipe publiée sur ce film, frame par frame — les
+// trois captures, dont le dernier point vaut le score du vainqueur à l API (3). Un pas sans mesure fait échouer le
+// test : la figer avant de changer la cadence.
+type valeursDeGrille struct {
+	FrameCount int
+	DureeMS    int
+	T0FilmMS   int64
+	Courbe     []replaydoc.ScoreTick
+}
+
+var valeursParPas = map[int]valeursDeGrille{
+	100: {781, 78100, 35170, []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}},
+	33:  {2366, 78078, 35167, []replaydoc.ScoreTick{{T: 591, V: 1}, {T: 1470, V: 2}, {T: 2141, V: 3}}},
+}
+
+// valeursDeLaCuisson rend les valeurs figées du pas de cuisson courant.
+func valeursDeLaCuisson(t *testing.T) (int, valeursDeGrille) {
+	t.Helper()
+	pas := replaybuild.CookFrameIntervalMS()
+	v, ok := valeursParPas[pas]
+	if !ok {
+		t.Fatalf("aucune valeur figée pour le pas de cuisson %d ms : mesurer ce film à ce pas et l ajouter à valeursParPas", pas)
+	}
+	return pas, v
+}
 
 // valeurObjectifsParStat : le calque des actions d'objectif, par nom de statistique.
 //
@@ -243,9 +262,10 @@ func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 	if doc.MatchID != "c0a82e88-7b3b-419c-a984-13385af99259" {
 		t.Errorf("matchId servi %q, attendu celui du fixture", doc.MatchID)
 	}
-	if doc.FrameCount != valeurFrameCount || doc.FrameIntervalMS != valeurIntervalleMS || doc.DurationMS != valeurDureeMS {
+	pas, v := valeursDeLaCuisson(t)
+	if doc.FrameCount != v.FrameCount || doc.FrameIntervalMS != pas || doc.DurationMS != v.DureeMS {
 		t.Errorf("grille : %d frames à %d ms pour %d ms, attendu %d/%d/%d",
-			doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS, valeurFrameCount, valeurIntervalleMS, valeurDureeMS)
+			doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS, v.FrameCount, pas, v.DureeMS)
 	}
 	if doc.OriginMs == nil {
 		t.Errorf("originMs ABSENT : l'origine n'est plus établie sur ce film (attendu %d ms)", valeurOriginMS)
@@ -254,14 +274,14 @@ func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 			*doc.OriginMs, valeurOriginMS)
 	}
 	if doc.T0FilmMs == nil {
-		t.Errorf("t0FilmMs ABSENT : le coup d'envoi n'est plus mesuré (attendu %d ms)", valeurT0FilmMS)
-	} else if *doc.T0FilmMs != valeurT0FilmMS {
-		t.Errorf("t0FilmMs = %d ms, attendu %d ms", *doc.T0FilmMs, valeurT0FilmMS)
+		t.Errorf("t0FilmMs ABSENT : le coup d'envoi n'est plus mesuré (attendu %d ms)", v.T0FilmMS)
+	} else if *doc.T0FilmMs != v.T0FilmMS {
+		t.Errorf("t0FilmMs = %d ms, attendu %d ms", *doc.T0FilmMs, v.T0FilmMS)
 	}
 }
 
 // assertRoster fige les vies publiées ET les confronte à l'oracle : le film ne nomme QUE les
-// joueurs que l'API donne morts au moins une fois — le seul joueur à 0 mort (2535458702376288)
+// joueurs que l'API donne morts au moins une fois — le seul joueur à 0 mort (2643148600905879)
 // (Depuis E2, schema 50 — 2026-09-09 : ce joueur a 0 mort EST nomme, par le record de creation de son bipede.)
 // est aussi le seul absent du roster nommé. C'est un fait des deux chaînes, pas une tautologie.
 func assertRoster(t *testing.T, doc replaydoc.ReplayDocument) {
@@ -379,10 +399,11 @@ func assertScoreCamp(t *testing.T, doc replaydoc.ReplayDocument) {
 		t.Errorf("la courbe du match à sens unique doit porter le camp 0 (vainqueur 3-0 au registre), obtenu %v",
 			camp.TeamID)
 	}
-	if len(camp.Total) != len(valeurCourbeCamp) {
-		t.Fatalf("courbe d'équipe : %d points, attendu %d (%v)", len(camp.Total), len(valeurCourbeCamp), camp.Total)
+	_, vals := valeursDeLaCuisson(t)
+	if len(camp.Total) != len(vals.Courbe) {
+		t.Fatalf("courbe d'équipe : %d points, attendu %d (%v)", len(camp.Total), len(vals.Courbe), camp.Total)
 	}
-	for i, attendu := range valeurCourbeCamp {
+	for i, attendu := range vals.Courbe {
 		if camp.Total[i] != attendu {
 			t.Errorf("courbe d'équipe, point %d : frame %d valeur %d, attendu frame %d valeur %d",
 				i, camp.Total[i].T, camp.Total[i].V, attendu.T, attendu.V)

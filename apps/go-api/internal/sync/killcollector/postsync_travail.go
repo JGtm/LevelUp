@@ -25,7 +25,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // PostSyncBacklogPagesMax borne le nombre de pages de backlog lues par cycle : 8 x 64 = 512

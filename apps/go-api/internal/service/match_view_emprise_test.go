@@ -56,7 +56,7 @@ func donneesDeTest(publiables int) matchViewData {
 func serviceMatchEmprise(usage *mockSessionUsageRepo, vies *viesCampFixes) *MatchViewService {
 	svc := NewMatchViewService(nil, "P").WithEmpriseSheet(feuilleDeTest()).WithRadarRange(map[string]int{"Slayer:Arena": 18})
 	if usage != nil {
-		svc = svc.WithEmpriseUsageSummary(usage, "")
+		svc = svc.WithEmpriseUsageSummary(usage, nil)
 	}
 	if vies != nil {
 		svc = svc.WithCampLives(vies)

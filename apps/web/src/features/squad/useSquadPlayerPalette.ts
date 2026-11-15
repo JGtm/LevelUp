@@ -11,7 +11,7 @@ import { useSquadContext } from './SquadContext'
 
 export function useSquadPlayerPalette(): SquadPlayerPalette {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
-  // Le backend renvoie le gamertag en casse mixte (« Madina97294 »), l'URL le porte souvent en
+  // Le backend renvoie le gamertag en casse mixte (« Joueur90002 »), l'URL le porte souvent en
   // minuscules : la clé du joueur principal est `main_player`.
   const main = pageData?.main_player ?? playerSlug
   return useMemo(() => squadPlayerPalette(main, confirmedGamertags), [main, confirmedGamertags])

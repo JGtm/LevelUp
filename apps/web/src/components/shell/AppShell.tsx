@@ -5,8 +5,9 @@
  * jamais le nom du profil) :
  * - site : NavL1 (barre haute, h-12) au-dessus de la zone de contenu, pied de page dans le flux ;
  * - application de bureau : barre latérale (SidebarNav) à gauche, zone de contenu au centre, volet
- *   des référentiels ancré à droite (il pousse le contenu, rien ne se superpose), sans pied de page
- *   (la fenêtre « À propos » en porte le contenu).
+ *   des référentiels à droite, sans pied de page (la fenêtre « À propos » en porte le contenu). Le volet
+ *   est toujours monté dans la rangée : épinglé, sa fente prend sa largeur et pousse le contenu ;
+ *   sinon la fente reste vide et le volet se superpose à la page sous un voile.
  *
  * L'en-tête de page (SectionHeader), les filtres Stats (SoloFiltersBar) et la KPIBar sont gérés
  * au niveau du layout joueur ($playerSlug.tsx).
@@ -56,8 +57,8 @@ function ShellOverlays({ compact }: { compact: boolean }) {
   // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const locale = useAppShellStore((s) => s.locale)
-  // Volet des référentiels ancré (bureau) : les toasts, posés par rapport à la fenêtre, se décalent de sa
-  // largeur pour rester dans la colonne du contenu.
+  // Volet des référentiels ancré ET épinglé (bureau) : les toasts, posés par rapport à la fenêtre, se
+  // décalent de sa largeur pour rester dans la colonne du contenu. Superposé, il ne prend aucune place.
   const dockedInset = useDockedPanelInset()
   return (
     <>
@@ -66,7 +67,7 @@ function ShellOverlays({ compact }: { compact: boolean }) {
       {!compact && <TopProgressBar />}
 
       {/* Toasts globaux (Sonner) — décalés sous la NavL1 (h-12 = 48px + 8px marge) sur le site ; en bureau
-          contre le bord haut et à gauche du volet ancré. theme={theme} synchronise les toasts avec le thème. */}
+          contre le bord haut et à gauche du volet épinglé. theme={theme} synchronise les toasts avec le thème. */}
       <Toaster
         position="top-right"
         offset={compact ? { top: TOAST_EDGE_PX, right: TOAST_EDGE_PX + dockedInset } : 56}

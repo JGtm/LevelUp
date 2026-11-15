@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 func TestIsAuthError(t *testing.T) {

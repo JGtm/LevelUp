@@ -239,7 +239,7 @@ describe('alignFeedByOrigin — une fin de vie prolongée à la mort écrite', (
 
 /**
  * LE JOUEUR QUI N'A PAS QUITTÉ LA PARTIE RESTE AFFICHÉ JUSQU'AU BOUT, sur le témoin réel `008e1bba`
- * (SloppyTopp8812) : le film cesse d'écrire le bipède à la frame 636 sur 1 701, sans écrire sa mort, et
+ * (Joueur90000008) : le film cesse d'écrire le bipède à la frame 636 sur 1 701, sans écrire sa mort, et
  * l'API le déclare présent à la fin — la piste publie `endFrame = frameCount − 1`. Une fin close avant
  * l'horizon passait pour une mort que le fil doit dire : la ligne fantôme sans icône.
  */
@@ -351,8 +351,6 @@ describe('collectMedalEvents', () => {
     event_type: 'medal',
     event_time_ms: 1_000,
     actor_xuid: 'x1',
-    target_xuid: null,
-    weapon_id: null,
     medal_name: 'No Scope',
     ...over,
   })
@@ -381,9 +379,9 @@ describe('collectMedalEvents', () => {
     expect(
       collectMedalEvents([
         ev({ event_type: 'kill' }),
-        ev({ actor_xuid: null }),
-        ev({ event_time_ms: null }),
-        ev({ medal_name: null }),
+        ev({ actor_xuid: undefined }),
+        ev({ event_time_ms: undefined }),
+        ev({ medal_name: undefined }),
       ]),
     ).toEqual([])
   })

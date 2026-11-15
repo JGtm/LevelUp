@@ -23,7 +23,7 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // mesureGeom est ce qu'une carte rend a l'instrument.

@@ -2,7 +2,7 @@
  * ReplaySettingsLayers — la section CALQUES du tiroir de réglages, et ce que chaque calque
  * demande au film pour seulement s'afficher.
  *
- * EXTRAITE DE `ReplaySettingsDrawer.tsx` LE 2026-08-29, deuxième extraction du tiroir après
+ * EXTRAITE DE `ReplaySettingsDrawer.tsx` (devenu `ReplayViewPanel.tsx`) LE 2026-08-29, deuxième extraction du tiroir après
  * la carte de chaleur (2026-08-18) et pour la même raison : le tiroir gagnait une section —
  * la LECTURE (lecture automatique) — et repassait au-dessus du seuil de 500 lignes du dépôt
  * (CLAUDE.md n°5). La règle du dépôt est d'extraire, pas de relever le plafond.
@@ -17,7 +17,9 @@
  */
 import type { ReactNode } from 'react'
 
-import { SettingsToggle } from './ReplaySettingsToggle'
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
+import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
@@ -127,6 +129,29 @@ export interface ReplayBombCarrierControls {
   onToggle: () => void
 }
 
+/**
+ * Le PLAN DES MURS du fond de carte : un seul calque, allumé par défaut. `available` = le fond
+ * retenu porte un plan (Live Fire et deux cartes Forge n'en ont pas, et n'affichent pas la bascule).
+ * `inPlan` = le fond posé est l'image plan, qui porte déjà les murs : le calque est alors retiré et
+ * son interrupteur, désactivé (`layerWallPlanInPlanHint`).
+ */
+export interface ReplayWallPlanControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+  inPlan: boolean
+}
+
+/**
+ * Le STYLE DU FOND (réglage global, `replay-background-style`) : rendu ou plan. `available` = le
+ * fond retenu porte une image plan ; sans elle la commande n'est pas proposée (le rendu est servi).
+ */
+export interface ReplayBackgroundControls {
+  available: boolean
+  value: MapBackgroundVariant
+  onSelect: (style: MapBackgroundVariant) => void
+}
+
 /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
 export interface ReplayVehicleControls {
   available: boolean
@@ -152,12 +177,14 @@ export interface LayersSectionProps {
   skullCarrier: ReplaySkullCarrierControls
   bombCarrier: ReplayBombCarrierControls
   vehicles: ReplayVehicleControls
+  wallPlan: ReplayWallPlanControls
+  background: ReplayBackgroundControls
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, modeObjectives,
-  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles,
+  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles, wallPlan, background,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -182,7 +209,7 @@ export function LayersSection({
       {/* LE TERRAIN : des lieux et des objets, pas des gens. Les EMPLACEMENTS D'ARME sont une
           récurrence spatiale mesurée ; les ARMES AU SOL sont des objets qui gisent là où ils
           sont tombés — on peut vouloir les socles sans le fouillis, et l'inverse. */}
-      {(zonesAvailable || weaponPads.available || groundWeapons.available || vehicles.available) && (
+      {(zonesAvailable || wallPlan.available || background.available || weaponPads.available || groundWeapons.available || vehicles.available) && (
         <LayerGroup title={t.layerGroupTerrain}>
           {zonesAvailable && (
             <SettingsToggle
@@ -190,6 +217,29 @@ export function LayersSection({
               pressed={showZones}
               onToggle={onToggleZones}
               hint={t.layerZonesHint}
+            />
+          )}
+          {/* LE FOND : rendu ou plan. Même calage, mêmes dimensions : changer d'image ne déplace rien. */}
+          {background.available && (
+            <SettingsSegments
+              label={t.layerBackground}
+              value={background.value}
+              onSelect={background.onSelect}
+              options={[
+                { value: 'rendu', label: t.layerBackgroundRender, hint: t.layerBackgroundRenderHint },
+                { value: 'plan', label: t.layerBackgroundPlan, hint: t.layerBackgroundPlanHint },
+              ]}
+            />
+          )}
+          {/* EN MODE PLAN les murs sont déjà dans l'image : l'interrupteur reste visible mais désactivé,
+              éteint, avec la raison en infobulle. */}
+          {wallPlan.available && (
+            <SettingsToggle
+              label={t.layerWallPlan}
+              pressed={wallPlan.show && !wallPlan.inPlan}
+              onToggle={wallPlan.onToggle}
+              hint={wallPlan.inPlan ? t.layerWallPlanInPlanHint : t.layerWallPlanHint}
+              disabled={wallPlan.inPlan}
             />
           )}
           {weaponPads.available && (

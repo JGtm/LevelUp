@@ -6,7 +6,7 @@
  * Construit côté client depuis TimeseriesMatchRow[].
  */
 import { useCallback, useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { Card, CardContent } from '@/components/ui/card'
@@ -136,7 +136,7 @@ interface BuildLabels {
 export function buildKdaBarsOption(
   series: ChartSeries<KdaBarPoint>[],
   labels: BuildLabels,
-): EChartsCoreOption {
+): ChartOption {
   if (series.length === 0 || series[0].datapoints.length === 0) {
     return { backgroundColor: CHART_BG }
   }

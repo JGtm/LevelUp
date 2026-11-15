@@ -9,7 +9,7 @@ import (
 // pool_maxsize_test.go — MaxSize plafonne les slots SAINS (D2, plan robustesse 2026-09-16).
 //
 // Constat fondateur : `--token-pool-size 1` tronquait le scan AVANT de résoudre, prenait la
-// première source venue (Chocoboflor, révoquée) et le pool échouait sur « aucun slot créé ».
+// première source venue (Joueur90001, révoquée) et le pool échouait sur « aucun slot créé ».
 // L'ordre du scan vient d'une map : il changeait d'une exécution à l'autre.
 //
 // Ces tests rougissent si la troncature `sources[:MaxSize]` revient (le pool ne se crée plus)
@@ -55,11 +55,11 @@ func sourcesFor(gamertags ...string) []CredentialSource {
 }
 
 func TestNewPool_MaxSize1_PlafonneLesSlotsSains(t *testing.T) {
-	// Chocoboflor est révoquée ET première dans l'ordre alphabétique : avec l'ancienne
+	// Joueur90001 est révoquée ET première dans l'ordre alphabétique : avec l'ancienne
 	// troncature, elle était la seule tentée et le pool n'avait aucun slot.
-	resolver := newRevokedResolver("Chocoboflor")
+	resolver := newRevokedResolver("Joueur90001")
 	p, err := NewPool(context.Background(), resolver,
-		sourcesFor("Chocoboflor", "DankerGlue", "Bianca"), PoolOptions{MaxSize: 1})
+		sourcesFor("Joueur90001", "Joueur9001", "Bianca"), PoolOptions{MaxSize: 1})
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
@@ -68,16 +68,16 @@ func TestNewPool_MaxSize1_PlafonneLesSlotsSains(t *testing.T) {
 	if got := p.Size(); got != 1 {
 		t.Fatalf("Size() = %d, attendu 1 slot sain", got)
 	}
-	// Première SAINE dans l'ordre alphabétique : Bianca (Chocoboflor est révoquée).
+	// Première SAINE dans l'ordre alphabétique : Bianca (Joueur90001 est révoquée).
 	if !p.HasPlayer("Bianca") {
 		t.Errorf("attendu Bianca (première saine par ordre alphabétique), pool = %d slot(s)", p.Size())
 	}
 }
 
 func TestNewPool_MaxSize2_DeuxSlotsSains(t *testing.T) {
-	resolver := newRevokedResolver("Chocoboflor")
+	resolver := newRevokedResolver("Joueur90001")
 	p, err := NewPool(context.Background(), resolver,
-		sourcesFor("DankerGlue", "Chocoboflor", "Bianca", "Alice"), PoolOptions{MaxSize: 2})
+		sourcesFor("Joueur9001", "Joueur90001", "Bianca", "Alice"), PoolOptions{MaxSize: 2})
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
@@ -94,9 +94,9 @@ func TestNewPool_MaxSize2_DeuxSlotsSains(t *testing.T) {
 }
 
 func TestNewPool_MaxSize0_TousLesSlotsSains(t *testing.T) {
-	resolver := newRevokedResolver("Chocoboflor")
+	resolver := newRevokedResolver("Joueur90001")
 	p, err := NewPool(context.Background(), resolver,
-		sourcesFor("DankerGlue", "Chocoboflor", "Bianca"), PoolOptions{MaxSize: 0})
+		sourcesFor("Joueur9001", "Joueur90001", "Bianca"), PoolOptions{MaxSize: 0})
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
@@ -105,19 +105,19 @@ func TestNewPool_MaxSize0_TousLesSlotsSains(t *testing.T) {
 	if got := p.Size(); got != 2 {
 		t.Fatalf("Size() = %d, attendu 2 (toutes les sources saines)", got)
 	}
-	if p.HasPlayer("Chocoboflor") {
+	if p.HasPlayer("Joueur90001") {
 		t.Error("une source révoquée ne doit pas créer de slot")
 	}
 }
 
 func TestNewPool_MaxSize_MemeParcQuelQueSoitLOrdreDEntree(t *testing.T) {
 	ordres := [][]string{
-		{"DankerGlue", "Chocoboflor", "Bianca", "Alice"},
-		{"Alice", "Bianca", "Chocoboflor", "DankerGlue"},
-		{"Bianca", "DankerGlue", "Alice", "Chocoboflor"},
+		{"Joueur9001", "Joueur90001", "Bianca", "Alice"},
+		{"Alice", "Bianca", "Joueur90001", "Joueur9001"},
+		{"Bianca", "Joueur9001", "Alice", "Joueur90001"},
 	}
 	for _, ordre := range ordres {
-		resolver := newRevokedResolver("Chocoboflor")
+		resolver := newRevokedResolver("Joueur90001")
 		p, err := NewPool(context.Background(), resolver, sourcesFor(ordre...), PoolOptions{MaxSize: 2})
 		if err != nil {
 			t.Fatalf("NewPool(%v): %v", ordre, err)

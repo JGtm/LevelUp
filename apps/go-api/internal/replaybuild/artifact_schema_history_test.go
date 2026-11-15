@@ -43,9 +43,10 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // versionsAnterieures : les versions que la chronique declare, sous la version courante.
@@ -75,14 +76,15 @@ func versionsAnterieures(t *testing.T) []int {
 // fichier laisse sur disque par un binaire d'hier.
 func artefactAuSchema(version int, matchID string, avecCompteurs bool) []byte {
 	corps := map[string]any{
-		"schemaVersion": version,
-		"matchId":       matchID,
-		"titleSlug":     title.DefaultSlug,
-		"tracks":        []map[string]any{{"xuid": "2533274819954312"}},
+		"schemaVersion":   version,
+		"frameIntervalMs": CookFrameIntervalMS(),
+		"matchId":         matchID,
+		"titleSlug":       title.DefaultSlug,
+		"tracks":          []map[string]any{{"xuid": "2533491259474651"}},
 	}
 	if avecCompteurs {
 		corps["scoreTimeline"] = map[string]any{
-			"players": []map[string]any{{"xuid": "2533274819954312"}},
+			"players": []map[string]any{{"xuid": "2533491259474651"}},
 		}
 	}
 	blob, err := json.Marshal(corps)
@@ -175,7 +177,7 @@ func TestLePointDEcritureRefuseLAppauvrissementAChaqueSchema(t *testing.T) {
 				t.Errorf("l'accuse decrit un artefact sans compteurs alors que celui en place "+
 					"en porte (schema %d)", v)
 			}
-			surDisque, err := os.ReadFile(path) //nolint:gosec // chemin de repertoire temporaire de test
+			surDisque, err := replayartifact.ReadBytes(path)
 			if err != nil {
 				t.Fatalf("relecture : %v", err)
 			}

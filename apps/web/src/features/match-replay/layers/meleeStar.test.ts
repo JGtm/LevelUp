@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import { drawKillFxLayer, type KillFxStyle } from './replayDraw'
 import type { KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, MELEE_STAR_MS, meleeStarProgress } from './meleeStar'
+import { killFxEntry } from '../test/killFxEntry'
 import { recordingContext, type CanvasOp } from '../test/recordingContext'
 
 const VIEW = { bounds: { minX: 0, minY: 0, maxX: 20, maxY: 20 }, width: 400, height: 400, pad: 0 }
@@ -26,10 +27,7 @@ const STYLE: KillFxStyle = {
 }
 
 function entry(over: Partial<KillFxEntry> = {}): KillFxEntry {
-  return {
-    frame: 0, x: 5, y: 5, vx: null, vy: null, deathX: 15, deathY: 15,
-    dist: null, fam: 'melee', slot: 3, seed: 7, ...over,
-  }
+  return killFxEntry({ fam: 'melee', ...over })
 }
 
 function trace(fx: KillFxEntry, frame = 1, style: Partial<KillFxStyle> = {}): CanvasOp[] {

@@ -260,7 +260,7 @@ func TestDefaultResolver_Get_IndexUnavailable_FallsBackToFetch(t *testing.T) {
 // d'asset upstream) ET sans URL, entryToPayload retournait un URLPayload vide
 // → http.Redirect avec Location="" → résolution relative qui strippe le filename
 // (ex: /api/v1/.../nameplates/file.png → /api/v1/.../nameplates/). Observé en
-// prod 2026-05-20 sur Chocoboflor après nettoyage du cache spartan-banner.
+// prod 2026-05-20 sur Joueur90001 après nettoyage du cache spartan-banner.
 //
 // Fix : détecter URLPayload vide en sortie d'entryToPayload et retomber sur fetch.
 func TestDefaultResolver_Get_IndexOrphan_FallsBackToFetch(t *testing.T) {

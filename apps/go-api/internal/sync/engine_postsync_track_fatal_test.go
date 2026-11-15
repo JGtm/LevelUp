@@ -47,7 +47,7 @@ func TestTrackFatalErr_FatalInvalidated_Appended(t *testing.T) {
 
 func TestTrackFatalErr_FailedToDeleteRows_Appended(t *testing.T) {
 	r := &domain.PostSyncResult{}
-	// Signature exacte du crash prod 2026-05-24 20:41:04 (Chocoboflor LUSR).
+	// Signature exacte du crash prod 2026-05-24 20:41:04 (Joueur90001 LUSR).
 	fatal := errors.New("Invalid Input Error: Failed to delete all rows from index. Only deleted 0 out of 1 rows.")
 	trackFatalErr(r, "LUSR", fatal)
 	if len(r.FatalErrors) != 1 {

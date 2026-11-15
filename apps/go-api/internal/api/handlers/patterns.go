@@ -41,7 +41,7 @@ const (
 )
 
 // PatternsRepoResolver retourne le PatternsRepository d'un joueur pour un slug.
-// Implémenté côté composition (server.go) en wrappant le ProgressionResolver.
+// Implémenté côté composition (server.go) en adaptant le résolveur de joueurs.
 type PatternsRepoResolver func(ctx context.Context, slug string) (port.PatternsRepository, error)
 
 // PatternsHandler gère l'endpoint GET /patterns.
@@ -110,6 +110,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		N:      n,
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
+		Locale: i18n.FromContext(ctx),
 	})
 	h.enrichContextLabels(ctx, repo, &report)
 	slog.DebugContext(ctx, "patterns: analyse terminée",

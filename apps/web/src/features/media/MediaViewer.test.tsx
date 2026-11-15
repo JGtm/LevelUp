@@ -4,13 +4,14 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { focusByKeyboard } from '@/test/focus'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaThumbnailCard } from './MediaViewer'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 
 // ─── MediaThumbnailCard — fallback "Pas de match associé" ───────────────────
 
-function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+function makeItem(overrides: Partial<NormalizedMediaItem>): NormalizedMediaItem {
   return {
     basename: 'shot.png',
     file_path: '/media/shot.png',
@@ -342,7 +343,7 @@ describe("MediaThumbnailCard — infobulle des mentions « J'aime »", () => {
     })
   })
 
-  function renderCard(overrides: Partial<MediaItemRow>) {
+  function renderCard(overrides: Partial<NormalizedMediaItem>) {
     return renderWithProviders(
       <MediaThumbnailCard item={makeItem(overrides)} onToggleLike={vi.fn()} onOpen={vi.fn()} />,
     )
@@ -384,7 +385,7 @@ describe("MediaThumbnailCard — infobulle des mentions « J'aime »", () => {
 
   it("s'ouvre aussi au focus clavier", () => {
     renderCard({ like_count: 1, likers: ['Alice'], total_likers: 1 })
-    fireEvent.focus(screen.getByRole('button', { name: 'Aimer' }).parentElement!)
+    focusByKeyboard(screen.getByRole('button', { name: 'Aimer' }))
     expect(screen.getByRole('tooltip')).toHaveTextContent('Aimé par Alice')
   })
 

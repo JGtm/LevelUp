@@ -11,7 +11,7 @@
  *
  * Toutes les couleurs arrivent résolues (jetons, palette des joueurs de l'Escouade).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
@@ -207,7 +207,7 @@ export function buildImpactHistoryOption(
   c: ImpactChartColors,
   t: ImpactChartText,
   narrow: boolean,
-): EChartsCoreOption {
+): ChartOption {
   const tc = c.theme
   const count = view.axisLabels.length
   return {

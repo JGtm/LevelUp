@@ -26,6 +26,7 @@ func violationsSauts(d *Document, mapID string) Violation {
 	var out Violation
 	portes := portesDe(mapID)
 	pas := float64(d.FrameIntervalMs) / 1000
+	tolTransloc := d.images(toleranceTranslocationMS)
 	for _, t := range d.Tracks {
 		for i := 1; i < len(t.Points); i++ {
 			p, q := t.Points[i-1], t.Points[i]
@@ -33,7 +34,7 @@ func violationsSauts(d *Document, mapID string) Violation {
 			if dt <= 0 || distance(p.X, p.Y, p.Z, q.X, q.Y, q.Z)/dt <= vitesseSautMaxMPS {
 				continue
 			}
-			if procheDUneTranslocation(d.Translocations, q.T) || surUnePorte(portes, p) || surUnePorte(portes, q) {
+			if procheDUneTranslocation(d.Translocations, q.T, tolTransloc) || surUnePorte(portes, p) || surUnePorte(portes, q) {
 				out.Exemptees++
 				continue
 			}
@@ -44,9 +45,9 @@ func violationsSauts(d *Document, mapID string) Violation {
 	return out
 }
 
-func procheDUneTranslocation(ts []Translocation, t int) bool {
+func procheDUneTranslocation(ts []Translocation, t, tolerance int) bool {
 	for _, x := range ts {
-		if t-x.T >= -toleranceTranslocationImages && t-x.T <= toleranceTranslocationImages {
+		if t-x.T >= -tolerance && t-x.T <= tolerance {
 			return true
 		}
 	}
@@ -67,6 +68,10 @@ func surUnePorte(portes [][3]float64, p Point) bool {
 // margeEmpriseObjetsM de l'enveloppe publiee des pistes. Les tirs, grenades et projectiles n'y sont
 // PAS : ils volent legitimement au-dela de l'enveloppe des joueurs (mesure : des centaines sur les
 // cartes BTB a 20 m).
+//
+// Un vehicule se compte par PASSAGE hors emprise : les echantillons consecutifs d'un meme vehicule
+// hors de l'enveloppe forment une seule instance (datee du premier). Compter les echantillons
+// ferait varier le total avec la densite de la grille, sans qu'aucun vehicule n'ait bouge.
 func violationsHorsEmprise(d *Document) Violation {
 	var out Violation
 	if d.Bounds == nil {
@@ -85,38 +90,60 @@ func violationsHorsEmprise(d *Document) Violation {
 		}
 	}
 	for _, v := range d.Vehicles {
+		dehors := false
 		for _, s := range v.Samples {
-			if hors(s.X, s.Y) {
+			h := hors(s.X, s.Y)
+			if h && !dehors {
 				out.Instances = append(out.Instances, fmt.Sprintf("vehicule %d @%d", v.Slot, s.T))
 			}
+			dehors = h
 		}
 	}
 	sort.Strings(out.Instances)
 	return out
 }
 
-// violationsTrajets : V-6, un echantillon de vehicule pendant un trajet dont le passager, a la meme
-// image (±toleranceEchantillonImages), est a plus de rayonTrajetM du vehicule.
+// violationsTrajets : V-6, un passager a plus de rayonTrajetM de son vehicule pendant un trajet,
+// a l'instant d'un echantillon du vehicule (point du passager a ±toleranceEchantillonMS).
+//
+// Un trajet se compte par PASSAGE loin du vehicule : les echantillons evaluables consecutifs d'un
+// meme trajet en violation forment une seule instance (datee du premier). Un echantillon evalue a
+// moins de rayonTrajetM clot le passage ; un echantillon sans point de passager a portee n'est pas
+// juge et ne le clot pas (aucune preuve de retour). Compter les echantillons ferait varier le total
+// avec la densite de la grille (un passager dont le corps cesse de repliquer a la montee reste
+// « loin » de plus d'echantillons quand le pas diminue), sans qu'aucun passager n'ait bouge.
 func violationsTrajets(d *Document) Violation {
 	var out Violation
 	points := pointsParSlot(d)
+	tolerance := d.images(toleranceEchantillonMS)
 	for _, v := range d.Vehicles {
 		for _, r := range v.Rides {
-			for _, s := range v.Samples {
-				if s.T < r.T0 || s.T > r.T1 {
-					continue
-				}
-				p, ok := pointA(points[r.Slot], s.T)
-				if !ok {
-					continue
-				}
-				if distance(p.X, p.Y, p.Z, s.X, s.Y, s.Z) > rayonTrajetM {
-					out.Instances = append(out.Instances, fmt.Sprintf("vehicule %d passager %d @%d", v.Slot, r.Slot, s.T))
-				}
-			}
+			out.Instances = append(out.Instances, passagesLoin(v, r, points[r.Slot], tolerance)...)
 		}
 	}
 	sort.Strings(out.Instances)
+	return out
+}
+
+// passagesLoin rend une instance par passage loin du vehicule d'un trajet, datee de son premier
+// echantillon.
+func passagesLoin(v Vehicule, r Trajet, pointsPassager []Point, tolerance int) []string {
+	var out []string
+	loin := false
+	for _, s := range v.Samples {
+		if s.T < r.T0 || s.T > r.T1 {
+			continue
+		}
+		p, ok := pointA(pointsPassager, s.T, tolerance)
+		if !ok {
+			continue
+		}
+		trop := distance(p.X, p.Y, p.Z, s.X, s.Y, s.Z) > rayonTrajetM
+		if trop && !loin {
+			out = append(out, fmt.Sprintf("vehicule %d passager %d @%d", v.Slot, r.Slot, s.T))
+		}
+		loin = trop
+	}
 	return out
 }
 
@@ -133,12 +160,12 @@ func pointsParSlot(d *Document) map[int][]Point {
 	return out
 }
 
-// pointA rend le point le plus proche de l'image t, s'il est a ±toleranceEchantillonImages.
-func pointA(pts []Point, t int) (Point, bool) {
-	i := sort.Search(len(pts), func(i int) bool { return pts[i].T >= t-toleranceEchantillonImages })
-	if i < len(pts) && pts[i].T <= t+toleranceEchantillonImages {
+// pointA rend le point le plus proche de l'image t, s'il est a ±tolerance images.
+func pointA(pts []Point, t, tolerance int) (Point, bool) {
+	i := sort.Search(len(pts), func(i int) bool { return pts[i].T >= t-tolerance })
+	if i < len(pts) && pts[i].T <= t+tolerance {
 		best := pts[i]
-		for j := i + 1; j < len(pts) && pts[j].T <= t+toleranceEchantillonImages; j++ {
+		for j := i + 1; j < len(pts) && pts[j].T <= t+tolerance; j++ {
 			if abs(pts[j].T-t) < abs(best.T-t) {
 				best = pts[j]
 			}

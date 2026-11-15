@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // carteJouee agrege tout ce que le registre sait d'une identite de carte jouee.
@@ -98,7 +98,7 @@ func (c carteJouee) PlaylistsTriees() []string {
 
 // requeteCartes : une ligne par (carte, playlist).
 //
-// L instant du dernier match passe par `analysis.SQLStartTimeCanonical` et NON par le litteral
+// L instant du dernier match passe par `sqlfrag.SQLStartTimeCanonical` et NON par le litteral
 // equivalent ecrit a la main. Les deux rendent le meme SQL ; seul le premier est cherchable, et
 // le ratchet `TestNoNewRawStartTimeLiteral` refuse le second — il a d ailleurs refuse celui-ci,
 // ecrit ici le 2026-09-03 sous un commentaire qui citait la regle qu il violait. Le fragment n a
@@ -110,7 +110,7 @@ var requeteCartes = `
 		COALESCE(NULLIF(TRIM(playlist_name), ''), '(sans playlist)')  AS playlist,
 		COUNT(*)                                                      AS matchs,
 		SUM(CASE WHEN is_firefight THEN 1 ELSE 0 END)                 AS firefight,
-		MAX(` + analysis.SQLStartTimeCanonical("") + `)               AS dernier
+		MAX(` + sqlfrag.SQLStartTimeCanonical("") + `)               AS dernier
 	FROM match_registry
 	GROUP BY 1, 2, 3
 `

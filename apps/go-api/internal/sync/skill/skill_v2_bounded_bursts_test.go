@@ -165,8 +165,6 @@ func TestLUSRV2Shadow_RafaleRendueApresMaxHold(t *testing.T) {
 // tombent dans deux rafales différentes : le groupe doit rester tenu d'une rafale à l'autre
 // (anti-trou, fix 2026-06-07), comme dans l'orchestration d'avant.
 func TestLUSRV2Shadow_ParityWithLegacyOrchestration_RafalesMultiples(t *testing.T) {
-	t.Setenv(lusrModeCouplingEnvFlag, "1")
-	t.Setenv(lusrSquadOffsetEnvFlag, "1")
 	withBurstLimits(t, lusrBurstLimits{maxMatches: 2, maxHold: time.Hour, now: time.Now})
 
 	legacy, current := newParityWorld(t), newParityWorld(t)

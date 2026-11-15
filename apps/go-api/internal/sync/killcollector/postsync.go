@@ -46,12 +46,12 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/filmfetch"
 )
@@ -479,7 +479,7 @@ const conditionBacklog = `
 // recent revenait donc a offrir toute la liste de travail a des matchs irrecuperables. Les
 // recents sont a la fois les seuls recuperables et ceux que l utilisateur regarde.
 var requeteBacklog = `SELECT r.match_id` + conditionBacklog + `
-		ORDER BY ` + analysis.SQLStartTimeCanonical("r") + ` DESC, r.match_id
+		ORDER BY ` + sqlfrag.SQLStartTimeCanonical("r") + ` DESC, r.match_id
 		LIMIT ? OFFSET ?`
 
 // requeteBacklogTaille : la jauge, SANS borne. Elle repond a « combien reste-t-il », pas a

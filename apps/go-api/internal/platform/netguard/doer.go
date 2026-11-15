@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // Doer est le `haloapi.Doer` GARDÉ que LevelUp passe aux clients de la brique `libs/haloapi` :

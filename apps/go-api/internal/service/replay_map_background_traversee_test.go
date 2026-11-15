@@ -23,7 +23,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // clesHostiles : ce qu'aucune cle de fond ne doit jamais etre.
@@ -45,7 +45,7 @@ func TestResolveBackgroundKey_RefuseUnMapIDHostile(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	for _, hostile := range clesHostiles {
 		repo := &mapNamesStub{mapID: hostile, names: []string{"Cliffhanger"}}
-		svc := NewReplayService(title.DefaultSlug, root, repo)
+		svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 		if _, err := svc.MapBackgroundForMap(context.Background(), hostile); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("cle %q : err = %v, attendu ErrMapBackgroundNotAvailable", hostile, err)
@@ -111,7 +111,7 @@ func TestResolveBackgroundKey_RefuseUneCleDIndexHostile(t *testing.T) {
 	}
 
 	repo := &mapNamesStub{names: []string{"piege"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
@@ -219,8 +219,12 @@ func TestReadBackgroundImage_RefuseImageHostile(t *testing.T) {
 					`"widthPx":100,"heightPx":100,"convention":"test"},`+
 					`"stats":{"anchors":1}}`)
 			ecrire(t, res.MapBackgroundPath(title.DefaultSlug, "ridgeline"), "\x89PNG\r\n\x1a\nfaux")
+			// La cible existe la ou une lecture sans garde irait : le nom brut sous le dossier
+			// des fonds, et son nom de base. Sans la garde sur `Image`, l'image serait servie.
+			ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, c.image), "\x89PNG\r\n\x1a\nhostile")
+			ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, filepath.Base(c.image)), "\x89PNG\r\n\x1a\nhostile")
 
-			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				t.Errorf("image=%q : err = %v, attendu ErrMapBackgroundNotAvailable", c.image, err)
 			}

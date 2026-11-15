@@ -1,28 +1,27 @@
 /**
  * effectiveHp — barème PV-pour-tuer du titre COURANT (title-aware).
  *
- * 225 Halo Infinite (90 vie + 135 bouclier) · 115 Halo 5 (bouclier 70 + armure 45).
- * Source unique côté front pour les surfaces combat (rendement / résistance) qui
- * doivent afficher le barème du titre sélectionné au lieu du 225 câblé. Le défaut
- * est `ONE_LIFE_DAMAGE` (Infinite), aligné sur le fallback backend
- * (games.DefaultEffectiveHpToKill).
+ * Source unique côté front pour les surfaces combat (rendement / résistance) : la valeur
+ * vient de `/bootstrap` (`TitleSummary.effective_hp_to_kill`), elle-même lue dans
+ * `config/titles/{slug}/constants.toml` [damage_model]. Aucun nombre en dur ici : tant que
+ * le bootstrap n'est pas chargé, le hook rend `undefined` et les surfaces n'affichent rien.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeWindow'
 
-/** PV-pour-tuer du titre courant, défaut Infinite (ONE_LIFE_DAMAGE). */
-export function useEffectiveHpToKill(): number {
+/** PV-pour-tuer du titre courant ; `undefined` tant que le bootstrap n'est pas chargé. */
+export function useEffectiveHpToKill(): number | undefined {
   return useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.effective_hp_to_kill ??
-      ONE_LIFE_DAMAGE,
+    (s) => s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.effective_hp_to_kill,
   )
 }
 
-/** Remplace le jeton `{{HP}}` d'un libellé i18n par le barème PV du titre. */
-export function substituteHpToken(text: string, hp: number): string {
-  return text.replace(/\{\{HP\}\}/g, String(hp))
+/** Affiché à la place du barème tant que le bootstrap n'est pas chargé : aucune valeur de repli. */
+export const HP_PENDING = '—'
+
+/** Remplace le jeton `{{HP}}` d'un libellé i18n par le barème PV du titre (`HP_PENDING` s'il est inconnu). */
+export function substituteHpToken(text: string, hp: number | undefined): string {
+  return text.replace(/\{\{HP\}\}/g, hp === undefined ? HP_PENDING : String(Math.round(hp)))
 }
 
 /** Frontière élite OC (80e percentile) par défaut — Halo Infinite. Miroir de

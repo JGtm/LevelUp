@@ -15,6 +15,7 @@ vi.mock('@/lib/accessibility/resolveToken', () => ({
 }))
 
 import type { KillFxEntry } from '../model/killFx'
+import { killFxEntry } from '../test/killFxEntry'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayHeatmap } from './useReplayHeatmap'
 
@@ -32,11 +33,10 @@ function doc() {
 
 /** Une mort du calque d'effets : `deathX` porte le lieu, `vx` l'orientation. */
 function killAt(x: number | null): KillFxEntry {
-  return {
-    frame: 10, x: 0, y: 0, vx: null, vy: null, dist: null,
-    fam: 'plain', slot: 0, seed: 1,
+  return killFxEntry({
+    frame: 10, x: 0, y: 0, slot: 0, seed: 1,
     deathX: x, deathY: x === null ? null : 12,
-  }
+  })
 }
 
 /**
@@ -167,5 +167,42 @@ describe('useReplayHeatmap — portée de temps (V2)', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('useReplayHeatmap — Seul et Masquer', () => {
+  const garde = { killFx: () => true, slotAt: () => true }
+  const retire = { killFx: () => false, slotAt: () => false }
+
+  it('présence : la chaleur ne compte que les vies que le filtre garde', () => {
+    const tout = renderHook(() => useReplayHeatmap(doc(), BOUNDS, [], settings())).result.current.grid
+    const gardee = renderHook(() => useReplayHeatmap(doc(), BOUNDS, [], settings({ shown: garde }))).result.current.grid
+    const retiree = renderHook(() => useReplayHeatmap(doc(), BOUNDS, [], settings({ shown: retire }))).result.current.grid
+    expect(tout).not.toBeNull()
+    expect(gardee?.filled).toBe(tout?.filled)
+    expect(retiree).toBeNull()
+  })
+
+  it('présence : le filtre lit la vie à son image de début', () => {
+    const vus: number[][] = []
+    const spy = { killFx: () => true, slotAt: (slot: number, frame: number) => { vus.push([slot, frame]); return true } }
+    renderHook(() => useReplayHeatmap(doc(), BOUNDS, [], settings({ shown: spy })))
+    expect(vus[0]).toEqual([0, 0])
+  })
+
+  it('éliminations : seules les morts gardées se déposent, et la lecture reste disponible', () => {
+    const morts = [killAt(5), killAt(15)]
+    const reglages = settings({ mode: 'kills' as const })
+    const tout = renderHook(() => useReplayHeatmap(doc(), BOUNDS, morts, reglages)).result.current
+    const unSeul = renderHook(() =>
+      useReplayHeatmap(doc(), BOUNDS, morts, { ...reglages, shown: { ...garde, killFx: (e: KillFxEntry) => e.deathX === 5 } }),
+    ).result.current
+    const aucune = renderHook(() => useReplayHeatmap(doc(), BOUNDS, morts, { ...reglages, shown: retire })).result.current
+    expect(tout.mode).toBe('kills')
+    expect(unSeul.grid?.filled).toBeLessThan(tout.grid?.filled ?? 0)
+    // Aucune mort gardée : rien à peindre, mais la lecture « éliminations » reste proposée et servie.
+    expect(aucune.grid).toBeNull()
+    expect(aucune.killsAvailable).toBe(true)
+    expect(aucune.mode).toBe('kills')
   })
 })

@@ -26,9 +26,9 @@ type gt struct {
 
 // terrainGrabsM1 : la sequence FIGEE des prises de la manche 1 (cf. TERRAIN_PROTOCOLE.md §1).
 var terrainGrabsM1 = []gt{
-	{48, "SHROOM GOD3261"}, {65, "scuderiasven"}, {124, "LadyJezz"}, {130, "L0UDEN13"},
-	{155, "scuderiasven"}, {160, "LadyJezz"}, {180, "L0UDEN13"}, {189, "DinoR00"},
-	{219, "SHROOM GOD3261"},
+	{48, "Joueur90000006"}, {65, "Joueur90000b"}, {124, "Joueur97"}, {130, "Joueur96"},
+	{155, "Joueur90000b"}, {160, "Joueur97"}, {180, "Joueur96"}, {189, "J900001"},
+	{219, "Joueur90000006"},
 }
 
 // carryInterval est une periode de portage reconstruite : un train de tics d'un meme slot.

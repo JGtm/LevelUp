@@ -7,7 +7,6 @@
  */
 
 import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 import type { RouterContext } from '@/app/router'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -17,8 +16,7 @@ import {
   serverStartFailure,
   serverStartingStepKey,
 } from '@/app/serverStartup'
-import { api } from '@/lib/api/client'
-import { queryKeys } from '@/lib/query/keys'
+import { fetchBootstrap, useBootstrap } from '@/lib/query/bootstrap'
 import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
@@ -33,7 +31,6 @@ import {
 } from '@/components/shell/authRequiredGuard'
 import { needsOwnProfile, SETUP_PATH, setupRedirectPath } from '@/features/setup/setupRouting'
 import { OAUTH_ERROR_PARAM } from '@/features/auth/loginError'
-import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -53,9 +50,7 @@ export function RootLayout() {
   // Politique de rejeu à état (compteur cumulé de TanStack) : une par instance, stable.
   const [bootstrapRetry] = useState(() => createBootstrapRetryPolicy())
 
-  const { data, isLoading, isError, error, failureReason } = useQuery({
-    queryKey: queryKeys.bootstrap,
-    queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
+  const { data, isLoading, isError, error, failureReason } = useBootstrap({
     staleTime: 2 * 60 * 1000,
     // reauth_required (bannière de reconnexion Xbox) est la seule donnée volatile
     // du bootstrap : le back l'efface dès qu'un refresh par-joueur réussit. On
@@ -106,7 +101,7 @@ export function RootLayout() {
       if (authCheckInFlightRef.current) return
       authCheckInFlightRef.current = true
       const verdict = await decideOnAuthRequired({
-        fetchBootstrap: () => api.get<BootstrapResponse>('/bootstrap'),
+        fetchBootstrap,
         storage: sessionStorageOrNull(),
         now: Date.now,
       })

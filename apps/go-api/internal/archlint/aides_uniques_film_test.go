@@ -49,8 +49,7 @@ func fichiersGo(t *testing.T, racine string, f func(rel string, data []byte)) {
 		if rerr != nil {
 			return rerr
 		}
-		rel, _ := filepath.Rel(base, chemin)
-		f(filepath.ToSlash(rel), data)
+		f(relDuDepotOuFatal(t, base, chemin), data)
 		return nil
 	})
 	if err != nil {
@@ -86,7 +85,7 @@ func TestLEnsembleDesFamillesConnuesSeConstruitUneFois(t *testing.T) {
 		}
 	}
 	for _, r := range racinesEspaceDeTravail {
-		fichiersGo(t, filepath.Join(workspaceRoot(t), filepath.FromSlash(r)), visiter)
+		fichiersGo(t, cheminDuDepotOuFatal(t, workspaceRoot(t), r), visiter)
 	}
 	if !maison {
 		t.Errorf("%s ne porte plus `FamillesConnues` : le garde-rail ne garde plus rien", maisonDesFamillesConnues)
@@ -98,7 +97,7 @@ func TestLEnsembleDesFamillesConnuesSeConstruitUneFois(t *testing.T) {
 }
 
 func TestUneSeuleConversionBooleenneParPaquet(t *testing.T) {
-	racine := filepath.Join(workspaceRoot(t), filepath.FromSlash(racineBriqueFilm))
+	racine := surDisque(t, racineBriqueFilm)
 	parGroupe := map[string][]string{}
 	fichiersGo(t, racine, func(rel string, data []byte) {
 		fset := token.NewFileSet()

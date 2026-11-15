@@ -14,7 +14,7 @@
  * indépendamment du signe du cumul. Une seule série (ligne + symboles), aucun scatter séparé.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -48,7 +48,7 @@ interface NetPoint {
 export function buildSessionNetScoreOption(
   series: ChartSeries<NetPoint>[],
   opts: { seriesLabel: string; yDomain?: [number, number] },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

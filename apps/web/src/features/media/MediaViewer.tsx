@@ -9,7 +9,7 @@ import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import { looksLikeAssetId } from '@/lib/halo/assetId'
 import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 import { ownerTagColor } from './mediaOwnerColors'
 
 export { CoverFlowModal as MediaLightbox }
@@ -120,8 +120,8 @@ export function MediaLikeButton({
       onClick={handleClick}
       // color-allow: rose pour le bouton like (heart) — CLAUDE.md §20 tolère rose pour liked
       className={compact
-        ? `flex h-6 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-3xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-card/90 text-rose-400' : 'bg-card/70 text-muted-foreground hover:text-rose-300'}` // color-allow: rose like button compact
-        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-border bg-card/80 text-foreground hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow: rose like button
+        ? `flex h-6 min-w-6 items-center justify-center gap-1 rounded-full px-2 text-3xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-card/90 text-rose-400' : 'bg-card/70 text-muted-foreground hover:text-rose-300'}` // color-allow(tailwind): rose like button compact
+        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-border bg-card/80 text-foreground hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow(tailwind): rose like button
       aria-label={isLiked ? text.like.ariaUnlike : text.like.ariaLike}
     >
       <HeartIcon
@@ -141,8 +141,8 @@ export function MediaLikeButton({
 }
 
 interface MediaThumbnailCardProps {
-  item: MediaItemRow
-  onToggleLike: (item: MediaItemRow) => void
+  item: NormalizedMediaItem
+  onToggleLike: (item: NormalizedMediaItem) => void
   onOpen: () => void
   likeDisabled?: boolean
   /** Slug du joueur courant pour construire le lien vers la page du match. */
@@ -159,7 +159,7 @@ interface MediaThumbnailCardProps {
   playerColorMap?: Record<string, string>
   /** Callback pour ouvrir le picker d'association (Associer ou Réassocier).
    *  Si absent, aucun lien d'(ré)association n'est rendu. */
-  onAssociate?: (item: MediaItemRow) => void
+  onAssociate?: (item: NormalizedMediaItem) => void
   /** Callback pour naviguer vers la page du match. Si fourni, remplace le
    *  comportement par défaut (lien `<a>`) pour permettre au consommateur
    *  d'attacher un MatchNavContext (cf. useNavigateToMatch). */

@@ -14,14 +14,16 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+
+	"levelup/go-api/internal/port"
 )
 
 // TestDirMediaIndexer_ImplementsInterface verifie le contract MediaIndexer.
 // Sentinelle : si quelqu'un supprime/renomme ResetAndReindex ou ScanAllMedia
 // sur DirMediaIndexer, ce test ne compile plus.
 func TestDirMediaIndexer_ImplementsInterface(t *testing.T) {
-	var _ MediaIndexer = (*DirMediaIndexer)(nil)
-	var _ MediaIndexer = NewDirMediaIndexer()
+	var _ port.MediaIndexer = (*DirMediaIndexer)(nil)
+	var _ port.MediaIndexer = NewDirMediaIndexer()
 }
 
 // TestNewDirMediaIndexer_NotNil : constructeur retourne instance non-nil.
@@ -36,7 +38,7 @@ func TestNewDirMediaIndexer_NotNil(t *testing.T) {
 // signatures methodes de l'interface. Si quelqu'un change la signature,
 // le compilateur fail ce test.
 func TestMediaIndexer_InterfaceMethods(t *testing.T) {
-	var idx MediaIndexer = NewDirMediaIndexer()
+	var idx port.MediaIndexer = NewDirMediaIndexer()
 	_ = idx // suppress unused
 	// Les methodes ResetAndReindex et ScanAllMedia sont publiques ici via
 	// l'interface — assertion compile-time uniquement.

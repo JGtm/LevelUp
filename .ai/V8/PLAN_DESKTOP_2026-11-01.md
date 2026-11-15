@@ -1,6 +1,6 @@
 # Plan — Version Desktop de LevelUp (Tauri 2 + serveur Go en sidecar) — 2026-11-01
 
-Statut : **plan, rien d'implémenté**. Sources : `.ai/ETUDE_DESKTOP_TAURI_2026-10-26.md` (l'étude)
+Statut : **clos le 2026-11-09** (P0, P1 et P2 livrés ; versions 8.1.0 et 8.1.1 publiées, voir la clôture en §12 ; les suites vivent au backlog et au registre des reports). Sources : `.ai/ETUDE_DESKTOP_TAURI_2026-10-26.md` (l'étude)
 et `.ai/AUDIT_COMPLEMENTAIRE_DESKTOP_2026-10-27.md` (l'audit, chantiers C1 à C12). Exécution sous le
 contrat du skill `plan-execution` (ordre strict, aucune étape différée, statut `[x]` / `[~]` / `[!]`
 sur chaque item, zéro fix hors périmètre, découvertes consignées en §10). Relecture `adversarial-review`

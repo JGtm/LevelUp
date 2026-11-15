@@ -147,7 +147,7 @@ func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
 // Retourne aussi le *wire.ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 //
 // Le montage des routes et services passe par plusieurs sous-fonctions (extraites
-// en K2a) et des groupes conditionnels (PRESTIGE_ENABLED, etc.). La complexité
+// en K2a) et des groupes conditionnels (prestige_enabled, etc.). La complexité
 // reflète la surface API, pas un défaut de conception.
 //
 // loadTitleAssetDrawerData charge les maps + armes (avec leurs URLs d'image) d'un
@@ -574,30 +574,6 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 	}
 }
 
-// startSessionPurgeLoop lance la purge périodique des sessions expirées (TTL
-// dépassé) : purge immédiate au boot (rattrape le backlog) puis toutes les 6h,
-// arrêt propre au shutdown via serverCtx. Extrait de NewRouter (K2a — réduction
-// du god-func d'assemblage DI).
-func startSessionPurgeLoop(serverCtx context.Context, sessionStore *session_platform.Store) {
-	go func() {
-		if n := sessionStore.PurgeExpired(); n > 0 {
-			slog.InfoContext(serverCtx, "session: purge initiale sessions expirées", "removed", n)
-		}
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-serverCtx.Done():
-				return
-			case <-ticker.C:
-				if n := sessionStore.PurgeExpired(); n > 0 {
-					slog.InfoContext(serverCtx, "session: purge sessions expirées", "removed", n)
-				}
-			}
-		}
-	}()
-}
-
 // applyTransverseMiddlewares monte les middlewares transverses (l'ORDRE importe)
 // sur le routeur racine : recovery, préservation du pair TCP, résolution de l'IP
 // cliente (X-Real-IP seulement derrière un proxy de confiance), en-têtes de
@@ -678,8 +654,6 @@ func NewRouter(
 	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
 	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
-	// Purge périodique des sessions expirées (TTL dépassé) — cf. startSessionPurgeLoop.
-	startSessionPurgeLoop(serverCtx, sessionStore)
 	attemptStore := auth_platform.NewAttemptStore()
 
 	// Sprint 16 : settings store + Sprint 17 : job store

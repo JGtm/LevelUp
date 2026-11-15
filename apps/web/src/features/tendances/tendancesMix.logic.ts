@@ -1,5 +1,3 @@
-// cross-feature-allow: jetons de couleur des chaînes LUSR (`LUSR_GROUP_TOKENS`) partagés avec
-// l'onglet Carrière — une seule table de couleurs de types de partie dans l'app.
 /**
  * tendancesMix.logic — la série PURE du graphique « Matchs par type de partie » : de
  * `data.mix` au pas courant aux bâtons empilés du wrapper `BarStackedChart`.

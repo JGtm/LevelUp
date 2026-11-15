@@ -261,43 +261,47 @@ See [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/V7/PLAN_MULTI_TI
 for the design rationale and [`tools/mappings/CHANGELOG.md`](../tools/mappings/CHANGELOG.md)
 for the TOML schema versioning history.
 
-## Bricks / libs (ADR 0041)
+## Bricks (ADR 0041, 0043)
 
 Code that is autonomous by nature (a file format, a stream decoder, a protocol) lives in **Go
-modules of its own** under `libs/<brick>/`, in this repository, linked to the application by the
-`go.work` at the root (no `replace` directive). The application stays the module `levelup/go-api`
-(`apps/go-api`); a brick is `github.com/JGtm/LevelUp/libs/<brick>`, with its packages at the first
-level of the module (an `internal/` package could not be imported by the application).
+modules of its own**, published from **dedicated repositories** and required by `apps/go-api/go.mod` at a
+published version. Until the 8.1.2 switch the bricks lived under `libs/` of this repository, linked by a
+`go.work`; since then this repository holds neither. The application stays the module `levelup/go-api`
+(`apps/go-api`); a brick is a module with its packages at the first level (an `internal/` package could not
+be imported by the application).
 
 ```text
-go.work                  use ./apps/go-api ./libs/film ./libs/gamefiles ./libs/haloapi ./libs/himap
-apps/go-api/             the application (module levelup/go-api)
-libs/film/               the "film decoder" brick (ADR 0034): the facade decfilm, the publication layer
-                         replay, the closed layers under internal/ (source, profile, grammar, facts)
-                         and its catalogues — imports libs/gamefiles and libs/himap only
-libs/gamefiles/          the "game files" brick: himodule, ooz (GPLv3, never linked by cmd/server),
-                         hinavmesh, mapvar — imports nothing from LevelUp
-libs/haloapi/            the "Halo API" brick (ADR 0042): xblauth, infinite, halo5, xboxlive —
-                         imports nothing from LevelUp and no other brick
-libs/himap/              the "map images" brick: package himap (map geometry and top-down background
-                         images read from the game files) — imports libs/gamefiles only
+apps/go-api/                          the application (module levelup/go-api)
+halo-infinite-film-decoder            the "film decoder" brick (ADR 0034): the facade decfilm, the publication
+                                      layer replay, the closed layers under internal/ (source, profile,
+                                      grammar, facts) and its catalogues — imports the two bricks below only
+halo-infinite-files-reader            the "game files" brick: himodule, ooz (GPLv3, never linked by cmd/server),
+                                      hinavmesh, mapvar — imports nothing from LevelUp
+halo-api                              the "Halo API" brick (ADR 0042): xblauth, infinite, halo5, xboxlive —
+                                      imports nothing from LevelUp and no other brick
+halo-infinite-map-images              the "map images" brick: package himap (map geometry and top-down
+                                      background images read from the game files) — imports the
+                                      game-files brick only
 ```
 
-Rules, held by ratchets: a brick imports nothing from `levelup/go-api` and only bricks of lower
-rank (`archlint/briques_imports_test.go`, tests included); `go list -deps` in the module shows no
-`levelup/go-api` package; no file extracted from the installed game enters a brick; the `go` line
-is the same in `go.work`, `apps/go-api/go.mod`, every `libs/*/go.mod` and the `Dockerfile` image.
-`./...` never crosses a module boundary: `make libs-test` and the CI steps "brique film", "brique gamefiles", "brique haloapi" and "brique himap"
-(plus the `film*` and `haloapi` shards of the coverage matrix) cover the bricks, `go mod tidy` does not run in `apps/go-api`. A brick is importable from outside by the
-tag `libs/<brick>/vX.Y.Z`. Commands: [`COMMANDS.md`](COMMANDS.md) § "Go modules under `libs/`"; decision and the
-checklist for adding a brick: [`adr/0041-go-modules-under-libs.md`](adr/0041-go-modules-under-libs.md).
+(Module paths: `github.com/JGtm/<repository>`.) Rules, held by ratchets: a brick imports nothing from
+`levelup/go-api` and only bricks of lower rank (`archlint/briques_imports_test.go`, tests included); no
+file extracted from the installed game enters a brick; the `go` line of `apps/go-api/go.mod` and the
+`Dockerfile` image stay the same. `./...` of `apps/go-api` covers LevelUp only: a brick's tests run in its own
+repository, and the CI of LevelUp plays the packages it needs by import path (Windows lane, gamefiles
+compilation, coverage shards of the bricks). A change of a brick is a tag on its repository, then a bump of
+the `require` in `apps/go-api/go.mod`; to see a change in LevelUp before publishing, a local, never versioned
+workspace is generated by `scripts/briques-workspace.sh` and designated by `GOWORK`. Commands:
+[`COMMANDS.md`](COMMANDS.md) § "Go bricks" and "Developing a brick"; decision, amendments and the
+checklist for adding a brick: [`adr/0041-go-modules-under-libs.md`](adr/0041-go-modules-under-libs.md) and
+[`adr/0043-publishing-the-bricks.md`](adr/0043-publishing-the-bricks.md).
 
 ### Halo API brick (ADR 0042)
 
-The code that **talks to** the Halo services is the module `libs/haloapi` (since 2026-11-01; it was internal
-packages of `apps/go-api` before): `libs/haloapi/xblauth` (the exchange chain Microsoft token -> Xbox Live ->
-XSTS -> Spartan), `libs/haloapi/infinite` (addresses, transport, one file per service, raw JSON DTOs, compressed
-film bytes), `libs/haloapi/halo5` (Halo 5 services) and `libs/haloapi/xboxlive` (Xbox Live achievements). They
+The code that **talks to** the Halo services is the module `github.com/JGtm/halo-api` (internal packages of
+`apps/go-api` before 2026-11-01): `xblauth` (the exchange chain Microsoft token -> Xbox Live ->
+XSTS -> Spartan), `infinite` (addresses, transport, one file per service, raw JSON DTOs, compressed
+film bytes), `halo5` (Halo 5 services) and `xboxlive` (Xbox Live achievements). They
 hold no state and no policy and import nothing of LevelUp: the HTTP
 `Doer` (guarded per `netguard` surface, consulted before the limiter), the retry policy (`Retry`, three
 policies kept), the addresses, the Azure client, the title descriptor, the tokens and the language are all

@@ -40,8 +40,8 @@ package persist
 // ─── CE QUE LA MESURE DU 2026-09-16 A CONTREDIT (lot 2.9, D1 de la cloture M1) ──────────────
 //
 // LE TEMOIN : `9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757`. A cet instant le credit porte la mort
-// de 2535413577167650 (Artemlv2774, tue par Ritio3987) et le film celle de 2535427572079378
-// (DANIELBOIMEXICO, dont les morts de credit de ce match sont a 106 661 ms, 162 355 ms, ...).
+// de 2713037253000017 (Joueur90003, tue par Joueur906) et le film celle de 2762190624883248
+// (Joueur900000003, dont les morts de credit de ce match sont a 106 661 ms, 162 355 ms, ...).
 // DEUX MORTS DISTINCTES A LA MEME MILLISECONDE, chaque cote n en voyant qu une. La clef
 // `(match_id, time_ms)` les a appariees, le controle d identite a rendu l erreur — et la passe a
 // refuse LE FILM ENTIER (249 films ecrits sur 250, tranche 1 du backlog du 2026-09-17).

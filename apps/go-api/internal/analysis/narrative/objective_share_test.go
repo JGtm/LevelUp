@@ -1,0 +1,231 @@
+package narrative
+
+import (
+	"strings"
+	"testing"
+)
+
+// ctfRows : une équipe 0 (porteur, escorte, tueur) et un adversaire 1 qui a aussi capturé
+// (ses actions ne doivent JAMAIS entrer dans la part de l'équipe 0).
+func ctfRows() []ObjectiveTeamRow {
+	return []ObjectiveTeamRow{
+		{XUID: "porteur", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
+			"flag_captures": 2, "flag_steals": 2, "time_as_flag_carrier_seconds": 26,
+		}}, // 5×2 + 2×2 = 14
+		{XUID: "escorte", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
+			"flag_capture_assists": 2, "flag_returns": 2, "flag_carriers_killed": 2,
+		}}, // 2×2 + 1.5×2 + 1.5×2 = 10
+		{XUID: "tueur", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{}},
+		{XUID: "adverse", TeamID: 1, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
+			"flag_captures": 4,
+		}},
+	}
+}
+
+func TestComputeObjectiveTeamShare_CTFPorteurEscorteTueur(t *testing.T) {
+	rows := ctfRows()
+	cases := []struct {
+		xuid   string
+		points float64
+		share  float64
+	}{
+		{"porteur", 14, 14.0 / 24.0},
+		{"escorte", 10, 10.0 / 24.0},
+		{"tueur", 0, 0},
+	}
+	var sum float64
+	for _, c := range cases {
+		got, ok := ComputeObjectiveTeamShare(rows, c.xuid)
+		if !ok {
+			t.Fatalf("%s : ok = false", c.xuid)
+		}
+		if got.Family != FamilyCTF || !almostEqual(got.Points, c.points) ||
+			!almostEqual(got.TeamPoints, 24) || !almostEqual(got.Share, c.share) {
+			t.Errorf("%s : %+v, want points=%v teamPoints=24 share=%v", c.xuid, got, c.points, c.share)
+		}
+		sum += got.Share
+	}
+	if !almostEqual(sum, 1) {
+		t.Errorf("la somme des parts du camp = %v, want 1", sum)
+	}
+}
+
+// L'indice brut du joueur est le r_f du package sur l'agrégat de son match : une seule définition.
+func TestComputeObjectiveTeamShare_IndexEgalIndiceDuPackage(t *testing.T) {
+	rows := ctfRows()
+	got, _ := ComputeObjectiveTeamShare(rows, "porteur")
+	want := objectiveFamilyRawScore(FamilyCTF, objectiveStatsOfRow(FamilyCTF, &rows[0]))
+	if got.RawIndex <= 0 || !almostEqual(got.RawIndex, want) {
+		t.Fatalf("RawIndex = %v, want %v", got.RawIndex, want)
+	}
+	if got.TeamSize != 3 {
+		t.Fatalf("TeamSize = %d, want 3 (les trois joueurs du camp 0, pas l'adversaire)", got.TeamSize)
+	}
+}
+
+// Un joueur sans action garde une part nulle ; son indice ne compte que sa tenue.
+func TestComputeObjectiveTeamShare_PartNulle(t *testing.T) {
+	got, ok := ComputeObjectiveTeamShare(ctfRows(), "tueur")
+	if !ok || got.Share != 0 || got.Points != 0 || got.RawIndex != 0 {
+		t.Fatalf("tueur = %+v ok=%v, want part nulle et indice nul", got, ok)
+	}
+}
+
+// Un camp sans aucune action : part 0, pas une absence.
+func TestComputeObjectiveTeamShare_CampSansAction(t *testing.T) {
+	rows := []ObjectiveTeamRow{
+		{XUID: "a", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 300, Values: map[string]float64{}},
+		{XUID: "b", TeamID: 1, Family: FamilyCTF, TimePlayedSeconds: 300, Values: map[string]float64{"flag_captures": 1}},
+	}
+	got, ok := ComputeObjectiveTeamShare(rows, "a")
+	if !ok || got.Share != 0 || got.TeamPoints != 0 {
+		t.Fatalf("camp sans action : %+v ok=%v", got, ok)
+	}
+}
+
+// KOTH l'emporte sur Strongholds dès qu'une ligne a des ticks : les poids KOTH (ticks
+// compris) servent alors à TOUS les joueurs du match, y compris ceux classés Strongholds.
+func TestMatchObjectiveFamily_KOTHPrime(t *testing.T) {
+	rows := []ObjectiveTeamRow{
+		{XUID: "a", Family: FamilyZonesKOTH},
+		{XUID: "b", Family: FamilyZonesStrongholds},
+		{XUID: "c", Family: FamilyZonesStrongholds},
+	}
+	if got := MatchObjectiveFamily(rows); got != FamilyZonesKOTH {
+		t.Fatalf("famille = %q, want KOTH", got)
+	}
+	rows[0].Family = FamilyZonesStrongholds
+	if got := MatchObjectiveFamily(rows); got != FamilyZonesStrongholds {
+		t.Fatalf("famille = %q, want Strongholds", got)
+	}
+}
+
+// Halo 5 (ou tout titre sans match_objective_stats) : aucune ligne, ou des lignes sans bloc
+// d'objectif. La part est ABSENTE (ok == false), sans panique.
+func TestComputeObjectiveTeamShare_SansDonneesAbsent(t *testing.T) {
+	cases := map[string][]ObjectiveTeamRow{
+		"nil":                nil,
+		"vide":               {},
+		"sans famille":       {{XUID: "a", TeamID: 0}, {XUID: "b", TeamID: 1}},
+		"valeurs nil":        {{XUID: "a", TeamID: 0, Family: FamilyCTF}},
+		"joueur absent":      {{XUID: "z", TeamID: 0, Family: FamilyCTF, Values: map[string]float64{"flag_captures": 1}}},
+		"camp inconnu":       {{XUID: "a", TeamID: NoObjectiveTeam, Family: FamilyCTF, Values: map[string]float64{"flag_captures": 1}}},
+		"famille hors-table": {{XUID: "a", TeamID: 0, Family: "inconnue"}},
+	}
+	for name, rows := range cases {
+		got, ok := ComputeObjectiveTeamShare(rows, "a")
+		switch name {
+		case "valeurs nil":
+			// ligne présente, famille connue, aucune valeur : part 0, mesuré.
+			if !ok || got.Share != 0 {
+				t.Errorf("%s : %+v ok=%v, want part 0 mesurée", name, got, ok)
+			}
+		case "famille hors-table":
+			// MatchObjectiveFamily ne retient que les familles de la table.
+			if ok {
+				t.Errorf("%s : ok = true, want absent", name)
+			}
+		default:
+			if ok {
+				t.Errorf("%s : ok = true (%+v), want absent", name, got)
+			}
+		}
+	}
+}
+
+// VIP : kills_as_vip est rapporté aux sélections, comme dans l'indice.
+func TestObjectiveActionPoints_VIPDenominateurSelections(t *testing.T) {
+	st := ObjectiveFamilyStats{
+		Matches: 1, TimesSelectedAsVIP: 2,
+		ColumnSums: map[string]float64{"vip_kills": 1, ObjectiveColKillsAsVIP: 4},
+	}
+	// 3×1 + 2×4/2 = 7
+	if got := ObjectiveActionPoints(FamilyVIP, st); !almostEqual(got, 7) {
+		t.Fatalf("points VIP = %v, want 7", got)
+	}
+	if got := ObjectiveActionPoints(FamilyVIP, ObjectiveFamilyStats{}); got != 0 {
+		t.Fatalf("Matches = 0 : %v, want 0", got)
+	}
+}
+
+// Garde-rail : les colonnes de soutien sont des colonnes de la table de poids (aucune colonne
+// neuve), les frags sont un sous-ensemble du soutien, et la distinction suit le nom de la
+// colonne : « tués » / « kills » pour les frags, rien de tel pour les actions sans frag.
+func TestObjectiveSupportColumns_SousEnsembleEtDistinctionFrag(t *testing.T) {
+	inSupport := map[string]bool{}
+	for fam, cols := range ObjectiveSupportColumns {
+		for _, c := range cols {
+			inSupport[c] = true
+			if _, ok := ObjectiveFamilyActionWeights[fam][c]; !ok {
+				t.Errorf("famille %s : colonne de soutien %q absente de ObjectiveFamilyActionWeights", fam, c)
+			}
+			isFragName := strings.Contains(c, "killed") || strings.Contains(c, "_kills")
+			if objectiveSupportFragColumns[c] != isFragName {
+				t.Errorf("colonne %q : frag = %v, mais son nom dit %v", c, objectiveSupportFragColumns[c], isFragName)
+			}
+		}
+	}
+	for c := range objectiveSupportFragColumns {
+		if !inSupport[c] {
+			t.Errorf("la colonne de frag %q n'est pas une colonne de soutien", c)
+		}
+	}
+	// Ni capture ni vol : le soutien ne reprend pas ce qui prend l'objectif.
+	for _, c := range ObjectiveSupportColumns[FamilyCTF] {
+		if c == objectiveColFlagCaptures || c == objectiveColFlagSteals {
+			t.Errorf("%q n'est pas du soutien", c)
+		}
+	}
+}
+
+// Points de soutien : poids plein sans frag, poids réduit pour les frags, poids de la table.
+func TestObjectiveSupportPoints_FragsAPoidsReduit(t *testing.T) {
+	st := ObjectiveFamilyStats{Matches: 1, ColumnSums: map[string]float64{
+		"flag_returns": 4, "flag_secures": 2, "flag_capture_assists": 2, // 1,5x4 + 1x2 + 2x2 = 12
+		"flag_carriers_killed": 4, "flag_returners_killed": 2, // (1,5x4 + 1,5x2) x 0,5 = 4,5
+		"flag_captures": 9, // pas du soutien
+	}}
+	if got := ObjectiveSupportPoints(FamilyCTF, st); !almostEqual(got, 12+4.5) {
+		t.Fatalf("points de soutien = %v, want 16,5", got)
+	}
+	if got := ObjectiveSupportPoints(FamilyCTF, ObjectiveFamilyStats{}); got != 0 {
+		t.Fatalf("Matches = 0 : %v", got)
+	}
+	zone := ObjectiveFamilyStats{Matches: 1, ColumnSums: map[string]float64{"zone_secures": 3, "zone_defensive_kills": 4, "zone_offensive_kills": 2, "zone_captures": 5}}
+	// 2x3 + (1x4 + 1x2) x 0,5 = 9
+	if got := ObjectiveSupportPoints(FamilyZonesStrongholds, zone); !almostEqual(got, 9) {
+		t.Fatalf("points de soutien (zones) = %v, want 9", got)
+	}
+}
+
+// L indice brut n est pas écrêté ; la part du soutien ne compte
+// que les colonnes de soutien et la table de poids n'est jamais modifiée.
+func TestComputeObjectiveTeamShare_BrutEtPartDuSoutien(t *testing.T) {
+	rows := []ObjectiveTeamRow{
+		{XUID: "porteur", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
+			"flag_captures": 6, "flag_steals": 4, "time_as_flag_carrier_seconds": 60,
+		}},
+		{XUID: "escorte", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
+			"flag_returns": 4, "flag_carriers_killed": 4, "flag_capture_assists": 2,
+		}},
+	}
+	before := ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"]
+	p, _ := ComputeObjectiveTeamShare(rows, "porteur")
+	if p.RawIndex <= 1.25 {
+		t.Fatalf("porteur : RawIndex %v, want brut non écrêté (> 1,25)", p.RawIndex)
+	}
+	e, _ := ComputeObjectiveTeamShare(rows, "escorte")
+	// escorte : points d'objectif 1,5x4 + 1,5x4 + 2x2 = 16 ; soutien 1,5x4 + 2x2 + 1,5x4x0,5 = 13.
+	if !almostEqual(e.Points, 16) || !almostEqual(e.SupportPoints, 13) || !almostEqual(e.SupportShare, 1) {
+		t.Errorf("escorte : %v points, %v de soutien, part du soutien %v, want 16, 13, 1", e.Points, e.SupportPoints, e.SupportShare)
+	}
+	if p.SupportShare != 0 || p.SupportPoints != 0 {
+		t.Errorf("le porteur n'a aucune action de soutien : %v / %v", p.SupportShare, p.SupportPoints)
+	}
+	if !almostEqual(e.Share, 16.0/54.0) || !almostEqual(e.TeamSupportPoints, 13) {
+		t.Errorf("part de l'escorte %v, soutien de l'équipe %v", e.Share, e.TeamSupportPoints)
+	}
+	if ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"] != before {
+		t.Error("la table de poids a été modifiée")
+	}
+}

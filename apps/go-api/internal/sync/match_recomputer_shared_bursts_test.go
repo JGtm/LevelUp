@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
-const recomputerTestXUID = "2533274858283686"
+const recomputerTestXUID = "2623439693412443"
 
 // spySharedProvider compte les prises du writer partagé et les lecteurs en vol.
 type spySharedProvider struct {

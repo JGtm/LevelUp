@@ -14,6 +14,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/domain"
 )
 
 // emblemCMS3806589 reproduit le JSON GameCMS de l'emblème équipé par JGtm le
@@ -102,10 +104,10 @@ func TestDiagnoseNameplate_MappingHitOK(t *testing.T) {
 	diag := DiagnoseNameplate(context.Background(),
 		"Inventory/Spartan/Emblems/104-001-olympus-campa-2ddbe23b.json",
 		-809699482, "spartan", "clearance")
-	if diag.Verdict != VerdictOK || diag.Detail != DetailMappingHit {
+	if diag.Verdict != domain.AppearanceVerdictOK || diag.Detail != domain.AppearanceDetailMappingHit {
 		t.Fatalf("verdict/detail = %q/%q, attendu ok/mapping_hit", diag.Verdict, diag.Detail)
 	}
-	if diag.ServedFrom != ServedFromLive {
+	if diag.ServedFrom != domain.AppearanceServedFromLive {
 		t.Fatalf("served_from = %q, attendu live", diag.ServedFrom)
 	}
 	want := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png"
@@ -124,7 +126,7 @@ func TestDiagnoseNameplate_PositiveCfgDirectOK(t *testing.T) {
 	diag := DiagnoseNameplate(context.Background(),
 		"Inventory/Spartan/Emblems/104-001-test-emblem-abcdef.json",
 		372285867, "s", "c")
-	if diag.Verdict != VerdictOK || diag.Detail != DetailMappingMiss {
+	if diag.Verdict != domain.AppearanceVerdictOK || diag.Detail != domain.AppearanceDetailMappingMiss {
 		t.Fatalf("verdict/detail = %q/%q, attendu ok/mapping_miss", diag.Verdict, diag.Detail)
 	}
 	want := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/nameplates/104-001-test-emblem-abcdef_372285867.png"
@@ -140,12 +142,12 @@ func TestDiagnoseNameplate_Guards(t *testing.T) {
 	defer resetEmblemMappingCacheForTest()
 
 	empty := DiagnoseNameplate(context.Background(), "   ", 1, "s", "c")
-	if empty.ResolvedURL != "" || empty.Detail != DetailNoEmblemPath {
+	if empty.ResolvedURL != "" || empty.Detail != domain.AppearanceDetailNoEmblemPath {
 		t.Fatalf("empty path : url=%q detail=%q, attendu \"\"/no_emblem_path", empty.ResolvedURL, empty.Detail)
 	}
 	nonEmblem := DiagnoseNameplate(context.Background(),
 		"Inventory/Spartan/BackdropImages/x.json", 1, "s", "c")
-	if nonEmblem.ResolvedURL != "" || nonEmblem.Detail != DetailNonEmblemPath {
+	if nonEmblem.ResolvedURL != "" || nonEmblem.Detail != domain.AppearanceDetailNonEmblemPath {
 		t.Fatalf("non-emblem : url=%q detail=%q, attendu \"\"/non_emblem_path", nonEmblem.ResolvedURL, nonEmblem.Detail)
 	}
 }
@@ -173,10 +175,10 @@ func TestDiagnoseNameplate_UpstreamMissing_RealCMS(t *testing.T) {
 	diag := DiagnoseNameplate(context.Background(),
 		"Inventory/Spartan/Emblems/3806589-SpartanEmblem.json",
 		-1766636888, "spartan", "clearance")
-	if diag.Verdict != VerdictUpstreamMissing || diag.Detail != DetailNoPositiveCfg {
+	if diag.Verdict != domain.AppearanceVerdictUpstreamMissing || diag.Detail != domain.AppearanceDetailNoPositiveCfg {
 		t.Fatalf("verdict/detail = %q/%q, attendu upstream_missing/no_positive_cfg", diag.Verdict, diag.Detail)
 	}
-	if diag.ServedFrom != ServedFromCarry {
+	if diag.ServedFrom != domain.AppearanceServedFromCarry {
 		t.Fatalf("served_from = %q, attendu carry", diag.ServedFrom)
 	}
 	if diag.ResolvedURL != "" {
@@ -198,10 +200,10 @@ func TestDiagnoseNameplate_Transient_HTTPError(t *testing.T) {
 	diag := DiagnoseNameplate(context.Background(),
 		"Inventory/Spartan/Emblems/3806589-SpartanEmblem.json",
 		-1766636888, "spartan", "clearance")
-	if diag.Verdict != VerdictTransient || diag.Detail != DetailCMSHTTPError {
+	if diag.Verdict != domain.AppearanceVerdictTransient || diag.Detail != domain.AppearanceDetailCMSHTTPError {
 		t.Fatalf("verdict/detail = %q/%q, attendu transient/cms_http_error", diag.Verdict, diag.Detail)
 	}
-	if diag.ServedFrom != ServedFromCarry {
+	if diag.ServedFrom != domain.AppearanceServedFromCarry {
 		t.Fatalf("served_from = %q, attendu carry", diag.ServedFrom)
 	}
 }
@@ -229,10 +231,10 @@ func TestDiagnoseCustomizationImage_OK(t *testing.T) {
 		limiter:        fastLimiter(),
 	}
 	diag := c.DiagnoseCustomizationImage(context.Background(), "Inventory/Spartan/Emblems/e.json")
-	if diag.Verdict != VerdictOK || diag.Detail != DetailImageResolved {
+	if diag.Verdict != domain.AppearanceVerdictOK || diag.Detail != domain.AppearanceDetailImageResolved {
 		t.Fatalf("verdict/detail = %q/%q, attendu ok/image_resolved", diag.Verdict, diag.Detail)
 	}
-	if diag.ServedFrom != ServedFromLive {
+	if diag.ServedFrom != domain.AppearanceServedFromLive {
 		t.Fatalf("served_from = %q, attendu live", diag.ServedFrom)
 	}
 	if diag.ResolvedURL != srv.URL+"/hi/images/file/progression/Emblems/e.png" {
@@ -256,23 +258,10 @@ func TestDiagnoseCustomizationImage_TransientOnHTTPError(t *testing.T) {
 		limiter:        fastLimiter(),
 	}
 	diag := c.DiagnoseCustomizationImage(context.Background(), "Inventory/Spartan/Emblems/e.json")
-	if diag.Verdict != VerdictTransient || diag.Detail != DetailImageUnresolved {
+	if diag.Verdict != domain.AppearanceVerdictTransient || diag.Detail != domain.AppearanceDetailImageUnresolved {
 		t.Fatalf("verdict/detail = %q/%q, attendu transient/image_unresolved", diag.Verdict, diag.Detail)
 	}
-	if diag.ServedFrom != ServedFromCarry {
+	if diag.ServedFrom != domain.AppearanceServedFromCarry {
 		t.Fatalf("served_from = %q, attendu carry", diag.ServedFrom)
-	}
-}
-
-// ─── DiagnoseServiceTag ──────────────────────────────────────────────────────
-
-func TestDiagnoseServiceTag(t *testing.T) {
-	present := DiagnoseServiceTag("JGTM")
-	if present.Verdict != VerdictOK || present.Detail != DetailServiceTagPresent || present.ServedFrom != ServedFromLive {
-		t.Fatalf("present: %+v, attendu ok/service_tag_present/live", present)
-	}
-	absent := DiagnoseServiceTag("   ")
-	if absent.Verdict != VerdictTransient || absent.Detail != DetailNoServiceTag || absent.ServedFrom != ServedFromCarry {
-		t.Fatalf("absent: %+v, attendu transient/no_service_tag/carry", absent)
 	}
 }

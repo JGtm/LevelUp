@@ -51,9 +51,9 @@ import (
 
 	"levelup/go-api/internal/platform/atomicfile"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // EnsureDirs cree les deux dossiers du cache et rend la racine prete a l emploi.

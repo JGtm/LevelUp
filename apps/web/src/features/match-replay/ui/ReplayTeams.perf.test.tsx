@@ -23,7 +23,6 @@
  *
  * Commande : `REPLAY_PERF=1 npx vitest run src/features/match-replay/ui/ReplayTeams.perf.test.tsx`
  */
-import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Profiler, type ProfilerOnRenderCallback } from 'react'
 import { render } from '@testing-library/react'
@@ -40,6 +39,7 @@ import { teleportMoments } from '../model/placementTeleport'
 import { playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
 import type { PresenceHeader } from '../model/presenceFeed'
 import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
+import { cheminArtefact, lireArtefact } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
@@ -67,19 +67,18 @@ const BASE_FRAME = 5_000
  * lecture d'inventaire supplémentaire de `handCellHint` (jamais faite en normal) ne serait
  * jamais dans la mesure, et le seuil serait tenu à vide.
  */
-const TEMOINS: readonly { nom: string; fichier: string; header?: PresenceHeader }[] = [
-  { nom: 'BTB 12v12 (4f77afc1)', fichier: '4f77afc1.json' },
-  { nom: '4v4 (000d5950)', fichier: '000d5950.json' },
-  { nom: 'BTB 12v12 (4f77afc1) — tuile compacte (mode_category BTB)', fichier: '4f77afc1.json', header: { mode_category: 'BTB' } },
+const TEMOINS: readonly { nom: string; court: string; header?: PresenceHeader }[] = [
+  { nom: 'BTB 12v12 (4f77afc1)', court: '4f77afc1' },
+  { nom: '4v4 (000d5950)', court: '000d5950' },
+  { nom: 'BTB 12v12 (4f77afc1) — tuile compacte (mode_category BTB)', court: '4f77afc1', header: { mode_category: 'BTB' } },
 ]
 
 function dossierTemoins(): string {
   return process.env.REPLAY_PERF_DIR ?? join(racineDuDepot(), 'data', 'cache', 'replays', 'halo_infinite')
 }
 
-function chargerTemoin(fichier: string): ReplayDocumentReady {
-  const brut = JSON.parse(readFileSync(join(dossierTemoins(), fichier), 'utf8')) as Partial<ReplayDocument>
-  return testReplayDoc(brut)
+function chargerTemoin(chemin: string): ReplayDocumentReady {
+  return testReplayDoc(lireArtefact<Partial<ReplayDocument>>(chemin))
 }
 
 /** Le tableau depuis le roster : deux camps en alternance (le film ne porte pas le camp). */
@@ -209,11 +208,11 @@ function mesurerModele(doc: ReplayDocumentReady, base: number): Stats {
 
 describe.skipIf(!process.env.REPLAY_PERF)('ReplayTeams — mesure JS de la colonne (REPLAY_PERF)', () => {
   for (const temoin of TEMOINS) {
-    const chemin = join(dossierTemoins(), temoin.fichier)
-    it.skipIf(!existsSync(chemin))(
+    const chemin = cheminArtefact(dossierTemoins(), temoin.court)
+    it.skipIf(!chemin)(
       `${temoin.nom} : colonne (Profiler) et modèle seul, ${REPEATS} répétitions`,
       () => {
-        const doc = chargerTemoin(temoin.fichier)
+        const doc = chargerTemoin(chemin as string)
         const base = imageDeBase(doc)
         const colonne: Stats[] = []
         const modele: Stats[] = []
@@ -222,7 +221,7 @@ describe.skipIf(!process.env.REPLAY_PERF)('ReplayTeams — mesure JS de la colon
           modele.push(mesurerModele(doc, base))
         }
         const resultat = {
-          temoin: temoin.fichier,
+          temoin: temoin.court,
           gabarit: temoin.header?.mode_category ?? 'normal',
           fiches: doc.roster.length,
           images: doc.frameCount,

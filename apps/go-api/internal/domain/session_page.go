@@ -67,10 +67,6 @@ type SessionDetailMatchRow struct {
 	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
 	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
 	SkillRatingDelta *float64 `json:"skill_rating_delta,omitempty"` // gain/perte de rating du match
-	// SkillExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
-	// (LUSR v2, ∈ [0,1]). nil pour les matchs pré-v2 / non-LUSR. Le front la
-	// catégorise (attendu / surprise / belle perf) via categorizeWinProb.
-	SkillExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// SkillTierLabel : libellé du palier ranked/LUSR (ex. "Or III", "Diamant V"),
 	// construit comme l'Explorer (analysis.BuildSkillTierLabel). Nil si non rankée /
 	// placement. La colonne "Rang" du tableau affiche ça (pas la valeur brute).
@@ -104,6 +100,11 @@ type SessionDetailMatchRow struct {
 	ScoreLabel string `json:"score_label,omitempty"`
 	// DominanceFlag : enrichissement narratif du match (canonical.DominanceFlag) ; 0 = aucun.
 	DominanceFlag int `json:"dominance_flag,omitempty"`
+	// LeadShare : la MAINMISE du match — part de la durée jouée passée EN TÊTE du score par l'équipe du
+	// joueur, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré (mode à peu de points, score non couvert,
+	// film absent) : jamais zéro. LeadChanges : retournements du match, absent avec LeadShare.
+	LeadShare   *float64 `json:"lead_share,omitempty"`
+	LeadChanges *int     `json:"lead_changes,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

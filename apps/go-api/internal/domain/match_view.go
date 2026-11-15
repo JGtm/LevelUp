@@ -178,6 +178,13 @@ type MatchViewHeader struct {
 	// C'est un OFFSET, pas une durée d'affichage : rien ne l'affiche, il sert à remettre
 	// deux horloges l'une sur l'autre (`msFilm = event_time_ms + t0_ms`).
 	T0Ms int64 `json:"t0_ms,omitempty"`
+	// LeadShare : la MAINMISE du match pour l'équipe du joueur de la page — part de la durée jouée
+	// passée EN TÊTE du score, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré (mode à peu de points, score
+	// non couvert, film absent) : jamais zéro. Calculé de la courbe de score du rejeu
+	// (analysis/leadshare), lu de match_lead_share_latest.
+	LeadShare *float64 `json:"lead_share,omitempty"`
+	// LeadChanges : retournements du match (changements de meneur). Absent avec LeadShare.
+	LeadChanges *int `json:"lead_changes,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -246,9 +253,6 @@ type MatchExpectedStats struct {
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
-	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur (LUSR v2,
-	// ∈ [0,1]). Alimente la card « Résultat attendu ». Nil si pré-v2 / non disponible.
-	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// LocallyEstimated : true quand expected_kills/deaths ne viennent PAS de l'API
 	// skill (absente, ex. Halo 5) mais d'un modèle local count∝durée (TrueSkill2-like)
 	// → le front affiche « Estimé localement ».
@@ -417,10 +421,7 @@ type MatchTugOfWarBin struct {
 
 // MatchImpactBadge : badge d'impact calculé (premier sang, finisseur…).
 //
-// Deprecated: utiliser MatchViewImpactRole pour les nouveaux consommateurs
-// (8 rôles narratifs typés via narrative.IdentifyImpactRoles, Phase 1
-// méta-plan § 6.1.3). Conservé pour rétrocompat avec analysis.ComputeMatchImpactFull
-// (4 rôles bilatéral legacy).
+// Produit par analysis.ComputeMatchImpactFull (quatre rôles, périmètre allié).
 type MatchImpactBadge struct {
 	Key        string `json:"key"`
 	Label      string `json:"label"`
@@ -431,21 +432,6 @@ type MatchImpactBadge struct {
 	// stat-based (top_killer, silent_hero, false_brother) qui n'ont pas de
 	// notion de temps.
 	TimeMS *int64 `json:"time_ms,omitempty"`
-}
-
-// MatchViewImpactRole : rôle narratif attribué via narrative.IdentifyImpactRoles
-// (8 rôles : first_blood, clutch_finisher, last_casualty, last_group_kill,
-// first_group_death, silent_hero, false_brother, top_killer).
-//
-// Mirror frontend du narrative.RoleAssignment Go. Rendu via le wrapper
-// `<NarrativeBadge>` (Phase 0 méta-plan § 5.4) avec couleur résolue côté
-// front via tokenCssVar(ColorToken).
-type MatchViewImpactRole struct {
-	XUID       string `json:"xuid"`
-	RoleKey    string `json:"role_key"`
-	LabelKey   string `json:"label_key"`
-	ColorToken string `json:"color_token"`
-	Inverted   bool   `json:"inverted,omitempty"`
 }
 
 // MatchKDTimelinePoint : point K/D sur la timeline du match.
@@ -482,12 +468,6 @@ type MatchCombatTab struct {
 	// porte pas l'assistance (ou qu'il n'y a pas de film) : l'UI ne rend alors rien, cf.
 	// domain.MatchAssistPairs.
 	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
-
-	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
-	// fondations narrative). 8 rôles narratifs typés via
-	// narrative.IdentifyImpactRoles, en parallèle des 4 ImpactBadges
-	// legacy. Vide si events ou scoreboard absents.
-	ImpactRoles []MatchViewImpactRole `json:"impact_roles,omitempty"`
 
 	// Cadence (Phase 1 méta-plan § 6.1.3). Cadence intra-match : kills
 	// par phase de 60s, 1 série par xuid du scoreboard.

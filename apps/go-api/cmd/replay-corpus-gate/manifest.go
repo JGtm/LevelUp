@@ -8,6 +8,7 @@ package main
 // meme est une decision produit figee dans la donnee, pas dans le code.
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -22,6 +23,8 @@ type Manifest struct {
 		SchemaVersion int    `toml:"schema_version"`
 	} `toml:"meta"`
 	Temoins []Temoin `toml:"temoin"`
+	// Decisions : les FAUX du banc que l'utilisateur a acceptés (decisions.go).
+	Decisions []Decision `toml:"decision"`
 }
 
 // Temoin est UNE entree du corpus : un match choisi pour la famille de mode qu'il porte.
@@ -41,7 +44,9 @@ func LoadManifest(path string) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("manifeste illisible (%s) : %w", path, err)
 	}
 	var m Manifest
-	if err := toml.Unmarshal(raw, &m); err != nil {
+	// STRICT : une clé mal orthographiée (`temoin` pour `temoins` dans une décision) serait sinon
+	// ignorée, et la décision vaudrait pour tous les témoins.
+	if err := toml.NewDecoder(bytes.NewReader(raw)).DisallowUnknownFields().Decode(&m); err != nil {
 		return Manifest{}, fmt.Errorf("manifeste invalide (%s) : %w", path, err)
 	}
 	if m.Meta.TitleSlug == "" {
@@ -50,12 +55,19 @@ func LoadManifest(path string) (Manifest, error) {
 	if len(m.Temoins) == 0 {
 		return Manifest{}, fmt.Errorf("manifeste %s : aucun [[temoin]]", path)
 	}
+	connus := make(map[string]bool, len(m.Temoins))
 	for i, t := range m.Temoins {
 		if t.ID == "" {
 			return Manifest{}, fmt.Errorf("manifeste %s : temoin #%d sans id", path, i)
 		}
 		if t.Famille == "" {
 			return Manifest{}, fmt.Errorf("manifeste %s : temoin %s sans famille", path, t.ID)
+		}
+		connus[t.ID] = true
+	}
+	for i, d := range m.Decisions {
+		if err := d.valider(i, connus); err != nil {
+			return Manifest{}, fmt.Errorf("manifeste %s : %w", path, err)
 		}
 	}
 	return m, nil

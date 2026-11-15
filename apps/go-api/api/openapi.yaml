@@ -105,7 +105,7 @@ paths:
         (counts) post-exécution pour vérifier que les tables se peuplent.
       operationId: backfillProgression
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -200,7 +200,7 @@ paths:
         matured/placement) ou s'il faut lancer un backfill.
       operationId: getDiagCSRCoverage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -237,7 +237,7 @@ paths:
         (dénominateur nul).
       operationId: getDiagPrestigeTelemetry
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -272,7 +272,7 @@ paths:
         n'est pas câblé correctement.
       operationId: getDiagProgression
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -1618,6 +1618,35 @@ paths:
       summary: Modifie le rôle d'un utilisateur (admin/user)
       tags:
         - admin
+  /assets/{title_id}/kill-sources:
+    get:
+      operationId: listKillSourceIcons
+      parameters:
+        - in: path
+          name: title_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/KillSourceIconEntry'
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les pictogrammes d'arme du titre par weapon_key (noms dans la langue de la requete)
+      tags:
+        - assets
   /assets/{title_id}/maps:
     get:
       operationId: listMapsMetadata
@@ -3178,7 +3207,7 @@ paths:
     get:
       operationId: getCommendationTotals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3314,7 +3343,7 @@ paths:
     post:
       operationId: filtersMatchIDs
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3362,7 +3391,7 @@ paths:
         - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
       operationId: resolveFilters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3460,7 +3489,7 @@ paths:
         - Les blocs partiels sont autorisés si le contrat principal est servable
       operationId: getMatchView
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3576,7 +3605,7 @@ paths:
         Un match exclu est ignoré partout dans l'app (stats, graphes, historique, export).
       operationId: setMatchExclusion
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3762,6 +3791,9 @@ paths:
                 $ref: '#/components/schemas/ReplayDocument'
           description: OK
           headers:
+            X-Replay-Cadence-Stale:
+              schema:
+                type: boolean
             X-Replay-Latest-Schema-Version:
               schema:
                 format: int64
@@ -3824,11 +3856,24 @@ paths:
           required: true
           schema:
             type: string
+        - description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          in: query
+          name: variante
+          required: false
+          schema:
+            enum:
+              - plan
+            type: string
       responses:
         "200":
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        "400":
+          description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour la carte de ce match
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
       summary: Sert l'image du fond de carte du rejeu 2D
       tags:
         - match-view
@@ -4057,7 +4102,7 @@ paths:
     patch:
       operationId: patchMediaLike
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4592,7 +4637,7 @@ paths:
         titre courant ne supporte pas cette feature.
       operationId: getAchievementsPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4630,7 +4675,7 @@ paths:
         - Le contrat est page-oriented, pas une projection brute du canonique Halo
       operationId: getCareerPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4674,7 +4719,7 @@ paths:
         + saison courante). LUSR n'est pas concerné (cumulatif, hors saison).
       operationId: getCareerCSRs
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4716,7 +4761,7 @@ paths:
       description: Retourne les adversaires et coéquipiers fréquents.
       operationId: getCareerEncounters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4766,7 +4811,7 @@ paths:
         `available_seasons`) qui respectent l'autre filtre actif (cascade-aware).
       operationId: getCareerHighlightMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4844,7 +4889,7 @@ paths:
         (avec garde div-par-zéro : 0 morts → ratio = float64(frags)).
       operationId: getCareerRivals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4884,7 +4929,7 @@ paths:
         badges narratifs ally_plus / tough_enemy / ordinal.
       operationId: getCareerTopEncounters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4918,7 +4963,7 @@ paths:
     post:
       operationId: postCitations
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4946,7 +4991,7 @@ paths:
     post:
       operationId: postCommendations
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4974,7 +5019,7 @@ paths:
     post:
       operationId: postComparePage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5011,7 +5056,7 @@ paths:
       description: Retourne la liste paginée et filtrée des matchs pour la vue Explorer.
       operationId: queryExplorerMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5054,7 +5099,7 @@ paths:
       description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
       operationId: queryExplorerPlayer
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5096,7 +5141,7 @@ paths:
     get:
       operationId: getHomePage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5170,7 +5215,7 @@ paths:
         match_id décroissant) et, avec `kind=favorites`, les favoris du joueur en entier.
       operationId: getHomeMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5285,7 +5330,7 @@ paths:
     get:
       operationId: getLeaderboardPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5340,7 +5385,7 @@ paths:
     get:
       operationId: getLeaderboardCatalog
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5400,7 +5445,7 @@ paths:
         - `match_url` est porté par chaque ligne, pas reconstruit côté frontend
       operationId: queryMatchHistory
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5438,7 +5483,7 @@ paths:
     post:
       operationId: postMedals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5466,7 +5511,7 @@ paths:
     post:
       operationId: postMediaLibrary
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5583,7 +5628,7 @@ paths:
     get:
       operationId: getSessions
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5630,7 +5675,7 @@ paths:
     post:
       operationId: postSessionDetailPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5671,7 +5716,7 @@ paths:
     get:
       operationId: getSquadPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5799,7 +5844,7 @@ paths:
     post:
       operationId: postStatsQuery
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5827,7 +5872,7 @@ paths:
     post:
       operationId: postSynthesisPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5859,7 +5904,7 @@ paths:
     post:
       operationId: postTeammatesPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5907,7 +5952,7 @@ paths:
         capability requise répond 503 `capability_not_supported`.
       operationId: getTeammatesSessions
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5957,7 +6002,7 @@ paths:
     post:
       operationId: postTimeseriesPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -6019,7 +6064,7 @@ paths:
         (top 3 axes d'amélioration). Analyse sur les `n` derniers matchs.
       operationId: getPlayerPatterns
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -6712,6 +6757,31 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/sync/status:
+    get:
+      operationId: getPlayerSyncStatus
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerSyncStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Statut de la synchronisation d'un joueur
+      tags:
+        - sync
   /players/{player_slug}/tactical/{map_id}/background:
     get:
       operationId: getTacticalMapBackground
@@ -6763,11 +6833,24 @@ paths:
           required: true
           schema:
             type: string
+        - description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          in: query
+          name: variante
+          required: false
+          schema:
+            enum:
+              - plan
+            type: string
       responses:
         "200":
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        "400":
+          description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour cette carte
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
       tags:
         - tactical
@@ -6974,7 +7057,7 @@ paths:
         pu être supprimés malgré le retrait du profil (verrou disque résiduel).
       operationId: purgeTitleData
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -7016,7 +7099,7 @@ paths:
         Refuse de mettre en pause le DERNIER titre actif du joueur (409).
       operationId: setTitleSync
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -7822,7 +7905,7 @@ paths:
 components:
   parameters:
     PlayerSlug:
-      description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       in: path
       name: player_slug
       required: true
@@ -10069,6 +10152,9 @@ components:
           type: boolean
         oauth_code_flow_enabled:
           type: boolean
+        own_halo_xuid:
+          description: xuid du compte connecté, celui que reauth_required concerne.
+          type: string
         pool_sharing:
           enum:
             - granted
@@ -10838,6 +10924,9 @@ components:
         can_offer_windows_download:
           description: Téléchargement de l'application Windows proposé.
           type: boolean
+        can_pick_folder:
+          description: Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau.
+          type: boolean
         can_pool_tokens:
           description: Mise en commun des jetons proposée à l'utilisateur.
           type: boolean
@@ -10952,6 +11041,7 @@ components:
         - can_keep_media_sources
         - can_reveal_files_in_explorer
         - can_trash_media_sources
+        - can_pick_folder
         - deployment
       type: object
     CareerCSRRank:
@@ -12397,9 +12487,6 @@ components:
     CompareRequest:
       properties:
         target_gamertag:
-          type: string
-        title_slug:
-          default: hi
           type: string
       required:
         - target_gamertag
@@ -14769,12 +14856,86 @@ components:
       type: object
     ExplorerMatchesQueryRequest:
       properties:
+        experience_types:
+          items:
+            type: string
+          nullable: true
+          type: array
         filters:
           $ref: '#/components/schemas/FilterContextInput'
-        match_filters:
-          $ref: '#/components/schemas/ExplorerMatchFilters'
+        include_briefing:
+          type: boolean
+        include_export_hint:
+          type: boolean
+        map_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_end_date:
+          format: date-time
+          nullable: true
+          type: string
+        match_id_search:
+          type: string
+        match_ids:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_start_date:
+          format: date-time
+          nullable: true
+          type: string
+        mode_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        outcome_filter:
+          items:
+            type: integer
+          nullable: true
+          type: array
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        perf_tiers:
+          items:
+            type: integer
+          nullable: true
+          type: array
+        playlists:
+          items:
+            type: string
+          nullable: true
+          type: array
+        ranked_context:
+          enum:
+            - ""
+            - ranked
+            - unranked
+          type: string
+        replay_scope:
+          enum:
+            - ""
+            - with
+            - without
+          type: string
+        skill_tiers:
+          items:
+            type: string
+          nullable: true
+          type: array
+        sort_dir:
+          type: string
+        sort_field:
+          type: string
+        squad_scope:
+          enum:
+            - ""
+            - solo
+            - squad
+          type: string
       type: object
     ExplorerMatchesQueryResponse:
       additionalProperties: false
@@ -14823,9 +14984,6 @@ components:
           format: int64
           type: integer
         enemy_mmr:
-          format: double
-          type: number
-        expected_win_prob:
           format: double
           type: number
         experience_type_label:
@@ -15007,10 +15165,9 @@ components:
       type: object
     ExplorerPlayerQueryRequest:
       properties:
-        filters:
-          allOf:
-            - $ref: '#/components/schemas/FilterContextInput'
-          nullable: true
+        page:
+          description: Page 1-indexée (défaut 1).
+          type: integer
         target_gamertag:
           type: string
         target_xuid:
@@ -17458,6 +17615,23 @@ components:
         - slides
         - framedAbsentBipeds
       type: object
+    KillSourceIconEntry:
+      additionalProperties: false
+      properties:
+        image_url:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        tinted:
+          type: boolean
+      required:
+        - key
+        - label
+        - image_url
+        - tinted
+      type: object
     Knockback:
       additionalProperties: false
       properties:
@@ -17827,6 +18001,8 @@ components:
     LayerCoverage:
       additionalProperties: false
       properties:
+        aim:
+          $ref: '#/components/schemas/ShotAimCoverage'
         ambiguous:
           format: int64
           type: integer
@@ -17861,6 +18037,28 @@ components:
         - ambiguous
         - outOfWindow
         - unpublished
+      type: object
+    LeadSharePeriodPoint:
+      additionalProperties: false
+      properties:
+        lead_share:
+          format: double
+          type: number
+        matches:
+          format: int64
+          type: integer
+        measured_matches:
+          format: int64
+          type: integer
+        month:
+          type: string
+        start_date:
+          type: string
+      required:
+        - month
+        - start_date
+        - measured_matches
+        - matches
       type: object
     LeaderboardCatalog:
       additionalProperties: false
@@ -18293,6 +18491,10 @@ components:
             - "null"
         module:
           type: string
+        plan:
+          $ref: '#/components/schemas/MapBackgroundPlan'
+        planImage:
+          type: string
         schemaVersion:
           format: int64
           type: integer
@@ -18339,6 +18541,36 @@ components:
         - widthPx
         - heightPx
         - convention
+      type: object
+    MapBackgroundPlan:
+      additionalProperties: false
+      properties:
+        edges:
+          items:
+            items:
+              format: double
+              type: number
+            maxItems: 4
+            minItems: 4
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        faces:
+          format: int64
+          type: integer
+        source:
+          type: string
+        vertices:
+          format: int64
+          type: integer
+      required:
+        - source
+        - vertices
+        - faces
+        - edges
       type: object
     MapBackgroundStats:
       additionalProperties: false
@@ -18422,6 +18654,12 @@ components:
     MapBreakdownRow:
       additionalProperties: false
       properties:
+        historical_lead_share:
+          format: double
+          type: number
+        historical_lead_share_matches:
+          format: int64
+          type: integer
         historical_match_count:
           format: int64
           type: integer
@@ -18431,6 +18669,12 @@ components:
         historical_win_rate:
           format: double
           type: number
+        lead_share:
+          format: double
+          type: number
+        lead_share_matches:
+          format: int64
+          type: integer
         map_ui:
           type: string
         match_count:
@@ -18724,12 +18968,6 @@ components:
         impact_badges:
           items:
             $ref: '#/components/schemas/MatchImpactBadge'
-          type:
-            - array
-            - "null"
-        impact_roles:
-          items:
-            $ref: '#/components/schemas/MatchViewImpactRole'
           type:
             - array
             - "null"
@@ -19041,9 +19279,6 @@ components:
         expected_kills:
           format: double
           type: number
-        expected_win_prob:
-          format: double
-          type: number
         has_hist_avg:
           type: boolean
         hist_avg_assists:
@@ -19258,13 +19493,90 @@ components:
             type: string
           nullable: true
           type: array
+        experience_types:
+          items:
+            type: string
+          nullable: true
+          type: array
         filters:
           $ref: '#/components/schemas/FilterContextInput'
         include_export_hint:
           default: false
           type: boolean
+        map_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_end_date:
+          format: date-time
+          nullable: true
+          type: string
+        match_id_search:
+          type: string
+        match_ids:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_start_date:
+          format: date-time
+          nullable: true
+          type: string
+        mode_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        outcome_filter:
+          items:
+            type: integer
+          nullable: true
+          type: array
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        perf_tiers:
+          items:
+            type: integer
+          nullable: true
+          type: array
+        picked_solo_session_labels:
+          items:
+            type: string
+          nullable: true
+          type: array
+        playlists:
+          items:
+            type: string
+          nullable: true
+          type: array
+        ranked_context:
+          enum:
+            - ""
+            - ranked
+            - unranked
+          type: string
+        replay_scope:
+          enum:
+            - ""
+            - with
+            - without
+          type: string
+        skill_tiers:
+          items:
+            type: string
+          nullable: true
+          type: array
+        sort_dir:
+          type: string
+        sort_field:
+          type: string
+        squad_scope:
+          enum:
+            - ""
+            - solo
+            - squad
+          type: string
       type: object
     MatchHistoryQuerySummary:
       additionalProperties: false
@@ -19368,9 +19680,6 @@ components:
           type:
             - number
             - "null"
-        expected_win_prob:
-          format: double
-          type: number
         experience_type_label:
           type: string
         has_replay:
@@ -20748,6 +21057,12 @@ components:
           type: boolean
         is_ranked:
           type: boolean
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
         map_id:
           type: string
         map_image_url:
@@ -20828,25 +21143,6 @@ components:
         - is_ranked
         - is_favorite
         - replay_available
-      type: object
-    MatchViewImpactRole:
-      additionalProperties: false
-      properties:
-        color_token:
-          type: string
-        inverted:
-          type: boolean
-        label_key:
-          type: string
-        role_key:
-          type: string
-        xuid:
-          type: string
-      required:
-        - xuid
-        - role_key
-        - label_key
-        - color_token
       type: object
     MatchViewRank:
       additionalProperties: false
@@ -23599,6 +23895,26 @@ components:
         - is_demo
         - sync_enabled
       type: object
+    PlayerSyncStatus:
+      additionalProperties: false
+      properties:
+        cooldown_retry_after_s:
+          description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
+          format: int64
+          type: integer
+        job:
+          $ref: '#/components/schemas/AsyncJobStatus'
+          description: Job de sync actif du joueur, sinon le plus récent encore conservé.
+        player_slug:
+          type: string
+        syncing:
+          description: Une synchronisation de ce joueur est en vol, quelle qu'en soit la source.
+          type: boolean
+      required:
+        - player_slug
+        - syncing
+        - cooldown_retry_after_s
+      type: object
     PlayerTokenHealth:
       additionalProperties: false
       properties:
@@ -25948,6 +26264,12 @@ components:
         last_skill_rating:
           format: double
           type: number
+        lead_share:
+          format: double
+          type: number
+        lead_share_matches:
+          format: int64
+          type: integer
         losses:
           format: int64
           type: integer
@@ -26168,9 +26490,6 @@ components:
         enemy_mmr:
           format: double
           type: number
-        expected_win_prob:
-          format: double
-          type: number
         is_ranked:
           type: boolean
         kda:
@@ -26183,6 +26502,12 @@ components:
           format: int64
           type: integer
         kills_expected:
+          format: double
+          type: number
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
           format: double
           type: number
         lobby_size:
@@ -26671,6 +26996,25 @@ components:
     SettingsResponse:
       description: Configuration de l'application (GET/PATCH /settings)
       properties:
+        archive_films:
+          description: 'Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée.'
+          type: boolean
+        auth_provider:
+          type: string
+        backup_dir:
+          description: Dossier de la sauvegarde périodique des données en Parquet (chemin absolu). Vide = désactivée. Application de bureau seulement.
+          type: string
+        backup_interval:
+          description: Délai entre deux sauvegardes, en heures entières (1h à 168h). Vide = 24h. Application de bureau seulement.
+          type: string
+        backup_keep:
+          description: Nombre de jeux de sauvegarde conservés dans le dossier choisi (1 à 60). Défaut 7. Application de bureau seulement.
+          type: integer
+        close_to_tray:
+          description: La croix de la fenêtre réduit l'application dans la zone de notification au lieu de la quitter ; le serveur continue. Application de bureau seulement.
+          type: boolean
+        coach_proactive_mode:
+          type: boolean
         discord_lang:
           enum:
             - fr
@@ -26680,11 +27024,21 @@ components:
           type: boolean
         discord_notify_backfill:
           type: boolean
+        discord_notify_friends:
+          type: boolean
         discord_notify_new_version:
           type: boolean
         discord_notify_sync:
           type: boolean
         discord_webhook_url_present:
+          type: boolean
+        film_archive_dir:
+          description: Dossier de l'archive des films (chemin absolu). Vide = emplacement par défaut. Appliqué tout de suite tant que l'archive est vide.
+          type: string
+        game_process_watch:
+          description: 'Détecter le jeu en cours : pendant une partie, cuisson des rejeux et tâches lourdes en attente ; synchronisation à la fermeture du jeu. Application de bureau.'
+          type: boolean
+        instance_locked:
           type: boolean
         lang:
           enum:
@@ -26702,10 +27056,58 @@ components:
           type: integer
         media_watcher_enabled:
           type: boolean
+        memory_limit_mb:
+          description: Plafond mémoire de chaque base DuckDB, en Mo (1024 à 32768). 0 = valeur par défaut du serveur. Application de bureau seulement.
+          type: integer
+        native_notifications:
+          description: Afficher les notifications de la cloche comme notifications Windows quand la fenêtre n'est pas au premier plan. Application de bureau seulement.
+          type: boolean
         normalize_mode_labels:
+          type: boolean
+        outcome_badge_sensitivity:
+          enum:
+            - relaxed
+            - standard
+            - strict
+          type: string
+        outcome_exclude_bot_matches_from_badges:
+          type: boolean
+        outcome_exclude_bot_matches_from_records:
           type: boolean
         refresh_clears_caches:
           type: boolean
+        rendement_exclude_assists:
+          type: boolean
+        replay_build_location:
+          description: 'Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l''instance.'
+          enum:
+            - ""
+            - local
+            - worker
+            - "off"
+          type: string
+        replay_retention_months:
+          description: Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité.
+          type: integer
+        replay_sound_distance_percent:
+          description: Effet de distance des sons d'armes du rejeu 2D (0-100 %). 0 = son pur.
+          type: integer
+        replay_sound_variation_percent:
+          description: Variation des sons d'armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles.
+          type: integer
+        scheduled_refresh:
+          description: Poser une tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. Application de bureau seulement.
+          type: boolean
+        session_gap_minutes:
+          type: integer
+        session_split_on_ranked_change:
+          type: boolean
+        session_team_change_mode:
+          enum:
+            - ignore
+            - group
+            - friends
+          type: string
         show_progression:
           description: Affichage du système Objectifs/Prestige (section Accueil + nav L1).
           type: boolean
@@ -26733,6 +27135,9 @@ components:
           type: boolean
         spnkr_refresh_with_backfill:
           type: boolean
+        start_with_windows:
+          description: Lancer l'application, réduite dans la zone de notification, à l'ouverture de la session Windows. Application de bureau seulement.
+          type: boolean
         user_timezone:
           type: string
         watcher_presence_enabled:
@@ -26742,13 +27147,70 @@ components:
             type: string
           type: array
       required:
+        - archive_films
+        - film_archive_dir
+        - game_process_watch
+        - native_notifications
+        - close_to_tray
+        - start_with_windows
+        - scheduled_refresh
+        - backup_dir
+        - backup_interval
+        - backup_keep
+        - memory_limit_mb
         - lang
+        - discord_lang
         - user_timezone
+        - normalize_mode_labels
+        - show_records
+        - refresh_clears_caches
+        - media_captures_base_dir
+        - media_delete_source_after_transcode
+        - media_tolerance_minutes
+        - media_watcher_enabled
+        - media_watcher_debounce_seconds
+        - discord_notifications_enabled
+        - discord_webhook_url_present
+        - discord_notify_sync
+        - discord_notify_backfill
+        - discord_notify_new_version
+        - discord_notify_friends
+        - spnkr_auto_sync_enabled
+        - spnkr_auto_sync_interval_hours
+        - spnkr_auto_sync_interval_minutes
+        - watcher_presence_enabled
+        - watcher_subscribed_players
+        - spnkr_refresh_with_backfill
+        - spnkr_refresh_backfill_medals
+        - spnkr_refresh_backfill_skill
+        - spnkr_refresh_backfill_aliases
+        - spnkr_refresh_backfill_personal_scores
+        - spnkr_refresh_backfill_performance_scores
+        - spnkr_refresh_backfill_lusr
+        - spnkr_refresh_backfill_events
+        - session_gap_minutes
+        - session_split_on_ranked_change
+        - session_team_change_mode
+        - replay_retention_months
+        - replay_build_location
+        - outcome_exclude_bot_matches_from_badges
+        - outcome_exclude_bot_matches_from_records
+        - outcome_badge_sensitivity
+        - rendement_exclude_assists
+        - show_progression
+        - coach_proactive_mode
+        - auth_provider
+        - instance_locked
+        - replay_sound_variation_percent
+        - replay_sound_distance_percent
       type: object
     Shot:
       additionalProperties: false
       properties:
         h:
+          format: float
+          type: number
+        p:
           format: float
           type: number
         slot:
@@ -26775,6 +27237,27 @@ components:
         - slot
         - x
         - "y"
+      type: object
+    ShotAimCoverage:
+      additionalProperties: false
+      properties:
+        none:
+          format: int64
+          type: integer
+        record:
+          format: int64
+          type: integer
+        sameTick:
+          format: int64
+          type: integer
+        track:
+          format: int64
+          type: integer
+      required:
+        - track
+        - sameTick
+        - record
+        - none
       type: object
     SkillRatingSnapshot:
       additionalProperties: false
@@ -26819,11 +27302,6 @@ components:
             - number
             - "null"
         Delta:
-          format: double
-          type:
-            - number
-            - "null"
-        ExpectedWinProb:
           format: double
           type:
             - number
@@ -26873,7 +27351,6 @@ components:
         - MeasurementRemaining
         - KillsExpected
         - DeathsExpected
-        - ExpectedWinProb
       type: object
     SkillTrendPoint:
       additionalProperties: false
@@ -27266,11 +27743,6 @@ components:
         performance_timeseries:
           items:
             $ref: '#/components/schemas/ChartSeriesChartPoint2D'
-          type:
-            - array
-            - "null"
-        radar:
-          items: {}
           type:
             - array
             - "null"
@@ -28216,6 +28688,31 @@ components:
         - players
         - bars
       type: object
+    SquadLeadSharePoint:
+      additionalProperties: false
+      properties:
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
+        map_name:
+          type: string
+        match_id:
+          type: string
+        outcome:
+          format: int64
+          type: integer
+        session_label:
+          type: string
+        start_time:
+          type: string
+      required:
+        - match_id
+        - start_time
+        - outcome
+      type: object
     SquadMapHeatmap:
       additionalProperties: false
       properties:
@@ -28282,9 +28779,6 @@ components:
           format: int64
           type: integer
         enemy_mmr_avg:
-          format: double
-          type: number
-        expected_win_prob:
           format: double
           type: number
         gameplay_duration_seconds:
@@ -28514,6 +29008,12 @@ components:
       additionalProperties: false
       properties:
         assists_per_minute:
+          format: double
+          type: number
+        damage_dealt_per_minute:
+          format: double
+          type: number
+        damage_taken_per_minute:
           format: double
           type: number
         deaths_per_minute:
@@ -30018,6 +30518,9 @@ components:
         spawn:
           description: 'Identifiant d''une grappe de reapparition : restreint l''univers aux matchs dont MA premiere vie en part.'
           type: string
+        vies:
+          description: 'Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe).'
+          type: string
       required:
         - cellule
       type: object
@@ -30370,6 +30873,9 @@ components:
           type: string
         spawn:
           description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
+          type: string
+        vies:
+          description: 'Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe).'
           type: string
       type: object
     TacticalSequence:
@@ -30753,6 +31259,12 @@ components:
           $ref: '#/components/schemas/SquadIntensityProfile'
         latest_composition_session:
           type: string
+        lead_share_series:
+          items:
+            $ref: '#/components/schemas/SquadLeadSharePoint'
+          type:
+            - array
+            - "null"
         main_player:
           type: string
         map_breakdown:
@@ -31270,6 +31782,12 @@ components:
         kills_expected:
           format: double
           type: number
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
         map_label:
           type: string
         map_name:
@@ -31391,6 +31909,12 @@ components:
           $ref: '#/components/schemas/TimeseriesIntensityTab'
         kill_types:
           $ref: '#/components/schemas/TimeseriesKillTypes'
+        lead_share_by_month:
+          items:
+            $ref: '#/components/schemas/LeadSharePeriodPoint'
+          type:
+            - array
+            - "null"
         lives_near_teammate:
           $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         map_breakdown:
@@ -32450,6 +32974,8 @@ components:
         deathsUnmatched:
           format: int64
           type: integer
+        destructions:
+          $ref: '#/components/schemas/VehicleDestructionCoverage'
         echantillonsAuTraversDUnSilence:
           format: int64
           type: integer
@@ -32679,6 +33205,108 @@ components:
         - gaps
         - missing
       type: object
+    VehicleDestroyer:
+      additionalProperties: false
+      properties:
+        bot:
+          type: boolean
+        i:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - i
+      type: object
+    VehicleDestruction:
+      additionalProperties: false
+      properties:
+        by:
+          $ref: '#/components/schemas/VehicleDestroyer'
+        cause:
+          format: int32
+          minimum: 0
+          type: integer
+        causeKey:
+          type: string
+        killed:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        occupant:
+          type: string
+      type: object
+    VehicleDestructionCoverage:
+      additionalProperties: false
+      properties:
+        byBot:
+          format: int64
+          type: integer
+        byHuman:
+          format: int64
+          type: integer
+        cause:
+          format: int64
+          type: integer
+        causeAbsent:
+          format: int64
+          type: integer
+        causeUnresolved:
+          format: int64
+          type: integer
+        destroyed:
+          format: int64
+          type: integer
+        killed:
+          format: int64
+          type: integer
+        killedCleanup:
+          format: int64
+          type: integer
+        killedNoIdentity:
+          format: int64
+          type: integer
+        killedOccupants:
+          format: int64
+          type: integer
+        killerAbsent:
+          format: int64
+          type: integer
+        killerAmbiguous:
+          format: int64
+          type: integer
+        killerOutOfRoster:
+          format: int64
+          type: integer
+        occupant:
+          format: int64
+          type: integer
+        pieces:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+      required:
+        - destroyed
+        - pieces
+        - published
+        - byHuman
+        - byBot
+        - killerAbsent
+        - killerOutOfRoster
+        - killerAmbiguous
+        - cause
+        - causeUnresolved
+        - causeAbsent
+        - occupant
+        - killed
+        - killedOccupants
+        - killedNoIdentity
+        - killedCleanup
+      type: object
     VehicleLabel:
       additionalProperties: false
       properties:
@@ -32841,6 +33469,8 @@ components:
           $ref: '#/components/schemas/VehicleLifeRef'
         chassis:
           type: string
+        destruction:
+          $ref: '#/components/schemas/VehicleDestruction'
         end:
           type: string
         family:

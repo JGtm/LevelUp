@@ -40,6 +40,22 @@
  * Le bridage vit chez celui qui peint (`useReplayClock` : 150 ms, avec le rattrapage sans
  * délai de la dernière image) — le magasin, lui, ne décide pas du rythme.
  *
+ * # LE CANAL DE SAUT : LA PAGE DEMANDE, LE CANVAS EXÉCUTE (plan « maquettes du rejeu », D-5)
+ *
+ * « Le canvas écrit, tout le monde lit » reste vrai pour le TEMPS : la page ne l'écrit jamais.
+ * Quand elle veut déplacer la lecture (un clic sur une ligne de frag du fil), elle DEMANDE un saut
+ * (`requestSeek`) et le lecteur du canvas (`useReplayPlayback`) l'exécute — pause, puis pose sur
+ * l'image —, par le même `seekTo` borné à la fenêtre de gameplay que la frise. Une demande faite
+ * avant que le canvas ne soit monté l'attend (la dernière seule), et lui est remise une fois.
+ *
+ * # LA MISE EN VALEUR D'UNE ÉLIMINATION : UN ÉTAT DE PAGE, TENU ICI PARCE QUE DEUX LECTEURS LA
+ * # PARTAGENT
+ *
+ * Le fil la POSE (clic) et affiche la ligne « sélectionnée » ; le canvas la LIT pour peindre les
+ * équerres et les étiquettes, et l'EFFACE quand la lecture repart ou qu'on déplace la frise. Les
+ * règles (jeton par clic, remplacement, effacement) sont pures — `killFocusLogic`. Elle n'est
+ * jamais mémorisée : le magasin naît avec la page.
+ *
  * # PAS DE SINGLETON DE MODULE
  *
  * Le magasin naît avec la page (`usePlaybackStore`) et meurt avec elle. Un singleton de module
@@ -47,6 +63,13 @@
  * (un test, un rendu concurrent) indiscernables.
  */
 import { useState, useSyncExternalStore } from 'react'
+
+import {
+  NO_KILL_FOCUS,
+  reduceKillFocus,
+  type KillFocusRequest,
+  type KillFocusTarget,
+} from './killFocusLogic'
 
 export interface PlaybackStore {
   /**
@@ -61,6 +84,24 @@ export interface PlaybackStore {
   publish(frame: number): void
   /** Abonnement React (`useSyncExternalStore`) : rend le désabonnement. */
   subscribe(listener: () => void): () => void
+  /**
+   * DEMANDE de mettre la lecture en pause sur cette image (cf. « le canal de saut » en tête). La
+   * page l'appelle ; ce magasin ne déplace rien lui-même, et `published()` ne bouge pas.
+   */
+  requestSeek(frame: number): void
+  /**
+   * L'EXÉCUTEUR du canal de saut : le lecteur du canvas, et lui seul. Une demande en attente lui
+   * est remise à l'inscription. Rend le désabonnement.
+   */
+  onSeekRequest(executer: (frame: number) => void): () => void
+  /** La mise en valeur courante, `null` hors clic — un instantané stable entre deux changements. */
+  focus(): KillFocusRequest | null
+  /** Un CLIC sur une ligne de frag : pose la mise en valeur (jeton neuf, même sur la même ligne). */
+  focusKill(target: KillFocusTarget): void
+  /** Efface la mise en valeur : la Lecture et tout saut manuel. Sans effet si elle est déjà vide. */
+  clearFocus(): void
+  /** Abonnement à la mise en valeur (`useSyncExternalStore`) : rend le désabonnement. */
+  subscribeFocus(listener: () => void): () => void
 }
 
 /**
@@ -72,6 +113,16 @@ export interface PlaybackStore {
 export function createPlaybackStore(): PlaybackStore {
   let frame = 0
   const listeners = new Set<() => void>()
+  const executers = new Set<(frame: number) => void>()
+  // La demande faite quand personne n'exécutait encore : remise une fois au premier exécuteur.
+  let pendingSeek: number | null = null
+  let focusState = NO_KILL_FOCUS
+  const focusListeners = new Set<() => void>()
+  const setFocus = (next: typeof focusState) => {
+    if (next === focusState) return
+    focusState = next
+    for (const l of focusListeners) l()
+  }
   return {
     published: () => frame,
     publish(next) {
@@ -82,6 +133,29 @@ export function createPlaybackStore(): PlaybackStore {
     subscribe(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
+    },
+    requestSeek(target) {
+      if (executers.size === 0) {
+        pendingSeek = target
+        return
+      }
+      for (const run of executers) run(target)
+    },
+    onSeekRequest(executer) {
+      executers.add(executer)
+      if (pendingSeek !== null) {
+        const waiting = pendingSeek
+        pendingSeek = null
+        executer(waiting)
+      }
+      return () => executers.delete(executer)
+    },
+    focus: () => focusState.current,
+    focusKill: (target) => setFocus(reduceKillFocus(focusState, { type: 'select', target })),
+    clearFocus: () => setFocus(reduceKillFocus(focusState, { type: 'clear' })),
+    subscribeFocus(listener) {
+      focusListeners.add(listener)
+      return () => focusListeners.delete(listener)
     },
   }
 }
@@ -108,4 +182,20 @@ export function usePlaybackStore(): PlaybackStore {
  */
 export function usePlaybackFrame(store: PlaybackStore): number {
   return useSyncExternalStore(store.subscribe, store.published, store.published)
+}
+
+const NEVER_SUBSCRIBE = () => () => {}
+const NO_FOCUS = (): KillFocusRequest | null => null
+
+/**
+ * usePlaybackFocus abonne un composant à la mise en valeur courante : la ligne « sélectionnée »
+ * du fil, et le canvas qui la peint. Sans magasin (un fil monté hors de la page de rejeu), il ne
+ * lit rien et ne s'abonne à rien.
+ */
+export function usePlaybackFocus(store: PlaybackStore | undefined): KillFocusRequest | null {
+  return useSyncExternalStore(
+    store?.subscribeFocus ?? NEVER_SUBSCRIBE,
+    store?.focus ?? NO_FOCUS,
+    store?.focus ?? NO_FOCUS,
+  )
 }

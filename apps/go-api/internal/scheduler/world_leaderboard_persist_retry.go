@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 )
 
 const (
@@ -52,24 +53,24 @@ var worldLeaderboardSleep = func(ctx context.Context, d time.Duration) error {
 
 // acquireWriterRetry acquiert le writer shared sous l'étiquette label, en retentant
 // UNIQUEMENT une vidange expirée (cf. en-tête). Sert persist ET persistStats.
-func (c *WorldLeaderboardCron) acquireWriterRetry(ctx context.Context, label string) (*sharedprovider.WriterHandle, error) {
+func (c *WorldLeaderboardCron) acquireWriterRetry(ctx context.Context, label string) (port.WorldLeaderboardWriter, func(), error) {
 	writerCtx := ctxkeys.WithDBWriterLabel(ctx, label)
 	for attempt := 1; ; attempt++ {
-		wh, err := c.provider.AcquireWriter(writerCtx)
+		w, release, err := c.store.AcquireWriter(writerCtx)
 		if err == nil {
-			return wh, nil
+			return w, release, nil
 		}
 		if !errors.Is(err, sharedprovider.ErrDrainTimeout) {
-			return nil, err
+			return nil, nil, err
 		}
 		if attempt == worldLeaderboardPersistAttempts {
-			return nil, fmt.Errorf("writer %s : %d tentatives épuisées : %w", label, attempt, err)
+			return nil, nil, fmt.Errorf("writer %s : %d tentatives épuisées : %w", label, attempt, err)
 		}
 		slog.WarnContext(ctx, "world_leaderboard_cron: vidange des lecteurs expirée — nouvelle tentative d'écriture",
 			"module", logging.ModuleLeaderboard, "label", label, "attempt", attempt,
 			"wait", worldLeaderboardPersistRetryDelay, "err", err)
 		if serr := worldLeaderboardSleep(ctx, worldLeaderboardPersistRetryDelay); serr != nil {
-			return nil, fmt.Errorf("writer %s : attente avant la tentative %d interrompue (%w) : %w",
+			return nil, nil, fmt.Errorf("writer %s : attente avant la tentative %d interrompue (%w) : %w",
 				label, attempt+1, serr, err)
 		}
 	}

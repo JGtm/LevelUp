@@ -107,7 +107,7 @@ export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1Mob
 
       {open && (
         <div
-          className="fixed inset-0 z-[59] bg-black/40"
+          className="fixed inset-0 z-[59] bg-scrim/40"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
@@ -145,7 +145,7 @@ export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1Mob
 
           <div className="flex items-center justify-between px-5 py-2">
             <span className="text-sm text-sidebar-foreground/80">{t('common.shell.nav_theme')}</span>
-            <ThemeToggle variant="menu" />
+            <ThemeToggle />
           </div>
 
           <RowLabel>{t('common.shell.nav_settings')}</RowLabel>

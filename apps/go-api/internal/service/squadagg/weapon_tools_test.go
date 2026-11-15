@@ -14,7 +14,7 @@ import (
 // service/teammates/teammates_squad_weapon_tools_test.go.
 
 const (
-	toolJ, toolC   = "JGtm", "Chocoboflor"
+	toolJ, toolC   = "JGtm", "Joueur90001"
 	toolXJ, toolXC = "x_jgtm", "x_choco"
 	keyToolFrag    = "hinf_" + "frag_grenade"
 	// Clés Halo 5 nommées plutôt qu'écrites en clair dans les littéraux de ligne : le détecteur

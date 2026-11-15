@@ -35,9 +35,9 @@ const DEFAULT_PER_SIDE_PX = 150
 const CENTER_GAP_PX = 5
 
 export interface CombatYieldBarProps {
-  /** offensive_conversion = 225 × (kills + assists/3) / damage_dealt */
+  /** offensive_conversion = 229 × (kills + assists/3) / damage_dealt */
   offensiveConversion?: number | null
-  /** defensive_resistance = damage_taken / (225 × deaths) */
+  /** defensive_resistance = damage_taken / (229 × deaths) */
   defensiveResistance?: number | null
   /** Dégâts moyens par frag-équivalent (kills + assists/3) — pour tooltip */
   damagePerKill?: number | null

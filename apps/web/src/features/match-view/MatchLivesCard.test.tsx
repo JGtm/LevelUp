@@ -22,13 +22,13 @@ describe('MatchLivesCard', () => {
     afficher()
     const jgtm = screen.getByText('JGtm')
     expect(jgtm.className).toContain('font-semibold')
-    expect(screen.getByText('XL JACOB').className).not.toContain('font-semibold')
+    expect(screen.getByText('Joueur9c').className).not.toContain('font-semibold')
     expect((jgtm.previousElementSibling as HTMLElement).style.backgroundColor).toBe(`var(--ink-${XUID.jgtm})`)
   })
 
   it('un joueur sans vie rangée n’a pas de ligne', () => {
     afficher(buildMatchLives({ players: STARBOARD_LIVES.players!.filter((p) => p.xuid !== XUID.madina) }, STARBOARD.players!)!)
-    expect(screen.queryByText('Madina97294')).toBeNull()
+    expect(screen.queryByText('Joueur90002')).toBeNull()
   })
 
   it('l’aide dit ce que la carte range, après la portée « une ligne par joueur », sans compte d’écartées', () => {

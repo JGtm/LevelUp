@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/port"
 )
 
 type mockServedReader struct {
@@ -30,21 +30,21 @@ func (m *mockServedReader) LoadLastFetchStatus(context.Context, string) (string,
 }
 
 type mockAppearanceFetcher struct {
-	inputs    *haloadapter.AppearanceInputs
+	inputs    *domain.AppearanceInputs
 	inputsErr error
-	nameplate haloadapter.AppearanceDiagnosis
-	image     haloadapter.AppearanceDiagnosis
+	nameplate domain.AppearanceDiagnosis
+	image     domain.AppearanceDiagnosis
 }
 
-func (m *mockAppearanceFetcher) FetchAppearanceInputs(context.Context, string) (*haloadapter.AppearanceInputs, error) {
+func (m *mockAppearanceFetcher) FetchAppearanceInputs(context.Context, string) (*domain.AppearanceInputs, error) {
 	return m.inputs, m.inputsErr
 }
 
-func (m *mockAppearanceFetcher) DiagnoseNameplate(context.Context, string, int64) haloadapter.AppearanceDiagnosis {
+func (m *mockAppearanceFetcher) DiagnoseNameplate(context.Context, string, int64) domain.AppearanceDiagnosis {
 	return m.nameplate
 }
 
-func (m *mockAppearanceFetcher) DiagnoseCustomizationImage(context.Context, string) haloadapter.AppearanceDiagnosis {
+func (m *mockAppearanceFetcher) DiagnoseCustomizationImage(context.Context, string) domain.AppearanceDiagnosis {
 	return m.image
 }
 
@@ -92,9 +92,9 @@ func findComponent(t *testing.T, comps []domain.AppearanceComponentDiagnosis, na
 // valeurs servies et last_fetch_status transmis.
 func TestDiagnose_Nominal_OK(t *testing.T) {
 	fetcher := &mockAppearanceFetcher{
-		inputs:    &haloadapter.AppearanceInputs{ServiceTag: "JG42", EmblemPath: "Inventory/Spartan/Emblems/x.json"},
-		nameplate: haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromLive, Verdict: haloadapter.VerdictOK, Detail: haloadapter.DetailMappingHit},
-		image:     haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromLive, Verdict: haloadapter.VerdictOK, Detail: haloadapter.DetailImageResolved},
+		inputs:    &domain.AppearanceInputs{ServiceTag: "JG42", EmblemPath: "Inventory/Spartan/Emblems/x.json"},
+		nameplate: domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromLive, Verdict: domain.AppearanceVerdictOK, Detail: domain.AppearanceDetailMappingHit},
+		image:     domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromLive, Verdict: domain.AppearanceVerdictOK, Detail: domain.AppearanceDetailImageResolved},
 	}
 	svc := NewAppearanceDiagService(baseDeps(t, fetcher))
 	resp, err := svc.Diagnose(context.Background(), "JGtm", "halo_infinite")
@@ -124,9 +124,9 @@ func TestDiagnose_Nominal_OK(t *testing.T) {
 // bannière (cas emblème sans nameplate upstream — JGtm 3806589).
 func TestDiagnose_UpstreamMissing(t *testing.T) {
 	fetcher := &mockAppearanceFetcher{
-		inputs:    &haloadapter.AppearanceInputs{ServiceTag: "JG42", EmblemPath: "Inventory/Spartan/Emblems/3806589-SpartanEmblem.json"},
-		nameplate: haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromCarry, Verdict: haloadapter.VerdictUpstreamMissing, Detail: haloadapter.DetailNoPositiveCfg},
-		image:     haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromLive, Verdict: haloadapter.VerdictOK, Detail: haloadapter.DetailImageResolved},
+		inputs:    &domain.AppearanceInputs{ServiceTag: "JG42", EmblemPath: "Inventory/Spartan/Emblems/3806589-SpartanEmblem.json"},
+		nameplate: domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromCarry, Verdict: domain.AppearanceVerdictUpstreamMissing, Detail: domain.AppearanceDetailNoPositiveCfg},
+		image:     domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromLive, Verdict: domain.AppearanceVerdictOK, Detail: domain.AppearanceDetailImageResolved},
 	}
 	svc := NewAppearanceDiagService(baseDeps(t, fetcher))
 	resp, err := svc.Diagnose(context.Background(), "JGtm", "halo_infinite")
@@ -218,13 +218,13 @@ func TestDiagnose_NotSupported_Capability(t *testing.T) {
 	}
 }
 
-// TestDiagnose_ProfileNotFound : slug inconnu → ErrProfileNotFound (→ 404 côté handler).
+// TestDiagnose_ProfileNotFound : slug inconnu → port.ErrAppearanceProfileNotFound (→ 404 côté handler).
 func TestDiagnose_ProfileNotFound(t *testing.T) {
 	deps := baseDeps(t, nil)
 	svc := NewAppearanceDiagService(deps)
 	_, err := svc.Diagnose(context.Background(), "Inconnu", "halo_infinite")
-	if !errors.Is(err, ErrProfileNotFound) {
-		t.Fatalf("erreur = %v (attendu ErrProfileNotFound)", err)
+	if !errors.Is(err, port.ErrAppearanceProfileNotFound) {
+		t.Fatalf("erreur = %v (attendu port.ErrAppearanceProfileNotFound)", err)
 	}
 }
 
@@ -232,9 +232,9 @@ func TestDiagnose_ProfileNotFound(t *testing.T) {
 // valeurs servies vides, le diagnostic live continue.
 func TestDiagnose_ServedReaderError_Degraded(t *testing.T) {
 	fetcher := &mockAppearanceFetcher{
-		inputs:    &haloadapter.AppearanceInputs{ServiceTag: "JG42"},
-		nameplate: haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromLive, Verdict: haloadapter.VerdictOK},
-		image:     haloadapter.AppearanceDiagnosis{ServedFrom: haloadapter.ServedFromLive, Verdict: haloadapter.VerdictOK},
+		inputs:    &domain.AppearanceInputs{ServiceTag: "JG42"},
+		nameplate: domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromLive, Verdict: domain.AppearanceVerdictOK},
+		image:     domain.AppearanceDiagnosis{ServedFrom: domain.AppearanceServedFromLive, Verdict: domain.AppearanceVerdictOK},
 	}
 	deps := baseDeps(t, fetcher)
 	deps.ResolveServedReader = func(context.Context, string, string) (CareerServedReader, error) {

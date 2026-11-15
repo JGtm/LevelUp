@@ -2,7 +2,7 @@
 name = "levelup-desktop"
 # Meme numero que `version` de tauri.conf.json (A9) : c'est ce fichier-la qui fait foi, la
 # verification d'egalite avec le tag git est une etape de release.yml (lot L17).
-version = "8.1.3"
+version = "8.2.0"
 description = "Coquille Tauri de LevelUp : fenetre, mise a jour et installeur, aucune logique metier (ADR 0045 D-18)."
 authors = ["Guillaume Sitbon"]
 license = "AGPL-3.0-or-later"
@@ -50,6 +50,11 @@ tauri-plugin-autostart = "2"
 # Lecture de l'entree de demarrage (presence et approbation) : le plugin d'autostart ne les distingue pas.
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
+
+[dev-dependencies]
+# Runtime factice de tauri : `src/pick_folder_acl_tests.rs` interroge les permissions embarquees par build.rs
+# sans ouvrir de fenetre.
+tauri = { version = "2", features = ["test"] }
 
 [profile.release]
 # Binaire plus petit : la coquille ne calcule rien, elle attend.

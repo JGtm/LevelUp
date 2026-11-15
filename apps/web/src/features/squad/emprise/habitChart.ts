@@ -5,7 +5,7 @@
  * mêmes briques de graphe (axe en %, colonne de ce soir, infobulle) et même calcul du pied d'axe.
  * Toutes les couleurs arrivent résolues (jetons).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { CHART_BG, getTooltipBase } from '@/components/charts/_utils'
 import { footLabelStyle, layoutAxisFoot, lineHeightFor, type AxisFootSpec, type FootLabels } from '@/components/charts/axisFoot'
@@ -144,7 +144,7 @@ export function buildHabitOption(
   medians: Record<string, number | null>,
   c: HabitChartColors,
   t: HabitChartText,
-): EChartsCoreOption {
+): ChartOption {
   const tc = c.theme
   const foot = layoutAxisFoot(HABIT_FOOT)
   const categories = points.map((_, i) => String(i))

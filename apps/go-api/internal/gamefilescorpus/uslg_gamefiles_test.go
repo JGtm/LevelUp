@@ -23,7 +23,7 @@ import (
 
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // racineJeu rend l'installation du jeu, ou déclare le test absent si elle ou le module des

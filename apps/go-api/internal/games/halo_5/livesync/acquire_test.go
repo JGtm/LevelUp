@@ -54,7 +54,7 @@ func TestAcquireRunner_PinnedDead_FallsBackToPool(t *testing.T) {
 	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
 	p := &acqPool{pinnedErr: errors.New("ErrNoTokenForPlayer (RT mort)")}
 
-	r, runCtx, release, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "Chocoboflor", "xuid-choco")
+	r, runCtx, release, err := AcquireRunner(context.Background(), p, cfg, halo5.TitleSlug, "Joueur90001", "xuid-choco")
 	if err != nil {
 		t.Fatalf("AcquireRunner: fallback attendu, err: %v", err)
 	}

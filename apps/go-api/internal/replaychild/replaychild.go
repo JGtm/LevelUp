@@ -42,7 +42,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // Flag : le drapeau qui fait d'un processus l'enfant de cuisson. Il n'est pas destine a la main

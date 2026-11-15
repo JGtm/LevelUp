@@ -1,0 +1,66 @@
+variante=slayer  cartes retenues=45  reapparitions=43966
+points candidats par carte (moyenne) : 65.0 ; reapparitions hors candidats : 149
+
+hasard                                           top1   1.9 %   top3   5.6 %
+frequence seule (hors match teste)               top1   4.5 %   top3  12.8 %   rang moyen 25.8
+le plus loin de l'ennemi le plus proche          top1   9.6 %   top3  23.3 %   rang moyen 14.2
+le plus loin du barycentre ennemi                top1   6.4 %   top3  16.9 %   rang moyen 17.6
+le plus pres d'un coequipier                     top1   1.2 %   top3   5.1 %   rang moyen 24.1
+modele combine (validation croisee)              top1  11.0 %   top3  27.7 %   rang moyen 11.5
+
+a moins de 8 m du point reel : hasard 14.1 % | frequence top1 15.6 %, top3 38.4 % | modele top1 44.9 %, top3 62.5 %
+
+poids du modele (tout le jeu) :
+  ennemi le plus proche (/10 m)            +1.98
+  ennemis a moins de 20 m                  -0.65
+  coequipier le plus proche (/10 m)        -1.08
+  distance au lieu de la mort (/10 m)      +0.15
+  frequence (log)                          +0.45
+  distance au barycentre ennemi (/10 m)    -0.93
+
+par carte (top1 frequence -> top1 modele ; top3 frequence -> top3 modele ; candidats) :
+  Kaiketsu             n= 886  top1 13.7 -> 33.6   top3 39.2 -> 67.6   K=17
+  Solution             n= 809  top1 14.8 -> 31.6   top3 39.3 -> 65.5   K=19
+  Dredge               n=1097  top1 11.4 -> 26.3   top3 30.7 -> 56.2   K=35
+  Houseki              n= 972  top1  9.7 -> 19.5   top3 22.5 -> 47.6   K=29
+  Perilous             n= 711  top1 12.1 -> 23.8   top3 29.4 -> 53.4   K=33
+  Vagabond             n= 852  top1  2.9 -> 13.3   top3 12.6 -> 35.9   K=53
+  Chasm                n= 776  top1  3.1 -> 10.6   top3 12.8 -> 35.3   K=45
+  Solitude             n= 719  top1  2.0 -> 11.4   top3 11.0 -> 32.4   K=58
+  Sylvanus             n= 921  top1  6.4 -> 16.6   top3 23.3 -> 44.7   K=32
+  Nemesis              n=1030  top1  2.3 -> 12.6   top3 10.8 -> 31.0   K=51
+  Dynasty              n=1320  top1  4.4 -> 13.9   top3 12.3 -> 31.4   K=55
+  Kiken'na             n=1074  top1 14.0 -> 22.1   top3 28.7 -> 47.5   K=35
+  Prism                n= 755  top1  3.1 -> 10.9   top3  9.5 -> 27.9   K=40
+  Curfew               n=1174  top1  4.6 -> 12.9   top3 15.4 -> 33.8   K=52
+  Argyle               n=1114  top1  3.9 -> 13.8   top3 18.8 -> 35.9   K=35
+  Goliath              n=1034  top1  8.3 -> 15.4   top3 19.3 -> 36.2   K=52
+  Recharge             n=1009  top1  3.8 -> 10.7   top3 12.9 -> 29.5   K=58
+  Absolution           n=1220  top1  3.4 ->  8.2   top3  8.4 -> 24.9   K=63
+  Detachment           n=1321  top1  2.3 ->  8.3   top3 10.4 -> 26.1   K=59
+  Live Fire            n= 768  top1  5.6 ->  9.8   top3 13.4 -> 28.8   K=46
+  Starboard            n=1348  top1  5.1 -> 10.4   top3 10.6 -> 25.7   K=52
+  The Pit              n=1661  top1  2.2 ->  6.6   top3  5.4 -> 20.4   K=81
+  Cliffside            n=1002  top1  4.2 ->  8.9   top3 11.4 -> 26.2   K=91
+  Catalyst             n=1092  top1  3.9 ->  7.8   top3  9.9 -> 23.3   K=96
+  Salvation            n= 778  top1  4.0 -> 11.7   top3 18.9 -> 32.3   K=41
+  Illusion             n= 956  top1  3.6 ->  9.7   top3  6.5 -> 19.8   K=79
+  Cliffhanger          n=1126  top1  2.9 ->  7.1   top3  5.3 -> 17.8   K=86
+  Shogun               n= 678  top1  7.7 -> 11.7   top3 21.5 -> 33.8   K=41
+  Empyrean             n= 945  top1  1.3 ->  7.5   top3  6.7 -> 18.6   K=67
+  Takamanohara         n= 884  top1  2.4 ->  7.9   top3  9.3 -> 20.6   K=68
+  Elevation            n= 778  top1  3.3 ->  7.2   top3 10.7 -> 22.0   K=67
+  Origin               n=1117  top1  2.5 ->  4.7   top3  3.8 -> 15.0   K=101
+  Streets              n=1134  top1  1.9 ->  6.0   top3  7.5 -> 18.5   K=76
+  High Ground          n= 924  top1  2.7 ->  7.6   top3  7.4 -> 18.2   K=71
+  Domicile             n= 948  top1  4.2 ->  6.3   top3  7.4 -> 17.7   K=82
+  Shiro                n=1101  top1  1.9 ->  7.4   top3  8.7 -> 17.6   K=58
+  Bazaar               n=1114  top1  3.1 ->  6.3   top3  6.7 -> 15.5   K=97
+  Isolation            n= 748  top1  4.3 ->  8.3   top3 10.4 -> 18.9   K=64
+  Snowbound            n=1020  top1  2.3 ->  5.5   top3  6.2 -> 14.3   K=91
+  Behemoth             n= 859  top1  0.7 ->  4.1   top3  3.4 -> 11.2   K=133
+  Fortress             n= 786  top1  2.4 ->  5.1   top3  7.9 -> 15.3   K=87
+  Forbidden            n=1028  top1  0.4 ->  2.9   top3  1.1 ->  8.1   K=136
+  Aquarius             n= 773  top1  1.3 ->  3.1   top3  3.5 ->  9.1   K=91
+  Banished Narrows     n= 837  top1  3.5 ->  6.6   top3 13.1 -> 18.5   K=67
+  Smallhalla           n= 767  top1  2.6 ->  4.0   top3  7.4 -> 11.3   K=105

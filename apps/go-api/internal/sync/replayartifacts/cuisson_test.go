@@ -32,10 +32,11 @@ import (
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // poserArtefactCuisson ecrit un artefact au schema courant, avec ou sans compteurs de joueur.
@@ -47,18 +48,18 @@ func poserArtefactCuisson(t *testing.T, repoRoot, matchID string, joueurs int) s
 	}
 	// LES COUCHES SONT DECLAREES (lot 4.4.1) : `UpToDate` juge desormais AUSSI les revisions, et
 	// un artefact muet sur les siennes se lit « a redecoder ».
-	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID,
+	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID,
 		Tracks: []replay.Track{{Slot: 1, Team: -1}}, Layers: couchesDeTest()}
 	doc.ScoreTimeline = &replay.ScoreTimeline{}
 	for i := range joueurs {
 		doc.ScoreTimeline.Players = append(doc.ScoreTimeline.Players,
-			replay.PlayerScore{XUID: strconv.Itoa(2533274819954312 + i)})
+			replay.PlayerScore{XUID: strconv.Itoa(2533491259474651 + i)})
 	}
 	blob, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	return path
@@ -74,7 +75,7 @@ func TestEtatArtefact_UneSeuleLectureParArtefact(t *testing.T) {
 	repoRoot := t.TempDir()
 	const matchID = "64e8adfa-0000-0000-0000-000000000000"
 	path := poserArtefactCuisson(t, repoRoot, matchID, 8)
-	faits := port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}}}
+	faits := port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}}}
 
 	avant := observability.LoadCounter(replaybuild.CompteurLecturesArtefact)
 	aJour, complet := etatArtefact(path, faits)
@@ -97,7 +98,7 @@ func TestEtatArtefact_ArtefactPerime_NeLitQuUneFois(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(path, []byte(`{"schemaVersion":1}`), 0o644); err != nil {
+	if err := poserCompresse(path, []byte(`{"schemaVersion":1}`), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	avant := observability.LoadCounter(replaybuild.CompteurLecturesArtefact)
@@ -359,4 +360,11 @@ func verifierAucuneGoroutineSurvivante(t *testing.T, avant int) {
 	}
 	t.Errorf("goroutines : %d avant le cycle, %d apres — un prechargement a survecu au cycle",
 		avant, runtime.NumGoroutine())
+}
+
+// poserCompresse range un artefact de test par la porte (compressé, sous le nom canonique de p) ; la signature suit
+// os.WriteFile pour que les écritures des tests de ce paquet ne changent que de nom.
+func poserCompresse(p string, raw []byte, _ os.FileMode) error {
+	_, _, err := replayartifact.Write(context.Background(), p, raw)
+	return err
 }

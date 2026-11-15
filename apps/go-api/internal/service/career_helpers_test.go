@@ -343,7 +343,7 @@ func TestBuildProjections_Normal(t *testing.T) {
 
 // TestComputeActiveXPPerDay_RegressiveHistory documente le comportement défensif :
 // si l'historique est régressif (lastXP < firstXP) on retourne 0 plutôt qu'un
-// taux négatif. Pré-fix Q7, ce cas se produisait pour Madina97294 quand le
+// taux négatif. Pré-fix Q7, ce cas se produisait pour Joueur90002 quand le
 // fallback rank*1000 ramenait la dernière valeur sous la première.
 func TestComputeActiveXPPerDay_RegressiveHistory(t *testing.T) {
 	now := time.Now()

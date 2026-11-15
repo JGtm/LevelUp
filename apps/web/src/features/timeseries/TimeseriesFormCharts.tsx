@@ -2,7 +2,7 @@
 /**
  * TimeseriesFormCharts — wrappers locaux pour les charts du tab Forme.
  *
- * Couvre timeseries.12, .13, .14, .15, .16, .19 (chart .11 traité via un
+ * Couvre timeseries.12, .13, .15, .16, .19 (.14 : TimeseriesPerMinuteTrend.tsx) (chart .11 traité via un
  * composant dédié quand l'agrégation backend sera disponible).
  *
  * Tous les composants consomment `TimeseriesMatchRow[]` et calculent leurs
@@ -10,7 +10,7 @@
  * tokens sémantiques sont résolus via `resolveToken()`.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   getEChartsThemeColors,
@@ -31,29 +31,9 @@ import { buildMatchCategories } from './matchLabels'
 import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
 import { matchAvgLifeSeconds } from '@/lib/charts/avgLife'
 import { ChartFromOption } from './ChartFromOption'
+import { movingMean } from '@/lib/charts/stats'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────
-
-/** Moyenne mobile centrée fenêtre `window` (smoothing). NaN ignorés. */
-function rollingMean(values: (number | null | undefined)[], window: number): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null)
-  if (window <= 1) return values.map((v) => (v == null ? null : v))
-  const half = Math.floor(window / 2)
-  for (let i = 0; i < values.length; i++) {
-    const lo = Math.max(0, i - half)
-    const hi = Math.min(values.length - 1, i + half)
-    let sum = 0
-    let n = 0
-    for (let k = lo; k <= hi; k++) {
-      const v = values[k]
-      if (v == null || !Number.isFinite(v)) continue
-      sum += v
-      n++
-    }
-    out[i] = n > 0 ? sum / n : null
-  }
-  return out
-}
 
 /**
  * Seuil de lecture du FDA : autant de frags + assistances/3 que de morts (ADR 0006).
@@ -73,7 +53,7 @@ const FDA_TIP = axisTooltipFormatter({ value: (r) => tipNumber(r.value, 2) })
 
 interface CommonRenderProps {
   height: number
-  option: EChartsCoreOption | null
+  option: ChartOption | null
   title?: ReactNode
   emptyMessage?: string
   /** Clé de tournée de revue (badge inerte hors tournée, cf. lib/review). */
@@ -113,7 +93,7 @@ export function TimeseriesKdaValueTrend({
 }: TimeseriesKdaValueTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     // FDA < 1 → barre rouge (plus de morts que de frags+assists), sinon vert.
@@ -133,9 +113,10 @@ export function TimeseriesKdaValueTrend({
     // construction (une valeur est d'un seul côté du seuil), donc jamais côte à côte.
     const above = values.map((v) => (v == null || v < FDA_THRESHOLD ? null : v))
     const below = values.map((v) => (v == null || v >= FDA_THRESHOLD ? null : v))
-    const smooth = rollingMean(
+    const smooth = movingMean(
       rows.map((r) => (r.kda != null && Number.isFinite(r.kda) ? r.kda : null)),
       5,
+      { align: 'centered' },
     )
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     const aboveLabel = `${fdaLabel} ≥ ${FDA_THRESHOLD}`
@@ -228,7 +209,7 @@ export function TimeseriesPerformanceTrend({
 }: TimeseriesPerformanceTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -241,7 +222,7 @@ export function TimeseriesPerformanceTrend({
         itemStyle: { color: resolveToken(perfScale(v)), opacity: 0.85 },
       }
     })
-    const smooth = rollingMean(scores, 5)
+    const smooth = movingMean(scores, 5, { align: 'centered' })
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 10) / 10))
 
     return {
@@ -301,14 +282,14 @@ export function TimeseriesAssistsTrend({
 }: TimeseriesAssistsTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
     const assists = rows.map((r) => r.assists)
     const accent = resolveToken('chart-series-3')
     const smoothColor = resolveToken('chart-series-1')
-    const smooth = rollingMean(assists, 10)
+    const smooth = movingMean(assists, 10, { align: 'centered' })
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,
@@ -347,115 +328,6 @@ export function TimeseriesAssistsTrend({
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
-// ─── timeseries.14 — Stats par minute (groupées par match) ───────────────────
-
-export interface TimeseriesPerMinuteTrendProps {
-  rows: TimeseriesMatchRow[]
-  height?: number
-  title?: ReactNode
-  emptyMessage?: string
-  killsLabel: string
-  deathsLabel: string
-  assistsLabel: string
-  perMinuteSuffix: string
-}
-
-export function TimeseriesPerMinuteTrend({
-  rows,
-  title,
-  emptyMessage,
-  height = 360,
-  killsLabel,
-  deathsLabel,
-  assistsLabel,
-  perMinuteSuffix,
-}: TimeseriesPerMinuteTrendProps) {
-  const themeVersion = useThemeVersion()
-
-  const option = useMemo<EChartsCoreOption | null>(() => {
-    if (rows.length === 0) return null
-    const tc = getEChartsThemeColors()
-    const colKills = resolveToken('stat-kills')
-    const colDeaths = resolveToken('stat-deaths')
-    const colAssists = resolveToken('stat-assists')
-
-    // Étiquettes X au format `#N\nMap` (style SquadPerformanceCharts).
-    const categories = buildMatchCategories(rows)
-
-    const perMin = (v: number, sec: number | null | undefined) => {
-      if (sec == null || sec <= 0) return null
-      return v / (sec / 60)
-    }
-    const round2 = (v: number | null) => (v == null ? null : Math.round(v * 100) / 100)
-
-    const kills = rows.map((r) => round2(perMin(r.kills, r.time_played_seconds)))
-    const deaths = rows.map((r) => {
-      const v = perMin(r.deaths, r.time_played_seconds)
-      return v == null ? null : -Math.round(v * 100) / 100 // négatif (sous l'axe)
-    })
-    const assists = rows.map((r) => round2(perMin(r.assists, r.time_played_seconds)))
-
-    return {
-      backgroundColor: CHART_BG,
-      grid: getGridBase({ top: 24 }),
-      tooltip: {
-        ...getTooltipBase(tc),
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        // Les morts sont tracées sous l'axe (négatives) : la bulle écrit leur valeur absolue.
-        formatter: axisTooltipFormatter({
-          value: (r) => `${tipNumber(Math.abs(r.value), 2)}${perMinuteSuffix}`,
-        }),
-      },
-      legend: { ...getLegendBase(tc), bottom: 0 },
-      xAxis: {
-        ...getAxisBase(tc),
-        type: 'category',
-        data: categories,
-        axisLine: { lineStyle: { color: tc.text, width: 1.5 } },
-        axisLabel: {
-          ...getAxisBase(tc).axisLabel,
-          interval: 0,
-          fontSize: 9,
-        },
-      },
-      yAxis: {
-        ...getAxisBase(tc),
-        type: 'value',
-        axisLabel: {
-          ...getAxisBase(tc).axisLabel,
-          formatter: (v: number) => tipNumber(Math.abs(v), 1),
-        },
-      },
-      series: [
-        {
-          type: 'bar',
-          name: killsLabel,
-          data: kills,
-          itemStyle: { color: colKills, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          type: 'bar',
-          name: deathsLabel,
-          data: deaths,
-          itemStyle: { color: colDeaths, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          type: 'bar',
-          name: assistsLabel,
-          data: assists,
-          itemStyle: { color: colAssists, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-      ],
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, killsLabel, deathsLabel, assistsLabel, perMinuteSuffix, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
-}
-
 // ─── timeseries.15 — Average life timeseries ─────────────────────────────────
 
 export interface TimeseriesAvgLifeTrendProps {
@@ -479,7 +351,7 @@ export function TimeseriesAvgLifeTrend({
 }: TimeseriesAvgLifeTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const accent = resolveToken('chart-series-3')
@@ -550,7 +422,7 @@ export function TimeseriesSpreeHeadshots({
 }: TimeseriesSpreeHeadshotsProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -624,7 +496,7 @@ export function TimeseriesSkillRankPerformance({
 }: TimeseriesSkillRankPerformanceProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colRating = resolveToken('chart-series-2')
@@ -732,7 +604,7 @@ export function TimeseriesRankScore({
 }: TimeseriesRankScoreProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -826,7 +698,7 @@ export function TimeseriesCareerXP({
 }: TimeseriesCareerXPProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     const { hasData, perMatch, cumulative } = buildCareerXpSeries(rows)
     if (!hasData) return null
     const tc = getEChartsThemeColors()

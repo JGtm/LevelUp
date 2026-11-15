@@ -31,7 +31,7 @@ import (
 
 	"levelup/go-api/internal/games"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 // ObjectiveEventsRepo persiste et relit les events objectif v3 dans la DB shared.

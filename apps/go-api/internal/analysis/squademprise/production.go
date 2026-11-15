@@ -14,7 +14,10 @@ package squademprise
 // un match dont le film n'a pas d'échelle de temps n'apporte ni frags ni temps d'effet
 // (timeScaled) : Kills = Exposure.Kills, un seul périmètre là aussi.
 
-import "levelup/go-api/internal/domain"
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+)
 
 // production rend les ressources produites ; une ressource sans mesure est absente.
 func production(s *soiree) []domain.SquadEmpriseProduction {
@@ -74,7 +77,7 @@ func parMinute(kills int, ms int64) *float64 {
 	if ms <= 0 {
 		return nil
 	}
-	v := float64(kills) / (float64(ms) / 60_000)
+	v := float64(kills) / analysis.MillisecondsToMinutes(float64(ms))
 	return &v
 }
 

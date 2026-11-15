@@ -9,7 +9,7 @@
  * reflètent autour des libellés centraux. Échelle fixe 0..100 → symétrie lisible.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -34,7 +34,7 @@ interface ParticipationOpts {
 export function buildSessionParticipationBarsOption(
   series: ChartSeries<ParticipationBar>[],
   opts: ParticipationOpts,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

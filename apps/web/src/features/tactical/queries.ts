@@ -29,7 +29,7 @@
  * — la liste de `match_id` de A partait alors sur les lectures de B, et la réponse
  * s'affichait comme celle de B.
  */
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
@@ -47,9 +47,12 @@ import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPend
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { causeDeLErreur } from './sequenceCause.logic'
+import type { TacticalVies } from './vies.logic'
 
 /** FNV-1a 32 bits — même algorithme que `useFiltersPreview` et `computeHash`. */
 export function hashFiltre(valeur: unknown): string {
@@ -175,14 +178,37 @@ export function useTacticalMaps(
  * carte porte un calage (`TacticalMapCard.calage_fond`). Un `<img src>` direct ne convient pas
  * ici : il n'emporte pas l'en-tête `X-LevelUp-Title` (cf. `api.getBlob`), et l'API résoudrait le
  * titre de la session au lieu de celui de la page. La clé de cache reste celle du plan principal.
+ *
+ * `variante` : `rendu` (défaut, l'image du fond) ou `plan` (la vue plan à hauteurs, même calage et mêmes
+ * dimensions, donc le cadre et le calque ne bougent pas). Une clé de cache par variante. Les vignettes
+ * de la grille gardent le rendu.
  */
-export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, actif = true): string | null {
+export function useTacticalMapBackgroundUrl(
+  playerSlug: string,
+  mapId: string,
+  actif = true,
+  variante: MapBackgroundVariant = 'rendu',
+): string | null {
+  return useTacticalMapBackgroundImage(playerSlug, mapId, actif, variante).url
+}
+
+/**
+ * useTacticalMapBackgroundImage — comme `useTacticalMapBackgroundUrl`, et dit en plus QUELLE variante est
+ * réellement chargée (le plan demandé mais en échec rend le rendu de repli) : les murs se décident sur
+ * cette variante-là, pas sur celle qu'on a demandée.
+ */
+export function useTacticalMapBackgroundImage(
+  playerSlug: string,
+  mapId: string,
+  actif = true,
+  variante: MapBackgroundVariant = 'rendu',
+): { url: string | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
-    queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId),
+  const load = (v: MapBackgroundVariant) => ({
+    queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId, v),
     queryFn: async () => {
       const blob = await api.getBlob(
-        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background.png`,
+        backgroundImagePath(`/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background.png`, v),
       )
       // `createObjectURL` manque dans certains environnements de test : l'absence de fond
       // n'est pas une panne de grille, la vignette s'affiche sans image.
@@ -191,10 +217,30 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, a
     },
     staleTime: Infinity,
     gcTime: Infinity,
-    enabled: !!playerSlug && !!mapId && actif,
     retry: false,
   })
-  return data ?? null
+  const pret = !!playerSlug && !!mapId && actif
+  // REPLI SILENCIEUX sur le rendu : l'image plan qui ne se charge pas n'est jamais une erreur
+  // affichée ; pendant son chargement, le rendu déjà en cache reste en place.
+  const plan = useQuery({ ...load('plan'), enabled: pret && variante === 'plan' })
+  const rendu = useQuery({ ...load('rendu'), enabled: pret && (variante === 'rendu' || plan.isError) })
+  const { image, variante: chargee } = loadedBackground(variante, plan.data ?? undefined, rendu.data ?? undefined)
+  return { url: image, variante: chargee }
+}
+
+/**
+ * useTacticalMapPlanImage — la carte a-t-elle une IMAGE PLAN (`planImage` du sidecar du fond) ?
+ * Même requête que le calage et le plan des murs : rien de plus n'est chargé. C'est elle qui décide,
+ * avec la préférence de style, de l'image demandée (`resolveBackgroundVariant`). `pending` tant que le
+ * sidecar n'a répondu ni par une donnée ni par une absence (404 : carte sans fond figé) : l'image ne se
+ * demande pas avant, sans quoi le rendu serait téléchargé pour rien avant que le plan soit connu.
+ */
+export function useTacticalMapPlanImage(
+  playerSlug: string,
+  mapId: string,
+): { planImage: string | undefined; pending: boolean } {
+  const { data, isPending } = useTacticalMapBackgroundSidecarQuery(playerSlug, mapId)
+  return { planImage: data?.planImage, pending: isPending }
 }
 
 /**
@@ -212,8 +258,28 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, a
  * propres bornes.
  */
 export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string): MapFrame | null {
+  const data = useTacticalMapBackgroundSidecar(playerSlug, mapId)
+  return data?.calibration ? mapFrame(data.calibration) : null
+}
+
+/**
+ * useTacticalMapBackgroundPlan — LE PLAN DES MURS du fond d'une carte, ou `null` (carte sans plan,
+ * sans fond figé). Il vient du MÊME sidecar que le calage (`/tactical/{map_id}/background`) : la
+ * requête est partagée, rien de plus n'est chargé. Normalisé une fois (`normalizeWallPlan`).
+ */
+export function useTacticalMapBackgroundPlan(playerSlug: string, mapId: string): WallPlanReady | null {
+  const data = useTacticalMapBackgroundSidecar(playerSlug, mapId)
+  return useMemo(() => normalizeWallPlan(data?.plan), [data])
+}
+
+/** Le sidecar du fond (calage et plan des murs) : UNE requête, lue par les deux hooks ci-dessus. */
+function useTacticalMapBackgroundSidecar(playerSlug: string, mapId: string): ReplayMapBackground | undefined {
+  return useTacticalMapBackgroundSidecarQuery(playerSlug, mapId).data
+}
+
+function useTacticalMapBackgroundSidecarQuery(playerSlug: string, mapId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
+  return useQuery({
     queryKey: queryKeys.tacticalMapBackgroundFrame(titleSlug, mapId),
     queryFn: () =>
       api.get<ReplayMapBackground>(
@@ -224,7 +290,6 @@ export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string)
     enabled: !!playerSlug && !!mapId,
     retry: false,
   })
-  return data?.calibration ? mapFrame(data.calibration) : null
 }
 
 /** Les paramètres d'une lecture du plan (le corps de `/tactical/{map}/raster`, périmètre non résolu = `null`). */
@@ -234,6 +299,8 @@ export interface ParamsDuRaster {
   question?: string
   qui?: string
   spawn?: string
+  /** Les apparitions qui forment les grappes ; absent = `depart` (cf. `viesPostees`). */
+  vies?: TacticalVies
 }
 
 /** Le corps posté : la liste blanche résolue (vide tant qu'elle ne l'est pas — la requête ne part pas). */
@@ -379,13 +446,7 @@ export function useTacticalCellule(
   playerSlug: string,
   mapId: string,
   cellule: { col: number; lig: number; pas_m: number } | null,
-  params: {
-    match_ids: string[] | null
-    coequipiers?: string[]
-    question?: string
-    qui?: string
-    spawn?: string
-  },
+  params: ParamsDuRaster,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)

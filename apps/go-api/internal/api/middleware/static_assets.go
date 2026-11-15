@@ -5,7 +5,7 @@
 // Trois consommateurs, une seule liste :
 //   - `RateLimit` (rate_limit.go) : exempte ces chemins du bucket httprate —
 //     une page peut tirer 100+ images/icônes en rafale.
-//   - `serveStaticFile` (internal/api/server_apiv1.go) : pose le Cache-Control
+//   - `serveStaticFile` (internal/api/handlers/static_cache.go) : pose le Cache-Control
 //     des fichiers non fingerprintés.
 //   - `mountSPA` (idem) : un chemin à extension statique absent du dist est un
 //     404 franc, jamais un fallback index.html.

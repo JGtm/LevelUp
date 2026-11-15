@@ -300,7 +300,7 @@ func loadPlayerSummary(cfg *config.AppConfig, gamertag string) (*domain.PlayerSu
 // `C:\...\LevelUp\data\cache`) et instancie un LocalFilmCache si le
 // repertoire existe. Retourne nil sinon (cache desactive).
 func loadLocalFilmCache() *go_sync.LocalFilmCache {
-	dir := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR"))
+	dir := config.LegacyFilmCacheDirFromEnv()
 	if dir == "" {
 		return nil
 	}

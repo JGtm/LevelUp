@@ -2,7 +2,6 @@
  * ConvergencePlayersTable — backlog par joueur avec action « Converger »
  * (job player_convergence suivi inline). Compteurs plafonnés affichés « N+ ».
  */
-import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -10,6 +9,7 @@ import { queryKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/api/client'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { SortableTh } from '@/components/ui/sortable-th'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import type { AdminConvergenceReport, AsyncJobStatus, PlayerConvergenceReport } from '@/lib/api/types'
 import { conflictJobId } from '../monitoring/mutations'
 import { useRunPlayerConvergence } from '../data-quality/mutations'
@@ -18,17 +18,12 @@ import { useAdminT } from '../useAdminText'
 
 type ConvergenceSortKey = 'gamertag' | 'missing_enrichment' | 'missing_psa' | 'missing_events' | 'total'
 
-function convergenceRawValue(p: PlayerConvergenceReport, key: ConvergenceSortKey): string | number {
-  if (key === 'gamertag') return p.gamertag
-  if (key === 'total') return p.missing_enrichment + p.missing_psa + p.missing_events
-  return p[key]
-}
-
-function compareConvergence(a: PlayerConvergenceReport, b: PlayerConvergenceReport, key: ConvergenceSortKey, dir: 'asc' | 'desc'): number {
-  const va = convergenceRawValue(a, key)
-  const vb = convergenceRawValue(b, key)
-  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+const SORT_COLUMNS: Record<ConvergenceSortKey, SortColumn<PlayerConvergenceReport>> = {
+  gamertag: { value: (p) => p.gamertag, firstDir: 'asc' },
+  missing_enrichment: { value: (p) => p.missing_enrichment },
+  missing_psa: { value: (p) => p.missing_psa },
+  missing_events: { value: (p) => p.missing_events },
+  total: { value: (p) => p.missing_enrichment + p.missing_psa + p.missing_events },
 }
 
 export function ConvergencePlayersTable({ report }: { report: AdminConvergenceReport }) {
@@ -37,21 +32,8 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
   const runConvergence = useRunPlayerConvergence()
   // I16 : tri CLIENT par clic sur les en-têtes. Aucun tri actif par défaut →
   // l'ordre serveur reste affiché tant qu'aucun en-tête n'a été cliqué.
-  const [sortKey, setSortKey] = useState<ConvergenceSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  function toggleSort(key: ConvergenceSortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'gamertag' ? 'asc' : 'desc')
-    }
-  }
-  const sortedPlayers = useMemo(() => {
-    const players = report.players ?? []
-    if (!sortKey) return players
-    return [...players].sort((a, b) => compareConvergence(a, b, sortKey, sortDir))
-  }, [report.players, sortKey, sortDir])
+  const sort = useColumnSort(report.players ?? [], SORT_COLUMNS)
+  const sortedPlayers = sort.rows
 
   function invalidateAfterConvergence() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringConvergence })
@@ -83,11 +65,11 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <SortableTh label={tA('admin.convergence.col_player')} active={sortKey === 'gamertag'} dir={sortDir} onClick={() => toggleSort('gamertag')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.convergence.kpi_enrichment')} active={sortKey === 'missing_enrichment'} dir={sortDir} onClick={() => toggleSort('missing_enrichment')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_enrichment_tooltip')} />
-            <SortableTh label={tA('admin.convergence.kpi_psa')} active={sortKey === 'missing_psa'} dir={sortDir} onClick={() => toggleSort('missing_psa')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_psa_tooltip')} />
-            <SortableTh label={tA('admin.convergence.kpi_events')} active={sortKey === 'missing_events'} dir={sortDir} onClick={() => toggleSort('missing_events')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_events_tooltip')} />
-            <SortableTh label={tA('admin.convergence.col_total')} active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.col_total_tooltip')} />
+            <SortableTh label={tA('admin.convergence.col_player')} {...sort.header('gamertag')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.convergence.kpi_enrichment')} {...sort.header('missing_enrichment')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_enrichment_tooltip')} />
+            <SortableTh label={tA('admin.convergence.kpi_psa')} {...sort.header('missing_psa')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_psa_tooltip')} />
+            <SortableTh label={tA('admin.convergence.kpi_events')} {...sort.header('missing_events')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_events_tooltip')} />
+            <SortableTh label={tA('admin.convergence.col_total')} {...sort.header('total')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.col_total_tooltip')} />
             <th className="px-3 py-2" />
           </tr>
         </thead>

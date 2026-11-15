@@ -36,11 +36,8 @@ const FEATURE_LABEL: Record<TitleCapability, Record<Locale, string>> = {
     fr: 'la portée des engagements',
     en: 'engagement range',
   },
-  expected_win_prob: {
-    fr: 'la probabilité de victoire attendue',
-    en: 'expected win probability',
-  },
   citations: { fr: 'les citations calculées', en: 'computed citations' },
+  spawn_forecast: { fr: 'toutes les vies de la Tactique', en: 'the Tactics all-lives view' },
 }
 
 /** Titre et phrase du placeholder, par langue ; `feature` est le libellé de FEATURE_LABEL. */

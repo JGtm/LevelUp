@@ -5,7 +5,7 @@
  * pair_name). Tri décroissant. 1 barre par mode, couleurs de série pour distinction.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from '@/components/charts/_utils'
@@ -23,7 +23,7 @@ interface ModePoint {
 export function buildSessionModeBreakdownOption(
   series: ChartSeries<ModePoint>[],
   opts: { countLabel: string; yMax?: number },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

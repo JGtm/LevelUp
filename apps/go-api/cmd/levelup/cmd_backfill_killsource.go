@@ -313,7 +313,7 @@ func jouerLesDeuxPasses(
 // migrerSchemaPartage : joue les migrations du shared sur le handle deja ouvert.
 //
 // Le provider de steps title-owned est cable comme partout ailleurs dans `cmd/`
-// (`apply_shared_migrations`, `h5-backfill`, ...) : les migrations propres a un titre ne sont
+// (`apply_shared_migrations`, ...) : les migrations propres a un titre ne sont
 // pas dans le jeu canonique, et sans ce cablage la commande creerait les tables communes en
 // manquant SILENCIEUSEMENT celles du titre.
 func migrerSchemaPartage(db *sql.DB, slug string) error {
@@ -460,7 +460,7 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 	if v := strings.TrimSpace(flagValue); v != "" {
 		return v
 	}
-	if v := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR")); v != "" {
+	if v := config.LegacyFilmCacheDirFromEnv(); v != "" {
 		return v
 	}
 	return cfg.PathResolver().FilmArchiveDir()

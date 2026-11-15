@@ -14,7 +14,7 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
@@ -66,7 +66,7 @@ function useRangeOption({
   text: CompareText
   fmtDistance: (m: number) => string
 }) {
-  return useCallback((): EChartsCoreOption => {
+  return useCallback((): ChartOption => {
     const tc = getEChartsThemeColors()
     return buildWeaponRangeOption({
       lines,

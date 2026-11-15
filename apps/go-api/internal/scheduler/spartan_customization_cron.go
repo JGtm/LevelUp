@@ -42,7 +42,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/dbfault"
 )
 
 // SpartanIdentityFetcher abstrait CareerLiveService pour le mocking.
@@ -251,8 +251,8 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 	}
 	// Filtre CANONIQUE des chemins de refresh (domain.SyncablePlayers) : exclut les
 	// titres en pause ET les profils AuthOnly. Un profil AuthOnly n'existe que pour
-	// fournir des refresh tokens au pool (comptes DankerGlue/QuiteSiren/UppedJoker/
-	// GeleJugefi/Trimbutton) : il n'a PAS de player DB (stats.duckdb absent), donc le
+	// fournir des refresh tokens au pool (comptes Joueur9001/Joueur9008/Joueur900a/
+	// Joueur9003/Joueur9009) : il n'a PAS de player DB (stats.duckdb absent), donc le
 	// refresher échoue systématiquement en "No such file or directory" et polluait les
 	// cycles d'un WARN par joueur. Le refresh de customisation est un chemin de refresh
 	// au même titre que le sync : on applique le même filtre à la SOURCE.
@@ -318,7 +318,7 @@ func (t *cycleTally) record(gamertag string, r refreshReport) {
 		t.skipped++
 	case refreshFailed:
 		t.failed++
-		if duckdb.IsFileLockError(r.err) {
+		if dbfault.IsFileLock(r.err) {
 			t.lockedDBs = append(t.lockedDBs, gamertag)
 			return
 		}
@@ -385,7 +385,7 @@ func (c *SpartanCustomizationCron) refreshOne(
 	if err := refresher(playerCtx, p); err != nil {
 		// Lock concurrent sur la player DB : pas de WARN par-joueur (la cause
 		// racine est loggée une seule fois, agrégée, en fin de cycle par runOnceForTitle).
-		if duckdb.IsFileLockError(err) {
+		if dbfault.IsFileLock(err) {
 			slog.DebugContext(ctx, "spartan_cron: refresher failed (player DB lock — agrégé en fin de cycle)",
 				"gamertag", p.Gamertag, "err", err)
 		} else {

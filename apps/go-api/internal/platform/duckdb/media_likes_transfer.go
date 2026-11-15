@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // TransferMediaLikes fait suivre les likes actifs d'un média qui change de
@@ -23,7 +23,7 @@ import (
 // exec est la transaction de l'appelant ; le commit et son CHECKPOINT lui
 // appartiennent. Unique copie de ces deux requêtes (réassociation, relocalisation
 // par la passe de réconciliation, fusion de fiches).
-func TransferMediaLikes(ctx context.Context, exec port.DBExecutor, oldPath, newPath string) error {
+func TransferMediaLikes(ctx context.Context, exec dblease.DBExecutor, oldPath, newPath string) error {
 	if oldPath == newPath {
 		return nil
 	}

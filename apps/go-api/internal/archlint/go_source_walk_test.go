@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	resolveur "levelup/go-api/internal/briques"
 )
 
 // goSource est un fichier Go non-test du module, déjà analysé.
@@ -124,7 +126,9 @@ type fichierGo struct {
 }
 
 // workspaceGoSources liste TOUS les fichiers `.go` (tests compris) sous les racines données,
-// relatives à la racine du dépôt (`racinesEspaceDeTravail` pour « tout le Go du dépôt »). C'est le
+// relatives à la racine du dépôt, sauf une racine de brique (`libs/<brique>`, résolue par
+// [resolveur.SurDisque] et rendue en chemin de garde-rail) (`racinesEspaceDeTravail` pour « tout le Go du
+// dépôt »). C'est le
 // parcours des garde-rails à règle GÉNÉRALE : leur racine est l'espace de travail, pas un module,
 // sinon une brique sous `libs/` sortirait de leur vue. Les garde-rails propres à `go-api` restent
 // sur `goSourcesUnder` / `apiModuleRoot`.
@@ -138,6 +142,9 @@ func workspaceGoSources(t *testing.T, roots ...string) []fichierGo {
 	var out []fichierGo
 	for _, root := range roots {
 		base := filepath.Join(depot, filepath.FromSlash(root))
+		if _, estBrique, _ := resolveur.SurDisque(root); estBrique {
+			base = surDisque(t, root)
+		}
 		avant := len(out)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -154,8 +161,7 @@ func workspaceGoSources(t *testing.T, roots ...string) []fichierGo {
 			if !strings.HasSuffix(chemin, ".go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(depot, chemin)
-			out = append(out, fichierGo{Rel: filepath.ToSlash(rel), Chemin: chemin})
+			out = append(out, fichierGo{Rel: relDeLEspaceDeTravail(t, depot, chemin), Chemin: chemin})
 			return nil
 		})
 		if err != nil {
@@ -170,13 +176,18 @@ func workspaceGoSources(t *testing.T, roots ...string) []fichierGo {
 
 // surDisque rend le chemin absolu d'un chemin de garde-rail. Les tables des garde-rails propres à
 // go-api parlent deux repères qui ne se recouvrent pas : un chemin sous `libs/` (une brique, ADR
-// 0041 : `libs/film/...`) est relatif à la racine du dépôt et se lit depuis `workspaceRoot` ; tout
-// autre chemin (`internal/...`, `cmd/...`) est relatif à `apps/go-api`. `apps/go-api` ne porte
-// aucun dossier `libs/`.
+// 0041 : `libs/film/...`) est une clé logique que le résolveur des briques ([resolveur.SurDisque])
+// situe sur le disque (dossier de l'espace de travail ou cache de modules, jamais un chemin depuis
+// la racine du dépôt) ; tout autre chemin (`internal/...`, `cmd/...`) est relatif à `apps/go-api`.
+// `apps/go-api` ne porte aucun dossier `libs/`.
 func surDisque(t *testing.T, rel string) string {
 	t.Helper()
-	if strings.HasPrefix(rel, "libs/") {
-		return filepath.Join(workspaceRoot(t), filepath.FromSlash(rel))
+	abs, estBrique, err := resolveur.SurDisque(rel)
+	if err != nil {
+		t.Fatalf("brique de %s : %v", rel, err)
+	}
+	if estBrique {
+		return abs
 	}
 	return filepath.Join(apiModuleRoot(t), filepath.FromSlash(rel))
 }
@@ -185,12 +196,26 @@ func surDisque(t *testing.T, rel string) string {
 // fichier ou d'un dossier absolu (séparateurs "/").
 func cheminDeGardeRail(t *testing.T, abs string) string {
 	t.Helper()
-	if rel, err := filepath.Rel(filepath.Join(workspaceRoot(t), "libs"), abs); err == nil &&
-		rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "libs/" + filepath.ToSlash(rel)
+	rel, estBrique, err := resolveur.DeGardeRail(abs)
+	if err != nil {
+		t.Fatalf("brique de %s : %v", abs, err)
 	}
-	rel, _ := filepath.Rel(apiModuleRoot(t), abs)
+	if estBrique {
+		return rel
+	}
+	rel, _ = filepath.Rel(apiModuleRoot(t), abs)
 	return filepath.ToSlash(rel)
+}
+
+// relDeLEspaceDeTravail rend le chemin d'un fichier Go de l'espace de travail : relatif à la racine du
+// dépôt, ou chemin de garde-rail (`libs/<brique>/...`) pour un fichier d'une brique.
+func relDeLEspaceDeTravail(t *testing.T, depot, chemin string) string {
+	t.Helper()
+	rel, err := relDuDepot(depot, chemin)
+	if err != nil {
+		t.Fatalf("brique de %s : %v", chemin, err)
+	}
+	return rel
 }
 
 // marcherAPIEtBriqueFilm applique `fn` à `apps/go-api` puis à la brique du décodeur de film
@@ -215,4 +240,54 @@ func balayerGo(t *testing.T, visiter func(rel, chemin string)) {
 	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
 		visiter(f.Rel, f.Chemin)
 	}
+}
+
+// cheminDuDepot rend le chemin disque d'un chemin relatif à la racine du dépôt : un chemin de garde-rail
+// de brique (`libs/<brique>/...`) passe par le résolveur [resolveur.SurDisque], tout autre par `racine`.
+func cheminDuDepot(racine, rel string) (string, error) {
+	abs, estBrique, err := resolveur.SurDisque(rel)
+	if err != nil {
+		return "", err
+	}
+	if estBrique {
+		return abs, nil
+	}
+	return filepath.Join(racine, filepath.FromSlash(rel)), nil
+}
+
+// relDuDepot est l'inverse de [cheminDuDepot] : le chemin relatif à `racine`, ou de garde-rail
+// (`libs/<brique>/...`) pour un fichier ou un dossier d'une brique (séparateurs "/").
+func relDuDepot(racine, abs string) (string, error) {
+	rel, estBrique, err := resolveur.DeGardeRail(abs)
+	if err != nil {
+		return "", err
+	}
+	if estBrique {
+		return rel, nil
+	}
+	r, err := filepath.Rel(racine, abs)
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(r), nil
+}
+
+// cheminDuDepotOuFatal est [cheminDuDepot] pour un test : une brique introuvable l'arrête.
+func cheminDuDepotOuFatal(t *testing.T, racine, rel string) string {
+	t.Helper()
+	abs, err := cheminDuDepot(racine, rel)
+	if err != nil {
+		t.Fatalf("chemin de %s : %v", rel, err)
+	}
+	return abs
+}
+
+// relDuDepotOuFatal est [relDuDepot] pour un test : une brique introuvable l'arrête.
+func relDuDepotOuFatal(t *testing.T, racine, abs string) string {
+	t.Helper()
+	rel, err := relDuDepot(racine, abs)
+	if err != nil {
+		t.Fatalf("chemin relatif de %s : %v", abs, err)
+	}
+	return rel
 }

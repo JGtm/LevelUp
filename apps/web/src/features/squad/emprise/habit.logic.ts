@@ -14,8 +14,8 @@
  */
 import type { SquadEmpriseBlock, SquadEmpriseEvening } from '@/lib/api/types'
 
-import { median } from '../objectif/objectif.logic'
 import { RESOURCE_ORDER } from './emprise.logic'
+import { medianOfValid } from '@/lib/charts/stats'
 
 /** La médiane n'est tracée qu'à partir de trois soirées précédentes (D5). */
 export const HABIT_MIN_PREVIOUS_FOR_MEDIAN = 3
@@ -60,7 +60,7 @@ export function buildHabitView(block: SquadEmpriseBlock): HabitView {
   const medians: Record<string, number | null> = {}
   for (const r of resources) {
     const past = previous.flatMap((p) => (!p.comparable || p.shares[r] == null ? [] : [p.shares[r] as number]))
-    medians[r] = past.length >= HABIT_MIN_PREVIOUS_FOR_MEDIAN ? median(past) : null
+    medians[r] = past.length >= HABIT_MIN_PREVIOUS_FOR_MEDIAN ? medianOfValid(past) : null
   }
   return { kind: 'chart', resources, points, medians }
 }

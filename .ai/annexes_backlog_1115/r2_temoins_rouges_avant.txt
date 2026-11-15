@@ -1,0 +1,16 @@
+--- FAIL: TestTemoinMinute_ProfilsUnSeulArrondi
+    profil.3sur800.squad = 0.22, attendu 0.23
+    profil.3sur800.mate = 0.22, attendu 0.23
+    profil.23sur736.squad = 1.87, attendu 1.88
+    profil.23sur736.mate = 1.87, attendu 1.88
+FAIL
+FAIL levelup/go-api/internal/analysis
+--- FAIL: TestTemoinMinute_ContributionsSommeDesMinutes
+    contrib2.kills_per_min = 2.329192546583851, attendu 2.3291925465838506
+    contrib2.deaths_per_min = 0.9316770186335405, attendu 0.9316770186335402
+    contrib2.assists_per_min = 0.6521739130434783, attendu 0.6521739130434782
+--- FAIL: TestTemoinMinute_BucketsDureeNegativeExclue
+    buckets.negatif.len = 1, attendu 0
+FAIL
+FAIL levelup/go-api/internal/service
+FAIL

@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -120,12 +120,14 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	// pour tous les candidats en attente : la dépendance séquentielle des états EP
 	// impose de persister au fil de l'eau, dans l'ordre chronologique, rafale après
 	// rafale, dans ce même cycle.
+	ctx, repli := withRepliTally(ctx)
 	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
 	base.excluded = excluded
 	base.matchFailures = cfg.matchFailures
 	base.components.medals = work.medals
 	bursts, err := runWriterBursts(ctx, shared, base, work, &s)
 	logShadowBurstDone(ctx, xuid, work, s, bursts)
+	repli.logSummary(ctx, xuid, s.processed)
 	if err != nil {
 		return s.processed, fmt.Errorf("RunLUSRV2Shadow: %w", err)
 	}
@@ -156,7 +158,6 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 		xuid:             xuid,
 		canonical:        canonical,
 		ownerOnlyPersist: ownerOnlyPersist,
-		squadEnabled:     IsLUSRV2SquadOffsetEnabled(),
 		priorsCache:      make(map[string]skillv2.Priors),
 		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 		burst:            defaultLUSRBurstLimits,
@@ -173,7 +174,7 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 // sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           port.SkillV2Repository
-	squadRepo      port.SquadOffsetRepository // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
+	squadRepo      port.SquadOffsetRepository // câblé sur la rafale (processShadowBurst)
 	playerDB       *sql.DB
 	sharedDB       *sql.DB
 	priors         skillv2.Priors
@@ -183,11 +184,8 @@ type shadowRunContext struct {
 	// ownerOnlyPersist : recovery backfill — ne persiste que l'état du joueur
 	// traité (pas les coéquipiers). Voir RunLUSRV2ShadowOwnerOnly.
 	ownerOnlyPersist bool
-	// squadEnabled : LEVELUP_LUSR_V2_SQUAD_OFFSET actif → squadRepo câblé sur la rafale.
-	// Porté ici (pas en paramètre) pour borner le nb d'arguments de processShadowBurst.
-	squadEnabled  bool
-	priorsCache   map[string]skillv2.Priors
-	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	priorsCache      map[string]skillv2.Priors
+	countHypCache    map[string]map[skillv2.CountType]skillv2.CountHyperparams
 	// burst : bornes d'une rafale d'écrivain (skill_v2_shared_access.go).
 	burst lusrBurstLimits
 	// excluded : matchs is_excluded du joueur, que le chaînage des notes ne prend jamais
@@ -385,9 +383,8 @@ func resolveGroupParams(ctx context.Context, c shadowRunContext, group string) (
 // ne bouge pas, donc retry au prochain run — improbable de changer en pratique).
 // Diff = 1 reste accepté (cas courant : 4v3 / 4v5 après quit/late-join).
 //
-// Cf. ADR 0024 limites — Phase 3e pourrait introduire du damping EP pour
-// élargir la tolérance, ou un facteur tronqué propre pour mieux gérer les
-// asymétries.
+// Une non-convergence du solveur sur un match accepté est rattrapée par
+// solveWithCountFallback (recalcul sans les observations de comptes).
 func isTeamImbalanceTooHigh(nA, nB int) bool {
 	if nA == 0 || nB == 0 {
 		return true
@@ -437,14 +434,14 @@ func concurrentTeamSize(team []rosterMember) int {
 func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]shadowMatch, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.match_id,
-		       `+analysis.SQLStartTimeCanonical("mr")+` AS ts,
+		       `+sqlfrag.SQLStartTimeCanonical("mr")+` AS ts,
 		       COALESCE(mr.pair_name, ''),
 		       COALESCE(mp.outcome, 0),
 		       mp.team_id,
 		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
 		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
 		           WHEN mr.real_start_time IS NOT NULL THEN
-		               `+analysis.SQLRealStartOffsetMs("mr")+`
+		               `+sqlfrag.SQLRealStartOffsetMs("mr")+`
 		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
@@ -454,7 +451,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		  -- title-generic : les titres canoniques (Halo 5) renseignent start_time_utc
 		  -- et laissent start_time (legacy) NULL ; filtrer sur le COALESCE comme le SELECT.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY ts ASC`, xuid)
 	if err != nil {
 		return nil, err
@@ -654,11 +651,12 @@ func computeMatchToSkillV2(
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}
-	newEffA, newEffB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
-		TeamA:   effA,
-		TeamB:   effB,
-		ResultA: outcomeA,
-	}, counts, priors)
+	newEffA, newEffB, err := solveMatchWithCounts(ctx, countedMatch{
+		matchID: matchID,
+		match:   skillv2.TwoTeamMatch{TeamA: effA, TeamB: effB, ResultA: outcomeA},
+		counts:  counts,
+		priors:  priors,
+	})
 	if err != nil {
 		return shadowMatchComputed{}, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
@@ -709,10 +707,10 @@ func persistComputedMatchSkillV2(
 		}
 	}
 
-	// Phase 4 (mode correlation) : si activée, propage le delta du owner dans
-	// son mode primaire vers tous ses autres modes joués. w_d capé à 0.4 par
-	// la fonction skill_v2.ApplyCrossModeLeak.
-	if IsLUSRV2ModeCouplingEnabled() && c.ownerNew != nil && c.ownerPrior != nil {
+	// Phase 4 (mode correlation) : propage le delta du owner dans son mode
+	// primaire vers tous ses autres modes joués. w_d capé à 0.4 par la fonction
+	// skill_v2.ApplyCrossModeLeak.
+	if c.ownerNew != nil && c.ownerPrior != nil {
 		if err := propagateCrossModeLeak(ctx, repo, *c.ownerPrior, *c.ownerNew); err != nil {
 			slog.WarnContext(ctx, "Phase 4: cross-mode leak échoué",
 				"xuid", ownerXUID, "primary_group", playlistGroup, "err", err)

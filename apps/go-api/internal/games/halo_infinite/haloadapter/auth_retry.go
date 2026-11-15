@@ -8,7 +8,7 @@ import (
 
 	"levelup/go-api/internal/platform/auth/tokencache"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // IsAuthError dit si `err` est un refus d'authentification d'un service Halo (HTTP 401/403),

@@ -117,7 +117,7 @@ function mockCtx() {
 /** Un calque dont le porteur est TOUJOURS localisable (position servie par le test). */
 function layerWith(pos: { x: number; y: number } | null, reducedMotion = false): FlagCarriesInput {
   return {
-    style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion },
+    style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion, frameMs: 100 },
     posOf: () => pos,
   }
 }
@@ -203,7 +203,7 @@ describe('drawFlagCarries — habillage du drapeau libéré', () => {
     // il ferait MENTIR la position. Le glyphe s'ancre donc sur le point brut.
     const posOf = (_x: string, f: number) => (f <= 12 ? { x: 2, y: 8 } : null)
     const layer: FlagCarriesInput = {
-      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true }, posOf,
+      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true, frameMs: 100 }, posOf,
     }
     const libre = mockCtx()
     drawFlagCarries(libre.ctx, layer, [FLAG_0], VIEW, 15)
@@ -224,7 +224,7 @@ describe('drawFlagCarries — habillage du drapeau libéré', () => {
     // le glyphe ne l'a plus, la cible serait à 6 px à côté — un écart qui ne se voit pas.
     const posOf = (_x: string, f: number) => (f <= 12 ? { x: 2, y: 8 } : null)
     const layer: FlagCarriesInput = {
-      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true }, posOf,
+      style: { colorOfTeam: () => INK, outline: OUTLINE, reducedMotion: true, frameMs: 100 }, posOf,
     }
     // Les deux calques visent le MÊME point monde (2, 8) : seul l'habillage les sépare. On sonde
     // les deux au même endroit de la toile — la position projetée de ce point.
@@ -267,6 +267,7 @@ describe('drawFlagCarries', () => {
         },
         outline: OUTLINE,
         reducedMotion: false,
+        frameMs: 100,
       },
       posOf: () => ({ x: 5, y: 5 }),
     }
@@ -511,44 +512,44 @@ describe('flagBlinkAlpha (le clignotement du drapeau porté, 2026-08-27 ; au sol
 
   it('les DEUX états portés clignotent : leur opacité dépend de l\'image', () => {
     for (const s of DEHORS) {
-      const vues = new Set([0, 2, 5, 7].map((f) => flagBlinkAlpha(s, f, false)))
+      const vues = new Set([0, 2, 5, 7].map((f) => flagBlinkAlpha(s, f, false, 100)))
       expect(vues.size, `${s} ne bouge pas`).toBeGreaterThan(1)
     }
   })
 
   it('`home` est STABLE et PLEIN — insensible à l\'image', () => {
-    for (const f of [0, 1, 3, 7, 40, 1_000]) expect(flagBlinkAlpha('home', f, false)).toBe(0.95)
+    for (const f of [0, 1, 3, 7, 40, 1_000]) expect(flagBlinkAlpha('home', f, false, 100)).toBe(0.95)
   })
 
   it('`dropped` est STABLE et PLEIN : au sol, c\'est la zone de retour qui signale (2026-10-07)', () => {
     // Le fantôme posé au centre du cercle ne bat pas : un glyphe qui clignote sur un cercle fixe
     // se lit comme un défaut d'affichage (constat utilisateur), pas comme un signal.
-    for (const f of [0, 1, 2, 3, 5, 7, 40, 1_000]) expect(flagBlinkAlpha('dropped', f, false)).toBe(0.95)
+    for (const f of [0, 1, 2, 3, 5, 7, 40, 1_000]) expect(flagBlinkAlpha('dropped', f, false, 100)).toBe(0.95)
   })
 
   it('un état INCONNU suit le comportement « présent » : plein et fixe, jamais clignotant', () => {
     // Un artefact plus récent que ce code peut nommer un état qu'il ne connaît pas ; le faire
     // battre affirmerait « il est sorti », ce que rien ne dit.
-    for (const f of [0, 3, 5, 8]) expect(flagBlinkAlpha('teleported', f, false)).toBe(0.95)
+    for (const f of [0, 3, 5, 8]) expect(flagBlinkAlpha('teleported', f, false, 100)).toBe(0.95)
   })
 
   it('MOUVEMENT RÉDUIT : les quatre états rendent la même opacité pleine, sans battement', () => {
     for (const s of [...DEHORS, 'home'] as const) {
-      for (const f of [0, 2, 5, 7, 13]) expect(flagBlinkAlpha(s, f, true)).toBe(0.95)
+      for (const f of [0, 2, 5, 7, 13]) expect(flagBlinkAlpha(s, f, true, 100)).toBe(0.95)
     }
   })
 
   it('les bornes [0,35 ; 0,95] ne sont JAMAIS franchies — un glyphe éteint serait introuvable', () => {
     for (const s of DEHORS) {
       for (let f = 0; f <= 120; f += 1) {
-        const a = flagBlinkAlpha(s, f, false)
+        const a = flagBlinkAlpha(s, f, false, 100)
         expect(a, `${s} à l'image ${f}`).toBeGreaterThanOrEqual(0.35)
         expect(a, `${s} à l'image ${f}`).toBeLessThanOrEqual(0.95)
       }
     }
     // Et le battement PARCOURT TOUT l'intervalle, sur des images ENTIÈRES : c'est ce que le
-    // cosinus achète (un sinus s'arrêterait à 0,36 et 0,94 — cf. BLINK_PERIOD_FRAMES).
-    const vues = Array.from({ length: 120 }, (_, f) => flagBlinkAlpha('carried', f, false))
+    // cosinus achète (un sinus s'arrêterait à 0,36 et 0,94 — cf. BLINK_PERIOD_MS).
+    const vues = Array.from({ length: 120 }, (_, f) => flagBlinkAlpha('carried', f, false, 100))
     expect(Math.min(...vues)).toBeCloseTo(0.35, 10)
     expect(Math.max(...vues)).toBeCloseTo(0.95, 10)
   })
@@ -556,12 +557,12 @@ describe('flagBlinkAlpha (le clignotement du drapeau porté, 2026-08-27 ; au sol
   it('LA PÉRIODE EST CELLE ATTENDUE : deux images à une demi-période d\'écart s\'opposent', () => {
     // Période de 10 images (≈ 1 s au pas de 100 ms) : 0 et 5 sont à une demi-période l'une de
     // l'autre, donc aux deux bouts de la course — l'écart doit être franc, pas cosmétique.
-    const haut = flagBlinkAlpha('carried', 0, false)
-    const bas = flagBlinkAlpha('carried', 5, false)
+    const haut = flagBlinkAlpha('carried', 0, false, 100)
+    const bas = flagBlinkAlpha('carried', 5, false, 100)
     expect(Math.abs(haut - bas)).toBeGreaterThan(0.5)
     // Une période PLEINE ramène la même valeur : c'est ce qui fait un cycle, pas une dérive.
-    expect(flagBlinkAlpha('carried', 10, false)).toBeCloseTo(haut, 10)
-    expect(flagBlinkAlpha('carried', 15, false)).toBeCloseTo(bas, 10)
+    expect(flagBlinkAlpha('carried', 10, false, 100)).toBeCloseTo(haut, 10)
+    expect(flagBlinkAlpha('carried', 15, false, 100)).toBeCloseTo(bas, 10)
   })
 })
 

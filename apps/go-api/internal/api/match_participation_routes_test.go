@@ -30,7 +30,6 @@ import (
 const matchScopedMarker = "/api/v1/players/{player_slug}/matches/{match_id}"
 
 func TestMatchRoutesRequireParticipation(t *testing.T) {
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	r, ok := buildTestRouter(t).(chi.Router)
 	if !ok {
 		t.Fatal("le routeur n'est pas un chi.Router")

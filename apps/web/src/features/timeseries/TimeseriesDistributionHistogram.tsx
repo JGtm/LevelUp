@@ -5,7 +5,7 @@
  * ajoute une markLine verticale à la médiane interpolée depuis les buckets.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -69,7 +69,7 @@ export function TimeseriesDistributionHistogram({
   const locale = useAppShellStore((st) => st.locale)
 
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (buckets.length === 0) return null
     const tc = getEChartsThemeColors()
     const countLabel = formatMessage(commonManifest, 'common.charts.axis_matches', locale)

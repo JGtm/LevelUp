@@ -24,8 +24,8 @@ import (
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/killicon"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/killicon"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (
@@ -90,7 +90,7 @@ func vhPoser(t *testing.T, repoRoot, matchID string, doc replay.ReplayDocument) 
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if err := poserCompresse(path, blob, 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	return path

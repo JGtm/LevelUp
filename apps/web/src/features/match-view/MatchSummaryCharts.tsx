@@ -11,11 +11,12 @@
  */
 import { useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { buildRadarOption } from '@/components/charts/RadarChart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { substituteHpToken, useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
 import {
   getEChartsThemeColors,
   getAxisBase,
@@ -57,7 +58,7 @@ const DECAL_HATCH: DecalConfig = {
   dashArrayX: [1, 0],
   dashArrayY: [4, 4],
   rotation: -Math.PI / 4,
-  color: 'rgba(255,255,255,0.35)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  color: 'rgba(255,255,255,0.35)', // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // Décal cercles (série "Hist. Moy.")
@@ -66,7 +67,7 @@ const DECAL_DOTS: DecalConfig = {
   symbolSize: 1,
   dashArrayX: [4, 8],
   dashArrayY: [4, 8],
-  color: 'rgba(255,255,255,0.45)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  color: 'rgba(255,255,255,0.45)', // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // option aria pour activer les décals par item
@@ -128,7 +129,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelKills, t.labelDeaths, t.labelAssists]
       // Famille dédiée des stats de combat (2026-09-17) — mêmes couleurs que partout.
@@ -190,7 +191,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
         legend: { ...getLegendBase(tc), data: legendData },
         xAxis: { ...getAxisBase(tc), type: 'category' as const, data: cats },
         yAxis: { ...getAxisBase(tc), type: 'value' as const, minInterval: 1, min: 0 },
-        series: seriesList as EChartsCoreOption['series'],
+        series: seriesList as ChartOption['series'],
       }
     },
 
@@ -222,15 +223,15 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelSpree, t.labelHeadshots, t.labelPerfectKills]
       // color-allow: hex en commentaires de documentation token→couleur
       // Spree=#8B5CF6  Headshots=#33D6FF  Perfect=#00DC82
       const tokens: SemanticToken[] = [
-        'outcome-dnf', // color-allow: doc token (violet #8B5CF6)
-        'narrative-contre-remontada', // color-allow: doc token (cyan #33D6FF)
-        'narrative-dominant', // color-allow: doc token (vert vif #00DC82)
+        'outcome-dnf', // color-allow(hex): doc token (violet #8B5CF6)
+        'narrative-contre-remontada', // color-allow(hex): doc token (cyan #33D6FF)
+        'narrative-dominant', // color-allow(hex): doc token (vert vif #00DC82)
       ]
 
       const seriesList: BarSeries[] = [
@@ -276,7 +277,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
         },
         xAxis: { ...getAxisBase(tc), type: 'category' as const, data: cats },
         yAxis: { ...getAxisBase(tc), type: 'value' as const, minInterval: 1, min: 0 },
-        series: seriesList as EChartsCoreOption['series'],
+        series: seriesList as ChartOption['series'],
       }
     },
 
@@ -310,6 +311,7 @@ interface MatchSummaryRadarChartProps {
 }
 
 export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarChartProps) {
+  const hp = useEffectiveHpToKill()
   const mySeries = radar?.find((s) => s.xuid === meXUID)
 
   const axisLabels: Record<string, string> = {
@@ -332,11 +334,11 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
     : []
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const opt = buildRadarOption(radarPayload, { axisLabels }) as Record<string, unknown>
       // Serie unique (joueur actif) : aucune legende a afficher.
       opt.legend = { show: false }
-      return opt as EChartsCoreOption
+      return opt as ChartOption
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [radar, meXUID, t],
@@ -348,9 +350,9 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
       <InfoTooltip
         content={
           <div className="space-y-1">
-            <p><span className="font-medium">{t.radarAxisImpact}</span> — {t.radarTooltipImpact}</p>
+            <p><span className="font-medium">{t.radarAxisImpact}</span> — {substituteHpToken(t.radarTooltipImpact, hp)}</p>
             <p><span className="font-medium">{t.radarAxisCombat}</span> — {t.radarTooltipCombat}</p>
-            <p><span className="font-medium">{t.radarAxisSurvival}</span> — {t.radarTooltipSurvival}</p>
+            <p><span className="font-medium">{t.radarAxisSurvival}</span> — {substituteHpToken(t.radarTooltipSurvival, hp)}</p>
             <p><span className="font-medium">{t.radarAxisSupport}</span> — {t.radarTooltipSupport}</p>
             <p><span className="font-medium">{t.radarAxisScore}</span> — {t.radarTooltipScore}</p>
             <p><span className="font-medium">{t.radarAxisObjective}</span> — {t.radarTooltipObjective}</p>

@@ -315,9 +315,9 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 // GetCareerRank implémente HaloClient.GetCareerRank() avec PolicyAnyPublic.
 //
 // MESURE DU 2026-09-16 (D4, plan robustesse) : `/careerranks` est ENTIÈREMENT PUBLIC.
-// Interrogé pour un xuid TIERS avec trois prêteurs différents (JGtm, DankerGlue,
-// Trimbutton), il rend 200 et les MÊMES rang et XP que l'appel du propriétaire
-// (JGtm : rank=202 xp=2555 vu par deux prêteurs ; Nuzzles : rank=272 xp=0, 272 étant le
+// Interrogé pour un xuid TIERS avec trois prêteurs différents (JGtm, Joueur9001,
+// Joueur9009), il rend 200 et les MÊMES rang et XP que l'appel du propriétaire
+// (JGtm : rank=202 xp=2555 vu par deux prêteurs ; J900004 : rank=272 xp=0, 272 étant le
 // rang maximal et l'XP nulle sa vraie valeur). La politique `PolicyPinnedPlayer` reposait
 // donc sur une prémisse fausse, déjà contredite par `service/career_live_target.go`.
 // Restent légitimement épinglés, hors de ce client : le cron de personnalisation Spartan

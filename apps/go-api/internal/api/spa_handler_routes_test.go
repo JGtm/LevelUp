@@ -1,6 +1,6 @@
 //go:build cgo
 
-// spa_handler_routes_test.go — la liste des routes du routeur (isServerRoutePath) couvre le
+// spa_handler_routes_test.go — la liste des routes du routeur (handlers.IsServerRoutePath) couvre le
 // VRAI routeur : pendant le démarrage, une route serveur absente de cette liste serait
 // servie en index.html au lieu de la réponse « serveur en démarrage ».
 package api_test
@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/api/handlers"
 )
 
 // routeParam : segment variable d'un motif chi ({param} ou {param:regex}).
@@ -21,7 +21,6 @@ var routeParam = regexp.MustCompile(`\{[^/]+\}`)
 
 func TestServerRoutePath_CouvreLeRouteur(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	r, ok := buildTestRouter(t).(chi.Router)
 	if !ok {
 		t.Fatal("le routeur n'est pas un chi.Router")
@@ -33,7 +32,7 @@ func TestServerRoutePath_CouvreLeRouteur(t *testing.T) {
 		}
 		walked++
 		sample := strings.ReplaceAll(routeParam.ReplaceAllString(route, "x"), "*", "x")
-		if !api.IsServerRoutePath(sample) {
+		if !handlers.IsServerRoutePath(sample) {
 			t.Errorf("%s %s : route du routeur absente de serverRoutePrefixes/serverRoutePaths", method, route)
 		}
 		return nil

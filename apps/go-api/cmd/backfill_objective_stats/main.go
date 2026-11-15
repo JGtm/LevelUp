@@ -38,13 +38,13 @@ import (
 	"log/slog"
 	"os"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/titleseams"
 	persist "levelup/go-api/internal/persist"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/objective"
 )
@@ -202,7 +202,7 @@ func listCandidateMatchIDs(ctx context.Context, db *sql.DB, limit int, force boo
 	        AND NOT EXISTS (
 	            SELECT 1 FROM match_objective_stats_latest o WHERE o.match_id = mr.match_id
 	        )
-	      ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC`, bitClause)
+	      ORDER BY `+sqlfrag.SQLStartTimeCanonical("mr")+` DESC`, bitClause)
 	if limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d", limit)
 	}

@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"math"
@@ -148,7 +147,7 @@ func computeExpectedAssists(
 		// Aucune ligne `__global__` : le modèle populationnel n'est pas seedé (donnée manquante,
 		// WARN). Toute autre erreur est une panne de lecture (ERROR, DEBUG si requête abandonnée).
 		level := observability.LevelUnlessCanceled(ctx, err, slog.LevelError)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, port.ErrNotFound) {
 			level = slog.LevelWarn
 		}
 		slog.Log(ctx, level, "match_view: modèle populationnel d'assists attendus illisible, valeur omise",
@@ -259,7 +258,7 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	// expected K/D LOCAL — modèle count∝durée (TrueSkill2-like) quand l'API skill
 	// n'a pas fourni l'attendu (Halo 5). Cf. localExpectedKD (réutilisé pour les
 	// amis trackés). Validé sur 3135 matchs H5 (+13% frags / +5% morts vs moyenne
-	// plate ; cmd/diag_expected_kd). N'écrase JAMAIS un attendu fourni par l'API.
+	// plate). N'écrase JAMAIS un attendu fourni par l'API.
 	if out.ExpectedKills == nil && out.ExpectedDeaths == nil {
 		if ek, ed, ok := localExpectedKD(histRows, meta, durationSec); ok {
 			out.ExpectedKills = ek

@@ -7,35 +7,22 @@
  */
 import { useQuery } from '@tanstack/react-query'
 
-import { api, API_BASE_URL } from '@/lib/api/client'
+import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 
+import type { components } from '@/lib/api/generated'
 export type TitleStatus = 'active' | 'coming_soon' | 'archived'
 
-export interface AdminTitleSummary {
-  slug: string
-  name: string
-  provider: string
-  icon_url: string
+export type AdminTitleSummary = Omit<components['schemas']['AdminTitleSummary'], 'status'> & {
   status: TitleStatus
-  capabilities: string[]
-  is_default: boolean
-  xbox_title_id: string
-  steam_app_id: string
-  has_mappings: boolean
 }
 
-export interface AdminTitlesListResponse {
-  titles: AdminTitleSummary[]
-  count: number
+export type AdminTitlesListResponse = Omit<components['schemas']['AdminTitlesListResponse'], 'titles'> & {
+  titles: AdminTitleSummary[] | null
 }
 
-export interface AdminTitleDetail extends AdminTitleSummary {
-  schema_version?: number
-  /** capabilities.toml : capabilityKey → supported|degraded|not_exposed */
-  declared_capabilities?: Record<string, string>
-  /** cascade calculée : featureKey → available|degraded|unavailable */
-  feature_matrix?: Record<string, string>
+export type AdminTitleDetail = Omit<components['schemas']['AdminTitleDetail'], 'status'> & {
+  status: TitleStatus
 }
 
 export function useAdminTitles() {
@@ -62,18 +49,7 @@ export function useAdminTitleDetail(slug: string | null) {
 
 // Formes imbriquées inlinées dans TitleDiagnostic (knip : pas d'export mort ;
 // elles ne sont consommées que via l'inférence du hook côté page).
-export interface TitleDiagnostic {
-  title_slug: string
-  config_files: { name: string; present: boolean; required: boolean }[]
-  databases: {
-    name: string
-    exists: boolean
-    tables?: { name: string; exists: boolean; rows: number }[]
-    error?: string
-  }[]
-  /** Écarts déclaré-vs-réalité (vide/absent = pas de drift). */
-  drifts?: { feature: string; kind: string; computed: string; reason: string }[]
-}
+export type TitleDiagnostic = components['schemas']['TitleDiagnostic']
 
 export function useAdminTitleDiagnostic(slug: string | null) {
   return useQuery({
@@ -87,15 +63,8 @@ export function useAdminTitleDiagnostic(slug: string | null) {
 
 // --- Brouillon capabilities.toml (D10 : presse-papier, zéro écriture serveur) ---
 
-// Réponse text/plain (pas JSON) → fetch dédié plutôt que le client api.
-// Le slug est dans le path (route admin title-agnostic) ; cookie de session via
-// credentials. À copier côté front avec navigator.clipboard.
-export async function fetchTitleTomlDraft(slug: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/admin/titles/${slug}/toml-draft`, {
-    credentials: 'include',
-  })
-  if (!res.ok) {
-    throw new Error(`toml-draft ${res.status}`)
-  }
-  return res.text()
+// Réponse text/plain (pas JSON) → api.getText. Le slug est dans le path (route admin
+// title-agnostic) ; cookie de session via le client. À copier côté front avec navigator.clipboard.
+export function fetchTitleTomlDraft(slug: string): Promise<string> {
+  return api.getText(`/admin/titles/${slug}/toml-draft`)
 }

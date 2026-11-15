@@ -64,7 +64,7 @@ describe('selectMatchNotices — sélection', () => {
     const warning = { level: 'partial', message: 'Profil partiellement privé.' } as never
     expect(selectMatchNotices({ privacy_warning: warning })).toEqual([{ kind: 'privacy', warning }])
     expect(selectMatchNotices({ privacy_warning: { level: 'none', message: '' } as never })).toEqual([])
-    expect(selectMatchNotices({ privacy_warning: null })).toEqual([])
+    expect(selectMatchNotices({ privacy_warning: undefined })).toEqual([])
   })
 })
 

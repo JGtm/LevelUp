@@ -12,7 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // replay_vehicle_scenery_synth_test.go — LA MATIERE DANS LE CADRE (revue RR-M7-05 du 2026-09-24).
@@ -56,7 +56,7 @@ func fondSynthetique(t *testing.T, root string) {
 
 func decorSynthetique(t *testing.T, root string, vies ...replay.VehicleTrack) *replay.VehicleScenery {
 	t.Helper()
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondSynthetique}).(*replayService)
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondSynthetique}, nil).(*replayService)
 	doc := docJoue(0, vies...)
 	svc.resolveVehicleScenery(context.Background(), doc, "m7", svc.matchMapKeys(context.Background(), "m7"))
 	return doc.VehicleScenery

@@ -25,7 +25,7 @@ vi.mock('@/lib/capabilities/dataCapabilities', async (importOriginal) => ({
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
-  SquadPerMinuteChart: () => <div data-testid="per-minute-chart" />,
+  SquadPerMinuteChart: ({ title }: { title?: React.ReactNode }) => <div data-testid="per-minute-chart">{title}</div>,
 }))
 vi.mock('./SquadSynergyRadarChart', () => ({
   SquadSynergyRadarChart: () => <div data-testid="synergy-radar-chart" />,
@@ -78,6 +78,22 @@ describe('SquadContributionsPage', () => {
     })
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
+  })
+
+  it('« Stats par minute » : le titre nomme les dégâts seulement quand un joueur en porte', () => {
+    const base = { player: 'test', kills_per_minute: 1, deaths_per_minute: 0.5, assists_per_minute: 0.2, match_count: 5 }
+    mockSquadContext({ pageData: { per_minute_stats: [base] } as unknown as TeammatesPageResponse })
+    const { unmount } = renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('per-minute-chart')).toHaveTextContent(/^Stats par minute — Frags \/ Morts \/ Assistances$/)
+    unmount()
+
+    mockSquadContext({
+      pageData: { per_minute_stats: [{ ...base, damage_dealt_per_minute: 310 }] } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('per-minute-chart')).toHaveTextContent(
+      'Stats par minute — Frags / Morts / Assistances / Dégâts',
+    )
   })
 
   // LOT 3 « sections » (2026-09-22) : l'impact des coéquipiers et les médailles ont
@@ -144,7 +160,7 @@ describe('SquadContributionsPage', () => {
   // le bloc : la carte reste avec son constat quand le titre lit les événements horodatés, sinon elle est absente.
   it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
     mockSquadContext({
-      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      confirmedGamertags: ['Joueur90001', 'Joueur90002'],
       pageData: { main_player: 'JGtm', squad_impact_history: impactHistory3 } as unknown as TeammatesPageResponse,
     })
     const { container } = renderWithProviders(<SquadContributionsPage />)
@@ -175,7 +191,7 @@ describe('SquadContributionsPage', () => {
   // n'en monte plus aucune carte.
   it('ne monte plus la section « Objectif » (partie dans l’onglet Emprise)', () => {
     mockSquadContext({
-      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      confirmedGamertags: ['Joueur90001', 'Joueur90002'],
       pageData: {
         main_player: 'JGtm',
         formes_retenues: block0709(),

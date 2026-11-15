@@ -31,7 +31,7 @@ func newEnvLockedSettingsRouter(t *testing.T) (*chi.Mux, string) {
 	settingsPath := filepath.Join(dir, "app_settings.json")
 	settingsStore := settings_platform.NewStore(settingsPath)
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 	return r, settingsPath

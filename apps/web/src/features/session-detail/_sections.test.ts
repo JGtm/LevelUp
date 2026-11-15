@@ -49,6 +49,20 @@ const CARTES = [
   'equipment',
 ]
 
+describe('sessionSectionKeys — la Mainmise', () => {
+  it('absente tant que la présence ne la pose pas (titre sans décodeur de film)', () => {
+    expect(sessionSectionKeys(TOUT)).not.toContain('lead_share')
+  })
+
+  it('posée : entre « Vies nettes » et « Intensité », sous « Match par match »', () => {
+    const keys = sessionSectionKeys({ ...TOUT, lead_share: true })
+    expect(keys.indexOf('lead_share')).toBe(keys.indexOf('net_lives') + 1)
+    expect(keys.indexOf('intensity')).toBe(keys.indexOf('lead_share') + 1)
+    const run = groupSessionSections(keys).find((r) => r.keys.includes('lead_share'))
+    expect(run?.group).toBe('match_by_match')
+  })
+})
+
 describe('sessionSectionKeys — une clé par carte', () => {
   it('ordre : les cartes A à L après la carrière, avant le tableau des matchs', () => {
     const keys = sessionSectionKeys(TOUT)

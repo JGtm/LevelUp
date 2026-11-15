@@ -154,12 +154,7 @@ func processShadowBurst(ctx context.Context, base shadowRunContext, burstDB *sql
 	c := base
 	c.sharedDB = burstDB
 	c.repo = duckdb.NewSkillV2Repo(burstDB)
-	// squadRepo seulement si le flag est actif (sinon interface nil → offsets nuls,
-	// comportement strictement inchangé ; un typed-nil casserait le garde de
-	// computeTeamSquadOffsets).
-	if c.squadEnabled {
-		c.squadRepo = duckdb.NewSquadOffsetRepo(burstDB)
-	}
+	c.squadRepo = duckdb.NewSquadOffsetRepo(burstDB)
 	start := c.burst.now()
 	n, held := 0, time.Duration(0)
 	for n < len(q.pending) {

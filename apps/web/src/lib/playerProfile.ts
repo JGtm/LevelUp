@@ -6,166 +6,54 @@
  */
 import { api } from './api/client'
 
+import type { components } from '@/lib/api/generated'
 // ─── Sections A1 ────────────────────────────────────────────────────────────
 
-export interface ParticipationAxisValue {
-  axis: string // 'combat' | 'survival' | 'support' | 'score' | 'objective' | 'impact'
-  value: number // 0..100
-  raw?: number
-}
+export type ParticipationAxisValue = components['schemas']['ParticipationAxisValue']
 
-export interface RadarAxisInsight {
-  axis: string
-  value: number
-  message?: string // i18n key
-}
+export type RadarAxisInsight = components['schemas']['RadarAxisInsight']
 
 // ─── Section A2 ─────────────────────────────────────────────────────────────
 
-export interface StyleSignature {
-  first_kill_count: number
-  first_death_count: number
-  fkfd_ratio: number
-  style_key?: string // 'opportunistic_finisher' | 'overextended' | 'hyper_engaged' | 'passive'
-}
+export type StyleSignature = components['schemas']['StyleSignature']
 
-export interface EngagementSnapshot {
-  score: number // 0..100
-  tier: string // 'low' | 'regular' | 'high' | 'intense'
-  matches_per_day_avg: number
-  max_gap_days: number
-  regularity_coach?: string // i18n key
-}
+export type EngagementSnapshot = components['schemas']['EngagementSnapshot']
 
 // ─── Section B ──────────────────────────────────────────────────────────────
 
-export interface SkillRatingSnapshot {
-  /** Nom du tier dans la langue de la requête ("Diamond", "Diamant"). */
-  tier_name: string
-  sub_tier: number
-  label: string
-  mu: number
-  sigma: number
-  next_tier_label?: string
-  next_tier_mu?: number
-  gap_to_next?: number
-  progress_ratio?: number
-}
+export type SkillRatingSnapshot = components['schemas']['SkillRatingSnapshot']
 
-export interface LUSRState {
-  Mu?: number
-  Sigma?: number
-  MatchesCount?: number
-  LastMatchAt?: string
-}
+export type LUSRState = components['schemas']['LUSRState']
 
-export interface LUSRComponentBreakdown {
-  name: string
-  weight: number
-  current_avg: number
-  personal_top_20: number
-  target_for_tier: number
-  trend: number
-}
+export type LUSRComponentBreakdown = components['schemas']['LUSRComponentBreakdown']
 
-export interface LOWESSTrend {
-  Metric?: string
-  Slope?: number
-  Window?: number
-}
+export type LOWESSTrend = components['schemas']['LOWESSTrend']
 
 /**
  * Point de la sparkline de tendance LUSR 90 j (DEC-5/D2). `value` est le rating
  * LUSR déjà LISSÉ par LOWESS côté serveur (échelle points, identique à la valeur
  * « pts LUSR » du tier) — jamais le μ brut (DEC-6). `date` = jour UTC YYYY-MM-DD.
  */
-export interface SkillTrendPoint {
-  date: string
-  value: number
-}
+export type SkillTrendPoint = components['schemas']['SkillTrendPoint']
 
 // ─── Section C ──────────────────────────────────────────────────────────────
 
-export interface ProgressionLeverage {
-  component: string
-  leverage_value: number
-  narrative_axes: string[]
-  coaching_message: string // i18n key
-}
+export type ProgressionLeverage = components['schemas']['ProgressionLeverage']
 
-export interface SuggestedChallenge {
-  template_id: string
-  target_tier: string // 'normal' | 'heroic' | 'legendary' | 'mythic'
-  historical_streak: number
-  is_arc_step: boolean
-  arc_id?: string
-  // V2 §3 : hydratés côté backend depuis le template prestige. Permettent
-  // à l'UI d'afficher un libellé humain sans charger le catalogue séparément.
-  /** Libellé et description du template, dans la langue de la requête. */
-  label?: string
-  description?: string
-}
+export type SuggestedChallenge = components['schemas']['SuggestedChallenge']
 
 // ─── PlayerProfile complet ──────────────────────────────────────────────────
 
-export interface PlayerProfile {
-  user_id: string
-  title_slug: string
-  updated_at: string
-  has_enough_data: boolean
-  matches_analyzed: number
-
-  // A1
-  dominant_role?: string
-  secondary_role?: string
-  radar_axes?: ParticipationAxisValue[]
-  strengths?: RadarAxisInsight[]
-  improvement_areas?: RadarAxisInsight[]
-
-  // A2
-  style_signature: StyleSignature
-  engagement_snap: EngagementSnapshot
-
-  // B
-  lusr: LUSRState
-  skill_rating: SkillRatingSnapshot
-  lusr_components?: LUSRComponentBreakdown[]
-  mu_trend: LOWESSTrend
-  /** Sparkline 90 j de tendance LUSR (μ lissé LOWESS, en points). Vide/absent si
-   *  < 3 points → le front n'affiche rien (DEC-5/D2). */
-  skill_trend?: SkillTrendPoint[]
-
-  // C
-  leverages?: ProgressionLeverage[]
-  suggested_challenges?: SuggestedChallenge[]
-}
+export type PlayerProfile = components['schemas']['PlayerProfile']
 
 // ─── Campagne V1 §4.5 ──────────────────────────────────────────────────────
 
 export type CampaignStatus = 'active' | 'paused' | 'completed' | 'abandoned'
 export type AxisKind = 'radar' | 'lusr_component'
 
-export interface ImprovementCampaign {
-  id: string
-  user_id: string
-  title_slug: string
-  axis: string
+export type ImprovementCampaign = Omit<components['schemas']['ImprovementCampaign'], 'axis_kind' | 'status'> & {
   axis_kind: AxisKind
-  started_at: string
-  ended_at?: string
   status: CampaignStatus
-  playlist_group: string
-  snapshot_value: number
-  snapshot_sample: number
-  current_value_raw?: number
-  current_value_lowess?: number
-  matches_since_start: number
-  last_evaluated_at?: string
-  mann_whitney_p?: number
-  progression_confirmed: boolean
-  auto_closure_suggested: boolean
-  auto_closure_reason?: string
-  linked_challenge_ids?: string[]
 }
 
 export interface StartCampaignBody {
@@ -179,17 +67,9 @@ export interface StartCampaignBody {
  * miroir de handlers.campaignHistoryItem. `delta` = final − snapshot (progression
  * sur l'axe), absent si la campagne n'a jamais été évaluée.
  */
-export interface CampaignHistoryItem {
-  id: string
-  axis: string
+export type CampaignHistoryItem = Omit<components['schemas']['CampaignHistoryItem'], 'axis_kind' | 'status'> & {
   axis_kind: AxisKind
-  playlist_group: string
   status: CampaignStatus
-  started_at: string
-  ended_at?: string
-  snapshot_value: number
-  final_value?: number
-  delta?: number
 }
 
 // ─── API client ────────────────────────────────────────────────────────────

@@ -270,3 +270,70 @@ func TestUninstallCleanup_RemovesTheResourcePackOfTheInstallDir(t *testing.T) {
 		t.Fatalf("seul le moteur doit rester : %v", entries)
 	}
 }
+
+// writeTree pose les fichiers rel (chemins relatifs à dir, séparés par /) avec un contenu quelconque.
+func writeTree(t *testing.T, dir string, rels ...string) {
+	t.Helper()
+	for _, rel := range rels {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(rel), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestUninstallCleanup_RemovesTheEngineDirsAndKeepsRootFiles : après une mise à jour, web/assets porte des fichiers
+// hachés que le désinstalleur ne connaît plus ; le mode retire web et config en entier quand web/index.html existe,
+// compte les fichiers retirés, et laisse un fichier posé à la racine du dossier du programme.
+func TestUninstallCleanup_RemovesTheEngineDirsAndKeepsRootFiles(t *testing.T) {
+	dir := t.TempDir()
+	// Le paquet (manifeste) d'abord, puis les fichiers du moteur que le manifeste ne liste pas.
+	writeTree(t, dir, "static/a.png", "web/titles/x/b.png")
+	m, err := resourcepack.Build(dir, "")
+	if err != nil || resourcepack.WriteManifest(dir, m) != nil {
+		t.Fatalf("manifeste : %v", err)
+	}
+	writeTree(t, dir, "web/index.html", "web/assets/index-old111.js", "web/assets/index-new222.js", "config/locales.toml",
+		"levelup-server.exe", "notes.txt")
+	deps, out := newCleanup(t, &cleanupRegistry{}, &cleanupRunner{})
+	deps.InstallDir = dir
+	if code := uninstallCleanup(context.Background(), deps); code != 0 {
+		t.Fatalf("code %d : %s", code, out)
+	}
+	for _, want := range []string{"ressources=2-fichiers moteur=4-fichiers ", "ok=true", "exit=0"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("bilan sans %q : %s", want, out)
+		}
+	}
+	entries, _ := os.ReadDir(dir)
+	var left []string
+	for _, e := range entries {
+		left = append(left, e.Name())
+	}
+	if strings.Join(left, ",") != "levelup-server.exe,notes.txt" {
+		t.Fatalf("restes dans le dossier du programme : %v", left)
+	}
+}
+
+// TestUninstallCleanup_WithoutIndexHTMLTheEngineDirsAreKept : sans web/index.html le dossier n'est pas reconnu comme
+// une installation, web et config ne sont pas touchés ; le paquet de ressources se retire comme avant.
+func TestUninstallCleanup_WithoutIndexHTMLTheEngineDirsAreKept(t *testing.T) {
+	dir := t.TempDir()
+	writeTree(t, dir, "web/assets/index-old111.js", "config/locales.toml", "levelup-server.exe")
+	deps, out := newCleanup(t, &cleanupRegistry{}, &cleanupRunner{})
+	deps.InstallDir = dir
+	if code := uninstallCleanup(context.Background(), deps); code != 0 {
+		t.Fatalf("code %d : %s", code, out)
+	}
+	if !strings.Contains(out.String(), "ressources=0-fichiers moteur=0-fichiers ") {
+		t.Fatalf("bilan : %s", out)
+	}
+	for _, rel := range []string{"web/assets/index-old111.js", "config/locales.toml", "levelup-server.exe"} {
+		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("%s ne devait pas être retiré : %v", rel, err)
+		}
+	}
+}

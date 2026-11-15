@@ -28,9 +28,9 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 var updateBotsFixtures = flag.Bool("update-bots-fixtures", false,
@@ -74,7 +74,7 @@ func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("%s : film absent du cache %s : %v", id, cache, err)
 		}
-		res := b.decodeKillSource(ctx, id, carte, film)
+		res, _ := b.decodeKillSource(ctx, id, carte, film)
 		if res == nil {
 			t.Fatalf("%s : kill-feed non decode", id)
 		}

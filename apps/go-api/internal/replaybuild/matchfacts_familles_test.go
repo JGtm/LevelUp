@@ -14,8 +14,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // recordsCTFAvecFragsDeTest — la meme fixture que [recordsCTFDeTest], plus le compteur de FRAGS

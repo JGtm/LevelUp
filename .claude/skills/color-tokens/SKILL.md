@@ -47,6 +47,11 @@ apps/web/src/lib/accessibility/
 Consulter `semantic-tokens.ts` pour la liste complète. Exemples typiques :
 `primary`, `secondary`, `success`, `warning`, `danger`, `series1`…`seriesN`, `neutral`.
 
+**Voile et texte sur voile** (plan 8.1.2, D-7) : `scrim` (voile noir, `bg-scrim/60`) et
+`on-scrim` (texte blanc sur voile, `text-on-scrim/80`). Identiques dans les deux thèmes, définis
+dans `styles/globals.css`. Ils remplacent `bg-black` / `text-white` (et variantes d'opacité) dans
+`features/` et `components/` : le garde-rail `tools/lint-no-hardcoded-colors.mjs` les refuse.
+
 ## Stats de combat — famille dédiée (2026-09-17)
 
 Toute couleur qui dit « c'est un frag / une mort / une assistance / ce sens d'assistance »

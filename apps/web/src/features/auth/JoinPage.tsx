@@ -13,16 +13,18 @@
  * repli si l'invité n'a que le code.
  */
 import { useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { API_BASE_URL } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { Route } from '@/routes/join'
+
+const route = getRouteApi('/join')
 
 export function JoinPage() {
-  const { invite } = Route.useSearch()
+  const { invite } = route.useSearch()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [code, setCode] = useState(invite ?? '')

@@ -30,21 +30,21 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // CampaignHandler regroupe les endpoints campagne.
 type CampaignHandler struct {
-	resolve   ProgressionResolver
+	svc       port.CampaignService
 	titleSlug string
 }
 
 // NewCampaignHandler construit le handler.
-func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *CampaignHandler {
+func NewCampaignHandler(svc port.CampaignService, titleSlug string) *CampaignHandler {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	return &CampaignHandler{resolve: resolve, titleSlug: titleSlug}
+	return &CampaignHandler{svc: svc, titleSlug: titleSlug}
 }
 
 // Mount enregistre les routes via Huma sur le sous-routeur chi (préfixe
@@ -143,13 +143,7 @@ type campaignNoContent struct {
 // la validation Huma en 422 validation_error (au lieu de l'ancien 400 invalid_body) —
 // seul écart délibéré de la migration, sans incidence pour un client bien formé.
 func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInput) (*campaignCreatedOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
-	svc := h.serviceFromPDB(pdb)
-	c, err := svc.StartCampaign(ctx, campaign.StartParams{
-		UserID:        pdb.XUID,
+	c, err := h.svc.Start(ctx, in.PlayerSlug, campaign.StartParams{
 		TitleSlug:     requestTitleSlug(ctx, h.titleSlug),
 		Axis:          in.Body.Axis,
 		AxisKind:      campaign.AxisKind(in.Body.AxisKind),
@@ -157,6 +151,8 @@ func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInpu
 	}, time.Now().UTC())
 	if err != nil {
 		switch {
+		case isPlayerNotFound(err):
+			return nil, progressionHTTPError(ctx, err)
 		case errors.Is(err, campaign.ErrAlreadyActive):
 			return nil, humacore.NewErrorFrom(ctx, http.StatusConflict, "campaign_already_active", err)
 		case errors.Is(err, campaign.ErrInvalidAxis):
@@ -171,13 +167,11 @@ func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInpu
 
 // handleGetActive : GET /campaigns/active → campagne active du joueur (ou null).
 func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlayerInput) (*campaignActiveOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	c, err := h.svc.Active(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
-		return nil, err
-	}
-	svc := h.serviceFromPDB(pdb)
-	c, err := svc.GetActive(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
-	if err != nil {
+		if isPlayerNotFound(err) {
+			return nil, progressionHTTPError(ctx, err)
+		}
 		if errors.Is(err, campaign.ErrNotFound) {
 			return &campaignActiveOutput{Body: nil}, nil
 		}
@@ -190,13 +184,11 @@ func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlaye
 // handleListEnded : GET /campaigns/history → campagnes closes du joueur, les
 // plus récentes d'abord. Mappe vers un DTO dédié (delta snapshot→final calculé).
 func (h *CampaignHandler) handleListEnded(ctx context.Context, in *campaignPlayerInput) (*campaignHistoryOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	list, err := h.svc.Ended(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
-		return nil, err
-	}
-	svc := h.serviceFromPDB(pdb)
-	list, err := svc.ListEnded(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
-	if err != nil {
+		if isPlayerNotFound(err) {
+			return nil, progressionHTTPError(ctx, err)
+		}
 		slog.WarnContext(ctx, "campaign: list ended", "err", err)
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_campaigns_error", err)
 	}
@@ -225,13 +217,11 @@ func toCampaignHistoryItem(c *campaign.ImprovementCampaign) campaignHistoryItem 
 
 // handleGetByID : GET /campaigns/{id} → détail + défis liés.
 func (h *CampaignHandler) handleGetByID(ctx context.Context, in *campaignIDInput) (*campaignOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	c, err := h.svc.ByID(ctx, in.PlayerSlug, in.ID)
 	if err != nil {
-		return nil, err
-	}
-	svc := h.serviceFromPDB(pdb)
-	c, err := svc.GetByID(ctx, in.ID)
-	if err != nil {
+		if isPlayerNotFound(err) {
+			return nil, progressionHTTPError(ctx, err)
+		}
 		if errors.Is(err, campaign.ErrNotFound) {
 			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "campaign_not_found", err)
 		}
@@ -243,63 +233,50 @@ func (h *CampaignHandler) handleGetByID(ctx context.Context, in *campaignIDInput
 
 // handlePause : POST /campaigns/{id}/pause → 204.
 func (h *CampaignHandler) handlePause(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
-	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
-		return svc.PauseCampaign(ctx, id)
+	return h.runTransition(ctx, in, func(slug, id string) error {
+		return h.svc.Pause(ctx, slug, id)
 	})
 }
 
 // handleResume : POST /campaigns/{id}/resume → 204.
 func (h *CampaignHandler) handleResume(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
-	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
-		return svc.ResumeCampaign(ctx, id)
+	return h.runTransition(ctx, in, func(slug, id string) error {
+		return h.svc.Resume(ctx, slug, id)
 	})
 }
 
 // handleClose : POST /campaigns/{id}/close → 204.
 func (h *CampaignHandler) handleClose(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
 	now := time.Now().UTC()
-	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
-		return svc.CloseCampaign(ctx, id, now)
+	return h.runTransition(ctx, in, func(slug, id string) error {
+		return h.svc.Close(ctx, slug, id, now)
 	})
 }
 
 // handleAbandon : POST /campaigns/{id}/abandon → 204.
 func (h *CampaignHandler) handleAbandon(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
 	now := time.Now().UTC()
-	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
-		return svc.AbandonCampaign(ctx, id, now)
+	return h.runTransition(ctx, in, func(slug, id string) error {
+		return h.svc.Abandon(ctx, slug, id, now)
 	})
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
-// (contrat préservé : {code:player_not_found}).
-func (h *CampaignHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
-	pdb, err := h.resolve(ctx, slug)
-	if err != nil {
-		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
-	}
-	return pdb, nil
-}
-
-func (h *CampaignHandler) serviceFromPDB(pdb *duckdb.PlayerDB) *campaign.Service {
-	repo := duckdb.NewCampaignRepo(pdb.Player)
-	samples := duckdb.NewCampaignSampleProvider(pdb)
-	return campaign.NewService(repo, samples)
+// isPlayerNotFound : le service n'a pas résolu le joueur (404 player_not_found, contrat préservé).
+func isPlayerNotFound(err error) bool {
+	var pe *port.ProgressionError
+	return errors.As(err, &pe) && pe.Kind == port.ProgErrPlayerNotFound
 }
 
 // runTransition factorise les 4 transitions d'état (pause/resume/close/abandon),
 // chacune renvoyant 204 No Content en succès. Contrat d'erreur identique à
 // l'ancien handler chi (404 campaign_not_found, 409 invalid_status_transition).
-func (h *CampaignHandler) runTransition(ctx context.Context, in *campaignIDInput, fn func(*campaign.Service, string) error) (*campaignNoContent, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
-	svc := h.serviceFromPDB(pdb)
-	if err := fn(svc, in.ID); err != nil {
+func (h *CampaignHandler) runTransition(ctx context.Context, in *campaignIDInput, fn func(playerSlug, id string) error) (*campaignNoContent, error) {
+	if err := fn(in.PlayerSlug, in.ID); err != nil {
 		switch {
+		case isPlayerNotFound(err):
+			return nil, progressionHTTPError(ctx, err)
 		case errors.Is(err, campaign.ErrNotFound):
 			return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "campaign_not_found", err)
 		case errors.Is(err, campaign.ErrInvalidStatus):

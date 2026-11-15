@@ -20,6 +20,7 @@ import { type ReactNode } from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
+import { focusByKeyboard } from '@/test/focus'
 import { HeaderLabelTooltip } from './columnMeta'
 import { SortableTh } from '@/components/ui/sortable-th'
 
@@ -85,7 +86,7 @@ describe('HeaderLabelTooltip (famille 1)', () => {
         </HeaderLabelTooltip>
       </th>,
     )
-    fireEvent.focus(screen.getByRole('button'))
+    focusByKeyboard(screen.getByRole('button'))
     expect(screen.getByRole('tooltip')).toHaveTextContent('Impact par match.')
   })
 
@@ -99,7 +100,7 @@ describe('HeaderLabelTooltip (famille 1)', () => {
     )
     const trigger = screen.getByText('Contexte')
     expect(trigger).toHaveAttribute('tabindex', '0')
-    fireEvent.focus(trigger)
+    focusByKeyboard(trigger)
     expect(screen.getByRole('tooltip')).toHaveTextContent('Contexte du match.')
   })
 })

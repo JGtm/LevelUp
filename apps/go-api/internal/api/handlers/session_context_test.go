@@ -23,7 +23,7 @@ func newSessionContextRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
 	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := handlers.NewSessionHandler(store)
+	h := handlers.NewSessionHandler(store, fakeAvailableTitles)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
 	h.Mount(r)
@@ -247,7 +247,7 @@ func TestSessionHandler_PostContext_PersistsAccountLocale(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := handlers.NewSessionHandler(store).WithUserStore(users)
+	h := handlers.NewSessionHandler(store, fakeAvailableTitles).WithUserStore(users)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
 	h.Mount(r)
@@ -291,7 +291,7 @@ func TestSessionHandler_PostContext_AnonymousLocaleNotPersistedToAccount(t *test
 		t.Fatalf("Create: %v", err)
 	}
 	store := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := handlers.NewSessionHandler(store).WithUserStore(users)
+	h := handlers.NewSessionHandler(store, fakeAvailableTitles).WithUserStore(users)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
 	h.Mount(r)
@@ -313,4 +313,10 @@ func TestSessionHandler_PostContext_AnonymousLocaleNotPersistedToAccount(t *test
 	if account.Locale != "" {
 		t.Errorf("locale du compte = %q, want vide (session anonyme sans rapport)", account.Locale)
 	}
+}
+
+// fakeAvailableTitles : le catalogue de titres que le handler rend dans le contexte de session,
+// fourni par le test à la place du registre de titres.
+func fakeAvailableTitles() []domain.TitleSummary {
+	return []domain.TitleSummary{{Slug: "halo_infinite", Name: "Halo Infinite", Status: "active", IsDefault: true}}
 }

@@ -66,3 +66,32 @@ func loadCoarseCapability(t *testing.T, root, slug string, cap title.Capability)
 	}
 	return desc.HasCapability(cap)
 }
+
+// TestSpawnForecastCoarseFineMirror — la capability de titre `spawn_forecast` (title.CapSpawnForecast :
+// bascule « Toutes les vies » de la Tactique, seule visible du web par le bootstrap) et la capability
+// de donnee `film.spawn_forecast` (ce que le serveur sert : `vies=toutes`) sont LA MEME question.
+// L'egalite est exigee dans les deux sens, pour tous les titres du depot, titre synthetique compris
+// (il a `film.replay_artifact` sans `film.spawn_forecast`).
+func TestSpawnForecastCoarseFineMirror(t *testing.T) {
+	root := mirrorRepoRoot(t)
+	for _, slug := range []string{title.DefaultSlug, "halo_5", "synthetic_title_b"} {
+		t.Run(slug, func(t *testing.T) {
+			set, err := mappings.LoadCapabilitiesFromFile(
+				filepath.Join(root, "config", "titles", slug, "mappings", "capabilities.toml"))
+			if err != nil {
+				t.Fatalf("LoadCapabilitiesFromFile(%s): %v", slug, err)
+			}
+			cm, err := games.CapabilityMapFromMappings(set)
+			if err != nil {
+				t.Fatalf("CapabilityMapFromMappings(%s): %v", slug, err)
+			}
+			fine := cm[games.CapFilmSpawnForecast]
+			served := fine == games.CapSupported || fine == games.CapDegraded
+			coarse := loadCoarseCapability(t, root, slug, title.CapSpawnForecast)
+			if served != coarse {
+				t.Errorf("titre %q : film.spawn_forecast=%q (servi=%v) mais title.CapSpawnForecast declaree=%v — "+
+					"les deux doivent concorder.", slug, fine, served, coarse)
+			}
+		})
+	}
+}

@@ -24,6 +24,7 @@
  * « Cartes jouées », la liste. Une seule classe (`ESTOMPE`), un seul helper (`classeRelecture`).
  */
 import type { MapFrame } from '@/lib/replay/heatPaint'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 
 import {
   PLAN_ASPECT_DEFAUT,
@@ -89,8 +90,11 @@ export function questionServie(servie: string, demandee: TacticalQuestion): Tact
  * carte à fond EST son calage, donc le rapport ne saute pas à l'arrivée de la réponse) ;
  * sinon le rapport par défaut.
  */
-export function aspectDuPlan(fond: MapFrame | null, repere: RepereTactique | null): number {
+export function aspectDuPlan(fond: MapFrame | null, repere: RepereTactique | null, turns: QuarterTurns = 0): number {
   if (repere) return repereAspect(repere)
-  if (fond && fond.widthM > 0 && fond.heightM > 0) return fond.widthM / fond.heightM
+  if (fond && fond.widthM > 0 && fond.heightM > 0) {
+    // La carte tournée d'un quart ou de trois quarts de tour échange sa largeur et sa hauteur.
+    return turns % 2 === 1 ? fond.heightM / fond.widthM : fond.widthM / fond.heightM
+  }
   return PLAN_ASPECT_DEFAUT
 }

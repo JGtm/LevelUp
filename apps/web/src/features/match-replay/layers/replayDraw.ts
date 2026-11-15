@@ -19,7 +19,7 @@ import { MELEE_LINK_MAX_M, type KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, footprint } from '../../../lib/replay/replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
-import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
+import { type CanvasView, projectTo, scaleOf, turnsOfView } from '../model/replayView'
 import { vehicleCeilPx } from '../../../lib/replay/screenSizes'
 
 /** Amplitude verticale utilisée pour l'indication d'étage. */
@@ -135,10 +135,11 @@ export function drawShotsLayer(
   for (const s of shots) {
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAtSlot && !style.shownAtSlot(s.slot, s.frame)) continue
     const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
-      scalePxPerM, ceilPx,
+      scalePxPerM, ceilPx, turns: turnsOfView(view),
     })
     drawMuzzleFlash(ctx, s.fam, s.tint, {
       x: origin.x,
@@ -170,6 +171,11 @@ export interface ShotStyle {
    * garde le repli centre pour tout tir en véhicule, jamais une exception.
    */
   vehicleSizeOf?: (family: string) => VehicleMountSpriteSize | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand ce que porte ce slot à cette image est
+   * retiré de la carte. L'éclair de bouche est celui du tireur : il part avec son pion. Absent = tout se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */
@@ -185,6 +191,11 @@ export interface KillFxStyle {
   reducedMotion: boolean
   /** Densité du canevas : l'étoile de mêlée est déclarée en pixels d'ÉCRAN. */
   k: number
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand l'effet est retiré de la carte. Un effet de mort
+   * appartient au tueur ET à la victime (`killFxShown`). Absent = tout se dessine.
+   */
+  shown?: (e: KillFxEntry) => boolean
 }
 
 /**
@@ -212,6 +223,7 @@ export function drawKillFxLayer(
   for (const e of fx) {
     const age = win.frame - e.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shown && !style.shown(e)) continue
     const fade = 1 - age / (win.hold + 1)
     const c = projectTo(view, e)
     const color = (e.slot !== null ? style.colorOfSlot(e.slot, e.frame) : null) ?? style.fallback

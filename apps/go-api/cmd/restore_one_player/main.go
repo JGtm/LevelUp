@@ -3,12 +3,12 @@
 // restore_one_player — one-shot : reconstruit le stats.duckdb d'UN seul joueur
 // depuis un staging Parquet déjà extrait (pas de pull restic, juste l'import).
 //
-// Usage : go run -tags cgo ./cmd/restore_one_player --staging /tmp/staging_choco --player Chocoboflor
+// Usage : go run -tags cgo ./cmd/restore_one_player --staging /tmp/staging_choco --player Joueur90001
 //
 // Le staging doit avoir la structure : <staging>/halo_infinite/player/<gt>/*.parquet
 // La DB cible est résolue via PathResolver. Aucune autre DB n'est touchée.
 //
-// Créé pour restaurer Chocoboflor après corruption causée par taskkill /F
+// Créé pour restaurer Joueur90001 après corruption causée par taskkill /F
 // durant un cmd qui ne devait pas tourner alors que le serveur tenait la DB
 // (incident 2026-05-27, cf. thought_log).
 package main

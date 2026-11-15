@@ -24,8 +24,6 @@ const EMPTY_KPIS: TeammateKPIs = {
   accuracy: null,
   kills_per_game: null,
   assists_per_game: null,
-  headshot_kills_per_game: null,
-  perfect_kills_per_game: null,
 }
 
 const FULL_KPIS: TeammateKPIs = {

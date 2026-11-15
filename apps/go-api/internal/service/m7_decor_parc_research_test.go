@@ -30,7 +30,7 @@ import (
 
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func m7CartesDuJournal(t *testing.T, path string) map[string]string {

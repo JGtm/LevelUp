@@ -83,20 +83,27 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 // liste (weaponRegistryFamilies ne porte plus de libellé EN/FR, colonnes purgées de
 // weapon_families — champ mort, cf. commentaire ci-dessous) — 130 fichiers, 500
 // littéraux.
+// Mise à jour 2026-11-09 (v8.1.2, item 2.1) : behavioral.go 2 → 0 et behavioral_engagement.go
+// 3 → 0, retirés (alertes de comportement rendues par le catalogue de messages) — 128 fichiers,
+// 472 littéraux. L'en-tête précédent (500) n'était plus exact : la somme mesurée des entrées
+// était 477 avant cette mise à jour.
+// Mise à jour 2026-11-12 (plan architecture, 4.2) : les messages des refus des jobs de sync et le
+// libellé du job de recalcul des sessions quittent api/handlers/{sync_handler,sync_handler_align,
+// backfill,settings_sessions_recalc}.go (11 littéraux) pour api/handlers/sync_job_errors.go,
+// service/sync_jobs_recalc.go et ce qui reste de backfill.go et sync_handler.go (9 littéraux) : un
+// déplacement, le compte baisse, aucun libellé nouveau.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
 	// L6 — narratif / prestige (D7 : ce sont des PHRASES/contenu, ADR 0028 — hors plan
 	// libellés sauf mojibake, mais comptées ici tant qu'elles restent en dur).
 	"libs/film/internal/grammar/equipment_creation_width.go": 1,
-	"analysis/patterns/behavioral.go":                        2,
-	"analysis/patterns/behavioral_engagement.go":             3,
 	"analysis/prestigetuning/analyze.go":                     6,
 	"analysis/prestigetuning/render.go":                      16,
 	"libs/film/replay/coverage_bridge.go":                    5,
 	"libs/film/replay/neutral_deaths.go":                     2,
 	"analysis/skill_v2/display_smoothing.go":                 1,
-	"notify/coach.go":                                        5,
+	"notify/coach.go":                                        3,
 	"service/synthesis_service_builders.go":                  1,
 	"service/synthesis_service_legacy.go":                    5,
 
@@ -168,7 +175,7 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/assets.go":                      2,
 	"api/handlers/assets_metadata.go":             5,
 	"api/handlers/auth.go":                        5,
-	"api/handlers/backfill.go":                    2,
+	"api/handlers/backfill.go":                    1,
 	"api/handlers/build_worker.go":                8,
 	"api/handlers/build_worker_artifact.go":       4,
 	"api/handlers/campaign.go":                    4,
@@ -210,14 +217,13 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/session_page.go":                1,
 	"api/handlers/sessions.go":                    1,
 	"api/handlers/settings.go":                    17,
-	"api/handlers/settings_sessions_recalc.go":    2, // 2026-10-19 : les 2 libellés du job, déplacés de settings.go
 	"api/handlers/settings_backup.go":             1,
 	"api/handlers/settings_replay_sound.go":       1,
 	"api/handlers/setup.go":                       12,
 	"api/handlers/squad_v2.go":                    1,
 	"api/handlers/stats.go":                       1,
-	"api/handlers/sync_handler.go":                6,
-	"api/handlers/sync_handler_align.go":          1,
+	"api/handlers/sync_handler.go":                1,
+	"api/handlers/sync_job_errors.go":             6, // 2026-11-12 : messages des refus des jobs de sync, déplacés de sync_handler.go, sync_handler_align.go, backfill.go
 	"api/handlers/synthesis.go":                   1,
 	"api/handlers/teammates.go":                   1,
 	"api/handlers/timeseries.go":                  1,
@@ -263,6 +269,7 @@ var frenchLabelAllowlist = map[string]int{
 	"service/seasons_catalog.go":                            3,
 	"service/session_compare_service.go":                    2,
 	"service/session_compare_table_helpers.go":              1,
+	"service/sync_jobs_recalc.go":                           1, // 2026-11-12 : libellé du job de recalcul des sessions, déplacé de api/handlers/settings_sessions_recalc.go
 	"service/session_page_service.go":                       7,
 	"service/skill_v2_service.go":                           1,
 	"service/squad_service_v2_intersect.go":                 1,
@@ -335,8 +342,7 @@ func scanFrenchLabelLiterals(t *testing.T, internalRoot, dir string, compte map[
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(internalRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel := relDuDepotOuFatal(t, internalRoot, path)
 		if strings.Contains(rel, "/migrations/") {
 			return nil // DDL + notes de migration — HORS PÉRIMÈTRE, cf. en-tête du fichier.
 		}

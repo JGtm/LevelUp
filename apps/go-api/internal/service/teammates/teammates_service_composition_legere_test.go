@@ -209,7 +209,7 @@ func TestCompositionSessions_EcartPublieCommeLaPage(t *testing.T) {
 	for _, ex := range s1.ExcludedByExactComposition {
 		responsables[ex.MatchID] = ex.ExtraGamertags
 	}
-	if got := responsables["m5"]; !slices.Equal(got, []string{"Nilton410", "passivemarquise"}) {
+	if got := responsables["m5"]; !slices.Equal(got, []string{"Joueur903", "Joueur90000000i"}) {
 		t.Errorf("m5 : responsables %v", got)
 	}
 	if got := responsables["m4"]; !slices.Equal(got, []string{"Joueur 0009"}) {

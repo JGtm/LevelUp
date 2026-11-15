@@ -27,6 +27,7 @@ import {
   type PlacementView,
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
+import type { FocusFilter } from '../model/focusFilter'
 import { translocationLinks } from '../model/placementTeleport'
 import { drawablePlacements } from '../model/spawnedObjects'
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
@@ -52,6 +53,12 @@ export interface ReplayPlacementsInput {
    * hook ni le calque n'ont jamais connu la notion de mode, et le document n'en publie aucun.
    */
   showDropped: boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : ce que le SURVOL et la scène des failles retirent. Les comptes
+   * (donc la disponibilité du calque) restent ceux du document. `all` reste complet : le dessin le filtre
+   * lui-même, la révélation du capteur lisant aussi les capteurs retirés.
+   */
+  focusFilter?: Pick<FocusFilter, 'placement' | 'slotAt'>
 }
 
 export interface ReplayPlacements {
@@ -92,6 +99,7 @@ export function useReplayPlacements({
   enabled,
   showUnnamed,
   showDropped,
+  focusFilter,
 }: ReplayPlacementsInput): ReplayPlacements {
   // LES DEUX BALAYAGES DE DOCUMENT DU CALQUE — les VA-ET-VIENT (le lien bref sur la carte) et
   // les STATIONS de la faille (où elle est, jusqu'à quand). Tous deux se lisent dans
@@ -99,9 +107,20 @@ export function useReplayPlacements({
   // distance, et rien du tout sur un artefact qui ne porte pas ce calque. Ils vivent ici et non
   // dans le composant pour la même raison que les comptes : c'est une lecture du document, et
   // le composant n'a pas à la refaire à chaque image.
-  const rift = useMemo(
+  const riftAll = useMemo(
     () => ({ teleports: translocationLinks(doc.translocations), rifts: riftStations(doc) }),
     [doc],
+  )
+  // Une faille et un aller-retour sont à celui qui porte le translocateur, lu à l'image de l'échange.
+  const rift = useMemo<RiftScene>(
+    () =>
+      focusFilter
+        ? {
+            teleports: riftAll.teleports.filter((t) => focusFilter.slotAt(t.slot, t.frame)),
+            rifts: riftAll.rifts.filter((s) => focusFilter.slotAt(s.slot, s.t0)),
+          }
+        : riftAll,
+    [riftAll, focusFilter],
   )
 
   // LES COMPTES PASSENT PAR LA MÊME PORTE QUE LE TRACÉ : une commande du tiroir ne s'allume
@@ -111,8 +130,8 @@ export function useReplayPlacements({
   const all = useMemo(() => drawablePlacements(doc), [doc])
   const placementCounts = useMemo(() => countDrawablePlacements(all), [all])
   const counts = useMemo(
-    () => ({ ...placementCounts, drawable: placementCounts.drawable + rift.rifts.length }),
-    [placementCounts, rift],
+    () => ({ ...placementCounts, drawable: placementCounts.drawable + riftAll.rifts.length }),
+    [placementCounts, riftAll],
   )
 
   // L'axe de temps : `frameMs` est la durée RÉELLE d'une image (le ping du capteur bat en
@@ -127,8 +146,12 @@ export function useReplayPlacements({
     [showUnnamed, showDropped],
   )
 
+  const shownPlacements = useMemo(
+    () => (focusFilter ? all.filter((p) => focusFilter.placement(p)) : all),
+    [all, focusFilter],
+  )
   const hover = usePlacementHover({
-    placements: all,
+    placements: shownPlacements,
     view,
     time: windowTime,
     frameRef,

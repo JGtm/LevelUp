@@ -3,10 +3,10 @@
 //
 // **Le défaut qu'il ferme (2026-07-26).** Deux identités distinctes coexistent :
 //
-//	player_slug — identité APPLICATIVE du joueur ("JGtm", "Chocoboflor",
+//	player_slug — identité APPLICATIVE du joueur ("JGtm", "Joueur90001",
 //	              "demo-player"). Clé des données Prestige : arc.user_id,
 //	              challenge.user_id, prestige_events.user_id.
-//	xuid        — identité XBOX ("2533274823110022"). Clé des données de MATCH :
+//	xuid        — identité XBOX ("2603225103667623"). Clé des données de MATCH :
 //	              match_participants.xuid, medals_earned.xuid.
 //
 // Elles voyageaient toutes deux dans un `string` nu. `HaloBaselineProvider.

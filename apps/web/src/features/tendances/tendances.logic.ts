@@ -108,7 +108,7 @@ function numberParts(
 
 /**
  * Formate une valeur d'indicateur selon son unité : `ratio` en pourcentage, `seconds` avec
- * « s », `hours` avec « h », `number` tel quel. Séparateurs et arrondi d'Intl ; le moins
+ * « s », `hours` avec « h », `per_minute` avec « /min », `number` tel quel. Séparateurs et arrondi d'Intl ; le moins
  * typographique (U+2212) précède une valeur négative, un zéro à l'affichage s'écrit sans signe.
  */
 export function formatTrendValue(
@@ -132,6 +132,8 @@ export function formatTrendValue(
       return `${nombre}\u00a0${t.unitSeconds}`
     case 'hours':
       return `${nombre}\u00a0${t.unitHours}`
+    case 'per_minute':
+      return `${nombre}${t.unitPerMinute}`
     default:
       return nombre
   }
@@ -143,6 +145,7 @@ function deltaSuffix(unit: string, locale: Locale): string {
   if (unit === 'ratio') return `\u00a0${t.unitPoints}`
   if (unit === 'seconds') return `\u00a0${t.unitSeconds}`
   if (unit === 'hours') return `\u00a0${t.unitHours}`
+  if (unit === 'per_minute') return t.unitPerMinute
   return ''
 }
 

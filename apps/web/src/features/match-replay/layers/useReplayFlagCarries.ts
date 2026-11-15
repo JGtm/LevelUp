@@ -45,12 +45,12 @@ import {
 import {
   buildFlagCaptureFx,
   drawFlagCaptureFx,
-  FLAG_CAPTURE_HOLD_FRAMES,
+  flagCaptureHoldFrames,
   type FlagCaptureStyle,
 } from './flagCaptureFx'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Le camp d'un drapeau VU DU JOUEUR REGARDÉ — `unknown` quand le film ne le situe pas. */
@@ -93,6 +93,11 @@ export interface FlagCarriesHookInput {
    */
   outline: string
   reducedMotion: boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand ce que ce joueur porte ou accomplit est retiré — le drapeau
+   * qu'il porte et l'onde de sa capture. La base, le drapeau tombé et la zone de retour restent. Absent = tout.
+   */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 export interface ReplayFlagCarries {
@@ -122,6 +127,7 @@ export function useReplayFlagCarries({
   neutral,
   outline,
   reducedMotion,
+  shownAuthor,
 }: FlagCarriesHookInput): ReplayFlagCarries {
   const carries = doc.flagCarries
   const [hover, setHover] = useState<FlagHover | null>(null)
@@ -161,8 +167,12 @@ export function useReplayFlagCarries({
   )
 
   const layer = useMemo<FlagCarriesInput>(
-    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion }, posOf }),
-    [inkOfTeam, outline, reducedMotion, posOf],
+    () => ({
+      style: { colorOfTeam: inkOfTeam, outline, reducedMotion, frameMs: durationFrameMs(doc) },
+      posOf,
+      shownCarrier: shownAuthor,
+    }),
+    [inkOfTeam, outline, reducedMotion, posOf, doc, shownAuthor],
   )
 
   // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
@@ -202,9 +212,12 @@ export function useReplayFlagCarries({
         return ally === null ? neutral : teamColorOf(ally)
       },
       reducedMotion,
+      shownAuthor,
     }),
-    [allegiance, neutral, teamColorOf, reducedMotion],
+    [allegiance, neutral, teamColorOf, reducedMotion, shownAuthor],
   )
+
+  const captureHold = useMemo(() => flagCaptureHoldFrames(doc), [doc])
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
@@ -224,9 +237,9 @@ export function useReplayFlagCarries({
       )
       drawFlagCarries(ctx, layer, carries, view, frame)
       // Les ondes APRÈS le calque : l'anneau s'ouvre autour du glyphe, il ne passe pas dessous.
-      drawFlagCaptureFx(ctx, captures, view, { frame, hold: FLAG_CAPTURE_HOLD_FRAMES }, captureStyle)
+      drawFlagCaptureFx(ctx, captures, view, { frame, hold: captureHold }, captureStyle)
     },
-    [enabled, carries, layer, view, captures, captureStyle, returnDrops, inkOfTeam],
+    [enabled, carries, layer, view, captures, captureStyle, captureHold, returnDrops, inkOfTeam],
   )
 
   const onPointerMove = useCallback(

@@ -26,7 +26,7 @@ func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, p
 	// Résumé d'usage (Emprise, objectif, effectif de camp de la coordination) et catalogues du
 	// titre : film.usage_summary.
 	if caps.Has(games.CapFilmUsageSummary) {
-		svc = svc.WithSessionUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+		svc = svc.WithSessionUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())
 	}
 	// Les vies du joueur : MÊME porte que les vies au sync, film.kill_positions.
 	if caps.Has(games.CapFilmKillPositions) {
@@ -35,6 +35,10 @@ func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, p
 	// Ressource véhicules : la capability fine film.vehicle_usage, comme l'Escouade.
 	if caps.Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithSessionVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
+	}
+	// Mainmise (part du temps en tete du score) : la capability fine film.lead_share.
+	if caps.Has(games.CapFilmLeadShare) {
+		svc = svc.WithSessionLeadShare(duckdb.NewLeadShareRepo(pdb))
 	}
 	// Feuille d'objectif : les colonnes d'objectif quand le titre les publie (match.objective.stats).
 	if caps.Has(games.CapMatchObjectiveStats) {

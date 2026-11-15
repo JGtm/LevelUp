@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // sortieJSON : la racine du document.

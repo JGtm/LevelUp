@@ -32,7 +32,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // perteCarte est le constat pour UNE carte : combien de sommets avant, combien apres.

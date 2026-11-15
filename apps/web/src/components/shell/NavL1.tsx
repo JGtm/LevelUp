@@ -205,7 +205,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
           <TitleSwitcher onSwitched={() => setOpen(false)} />
           <div className="flex items-center justify-between gap-4 px-3 py-1.5">
             <span className="text-sm text-popover-foreground">{t('common.shell.nav_theme')}</span>
-            <ThemeToggle variant="menu" />
+            <ThemeToggle />
           </div>
           <div role="separator" className="my-1 h-px bg-foreground/20" />
           {tabs.map((item) => (

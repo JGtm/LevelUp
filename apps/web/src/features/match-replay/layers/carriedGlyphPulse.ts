@@ -23,21 +23,27 @@
 /** Opacité pleine : un fait daté ferme le port (mort du porteur, ou passation). */
 export const CARRIED_ALPHA_SOLID = 0.95
 
-/** Bornes de la pulsation d'un glyphe « ouvert » (`closed` faux), et sa période en images. */
+/** Bornes de la pulsation d'un glyphe « ouvert » (`closed` faux), et sa période en millisecondes. */
 export const CARRIED_PULSE_MIN = 0.42
 export const CARRIED_PULSE_MAX = 0.78
-export const CARRIED_PULSE_PERIOD_FRAMES = 26
+export const CARRIED_PULSE_PERIOD_MS = 2600
 
 /**
  * carriedGlyphAlpha rend l'opacité d'un glyphe porté à l'image donnée.
  *
- * La période est en IMAGES et non en millisecondes, comme tout ce qui se lit sur la grille du
- * film : à vitesse double, la respiration double avec la scène, ce qui est le comportement
- * attendu d'un effet posé sur un porteur qui bouge lui aussi deux fois plus vite.
+ * La période est une DURÉE (`CARRIED_PULSE_PERIOD_MS`), convertie en images avec la durée réelle
+ * d'une image du document (`frameMs`) : elle ne change pas avec la cadence du rejeu. `frame` reste
+ * l'index de lecture : à vitesse double, la respiration double avec la scène, ce qui est le
+ * comportement attendu d'un effet posé sur un porteur qui bouge lui aussi deux fois plus vite.
  */
-export function carriedGlyphAlpha(closed: boolean, frame: number, reducedMotion: boolean): number {
+export function carriedGlyphAlpha(
+  closed: boolean,
+  frame: number,
+  reducedMotion: boolean,
+  frameMs: number,
+): number {
   if (closed) return CARRIED_ALPHA_SOLID
   if (reducedMotion) return (CARRIED_PULSE_MIN + CARRIED_PULSE_MAX) / 2
-  const phase = (2 * Math.PI * frame) / CARRIED_PULSE_PERIOD_FRAMES
+  const phase = (2 * Math.PI * frame) / (CARRIED_PULSE_PERIOD_MS / frameMs)
   return CARRIED_PULSE_MIN + (CARRIED_PULSE_MAX - CARRIED_PULSE_MIN) * (0.5 + 0.5 * Math.sin(phase))
 }

@@ -30,6 +30,8 @@ export type InkVar =
   | '--replay-label-stroke'
   /** Fond de la VIDÉO exportée : noir pur, identique dans les deux thèmes (décision D8). */
   | '--replay-export-backdrop'
+  /** Le VOILE noir du système de design, identique dans les deux thèmes (mise en valeur d'un frag). */
+  | '--scrim'
 
 /**
  * readInk lit une variable de mise en page du thème — celle du thème SOMBRE pendant un export

@@ -13,8 +13,8 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // ---------------------------------------------------------------------------
@@ -204,6 +204,12 @@ type ReplayService interface {
 	// Mêmes sentinelles d'absence que leurs jumelles par match.
 	MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error)
 	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
+	// MapBackgroundPlanImage et MapBackgroundPlanImageForMap servent l'IMAGE PLAN du même fond
+	// (plan des composantes du maillage de navigation, même cadre et même calage que l'image du
+	// fond), par match et par carte. ErrMapBackgroundNotAvailable quand le fond n'existe pas ou
+	// n'a pas de plan.
+	MapBackgroundPlanImage(ctx context.Context, matchID string) ([]byte, string, error)
+	MapBackgroundPlanImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné complété du
 	// catalogue généré au fil de l'eau). Retourne ErrMapCalloutsNotAvailable quand la
@@ -267,7 +273,7 @@ type ReplayMapNameRepo interface {
 // rejeu 2D ne gere pas (PvE Firefight, decision du 2026-10-15). Le service de rejeu la detecte
 // par assertion : sans elle, aucun mode n'est ecarte (tests, outils sans base).
 //
-// LE VERDICT VIENT DU REGISTRE (`analysis.SQLModeNonGere`), jamais d'un nom de mode ni d'un slug.
+// LE VERDICT VIENT DU REGISTRE (`sqlfrag.SQLModeNonGere`), jamais d'un nom de mode ni d'un slug.
 type ReplayModeGate interface {
 	// ModeNonGere dit si ce match (identifiant complet) est d'un mode non gere. Un match absent
 	// du registre n'est pas non gere.

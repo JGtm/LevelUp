@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ownerXUID = "2533274823110022"
+	ownerXUID = "2603225103667623"
 	otherXUID = "2533274801010001"
 )
 
@@ -310,7 +310,7 @@ func TestMapMedals_NoMedalsReturnsNil(t *testing.T) {
 }
 
 func TestMapHighlight_NumericXUID(t *testing.T) {
-	body := []byte(`{"event_type":"kill","time_ms":46832,"xuid":2533274945467756,"type_hint":50}`)
+	body := []byte(`{"event_type":"kill","time_ms":46832,"xuid":2650295491772772,"type_hint":50}`)
 	row, err := MapHighlight("m-1", body)
 	if err != nil {
 		t.Fatalf("MapHighlight: %v", err)
@@ -321,8 +321,8 @@ func TestMapHighlight_NumericXUID(t *testing.T) {
 	if row.TimeMs == nil || *row.TimeMs != 46832 {
 		t.Errorf("TimeMs: want 46832, got %v", row.TimeMs)
 	}
-	if row.XUID == nil || *row.XUID != "2533274945467756" {
-		t.Errorf("XUID: want '2533274945467756', got %v", row.XUID)
+	if row.XUID == nil || *row.XUID != "2650295491772772" {
+		t.Errorf("XUID: want '2650295491772772', got %v", row.XUID)
 	}
 	if row.TypeHint == nil || *row.TypeHint != 50 {
 		t.Errorf("TypeHint: want 50, got %v", row.TypeHint)
@@ -344,7 +344,7 @@ func TestMapHighlight_StringXUIDWrapped(t *testing.T) {
 }
 
 func TestMapHighlight_RejectsEmptyEventType(t *testing.T) {
-	body := []byte(`{"event_type":"","xuid":2533274945467756}`)
+	body := []byte(`{"event_type":"","xuid":2650295491772772}`)
 	if _, err := MapHighlight("m-3", body); !errors.Is(err, ErrInvalidMatch) {
 		t.Errorf("want ErrInvalidMatch, got %v", err)
 	}

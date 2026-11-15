@@ -63,11 +63,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
@@ -171,7 +172,11 @@ func lireDrapeaux() (options, error) {
 	}
 	o.originaux = originauxEffectifs(o.originaux, o.repoRoot)
 	if o.corpus == "" {
-		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
+		dossier, err := dossierEquivalence()
+		if err != nil {
+			return o, err
+		}
+		o.corpus = filepath.Join(dossier, "CORPUS.txt")
 	}
 	return o, valider(o)
 }
@@ -191,14 +196,38 @@ func valider(o options) error {
 	default:
 		return fmt.Errorf("-passe %q inconnue : %q ou %q", o.passe, passeFilm, passeFaits)
 	}
+	// L'emplacement de la brique se contrôle en dernier : un refus d'options ne dépend pas du disque.
+	if o.update {
+		return verifierMiseAJourPossible()
+	}
 	return nil
 }
 
 // dossierEquivalence rend l'emplacement CANONIQUE des digests de reference et des faits figes.
 //
+// Ces references font partie du decodeur (ses propres tests les lisent) : le dossier est celui que le
+// resolveur des briques tire de l'outil Go pour la brique du decodeur (espace de travail ou cache de modules).
 // Chemin de SOURCE, pas de donnee : il ne passe donc pas par PathResolver (qui resout `data/`).
-func dossierEquivalence(repoRoot string) string {
-	return filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence")
+func dossierEquivalence() (string, error) {
+	return briques.Chemin("film", "replay", "testdata", "equivalence")
+}
+
+// verifierMiseAJourPossible refuse `-update` quand le dossier de la brique du decodeur est celui du cache de
+// modules (lecture seule) : c'est le cas sans espace de travail Go, ou aucun clone n'est designe. Un clone du
+// depot du decodeur, relie par `GOWORK` (scripts/briques-workspace.sh), est accepte ou qu'il soit sur le disque.
+func verifierMiseAJourPossible() error {
+	return verifierMiseAJour(briques.Modifiable)
+}
+
+// verifierMiseAJour est [verifierMiseAJourPossible] avec le jugement de la brique en parametre (testable
+// sans outil Go).
+func verifierMiseAJour(modifiable func(brique string) error) error {
+	if err := modifiable("film"); err != nil {
+		return fmt.Errorf("-update refuse : %w. Les references vivent dans la brique du decodeur : "+
+			"les re-figer dans un clone de son depot relie par l'espace de travail local, puis publier "+
+			"une version de la brique", err)
+	}
+	return nil
 }
 
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.

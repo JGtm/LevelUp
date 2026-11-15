@@ -679,7 +679,7 @@ en = "Cumulative frag gap"
 
 # ─── 3e rangée de la section « matchs joués ensemble » : répartition des résultats +
 # part des assistances (colonne gauche), portée des frags (colonne droite).
-# Les textes des assistances viennent de ASSISTS_TEXT (_shared/assists/assistsI18n.ts),
+# Les textes des assistances viennent de ASSISTS_TEXT (components/assists/assistsI18n.ts),
 # partagé avec Relations — pas de doublon ici.
 [explorer.target_profile.assists_title]
 fr = "Part des assistances"

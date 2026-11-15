@@ -61,14 +61,15 @@ export function SquadNetLivesChart({
   // `buildOption` fait partie des dépendances du useMemo de ChartCard : une
   // lambda écrite dans le JSX est neuve à chaque rendu, donc l'option ECharts
   // est rebâtie et l'animation d'entrée REJOUÉE même à donnée inchangée.
-  // Déclaré avant le retour anticipé (règle des hooks).
+  // Déclaré avant le retour anticipé (règle des hooks) ; sans barème (bootstrap non chargé) le
+  // composant ne rend rien, l'option n'est jamais lue.
   const buildOption = useCallback(
-    () => buildNetLivesCumulativeOption(rowsByPlayer, { colorByPlayer, playerOrder: players, hp }),
+    () => buildNetLivesCumulativeOption(rowsByPlayer, { colorByPlayer, playerOrder: players, hp: hp ?? 0 }),
     [rowsByPlayer, colorByPlayer, players, hp],
   )
 
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
-  if (!providesDamageTaken) return null
+  if (!providesDamageTaken || hp === undefined) return null
 
   return (
     <ChartCard

@@ -38,7 +38,7 @@ func buildPlayerWithPersonalScores(xuid string, scores []map[string]any) []any {
 
 func TestExtractPersonalScoreAwards_NominalKill(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{
 				"NameId":                    float64(1024030246), // killed_player
 				"Count":                     float64(15),
@@ -47,7 +47,7 @@ func TestExtractPersonalScoreAwards_NominalKill(t *testing.T) {
 		}),
 	}
 
-	rows := ExtractPersonalScoreAwards(matchJSON, "match-1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "match-1", "2603225103667623")
 	if len(rows) != 1 {
 		t.Fatalf("attendu 1 row, got %d", len(rows))
 	}
@@ -55,8 +55,8 @@ func TestExtractPersonalScoreAwards_NominalKill(t *testing.T) {
 	if got.MatchID != "match-1" {
 		t.Errorf("MatchID = %q, want match-1", got.MatchID)
 	}
-	if got.XUID != "2533274823110022" {
-		t.Errorf("XUID = %q, want 2533274823110022", got.XUID)
+	if got.XUID != "2603225103667623" {
+		t.Errorf("XUID = %q, want 2603225103667623", got.XUID)
 	}
 	if got.AwardName != "killed_player" {
 		t.Errorf("AwardName = %q, want killed_player", got.AwardName)
@@ -81,7 +81,7 @@ func TestExtractPersonalScoreAwards_FallbackScoreFromPSAPoints(t *testing.T) {
 	}
 
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{
 				"NameId": float64(killedPlayer),
 				"Count":  float64(7),
@@ -89,7 +89,7 @@ func TestExtractPersonalScoreAwards_FallbackScoreFromPSAPoints(t *testing.T) {
 			},
 		}),
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 1 {
 		t.Fatalf("attendu 1 row, got %d", len(rows))
 	}
@@ -101,7 +101,7 @@ func TestExtractPersonalScoreAwards_FallbackScoreFromPSAPoints(t *testing.T) {
 
 func TestExtractPersonalScoreAwards_UnknownNameIdSkipped(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{
 				"NameId": float64(99999), // inconnu
 				"Count":  float64(3),
@@ -113,7 +113,7 @@ func TestExtractPersonalScoreAwards_UnknownNameIdSkipped(t *testing.T) {
 			},
 		}),
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 1 {
 		t.Errorf("attendu 1 row (unknown NameId skip), got %d", len(rows))
 	}
@@ -124,14 +124,14 @@ func TestExtractPersonalScoreAwards_UnknownNameIdSkipped(t *testing.T) {
 
 func TestExtractPersonalScoreAwards_ZeroNameIdSkipped(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{
 				"NameId": float64(0),
 				"Count":  float64(3),
 			},
 		}),
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 0 {
 		t.Errorf("NameId=0 doit etre skippe, got %d rows", len(rows))
 	}
@@ -139,11 +139,11 @@ func TestExtractPersonalScoreAwards_ZeroNameIdSkipped(t *testing.T) {
 
 func TestExtractPersonalScoreAwards_EmptyMatchIDOrXUID(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{"NameId": float64(1024030246), "Count": float64(1), "TotalPersonalScoreAwarded": float64(50)},
 		}),
 	}
-	if rows := ExtractPersonalScoreAwards(matchJSON, "", "2533274823110022"); rows != nil {
+	if rows := ExtractPersonalScoreAwards(matchJSON, "", "2603225103667623"); rows != nil {
 		t.Errorf("matchID vide doit retourner nil, got %v", rows)
 	}
 	if rows := ExtractPersonalScoreAwards(matchJSON, "m1", ""); rows != nil {
@@ -153,21 +153,21 @@ func TestExtractPersonalScoreAwards_EmptyMatchIDOrXUID(t *testing.T) {
 
 func TestExtractPersonalScoreAwards_XUIDNotInPlayers(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{"NameId": float64(1024030246), "Count": float64(1), "TotalPersonalScoreAwarded": float64(50)},
 		}),
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274858283686")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2623439693412443")
 	if rows != nil {
 		t.Errorf("xuid absent de Players doit retourner nil, got %v", rows)
 	}
 }
 
 func TestExtractPersonalScoreAwards_NoPlayers(t *testing.T) {
-	if rows := ExtractPersonalScoreAwards(map[string]any{}, "m1", "2533274823110022"); rows != nil {
+	if rows := ExtractPersonalScoreAwards(map[string]any{}, "m1", "2603225103667623"); rows != nil {
 		t.Errorf("Players absent doit retourner nil, got %v", rows)
 	}
-	if rows := ExtractPersonalScoreAwards(map[string]any{"Players": []any{}}, "m1", "2533274823110022"); rows != nil {
+	if rows := ExtractPersonalScoreAwards(map[string]any{"Players": []any{}}, "m1", "2603225103667623"); rows != nil {
 		t.Errorf("Players vide doit retourner nil, got %v", rows)
 	}
 }
@@ -176,7 +176,7 @@ func TestExtractPersonalScoreAwards_PlayerWithoutPersonalScores(t *testing.T) {
 	matchJSON := map[string]any{
 		"Players": []any{
 			map[string]any{
-				"PlayerId": "xuid(2533274823110022)",
+				"PlayerId": "xuid(2603225103667623)",
 				"PlayerTeamStats": []any{
 					map[string]any{
 						"Stats": map[string]any{
@@ -189,7 +189,7 @@ func TestExtractPersonalScoreAwards_PlayerWithoutPersonalScores(t *testing.T) {
 			},
 		},
 	}
-	if rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022"); rows != nil {
+	if rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623"); rows != nil {
 		t.Errorf("PersonalScores absent doit retourner nil, got %v", rows)
 	}
 }
@@ -200,7 +200,7 @@ func TestExtractPersonalScoreAwards_RecursivePlayerTeamStats(t *testing.T) {
 	matchJSON := map[string]any{
 		"Players": []any{
 			map[string]any{
-				"PlayerId": "xuid(2533274823110022)",
+				"PlayerId": "xuid(2603225103667623)",
 				"PlayerTeamStats": []any{
 					map[string]any{
 						"Stats": map[string]any{
@@ -219,7 +219,7 @@ func TestExtractPersonalScoreAwards_RecursivePlayerTeamStats(t *testing.T) {
 			},
 		},
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 1 {
 		t.Fatalf("findPSRecursive doit traverser : attendu 1 row, got %d", len(rows))
 	}
@@ -234,14 +234,14 @@ func TestExtractPersonalScoreAwards_MultipleCategories(t *testing.T) {
 	)
 
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{"NameId": float64(killed), "Count": float64(5), "TotalPersonalScoreAwarded": float64(250)},
 			{"NameId": float64(killAssist), "Count": float64(8), "TotalPersonalScoreAwarded": float64(160)},
 			{"NameId": float64(flagCaptured), "Count": float64(1), "TotalPersonalScoreAwarded": float64(100)},
 		}),
 	}
 
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 3 {
 		t.Fatalf("attendu 3 rows, got %d", len(rows))
 	}
@@ -263,7 +263,7 @@ func TestExtractPersonalScoreAwards_MultipleCategories(t *testing.T) {
 
 func TestExtractPersonalScoreAwards_CountAbsentDefaultsToZero(t *testing.T) {
 	matchJSON := map[string]any{
-		"Players": buildPlayerWithPersonalScores("2533274823110022", []map[string]any{
+		"Players": buildPlayerWithPersonalScores("2603225103667623", []map[string]any{
 			{
 				"NameId":                    float64(1024030246),
 				"TotalPersonalScoreAwarded": float64(50),
@@ -271,7 +271,7 @@ func TestExtractPersonalScoreAwards_CountAbsentDefaultsToZero(t *testing.T) {
 			},
 		}),
 	}
-	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2533274823110022")
+	rows := ExtractPersonalScoreAwards(matchJSON, "m1", "2603225103667623")
 	if len(rows) != 1 {
 		t.Fatalf("attendu 1 row, got %d", len(rows))
 	}

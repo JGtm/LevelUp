@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // synthDemoSeason : season_id fixe du corpus synthétique.

@@ -11,7 +11,7 @@ import (
 )
 
 // TestAxisValueExpression : mapping axis radar → expression SQL.
-// Seuls les 6 axes radar V1 sont mappés. Tout le reste retourne ("", false).
+// Seuls 5 axes radar sont mappés sur une colonne. Tout le reste retourne ("", false).
 func TestAxisValueExpression(t *testing.T) {
 	tests := []struct {
 		axis    string
@@ -25,8 +25,8 @@ func TestAxisValueExpression(t *testing.T) {
 		{"support", campaign.AxisKindRadar, "CAST(mp.assists AS DOUBLE)", true},
 		{"score", campaign.AxisKindRadar, "CAST(mp.personal_score AS DOUBLE)", true},
 		{"impact", campaign.AxisKindRadar, "CAST(mp.max_killing_spree AS DOUBLE) * 10", true},
-		// objective V1 : placeholder constant (V2 commit-2 prévu pour le mapping awards).
-		{"objective", campaign.AxisKindRadar, "0.0", true},
+		// objective : mesuré par match depuis les lignes d'objectif (loadObjectiveSamples), pas par une colonne.
+		{"objective", campaign.AxisKindRadar, "", false},
 		// Axes inconnus radar → empty/false.
 		{"unknown_axis", campaign.AxisKindRadar, "", false},
 		{"", campaign.AxisKindRadar, "", false},

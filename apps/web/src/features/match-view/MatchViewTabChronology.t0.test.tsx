@@ -23,7 +23,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
 import { MATCH_VIEW_TEXT } from './i18n'
-import { SCORE_TIMELINE_EVENTS } from './scoreTimelineKind'
+import { SCORE_TIMELINE_EVENTS } from '@/lib/halo/scoreTimelineKind'
 
 vi.mock('@/lib/accessibility', async (orig) => {
   const reel = await orig<typeof import('@/lib/accessibility')>()
@@ -46,7 +46,7 @@ vi.mock('@/lib/replay/queries', () => ({
   useMatchReplay: () => ({ data: artefact.current, isLoading: false }),
   useReplayMapBackground: () => ({ data: undefined }),
   useReplayMapCallouts: () => ({ data: undefined }),
-  useReplayMapImage: () => ({ data: undefined }),
+  useReplayMapImage: () => ({ image: null, variante: 'rendu' }),
 }))
 
 // Hors périmètre de ce témoin : cette section ouvre sa propre requête.

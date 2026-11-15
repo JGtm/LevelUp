@@ -1,7 +1,7 @@
 package service
 
 // tactical_sequence_store.go — LE LECTEUR DES PISTES D'UN ARTEFACT DE REJEU, pour la sequence d'une
-// mort (vue D). Il lit le fichier `{short8}.json` de l'artefact et n'en DECODE QUE ce dont la
+// mort (vue D). Il lit le fichier de l'artefact (`{short8}.json.gz`, par la porte replayartifact) et n'en DECODE QUE ce dont la
 // sequence a besoin (echelle de temps, origine du film, pistes : xuid, bot, points) ; le fond de
 // carte, la structure, les objets et les autres calques sont parcourus sans etre materialises.
 //
@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 )
 
 type tacticalSequenceStore struct {
@@ -42,7 +43,7 @@ func (s *tacticalSequenceStore) Pistes(ctx context.Context, matchID string) (*do
 	path := title.NewPathResolver(s.runtimeRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	stop := timing.FromContext(ctx).Section("tactical_sequence_artefact")
 	defer stop()
-	raw, err := os.ReadFile(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

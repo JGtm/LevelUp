@@ -29,7 +29,7 @@ import {
   readNavContext,
   resolveNeighborsFromContext,
   type ContextDescriptor,
-  type MatchFilterSpec,
+  type MatchNavFilterSpec,
   type MatchNavContext,
 } from './navContext'
 
@@ -42,7 +42,7 @@ import {
 function useMatchNeighborsAPI(
   playerSlug: string,
   matchId: string,
-  spec: MatchFilterSpec | null,
+  spec: MatchNavFilterSpec | null,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
@@ -119,7 +119,7 @@ export function useMatchNeighborsResolved(
   const localCtx = stateCtx ?? storedCtx ?? null
 
   // 3. Spec depuis URL query params si pas de ctx local avec matchIds
-  const urlSpec = useMemo<MatchFilterSpec | null>(
+  const urlSpec = useMemo<MatchNavFilterSpec | null>(
     () => (localCtx ? null : parseFilterSpecFromSearch(urlSearch)),
     [localCtx, urlSearch],
   )

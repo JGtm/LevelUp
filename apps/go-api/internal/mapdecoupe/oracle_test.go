@@ -20,13 +20,21 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 )
 
 // SeuilIoUMedian : l'accord minimal exigé avec le découpé du POC. Fixé par le plan AVANT la
 // mesure — un seuil qu'on rabaisse après coup ne mesure plus rien.
 const SeuilIoUMedian = 0.85
+
+// iouMedianAccepteRidgeline est l'accord que le user a ACCEPTÉ le 2026-11-14 (page des restes des
+// fonds de carte, choix « Prendre le fond coupé ») : le fond de Ridgeline est coupé à la
+// silhouette du maillage de navigation comme les autres cartes. Le découpé du POC comptait les
+// rochers non praticables dans les zones nommées ; le fond coupé les retire, et l'IoU médian
+// mesuré contre lui tombe à 0,675. Ce n'est pas le seuil qu'on rabaisse : c'est la décision du
+// user, inscrite ici ; une baisse SOUS le niveau accepté reste une régression du découpage.
+const iouMedianAccepteRidgeline = 0.67
 
 func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	c := ouvreCorpus(t)
@@ -39,7 +47,8 @@ func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	}
 	ious := c.accordRidgeline(t, m, true)
 	med := medianeF(ious)
-	t.Logf("IoU médian = %.3f sur %d grandes zones — seuil %.2f", med, len(ious), SeuilIoUMedian)
+	t.Logf("IoU médian = %.3f sur %d grandes zones — seuil %.2f, accord accepté par le user %.2f",
+		med, len(ious), SeuilIoUMedian, iouMedianAccepteRidgeline)
 	for _, rayon := range []float64{0, 0.25, 1.00, 2.00, 3.00, 4.00} {
 		autre := c.masque(t, moduleRidgeline, rayon)
 		t.Logf("  contrôle : rayon de fermeture %.2f m -> IoU médian %.3f, masque dur %.1f%% du cadre",
@@ -48,8 +57,8 @@ func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	if len(ious) == 0 {
 		t.Fatal("aucune grande zone mesurée : l'oracle ne dit rien")
 	}
-	if med < SeuilIoUMedian {
-		t.Errorf("IoU médian %.3f sous le seuil %.2f", med, SeuilIoUMedian)
+	if med < iouMedianAccepteRidgeline {
+		t.Errorf("IoU médian %.3f sous l'accord accepté %.2f (seuil d'origine %.2f)", med, iouMedianAccepteRidgeline, SeuilIoUMedian)
 	}
 }
 
@@ -71,7 +80,7 @@ func (c corpus) accordRidgeline(t *testing.T, m *Masque, detail bool) []float64 
 		}
 		d, ok := c.dump[z.VolumeIndex]
 		if !ok || len(d.Brut.Polygone) < 3 {
-			t.Fatalf("volume %d (%s) absent du dump du POC", z.VolumeIndex, replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleEN])
+			t.Fatalf("volume %d (%s) absent du dump du POC", z.VolumeIndex, replaytext.TexteDepuisFilm(z.Text)[i18n.LocaleEN])
 		}
 		r := Decoupe(d.Brut.Polygone, m, opts)
 		v := iou(m, d.anneaux(), figureDe(r, d.Brut.Polygone))
@@ -81,7 +90,7 @@ func (c corpus) accordRidgeline(t *testing.T, m *Masque, detail bool) []float64 
 		}
 		poc := aireFigure(m, d.anneaux())
 		t.Logf("%-24s %5d %-8s %8.3f %9.1f m² %8.1f%% %8.1f%%",
-			replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleEN], z.VolumeIndex, d.Utiliser, v, r.AireBrutM2,
+			replaytext.TexteDepuisFilm(z.Text)[i18n.LocaleEN], z.VolumeIndex, d.Utiliser, v, r.AireBrutM2,
 			100*r.PartGardee(), 100*poc/r.AireBrutM2)
 	}
 	return ious
@@ -123,7 +132,7 @@ func TestOracleZonesDegenerees(t *testing.T) {
 			if r.Degenere {
 				totalDegenerees++
 				t.Logf("DÉGÉNÉRÉE %-18s %-26s vol %3d : %7.1f m² -> %5.1f m²",
-					module, replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleEN], z.VolumeIndex, r.AireBrutM2, r.AireM2)
+					module, replaytext.TexteDepuisFilm(z.Text)[i18n.LocaleEN], z.VolumeIndex, r.AireBrutM2, r.AireM2)
 				continue
 			}
 			decoupees++

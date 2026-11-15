@@ -35,11 +35,11 @@
  */
 import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
-import { heldReading } from '../../../lib/replay/replayLogic'
+import { frameToMs, heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
 import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
-import type { VehicleWeaponMount } from './vehicleWeaponMounts'
+import type { VehicleWeaponMountEntry } from './vehicleWeaponMounts'
 import { vehicleSpriteFamily } from './vehiclesLayer'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 import { fireBurstShots } from './fireBursts'
@@ -59,7 +59,7 @@ export interface VehicleShotSource {
    * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
    * DIRECTION (cf. `vehicleShotPlacement`).
    */
-  mount: VehicleWeaponMount | null
+  mount: VehicleWeaponMountEntry | null
   /**
    * CE QUI A TIRÉ, ET C'EST LA CLÉ DE LA RÈGLE DE DIRECTION (lot 5.8.5) : une arme DE VÉHICULE est
    * solidaire du châssis (son cap est donc un repli légitime), une arme DE JOUEUR tirée depuis un
@@ -93,6 +93,8 @@ export interface VehicleShotSource {
 export interface ShotFxEntry {
   /** Frame du tir sur la grille du rejeu. */
   frame: number
+  /** Le slot du tireur : Seul et Masquer retirent ses éclairs avec son pion. */
+  slot: number
   x: number
   y: number
   /**
@@ -150,6 +152,7 @@ export function buildShotFx(
     const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
     out.push({
       frame: s.t,
+      slot: s.slot,
       x: s.x,
       y: s.y,
       h: read ? read.value : null,
@@ -217,8 +220,9 @@ function vehicleShotSourceOf(
   // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
   // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
   // du Scorpion — comme pour le passager qui tire sa propre arme.
+  const frameMs = frameToMs(1, doc)
   const viseeTireur =
-    vehicleShooterAimAt(track, shot.slot, t) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
+    vehicleShooterAimAt(track, shot.slot, t, frameMs) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
   // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
   // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
   if (!mount && !armeDeVehicule && viseeTireur === null) return null
@@ -227,7 +231,7 @@ function vehicleShotSourceOf(
     arme: armeDeVehicule ? 'vehicule' : 'joueur',
     // LE SPRITE DESSINÉ, variante comprise (schéma 69) : c'est sur SES dimensions que l'ancre se lit.
     family: vehicleSpriteFamily(track),
-    headingDeg: vehicleChassisHeadingAt(track, t),
+    headingDeg: vehicleChassisHeadingAt(track, t, frameMs),
     shooterHeadingDeg: viseeTireur,
   }
 }
@@ -250,9 +254,10 @@ function viseeSurUnePiecePortee(
   slotTireur: number,
   t: number,
 ): number | null {
+  const frameMs = frameToMs(1, doc)
   for (const piece of doc.vehicles) {
     if (piece.carrier?.slot !== porteur.slot || piece.carrier.gen !== porteur.gen) continue
-    const visee = vehicleShooterAimAt(piece, slotTireur, t)
+    const visee = vehicleShooterAimAt(piece, slotTireur, t, frameMs)
     if (visee !== null) return visee
   }
   return null

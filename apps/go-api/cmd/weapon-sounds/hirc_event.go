@@ -35,7 +35,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // dumpeurV3E porte l'etat d'un dump : la banque parsee et la table des noeuds complets.

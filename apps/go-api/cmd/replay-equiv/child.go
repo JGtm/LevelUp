@@ -35,9 +35,9 @@ import (
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // attenteVerrouMax : combien de temps un enfant attend son tour de decodage avant de refuser
@@ -126,7 +126,11 @@ func enfantEquivalence(ctx context.Context, o options) int {
 
 // digestsDuFilm cuit le film et rend une ligne `etape\tcompte\tsha` par etape observee.
 func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string, error) {
-	factsPath := filepath.Join(dossierEquivalence(o.repoRoot), o.film+".facts.json")
+	dossier, err := dossierEquivalence()
+	if err != nil {
+		return nil, err
+	}
+	factsPath := filepath.Join(dossier, o.film+".facts.json")
 	faits, err := replaybuild.ReadFactsFile(factsPath)
 	if err != nil {
 		return nil, err
@@ -139,6 +143,16 @@ func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string
 	if err != nil {
 		return nil, fmt.Errorf("preparation du builder (titre %s) : %w", o.titleSlug, err)
 	}
+	// LE CATALOGUE DES SOCLES EST CELUI DU HARNAIS, jamais l'overlay du poste (cf.
+	// catalogue_hermetique.go).
+	socles, err := catalogueDesSocles(ctx, o.repoRoot, o.titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	b.WithPadsCatalog(socles)
+	// LES REFERENCES SONT FIGEES AU PAS DE CONSTRUCTION DU DECODEUR, et la cuisson prend le pas de cuisson de
+	// LevelUp (`replaybuild.CookFrameIntervalMS`), qui est ce pas : seule l etape `artifact` en depend. Un pas de
+	// cuisson qui s en ecarterait rougirait ici, au lieu de decaler les references en silence.
 	var col collecteur
 	b.WithObserver(col.etape)
 	// LE DECODAGE EST FORCE PARTOUT SAUF DANS LA PASSE `faits`, ET C EST UNE CORRECTION MESUREE

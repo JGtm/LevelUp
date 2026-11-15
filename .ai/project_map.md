@@ -11,7 +11,7 @@
 > anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
 >
-> **Dernière mise à jour : 2026-11-08** — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
+> **Dernière mise à jour : 2026-11-14** (clôture de la 8.2.0 : `libs/` et `go.work` supprimés au profit des modules publiés, îlot « Briques Go » ajouté ; îlot « Frontières de couches » du 2026-11-13) — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
 > (.ai/) » réécrite le 2026-09-23 sur l'état final de la racine après le lot d'archivage (îlot du décodeur de film :
 > 2026-09-18).
 
@@ -38,6 +38,27 @@
 | Noms par langue en base (une ligne par identifiant et langue) | `metadata.duckdb` : `asset_translations`, `medal_translations`, `weapon_name_labels`, `weapon_label_names`, `mode_name_tr`, `career_rank_translations` (skill `db-schema`) |
 | Garde-rails | web : `apps/web/src/lib/i18n/*.guard.test.ts`, `locale.ratchet.test.ts` ; Go : `apps/go-api/internal/archlint/i18n_*_test.go`, `no_locale_literal_test.go` |
 
+## Frontières de couches — cartographie À JOUR AU 2026-11-13 (îlot de fraîcheur)
+
+> Mesurée à la clôture de l'étape 8 du plan `.ai/PLAN_ARCHITECTURE_FRONTIERES_2026-11-10.md`. Le code fait
+> foi ; les règles et les noms des gardes vivent dans `CLAUDE.md` (« Frontières de couches ») et le skill
+> `arch-rules`. Chemins sous `apps/go-api/internal/` sauf mention contraire.
+
+| Rôle | Chemin réel |
+|---|---|
+| Lectures du profil de progression (13 requêtes) derrière `port.ProfileStore` | `platform/duckdb/profilerepo/` |
+| Classement mondial derrière `port.WorldLeaderboardStore` (fournisseur partagé, bascule B-swap) | `platform/duckdb/worldrepo/` |
+| Fragments SQL partagés (fuseau canonique, listes, annuaire des noms), sortis d'`analysis/` | `platform/duckdb/sqlfrag/` |
+| Classement des pannes de lecture pour la couche HTTP (503 retentable) | `platform/dbfault/` |
+| `DBExecutor` et `DBWriter` (les types SQL ne sont plus dans `port/`) | `platform/dblease/` |
+| Stockage des services d'import (OpenSpartan, import depuis le site) derrière des ports | `importstore/` |
+| Lectures des tâches de fond du scheduler (sondes de santé, purge des rejeux) | `cronstore/` |
+| Ouverture du PlayerDB d'un joueur et du lecteur partagé d'un titre (câblage, hors `config`) | `playerresolve/` |
+| Conversion des libellés du rejeu entre `i18n.Text` et le décodeur | `replaytext/` |
+| Câblage HTTP : dépôts, services, tâches de fond ; ni SQL ni logique métier | `api/wire/` |
+| Gardes d'imports et de SQL | `archlint/frontieres_imports_test.go`, `archlint/frontieres_sql_test.go`, `archlint/no_env_read_outside_config_test.go`, `archlint/no_title_package_in_analysis_test.go` |
+| Gardes web | `tools/lint-cross-feature-imports.mjs` ; `apps/web/src/**/*.guard.test.ts` (graphes, `fetch`, contrat, requêtes, tris, routes) |
+
 ## Décodeur de film — cartographie À JOUR AU 2026-09-18 (îlot de fraîcheur)
 
 > Le reste de ce fichier est gelé (bandeau ci-dessus). Cette section-ci est mesurée sur l'arbre
@@ -45,6 +66,10 @@
 > (base `896a9ce04`) et porte sa date : elle existe parce que les briefs et les notes citaient
 > encore des chemins morts.
 > Doctrine inchangée : le code fait foi, l'ADR 0034 porte les décisions et l'état atteint.
+
+> **Mise à jour 2026-11-14** : les chemins `internal/games/halo_infinite/film/` de ce tableau n'existent plus dans ce dépôt ; ils vivent
+> dans le dépôt dédié `halo-infinite-film-decoder` (voir « Briques Go » plus bas), et les nombres (`SchemaVersion` 62, façade de 166
+> symboles) sont ceux du 2026-09-18 : le schéma est à 115 avec le décodeur v1.3.6.
 
 Chemins sous `apps/go-api/` sauf mention contraire.
 
@@ -79,18 +104,34 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 `LockProcessDecode` et `decode_gate.go` (supprimés, et leur retour est interdit par un ratchet).
 `internal/analysis/` n'importe plus AUCUN paquet de titre, production et test comprises.
 
+## Briques Go : modules publiés — cartographie À JOUR AU 2026-11-14 (îlot de fraîcheur)
+
+> Depuis la bascule de la 8.2.0 (2026-11-12, PR #201), `libs/` et `go.work` n'existent plus dans ce dépôt : LevelUp consomme
+> les briques comme modules publiés (ADR 0041, 0042, 0043 amendés). Le code d'une brique se modifie dans son dépôt dédié, puis un
+> tag, puis une montée du `require`. Le code fait foi.
+
+| Rôle | Chemin réel |
+|---|---|
+| Quatre modules requis par `apps/go-api/go.mod` (versions du 2026-11-14 : `halo-api` v1.0.1, `halo-infinite-files-reader` v1.1.0, `halo-infinite-map-images` v1.1.0, `halo-infinite-film-decoder` v1.3.6) | `github.com/JGtm/{halo-api,halo-infinite-files-reader,halo-infinite-map-images,halo-infinite-film-decoder}` |
+| Résolveur unique du dossier d'une brique sur le disque (`go list -m -f {{.Dir}}`), pour les tests et les outils hors ligne ; le serveur ne l'importe pas | `apps/go-api/internal/briques/` |
+| Espace de travail LOCAL pour modifier une brique avant son tag (jamais versionné, désigné par `GOWORK`) | `scripts/briques-workspace.sh` -> `levelup-briques.work` ; garde-rail : `archlint/no_go_work_versionne_test.go` |
+| Frontières entre briques et LevelUp | `archlint/briques_imports_test.go`, `archlint/briques_notice_test.go` (chaque brique a un `NOTICE.md`) |
+| Corpus des cartes lu dans le jeu installé (tag `gamefiles`) | `apps/go-api/internal/gamefilescorpus/`, cible `make go-api-test-gamefiles` |
+| Tests des briques dans la CI de LevelUp | lots par module de `.github/ci/go-shards.txt` (directive `module <chemin de module>`, lancés depuis `apps/go-api`) |
+| Publier une version d'une brique | section « Go bricks » (« Developing a brick ») de `docs/COMMANDS.md` (et `docs/FR/COMMANDS.md`), amendement de l'ADR 0043 |
+
 ## Décodeur de film : brique et exploitation (2026-11-08)
 
 Chemins depuis la racine du dépôt. Complète la cartographie ci-dessus, dont les chemins
-sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`.
+sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`, puis, à la bascule de la 8.1.2 (2026-11-12), vers le dépôt dédié `halo-infinite-film-decoder` (`libs/` n'existe plus dans ce dépôt).
 
 | Rôle | Chemin |
 |---|---|
-| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | `libs/film/` (`decfilm/`, `memguard/`, `filmcache/`) |
+| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | dépôt `halo-infinite-film-decoder` (`decfilm/`, `memguard/`, `filmcache/`), requis par `apps/go-api/go.mod` |
 | Lanceur de décodage enfant et priorité | `apps/go-api/internal/filmrun/` |
 | Archive, recompression et déplacement des films | `apps/go-api/internal/filmarchive/` |
 | Replis complétés par l'hôte | `apps/go-api/internal/filmreplis/` |
-| Verrou de fichier : copie jumelle de `libs/film/internal/filelock` (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
+| Verrou de fichier : copie jumelle de `internal/filelock` du décodeur de film (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
 
 ## ⚠️ Limitations Connues
 

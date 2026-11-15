@@ -34,8 +34,9 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // censusMode agrege un mode : ses matchs, ceux qui ont un film, et les schemas des artefacts.
@@ -113,7 +114,7 @@ func runCensus(ctx context.Context, db *sql.DB, slug, cacheDir, repoRoot string)
 // ou ne se lit pas — un artefact illisible n'est PAS un artefact absent, mais il ne se compte
 // pas davantage : les deux se voient au denominateur `avecArtefact`.
 func artifactSchema(path string) (int, bool) {
-	blob, err := os.ReadFile(path)
+	blob, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		return 0, false
 	}

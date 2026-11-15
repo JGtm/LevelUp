@@ -119,44 +119,21 @@ const seuilLignesParFonction = 80
 // et le perimetre des deux ratchets est le meme — le chantier du decodeur de film. Ajouter une
 // racine la-bas la met sous les deux regles ici.
 
-// plancherFonctionsBalayees : LE PLANCHER CONTRE UN BALAYAGE MUET. 2 516 fonctions et methodes de
-// production mesurees le 2026-09-16 dans les quatre racines (410 fichiers `.go` hors tests) ; un
+// plancherFonctionsBalayees : LE PLANCHER CONTRE UN BALAYAGE MUET. Environ 330 fonctions et methodes de
+// production dans les racines a la bascule sur les briques publiees (ADR 0043) ; un
 // balayage qui en rend nettement moins n a pas trouve l arborescence (racine renommee, chemin
 // relatif casse) et ne garde plus rien. Il doit ECHOUER bruyamment, pas rendre vert sur du vide.
-const plancherFonctionsBalayees = 2300
+const plancherFonctionsBalayees = 300
 
-// plafondsParFonction — LA TABLE DATEE DES FONCTIONS DE PRODUCTION DEJA AU-DELA DU SEUIL, avec
-// leur longueur physique du 2026-09-16 (item 2.10.5). Cle : chemin relatif a `apps/go-api` en
-// slash, puis `:`, puis le nom rendu par `nomDeFonction` (le namer DEJA canonique de ce paquet,
-// `no_recomputed_film_context_test.go`) — soit `consumeByName` pour une fonction, soit
-// `(*FilmContext).BipedSlots` pour une methode, recepteur compris.
+// plafondsParFonction — LA TABLE DATEE DES FONCTIONS DE PRODUCTION DEJA AU-DELA DU SEUIL, avec leur
+// longueur physique du jour de leur mise en table. Cle : chemin de garde-rail en slash, puis `:`, puis le
+// nom rendu par `nomDeFonction` (`consumeByName` pour une fonction, `(*FilmContext).BipedSlots` pour une
+// methode, recepteur compris).
 //
-// CHAQUE VALEUR NE PEUT QUE DESCENDRE. La reponse a « mon lot ajoute dix lignes ici » est d en
-// sortir dix ailleurs dans la fonction, ou de l extraire. Mettre une fonction NEUVE dans cette
-// table n est pas une reponse : elle est datee et fermee au 2026-09-16, elle recense la dette
-// constatee ce jour-la, pas la dette a venir.
-//
-// Les huit entrees sont dans `grammar` et se lisent en deux familles :
-//   - les sept aiguillages de composants et la boucle d inference — de longues suites de `case`
-//     sur la grammaire du film, ou chaque branche consomme des bits dans un ordre impose par le
-//     format. Elles se scinderont par famille de composants, dans un lot qui portera sa preuve
-//     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
-//   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
-var plafondsParFonction = map[string]int{
-	"libs/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       123,
-	"libs/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      132,
-	"libs/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             132,
-	"libs/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 96,
-	"libs/film/internal/grammar/dispatch_object.go:consumeByName":                           110,
-	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             109,
-	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          111,
-	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     87,
-
-	// 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041 D7) : la racine du ratchet est passee a
-	// l espace de travail ; la seule fonction de production de `himap`, `gamefiles` et `haloapi` au-dela
-	// du seuil. Longueur du jour, qui ne peut que descendre ; aucune autre entree ne s ajoute.
-	"libs/himap/himap/cuisson_forge.go:CuitCarteForge": 84,
-}
+// CHAQUE VALEUR NE PEUT QUE DESCENDRE, et la table est fermee : une fonction NEUVE n y entre pas. Elle
+// est vide depuis que le ratchet ne couvre plus que l'arbre de LevelUp (bascule sur les briques
+// publiees, ADR 0043) : toutes ses entrees etaient des fonctions des briques.
+var plafondsParFonction = map[string]int{}
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse
 // son plafond — 80 lignes physiques par defaut, sa longueur figee si elle est dans la table.

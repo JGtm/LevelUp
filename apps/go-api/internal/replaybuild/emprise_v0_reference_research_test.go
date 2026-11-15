@@ -46,10 +46,10 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // v0Identite : ce que le volet collecteur a lu en base (noms de carte, faits du match).

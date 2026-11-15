@@ -172,7 +172,6 @@ func TestNoDuplicateRouteRegistration(t *testing.T) {
 	// Flags ON pour exposer le MAXIMUM de routes (prestige + multi-titre), comme
 	// contract_test — la surface complète doit être vérifiée.
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	// V72-01 / H1 : sous le document PARTAGÉ, huma écrase silencieusement une
 	// collision (méthode, chemin) — elle n'est PLUS lisible dans le document final

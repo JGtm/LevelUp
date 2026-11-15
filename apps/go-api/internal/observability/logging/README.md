@@ -69,7 +69,6 @@ Le module d'un record est résolu dans cet ordre :
 | `LEVELUP_LOG_FORMAT` | `compact` | `compact` (ConsoleHandler, défaut) / `text` (slog natif, verbeux) / `json` (prod). |
 | `LEVELUP_LOG_MAX_LINE` | `200` | Tronquage console (caractères). `0` désactive. Format `compact` uniquement. |
 | `LEVELUP_LOG_COLOR` | `off` | Codes ANSI couleur (`on`/`off`). `off` par défaut pour Windows cmd.exe. |
-| `LEVELUP_LOG_JSON` | `false` | **Legacy** — équivalent à `LEVELUP_LOG_FORMAT=json` si `LEVELUP_LOG_FORMAT` non défini. |
 
 ### Exemples
 

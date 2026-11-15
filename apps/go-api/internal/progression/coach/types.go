@@ -45,14 +45,6 @@ const (
 	AlertTypeCampaignProgress AlertType = "campaign_progress"
 	// AlertTypeCampaignCloseAuto : axe ciblé sorti du bottom 3 (V1).
 	AlertTypeCampaignCloseAuto AlertType = "campaign_close_auto"
-	// AlertPatternStrength : force détectée sur un contexte (mode/map/squad).
-	AlertPatternStrength AlertType = "pattern_strength"
-	// AlertPatternWeakness : faiblesse détectée sur un contexte.
-	AlertPatternWeakness AlertType = "pattern_weakness"
-	// AlertPatternBehavior : pattern comportemental (tilt/fatigue/engagement).
-	AlertPatternBehavior AlertType = "pattern_behavior"
-	// AlertPatternLever : levier calibré prioritaire (pattern engine).
-	AlertPatternLever AlertType = "pattern_lever"
 	// AlertTypeCombatPatternActif : activité élevée mais conversion OC basse — signal d'amélioration.
 	AlertTypeCombatPatternActif AlertType = "combat_pattern_actif"
 	// AlertTypeCombatPatternDiscret : activité très basse (résidu engagement < -5).
@@ -69,8 +61,6 @@ func AllAlertTypes() []AlertType {
 		AlertTypeLUSRTierApproach, AlertTypeStreakMilestone,
 		AlertTypeComebackWelcome, AlertTypeLOWESSPositive, AlertTypeLOWESSSoftNegative,
 		AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto,
-		AlertPatternStrength, AlertPatternWeakness,
-		AlertPatternBehavior, AlertPatternLever,
 		AlertTypeCombatPatternActif, AlertTypeCombatPatternDiscret, AlertTypeCombatPatternFragile,
 	}
 }

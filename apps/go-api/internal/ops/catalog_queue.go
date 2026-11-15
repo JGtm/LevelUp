@@ -12,6 +12,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // CatalogQueueSeedResult compte les insertions effectives (hors doublons
@@ -97,4 +99,20 @@ func seedQueueAsset(ctx context.Context, metadataDB, sharedDB *sql.DB, titleSlug
 		}
 	}
 	return inserted, rows.Err()
+}
+
+// SeedCatalogQueueForTitle recense la file de récupération du titre : lit la base partagée du titre
+// (rendue en sortant : un lecteur en vol fait échouer toute prise d'écriture, ADR 0016) puis enfile ce
+// qu'elle a vu dans metadata (SeedCatalogQueueFromRegistry).
+func SeedCatalogQueueForTitle(ctx context.Context, bases duckdb.TitleBases, metadataDB *sql.DB, titleSlug string) (CatalogQueueSeedResult, error) {
+	sharedSQL, release, err := bases.ReadShared(ctx, titleSlug)
+	if err != nil {
+		return CatalogQueueSeedResult{}, err
+	}
+	defer release()
+	seeded, err := SeedCatalogQueueFromRegistry(ctx, metadataDB, sharedSQL, titleSlug)
+	if err != nil {
+		return seeded, fmt.Errorf("seed queue: %w", err)
+	}
+	return seeded, nil
 }

@@ -36,18 +36,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier.
+// StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier. Bytes est la taille STOCKÉE (le fichier
+// compressé sur disque, cf. internal/replayartifact/gate.go).
 type StoredArtifact struct {
 	Path          string
 	MatchID       string
@@ -82,8 +81,9 @@ func StoreArtifactAt(ctx context.Context, outPath, titleSlug, matchID string, bl
 	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
+	canonique, _ := title.ReplayArtifactCandidates(outPath)
 	return StoredArtifact{
-		Path: outPath, MatchID: matchID, Bytes: surDisque.Bytes,
+		Path: canonique, MatchID: matchID, Bytes: surDisque.Bytes,
 		Tracks: surDisque.Tracks, SchemaVersion: surDisque.SchemaVersion,
 	}, nil
 }
@@ -116,6 +116,17 @@ func wouldDowngrade(outPath string, blob []byte) (enPlace Digest, oui bool) {
 	// qui se tromperait au premier rang de la même journée.
 	if current.decodageIntact() && !incoming.decodageIntact() {
 		return current, true
+	}
+	// LE PAS EST UNE MARQUE DE FRAÎCHEUR AU MÊME TITRE QUE LE SCHÉMA ([CadenceUpToDate], la source
+	// unique). Un artefact au pas courant ne se laisse pas écraser par un candidat à un autre pas (un
+	// retour à une grille périmée), et un artefact à un pas périmé se laisse remplacer par un candidat au
+	// pas courant : c'est la reconstruction voulue, comme une montée de schéma, que le garde de compteurs
+	// ci-dessous ne doit pas arrêter.
+	switch {
+	case CadenceUpToDate(current.FrameIntervalMS) && !CadenceUpToDate(incoming.FrameIntervalMS):
+		return current, true
+	case !CadenceUpToDate(current.FrameIntervalMS) && CadenceUpToDate(incoming.FrameIntervalMS):
+		return current, false
 	}
 	if current.Players == 0 {
 		return current, false // rien à protéger sur l'axe des compteurs
@@ -160,6 +171,12 @@ func validateArtifact(titleSlug, matchID string, blob []byte) error {
 	if doc.SchemaVersion != replay.SchemaVersion {
 		return fmt.Errorf("%w (schéma %d, attendu %d)",
 			domain.ErrBuildArtifactInvalid, doc.SchemaVersion, replay.SchemaVersion)
+	}
+	// LE PAS EST UNE MARQUE DE FRAICHEUR COMME LE SCHEMA (cf. cadence.go) : un ouvrier d'une autre
+	// cadence depose un artefact que le critere jugerait aussitot a recuire.
+	if !CadenceUpToDate(doc.FrameIntervalMS) {
+		return fmt.Errorf("%w (pas %d ms, attendu %d)", domain.ErrBuildArtifactInvalid,
+			FrameIntervalOrHistorical(doc.FrameIntervalMS), CookFrameIntervalMS())
 	}
 	// La comparaison porte sur la forme COURTE : c'est l'identité sous laquelle
 	// l'artefact est rangé (ReplayArtifactPath), donc la seule qui décide où le
@@ -224,18 +241,18 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 		observability.IncCounter("replay_artifact_downgrade_refused_total")
 		return enPlace, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+	ecritPath, stocke, err := replayartifact.Write(ctx, outPath, blob)
+	if err != nil {
 		return Digest{}, err
 	}
-	if err := atomicfile.WriteFile(ctx, outPath, blob, 0o644); err != nil {
-		return Digest{}, err
-	}
+	replayartifact.RemoveLegacy(ctx, ecritPath)
 	ecrit, _ := digestFromBytes(blob)
+	ecrit.Bytes = len(stocke) // taille stockee, cf. internal/replayartifact/gate.go
 	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),
 	// un .meta absent ou plus ancien (arret entre les deux ecritures) fait relire l'artefact.
-	ecrireEntete(ctx, outPath, ecrit, AppVersion())
+	ecrireEntete(ctx, ecritPath, ecrit, AppVersion())
 	publishArtifactStored(ctx, ArtifactStored{
-		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
+		TitleSlug: titleSlug, MatchID: matchID, Path: ecritPath,
 		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,
 	})
 	return ecrit, nil

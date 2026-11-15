@@ -10,6 +10,7 @@ export const assetDrawerManifest = {
   "asset_drawer.empty.medals": { fr: "Aucune médaille trouvée.", en: "No medal found." },
   "asset_drawer.empty.weapons": { fr: "Aucune arme trouvée.", en: "No weapon found." },
   "asset_drawer.mini_tab": { fr: "Référentiels", en: "References" },
+  "asset_drawer.pin.toggle": { fr: "Épingler le volet", en: "Pin the pane" },
   "asset_drawer.search.placeholder": { fr: "Rechercher…", en: "Search…" },
   "asset_drawer.tab.maps": { fr: "Cartes", en: "Maps" },
   "asset_drawer.tab.medals": { fr: "Médailles", en: "Medals" },

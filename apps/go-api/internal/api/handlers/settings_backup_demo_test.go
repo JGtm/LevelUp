@@ -36,7 +36,7 @@ func routeurSauvegarde(t *testing.T, sched *duckdbbackup.Scheduler) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
-	h := handlers.NewSettingsHandlerWithIndexer(cfg,
+	h := handlers.NewSettingsHandler(cfg,
 		settings_platform.NewStore(filepath.Join(dir, "app_settings.json")),
 		jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{}).
 		WithBackupScheduler(sched)

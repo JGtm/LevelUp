@@ -111,8 +111,8 @@ func TestBuildQueue_LesFaitsSurviventALaFile(t *testing.T) {
 	scores := [2]int{3, 0}
 	facts := &domain.MatchFacts{
 		Players: []domain.MatchPlayerFact{
-			{XUID: "2533274819954312", Kills: 12, Deaths: 7, Assists: 3, TeamID: 0},
-			{XUID: "2535469190789936", Kills: 9, Deaths: 11, Assists: 5, TeamID: 1},
+			{XUID: "2533491259474651", Kills: 12, Deaths: 7, Assists: 3, TeamID: 0},
+			{XUID: "2547408409520575", Kills: 9, Deaths: 11, Assists: 5, TeamID: 1},
 		},
 		TeamScores:      &scores,
 		GameVariantName: "CTF:Arena",

@@ -11,28 +11,49 @@ package squadagg
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaytext"
+
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
+
+// labelCatalogue rend le catalogue de libellés du rejeu du titre, ou faux quand il manque : source
+// absente, titre vide, titre sans rejeu (`games.ErrCapabilityNotSupported`, dégradation voulue) ou
+// catalogue illisible (dit sous `message`). Les appelants servent alors sans libellé du titre.
+func labelCatalogue(ctx context.Context, labels port.ReplayLabelSource, titleSlug, message string) (replay.LabelCatalog, bool) {
+	if labels == nil || titleSlug == "" {
+		return replay.LabelCatalog{}, false
+	}
+	cat, err := labels.LabelCatalogue(titleSlug)
+	switch {
+	case err == nil:
+		return cat, true
+	case errors.Is(err, games.ErrCapabilityNotSupported):
+		slog.DebugContext(ctx, "escouade: titre sans catalogue de libellés du rejeu",
+			"titleSlug", titleSlug, "err", err)
+	default:
+		slog.WarnContext(ctx, message, "err", err, "titleSlug", titleSlug)
+	}
+	return replay.LabelCatalog{}, false
+}
 
 // VehicleFamilyLabels — famille de véhicule qualifiée -> libellé dans la langue de la requête. Map
 // vide (jamais nil) quand le catalogue manque : les familles gardent alors leur clé à l'écran.
-func VehicleFamilyLabels(ctx context.Context, repoRoot, titleSlug, locale string) map[string]string {
+func VehicleFamilyLabels(ctx context.Context, labels port.ReplayLabelSource, titleSlug, locale string) map[string]string {
 	out := map[string]string{}
-	if repoRoot == "" || titleSlug == "" {
-		return out
-	}
-	cat, err := replaylabels.Catalogue(repoRoot, titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "escouade: catalogue des familles de vehicule illisible — familles non nommees",
-			"err", err, "titleSlug", titleSlug)
+	cat, ok := labelCatalogue(ctx, labels, titleSlug,
+		"escouade: catalogue des familles de vehicule illisible — familles non nommees")
+	if !ok {
 		return out
 	}
 	labelLocale := i18n.Parse(locale)
 	for family, info := range cat.VehicleFamilies {
-		label := replaylabels.TexteDepuisFilm(info.Label).Pick(labelLocale)
+		label := replaytext.TexteDepuisFilm(info.Label).Pick(labelLocale)
 		if label != "" {
 			out[family] = label
 		}

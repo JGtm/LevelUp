@@ -15,12 +15,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  BOMB_BLAST_HOLD_FRAMES,
+  BOMB_BLAST_HOLD_MS,
+  bombBlastHoldFrames,
   buildBombBlastFx,
   drawBombBlastFx,
   type BombBlastFx,
 } from './bombBlastFx'
-import { FLAG_CAPTURE_HOLD_FRAMES } from './flagCaptureFx'
+import { FLAG_CAPTURE_HOLD_MS } from './flagCaptureFx'
 import { testReplayDoc } from '../test/testDoc'
 
 const VIEW = {
@@ -31,6 +32,9 @@ const VIEW = {
 }
 
 const INK = 'team-ink'
+
+/** La durée de l'effet, en images, sur la grille historique de 100 ms de ces fixtures. */
+const HOLD = bombBlastHoldFrames({ frameIntervalMs: 100 })
 
 /** Le joueur A immobile en (1,9) : sa position est relue à toute image de sa vie. */
 const TRACKS = [
@@ -112,12 +116,12 @@ describe('buildBombBlastFx', () => {
 
 describe('drawBombBlastFx — ce qui la rend VOYANTE', () => {
   it('tient DEUX FOIS plus longtemps que l’onde de capture : un événement rare a ce droit', () => {
-    expect(BOMB_BLAST_HOLD_FRAMES).toBe(2 * FLAG_CAPTURE_HOLD_FRAMES)
+    expect(BOMB_BLAST_HOLD_MS).toBe(2 * FLAG_CAPTURE_HOLD_MS)
   })
 
   it("dessine les TROIS couches à l'instant de l'explosion : éclat, onde, éclats", () => {
     const { ctx, calls } = mockCtx()
-    drawBombBlastFx(ctx, [BLAST], VIEW, { frame: 10, hold: BOMB_BLAST_HOLD_FRAMES }, style())
+    drawBombBlastFx(ctx, [BLAST], VIEW, { frame: 10, hold: HOLD }, style())
     // L'ÉCLAT est le seul `fill` du tracé ; les ÉCLATS les seuls `moveTo`/`lineTo`.
     expect(calls.filter((c) => c.method === 'fill')).toHaveLength(1)
     expect(calls.filter((c) => c.method === 'stroke').length).toBeGreaterThanOrEqual(2)
@@ -125,7 +129,7 @@ describe('drawBombBlastFx — ce qui la rend VOYANTE', () => {
   })
 
   it("l'ÉCLAT meurt au premier quart, l'onde continue — sinon il empâterait la fin", () => {
-    const tot = BOMB_BLAST_HOLD_FRAMES
+    const tot = HOLD
     const tard = mockCtx()
     drawBombBlastFx(tard.ctx, [BLAST], VIEW, { frame: 10 + tot - 1, hold: tot }, style())
     expect(tard.calls.filter((c) => c.method === 'fill')).toHaveLength(0)
@@ -134,24 +138,24 @@ describe('drawBombBlastFx — ce qui la rend VOYANTE', () => {
 
   it("l'ONDE s'ouvre BIEN PLUS LOIN que celle d'une capture (24 px) : c'est ce qui la distingue", () => {
     const fin = mockCtx()
-    drawBombBlastFx(fin.ctx, [BLAST], VIEW, { frame: 10 + BOMB_BLAST_HOLD_FRAMES, hold: BOMB_BLAST_HOLD_FRAMES }, style())
+    drawBombBlastFx(fin.ctx, [BLAST], VIEW, { frame: 10 + HOLD, hold: HOLD }, style())
     expect(Math.max(...rayons(fin.calls))).toBeGreaterThan(40)
   })
 
   it("rien avant l'instant, rien après la fenêtre", () => {
     const avant = mockCtx()
-    drawBombBlastFx(avant.ctx, [BLAST], VIEW, { frame: 9, hold: BOMB_BLAST_HOLD_FRAMES }, style())
+    drawBombBlastFx(avant.ctx, [BLAST], VIEW, { frame: 9, hold: HOLD }, style())
     expect(avant.calls).toHaveLength(0)
     const apres = mockCtx()
-    drawBombBlastFx(apres.ctx, [BLAST], VIEW, { frame: 10 + BOMB_BLAST_HOLD_FRAMES + 1, hold: BOMB_BLAST_HOLD_FRAMES }, style())
+    drawBombBlastFx(apres.ctx, [BLAST], VIEW, { frame: 10 + HOLD + 1, hold: HOLD }, style())
     expect(apres.calls).toHaveLength(0)
   })
 
   it("MOUVEMENT RÉDUIT : une empreinte FIXE et pleine — aucun éclat, aucune expansion", () => {
     const a = mockCtx()
-    drawBombBlastFx(a.ctx, [BLAST], VIEW, { frame: 10, hold: BOMB_BLAST_HOLD_FRAMES }, style(true))
+    drawBombBlastFx(a.ctx, [BLAST], VIEW, { frame: 10, hold: HOLD }, style(true))
     const b = mockCtx()
-    drawBombBlastFx(b.ctx, [BLAST], VIEW, { frame: 15, hold: BOMB_BLAST_HOLD_FRAMES }, style(true))
+    drawBombBlastFx(b.ctx, [BLAST], VIEW, { frame: 15, hold: HOLD }, style(true))
     expect(a.calls.filter((c) => c.method === 'moveTo')).toHaveLength(0)
     // Le rayon ne bouge pas d'une image à l'autre : c'est la définition de « sans mouvement ».
     expect(rayons(b.calls)).toEqual(rayons(a.calls))

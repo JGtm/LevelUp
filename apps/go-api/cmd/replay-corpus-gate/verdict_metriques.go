@@ -29,7 +29,12 @@ package main
 //	(b) REJET       une hausse n est une PERTE que si le RAPPORT au denominateur se degrade, avec
 //	    un denominateur NON NUL des deux cotes. Sinon c est un CHANGEMENT : affiche, instruit par
 //	    le pilote, toujours bloquant.
+//	    Un denominateur ABSENT d'un cote (bloc entier non publie par l'artefact de base) vaut
+//	    NUL : le bloc `coverage.vehicles.destructions.` d'un artefact qui ne le porte pas fait de
+//	    ses compteurs de rejet des changements, tant que `destroyed` est declare ici.
 //	(c) LE RESTE    inchange. Une perte reelle et un changement hors telemetrie bloquent.
+//	(d) DEPLACEMENT une baisse de compteur que la hausse d'un compteur frere compense est un
+//	    CHANGEMENT (verdict_deplacements.go) ; une baisse non compensee reste une perte.
 //
 // DEPUIS LE 2026-09-30, CETTE CLASSIFICATION N EST PLUS LE VERDICT : c est le banc de verite
 // (verite.go). Elle continue de dire, au rapport, ce qui est perte, changement ou telemetrie, et
@@ -227,6 +232,15 @@ func rejetsDeCouverture() []familleDeRejet {
 			Preuve:       "replay/document_vehicles.go : les trois se rapportent aux `Shots` du calque",
 		},
 		{
+			Blocs:        []string{"coverage.vehicles.destructions."},
+			Denominateur: "destroyed",
+			Rejets: []string{"killerAbsent", "killerOutOfRoster", "killerAmbiguous",
+				"causeUnresolved", "causeAbsent", "killedNoIdentity"},
+			Preuve: "domain/replaydoc/coverage_world.go, VehicleDestructionCoverage : « le " +
+				"denominateur est `Destroyed` » ; le bloc entier est absent d'un artefact qui " +
+				"ne le publie pas",
+		},
+		{
 			Blocs:        []string{"bombStats.coverage."},
 			Denominateur: "periods",
 			Rejets:       []string{"periodsNoBridge", "periodsOpen"},
@@ -279,6 +293,9 @@ func classerPourLeVerdict(d replaydiff.Difference,
 	}
 	if d.Sens != replaydiff.SensPerte && d.Sens != replaydiff.SensDisparu {
 		return d.Sens
+	}
+	if estDeplacementCompense(d, parMetrique) {
+		return replaydiff.SensChangement
 	}
 	cleDenom, estRejet := denominateurDe(d.Metrique)
 	if !estRejet || cleDenom == "" {

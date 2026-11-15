@@ -37,7 +37,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // fetcherRaster : un client film minimal — le pont disque doit trouver de quoi persister,
@@ -72,14 +72,16 @@ func racineCuisson(t *testing.T) string {
 // documentCuit : les octets qu'un enfant decodeur rendrait — un joueur immobile 2 s.
 func documentCuit(t *testing.T, matchID string) []byte {
 	t.Helper()
+	pas := replaybuild.CookFrameIntervalMS()
+	fin := 2000 / pas // 2 s a la grille courante (arrondi bas : jamais au-dela de 2 s)
 	doc := replay.ReplayDocument{
 		SchemaVersion:   replay.SchemaVersion,
 		MatchID:         matchID,
-		FrameIntervalMS: 100,
-		FrameCount:      21,
+		FrameIntervalMS: pas,
+		FrameCount:      fin + 1,
 		Tracks: []replay.Track{{
-			Slot: 1, Team: -1, XUID: "111", StartFrame: 0, EndFrame: 20,
-			Points: []replay.Point{{T: 0, X: 0.25, Y: 0.25}, {T: 20, X: 0.25, Y: 0.25}},
+			Slot: 1, Team: -1, XUID: "111", StartFrame: 0, EndFrame: fin,
+			Points: []replay.Point{{T: 0, X: 0.25, Y: 0.25}, {T: fin, X: 0.25, Y: 0.25}},
 		}},
 	}
 	raw, err := json.Marshal(doc)

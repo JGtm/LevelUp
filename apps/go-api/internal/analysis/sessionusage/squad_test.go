@@ -66,12 +66,12 @@ func TestResolveScopeMembers_GamertagsVidesDesParticipants(t *testing.T) {
 		{MatchID: "m1", XUID: "inconnu", Gamertag: "", TeamID: intp(0)},
 		{MatchID: "m2", XUID: "jgtm", Gamertag: "JGtm", TeamID: intp(1)},
 		{MatchID: "m2", XUID: "choco", Gamertag: "", TeamID: intp(1)},
-		{MatchID: "m2", XUID: "madina", Gamertag: "Madina97294", TeamID: intp(1)},
+		{MatchID: "m2", XUID: "madina", Gamertag: "Joueur90002", TeamID: intp(1)},
 	}
-	got := ResolveScopeMembers("jgtm", participants, membres("choco", "Chocoboflor", "madina", ""))
+	got := ResolveScopeMembers("jgtm", participants, membres("choco", "Joueur90001", "madina", ""))
 	want := []domain.SessionUsageSquadPlayer{
-		{XUID: "choco", Gamertag: "Chocoboflor"},
-		{XUID: "madina", Gamertag: "Madina97294"},
+		{XUID: "choco", Gamertag: "Joueur90001"},
+		{XUID: "madina", Gamertag: "Joueur90002"},
 	}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("membres du scope = %+v, attendu %+v", got, want)

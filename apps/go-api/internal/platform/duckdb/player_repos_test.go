@@ -8,10 +8,12 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
@@ -1735,11 +1737,15 @@ func TestStatsRepo_LoadStatsMatches_WithData(t *testing.T) {
 	if rows[0].DefensiveResistance == nil {
 		t.Fatal("defensive_resistance nil")
 	}
-	if got := *rows[0].OffensiveConversion; got != 0.8 {
-		t.Fatalf("offensive_conversion = %.3f, want 0.800", got)
+	// 10 frags, 2 assistances, 5 morts, 3 000 dégâts infligés, 1 500 subis ; la vie effective est
+	// celle du titre (games.DefaultEffectiveHpToKill).
+	hp := games.DefaultEffectiveHpToKill
+	wantOC, wantDR := hp*(10+2.0/3)/3000, 1500/(hp*5)
+	if got := *rows[0].OffensiveConversion; math.Abs(got-wantOC) > 1e-9 {
+		t.Fatalf("offensive_conversion = %.6f, want %.6f", got, wantOC)
 	}
-	if got := *rows[0].DefensiveResistance; got != 1.3333333333333333 {
-		t.Fatalf("defensive_resistance = %.16f, want 1.3333333333333333", got)
+	if got := *rows[0].DefensiveResistance; math.Abs(got-wantDR) > 1e-9 {
+		t.Fatalf("defensive_resistance = %.16f, want %.16f", got, wantDR)
 	}
 }
 

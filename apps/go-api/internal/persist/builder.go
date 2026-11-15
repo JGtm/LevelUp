@@ -3,7 +3,7 @@
 //
 // Usage type :
 //
-//	builder := persist.NewBatchBuilder("halo_infinite", "Madina97294", "2533274858283686", "sync_delta")
+//	builder := persist.NewBatchBuilder("halo_infinite", "Joueur90002", "2623439693412443", "sync_delta")
 //	builder.SetMatch(matchRegistryRow)
 //	builder.AddParticipants(participants)
 //	builder.AddMedals(medals)
@@ -159,6 +159,13 @@ func (b *BatchBuilder) SetPadTiers(pass *PadTiersBatch) *BatchBuilder {
 // Set et non Add : l unite de production est l ARTEFACT ENTIER (une passe = un decode_pass).
 func (b *BatchBuilder) SetVehicleTakes(pass *VehicleTakesBatch) *BatchBuilder {
 	b.batch.Shared.VehicleTakes = pass
+	return b
+}
+
+// SetLeadShare fixe la Mainmise d une passe de lecture d artefact pour ce match. Set et non Add :
+// l unite de production est l ARTEFACT ENTIER (une passe = un decode_pass).
+func (b *BatchBuilder) SetLeadShare(pass *LeadShareBatch) *BatchBuilder {
+	b.batch.Shared.LeadShare = pass
 	return b
 }
 

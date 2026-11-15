@@ -15,7 +15,8 @@
 //   - aucune ouverture (`Open*`) sur le chemin de la base partagée (`SharedDBPath` /
 //     `sharedDBPath`) hors de `openPlayerDB`, qui ne l'ouvre qu'en mode legacy (sans provider).
 //
-// Allowlist vide.
+// Allowlist DATÉE de deux entrées (ci-dessous) : deux lectures venues de api/wire, qui vivaient hors du
+// périmètre balayé et que le déplacement du 2026-11-12 (4.4) a fait entrer dans le paquet.
 package archlint
 
 import (
@@ -79,14 +80,44 @@ func mentionsSharedPath(args []ast.Expr) bool {
 	return found
 }
 
+// poolSharedHandleAllowlist : fichier du paquet -> nombre d'ouvertures de la base partagée tolérées, avec la
+// date et le RISQUE. Les deux entrées ne sont pas des fautes du pool (le pool ne tient rien) : ce sont des
+// lectures d'administration qui ouvrent la base partagée d'un titre PAR SON CHEMIN, comme elles le faisaient dans
+// api/wire avant 4.4, hors du périmètre de ce garde. Une entrée ne s'ajoute pas : elle se supprime avec le code
+// qui la justifie, et une entrée sans ouverture fait échouer le test.
+var poolSharedHandleAllowlist = map[string]struct {
+	n      int
+	reason string
+}{
+	"internal/platform/duckdb/title_bases.go": {1, "2026-11-12 : TitleBases.ReadShared, déplacée à l'identique de api/wire/registry_data_quality.go (4.4) — " +
+		"pour un titre dont le provider ne tient pas le fichier, OpenReadOnly ouvre une référence en LECTURE tenue le temps de la " +
+		"tâche d'administration ; si ce fichier devenait celui d'un provider B-swap, cette référence ferait refuser sa bascule en " +
+		"écriture (« different configuration », ADR 0016). Le titre tenu par le provider passe, lui, par AcquireSharedRead."},
+	"internal/platform/duckdb/last_match_reader.go": {1, "2026-11-12 : LastMatchReader.LastMatchByXUID, déplacée à l'identique de " +
+		"api/wire/registry_monitoring_freshness.go (4.4) — OpenReadForQuery emprunte le handle en cache (RO ou RW) et ne ferme que " +
+		"ce qu'il ouvre ; seul risque : une référence en lecture tenue le temps d'une requête groupée, pendant une bascule du provider."},
+}
+
 func TestPoolNeTientAucunHandleSurLaBasePartagee(t *testing.T) {
+	vus := map[string]int{}
 	for _, s := range goSourcesUnder(t, "internal/platform/duckdb") {
 		if strings.Count(strings.TrimPrefix(s.Rel, "internal/platform/duckdb/"), "/") > 0 {
 			continue // sous-paquets (sharedprovider : le détenteur légitime)
 		}
-		for _, line := range poolSharedHandleDefects(s) {
+		lines := poolSharedHandleDefects(s)
+		vus[s.Rel] = len(lines)
+		allowed := poolSharedHandleAllowlist[s.Rel].n
+		if len(lines) <= allowed {
+			continue
+		}
+		for _, line := range lines {
 			t.Errorf("%s:%d : le pool tient ou rouvre un handle sur la base partagée — en mode B-swap "+
 				"son provider en est l'unique détenteur (ADR 0016) ; lire par PlayerDB.SharedReadDB()", s.Rel, line)
+		}
+	}
+	for rel, e := range poolSharedHandleAllowlist {
+		if n, ok := vus[rel]; !ok || n != e.n {
+			t.Errorf("%s : allowlist de %d ouverture(s), %d vue(s) — ajuster ou retirer l'entrée de poolSharedHandleAllowlist", rel, e.n, n)
 		}
 	}
 }

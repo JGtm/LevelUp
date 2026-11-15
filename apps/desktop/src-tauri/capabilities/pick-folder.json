@@ -1,0 +1,10 @@
+{
+  "identifier": "pick-folder",
+  "description": "La page servie par le sidecar (http://127.0.0.1:<port>, origine distante) peut appeler la seule commande pick_folder : la boite Parcourir du systeme. Aucune autre permission, aucune autre origine, aucun autre ecran (les ecrans embarques de la coquille n'ont pas de capacite).",
+  "local": false,
+  "remote": {
+    "urls": ["http://127.0.0.1:*"]
+  },
+  "windows": ["main"],
+  "permissions": ["allow-pick-folder"]
+}

@@ -1,9 +1,9 @@
 package filmfetch
 
 import (
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // Constantes pour les types de chunks film Halo.

@@ -16,6 +16,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
@@ -156,4 +157,21 @@ func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
 // X-LevelUp-Title), ne doit pas décider de ce qui s'exclut d'une base d'un autre titre.
 func (e *SyncEngine) pinTitle(ctx context.Context) context.Context {
 	return ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+}
+
+// SharedWriterAcquirer prend un segment d'ÉCRITURE shared court : la base, et la fonction qui la rend.
+type SharedWriterAcquirer func(ctx context.Context) (*sql.DB, func(), error)
+
+// NewSharedWriterAcquirer construit l'acquisition d'un writer shared de la base située à sharedDBPath, nommé
+// `label` dans les journaux du lease et bornée par budget (une attente qui le dépasse échoue). Nil quand
+// provider est nil : rien ne peut écrire.
+func NewSharedWriterAcquirer(provider sharedprovider.Provider, sharedDBPath, label string, budget time.Duration) SharedWriterAcquirer {
+	if provider == nil {
+		return nil
+	}
+	return func(ctx context.Context) (*sql.DB, func(), error) {
+		acquireCtx, cancel := context.WithTimeout(ctx, budget)
+		defer cancel()
+		return AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(acquireCtx, label), provider, sharedDBPath)
+	}
 }

@@ -3,25 +3,12 @@
  * type déclaré une fois (`contract.ts`). Ajouter une langue : un fichier, une ligne ici.
  */
 import type { Locale } from '@/lib/i18n/locale'
+import { substituteHpToken } from '@/lib/damage/effectiveHp'
 import type { HelpText } from './contract'
 import { EN_TEXT } from './en'
 import { FR_TEXT } from './fr'
 
 export type { GlossaryEntry, GlossarySection, HelpTab, HelpText } from './contract'
-
-/**
- * Baseline PV-pour-tuer par défaut (Halo Infinite : 90 vie + 135 bouclier).
- * Utilisé comme repli quand le titre courant n'expose pas son barème. Doit rester
- * aligné avec `games.DefaultEffectiveHpToKill` côté backend.
- */
-export const DEFAULT_EFFECTIVE_HP_TO_KILL = 225
-
-/**
- * Jeton remplacé par le barème PV-pour-tuer du titre courant dans le copy combat
- * (rendement / résistance). Toutes les valeurs réelles sont à 3 chiffres (115–225),
- * ce qui préserve l'alignement des tableaux ASCII après substitution.
- */
-const HP_TOKEN = '{{HP}}'
 
 const TEXT: Record<Locale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
 
@@ -33,9 +20,8 @@ const TEXT: Record<Locale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
  * (0,90 / 1,65) restent calibrés Halo Infinite (recalibration par titre différée) et
  * ne sont pas tokenisés.
  */
-function withDamageBaseline(text: HelpText, effectiveHpToKill: number): HelpText {
-  const hp = String(Math.round(effectiveHpToKill))
-  const sub = (s: string): string => s.split(HP_TOKEN).join(hp)
+function withDamageBaseline(text: HelpText, effectiveHpToKill: number | undefined): HelpText {
+  const sub = (s: string): string => substituteHpToken(s, effectiveHpToKill)
   return {
     ...text,
     glossary: {
@@ -55,12 +41,12 @@ function withDamageBaseline(text: HelpText, effectiveHpToKill: number): HelpText
 
 /**
  * Retourne le glossaire localisé. `effectiveHpToKill` (PV-pour-tuer du titre courant,
- * résolu depuis le bootstrap) rend le copy combat title-aware ; à défaut, repli sur
- * le barème Halo Infinite.
+ * lu du bootstrap) rend le copy combat title-aware ; tant qu'il est absent, le barème
+ * s'affiche « — » (aucune valeur de repli).
  */
 export function getHelpText(
   locale: Locale,
-  effectiveHpToKill: number = DEFAULT_EFFECTIVE_HP_TO_KILL,
+  effectiveHpToKill?: number,
 ): HelpText {
   return withDamageBaseline(TEXT[locale], effectiveHpToKill)
 }

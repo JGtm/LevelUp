@@ -11,6 +11,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // TestClassifyWeaponCoverage vérifie la classification registre / weapon_labels /
@@ -44,8 +45,8 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 	ids := []int64{int64(brID), int64(labelOnly), unknown}
 
 	// Avec registre.
-	inReg, inLabel := map[int64]bool{}, map[int64]bool{}
-	classifyWeaponCoverage(ctx, db, "halo_infinite", ids, inReg, inLabel)
+	repo := duckdb.NewWeaponCoverageRepo(nil, db)
+	inReg, inLabel := repo.ClassifyWeaponIDs(ctx, "halo_infinite", ids)
 	if !inReg[int64(brID)] || !inLabel[int64(brID)] {
 		t.Errorf("BR75 devrait être registre+label : reg=%v label=%v", inReg[int64(brID)], inLabel[int64(brID)])
 	}
@@ -62,8 +63,7 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 	// (66/66 stock_ids hors sentinelles). inLabel reste false (aucune ligne label).
 	ugcH5 := int64(2457457776) // UGC H5, mappé à h5_other_ugc, absent de weapon_labels
 	spartanH5 := int64(3168248199)
-	inRegH5, inLabelH5 := map[int64]bool{}, map[int64]bool{}
-	classifyWeaponCoverage(ctx, db, "halo_5", []int64{ugcH5, spartanH5}, inRegH5, inLabelH5)
+	inRegH5, inLabelH5 := repo.ClassifyWeaponIDs(ctx, "halo_5", []int64{ugcH5, spartanH5})
 	if !inRegH5[ugcH5] {
 		t.Errorf("UGC H5 %d devrait être résolu par le registre (h5_other_ugc)", ugcH5)
 	}
@@ -78,8 +78,7 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 	if _, err := db.ExecContext(ctx, "DROP TABLE weapon_ids"); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
-	inReg2, inLabel2 := map[int64]bool{}, map[int64]bool{}
-	classifyWeaponCoverage(ctx, db, "halo_infinite", ids, inReg2, inLabel2)
+	inReg2, inLabel2 := repo.ClassifyWeaponIDs(ctx, "halo_infinite", ids)
 	if len(inReg2) != 0 {
 		t.Errorf("sans registre, inReg devrait être vide : %v", inReg2)
 	}

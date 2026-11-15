@@ -152,7 +152,7 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
   it('« Isolement » : une ligne par joueur dans l’ordre des fiches de « Prises par joueur »', () => {
     afficher()
     const lives = screen.getByTestId('match-emprise-lives')
-    const names = ['JGtm', 'XL JACOB', 'Madina97294', 'Chocoboflor']
+    const names = ['JGtm', 'Joueur9c', 'Joueur90002', 'Joueur90001']
     const positions = names.map((n) => lives.textContent!.indexOf(n))
     expect(positions.every((p) => p >= 0)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)

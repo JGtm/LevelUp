@@ -8,8 +8,8 @@ import { useMemo } from 'react'
 
 import {
   SquadEngagementView,
-  type SquadEngagementSession as ViewSession,
-  type SquadPlayerEngagement as ViewPlayer,
+  type SquadEngagementSessionView as ViewSession,
+  type SquadPlayerEngagementView as ViewPlayer,
 } from '@/features/squad/v2/SquadEngagementView'
 import { useSquadEngagementSession, type SquadTeammateEntry } from '@/features/engagement/queries'
 import type { SemanticToken } from '@/lib/accessibility'

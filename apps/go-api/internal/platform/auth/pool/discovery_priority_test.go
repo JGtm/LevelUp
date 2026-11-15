@@ -25,11 +25,11 @@ import (
 // ─── Le RT vient du store, l'env var est ignorée ─────────────────────────
 
 func TestDiscoveryScan_StoreOAuthRT_EnvVarIgnored(t *testing.T) {
-	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
+	cfg := fakeConfigWithPlayers(t, "Joueur90002", "2623439693412443")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
 	// Env var legacy : doit être TOTALEMENT ignorée (Phase 5).
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294", "rt-from-env-STALE")
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JOUEUR90002", "rt-from-env-STALE")
 
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")
 	if err := os.MkdirAll(storeDir, 0o700); err != nil {
@@ -37,8 +37,8 @@ func TestDiscoveryScan_StoreOAuthRT_EnvVarIgnored(t *testing.T) {
 	}
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := store.Upsert(&auth.UserTokens{
-		XUID:              "2533274858283686",
-		Gamertag:          "Madina97294",
+		XUID:              "2623439693412443",
+		Gamertag:          "Joueur90002",
 		OAuthRefreshToken: "rt-from-store-FRESH",
 	}); err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestDiscoveryScan_StoreOAuthRT_EnvVarIgnored(t *testing.T) {
 // ─── Entrée store sans RT → joueur exclu ─────────────────────────────────
 
 func TestDiscoveryScan_StoreEntryWithoutRT_PlayerExcluded(t *testing.T) {
-	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
+	cfg := fakeConfigWithPlayers(t, "Joueur90002", "2623439693412443")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")
@@ -74,8 +74,8 @@ func TestDiscoveryScan_StoreEntryWithoutRT_PlayerExcluded(t *testing.T) {
 	}
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := store.Upsert(&auth.UserTokens{
-		XUID:      "2533274858283686",
-		Gamertag:  "Madina97294",
+		XUID:      "2623439693412443",
+		Gamertag:  "Joueur90002",
 		XSTSToken: "xsts-only", // aucun RT
 	}); err != nil {
 		t.Fatal(err)
@@ -94,10 +94,10 @@ func TestDiscoveryScan_StoreEntryWithoutRT_PlayerExcluded(t *testing.T) {
 // ─── Store vide + env var présente → joueur exclu (ratchet Phase 5) ──────
 
 func TestDiscoveryScan_StoreEmpty_NoEnvFallback(t *testing.T) {
-	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
+	cfg := fakeConfigWithPlayers(t, "Joueur90002", "2623439693412443")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294", "rt-from-env-LEGACY")
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JOUEUR90002", "rt-from-env-LEGACY")
 
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")
 	if err := os.MkdirAll(storeDir, 0o700); err != nil {
@@ -119,7 +119,7 @@ func TestDiscoveryScan_StoreEmpty_NoEnvFallback(t *testing.T) {
 // ─── Aucune source : joueur exclu ────────────────────────────────────────
 
 func TestDiscoveryScan_NoSourcesAnywhere_PlayerExcluded(t *testing.T) {
-	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
+	cfg := fakeConfigWithPlayers(t, "Joueur90002", "2623439693412443")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")

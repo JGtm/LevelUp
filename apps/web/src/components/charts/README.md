@@ -21,6 +21,10 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | Squad "Dynamique" tab, Timeseries "Progression" tab, Session chart stack |
 | 12 | `<WeaponAccuracyChart>` | Per-weapon accuracy bars, coloured by weapon class, hover linked to the frag sunburst | Synthesis, Timeseries "Résumé" tab, Sessions (Halo 5 accuracy card) |
 
+> The chart library is only imported inside this folder (`chartsImportBoundary.guard.test.ts`): option builders elsewhere type their result with `ChartOption` from `chartOption.ts`, and a test that needs the real render uses `svgRender.testutil.ts`.
+
+> `<LazyECharts>` is only mounted inside this folder (`lazyEchartsMount.guard.test.ts`). `ChartCard` rebuilds its option on theme AND accessibility-palette changes; the two components that mount `LazyECharts` directly because they draw a bare strip without card chrome — `OutcomeSequenceTape` and `CumulativeFragGapChart` (cumulative frag gap, Relations / Explorer) — must call `useColorPaletteVersion()` themselves, which the same guard enforces (`chartsFollowPalette.test.tsx` proves both follow a palette change without a remount).
+
 > Wrapper 10 alone is kept in `features/timeseries/` (not in this folder) because it composes `<ChartCard>` directly with a custom `buildOption` and isn't reusable elsewhere. `FirstBloodLanes` (#11) lives in this folder — it's consumed by Squad, Timeseries and Session Detail (see catalog above).
 
 ## Common API contract
@@ -37,7 +41,7 @@ interface ChartSeries<T> {
 }
 ```
 
-Each chart kind has its own datapoint type (`ChartPoint2D`, `ChartPointStacked`, `ChartPointHeatmap`, `ChartPointHistogram`, `ChartPointScatter`, `ChartPointDonut`).
+Each chart kind has its own datapoint type (`ChartPoint2D`, `ChartPointStacked`, `HeatmapCellPoint`, `ChartPointHistogram`, `ChartPointScatter`, `ChartPointDonut`).
 
 ## Wrapper details
 
@@ -68,9 +72,7 @@ type ChartPointStacked = {
 ```
 
 `componentColors` maps sub-key → SemanticToken. `componentOrder` controls bar stack/group order.
-`tooltipHideZero` drops zero-valued sub-keys from the tooltip; `tooltipComponentNote(category,
-component)` appends a localized note next to a segment value (used by the match assists chart
-for "of which stolen: N"). Either one switches the tooltip to the custom formatter.
+`tooltipHideZero` drops zero-valued sub-keys from the tooltip and switches it to the custom formatter.
 
 ### `<HistogramChart>`
 
@@ -96,7 +98,7 @@ Single-series pie/donut from `ChartSeries<ChartPointDonut>[]` (`{ name, value }`
 
 ### `<Heatmap2DChart>`
 
-Single-series 2D grid from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
+Single-series 2D grid from `ChartSeries<HeatmapCellPoint>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
 
 The option builder lives next door in `heatmap2DOption.ts` (the component file was over the 500-line threshold); `Heatmap2DChart.tsx` re-exports `buildHeatmap2DOption` and the types, so importers are unchanged.
 

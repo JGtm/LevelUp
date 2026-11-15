@@ -101,7 +101,7 @@ function makeNotif(category: NotificationCategory): Notification {
     title_key: `notif.${category}.title`,
     source: 'test',
     created_at: '2026-04-29T00:00:00Z',
-    read_at: null,
+    read_at: undefined,
     params: { id: 42, job_id: 'job-1', metric: 'kd_ratio', match_id: 'm-1' },
   }
 }

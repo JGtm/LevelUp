@@ -216,6 +216,7 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 		ParcRoot: env.ParcRoot, WorkRoot: workRoot, BinHead: binHead,
 		LockRoot: env.LockRoot, TitleSlug: env.TitleSlug, Reference: o.Reference,
 		MemGiB: o.MemGiB, SansCacheBase: o.SansCacheBase,
+		Decisions: env.Manifest.Decisions, DecisionsVues: decisionsAppliquees{},
 	}
 	refLabel := referenceParc
 	if o.Reference == referenceBase {
@@ -236,6 +237,9 @@ func executer(ctx context.Context, o executerOptions) (int, error) {
 	}
 
 	lignes := cuireEtComparerTousLesTemoins(ctx, env.Manifest, tc)
+	if executionComplete(lignes, env.Manifest, o.Temoins != "") {
+		signalerLesDecisionsSansEffet(ctx, tc.Decisions, tc.DecisionsVues)
+	}
 	o.registreAvantConnu = tc.RegistreBase != nil
 	return finaliser(ctx, lignes, refLabel, o)
 }
@@ -290,7 +294,7 @@ func chargerEnvironnement(ctx context.Context, o executerOptions) (environnement
 // le code au HEAD.
 func preparerCuissonHead(ctx context.Context, sourceRoot, workRoot, titleSlug string) (binHead string, err error) {
 	avertirSiCatalogueModifie(ctx, sourceRoot, titleSlug)
-	if err := stageReferenceOnce(sourceRoot, workRoot, titleSlug); err != nil {
+	if err := stageReferenceOnce(ctx, sourceRoot, workRoot, titleSlug); err != nil {
 		return "", fmt.Errorf("catalogues de reference (HEAD) : %w", err)
 	}
 	binHead = filepath.Join(workRoot, "bin", "replay-build-head"+exeSuffix())

@@ -54,7 +54,6 @@ func routeHasMutationGuard(mws []func(http.Handler) http.Handler) bool {
 // middleware.IsMutatingRequest.
 func TestPlayerRoutesRatchet_AllUnderMutationGuard(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	router := buildTestRouter(t)
 	r, ok := router.(chi.Router)

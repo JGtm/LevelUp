@@ -9,7 +9,7 @@
  * Couleurs uniquement via tokens sémantiques (resolveToken). Cf.
  * PLAN_explorer_combat_profile_charts.md §7 + §Spécification par graphe.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { resolveToken } from '@/lib/accessibility'
 import {
@@ -56,7 +56,7 @@ export interface CombatFdaLabels {
 export function buildCombatFdaOption(
   series: ChartSeries<CombatFdaPoint>[],
   labels: CombatFdaLabels,
-): EChartsCoreOption {
+): ChartOption {
   if (series.length === 0 || series[0].datapoints.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -160,7 +160,7 @@ export interface CombatScoreLabels {
 export function buildCombatScoreOption(
   series: ChartSeries<CombatScorePoint>[],
   labels: CombatScoreLabels,
-): EChartsCoreOption {
+): ChartOption {
   if (series.length === 0 || series[0].datapoints.length === 0) {
     return { backgroundColor: CHART_BG }
   }

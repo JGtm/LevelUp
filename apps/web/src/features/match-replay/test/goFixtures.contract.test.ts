@@ -64,6 +64,8 @@ import { hasAbilityChargeLayer } from '../model/abilityChargeLogic'
 import { buildEquipmentUsage } from '../model/equipmentUsageLogic'
 import { equippedWeapons } from '../model/equippedLogic'
 import { readHillHold } from '../model/hillHoldLogic'
+import { vehicleDestructionsOf } from '../model/vehicleDestructionSource'
+import { vehicleKilledLabel } from '../model/vehicleKilledLabel'
 import { MIN_RENDERABLE_SCHEMA_VERSION } from '../model/replaySchemaStatusLogic'
 import { roundCount } from '../model/roundsLogic'
 import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt } from '../model/seatLogic'
@@ -205,6 +207,49 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
 
       it('respecte la RÈGLE DES PLACES : jamais plus de places que la taille d’équipe, jamais un parti', () => {
         verifierLaRegleDesPlaces(pret(), entry.film)
+      })
+
+      it('nourrit la source des destructions de véhicule : une par vie détruite hors pièce montée, jointe au roster', () => {
+        const doc = pret()
+        const attendues = doc.vehicles.filter((v) => v.end === 'destroyed' && !v.part && !v.scenery && v.tEnd != null)
+        const lues = vehicleDestructionsOf(doc)
+        expect(lues, `${entry.film} : une destruction par vie détruite datée`).toHaveLength(attendues.length)
+        // Un bloc publié dit ce que la couverture en dit — quand elle existe (absente sans véhicule détruit).
+        const publies = attendues.filter((v) => v.destruction).length
+        const couverture = doc.coverage?.vehicles?.destructions
+        if (couverture) expect(couverture.published, `${entry.film} : blocs publiés`).toBe(publies)
+        // La jointure `by.i` = `roster[].filmIndex` : un destructeur humain nommé est CE joueur du roster.
+        for (const v of attendues) {
+          const by = v.destruction?.by
+          if (!by?.xuid) continue
+          const joueur = doc.roster.find((r) => r.filmIndex === by.i)
+          expect(joueur?.xuid, `${entry.film} : by.i=${by.i} ne désigne pas ${by.xuid} au roster`).toBe(by.xuid)
+        }
+        const nommes = lues.filter((d) => d.authorXuid).length
+        expect(nommes, `${entry.film} : auteurs nommés`).toBe(attendues.filter((v) => v.destruction?.by?.xuid).length)
+      })
+
+      it('la parenthèse de chaque destruction ne parle que des tués lus dans le film (`killed`), jamais de l’occupant', () => {
+        const doc = pret()
+        const attendues = doc.vehicles.filter((v) => v.end === 'destroyed' && !v.part && !v.scenery && v.tEnd != null)
+        const lues = vehicleDestructionsOf(doc)
+        const nomDe = (xuid: string) => doc.roster.find((r) => r.xuid === xuid)?.name ?? xuid
+        lues.forEach((d, i) => {
+          const bloc = attendues[i].destruction
+          const tues = [...new Set(bloc?.killed ?? [])]
+          expect(d.killedXuids, `${entry.film} : tués de la destruction ${i}`).toEqual(tues)
+          for (const locale of ['fr', 'en'] as const) {
+            const texte = vehicleKilledLabel(d.killedXuids.map(nomDe), locale)
+            if (tues.length === 0) expect(texte, `${entry.film} : aucun tué, aucune parenthèse`).toBe('')
+            else if (tues.length === 1) expect(texte).toContain(nomDe(tues[0]))
+            else expect(texte).toContain(String(tues.length))
+            // L'occupant qui n'est pas dans la liste des tués ne se nomme jamais dans la parenthèse.
+            const occupant = bloc?.occupant
+            if (occupant && !tues.includes(occupant) && nomDe(occupant) !== nomDe(tues[0] ?? '')) {
+              expect(texte, `${entry.film} : l’occupant ${nomDe(occupant)} n’est pas un tué`).not.toContain(nomDe(occupant))
+            }
+          }
+        })
       })
 
       it('nourrit les logiques de calque, chacune sans lever', () => {

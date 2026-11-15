@@ -24,8 +24,6 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/mappings"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/profile"
 )
 
@@ -37,25 +35,16 @@ const ActivityCalendarWindowDays = 90
 
 // PlayerProfileHandler regroupe le endpoint /profile.
 type PlayerProfileHandler struct {
-	resolve   ProgressionResolver
+	svc       profile.PlayerProfileService
 	titleSlug string
-	// V2 §2 : mapping awards → axes (optionnel, enrichit la Section A1 radar).
-	// Sans mapping, Objective reste à 0 (fallback V1).
-	awards *mappings.AwardMappingSet
 }
 
 // NewPlayerProfileHandler construit le handler.
-func NewPlayerProfileHandler(resolve ProgressionResolver, titleSlug string) *PlayerProfileHandler {
+func NewPlayerProfileHandler(svc profile.PlayerProfileService, titleSlug string) *PlayerProfileHandler {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	return &PlayerProfileHandler{resolve: resolve, titleSlug: titleSlug}
-}
-
-// WithAwardMapping injecte le mapping awards → axes (V2 §2). Chainable.
-func (h *PlayerProfileHandler) WithAwardMapping(set *mappings.AwardMappingSet) *PlayerProfileHandler {
-	h.awards = set
-	return h
+	return &PlayerProfileHandler{svc: svc, titleSlug: titleSlug}
 }
 
 // Mount enregistre /profile via Huma (Phase 3b) sur le sous-routeur chi
@@ -95,10 +84,6 @@ type activityCalendarOutput struct{ Body *profile.ActivityCalendar }
 // Query params optionnels :
 //   - window_days : fenêtre d'analyse (défaut 30, min 7, max 120)
 func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profileInput) (*profileOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
 	window := atoi(in.WindowDays)
 	if window <= 0 {
 		window = ProfileWindowDays
@@ -110,12 +95,11 @@ func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profile
 		window = 120
 	}
 
-	svc := profile.NewServiceFromPlayerDB(pdb)
-	if h.awards != nil {
-		svc = svc.WithAwardMapping(h.awards)
-	}
-	prof, err := svc.BuildProfile(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), window, time.Now().UTC())
+	prof, err := h.svc.Build(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug), window, time.Now().UTC())
 	if err != nil {
+		if isPlayerNotFound(err) {
+			return nil, progressionHTTPError(ctx, err)
+		}
 		slog.WarnContext(ctx, "profile: build", "err", err)
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "build_profile_error", err)
 	}
@@ -125,10 +109,6 @@ func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profile
 // handleGetActivityCalendar : GET /activity-calendar → jours joués sur la fenêtre
 // (DEC-5/D3). Query param optionnel `days` (défaut 90, min 7, max 180).
 func (h *PlayerProfileHandler) handleGetActivityCalendar(ctx context.Context, in *activityCalendarInput) (*activityCalendarOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
 	days := atoi(in.Days)
 	if days <= 0 {
 		days = ActivityCalendarWindowDays
@@ -140,20 +120,13 @@ func (h *PlayerProfileHandler) handleGetActivityCalendar(ctx context.Context, in
 		days = 180
 	}
 	now := time.Now().UTC()
-	cal, err := profile.NewServiceFromPlayerDB(pdb).LoadActivityCalendar(ctx, pdb.XUID, now.AddDate(0, 0, -days), now)
+	cal, err := h.svc.ActivityCalendar(ctx, in.PlayerSlug, now.AddDate(0, 0, -days), now)
 	if err != nil {
+		if isPlayerNotFound(err) {
+			return nil, progressionHTTPError(ctx, err)
+		}
 		slog.WarnContext(ctx, "profile: activity calendar", "err", err)
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "activity_calendar_error", err)
 	}
 	return &activityCalendarOutput{Body: &cal}, nil
-}
-
-// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
-// (contrat préservé : {code:player_not_found}).
-func (h *PlayerProfileHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
-	pdb, err := h.resolve(ctx, slug)
-	if err != nil {
-		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
-	}
-	return pdb, nil
 }

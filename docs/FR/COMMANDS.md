@@ -259,14 +259,17 @@ panne). Un **second** `Ctrl-C` tue le processus immédiatement.
 
 #### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
 
-Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)
+Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json.gz`, ou `.json` dans un parc pas encore converti)
 et les projettent vers les tables partagées. **Aucune des deux ne décode de film.** Ce sont des
 tâches de RELEASE, et toutes deux exigent le **serveur arrêté** : elles prennent `OpenReadWrite`
 sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--dry-run`.
 
 ```bash
 # 1. RE-CUIRE les artefacts d'abord — le schéma 39 périme tout artefact antérieur, et c'est
-#    cette passe-là qui fait NAÎTRE `bombStats` dedans.
+#    cette passe-là qui fait NAÎTRE `bombStats` dedans. Un artefact est à jour quand son schéma
+#    est le courant ET que son pas (`frameIntervalMs`, absent = 100 ms) est le pas de cuisson
+#    courant de LevelUp (`replaybuild.CookFrameIntervalMS`) : un rejeu cuit sur une autre grille
+#    est périmé aussi.
 go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
 
 # 2. Usages d'équipement et de socles -> match_usage_players + match_usage_films.
@@ -312,6 +315,19 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
 #    trop court = refusé, rien d écrit.
 
+# 4 ter bis. MAINMISE (part du temps joué pendant laquelle un camp est seul en tête du score, et
+#    nombre de retournements) -> match_lead_share (append-only). Même motif que (4 ter) : elle
+#    LIT les artefacts TELS QU'ILS SONT, sans décodage, SANS RECUISSON, un artefact à la fois ; la
+#    seule lecture en base est le mode et la durée du match au registre. Un match que la mesure
+#    refuse (mode à peu de points : drapeau, colline, bombe ; score non couvert ; horloge sans
+#    origine ; ...) s'écrit « non mesuré » avec sa raison, jamais zéro. LA REPRISE SE CLE SUR LA
+#    PRÉSENCE, donc APRÈS UNE RECUISSON (ou un changement de règle) --force EST OBLIGATOIRE.
+#    SERVEUR ARRÊTÉ. --dry-run ouvre la base partagée en LECTURE SEULE (rien d'écrit, aucune
+#    migration, la table peut ne pas exister) : une ligne par match et un bilan avec le taux de
+#    matchs mesurés et les refus par raison.
+go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
+go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
+
 # 4 quater. Zones nommées (callouts) des cartes Forge jouées qui n'en ont pas -> le catalogue
 #    GÉNÉRÉ reference/generated/map_callouts.json (ignoré par git ; le map_callouts.json
 #    versionné n'est jamais écrit). La variante (.mvar) de chaque carte est lue au cache
@@ -327,7 +343,24 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
+#    Le schéma 7 ajoute l'équipe, la hauteur et, par réapparition, le lieu de la mort et l'instantané
+#    des autres joueurs vivants : les sidecars d'un schéma plus ancien sont réécrits depuis leur
+#    artefact (aucun film relu). Contrôle : grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
+
+# 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu
+#    un à un et le registre des matchs en lecture seule (OpenReadForQuery ; si un autre processus tient
+#    la base en écriture, la commande le dit et s'arrête). Rien n'est écrit, sauf, pour `fit`, le fichier
+#    de poids versionné data/titles/{slug}/reference/spawn_model.json. Les familles de modes viennent de
+#    config/titles/{slug}/mappings/spawn_families.toml (un titre sans ce fichier n'a pas de mesure).
+#    --matchs-min-carte vaut 8 par défaut pour `evaluate` (la mesure de départ) et 3 pour `fit`.
+#    `fit` ne réécrit le fichier de référence que sur le parc entier et toutes les familles : avec
+#    --famille ou --limit il refuse, sauf si --sortie <fichier> écrit ailleurs.
+#    La commande qui reproduit le fichier de poids livré (depuis la racine du dépôt, LEVELUP_DATA_DIR
+#    sur le dossier de données qui porte les artefacts de rejeu) :
+#      levelup spawn-model fit --matchs-min-carte 3
+go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--matchs-min-carte N] [--famille F --sortie FICHIER] [--limit N --sortie FICHIER] [--title S]
 ```
 
 `backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —
@@ -408,9 +441,11 @@ levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur 
 `HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
 `LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR` (seulement si son action lance le serveur de ce même dossier : deux installations
 d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche de l'autre reste en place, `tache=foreign`). Il n'ouvre aucune
-base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
+base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Il retire aussi le paquet de ressources installé et les dossiers `web` et `config` du moteur (ces
+derniers seulement quand `web/index.html` existe, et en entier : le front nomme ses fichiers par un hachage de leur contenu, donc après une mise à jour le
+désinstalleur ne liste plus les anciens ; un fichier posé à la racine du dossier du programme reste). Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
 une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la désinstallation n'en dépend jamais) ; le bilan va sur stderr
-(`demarrage=… tache=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
+(`demarrage=… tache=… ressources=… moteur=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
 `e2e-install.ps1`, code de sortie compris). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur vérifie d'abord que l'application ne tourne pas (« Annuler » à
 « LevelUp est en cours d'exécution » ne retire rien), puis le lance avant l'effacement des fichiers. Il ne tourne pas dans le flux de l'updater
 (`/UPDATE` : l'updater n'appelle jamais l'ancien désinstalleur), mais une mise à jour MANUELLE (installeur lancé à la main, case « désinstaller avant »
@@ -505,6 +540,31 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un dé
   une reconstruction depuis l'archive).
 - Pour mesurer le gain sur son poste : `du -sh data/cache/film_chunks` avant et après `film recompress`.
 
+### Artefacts de rejeu (compression)
+
+Un artefact de rejeu se range `data/cache/replays/<titre>/<short8>.json.gz` (gzip, niveau 6 de la
+bibliothèque standard Go). Son contenu décompressé est le document de rejeu, inchangé d'un octet : toute
+lecture et toute écriture des octets d'un artefact passent par une porte unique (`internal/replaybuild`),
+qui reconnaît la forme aux octets magiques de gzip, pas au nom. Un parc ancien porte des `<short8>.json`
+bruts et reste lisible ; un match qui a les deux formes est lu dans le `.json.gz` (un avertissement et un
+compteur le signalent). L'en-tête `.meta` et la marque `.derived.json` gardent leurs noms, et leur `bytes`
+est la taille stockée (celle du fichier sur disque).
+
+`replay compress` convertit un parc brut sur place. Il est **à lancer soi-même** (rien ne le lance seul :
+ni cron, ni tâche au démarrage). Chaque artefact est écrit en `.json.gz` atomiquement, relu et comparé au
+JSON d'origine (identique, octet pour octet) avant que le `.json` ne soit supprimé ; son `.meta` est
+réécrit, et une marque de dérivation à jour suit la nouvelle taille stockée : aucune dérivation n'est
+rejouée. Un fichier en échec est compté, journalisé et laissé en place. La commande est idempotente (un
+artefact compressé est sauté) et rend le compte : convertis, déjà compressés, doublons (les deux formes,
+laissées telles quelles), échecs, octets avant et après.
+
+```bash
+go run ./cmd/levelup replay compress --dry-run          # lit et compresse en mémoire, affiche le gain, n'écrit rien
+go run ./cmd/levelup replay compress                    # convertit le parc du titre par défaut
+go run ./cmd/levelup replay compress --title halo_5     # un autre titre
+go run ./cmd/levelup replay compress --dir D:\copie\parc # un dossier d'artefacts explicite
+```
+
 ### Référentiels / seed / migration
 
 ```bash
@@ -572,7 +632,7 @@ Défauts de `populate-assets` : les quatre types, les 14 étiquettes de `domain.
 
 Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités
 (`data/titles/{slug}/reference/`, `static/`, ou un fichier Go généré). Aucune n'est câblée
-dans `cmd/server` — le décodage du jeu et le code GPLv3 (`libs/himap/himap`, `libs/gamefiles/ooz`,
+dans `cmd/server` — le décodage du jeu et le code GPLv3 (le paquet `himap` de `halo-infinite-map-images`, le paquet `ooz` de `halo-infinite-files-reader`,
 Kraken/Oodle) restent isolés dans ces binaires. Lancées depuis `apps/go-api` sauf mention
 contraire. `--title`/`-title` vaut `halo_infinite` par défaut partout.
 
@@ -660,13 +720,32 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
 ```
 
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
   calage) par carte — 218 fichiers aujourd'hui.
+- Maillage de navigation : une carte native est cuite avec le maillage de navigation de son
+  module `any` (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilaté de 1,5 m, est
+  effacée, et le sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au
+  millimètre). Un module sans maillage (Live Fire, le tutoriel de l'Académie) est cuit comme avant
+  et porte « aucun maillage de navigation dans le module any » dans `degradations`, sans `plan`.
+  Leviers par carte de `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe`) :
+  `rogneAuNavmesh` (sur une carte native : actif par défaut, `false` garde le maillage comme
+  surface de référence sans rogner ; sur une carte Forge : inactif par défaut), `margeNavmesh`
+  (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (cartes
+  natives) cuit sans le maillage (ni référence, ni rognage) mais publie quand même son `plan`. Une carte Forge reçoit
+  aussi `navmeshReference`, et publie un `plan` dès que le dépôt porte son `navmesh.blob`
+  (`mapnav-fetch`), que la cuisson s'en serve ou non.
+- `--plan-seul` ne cuit rien : pour chaque carte Forge dont le `navmesh.blob` est au dépôt, il
+  ajoute le `plan` au sidecar publié et laisse tout le reste (image, calage, statistiques,
+  dégradations, `generatedAt`) tel quel. Une carte sans blob, ou sans sidecar, est laissée
+  intacte. C'est ainsi qu'une carte dont la variante `.mvar` manque obtient son plan.
+- Après la cuisson, lancer `go run ./cmd/mapfond-webp -convertir` : il réécrit chaque sidecar par
+  `internal/mapfondsidecar`, qui conserve le `plan` (le `replay.MapBackground` du décodeur de film
+  ne le connaît pas).
 - Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
-  chaîne cgo/GPLv3 (`libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`, jamais liée
+  chaîne cgo/GPLv3 (`halo-infinite-map-images/himap` -> `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz`, jamais liée
   dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
   sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
@@ -739,7 +818,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
 - Sortie : `data/titles/{slug}/reference/map_positions_jouees.json` (fusionne dans le
   catalogue existant, une clé de carte à la fois).
 - Prérequis : ni jeu installé, ni cgo — post-traitement pur sur des artefacts de rejeu déjà
-  décodés (`data/cache/replays/{title}/{matchId}.json`), passés en arguments positionnels.
+  décodés (`data/cache/replays/{title}/{matchId}.json.gz` ou `.json`), passés en arguments positionnels.
 - À rejouer : quand plus ou de plus récents matchs doivent affiner le masque de positions
   jouées d'une carte.
 
@@ -795,7 +874,7 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
   `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
   (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
-  `cmd/weapon-sounds` importe `libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
+  `cmd/weapon-sounds` importe `halo-infinite-map-images/himap` -> `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz`
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
   jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
@@ -841,6 +920,10 @@ go run ./cmd/levelup diagnose --db PATH [--verbose]
 go run ./cmd/levelup check-env
 go run ./cmd/levelup gate-check [--gamertag X] [--json]
 go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
+go run ./cmd/diag_q DB_PATH "SQL"                       # SQL en lecture seule, sortie TSV ; à lancer sur une COPIE d'une base tenue par le serveur
+go run ./cmd/admin create-admin --username U --password P   # outil de secours des comptes, sans l'API web
+go run ./cmd/admin reset-password --username U --password P
+go run ./cmd/admin list-users
 ```
 
 ### Prestige — analyseur de tuning de la grammaire coach
@@ -1030,6 +1113,129 @@ go run ./cmd/levelup compact-passes                                  # facultati
 La réparation ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
 (477 sur 4 010 sur la copie du 2026-10-15) et est idempotente.
 
+### Rattrapages de l'historique Halo 5 et rangs des saisons passées (outils autonomes, serveur arrêté)
+
+Binaires autonomes (`apps/go-api/cmd/<nom>`), à lancer depuis la racine du dépôt ; ils demandent la
+compilation CGO (gcc) comme le serveur. Chacun ouvre directement la base qu'il écrit : le **serveur
+doit être arrêté** (un seul processus écrivain par base). Les outils Halo 5 lisent `db_profiles.json`
+et le magasin de jetons (`data/auth/watcher_tokens/`) ; quand le jeton de rafraîchissement de la
+cible est mort, empruntez celui d'un compte sain avec `LEVELUP_H5_AUTH_AS=<Gamertag>` (l'historique,
+les événements et les dossiers de service Halo 5 sont servis pour n'importe quel gamertag à n'importe
+quel jeton valide). Le gamertag positionnel vaut `JGtm` par défaut.
+
+```bash
+go run ./apps/go-api/cmd/h5-backfill [Gamertag] [tailleDePage]              # tailleDePage : 25 par défaut
+go run ./apps/go-api/cmd/h5-events-backfill [Gamertag-auth] [maxMatchs]     # 0 ou absent = tous les matchs
+go run ./apps/go-api/cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatchs] [force]
+go run ./apps/go-api/cmd/h5-csr-backfill [Gamertag]
+go run ./apps/go-api/cmd/h5-roster-refetch [--commit] [--match ID] [--limit N] [--title halo_5] [--resolver]
+go run ./apps/go-api/cmd/backfill-csr-history -xuid XUID -player-db CHEMIN [-season CsrSeason12-1] [-dry-run]
+```
+
+- `h5-backfill` : historique Halo 5 complet d'un joueur (de 2016 à aujourd'hui), en complément de la
+  synchronisation incrémentale. Chaque page est persistée dès qu'elle est lue et les matchs connus
+  sont sautés : relancer après une interruption reprend sans doublon (INSERT seul). Affiche à la fin
+  les effectifs de la base partagée Halo 5.
+- `h5-events-backfill` : relit les événements par match des matchs Halo 5 collectés avant l'existence
+  des surfaces dérivées et ne réécrit que celles-ci (précision des armes, événements marquants
+  d'assistance et d'objectif). Idempotent. Le compte d'authentification est le premier argument (ou
+  `LEVELUP_H5_AUTH_AS`).
+- `h5-kill-kind-backfill` : relit les événements et recalcule `weapon_kills` avec la mécanique du
+  frag (`kill_kind`), écrite en nouvelle génération (INSERT seul, `v_weapon_kills` lit la dernière).
+  Sans `force`, seuls les matchs dont `kill_kind` est vide sont traités ; `force` (troisième argument
+  `force`, `1` ou `true`, ou `LEVELUP_KK_FORCE=1`) recalcule tous les matchs, nécessaire pour
+  recueillir une valeur de `kill_kind` nouvellement introduite.
+- `h5-csr-backfill` : écrit les instantanés de CSR de carrière en arène d'un joueur, par liste de
+  lecture classée, dans `player_csr_snapshots` de sa base joueur Halo 5 (la cible doit être déclarée
+  dans `db_profiles.json`).
+- `h5-roster-refetch` : matchs Halo 5 dont l'effectif est incomplet et non reconstructible hors
+  ligne (BTB 8 contre 8, matchs avec remplacements) : relit le match et ajoute les participants
+  MANQUANTS avec leurs statistiques complètes (INSERT seul, garde `NOT EXISTS` sur
+  `(match_id, xuid)`, `match_registry` intact). **Simulation par défaut** : rien n'est écrit sans
+  `--commit`. Les identités viennent d'abord du fil des frags local du match ; `--resolver` ajoute le
+  résolveur universel en repli (désactivé par défaut).
+- `backfill-csr-history` : instantanés de rang (CSR) des saisons PASSÉES d'un joueur Halo Infinite,
+  qui alimentent le menu des saisons de la page Carrière : la synchronisation n'écrit que la saison
+  courante. Les saisons viennent de `csr_season_calendars` dans `-metadata-db` (toutes, sauf si
+  `-season` est donné) ; une saison jamais jouée en classé n'a pas de palier réel et n'écrit rien.
+  `-dry-run` liste les saisons visées sans appeler l'API ni écrire. Autres drapeaux : `-metadata-db`,
+  `-watcher-tokens-dir`, `-title` (`halo_infinite` par défaut), `-gamertag` (journaux seulement),
+  `-env-file` (`.env.local` par défaut), `-rate-limit` (requêtes par minute, 60 par défaut). Le jeton
+  de rafraîchissement du joueur doit se trouver dans le magasin de jetons.
+
+### Calibrage du LUSR (outils autonomes, serveur arrêté)
+
+Estimations hors ligne qui alimentent la note LUSR v2 à partir de l'historique des matchs de la base
+partagée Halo Infinite. À lancer depuis la racine du dépôt (le `--db` par défaut est le chemin
+relatif `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb`), **serveur arrêté** : ils
+ouvrent la base directement. Commencer par `--dry-run` quand il existe.
+
+```bash
+go run ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run] [--db CHEMIN] [--smooth [--write-smoothed]]
+go run ./apps/go-api/cmd/lusr_v2_squad_estimate [--dry-run] [--db CHEMIN] [--weeks 4] [--min-matches 10] [--gain 6.0]
+go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
+```
+
+- `lusr_v2_ttt_batch` : hyperparamètres empiriques par groupe de listes de lecture (probabilité de
+  match nul, moyenne et écart type des frags et des morts, nombre de matchs) et matrice de couplage
+  entre modes, ajoutés à `lusr_hyperparams_v2` sous une source datée `batch_AAAA_MM_JJ` ; le
+  calcul de fond les relit par les vues `_latest`. Idempotent (une relance ajoute une ligne, la vue
+  dédoublonne). `--smooth` estime en plus un tau par joueur et par groupe et l'écrit dans
+  `ttt_tau_empirical` ; `--write-smoothed` (avec `--smooth`) écrit en outre le mu lissé terminal dans
+  `player_skill_state_v2`. Estimation de première passe, pas le lissage complet « Through-Time ».
+- `lusr_v2_squad_estimate` : décalage de synergie d'escouade (`player_squad_offset`) de chaque paire
+  de coéquipiers ayant au moins `--min-matches` matchs ensemble sur les `--weeks` dernières
+  semaines, par groupe de listes de lecture : moyenne de (issue réelle - probabilité de victoire
+  prédite par les notes SOLO), convertie en mu par `--gain`. Première passe prudente (les notes solo
+  courantes incluent déjà ces matchs, le décalage est donc sous-estimé). La note lit ces
+  décalages dès qu'ils existent (aucun interrupteur côté serveur).
+- `lusr_v2_replay` : rejoue le LUSR v2 sur tout l'historique des joueurs nommés (par défaut quatre
+  gamertags figés : passez les vôtres) et imprime sur la sortie standard un rapport markdown à
+  comparer aux niveaux cibles validés. Le rejeu écrit lui-même l'état de note
+  (`player_skill_state_v2`). **`--reset` supprime toutes les lignes de `player_skill_state_v2`**, pour
+  tous les joueurs, avant le rejeu (état neuf depuis les priors).
+
+### Réparations de données (outils autonomes, serveur arrêté)
+
+Deux outils de réparation des données existantes, jamais lancés par le serveur. Chacun ouvre
+directement les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà
+des données justes pour les nouveaux matchs ; ces outils ne concernent que des lignes écrites avant.
+
+```bash
+cd apps/go-api
+go run -tags cgo ./cmd/purge_corrupt_records [--data-root CHEMIN] [--apply]
+go run ./cmd/backfill_time_played --db CHEMIN [--commit]
+```
+
+- `purge_corrupt_records` : retire les records personnels invraisemblables : valeurs hors des bornes
+  de vraisemblance (une précision de « 7333 % », un `best_kda` de 107) ou métriques hors du
+  catalogue suivi. Il couvre `player_records_history` (et sa vue `player_records_latest`) dans
+  `warehouse/shared_social.duckdb`, et `record_history` dans le `stats.duckdb` de chaque dossier
+  joueur sous `players/`, le tout sous `--data-root` (défaut `../../data/titles/halo_infinite`,
+  relatif à `apps/go-api` ; passer `data/titles/{slug}` pour un autre titre). Jamais de `DELETE`
+  brut : chaque table est reconstruite avec les seules lignes plausibles et échangée dans une seule
+  transaction (recette de l'ADR 0026), avec un contrôle du nombre de lignes avant le COMMIT et un
+  retour arrière complet à la moindre erreur ; clé primaire, index et vue sont recréés.
+  **Simulation par défaut** : sans `--apply`, il imprime seulement, par table, les lignes à retirer
+  regroupées par (métrique, valeur). Il ouvre chaque base en lecture-écriture dans les deux modes :
+  le serveur doit donc être arrêté même pour la simulation. Il ne fait aucune sauvegarde de
+  lui-même.
+- `backfill_time_played` : recalcule `time_played_seconds` de `match_participants` à partir des
+  horodatages de participation (`first_joined_time`, `last_leave_time`), en gérant les joueurs partis
+  avant la fin et les arrivés en cours de match, dans la fenêtre de jeu du match (de
+  `real_start_time` au début plus la durée). `--db` est la base de matchs partagée
+  (`shared_matches_v2.duckdb`). **Simulation par défaut** (base ouverte en lecture seule) : il
+  imprime la répartition par qualité, l'écart entre la valeur recalculée et celle de l'API, et le
+  garde-fou des matchs complets (la médiane de `time_played` des joueurs présents du début à la fin
+  doit être proche de la durée de jeu, cible : plus de 95 % à 5 % près). `--commit` écrit, dans une
+  seule transaction, uniquement les lignes de qualité `ok` ; les lignes sans `first_joined_time`
+  gardent leur valeur de l'API. Serveur en marche, viser une copie de la base pour la simulation.
+  Réserve : les nouveaux matchs sont déjà corrects, la synchronisation calcule elle-même cette valeur
+  (`timeline.ComputeTimePlayedFor`, appelé depuis `internal/sync/transforms.go`) ; la commande ne sert
+  qu'aux anciens matchs. Elle dépend de l'heure d'arrivée du joueur (`first_joined_time`), dont le
+  fuseau horaire est une dette connue : lire un échantillon du rapport de simulation avant de
+  l'appliquer en masse.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables
@@ -1045,6 +1251,51 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # flags : --db PATH (requis)  --captures-base DIR  --settings app_settings.json  --dry-run
 # --captures-base : défaut = media_captures_base_dir de app_settings.json
 ```
+
+### Maintenance des médias HLS (outils autonomes)
+
+Deux binaires pour la version HLS des médias (clips servis par segments). Le serveur fait déjà le
+travail courant lui-même : il transcode les médias sans version HLS après chaque scan ou
+synchronisation des médias. Ces outils servent aux gros rattrapages et à la réparation d'arbres
+existants. Les deux ont besoin de `ffmpeg` et `ffprobe` (sauf mention contraire).
+
+```bash
+cd apps/go-api
+go run ./cmd/backfill-media-hls --db CHEMIN [--captures-base DOSSIER] [--settings app_settings.json] [--slug GT] [--limit N] [--dry-run] [--retry-failed] [--delete-source=false]
+go run ./cmd/migrate-hls-audio --root DOSSIER [--slug GT] [--limit N] [--dry-run] [--collapse-redundant]
+go run ./cmd/migrate-hls-audio --collapse-dir DOSSIER [--dry-run]
+go run ./cmd/migrate-hls-audio --analyze FICHIER
+```
+
+- `backfill-media-hls` : convertit en HLS les vidéos médias qui n'ont pas encore de version HLS, et
+  reprend les transcodages laissés à `processing` sans `hls_path` après un plantage. C'est une fine
+  enveloppe autour de la routine que le serveur lance après chaque scan. **Serveur arrêté** : il écrit
+  `shared_social.duckdb` (`--db`, requis) en lecture-écriture. `--captures-base` vaut par défaut
+  `media_captures_base_dir` du fichier donné par `--settings`. `--slug` limite à un joueur, `--limit`
+  borne le nombre de clips transcodés. `--dry-run` liste sans transcoder. `--retry-failed` réarme
+  d'abord les transcodages en échec (`transcode_status` `failed` remis à NULL, dans le périmètre de
+  `--slug`), puis balaie ; les échecs ne sont plus rejoués automatiquement, c'est donc un geste
+  explicite de l'opérateur (ignoré avec `--dry-run`). **`--delete-source` vaut vrai par défaut ici** :
+  après un transcodage HLS réussi, le fichier source est SUPPRIMÉ ; passer `--delete-source=false`
+  pour garder les originaux.
+- `migrate-hls-audio` : maintenance sur place des arbres HLS multipistes EXISTANTS. Il ne touche que
+  des fichiers sous la racine des médias (aucune base). Les modes sont exclusifs ; les modes
+  d'écriture remplacent des fichiers servis : lancer **serveur arrêté** (ou à faible trafic : un clip
+  lu pendant l'échange pourrait saccader). Tous sont idempotents et relançables, et tous sauf
+  `--analyze` acceptent `--dry-run`.
+  - défaut (`--root` ; `--slug`, `--limit`) : rend mono-codec AAC le groupe audio des arbres dont les
+    renditions mélangent des codecs (jeu en Opus, voix et mix complet en AAC), pour que le changement
+    de piste fonctionne sur Firefox et Safari. Ni la vidéo ni le master ne sont touchés.
+  - `--collapse-redundant` (`--root`) : sur les clips dont les renditions `game` et `voices` portent le
+    MÊME son (pas de voix isolée, par exemple des sessions solo OBS), réécrit le master pour n'exposer
+    que `game`. Gardé par la corrélation d'enveloppe : un vrai clip jeu et voix n'est pas touché.
+  - `--collapse-dir DOSSIER` : réduction FORCÉE d'UN seul arbre (dossier contenant `master.m3u8`) sans
+    le critère de corrélation, pour des clips anciens dont la redondance est structurelle mais dont la
+    corrélation passe sous le seuil à cause de la voix, et dont les sources sont supprimées. À réserver
+    à un arbre dont on sait la redondance. N'a pas besoin de `ffmpeg`.
+  - `--analyze FICHIER` : inspection en lecture seule de la disposition audio d'un fichier SOURCE
+    (détection de la piste de mix complet, composante jeu, mesures) ; imprime la décision, n'écrit rien.
+  - Code de sortie 1 si un arbre a échoué ; `--root` ou l'un des deux autres modes est requis.
 
 ### Rejeu 2D — où se construit un artefact (`replay_build_location`)
 
@@ -1086,7 +1337,7 @@ priorité CPU basse, verrou solo).
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out ../../libs/film/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out <copie du décodeur>/replay/testdata/equivalence \
   [--title slug] [--oracle] <short8|match_id>...
 ```
 
@@ -1107,6 +1358,11 @@ go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt)
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
 #         -title slug  -out-dir D (conserve les TSV des enfants au lieu d'un temporaire effacé)
+# -update écrit dans la brique du décodeur : à lancer sur un clone de son dépôt, relié par l'espace de travail local,
+# où qu'il soit sur le disque :
+#   bash scripts/briques-workspace.sh ../halo-infinite-film-decoder
+#   export GOWORK="$PWD/levelup-briques.work"   # PowerShell : $env:GOWORK = "$PWD\levelup-briques.work"
+# Sans GOWORK la brique est résolue vers le cache de modules (lecture seule) : -update refuse et nomme le script.
 ```
 
 Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
@@ -1120,7 +1376,7 @@ d'effacer un temporaire, pour comparer les digests obtenus aux références sans
 `-update` et le format des TSV de référence sont inchangés. Parent et enfant vivent
 dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
 (verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
-`libs/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
+`replay/testdata/equivalence/<short8>.tsv` du décodeur de film (`halo-infinite-film-decoder`, à la version qu'exige `go.mod`), chacune ouverte par son marqueur
 `# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
 d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
 références au lieu de les comparer — pour une correction déclarée seulement. Le mode `-walkers`
@@ -1129,6 +1385,12 @@ il portait en copie trois marcheurs de paquets historiques dont les originaux n'
 ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
 `.ai/archive/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
 `internal/analysis/filmsource`.
+
+Le harnais est **hermétique pour le catalogue des socles d'armes** : la construction qu'il cuit lit
+le catalogue versionné plus la fixture `cmd/replay-equiv/testdata/map_weapon_pads_overlay.json` (la
+seule carte avec laquelle les références ont été figées), jamais l'overlay non versionné que le
+runtime d'un poste remplit ; le verdict ne dépend donc plus de la machine. Une fixture absente est
+une erreur, pas un repli silencieux.
 
 ```bash
 levelup replay-parc-vies --faits <dossier des faits> --cache <depot>/data/cache --sortie <racine de travail> \
@@ -1176,7 +1438,7 @@ ne s'exécute PAS sur une mini-bobine — il dérive sa bande de slots bipède d
 refuse une bobine dont les images sont concaténées hors de leur continuité.)
 
 ```bash
-cd libs/film
+cd <copie du décodeur>   # le décodeur vit dans son propre dépôt (halo-infinite-film-decoder)
 # la ligne de base commise (à régénérer seulement sur un changement déclaré)
 go test -bench . -run '^$' -count 10 ./internal/grammar/ \
   > internal/grammar/testdata/bench_baseline.txt
@@ -1304,68 +1566,82 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # rapport de couverture
-make go-api-lint       # golangci-lint ratchet (apps/go-api + chaque module libs/) ; go vet en repli
+make go-api-lint       # golangci-lint ratchet sur apps/go-api ; go vet en repli
 ```
 
-#### Modules Go sous `libs/` et espace de travail (ADR 0041)
+#### Briques Go : modules publiés, développés dans leurs dépôts dédiés (ADR 0041, 0043)
 
-Quatre briques vivent dans leur propre module Go : « fichiers du jeu », `libs/gamefiles` (chemin de module
-`github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), « images de
-carte », `libs/himap` (`github.com/JGtm/LevelUp/libs/himap` : paquet `himap`, qui n'importe que `libs/gamefiles`),
-et le « décodeur de film », `libs/film` (`github.com/JGtm/LevelUp/libs/film` : la façade `decfilm`, la couche de
-publication `replay`, les couches fermées sous `internal/`, ses catalogues ; n'importe que `libs/gamefiles` et
-`libs/himap`, ADR 0034), et l'« API Halo », `libs/haloapi` (`github.com/JGtm/LevelUp/libs/haloapi` : paquets
-`xblauth`, `infinite`, `halo5`, `xboxlive` ; n'importe aucune autre brique, ADR 0042). Toutes quatre sont reliées à
-`apps/go-api` par le `go.work` de la racine du dépôt (aucune directive
-`replace` ; `go.work.sum` est versionné). Deux conséquences pour toute commande :
+Quatre briques sont des modules Go publiés depuis leur propre dépôt, et `apps/go-api/go.mod` les exige à une version
+publiée (v1.0.1 à la bascule de la 8.1.2 ; ce dépôt ne porte plus ni `libs/` ni aucun `go.work`) : « fichiers du
+jeu », `github.com/JGtm/halo-infinite-files-reader` (paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), « images de
+carte », `github.com/JGtm/halo-infinite-map-images` (paquet `himap`, qui n'importe que la brique des fichiers du jeu),
+le « décodeur de film », `github.com/JGtm/halo-infinite-film-decoder` (la façade `decfilm`, la couche de publication
+`replay`, les couches fermées sous `internal/`, ses catalogues ; n'importe que les deux briques ci-dessus, ADR 0034),
+et l'« API Halo », `github.com/JGtm/halo-api` (paquets `xblauth`, `infinite`, `halo5`, `xboxlive` ; n'importe aucune
+autre brique, ADR 0042). Trois conséquences pour toute commande :
 
-- `./...` ne franchit jamais la frontière d'un module. `cd apps/go-api && go test ./...` ne teste **pas**
-  `libs/`, et `go mod tidy` ne peut plus tourner dans `apps/go-api` (il cherche le module voisin sur le
-  réseau ; l'espace de travail le résout, donc `go.mod` ne porte aucun `require` pour lui). Une montée
-  de dépendance d'une brique se fait dans son propre `go.mod` (`cd libs/gamefiles && go get ...`) ; `go mod
-  tidy` ne marche pas non plus dans `libs/himap` ni `libs/film` (elles importent une autre brique) : `make tidy`
-  dans `apps/go-api` les nomme et les saute, et leur `go.mod` s'édite à la main.
-- La ligne de version Go est la même dans `apps/go-api/go.mod`, `go.work`, chaque `libs/*/go.mod` et l'image
-  du `Dockerfile` (`internal/archlint/dockerfile_go_version_test.go`).
+- Le `./...` de `apps/go-api` ne couvre que LevelUp : les tests d'une brique se jouent dans son dépôt (sa CI les
+  joue). LevelUp garde les tests qui exigent ses données (`internal/gamefilescorpus/`, `internal/filmcorpus/`,
+  `cmd/replay-equiv`, `cmd/replay-corpus-gate`).
+- Une brique se monte comme toute dépendance : un nouveau tag sur son dépôt, puis la ligne `require` de
+  `apps/go-api/go.mod` (voir « Développer une brique » ci-dessous). `make tidy` dans `apps/go-api` lance
+  `go mod tidy` avec `GOWORK=off`, jamais contre un espace de travail local.
+- Un paquet de brique se nomme par son chemin d'import : `cd apps/go-api && go test
+  github.com/JGtm/halo-infinite-map-images/himap/ -run ...` joue un paquet de la version qu'exige `go.mod` (le
+  Makefile fait ainsi pour `BRIQUE_FILM` et pour le corpus `gamefiles`). `make gate-push` pose `GOWORK=off` : le filet
+  juge les versions publiées, jamais un espace de travail local.
+
+##### Développer une brique
+
+Le code d'une brique se modifie dans son dépôt dédié, jamais dans LevelUp :
 
 ```bash
-make libs-test                       # vet (défaut, tags research, gamefiles, gamefiles+research) + tests de chaque module libs/, CGO actif
-cd libs/gamefiles && go test ./... -count=1
-cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile les instruments de recherche
-cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # ne doit rien afficher : le module est autonome
-cd libs/himap && go test ./... -count=1                         # la brique images de carte, sans le jeu : son corpus est sous le tag
-cd libs/himap && go list -deps ./... | grep levelup/go-api      # ne doit rien afficher non plus
-cd libs/film && go test ./... -count=1                          # le décodeur de film (gates de couche et goldens compris)
-cd libs/film && go vet -tags=research ./...                     # compile ses instruments de recherche
-cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # joue des instruments de recherche à la demande
-cd libs/haloapi && go test ./... -count=1                       # le protocole de l'API Halo (httptest seulement, sans CGo)
-cd libs/film && go list -deps -test ./... | grep levelup/go-api # ne doit rien afficher non plus
-go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # depuis la racine du dépôt fonctionne aussi (espace de travail)
+# 1. cloner le dépôt dédié à côté de LevelUp
+git clone https://github.com/JGtm/halo-infinite-film-decoder ../halo-infinite-film-decoder
+
+# 2. voir le changement dans LevelUp avant de publier : engendrer l'espace de travail LOCAL
+#    (levelup-briques.work, ignoré par git ; un garde-rail, archlint/no_go_work_versionne_test.go,
+#    interdit de commiter un go.work), puis y pointer Go
+bash scripts/briques-workspace.sh ../halo-infinite-film-decoder [../halo-api ...]
+export GOWORK="$PWD/levelup-briques.work"      # PowerShell : $env:GOWORK = "$PWD\levelup-briques.work"
+
+# 3. tester dans le dépôt de la brique (ses propres gates), puis dans LevelUp
+cd ../halo-infinite-film-decoder && go test ./... -count=1
+cd ../LevelUp/apps/go-api && go test ./internal/... -count=1
+
+# 4. retour aux versions publiées
+unset GOWORK                                   # ou supprimer levelup-briques.work
 ```
 
-`make go-api-lint` et `make gate-push` passent aussi le lint sur chaque module `libs/` (même `.golangci.yml`, donné par
-`--config ../../apps/go-api/.golangci.yml`). Le job CI `go-build` joue les mêmes vet et tests dans un pas dédié.
-Une brique n'a ni base de données ni donnée de LevelUp : ses tests ne lisent que leur `testdata/` et le jeu installé ;
-les tests qui exigent des données de LevelUp vivent dans `apps/go-api` (`internal/gamefilescorpus/`, `internal/filmcorpus/`
-pour le décodeur de film). Un test du film qui lit les données versionnées du dépôt hôte trouve sa racine par le marqueur
-`go.work` (`racineDepot`, un helper par paquet) et se saute hors du dépôt.
+Seul `GOWORK` désigne l'espace de travail : sans la variable, tout outil Go juge les versions publiées. Publier se fait
+en deux temps : (1) le mainteneur pousse le changement de la brique sur son dépôt et y pose le tag (`vX.Y.Z`, un numéro
+par dépôt ; un tag ne se déplace jamais), (2) une branche de LevelUp monte le `require` (`cd apps/go-api && go get
+github.com/JGtm/<brique>@vX.Y.Z && make tidy`) et joue `make gate-push`. Une pseudo-version (`@<sha>`) est permise sur
+une branche de travail, un tag est obligatoire avant `main` (ADR 0043, amendement du 2026-11-12). Les tags de
+l'ancien chemin `libs/<brique>/vX.Y.Z` sont dépréciés et ne reçoivent plus de version ; `github.com/JGtm/halo-api`
+retire v0.1.0 et v1.0.0.
+
+Une brique n'a ni base de données ni donnée de LevelUp : ses tests ne lisent que leur `testdata/` et le jeu installé.
+Un test du film qui exige les données versionnées du dépôt hôte en prend la racine dans
+`DECODEUR_FILM_RACINE_DONNEES` (une copie de travail de LevelUp) et se saute sans elle ; une valeur qui ne mène nulle
+part fait échouer le test.
 
 #### Corpus du tag de build `gamefiles` (cartes **et** catalogues commis)
 
 Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:build gamefiles` :
 
-- les fichiers `*_gamefiles_test.go` de `libs/himap/himap/` (34 au 2026-10-28, après le lot 2c) décodent les
+- les fichiers `*_gamefiles_test.go` du paquet `himap` de `halo-infinite-map-images` (34 au 2026-10-28, après le lot 2c) décodent les
   modules du jeu, et ceux de `internal/gamefilescorpus/` (25, un paquet de tests seuls : depuis
   le plan de découplage D1, les tests de `himap` qui lisent des données de LevelUp y vivent et
   appellent `himap` par son API exportée) balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
   `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant le passage du
   lecteur de modules en projection mémoire, le même jour). Le tag garde un `go test
-  ./himap/` nu (depuis `libs/himap`) utilisable (2,8 s) ;
+  ./himap/` nu (depuis le dépôt `halo-infinite-map-images`) utilisable (2,8 s) ;
 - trois fabricants de catalogues sous `cmd/` re-dérivent leur catalogue **commis** depuis le jeu
   installé et le comparent à l'octet : `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9,0 s à eux trois, mesuré le 2026-09-17).
 
-`make go-api-test-gamefiles` joue **les cinq paquets** (la brique depuis `libs/himap`, les quatre autres depuis
+`make go-api-test-gamefiles` joue **les six paquets** (le paquet `himap` de la brique des images de carte et le paquet `hinavmesh` de la brique des fichiers du jeu, par chemin d'import, les quatre autres depuis
 `apps/go-api`). Jusqu'au 2026-09-17 la cible ne jouait que la brique : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
 (découverte D1 (3.1.2) ; le plus ancien est tagué depuis le 2026-09-05). La liste des paquets est
 explicite et non `./cmd/...` : sous le tag, un paquet sans fichier `gamefiles` n'apporte que du
@@ -1374,7 +1650,7 @@ entre au corpus sans entrer dans la cible.
 
 ```bash
 make go-api-test-gamefiles                       # corpus entier (~6 min, exige le jeu)
-cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s github.com/JGtm/halo-infinite-map-images/himap/ -v
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
   ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
@@ -1388,12 +1664,16 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
   ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Jeu installé ailleurs :
-cd libs/himap && LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./himap/
+cd apps/go-api && LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles github.com/JGtm/halo-infinite-map-images/himap/
 ```
+
+Les tests natifs de `hinavmesh` ne cherchent pas l'installation eux-mêmes : ils exigent
+`LEVELUP_HALO_DEPLOY` (le dossier `deploy` du jeu), que la cible transmet depuis l'environnement
+(elle affiche un avertissement s'il n'est pas posé), et prennent leur `t.Skip` sinon.
 
 Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
 seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
-(`go vet -tags=gamefiles ./...` dans `libs/himap` et `go vet -tags=gamefiles ./internal/gamefilescorpus/` dans `apps/go-api`, job `go-build`) ; elle ne l'exécute jamais. Le
+(`go vet -tags=gamefiles` du paquet `himap` et de `./internal/gamefilescorpus/`, depuis `apps/go-api`, job `go-build` ; la CI de la brique compile le reste) ; elle ne l'exécute jamais. Le
 tag lui-même est tenu sur tout l'espace de travail par `internal/archlint/gamefiles_tag_test.go`, qui
 tourne dans le build par défaut.
 
@@ -1411,11 +1691,11 @@ portent `//go:build gamefiles && research` (les autres `//go:build research`). I
 exigent le jeu installé et, pour certains, `.ai/re_dump` :
 
 ```bash
-cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
-cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
+cd <copie images de carte> && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
+cd <copie fichiers du jeu> && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
 ```
 
-La CI les compile (`go vet -tags=gamefiles,research ./...` dans `libs/himap` et dans `libs/gamefiles`) ;
+La CI de chaque brique les compile (`go vet -tags=gamefiles,research ./...` dans son dépôt) ;
 le `go vet -tags=research ./...` de tout le module laisse de côté, volontairement, ceux en `gamefiles && research`
 (les deux tags sont requis). La règle est tenue par `internal/archlint/gamefiles_tag_test.go` (« un instrument qui
 ouvre le jeu déclare `gamefiles` ») et `research_tag_test.go`.
@@ -1450,7 +1730,13 @@ gate qui échoue toujours ne gate rien) :
 Dans les deux modes, la racine de travail est jetable (entrées copiées, config/catalogues
 depuis la branche extraite ou le worktree de base, chunks de film depuis le parc de
 développement — **jamais d'écriture dans le parc**), et le gate ne bumpe jamais un schéma — il
-ne fait que comparer.
+ne fait que comparer. Config et catalogues sont copiés **tels que Git les voit** (fichiers suivis,
+plus fichiers non suivis non ignorés, pour pouvoir essayer un catalogue non commis) : un fichier de
+référence ignoré par git (les overlays du runtime sous `data/titles/{slug}/reference/generated/`)
+n'est fourni à AUCUNE des deux racines. La racine de la base est extraite d'une révision et ne l'a
+jamais ; le donner au seul HEAD faisait apparaître, sur une carte rattrapée par l'overlay, un écart
+sans rapport avec le diff (`pickups.mapCatalogPoints` 0 -> 54). Une racine source hors d'un dépôt
+Git est refusée.
 
 ```bash
 make replay-corpus-gate                                      # defaut : mode base, manifeste complet
@@ -1561,7 +1847,7 @@ jour) :
 | `--keep-work` | `false` | conserver la racine de travail après l'exécution (débogage) |
 | `--json` | (aucun) | chemin où écrire aussi le rapport complet en JSON |
 
-**À exécuter avant tout merge qui touche** `libs/film/replay`, `replaybuild`, `libs/film/internal/grammar`, ou qui
+**À exécuter avant tout merge qui touche** `replaybuild`, le `replay` ou le `internal/grammar` du décodeur (par une nouvelle version du décodeur), ou qui
 bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
 déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en
@@ -1601,6 +1887,18 @@ branché) ; `MANQUE` quand un faux négatif d'oracle monte ou qu'une preuve inte
 unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, camps rattachés par
 `teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
 <short8>.oracle.json` ajoute O-S3 (score personnel).
+
+Toute tolérance de temps du banc est une DURÉE en millisecondes, convertie en images avec le
+`frameIntervalMs` de l'artefact (arrondi vers le bas) : un même verdict tient sur la grille de 100 ms
+et sur celle de 33 ms (30,3 images/s). Mesurées sur 12 témoins aux deux grilles : tolérance de vie
+650 ms (V-3, V-5), de mort 250 ms (V-8). V-2 compte une instance par PASSAGE de véhicule hors
+emprise (les échantillons consécutifs d'un même véhicule forment une seule instance), non par
+échantillon : un compte par échantillon suit la densité de la grille. V-6 compte une instance par
+PASSAGE d'un passager loin du véhicule dans un trajet (les échantillons évalués consécutifs au-delà
+du rayon forment une instance, datée du premier ; un échantillon sans point du passager à portée
+n'est pas jugé et ne clôt pas le passage, un échantillon évalué dans le rayon le clôt) : à la montée,
+le corps du passager cesse de répliquer et son dernier point reste le seul apparié, si bien qu'un
+compte par échantillon triplait entre 100 et 33 ms pour un même passage.
 
 **Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
 jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
@@ -1646,17 +1944,19 @@ et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent e
 make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
 
-`make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu, juste après `make libs-test`) :
-les références de `libs/film/replay/testdata/equivalence` ont dérivé sans bruit de la v8.0.0 au re-figeage
-du 2026-10-30 faute de gate qui les joue. Il exige le parc local de films ; pour re-figer après une
-preuve d'équivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+`make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu) : les références de
+`replay/testdata/equivalence` du décodeur de film (lues à la version qu'exige `go.mod`) ont dérivé sans bruit de la
+v8.0.0 au re-figeage du 2026-10-30 faute de gate qui les joue. Il exige le parc local de films ; pour re-figer après
+une preuve d'équivalence : `go run ./cmd/replay-equiv -update` depuis `apps/go-api`, avec `GOWORK` pointant sur une
+copie du décodeur (voir « Développer une brique » ; la copie peut être n'importe où sur le disque, seul le cache de
+modules est refusé), puis publier la nouvelle version du décodeur et monter le `require`.
 
-La baseline de tests joue deux voies en parallèle, une par module Go (ADR 0041) : la voie film (le
-module `libs/film`, sans dépendance à DuckDB — garde-rail
-`internal/archlint/film_lane_duckdb_free_test.go` — jugée contre
-`.ai/baselines/tests_libs_film.jsonl`) et la voie DuckDB (tout `apps/go-api`, `-p 1`, jugée contre
-`.ai/baselines/tests_pre_migration.jsonl`). La voie DuckDB fixe la durée ; `scripts/gate-push.ps1`
-ci-dessous exécute les deux suites l'une après l'autre.
+La baseline de tests joue deux voies en parallèle (ADR 0041) : la voie des briques (les paquets des briques publiées
+`halo-infinite-film-decoder` et `halo-api`, joués depuis `apps/go-api` par chemin d'import, sans dépendance à DuckDB —
+garde-rail `internal/archlint/film_lane_duckdb_free_test.go` — jugés contre
+`.ai/baselines/tests_halo-infinite-film-decoder.jsonl` et `.ai/baselines/tests_halo-api.jsonl`) et la voie DuckDB
+(tout `apps/go-api`, `-p 1`, jugée contre `.ai/baselines/tests_pre_migration.jsonl`). La voie DuckDB fixe la durée ;
+`scripts/gate-push.ps1` ci-dessous exécute les deux suites l'une après l'autre.
 
 Sur certains postes Windows, l'environnement git-bash casse le lien des
 binaires de test Go embarquant `libduckdb_static` (`undefined reference
@@ -1679,8 +1979,8 @@ powershell -File scripts/gate-push.ps1
 
 Le job CI `go-test-windows-cgo` (`.github/workflows/ci.yml`) tourne sur `windows-latest` avec `CGO_ENABLED=1` (le runner
 fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis joue `./cmd/server/...`,
-`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` et `./cmd/levelup/...` depuis `apps/go-api`, `./internal/decodelock/` et `./internal/filelock/`
-depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
+`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` et `./cmd/levelup/...` depuis `apps/go-api`,
+puis, toujours depuis `apps/go-api` par chemin d'import, `internal/decodelock/` et `internal/filelock/` du décodeur de film et `himodule/` de la brique des fichiers du jeu : les paquets qui portent les fichiers `*_windows.go` /
 `*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
 modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.
 Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit). Les runners Windows coûtent

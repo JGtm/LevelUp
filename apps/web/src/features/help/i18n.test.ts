@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { DEFAULT_EFFECTIVE_HP_TO_KILL, getHelpText } from './i18n'
+import { getHelpText } from './i18n'
 
 /** Concatène tout le texte combat d'un glossaire pour des assertions globales. */
 function flatten(locale: 'fr' | 'en', hp?: number): string {
@@ -11,19 +11,34 @@ function flatten(locale: 'fr' | 'en', hp?: number): string {
     .join('\n')
 }
 
+/** Texte (définition, formule, exemple) d'une entrée du glossaire, identifiée par son terme. */
+function glossaryEntryText(locale: 'fr' | 'en', term: string): string {
+  const entry = getHelpText(locale).glossary.sections
+    .flatMap((s) => s.entries)
+    .find((e) => e.term === term)
+  if (!entry) throw new Error(`entrée de glossaire absente : ${term} (${locale})`)
+  return [entry.definition, entry.formula ?? '', entry.example ?? ''].join('\n')
+}
+
 describe('getHelpText — copy combat title-aware', () => {
-  it('ne laisse jamais fuiter le jeton {{HP}} (fr/en, défaut et 115)', () => {
+  it('ne laisse jamais fuiter le jeton {{HP}} (fr/en, avant bootstrap et 115)', () => {
     expect(flatten('fr')).not.toContain('{{HP}}')
     expect(flatten('en')).not.toContain('{{HP}}')
     expect(flatten('fr', 115)).not.toContain('{{HP}}')
     expect(flatten('en', 115)).not.toContain('{{HP}}')
   })
 
-  it('par défaut, applique le barème Halo Infinite (225)', () => {
-    expect(DEFAULT_EFFECTIVE_HP_TO_KILL).toBe(225)
+  it("avec le barème du bootstrap, l'applique tel quel", () => {
+    const fr = flatten('fr', 229)
+    expect(fr).toContain('229 × (éliminations + assistances/3) / dégâts infligés')
+    expect(fr).toContain('dégâts reçus / (229 × morts)')
+  })
+
+  it("avant le bootstrap, n'affiche aucune valeur de repli", () => {
     const fr = flatten('fr')
-    expect(fr).toContain('225 × (éliminations + assistances/3) / dégâts infligés')
-    expect(fr).toContain('dégâts reçus / (225 × morts)')
+    expect(fr).toContain('— × (éliminations + assistances/3) / dégâts infligés')
+    expect(fr).toContain('dégâts reçus / (— × morts)')
+    expect(flatten('en')).toContain('Defensive resistance = damage_taken / (— × deaths)')
   })
 
   it('injecte le barème du titre courant dans le rendement et la résistance (115)', () => {
@@ -42,5 +57,14 @@ describe('getHelpText — copy combat title-aware', () => {
     // Les P80 (0,83 / 1,59) ne sont pas tokenisés : recalibration par titre différée.
     expect(flatten('fr', 115)).toContain('0,83')
     expect(flatten('fr', 115)).toContain('1,59')
+  })
+
+  it("n'exprime pas le FDA ni le KDA du glossaire en quotient par les morts", () => {
+    // Seule l'entrée du glossaire est visée : le tableau du score garde la mesure interne
+    // « Efficacité de combat », qui est légitimement un quotient.
+    expect(glossaryEntryText('fr', 'FDA')).toContain("FDA d'un match = frags + assistances / 3 − morts")
+    expect(glossaryEntryText('fr', 'FDA')).not.toContain('max(1, morts)')
+    expect(glossaryEntryText('en', 'KDA')).toContain('KDA of a match = kills + assists / 3 − deaths')
+    expect(glossaryEntryText('en', 'KDA')).not.toContain('max(1, deaths)')
   })
 })

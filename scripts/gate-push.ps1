@@ -29,6 +29,10 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Le filet juge les briques a la version que fixe apps/go-api/go.mod, jamais un espace de travail
+# local (scripts/briques-workspace.sh) que GOWORK designerait.
+$env:GOWORK = 'off'
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $goApiDir = Join-Path $repoRoot 'apps\go-api'
 $webDir = Join-Path $repoRoot 'apps\web'
@@ -129,25 +133,26 @@ if ($testLines -eq 0) {
     Add-Result -Name 'Go tests (integration)' -Ok ($baselineExit -eq 0) -Detail "check_test_baseline exit=$baselineExit (go test exit=$testExit)"
 }
 
-# Meme maillon, module libs/film (le decodeur de film, ADR 0041) : `./...` de go-api ne franchit
-# pas la frontiere d'un module. Sa suite est jugee contre SA baseline
-# (.ai/baselines/tests_libs_film.jsonl), comme dans le job CI de fusion.
-$filmDir = Join-Path $repoRoot 'libs\film'
-$filmJsonlPath = Join-Path $goApiDir 'baseline_current_libs_film.jsonl'
-$filmJsonlRelative = 'apps/go-api/baseline_current_libs_film.jsonl'
-Write-Host '  Lancement de la suite du module libs/film...'
-$filmTestExit = Invoke-GoTestJson -Dir $filmDir -OutPath $filmJsonlPath -StderrPath $stderrLogPath
+# Meme maillon, brique du decodeur de film (dependance publiee, ADR 0043) : `./...` de go-api ne
+# couvre pas ses paquets. Sa suite se joue depuis apps/go-api, a la version que fixe go.mod, et se
+# juge contre SA baseline (.ai/baselines/tests_halo-infinite-film-decoder.jsonl), comme dans le job
+# CI de fusion. Ses tests qui lisent des donnees de ce depot les trouvent par DECODEUR_FILM_RACINE_DONNEES.
+$filmJsonlPath = Join-Path $goApiDir 'baseline_current_briques.jsonl'
+$filmJsonlRelative = 'apps/go-api/baseline_current_briques.jsonl'
+Write-Host '  Lancement de la suite de la brique du decodeur de film...'
+$env:DECODEUR_FILM_RACINE_DONNEES = $repoRoot
+$filmTestExit = Invoke-GoTestJson -Dir $goApiDir -OutPath $filmJsonlPath -StderrPath $stderrLogPath -Packages 'github.com/JGtm/halo-infinite-film-decoder/...'
 if ((Get-JsonlLineCount -Path $filmJsonlPath) -eq 0) {
-    Add-Result -Name 'Go tests (libs/film)' -Ok $false -Detail "go test exit=$filmTestExit, JSONL vide (voir $stderrLogPath)"
+    Add-Result -Name 'Go tests (brique film)' -Ok $false -Detail "go test exit=$filmTestExit, JSONL vide (voir $stderrLogPath)"
 } else {
     Push-Location $repoRoot
     try {
-        & bash scripts/check_test_baseline.sh tests --from-jsonl $filmJsonlRelative --baseline .ai/baselines/tests_libs_film.jsonl
+        & bash scripts/check_test_baseline.sh tests --from-jsonl $filmJsonlRelative --baseline .ai/baselines/tests_halo-infinite-film-decoder.jsonl
         $filmBaselineExit = $LASTEXITCODE
     } finally {
         Pop-Location
     }
-    Add-Result -Name 'Go tests (libs/film)' -Ok ($filmBaselineExit -eq 0) -Detail "check_test_baseline exit=$filmBaselineExit (go test exit=$filmTestExit)"
+    Add-Result -Name 'Go tests (brique film)' -Ok ($filmBaselineExit -eq 0) -Detail "check_test_baseline exit=$filmBaselineExit (go test exit=$filmTestExit)"
 }
 
 # ---------------------------------------------------------------------------

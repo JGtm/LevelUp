@@ -126,10 +126,13 @@ Each item cites its source so it can be re-verified against the code. Structure:
 
       # 2. Ship the artifacts of the demo replays only (not the whole local cache).
       title=halo_infinite
+      # An artifact is <short8>.json.gz (a parc not yet converted by `levelup replay compress` still holds
+      # <short8>.json): ship both forms, whichever exists locally.
       for id in $(jq -r '.corpus.replay_matches[].match_id' config/demo/*/"$title".json); do
+        echo "${id%%-*}.json.gz"
         echo "${id%%-*}.json"
       done > /tmp/demo_replays.txt
-      rsync -a --files-from=/tmp/demo_replays.txt \
+      rsync -a --ignore-missing-args --files-from=/tmp/demo_replays.txt \
         data/cache/replays/"$title"/ deploy@<vps>:/opt/levelup/data/cache/replays/"$title"/
       ```
 

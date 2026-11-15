@@ -1,5 +1,7 @@
 // Package scoringrevision rejoue, une fois au démarrage, notes de performance et LUSR de chaque
-// joueur dont la révision de formule rangée diffère de celle du binaire (sync/skill.ScoringRevision).
+// joueur dont la révision de formule rangée diffère de celle du binaire (sync/skill.ScoringRevision),
+// et recale le départ de ses campagnes sur l'axe Objectif quand la révision de cette mesure diffère
+// (campaign.ObjectiveAxisRev) ; le port décide de ce que fait un passage par joueur.
 //
 // Une mise à jour qui change une formule n'a besoin d'aucun outil manuel : le premier démarrage
 // qui suit recalcule l'historique de chaque joueur, une fois. Un joueur dont le recalcul échoue
@@ -88,7 +90,7 @@ func (s *Service) appliquer(ctx context.Context, slug string, p domain.PlayerSum
 			"err", err, "player", p.Gamertag, "titleSlug", slug)
 	case applied:
 		observability.IncCounterT(slug, CompteurAppliquee)
-		slog.InfoContext(ctx, "scoring revision: KPI recalculés après changement de formule",
+		slog.InfoContext(ctx, "scoring revision: recalcul appliqué après changement de formule ou de mesure",
 			"player", p.Gamertag, "titleSlug", slug)
 	default:
 		observability.IncCounterT(slug, CompteurAJour)

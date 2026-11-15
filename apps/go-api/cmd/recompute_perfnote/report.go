@@ -5,7 +5,7 @@
 // Chaque player DB est ouverte en access_mode=read_only, la shared y est ATTACHée
 // en `sh` (READ_ONLY) pour les jointures outcome/pair_name. Les prédicats sur la
 // shared forcent le scan (`col || ” = ?`) : c'est le même parti que
-// recompute_after_art_rebuild.go et diag_perfsim — un contrôle d'intégrité ne doit
+// recompute_after_art_rebuild.go — un contrôle d'intégrité ne doit
 // pas dépendre d'un index ART dont la fiabilité est précisément l'objet du doute.
 package main
 
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // sectionsFor rend les requêtes de contrôle d'un joueur, dans l'ordre du rapport.
@@ -100,7 +100,7 @@ func runSQL(ctx context.Context, env runEnv, query string) error {
 	}
 	return forEachPlayerRO(ctx, env, func(gt, xuid string, db *sql.DB) error {
 		q := strings.ReplaceAll(query, "{{xuid}}", "'"+xuid+"'")
-		q = strings.ReplaceAll(q, "{{start_time}}", analysis.SQLStartTimeCanonical("r"))
+		q = strings.ReplaceAll(q, "{{start_time}}", sqlfrag.SQLStartTimeCanonical("r"))
 		fmt.Printf("---------- %s (xuid=%s) ----------\n", gt, xuid)
 		if err := printQuery(ctx, db, q); err != nil {
 			return fmt.Errorf("%s: %w", gt, err)

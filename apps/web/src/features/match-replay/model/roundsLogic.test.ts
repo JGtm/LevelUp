@@ -15,6 +15,7 @@ import {
   activeRoundTransition,
   currentRoundAtFrame,
   roundCount,
+  roundEnds,
   roundDots,
   roundTransitions,
 } from './roundsLogic'
@@ -300,5 +301,25 @@ describe('activeRoundTransition — la fenêtre d\'affichage du message inter-ma
 
   it('aucune bascule active quand il n\'y en a pas', () => {
     expect(activeRoundTransition([], 100, 60)).toBeNull()
+  })
+})
+
+describe('roundEnds — la fin de CHAQUE manche, la dernière comprise', () => {
+  it('une fin par manche jouée, au dernier palier, dans l\'ordre', () => {
+    expect(roundEnds(BEST_OF_THREE()).map((e) => [e.round, e.index])).toEqual([[0, 1], [1, 2], [2, 3]])
+    expect(roundEnds(ODDBALL())).toEqual([
+      { round: 0, index: 1, frame: 50 },
+      { round: 1, index: 2, frame: 150 },
+    ])
+  })
+
+  it('les fins sont les bascules, plus la fin du match que `roundTransitions` écarte', () => {
+    const ends = roundEnds(BEST_OF_THREE())
+    expect(ends.slice(0, -1).map((e) => e.frame)).toEqual(roundTransitions(BEST_OF_THREE()).map((t) => t.frame))
+    expect(ends).toHaveLength(roundTransitions(BEST_OF_THREE()).length + 1)
+  })
+
+  it('rien sans calque', () => {
+    expect(roundEnds(undefined)).toEqual([])
   })
 })

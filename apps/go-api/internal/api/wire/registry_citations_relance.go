@@ -5,8 +5,6 @@ package wire
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"levelup/go-api/internal/config"
@@ -37,14 +35,7 @@ func (c citationsRecomputer) Participants(ctx context.Context, titleSlug, matchI
 	if lire == nil {
 		return nil, fmt.Errorf("base partagée du titre %s non câblée", titleSlug)
 	}
-	var (
-		out []string
-		err = errors.New("base partagée indisponible")
-	)
-	lire(ctx, "citations_relance_participants", func(db *sql.DB) {
-		out, err = citationsfilm.ParticipantsDuMatch(ctx, db, matchID)
-	})
-	return out, err
+	return citationsfilm.ParticipantsLus(ctx, lire, matchID)
 }
 
 func (c citationsRecomputer) FollowedPlayers(titleSlug string) ([]domain.PlayerSummary, error) {
@@ -59,23 +50,12 @@ func (c citationsRecomputer) RecomputeForPlayer(
 		return "", fmt.Errorf("base partagée du titre %s non câblée", titleSlug)
 	}
 	metaPath := config.MetadataDBPath(c.r.cfg, titleSlug)
-	repoRoot := c.r.cfg.RepoRoot
 	return citationsfilm.RelancerPourJoueur(ctx, citationsfilm.RelanceDeps{
-		LireShared: lire,
-		MetaDB: func() *sql.DB {
-			if db, ok := duckdbpkg.LookupCachedDB(metaPath); ok {
-				return db.SQLDb()
-			}
-			return nil
-		},
+		LireShared:   lire,
+		MetaDB:       duckdbpkg.CachedSQLDB(metaPath),
 		LireJoueur:   duckdbpkg.OpenReadForQuery,
 		OuvrirJoueur: syncpkg.OpenPlayerDB,
-		Calculer: func(ctx context.Context, metaDB, sharedDB, playerDB *sql.DB, xuid string, ids []string) error {
-			return syncpkg.RecalculerCitations(ctx, syncpkg.RecalculCitations{
-				RepoRoot: repoRoot, TitleSlug: titleSlug, XUID: xuid,
-				MetaDB: metaDB, SharedDB: sharedDB, PlayerDB: playerDB, MatchIDs: ids,
-			})
-		},
+		Calculer:     syncpkg.RecalculerCitationsDuTitre(c.r.cfg.RepoRoot, titleSlug),
 	}, citationsfilm.RelanceJoueur{
 		XUID:         player.XUID,
 		PlayerDBPath: config.PlayerDBPath(c.r.cfg, titleSlug, player.Gamertag),

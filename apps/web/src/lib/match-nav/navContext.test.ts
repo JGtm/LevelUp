@@ -11,7 +11,7 @@ import {
   labelsFor,
   labelsOfOptions,
   labelOfKey,
-  type MatchFilterSpec,
+  type MatchNavFilterSpec,
   type MatchNavContext,
 } from './navContext'
 
@@ -156,7 +156,7 @@ describe('filterSpecToQueryString', () => {
   })
 
   it('mappe playlist_names → playlist, mode_categories → mode, etc.', () => {
-    const spec: MatchFilterSpec = {
+    const spec: MatchNavFilterSpec = {
       playlist_names: ['Ranked Arena'],
       mode_categories: ['BTB'],
       date_from: '2026-04-01T00:00:00Z',
@@ -235,7 +235,7 @@ describe('parseFilterSpecFromSearch', () => {
   })
 
   it('round-trip toQueryString → parseFromSearch', () => {
-    const orig: MatchFilterSpec = {
+    const orig: MatchNavFilterSpec = {
       playlist_names: ['Ranked Arena', 'Big Team Battle'],
       mode_categories: ['BTB'],
       date_from: '2026-04-01T00:00:00Z',
@@ -248,9 +248,9 @@ describe('parseFilterSpecFromSearch', () => {
 
   it('with_player : XUID numérique valide est conservé', () => {
     expect(
-      parseFilterSpecFromSearch({ with_player: '2533274791785593' }),
+      parseFilterSpecFromSearch({ with_player: '2561451715135583' }),
     ).toEqual({
-      with_player_xuid: '2533274791785593',
+      with_player_xuid: '2561451715135583',
     })
   })
 
@@ -262,10 +262,10 @@ describe('parseFilterSpecFromSearch', () => {
   })
 
   it('round-trip with_player_xuid via toQueryString', () => {
-    const qs = filterSpecToQueryString({ with_player_xuid: '2533274791785593' })
-    expect(qs).toContain('with_player=2533274791785593')
+    const qs = filterSpecToQueryString({ with_player_xuid: '2561451715135583' })
+    expect(qs).toContain('with_player=2561451715135583')
     expect(parseFilterSpecFromSearch(new URLSearchParams(qs))).toEqual({
-      with_player_xuid: '2533274791785593',
+      with_player_xuid: '2561451715135583',
     })
   })
 })
@@ -288,7 +288,7 @@ describe('libellé affiché / clé de filtre', () => {
   }
 
   it('le lien porte la clé dans les deux langues', () => {
-    const specOf = (lang: 'fr' | 'en'): MatchFilterSpec => ({
+    const specOf = (lang: 'fr' | 'en'): MatchNavFilterSpec => ({
       playlist_names: ['Partie rapide'],
       playlist_labels: labelsFor(['Partie rapide'], labelsOfOptions(options[lang])),
     })

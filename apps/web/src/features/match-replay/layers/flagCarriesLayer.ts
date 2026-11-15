@@ -170,6 +170,8 @@ export interface FlagCarriesStyle {
   outline: string
   /** Mouvement réduit : le clignotement hors base devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de clignotement est une durée. */
+  frameMs: number
 }
 
 // Réglages du calque. Le glyphe reste volontairement PLUS PETIT que le marqueur d'un joueur :
@@ -243,20 +245,17 @@ const ALPHA_FAINT = 0.38
 const BLINK_MIN = 0.35
 const BLINK_MAX = ALPHA_SOLID
 /**
- * Période du clignotement, EN IMAGES — 10 images ≈ 1 s au pas de 100 ms documenté du rejeu.
+ * Période du clignotement, en millisecondes de match : 1 s. Le calque ne reçoit que l'index
+ * d'image ; `flagBlinkAlpha` la convertit avec la durée réelle d'une image du document, donc la
+ * période ne change pas avec la cadence du rejeu.
  *
- * Elle est en images et non en millisecondes pour la même raison que l'ancienne respiration : le
- * calque ne reçoit que l'index d'image, jamais l'horloge du document. Conséquence assumée — un
- * film au pas différent clignoterait plus vite ou plus lentement ; aucun n'a été mesuré à ce
- * jour, et la lecture ne dépend pas de la période exacte.
- *
- * LE BATTEMENT EST UN COSINUS, ET C'EST MESURABLE : les images sont ENTIÈRES, et sur une période
- * paire un sinus ne tombe sur aucun de ses extrema (ils arrivent à la demi-image 2,5 et 7,5).
- * L'amplitude réellement affichée y perdait 5 % à chaque bord — 0,36..0,94 au lieu de 0,35..0,95.
- * Le cosinus place ses deux extrema sur des images entières : le clignotement montre toute sa
+ * LE BATTEMENT EST UN COSINUS, ET C'EST MESURABLE : sur une grille à période entière en images
+ * (100 ms : 10 images), un sinus ne tombe sur aucun de ses extrema (ils arrivent à la demi-image
+ * 2,5 et 7,5). L'amplitude réellement affichée y perdait 5 % à chaque bord — 0,36..0,94 au lieu
+ * de 0,35..0,95. Le cosinus place ses extrema sur la phase 0 : le clignotement montre toute sa
  * course, et les bornes ci-dessus sont ce qu'on voit, pas une intention.
  */
-const BLINK_PERIOD_FRAMES = 10
+export const BLINK_PERIOD_MS = 1000
 
 /**
  * ReplayFlagPaint — ce que le calque reçoit de l'appelant (`useReplayFlagCarries`).
@@ -269,6 +268,21 @@ export interface FlagCarriesInput {
   style: FlagCarriesStyle
   /** Position monde d'un joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand le drapeau PORTÉ par ce joueur est retiré de la carte.
+   * Seul le glyphe porté est à son porteur : la base, le drapeau tombé et la zone de retour sont à personne et
+   * se dessinent toujours. Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
+}
+
+/**
+ * flagGlyphShown dit si le glyphe vivant d'un drapeau se dessine (et se survole) : faux seulement quand il est
+ * porté par un joueur que Seul ou Masquer écarte. Le drapeau d'un porteur qu'aucun xuid ne nomme reste.
+ */
+export function flagGlyphShown(layer: Pick<FlagCarriesInput, 'shownCarrier'>, now: FlagNow): boolean {
+  const porte = now.state === 'carried' || now.state === 'carried_open'
+  return !(porte && now.xuid !== null && layer.shownCarrier && !layer.shownCarrier(now.xuid))
 }
 
 /** Où le drapeau se dessine à cette image, et AVEC QUEL HABILLAGE (porté / lieu). */
@@ -321,10 +335,15 @@ export function flagPlaceAt(now: FlagNow, frame: number, posOf: FlagCarriesInput
  * Elle remplace l'ancienne respiration du `dropped` (2026-08-27) : les deux auraient dit la même
  * chose de deux façons, et l'utilisateur en a demandé une seule.
  */
-export function flagBlinkAlpha(state: string, frame: number, reducedMotion: boolean): number {
+export function flagBlinkAlpha(
+  state: string,
+  frame: number,
+  reducedMotion: boolean,
+  frameMs: number,
+): number {
   if (reducedMotion) return ALPHA_SOLID
   if (state !== 'carried' && state !== 'carried_open') return ALPHA_SOLID
-  const phase = (2 * Math.PI * frame) / BLINK_PERIOD_FRAMES
+  const phase = (2 * Math.PI * frame) / (BLINK_PERIOD_MS / frameMs)
   return BLINK_MIN + (BLINK_MAX - BLINK_MIN) * (0.5 + 0.5 * Math.cos(phase))
 }
 
@@ -362,6 +381,7 @@ export function drawFlagCarries(
       // LA BASE N'EST JAMAIS DÉCALÉE : c'est un lieu fixe, aucun pion ne s'y tient.
       drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true, offset: false })
     }
+    if (!flagGlyphShown(layer, now)) continue
     const place = flagPlaceAt(now, frame, layer.posOf)
     const worldPoint = place.at
     // PORTÉ AU SENS DU RENDU : un portage dont le porteur n'est pas à l'écran ne l'est plus —
@@ -375,7 +395,7 @@ export function drawFlagCarries(
     drawFlagGlyph(ctx, at, {
       ink,
       outline,
-      alpha: flagBlinkAlpha(now.state, frame, layer.style.reducedMotion),
+      alpha: flagBlinkAlpha(now.state, frame, layer.style.reducedMotion, layer.style.frameMs),
       hollow: now.state === 'carried_open',
       offset: glyphIsOffset(now.state) && !place.loose,
     })
@@ -555,7 +575,7 @@ export function flagAt(
   let bestD = FLAG_HIT_RADIUS * FLAG_HIT_RADIUS
   for (const carry of carries) {
     const now = flagSpanAt(carry, frame)
-    if (!now) continue
+    if (!now || !flagGlyphShown(layer, now)) continue
     const place = flagPlaceAt(now, frame, layer.posOf)
     const c = projectTo(view, place.at)
     // MÊME RÈGLE DE DÉCALAGE QUE LE TRACÉ (2026-09-08) : elle dépend de l'ÉTAT, et depuis le lot

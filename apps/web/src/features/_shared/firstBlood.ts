@@ -6,7 +6,7 @@
  * du composant et le calcul de la fenêtre d'axe vivent ici, et nulle part ailleurs.
  * Le composant `FirstBloodLanes` reste ignorant du contrat HTTP.
  */
-import type { FirstBloodPlayerSeries } from '@/components/charts/FirstBloodLanes'
+import type { FirstBloodLaneSeries } from '@/components/charts/FirstBloodLanes'
 import type { FirstBloodPlayerSeriesDTO } from '@/lib/api/types'
 
 /** Fenêtre d'axe minimale (5 min) — sous ce seuil les bandes deviennent illisibles. */
@@ -17,7 +17,7 @@ const AXIS_STEP_SEC = 60
 /** Projette le payload API en séries de props (camelCase). */
 export function toFirstBloodSeries(
   rows: FirstBloodPlayerSeriesDTO[] | null | undefined,
-): FirstBloodPlayerSeries[] {
+): FirstBloodLaneSeries[] {
   if (!rows || rows.length === 0) return []
   return rows.map((r) => ({
     player: r.player,
@@ -41,7 +41,7 @@ export function toFirstBloodSeries(
  * ne meurt qu'à 9 minutes — écrase toutes les autres bandes sur la gauche de l'axe ;
  * le point hors fenêtre reste tracé par ECharts, simplement collé au bord droit.
  */
-export function firstBloodMaxSec(series: FirstBloodPlayerSeries[]): number {
+export function firstBloodMaxSec(series: FirstBloodLaneSeries[]): number {
   const values: number[] = []
   for (const s of series) {
     for (const m of s.matches) {

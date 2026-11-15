@@ -93,6 +93,13 @@ function renderSummary(data: TimeseriesPageResponse) {
 }
 
 function renderProgression(data: TimeseriesPageResponse) {
+  // Le bloc Rendement / Résistance n'existe qu'une fois la vie du titre connue (bootstrap).
+  useAppShellStore.setState({
+    currentTitleSlug: 'sonde',
+    availableTitles: [
+      { slug: 'sonde', name: 'Sonde', status: 'active', capabilities: [], is_default: false, effective_hp_to_kill: 100 },
+    ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
+  })
   renderWithProviders(
     <TimeseriesProgressionTab
       data={data}

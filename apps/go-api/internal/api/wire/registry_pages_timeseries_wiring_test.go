@@ -87,10 +87,19 @@ func TestTimeseries_CableLesViesEtLaPorteeDuRadar(t *testing.T) {
 }
 
 // Le résumé d'usage n'a plus de résolveur d'amis (le bloc « servi ou gâché » qui le lisait a quitté
-// la page) : le repo et la racine du dépôt, rien d'autre.
+// la page) : le repo et la source des catalogues du titre, rien d'autre.
 func TestTimeseries_LeResumeDUsageSansResolveurDAmis(t *testing.T) {
 	appels := appelsDansTimeseries(t, "WithUsageSummary")
-	if len(appels) != 1 || strings.Join(appels[0].args, ", ") != "duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot" {
-		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)", appels)
+	if len(appels) != 1 || strings.Join(appels[0].args, ", ") != "duckdb.NewSessionUsageRepo(pdb), r.replayLabels()" {
+		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())", appels)
+	}
+}
+
+// La Mainmise : la seule porte film.lead_share, sur le PlayerDB du joueur.
+func TestTimeseries_CableLaMainmiseSousSaPorte(t *testing.T) {
+	ms := appelsDansUsages(t, "WithLeadShare")
+	if len(ms) != 1 || strings.Join(ms[0].args, "") != "duckdb.NewLeadShareRepo(pdb)" ||
+		len(ms[0].portes) != 1 || !strings.Contains(ms[0].portes[0], "games.CapFilmLeadShare") {
+		t.Errorf("WithLeadShare = %+v : attendu duckdb.NewLeadShareRepo(pdb) sous la seule porte games.CapFilmLeadShare", ms)
 	}
 }

@@ -1,0 +1,109 @@
+=== RUN   TestTemoinMinute_KPIStats
+    kpi.kpm = 1.1138251099169516
+    kpi.dpm = 0.6448461162677088
+    kpi.apm = 0.26380068392769906
+    kpi.zero.kpm = 0
+    kpi.zero.dpm = 0
+    kpi.zero.apm = 0
+--- PASS: TestTemoinMinute_KPIStats
+=== RUN   TestTemoinMinute_ExplorerCadence
+    explorer.kpm = 1.1172622043281328
+    explorer.dpm = 0.8756919979869149
+    explorer.apm = 0.33215903371917466
+    explorer.zero.kpm = nil
+    explorer.zero.dpm = nil
+    explorer.zero.apm = nil
+--- PASS: TestTemoinMinute_ExplorerCadence
+=== RUN   TestTemoinMinute_HighlightTuile
+    highlight.slide0 = 1.03
+    highlight.slide1 = 0.60
+    highlight.slide2 = 0.24
+    highlight.value = 1.03
+    highlight.zero = nil
+--- PASS: TestTemoinMinute_HighlightTuile
+=== RUN   TestTemoinMinute_SynthesisKPIsLegacy
+    synth.kpm = 1.18
+    synth.zero.kpm = nil
+    synth.nil.kpm = nil
+--- PASS: TestTemoinMinute_SynthesisKPIsLegacy
+=== RUN   TestTemoinMinute_SynthesisKPIsCanonical
+    canon.kpm = 1.15
+    canon.dpm = 0.66
+    canon.apm = 0.27
+    canon.zero.kpm = nil
+    canon.zero.dpm = nil
+    canon.zero.apm = nil
+--- PASS: TestTemoinMinute_SynthesisKPIsCanonical
+=== RUN   TestTemoinMinute_Profils
+    profil.squad.kpm = 3.05
+    profil.squad.zero.kpm = 0
+    profil.mate.kpm = 3.05
+    profil.mate.zero.kpm = 0
+--- PASS: TestTemoinMinute_Profils
+=== RUN   TestTemoinMinute_ProfilsUnSeulArrondi
+    profil.3sur800.squad = 0.23
+    profil.3sur800.mate = 0.23
+    profil.23sur736.squad = 1.88
+    profil.23sur736.mate = 1.88
+--- PASS: TestTemoinMinute_ProfilsUnSeulArrondi
+PASS
+ok levelup/go-api/internal/analysis
+=== RUN   TestTemoinMinute_OngletPrecision
+    precision.len = 4
+    precision.spm0 = 79
+    precision.spm1 = 56.3
+    precision.spm2 = 600
+    precision.spm3 = 10
+--- PASS: TestTemoinMinute_OngletPrecision
+=== RUN   TestTemoinMinute_BucketsScoreParMinute
+    buckets.len = 4
+    buckets [10,20) = 1
+    buckets [50,60) = 1
+    buckets [70,80) = 1
+    buckets [600,610) = 1
+--- PASS: TestTemoinMinute_BucketsScoreParMinute
+=== RUN   TestTemoinMinute_OngletIntensite
+    intensite.len = 7
+    intensite.spm0 = 79.02
+    intensite.spm1 = 56.35
+    intensite.spm2 = 600
+    intensite.spm3 = 10
+    intensite.spm4 = 0
+    intensite.spm5 = 0
+    intensite.spm6 = 0
+--- PASS: TestTemoinMinute_OngletIntensite
+=== RUN   TestTemoinMinute_ContributionsParMinute
+    contrib.len = 2
+    contrib.alpha.kills_per_min = 1.1138251099169516
+    contrib.alpha.deaths_per_min = 0.6448461162677088
+    contrib.alpha.assists_per_min = 0.26380068392769906
+    contrib.carol.kills_per_min = 1.1980033277870215
+    contrib.carol.deaths_per_min = 0.5990016638935107
+    contrib.carol.assists_per_min = 0.39933444259567386
+--- PASS: TestTemoinMinute_ContributionsParMinute
+=== RUN   TestTemoinMinute_ContributionsSommeDesMinutes
+    contrib2.len = 1
+    contrib2.kills_per_min = 2.3291925465838506
+    contrib2.deaths_per_min = 0.9316770186335402
+    contrib2.assists_per_min = 0.6521739130434782
+--- PASS: TestTemoinMinute_ContributionsSommeDesMinutes
+=== RUN   TestTemoinMinute_BucketsDureeNegativeExclue
+    buckets.negatif.len = 0
+--- PASS: TestTemoinMinute_BucketsDureeNegativeExclue
+PASS
+ok levelup/go-api/internal/service
+=== RUN   TestTemoinMinute_SynergyScorePerMinute
+    synergy.937 = 79.01814300960513
+    synergy.59 = 78.30508474576271
+    synergy.zero = 0
+    synergy.negatif = 0
+--- PASS: TestTemoinMinute_SynergyScorePerMinute
+PASS
+ok levelup/go-api/internal/service/teammates
+=== RUN   TestTemoinMinute_MetriquesDeMatch
+    perf.937 kpm=0.7043756670224119 dpm=0.44823906083244397 apm=0.192102454642476 pspm=79.01814300960513 dpmDamage=276.6915688367129 ospm=20.55496264674493
+    perf.59 kpm=4.067796610169491 dpm=2.0338983050847457 apm=1.0169491525423728 pspm=78.30508474576271 dpmDamage=915.2542372881356 ospm=0
+    perf.zero kpm=0.9 dpm=0.4 apm=0.2 pspm=50 dpmDamage=150 ospm=32.1
+--- PASS: TestTemoinMinute_MetriquesDeMatch
+PASS
+ok levelup/go-api/internal/sync

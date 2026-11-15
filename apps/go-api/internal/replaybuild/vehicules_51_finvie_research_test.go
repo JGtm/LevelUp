@@ -43,7 +43,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,8 +50,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestVehicules51FinDeVie(t *testing.T) {
@@ -105,7 +104,7 @@ func veh51Entrees(t *testing.T, repoRoot, court, carte string, sansFaits bool) (
 		}
 		return court, []string{carte}, port.MatchFacts{}
 	}
-	chemin := filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence", court+".facts.json")
+	chemin := testutil.CheminBriqueFilm(t, "replay", "testdata", "equivalence", court+".facts.json")
 	faits, err := ReadFactsFile(chemin)
 	if err != nil {
 		t.Fatalf("faits %s : %v — poser VEH51_NOFACTS=1 et VEH51_MAP pour cuire sans faits", chemin, err)

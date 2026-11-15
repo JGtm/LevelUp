@@ -260,7 +260,7 @@ type Deps struct {
 // `userID string` que les trois appelants remplissaient avec `Challenge.UserID`,
 // c'est-à-dire un **player_slug** ("JGtm"), tandis que l'implémentation Halo
 // l'injectait dans `WHERE match_participants.xuid = ?`, qui n'accepte qu'un
-// **xuid** ("2533274823110022"). Zéro ligne, partout, en silence : baseline
+// **xuid** ("2603225103667623"). Zéro ligne, partout, en silence : baseline
 // vide, jauges à 0, objectifs jamais évalués. Deux identités distinctes dans un
 // même type `string`, rien pour empêcher de les intervertir.
 //

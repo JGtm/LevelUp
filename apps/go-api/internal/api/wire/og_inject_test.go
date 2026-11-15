@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/ogmeta"
 )
 
 const testIndexHTML = `<!doctype html>
@@ -111,9 +112,8 @@ func TestServeIndexWithOG_DefaultCard(t *testing.T) {
 	if !strings.Contains(body, `content="https://demo.lvelup.info/og-default.png"`) {
 		t.Errorf("og:image non reecrit a l'origine:\n%s", body)
 	}
-	if !strings.Contains(body, "Stats Halo") {
-		t.Errorf("carte generique attendue:\n%s", body)
-	}
+	// Robot sans Accept-Language ni ?lang= : carte generique dans la langue de repli.
+	assertGenericOGTitle(t, body, i18n.Fallback)
 	if strings.Contains(body, `content="OLD"`) {
 		t.Errorf("bloc OG non remplace:\n%s", body)
 	}
@@ -208,5 +208,47 @@ func TestOGMetaFromHome_ForeignContextXUID_OverriddenByPage(t *testing.T) {
 	}
 	if svc.seenXUID != pageXUID {
 		t.Errorf("xuid ambiant %q doit être écrasé par le xuid de la page %q, got %q", ambientXUID, pageXUID, svc.seenXUID)
+	}
+}
+
+// La langue de l'apercu suit la requete : ?lang= du lien d'abord, Accept-Language du
+// robot ensuite, repli sinon. Verifie de bout en bout (requete HTTP → balises).
+func TestServeIndexWithOG_LocaleFollowsRequest(t *testing.T) {
+	indexPath := writeTempIndex(t)
+	reg := &ServiceRegistry{cfg: &config.AppConfig{}}
+	cases := []struct {
+		name       string
+		path       string
+		acceptLang string
+		want       i18n.Locale
+	}{
+		{"?lang=fr prime sur Accept-Language en", "/?lang=fr", "en-US,en;q=0.9", i18n.LocaleFR},
+		{"?lang=en prime sur Accept-Language fr", "/?lang=en", "fr-FR,fr;q=0.9", i18n.LocaleEN},
+		{"Accept-Language fr sans ?lang=", "/", "fr-FR,fr;q=0.9", i18n.LocaleFR},
+		{"ni ?lang= ni Accept-Language → repli", "/", "", i18n.Fallback},
+		{"?lang= inconnu et Accept-Language inconnu → repli", "/?lang=de", "de-DE", i18n.Fallback},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, c.path, nil)
+			req.Host = "lvelup.info"
+			req.Header.Set("User-Agent", "Discordbot/2.0")
+			if c.acceptLang != "" {
+				req.Header.Set("Accept-Language", c.acceptLang)
+			}
+			rec := httptest.NewRecorder()
+			reg.serveIndexWithOG(rec, req, indexPath)
+			assertGenericOGTitle(t, rec.Body.String(), c.want)
+		})
+	}
+}
+
+// assertGenericOGTitle verifie que body porte le titre de la carte generique dans la
+// langue loc (texte lu dans le catalogue, jamais un libelle en dur).
+func assertGenericOGTitle(t *testing.T, body string, loc i18n.Locale) {
+	t.Helper()
+	want := `content="` + i18n.Msg(loc, "og.title.default", i18n.Params{"site": ogmeta.SiteName}) + `"`
+	if !strings.Contains(body, want) {
+		t.Errorf("carte generique %s attendue (%s):\n%s", loc, want, body)
 	}
 }

@@ -28,9 +28,9 @@ var refSquadMates = []struct {
 	col, gamertag string
 	bit           int
 }{
-	{"m", "Madina97294", 1},
-	{"c", "Chocoboflor", 2},
-	{"x", "XxDaemonGamerxX", 4},
+	{"m", "Joueur90002", 1},
+	{"c", "Joueur90001", 2},
+	{"x", "Joueur90000000f", 4},
 }
 
 // refSquadSample construit l'échantillon d'escouade d'une ligne ; nil sans frags d'équipe.

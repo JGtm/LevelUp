@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matchID string) (mapName, modeName *string, err error) {
@@ -130,12 +130,12 @@ func (r *MediaRepo) MediaExists(ctx context.Context, filePath string) (bool, err
 //
 // Cette méthode est l'usage canonique côté MediaService quand un
 // WriterAcquirer est configuré : le service ouvre une *sql.Tx via
-// LeasedWriter.BeginTx, l'injecte ici comme port.DBExecutor → atomicité.
+// LeasedWriter.BeginTx, l'injecte ici comme dblease.DBExecutor → atomicité.
 //
 // Cf. commit 6 du refactor leased-writer-enforcement (résout P3).
 func (r *MediaRepo) SetMediaLikeAtomic(
 	ctx context.Context,
-	exec port.DBExecutor,
+	exec dblease.DBExecutor,
 	filePath, likerSlug, likerGamertag string,
 	liked bool,
 ) (bool, error) {

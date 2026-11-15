@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/campaign"
+	"levelup/go-api/internal/domain"
 )
 
 // TestCampaignRepo_ListEnded vérifie le filtre closes (completed/abandoned),
@@ -189,5 +190,67 @@ func TestCampaignSampleProvider_loadLUSRComponentSamples(t *testing.T) {
 	}
 	if samples[0] != 0.5 || samples[1] != 0.8 || samples[2] != 0.3 {
 		t.Errorf("samples ordonnés chronologiquement [0.5, 0.8, 0.3], obtenu %v", samples)
+	}
+}
+
+// TestCampaignSampleProvider_LoadAxisSamples_Objective : l'axe « objectif » d'un défi est mesuré par
+// match (note d'objectif : part du joueur dans l'objectif de son équipe, 0-100), dans l'ordre
+// chronologique ; un match sans ligne d'objectif n'est pas un échantillon, ni un match que le joueur n'a pas
+// terminé. L'axe n'est jamais figé à 0 : un défi sur cet axe peut progresser.
+func TestCampaignSampleProvider_LoadAxisSamples_Objective(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	type seed struct {
+		matchID, startTS string
+		me, mate         int  // captures du joueur et de son coéquipier (-1 : aucune ligne d'objectif)
+		dnf              bool // le joueur n'a pas terminé le match
+	}
+	for _, m := range []seed{
+		{"m_obj_1", "2025-06-15 10:00:00+00", 2, 2, false},        // part équitable : 50
+		{"m_obj_2", "2025-07-01 10:00:00+00", 3, 0, false},        // tout l'objectif de l'équipe : 100
+		{"m_obj_slayer", "2025-08-01 10:00:00+00", -1, -1, false}, // sans objectif : pas d'échantillon
+		{"m_obj_dnf", "2025-09-01 10:00:00+00", 4, 0, true},       // abandon : pas d'échantillon
+	} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time) VALUES (?, ?)`, m.matchID, m.startTS)
+		for _, xuid := range []string{pTestXUID, "xuid_mate"} {
+			outcome := 2
+			if m.dnf && xuid == pTestXUID {
+				outcome = domain.OutcomeDNF
+			}
+			execOnSharedDBs(t, pdb, ctx,
+				`INSERT INTO shared.match_participants (match_id, xuid, kills, deaths, team_id, time_played_seconds, outcome)
+				 VALUES (?, ?, 1, 1, 0, 600, ?)`, m.matchID, xuid, outcome)
+		}
+		if m.me >= 0 {
+			mustExecPlayerShared(t, pdb, ctx,
+				`INSERT INTO shared.match_objective_stats (match_id, xuid, flag_captures) VALUES (?, ?, ?)`,
+				m.matchID, pTestXUID, m.me)
+			mustExecPlayerShared(t, pdb, ctx,
+				`INSERT INTO shared.match_objective_stats (match_id, xuid, flag_captures) VALUES (?, ?, ?)`,
+				m.matchID, "xuid_mate", m.mate)
+		}
+	}
+
+	provider := NewCampaignSampleProvider(pdb)
+	since, _ := time.Parse(time.RFC3339, "2025-06-01T00:00:00Z")
+	until, _ := time.Parse(time.RFC3339, "2025-12-31T23:59:59Z")
+	samples, err := provider.LoadAxisSamples(ctx, pTestXUID, "halo_infinite",
+		"objective", campaign.AxisKindRadar, "all", since, until)
+	if err != nil {
+		t.Fatalf("LoadAxisSamples objective: %v", err)
+	}
+	if len(samples) != 2 || samples[0] != 50 || samples[1] != 100 {
+		t.Fatalf("échantillons attendus [50, 100] (chronologique, match sans objectif et abandon écartés), obtenu %v", samples)
+	}
+}
+
+// mustExecPlayerShared exécute une requête sur la connexion joueur du harnais, qui porte le schéma
+// `shared` lu par SharedReadDB (la table et la vue d'objectif y vivent).
+func mustExecPlayerShared(t *testing.T, pdb *PlayerDB, ctx context.Context, query string, args ...any) {
+	t.Helper()
+	if _, err := pdb.Player.Exec(ctx, query, args...); err != nil {
+		t.Fatalf("mustExecPlayerShared: %v\nSQL: %s", err, query)
 	}
 }

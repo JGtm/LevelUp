@@ -29,6 +29,8 @@
  * et échoue sur une fabrique non classée ou dont le paramètre de langue ne correspond pas à son classement.
  */
 
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
   players: ['players'] as const,
@@ -38,11 +40,17 @@ export const queryKeys = {
   // Sélection par titre (réglages Jeux) — statut sync par titre du joueur courant.
   playerTitles: (playerSlug: string) => ['player-titles', playerSlug] as const,
 
+  // État de la synchronisation d'un joueur (GET /players/{slug}/sync/status) : accueil sans match.
+  // Le titre scope la clé : « en vol » se lit par la porte de déduplication du titre courant.
+  playerSyncStatus: (playerSlug: string, titleSlug: string) => ['player-sync-status', playerSlug, titleSlug] as const,
+
   // Setup & auth (Slice 1)
   // setupStatus supprimé (sprint 29) : GET /setup/status n'existe ni en FastAPI ni en Go
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,
+  // État du scheduler de sauvegarde (GET /settings/backup/status) — sous la clé des réglages.
+  settingsBackupStatus: ['settings', 'backup-status'] as const,
   // Occupation et emplacement de l'archive des films (GET /settings/film-archive).
   filmArchive: ['film-archive'] as const,
   // État vivant de l'intégration au poste (GET /settings/desktop) : le jeu tourne-t-il.
@@ -170,9 +178,15 @@ export const queryKeys = {
   // qu'à une re-cuisson.
   matchReplayBackground: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay-background', playerSlug, titleSlug, matchId] as const,
-  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage.
-  matchReplayBackgroundImage: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['match-replay-background-image', playerSlug, titleSlug, matchId] as const,
+  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage. La
+  // VARIANTE (rendu ou plan) est le dernier segment : les deux images d'un meme fond ne se servent
+  // jamais l'une pour l'autre.
+  matchReplayBackgroundImage: (
+    playerSlug: string,
+    titleSlug: string,
+    matchId: string,
+    variante: MapBackgroundVariant = 'rendu',
+  ) => ['match-replay-background-image', playerSlug, titleSlug, matchId, variante] as const,
   // Zones nommées (callouts) : même logique que le fond — propres à la CARTE, servies par
   // match, figées entre deux régénérations du catalogue versionné.
   matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
@@ -230,6 +244,11 @@ export const queryKeys = {
   // Le nom de la carte de chaque duel est servi dans la langue de la requête.
   palmaresRelations: (playerSlug: string, titleSlug: string, locale = '') =>
     ['palmares', playerSlug, titleSlug, 'relations', locale] as const,
+  // Page Relations et section « Moments & Rivalités », segmentées par le contexte de filtre committed (`hash`).
+  palmaresRelationsPage: (playerSlug: string, titleSlug: string, locale: string, hash: string) =>
+    ['palmares', playerSlug, titleSlug, 'relations', locale, hash] as const,
+  palmaresRelationsMoments: (playerSlug: string, titleSlug: string, locale: string, hash: string) =>
+    ['palmares', playerSlug, titleSlug, 'relations', locale, 'moments', hash] as const,
 
   // Escouade / Teammates (Slice 6)
   // exactComposition : l'option « composition exacte » change la POPULATION servie
@@ -283,8 +302,9 @@ export const queryKeys = {
   // N images par joueur consulté dans la session, pour exactement le même contenu.
   // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
   // fetch garde le joueur (la route est derrière l'ownership).
-  tacticalMapBackground: (titleSlug: string, mapId: string) =>
-    ['tactical-map-background', titleSlug, mapId] as const,
+  // La VARIANTE (rendu ou plan) est le dernier segment, comme pour l'image du fond du rejeu.
+  tacticalMapBackground: (titleSlug: string, mapId: string, variante: MapBackgroundVariant = 'rendu') =>
+    ['tactical-map-background', titleSlug, mapId, variante] as const,
   /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
    *  régime : versionnée par titre, jamais par joueur. */
   tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>
@@ -431,6 +451,9 @@ export const queryKeys = {
     ['assets', titleSlug, 'weapons', q, locale] as const,
   assetMedals: (titleSlug: string, q: string, locale: string) =>
     ['assets', titleSlug, 'medals', q, locale] as const,
+  // Pictogrammes d'arme du titre par weapon_key (GET /assets/{titre}/kill-sources) : le nom est
+  // résolu dans la langue de la requête, la langue est le dernier segment.
+  killSourceIcons: (titleSlug: string, locale: string) => ['assets', titleSlug, 'kill-sources', locale] as const,
 
   // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
   // Dérivée des matchs du titre → titleSlug scope la clé.

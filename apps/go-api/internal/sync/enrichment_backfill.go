@@ -11,7 +11,7 @@
 // Les FONCTIONS de calcul sont déjà title-agnostic (elles lisent le shared + écrivent
 // la player DB par xuid). Seul le CALL-SITE était Infinite-only. Cette fonction
 // reproduit la séquence du post-sync (runScoringSteps + ensure rows + dominance +
-// friends + aggregates) hors LUSR — le LUSR est recalculé séparément (cmd/h5-lusr-backfill),
+// friends + aggregates) hors LUSR — le LUSR est recalculé séparément,
 // APRÈS la classification ranked, pour ne pas mêler de l'Arena classé au rating social.
 //
 // Distinct du recalcul post-rebuild ART retiré (qui supposait les rows enrichment déjà

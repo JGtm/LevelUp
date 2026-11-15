@@ -11,8 +11,9 @@ import (
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 )
 
-// Le classement n'a d'effet que branché sur le chemin du calcul : aucune donnée de test ne fait
-// diverger le solveur de façon stable, le branchement se vérifie donc sur la source.
+// Le classement n'a d'effet que branché sur le chemin du calcul : le branchement de la branche
+// d'échec se vérifie sur la source ; le repli et son second échec sont couverts, sur le calcul,
+// par skill_v2_solver_fallback_test.go.
 func TestProcessOneShadowMatch_ClasseLEchecDeCalcul(t *testing.T) {
 	src, err := os.ReadFile("skill_v2_shadow.go")
 	if err != nil {

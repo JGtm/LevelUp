@@ -23,7 +23,9 @@ vi.mock('./queries', async (importOriginal) => {
   return {
     ...actual,
     useTacticalMapBackgroundFrame: () => null,
-    useTacticalMapBackgroundUrl: () => null,
+    useTacticalMapBackgroundPlan: () => null,
+    useTacticalMapBackgroundImage: () => ({ url: null, variante: 'rendu' }),
+    useTacticalMapPlanImage: () => ({ planImage: undefined, pending: false }),
   }
 })
 
@@ -60,6 +62,8 @@ const REGLAGES: ReglagesDuPlan = {
   escouadeEnAttente: false,
   spawn: '',
   onSpawnChange: () => {},
+  vies: 'depart',
+  onViesChange: () => {},
   grappes: [],
   zonesVisibles: true,
   onZonesVisiblesChange: () => {},

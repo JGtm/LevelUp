@@ -37,15 +37,15 @@
 // different que pour un xuid SANS alias, dont le nom VARIE d'un match a l'autre — mesure sur la
 // copie de production du 2026-09-23 : zero ecart sur les 50 du top, les 796 allies et les
 // 2 393 joueurs de lobby des 604 matchs « avec amis » de JGtm, ni sur les 119 + 29 xuids que
-// seul le kill-feed nomme parmi les 579 matchs JGtm + Madina97294. Et un xuid de bot absent
+// seul le kill-feed nomme parmi les 579 matchs JGtm + Joueur90002. Et un xuid de bot absent
 // de toutes les sources prend le nom du bot la ou la jointure rendait le libelle masque
 // (aucun bot dans highlight_events, seule lecture ou ce cas pouvait se produire).
 //
 // Carriere (L7), meme copie, sur TOUS les joueurs croises ou affrontes par les cinq joueurs
 // suivis (58 353 couples joueur / croise, pas seulement les lignes servies) : zero ecart pour
-// quatre d'entre eux ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom HORS de ses
+// quatre d'entre eux ; 8 chez J900004, « Joueur #### » la ou la vue trouve un nom HORS de ses
 // 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie. Les 269
-// rivaux sans alias ni nom de participant (JGtm, Madina97294, Chocoboflor) y ont le nom de la vue.
+// rivaux sans alias ni nom de participant (JGtm, Joueur90002, Joueur90001) y ont le nom de la vue.
 // Comparer : zero ecart sur les 53 061 xuids de la base (la lecture couvre tout leur historique).
 //
 // # LA PORTEE BASE (lot A du plan perf « lectures par perimetre », 2026-09-26, ADR 0036 I1)
@@ -66,7 +66,7 @@
 // Q23b et les 1 853 xuids de ResolveGamertags (279 couples match / joueur), les 12 289 lignes de
 // Relations et les 1 265 de la heatmap (cinq joueurs suivis, periode entiere et 30 matchs). Sans le
 // dernier repli : exactement les 11 + 2 noms perdus. Cout : l'annuaire d'un match coute moins de
-// 10 ms ; quand le repli part (23 des 1 160 matchs de JGtm, 4 688 des 7 190 de Nuzzles), 150 a
+// 10 ms ; quand le repli part (23 des 1 160 matchs de JGtm, 4 688 des 7 190 de J900004), 150 a
 // 360 ms (la localisation parcourt la table brute) au lieu de 3 a 7 s quand il relisait la fenetre
 // entiere (journal P2 du plan).
 package duckdb
@@ -79,6 +79,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // accesLigne : ce que nommerLignes lit et ecrit sur une ligne de lecture.
@@ -147,7 +148,7 @@ type lectureANommer struct {
 // lecture est agregee (Q29, une ligne par coequipier) : lu dans match_participants, parmi les
 // matchs de la lecture — une requete sur une TABLE, qui pousse ses deux predicats.
 //
-// Mesure sur la copie de production (2026-09-23, JGtm + Madina97294, 579 matchs) : 119 xuids de
+// Mesure sur la copie de production (2026-09-23, JGtm + Joueur90002, 579 matchs) : 119 xuids de
 // lobby sans alias ni participant nommes, rencontres dans 34 matchs — memes 118 noms qu'en
 // lisant les 579 matchs, 86 ms au lieu de 452 (le cout de la jambe suit la liste de matchs).
 func (l lectureANommer) matchsKillFeed(ctx context.Context, db *sql.DB, restants []string) ([]string, error) {
@@ -288,10 +289,10 @@ func xuidsSansNom(xuids []string, a analysis.AnnuaireGamertags) []string {
 func lireAliasEtParticipants(
 	ctx context.Context, db *sql.DB, xuids []string, lecture lectureANommer, a *analysis.AnnuaireGamertags,
 ) error {
-	q := analysis.AnnuaireNomsBaseSQL()
+	q := sqlfrag.AnnuaireNomsBaseSQL()
 	args := []any{argListe(xuids), argListe(xuids)}
 	if !lecture.porteeBase {
-		q = analysis.AnnuaireNomsSQL()
+		q = sqlfrag.AnnuaireNomsSQL()
 		args = append(args, argListe(lecture.matchIDs))
 	}
 	rows, err := db.QueryContext(ctx, q, args...)
@@ -305,9 +306,9 @@ func lireAliasEtParticipants(
 			return fmt.Errorf("annuaire (alias, participants) scan: %w", err)
 		}
 		switch niveau {
-		case analysis.AnnuaireNiveauAlias:
+		case sqlfrag.AnnuaireNiveauAlias:
 			a.Alias[xuid] = gamertag
-		case analysis.AnnuaireNiveauParticipant:
+		case sqlfrag.AnnuaireNiveauParticipant:
 			a.Participants[xuid] = gamertag
 		}
 	}
@@ -318,12 +319,12 @@ func lireAliasEtParticipants(
 func lireKillFeed(
 	ctx context.Context, db *sql.DB, xuids, matchIDs []string, a *analysis.AnnuaireGamertags,
 ) error {
-	args := make([]any, 0, analysis.AnnuaireKillFeedJambes+1)
-	for range analysis.AnnuaireKillFeedJambes {
+	args := make([]any, 0, sqlfrag.AnnuaireKillFeedJambes+1)
+	for range sqlfrag.AnnuaireKillFeedJambes {
 		args = append(args, argListe(matchIDs))
 	}
 	args = append(args, argListe(xuids))
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedSQL(), args...)
+	rows, err := db.QueryContext(ctx, sqlfrag.AnnuaireKillFeedSQL(), args...)
 	if err != nil {
 		return fmt.Errorf("annuaire (kill-feed): %w", err)
 	}
@@ -351,11 +352,11 @@ func lireKillFeedBase(ctx context.Context, db *sql.DB, xuids []string, a *analys
 	return lireKillFeed(ctx, db, xuids, matchs, a)
 }
 
-// localiserKillFeed : les matchs candidats des xuids (analysis.AnnuaireKillFeedLocaliserSQL).
+// localiserKillFeed : les matchs candidats des xuids (sqlfrag.AnnuaireKillFeedLocaliserSQL).
 // LECTURE DE LOCALISATION de la table append-only `match_kill_events` (ADR 0036, « locating
 // read » ; site unique) : elle ne rend que des match_id, aucune valeur n'en est lue.
 func localiserKillFeed(ctx context.Context, db *sql.DB, xuids []string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedLocaliserSQL(), argListe(xuids))
+	rows, err := db.QueryContext(ctx, sqlfrag.AnnuaireKillFeedLocaliserSQL(), argListe(xuids))
 	if err != nil {
 		return nil, fmt.Errorf("annuaire (kill-feed, localisation): %w", err)
 	}

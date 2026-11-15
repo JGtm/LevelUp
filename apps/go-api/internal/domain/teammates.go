@@ -94,6 +94,14 @@ type MapBreakdownRow struct {
 	// sur TOUT son historique pour cette carte. Sert de référence pour le chart
 	// teammates.13. Nil si aucune donnée historique avec score.
 	HistoricalPerformanceAvg *float64 `json:"historical_performance_avg,omitempty"`
+	// LeadShare : MAINMISE moyenne sur les matchs filtrés de la carte — moyenne des parts des matchs
+	// MESURÉS (FRACTION 0..1), LeadShareMatches leur nombre. HistoricalLeadShare(Matches) : même chose sur
+	// tout l'historique de la carte. Absents quand aucun match n'est mesuré (jamais zéro). Servis par les
+	// Séries temporelles seulement.
+	LeadShare                  *float64 `json:"lead_share,omitempty"`
+	LeadShareMatches           int      `json:"lead_share_matches,omitempty"`
+	HistoricalLeadShare        *float64 `json:"historical_lead_share,omitempty"`
+	HistoricalLeadShareMatches int      `json:"historical_lead_share_matches,omitempty"`
 }
 
 // SquadMatchSeriesPoint est un point de la série par match (perf/timeline).
@@ -151,6 +159,19 @@ type SquadKillMechanics struct {
 	Bars    []SquadKillMechanicBar `json:"bars"`
 }
 
+// SquadLeadSharePoint est la Mainmise d'UN match de l'escouade. LeadShare est une FRACTION 0..1 ;
+// ABSENT = match non mesuré (mode à peu de points, score non couvert, film absent) : jamais zéro. Le
+// match reste dans la série pour que la page le dise.
+type SquadLeadSharePoint struct {
+	MatchID      string   `json:"match_id"`
+	StartTime    string   `json:"start_time"` // ISO 8601
+	Outcome      int      `json:"outcome"`
+	SessionLabel *string  `json:"session_label,omitempty"`
+	MapName      string   `json:"map_name,omitempty"` // libellé localisé de la carte
+	LeadShare    *float64 `json:"lead_share,omitempty"`
+	LeadChanges  *int     `json:"lead_changes,omitempty"`
+}
+
 // SquadPerformanceSeriesPoint est une mesure 1-match × 1-joueur pour le
 // chart family teammates.16. Toutes les métriques sont optionnelles (nil =
 // non disponible côté DB / pas calculé). MatchOrder est un index 0..N-1
@@ -206,6 +227,10 @@ type SquadSynergyRadarAxis struct {
 // SquadSynergyRadarSeries est un profil radar pour un joueur de l'escouade
 // sur les matchs PARTAGÉS (intersection des match_ids de tous les membres
 // sélectionnés). Cf. teammates.06.
+//
+// Toutes les séries d'une réponse portent les MÊMES axes : un axe qu'un joueur ne peut pas porter (Survie
+// sans damage_taken, Objectif sans note mesurée) est retiré de toutes les séries, jamais rendu à 0 ni
+// absent d'une seule (un radar a un jeu d'indicateurs unique et rend une valeur manquante au centre).
 type SquadSynergyRadarSeries struct {
 	Player     string                  `json:"player"`
 	Axes       []SquadSynergyRadarAxis `json:"axes"`
@@ -249,15 +274,21 @@ type SquadIntensityProfile struct {
 	Rows    map[string][]SquadIntensityMatchRow `json:"rows"` // optionKey → lignes (1 par match)
 }
 
-// SquadPerMinuteEntry est l'agrégat par joueur des stats /minute pour le
-// chart teammates.14. Calculé à partir de sum(kills/deaths/assists) / sum(time_played_secs / 60).
-// Si TimePlayedSecs == 0, les ratios sont nuls.
+// SquadPerMinuteEntry est l'agrégat par joueur des stats /minute pour les charts teammates.14
+// (frags, morts, assistances) et « dégâts par minute ». Chaque cadence est la somme des comptes
+// rapportée à la somme des minutes jouées (analysis.PerMinute) ; si TimePlayedSecs == 0, les
+// ratios sont nuls.
+//
+// Les dégâts sont des pointeurs : nil = aucun match du joueur n'en porte (dégâts subis non fournis
+// par le titre, Halo 5), jamais un zéro fabriqué.
 type SquadPerMinuteEntry struct {
-	Player           string  `json:"player"`
-	KillsPerMinute   float64 `json:"kills_per_minute"`
-	DeathsPerMinute  float64 `json:"deaths_per_minute"`
-	AssistsPerMinute float64 `json:"assists_per_minute"`
-	MatchCount       int     `json:"match_count"`
+	Player               string   `json:"player"`
+	KillsPerMinute       float64  `json:"kills_per_minute"`
+	DeathsPerMinute      float64  `json:"deaths_per_minute"`
+	AssistsPerMinute     float64  `json:"assists_per_minute"`
+	DamageDealtPerMinute *float64 `json:"damage_dealt_per_minute,omitempty"`
+	DamageTakenPerMinute *float64 `json:"damage_taken_per_minute,omitempty"`
+	MatchCount           int      `json:"match_count"`
 }
 
 // SquadSessionPoint est un point agrégé par session pour le chart timeline
@@ -374,10 +405,7 @@ type SquadMatchHistoryRow struct {
 	// de référence à comparer avec le résultat du match courant.
 	WinRateHist      *float64 `json:"win_rate_hist,omitempty"`
 	WinRateHistTotal *int     `json:"win_rate_hist_total,omitempty"`
-	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
-	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
-	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
-	SessionLabel    *string  `json:"session_label,omitempty"`
+	SessionLabel     *string  `json:"session_label,omitempty"`
 	// DominanceFlag : badge narratif du match — 0=aucun, 1=domination,
 	// 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada
 	// (cf. canonical.DominanceFlag). `omitempty` : 0 disparaît du JSON et le front
@@ -547,6 +575,10 @@ type TeammatesPageResponse struct {
 	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil
 	// si aucun match commun.
 	PerformanceSeries map[string][]SquadPerformanceSeriesPoint `json:"performance_series,omitempty"`
+	// LeadShareSeries : la MAINMISE de chaque match du périmètre pour l'équipe du joueur principal
+	// (l'escouade joue du même côté), triée du plus ancien au plus récent. Alimente la carte Mainmise de la
+	// section Dynamique. Vide sans lecteur de la mesure (titre sans film.lead_share) ou sans match.
+	LeadShareSeries []SquadLeadSharePoint `json:"lead_share_series,omitempty"`
 	// FragClasses alimente le sous-chart « Répartition des frags » de teammates.16
 	// (barres empilées PAR CLASSE, D8). Map gamertag → classes niveau 1 (agrégat sur
 	// les matchs partagés du scope, réutilise fragdist.Build). Sans mécaniques natives

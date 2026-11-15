@@ -48,7 +48,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"

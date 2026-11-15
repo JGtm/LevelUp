@@ -43,14 +43,6 @@ func (a AlertType) NotificationCategory() notifications.Category {
 		// Catégorie NEUTRE dédiée : une tendance descendante ne doit pas
 		// s'afficher « Palier franchi » (Coach V3 Phase A).
 		return notifications.CategoryTrendConsolidate
-	case AlertPatternStrength:
-		return notifications.CategoryPatternStrength
-	case AlertPatternWeakness:
-		return notifications.CategoryPatternWeakness
-	case AlertPatternBehavior:
-		return notifications.CategoryPatternBehavior
-	case AlertPatternLever:
-		return notifications.CategoryPatternLever
 	case AlertTypeCombatPatternActif, AlertTypeCombatPatternDiscret, AlertTypeCombatPatternFragile:
 		return notifications.CategoryCombatPattern
 	default:

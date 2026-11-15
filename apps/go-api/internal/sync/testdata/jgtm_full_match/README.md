@@ -1,8 +1,8 @@
-# JGtm Full Match Fixture — `b71d39db-e3af-40e4-b7f9-e7c34c367981`
+# Jf01 Full Match Fixture — `b71d39db-e3af-40e4-b7f9-e7c34c367981`
 
 Match Halo Infinite complet capturé le **2026-05-24** depuis l'API live, utilisé comme fixture E2E pour `internal/sync` + `internal/persist` + `internal/analysis`.
 
-**Owner** : JGtm (xuid `2533274823110022`)
+**Owner** : Jf01 (xuid `2603225103667623`)
 **Mode** : Arena (LifecycleMode=3), 8 participants
 **Date du match** : 2026-05-19 17:35:20 UTC
 **Durée** : 532s (~9 min)
@@ -31,8 +31,8 @@ replication chunks (type=2) : 28
 
 ```go
 // internal/sync/testdata/fixtures.go
-func LoadJGtmFullMatch(t *testing.T) JGtmFixture {
-    return JGtmFixture{
+func LoadJf01FullMatch(t *testing.T) Jf01Fixture {
+    return Jf01Fixture{
         Manifest:      loadJSON[FilmManifestRaw](t, "jgtm_full_match/manifest_raw.json"),
         ChunksDir:     "jgtm_full_match/chunks",
         MatchStats:    loadJSON[MatchStatsAPI](t, "jgtm_full_match/api_match_stats.json"),
@@ -44,7 +44,7 @@ func LoadJGtmFullMatch(t *testing.T) JGtmFixture {
 
 ## Aspects PII
 
-- Le xuid de JGtm (`2533274823110022`) est conservé : c'est l'owner du compte connecté pour le test
+- Le xuid de Jf01 (`2603225103667623`) est conservé : c'est l'owner du compte connecté pour le test
 - Les xuids des 7 autres participants sont publics côté API Halo et ne sont pas considérés PII strict
 - Aucun token (SpartanToken, ClearanceToken, OAuth) n'est embarqué — uniquement les réponses des endpoints
 

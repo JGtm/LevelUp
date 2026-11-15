@@ -45,10 +45,11 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // mimeImagePNG / mimeImageWebP : les deux seuls types MIME qu'un fond de carte peut
@@ -75,11 +76,7 @@ func (s *replayService) MapBackground(ctx context.Context, matchID string) (*rep
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImage retourne les octets du fond de carte du match, et le type MIME sous
@@ -107,11 +104,7 @@ func (s *replayService) MapBackgroundForMap(ctx context.Context, mapID string) (
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImageForMap retourne les octets du fond d'une CARTE, et son type MIME.
@@ -140,6 +133,11 @@ func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]
 	if err != nil {
 		return nil, "", err
 	}
+	return lisFichierImage(path, mime, key)
+}
+
+// lisFichierImage lit l'image d'une clé de fond : une absence de fichier est l'absence du fond.
+func lisFichierImage(path, mime, key string) ([]byte, string, error) {
 	blob, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, "", port.ErrMapBackgroundNotAvailable
@@ -164,11 +162,17 @@ func (s *replayService) backgroundImageFile(ctx context.Context, key string) (st
 // type MIME. Seul point qui passe d'un sidecar à un fichier image : l'image SERVIE et le masque de
 // la zone jouable (replay_vehicle_scenery.go, qui garde le calage du même sidecar) le partagent.
 func (s *replayService) imageFileOf(ctx context.Context, key string, bg *replay.MapBackground) (string, string, error) {
-	nom := filepath.Base(bg.Image)
+	return s.imageFileNamed(ctx, key, bg.Image)
+}
+
+// imageFileNamed valide un nom de fichier image lu dans un sidecar (l'image du fond ou son image
+// plan) et rend son chemin et son type MIME : un nom simple, d'extension en liste blanche.
+func (s *replayService) imageFileNamed(ctx context.Context, key, image string) (string, string, error) {
+	nom := filepath.Base(image)
 	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
-	if nom != bg.Image || !connue {
+	if nom != image || !connue {
 		slog.ErrorContext(ctx, "fond de carte : nom de fichier image refusé",
-			"image", bg.Image, "cle", key, "titleSlug", s.titleSlug)
+			"image", image, "cle", key, "titleSlug", s.titleSlug)
 		return "", "", port.ErrMapBackgroundNotAvailable
 	}
 	return title.NewPathResolver(s.repoRoot).MapBackgroundImageFilePath(s.titleSlug, nom), mime, nil
@@ -274,6 +278,26 @@ func cleDeFondSure(cle string) bool {
 		return false
 	}
 	return !strings.Contains(cle, "..")
+}
+
+// servedMapBackground rend le calage d'une clé de fond dans sa forme SERVIE : le sidecar complet
+// (calage du décodeur et plan des murs, `internal/mapfondsidecar`) projeté une fois sur le contrat
+// public. Un plan illisible est journalisé et laissé de côté : le calage et l'image restent servis.
+func (s *replayService) servedMapBackground(ctx context.Context, key string) (*replaydoc.MapBackground, error) {
+	path := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, key)
+	full, err := mapfondsidecar.Load(path)
+	if err == nil {
+		return replayview.MapBackgroundOf(full), nil
+	}
+	// Le sidecar complet ne se lit pas : le calage seul dit si c'est lui (fond absent ou
+	// illisible, journalisé et refusé par loadMapBackground) ou le plan.
+	bg, errCalage := s.loadMapBackground(ctx, key)
+	if errCalage != nil {
+		return nil, errCalage
+	}
+	slog.WarnContext(ctx, "rejeu 2D : plan des murs illisible — fond servi sans plan",
+		"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
+	return replayview.MapBackgroundOf(&mapfondsidecar.MapBackground{MapBackground: *bg}), nil
 }
 
 // loadMapBackground lit le sidecar de calage d'une clé de fond (module installé ou map_id).

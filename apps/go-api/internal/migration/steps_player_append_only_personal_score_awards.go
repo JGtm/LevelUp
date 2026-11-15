@@ -7,7 +7,7 @@ package migration
 // `DELETE FROM personal_score_awards WHERE match_id=? AND xuid=?` puis INSERT
 // batch en TX (REPLACE-semantics). Le DELETE retire N lignes des 4 index ART
 // (idx_psa_match/xuid/category/match_xuid) = vecteur DuckDB #23645 sur le
-// chemin de sync LIVE (engine_process_match + convergePSA). Jumeau direct du
+// chemin de sync LIVE (engine_process_match + runPSAConvergence). Jumeau direct du
 // DELETE LUSR match_skill_rank corrigé en Phase 1.
 //
 // **Stratégie append-only GÉNÉRATION** : la sémantique métier est « remplacer

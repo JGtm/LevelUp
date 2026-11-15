@@ -14,6 +14,7 @@ export const MATRIX_GROUPS = [
   'level',
   'results',
   'combat',
+  'pace',
   'style',
   'objectives',
   'activity',
@@ -29,6 +30,11 @@ const MANIFEST_INDICATORS: ReadonlySet<string> = new Set([
   'assists_per_match',
   'kills_per_match',
   'deaths_per_match',
+  'kills_per_minute',
+  'deaths_per_minute',
+  'assists_per_minute',
+  'damage_dealt_per_minute',
+  'damage_taken_per_minute',
   'headshot_share',
   'power_weapon_share',
   'equipment_used_share',
@@ -112,9 +118,12 @@ function evolutionTexts(m: Message) {
     chartLusr: m('tendances.evolution.chart_lusr'),
     chartMmrPair: m('tendances.evolution.chart_mmr_pair'),
     chartDamage: m('tendances.evolution.chart_damage'),
+    chartPace: m('tendances.evolution.chart_pace'),
+    chartPaceDamage: m('tendances.evolution.chart_pace_damage'),
     chartObjectives: m('tendances.evolution.chart_objectives'),
     infoMmrPair: m('tendances.evolution.info_mmr_pair'),
     infoCsr: m('tendances.evolution.info_csr'),
+    infoPace: m('tendances.evolution.info_pace'),
     infoObjectives: m('tendances.evolution.info_objectives'),
     evolutionTooltipLine: (name: string, value: string, matches: number) =>
       m('tendances.evolution.tooltip_line', {
@@ -186,6 +195,7 @@ function squadTexts(m: Message) {
     unitSeconds: m('tendances.unit.seconds'),
     unitHours: m('tendances.unit.hours'),
     unitPoints: m('tendances.unit.points'),
+    unitPerMinute: m('tendances.unit.per_minute'),
     /** Libellé manifeste d'un indicateur, ou `undefined` quand la clé relève des champs canoniques. */
     indicatorLabel: (key: string): string | undefined =>
       MANIFEST_INDICATORS.has(key)

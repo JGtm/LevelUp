@@ -24,24 +24,7 @@ function row(xuid: string, overrides: Partial<MatchScoreboardRow>): MatchScorebo
   return {
     xuid,
     gamertag: xuid,
-    team_side: null,
     is_me: false,
-    rank: null,
-    score: null,
-    kills: null,
-    deaths: null,
-    assists: null,
-    shots_fired: null,
-    shots_hit: null,
-    accuracy: null,
-    damage_dealt: null,
-    damage_taken: null,
-    average_life: null,
-    headshot_kills: null,
-    max_killing_spree: null,
-    perfect_kills: null,
-    power_weapon_kills: null,
-    melee_kills: null,
     outcome: 'win',
     ...overrides,
   }
@@ -65,7 +48,7 @@ describe('getExtremes', () => {
   it('ignore les nulls dans le calcul', () => {
     const rows = [
       row('a', { kills: 10 }),
-      row('b', { kills: null }),
+      row('b', { kills: undefined }),
       row('c', { kills: 5 }),
     ]
     expect(getExtremes(rows, 'kills')).toEqual({ min: 5, max: 10 })

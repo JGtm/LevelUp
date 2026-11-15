@@ -41,6 +41,7 @@ import {
   type ObjectiveRole,
 } from '../formes/model/objectives'
 import { intlLocale } from '@/lib/formatters/intlLocale'
+import { medianOfValid } from '@/lib/charts/stats'
 
 /** Le minimum de matchs à objectif pour tracer une courbe (D6, `min_objective_matches`). */
 export const OBJECTIVE_MIN_MATCHES = 3
@@ -428,14 +429,6 @@ function toPoint(e: SquadObjectiveEvening, current: boolean): EveningPoint {
   }
 }
 
-/** La médiane d'une liste de nombres (null si vide). */
-export function median(values: number[]): number | null {
-  if (values.length === 0) return null
-  const s = [...values].sort((a, b) => a - b)
-  const mid = (s.length - 1) / 2
-  return (s[Math.floor(mid)] + s[Math.ceil(mid)]) / 2
-}
-
 /**
  * buildEveningsView — ce que la carte montre : la note « sous le minimum » (soirée affichée
  * sous trois matchs à objectif, D6), la note « première soirée » (aucune soirée précédente),
@@ -456,7 +449,7 @@ export function buildEveningsView(h: SquadObjectiveHistory): EveningsView {
   if (previous.length === 0) return { kind: 'noHistory', current }
   const medians = {} as Record<ObjectiveRole, number | null>
   for (const role of OBJECTIVE_ROLES) {
-    medians[role] = median(previous.flatMap((p) => (p.shares[role] == null ? [] : [p.shares[role] as number])))
+    medians[role] = medianOfValid(previous.map((p) => p.shares[role]))
   }
   return { kind: 'chart', points: [...previous, current], medians }
 }

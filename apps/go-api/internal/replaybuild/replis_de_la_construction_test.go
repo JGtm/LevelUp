@@ -18,8 +18,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestLaResolutionDesFragsCompteSesReplis : un gamertag vu avec deux xuids ne resout rien (il est

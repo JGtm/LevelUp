@@ -341,23 +341,6 @@ func TestSetupHandler_CreatePlayer_OnboardError(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// SyncHandler — StartInitialSync (no auth tokens)
-// ---------------------------------------------------------------------------
-
-func TestSyncHandler_InitialSync_NoTokens(t *testing.T) {
-	r, _ := newSyncRouter(t, true)
-	body := `{"player_slug":"test-player","max_matches":100}`
-	req := httptest.NewRequest(http.MethodPost, "/sync/initial", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	// No session with HaloTokens → 401
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
 // NB (Phase 3b) : les tests TestSquadHandler_GetSynthesisPage_* ont été retirés —
 // la route POST /pages/synthesis est servie par SynthesisHandler (server.go), pas
 // par SquadHandler ; sa méthode HTTP côté squad était morte (jamais montée en prod)

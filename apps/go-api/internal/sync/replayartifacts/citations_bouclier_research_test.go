@@ -26,7 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 var citBouclierDocRe = regexp.MustCompile(`^([0-9a-f]{8})\.json$`)

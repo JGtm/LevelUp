@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 func registreModesDeTest(t *testing.T) *sql.DB {
@@ -51,7 +51,7 @@ func TestSelectBuildWork_ExclutLeModeNonGere(t *testing.T) {
 func TestRequeteQueueRecente_ExclutLeModeNonGere(t *testing.T) {
 	db := registreModesDeTest(t)
 	sqlQueue, args := requeteQueueRecente(0)
-	if !strings.Contains(sqlQueue, analysis.SQLModeNonGere("r")) {
+	if !strings.Contains(sqlQueue, sqlfrag.SQLModeNonGere("r")) {
 		t.Fatalf("requete = %q : le predicat de mode non gere manque", sqlQueue)
 	}
 	rows, err := db.QueryContext(context.Background(), sqlQueue, append(args, BacklogHorizon)...)

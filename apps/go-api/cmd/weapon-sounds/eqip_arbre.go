@@ -34,7 +34,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // evenementStructure : un evenement de la banque, avec la maniere dont il se joue.

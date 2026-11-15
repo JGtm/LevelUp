@@ -59,7 +59,7 @@ func httpErr(status int) error {
 func TestPage_429PuisSucces_RejoueSansAttendre(t *testing.T) {
 	waits := captureSleeps(t)
 	appels := 0
-	entrees, err := Page(context.Background(), "Nuzzles", 225,
+	entrees, err := Page(context.Background(), "J900004", 225,
 		fetchScripte(&appels, reponse{err: httpErr(429)}, reponse{entrees: []string{"m1"}}))
 	if err != nil {
 		t.Fatalf("attendu succès au rejeu, obtenu %v", err)
@@ -79,7 +79,7 @@ func TestPage_429PuisSucces_RejoueSansAttendre(t *testing.T) {
 func TestPage_PoolSansSlotSain_AttendPuisRejoue(t *testing.T) {
 	waits := captureSleeps(t)
 	appels := 0
-	entrees, err := Page(context.Background(), "Nuzzles", 0, fetchScripte(&appels,
+	entrees, err := Page(context.Background(), "J900004", 0, fetchScripte(&appels,
 		reponse{err: fmt.Errorf("pooled: Acquire failed: %w", pool.ErrNoHealthySlot)},
 		reponse{entrees: []string{"m2"}}))
 	if err != nil {
@@ -98,7 +98,7 @@ func TestPage_PoolSansSlotSain_AttendPuisRejoue(t *testing.T) {
 func TestPage_429Persistant_RemonteApresTroisTentatives(t *testing.T) {
 	waits := captureSleeps(t)
 	appels := 0
-	_, err := Page(context.Background(), "Nuzzles", 0, fetchScripte(&appels,
+	_, err := Page(context.Background(), "J900004", 0, fetchScripte(&appels,
 		reponse{err: httpErr(429)}, reponse{err: httpErr(429)}, reponse{err: httpErr(429)}))
 	if err == nil {
 		t.Fatal("attendu une erreur, obtenu nil")
@@ -115,7 +115,7 @@ func TestPage_429Persistant_RemonteApresTroisTentatives(t *testing.T) {
 func TestPage_Erreur500_RemonteSansRejeu(t *testing.T) {
 	waits := captureSleeps(t)
 	appels := 0
-	if _, err := Page(context.Background(), "Nuzzles", 50, fetchScripte(&appels,
+	if _, err := Page(context.Background(), "J900004", 50, fetchScripte(&appels,
 		reponse{err: httpErr(500)}, reponse{entrees: []string{"jamais"}})); err == nil {
 		t.Fatal("attendu une erreur, obtenu nil")
 	}
@@ -131,7 +131,7 @@ func TestPage_Erreur500_RemonteSansRejeu(t *testing.T) {
 func TestPage_Erreur503_NonRejoueeIci(t *testing.T) {
 	waits := captureSleeps(t)
 	appels := 0
-	_, err := Page(context.Background(), "Nuzzles", 75, fetchScripte(&appels,
+	_, err := Page(context.Background(), "J900004", 75, fetchScripte(&appels,
 		reponse{err: httpErr(503)}, reponse{entrees: []string{"jamais"}}))
 	var he *haloadapter.HTTPError
 	if !errors.As(err, &he) || he.StatusCode != 503 {

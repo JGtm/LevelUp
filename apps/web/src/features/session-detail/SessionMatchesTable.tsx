@@ -111,7 +111,6 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
     // backend (analysis.BuildSkillTierLabel). Plus la valeur brute.
     skill_tier_label: m.skill_tier_label ?? null,
     skill_rating_delta: m.skill_rating_delta ?? null,
-    expected_win_prob: m.expected_win_prob ?? null,
     // Placement X/Y (phase de placement) : l'Explorer l'affiche dans la colonne Rang
     // à la place du palier quand les deux sont présents.
     placement_done: m.placement_done ?? null,

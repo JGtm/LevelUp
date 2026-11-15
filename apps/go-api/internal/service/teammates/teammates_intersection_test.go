@@ -24,7 +24,7 @@ func makeSquadRowSess(matchID, mapUI string, outcome int, session string, ts tim
 
 // TestGetPage_TwoTeammates_OnlySharedMatchesInCharts : avec 2 coéquipiers, seuls
 // les matchs joués par TOUS (intersection) alimentent les charts. C'est le
-// scénario Chocoboflor/Madina : un match joué sans Madina ne doit pas survivre.
+// scénario Joueur90001/Madina : un match joué sans Madina ne doit pas survivre.
 func TestGetPage_TwoTeammates_OnlySharedMatchesInCharts(t *testing.T) {
 	repo := &mockSquadRepo{
 		topRows: []domain.TopTeammateRow{

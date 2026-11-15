@@ -104,9 +104,9 @@ appearance, err := client.GetSpartanCustomization(ctx, xuid)
 ```
 
 **The career rank is NOT privacy-gated.** Measured on 2026-09-16: `GET /careerranks` for a
-THIRD-PARTY xuid, with three different lender tokens (JGtm, DankerGlue, Trimbutton), returns
+THIRD-PARTY xuid, with three different lender tokens (JGtm, Joueur9001, Joueur9009), returns
 200 with the SAME rank and XP as the owner own call (JGtm: `rank=202 xp=2555` seen by two
-lenders; Nuzzles: `rank=272 xp=0` — 272 is the maximum rank and the zero XP is its true value).
+lenders; J900004: `rank=272 xp=0` — 272 is the maximum rank and the zero XP is its true value).
 `PooledHaloClient.GetCareerRank` therefore acquires in `PolicyAnyPublic`, and
 `sync.ErrNoPinnedToken` no longer exists (D4, sync robustness plan 2026-09-16).
 

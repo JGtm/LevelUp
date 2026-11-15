@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // matchRef relie le préfixe cache (8-char, clé de film_chunks/ + film_manifests/)

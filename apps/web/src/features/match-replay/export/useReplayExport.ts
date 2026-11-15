@@ -217,7 +217,7 @@ export interface ReplayExport {
 const IDLE: ReplayExportState = { phase: 'idle', done: 0, total: 0, pct: 0 }
 
 /** Nombre d'images encodees avant de risquer une estimation : sous ce seuil, elle danserait. */
-const ETA_MIN_FRAMES = 30
+const ETA_MIN_ENCODED = 30
 
 /** Les encres du thème, résolues UNE fois par export (cf. piège 2 de l'en-tête). */
 function readOverlayInk(): OverlayInk {
@@ -480,12 +480,12 @@ function fail(setState: (s: ReplayExportState) => void, message: string): void {
 /**
  * etaFor estime le temps restant depuis la cadence DEJA constatee.
  *
- * `undefined` sous `ETA_MIN_FRAMES` : une estimation batie sur trois images danserait d'un
+ * `undefined` sous `ETA_MIN_ENCODED` : une estimation batie sur trois images danserait d'un
  * facteur dix a chaque rafraichissement, et une estimation qui saute est pire que pas
  * d'estimation.
  */
 function etaFor(done: number, total: number, elapsedMs: number): number | undefined {
-  if (done < ETA_MIN_FRAMES || elapsedMs <= 0) return undefined
+  if (done < ETA_MIN_ENCODED || elapsedMs <= 0) return undefined
   return Math.max(0, Math.round((elapsedMs / done) * (total - done)))
 }
 

@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // capturePuits installe un puits qui enregistre les événements et le retire à la fin du
@@ -55,9 +55,13 @@ func TestPuits_DepotOuvrierPublieUnEvenement(t *testing.T) {
 	if ev.Path != stored.Path {
 		t.Errorf("path = %q, attendu %q (celui de l'accusé)", ev.Path, stored.Path)
 	}
-	if ev.Bytes != len(blob) || ev.Tracks != 1 || ev.SchemaVersion != replay.SchemaVersion {
-		t.Errorf("event = %+v, attendu %d octets, 1 piste, schéma %d",
-			ev, len(blob), replay.SchemaVersion)
+	stocke, serr := os.Stat(stored.Path)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	if int64(ev.Bytes) != stocke.Size() || ev.Tracks != 1 || ev.SchemaVersion != replay.SchemaVersion {
+		t.Errorf("event = %+v, attendu %d octets stockés, 1 piste, schéma %d",
+			ev, stocke.Size(), replay.SchemaVersion)
 	}
 }
 
@@ -66,12 +70,13 @@ func TestPuits_DepotOuvrierPublieUnEvenement(t *testing.T) {
 func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 	vus := capturePuits(t)
 	dir := t.TempDir()
-	path := dir + "/000d5950.json"
+	path := dir + "/000d5950.json.gz"
 	doc := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", doc); err != nil {

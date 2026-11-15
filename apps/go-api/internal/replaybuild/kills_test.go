@@ -5,19 +5,19 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // kills_test.go — la résolution d'identité hors ligne (gamertag -> xuid), sur données
 // 100 % synthétiques (aucun film) : PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1.
 
 func TestResolveKillIdentity_Gamertag(t *testing.T) {
-	byGamertag := map[string]uint64{"Chocoboflor": 2533274822053343}
-	xuid, ok := resolveKillIdentity("Chocoboflor", byGamertag)
-	if !ok || xuid != 2533274822053343 {
-		t.Fatalf("xuid=%d ok=%v, attendu 2533274822053343/true", xuid, ok)
+	byGamertag := map[string]uint64{"Joueur90001": 2760422862404164}
+	xuid, ok := resolveKillIdentity("Joueur90001", byGamertag)
+	if !ok || xuid != 2760422862404164 {
+		t.Fatalf("xuid=%d ok=%v, attendu 2760422862404164/true", xuid, ok)
 	}
 }
 

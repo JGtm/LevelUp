@@ -1,0 +1,105 @@
+package ep
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"testing"
+)
+
+// realistic : n slots par equipe, kA / kB slots remplaces (leaver + remplacant = 2 lignes de roster).
+func mkReal(r *rand.Rand, n, kA, kB int) Match2TeamInput {
+	beta := 25.0 / 3.0 / 2.0
+	build := func(k int) ([]Gaussian, []float64, []float64, []float64) {
+		var g []Gaussian
+		var w []float64
+		var kills, deaths []float64
+		add := func(weight float64) {
+			mu := 25 + r.NormFloat64()*3
+			sg := 3 + r.Float64()*5.3
+			gg, _ := FromMeanSigma(mu, sg)
+			g = append(g, gg)
+			w = append(w, weight)
+			kills = append(kills, float64(poisson(r, 10*math.Max(weight, 0.1))))
+			deaths = append(deaths, float64(poisson(r, 10*math.Max(weight, 0.1))))
+		}
+		for i := 0; i < n; i++ {
+			if i < k {
+				f := 0.15 + 0.7*r.Float64()
+				add(f)
+				add(1 - f)
+			} else {
+				add(1)
+			}
+		}
+		return g, w, kills, deaths
+	}
+	a, wa, ka, da := build(kA)
+	b, wb, kb, db := build(kB)
+	var obs []CountObservation
+	for i := range a {
+		obs = append(obs, CountObservation{PlayerIndex: i, Side: SideA, Type: CountKill, Value: ka[i]}, CountObservation{PlayerIndex: i, Side: SideA, Type: CountDeath, Value: da[i]})
+	}
+	for i := range b {
+		obs = append(obs, CountObservation{PlayerIndex: i, Side: SideB, Type: CountKill, Value: kb[i]}, CountObservation{PlayerIndex: i, Side: SideB, Type: CountDeath, Value: db[i]})
+	}
+	res := TeamWin
+	if r.Intn(2) == 0 {
+		res = TeamLoss
+	}
+	pinv := math.Sqrt2 * math.Erfinv(2*((0.10+1)/2)-1)
+	dm := pinv * math.Sqrt(float64(len(a)+len(b))) * beta
+	return Match2TeamInput{TeamA: a, TeamB: b, ResultA: res, Beta: beta, Tau: 25.0 / 3.0 / 100, DrawMargin: dm, Counts: obs, WeightsA: wa, WeightsB: wb}
+}
+
+func poisson(r *rand.Rand, lambda float64) int {
+	l := math.Exp(-lambda)
+	k, p := 0, 1.0
+	for {
+		k++
+		p *= r.Float64()
+		if p <= l {
+			return k - 1
+		}
+	}
+}
+
+func TestReal(t *testing.T) {
+	cfg := DefaultMatch2TeamConfig()
+	for _, c := range [][3]int{{4, 0, 0}, {4, 1, 0}, {4, 2, 1}, {4, 2, 2}, {6, 2, 0}, {8, 3, 1}, {8, 4, 0}, {12, 4, 4}, {12, 6, 2}} {
+		r := rand.New(rand.NewSource(7))
+		N := 200
+		nc, ncDamp := 0, 0
+		var maxD, sumD float64
+		cmp := 0
+		for k := 0; k < N; k++ {
+			in := mkReal(r, c[0], c[1], c[2])
+			Damping = 0
+			a0, b0, err0 := UpdateMatch2Team(in, cfg)
+			Damping = 0.5
+			a1, b1, err1 := UpdateMatch2Team(in, cfg)
+			Damping = 0
+			if errors.Is(err0, ErrNotConverged) {
+				nc++
+			}
+			if errors.Is(err1, ErrNotConverged) {
+				ncDamp++
+			}
+			if err0 == nil && err1 == nil {
+				cmp++
+				d := 0.0
+				for i := range a0 {
+					d = math.Max(d, math.Abs(a0[i].Mu()-a1[i].Mu()))
+				}
+				for i := range b0 {
+					d = math.Max(d, math.Abs(b0[i].Mu()-b1[i].Mu()))
+				}
+				maxD = math.Max(maxD, d)
+				sumD += d
+			}
+		}
+		fmt.Printf("slots=%d remplaces A=%d B=%d (roster %dv%d): nonconv=%d/%d ; avec amortissement 0.5: %d/%d ; ecart max mu sur cas convergents des deux = %.4f (moy %.5f, n=%d)\n",
+			c[0], c[1], c[2], c[0]+c[1], c[0]+c[2], nc, N, ncDamp, N, maxD, sumD/math.Max(1, float64(cmp)), cmp)
+	}
+}

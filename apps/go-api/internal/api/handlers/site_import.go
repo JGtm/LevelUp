@@ -13,8 +13,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/service"
-	"levelup/go-api/internal/transfer"
+	"levelup/go-api/internal/port"
 )
 
 // Codes des refus de la demande d'import (avant le démarrage).
@@ -27,11 +26,11 @@ const (
 
 // SiteImportHandler sert les routes d'import depuis le site.
 type SiteImportHandler struct {
-	svc *service.SiteImport
+	svc port.SiteImportService
 }
 
 // NewSiteImportHandler crée le handler sur le service de l'import.
-func NewSiteImportHandler(svc *service.SiteImport) *SiteImportHandler {
+func NewSiteImportHandler(svc port.SiteImportService) *SiteImportHandler {
 	return &SiteImportHandler{svc: svc}
 }
 
@@ -55,17 +54,17 @@ type siteImportStatusOutput struct {
 
 // handleStart valide la demande et lance l'import en arrière-plan (202) ; l'état se lit par GET /import/site.
 func (h *SiteImportHandler) handleStart(ctx context.Context, in *siteImportStartInput) (*siteImportStatusOutput, error) {
-	err := h.svc.Start(service.SiteImportRequest{URL: in.Body.URL, Token: in.Body.Token, Gamertag: in.Body.Gamertag})
+	err := h.svc.Start(port.SiteImportRequest{URL: in.Body.URL, Token: in.Body.Token, Gamertag: in.Body.Gamertag})
 	switch {
 	case err == nil:
-		return &siteImportStatusOutput{Body: statusBody(h.svc.Status())}, nil
-	case errors.Is(err, transfer.ErrImportRunning):
+		return &siteImportStatusOutput{Body: h.status()}, nil
+	case errors.Is(err, port.ErrSiteImportRunning):
 		return nil, humacore.NewError(http.StatusConflict, codeImportRunning, "import running")
-	case errors.Is(err, service.ErrSiteImportNoPlayer):
+	case errors.Is(err, port.ErrSiteImportNoPlayer):
 		return nil, humacore.NewError(http.StatusConflict, codeImportNoPlayer, "no tracked player")
-	case errors.Is(err, service.ErrSiteImportAmbiguous):
+	case errors.Is(err, port.ErrSiteImportAmbiguous):
 		return nil, humacore.NewError(http.StatusBadRequest, codeImportAmbiguous, "player ambiguous")
-	case errors.Is(err, service.ErrSiteImportPlayerNoXID):
+	case errors.Is(err, port.ErrSiteImportPlayerNoXID):
 		return nil, humacore.NewError(http.StatusConflict, codeImportNoXuid, "player without xuid")
 	default:
 		return nil, humacore.NewErrorFrom(ctx, http.StatusServiceUnavailable, "import_unavailable", err)
@@ -74,11 +73,11 @@ func (h *SiteImportHandler) handleStart(ctx context.Context, in *siteImportStart
 
 // handleStatus rend l'état de l'import courant ou du dernier.
 func (h *SiteImportHandler) handleStatus(_ context.Context, _ *struct{}) (*siteImportStatusOutput, error) {
-	return &siteImportStatusOutput{Body: statusBody(h.svc.Status())}, nil
+	return &siteImportStatusOutput{Body: h.status()}, nil
 }
 
-// statusBody convertit l'état de l'exécuteur en réponse d'API ; Matches est le nombre de matchs du registre ajoutés.
-func statusBody(st transfer.Status) *domain.SiteImportStatus {
-	return &domain.SiteImportStatus{Phase: string(st.Phase), ErrorCode: st.ErrorCode, Inserted: st.Inserted,
-		Matches: st.Inserted["shared/match_registry"]}
+// status rend l'état de l'import courant ou du dernier, en réponse d'API.
+func (h *SiteImportHandler) status() *domain.SiteImportStatus {
+	st := h.svc.Status()
+	return &st
 }

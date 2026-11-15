@@ -134,6 +134,8 @@ type ligneRapport struct {
 	// Filets : les pertes `replaydiff` qui restent BLOQUANTES — hors de tout bloc couvert par une
 	// mesure du banc, ou calque disparu (verite.go, `filetsDe`).
 	Filets []replaydiff.Difference
+	// FiletsAcceptes : les filets qu'une décision de l'utilisateur accepte (decisions.go).
+	FiletsAcceptes []replaydiff.Difference
 }
 
 // origineBase dit d'ou vient l'artefact de la base, pour la colonne « base » du tableau :

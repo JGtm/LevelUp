@@ -29,10 +29,11 @@
  */
 import { buildCarrierPosAt } from './carrierPosition'
 import type { ReplayKill } from './killFeedLogic'
+import { lifeSlotAt } from './livesMarks'
 import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
-import { isAliveAt, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
+import { msToFrames } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Seuil MÊLÉE, en mètres monde : en deçà, la victime est à portée du geste et l'arc de
@@ -67,25 +68,17 @@ export interface KillFxEntry {
   fam: ShotFamily
   /** Slot de la vie du tueur à cet instant (pour sa couleur) ; null si introuvable. */
   slot: number | null
+  /** Une image DANS la vie du tueur (la dernière si le coup est posthume) : `slot` ne se lit qu'avec elle. */
+  slotFrame: number
+  /** Le tueur tel que le fil le nomme : la clé de repli quand sa vie n'est pas retrouvée (un bot). */
+  killerXuid: string
+  /** Slot de la vie de la victime, et une image DANS cette vie (la dernière : elle vient de finir) ; null = introuvable. */
+  victimSlot: number | null
+  victimFrame: number
+  /** La victime telle que le fil la nomme ; null = le fil ne la nomme pas. */
+  victimXuid: string | null
   /** Germe stable : deux lectures du même instant redonnent la même forme. */
   seed: number
-}
-
-/** slotOfPlayerAt — le slot de la vie du joueur couvrant la frame (ou la dernière close). */
-function slotOfPlayerAt(
-  lives: ReplayTrackReady[] | undefined,
-  frame: number,
-  deathFrames: number,
-): number | null {
-  if (!lives) return null
-  for (const l of lives) {
-    if (isAliveAt(l, frame)) return l.slot
-  }
-  for (const l of lives) {
-    const d = frame - trackWindow(l).end
-    if (d >= 0 && d <= deathFrames) return l.slot
-  }
-  return null
 }
 
 /**
@@ -125,6 +118,10 @@ export function buildKillFx(
     const origin = killer ?? victim
     if (!origin) continue // ni tueur ni victime localisable : on ne dessine rien
     const complete = killer !== null && victim !== null
+    // LES DEUX VIES, une image DANS chacune : c'est ce que « Seul » et « Masquer » lisent (`shownAtSlot`
+    // ne désigne que des vies), et la fenêtre après-mort rend celle qui vient de finir.
+    const killerLife = lifeSlotAt(lives.get(k.xuid), frame, deathFrames)
+    const victimLife = k.victimXuid ? lifeSlotAt(lives.get(k.victimXuid), frame, deathFrames) : null
     out.push({
       frame,
       x: origin.x,
@@ -135,7 +132,12 @@ export function buildKillFx(
       deathY: victim ? victim.y : null,
       dist: complete ? Math.hypot(victim.x - killer.x, victim.y - killer.y) : null,
       fam: familyOf(k.weaponKey ? doc.killEffects?.[k.weaponKey] : undefined),
-      slot: slotOfPlayerAt(lives.get(k.xuid), frame, deathFrames),
+      slot: killerLife ? killerLife.slot : null,
+      slotFrame: killerLife ? killerLife.frame : frame,
+      killerXuid: k.xuid,
+      victimSlot: victimLife ? victimLife.slot : null,
+      victimFrame: victimLife ? victimLife.frame : frame,
+      victimXuid: k.victimXuid || null,
       seed: (frame * 2654435761) % 100003,
     })
   }

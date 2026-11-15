@@ -6,6 +6,7 @@ import (
 	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan/mapper"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
 )
@@ -187,4 +188,24 @@ func toAnalysisEvent(h mapper.HighlightEventRow) highlightevent.HighlightEvent {
 		e.TypeHint = *h.TypeHint
 	}
 	return e
+}
+
+// toPortCSRs convertit les lignes CSR par match extraites du payload de compétence vers le port d'écriture.
+func toPortCSRs(rows []sync.SharedMatchCSRRow) []port.OpenSpartanMatchCSR {
+	out := make([]port.OpenSpartanMatchCSR, len(rows))
+	for i, c := range rows {
+		out[i] = port.OpenSpartanMatchCSR{
+			MatchID:                     c.MatchID,
+			XUID:                        c.XUID,
+			RatingType:                  c.RatingType,
+			RatingValue:                 c.RatingValue,
+			Tier:                        c.Tier,
+			SubTier:                     c.SubTier,
+			TierLabel:                   c.TierLabel,
+			RatingDelta:                 c.RatingDelta,
+			MeasurementMatchesRemaining: c.MeasurementMatchesRemaining,
+			SeasonID:                    c.SeasonID,
+		}
+	}
+	return out
 }

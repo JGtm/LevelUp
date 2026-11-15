@@ -83,6 +83,13 @@ type ImprovementCampaign struct {
 	LinkedChallengeIDs []string `json:"linked_challenge_ids,omitempty"`
 }
 
+// startParams rend les paramètres de mesure de l'axe de la campagne (ceux de son StartCampaign).
+func (c *ImprovementCampaign) startParams() StartParams {
+	return StartParams{
+		UserID: c.UserID, TitleSlug: c.TitleSlug, Axis: c.Axis, AxisKind: c.AxisKind, PlaylistGroup: c.PlaylistGroup,
+	}
+}
+
 // IsActive retourne true si la campagne est en cours.
 func (c *ImprovementCampaign) IsActive() bool { return c.Status == StatusActive }
 
@@ -116,10 +123,6 @@ func (c *ImprovementCampaign) Delta() *float64 {
 	d := *final - c.SnapshotValue
 	return &d
 }
-
-// MinMatchesForTrend est le seuil sous lequel le delta lissé n'est pas affiché.
-// Cf. R1 (delta lissé LOWESS) — l'UI montre "joue encore N matchs" en dessous.
-const MinMatchesForTrend = 20
 
 // MinMatchesForMannWhitney est le seuil sous lequel le test stat n'est pas
 // calculé. Cf. R4 — déclenche la notif "progression confirmée".

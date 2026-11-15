@@ -22,7 +22,7 @@ import (
 func TestMapBackgroundForMap_ParNom(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	repo := &mapNamesStub{mapID: "asset-cliffhanger", names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	bg, err := svc.MapBackgroundForMap(context.Background(), "asset-cliffhanger")
 	if err != nil {
@@ -60,7 +60,7 @@ func TestMapBackgroundForMap_ParMapID(t *testing.T) {
 	// Le stub rend AUSSI un nom qui menerait a « ridgeline » : si la cle map_id ne passait
 	// pas en premier, le test servirait le fond de l'autre carte sans que rien ne le dise.
 	repo := &mapNamesStub{mapID: mapID, names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	bg, err := svc.MapBackgroundForMap(context.Background(), mapID)
 	if err != nil {
@@ -76,7 +76,7 @@ func TestMapBackgroundForMap_ParMapID(t *testing.T) {
 func TestMapBackgroundForMap_SansFond(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	repo := &mapNamesStub{mapID: "asset-inconnue", names: []string{"CarteSansFond"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-inconnue"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
@@ -92,7 +92,7 @@ func TestMapBackgroundForMap_SansFond(t *testing.T) {
 func TestMapBackgroundImageForMap_ImageManquante(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", false)
 	repo := &mapNamesStub{mapID: "asset-cliffhanger", names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-cliffhanger"); err != nil {
 		t.Fatalf("le calage doit rester lisible : %v", err)
@@ -107,7 +107,7 @@ func TestMapBackgroundImageForMap_ImageManquante(t *testing.T) {
 func TestMapBackgroundForMap_RegistreEnEchec(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	repo := &mapNamesStub{err: errors.New("registre illisible")}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)

@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // maxRetries : le nombre d'essais de la politique de production des films (vérifié à l'init : une

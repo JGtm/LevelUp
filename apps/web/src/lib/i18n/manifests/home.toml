@@ -42,6 +42,83 @@ en = "Data is being synced. The first sync can take a few minutes. This page wil
 fr = "Actualiser"
 en = "Refresh"
 
+# État réel de la synchronisation d'un joueur sans match (features/home/firstSyncState.ts).
+[home.first_sync.waiting_title]
+fr = "En attente de connexion"
+en = "Waiting for sign-in"
+
+[home.first_sync.waiting_description]
+fr = "La connexion au compte Xbox a expiré : la synchronisation reste arrêtée tant qu'il n'est pas reconnecté. Reconnecte-le pour récupérer tes matchs."
+en = "The Xbox account sign-in has expired: sync stays stopped until it is signed in again. Sign in again to retrieve your matches."
+
+[home.first_sync.waiting_action]
+fr = "Se reconnecter"
+en = "Sign in again"
+
+[home.first_sync.paused_title]
+fr = "Synchronisation en pause"
+en = "Sync paused"
+
+[home.first_sync.paused_description]
+fr = "La synchronisation de ce titre est en pause pour ce joueur : aucun match n'est récupéré tant qu'elle n'est pas réactivée dans les réglages des jeux."
+en = "Sync for this title is paused for this player: no match is retrieved until it is turned back on in the game settings."
+
+[home.first_sync.failed_title]
+fr = "Échec de la synchronisation"
+en = "Sync failed"
+
+[home.first_sync.retry_action]
+fr = "Réessayer"
+en = "Try again"
+
+[home.first_sync.empty_title]
+fr = "Aucun match trouvé"
+en = "No match found"
+
+[home.first_sync.empty_description]
+fr = "La synchronisation est terminée, mais aucun match n'a été trouvé pour ce compte sur ce titre."
+en = "The sync is finished, but no match was found for this account on this title."
+
+[home.first_sync.idle_title]
+fr = "Aucun match synchronisé pour l'instant"
+en = "No match synced yet"
+
+[home.first_sync.idle_description]
+fr = "Aucune synchronisation n'a été lancée depuis cet écran. La synchronisation automatique récupérera les matchs à son prochain passage, ou elle peut être lancée maintenant."
+en = "No sync has been started from this screen. The automatic sync will retrieve the matches on its next pass, or it can be started now."
+
+[home.first_sync.idle_description_readonly]
+fr = "Aucun match n'a encore été synchronisé pour ce joueur. Ses matchs apparaîtront après la prochaine synchronisation de son propriétaire."
+en = "No match has been synced for this player yet. Their matches will appear after the owner's next sync."
+
+[home.first_sync.start_action]
+fr = "Lancer la synchronisation"
+en = "Start sync"
+
+[home.first_sync.cooldown_note]
+fr = "Une nouvelle synchronisation sera possible dans environ {minutes} min."
+en = "A new sync will be possible in about {minutes} min."
+
+[home.first_sync.start_cooldown]
+fr = "Une synchronisation vient d'être lancée : réessaie dans quelques minutes."
+en = "A sync was just started: try again in a few minutes."
+
+[home.first_sync.start_already_active]
+fr = "Une synchronisation de ce joueur est déjà en cours."
+en = "A sync of this player is already running."
+
+[home.first_sync.status_error_title]
+fr = "État de la synchronisation indisponible"
+en = "Sync status unavailable"
+
+[home.first_sync.status_error_description]
+fr = "Le serveur n'a pas pu dire où en est la synchronisation de ce joueur. Réessaie dans un instant."
+en = "The server could not say where the sync of this player stands. Try again in a moment."
+
+[home.first_sync.start_failed]
+fr = "La synchronisation n'a pas pu démarrer."
+en = "The sync could not be started."
+
 [home.errors.retry]
 fr = "Réessayer"
 en = "Retry"

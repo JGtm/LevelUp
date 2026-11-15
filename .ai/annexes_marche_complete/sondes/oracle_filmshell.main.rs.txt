@@ -1,0 +1,244 @@
+// Temoin jetable : rend, pour un film Halo Infinite, tout ce que lit la marche de libfilmshell,
+// une ligne TSV par element lu, avec des positions de bit relatives a la charge utile du paquet.
+// Voir LISEZMOI.md pour la definition exacte de chaque position.
+use filmshell::research::{components, container, events, header, inflate, levels, payload};
+use std::fmt::Display;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+
+const HEADER: &str = "film\tchunk\tpaquet\toctet_debut\toctet_fin\ttick\tvue\tbit\ttype\tindex\tgeneration\ttype_entite\tcomposants\tblocs\tdetail";
+
+/// Un paquet de type 0 du film, tel que le container le range.
+struct Pkt {
+    ci: usize,
+    rank_all: usize,
+    rank0: usize,
+    start: usize,
+    end: usize,
+    ts_us: u64,
+}
+
+fn opt<T: Display>(o: Option<T>) -> String {
+    o.map_or("-".to_string(), |v| v.to_string())
+}
+
+fn stop_str(s: Option<payload::Stop>) -> String {
+    s.map_or("aucun".to_string(), |s| format!("{s:?}"))
+}
+
+fn load_chunks(dir: &Path) -> Result<Vec<Vec<u8>>, String> {
+    let mut v: Vec<(u32, Vec<u8>)> = Vec::new();
+    for e in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+        let p = e.map_err(|e| e.to_string())?.path();
+        let name = p.file_name().unwrap().to_str().unwrap().to_string();
+        let Some(n) = name.strip_prefix("chunk_").and_then(|s| s.strip_suffix(".bin")).and_then(|s| s.parse::<u32>().ok()) else {
+            continue;
+        };
+        let b = std::fs::read(&p).map_err(|e| e.to_string())?;
+        let b = if b.len() > 2 && b[0] == 0x78 {
+            match inflate::zlib(&b, 1 << 28) {
+                Ok(x) => x,
+                Err(_) => b,
+            }
+        } else {
+            b
+        };
+        v.push((n, b));
+    }
+    v.sort_by_key(|x| x.0);
+    for (i, (n, _)) in v.iter().enumerate() {
+        if *n as usize != i {
+            eprintln!("attention : {} : le fichier chunk_{n:02} est en position {i} (numerotation non contigue)", dir.display());
+        }
+    }
+    let mut chunks: Vec<Vec<u8>> = v.into_iter().map(|x| x.1).collect();
+    chunks.pop(); // chunk des temps forts, ecarte comme la sonde d'origine
+    Ok(chunks)
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.len() < 3 {
+        eprintln!("usage : oracle <racine_des_films> <dossier_de_sortie> <id8> [<id8> ...]");
+        std::process::exit(2);
+    }
+    let root = PathBuf::from(&args[0]);
+    let out_dir = PathBuf::from(&args[1]);
+    std::fs::create_dir_all(&out_dir).expect("creation du dossier de sortie");
+    for id in &args[2..] {
+        run_film(id, &root.join(id), &out_dir.join(format!("{id}.tsv")));
+    }
+}
+
+fn run_film(id: &str, dir: &Path, out_path: &Path) {
+    let t0 = Instant::now();
+    let chunks = match load_chunks(dir) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{id}: ERREUR chargement : {e}");
+            return;
+        }
+    };
+    let film = container::Film::new(chunks, container::Framing::Packets);
+    let mut w = std::io::BufWriter::with_capacity(1 << 20, std::fs::File::create(out_path).expect("creation du TSV"));
+    writeln!(w, "{HEADER}").unwrap();
+    if film.framing != container::Framing::Packets {
+        println!("{id}: un chunk ne se decoupe pas en paquets : repli sur marqueurs, rien a lire (TSV vide)");
+        return;
+    }
+    let Some(level) = header::read(&film.chunks[0]).level.and_then(levels::level) else {
+        println!("{id}: niveau inconnu (TSV vide)");
+        return;
+    };
+    let mut params = components::Params::new(level.widths);
+    params.set_level(Some(level));
+
+    // Table des paquets de type 0, dans l'ordre des frames du container.
+    let mut table: Vec<Pkt> = Vec::new();
+    for ci in 1..film.chunks.len() {
+        let mut rank0 = 0;
+        for (rank_all, p) in film.packets(ci).unwrap_or(&[]).iter().enumerate() {
+            if p.kind != 0 {
+                continue;
+            }
+            table.push(Pkt { ci, rank_all, rank0, start: p.start, end: p.end, ts_us: p.ts_us });
+            rank0 += 1;
+        }
+    }
+    let nframes = film.frames().count();
+    assert_eq!(nframes, table.len(), "{id}: frames et paquets de type 0 ne se correspondent pas");
+    for (fr, p) in film.frames().zip(&table) {
+        assert!(fr.start == p.start && fr.end == p.end, "{id}: frame {} != paquet", fr.index);
+    }
+    let ticks = film.frame_ticks().to_vec();
+
+    let mut walker = payload::Walker::new(&film.chunks[0], params);
+    let (mut n, mut exact, mut skipped_total, mut stopped, mut lines) = (0u64, 0u64, 0u64, 0u64, 0u64);
+    let mut buf = String::new();
+
+    payload::for_each_payload_in(&film, &mut walker, |fi, c, p| {
+        let pk = &table[fi];
+        let base = 8 * pk.start as i64;
+        let rel = |a: i64| a - base;
+        let end_bits = 8 * pk.end as i64;
+        n += 1;
+        skipped_total += p.skipped.len() as u64;
+        stopped += p.stop.is_some() as u64;
+        let tick = ticks[fi];
+        let prefix = format!("{id}\t{}\t{}\t{}\t{}\t{tick}", pk.ci, pk.rank_all, pk.start, pk.end);
+        let mut line = |vue: &str, bit: String, ty: String, index: String, gener: String, tent: String, comps: String, blocs: String, detail: String| {
+            buf.clear();
+            use std::fmt::Write as _;
+            write!(buf, "{prefix}\t{vue}\t{bit}\t{ty}\t{index}\t{gener}\t{tent}\t{comps}\t{blocs}\t{detail}\n").unwrap();
+            w.write_all(buf.as_bytes()).unwrap();
+            lines += 1;
+        };
+
+        // --- P : le paquet
+        let (msgs, cend) = components::control_view(c, p.end, &params);
+        let rest = cend.map(|e| end_bits - e);
+        let in_last = rest.is_some_and(|r| (0..8).contains(&r));
+        if p.stop.is_none() && in_last {
+            exact += 1;
+        }
+        let mut d = format!(
+            "rang0={};taille={};ts_us={};event_stop={};stop={};reprises={}",
+            pk.rank0,
+            pk.end - pk.start,
+            pk.ts_us,
+            stop_str(p.event_stop),
+            stop_str(p.stop),
+            p.skipped.len()
+        );
+        for (i, (s, from, to)) in p.skipped.iter().enumerate() {
+            d += &format!(";reprise{}={s:?}@{}>{}", i + 1, rel(*from), rel(*to));
+        }
+        d += &format!(
+            ";entity_start={};end={};ctrl_valide={};ctrl_msgs={};ctrl_fin={};ctrl_reste_bits={};ctrl_fin_dernier_octet={}",
+            opt(p.entity_start.map(rel)),
+            rel(p.end),
+            if p.stop.is_none() { "oui" } else { "non(stop)" },
+            msgs.len(),
+            opt(cend.map(rel)),
+            opt(rest),
+            if cend.is_none() { "na" } else if in_last { "oui" } else { "non" }
+        );
+        line("P", "0".into(), "paquet".into(), "".into(), "".into(), "".into(), "".into(), "".into(), d);
+
+        // --- A : la vue des evenements
+        for e in &p.events {
+            let mut d = String::new();
+            for (i, h) in e.handles.iter().enumerate() {
+                if i > 0 {
+                    d.push(';');
+                }
+                match h {
+                    Some(h) => d += &format!("h{i}={}:{}{}", h.entity(), h.generation, if h.unit { "u" } else { "" }),
+                    None => d += &format!("h{i}=-"),
+                }
+            }
+            d += &format!(";body={:?}", e.body);
+            line("A", rel(e.at).to_string(), e.kind.to_string(), "".into(), "".into(), "".into(), "".into(), "".into(), d);
+        }
+
+        // --- B : la vue des entites
+        for op in &p.ops {
+            let (ty, op_bit, comps, blocs, mut d): (&str, i64, Vec<u32>, Vec<(u32, i64)>, String) = match &op.kind {
+                payload::OpKind::Update { list, fields } => ("update", op.at - 1, list.clone(), fields.blocks.clone(), String::new()),
+                payload::OpKind::Create { tag } => {
+                    let blocks = op.init.as_ref().map(|f| f.blocks.clone()).unwrap_or_default();
+                    let comps = blocks.iter().map(|b| b.0).collect();
+                    let mut d = format!("tag={}", tag.map_or("-".to_string(), |t| format!("0x{t:08x}")));
+                    if op.init.is_none() {
+                        d += ";init=absent";
+                    }
+                    ("create", op.at - 3, comps, blocks, d)
+                }
+                payload::OpKind::Delete => ("delete", op.at - 3, vec![], vec![], String::new()),
+            };
+            if !d.is_empty() {
+                d.push(';');
+            }
+            d += &format!("op_bit={}", rel(op_bit));
+            if op.shooter.0.is_some() || op.shooter.1.is_some() {
+                d += &format!(";tireur={}", opt(op.shooter.0));
+                if let Some(h) = op.shooter.1 {
+                    d += &format!(",{}:{}{}", h.entity(), h.generation, if h.unit { "u" } else { "" });
+                }
+            }
+            let comps_s = comps.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(",");
+            let blocs_s = blocs.iter().map(|(k, b)| format!("{k}:{}", rel(*b))).collect::<Vec<_>>().join(",");
+            line("B", rel(op.at).to_string(), ty.into(), op.index.to_string(), op.generation.to_string(), opt(op.entity_type), comps_s, blocs_s, d);
+        }
+
+        // --- C : la vue de controle (seulement quand la vue des entites s'est terminee par son op 0)
+        if p.stop.is_none() && cend.is_some() {
+            for m in &msgs {
+                #[cfg(feature = "patched")]
+                let bit = rel(m.at).to_string();
+                #[cfg(not(feature = "patched"))]
+                let bit = String::new();
+                let d = format!(
+                    "joueur={};genre={};debit={};etat={};cmd_bit={};tete={};plan={}",
+                    m.player,
+                    if m.command_at.is_some() { 1 } else { 0 },
+                    m.throttle.map_or("-".to_string(), |t| format!("{},{}", t[0], t[1])),
+                    opt(m.state),
+                    opt(m.command_at.map(rel)),
+                    m.head.iter().map(|h| opt(*h)).collect::<Vec<_>>().join(","),
+                    m.plan.map_or("-".to_string(), |pl| pl.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(",")),
+                );
+                line("C", bit, "message".into(), "".into(), "".into(), "".into(), "".into(), "".into(), d);
+            }
+        }
+    });
+    w.flush().unwrap();
+    let _ = events::INDEX_BITS;
+    let pct = 100.0 * exact as f64 / n.max(1) as f64;
+    println!(
+        "{id}: paquets {n} (frames {nframes}, sans ligne P {}) | lu jusqu'au dernier octet {pct:.2}% ({exact}/{n}) | reprises {skipped_total} | arrets definitifs {stopped} | lignes {lines} | {:.1} s",
+        nframes as u64 - n,
+        t0.elapsed().as_secs_f64()
+    );
+}

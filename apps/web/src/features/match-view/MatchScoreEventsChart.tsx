@@ -29,7 +29,7 @@
  *
  * La projection (paliers -> marques datées) vit dans `_scoreEvents.ts`, pur et testé.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -109,7 +109,7 @@ export function MatchScoreEventsChart({
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<ScoreEventsTeam>[]): EChartsCoreOption => {
+    (s: ChartSeries<ScoreEventsTeam>[]): ChartOption => {
       if (s.length === 0 || !events) return { backgroundColor: CHART_BG }
       // Les tokens sont résolus ICI, dans le builder : leur valeur calculée change avec la
       // palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard,
@@ -158,7 +158,7 @@ function scoreEventsOption(
   events: ScoreEvents,
   tc: EChartsThemeColors,
   t: MatchViewText,
-): EChartsCoreOption {
+): ChartOption {
   const couleurs = new Map(
     events.teams.map((team) => [team.teamId, teamSeriesColor(team.ally, tc)] as const),
   )

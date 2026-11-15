@@ -5,9 +5,10 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/mapfondsidecar"
+	"levelup/go-api/internal/replaytext"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func toMapObjectives(v replay.MapObjectives) replaydoc.MapObjectives {
@@ -84,7 +85,7 @@ func toSurface(v replay.Surface) replaydoc.Surface {
 	}
 }
 
-func toMapBackground(v replay.MapBackground) replaydoc.MapBackground {
+func toMapBackground(v mapfondsidecar.MapBackground) replaydoc.MapBackground {
 	return replaydoc.MapBackground{
 		SchemaVersion: v.SchemaVersion,
 		Module:        v.Module,
@@ -96,6 +97,8 @@ func toMapBackground(v replay.MapBackground) replaydoc.MapBackground {
 		Calibration:   toMapBackgroundCalibration(v.Calibration),
 		Stats:         toMapBackgroundStats(v.Stats),
 		Degradations:  v.Degradations,
+		Plan:          v.Plan,
+		PlanImage:     v.PlanImage,
 	}
 }
 
@@ -148,7 +151,7 @@ func toCalloutZone(v replay.CalloutZone) replaydoc.CalloutZone {
 	return replaydoc.CalloutZone{
 		VolumeIndex: v.VolumeIndex,
 		Name:        v.Name,
-		Text:        replaylabels.TexteDepuisFilm(v.Text),
+		Text:        replaytext.TexteDepuisFilm(v.Text),
 		X:           v.X,
 		Y:           v.Y,
 		Z:           v.Z,

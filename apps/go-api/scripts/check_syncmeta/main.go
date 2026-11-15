@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	dbPath := `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\data\titles\halo_infinite\players\Chocoboflor\stats.duckdb?access_mode=read_only`
+	dbPath := `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\data\titles\halo_infinite\players\Joueur90001\stats.duckdb?access_mode=read_only`
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		fmt.Println("open err:", err)

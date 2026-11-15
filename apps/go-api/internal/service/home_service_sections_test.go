@@ -15,7 +15,7 @@ import (
 // enrichissements par tuile une par liste.
 func TestGetHomePage_SectionsDeDuree(t *testing.T) {
 	repo := homeReplayRepo(time.Now())
-	svc := withHomeMock(NewHomeService(repo), repo).WithReplay(&stubReplayService{})
+	svc := withHomeMock(NewHomeService(repo, nil), repo).WithReplay(&stubReplayService{})
 	ctx, chrono := timing.WithTimings(context.Background())
 	if _, err := svc.GetHomePage(ctx, "TestGT", "fr"); err != nil {
 		t.Fatalf("GetHomePage: %v", err)

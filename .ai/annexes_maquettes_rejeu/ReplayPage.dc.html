@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Socle du rejeu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&amp;display=swap">
+<style>body{margin:0;background:#050505}</style>
+</helmet>
+<div ref="{{rootRef}}" style="width: 1280px; height: 880px; position: relative; overflow: hidden; background: #050505; color: #fafafa; font-family: Roboto, system-ui, sans-serif; font-size: 12px">
+
+  <div style="height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 12px; color: #a1a1a1">
+    <span>Retour</span><span>·</span><span>JGtm</span><span>›</span><span>Capture du drapeau · carte fictive</span><span>›</span><span style="color: #fafafa; font-weight: 700">Rejeu 2D</span>
+    <span style="margin-left: auto">9 nov. 2026, 20:30</span>
+    <span style="border: 1px solid #2a2a2a; border-radius: 6px; padding: 4px 8px; color: #fafafa">Détails du match</span>
+  </div>
+
+  <div style="position: absolute; left: 4px; top: 40px; width: 778px; height: 28px; display: flex; align-items: center; background: #101010">
+    <div style="flex: 1; height: 100%; display: flex; justify-content: flex-end"><div style="width: 58%; background: #2ee08f; color: #06281a; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-weight: 900; font-size: 15px">2</div></div>
+    <div style="width: 66px; text-align: center; font-weight: 700; font-size: 13px">4:24</div>
+    <div style="flex: 1; height: 100%"><div style="width: 30%; height: 100%; background: #e5393b; color: #2b0505; display: flex; align-items: center; padding-left: 10px; font-weight: 900; font-size: 15px">1</div></div>
+  </div>
+
+  <div style="position: absolute; left: 4px; top: 72px; width: 776px; height: 462px; background: #0d0d0d; border: 1px solid #1f1f1f; border-radius: 8px; overflow: hidden">
+    <div style="position: absolute; left: 8px; top: 5px; width: 760px; height: 450px">
+      <div style="position: absolute; inset: 0; transform-origin: 0 0; transform: {{camera}}; transition: transform .3s ease">
+      <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+        <rect width="760" height="450" fill="#191919"></rect>
+        <polygon points="20,70 240,44 268,186 118,214 34,190" fill="#8b8b8b"></polygon>
+        <polygon points="268,70 470,48 492,206 300,226" fill="#a2a2a2"></polygon>
+        <polygon points="492,60 716,86 738,262 520,240" fill="#8f8f8f"></polygon>
+        <polygon points="40,224 300,240 322,436 62,420" fill="#7c7c7c"></polygon>
+        <polygon points="330,240 620,256 640,430 348,436" fill="#969696"></polygon>
+        <polygon points="646,276 742,284 748,420 662,428" fill="#707070"></polygon>
+        <rect x="196" y="270" width="104" height="96" fill="#6a6a78" stroke="#3a3a42"></rect>
+        <rect x="452" y="288" width="96" height="84" fill="#6f6f7c" stroke="#3a3a42"></rect>
+        <rect x="358" y="104" width="72" height="66" fill="#77777f" stroke="#3a3a42"></rect>
+        <path d="M60 110H200M90 150H220M300 96V210M520 120H700M560 160V236M90 280V400M360 300H440M380 396H620M640 300V410" stroke="#3a3a3a" stroke-width="2" fill="none"></path>
+      </svg>
+
+      <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0; opacity: {{sceneOpacity}}">
+        <path d="{{layers.coneA}}" fill="#2ee08f" fill-opacity="0.2"></path>
+        <path d="{{layers.coneE}}" fill="#e5393b" fill-opacity="0.2"></path>
+        <path d="{{layers.trailA}}" stroke="#2ee08f" stroke-width="1.6" stroke-opacity="0.75" fill="none"></path>
+        <path d="{{layers.trailE}}" stroke="#e5393b" stroke-width="1.6" stroke-opacity="0.75" fill="none"></path>
+      </svg>
+
+      <sc-if value="{{layers.zones}}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{callouts}}" as="z" hint-placeholder-count="6">
+          <div style="position: absolute; left: {{z.x}}px; top: {{z.y}}px; transform: translate(-50%,-50%); font-size: 10px; font-weight: 700; color: #ffffff; text-shadow: 0 0 3px #000, 0 0 2px #000; opacity: {{sceneOpacity}}">{{z.n}}</div>
+        </sc-for>
+      </sc-if>
+
+      <sc-for list="{{objects}}" as="o" hint-placeholder-count="5">
+        <div style="position: absolute; left: {{o.x}}px; top: {{o.y}}px; width: {{o.s}}px; height: {{o.s}}px; transform: translate(-50%,-50%) rotate({{o.r}}deg); background: {{o.bg}}; border: 1px solid {{o.bd}}; border-radius: {{o.rad}}px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: #fafafa; opacity: {{sceneOpacity}}">{{o.l}}</div>
+      </sc-for>
+
+      <sc-for list="{{pawns}}" as="p" hint-placeholder-count="8">
+        <div style="position: absolute; left: {{p.x}}px; top: {{p.y}}px; opacity: {{p.op}}">
+          <div style="position: absolute; left: -5px; top: -5px; width: 9px; height: 9px; background: {{p.c}}; border-radius: {{p.rad}}; box-shadow: 0 0 0 1px rgba(255,255,255,.62)"></div>
+          <div style="position: absolute; left: -60px; width: 120px; top: 7px; text-align: center; font-size: 10.5px; font-weight: 500; color: {{p.c}}; text-shadow: 0 0 3px #000, 0 0 2px #000">{{p.n}}</div>
+        </div>
+      </sc-for>
+
+      <sc-if value="{{fx.lien}}" hint-placeholder-val="{{ false }}">
+        <div data-fx="fade" style="position: absolute; inset: 0; background: rgba(0,0,0,.22)"></div>
+        <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+          <line x1="{{fx.lx1}}" y1="{{fx.ly1}}" x2="{{fx.lx2}}" y2="{{fx.ly2}}" stroke="#000" stroke-opacity=".7" stroke-width="5"></line>
+          <line data-fx="draw" pathLength="1" stroke-dasharray="1" x1="{{fx.lx1}}" y1="{{fx.ly1}}" x2="{{fx.lx2}}" y2="{{fx.ly2}}" stroke="{{fx.kc}}" stroke-width="2.5"></line>
+          <path d="{{fx.arrow}}" fill="{{fx.kc}}" stroke="#000" stroke-width="1"></path>
+        </svg>
+        <div style="position: absolute; left: {{fx.mx}}px; top: {{fx.my}}px; transform: translate(-50%,-50%)"><div data-fx="pop" style="display: flex; align-items: center; gap: 6px; background: #0b0b0b; border: 1px solid {{fx.kc}}; border-radius: 4px; padding: 3px 7px; white-space: nowrap; font-size: 11px"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="#fafafa"></path></svg><span style="font-weight: 700">{{fx.weapon}}</span><span style="color: #a1a1a1">{{fx.dist}}</span></div></div>
+        <div style="position: absolute; left: {{fx.kx}}px; top: {{fx.ky}}px; transform: translate(-50%,-30px)"><div data-fx="pop" style="background: {{fx.kc}}; color: #050505; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 3px; white-space: nowrap">TUEUR</div></div>
+        <div style="position: absolute; left: {{fx.vx}}px; top: {{fx.vy}}px; transform: translate(-50%,-30px)"><div data-fx="pop" style="background: #0b0b0b; border: 1px solid {{fx.vc}}; color: {{fx.vc}}; font-size: 10px; font-weight: 900; padding: 1px 6px; border-radius: 3px; white-space: nowrap">VICTIME</div></div>
+        <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0"><path d="{{fx.cross}}" stroke="#fff" stroke-width="2.4" fill="none"></path></svg>
+      </sc-if>
+
+      <sc-if value="{{fx.projecteur}}" hint-placeholder-val="{{ false }}">
+        <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+          <mask id="trous"><rect width="760" height="450" fill="#fff"></rect>
+            <circle cx="{{fx.kx}}" cy="{{fx.ky}}" r="34" fill="#000"></circle>
+            <circle cx="{{fx.vx}}" cy="{{fx.vy}}" r="34" fill="#000"></circle>
+          </mask>
+          <rect data-fx="fade" width="760" height="450" fill="#000" fill-opacity=".1" mask="url(#trous)"></rect>
+          <path data-fx="verrou" d="{{fx.bracketK}}" stroke="{{fx.kc}}" stroke-width="3" fill="none" style="transform-box: fill-box; transform-origin: center"></path>
+          <path data-fx="verrou" d="{{fx.bracketV}}" stroke="{{fx.vc}}" stroke-width="3" fill="none" style="transform-box: fill-box; transform-origin: center"></path>
+          <path d="{{fx.cross}}" stroke="#fff" stroke-width="2.4" fill="none"></path>
+        </svg>
+        <div style="position: absolute; left: {{fx.kx}}px; top: {{fx.ky}}px; transform: translate(-50%,27px)"><div data-fx="pop" style="display: flex; align-items: center; gap: 6px; background: {{fx.kc}}; color: #050505; padding: 3px 9px 3px 7px; white-space: nowrap; font-size: 13px; font-weight: 900; clip-path: polygon(0 0,100% 0,100% 72%,90% 100%,0 100%)"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="#050505"></path></svg>{{fx.kName}}</div></div>
+        <div style="position: absolute; left: {{fx.vx}}px; top: {{fx.vy}}px; transform: translate(-50%,27px)"><div data-fx="pop" style="display: flex; align-items: center; gap: 6px; background: #0b0b0b; color: {{fx.vc}}; box-shadow: inset 0 0 0 1.5px {{fx.vc}}; padding: 3px 9px 3px 7px; white-space: nowrap; font-size: 13px; font-weight: 900; clip-path: polygon(0 0,100% 0,100% 72%,90% 100%,0 100%)"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="2"></path></svg>{{fx.vName}}</div></div>
+      </sc-if>
+
+      <sc-if value="{{fx.balises}}" hint-placeholder-val="{{ false }}">
+        <svg width="760" height="450" viewBox="0 0 760 450" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+          <line x1="{{fx.kx}}" y1="{{fx.stemK}}" x2="{{fx.kx}}" y2="{{fx.ky}}" stroke="{{fx.kc}}" stroke-width="2"></line>
+          <line x1="{{fx.vx}}" y1="{{fx.stemV}}" x2="{{fx.vx}}" y2="{{fx.vy}}" stroke="{{fx.vc}}" stroke-width="2"></line>
+          <path d="{{fx.cross}}" stroke="#fff" stroke-width="2.4" fill="none"></path>
+        </svg>
+        <div style="position: absolute; left: {{fx.vx}}px; top: {{fx.vy}}px; width: 20px; height: 20px; margin: -10px 0 0 -10px"><div data-fx="ping" style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid {{fx.vc}}; opacity: 0"></div></div>
+        <div style="position: absolute; left: {{fx.kx}}px; top: {{fx.stemK}}px; transform: translate(-50%,-100%)"><div data-fx="drop" style="display: flex; align-items: center; gap: 6px; background: {{fx.kc}}; color: #050505; padding: 3px 9px 3px 7px; white-space: nowrap; font-size: 11.5px; font-weight: 900; clip-path: polygon(0 0,100% 0,100% 72%,90% 100%,0 100%)"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="#050505"></path></svg>{{fx.kName}}</div></div>
+        <div style="position: absolute; left: {{fx.vx}}px; top: {{fx.stemV}}px; transform: translate(-50%,-100%)"><div data-fx="drop" style="display: flex; align-items: center; gap: 6px; background: #0b0b0b; color: {{fx.vc}}; box-shadow: inset 0 0 0 1.5px {{fx.vc}}; padding: 3px 9px 3px 7px; white-space: nowrap; font-size: 11.5px; font-weight: 900; clip-path: polygon(0 0,100% 0,100% 72%,90% 100%,0 100%)"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="2"></path></svg>{{fx.vName}}</div></div>
+      </sc-if>
+
+      </div>
+
+      <sc-if value="{{showRail}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: 8px; top: 8px; display: flex; flex-direction: column; gap: 2px; background: rgba(10,10,10,.82); border: 1px solid #2a2a2a; border-radius: 8px; padding: 4px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+            <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.active}}" aria-label="{{p.label}}" style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 8px; border: 0; border-radius: 5px; cursor: pointer; font: inherit; background: {{p.bg}}; color: {{p.fg}}">
+              <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="{{p.d}}" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+              <sc-if value="{{p.active}}" hint-placeholder-val="{{ false }}"><span style="font-weight: 700">{{p.label}}</span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showAuto}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; right: 8px; top: 8px; width: 330px">
+          <button type="button" onClick="{{toggleAuto}}" aria-expanded="{{autoOpen}}" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 10px; background: rgba(10,10,10,.88); border: 1px solid #2a2a2a; border-radius: 8px; color: #fafafa; font: inherit; cursor: pointer"><span style="color: #a1a1a1">Vue</span><span style="font-weight: 700">{{currentPresetLabel}}</span><span style="margin-left: auto; color: #a1a1a1; font-size: 11px">{{autoHint}}</span></button>
+          <sc-if value="{{autoOpen}}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: 4px; padding: 6px; background: rgba(10,10,10,.94); border: 1px solid #2a2a2a; border-radius: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+              <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+                <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.active}}" style="text-align: left; padding: 7px; border-radius: 6px; border: 1px solid {{p.bd}}; background: {{p.bg2}}; color: #fafafa; font: inherit; cursor: pointer">
+                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="{{p.d}}" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+                  <div style="font-weight: 700; margin-top: 3px">{{p.label}}</div>
+                  <div style="color: #a1a1a1; font-size: 10.5px">{{p.desc}}</div>
+                </button>
+              </sc-for>
+              <div style="grid-column: 1 / -1; padding: 6px 2px 0; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">CALQUES</div>
+              <sc-for list="{{layerToggles}}" as="t" hint-placeholder-count="8">
+                <button type="button" onClick="{{t.pick}}" role="switch" aria-checked="{{t.on}}" style="display: flex; align-items: center; height: 28px; padding: 0 6px; background: none; border: 0; color: #fafafa; font: inherit; cursor: pointer">{{t.l}}<span style="margin-left: auto; width: 26px; height: 14px; border-radius: 7px; background: {{t.track}}; position: relative"><span style="position: absolute; top: 2px; left: {{t.knob}}px; width: 10px; height: 10px; border-radius: 50%; background: #fafafa"></span></span></button>
+              </sc-for>
+              <div style="grid-column: 1 / -1; border-top: 1px solid #2a2a2a; margin-top: 4px; padding-top: 4px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; color: #d4d4d4">
+                <span style="padding: 5px 6px">Effets ›</span><span style="padding: 5px 6px">Carte de chaleur ›</span><span style="padding: 5px 6px">Couleurs ›</span><span style="padding: 5px 6px">Sons ›</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showBubble}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: {{bubble.x}}px; top: {{bubble.y}}px; width: 262px; background: rgba(12,12,12,.96); border: 1px solid #333; border-radius: 8px; padding: 10px">
+          <div style="display: flex; align-items: center; gap: 6px"><span style="font-weight: 900; font-size: 13px; color: {{sel.c}}">{{sel.n}}</span><span style="margin-left: auto; font-size: 11px; color: #a1a1a1">à 4:24</span></div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 8px"><sc-for list="{{sel.tiles}}" as="t" hint-placeholder-count="6"><div style="background: #1a1a1a; border-radius: 4px; padding: 5px 6px"><div style="font-weight: 700; font-size: 13px">{{t.v}}</div><div style="color: #a1a1a1; font-size: 10px">{{t.l}}</div></div></sc-for></div>
+          <div style="margin-top: 8px; display: flex; gap: 4px"><sc-for list="{{actions}}" as="a" hint-placeholder-count="3"><button type="button" onClick="{{a.pick}}" aria-pressed="{{a.on}}" style="flex: 1; height: 28px; font: inherit; color: {{a.fg}}; background: {{a.bg}}; border: 1px solid #333; border-radius: 5px; cursor: pointer">{{a.l}}</button></sc-for></div>
+        </div>
+      </sc-if>
+
+      <div style="position: absolute; right: 8px; bottom: 8px; width: 84px; height: 110px; background: rgba(10,10,10,.75); border-radius: 8px; display: flex; flex-direction: column; align-items: center; padding-top: 6px; color: #a1a1a1; gap: 4px"><div>− 1× +</div><svg width="52" height="62" viewBox="0 0 52 62" aria-hidden="true"><path d="M26 6l-6 8h12zM26 56l-6-8h12zM6 31l8-6v12zM46 31l-8-6v12z" fill="#555"></path></svg></div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 12px; top: 540px; width: 760px; height: 92px; display: grid; grid-template-columns: 96px 1fr; row-gap: 6px; align-items: center; color: #a1a1a1; font-size: 10px; font-weight: 700; letter-spacing: .08em">
+    <div>JGTM</div><div style="height: 14px; background: #0f0f0f; position: relative"><sc-for list="{{marksOwn}}" as="m" hint-placeholder-count="6"><div style="position: absolute; left: {{m.x}}%; top: 2px; width: 3px; height: 10px; background: {{m.c}}"></div></sc-for></div>
+    <div>COÉQUIPIERS</div><div style="height: 14px; background: #0f0f0f; position: relative"><sc-for list="{{marksTeam}}" as="m" hint-placeholder-count="6"><div style="position: absolute; left: {{m.x}}%; top: 4px; width: 2px; height: 7px; background: {{m.c}}"></div></sc-for></div>
+    <div>DOMINATION</div><div style="height: 12px; display: flex"><div style="width: 8%; background: #2f7fe8"></div><div style="width: 32%; background: #2ee08f"></div><div style="width: 14%; background: #e5393b"></div><div style="width: 6%; background: #2f7fe8"></div><div style="width: 24%; background: #2ee08f"></div><div style="width: 16%; background: #e5393b"></div></div>
+    <div>MÉDIAS</div><div style="height: 18px; border: 1px solid #222; border-radius: 4px; text-align: center; color: #666; font-weight: 400; letter-spacing: 0; line-height: 18px">Aucun média sur ce match</div>
+  </div>
+
+  <div style="position: absolute; left: 130px; top: 640px; width: 642px; height: 6px; background: #2a2a2a; border-radius: 3px"><div style="width: 49%; height: 100%; background: #eee; border-radius: 3px"></div><div style="position: absolute; left: 49%; top: -5px; width: 16px; height: 16px; margin-left: -8px; background: #fff; border-radius: 50%"></div></div>
+  <div style="position: absolute; left: 420px; top: 656px; color: #a1a1a1">4:24 / 9:02</div>
+
+  <div style="position: absolute; left: 12px; top: 678px; width: 760px; height: 56px; display: flex; align-items: center; gap: 8px">
+    <span style="border: 1px solid #2a2a2a; border-radius: 16px; padding: 6px 10px">2×</span>
+    <sc-if value="{{showFrise}}" hint-placeholder-val="{{ false }}">
+      <div role="group" aria-label="Préréglages de vue" style="display: flex; background: #151515; border: 1px solid #2a2a2a; border-radius: 16px; padding: 2px"><sc-for list="{{presets}}" as="p" hint-placeholder-count="4"><button type="button" onClick="{{p.pick}}" aria-pressed="{{p.active}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 14px; font: inherit; cursor: pointer; background: {{p.bg}}; color: {{p.fg}}; font-weight: 700">{{p.label}}</button></sc-for></div>
+    </sc-if>
+    <sc-if value="{{noFrise}}" hint-placeholder-val="{{ true }}"><span style="color: #a1a1a1">Volume</span><div style="width: 56px; height: 4px; background: #555; border-radius: 2px"></div></sc-if>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px"><span style="color: #a1a1a1">−10</span><button type="button" onClick="{{playClear}}" aria-label="Lecture" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #efefef; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><path d="M1 1l14 8-14 8z" fill="#0a0a0a"></path></svg></button><span style="color: #a1a1a1">+10</span></div>
+    <div style="margin-left: auto; display: flex; gap: 12px; color: #a1a1a1"><span>Photo</span><span>Export</span><span>Plein écran</span><sc-if value="{{showReglages}}" hint-placeholder-val="{{ true }}"><span>Réglages</span></sc-if></div>
+  </div>
+
+  <div style="position: absolute; left: 794px; top: 40px; width: 482px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8px">
+    <div>
+      <div style="height: 22px; line-height: 22px; padding-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .12em; background: rgba(46,224,143,.12); box-shadow: inset 2px 0 #2ee08f">ÉQUIPE EAGLE</div>
+      <sc-for list="{{allyCards}}" as="c" hint-placeholder-count="4">
+        <div style="margin-top: 4px; background: {{c.bg}}; border: 1px solid {{c.bd}}; border-radius: 8px; padding: 8px; box-sizing: border-box; min-height: {{c.h}}px">
+          <button type="button" onClick="{{c.pick}}" aria-label="{{c.aria}}" style="display: block; width: 100%; padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: {{c.cursor}}">
+            <div style="display: flex; align-items: center; gap: 6px"><span style="font-weight: 900; font-size: 12px">{{c.N}}</span><span style="margin-left: auto; color: #a1a1a1; font-size: 10.5px">{{c.score}}</span><span style="background: #222; border-radius: 3px; padding: 1px 5px; color: #2ee08f; font-size: 10.5px">{{c.kda}}</span></div>
+            <sc-if value="{{c.bars}}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top: 6px; height: 3px; background: #1d2a44"><div style="width: {{c.sh}}%; height: 100%; background: #2f7fe8"></div></div>
+              <div style="margin-top: 2px; height: 3px; background: #123"><div style="width: {{c.hp}}%; height: 100%; background: #2fc96b"></div></div>
+              <div style="margin-top: 7px; display: flex; align-items: center; gap: 8px; color: #d4d4d4; font-size: 10.5px"><svg width="26" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="#fafafa"></path></svg><span>{{c.w}}</span><span style="margin-left: auto; color: #e8b33f">×2</span></div>
+            </sc-if>
+          </button>
+          <sc-if value="{{c.expanded}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 8px"><sc-for list="{{sel.tiles}}" as="t" hint-placeholder-count="6"><div style="background: #1d1d1d; border-radius: 4px; padding: 4px 5px"><div style="font-weight: 700">{{t.v}}</div><div style="color: #a1a1a1; font-size: 9.5px">{{t.l}}</div></div></sc-for></div>
+            <div style="margin-top: 6px; display: flex; gap: 3px"><sc-for list="{{actions}}" as="a" hint-placeholder-count="3"><button type="button" onClick="{{a.pick}}" aria-pressed="{{a.on}}" style="flex: 1; height: 26px; font: inherit; font-size: 11px; color: {{a.fg}}; background: {{a.bg}}; border: 1px solid #333; border-radius: 5px; cursor: pointer">{{a.l}}</button></sc-for></div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div>
+      <div style="height: 22px; line-height: 22px; padding-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .12em; background: rgba(229,57,59,.12); box-shadow: inset 2px 0 #e5393b">ÉQUIPE COBRA</div>
+      <sc-for list="{{enemyCards}}" as="c" hint-placeholder-count="4">
+        <div style="margin-top: 4px; background: {{c.bg}}; border: 1px solid {{c.bd}}; border-radius: 8px; padding: 8px; box-sizing: border-box; min-height: {{c.h}}px">
+          <button type="button" onClick="{{c.pick}}" aria-label="{{c.aria}}" style="display: block; width: 100%; padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: {{c.cursor}}">
+            <div style="display: flex; align-items: center; gap: 6px"><span style="font-weight: 900; font-size: 12px">{{c.N}}</span><span style="margin-left: auto; color: #a1a1a1; font-size: 10.5px">{{c.score}}</span><span style="background: #222; border-radius: 3px; padding: 1px 5px; color: #e5393b; font-size: 10.5px">{{c.kda}}</span></div>
+            <sc-if value="{{c.bars}}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top: 6px; height: 3px; background: #1d2a44"><div style="width: {{c.sh}}%; height: 100%; background: #2f7fe8"></div></div>
+              <div style="margin-top: 2px; height: 3px; background: #123"><div style="width: {{c.hp}}%; height: 100%; background: #2fc96b"></div></div>
+              <div style="margin-top: 7px; display: flex; align-items: center; gap: 8px; color: #d4d4d4; font-size: 10.5px"><svg width="26" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="#fafafa"></path></svg><span>{{c.w}}</span><span style="margin-left: auto; color: #e8b33f">×2</span></div>
+            </sc-if>
+          </button>
+          <sc-if value="{{c.expanded}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 8px"><sc-for list="{{sel.tiles}}" as="t" hint-placeholder-count="6"><div style="background: #1d1d1d; border-radius: 4px; padding: 4px 5px"><div style="font-weight: 700">{{t.v}}</div><div style="color: #a1a1a1; font-size: 9.5px">{{t.l}}</div></div></sc-for></div>
+            <div style="margin-top: 6px; display: flex; gap: 3px"><sc-for list="{{actions}}" as="a" hint-placeholder-count="3"><button type="button" onClick="{{a.pick}}" aria-pressed="{{a.on}}" style="flex: 1; height: 26px; font: inherit; font-size: 11px; color: {{a.fg}}; background: {{a.bg}}; border: 1px solid #333; border-radius: 5px; cursor: pointer">{{a.l}}</button></sc-for></div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 794px; top: {{feedTop}}px; width: 482px; height: {{feedH}}px; overflow: hidden">
+    <sc-if value="{{showPanel}}" hint-placeholder-val="{{ false }}">
+      <div style="height: 100%; background: #0e0e0e; border: 1px solid #222; border-radius: 8px; box-sizing: border-box; padding: 10px; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 8px"><span style="font-weight: 900; font-size: 14px; color: {{sel.c}}">{{sel.N}}</span><span style="background: #222; border-radius: 3px; padding: 1px 6px; color: {{sel.c}}">{{sel.kda}}</span><span style="color: #a1a1a1">à 4:24</span><button type="button" onClick="{{closePanel}}" style="margin-left: auto; background: none; border: 1px solid #333; color: #d4d4d4; border-radius: 5px; font: inherit; padding: 4px 8px; cursor: pointer">Retour au fil</button></div>
+        <div style="margin-top: 8px; display: flex; gap: 4px"><sc-for list="{{actions}}" as="a" hint-placeholder-count="3"><button type="button" onClick="{{a.pick}}" aria-pressed="{{a.on}}" style="flex: 1; height: 30px; font: inherit; color: {{a.fg}}; background: {{a.bg}}; border: 1px solid #333; border-radius: 5px; cursor: pointer">{{a.l}}</button></sc-for></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px">
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">PRÉCISION JUSQU'À CET INSTANT <span style="letter-spacing: 0; font-weight: 400; color: #e8b33f">estimée</span></div>
+            <div style="font-size: 22px; font-weight: 900; margin-top: 3px">{{sel.acc}} %</div>
+            <div style="color: #a1a1a1">{{sel.hits}} touches sur {{sel.shots}} tirs</div>
+            <svg width="210" height="46" viewBox="0 0 210 46" role="img" aria-label="Précision au fil du match"><path d="M0 30 L18 12 L36 20 L54 24 L72 18 L90 26 L108 22 L126 28 L144 24 L162 27 L180 25 L210 26" fill="none" stroke="#7fb3ff" stroke-width="2"></path></svg>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">DÉTAIL DU SCORE</div>
+            <sc-for list="{{sel.parts}}" as="s" hint-placeholder-count="3"><div style="display: flex; padding: 3px 0; border-bottom: 1px solid #1f1f1f"><span>{{s.l}}</span><span style="margin-left: auto; color: #a1a1a1">{{s.n}}</span><span style="width: 50px; text-align: right; font-weight: 700">{{s.v}}</span></div></sc-for>
+            <div style="margin-top: 12px; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">DÉGÂTS JUSQU'À CET INSTANT <span style="letter-spacing: 0; font-weight: 400; color: #e8b33f">estimés</span></div>
+            <sc-for list="{{sel.damage}}" as="s" hint-placeholder-count="2"><div style="display: flex; padding: 3px 0; border-bottom: 1px solid #1f1f1f"><span>{{s.l}}</span><span style="margin-left: auto; font-weight: 700">{{s.v}}</span></div></sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showFeed}}" hint-placeholder-val="{{ true }}">
+      <div style="height: 26px; display: flex; align-items: center; padding: 0 10px; background: #111; box-shadow: inset 2px 0 #555; position: relative">
+        <sc-if value="{{feed.plainTitle}}" hint-placeholder-val="{{ true }}"><span style="font-size: 10px; font-weight: 700; letter-spacing: .14em">ÉLIMINATIONS</span></sc-if>
+        <sc-if value="{{feed.dropdown}}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{feed.toggle}}" aria-expanded="{{feed.open}}" aria-haspopup="menu" style="display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: #fafafa; font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .14em; cursor: pointer">{{feed.title}}<svg width="9" height="6" viewBox="0 0 9 6" aria-hidden="true"><path d="M1 1l3.5 4L8 1" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg></button>
+          <span style="margin-left: auto; color: #a1a1a1; font-size: 10.5px">{{feed.recap}}</span>
+        </sc-if>
+      </div>
+      <sc-if value="{{feed.chipsShown}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; gap: 4px; padding: 5px 6px; background: #0b0b0b; border-bottom: 1px solid #1c1c1c"><sc-for list="{{feed.chips}}" as="c" hint-placeholder-count="4"><button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 12px; border: 1px solid {{c.bd}}; background: {{c.bg}}; color: {{c.fg}}; font: inherit; font-size: 10.5px; cursor: pointer"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="{{c.d}}" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></svg>{{c.l}}</button></sc-for></div>
+      </sc-if>
+      <div>
+        <sc-for list="{{feed.rows}}" as="r" hint-placeholder-count="10">
+          <button type="button" onClick="{{r.pick}}" aria-pressed="{{r.sel}}" style="display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: {{r.pad}}px 8px {{r.pad}}px 10px; border: 0; border-bottom: 1px solid #1c1c1c; font: inherit; color: #fafafa; text-align: left; cursor: pointer; background: {{r.bg}}; box-shadow: {{r.shadow}}">
+            <span style="width: 32px; color: #a1a1a1; flex: none">{{r.t}}</span>
+            <sc-if value="{{r.isKill}}" hint-placeholder-val="{{ true }}">
+              <span style="color: {{r.kc}}; font-weight: 500">{{r.kn}}</span>
+              <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true" style="flex: none"><path d="M0 2h13l2 2h7v2h-9l-2 3H8l1-3H0z" fill="{{r.kc}}"></path></svg>
+              <span style="color: {{r.vc}}; font-weight: 500">{{r.vn}}</span>
+              <sc-if value="{{r.medal}}" hint-placeholder-val="{{ false }}"><span style="border: 1px solid #e8b33f; color: #e8b33f; border-radius: 3px; padding: 0 5px; font-size: 10px">{{r.medal}}</span></sc-if>
+              <span style="margin-left: auto; color: #8fa8c9; font-size: 10.5px">{{r.as}}</span>
+            </sc-if>
+            <sc-if value="{{r.isEvent}}" hint-placeholder-val="{{ false }}">
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="flex: none; color: {{r.kc}}"><path d="{{r.d}}" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+              <span style="color: {{r.kc}}; font-weight: {{r.fw}}">{{r.kn}}</span>
+              <span style="color: #d4d4d4">{{r.txt}}</span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{feed.open}}" hint-placeholder-val="{{ false }}">
+        <div role="menu" style="position: absolute; left: 6px; top: 28px; width: 248px; background: #161616; border: 1px solid #333; border-radius: 8px; padding: 4px">
+          <sc-for list="{{feed.menu}}" as="m" hint-placeholder-count="3">
+            <sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><div style="padding: 7px 8px 3px; color: #a1a1a1; font-size: 10px; letter-spacing: .08em">PROPOSÉES EN PLUS</div></sc-if>
+            <button type="button" role="menuitem" onClick="{{m.pick}}" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 5px; background: {{m.bg}}; color: #fafafa; font: inherit; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="{{m.d}}" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></svg>{{m.l}}<span style="margin-left: auto; color: #a1a1a1">{{m.n}}</span></button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </sc-if>
+  </div>
+
+  <div style="position: absolute; left: 0; top: 800px; width: 1280px; height: 80px; box-sizing: border-box; background: #18181b; border-top: 1px solid #333; padding: 10px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{caption}}" as="c" hint-placeholder-count="3">
+      <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">{{c.h}}</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">{{c.t}}</div></div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"killVariant":{"editor":null},"presetVariant":{"editor":null},"feedVariant":{"editor":null},"ficheVariant":{"editor":null},"$preview":{"width":1280,"height":880}}'>
+const ALLY = "#2ee08f", ENEMY = "#e5393b";
+const PLAYERS = {
+  j: { n: "JGtm", t: "a", x: 172, y: 285, ang: -0.2, sh: 88, hp: 100, kda: "5 / 6 / 0", score: 500, w: "25/150", acc: 45, hits: 74, shots: 163, dealt: "2 140", taken: "2 260", tr: [[-46, 52], [-30, 30], [-12, 18]], parts: [["Frags", "5 × 100", "500"]] },
+  v: { n: "Vortex Kael", t: "a", x: 285, y: 262, ang: 0.1, sh: 100, hp: 100, kda: "7 / 6 / 0", score: 630, w: "15/30", acc: 52, hits: 96, shots: 184, dealt: "2 910", taken: "2 030", tr: [[-58, 16], [-40, -18], [-16, -8]], parts: [["Frags", "6 × 100", "600"], ["Assistances", "1 × 30", "30"]] },
+  n: { n: "NoScope Lou", t: "a", x: 272, y: 372, ang: -0.5, sh: 40, hp: 100, kda: "5 / 5 / 2", score: 600, w: "2/1", acc: 61, hits: 41, shots: 67, dealt: "2 330", taken: "1 880", tr: [[-38, 40], [-26, 18], [-10, 10]], parts: [["Frags", "5 × 100", "500"], ["Assistances", "2 × 50", "100"]] },
+  b: { n: "Brume42", t: "a", x: 345, y: 398, ang: -1.2, sh: 100, hp: 70, kda: "5 / 5 / 1", score: 550, w: "8/10", acc: 38, hits: 52, shots: 137, dealt: "1 960", taken: "2 120", tr: [[-60, 24], [-34, 22], [-14, 8]], parts: [["Frags", "5 × 100", "500"], ["Assistances", "1 × 50", "50"]] },
+  f: { n: "Fenrir88", t: "e", x: 405, y: 165, ang: 2.5, sh: 100, hp: 100, kda: "11 / 8 / 0", score: 1100, w: "2/1", acc: 58, hits: 88, shots: 152, dealt: "3 610", taken: "2 540", tr: [[36, -44], [22, -30], [10, -12]], parts: [["Frags", "11 × 100", "1 100"]] },
+  o: { n: "Ombre Noire", t: "e", x: 420, y: 262, ang: 3, sh: 22, hp: 100, kda: "6 / 5 / 1", score: 650, w: "8/10", acc: 41, hits: 63, shots: 154, dealt: "2 240", taken: "1 980", tr: [[50, -26], [32, -10], [14, 4]], parts: [["Frags", "6 × 100", "600"], ["Assistances", "1 × 50", "50"]] },
+  ka: { n: "Kaya Zéro", t: "e", x: 560, y: 250, ang: 2.9, sh: 100, hp: 100, kda: "2 / 7 / 2", score: 320, w: "25/90", acc: 33, hits: 38, shots: 115, dealt: "1 240", taken: "2 710", tr: [[46, 28], [30, 8], [12, 6]], parts: [["Frags", "2 × 100", "200"], ["Assistances", "2 × 60", "120"]] },
+  t: { n: "Tinman", t: "e", x: 520, y: 345, ang: -2.6, sh: 64, hp: 100, kda: "2 / 2 / 0", score: 200, w: "12/36", acc: 44, hits: 31, shots: 70, dealt: "860", taken: "720", tr: [[40, 40], [24, 30], [10, 12]], parts: [["Frags", "2 × 100", "200"]] }
+};
+const ORDER_A = ["v", "n", "j", "b"], ORDER_E = ["f", "o", "ka", "t"];
+const KILLS = {
+  k1: { t: "4:18", k: "v", v: "o", w: "Fusil de combat", d: "14 m", m: "Double" },
+  k2: { t: "4:07", k: "n", v: "ka", w: "Fusil de précision", d: "31 m", as: "Brume42 54 %", m: "Tir à la tête" },
+  k3: { t: "3:49", k: "f", v: "j", w: "Lance-roquettes", d: "27 m" },
+  k4: { t: "3:36", k: "j", v: "t", w: "Fusil d'assaut", d: "18 m", as: "Vortex Kael 31 %" },
+  k5: { t: "3:21", k: "t", v: "b", w: "Pistolet", d: "22 m" }
+};
+const ICON = {
+  kill: "M12 3v5M12 16v5M3 12h5M16 12h5M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
+  obj: "M5 21V4M5 4h12l-3 4 3 4H5",
+  arme: "M3 9h13l2 2h3v3h-9l-2 4H7l1-4H3Z",
+  veh: "M4 15l2-6h12l2 6v3H4ZM7 18v2M17 18v2",
+  tout: "M4 6h16M4 12h16M4 18h16",
+  pres: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21a7 7 0 0 1 14 0",
+  medal: "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.5 14 7 21l5-3 5 3-1.5-7"
+};
+const EVENTS = [
+  { id: "k1", fam: "kills" }, { id: "e1", fam: "objectifs", t: "4:12", a: "b", txt: "a capturé le drapeau", d: ICON.obj },
+  { id: "k2", fam: "kills" }, { id: "e2", fam: "armes", t: "3:58", a: "f", txt: "a pris le fusil de précision du socle", d: ICON.arme },
+  { id: "e3", fam: "objectifs", t: "3:52", a: "o", txt: "a pris le drapeau", d: ICON.obj },
+  { id: "k3", fam: "kills" }, { id: "e4", fam: "vehicules", t: "3:41", a: "j", txt: "a détruit le Ghost de Tinman", d: ICON.veh },
+  { id: "k4", fam: "kills" }, { id: "e5", fam: "armes", t: "3:30", a: "ka", txt: "a pris le surbouclier", d: ICON.arme },
+  { id: "k5", fam: "kills" }, { id: "e6", fam: "objectifs", t: "3:05", a: "v", txt: "a rendu le drapeau", d: ICON.obj },
+  { id: "e7", fam: "objectifs", t: "2:58", a: "n", txt: "a lâché le drapeau", d: ICON.obj },
+  { id: "e8", fam: "medailles", t: "2:51", a: "j", txt: "Série de 5 frags", d: ICON.medal }
+];
+const FILTERS = [
+  { id: "tout", l: "Tout", title: "TOUT", d: ICON.tout },
+  { id: "kills", l: "Éliminations", title: "ÉLIMINATIONS", d: ICON.kill },
+  { id: "objectifs", l: "Objectifs", title: "OBJECTIFS", d: ICON.obj },
+  { id: "armes", l: "Armes et bonus", title: "ARMES ET BONUS", d: ICON.arme, extra: true },
+  { id: "vehicules", l: "Véhicules", title: "VÉHICULES", d: ICON.veh, extra: true },
+  { id: "medailles", l: "Médailles", title: "MÉDAILLES", d: ICON.medal, extra: true },
+  { id: "assists", l: "Assistances", title: "ASSISTANCES", d: ICON.pres, extra: true }
+];
+const matchFilter = (e, f) => {
+  if (f === "assists") return e.fam === "kills" && !!KILLS[e.id].as;
+  if (f === "medailles") return e.fam === "medailles" || (e.fam === "kills" && !!KILLS[e.id].m);
+  return e.fam === f;
+};
+const PRESETS = {
+  complet: { label: "Complet", desc: "Tous les calques", d: "M12 3 3 8l9 5 9-5-9-5ZM3 13l9 5 9-5", on: ["aim", "trail", "zones", "pads", "ground", "vehicles", "placements", "obj"] },
+  combat: { label: "Combat", desc: "Visée, traînées, véhicules", d: ICON.kill, on: ["aim", "trail", "vehicles", "obj"] },
+  deplacements: { label: "Déplacements", desc: "Vies entières et zones", d: "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 15V9a4 4 0 0 1 8 0v6a4 4 0 0 0 4 4", on: ["trail", "trailLong", "zones"] },
+  objectif: { label: "Objectif", desc: "Enjeux, porteurs, zones", d: ICON.obj, on: ["trail", "zones", "obj"] }
+};
+const LAYER_NAMES = [["aim", "Visée"], ["trail", "Traînée"], ["zones", "Zones"], ["pads", "Socles"], ["ground", "Armes au sol"], ["vehicles", "Véhicules"], ["placements", "Poses"], ["obj", "Objectifs"]];
+const FX = {
+  draw: { k: [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], d: 360 },
+  pop: { k: [{ transform: "scale(.6)", opacity: 0 }, { transform: "scale(1.08)", opacity: 1, offset: 0.7 }, { transform: "scale(1)", opacity: 1 }], d: 280 },
+  fade: { k: [{ opacity: 0 }, { opacity: 1 }], d: 240 },
+  iris: { k: [{ transform: "scale(9)" }, { transform: "scale(1)" }], d: 420 },
+  drop: { k: [{ transform: "translateY(-18px)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }], d: 300 },
+  ping: { k: [{ transform: "scale(.3)", opacity: 0.9 }, { transform: "scale(4)", opacity: 0 }], d: 800 },
+  verrou: { k: [{ transform: "scale(2.2) rotate(45deg)", opacity: 0 }, { transform: "scale(.88) rotate(0deg)", opacity: 1, offset: 0.72 }, { transform: "scale(1) rotate(0deg)", opacity: 1 }], d: 340 }
+};
+const pc = (p) => (p.t === "a" ? ALLY : ENEMY);
+function coneOf(p) {
+  const L = 54, a0 = p.ang - 0.42, a1 = p.ang + 0.42;
+  return `M${p.x} ${p.y}L${(p.x + L * Math.cos(a0)).toFixed(1)} ${(p.y + L * Math.sin(a0)).toFixed(1)}L${(p.x + L * Math.cos(a1)).toFixed(1)} ${(p.y + L * Math.sin(a1)).toFixed(1)}Z`;
+}
+function trailOf(p, long) {
+  const pts = long ? [[p.tr[0][0] * 3.1, p.tr[0][1] * 2.2], [p.tr[0][0] * 2, p.tr[0][1] * 0.8], ...p.tr] : p.tr;
+  return "M" + pts.map(([dx, dy]) => `${p.x + dx} ${p.y + dy}`).join("L") + `L${p.x} ${p.y}`;
+}
+function brackets(x, y, s, a) {
+  return `M${x - s} ${y - s + a}V${y - s}H${x - s + a}M${x + s - a} ${y - s}H${x + s}V${y - s + a}M${x + s} ${y + s - a}V${y + s}H${x + s - a}M${x - s + a} ${y + s}H${x - s}V${y + s - a}`;
+}
+class Component extends DCLogic {
+  state = { kill: "k1", tick: 0, preset: null, autoOpen: true, filter: "tout", menuOpen: null, chipsOff: {}, sel: "j", panel: true, solo: false, hide: false, follow: false };
+  rootRef = (el) => { this.root = el; };
+  lastTick = 0;
+  componentDidUpdate() {
+    if (this.lastTick !== this.state.tick && this.root) {
+      this.lastTick = this.state.tick;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      this.root.querySelectorAll("[data-fx]").forEach((el) => {
+        const fx = FX[el.getAttribute("data-fx")];
+        if (fx) el.animate(fx.k, { duration: fx.d, easing: "cubic-bezier(.2,.8,.2,1)" });
+      });
+    }
+  }
+  renderVals() {
+    const v = this.props, s = this.state;
+    const killV = v.killVariant, presetV = v.presetVariant, feedV = v.feedVariant, ficheV = v.ficheVariant;
+    const defaultPreset = presetV === "rail" ? "deplacements" : presetV === "auto" ? "objectif" : presetV ? "combat" : "complet";
+    const presetId = s.preset ?? defaultPreset;
+    const on = new Set(s.customOn ?? PRESETS[presetId].on);
+    const selected = killV ? s.kill : null;
+    const kill = selected ? KILLS[selected] : null;
+    const kP = kill && PLAYERS[kill.k], vP = kill && PLAYERS[kill.v];
+    const dimOthers = false;
+    const showActors = kill ? new Set([kill.k, kill.v]) : null;
+
+    const ids = Object.keys(PLAYERS);
+    const visible = (id) => !(ficheV && s.hide && id === s.sel);
+    const layers = {
+      zones: on.has("zones"),
+      coneA: on.has("aim") ? ids.filter((i) => PLAYERS[i].t === "a" && visible(i)).map((i) => coneOf(PLAYERS[i])).join("") : "",
+      coneE: on.has("aim") ? ids.filter((i) => PLAYERS[i].t === "e" && visible(i)).map((i) => coneOf(PLAYERS[i])).join("") : "",
+      trailA: on.has("trail") ? ids.filter((i) => PLAYERS[i].t === "a" && visible(i)).map((i) => trailOf(PLAYERS[i], on.has("trailLong"))).join("") : "",
+      trailE: on.has("trail") ? ids.filter((i) => PLAYERS[i].t === "e" && visible(i)).map((i) => trailOf(PLAYERS[i], on.has("trailLong"))).join("") : ""
+    };
+
+    const objects = [];
+    if (on.has("pads")) [[110, 130, "S"], [610, 150, "S"], [440, 400, "S"]].forEach(([x, y, l]) => objects.push({ x, y, s: 16, r: 0, l, rad: 3, bg: "#111", bd: "#e8b33f" }));
+    if (on.has("ground")) [[330, 330], [230, 110], [650, 340]].forEach(([x, y]) => objects.push({ x, y, s: 12, r: 0, l: "", rad: 2, bg: "#fafafa", bd: "#111" }));
+    if (on.has("placements")) [[480, 180], [150, 370]].forEach(([x, y]) => objects.push({ x, y, s: 13, r: 45, l: "", rad: 1, bg: "#7fb3ff", bd: "#111" }));
+    if (on.has("vehicles")) objects.push({ x: 606, y: 320, s: 30, r: -25, l: "G", rad: 9, bg: ENEMY, bd: "#fff" });
+    if (on.has("obj")) { objects.push({ x: 70, y: 310, s: 18, r: 0, l: "D", rad: 9, bg: ALLY, bd: "#fff" }); objects.push({ x: 690, y: 180, s: 18, r: 0, l: "D", rad: 9, bg: ENEMY, bd: "#fff" }); }
+
+    const pawns = ids.filter(visible).map((id) => {
+      const p = PLAYERS[id];
+      let op = 1;
+      if (dimOthers) op = showActors.has(id) ? 1 : 0.28;
+      if (ficheV && s.solo && id !== s.sel) op = 0.22;
+      return { x: p.x, y: p.y, n: killV === "projecteur" && showActors && showActors.has(id) ? "" : p.n, c: pc(p), rad: id === "j" ? "50%" : p.t === "a" ? "2px" : "50%", op };
+    });
+
+    let fx = {};
+    if (kill) {
+      const dx = vP.x - kP.x, dy = vP.y - kP.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+      const lx1 = kP.x + ux * 12, ly1 = kP.y + uy * 12, lx2 = vP.x - ux * 14, ly2 = vP.y - uy * 14;
+      const ax = lx2 - ux * 9, ay = ly2 - uy * 9;
+      fx = {
+        lien: killV === "lien", projecteur: killV === "projecteur", balises: killV === "balises",
+        kx: kP.x, ky: kP.y, vx: vP.x, vy: vP.y, kc: pc(kP), vc: pc(vP), kName: kP.n, vName: vP.n,
+        weapon: kill.w, dist: kill.d, lx1, ly1, lx2, ly2, mx: (lx1 + lx2) / 2, my: (ly1 + ly2) / 2,
+        arrow: `M${lx2} ${ly2}L${ax - uy * 6} ${ay + ux * 6}L${ax + uy * 6} ${ay - ux * 6}Z`,
+        cross: `M${vP.x - 6} ${vP.y - 6}L${vP.x + 6} ${vP.y + 6}M${vP.x + 6} ${vP.y - 6}L${vP.x - 6} ${vP.y + 6}`,
+        bracketK: brackets(kP.x, kP.y, 22, 8), bracketV: brackets(vP.x, vP.y, 22, 8),
+        stemK: Math.max(kP.y - 42, 26), stemV: Math.max(vP.y - 42, 26)
+      };
+    }
+
+    const presets = Object.entries(PRESETS).map(([id, p]) => ({
+      ...p, active: id === presetId && !s.customOn,
+      bg: id === presetId ? "#efefef" : "transparent", fg: id === presetId ? "#0a0a0a" : "#d4d4d4",
+      bg2: id === presetId && !s.customOn ? "#26303f" : "#171717", bd: id === presetId && !s.customOn ? "#7fb3ff" : "#2a2a2a",
+      pick: () => this.setState({ preset: id, customOn: null })
+    }));
+    const layerToggles = LAYER_NAMES.map(([k, l]) => ({
+      l, on: on.has(k), track: on.has(k) ? "#2f7fe8" : "#444", knob: on.has(k) ? 14 : 2,
+      pick: () => { const next = new Set(on); if (next.has(k)) next.delete(k); else next.add(k); this.setState({ customOn: [...next] }); }
+    }));
+
+    const sel = (() => {
+      const p = PLAYERS[s.sel];
+      return {
+        n: p.n, N: p.n.toUpperCase(), c: pc(p), acc: p.acc, hits: p.hits, shots: p.shots, kda: p.kda,
+        damage: [{ l: "Infligés", v: p.dealt }, { l: "Subis", v: p.taken }],
+        tiles: [{ v: p.kda.split(" / ")[0], l: "Frags" }, { v: p.kda.split(" / ")[1], l: "Morts" }, { v: p.kda.split(" / ")[2], l: "Assist." }, { v: p.acc + " %", l: "Précision" }, { v: p.dealt, l: "Infligés" }, { v: p.taken, l: "Subis" }],
+        parts: p.parts.map(([l, n, val]) => ({ l, n, v: val }))
+      };
+    })();
+    const actions = [
+      { l: "Suivre", on: s.follow, key: "follow" }, { l: "Seul", on: s.solo, key: "solo" }, { l: "Masquer", on: s.hide, key: "hide" }
+    ].map((a) => ({
+      ...a, bg: a.on ? "#efefef" : "#1a1a1a", fg: a.on ? "#0a0a0a" : "#e5e5e5",
+      pick: () => {
+        const next = !s[a.key], patch = { [a.key]: next };
+        if (next && a.key === "solo") patch.hide = false;
+        if (next && a.key === "follow") patch.hide = false;
+        if (next && a.key === "hide") { patch.solo = false; patch.follow = false; }
+        this.setState(patch);
+      }
+    }));
+
+    const cardOf = (id) => {
+      const p = PLAYERS[id], isSel = ficheV && s.sel === id;
+      const sameTeamSel = ficheV === "deplie" && PLAYERS[s.sel].t === p.t && !isSel;
+      return {
+        N: p.n.toUpperCase(), score: p.score, kda: p.kda, sh: p.sh, hp: p.hp, w: p.w,
+        bg: isSel ? "#1b1b1b" : "#111", bd: isSel ? pc(p) : "#232323", h: sameTeamSel ? 34 : 76,
+        bars: !sameTeamSel, expanded: ficheV === "deplie" && isSel,
+        aria: `Fiche de ${p.n}`, cursor: ficheV ? "pointer" : "default",
+        pick: () => { if (ficheV) this.setState({ sel: id, panel: true }); }
+      };
+    };
+
+    const counts = {};
+    EVENTS.forEach((e) => { counts[e.fam] = (counts[e.fam] || 0) + 1; });
+    counts.tout = EVENTS.length;
+    const filter = feedV ? s.filter : "kills";
+    const rowsSrc = EVENTS.filter((e) => (filter === "tout" ? !(feedV === "pastilles" && s.chipsOff[e.fam]) : matchFilter(e, filter)));
+    const rows = rowsSrc.map((e) => {
+      if (e.fam === "kills") {
+        const K = KILLS[e.id], kp = PLAYERS[K.k], vp = PLAYERS[K.v], isSel = selected === e.id;
+        return {
+          isKill: true, isEvent: false, t: K.t, kn: K.k === "j" ? "JGtm" : kp.n, vn: vp.n, kc: pc(kp), vc: pc(vp), as: K.as || "", medal: feedV ? K.m || "" : "", d: "", txt: "", fw: 500, pad: 5, sel: isSel,
+          bg: isSel ? "#242424" : "transparent", shadow: isSel ? `inset 3px 0 ${pc(kp)}, inset -3px 0 ${pc(vp)}` : "none",
+          pick: () => { if (killV) this.setState({ kill: s.kill === e.id ? null : e.id, tick: s.tick + 1 }); }
+        };
+      }
+      const a = PLAYERS[e.a], band = feedV === "bandeaux" && e.fam === "objectifs";
+      return {
+        isKill: false, isEvent: true, t: e.t, kn: a.n, txt: e.txt, d: e.d, kc: pc(a), vc: "", vn: "", as: "", fw: band ? 900 : 500, pad: band ? 9 : 5, sel: false,
+        bg: band ? (a.t === "a" ? "rgba(46,224,143,.15)" : "rgba(229,57,59,.16)") : "transparent", shadow: band ? `inset 3px 0 ${pc(a)}` : "none", pick: () => {}
+      };
+    });
+    const menuOpen = s.menuOpen ?? feedV === "titre";
+    const menu = FILTERS.filter((f) => feedV !== "pastilles" || !f.extra).map((f, i, arr) => ({
+      ...f, n: f.id === "tout" ? EVENTS.length : EVENTS.filter((e) => matchFilter(e, f.id)).length, sep: !!f.extra && !arr[i - 1].extra, bg: f.id === filter ? "#2a2a2a" : "transparent",
+      pick: () => this.setState({ filter: f.id, menuOpen: false })
+    }));
+    const chips = FILTERS.slice(1).map((f) => ({
+      ...f, on: !s.chipsOff[f.id], bg: s.chipsOff[f.id] ? "transparent" : "#262626", bd: s.chipsOff[f.id] ? "#2a2a2a" : "#4a4a4a", fg: s.chipsOff[f.id] ? "#8a8a8a" : "#fafafa",
+      pick: () => this.setState({ chipsOff: { ...s.chipsOff, [f.id]: !s.chipsOff[f.id] } })
+    }));
+    const title = FILTERS.find((f) => f.id === filter).title;
+
+    const offCount = LAYER_NAMES.filter(([k]) => !on.has(k)).length;
+    const shownLayers = LAYER_NAMES.filter(([k]) => on.has(k)).map(([, l]) => l).join(", ");
+    const hiddenLayers = LAYER_NAMES.filter(([k]) => !on.has(k)).map(([, l]) => l).join(", ") || "aucun";
+    const saved = offCount ? `${offCount} interrupteur${offCount > 1 ? "s" : ""} en moins à actionner depuis l'état Complet : 1 clic au lieu d'ouvrir le tiroir puis ${offCount} clic${offCount > 1 ? "s" : ""}.` : "État complet, rien à masquer.";
+
+    const CAPS = {
+      lien: [["AU CLIC", "La ligne se trace du tueur vers la victime, l'arme et la distance apparaissent, la carte s'assombrit légèrement."], ["PERMANENT", "Ligne, arme, distance et étiquettes TUEUR / VICTIME restent tant que la ligne du fil reste sélectionnée."], ["D'UN COUP D'ŒIL", "Le sens de la flèche dit qui tue qui. Ligne du fil encadrée aux deux couleurs. Recliquer désélectionne."]],
+      projecteur: [["AU CLIC", "Les équerres arrivent de loin en tournant et se verrouillent sur les deux joueurs. Le reste de la carte s'assombrit de 10 %."], ["PERMANENT", "Équerres maintenues. Le nom sous le pion devient une étiquette plus grande : pleine avec l'arme pour le tueur, en creux avec une croix pour la victime."], ["FIN", "Le bouton Lecture retire la mise en valeur et rend aux noms leur forme normale. Recliquer la ligne aussi."]],
+      balises: [["AU CLIC", "Deux balises tombent sur leur joueur, une onde part du point de mort."], ["PERMANENT", "Balise pleine pour le tueur avec son arme, balise en creux avec croix pour la victime."], ["D'UN COUP D'ŒIL", "Plein contre creux : lisible sans la couleur et sans toucher au reste de la carte."]],
+      frise: [["EMPLACEMENT", "Quatre boutons dans la barre de lecture, à la place du curseur de volume (l'icône reste dans le menu son)."], ["SUR LE CANEVAS", `Visible : ${shownLayers}. Masqué : ${hiddenLayers}.`], ["GAIN", `${saved} Aucun pixel pris à la carte.`]],
+      rail: [["EMPLACEMENT", "Rail flottant dans le coin de la carte, seul le préréglage actif montre son nom."], ["SUR LE CANEVAS", `Visible : ${shownLayers}. Masqué : ${hiddenLayers}.`], ["GAIN", `${saved} Le rail couvre un coin de carte de 110 × 150 px.`]],
+      auto: [["EMPLACEMENT", "Le bouton « Vue », en haut à droite de la carte, remplace le tiroir : préréglages, calques, puis effets, chaleur, couleurs et sons. Le bouton Réglages disparaît."], ["SUR LE CANEVAS", `Visible : ${shownLayers}. Masqué : ${hiddenLayers}.`], ["GAIN", "La page s'ouvre sur la vue adaptée au mode, sans clic. Toucher un calque passe la vue en « Personnalisé »."]],
+      titre: [["MENU", "Le titre du fil devient le menu, avec le nombre de lignes par famille. Tout / Éliminations / Objectifs, comme demandé."], ["AUTRES DONNÉES", "Armes et bonus (socles vidés, ramasseur nommé) et Véhicules (apparition, destruction) sont déjà dans nos rejeux."], ["RENDU", "Le fil reste identique, une icône et une phrase pour tout ce qui n'est pas une élimination."]],
+      pastilles: [["MENU", "Titre déroulant à trois entrées, pastilles pour retirer une famille de « Tout »."], ["AUTRES DONNÉES", "Armes et bonus, Véhicules deviennent des pastilles plutôt que des entrées de menu."], ["RENDU", "Filtrage fin, au prix d'une ligne de hauteur en plus au-dessus du fil."]],
+      bandeaux: [["MENU", "Titre déroulant : Tout, Éliminations, Objectifs, puis Armes et bonus, Véhicules, Médailles, Assistances."], ["SANS DOUBLON", "Assistances et médailles restent sur la ligne de leur élimination. Leurs entrées de menu servent à les isoler."], ["RENDU", "Les objectifs deviennent des bandeaux teintés : ce sont les tournants du match, l'œil les trouve sans lire."]],
+      dock: [["PLACE", "Clic sur une fiche : le panneau prend la place du fil, la carte n'est jamais couverte. « Retour au fil » le referme."], ["CONTENU", "Compteurs au format de la fiche, précision, détail du score et dégâts en listes. Suivre zoome et centre la carte sur le joueur."], ["DONNÉES À INSTRUIRE", "Compteurs et score existent déjà. Touches, précision et dégâts à l'instant sont à instruire côté décodeur."]],
+      deplie: [["PLACE", "La fiche choisie se déplie dans sa colonne, les trois autres de l'équipe passent en version compacte."], ["CONTENU", "Six compteurs et les trois actions, sans courbe ni détail du score, faute de place."], ["DONNÉES À INSTRUIRE", "Compteurs et score existent déjà. Touches, précision et dégâts à l'instant sont à instruire côté décodeur."]],
+      bulle: [["PLACE", "La bulle s'ancre au pion du joueur choisi, le fil et les fiches ne bougent pas."], ["CONTENU", "Six compteurs et les trois actions. Choisir un joueur via sa fiche, à terme via son pion."], ["DONNÉES À INSTRUIRE", "Compteurs et score existent déjà. Touches, précision et dégâts à l'instant sont à instruire côté décodeur."]],
+      base: [["EXISTANT", "Reconstitution du rejeu 2D actuel pour situer les propositions."], ["DONNÉES", "Joueurs, carte et chiffres fictifs."], ["RÉGLAGES", "Les calques se règlent un par un dans le tiroir ouvert par « Réglages »."]]
+    };
+    const capKey = killV || presetV || feedV || ficheV || "base";
+    const caption = CAPS[capKey].map(([h, t]) => ({ h, t }));
+
+    const showPanel = ficheV === "dock" && s.panel;
+    const selP = PLAYERS[s.sel];
+    const cardCol = (list) => list.map(cardOf);
+    return {
+      rootRef: this.rootRef, layers, callouts: [{ n: "MARCHÉ", x: 400, y: 318 }, { n: "TOUR", x: 394, y: 132 }, { n: "CAFÉ", x: 248, y: 318 }, { n: "ALLÉE OUEST", x: 170, y: 400 }, { n: "PONT EST", x: 620, y: 210 }, { n: "COUR OUEST", x: 120, y: 170 }, { n: "ANTENNE", x: 660, y: 120 }, { n: "LIBRAIRIE", x: 340, y: 70 }],
+      objects, pawns, fx, sceneOpacity: dimOthers ? 0.75 : 1,
+      presets, showRail: presetV === "rail", showAuto: presetV === "auto", showFrise: presetV === "frise", noFrise: presetV !== "frise",
+      autoOpen: s.autoOpen, toggleAuto: () => this.setState({ autoOpen: !s.autoOpen }), currentPresetLabel: s.customOn ? "Personnalisé" : PRESETS[presetId].label, autoHint: s.customOn || s.preset ? "choisie" : "auto pour ce mode",
+      layerToggles, showReglages: presetV !== "auto",
+      playClear: () => { if (killV) this.setState({ kill: null }); },
+      camera: ficheV && s.follow ? `translate(${380 - 2.2 * selP.x}px, ${225 - 2.2 * selP.y}px) scale(2.2)` : "none",
+      marksOwn: [6, 14, 22, 31, 38, 47, 55, 63, 71, 88].map((x, i) => ({ x, c: i % 3 ? ALLY : ENEMY })),
+      marksTeam: [3, 9, 12, 18, 24, 28, 35, 41, 44, 52, 58, 62, 67, 74, 79, 86, 92].map((x, i) => ({ x, c: i % 2 ? ALLY : ENEMY })),
+      allyCards: cardCol(ORDER_A), enemyCards: cardCol(ORDER_E),
+      feedTop: ficheV === "deplie" ? 406 : 392, feedH: ficheV === "deplie" ? 390 : 404,
+      showPanel, showFeed: !showPanel, closePanel: () => this.setState({ panel: false }),
+      showBubble: ficheV === "bulle", bubble: { x: Math.min(selP.x + 16, 480), y: Math.max(selP.y - 40, 8) }, sel, actions,
+      feed: {
+        plainTitle: !feedV, dropdown: !!feedV, title, toggle: () => this.setState({ menuOpen: !menuOpen }), open: menuOpen, menu, rows,
+        chipsShown: feedV === "pastilles" && filter === "tout", chips,
+        recap: feedV === "bandeaux" ? `${counts.objectifs} objectifs · ${counts.kills} éliminations` : ""
+      },
+      caption
+    };
+  }
+}
+</script>
+</body>
+</html>

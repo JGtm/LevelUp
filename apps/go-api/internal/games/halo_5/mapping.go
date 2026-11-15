@@ -17,7 +17,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/halo-api/halo5"
 )
 
 // h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide

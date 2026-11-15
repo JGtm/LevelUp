@@ -55,7 +55,7 @@ func newDeleteRouter(mock *mockMediaService, authEnforced bool) *chi.Mux {
 	}
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(authEnforced).
-		WithRequester(sessionPlayerAsOwnedProfile).WithUserLookup(mediaAccounts{"Chocoboflor": domain.RoleAdmin})
+		WithRequester(sessionPlayerAsOwnedProfile).WithUserLookup(mediaAccounts{"Joueur90001": domain.RoleAdmin})
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r)
 	})
@@ -145,7 +145,7 @@ func TestMediaHandler_DeleteMedia_NotOwner_403(t *testing.T) {
 	r := newDeleteRouter(mock, true)
 
 	w := deleteMedia(r, "/api/v1/players/"+testPlayerSlug+"/media/files/JGtm/clip.mp4",
-		sessionFor("Chocoboflor", "user"))
+		sessionFor("Joueur90001", "user"))
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d: %s", w.Code, w.Body.String())
@@ -190,7 +190,7 @@ func TestMediaHandler_DeleteMedia_AdminRolePropagated(t *testing.T) {
 	r := newDeleteRouter(mock, true)
 
 	w := deleteMedia(r, "/api/v1/players/"+testPlayerSlug+"/media/files/JGtm/clip.mp4",
-		sessionFor("Chocoboflor", string(domain.RoleAdmin)))
+		sessionFor("Joueur90001", string(domain.RoleAdmin)))
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())

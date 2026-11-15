@@ -1,5 +1,5 @@
 /**
- * heatmapChart.test.ts — buildHeatmapSeries produit un ChartSeries<ChartPointHeatmap>
+ * heatmapChart.test.ts — buildHeatmapSeries produit un ChartSeries<HeatmapCellPoint>
  * correctement trié et sans libellé hardcodé.
  */
 import { describe, it, expect, vi } from 'vitest'

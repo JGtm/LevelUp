@@ -30,7 +30,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // artefactAvecSocles pose un artefact PROJETABLE : schema courant, deux humains au roster, deux
@@ -61,7 +61,7 @@ func artefactAvecSocles(t *testing.T, repoRoot, matchID string) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if err := poserCompresse(path, blob, 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

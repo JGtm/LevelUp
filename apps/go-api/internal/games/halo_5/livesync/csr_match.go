@@ -3,7 +3,7 @@ package livesync
 // csr_match.go — CSR PAR MATCH Halo 5 : projette le CurrentCsr (post-match) du carnage
 // arena vers match_skill_rank (rating_type='CSR'). La vue match_skill_rank_latest
 // priorise CSR > LUSR → les matchs classés affichent le CSR, les sociaux le LUSR.
-// Partagé par le hook live (PostScore) et l'outil de backfill (cmd/h5-csr-match-backfill).
+// Appelé par le hook live (PostScore).
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/skill"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 // carnageGetter — sous-ensemble de halo5.CaptureSource réellement utilisé par le CSR

@@ -2,6 +2,7 @@ package teammates
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -350,8 +351,8 @@ func TestBuildSquadPerformanceSeries_ExpectedFDA(t *testing.T) {
 func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	// 10 kills, 5 deaths, 3 assists, damageDealt=2300, damageTaken=1200
-	// rendement = 225 × (10 + 3/3) / 2300 = 225×11/2300 ≈ 1.076 → round2 = 1.08
-	// résistance = 1200 / (225×5) = 1200/1125 ≈ 1.067 → round2 = 1.07
+	// rendement = 229 × (10 + 3/3) / 2300 = 229×11/2300 ≈ 1.095 → round2 = 1.10
+	// résistance = 1200 / (229×5) = 1200/1145 ≈ 1.048 → round2 = 1.05
 	loader := &fakeSquadLoader{
 		rowsByGT: map[string][]canonical.PlayerMatchRow{
 			"main":    {rowWithDamage("m1", t0, 10, 5, 3, 600, 0, 2300, 1200)},
@@ -373,12 +374,12 @@ func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	pt := pts[0]
 	if pt.RendementOffensif == nil {
 		t.Error("RendementOffensif nil alors que DamageDealt disponible")
-	} else if got, want := *pt.RendementOffensif, 1.08; got != want {
+	} else if got, want := *pt.RendementOffensif, 1.10; got != want {
 		t.Errorf("RendementOffensif = %.2f, want %.2f", got, want)
 	}
 	if pt.ResistanceDefensive == nil {
 		t.Error("ResistanceDefensive nil alors que DamageTaken disponible")
-	} else if got, want := *pt.ResistanceDefensive, 1.07; got != want {
+	} else if got, want := *pt.ResistanceDefensive, 1.05; got != want {
 		t.Errorf("ResistanceDefensive = %.2f, want %.2f", got, want)
 	}
 }
@@ -1046,37 +1047,47 @@ func TestBuildSquadSynergyRadar_SurvivalIsDefensiveResistance(t *testing.T) {
 	}
 }
 
-// ---------- Radar synergie — axe Objectif (index par opportunité) ----------
+// ---------- Radar synergie — axe Objectif (note d'objectif du match, moyenne) ----------
 
-// TestBuildSquadSynergyRadar_ObjectiveFromIndex vérifie que l'axe objective est
-// alimenté par l'index par opportunité (port.ObjectiveIndexRepository, source
-// shared) : un joueur au P80 de sa famille marque raw=1.0 → 80/100 ; un joueur
-// sans ligne objectif garde l'axe (aligné sur series[0]) à 0.
-func TestBuildSquadSynergyRadar_ObjectiveFromIndex(t *testing.T) {
+// TestBuildSquadSynergyRadar_ObjectiveFromTeamShare vérifie que l'axe objective est la note d'objectif
+// moyenne des matchs partagés (part du joueur dans l'objectif de son équipe, 0-100, source shared) :
+// les lignes des deux camps se lisent en UNE requête et les gamertags en UNE autre. Les deux joueurs sont
+// mesurés : l'axe est présent sur les deux séries.
+func TestBuildSquadSynergyRadar_ObjectiveFromTeamShare(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	loader := &fakeSquadLoader{
 		rowsByGT: map[string][]canonical.PlayerMatchRow{
-			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
-			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
+			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000), rowWithPersonalScore("m2", t0, 5, 3, 2, 600, 2000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500), rowWithPersonalScore("m2", t0, 3, 4, 8, 600, 1500)},
 		},
 	}
-	// main : 1 match CTF exactement au P80 (actions 11, hold 0.0434) → r = 1.0.
-	objRepo := &fakeObjectiveIndexRepo{inputsByGT: map[string]narrative.ObjectiveIndexInput{
-		"main": {
-			narrative.FamilyCTF: {
-				Matches:           1,
-				ColumnSums:        map[string]float64{"flag_captures": 1, "flag_steals": 1, "flag_returns": 2, "flag_secures": 1},
-				HoldSeconds:       0.0434 * 600,
-				TimePlayedSeconds: 600,
-			},
+	ctf := func(xuid string, team int, captures float64) narrative.ObjectiveTeamRow {
+		return narrative.ObjectiveTeamRow{
+			XUID: xuid, TeamID: team, Family: narrative.FamilyCTF, TimePlayedSeconds: 600,
+			Values: map[string]float64{"flag_captures": captures},
+		}
+	}
+	// main et friend1 sont dans la même équipe de 2. m1 : main prend tout l'objectif (main 100, friend1 0) ;
+	// m2 : parts égales (50 chacun).
+	repo := &fakeObjectiveTeamRepo{
+		rows: map[string][]narrative.ObjectiveTeamRow{
+			"m1": {ctf("xm", 0, 3), ctf("xf", 0, 0), ctf("foe", 1, 9)},
+			"m2": {ctf("xm", 0, 2), ctf("xf", 0, 2), ctf("foe", 1, 9)},
 		},
-	}}
-	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveIndex: objRepo}
-	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+		xuids: map[string][]string{"main": {"xm"}, "friend1": {"xf"}},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveTeam: repo}
+	allRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}, {MatchID: "m2", StartTime: t0, Kills: 5, Deaths: 3},
+	}
 
 	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
 	if len(got) != 2 {
 		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	if repo.rowsCalls != 1 || repo.aliasCalls != 1 || len(repo.askedMatches) != 2 {
+		t.Errorf("lectures : lignes %d, alias %d, matchs demandés %d, want 1, 1, 2 (jamais par joueur ni par match)",
+			repo.rowsCalls, repo.aliasCalls, len(repo.askedMatches))
 	}
 	axis := func(s domain.SquadSynergyRadarSeries, name string) domain.SquadSynergyRadarAxis {
 		for _, a := range s.Axes {
@@ -1090,24 +1101,66 @@ func TestBuildSquadSynergyRadar_ObjectiveFromIndex(t *testing.T) {
 	for _, s := range got {
 		byPlayer[s.Player] = s
 	}
+	// Moyenne de (100 + 50) / 2 = 75, telle quelle sur 0-100.
 	mainObj := axis(byPlayer["main"], "objective")
-	if mainObj.Raw != 1.0 {
-		t.Errorf("main objective raw: want 1.0 (P80), got %v", mainObj.Raw)
+	if mainObj.Raw != 75 || mainObj.Value != 75 {
+		t.Errorf("main objective: want raw 75 / value 75, got %v / %v", mainObj.Raw, mainObj.Value)
 	}
-	if mainObj.Value != 80 {
-		t.Errorf("main objective value: want 80, got %v", mainObj.Value)
+	// friend1 : (0 + 50) / 2 = 25.
+	if f1Obj := axis(byPlayer["friend1"], "objective"); f1Obj.Raw != 25 || f1Obj.Value != 25 {
+		t.Errorf("friend1 objective: want 25, got %+v", f1Obj)
 	}
-	// friend1 sans ligne objectif : l'axe reste présent (alignement series[0])
-	// avec raw 0.
-	if f1Obj := axis(byPlayer["friend1"], "objective"); f1Obj.Raw != 0 {
-		t.Errorf("friend1 objective raw: want 0, got %v", f1Obj.Raw)
+}
+
+// TestBuildSquadSynergyRadar_ObjectiveAxisDroppedWhenOnePlayerUnmeasured : un radar a un jeu
+// d'indicateurs pour toutes ses séries et ECharts rend une valeur manquante au centre (comme un zéro) :
+// dès qu'un joueur n'est pas mesuré (alias absent ici), l'axe est retiré de TOUTES les séries, y compris
+// celle du joueur mesuré, et aucune n'en porte un 0.
+func TestBuildSquadSynergyRadar_ObjectiveAxisDroppedWhenOnePlayerUnmeasured(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
+		},
+	}
+	ctf := func(xuid string, captures float64) narrative.ObjectiveTeamRow {
+		return narrative.ObjectiveTeamRow{
+			XUID: xuid, TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600,
+			Values: map[string]float64{"flag_captures": captures},
+		}
+	}
+	repo := &fakeObjectiveTeamRepo{
+		rows:  map[string][]narrative.ObjectiveTeamRow{"m1": {ctf("xm", 3), ctf("xf", 1)}},
+		xuids: map[string][]string{"main": {"xm"}}, // friend1 : alias inconnu
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveTeam: repo}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	for _, s := range got {
+		if len(s.Axes) == 0 {
+			t.Fatalf("%s : aucun axe", s.Player)
+		}
+		for _, a := range s.Axes {
+			if a.Axis == "objective" {
+				t.Errorf("axe objective présent sur %s (%+v), want retiré de toutes les séries", s.Player, a)
+			}
+		}
+	}
+	// Les autres axes restent identiques d'une série à l'autre (mêmes indicateurs).
+	if len(got[0].Axes) != len(got[1].Axes) {
+		t.Errorf("axes : %d contre %d, want le même nombre", len(got[0].Axes), len(got[1].Axes))
 	}
 }
 
 // TestBuildSquadSynergyRadar_ObjectiveAxisDropped vérifie le retrait de l'axe
 // objective de TOUTES les séries quand : (a) le repo n'est pas câblé (titre sans
 // capability match.objective.stats) ; (b) aucun joueur n'a de match à objectif
-// dans le scope (n_obj = 0 partout).
+// dans le scope ; (c) la lecture échoue (journalisée, jamais un zéro).
 func TestBuildSquadSynergyRadar_ObjectiveAxisDropped(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	newLoader := func() *fakeSquadLoader {
@@ -1127,7 +1180,11 @@ func TestBuildSquadSynergyRadar_ObjectiveAxisDropped(t *testing.T) {
 		{"repo absent (capability)", &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: newLoader()}},
 		{"scope sans match à objectif", &TeammatesService{
 			titleSlug: "halo_infinite", gamertag: "main", squadLoader: newLoader(),
-			objectiveIndex: &fakeObjectiveIndexRepo{},
+			objectiveTeam: &fakeObjectiveTeamRepo{},
+		}},
+		{"lecture en échec", &TeammatesService{
+			titleSlug: "halo_infinite", gamertag: "main", squadLoader: newLoader(),
+			objectiveTeam: &fakeObjectiveTeamRepo{err: errors.New("panne")},
 		}},
 	}
 	for _, tc := range cases {

@@ -31,9 +31,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/streaks"
 
@@ -196,7 +196,7 @@ func loadDemoCorpusStats(ctx context.Context, sharedDBPath, demoXUID string,
 // demoCanonicalStartExpr : instant canonique d'un match (règle timezone CLAUDE.md n°8).
 // DÉRIVÉ du helper partagé, jamais réécrit en littéral : le garde-rail
 // archlint.TestNoNewRawStartTimeLiteral interdit toute copie de l'expression.
-var demoCanonicalStartExpr = analysis.SQLStartTimeCanonical("mr")
+var demoCanonicalStartExpr = sqlfrag.SQLStartTimeCanonical("mr")
 
 // demoOutcomeWin : valeur `outcome` d'une victoire dans match_participants
 // (1=Tie, 2=Win, 3=Loss, 4=DNF — cf. skill db-schema).

@@ -15,11 +15,11 @@ func TestReportSyncResult_Succes_AucuneErreur(t *testing.T) {
 	var out strings.Builder
 	r := &domain.SyncResult{MatchesInserted: 12, MatchesSkipped: 3, DurationSeconds: 4.5}
 
-	if err := reportSyncResult(&out, "delta", "Nuzzles", r); err != nil {
+	if err := reportSyncResult(&out, "delta", "J900004", r); err != nil {
 		t.Fatalf("attendu nil sur une passe sans erreur, obtenu %v", err)
 	}
 	line := out.String()
-	for _, want := range []string{"sync delta SUCCESS:", "gamertag=Nuzzles", "inserted=12", "status=success"} {
+	for _, want := range []string{"sync delta SUCCESS:", "gamertag=J900004", "inserted=12", "status=success"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("sortie %q sans %q", line, want)
 		}
@@ -34,7 +34,7 @@ func TestReportSyncResult_Failure_ErreurEtPremiereCause(t *testing.T) {
 	r := &domain.SyncResult{}
 	r.AddError("historique interrompu à start=225: HTTP 429")
 
-	err := reportSyncResult(&out, "full", "Nuzzles", r)
+	err := reportSyncResult(&out, "full", "J900004", r)
 	if err == nil {
 		t.Fatal("attendu une erreur sur un statut failure, obtenu nil")
 	}
@@ -55,7 +55,7 @@ func TestReportSyncResult_PartialSuccess_RendUneErreur(t *testing.T) {
 	r := &domain.SyncResult{MatchesInserted: 7}
 	r.AddError("historique interrompu à start=50: HTTP 429")
 
-	if err := reportSyncResult(&out, "full", "Nuzzles", r); err == nil {
+	if err := reportSyncResult(&out, "full", "J900004", r); err == nil {
 		t.Fatal("une passe incomplète doit sortir en erreur, même avec des insertions")
 	}
 	if !strings.Contains(out.String(), "sync full PARTIAL_SUCCESS:") {
@@ -65,7 +65,7 @@ func TestReportSyncResult_PartialSuccess_RendUneErreur(t *testing.T) {
 
 func TestReportSyncResult_ResultatNil_RendUneErreur(t *testing.T) {
 	var out strings.Builder
-	if err := reportSyncResult(&out, "delta", "Nuzzles", nil); err == nil {
+	if err := reportSyncResult(&out, "delta", "J900004", nil); err == nil {
 		t.Fatal("un résultat absent est une erreur, pas un succès muet")
 	}
 }

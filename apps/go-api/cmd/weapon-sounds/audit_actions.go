@@ -42,7 +42,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // offsetPropsAction : l'offset THEORIQUE du premier paquet de proprietes d'une action.

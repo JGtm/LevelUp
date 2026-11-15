@@ -50,5 +50,13 @@ func (p *PathResolver) TacticalRasterDir(titleSlug string) string {
 // de nommer un sidecar depuis un simple listing du dossier d'artefacts, et a la lecture
 // de le retrouver depuis le match_id complet du registre.
 func (p *PathResolver) TacticalRasterPath(titleSlug, matchID string) string {
-	return filepath.Join(p.TacticalRasterDir(titleSlug), FilmShortMatchID(matchID)+".json")
+	return filepath.Join(p.TacticalRasterDir(titleSlug), FilmShortMatchID(matchID)+ReplaySidecarExt)
+}
+
+// SpawnModelPath retourne le chemin du fichier des POIDS DU MODELE DE REAPPARITION d'un titre
+// (cf. domain.PoidsReapparition) : donnee de REFERENCE versionnee, ecrite hors serveur par
+// `levelup spawn-model fit` et relue telle quelle par le service.
+// Ex: data/titles/halo_infinite/reference/spawn_model.json
+func (p *PathResolver) SpawnModelPath(titleSlug string) string {
+	return filepath.Join(p.referenceDir(titleSlug), "spawn_model.json")
 }

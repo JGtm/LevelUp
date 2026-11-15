@@ -954,6 +954,23 @@ export interface paths {
         patch: operations["patchAdminUserRole"];
         trace?: never;
     };
+    "/assets/{title_id}/kill-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les pictogrammes d'arme du titre par weapon_key (noms dans la langue de la requete) */
+        get: operations["listKillSourceIcons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{title_id}/maps": {
         parameters: {
             query?: never;
@@ -2322,7 +2339,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
                 filepath: string;
             };
@@ -2479,7 +2496,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -3709,6 +3726,23 @@ export interface paths {
         put?: never;
         /** Sync delta par joueur */
         post: operations["postPlayerSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/sync/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut de la synchronisation d'un joueur */
+        get: operations["getPlayerSyncStatus"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5256,6 +5290,8 @@ export interface components {
             /** @description Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé. */
             media_h264_missing?: boolean;
             oauth_code_flow_enabled: boolean;
+            /** @description xuid du compte connecté, celui que reauth_required concerne. */
+            own_halo_xuid?: string;
             /** @enum {string} */
             pool_sharing: "granted" | "declined" | "undecided" | "unavailable";
             /** @description Sprint 54-B : informations de confidentialité des matchs du joueur actif. */
@@ -5569,6 +5605,8 @@ export interface components {
             can_manage_settings: boolean;
             /** @description Téléchargement de l'application Windows proposé. */
             can_offer_windows_download: boolean;
+            /** @description Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau. */
+            can_pick_folder: boolean;
             /** @description Mise en commun des jetons proposée à l'utilisateur. */
             can_pool_tokens: boolean;
             can_read_local_data: boolean;
@@ -6201,8 +6239,6 @@ export interface components {
         };
         CompareRequest: {
             target_gamertag: string;
-            /** @default hi */
-            title_slug: string;
         };
         CompareResponse: {
             encounter_badges?: components["schemas"]["MatchEncounterBadge"][] | null;
@@ -7275,9 +7311,31 @@ export interface components {
             squad_scope: "all" | "solo" | "squad";
         };
         ExplorerMatchesQueryRequest: {
+            experience_types?: string[] | null;
             filters?: components["schemas"]["FilterContextInput"];
-            match_filters?: components["schemas"]["ExplorerMatchFilters"];
+            include_briefing?: boolean;
+            include_export_hint?: boolean;
+            map_names?: string[] | null;
+            /** Format: date-time */
+            match_end_date?: string | null;
+            match_id_search?: string;
+            match_ids?: string[] | null;
+            /** Format: date-time */
+            match_start_date?: string | null;
+            mode_names?: string[] | null;
+            outcome_filter?: number[] | null;
             pagination?: components["schemas"]["PaginationRequest"];
+            perf_tiers?: number[] | null;
+            playlists?: string[] | null;
+            /** @enum {string} */
+            ranked_context?: "" | "ranked" | "unranked";
+            /** @enum {string} */
+            replay_scope?: "" | "with" | "without";
+            skill_tiers?: string[] | null;
+            sort_dir?: string;
+            sort_field?: string;
+            /** @enum {string} */
+            squad_scope?: "" | "solo" | "squad";
         };
         ExplorerMatchesQueryResponse: {
             briefing?: components["schemas"]["ExplorerBriefing"];
@@ -7304,8 +7362,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             /** @default Non classé */
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
@@ -7371,7 +7427,8 @@ export interface components {
             pagination: components["schemas"]["PaginationMeta"];
         };
         ExplorerPlayerQueryRequest: {
-            filters?: components["schemas"]["FilterContextInput"] | null;
+            /** @description Page 1-indexée (défaut 1). */
+            page?: number;
             target_gamertag: string;
             target_xuid?: string;
         };
@@ -8427,6 +8484,12 @@ export interface components {
             /** Format: int64 */
             slides: number;
         };
+        KillSourceIconEntry: {
+            image_url: string;
+            key: string;
+            label: string;
+            tinted: boolean;
+        };
         Knockback: {
             /** Format: int32 */
             by?: number;
@@ -8576,6 +8639,7 @@ export interface components {
             title_name: string;
         };
         LayerCoverage: {
+            aim?: components["schemas"]["ShotAimCoverage"];
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
@@ -8594,6 +8658,16 @@ export interface components {
             unitOtherIndex?: number;
             /** Format: int64 */
             unpublished: number;
+        };
+        LeadSharePeriodPoint: {
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            measured_matches: number;
+            month: string;
+            start_date: string;
         };
         LeaderboardCatalog: {
             playlists: components["schemas"]["LeaderboardCatalogRef"][] | null;
@@ -8786,6 +8860,8 @@ export interface components {
             image: string;
             mapNames?: string[] | null;
             module: string;
+            plan?: components["schemas"]["MapBackgroundPlan"];
+            planImage?: string;
             /** Format: int64 */
             schemaVersion: number;
             source: string;
@@ -8804,6 +8880,14 @@ export interface components {
             originY: number;
             /** Format: int64 */
             widthPx: number;
+        };
+        MapBackgroundPlan: {
+            edges: (number[] | null)[] | null;
+            /** Format: int64 */
+            faces: number;
+            source: string;
+            /** Format: int64 */
+            vertices: number;
         };
         MapBackgroundStats: {
             /** Format: double */
@@ -8848,12 +8932,20 @@ export interface components {
             waterVolumes: number;
         };
         MapBreakdownRow: {
+            /** Format: double */
+            historical_lead_share?: number;
+            /** Format: int64 */
+            historical_lead_share_matches?: number;
             /** Format: int64 */
             historical_match_count?: number;
             /** Format: double */
             historical_performance_avg?: number;
             /** Format: double */
             historical_win_rate?: number;
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            lead_share_matches?: number;
             map_ui: string;
             /** Format: int64 */
             match_count: number;
@@ -8972,7 +9064,6 @@ export interface components {
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
-            impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
@@ -9085,8 +9176,6 @@ export interface components {
             expected_deaths?: number;
             /** Format: double */
             expected_kills?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             has_hist_avg: boolean;
             /** Format: double */
             hist_avg_assists?: number;
@@ -9179,10 +9268,32 @@ export interface components {
         };
         MatchHistoryQueryRequest: {
             columns?: string[] | null;
+            experience_types?: string[] | null;
             filters?: components["schemas"]["FilterContextInput"];
             /** @default false */
             include_export_hint: boolean;
+            map_names?: string[] | null;
+            /** Format: date-time */
+            match_end_date?: string | null;
+            match_id_search?: string;
+            match_ids?: string[] | null;
+            /** Format: date-time */
+            match_start_date?: string | null;
+            mode_names?: string[] | null;
+            outcome_filter?: number[] | null;
             pagination?: components["schemas"]["PaginationRequest"];
+            perf_tiers?: number[] | null;
+            picked_solo_session_labels?: string[] | null;
+            playlists?: string[] | null;
+            /** @enum {string} */
+            ranked_context?: "" | "ranked" | "unranked";
+            /** @enum {string} */
+            replay_scope?: "" | "with" | "without";
+            skill_tiers?: string[] | null;
+            sort_dir?: string;
+            sort_field?: string;
+            /** @enum {string} */
+            squad_scope?: "" | "solo" | "squad";
         };
         MatchHistoryQuerySummary: {
             active_filter_mode: string;
@@ -9215,8 +9326,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr: number | null;
-            /** Format: double */
-            expected_win_prob?: number;
             experience_type_label?: string;
             has_replay?: boolean;
             is_excluded: boolean;
@@ -9826,6 +9935,10 @@ export interface components {
             is_favorite: boolean;
             is_overtime?: boolean;
             is_ranked: boolean;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             map_id?: string;
             map_image_url?: string;
             map_ui: string;
@@ -9861,13 +9974,6 @@ export interface components {
             /** Format: int64 */
             t0_ms?: number;
             waypoint_url?: string;
-        };
-        MatchViewImpactRole: {
-            color_token: string;
-            inverted?: boolean;
-            label_key: string;
-            role_key: string;
-            xuid: string;
         };
         MatchViewRank: {
             /** Format: double */
@@ -11026,6 +11132,18 @@ export interface components {
             waypoint_player: string;
             xuid: string;
         };
+        PlayerSyncStatus: {
+            /**
+             * Format: int64
+             * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
+             */
+            cooldown_retry_after_s: number;
+            /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
+            job?: components["schemas"]["AsyncJobStatus"];
+            player_slug: string;
+            /** @description Une synchronisation de ce joueur est en vol, quelle qu'en soit la source. */
+            syncing: boolean;
+        };
         PlayerTokenHealth: {
             access: string;
             credential_source?: string;
@@ -11948,6 +12066,10 @@ export interface components {
             kills_per_match: number;
             /** Format: double */
             last_skill_rating?: number;
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            lead_share_matches?: number;
             /** Format: int64 */
             losses: number;
             match_series: components["schemas"]["SessionMatchPoint"][] | null;
@@ -12034,8 +12156,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             is_ranked: boolean;
             /** Format: double */
             kda?: number;
@@ -12045,6 +12165,10 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             /** Format: int64 */
             lobby_size?: number;
             map_name?: string;
@@ -12231,44 +12355,92 @@ export interface components {
         };
         /** @description Configuration de l'application (GET/PATCH /settings) */
         SettingsResponse: {
+            /** @description Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée. */
+            archive_films: boolean;
+            auth_provider: string;
+            /** @description Dossier de la sauvegarde périodique des données en Parquet (chemin absolu). Vide = désactivée. Application de bureau seulement. */
+            backup_dir: string;
+            /** @description Délai entre deux sauvegardes, en heures entières (1h à 168h). Vide = 24h. Application de bureau seulement. */
+            backup_interval: string;
+            /** @description Nombre de jeux de sauvegarde conservés dans le dossier choisi (1 à 60). Défaut 7. Application de bureau seulement. */
+            backup_keep: number;
+            /** @description La croix de la fenêtre réduit l'application dans la zone de notification au lieu de la quitter ; le serveur continue. Application de bureau seulement. */
+            close_to_tray: boolean;
+            coach_proactive_mode: boolean;
             /** @enum {string} */
-            discord_lang?: "fr" | "en";
-            discord_notifications_enabled?: boolean;
-            discord_notify_backfill?: boolean;
-            discord_notify_new_version?: boolean;
-            discord_notify_sync?: boolean;
-            discord_webhook_url_present?: boolean;
+            discord_lang: "fr" | "en";
+            discord_notifications_enabled: boolean;
+            discord_notify_backfill: boolean;
+            discord_notify_friends: boolean;
+            discord_notify_new_version: boolean;
+            discord_notify_sync: boolean;
+            discord_webhook_url_present: boolean;
+            /** @description Dossier de l'archive des films (chemin absolu). Vide = emplacement par défaut. Appliqué tout de suite tant que l'archive est vide. */
+            film_archive_dir: string;
+            /** @description Détecter le jeu en cours : pendant une partie, cuisson des rejeux et tâches lourdes en attente ; synchronisation à la fermeture du jeu. Application de bureau. */
+            game_process_watch: boolean;
+            instance_locked: boolean;
             /** @enum {string} */
             lang: "fr" | "en";
-            media_captures_base_dir?: string;
+            media_captures_base_dir: string;
             /** @description Supprimer le fichier source (.mkv/.avi…) après un transcodage HLS réussi. GET renvoie la valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage (omis = auto). */
-            media_delete_source_after_transcode?: boolean;
-            media_tolerance_minutes?: number;
-            media_watcher_debounce_seconds?: number;
-            media_watcher_enabled?: boolean;
-            normalize_mode_labels?: boolean;
-            refresh_clears_caches?: boolean;
+            media_delete_source_after_transcode: boolean;
+            media_tolerance_minutes: number;
+            media_watcher_debounce_seconds: number;
+            media_watcher_enabled: boolean;
+            /** @description Plafond mémoire de chaque base DuckDB, en Mo (1024 à 32768). 0 = valeur par défaut du serveur. Application de bureau seulement. */
+            memory_limit_mb: number;
+            /** @description Afficher les notifications de la cloche comme notifications Windows quand la fenêtre n'est pas au premier plan. Application de bureau seulement. */
+            native_notifications: boolean;
+            normalize_mode_labels: boolean;
+            /** @enum {string} */
+            outcome_badge_sensitivity: "relaxed" | "standard" | "strict";
+            outcome_exclude_bot_matches_from_badges: boolean;
+            outcome_exclude_bot_matches_from_records: boolean;
+            refresh_clears_caches: boolean;
+            rendement_exclude_assists: boolean;
+            /**
+             * @description Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l'instance.
+             * @enum {string}
+             */
+            replay_build_location: "" | "local" | "worker" | "off";
+            /** @description Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité. */
+            replay_retention_months: number;
+            /** @description Effet de distance des sons d'armes du rejeu 2D (0-100 %). 0 = son pur. */
+            replay_sound_distance_percent: number;
+            /** @description Variation des sons d'armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles. */
+            replay_sound_variation_percent: number;
+            /** @description Poser une tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. Application de bureau seulement. */
+            scheduled_refresh: boolean;
+            session_gap_minutes: number;
+            session_split_on_ranked_change: boolean;
+            /** @enum {string} */
+            session_team_change_mode: "ignore" | "group" | "friends";
             /** @description Affichage du système Objectifs/Prestige (section Accueil + nav L1). */
-            show_progression?: boolean;
-            show_records?: boolean;
-            spnkr_auto_sync_enabled?: boolean;
-            spnkr_auto_sync_interval_hours?: number;
-            spnkr_auto_sync_interval_minutes?: number;
-            spnkr_refresh_backfill_aliases?: boolean;
-            spnkr_refresh_backfill_events?: boolean;
-            spnkr_refresh_backfill_lusr?: boolean;
-            spnkr_refresh_backfill_medals?: boolean;
-            spnkr_refresh_backfill_performance_scores?: boolean;
-            spnkr_refresh_backfill_personal_scores?: boolean;
-            spnkr_refresh_backfill_skill?: boolean;
-            spnkr_refresh_with_backfill?: boolean;
+            show_progression: boolean;
+            show_records: boolean;
+            spnkr_auto_sync_enabled: boolean;
+            spnkr_auto_sync_interval_hours: number;
+            spnkr_auto_sync_interval_minutes: number;
+            spnkr_refresh_backfill_aliases: boolean;
+            spnkr_refresh_backfill_events: boolean;
+            spnkr_refresh_backfill_lusr: boolean;
+            spnkr_refresh_backfill_medals: boolean;
+            spnkr_refresh_backfill_performance_scores: boolean;
+            spnkr_refresh_backfill_personal_scores: boolean;
+            spnkr_refresh_backfill_skill: boolean;
+            spnkr_refresh_with_backfill: boolean;
+            /** @description Lancer l'application, réduite dans la zone de notification, à l'ouverture de la session Windows. Application de bureau seulement. */
+            start_with_windows: boolean;
             user_timezone: string;
-            watcher_presence_enabled?: boolean;
-            watcher_subscribed_players?: string[];
+            watcher_presence_enabled: boolean;
+            watcher_subscribed_players: string[];
         };
         Shot: {
             /** Format: float */
             h?: number;
+            /** Format: float */
+            p?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -12280,6 +12452,16 @@ export interface components {
             x: number;
             /** Format: float */
             y: number;
+        };
+        ShotAimCoverage: {
+            /** Format: int64 */
+            none: number;
+            /** Format: int64 */
+            record: number;
+            /** Format: int64 */
+            sameTick: number;
+            /** Format: int64 */
+            track: number;
         };
         SkillRatingSnapshot: {
             /** Format: double */
@@ -12303,8 +12485,6 @@ export interface components {
             DeathsExpected: number | null;
             /** Format: double */
             Delta: number | null;
-            /** Format: double */
-            ExpectedWinProb: number | null;
             /** Format: double */
             KillsExpected: number | null;
             /** Format: int64 */
@@ -12469,7 +12649,6 @@ export interface components {
             per_minute_stats?: components["schemas"]["ChartSeriesChartPointStacked"];
             perf_vs_historical?: components["schemas"]["ChartSeriesChartPoint2D"];
             performance_timeseries?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
-            radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
         SquadEmpriseBlock: {
@@ -12791,6 +12970,18 @@ export interface components {
             bars: components["schemas"]["SquadKillMechanicBar"][] | null;
             players: string[] | null;
         };
+        SquadLeadSharePoint: {
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
+            map_name?: string;
+            match_id: string;
+            /** Format: int64 */
+            outcome: number;
+            session_label?: string;
+            start_time: string;
+        };
         SquadMapHeatmap: {
             cells: components["schemas"]["SquadMapHeatmapCell"][] | null;
             maps_topn: string[] | null;
@@ -12819,8 +13010,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr_avg?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             /** Format: int64 */
             gameplay_duration_seconds?: number;
             has_replay?: boolean;
@@ -12918,6 +13107,10 @@ export interface components {
         SquadPerMinuteEntry: {
             /** Format: double */
             assists_per_minute: number;
+            /** Format: double */
+            damage_dealt_per_minute?: number;
+            /** Format: double */
+            damage_taken_per_minute?: number;
             /** Format: double */
             deaths_per_minute: number;
             /** Format: double */
@@ -13572,6 +13765,8 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part. */
             spawn?: string;
+            /** @description Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe). */
+            vies?: string;
         };
         TacticalCelluleReponse: {
             bilan?: components["schemas"]["TacticalBilanZone"];
@@ -13712,6 +13907,8 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
+            /** @description Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe). */
+            vies?: string;
         };
         TacticalSequence: {
             acteurs: components["schemas"]["TacticalSequenceActeur"][] | null;
@@ -13868,6 +14065,7 @@ export interface components {
             impact_matrix?: components["schemas"]["SquadImpactMatrix"];
             intensity_profile?: components["schemas"]["SquadIntensityProfile"];
             latest_composition_session?: string;
+            lead_share_series?: components["schemas"]["SquadLeadSharePoint"][] | null;
             main_player?: string;
             map_breakdown?: components["schemas"]["MapBreakdownRow"][] | null;
             map_heatmap?: components["schemas"]["SquadMapHeatmap"];
@@ -14054,6 +14252,10 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             map_label?: string;
             map_name?: string;
             match_id: string;
@@ -14099,6 +14301,7 @@ export interface components {
             intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
+            lead_share_by_month?: components["schemas"]["LeadSharePeriodPoint"][] | null;
             lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
@@ -14519,6 +14722,7 @@ export interface components {
             deathsTailDesync: number;
             /** Format: int64 */
             deathsUnmatched: number;
+            destructions?: components["schemas"]["VehicleDestructionCoverage"];
             /** Format: int64 */
             echantillonsAuTraversDUnSilence: number;
             /** Format: int64 */
@@ -14627,6 +14831,54 @@ export interface components {
             /** Format: float */
             y: number;
         };
+        VehicleDestroyer: {
+            bot?: boolean;
+            /** Format: int64 */
+            i: number;
+            xuid?: string;
+        };
+        VehicleDestruction: {
+            by?: components["schemas"]["VehicleDestroyer"];
+            /** Format: int32 */
+            cause?: number;
+            causeKey?: string;
+            killed?: string[] | null;
+            occupant?: string;
+        };
+        VehicleDestructionCoverage: {
+            /** Format: int64 */
+            byBot: number;
+            /** Format: int64 */
+            byHuman: number;
+            /** Format: int64 */
+            cause: number;
+            /** Format: int64 */
+            causeAbsent: number;
+            /** Format: int64 */
+            causeUnresolved: number;
+            /** Format: int64 */
+            destroyed: number;
+            /** Format: int64 */
+            killed: number;
+            /** Format: int64 */
+            killedCleanup: number;
+            /** Format: int64 */
+            killedNoIdentity: number;
+            /** Format: int64 */
+            killedOccupants: number;
+            /** Format: int64 */
+            killerAbsent: number;
+            /** Format: int64 */
+            killerAmbiguous: number;
+            /** Format: int64 */
+            killerOutOfRoster: number;
+            /** Format: int64 */
+            occupant: number;
+            /** Format: int64 */
+            pieces: number;
+            /** Format: int64 */
+            published: number;
+        };
         VehicleLabel: {
             en?: string;
             fr?: string;
@@ -14699,6 +14951,7 @@ export interface components {
         VehicleTrack: {
             carrier?: components["schemas"]["VehicleLifeRef"];
             chassis?: string;
+            destruction?: components["schemas"]["VehicleDestruction"];
             end: string;
             family?: string;
             /** Format: int32 */
@@ -15144,7 +15397,7 @@ export interface components {
         };
     };
     parameters: {
-        /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+        /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
         PlayerSlug: string;
     };
     requestBodies: never;
@@ -15158,7 +15411,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15280,7 +15533,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15313,7 +15566,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15346,7 +15599,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -17062,6 +17315,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listKillSourceIcons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KillSourceIconEntry"][] | null;
+                };
             };
             /** @description Error */
             default: {
@@ -19022,7 +19306,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19176,7 +19460,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19216,7 +19500,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19319,7 +19603,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description UUID du match Halo Infinite */
                 match_id: string;
@@ -19430,7 +19714,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description UUID du match Halo Infinite */
                 match_id: string;
@@ -19607,6 +19891,7 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    "X-Replay-Cadence-Stale"?: boolean;
                     "X-Replay-Latest-Schema-Version"?: number;
                     [name: string]: unknown;
                 };
@@ -19659,7 +19944,14 @@ export interface operations {
     };
     getMatchReplayBackgroundImage: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+                 *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
+                 *     fond, à superposer). Toute autre valeur est refusée.
+                 */
+                variante?: "plan";
+            };
             header?: never;
             path: {
                 player_slug: string;
@@ -19669,14 +19961,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image PNG du fond de carte */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour la carte de ce match */
+            /** @description Valeur de `variante` inconnue */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -19919,7 +20218,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
                 filepath: string;
             };
@@ -19941,7 +20240,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20201,7 +20500,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -20545,7 +20844,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20579,7 +20878,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20618,7 +20917,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20654,7 +20953,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20696,7 +20995,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20746,7 +21045,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20782,7 +21081,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20818,7 +21117,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20851,7 +21150,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20884,7 +21183,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20922,7 +21221,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20963,7 +21262,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21007,7 +21306,7 @@ export interface operations {
                 "If-None-Match"?: string;
             };
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21075,7 +21374,7 @@ export interface operations {
                 "If-None-Match"?: string;
             };
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21131,7 +21430,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -21163,7 +21462,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21196,7 +21495,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21229,7 +21528,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -21255,7 +21554,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21294,7 +21593,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21327,7 +21626,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21465,7 +21764,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21500,7 +21799,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21542,7 +21841,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21648,7 +21947,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21681,7 +21980,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21716,7 +22015,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21760,7 +22059,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21795,7 +22094,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21864,7 +22163,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -22714,6 +23013,37 @@ export interface operations {
             };
         };
     };
+    getPlayerSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerSyncStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getTacticalMapBackground: {
         parameters: {
             query?: never;
@@ -22748,7 +23078,14 @@ export interface operations {
     };
     getTacticalMapBackgroundImage: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+                 *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
+                 *     fond, à superposer). Toute autre valeur est refusée.
+                 */
+                variante?: "plan";
+            };
             header?: never;
             path: {
                 player_slug: string;
@@ -22758,14 +23095,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image PNG du fond de carte */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour cette carte */
+            /** @description Valeur de `variante` inconnue */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -22986,7 +23330,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description Slug du titre cible */
                 slug: string;
@@ -23023,7 +23367,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description Slug du titre cible (ex. halo_infinite, halo_5) */
                 slug: string;

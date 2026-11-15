@@ -136,14 +136,14 @@ func TestLeaderboardPage_MissingParams_200Empty(t *testing.T) {
 // au repo — la garde 4.1 ne coupe pas le chemin nominal.
 func TestLeaderboardPage_CompleteParams_ServesEntries(t *testing.T) {
 	repo := &strictLeaderboardRepo{entries: []domain.LeaderboardEntry{
-		{Rank: 1, Gamertag: "Twissted Mindss", CSRValue: 2180},
+		{Rank: 1, Gamertag: "Joueur90000000c", CSRValue: 2180},
 	}}
 	code, body := getLeaderboard(t, newLeaderboardRouter(repo),
 		"?season=csrseason13-3&playlist=edfef3ac-9cbe-4fa2-b949-8f29deafd483")
 	if code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", code)
 	}
-	if len(body.Entries) != 1 || body.Entries[0].Gamertag != "Twissted Mindss" {
+	if len(body.Entries) != 1 || body.Entries[0].Gamertag != "Joueur90000000c" {
 		t.Fatalf("entries inattendues: %+v", body.Entries)
 	}
 	if body.TotalLocal != 1 {

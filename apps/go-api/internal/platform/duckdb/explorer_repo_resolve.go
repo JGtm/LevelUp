@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ResolveXUIDByGamertag résout un gamertag en xuid : le xuid dont le nom canonique
@@ -39,14 +39,14 @@ func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag strin
 			return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
 		}
 	}
-	return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, sql.ErrNoRows)
+	return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, NotFound(sql.ErrNoRows))
 }
 
 // qResolveParAlias : niveau 1 de la cascade — un alias non vide gagne toujours.
 var qResolveParAlias = `
 		SELECT xuid FROM xuid_aliases
 		WHERE gamertag IS NOT NULL AND gamertag != '' AND gamertag ILIKE ?
-		  AND ` + analysis.SQLIsNotBotCol("xuid") + `
+		  AND ` + sqlfrag.SQLIsNotBotCol("xuid") + `
 		LIMIT 1
 	`
 
@@ -67,7 +67,7 @@ var qResolveParParticipant = `
 		)
 		SELECT n.xuid FROM noms n, motif
 		WHERE n.gamertag != '' AND n.gamertag ILIKE motif.m
-		  AND ` + analysis.SQLIsNotBotCol("n.xuid") + `
+		  AND ` + sqlfrag.SQLIsNotBotCol("n.xuid") + `
 		  AND NOT EXISTS (
 			SELECT 1 FROM xuid_aliases xa
 			WHERE xa.xuid = n.xuid AND xa.gamertag IS NOT NULL AND xa.gamertag != ''
@@ -78,6 +78,6 @@ var qResolveParParticipant = `
 // qResolveParVueDesNoms : derniers niveaux (kill-feed, libellé masqué) — la vue elle-même.
 var qResolveParVueDesNoms = `
 		SELECT xuid FROM v_gamertag_lookup
-		WHERE gamertag ILIKE ? AND ` + analysis.SQLIsNotBotCol("xuid") + `
+		WHERE gamertag ILIKE ? AND ` + sqlfrag.SQLIsNotBotCol("xuid") + `
 		LIMIT 1
 	`

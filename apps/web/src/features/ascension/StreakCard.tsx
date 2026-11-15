@@ -16,9 +16,9 @@ import type { Streak } from './types'
 /** Classe du badge de statut (couleurs d'état UI génériques, cf. CLAUDE.md §20). */
 function streakStatusBadgeClass(status: Streak['status']): string {
   return status === 'active'
-    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' // color-allow: emerald status badge active (CLAUDE.md §20)
+    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' // color-allow(tailwind): emerald status badge active (CLAUDE.md §20)
     : status === 'paused'
-      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow: amber status badge paused (CLAUDE.md §20)
+      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow(tailwind): amber status badge paused (CLAUDE.md §20)
       : 'bg-muted text-muted-foreground'
 }
 
@@ -124,7 +124,7 @@ export function StreakCard({ streak: s, locale, t, compact = false }: StreakCard
           </div>
         )}
         {!nextTier && s.status === 'active' && (
-          <div className="text-emerald-700 dark:text-emerald-300"> {/* color-allow: emerald streak active at max multiplier (CLAUDE.md §20) */}
+          <div className="text-emerald-700 dark:text-emerald-300"> {/* color-allow(tailwind): emerald streak active at max multiplier (CLAUDE.md §20) */}
             {t.streakAtMaxMultiplier}
           </div>
         )}

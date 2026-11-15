@@ -1,12 +1,13 @@
 /**
- * PlacementVieCard — « Placement et rendement de chaque vie » (Escouade › Emprise, bloc
- * « Groupés ou isolés », pleine largeur ; lot V4 du plan PLAN_EMPRISE_VIES_2026-09-28, §2.1).
+ * PlacementVieCard — « Distance au coéquipier le plus proche et frags, par vie » (Escouade ›
+ * Emprise, bloc « Groupé ou isolé », pleine largeur ; spécification §2.1).
  *
- * Un nuage : un point par vie (couleur du joueur, taille = durée), un gros point par joueur
- * (médianes), repère de la portée du radar, frontière « au moins un frag », quatre quarts nommés
- * dont le seul « isolé et coûteux » est teinté (`placementCharts.ts`). Légende ECharts NATIVE en
- * bas, centrée : un clic isole le semis ET le gros point d'un joueur (même nom de série), ce que
- * la légende DOM des autres cartes ne fait pas. Hauteur 420.
+ * Une carte de chaleur : 8 cases de distance (0,25 portée de radar) sur 6 lignes de frags, la
+ * valeur d'une case étant sa part des vies de l'escouade ; un gros point par joueur (distance
+ * médiane, frags moyens par vie), repère de la portée du radar, frontière « au moins un frag »,
+ * quatre quarts nommés (`placementCharts.ts`). Légende ECharts NATIVE en bas, centrée : un clic
+ * masque le gros point d'un joueur. Hauteur 520 : une ligne de frags garde de quoi loger le titre
+ * d'un quart sans recouvrir la valeur de ses cases.
  */
 import { useCallback, useMemo } from 'react'
 
@@ -24,8 +25,8 @@ import {
 } from './placementCharts'
 import type { PlacementText } from './placementStrings'
 
-/** Hauteur du graphe (spécification §2.1). */
-const LIFE_HEIGHT = 420
+/** Hauteur du graphe. */
+const LIFE_HEIGHT = 520
 
 export function PlacementVieCard({ placement, locale, t }: { placement: PlacementBlock; locale: Locale; t: PlacementText }) {
   const formats = useMemo(() => placementFormats(locale), [locale])

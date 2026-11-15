@@ -3,7 +3,7 @@ package wire
 import (
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
 )
 
 // brancherCompteursDuFilm republie sur `/debug/vars` les compteurs que le décodeur de film tient

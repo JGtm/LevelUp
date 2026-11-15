@@ -32,7 +32,7 @@ func newDesktopFixture(t *testing.T, caps config.DeploymentCapabilities) desktop
 	cfg := &config.AppConfig{RepoRoot: dir, DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
 	cfg.Capabilities = caps
 	store := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
-	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(dir, "jobs.json")))
+	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 	return desktopFixture{r: r, store: store}

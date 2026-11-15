@@ -58,7 +58,8 @@ import {
   type BornesDeLegende,
   type EtatDuPlan,
 } from './plan.logic'
-import { useTacticalMapBackgroundFrame } from './queries'
+import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
+import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundPlan } from './queries'
 import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
@@ -78,9 +79,14 @@ import {
 } from './tacticalView.logic'
 import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import type { EtatDeLaSequence } from './sequenceCause.logic'
+import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
+import { ETIQUETTE, PILULE } from './pilules'
+import { PilulesDeReapparition } from './TacticalPlanVies'
+import type { TacticalVies } from './vies.logic'
 import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
 /** Les trois réglages du bandeau (état local de la vue). */
@@ -96,6 +102,9 @@ export interface ReglagesDuPlan {
   escouadeEnAttente: boolean
   spawn: string
   onSpawnChange: (spawn: string) => void
+  /** Les apparitions qui forment les grappes ; changer de valeur remet le filtre de grappe à « Toutes ». */
+  vies: TacticalVies
+  onViesChange: (vies: TacticalVies) => void
   grappes: readonly TacticalGrappe[]
   /** Les contours et noms des zones nommées sont peints sur le plan. */
   zonesVisibles: boolean
@@ -162,9 +171,18 @@ export function TacticalPlanCard({
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
+  // L'ORIENTATION ET LE PLAN DES MURS SONT CEUX DU REJEU 2D (mêmes préférences, lues seulement) : une carte
+  // tournée dans le rejeu l'est ici, et son plan des murs s'y allume et s'éteint avec lui.
+  const { turns, showWallPlan } = useMapViewPreferences(mapId)
+  const planDesMurs = useTacticalMapBackgroundPlan(playerSlug, mapId)
+  // En mode plan, les murs sont déjà dans l'image du fond : le calque des murs se retire.
+  const { variante } = useTacticalFondVariante(playerSlug, mapId)
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
-  const repere = useMemo(() => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m) : null), [cadreFond, lue])
-  const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond)
+  const repere = useMemo(
+    () => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null),
+    [cadreFond, lue, turns],
+  )
+  const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
   const zonesPeintes = reglages.zonesVisibles ? zones : AUCUNE_ZONE
@@ -219,10 +237,10 @@ export function TacticalPlanCard({
           <TacticalPlanFond
             playerSlug={playerSlug}
             mapId={mapId}
-            aspect={aspectDuPlan(cadreFond, repere)}
+            aspect={aspectDuPlan(cadreFond, repere, turns)}
             hauteurMax={hauteurMax}
             cadreRef={cadreRef}
-            cadrage={cadrageDuFond(scene, fenetre)}
+            cadrage={cadrageDuFond(scene, fenetre, turns)}
           >
             {lue && raisonVide === null && (
               <CalqueDuPlan
@@ -232,6 +250,7 @@ export function TacticalPlanCard({
                 zoom={zoom}
                 ramp={peinture.ramp}
                 zones={zonesPeintes}
+                plan={isWallPlanDrawn(showWallPlan, variante) ? planDesMurs : null}
                 locale={locale}
                 selected={selected}
                 onPointSelect={onPointSelect}
@@ -281,14 +300,11 @@ export function TacticalPlanCard({
 
 const AUCUNE_ZONE: readonly CalloutZoneReady[] = []
 
-const PILULE =
-  'inline-flex h-7 items-stretch overflow-hidden rounded-md border border-input bg-background text-[11.5px] font-normal'
-const ETIQUETTE = 'flex items-center whitespace-nowrap border-r border-input bg-muted px-1.5 text-muted-foreground'
 const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
 
 /**
- * ReglagesEnPilules — « Lecture », « Joueurs » et « Réapparition » (celle-ci seulement s'il y a des
- * amas ou un filtre posé), chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
+ * ReglagesEnPilules — « Lecture », « Joueurs », puis « Réapparition » et « Vies » (`PilulesDeReapparition`),
+ * chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
  * composition de la barre (`onQuiChange`, cf. `useReglages`), la valeur reste atténuée et un texte
  * visible dit qu'aucune composition n'est choisie — la lecture, elle, reste sur « Moi ».
  */
@@ -303,14 +319,14 @@ function ReglagesEnPilules({
   escouadeEnAttente,
   spawn,
   onSpawnChange,
+  vies,
+  onViesChange,
   grappes,
   zonesVisibles,
   onZonesVisiblesChange,
   zonesDisponibles,
 }: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
-  // « Réapparition » n'a rien à choisir sans amas ; un filtre déjà posé reste visible pour pouvoir l'ôter.
-  const pilulePresente = grappes.length > 0 || spawn !== ''
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
       <label className={PILULE} onPointerEnter={onQuestionIntent} onFocus={onQuestionIntent}>
@@ -350,24 +366,14 @@ function ReglagesEnPilules({
           {t.planSquadPending}
         </span>
       )}
-      {pilulePresente && (
-        <label className={PILULE}>
-          <span className={ETIQUETTE}>{t.pillRespawn}</span>
-          <select
-            value={spawn}
-            onChange={(e) => onSpawnChange(e.target.value)}
-            aria-label={t.pillRespawn}
-            className="w-[72px] bg-transparent pl-1.5 pr-0.5 text-foreground"
-          >
-            <option value="">{t.pillRespawnAll}</option>
-            {grappes.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.nom}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <PilulesDeReapparition
+        t={t}
+        spawn={spawn}
+        onSpawnChange={onSpawnChange}
+        grappes={grappes}
+        vies={vies}
+        onViesChange={onViesChange}
+      />
       {zonesDisponibles && (
         <button
           type="button"

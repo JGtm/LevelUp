@@ -596,7 +596,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 // Objectif sont des métriques intensives (ratios/index agrégés) → seuil
 // CONSTANT étiré au-dessus du P80 pour préserver la variance inter-joueurs
 // (un squad de joueurs corrects dépasse tous le P80, ce qui aplatissait les
-// axes à 100). Objectif : index par opportunité, seuil ObjectiveIndexThreshold.
+// axes à 100). Objectif : note d'objectif du match moyenne, seuil ObjectiveScoreMax.
 //
 // Combat calibration : accuracy est stockée 0..100 en DB (voir transforms.go).
 // Dans loadSynergyMateAxes/synergyMainFallbackAxes acc est normalisé /100

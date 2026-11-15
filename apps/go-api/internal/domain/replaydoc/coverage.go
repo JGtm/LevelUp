@@ -91,6 +91,21 @@ type LayerCoverage struct {
 	// `replay.LayerCoverage`).
 	ByUnit         int `json:"byUnit,omitempty"`
 	UnitOtherIndex int `json:"unitOtherIndex,omitempty"`
+	// Aim : d'où vient la direction de chaque tir posé (calque des tirs seulement) ; absent ailleurs.
+	Aim *ShotAimCoverage `json:"aim,omitempty"`
+}
+
+// ShotAimCoverage : la source de la direction des tirs posés. Track + Record + None =
+// Attached + Unpublished.
+type ShotAimCoverage struct {
+	// Track : visée du tireur, sa dernière lecture au plus tard à l'instant du tir.
+	Track int `json:"track"`
+	// SameTick : parmi Track, celles lues dans le paquet même du tir.
+	SameTick int `json:"sameTick"`
+	// Record : champ de visée de l'enregistrement de tir, faute de visée tenable (repli compté).
+	Record int `json:"record"`
+	// None : ni l'une ni l'autre ; le tir se publie sans direction.
+	None int `json:"none"`
 }
 
 // BridgeHealth résume la santé du pont slot -> joueur.

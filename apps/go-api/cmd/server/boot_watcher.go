@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
@@ -32,7 +31,7 @@ func startWatcher(st *bootState) {
 	ctx, cfg, boot := st.ctx, st.cfg, st.boot
 	settingsStore, tokenProvider, autoSyncPool, autoScheduler := st.settingsStore, st.tokenProvider, st.autoSyncPool, st.autoScheduler
 
-	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
+	// Watcher daemon (présence Xbox RTA) — démarré avant le scheduler pour câbler
 	// l'ActivityChecker : quand un joueur est en état Watching/Syncing/Cooling, le scheduler
 	// cède son tick pour ce joueur et évite deux syncs concurrentes sur la même stats.duckdb.
 	//
@@ -353,15 +352,8 @@ func newWatcherDaemon(cfg *config.AppConfig, deps watcherDeps, titleReg *title.R
 	watcherPR := cfg.PathResolver()
 	daemon = watcher.NewDaemon(watcher.DaemonConfig{
 		RepoRoot:        cfg.RepoRoot,
-		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
 		MaxParallelSync: 2,
 		MatchFetcher:    matchFetcher,
-		// Broadcast présence active : quand un joueur passe in-game (titre
-		// tracké), tous les autres PlayerWatcher passent aussi en Watching.
-		// Évite que les sessions de groupe soient invisibles côté tracker
-		// (incident 2026-05-27 — cf. ensure_enrichment_rows.go + thought_log).
-		// Désactivable via LEVELUP_WATCHER_BROADCAST=0.
-		BroadcastPresenceActive: os.Getenv("LEVELUP_WATCHER_BROADCAST") != "0",
 		LiveRefreshFactory: func(gamertag, xuid, titleSlug string) watcher.LiveRefreshTrigger {
 			if titleSlug == "" {
 				titleSlug = title.DefaultSlug

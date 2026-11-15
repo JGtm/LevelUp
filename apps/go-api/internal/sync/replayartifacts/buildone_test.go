@@ -15,13 +15,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // deps monte des dependances minimales : ni base, ni cache, ni reseau.
@@ -37,7 +39,7 @@ func work() buildWork {
 		mapNames: []string{"Catalyst"},
 		facts: port.MatchFacts{
 			GameVariantName: "CTF:Arena", MapID: "f7e8cde9",
-			Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}},
+			Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}},
 		},
 	}
 }
@@ -119,7 +121,7 @@ func TestBuildAndStoreOneRemonteLaMesure(t *testing.T) {
 	// UNE TRAJECTOIRE AU MOINS : `StoreArtifact` refuse un document vide (il se servirait comme
 	// le rejeu « propre » d'un match sans joueur).
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: w.matchID,
+		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: w.matchID,
 		Tracks: []replay.Track{{Slot: 1, Team: -1}},
 	})
 	if err != nil {
@@ -144,7 +146,8 @@ func TestBuildAndStoreOneRemonteLaMesure(t *testing.T) {
 		t.Errorf("pic = %d, attendu %d", out.peak, picAttendu)
 	}
 	// L'ARTEFACT EST BIEN RANGE : la mesure accompagne un rangement reel, elle ne le remplace pas.
-	if out.stored.Path == "" || out.stored.Bytes != len(blob) {
-		t.Errorf("artefact range = %+v, attendu %d octets a une place canonique", out.stored, len(blob))
+	st, serr := os.Stat(out.stored.Path)
+	if out.stored.Path == "" || serr != nil || int64(out.stored.Bytes) != st.Size() {
+		t.Errorf("artefact range = %+v (%v), attendu la taille stockee a une place canonique", out.stored, serr)
 	}
 }

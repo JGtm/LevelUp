@@ -23,27 +23,13 @@ import (
 	"levelup/go-api/internal/sync/objective"
 )
 
-// RunPostSyncForV2 expose runPostSyncPipeline (méthode interne) au pipeline V2.
+// RunPostSyncForV2Shared expose runPostSyncPipeline (méthode interne) au pipeline V2,
+// en bursts paresseux : le caller ne tient PAS de writer — le pipeline acquiert des
+// bursts courts par écriture shared via le SharedAccess fourni.
 //
 // Wrapper trivial : aucune logique ajoutée. La SyncEngine doit avoir été
 // configurée via NewSyncEngine + WithCSRSeasonID + WithFriendsLoader +
 // WithResolver + WithMediaScanHook (tous exportés).
-//
-// À supprimer en D8 cleanup quand V1 est désactivé.
-func (e *SyncEngine) RunPostSyncForV2(
-	ctx context.Context,
-	playerDB, sharedDB *sql.DB,
-	client HaloClient,
-	insertedIDs []string,
-) domain.PostSyncResult {
-	// Compat V2 actuelle : le runner tient déjà le writer → pinned (byte-identique).
-	// L'incrément 5 basculera le runner sur RunPostSyncForV2Shared (bursts).
-	return e.runPostSyncPipeline(ctx, playerDB, NewPinnedSharedAccess(sharedDB), client, insertedIDs)
-}
-
-// RunPostSyncForV2Shared est la variante bursts paresseux (étape 1 contention) :
-// le caller ne tient PAS de writer — le pipeline acquiert des bursts courts par
-// écriture shared via le SharedAccess fourni. Cible du flip V2 (incrément 5).
 func (e *SyncEngine) RunPostSyncForV2Shared(
 	ctx context.Context,
 	playerDB *sql.DB,

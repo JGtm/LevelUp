@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"sort"
 	"time"
@@ -31,7 +30,7 @@ const dayLayout = "2006-01-02"
 
 // LoadActivityCalendar agrège le nombre de matchs distincts par jour UTC sur la
 // fenêtre [since, until]. Source : match_participants (filtré xuid) JOIN
-// match_registry, via SharedReader (ADR 0016). Le bucket jour est calculé en Go
+// match_registry, via port.ProfileStore (SharedReader, ADR 0016). Le bucket jour est calculé en Go
 // (`t.UTC().Format`) à partir du timestamp canonique (motif A6 : évite les pièges
 // TZ du CAST DATE côté DuckDB). Exclut les matchs Campagne (campaignExcl).
 func (s *Service) LoadActivityCalendar(ctx context.Context, userID string, since, until time.Time) (ActivityCalendar, error) {
@@ -40,53 +39,27 @@ func (s *Service) LoadActivityCalendar(ctx context.Context, userID string, since
 		Until: until.UTC().Format(dayLayout),
 		Days:  []ActivityDay{},
 	}
-	if s.pdb == nil {
+	if s.store == nil {
 		return out, fmt.Errorf("LoadActivityCalendar: PlayerDB non initialisée")
 	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	matchDays, err := s.store.MatchDays(ctx, userID, since, until)
 	if err != nil {
-		return out, fmt.Errorf("LoadActivityCalendar: shared reader: %w", err)
+		return out, err
 	}
-	defer release()
-
-	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT mp.match_id, `+startTimeCanonicalMR+`
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
-		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
-	`, userID, since, until)
-	if err != nil {
-		return out, fmt.Errorf("LoadActivityCalendar: %w", err)
-	}
-	defer rows.Close()
 
 	// Dédup match par jour (robuste à d'éventuelles lignes participant dupliquées).
 	perDay := map[string]map[string]struct{}{}
-	for rows.Next() {
-		var (
-			matchID string
-			at      sql.NullTime
-		)
-		if err := rows.Scan(&matchID, &at); err != nil {
-			return out, err
-		}
-		if !at.Valid {
-			continue
-		}
-		day := at.Time.UTC().Format(dayLayout)
+	for _, md := range matchDays {
+		day := md.At.UTC().Format(dayLayout)
 		set, ok := perDay[day]
 		if !ok {
 			set = map[string]struct{}{}
 			perDay[day] = set
 		}
-		set[matchID] = struct{}{}
-	}
-	if err := rows.Err(); err != nil {
-		return out, err
+		set[md.MatchID] = struct{}{}
 	}
 
 	days := make([]ActivityDay, 0, len(perDay))

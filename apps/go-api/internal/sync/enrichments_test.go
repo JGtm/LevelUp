@@ -129,7 +129,7 @@ func getHadBot(t *testing.T, db *sql.DB, matchID string) bool {
 
 func TestComputeAndPersistHadBotTeammate_BotInSameTeam_TRUE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Match avec self team 0 + bot team 0 + un autre humain team 1.
 	// Bot 600s sur match 600s (100%) -> bien au-dessus du seuil hybride 30s/15%.
@@ -153,7 +153,7 @@ func TestComputeAndPersistHadBotTeammate_BotInSameTeam_TRUE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_BotInOppositeTeam_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Match avec self team 0 + bot dans team 1 (adverse) → had_bot = FALSE.
 	insertMatchRegistry(t, shared, "m1", 600)
@@ -175,7 +175,7 @@ func TestComputeAndPersistHadBotTeammate_BotInOppositeTeam_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_NoBots_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	insertMatchRegistry(t, shared, "m1", 600)
 	insertParticipant(t, shared, "m1", selfXUID, 0)
@@ -194,7 +194,7 @@ func TestComputeAndPersistHadBotTeammate_NoBots_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_MultipleMatches_OnlyAffectedUpdated(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// m1 : avec bot teammate (bot 600s sur match 600s = 100% → significatif)
 	insertMatchRegistry(t, shared, "m1", 600)
@@ -232,7 +232,7 @@ func TestComputeAndPersistHadBotTeammate_MultipleMatches_OnlyAffectedUpdated(t *
 
 func TestComputeAndPersistHadBotTeammate_Idempotent_SecondRunZero(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	insertMatchRegistry(t, shared, "m1", 600)
 	insertParticipant(t, shared, "m1", selfXUID, 0)
@@ -266,7 +266,7 @@ func TestComputeAndPersistHadBotTeammate_NoMatchesForXUID(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_OnlySelfInTeam_NoBotTeammate(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Match avec uniquement self dans team 0, autres team 1.
 	insertMatchRegistry(t, shared, "m1", 600)
@@ -288,7 +288,7 @@ func TestComputeAndPersistHadBotTeammate_OnlySelfInTeam_NoBotTeammate(t *testing
 
 func TestComputeAndPersistHadBotTeammate_BotBrief_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot 10s sur match 480s (2%) → FALSE (sous les deux seuils).
 	insertMatchRegistry(t, shared, "m1", 480)
@@ -306,7 +306,7 @@ func TestComputeAndPersistHadBotTeammate_BotBrief_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_BotBelowAbsolute_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot 25s sur match 100s : ratio = 25% (>= 15%) MAIS time < 30s → FALSE
 	// (plancher absolu sur matchs courts).
@@ -325,7 +325,7 @@ func TestComputeAndPersistHadBotTeammate_BotBelowAbsolute_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_BotBelowRatio_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot 50s sur match 500s : time >= 30s MAIS ratio = 10% (< 15%) → FALSE
 	// (ratio sous le seuil sur matchs longs).
@@ -344,7 +344,7 @@ func TestComputeAndPersistHadBotTeammate_BotBelowRatio_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_BotMeetsBothThresholds_TRUE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot 100s sur match 480s : time >= 30s ET ratio = 20.8% (>= 15%) → TRUE.
 	insertMatchRegistry(t, shared, "m1", 480)
@@ -362,7 +362,7 @@ func TestComputeAndPersistHadBotTeammate_BotMeetsBothThresholds_TRUE(t *testing.
 
 func TestComputeAndPersistHadBotTeammate_MultipleBotsSummed_TRUE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Deux bots dans ma team : 30s + 30s = 60s cumules sur match 200s (30%).
 	// Chacun pris individuellement sous le ratio 15% — c'est la SOMME qui compte.
@@ -389,7 +389,7 @@ func TestComputeAndPersistHadBotTeammate_MultipleBotsSummed_TRUE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_LateJoinBrief_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot late-join, 80s sur 480s (16.6% < 30% ratio late-join) → ignoré
 	// dans la SUM même si ratio normal 16.6% > 15% aurait passé sans
@@ -410,7 +410,7 @@ func TestComputeAndPersistHadBotTeammate_LateJoinBrief_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_LateJoinLong_TRUE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot late-join, 200s sur 480s (41.6% >= 30%) → compté dans la SUM.
 	// Sémantique : humain quitté à mi-match, bot prend la suite → vrai
@@ -431,7 +431,7 @@ func TestComputeAndPersistHadBotTeammate_LateJoinLong_TRUE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_FromStartBrief_PassesNormalThresholds(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Bot present_at_beginning=TRUE (pas late-join), time_played=100s sur 480s
 	// (20.8%). Le raffinement late-join NE s'applique PAS → SUM=100s, ratio
@@ -452,7 +452,7 @@ func TestComputeAndPersistHadBotTeammate_FromStartBrief_PassesNormalThresholds(t
 
 func TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274858283686"
+	const selfXUID = "2623439693412443"
 
 	// Reproduit exactement le cas Madina/615b3ebc : bot late-join, 6s sur
 	// 390s (1.5%). Ce match a motivé l'amélioration ; il doit être FALSE
@@ -476,7 +476,7 @@ func TestComputeAndPersistHadBotTeammate_MadinaRealCase_FALSE(t *testing.T) {
 
 func TestComputeAndPersistHadBotTeammate_Recompute_FlipsTrueToFalse(t *testing.T) {
 	shared, player := setupEnrichmentsTestDBs(t)
-	const selfXUID = "2533274823110022"
+	const selfXUID = "2603225103667623"
 
 	// Simule l'etat post ancien algo : bot 10s, flag deja TRUE en DB.
 	insertMatchRegistry(t, shared, "m1", 480)

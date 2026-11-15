@@ -23,7 +23,7 @@
 import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { campCountOf, leaderStates, scoreTimelineOf } from '../../../lib/replay/scoreTimeline'
-import { SCORE_TIMELINE_HIDDEN } from '../../match-view/scoreTimelineKind'
+import { SCORE_TIMELINE_HIDDEN } from '@/lib/halo/scoreTimelineKind'
 import { roundTransitions } from './roundsLogic'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { MedalEvent } from './killFeedLogic'

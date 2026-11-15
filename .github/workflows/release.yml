@@ -55,10 +55,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: Extract version from tag
         id: ver
@@ -201,10 +197,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: Download web dist
         uses: actions/download-artifact@v8

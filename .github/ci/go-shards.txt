@@ -4,11 +4,12 @@
 #
 # Syntaxe (une directive par ligne, champs séparés par des blancs, `#` commence un commentaire) :
 #
-#   module <dossier>
-#       Les lots qui suivent appartiennent au module Go de ce dossier (relatif à la racine du dépôt,
-#       ADR 0041) jusqu'à la directive `module` suivante ; avant toute directive, `apps/go-api`. Un
-#       lot se lance DEPUIS son module (`--module <lot>`) : `./...` ne franchit jamais la frontière
-#       d'un module, la partition se prouve module par module.
+#   module <dossier ou chemin de module>
+#       Les lots qui suivent appartiennent à ce module Go jusqu'à la directive `module` suivante ;
+#       avant toute directive, `apps/go-api`. Un dossier (relatif à la racine du dépôt) porte un
+#       go.mod, et ses lots se lancent depuis lui ; un chemin de module (`github.com/...`) désigne une
+#       brique publiée dont apps/go-api dépend (ADR 0043), dont les lots se lancent depuis apps/go-api,
+#       à la version que fixe son go.mod (`--dossier <lot>`). La partition se prouve module par module.
 #
 #   heavy <nom> <Test> [<Test> ...]
 #       Liste NOMMÉE de tests de premier niveau. Elle sert à la fois de `-run '^(A|B)$'` et de
@@ -56,24 +57,24 @@ heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestF
 heavy grammar-moyens TestLaStructureDesBobinesTientSesInvariants TestLaFermetureDeLaStructureNeDescendPas TestFrameClosureRatchet TestLesValeursDeLEtatCompletDesBobines TestLaFenetreNeVoitQueLesRecordsNonAdmis TestLEtatCompletDesBobines TestLesArmesSeulesSontCellesDeLaMarcheComplete TestUnRecordRecupereParLInventairePorteUneValeur TestEntitesTi9SurLesBobines TestScanPlayerTeamsSurLesBobines TestPositions_CorpsDeGenerationDeuxPublieParLeCheminDeProduction TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact TestMarcheurDelta_GenerationPorteeEstCelleDuHandle TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA
 
 # Module apps/go-api. `persist` et `ops` partageaient le lot du décodeur de film (56 + 6 s hors
-# couverture au relevé du 2026-10-28) avant que le décodeur ne devienne le module libs/film.
+# couverture au relevé du 2026-10-28) avant que le décodeur ne devienne une brique.
 module apps/go-api
 lot persist-ops         - ./internal/persist ./internal/ops
 lot platform            - ./internal/platform/duckdb/... ./internal/migration ./internal/games/halo_infinite/migrations ./internal/mapdecoupe ./cmd/levelup
 lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
 lot reste               - @reste
 
-# Module libs/film (le décodeur de film, ADR 0041) : `grammar` coupé en trois tiers, le reste du
+# Brique du décodeur de film (ADR 0041, 0043) : `grammar` coupé en trois tiers, le reste du
 # module (dont `replay`, 72 s hors couverture) dans son complément.
-module libs/film
+module github.com/JGtm/halo-infinite-film-decoder
 lot film-grammar-lourd  run:grammar-lourds ./internal/grammar
 lot film-grammar-moyen  run:grammar-moyens ./internal/grammar
 lot film-grammar-reste  skip:grammar-lourds,grammar-moyens ./internal/grammar
 lot film                - @reste
 
-# Module libs/haloapi (l'API Halo, ADR 0041 et 0042, plan PUBLICATION lot 3) : ses paquets tournaient
-# dans le lot `reste` de go-api ; sans CGo ni DuckDB, quelques secondes de test : un seul lot.
-module libs/haloapi
+# Brique de l'API Halo (ADR 0041, 0042, 0043) : sans CGo ni DuckDB, quelques secondes de test : un
+# seul lot.
+module github.com/JGtm/halo-api
 lot haloapi             - @reste
 
 # Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot : 600 s partout.

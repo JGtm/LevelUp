@@ -9,20 +9,12 @@
 
 import type { Locale } from '@/lib/i18n/locale'
 
-export interface ApiError {
-  code: string
-  message: string
-  retryable: boolean
-  details?: unknown
-  field_errors?: FieldError[]
+import type { components } from '@/lib/api/generated'
+export type ApiError = Omit<components['schemas']['ApiError'], 'status'> & {
   status: number
 }
 
-export interface FieldError {
-  field: string
-  message: string
-  code?: string
-}
+export type FieldError = components['schemas']['FieldError']
 
 /**
  * Extrait un message lisible d'une erreur catchée par TanStack Query ou un
@@ -218,6 +210,11 @@ export function setApiLocale(locale: Locale): void {
   _currentLocale = locale
 }
 
+/** Locale courante des réponses API, telle que posée par le store (lien de partage, exports). */
+export function getApiLocale(): Locale {
+  return _currentLocale
+}
+
 function getLocaleHeader(): Record<string, string> {
   return { 'X-LevelUp-Locale': _currentLocale }
 }
@@ -236,6 +233,11 @@ interface RequestOptions {
    * serveur arrête son calcul (contexte Go annulé → 499 `client_closed`).
    */
   signal?: AbortSignal
+  /**
+   * `path` part de la racine du site (fichier statique servi par l'application), pas du préfixe de l'API.
+   * Voir `api.getStatic`.
+   */
+  absolute?: boolean
 }
 
 /**
@@ -261,7 +263,7 @@ async function sendRequest(
   path: string,
   options?: RequestOptions,
 ): Promise<Response> {
-  const url = `${BASE_URL}${path}`
+  const url = options?.absolute ? path : `${BASE_URL}${path}`
   // Titre affirmé sur CETTE requête (peut être nul : page agnostique au boot). Capturé
   // avant le fetch pour la garde anti-fuite cross-titre (guardResolvedTitle).
   const sentTitle = _currentTitleSlug
@@ -322,6 +324,22 @@ export const api = {
     request<T>('GET', path, { headers, signal: options?.signal }),
 
   /**
+   * GET d'une ressource TEXTE (non JSON) de l'API, ex. le brouillon TOML d'un titre. Même client que
+   * `get` : mêmes en-têtes de titre et de locale, mêmes cookies, même mapping d'erreurs ; seul
+   * `Accept` change.
+   */
+  getText: async (path: string, headers?: Record<string, string>): Promise<string> =>
+    (await sendRequest('GET', path, { headers: { Accept: 'text/plain', ...headers } })).text(),
+
+  /**
+   * GET JSON d'un fichier STATIQUE du site (même origine, hors préfixe de l'API), ex. un catalogue publié
+   * avec l'application. `path` commence par `/`. Une réponse en erreur lève une `ApiError`, comme pour
+   * un appel d'API.
+   */
+  getStatic: <T>(path: string, options?: CallOptions) =>
+    request<T>('GET', path, { absolute: true, signal: options?.signal }),
+
+  /**
    * GET d'une ressource BINAIRE (image, export). Même client que `get` — donc mêmes
    * en-têtes de titre et de locale, mêmes cookies, même mapping d'erreurs.
    *
@@ -333,21 +351,23 @@ export const api = {
     (await sendRequest('GET', path, { headers })).blob(),
 
   /**
-   * GET JSON + UN en-tête de réponse choisi. Réservé aux endpoints qui publient une MÉTA
-   * HTTP hors du corps JSON (ex : `X-Replay-Latest-Schema-Version`, cf.
-   * `internal/api/handlers/replay.go` côté Go — la méta voyage en en-tête pour ne jamais
+   * GET JSON + des en-têtes de réponse choisis. Réservé aux endpoints qui publient une MÉTA
+   * HTTP hors du corps JSON (ex : `X-Replay-Latest-Schema-Version` et `X-Replay-Cadence-Stale`,
+   * cf. `internal/api/handlers/replay.go` côté Go — la méta voyage en en-tête pour ne jamais
    * toucher la forme de fil du document, verrouillée par `replayview/parity_test.go`).
-   * `header` rend `null` quand l'en-tête est absent de la réponse — jamais une erreur : une
-   * méta optionnelle qui manque n'est pas un échec de requête.
+   * Chaque valeur de `responseHeaders` rend `null` quand l'en-tête est absent de la réponse —
+   * jamais une erreur : une méta optionnelle qui manque n'est pas un échec de requête.
    */
-  getWithHeader: async <T>(
+  getWithHeaders: async <T>(
     path: string,
-    header: string,
+    names: readonly string[],
     headers?: Record<string, string>,
-  ): Promise<{ data: T; header: string | null }> => {
+  ): Promise<{ data: T; responseHeaders: Record<string, string | null> }> => {
     const response = await sendRequest('GET', path, { headers })
     const data = (await response.json()) as T
-    return { data, header: response.headers.get(header) }
+    const responseHeaders: Record<string, string | null> = {}
+    for (const name of names) responseHeaders[name] = response.headers.get(name)
+    return { data, responseHeaders }
   },
 
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>, options?: CallOptions) =>

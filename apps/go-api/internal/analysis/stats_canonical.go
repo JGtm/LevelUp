@@ -164,7 +164,6 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 		out.SkillSeasonID = r.Enrichment.SkillSnapshot.SeasonID
 		out.SkillMeasurementRemaining = r.Enrichment.SkillSnapshot.MeasurementRemaining
 		out.SkillRatingDelta = r.Enrichment.SkillSnapshot.Delta
-		out.SkillExpectedWinProb = r.Enrichment.SkillSnapshot.ExpectedWinProb
 		out.SkillTierCode = r.Enrichment.SkillSnapshot.TierCode
 		out.SkillSubTier = r.Enrichment.SkillSnapshot.SubTier
 	}

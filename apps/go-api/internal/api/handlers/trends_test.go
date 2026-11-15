@@ -120,7 +120,7 @@ func TestTrendsHandler_CapabilityNotSupported(t *testing.T) {
 	}
 }
 
-const squadBody = `{"view":"squad","selected_gamertags":["Madina97294"],"exact_composition":true}`
+const squadBody = `{"view":"squad","selected_gamertags":["Joueur90002"],"exact_composition":true}`
 
 func TestTrendsHandler_SquadRoutedToSquadService(t *testing.T) {
 	solo := &mockTrendsService{}

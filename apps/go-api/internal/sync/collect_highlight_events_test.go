@@ -17,7 +17,7 @@ import (
 // la ligne part avec son type_hint ET son document d identite.
 func TestHighlightEventInserts_MedailleConnue(t *testing.T) {
 	events := []highlightevent.HighlightEvent{
-		{XUID: 2533274792574872, Gamertag: "JGtm", EventType: highlightevent.EventTypeMedal,
+		{XUID: 2780418977053363, Gamertag: "JGtm", EventType: highlightevent.EventTypeMedal,
 			TypeHint: 50, IsMedal: true, TimeMS: 12345, MedalType: 26},
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)
@@ -37,7 +37,7 @@ func TestHighlightEventInserts_MedailleConnue(t *testing.T) {
 	if want := `{"medal_name":"Killjoy"}`; *got.RawJSON != want {
 		t.Errorf("RawJSON = %q, attendu %q", *got.RawJSON, want)
 	}
-	if got.MatchID != "m1" || got.TimeMS != 12345 || got.XUID == nil || *got.XUID != "2533274792574872" {
+	if got.MatchID != "m1" || got.TimeMS != 12345 || got.XUID == nil || *got.XUID != "2780418977053363" {
 		t.Errorf("champs de base alteres: %+v", got)
 	}
 	if got.DetailsJSON != nil {
@@ -49,9 +49,9 @@ func TestHighlightEventInserts_MedailleConnue(t *testing.T) {
 // dans raw_json : l identite n existe que pour les medailles.
 func TestHighlightEventInserts_KillSansRawJSON(t *testing.T) {
 	events := []highlightevent.HighlightEvent{
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeKill, TypeHint: 50, TimeMS: 900},
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeDeath, TypeHint: 20, TimeMS: 950},
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMode, TypeHint: 10, TimeMS: 980},
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeKill, TypeHint: 50, TimeMS: 900},
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeDeath, TypeHint: 20, TimeMS: 950},
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeMode, TypeHint: 10, TimeMS: 980},
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)
 	if sansNom != 0 {
@@ -75,11 +75,11 @@ func TestHighlightEventInserts_KillSansRawJSON(t *testing.T) {
 // hors table ne recoit pas un nom voisin, il ne recoit RIEN, et le compteur le dit.
 func TestHighlightEventInserts_CoupleInconnuCompte(t *testing.T) {
 	events := []highlightevent.HighlightEvent{
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 50, IsMedal: true, TimeMS: 100, MedalType: 255},
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 100, IsMedal: true, TimeMS: 200, MedalType: 254},
-		{XUID: 2533274792574872, EventType: highlightevent.EventTypeMedal,
+		{XUID: 2780418977053363, EventType: highlightevent.EventTypeMedal,
 			TypeHint: 150, IsMedal: true, TimeMS: 300, MedalType: 1}, // Triple Kill, connu
 	}
 	inserts, sansNom := highlightEventInserts(context.Background(), "m1", events)

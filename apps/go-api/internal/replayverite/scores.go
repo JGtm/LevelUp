@@ -79,11 +79,12 @@ func xuidsCirculaires(d *Document) map[string]bool {
 func noterVies(d *Document, faits domain.MatchFacts, scores map[string]Score) {
 	vies := map[string]int{}
 	finsDeVie := 0
+	marge := d.images(margeFinDeFilmMS)
 	for _, t := range d.Tracks {
 		if t.XUID != "" {
 			vies[t.XUID]++
 		}
-		if t.EndFrame < d.FrameCount-1-margeFinDeFilmImages {
+		if t.EndFrame < d.FrameCount-1-marge {
 			finsDeVie++
 		}
 	}

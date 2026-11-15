@@ -31,7 +31,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // v0Horloge : ce que l'instrument de cuisson pose du document de rejeu (sous-ensemble lu ici).

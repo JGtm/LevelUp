@@ -45,7 +45,7 @@ import (
 
 const titleSlug = "halo_infinite"
 
-var defaultPlayers = []string{"JGtm", "Chocoboflor", "Madina97294", "XxDaemonGamerxX"}
+var defaultPlayers = []string{"JGtm", "Joueur90001", "Joueur90002", "Joueur90000000f"}
 
 // runEnv porte le contexte d'exécution commun aux quatre modes.
 type runEnv struct {

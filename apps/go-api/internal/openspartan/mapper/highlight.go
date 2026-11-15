@@ -59,9 +59,9 @@ func MapHighlight(matchID string, rawJSON []byte) (HighlightEventRow, error) {
 // observed under and returns the bare-digit XUID, or "" if none matched.
 //
 // Shapes:
-//   - JSON number:           2533274945467756
-//   - JSON string of digits: "2533274945467756"
-//   - JSON string wrapped:   "xuid(2533274945467756)"
+//   - JSON number:           2650295491772772
+//   - JSON string of digits: "2650295491772772"
+//   - JSON string wrapped:   "xuid(2650295491772772)"
 func decodeHighlightXUID(raw json.RawMessage) string {
 	if len(raw) == 0 {
 		return ""

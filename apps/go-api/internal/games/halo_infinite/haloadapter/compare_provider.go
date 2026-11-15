@@ -13,7 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/duration"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // FetchRemoteStats retourne les stats normalisées d'un joueur (sans les médailles). Conservé pour

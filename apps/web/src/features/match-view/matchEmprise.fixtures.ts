@@ -3,8 +3,8 @@
  * que lisent les cartes :
  *   - `STARBOARD` (22/09, Drapeau à Starboard, 4 contre 4, journal des morts publiable) : bonus 5–2
  *     (Surbouclier, 10 socles vidés), armes spéciales 0–2 (Épée à énergie), râteliers 4–3 (Fusil
- *     électrique 2–2, VK78 Commando 2–0, CQS48 Bulldog 0–1) ; fiches JGtm, XL JACOB, Madina97294,
- *     Chocoboflor ; temps d'effet 71,6 s contre 0 ; vies au seuil de 18 m.
+ *     électrique 2–2, VK78 Commando 2–0, CQS48 Bulldog 0–1) ; fiches JGtm, Joueur9c, Joueur90002,
+ *     Joueur90001 ; temps d'effet 71,6 s contre 0 ; vies au seuil de 18 m.
  *   - `FLOOD_GULCH` (24/07, BTB, 12 contre 12, journal non publiable) : armes spéciales 19–11 (S7
  *     Sniper 11–8, SPNKr à combustible 8–3), râteliers 29–40, 31 prises non identifiées (19 / 12),
  *     aucun bonus pris publié mais 166,7 s d'effet contre 216,9 s.
@@ -55,9 +55,9 @@ export const STARBOARD: MatchEmpriseBlock = {
   kill_journal: 'publishable',
   players: [
     { xuid: XUID.jgtm, gamertag: 'JGtm' },
-    { xuid: XUID.jacob, gamertag: 'XL JACOB' },
-    { xuid: XUID.madina, gamertag: 'Madina97294' },
-    { xuid: XUID.choco, gamertag: 'Chocoboflor' },
+    { xuid: XUID.jacob, gamertag: 'Joueur9c' },
+    { xuid: XUID.madina, gamertag: 'Joueur90002' },
+    { xuid: XUID.choco, gamertag: 'Joueur90001' },
   ],
   objects: STARBOARD_OBJECTS,
   resources: [
@@ -151,11 +151,11 @@ export const STARBOARD_LIVES: MatchLivesNearTeammate = {
 /** Le tableau du 22/09 : quatre contre quatre, tous présents à la fin. */
 export const STARBOARD_SCOREBOARD = [
   { xuid: XUID.jgtm, gamertag: 'JGtm', team_side: 't0', is_me: true },
-  { xuid: XUID.jacob, gamertag: 'XL JACOB', team_side: 't0' },
-  { xuid: XUID.madina, gamertag: 'Madina97294', team_side: 't0' },
-  { xuid: XUID.choco, gamertag: 'Chocoboflor', team_side: 't0' },
-  { xuid: 'x-o1', gamertag: 'UNSCSparton11', team_side: 't1' },
-  { xuid: 'x-o2', gamertag: 'NOaimAssist5833', team_side: 't1' },
-  { xuid: 'x-o3', gamertag: 'Taiko900BPM', team_side: 't1' },
-  { xuid: 'x-o4', gamertag: 'Rianbolis', team_side: 't1' },
+  { xuid: XUID.jacob, gamertag: 'Joueur9c', team_side: 't0' },
+  { xuid: XUID.madina, gamertag: 'Joueur90002', team_side: 't0' },
+  { xuid: XUID.choco, gamertag: 'Joueur90001', team_side: 't0' },
+  { xuid: 'x-o1', gamertag: 'Joueur9000006', team_side: 't1' },
+  { xuid: 'x-o2', gamertag: 'Joueur900000007', team_side: 't1' },
+  { xuid: 'x-o3', gamertag: 'Joueur90010', team_side: 't1' },
+  { xuid: 'x-o4', gamertag: 'Joueur905', team_side: 't1' },
 ] as unknown as MatchScoreboardRow[]

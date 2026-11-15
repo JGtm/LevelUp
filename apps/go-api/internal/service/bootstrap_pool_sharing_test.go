@@ -64,8 +64,8 @@ func TestBuild_PoolSharing_PassesResolverState(t *testing.T) {
 // Comme reauth_required : l'état est celui du COMPTE CONNECTÉ (son xuid), jamais celui du
 // joueur affiché. Un admin qui consulte un autre joueur ne décide pas à sa place.
 func TestBuild_PoolSharing_ScopedToOwnAccount(t *testing.T) {
-	const ownXUID = "2533274823110022"
-	const otherXUID = "2535469190789936"
+	const ownXUID = "2603225103667623"
+	const otherXUID = "2547408409520575"
 	admin := &domain.User{Username: "jgtm_xbox", XUID: ownXUID, Role: domain.RoleAdmin}
 	lookup := fakeBootstrapLookup{
 		byName: map[string]*domain.User{"jgtm_xbox": admin},
@@ -83,11 +83,11 @@ func TestBuild_PoolSharing_ScopedToOwnAccount(t *testing.T) {
 		})
 
 	username := "jgtm_xbox"
-	other := "Chocoboflor"
+	other := "Joueur90001"
 	sess := &domain.SessionData{
 		Username:           &username,
 		CurrentPlayerSlug:  &other,
-		LinkedHaloIdentity: &domain.HaloIdentity{Gamertag: "Chocoboflor", XUID: otherXUID},
+		LinkedHaloIdentity: &domain.HaloIdentity{Gamertag: "Joueur90001", XUID: otherXUID},
 	}
 
 	if got := buildPoolSharing(t, svc, sess); got != domain.PoolSharingGranted {

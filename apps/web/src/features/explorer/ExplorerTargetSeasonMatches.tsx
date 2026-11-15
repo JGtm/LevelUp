@@ -13,7 +13,7 @@
  * total par saison.
  */
 import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -91,7 +91,7 @@ function toSeasonSeries(
 export function buildSeasonMatchesOption(
   seasons: SeasonMatchCount[],
   matchesLabel: string,
-): EChartsCoreOption {
+): ChartOption {
   const option = buildBarStackedOption(toSeasonSeries(seasons, matchesLabel), {
     orientation: 'vertical',
     componentColors: { [matchesLabel]: MATCHES_TOKEN },
@@ -113,7 +113,7 @@ export function buildSeasonMatchesOption(
     ]
   })
 
-  const mut = option as EChartsCoreOption & {
+  const mut = option as ChartOption & {
     series?: Array<Record<string, unknown>>
     grid?: Record<string, unknown>
     legend?: Record<string, unknown>

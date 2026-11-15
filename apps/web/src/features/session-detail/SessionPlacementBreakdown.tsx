@@ -9,7 +9,7 @@
  * tailles de lobby ne sont pas disponibles. Bars colorés du meilleur (vert) au pire (rouge).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -38,7 +38,7 @@ function placementToken(index: number, total: number): SemanticToken {
 export function buildSessionPlacementOption(
   series: ChartSeries<PlacementPoint>[],
   opts: { countLabel: string; yMax?: number },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

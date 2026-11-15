@@ -43,7 +43,7 @@ const CELL_BORDER_WIDTH = 4
 /** Arrondi des coins de case (décision D2). */
 const CELL_BORDER_RADIUS = 2
 
-export interface ChartPointHeatmap {
+export interface HeatmapCellPoint {
   x: string
   y: string
   /**
@@ -128,7 +128,7 @@ export interface BuildOpts {
   saturationCap?: number
   /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
   colorPalette?: ColorPalette
-  formatTooltip?: (point: ChartPointHeatmap) => string
+  formatTooltip?: (point: HeatmapCellPoint) => string
   /** Cf. les props homonymes du composant — toutes absentes = rendu historique. */
   cellLabelColor?: string
   showVisualMap?: boolean
@@ -241,7 +241,7 @@ function emptyCellItemStyle(tc: EChartsThemeColors) {
  * sans changer le rendu des cases mesurées, qui restent de simples tuples.
  */
 function buildCellData(
-  dps: ChartPointHeatmap[],
+  dps: HeatmapCellPoint[],
   xs: string[],
   ys: string[],
   tc: EChartsThemeColors,
@@ -301,7 +301,7 @@ function heatVisualMap(v: VisualMapInput): Record<string, unknown> {
 }
 
 export function buildHeatmap2DOption(
-  series: ChartSeries<ChartPointHeatmap>[],
+  series: ChartSeries<HeatmapCellPoint>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { paletteMode = 'sequential', valueRange, saturationCap, colorPalette = 'default' } = opts
@@ -335,7 +335,7 @@ export function buildHeatmap2DOption(
   const tc = getEChartsThemeColors()
   const data = buildCellData(dps, xs, ys, tc, emptyCells)
 
-  const remplies = dps.filter((d): d is ChartPointHeatmap & { value: number } => d.value != null)
+  const remplies = dps.filter((d): d is HeatmapCellPoint & { value: number } => d.value != null)
   const valeurs = remplies.map((d) => d.value)
   const minV = valueRange?.[0] ?? (valeurs.length > 0 ? Math.min(...valeurs) : 0)
   // Plafond de saturation : ignoré si valueRange fixe déjà le max. Absent des deux
@@ -441,7 +441,7 @@ export function buildHeatmap2DOption(
           ...(cellLabelColor ? { color: cellLabelColor } : {}),
         },
         emphasis: {
-          itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' }, // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+          itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' }, // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
         },
       },
     ],

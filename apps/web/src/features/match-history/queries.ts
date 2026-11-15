@@ -11,16 +11,13 @@ import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { patchFavoriteFlag } from '@/lib/home-tiles/homeTiles.logic'
 
+import type { components } from '@/lib/api/generated'
 interface SetExclusionVars {
   matchId: string
   excluded: boolean
 }
 
-interface MatchFavoriteResponse {
-  player_slug: string
-  match_id: string
-  favorited: boolean
-}
+export type MatchFavoriteResponse = components['schemas']['MatchFavoriteResponse']
 
 /**
  * useSetMatchExclusion — marque/démarque un match comme non pertinent.

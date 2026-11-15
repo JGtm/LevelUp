@@ -49,10 +49,6 @@ type engagementTOML struct {
 // title-spécifiques). Optionnelle : absente → modèle de dégâts non déclaré.
 type damageModelTOML struct {
 	EffectiveHpToKill float64 `toml:"effective_hp_to_kill"`
-	// no_native_kda = true → le titre ne fournit PAS de KDA per-match via son API
-	// (ex. Halo 5 : forme native = FDA NET, pas le quotient KDA). Défaut false =
-	// KDA natif disponible (Infinite). Consommé via games.ProvidesNativeKDA(slug).
-	NoNativeKDA bool `toml:"no_native_kda"`
 	// no_damage_taken = true → le titre ne fournit PAS damage_taken (Halo 5). La
 	// résistance défensive et ses dérivés sont neutralisés. Via games.ProvidesDamageTaken.
 	NoDamageTaken bool `toml:"no_damage_taken"`
@@ -168,7 +164,6 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 
 	dm := DamageModelConstants{
 		EffectiveHpToKill:      doc.DamageModel.EffectiveHpToKill,
-		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
 		NoDamageTaken:          doc.DamageModel.NoDamageTaken,
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
 		DefensiveResistanceP80: doc.DamageModel.DefensiveResistanceP80,

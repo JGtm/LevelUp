@@ -130,12 +130,12 @@ func TestSanitizeBatch_MarshalSucceedsAfterSanitize(t *testing.T) {
 	// echec. Apres SanitizeBatch, le marshal reussit.
 	batch := &MatchBatch{
 		BatchID: "regression-prod",
-		Player:  "Chocoboflor",
+		Player:  "Joueur90001",
 		Shared: SharedBatch{
 			Participants: []domain.MatchParticipantRow{
 				{
 					MatchID:  "508bd2fb-106f-4698-b21e-5e1502e69ee9",
-					XUID:     "2535469190789936",
+					XUID:     "2547408409520575",
 					Kills:    intPtr(0),
 					Deaths:   intPtr(0), // deaths=0 → KDA=NaN
 					KDA:      fpPtr(math.NaN()),

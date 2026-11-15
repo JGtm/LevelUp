@@ -68,7 +68,7 @@ package service
 // tenu nulle part ne sait pas son sol : le test de hauteur ne s applique pas ([sceneryFloorUnknown]).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // playArea est la zone jouable EN PLAN d une carte.

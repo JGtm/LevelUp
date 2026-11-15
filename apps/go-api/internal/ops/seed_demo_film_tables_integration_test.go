@@ -84,6 +84,10 @@ func filmTableCases() []filmTableCase {
 			`(1, 'm1', 'p1', ` + oldPassAt + `, 'take', 0, ` + src + `, 'warthog', 2, 30000, 1, 0, 3` + vehicleCoverage + `)`,
 			`(2, 'm1', 'p2', ` + newPassAt + `, 'take', 0, ` + src + `, 'warthog', 2, 30000, 1, 0, 3` + vehicleCoverage + `)`,
 			`(3, 'm3', 'p2', ` + newPassAt + `, 'take', 0, ` + src + `, 'warthog', 2, 30000, 1, 0, 3` + vehicleCoverage + `)`}},
+		{table: "match_lead_share", raw: 2, view: "match_lead_share_latest", latest: 1, inserts: []string{
+			`(1, 'm1', 'p1', ` + oldPassAt + `, 'camp', 0, 300000` + leadShareCoverage + `)`,
+			`(2, 'm1', 'p2', ` + newPassAt + `, 'camp', 0, 300000` + leadShareCoverage + `)`,
+			`(3, 'm3', 'p2', ` + newPassAt + `, 'camp', 0, 300000` + leadShareCoverage + `)`}},
 		{table: "match_flag_grabs_net", raw: 2, view: "match_flag_grabs_net_latest", latest: 1, inserts: []string{
 			`(1, 'm1', 'p1', ` + src + `, 2, 1, 1, 5000, ` + oldPassAt + `)`,
 			`(2, 'm1', 'p2', ` + src + `, 2, 1, 1, 5000, ` + newPassAt + `)`,
@@ -119,6 +123,7 @@ var filmInsertColumns = map[string]string{
 	"match_usage_players":           `(id, match_id, summary_pass, summary_rev, written_at, xuid, grapple_pulls, camo_episodes, camo_ms, camo_kills, overshield_episodes, overshield_ms, overshield_kills, deployed_json, dropped_objects, grenades_thrown, pad_pickups, pad_pickups_json)`,
 	"match_pad_pickups_by_tier":     `(id, match_id, decode_pass, xuid, tier, weapon_family, pickups, pads_confirmed, pads_total, random_starts, written_at)`,
 	"match_vehicle_takes":           `(id, match_id, decode_pass, written_at, row_kind, camp, xuid, family, takes, aboard_ms, episodes, proximity_episodes, frags, measured, unmeasured_reason, doc_schema, episodes_read, episodes_unnamed, episodes_no_camp, frags_read, frags_reason, frags_total, frags_unmatched)`,
+	"match_lead_share":              `(id, match_id, decode_pass, written_at, row_kind, camp, lead_ms, measured, unmeasured_reason, doc_schema, measured_ms, tie_ms, lead_changes, silent_camps)`,
 	"match_flag_grabs_net":          `(id, match_id, decode_pass, xuid, flag_grabs_raw, flag_grabs_net, openings, juggle_window_ms, written_at)`,
 	"match_bomb_stats":              `(id, match_id, xuid, bomb_detonations, bomb_arms, bomb_grabs, time_as_bomb_carrier_seconds, bomb_carriers_killed, written_at)`,
 	"match_objective_events":        `(match_id, seq, time_ms, objective_type, event_type, team_id, objective_id, value, source, confidence, details, written_at)`,
@@ -230,3 +235,8 @@ const usageCounters = `, 0, 0, 0, 0, 0, 0, 0, '{}', 0, 0, 0, '{}'`
 // vehicleCoverage : les colonnes de couverture NOT NULL de match_vehicle_takes (mesuré, schéma 70,
 // épisodes lus, frags lus) — la suite de la liste de colonnes de filmInsertColumns.
 const vehicleCoverage = `, true, '', 70, 1, 0, 0, true, '', 3, 0`
+
+// leadShareCoverage : les colonnes de couverture NOT NULL de match_lead_share (mesuré, schéma 70,
+// 600 s jouées dont 300 s à égalité, deux retournements, aucun camp muet) — la suite de la liste de
+// colonnes de filmInsertColumns.
+const leadShareCoverage = `, true, '', 70, 600000, 300000, 2, 0`

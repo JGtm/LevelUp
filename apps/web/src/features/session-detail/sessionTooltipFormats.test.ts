@@ -83,6 +83,25 @@ describe('infobulles de Sessions : nombres à la langue', () => {
     expect(tip(opt)([{ name: 'Morts', value: -7.5 }])).toBe('Morts: <b>7,5</b>')
   })
 
+  it('FDA par minute, dégâts : entier à la langue, dégâts subis sans signe, ligne de la série qui porte la valeur', () => {
+    const opt = buildSessionFdaBarsOption(
+      [
+        {
+          key: 'f',
+          datapoints: [
+            { key: 'deaths', label: 'Morts', value: 0.7 },
+            { key: 'damageTaken', label: 'Subis', value: 1234.4 },
+          ],
+        },
+      ] as never,
+      { decimals: 2 },
+    )
+    // Deux séries : la première ne porte rien sur la colonne des dégâts, la seconde porte la valeur.
+    expect(strip(tip(opt)([{ name: 'Subis', dataIndex: 1, value: null }, { name: 'Subis', dataIndex: 1, value: -1234 }]))).toBe(
+      'Subis: <b>1 234</b>',
+    )
+  })
+
   it('répartition par mode et participation : comptes à la langue, libellés échappés', () => {
     const mode = buildSessionModeBreakdownOption([{ key: 'm', datapoints: [{ mode: 'Slayer', count: 1200 }] }], {
       countLabel: 'matchs',

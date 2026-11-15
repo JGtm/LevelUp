@@ -12,11 +12,12 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
 
 const (
-	postImportTestXUID     = "2533274823110022"
+	postImportTestXUID     = "2603225103667623"
 	postImportTestGamertag = "TestOwner"
 )
 
@@ -122,21 +123,21 @@ func insertTestMatch(t *testing.T, db *sql.DB, matchID, xuid string, start time.
 // ─── TESTS ────────────────────────────────────────────────────────────────────
 
 func TestPostImport_NewService_DefaultLoggerNotNil(t *testing.T) {
-	svc := NewOpenSpartanPostImportService(&config.AppConfig{})
+	svc := postImportOn(&config.AppConfig{})
 	if svc.log == nil {
 		t.Error("default logger should be slog.Default(), got nil")
 	}
 }
 
 func TestPostImport_ApplyDefaults_FillsZeroValues(t *testing.T) {
-	got := applyPostImportDefaults(PostImportOptions{})
+	got := applyPostImportDefaults(port.OpenSpartanPostImportOptions{})
 	if got.TitleSlug != titlePkg.DefaultSlug {
 		t.Errorf("TitleSlug default: want %s, got %s", titlePkg.DefaultSlug, got.TitleSlug)
 	}
 }
 
 func TestPostImport_ApplyDefaults_PreservesExplicitValues(t *testing.T) {
-	in := PostImportOptions{
+	in := port.OpenSpartanPostImportOptions{
 		TitleSlug:       "halo_5",
 		ForcePerfScores: true,
 	}
@@ -151,9 +152,9 @@ func TestPostImport_ApplyDefaults_PreservesExplicitValues(t *testing.T) {
 
 func TestPostImport_Run_RejectsEmptyXUID(t *testing.T) {
 	env := setupPostImportEnv(t)
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 
-	_, err := svc.Run(context.Background(), "", postImportTestGamertag, nil, PostImportOptions{})
+	_, err := svc.Run(context.Background(), "", postImportTestGamertag, nil, port.OpenSpartanPostImportOptions{})
 	if err == nil {
 		t.Fatal("expected error on empty xuid")
 	}
@@ -161,9 +162,9 @@ func TestPostImport_Run_RejectsEmptyXUID(t *testing.T) {
 
 func TestPostImport_Run_RejectsEmptyGamertag(t *testing.T) {
 	env := setupPostImportEnv(t)
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 
-	_, err := svc.Run(context.Background(), postImportTestXUID, "", nil, PostImportOptions{})
+	_, err := svc.Run(context.Background(), postImportTestXUID, "", nil, port.OpenSpartanPostImportOptions{})
 	if err == nil {
 		t.Fatal("expected error on empty gamertag")
 	}
@@ -171,9 +172,9 @@ func TestPostImport_Run_RejectsEmptyGamertag(t *testing.T) {
 
 func TestPostImport_Run_NoMatchIDsSkipsCitations(t *testing.T) {
 	env := setupPostImportEnv(t)
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 
-	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, nil, PostImportOptions{})
+	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, nil, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestPostImport_Run_NoMatchIDsSkipsCitations(t *testing.T) {
 
 func TestPostImport_Run_CreatesPlayerDBOnFirstCall(t *testing.T) {
 	env := setupPostImportEnv(t)
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 
 	// Verify the player DB does NOT exist before the run.
 	playerPath := config.PlayerDBPath(env.cfg, "", postImportTestGamertag)
@@ -196,7 +197,7 @@ func TestPostImport_Run_CreatesPlayerDBOnFirstCall(t *testing.T) {
 		t.Fatalf("player DB should not exist before the test, found %s", playerPath)
 	}
 
-	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, nil, PostImportOptions{}); err != nil {
+	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, nil, port.OpenSpartanPostImportOptions{}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -213,9 +214,9 @@ func TestPostImport_Run_RecomputesAllStagesWithMatches(t *testing.T) {
 	insertTestMatch(t, env.sharedDB, "post-m2", postImportTestXUID, time.Now().Add(-2*time.Hour))
 	insertTestMatch(t, env.sharedDB, "post-m3", postImportTestXUID, time.Now().Add(-1*time.Hour))
 
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 	matchIDs := []string{"post-m1", "post-m2", "post-m3"}
-	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{})
+	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -253,8 +254,8 @@ func TestPostImport_Run_AppliesTitleSessionRule(t *testing.T) {
 	insertTestMatch(t, env.sharedDB, matchIDs[0], postImportTestXUID, time.Now().Add(-3*time.Hour))
 	insertTestMatch(t, env.sharedDB, matchIDs[1], postImportTestXUID, time.Now().Add(-2*time.Hour))
 
-	svc := NewOpenSpartanPostImportService(env.cfg)
-	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{}); err != nil {
+	svc := postImportOn(env.cfg)
+	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, port.OpenSpartanPostImportOptions{}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -276,7 +277,7 @@ func TestPostImport_Run_AppliesTitleSessionRule(t *testing.T) {
 func TestPostImport_PostImportError_StructFields(t *testing.T) {
 	// Sanity-check the public error struct fields stay stable (consumed by the
 	// handler when building the job Result).
-	e := PostImportError{Stage: "sessions", MatchID: "m-1", Err: "boom"}
+	e := port.OpenSpartanPostImportError{Stage: "sessions", MatchID: "m-1", Err: "boom"}
 	if e.Stage != "sessions" || e.MatchID != "m-1" || e.Err != "boom" {
 		t.Errorf("unexpected fields: %+v", e)
 	}
@@ -291,8 +292,8 @@ func TestPostImport_Run_EnsuresPlayerEnrichmentRowsAreCreated(t *testing.T) {
 			time.Now().Add(time.Duration(-3+i)*time.Hour))
 	}
 
-	svc := NewOpenSpartanPostImportService(env.cfg)
-	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{})
+	svc := postImportOn(env.cfg)
+	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -326,14 +327,14 @@ func TestPostImport_Run_EnsurePrimerIdempotent(t *testing.T) {
 	for _, mid := range matchIDs {
 		insertTestMatch(t, env.sharedDB, mid, postImportTestXUID, time.Now().Add(-time.Hour))
 	}
-	svc := NewOpenSpartanPostImportService(env.cfg)
+	svc := postImportOn(env.cfg)
 
 	// 1st run primes the rows.
-	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{}); err != nil {
+	if _, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, port.OpenSpartanPostImportOptions{}); err != nil {
 		t.Fatalf("first Run: %v", err)
 	}
 	// 2nd run must NOT error on the ON CONFLICT DO NOTHING path.
-	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, PostImportOptions{})
+	result, err := svc.Run(context.Background(), postImportTestXUID, postImportTestGamertag, matchIDs, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}

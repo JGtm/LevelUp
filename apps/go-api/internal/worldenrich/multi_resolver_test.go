@@ -25,15 +25,15 @@ func (f *fakeResolver) ResolveXUID(_ context.Context, _ string) (string, error) 
 func TestChainResolver_FallbackToSecond(t *testing.T) {
 	// 1er (PeopleHub) échoue (gamertag hors graphe social) → 2e (profil) résout.
 	first := &fakeResolver{err: errors.New("gamertag absent des résultats peoplehub")}
-	second := &fakeResolver{xuid: "2533274895653213"}
+	second := &fakeResolver{xuid: "2599816533977960"}
 	chain := chainResolver{resolvers: []XUIDResolver{first, second}}
 
 	got, err := chain.ResolveXUID(context.Background(), "RandomOpponent")
 	if err != nil {
 		t.Fatalf("ResolveXUID: %v", err)
 	}
-	if got != "2533274895653213" {
-		t.Errorf("xuid = %q, want 2533274895653213 (résolu par le fallback profil)", got)
+	if got != "2599816533977960" {
+		t.Errorf("xuid = %q, want 2599816533977960 (résolu par le fallback profil)", got)
 	}
 	if first.hits != 1 || second.hits != 1 {
 		t.Errorf("hits: first=%d second=%d, want 1/1 (fallback essayé après échec PeopleHub)", first.hits, second.hits)

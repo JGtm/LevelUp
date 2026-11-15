@@ -34,10 +34,9 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID, pdb.TitleSlug)
 	homeRepo := r.newHomeRepo(pdb)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
-	svc := service.NewHomeService(homeRepo).
+	svc := service.NewHomeService(homeRepo, haloProvider).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
-		WithHaloProvider(haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
@@ -121,10 +120,9 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	homeRepo := r.newHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID, pdb.TitleSlug)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
-	homeSvc := service.NewHomeService(homeRepo).
+	homeSvc := service.NewHomeService(homeRepo, haloProvider).
 		WithPersistSink(sink).
 		WithCacheRepo(homeRepo).
-		WithHaloProvider(haloProvider).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithXUID(pdb.XUID).

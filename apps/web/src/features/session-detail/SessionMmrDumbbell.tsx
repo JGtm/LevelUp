@@ -8,7 +8,7 @@
  * neutre. ChartCard + buildOption custom (scatter ×2 + série custom pour les segments).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -35,7 +35,7 @@ interface MmrOpts {
 export function buildSessionMmrDumbbellOption(
   series: ChartSeries<MmrPoint>[],
   opts: MmrOpts,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

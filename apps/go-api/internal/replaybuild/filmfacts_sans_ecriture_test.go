@@ -12,13 +12,13 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func artefactValidePourFaits(t *testing.T) []byte {
 	t.Helper()
 	raw, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: "0000a001", TitleSlug: title.DefaultSlug,
+		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: CookFrameIntervalMS(), MatchID: "0000a001", TitleSlug: title.DefaultSlug,
 		Tracks: []replay.Track{{Slot: 1}},
 	})
 	if err != nil {

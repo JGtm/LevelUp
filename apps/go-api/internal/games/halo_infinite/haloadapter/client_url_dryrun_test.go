@@ -68,7 +68,7 @@ func TestGetMatchHistory_URLFormat_DryRun(t *testing.T) {
 	client, ct := newDryRunClient(srv)
 
 	const (
-		xuid      = "2535469190789936" // Chocoboflor
+		xuid      = "2547408409520575" // Joueur90001
 		matchType = "matchmaking"
 		start     = 0
 		count     = 25
@@ -115,7 +115,7 @@ func TestGetMatchHistory_URLFormat_DryRun(t *testing.T) {
 }
 
 // TestGetMatchHistory_OldGamertagFormat_DryRun documente le BUG d'avant fix :
-// passer le gamertag brut produit /hi/players/Chocoboflor/matches au lieu de
+// passer le gamertag brut produit /hi/players/Joueur90001/matches au lieu de
 // /hi/players/xuid(...)/matches. Garde-fou contre une régression du call site.
 func TestGetMatchHistory_OldGamertagFormat_DryRun(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -126,13 +126,13 @@ func TestGetMatchHistory_OldGamertagFormat_DryRun(t *testing.T) {
 
 	client, ct := newDryRunClient(srv)
 
-	if _, err := client.GetMatchHistory(context.Background(), "Chocoboflor", "matchmaking", 0, 25); err != nil {
+	if _, err := client.GetMatchHistory(context.Background(), "Joueur90001", "matchmaking", 0, 25); err != nil {
 		t.Fatalf("GetMatchHistory: %v", err)
 	}
 	got := ct.last()
 	decoded, _ := url.PathUnescape(got.URL.Path)
-	if !strings.Contains(decoded, "Chocoboflor") {
-		t.Fatalf("dry-run setup cassé : path attendu contient 'Chocoboflor', got %q", decoded)
+	if !strings.Contains(decoded, "Joueur90001") {
+		t.Fatalf("dry-run setup cassé : path attendu contient 'Joueur90001', got %q", decoded)
 	}
 	if strings.Contains(decoded, "xuid(") {
 		t.Errorf("regression : gamertag brut auto-wrappé en xuid() — ce n'est pas le contrat actuel\n  got : %s", decoded)

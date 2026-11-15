@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   PAD_APPROACH_RADIUS_M,
-  PAD_BETWEEN_FRAMES,
+  PAD_BETWEEN_EPSILON,
   refinePadPresence,
 } from './padPresenceRefine'
 import type { ReplayTrackReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
@@ -132,10 +132,10 @@ describe('refinePadPresence — personne n’est passé : le socle reste PLEIN',
    * ~1,6 ms de film — et que le sentinel « jamais vidé » ne soit jamais déclenché.
    */
   it('la lame « personne n’est passé » est ÉTROITE, et ne réveille pas le sentinel', () => {
-    expect(PAD_BETWEEN_FRAMES).toBeGreaterThan(0)
-    expect(PAD_BETWEEN_FRAMES).toBeLessThanOrEqual(1 / 64)
+    expect(PAD_BETWEEN_EPSILON).toBeGreaterThan(0)
+    expect(PAD_BETWEEN_EPSILON).toBeLessThanOrEqual(1 / 64)
     const occ = seul(refinePadPresence([pad()], [loin(50)]))
-    expect(occ.tLow).toBe(occ.tHigh - PAD_BETWEEN_FRAMES)
+    expect(occ.tLow).toBe(occ.tHigh - PAD_BETWEEN_EPSILON)
     // `tHigh > tLow` reste vrai : c'est cette inégalité qui garde la bascule « vide » vivante.
     expect(occ.tHigh).toBeGreaterThan(occ.tLow)
     // Et AUCUNE image entière de la fenêtre ne se lit « incertain ».
@@ -223,7 +223,7 @@ describe('refinePadPresence — le SEGMENT, pas les points', () => {
     expect(padStateAt(raffine, 150)).toBe('full')
     // LES DEUX ASSERTIONS QUI MORDENT : la borne est la lame « personne n'est passé », et le
     // socle bascule bien vide à la preuve d'absence au lieu de se figer plein.
-    expect(raffine.presence[0].tLow).toBe(200 - PAD_BETWEEN_FRAMES)
+    expect(raffine.presence[0].tLow).toBe(200 - PAD_BETWEEN_EPSILON)
     expect(padStateAt(raffine, 250)).toBe('empty')
   })
 })

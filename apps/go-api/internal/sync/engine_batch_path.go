@@ -102,7 +102,7 @@ func (e *SyncEngine) submitMatchAsBatch(
 	// match_registry. Le SharedPersister no-op silently si le match_id
 	// existe deja (cf. shared_persister.go:78), mais le compteur en aval
 	// (result.MatchesInserted) etait incrementé optimistement → inflation
-	// observee en prod 2026-05-24 (XxDaemonGamerxX 9 matchs inserted/cycle
+	// observee en prod 2026-05-24 (Joueur90000000f 9 matchs inserted/cycle
 	// alors qu'il n'a pas joue depuis 1 mois). Cascade : post-sync trigge
 	// sur InsertedMatchIDs, re-download films → 285s perdues.
 	//

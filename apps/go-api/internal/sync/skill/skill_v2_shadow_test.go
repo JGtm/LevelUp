@@ -5,7 +5,6 @@ package skill
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 	"time"
 
@@ -17,45 +16,6 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
-
-// TestDefaultOnFlags vérifie que squad offset et cross-mode coupling sont ON par
-// défaut (décision produit 2026-05-28) : actifs sauf si explicitement "0"/"false"/"no".
-func TestDefaultOnFlags(t *testing.T) {
-	cases := []struct {
-		envVal string
-		want   bool
-	}{
-		{"", true}, // défaut = ON
-		{"1", true},
-		{"true", true},
-		{"yes", true},
-		{"random", true}, // seul "0"/"false"/"no" désactive
-		{"0", false},
-		{"false", false},
-		{"no", false},
-		{"  0  ", false}, // trim
-		{"FALSE", false}, // case-insensitive
-	}
-	for _, fn := range []struct {
-		name string
-		env  string
-		f    func() bool
-	}{
-		{"SquadOffset", lusrSquadOffsetEnvFlag, IsLUSRV2SquadOffsetEnabled},
-		{"ModeCoupling", lusrModeCouplingEnvFlag, IsLUSRV2ModeCouplingEnabled},
-	} {
-		original := os.Getenv(fn.env)
-		t.Run(fn.name, func(t *testing.T) {
-			t.Cleanup(func() { _ = os.Setenv(fn.env, original) })
-			for _, c := range cases {
-				_ = os.Setenv(fn.env, c.envVal)
-				if got := fn.f(); got != c.want {
-					t.Errorf("%s avec env=%q = %v, want %v", fn.name, c.envVal, got, c.want)
-				}
-			}
-		})
-	}
-}
 
 func TestIsTeamImbalanceTooHigh(t *testing.T) {
 	// Critère : |nA - nB| > 1 → trop déséquilibré → skip.
@@ -783,16 +743,9 @@ func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
 	}
 }
 
-// TestRunLUSRV2Shadow_Phase4_CrossModeLeak vérifie qu'avec LEVELUP_LUSR_V2_MODE_COUPLING=1
-// activé, un match dans le mode "arena_slayer" leak son delta vers les autres
+// TestRunLUSRV2Shadow_Phase4_CrossModeLeak vérifie qu'un match dans le mode "arena_slayer" leak son delta vers les autres
 // modes (e.g., "btb") du même joueur, capé à w_d · delta.
 func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
-	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
-	})
-	_ = os.Setenv(lusrModeCouplingEnvFlag, "1")
-
 	db := openShadowTestDB(t)
 	repo := duckdb.NewSkillV2Repo(db)
 	ctx := context.Background()
@@ -860,65 +813,6 @@ func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
 	// σ inchangé.
 	if btb.Sigma != 6.0 {
 		t.Errorf("btb σ = %v, want 6.0 (leak ne modifie pas σ)", btb.Sigma)
-	}
-}
-
-// TestRunLUSRV2Shadow_Phase4_ExplicitlyOff vérifie qu'avec le flag explicitement
-// désactivé ("0"), les autres modes ne sont PAS modifiés. (Le cross-mode leak est
-// désormais ON par défaut — décision produit 2026-05-28.)
-func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
-	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
-	})
-	_ = os.Setenv(lusrModeCouplingEnvFlag, "0") // explicitement désactivé
-
-	db := openShadowTestDB(t)
-	repo := duckdb.NewSkillV2Repo(db)
-	ctx := context.Background()
-
-	pretime := time.Date(2025, 1, 1, 8, 0, 0, 0, time.UTC)
-	if err := repo.UpsertState(ctx, domain.SkillV2State{
-		XUID: "owner", PlaylistGroup: "btb",
-		Mu: 24.0, Sigma: 6.0, Experience: 5,
-		LastMatchAt: &pretime,
-	}); err != nil {
-		t.Fatalf("seed btb: %v", err)
-	}
-
-	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
-	_, err := db.Exec(`INSERT INTO match_registry
-		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
-		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`,
-		"m_phase4_off", startTime, startTime)
-	if err != nil {
-		t.Fatalf("insert match: %v", err)
-	}
-	for _, q := range []struct {
-		xuid          string
-		team, outcome int
-		kills, deaths int
-	}{
-		{"owner", 0, 2, 25, 4}, {"teammate", 0, 2, 10, 9},
-		{"opp1", 1, 3, 6, 16}, {"opp2", 1, 3, 8, 14},
-	} {
-		_, err := db.Exec(`INSERT INTO match_participants
-			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
-			"m_phase4_off", q.xuid, q.team, q.outcome, q.kills, q.deaths)
-		if err != nil {
-			t.Fatalf("insert participant: %v", err)
-		}
-	}
-	if _, err := RunLUSRV2Shadow(ctx, nil, newPinnedSharedAccessor(db), "owner"); err != nil {
-		t.Fatalf("RunLUSRV2Shadow: %v", err)
-	}
-
-	btb, err := repo.LoadState(ctx, "owner", "btb")
-	if err != nil || btb == nil {
-		t.Fatalf("btb state: %v", err)
-	}
-	if btb.Mu != 24.0 {
-		t.Errorf("btb μ = %v, want 24.0 (flag off, no leak)", btb.Mu)
 	}
 }
 
@@ -1131,14 +1025,7 @@ func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
 // d'escouade : avec un offset de synergie positif owner↔teammate, quand le
 // squad GAGNE, le μ individuel du owner monte MOINS que sans offset (la victoire
 // est en partie attribuée à la synergie, pas au skill individuel → anti-inflation).
-// Gated : flag LEVELUP_LUSR_V2_SQUAD_OFFSET=1.
 func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
-	origSquad := os.Getenv(lusrSquadOffsetEnvFlag)
-	t.Cleanup(func() {
-		_ = os.Setenv(lusrSquadOffsetEnvFlag, origSquad)
-	})
-	_ = os.Setenv(lusrSquadOffsetEnvFlag, "1")
-
 	// runWin joue un match 2v2 où owner+teammate GAGNENT (sans counts) et
 	// retourne le μ posterior du owner. Si withOffset, seede +1.5 owner↔teammate.
 	runWin := func(withOffset bool) float64 {

@@ -16,7 +16,7 @@ func TestParseBackupKey(t *testing.T) {
 		{"halo_5:metadata", BackupKey{Slug: "halo_5", Target: migration.TargetMetadata}, true},
 		{"halo_infinite:shared_pve", BackupKey{Slug: "halo_infinite", Target: migration.TargetSharedPvE}, true},
 		{"halo_infinite:shared_social", BackupKey{Slug: "halo_infinite", Target: migration.TargetSharedSocial}, true},
-		{"halo_infinite:player:Chocoboflor", BackupKey{Slug: "halo_infinite", Target: migration.TargetPlayer, Gamertag: "Chocoboflor"}, true},
+		{"halo_infinite:player:Joueur90001", BackupKey{Slug: "halo_infinite", Target: migration.TargetPlayer, Gamertag: "Joueur90001"}, true},
 		{"xbox_aliases", BackupKey{}, false},
 		{"halo_infinite:inconnue", BackupKey{Slug: "halo_infinite"}, false},
 		{"halo_infinite:player:", BackupKey{}, false},

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/lib/api/client'
 import type { ExplorerMatchRow, ExplorerMatchesQueryResponse } from '@/lib/api/types'
 
 /**
@@ -51,6 +52,5 @@ export function splitCommonMatchRows(
  * et issue sortent dans la langue affichée.
  */
 export function matchHistoryExportUrl(playerSlug: string, token: string, locale: string): string {
-  const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
-  return `${base}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(token)}&lang=${encodeURIComponent(locale)}`
+  return `${API_BASE_URL}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(token)}&lang=${encodeURIComponent(locale)}`
 }

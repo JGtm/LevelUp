@@ -24,7 +24,7 @@
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
@@ -235,7 +235,7 @@ function RangeChartBody({
 }: {
   publiable: boolean
   series: ChartSeries<WeaponRangeLine>[]
-  buildOption: () => EChartsCoreOption
+  buildOption: () => ChartOption
   height: number
   legendItems: ChartLegendItem[]
   legendLabel: string

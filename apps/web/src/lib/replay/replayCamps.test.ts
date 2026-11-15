@@ -22,8 +22,8 @@ interface Item {
 }
 
 const ligne = (side: string | null, team_name: string | null = null): CampSheetRow => ({
-  team_side: side,
-  team_name,
+  team_side: side ?? undefined,
+  team_name: team_name ?? undefined,
 })
 
 function camps(items: Item[]) {

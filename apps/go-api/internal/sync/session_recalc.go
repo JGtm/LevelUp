@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // sessionMatchesSQL charge les matchs d'un joueur depuis shared DB.
@@ -40,13 +41,13 @@ SELECT
     END AS end_time
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
-WHERE mp.xuid = ?` + analysis.CampaignExclusionToken + `
+WHERE mp.xuid = ?` + sqlfrag.CampaignExclusionToken + `
 ORDER BY r.start_time ASC`
 
 // loadSessionMatchRowsDirect charge les matchs depuis shared DB (sans préfixe "shared.").
 func loadSessionMatchRowsDirect(ctx context.Context, sharedDB *sql.DB, xuid string) ([]domain.SessionMatchRow, error) {
 	rows, err := sharedDB.QueryContext(ctx,
-		analysis.SQLResolveCampaignExclusionCtx(ctx, sessionMatchesSQL, "r"), xuid, xuid)
+		sqlfrag.SQLResolveCampaignExclusionCtx(ctx, sessionMatchesSQL, "r"), xuid, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadSessionMatchRowsDirect: %w", err)
 	}

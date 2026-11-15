@@ -1,0 +1,63 @@
+package archlint
+
+import (
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+)
+
+var modulesBriques = map[string]string{
+	"film":      "github.com/JGtm/halo-infinite-film-decoder",
+	"gamefiles": "github.com/JGtm/halo-infinite-files-reader",
+	"himap":     "github.com/JGtm/halo-infinite-map-images",
+	"haloapi":   "github.com/JGtm/halo-api",
+}
+
+var (
+	onceBriques sync.Once
+	dirBriques  map[string]string
+)
+
+func chargerBriques(t *testing.T) map[string]string {
+	t.Helper()
+	onceBriques.Do(func() {
+		dirBriques = map[string]string{}
+		for b, m := range modulesBriques {
+			cmd := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", m)
+			cmd.Dir = apiModuleRoot(t)
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("go list -m %s : %v", m, err)
+			}
+			dirBriques[b] = strings.TrimSpace(string(out))
+		}
+	})
+	return dirBriques
+}
+
+func briqueSurDisque(t *testing.T, rel string) (string, bool) {
+	t.Helper()
+	if !strings.HasPrefix(rel, "libs/") {
+		return "", false
+	}
+	reste := strings.TrimPrefix(rel, "libs/")
+	nom, suite, _ := strings.Cut(reste, "/")
+	d, ok := chargerBriques(t)[nom]
+	if !ok {
+		t.Fatalf("brique inconnue %s", rel)
+	}
+	return filepath.Join(d, filepath.FromSlash(suite)), true
+}
+
+func relBrique(t *testing.T, abs string) (string, bool) {
+	t.Helper()
+	for b, d := range chargerBriques(t) {
+		rel, err := filepath.Rel(d, abs)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return "libs/" + b + "/" + filepath.ToSlash(rel), true
+		}
+	}
+	return "", false
+}

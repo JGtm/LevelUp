@@ -180,9 +180,9 @@ func TestNewPool_ResolutionParallele_ConcurrenceBornee(t *testing.T) {
 // résolutions se terminent (les dernières sources répondent les premières), le parc et les
 // sources tentées sont ceux de la boucle en série, pour chaque plafond.
 func TestNewPool_ResolutionParallele_MemeParcQuEnSerie(t *testing.T) {
-	gts := []string{"Hector", "Bianca", "Chocoboflor", "Gaston", "Alice", "DankerGlue", "Fabien", "Edgar", "Ines"}
-	failing := map[string]bool{"Chocoboflor": true, "Fabien": true, "Alice": true}
-	failingList := []string{"Chocoboflor", "Fabien", "Alice"}
+	gts := []string{"Hector", "Bianca", "Joueur90001", "Gaston", "Alice", "Joueur9001", "Fabien", "Edgar", "Ines"}
+	failing := map[string]bool{"Joueur90001": true, "Fabien": true, "Alice": true}
+	failingList := []string{"Joueur90001", "Fabien", "Alice"}
 	rank := map[string]int{}
 	sorted := append([]string(nil), gts...)
 	sort.Strings(sorted)
@@ -216,7 +216,7 @@ func TestNewPool_ResolutionParallele_MemeParcQuEnSerie(t *testing.T) {
 }
 
 func TestNewPool_ResolutionParallele_UnEchecNAffectePasLesAutres(t *testing.T) {
-	gts := []string{"Alice", "Bianca", "Chocoboflor", "DankerGlue"}
+	gts := []string{"Alice", "Bianca", "Joueur90001", "Joueur9001"}
 	// Le compte en échec est aussi le plus lent : les autres ne l'attendent pas pour réussir.
 	delay := func(gt string) time.Duration {
 		if gt == "Bianca" {
@@ -231,10 +231,10 @@ func TestNewPool_ResolutionParallele_UnEchecNAffectePasLesAutres(t *testing.T) {
 	}
 	defer p.Close()
 
-	if got, want := slotGamertags(t, p), []string{"Alice", "Chocoboflor", "DankerGlue"}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := slotGamertags(t, p), []string{"Alice", "Joueur90001", "Joueur9001"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("slots = %v, attendu %v", got, want)
 	}
-	for _, gt := range []string{"Alice", "Chocoboflor", "DankerGlue"} {
+	for _, gt := range []string{"Alice", "Joueur90001", "Joueur9001"} {
 		if _, err := p.Acquire(context.Background(), PolicyPinnedPlayer, gt); err != nil {
 			t.Errorf("Acquire(%s) : %v", gt, err)
 		}
@@ -248,7 +248,7 @@ func TestNewPool_ResolutionParallele_UnEchecNAffectePasLesAutres(t *testing.T) {
 // refresh token (un même compte déclaré deux fois) sont résolues l'une après l'autre, dans
 // l'ordre alphabétique, pendant que les autres comptes avancent en parallèle.
 func TestNewPool_ResolutionParallele_JamaisDeuxEchangesDuMemeJeton(t *testing.T) {
-	sources := sourcesFor("Alice", "alice", "Bianca", "Chocoboflor")
+	sources := sourcesFor("Alice", "alice", "Bianca", "Joueur90001")
 	sources[1].RefreshToken = sources[0].RefreshToken // même compte, gamertag écrit autrement
 	resolver := newTimedResolver(func(string) time.Duration { return 30 * time.Millisecond })
 
@@ -305,7 +305,7 @@ func sortedKeys(m map[string]bool) []string {
 // tel quel par le CLI) veut dire « sans plafond », comme 0 : tous les comptes sont résolus et
 // chaque slot porte ses tokens. Jamais un slot sans tokens compté comme succès.
 func TestNewPool_MaxSizeNegatif_SansPlafond(t *testing.T) {
-	gts := []string{"Alice", "Bianca", "Chocoboflor"}
+	gts := []string{"Alice", "Bianca", "Joueur90001"}
 	resolver := newTimedResolver(func(string) time.Duration { return 5 * time.Millisecond })
 	p, err := NewPool(context.Background(), resolver, sourcesFor(gts...), PoolOptions{MaxSize: -1})
 	if err != nil {

@@ -107,7 +107,7 @@ func TestMediaLike_SocialEventVisibleForStoredPath(t *testing.T) {
 	repo := NewMediaRepo(&PlayerDB{SharedSocial: socialDB, Gamertag: "JGtm"})
 	ctx := context.Background()
 
-	if err := repo.ToggleSharedLike(ctx, storedPath, "Chocoboflor", "Chocoboflor", true); err != nil {
+	if err := repo.ToggleSharedLike(ctx, storedPath, "Joueur90001", "Joueur90001", true); err != nil {
 		t.Fatalf("ToggleSharedLike: %v", err)
 	}
 

@@ -30,7 +30,7 @@ import (
 )
 
 // Les chemins d'import des paquets de la brique qui construisent un client.
-const (
+var (
 	cheminBriqueInfinite = importBriqueHaloapi + "/infinite"
 	cheminBriqueHalo5    = importBriqueHaloapi + "/halo5"
 	cheminBriqueXboxlive = importBriqueHaloapi + "/xboxlive"
@@ -148,11 +148,11 @@ func TestBriqueInfiniteRecoitLeDoerGarde(t *testing.T) {
 // littéraux gardés passent, import de netguard aliasé compris.
 func TestBriqueInfiniteRecoitLeDoerGarde_AutoPreuve(t *testing.T) {
 	const rel = "internal/games/halo_infinite/haloadapter/x.go"
-	const entete = "package haloadapter\nimport (\n\"net/http\"\n\"" + cheminBriqueInfinite + "\"\n" +
+	var entete = "package haloadapter\nimport (\n\"net/http\"\n\"" + cheminBriqueInfinite + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
-	const enteteH5 = "package halo_5\nimport (\n\"net/http\"\n\"" + cheminBriqueHalo5 + "\"\n" +
+	var enteteH5 = "package halo_5\nimport (\n\"net/http\"\n\"" + cheminBriqueHalo5 + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
-	const enteteXbox = "package sync\nimport (\n\"net/http\"\n\"" + cheminBriqueXboxlive + "\"\n" +
+	var enteteXbox = "package sync\nimport (\n\"net/http\"\n\"" + cheminBriqueXboxlive + "\"\n" +
 		"\"levelup/go-api/internal/platform/netguard\"\n)\n"
 	interdits := map[string]struct {
 		src string

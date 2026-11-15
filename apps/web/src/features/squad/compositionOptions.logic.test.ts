@@ -54,7 +54,7 @@ const proposes = (s: SourcesDeComposition) =>
 describe('estUnBot', () => {
   it('reconnaît le xuid d’un bot, et lui seul', () => {
     expect(estUnBot('bid(3.0)')).toBe(true)
-    expect(estUnBot('2533274823110022')).toBe(false)
+    expect(estUnBot('2603225103667623')).toBe(false)
   })
 })
 

@@ -46,7 +46,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"sync"
 	"time"
@@ -54,6 +53,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/coalesce"
 )
 
 // CareerLiveBudget cap la durée totale du fetch live dans le chemin
@@ -69,6 +69,12 @@ const CareerLiveBudget = 2500 * time.Millisecond
 // contexte de la requête. Plus généreux que le budget synchrone parce que
 // le caller ne nous attend plus.
 const careerLiveBgTimeout = 30 * time.Second
+
+// careerLivePersistWait borne l'attente de l'écrivain de la base joueur par l'écriture d'un instantané
+// de carrière. Le recalcul des notes (sync.MatchRecomputer) tient cet écrivain pendant tout le rejeu du
+// joueur, plusieurs minutes au démarrage : l'attente ne partage donc pas le budget de careerLiveBgTimeout,
+// déjà consommé par les appels à l'API, sans quoi l'instantané est perdu à chaque démarrage qui recalcule.
+const careerLivePersistWait = 5 * time.Minute
 
 const careerLiveLogModule = "career_live"
 
@@ -121,6 +127,9 @@ type CareerLiveService struct {
 	// par xuid, peu importe combien de requêtes timeoutent en parallèle.
 	bgInflightMu sync.Mutex
 	bgInflight   map[string]bool
+
+	// persistRuns porte l'écriture des instantanés sous le suivi d'arrêt (persistTracked).
+	persistRuns coalesce.Runs
 }
 
 // NewCareerLiveService construit le service. `cache` peut être nil (auquel cas
@@ -423,7 +432,7 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid, ownerXUID string, tok
 		// lecture conserve les valeurs historiques. Pas de pollution possible.
 		// Le status (Phase 6) trace l'issue du fetch pour diag.
 		status := computeFetchStatus(progress, custom)
-		s.persistPartial(bgCtx, xuid, progress, custom, status)
+		s.persistTracked(bgCtx, xuid, progress, custom, status)
 
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()
@@ -431,51 +440,6 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid, ownerXUID string, tok
 
 // fetchProgressCached, fetchCustomizationCached, makeFetcher → extraits dans
 // `career_live_fetcher.go` (refactor V2 dette technique 2026-05-26).
-
-// persistPartial écrit dans career_progression UNIQUEMENT les champs
-// effectivement rendus non-vides par l'API live (PartialFromLive). Les
-// colonnes omises restent NULL dans la nouvelle ligne — la lecture via
-// ARG_MAX FILTER WHERE NOT NULL conserve les valeurs historiques.
-//
-// Phase 6 PLAN_V2 : status trace l'issue du fetch (ok / api_empty /
-// forbidden_403 / auth_missing / failed). Toujours écrit pour permettre
-// le diag "pourquoi ce joueur n'a pas de bannière".
-//
-// Best-effort : une erreur est loggée mais non propagée à l'appelant.
-func (s *CareerLiveService) persistPartial(
-	ctx context.Context,
-	xuid string,
-	progress *domain.CareerRankSnapshot,
-	custom *domain.SpartanCustomizationData,
-	status FetchStatus,
-) {
-	if s.repo == nil {
-		return
-	}
-	partial := PartialFromLive(progress, custom)
-	statusStr := string(status)
-	partial.LastFetchStatus = &statusStr
-
-	inserted, err := s.repo.InsertCareerProgressionPartial(ctx, xuid, partial)
-	if err != nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": persist partial failed",
-			"xuid", xuid, "err", err)
-		return
-	}
-	if inserted {
-		careerLiveInsertChanged.Add(1)
-		slog.InfoContext(ctx, careerLiveLogModule+": partial snapshot inserted",
-			"xuid", xuid,
-			"status", statusStr,
-			"has_rank", partial.Rank != nil,
-			"has_xp", partial.CurrentXP != nil,
-			"has_banner", partial.BannerImageURL != nil,
-			"has_emblem", partial.EmblemImageURL != nil,
-			"has_spartan_id", partial.SpartanID != nil)
-	} else {
-		careerLiveInsertSkipped.Add(1)
-	}
-}
 
 // computeFetchStatus dérive le FetchStatus depuis le résultat des 2 fetchs.
 // Source de vérité unique pour la classification des outcomes.
@@ -531,10 +495,3 @@ func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string, in
 //
 // CareerFetcherFactoryFromTokens, compile-time check → extraits dans
 // `career_live_fetcher.go`.
-
-// errNoFallback est conservé pour signaler explicitement le cas "rien à
-// servir" dans les futurs chemins (CLI manuel, healthcheck). Inutilisé pour
-// l'instant côté HTTP.
-//
-//nolint:unused // export api defensive — supprimer si non câblé d'ici 2026-Q3
-var errNoFallback = sql.ErrNoRows

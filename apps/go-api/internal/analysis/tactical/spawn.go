@@ -53,9 +53,12 @@ import (
 // PointSpawn est une reapparition observee : ou, et dans quel match.
 //
 // Le match est porte par le point parce que le plancher se compte en matchs DISTINCTS —
-// quatre reapparitions d'une meme partie ne sont qu'une observation.
+// quatre reapparitions d'une meme partie ne sont qu'une observation. Frame est l'instant de
+// l'apparition : la cle qui rattache un point a la route de la meme vie (Route.DebutFrame),
+// que les grappes elles-memes n'utilisent pas.
 type PointSpawn struct {
 	MatchID string
+	Frame   int
 	X, Y    float64
 }
 

@@ -7,7 +7,9 @@
  *      (les 7 ex-registres prestige/arc/challenge/squad/profile/watcher/admin
  *      ont été centralisés — L5) ;
  *   2. un `queryKey: ['…']` littéral bypasse `queryKeys` (les extensions
- *      `queryKey: [...queryKeys.X, …]` restent autorisées).
+ *   3. une clé DÉRIVÉE s'écrit hors de keys.ts : `[...queryKeys.X, …]` (7.10) — une extension
+ *      de clé est une clé de plus, donc une fabrique de `queryKeys` ; sinon deux sites la répètent
+ *      et la clé d'invalidation diverge de celle de lecture.
  *
  * Sans ce garde-rail, les clés re-divergent (leçon : registres dupliqués par
  * feature → collisions de cache silencieuses).
@@ -18,9 +20,11 @@ import { join, resolve } from 'node:path'
 
 const LOCAL_REGISTRY = /export\s+const\s+\w+Keys\s*=\s*\{/
 // queryKey dont le tableau commence par un littéral chaîne → bypass interdit.
-// Autorisé : queryKey: queryKeys.X(...) et queryKey: [...queryKeys.X, ...].
+// Autorisé : queryKey: queryKeys.X(...).
 const INLINE_LITERAL = /queryKey:\s*\[\s*['"]/
 // keys.ts EST la source unique (queryKeys y est défini) → exempté.
+// Une clé dérivée écrite à la main : `[...queryKeys.X` n'importe où (ligne ou commentaire exclus par le test).
+const DERIVED_SPREAD = /\[\s*\.\.\.\s*queryKeys\./
 const ALLOWED = new Set(['keys.ts'])
 
 function walk(dir: string): string[] {
@@ -53,5 +57,12 @@ describe('garde-rail query keys (queryKeys source unique — L5)', () => {
       .filter((f) => INLINE_LITERAL.test(readFileSync(f, 'utf8')))
       .map((f) => f.replace(srcRoot, 'src'))
     expect(offenders, `queryKey littéral à router via queryKeys : ${offenders.join(', ')}`).toEqual([])
+  })
+
+  it('aucune clé dérivée `[...queryKeys.X, …]` hors keys.ts (ajouter une fabrique)', () => {
+    const offenders = files
+      .filter((f) => DERIVED_SPREAD.test(readFileSync(f, 'utf8')))
+      .map((f) => f.replace(srcRoot, 'src'))
+    expect(offenders, `clé dérivée à déclarer dans queryKeys : ${offenders.join(', ')}`).toEqual([])
   })
 })

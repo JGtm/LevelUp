@@ -39,7 +39,7 @@ func TestGetMatchHistory_ContractAgainstFixture(t *testing.T) {
 
 	client, _ := newDryRunClient(srv) // helper défini dans client_url_dryrun_test.go
 
-	const xuid = "2535469190789936"
+	const xuid = "2547408409520575"
 	playerID := "xuid(" + xuid + ")"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

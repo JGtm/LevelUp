@@ -22,7 +22,7 @@ que le backend Go retourne exactement les mêmes données que le Python.
 | `players_list.json` | `GET /api/v1/players` | Sprint 6 |
 | `filters_resolve_all.json` | `POST /api/v1/players/{slug}/filters/resolve` (sans filtre) | Sprint 6 |
 | `filters_resolve_zero_matches.json` | POST filters/resolve — cas 0 match | Sprint 6 |
-| `career_page_chocoboflor.json` | `GET /api/v1/players/Chocoboflor/pages/career` | Sprint 6 |
+| `career_page_joueur90001.json` | `GET /api/v1/players/Joueur90001/pages/career` | Sprint 6 |
 | `match_history_page1_nofilter.json` | `POST /pages/match-history/query` (page 1, sans filtre) | Sprint 6 |
 | `gamertag_search_cho.json` | `GET /directory/gamertags/search?q=cho` | Sprint 8 |
 | `gamertag_search_empty.json` | GET gamertags/search — cas 0 résultat | Sprint 8 |
@@ -52,7 +52,7 @@ uvicorn app.main:app --port 8000
 
 # 2. Dans un autre terminal, lancer la capture
 cd apps/go-api
-python apps/go-api/scripts/capture_golden_values.py --player Chocoboflor
+python apps/go-api/scripts/capture_golden_values.py --player Joueur90001
 
 # 3. Vérifier les fichiers générés
 ls tests/fixtures/golden_values/*.json
@@ -94,7 +94,7 @@ Le comparateur Go doit respecter ces tolérances :
 |-----|---------|
 | 0 matchs après filtre | `filters_resolve_zero_matches.json` |
 | Recherche gamertag sans résultat | `gamertag_search_empty.json` |
-| Carrière sans charts (null) | `career_page_chocoboflor.json` |
+| Carrière sans charts (null) | `career_page_joueur90001.json` |
 | Bootstrap sans auth | `bootstrap_no_auth.json` |
 
 **Cas à ajouter avant Sprint 6 (capture live) :**

@@ -309,6 +309,8 @@ export function MatchViewPage() {
             cadence={combat_tab.cadence}
             scoreTimelineKind={header.score_timeline_kind}
             t0Ms={header.t0_ms}
+            leadShare={header.lead_share}
+            leadChanges={header.lead_changes}
             t={t}
           />
         )}

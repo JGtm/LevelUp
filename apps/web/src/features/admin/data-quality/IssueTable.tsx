@@ -3,7 +3,7 @@
  * bouton d'action par ligne ouvrant un formulaire inline (une seule ligne
  * ouverte à la fois — état porté par le parent via openID).
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   type ColumnDef,
   getCoreRowModel,
@@ -12,6 +12,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { SortableTh } from '@/components/ui/sortable-th'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import type { AdminDataQualityIssue } from '@/lib/api/types'
 import { playerScopedHref } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -33,39 +34,19 @@ export interface IssueColumn {
   sortDescFirst?: boolean
 }
 
-/** Clé interne identifiant la colonne triée : les colonnes génériques (index
- *  dans `columns`) ou l'une des 2 colonnes fixes toujours rendues par IssueTable. */
-type IssueSortKey = { kind: 'col'; index: number } | { kind: 'occurrences' } | { kind: 'last_seen' }
+/** Colonnes triables : les colonnes génériques portant un `sortValue` (`col:<index>` dans `columns`) et les
+ *  2 colonnes fixes toujours rendues par IssueTable (`occurrences`, `last_seen`). */
+type IssueSortKey = 'occurrences' | 'last_seen' | `col:${number}`
 
-function issueSortKeyEq(a: IssueSortKey | null, b: IssueSortKey): boolean {
-  if (!a) return false
-  if (a.kind !== b.kind) return false
-  return a.kind === 'col' && b.kind === 'col' ? a.index === b.index : true
-}
-
-function issueRawValue(issue: AdminDataQualityIssue, columns: IssueColumn[], key: IssueSortKey): string | number | null {
-  if (key.kind === 'occurrences') return issue.occurrences
-  if (key.kind === 'last_seen') return issue.last_seen ? Date.parse(issue.last_seen) : null
-  return columns[key.index]?.sortValue?.(issue) ?? null
-}
-
-function compareIssues(
-  a: AdminDataQualityIssue,
-  b: AdminDataQualityIssue,
-  columns: IssueColumn[],
-  key: IssueSortKey,
-  dir: 'asc' | 'desc',
-): number {
-  const va = issueRawValue(a, columns, key)
-  const vb = issueRawValue(b, columns, key)
-  if (va == null && vb == null) return 0
-  if (va == null) return 1
-  if (vb == null) return -1
-  const cmp =
-    typeof va === 'string' && typeof vb === 'string'
-      ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' })
-      : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+function issueSortColumns(columns: IssueColumn[]): Record<IssueSortKey, SortColumn<AdminDataQualityIssue>> {
+  const out: Record<string, SortColumn<AdminDataQualityIssue>> = {
+    occurrences: { value: (i) => i.occurrences, firstDir: 'desc' },
+    last_seen: { value: (i) => (i.last_seen ? Date.parse(i.last_seen) : null), firstDir: 'desc' },
+  }
+  columns.forEach((c, index) => {
+    if (c.sortValue) out[`col:${index}`] = { value: c.sortValue, firstDir: c.sortDescFirst === true ? 'desc' : 'asc' }
+  })
+  return out
 }
 
 /** Pagination serveur optionnelle (kinds à liste longue, ex. xuids orphelins). */
@@ -115,20 +96,9 @@ export function IssueTable({
   // Garde défensive : la pagination serveur et le tri client sont incompatibles
   // (cf. doc `sortable` ci-dessus) — la pagination prime toujours.
   const effectiveSortable = sortable === true && !pagination
-  const [sortKey, setSortKey] = useState<IssueSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  function toggleSort(key: IssueSortKey, descFirst: boolean) {
-    if (issueSortKeyEq(sortKey, key)) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(descFirst ? 'desc' : 'asc')
-    }
-  }
-  const sortedIssues = useMemo(() => {
-    if (!effectiveSortable || !sortKey) return issues
-    return [...issues].sort((a, b) => compareIssues(a, b, columns, sortKey, sortDir))
-  }, [issues, columns, effectiveSortable, sortKey, sortDir])
+  const sortColumns = useMemo(() => issueSortColumns(columns), [columns])
+  const sort = useColumnSort(issues, sortColumns)
+  const sortedIssues = effectiveSortable ? sort.rows : issues
   const locale = useAdminLocale()
   // Joueur cible des liens de match : la vue de match est player-scopée
   // (/t/{slug}/players/{player}/matches/{id}). En admin il n'y a pas de scope
@@ -154,14 +124,11 @@ export function IssueTable({
                   </th>
                 )
               }
-              const key: IssueSortKey = { kind: 'col', index }
               return (
                 <SortableTh
                   key={c.header}
                   label={c.header}
-                  active={issueSortKeyEq(sortKey, key)}
-                  dir={sortDir}
-                  onClick={() => toggleSort(key, c.sortDescFirst === true)}
+                  {...sort.header(`col:${index}`)}
                   className={colClass}
                 />
               )
@@ -169,9 +136,7 @@ export function IssueTable({
             {effectiveSortable ? (
               <SortableTh
                 label={tA('admin.dq.col_occurrences')}
-                active={issueSortKeyEq(sortKey, { kind: 'occurrences' })}
-                dir={sortDir}
-                onClick={() => toggleSort({ kind: 'occurrences' }, true)}
+                {...sort.header('occurrences')}
                 className="px-3 py-2 font-medium text-right"
               />
             ) : (
@@ -180,9 +145,7 @@ export function IssueTable({
             {effectiveSortable ? (
               <SortableTh
                 label={tA('admin.dq.col_last_seen')}
-                active={issueSortKeyEq(sortKey, { kind: 'last_seen' })}
-                dir={sortDir}
-                onClick={() => toggleSort({ kind: 'last_seen' }, true)}
+                {...sort.header('last_seen')}
                 className="px-3 py-2 font-medium"
               />
             ) : (

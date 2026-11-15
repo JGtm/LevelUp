@@ -28,9 +28,9 @@ import (
 	"sort"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -125,7 +125,7 @@ func loadMatchWindows(db *sql.DB) (map[string]domain.MatchTimeline, error) {
 	rows, err := db.Query(`
 		SELECT
 			match_id,
-			` + analysis.SQLStartTimeCanonical("") + `               AS start_utc,
+			` + sqlfrag.SQLStartTimeCanonical("") + `               AS start_utc,
 			real_start_time,
 			COALESCE(duration_seconds, 0)                                         AS dur
 		FROM match_registry`)

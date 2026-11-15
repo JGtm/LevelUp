@@ -21,8 +21,17 @@ export interface CompareScale {
   netScore?: [number, number]
   /** [min, max] de la balance des dégâts cumulée (vies nettes), 0 inclus. */
   netLives?: [number, number]
-  /** [min, max] des taux/min FDA (morts en négatif), 0 inclus. */
+  /**
+   * [min, max] des taux/min de l'axe de gauche du graphe « Stats par minute » (frags et
+   * assistances au-dessus, morts en négatif), 0 inclus.
+   *
+   * Comme `rangeDelta`, il N'ENTRE PAS dans `computeCompareScale` : il dépend d'un cinquième
+   * choix (le titre fournit-il les dégâts subis ?), et lui passer ce paramètre le porterait à six
+   * (seuil CLAUDE.md n°5). La page le compose avec `perMinuteDomains`.
+   */
   fdaMinute?: [number, number]
+  /** [min, max] de l'axe de droite (dégâts par minute), zéro aligné sur celui de `fdaMinute`. */
+  damageMinute?: [number, number]
   /** [min, max] du score d'engagement (résidu centré sur 0), 0 inclus. */
   engagement?: [number, number]
   /** [min, max] de l'écart d'engagement cumulé (événements), 0 inclus. */
@@ -80,26 +89,6 @@ function netLivesCumulatives(matches: SessionDetailMatchRow[], hp: number): numb
   return cumulativeSigned(sorted.map((m) => netLives(m.damage_dealt, m.damage_taken, hp))).map(
     (c) => c.cumulative,
   )
-}
-
-/** cf. SessionFdaBars mode="minute" : taux frags/morts/assists par minute. */
-function fdaMinuteRates(
-  matches: SessionDetailMatchRow[],
-): { frags: number; deaths: number; assists: number } | null {
-  const rows = matches.filter((m) => (m.duration_seconds ?? 0) > 0)
-  if (rows.length === 0) return null
-  const t = rows.reduce(
-    (acc, m) => {
-      acc.kills += m.kills
-      acc.deaths += m.deaths
-      acc.assists += m.assists
-      acc.minutes += (m.duration_seconds ?? 0) / 60
-      return acc
-    },
-    { kills: 0, deaths: 0, assists: 0, minutes: 0 },
-  )
-  if (t.minutes <= 0) return null
-  return { frags: t.kills / t.minutes, deaths: t.deaths / t.minutes, assists: t.assists / t.minutes }
 }
 
 /** cf. SessionEngagementChart : engagement_score par match (entry.match_series). */
@@ -166,15 +155,6 @@ export function computeCompareScale(
   const netLivesVals = [...netLivesCumulatives(aMatches, hp), ...netLivesCumulatives(bMatches, hp)]
   if (netLivesVals.length > 0)
     scale.netLives = [Math.min(...netLivesVals, 0), Math.max(...netLivesVals, 0)]
-
-  const fdas = [fdaMinuteRates(aMatches), fdaMinuteRates(bMatches)].filter(
-    (x): x is NonNullable<typeof x> => x != null,
-  )
-  if (fdas.length > 0) {
-    const posMax = Math.max(...fdas.flatMap((f) => [f.frags, f.assists]), 0)
-    const deathMax = Math.max(...fdas.map((f) => f.deaths), 0)
-    scale.fdaMinute = [-deathMax, posMax]
-  }
 
   const engVals = [...engagementValues(aEntry), ...engagementValues(bEntry)]
   if (engVals.length > 0) scale.engagement = [Math.min(...engVals, 0), Math.max(...engVals, 0)]

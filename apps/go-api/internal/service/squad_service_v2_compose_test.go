@@ -174,11 +174,6 @@ func TestGetSquadPage_FullComposition(t *testing.T) {
 		t.Error("AssistsTimeseries want non-empty")
 	}
 
-	// Radar (S8) — 2 joueurs (main + f1) → 2 séries
-	if len(resp.Charts.Radar) != 2 {
-		t.Errorf("Radar want 2 series, got %d", len(resp.Charts.Radar))
-	}
-
 	// Tables (S9)
 	if len(resp.Tables.History) != 2 {
 		t.Errorf("History want 2 rows, got %d", len(resp.Tables.History))

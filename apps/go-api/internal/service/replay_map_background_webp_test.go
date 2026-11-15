@@ -39,7 +39,7 @@ func TestReadBackgroundImage_MimeSuitLeSidecar(t *testing.T) {
 					`"stats":{"anchors":1}}`)
 			ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, c.image), c.corps)
 
-			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 			blob, mime, err := svc.MapBackgroundImage(context.Background(), "m1")
 			if err != nil {
 				t.Fatalf("image=%q : err = %v", c.image, err)

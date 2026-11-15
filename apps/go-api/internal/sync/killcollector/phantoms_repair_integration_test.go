@@ -65,15 +65,15 @@ func reparerLesCouples(t *testing.T, db *sql.DB) StalePairsReport {
 }
 
 // Apres la purge des fantomes, les couples du match se recalculent depuis highlight_events assaini :
-// un seul couple (Partycz -> Kin3tico), noms de l annuaire, les trois index gardes ; un second
+// un seul couple (J900006 -> Joueur95), noms de l annuaire, les trois index gardes ; un second
 // passage ne trouve plus rien (et c est ce qui rend une reparation interrompue reprenable).
 func TestReparationDesCouplesApresPurge(t *testing.T) {
 	db := baseDeReparation(t,
 		`INSERT INTO killer_victim_pairs (match_id,killer_xuid,killer_gamertag,victim_xuid,victim_gamertag,time_ms)
-			VALUES ('m','fake','Partycz','kin','Kin3tico',40500),('m','real','Partycz','real','Partycz',80000)`,
+			VALUES ('m','fake','J900006','kin','Joueur95',40500),('m','real','J900006','real','J900006',80000)`,
 		`INSERT INTO highlight_events (id,match_id,event_type,time_ms,xuid,type_hint) VALUES
 			(1,'m','kill',40500,'real',50),(2,'m','kill',40500,'real',50),(3,'m','death',40501,'kin',20)`,
-		`INSERT INTO v_gamertag_lookup VALUES ('real','Partycz'),('kin','Kin3tico')`)
+		`INSERT INTO v_gamertag_lookup VALUES ('real','J900006'),('kin','Joueur95')`)
 	if rep := reparerLesCouples(t, db); len(rep.MatchIDs) != 1 {
 		t.Fatalf("matchs recalcules = %v, attendu [m]", rep.MatchIDs)
 	}
@@ -83,8 +83,8 @@ func TestReparationDesCouplesApresPurge(t *testing.T) {
 		FROM killer_victim_pairs WHERE match_id = 'm'`).Scan(&c, &k, &v, &gk); err != nil {
 		t.Fatal(err)
 	}
-	if c != 1 || k != "real" || v != "kin" || gk != "Partycz" {
-		t.Errorf("%d couples %s->%s (%s), attendu 1 couple real->kin nomme Partycz", c, k, v, gk)
+	if c != 1 || k != "real" || v != "kin" || gk != "J900006" {
+		t.Errorf("%d couples %s->%s (%s), attendu 1 couple real->kin nomme J900006", c, k, v, gk)
 	}
 	var idx int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'killer_victim_pairs'`).
@@ -98,15 +98,15 @@ func TestReparationDesCouplesApresPurge(t *testing.T) {
 
 // Seuls les matchs dont les couples stockes different de l appariement courant sont recalcules :
 // `m1` porte le couple de l ancien appariement glouton (le kill du bot a 593 093 avait pris la mort
-// de Sprifi), `m2` est deja juste. Un joueur que ni l annuaire ni les couples ne nomment reste sans
+// de J90005), `m2` est deja juste. Un joueur que ni l annuaire ni les couples ne nomment reste sans
 // nom : jamais son xuid a la place.
 func TestStalePairsNeRecalculeQueLesCouplesPerimes(t *testing.T) {
 	db := baseDeReparation(t,
 		`INSERT INTO highlight_events (id,match_id,event_type,time_ms,xuid,type_hint) VALUES
-			(1,'m1','kill',593093,'jgtm',50),(2,'m1','death',593095,'sprifi',20),(3,'m1','kill',593095,'jgtm',50),
+			(1,'m1','kill',593093,'jgtm',50),(2,'m1','death',593095,'j90005',20),(3,'m1','kill',593095,'jgtm',50),
 			(4,'m2','kill',1000,'a',50),(5,'m2','death',1001,'b',20)`,
 		`INSERT INTO killer_victim_pairs (match_id,killer_xuid,killer_gamertag,victim_xuid,victim_gamertag,time_ms)
-			VALUES ('m1','jgtm','JGtm','sprifi','sprifi',593093),('m2','a','A','b','B',1000)`)
+			VALUES ('m1','jgtm','JGtm','j90005','j90005',593093),('m2','a','A','b','B',1000)`)
 	rep := reparerLesCouples(t, db)
 	if rep.Examined != 2 || len(rep.MatchIDs) != 1 || rep.MatchIDs[0] != "m1" {
 		t.Fatalf("rapport %+v, attendu 2 examines, [m1] recalcule", rep)

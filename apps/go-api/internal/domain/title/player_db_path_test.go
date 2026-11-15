@@ -12,7 +12,7 @@ func TestIsPlayerDBPath(t *testing.T) {
 	pr := NewPathResolver(root)
 	demo := NewDemoLayout(filepath.Join(root, "demo"))
 	oui := []string{
-		pr.PlayerDBPath(DefaultSlug, "Chocoboflor"),
+		pr.PlayerDBPath(DefaultSlug, "Joueur90001"),
 		pr.PlayerDBPath("halo_5", "Joueur Avec Espace"),
 		pr.PlayerDBPath(DefaultSlug, "players"), // gamertag homonyme du répertoire
 		demo.PlayerDBPath(DefaultSlug, "DEMO"),

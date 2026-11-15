@@ -1,5 +1,3 @@
-// cross-feature-allow: libellés de chaînes LUSR (`lusrChainLabel`) partagés avec l'onglet
-// Carrière — une seule table de noms de chaînes dans l'app.
 /**
  * labels — les libellés que la page Tendances résout : un type de partie et une ligne
  * d'indicateur.

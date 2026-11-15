@@ -370,9 +370,8 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 		kpis.AvgLifeSeconds = &avgLife
 	}
 	if nTime > 0 {
-		totalMinutes := sumTimePlayed / 60.0
-		if totalMinutes > 0 {
-			kpm := math.Round(sumKills/totalMinutes*100) / 100
+		if sumTimePlayed > 0 {
+			kpm := math.Round(PerMinute(sumKills, sumTimePlayed)*100) / 100
 			kpis.KillsPerMin = &kpm
 		}
 	}

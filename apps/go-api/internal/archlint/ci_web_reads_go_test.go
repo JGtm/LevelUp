@@ -113,7 +113,13 @@ func uncoveredGoReads(ciText string, webTests map[string]string) map[string][]st
 	out := map[string][]string{}
 	for file, text := range webTests {
 		for _, p := range goPathsReadByWebTest(text) {
-			if !coveredByCroisee(patterns, p) {
+			// Une source de brique (`libs/<brique>/...`, chemin de garde-rail) vient de la version que fixe
+			// apps/go-api/go.mod (ADR 0043) : seul ce fichier la change, c est lui que `croisee` doit nommer.
+			cible := p
+			if strings.HasPrefix(p, "libs/") {
+				cible = "apps/go-api/go.mod"
+			}
+			if !coveredByCroisee(patterns, cible) {
 				out[p] = append(out[p], file)
 			}
 		}
@@ -178,7 +184,7 @@ func TestWebReadsGoGuardDetectsDefects(t *testing.T) {
               - 'apps/go-api/cmd/server/boot_gate.go'
               - 'apps/go-api/internal/film/replay/**'
               - 'apps/go-api/internal/mappings/loader_*.go'
-              - 'libs/film/replay/**'
+              - 'apps/go-api/go.mod'
             autre:
               - '**'
 `
@@ -194,9 +200,15 @@ func TestWebReadsGoGuardDetectsDefects(t *testing.T) {
 	tests["c.test.ts"] = "readFileSync(resolve(r, '../go-api/internal/analysis/weapon_range.go'))\n" +
 		"readdirSync(r + 'apps/go-api/internal/film/grammar')\nresolve(REPO, 'libs/film/internal/grammar')"
 	got := uncoveredGoReads(ci, tests)
-	if len(got) != 3 || got["apps/go-api/internal/analysis/weapon_range.go"][0] != "c.test.ts" ||
-		got["apps/go-api/internal/film/grammar"][0] != "c.test.ts" || got["libs/film/internal/grammar"][0] != "c.test.ts" {
+	if len(got) != 2 || got["apps/go-api/internal/analysis/weapon_range.go"][0] != "c.test.ts" ||
+		got["apps/go-api/internal/film/grammar"][0] != "c.test.ts" {
 		t.Fatalf("défauts vus : %v (le fichier et le dossier non couverts étaient attendus)", got)
+	}
+	// Une source de brique n'est couverte que par apps/go-api/go.mod, qui en fixe la version.
+	sansGoMod := strings.Replace(ci, "'apps/go-api/go.mod'", "'apps/go-api/x.go'", 1)
+	if got := uncoveredGoReads(sansGoMod, tests); len(got["libs/film/internal/grammar"]) != 1 ||
+		len(got["libs/film/replay/document_chronicle.go"]) != 1 {
+		t.Fatalf("sources de brique non vues sans go.mod dans croisee : %v", got)
 	}
 	if p := croiseePatterns(ci); len(p) != 5 {
 		t.Fatalf("motifs croisee lus : %v (5 attendus, la classe suivante ne doit pas y entrer)", p)

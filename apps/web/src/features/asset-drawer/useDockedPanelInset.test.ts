@@ -1,6 +1,7 @@
 /**
- * useDockedPanelInset : la largeur que le volet ancré prend au contenu — 0 fermé, sa largeur bornée
- * (mêmes bornes que le volet) ouvert, recalculée au redimensionnement de la fenêtre.
+ * useDockedPanelInset : la largeur que le volet ancré prend au contenu — 0 fermé ou superposé (non
+ * épinglé), sa largeur bornée (mêmes bornes que le volet) ouvert ET épinglé, recalculée au
+ * redimensionnement de la fenêtre.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -18,22 +19,30 @@ function setViewport(width: number) {
 
 beforeEach(() => {
   setViewport(1600)
-  useAssetDrawerStore.setState({ isOpen: false, panelWidth: PANEL_DEFAULT_WIDTH })
+  useAssetDrawerStore.setState({ isOpen: false, pinned: true, panelWidth: PANEL_DEFAULT_WIDTH })
   useSidebarWidthStore.getState().setCollapsed(false)
 })
 afterEach(() => {
   setViewport(initialInnerWidth)
-  useAssetDrawerStore.setState({ isOpen: false })
+  useAssetDrawerStore.setState({ isOpen: false, pinned: false })
 })
 
 describe('useDockedPanelInset', () => {
-  it('fermé : 0, quelle que soit la largeur mémorisée', () => {
+  it('fermé (même épinglé) : 0, quelle que soit la largeur mémorisée', () => {
     useAssetDrawerStore.setState({ isOpen: false, panelWidth: 500 })
     const { result } = renderHook(() => useDockedPanelInset())
     expect(result.current).toBe(0)
   })
 
-  it('ouvert : la largeur du volet, bornée comme le volet lui-même', () => {
+  it('ouvert mais non épinglé (superposé) : 0, il ne prend aucune place au contenu', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: false, panelWidth: 500 })
+    const { result } = renderHook(() => useDockedPanelInset())
+    expect(result.current).toBe(0)
+    act(() => useAssetDrawerStore.getState().setPinned(true))
+    expect(result.current).toBe(500)
+  })
+
+  it('ouvert et épinglé : la largeur du volet, bornée comme le volet lui-même', () => {
     useAssetDrawerStore.setState({ isOpen: true, panelWidth: 500 })
     const { result } = renderHook(() => useDockedPanelInset())
     expect(result.current).toBe(clampPanelWidth(500, 1600, SIDEBAR_PANEL_WIDTH))

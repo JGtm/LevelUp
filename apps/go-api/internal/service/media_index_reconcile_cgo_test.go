@@ -90,16 +90,16 @@ func TestDeleteConvertedMediaThenIndex_ComesBackWithOriginal(t *testing.T) {
 		t.Fatalf("RunHLSTranscode: %v", err)
 	}
 	if _, err := db.SQLDb().Exec(`INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-		VALUES (?, 'Chocoboflor', 'Chocoboflor', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, hlsRel); err != nil {
+		VALUES (?, 'Joueur90001', 'Joueur90001', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, hlsRel); err != nil {
 		t.Fatal(err)
 	}
 
 	// Suppression depuis l'app : l'original part avec la version convertie.
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: gamertag}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}),
+		})),
 		WithMediaFileRemover(ops.NewOSMediaFileRemover(func() string { return base })))
 	if _, err := svc.DeleteMedia(ctx, domain.MediaDeleteRequest{FilePath: hlsRel, RequesterSlug: gamertag}); err != nil {
 		t.Fatalf("DeleteMedia: %v", err)

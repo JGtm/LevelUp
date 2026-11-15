@@ -1,21 +1,37 @@
 package games
 
-import "levelup/go-api/internal/games/mappings"
+import (
+	"strconv"
+	"strings"
+
+	"levelup/go-api/internal/games/mappings"
+)
 
 // damage_model.go — résolution title-aware du modèle de dégâts (PV effectifs pour
 // tuer un joueur), baseline des KPI rendement/résistance (offensive_conversion =
 // effective_hp × frag-équivalents / dégâts ; defensive_resistance = dégâts_subis /
-// (effective_hp × morts)). Externalise le littéral `225` câblé Infinite (cf.
+// (effective_hp × morts)). Externalise le littéral câblé Infinite (cf.
 // PLAN_DAMAGE_MODEL_PER_TITLE.md) : un titre déclare SA valeur dans
-// constants.toml [damage_model] ; le défaut reste Halo Infinite, byte-identique.
+// constants.toml [damage_model] ; le défaut reste Halo Infinite.
 
-// DefaultEffectiveHpToKill — PV effectifs pour tuer un Spartan Halo Infinite
-// (90 vie + 135 bouclier, échelle de dégâts de l'API). Défaut byte-identique
-// quand le resolver n'est pas câblé ou que le titre ne déclare pas son
-// [damage_model] (ex. mono-titre, tests). Halo 5 = 115 (design : bouclier 70 +
-// armure 45 ; PV-pour-tuer réels, PAS la moyenne empirique dégâts/kill —
-// cf. config/titles/halo_5/constants.toml).
-const DefaultEffectiveHpToKill = 225.0
+// DefaultEffectiveHpToKill — repli du resolver quand il n'est pas câblé (commandes hors serveur, tests des
+// autres paquets) ou que le titre ne déclare pas son [damage_model]. La SOURCE de la vie effective est
+// `effective_hp_to_kill` de config/titles/{slug}/constants.toml (Halo Infinite : la vie que mesure le
+// compteur « dégâts subis » du film, mesure et historique dans l'ADR 0047 ; Halo 5 : design, bouclier 70 +
+// armure 45) ; la valeur ci-dessous n'existe que pour ce repli et un test l'égale au TOML d'Infinite
+// (TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite). La note de performance et le LUSR lisent la valeur
+// CHARGÉE du TOML : l'empreinte de révision (scoring_revision_test.go) la hache, pas cette constante.
+const DefaultEffectiveHpToKill = 229.0
+
+// HPToken est le jeton qui tient la place de la vie effective dans un texte affiché (descriptions de
+// fields.toml, formules des infobulles) : le texte ne porte jamais le nombre, il est substitué à la
+// lecture par la valeur du titre.
+const HPToken = "{{HP}}"
+
+// SubstituteHPToken remplace HPToken par la vie effective hp dans text.
+func SubstituteHPToken(text string, hp float64) string {
+	return strings.ReplaceAll(text, HPToken, strconv.FormatFloat(hp, 'f', -1, 64))
+}
 
 // DamageModelResolver est l'extension OPTIONNELLE d'EndpointResolver qui résout les
 // constantes de modèle de dégâts d'un titre (constants.toml [damage_model]).
@@ -97,32 +113,6 @@ func DefensiveResistanceP80FromResolver(res EndpointResolver, slug string) float
 // défaut, jamais consommé (les surfaces de résistance y sont neutralisées).
 func DefensiveResistanceP80(slug string) float64 {
 	return DefensiveResistanceP80FromResolver(DefaultEndpointResolver(), slug)
-}
-
-// ProvidesNativeKDA indique si le titre fournit un KDA per-match via son API (donc
-// utilisable/affichable tel quel). Faux pour les titres qui n'en renvoient pas —
-// Halo 5 : forme native = FDA NET ((k+a/3)−d)/games, distincte du quotient KDA ;
-// fabriquer un KDA façon Infinite pour eux produirait une valeur fausse. Ces titres
-// déclarent no_native_kda = true dans constants.toml [damage_model]. Défaut true
-// (byte-identique Infinite). Source = config, JAMAIS de slug== (règle title-agnostic).
-//
-// RÈGLE ABSOLUE associée : on ne CALCULE jamais le KDA d'un titre qui le fournit
-// (on lit l'API) ; pour un titre qui ne le fournit pas, on le laisse nil plutôt que
-// d'appliquer une formule étrangère.
-func ProvidesNativeKDA(slug string) bool {
-	return ProvidesNativeKDAFromResolver(DefaultEndpointResolver(), slug)
-}
-
-// ProvidesNativeKDAFromResolver est la forme testable de ProvidesNativeKDA (point
-// d'injection du resolver). Défaut true si le resolver est nil / ne supporte pas
-// l'extension / le titre ne déclare pas son [damage_model].
-func ProvidesNativeKDAFromResolver(res EndpointResolver, slug string) bool {
-	if dmr, ok := res.(DamageModelResolver); ok {
-		if dm, found := dmr.DamageModelFor(slug); found {
-			return !dm.NoNativeKDA
-		}
-	}
-	return true
 }
 
 // ProvidesDamageTaken indique si le titre fournit damage_taken (dégâts subis) via

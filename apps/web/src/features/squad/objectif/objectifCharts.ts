@@ -19,7 +19,7 @@
  * colonne de ce soir) servent aussi au « Contrôle des ressources au fil de la session » de l'onglet
  * Emprise (`emprise/empriseCharts.ts`, lot L5) : une seule grammaire de courbe cumulée.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
 import {
@@ -275,7 +275,7 @@ function filXAxes(matches: FilMatch[], categories: string[], tc: EChartsThemeCol
   ]
 }
 
-export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText): EChartsCoreOption {
+export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText): ChartOption {
   const tc = c.theme
   const foot = layoutAxisFoot(FIL_FOOT_SPEC)
   const categories = matches.map((m) => m.matchId)

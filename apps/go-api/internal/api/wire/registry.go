@@ -47,7 +47,9 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
+	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
@@ -125,6 +127,7 @@ type ServiceRegistry struct {
 	advisorBundle        *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
 	authStore            auth.UserTokenStore                  // ADR 0023 : SEULE source des tokens auth (nil → aucun refresh possible, refreshTokensFromDB rend nil)
 	publicReadTokenSrc   pooledTokenSource                    // A1 : source de token SAIN du pool pour les LECTURES PUBLIQUES de tiers (Explorer) ; nil → pas de fallback pool (comportement historique)
+	sessionStore         *session_platform.Store              // magasin des sessions HTTP du routeur (purge périodique : cmd/server)
 	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
 	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
@@ -287,7 +290,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		cfg: cfg,
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 			titleSlug := ctxkeys.TitleSlug(ctx)
-			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
+			return playerresolve.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
 		resolveByGT:     makeTitlePlayerResolver(cfg),
 		provider:        provider,
@@ -315,7 +318,7 @@ func makeTitlePlayerResolver(cfg *config.AppConfig) duckdb.TitlePlayerResolver {
 		}
 		for i := range players {
 			if strings.EqualFold(players[i].Gamertag, gamertag) {
-				return config.ResolvePlayer(ctx, cfg, players[i].PlayerSlug, titleSlug)
+				return playerresolve.ResolvePlayer(ctx, cfg, players[i].PlayerSlug, titleSlug)
 			}
 		}
 		return nil, fmt.Errorf("%w: title=%q gamertag=%q", config.ErrPlayerNotFound, titleSlug, gamertag)

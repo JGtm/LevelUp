@@ -1,6 +1,6 @@
 // cmd/replay-build — génère l'artefact de rejeu 2D d'un match à partir des SEULS CHUNKS
 // DU FILM (décodage offline des positions bipeds, zéro entrée Cheat Engine), plus un fond
-// de carte optionnel (props Forge). Écrit data/cache/replays/{title}/{matchId}.json
+// de carte optionnel (props Forge). Écrit data/cache/replays/{title}/{matchId}.json.gz (JSON compressé)
 // (résolu par PathResolver).
 //
 // L'ASSEMBLAGE (catalogue de bornes + libellés + structure + écriture) vit dans
@@ -45,8 +45,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
@@ -57,7 +57,7 @@ func main() {
 	// LE CONTEXTE DE L OUTIL NAIT ICI, ET NULLE PART AILLEURS (lot J12.3).
 	ctx := context.Background()
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
-	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = défaut)")
+	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = le pas de cuisson courant de LevelUp)")
 	geomDir := flag.String("geometry", "",
 		"répertoire des props Forge d'une carte, imposé pour toutes (défaut : "+
 			"PathResolver.MapGeometryDir du titre ET du module de la carte)")

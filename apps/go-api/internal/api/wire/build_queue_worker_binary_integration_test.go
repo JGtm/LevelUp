@@ -59,10 +59,11 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // fixtureShort : le film de la preuve — le plus petit du corpus qui rend un artefact À JOUEURS.
@@ -201,8 +202,8 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	}
 
 	// Le chemin canonique est TOUJOURS la forme courte (ReplayArtifactPath normalise).
-	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
-	blobRecu, err := os.ReadFile(recu)
+	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+titlePkg.ReplayArtifactExt)
+	blobRecu, err := replayartifact.ReadBytes(recu)
 	if err != nil {
 		t.Fatalf("aucun artefact rangé côté serveur (%s): %v", recu, err)
 	}
@@ -212,7 +213,7 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 			len(blobRecu), rendu.SHA256)
 	}
 
-	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil).
+	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil, nil).
 		GetReplay(context.Background(), fixtureShort)
 	if err != nil {
 		t.Fatalf("le service de rejeu ne lit pas l'artefact livré: %v", err)

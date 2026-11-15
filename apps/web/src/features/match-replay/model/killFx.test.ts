@@ -220,3 +220,36 @@ describe('buildKillFx — la règle du pion', () => {
     expect(e.vx).not.toBeNull()
   })
 })
+
+describe('buildKillFx — les vies du tueur ET de la victime (Seul, Masquer)', () => {
+  it('porte le slot de chacun et une image DANS sa vie', () => {
+    // Frame 15 : la victime (vie 0-20) et le tueur (vie 0-100) sont vivants.
+    const [e] = buildKillFx(docWithCouple(), [kill({ replayMs: 1_500 })])
+    expect([e.slot, e.slotFrame]).toEqual([1, 15])
+    expect([e.victimSlot, e.victimFrame]).toEqual([2, 15])
+    expect([e.killerXuid, e.victimXuid]).toEqual(['K', 'V'])
+  })
+
+  it('une mort datée APRES la fin de la vie reste celle de cette vie : l’image est ramenée dans la vie', () => {
+    // Frame 22 : la victime est morte à la frame 20, dans la fenêtre après-mort (1,5 s).
+    const [e] = buildKillFx(docWithCouple(), [kill({ replayMs: 2_200 })])
+    expect([e.victimSlot, e.victimFrame]).toEqual([2, 20])
+    expect([e.slot, e.slotFrame]).toEqual([1, 22])
+  })
+
+  it('victime hors de la fenêtre après-mort ou inconnue : null, jamais un slot deviné', () => {
+    const [tard] = buildKillFx(docWithCouple(), [kill({ replayMs: 9_000 })])
+    expect(tard.victimSlot).toBeNull()
+    const [inconnue] = buildKillFx(docWithCouple(), [kill({ replayMs: 1_500, victimXuid: 'inconnu' })])
+    expect(inconnue.victimSlot).toBeNull()
+    expect(inconnue.victimXuid).toBe('inconnu')
+    const [sans] = buildKillFx(docWithCouple(), [kill({ replayMs: 1_500, victimXuid: '' })])
+    expect([sans.victimSlot, sans.victimXuid]).toEqual([null, null])
+  })
+
+  it('tueur introuvable : slot null, clé du fil gardée (un bot se relie par elle)', () => {
+    const [e] = buildKillFx(docWithCouple(), [kill({ replayMs: 1_500, xuid: 'fantome' })])
+    expect(e.slot).toBeNull()
+    expect(e.killerXuid).toBe('fantome')
+  })
+})

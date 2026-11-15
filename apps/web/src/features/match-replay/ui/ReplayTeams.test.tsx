@@ -25,24 +25,13 @@ function sbRow(xuid: string, gamertag: string, side: string | null): MatchScoreb
   return {
     xuid,
     gamertag,
-    team_side: side,
+    team_side: side ?? undefined,
     is_me: false,
     rank: 1,
     score: 0,
     kills: 1,
     deaths: 1,
     assists: 0,
-    shots_fired: null,
-    shots_hit: null,
-    accuracy: null,
-    damage_dealt: null,
-    damage_taken: null,
-    average_life: null,
-    headshot_kills: null,
-    max_killing_spree: null,
-    perfect_kills: null,
-    power_weapon_kills: null,
-    melee_kills: null,
     outcome: 'win',
   }
 }
@@ -205,12 +194,13 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
     expect(screen.getByTitle(/^Plasma — .*le seul porté/)).toBeTruthy()
   })
 
-  it('deux types sans lecture : « sél. ? » — l’indétermination se dit, elle ne se devine pas', () => {
+  it('deux types sans lecture : l’indétermination se dit dans l’infobulle, jamais en texte sur la fiche', () => {
     renderTeams({
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [1, 2] }],
     })
-    expect(screen.getByText('sél. ?')).toBeTruthy()
+    expect(screen.queryByText(/Grenade en main/)).toBeNull()
+    expect(screen.getByTitle(/^Grenade en main : inconnue/)).toBeTruthy()
     // Aucun des deux types n'est marqué sélectionné (title = nom seul).
     expect(screen.getByTitle('Plasma')).toBeTruthy()
     expect(screen.getByTitle('Fragmentation')).toBeTruthy()
@@ -945,7 +935,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 
   it('un compteur NON LU ne donne aucun fond — une couleur est une affirmation', () => {
     const doc = testReplayDoc(twoLives)
-    const trous = board().map((r) => ({ ...r, assists: null }))
+    const trous = board().map((r) => ({ ...r, assists: undefined }))
     const view = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={trous} frame={100} locale="fr" />)
     const base = view.getAllByTitle('Frags / morts / assistances du match')
     expect(base).toHaveLength(2)

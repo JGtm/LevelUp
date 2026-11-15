@@ -32,7 +32,7 @@ func homeReplayRepo(now time.Time) *mockHomeRepo {
 func TestGetHomePage_HasReplay_UnSeulListing(t *testing.T) {
 	repo := homeReplayRepo(time.Now())
 	stub := &stubReplayService{shortIDs: []string{"aaaa1111"}}
-	svc := withHomeMock(NewHomeService(repo), repo).WithReplay(stub)
+	svc := withHomeMock(NewHomeService(repo, nil), repo).WithReplay(stub)
 
 	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
@@ -58,7 +58,7 @@ func TestGetHomePage_HasReplay_UnSeulListing(t *testing.T) {
 func TestGetHomePage_Replay_DegradationPropre(t *testing.T) {
 	// Sans service injecté.
 	repo := homeReplayRepo(time.Now())
-	resp, err := withHomeMock(NewHomeService(repo), repo).
+	resp, err := withHomeMock(NewHomeService(repo, nil), repo).
 		GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("service non câblé : %v", err)
@@ -72,7 +72,7 @@ func TestGetHomePage_Replay_DegradationPropre(t *testing.T) {
 	// Listing en échec : page servie, lien éteint.
 	repo = homeReplayRepo(time.Now())
 	failing := &stubReplayService{err: errors.New("dossier illisible")}
-	resp, err = withHomeMock(NewHomeService(repo), repo).WithReplay(failing).
+	resp, err = withHomeMock(NewHomeService(repo, nil), repo).WithReplay(failing).
 		GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("listing en échec : la page doit être servie, obtenu %v", err)

@@ -55,7 +55,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // hitsMetric* : les compteurs de sante du numerateur film (ADR 0009 — entiers, snake_case).

@@ -61,9 +61,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 func init() {
@@ -109,7 +109,7 @@ func applyKillEventsFromPairs(db *sql.DB) error {
 	// v_gamertag_lookup est recreee : elle lit desormais `match_kill_events_latest`, que la
 	// reprise ci-dessus vient de remplir. La reposer ICI garantit qu aucune base ne garde
 	// l ancienne definition apres la reprise.
-	if _, err := db.ExecContext(bootCtx(), analysis.GamertagLookupViewSQL()); err != nil {
+	if _, err := db.ExecContext(bootCtx(), sqlfrag.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("bascule kill events: recreation v_gamertag_lookup: %w", err)
 	}
 	return nil

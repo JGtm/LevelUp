@@ -72,6 +72,10 @@ en = "Results"
 fr = "Combat"
 en = "Combat"
 
+[tendances.group.pace]
+fr = "Rythme"
+en = "Pace"
+
 [tendances.group.style]
 fr = "Façon de jouer"
 en = "Playstyle"
@@ -147,6 +151,10 @@ en = "h"
 fr = "pts"
 en = "pts"
 
+[tendances.unit.per_minute]
+fr = "/min"
+en = "/min"
+
 # -- Libelles d'indicateur sans cle de champ canonique -------------------------
 [tendances.indicator.damage_balance]
 fr = "Balance des dégâts (infligés − subis)"
@@ -163,6 +171,26 @@ en = "Kills per match"
 [tendances.indicator.deaths_per_match]
 fr = "Morts par match"
 en = "Deaths per match"
+
+[tendances.indicator.kills_per_minute]
+fr = "Frags par minute"
+en = "Kills per minute"
+
+[tendances.indicator.deaths_per_minute]
+fr = "Morts par minute"
+en = "Deaths per minute"
+
+[tendances.indicator.assists_per_minute]
+fr = "Assistances par minute"
+en = "Assists per minute"
+
+[tendances.indicator.damage_dealt_per_minute]
+fr = "Dégâts infligés par minute"
+en = "Damage dealt per minute"
+
+[tendances.indicator.damage_taken_per_minute]
+fr = "Dégâts subis par minute"
+en = "Damage taken per minute"
 
 [tendances.indicator.headshot_share]
 fr = "Part des frags à la tête"
@@ -276,6 +304,18 @@ en = "Opponents' and team MMR"
 [tendances.evolution.chart_damage]
 fr = "Dégâts infligés et subis par match"
 en = "Damage dealt and taken per match"
+
+[tendances.evolution.chart_pace]
+fr = "Frags, morts et assistances par minute"
+en = "Kills, deaths and assists per minute"
+
+[tendances.evolution.chart_pace_damage]
+fr = "Dégâts infligés et subis par minute"
+en = "Damage dealt and taken per minute"
+
+[tendances.evolution.info_pace]
+fr = "Chaque point est le total de la période divisé par le nombre de minutes jouées, pas la moyenne des matchs : un match court pèse moins qu'un long. Un match sans durée connue n'y compte pas."
+en = "Each point is the period's total divided by the minutes played, not the average of the matches: a short match weighs less than a long one. A match with no known length is left out."
 
 [tendances.evolution.chart_objectives]
 fr = "Objectifs : prendre, défendre, tenir"

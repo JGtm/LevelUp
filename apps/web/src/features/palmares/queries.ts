@@ -35,7 +35,7 @@ export function useRelationsPage(playerSlug: string, filterContext: FilterContex
   // Le nom de la carte de chaque duel est servi dans la langue de la requête.
   const locale = useAppShellStore((s) => s.locale)
   return useQuery<RelationsPageResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug, locale), hash],
+    queryKey: queryKeys.palmaresRelationsPage(playerSlug, titleSlug, locale, hash),
     queryFn: () =>
       api.post<RelationsPageResponse>(`/players/${playerSlug}/pages/palmares/relations`, filterContext),
     enabled: !!playerSlug,
@@ -57,7 +57,7 @@ export function useRelationsMoments(
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)
   return useQuery<RelationsMomentsResponse>({
-    queryKey: [...queryKeys.palmaresRelations(playerSlug, titleSlug, locale), 'moments', hash],
+    queryKey: queryKeys.palmaresRelationsMoments(playerSlug, titleSlug, locale, hash),
     queryFn: () =>
       api.post<RelationsMomentsResponse>(
         `/players/${playerSlug}/pages/palmares/relations/moments`,

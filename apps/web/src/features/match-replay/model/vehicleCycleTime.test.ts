@@ -15,9 +15,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 
-import { racineDuDepot } from '../test/featureFiles'
+import { instantaneFilm } from '../test/featureFiles'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
   VEHICLE_CYCLE_CLUSTER_M,
@@ -59,13 +58,7 @@ function life(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackRe
 
 describe('vehicleCycleTime — la maille de l appariement', () => {
   it('vaut EXACTEMENT celle du producteur Go (garde-rail : le document ne la publie pas)', () => {
-    const go = readFileSync(
-      resolve(
-        racineDuDepot(),
-        'libs/film/replay/vehicle_cycles.go',
-      ),
-      'utf8',
-    )
+    const go = readFileSync(instantaneFilm('replay', 'vehicle_cycles.go.txt'), 'utf8')
     const m = /const vehicleCycleClusterM = ([0-9.]+)/.exec(go)
     expect(m, 'la constante du producteur doit rester trouvable').not.toBeNull()
     expect(Number(m?.[1])).toBe(VEHICLE_CYCLE_CLUSTER_M)

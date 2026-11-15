@@ -1,7 +1,7 @@
 /**
  * ReplayHeatmapSection — la section CARTE DE CHALEUR du tiroir de réglages.
  *
- * EXTRAITE DE `ReplaySettingsDrawer.tsx` LE 2026-08-18 (lot R3, item R3.7) : le tiroir a
+ * EXTRAITE DE `ReplaySettingsDrawer.tsx` (devenu `ReplayViewPanel.tsx`) LE 2026-08-18 (lot R3, item R3.7) : le tiroir a
  * gagné une section de plus — les FICHES — et franchissait le seuil de 500 lignes du dépôt.
  * C'est la carte de chaleur qui part, parce qu'elle est la seule section à porter DEUX axes
  * de choix (ce qu'on mesure, sur quelle durée) : elle pèse à elle seule autant que les

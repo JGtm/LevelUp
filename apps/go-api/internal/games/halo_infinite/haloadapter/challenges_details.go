@@ -14,7 +14,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // challengeTagAliases : étiquettes de traduction voisines que l'API Waypoint peut porter à la place

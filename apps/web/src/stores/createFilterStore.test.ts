@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFilterStore, DEFAULT_FILTER_CONTEXT } from './createFilterStore'
+import { createFilterStore, DEFAULT_FILTER_CONTEXT, SHARE_LANG_PARAM } from './createFilterStore'
 
 describe('createFilterStore', () => {
   // Compteur pour générer des noms uniques par test (évite la collision avec
@@ -265,6 +265,33 @@ describe('createFilterStore — garde deep-link ?f= par titre', () => {
     const payload = JSON.parse(decodeURIComponent(atob(f)))
     expect(payload.t).toBe('halo_5')
     expect(payload.c.sessions.picked_sessions).toEqual(['s'])
+  })
+
+  it('buildShareUrl porte la langue du partageur dans ?lang= quand getLocale est fourni', () => {
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getLocale: () => 'en',
+    })
+    const shareUrl = new URL(store.getState().buildShareUrl()!)
+    expect(shareUrl.searchParams.get(SHARE_LANG_PARAM)).toBe('en')
+    expect(shareUrl.searchParams.has('f')).toBe(true)
+  })
+
+  it('buildShareUrl ne porte pas de langue sans getLocale', () => {
+    const store = createFilterStore({ name: nextName(), urlEnabled: true, urlParam: 'f' })
+    const shareUrl = new URL(store.getState().buildShareUrl()!)
+    expect(shareUrl.searchParams.has(SHARE_LANG_PARAM)).toBe(false)
+  })
+
+  it('retire ?lang= avec ?f= après hydratation, sans toucher aux autres params', () => {
+    const encoded = btoa(encodeURIComponent(JSON.stringify({ t: 'halo_5', c: SESSION_CTX })))
+    window.history.replaceState(null, '', `/players/p/home?f=${encoded}&lang=en&other=1`)
+    createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    const after = new URL(window.location.href).searchParams
+    expect(after.has('f')).toBe(false)
+    expect(after.has(SHARE_LANG_PARAM)).toBe(false)
+    expect(after.get('other')).toBe('1')
   })
 
   it('roundtrip buildShareUrl→decode préserve le contexte ET le titre', () => {

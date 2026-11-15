@@ -6,7 +6,7 @@ package scheduler
 // une tête à une ancienne révision de la règle, ou une tête qui résume une autre passe que la
 // courante. Un lecteur de résumés montre un tel match comme non mesuré, ou l'omet d'une somme :
 // la jauge doit valoir 0 sur les bases servies, et `levelup backfill-match-summaries` la ramène
-// à 0 (même texte SQL, `persist.CountPendingKillSummaries`).
+// à 0 (même texte SQL, `persist.CountPendingKillSummaries`, lu par le magasin du scheduler).
 //
 // Elle se calcule ICI, dans le contrôle de santé périodique, et jamais au démarrage : la vue
 // `_latest` du journal porte une fenêtre sur toute la table (plusieurs secondes sur le parc).
@@ -17,8 +17,7 @@ import (
 	"expvar"
 	"log/slog"
 
-	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // killSummariesPendingGauge : jauge expvar (`/debug/vars`), une entrée par titre, valeur du
@@ -28,8 +27,8 @@ var killSummariesPendingGauge = expvar.NewMap("levelup.kill_summaries_pending")
 
 // auditKillSummaries mesure la jauge pour un titre, la publie et l'ajoute à `res`. Un compte
 // non nul est journalisé en WARN ; une sonde en échec compte dans `res.ProbeErrors`.
-func (s *HealthScheduler) auditKillSummaries(ctx context.Context, db *duckdb.DB, slug string, res *DataHealthCheckResult) {
-	n, err := persist.CountPendingKillSummaries(ctx, db.SQLDb())
+func (s *HealthScheduler) auditKillSummaries(ctx context.Context, db port.DataHealthShared, slug string, res *DataHealthCheckResult) {
+	n, err := db.PendingKillSummaries(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "data_health: sonde échouée", "probe", "kill_summaries_pending",
 			"titleSlug", slug, "err", err)

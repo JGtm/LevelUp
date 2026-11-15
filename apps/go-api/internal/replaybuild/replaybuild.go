@@ -38,9 +38,9 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Builder porte les entrées chargées UNE fois (catalogue de bornes, libellés du titre,
@@ -60,7 +60,7 @@ type Builder struct {
 	// gagne sur la resolution par carte, pour toutes les cartes ; c'est l'echappatoire de
 	// l'operateur qui teste une extraction.
 	geometryOverride []replay.MapObject
-	// interval : pas de temps du rejeu en ms ; 0 = défaut de replay.Options.
+	// interval : pas de temps du rejeu en ms ; 0 = le pas de cuisson courant ([CookFrameIntervalMS]).
 	interval int
 	// structures : cache par module du fond structurel (une carte revient N fois dans une
 	// passe de masse ; recharger le fichier à chaque match serait du pur gaspillage).
@@ -142,7 +142,7 @@ func NewBuilder(ctx context.Context, repoRoot, titleSlug string) (*Builder, erro
 	}, nil
 }
 
-// WithFrameInterval règle le pas de temps du rejeu en ms (0 = défaut). Chaînable.
+// WithFrameInterval règle le pas de temps du rejeu en ms (0 = le pas de cuisson courant). Chaînable.
 func (b *Builder) WithFrameInterval(ms int) *Builder {
 	b.interval = ms
 	return b
@@ -297,9 +297,9 @@ type entreesCatalogue struct {
 	matchKills  replay.MatchKillsInput
 	bots        []replay.BotIdentity
 	successions []replay.Succession
-	// killsource : le resultat du kill-feed, ou nil. Il ne voyage ici que pour son PROFIL DE
-	// BALAYAGE (lot 2.3 — cf. profilDeBalayageDeLaCuisson).
+	// killsource, contexte : le kill-feed (ou nil, cf. profilDeBalayageDeLaCuisson) et le contexte de film partagé.
 	killsource *decfilm.Result
+	contexte   *decfilm.FilmContext
 	// replis : le compteur des replis de la construction de CETTE cuisson (lot J8.7).
 	replis *decfilm.Compteur
 }
@@ -361,8 +361,8 @@ func (b *Builder) collecterEntreesCatalogue(ctx context.Context,
 	bots := replayidentity.BotIdentities(ksRes)
 	successions := botSuccessions(ctx, matchID, facts, ksRes, fb)
 	return entreesCatalogue{
-		killsource: ksRes,
-		zones:      zones, zoneRoles: zoneRoles,
+		killsource: ksRes, contexte: src.contexte,
+		zones: zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,

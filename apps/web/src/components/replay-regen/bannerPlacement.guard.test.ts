@@ -15,10 +15,10 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const WEB_SRC = join(HERE, '..', '..')
 
-/** Seuls fichiers autorisés à importer le bandeau : son propre dossier et la route de la page de rejeu. */
+/** Seuls fichiers autorisés à importer le bandeau : son propre dossier et la page de rejeu. */
 const ALLOWED = [
   'components/replay-regen/',
-  'routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay.tsx',
+  'features/match-replay/ReplayPage.tsx',
 ]
 
 function collect(dir: string): string[] {

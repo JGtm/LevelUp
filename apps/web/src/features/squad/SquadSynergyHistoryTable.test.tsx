@@ -98,7 +98,7 @@ const WAYPOINT_LABEL = 'Ouvrir sur Halo Waypoint'
 describe('SquadSynergyHistoryTable — non-régression', () => {
   it('rend les colonnes de base (date, carte, résultat)', () => {
     renderWithProviders(
-      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Chocoboflor" />,
+      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Joueur90001" />,
     )
     expect(screen.getByText('Live Fire')).toBeInTheDocument()
     expect(screen.getByText('Victoire')).toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('SquadSynergyHistoryTable — tri CLIENT par en-têtes (I16)', () => {
   })
 
   it('colonnes Ouvrir / Waypoint : jamais triables (pas de bouton d’en-tête)', () => {
-    renderWithProviders(<SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Chocoboflor" />)
+    renderWithProviders(<SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Joueur90001" />)
     const theadRow = screen.getByTestId('squad-synergy-history-table').querySelector('thead tr')
     const firstHeaderCells = Array.from(theadRow?.querySelectorAll('th') ?? []).slice(0, 2)
     for (const th of firstHeaderCells) {
@@ -164,12 +164,12 @@ describe('SquadSynergyHistoryTable — tri CLIENT par en-têtes (I16)', () => {
 describe('SquadSynergyHistoryTable — lien « Ouvrir sur Halo Waypoint » (I19)', () => {
   it('visible par défaut (capability fail-open + préférence locale ON)', () => {
     renderWithProviders(
-      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Chocoboflor" />,
+      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Joueur90001" />,
     )
     const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
     expect(link).toHaveAttribute(
       'href',
-      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/match-1',
+      'https://www.halowaypoint.com/halo-infinite/players/Joueur90001/matches/match-1',
     )
   })
 
@@ -189,7 +189,7 @@ describe('SquadSynergyHistoryTable — lien « Ouvrir sur Halo Waypoint » (I19)
 
   it('cliquer le lien Waypoint ne déclenche PAS la navigation interne de la ligne (stopPropagation)', () => {
     renderWithProviders(
-      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Chocoboflor" />,
+      <SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="Joueur90001" />,
     )
     fireEvent.click(screen.getByRole('link', { name: WAYPOINT_LABEL }))
     expect(navigateMock).not.toHaveBeenCalled()
@@ -201,7 +201,7 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
 
   it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
     renderWithProviders(
-      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Chocoboflor" />,
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Joueur90001" />,
     )
     const link = screen.getByRole('link', { name: REPLAY_LABEL })
     expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
@@ -209,7 +209,7 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
 
   it("l'icône de rejeu est centrée : la cellule et l'en-tête de la colonne portent text-center", () => {
     renderWithProviders(
-      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Chocoboflor" />,
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Joueur90001" />,
     )
     const cell = screen.getByRole('link', { name: REPLAY_LABEL }).closest('td') as HTMLElement
     const index = Array.from((cell.parentElement as HTMLElement).children).indexOf(cell)

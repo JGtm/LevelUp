@@ -11,6 +11,10 @@
  * recopier une troisième fois chacun de leur côté.
  */
 import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
+import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
+import { DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { normalizeTurns, QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
+import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
 
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
 export function readStoredFlag(key: string, fallback: boolean): boolean {
@@ -113,4 +117,89 @@ export function readExportFormat(): ExportFormatId {
 /** Retient le format choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
 export function persistExportFormat(id: ExportFormatId): void {
   persistPreference(EXPORT_FORMAT_KEY, id)
+}
+
+/**
+ * LE FILTRE DU FIL DES ÉLIMINATIONS (D-4 du plan « maquettes du rejeu ») : retenu dans CE
+ * navigateur, jamais côté serveur. La lecture est VALIDÉE contre la liste fermée des filtres :
+ * absente, inconnue ou écrite par une autre version -> Tout. Le filtre mémorisé qu'un match ne
+ * propose pas (Objectifs sur un Assassin) n'est pas effacé : il se lit tel quel, et c'est
+ * `effectiveFeedFilter` qui retombe sur Tout pour ce match seulement.
+ */
+export const FEED_FILTER_KEY = 'replay-feed-filter'
+
+/** Le filtre du fil retenu, ou Tout. */
+export function readFeedFilter(): FeedFilterId {
+  return readStoredChoice(FEED_FILTER_KEY, DEFAULT_FEED_FILTER, FEED_FILTER_IDS)
+}
+
+/** Retient le filtre choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistFeedFilter(id: FeedFilterId): void {
+  persistPreference(FEED_FILTER_KEY, id)
+}
+
+/**
+ * LE PRÉRÉGLAGE DE VUE CHOISI en dernier (plan « maquettes du rejeu », lot 3) : retenu dans CE
+ * navigateur. La vue active se DÉDUIT de l'état des calques (`activeView`) ; cette valeur ne
+ * sert qu'à départager deux préréglages égaux sur les calques d'un match. Les clés `replay-*`
+ * des calques restent lues telles quelles. La lecture est VALIDÉE contre la liste fermée :
+ * absente, inconnue (« personnalise » compris, il se déduit et ne se retient pas) ou écrite
+ * par une autre version -> `undefined`.
+ */
+export const VIEW_PRESET_KEY = 'replay-view-preset'
+
+/** Le préréglage retenu, ou `undefined`. */
+export function readViewPreset(): ViewPresetId | undefined {
+  return readStoredChoice<ViewPresetId | ''>(VIEW_PRESET_KEY, '', VIEW_PRESET_IDS) || undefined
+}
+
+/** Retient le préréglage choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistViewPreset(id: ViewPresetId): void {
+  persistPreference(VIEW_PRESET_KEY, id)
+}
+
+/**
+ * L'ORIENTATION DE LA CARTE (`lib/replay/orientation`) est un réglage PAR CARTE : retenue dans CE
+ * navigateur sous `replay-orientation.<mapId>`, jamais côté serveur. Une carte dont l'utilisateur
+ * a tourné la vue s'ouvre ainsi toujours tournée, sans toucher aux autres. La lecture est
+ * VALIDÉE contre les quatre positions : absente, hors liste ou écrite par une autre version ->
+ * 0 quart de tour.
+ */
+export const ORIENTATION_KEY_PREFIX = 'replay-orientation.'
+
+/** Les valeurs écrites : le nombre de quarts de tour, en chaîne (`readStoredChoice` compare des chaînes). */
+const ORIENTATION_VALUES: readonly string[] = QUARTER_TURNS.map(String)
+
+/** La clé de stockage de l'orientation d'une carte. */
+export function orientationKey(mapId: string): string {
+  return `${ORIENTATION_KEY_PREFIX}${mapId}`
+}
+
+/** L'orientation retenue pour cette carte, ou 0 quart de tour. */
+export function readOrientation(mapId: string): QuarterTurns {
+  return normalizeTurns(Number(readStoredChoice(orientationKey(mapId), '0', ORIENTATION_VALUES)))
+}
+
+/** Retient l'orientation choisie pour cette carte. Stockage refusé : le choix vaut pour la session. */
+export function persistOrientation(mapId: string, turns: QuarterTurns): void {
+  persistPreference(orientationKey(mapId), String(turns))
+}
+
+/**
+ * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `rendu` (défaut) ou `plan` (la vue
+ * plan à hauteurs), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,
+ * Tactique, « Occupation du terrain »). Retenu dans CE navigateur, jamais côté serveur. La lecture est
+ * VALIDÉE contre les deux valeurs : absente, inconnue ou écrite par une autre version -> `rendu`.
+ * Le choix `plan` ne s'applique qu'à un fond qui porte une image plan : sinon le rendu est servi.
+ */
+export const BACKGROUND_STYLE_KEY = 'replay-background-style'
+
+/** Le style de fond retenu, ou le rendu. */
+export function readBackgroundStyle(): MapBackgroundVariant {
+  return readStoredChoice(BACKGROUND_STYLE_KEY, DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS)
+}
+
+/** Retient le style choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistBackgroundStyle(style: MapBackgroundVariant): void {
+  persistPreference(BACKGROUND_STYLE_KEY, style)
 }

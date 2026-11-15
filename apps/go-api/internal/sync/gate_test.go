@@ -17,15 +17,15 @@ import (
 func TestSyncGate_TryClaim_Dedup(t *testing.T) {
 	coord := NewCoordinator(&mockRunner{}, 2)
 
-	release, ok := coord.TryClaim("Madina97294")
+	release, ok := coord.TryClaim("Joueur90002")
 	if !ok {
 		t.Fatal("premier TryClaim devrait réussir")
 	}
-	if _, ok2 := coord.TryClaim("Madina97294"); ok2 {
+	if _, ok2 := coord.TryClaim("Joueur90002"); ok2 {
 		t.Error("second TryClaim sur le même joueur devrait échouer (déjà en vol)")
 	}
 	release()
-	if _, ok3 := coord.TryClaim("Madina97294"); !ok3 {
+	if _, ok3 := coord.TryClaim("Joueur90002"); !ok3 {
 		t.Error("TryClaim après release devrait réussir")
 	}
 }
@@ -115,7 +115,7 @@ func TestSyncGate_Concurrent_3sources(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if release, ok := coord.TryClaim("Chocoboflor"); ok {
+			if release, ok := coord.TryClaim("Joueur90001"); ok {
 				wins.Add(1)
 				releases <- release
 			}
@@ -130,7 +130,7 @@ func TestSyncGate_Concurrent_3sources(t *testing.T) {
 	for release := range releases {
 		release()
 	}
-	if coord.IsInFlight("Chocoboflor") {
+	if coord.IsInFlight("Joueur90001") {
 		t.Error("plus aucun claim ne devrait subsister après release")
 	}
 }
@@ -211,18 +211,18 @@ func TestSyncGate_TryClaimDoesNotBlockSubmit(t *testing.T) {
 	coord := NewCoordinator(runner, 2)
 
 	// auto/HTTP réserve d'abord le joueur.
-	release, ok := coord.TryClaim("Madina97294")
+	release, ok := coord.TryClaim("Joueur90002")
 	if !ok {
 		t.Fatal("TryClaim initial devrait réussir")
 	}
 	defer release()
 
 	// Le watcher Submit le MÊME joueur → doit réussir malgré le gateClaim auto/HTTP.
-	if !coord.Submit(context.Background(), CoordinatorRequest{Gamertag: "Madina97294", XUID: "x", MatchIDs: []string{"m1"}}) {
+	if !coord.Submit(context.Background(), CoordinatorRequest{Gamertag: "Joueur90002", XUID: "x", MatchIDs: []string{"m1"}}) {
 		t.Error("Submit watcher NE doit PAS être bloqué par un claim auto/HTTP (priorité watcher)")
 	}
 	// Symétrie inverse : tant que le watcher est en vol, un TryClaim auto/HTTP cède.
-	if _, ok2 := coord.TryClaim("Madina97294"); ok2 {
+	if _, ok2 := coord.TryClaim("Joueur90002"); ok2 {
 		t.Error("TryClaim devrait céder au sync watcher en cours")
 	}
 }

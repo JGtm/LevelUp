@@ -37,7 +37,7 @@ func buildAuxOnlyFixture(t *testing.T, dir string) string {
 		}
 	}
 	for _, a := range []struct{ x, g, src, ls string }{
-		{"2533274823110022", "TestOwner", "api", "2026-01-01T12:00:00Z"},
+		{"2603225103667623", "TestOwner", "api", "2026-01-01T12:00:00Z"},
 		{"2533274801010001", "PlayerB", "api", "2026-01-02T09:00:00Z"},
 		{"", "ShouldBeSkipped", "api", ""}, // invalid row (empty XUID) — skipped
 	} {
@@ -47,8 +47,8 @@ func buildAuxOnlyFixture(t *testing.T, dir string) string {
 		}
 	}
 	for _, f := range []struct{ owner, fr, gt string }{
-		{"2533274823110022", "2533274801010001", "PlayerB"},
-		{"2533274823110022", "2533274802020002", "PlayerC"},
+		{"2603225103667623", "2533274801010001", "PlayerB"},
+		{"2603225103667623", "2533274802020002", "PlayerC"},
 	} {
 		if _, err := db.Exec(`INSERT INTO Friends(owner_xuid, friend_xuid, friend_gamertag) VALUES (?, ?, ?)`,
 			f.owner, f.fr, f.gt); err != nil {
@@ -56,8 +56,8 @@ func buildAuxOnlyFixture(t *testing.T, dir string) string {
 		}
 	}
 	for matchID, body := range map[string]string{
-		"m1": `{"event_type":"kill","time_ms":1234,"xuid":2533274823110022,"type_hint":50}`,
-		"m2": `{"event_type":"medal","time_ms":4567,"xuid":2533274823110022,"type_hint":12}`,
+		"m1": `{"event_type":"kill","time_ms":1234,"xuid":2603225103667623,"type_hint":50}`,
+		"m2": `{"event_type":"medal","time_ms":4567,"xuid":2603225103667623,"type_hint":12}`,
 		"m3": `{"event_type":"death","time_ms":7890,"xuid":2533274801010001,"type_hint":1}`,
 	} {
 		if _, err := db.Exec(`INSERT INTO HighlightEvents(MatchId, ResponseBody) VALUES (?, ?)`, matchID, body); err != nil {
@@ -65,7 +65,7 @@ func buildAuxOnlyFixture(t *testing.T, dir string) string {
 		}
 	}
 	if _, err := db.Exec(`INSERT INTO CacheMeta(key, value) VALUES (?, ?)`,
-		"current_user_xuid", "2533274823110022"); err != nil {
+		"current_user_xuid", "2603225103667623"); err != nil {
 		t.Fatalf("insert CacheMeta: %v", err)
 	}
 	abs, _ := filepath.Abs(path)
@@ -112,7 +112,7 @@ func TestLoadXuidAliases_ParsesLastSeenTimestamp(t *testing.T) {
 	}
 	var owner XuidAliasRow
 	for _, a := range aliases {
-		if a.XUID == "2533274823110022" {
+		if a.XUID == "2603225103667623" {
 			owner = a
 		}
 	}
@@ -136,8 +136,8 @@ func TestAliasMap_BuildsXUIDtoGamertagLookup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AliasMap: %v", err)
 	}
-	if m["2533274823110022"] != "TestOwner" {
-		t.Errorf("want TestOwner, got %q", m["2533274823110022"])
+	if m["2603225103667623"] != "TestOwner" {
+		t.Errorf("want TestOwner, got %q", m["2603225103667623"])
 	}
 	if m["2533274801010001"] != "PlayerB" {
 		t.Errorf("want PlayerB, got %q", m["2533274801010001"])
@@ -163,8 +163,8 @@ func TestLoadFriends_ReturnsRows(t *testing.T) {
 		t.Fatalf("len: want 2, got %d", len(friends))
 	}
 	for _, f := range friends {
-		if f.OwnerXUID != "2533274823110022" {
-			t.Errorf("OwnerXUID: want 2533274823110022, got %q", f.OwnerXUID)
+		if f.OwnerXUID != "2603225103667623" {
+			t.Errorf("OwnerXUID: want 2603225103667623, got %q", f.OwnerXUID)
 		}
 		if f.FriendXUID == "" {
 			t.Error("FriendXUID should not be empty")
@@ -285,8 +285,8 @@ func TestXuidFromCacheMeta_ReturnsStoredXUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("xuidFromCacheMeta: %v", err)
 	}
-	if got != "2533274823110022" {
-		t.Errorf("want 2533274823110022, got %q", got)
+	if got != "2603225103667623" {
+		t.Errorf("want 2603225103667623, got %q", got)
 	}
 }
 

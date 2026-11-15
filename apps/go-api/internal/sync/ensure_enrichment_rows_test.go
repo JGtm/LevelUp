@@ -66,11 +66,11 @@ func TestEnsurePlayerEnrichmentRows_CreatesMissingRows(t *testing.T) {
 	playerDB, sharedDB := setupTwoDBs(t)
 	ctx := context.Background()
 
-	const xuid = "2533274858283686" // Madina
+	const xuid = "2623439693412443" // Madina
 	matchIDs := []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"}
 	for _, id := range matchIDs {
 		if _, err := sharedDB.Exec(`INSERT INTO match_participants VALUES (?, ?, ?)`,
-			id, xuid, "Madina97294"); err != nil {
+			id, xuid, "Joueur90002"); err != nil {
 			t.Fatalf("insert shared: %v", err)
 		}
 	}

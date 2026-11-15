@@ -152,7 +152,7 @@ describe('SetupPage', () => {
     renderWithProviders(<SetupPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Impossible d'obtenir un accès Halo/i)).toBeInTheDocument()
+      expect(screen.getByText(/Halo a refusé l'accès à ce compte/i)).toBeInTheDocument()
     })
     expect(screen.queryByText(/Échec de l'authentification/i)).not.toBeInTheDocument()
   })

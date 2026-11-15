@@ -53,6 +53,13 @@ describe('buildGrenadeRestFx', () => {
     expect(fx[1]).toMatchObject({ frame: 35, x: 2, y: 2, rank: 0, rest: false })
   })
 
+  it('chaque effet porte son auteur : le slot et l’image du lancer (Seul, Masquer)', () => {
+    const doc = docWith({
+      grenades: [{ t: 10, slot: 6, i: 1, x: 2, y: 3, rank: 0, s: 'projectile', proj: 0 }],
+    })
+    expect(buildGrenadeRestFx(doc)[0].owner).toEqual({ slot: 6, frame: 10 })
+  })
+
   it('un lien hors bornes est ignoré — jamais un effet posé au hasard', () => {
     const doc = docWith({
       grenades: [{ t: 10, slot: 0, i: 1, x: 2, y: 3, rank: 1, s: 'projectile', proj: 9 }],

@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // candidatDuree : un evenement survivant des deux filtres, avec ses durees et sa recette.

@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -120,8 +121,8 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	}
 	// Masquage read-side des matchs Campagne du titre (Halo 5). Alias "r" =
 	// v_match_full dans playerMatchesSharedBaseSelect. Clause littérale (aucun arg,
-	// source unique analysis.SQLExcludeCampaignVariants) ; no-op pour Infinite.
-	sb.WriteString(analysis.SQLExcludeCampaignVariants(pdbTitleSlug(r.pdb), "r"))
+	// source unique sqlfrag.SQLExcludeCampaignVariants) ; no-op pour Infinite.
+	sb.WriteString(sqlfrag.SQLExcludeCampaignVariants(pdbTitleSlug(r.pdb), "r"))
 
 	hints, orderBy, err := classifyOrderBy(f.OrderBy)
 	if err != nil {
@@ -140,7 +141,7 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	return sb.String(), args, hints, nil
 }
 
-// StartTimeCanonicalSQL délègue à analysis.SQLStartTimeCanonical — source unique
+// StartTimeCanonicalSQL délègue à sqlfrag.SQLStartTimeCanonical — source unique
 // du fragment timezone canonique (règle CLAUDE.md n°8). Conservé comme alias local
 // pour les repos platform/duckdb (appel sans préfixe de package). Les garde-rails
 // vivent dans internal/archlint/no_raw_start_time_literal_test.go (le chemin
@@ -151,13 +152,13 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 // Unification H1 (2026-07-04) : le corps a migré vers internal/analysis car
 // analysis/match_filter.go en a besoin et ne peut pas importer platform/duckdb.
 func StartTimeCanonicalSQL(alias string) string {
-	return analysis.SQLStartTimeCanonical(alias)
+	return sqlfrag.SQLStartTimeCanonical(alias)
 }
 
 // T0MsSQL : le T0 (countdown pré-match) en ms, NULL sans `real_start_time` — délégué de
-// analysis.SQLT0Ms, seule définition de l'expression (ratchet archlint no_raw_real_start_offset).
+// sqlfrag.SQLT0Ms, seule définition de l'expression (ratchet archlint no_raw_real_start_offset).
 func T0MsSQL(alias string) string {
-	return analysis.SQLT0Ms(alias)
+	return sqlfrag.SQLT0Ms(alias)
 }
 
 // startTimeCanonicalSQL : expression canonique pour l'alias `r` (projection,

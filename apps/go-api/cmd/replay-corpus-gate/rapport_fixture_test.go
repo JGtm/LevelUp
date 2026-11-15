@@ -84,8 +84,8 @@ func TestRapportDuGateSurUnePaireReelle(t *testing.T) {
 		"coverage.bridge.livesTotal", "coverage.placements.byFamilyOrigin.repulsor/deployed",
 		// LA SECTION QUI N'EXISTAIT PAS AVANT LE 2026-09-17, avec les deux changements NOMMES.
 		"DETAIL DES CHANGEMENTS (1 temoin(s)) :",
-		"tracks/par-xuid/2535429985869093",
-		"tracks/vies-par-xuid/2535429985869093",
+		"tracks/par-xuid/2669605393856835",
+		"tracks/vies-par-xuid/2669605393856835",
 	} {
 		if !strings.Contains(out, attendu) {
 			t.Errorf("le rapport doit contenir %q :\n%s", attendu, out)

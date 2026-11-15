@@ -353,12 +353,12 @@ describe('ExplorerMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19)'
 
   it('visible par défaut (capability fail-open + préférence locale ON)', () => {
     renderWithProviders(
-      <ExplorerMatchesTable rows={[makeRow(1)]} playerSlug="Chocoboflor" />,
+      <ExplorerMatchesTable rows={[makeRow(1)]} playerSlug="Joueur90001" />,
     )
     const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
     expect(link).toHaveAttribute(
       'href',
-      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/match-1',
+      'https://www.halowaypoint.com/halo-infinite/players/Joueur90001/matches/match-1',
     )
   })
 
@@ -393,7 +393,7 @@ describe('ExplorerMatchesTable — colonne « Rejeu »', () => {
 
   it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
     renderWithProviders(
-      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="Chocoboflor" />,
+      <ExplorerMatchesTable rows={[makeRow(1, { has_replay: true })]} playerSlug="Joueur90001" />,
     )
     const link = screen.getByRole('link', { name: REPLAY_LABEL })
     // Lien INTERNE (route de l'app), pas une URL externe.

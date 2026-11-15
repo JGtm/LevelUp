@@ -123,7 +123,6 @@ SELECT
     NULLIF(TRIM(COALESCE(tier, '')), '')             AS skill_tier,
     NULLIF(TRIM(COALESCE(rating_type, '')), '')      AS skill_rating_type,
     NULLIF(TRIM(COALESCE(tier_label, '')), '')       AS skill_tier_label,
-    expected_win_prob,
     NULLIF(TRIM(COALESCE(playlist_group, '')), '')   AS playlist_group,
     rating_value,
     rating_delta,

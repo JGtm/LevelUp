@@ -58,8 +58,6 @@ function ev(actorXuid: string, tMs: number): MatchHighlightEvent {
     event_type: 'kill',
     actor_xuid: actorXuid,
     event_time_ms: tMs,
-    target_xuid: null,
-    weapon_id: null,
   }
 }
 

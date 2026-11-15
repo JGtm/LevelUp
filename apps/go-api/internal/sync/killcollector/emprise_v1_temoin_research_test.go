@@ -45,7 +45,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Les seuils du plan (V1.3), et la fenêtre de jointure des contextes de mort.

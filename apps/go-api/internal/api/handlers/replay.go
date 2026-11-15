@@ -22,8 +22,9 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ReplayHandler sert le rejeu 2D d'un match via un ReplayService résolu par joueur.
@@ -79,6 +80,9 @@ type replayInput struct {
 type replayOutput struct {
 	Body                replaydoc.ReplayDocument
 	LatestSchemaVersion int `header:"X-Replay-Latest-Schema-Version"`
+	// CadenceStale : le pas du document servi n est pas le pas de cuisson courant (`replaybuild.CadenceUpToDate`).
+	// Le serveur decide, le badge affiche : aucune seconde regle cote web.
+	CadenceStale bool `header:"X-Replay-Cadence-Stale"`
 }
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
@@ -99,7 +103,10 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
-	return &replayOutput{Body: doc, LatestSchemaVersion: replay.SchemaVersion}, nil
+	return &replayOutput{
+		Body: doc, LatestSchemaVersion: replay.SchemaVersion,
+		CadenceStale: !replaybuild.CadenceUpToDate(doc.FrameIntervalMS),
+	}, nil
 }
 
 type backgroundOutput struct{ Body replaydoc.MapBackground }
@@ -152,7 +159,7 @@ func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) 
 	return &calloutsOutput{Body: *entry}, nil
 }
 
-// handleGetBackgroundImage sert le PNG du fond de carte.
+// handleGetBackgroundImage sert l'image du fond de carte, ou son image plan avec `?variante=plan`.
 //
 // Route chi nue (cf. Mount) : la charge utile est binaire. Elle rend les mêmes 404 que le
 // calage, et pour les mêmes raisons — l'image et son calage vont toujours ensemble.
@@ -169,7 +176,13 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
 		return
 	}
-	blob, contentType, err := svc.MapBackgroundImage(ctx, matchID)
+	plan, ok := varianteFond(ctx, w, r)
+	if !ok {
+		return
+	}
+	blob, contentType, err := imageDeFond(plan,
+		func() ([]byte, string, error) { return svc.MapBackgroundImage(ctx, matchID) },
+		func() ([]byte, string, error) { return svc.MapBackgroundPlanImage(ctx, matchID) })
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			"aucun fond de carte pour ce match")

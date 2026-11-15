@@ -32,8 +32,8 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // prefixeReplisDeLaPasse : le prefixe des compteurs expvar par repli (ADR 0009). Celui du paquet.

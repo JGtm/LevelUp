@@ -258,7 +258,7 @@ func (s *Store) Delete(sessionID string) error {
 
 // PurgeExpired supprime les sessions expirées. Retourne le nombre supprimé.
 //
-// Tourne au boot puis toutes les 6h (startSessionPurgeLoop). Le scan du répertoire
+// Tourne au boot puis toutes les 6h (scheduler.RunSessionPurgeLoop). Le scan du répertoire
 // (os.ReadDir) est hors verrou, mais chaque fichier de session .json est traité sous
 // le Lock exclusif s.mu, pris et relâché PAR FICHIER (critical section courte, cf.
 // purgeSessionFileLocked) : sans ce verrou, sous Windows, l'os.ReadFile de la purge

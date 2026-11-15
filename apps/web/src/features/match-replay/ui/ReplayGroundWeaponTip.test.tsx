@@ -19,7 +19,7 @@ function survol(over: Partial<GroundWeaponHover> = {}): GroundWeaponHover {
     },
     at: { x: 10, y: 10 },
     weaponName: 'BR75',
-    originLine: 'lâchée par DinoR00',
+    originLine: 'lâchée par J900001',
     pickupLine: null,
     ammoLine: null,
     ...over,
@@ -39,13 +39,13 @@ describe('ReplayGroundWeaponTip', () => {
       />,
     )
     expect(screen.getByRole('tooltip')).toHaveTextContent(
-      'BR75 · lâchée par DinoR00 · ≈ 12 au chargeur et 24 en réserve, lues 9.0 s avant le lâcher · reprise par SHROOM',
+      'BR75 · lâchée par J900001 · ≈ 12 au chargeur et 24 en réserve, lues 9.0 s avant le lâcher · reprise par SHROOM',
     )
   })
 
   it('sans munitions ni reprise : deux fragments, aucun séparateur pendant', () => {
     render(<ReplayGroundWeaponTip locale="fr" width={400} hover={survol()} />)
-    expect(screen.getByRole('tooltip').textContent).toBe('BR75 · lâchée par DinoR00')
+    expect(screen.getByRole('tooltip').textContent).toBe('BR75 · lâchée par J900001')
   })
 
   it('reprise SANS munitions : la reprise remonte, elle ne saute pas une place', () => {
@@ -57,7 +57,7 @@ describe('ReplayGroundWeaponTip', () => {
       />,
     )
     expect(screen.getByRole('tooltip').textContent).toBe(
-      'BR75 · lâchée par DinoR00 · reprise par SHROOM',
+      'BR75 · lâchée par J900001 · reprise par SHROOM',
     )
   })
 })

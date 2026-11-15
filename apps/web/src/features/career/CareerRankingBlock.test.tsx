@@ -53,7 +53,7 @@ const HALO5: TitleSummary = {
   defensive_resistance_p80: 1.65,
 }
 
-function checkpoint(group: string): CareerLusrSection['checkpoints'][number] {
+function checkpoint(group: string): NonNullable<CareerLusrSection['checkpoints']>[number] {
   return {
     recorded_at: '2026-06-01T00:00:00Z',
     rating_type: 'LUSR',
@@ -61,7 +61,6 @@ function checkpoint(group: string): CareerLusrSection['checkpoints'][number] {
     tier_label: 'Or III',
     playlist_group: group,
     playlist_name: 'Arena',
-    badge_image_url: null,
   }
 }
 

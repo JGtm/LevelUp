@@ -184,8 +184,12 @@ export interface ReplayInks {
   grapple: string
   /** Contour des étiquettes : SOMBRE dans les deux thèmes (cf. globals.css). */
   labelStroke: string
+  /** Le voile noir de la mise en valeur d'un frag : jeton `scrim`, identique dans les deux thèmes. */
+  scrim: string
   /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
   self: string
+  /** Le plan des murs du fond : l'encre de mise en page la plus contrastée du thème (`--foreground`). */
+  wallPlan: string
   /** Arc du mur de protection : un token FIXE, plus la couleur d'équipe (cf. WALL_TOKEN). */
   wall: string
   /** Les deux encres FIXES de la faille du translocateur (cf. RIFT_RIM_TOKEN). */
@@ -243,7 +247,9 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       fx: readFxInk(),
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
+      scrim: readInk('--scrim'),
       self: resolveToken(SELF_TOKEN),
+      wallPlan: readInk('--foreground'),
       wall: resolveToken(WALL_TOKEN),
       rift: { rim: resolveToken(RIFT_RIM_TOKEN), core: resolveToken(RIFT_CORE_TOKEN) },
       shroud: shroudInk(resolveToken(SHROUD_GLOW_TOKEN)),

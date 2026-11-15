@@ -26,7 +26,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
@@ -113,7 +113,7 @@ func auditShared(path string) {
 		SELECT
 			COUNT(*),
 			SUM(CASE WHEN gamertag IS NULL OR gamertag = '' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN gamertag = xuid AND `+analysis.SQLIsNotBotCol("xuid")+` THEN 1 ELSE 0 END),
+			SUM(CASE WHEN gamertag = xuid AND `+sqlfrag.SQLIsNotBotCol("xuid")+` THEN 1 ELSE 0 END),
 			SUM(CASE WHEN team_mmr IS NULL THEN 1 ELSE 0 END)
 		FROM match_participants
 	`).Scan(&totalParts, &gtNull, &gtIsXuid, &mmrNull)
@@ -163,7 +163,7 @@ func auditShared(path string) {
 	fmt.Println("│ ── xuid_aliases (shared) ──")
 	var aliasesTotal, aliasesBots int
 	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM xuid_aliases`).Scan(&aliasesTotal)
-	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM xuid_aliases WHERE `+analysis.SQLIsBotCol("xuid")+``).Scan(&aliasesBots)
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM xuid_aliases WHERE `+sqlfrag.SQLIsBotCol("xuid")+``).Scan(&aliasesBots)
 	fmt.Printf("│ total alias                             : %d (dont %d bots)\n", aliasesTotal, aliasesBots)
 
 	// Combien de xuids participants n'ont aucun alias quelque part
@@ -172,7 +172,7 @@ func auditShared(path string) {
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
+		WHERE `+sqlfrag.SQLIsNotBotCol("mp.xuid")+`
 		  AND xa.xuid IS NULL
 		  AND (mp.gamertag IS NULL OR mp.gamertag = '' OR mp.gamertag = mp.xuid)
 	`).Scan(&orphanXuids)

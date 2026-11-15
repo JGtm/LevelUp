@@ -18,9 +18,9 @@ function cls(className: string, kills: number): FragClassEntry {
 
 const DATA = {
   JGtm: [cls('shoulder', 28), cls('sidearm', 13), cls('grenade', 5), cls('unattributed', 2)],
-  Madina97294: [cls('shoulder', 45), cls('grenade', 3)],
+  Joueur90002: [cls('shoulder', 45), cls('grenade', 3)],
 }
-const ORDER = ['JGtm', 'Madina97294']
+const ORDER = ['JGtm', 'Joueur90002']
 
 function renderCard() {
   return render(
@@ -66,7 +66,7 @@ describe('SquadFragBreakdownCard', () => {
     expect([...row.querySelectorAll('[data-testid^="frag-breakdown-side-JGtm-"]')].map((n) => n.textContent)).toEqual(['28', '13', '5', '2'])
     expect([...row.querySelectorAll<HTMLElement>('[data-fit-label]')].map((l) => l.textContent)).toEqual(['28', '13', '5', '2'])
     expect(screen.getByTestId('frag-breakdown-total-JGtm').textContent).toBe('48')
-    expect(screen.getByTestId('frag-breakdown-total-Madina97294').textContent).toBe('48')
+    expect(screen.getByTestId('frag-breakdown-total-Joueur90002').textContent).toBe('48')
   })
 
   it('compte dans le segment quand il tient, masqué sinon (aucune ligne de repli)', () => {
@@ -79,12 +79,12 @@ describe('SquadFragBreakdownCard', () => {
     expect(seg('JGtm', 'grenade').style.visibility).toBe('visible')
     expect(seg('JGtm', 'unattributed').style.visibility).toBe('hidden')
     expect(screen.queryByTestId('frag-breakdown-repli-JGtm')).toBeNull()
-    // Madina97294 : 45 tient, 3 (12 px) ne tient pas.
-    expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-shoulder')).getByText('45').style.visibility).toBe('visible')
-    expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-grenade')).getByText('3').style.visibility).toBe('hidden')
-    expect(screen.queryByTestId('frag-breakdown-repli-Madina97294')).toBeNull()
-    expect(screen.getByTestId('frag-breakdown-side-Madina97294-grenade').textContent).toBe('3')
-    expect(screen.queryByTestId('frag-breakdown-side-Madina97294-shoulder')).toBeNull()
+    // Joueur90002 : 45 tient, 3 (12 px) ne tient pas.
+    expect(within(screen.getByTestId('frag-breakdown-seg-Joueur90002-shoulder')).getByText('45').style.visibility).toBe('visible')
+    expect(within(screen.getByTestId('frag-breakdown-seg-Joueur90002-grenade')).getByText('3').style.visibility).toBe('hidden')
+    expect(screen.queryByTestId('frag-breakdown-repli-Joueur90002')).toBeNull()
+    expect(screen.getByTestId('frag-breakdown-side-Joueur90002-grenade').textContent).toBe('3')
+    expect(screen.queryByTestId('frag-breakdown-side-Joueur90002-shoulder')).toBeNull()
     expect(screen.getByTestId('frag-breakdown-side-JGtm-unattributed').textContent).toBe('2')
   })
 

@@ -22,14 +22,14 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ligneRegistre : ce que la base sait du T0 d'un match, et rien d'autre.
 type ligneRegistre struct {
-	// startUTC est le start CANONIQUE (`analysis.SQLStartTimeCanonical`), jamais `start_time`
+	// startUTC est le start CANONIQUE (`sqlfrag.SQLStartTimeCanonical`), jamais `start_time`
 	// brut — ratchet `archlint/no_raw_start_time_literal_test.go`.
 	startUTC time.Time
 	// realStart est le debut de gameplay deja en base. NULL = aucun T0 stocke.
@@ -57,7 +57,7 @@ func ouvrirBase(path string, commit bool) (*sql.DB, func(), error) {
 func chargerRegistre(ctx context.Context, db *sql.DB) (map[string]ligneRegistre, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT match_id,
-		       `+analysis.SQLStartTimeCanonical("")+` AS start_utc,
+		       `+sqlfrag.SQLStartTimeCanonical("")+` AS start_utc,
 		       real_start_time,
 		       COALESCE(t0_quality, '')
 		FROM match_registry`)

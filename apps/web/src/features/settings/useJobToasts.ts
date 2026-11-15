@@ -3,6 +3,12 @@ import { toast } from 'sonner'
 import type { AsyncJobStatus, JobStatus } from '@/lib/api/types'
 
 const TERMINAL: readonly JobStatus[] = ['succeeded', 'failed', 'cancelled', 'interrupted']
+const JOB_STATUSES: readonly JobStatus[] = ['queued', 'running', ...TERMINAL]
+
+/** Le contrat sert `status` en chaîne libre : seul un statut connu pilote les toasts. */
+function isJobStatus(status: string): status is JobStatus {
+  return (JOB_STATUSES as readonly string[]).includes(status)
+}
 
 export interface JobToastLabels {
   succeeded: string
@@ -38,7 +44,7 @@ export function useJobToasts(
 
   useEffect(() => {
     const status = jobStatusRef.current?.status
-    if (!status) return
+    if (!status || !isJobStatus(status)) return
 
     const prev = prevStatusRef.current
     prevStatusRef.current = status

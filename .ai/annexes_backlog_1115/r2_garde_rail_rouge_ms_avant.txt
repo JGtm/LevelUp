@@ -1,0 +1,8 @@
+--- FAIL: TestCadenceParMinuteSansDivisionEnLigne (3.64s)
+    no_inline_per_minute_test.go:144: cadence par minute calculée en ligne : utiliser analysis.PerMinute(total, secondes) :
+          internal/analysis/squademprise/production.go:77
+          internal/analysis/temporal/engagement_curve.go:63
+          internal/analysis/temporal/engagement_score.go:315
+FAIL
+FAIL	levelup/go-api/internal/archlint	3.811s
+FAIL

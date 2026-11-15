@@ -16,10 +16,10 @@
  * voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué. Quand l'analyse du
  * film est en cours (`analysisPending`), le même emplacement annonce « analyse en cours ».
  */
-import { AssistTierBar, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
-import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
-import { assistShareSegments } from '@/features/_shared/assists/assistExchange'
-import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
+import { AssistTierBar, ASSIST_RECEIVED_TOKEN } from '@/components/assists/AssistTierBar'
+import { assistTierTone } from '@/components/assists/assistTierTone'
+import { assistShareSegments } from '@/components/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/components/assists/assistsI18n'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchAssistedFrags } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'

@@ -14,23 +14,18 @@
  * `fade` est l'estompage propre de SA lecture. Absent, le chiffre hérite de l'opacité de la
  * boîte qui le porte (la boîte de grenades pâlit déjà tout entière avec son âge).
  *
- * `outsetPx` sort le chiffre de la vignette vers la droite, de ce nombre de pixels. La boîte qui
- * le porte doit réserver cette place, sans quoi il serait coupé.
+ * Le chiffre DÉBORDE de la vignette vers la droite de `COUNT_OUTSET_PX` : la petite vignette
+ * reste lisible sous lui. Ce débord tombe dans l'intervalle qui suit la vignette (4 px entre deux
+ * grenades, 5 px entre les cellules de la rangée) : la boîte qui le porte ne doit pas le rogner.
  */
-export function ReplayIconCount({
-  count,
-  fade,
-  outsetPx,
-}: {
-  count: number
-  fade?: number
-  outsetPx?: number
-}) {
+const COUNT_OUTSET_PX = 3
+
+export function ReplayIconCount({ count, fade }: { count: number; fade?: number }) {
   return (
     <span
       aria-hidden="true"
       className="pointer-events-none absolute bottom-0 right-0 rounded-sm bg-background/75 px-[2px] font-mono text-[9px] font-semibold leading-none tabular-nums text-foreground"
-      style={{ opacity: fade, right: outsetPx === undefined ? undefined : -outsetPx }}
+      style={{ opacity: fade, right: -COUNT_OUTSET_PX }}
     >
       {count}
     </span>

@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // snapshotGraceWindow : ancienneté au-delà de laquelle un match dont une dérivation
@@ -204,7 +204,7 @@ func loadSnapshotSharedFacts(ctx context.Context, sharedDB *sql.DB, xuid string)
 		       COALESCE(mr.is_ranked, FALSE),
 		       COALESCE(mr.is_firefight, FALSE),
 		       COALESCE(mr.duration_seconds, 0),
-		       `+analysis.SQLStartTimeCanonical("mr")+`,
+		       `+sqlfrag.SQLStartTimeCanonical("mr")+`,
 		       (SELECT COUNT(DISTINCT mp2.team_id) FROM match_participants mp2
 		          WHERE mp2.match_id = mr.match_id AND mp2.team_id IS NOT NULL)
 		FROM match_registry mr

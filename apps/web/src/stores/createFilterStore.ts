@@ -34,6 +34,11 @@ import type {
   SessionsInput,
 } from '@/lib/api/types'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
+import type { Locale } from '@/lib/i18n/locale'
+
+/** Paramètre d'URL qui porte la langue du partageur dans un lien de partage. Lu par le
+ *  serveur pour la langue des balises Open Graph (`ogmeta.LocaleFromParams`). */
+export const SHARE_LANG_PARAM = 'lang'
 
 // ---------------------------------------------------------------------------
 // Valeurs par défaut
@@ -176,6 +181,13 @@ interface CreateFilterStoreOptions {
    *  Injecté (plutôt qu'importé) pour garder la factory découplée/testable.
    *  Défaut : titre par défaut (utile aux stores sans URL / aux tests). */
   getActiveTitleSlug?: () => string
+  /** Langue de l'interface du partageur, portée par le lien de partage dans `?lang=`
+   *  pour que l'aperçu du lien (balises Open Graph rendues par le serveur) sorte dans
+   *  cette langue : le robot d'aperçu n'en annonce aucune. Le paramètre est retiré de
+   *  la barre d'adresse avec `?f=` à la consommation du lien ; il ne change pas la
+   *  langue du destinataire. Injecté pour les mêmes raisons que getActiveTitleSlug.
+   *  Absent : le lien ne porte pas de langue (stores sans URL / tests). */
+  getLocale?: () => Locale
 }
 
 /**
@@ -186,19 +198,21 @@ interface CreateFilterStoreOptions {
  * des `name` distincts.
  */
 export function createFilterStore(options: CreateFilterStoreOptions): FilterStore {
-  const { name, urlEnabled = false, urlParam = 'f', getActiveTitleSlug } = options
+  const { name, urlEnabled = false, urlParam = 'f', getActiveTitleSlug, getLocale } = options
 
   const activeTitle = (): string => getActiveTitleSlug?.() ?? DEFAULT_TITLE_SLUG
 
-  // Retire le param `?f=` de la barre d'adresse après consommation d'un deep-link
-  // (one-shot). L'état est persisté en localStorage : un refresh conserve donc les
-  // filtres même une fois l'URL nettoyée. Ne strip QUE si le param est présent.
+  // Retire le param `?f=` (et la langue `?lang=` qui l'accompagne) de la barre
+  // d'adresse après consommation d'un deep-link (one-shot). L'état est persisté en
+  // localStorage : un refresh conserve donc les filtres même une fois l'URL nettoyée.
+  // Ne strip QUE si le param est présent.
   function stripUrlParam(): void {
     if (typeof window === 'undefined') return
     try {
       const url = new URL(window.location.href)
       if (!url.searchParams.has(urlParam)) return
       url.searchParams.delete(urlParam)
+      url.searchParams.delete(SHARE_LANG_PARAM)
       window.history.replaceState(null, '', url.toString())
     } catch {
       // Silencieux si l'URL est invalide
@@ -347,6 +361,8 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
             const url = new URL(window.location.href)
             url.searchParams.set(urlParam, encoded)
+            const locale = getLocale?.()
+            if (locale) url.searchParams.set(SHARE_LANG_PARAM, locale)
             return url.toString()
           } catch {
             return null

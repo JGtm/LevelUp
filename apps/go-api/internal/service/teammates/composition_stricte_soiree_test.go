@@ -1,8 +1,8 @@
 package teammates
 
 // composition_stricte_soiree_test.go — non-régression de la soirée du 7 octobre 2026 (ADR 0033,
-// décision 1) : huit matchs de JGtm avec Chocoboflor et Madina97294 du début à la fin, la
-// quatrième place tenue par un inconnu différent selon les matchs. L'un d'eux (« Tea N Snacks »)
+// décision 1) : huit matchs de JGtm avec Joueur90001 et Joueur90002 du début à la fin, la
+// quatrième place tenue par un inconnu différent selon les matchs. L'un d'eux (« Joueur900008 »)
 // était dans deux de ces matchs (Aquarius, Houseki), ce qui le plaçait dans le top des
 // coéquipiers fréquents : l'option « composition stricte » écartait ces deux matchs. Un
 // coéquipier connu, c'est un ami déclaré ou un profil suivi — rien d'autre.
@@ -18,30 +18,30 @@ import (
 )
 
 const (
-	soireeJGtm     = "2533274823110022"
-	soireeMadina   = "2533274858283686"
-	soireeChoco    = "2535469190789936"
-	soireeTeaSnack = "2533274832794897"
+	soireeJGtm     = "2603225103667623"
+	soireeMadina   = "2623439693412443"
+	soireeChoco    = "2547408409520575"
+	soireeTeaSnack = "2555408283632666"
 	soireeSession  = "S_07_10"
 )
 
 // soireeDu7Octobre : les huit matchs (heure UTC du registre), la quatrième place de chacun, et
-// le registre des profils et des amis de l'instance (JGtm, Chocoboflor, Madina97294,
-// XxDaemonGamerxX suivis et amis entre eux ; Nuzzles suivi ; Trimbutton auth_only).
+// le registre des profils et des amis de l'instance (JGtm, Joueur90001, Joueur90002,
+// Joueur90000000f suivis et amis entre eux ; J900004 suivi ; Joueur9009 auth_only).
 func soireeDu7Octobre() *mockSquadRepo {
 	type match struct {
 		id, carte, quatrieme string
 		h, m                 int
 	}
 	matchs := []match{
-		{"1bde099b", "Dredge", "2535405773599404", 19, 23},
-		{"3b515f13", "Cliffhanger", "2533274792509181", 19, 37},
+		{"1bde099b", "Dredge", "2700955136410675", 19, 23},
+		{"3b515f13", "Cliffhanger", "2666953393830752", 19, 37},
 		{"ff9d29b8", "Aquarius", soireeTeaSnack, 19, 50},
 		{"b20cff37", "Houseki", soireeTeaSnack, 20, 3},
-		{"5c38f581", "Prism", "2535449711429427", 20, 10},
-		{"6c55be89", "Fortress", "2535407407499823", 20, 19},
-		{"760fb768", "Empyrean", "2533274804962537", 20, 33},
-		{"0a08d2f2", "Banished Narrows", "2548018717759455", 20, 48},
+		{"5c38f581", "Prism", "2609704305081750", 20, 10},
+		{"6c55be89", "Fortress", "2593890809119174", 20, 19},
+		{"760fb768", "Empyrean", "2559048201277236", 20, 33},
+		{"0a08d2f2", "Banished Narrows", "2571106636493958", 20, 48},
 	}
 	var rows []domain.SquadMatchRow
 	var allies []domain.AllyParticipant
@@ -52,22 +52,22 @@ func soireeDu7Octobre() *mockSquadRepo {
 			ally(m.id, soireeJGtm), ally(m.id, soireeMadina), ally(m.id, soireeChoco), ally(m.id, m.quatrieme))
 	}
 	return &mockSquadRepo{
-		// Le top des coéquipiers fréquents (Q29) tel que mesuré : Tea N Snacks y figure, avec
+		// Le top des coéquipiers fréquents (Q29) tel que mesuré : Joueur900008 y figure, avec
 		// deux matchs ensemble — ceux de cette soirée.
 		topRows: []domain.TopTeammateRow{
-			{XUID: soireeMadina, Gamertag: "Madina97294", GamesTogether: 587},
-			{XUID: soireeChoco, Gamertag: "Chocoboflor", GamesTogether: 466},
-			{XUID: "2533274833178266", Gamertag: "XxDaemonGamerxX", GamesTogether: 39},
-			{XUID: soireeTeaSnack, Gamertag: "Tea N Snacks", GamesTogether: 2},
+			{XUID: soireeMadina, Gamertag: "Joueur90002", GamesTogether: 587},
+			{XUID: soireeChoco, Gamertag: "Joueur90001", GamesTogether: 466},
+			{XUID: "2558964982616721", Gamertag: "Joueur90000000f", GamesTogether: 39},
+			{XUID: soireeTeaSnack, Gamertag: "Joueur900008", GamesTogether: 2},
 		},
 		squadRowsByTeammate: map[string][]domain.SquadMatchRow{soireeMadina: rows, soireeChoco: rows},
 		allyRows:            allies,
-		amis:                []string{"XxDaemonGamerxX", "Madina97294", "Chocoboflor"},
+		amis:                []string{"Joueur90000000f", "Joueur90002", "Joueur90001"},
 		profils: []domain.PlayerSummary{
-			profilSuivi(soireeJGtm, "JGtm"), profilSuivi(soireeChoco, "Chocoboflor"),
-			profilSuivi(soireeMadina, "Madina97294"), profilSuivi("2533274833178266", "XxDaemonGamerxX"),
-			profilSuivi("2535472547643888", "Nuzzles"),
-			{XUID: "2535413181053876", Gamertag: "Trimbutton", AuthOnly: true},
+			profilSuivi(soireeJGtm, "JGtm"), profilSuivi(soireeChoco, "Joueur90001"),
+			profilSuivi(soireeMadina, "Joueur90002"), profilSuivi("2558964982616721", "Joueur90000000f"),
+			profilSuivi("2543518745364847", "J900004"),
+			{XUID: "2734274180837334", Gamertag: "Joueur9009", AuthOnly: true},
 		},
 	}
 }
@@ -76,7 +76,7 @@ func soireeDu7Octobre() *mockSquadRepo {
 // qui doivent dire la même chose.
 func pageEtSessionsDeLaSoiree(t *testing.T, repo *mockSquadRepo) domain.CompositionSessionEntry {
 	t.Helper()
-	gts := []string{"Chocoboflor", "Madina97294"}
+	gts := []string{"Joueur90001", "Joueur90002"}
 	svc := avecConnus(NewTeammatesService(repo, nil), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "JGtm")
 	page, err := svc.GetPage(context.Background(), soireeJGtm, domain.TeammatesQueryRequest{
@@ -122,24 +122,24 @@ func TestCompositionStricte_Soiree7Octobre_ConnuEcarte(t *testing.T) {
 		ecartePar []string
 	}{
 		{"ami declare", func(r *mockSquadRepo) {
-			r.amis = append(r.amis, "Tea N Snacks")
-			r.amisLus = map[string]string{"Tea N Snacks": soireeTeaSnack}
-		}, 6, []string{"Tea N Snacks"}},
+			r.amis = append(r.amis, "Joueur900008")
+			r.amisLus = map[string]string{"Joueur900008": soireeTeaSnack}
+		}, 6, []string{"Joueur900008"}},
 		{"profil suivi", func(r *mockSquadRepo) {
-			r.profils = append(r.profils, profilSuivi(soireeTeaSnack, "Tea N Snacks"))
-		}, 6, []string{"Tea N Snacks"}},
+			r.profils = append(r.profils, profilSuivi(soireeTeaSnack, "Joueur900008"))
+		}, 6, []string{"Joueur900008"}},
 		{"profil suivi en pause", func(r *mockSquadRepo) {
-			p := profilSuivi(soireeTeaSnack, "Tea N Snacks")
+			p := profilSuivi(soireeTeaSnack, "Joueur900008")
 			p.SyncEnabled = false
 			r.profils = append(r.profils, p)
-		}, 6, []string{"Tea N Snacks"}},
+		}, 6, []string{"Joueur900008"}},
 		{"profil auth_only", func(r *mockSquadRepo) {
-			r.profils = append(r.profils, domain.PlayerSummary{XUID: soireeTeaSnack, Gamertag: "Tea N Snacks", AuthOnly: true})
+			r.profils = append(r.profils, domain.PlayerSummary{XUID: soireeTeaSnack, Gamertag: "Joueur900008", AuthOnly: true})
 		}, 8, nil},
 		{"profil auth_only declare ami", func(r *mockSquadRepo) {
-			r.profils = append(r.profils, domain.PlayerSummary{XUID: soireeTeaSnack, Gamertag: "Tea N Snacks", AuthOnly: true})
-			r.amis = append(r.amis, "tea n snacks")
-		}, 6, []string{"Tea N Snacks"}},
+			r.profils = append(r.profils, domain.PlayerSummary{XUID: soireeTeaSnack, Gamertag: "Joueur900008", AuthOnly: true})
+			r.amis = append(r.amis, "joueur900008")
+		}, 6, []string{"Joueur900008"}},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {

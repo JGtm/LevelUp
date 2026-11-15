@@ -170,9 +170,5 @@ var coachCategoryLabels = map[string]map[string]string{
 	"comeback_welcome":    {"fr": "Retour de pause", "en": "Comeback"},
 	"threshold_crossed":   {"fr": "Palier franchi", "en": "Threshold crossed"},
 	"trend_consolidate":   {"fr": "Axe à consolider", "en": "Axis to consolidate"},
-	"pattern_strength":    {"fr": "Force détectée", "en": "Strength detected"},
-	"pattern_weakness":    {"fr": "Faiblesse détectée", "en": "Weakness detected"},
-	"pattern_behavior":    {"fr": "Profil de jeu", "en": "Play pattern"},
-	"pattern_lever":       {"fr": "Levier prioritaire", "en": "Priority lever"},
 	"combat_pattern":      {"fr": "Profil de combat", "en": "Combat profile"},
 }

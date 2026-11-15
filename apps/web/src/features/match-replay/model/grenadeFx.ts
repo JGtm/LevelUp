@@ -18,6 +18,7 @@
 import { EXPLOSION_MS } from '../layers/explosionFx'
 import type { FxTint } from '../layers/fxInk'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ProjectileOwner } from './projectileOwners'
 
 /** Rang du type Shock/Dynamo dans GrenadeLabels — l'ordre des rangs est LA donnée
  *  (établi par deux chaînes indépendantes, cf. replay_labels.toml). */
@@ -114,6 +115,9 @@ export interface GrenadeRestFx {
   /** Stem du son de la détonation d'un projectile de tir (registre de l'arme). Absent sur un
    *  projectile de tir = explosion muette ; une grenade (sans `tint`) sonne par son rang. */
   impactStem?: string
+  /** Qui a lancé : le slot et l'image du lancer (grenade) ou du tir (projectile de tir). Seul et
+   *  Masquer retirent l'effet d'un joueur écarté ; absent = auteur inconnu, l'effet se dessine. */
+  owner?: ProjectileOwner
 }
 
 /** Germe de la géométrie d'une explosion, fonction de sa seule frame : la même explosion
@@ -184,6 +188,7 @@ export function buildGrenadeRestFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
       rank: g.rank ?? -1,
       rest: !!pr.rest,
       seed: explosionSeedOf(frame),
+      owner: { slot: g.slot, frame: g.t },
     })
   }
   return out

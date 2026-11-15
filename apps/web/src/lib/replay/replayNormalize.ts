@@ -268,8 +268,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // tableau et reste tel quel (absent = record de création non lu, jamais un objet inventé).
     // `vehicleCycles` (schéma 63) : une LISTE PLATE d'emplacements, aucun tableau imbriqué.
     vehicleCycles: raw.vehicleCycles ?? [],
-    vehicles: (raw.vehicles ?? []).map((v) => ({
+    vehicles: (raw.vehicles ?? []).map(({ destruction, ...v }) => ({
       ...v,
+      // LA DESTRUCTION (schéma 109) : facultative, et absente reste absente ; sa liste de tués, nullable
+      // au contrat, se comble à vide.
+      ...(destruction ? { destruction: { ...destruction, killed: destruction.killed ?? [] } } : {}),
       // LE DÉCOR DE CARTE : le serveur nomme les vies de décor (`vehicleScenery.hidden` — posées
       // hors de la zone jouable, ou tenues en l'air sans occupant) ; la vie le porte, pour que le
       // calque n'ait qu'un prédicat à lire (`vehicleIsScenery`). Absent = aucun verdict de décor.

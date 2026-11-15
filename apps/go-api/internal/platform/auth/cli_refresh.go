@@ -1,6 +1,6 @@
 // Package auth — cli_refresh.go : helper canonique pour les CLI one-shot
 // qui ont besoin de récupérer des HaloTokens (refresh-metadata,
-// refresh-career-ranks, populate-career-rank-images, diag_emblem_colors).
+// refresh-career-ranks, populate-career-rank-images).
 //
 // Avant ADR 0023, chaque CLI dupliquait le pipeline OAuth refresh → Exchange,
 // lisait l'env var + sync_meta DuckDB, et NE PERSISTAIT PAS la rotation.

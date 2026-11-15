@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // Bits du ledger match_registry.backfill_completed — miroir de
@@ -32,7 +34,7 @@ const (
 
 // dqTimestampExpr : horodatage canonique d'un match (règle projet : jamais
 // start_time brut — cf. pattern media_repo).
-var dqTimestampExpr = `` + analysis.SQLStartTimeCanonical("") + ``
+var dqTimestampExpr = `` + sqlfrag.SQLStartTimeCanonical("") + ``
 
 // DataQualityCounts agrège les compteurs d'inconnus.
 type DataQualityCounts struct {
@@ -117,7 +119,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, 
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
+		WHERE `+sqlfrag.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 	`).Scan(&c.OrphanXUIDs); err != nil {
 		return c, fmt.Errorf("count orphan xuids: %w", err)
@@ -131,8 +133,8 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, 
 		return c, fmt.Errorf("count lying bits events: %w", err)
 	}
 	// La PREUVE du detail des armes change de table selon le titre (cf.
-	// analysis.WeaponEvidenceTable) : on sonde celle que la base CONTIENT.
-	if evidence := analysis.WeaponEvidenceTable(ctx, sharedDB); evidence != "" {
+	// duckdb.WeaponEvidenceTable) : on sonde celle que la base CONTIENT.
+	if evidence := duckdb.WeaponEvidenceTable(ctx, sharedDB); evidence != "" {
 		if err := sharedDB.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
@@ -469,11 +471,11 @@ func listOrphanPlaylists(
 // compteur) + jointure clé-primaire sur match_registry.
 func listOrphanXUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQualityIssue, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT mp.xuid, COUNT(DISTINCT mp.match_id), MAX(`+analysis.SQLStartTimeCanonical("r")+`)
+		SELECT mp.xuid, COUNT(DISTINCT mp.match_id), MAX(`+sqlfrag.SQLStartTimeCanonical("r")+`)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
 		LEFT JOIN match_registry r ON r.match_id = mp.match_id
-		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
+		WHERE `+sqlfrag.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		GROUP BY mp.xuid
 		ORDER BY 2 DESC`)

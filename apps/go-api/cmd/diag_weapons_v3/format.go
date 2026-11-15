@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 // fmtTimeMS rend un *int de ms en secondes (ou "?" si nil).

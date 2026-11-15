@@ -17,7 +17,7 @@
  *
  * LANCEMENT
  *   README_SHOTS=1 E2E_BASE_URL=http://localhost:5173 E2E_VISUAL_PLAYER=JGtm \
- *     E2E_VISUAL_SQUAD_TEAMMATES=Chocoboflor,Madina97294 \
+ *     E2E_VISUAL_SQUAD_TEAMMATES=Joueur90001,Joueur90002 \
  *     E2E_README_MATCH_ID=<uuid> \
  *     npx playwright test --project=visual readme-shots
  *

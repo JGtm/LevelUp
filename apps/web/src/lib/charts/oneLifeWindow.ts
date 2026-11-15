@@ -4,8 +4,8 @@
  *
  * Le pivot est le même partout : **une vie de Spartan**, exprimée à 100 % dans
  * l'unité de TOUTES les surfaces (escouade et solo tracent le taux rapporté à
- * une vie). Le barème en dégâts bruts du titre ({@link ONE_LIFE_DAMAGE} pour
- * Halo Infinite) ne sert plus qu'à CONVERTIR une valeur brute en taux
+ * une vie). Le barème en dégâts bruts du titre (`effective_hp_to_kill` du titre, lu
+ * du bootstrap) ne sert plus qu'à CONVERTIR une valeur brute en taux
  * ({@link oneLifeOffensiveRatePct}, {@link oneLifeDefensiveRatePct}).
  *
  * Deux invariants tiennent l'alignement des surfaces :
@@ -31,14 +31,6 @@
  */
 import { resolveToken } from '@/lib/accessibility'
 
-/**
- * Dégâts d'une vie complète de Spartan — barème de conversion brut → taux.
- * DÉFAUT = Halo Infinite (90 vie + 135 bouclier). Les fonctions ci-dessous
- * acceptent un `oneLife` par titre (115 Halo 5…) ; sans argument elles gardent
- * ce barème Infinite.
- */
-export const ONE_LIFE_DAMAGE = 225
-
 /** Taux d'UNE VIE, en % — pivot commun de toutes les surfaces. */
 export const ONE_LIFE_RATE_PCT = 100
 
@@ -54,7 +46,7 @@ export const ONE_LIFE_WINDOW_FACTOR = 2
 export const ONE_LIFE_ZONE_OPACITY = { pos: 0.08, neg: 0.06 } as const
 
 /** Bornes de la fenêtre FIXE encadrant le pivot (jamais dérivées des données). */
-export function oneLifeWindowBounds(pivot: number = ONE_LIFE_DAMAGE): {
+export function oneLifeWindowBounds(pivot: number): {
   min: number
   max: number
 } {
@@ -110,7 +102,7 @@ export function damagePerDeath(damageTaken?: number | null, deaths?: number | nu
  */
 export function oneLifeOffensiveRatePct(
   dmgPerEffectiveFrag: number | null | undefined,
-  oneLife: number = ONE_LIFE_DAMAGE,
+  oneLife: number,
 ): number | null {
   if (dmgPerEffectiveFrag == null || !Number.isFinite(dmgPerEffectiveFrag)) return null
   if (dmgPerEffectiveFrag <= 0) return null
@@ -126,7 +118,7 @@ export function oneLifeOffensiveRatePct(
  */
 export function oneLifeDefensiveRatePct(
   dmgPerDeath: number | null | undefined,
-  oneLife: number = ONE_LIFE_DAMAGE,
+  oneLife: number,
 ): number | null {
   if (dmgPerDeath == null || !Number.isFinite(dmgPerDeath)) return null
   if (oneLife <= 0) return null

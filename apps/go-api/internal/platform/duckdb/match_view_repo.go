@@ -130,7 +130,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		row, err = r.scanMatchMeta(ctx, r.pdb.SharedReadDB(), matchID)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", NotFound(err))
 	}
 	// Noms d'asset par langue (asset_translations, assetNameTexts) : une seule requête SQL par
 	// asset, source unique de vérité, toutes les langues de config/locales.toml. Le choix de la

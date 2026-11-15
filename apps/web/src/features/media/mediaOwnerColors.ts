@@ -4,7 +4,7 @@
  * (react-refresh/only-export-components).
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 import { SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
 
 // Source unique (pas de copie locale) : les pills « propriétaire » reprennent
@@ -24,7 +24,7 @@ export function ownerTagColor(gamertag: string): string {
  * `currentRef` est exclu du mapping (ses médias n'affichent pas de pill).
  */
 export function buildOwnerColorMap(
-  items: MediaItemRow[],
+  items: NormalizedMediaItem[],
   currentRef: string | null | undefined,
 ): Record<string, string> {
   const map: Record<string, string> = {}

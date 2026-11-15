@@ -14,7 +14,7 @@
  * chronologique — I12). yAxis inverse conservé : la première entrée reçue
  * s'affiche en haut.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
@@ -82,7 +82,7 @@ function bulletTooltipFormatter(
 export function buildWinRateVsHistoryBulletOption(
   series: ChartSeries<MapBreakdownRow>[],
   opts: WinRateVsHistoryBulletOpts,
-): EChartsCoreOption {
+): ChartOption {
   const rows = series[0]?.datapoints ?? []
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 

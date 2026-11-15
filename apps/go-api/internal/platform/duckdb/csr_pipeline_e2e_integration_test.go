@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	pipelineTestXUID = "2533274823110022"
+	pipelineTestXUID = "2603225103667623"
 	pipelineTestSlug = "TestPlayer"
 )
 

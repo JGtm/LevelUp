@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 
 import { MONTHS, horizonCells, indicator, monthCells } from './tendances.fixture'
 import {
@@ -17,7 +17,7 @@ import {
 
 const labelOf = (key: string, variant?: string) => (variant ? `${key}/${variant}` : key)
 
-function points(grid: { series: { datapoints: ChartPointHeatmap[] }[] }) {
+function points(grid: { series: { datapoints: HeatmapCellPoint[] }[] }) {
   return grid.series[0].datapoints
 }
 
@@ -37,6 +37,22 @@ describe('buildMatrixGrids — groupes', () => {
     )
     expect(grids.map((g) => g.group)).toEqual(['level', 'results', 'combat', 'activity'])
     expect(grids.find((g) => g.group === 'combat')?.rows).toBe(1)
+  })
+
+  it('le groupe « Rythme » (pace) suit « Combat » et précède « Façon de jouer »', () => {
+    const grids = buildMatrixGrids(
+      [
+        indicator({ key: 'avg_life_seconds', group: 'style' }),
+        indicator({ key: 'kills_per_minute', group: 'pace', unit: 'per_minute', decimals: 2 }),
+        indicator({ key: 'deaths_per_minute', group: 'pace', unit: 'per_minute', decimals: 2 }),
+        indicator({ key: 'kda', group: 'combat' }),
+      ],
+      MONTHS,
+      'fr',
+      labelOf,
+    )
+    expect(grids.map((g) => g.group)).toEqual(['combat', 'pace', 'style'])
+    expect(grids[1].rows).toBe(2)
   })
 
   it('aucun indicateur en matrice : aucune grille', () => {
@@ -185,7 +201,7 @@ describe('formatMatrixTooltip', () => {
       'fr',
       labelOf,
     )
-    return points(grids[0]).find((p) => p.x === x) as ChartPointHeatmap
+    return points(grids[0]).find((p) => p.x === x) as HeatmapCellPoint
   }
 
   it('horizon comparé : valeur, période d’avant, variation signée', () => {

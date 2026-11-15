@@ -29,20 +29,27 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// cheminGoldenDeForme : le golden de forme de la brique, depuis la racine du depot.
-var cheminGoldenDeForme = filepath.Join("libs", "film", "replay", "testdata", "document_shape.golden")
+// cheminGoldenDeForme : le golden de forme de la brique, relatif a la brique du decodeur (resolveur des
+// briques).
+var cheminGoldenDeForme = filepath.Join("replay", "testdata", "document_shape.golden")
 
 // TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles ?
 //
 // Elles le doivent : `domain/replaydoc` est le jumeau de fil de `replay.ReplayDocument`, meme
 // noms de types, memes tags JSON, memes `omitempty` (cf. son `doc.go`). Une divergence signifie
 // qu'un calque cuit n'atteint plus le client, ou qu'un champ servi n'a plus de source.
+//
+// ELLES SE COMPARENT SUR CE QUI SE SERIALISE. Un champ non exporte n'atteint jamais le client : le type
+// qu'il est seul a porter (le dead-state qu'une vie de vehicule garde pour batir sa destruction) n'a pas
+// de jumeau servi et n'en doit pas avoir. Le golden de la brique, lui, le range dans sa forme en clair
+// (cf. `TestRenduDesFormesJumeauxSuitLeGolden`) : la comparaison des jumeaux suit donc les seuls champs
+// exportes, et le golden la forme complete.
 func TestDocumentShapeTwinsAgree(t *testing.T) {
-	stockee := documentShapeRender(reflect.TypeFor[replay.ReplayDocument]())
-	servie := documentShapeRender(reflect.TypeFor[replaydoc.ReplayDocument]())
+	stockee := documentShapeRenderSerialise(reflect.TypeFor[replay.ReplayDocument]())
+	servie := documentShapeRenderSerialise(reflect.TypeFor[replaydoc.ReplayDocument]())
 	if stockee == servie {
 		return
 	}
@@ -68,7 +75,7 @@ func TestDocumentShapeSchemaHasChronicleEntry(t *testing.T) {
 // TestRenduDesFormesJumeauxSuitLeGolden : la copie du rendu de forme de ce fichier est celle de la
 // brique. Elle rend, pour le document de la brique, la forme en clair du golden et son empreinte.
 func TestRenduDesFormesJumeauxSuitLeGolden(t *testing.T) {
-	chemin := filepath.Join(racineDuDepot(t), cheminGoldenDeForme)
+	chemin := testutil.CheminBriqueFilm(t, cheminGoldenDeForme)
 	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin fige dans le code
 	if err != nil {
 		t.Fatalf("golden de forme de la brique illisible (%s) : %v", chemin, err)
@@ -98,8 +105,18 @@ func empreinteDe(render string) string {
 // declaration est deliberement ignore (l'ordre des champs n'est pas le contrat d'un lecteur JSON,
 // et c'est ce qui rend les deux jumeaux comparables).
 func documentShapeRender(root reflect.Type) string {
+	return documentShapeRenderChamps(root, false)
+}
+
+// documentShapeRenderSerialise est la forme des seuls types atteints par un champ EXPORTE : ce qui
+// peut atteindre un lecteur JSON.
+func documentShapeRenderSerialise(root reflect.Type) string {
+	return documentShapeRenderChamps(root, true)
+}
+
+func documentShapeRenderChamps(root reflect.Type, exportesSeuls bool) string {
 	types := map[string]reflect.Type{}
-	collecterTypes(root, types, map[reflect.Type]bool{})
+	collecterTypes(root, types, map[reflect.Type]bool{}, exportesSeuls)
 	noms := make([]string, 0, len(types))
 	for nom := range types {
 		noms = append(noms, nom)
@@ -130,23 +147,26 @@ func champsDe(t reflect.Type) []string {
 
 // collecterTypes recense les types struct NOMMES atteignables. La carte des types deja vus
 // borne la recursion : le document porte des structures qui se referencent.
-func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect.Type]bool) {
+func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect.Type]bool, exportesSeuls bool) {
 	if t == nil || vus[t] {
 		return
 	}
 	vus[t] = true
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Slice, reflect.Array:
-		collecterTypes(t.Elem(), out, vus)
+		collecterTypes(t.Elem(), out, vus, exportesSeuls)
 	case reflect.Map:
-		collecterTypes(t.Key(), out, vus)
-		collecterTypes(t.Elem(), out, vus)
+		collecterTypes(t.Key(), out, vus, exportesSeuls)
+		collecterTypes(t.Elem(), out, vus, exportesSeuls)
 	case reflect.Struct:
 		if nom := t.Name(); nom != "" {
 			out[nom] = t
 		}
 		for field := range t.Fields() {
-			collecterTypes(field.Type, out, vus)
+			if exportesSeuls && field.PkgPath != "" {
+				continue
+			}
+			collecterTypes(field.Type, out, vus, exportesSeuls)
 		}
 	default:
 	}

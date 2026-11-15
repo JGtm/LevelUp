@@ -3,14 +3,18 @@ package sync
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/analysis/skill_v2/ep"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/sync/skill"
 )
 
@@ -21,9 +25,19 @@ import (
 var (
 	performanceParametersByRevision = map[string]string{
 		"perf-2026-11-08": "858ec5dd81c1ce3e36adb02fe0578f388abc983152eb67e56e60547b19fae43a",
+		// Note à objectif (V7, objectiveblend) : profil de combat des chaînes objectif sans ospm, réglages
+		// de la note à objectif, poids des frags de soutien, vie effective 229.
+		"perf-2026-11-15": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
+		// Même empreinte : la logique change, pas un paramètre haché. En repli sur les autres familles,
+		// O_sout ne classe plus le débit de soutien par minute, seulement la part du soutien.
+		"perf-2026-11-15b": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
+		// Le repli du solveur sans comptes (solveWithCountFallback) est de la logique : aucun paramètre haché ne change.
+		"lusr-2026-11-09": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
+		// Vie effective du TOML d'Infinite (229) : Conversion offensive et Résistance défensive du composite.
+		"lusr-2026-11-15": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
 	}
 )
 
@@ -52,14 +66,42 @@ func (b *fingerprintBuilder) sum() (string, string) {
 	return hex.EncodeToString(h[:]), body
 }
 
-// performanceParameters rend l'empreinte des paramètres de la note de performance relative.
-func performanceParameters() (digest, body string) {
+// infiniteEffectiveHpToKill lit la vie effective de Halo Infinite dans sa config réelle
+// (config/titles/halo_infinite/constants.toml [damage_model]), la source unique que servent le
+// resolver du titre et /bootstrap : les empreintes hachent CETTE valeur, pas une constante Go.
+func infiniteEffectiveHpToKill(t *testing.T) float64 {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	root := filepath.Join(filepath.Dir(file), "..", "..", "..", "..")
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(root, []string{"halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("config de halo_infinite illisible : %v", errs)
+	}
+	dm, ok := games.NewMappingsEndpointResolver(reg, "halo_infinite").DamageModelFor("halo_infinite")
+	if !ok || dm.EffectiveHpToKill <= 0 {
+		t.Fatalf("halo_infinite ne déclare pas effective_hp_to_kill : %+v", dm)
+	}
+	return dm.EffectiveHpToKill
+}
+
+// performanceParameters rend l'empreinte des paramètres de la note de performance relative ; hp est la
+// vie effective du titre, lue de sa config.
+func performanceParameters(hp float64) (digest, body string) {
 	var b fingerprintBuilder
 	b.integer("perfWindowSize", perfWindowSize)
 	b.float("perfFallbackDurationSeconds", perfFallbackDurationSeconds)
 	b.integer("MinMatchesForRelative", skill.MinMatchesForRelative)
 	b.integer("MinMatchesPerChainForRelative", skill.MinMatchesPerChainForRelative)
-	b.float("games.DefaultEffectiveHpToKill", games.DefaultEffectiveHpToKill)
+	b.float("games.DefaultEffectiveHpToKill", hp) // clé historique des empreintes ; valeur = TOML du titre
+	blend := objectiveBlendParams()
+	b.float("objectiveblend.AlphaMin", blend.AlphaMin)
+	b.float("objectiveblend.AlphaMax", blend.AlphaMax)
+	b.float("objectiveblend.SupportSlope", blend.SupportSlope)
+	b.integer("objectiveblend.MinFamilyMatches", blend.MinFamilyMatches)
+	b.float("narrative.ObjectiveSupportFragWeight", narrative.ObjectiveSupportFragWeight)
 	b.weights("RelativeWeights", skill.RelativeWeights)
 	for _, chain := range knownPerformanceChains() {
 		b.weights("WeightsForChain."+chain, skill.WeightsForChain(chain))
@@ -77,11 +119,11 @@ func knownPerformanceChains() []string {
 
 // lusrParameters rend l'empreinte des paramètres du LUSR : constantes et tables de
 // skill_config.go, pénalités d'abandon, et valeurs par défaut du moteur TrueSkill 2.
-func lusrParameters() (digest, body string) {
+func lusrParameters(hp float64) (digest, body string) {
 	var b fingerprintBuilder
 	addSkillConfigParameters(&b)
 	b.float("skill.QuitSecondaryFactor", skill.QuitSecondaryFactor)
-	b.float("games.DefaultEffectiveHpToKill", games.DefaultEffectiveHpToKill)
+	b.float("games.DefaultEffectiveHpToKill", hp) // clé historique des empreintes ; valeur = TOML du titre
 	addSkillV2Parameters(&b)
 	return b.sum()
 }
@@ -169,14 +211,33 @@ func requireRevisionFingerprint(t *testing.T, revConst, rev string, table map[st
 // performance ou du LUSR change la révision correspondante, donc relance le calcul complet.
 func TestScoringParametersMatchRevision(t *testing.T) {
 	t.Run("performance", func(t *testing.T) {
-		digest, body := performanceParameters()
+		digest, body := performanceParameters(infiniteEffectiveHpToKill(t))
 		requireRevisionFingerprint(t, "skill.PerformanceScoreRev", skill.PerformanceScoreRev,
 			performanceParametersByRevision, digest, body)
 	})
 	t.Run("lusr", func(t *testing.T) {
-		digest, body := lusrParameters()
+		digest, body := lusrParameters(infiniteEffectiveHpToKill(t))
 		requireRevisionFingerprint(t, "skill.LUSRRev", skill.LUSRRev, lusrParametersByRevision, digest, body)
 	})
+}
+
+// L'empreinte hache la valeur CHARGÉE du TOML du titre : une autre vie change les deux empreintes,
+// donc impose de changer les révisions ; la constante Go de repli n'y entre pas.
+func TestScoringParameters_LEmpreinteSuitLaValeurDuTOML(t *testing.T) {
+	hp := infiniteEffectiveHpToKill(t)
+	for name, digestOf := range map[string]func(float64) (string, string){
+		"performance": performanceParameters,
+		"lusr":        lusrParameters,
+	} {
+		here, body := digestOf(hp)
+		other, _ := digestOf(hp + 1)
+		if here == other {
+			t.Errorf("%s : une autre vie effective ne change pas l'empreinte", name)
+		}
+		if !strings.Contains(body, "games.DefaultEffectiveHpToKill="+strconv.FormatFloat(hp, 'g', -1, 64)) {
+			t.Errorf("%s : la vie du TOML (%v) n'est pas dans les paramètres hachés : %s", name, hp, body)
+		}
+	}
 }
 
 func TestScoringRevisionComposition(t *testing.T) {

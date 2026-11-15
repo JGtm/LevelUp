@@ -30,8 +30,8 @@ package halo_infinite
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
-	"github.com/JGtm/LevelUp/libs/film/killicon"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/killicon"
 )
 
 // dispenseConcordance : une règle autorisée à donner une image sans donner de clé.

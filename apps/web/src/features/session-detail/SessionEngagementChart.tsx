@@ -7,7 +7,7 @@
  * Axe X "#N + carte" aligné sur "Score de performance" ; axe Y étiqueté pour la lisibilité.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -16,10 +16,11 @@ import { resolveToken } from '@/lib/accessibility'
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { meanOfValid } from '@/lib/charts/stats'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-interface EngagementPoint {
+interface SessionEngagementPoint {
   label: string
   value: number
 }
@@ -35,15 +36,15 @@ interface Props {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionEngagementOption(
-  series: ChartSeries<EngagementPoint>[],
+  series: ChartSeries<SessionEngagementPoint>[],
   opts: { meanLabel: string; axisName: string; yDomain?: [number, number] },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const mean = round2(points.reduce((acc, p) => acc + p.value, 0) / points.length)
+  const mean = round2(meanOfValid(points.map((p) => p.value)) ?? 0)
   const meanColor = resolveToken(mean >= 0 ? 'divergent-pos' : 'divergent-neg')
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
@@ -101,12 +102,12 @@ export function buildSessionEngagementOption(
 export function SessionEngagementChart({ title, matches, entry, height = 260, yDomain }: Props) {
   const t = useSessionT()
 
-  const series = useMemo<ChartSeries<EngagementPoint>[]>(() => {
+  const series = useMemo<ChartSeries<SessionEngagementPoint>[]>(() => {
     const ms = [...(entry?.match_series ?? [])].sort((a, b) => a.index - b.index)
     if (ms.length === 0) return []
     // Les matchs (pour la carte) sont zippés par ordre chronologique avec la série.
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
-    const points: EngagementPoint[] = []
+    const points: SessionEngagementPoint[] = []
     ms.forEach((p, i) => {
       if (p.engagement_score == null) return
       const m = sorted[i]

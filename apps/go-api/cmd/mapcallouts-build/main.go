@@ -54,13 +54,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+	"levelup/go-api/internal/replaytext"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // deployVariant : la variante sur laquelle la table levl a été établie et mesurée
@@ -77,11 +77,11 @@ const (
 // l'outil (donnees/) : c'est son entrée, lue à chaque passe Forge, pas une pièce de travail.
 var inventaireParDefaut = []string{"apps", "go-api", "cmd", "mapcallouts-build", "donnees", "inventaire_rotation_ugc_2026-08-27.json"}
 
-// cacheVariantesParDefaut : le cache local des `.mvar`, HORS DÉPÔT (.gitignore) hormis les trois
-// témoins versionnés. Il vit dans le `testdata/` de la brique mapvar, qui possède ces fichiers
-// (même chemin que `testfixtures.MapvarFixturesDir`, qu'un binaire de production n'importe pas :
-// une seule ligne à toucher aux deux endroits quand la brique change de place).
-var cacheVariantesParDefaut = []string{"libs", "gamefiles", "mapvar", "testdata"}
+// sousDossierCacheVariantes : le sous-dossier, sous la racine des caches du PathResolver
+// (`PathResolver.CacheRootDir`, hors dépôt), du cache local des `.mvar` re-téléchargeables. Ce cache est
+// une donnée de travail de l'outil : il ne vit pas dans une brique, dont le dossier peut être en lecture seule
+// (cache de modules), et les `.mvar` suivis par les tests de la brique mapvar n'en font pas partie.
+const sousDossierCacheVariantes = "mapvar_variantes"
 
 // options porte les chemins et les bascules résolus, pour ne pas promener dix paramètres.
 type options struct {
@@ -131,7 +131,7 @@ func lisOptions() options {
 	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json)")
 	flag.StringVar(&o.outPath, "out", "", "fichier de sortie (défaut : PathResolver.MapCalloutsPath)")
 	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_2026-08-27.json)")
-	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : libs/gamefiles/mapvar/testdata)")
+	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : <racine des caches>/mapvar_variantes)")
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
 	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")
@@ -169,7 +169,7 @@ func lisOptions() options {
 		o.inventaire = filepath.Join(append([]string{root}, inventaireParDefaut...)...)
 	}
 	if o.cacheForge == "" {
-		o.cacheForge = filepath.Join(append([]string{root}, cacheVariantesParDefaut...)...)
+		o.cacheForge = filepath.Join(o.res.CacheRootDir(), sousDossierCacheVariantes)
 	}
 	return o
 }
@@ -449,7 +449,7 @@ func construitEntree(module string, cs []himap.Callout, labels libelles) (replay
 		z := replay.CalloutZone{
 			VolumeIndex: c.VolumeIndex,
 			Name:        c.Name,
-			Text:        replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: lbl.en, i18n.LocaleFR: lbl.fr}),
+			Text:        replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: lbl.en, i18n.LocaleFR: lbl.fr}),
 			X:           c.Pos[0],
 			Y:           c.Pos[1],
 			Z:           c.Pos[2],

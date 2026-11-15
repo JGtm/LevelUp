@@ -60,7 +60,7 @@ func BuildPerMinuteStats(rowsByPlayer map[string][]canonical.PlayerMatchRow) dom
 			if r.Summary.DurationSeconds == nil || *r.Summary.DurationSeconds <= 0 {
 				continue
 			}
-			totalMin += float64(*r.Summary.DurationSeconds) / 60.0
+			totalMin += analysis.SecondsToMinutes(float64(*r.Summary.DurationSeconds))
 			kills += derefInt(r.Self.Kills)
 			deaths += derefInt(r.Self.Deaths)
 			assists += derefInt(r.Self.Assists)

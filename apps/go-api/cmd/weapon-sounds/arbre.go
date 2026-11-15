@@ -18,7 +18,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // nomsTypesHIRC : nomenclature Wwise des objets de la hierarchie.

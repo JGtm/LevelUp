@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -100,10 +99,10 @@ var postSyncCounterDeltas = []counterDelta{
 	// TestPostSyncNeverEmitsObjectiveAssigned.
 }
 
-// BuildPostSyncDeltaHook construit la closure consommée par sync_handler :
+// BuildPostSyncDeltaHook construit la closure consommée par le post-sync runner :
 // elle prend une snapshot avant le run, retourne une fonction qui prend
 // la snapshot d'après et émet les notifications correspondantes.
-func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
+func BuildPostSyncDeltaHook(reg *ServiceRegistry) func(ctx context.Context, slug string) func(ctx context.Context) {
 	return func(ctx context.Context, slug string) func(ctx context.Context) {
 		pdb, err := reg.resolve(ctx, slug)
 		if err != nil {
@@ -154,7 +153,7 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			// bloquant : toute erreur reste en slog.Warn.
 			// PMT-4 : coach proactif + pipeline progression résolus pour le TITRE
 			// du joueur syncé (pdb2.TitleSlug), JAMAIS le slug joueur de la closure
-			// (`slug` = PlayerSlug ici, cf. sync_handler.postSync). Limite connue :
+			// (`slug` = PlayerSlug ici, cf. SyncJobService.launchSyncJob). Limite connue :
 			// en post-sync background (auto-sync/CLI) le ctx ne porte pas de titre
 			// → pdb2.TitleSlug = DefaultSlug (correct mono-titre ; à threader depuis
 			// l'engine quand un 2e titre arrivera).

@@ -12,7 +12,10 @@
 //     de l'autre (`tache=foreign`) n'est pas retirée ;
 //   - le paquet de ressources installé sous le dossier du programme (internal/resourcepack.Remove : les fichiers que son
 //     manifeste liste, rien d'autre) : l'installeur « moteur seul » d'une mise à jour ne les liste pas, le désinstalleur
-//     NSIS ne les connaît donc plus après une mise à jour courante.
+//     NSIS ne les connaît donc plus après une mise à jour courante ;
+//   - les dossiers `web` et `config` du moteur, quand web/index.html existe (uninstall_cleanup_engine.go) : le front
+//     compilé nomme ses fichiers par un hachage, et ceux d'une version précédente ne sont plus dans la liste du
+//     désinstalleur. Un fichier posé à la racine du dossier du programme reste.
 //
 // La racine de données n'est JAMAIS touchée (ADR 0045, A22). Le bilan va sur stderr (stdout est réservé aux
 // événements de la coquille). Une entrée absente ou étrangère est un succès (sortie 0) ; un échec de lecture ou de
@@ -35,7 +38,6 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/schedtask"
 	"levelup/go-api/internal/platform/startupentry"
-	"levelup/go-api/internal/resourcepack"
 )
 
 // uninstallCleanupFailure : code de sortie quand une lecture ou une suppression a échoué.
@@ -99,7 +101,7 @@ func newUninstallCleanupDeps(exe string, roots title.Roots, startup startupentry
 // première échoue.
 func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	var failures []error
-	startup := "erreur"
+	startup := bilanErreur
 	if outcome, err := startupentry.RemoveForInstall(d.Startup, d.InstallDir); err != nil {
 		failures = append(failures, err)
 	} else {
@@ -107,19 +109,15 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	}
 	task := "racine-inconnue"
 	if d.Tasks != nil {
-		task = "erreur"
+		task = bilanErreur
 		if outcome, err := d.Tasks.RemoveIfTargets(ctx, d.InstallDir); err != nil {
 			failures = append(failures, err)
 		} else {
 			task = string(outcome)
 		}
 	}
-	pack := "erreur"
-	if n, err := resourcepack.Remove(d.InstallDir); err != nil {
-		failures = append(failures, err)
-	} else {
-		pack = fmt.Sprintf("%d-fichiers", n)
-	}
+	pack, engine, fileFailures := removeProgramFiles(d.InstallDir)
+	failures = append(failures, fileFailures...)
 	taskName := ""
 	if d.Tasks != nil {
 		taskName = d.Tasks.TaskName()
@@ -128,8 +126,8 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	if len(failures) > 0 {
 		code = uninstallCleanupFailure
 	}
-	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s ressources=%s nom_tache=%q data_root=%q install_dir=%q ok=%t exit=%d",
-		startup, task, pack, taskName, d.DataRoot, d.InstallDir, code == 0, code)
+	report := fmt.Sprintf("uninstall-cleanup: demarrage=%s tache=%s ressources=%s moteur=%s nom_tache=%q data_root=%q install_dir=%q ok=%t exit=%d",
+		startup, task, pack, engine, taskName, d.DataRoot, d.InstallDir, code == 0, code)
 	d.say("%s", report)
 	if err := errors.Join(failures...); err != nil {
 		d.say("uninstall-cleanup : %v", err)

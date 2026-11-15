@@ -28,14 +28,16 @@ type sessionBlocksDeps struct {
 	// (WithSessionEmprise, câblage inconditionnel).
 	sessionXUID string
 	// sessionUsageRepo : le résumé d'usage (vues _latest), câblé sous film.usage_summary ; nil =
-	// titre sans résumé. repoRoot : les catalogues du titre (noms d'armes et de véhicules de
-	// l'Emprise) ; vide = les objets gardent leur clé.
+	// titre sans résumé. labels : les catalogues du titre (noms d'armes et de véhicules de
+	// l'Emprise) ; nil = les objets gardent leur clé.
 	sessionUsageRepo port.SessionUsageRepository
-	repoRoot         string
+	labels           port.ReplayLabelSource
 	// empriseRepo : la feuille de match (frags aux armes spéciales), tous titres.
 	empriseRepo port.SquadEmpriseRepository
 	// vehicleRepo : la ressource véhicules, câblée sous film.vehicle_usage ; nil = non mesurée.
 	vehicleRepo port.SquadVehicleRepository
+	// leadShareRepo : la Mainmise (câblée sous film.lead_share) ; nil = non mesurée.
+	leadShareRepo port.LeadShareRepository
 	// emblemLoader : l'emblème du joueur de la page ; nil = initiale côté web.
 	emblemLoader port.EmblemURLLoader
 	// livesRepo : les vies (câblé sous film.kill_positions) ; radarRange : game_variant_name -> m.
@@ -58,12 +60,12 @@ func (s *SessionPageService) WithAnalysisPending(r port.AnalysisPendingMatches) 
 	return s
 }
 
-// WithSessionUsageSummary injecte le résumé d'usage et la racine des catalogues du titre. Câblé sous
+// WithSessionUsageSummary injecte le résumé d'usage et la source des catalogues du titre. Câblé sous
 // film.usage_summary (jamais slug==) ; nil = titre sans résumé : l'Emprise ne garde que la feuille
 // de match, l'objectif et l'effectif de camp de la coordination se retirent.
-func (s *SessionPageService) WithSessionUsageSummary(repo port.SessionUsageRepository, repoRoot string) *SessionPageService {
+func (s *SessionPageService) WithSessionUsageSummary(repo port.SessionUsageRepository, labels port.ReplayLabelSource) *SessionPageService {
 	s.sessionUsageRepo = repo
-	s.repoRoot = repoRoot
+	s.labels = labels
 	return s
 }
 
@@ -132,6 +134,7 @@ func (s *SessionPageService) attachSessionBlocks(
 	s.attachSessionLives(ctx, resp, sc)
 	s.attachSessionFormes(ctx, resp, sc, canon, lus)
 	s.attachSessionEmblem(ctx, resp)
+	s.attachSessionLeadShare(ctx, resp)
 }
 
 // lireUsageDeSession fait les trois lectures du résumé d'usage d'une session ; nil sans résumé

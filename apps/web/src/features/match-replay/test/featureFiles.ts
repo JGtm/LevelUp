@@ -42,6 +42,20 @@ export function racineDuDepot(): string {
   return resolve(racineWeb(), '..', '..')
 }
 
+/**
+ * Le chemin, dans l'instantané versionné, d'un fichier de la brique du décodeur de film (`replay/…`,
+ * `internal/grammar/…`, `killicon/data/…`). Les gardes qui confrontent le client à une source de la
+ * brique la lisent ICI, jamais sous le dépôt : la brique n'est pas un dossier du dépôt (module Go
+ * résolu par l'outil Go), et la CI web ne lance pas Go. L'instantané est produit par
+ * `go run ./cmd/film-web-snapshot` (depuis apps/go-api), son test de fraîcheur est Go
+ * (`cmd/film-web-snapshot`, `TestInstantaneEstFrais`). Les sources Go y portent le suffixe `.txt`
+ * (`replay/document.go.txt`), la chronique n'y garde que ses lignes d'en-tête de version
+ * (`replay/document_chronicle.entetes.txt`).
+ */
+export function instantaneFilm(...segments: string[]): string {
+  return resolve(dirname(__filename), 'film-source', ...segments)
+}
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

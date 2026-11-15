@@ -47,8 +47,10 @@ var segmentsDeLaDispositionDemo = map[string]bool{
 }
 
 // fichiersDeLArbreDemo : fichiers qui fabriquent ou résolvent l'arbre démo — règle 3.
+// internal/playerresolve/resolve.go (résolveur de démo sorti de config/player_resolver.go, qui garde les chemins
+// des bases démo) y figure depuis le 2026-11-12.
 var fichiersDeLArbreDemo = regexp.MustCompile(
-	`^(internal/ops/seed_demo[^/]*\.go|internal/config/player_resolver\.go|internal/config/config_players\.go|cmd/server/demo_paths\.go)$`)
+	`^(internal/ops/seed_demo[^/]*\.go|internal/config/player_resolver\.go|internal/playerresolve/resolve\.go|internal/config/config_players\.go|cmd/server/demo_paths\.go)$`)
 
 func TestNoDemoLayoutTranslationOutsideHelper(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)

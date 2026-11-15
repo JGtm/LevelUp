@@ -80,7 +80,7 @@ export function objectiveCell(
 }
 
 /** L'agrégat d'un ensemble de colonnes : le total de mon camp, celui du lobby. */
-export interface ObjectiveAggregate {
+export interface ObjectiveAggregateView {
   team: number
   lobby: number
 }
@@ -96,7 +96,7 @@ export interface ObjectiveAggregate {
  * pris ». C'est le faux zéro que le serveur refuse déjà en n'écrivant AUCUNE clé
  * (cf. SquadFormesObjectiveColumn.optional).
  */
-export function aggregateColumns(matches: SquadFormesMatch[], columns: SquadFormesObjectiveColumn[]): ObjectiveAggregate {
+export function aggregateColumns(matches: SquadFormesMatch[], columns: SquadFormesObjectiveColumn[]): ObjectiveAggregateView {
   let team = 0
   let lobby = 0
   for (const match of matches) {

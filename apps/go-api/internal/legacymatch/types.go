@@ -154,7 +154,6 @@ type StatsMatchRow struct {
 	SkillSeasonID             *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
 	SkillMeasurementRemaining *int     // matchs de placement restants (>0 = placement)
 	SkillRatingDelta          *float64 // gain/perte de rating du match (depuis SkillSnapshot.Delta)
-	SkillExpectedWinProb      *float64 // proba de victoire pré-match ∈ [0,1] (LUSR v2, SkillSnapshot.ExpectedWinProb)
 	// Codes de palier (pour reconstruire le libellé "Or III" comme l'Explorer) :
 	SkillTierCode       *string  // code EN stable (ex: "gold", "diamond", "onyx")
 	SkillSubTier        *int     // 1..6, nil pour Onyx

@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // mediaStatusColumn rend la colonne status qualifiée par l'alias (vide = nue).
@@ -158,7 +158,7 @@ func (r *MediaRepo) loadMediaHLSPath(ctx context.Context, mediaID int64) string 
 //
 // exec est la transaction du LeasedWriter appelant : le commit et son CHECKPOINT
 // sont la responsabilité du service (cf. media_service_delete.go).
-func (r *MediaRepo) MarkMediaDeleted(ctx context.Context, exec port.DBExecutor, filePath string) (bool, error) {
+func (r *MediaRepo) MarkMediaDeleted(ctx context.Context, exec dblease.DBExecutor, filePath string) (bool, error) {
 	res, err := exec.ExecContext(ctx, `
 		UPDATE media_files
 		SET status = ?, updated_at = CURRENT_TIMESTAMP

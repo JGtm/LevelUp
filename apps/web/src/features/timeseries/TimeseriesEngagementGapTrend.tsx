@@ -13,7 +13,7 @@
  * sans résidu ou sans durée ne fait pas avancer le cumul.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   getEChartsThemeColors,
@@ -52,7 +52,7 @@ function buildEngagementGapOption(
   points: EngagementMatchSummaryAPI[],
   granularity: EngagementGranularity,
   labels: GapLabels,
-): EChartsCoreOption | null {
+): ChartOption | null {
   if (points.length === 0) return null
   // Ordre du service conservé (déjà trié ASC) — pas de re-tri.
   const cum = cumulativeSigned(
@@ -140,7 +140,7 @@ export function TimeseriesEngagementGapTrend({
     axis: formatMessage(engagementManifest, 'engagement.cumulative_gap.axis', locale),
   }
 
-  const option = useMemo<EChartsCoreOption | null>(
+  const option = useMemo<ChartOption | null>(
     () => buildEngagementGapOption(pointsAPI, granularity, labels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pointsAPI, granularity, themeVersion, locale],

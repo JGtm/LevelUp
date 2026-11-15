@@ -1,17 +1,10 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
-import "levelup/go-api/internal/analysis"
-
-// QSquadExpectedWinProbTpl : proba de victoire pré-match (LUSR v2) par match_id,
-// depuis player.match_skill_rank. MAX(expected_win_prob) car la valeur n'est
-// posée que sur les rows LUSR (append-only, N versions/match) — robuste à la
-// présence d'une row CSR (NULL) pour le même match. %s = Placeholders(len(ids)).
-const QSquadExpectedWinProbTpl = `
-SELECT match_id, MAX(expected_win_prob) AS expected_win_prob
-FROM match_skill_rank
-WHERE match_id IN (%s) AND expected_win_prob IS NOT NULL
-GROUP BY match_id`
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+)
 
 // Q29TopTeammatesSharedTpl : (ADR 0016) — partie shared du split
 // LoadTopTeammates. Découpé en :
@@ -96,7 +89,7 @@ SELECT
     -- Vraie durée de gameplay (countdown pré-match retranché via real_start_time).
     GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
         WHEN r.real_start_time IS NOT NULL THEN CAST(round(
-            (` + analysis.SQLRealStartOffsetMs("r") + `) / 1000.0
+            (` + sqlfrag.SQLRealStartOffsetMs("r") + `) / 1000.0
         ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
     -- T0 offset (Match Timeline T0, §4.A-bis) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0. Même formule

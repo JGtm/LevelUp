@@ -55,10 +55,6 @@ offensive_conversion_p80 = 1.264
 # backend sert donc le défaut Infinite (games.DefaultDefensiveResistanceP80) sur ce titre,
 # valeur JAMAIS consommée : provides_damage_taken=false neutralise toutes les surfaces
 # de résistance côté front (carte Résistance de la Dynamique escouade comprise).
-# no_native_kda = true → Halo 5 ne renvoie PAS de KDA per-match via l'API ; sa forme
-# native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
-# pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.
-no_native_kda = true
 # no_damage_taken = true → l'API carnage h5 ne fournit PAS damage_taken (0/13241
 # vérifié). La résistance défensive (DR) n'est pas calculable : on neutralise l'axe
 # défensif du profil de combat, l'alerte coaching « fragile » et les milestones

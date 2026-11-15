@@ -11,9 +11,9 @@ import (
 func TestConvertPath_StandardMultiPlayer(t *testing.T) {
 	store := ops.MediaPathStore{CapturesBase: filepath.FromSlash("C:/Captures")}
 
-	abs := filepath.FromSlash("C:/Captures/Madina97294/thumbs/x.webp")
-	got := convertPath(store, abs, "Madina97294")
-	want := "Madina97294/thumbs/x.webp"
+	abs := filepath.FromSlash("C:/Captures/Joueur90002/thumbs/x.webp")
+	got := convertPath(store, abs, "Joueur90002")
+	want := "Joueur90002/thumbs/x.webp"
 	if got != want {
 		t.Errorf("standard multi-player: got %q, want %q", got, want)
 	}

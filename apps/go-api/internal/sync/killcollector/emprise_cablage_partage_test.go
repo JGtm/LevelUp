@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // v0Env porte les entrees du protocole, lues dans l'environnement.

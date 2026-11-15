@@ -5,11 +5,19 @@
 ```
 api/handlers/    — HTTP : décode requête, appelle service via port interface, encode réponse
 api/middleware/  — Cross-cutting : auth, CSRF, rate-limit, slog HTTP, title, ownership
-port/            — Interfaces : StatsService, Repository… (découplage handlers↔services)
-service/         — Orchestration : combine repo + analysis, implémente port.*Service
+api/wire/        — DI : assemble dépôts, services et fournisseurs ; 0 SQL, 0 logique métier
+port/            — Interfaces : StatsService, Repository… (découplage handlers↔services) ; aucun type `sql.`
+service/         — Orchestration : combine repo + analysis, implémente port.*Service ; 0 SQL, 0 paquet de titre
 domain/          — Types métier purs : structs, enums — 0 DB, 0 HTTP
-analysis/        — Algos purs : fonctions stateless — 0 DB, 0 HTTP, 0 side-effect
-platform/duckdb/ — Infrastructure : implémente port.Repository, accès DuckDB
+analysis/        — Algos purs : fonctions stateless — 0 DB, 0 HTTP, 0 side-effect, 0 paquet de titre
+platform/duckdb/ — Infrastructure : implémente port.Repository, accès DuckDB ; sous-paquets `profilerepo`
+                   (profil de progression), `worldrepo` (classement mondial), `sqlfrag` (fragments SQL
+                   partagés, dont le fuseau canonique) ; `platform/dbfault` classe les pannes de lecture
+platform/dblease/— Baux d'écriture ; porte `DBExecutor` et `DBWriter` (types SQL hors de `port/`)
+importstore/     — Stockage des services d'import (OpenSpartan, import depuis le site) derrière des ports
+cronstore/       — Lectures des tâches de fond du scheduler (sondes de santé, purge des rejeux)
+playerresolve/   — Câblage : ouvre le PlayerDB d'un joueur et résout le lecteur partagé d'un titre
+replaytext/      — Conversion des libellés du rejeu entre `i18n.Text` et le décodeur
 platform/auth/   — Tokens (MultiUserTokenStore, ADR 0023), échanges Halo
 persist/         — Écritures per-match : BatchBuilder + Persisters INSERT-only (ADR 0019)
 sync/ + sync/v2/ — Moteur de synchronisation (V2 = cycle orchestrator, ADR 0027)
@@ -21,7 +29,8 @@ ops/             — Backup, restore, seed demo — ATTENTION : certains chemins
 
 **Note racine `api/`** : la racine (hors handlers/ et middleware/) est réservée à la DI
 (registry/wire). Ne JAMAIS y ajouter de SQL, de logique métier ou de runner — c'est la
-dérive n°1 identifiée par l'audit archi 2026-07.
+dérive n°1 identifiée par l'audit archi 2026-07 ; elle est tenue par `TestApiSansSQL`
+(`archlint/frontieres_sql_test.go`, plafond 0).
 
 ## Règle : où va ce code ?
 
@@ -32,7 +41,10 @@ dérive n°1 identifiée par l'audit archi 2026-07.
 | Combine DB + algo → réponse | `service/` |
 | Interface entre handler et service | `port/` |
 | Décode HTTP → appelle service → encode JSON | `api/handlers/` |
-| Requête DuckDB (lecture) | `platform/duckdb/` |
+| Requête DuckDB (lecture) | `platform/duckdb/` (jamais dans `service/`, `analysis/`, `scheduler/`, `api/`) |
+| Fragment SQL partagé (fuseau canonique, listes, annuaire des noms) | `platform/duckdb/sqlfrag/` |
+| Lire pour un job de fond ou un service d'import | `cronstore/`, `importstore/`, derrière un port |
+| Absence de ligne | `platform/duckdb.NotFound` → `port.ErrNotFound` (`errors.Is`), jamais `sql.ErrNoRows` hors du stockage |
 | Écriture per-match sur DB partagée | `persist/` (BatchBuilder → Persister, INSERT-only) |
 | Code spécifique à un titre (parsing, client, film) | `games/{slug}/` |
 | DDL / évolution de schéma | `migration/` |
@@ -63,6 +75,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
     rows, _ := h.db.Query("SELECT ...")  // accès DB dans handler = non
 }
 
+// Handler qui tient un type concret de service, un dépôt DuckDB ou le moteur de sync
+type Handler struct{ svc *service.StatsService } // non : interface de port/ (TestHandlersSansTypeConcretDeService)
+
 // Service qui appelle un autre service (couplage horizontal)
 func (s *StatsService) Get(...) {
     result := s.sessionSvc.GetSessions(...)  // non
@@ -80,8 +95,31 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 |---|---|
 | `analysis/` | Tests unitaires purs, 0 dépendance externe |
 | `service/` | Mock `port.Repository` via interface |
-| `api/handlers/` | `httptest.NewRecorder` + mock `port.*Service` |
-| `platform/duckdb/` | DuckDB `:memory:` |
+| `api/handlers/` | `httptest.NewRecorder` + faux `port.*Service` |
+| `platform/duckdb/` (et sous-paquets) | DuckDB `:memory:` |
+
+## Frontières de couches — garde-rails
+
+Plafond 0, allowlists vides ou datées ; une entrée ne s'ajoute pas, elle se supprime avec le code qui la
+justifiait (une entrée sans violation fait rougir le test). Imports lus dans l'AST, chemin exact.
+
+| Test (`archlint/`) | Règle |
+|---|---|
+| `TestHandlersSansMoteurDeSync` | `api/handlers` sans `sync`, `persist`, ni paquet de titre ; les titres se lisent sur `internal/games/` hors `paquetsInterTitres` |
+| `TestHandlersSansStockageDuckDB` | `api/handlers` sans `platform/duckdb` (pannes : `platform/dbfault`) |
+| `TestHandlersSansTypeConcretDeService` | `api/handlers` sans `service` |
+| `TestServiceImporteAucunPaquetDeTitre`, `TestAnalysisImporteAucunPaquetDeTitre` | `service/` et `analysis/` sans paquet de titre |
+| `TestSchedulerSansStockageDuckDB`, `TestAnalysisSansStockage`, `TestWorldenrichSansService` | `scheduler/`, `analysis/`, `worldenrich` |
+| `TestApiSansSQL`, `TestMetierSansSQL`, `TestPortSansTypeSQL` | ni SQL ni `database/sql` dans `api/`, `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/` |
+| `TestAucuneLectureEnvHorsConfig` | `os.Getenv` seulement dans `internal/config`, `cmd/`, allowlist datée |
+| `TestOpenReadWriteHorsDuPointUniqueSurAllowlist`, `TestOpenReadWriteAllowlistDatee` | `duckdb.OpenReadWrite` sur l'allowlist datée de l'ADR 0030 D-3 |
+
+Front (`apps/web`) : `node tools/lint-cross-feature-imports.mjs` ; gardes `*.guard.test.ts` :
+`components/charts/chartsImportBoundary` (`echarts` seulement sous `components/charts/`),
+`components/charts/lazyEchartsMount`, `lib/api/rawFetch` (`fetch` seulement dans `lib/api/` et
+`lib/desktop/`, liste datée), `lib/api/response-types` (types homonymes d'un schéma),
+`lib/query/featureTsxNoQuery`, `lib/query/bootstrap`, `lib/query/keys`,
+`lib/table/noLocalSortToggle`, `features/noRouteImport`.
 
 ## Logging — `log/slog` (stdlib)
 
@@ -295,15 +333,18 @@ if errors.Is(err, games.ErrCapabilityNotSupported) {
 2. `config/titles/{new_title}/mappings/fields.toml` + `assets.toml` + `outcomes.toml`
 3. Enregistrer dans `TitleRegistry` + `Resolver` au boot (`api/server.go`)
 4. Brancher sur `HasCapability()` côté domain, jamais sur le slug
+5. Aucun import du nouveau paquet depuis `service/`, `analysis/` ni `api/handlers` : il arrive par un
+   port injecté au câblage (`api/wire`, `cmd/`) ; les gardes le refusent sans qu'on les édite
 
 ## Feature flags & kill-switches
 
 - Lire les env vars au boot via `internal/config` et injecter — pas de `os.Getenv`
-  dispersés dans les packages (risque de divergence entre deux lecteurs du même flag).
+  dispersés dans les packages (risque de divergence entre deux lecteurs du même flag) ;
+  `TestAucuneLectureEnvHorsConfig` tient la règle, l'allowlist datée ne fait que rétrécir.
 - Supprimer le flag et son branchement une fois la feature stabilisée en prod. Ne pas
   laisser de code mort conditionnel.
 - Un kill-switch conservé volontairement porte dans son commentaire : date du basculement
   de défaut + date cible de retrait + critère mesurable. Modèle à copier :
-  `platform/duckdb/shared_reader_legacy.go`.
+  `scheduler/auto_sync_convergence.go`.
 - Quand le DÉFAUT d'un flag bascule : mettre à jour tous ses commentaires/doc dans le
   même commit (une doc inversée sur un flag anti-corruption est un incident en attente).

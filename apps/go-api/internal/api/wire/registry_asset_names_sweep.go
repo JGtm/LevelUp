@@ -59,7 +59,7 @@ func (r *ServiceRegistry) sweepAssetNames(ctx context.Context, titleSlug string,
 	if err != nil {
 		return assetnames.Result{}, err
 	}
-	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
+	metaSQL, closeMeta := r.titleBases().Metadata(ctx, titleSlug)
 	defer closeMeta()
 	if metaSQL == nil {
 		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s", titleSlug)
@@ -70,15 +70,15 @@ func (r *ServiceRegistry) sweepAssetNames(ctx context.Context, titleSlug string,
 // collecterAssetsNonResolus lit les références d'assets restées en UUID dans la base partagée du
 // titre, et rend ses handles (shared + metadata, dataQualityHandles) en sortant.
 func (r *ServiceRegistry) collecterAssetsNonResolus(ctx context.Context, titleSlug string) ([]assetnames.AssetRef, error) {
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return nil, err
 	}
-	defer closeAll()
-	if metaSQL == nil {
+	defer h.Close()
+	if h.Meta == nil {
 		return nil, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
-	return syncpkg.CollectUnresolvedAssetRefs(ctx, sharedSQL), nil
+	return syncpkg.CollectUnresolvedAssetRefs(ctx, h.Shared), nil
 }
 
 // convergeRegistryNames exécute sync.BackfillRegistryNames sous le writer shared du titre

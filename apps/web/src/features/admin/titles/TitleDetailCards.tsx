@@ -69,11 +69,11 @@ export function TitleDetailCard({ slug }: { slug: string }) {
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {tA('admin.titles.registry_capabilities')}
           </h4>
-          {data.capabilities.length === 0 ? (
+          {(data.capabilities?.length ?? 0) === 0 ? (
             <p className="text-xs text-muted-foreground">—</p>
           ) : (
             <ul className="flex flex-wrap gap-1">
-              {data.capabilities.map((c) => (
+              {(data.capabilities ?? []).map((c) => (
                 <li key={c} className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
                   {c}
                 </li>
@@ -174,7 +174,7 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
               {tA('admin.titles.diag_config')}
             </h4>
             <ul className="space-y-1">
-              {data.config_files.map((cf) => (
+              {(data.config_files ?? []).map((cf) => (
                 <li key={cf.name} className="flex items-center justify-between gap-3 text-xs">
                   <span className="font-mono text-foreground">
                     {cf.name}
@@ -194,7 +194,7 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
               {tA('admin.titles.diag_databases')}
             </h4>
             <ul className="space-y-2">
-              {data.databases.map((db) => (
+              {(data.databases ?? []).map((db) => (
                 <li key={db.name} className="text-xs">
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-mono text-foreground">{db.name}</span>

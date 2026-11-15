@@ -61,6 +61,7 @@ type CapabilityMap struct {
 	CanKeepMediaSources      bool `json:"can_keep_media_sources" doc:"L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué)."`
 	CanRevealFilesInExplorer bool `json:"can_reveal_files_in_explorer" doc:"Ouverture de l'explorateur de fichiers du système sur un média."`
 	CanTrashMediaSources     bool `json:"can_trash_media_sources" doc:"Suppression d'un média : l'original part à la Corbeille du système quand le support en a une."`
+	CanPickFolder            bool `json:"can_pick_folder" doc:"Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`
@@ -73,7 +74,7 @@ type PlayerSummary struct {
 	XUID           string `json:"xuid"`
 	WaypointPlayer string `json:"waypoint_player"`
 	IsDemo         bool   `json:"is_demo"`
-	SteamID        string `json:"steam_id,omitempty"`   // Steam ID pour le poller de présence
+	SteamID        string `json:"steam_id,omitempty"`   // Steam ID (réservé, sans lecteur)
 	TitleSlug      string `json:"title_slug,omitempty"` // Sprint 44 : titre associé
 	// SyncEnabled : false = sync en PAUSE pour ce (joueur, titre) — les données
 	// restent sur disque mais ne sont plus rafraîchies. Résolu nil→true au chargement.
@@ -127,7 +128,7 @@ type TitleSummary struct {
 	Capabilities []string `json:"capabilities"`
 	IsDefault    bool     `json:"is_default"`
 	// EffectiveHpToKill : PV effectifs pour tuer un joueur (baseline rendement/
-	// résistance), title-spécifique (225 Infinite, 115 Halo 5). Permet au front de
+	// résistance), title-spécifique (229 Infinite, 115 Halo 5). Permet au front de
 	// rendre le copy d'aide combat title-aware sans dupliquer la constante.
 	EffectiveHpToKill float64 `json:"effective_hp_to_kill"`
 	// OffensiveConversionP80 : frontière élite (80e percentile) du rendement OC du
@@ -192,6 +193,10 @@ type BootstrapResponse struct {
 	// (refresh silencieux définitivement KO). Le front affiche une bannière
 	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
 	ReauthRequired bool `json:"reauth_required"`
+	// OwnHaloXUID : le xuid du compte CONNECTÉ (celui que `reauth_required` concerne), vide sans identité
+	// propre. Le front s'en sert pour ne dire « reconnecte-toi » que sur le profil de ce compte : le jeton
+	// mort d'un admin ne dit rien de la synchronisation du joueur qu'il consulte.
+	OwnHaloXUID string `json:"own_halo_xuid,omitempty" doc:"xuid du compte connecté, celui que reauth_required concerne."`
 	// PoolSharing : où en est le user connecté sur la mise en commun de son jeton avec le
 	// pool qui sert la synchro des autres joueurs. « undecided » déclenche la question au
 	// front ; « unavailable » = pas de jeton (compte password sans Xbox) ou pas de résolveur.

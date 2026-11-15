@@ -72,9 +72,9 @@ type TimeseriesService struct {
 	gamertag          string
 	// mapGroups : groupes de cartes (une variante compte sous sa carte de base). nil : cartes seules.
 	mapGroups port.MapGroupReader
-	// repoRoot : racine du depot, pour les catalogues du titre (noms d'armes des formes retenues
-	// et de l'Emprise). Vide = les armes s'affichent sous leur cle, jamais un nom approchant.
-	repoRoot string
+	// labels : source des catalogues du titre (noms d'armes des formes retenues
+	// et de l'Emprise). Nil = les armes s'affichent sous leur cle, jamais un nom approchant.
+	labels port.ReplayLabelSource
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository
@@ -91,6 +91,7 @@ type TimeseriesService struct {
 	// (slug deja fixe par PlayerDB).
 	highlightEventsRepo highlightEventsLoader
 	playerXUID          string
+	leadShareRepo       port.LeadShareRepository // Mainmise (timeseries_service_lead_share.go) ; nil = non mesurée
 	// expectedAssistsModels / expectedAssistsCoefs (optionnels) : résolution des
 	// assists attendus du joueur suivi (chaîne personnel → populationnel) pour
 	// l'écart au FDA attendu. nil → AssistsExpected nil (l'attendu dégrade en K/D pur).
@@ -301,6 +302,7 @@ func (s *TimeseriesService) GetPage(
 		KillTypes:        buildTimeseriesKillTypes(matches),
 	}
 	stop()
+	s.attachLeadShare(ctx, &resp, matches, historicalSolo, mapgroups.Load(ctx, s.mapGroups))
 
 	// KPI objectifs (cumul CTF/Zones/Oddball sur le scope) : best-effort, gated (repo
 	// nil hors capability match.objective.stats). Bloc omis si aucun match à objectif.

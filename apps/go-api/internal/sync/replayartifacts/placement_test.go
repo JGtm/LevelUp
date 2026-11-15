@@ -19,7 +19,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // hookAvec construit un hook au réglage donné, sans store de configuration.
@@ -143,7 +143,7 @@ func TestEnqueueAll_ReEnfileUnArtefactAppauvri(t *testing.T) {
 		matchID: appauvri,
 		facts: port.MatchFacts{
 			GameVariantName: "CTF:Arena",
-			Players:         []port.MatchPlayerFact{{XUID: "2533274819954312", Kills: 12}},
+			Players:         []port.MatchPlayerFact{{XUID: "2533491259474651", Kills: 12}},
 		},
 	}})
 	if len(enfiles) != 1 || enfiles[0] != appauvri {
@@ -168,7 +168,7 @@ func TestEnqueueAll_ArtefactCompletResteSaute(t *testing.T) {
 	}
 	enqueueAll(context.Background(), d, []buildWork{{
 		matchID: complet,
-		facts:   port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}}},
+		facts:   port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}}},
 	}})
 	if len(enfiles) != 0 {
 		t.Fatalf("mis en file = %v, attendu aucun (l'artefact porte déjà les faits)", enfiles)
@@ -238,15 +238,16 @@ func ecrireArtefactAvecFaits(t *testing.T, repoRoot, matchID string) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
-		ScoreTimeline: &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533274819954312"}}},
-		Layers:        couchesDeTest(),
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: replaybuild.CookFrameIntervalMS(),
+		MatchID:         matchID,
+		ScoreTimeline:   &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533491259474651"}}},
+		Layers:          couchesDeTest(),
 	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }
@@ -259,12 +260,12 @@ func ecrireArtefact(t *testing.T, repoRoot, matchID string) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: matchID, Layers: couchesDeTest(),
+		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID, Layers: couchesDeTest(),
 	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

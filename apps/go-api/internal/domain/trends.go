@@ -23,11 +23,12 @@ const (
 	TrendsViewSquad = "squad"
 )
 
-// Groupes d'indicateurs (TrendsIndicator.Group).
+// Groupes d'indicateurs (TrendsIndicator.Group). « pace » : stats par minute jouée.
 const (
 	TrendsGroupLevel      = "level"
 	TrendsGroupResults    = "results"
 	TrendsGroupCombat     = "combat"
+	TrendsGroupPace       = "pace"
 	TrendsGroupStyle      = "style"
 	TrendsGroupObjectives = "objectives"
 	TrendsGroupActivity   = "activity"
@@ -35,12 +36,13 @@ const (
 	TrendsGroupMembers    = "members"
 )
 
-// Unités d'un indicateur (TrendsIndicator.Unit).
+// Unités d'un indicateur (TrendsIndicator.Unit). « per_minute » : compte rapporté aux minutes jouées.
 const (
 	TrendsUnitNumber  = "number"
 	TrendsUnitRatio   = "ratio"
 	TrendsUnitSeconds = "seconds"
 	TrendsUnitHours   = "hours"
+	TrendsUnitPerMin  = "per_minute"
 )
 
 // Groupes de statistiques du bloc « Victoires et défaites » (TrendsWinLossRow.Group).
@@ -80,6 +82,12 @@ const (
 	TrendsKeyDeathsPerMatch       = "deaths_per_match"
 	TrendsKeyAvgDamageDealt       = "avg_damage_dealt"
 	TrendsKeyAvgDamageTaken       = "avg_damage_taken"
+	// Groupe « Rythme » : somme des comptes / somme des minutes jouées.
+	TrendsKeyKillsPerMinute       = "kills_per_minute"
+	TrendsKeyDeathsPerMinute      = "deaths_per_minute"
+	TrendsKeyAssistsPerMinute     = "assists_per_minute"
+	TrendsKeyDamageDealtPerMinute = "damage_dealt_per_minute"
+	TrendsKeyDamageTakenPerMinute = "damage_taken_per_minute"
 	TrendsKeyObjectiveParity      = "objective_parity"
 	TrendsKeyDeaths               = "deaths"
 	TrendsKeyKills                = "kills"

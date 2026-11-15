@@ -31,7 +31,7 @@
 //
 //  4. Le contenu : R constant à 255, G constant à 0, B = rampe verticale de teinte appliquée
 //     au rendu, A = LE DESSIN. Seul l'alpha est extrait, rendu en blanc sur fond transparent
-//     — même convention que static/abilities-assets.
+//     — même convention que les vignettes du HUD (cf. hud.go).
 //
 //  5. QUELLE IMAGE DÉSIGNE QUELLE ARME — établi depuis, et c'est le champ `sprite index` du
 //     bloc `UI display info` du tag `weap` (cf. weapui.go). 29 armes sur 29, chacune
@@ -111,6 +111,9 @@ func main() {
 		"page de nommage dont les tables sont réécrites")
 	probe := flag.Int("probe", 6, "profondeur de la sonde de recalage descripteur -> ressource")
 	maxIdx := flag.Int("max", 120, "nombre d'images à extraire par atlas")
+	hudRoot := flag.String("hud", filepath.Join("..", "..", "static", "weapons-assets", "halo_infinite"),
+		"racine où sont écrites les vignettes du HUD (hud/*.png, Grenade.png, Melee.png)")
+	hudOnly := flag.Bool("hud-seul", false, "n'écrire que les vignettes du HUD (ni jeu/, ni index.json, ni page de nommage)")
 	flag.Parse()
 	probeWindow = *probe
 
@@ -133,6 +136,14 @@ func main() {
 
 	ix := buildIndex("")
 	fmt.Printf("index : %d archives, %d entrées\n", ix.nMods, ix.nEntry)
+
+	if err := writeHud(ix, *hudRoot); err != nil {
+		fmt.Fprintln(os.Stderr, "vignettes du HUD:", err)
+		os.Exit(1)
+	}
+	if *hudOnly {
+		return
+	}
 
 	// Le lien arme -> index d'icône, lu dans les tags `weap` et auto-validé.
 	icons, err := resolveWeaponIcons(ix)

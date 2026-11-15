@@ -37,6 +37,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	authpkg "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 )
 
 type rankRow struct {
@@ -265,7 +266,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		return nil, errors.New("SPARTAN_TOKEN absent ET --player non fourni — précisez l'un des deux")
 	}
 
-	pdb, err := config.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
+	pdb, err := playerresolve.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
 	if err != nil {
 		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
 	}

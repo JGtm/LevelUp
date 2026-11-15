@@ -28,8 +28,8 @@ import (
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // surfacesJournal capture les surfaces que `netguard` journalise (une ligne par surface coupée).

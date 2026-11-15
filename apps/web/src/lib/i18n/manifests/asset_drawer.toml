@@ -63,6 +63,10 @@ en = "References"
 fr = "Redimensionner le volet des référentiels"
 en = "Resize the references pane"
 
+[asset_drawer.pin.toggle]
+fr = "Épingler le volet"
+en = "Pin the pane"
+
 [asset_drawer.trigger.title]
 fr = "Référentiels (Ctrl+Maj+L)"
 en = "References (Ctrl+Shift+L)"

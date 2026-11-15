@@ -37,7 +37,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // UsageSummaryPersister ecrit une passe de resume d usage dans shared_matches_v2.duckdb.

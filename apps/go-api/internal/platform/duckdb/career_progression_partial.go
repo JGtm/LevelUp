@@ -68,7 +68,7 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	}
 	// Phase 6 PLAN_V2 : un partial avec uniquement LastFetchStatus est inséré
 	// pour tracer une tentative qui n'a rien rendu (ex: 403 sur customization
-	// pour XxDaemonGamerxX). Sinon vide-vide → skip.
+	// pour Joueur90000000f). Sinon vide-vide → skip.
 	if partial == nil {
 		return false, nil
 	}

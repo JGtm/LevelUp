@@ -2,8 +2,8 @@
 //
 // v2 est le seul modèle LUSR (ADR 0024) : la v1 est supprimée. Ces fonctions
 // réutilisent le chemin de prod RunLUSRV2ShadowOwnerOnly, précédé d'un reset du
-// watermark du joueur — exactement le pattern du backfill canonical
-// (cmd/lusr_v2_canonical_backfill), ici nommé et réutilisable.
+// watermark du joueur — exactement le pattern du backfill canonical,
+// ici nommé et réutilisable.
 package sync
 
 import (

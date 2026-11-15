@@ -63,7 +63,7 @@ const FIXTURE: PlayerProfile = {
     matches_per_day_avg: 4.3,
     max_gap_days: 3,
   },
-  lusr: { Mu: 1850, Sigma: 95 },
+  lusr: { Mu: 1850, Sigma: 95, MatchesCount: 0, LastMatchAt: null },
   skill_rating: {
     tier_name: 'Onyx',
     sub_tier: 3,

@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // Supprimer retire un film de l'archive : son manifeste D'ABORD (c'est le marqueur de commit, le

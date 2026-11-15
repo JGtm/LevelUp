@@ -2,7 +2,7 @@
 // skill complètes, en forme de réponse JSON de l'API :
 //   - testdata/skill_match_social.json : RankRecap d'un match social, valeurs transcrites de la
 //     charge réelle capturée le 2026-05-24 (jgtm_full_match/api_skill.json) : tout à zéro ;
-//   - testdata/skill_match_ranked.json : réponse skill RÉELLE d'un Ranked Slayer (Nuzzles, 30/09/2026,
+//   - testdata/skill_match_ranked.json : réponse skill RÉELLE d'un Ranked Slayer (J900004, 30/09/2026,
 //     HTTP 200), copiée telle quelle : Onyx 1756 -> 1749, InitialMeasurementMatches = 5.
 package sync
 
@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	rulePlayerXUID = "2533274823110022" // joueur de la charge sociale
-	ruleRankedXUID = "2535472547643888" // joueur de la charge classée
+	rulePlayerXUID = "2603225103667623" // joueur de la charge sociale
+	ruleRankedXUID = "2543518745364847" // joueur de la charge classée
 )
 
 func loadSkillFixture(t *testing.T, name string) map[string]*MatchSkillData {

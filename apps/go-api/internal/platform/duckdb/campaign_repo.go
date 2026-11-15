@@ -238,7 +238,7 @@ func scanCampaign(row RowScanner) (campaign.ImprovementCampaign, error) {
 //   - radar.survival        : kills - deaths (clampé à 0)
 //   - radar.support         : assists
 //   - radar.score           : personal_score
-//   - radar.objective       : 0 (V1 — mapping award→axis title-specific reporté)
+//   - radar.objective       : note d'objectif du match (loadObjectiveSamples, part de l'équipe)
 //   - radar.impact          : max_killing_spree * 10
 //   - lusr_component.*      : lusr_component_history (PLAYER) ⨝ match_registry (SHARED)
 type CampaignSampleProvider struct{ pdb *PlayerDB }
@@ -267,26 +267,15 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 		return p.loadLUSRComponentSamples(ctx, axis, playlistGroup, since, until)
 	}
 
+	if axisKind == campaign.AxisKindRadar && axis == campaignObjectiveAxis {
+		return p.loadObjectiveSamples(ctx, userID, playlistGroup, since, until)
+	}
+
 	expr, supported := axisValueExpression(axis, axisKind)
 	if !supported {
 		return nil, nil
 	}
-	// Temps canonique (règle n°8) : filtre de fenêtre ET tri, sinon un import à
-	// start_time NULL sort de la fenêtre et l'ordre des échantillons dérive.
-	tsMr := StartTimeCanonicalSQL("mr")
-	q := "SELECT " + expr + ` AS val
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
-		  AND ` + tsMr + ` >= ? AND ` + tsMr + ` <= ?` +
-		// Campagne exclue (D-5, backlog B4) ; titre = celui de la base partagée lue.
-		excludeCampaignClause(pdbTitleSlug(p.pdb), "mr")
-	args := []any{userID, since, until}
-	if playlistGroup != "" && playlistGroup != "all" {
-		q += ` AND mr.playlist_id = ?`
-		args = append(args, playlistGroup)
-	}
-	q += " ORDER BY " + tsMr + " ASC"
+	q, args := p.windowSamplesQuery(expr, userID, playlistGroup, since, until)
 
 	db, release, err := p.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -311,6 +300,10 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 	}
 	return out, rows.Err()
 }
+
+// campaignObjectiveAxis : l'axe radar « Objectif », mesuré par match comme sur le radar de la vue
+// Match (note d'objectif du match, 0-100) et non par une colonne de match_participants.
+const campaignObjectiveAxis = "objective"
 
 // loadLUSRComponentSamples lit la chronologie d'une composante LUSR depuis
 // `lusr_component_history` (table joueur), joint à `match_registry` (shared)
@@ -441,8 +434,8 @@ func (p *CampaignSampleProvider) loadLUSRValuesByMatch(
 }
 
 // axisValueExpression mappe (axis, kind=radar) → expression SQL sur
-// match_participants. V1 = heuristique pragmatique pour les axes radar.
-// Le mapping fin via awards.toml arrive au V2 commit-2.
+// match_participants (axes radar, heuristique pragmatique). L'axe « objectif » n'y est pas : il se
+// mesure par match depuis les lignes d'objectif des deux camps (loadObjectiveSamples).
 //
 // Note : kind=lusr_component est traité séparément par loadLUSRComponentSamples
 // qui lit `lusr_component_history` directement (V2 commit-1).
@@ -459,8 +452,6 @@ func axisValueExpression(axis string, kind campaign.AxisKind) (string, bool) {
 			return "CAST(mp.personal_score AS DOUBLE)", true
 		case "impact":
 			return "CAST(mp.max_killing_spree AS DOUBLE) * 10", true
-		case "objective":
-			return "0.0", true // placeholder V1 — mapping awards→axis arrive V2 commit-2
 		}
 	}
 	return "", false

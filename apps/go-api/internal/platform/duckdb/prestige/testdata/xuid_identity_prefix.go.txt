@@ -7,7 +7,7 @@
 // pour rendre le fragment parsable isolement.
 //
 // C EST LE BUG : parametre d identite applicative `userID` (un player_slug tel
-// que "JGtm") injecte dans `WHERE mp.xuid = ?` (qui n accepte qu un xuid Xbox).
+// que "Jf01") injecte dans `WHERE mp.xuid = ?` (qui n accepte qu un xuid Xbox).
 // Le detecteur DOIT signaler ce fichier, sinon le garde-rail est decoratif.
 package prestige
 

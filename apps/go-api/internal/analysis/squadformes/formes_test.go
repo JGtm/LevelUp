@@ -31,7 +31,7 @@ func fixture() Input {
 	return Input{
 		PlayerXUID: "moi",
 		SquadPlayers: []domain.SessionUsageSquadPlayer{
-			{XUID: "moi", Gamertag: "JGtm"}, {XUID: "cop", Gamertag: "Madina97294"},
+			{XUID: "moi", Gamertag: "JGtm"}, {XUID: "cop", Gamertag: "Joueur90002"},
 		},
 		Metas: []MatchMeta{
 			{MatchID: "m1", StartTime: "2026-07-31T19:22:00Z", ModeLabel: "Bastion", MapLabel: "Perilous"},

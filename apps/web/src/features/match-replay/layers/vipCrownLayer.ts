@@ -42,6 +42,8 @@ export interface VipCrownStyle {
   outline: string
   /** Mouvement réduit : la pulsation de la couronne « ouverte » devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de pulsation est une durée. */
+  frameMs: number
 }
 
 /**
@@ -54,6 +56,11 @@ export interface VipCrownInput {
   style: VipCrownStyle
   /** Position monde du joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la couronne est retiré de la carte — il est à son porteur.
+   * Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 /** Côté du glyphe, en pixels canvas : la largeur du crâne porté (r=7 + liseré). */
@@ -96,12 +103,13 @@ export function drawVipCrown(
   frame: number,
 ): void {
   for (const p of vipActiveAt(periods, frame)) {
+    if (layer.shownCarrier && !layer.shownCarrier(p.xuid)) continue
     const w = layer.posOf(p.xuid, frame)
     if (!w) continue
     drawCrownGlyph(ctx, projectTo(view, w), {
       ink: layer.style.inkOf(p.xuid),
       outline: layer.style.outline,
-      alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion, layer.style.frameMs),
     })
   }
   ctx.globalAlpha = 1

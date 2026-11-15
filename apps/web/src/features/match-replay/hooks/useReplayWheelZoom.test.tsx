@@ -23,6 +23,7 @@ function spies(): ReplayZoom {
     panStep: vi.fn(),
     zoomAt: vi.fn(),
     panBy: vi.fn(),
+    focusOn: vi.fn(),
   }
 }
 

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Trois vrais matchs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&amp;display=swap">
+<style>body{margin:0;background:#050505}</style>
+</helmet>
+<div style="width: 1280px; height: 880px; position: relative; overflow: hidden; background: #050505; color: #fafafa; font-family: Roboto, system-ui, sans-serif; font-size: 12px">
+  <div style="height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #1f1f1f">
+    <sc-for list="{{matches}}" as="m" hint-placeholder-count="3"><button type="button" onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="height: 38px; padding: 0 14px; border-radius: 19px; border: 1px solid {{m.bd}}; background: {{m.bg}}; color: #fafafa; font: inherit; cursor: pointer">{{m.l}}</button></sc-for>
+    <div style="margin-left: auto; color: #d4d4d4">{{readout}}</div>
+  </div>
+
+  <div style="position: absolute; left: 12px; top: 62px; width: 1256px" onMouseMove="{{hoverMove}}" onMouseLeave="{{hoverOut}}">
+    <sc-for list="{{charts}}" as="c" hint-placeholder-count="3">
+      <div style="height: 222px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; box-sizing: border-box; margin-bottom: 6px; position: relative">
+        <div style="position: absolute; left: 12px; top: 8px; font-weight: 700; font-size: 13px">{{c.title}}</div>
+        <div style="position: absolute; right: 54px; top: 8px; color: #a1a1a1">{{c.legend}}</div>
+        <svg width="1254" height="220" viewBox="0 0 1254 220" role="img" aria-label="{{c.title}}" style="position: absolute; left: 0; top: 0; pointer-events: none">
+          <line x1="52" x2="1200" y1="{{c.zero}}" y2="{{c.zero}}" stroke="#4a4a4a"></line>
+          <path d="{{c.pos}}" fill="#2ee08f" fill-opacity=".5"></path>
+          <path d="{{c.neg}}" fill="#e5393b" fill-opacity=".5"></path>
+          <path d="{{c.lineA}}" fill="none" stroke="#2ee08f" stroke-width="2"></path>
+          <path d="{{c.lineB}}" fill="none" stroke="#e5393b" stroke-width="2"></path>
+          <line x1="{{hoverX}}" x2="{{hoverX}}" y1="30" y2="210" stroke="#888" stroke-opacity="{{hoverOp}}"></line>
+        </svg>
+        <sc-for list="{{c.ticks}}" as="t" hint-placeholder-count="3"><div style="position: absolute; left: 8px; width: 38px; text-align: right; top: {{t.y}}px; transform: translateY(-50%); color: #a1a1a1; font-size: 11px">{{t.l}}</div></sc-for>
+      </div>
+    </sc-for>
+    <div style="position: relative; height: 16px">
+      <sc-for list="{{xTicks}}" as="t" hint-placeholder-count="6"><div style="position: absolute; top: 0; left: {{t.x}}px; transform: translateX(-50%); color: #a1a1a1; font-size: 11px">{{t.l}}</div></sc-for>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; top: 800px; width: 1280px; height: 80px; box-sizing: border-box; background: #18181b; border-top: 1px solid #333; padding: 10px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">DONNÉES</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">Vrais matchs tirés de tes rejeux, un point toutes les 10 s. Vert et rouge désignent les deux équipes du match, sans lien avec ton camp.</div></div>
+    <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">TROIS ANGLES</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">Les trois sont gardés : la courbe pour le déroulé, l'écart pour voir qui mène et de combien, la supériorité pour le rapport de force sur le terrain.</div></div>
+    <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">SUPÉRIORITÉ</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">Information différente du score : écart de joueurs en vie, bots compris, plus nerveux et bruité sur 10 s.</div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":880}}'>
+const DATA = [
+  { l: "Très serré, 49 à 50", a: [0,0,0,0,1,3,4,5,5,6,8,10,11,12,14,14,14,16,18,18,18,20,21,25,25,26,27,29,31,32,32,33,33,33,34,36,38,39,39,39,40,40,41,42,43,44,45,46,48,48,49], b: [0,0,0,0,1,2,3,5,7,8,10,11,11,12,13,16,17,19,19,20,20,20,21,21,21,24,24,25,27,27,28,31,32,34,35,36,36,37,39,40,42,43,43,44,45,45,49,49,49,49,50], adv: [2,0,0,0,0,1,0,-1,-2,0,1,0,1,0,1,-2,-1,-1,2,-1,0,2,-1,3,0,-2,1,1,1,0,-1,-1,0,-2,1,0,2,0,-2,-1,-1,0,1,1,0,1,-2,1,1,1,1] },
+  { l: "Retournement, 200 à 199", a: [0,0,0,0,0,10,12,12,12,12,12,12,12,12,12,12,17,20,20,23,29,30,33,33,34,44,45,51,58,58,58,58,58,58,62,62,62,68,69,69,69,69,72,82,85,94,107,119,119,119,124,126,128,128,130,130,132,140,150,156,156,156,156,156,166,171,180,180,180,180,180,180,180,180,196,200], b: [0,0,0,0,0,0,0,5,15,20,21,25,26,36,36,42,42,42,42,42,42,42,42,47,50,50,52,52,52,56,66,76,80,81,81,97,104,104,105,115,125,132,132,132,132,132,132,132,133,141,141,142,142,146,147,155,155,155,155,155,161,165,169,170,170,170,170,174,181,189,189,192,199,199,199,199], adv: [-1,0,0,0,0,-1,-1,-1,-1,1,0,-3,0,-1,-1,0,-2,0,0,-1,1,-1,2,0,0,2,0,0,-1,0,-1,1,-1,-1,-3,-1,1,-1,0,-2,0,-1,1,0,1,2,0,-1,-1,2,-2,0,-2,0,-1,2,1,2,-1,1,-1,0,-1,1,1,0,-1,-2,-1,-1,-1,0,0,2,1,2] },
+  { l: "À sens unique, 50 à 15", a: [0,0,0,0,3,3,3,4,4,4,6,6,8,8,10,11,13,14,14,16,17,18,19,21,21,22,23,23,24,24,25,25,28,28,29,32,33,34,37,37,39,40,40,41,42,45,46,47,49,49,49,50], b: [0,0,0,1,1,1,1,2,2,3,4,4,5,6,6,6,6,6,6,7,8,8,8,9,9,9,9,10,11,11,12,12,12,12,12,12,12,12,12,12,12,12,12,13,13,13,13,13,14,14,14,15], adv: [-1,0,0,0,2,1,1,1,2,1,1,1,3,3,2,2,3,1,0,1,0,0,1,1,1,1,0,-1,0,0,1,0,3,0,1,3,2,2,3,1,3,1,0,0,1,2,2,2,2,1,1,0] }
+];
+const PAS = 10, L = 52, R = 1200, T = 34, B = 208;
+const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const signe = (v) => (v > 0 ? `+${v}` : `${v}`);
+const step = (xs, ys) => xs.map((x, i) => (i === 0 ? `M${x} ${ys[i]}` : `H${x}V${ys[i]}`)).join("");
+function diverge(xs, serie, M) {
+  const yOf = (v) => T + ((M - v) / (2 * M)) * (B - T), zero = yOf(0);
+  let pos = "", neg = "";
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const r = `M${xs[i]} ${zero}H${xs[i + 1]}V${yOf(serie[i])}H${xs[i]}Z`;
+    if (serie[i] > 0) pos += r; else if (serie[i] < 0) neg += r;
+  }
+  return { pos, neg, zero, ticks: [M, 0, -M].map((v) => ({ y: yOf(v), l: signe(v) })) };
+}
+class Component extends DCLogic {
+  state = { match: 0, hover: null };
+  renderVals() {
+    const m = DATA[this.state.match], n = m.a.length;
+    const xs = Array.from({ length: n }, (_, i) => L + (i / (n - 1)) * (R - L));
+    const delta = m.a.map((v, i) => v - m.b[i]);
+    const maxS = Math.max(...m.a, ...m.b), yS = (v) => B - (v / maxS) * (B - T);
+    const Md = Math.max(4, ...delta.map(Math.abs));
+    const blank = { pos: "", neg: "", lineA: "", lineB: "" };
+    const charts = [
+      { ...blank, title: "Score dans le temps", legend: "Vert : première équipe · Rouge : seconde équipe", zero: B, lineA: step(xs, m.a.map(yS)), lineB: step(xs, m.b.map(yS)), ticks: [maxS, Math.round(maxS / 2), 0].map((v) => ({ y: yS(v), l: v })) },
+      { ...blank, title: "Écart de score", legend: "Au-dessus : le vert mène · En dessous : le rouge mène", ...diverge(xs, delta, Md) },
+      { ...blank, title: "Supériorité numérique", legend: "Différence de joueurs en vie", ...diverge(xs, m.adv, 4) }
+    ];
+    const hover = this.state.hover;
+    const hoverMove = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const scale = rect.width / 1256 || 1;
+      const px = (e.clientX - rect.left) / scale;
+      const i = Math.max(0, Math.min(n - 1, Math.round(((px - L) / (R - L)) * (n - 1))));
+      if (i !== this.state.hover) this.setState({ hover: i });
+    };
+    const lead = delta.filter((v) => v > 0).length, trail = delta.filter((v) => v < 0).length;
+    const pct = (x) => Math.round((x / n) * 100);
+    return {
+      charts, hoverMove, hoverOut: () => this.setState({ hover: null }),
+      hoverX: hover === null ? -10 : xs[hover], hoverOp: hover === null ? 0 : 1,
+      readout: hover === null ? `Mainmise : vert ${pct(lead)} %, rouge ${pct(trail)} %` : `${fmt(hover * PAS)} · Score ${m.a[hover]} à ${m.b[hover]} · Écart ${signe(delta[hover])} · Supériorité ${signe(m.adv[hover])}`,
+      xTicks: Array.from({ length: 7 }, (_, i) => ({ x: L + (i / 6) * (R - L), l: fmt(Math.round((((n - 1) * PAS) * i) / 6)) })),
+      matches: DATA.map((d, i) => ({ l: d.l, on: i === this.state.match, bd: i === this.state.match ? "#7fb3ff" : "#333", bg: i === this.state.match ? "#26303f" : "transparent", pick: () => this.setState({ match: i, hover: null }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

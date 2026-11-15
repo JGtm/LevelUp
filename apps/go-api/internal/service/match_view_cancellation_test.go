@@ -3,7 +3,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -149,7 +148,7 @@ func TestComputeExpectedAssists_CoefPopulationnelEnEchec_EstJournalise(t *testin
 	t.Run("modèle non seedé", func(t *testing.T) {
 		logs := logsNiveau(t)
 		_ = computeExpectedAssists(context.Background(), repo,
-			&fakeMetadataRepo{coefErr: sql.ErrNoRows}, "Slayer", &domain.PlayerMatchStatsRaw{})
+			&fakeMetadataRepo{coefErr: port.ErrNotFound}, "Slayer", &domain.PlayerMatchStatsRaw{})
 		if !strings.Contains(logs.String(), "level=WARN msg=\"match_view: modèle populationnel d'assists attendus illisible") {
 			t.Errorf("WARN attendu : %s", logs.String())
 		}

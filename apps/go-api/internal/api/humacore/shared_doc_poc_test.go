@@ -164,9 +164,9 @@ func TestSharedDoc_HTTPBehaviorPreserved(t *testing.T) {
 		MiddlewareRan bool       `json:"middleware_ran"`
 		Meta          CommonMeta `json:"meta"`
 	}
-	doJSON(t, r, http.MethodGet, "/api/v1/players/Madina97294/pages/probe", nil, http.StatusOK, &a)
-	if a.Slug != "Madina97294" {
-		t.Errorf("A: slug = %q, want Madina97294 (path param parent non lu)", a.Slug)
+	doJSON(t, r, http.MethodGet, "/api/v1/players/Joueur90002/pages/probe", nil, http.StatusOK, &a)
+	if a.Slug != "Joueur90002" {
+		t.Errorf("A: slug = %q, want Joueur90002 (path param parent non lu)", a.Slug)
 	}
 	if !a.MiddlewareRan {
 		t.Error("A: middleware du sous-groupe NON hérité par la route Huma")
@@ -180,10 +180,10 @@ func TestSharedDoc_HTTPBehaviorPreserved(t *testing.T) {
 		Slug string     `json:"slug"`
 		Meta CommonMeta `json:"meta"`
 	}
-	doJSON(t, r, http.MethodPost, "/api/v1/players/Madina97294/pages/submit",
+	doJSON(t, r, http.MethodPost, "/api/v1/players/Joueur90002/pages/submit",
 		strings.NewReader(`{"note":"hi"}`), http.StatusOK, &ap)
-	if ap.Slug != "Madina97294" || ap.Meta.Count != 2 {
-		t.Errorf("A POST: slug=%q count=%d, want Madina97294/2", ap.Slug, ap.Meta.Count)
+	if ap.Slug != "Joueur90002" || ap.Meta.Count != 2 {
+		t.Errorf("A POST: slug=%q count=%d, want Joueur90002/2", ap.Slug, ap.Meta.Count)
 	}
 
 	// Groupe B : gate RequireAuth-like — 401 sans en-tête.

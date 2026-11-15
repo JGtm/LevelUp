@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const testSlug = "halo_infinite"
@@ -47,6 +48,7 @@ func writeArtifact(t *testing.T, paths *title.PathResolver, matchID string, curr
 	doc := map[string]any{"matchId": matchID, "schemaVersion": 1}
 	if current {
 		doc["schemaVersion"] = replay.SchemaVersion
+		doc["frameIntervalMs"] = replaybuild.CookFrameIntervalMS()
 		layers := map[string]string{}
 		for fam, rev := range replay.RevisionsCourantesDesCouches() {
 			layers[fam] = rev
@@ -61,7 +63,7 @@ func writeArtifact(t *testing.T, paths *title.PathResolver, matchID string, curr
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, raw, 0o644); err != nil {
+	if err := poserCompresse(p, raw, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -81,8 +83,10 @@ type fixture struct {
 	inFly    atomic.Int32
 	maxFly   atomic.Int32
 	rebuild  func(ctx context.Context, slug, id string) error
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	// heavyHook : appelé à chaque consultation de la porte du mode jeu (nil = rien).
+	heavyHook func()
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
 }
 
 // newFixture relie un service sur une racine temporaire. Par défaut la reconstruction réécrit l'artefact à jour.
@@ -117,8 +121,13 @@ func newFixture(t *testing.T) *fixture {
 			time.Sleep(5 * time.Millisecond)
 			return f.rebuild(ctx, slug, id)
 		},
-		Pending:        f.pending,
-		HeavyAllowed:   f.heavy.Load,
+		Pending: f.pending,
+		HeavyAllowed: func() bool {
+			if f.heavyHook != nil {
+				f.heavyHook()
+			}
+			return f.heavy.Load()
+		},
 		GateEvery:      10 * time.Millisecond,
 		BusyRetryEvery: 5 * time.Millisecond,
 		BusyRetries:    3,
@@ -181,7 +190,7 @@ func TestScan_ArtefactPlusRecentQueLeBinaireNEstPasEnRetard(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte(fmt.Sprintf(`{"matchId":"f00d0001","schemaVersion":%d}`, replay.SchemaVersion+5)), 0o644); err != nil {
+	if err := poserCompresse(p, []byte(fmt.Sprintf(`{"matchId":"f00d0001","schemaVersion":%d}`, replay.SchemaVersion+5)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	f.films["f00d0001"] = true
@@ -494,5 +503,55 @@ func TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement(t *testing.
 	cands, err := f.svc.scan(context.Background())
 	if err != nil || len(cands) != 2 {
 		t.Fatalf("candidats = %d, err = %v : le décompte doit tenir sans le registre", len(cands), err)
+	}
+}
+
+// poserCompresse range un artefact par la porte (compressé, sous le nom canonique de p) ; la signature suit os.WriteFile
+// pour que les écritures de ce paquet de tests ne changent que de nom.
+func poserCompresse(p string, raw []byte, _ os.FileMode) error {
+	_, _, err := replayartifact.Write(context.Background(), p, raw)
+	return err
+}
+
+// TestScan_LePasEntreDansLeCritereDuDecompte : au schéma et aux couches courants, un rejeu à 100 ms est en retard
+// (et refaisable, film présent) quand la cadence courante est 33 ms, à jour quand elle est 100 ms ; un en-tête
+// sans pas se lit à 100 ms.
+func TestScan_LePasEntreDansLeCritereDuDecompte(t *testing.T) {
+	for _, c := range []struct {
+		nom      string
+		courant  int
+		pas      any // nil = pas absent de l'en-tête
+		enRetard bool
+	}{
+		{"100 ms face à 33 ms", 33, 100, true},
+		{"100 ms face à 100 ms", 100, 100, false},
+		{"33 ms face à 33 ms", 33, 33, false},
+		{"pas absent face à 33 ms", 33, nil, true},
+		{"pas absent face à 100 ms", 100, nil, false},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			defer replaybuild.ForceCookFrameIntervalMS(c.courant)()
+			f := newFixture(t)
+			writeArtifact(t, f.paths, "5af11111", true)
+			p := f.paths.ReplayArtifactPath(testSlug, "5af11111")
+			// Un artefact à jour par son schéma et ses couches, au pas voulu ; l'en-tête est réécrit à ce pas.
+			doc := map[string]any{"matchId": "5af11111", "schemaVersion": replay.SchemaVersion, "layers": replay.RevisionsCourantesDesCouches()}
+			if c.pas != nil {
+				doc["frameIntervalMs"] = c.pas
+			}
+			raw, _ := json.Marshal(doc)
+			if err := poserCompresse(p, raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			_ = os.Remove(replaybuild.MetaPath(p)) // l'en-tête se reconstruit de l'artefact
+			f.films["5af11111"] = true
+			cands, err := f.svc.scan(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (len(cands) == 1) != c.enRetard {
+				t.Fatalf("candidats = %d, en retard attendu = %v", len(cands), c.enRetard)
+			}
+		})
 	}
 }

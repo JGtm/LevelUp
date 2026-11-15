@@ -22,8 +22,8 @@ import (
 	halo "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/weapons"
 
-	"github.com/JGtm/LevelUp/libs/film/killicon"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/killicon"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func vtTagEngin(t *testing.T) uint32 {
@@ -66,7 +66,7 @@ func vtArtefact(t *testing.T, racine, matchID string, schema int) {
 		t.Fatal(err)
 	}
 	blob, _ := json.Marshal(doc)
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if err := poserCompresse(path, blob, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

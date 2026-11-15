@@ -32,15 +32,15 @@ func TestCoordinator_Submit_RefuseSansProfilSuivi(t *testing.T) {
 		})
 
 	ok := coord.Submit(context.Background(), CoordinatorRequest{
-		Gamertag: "InconnuAuBataillon", XUID: "2533274796795729",
+		Gamertag: "InconnuAuBataillon", XUID: "2676423891261051",
 		MatchIDs: []string{"m1"}, TitleSlug: "halo_infinite",
 	})
 
 	if ok {
 		t.Fatal("Submit doit rendre false pour un joueur sans profil suivi")
 	}
-	if vuTitre != "halo_infinite" || vuXUID != "2533274796795729" {
-		t.Errorf("la porte doit recevoir (titre, xuid) = (halo_infinite, 2533274796795729), reçu (%q, %q)", vuTitre, vuXUID)
+	if vuTitre != "halo_infinite" || vuXUID != "2676423891261051" {
+		t.Errorf("la porte doit recevoir (titre, xuid) = (halo_infinite, 2676423891261051), reçu (%q, %q)", vuTitre, vuXUID)
 	}
 	if got := observability.LoadCounter("sync_refused_no_profile"); got != 1 {
 		t.Errorf("compteur sync_refused_no_profile = %d, want 1", got)

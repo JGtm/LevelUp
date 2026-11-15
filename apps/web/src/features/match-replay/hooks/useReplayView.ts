@@ -28,8 +28,12 @@ import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/typ
 import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import type { WallPlanReady } from '@/lib/replay/wallPlan'
+import { orientAbout, orientBounds, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
+import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { lockedZoom, useReplayZoom, type ReplayZoom } from './useReplayZoom'
+import { lockedZoom, useReplayZoom, withManualMove, type ReplayZoom } from './useReplayZoom'
 import { useExportLayout } from '../export/exportLayoutStore'
 
 // LA HAUTEUR DE DESSIN N'EST PLUS FIXE (2026-09-02) : elle est le moindre de ce que l'écran
@@ -67,12 +71,27 @@ export const CANVAS_PAD = 24
 export interface ReplayMapBackgroundLayer {
   calibration: ReplayMapBackgroundCalibration
   image: HTMLImageElement
+  /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `lib/replay/wallPlan`). */
+  plan: WallPlanReady | null
+  /**
+   * L'image posée : `plan` (vue plan à hauteurs, qui porte déjà les murs : le calque des murs se
+   * retire) ou `rendu`. Même calage, mêmes dimensions : rien d'autre ne dépend de cette valeur.
+   */
+  variante: MapBackgroundVariant
+  /** Le fond porte-t-il une image plan ? La commande « Fond » n'est proposée que s'il en a une. */
+  planAvailable: boolean
 }
 
 export interface ReplayViewOptions {
   doc: ReplayDocumentReady
   /** Fond de carte figé, tel que la page l'a chargé. Absent = la carte n'en a pas. */
   background?: ReplayMapBackgroundLayer | null
+  /**
+   * L'ORIENTATION DE LA CARTE, en quarts de tour horaires (0 = non tournée). Les bornes du
+   * cadrage et `canvasView` la portent : tout ce qui projette par le cadrage — dessin, survol,
+   * export, chaleur — suit sans la connaître (cf. `lib/replay/orientation`).
+   */
+  turns?: QuarterTurns
   /** Largeur mesurée du conteneur, en px CSS. 0 = le canvas n'est pas encore mesuré. */
   width: number
   /**
@@ -82,12 +101,23 @@ export interface ReplayViewOptions {
    * quelle hauteur on n'ajoute plus que du vide.
    */
   freeHeight: number
+  /**
+   * Appelé à chaque geste MANUEL de cadrage (croix, molette, clavier, glisser, retour) : c'est ce
+   * qui arrête « Suivre » (panneau de joueur). Absent = aucun écouteur. Le cadrage programmé
+   * (`zoom.focusOn`) ne l'appelle pas.
+   */
+  onManualMove?: () => void
 }
 
 /** Le cadrage complet, dans l'ordre où il se décide. */
 export interface ReplayView {
   /** Le fond RETENU (`null` = écarté ou absent) : c'est lui qui décide du reste. */
   mapImage: ReplayMapBackgroundLayer | null
+  /**
+   * Les bornes de la scène dans le repère MONDE, avant toute rotation : c'est le repère des
+   * données du film (la grille de chaleur s'y accumule). Le cadrage tourné, lui, est
+   * `canvasView.bounds`.
+   */
   bounds: ReplayBounds
   /** Largeur de dessin en px CSS ; 0 tant que le conteneur n'est pas mesuré. */
   renderWidth: number
@@ -117,8 +147,10 @@ export interface ReplayView {
 export function useReplayView({
   doc,
   background,
+  turns = 0,
   width,
   freeHeight,
+  onManualMove,
 }: ReplayViewOptions): ReplayView {
   // LE FOND DE CARTE PREND LA PLACE DU SOL RECONSTRUIT, il ne s'y ajoute pas : l'image
   // porte la carte telle que le jeu la dessine, la trame d'altitudes n'en est que
@@ -133,6 +165,11 @@ export function useReplayView({
   }, [background, doc.bounds])
   // Le cadrage se décide APRÈS le fond : une image posée écarte les props du cadre (sceneBounds).
   const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
+  // LA SCÈNE TOURNÉE : c'est elle, et non la scène du monde, que la hauteur utile, le cadre et le
+  // zoom prennent pour référence — une carte tournée d'un quart de tour échange sa largeur et sa
+  // hauteur. Les positions du film, elles, ne sont tournées qu'à la projection (`orient`).
+  const sceneTurned = useMemo(() => orientBounds(bounds, turns), [bounds, turns])
+  const orient = useMemo(() => viewOrientation(turns, bounds), [turns, bounds])
 
   // LA HAUTEUR RETENUE — le moindre de ce que l'écran offre et de ce que la carte peut utiliser.
   // Les deux bornes sont indispensables et ne disent pas la même chose : l'offre empêche la page
@@ -143,8 +180,8 @@ export function useReplayView({
     () =>
       width === 0
         ? freeHeight
-        : Math.floor(Math.min(freeHeight, usefulHeight(bounds, width, CANVAS_PAD))),
-    [bounds, width, freeHeight],
+        : Math.floor(Math.min(freeHeight, usefulHeight(sceneTurned, width, CANVAS_PAD))),
+    [sceneTurned, width, freeHeight],
   )
   // LA TOILE PREND TOUTE LA LARGEUR DU BLOC (2026-09-03, « quand je zoome c'est croppé alors que
   // le bloc du replay est assez grand »). Elle épousait le ratio de la SCÈNE : dès que la hauteur
@@ -181,15 +218,23 @@ export function useReplayView({
   // rétrécit et que le déplacement borne : sinon la fenêtre resterait plus étroite que la toile,
   // et le recadrage reviendrait au premier cran de grossissement.
   const frame = useMemo(
-    () => frameBounds(bounds, renderWidth, renderHeight, CANVAS_PAD),
-    [bounds, renderWidth, renderHeight],
+    () => frameBounds(sceneTurned, renderWidth, renderHeight, CANVAS_PAD),
+    [sceneTurned, renderWidth, renderHeight],
   )
   const userZoom = useReplayZoom(frame)
+  // UN CHANGEMENT D'ORIENTATION REVIENT À LA CARTE ENTIÈRE (règle partagée avec les autres vues 2D).
+  useZoomResetOnTurns(turns, userZoom.reset)
   // PENDANT UN EXPORT (décisions D6/D7, 2026-09-16) : les gestes de cadrage sont éteints, et le
   // cadrage « carte entière » rend la fenêtre à 1x SANS toucher à l'état du zoom — l'utilisateur
   // le retrouve tel quel à la fin. « Cadrage actuel » garde palier et centre.
   const exporting = exportLayout !== null
-  const zoom = exporting ? lockedZoom(userZoom) : userZoom
+  const gestureZoom = exporting ? lockedZoom(userZoom) : userZoom
+  const handZoom = onManualMove ? withManualMove(gestureZoom, onManualMove) : gestureZoom
+  // LE CADRAGE PROGRAMMÉ PARLE MONDE : « Suivre » donne la position du joueur dans le repère du
+  // film, et le zoom raisonne dans celui de la carte tournée. La conversion est ICI, une fois.
+  const zoom: ReplayZoom = orient
+    ? { ...handZoom, focusOn: (at, minLevel) => handZoom.focusOn(orientAbout(at, orient.turns, orient.pivot), minLevel) }
+    : handZoom
   const shownLevel = exportLayout?.framing === 'whole' ? 1 : zoom.level
   const viewBounds = useMemo(
     () => visibleBounds(frame, shownLevel, zoom.center.x, zoom.center.y),
@@ -201,9 +246,9 @@ export function useReplayView({
   const canvasView = useMemo(
     () => {
       void exportLayout
-      return { bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }
+      return { bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD, orient }
     },
-    [viewBounds, renderWidth, renderHeight, exportLayout],
+    [viewBounds, renderWidth, renderHeight, exportLayout, orient],
   )
   const screen = useMemo(() => ({ width: screenWidth, height: screenHeight }), [screenWidth, screenHeight])
 

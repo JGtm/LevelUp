@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { vehicleSpriteScale } from './vehiclesLayer'
-import { vehicleShotPlacement, type VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleShotPlacement, type VehicleWeaponMountEntry } from './vehicleWeaponMounts'
 
 describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule', () => {
   const size = { naturalWidthPx: 100, naturalHeightPx: 200, mmPerPx: 10 }
@@ -27,9 +27,9 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   const CAPS = (chassisDeg: number) => ({ chassisDeg, tireurDeg: null, arme: 'vehicule' as const })
   // Ancre nez pur (ax=0, ay=-0,5) : au bord haut du sprite AVANT rotation, comme
   // `drawRotatedSprite` dessine `drawImage(img, -w/2, -h/2, w, h)` (ay=-0,5 -> y local = -h/2).
-  const nose: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0.5 }
+  const nose: VehicleWeaponMountEntry = { classe: 'fixe', ax: 0, ay: -0.5 }
   // Ancre latérale pure (ax=+0,5, ay=0) : au bord droit du sprite avant rotation.
-  const rightSide: VehicleWeaponMount = { classe: 'fixe', ax: 0.5, ay: 0 }
+  const rightSide: VehicleWeaponMountEntry = { classe: 'fixe', ax: 0.5, ay: 0 }
 
   it('cap 90° (vehicleScreenAngle = 0) : repère local = repère écran, sans rotation', () => {
     const p = vehicleShotPlacement(nose, CAPS(90), size, 1, ECHELLE)
@@ -76,7 +76,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * TIREUR, quand elle est lue, l'oriente désormais (cas suivant).
    */
   it('classe tourelle SANS visée de tireur : direction null, quel que soit le cap du châssis', () => {
-    const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0 }
+    const turret: VehicleWeaponMountEntry = { classe: 'tourelle', ax: 0, ay: 0 }
     expect(vehicleShotPlacement(turret, CAPS(45), size, 1, ECHELLE).angle).toBeNull()
     expect(vehicleShotPlacement(turret, CAPS(270), size, 1, ECHELLE).angle).toBeNull()
   })
@@ -86,7 +86,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * devoir au cap du châssis — d'où un cap de châssis franchement différent dans ce cas.
    */
   it('classe tourelle AVEC visée de tireur : direction = visée du tireur, pas le cap du châssis', () => {
-    const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0 }
+    const turret: VehicleWeaponMountEntry = { classe: 'tourelle', ax: 0, ay: 0 }
     const p = vehicleShotPlacement(turret, { chassisDeg: 10, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(p.angle).toBeCloseTo((-200 * Math.PI) / 180, 10)
   })
@@ -96,7 +96,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * l'image. Seul le CANON (`reach`, nul ici) suit la visée du tireur — cf. les tests de bouche.
    */
   it('classe tourelle SANS canon : le PIVOT suit le châssis, jamais la visée du tireur', () => {
-    const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: -0.5 }
+    const turret: VehicleWeaponMountEntry = { classe: 'tourelle', ax: 0, ay: -0.5 }
     const sansVisee = vehicleShotPlacement(turret, CAPS(90), size, 1, ECHELLE)
     const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(avecVisee.offset).toEqual(sansVisee.offset)
@@ -187,7 +187,7 @@ describe('vehicleShotPlacement — bouche d’une tourelle', () => {
   const ECHELLE = 20
   const SCALE = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, ECHELLE)
   // Pivot à l'arrière (ay = +0,25 -> 50 px locaux), canon de 0,4 longueur (80 px locaux).
-  const tourelle: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0.25, reach: 0.4 }
+  const tourelle: VehicleWeaponMountEntry = { classe: 'tourelle', ax: 0, ay: 0.25, reach: 0.4 }
   // Châssis au cap 90° (nez en haut de l'écran) : le pivot tombe à (0, +50) * SCALE.
   const pivotY = 50 * SCALE
   const canon = 0.4 * 200 * SCALE

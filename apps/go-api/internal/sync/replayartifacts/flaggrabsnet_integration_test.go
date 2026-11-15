@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // artefactDrapeau forge un artefact de CTF minimal mais complet : deux drapeaux, un jonglage

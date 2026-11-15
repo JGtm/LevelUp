@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -41,18 +40,22 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/importstore"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/coach_advisor"
+	"levelup/go-api/internal/progression/profile"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
@@ -99,6 +102,7 @@ type apiV1Deps struct {
 	settingsStore         *settings_platform.Store
 	assetHandler          *handlers.AssetHandler
 	assetMetaHandler      *handlers.AssetMetadataHandler
+	killIconsHandler      *handlers.KillSourceIconsHandler
 	gamertagSvc           port.GamertagSearchService
 	prestigeBundle        *wire.PrestigeBundle
 	serverCtx             context.Context
@@ -155,9 +159,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
 	ownershipMW := middleware.RequirePlayerOwnership(playerAccess)
 	// Auteurs visibles des médias (galerie, fichiers, onglet Médias du match et du rejeu).
-	mediaAudience := mediaAudienceResolver(authz.Enforced(cfg.DemoMode, cfg.AuthMode) && users != nil,
+	mediaAudience := mediaAudienceResolver(service.NewMediaAudienceService(
+		authz.Enforced(cfg.DemoMode, cfg.AuthMode) && users != nil,
 		func(titleSlug string) ([]domain.PlayerSummary, error) { return cfg.LoadPlayers(titleSlug) },
-		groupCoMembers(groupStore), users)
+		groupCoMembers(groupStore), users))
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
 	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
@@ -344,7 +349,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Sprint 14 : contexte de session
 	// Le joueur courant ne désigne qu'un profil que la session peut LIRE (sien,
 	// d'un co-membre de groupe, tout profil pour un admin) : sinon 403.
-	sessionHandler := handlers.NewSessionHandler(sessionStore).
+	sessionHandler := handlers.NewSessionHandler(sessionStore, service.BuildAvailableTitles).
 		WithPlayerAccess(func(ctx context.Context, slug string) bool {
 			granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), slug, false)
 			return granted
@@ -594,8 +599,41 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
 	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
 		WithNotifier(reg.NotificationsEmitter)
-	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
+	// Jobs de synchronisation lancés depuis l'API (sync initiale, delta, rattrapage, recalcul des
+	// sessions) : un seul service derrière port.SyncJobService, partagé par les handlers sync, backfill
+	// et réglages.
+	syncJobs := service.NewSyncJobService(cfg, settingsStore, jobStore, tokenProvider).
 		WithFriendStore(friendStore).
+		WithLiveRunnerBuilder(wire.NewLiveRunnerBuilder(cfg))
+	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
+	if prestigeBundle != nil {
+		syncJobs = syncJobs.WithPrestigeHook(prestigeBundle.RunPostSync)
+	}
+	// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
+	syncJobs = syncJobs.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
+	// Branche le runner post-sync (season_pass_level / objective_completed / challenge_completed).
+	syncJobs = syncJobs.WithPostSyncRunner(wire.NewPostSyncRunner(reg))
+	// Branche la mise en file des rejeux (placement « worker ») sur le moteur de la sync initiale :
+	// sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien alors que l'auto-sync le fait.
+	syncJobs = syncJobs.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
+	// Dédup cross-source : le gate provient du Coordinator partagé du watcher, exposé via le
+	// scheduler. Si le watcher est désactivé, Gate() renvoie le NopSyncGate par défaut (le bail reste
+	// le seul rempart cross-source).
+	if autoSyncScheduler != nil {
+		syncJobs = syncJobs.WithSyncGate(autoSyncScheduler.Gate())
+		// Alignement sync manuel / auto-sync : le sync HTTP delta (/sync/all, /players/{slug}/sync)
+		// construit son moteur via le MÊME BuildEngine que l'auto-sync → même PooledHaloClient (pool de
+		// jetons partagé, source unique ADR 0023), post-sync runner, batch queue. L'auth ne dépend plus
+		// des HaloTokens de session (le store a le RT).
+		syncJobs = syncJobs.WithEngineBuilder(autoSyncScheduler.BuildEngine)
+	}
+	// serverCtx (annulé au shutdown) : les jobs en dérivent leur contexte pour être annulés proprement
+	// à l'arrêt (avant duckdb.CloseAll).
+	syncJobs = syncJobs.WithServerContext(serverCtx)
+
+	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, service.NewDirMediaIndexer()).
+		WithSessionsRecalc(syncJobs).
+		WithDatabaseMemory(platform_duckdb.MemoryLimit{}).
 		WithBackupScheduler(backupScheduler).
 		WithUserLookup(users)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
@@ -639,36 +677,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
-	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider).
-		WithFriendStore(friendStore)
-	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
-	if prestigeBundle != nil {
-		syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
-	}
-	// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
-	syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
-	// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
-	syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
-	// Branche la mise en file des rejeux (placement « worker ») sur le moteur legacy
-	// du handler : sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien
-	// alors que l'auto-sync le fait — un trou que rien ne signalerait.
-	syncH = syncH.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
-	// Dédup cross-source (unification 2026-06-02) : le gate provient du
-	// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
-	// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le
-	// NopSyncGate par défaut → comportement legacy (lease seul rempart).
-	if autoSyncScheduler != nil {
-		syncH = syncH.WithSyncGate(autoSyncScheduler.Gate())
-		// Alignement sync manuel ↔ auto-sync (2026-06-14) : le sync HTTP delta
-		// (/sync/all, /players/{slug}/sync) construit son moteur via le MÊME
-		// BuildEngine que l'auto-sync → même PooledHaloClient (pool de tokens
-		// partagé, source unique ADR 0023), post-sync runner, batch queue.
-		// L'auth ne dépend plus des HaloTokens de session (le store a le RT).
-		syncH = syncH.WithEngineBuilder(autoSyncScheduler.BuildEngine)
-	}
-	// serverCtx (annulé au shutdown) : les syncs HTTP en dérivent leur bgCtx
-	// pour être annulés proprement à l'arrêt (avant duckdb.CloseAll).
-	syncH = syncH.WithServerContext(serverCtx)
+	syncH := handlers.NewSyncHandler(syncJobs)
 	// D3-01 (revue 2026-06-01) : /sync/initial et /sync/all sont des opérations
 	// admin/setup (sync d'un joueur arbitraire lu dans le body / de TOUS les
 	// joueurs). Auparavant montées sous /api/v1 SANS auth → contournaient
@@ -684,7 +693,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
 		// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
-		handlers.NewBackfillHandler(cfg, jobStore).Mount(r, apiOpt) // POST /backfill/start
+		handlers.NewBackfillHandler(syncJobs).Mount(r, apiOpt) // POST /backfill/start
 	})
 
 	// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
@@ -697,8 +706,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// échouait). OpenSpartan import = flow d'onboarding rare (un user qui
 	// importe ses données), pas de raison d'ouvrir RW au boot.
 	if !cfg.DemoMode {
-		osImportSvc := service.NewOpenSpartanImportService(cfg.SharedProvider, config.SharedDBPath(cfg, ""))
-		osPostImportSvc := service.NewOpenSpartanPostImportService(cfg)
+		osImportSvc := service.NewOpenSpartanImportService(importstore.NewSharedAcquirer(cfg.SharedProvider, config.SharedDBPath(cfg, "")))
+		osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, importstore.NewPostImportStore(cfg.SharedProvider))
 		osCfg := handlers.OpenSpartanImportConfig{
 			ImportService:     osImportSvc,
 			PostImportService: osPostImportSvc,
@@ -741,6 +750,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	} else {
 		handlers.NewEmptyAssetMetadataHandler().Mount(r, apiOpt) // fallback Huma → []
 	}
+	// Référentiel des pictogrammes d'arme : indépendant de la metadata DB, toujours monté.
+	d.killIconsHandler.Mount(r, apiOpt) // GET /assets/{title_id}/kill-sources
 
 	// Sélection par titre (Pass B.5) : activer / mettre en pause / purger un
 	// titre d'un joueur. Owner-gated SANS RequireActiveTitle (doit fonctionner
@@ -1045,7 +1056,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
-		progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug)
+		profileResolve := func(ctx context.Context, slug string) (port.ProfileStore, string, error) {
+			pdb, err := reg.Resolve()(ctx, slug)
+			if err != nil {
+				return nil, "", err
+			}
+			return profilerepo.ForPlayer(pdb), pdb.XUID, nil
+		}
+		progressionH := handlers.NewProgressionHandler(service.NewProgressionService(progressionStoreResolver(reg.Resolve())), titlePkg.DefaultSlug)
 		progressionH.Mount(r, playerOpt)
 
 		// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
@@ -1074,18 +1092,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// PlayerProfile V1 (Ascension) — endpoint /profile complet.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
-		profileH := handlers.NewPlayerProfileHandler(progressionResolve, titlePkg.DefaultSlug)
+		var awardSet *mappings.AwardMappingSet
 		// V2 §2 : injection optionnelle du mapping awards→axes (Section A1 radar).
 		// Chargement lazy depuis config/titles/{slug}/mappings/awards.toml.
 		// Absence du fichier ou erreur de parse : log + fallback V1 silencieux.
 		awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "awards.toml")
-		if awardSet, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
+		if loaded, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
 			slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err)
 		} else {
 			slog.Info("player_profile_awards_loaded",
-				"path", awardsPath, "awards_count", len(awardSet.All()))
-			profileH = profileH.WithAwardMapping(awardSet)
+				"path", awardsPath, "awards_count", len(loaded.All()))
+			awardSet = loaded
 		}
+		profileH := handlers.NewPlayerProfileHandler(profile.NewPlayerService(profileResolve, awardSet), titlePkg.DefaultSlug)
 		profileH.Mount(r, playerOpt)
 
 		// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
@@ -1104,14 +1123,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
-		campaignH := handlers.NewCampaignHandler(progressionResolve, titlePkg.DefaultSlug)
+		campaignH := handlers.NewCampaignHandler(service.NewCampaignService(campaignScopeResolver(reg.Resolve())), titlePkg.DefaultSlug)
 		campaignH.Mount(r, playerOpt)
 
 		// Match favoris (shared_social.duckdb)
 		fav := handlers.NewMatchFavoriteHandler(reg.Social)
 		fav.Mount(r.With(participated), playerOpt) // PATCH /matches/{match_id}/favorite
 
-		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
+		// Module Prestige — routes derrière le réglage prestige_enabled (cfg.PrestigeEnabled).
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 		//
 		// V721-04 — contrat publié : le document OpenAPI est rendu depuis un routeur
@@ -1423,7 +1442,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
-	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
+	// Si le réglage prestige_enabled est désactivé, les routes ne sont pas montées et
 	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
 	// config au démarrage.
 	var prestigeBundle *wire.PrestigeBundle
@@ -1460,16 +1479,15 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
 	// (cf. service.WithMediaTranscoding, injecté dans MediaUpload).
 	reg.WithJobStore(jobStore)
+	// Le magasin de sessions du routeur : la tâche de fond qui purge les sessions expirées (cmd/server) le lit ici.
+	reg.WithSessionStore(sessionStore)
 
 	var gamertagSvc port.GamertagSearchService
 	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
 	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné
 	// qui pinnait le fichier shared pendant les swaps RW du sync engine (bug
 	// latent : le handle dédié à gamertag search bloquait Provider.AcquireWriter
-	// avec "Unique file handle conflict" et faisait régresser le bug Madina97294).
-	// En mode kill-switch (LEVELUP_USE_SHARED_PROVIDER=0), cfg.SharedProvider
-	// reste un LegacySharedReader wrappant le handle global — comportement
-	// identique au pre-sprint.
+	// avec "Unique file handle conflict" et faisait régresser le bug Joueur90002).
 	if cfg.SharedProvider != nil {
 		local := platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
 		// Fallback live (joueur JAMAIS croisé) : résolveur PeopleHub→profil Xbox
@@ -1505,7 +1523,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		// Versions de carte jouées : lues dans la base partagée du titre demandé (lecteur
 		// du provider), elles rendent l'image de carte d'un vrai match récupérable par tous.
 		PlayedMapVersions: func(ctx context.Context, titleID string, visit func(mapID, versionID string)) error {
-			return platform_duckdb.ForEachPlayedMapVersion(ctx, cfg.SharedReaderForTitle(titleID), visit)
+			return platform_duckdb.ForEachPlayedMapVersion(ctx, playerresolve.SharedReaderForTitle(cfg, titleID), visit)
 		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
@@ -1597,6 +1615,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// AssetMetadataHandler (drawer) — construit hors NewRouter (K2a). nil si metadata
 	// indisponible après retries (non fatal).
 	assetMetaHandler := buildAssetMetadataHandler(cfg, hiAssetURL, titleRegistry, h5Maps, h5Weapons, h5Medals)
+	killIconsHandler := handlers.NewKillSourceIconsHandler(
+		service.NewKillSourceIconService(titleResolver.AssetURL, cfg.PathResolver()))
 
 	// Résolveurs d'assets title-aware Halo 5 (badge CSR + AssetURLAdapter + sprites
 	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
@@ -1615,7 +1635,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	service.RegisterGhostMedalIDs(halo5.TitleSlug, halo5.GhostMedalIDs)
 
 	// Fichiers statiques (images maps, médailles, armes…), sans listing de dossier.
-	registerStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
+	handlers.RegisterStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
 	//
@@ -1678,6 +1698,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		settingsStore:         settingsStore,
 		assetHandler:          assetHandler,
 		assetMetaHandler:      assetMetaHandler,
+		killIconsHandler:      killIconsHandler,
 		gamertagSvc:           gamertagSvc,
 		prestigeBundle:        prestigeBundle,
 		serverCtx:             serverCtx,
@@ -1692,53 +1713,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 }
 
-// immutableAssetCacheControl : politique de cache des assets Vite au nom hashé.
-// max-age 1 an + immutable — sûr car le hash de contenu change à chaque build,
-// donc l'URL elle-même est un cache-buster (le navigateur ne revalide jamais).
-const immutableAssetCacheControl = "public, max-age=31536000, immutable"
-
-// publicAssetCacheControl : politique de cache des fichiers statiques NON
-// fingerprintés du dist (recopiés depuis apps/web/public/ : /logo.png, icônes,
-// /titles/**, polices...). 1 h, sans `immutable` : leur URL est stable d'un build
-// à l'autre, donc un cache long empêcherait de livrer une image corrigée — mais
-// sans aucun Cache-Control (état d'avant le 2026-07-26) chaque navigation
-// re-tirait la centaine d'images d'une page, ce qui vidait le bucket rate limit.
-// Le validateur Last-Modified posé par le FileServer permet un 304 peu coûteux
-// après expiration.
-const publicAssetCacheControl = "public, max-age=3600"
-
-// viteHashedAssetPattern reconnaît les fichiers émis par Vite avec un hash de
-// contenu : `/assets/<nom>-<hash>.<ext>`. Le hash par défaut de Vite fait 8
-// caractères base64url ([A-Za-z0-9_-]) ; on exige >= 8 pour ne PAS confondre un
-// simple nom à tirets (`/assets/mon-fichier.css`) avec un asset hashé. index.html
-// et tout fichier non hashé (racine, /favicon.ico…) ne matchent pas → jamais
-// marqués immutable (ils DOIVENT rester revalidables pour livrer un nouveau build).
-var viteHashedAssetPattern = regexp.MustCompile(`^/assets/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`)
-
-// isViteHashedAsset indique si le chemin URL cible un asset Vite au nom hashé.
-func isViteHashedAsset(urlPath string) bool {
-	return viteHashedAssetPattern.MatchString(urlPath)
-}
-
-// serveStaticFile délègue au FileServer (qui pose ETag/Last-Modified/Content-Type)
-// après avoir posé le Cache-Control adapté :
-//   - asset Vite hashé → immutable 1 an (l'URL EST le cache-buster) ;
-//   - autre fichier statique (public/ recopié à la racine du dist) → 1 h ;
-//   - index.html et tout ce qui n'est pas un fichier statique → aucun header,
-//     donc revalidation systématique (un nouveau build doit être livré).
-//
-// Le header est posé AVANT ServeHTTP : il survit aussi bien au 200 qu'au 304.
-func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.Handler) {
-	switch {
-	case isViteHashedAsset(req.URL.Path):
-		w.Header().Set("Cache-Control", immutableAssetCacheControl)
-	case middleware.IsStaticAssetPath(req.URL.Path):
-		w.Header().Set("Cache-Control", publicAssetCacheControl)
-	}
-	fileServer.ServeHTTP(w, req)
-}
-
-// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. newSPAHandler), avec
+// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. handlers.NewSPAHandler), avec
 // injection Open Graph sur index.html. Les routes /api/v1 sont montees AVANT (r.Route dans
 // server.go) : un chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais
 // ici. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
@@ -1747,7 +1722,7 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 	if dist == "" {
 		return
 	}
-	spa, ok := newSPAHandler(dist, reg.ServeIndexWithOG)
+	spa, ok := handlers.NewSPAHandler(dist, reg.ServeIndexWithOG)
 	if !ok {
 		slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
 		return

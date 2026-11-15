@@ -20,7 +20,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // VehiSon est la chaine son d'UN tag `vehi`, telle que la passe 1 la rend.

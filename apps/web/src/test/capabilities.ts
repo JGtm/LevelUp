@@ -59,6 +59,7 @@ export function desktopCapabilities(): Partial<CapabilityMap> {
     can_keep_media_sources: true,
     can_reveal_files_in_explorer: true,
     can_trash_media_sources: true,
+    can_pick_folder: true,
     deployment: 'desktop',
   }
 }

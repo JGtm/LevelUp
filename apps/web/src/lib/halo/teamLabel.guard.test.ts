@@ -34,7 +34,7 @@ describe('resolveTeamLabel — la cascade', () => {
     expect(resolveTeamLabel([{ team_name: 'Team Cobra' }], 't1', EN)).toBe('Team Cobra')
   })
   it('le backend prime sur le référentiel officiel', () => {
-    expect(resolveTeamLabel([{ team_name: null }, { team_name: 'Bleu' }], 't1', FR)).toBe('Équipe Bleu')
+    expect(resolveTeamLabel([{ team_name: undefined }, { team_name: 'Bleu' }], 't1', FR)).toBe('Équipe Bleu')
   })
   it('id connu hors référentiel -> « Équipe N » ; côté absent ou malformé -> inconnue', () => {
     expect(resolveTeamLabel([], 't12', FR)).toBe('Équipe 12')

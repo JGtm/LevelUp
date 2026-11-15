@@ -42,6 +42,8 @@ export interface BombCarrierStyle {
   outline: string
   /** Mouvement réduit : la pulsation d'un portage « ouvert » devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de pulsation est une durée. */
+  frameMs: number
 }
 
 /**
@@ -55,6 +57,12 @@ export interface BombCarrierInput {
   style: BombCarrierStyle
   /** Position monde du joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la bombe PORTÉE est retirée de la carte — elle est à son
+   * porteur, qu'elle se dessine portée ou libre faute de position du porteur (même règle que le drapeau). Absent =
+   * tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 /** Décalage vertical au-dessus du point du porteur (le marqueur occupe le point lui-même). */
@@ -132,6 +140,8 @@ export function drawBombCarrier(
   frame: number,
 ): void {
   for (const c of bombCarrierActiveAt(carries, frame)) {
+    // LA BOMBE EST À SON PORTEUR, même quand elle se dessine libre faute de position (comme le drapeau).
+    if (layer.shownCarrier && !layer.shownCarrier(c.xuid)) continue
     // LA RÈGLE COMMUNE AUX TROIS GLYPHES PORTÉS (`carriedGlyphPlace.ts`) : sans position du
     // porteur, la bombe est LIBRE à sa dernière position connue, pas disparue. `fallback: null`
     // — la bombe n'a AUCUN canal de position propre (cf. l'en-tête, document_bomb_carries.go).
@@ -157,7 +167,7 @@ export function drawBombCarrier(
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {
       ink: layer.style.ink,
       outline: layer.style.outline,
-      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion, layer.style.frameMs),
     })
     ctx.globalAlpha = 1
     return // une seule bombe : portée, donc jamais au sol à la même image

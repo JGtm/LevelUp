@@ -132,6 +132,7 @@ type patternSharedRow struct {
 	DamageTkn     float64
 	HeadshotKills int
 	IsRanked      bool
+	KDA           *float64 // kda natif (FDA net), nil si NULL (Halo 5) : dérivé au merge
 }
 
 // patternEnrichmentRow est le résultat intermédiaire de la phase 2 (player_match_enrichment).
@@ -173,7 +174,7 @@ SELECT
     r.map_id,
     p.outcome,
     r.duration_seconds,
-    p.kills, p.deaths, p.assists, p.accuracy,
+    p.kills, p.deaths, p.assists, p.kda, p.accuracy,
     p.damage_dealt, p.damage_taken, p.headshot_kills,
     ` + analysis.SQLKnownMMR("p.team_mmr") + ` IS NOT NULL AS is_ranked
 FROM match_participants p
@@ -204,7 +205,7 @@ LIMIT ?`
 			&row.MapID,
 			&row.Outcome, &row.DurationSec,
 			&row.Kills, &row.Deaths, &row.Assists,
-			&accuracy, &damageDlt, &damageTkn, &row.HeadshotKills,
+			&row.KDA, &accuracy, &damageDlt, &damageTkn, &row.HeadshotKills,
 			&isRanked,
 		)
 		if err != nil {
@@ -447,12 +448,11 @@ func mergePatternRows(shared []patternSharedRow, enrichMap map[string]patternEnr
 			DR:          cy.DefensiveResistance,
 			HSRate:      hsRate,
 		}
-		// KDA : (kills + assists/2) / max(1, deaths)
-		denom := s.Deaths
-		if denom == 0 {
-			denom = 1
+		// FDA net du match (ADR 0006) : valeur native, sinon dérivée des compteurs au même net.
+		row.KDA = analysis.AggregateKDA(s.Kills, s.Assists, s.Deaths, 1)
+		if s.KDA != nil {
+			row.KDA = *s.KDA
 		}
-		row.KDA = (float64(s.Kills) + float64(s.Assists)/2.0) / float64(denom)
 
 		if enr, ok := enrichMap[s.MatchID]; ok {
 			row.PerfScore = enr.PerfScore

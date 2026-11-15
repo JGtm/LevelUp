@@ -12,7 +12,6 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	gosync "sync"
 
@@ -50,7 +49,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	// avant ce defer). err = erreur finale nommée.
 	defer func() { r.journalAction(ctx, adminstate.ActionCatalogUGCDrain, err) }()
 
-	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
+	metaSQL, closeMeta := r.titleBases().Metadata(ctx, titleSlug)
 	defer closeMeta()
 	if metaSQL == nil {
 		return res, fmt.Errorf("metadata indisponible pour %s", titleSlug)
@@ -58,7 +57,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 
 	// 1. Recensement (zéro réseau) : seule étape qui lit la base partagée, rendue avant le
 	// réseau (un lecteur en vol fait échouer toute prise d'écriture de la base, ADR 0016).
-	seeded, err := r.recenserCatalogue(ctx, metaSQL, titleSlug)
+	seeded, err := ops.SeedCatalogQueueForTitle(ctx, r.titleBases(), metaSQL, titleSlug)
 	if err != nil {
 		return res, err
 	}
@@ -174,18 +173,3 @@ func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug stri
 // premier accès réseau de ces deux tâches. Variable de paquet : les tests y substituent une prise
 // factice, sans réseau ni magasin de jetons.
 var jetonsCatalogue = (*ServiceRegistry).haloTokensForDrain
-
-// recenserCatalogue enfile dans catalog_fetch_queue les assets vus en match, dans une lecture de
-// la base partagée rendue en sortant.
-func (r *ServiceRegistry) recenserCatalogue(ctx context.Context, metaSQL *sql.DB, titleSlug string) (ops.CatalogQueueSeedResult, error) {
-	sharedSQL, release, err := r.lectureSharedDuTitre(ctx, titleSlug)
-	if err != nil {
-		return ops.CatalogQueueSeedResult{}, err
-	}
-	defer release()
-	seeded, err := ops.SeedCatalogQueueFromRegistry(ctx, metaSQL, sharedSQL, titleSlug)
-	if err != nil {
-		return seeded, fmt.Errorf("seed queue: %w", err)
-	}
-	return seeded, nil
-}

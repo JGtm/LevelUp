@@ -17,7 +17,7 @@
  */
 import { useMemo } from 'react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 
@@ -103,7 +103,7 @@ export function formatHeatmapTooltip(
 export function buildBucketPoints(
   cells: HeatmapBucketCell[],
   bucketLabels: string[],
-): ChartPointHeatmap[] {
+): HeatmapCellPoint[] {
   const totals = new Map<string, number>()
   for (const c of cells) {
     totals.set(c.xuid, (totals.get(c.xuid) ?? 0) + c.count)
@@ -121,7 +121,7 @@ export function buildBucketPoints(
     lookup.set(`${c.xuid}-${c.bucket}`, c.count)
   }
 
-  const points: ChartPointHeatmap[] = []
+  const points: HeatmapCellPoint[] = []
   for (let b = 0; b < bucketLabels.length; b++) {
     for (const xuid of rowOrder) {
       const count = lookup.get(`${xuid}-${b}`)
@@ -147,14 +147,14 @@ export function RelationsMomentsHeatmap({
   const points = useMemo(() => buildBucketPoints(cells, bucketLabels), [cells, bucketLabels])
   // Rangées effectivement tracées (relations retenues, cap MAX_HEATMAP_ROWS inclus).
   const rowCount = useMemo(() => new Set(points.map((pt) => pt.y)).size, [points])
-  const series: ChartSeries<ChartPointHeatmap>[] =
+  const series: ChartSeries<HeatmapCellPoint>[] =
     points.length > 0 ? [{ key: 'heatmap', datapoints: points }] : []
 
   // Clé stable des libellés : le parent peut recréer l'objet à chaque rendu sans
   // provoquer de rebuild inutile de l'option ECharts.
   const { playerLabel, bucketTypeLabel, matchesLabel, emptyCell } = tooltipText
   const formatTooltip = useMemo(
-    () => (point: ChartPointHeatmap) =>
+    () => (point: HeatmapCellPoint) =>
       formatHeatmapTooltip(point.y, point.x, point.value, {
         playerLabel,
         bucketTypeLabel,

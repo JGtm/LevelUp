@@ -71,7 +71,7 @@ import {
 import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_LOOPS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
-import { racineDuDepot } from '../test/featureFiles'
+import { instantaneFilm, racineDuDepot } from '../test/featureFiles'
 import { opusInfo } from '../test/oggOpusFile'
 
 /**
@@ -97,10 +97,7 @@ function stemsZone(): string[] {
 
 const REPO_ROOT = racineDuDepot()
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
-const KILLICON_RULES = resolve(
-  REPO_ROOT,
-  'libs/film/killicon/data/rules.tsv',
-)
+const KILLICON_RULES = instantaneFilm('killicon', 'data', 'rules.tsv')
 
 /** L'extension des sons livrés : celle que l'URL de production demande (`soundUrlOf`), pas un littéral de plus. */
 const SOUND_EXT = soundUrlOf('x').slice('/static/sounds/halo_infinite/x'.length)

@@ -18,6 +18,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
@@ -74,7 +75,7 @@ func TestHealthScheduler_E2E_AuditsMultipleTitles(t *testing.T) {
 	// Anomalie UUID brut UNIQUEMENT dans halo_5.
 	seedRawUUIDMapName(t, h5Shared)
 
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 	res := sched.RunOnce(context.Background())
 	if res == nil {
 		t.Fatal("RunOnce a retourné nil")
@@ -98,7 +99,7 @@ func TestHealthScheduler_E2E_TitleWithoutSharedDB_SkippedGracefully(t *testing.T
 	// Seul halo_infinite a une shared DB ; halo_5 n'en a pas → doit être skippé.
 	seedTitleSharedDB(t, repoRoot, "halo_infinite")
 
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 	res := sched.RunOnce(context.Background())
 	if res == nil {
 		t.Fatal("RunOnce a retourné nil (panic/avorté alors qu'halo_infinite est présent)")

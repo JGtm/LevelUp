@@ -30,10 +30,10 @@ vi.mock('./MatchScoreboard', () => ({ MatchScoreboard: () => <div /> }))
 vi.mock('./MatchEncountersTable', () => ({ MatchEncountersTable: () => <div /> }))
 // `MatchAssistChart` n'est PAS mocké : c'est sa porte 1 (bloc absent -> rien) que la rangée
 // doit accompagner, et la mocker reviendrait à tester la mise en page contre une fiction.
-vi.mock('@/components/charts/BarStackedChart', () => ({
-  BarStackedChart: ({ title, valueAxisName }: { title: string; valueAxisName: string }) => (
-    <div data-testid="assistances" data-axe={valueAxisName}>
-      {title}
+vi.mock('@/features/_shared/assists/AssistFlowChart', () => ({
+  AssistFlowChart: ({ frame, headers }: { frame?: { title: string }; headers: { assistant: string; finisher: string } }) => (
+    <div data-testid="assistances" data-assistant={headers.assistant} data-finisseur={headers.finisher}>
+      {frame?.title}
     </div>
   ),
 }))
@@ -91,12 +91,16 @@ describe('MatchViewTabPlayers — Antagonistes et Assistances sur une rangée', 
   })
 })
 
-describe('MatchViewTabPlayers — l’axe des assistances', () => {
-  it('nomme l’axe des valeurs par le geste du larbin : « a assisté… » / « assisted… »', () => {
-    expect(afficher(BLOC_ASSISTANCES).getByTestId('assistances').getAttribute('data-axe')).toBe('a assisté…')
+describe('MatchViewTabPlayers — les colonnes du flux des assistances', () => {
+  it('nomme les deux colonnes en mini-phrases : « Assistant : prépare le frag » / « Finisseur : conclut le frag »', () => {
+    const carte = afficher(BLOC_ASSISTANCES).getByTestId('assistances')
+    expect(carte.getAttribute('data-assistant')).toBe('Assistant : prépare le frag')
+    expect(carte.getAttribute('data-finisseur')).toBe('Finisseur : conclut le frag')
   })
 
-  it('EN : « assisted… »', () => {
-    expect(afficher(BLOC_ASSISTANCES, 'en').getByTestId('assistances').getAttribute('data-axe')).toBe('assisted…')
+  it('EN : « Assister » / « Finisher »', () => {
+    const carte = afficher(BLOC_ASSISTANCES, 'en').getByTestId('assistances')
+    expect(carte.getAttribute('data-assistant')).toBe('Assister: sets up the kill')
+    expect(carte.getAttribute('data-finisseur')).toBe('Finisher: completes the kill')
   })
 })

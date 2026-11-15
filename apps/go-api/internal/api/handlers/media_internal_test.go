@@ -72,8 +72,8 @@ func TestFilePathToURL_MultiPlayerCapturesBaseWithSlug(t *testing.T) {
 // C'est le format canonique post-migration.
 func TestFilePathToURL_RelativePath_PostMigration(t *testing.T) {
 	h := &MediaHandler{}
-	in := "Madina97294/thumbs/Halo Infinite 2026-04-19.webp"
-	want := "/api/v1/players/JGtm/media/files/Madina97294/thumbs/Halo Infinite 2026-04-19.webp"
+	in := "Joueur90002/thumbs/Halo Infinite 2026-04-19.webp"
+	want := "/api/v1/players/JGtm/media/files/Joueur90002/thumbs/Halo Infinite 2026-04-19.webp"
 	got := h.filePathToURL("JGtm", in, `C:\Captures`)
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -176,7 +176,7 @@ func TestOwnerSlugFromFilePath(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"canonique relatif", "Madina97294/Halo Infinite 2026-04-19.mp4", "Madina97294"},
+		{"canonique relatif", "Joueur90002/Halo Infinite 2026-04-19.mp4", "Joueur90002"},
 		{"canonique relatif HLS", "JGtm/hls/clip/master.m3u8", "JGtm"},
 		{"basename seul", "clip.mp4", ""},
 		{"vide", "", ""},
@@ -197,7 +197,7 @@ func TestOwnerSlugFromFilePath_LegacyAbsolute(t *testing.T) {
 	cases := []struct {
 		in, want string
 	}{
-		{`C:\Users\Guillaume\Videos\Captures\Madina97294\clip.mp4`, "Madina97294"},
+		{`C:\Users\Guillaume\Videos\Captures\Joueur90002\clip.mp4`, "Joueur90002"},
 		{`C:\data\titles\halo_infinite\players\JGtm\captures\clip.mp4`, "JGtm"},
 	}
 	for _, tc := range cases {

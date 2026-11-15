@@ -7,7 +7,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -243,12 +242,12 @@ func applyCSRSummary(s *domain.NormalizedPlayerStats, sum csrSummary) {
 	s.HighestCSRAllTimeLabel = sum.allTimeLabel
 }
 
-// logBestEffortErr distingue les erreurs "pas de data" (sql.ErrNoRows, attendu)
+// logBestEffortErr distingue les erreurs "pas de data" (port.ErrNotFound, attendu)
 // des anomalies SQL/conn (anormal). Pattern motivé par le bug 2026-05-26 où
 // un Catalog Error a vécu ~1 semaine sous Debug silencieux. Cf. thought_log
 // "Fix shared.X via SharedReader — 10 sites cassés en silence".
 func logBestEffortErr(ctx context.Context, msg string, err error, kv ...any) {
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, port.ErrNotFound) {
 		slog.DebugContext(ctx, msg+" (no rows)", kv...)
 		return
 	}
@@ -441,8 +440,8 @@ func metricAvailability(key string, value float64, isLocal bool) bool {
 func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) []domain.CompareMetricRow {
 	// Rendement (OC) / Résistance (DR) : MÊMES formules que la KPI bar home
 	// (analysis.ComputeCombatYield) pour que le Face à face affiche les mêmes
-	// chiffres. OC = 225*(kills+assists/3)/dégâts (plus haut = mieux) ;
-	// DR = dégâts_subis/(225*morts), baseline 1.0 (plus haut = mieux).
+	// chiffres. OC = 229*(kills+assists/3)/dégâts (plus haut = mieux) ;
+	// DR = dégâts_subis/(229*morts), baseline 1.0 (plus haut = mieux).
 	cyA, cyB := combatYieldOf(a, effectiveHpToKill), combatYieldOf(b, effectiveHpToKill)
 	rendementA, rendementB := cyA.OffensiveConversion, cyB.OffensiveConversion
 	resistanceA, resistanceB := cyA.DefensiveResistance, cyB.DefensiveResistance

@@ -109,11 +109,11 @@ func TestUpsertXUIDAlias_EmptyGamertag_NoOp(t *testing.T) {
 
 func TestUpsertXUIDAlias_NonBotPreservesGamertag(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
-	if err := intsync.UpsertXUIDAlias(t.Context(), db, "2533274823110022", "JGtm"); err != nil {
+	if err := intsync.UpsertXUIDAlias(t.Context(), db, "2603225103667623", "JGtm"); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 	var stored string
-	_ = db.QueryRow("SELECT gamertag FROM xuid_aliases WHERE xuid = ?", "2533274823110022").Scan(&stored)
+	_ = db.QueryRow("SELECT gamertag FROM xuid_aliases WHERE xuid = ?", "2603225103667623").Scan(&stored)
 	if stored != "JGtm" {
 		t.Errorf("gamertag humain doit etre preserve tel quel, got %q want JGtm", stored)
 	}

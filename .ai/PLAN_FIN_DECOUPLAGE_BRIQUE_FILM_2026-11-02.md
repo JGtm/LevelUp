@@ -1395,6 +1395,8 @@ jetable, CI du dépôt verte.
       nouveaux dépôts préparés ; posés par le user.
 ### Tags dépréciés préparés (6.4, à poser AVANT la suppression de `libs/` dans LevelUp, jamais avant)
 
+2026-11-09 : les briques passent en v1.0.0 (décision du mainteneur) ; les tags dépréciés de l'ancien chemin seront donc `libs/<brique>/v1.0.1`, pas `v0.1.1` (ADR 0043, amendement du 2026-11-09).
+
 Pour chaque brique, sur une branche éphémère depuis `main`, un commit qui ajoute en tête du `go.mod` de `libs/<brique>` la ligne
 `// Deprecated: moved to github.com/JGtm/<dépôt>` (au-dessus de `module ...`), puis le tag annoté `libs/<brique>/v0.1.1` sur ce commit, poussé ;
 la branche est ensuite fusionnée normalement (le commentaire reste dans `go.mod` jusqu'à la suppression de `libs/`). Dépôts :

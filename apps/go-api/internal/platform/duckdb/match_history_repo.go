@@ -256,7 +256,6 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		tier          string
 		rating        *string
 		tierLabel     *string
-		winProb       *float64
 		playlistGroup *string
 		ratingValue   *float64
 		ratingDelta   *float64
@@ -267,13 +266,13 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		var mid string
 		var s skill
 		var tierEN *string
-		if err := dbRows.Scan(&mid, &tierEN, &s.rating, &s.tierLabel, &s.winProb, &s.playlistGroup, &s.ratingValue, &s.ratingDelta, &s.subTier); err != nil {
+		if err := dbRows.Scan(&mid, &tierEN, &s.rating, &s.tierLabel, &s.playlistGroup, &s.ratingValue, &s.ratingDelta, &s.subTier); err != nil {
 			return fmt.Errorf("skill_rank scan: %w", err)
 		}
 		s.tier = derefString(tierEN)
 		// Q5 lit désormais match_skill_rank_latest : 1 ligne/match (priorité
 		// CSR>LUSR), plus de N versions à fusionner. Sur un match ranked la ligne
-		// gagnante est CSR → expected_win_prob NULL (convention _latest déjà en
+		// gagnante est CSR (convention _latest déjà en
 		// vigueur : Q22a, playerMatchesSkillRankTpl).
 		ranks[mid] = s
 	}
@@ -289,7 +288,6 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		rows[i].SkillTier = s.tier
 		rows[i].SkillRatingType = s.rating
 		rows[i].SkillStoredLabel = s.tierLabel
-		rows[i].SkillExpectedWinProb = s.winProb
 		rows[i].PlaylistGroup = s.playlistGroup
 		rows[i].RatingValue = s.ratingValue
 		rows[i].RatingDelta = s.ratingDelta

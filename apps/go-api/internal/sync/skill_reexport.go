@@ -29,8 +29,6 @@ const (
 	MetricKeyDPMDamage        = skill.MetricKeyDPMDamage
 	MetricKeyRankPerf         = skill.MetricKeyRankPerf
 
-	MetricKeyObjectiveParticipation = skill.MetricKeyObjectiveParticipation
-
 	MinMatchesForRating           = skill.MinMatchesForRating
 	MinMatchesForAccuracyDelta    = skill.MinMatchesForAccuracyDelta
 	MinMatchesForRelative         = skill.MinMatchesForRelative
@@ -76,16 +74,15 @@ var (
 // Fonctions ré-exportées (valeur de fonction — les appelants sync-root gardent leur nom
 // d'origine ; les impl minuscules sont exportées côté skill sans collision).
 var (
-	RunFormulaSim              = skill.RunFormulaSim
-	RunLUSRV2ShadowOwnerOnly   = skill.RunLUSRV2ShadowOwnerOnly
-	loadExistingRatingIDs      = skill.LoadExistingRatingIDs
-	slugHasLUSR                = skill.SlugHasLUSR
-	GetPerformanceChain        = skill.GetPerformanceChain
-	RunDualRowSentinel         = skill.RunDualRowSentinel
-	computeCombatYield         = skill.ComputeCombatYield
-	clampF                     = skill.ClampF
-	loadExcludedMatchIDs       = skill.LoadExcludedMatchIDs
-	loadObjectiveParticipation = skill.LoadObjectiveParticipation
+	RunFormulaSim            = skill.RunFormulaSim
+	RunLUSRV2ShadowOwnerOnly = skill.RunLUSRV2ShadowOwnerOnly
+	loadExistingRatingIDs    = skill.LoadExistingRatingIDs
+	slugHasLUSR              = skill.SlugHasLUSR
+	GetPerformanceChain      = skill.GetPerformanceChain
+	RunDualRowSentinel       = skill.RunDualRowSentinel
+	computeCombatYield       = skill.ComputeCombatYield
+	clampF                   = skill.ClampF
+	loadExcludedMatchIDs     = skill.LoadExcludedMatchIDs
 
 	CompositeWeights               = skill.CompositeWeights
 	WeightsForChain                = skill.WeightsForChain

@@ -40,7 +40,7 @@
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import { type XY } from '../../../lib/replay/replayLogic'
+import { durationToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -84,14 +84,21 @@ export function buildBombBlastFx(
 }
 
 /**
- * Durée de l'effet, EN IMAGES — 12 images ≈ 1,2 s au pas de 100 ms documenté du rejeu.
+ * Durée de l'effet, en millisecondes de match : 1,2 s. Le tracé la reçoit en images
+ * (`bombBlastHoldFrames`), converties avec le pas du document — la durée ne dépend pas de la
+ * cadence du rejeu.
  *
- * DEUX FOIS l'onde de capture (6 images), et c'est délibéré : une capture de drapeau se répète
+ * DEUX FOIS l'onde de capture (600 ms), et c'est délibéré : une capture de drapeau se répète
  * plusieurs fois par manche, une explosion d'Assaut arrive une à quatre fois par MATCH (relevé
  * A0.3 : 28 explosions sur 9 films). Un événement rare a le droit de tenir l'écran plus
  * longtemps — le risque de recouvrement, lui, est nul à cette densité.
  */
-export const BOMB_BLAST_HOLD_FRAMES = 12
+export const BOMB_BLAST_HOLD_MS = 1200
+
+/** bombBlastHoldFrames rend la durée de l'effet en images du document (fractionnaire si la grille ne tombe pas juste). */
+export function bombBlastHoldFrames(doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
+  return durationToFrames(BOMB_BLAST_HOLD_MS, doc)
+}
 
 /** Fenêtre d'affichage (même forme que celle de l'onde de capture). */
 export interface BombBlastWindow {
@@ -105,6 +112,8 @@ export interface BombBlastStyle {
   inkOf: (xuid: string) => string
   /** Mouvement réduit : rien ne s'ouvre, l'empreinte ne fait que s'éteindre. */
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand l'explosion de cet auteur est retirée. Absent = tout se dessine. */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 // Géométrie, en pixels d'écran.
@@ -147,6 +156,7 @@ export function drawBombBlastFx(
   for (const f of fx) {
     const age = win.frame - f.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAuthor && !style.shownAuthor(f.xuid)) continue
     const k = age / Math.max(win.hold, 1)
     const c = projectTo(view, f)
     const ink = style.inkOf(f.xuid)

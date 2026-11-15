@@ -20,7 +20,7 @@ import (
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 // fakeCarnage implémente carnageGetter : réponses/erreurs par matchID.

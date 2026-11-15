@@ -110,10 +110,10 @@ export function drawMuzzleFlash(
   ctx.lineJoin = 'round'
   ctx.strokeStyle = color
   ctx.fillStyle = color
-  // L'ÉCLAT TOMBE VITE, mais plus au CARRÉ : le pas de temps réel des documents est de
-  // 100 ms (mesuré sur les 23 artefacts locaux, valeur unique), donc 600 ms de rémanence
-  // valent 6 images. Au carré, l'éclair avait déjà perdu 75 % de son intensité à la
-  // troisième et ne se lisait plus que sur deux. En puissance 3/2, il en tient quatre.
+  // L'ÉCLAT TOMBE VITE, mais plus au CARRÉ : `fade` descend de 1 à 0 sur la rémanence, une
+  // durée (600 ms, `SHOT_HOLD_MS`) et non un nombre d'images. Au carré, l'éclair avait déjà
+  // perdu 75 % de son intensité à la moitié de sa durée et ne se lisait plus que sur la
+  // première moitié. En puissance 3/2, il tient nettement plus longtemps.
   // Sous mouvement réduit, l'intensité ne varie plus du tout.
   const heat = shape.reduced ? 0.6 : shape.fade * Math.sqrt(shape.fade)
   const grow = shape.reduced ? 0.5 : 1 - shape.fade

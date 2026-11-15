@@ -28,7 +28,7 @@ import (
 	ddb "levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // setupUsageSharedDB : DB shared temporaire, schéma réel + migrations réelles.

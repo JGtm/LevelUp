@@ -89,7 +89,7 @@ func (m *engagementMockRepo) LoadRatioSamples(_ context.Context, _, _ string, _ 
 }
 
 // newEngagementRouter cree un router test avec l'EngagementHandler branche.
-func newEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
+func newEngagementRouter(factory handlers.ServiceFactory[port.PlayerEngagementService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewEngagementHandler(factory)
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
@@ -115,7 +115,7 @@ func TestEngagementHandler_GetMatchEngagement_OK(t *testing.T) {
 			IsTeamMode:   true,
 		},
 	}
-	factory := func(_ context.Context, slug string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, slug string) (port.PlayerEngagementService, error) {
 		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
@@ -144,7 +144,7 @@ func TestEngagementHandler_GetMatchEngagement_OK(t *testing.T) {
 }
 
 func TestEngagementHandler_GetMatchEngagement_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return nil, errors.New("player_not_found")
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/unknown/matches/m1/engagement", nil)
@@ -157,7 +157,7 @@ func TestEngagementHandler_GetMatchEngagement_PlayerNotFound(t *testing.T) {
 
 func TestEngagementHandler_GetMatchEngagement_MatchNotFound(t *testing.T) {
 	repo := &engagementMockRepo{matchCtx: nil}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/missing/engagement", nil)
@@ -172,7 +172,7 @@ func TestEngagementHandler_GetMatchEngagement_PvENotSupported(t *testing.T) {
 	repo := &engagementMockRepo{
 		matchCtx: &port.MatchEngagementContext{MatchID: "m", IsPvE: true},
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m/engagement", nil)
@@ -197,7 +197,7 @@ func TestEngagementHandler_GetMatchEngagement_Insufficient(t *testing.T) {
 			IsTeamMode:   true,
 		},
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/short/engagement", nil)
@@ -225,7 +225,7 @@ func mockEngagementMatchCtx() *port.MatchEngagementContext {
 // not_exposed → 503 capability_not_supported (jamais un score cold-start faux).
 func TestEngagementHandler_GetMatchEngagement_CapabilityNotExposed(t *testing.T) {
 	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
 			WithEngagementCapability(games.CapNotExposed), nil
 	}
@@ -243,7 +243,7 @@ func TestEngagementHandler_GetMatchEngagement_CapabilityNotExposed(t *testing.T)
 // degraded → 200 avec calibration=provisional (badge front).
 func TestEngagementHandler_GetMatchEngagement_CalibrationProvisional(t *testing.T) {
 	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
 			WithEngagementCapability(games.CapDegraded), nil
 	}
@@ -265,7 +265,7 @@ func TestEngagementHandler_GetMatchEngagement_CalibrationProvisional(t *testing.
 // supported → 200 avec calibration=validated.
 func TestEngagementHandler_GetMatchEngagement_CalibrationValidated(t *testing.T) {
 	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
 			WithEngagementCapability(games.CapSupported), nil
 	}
@@ -299,7 +299,7 @@ func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 			{XUID: "xuid-test", ModeCategory: "PvP_ranked", CoefLobbyShare: 1.05, NMatches: 200, LastUpdated: time.Now()},
 		},
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/engagement_profile", nil)
@@ -327,7 +327,7 @@ func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 
 func TestEngagementHandler_GetEngagementProfile_EmptyOnUnavailable(t *testing.T) {
 	repo := &engagementMockRepo{allCoefsErr: port.ErrEngagementUnavailable}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/engagement_profile", nil)
@@ -375,7 +375,7 @@ func TestEngagementHandler_RecomputeCoefficients_OK(t *testing.T) {
 	repo := &engagementMockRepo{
 		ratioSamples: validRatioSamples(15, 1.25, 1.10),
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodPost,
@@ -386,7 +386,7 @@ func TestEngagementHandler_RecomputeCoefficients_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var report service.RecomputeReport
+	var report domain.RecomputeReport
 	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestEngagementHandler_RecomputeCoefficients_InsufficientHistory(t *testing.
 	repo := &engagementMockRepo{
 		ratioSamples: validRatioSamples(5, 1.0, 1.0),
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodPost,
@@ -420,7 +420,7 @@ func TestEngagementHandler_RecomputeCoefficients_InsufficientHistory(t *testing.
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200 (skipped, not error), got %d: %s", w.Code, w.Body.String())
 	}
-	var report service.RecomputeReport
+	var report domain.RecomputeReport
 	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -436,7 +436,7 @@ func TestEngagementHandler_RecomputeCoefficients_InsufficientHistory(t *testing.
 }
 
 func TestEngagementHandler_RecomputeCoefficients_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return nil, errors.New("player_not_found")
 	}
 	req := httptest.NewRequest(http.MethodPost,
@@ -452,7 +452,7 @@ func TestEngagementHandler_RecomputeCoefficients_Unavailable(t *testing.T) {
 	repo := &engagementMockRepo{
 		ratioSamplesErr: port.ErrEngagementUnavailable,
 	}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodPost,
@@ -468,7 +468,7 @@ func TestEngagementHandler_RecomputeCoefficients_Unavailable(t *testing.T) {
 // GET /pages/squad/v2/engagement (GetSquadEngagementSession)
 // =============================================================================
 
-func newSquadEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
+func newSquadEngagementRouter(factory handlers.ServiceFactory[port.PlayerEngagementService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewEngagementHandler(factory)
 	r.Route("/players/{player_slug}", func(sub chi.Router) {
@@ -485,7 +485,7 @@ func newSquadEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEng
 // échouent avec le repo stub : la structure est garantie).
 func TestEngagementHandler_GetSquadSession_ExplicitMatchIDs(t *testing.T) {
 	repo := &engagementMockRepo{}
-	factory := func(_ context.Context, slug string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, slug string) (port.PlayerEngagementService, error) {
 		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
@@ -521,7 +521,7 @@ func TestEngagementHandler_GetSquadSession_ExplicitMatchIDs(t *testing.T) {
 // (labels []), pas une erreur — le front (ChartCard) affiche son état vide.
 func TestEngagementHandler_GetSquadSession_FallbackEmptyDerivation(t *testing.T) {
 	repo := &engagementMockRepo{} // historyResult vide → timeseries vide
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
 	}
 
@@ -557,7 +557,7 @@ func TestEngagementHandler_GetSquadSession_FallbackEmptyDerivation(t *testing.T)
 // jamais 422 — aligné sur le contournement des endpoints filtres (decodeFiltersBody).
 func TestEngagementHandler_Timeseries_NullDates_NotRejected(t *testing.T) {
 	repo := &engagementMockRepo{} // playerMatchesRepo nil → GetTimeseries dégrade en 200 vide
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
 	}
 
@@ -584,7 +584,7 @@ func TestEngagementHandler_Timeseries_NullDates_NotRejected(t *testing.T) {
 // (compat smoke / integration). Ne doit jamais renvoyer 4xx.
 func TestEngagementHandler_Timeseries_EmptyBody_OK(t *testing.T) {
 	repo := &engagementMockRepo{}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
 	}
 
@@ -604,7 +604,7 @@ func TestEngagementHandler_Timeseries_EmptyBody_OK(t *testing.T) {
 // FilterContextInput.Validate.
 func TestEngagementHandler_Timeseries_InvalidFilters_400(t *testing.T) {
 	repo := &engagementMockRepo{}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
 	}
 
@@ -624,7 +624,7 @@ func TestEngagementHandler_Timeseries_InvalidFilters_400(t *testing.T) {
 // rejeté proprement en 400 invalid_body (pas de 500 ni de panic).
 func TestEngagementHandler_Timeseries_MalformedJSON_400(t *testing.T) {
 	repo := &engagementMockRepo{}
-	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+	factory := func(_ context.Context, _ string) (port.PlayerEngagementService, error) {
 		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
 	}
 

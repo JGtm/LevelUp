@@ -55,6 +55,8 @@ var filmDerivedTables = []extractTable{
 	{name: "match_pad_pickups_by_tier", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	// Ressource véhicules de l'Emprise.
 	{name: "match_vehicle_takes", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	// Mainmise : temps en tete du score par camp (niveau match, sans joueur).
+	{name: "match_lead_share", where: matchIDInClause},
 	// Objectifs reconstruits du film : drapeaux nets, bombe d'Assaut, faits datés (+ leurs
 	// joueurs) de la chronologie des objectifs. Positions de la carte de chaleur (niveau match,
 	// sans joueur).

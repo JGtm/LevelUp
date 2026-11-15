@@ -9,9 +9,9 @@ func TestMediaPathStore_ToRel_MultiPlayerLayout(t *testing.T) {
 	base := filepath.FromSlash("C:/Users/Guillaume/Videos/Captures")
 	store := MediaPathStore{CapturesBase: base}
 
-	abs := filepath.FromSlash("C:/Users/Guillaume/Videos/Captures/Madina97294/Halo Infinite 2026-04-19 17-43-35.mp4")
-	got := store.ToRel(abs, "Madina97294")
-	want := "Madina97294/Halo Infinite 2026-04-19 17-43-35.mp4"
+	abs := filepath.FromSlash("C:/Users/Guillaume/Videos/Captures/Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4")
+	got := store.ToRel(abs, "Joueur90002")
+	want := "Joueur90002/Halo Infinite 2026-04-19 17-43-35.mp4"
 	if got != want {
 		t.Errorf("ToRel multi-player: got %q, want %q", got, want)
 	}
@@ -63,9 +63,9 @@ func TestMediaPathStore_ToAbs_RelativeJoinedWithBase(t *testing.T) {
 	base := filepath.FromSlash("/srv/captures")
 	store := MediaPathStore{CapturesBase: base}
 
-	stored := "Madina97294/thumbs/x.webp"
+	stored := "Joueur90002/thumbs/x.webp"
 	got := store.ToAbs(stored)
-	want := filepath.Join(base, "Madina97294", "thumbs", "x.webp")
+	want := filepath.Join(base, "Joueur90002", "thumbs", "x.webp")
 	if got != want {
 		t.Errorf("ToAbs relative: got %q, want %q", got, want)
 	}

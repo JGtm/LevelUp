@@ -42,6 +42,11 @@ const defaultCloseDrainTimeout = 3 * time.Second
 // Fire par ACQUISITION (une fois), pas en boucle : pas de spam.
 const defaultRWHoldWatchdog = 2 * time.Second
 
+// defaultHoldAlarm : durée au-delà de laquelle une prise du writer ou une lecture est journalisée à coup sûr,
+// même sous un épisode de dépassements déjà annoncé (hold_journal.go). Les rafales du rejeu ne tiennent
+// l'écrivain que 2 s ; 30 s est une tenue anormale.
+const defaultHoldAlarm = 30 * time.Second
+
 // defaultSlowSwapThreshold est la durée à partir de laquelle une phase du cycle
 // B-swap (drain des readers, swap RO→RW, swap RW→RO) cesse d'être nominale : en
 // dessous elle est journalisée en DEBUG, à partir du seuil elle repasse en INFO
@@ -153,6 +158,16 @@ type providerImpl struct {
 	// Désarmé au releaseWriter. Protégé par p.mu ; le callback du timer ne prend
 	// AUCUN lock (valeurs capturées) — pas de deadlock possible.
 	rwWatchdog *time.Timer
+	// rwAlarm : second seuil, plus long, armé en même temps que le watchdog (defaultRWHoldAlarm). Il écrit
+	// TOUJOURS sa ligne, même quand le journal des épisodes a tu le premier dépassement : un writer bloqué
+	// ne peut pas rester silencieux.
+	rwAlarm *time.Timer
+	// rwHold : suivi de l'acquisition RW en cours (lectures retenues, dépassement annoncé).
+	// Posé au swapToRW, lu au releaseWriter ; protégé par p.mu.
+	rwHold *rwHoldRecord
+	// holdJournal et readerJournal : un épisode de dépassement = une ligne (hold_journal.go).
+	holdJournal   journalDepassements
+	readerJournal journalDepassements
 
 	// readers compte les Get en vol : incrémenté sous p.mu quand state=RO,
 	// décrémenté par le release retourné. AcquireWriter attend qu'il retombe à
@@ -172,6 +187,10 @@ type providerImpl struct {
 	retryBaseBackoff time.Duration
 	drainTimeout     time.Duration
 	rwHoldWatchdog   time.Duration
+	// rwHoldAlarm / readerAlarm : durée au-delà de laquelle une prise du writer ou une lecture est journalisée
+	// quel que soit l'épisode en cours (<= 0 : désactivé).
+	rwHoldAlarm time.Duration
+	readerAlarm time.Duration
 	// slowSwapThreshold : au-delà de cette durée, une phase du cycle B-swap est
 	// journalisée en INFO au lieu de DEBUG (cf. defaultSlowSwapThreshold).
 	slowSwapThreshold time.Duration
@@ -203,6 +222,8 @@ func New(path string, timezone ...string) (Provider, error) {
 		retryBaseBackoff: defaultRetryBaseBackoff,
 		drainTimeout:     defaultDrainTimeout,
 		rwHoldWatchdog:   defaultRWHoldWatchdog,
+		rwHoldAlarm:      defaultHoldAlarm,
+		readerAlarm:      defaultHoldAlarm,
 
 		slowSwapThreshold:   defaultSlowSwapThreshold,
 		slowReaderThreshold: defaultSlowReaderThreshold,
@@ -234,6 +255,7 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 	// (état non-RO) ; le defer ajoute la durée totale d'attente UNE fois à la
 	// sortie (évite le double-comptage entre itérations de la boucle).
 	var waitStart time.Time
+	compteeRetenue := false
 	defer func() {
 		if !waitStart.IsZero() {
 			readerStallNsTotal.Add(time.Since(waitStart).Nanoseconds())
@@ -269,6 +291,10 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 		if waitStart.IsZero() {
 			waitStart = time.Now()
 			readerDelayedTotal.Add(1)
+		}
+		if s == StateRW && !compteeRetenue && p.rwHold != nil {
+			compteeRetenue = true
+			p.rwHold.lecturesRetenues.Add(1)
 		}
 		ready := p.ready
 		p.mu.Unlock()
@@ -319,6 +345,7 @@ func (p *providerImpl) Close() error {
 		close(p.ready)
 	}
 	p.mu.Unlock()
+	p.flushJournals()
 
 	// Best-effort drain — ne pas bloquer le shutdown sur des readers stuck.
 	drainDone := p.beginDrain()

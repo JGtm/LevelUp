@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
@@ -31,6 +32,8 @@ func bootMigrate(st *bootState) {
 	prepareWarehouse(st)
 	migrateSharedOrRefuse(st)
 	migrateAdditionalAndPlayerDBs(st)
+	// Les bases sont migrées et pas encore ouvertes par les fournisseurs : ce processus en est l'écrivain unique.
+	compactPassesAtBootAllTitles(st.ctx, st.cfg, st.pr, title.DefaultRegistry())
 }
 
 // resolveBootPaths résout le PathResolver, le slug par défaut et les chemins des bases ; en
@@ -244,7 +247,7 @@ func migrateMetadataDB(metaPath, prestigeConfigDir string) error {
 	// seedée depuis config/titles/{slug}/mappings/weapon_names.toml. Idempotent au boot
 	// (comme le registre). prestigeConfigDir = config/titles/{DefaultSlug}.
 	if _, err := weapons.ReconcileNameLabels(metaDB.SQLDb(), migration.DefaultSlug,
-		filepath.Join(prestigeConfigDir, "mappings", "weapon_names.toml")); err != nil {
+		mappings.WeaponNamesPath(filepath.Join(prestigeConfigDir, "mappings"))); err != nil {
 		metaDB.Close()
 		return fmt.Errorf("metadata weapon name labels reconcile: %w", err)
 	}

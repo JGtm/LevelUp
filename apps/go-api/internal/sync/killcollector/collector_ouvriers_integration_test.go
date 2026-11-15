@@ -34,7 +34,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // ouvriersDuTest : le nombre d ouvriers oppose a la boucle en serie.

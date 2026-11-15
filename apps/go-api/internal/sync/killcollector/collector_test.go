@@ -324,14 +324,14 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	}
 
 	db2 := openSharedTestDB(t)
-	col2 := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"}, sharedWriter(db2), capsAvecFilm(), 0), carteDe9b191a7f)
+	col2 := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{victime: "xuid(2697935320551236)"}, sharedWriter(db2), capsAvecFilm(), 0), carteDe9b191a7f)
 	if _, _, err := col2.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe avec roster: %v", err)
 	}
 
 	var resolus int
 	if err := db2.QueryRow(`SELECT COUNT(*) FROM match_kill_events_latest
-		WHERE victim_xuid = 'xuid(2533274792395366)'`).Scan(&resolus); err != nil {
+		WHERE victim_xuid = 'xuid(2697935320551236)'`).Scan(&resolus); err != nil {
 		t.Fatalf("select resolus: %v", err)
 	}
 	if resolus == 0 {

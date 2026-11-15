@@ -11,14 +11,17 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestDemoReplayFamilyOf(t *testing.T) {
@@ -102,7 +105,7 @@ func TestValidateDemoManifest_RejeuxFiges(t *testing.T) {
 func artefactJSON(t *testing.T, matchID string, schema int) []byte {
 	t.Helper()
 	raw, err := json.Marshal(map[string]any{
-		"schemaVersion": schema, "matchId": matchID, "titleSlug": titlePkg.DefaultSlug,
+		"schemaVersion": schema, "frameIntervalMs": replaybuild.CookFrameIntervalMS(), "matchId": matchID, "titleSlug": titlePkg.DefaultSlug,
 		"tracks": []map[string]any{{"slot": 1, "points": []any{}}},
 		"layers": replay.RevisionsCourantesDesCouches(),
 	})
@@ -116,6 +119,12 @@ func ecrireTest(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
+	}
+	if strings.HasSuffix(path, titlePkg.ReplayArtifactExt) { // un artefact se range compressé, par la porte
+		if _, _, err := replayartifact.Write(context.Background(), path, data); err != nil {
+			t.Fatal(err)
+		}
+		return
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatal(err)

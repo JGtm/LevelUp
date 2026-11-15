@@ -20,8 +20,9 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/mapfondsidecar"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // FromArtifact projette le document d'artefact sur le document servi.
@@ -29,9 +30,10 @@ func FromArtifact(doc replay.ReplayDocument) replaydoc.ReplayDocument {
 	return toReplayDocument(doc)
 }
 
-// MapBackgroundOf projette le calage du fond de carte. nil reste nil : l'absence de fond
-// est un cas nominal (toutes les cartes n'ont pas d'image figee), pas une erreur.
-func MapBackgroundOf(bg *replay.MapBackground) *replaydoc.MapBackground {
+// MapBackgroundOf projette le sidecar COMPLET d'un fond de carte (calage du decodeur et plan des
+// murs). nil reste nil : l'absence de fond est un cas nominal (toutes les cartes n'ont pas
+// d'image figee), pas une erreur.
+func MapBackgroundOf(bg *mapfondsidecar.MapBackground) *replaydoc.MapBackground {
 	return ptrOf(bg, toMapBackground)
 }
 

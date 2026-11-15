@@ -1,0 +1,9 @@
+== par build (sous carte) : films, paquets, fermes avant, fermes apres, part avant, part apres, gain
+HI_1_10_0	3	62049	59203	59232	95.41 %	95.46 %	+29	(sans carte avant/apres 14529/14529)
+HI_1_11_0	3	65538	62963	64419	96.07 %	98.29 %	+1456	(sans carte avant/apres 15244/15259)
+HI_1_12_0	8	225671	220481	220481	97.70 %	97.70 %	+0	(sans carte avant/apres 218747/218747)
+HI_1_13_0	119	3883921	3790636	3861351	97.60 %	99.42 %	+70715	(sans carte avant/apres 3771684/3772418)
+HI_1_8_0	1	20210	13965	13962	69.10 %	69.08 %	-3	(sans carte avant/apres 10403/10403)
+HI_1_9_0	1	17629	16303	16304	92.48 %	92.48 %	+1	(sans carte avant/apres 6094/6095)
+== films : id build niveau paquets avant apres delta part_avant part_apres
+== films en baisse : f144db25 -3

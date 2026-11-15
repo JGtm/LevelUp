@@ -33,7 +33,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/platform/jobs"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/util/pointers"
 )
 
@@ -52,8 +52,8 @@ type EventsConvergenceTrigger interface {
 
 // OpenSpartanImportHandler wires the import service to the HTTP layer.
 type OpenSpartanImportHandler struct {
-	importSvc     *service.OpenSpartanImportService
-	postImportSvc *service.OpenSpartanPostImportService
+	importSvc     port.OpenSpartanImportService
+	postImportSvc port.OpenSpartanPostImportService
 	convergence   EventsConvergenceTrigger
 	jobStore      *jobs.Store
 	tempDir       string
@@ -62,11 +62,11 @@ type OpenSpartanImportHandler struct {
 
 // OpenSpartanImportConfig collects the dependencies needed by the handler.
 type OpenSpartanImportConfig struct {
-	ImportService *service.OpenSpartanImportService
+	ImportService port.OpenSpartanImportService
 	// PostImportService recomputes sessions/perf_score/citations after the
 	// raw import. Optional — when nil, the recompute stage is skipped and
 	// callers can run it out-of-band (e.g. via the sync engine).
-	PostImportService *service.OpenSpartanPostImportService
+	PostImportService port.OpenSpartanPostImportService
 	// Convergence (optionnel) déclenche un backfill events immédiat après l'import.
 	// Nil → repris au prochain cycle scheduler.
 	Convergence EventsConvergenceTrigger
@@ -220,7 +220,7 @@ func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpP
 
 	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("opening_database"))
 
-	opts := service.ImportOptions{
+	opts := port.OpenSpartanImportOptions{
 		Source:     "openspartan_import",
 		StashDir:   h.stashDir,
 		OnProgress: h.makeProgressCallback(jobID),
@@ -250,12 +250,12 @@ func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpP
 // never bubble up: the import itself succeeded.
 func (h *OpenSpartanImportHandler) runPostImport(
 	ctx context.Context, jobID, xuid, gamertag string, matchIDs []string,
-) service.PostImportResult {
+) port.OpenSpartanPostImportResult {
 	if h.postImportSvc == nil || gamertag == "" {
-		return service.PostImportResult{}
+		return port.OpenSpartanPostImportResult{}
 	}
 	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("recomputing_sessions_and_scores"))
-	res, err := h.postImportSvc.Run(ctx, xuid, gamertag, matchIDs, service.PostImportOptions{})
+	res, err := h.postImportSvc.Run(ctx, xuid, gamertag, matchIDs, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		slog.Warn("openspartan_post_import_fatal", "job_id", jobID, "err", err)
 	}
@@ -277,7 +277,7 @@ func (h *OpenSpartanImportHandler) makeProgressCallback(jobID string) func(parse
 }
 
 func (h *OpenSpartanImportHandler) recordSuccess(
-	jobID string, result service.ImportResult, post service.PostImportResult,
+	jobID string, result port.OpenSpartanImportResult, post port.OpenSpartanPostImportResult,
 ) {
 	slog.Info("openspartan_import_succeeded",
 		"job_id", jobID,
@@ -325,9 +325,9 @@ func (h *OpenSpartanImportHandler) recordFailure(jobID string, err error) {
 
 func classifyImportError(err error) string {
 	switch {
-	case errors.Is(err, service.ErrXUIDMismatch):
+	case errors.Is(err, port.ErrOpenSpartanXUIDMismatch):
 		return "xuid_mismatch"
-	case errors.Is(err, service.ErrLowConfidence):
+	case errors.Is(err, port.ErrOpenSpartanLowConfidence):
 		return "owner_low_confidence"
 	case errors.Is(err, openspartan.ErrNotOpenSpartanDB):
 		return "not_openspartan_db"

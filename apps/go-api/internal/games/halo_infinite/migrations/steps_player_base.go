@@ -222,27 +222,9 @@ func playerBaseSteps() []migration.Migration {
 		{
 			Name:        "create_progression_player_schema",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Tables Progression Tracking côté joueur (streak, record_history, milestone_earned)",
+			Description: "Tables Progression Tracking côté joueur (record_history, milestone_earned) ; les séries vivent dans streak_history (create_streak_history_append_only)",
 			ApplySchema: func(db *sql.DB) error {
 				return migration.ExecScript(db, `
-					CREATE TABLE IF NOT EXISTS streak (
-						id                  VARCHAR PRIMARY KEY,
-						user_id             VARCHAR NOT NULL,
-						title_slug          VARCHAR NOT NULL,
-						type                VARCHAR NOT NULL,
-						started_at          TIMESTAMP NOT NULL,
-						current_length      INTEGER NOT NULL DEFAULT 0,
-						best_length         INTEGER NOT NULL DEFAULT 0,
-						last_increment_at   TIMESTAMP,
-						threshold           DOUBLE,
-						shields_used        INTEGER NOT NULL DEFAULT 0,
-						shields_available   INTEGER NOT NULL DEFAULT 1,
-						status              VARCHAR NOT NULL DEFAULT 'active',
-						broken_at           TIMESTAMP
-					);
-					CREATE INDEX IF NOT EXISTS idx_streak_user_title_type ON streak(user_id, title_slug, type);
-					CREATE INDEX IF NOT EXISTS idx_streak_user_status     ON streak(user_id, status);
-
 					CREATE TABLE IF NOT EXISTS record_history (
 						id           VARCHAR PRIMARY KEY,
 						user_id      VARCHAR NOT NULL,

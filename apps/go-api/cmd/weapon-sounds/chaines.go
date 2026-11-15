@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // longueurMinChaine : en dessous, une suite d'octets imprimables est du hasard. Quatre

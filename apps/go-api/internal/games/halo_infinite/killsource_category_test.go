@@ -5,7 +5,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 // TestKillSourceCategory_ParLaClasse : chaque tag `OBJET_EXPLOSIF` de la table est un objet

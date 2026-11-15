@@ -54,7 +54,7 @@ export function stepToken(step: string): SemanticToken {
  * no-op) ; les proportions sont calculées sur la somme des durées non
  * nulles. Retourne [] si rien de significatif.
  */
-export function buildTimelineSegments(timings: PostSyncStepTiming[] | undefined): TimelineSegment[] {
+export function buildTimelineSegments(timings: PostSyncStepTiming[] | null | undefined): TimelineSegment[] {
   if (!timings?.length) return []
   const significant = timings.filter((t) => t.duration_ms > 0)
   const total = significant.reduce((acc, t) => acc + t.duration_ms, 0)

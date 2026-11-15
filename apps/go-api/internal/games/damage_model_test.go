@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -27,8 +29,8 @@ func repoConfigRoot(t *testing.T) string {
 
 // TestEffectiveHpToKill_TitleAwareAndFallback — oracle damage-model Phase 0 : un
 // titre déclare son effective_hp_to_kill dans constants.toml [damage_model] et la
-// valeur route VRAIMENT (pas le 225 par défaut) ; un titre sans section / inconnu /
-// resolver legacy / resolver nil retombe sur DefaultEffectiveHpToKill (225,
+// valeur route VRAIMENT (pas le 229 par défaut) ; un titre sans section / inconnu /
+// resolver legacy / resolver nil retombe sur DefaultEffectiveHpToKill (229,
 // byte-identique Halo Infinite).
 func TestEffectiveHpToKill_TitleAwareAndFallback(t *testing.T) {
 	t.Parallel()
@@ -54,7 +56,7 @@ effective_hp_to_kill = 115
 	}
 	res := NewMappingsEndpointResolver(reg, "halo_infinite")
 
-	// (1) La valeur déclarée (115) route réellement, pas le défaut 225.
+	// (1) La valeur déclarée (115) route réellement, pas le défaut 229.
 	if dm, ok := res.DamageModelFor(slug); !ok || dm.EffectiveHpToKill != 115 {
 		t.Errorf("DamageModelFor(%q) = %+v ok=%v, want EffectiveHpToKill=115 true", slug, dm, ok)
 	}
@@ -62,17 +64,17 @@ effective_hp_to_kill = 115
 		t.Errorf("EffectiveHpToKillFromResolver(%q) = %v, want 115", slug, got)
 	}
 
-	// (2) Titre inconnu du registre → défaut 225.
+	// (2) Titre inconnu du registre → défaut 229.
 	if got := EffectiveHpToKillFromResolver(res, "never_loaded"); got != DefaultEffectiveHpToKill {
 		t.Errorf("inconnu = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
 
-	// (3) Resolver legacy (sans DamageModelResolver) → défaut 225.
+	// (3) Resolver legacy (sans DamageModelResolver) → défaut 229.
 	if got := EffectiveHpToKillFromResolver(hostOnlyResolver{}, slug); got != DefaultEffectiveHpToKill {
 		t.Errorf("resolver legacy = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
 
-	// (4) Resolver nil → défaut 225.
+	// (4) Resolver nil → défaut 229.
 	if got := EffectiveHpToKillFromResolver(nil, slug); got != DefaultEffectiveHpToKill {
 		t.Errorf("resolver nil = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
@@ -200,45 +202,25 @@ func TestDefensiveResistanceP80_RealConfig(t *testing.T) {
 	}
 }
 
-// TestProvidesNativeKDA — un titre déclarant no_native_kda=true (Halo 5) route
-// false ; un titre sans le flag / inconnu / resolver legacy / resolver nil retombe
-// sur true (défaut Infinite). Garantit qu'on ne fabrique jamais de KDA pour un
-// titre qui n'en fournit pas via son API (règle absolue).
-func TestProvidesNativeKDA(t *testing.T) {
+// TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite — la constante de repli n'est pas une seconde
+// source : elle égale la valeur de config/titles/halo_infinite/constants.toml, que le resolver
+// du titre sert et que /bootstrap transmet au web.
+func TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite(t *testing.T) {
 	t.Parallel()
-	const slug = "synthetic_nokda_title"
-
-	tmp := t.TempDir()
-	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
-	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
-[meta]
-title_slug = "`+slug+`"
-schema_version = 1
-
-[endpoints]
-stats = "https://stats.example.test"
-
-[damage_model]
-effective_hp_to_kill = 115
-no_native_kda = true
-`)
 	reg := mappings.NewRegistry()
-	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
-		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	if errs := reg.LoadFromConfigDir(repoConfigRoot(t), []string{"halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir(halo_infinite) errs: %v", errs)
 	}
 	res := NewMappingsEndpointResolver(reg, "halo_infinite")
-
-	if ProvidesNativeKDAFromResolver(res, slug) {
-		t.Errorf("ProvidesNativeKDA(%q) = true, want false (no_native_kda=true)", slug)
+	dm, ok := res.DamageModelFor("halo_infinite")
+	if !ok || dm.EffectiveHpToKill <= 0 {
+		t.Fatalf("halo_infinite doit déclarer effective_hp_to_kill (reçu %+v ok=%v)", dm, ok)
 	}
-	if !ProvidesNativeKDAFromResolver(res, "never_loaded") {
-		t.Error("titre inconnu : ProvidesNativeKDA devrait être true (défaut)")
+	if dm.EffectiveHpToKill != DefaultEffectiveHpToKill {
+		t.Errorf("TOML d'Infinite = %v, repli Go = %v : une seule valeur, celle du TOML", dm.EffectiveHpToKill, DefaultEffectiveHpToKill)
 	}
-	if !ProvidesNativeKDAFromResolver(hostOnlyResolver{}, slug) {
-		t.Error("resolver legacy : ProvidesNativeKDA devrait être true (défaut)")
-	}
-	if !ProvidesNativeKDAFromResolver(nil, slug) {
-		t.Error("resolver nil : ProvidesNativeKDA devrait être true (défaut)")
+	if got := EffectiveHpToKillFromResolver(res, "halo_infinite"); got != dm.EffectiveHpToKill {
+		t.Errorf("EffectiveHpToKillFromResolver = %v, want %v (TOML)", got, dm.EffectiveHpToKill)
 	}
 }
 
@@ -402,5 +384,39 @@ func TestH5ProvidesTeamMMRAndMaxKillingSpree(t *testing.T) {
 	}
 	if !ProvidesMaxKillingSpreeFromResolver(res, "halo_infinite") {
 		t.Error("halo_infinite : ProvidesMaxKillingSpree doit être true (events-timeline degraded)")
+	}
+}
+
+// TestFieldsTOML_LaVieEstLeJetonRendueParLeTitre — les descriptions des champs Rendement et Résistance de
+// la config RÉELLE portent le jeton, jamais un nombre : rendues avec la vie du titre, elles disent 229
+// pour Halo Infinite et 115 pour Halo 5 (le TOML de Halo 5 écrivait 225, faux).
+func TestFieldsTOML_LaVieEstLeJetonRendueParLeTitre(t *testing.T) {
+	t.Parallel()
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(repoConfigRoot(t), []string{"halo_5", "halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+	for slug, want := range map[string]string{"halo_infinite": "229", "halo_5": "115"} {
+		set, ok := reg.Get(slug)
+		if !ok {
+			t.Fatalf("champs de %s absents", slug)
+		}
+		hp := EffectiveHpToKillFromResolver(res, slug)
+		for _, key := range []string{"offensive_conversion", "defensive_resistance"} {
+			m, ok := set.Get(canonical.FieldKey(key))
+			if !ok {
+				t.Fatalf("%s : champ %s absent", slug, key)
+			}
+			for _, loc := range []string{"fr", "en"} {
+				raw, _ := m.Description(loc)
+				if !strings.Contains(raw, HPToken) {
+					t.Errorf("%s.%s (%s) : la description doit porter %s, reçu %q", slug, key, loc, HPToken, raw)
+				}
+				if got := SubstituteHPToken(raw, hp); !strings.Contains(got, want+" ×") && !strings.Contains(got, "("+want+" ×") {
+					t.Errorf("%s.%s (%s) : rendu %q, attendu la vie %s", slug, key, loc, got, want)
+				}
+			}
+		}
 	}
 }

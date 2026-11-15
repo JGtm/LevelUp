@@ -26,7 +26,7 @@ import (
 	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/util/pointers"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/halo-api/halo5"
 )
 
 // h5GameModeSegment mappe le GameMode numérique (liste de matchs) vers le segment

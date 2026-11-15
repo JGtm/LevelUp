@@ -45,7 +45,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les

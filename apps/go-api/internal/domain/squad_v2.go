@@ -73,11 +73,6 @@ type SquadCharts struct {
 	AccuracyTimeseries    []ChartSeries[ChartPoint2D]     `json:"accuracy_timeseries,omitempty"`
 	AvgLifeTimeseries     []ChartSeries[ChartPoint2D]     `json:"avg_life_timeseries,omitempty"`
 	PerformanceTimeseries []ChartSeries[ChartPoint2D]     `json:"performance_timeseries,omitempty"`
-
-	// Onglet Contributions suite (chunk S8 — Radar 6 axes).
-	// Type opaque (any) car le payload Radar est defini cote service
-	// (RadarChartSeries) — laisse le service amont serializer.
-	Radar []any `json:"radar,omitempty"`
 }
 
 // SquadTables regroupe les tableaux + galerie de la page Squad V2 (chunk S9).
@@ -140,10 +135,10 @@ type KPIStats struct {
 	// PerformanceScore : score 0-100 du joueur sur le scope filtre.
 	// Moyenne des performance_score par match (sync). Nil si aucun match enrichi.
 	PerformanceScore *float64 `json:"performance_score,omitempty"`
-	// AvgOffensiveConversion : moyenne du rendement offensif (225*(kills+assists/3)/damage_dealt).
+	// AvgOffensiveConversion : moyenne du rendement offensif (229*(kills+assists/3)/damage_dealt).
 	// Nil si aucun match avec damage_dealt > 0.
 	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
-	// AvgDefensiveResistance : moyenne de la résistance défensive (damage_taken/(225*deaths)).
+	// AvgDefensiveResistance : moyenne de la résistance défensive (damage_taken/(229*deaths)).
 	// Nil si aucun match avec deaths > 0.
 	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
 	// CombatProfile : profil combat 3 axes avec descripteurs textuels.

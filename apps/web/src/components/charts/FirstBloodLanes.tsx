@@ -64,7 +64,7 @@ import {
   formatLaneSeconds,
   sanitizeRichText,
   type FirstBloodLane,
-  type FirstBloodPlayerSeries,
+  type FirstBloodLaneSeries,
 } from './firstBloodLanesModel'
 
 /** Placeholder d'une médiane ou d'un libellé (carte/mode) manquant. */
@@ -94,7 +94,7 @@ const GAP_BAR_OPACITY = 0.5
  */
 const MIN_MATCHES_FOR_CLOUD = 3
 
-export type { FirstBloodMatch, FirstBloodPlayerSeries } from './firstBloodLanesModel'
+export type { FirstBloodMatch, FirstBloodLaneSeries } from './firstBloodLanesModel'
 
 /** Libellés localisés consommés par le builder (le builder reste sans locale). */
 export interface FirstBloodLanesLabels {
@@ -122,7 +122,7 @@ export interface FirstBloodLanesLabels {
 }
 
 export interface FirstBloodLanesProps {
-  data: FirstBloodPlayerSeries[]
+  data: FirstBloodLaneSeries[]
   /** Fenêtre de l'axe X en secondes (défaut 300). */
   maxSec?: number
   /**

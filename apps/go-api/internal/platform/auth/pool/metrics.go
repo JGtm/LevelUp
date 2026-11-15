@@ -13,6 +13,9 @@ var (
 	retryAfterHonoredTotal = expvar.NewInt("levelup.auth_pool.retry_after_honored_total")
 	cooldownExtendedTotal  = expvar.NewInt("levelup.auth_pool.cooldown_extended_total")
 	lastCooldownSeconds    = expvar.NewInt("levelup.auth_pool.last_cooldown_seconds")
+	// perToken429Absorbed : 429 imputés à un token et absorbés par sa mise à l'écart (cooldown per-token +
+	// AIMD), nominal sous charge ; le WARN n'est réservé qu'aux mises à l'écart longues.
+	perToken429Absorbed = expvar.NewInt("levelup.auth_pool.per_token_429_absorbed_total")
 )
 
 // recordCooldownMetrics incrémente les compteurs cumulés à chaque déclenchement

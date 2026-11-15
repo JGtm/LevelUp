@@ -12,7 +12,7 @@
  * (capability `damage_taken` — Halo 5 n'a pas de dégâts subis).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -24,7 +24,8 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { tipNumberUpTo } from '@/components/charts/tipNumber'
-import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
+import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { meanOfValid } from '@/lib/charts/stats'
 import { netLives } from '@/lib/charts/netLives'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useEffectiveHpToKill, substituteHpToken, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -73,7 +74,7 @@ export interface NetLivesLabels {
 export function buildSessionNetLivesOption(
   series: ChartSeries<NetLivesPoint>[],
   opts: NetLivesLabels,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
@@ -154,7 +155,7 @@ export function SessionNetLivesCumulative({ title, matches, height = 280, yDomai
   const t = useSessionT()
 
   const points = useMemo(
-    () => (matches.length === 0 ? [] : computeCumulativeNetLives(matches, hp)),
+    () => (matches.length === 0 || hp === undefined ? [] : computeCumulativeNetLives(matches, hp)),
     [matches, hp],
   )
   const series = useMemo<ChartSeries<NetLivesPoint>[]>(
@@ -164,7 +165,7 @@ export function SessionNetLivesCumulative({ title, matches, height = 280, yDomai
   const mean = useMemo(() => meanOfValid(points.map((p) => p.value)), [points])
 
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
-  if (!providesDamageTaken) return null
+  if (!providesDamageTaken || hp === undefined) return null
 
   const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,

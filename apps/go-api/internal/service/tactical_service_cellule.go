@@ -56,19 +56,27 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	if err := validerLecture(req.MapID, req.Question, req.Qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
+	vies, err := s.viesAcceptees(ctx, req.MapID, req.Scope.Vies)
+	if err != nil {
+		return out, err
+	}
+	scope.Vies = vies
 	if s.repo == nil {
 		return out, games.ErrCapabilityNotSupported
+	}
+	dejaLus, err := s.appliquerLeFiltreDeGrappe(ctx, req.MapID, &scope)
+	if err != nil {
+		return out, err
 	}
 	req.Scope = scope
 
 	var (
 		lues    []contributionLue
 		univers domain.TacticalUnivers
-		err     error
 	)
 	switch {
 	case lectureDArtefact(req.Question):
-		lues, univers, err = s.celluleArtefact(ctx, req, scope)
+		lues, univers, err = s.celluleArtefact(ctx, req, scope, dejaLus)
 	case req.Question == domain.TacticalQuestionIsole:
 		lues, univers, err = s.celluleIsole(ctx, req, scope)
 	default:
@@ -300,7 +308,7 @@ func pointDuTueur(m domain.MortContexte) *domain.TacticalPoint {
 // champ TOUJOURS present au schema 6 (ecrit a la cuisson) : aucun cas de « temps sans
 // instant » n'a ete rencontre sur le corpus courant (verdict consigne au journal du lot).
 func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]contributionLue, domain.TacticalUnivers, error) {
+	scope domain.TacticalScope, dejaLus map[string]*domain.TacticalRasterSidecar) ([]contributionLue, domain.TacticalUnivers, error) {
 	if !s.caps.Has(games.CapFilmReplayArtifact) {
 		s.logger.WarnContext(ctx, "tactique: lecture d'artefact indisponible (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
@@ -324,13 +332,8 @@ func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.Tactic
 
 	out := make([]contributionLue, 0, 2)
 	for _, m := range univers.Matchs {
-		sc, err := s.rasters.Charger(ctx, m.MatchID)
-		if err != nil {
-			s.logger.ErrorContext(ctx, "tactique: sidecar de raster illisible (detail de cellule)",
-				"player", s.xuid, "map_id", req.MapID, "match_id", m.MatchID, "err", err)
-			continue
-		}
-		if !s.sidecarExploitable(ctx, sc, m.MatchID) {
+		sc := s.sidecarDeLaCellule(ctx, req.MapID, m.MatchID, dejaLus)
+		if sc == nil {
 			continue
 		}
 		out = append(out, contributionsDuSidecar(sc, m.MatchID, req.Question, celluleVisee(req), dans)...)

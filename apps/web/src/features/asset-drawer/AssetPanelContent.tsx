@@ -11,6 +11,7 @@ import type { Ref } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
+import { PinIcon, PinOffIcon } from '@/components/icons/lucide'
 import { useAssetDrawerStore, type AssetTab } from './assetDrawer.store'
 import { useAssetMaps, useAssetWeapons, useAssetMedals } from './useAssetDrawer'
 import { dedupeAssetsById } from './assetDrawerLogic'
@@ -32,9 +33,18 @@ interface AssetPanelContentProps {
   searchFirst?: boolean
   /** Focus programmatique du champ de recherche (volet ancré). */
   searchRef?: Ref<HTMLInputElement>
+  /** Volet ancré : bouton d'épinglage, placé avant la fermeture. Sans `onTogglePin`, pas de bouton. */
+  pinned?: boolean
+  onTogglePin?: () => void
 }
 
-export function AssetPanelContent({ onClose, searchFirst = false, searchRef }: AssetPanelContentProps) {
+export function AssetPanelContent({
+  onClose,
+  searchFirst = false,
+  searchRef,
+  pinned = false,
+  onTogglePin,
+}: AssetPanelContentProps) {
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { isOpen, activeTab, search, setTab, setSearch } = useAssetDrawerStore()
@@ -58,14 +68,28 @@ export function AssetPanelContent({ onClose, searchFirst = false, searchRef }: A
           <TabButton key={tab} active={activeTab === tab} onClick={() => setTab(tab)} label={t(label)} />
         ))}
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t('asset_drawer.toggle.close')}
-        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-      >
-        <CloseIcon />
-      </button>
+      <div className="flex items-center gap-1">
+        {onTogglePin && (
+          <button
+            type="button"
+            onClick={onTogglePin}
+            aria-pressed={pinned}
+            aria-label={t('asset_drawer.pin.toggle')}
+            title={t('asset_drawer.pin.toggle')}
+            className={`rounded p-1 hover:bg-accent hover:text-accent-foreground ${pinned ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
+          >
+            {pinned ? <PinOffIcon /> : <PinIcon />}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('asset_drawer.toggle.close')}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <CloseIcon />
+        </button>
+      </div>
     </div>
   )
   const searchField = (

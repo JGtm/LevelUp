@@ -27,8 +27,10 @@ import (
 
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaytext"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // corpusDir rend le dossier d'artefacts, ou saute le test.
@@ -41,28 +43,24 @@ func corpusDir(t *testing.T) string {
 	return dir
 }
 
-// artefacts liste les documents de rejeu du corpus, extension .json STRICTE (le dossier
-// porte aussi des copies datées, qui ne sont pas des artefacts courants).
+// artefacts liste les documents de rejeu du corpus (un par match, compressé ou brut, par la porte
+// replayartifact : le dossier porte aussi des copies datées et des marques, qui ne sont pas des artefacts).
 func artefacts(t *testing.T, dir string) []string {
 	t.Helper()
-	entries, err := os.ReadDir(dir)
+	entries, err := replayartifact.List(dir)
 	if err != nil {
 		t.Fatalf("lecture du corpus : %v", err)
 	}
 	var out []string
 	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
-			continue
-		}
-		out = append(out, filepath.Join(dir, e.Name()))
+		out = append(out, filepath.Join(dir, e.Name))
 	}
-	sort.Strings(out)
 	return out
 }
 
 func lireDocument(t *testing.T, path string) replay.ReplayDocument {
 	t.Helper()
-	raw, err := os.ReadFile(path) //nolint:gosec // chemin de corpus fourni par l'opérateur
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("lecture %s : %v", path, err)
 	}
@@ -200,8 +198,8 @@ func TestCadenceDesArmesSurLeCorpus(t *testing.T) {
 	// Nom affichable par weapon_key : le catalogue nomme par FAMILLE, la mesure agrège par clé.
 	nomParCle := map[string]string{}
 	for fam, key := range cat.Keys {
-		if w, ok := cat.Weapons[fam]; ok && TexteDepuisFilm(w.Text)[i18n.LocaleFR] != "" {
-			nomParCle[key] = TexteDepuisFilm(w.Text)[i18n.LocaleFR]
+		if w, ok := cat.Weapons[fam]; ok && replaytext.TexteDepuisFilm(w.Text)[i18n.LocaleFR] != "" {
+			nomParCle[key] = replaytext.TexteDepuisFilm(w.Text)[i18n.LocaleFR]
 		}
 	}
 	type ligne struct {

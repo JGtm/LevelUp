@@ -14,8 +14,8 @@ import (
 
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // rosterDe fabrique des faits de match a `n` joueurs presents au coup d'envoi, sur une
@@ -95,7 +95,7 @@ func TestSiegesAuCoupDEnvoiNeCompteNiBotNiRemplacant(t *testing.T) {
 	f := rosterDe(decfilm.StatPlayerSlots) // huit joueurs au coup d'envoi
 	f.Players = append(f.Players,
 		port.MatchPlayerFact{XUID: "bid(7.0)"},                                 // le bot qui tient la place
-		port.MatchPlayerFact{XUID: "2535461109438273", JoinedInProgress: true}) // le remplacant
+		port.MatchPlayerFact{XUID: "2770776903346818", JoinedInProgress: true}) // le remplacant
 
 	if got := siegesAuCoupDEnvoi(f); got != decfilm.StatPlayerSlots {
 		t.Errorf("%d sieges pour %d lignes, attendu %d", got, len(f.Players),

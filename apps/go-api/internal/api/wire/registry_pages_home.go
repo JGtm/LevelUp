@@ -24,7 +24,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		return nil, "", "", err
 	}
 	homeRepo := r.newHomeRepo(pdb)
-	svc := service.NewHomeService(homeRepo).
+	svc := service.NewHomeService(homeRepo, haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
@@ -247,11 +247,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		// Une variante de carte compte sous sa carte de base : filtre de cartes de l'Escouade.
 		WithMapGroups(r.mapGroupsFor(pdb))
-	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
+	// Axe « Objectif » (note d'objectif du match) du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
+		svc = svc.WithObjectiveTeamRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
 	// Résumé d'usage (lectures communes des blocs d'usage et de l'Emprise) : MÊME repo que les
 	// pages Sessions et Synthèse, sur le périmètre D2 de cette page (cf.
@@ -267,7 +267,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 			objectives = duckdb.NewObjectiveStatsRepo(pdb)
 		}
-		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.replayLabels())
 	}
 	// Historique d'objectif (« Rapport de force, soirée après soirée », D6) : le titre qui
 	// publie les stats d'objectif dit aussi quels modes l'historique écarte (le drapeau neutre,
@@ -288,6 +288,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// la Répartition des frags. Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
+	}
+	// Mainmise de la section Dynamique (part du temps en tete du score, par match) : la capability
+	// fine film.lead_share (absente pour Halo 5 -> serie absente). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmLeadShare) {
+		svc = svc.WithLeadShare(duckdb.NewLeadShareRepo(pdb))
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

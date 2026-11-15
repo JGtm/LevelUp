@@ -158,6 +158,11 @@ export const defaultPalette: Palette = {
   'objective-role-defend': '#0891B2', // cyan-600 — Défendre
   'objective-role-hold':   '#A924BD', // magenta — Tenir
 
+  // ── Rôles de portée — rampe ordinale chaude -> neutre -> froide, clair et sombre (rangeRoleTokens.test.ts) ──
+  'range-role-front': '#D9480F', // orange brûlé — Ligne de front
+  'range-role-mid':   '#868E96', // gris — Polyvalent
+  'range-role-far':   '#1C7ED6', // bleu — Tireur d'élite
+
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge
   'heatmap-hot':            '#10B981', // bon     — vert

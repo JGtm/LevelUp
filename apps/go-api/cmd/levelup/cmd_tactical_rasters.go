@@ -52,7 +52,7 @@ import (
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // tacticalRastersOptions : les reglages de la passe.
@@ -61,6 +61,9 @@ type tacticalRastersOptions struct {
 	backfill  bool
 	dryRun    bool
 	limit     int
+	// prevision : le titre declare film.spawn_forecast ; les sidecars portent alors la matiere de la
+	// prevision de reapparition (lue dans les capabilities, jamais devinee d'apres le slug).
+	prevision bool
 }
 
 // bilanTacticalRasters : ce que la passe a fait, et pourquoi elle a saute ce qu'elle a
@@ -100,6 +103,7 @@ func runTacticalRasters(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
+	o.prevision = caps.Has(games.CapFilmSpawnForecast)
 	ctx := context.Background()
 	shorts, err := artefactsDuTitre(ctx, cfg, o.titleSlug)
 	if err != nil {
@@ -140,7 +144,7 @@ func suffixeDryRun(dryRun bool) string {
 // L'ordre est stable (tri des cles) : une passe interrompue reprend au meme endroit, et
 // deux passes se comparent ligne a ligne.
 func artefactsDuTitre(ctx context.Context, cfg *config.AppConfig, slug string) ([]string, error) {
-	set, err := service.NewReplayService(slug, cfg.RepoRoot, nil).AvailableSet(ctx)
+	set, err := service.NewReplayService(slug, cfg.RepoRoot, nil, nil).AvailableSet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing des artefacts de %s: %w", slug, err)
 	}
@@ -169,7 +173,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.sautes++
 			continue
 		}
-		s, err := replayartifacts.ProjeterRasterTactique(pr.ReplayArtifactPath(o.titleSlug, short))
+		s, err := replayartifacts.ProjeterRasterTactique(pr.ReplayArtifactPath(o.titleSlug, short), o.prevision)
 		if err != nil {
 			// Jamais avale : l'echec d'UN artefact n'arrete pas la passe, mais il se voit.
 			slog.ErrorContext(ctx, "rasters tactiques : artefact non projete",
@@ -177,7 +181,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.echecs++
 			continue
 		}
-		if dejaProjete(ctx, cible, s.ArtifactSchemaVersion) {
+		if dejaProjete(ctx, cible, s.ArtifactSchemaVersion, s.FrameIntervalMs) {
 			b.sautes++
 			continue
 		}
@@ -204,20 +208,23 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 // POURQUOI CE RACCOURCI EXISTE : un artefact pese quelques megaoctets, un sidecar quelques
 // kilooctets. Sans lui, une passe de controle sur un corpus de milliers de matchs relirait
 // des gigaoctets pour n'ecrire rien. Il est SUR parce qu'un artefact ne peut pas porter un
-// schema superieur a celui que le binaire courant sait produire : un sidecar qui declare
-// deja `replay.SchemaVersion` ne peut pas etre en retard sur son artefact.
+// schema superieur ni a un pas plus recent que ceux que le binaire courant sait produire : un sidecar
+// qui declare deja `replay.SchemaVersion` ET le pas de cuisson courant ([aLaCadenceCourante])
+// ne peut pas etre en retard sur son artefact.
 //
 // Tous les autres cas — sidecar absent, illisible, d'un autre format, ou projete d'un
 // artefact plus ancien — retombent sur la comparaison complete (dejaProjete).
 func sidecarAJour(ctx context.Context, path string) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion
+	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion && aLaCadenceCourante(s.FrameIntervalMs)
 }
 
-// dejaProjete compare le sidecar en place au schema de l'artefact qui vient d'etre lu.
-func dejaProjete(ctx context.Context, path string, schemaArtefact int) bool {
+// dejaProjete compare le sidecar en place au schema ET au pas de l'artefact qui vient d'etre lu :
+// le pas est une marque de fraicheur au meme titre que le schema (un artefact regenere a un autre pas
+// refait son sidecar, a schema egal).
+func dejaProjete(ctx context.Context, path string, schemaArtefact, pasArtefact int) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == schemaArtefact
+	return ok && s.ArtifactSchemaVersion == schemaArtefact && memeCadence(s.FrameIntervalMs, pasArtefact)
 }
 
 // lireSidecarRaster lit le sidecar en place et dit s'il est exploitable EN L'ETAT.

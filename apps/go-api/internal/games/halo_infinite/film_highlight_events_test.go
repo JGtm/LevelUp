@@ -6,7 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain/highlightevent"
 
-	filmhighlight "github.com/JGtm/LevelUp/libs/film/highlightevent"
+	filmhighlight "github.com/JGtm/halo-infinite-film-decoder/highlightevent"
 )
 
 // TestHighlightEventDepuisFilm_MemesChamps : les deux formes de l evenement de temps fort (celle

@@ -31,11 +31,10 @@ export {
   useSuggestedTemplates,
   useJoinSquadChallenge,
 } from './hooks/usePrestige'
-// cross-feature-allow: les hooks profil/campagne vivent désormais dans
-// features/ascension/profile (refonte 2026-05-26). Re-broadcast ici pour les
-// callers prestige existants.
+// Les hooks profil/campagne vivent désormais dans features/ascension/profile (refonte
+// 2026-05-26). Re-broadcast ici pour les callers prestige existants.
 export {
   useActiveCampaign,
   useCampaignMutations,
   usePlayerProfile,
-} from '@/features/ascension/profile/queries'
+} from '@/features/ascension/profile/queries' // cross-feature-allow: réexport des hooks profil/campagne pour les appelants prestige

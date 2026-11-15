@@ -18,7 +18,7 @@ describe('buildImpactHistoryView', () => {
     const v = view()
     expect(v.bars).toHaveLength(9)
     expect(v.bars.slice(0, 3).map((b) => [b.evening, b.player])).toEqual([[0, 0], [0, 1], [0, 2]])
-    expect(v.players).toEqual(['JGtm', 'Chocoboflor', 'Madina97294'])
+    expect(v.players).toEqual(['JGtm', 'Joueur90001', 'Joueur90002'])
   })
 
   it('reprend les nets servis, sans recalcul', () => {
@@ -61,7 +61,7 @@ describe('buildImpactHistoryView', () => {
   it('infobulle : joueur, matchs et victoires, rôles dans l’ordre de lecture des barres, net', () => {
     const v = view()
     const choco = v.bars[7].tip
-    expect(choco.player).toBe('Chocoboflor')
+    expect(choco.player).toBe('Joueur90001')
     expect(choco).not.toHaveProperty('evening')
     expect(choco.matches).toBe('1 match, aucune victoire')
     expect(choco.roles.map((r) => `${r.label} ×${r.count} · ${r.points}`)).toEqual([
@@ -92,7 +92,7 @@ describe('buildImpactHistoryView', () => {
 
   it('aide et résumé accessible portent le barème et les nets', () => {
     const v = view()
-    expect(v.info).toContain('JGtm, Chocoboflor et Madina97294')
+    expect(v.info).toContain('JGtm, Joueur90001 et Joueur90002')
     expect(v.info).toContain(
       'Barème : Finisseur et Premier sang +2, Héros silencieux +1,5, Bourreau +1 ; Boulet −2, Faux-frère −1,5, ' +
         'Première victime, Touriste, Kamikaze et Voleur −1.',

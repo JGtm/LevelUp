@@ -19,7 +19,7 @@
  * au call-site (libellé + InfoTooltip), à l'identique du pattern `ocdr`.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -53,7 +53,7 @@ interface CareerXpOpts {
 export function buildSessionCareerXpOption(
   series: ChartSeries<CareerXpPoint>[],
   opts: CareerXpOpts,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

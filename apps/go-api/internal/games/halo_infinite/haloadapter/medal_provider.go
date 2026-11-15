@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/metadata"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // FetchMedalsMetadata récupère les métadonnées des médailles : entrées de métadonnées, corps brut

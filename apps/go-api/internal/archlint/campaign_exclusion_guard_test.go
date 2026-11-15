@@ -21,7 +21,7 @@
 // registre (match_registry, v_match_full) lu SEUL sur une fenêtre de temps (une inégalité ou un
 // BETWEEN contre un paramètre) : le filtre joueur y vient d'ailleurs, par match_id, et aucun
 // `xuid = ?` n'y paraît (E5.6, plan backlog 2026-10-16).
-// Exclusion reconnue = le jeton (campaignExclusionToken / analysis.CampaignExclusionToken)
+// Exclusion reconnue = le jeton (campaignExclusionToken / sqlfrag.CampaignExclusionToken)
 // ou l'appel d'un résolveur listé dans resolveursCampagne, dans la déclaration ou dans une
 // constante-fragment qu'elle compose.
 package archlint
@@ -57,8 +57,9 @@ var racinesExclusionCampagne = []string{
 var racinesSansSousRepertoires = map[string]bool{"internal/api/wire": true}
 
 // resolveursCampagne : fonctions qui posent l'exclusion (appel reconnu quel que soit le
-// qualificatif). Les alias de platform/duckdb délèguent à la source unique analysis ;
-// campaignExcl est la méthode de progression/profile (même délégation).
+// qualificatif). Les alias de platform/duckdb délèguent à la source unique platform/duckdb/sqlfrag ;
+// campaignExclMR est la méthode de platform/duckdb/profilerepo (même délégation ; ex-campaignExcl de
+// progression/profile, renommée le 2026-11-12 quand son alias est devenu constant).
 var resolveursCampagne = map[string]bool{
 	"SQLResolveCampaignExclusion":       true,
 	"SQLExcludeCampaignVariants":        true,
@@ -69,7 +70,7 @@ var resolveursCampagne = map[string]bool{
 	"excludeCampaignClause":             true,
 	"excludeCampaignByMatchID":          true,
 	"excludeAllCampaignByMatchID":       true,
-	"campaignExcl":                      true,
+	"campaignExclMR":                    true,
 	"SQLExcludeCampaignByMatchIDCtx":    true,
 	"SQLResolveCampaignExclusionCtx":    true,
 }

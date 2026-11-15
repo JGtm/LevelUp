@@ -1,6 +1,6 @@
-// Smoke tests E2E de l'activation PRESTIGE_ENABLED (revue 2026-04-29 P3.4).
+// Smoke tests E2E du reglage prestige_enabled (revue 2026-04-29 P3.4).
 //
-// Verifie que le flag PRESTIGE_ENABLED ferme correctement le sous-arbre de routes
+// Verifie que le reglage prestige_enabled desactive ferme correctement le sous-arbre de routes
 // Prestige (~26 routes : challenges, arcs, leaderboard, PP, etc.).
 //
 // Pattern miroir multi_title_smoke_test.go.
@@ -31,10 +31,9 @@ import (
 // TestSmoke_Prestige_FlagOff_RoutesAbsent : flag explicitement off, aucune route
 // Prestige n'est enregistree dans le routeur chi → 404 propre (route absente).
 func TestSmoke_Prestige_FlagOff_RoutesAbsent(t *testing.T) {
-	t.Setenv("PRESTIGE_ENABLED", "false")
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
 
-	router := buildTestRouter(t)
+	router := buildTestRouterPrestige(t, false)
 
 	// Sample des routes Prestige principales — toutes doivent etre absentes.
 	cases := []struct {

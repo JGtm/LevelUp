@@ -27,7 +27,7 @@ import (
 
 	"levelup/go-api/internal/platform/atomicfile"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // RapportRecompression est le bilan de la recompression d'UN film (ou, cumule par [Ajouter], d'un

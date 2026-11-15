@@ -70,7 +70,7 @@ type SettingsResponse struct {
 	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 
 	// RendementExcludeAssists : si true, le rendement combat (OffensiveConversion)
-	// est calculé sans les assistances (= 225×kills/dégâts) sur TOUS les composants
+	// est calculé sans les assistances (= 229×kills/dégâts) sur TOUS les composants
 	// rendement. Défaut false (assists comptés à 1/3, convention Halo).
 	RendementExcludeAssists bool `json:"rendement_exclude_assists"`
 

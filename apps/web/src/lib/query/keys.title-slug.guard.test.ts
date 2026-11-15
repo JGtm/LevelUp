@@ -59,6 +59,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
   matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm'),
+  playerSyncStatus: () => queryKeys.playerSyncStatus(P, T),
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
   matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
@@ -73,6 +74,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   homeFavorites: () => queryKeys.homeFavorites(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
+  palmaresRelationsPage: () => queryKeys.palmaresRelationsPage(P, T, 'fr', 'h'),
+  palmaresRelationsMoments: () => queryKeys.palmaresRelationsMoments(P, T, 'fr', 'h'),
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
   // matchs du titre courant.
   tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h', 'fr'),
@@ -122,6 +125,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   assetMaps: () => queryKeys.assetMaps(T, 'q', 'fr'),
   assetWeapons: () => queryKeys.assetWeapons(T, 'q', 'fr'),
   assetMedals: () => queryKeys.assetMedals(T, 'q', 'fr'),
+  killSourceIcons: () => queryKeys.killSourceIcons(T, 'fr'),
   // Progression (Ascension).
   progressionStreaks: () => queryKeys.progressionStreaks(P, T),
   progressionRecords: () => queryKeys.progressionRecords(P, T),
@@ -170,6 +174,7 @@ const agnosticKeys = new Set<string>([
   'deviceFlow',
   'job',
   'settings',
+  'settingsBackupStatus', // sauvegarde de l'instance : un scheduler pour tous les titres
   'filmArchive', // archive des films : une par instance, tous titres confondus
   'desktopStatus', // intégration au poste : état du poste, indépendant du titre
   'dataStatus', // sauvegarde et mémoire du processus : état du poste, indépendant du titre

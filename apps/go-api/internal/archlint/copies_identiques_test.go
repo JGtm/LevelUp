@@ -58,8 +58,8 @@ func TestLesCopiesJumellesSontIdentiques(t *testing.T) {
 // ecartsDeCopie liste les ecarts entre l'original et sa copie.
 func ecartsDeCopie(t *testing.T, racine string, c coupleJumeau) []string {
 	t.Helper()
-	orig := fichiersGoDuDossier(t, filepath.Join(racine, filepath.FromSlash(c.original)))
-	copie := fichiersGoDuDossier(t, filepath.Join(racine, filepath.FromSlash(c.copie)))
+	orig := fichiersGoDuDossier(t, cheminDuDepotOuFatal(t, racine, c.original))
+	copie := fichiersGoDuDossier(t, cheminDuDepotOuFatal(t, racine, c.copie))
 	if len(orig) == 0 {
 		t.Fatalf("%s ne porte aucun fichier Go : le test ne garde rien", c.original)
 	}

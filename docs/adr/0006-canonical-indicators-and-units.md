@@ -1,6 +1,6 @@
 # ADR 0006 — Canonical indicators and units (KDA, KDR, WinRate, Accuracy, PerfTier)
 
-**Status** — Proposed (2026-04-29). Triggered by code review axe 1 (BLOQUANT 1, 2) + axe 6 (BLOQUANT seuils PerfTier).
+**Status** — Proposed (2026-04-29). Triggered by code review axe 1 (BLOQUANT 1, 2) + axe 6 (BLOQUANT seuils PerfTier). Amended 2026-11-09, 2026-11-14 and 2026-11-15 (Spartan life at 229): **the KDA quotient written in the body below is superseded** (KDA is the net, never the quotient); the body is kept as the record of the original decision and the amendments at the end are the current rule.
 
 **Deciders** — Guillaume (GS).
 
@@ -10,7 +10,7 @@ La revue de code 2026-04-29 a identifié plusieurs anti-patterns sur le calcul e
 
 - **WinRate** : 7+ implémentations Go avec unités divergentes (`0..1` dans Home/Synthesis/SquadV2, `0..100` dans Stats/Teammates/Compare/Timeseries). 14+ sites front font `*100` parfois en double, parfois jamais.
 - **Accuracy** : même divergence (`0..1` dans MatchView/Compare, `0..100` dans Home/Squad/MatchCard).
-- **KDA** : formule canonique `(K+A)/max(1,D)` documentée dans `apps/web/src/features/help/i18n.ts:326` mais répétée 3× inline en Go (`analysis/performance_score.go`, `sync/performance.go`). Aucun helper centralisé.
+- **KDA** : formule canonique `(K+A)/max(1,D)` [superseded, see Amendment 2026-11-09] documentée dans `apps/web/src/features/help/i18n.ts:326` mais répétée 3× inline en Go (`analysis/performance_score.go`, `sync/performance.go`). Aucun helper centralisé.
 - **K/D ratio (KDR)** : 2 recomputes côté front (`TimeseriesKdaBars.tsx:78`, `SynthesisPage.tsx:139-141`), dont 1 mathématiquement faux (`sum(K)/sum(D) ≠ avg(K/D)`).
 - **PerfTier (5 paliers)** : 6 implémentations Go avec seuils divergents (`80/60/40` 3-paliers vs `80/65/50/35` 5-paliers). Bug visuel latent : un même score `62` reçoit 3 couleurs différentes selon la surface.
 - **Précision décimale** : `toFixed(0)`, `toFixed(1)`, `toFixed(2)`, `Math.round(*1000)/10` selon le module — aucune convention.
@@ -27,6 +27,8 @@ Décisions produit déjà actées pendant la revue :
 package analysis
 
 // KDA = (kills + assists) / max(1, deaths)
+// SUPERSEDED (Amendment 2026-11-09): the KDA is the net, never this quotient;
+// the quotient lives on only as KDR. Current code: analysis.AggregateKDA.
 func KDA(k, a, d int) float64
 
 // KDR = K/D ratio (sans assists) — différent de KDA
@@ -90,3 +92,50 @@ func PerfTier(score float64) Tier
 - Plan d'action : `PLAN_ACTION.md` P1.2, P2.1, P2.3, P2.5, P2.6.
 - Source de vérité PerfTier : `apps/web/src/lib/accessibility/scales/instances.ts:20` + tests `apps/web/src/lib/accessibility/scales/__tests__/instances.test.ts:14-22`.
 - Formule KDA documentée : `apps/web/src/features/help/i18n.ts:326`.
+
+## Amendment 2026-11-09 — KDA is the net, never the quotient (release v8.1.2, item 2.2)
+
+**Relates to** — rule 9 of the project instructions, `analysis.AggregateKDA`, `lib/fda.ts` on the web side.
+
+The decision above wrote the KDA as the quotient `(K+A)/max(1,D)`. That formula is superseded and must not be used
+anywhere:
+
+- **Per match**, the KDA is the value the game API reports natively (`match_participants.kda`, a net). When the column is
+  NULL (part of Halo 5 matches), it is derived from the counters as `(kills + assists/3) - deaths`, which is
+  `analysis.AggregateKDA(k, a, d, 1)`.
+- **Aggregated**, it is `((kills + assists/3) - deaths) / matches`: a net average per match, possibly negative.
+- The KDR (`kills / max(1, deaths)`) is a distinct indicator and keeps its role.
+
+**What was still wrong.** The patterns pipeline (`PatternsRepo.loadShared`) computed `(kills + assists/2) / max(1,
+deaths)` per match, which is neither the quotient above nor the net. It fed the Solo / Squad card (`avg_kda`) and the
+behavioural detectors. It now reads `p.kda` with the fallback above.
+
+**Check of the native column** on a cold copy of the shared Halo Infinite database (28 993 `match_participants` rows, no
+NULL): the column is a `FLOAT` holding the net truncated to two decimals, and no row differs from
+`(kills + assists/3) - deaths` by more than 0.0067. Halo 5 (24 208 rows): 2 931 NULL, none of the others differs by more
+than 0.0067. The fallback is therefore exercised in production data, only for Halo 5.
+
+**Consequence for the tilt detector.** A relative drop `(outside - during) / outside` has no meaning on a net that can be
+negative or close to zero. The tilt is judged on an absolute drop of the mean net, in points: more than 2.5 points
+(`TiltFDADropPoints`), high severity above 4.5 (`TiltFDAHighDropPoints`). The previous relative thresholds, matched
+for the same trigger rate (2.0 and 4.0 points: 55 % of the 50-match windows with a run of three losses or more), were
+judged too frequent. The fatigue detector (negative slope of the per-match values) is scale-invariant and keeps its
+`FatigueSessionCovPct` threshold.
+
+## Amendment 2026-11-14 — the body keeps the quotient as history
+
+**Relates to** — the Amendment 2026-11-09 above.
+
+The Decision section still shows the KDA quotient `(K+A)/max(1,D)` and a `KDA(k, a, d)` helper built on it. Readers who stopped at the body took it for the rule. It is not: the Amendment 2026-11-09 is the current rule (per match, the native API net; aggregated, `((kills + assists/3) - deaths) / matches`; the KDR is the distinct ratio `kills / max(1, deaths)`). The Status line, the Context bullet and the code block of the body now carry a pointer to that amendment; the original text is otherwise left unchanged as the record of the 2026-04-29 decision. The units convention (ratios `0..1` on the API, percent only at display) and the PerfTier thresholds are not affected.
+
+## Amendment 2026-11-15 — Spartan life at 229, performance score of the objective chains
+
+**Relates to** — the Rendement / Resistance baseline and the PerfTier thresholds.
+
+- The Efficiency (offensive conversion) and Resistance (defensive resistance) indicators divide by the effective life of a
+  Spartan, `games.DefaultEffectiveHpToKill`, now **229** (it was 225): the value measured on the "damage taken" counter of
+  1 614 films (229 in 99.6 % of the lives without shield recharge). The game files give 90 + 140 = 230, the nominal capacity.
+  Halo 5 keeps its own 115. The elite references (P80) are not re-measured by this change.
+- The PerfTier thresholds `[80, 65, 50, 35]` are unchanged. The performance score of the `arena_objectif` and
+  `ranked_objectif` chains is now a symmetric blend of the combat score and of the player's objective and support (ADR 0047,
+  amendment 2026-11-15); 32 % of the objective matches of the measured parc change tier because of it.

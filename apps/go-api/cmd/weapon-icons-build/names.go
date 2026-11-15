@@ -31,7 +31,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // gameBinary rend le binaire du jeu, c'est-à-dire LE PLUS GROS des candidats : le fichier à

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -45,8 +45,8 @@ const (
 // C'est la correction structurelle du défaut qui rendait tout le module muet :
 // `RecentMatches` prenait un `userID string` que ses trois appelants
 // (computeBaselineFor, computeCurrentValue, evaluateOne) remplissaient avec
-// `Challenge.UserID` — un **player_slug** applicatif ("JGtm", "Chocoboflor"),
-// jamais un **xuid** Xbox ("2533274823110022"). Le `WHERE mp.xuid = ?` ne
+// `Challenge.UserID` — un **player_slug** applicatif ("JGtm", "Joueur90001"),
+// jamais un **xuid** Xbox ("2603225103667623"). Le `WHERE mp.xuid = ?` ne
 // ramenait donc JAMAIS une ligne : baseline vide, jauges à 0, objectifs figés,
 // silencieusement, en production. Deux identités distinctes voyageaient dans le
 // même type `string` ; supprimer le paramètre supprime le transport, donc
@@ -136,7 +136,7 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, titleSlug, met
 		WHERE mp.xuid = ?%s
 		ORDER BY %s DESC
 		LIMIT ?
-	`, startTime, col, analysis.SQLExcludeCampaignVariants(titleSlug, "mr"), startTime)
+	`, startTime, col, sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr"), startTime)
 
 	db, release, err := p.reader.Get(ctx)
 	if err != nil {
@@ -202,7 +202,7 @@ func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, titleSlug, m
 	// et « requête xuid » DANS UNE MÊME fonction — extraire la requête le
 	// rendrait aveugle. Timestamp : fragment canonique partagé (CLAUDE.md n°8).
 	startTime := duckdb.StartTimeCanonicalSQL("mr")
-	where := "mp.xuid = ?" + analysis.SQLExcludeCampaignVariants(titleSlug, "mr")
+	where := "mp.xuid = ?" + sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr")
 	args := []any{p.xuid}
 	if !since.IsZero() {
 		where += " AND " + startTime + " >= ?"

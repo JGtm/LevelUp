@@ -19,7 +19,7 @@
 import { useCallback, useMemo } from 'react'
 
 import {
-  BOMB_BLAST_HOLD_FRAMES,
+  bombBlastHoldFrames,
   buildBombBlastFx,
   drawBombBlastFx,
   type BombBlastStyle,
@@ -42,6 +42,8 @@ export interface BombBlastHookInput {
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni explosion invisible. */
   neutral: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand l'explosion de cet auteur est retirée. Absent = tout se dessine. */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 export interface ReplayBombBlast {
@@ -64,6 +66,7 @@ export function useReplayBombBlast({
   teamColorOf,
   neutral,
   reducedMotion,
+  shownAuthor,
 }: BombBlastHookInput): ReplayBombBlast {
   // La relecture de position partagée (carrierPosition.ts : embarqué -> position du véhicule,
   // sinon celle du bipède) — la fenêtre après-mort du repli compte PLUS ici qu'ailleurs : le
@@ -82,16 +85,19 @@ export function useReplayBombBlast({
         return ally === null ? neutral : teamColorOf(ally)
       },
       reducedMotion,
+      shownAuthor,
     }),
-    [allegiance, teamColorOf, neutral, reducedMotion],
+    [allegiance, teamColorOf, neutral, reducedMotion, shownAuthor],
   )
+
+  const hold = useMemo(() => bombBlastHoldFrames(doc), [doc])
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
       if (blasts.length === 0) return
-      drawBombBlastFx(ctx, blasts, view, { frame, hold: BOMB_BLAST_HOLD_FRAMES }, style)
+      drawBombBlastFx(ctx, blasts, view, { frame, hold }, style)
     },
-    [blasts, view, style],
+    [blasts, view, style, hold],
   )
 
   return { id: 'deflagration', available: blasts.length > 0, paint }

@@ -230,6 +230,26 @@ export function roundTransitions(
   return out
 }
 
+/** La fin d'UNE manche jouée, dernière comprise. */
+export interface RoundEnd {
+  /** Numéro de manche du film (0-based) : la clé de lecture des scores de manche. */
+  round: number
+  /** Rang d'affichage (1-based). */
+  index: number
+  /** Frame de clôture de la manche : son dernier palier, la même borne que la pastille pleine et que la bascule. */
+  frame: number
+}
+
+/**
+ * roundEnds rend la fin de CHAQUE manche jouée, la dernière comprise. `roundTransitions` écarte
+ * la dernière parce que l'écran de fin et la voix de conclusion l'annoncent déjà ; le fil, lui,
+ * écrit une ligne par manche et ne double aucune annonce.
+ */
+export function roundEnds(timeline: ReplayScoreTimelineReady | undefined): RoundEnd[] {
+  if (!timeline) return []
+  return orderedRounds(timeline).map((r, i) => ({ round: r.round, index: i + 1, frame: r.end }))
+}
+
 /**
  * activeRoundTransition rend la bascule dont la FENÊTRE D'AFFICHAGE contient l'image lue, ou
  * `null`. La fenêtre court de la bascule à `windowFrames` frames plus loin ; on retient la

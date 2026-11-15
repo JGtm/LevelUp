@@ -45,6 +45,10 @@ package replayartifacts
 // question, plus une lecture de TOML par cycle. Les gates jumeaux d'usage.go et de
 // bombstats.go existent, eux, parce qu'ils portent des cles DIFFERENTES de celle de
 // l'etape (`film.usage_summary`, `film.bomb_stats`).
+//
+// LA MATIERE DE LA PREVISION DE REAPPARITION a, elle, sa propre cle : `film.spawn_forecast`
+// (capabilityPrevisionArmee, lue une fois par lot). Sans elle, le sidecar d'un titre qui
+// declare le rejeu ne porte ni reapparition, ni mort, ni instantane ; le reste est inchange.
 
 import (
 	"encoding/json"
@@ -60,7 +64,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
 	"context"
 )
@@ -83,12 +87,16 @@ const permSidecarRaster = 0o644
 // DEJA le document lu par le cycle (`artefactLu.doc`) et appelle directement
 // [projeterRasterDepuisDocument] : les deux DOIVENT projeter a l'identique (meme fonction
 // pure), mais un seul des deux chemins a besoin de relire le fichier.
-func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
+//
+// `previsionArmee` dit si le titre declare `film.spawn_forecast` : seulement alors le sidecar porte
+// la matiere de la prevision de reapparition (voir spawnsDeLOccupation). L'appelant la lit dans les
+// capabilities du titre ; ce paquet-ci ne devine rien.
+func ProjeterRasterTactique(path string, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	doc, _, err := lireDocumentRange(path)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
-	return projeterRasterDepuisDocument(doc)
+	return projeterRasterDepuisDocument(doc, previsionArmee)
 }
 
 // projeterRasterDepuisDocument est le calcul pur du sidecar, a partir d'un document DEJA
@@ -96,10 +104,10 @@ func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 // le lire) et `projeterRastersTactiques` (qui le recoit d'`artefactLu.doc`, sans jamais
 // rouvrir le fichier — lot M6, cf. DECOUVERTES_TACTIQUE).
 //
-// `frameIntervalMs` absent (artefacts anciens) : l'echelle par defaut du decodeur
-// (replay.DefaultFrameIntervalMS) est appliquee ICI, chez l'appelant du calcul pur —
-// `analysis/tactical` ne devine aucune cadence.
-func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRasterSidecar, error) {
+// `frameIntervalMs` absent (artefacts anciens) : la cadence historique ([cadenceHistoriqueMS]) est
+// appliquee ICI, chez l'appelant du calcul pur — `analysis/tactical` ne devine aucune cadence.
+// Ce n'est pas la cadence de cuisson du decodeur : un artefact sans champ date de la grille a 100 ms.
+func projeterRasterDepuisDocument(doc *replay.ReplayDocument, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	if doc == nil {
 		// Ne devrait jamais arriver : `lireArtefacts` ne pose `artefactLu` qu'apres une
 		// lecture reussie, et `ProjeterRasterTactique` ne l'appelle qu'avec un document
@@ -112,22 +120,14 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 		// compte en matchs DISTINCTS, et un raster anonyme ne pourrait jamais y entrer.
 		return domain.TacticalRasterSidecar{}, fmt.Errorf("artefact sans matchId")
 	}
-	intervalle := doc.FrameIntervalMS
-	if intervalle <= 0 {
-		intervalle = replay.DefaultFrameIntervalMS
-	}
 	g := tactical.GrilleParDefaut()
-	entree := tactical.EntreeOccupation{
-		MatchID:           doc.MatchID,
-		IntervalleFrameMs: intervalle,
-		Pistes:            pistesDeLArtefact(doc.Tracks),
-		Embarquements:     embarquementsDeLArtefact(doc.Vehicles),
-	}
-	joueurs, ignores, err := rasteriserParJoueur(g, entree)
+	entree := EntreeOccupationDeLArtefact(doc)
+	intervalle := entree.IntervalleFrameMs
+	joueurs, ignores, err := rasteriserParJoueur(g, entree, previsionArmee)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
-	return domain.TacticalRasterSidecar{
+	sidecar := domain.TacticalRasterSidecar{
 		SchemaVersion:         domain.TacticalRasterSchemaVersion,
 		MatchID:               doc.MatchID,
 		ShortID:               titlePkg.FilmShortMatchID(doc.MatchID),
@@ -137,27 +137,29 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 		PasEchantillonMs:      tactical.PasOccupationMs,
 		PointsIgnores:         ignores,
 		Joueurs:               joueurs,
-	}, nil
+	}
+	if previsionArmee {
+		sidecar.Reapparitions = sourcesDesReapparitions(joueurs)
+	}
+	return sidecar, nil
 }
 
 // pistesDeLArtefact projette les pistes du document vers les types PURS du rasterisage.
 // C'est LA frontiere declaree par analysis/tactical/doc.go : ce paquet-la n'importe pas
 // `games/halo_infinite/film/replay`, c'est l'appelant qui traduit ce qu'il a.
+//
+// LES VIES SANS XUID SONT PORTEES AUSSI : `Occupation` les ecarte de l'occupation, mais elles sont
+// vivantes et comptent dans l'instantane d'une reapparition (bots, vies non nommees).
 func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 	out := make([]tactical.Piste, 0, len(tracks))
 	for _, t := range tracks {
-		if t.XUID == "" {
-			// Vie non nommee (le fil des morts ne l'a jamais citee, ou c'est un bot) :
-			// `Occupation` l'ecarterait de toute facon, mais la porter jusque-la
-			// copierait ses points pour rien.
-			continue
-		}
 		points := make([]tactical.PointPiste, 0, len(t.Points))
 		for _, p := range t.Points {
-			points = append(points, tactical.PointPiste{T: p.T, X: float64(p.X), Y: float64(p.Y)})
+			points = append(points, tactical.PointPiste{T: p.T, X: float64(p.X), Y: float64(p.Y), Z: float64(p.Z)})
 		}
 		out = append(out, tactical.Piste{
 			XUID: t.XUID, Points: points, StartFrame: t.StartFrame, EndFrame: t.EndFrame,
+			Equipe: t.Team,
 		})
 	}
 	return out
@@ -224,7 +226,7 @@ func pointsDuVehicule(samples []replay.VehicleSample) []tactical.PointPiste {
 // celui-la meme qui la publiera a la lecture. Les comptes sont lus par `CellulesBrutes` —
 // SANS plancher de rarete : le plancher appartient a l'agregat, jamais au match (cf. sa
 // doc).
-func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]domain.TacticalRasterJoueur, int, error) {
+func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation, previsionArmee bool) ([]domain.TacticalRasterJoueur, int, error) {
 	occ := tactical.Occupation(g, e, tactical.PasOccupationMs)
 	// VIDE MAIS PRESENT : un artefact sans piste nommee rend une liste vide, pas `null`.
 	// Le fichier existe donc, et « mesure a zero » ne se confond pas avec « non mesure ».
@@ -244,8 +246,9 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 		ignores += raster.PointsIgnores()
 		out = append(out, domain.TacticalRasterJoueur{
 			XUID:             j.XUID,
+			Equipe:           j.Equipe,
 			Cellules:         cellulesDuRaster(raster),
-			Spawns:           spawnsDeLOccupation(j.Spawns),
+			Spawns:           spawnsDeLOccupation(j.Spawns, previsionArmee),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
 			Routes:           routesDeLOccupation(j.Routes),
 		})
@@ -258,16 +261,6 @@ func cellulesDuRaster(r *tactical.Raster) []domain.TacticalRasterCellule {
 	out := make([]domain.TacticalRasterCellule, 0, len(brutes))
 	for _, c := range brutes {
 		out = append(out, domain.TacticalRasterCellule{Col: c.Col, Lig: c.Lig, Echantillons: c.Occurrences})
-	}
-	return out
-}
-
-func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSpawn {
-	out := make([]domain.TacticalRasterSpawn, 0, len(spawns))
-	for _, s := range spawns {
-		out = append(out, domain.TacticalRasterSpawn{
-			Frame: s.Frame, X: s.X, Y: s.Y, PremiereVie: s.PremiereVie,
-		})
 	}
 	return out
 }
@@ -329,8 +322,19 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 	titre := ctxkeys.TitleSlug(ctx)
 	pr := titlePkg.NewPathResolver(d.RepoRoot)
 	ecrits, echecs := 0, 0
+	prevision, incident := capabilityPrevisionArmee(ctx, d)
+	if incident {
+		// Capabilities illisibles : AUCUN sidecar n'est ecrit. Projete sans la matiere de prevision,
+		// un sidecar porterait le schema courant et ne serait jamais reecrit (sidecarAJour ne lit que
+		// le schema et la cadence). Le lot entier est saute et compte en echec ; un sidecar absent se
+		// refait par le rattrapage `levelup tactical-rasters --backfill`.
+		slog.ErrorContext(ctx, "post-sync: rasters tactiques sautes, capabilities illisibles",
+			"gamertag", d.Gamertag, "matchs", len(rapports))
+		observability.AddIntT(titre, CompteurRastersEchecs, int64(len(rapports)))
+		return
+	}
 	for _, r := range rapports {
-		s, err := projeterRasterDepuisDocument(r.doc)
+		s, err := projeterRasterDepuisDocument(r.doc, prevision)
 		if err != nil {
 			slog.ErrorContext(ctx, "post-sync: artefact range mais raster tactique impossible",
 				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)

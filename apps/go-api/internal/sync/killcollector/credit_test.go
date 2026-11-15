@@ -27,7 +27,7 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // ─── Harnais ───────────────────────────────────────────────────────────────────────────────

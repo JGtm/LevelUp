@@ -5,9 +5,9 @@
  * dépôt est de mesurer hors ligne puis de figer (cf. `placementDroppedWitness.test.ts`). Les
  * poussées et les téléportations ci-dessous sont celles que la cuisson au schéma 94 publie sur
  * trois films, relevées le 2026-10-14 :
- *  - `0d9a9af9` (Doubles, Forest) : WolfzyLIVE (slot 513) pousse JGtm (519) aux images 715 et 811,
- *    Clearshields (532) pousse Sterio23 (535) à l'image 2557 ; aucun kill au répulseur.
- *  - `215e7022` (Argyle) : Elmo910 (560) pousse deux joueurs aux images 2957 et 2958 — un seul
+ *  - `0d9a9af9` (Doubles, Forest) : Joueur900b (slot 513) pousse JGtm (519) aux images 715 et 811,
+ *    Joueur900003 (532) pousse Joueur9b (535) à l'image 2557 ; aucun kill au répulseur.
+ *  - `215e7022` (Argyle) : J900002 (560) pousse deux joueurs aux images 2957 et 2958 — un seul
  *    souffle —, et tue le premier : le kill au répulseur est programmé à 295 702 ms.
  *  - `1b2d9e08` (Dynasty) : trois téléportations, JGtm (535) image 1761, SpiffyDart (560) images
  *    3261 et 3419.
@@ -29,8 +29,8 @@ const POUSSEES_215E7022 = [
   { t: 2957, slot: 563, by: 560, vx: 2.34, vy: 5.12, vz: 2.06 },
   { t: 2958, slot: 564, by: 560, vx: 2.23, vy: 5.18, vz: 2.05 },
 ]
-/** Elmo910 (slot 560) et ses deux poussés, vivants autour de l'image 2957 ; l'auteur porte son xuid. */
-const ELMO = '2533274938952097'
+/** J900002 (slot 560) et ses deux poussés, vivants autour de l'image 2957 ; l'auteur porte son xuid. */
+const ELMO = '2734676873635857'
 const PISTES_215E7022 = [
   {
     slot: 560,
@@ -61,7 +61,7 @@ const PISTES_215E7022 = [
   },
 ]
 
-/** Le kill au répulseur d'Elmo910 à 295 702 ms, tel que le fil le pose (vignette `killfeed-56`). */
+/** Le kill au répulseur d'J900002 à 295 702 ms, tel que le fil le pose (vignette `killfeed-56`). */
 function killAuRepulseur(xuid: string): ReplayKill {
   return {
     replayMs: 295_702,
@@ -79,7 +79,7 @@ function killAuRepulseur(xuid: string): ReplayKill {
     killerDamagePct: null,
     assistDamagePct: null,
     victimXuid: 'V1',
-    victimGamertag: 'aK2fResHv3',
+    victimGamertag: 'Joueur900c',
   }
 }
 

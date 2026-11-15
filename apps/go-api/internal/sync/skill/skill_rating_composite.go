@@ -18,8 +18,8 @@ type compositeMatchRow struct {
 	DamageTaken         float64
 	Accuracy            float64
 	MedalExploitScore   float64 // score brut ComputeMedalExploitScore, 0 si absent
-	OffensiveConversion float64 // 225*(kills+assists/3)/damage_dealt, 0 si absent
-	DefensiveResistance float64 // damage_taken/(225*deaths), 0 si absent
+	OffensiveConversion float64 // vie_effective*(kills+assists/3)/damage_dealt, 0 si absent
+	DefensiveResistance float64 // damage_taken/(vie_effective*deaths), 0 si absent
 }
 
 // computeCompositeScoreWithBreakdown calcule composite + breakdown détaillé.

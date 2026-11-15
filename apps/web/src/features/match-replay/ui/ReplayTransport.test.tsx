@@ -81,7 +81,6 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
   const onRestart = vi.fn()
   const onSeekBy = vi.fn()
   const onSetSpeed = vi.fn()
-  const onToggleSettings = vi.fn()
   const captureImage = vi.fn()
   const toggleRecording = vi.fn()
   const utils = render(
@@ -105,9 +104,6 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
         videoExport: null,
       }}
       locale="fr"
-      settingsOpen={false}
-      onToggleSettings={onToggleSettings}
-      settingsButtonRef={createRef<HTMLButtonElement>()}
       fullscreen={{ active: false, disabled: false, toggle: vi.fn() }}
       {...over}
     />,
@@ -118,7 +114,6 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
     onRestart,
     onSeekBy,
     onSetSpeed,
-    onToggleSettings,
     captureImage,
     toggleRecording,
   }
@@ -316,14 +311,13 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
   })
 })
 
-describe('ReplayTransport — les réglages ferment la barre', () => {
-  it('le bouton du tiroir est là, en icône nommée, et bascule au clic', () => {
-    const { onToggleSettings } = renderTransport()
-    const btn = screen.getByRole('button', { name: 'Réglages' })
-    expect(btn.querySelector('svg')).toBeTruthy()
-    expect(btn).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(btn)
-    expect(onToggleSettings).toHaveBeenCalledTimes(1)
+describe('ReplayTransport — le tiroir de réglages a quitté la barre', () => {
+  // LES RÉGLAGES D'AFFICHAGE VIVENT SOUS LE BOUTON « VUE » DE LA CARTE : la barre n'en porte plus.
+  it('aucun bouton Réglages ni Vue dans la barre : le plein écran la ferme', () => {
+    renderTransport()
+    expect(screen.queryByRole('button', { name: 'Réglages' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Vue/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Plein écran' })).toBeTruthy()
   })
 })
 
@@ -458,7 +452,7 @@ describe('ReplayTransport — le panneau est ancre la ou il doit l etre', () => 
 
 /**
  * LA LECTURE AUTOMATIQUE A QUITTÉ LE TIROIR le 2026-09-02 (« on a carrément la place pour un
- * bouton comme YouTube ») : ces tests ont déménagé depuis `ReplaySettingsDrawer.test.tsx`, avec
+ * bouton comme YouTube ») : ces tests ont déménagé depuis l’ancien test du tiroir de réglages, avec
  * leur raison d'être. Le point le plus important est le DERNIER — ce bouton ne met ni en lecture
  * ni en pause, et rien à l'écran ne le distingue de « Lecture » sinon son nom et son infobulle.
  */

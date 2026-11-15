@@ -9,9 +9,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // coverCell est le pas de rastérisation de la couverture, en mètres (même pas que le

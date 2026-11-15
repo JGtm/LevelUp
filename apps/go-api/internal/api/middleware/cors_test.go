@@ -80,7 +80,7 @@ func TestCORS_ExposeLesEntetesLusParLeClient(t *testing.T) {
 
 	// rs/cors canonise la casse des noms (X-Levelup-...) : comparaison insensible a la casse.
 	exposed := strings.ToLower(w.Header().Get("Access-Control-Expose-Headers"))
-	for _, h := range []string{middleware.ResolvedTitleHeader, middleware.ReplayLatestSchemaHeader} {
+	for _, h := range []string{middleware.ResolvedTitleHeader, middleware.ReplayLatestSchemaHeader, middleware.ReplayCadenceStaleHeader} {
 		if !strings.Contains(exposed, strings.ToLower(h)) {
 			t.Errorf("Access-Control-Expose-Headers = %q : %s manque", exposed, h)
 		}

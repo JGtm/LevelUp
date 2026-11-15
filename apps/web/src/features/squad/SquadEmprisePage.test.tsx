@@ -74,7 +74,7 @@ function page(block = EMPRISE_2209): TeammatesPageResponse {
 }
 
 function mount(opts: { gamertags?: string[]; rows?: TeammateRow[]; pageData?: TeammatesPageResponse | null } = {}) {
-  const gamertags = opts.gamertags ?? ['Chocoboflor', 'Madina97294']
+  const gamertags = opts.gamertags ?? ['Joueur90001', 'Joueur90002']
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: opts.rows ?? gamertags.map(ROW),
     confirmedGamertags: gamertags,
@@ -195,7 +195,7 @@ describe('Répartition des prises dans l’escouade', () => {
     expect(document.body.textContent).not.toContain('Bonus perdus')
   })
 
-  it('fiches JGtm, Chocoboflor, Madina97294, sans fiche du reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
+  it('fiches JGtm, Joueur90001, Joueur90002, sans fiche du reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
     mount()
     for (const id of [XUID.jgtm, XUID.choco, XUID.madina]) {
       expect(screen.getByTestId(`emprise-sheet-${id}`)).toBeInTheDocument()
@@ -431,25 +431,25 @@ describe('Prendre et habitude — anglais (S12)', () => {
   })
 })
 
-describe('Isolement (lot V4 du plan Emprise vies)', () => {
+describe('Groupé ou isolé (lot V4 du plan Emprise vies)', () => {
   const withPlacement = (placement = PLACEMENT_2209) => page({ ...EMPRISE_2209, placement })
   const sansMesure = () => ({ ...PLACEMENT_2209, players: (PLACEMENT_2209.players ?? []).map((p) => ({ ...p, lives_measured: 0, lives: [] })) })
 
-  it('le bloc se montre entre « Rendement des ressources » et « Soirées précédentes », le nuage au-dessus de la barre des quarts', () => {
+  it('le bloc se montre entre « Rendement des ressources » et « Soirées précédentes », la carte de chaleur au-dessus de la barre des quarts', () => {
     mount({ pageData: withPlacement() })
     const prendre = screen.getByTestId('emprise-section-prendre')
     const section = screen.getByTestId('emprise-section-placement')
     const habitude = screen.getByTestId('emprise-section-habitude')
     expect(prendre.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(section.compareDocumentPosition(habitude) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(section).getByText('Isolement')).toBeInTheDocument()
+    expect(within(section).getByText('Groupé ou isolé')).toBeInTheDocument()
     const vie = within(section).getByTestId('emprise-placement-vie')
     const quarts = within(section).getByTestId('emprise-placement-quarts')
     expect(vie.compareDocumentPosition(quarts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // Pleine largeur : les deux cartes s'empilent, aucune grille à deux colonnes.
     expect(vie.parentElement).toBe(quarts.parentElement)
     expect(vie.parentElement?.className).not.toContain('grid-cols-2')
-    expect(within(vie).getByText('Placement et rendement de chaque vie')).toBeInTheDocument()
+    expect(within(vie).getByText('Distance au coéquipier le plus proche et frags, par vie')).toBeInTheDocument()
     expect(within(quarts).getByText('Part des vies par placement')).toBeInTheDocument()
     for (const card of [vie, quarts]) expect(within(card).getByTestId('echarts-mock')).toBeInTheDocument()
   })
@@ -458,8 +458,8 @@ describe('Isolement (lot V4 du plan Emprise vies)', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount({ pageData: withPlacement() })
     const section = screen.getByTestId('emprise-section-placement')
-    expect(within(section).getByText('Isolation')).toBeInTheDocument()
-    expect(within(section).getByText('Placement and yield of each life')).toBeInTheDocument()
+    expect(within(section).getByText('Grouped or isolated')).toBeInTheDocument()
+    expect(within(section).getByText('Distance to the nearest teammate and kills, per life')).toBeInTheDocument()
     expect(within(section).getByText('Share of lives by placement')).toBeInTheDocument()
   })
 

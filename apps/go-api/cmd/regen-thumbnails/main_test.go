@@ -9,7 +9,7 @@ import (
 
 func TestListOwnerSlugs(t *testing.T) {
 	dir := t.TempDir()
-	for _, name := range []string{"Madina97294", "JGtm", "Chocoboflor"} {
+	for _, name := range []string{"Joueur90002", "JGtm", "Joueur90001"} {
 		if err := os.MkdirAll(filepath.Join(dir, name), 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", name, err)
 		}
@@ -23,7 +23,7 @@ func TestListOwnerSlugs(t *testing.T) {
 		t.Fatalf("listOwnerSlugs: %v", err)
 	}
 	sort.Strings(slugs)
-	want := []string{"Chocoboflor", "JGtm", "Madina97294"}
+	want := []string{"JGtm", "Joueur90001", "Joueur90002"}
 	if len(slugs) != len(want) {
 		t.Fatalf("got %d slugs, want %d (%v)", len(slugs), len(want), slugs)
 	}

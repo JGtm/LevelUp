@@ -80,7 +80,7 @@ import type {
   ReplayObjectiveObjectReady,
   ReplaySkullCarry,
 } from '../../../lib/replay/replayNormalize'
-import { frameToMs } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
@@ -113,20 +113,20 @@ export const SKULL_SOUND_STEMS = {
 } as const
 
 /**
- * TOLERANCE_FRAMES — l'ecart admis entre la fin d'une vie et la prise qu'elle precede, pour
- * reconnaitre « le porteur arrive SUR le crane au repos ». Meme ordre de grandeur que la
- * tolerance de `zoneSound.ts`, et meme raison : les series publiees sont ALLEGEES, donc le
- * dernier point d'une vie precede la bascule de quelques images.
+ * TOLERANCE_MS — l'ecart admis, en millisecondes, entre la fin d'une vie et la prise qu'elle
+ * precede, pour reconnaitre « le porteur arrive SUR le crane au repos ». Meme ordre de grandeur
+ * que la tolerance de `zoneSound.ts`, et meme raison : les series publiees sont ALLEGEES, donc le
+ * dernier point d'une vie precede la bascule de quelques instants.
  */
-const TOLERANCE_FRAMES = 12
+const TOLERANCE_MS = 1200
 
 /**
- * RETOMBEE_FRAMES — la fenetre dans laquelle une vie doit s'ouvrir apres un lacher pour que ce
- * lacher soit une CHUTE AU SOL. Au-dela, le crane n'est pas retombe : il est sorti de la carte.
- * La verite terrain donne l'ordre de grandeur de l'autre cote (5 s entre la mort dans le vide
- * et le respawn au socle) ; une seconde suffit largement a couvrir une retombee reelle.
+ * RETOMBEE_MS — la fenetre, en millisecondes, dans laquelle une vie doit s'ouvrir apres un lacher
+ * pour que ce lacher soit une CHUTE AU SOL. Au-dela, le crane n'est pas retombe : il est sorti de
+ * la carte. La verite terrain donne l'ordre de grandeur de l'autre cote (5 s entre la mort dans
+ * le vide et le respawn au socle) ; six secondes couvrent largement une retombee reelle.
  */
-const RETOMBEE_FRAMES = 60
+const RETOMBEE_MS = 6000
 
 /**
  * estAuRepos — la vie designe-t-elle un crane POSE ? `t0 === t1` : un seul instant emis, ce que
@@ -142,14 +142,18 @@ function estAuRepos(vie: ReplayObjectiveObjectReady): boolean {
  * repos ET qu'elle touche la prise a la tolerance pres — un repos vieux de dix secondes ne
  * decrit pas la prise en cours.
  */
-function priseSurRepos(lives: readonly ReplayObjectiveObjectReady[], t0: number): boolean {
+function priseSurRepos(
+  lives: readonly ReplayObjectiveObjectReady[],
+  t0: number,
+  toleranceFrames: number,
+): boolean {
   let derniere: ReplayObjectiveObjectReady | undefined
   for (const vie of lives) {
     if (vie.t1 > t0) continue
     if (!derniere || vie.t1 > derniere.t1) derniere = vie
   }
   if (!derniere) return false
-  return estAuRepos(derniere) && t0 - derniere.t1 <= TOLERANCE_FRAMES
+  return estAuRepos(derniere) && t0 - derniere.t1 <= toleranceFrames
 }
 
 /**
@@ -162,9 +166,13 @@ function priseSurRepos(lives: readonly ReplayObjectiveObjectReady[], t0: number)
  * du crane, et en conclure une sortie de carte serait affirmer l'exceptionnel a partir d'une
  * absence de donnee. Sans information, le rejeu joue le geste ORDINAIRE.
  */
-function retombeApres(lives: readonly ReplayObjectiveObjectReady[], t1: number): boolean {
+function retombeApres(
+  lives: readonly ReplayObjectiveObjectReady[],
+  t1: number,
+  retombeeFrames: number,
+): boolean {
   if (lives.length === 0) return true
-  return lives.some((v) => v.t0 >= t1 && v.t0 - t1 <= RETOMBEE_FRAMES)
+  return lives.some((v) => v.t0 >= t1 && v.t0 - t1 <= retombeeFrames)
 }
 
 /**
@@ -237,6 +245,8 @@ export function skullSoundEvents(
   const carries: readonly ReplaySkullCarry[] = doc.skullCarries ?? []
   if (carries.length === 0) return []
   const lives = doc.objectiveObjects ?? []
+  const toleranceFrames = durationToFrames(TOLERANCE_MS, doc)
+  const retombeeFrames = durationToFrames(RETOMBEE_MS, doc)
   const out: ReplaySoundEvent[] = []
 
   // LES APPARITIONS SONT UN ENSEMBLE D'INSTANTS, pas une suite de `push` : l'apparition
@@ -248,11 +258,11 @@ export function skullSoundEvents(
   if (ouverture !== undefined) apparitions.add(ouverture)
 
   for (const c of carries) {
-    const prise = priseSurRepos(lives, c.t0) ? SKULL_SOUND_STEMS.taken : SKULL_SOUND_STEMS.pickup
+    const prise = priseSurRepos(lives, c.t0, toleranceFrames) ? SKULL_SOUND_STEMS.taken : SKULL_SOUND_STEMS.pickup
     out.push(soundEvent(frameToMs(c.t0, doc), prise))
     if (!c.closed) continue
     // CHUTE ou HORS MAP, jamais les deux : le crane est retombe au sol, ou il a disparu.
-    if (retombeApres(lives, c.t1)) {
+    if (retombeApres(lives, c.t1, retombeeFrames)) {
       out.push(soundEvent(frameToMs(c.t1, doc), SKULL_SOUND_STEMS.dropped))
       continue
     }

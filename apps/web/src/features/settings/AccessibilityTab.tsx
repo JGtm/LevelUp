@@ -166,8 +166,8 @@ function OutlineColorPicker({
               onClick={() => onChange(isSelected ? null : color.id)}
               className={`h-8 w-8 rounded-full border-2 transition-all ${
                 isSelected
-                  ? 'scale-110 border-white shadow-lg ring-2 ring-white/40'
-                  : 'border-transparent hover:scale-105 hover:border-white/30'
+                  ? 'scale-110 border-on-scrim shadow-lg ring-2 ring-on-scrim/40'
+                  : 'border-transparent hover:scale-105 hover:border-on-scrim/30'
               }`}
               style={{ backgroundColor: color.hex }}
             />

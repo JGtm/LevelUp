@@ -2,9 +2,10 @@
  * Tests AnalyseTab — focus sur la card « Progression long-terme »
  * (toggle Objectifs/Prestige + lien glossaire).
  */
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { AnalyseTab } from './AnalyseTab'
 import { getSettingsText } from './i18n'
 import type { SettingsResponse } from '@/lib/api/types'
@@ -87,5 +88,37 @@ describe('AnalyseTab — Progression long-terme', () => {
     renderTab({ show_progression: true })
     const link = screen.getByRole('link', { name: /glossaire/i })
     expect(link).toHaveAttribute('href', '/help?tab=glossary')
+  })
+})
+
+describe('AnalyseTab — rendement sans assistances : vie du bootstrap', () => {
+  const title = (hp: number) => ({
+    slug: 'un_titre',
+    name: 'T',
+    status: 'active' as const,
+    capabilities: [],
+    is_default: true,
+    effective_hp_to_kill: hp,
+    provides_damage_taken: true,
+    provides_team_mmr: true,
+    provides_max_killing_spree: true,
+    offensive_conversion_p80: 0.9,
+    defensive_resistance_p80: 1.65,
+  })
+
+  afterEach(() => {
+    useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'halo_infinite' })
+  })
+
+  it('rend la vie du titre courant dans la formule', () => {
+    useAppShellStore.setState({ availableTitles: [title(115)], currentTitleSlug: 'un_titre' })
+    renderTab({})
+    expect(screen.getByText(/le rendement devient 115 × éliminations/)).toBeInTheDocument()
+  })
+
+  it("n'affiche aucune valeur avant le bootstrap", () => {
+    useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'un_titre' })
+    renderTab({})
+    expect(screen.getByText(/le rendement devient — × éliminations/)).toBeInTheDocument()
   })
 })

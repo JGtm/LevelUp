@@ -6,7 +6,7 @@
  * l'application — aucun libellé écrit dans le constructeur d'option.
  */
 import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { barLabel } from '@/components/charts/barLabel'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -54,7 +54,7 @@ export function topWeeksNames(locale: Locale): TopWeeksNames {
 const RATE_SERIES_INDEX = 2
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildTopWeeksOption(weeks: TopWeekItem[], names: TopWeeksNames): EChartsCoreOption {
+export function buildTopWeeksOption(weeks: TopWeekItem[], names: TopWeeksNames): ChartOption {
   if (weeks.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -159,7 +159,7 @@ export function SynthesisTopWeeksChart({ weeks, title, height }: Props) {
     <ChartCard
       title={title}
       series={series}
-      buildOption={buildOption as (s: ChartSeries<Pt>[]) => EChartsCoreOption}
+      buildOption={buildOption as (s: ChartSeries<Pt>[]) => ChartOption}
       height={height ?? 360}
     />
   )

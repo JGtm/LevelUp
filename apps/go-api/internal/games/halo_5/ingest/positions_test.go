@@ -15,14 +15,14 @@ func killWithLocs(killerGT, victimGT string, timeMs int, kloc, vloc *canonical.V
 
 func TestMapKillPositions(t *testing.T) {
 	events := []canonical.MatchEvent{
-		killWithLocs("Madina97294", "JGtm", 5000,
+		killWithLocs("Joueur90002", "JGtm", 5000,
 			&canonical.Vec3{X: 1, Y: 2, Z: 3}, &canonical.Vec3{X: 4, Y: 5, Z: 6}),
-		killWithLocs("JGtm", "Madina97294", 8000,
+		killWithLocs("JGtm", "Joueur90002", 8000,
 			&canonical.Vec3{X: 7, Y: 8, Z: 9}, nil), // tueur seul, victime sans position
-		kill("Madina97294", "JGtm", "", 9000), // aucune position → ignoré
-		medal("Madina97294", "100", 1000),     // non-kill → ignoré
+		kill("Joueur90002", "JGtm", "", 9000), // aucune position → ignoré
+		medal("Joueur90002", "100", 1000),     // non-kill → ignoré
 	}
-	resolve := fakeResolver(map[string]string{"Madina97294": "xA", "JGtm": "xB"})
+	resolve := fakeResolver(map[string]string{"Joueur90002": "xA", "JGtm": "xB"})
 
 	rows := MapKillPositions("m1", events, resolve)
 

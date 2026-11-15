@@ -89,6 +89,7 @@ export function ReplaySchemaBadge({
   schemaVersion,
   latestSchemaVersion,
   contractIssue,
+  cadenceStale,
   locale,
   layers,
 }: {
@@ -96,6 +97,8 @@ export function ReplaySchemaBadge({
   schemaVersion: number
   latestSchemaVersion: number | undefined
   contractIssue?: ReplayContractIssue
+  /** Verdict du serveur : même schéma, autre grille que la cuisson courante (`X-Replay-Cadence-Stale`). */
+  cadenceStale?: boolean
   locale: ReplayLocale
   /**
    * La table des calques de l'artefact affiché (schéma 62) : nom de calque -> révision de la
@@ -110,6 +113,7 @@ export function ReplaySchemaBadge({
     latestSchemaVersion,
     contractIssue,
     layers,
+    cadenceStale,
   )
   const label = libelleDe(status, t)
   if (status.kind === 'unknown') {

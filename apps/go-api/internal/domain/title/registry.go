@@ -173,19 +173,6 @@ const (
 	// (games/adapter.go) : celles-là gouvernent la production, celle-ci l'affichage.
 	CapWeaponRange Capability = "weapon_range"
 
-	// CapExpectedWinProb — le titre expose la PROBABILITÉ DE VICTOIRE ATTENDUE
-	// pré-match (prédiction TrueSkill 2, champ expected_win_prob). Absente ⇒ le
-	// front masque la carte « Prob. victoire » du détail de match, la colonne
-	// « Prob. vic. » des tableaux (Progression, Synergies), et le champ reste nil
-	// dans les réponses API (dégradation par construction).
-	//
-	// REMISÉE le 2026-09-07 — NON déclarée par aucun titre. La prédiction est
-	// jugée pas assez fiable pour être exposée en production (écart modèle sur
-	// certaines compositions / modes). Les données restent calculées et stockées
-	// (match_skill_rank.expected_win_prob) pour analyse interne. Reprise : accorder
-	// la capability au titre concerné quand le modèle est recalibré.
-	CapExpectedWinProb Capability = "expected_win_prob"
-
 	// CapCitations — le titre sert les CITATIONS CALCULÉES par LevelUp (moteur dérivé :
 	// LoadMatchCitations, page Citations, tuiles de la home). Absente ⇒ le titre sert à la
 	// place des commendations NATIVES déclarées par le jeu (Halo 5) : la route
@@ -198,6 +185,16 @@ const (
 	// même partage des rôles que `replay` / `film.replay_artifact`. Leur cohérence est
 	// verrouillée par TestCitationsCoarseFineMirror (internal/games).
 	CapCitations Capability = "citations"
+
+	// CapSpawnForecast — les fichiers tactiques par match du titre portent TOUTES les apparitions
+	// du joueur (premiere vie, reapparitions, debuts de manche), pas seulement la premiere vie.
+	// Elle gouverne la bascule « Toutes les vies » de la Tactique : le serveur refuse `vies=toutes`
+	// (503 capability_not_supported) sans elle, et la page ne propose pas la bascule.
+	//
+	// Pendant title-level de la capability data-level `film.spawn_forecast` (capabilities.toml),
+	// qui est la meme question : leur egalite est verrouillee par TestSpawnForecastCoarseFineMirror
+	// (internal/games). Le bootstrap ne sert au web que les capabilities de titre.
+	CapSpawnForecast Capability = "spawn_forecast"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -401,6 +398,9 @@ func NewRegistry() *Registry {
 			// Citations calculées (moteur dérivé) : page Citations, route /pages/citations,
 			// tuiles de la home. Halo 5 ne la déclare pas : il sert des commendations natives.
 			CapCitations,
+			// Reapparitions et debuts de manche dans les fichiers tactiques : bascule
+			// « Toutes les vies » de la Tactique. Halo 5 ne la declare pas.
+			CapSpawnForecast,
 			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
 			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
 			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au
@@ -789,25 +789,25 @@ func (p *PathResolver) PlayersRootDir(titleSlug string) string {
 }
 
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/
+// Ex: data/titles/halo_infinite/players/Joueur90001/
 func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayersRootDir(titleSlug), gamertag)
 }
 
 // PlayerDBPath retourne le chemin de la DB stats d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/stats.duckdb
+// Ex: data/titles/halo_infinite/players/Joueur90001/stats.duckdb
 func (p *PathResolver) PlayerDBPath(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), playerDBFileName)
 }
 
 // PlayerArchiveDir retourne le répertoire d'archive d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/archive/
+// Ex: data/titles/halo_infinite/players/Joueur90001/archive/
 func (p *PathResolver) PlayerArchiveDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "archive")
 }
 
 // PlayerCapturesDir retourne le répertoire captures d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/captures/
+// Ex: data/titles/halo_infinite/players/Joueur90001/captures/
 func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "captures")
 }
@@ -815,7 +815,7 @@ func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 // PlayerMediaAudioConfigPath retourne le chemin du sidecar de réglage audio média
 // d'un joueur (rôle voix/jeu/autres des pistes source, mode auto/manuel). Placé à
 // côté du dossier captures dans le répertoire joueur du titre.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/media_audio_config.json
+// Ex: data/titles/halo_infinite/players/Joueur90001/media_audio_config.json
 func (p *PathResolver) PlayerMediaAudioConfigPath(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "media_audio_config.json")
 }
@@ -850,7 +850,7 @@ func (p *PathResolver) MediaDataDir() string {
 }
 
 // BackupDir retourne le répertoire de backup d'un joueur pour un titre.
-// Ex: data/titles/halo_infinite/backups/Chocoboflor/
+// Ex: data/titles/halo_infinite/backups/Joueur90001/
 func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "backups", gamertag)
 }
@@ -892,7 +892,8 @@ func (p *PathResolver) JobsCachePath() string {
 
 // ReplayArtifactPath retourne le chemin de l'artefact de rejeu 2D d'un match (produit
 // hors ligne par cmd/replay-build, servi tel quel par l'API).
-// Ex: data/cache/replays/halo_infinite/000d5950.json
+// Ex: data/cache/replays/halo_infinite/000d5950.json.gz (un parc ancien porte encore des .json bruts,
+// que la porte de replaybuild lit aussi).
 // Sous data/cache/* (non versionné, regénérable depuis capture + film).
 //
 // La clé est la forme COURTE (cf. FilmShortMatchID) : l'artefact est un dérivé du film,
@@ -904,7 +905,7 @@ func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
 }
 
 // ReplayArtifactsDir retourne le dossier des artefacts de rejeu 2D d'un titre (un
-// fichier {short8}.json par match). Sert la purge récurrente (replay_purge_cron) — qui
+// fichier {short8}.json.gz par match). Sert la purge récurrente (replay_purge_cron) — qui
 // supprime des ARTEFACTS, jamais des films.
 func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 	return filepath.Join(p.roots.Data, "cache", "replays", titleSlug)

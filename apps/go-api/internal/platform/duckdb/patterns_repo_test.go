@@ -5,6 +5,7 @@ package duckdb
 // un refactor de découplage ne doit RIEN changer à ces sorties.
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 func ptrF(v float64) *float64 { return &v }
 
-// TestMergePatternRows_FieldsAndRatingRouting vérifie KDA, HSRate, le mapping
+// TestMergePatternRows_FieldsAndRatingRouting vérifie le FDA net, HSRate, le mapping
 // des enrichissements et le routage rating_type → DeltaLUSR / CSRValue.
 func TestMergePatternRows_FieldsAndRatingRouting(t *testing.T) {
 	shared := []patternSharedRow{
@@ -28,6 +29,11 @@ func TestMergePatternRows_FieldsAndRatingRouting(t *testing.T) {
 			DurationSec: 500, Kills: 0, Deaths: 0, Assists: 0,
 			DamageDlt: 0, DamageTkn: 0, HeadshotKills: 0,
 		},
+		// KDA natif présent : prime sur la dérivation des compteurs (qui donnerait 4).
+		{
+			MatchID: "m3", Mode: "Slayer", MapID: "map1", Outcome: 2,
+			DurationSec: 600, Kills: 9, Deaths: 6, Assists: 3, KDA: ptrF(3.99),
+		},
 	}
 	enrichMap := map[string]patternEnrichmentRow{
 		"m1": {PerfScore: ptrF(0.8), SessionID: "s1", IsWithFriends: true, EngageScore: ptrF(0.6), ResidualBrut: ptrF(0.1)},
@@ -38,14 +44,14 @@ func TestMergePatternRows_FieldsAndRatingRouting(t *testing.T) {
 	}
 
 	out := mergePatternRows(shared, enrichMap, skillMap, 225)
-	if len(out) != 2 {
-		t.Fatalf("len(out) = %d, want 2", len(out))
+	if len(out) != 3 {
+		t.Fatalf("len(out) = %d, want 3", len(out))
 	}
 
 	m1 := out[0]
-	// KDA = (10 + 4/2) / 5 = 2.4
-	if m1.KDA != 2.4 {
-		t.Errorf("m1.KDA = %v, want 2.4", m1.KDA)
+	// KDA NULL : FDA net dérivé = 10 + 4/3 - 5 = 6,333... (jamais le quotient 2,4).
+	if math.Abs(m1.KDA-(10.0+4.0/3.0-5.0)) > 1e-9 {
+		t.Errorf("m1.KDA = %v, want 6.333...", m1.KDA)
 	}
 	// HSRate = 3/10 = 0.3
 	if m1.HSRate != 0.3 {
@@ -67,9 +73,13 @@ func TestMergePatternRows_FieldsAndRatingRouting(t *testing.T) {
 	}
 
 	m2 := out[1]
-	// Deaths=0 → denom forcé à 1 → KDA = 0
+	// Aucun compteur, KDA NULL : FDA net = 0 + 0/3 - 0 = 0.
 	if m2.KDA != 0 {
 		t.Errorf("m2.KDA = %v, want 0", m2.KDA)
+	}
+	// KDA natif présent : repris tel quel (la dérivation des compteurs donnerait 4).
+	if m3 := out[2]; m3.KDA != 3.99 {
+		t.Errorf("m3.KDA = %v, want 3.99 (valeur native)", m3.KDA)
 	}
 	// Kills=0 → HSRate reste 0 (pas de division par zéro)
 	if m2.HSRate != 0 {

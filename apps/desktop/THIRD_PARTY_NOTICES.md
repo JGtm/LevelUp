@@ -49,7 +49,7 @@ SIL Open Font License, Version 1.1 (https://openfontlicense.org). Served by the 
 The navigation and footer icons of the application (sidebar, About, settings and others) are copied
 from Lucide, https://lucide.dev, as SVG (no library is installed): `layout-dashboard`, `crosshair`,
 `swords`, `award`, `flame`, `globe`, `film`, `search`, `book-open`, `bug`, `book-open-text`,
-`settings`, `sun-moon`, `info`, `panel-left-close`, `panel-left-open` (lucide-static 0.552.0).
+`settings`, `sun-moon`, `info`, `panel-left-close`, `panel-left-open`, `ellipsis`, `pin`, `pin-off` (lucide-static 0.552.0).
 
 ISC License
 
@@ -75,7 +75,7 @@ Third-party libraries keep their own licences:
 - Rust dependencies of the application shell: the list with versions and licences is
   `THIRD_PARTY_CARGO.md`, installed next to this file.
 - Go dependencies of the server (DuckDB, chi, Huma and others): `apps/go-api/go.mod` and
-  `libs/*/go.mod` in the source repository.
+  the `go.mod` of the four bricks it requires (dedicated repositories under github.com/JGtm).
 - JavaScript dependencies of the interface (React, TanStack, ECharts and others):
   `apps/web/package-lock.json` in the source repository.
 - Microsoft Edge WebView2 runtime, installed if missing, under Microsoft's licence terms

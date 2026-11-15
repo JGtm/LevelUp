@@ -13,7 +13,7 @@
  *   - Joueur sans tir sur le rôle = valeur absente (null → pas de barre), distinct d'un 0 %.
  *   - Tooltip : rôle + précision % + tirs par joueur.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   getAxisBase,
@@ -41,7 +41,7 @@ function accuracyText(v: number): string {
 export function buildSquadWeaponAccuracyBarsOption(
   data: SquadWeaponAccuracy | null | undefined,
   opts: SquadWeaponAccuracyBarsOpts,
-): EChartsCoreOption {
+): ChartOption {
   const allBars = data?.bars ?? []
   const players = data?.players ?? []
   if (!data || allBars.length === 0 || players.length === 0) {
@@ -59,7 +59,7 @@ export function buildSquadWeaponAccuracyBarsOption(
 
   // 1 série bar (horizontale, group) par joueur : précision 0..100 % alignée sur yLabels.
   const series = players.map((player) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     const values = bars.map((b) => {
       const acc = b.accuracy_by_player[player]
       // Absent = pas de tir sur l'arme → null (pas de barre), distinct d'un vrai 0 %.

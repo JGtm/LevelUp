@@ -1,7 +1,7 @@
 /**
  * SquadPerMinuteChart — wrapper teammates.14.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
 import {
@@ -10,7 +10,7 @@ import {
 } from './charts/squadPerMinuteChart'
 
 interface SquadPerMinuteChartProps extends SquadPerMinuteOpts {
-  title?: string
+  title?: ReactNode
   emptyMessage?: string
   rows: SquadPerMinuteEntry[]
 }

@@ -1,5 +1,5 @@
 // cmd/mappos-build — construit le catalogue des POSITIONS REELLEMENT JOUEES par carte, a
-// partir des artefacts de rejeu deja decodes (data/cache/replays/{title}/{matchId}.json), et
+// partir des artefacts de rejeu deja decodes (data/cache/replays/{title}/{matchId}.json.gz ou .json), et
 // l'ecrit dans data/titles/{slug}/reference/map_positions_jouees.json (PathResolver).
 //
 // A QUOI CA SERT : `himap.RogneAuxPositionsJouees` efface la matiere loin de tout endroit ou un
@@ -26,7 +26,7 @@
 // Usage :
 //
 //	mappos-build --cle <mapId> [--carte <nom>] [--title slug] [--pas M]
-//	             [--min-matchs N] [--min-occurrences N] <rejeu.json>...
+//	             [--min-matchs N] [--min-occurrences N] <rejeu.json.gz|rejeu.json>...
 package main
 
 import (
@@ -39,6 +39,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // pisteRejeu : la seule part de l'artefact de rejeu que ce programme lit.
@@ -130,7 +131,7 @@ func agrege(fichiers []string, pas float64, minMatchs, minOccur int) (EntreeCart
 	}
 	vues := map[[2]int]*compte{}
 	for _, f := range fichiers {
-		brut, err := os.ReadFile(f)
+		brut, err := replayartifact.ReadBytes(f)
 		if err != nil {
 			return e, fmt.Errorf("lecture %s : %w", f, err)
 		}

@@ -23,8 +23,8 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // enqueueAll met les matchs du lot dans la file durable — le chemin du VPS web,

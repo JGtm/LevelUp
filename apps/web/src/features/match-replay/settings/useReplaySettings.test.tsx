@@ -11,9 +11,9 @@ import {
   AUTOPLAY_KEY,
   SPEED_MULTIPLIERS,
   TIMELINE_EXPANDED_KEY,
-  usePersistedFlag,
   useReplaySettings,
 } from './useReplaySettings'
+import { usePersistedFlag } from './usePersistedFlag'
 
 describe('useReplaySettings — valeurs par défaut', () => {
   it("visée et zones allumées, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
@@ -103,6 +103,25 @@ describe('useReplaySettings — bascules', () => {
     expect(result.current.showHeatmap).toBe(false)
     // Et le stockage suit la valeur affichée : sinon le retour se perdrait au rechargement.
     expect(localStorage.getItem('replay-show-heatmap')).toBe('false')
+  })
+})
+
+describe('useReplaySettings — plan des murs', () => {
+  it('allumé par défaut, bascule et persiste sous replay-show-wall-plan', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWallPlan).toBe(true)
+    act(() => result.current.toggleWallPlan())
+    expect(result.current.showWallPlan).toBe(false)
+    expect(localStorage.getItem('replay-show-wall-plan')).toBe('false')
+    act(() => result.current.toggleWallPlan())
+    expect(result.current.showWallPlan).toBe(true)
+    expect(localStorage.getItem('replay-show-wall-plan')).toBe('true')
+  })
+
+  it('un choix déjà stocké est relu au montage', () => {
+    localStorage.setItem('replay-show-wall-plan', 'false')
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWallPlan).toBe(false)
   })
 })
 

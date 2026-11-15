@@ -22,8 +22,8 @@ import (
 
 	"levelup/go-api/internal/filmarchive"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // serveurDeFilm sert un manifeste donne et compte les blobs demandes.

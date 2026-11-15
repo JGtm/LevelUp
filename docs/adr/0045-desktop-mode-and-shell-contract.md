@@ -384,7 +384,7 @@ the previous state and is logged once.
 `{"event":"notification","title","body","kind"}` and
 `{"event":"shell_settings","native_notifications","close_to_tray","start_with_windows","locale"}` (written once the server is ready, then
 at every change read every 5 s from the settings, whatever wrote them). The shell cannot call the server's HTTP API (its cookie is
-`HttpOnly`, no command is exposed to the page), so both directions use the private pipes: server to shell by stdout events, shell to
+`HttpOnly`, and the page calls no command of the shell but the folder picker, D-31), so both directions use the private pipes: server to shell by stdout events, shell to
 server by **commands on stdin**, one per line, executed before the EOF, which stays the stop order (D-4): `sync` runs
 `AutoSyncScheduler.RunOnceTrigger("manual")`, one cycle at a time, counted by the background wait group (`cmd/server/stdin_commands.go`).
 An unknown command is logged and ignored.
@@ -478,9 +478,10 @@ puts the configuration back, and refuses a target that already holds one of the 
 is refused without `--force` (killed application: start it once for a clean stop, or delete the WAL if losing the last writes is acceptable); under
 `--force` the WAL is set aside WITH its base and put back with it on failure, never replayed by the new database. The migrations of the next start
 bring the databases up to date.
-Tokens of another machine do not decrypt (system vault): the player signs in again. No native folder picker: the web page cannot open one
-and the shell has no command channel from the page (the cookie is `HttpOnly`, D-23), so the folder is a text field validated by the
-server; a `pick_dir` command and a `dir_picked` event would have been a new contract between shell and server for a field typed once.
+Tokens of another machine do not decrypt (system vault): the player signs in again. The folder is a text field validated by the
+server. When the shell offers it (capability `can_pick_folder`), a "Browse" button fills the field from the system folder picker (D-31:
+one shell command called by the page, nothing between shell and server); a `pick_dir` command and a `dir_picked` event, a new contract
+between shell and server, were not needed.
 
 **D-25 - Moving from the site to the application: an export by one-shot token, an import through `persist` (L22.b, 2026-11-03).**
 Hosted side, capability `ExportForDesktop` (`can_export_for_desktop`: every profile but desktop and demo): `POST /export/desktop/token`
@@ -563,7 +564,7 @@ rebuilds them **on the user's request only**.
 - **When the count runs.** At server start (in the background, behind the game-mode gate), at the end of the queue, and on an explicit
   `POST .../rescan`. `GET` never starts a count. During the final count `checked` is false (the interface never shows "finished" with the old
   count); a count started before a newer one finished is dropped (sequence number).
-- **Routes** (under the shell cookie): `GET /api/v1/desktop/replay-regen` returns `{checked, stale, running, done, total, paused, waiting_for_game, failed}`;
+- **Routes** (under the shell cookie): `GET /api/v1/desktop/replay-regen` returns `{checked, stale, raw, running, done, total, paused, waiting_for_game, failed, compressing, compressed, compress_failed}`;
   `POST .../start`, `.../pause`, `.../resume` drive the queue (`resume` on a finished queue is a 409), `POST .../rescan` recounts in the background.
   Nothing starts without the `POST start`.
 - **The queue.** One film at a time, never two in parallel, in the server process. Each film goes through the existing recipe, never a second one:
@@ -585,8 +586,27 @@ rebuilds them **on the user's request only**.
   (not running, not paused, flag cleared) before its final count, and the flag is written under the same lock as the state;
   a server stop leaves it set, so the queue **resumes at the next opening** (`ResumeIfPending` at boot), the only way it starts without a click, and only
   because the user had started it. A paused queue does not resume by itself.
+- **Raw replays are compressed at the end of a pass (2026-11-11).** A replay the queue rebuilds is written compressed (`{short8}.json.gz`). Those it
+  cannot rebuild (film no longer archived) and those already up to date stay raw `.json` from before the compression of replays, and an installed desktop
+  application has no command line. At the end of a pass the user launched (or resumed from the flag that gesture set), never at server start and never from the count,
+  `replayregen` runs the same conversion as `levelup replay compress` (`replaybuild.CompressDirWith`): one file at a time, behind the same wait for its turn as a film
+  (pause, game-mode gate, no sync cycle in progress), so never in parallel with a cooking. The `.json` is deleted only after its `.json.gz` is read back identical;
+  a stop, a pause or a crash loses nothing and the pass is idempotent (a resumed pass compresses the rest). The status reports `compressing`, `compressed` and
+  `compress_failed` (unreadable file, failed write or check, duplicate with different contents, raw file to delete on a re-run; every failed file stays readable
+  as it is). Guard-rail `archlint/no_auto_replay_compress_test.go` names the two callers of the conversion (the command and this queue).
+  The count also reports `raw`, the replays still in raw `.json` (by the file names the gate lists, no file is opened; a match with both forms is not counted).
+  The offer shows when `stale > 0` or `raw > 0`; when only raw replays remain, the text and the button say "compress" and the pass only compresses
+  (2026-11-11, user decision). The conversion never deletes a `.json.gz` it did not write itself: if another writer (a server re-cooking the match) replaced
+  it after the laying, nothing is touched and the file is counted apart (`replaced` in the command report), not as a failure.
+- **Filesystems without hard links.** `replayartifact.WriteIfAbsent` (the exclusive laying of a `.json.gz`) uses a hard link, which exFAT and FAT32 refuse. When the
+  link refusal means "not supported" (`errors.ErrUnsupported`; Windows `ERROR_INVALID_FUNCTION`, `ERROR_NOT_SUPPORTED`, `ERROR_CALL_NOT_IMPLEMENTED`;
+  POSIX `EPERM`, `ENOTSUP`, `EOPNOTSUPP`, `ENOSYS`) the folder is remembered for the process and every later file there is created with `O_CREATE|O_EXCL`, written and synced. Any other link error
+  (antivirus, sharing violation) only makes that one file fall back, with a warning and `replay_artifact_link_error_total`, and the folder is not remembered; a failed write
+  removes the partial file. This is not atomic, and it is safe because the gate refuses an incomplete gzip (a reader gets an error, never a document) and reads the
+  neighbouring `.json` when the `.json.gz` cannot be read; the conversion recognises an incomplete `.json.gz` left by a crash beside a valid `.json` (non-empty, well-formed JSON; a 0- or 1-byte `.json.gz` counts as incomplete), removes it and
+  converts again; a reader gets one more read of the `.json.gz` before an error is concluded. Counter `replay_artifact_link_fallback_total`.
 - **Journal and expvar.** `replay_regen: ...` lines (start, end, interruption, skipped and failed films), counters `replay_regen_started_total`,
-  `_done_total`, `_skipped_total`, `_failed_total`, `_deferred_game_total` and the gauge `replay_regen_stale`.
+  `_done_total`, `_skipped_total`, `_failed_total`, `_deferred_game_total`, `_compressed_total`, `_compress_failed_total` and the gauge `replay_regen_stale`.
 - **Web.** One component, `ReplayRegenPanel`, serves the banner of the replay page (offer with "Regenerate" and "Later", the latter hiding the offer for the
   session; progress with Pause and Resume while the queue runs) and the Replays card of Settings > Application (which also says "all replays are up to
   date"). A replay opened while its artifact is behind is shown as before, and rebuilt on opening if unreadable: the banner changes nothing there.
@@ -731,16 +751,57 @@ fingerprint, so the shell never waits 6 h for a pack nobody prepares. `Start` re
 right after (retry button, `POST /desktop/resources/retry`) is the preparation's, and a second request gets 409.
 
 *Uninstall.* The uninstaller written by the engine-only installer does not know the pack's files: `-mode uninstall-cleanup` (D-28) also removes the installed
-pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. Nothing is
-ever written under the data root (A22).
+pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. It then removes
+the engine's `web` and `config` folders whole, only when `web/index.html` exists (the folder is an installation); a file at the root of the program folder is
+kept. The report line carries `moteur=<n>-fichiers` after `ressources=`. The uninstaller cannot do it itself: the front's files are named by a content hash,
+so after an update the uninstaller's list holds only the names of the last installed version. Nothing is ever written under the data root (A22).
 
 *Known limits.* The shell screen of `resources_incompatible` tells the user to start LevelUp again (the start retries the download); a retry **button** is not
-built (it needs the shell to restart itself, which cannot be tested without launching it). Old `web/assets/*` files of a previous version stay after an
-update (the NSIS update mode never deletes: true since L17). The download is exercised against a local server in tests; the real publication hosts are
+built (it needs the shell to restart itself, which cannot be tested without launching it). Old `web/assets/*` files of a previous version are removed by the
+`NSIS_HOOK_PREINSTALL` hook, which empties `web\assets` before the extraction rewrites it, only when `levelup-server.exe` is already there (an existing
+installation) and AFTER the same `CheckIfAppIsRunning` check as the uninstall hook (a cancel at "LevelUp is running" removes nothing). The hook deletes nothing
+else: the uninstall hooks still delete nothing themselves (the server does it, see above). A real upgrade from one published version to the next, with different
+hashes, is not covered by the end-to-end test, which plants the old files itself (the engine-only installer is of the installed version). The download is exercised against a local server in tests; the real publication hosts are
 first met at gate 24.z.
 
 Amends D-17 (the 80 MB are paid at the first installation and when the pack changes, no longer at every update), D-2 and D-4 (event `resources`, state
 `resources_incompatible`, command `resources`), D-15 (two installers), D-16 (the pack is signed by the same key as the installer, verified by the server in Go).
+
+**D-31 - The page calls one shell command: the native folder picker (2026-11-10, plan 8.1.2 item 1.6, decision D-6 of that plan).**
+Until now the shell exposed no command to the page: the cookie is `HttpOnly` (D-23), every direction used the private pipes, and a field
+that wants a folder was a text field (D-24). That left a user of the desktop application typing `D:\...` by hand in three places (the
+backup folder, the film archive folder, the captures folder). The page may now ask the shell for the system "Browse" box, through **one
+command, `pick_folder`, and nothing else**.
+
+*What Tauri requires for a remote origin* (read in the sources of the `tauri` 2.11.6 and `tauri-build` 2.6.3 crates of `Cargo.lock`, not
+assumed). The server page is loaded from `http://127.0.0.1:<port>`: for Tauri it is a **remote** origin (`Webview::is_local_url` is true only
+for the embedded `tauri://` / `http://tauri.localhost`, the `frontendDist` and the registered custom protocols). A request from a remote
+origin is refused unless a capability lists that origin (`Webview::on_message`: the ACL is checked when the origin is not local, whether or
+not the application declared an app manifest). Hence three parts, all in `apps/desktop/src-tauri`:
+`build.rs` declares the command (`tauri_build::Attributes::app_manifest(AppManifest::new().commands(&["pick_folder"]))`, which generates
+the permission `allow-pick-folder`); `capabilities/pick-folder.json` grants it with `"remote": {"urls": ["http://127.0.0.1:*"]}`,
+`"windows": ["main"]` and `"local": false` (the embedded screens of the shell have no capability and call nothing); `main.rs` registers the
+handler. The origin is matched with a URL pattern (`urlpattern`) against the `Origin` header of the IPC request, which the page cannot forge.
+The bridge itself (`window.__TAURI_INTERNALS__.invoke`) is injected by Tauri in the main frame of every page of the window, remote ones
+included, so the web side needs no `@tauri-apps/api` dependency. The server sets no `connect-src`, so the IPC fetch to `ipc.localhost` is
+not blocked (and Tauri falls back to `postMessage` if it were).
+
+*The command.* `pick_folder(window, initial: Option<String>) -> Result<Option<String>, String>` opens `rfd::FileDialog::pick_folder`, modal
+to the calling window, and returns the chosen path **as an opaque string** (`None` when the user cancels). It is `async` and runs the blocking
+dialog in `spawn_blocking`: a synchronous Tauri command runs on the main thread, which the dialog's owner window needs to answer. `initial`
+(the field value) only picks where the box opens: `folder_pick::initial_dir` keeps the nearest existing parent, ignores an empty or relative
+value, and **never probes a network path** (a `\\host\share` value coming from the page would otherwise make the shell open a connection).
+The shell validates nothing else: the server validates the folder when the setting is saved, as for a typed value (D-24).
+
+*The capability.* `can_pick_folder` (`DeploymentCapabilities.PickFolder`, ADR 0044) is true in the `desktop` profile only. The web branches
+on it (`FolderPickButton`), never on the profile name, the system, or the presence of the bridge; without it the field stays a text field.
+This amends D-24 ("No native folder picker") and the sentence of the L21.b notes ("no command is exposed to the page"): the page now has
+exactly one command, and the guard below keeps it at one.
+
+*Guards.* `src/pick_folder_acl_tests.rs` builds the mock Tauri runtime on the real embedded permissions and checks that `pick_folder` is
+allowed from `http://127.0.0.1:<any port>` on the window `main`, and refused from another host, scheme, window or embedded origin, and that
+`open_url` and the plugin commands stay refused. `folder_pick::tests` (pure), `FolderPickButton.test.tsx`, `pickFolder.test.ts`, the
+profile tests of `config` and `service` for the capability.
 
 ### Tests
 
@@ -854,7 +915,7 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   replaces the browser launch by the log line, for automated runs.
 - **Why `target="_blank"` used to do nothing.** `tauri-plugin-opener` injects by default a script that catches clicks on
   `target="_blank"` links, calls `preventDefault()` and invokes the `open_url` command over IPC. The server page has no
-  capability, so the invocation is refused and the click was swallowed before the engine asked for a new window (only
+  capability for it (the only command the page may call is `pick_folder`, D-31), so the invocation is refused and the click was swallowed before the engine asked for a new window (only
   `window.open` reached `on_new_window`). The plugin is built with `open_js_links_on_click(false)`; the Rust side keeps
   using `AppHandle::opener()` for the launch. Ctrl+click and Shift+click, which the script also routed, now reach the engine
   as new-window requests and follow the same policy.
@@ -1005,6 +1066,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   Settings), which keeps the cross-feature import ceiling (P8.5) where it was.
 - **Found and left** (both settled in L22c): Firefight replays built before the 2026-10-15 decision were counted until their first (refused) rebuild (the count now skips them by
   rule, see "Uninstalling and finishing touches"); the Data tab's film-archive panel kept its own "Saved." text (it now uses the shared badge).
+
+## Implementation notes (2026-11-14)
+
+- **Compaction at startup.** The desktop profile compacts superseded decode passes after the migrations and before the
+  shared databases are opened (capability `CompactPassesAtStartup`; ADR 0026, amendment of 2026-11-14). It runs under the
+  existing `migrations` boot step and adds no event to this contract: the shell's 120 s wait for `ready` is the
+  constraint, hence the 75 s bound. A dedicated `maintenance` step and event would be the answer if a measured
+  compaction needs longer; none is needed before that measurement.
 
 ## Alternatives rejected
 

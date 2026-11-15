@@ -11,7 +11,7 @@ package main
 // SEMANTIQUE
 //
 //	--since AAAA-MM-JJ   films dont le match a commence a cette date UTC (minuit inclus) ou apres,
-//	                     date CANONIQUE du registre (analysis.SQLStartTimeCanonical). Un match
+//	                     date CANONIQUE du registre (sqlfrag.SQLStartTimeCanonical). Un match
 //	                     sans date est ECARTE et COMPTE (« sans date canonique »), jamais cuit.
 //	--match id1,id2,...  ces matchs seulement : identifiants complets ou prefixes univoques d au
 //	                     moins 8 caracteres, resolus contre le registre (meme resolveur que
@@ -39,10 +39,10 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // formatDateSince : la forme de `--since`.
@@ -202,7 +202,7 @@ func datesCanoniquesDuRegistre(ctx context.Context, pr *titlePkg.PathResolver, t
 
 // lireDatesCanoniques : la requete, separee de l ouverture pour se tester sur une base de test.
 func lireDatesCanoniques(ctx context.Context, db *sql.DB) (map[string]time.Time, error) {
-	rows, err := db.QueryContext(ctx, `SELECT match_id, `+analysis.SQLStartTimeCanonical("")+` FROM match_registry`)
+	rows, err := db.QueryContext(ctx, `SELECT match_id, `+sqlfrag.SQLStartTimeCanonical("")+` FROM match_registry`)
 	if err != nil {
 		return nil, fmt.Errorf("dates canoniques du registre: %w", err)
 	}

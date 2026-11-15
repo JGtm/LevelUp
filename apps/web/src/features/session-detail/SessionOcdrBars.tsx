@@ -10,7 +10,7 @@
  * divergent-neutral (DR), cohérentes avec CombatYieldBar et la KPI session.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -28,6 +28,7 @@ import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { meanOfValid } from '@/lib/charts/stats'
 
 /** Repères barre (frontière élite). OC = title-aware (hook useOffensiveConversionP80 :
  *  0.90 Infinite / 1.264 Halo 5) ; DR = miroir const Go (h5 sans damage_taken → DR N/A). */
@@ -55,7 +56,7 @@ interface OcdrOpts {
 export function buildSessionOcdrBarsOption(
   series: ChartSeries<OcdrPoint>[],
   opts: OcdrOpts,
-): EChartsCoreOption {
+): ChartOption {
   const showDr = opts.showDr ?? true
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -67,8 +68,8 @@ export function buildSessionOcdrBarsOption(
   const refColor = resolveToken('divergent-neutral')
   const round1 = (n: number) => Math.round(n * 10) / 10
 
-  const ocMean  = round1(points.reduce((s, p) => s + p.ocNorm, 0) / points.length)
-  const drMean  = round1(points.reduce((s, p) => s + p.drNorm, 0) / points.length)
+  const ocMean  = round1(meanOfValid(points.map((p) => p.ocNorm)) ?? 0)
+  const drMean  = round1(meanOfValid(points.map((p) => p.drNorm)) ?? 0)
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
   const markLineBase = {

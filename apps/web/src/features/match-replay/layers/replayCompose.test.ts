@@ -43,11 +43,14 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   placements: true,
   killFx: true,
   modeObjectives: true,
+  wallPlan: true,
+  lives: { spawns: true, deaths: true, killers: true },
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
   background: true,
   floor: true,
+  wallPlan: true,
   heat: true,
   zoneNames: true,
   objectivesCooked: true,
@@ -59,6 +62,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   zoneStates: true,
   objectivePulses: true,
   killFx: true,
+  lives: { spawns: true, deaths: true, killers: true },
 }
 
 function scene(over: Partial<ReplayScene> = {}): ReplayScene {
@@ -95,6 +99,7 @@ function peints(s: ReplayScene, frame = 42, dpr = 2): string[] {
 const ORDRE_ATTENDU = [
   'fond-carte',
   'sol-forge',
+  'plan-murs',
   'chaleur',
   'zones-nommees',
   'objectifs-cuits',
@@ -103,6 +108,9 @@ const ORDRE_ATTENDU = [
   'armes-au-sol',
   'poses-equipement',
   'vehicules',
+  'vies-apparitions',
+  'vies-morts',
+  'vies-tueurs',
   'trajectoires',
   'failles',
   'marques-de-tir',
@@ -118,10 +126,12 @@ const ORDRE_ATTENDU = [
   'deflagration',
   'pulses-objectif',
   'morts',
+  'mise-en-valeur',
+  'etiquettes-mise-en-valeur',
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-cinq calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les trente et un calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -129,15 +139,24 @@ describe('sceneLayers — l’ordre de la scène', () => {
     expect(new Set(LAYER_ORDER).size).toBe(LAYER_ORDER.length)
   })
 
-  it('PEINT du fond vers le sujet : le sol d’abord, les morts en dernier', () => {
+  it('PEINT du fond vers le sujet : le sol d’abord, la mise en valeur d’une élimination en dernier', () => {
     const ordre = peints(scene({ has: { ...TOUT_A_PEINDRE, floor: false } }))
     expect(ordre[0]).toBe('fond-carte')
-    expect(ordre[ordre.length - 1]).toBe('morts')
+    expect(ordre[ordre.length - 1]).toBe('etiquettes-mise-en-valeur')
+    // Le voile et les équerres au-dessus des pions et des morts, les étiquettes au-dessus des équerres.
+    expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
+    expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
+    expect(ordre.indexOf('mise-en-valeur')).toBeLessThan(ordre.indexOf('etiquettes-mise-en-valeur'))
     // Les repères qui décident de la lisibilité : le terrain sous les joueurs, les joueurs
     // sous les événements.
     expect(ordre.indexOf('chaleur')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('zones-nommees')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('vehicules')).toBeLessThan(ordre.indexOf('trajectoires'))
+    // Les traces des vies (creuses, fines) passent SOUS les pions, au-dessus du terrain et des objets.
+    for (const trace of ['vies-apparitions', 'vies-morts', 'vies-tueurs']) {
+      expect(ordre.indexOf('vehicules')).toBeLessThan(ordre.indexOf(trace))
+      expect(ordre.indexOf(trace)).toBeLessThan(ordre.indexOf('trajectoires'))
+    }
     expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('tirs'))
     expect(ordre.indexOf('tirs')).toBeLessThan(ordre.indexOf('morts'))
   })
@@ -178,6 +197,8 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
     // Les failles du translocateur suivent la bascule des poses : un seul geste les éteint.
     ['placements', ['poses-equipement', 'failles']],
     ['killFx', ['morts']],
+    // Le plan des murs a son interrupteur, et rien d'autre ne le coupe.
+    ['wallPlan', ['plan-murs']],
     // Trois calques pour UN objet (2026-09-18) : la géométrie cuite, l'état vivant des zones
     // et les pulses d'action. Les objets PORTÉS (drapeaux, couronne, crâne, bombe) ne sont
     // PAS dans cette liste : ils ont leur propre bascule, et le « exactement » le prouve.
@@ -199,9 +220,33 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
   })
 })
 
+describe('sceneLayers — les trois calques des vies', () => {
+  /** Chaque calque a son interrupteur et sa matière : couper l'un ne touche pas les deux autres. */
+  const VIES: Array<[keyof ReplayScene['toggles']['lives'], ReplayLayerId]> = [
+    ['spawns', 'vies-apparitions'],
+    ['deaths', 'vies-morts'],
+    ['killers', 'vies-tueurs'],
+  ]
+
+  it.each(VIES)('« %s » coupé retire exactement %s', (bascule, attendu) => {
+    const complet = peints(scene())
+    const toggles = { ...TOUT_ALLUME, lives: { ...TOUT_ALLUME.lives, [bascule]: false } }
+    const coupe = peints(scene({ toggles }))
+    expect(complet.filter((id) => !coupe.includes(id))).toEqual([attendu])
+  })
+
+  it.each(VIES)('sans marque « %s », %s ne se peint pas', (matiere, attendu) => {
+    const complet = peints(scene())
+    const has = { ...TOUT_A_PEINDRE, lives: { ...TOUT_A_PEINDRE.lives, [matiere]: false } }
+    const sans = peints(scene({ has }))
+    expect(complet.filter((id) => !sans.includes(id))).toEqual([attendu])
+  })
+})
+
 describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   /** Ce que chaque absence de matière doit retirer, exactement. */
   const SANS: Array<[keyof ReplayScene['has'], ReplayLayerId[]]> = [
+    ['wallPlan', ['plan-murs']],
     ['heat', ['chaleur']],
     ['zoneNames', ['zones-nommees']],
     ['objectivesCooked', ['objectifs-cuits']],
@@ -222,9 +267,10 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   })
 
   it('les calques SANS condition se peignent toujours, même sur une scène vide de matière', () => {
-    const vide = Object.fromEntries(
-      Object.keys(TOUT_A_PEINDRE).map((k) => [k, false]),
-    ) as unknown as ReplayScene['has']
+    const vide = {
+      ...(Object.fromEntries(Object.keys(TOUT_A_PEINDRE).map((k) => [k, false])) as unknown as ReplayScene['has']),
+      lives: { spawns: false, deaths: false, killers: false },
+    }
     expect(peints(scene({ has: vide }))).toEqual([
       'socles-armes',
       'armes-au-sol',
@@ -238,6 +284,10 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
       'crane-porte',
       'bombe-portee',
       'deflagration',
+      // La mise en valeur d'une élimination n'a pas de condition d'ouverture : son peintre ne pose
+      // rien tant qu'aucun clic n'a demandé de mise en valeur.
+      'mise-en-valeur',
+      'etiquettes-mise-en-valeur',
     ])
   })
 })
@@ -256,6 +306,6 @@ describe('composeScene — la boucle', () => {
     const { ctx, journal } = contexteEnregistreur()
     const inverse = [...sceneLayers(scene())].reverse()
     composeScene(ctx, inverse, 7, 1)
-    expect(journal[0]).toBe('morts@7/1')
+    expect(journal[0]).toBe('etiquettes-mise-en-valeur@7/1')
   })
 })

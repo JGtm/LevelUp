@@ -61,7 +61,7 @@ func captureStatsHost(t *testing.T, ctx context.Context, configure func(*Client)
 	if configure != nil {
 		configure(client)
 	}
-	if _, err := client.GetMatchHistory(ctx, "xuid(2535469190789936)", "matchmaking", 0, 25); err != nil {
+	if _, err := client.GetMatchHistory(ctx, "xuid(2547408409520575)", "matchmaking", 0, 25); err != nil {
 		t.Fatalf("GetMatchHistory: %v", err)
 	}
 	captured := ct.last()
@@ -156,7 +156,7 @@ func TestHostFor_SkillAxis(t *testing.T) {
 	const skillHost = "skill.svc.halowaypoint.com:443"
 	// GetPlayerCSRs vise l'host skill ; capture indifférente au parsing.
 	callCSRs := func(ctx context.Context, c *Client) {
-		_, _ = c.GetPlayerCSRs(ctx, "2535469190789936", "CsrSeason8")
+		_, _ = c.GetPlayerCSRs(ctx, "2547408409520575", "CsrSeason8")
 	}
 
 	t.Run("resolver halo = parité byte-identique", func(t *testing.T) {

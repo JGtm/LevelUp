@@ -32,7 +32,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Decalages depuis la liste d'enfants, pour les deux layouts candidats.

@@ -1913,6 +1913,10 @@ en = "America/Chicago"
 fr = "Onglets paramètres"
 en = "Settings tabs"
 
+[common.settings.browse_folder]
+fr = "Parcourir…"
+en = "Browse…"
+
 # ─── Changelog ──────────────────────────────────────────────────────────
 
 [common.changelog.load_failed]
@@ -2149,8 +2153,12 @@ fr = "Erreur lors de l'authentification Microsoft."
 en = "Error during Microsoft authentication."
 
 [common.device_code.err_halo]
-fr = "Impossible d'obtenir un accès Halo. Veuillez réessayer."
-en = "Unable to obtain Halo access. Please try again."
+fr = "Halo a refusé l'accès à ce compte. Vérifiez le compte choisi et son profil Xbox."
+en = "Halo refused access for this account. Check the chosen account and its Xbox profile."
+
+[common.device_code.err_halo_unreachable]
+fr = "Les services Halo ne répondent pas pour le moment. Réessayez plus tard."
+en = "The Halo services are not responding right now. Try again later."
 
 [common.device_code.err_identity]
 fr = "Impossible de résoudre le Gamertag. Réessaie dans quelques instants."
@@ -2685,6 +2693,10 @@ en = "About"
 [common.shell.nav_feedback]
 fr = "Signaler un problème"
 en = "Report a problem"
+
+[common.shell.nav_more]
+fr = "Plus"
+en = "More"
 
 [common.shell.sidebar_footer_aria]
 fr = "Aide, paramètres et informations sur l'application"

@@ -139,14 +139,14 @@ describe('buildPickupSheets — Répartition des prises dans l’escouade', () =
     expect(spnkr.taken).toEqual([5, 2, 0, 2])
   })
 
-  it('bonus perdus par joueur : Chocoboflor garde un camouflage, Madina97294 en lâche un', () => {
+  it('bonus perdus par joueur : Joueur90001 garde un camouflage, Joueur90002 en lâche un', () => {
     const camo = sheets.sections[0].lines.find((l) => l.object.key === 'powerup_camo')!
     expect(camo.taken).toEqual([1, 1, 4, 0])
     expect(camo.kept).toEqual([0, 1, 0, 0])
     expect(camo.dropped).toEqual([0, 0, 1, 0])
   })
 
-  it('ressource dominante : la part du camp la plus forte (JGtm armes spéciales, Madina97294 bonus)', () => {
+  it('ressource dominante : la part du camp la plus forte (JGtm armes spéciales, Joueur90002 bonus)', () => {
     expect(sheets.dominant).toEqual(['power_weapon', 'powerup', 'powerup', 'power_weapon'])
   })
 

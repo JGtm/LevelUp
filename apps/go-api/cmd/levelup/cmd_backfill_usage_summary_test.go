@@ -11,18 +11,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // artefactUsageDeTest ecrit un artefact minimal portant ce schema, et rend son chemin.
 func artefactUsageDeTest(t *testing.T, schema int) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "artefact.json")
-	if err := os.WriteFile(path, []byte(fmt.Sprintf(`{"schemaVersion":%d}`, schema)), 0o644); err != nil {
+	if err := poserCompresse(path, []byte(fmt.Sprintf(`{"schemaVersion":%d}`, schema)), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	return path
@@ -111,10 +112,49 @@ func TestProjeterUnArtefact_CleDeReprise(t *testing.T) {
 
 func TestProjeterUnArtefact_ArtefactIllisible(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "corrompu.json")
-	if err := os.WriteFile(path, []byte("{pas du json"), 0o644); err != nil {
+	if err := poserCompresse(path, []byte("{pas du json"), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	if _, etat := projeterUnArtefact(context.Background(), path, "m1", usageSummaryOptions{}, nil); etat != usageEchec {
 		t.Fatalf("etat = %d, attendu usageEchec (un artefact corrompu degrade CE match, pas la passe)", etat)
+	}
+}
+
+// TestProjeterUnArtefact_LePasEstUneMarqueDeFraicheur : à schéma et révision égaux, un artefact régénéré
+// à un autre pas est résumé de nouveau ; au même pas il est sauté. Mutation : retirer `SameCadence` de la
+// clé de reprise rend le premier cas « déjà à jour » et ce test rouge.
+func TestProjeterUnArtefact_LePasEstUneMarqueDeFraicheur(t *testing.T) {
+	artefactAuPas := func(pas int) string {
+		path := filepath.Join(t.TempDir(), "artefact.json")
+		corps := fmt.Sprintf(`{"schemaVersion":%d,"frameIntervalMs":%d}`, replay.SchemaVersion, pas)
+		if err := poserCompresse(path, []byte(corps), 0o644); err != nil {
+			t.Fatalf("ecrire artefact: %v", err)
+		}
+		return path
+	}
+	resumeAuPas := func(pas int) map[string]passeCouranteUsage {
+		return map[string]passeCouranteUsage{
+			"m1": {rev: replay.UsageSummaryRev, schema: replay.SchemaVersion, frameIntervalMs: pas},
+		}
+	}
+	cas := []struct {
+		nom    string
+		path   string
+		passes map[string]passeCouranteUsage
+		want   etatUsageMatch
+	}{
+		{"artefact regenere a un autre pas : resume de nouveau", artefactAuPas(replaybuild.CookFrameIntervalMS()),
+			resumeAuPas(replaybuild.HistoricalFrameIntervalMS), usageAProjeter},
+		{"meme pas : saute", artefactAuPas(replaybuild.CookFrameIntervalMS()),
+			resumeAuPas(replaybuild.CookFrameIntervalMS()), usageDejaAJour},
+		{"artefact encore a l'ancien pas, resume a l'ancien pas : saute (le remede est la regeneration de l'artefact)",
+			artefactAuPas(replaybuild.HistoricalFrameIntervalMS), resumeAuPas(replaybuild.HistoricalFrameIntervalMS), usageDejaAJour},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			if _, etat := projeterUnArtefact(context.Background(), c.path, "m1", usageSummaryOptions{}, c.passes); etat != c.want {
+				t.Fatalf("etat = %d, attendu %d", etat, c.want)
+			}
+		})
 	}
 }

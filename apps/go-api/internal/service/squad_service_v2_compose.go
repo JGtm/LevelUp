@@ -108,17 +108,6 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 		out.PerformanceTimeseries = BuildPerformanceChart(in.rowsByPlayer)
 	}
 
-	// Radar 6 axes (S8) — derive la mode_family depuis la playlist majoritaire
-	// des matchs partages. Pour Phase 1 pilote, "" (custom thresholds neutres).
-	if len(in.rowsByPlayer) > 0 {
-		radarSeries := BuildRadarSeries(in.rowsByPlayer, "")
-		// Convert []RadarChartSeries vers []any pour serializer JSON.
-		out.Radar = make([]any, 0, len(radarSeries))
-		for _, rs := range radarSeries {
-			out.Radar = append(out.Radar, rs)
-		}
-	}
-
 	return out
 }
 

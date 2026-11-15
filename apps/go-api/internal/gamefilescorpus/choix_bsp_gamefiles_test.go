@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // LE VERROU DU CHOIX DE BSP — sur les fichiers du jeu installe.

@@ -3,8 +3,8 @@ package timeline_test
 // Golden test d'intégration de la couche MatchTimeline sur données réelles.
 //
 // Rejoue la chaîne service → CorrectEvents → narrative sur les events des 8
-// matchs de référence (testdata/t0_fixtures/events_golden.json, généré par
-// cmd/export_t0_fixtures). Capture FirstEvents + IntensityProfiles par match.
+// matchs de référence (testdata/t0_fixtures/events_golden.json, généré hors
+// du dépôt à partir des matchs de référence). Capture FirstEvents + IntensityProfiles par match.
 //
 // Phase 3 (T0 réel) : le golden capture les chronologies recalées au début du
 // gameplay (TimeMS − T0 par match). Régénérer avec UPDATE_GOLDEN=1 si le calcul

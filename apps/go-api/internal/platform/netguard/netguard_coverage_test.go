@@ -61,9 +61,8 @@ var allowlist = map[string]string{
 	// Canaux sortants NON liés aux données de jeu, désactivés par la config démo
 	// (app_settings émis par le seed : discord_notifications_enabled=false,
 	// watcher_presence_enabled=false).
-	"notify/discord.go":        "webhook Discord — désactivé par app_settings en démo",
-	"presence/rest_client.go":  "présence Xbox — daemon watcher désactivé en démo",
-	"presence/steam_poller.go": "présence Steam — daemon watcher désactivé en démo",
+	"notify/discord.go":       "webhook Discord — désactivé par app_settings en démo",
+	"presence/rest_client.go": "présence Xbox — daemon watcher désactivé en démo",
 	// Ajout du 2026-11-08. Le paquet n'importe que la bibliothèque standard, car l'étage `pack-builder` du
 	// Dockerfile le compile seul, sans go.work ni briques : il ne peut pas importer netguard. La garde est
 	// posée à l'injection (`netguard.Doer`, tenu par TestNewResourcesDownloaderPasseParLaGarde dans cmd/server).

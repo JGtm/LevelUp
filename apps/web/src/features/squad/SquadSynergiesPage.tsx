@@ -53,7 +53,7 @@ export function SquadSynergiesPage() {
   // ChartCard rebâtissait son option ECharts (dont les `formatter`, comparés par
   // référence par echarts-for-react) et l'animation d'entrée REJOUAIT sans
   // qu'aucune valeur n'ait bougé.
-  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase) : on aligne sur main_player.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
   // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers (ordre

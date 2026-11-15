@@ -1,8 +1,6 @@
 package profile
 
 import (
-	"database/sql"
-	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/i18n"
@@ -12,7 +10,7 @@ import (
 
 // service_helpers_pure_test.go — helpers purs non couverts par
 // service_helpers_test.go (requiredCompositeFor, snapshot branches,
-// compositeWeightsExternal, nullStringToString, IsPositive, decodeStringListLocal).
+// compositeWeightsExternal, IsPositive).
 
 func TestRequiredCompositeFor_TargetNotAboveCurrent(t *testing.T) {
 	// targetMu <= currentMu → pas d'objectif → 0 (sortie avant délégation).
@@ -118,15 +116,6 @@ func TestCompositeWeightsExternal_DefensiveCopy(t *testing.T) {
 	}
 }
 
-func TestNullStringToString(t *testing.T) {
-	if got := nullStringToString(sql.NullString{String: "hello", Valid: true}); got != "hello" {
-		t.Errorf("valid: got %q, want 'hello'", got)
-	}
-	if got := nullStringToString(sql.NullString{String: "ignored", Valid: false}); got != "" {
-		t.Errorf("NULL: got %q, want ''", got)
-	}
-}
-
 func TestLOWESSTrend_IsPositive(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -146,27 +135,6 @@ func TestLOWESSTrend_IsPositive(t *testing.T) {
 			tr := LOWESSTrend{Slope: tt.slope, Window: tt.window}
 			if got := tr.IsPositive(tt.minWindow); got != tt.want {
 				t.Errorf("IsPositive = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestDecodeStringListLocal(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want []string
-	}{
-		{"vide → nil", "", nil},
-		{"un élément", "kills", []string{"kills"}},
-		{"plusieurs", "kills,deaths,wins", []string{"kills", "deaths", "wins"}},
-		{"virgule finale → élément vide conservé", "a,", []string{"a", ""}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := decodeStringListLocal(tt.in)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %#v, want %#v", got, tt.want)
 			}
 		})
 	}

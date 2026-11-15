@@ -14,6 +14,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/l
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from './mapBackgroundVariant'
 import { validateReplayDocument } from './replayDocumentSchema'
 import {
   normalizeReplayMatchContext,
@@ -22,6 +23,10 @@ import {
   type ReplayMatchContextWire,
 } from './replayMatchContext'
 import { normalizeReplayDocument } from './replayNormalize'
+
+/** Les deux métas HTTP du rejeu : la version courante du producteur, et le verdict de cadence du serveur. */
+const LATEST_SCHEMA_HEADER = 'X-Replay-Latest-Schema-Version'
+const CADENCE_STALE_HEADER = 'X-Replay-Cadence-Stale'
 
 /**
  * useMatchReplay charge l'artefact du match, normalisé.
@@ -48,10 +53,16 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
       // second appel au client plutôt qu'un simple `api.get`. Sert uniquement le badge admin
       // (`ReplaySchemaBadge`) ; `null` (en-tête absent) laisse `latestSchemaVersion` undefined,
       // et le badge retombe alors sur la seule version lue.
-      const { data: raw, header } = await api.getWithHeader<ReplayDocument>(
+      //
+      // `X-Replay-Cadence-Stale` : le SERVEUR dit si le pas du document n'est plus le pas de
+      // cuisson courant (même schéma, autre grille). Le web n'a aucune règle de cadence : il
+      // recopie ce verdict, que le badge met en mots.
+      const { data: raw, responseHeaders } = await api.getWithHeaders<ReplayDocument>(
         `/players/${playerSlug}/matches/${matchId}/replay`,
-        'X-Replay-Latest-Schema-Version',
+        [LATEST_SCHEMA_HEADER, CADENCE_STALE_HEADER],
       )
+      const header = responseHeaders[LATEST_SCHEMA_HEADER]
+      const cadence = responseHeaders[CADENCE_STALE_HEADER]
       // LE CONTRAT EST CONTRÔLÉ ICI, ET NULLE PART AILLEURS (lot 0.B, 2026-09-13). Les types
       // générés d'OpenAPI n'existent plus à l'exécution : un champ renommé par le producteur,
       // ou dont la nature change, ne fait rougir ni `tsc` ni aucun test — il arrive en
@@ -67,6 +78,7 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
       return {
         ...normalized,
         latestSchemaVersion: header !== null ? Number(header) : undefined,
+        cadenceStale: cadence === 'true' ? true : undefined,
         contractIssue: contractIssue ?? undefined,
       }
     },
@@ -134,18 +146,29 @@ export function useReplayMapBackground(playerSlug: string, matchId: string) {
  *
  * `enabled` est piloté par l'appelant : sans calage, l'image ne sert à rien — la charger
  * serait 700 Kio pour un fond qu'on ne saurait pas placer.
+ *
+ * `variante` : l'image à demander (`resolveBackgroundVariant` la décide : `plan` seulement pour un
+ * fond qui porte une image plan). Chaque variante a sa clé de cache. L'image plan a le même calage
+ * et les mêmes dimensions que le rendu : l'appelant ne change rien d'autre. REPLI SILENCIEUX : si
+ * l'image plan ne se charge pas, c'est le rendu qui est servi, sans erreur à l'écran ; pendant son
+ * chargement, le rendu déjà en cache reste affiché.
+ *
+ * LA VARIANTE RENDUE EST CELLE QUI EST RÉELLEMENT CHARGÉE, pas celle qu'on a demandée : c'est d'elle
+ * que dépendent les murs (déjà dans l'image plan, à tracer sur le rendu de repli). Tant qu'aucune
+ * image n'est prête, elle vaut la variante demandée.
  */
 export function useReplayMapImage(
   playerSlug: string,
   matchId: string,
   enabled: boolean,
-): HTMLImageElement | null {
+  variante: MapBackgroundVariant = 'rendu',
+): { image: HTMLImageElement | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
-    queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId),
+  const load = (v: MapBackgroundVariant) => ({
+    queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId, v),
     queryFn: async () => {
       const blob = await api.getBlob(
-        `/players/${playerSlug}/matches/${matchId}/replay/background.png`,
+        backgroundImagePath(`/players/${playerSlug}/matches/${matchId}/replay/background.png`, v),
       )
       const url = URL.createObjectURL(blob)
       try {
@@ -158,12 +181,14 @@ export function useReplayMapImage(
       }
     },
     staleTime: Infinity,
-    enabled: enabled && !!playerSlug && !!matchId,
     // Absence ou échec de chargement : pas de fond, le rejeu garde son sol reconstruit.
     // Rien à dire à l'utilisateur — la carte s'affiche quand même.
     retry: false,
   })
-  return data ?? null
+  const ready = enabled && !!playerSlug && !!matchId
+  const plan = useQuery({ ...load('plan'), enabled: ready && variante === 'plan' })
+  const rendu = useQuery({ ...load('rendu'), enabled: ready && (variante === 'rendu' || plan.isError) })
+  return loadedBackground(variante, plan.data, rendu.data)
 }
 
 /**

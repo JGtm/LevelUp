@@ -365,7 +365,7 @@ export function MediaToolbar({
         onClick={() => onLikedOnlyChange(!likedOnly)}
         className={`flex h-8 items-center justify-center rounded-md border px-2 text-base leading-none transition-colors ${
           likedOnly
-            ? 'border-rose-500/60 bg-rose-500/10 text-rose-500' // color-allow: rose pour le filtre "favoris" (heart icon) — CLAUDE.md §20 tolère rose pour liked
+            ? 'border-rose-500/60 bg-rose-500/10 text-rose-500' // color-allow(tailwind): rose pour le filtre "favoris" (heart icon) — CLAUDE.md §20 tolère rose pour liked
             : 'border-input text-muted-foreground hover:text-foreground'
         }`}
       >
@@ -380,7 +380,7 @@ export function MediaToolbar({
           onClick={() => onUnassignedOnlyChange(!unassignedOnly)}
           className={`flex h-8 items-center justify-center gap-1 rounded-md border px-2 text-xs leading-none transition-colors ${
             unassignedOnly
-              ? 'border-amber-500/60 bg-amber-500/10 text-amber-500' // color-allow: amber pour le filtre "sans match" — CLAUDE.md §20 tolère warning/amber dans badges d'état système
+              ? 'border-amber-500/60 bg-amber-500/10 text-amber-500' // color-allow(tailwind): amber pour le filtre "sans match" — CLAUDE.md §20 tolère warning/amber dans badges d'état système
               : 'border-input text-muted-foreground hover:text-foreground'
           }`}
         >

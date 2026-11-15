@@ -905,7 +905,7 @@ func TestMediaHandler_PatchMediaLike_SessionOverridesBodyLiker(t *testing.T) {
 	spy := &spyLikeService{}
 	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
 
-	sessionSlug := "Chocoboflor"
+	sessionSlug := "Joueur90001"
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "").WithRequester(sessionPlayerAsOwnedProfile)
 	r.Route("/players/{player_slug}", func(r chi.Router) {

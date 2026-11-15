@@ -26,7 +26,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 const ppTestMatchID = "m_positions_001"

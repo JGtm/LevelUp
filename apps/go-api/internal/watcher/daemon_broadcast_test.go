@@ -2,8 +2,7 @@
 // active aux PlayerWatchers (incident 2026-05-27, sessions de groupe non
 // détectées).
 //
-// Voir DaemonConfig.BroadcastPresenceActive (daemon.go) pour le contexte
-// complet du bug et la décision design.
+// Voir Daemon.broadcastPresenceActive (daemon.go) pour le contexte du bug.
 package watcher
 
 import (
@@ -51,14 +50,13 @@ func addTestPlayer(d *Daemon, gamertag, xuid string) *PlayerWatcher {
 func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{
-		RepoRoot:                "/repo",
-		BroadcastPresenceActive: true,
+		RepoRoot: "/repo",
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
-	choco := addTestPlayer(d, "Chocoboflor", "333")
-	xxdaemon := addTestPlayer(d, "XxDaemonGamerxX", "444")
+	madina := addTestPlayer(d, "Joueur90002", "222")
+	choco := addTestPlayer(d, "Joueur90001", "333")
+	xxdaemon := addTestPlayer(d, "Joueur90000000f", "444")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 	handler(haloPresenceEvent("111"))
@@ -68,42 +66,13 @@ func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 
 	for name, pw := range map[string]*PlayerWatcher{
 		"JGtm":            jgtm,
-		"Madina97294":     madina,
-		"Chocoboflor":     choco,
-		"XxDaemonGamerxX": xxdaemon,
+		"Joueur90002":     madina,
+		"Joueur90001":     choco,
+		"Joueur90000000f": xxdaemon,
 	} {
 		if got := pw.FSM().State(); got != StateWatching {
 			t.Errorf("après broadcast, %s FSM = %v, want Watching", name, got)
 		}
-	}
-}
-
-// TestBroadcast_DisabledKeepsOthersIdle : si BroadcastPresenceActive=false,
-// seul le triggering player passe Watching. Les autres restent Idle.
-func TestBroadcast_DisabledKeepsOthersIdle(t *testing.T) {
-	reg := title.NewRegistry()
-	d := NewDaemon(DaemonConfig{
-		RepoRoot:                "/repo",
-		BroadcastPresenceActive: false, // explicitement off
-	}, reg, &mockDaemonSyncRunner{})
-
-	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
-	choco := addTestPlayer(d, "Chocoboflor", "333")
-
-	handler := d.makePresenceHandler(context.Background(), jgtm)
-	handler(haloPresenceEvent("111"))
-
-	time.Sleep(50 * time.Millisecond)
-
-	if jgtm.FSM().State() != StateWatching {
-		t.Errorf("JGtm FSM = %v, want Watching (triggering player toujours activé)", jgtm.FSM().State())
-	}
-	if madina.FSM().State() != StateIdle {
-		t.Errorf("Madina FSM = %v, want Idle (broadcast off → pas propagé)", madina.FSM().State())
-	}
-	if choco.FSM().State() != StateIdle {
-		t.Errorf("Choco FSM = %v, want Idle (broadcast off)", choco.FSM().State())
 	}
 }
 
@@ -113,12 +82,11 @@ func TestBroadcast_DisabledKeepsOthersIdle(t *testing.T) {
 func TestBroadcast_IdempotentOnRepeatedEvents(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{
-		RepoRoot:                "/repo",
-		BroadcastPresenceActive: true,
+		RepoRoot: "/repo",
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
+	madina := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 
@@ -146,8 +114,7 @@ func TestBroadcast_IdempotentOnRepeatedEvents(t *testing.T) {
 func TestBroadcast_SoloPlayerNoOp(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{
-		RepoRoot:                "/repo",
-		BroadcastPresenceActive: true,
+		RepoRoot: "/repo",
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
@@ -168,12 +135,11 @@ func TestBroadcast_SoloPlayerNoOp(t *testing.T) {
 func TestBroadcast_DoesNotFireOnUntrackedTitle(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{
-		RepoRoot:                "/repo",
-		BroadcastPresenceActive: true,
+		RepoRoot: "/repo",
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
+	madina := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 

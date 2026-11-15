@@ -19,13 +19,15 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replayartifact"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ArtifactUpToDate dit si l'artefact au chemin donné existe ET porte la version de schéma
-// courante. C'est LA clé de reprise des backfills (cf. replay.SchemaVersion) : un artefact
-// d'une version antérieure se lit « à re-cuire », jamais « à jour ». Un fichier illisible
+// courante ET le pas de cuisson courant (cf. cadence.go). C'est LA clé de reprise des backfills
+// (cf. replay.SchemaVersion) : un artefact d'une version ou d'un pas antérieur se lit
+// « à re-cuire », jamais « à jour ». Un fichier illisible
 // est traité comme périmé (il sera réécrit), pas comme une erreur.
 //
 // C'EST UNE VUE DU DIGEST, PLUS UNE LECTURE (PLAN_CUISSON_PERF item 5.3). Elle reste exportée
@@ -48,9 +50,13 @@ func ArtifactUpToDate(path string) bool {
 type Digest struct {
 	MatchID       string
 	SchemaVersion int
-	Players       int
-	Tracks        int
-	Bytes         int
+	// FrameIntervalMS : le pas de l artefact (`frameIntervalMs`), 0 = absent, lu a 100 ms ([FrameIntervalOrHistorical]).
+	FrameIntervalMS int
+	Players         int
+	Tracks          int
+	// Bytes : la TAILLE STOCKEE de l artefact, celle du fichier sur disque (cf. internal/replayartifact/gate.go) ; pour un digest
+	// pris sur des octets en memoire, la longueur du JSON, que l appelant remplace par la taille stockee.
+	Bytes int
 	// Layers : les revisions de couche que l artefact DECLARE, calque par calque (schema 62,
 	// `film/replay/layers.go`). Nil = artefact anterieur au schema 62, qui ne declarait rien —
 	// et c est une REPONSE : on ne peut alors pas prouver que son decodage est intact.
@@ -115,7 +121,7 @@ func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 // ArtifactDigest lit UNE FOIS l'artefact au chemin donné et rend ses marques. ok=false si
 // absent ou illisible : dans le doute, l'appelant traite l'artefact comme inexploitable, jamais
 // comme bon — il ne peut PAS distinguer les deux cas ici, et c'est voulu (les deux appellent la
-// même conduite ; celui qui a besoin de la nuance fait son propre `os.Stat`, cf.
+// même conduite ; celui qui a besoin de la nuance interroge `replayartifact.Exists`, cf.
 // `cmd_backfill_replay_repair.go`).
 //
 // LE COMPTEUR EST LA MESURE DE CETTE LECTURE, et il a un rôle : c'est par lui que les gardes de
@@ -123,11 +129,13 @@ func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 // qui doublerait ses lectures se verrait dans /debug/vars avant de se voir dans un profil.
 func ArtifactDigest(path string) (Digest, bool) {
 	observability.IncCounter(CompteurLecturesArtefact)
-	raw, err := os.ReadFile(path)
+	c, err := replayartifact.Read(path)
 	if err != nil {
 		return Digest{}, false
 	}
-	return digestFromBytes(raw)
+	d, ok := digestFromBytes(c.JSON)
+	d.Bytes = c.StoredBytes
+	return d, ok
 }
 
 // CompteurLecturesArtefact : le nombre de lectures disque d'artefact faites par les gardes.
@@ -137,10 +145,11 @@ const CompteurLecturesArtefact = "replay_artifact_digest_reads_total"
 // le blob est là, le relire depuis le disque serait absurde).
 func digestFromBytes(raw []byte) (Digest, bool) {
 	var head struct {
-		MatchID       string            `json:"matchId"`
-		SchemaVersion int               `json:"schemaVersion"`
-		Tracks        []json.RawMessage `json:"tracks"`
-		ScoreTimeline struct {
+		MatchID         string            `json:"matchId"`
+		SchemaVersion   int               `json:"schemaVersion"`
+		FrameIntervalMS int               `json:"frameIntervalMs"`
+		Tracks          []json.RawMessage `json:"tracks"`
+		ScoreTimeline   struct {
 			Players []json.RawMessage `json:"players"`
 		} `json:"scoreTimeline"`
 		Layers map[string]string `json:"layers"`
@@ -149,12 +158,13 @@ func digestFromBytes(raw []byte) (Digest, bool) {
 		return Digest{}, false
 	}
 	return Digest{
-		MatchID:       head.MatchID,
-		SchemaVersion: head.SchemaVersion,
-		Players:       len(head.ScoreTimeline.Players),
-		Tracks:        len(head.Tracks),
-		Bytes:         len(raw),
-		Layers:        head.Layers,
+		MatchID:         head.MatchID,
+		SchemaVersion:   head.SchemaVersion,
+		FrameIntervalMS: head.FrameIntervalMS,
+		Players:         len(head.ScoreTimeline.Players),
+		Tracks:          len(head.Tracks),
+		Bytes:           len(raw),
+		Layers:          head.Layers,
 	}, true
 }
 
@@ -216,13 +226,15 @@ const (
 //  1. le DECODAGE est-il intact ? Sinon rien d autre ne compte : les faits persistes eux-memes
 //     ont ete produits par la couche qui a bouge, donc les rejouer reproduirait l ancien
 //     decodage. `Redecoder`, toujours.
-//  2. le schema est-il le courant ? Alors il n y a rien a faire.
-//  3. sinon seule la publication a bouge — `Republier` SI les faits sont la, `Redecoder` sinon.
+//  2. le schema est-il le courant ET le pas est-il le pas de cuisson courant ([CookFrameIntervalMS], un
+//     document sans pas se lisant a 100 ms) ? Alors il n y a rien a faire.
+//  3. sinon seule la publication a bouge (la grille est publiee, les faits ne dependent pas du pas) —
+//     `Republier` SI les faits sont la, `Redecoder` sinon.
 func (d Digest) Verdict(faitsPresents bool) Verdict {
 	switch {
 	case !d.decodageIntact():
 		return VerdictRedecoder
-	case d.SchemaVersion == replay.SchemaVersion:
+	case d.SchemaVersion == replay.SchemaVersion && d.cadenceCourante():
 		return VerdictAJour
 	case !faitsPresents:
 		return VerdictRedecoder

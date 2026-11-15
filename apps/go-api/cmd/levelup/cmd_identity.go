@@ -31,8 +31,8 @@ package main
 // Usage :
 //
 //	levelup identity list                          # l'annuaire, anomalies comprises
-//	levelup identity purge 2533274796795729        # SIMULATION, rien n'est supprime
-//	levelup identity purge 2533274796795729 --yes  # execute
+//	levelup identity purge 2676423891261051        # SIMULATION, rien n'est supprime
+//	levelup identity purge 2676423891261051 --yes  # execute
 
 import (
 	"context"

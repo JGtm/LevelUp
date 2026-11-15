@@ -86,9 +86,6 @@ func parityArrivals() []shadowFixture {
 }
 
 func TestLUSRV2Shadow_ParityWithLegacyOrchestration(t *testing.T) {
-	t.Setenv(lusrModeCouplingEnvFlag, "1") // fuite inter-modes : écrit d'autres groupes
-	t.Setenv(lusrSquadOffsetEnvFlag, "1")  // offsets d'escouade lus sous la rafale
-
 	legacy, current := newParityWorld(t), newParityWorld(t)
 
 	// Phase 1 — la partie déjà traitée, par l'orchestration d'avant, sur les deux.
@@ -150,9 +147,7 @@ func runLegacyOrchestration(t *testing.T, w parityWorld, xuid string) int {
 		c := base
 		c.sharedDB = w.shared
 		c.repo = duckdb.NewSkillV2Repo(w.shared)
-		if c.squadEnabled {
-			c.squadRepo = duckdb.NewSquadOffsetRepo(w.shared)
-		}
+		c.squadRepo = duckdb.NewSquadOffsetRepo(w.shared)
 		for _, m := range matches[start:end] {
 			processOneShadowMatch(ctx, c, m, &s, heldGroups)
 		}

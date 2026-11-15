@@ -28,7 +28,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/platform/duckdb"
 )
 
 const (
@@ -49,16 +48,9 @@ const (
 // aucun snapshot (DB vide au premier boot) ou lecture impossible : la graine figée
 // n'est plus l'unique point de découverte, donc elle ne peut plus geler le classement.
 func (c *WorldLeaderboardCron) applyDiscoverySeed(ctx context.Context, titleSlug string) {
-	db, release, err := c.provider.Get(ctx)
+	season, ok, err := c.store.LatestSeason(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: lecture graine saison impossible — graine par défaut conservée",
-			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
-		return
-	}
-	defer release()
-	season, ok, err := duckdb.WorldCSRLatestSeason(ctx, db)
-	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: requête graine saison échouée — graine par défaut conservée",
+		slog.WarnContext(ctx, "world_leaderboard_cron: lecture graine saison échouée — graine par défaut conservée",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
 		return
 	}

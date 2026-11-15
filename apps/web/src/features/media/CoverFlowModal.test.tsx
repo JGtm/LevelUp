@@ -8,9 +8,9 @@ import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { CoverFlowModal } from './CoverFlowModal'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 
-function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+function makeItem(overrides: Partial<NormalizedMediaItem>): NormalizedMediaItem {
   return {
     basename: 'clip.mp4',
     file_path: '/media/clip.mp4',

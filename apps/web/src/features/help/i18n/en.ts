@@ -40,29 +40,29 @@ export const EN_TEXT = {
           {
             term: 'Performance Score',
             definition:
-              'Relative 0–100 score measuring the contribution of a player in a match vs their own history. Computed from 13 weighted metrics — each metric is converted to a percentile rank over the player\'s past matches. Requires at least 10 historical matches to activate. Bot-resistant: if bots were on the player\'s team, a corrective bonus is applied based on the MMR gap.',
+              'Relative 0–100 score measuring the contribution of a player in a match vs their own history. Computed from 13 weighted metrics — each metric is converted to a percentile rank over the player\'s past matches. Requires at least 10 historical matches to activate. Bot-resistant: if bots were on the player\'s team, a corrective bonus is applied based on the MMR gap.\n\nObjective modes (Flag, Strongholds, King of the Hill, Oddball, VIP): the 13 metrics give the combat score, and two more measures are blended in. The objective: the share of the team objective taken in the match, and the objective index of the match. The support: returns, secures, carriers and returners downed, per minute and as a share of the team support. Each is ranked against the player\'s own history in the same mode, and weighs more the larger the share of the team objective or support the player did, up to half of the score; the combat score keeps at least half. A player who carries the objective with few kills is no longer marked down for it, and one who only fights, with nothing for the objective, can lose a few points. Without objective data (Halo 5, a match without objective stats) the score is the combat score alone.',
             formula:
-              'Score = Σ(percentile_rank × weight) / Σ(active weights), clamped 0–100\n\nMain weights:\n0.14 × kills/min · 0.11 × KDA · 0.10 × deaths/min (inverted)\n0.10 × personal score/min · 0.09 × kills vs expected\n0.09 × offensive conversion · 0.07 × deaths vs expected\n0.06 × damage/min · 0.06 × heroic medals · 0.05 × defensive resistance\n0.04 × accuracy · 0.04 × rank vs expected',
+              'Score = Σ(percentile_rank × weight) / Σ(active weights), clamped 0–100\n\nMain weights:\n0.14 × kills/min · 0.11 × Combat efficiency · 0.10 × deaths/min (inverted)\n0.10 × personal score/min · 0.09 × kills vs expected\n0.09 × offensive conversion · 0.07 × deaths vs expected\n0.06 × damage/min · 0.06 × heroic medals · 0.05 × defensive resistance\n0.04 × accuracy · 0.04 × rank vs expected\n\nObjective modes:\nScore = (1 − a_obj − a_sup) × combat + a_obj × objective + a_sup × support\na_obj = 0.12 + 0.38 × share of the team objective\na_sup = 0.38 × share of the team support\na_obj + a_sup capped at 0.50 (the combat score keeps at least half)',
             example:
               '80/100 in a match = the performance was in the top 20 % of the player\'s own historical performances across those metrics.',
           },
           {
             term: 'Offensive Conversion',
             definition:
-              'Offensive efficiency: measures how much damage is needed to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = kills are finished with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = damage is wasted (unconverted assists, poor follow-up).',
+              'Offensive efficiency: measures how much damage is needed to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 1.0 = kills are finished with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = damage is wasted (unconverted assists, poor follow-up).',
             formula:
               'Offensive conversion = {{HP}} × (kills + assists/3) / damage_dealt\n\nElite reference (gauge): 0.90',
             example:
-              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96, above the elite reference (0.90).',
+              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 229 HP): 10 kills, 6 assists, 2 800 damage → 229 × (10 + 2) / 2 800 ≈ 0.98, above the elite reference (0.90).',
           },
           {
             term: 'Defensive Resistance',
             definition:
-              'Measures how much damage is absorbed per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = death occurs after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = death occurs early in engagements, often from surprise or poor positioning.',
+              'Measures how much damage is absorbed per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 1.0 = death occurs after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = death occurs early in engagements, often from surprise or poor positioning.',
             formula:
               'Defensive resistance = damage_taken / ({{HP}} × deaths)\n\nElite reference (gauge): 1.65',
             example:
-              'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 225 HP): 5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24, i.e. 1.24× a Spartan\'s health absorbed per death.',
+              'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 229 HP): 5 deaths, 1 400 damage taken → 1 400 / (229 × 5) ≈ 1.22, i.e. 1.22× a Spartan\'s health absorbed per death.',
           },
           {
             term: 'Combat profile',
@@ -76,10 +76,20 @@ export const EN_TEXT = {
           {
             term: 'KDA',
             definition:
-              'Classic kills/deaths/assists ratio, with a floor of 1 death to avoid division by zero. Assists count fully (unlike offensive conversion where they count as 1/3). A reference metric but volume-sensitive — a very active player may have the same KDA as a passive one.',
-            formula: 'KDA = (kills + assists) / max(1, deaths)',
+              'Net result of a match: kills, plus one third of assists, minus deaths. This is the value the Halo API returns directly for each match. It can go negative: a player who dies more than their effective kills goes below zero. One third reflects that helping to down an opponent is worth less than doing it yourself: three assists are worth one kill.\n\nOver several matches, KDA is the average of the per-match values: the net total (kills + assists / 3 − deaths) divided by the number of matches. It is never a quotient by deaths, and it is not K/D (kills / deaths), which is a separate measure.\n\nReading: negative = deficit, 0 to 1 = even, above 1 = surplus. A reference measure but volume-sensitive: a very active player can show the same KDA as a passive one. The performance score complements this reading with 12 other measures.',
+            formula:
+              'KDA of a match = kills + assists / 3 − deaths\nKDA over several matches = (kills + assists / 3 − deaths) / number of matches',
             example:
-              '15 kills, 4 assists, 6 deaths → KDA = 19/6 ≈ 3.17\n0 kills, 0 assists, 0 deaths → KDA = 0/1 = 0 (floor at 1 death)',
+              '15 kills, 4 assists, 6 deaths → KDA = 15 + 4/3 − 6 ≈ 10.33\n4 kills, 3 assists, 9 deaths → KDA = 4 + 3/3 − 9 = −4.00 (below zero: more deaths than effective kills)\n0 kills, 0 assists, 0 deaths → KDA = 0.00\nOver the first two matches: KDA = (10.33 − 4.00) / 2 ≈ 3.17',
+          },
+          {
+            term: 'Lead share',
+            definition:
+              "Share of the match time the player's team spends ALONE in the lead of the score, with the number of lead changes. A team leads when it is alone in front: when tied nobody leads, and the first time a team takes the lead is not a lead change.\n\nThe figure is read from the replay score, over the part of the match actually played (from kickoff to the end). A mode where the score moves too rarely (flag, hill, bomb) has no lead share: a dash replaces the percentage, never zero. The same goes for a match whose film was not read.\n\nOver several matches, the average only counts the matches that have a figure.",
+            formula:
+              'Lead share = time alone in the lead / played match duration\n\nLead change = change of leader (a tie suspends the leader, it does not close it)',
+            example:
+              "In a 10-minute match where the player's team is alone in the lead for 6 minutes and tied for 1 minute, the lead share is 60%.",
           },
         ],
       },
@@ -89,9 +99,9 @@ export const EN_TEXT = {
           {
             term: 'Impact',
             definition:
-              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
             formula: 'Impact = {{HP}} × (kills + assists/3) / damage dealt\nElite reference: 0.90',
-            example: 'Worked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96, above the elite reference.',
+            example: 'Worked example (Halo Infinite, 229 HP): 10 kills, 6 assists, 2 800 damage → 229 × 12 / 2 800 ≈ 0.98, above the elite reference.',
           },
           {
             term: 'Combat',
@@ -103,7 +113,7 @@ export const EN_TEXT = {
           {
             term: 'Survival',
             definition:
-              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (225 on Halo Infinite). Above 1.65 (elite reference): engagements are survived well beyond a full life. Below 1.0: death occurs early in most exchanges.',
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (229 on Halo Infinite). Above 1.65 (elite reference): engagements are survived well beyond a full life. Below 1.0: death occurs early in most exchanges.',
             formula: 'Survival = damage taken / ({{HP}} × deaths)\nElite reference: 1.65',
             example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: close to the elite reference (1.65).',
           },
@@ -124,11 +134,11 @@ export const EN_TEXT = {
           {
             term: 'Objective',
             definition:
-              'Objective participation measured PER OPPORTUNITY: only objective matches (Flag, Zones, King of the Hill, Oddball, Stockpile, Extraction, VIP) count — Slayer matches no longer dilute the value, and the axis disappears when no objective match is in scope. Each mode combines its weighted actions (captures, grabs, returns, secures…) and the time spent on the objective (flag carrying, zone occupation…), normalized by the number of matches of that mode and calibrated against real benchmarks: a player at their mode\'s P80 level scores 80/100.',
+              'Objective participation OF EACH MATCH: the share the player takes of their team\'s objective, taking and supporting included (captures, grabs, returns, secures, capture assists, carrier kills counted at half…). Only objective matches count (Flag, Zones, King of the Hill, Oddball, Stockpile, Extraction, VIP): Slayer matches do not dilute the value, and the axis disappears when no objective match is in scope. The score is not compared with any history and does not depend on carry time: a player who escorts, returns or kills carriers is measured on their support. Over several matches, it is the average of the match scores. A match the player did not finish is left out of the average. On the Squad radar the axis is shown only when every selected player has a measured score; otherwise it is hidden for all players, never shown as 0.',
             formula:
-              'Per mode: r = min(1.25; 0.65 × actions/P80 + 0.35 × objective time/P80)\nIndex = average of r weighted by each mode\'s match count',
+              'Match score = 100 × min(1; share × N / 2), share = the higher of the player\'s objective share and support share in their team, N = players in the team\nAxis value = average of the objective-match scores',
             example:
-              '3 Flag matches at P80 (r = 1.0) + 1 average Zones match (r = 0.5) → (3 × 1.0 + 0.5) / 4 ≈ 0.88 → 70/100.',
+              'Team of 4: a fair share (25%) is worth 50/100, double (50%) or more is worth 100/100. With no objective action at all in the team, the score is 0.',
           },
         ],
       },

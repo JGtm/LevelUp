@@ -4,12 +4,13 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
-	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/title"
 	"os"
 	"slices"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 )
 
 type dbProfilesFile struct {

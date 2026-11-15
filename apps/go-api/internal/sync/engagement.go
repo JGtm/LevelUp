@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // engagementMatchRow regroupe les inputs necessaires pour calculer le score
@@ -356,7 +357,7 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 		    OR EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
 		  )%s
 		ORDER BY mr.start_time ASC
-	`, MBitEvents, analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id"))
+	`, MBitEvents, sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id"))
 	rows, err := sharedDB.QueryContext(ctx, q, xuid)
 	if err != nil {
 		return nil, err
@@ -397,8 +398,8 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 func loadTeamSizes(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
 	var q = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
-			SUM(CASE WHEN ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND ` + sqlfrag.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
+			SUM(CASE WHEN ` + sqlfrag.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
 		FROM match_participants
 		WHERE match_id = ?
 	`
@@ -499,7 +500,7 @@ func loadTeamXUIDs(ctx context.Context, sharedDB *sql.DB, matchID string, teamID
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND ` + analysis.SQLIsNotBotCol("xuid") + `
+		  AND ` + sqlfrag.SQLIsNotBotCol("xuid") + `
 		  AND xuid <> ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)
@@ -646,12 +647,18 @@ func persistMatchIntensity(ctx context.Context, sharedDB *sql.DB, matchID string
 	return err
 }
 
-// persistMatchIntensities flushe un lot d'intensités accumulées (best-effort,
-// même sémantique que l'ancien write inline : les erreurs sont ignorées une à
-// une). SQL inchangé — seul le MOMENT de l'écriture change (burst caller).
+// persistMatchIntensities flushe un lot d'intensités accumulées. Best-effort : un échec
+// n'interrompt pas le lot ; il est journalisé et compté (match_intensity_write_failed_total) et
+// match_registry.match_intensity reste inchangée pour ce match. SQL inchangé — seul le MOMENT
+// de l'écriture change (burst caller).
 func persistMatchIntensities(ctx context.Context, sharedDB *sql.DB, ups []matchIntensityUpdate) {
+	title := ctxkeys.TitleSlug(ctx)
 	for _, u := range ups {
-		_ = persistMatchIntensity(ctx, sharedDB, u.matchID, u.intensity)
+		if err := persistMatchIntensity(ctx, sharedDB, u.matchID, u.intensity); err != nil {
+			observability.IncCounterT(title, "match_intensity_write_failed_total")
+			slog.WarnContext(ctx, "engagement: intensité de match non écrite",
+				"match_id", u.matchID, "err", err)
+		}
 	}
 }
 

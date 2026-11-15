@@ -52,33 +52,15 @@ export type PlayersListResponse = components['schemas']['PlayersListResponse']
 export type PresenceSnapshot = components['schemas']['PresenceSnapshot']
 export type PlayerPresence = components['schemas']['PlayerPresence']
 
-export interface SessionContextRequest {
-  player_slug?: string | null
-  title_slug?: string | null  // Sprint 44 : switch titre
-  locale?: string | null
-  hints_visible?: boolean | null
-}
+export type SessionContextRequest = components['schemas']['SessionContextRequest']
 
-export interface SessionContextResponse {
-  current_player: PlayerSummary | null
-  current_title_slug: string  // Sprint 44
-  locale: string
-  hints_visible: boolean
-  capabilities: CapabilityMap
-  /** Sprint 44 : titres disponibles pour le titre switcher. */
-  available_titles?: TitleSummary[]
-}
+export type SessionContextResponse = components['schemas']['SessionContextResponse']
 
 // ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 
-export interface HealthResponse {
-  status: 'ok' | 'degraded' | 'down'
-  version: string
-  uptime_seconds: number
-  checks: Record<string, string>
-}
+export type HealthResponse = components['schemas']['HealthResponse']
 
 // ---------------------------------------------------------------------------
 // Filtres
@@ -97,12 +79,7 @@ export interface SessionsInput {
   gap_minutes?: number
 }
 
-export interface CascadeInput {
-  experience_types?: string[]
-  playlists?: string[]
-  modes?: string[]
-  maps?: string[]
-}
+export type CascadeInput = components['schemas']['CascadeInput']
 
 export interface FilterContextInput {
   filter_mode: 'period' | 'sessions'
@@ -147,17 +124,7 @@ export interface SetupPlayerInfo {
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
 
-export interface DeviceFlowStartResponse {
-  attempt_id: string
-  user_code: string
-  verification_uri: string
-  verification_uri_complete: string | null
-  /** Durée de validité en secondes depuis l'émission. */
-  expires_in: number
-  /** @deprecated Alias de expires_in pour compatibilité backend. */
-  expires_in_seconds?: number
-  poll_interval_seconds: number
-}
+export type DeviceFlowStartResponse = components['schemas']['DeviceFlowStartResponse']
 
 export type DeviceFlowStatus = 'pending' | 'authorized' | 'provisioned' | 'failed' | 'expired'
 
@@ -192,28 +159,8 @@ export interface SmokeTestStartRequest {
 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'interrupted' | 'cancelled'
 
-export interface AsyncJobStatus {
-  job_id: string
-  job_type: string
-  status: JobStatus
-  progress_pct: number | null
-  current_step: string | null
-  started_at: string | null
-  finished_at: string | null
-  result: Record<string, unknown> | null
-  error: ApiErrorSchema | null
-  // Champs enrichis sync initiale (Sprint 3)
-  phase_key: string | null
-  phase_label: string | null
-  matches_done: number | null
-  matches_total: number | null
-  subtasks_done: number | null
-  subtasks_total: number | null
-  eta_seconds: number | null
-  warnings: string[]
-  /** Slug joueur ("_all" pour les jobs serveur-wide, ex. cycle de sync forcé). */
-  player_slug?: string
-}
+export type AsyncJobStatus = components['schemas']['AsyncJobStatus']
+export type PlayerSyncStatus = components['schemas']['PlayerSyncStatus']
 
 // ---------------------------------------------------------------------------
 // Sync initiale (Sprint 3)
@@ -383,87 +330,7 @@ export interface BackfillStartRequest {
 // Settings (Slice 1)
 // ---------------------------------------------------------------------------
 
-export interface SettingsResponse {
-  lang: string
-  discord_lang: string
-  user_timezone: string
-  normalize_mode_labels: boolean
-  show_records: boolean
-  refresh_clears_caches: boolean
-  media_captures_base_dir: string
-  // Valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage.
-  media_delete_source_after_transcode: boolean
-  media_tolerance_minutes: number
-  media_watcher_enabled: boolean
-  media_watcher_debounce_seconds: number
-  discord_notifications_enabled: boolean
-  discord_webhook_url_present: boolean
-  discord_notify_sync: boolean
-  discord_notify_backfill: boolean
-  discord_notify_new_version: boolean
-  discord_notify_friends: boolean
-  spnkr_auto_sync_enabled: boolean
-  spnkr_auto_sync_interval_hours: number
-  spnkr_auto_sync_interval_minutes: number
-  watcher_presence_enabled: boolean
-  watcher_subscribed_players: string[]
-  // --- Règles de sessions ---
-  session_gap_minutes: number
-  session_split_on_ranked_change: boolean
-  session_team_change_mode: 'ignore' | 'group' | 'friends'
-  // --- Rejeu 2D : fenêtre de rétention des artefacts (0 = illimité) ---
-  replay_retention_months: number
-  // --- Rejeu 2D : où se construit un rejeu. '' = défaut de l'instance
-  // (ouvrier en production, ce serveur en développement). ---
-  replay_build_location: '' | 'local' | 'worker' | 'off'
-  // --- Règles de badges narratifs ---
-  outcome_exclude_bot_matches_from_badges: boolean
-  outcome_exclude_bot_matches_from_records: boolean
-  outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
-  // --- Rendement combat (OffensiveConversion) ---
-  rendement_exclude_assists: boolean
-  // --- Affichage Objectifs/Prestige ---
-  show_progression: boolean
-  // --- Coach proactif (pont coach → Prestige, cf. ADR 0020) ---
-  coach_proactive_mode: boolean
-  // --- Fournisseur d'authentification (admin uniquement) ---
-  auth_provider: string
-  // --- Verrou d'instance (admin uniquement, ADR 0035 D5) ---
-  // Instance fermée : un compte Xbox inconnu ne peut plus créer de compte ni de
-  // profil. Le serveur l'expose (domain.SettingsResponse:87) et accepte son
-  // PATCH sous rôle admin depuis le verrou centralisé — il manquait ici, donc
-  // aucune page ne pouvait le proposer (la prod a dû être verrouillée à la main).
-  instance_locked: boolean
-  // --- Sons d'armes du rejeu 2D (réglages d'instance, page admin) ---
-  // Les .wav extraits du jeu sont purs : ces deux pourcentages rejouent côté app ce que
-  // le moteur fait à chaque coup. Variation 100 = fourchettes du jeu telles quelles ;
-  // distance 0 = son pur, aucun traitement dans le chemin du signal.
-  replay_sound_variation_percent: number
-  replay_sound_distance_percent: number
-  // --- Archive des films (ADR 0045 D-12) ---
-  // Conserver les chunks des films après la cuisson du rejeu (défaut vrai). Faux : retirés
-  // après cuisson, et la fenêtre de rétention des rejeux doit rester illimitée (0).
-  archive_films: boolean
-  // Dossier de l'archive (chemin absolu) ; '' = emplacement par défaut. Pris en compte au
-  // redémarrage. L'occupation se lit par GET /settings/film-archive.
-  film_archive_dir: string
-  // --- Intégration au poste de l'application de bureau (lot L21) ---
-  // Détecter le jeu en cours (défaut vrai), notifications Windows, croix vers la zone de
-  // notification, démarrage avec Windows, tâche planifiée de rafraîchissement (défaut faux).
-  game_process_watch: boolean
-  native_notifications: boolean
-  close_to_tray: boolean
-  start_with_windows: boolean
-  scheduled_refresh: boolean
-  // --- Données de l'application de bureau (lot L22) ---
-  // Sauvegarde périodique en Parquet : dossier (chemin absolu, '' = désactivée), fréquence
-  // ('1h' à '168h'), nombre de jeux conservés (1 à 60) ; plafond mémoire de chaque base en Mo
-  // (0 = valeur par défaut du serveur, sinon 1024 à 32768).
-  backup_dir: string
-  backup_interval: string
-  backup_keep: number
-  memory_limit_mb: number
-}
+export type SettingsResponse = components['schemas']['SettingsResponse']
 
 export type UpdateSettingsRequest = Partial<
   Omit<SettingsResponse, 'discord_webhook_url_present'> & {
@@ -480,52 +347,19 @@ export interface MediaResetRequest {
 // Carrière (Slice 2)
 // ---------------------------------------------------------------------------
 
-export interface CareerSummary {
-  rank_number: number
-  rank_label: string
-  rank_name_raw: string
-  rank_tier: string
-  current_xp: number
-  xp_for_next_rank: number
-  xp_total: number
-  progress_pct: number
-  is_max_rank: boolean
-  recorded_at: string | null
-  rank_image_url?: string | null
-  next_rank_name?: string
-  next_rank_image_url?: string | null
-}
+export type CareerSummary = components['schemas']['CareerRankSummary']
 
 export type HeroProgress = components['schemas']['HeroProgress']
 
 export type CareerProjections = components['schemas']['CareerProjections']
 
-export interface CareerHistoryPoint {
-  recorded_at: string
-  rank: number
-  current_xp: number
-  xp_total: number
-}
+export type CareerHistoryPoint = components['schemas']['XPHistoryPoint']
 
 export type FriendXPHistory = components['schemas']['FriendXPHistory']
 
-export interface CareerLusrCheckpoint {
-  recorded_at: string | null
-  rating_type: string
-  rating_value: number
-  tier_label: string | null
-  playlist_group: string | null
-  playlist_name: string
-  badge_image_url?: string | null
-}
+export type CareerLusrCheckpoint = components['schemas']['LUSRCheckpointDTO']
 
-export interface CareerLusrSection {
-  current_rating: number | null
-  current_tier_label: string | null
-  current_playlist_group: string | null
-  trend_label: string | null
-  checkpoints: CareerLusrCheckpoint[]
-}
+export type CareerLusrSection = components['schemas']['LUSRSummary']
 
 // V8b (2026-07-07) — les DTO réels servis par les endpoints Career. Le contrat Go
 // NE renvoie PAS de `encounters_preview` sur /pages/career : les encounters sont
@@ -534,20 +368,13 @@ export interface CareerLusrSection {
 // PAS la shape de réponse — d'où des `undefined` silencieux.
 export type EncounterDTO = components['schemas']['EncounterDTO']
 
-// CareerPageResponse reste une interface manuelle : les sous-types view-model
-// (CareerSummary, CareerLusrSection, CareerHistoryPoint) sont hand-written et NE
-// portent PAS les mêmes noms de schéma que le contrat généré (CareerRankSummary,
-// LUSRSummary, XPHistoryPoint) — un ré-export cru romprait les consommateurs LUSR/
-// résumé/xp. Le fix V8b se limite à retirer les DEUX champs fantômes
+// Les sous-types de la Carrière portent des noms TS historiques qui ne sont PAS ceux des
+// schémas homonymes du contrat (ceux-là décrivent d'autres types Go) : CareerSummary =
+// CareerRankSummary, CareerHistoryPoint = XPHistoryPoint, CareerLusrSection = LUSRSummary,
+// CareerLusrCheckpoint = LUSRCheckpointDTO. CareerPageResponse reste une interface manuelle
+// (allowlist du garde des réponses) ; le fix V8b a retiré les DEUX champs fantômes
 // (top_matches_preview / encounters_preview) absents du CareerPageResponse Go.
-export interface CareerPageResponse {
-  summary: CareerSummary | null
-  hero_progress: HeroProgress | null
-  projections: CareerProjections | null
-  xp_history: CareerHistoryPoint[]
-  lusr: CareerLusrSection | null
-  friends_xp_history?: FriendXPHistory[]
-}
+export type CareerPageResponse = components['schemas']['CareerPageResponse']
 
 export type CareerEncountersResponse = components['schemas']['CareerEncountersResponse']
 
@@ -612,10 +439,7 @@ export type MedalCategoryGroup = components['schemas']['MedalCategoryGroup']
 
 export type SortSpec = components['schemas']['SortSpec']
 
-export interface PaginationRequest {
-  page?: number
-  page_size?: number
-}
+export type PaginationRequest = components['schemas']['PaginationRequest']
 
 export type PaginationMeta = components['schemas']['PaginationMeta']
 
@@ -631,52 +455,13 @@ export interface PaginatedResponse<T> {
 // Historique des matchs (Slice 3)
 // ---------------------------------------------------------------------------
 
-export interface MatchHistoryRow {
-  match_id: string
-  start_time: string
-  start_time_label: string
-  outcome_code: number | null
-  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
-  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
-  score_label: string
-  map_ui: string
-  mode_ui: string
-  playlist_label: string
-  team_mmr: number | null
-  enemy_mmr: number | null
-  delta_mmr: number | null
-  win_rate_hist: number | null
-  win_rate_hist_total: number | null
-  performance_score_relative: number | null
-  average_life_mmss: string
-  match_url: string
-  is_excluded?: boolean
-  /** S56 — combat yield */
-  kills?: number | null
-  assists?: number | null
-  deaths?: number | null
-  damage_dealt?: number | null
-  damage_taken?: number | null
-  offensive_conversion?: number | null
-  defensive_resistance?: number | null
-  offensive_finishing?: number | null
-  map_image_url?: string | null
-}
-
 export type MatchHistoryQuerySummary = components['schemas']['MatchHistoryQuerySummary']
 
 export type ExportHint = components['schemas']['ExportHint']
 
 export type MatchHistoryPageResponse = components['schemas']['MatchHistoryPageResponse']
 
-export interface MatchHistoryQueryRequest {
-  filters?: FilterContextInput
-  pagination?: PaginationRequest
-  columns?: string[] | null
-  include_export_hint?: boolean
-  /** §5 plan Squad/Sessions : filtre multi-sessions solo. */
-  picked_solo_session_labels?: string[]
-}
+export type MatchHistoryQueryRequest = Omit<components['schemas']['MatchHistoryQueryRequest'], 'filters'> & { filters?: FilterContextInput }
 
 export type FileTokenResponse = components['schemas']['FileTokenResponse']
 
@@ -743,9 +528,6 @@ export interface ExplorerMatchRow {
    *  porteur de données pour une colonne « Δ rang » INJECTÉE par un consommateur
    *  (vue session via extraColumns). Reste undefined côté page Explorer. */
   skill_rating_delta?: number | null
-  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
-   *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
-  expected_win_prob?: number | null
   /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la
    *  cellule Rang à la place du skill_tier_label, ET un badge « En placement » (V72-32,
    *  cf. ExplorerMatchesTable.placement.tsx) dans les cellules Perf/ΔPerf/Note à la place
@@ -789,66 +571,13 @@ export interface ExplorerMatchRow {
 
 export type ExplorerEncounterRow = components['schemas']['ExplorerEncounterRow']
 
-export interface ExplorerMatchesQuerySummary {
-  total_matches: number
-  selected_match_id: string | null
-  // available_experience_types : LabelValue (Label localisé backend, Value FR = clé
-  // de filtre intacte). GH6-1, miroir GH5-2 Omnibar.
-  available_experience_types?: LabelValue[]
-  // playlists / cartes / modes : LabelValue (label dans la langue de la requête, value = nom de la
-  // langue par défaut, clé de filtre `playlists` / `maps` / `modes` indépendante de la langue).
-  available_playlists?: LabelValue[]
-  available_maps?: LabelValue[]
-  available_modes?: LabelValue[]
-  /** Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
-   *  d'une dimension, AND entre dimensions). Les options à count=0 sont à griser.
-   *  Le `value` est : code outcome (1..4) ou tier (1..5) en string, ou clé EN
-   *  (Bronze..Onyx) pour skill_tier, ou "" / "ranked" / "unranked" pour ranked,
-   *  ou "" / "solo" / "squad" pour squad_scope. */
-  available_outcomes?: LabelValue[]
-  available_perf_tiers?: LabelValue[]
-  available_skill_tiers?: LabelValue[]
-  available_ranked_contexts?: LabelValue[]
-  available_squad_scopes?: LabelValue[]
-}
-
 export type ExplorerPlayerTarget = components['schemas']['ExplorerPlayerTarget']
 
 export type ExplorerPlayerSummary = components['schemas']['ExplorerPlayerSummary']
 
-export interface ExplorerMatchesQueryRequest {
-  filters?: FilterContextInput
-  pagination?: PaginationRequest
-  sort_field?: string
-  sort_dir?: string
-  include_export_hint?: boolean
-  perf_tiers?: number[]
-  skill_tiers?: string[]
-  ranked_context?: 'ranked' | 'unranked' | ''
-  outcome_filter?: number[]
-  // Explorer-specific match filters
-  match_start_date?: string | null
-  match_end_date?: string | null
-  experience_types?: string[]
-  playlists?: string[]
-  map_names?: string[]
-  mode_names?: string[]
-  squad_scope?: 'solo' | 'squad' | ''
-  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. Filtré côté Go. */
-  replay_scope?: 'with' | 'without' | ''
-  match_id_search?: string
-  /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
-  match_ids?: string[]
-  /** Opt-in du bandeau de briefing (mode Matchs) : le mode Matchs l'envoie à true. */
-  include_briefing?: boolean
-}
+export type ExplorerMatchesQueryRequest = Omit<components['schemas']['ExplorerMatchesQueryRequest'], 'filters'> & { filters?: FilterContextInput }
 
-export interface ExplorerPlayerQueryRequest {
-  target_gamertag: string
-  /** xuid optionnel : court-circuite la résolution gamertag→xuid locale (joueur du Classement). */
-  target_xuid?: string
-  page?: number
-}
+export type ExplorerPlayerQueryRequest = components['schemas']['ExplorerPlayerQueryRequest']
 
 export interface ExplorerCommonMatchRow {
   match_id: string
@@ -864,12 +593,7 @@ export interface ExplorerCommonMatchRow {
   kda: number
 }
 
-export interface MatchEncounterBadge {
-  kind: string
-  label_key: string
-  color_token: string
-  detail?: Record<string, unknown>
-}
+export type MatchEncounterBadge = components['schemas']['MatchEncounterBadge']
 
 /** Stats agrégées du couple (player_courant, target). Mirror partiel de
  *  MatchEncounterRow — les 7 colonnes du tableau MatchEncountersTable
@@ -1211,16 +935,7 @@ export type SeasonPassItemSummary = components['schemas']['SeasonPassItemSummary
 
 export type SeasonPassTierSummary = components['schemas']['SeasonPassTierSummary']
 
-export interface SeasonPassContentSummary {
-  total_tiers: number
-  credits?: number | null
-  spartan_points?: number | null
-  xp_boosts?: number | null
-  challenge_swaps?: number | null
-  cosmetics_total?: number | null
-  rarity_breakdown?: Record<string, number> | null
-  type_breakdown?: Record<string, number> | null
-}
+export type SeasonPassContentSummary = components['schemas']['SeasonPassContentSummary']
 
 export type SeasonPassTrackSummary = components['schemas']['SeasonPassTrackSummary']
 
@@ -1275,18 +990,7 @@ export interface RadarAxes {
   survival: number
 }
 
-export interface TeammateKPIs {
-  match_count: number
-  wins: number
-  kd_ratio: number | null
-  win_rate: number
-  accuracy: number | null
-  kills_per_game: number | null
-  assists_per_game: number | null
-  headshot_kills_per_game?: number | null
-  perfect_kills_per_game?: number | null
-  radar_axes?: RadarAxes | null
-}
+export type TeammateKPIs = components['schemas']['TeammateKPIs']
 
 export type TeammateRow = components['schemas']['TeammateRow']
 
@@ -1306,14 +1010,7 @@ export type SessionLabelsList = components['schemas']['SessionLabelsList']
  */
 export type CompositionSessionsResponse = components['schemas']['CompositionSessionsResponse']
 
-export interface SquadTimeseriesPoint {
-  period_label: string
-  match_count: number
-  wins: number
-  win_rate: number
-  avg_performance: number | null
-  avg_mmr: number | null
-}
+export type SquadTimeseriesPoint = components['schemas']['SquadTimeseriesPoint']
 
 export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 
@@ -1356,10 +1053,7 @@ export type SquadIntensityMatchRow = components['schemas']['SquadIntensityMatchR
 
 export type SquadIntensityOption = components['schemas']['SquadIntensityOption']
 
-export interface SquadIntensityProfile {
-  options: SquadIntensityOption[]
-  rows: Record<string, SquadIntensityMatchRow[]>
-}
+export type SquadIntensityProfile = components['schemas']['SquadIntensityProfile']
 
 /** Agrégat par joueur pour le chart per-minute teammates.14. */
 export type SquadPerMinuteEntry = components['schemas']['SquadPerMinuteEntry']
@@ -1440,90 +1134,7 @@ export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
 // fenêtre de la page (joueur consulté seul, lobby entier pour la médiane).
 export type RangeReferenceBlock = components['schemas']['RangeReferenceBlock']
 
-export interface TeammatesPageResponse {
-  options: TeammateOption[]
-  teammates: TeammateRow[]
-  total_matches: number
-  session_labels: SessionLabelsList
-  /** Nombre total d'amis configurés du joueur. Sert au label UI "parmi N amis". */
-  friends_count: number
-  timeseries?: SquadTimeseriesPoint[]
-  map_breakdown?: MapBreakdownRow[]
-  match_series?: Record<string, SquadMatchSeriesPoint[]>
-  match_history?: SquadMatchHistoryRow[]
-  session_timeline?: SquadSessionPoint[]
-  map_heatmap?: SquadMapHeatmap
-  impact_matrix?: SquadImpactMatrix
-  /**
-   * « Points d'impact par soirée et par rôle » : la soirée affichée et les soirées précédentes
-   * de la composition, mêmes rôles et même barème que la matrice. Absent sans coéquipier
-   * sélectionné ou quand aucun rôle ne tombe sur l'escouade.
-   */
-  squad_impact_history?: SquadImpactHistory
-  per_minute_stats?: SquadPerMinuteEntry[]
-  synergy_radar?: SquadSynergyRadarSeries[]
-  intensity_profile?: SquadIntensityProfile
-  performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
-  /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
-   *  sous-chart « Répartition des frags » de teammates.16. */
-  frag_classes?: Record<string, FragClassEntry[]>
-  /** « Outils de destruction » (D8) : chaque frag nommé, par outil et par joueur. */
-  weapon_tools?: SquadWeaponTools
-  /** Comparatif « Précision par arme » multi-joueurs (barres groupées horizontales).
-   *  Précision native Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
-  weapon_accuracy?: SquadWeaponAccuracy
-  native_kill_mechanics?: SquadKillMechanics
-  /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
-  first_blood?: FirstBloodPlayerSeriesDTO[]
-  /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
-   *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
-  assist_pairs?: SquadAssistPairs
-  /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
-  header?: import('@/features/squad/v2/types').SquadHeader
-  /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
-  main_player?: string
-  /** MedalDigest alimente <MedalDigest> en bas de SquadSynergiesPage. */
-  medal_digest?: MedalDigestEntry[]
-  /** Sessions où la composition EXACTE (joueur principal + tous les coéquipiers
-   *  sélectionnés) a joué ensemble. Alimente le SessionMultiSelect + le
-   *  ré-ancrage. Sans coéquipier : sessions squad du joueur principal. */
-  composition_sessions?: SessionLabelEntry[]
-  /** Label de la session la plus récente de la composition exacte (1re entrée de
-   *  composition_sessions). Vide si la composition n'a jamais joué ensemble. */
-  latest_composition_session?: string
-  /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
-   *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
-  data_issues?: DataIssue[]
-  /**
-   * Profils de PORTÉE par match (lot N2) : tous les joueurs mesurés de chaque match, leur
-   * médiane et leur écart à la médiane du lobby. Alimente la carte « Rôles de portée » de
-   * l'onglet Synergies. Absent = aucun film décodé sur la sélection.
-   */
-  range_profiles?: MatchRangeBlock
-  /**
-   * Bloc « formes retenues » — la MATIÈRE des cartes d'objectif : une feuille d'objectif par
-   * match à objectif, les deux camps. Publié par `TeammatesService.WithSquadFormes` sur le
-   * périmètre D2 de la page ; lu par les cartes d'objectif de Contributions.
-   * Absent = périmètre sans match ; `available:false` avec raison machine pour un titre sans
-   * `film.usage_summary`.
-   */
-  formes_retenues?: SquadFormesBlock
-  /**
-   * « Rapport de force, soirée après soirée » (lot L3 du plan
-   * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) : la soirée affichée (périmètre D2) et
-   * les dix soirées précédentes de la composition d’au moins trois matchs à objectif. Parts en
-   * 0..1. Absent sans coéquipier sélectionné ou sans stats d’objectif.
-   */
-  squad_objective_history?: SquadObjectiveHistory
-  /**
-   * Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : les prises de
-   * chaque ressource (bonus, armes spéciales, armes de râtelier) par notre camp et par
-   * l’adversaire, sur le périmètre D2 — bilan, match par match, objet par objet, qui chez nous,
-   * production et habitude. Résultat, score et dominance se joignent depuis `match_history`.
-   * Absent = périmètre sans match. Lu par l’onglet Emprise (lot L5).
-   */
-  squad_emprise?: SquadEmpriseBlock
-}
+export type TeammatesPageResponse = components['schemas']['TeammatesPageResponse']
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
  *  côté front ; `detail` (ex. gamertag) sert au diagnostic. */
@@ -1689,7 +1300,7 @@ export type SynthesisBreakdowns = components['schemas']['SynthesisBreakdowns']
 // Médias (Slice 8)
 // ---------------------------------------------------------------------------
 
-export interface MediaItemRow {
+export interface NormalizedMediaItem {
   basename: string
   file_path: string
   kind: string
@@ -1732,7 +1343,7 @@ export interface MediaQueryRequest {
 }
 
 export interface MediaPageResponse {
-  items: PaginatedResponse<MediaItemRow>
+  items: PaginatedResponse<NormalizedMediaItem>
   total_mine: number
   total_teammates: number
   total_unassigned: number
@@ -1841,87 +1452,7 @@ export type PlayerMedalRow = components['schemas']['PlayerMedalRow'] & {
   sprite_height?: number
 }
 
-export interface MatchHighlightEvent {
-  event_time_ms: number | null
-  event_type: string
-  actor_xuid: string | null
-  /**
-   * Gamertag déjà résolu côté backend via `v_gamertag_lookup`
-   * (bots → "343 Bot N", cascade alias/participants/raw fallback).
-   * Préférer ce champ sur `actor_xuid` pour l'affichage. Optionnel : absent
-   * du JSON quand le backend tourne sur une version pré-RC6, ou null si
-   * l'xuid est totalement orphelin (jamais en DB).
-   */
-  actor_gamertag?: string | null
-  target_xuid: string | null
-  weapon_id: number | null
-  /**
-   * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
-   * scoreboard. Absent si l'acteur n'y figure pas. Le rejeu s'en sert pour attribuer un frag
-   * à un camp (piste Dominance, `KillEvent.teamID`) ; elle ne colore rien — l'encre du fil
-   * vient de l'équipe du film.
-   */
-  actor_team_id?: number | null
-  /**
-   * L'ARME DU KILL. Peuplée seulement quand la source de dégât du kill est connue ET
-   * identifiée sans ambiguïté par le backend. Absente sinon : le feed affiche le kill
-   * sans icône, et c'est le repli assumé — jamais l'icône d'une autre arme.
-   *
-   * `weapon_label` est un nom PROPRE (BR75, Needler), pas un libellé traduit : il ne
-   * passe pas par i18n.ts. Vide pour les sources sans nom propre (mêlée, grenade), qui
-   * gardent leur icône.
-   *
-   * `weapon_image_tinted` dit que l'image est un MASQUE à teindre (cf. WeaponIcon) —
-   * ne jamais le déduire de la forme de l'URL.
-   */
-  weapon_key?: string | null
-  weapon_label?: string | null
-  weapon_image_url?: string | null
-  weapon_image_tinted?: boolean | null
-  /**
-   * Le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est connue
-   * ET non ambiguë — INDÉPENDAMMENT des champs `weapon_*` ci-dessus (le headshot ne
-   * dépend d'aucune résolution d'icône). Absent = non mesurable, JAMAIS false (G.1,
-   * 2026-08-30). Filtre backend STRICT : `HeadshotMultiplier` n'en fait jamais partie.
-   */
-  headshot?: boolean | null
-  /**
-   * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent JAMAIS :
-   * absent/'' = ON NE SAIT PAS (aucun kill-event apparié) ; 'none' = MESURÉ, pas
-   * d'assistant ; 'named' = assistant nommé (+ parts de dégâts quand elles sont lues).
-   * Ne jamais traiter l'absence comme « pas d'assistant » : c'est le mensonge que cette
-   * énumération existe pour empêcher.
-   *
-   * Les parts sont des % ENTIERS, NON bornés à 100 (mesures jusqu'à 228 — dégât
-   * excédentaire, hypothèse non établie). Absentes = non mesurées, jamais 0.
-   */
-  assist_state?: string | null
-  assist_gamertag?: string | null
-  assist_team_id?: number | null
-  killer_damage_pct?: number | null
-  assist_damage_pct?: number | null
-  /**
-   * La VICTIME du kill, jointe côté backend depuis killer_victim_pairs par la clé
-   * (tueur, instant) avec garde d'unanimité : deux victimes distinctes sur la même
-   * clé (double kill au même millisecond) n'en nomment AUCUNE. Absents quand la
-   * paire manque — jamais une victime au hasard.
-   */
-  victim_xuid?: string | null
-  victim_gamertag?: string | null
-  victim_team_id?: number | null
-  /**
-   * L'IDENTITÉ DE LA MÉDAILLE (events `medal` uniquement). medal_name est le nom
-   * ANGLAIS lu dans le film (quantité mesurée) ; label/description sont résolus
-   * locale-aware côté backend (medal_definitions), medal_image_url est le visuel du
-   * référentiel. Résolution absente → seul medal_name voyage : le front l'écrit en
-   * toutes lettres, jamais le visuel d'une autre médaille.
-   */
-  medal_name?: string | null
-  medal_name_id?: number | null
-  medal_label?: string | null
-  medal_description?: string | null
-  medal_image_url?: string | null
-}
+export type MatchHighlightEvent = components['schemas']['MatchHighlightEvent']
 
 export type MatchTugOfWarBin = components['schemas']['MatchTugOfWarBin']
 
@@ -1960,54 +1491,10 @@ export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWe
  */
 export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
 
-export interface MatchCombatTab {
-  highlight_events: MatchHighlightEvent[]
-  /** V7 */
-  tug_of_war: MatchTugOfWarBin[]
-  /** Deprecated. Préférer impact_roles (8 rôles narratifs typés). */
-  impact_badges: MatchImpactBadge[]
-  kd_timeline: MatchKDTimelinePoint[]
-  nemesis_duels: MatchNemesisRow[]
-  /** Paires killer→victim agrégées (match_view.18). Vide si killer_victim_pairs absent. */
-  killer_victim?: MatchKillerVictimPair[]
-  /**
-   * Paires (assistant → tueur assisté) + portée de la mesure. ABSENT quand le match
-   * n'a aucune ligne de film : l'UI ne rend alors rien.
-   */
-  assist_pairs?: MatchAssistPairs
-  /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
-  impact_roles?: MatchViewImpactRole[]
-  /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */
-  cadence?: MatchViewCadence | null
-  /**
-   * Répartition hiérarchique des frags v2 (sunburst classe→rôle) du viewer pour ce
-   * match. Nil si le viewer n'a aucun kill (le front rend null). Cf. P3.
-   */
-  frag_distribution?: FragDistribution
-  /**
-   * POC (LOT G.3, 2026-08-30, plan retours-utilisateur §3bis DEC-8) : kills
-   * mesurés et distance tueur-victime moyenne par arme, PAR JOUEUR (pas
-   * seulement le viewer), pour ce match. Absent/vide si aucun kill n'a de
-   * position mesurée — dégradation propre, jamais d'erreur.
-   */
-  kill_distance_by_weapon?: MatchKillDistancePlayer[]
-  /** « Outils de destruction » du joueur de la page (builder de l'Escouade et de Sessions). */
-  weapon_tools?: SquadWeaponTools | null
-}
-
-/** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
-export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']
+export type MatchCombatTab = components['schemas']['MatchCombatTab']
 
 /** MV2 : cadence chart (mirror domain.ChartSeries<ChartPointStacked>). */
-export interface MatchViewCadence {
-  key: string
-  label_key?: string
-  datapoints: Array<{
-    category: string
-    components: Record<string, number>
-  }>
-  meta?: Record<string, unknown>
-}
+export type MatchViewCadence = components['schemas']['ChartSeriesChartPointStacked']
 
 /** MV4.B : série radar 6 axes par joueur. */
 export interface MatchViewRadarSeries {
@@ -2021,81 +1508,7 @@ export interface MatchViewRadarSeries {
   mode_family?: string
 }
 
-export interface MatchScoreboardRow {
-  xuid: string
-  gamertag: string
-  team_side: string | null
-  /** Libellé d'équipe localisé fourni par le backend (Halo 5 : « Rouge »/« Red »
-   *  depuis team_colors). Absent/vide pour les titres sans référentiel d'équipes
-   *  (Halo Infinite) → le front retombe sur resolveTeamName (Eagle/Cobra). */
-  team_name?: string | null
-  /** Couleur d'identité d'équipe (#RRGGBB) fournie par le backend (Halo 5 : depuis
-   *  team_colors), absente pour Halo Infinite. Le front ne la lit pas : la couleur d'un
-   *  camp est son jeton d'allégeance (`team-ally` / `team-enemy`), réglable en
-   *  accessibilité. */
-  team_color?: string | null
-  is_me: boolean
-  /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
-  is_bot?: boolean
-  /**
-   * Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté EN COURS de
-   * partie, et QUAND (RFC3339 UTC). Absents sur les matchs d'avant les colonnes — le
-   * rejeu dérive alors la présence des bornes de vie du film (presenceFeed.ts).
-   */
-  joined_in_progress?: boolean | null
-  left_in_progress?: boolean | null
-  first_joined_time?: string | null
-  last_leave_time?: string | null
-  rank: number | null
-  score: number | null
-  kills: number | null
-  deaths: number | null
-  assists: number | null
-  kda?: number | null
-  shots_fired: number | null
-  shots_hit: number | null
-  accuracy: number | null
-  damage_dealt: number | null
-  damage_taken: number | null
-  average_life: string | null
-  avg_life_seconds?: number | null
-  headshot_kills: number | null
-  max_killing_spree: number | null
-  perfect_kills: number | null
-  power_weapon_kills: number | null
-  melee_kills: number | null
-  grenade_kills?: number | null
-  // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate) — null hors h5.
-  assassination_kills?: number | null
-  ground_pound_kills?: number | null
-  shoulder_bash_kills?: number | null
-  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
-  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
-  /** V7 — combat yield */
-  top_weapon_id?: number | null
-  top_weapon_label?: string | null
-  offensive_conversion?: number | null
-  defensive_resistance?: number | null
-  damage_per_kill?: number | null
-  damage_per_death?: number | null
-  expected_kills?: number | null
-  expected_deaths?: number | null
-  expected_assists?: number | null
-  /** True si les expected K/D viennent du modèle local (Halo 5), pas de l'API skill. */
-  locally_estimated?: boolean
-  weapon_kills?: PlayerWeaponKillRow[]
-  /** Médailles gagnées par CE joueur dans ce match (expander scoreboard). */
-  medals?: PlayerMedalRow[]
-  /** Performance score 0..100 — uniquement pour les joueurs trackés (main + amis). */
-  performance_score?: number | null
-  /** True si bot dans l'équipe du joueur — uniquement pour les joueurs trackés. */
-  had_bot_teammate?: boolean
-  /** Skill rank (CSR/LUSR) pour ce match — uniquement pour les joueurs trackés. */
-  skill_rank?: MatchScoreboardSkillRank | null
-  /** Stats objectifs (CTF/Zones/Oddball) — null hors mode à objectif ou titre non
-   *  supporté (capability objective_stats). Seuls les champs du mode joué sont non-nil. */
-  objective?: MatchScoreboardObjective | null
-}
+export type MatchScoreboardRow = components['schemas']['MatchScoreboardRow']
 
 export type MatchScoreboardSkillRank = components['schemas']['MatchScoreboardSkillRank']
 
@@ -2107,12 +1520,7 @@ export type MatchNemesisRow = components['schemas']['MatchNemesisRow']
 
 export type MatchEncounterRow = components['schemas']['MatchEncounterRow']
 
-export interface MatchTeamTab {
-  roster: MatchRosterRow[]
-  scoreboard: MatchScoreboardRow[]
-  nemesis: MatchNemesisRow[]
-  encounters: MatchEncounterRow[]
-}
+export type MatchTeamTab = components['schemas']['MatchTeamTab']
 
 /** Un media associe a un match — la forme REELLEMENT servie dans `media_tab.media_items`. */
 export type MatchAssociatedMedia = components['schemas']['MatchAssociatedMedia']
@@ -2124,37 +1532,7 @@ export type MatchCitationsTab = components['schemas']['MatchCitationsTab']
 /** Commendation NATIVE (Halo 5) gagnée sur un match — affichée telle quelle. */
 export type MatchNativeCommendation = components['schemas']['MatchNativeCommendation']
 
-export interface MatchViewResponse {
-  header: MatchViewHeader
-  rank: MatchViewRank
-  summary_tab: MatchSummaryTab
-  combat_tab: MatchCombatTab
-  team_tab: MatchTeamTab
-  media_tab: MatchMediaTab
-  citations_tab: MatchCitationsTab
-  /** Phase 1 MV4.B : radar 6 axes par joueur (vide si awards absents). */
-  radar?: MatchViewRadarSeries[]
-  /** Sprint 54-B : avertissement privacy */
-  privacy_warning?: MatchPrivacyWarning | null
-  /**
-   * RC6 — true quand le match a son `match_registry` peuplé mais qu'au moins
-   * une source secondaire critique est vide (scoreboard / events / stats /
-   * medals). Le 404 strict reste pour les match_id totalement absents en DB.
-   * Le front affiche un bandeau dégradé au lieu de l'écran d'erreur.
-   */
-  is_partial?: boolean
-  /**
-   * Codes stables des raisons de la partialité. Utilisés pour traduire en
-   * messages i18n côté front (« sync incomplet », « film expiré », etc.).
-   * Codes : "<source>_empty" (scoreboard, events, player_stats, medals : lecture réussie, rien à afficher),
-   * "<source>_unavailable" et "section_unavailable" (lecture EN ÉCHEC : vue transitoire, jamais conservée).
-   */
-  partial_reasons?: string[]
-  /** L'Emprise du match, fiches = les joueurs de l'équipe du joueur de la page (absente sans lui). */
-  emprise?: MatchEmpriseBlock | null
-  /** « Isolement » de chaque joueur de l'équipe, dans l'ordre des fiches de l'Emprise. */
-  lives_near_teammate?: MatchLivesNearTeammate | null
-}
+export type MatchViewResponse = components['schemas']['MatchViewResponse']
 
 export type MatchEmpriseBlock = components['schemas']['MatchEmpriseBlock']
 export type MatchLivesNearTeammate = components['schemas']['MatchLivesNearTeammate']
@@ -2220,6 +1598,11 @@ export type RankDelta = components['schemas']['RankDelta']
 /** KPIStats — agreges du joueur sur le scope filtre. Miroir Go domain.KPIStats. */
 export type KPIStats = components['schemas']['KPIStats']
 
+/** Verdict escouade et cartes joueur du bandeau de session (SessionBriefing). `label` et
+ *  `comparison` sont des chaînes libres du contrat : les lecteurs les restreignent eux-mêmes. */
+export type SquadScoreCard = components['schemas']['SquadScoreCard']
+export type PlayerScoreCard = components['schemas']['PlayerScoreCard']
+
 export type TimeseriesWeaponKill = components['schemas']['TimeseriesWeaponKill']
 
 /** Répartition des frags par type sur la période (donut 1er onglet, Halo 5). */
@@ -2240,6 +1623,8 @@ export type IntensityMatchRow = components['schemas']['IntensityMatchRow']
 
 /** Agrégat par session/semaine/mois (chart "Performance solo par session"). */
 export type SoloSessionPerfPoint = components['schemas']['SoloSessionPerfPoint']
+export type LeadSharePeriodPoint = components['schemas']['LeadSharePeriodPoint']
+export type SquadLeadSharePoint = components['schemas']['SquadLeadSharePoint']
 
 /** Bloc avec granularité auto-adaptative + points. */
 export type SoloSessionPerfBlock = components['schemas']['SoloSessionPerfBlock']
@@ -2331,72 +1716,14 @@ export type TimeseriesLivesNearTeammate = components['schemas']['TimeseriesLives
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
-export interface NormalizedPlayerStats {
-  xuid: string
-  gamertag: string
-  title_slug: string
-  is_local: boolean
-  matches: number
-  win_rate: number
-  kda: number
-  kdr: number
-  kills_per_game: number
-  deaths_per_game: number
-  assists_per_game: number
-  accuracy: number
-  damage_per_game: number
-  // Phase 2 — métriques enrichies
-  damage_taken_per_game: number
-  perfect_kills_per_game: number
-  max_killing_spree: number
-  avg_life_secs: number
-  headshot_kills_per_game: number
-  perf_ath: number
-  lusr_ath: number
-  career_rank: number
-  /** Titre localisé du rang carrière ("Général Platine VI"). Vide si rang inconnu. */
-  career_rank_label?: string
-  /** Meilleur CSR courant (saison en cours), récupéré en live. 0 si non classé. */
-  highest_csr?: number
-  /** Libellé tier du meilleur CSR courant ("Platine IV"). */
-  highest_csr_label?: string
-  /** Meilleur CSR de tous les temps. 0 si aucun. */
-  highest_csr_all_time?: number
-  /** Libellé tier du meilleur CSR all-time ("Onyx"). */
-  highest_csr_all_time_label?: string
-  /** Temps de jeu cumulé lifetime (s) depuis le service record Waypoint. */
-  time_played_seconds?: number
-  extended?: Record<string, unknown>
-}
+export type NormalizedPlayerStats = components['schemas']['NormalizedPlayerStats']
 
-export type CompareMetricRow = components['schemas']['CompareMetricRow']
+/** Ligne de la comparaison : celle que porte `CompareResponse.metrics` (le schéma homonyme décrit un autre type Go). */
+export type CompareMetricRow = NonNullable<components['schemas']['CompareResponse']['metrics']>[number]
 
-export interface CompareRequest {
-  target_gamertag: string
-}
+export type CompareRequest = components['schemas']['CompareRequest']
 
-export interface CompareResponse {
-  player_a: NormalizedPlayerStats
-  player_b: NormalizedPlayerStats
-  metrics: CompareMetricRow[]
-  title_slug: string
-  /** Badges narratifs ally_plus / tough_enemy / ordinal pour joueur B (best-effort). */
-  encounter_badges?: MatchEncounterBadge[]
-  /** C3.6 : avertissement si joueur B est privé ou introuvable. */
-  privacy_warning?: MatchPrivacyWarning | null
-  /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
-  player_b_partial?: boolean
-  /**
-   * Profil d'armes des deux joueurs.
-   * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
-   * absent de la base partagée, câblage manquant.
-   *
-   * Typé DEPUIS LE GÉNÉRÉ, contrairement au reste de cette interface manuscrite : le champ
-   * neuf n'a aucune raison de re-diverger du contrat, et migrer l'interface entière est un
-   * lot à part (consigné en Découverte au plan).
-   */
-  weapons?: components['schemas']['CompareWeaponProfile']
-}
+export type CompareResponse = components['schemas']['CompareResponse']
 
 /** Un côté du profil d'armes — le scope, les classes, la portée par rôle, le top 3. */
 export type CompareWeaponSide = components['schemas']['CompareWeaponSide']
@@ -2526,6 +1853,9 @@ export interface WatcherAuthStatus {
 // vides pour maps/armes), plus besoin de shim manuel.
 export type AssetMeta = components['schemas']['AssetMeta']
 
+// Référentiel des pictogrammes d'arme d'un titre (GET /assets/{titre}/kill-sources).
+export type KillSourceIconEntry = components['schemas']['KillSourceIconEntry']
+
 // ---------------------------------------------------------------------------
 // Achievements Xbox (bilingues EN/FR)
 // ---------------------------------------------------------------------------
@@ -2540,29 +1870,9 @@ export type AchievementsPageResponse = components['schemas']['AchievementsPageRe
 // Backup (pkg/duckdbbackup)
 // ---------------------------------------------------------------------------
 
-export interface IntegrityResult {
-  ok: boolean
-  detail?: string      // premier message d'erreur si !ok
-  checked_at: string   // ISO 8601 UTC
-}
+export type IntegrityResult = components['schemas']['IntegrityCheckResult']
 
-export interface BackupConfig {
-  interval: string
-  keep_daily: number
-  keep_weekly: number
-  keep_monthly: number
-}
-
-export interface BackupStatusResponse {
-  enabled: boolean
-  available: boolean
-  last_backup_at?: string   // ISO 8601, absent si jamais sauvegardé
-  last_snapshot_id?: string
-  last_exported?: string[]
-  last_duration_ms?: number
-  integrity_checks?: Record<string, IntegrityResult>
-  config?: BackupConfig     // absent quand le scheduler est nil (backup non configuré)
-}
+export type BackupStatusResponse = components['schemas']['BackupStatusResponse']
 
 export type BackupRunResult = components['schemas']['BackupRunResult']
 
@@ -2646,122 +1956,27 @@ export type AdminMonitoringOverview = components['schemas']['AdminMonitoringOver
 export type PostSyncStepTiming = components['schemas']['PostSyncStepTiming']
 
 /** Compteurs du pipeline post-sync (miroir domain.PostSyncResult). */
-export interface PostSyncCounters {
-  perf_scores_computed: number
-  lusr_updated: number
-  career_synced: boolean
-  views_refreshed: number
-  achievements_synced: boolean
-  matches_promoted_friends: number
-  engagement_scores_computed: number
-  engagement_coefs_updated: number
-  sessions_assigned: number
-  citations_computed: number
-  dominance_flags_computed: number
-  /** Rattrapés par la convergence (étapes 1.54 / 1.56). */
-  converged_events: number
-  converged_psa: number
-  /** Durée totale du pipeline + détail par étape (timeline). */
-  duration_ms: number
-  step_timings?: PostSyncStepTiming[]
-  fatal_errors?: string[]
-}
+export type PostSyncCounters = components['schemas']['PostSyncResult']
 
 export type SchedulerOutcome = 'ok' | 'skipped' | 'failed'
 
-export interface SchedulerPlayerOutcome {
-  gamertag: string
-  xuid: string
-  outcome: SchedulerOutcome | ''
-  reason: string
-  attempted_at: string
-  duration_ms: number
-  matches_inserted?: number
-  matches_skipped?: number
-  medals_inserted?: number
-  sync_status?: string
-  error_count?: number
-  first_error?: string
-  consecutive_zero_inserts?: number
-  post_sync?: PostSyncCounters
-  /** Durées post-sync (ms) des derniers cycles de ce joueur (ancien → récent), sparkline de tendance. */
-  post_sync_history_ms?: number[]
-}
+export type SchedulerPlayerOutcome = components['schemas']['PlayerOutcomeDetail']
 
-export interface SchedulerGateClaim {
-  gamertag: string
-  source: string
-  age_ms: number
-  stale: boolean
-}
+export type SchedulerGateClaim = components['schemas']['GateClaimInfo']
 
-export interface SchedulerGateSnapshot {
-  inflight_watcher: number
-  inflight_gate: number
-  granted_total: number
-  coalesced_total: number
-  stale_count: number
-  claims?: SchedulerGateClaim[]
-}
+export type SchedulerGateSnapshot = components['schemas']['GateSnapshotData']
 
-export interface SchedulerSnapshot {
-  last_cycle_at: string
-  last_cycle_result?: {
-    total: number
-    synced: number
-    skipped: number
-    failed: number
-    duration_ns: number
-  }
-  interval_minutes: number
-  pool_size: number
-  players: SchedulerPlayerOutcome[]
-  gate: SchedulerGateSnapshot
-  /** true = un cycle a tourné depuis ce boot ; false = snapshot réhydraté du
-   *  disque (dernier cycle d'avant redémarrage). Combiné à last_cycle_at (vide/
-   *  zéro = aucune donnée connue) pour distinguer les trois états côté UI (C1). */
-  since_boot: boolean
-}
+export type SchedulerSnapshot = components['schemas']['SchedulerSnapshot']
 
 /** Journal des actions globales admin (GET /admin/actions/journal, survit au reboot). */
 export type AdminActionJournalEntry = components['schemas']['AdminActionJournalEntry']
 export type AdminActionJournalResponse = components['schemas']['AdminActionJournalResponse']
 
-export interface SchedulerCycleRecord {
-  /** RFC3339 */
-  at: string
-  trigger: 'tick' | 'manual'
-  total: number
-  synced: number
-  skipped: number
-  failed: number
-  duration_ms: number
-  /** Fenêtre cumulée d'INDISPONIBILITÉ des lectures shared pendant ce cycle
-   *  (drain + maintien RW + reopen, B-swap). */
-  blocked_ms: number
-  /** Swaps RO→RW complets pendant ce cycle. */
-  swap_count: number
-  /** Lectures rejetées en 503 pendant ce cycle. */
-  reads_rejected: number
-  /** Temps cumulé d'appels API Halo pendant ce cycle (toutes goroutines). */
-  api_ms: number
-  /** Temps cumulé d'écriture persist (shared + player) pendant ce cycle. */
-  persist_write_ms: number
-}
+export type SchedulerCycleRecord = components['schemas']['CycleRecord']
 
-export interface AdminSchedulerStatusResponse {
-  available: boolean
-  snapshot?: SchedulerSnapshot
-  /** Plus récent en premier — ring mémoire, perdu au restart serveur. */
-  history: SchedulerCycleRecord[]
-  history_since_boot: boolean
-  zero_insert_warn_threshold: number
-}
+export type AdminSchedulerStatusResponse = components['schemas']['AdminSchedulerStatusResponse']
 
-export interface AdminJobsResponse {
-  generated_at: string
-  jobs: AsyncJobStatus[]
-}
+export type AdminJobsResponse = components['schemas']['AdminJobsResponse']
 
 // ─── Admin — Convergence (backlog d'enrichissement par joueur) ────────────────
 // Miroir de domain.AdminConvergenceReport (GET /admin/monitoring/convergence).
@@ -2882,18 +2097,7 @@ export type AdminLogModule = components['schemas']['AdminLogModule']
 
 export type AdminLogModules = components['schemas']['AdminLogModules']
 
-export interface AdminLogEntry {
-  time?: string
-  level: string
-  msg?: string
-  module?: string
-  request_id?: string
-  event_id?: string
-  err?: string
-  source?: string
-  fields?: Record<string, unknown>
-  raw?: string
-}
+export type AdminLogEntry = components['schemas']['AdminLogEntry']
 
 export type AdminLogTail = components['schemas']['AdminLogTail']
 
@@ -3345,6 +2549,9 @@ export type ReplayDocument = components['schemas']['ReplayDocument'] &
 // calage a dû être retrouvé à la main sur des trajectoires de joueur.
 export type ReplayMapBackground = components['schemas']['MapBackground']
 export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroundCalibration']
+// Le PLAN DES MURS du fond : des arêtes monde [x1, y1, x2, y2] dans le repère du rejeu, absent des
+// cartes dont le plan n'a pas pu être extrait (Live Fire, deux cartes Forge).
+export type ReplayMapBackgroundPlan = components['schemas']['MapBackgroundPlan']
 
 // Les ZONES NOMMÉES (« callouts ») de la carte du match : polygones monde + libellés
 // FR/EN officiels, servies à part du document (résolution par carte au service, comme le

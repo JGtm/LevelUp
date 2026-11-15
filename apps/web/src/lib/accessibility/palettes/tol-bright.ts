@@ -202,6 +202,11 @@ export const tolBrightPalette: Palette = {
   'objective-role-defend': '#117733',  // Tol Muted Green
   'objective-role-hold':   TOL_PURPLE, // pourpre
 
+  // ── Rôles de portée — rampe ordinale chaude -> neutre -> froide (rangeRoleTokens.test.ts) ──
+  'range-role-front': '#CC3311',     // Tol Vibrant Red — Ligne de front
+  'range-role-mid':   NEUTRAL_GREY,  // gris — Polyvalent
+  'range-role-far':   '#0077BB',     // Tol Vibrant Blue — Tireur d'élite
+
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           TOL_RED,
   'heatmap-hot':            TOL_BLUE,

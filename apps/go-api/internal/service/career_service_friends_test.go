@@ -37,7 +37,7 @@ func (l *lecteurDAmis) lire(_ context.Context, gts []string) (map[string]string,
 }
 
 func registreDesSuivis(context.Context) map[string]string {
-	return map[string]string{"Madina97294": "x_madina", "Chocoboflor": "x_choco", "JGtm": "x_jgtm"}
+	return map[string]string{"Joueur90002": "x_madina", "Joueur90001": "x_choco", "JGtm": "x_jgtm"}
 }
 
 func careerAvecAmis(amis []string, l *lecteurDAmis) (*CareerService, *mockCareerRepo) {
@@ -56,7 +56,7 @@ func careerAvecAmis(amis []string, l *lecteurDAmis) (*CareerService, *mockCareer
 // ami que rien ne connaît n'est pas exclu.
 func TestCareerService_ResolveFriendXUIDs_RegistreDAbordPuisUneLecture(t *testing.T) {
 	l := &lecteurDAmis{base: map[string]string{"Hors registre": "x_hors"}}
-	svc, repo := careerAvecAmis([]string{"madina97294", " Chocoboflor ", "Inconnu", "Hors registre", ""}, l)
+	svc, repo := careerAvecAmis([]string{"joueur90002", " Joueur90001 ", "Inconnu", "Hors registre", ""}, l)
 	if _, err := svc.GetTopEncounters(context.Background()); err != nil {
 		t.Fatalf("GetTopEncounters : %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCareerService_ResolveFriendXUIDs_RegistreDAbordPuisUneLecture(t *testin
 // de la base de production) ne coûtent aucune lecture.
 func TestCareerService_ResolveFriendXUIDs_TousSuivis_AucuneLecture(t *testing.T) {
 	l := &lecteurDAmis{}
-	svc, repo := careerAvecAmis([]string{"Madina97294", "Chocoboflor", "JGtm"}, l)
+	svc, repo := careerAvecAmis([]string{"Joueur90002", "Joueur90001", "JGtm"}, l)
 	if _, err := svc.GetTopEncounters(context.Background()); err != nil {
 		t.Fatalf("GetTopEncounters : %v", err)
 	}

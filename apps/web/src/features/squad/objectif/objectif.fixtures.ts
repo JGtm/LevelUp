@@ -5,7 +5,7 @@
  *
  * - 07/09/2026 : quatre Bases puis trois Drapeau, 1 victoire sur 7 ; les parts par match sont
  *   celles de la maquette (PERMATCH), les totaux par colonne ceux du rapport de force.
- * - 22/09/2026 : deux Drapeau (JGtm, Chocoboflor, Madina97294) ; les totaux par joueur sont
+ * - 22/09/2026 : deux Drapeau (JGtm, Joueur90001, Joueur90002) ; les totaux par joueur sont
  *   ceux des fiches de la maquette (FICHES), répartis sur les deux matchs.
  */
 import type {
@@ -112,8 +112,8 @@ const SOIREE_0709: { id: string; start: string; map: string; fam: string; v: { c
 
 const SQUAD = [
   { xuid: 'xj', gamertag: 'JGtm' },
-  { xuid: 'xc', gamertag: 'Chocoboflor' },
-  { xuid: 'xm', gamertag: 'Madina97294' },
+  { xuid: 'xc', gamertag: 'Joueur90001' },
+  { xuid: 'xm', gamertag: 'Joueur90002' },
 ]
 
 export function block0709(): SquadFormesBlock {
@@ -143,9 +143,9 @@ export function history0709(): SquadMatchHistoryRow[] {
     .reverse()
 }
 
-// --- 22/09 : les fiches de la maquette (JGtm, Chocoboflor, Madina97294, reste du camp) ----------
+// --- 22/09 : les fiches de la maquette (JGtm, Joueur90001, Joueur90002, reste du camp) ----------
 
-/** [JGtm, Chocoboflor, Madina97294, reste du camp] et le lobby, par colonne, sur la soirée. */
+/** [JGtm, Joueur90001, Joueur90002, reste du camp] et le lobby, par colonne, sur la soirée. */
 const FICHES_2209: Record<string, { camp: [number, number, number, number]; lobby: number }> = {
   flag_captures: { camp: [4, 0, 0, 0], lobby: 7 },
   flag_capture_assists: { camp: [0, 1, 1, 0], lobby: 5 },

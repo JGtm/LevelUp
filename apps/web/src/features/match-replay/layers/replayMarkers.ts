@@ -46,7 +46,8 @@ import {
   trailAt,
   type XY,
 } from '../../../lib/replay/replayLogic'
-import { type CanvasView, projectTo } from '../model/replayView'
+import { type CanvasView, projectTo, turnsOfView } from '../model/replayView'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 
@@ -211,6 +212,26 @@ export interface MarkerStyle {
    * QUE composer la géométrie et poser le texte qu'on lui donne.
    */
   offscreenLabelOf: (name: string, meters: number) => string
+  /**
+   * LA MISE EN VALEUR D'UNE ÉLIMINATION (plan « maquettes du rejeu », lot 2) : vrai pour un slot dont
+   * l'étiquette pleine du tueur ou de la victime REMPLACE le nom sous le pion — le même nom écrit deux
+   * fois sur le même pion est ce qu'on écarte. Ne vaut QUE pour le nom SOUS le pion : la flèche d'un
+   * joueur hors cadre garde le sien, et le pion reste dessiné. Absent = tous les noms s'écrivent.
+   */
+  nameHiddenAtSlot?: (slot: number) => boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la vie d'un slot est retirée de la carte — pion, nom,
+   * cône de visée, traînée ET croix de mort d'un seul geste. La croix est lue à la DERNIÈRE image de la vie
+   * qu'elle termine : elle est à sa victime (le tueur n'est pas dans la piste ; l'effet de mort tueur ->
+   * victime est le calque des morts). Absent = tout se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
+  /**
+   * La rotation de la carte (quarts de tour horaires), qui fait tourner le cône de visée avec le
+   * terrain. Posée par `drawTracksLayer` d'après le cadrage (`view.orient`), jamais par l'appelant :
+   * une seule source. Absent = 0.
+   */
+  turns?: QuarterTurns
 }
 
 /**
@@ -241,8 +262,10 @@ export function drawTracksLayer(
   ctx: CanvasRenderingContext2D,
   tracks: ReplayTrackReady[],
   view: CanvasView,
-  style: MarkerStyle,
+  baseStyle: MarkerStyle,
 ): void {
+  const turns = turnsOfView(view)
+  const style: MarkerStyle = turns === 0 ? baseStyle : { ...baseStyle, turns }
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   tracks.forEach((track) => {
@@ -264,10 +287,12 @@ export function drawTracksLayer(
     if (style.seatedAtSlot && !style.seatedAtSlot(track.slot, at, style.frame)) return
     if (!isAliveAt(track, style.frame)) {
       // La couleur du slot reste la PORTE (une vie sans couleur ne se dessine pas), mais la
-      // croix ne la porte plus : elle est rouge (cf. `deathInk`).
+      // croix ne la porte plus : elle est rouge (cf. `deathInk`). Elle est à la vie qu'elle termine.
+      if (style.shownAtSlot && !style.shownAtSlot(track.slot, w.end)) return
       drawDeathMark(ctx, track, view, style)
       return
     }
+    if (style.shownAtSlot && !style.shownAtSlot(track.slot, style.frame)) return
     drawLivingTrack(ctx, track, view, style, color)
   })
   ctx.globalAlpha = 1
@@ -365,7 +390,9 @@ function drawLivingTrack(
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
   const name = style.nameOfSlot(track.slot, style.frame)
-  if (name) drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
+  if (name && !style.nameHiddenAtSlot?.(track.slot)) {
+    drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
+  }
 }
 
 /**

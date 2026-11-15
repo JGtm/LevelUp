@@ -45,7 +45,8 @@
  * (`showAmmo: false` — elles passent dans l'infobulle de l'arme, composée par la fiche), pas de
  * boîte de stock (`showGrenadeStock: false` — le stock passe dans l'infobulle de la grenade,
  * `grenadeBoxHint`), et AUCUNE marque en texte (`showInventoryMarks: false`, décision D5 :
- * « sél. ? » dans l'infobulle de la grenade, « Mort » / « Inventaire indisponible » dans celle
+ * « grenade en main : inconnue » dans l'infobulle de la grenade — sur la fiche complète aussi
+ * depuis le 2026-11-14 —, « Mort » / « Inventaire indisponible » dans celle
  * de l'arme, les charges dans celle de la capacité).
  */
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
@@ -217,7 +218,16 @@ export function ReplayInventoryRow({
             width: gabarit.grenadesBoxW,
             opacity: box ? freshness(box.age, readingFull, READING_FADE) : 1,
           }}
-          title={box ? grenadeBoxHint(t, box, grenades, doc) : undefined}
+          // « GRENADE EN MAIN : INCONNUE » VIT DANS L'INFOBULLE, pas à l'écran (retour user
+          // 2026-11-14 : le mot, coupé par la largeur de la boîte, ne se lisait pas). Les types
+          // portés restent dessinés, aucun n'est mis en avant : on ne devine pas lequel partira.
+          title={
+            box
+              ? [selected === 'indeterminate' ? t.grenadeSelUnknown : null, grenadeBoxHint(t, box, grenades, doc)]
+                  .filter((p): p is string => !!p)
+                  .join(' · ')
+              : undefined
+          }
         >
           {grenades.map((g) => (
             <GrenadeChip
@@ -233,11 +243,6 @@ export function ReplayInventoryRow({
               t={t}
             />
           ))}
-          {selected === 'indeterminate' && (
-            <span className="border-b border-dashed border-border opacity-80">
-              {t.grenadeSelUnknown}
-            </span>
-          )}
         </span>
       ) : (
         <GrenadeSelectedCell
@@ -287,8 +292,8 @@ export function ReplayInventoryRow({
  * partira au prochain lancer, à l'encre `warning` du type équipé, sans compteur ni anneau (la
  * place). Tout le reste passe dans l'infobulle : la provenance de la sélection (LUE dans le
  * film, ou DÉDUITE d'un seul type porté — deux affirmations qui ne se confondent pas), le
- * STOCK des types portés (`grenadeBoxHint`, réemployé tel quel) et son âge, et « sél. ? »
- * quand plusieurs types sont portés sans sélecteur lu — la cellule reste alors VIDE, on ne
+ * STOCK des types portés (`grenadeBoxHint`, réemployé tel quel) et son âge, et « grenade en main :
+ * inconnue » quand plusieurs types sont portés sans sélecteur lu — la cellule reste alors VIDE, on ne
  * devine pas laquelle partira. Sans lecture : vide, sans infobulle. Même estompage que la
  * boîte : l'âge de la lecture de grenades.
  */

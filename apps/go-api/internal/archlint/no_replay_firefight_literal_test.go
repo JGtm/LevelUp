@@ -5,7 +5,7 @@
 //
 // Tout ce qui FABRIQUE un rejeu (file post-sync, `backfill-replay`, action admin, mise en file,
 // choix des rejeux de la demo) ou le SERT (service de rejeu) doit poser la meme question au
-// registre : `analysis.SQLModeNonGere`. Une formulation recopiee (`is_firefight` ecrit a la main)
+// registre : `sqlfrag.SQLModeNonGere`. Une formulation recopiee (`is_firefight` ecrit a la main)
 // diverge au premier ajustement — un NULL oublie, un mode ajoute d'un cote seulement — et le
 // rejeu se remet a fabriquer ou a servir ce qu'il ne gere pas. Le litteral n'est legitime que
 // dans le fragment proprietaire.
@@ -27,6 +27,7 @@ var fichiersDuRejeu = []string{
 	"cmd/levelup/cmd_backfill_replay*.go",
 	"internal/api/wire/registry_replay_build.go",
 	"internal/api/wire/registry_build_queue*.go",
+	"internal/platform/duckdb/replay_registry_repo.go",
 	"internal/service/replay_service.go",
 	"internal/platform/duckdb/replay_mode_gate.go",
 	"internal/platform/duckdb/replay_map_repo.go",
@@ -40,13 +41,13 @@ var consommateursDuFragment = []string{
 	"internal/sync/replayartifacts/zones_cartes.go",
 	"cmd/levelup/cmd_backfill_replay.go",
 	"cmd/levelup/cmd_backfill_replay_nongeres.go",
-	"internal/api/wire/registry_replay_build.go",
+	"internal/platform/duckdb/replay_registry_repo.go",
 	"internal/platform/duckdb/replay_mode_gate.go",
 	"internal/ops/seed_demo_replay_picks.go",
 }
 
 const (
-	fragmentProprietaire = "internal/analysis/sql_fragments.go"
+	fragmentProprietaire = "internal/platform/duckdb/sqlfrag/sql_fragments.go"
 	litteralFirefight    = "is_firefight"
 	nomDuFragment        = "SQLModeNonGere"
 )

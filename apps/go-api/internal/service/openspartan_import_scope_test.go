@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"levelup/go-api/internal/port"
 	"path/filepath"
 	"testing"
 	"time"
@@ -102,8 +103,8 @@ func TestOpenSpartanImport_WritesOnlyOwnerMatches(t *testing.T) {
 		t.Fatalf("seed alias: %v", err)
 	}
 
-	res, err := NewOpenSpartanImportServiceForTest(sharedDB).Import(context.Background(), testOwnerXUID, path,
-		ImportOptions{StashDir: filepath.Join(dir, "stash")})
+	res, err := importServiceOn(sharedDB).Import(context.Background(), testOwnerXUID, path,
+		port.OpenSpartanImportOptions{StashDir: filepath.Join(dir, "stash")})
 	if err != nil {
 		t.Fatalf("Import: %v", err)
 	}

@@ -228,7 +228,7 @@ export interface SlotOwnership {
    * peut tomber une image après la fin de vie du tueur. `ownerAtFrame` y rendrait `null` (donc
    * une encre neutre au lieu de la couleur d'équipe) : c'est un TROU à combler par la vie qui
    * précède, pas par le dernier-gagnant du match — en multi-manche, le résultat reste le joueur
-   * de LA manche concernée (SHROOM s'il vient de mourir, DinoR00 sinon). NE PAS l'employer pour
+   * de LA manche concernée (SHROOM s'il vient de mourir, J900001 sinon). NE PAS l'employer pour
    * le rendu continu des marqueurs/vies : eux doivent rester `null` dans les trous.
    */
   ownerAtFrameOrLast(slot: number, frame: number): ReplayPlayer | null

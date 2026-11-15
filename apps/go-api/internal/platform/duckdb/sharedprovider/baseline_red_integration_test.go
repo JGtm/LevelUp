@@ -20,7 +20,7 @@ import (
 // TestBaselineRedConflictExists_integration documente la limite native de
 // DuckDB-Go v2 que résout le SharedDBProvider (B-swap).
 //
-// Symptôme observé en prod (gamertag Madina97294, 2026-05-18) :
+// Symptôme observé en prod (gamertag Joueur90002, 2026-05-18) :
 //
 //	auto_sync: RunDelta échoué — run OpenSharedDB: OpenSharedDB open ...
 //	shared_matches_v2.duckdb: duckdb.OpenReadWrite(...): database/sql/driver:

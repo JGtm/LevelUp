@@ -61,7 +61,7 @@ function StatRow({ label, value, highlight = false }: { label: ReactNode; value:
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className={highlight ? 'font-semibold text-green-600 dark:text-green-400' /* color-allow: highlight stat — CLAUDE.md §20 */ : ''}>{value}</span>
+      <span className={highlight ? 'font-semibold text-green-600 dark:text-green-400' /* color-allow(tailwind): highlight stat — CLAUDE.md §20 */ : ''}>{value}</span>
     </div>
   )
 }

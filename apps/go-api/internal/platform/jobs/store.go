@@ -150,6 +150,50 @@ func (s *Store) FindActiveInitialSync(playerSlug string) *domain.AsyncJobStatus 
 	return s.FindActiveJob(domain.JobTypeInitialSync, playerSlug)
 }
 
+// LatestSyncJob retourne le job de sync (type initial_sync, qui porte aussi les syncs delta lancés
+// depuis l'API) du joueur POUR le titre : l'actif s'il existe, sinon le terminé le plus récent encore
+// conservé ; nil si aucun. Un job sans titre écrit (créé avant que les jobs le portent) compte pour le
+// titre par défaut (JobMeta.GetTitleSlug).
+func (s *Store) LatestSyncJob(playerSlug, titleSlug string) *domain.AsyncJobStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var best *domain.AsyncJobStatus
+	for _, job := range s.jobs {
+		if job.JobType != string(domain.JobTypeInitialSync) || job.PlayerSlug != playerSlug ||
+			job.Metadata.GetTitleSlug() != titleSlug {
+			continue
+		}
+		if job.IsTerminal() && job.FinishedAt != nil && time.Since(*job.FinishedAt) > jobRetention {
+			continue
+		}
+		if !job.IsTerminal() {
+			cp := *job
+			return &cp
+		}
+		if best == nil || moreRecentEnd(job, best) {
+			best = job
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	cp := *best
+	return &cp
+}
+
+// moreRecentEnd dit si a s'est terminé après b (un job sans fin connue passe après tout job daté).
+func moreRecentEnd(a, b *domain.AsyncJobStatus) bool {
+	switch {
+	case a.FinishedAt == nil:
+		return false
+	case b.FinishedAt == nil:
+		return true
+	default:
+		return a.FinishedAt.After(*b.FinishedAt)
+	}
+}
+
 // List retourne jusqu'à limit jobs non expirés (copies), actifs d'abord puis
 // par StartedAt décroissant — pour le dashboard monitoring admin. limit <= 0
 // applique le défaut 20. Les jobs terminaux au-delà de la rétention sont

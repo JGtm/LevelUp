@@ -28,7 +28,7 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535429985869093",
+          "metrique": "padPickups/par-xuid/2669605393856835",
           "sens": "perte",
           "ancien": "7",
           "nouveau": "3"
@@ -77,13 +77,13 @@
         },
         {
           "axe": "objectifs",
-          "metrique": "objectives/par-joueur/2533274876732804/kills",
+          "metrique": "objectives/par-joueur/2713751699127665/kills",
           "sens": "disparu",
           "ancien": "2"
         },
         {
           "axe": "objectifs",
-          "metrique": "objectives/par-joueur/2535460750735339/kills",
+          "metrique": "objectives/par-joueur/2701236422544437/kills",
           "sens": "disparu",
           "ancien": "1"
         }
@@ -91,13 +91,13 @@
       "changementsDetail": [
         {
           "axe": "objectifs",
-          "metrique": "objectives/par-xuid/2533274876732804",
+          "metrique": "objectives/par-xuid/2713751699127665",
           "sens": "changement",
           "ancien": "2"
         },
         {
           "axe": "objectifs",
-          "metrique": "objectives/par-xuid/2535460750735339",
+          "metrique": "objectives/par-xuid/2701236422544437",
           "sens": "changement",
           "ancien": "1"
         }
@@ -116,7 +116,7 @@
       "pertesDetail": [
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274795950878",
+          "metrique": "padPickups/par-xuid/2758522581629202",
           "sens": "disparu",
           "ancien": "3"
         },
@@ -136,14 +136,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274823110022",
+          "metrique": "padPickups/par-xuid/2603225103667623",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535408981717353",
+          "metrique": "padPickups/par-xuid/2808996413735222",
           "sens": "perte",
           "ancien": "3",
           "nouveau": "1"
@@ -233,21 +233,21 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274977810162",
+          "metrique": "padPickups/par-xuid/2586124022981975",
           "sens": "perte",
           "ancien": "10",
           "nouveau": "8"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535435655459376",
+          "metrique": "padPickups/par-xuid/2808972188417258",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535455182553276",
+          "metrique": "padPickups/par-xuid/2539574356664086",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "3"
@@ -302,14 +302,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535415634552853",
+          "metrique": "padPickups/par-xuid/2699476438048067",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535453226752724",
+          "metrique": "padPickups/par-xuid/2733326360768476",
           "sens": "perte",
           "ancien": "9",
           "nouveau": "6"
@@ -406,14 +406,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535425179403277",
+          "metrique": "padPickups/par-xuid/2568263014615267",
           "sens": "perte",
           "ancien": "3",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535447949934592",
+          "metrique": "padPickups/par-xuid/2746617336136508",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "2"
@@ -468,14 +468,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535407463474361",
+          "metrique": "padPickups/par-xuid/2554707433457719",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535458847428879",
+          "metrique": "padPickups/par-xuid/2564735375582160",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "4"
@@ -663,13 +663,13 @@
       "pertesDetail": [
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274817603732",
+          "metrique": "padPickups/par-xuid/2624504411370806",
           "sens": "disparu",
           "ancien": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274838592080",
+          "metrique": "padPickups/par-xuid/2691394909264967",
           "sens": "disparu",
           "ancien": "1"
         },
@@ -696,98 +696,98 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274806581989",
+          "metrique": "padPickups/par-xuid/2784271098469446",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274827106080",
+          "metrique": "padPickups/par-xuid/2688935206797534",
           "sens": "perte",
           "ancien": "7",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274858283686",
+          "metrique": "padPickups/par-xuid/2623439693412443",
           "sens": "perte",
           "ancien": "3",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274872064646",
+          "metrique": "padPickups/par-xuid/2762667261463623",
           "sens": "perte",
           "ancien": "8",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274966102798",
+          "metrique": "padPickups/par-xuid/2777475228477668",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533275023541803",
+          "metrique": "padPickups/par-xuid/2804606632263648",
           "sens": "perte",
           "ancien": "7",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535413695138897",
+          "metrique": "padPickups/par-xuid/2713868093037991",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "5"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535419608696209",
+          "metrique": "padPickups/par-xuid/2623045058294279",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535430265968559",
+          "metrique": "padPickups/par-xuid/2683317851328856",
           "sens": "perte",
           "ancien": "2",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535434739117735",
+          "metrique": "padPickups/par-xuid/2577607541108042",
           "sens": "perte",
           "ancien": "2",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535438799115472",
+          "metrique": "padPickups/par-xuid/2672288849542716",
           "sens": "perte",
           "ancien": "7",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535452889356435",
+          "metrique": "padPickups/par-xuid/2812400174606847",
           "sens": "perte",
           "ancien": "8",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535464635796745",
+          "metrique": "padPickups/par-xuid/2786629734999953",
           "sens": "perte",
           "ancien": "3",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535471203149377",
+          "metrique": "padPickups/par-xuid/2735620310557068",
           "sens": "perte",
           "ancien": "8",
           "nouveau": "3"
@@ -1042,25 +1042,25 @@
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274858283686",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2623439693412443",
           "sens": "disparu",
           "ancien": "2378"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274872064646",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2762667261463623",
           "sens": "disparu",
           "ancien": "284"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535464635796745",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2786629734999953",
           "sens": "disparu",
           "ancien": "604"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2674682457276537",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2674819520115804",
           "sens": "disparu",
           "ancien": "855"
         },
@@ -1073,56 +1073,56 @@
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274806581989",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2784271098469446",
           "sens": "perte",
           "ancien": "2746",
           "nouveau": "582"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274838592080",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2691394909264967",
           "sens": "perte",
           "ancien": "360",
           "nouveau": "152"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274966102798",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2777475228477668",
           "sens": "perte",
           "ancien": "1775",
           "nouveau": "218"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535438799115472",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2672288849542716",
           "sens": "perte",
           "ancien": "2852",
           "nouveau": "1257"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535442829120831",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2770778513120612",
           "sens": "perte",
           "ancien": "1856",
           "nouveau": "728"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535456423427614",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2661813924332111",
           "sens": "perte",
           "ancien": "3002",
           "nouveau": "2275"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535467063146739",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2729310715855668",
           "sens": "perte",
           "ancien": "1645",
           "nouveau": "984"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535471203149377",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2735620310557068",
           "sens": "perte",
           "ancien": "255",
           "nouveau": "54"
@@ -1131,77 +1131,77 @@
       "changementsDetail": [
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274827106080",
+          "metrique": "pickups/par-xuid/2688935206797534",
           "sens": "changement",
           "ancien": "36",
           "nouveau": "33"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274838592080",
+          "metrique": "pickups/par-xuid/2691394909264967",
           "sens": "changement",
           "ancien": "11",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274858283686",
+          "metrique": "pickups/par-xuid/2623439693412443",
           "sens": "changement",
           "ancien": "29",
           "nouveau": "23"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274872064646",
+          "metrique": "pickups/par-xuid/2762667261463623",
           "sens": "changement",
           "ancien": "30",
           "nouveau": "15"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535430265968559",
+          "metrique": "pickups/par-xuid/2683317851328856",
           "sens": "changement",
           "ancien": "23",
           "nouveau": "8"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535434739117735",
+          "metrique": "pickups/par-xuid/2577607541108042",
           "sens": "changement",
           "ancien": "7",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535452889356435",
+          "metrique": "pickups/par-xuid/2812400174606847",
           "sens": "changement",
           "ancien": "19",
           "nouveau": "17"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535456423427614",
+          "metrique": "pickups/par-xuid/2661813924332111",
           "sens": "changement",
           "ancien": "14",
           "nouveau": "12"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535458504956067",
+          "metrique": "pickups/par-xuid/2709786355549880",
           "sens": "changement",
           "ancien": "23",
           "nouveau": "18"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535466502328447",
+          "metrique": "pickups/par-xuid/2713755586748067",
           "sens": "changement",
           "ancien": "12",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2674682457276537",
+          "metrique": "pickups/par-xuid/2674819520115804",
           "sens": "changement",
           "ancien": "6",
           "nouveau": "1"
@@ -1236,67 +1236,67 @@
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2533274806581989",
+          "metrique": "vehicles.rides/par-xuid/2784271098469446",
           "sens": "changement",
           "ancien": "7",
           "nouveau": "6"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2533274858283686",
+          "metrique": "vehicles.rides/par-xuid/2623439693412443",
           "sens": "changement",
           "ancien": "3"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2533274872064646",
+          "metrique": "vehicles.rides/par-xuid/2762667261463623",
           "sens": "changement",
           "ancien": "1"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2533274966102798",
+          "metrique": "vehicles.rides/par-xuid/2777475228477668",
           "sens": "changement",
           "ancien": "4",
           "nouveau": "2"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535438799115472",
+          "metrique": "vehicles.rides/par-xuid/2672288849542716",
           "sens": "changement",
           "ancien": "9",
           "nouveau": "8"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535442829120831",
+          "metrique": "vehicles.rides/par-xuid/2770778513120612",
           "sens": "changement",
           "ancien": "5",
           "nouveau": "3"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535464635796745",
+          "metrique": "vehicles.rides/par-xuid/2786629734999953",
           "sens": "changement",
           "ancien": "1"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535467063146739",
+          "metrique": "vehicles.rides/par-xuid/2729310715855668",
           "sens": "changement",
           "ancien": "10",
           "nouveau": "7"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535471203149377",
+          "metrique": "vehicles.rides/par-xuid/2735620310557068",
           "sens": "changement",
           "ancien": "2",
           "nouveau": "1"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2674682457276537",
+          "metrique": "vehicles.rides/par-xuid/2674819520115804",
           "sens": "changement",
           "ancien": "1"
         }
@@ -1569,14 +1569,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274809233885",
+          "metrique": "padPickups/par-xuid/2792409163379854",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535406399121492",
+          "metrique": "padPickups/par-xuid/2639945145752479",
           "sens": "perte",
           "ancien": "3",
           "nouveau": "1"
@@ -1933,25 +1933,25 @@
       "pertesDetail": [
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274808061956",
+          "metrique": "padPickups/par-xuid/2553767541407218",
           "sens": "disparu",
           "ancien": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274813083991",
+          "metrique": "padPickups/par-xuid/2609026105754906",
           "sens": "disparu",
           "ancien": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535438935722042",
+          "metrique": "padPickups/par-xuid/2549923521489975",
           "sens": "disparu",
           "ancien": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535439208563665",
+          "metrique": "padPickups/par-xuid/2809841282209503",
           "sens": "disparu",
           "ancien": "2"
         },
@@ -1971,14 +1971,14 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274885125728",
+          "metrique": "padPickups/par-xuid/2669071487847951",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535439688275895",
+          "metrique": "padPickups/par-xuid/2567874819165741",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "1"
@@ -2187,21 +2187,21 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274801148251",
+          "metrique": "padPickups/par-xuid/2711316181962739",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274822500253",
+          "metrique": "padPickups/par-xuid/2546927801409240",
           "sens": "perte",
           "ancien": "11",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274975255322",
+          "metrique": "padPickups/par-xuid/2796710263231127",
           "sens": "perte",
           "ancien": "8",
           "nouveau": "6"
@@ -2242,13 +2242,13 @@
       "pertesDetail": [
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535432826033393",
+          "metrique": "padPickups/par-xuid/2575401242986491",
           "sens": "disparu",
           "ancien": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535445318491907",
+          "metrique": "padPickups/par-xuid/2642222702413791",
           "sens": "disparu",
           "ancien": "3"
         },
@@ -2268,91 +2268,91 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274818676576",
+          "metrique": "padPickups/par-xuid/2573321465012002",
           "sens": "perte",
           "ancien": "6",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274823110022",
+          "metrique": "padPickups/par-xuid/2603225103667623",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274858283686",
+          "metrique": "padPickups/par-xuid/2623439693412443",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274988198027",
+          "metrique": "padPickups/par-xuid/2563350602769669",
           "sens": "perte",
           "ancien": "2",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535420159292452",
+          "metrique": "padPickups/par-xuid/2550886075837404",
           "sens": "perte",
           "ancien": "10",
           "nouveau": "7"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535437483090324",
+          "metrique": "padPickups/par-xuid/2632700264829909",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "3"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535449476496795",
+          "metrique": "padPickups/par-xuid/2615815077049243",
           "sens": "perte",
           "ancien": "14",
           "nouveau": "9"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535457217346540",
+          "metrique": "padPickups/par-xuid/2690056610860898",
           "sens": "perte",
           "ancien": "9",
           "nouveau": "7"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535461484006747",
+          "metrique": "padPickups/par-xuid/2769104854931374",
           "sens": "perte",
           "ancien": "11",
           "nouveau": "4"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535461788192443",
+          "metrique": "padPickups/par-xuid/2646046920107160",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "2"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535462209962245",
+          "metrique": "padPickups/par-xuid/2779781155078810",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535462972817970",
+          "metrique": "padPickups/par-xuid/2784870293334143",
           "sens": "perte",
           "ancien": "8",
           "nouveau": "6"
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535469763661810",
+          "metrique": "padPickups/par-xuid/2710930876332218",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"
@@ -2654,77 +2654,77 @@
       "changementsDetail": [
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274798159764",
+          "metrique": "pickups/par-xuid/2798225113631945",
           "sens": "changement",
           "ancien": "11",
           "nouveau": "10"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274827096894",
+          "metrique": "pickups/par-xuid/2542494231387188",
           "sens": "changement",
           "ancien": "29",
           "nouveau": "26"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2533274988198027",
+          "metrique": "pickups/par-xuid/2563350602769669",
           "sens": "changement",
           "ancien": "12",
           "nouveau": "11"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535420159292452",
+          "metrique": "pickups/par-xuid/2550886075837404",
           "sens": "changement",
           "ancien": "21",
           "nouveau": "17"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535432826033393",
+          "metrique": "pickups/par-xuid/2575401242986491",
           "sens": "changement",
           "ancien": "9",
           "nouveau": "1"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535445318491907",
+          "metrique": "pickups/par-xuid/2642222702413791",
           "sens": "changement",
           "ancien": "10",
           "nouveau": "7"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535447170907787",
+          "metrique": "pickups/par-xuid/2634990399857364",
           "sens": "changement",
           "ancien": "13",
           "nouveau": "12"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535449476496795",
+          "metrique": "pickups/par-xuid/2615815077049243",
           "sens": "changement",
           "ancien": "28",
           "nouveau": "27"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535461484006747",
+          "metrique": "pickups/par-xuid/2769104854931374",
           "sens": "changement",
           "ancien": "25",
           "nouveau": "22"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535461788192443",
+          "metrique": "pickups/par-xuid/2646046920107160",
           "sens": "changement",
           "ancien": "18",
           "nouveau": "16"
         },
         {
           "axe": "armes",
-          "metrique": "pickups/par-xuid/2535468801188298",
+          "metrique": "pickups/par-xuid/2750551653702622",
           "sens": "changement",
           "ancien": "1"
         },
@@ -2763,56 +2763,56 @@
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2533274809500684",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2788951673476170",
           "sens": "changement",
           "ancien": "1717",
           "nouveau": "1065"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535432037056604",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2685352648935266",
           "sens": "changement",
           "ancien": "67",
           "nouveau": "26"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535457514480546",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2753091070419728",
           "sens": "changement",
           "ancien": "2813",
           "nouveau": "1879"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535461788192443",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2646046920107160",
           "sens": "changement",
           "ancien": "1638",
           "nouveau": "1436"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/duree-totale/par-xuid/2535469763661810",
+          "metrique": "vehicles.rides/duree-totale/par-xuid/2710930876332218",
           "sens": "changement",
           "ancien": "1582",
           "nouveau": "1380"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2533274809500684",
+          "metrique": "vehicles.rides/par-xuid/2788951673476170",
           "sens": "changement",
           "ancien": "8",
           "nouveau": "7"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535461788192443",
+          "metrique": "vehicles.rides/par-xuid/2646046920107160",
           "sens": "changement",
           "ancien": "6",
           "nouveau": "4"
         },
         {
           "axe": "vehicules",
-          "metrique": "vehicles.rides/par-xuid/2535469763661810",
+          "metrique": "vehicles.rides/par-xuid/2710930876332218",
           "sens": "changement",
           "ancien": "10",
           "nouveau": "8"
@@ -2832,7 +2832,7 @@
       "pertesDetail": [
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535450759128461",
+          "metrique": "padPickups/par-xuid/2571481023573114",
           "sens": "disparu",
           "ancien": "3"
         },
@@ -2852,7 +2852,7 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2533274823110022",
+          "metrique": "padPickups/par-xuid/2603225103667623",
           "sens": "perte",
           "ancien": "5",
           "nouveau": "2"
@@ -2907,7 +2907,7 @@
         },
         {
           "axe": "armes",
-          "metrique": "padPickups/par-xuid/2535408319544327",
+          "metrique": "padPickups/par-xuid/2788017960580249",
           "sens": "perte",
           "ancien": "4",
           "nouveau": "2"

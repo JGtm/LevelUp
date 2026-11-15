@@ -227,7 +227,7 @@ func buildAccuracyTab(matches []legacymatch.StatsMatchRow) domain.AccuracyTabRes
 			count++
 		}
 		if m.PersonalScore != nil && m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
-			spm := float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+			spm := analysis.PerMinute(float64(*m.PersonalScore), float64(*m.TimePlayedSeconds))
 			scorePerMin = append(scorePerMin, math.Round(spm*10)/10)
 		}
 	}

@@ -121,7 +121,7 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 		}
 	}
 	// Dégâts par frag-équivalent : dénominateur = frags + assists/3, aligné sur OC
-	// (% = 225 / DmgPerKill). DmgPerDeath reste brut (pas d'assists en défense).
+	// (% = 229 / DmgPerKill). DmgPerDeath reste brut (pas d'assists en défense).
 	// Title-aware : DmgPerKill ne dépend que du groupe offensif, DmgPerDeath du défensif.
 	if hasOffense {
 		if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {

@@ -98,7 +98,7 @@ export function AlertDialog({
         aria-hidden="true"
         onClick={() => !busy && onOpenChange(false)}
         className={
-          'absolute inset-0 bg-black/60 backdrop-blur-sm' +
+          'absolute inset-0 bg-scrim/60 backdrop-blur-sm' +
           (busy ? ' cursor-wait' : ' cursor-pointer')
         }
       />

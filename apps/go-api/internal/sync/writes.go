@@ -168,7 +168,8 @@ func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []doma
 // ─────────────────────────────────────────────────────────────────────────────
 
 // InsertWeaponKills remplace les entrées weapon_kills existantes pour (matchID, xuid)
-// par les nouvelles attributions. Opération atomique : DELETE + INSERT batch.
+// par les nouvelles attributions, en APPEND-ONLY : une génération neuve, INSERT en une
+// transaction, la vue v_weapon_kills ne lit que la génération maximale.
 //
 // weapon_id et reconciled_as sont des UBIGINT (uint64) et sont injectés sous forme
 // de string décimale puis castés dans le SQL : le driver duckdb-go rejette

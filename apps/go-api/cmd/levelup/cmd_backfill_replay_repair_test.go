@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ecrireArtefactAvecJoueurs pose un artefact portant une version de schema ET un nombre donne de
@@ -29,10 +29,11 @@ func ecrireArtefactAvecJoueurs(t *testing.T, repoRoot, slug, matchID string, sch
 		t.Fatalf("mkdir: %v", err)
 	}
 	doc := map[string]any{
-		"schemaVersion": schema,
-		"matchId":       matchID,
-		"tracks":        []map[string]any{{}}, // au moins une trajectoire : artefact non « vide »
-		"scoreTimeline": map[string]any{"players": make([]map[string]any, nbJoueurs)},
+		"schemaVersion":   schema,
+		"frameIntervalMs": replaybuild.CookFrameIntervalMS(),
+		"matchId":         matchID,
+		"tracks":          []map[string]any{{}}, // au moins une trajectoire : artefact non « vide »
+		"scoreTimeline":   map[string]any{"players": make([]map[string]any, nbJoueurs)},
 		// LES COUCHES SONT DECLAREES (lot 4.4.1) : sans elles, `UpToDate` classe l artefact « a
 		// redecoder » et le mode reparation ne verrait plus aucun artefact A JOUR ET APPAUVRI —
 		// c est-a-dire exactement la population qu il cible.
@@ -42,7 +43,7 @@ func ecrireArtefactAvecJoueurs(t *testing.T, repoRoot, slug, matchID string, sch
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	if err := poserCompresse(path, raw, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }
@@ -121,7 +122,7 @@ func TestClasserReparation_IllisibleNEstPasAbsent(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(path, []byte("{ceci n est pas du JSON"), 0o644); err != nil {
+	if err := poserCompresse(path, []byte("{ceci n est pas du JSON"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if got := classerReparation(path, func() int { return 0 }); got != reparationHorsSchema {

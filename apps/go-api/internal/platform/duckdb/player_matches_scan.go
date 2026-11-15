@@ -36,7 +36,6 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].skillSubTier = s.subTier
 			shared[i].skillDelta = s.delta
 			shared[i].skillPlaylistGroup = s.playlistGroup
-			shared[i].skillExpectedWinProb = s.expectedWinProb
 		}
 		// season_id + measurement_matches_remaining vivent dans match_csrs
 		// (shared DB), pas dans match_skill_rank — source unique de vérité.
@@ -122,13 +121,12 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 // étape 3. (playerMatchEnrichmentRow + playerMatchesEnrichmentTpl retirés au
 // commit 9d.4 — remplacés par MatchEnrichment + LoadPlayerMatchEnrichments).
 type playerMatchSkillRankRow struct {
-	ratingType      sql.NullString
-	ratingValue     sql.NullFloat64
-	tier            sql.NullString
-	subTier         sql.NullInt64
-	delta           sql.NullFloat64
-	playlistGroup   sql.NullString
-	expectedWinProb sql.NullFloat64
+	ratingType    sql.NullString
+	ratingValue   sql.NullFloat64
+	tier          sql.NullString
+	subTier       sql.NullInt64
+	delta         sql.NullFloat64
+	playlistGroup sql.NullString
 }
 
 // playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
@@ -141,8 +139,7 @@ SELECT
     tier,
     sub_tier,
     rating_delta,
-    playlist_group,
-    expected_win_prob
+    playlist_group
 FROM match_skill_rank_latest
 WHERE match_id IN (%s)`
 
@@ -198,7 +195,6 @@ type playerMatchScanResult struct {
 	skillSubTier                                            sql.NullInt64
 	skillDelta                                              sql.NullFloat64
 	skillPlaylistGroup                                      sql.NullString
-	skillExpectedWinProb                                    sql.NullFloat64
 	skillSeasonID                                           sql.NullString
 	skillMeasurementRemaining                               sql.NullInt64
 	maxKillingSpree, personalScore, rankInMatch             sql.NullInt64

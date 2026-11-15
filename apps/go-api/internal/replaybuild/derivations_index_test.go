@@ -147,8 +147,8 @@ func itoa(n int) string {
 // orpheline, sans reconstruire le nom de son cote).
 func TestArtefactDeLaMarque(t *testing.T) {
 	cas := map[string]struct{ entree, attendu string }{
-		"nom nu":                     {"aaaa0001" + suffixeMarqueTest, "aaaa0001.json"},
-		"chemin complet":             {"/data/replays/aaaa0001" + suffixeMarqueTest, "/data/replays/aaaa0001.json"},
+		"nom nu":                     {"aaaa0001" + suffixeMarqueTest, "aaaa0001.json.gz"},
+		"chemin complet":             {"/data/replays/aaaa0001" + suffixeMarqueTest, "/data/replays/aaaa0001.json.gz"},
 		"ce n'est pas une marque":    {"aaaa0001.json", "aaaa0001.json"},
 		"ni une sauvegarde manuelle": {"aaaa0001.json.ancien", "aaaa0001.json.ancien"},
 	}
@@ -161,7 +161,7 @@ func TestArtefactDeLaMarque(t *testing.T) {
 	}
 	// LA PROPRIETE QUI COMPTE : c'est l'inverse EXACT de DerivationsMarkPath. Si l'une bouge
 	// sans l'autre, le cron croira orpheline une marque qui ne l'est pas — et l'effacera.
-	const artefact = "/data/replays/halo_infinite/bbbb0002.json"
+	const artefact = "/data/replays/halo_infinite/bbbb0002.json.gz"
 	if got := ArtefactDeLaMarque(DerivationsMarkPath(artefact)); got != artefact {
 		t.Errorf("aller-retour = %q, attendu %q", got, artefact)
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -36,9 +37,10 @@ func TestServeIndexWithOG_TrappedSlugNeverResolved(t *testing.T) {
 			if len(seen) != 0 {
 				t.Errorf("slug %q passé à la résolution du joueur ; attendu : aucun appel", seen)
 			}
-			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Stats Halo") {
+			if rec.Code != http.StatusOK {
 				t.Errorf("carte générique attendue (200), got %d:\n%s", rec.Code, rec.Body.String())
 			}
+			assertGenericOGTitle(t, rec.Body.String(), i18n.Fallback)
 		})
 	}
 }

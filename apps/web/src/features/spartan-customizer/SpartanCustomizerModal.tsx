@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { api } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { SPARTAN_PALETTE } from '@/lib/accessibility/palettes/spartan'
@@ -82,8 +83,8 @@ export function SpartanCustomizerModal({
   // Catalogue (asset statique same-origin) — listes distinctes emblèmes / bannières.
   useEffect(() => {
     let cancelled = false
-    fetch(`${base}/spartan-catalog.json`)
-      .then((r) => r.json() as Promise<SpartanCatalog>)
+    api
+      .getStatic<SpartanCatalog>(`${base}/spartan-catalog.json`)
       .then((cat) => {
         if (cancelled) return
         const eIds = cat.emblem_ids ?? []

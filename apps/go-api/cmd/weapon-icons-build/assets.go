@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 var reAssetName = regexp.MustCompile(`[a-z][a-z0-9_]{4,}`)

@@ -54,7 +54,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 			matches:  []legacymatch.HomeMatchRow{},
 			sessions: []legacymatch.HomeSessionRow{},
 		}
-		svc := withHomeMock(NewHomeService(repo), repo)
+		svc := withHomeMock(NewHomeService(repo, nil), repo)
 		resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 		if err != nil {
 			t.Fatalf("error: %v", err)

@@ -9,10 +9,12 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service"
 )
 
 // classifieurDeTest : deux sources résolues, les autres non.
@@ -69,9 +71,14 @@ func TestWeaponCoverageFromSource_LitLesResumes(t *testing.T) {
 		}
 	}
 
-	resp, err := weaponCoverageFromSource(ctx, db, nil, classifieurDeTest{}, domain.AdminWeaponCoverage{})
+	resp, err := service.NewWeaponCoverageService(service.WeaponCoverageDeps{
+		Open: func(context.Context, string) (port.WeaponCoverageRepo, func(), error) {
+			return duckdb.NewWeaponCoverageRepo(db, nil), func() {}, nil
+		},
+		Classifier: func(string) port.KillSourceClassifier { return classifieurDeTest{} },
+	}).WeaponCoverage(ctx, "halo_infinite")
 	if err != nil {
-		t.Fatalf("weaponCoverageFromSource : %v", err)
+		t.Fatalf("WeaponCoverage : %v", err)
 	}
 	// Sources mesurées de la flotte : A (2 morts de m1), B (1 de m1 + 1 de m2), 0x0a0000ff (1 + 1).
 	if resp.DistinctWeapons != 3 || resp.ResolvedRegistry != 2 || resp.Unresolved != 1 {

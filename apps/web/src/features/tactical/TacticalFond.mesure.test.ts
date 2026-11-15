@@ -28,7 +28,8 @@
  *
  *   - catalogue des fonds : `data/titles/halo_infinite/reference/map_backgrounds/*.json` — le
  *     calage de chaque carte, servi tel quel comme réponse de `/tactical/{map}/background` ;
- *   - documents de rejeu cuits : `data/cache/replays/halo_infinite/<short8>.json` — lus UN À LA
+ *   - documents de rejeu cuits : `data/cache/replays/halo_infinite/<short8>.json.gz` (ou `.json` d'un parc
+ *     ancien) — lus UN À LA
  *     FOIS ; seule une empreinte normalisée de leurs trajectoires (≤ 3 000 points) est gardée pour
  *     fabriquer la réponse du raster (la répartition spatiale réelle d'un match, recalée dans le
  *     cadre de la carte). Le contenu du raster n'est pas l'objet de la mesure ; sa FORME l'est
@@ -61,6 +62,7 @@ import type {
 } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { lireArtefact, listerArtefacts } from '../match-replay/test/artefactFile'
 import { racineDuDepot } from '../match-replay/test/featureFiles'
 import { getTacticalText } from './i18n'
 import { TacticalPage } from './TacticalPage'
@@ -197,19 +199,18 @@ function catalogue(): Carte[] {
     })
 }
 
+/** Les chemins des documents du parc (compressés ou bruts, un par match). */
 function listeDesFilms(): string[] {
-  return readdirSync(DOSSIER_DOCS)
-    .filter((f) => /^[0-9a-f]{8}\.json$/.test(f))
-    .sort()
+  return listerArtefacts(DOSSIER_DOCS).map((a) => a.chemin)
 }
 
 /** L'empreinte d'un document : ses trajectoires normalisées dans [0,1]², ≤ 3 000 points. */
-function empreinte(fichier: string): Film {
-  const doc = JSON.parse(readFileSync(join(DOSSIER_DOCS, fichier), 'utf8')) as {
+function empreinte(chemin: string): Film {
+  const doc = lireArtefact<{
     matchId: string
     bounds: { minX: number; minY: number; maxX: number; maxY: number }
     tracks: { team: number; points: { x: number; y: number }[] }[] | null
-  }
+  }>(chemin)
   const b = doc.bounds
   const w = b.maxX - b.minX || 1
   const h = b.maxY - b.minY || 1

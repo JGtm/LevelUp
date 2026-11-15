@@ -12,6 +12,7 @@ import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { HomeBattlePassPanel } from './HomeBattlePassPanel'
+import { HomeFirstSync } from './HomeFirstSync'
 import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { HomeRecentPlaylistsCard } from './HomeRecentPlaylistsCard'
@@ -145,25 +146,12 @@ export function HomePage() {
   const highlights = data.highlights ?? []
   const lastSessionOutcomes = data.last_session_outcomes ?? []
 
-  // AXE E — première synchronisation : un titre fraîchement activé n'a pas encore de
-  // matchs synchronisés. Plutôt qu'un accueil vide/cassé, on montre un écran « sync en
-  // cours » qui rassure le joueur (sync en arrière-plan, on notifiera quand c'est prêt,
-  // continue sur Halo Infinite en attendant). Signal AUTORITATIF = total_matches du
-  // hero (≠ recent_matches, la tête de la liste de tuiles ; l'accueil agrège aussi des sources
-  // indépendantes — média, identité live — non liées au sync des matchs).
+  // Aucun match synchronisé : l'accueil dit l'état réel du sync (HomeFirstSync) au lieu d'annoncer
+  // « en cours » par défaut. Signal AUTORITATIF = total_matches du hero (≠ recent_matches, la tête
+  // de la liste de tuiles ; l'accueil agrège aussi des sources indépendantes — média, identité
+  // live — non liées au sync des matchs).
   if ((hero.kpis?.total_matches ?? 0) <= 0) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
-        <div className="mx-auto w-full max-w-lg">
-          <EmptyStateCard
-            title={t('home.first_sync.title')}
-            description={t('home.first_sync.description')}
-            actionLabel={t('home.first_sync.action')}
-            onAction={() => refetch()}
-          />
-        </div>
-      </div>
-    )
+    return <HomeFirstSync playerSlug={playerSlug} refetch={() => void refetch()} />
   }
 
   const spartanIdentity = data.spartan_identity ?? null

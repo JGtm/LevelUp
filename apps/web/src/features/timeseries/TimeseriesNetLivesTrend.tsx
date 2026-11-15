@@ -24,7 +24,7 @@
  * dégâts subis et la carte s'y retire d'elle-même).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -36,7 +36,8 @@ import {
 } from '@/components/charts/_utils'
 import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { titleWithInfo } from '@/components/ui/title-with-info'
-import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
+import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { meanOfValid } from '@/lib/charts/stats'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { netLives } from '@/lib/charts/netLives'
 import {
@@ -106,7 +107,7 @@ function fmtBalance(v: number | null): string {
 export function buildTimeseriesNetLivesOption(
   points: TimeseriesNetLivesPoint[],
   labels: TimeseriesNetLivesLabels,
-): EChartsCoreOption | null {
+): ChartOption | null {
   // Aucun match, ou aucun match portant les deux dégâts → état vide (pas une courbe
   // plate à zéro, qui se lirait comme un équilibre parfait).
   if (points.length === 0 || points.every((p) => p.value == null)) return null
@@ -208,10 +209,10 @@ export function TimeseriesNetLivesTrend({
   const themeVersion = useThemeVersion()
 
   const points = useMemo(
-    () => computeTimeseriesNetLives(rows, hp, locale),
+    () => (hp === undefined ? [] : computeTimeseriesNetLives(rows, hp, locale)),
     [rows, hp, locale],
   )
-  const option = useMemo<EChartsCoreOption | null>(
+  const option = useMemo<ChartOption | null>(
     () => buildTimeseriesNetLivesOption(points, labels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [points, labels, themeVersion],
@@ -219,7 +220,7 @@ export function TimeseriesNetLivesTrend({
   const mean = useMemo(() => meanOfValid(points.map((p) => p.value)), [points])
 
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
-  if (!providesDamageTaken) return null
+  if (!providesDamageTaken || hp === undefined) return null
 
   const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,

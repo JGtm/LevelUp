@@ -1,140 +1,22 @@
 package service
 
 import (
+	"math"
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/games"
 )
 
-func awardRow(xuid, name string, total int) port.PersonalScoreAwardRow {
-	return port.PersonalScoreAwardRow{
-		XUID:      xuid,
-		MatchID:   "m1",
-		AwardName: name,
-		Total:     total,
-	}
-}
-
-func TestBuildMatchRadar_AggregatesByAxis(t *testing.T) {
-	t.Parallel()
-	awards := []port.PersonalScoreAwardRow{
-		awardRow("x_p1", "kills", 10),
-		awardRow("x_p1", "double_kill", 2),
-		awardRow("x_p1", "killing_spree", 1), // impact
-		awardRow("x_p1", "assist", 5),        // support
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "x_p1", Gamertag: "PlayerOne"},
-	}
-
-	series := BuildMatchRadar(awards, scoreboard, "slayer")
-	if len(series) != 1 {
-		t.Fatalf("want 1 series, got %d", len(series))
-	}
-	s := series[0]
-	if s.XUID != "x_p1" {
-		t.Errorf("XUID want x_p1, got %s", s.XUID)
-	}
-	if s.Gamertag != "PlayerOne" {
-		t.Errorf("Gamertag want PlayerOne, got %s", s.Gamertag)
-	}
-	if len(s.Axes) != 6 {
-		t.Fatalf("want 6 axes, got %d", len(s.Axes))
-	}
-
-	// Vérifier que Combat aggregé = kills (10) + double_kill (2) = 12
-	for _, ax := range s.Axes {
-		if ax.Axis == narrative.AxisCombat && ax.Raw != 12 {
-			t.Errorf("Combat raw want 12, got %f", ax.Raw)
-		}
-		if ax.Axis == narrative.AxisSupport && ax.Raw != 5 {
-			t.Errorf("Support raw want 5, got %f", ax.Raw)
-		}
-		if ax.Axis == narrative.AxisImpact && ax.Raw != 1 {
-			t.Errorf("Impact raw want 1, got %f", ax.Raw)
-		}
-	}
-}
-
-func TestBuildMatchRadar_MultiplePlayersStableOrder(t *testing.T) {
-	t.Parallel()
-	awards := []port.PersonalScoreAwardRow{
-		awardRow("x_p1", "kills", 5),
-		awardRow("x_p2", "kills", 8),
-		awardRow("x_p3", "kills", 3),
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "x_p2", Gamertag: "Two"},
-		{XUID: "x_p1", Gamertag: "One"},
-		{XUID: "x_p3", Gamertag: "Three"},
-	}
-	series := BuildMatchRadar(awards, scoreboard, "")
-	if len(series) != 3 {
-		t.Fatalf("want 3 series, got %d", len(series))
-	}
-	// L'ordre doit suivre le scoreboard (Two, One, Three)
-	if series[0].XUID != "x_p2" || series[1].XUID != "x_p1" || series[2].XUID != "x_p3" {
-		t.Errorf("ordre series want [x_p2, x_p1, x_p3], got [%s, %s, %s]",
-			series[0].XUID, series[1].XUID, series[2].XUID)
-	}
-}
-
-func TestBuildMatchRadar_UnknownAwardsIgnored(t *testing.T) {
-	t.Parallel()
-	awards := []port.PersonalScoreAwardRow{
-		awardRow("x_p1", "kills", 10),
-		awardRow("x_p1", "totally_unknown_award", 999), // doit être ignoré
-	}
-	scoreboard := []domain.ScoreboardRaw{{XUID: "x_p1"}}
-	series := BuildMatchRadar(awards, scoreboard, "")
-	if len(series) != 1 {
-		t.Fatalf("want 1 series, got %d", len(series))
-	}
-	// Combat = 10 (kills), pas 1009 — l'unknown doit être skipped
-	for _, ax := range series[0].Axes {
-		if ax.Axis == narrative.AxisCombat && ax.Raw != 10 {
-			t.Errorf("Combat raw want 10 (unknown ignoré), got %f", ax.Raw)
-		}
-	}
-}
-
-func TestBuildMatchRadar_PlayerWithoutMappedAwardSkipped(t *testing.T) {
-	t.Parallel()
-	awards := []port.PersonalScoreAwardRow{
-		awardRow("x_p1", "kills", 5),
-		awardRow("x_p2", "totally_unknown", 999),
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "x_p1"},
-		{XUID: "x_p2"}, // ne devrait pas apparaître (que des awards inconnus)
-	}
-	series := BuildMatchRadar(awards, scoreboard, "")
-	if len(series) != 1 {
-		t.Fatalf("want 1 series (x_p2 sans award mappé), got %d", len(series))
-	}
-	if series[0].XUID != "x_p1" {
-		t.Errorf("XUID want x_p1, got %s", series[0].XUID)
-	}
-}
-
-func TestBuildMatchRadar_EmptyInputs(t *testing.T) {
-	t.Parallel()
-	if got := BuildMatchRadar(nil, nil, ""); got != nil {
-		t.Errorf("nil awards: want nil, got %v", got)
-	}
-}
-
-// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights : garde-rail anti-dérive
-// entre le mapping ObjectiveRaw → colonnes (match view) et la table de poids
-// narrative — toute clé produite doit exister dans les poids de sa famille, et la
-// classification (dont split KOTH/Strongholds par ticks) doit être correcte.
-func TestObjectiveIndexInputFromScoreboard_KeysMatchWeights(t *testing.T) {
+// TestObjectiveColumnValues_CoverFamilyTables : garde-rail anti-dérive entre le mapping
+// ObjectiveRaw → colonnes (vue Match) et les tables de narrative — toute colonne d'action, de durée
+// ou de dénominateur VIP que le noyau lit doit être produite (une colonne absente vaudrait 0 sans
+// bruit), et la classification (dont le split KOTH / Bases par ticks) doit être correcte.
+func TestObjectiveColumnValues_CoverFamilyTables(t *testing.T) {
 	t.Parallel()
 	ip := func(v int) *int { return &v }
 	fp := func(v float64) *float64 { return &v }
-	tp := fp(600)
 
 	cases := []struct {
 		name string
@@ -172,85 +54,136 @@ func TestObjectiveIndexInputFromScoreboard_KeysMatchWeights(t *testing.T) {
 		}, narrative.FamilyVIP},
 	}
 	for _, tc := range cases {
-		in := objectiveIndexInputFromScoreboard(domain.ScoreboardRaw{Obj: tc.obj, TimePlayed: tp})
-		if len(in) != 1 {
-			t.Errorf("%s: want 1 famille, got %v", tc.name, in)
+		row, ok := objectiveTeamRowFromScoreboard(domain.ScoreboardRaw{XUID: "x1", Obj: tc.obj, TimePlayed: fp(600)})
+		if !ok || row.Family != tc.want || row.TimePlayedSeconds != 600 {
+			t.Errorf("%s: (%+v, %v), want famille %s, durée 600", tc.name, row, ok, tc.want)
 			continue
 		}
-		st, ok := in[tc.want]
-		if !ok {
-			t.Errorf("%s: famille %s absente de %v", tc.name, tc.want, in)
-			continue
-		}
-		if st.Matches != 1 || st.TimePlayedSeconds != 600 {
-			t.Errorf("%s: Matches/TimePlayed = %d/%v, want 1/600", tc.name, st.Matches, st.TimePlayedSeconds)
-		}
-		weights := narrative.ObjectiveFamilyActionWeights[tc.want]
-		for col := range st.ColumnSums {
-			if _, known := weights[col]; !known {
-				t.Errorf("%s: colonne %q hors table de poids de %s", tc.name, col, tc.want)
+		for col := range narrative.ObjectiveFamilyActionWeights[tc.want] {
+			if _, ok := row.Values[col]; !ok {
+				t.Errorf("%s: colonne d'action %q de %s non produite", tc.name, col, tc.want)
 			}
 		}
+		for _, col := range narrative.ObjectiveFamilyHoldColumns[tc.want] {
+			if _, ok := row.Values[col]; !ok {
+				t.Errorf("%s: colonne de durée %q de %s non produite", tc.name, col, tc.want)
+			}
+		}
+		if _, ok := row.Values[narrative.ObjectiveColTimesSelectedAsVIP]; !ok {
+			t.Errorf("%s: dénominateur VIP non produit", tc.name)
+		}
 	}
-	// Slayer (aucun bloc) → nil.
-	if in := objectiveIndexInputFromScoreboard(domain.ScoreboardRaw{TimePlayed: tp}); in != nil {
-		t.Errorf("slayer: want nil, got %v", in)
+	// Slayer (aucun bloc) ou sans identité : pas de ligne.
+	if _, ok := objectiveTeamRowFromScoreboard(domain.ScoreboardRaw{XUID: "x1", TimePlayed: fp(600)}); ok {
+		t.Error("slayer : aucune ligne d'objectif attendue")
+	}
+	if _, ok := objectiveTeamRowFromScoreboard(domain.ScoreboardRaw{Obj: cases[0].obj}); ok {
+		t.Error("sans xuid : aucune ligne d'objectif attendue")
 	}
 }
 
-// TestBuildMatchRadarFromScoreboard_ObjectiveIndex : l'axe Objectif vient de
-// l'index par opportunité (P80 → 80/100), est RETIRÉ sur un match sans bloc
-// objectif, et le PSA objectiveScore ne sert qu'au résiduel de l'axe Score.
-func TestBuildMatchRadarFromScoreboard_ObjectiveIndex(t *testing.T) {
-	t.Parallel()
-	ip := func(v int) *int { return &v }
-	fp := func(v float64) *float64 { return &v }
-	axisOf := func(series []MatchViewRadarSeries, axis narrative.ParticipationAxis) *narrative.ParticipationScore {
-		for i := range series[0].Axes {
-			if series[0].Axes[i].Axis == axis {
-				return &series[0].Axes[i]
-			}
-		}
-		return nil
+// radarCTFRow : un participant d'un match Drapeau (camp `team`), avec ses actions d'objectif.
+func radarCTFRow(xuid string, team int, obj domain.ObjectiveRaw) domain.ScoreboardRaw {
+	tp, dd, dt, ps := 600.0, 2500.0, 2000.0, 2000.0
+	return domain.ScoreboardRaw{
+		XUID: xuid, Gamertag: "GT_" + xuid, TeamID: &team, Kills: 10, Deaths: 5, Assists: 2,
+		DamageDealt: &dd, DamageTaken: &dt, PersonalScore: &ps, TimePlayed: &tp, Obj: obj,
 	}
+}
 
-	// Match CTF exactement au P80 (actions 11, hold 0.0434 × 600 s).
-	ctfRow := domain.ScoreboardRaw{
-		XUID: "x1", Gamertag: "P1", Kills: 10, Deaths: 5, Assists: 2,
-		DamageDealt: fp(2500), DamageTaken: fp(2000), PersonalScore: fp(2000), TimePlayed: fp(600),
-		Obj: domain.ObjectiveRaw{
-			FlagCaptures: ip(1), FlagSteals: ip(1), FlagReturns: ip(2), FlagSecures: ip(1),
-			TimeAsFlagCarrierSeconds: fp(0.0434 * 600),
-		},
+// ctfActions : un bloc Drapeau avec les actions données (les autres colonnes à 0, mais présentes).
+func ctfActions(captures, steals, returns, secures int) domain.ObjectiveRaw {
+	z := 0
+	return domain.ObjectiveRaw{
+		FlagCaptures: &captures, FlagSteals: &steals, FlagReturns: &returns, FlagSecures: &secures,
+		FlagCaptureAssists: &z, FlagCarriersKilled: &z, FlagReturnersKilled: &z,
 	}
-	series := BuildMatchRadarFromScoreboard([]domain.ScoreboardRaw{ctfRow}, "x1", 500, "ctf", 225, 0.90)
-	if len(series) != 1 {
-		t.Fatalf("want 1 série, got %d", len(series))
+}
+
+func radarAxisOf(series []MatchViewRadarSeries, axis narrative.ParticipationAxis) *narrative.ParticipationScore {
+	for i := range series[0].Axes {
+		if series[0].Axes[i].Axis == axis {
+			return &series[0].Axes[i]
+		}
 	}
-	obj := axisOf(series, narrative.AxisObjective)
+	return nil
+}
+
+// TestBuildMatchRadarFromScoreboard_ObjectifDansCeMatch : l'axe Objectif est la note d'objectif DU
+// MATCH SEUL, la part du joueur dans l'objectif de SON équipe (les deux camps de la feuille), prise et
+// soutien compris. Il ne dépend d'aucun historique (la fonction n'en reçoit aucun) ni de l'adversaire.
+func TestBuildMatchRadarFromScoreboard_ObjectifDansCeMatch(t *testing.T) {
+	t.Parallel()
+	// Équipe 0 : « me » et trois coéquipiers à 2 captures et 2 vols chacun ; équipe 1 : un adversaire
+	// très actif, qui ne doit pas entrer dans la part.
+	board := []domain.ScoreboardRaw{
+		radarCTFRow("me", 0, ctfActions(2, 2, 0, 0)),
+		radarCTFRow("b", 0, ctfActions(2, 2, 0, 0)),
+		radarCTFRow("c", 0, ctfActions(2, 2, 0, 0)),
+		radarCTFRow("d", 0, ctfActions(2, 2, 0, 0)),
+		radarCTFRow("foe", 1, ctfActions(9, 9, 9, 9)),
+	}
+	series := BuildMatchRadarFromScoreboard(board, "me", 500, "ctf", games.DefaultEffectiveHpToKill, 0.90)
+	obj := radarAxisOf(series, narrative.AxisObjective)
 	if obj == nil {
-		t.Fatal("axe objective absent sur un match CTF")
+		t.Fatal("axe objective absent sur un match Drapeau")
 	}
-	if obj.Raw < 0.999 || obj.Raw > 1.001 {
-		t.Errorf("objective raw: want ~1.0 (P80), got %v", obj.Raw)
-	}
-	if obj.Value < 79.9 || obj.Value > 80.1 {
-		t.Errorf("objective value: want ~80, got %v", obj.Value)
+	// Part équitable (1/4 de l'équipe) = 50, quel que soit l'adversaire.
+	if math.Abs(obj.Value-50) > 1e-9 || math.Abs(obj.Raw-50) > 1e-9 {
+		t.Errorf("objective: want 50 (part équitable), got raw %v value %v", obj.Raw, obj.Value)
 	}
 	// Résiduel Score : PSA soustrait (décision 1) — 2000 − 10×100 − 2×50 − 500 = 400.
-	if sc := axisOf(series, narrative.AxisScore); sc == nil || sc.Raw != 400 {
+	if sc := radarAxisOf(series, narrative.AxisScore); sc == nil || sc.Raw != 400 {
 		t.Errorf("score residuel: want 400, got %+v", sc)
 	}
+}
 
-	// Match sans bloc objectif (Slayer) → axe objective RETIRÉ.
-	slayerRow := ctfRow
-	slayerRow.Obj = domain.ObjectiveRaw{}
-	series = BuildMatchRadarFromScoreboard([]domain.ScoreboardRaw{slayerRow}, "x1", 0, "slayer", 225, 0.90)
+// Une escorte (retours et sécurisations, aucun temps de port, aucune capture) est mesurée sur sa part
+// du SOUTIEN de l'équipe : l'ancien indice par famille, qui dépendait du temps de port et d'un repère
+// de population, la notait ~31 ; la note de ce match vaut 100 (tout le soutien de son équipe).
+func TestBuildMatchRadarFromScoreboard_EscorteMesureeSurLeSoutien(t *testing.T) {
+	t.Parallel()
+	board := []domain.ScoreboardRaw{
+		radarCTFRow("escorte", 0, ctfActions(0, 0, 3, 2)), // objectif : 6,5 points, tous de soutien
+		radarCTFRow("porteur", 0, ctfActions(2, 2, 0, 0)), // objectif : 14 points, aucun soutien
+		radarCTFRow("c", 0, ctfActions(0, 0, 0, 0)),
+		radarCTFRow("d", 0, ctfActions(0, 0, 0, 0)),
+		radarCTFRow("foe", 1, ctfActions(4, 4, 4, 4)),
+	}
+	series := BuildMatchRadarFromScoreboard(board, "escorte", 0, "ctf", games.DefaultEffectiveHpToKill, 0.90)
+	obj := radarAxisOf(series, narrative.AxisObjective)
+	if obj == nil || math.Abs(obj.Value-100) > 1e-9 {
+		t.Fatalf("escorte : %+v, want 100 (soutien : part de 100 %% de son équipe de 4)", obj)
+	}
+	// Le porteur n'a aucun soutien : sa note suit sa part de l'objectif (14 / 20,5 x 4 / 2 > 1).
+	series = BuildMatchRadarFromScoreboard(board, "porteur", 0, "ctf", games.DefaultEffectiveHpToKill, 0.90)
+	if p := radarAxisOf(series, narrative.AxisObjective); p == nil || p.Value != 100 {
+		t.Errorf("porteur : %+v, want 100", p)
+	}
+	// Un joueur de l'équipe qui n'a rien fait de l'objectif a 0 : mesuré, pas absent.
+	series = BuildMatchRadarFromScoreboard(board, "c", 0, "ctf", games.DefaultEffectiveHpToKill, 0.90)
+	if c := radarAxisOf(series, narrative.AxisObjective); c == nil || c.Value != 0 {
+		t.Errorf("joueur sans action : %+v, want 0 mesuré", c)
+	}
+}
+
+// Slayer, Halo 5 (aucun bloc d'objectif) ou joueur sans camp : l'axe est RETIRÉ, jamais 0.
+func TestBuildMatchRadarFromScoreboard_ObjectifAbsentRetire(t *testing.T) {
+	t.Parallel()
+	slayer := []domain.ScoreboardRaw{radarCTFRow("x1", 0, domain.ObjectiveRaw{}), radarCTFRow("x2", 1, domain.ObjectiveRaw{})}
+	series := BuildMatchRadarFromScoreboard(slayer, "x1", 0, "slayer", games.DefaultEffectiveHpToKill, 0.90)
 	if len(series) != 1 {
 		t.Fatalf("want 1 série, got %d", len(series))
 	}
-	if obj := axisOf(series, narrative.AxisObjective); obj != nil {
+	if obj := radarAxisOf(series, narrative.AxisObjective); obj != nil {
 		t.Errorf("axe objective sur un match Slayer: want retiré, got %+v", obj)
+	}
+	// Un bloc d'objectif mais aucun camp (donnée incomplète) : retiré aussi.
+	noTeam := radarCTFRow("x1", 0, ctfActions(1, 1, 1, 1))
+	noTeam.TeamID = nil
+	series = BuildMatchRadarFromScoreboard([]domain.ScoreboardRaw{noTeam}, "x1", 0, "ctf", games.DefaultEffectiveHpToKill, 0.90)
+	if obj := radarAxisOf(series, narrative.AxisObjective); obj != nil {
+		t.Errorf("joueur sans camp: want axe retiré, got %+v", obj)
 	}
 }
 

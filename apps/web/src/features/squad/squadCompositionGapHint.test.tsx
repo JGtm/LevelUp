@@ -15,14 +15,14 @@ const NILTON_MATCH: SquadSessionExcludedMatch = {
   match_id: 'm1',
   start_time: '2026-08-27T20:00:00Z',
   map_ui: 'Aquarius',
-  extra_gamertags: ['Nilton410'],
+  extra_gamertags: ['Joueur903'],
 }
 
 const DUO_MATCH: SquadSessionExcludedMatch = {
   match_id: 'm2',
   start_time: '2026-08-27T21:00:00Z',
   map_ui: 'Recharge',
-  extra_gamertags: ['Nilton410', 'passivemarquise'],
+  extra_gamertags: ['Joueur903', 'Joueur90000000i'],
 }
 
 const UNKNOWN_MATCH: SquadSessionExcludedMatch = {
@@ -42,13 +42,13 @@ describe('buildCompositionGapHint', () => {
     render(<>{node}</>)
     expect(screen.getByText(/1 match écarté/)).toBeTruthy()
     expect(screen.getByText(/Aquarius/)).toBeTruthy()
-    expect(screen.getByText(/Nilton410 était dans l'équipe/)).toBeTruthy()
+    expect(screen.getByText(/Joueur903 était dans l'équipe/)).toBeTruthy()
   })
 
   it('deux coequipiers responsables du meme match : accord pluriel "etaient"', () => {
     const node = buildCompositionGapHint([DUO_MATCH], 'fr', FR_TEXT.compositionGap)
     render(<>{node}</>)
-    expect(screen.getByText(/Nilton410 et passivemarquise étaient dans l'équipe/)).toBeTruthy()
+    expect(screen.getByText(/Joueur903 et Joueur90000000i étaient dans l'équipe/)).toBeTruthy()
   })
 
   it('coequipier non resolu (extra_gamertags null) : repli textuel, jamais une ligne vide', () => {
@@ -66,8 +66,8 @@ describe('buildCompositionGapHint', () => {
   it('EN : accord singulier/pluriel "was"/"were"', () => {
     const node = buildCompositionGapHint([NILTON_MATCH, DUO_MATCH], 'en', EN_TEXT.compositionGap)
     render(<>{node}</>)
-    expect(screen.getByText(/Nilton410 was on the team/)).toBeTruthy()
-    expect(screen.getByText(/Nilton410 and passivemarquise were on the team/)).toBeTruthy()
+    expect(screen.getByText(/Joueur903 was on the team/)).toBeTruthy()
+    expect(screen.getByText(/Joueur903 and Joueur90000000i were on the team/)).toBeTruthy()
     expect(screen.getByText(/2 matches excluded/)).toBeTruthy()
   })
 })

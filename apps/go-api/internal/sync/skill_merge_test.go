@@ -41,9 +41,9 @@ func TestMergeSkillIntoParticipants(t *testing.T) {
 
 func TestParticipantXUIDs_FiltersBots(t *testing.T) {
 	rows := []ParticipantRow{
-		{XUID: "2533274858283686"},
+		{XUID: "2623439693412443"},
 		{XUID: "bid(3.0)"},
-		{XUID: "2533274823110022"},
+		{XUID: "2603225103667623"},
 		{XUID: ""},
 	}
 	got := ParticipantXUIDs(rows)

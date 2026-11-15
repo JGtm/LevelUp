@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import { EmptyStateCard } from '@/components/ui/empty-state'
-import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
@@ -229,7 +228,7 @@ const ENCOUNTER_BADGE_TOOLTIPS: Record<string, Record<Locale, string>> = {
   'narrative.encounter.ordinal': { fr: 'Total rencontres croisées (allié + ennemi)', en: 'Total cross encounters (ally + enemy)' },
 }
 
-function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadge[]; locale: Locale }) {
+function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadge[] | null; locale: Locale }) {
   if (!badges?.length) return null
   return (
     <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
@@ -273,8 +272,8 @@ function MirrorHeader({
   gamertagA: string
   gamertagB: string
   gamertagC: string
-  badgesB?: MatchEncounterBadge[]
-  badgesC?: MatchEncounterBadge[]
+  badgesB?: MatchEncounterBadge[] | null
+  badgesC?: MatchEncounterBadge[] | null
   locale: Locale
 }) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
@@ -409,24 +408,24 @@ export function ComparePage() {
             <CategoryMirrorSection
               title={text.catCombat}
               keys={CATEGORY_KEYS.combat}
-              metricsLeft={leftData.metrics}
-              metricsRight={rightData.metrics}
+              metricsLeft={leftData.metrics ?? []}
+              metricsRight={rightData.metrics ?? []}
               text={text}
               locale={locale}
             />
             <CategoryMirrorSection
               title={text.catPrecision}
               keys={CATEGORY_KEYS.precision}
-              metricsLeft={leftData.metrics}
-              metricsRight={rightData.metrics}
+              metricsLeft={leftData.metrics ?? []}
+              metricsRight={rightData.metrics ?? []}
               text={text}
               locale={locale}
             />
             <CategoryMirrorSection
               title={text.catBilan}
               keys={CATEGORY_KEYS.bilan}
-              metricsLeft={leftData.metrics}
-              metricsRight={rightData.metrics}
+              metricsLeft={leftData.metrics ?? []}
+              metricsRight={rightData.metrics ?? []}
               text={text}
               locale={locale}
             />
@@ -441,20 +440,13 @@ export function ComparePage() {
       {/* ── Mode normal (1 challenger) ── */}
       {!isPending && !isMirror && leftData && (
         <div className="space-y-6">
-          <PrivacyBanner warning={leftData.privacy_warning} />
-          {leftData.player_b_partial && !leftData.privacy_warning && (
-            <p className="rounded bg-warning/10 px-3 py-2 text-xs text-warning">
-              {text.partialWarning(leftData.player_b.gamertag)}
-            </p>
-          )}
-
           <PlayerHeader data={leftData} text={text} locale={locale} />
 
-          {leftData.metrics.length > 0 && (
+          {(leftData.metrics?.length ?? 0) > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-8">
               <CategoryColumn
                 title={text.catCombat}
-                rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.combat)}
+                rows={getCategoryRows(leftData.metrics ?? [], CATEGORY_KEYS.combat)}
                 text={text}
                 locale={locale}
                 gamertagA={leftData.player_a.gamertag}
@@ -462,7 +454,7 @@ export function ComparePage() {
               />
               <CategoryColumn
                 title={text.catPrecision}
-                rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.precision)}
+                rows={getCategoryRows(leftData.metrics ?? [], CATEGORY_KEYS.precision)}
                 text={text}
                 locale={locale}
                 gamertagA={leftData.player_a.gamertag}
@@ -470,7 +462,7 @@ export function ComparePage() {
               />
               <CategoryColumn
                 title={text.catBilan}
-                rows={getCategoryRows(leftData.metrics, CATEGORY_KEYS.bilan)}
+                rows={getCategoryRows(leftData.metrics ?? [], CATEGORY_KEYS.bilan)}
                 text={text}
                 locale={locale}
                 gamertagA={leftData.player_a.gamertag}

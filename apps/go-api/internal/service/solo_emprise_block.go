@@ -24,8 +24,8 @@ type soloEmpriseQuery struct {
 	Page       string
 	Player     string
 	PlayerXUID string
-	// RepoRoot / TitleSlug / Locale : catalogue d'armes et noms de véhicules du titre.
-	RepoRoot  string
+	// Labels / TitleSlug / Locale : catalogue d'armes et noms de véhicules du titre.
+	Labels    port.ReplayLabelSource
 	TitleSlug string
 	Locale    string
 	// Current : les matchs, déjà projetés (carte, résultat, session) par la page.
@@ -51,10 +51,10 @@ type soloEmpriseQuery struct {
 // et un joueur connu.
 func buildSoloEmpriseBlock(ctx context.Context, q soloEmpriseQuery) *domain.SoloEmpriseBlock {
 	ids := squadagg.EmpriseMatchIDs(q.Current)
-	lecteur := squadagg.EmpriseLecteur{Page: q.Page, Player: q.Player, RepoRoot: q.RepoRoot, TitleSlug: q.TitleSlug}
+	lecteur := squadagg.EmpriseLecteur{Page: q.Page, Player: q.Player, Labels: q.Labels, TitleSlug: q.TitleSlug}
 	in := squademprise.Input{
 		PlayerXUID: q.PlayerXUID, Current: q.Current,
-		Weapons: squadagg.WeaponCatalog(ctx, q.RepoRoot, q.TitleSlug, q.Locale),
+		Weapons: squadagg.WeaponCatalog(ctx, q.Labels, q.TitleSlug, q.Locale),
 	}
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, q.EmpriseRepo, ids)
 	in.Journal = lecteur.Journal(ctx, q.EmpriseRepo, ids, in.Weapons)

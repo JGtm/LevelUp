@@ -16,6 +16,12 @@ export interface LegacyRedirect {
  * verbatim. Un pathname hors `/players` → null. `/players` sans slug → null
  * (aucune route index legacy). `/players/{slug}` sans suffixe → `.../home`.
  *
+ * BRANCHE DE COMPATIBILITÉ (créée le 2026-07-22). Retrait cible : 2026-12-31. Critère
+ * mesurable, relevé en lecture seule sur la production : 0 requête de page `GET /players/…`
+ * (hors `/api/`, sans segment `/t/`) dans le journal d'accès de nginx sur 30 jours. Critère
+ * tenu : supprimer ce module, son test, la route `routes/players/$.tsx` et le test
+ * e2e `legacy-redirect.spec.ts`. Non tenu : repousser la date ici avec la nouvelle mesure.
+ *
  * `lang` (I10) : locale de SESSION à ÉMETTRE dans le segment `/{lang}` du premier hop,
  * pour que le bookmark legacy atterrisse directement sur une URL langue-visible (puis
  * héritée par la nav interne). OMIS (undefined) → forme courte `/t/…` (rétro-compat :

@@ -70,7 +70,7 @@ func TestRegressionB2_NoIsBotColumn(t *testing.T) {
 			s = repoSource
 		}
 		if strings.Contains(s, "is_bot") {
-			t.Errorf("régression B2 : %s contient `is_bot` — utiliser le prédicat xuid LIKE 'bid(%%' via analysis.SQLIsNotBotCol", name)
+			t.Errorf("régression B2 : %s contient `is_bot` — utiliser le prédicat xuid LIKE 'bid(%%' via sqlfrag.SQLIsNotBotCol", name)
 		}
 		// H2 (2026-07-04) : le prédicat bot est centralisé dans
 		// analysis.SQLIs[Not]BotCol(col) — accepter le littéral brut OU le helper.

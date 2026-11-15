@@ -5,7 +5,7 @@ import type { ReplayVipPeriod } from '../../../lib/replay/replayNormalize'
 import { drawVipCrown, vipActiveAt, type VipCrownInput } from './vipCrownLayer'
 
 const period = (over: Partial<ReplayVipPeriod>): ReplayVipPeriod => ({
-  xuid: '2533274806055812',
+  xuid: '2725208139384704',
   t0: 0,
   t1: 100,
   closed: true,
@@ -45,7 +45,7 @@ describe('drawVipCrown', () => {
     }
     return { ctx: ctx as unknown as CanvasRenderingContext2D, fills, raw: ctx }
   }
-  const style = (inkOf: (xuid: string) => string) => ({ inkOf, outline: 'fond', reducedMotion: true })
+  const style = (inkOf: (xuid: string) => string) => ({ inkOf, outline: 'fond', reducedMotion: true, frameMs: 100 })
 
   it('ne dessine pas un VIP non localisable (aucune position propre à inventer)', () => {
     const { ctx, raw } = recordingCtx()

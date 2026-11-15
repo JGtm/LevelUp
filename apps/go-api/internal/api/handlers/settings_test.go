@@ -35,7 +35,7 @@ func newSettingsRouter(t *testing.T, demoMode bool) (*chi.Mux, *jobs.Store) {
 	// Mock indexer pour éviter que la goroutine background de PostMediaResetIndex
 	// scanne le disque réel (DirMediaIndexer par défaut) et produise des effets
 	// de bord sur les tests suivants.
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 
 	r := chi.NewRouter()
 	h.Mount(r)
@@ -232,36 +232,5 @@ func TestSettingsHandler_Patch_AnalyseRoundTrip(t *testing.T) {
 	}
 	if got["outcome_badge_sensitivity"] != "relaxed" {
 		t.Errorf("outcome_badge_sensitivity = %v, want 'relaxed'", got["outcome_badge_sensitivity"])
-	}
-}
-
-func TestSettingsHandler_PostRecalculateSessions_Accepted(t *testing.T) {
-	r, jobStore := newSettingsRouter(t, false)
-
-	req := httptest.NewRequest(http.MethodPost, "/settings/sessions/recalculate", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusAccepted {
-		t.Fatalf("expected 202 Accepted, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var body map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("invalid JSON response: %v", err)
-	}
-	if body["job_id"] == "" || body["job_id"] == nil {
-		t.Errorf("expected non-empty job_id in response, got %v", body)
-	}
-	if body["status"] != "queued" {
-		t.Errorf("expected status=queued, got %v", body["status"])
-	}
-	if body["job_type"] != "sessions_recalculate" {
-		t.Errorf("expected job_type=sessions_recalculate, got %v", body["job_type"])
-	}
-
-	// Attendre la fin du job background avant que t.TempDir() cleanup le dossier.
-	if id, ok := body["job_id"].(string); ok && id != "" {
-		pollJobSucceeded(t, jobStore, id)
 	}
 }

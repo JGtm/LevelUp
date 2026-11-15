@@ -112,6 +112,11 @@ function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
  * désormais `grenadeRestLayer.ts` (3 imports de valeur, tous injectés ici) — et la spec tourne
  * à chaque push, cf. le step « Rasterisation du rejeu » du job `frontend`.
  *
+ * `replayView.ts` porte 2 imports de valeur depuis le 2026-11-13 : `replayLogic` (projection,
+ * `layerOffset`) et `orientation` (`orientAbout`, `turnsOf` : la rotation par quarts de tour
+ * s'applique dans `projectTo`). `orientation.ts` n'a que des imports de type et se charge dans
+ * sa propre portée (ORIENT) avant VIEW.
+ *
  * `replayLogic.ts` porte 1 import de valeur, `matchClock` (lien tactique, `resolveTacticalOpenAtFrame`) : il
  * est injecté ICI en vraie fonction (`matchClock.ts`, sans import de valeur), pour que la portée de
  * `replayLogic` reste complète même si ce test n'appelle que `worldToCanvas` et `canvasScale`.
@@ -126,11 +131,16 @@ function harnais(): string {
       const matchClock = (function(){ ${moduleSource('matchClock.ts')}
         return matchClock })()
       ${moduleSource('replayLogic.ts', 1)}
-      return { worldToCanvas, canvasScale } })()
+      return { worldToCanvas, canvasScale, layerOffset } })()
+    const ORIENT = (function(){ ${moduleSource('orientation.ts')}
+      return { orientAbout, turnsOf } })()
     const VIEW = (function(){
       const worldToCanvas = LOGIC.worldToCanvas
       const canvasScale = LOGIC.canvasScale
-      ${moduleSource('replayView.ts', 1)}
+      const layerOffset = LOGIC.layerOffset
+      const orientAbout = ORIENT.orientAbout
+      const turnsOf = ORIENT.turnsOf
+      ${moduleSource('replayView.ts', 2)}
       return { projectTo } })()
     const EXPLO = (function(){ ${moduleSource('explosionFx.ts')}
       return { EXPLOSION_MS, drawExplosion, drawFlash, drawEmbers, drawWave, drawSparks, drawDust } })()

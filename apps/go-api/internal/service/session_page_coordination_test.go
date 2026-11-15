@@ -63,7 +63,7 @@ func restreindreLectureDeTest(src domain.TacticalUnivers, ids []string) domain.T
 
 func serviceDeCoordination(tactical port.TacticalRepository) *SessionPageService {
 	return NewSessionPageService(nil).
-		WithSessionUsageSummary(usageTestRepoMock(), "").
+		WithSessionUsageSummary(usageTestRepoMock(), nil).
 		WithSessionEmprise(nil, "P"). // D9 : le joueur de la coordination
 		WithSessionCoordination(tactical, &appuisRepoStub{rows: []domain.CoordinationAppuiRow{
 			{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
@@ -183,7 +183,7 @@ func appuisAvecReference() []domain.CoordinationAppuiRow {
 
 func serviceAvecReference(tactical *tacticalRepoParScope, appuis *appuisRepoStub) *SessionPageService {
 	return NewSessionPageService(nil).
-		WithSessionUsageSummary(usageTestRepoMock(), "").
+		WithSessionUsageSummary(usageTestRepoMock(), nil).
 		WithSessionEmprise(nil, "P"). // D9 : le joueur de la coordination
 		WithSessionCoordination(tactical, appuis, games.CapabilityMap{games.CapFilmKillSource: games.CapSupported})
 }

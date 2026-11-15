@@ -249,7 +249,6 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		SkillRatingType:          r.SkillRatingType,
 		SkillRankImageURL:        fmts.skillRankImageURLFor(r),
 		PersonalScore:            r.PersonalScore,
-		ExpectedWinProb:          r.SkillExpectedWinProb,
 		PlacementDone:            r.PlacementDone,
 		PlacementTotal:           r.PlacementTotal,
 		PerfPlacementDone:        r.PerfPlacementDone,

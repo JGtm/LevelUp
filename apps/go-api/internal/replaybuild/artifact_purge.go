@@ -2,7 +2,7 @@ package replaybuild
 
 // artifact_purge.go — RETIRER LES FICHIERS DE REJEU D'UN MATCH, et eux seuls.
 //
-// Un match a, sur disque, quatre fichiers de rejeu : l'artefact (`<short8>.json`), sa marque de
+// Un match a, sur disque, quatre fichiers de rejeu : l'artefact (`<short8>.json.gz`, ou `<short8>.json` d'un parc ancien), sa marque de
 // dérivation (`<short8>.derived.json`), son en-tête (`<short8>.meta`, artifact_meta.go) et le sidecar de raster tactique (`rasters/<short8>.json`).
 // Le film (`film_chunks/`, `film_manifests/`) et les faits persistés (`film_facts/`) ne sont PAS
 // des fichiers de rejeu : ils ne sont jamais touchés ici (le film expire côté serveur Halo,
@@ -25,7 +25,8 @@ import (
 // première suppression en échec arrête le match et remonte l'erreur nommée.
 func PurgeMatchFiles(pr *titlePkg.PathResolver, titleSlug, matchID string, dryRun bool) ([]string, error) {
 	artefact := pr.ReplayArtifactPath(titleSlug, matchID)
-	candidats := []string{artefact, DerivationsMarkPath(artefact), MetaPath(artefact), pr.TacticalRasterPath(titleSlug, matchID)}
+	compresse, brut := titlePkg.ReplayArtifactCandidates(artefact)
+	candidats := []string{compresse, brut, DerivationsMarkPath(artefact), MetaPath(artefact), pr.TacticalRasterPath(titleSlug, matchID)}
 	var touches []string
 	for _, path := range candidats {
 		info, err := os.Stat(path)

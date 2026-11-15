@@ -20,7 +20,7 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
-export interface LeaderboardEntry {
+export interface PrestigeLeaderboardEntry {
   user_id: string
   gamertag: string
   raw_score: number
@@ -34,7 +34,7 @@ export interface LeaderboardEntry {
 }
 
 interface LeaderboardPPProps {
-  entries: LeaderboardEntry[]
+  entries: PrestigeLeaderboardEntry[]
   period?: 'week' | 'month' | 'all'
   onPeriodChange?: (p: 'week' | 'month' | 'all') => void
   /** Filtre arc actif (sinon tous). */
@@ -133,7 +133,7 @@ function PeriodToggle({
   )
 }
 
-function Row({ entry, rank, locale }: { entry: LeaderboardEntry; rank: number; locale: ManifestLocale }) {
+function Row({ entry, rank, locale }: { entry: PrestigeLeaderboardEntry; rank: number; locale: ManifestLocale }) {
   const tierColor = entry.last_tier ? TIER_COLORS[entry.last_tier] : undefined
   // Phase 4 plan finition multi-titres : libellé du tier via TOML, fallback dict.
   const tierLabelFromTOML = useAssetLabel('challenge_tier', entry.last_tier ?? '')

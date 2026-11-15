@@ -75,7 +75,7 @@ func newFullyWiredScheduler(t *testing.T) (*scheduler.AutoSyncScheduler, *config
 	// settings. Une entrée pour le xuid utilisé par le test golden.
 	friendsPath := filepath.Join(repoRoot, "data", "global", "player_friends.json")
 	friendStore := friendstore.NewFriendStore(friendsPath)
-	if _, err := friendStore.Set("2533274823110022", "JGtm", []string{"F1"}); err != nil {
+	if _, err := friendStore.Set("2603225103667623", "JGtm", []string{"F1"}); err != nil {
 		t.Fatalf("écriture amis: %v", err)
 	}
 	s := scheduler.New(cfg, store, &fakeProvider{}, nil).WithFriendStore(friendStore)
@@ -101,7 +101,7 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	cfg.SharedProvider = memProvider
 	cfg.CurrentCSRSeasonID = "CsrSeason42"
 
-	engine := s.BuildEngine(context.Background(), "JGtm", "2533274823110022")
+	engine := s.BuildEngine(context.Background(), "JGtm", "2603225103667623")
 	_ = prestigeFired // évite unused si les assertions bougent
 	if engine == nil {
 		t.Fatal("BuildEngine returned nil")
@@ -132,8 +132,8 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	if engine.GamertagForTest() != "JGtm" {
 		t.Errorf("gamertag = %q, want JGtm", engine.GamertagForTest())
 	}
-	if engine.XUIDForTest() != "2533274823110022" {
-		t.Errorf("xuid = %q, want 2533274823110022", engine.XUIDForTest())
+	if engine.XUIDForTest() != "2603225103667623" {
+		t.Errorf("xuid = %q, want 2603225103667623", engine.XUIDForTest())
 	}
 }
 

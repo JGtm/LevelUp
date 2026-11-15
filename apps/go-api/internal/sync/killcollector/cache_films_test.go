@@ -22,8 +22,8 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // cacheAvecManifestePartiel archive `chunksTemoins` puis REMPLACE le manifeste par ses deux

@@ -18,6 +18,7 @@
 //! - [`download_watch`] : l'echeance d'inactivite du telechargement de l'installeur.
 //! - [`update_notes`] : les notes de mise a jour dans la langue de la coquille (`notes`, `notes_<code>` de `latest.json`).
 //! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
+//! - [`folder_pick`] : le dossier de depart de la boite « Parcourir » demandee par la page (commande `pick_folder`, la seule que la page appelle).
 //! - [`resources`] : le paquet de ressources livre a part du moteur (L24) : le bloc de `latest.json` et l'attente de sa preparation par le serveur.
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
@@ -25,6 +26,7 @@ pub mod autostart;
 pub mod catalogue;
 pub mod download_watch;
 pub mod events;
+pub mod folder_pick;
 pub mod launch;
 pub mod lifecycle;
 pub mod linereader;

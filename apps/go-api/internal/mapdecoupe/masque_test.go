@@ -10,7 +10,7 @@ import (
 
 	"github.com/HugoSmits86/nativewebp"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // masqueTest fabrique un masque synthétique calé en (0, 0), un mètre par cellule — les

@@ -100,6 +100,30 @@ const PERF_PAGE = {
 } as unknown as TeammatesPageResponse
 
 describe('SquadDynamiquePage', () => {
+  it('Mainmise : après la rangée Vies nettes / Écart cumulé, avant Engagement, sur un titre qui décode le film', () => {
+    setTitleCaps(['replay', 'engagement'])
+    mockSquadContext({
+      pageData: {
+        main_player: 'Main',
+        lead_share_series: [{ match_id: 'm1', start_time: '2026-09-22T20:00:00Z', outcome: 2, lead_share: 0.6 }],
+      } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadDynamiquePage />)
+    const mainmise = screen.getByTestId('lead-share-chart')
+    const cumul = container.querySelector('[data-testid="squad-cumulative-row"]')
+    const engagement = screen.getByTestId('engagement-section')
+    expect(cumul).not.toBeNull()
+    expect(cumul!.compareDocumentPosition(mainmise) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(mainmise.compareDocumentPosition(engagement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('Mainmise : aucune carte sur un titre sans décodeur de film', () => {
+    setTitleCaps(['analytics.timeseries'])
+    mockSquadContext({ pageData: { main_player: 'Main' } as unknown as TeammatesPageResponse })
+    renderWithProviders(<SquadDynamiquePage />)
+    expect(screen.queryByTestId('lead-share-chart')).toBeNull()
+  })
+
   it('monte sans erreur avec pageData null', () => {
     mockSquadContext({})
     const { container } = renderWithProviders(<SquadDynamiquePage />)

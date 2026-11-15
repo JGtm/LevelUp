@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// TestInstallCLI_RoutesLeaderboardModuleToFile vérifie qu'un log taggé
-// module=leaderboard émis après InstallCLI atterrit dans logs/leaderboard.log.
-func TestInstallCLI_RoutesLeaderboardModuleToFile(t *testing.T) {
+// TestInstallCLILevel_RoutesLeaderboardModuleToFile vérifie qu'un log taggé
+// module=leaderboard émis après InstallCLILevel atterrit dans logs/leaderboard.log.
+func TestInstallCLILevel_RoutesLeaderboardModuleToFile(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("LEVELUP_LOGS_DIR", dir)
 	t.Setenv("LEVELUP_LOGS_ENABLED", "true")
@@ -19,7 +19,7 @@ func TestInstallCLI_RoutesLeaderboardModuleToFile(t *testing.T) {
 	prev := slog.Default()
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	closer := InstallCLI("")
+	closer := InstallCLILevel("", slog.LevelInfo)
 	slog.Default().With("module", ModuleLeaderboard, "job", "snapshot-test").
 		Info("snapshot world leaderboard terminé", "rows_inserted", 42)
 	closer() // flush + close des fichiers

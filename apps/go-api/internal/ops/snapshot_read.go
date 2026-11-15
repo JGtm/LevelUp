@@ -111,7 +111,7 @@ var vuesDesTablesDuTitre = map[string]string{
 //
 // Zéro divergence : les vues sont créées par les MÊMES fonctions canoniques que le boot/
 // migrations (migration.ApplyResolutionViews + ApplyMvPlayerMatchesView, qui réutilisent
-// analysis.GamertagLookupViewSQL — source unique du chokepoint gamertag ;
+// sqlfrag.GamertagLookupViewSQL — source unique du chokepoint gamertag ;
 // migration.MatchObjectiveStatsLatestViewSQL pour match_objective_stats_latest). Seules
 // v_weapon_kills / match_csrs_latest sont inlinées (DDL court, gardé par le test de
 // fidélité). Le test de contrat TestOpenSnapshotShared_SchemaContract_integration liste

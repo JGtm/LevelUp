@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // TestPrendreVerrouCreeLeDossierEtNAttendPas — le premier rattrapage d'un titre ne doit ni

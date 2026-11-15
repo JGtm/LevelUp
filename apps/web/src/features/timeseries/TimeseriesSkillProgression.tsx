@@ -14,7 +14,7 @@
  * via frameToData) avec bandes de sous-palier, pour rendre lisible le mouvement
  * par-match sur les sessions courtes.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   getEChartsThemeColors,
@@ -66,7 +66,7 @@ function buildOption(
   rows: TimeseriesMatchRow[],
   locale: ManifestLocale,
   height: number,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
   const categories = buildMatchCategories(rows)

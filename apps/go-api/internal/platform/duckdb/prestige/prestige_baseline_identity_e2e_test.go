@@ -32,8 +32,8 @@ import (
 // le slug est le gamertag applicatif (db_profiles.json), le xuid est numérique.
 const (
 	identityPlayerSlug = "JGtm"
-	identityXUID       = "2533274823110022"
-	identityDecoyXUID  = "2535469190789936"
+	identityXUID       = "2603225103667623"
+	identityDecoyXUID  = "2547408409520575"
 	identityTitleSlug  = "halo_infinite"
 )
 

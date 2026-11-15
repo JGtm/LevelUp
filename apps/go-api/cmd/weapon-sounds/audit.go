@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // chunksLus : les chunks que `parserBank` exploite reellement aujourd'hui.

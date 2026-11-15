@@ -12,7 +12,7 @@ import (
 
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
+	"github.com/JGtm/halo-api/xboxlive"
 )
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,3 @@
-// cross-feature-allow: le sélecteur de composition de la page Escouade (`SquadCompositionPicker`),
-// sa liste légère de coéquipiers (`useCompositionOptions`) et ses libellés — le MÊME sélecteur que
-// l'Escouade, sans second jeu de libellés ni de couleurs.
 /**
  * TendancesSquadPicker — la sélection de l'escouade de la vue Escouade : le sélecteur de composition
  * de la page Escouade (`SquadCompositionPicker`) et la case « Composition stricte » au gabarit exact

@@ -3,7 +3,7 @@ package main
 // cmd_backfill_replay_nongeres.go — LES MATCHS DE MODE NON GERE dans `backfill-replay`.
 //
 // Le rejeu ne gere pas le Firefight (PvE, decision du 2026-10-15). Le registre porte le drapeau
-// (`analysis.SQLModeNonGere`) ; ce fichier en tire les deux gestes de la commande :
+// (`sqlfrag.SQLModeNonGere`) ; ce fichier en tire les deux gestes de la commande :
 //
 //   - `--one <id>` sur un tel match REFUSE, avec un message clair (la forme interne appelee par le
 //     parent n'y arrive jamais : la selection les a ecartes) ;
@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -29,7 +29,7 @@ import (
 // pas classer.
 func matchNonGere(ctx context.Context, db *sql.DB, matchID string) (nonGere, connu bool, err error) {
 	row := db.QueryRowContext(ctx,
-		`SELECT `+analysis.SQLModeNonGere("")+` FROM match_registry WHERE match_id = ?`, matchID)
+		`SELECT `+sqlfrag.SQLModeNonGere("")+` FROM match_registry WHERE match_id = ?`, matchID)
 	if err := row.Scan(&nonGere); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, false, nil
@@ -42,7 +42,7 @@ func matchNonGere(ctx context.Context, db *sql.DB, matchID string) (nonGere, con
 // idsNonGeres liste les matchs du registre dont le mode n'est pas gere.
 func idsNonGeres(ctx context.Context, db *sql.DB) ([]string, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT match_id FROM match_registry WHERE `+analysis.SQLModeNonGere("")+` ORDER BY match_id`)
+		`SELECT match_id FROM match_registry WHERE `+sqlfrag.SQLModeNonGere("")+` ORDER BY match_id`)
 	if err != nil {
 		return nil, fmt.Errorf("registre des matchs (modes non geres): %w", err)
 	}

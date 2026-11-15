@@ -24,9 +24,9 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // mrFetcherEspion compte ses appels et rend ce qu'on lui dit de rendre.

@@ -1,0 +1,152 @@
+film	lecture_libfilmshell	duree_ms	chunks	build	mode	niveau	joueurs
+00162144	lu	840	25	HI_1_13_0	Slayer	fo08_wetland	10
+0215fe6b	lu	1300	37	HI_1_13_0	Slayer	fo08_wetland	10
+03b7bbb6	lu	921	25	HI_1_13_0	Slayer	sgh_streets	8
+04c59fb1	refuse		51				
+0646b2ee	refuse		26				
+07aa428d	lu	1054	28	HI_1_13_0	Slayer	ctf_illusion	8
+090139ed	lu	865	29	HI_1_13_0	CaptureTheFlag	fo08_wetland	8
+0ae3b0a1	lu	1006	33	HI_1_13_0	Slayer	forest	12
+0d094c9b	lu	1078	32	HI_1_13_0	Slayer	fo08_wetland	8
+0ed3d6db	refuse		28				
+108a4e4c	refuse		29				
+11de8353	refuse		33				
+147ffd4d	lu	905	30	HI_1_13_0	Slayer	ctf_bazaar	12
+15d8d850	lu	1078	33	HI_1_13_0	Slayer	fo05_desert	14
+189d1c23	lu	1022	31	HI_1_13_0	Slayer	ctf_bazaar	10
+1a58b3ef	lu	1228	35	HI_1_13_0	Slayer	ctf_aquarius	8
+1b73b3f9	lu	1021	29	HI_1_13_0	Slayer	sgh_crystalcaves	11
+1c5c10cc	refuse		39				
+1eedd3c8	lu	928	29	HI_1_13_0	Slayer	fo08_wetland	10
+20fd2c23	lu	1299	39	HI_1_13_0	Slayer	chasm	14
+221dd082	lu	991	30	HI_1_12_0	Slayer	fo09_academy	8
+241312d1	lu	787	23	HI_1_13_0	Slayer	sgh_streets	8
+25c36f16	lu	67	5	HI_1_13_0	Oddball	fo13_frost	8
+282ced4c	lu	762	24	HI_1_13_0	Slayer	sgh_interlock	8
+29a3ef4c	lu	1279	38	HI_1_13_0	KingOfTheHill	sgh_interlock	8
+2b50122a	lu	914	28	HI_1_13_0	Slayer	catalyst	8
+2db2ff27	lu	903	27	HI_1_13_0	Slayer	forest	8
+2f11f49a	lu	933	30	HI_1_13_0	Slayer	chasm	9
+30a23d15	lu	877	28	HI_1_13_0	Slayer	fo11_blank	8
+3274c610	refuse		44				
+338ce76a	refuse		17				
+350f915f	lu	877	24	HI_1_13_0	Slayer	ctf_illusion	8
+3685373c	lu	417	13	HI_1_12_0	CaptureTheFlag	fo09_academy	8
+381230b2	lu	629	21	HI_1_13_0	KingOfTheHill	ctf_forbidden	9
+396cfc92	lu	1107	29	HI_1_13_0	Strongholds	ctf_illusion	10
+3b451a1e	lu	807	28	HI_1_13_0	Slayer	sgh_interlock	8
+3d58eb37	lu	840	22	HI_1_13_0	Slayer	fo09_academy	13
+3f0a1fcb	lu	1150	37	HI_1_13_0	KingOfTheHill	sgh_blueprint	8
+407623fc	refuse		31				
+4286486f	lu	1015	25	HI_1_13_0	CaptureTheFlag	fo08_wetland	8
+445a4f23	refuse		41				
+46207ef4	lu	976	34	HI_1_13_0	Slayer	fo05_desert	8
+48068e31	refuse		27				
+49e6248f	lu	881	30	HI_1_13_0	Slayer	ctf_illusion	8
+4b579469	refuse		27				
+4c9e4014	lu	748	25	HI_1_13_0	Slayer	sgh_crystalcaves	9
+4e7cb975	lu	788	25	HI_1_13_0	Slayer	sgh_blueprint	8
+4f77afc1	lu	2987	63	HI_1_13_0	Other	fo05_desert	37
+50cd2d8c	lu	610	25	HI_1_13_0	Slayer	fo11_blank	10
+51d3ab9f	lu	1194	39	HI_1_13_0	Slayer	va_launchsite	8
+53a3768e	lu	1013	30	HI_1_13_0	Slayer	ctf_bazaar	8
+54c4b58d	refuse		27				
+566501c2	lu	729	32	HI_1_13_0	Slayer	fo11_blank	8
+57a5df63	lu	926	34	HI_1_13_0	CaptureTheFlag	fo08_wetland	10
+59680177	lu	1277	34	HI_1_13_0	Strongholds	sgh_interlock	8
+5b2a96e6	lu	1308	33	HI_1_13_0	Slayer	sgh_crystalcaves	10
+5d1df471	lu	1104	30	HI_1_13_0	Slayer	fo08_wetland	11
+5f2f5ae8	lu	1128	30	HI_1_13_0	Slayer	fo11_blank	8
+603479b1	lu	1032	29	HI_1_13_0	Slayer	ridgeline	8
+61a0b5d2	lu	874	22	HI_1_13_0	KingOfTheHill	fo11_blank	10
+63d6f727	lu	1033	29	HI_1_13_0	Slayer	fo05_desert	8
+6544f3fe	lu	1466	39	HI_1_13_0	KingOfTheHill	fo09_academy	8
+672641d0	lu	5667	67	HI_1_13_0	Oddball	sgh_interlock	8
+68911f6f	lu	1269	37	HI_1_13_0	Slayer	fo11_blank	9
+69e2b483	lu	1165	36	HI_1_13_0	CaptureTheFlag	fo11_blank	8
+6bbad606	lu	1569	40	HI_1_13_0	Strongholds	sgh_streets	8
+6ceaf3b8	lu	1893	37	HI_1_12_0	Slayer	fo09_academy	28
+6e734cbb	lu	1064	32	HI_1_13_0	KingOfTheHill	fo11_blank	8
+70a1c6c6	lu	797	25	HI_1_13_0	CaptureTheFlag	fo08_wetland	10
+72b0a25e	lu	1091	26	HI_1_13_0	Slayer	fo05_desert	10
+745f750c	lu	57	5	HI_1_13_0	CaptureTheFlag	ctf_aquarius	8
+760070bd	lu	970	29	HI_1_13_0	Slayer	fo08_wetland	8
+77e41773	lu	752	31	HI_1_12_0	CaptureTheFlag	ctf_aquarius	8
+79197931	lu	842	32	HI_1_13_0	KingOfTheHill	fo13_frost	8
+7a91adff	lu	966	28	HI_1_13_0	KingOfTheHill	sgh_blueprint	8
+7cc59cc5	lu	3472	53	HI_1_13_0	Oddball	fo09_academy	8
+7e01d199	lu	1305	39	HI_1_13_0	Strongholds	sgh_interlock	8
+801922d4	lu	1382	34	HI_1_13_0	Slayer	fo05_desert	9
+81c0fc99	lu	662	20	HI_1_13_0	CaptureTheFlag	catalyst	8
+8300d0ec	refuse		41				
+8439a6b8	lu	3176	43	HI_1_13_0	Oddball	fo09_academy	8
+85fed352	lu	957	25	HI_1_13_0	Slayer	sgh_crystalcaves	9
+879a4dba	lu	1305	24	HI_1_13_0	Other	fo05_desert	26
+895edeba	lu	854	26	HI_1_13_0	Slayer	fo11_blank	10
+8b1f15cb	lu	5335	41	HI_1_13_0	CaptureTheFlag	fo08_wetland	33
+8d1ae527	lu	1094	33	HI_1_13_0	CaptureTheFlag	fo03_space	9
+8ebab517	lu	949	28	HI_1_13_0	Slayer	ridgeline	8
+90e9299c	refuse		41				
+92d81b6d	lu	1011	32	HI_1_13_0	Slayer	catalyst	8
+94e3d514	lu	1096	33	HI_1_13_0	Slayer	fo11_blank	8
+972cdbc6	lu	1074	32	HI_1_12_0	Slayer	fo11_blank	8
+997df431	lu	990	27	HI_1_13_0	Slayer	sgh_streets	8
+9ba7c3cd	lu	767	24	HI_1_13_0	Slayer	ctf_aquarius	10
+9dfd3c24	refuse		33				
+a01e98ec	lu	766	22	HI_1_13_0	CaptureTheFlag	fo09_academy	8
+a1c0fc5b	lu	516	17	HI_1_13_0	KingOfTheHill	fo11_blank	8
+a2c761c7	lu	1072	32	HI_1_13_0	Slayer	fo05_desert	12
+a46cd8dc	lu	892	29	HI_1_13_0	Slayer	fo13_frost	8
+a7a2fce3	lu	837	26	HI_1_13_0	Slayer	ctf_bazaar	8
+aa00a8cd	lu	993	30	HI_1_12_0	Slayer	fo11_blank	8
+ab4eef5a	lu	1086	31	HI_1_13_0	Slayer	ctf_bazaar	10
+ac919b39	lu	642	20	HI_1_12_0	KingOfTheHill	fo09_academy	15
+ad5876aa	lu	1188	35	HI_1_13_0	Slayer	ctf_forbidden	9
+aef92f0d	lu	894	26	HI_1_13_0	Slayer	ctf_aquarius	9
+b0b00769	refuse		41				
+b1f2f721	lu	794	24	HI_1_13_0	Slayer	forest	9
+b439b24d	lu	1082	31	HI_1_13_0	Slayer	catalyst	8
+b5d130ad	lu	1142	31	HI_1_13_0	Strongholds	fo11_blank	15
+b81a19f6	refuse		24				
+b8ee2bbc	lu	1033	30	HI_1_13_0	Slayer	ctf_forbidden	8
+bae3c18b	refuse		33				
+bd36ab0d	lu	1053	29	HI_1_13_0	Slayer	fo05_desert	8
+beb549bf	lu	870	24	HI_1_13_0	Slayer	sgh_blueprint	8
+c018dcfd	lu	1095	32	HI_1_13_0	Slayer	fo13_frost	8
+c25f8e7c	lu	1220	35	HI_1_13_0	Slayer	forest	8
+c3fe1007	lu	1215	36	HI_1_13_0	Slayer	fo08_wetland	8
+c6238946	lu	1344	37	HI_1_13_0	KingOfTheHill	sgh_blueprint	8
+c7843f15	lu	713	23	HI_1_13_0	Slayer	sgh_blueprint	10
+c9bbb17e	lu	1430	41	HI_1_13_0	CaptureTheFlag	ctf_aquarius	8
+cbbd7404	lu	1100	32	HI_1_13_0	Slayer	chasm	8
+cdaf8657	lu	536	18	HI_1_13_0	CaptureTheFlag	ctf_aquarius	8
+cf3a088b	lu	1431	36	HI_1_13_0	Slayer	ctf_illusion	11
+d11d78d1	lu	730	24	HI_1_13_0	Slayer	fo11_blank	8
+d2ae5da4	lu	461	16	HI_1_13_0	CaptureTheFlag	fo11_blank	8
+d39926cb	lu	893	26	HI_1_13_0	Strongholds	fo05_desert	12
+d4ebdd5d	lu	1007	25	HI_1_13_0	Slayer	sgh_streets	9
+d6a9a42e	lu	1056	31	HI_1_13_0	Slayer	ridgeline	11
+d8c7d880	refuse		52				
+d990c798	lu	823	24	HI_1_13_0	Oddball	sgh_interlock	8
+dae9cc00	lu	1230	31	HI_1_12_0	Slayer	fo05_desert	8
+dcf44b35	lu	1502	35	HI_1_13_0	CaptureTheFlag	fo09_academy	8
+de7c1986	lu	1453	41	HI_1_13_0	Slayer	fo05_desert	8
+e09424d6	refuse		25				
+e221fbb7	lu	904	25	HI_1_13_0	Slayer	sgh_interlock	8
+e3c2cabe	lu	1070	30	HI_1_13_0	Slayer	fo11_blank	13
+e5f54252	lu	971	30	HI_1_13_0	Slayer	sgh_interlock	8
+e71f9bae	lu	1025	32	HI_1_13_0	Slayer	fo11_blank	8
+e8d384c7	lu	908	26	HI_1_13_0	CaptureTheFlag	chasm	10
+eabdb166	lu	1275	35	HI_1_13_0	Slayer	ridgeline	8
+ec62cb21	lu	1061	28	HI_1_13_0	Slayer	ctf_illusion	8
+eea92d4e	refuse		30				
+f031fe5e	lu	1199	29	HI_1_13_0	Slayer	fo09_academy	8
+f144db25	refuse		36				
+f2e14485	lu	739	25	HI_1_13_0	Slayer	forest	8
+f413fdb9	lu	758	24	HI_1_13_0	Slayer	ctf_forbidden	9
+f59c9332	lu	1427	41	HI_1_13_0	Slayer	catalyst	10
+f7914dde	lu	778	25	HI_1_13_0	Slayer	fo03_space	9
+f9873569	lu	906	27	HI_1_13_0	Slayer	fo09_academy	9
+fb71123d	lu	1021	28	HI_1_13_0	Slayer	ctf_illusion	8
+fccc61cd	lu	1206	31	HI_1_13_0	Slayer	va_launchsite	9
+fe7a0500	refuse		41				

@@ -34,7 +34,7 @@ import (
 
 	"levelup/go-api/internal/filmrun"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // childFlag : le drapeau qui fait d'un processus l'ENFANT d'une passe.

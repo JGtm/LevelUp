@@ -72,25 +72,25 @@ describe('AppShell — chrome selon la capacité', () => {
     expect(progress.parentElement).not.toContainElement(screen.getByTestId('asset-docked'))
   })
 
-  it('capacité vraie : les toasts restent à gauche du volet ancré, contre le bord quand il est fermé', () => {
+  it('capacité vraie : les toasts restent à gauche du volet épinglé, contre le bord quand il est fermé ou superposé', () => {
     setCapabilities(true)
     renderWithProviders(<AppShell />)
     expect(screen.getByTestId('toaster')).toHaveAttribute('data-offset', JSON.stringify({ top: 16, right: 16 }))
   })
 
-  it('capacité vraie : le décalage des toasts suit la largeur du volet ouvert', () => {
+  it('capacité vraie : le décalage des toasts suit la largeur du volet ouvert et épinglé', () => {
     mockDockedInset = 420
     setCapabilities(true)
     renderWithProviders(<AppShell />)
     expect(screen.getByTestId('toaster')).toHaveAttribute('data-offset', JSON.stringify({ top: 16, right: 436 }))
   })
 
-  it('capacité vraie : le volet des référentiels est un frère du contenu dans la rangée, qui le pousse', () => {
+  it('capacité vraie : le volet des référentiels est un frère du contenu dans la rangée, à sa droite', () => {
     setCapabilities(true)
     renderWithProviders(<AppShell />)
     const docked = screen.getByTestId('asset-docked')
     const row = docked.parentElement as HTMLElement
-    // Même rangée horizontale que la barre latérale et le contenu, à droite du contenu : rien ne se superpose.
+    // Même rangée horizontale que la barre latérale et le contenu, à droite du contenu : sa fente y prend sa place.
     expect(row.className).toContain('flex-row')
     const kids = Array.from(row.children)
     expect(kids.indexOf(screen.getByTestId('sidebar-nav'))).toBeLessThan(

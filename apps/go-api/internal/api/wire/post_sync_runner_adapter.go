@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// postSyncRunnerAdapter adapte la closure handlers.PostSyncDeltaHook au
+// postSyncRunnerAdapter adapte la closure BuildPostSyncDeltaHook au
 // contrat port.PostSyncRunner.
 type postSyncRunnerAdapter struct {
 	reg *ServiceRegistry

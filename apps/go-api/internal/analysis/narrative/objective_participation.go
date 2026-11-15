@@ -1,28 +1,21 @@
 package narrative
 
-// objective_participation.go — index de participation aux objectifs PAR OPPORTUNITÉ.
+// objective_participation.go — les TABLES du noyau d'objectif : familles, poids d'action, colonnes
+// de durée, repères P80, et l'indice r_f par famille de mode (objectiveFamilyRawScore).
 //
-// Remplace, pour l'axe « Objectifs » du profil de participation, l'ancienne somme
-// PSA catégorie 'objective' diluée par le nombre TOTAL de matchs (Slayer inclus).
-// L'index est construit sur les colonnes de `match_objective_stats_latest`
-// (shared_matches_v2) : sous-score r_f par famille de mode calculé sur les SEULS
-// matchs de la famille, agrégé pondéré par n_f, clampé à ObjectiveIndexClip.
+// Les colonnes sont celles de `match_objective_stats_latest` (shared_matches_v2). Pour une famille f
+// et un match (ObjectiveFamilyStats d'un match) :
 //
-// Pour une famille f et un scope de matchs (session, fenêtre, escouade ou 1 match) :
+//	actions_f = Σ_col (w_col × stat_col)                (ObjectiveActionPoints)
+//	hold_f    = Σ durées_f / time_played_f              (part du temps sur l'objectif)
+//	r_f       = 0.65×actions_f/P80_actions + 0.35×hold_f/P80_hold
+//	            (extraction : pas de durée → r_f = actions_f/P80_actions)
 //
-//	actions_f = Σ_col (w_col × Σ stat_col) / n_f      (cadence pondérée par match)
-//	hold_f    = Σ durées_f / Σ time_played_f          (part du temps sur l'objectif)
-//	r_f       = min(1.25, 0.65×actions_f/P80_actions + 0.35×hold_f/P80_hold)
-//	            (extraction : pas de durée → r_f = min(1.25, actions_f/P80_actions))
-//	raw       = Σ_f (n_f × r_f) / n_obj               (n_obj = Σ_f n_f)
+// r_f ne s'affiche plus tel quel : il sert de rang brut, non écrêté, à la note de performance à
+// objectif (objectiveblend). L'axe « Objectif » des radars et des profils est la note d'objectif du
+// match, ObjectiveScoreOf (objective_match_score.go), qui repose sur la part de l'équipe.
 //
-// Un joueur au P80 de sa famille marque r_f = 1.0 → 80/100 après normalisation par
-// ObjectiveIndexThreshold (idiome intensif P80×1.25, cf. ScorePerMinuteP80).
-// n_obj == 0 → l'axe est RETIRÉ par le caller (pas de 0 trompeur).
-//
-// AUCUN I/O ici : les agrégats (sommes par colonne, durées, time_played) sont fournis
-// par la couche repo (platform/duckdb) ou service ; la normalisation 0..100 finale
-// reste ComputeParticipationProfile (réutilisée, pas dupliquée).
+// AUCUN I/O ici : les agrégats sont fournis par la couche repo (platform/duckdb) ou service.
 
 // ObjectiveFamily identifie une famille de modes à objectif de
 // match_objective_stats. Le split zones_koth / zones_strongholds se fait par ligne
@@ -54,8 +47,8 @@ func AllObjectiveFamilies() []ObjectiveFamily {
 // Seule colonne EXPORTÉE : son traitement particulier doit être nommable depuis les
 // producteurs d'agrégats (service, repo). Les autres noms de colonnes n'ont pas à
 // franchir la frontière du package — leur cohérence avec les producteurs est
-// verrouillée par garde-rail (TestObjectiveIndexRepo_WeightKeysSubsetOfSchema,
-// TestObjectiveIndexInputFromScoreboard_KeysMatchWeights).
+// verrouillée par garde-rail (TestObjectiveFamilySQL_WeightKeysSubsetOfSchema,
+// TestObjectiveColumnValues_CoverFamilyTables).
 const ObjectiveColKillsAsVIP = "kills_as_vip"
 
 // Noms de colonnes de match_objective_stats consommés par les deux tables
@@ -167,7 +160,7 @@ var ObjectiveFamilyActionWeights = map[ObjectiveFamily]map[string]float64{
 // ObjectiveFamilyHoldColumns : colonnes de durée (secondes) du terme hold_f par
 // famille (décision 8). Extraction : aucune durée → pas de terme hold.
 // VIP : time_as_vip_seconds est normalisé par sélection (÷ max(1, Σ selections))
-// dans ComputeObjectiveIndex, pas ici.
+// dans objectiveFamilyHold, pas ici.
 var ObjectiveFamilyHoldColumns = map[ObjectiveFamily][]string{
 	FamilyCTF:              {objectiveColTimeAsFlagCarrier},
 	FamilyZonesKOTH:        {objectiveColTimeInZones},
@@ -177,15 +170,6 @@ var ObjectiveFamilyHoldColumns = map[ObjectiveFamily][]string{
 	FamilyExtraction:       {},
 	FamilyVIP:              {objectiveColTimeAsVip},
 }
-
-// ObjectiveIndexClip est le plafond du sous-score r_f et de l'index brut : +25 %
-// au-dessus du repère P80 sature (idiome ScorePerMinuteP80 × 1.25).
-const ObjectiveIndexClip = 1.25
-
-// ObjectiveIndexThreshold est le seuil à passer à ParticipationThresholds.Objective
-// quand l'axe est alimenté par ComputeObjectiveIndex : un joueur au P80 marque
-// 80/100, le clip 1.25 marque 100.
-const ObjectiveIndexThreshold = ObjectiveIndexClip
 
 // Pondérations relatives des deux termes du sous-score r_f (familles avec durée).
 const (
@@ -201,7 +185,7 @@ type objectiveFamilyCalibration struct {
 }
 
 // objectiveCalibrations : repères P80 par famille, mesurés localement le 2026-07-26
-// (diag_q sur match_objective_stats_latest ⋈ match_participants, population
+// (requête sur match_objective_stats_latest ⋈ match_participants, population
 // match-joueur, time_played_seconds > 30, hors bots xuid LIKE 'bid(%').
 // actions = Σ w_col × col par ligne ; hold = durée_f / time_played_seconds par ligne.
 //
@@ -251,41 +235,17 @@ type ObjectiveFamilyStats struct {
 	TimesSelectedAsVIP float64
 }
 
-// ObjectiveIndexInput : agrégats par famille pour un scope donné.
-type ObjectiveIndexInput map[ObjectiveFamily]ObjectiveFamilyStats
-
-// ComputeObjectiveIndex calcule l'index brut (raw ∈ [0, ObjectiveIndexClip]) et
-// n_obj, le nombre de matchs à objectif du scope. n_obj == 0 ⇒ (0, 0) : le caller
-// RETIRE l'axe Objectif (patron dropUncomputableRadarAxes / skipSurvivalAxis).
-// Le raw se normalise en 0..100 via ComputeParticipationProfile avec
-// Thresholds.Objective = ObjectiveIndexThreshold.
-func ComputeObjectiveIndex(in ObjectiveIndexInput) (float64, int) {
-	var weighted float64
-	var nObj int
-	for _, fam := range AllObjectiveFamilies() {
-		st, ok := in[fam]
-		if !ok || st.Matches <= 0 {
-			continue
-		}
-		r := objectiveFamilySubScore(fam, st)
-		weighted += float64(st.Matches) * r
-		nObj += st.Matches
-	}
-	if nObj == 0 {
-		return 0, 0
-	}
-	return weighted / float64(nObj), nObj
-}
-
-// objectiveFamilySubScore calcule r_f ∈ [0, ObjectiveIndexClip] pour une famille.
-func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
-	cal := objectiveCalibrations[fam]
-	if cal.actionsP80 <= 0 {
+// ObjectiveActionPoints calcule actions_f : la cadence d'actions pondérée par les
+// ObjectiveFamilyActionWeights de la famille, par match (Σ_col w_col × Σ stat_col / n_f ;
+// kills_as_vip rapporté aux sélections, pas à n_f). Sur un agrégat d'UN match
+// (Matches == 1) c'est la somme pondérée des actions de ce match. Une famille inconnue
+// ou Matches <= 0 rend 0. Source unique du terme « actions » de r_f ET de la part de
+// l'équipe (ComputeObjectiveTeamShare).
+func ObjectiveActionPoints(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
+	if st.Matches <= 0 {
 		return 0
 	}
 	n := float64(st.Matches)
-
-	// actions_f : cadence pondérée par match ; kills_as_vip rapporté aux sélections.
 	var actions float64
 	for col, w := range ObjectiveFamilyActionWeights[fam] {
 		v := st.ColumnSums[col]
@@ -298,6 +258,18 @@ func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float
 		}
 		actions += w * v / n
 	}
+	return actions
+}
+
+// objectiveFamilyRawScore calcule r_f SANS écrêtage (>= 0) : l'indice qui sert à CLASSER
+// des matchs entre eux, où le plafond de l'affichage mettrait à égalité tous les bons
+// matchs.
+func objectiveFamilyRawScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
+	cal := objectiveCalibrations[fam]
+	if cal.actionsP80 <= 0 {
+		return 0
+	}
+	actions := ObjectiveActionPoints(fam, st)
 
 	r := actions / cal.actionsP80
 	if cal.holdP80 > 0 {
@@ -305,13 +277,7 @@ func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float
 		r = objectiveActionsTermWeight*actions/cal.actionsP80 +
 			objectiveHoldTermWeight*hold/cal.holdP80
 	}
-	if r > ObjectiveIndexClip {
-		r = ObjectiveIndexClip
-	}
-	if r < 0 {
-		r = 0
-	}
-	return r
+	return max(r, 0)
 }
 
 // objectiveFamilyHold calcule hold_f ∈ [0, ~1] : part du temps de jeu passée sur

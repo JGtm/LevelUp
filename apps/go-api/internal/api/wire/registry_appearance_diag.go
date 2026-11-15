@@ -11,12 +11,12 @@ package wire
 import (
 	"context"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/service"
 )
 
@@ -43,7 +43,7 @@ func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagServ
 			return r.cfg.LoadPlayers(ts)
 		},
 		ResolveServedReader: func(ctx context.Context, playerSlug, ts string) (service.CareerServedReader, error) {
-			pdb, err := config.ResolvePlayer(ctx, r.cfg, playerSlug, ts)
+			pdb, err := playerresolve.ResolvePlayer(ctx, r.cfg, playerSlug, ts)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +59,7 @@ func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagServ
 			}
 			return res.Tokens.SpartanToken, res.Tokens.ClearanceToken, nil
 		},
-		NewFetcher: service.NewHaloAppearanceFetcher(appearanceDiagRPS),
+		NewFetcher: newHaloAppearanceFetcher(appearanceDiagRPS),
 		HasSpartanCustomizer: func(ts string) bool {
 			desc := titlePkg.DefaultRegistry().Get(ts)
 			return desc != nil && desc.HasCapability(titlePkg.CapSpartanCustomizer)

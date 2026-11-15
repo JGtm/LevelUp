@@ -8,7 +8,7 @@ package main
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // TestCollecteurRetientLaValeurDesEtapesChaine — LE COMPTE NE DIT RIEN D'UNE CHAINE :

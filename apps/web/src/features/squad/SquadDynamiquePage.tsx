@@ -11,6 +11,7 @@
  * Multi-titres : strings UI via getSquadText ; SquadEngagementSection gardée
  * derrière FeatureGate capability="engagement".
  */
+import { withoutNullRows } from './withoutNullRows'
 import { useMemo } from 'react'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
@@ -29,6 +30,8 @@ import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useCapability } from '@/lib/capabilities/capabilities'
+import { SquadLeadShareCard } from './SquadLeadShareCard'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
 
 export function SquadDynamiquePage() {
@@ -36,6 +39,8 @@ export function SquadDynamiquePage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const performanceSeries = pageData?.performance_series
+  // La Mainmise vient du score du film : sa carte n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
   // Dérivés MÉMOÏSÉS : ils descendent en props dans des ChartCard, qui
   // reconstruisent leur option ECharts (et rejouent leur animation d'entrée) dès
   // qu'une prop change d'identité, même à valeur égale. Les objets/tableaux
@@ -45,8 +50,8 @@ export function SquadDynamiquePage() {
     () => pageData?.intensity_profile ?? { options: [], rows: {} },
     [pageData?.intensity_profile],
   )
-  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
-  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  const perfSeriesByPlayer = useMemo(() => withoutNullRows(performanceSeries), [performanceSeries])
+  // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des séries par joueur.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
@@ -130,6 +135,9 @@ export function SquadDynamiquePage() {
         t={t}
         locale={locale}
       />
+
+      {/* Mainmise, match par match : apres Vies nettes / Ecart cumule, avant Engagement. */}
+      {hasFilmDecoder && <SquadLeadShareCard series={pageData?.lead_share_series} />}
 
       <EngagementRow
         playerSlug={playerSlug}

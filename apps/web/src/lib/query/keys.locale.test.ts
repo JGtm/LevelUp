@@ -65,6 +65,7 @@ describe('query keys des réponses localisées par le serveur (lot B, étape 6)'
     assetMaps: (l) => queryKeys.assetMaps(T, 'q', l),
     assetWeapons: (l) => queryKeys.assetWeapons(T, 'q', l),
     assetMedals: (l) => queryKeys.assetMedals(T, 'q', l),
+    killSourceIcons: (l) => queryKeys.killSourceIcons(T, l),
     progressionMilestones: (l) => queryKeys.progressionMilestones(P, T, l),
     progressionProfile: (l) => queryKeys.progressionProfile(P, T, l),
     'playerProfile.profile': (l) => queryKeys.playerProfile.profile(P, T, l, 30),
@@ -158,6 +159,8 @@ describe('query keys des noms de jeu servis dans la langue de la requête (item 
     engagementTimeseries: (l) => queryKeys.engagementTimeseries(P, T, 'h', 50, l),
     engagementSquadSession: (l) => queryKeys.engagementSquadSession(P, T, ['m'], ['x'], l),
     palmaresRelations: (l) => queryKeys.palmaresRelations(P, T, l),
+    palmaresRelationsPage: (l) => queryKeys.palmaresRelationsPage(P, T, l, 'h'),
+    palmaresRelationsMoments: (l) => queryKeys.palmaresRelationsMoments(P, T, l, 'h'),
   }
 
   for (const [nom, fabrique] of Object.entries(fabriques)) {
@@ -216,6 +219,8 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   homeFavorites: () => queryKeys.homeFavorites(PL, TI, L),
   seasonPass: () => queryKeys.seasonPass(PL, TI, L),
   palmaresRelations: () => queryKeys.palmaresRelations(PL, TI, L),
+  palmaresRelationsPage: () => queryKeys.palmaresRelationsPage(PL, TI, L, 'h'),
+  palmaresRelationsMoments: () => queryKeys.palmaresRelationsMoments(PL, TI, L, 'h'),
   teammates: () => queryKeys.teammates(PL, TI, 'h', [], L),
   teammatesTop: () => queryKeys.teammatesTop(PL, TI, L),
   tacticalMaps: () => queryKeys.tacticalMaps(PL, TI, 'h', L),
@@ -237,6 +242,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   assetMaps: () => queryKeys.assetMaps(TI, 'q', L),
   assetWeapons: () => queryKeys.assetWeapons(TI, 'q', L),
   assetMedals: () => queryKeys.assetMedals(TI, 'q', L),
+  killSourceIcons: () => queryKeys.killSourceIcons(TI, L),
   progressionMilestones: () => queryKeys.progressionMilestones(PL, TI, L),
   progressionProfile: () => queryKeys.progressionProfile(PL, TI, L),
   progressionPatterns: () => queryKeys.progressionPatterns(PL, TI, L),
@@ -262,6 +268,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   sessionContext: 'contexte de session (identifiants)',
   health: "état du serveur",
   settings: "réglages d'instance (valeurs)",
+  settingsBackupStatus: 'état du scheduler de sauvegarde (dates, nombres, codes fixes ; aucun libellé)',
   filmArchive: "occupation de l'archive des films (nombres et chemins, aucun libellé)",
   desktopStatus: "état vivant de l'intégration au poste (un booléen : le jeu tourne, aucun libellé)",
   dataStatus: 'sauvegarde et mémoire du poste (nombres, dates et codes fixes ; aucun libellé)',
@@ -274,6 +281,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   feedVersion: 'compteur de version du flux média',
   // Identifiants, jobs, statuts.
   playerTitles: 'statut de synchronisation par titre',
+  playerSyncStatus: "état de la synchronisation d'un joueur (booléen, nombre de secondes, statut et code d'un job ; aucun libellé)",
   deviceFlow: "état d'un flux d'authentification",
   job: "état d'une tâche",
   playerFriends: 'gamertags des amis',

@@ -23,7 +23,7 @@ import (
 func ssoAttempt() *auth.Attempt {
 	return &auth.Attempt{
 		Gamertag:             "InconnuAuBataillon",
-		XUID:                 "2533274796795729",
+		XUID:                 "2676423891261051",
 		MicrosoftAccessToken: "ms-access-token",
 		OAuthRefreshToken:    "refresh-token",
 		XSTSRTAToken:         "xsts-rta-token",

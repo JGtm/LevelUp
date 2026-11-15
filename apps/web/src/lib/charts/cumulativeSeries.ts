@@ -19,7 +19,7 @@ export function finiteOrNull(v: number | null | undefined): number | null {
   return v != null && Number.isFinite(v) ? v : null
 }
 
-export interface CumulativePoint {
+export interface CumulativeSeriesPoint {
   /** Contribution du point (arrondie 2 déc.), `null` si absente/non-finie (D5). */
   value: number | null
   /** Cumul signé courant (reporte la dernière valeur si `value === null`). */
@@ -31,28 +31,11 @@ export interface CumulativePoint {
  * courant, reporté tel quel quand une contribution est absente (D5). Valeurs
  * arrondies à 2 décimales.
  */
-export function cumulativeSigned(values: Array<number | null | undefined>): CumulativePoint[] {
+export function cumulativeSigned(values: Array<number | null | undefined>): CumulativeSeriesPoint[] {
   let carryForward = 0
   return values.map((raw) => {
     const value = finiteOrNull(raw)
     if (value != null) carryForward = round2(carryForward + value)
     return { value: value != null ? round2(value) : null, cumulative: carryForward }
   })
-}
-
-/**
- * Moyenne des contributions valides (non-null, finies) — `null` si aucune.
- * Sert les pastilles KPI « moyenne par match » des charts cumulés.
- */
-export function meanOfValid(values: Array<number | null | undefined>): number | null {
-  let sum = 0
-  let count = 0
-  for (const raw of values) {
-    const v = finiteOrNull(raw)
-    if (v != null) {
-      sum += v
-      count += 1
-    }
-  }
-  return count === 0 ? null : sum / count
 }

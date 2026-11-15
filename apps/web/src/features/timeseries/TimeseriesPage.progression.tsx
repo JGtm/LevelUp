@@ -12,23 +12,21 @@
  * vient du film décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo } from 'react'
-import { type ColumnDef } from '@tanstack/react-table'
 import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
-import { tokenCssVar } from '@/lib/accessibility'
-import { formatWinProb } from '@/lib/winProbCategory'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import {
   TimeseriesPerformanceTrend,
-  TimeseriesPerMinuteTrend,
   TimeseriesSpreeHeadshots,
   TimeseriesRankScore,
   TimeseriesSkillRankPerformance,
   TimeseriesCareerXP,
 } from './TimeseriesFormCharts'
+import { TimeseriesPerMinuteTrend, type PerMinuteTrendLabels } from './TimeseriesPerMinuteTrend'
+import { paceHasDamage } from './timeseriesPerMinute.logic'
 import {
   TimeseriesEfficiency,
   TimeseriesIntensityProfile,
@@ -39,8 +37,8 @@ import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
-import { NUMERIC_SORT } from '@/features/explorer/explorerMatchesClientSort'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -75,34 +73,35 @@ export function TimeseriesProgressionTab({
   filterContextHash,
   explorerMatchRows,
 }: TimeseriesProgressionTabProps) {
-  const hasExpectedWinProb = useCapability('expected_win_prob')
-  // Colonne « Prob. vic. » (expected_win_prob, LUSR v2) injectée après « Résultat »
-  // dans le tableau historique — gatée par capability expected_win_prob (remisée).
-  const winProbColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
-    () => hasExpectedWinProb ? [
-      {
-        id: 'expected_win_prob',
-        accessorFn: (r) => r.expected_win_prob ?? undefined,
-        ...NUMERIC_SORT,
-        header: t('timeseries.progression.col_win_prob'),
-        cell: (ctx) => {
-          const v = ctx.row.original.expected_win_prob
-          if (v == null) return <span className="text-muted-foreground">-</span>
-          const color = v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
-          return (
-            <span className="font-mono tabular-nums" style={{ color }}>
-              {formatWinProb(v)}
-            </span>
-          )
-        },
-      },
-    ] : [],
-    [t, hasExpectedWinProb],
-  )
   const emptyMsg = t('timeseries.empty.no_data_description')
   // « Premier frag / première mort » : série solo servie par le payload de page —
   // même scope (filtres L2) que tous les autres blocs Progression.
   const firstBlood = useMemo(() => toFirstBloodSeries(data.first_blood), [data.first_blood])
+  // « Stats par minute » : les dégâts par minute s'ajoutent en courbes (axe de droite) quand les matchs
+  // en portent ; le titre les nomme alors, avec une aide sur le calcul. Les dégâts subis sont retirés
+  // d'un titre qui ne les fournit pas (Halo 5).
+  const withDamageTaken = useProvidesDamageTaken()
+  const matchRows = data.match_rows
+  const perMinuteHasDamage = useMemo(() => paceHasDamage(matchRows ?? [], withDamageTaken), [matchRows, withDamageTaken])
+  const killsLabel = fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'
+  const deathsLabel = fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'
+  const assistsLabel = fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'
+  const damageDealtLabel = t('timeseries.progression.damage_dealt_per_minute')
+  const damageTakenLabel = t('timeseries.progression.damage_taken_per_minute')
+  const damageAxis = t('timeseries.progression.per_minute_damage_axis')
+  const perMinuteSuffix = t('timeseries.progression.per_minute_suffix')
+  const perMinuteLabels = useMemo<PerMinuteTrendLabels>(
+    () => ({
+      kills: killsLabel,
+      deaths: deathsLabel,
+      assists: assistsLabel,
+      damageDealt: damageDealtLabel,
+      damageTaken: damageTakenLabel,
+      damageAxis,
+      suffix: perMinuteSuffix,
+    }),
+    [killsLabel, deathsLabel, assistsLabel, damageDealtLabel, damageTakenLabel, damageAxis, perMinuteSuffix],
+  )
   // Charts dépendant du rating de skill (CSR/LUSR) : masqués pour un titre sans
   // système de rang. NO-OP halo_infinite (déclare 'ranked' + 'lusr'). RankScore
   // (score + placement de match) reste générique. Les deux hooks sont appelés
@@ -134,13 +133,20 @@ export function TimeseriesProgressionTab({
         />
 
         <TimeseriesPerMinuteTrend
-          title={t('timeseries.progression.per_minute_title')}
+          title={
+            perMinuteHasDamage ? (
+              <span className="flex items-center gap-1.5">
+                {t('timeseries.progression.per_minute_damage_title')}
+                <InfoTooltip content={t('timeseries.progression.per_minute_damage_info')} />
+              </span>
+            ) : (
+              t('timeseries.progression.per_minute_title')
+            )
+          }
           emptyMessage={emptyMsg}
-          rows={data.match_rows ?? []}
-          killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
-          deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
-          assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
-          perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
+          rows={matchRows ?? []}
+          labels={perMinuteLabels}
+          withTaken={withDamageTaken}
         />
       </div>
 
@@ -298,15 +304,12 @@ export function TimeseriesProgressionTab({
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
           en bas de Progression. Reflète le scope solo du filtre global (mêmes
-          matchs que les charts ci-dessus). Colonne « Prob. vic. » injectée après
-          « Résultat ». */}
+          matchs que les charts ci-dessus). */}
       {explorerMatchRows && explorerMatchRows.length > 0 && (
         <ExplorerMatchesTable
           rows={explorerMatchRows}
           playerSlug={playerSlug}
           alwaysShowPagination
-          extraColumns={winProbColumns}
-          extraColumnsAfterId="outcome_code"
           // I16 : même endpoint/tri backend (date DESC) que le mode Matchs →
           // le défaut interne de ExplorerMatchesTable reproduit déjà l'ordre
           // serveur, aucun `defaultSort` à surcharger (cf. ExplorerPage.playerMode).

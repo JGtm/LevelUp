@@ -14,6 +14,7 @@ import { router } from '@/app/router'
 import { queryClient } from '@/app/queryClient'
 import { ThemeProvider } from './theme-provider'
 import { DocumentLangProvider } from './document-lang-provider'
+import { TitleTooltipLayer } from '@/components/ui/TitleTooltipLayer'
 
 export function AppProviders() {
   return (
@@ -21,6 +22,8 @@ export function AppProviders() {
       <ThemeProvider>
         <DocumentLangProvider>
           <RouterProvider router={router} />
+          {/* Infobulles des attributs title, rendues par l'application (visibles dans un partage de fenêtre). */}
+          <TitleTooltipLayer />
         </DocumentLangProvider>
       </ThemeProvider>
       {/* Devtools React Query — dev uniquement (tree-shaké en prod via DEV),

@@ -13,8 +13,8 @@ import (
 
 	"levelup/go-api/internal/domain"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/haloapitest"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 const (

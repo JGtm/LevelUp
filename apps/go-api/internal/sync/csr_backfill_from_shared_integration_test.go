@@ -109,7 +109,7 @@ func seedSharedCSR(t *testing.T, sdb *sql.DB, matchID, xuid string, st time.Time
 
 func TestBackfillCSRFromShared_ProjectsStableRank(t *testing.T) {
 	pdb, sdb := openCSRProjectionDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedSharedCSR(t, sdb, "m1", xuid, time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC), 1200, 1225, "Gold", 2, 0)
 
 	n, err := BackfillCSRFromShared(t.Context(), sdb, pdb, xuid)
@@ -155,7 +155,7 @@ func TestBackfillCSRFromShared_ProjectsStableRank(t *testing.T) {
 
 func TestBackfillCSRFromShared_Idempotent(t *testing.T) {
 	pdb, sdb := openCSRProjectionDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedSharedCSR(t, sdb, "m1", xuid, time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC), 1200, 1225, "Gold", 2, 0)
 
 	if _, err := BackfillCSRFromShared(t.Context(), sdb, pdb, xuid); err != nil {
@@ -182,7 +182,7 @@ func TestBackfillCSRFromShared_Idempotent(t *testing.T) {
 // NOT NULL répliqué depuis ExtractCSRRowIfRanked).
 func TestBackfillCSRFromShared_PlacementZeroValue(t *testing.T) {
 	pdb, sdb := openCSRProjectionDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	// post=0, tier="", measurementRem=3 → ExtractAllSharedCSRRows produit
 	// tier="Placement", rating_value NULL.
 	seedSharedCSR(t, sdb, "m_place", xuid, time.Date(2026, 1, 3, 10, 0, 0, 0, time.UTC), 0, 0, "", 0, 3)

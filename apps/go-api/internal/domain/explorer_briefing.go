@@ -180,8 +180,7 @@ type ExplorerBriefingDimensionEntry struct {
 // CHAÎNE de playlist (rating_type, playlist_group) sur le scope. Une entrée par
 // chaîne — paliers début/fin ET pt/match viennent des MÊMES matchs de la MÊME chaîne,
 // jamais de flèche inter-chaînes (DEC-RANK-BE). CSR = chaîne unique « ranked » (P-3
-// préservé) ; LUSR se scinde en ses chaînes. Le bloc « attendu vs réel »
-// (expected_win_prob) a été retiré (décision produit 2026-07-16 : donnée non fiable).
+// préservé) ; LUSR se scinde en ses chaînes.
 type ExplorerBriefingRanked struct {
 	// Kinds : une entrée par CHAÎNE (rating_type, playlist_group). Ordre déterministe
 	// (type majoritaire du scope d'abord, puis chaînes du type par nb de matchs). Au

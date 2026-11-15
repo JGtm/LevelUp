@@ -30,7 +30,7 @@ import (
 
 	"levelup/go-api/internal/games"
 
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // PlayerPositionsRepo persiste et relit les positions keyframe dans shared.

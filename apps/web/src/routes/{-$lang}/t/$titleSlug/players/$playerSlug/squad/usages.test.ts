@@ -34,7 +34,7 @@ function redirectOf(ctx: Parameters<BeforeLoad>[0]) {
 describe('route squad/usages → squad/emprise', () => {
   it('redirige vers l’onglet Emprise, mêmes paramètres, recherche transmise, sans empiler', () => {
     const params = { lang: 'en', titleSlug: 'halo_infinite', playerSlug: 'jgtm' }
-    const search = { session: '2026-09-22', teammates: 'Chocoboflor,Madina97294' }
+    const search = { session: '2026-09-22', teammates: 'Joueur90001,Joueur90002' }
     const opts = redirectOf({ params, search })
     expect(opts.to).toBe('/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise')
     expect(opts.params).toEqual(params)

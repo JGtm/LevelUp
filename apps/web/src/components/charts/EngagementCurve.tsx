@@ -29,7 +29,7 @@ import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
 import { tipNumber } from './tipNumber'
 
-export interface EngagementPoint {
+export interface EngagementCurvePoint {
   /** Timestamp en ms (Match View) ou index match (Session) */
   x: number
   /** Pace equipe alliee per_player */
@@ -52,7 +52,7 @@ export interface EngagementCurveProps {
   /** Subtitle / sous-titre optionnel. */
   subtitle?: string
   /** Donnees ordonnees chronologiquement. */
-  points: EngagementPoint[]
+  points: EngagementCurvePoint[]
   /** Format des labels X axis. */
   xFormatter?: (x: number) => string
   /** Mode de granularite : 'intra' (smooth) ou 'session' (lineaire avec markers). */
@@ -136,7 +136,7 @@ export function EngagementCurve(props: EngagementCurveProps) {
   )
 
   const buildOption = useCallback(
-    (series: ChartSeries<EngagementPoint>[]): EChartsCoreOption => {
+    (series: ChartSeries<EngagementCurvePoint>[]): EChartsCoreOption => {
       const pts = series[0]?.datapoints ?? points
       return buildEngagementOption(pts, granularity, xFormatter, hideAttendu, seriesLabels)
     },
@@ -147,7 +147,7 @@ export function EngagementCurve(props: EngagementCurveProps) {
   // OU quand `points` est vide pour que ChartCard rende son emptyMessage au
   // lieu d'un canvas blanc sans contexte.
   const isError = state === 'error'
-  const series: ChartSeries<EngagementPoint>[] =
+  const series: ChartSeries<EngagementCurvePoint>[] =
     state === 'empty' || isError || points.length === 0
       ? []
       : [{ key: 'engagement', datapoints: points }]
@@ -176,7 +176,7 @@ export function EngagementCurve(props: EngagementCurveProps) {
 // ---------------------------------------------------------------------------
 
 function buildEngagementOption(
-  points: EngagementPoint[],
+  points: EngagementCurvePoint[],
   granularity: 'intra' | 'session',
   // `| undefined` plutot que `?` : un parametre REQUIS (`labels`) ne peut pas suivre un
   // parametre optionnel — alors qu'il peut suivre un parametre a valeur par defaut.

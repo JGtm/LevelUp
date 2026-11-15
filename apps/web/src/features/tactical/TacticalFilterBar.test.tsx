@@ -45,7 +45,7 @@ const sessions = [
   },
 ]
 
-vi.mock('@/features/filters/queries', () => ({
+vi.mock('@/lib/query/useFiltersPreview', () => ({
   useFiltersPreview: () => ({
     data: {
       available_options: {
@@ -62,7 +62,7 @@ vi.mock('@/features/filters/queries', () => ({
   }),
 }))
 
-vi.mock('@/features/squad/useActiveSeason', () => ({
+vi.mock('@/lib/seasons/useActiveSeason', () => ({
   useActiveSeason: () => ({ seasons: [], activeSeason: null }),
   seasonToPeriod: () => ({ start_date: null, end_date: null }),
 }))

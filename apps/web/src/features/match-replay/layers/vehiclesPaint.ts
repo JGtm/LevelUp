@@ -16,6 +16,7 @@
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
+import type { FocusFilter } from '../model/focusFilter'
 import type { FxInk } from './fxInk'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 import { project, viewScale, type PlacementView } from './placementShapes'
@@ -26,6 +27,8 @@ import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
 import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
+import type { QuarterTurns } from '@/lib/replay/orientation'
+import { turnsOfView } from '../model/replayView'
 import {
   vehicleActiveRides,
   vehicleDestructionFrame,
@@ -64,6 +67,17 @@ export interface VehicleTime {
    * échelle temporelle reçoit déjà le repli de `frameToMs` en amont ; ce champ ne le redevine pas.
    */
   frameMs: number
+  /**
+   * Durée d'une image pour convertir une DURÉE en images (maintien de visée, interpolation de cap) : le pas du
+   * document, sinon le pas historique. Absent = `frameMs`.
+   */
+  durationFrameMs?: number
+  /**
+   * La rotation de la carte (quarts de tour horaires) : le sprite, le cône et le montage des
+   * armes suivent le terrain. Posée par `drawVehiclesLayer` d'après le cadrage (`view.orient`),
+   * jamais par l'appelant : une seule source. Absent = 0.
+   */
+  turns?: QuarterTurns
 }
 
 /**
@@ -177,6 +191,11 @@ export interface VehicleStyle {
   /** Sous « mouvement réduit », l'explosion de destruction ne se joue pas (même contrat que
    *  `explosionFx.ExplosionShape.reduced` et `GrenadeRestStyle.reducedMotion`). */
   reducedMotion: boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : le véhicule, ses occupants nommés et son explosion de destruction.
+   * Un véhicule vide n'est à personne et se dessine toujours. Absent = tout se dessine.
+   */
+  shown?: Pick<FocusFilter, 'vehicleAt' | 'occupant' | 'vehicleDestruction'>
 }
 
 /** Écart entre deux noms empilés, en pixels d'écran (police partagée avec `replayLabels.ts`). */
@@ -377,7 +396,7 @@ function vehicleOffscreenText(
  * trace (`drawAimSector`), pas une copie locale, et l'ÉLÉVATION passe par le même barème de
  * longueur (`aimLengthScale`). Une seule différence subsiste, voulue : pas de FRAÎCHEUR — la
  * série d'un occupant est dense (5 à 46 lectures/s pour 10 frames/s) et son maintien est court
- * (`VEHICLE_AIM_HOLD_FRAMES`), il n'y a pas de visée « vieille » à faire pâlir.
+ * (`VEHICLE_AIM_HOLD_MS`), il n'y a pas de visée « vieille » à faire pâlir.
  */
 function drawVehicleAimCones(
   ctx: CanvasRenderingContext2D,
@@ -394,7 +413,7 @@ function drawVehicleAimCones(
     // couleur ne se dessine pas). Un occupant non résolu ne reçoit donc aucun cône.
     const color = vehicleRideColor(ride, time.frame, style)
     if (!color) continue
-    const aim = vehicleOccupantAimAt(track, ride, time.frame)
+    const aim = vehicleOccupantAimAt(track, ride, time.frame, time.durationFrameMs ?? time.frameMs, time.turns ?? 0)
     drawAimSector(ctx, c, aim.ang, time.k, color, { lengthScale: aimLengthScale(aim.pitchDeg) })
   }
 }
@@ -500,10 +519,13 @@ export function drawVehiclesLayer(
   ctx: CanvasRenderingContext2D,
   tracks: readonly ReplayVehicleTrackReady[],
   view: PlacementView,
-  time: VehicleTime,
+  frameTime: VehicleTime,
   style: VehicleStyle,
 ): void {
   if (tracks.length === 0 || view.width === 0) return
+  // LA ROTATION DE LA CARTE SE LIT SUR LE CADRAGE, une fois, et voyage avec l'instant.
+  const turns = turnsOfView(view)
+  const time: VehicleTime = turns === 0 ? frameTime : { ...frameTime, turns }
   // L'ÉCHELLE DU CADRAGE, LUE UNE FOIS PAR IMAGE : c'est elle qui donne aux véhicules leur
   // taille RÉELLE quand elle le permet (cf. `lib/replay/screenSizes.ts`). Elle ne dépend que de la
   // vue, jamais du véhicule — la relire par véhicule serait un doublon de travail.
@@ -518,7 +540,7 @@ export function drawVehiclesLayer(
     // échappe. LE DÉCOR DE CARTE (véhicule posé, jamais simulé) est masqué de même
     // (décision utilisateur du 2026-09-23, Q13) : `vehicleIsHidden` réunit les deux refus.
     if (vehicleIsHidden(track)) continue
-    if (vehicleVisibleAt(track, time.frame)) {
+    if (vehicleVisibleAt(track, time.frame) && (!style.shown || style.shown.vehicleAt(track, time.frame))) {
       const world = vehiclePositionAt(track, time.frame)
       if (world) {
         // BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10 — découverte du
@@ -536,7 +558,9 @@ export function drawVehiclesLayer(
         // LES OCCUPANTS SONT LUS UNE FOIS pour les deux calques qui les consomment (cônes puis
         // noms) : `vehicleActiveRides` trie, filtre et alloue — l'appeler deux fois par véhicule
         // et par image serait un doublon de travail autant qu'un doublon de source.
-        const rides = vehicleActiveRides(track, time.frame)
+        const rides = vehicleActiveRides(track, time.frame).filter(
+          (r) => !style.shown || style.shown.occupant(r, time.frame),
+        )
         drawVehicleAimCones(ctx, track, rides, time, style, c)
         // ÉDGE PAR DÉFAUT (chassis non résolu, ou vignette pas encore chargée) : le plancher de
         // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
@@ -556,7 +580,7 @@ export function drawVehiclesLayer(
           const size = style.sizeOf(dessin)
           const sprite = size ? style.spriteOf(dessin, color) : null
           if (size && sprite) {
-            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
+            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs), time.turns ?? 0)
             const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle, ceilPx)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
@@ -568,7 +592,7 @@ export function drawVehiclesLayer(
             // l'emporte d'elle-même : seule la table d'assets aura changé.
             const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
-              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame)), demi)
+              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs), time.turns ?? 0), demi)
             edgePx = demi * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
@@ -601,7 +625,7 @@ export function drawVehiclesLayer(
     // `end: "unknown"` — aujourd'hui, systématiquement. Voir l'en-tête de fonction pour l'ordre
     // peintre et l'indépendance vis-à-vis de la visibilité ci-dessus.
     const destroyedFrame = vehicleDestructionFrame(track)
-    if (destroyedFrame !== null) {
+    if (destroyedFrame !== null && (!style.shown || style.shown.vehicleDestruction(track, destroyedFrame))) {
       drawVehicleDestructionFx(ctx, track, destroyedFrame, time, view, style)
     }
   }

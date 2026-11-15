@@ -18,23 +18,25 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // docJSON fabrique un artefact sérialisé au schéma courant, avec ou sans compteurs de joueur.
 func docJSON(t *testing.T, matchID string, avecCompteurs bool) []byte {
 	t.Helper()
 	doc := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
-		TitleSlug:     title.DefaultSlug,
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         matchID,
+		TitleSlug:       title.DefaultSlug,
 		// Une trajectoire au moins : validateArtifact refuse un document sans piste.
-		Tracks: []replay.Track{{XUID: "2533274819954312"}},
+		Tracks: []replay.Track{{XUID: "2533491259474651"}},
 	}
 	if avecCompteurs {
 		doc.ScoreTimeline = &replay.ScoreTimeline{
-			Players: []replay.PlayerScore{{XUID: "2533274819954312"}},
+			Players: []replay.PlayerScore{{XUID: "2533491259474651"}},
 		}
 	}
 	blob, err := json.Marshal(doc)
@@ -85,16 +87,17 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 	avant := compteurRefus(t)
 	// Ce que fait BuildMatch avec des faits vides : un document sans compteurs de joueur.
 	appauvri := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 	taille, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", appauvri)
 	if err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -123,20 +126,21 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "000d5950.json")
 	// En place : RICHE, mais à un schéma ANTÉRIEUR.
-	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533274819954312"}]}}`
+	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533491259474651"}]}}`
 	if err := os.WriteFile(path, []byte(ancien), 0o644); err != nil {
 		t.Fatalf("pose: %v", err)
 	}
 	nouveau := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -164,7 +168,7 @@ func TestStoreArtifact_RefuseLaRegression(t *testing.T) {
 	if err != nil {
 		t.Fatalf("un dépôt appauvri ne doit pas être une erreur de protocole : %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -173,9 +177,13 @@ func TestStoreArtifact_RefuseLaRegression(t *testing.T) {
 	}
 	// L'accusé doit décrire CE QUI EST RANGÉ, pas ce qui a été refusé : un ouvrier qui lirait
 	// la taille du blob refusé croirait son travail retenu.
-	if stored.Bytes != len(complet) {
-		t.Errorf("accusé = %d octets, attendu %d (la taille de l'artefact réellement en place)",
-			stored.Bytes, len(complet))
+	stocke, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(stored.Bytes) != stocke.Size() {
+		t.Errorf("accusé = %d octets, attendu %d (la taille stockée de l artefact réellement en place)",
+			stored.Bytes, stocke.Size())
 	}
 }
 
@@ -193,7 +201,7 @@ func TestStoreArtifact_EnrichissementAccepte(t *testing.T) {
 		t.Fatalf("dépôt enrichi: %v", err)
 	}
 	path := title.NewPathResolver(repoRoot).ReplayArtifactPath(title.DefaultSlug, matchID)
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}

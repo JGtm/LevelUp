@@ -52,7 +52,7 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // filmsDeLaReprise : des films du bas du cout QUI ECRIVENT (les moins chers du cache ne

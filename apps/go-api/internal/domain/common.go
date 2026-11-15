@@ -2,6 +2,7 @@
 package domain
 
 import (
+	"errors"
 	"strings"
 	"time"
 )
@@ -25,6 +26,11 @@ func ErrorMessageForCode(code string) string {
 	}
 	return strings.ReplaceAll(code, "_", " ")
 }
+
+// ErrRecordNotFound : une lecture n'a trouvé aucune ligne (donnée absente, pas une panne). Les dépôts la
+// rendent (platform/duckdb.NotFound) et la couche métier la reconnaît par errors.Is, jamais par le sentinelle
+// du moteur de base ; port.ErrNotFound en est l'alias que consomment les services.
+var ErrRecordNotFound = errors.New("record not found")
 
 // ErrNotFound crée une erreur 404 standard.
 func ErrNotFound(resource, id string) *APIError {

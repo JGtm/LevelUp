@@ -1,0 +1,21 @@
+# 20 films de A1.1 (corpus_151.tsv, lecture_libfilmshell=lu) : id	build	mode	niveau	joueurs	chunks
+3685373c	HI_1_12_0	CaptureTheFlag	fo09_academy	8	13
+6ceaf3b8	HI_1_12_0	Slayer	fo09_academy	28	37
+972cdbc6	HI_1_12_0	Slayer	fo11_blank	8	32
+aa00a8cd	HI_1_12_0	Slayer	fo11_blank	8	30
+ac919b39	HI_1_12_0	KingOfTheHill	fo09_academy	15	20
+dae9cc00	HI_1_12_0	Slayer	fo05_desert	8	31
+0ae3b0a1	HI_1_13_0	Slayer	forest	12	33
+20fd2c23	HI_1_13_0	Slayer	chasm	14	39
+396cfc92	HI_1_13_0	Strongholds	ctf_illusion	10	29
+4f77afc1	HI_1_13_0	Other	fo05_desert	37	63
+57a5df63	HI_1_13_0	CaptureTheFlag	fo08_wetland	10	34
+6544f3fe	HI_1_13_0	KingOfTheHill	fo09_academy	8	39
+7cc59cc5	HI_1_13_0	Oddball	fo09_academy	8	53
+879a4dba	HI_1_13_0	Other	fo05_desert	26	24
+a01e98ec	HI_1_13_0	CaptureTheFlag	fo09_academy	8	22
+b5d130ad	HI_1_13_0	Strongholds	fo11_blank	15	31
+c6238946	HI_1_13_0	KingOfTheHill	sgh_blueprint	8	37
+d4ebdd5d	HI_1_13_0	Slayer	sgh_streets	9	25
+e8d384c7	HI_1_13_0	CaptureTheFlag	chasm	10	26
+f9873569	HI_1_13_0	Slayer	fo09_academy	9	27

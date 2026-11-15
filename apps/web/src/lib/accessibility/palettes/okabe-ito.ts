@@ -190,6 +190,11 @@ export const okabePalette: Palette = {
   'objective-role-defend': '#009E73', // Bluish Green
   'objective-role-hold':   '#B77E00', // Orange assombri (× 0.60, = squad-player-2)
 
+  // ── Rôles de portée — rampe ordinale chaude -> neutre -> froide (rangeRoleTokens.test.ts) ──
+  'range-role-front': '#D55E00', // Vermillion — Ligne de front
+  'range-role-mid':   '#888888', // Gris — Polyvalent
+  'range-role-far':   '#0072B2', // Blue — Tireur d'élite
+
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais
   'heatmap-hot':            '#0072B2', // Blue       — bon

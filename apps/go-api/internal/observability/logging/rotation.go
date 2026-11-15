@@ -14,7 +14,7 @@
 // se termine pas par `.log`, donc `ops.ListLogModules` (viewer admin) l'ignore
 // déjà sans modification, et `logtail` ne la propose jamais comme « module ».
 //
-// Multi-process : le serveur ET les CLIs (`cmd/*` via InstallCLI) écrivent dans
+// Multi-process : le serveur ET les CLIs (`cmd/*` via InstallCLILevel) écrivent dans
 // le même dossier. L'append O_APPEND reste atomique et inchangé ; seule la
 // rotation ajoute un rename. Le writer qui perd la course détecte, via
 // os.SameFile, que le fichier sous le chemin n'est plus son inode et se contente

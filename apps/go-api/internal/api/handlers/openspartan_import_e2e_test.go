@@ -16,12 +16,13 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/importstore"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
 )
 
-const testE2EXUID = "2533274823110022"
+const testE2EXUID = "2603225103667623"
 
 // e2eEnv bundles every dependency the end-to-end test needs.
 type e2eEnv struct {
@@ -122,8 +123,8 @@ func setupE2E(t *testing.T) *e2eEnv {
 	}
 	_ = metaDB.Close() // services will re-open RW via OpenReadWriteShared.
 
-	importSvc := service.NewOpenSpartanImportServiceForTest(sharedDB)
-	postImportSvc := service.NewOpenSpartanPostImportService(cfg)
+	importSvc := importServiceOn(sharedDB)
+	postImportSvc := service.NewOpenSpartanPostImportService(cfg, importstore.NewPostImportStore(cfg.SharedProvider))
 	jobStore := jobs.NewStore(filepath.Join(tempDir, "jobs.json"))
 
 	handler := NewOpenSpartanImportHandler(OpenSpartanImportConfig{

@@ -15,7 +15,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // LyingBitsResetResult — compteurs des matchs concernés par catégorie. En
@@ -64,10 +64,10 @@ func ResetLyingBits(ctx context.Context, db *sql.DB, dryRun bool) (LyingBitsRese
 	out.EventsBitsCleared = len(eventsIDs)
 
 	// La PREUVE du detail des armes change de table selon le titre (cf.
-	// analysis.WeaponEvidenceTable) : on sonde celle que la base CONTIENT. Aucune table
+	// duckdb.WeaponEvidenceTable) : on sonde celle que la base CONTIENT. Aucune table
 	// presente = aucun bit menteur a nettoyer, et surtout pas une requete vouee a l erreur.
 	var weaponsIDs []string
-	if evidence := analysis.WeaponEvidenceTable(ctx, db); evidence != "" {
+	if evidence := duckdb.WeaponEvidenceTable(ctx, db); evidence != "" {
 		weaponsIDs, err = selectLyingMatchIDs(ctx, db, fmt.Sprintf(`
 		SELECT r.match_id FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0

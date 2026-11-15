@@ -73,7 +73,7 @@ export function CareerProgressionTab() {
         summary={data.summary}
         heroProgress={data.hero_progress}
         projections={data.projections ?? null}
-        friendsXpHistory={data.friends_xp_history}
+        friendsXpHistory={data.friends_xp_history ?? undefined}
         rightSlot={
           hasAchievements ? (
             <AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" />

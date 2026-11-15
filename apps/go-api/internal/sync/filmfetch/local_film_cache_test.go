@@ -9,8 +9,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmarchive"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // TestLocalFilmCacheLoadChunk_MemeValidationQueFilmcache — le lecteur du client Halo lit le

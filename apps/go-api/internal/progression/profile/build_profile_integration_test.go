@@ -8,6 +8,7 @@ package profile
 import (
 	"context"
 	"database/sql"
+	"math"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 )
 
 const (
@@ -163,7 +165,7 @@ func zeropadProfile(n, w int) string {
 // TestBuildProfile_EmptyDB_HasEnoughDataFalse vérifie le cas dégradé.
 func TestBuildProfile_EmptyDB_HasEnoughDataFalse(t *testing.T) {
 	pdb := setupProfileEnv(t)
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 
 	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 30, now)
@@ -185,7 +187,7 @@ func TestBuildProfile_WithMatches_FillsSections(t *testing.T) {
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
 		t.Fatalf("BuildProfile: %v", err)
@@ -217,7 +219,7 @@ func TestBuildProfile_LUSRComponentsPopulated(t *testing.T) {
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
 		t.Fatalf("BuildProfile: %v", err)
@@ -241,13 +243,13 @@ func TestBuildProfile_LUSRComponentsPopulated(t *testing.T) {
 	}
 }
 
-// TestBuildProfile_ObjectiveAxisFromIndex vérifie le nouveau modèle de l'axe
-// Objective (plan PLAN_AXE_OBJECTIFS_INDEX) : il vient de l'index par
-// opportunité (match_objective_stats_latest, shared) et NON des
+// TestBuildProfile_ObjectiveAxisFromTeamShare vérifie le modèle de l'axe
+// Objective : il vient de la note d'objectif du match (part du joueur dans l'objectif de son équipe,
+// match_objective_stats_latest, shared) et NON des
 // personal_score_awards — sans match à objectif dans la fenêtre, l'axe est
 // RETIRÉ même avec un AwardMappingSet mappant des awards « objective » ;
 // awards.toml reste la source des AUTRES axes (support boosté ici).
-func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
+func TestBuildProfile_ObjectiveAxisFromTeamShare(t *testing.T) {
 	pdb := setupProfileEnv(t)
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
@@ -277,7 +279,7 @@ func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
 
 	// Sans ligne match_objective_stats : axe objective RETIRÉ (pas de 0 trompeur),
 	// malgré les awards « objective » mappés.
-	svcNoObj := NewServiceFromPlayerDB(pdb).WithAwardMapping(awardSet)
+	svcNoObj := NewService(profilerepo.ForPlayer(pdb)).WithAwardMapping(awardSet)
 	profNoObj, err := svcNoObj.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
 		t.Fatalf("BuildProfile sans lignes objectifs: %v", err)
@@ -288,7 +290,7 @@ func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
 	supportNoObj, _ := axisLookup(profNoObj, "support")
 
 	// Awards toujours actifs sur les AUTRES axes : support boosté vs sans mapping.
-	profNoMap, err := NewServiceFromPlayerDB(pdb).BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	profNoMap, err := NewService(profilerepo.ForPlayer(pdb)).BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
 		t.Fatalf("BuildProfile sans mapping: %v", err)
 	}
@@ -297,14 +299,23 @@ func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
 		t.Errorf("support avec mapping (%.2f) devrait dépasser sans mapping (%.2f)", supportNoObj, supportNoMap)
 	}
 
-	// Seed 2 lignes objectifs CTF (shared) sur des matchs de la fenêtre → axe
-	// présent, alimenté par l'index par opportunité.
+	// Seed 2 matchs CTF (shared) où un coéquipier fait exactement la même chose que le joueur : sa part
+	// de l'objectif de son équipe est de moitié, la note d'objectif du match vaut la part équitable
+	// (50), la moyenne des deux matchs aussi. La lecture rend les lignes des DEUX camps en une requête.
 	for i, mid := range []string{zeropadProfile(0, 4), zeropadProfile(1, 4)} {
 		if _, err := pdb.Shared.Exec(ctx, `
-			INSERT INTO match_objective_stats (match_id, xuid, flag_captures, flag_secures, time_as_flag_carrier_seconds)
-			VALUES (?, ?, ?, ?, ?)
-		`, mid, testXUID, 2+i, 3, 25.0); err != nil {
-			t.Fatalf("insert match_objective_stats %s: %v", mid, err)
+			INSERT INTO match_participants (match_id, xuid, gamertag, team_id, time_played_seconds)
+			VALUES (?, 'mate', 'Mate', 1, 600)
+		`, mid); err != nil {
+			t.Fatalf("insert coéquipier %s: %v", mid, err)
+		}
+		for _, xuid := range []string{testXUID, "mate"} {
+			if _, err := pdb.Shared.Exec(ctx, `
+				INSERT INTO match_objective_stats (match_id, xuid, flag_captures, flag_secures, time_as_flag_carrier_seconds)
+				VALUES (?, ?, ?, ?, ?)
+			`, mid, xuid, 2+i, 3, 25.0); err != nil {
+				t.Fatalf("insert match_objective_stats %s: %v", mid, err)
+			}
 		}
 	}
 	profObj, err := svcNoObj.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
@@ -312,8 +323,8 @@ func TestBuildProfile_ObjectiveAxisFromIndex(t *testing.T) {
 		t.Fatalf("BuildProfile avec lignes objectifs: %v", err)
 	}
 	objVal, present := axisLookup(profObj, "objective")
-	if !present || objVal <= 0 {
-		t.Errorf("axe objective avec lignes objectifs: present=%v val=%.2f, want présent et > 0", present, objVal)
+	if !present || math.Abs(objVal-50) > 1e-6 {
+		t.Errorf("axe objective avec lignes objectifs: present=%v val=%.2f, want présent et 50 (part équitable)", present, objVal)
 	}
 }
 
@@ -334,7 +345,7 @@ func TestBuildProfile_SkillTrendPopulated(t *testing.T) {
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, 25) // 25 jours notés → LOWESS effectif
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
 	if err != nil {
 		t.Fatalf("BuildProfile: %v", err)
@@ -362,7 +373,7 @@ func TestLoadActivityCalendar_CountsDistinctDays(t *testing.T) {
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, 10) // 1 match/jour sur 10 jours distincts
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	cal, err := svc.LoadActivityCalendar(context.Background(), testXUID, now.AddDate(0, 0, -90), now)
 	if err != nil {
 		t.Fatalf("LoadActivityCalendar: %v", err)
@@ -393,7 +404,7 @@ func TestLoadActivityCalendar_EmptyWindow(t *testing.T) {
 	pdb := setupProfileEnv(t)
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	cal, err := svc.LoadActivityCalendar(context.Background(), testXUID, now.AddDate(0, 0, -90), now)
 	if err != nil {
 		t.Fatalf("LoadActivityCalendar: %v", err)
@@ -410,7 +421,7 @@ func TestLoad_V2Compat(t *testing.T) {
 	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
 	seedMatchesForProfile(t, pdb, now, MinMatchesForRating+5)
 
-	svc := NewService(pdb.Player) // V2 path : constructor minimal
+	svc := NewService(profilerepo.ForPlayer(pdb)) // chemin du hook post-sync (Load)
 	prof, err := svc.Load(context.Background(), testXUID, testTitle, 30, now)
 	if err != nil {
 		t.Fatalf("Load: %v", err)

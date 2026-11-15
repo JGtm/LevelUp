@@ -20,7 +20,7 @@ import { cheminCourt, fichierNomme, lire, nomDe, tousLesFichiers } from '../test
 const SINUSOIDE = /0\.5 \+ 0\.5 \* Math\.sin\(/
 
 /** Sa période, redéclarée. */
-const PERIODE = /PULSE_PERIOD_FRAMES\s*=/
+const PERIODE = /PULSE_PERIOD_MS\s*=/
 
 const AUTORISES = new Set(['carriedGlyphPulse.ts', 'carriedGlyphPulse.guard.test.ts'])
 

@@ -52,11 +52,11 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // rapportT0Film : un match dont l'artefact range publie un coup d'envoi mesure, en
@@ -154,7 +154,7 @@ func ecrireUnT0Film(ctx context.Context, db *sql.DB, p *persist.T0FilmPersister,
 	var qualite string
 	// Start CANONIQUE, jamais `start_time` brut (ratchet archlint/no_raw_start_time_literal).
 	err := db.QueryRowContext(ctx, `
-		SELECT `+analysis.SQLStartTimeCanonical("")+` AS start_utc,
+		SELECT `+sqlfrag.SQLStartTimeCanonical("")+` AS start_utc,
 		       real_start_time,
 		       COALESCE(t0_quality, '')
 		FROM match_registry WHERE match_id = ?`, r.matchID).Scan(&startUTC, &realStart, &qualite)

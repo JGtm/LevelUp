@@ -1,5 +1,8 @@
 /** Textes du rejeu 2D en français (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { FR_FEED_LINES } from './feedLines.i18n'
+import { FR_LIVES } from './lives.i18n'
+import { FR_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const FR_TEXT = {
   title: 'Rejeu 2D',
@@ -14,10 +17,10 @@ export const FR_TEXT = {
   loadErrorRetry: 'Réessayer',
   schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
   schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
-  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion})`,
+  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à régénérer`,
   schemaBadgeStalePublicationFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
   schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
   schemaBadgeInvalidFmt: (schemaVersion, detail) =>
     `Schéma ${schemaVersion} · contrat non respecté (${detail})`,
@@ -28,7 +31,7 @@ export const FR_TEXT = {
   offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
   openAtNoOriginTitle: 'Instant non calé sur cet artefact',
   openAtNoOriginDescription:
-    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
+    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Régénération nécessaire — le rejeu s’ouvre au début.',
   speed: 'Vitesse',
   time: 'Temps de match',
   skipBackFmt: (seconds) => `Reculer de ${seconds} s`,
@@ -36,14 +39,53 @@ export const FR_TEXT = {
   speedNormal: 'normal',
   speedMuted: 'son coupé',
   keySpace: 'Espace',
-  killFeedTitle: 'Éliminations',
+  feedFilterLabel: {
+    tout: 'Tout',
+    kills: 'Éliminations',
+    objectives: 'Objectifs',
+    pickups: 'Armes et bonus',
+    vehicles: 'Véhicules',
+    medals: 'Médailles',
+    assists: 'Assistances',
+  },
+  feedFilterMenuLabel: 'Filtrer le fil',
+  feedFilterMoreHeading: 'Proposées en plus',
   killFeedEmpty: 'Rien à cet instant du match.',
+  killFeedEmptyHint: 'Ce filtre a des lignes plus loin dans le match : elles apparaissent au fil de la lecture.',
+  feedEmptyMatch: 'Aucune entrée pour ce match',
+  feedEmptyMatchHint: "Ce match n'a aucune ligne pour ce filtre.",
+  feedObjectiveAction: {
+    flag_captures: 'a capturé le drapeau',
+    flag_capture_assists: 'a aidé à capturer le drapeau',
+    flag_grabs: 'a pris le drapeau',
+    flag_secures: 'a sécurisé le drapeau',
+    flag_returns: 'a rendu le drapeau',
+    flag_steals: 'a volé le drapeau',
+    flag_carriers_killed: 'a éliminé un porteur de drapeau',
+    zone_captures: 'a capturé une base',
+    zone_secures: 'a sécurisé une base',
+    vip_selected: 'a été désigné VIP',
+    bomb_detonations: 'a fait exploser la bombe',
+  },
+  feedPickupAction: (name) => `a pris : ${name}`,
+  feedVehicleAction: (name) => `est monté à bord : ${name}`,
+  feedGroundPickupAction: (name) => `a ramassé : ${name}`,
+  feedVehicleDestroyedBy: (name) => `a détruit : ${name}`,
+  feedVehicleDestroyed: (name) => `${name} détruit`,
+  feedVehicleKilledWho: (who) => `(${who} tué avec le véhicule)`,
+  feedVehicleKilledOne: '({n} tué avec le véhicule)',
+  feedVehicleKilledOther: '({n} tués avec le véhicule)',
   killFeedUnknownWeapon: 'Arme non identifiée',
+  killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
+  playerPanel: FR_PLAYER_PANEL,
+  lives: FR_LIVES,
+  feedLines: FR_FEED_LINES,
   killFeedNoAssistHint:
     'Mort sans assistant : la mort porte son événement dans le film, et il ne déclare personne.',
   killFeedAssistHint:
     'Assistant lu dans le film, avec sa part de dégâts. Les parts ne sont pas bornées à 100 %.',
   killFeedKillerShare: (pct) => `tueur ${pct} %`,
+  killFeedKillerZone: (zone) => `Zone du tueur : ${zone}`,
   killFeedAssistMark: 'Assistance',
   killFeedAssistShare: (pct) => `${pct} %`,
   killFeedDeathLabel: 'mort',
@@ -85,8 +127,23 @@ export const FR_TEXT = {
     "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
   // « REC » et « Arrêter » : la convention des lecteurs, identique dans les deux langues
   // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
-  settingsButton: 'Réglages',
-  settingsClose: 'Fermer les réglages',
+  viewButton: 'Vue',
+  viewClose: 'Fermer la vue',
+  viewPresetsTitle: 'Préréglages',
+  viewPreset: {
+    complet: 'Complet',
+    combat: 'Combat',
+    deplacements: 'Déplacements',
+    objectif: 'Objectif',
+    personnalise: 'Personnalisé',
+  },
+  viewPresetHint: {
+    complet: 'Tous les calques, sauf le groupe Vies',
+    combat: 'Visée, traînées, véhicules, objectifs, morts et tueurs',
+    deplacements: 'Traînées, zones et apparitions',
+    objectif: 'Traînées, zones, objectifs',
+  },
+  viewCustomNote: 'Les calques ne correspondent à aucun préréglage.',
   fullscreenEnter: 'Plein écran',
   fullscreenExit: 'Quitter le plein écran',
   autoPlay: 'Lecture automatique',
@@ -111,6 +168,19 @@ export const FR_TEXT = {
   layerZones: 'Zones',
   layerZonesHint:
     'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
+  layerWallPlan: 'Plan des murs',
+  layerWallPlanHint:
+    "Le dessin exact des murs de la carte, en traits fins par-dessus son image. Disponible pour les cartes dont le plan a pu être extrait du jeu.",
+  layerWallPlanInPlanHint: 'Déjà dans le plan',
+  layerBackground: 'Fond',
+  layerBackgroundRender: 'Rendu',
+  layerBackgroundRenderHint: 'Le fond de la carte, en image rendue.',
+  layerBackgroundPlan: 'Plan',
+  layerBackgroundPlanHint:
+    'La vue plan à hauteurs : silhouette du sol teintée par altitude, murs, étages recouverts en pointillé. Le choix vaut pour toutes les cartes et toutes les vues 2D.',
+  orientationTitle: 'Orientation',
+  orientationHint:
+    "Tourne la carte par quarts de tour, dans le sens des aiguilles d'une montre. Le choix est retenu pour cette carte.",
   layerTrail: 'Traînée',
   layerTrailHint:
     "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
@@ -204,7 +274,7 @@ export const FR_TEXT = {
     `≈ ${mag} au chargeur et ${res} en réserve, lues ${age} avant le lâcher`,
   layerVehicles: 'Véhicules',
   layerVehiclesHint:
-    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le film ne date aucune destruction — le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
+    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. Quand le film date la destruction d'un véhicule, le sprite cesse à cet instant, une explosion se joue à sa position et une ligne s'ajoute au fil (filtre Véhicules). Sans cette date, LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
   padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
   padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
   padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
@@ -328,7 +398,7 @@ export const FR_TEXT = {
   grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
   grenadeSelectedRead:
     'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
-  grenadeSelUnknown: 'sél. ?',
+  grenadeSelUnknown: 'Grenade en main : inconnue',
   grenadeAge: 'Grenades lues il y a',
   grenadeAhead: 'Grenades lues dans',
   abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,

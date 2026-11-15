@@ -7,7 +7,7 @@
  * à la fois, bascule dans le titre quand les deux existent (cf. lusrEvolution.logic).
  */
 import { useState } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { Segmented } from '@/components/ui/segmented'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
@@ -81,7 +81,7 @@ function buildLusrEvolutionOption(
   series: ChartSeries<[string, number]>[],
   scale: RatingScale,
   locale: ManifestLocale,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
   const intlLocale = toIntlLocale(locale)

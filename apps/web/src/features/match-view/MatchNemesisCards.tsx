@@ -104,11 +104,11 @@ function NemesisCard({ title, accentToken, row, statLine, logoSrc, t }: CardProp
           >
             {title}
           </div>
-          <div className="mt-1 truncate text-2xl font-bold text-white">
+          <div className="mt-1 truncate text-2xl font-bold text-on-scrim">
             {row?.gamertag ?? t.combatNoNemesis}
           </div>
           {statLine !== null && (
-            <div className="mt-3 text-sm text-white/80">
+            <div className="mt-3 text-sm text-on-scrim/80">
               <div className="tabular-nums">{statLine}</div>
             </div>
           )}

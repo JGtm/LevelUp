@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/briques"
 )
 
 // racineDuDepot : ce paquet vit sous apps/go-api/cmd/anonymise-gamertags.
@@ -246,4 +248,16 @@ func sousTotauxDossiers(m map[string]map[string]int) string {
 		}
 	}
 	return sb.String()
+}
+
+// dossierDeLaBrique rend le dossier de la brique du decodeur de film, tire de l'outil Go par le resolveur
+// des briques : le registre des fictifs et les fichiers a balayer y sont, quel que soit l'endroit ou la
+// brique est posee.
+func dossierDeLaBrique(t *testing.T) string {
+	t.Helper()
+	dir, err := briques.Dir("film")
+	if err != nil {
+		t.Fatalf("dossier de la brique du decodeur : %v", err)
+	}
+	return dir
 }

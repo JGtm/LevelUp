@@ -15,7 +15,7 @@ import (
 
 	"levelup/go-api/internal/mapcatalog"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ingestFn est la couture qui rend la DERIVE testable. Sans elle, exercer le chemin

@@ -12,8 +12,8 @@ import (
 // la synthèse « fun stats » (TotalSuicides/TotalBetrayals) lit ces award_name
 // (self_destruction / betrayed_player) sans aucun changement de surface.
 //
-// ⚠️ H5-ONLY. Appelé uniquement depuis l'enrich H5 (cmd/h5-enrich + livesync H5,
-// les 2 seuls callers de BackfillEnrichmentFromShared). NE JAMAIS câbler pour un
+// ⚠️ H5-ONLY. Appelé uniquement depuis l'enrich H5 (livesync H5,
+// le seul caller de BackfillEnrichmentFromShared). NE JAMAIS câbler pour un
 // titre à PSA NATIF (Infinite) : ça DOUBLE-COMPTERAIT les trahisons (PSA de l'API
 // + ce calcul). Infinite passe par le sync engine, pas par cette fonction.
 //

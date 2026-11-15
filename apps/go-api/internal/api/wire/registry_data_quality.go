@@ -11,9 +11,6 @@ package wire
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"os"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -22,57 +19,17 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// dataQualityHandles ouvre shared (RO) + metadata (RW partagé). closeAll
-// décrémente les ref-counts — à defer par le caller. metadata absente →
-// metaSQL nil (les fonctions ops dégradent explicitement). Une tâche qui va sur le
-// réseau prend les deux séparément (lectureSharedDuTitre, metadataDuTitre) et rend la
-// base partagée avant : un lecteur en vol fait échouer toute prise d'écriture (ADR 0016).
-func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug string) (sharedSQL, metaSQL *sql.DB, closeAll func(), err error) {
-	sharedSQL, sharedRelease, err := r.lectureSharedDuTitre(ctx, titleSlug)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	metaSQL, metaRelease := r.metadataDuTitre(ctx, titleSlug)
-	return sharedSQL, metaSQL, func() { sharedRelease(); metaRelease() }, nil
+// titleBases rend l'accès aux bases d'un titre (platform/duckdb), construit à l'appel.
+func (r *ServiceRegistry) titleBases() duckdb.TitleBases {
+	return duckdb.TitleBases{Paths: r.cfg.PathResolver(), SharedProvider: r.cfg.SharedProvider, Log: monitoringLog}
 }
 
-// lectureSharedDuTitre ouvre la base partagée du titre en lecture ; release la rend.
-func (r *ServiceRegistry) lectureSharedDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func(), error) {
-	sharedPath := r.cfg.PathResolver().SharedDBPath(titleSlug)
-	if _, statErr := os.Stat(sharedPath); statErr != nil {
-		return nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
-	}
-	// Lecture shared B-swap-safe : si le SharedProvider tient CE fichier (titre par
-	// défaut), passer par lui (drain RO↔RW, résilient au sync concurrent) ; sinon
-	// OpenReadOnly direct (aucune fenêtre RW en process pour ce titre).
-	if r.cfg.SharedProvider != nil && r.cfg.SharedProvider.Path() == sharedPath {
-		db, release, gerr := acquireProgressionSharedRead(ctx, r.cfg.SharedProvider)
-		if gerr != nil {
-			return nil, nil, fmt.Errorf("acquire shared read (provider): %w", gerr)
-		}
-		return db, release, nil
-	}
-	shared, oerr := duckdb.OpenReadOnly(sharedPath)
-	if oerr != nil {
-		return nil, nil, fmt.Errorf("open shared RO: %w", oerr)
-	}
-	return shared.SQLDb(), func() { _ = shared.Close() }, nil //nolint:errcheck // ref-count
-}
-
-// metadataDuTitre ouvre metadata du titre (RW partagé, handle process ref-compté) ; release le
-// rend. Absente ou illisible → nil (journalisé), jamais d'erreur : les appelants dégradent.
-func (r *ServiceRegistry) metadataDuTitre(ctx context.Context, titleSlug string) (*sql.DB, func()) {
-	metaPath := r.cfg.PathResolver().MetadataDBPath(titleSlug)
-	if _, statErr := os.Stat(metaPath); statErr != nil {
-		return nil, func() {}
-	}
-	meta, openErr := duckdb.OpenReadWriteShared(metaPath)
-	if openErr != nil {
-		monitoringLog.WarnContext(ctx, "data_quality: metadata indisponible",
-			"title", titleSlug, "err", openErr)
-		return nil, func() {}
-	}
-	return meta.SQLDb(), func() { _ = meta.Close() } //nolint:errcheck // ref-count
+// dataQualityHandles ouvre shared (RO) + metadata (RW partagé). Close décrémente les ref-counts — à
+// defer par le caller. metadata absente : Meta nil (les fonctions ops dégradent explicitement). Une tâche
+// qui va sur le réseau prend les deux séparément (titleBases().ReadShared, .Metadata) et rend la base
+// partagée avant : un lecteur en vol fait échouer toute prise d'écriture (ADR 0016).
+func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug string) (duckdb.TitleHandles, error) {
+	return r.titleBases().Open(ctx, titleSlug)
 }
 
 // DataQualityCounts calcule les compteurs d'inconnus (lectures seules). locale =
@@ -83,13 +40,13 @@ func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug, loca
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Locale:      locale,
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return resp, err
 	}
-	defer closeAll()
+	defer h.Close()
 
-	counts, err := ops.CountDataQuality(ctx, sharedSQL, metaSQL, titleSlug, locale)
+	counts, err := ops.CountDataQuality(ctx, h.Shared, h.Meta, titleSlug, locale)
 	if err != nil {
 		return resp, err
 	}
@@ -122,13 +79,13 @@ func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind
 		Locale:      locale,
 		Items:       []domain.AdminDataQualityIssue{},
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return resp, err
 	}
-	defer closeAll()
+	defer h.Close()
 
-	items, total, err := ops.ListDataQualityIssues(ctx, sharedSQL, metaSQL, titleSlug, kind, locale, limit, offset)
+	items, total, err := ops.ListDataQualityIssues(ctx, h.Shared, h.Meta, titleSlug, kind, locale, limit, offset)
 	if err != nil {
 		return resp, err
 	}

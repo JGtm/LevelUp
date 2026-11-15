@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaydiff"
 	"levelup/go-api/internal/replayverite"
 )
@@ -185,7 +186,7 @@ func juger(j jugement) (*replayverite.Comparaison, error) {
 }
 
 func lireArtefactDuBanc(path string) (*replayverite.Document, error) {
-	blob, err := os.ReadFile(path) //nolint:gosec // chemin d'artefact produit par ce gate
+	blob, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		return nil, fmt.Errorf("banc de verite : %w", err)
 	}
@@ -236,7 +237,7 @@ func (l ligneRapport) statutVerite() string {
 func imprimerVerite(ctx context.Context, w io.Writer, lignes []ligneRapport, registreAvantConnu bool) {
 	var concernes []ligneRapport
 	for _, l := range lignes {
-		if l.Verite != nil || len(l.Filets) > 0 {
+		if l.Verite != nil || len(l.Filets) > 0 || len(l.FiletsAcceptes) > 0 {
 			concernes = append(concernes, l)
 		}
 	}
@@ -257,6 +258,10 @@ func imprimerVerite(ctx context.Context, w io.Writer, lignes []ligneRapport, reg
 		}
 		for _, d := range l.Filets {
 			_, _ = fmt.Fprintf(w, "  [FILET] %s %s : %s -> %s (aucune mesure du banc ne couvre ce bloc)\n",
+				d.Axe, d.Metrique, vide(d.Ancien), vide(d.Nouveau))
+		}
+		for _, d := range l.FiletsAcceptes {
+			_, _ = fmt.Fprintf(w, "  [FILET ACCEPTE] %s %s : %s -> %s (decision du manifeste)\n",
 				d.Axe, d.Metrique, vide(d.Ancien), vide(d.Nouveau))
 		}
 	}

@@ -16,7 +16,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 func afficherSante(r *rapport) error {

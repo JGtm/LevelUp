@@ -65,15 +65,14 @@ var weaponKillsSQLAllowlist = map[string]string{
 	// (2) Halo 5
 	"internal/games/halo_5/livesync/kill_kind_backfill.go":        "Halo 5 : backfill de kill_kind sur SA table",
 	"internal/platform/duckdb/halo5/halo5_match_events_source.go": "Halo 5 : source d'événements adossée à SA table",
-	"cmd/h5-sync/main.go":     "CLI Halo 5",
-	"cmd/h5-backfill/main.go": "CLI Halo 5",
+	"cmd/h5-backfill/main.go":                                     "CLI Halo 5",
 	// (3) replis partagés — branche « titre sans décodeur de film », c'est-à-dire Halo 5
 	"internal/platform/duckdb/weapon_kills_repo.go":      "repo historique : sert Halo 5 (le lecteur Halo Infinite est killsource_weapon_kills_repo.go)",
 	"internal/platform/duckdb/queries_match_detail.go":   "repli Q-détail par joueur (branche sans classifier de source)",
 	"internal/platform/duckdb/queries_home_citations.go": "repli arme favorite de l'accueil (branche sans classifier)",
 	"internal/platform/duckdb/explorer_repo.go":          "repli top armes de la cible (branche sans classifier)",
 	"internal/sync/citations.go":                         "repli de la statistique weapon_stat du moteur de citations",
-	"internal/api/wire/registry_weapon_coverage.go":      "repli de la page admin de couverture (titre sans décodeur)",
+	"internal/platform/duckdb/weapon_coverage_repo.go":   "repli de la page admin de couverture (titre sans décodeur), déplacé de api/wire le 2026-11-12",
 	"internal/sync/writes.go":                            "InsertWeaponKills : écriture du producteur natif Halo 5",
 	"internal/persist/shared_persister.go":               "persister partagé : insertion des lignes natives Halo 5",
 	// Outils d'ops et de diagnostic — hors flux applicatif, exécution manuelle.
@@ -82,9 +81,6 @@ var weaponKillsSQLAllowlist = map[string]string{
 	"internal/ops/snapshot_read.go":              "lecture d'un snapshot exporté (schéma figé au moment de l'export)",
 	"internal/sync/testutil/fixture.go":          "fixture de test partagée (monte le schéma legacy complet)",
 	"cmd/diag_db_health/main.go":                 "diagnostic manuel",
-	"cmd/diag_recent_match_sync/main.go":         "diagnostic manuel",
-	"cmd/diag_audit_crash/main.go":               "diagnostic manuel",
-	"cmd/audit_coverage/main.go":                 "audit manuel de couverture",
 }
 
 // TestNoNewWeaponKillsSQL échoue si une forme SQL sur weapon_kills apparaît hors

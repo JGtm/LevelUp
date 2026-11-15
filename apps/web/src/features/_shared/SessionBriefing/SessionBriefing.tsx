@@ -21,7 +21,7 @@ import { useMemo, useState } from 'react'
 
 import type { KPIStats } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
-import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
+import type { PlayerScoreCard, SquadScoreCard } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { KpiGrid } from './KpiGrid'

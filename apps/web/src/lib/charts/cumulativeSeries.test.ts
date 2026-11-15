@@ -3,12 +3,11 @@
  *
  * - `cumulativeSigned` : cumul par ordre donné, report carry-forward (null ne fait
  *   pas avancer le cumul, la courbe reporte), arrondi 2 déc.
- * - `meanOfValid` : moyenne sur les contributions valides uniquement.
  * - `finiteOrNull` : garde D5 partagée.
  */
 import { describe, it, expect } from 'vitest'
 
-import { cumulativeSigned, meanOfValid, finiteOrNull } from './cumulativeSeries'
+import { cumulativeSigned, finiteOrNull } from './cumulativeSeries'
 
 describe('finiteOrNull', () => {
   it('renvoie la valeur si finie, sinon null', () => {
@@ -49,20 +48,5 @@ describe('cumulativeSigned', () => {
 
   it('tableau vide → aucun point', () => {
     expect(cumulativeSigned([])).toEqual([])
-  })
-})
-
-describe('meanOfValid', () => {
-  it('moyenne sur les contributions valides', () => {
-    expect(meanOfValid([0.6, 0.4])).toBe(0.5)
-  })
-
-  it('ignore null / non-fini (D5)', () => {
-    expect(meanOfValid([0.6, null, undefined, Infinity])).toBe(0.6)
-  })
-
-  it('null si aucune contribution exploitable', () => {
-    expect(meanOfValid([null, undefined])).toBeNull()
-    expect(meanOfValid([])).toBeNull()
   })
 })

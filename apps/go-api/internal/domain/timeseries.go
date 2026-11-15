@@ -100,6 +100,17 @@ type SoloSessionPerfPoint struct {
 	TeamMMRAvg   *float64 `json:"team_mmr_avg,omitempty"` // moyenne TeamMMR
 }
 
+// LeadSharePeriodPoint est la Mainmise moyenne d'un mois : la moyenne des parts des matchs MESURÉS
+// (un match non mesuré n'entre ni au numérateur ni au dénominateur), FRACTION 0..1.
+type LeadSharePeriodPoint struct {
+	Month     string `json:"month"`      // "2026-10"
+	StartDate string `json:"start_date"` // ISO, premier jour du mois
+	// LeadShare : absent quand aucun match du mois n'est mesuré.
+	LeadShare       *float64 `json:"lead_share,omitempty"`
+	MeasuredMatches int      `json:"measured_matches"`
+	Matches         int      `json:"matches"`
+}
+
 // SoloSessionPerfBlock contient les points + leur granularité (session, week,
 // month) pour permettre au frontend de labelliser correctement.
 type SoloSessionPerfBlock struct {
@@ -226,6 +237,11 @@ type TimeseriesMatchRow struct {
 	// ne dessine alors aucun marqueur sur la bande de résultats (titre sans
 	// timeline de score, ex. Halo 5 → dégradation silencieuse et correcte).
 	DominanceFlag int `json:"dominance_flag,omitempty"`
+	// LeadShare : la MAINMISE du match — part de la durée jouée passée EN TÊTE du score par l'équipe du
+	// joueur, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré, jamais zéro. LeadChanges : retournements,
+	// absent avec LeadShare.
+	LeadShare   *float64 `json:"lead_share,omitempty"`
+	LeadChanges *int     `json:"lead_changes,omitempty"`
 	// Métriques alimentant les charts Forme (timeseries.16) — sync depuis
 	// match_participants (max_killing_spree, headshot_kills, perfect_kills).
 	MaxKillingSpree *int `json:"max_killing_spree,omitempty"`
@@ -312,6 +328,9 @@ type TimeseriesPageResponse struct {
 	// "Performance solo par session" sur l'onglet Synthèse. Granularité
 	// auto-adaptative selon la densité.
 	SoloSessionPerf *SoloSessionPerfBlock `json:"solo_session_perf,omitempty"`
+	// LeadShareByMonth : la MAINMISE par mois sur la population solo complète (comme SoloSessionPerf :
+	// ignore filtres period/sessions/cascade) — moyenne des matchs MESURÉS du mois. Vide sans match.
+	LeadShareByMonth []LeadSharePeriodPoint `json:"lead_share_by_month,omitempty"`
 	// BriefingKPIs alimente le composant <SessionBriefing> en haut de la page
 	// (mode solo : pas de squad verdict). Calcule sur les memes match_ids que
 	// les autres onglets (apres filtres). Nil si aucun match.

@@ -23,7 +23,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Bornes de plausibilite d'une cadence, en coups par seconde. Larges a dessein : un lance-

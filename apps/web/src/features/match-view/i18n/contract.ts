@@ -156,6 +156,31 @@ export interface MatchViewText {
   scoreEventsScoredFmt: (points: number) => string
   /** Score cumulé du camp juste après cette marque (ex. « Score : 2 »). */
   scoreEventsTotalFmt: (total: number) => string
+  /**
+   * LES DEUX GRAPHES DIVERGENTS qui suivent « Score dans le temps » : l'ÉCART DE SCORE et la
+   * SUPÉRIORITÉ NUMÉRIQUE. Même forme (deux aires autour de zéro), mêmes réserves : sans film ou
+   * sans camp établi pour le joueur, ils disent pourquoi ils ne tracent rien.
+   */
+  scoreDeltaTitle: string
+  scoreDeltaInfo: string
+  /** État vide des deux graphes divergents quand le match n'a pas de rejeu. */
+  divergentNeedsReplay: string
+  scoreDeltaUnavailableFilm: string
+  scoreDeltaUnavailableCamps: string
+  numbersAdvantageTitle: string
+  numbersAdvantageInfo: string
+  numbersAdvantageLegendAlly: string
+  numbersAdvantageLegendEnemy: string
+  /** Joueurs en vie d'un camp à cet instant, dans l'infobulle (ex. « 3 en vie »). */
+  numbersAdvantageAliveFmt: (n: number) => string
+  numbersAdvantageUnavailableFilm: string
+  numbersAdvantageUnavailableCamps: string
+  /** L'écart signé (score ou effectif) de l'infobulle. */
+  divergentGapLabel: string
+  /** Ajoutée à l'aide du titre quand le match oppose plus de deux camps. */
+  divergentMultiTeamNote: string
+  /** Nom du camp d'en face quand il y en a plusieurs : la meilleure équipe adverse. */
+  divergentBestOpponent: string
   combatCadenceTitle: string
   combatKillsLabel: string
   combatDeathsLabel: string
@@ -195,23 +220,12 @@ export interface MatchViewText {
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
-  // Graphe des ASSISTANCES (assistant -> tueur assisté). Un match dont le film ne porte pas
+  // Diagramme de flux des ASSISTANCES (assistant -> finisseur ; les textes du flux sont partagés avec
+  // l'Escouade : features/_shared/assists/assistFlowStrings.ts). Un match dont le film ne porte pas
   // l'assistance n'a pas de bloc (rien n'est rendu) : le seul état vide écrit est « aucune »,
   // le film lu sans aucune assistance.
   assistTitle: string
   assistNoData: string
-  // Note d'infobulle d'un segment : les éliminations volées de ce couple
-  // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
-  assistStolenNote: (n: number) => string
-  // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
-  // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
-  assistAvgShareNote: (pct: number) => string
-  // Les deux rôles du graphe (décision utilisateur 2026-09-17, même vocabulaire que la page
-  // Escouade) : la barre est le LARBIN (il a assisté), le segment le PATRON (frag crédité).
-  // Titres d'axes et infobulle.
-  assistRoleAssistant: string
-  assistRoleBeneficiary: string
-  assistValueAxis: string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string

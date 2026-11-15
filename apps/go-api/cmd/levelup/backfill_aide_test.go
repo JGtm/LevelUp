@@ -65,6 +65,7 @@ func TestAideBackfillChaqueEntreePorteSonTexte(t *testing.T) {
 	tables := map[string]string{
 		"backfill-flag-grabs-net": "match_flag_grabs_net",
 		"backfill-vehicle-takes":  "match_vehicle_takes",
+		"backfill-lead-share":     "match_lead_share",
 		"backfill-bomb-stats":     "match_bomb_stats",
 		"backfill-usage-summary":  "match_usage_players",
 	}
@@ -86,7 +87,7 @@ func TestAideBackfillChaqueEntreePorteSonTexte(t *testing.T) {
 		}
 	}
 	// Chaque bloc se ferme sur la parenthese de ses options, pas au milieu d'une phrase.
-	for _, nom := range []string{"backfill-flag-grabs-net", "backfill-vehicle-takes"} {
+	for _, nom := range []string{"backfill-flag-grabs-net", "backfill-vehicle-takes", "backfill-lead-share"} {
 		lignes := strings.Split(entrees[nom], "\n")
 		if dernier := strings.TrimSpace(lignes[len(lignes)-1]); !strings.HasSuffix(dernier, ")") {
 			t.Errorf("%s : le bloc ne se ferme pas sur la liste des options : %q", nom, dernier)

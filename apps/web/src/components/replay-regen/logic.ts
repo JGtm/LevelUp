@@ -10,18 +10,37 @@ export type RegenPhase =
   | 'offer' // des rejeux en retard, la file n'est pas lancée
   | 'preparing' // lancée, la liste se prépare
   | 'running'
+  | 'compressing' // fin de passe : compression des rejeux bruts que la file n'a pas pu refaire
   | 'paused'
   | 'waitingGame'
+  | 'compressionPaused' // la pause demandée retient la compression, pas une refonte
+  | 'compressionWaitingGame' // la partie en cours retient la compression, pas une refonte
 
 export function regenPhase(status: ReplayRegenStatus | undefined): RegenPhase {
   if (!status) return 'checking'
   if (status.running) {
-    if (status.total === 0) return 'preparing'
-    if (status.paused) return 'paused'
-    return status.waiting_for_game ? 'waitingGame' : 'running'
+    if (status.total === 0 && !status.compressing) return 'preparing'
+    // La compression passe par la même porte que la refonte (pause, partie en cours) : quand elle tourne, c'est
+    // elle qui attend, même si total vaut 0.
+    if (status.paused) return status.compressing ? 'compressionPaused' : 'paused'
+    if (status.waiting_for_game) return status.compressing ? 'compressionWaitingGame' : 'waitingGame'
+    return status.compressing ? 'compressing' : 'running'
   }
   if (!status.checked) return 'checking'
-  return status.stale > 0 ? 'offer' : 'upToDate'
+  return status.stale > 0 || status.raw > 0 ? 'offer' : 'upToDate'
+}
+
+/** La file est lancée (préparation, refonte, compression, pause ou attente comprises). */
+export function regenPhaseActive(phase: RegenPhase): boolean {
+  return (
+    phase === 'preparing' ||
+    phase === 'running' ||
+    phase === 'compressing' ||
+    phase === 'paused' ||
+    phase === 'waitingGame' ||
+    phase === 'compressionPaused' ||
+    phase === 'compressionWaitingGame'
+  )
 }
 
 /**
@@ -30,7 +49,7 @@ export function regenPhase(status: ReplayRegenStatus | undefined): RegenPhase {
  */
 export function bannerPhaseVisible(phase: RegenPhase, dismissed: boolean): boolean {
   if (phase === 'offer') return !dismissed
-  return phase === 'preparing' || phase === 'running' || phase === 'paused' || phase === 'waitingGame'
+  return regenPhaseActive(phase)
 }
 
 /** Part faite de la file, de 0 à 100 ; 0 tant que la liste se prépare. */

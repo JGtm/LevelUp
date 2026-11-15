@@ -1,11 +1,11 @@
 /**
  * i18n.test.ts — buildContextLabel : produit un label localisé depuis un
- * MatchFilterSpec pour la barre de navigation contextuelle (Phase 2b).
+ * MatchNavFilterSpec pour la barre de navigation contextuelle (Phase 2b).
  */
 import { describe, it, expect } from 'vitest'
 
 import { buildContextLabel } from './i18n'
-import type { MatchFilterSpec } from '@/lib/match-nav/navContext'
+import type { MatchNavFilterSpec } from '@/lib/match-nav/navContext'
 
 describe('buildContextLabel', () => {
   it('spec null : chaîne vide', () => {
@@ -37,7 +37,7 @@ describe('buildContextLabel', () => {
   // Les clés (noms de la langue par défaut) filtrent ; les libellés posés à côté nomment le filtre dans la
   // langue de la page. Sans libellé (lien partagé), la clé s'affiche.
   it('playlists et modes : libellés de la page, clés intactes', () => {
-    const spec: MatchFilterSpec = {
+    const spec: MatchNavFilterSpec = {
       playlist_names: ['Partie rapide', 'Grande bataille'],
       playlist_labels: { 'Partie rapide': 'Quick Play' },
       mode_categories: ['Assassin'],
@@ -51,13 +51,13 @@ describe('buildContextLabel', () => {
   })
 
   it('outcome FR vs EN', () => {
-    const spec: MatchFilterSpec = { outcome: 'win' }
+    const spec: MatchNavFilterSpec = { outcome: 'win' }
     expect(buildContextLabel(spec, 'fr')).toBe('Victoires')
     expect(buildContextLabel(spec, 'en')).toBe('Wins')
   })
 
   it('range complet de dates', () => {
-    const spec: MatchFilterSpec = {
+    const spec: MatchNavFilterSpec = {
       date_from: '2026-04-01T00:00:00Z',
       date_to: '2026-05-01T00:00:00Z',
     }
@@ -68,19 +68,19 @@ describe('buildContextLabel', () => {
   })
 
   it('seulement date_from : "Depuis JJ/MM/YYYY"', () => {
-    const spec: MatchFilterSpec = { date_from: '2026-04-01T00:00:00Z' }
+    const spec: MatchNavFilterSpec = { date_from: '2026-04-01T00:00:00Z' }
     expect(buildContextLabel(spec, 'fr')).toMatch(/^Depuis /)
     expect(buildContextLabel(spec, 'en')).toMatch(/^From /)
   })
 
   it('seulement date_to : "Jusqu\'au JJ/MM/YYYY"', () => {
-    const spec: MatchFilterSpec = { date_to: '2026-05-01T00:00:00Z' }
+    const spec: MatchNavFilterSpec = { date_to: '2026-05-01T00:00:00Z' }
     expect(buildContextLabel(spec, 'fr')).toMatch(/^Jusqu'au /)
     expect(buildContextLabel(spec, 'en')).toMatch(/^To /)
   })
 
   it('combinaison complète FR', () => {
-    const spec: MatchFilterSpec = {
+    const spec: MatchNavFilterSpec = {
       playlist_names: ['Classée'],
       mode_categories: ['BTB'],
       outcome: 'loss',

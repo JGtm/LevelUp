@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replayregen"
 )
 
@@ -44,7 +45,7 @@ func regenFixture(t *testing.T, pending bool) (replayregen.Deps, *atomic.Int32, 
 			t.Fatal(err)
 		}
 		raw, _ := json.Marshal(map[string]any{"matchId": id, "schemaVersion": 1})
-		if err := os.WriteFile(p, raw, 0o644); err != nil {
+		if _, _, err := replayartifact.Write(context.Background(), p, raw); err != nil {
 			t.Fatal(err)
 		}
 		films[id] = true

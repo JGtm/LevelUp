@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	identityXUID     = "2533274796795729"
+	identityXUID     = "2676423891261051"
 	identityGamertag = "Inconnu"
 )
 

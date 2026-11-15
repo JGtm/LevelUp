@@ -160,4 +160,29 @@ type VehicleCoverage struct {
 	Cycles         int `json:"cycles"`
 	CycleGaps      int `json:"cycleGaps"`
 	CycleMissing   int `json:"cycleMissing"`
+	// Destructions : la couverture de `vehicles[].destruction` (cf. `replay.VehicleDestructionCoverage`).
+	// Absente quand le film n'a aucun vehicule detruit, ou que l'artefact est anterieur au bloc.
+	Destructions *VehicleDestructionCoverage `json:"destructions,omitempty"`
+}
+
+// VehicleDestructionCoverage dit ce que le bloc de destruction a vu, resolu et refuse de dire. Le
+// denominateur est `Destroyed` ; les causes du destructeur en sont une partition, comme celles de la
+// cause.
+type VehicleDestructionCoverage struct {
+	Destroyed         int `json:"destroyed"`
+	Pieces            int `json:"pieces"`
+	Published         int `json:"published"`
+	ByHuman           int `json:"byHuman"`
+	ByBot             int `json:"byBot"`
+	KillerAbsent      int `json:"killerAbsent"`
+	KillerOutOfRoster int `json:"killerOutOfRoster"`
+	KillerAmbiguous   int `json:"killerAmbiguous"`
+	Cause             int `json:"cause"`
+	CauseUnresolved   int `json:"causeUnresolved"`
+	CauseAbsent       int `json:"causeAbsent"`
+	Occupant          int `json:"occupant"`
+	Killed            int `json:"killed"`
+	KilledOccupants   int `json:"killedOccupants"`
+	KilledNoIdentity  int `json:"killedNoIdentity"`
+	KilledCleanup     int `json:"killedCleanup"`
 }

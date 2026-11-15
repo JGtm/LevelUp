@@ -1,6 +1,6 @@
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import "levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 const Q22aMatchSkillRankPlayer = `
 SELECT
@@ -9,8 +9,7 @@ SELECT
     msr.rating_delta,
     msr.playlist_group,
     msr.tier,
-    msr.sub_tier,
-    msr.expected_win_prob
+    msr.sub_tier
 FROM match_skill_rank_latest msr
 WHERE msr.match_id = ?
 LIMIT 1`
@@ -45,7 +44,7 @@ WITH this_match AS (
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
       -- "historique de rencontres" pertinent à afficher.
-      AND ` + analysis.SQLIsNotBotCol("p.xuid") + `
+      AND ` + sqlfrag.SQLIsNotBotCol("p.xuid") + `
 ),
 my_team AS (
     SELECT team_id FROM match_participants

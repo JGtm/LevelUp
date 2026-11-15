@@ -346,7 +346,7 @@ func TestGetMatchMeta_NoTranslation(t *testing.T) {
 
 // TestGetMatchEvents_ResolvesGamertagViaView reproduit le bug "Faits marquants"
 // 2026-05-08 : highlight_events stockait juste le xuid, le frontend affichait
-// "Premier sang 2535472884034919 · 0:43" au lieu de "Premier sang JGtm · 0:43".
+// "Premier sang 2783503310586789 · 0:43" au lieu de "Premier sang JGtm · 0:43".
 //
 // Nom historique : depuis le lot A (plan perf « lectures par périmètre », 2026-09-26) Q21 ne
 // joint plus la vue canonique des noms ; GetMatchEvents nomme les events par l'annuaire du match
@@ -387,13 +387,13 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 		}
 	}
 	for _, q := range []string{
-		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('2535472884034919', 'JGtm')`,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('2783503310586789', 'JGtm')`,
 		`INSERT INTO shared.match_participants VALUES ('m1', 'bid(7.0)', NULL)`,
-		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2535472884034919', 'kill', NULL)`,
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2783503310586789', 'kill', NULL)`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'killing_spree', 60000, 'bid(7.0)', 'spree', NULL)`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'kill', 90000, '9999999999999999', 'kill', NULL)`, // orphelin
 		// Event medal : le raw_json porte le nom anglais, extrait dans EventRaw.MedalName.
-		`INSERT INTO shared.highlight_events VALUES ('m1', 'medal', 95000, '2535472884034919', '50',
+		`INSERT INTO shared.highlight_events VALUES ('m1', 'medal', 95000, '2783503310586789', '50',
 			'{"medal_name": "Odin''s Raven", "medal_value": 91}')`,
 	} {
 		if _, err := pdb.Player.Exec(ctx, q); err != nil {

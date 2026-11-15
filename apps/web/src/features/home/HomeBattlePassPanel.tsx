@@ -172,8 +172,7 @@ export function HomeBattlePassPanel({
           )}
           {featuredPass.content && (
             <>
-              {/* color-allow: gradient sombre fixe pour la lisibilité de l'overlay « restant » sur l'image (parité page dédiée). */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-scrim/85 via-scrim/40 to-transparent" aria-hidden="true" />
               <div className="absolute inset-x-0 bottom-0 p-3">
                 <PassContentSummary
                   content={featuredPass.content}

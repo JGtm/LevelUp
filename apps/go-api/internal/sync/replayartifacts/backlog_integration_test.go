@@ -38,7 +38,7 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func baseRegistre(t *testing.T) *sql.DB {
@@ -71,11 +71,11 @@ func poserArtefact(t *testing.T, repoRoot, matchID string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID})
+	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }
@@ -416,7 +416,7 @@ func poserArtefactPerime(t *testing.T, repoRoot, matchID string) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

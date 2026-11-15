@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -285,7 +285,7 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 }
 
 // TestBuildSessionParticipationProfile_ObjectiveAndScore couvre les axes Objective
-// (index par opportunité — agrégats match_objective_stats) et Score (score
+// (note d'objectif moyenne des matchs mesurés, 0-100, reprise telle quelle) et Score (score
 // personnel par minute jouée) du profil de participation. Sans match à objectif,
 // l'axe Objectif est RETIRÉ (pas de 0 trompeur) ; Score = ΣPS / (Σtime_played/60).
 func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
@@ -303,8 +303,8 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 		}
 		return -1
 	}
-	// Sans agrégats objectifs → axe Objectif RETIRÉ ; Score reste calculé.
-	without := buildSessionParticipationProfile(rows, nil, 225)
+	// Sans match mesuré → axe Objectif RETIRÉ ; Score reste calculé.
+	without := buildSessionParticipationProfile(rows, sessionObjective{}, games.DefaultEffectiveHpToKill)
 	if v := axisVal(without, "objective"); v != -1 {
 		t.Fatalf("Objective sans match à objectif: want axe retiré, got %v", v)
 	}
@@ -312,22 +312,14 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 	if v := axisVal(without, "score"); v <= 0 {
 		t.Fatalf("Score PS/min: want > 0, got %v", v)
 	}
-	// Avec agrégats objectifs (1 match CTF au P80) → axe présent, ~80/100 ;
-	// Score inchangé (indépendant de l'index objectif).
-	objIdx := narrative.ObjectiveIndexInput{
-		narrative.FamilyCTF: {
-			Matches:           1,
-			ColumnSums:        map[string]float64{"flag_captures": 1, "flag_steals": 1, "flag_returns": 2, "flag_secures": 1},
-			HoldSeconds:       0.0434 * 600,
-			TimePlayedSeconds: 600,
-		},
-	}
-	with := buildSessionParticipationProfile(rows, objIdx, 225)
-	if v := axisVal(with, "objective"); v < 79.9 || v > 80.1 {
-		t.Fatalf("Objective au P80: want ~80, got %v", v)
+	// Avec 2 matchs mesurés (note moyenne 62,5 sur 0-100) → axe présent à cette valeur, SANS
+	// renormalisation par un repère de population ; Score inchangé (indépendant de l'objectif).
+	with := buildSessionParticipationProfile(rows, sessionObjective{Score: 62.5, Matches: 2}, games.DefaultEffectiveHpToKill)
+	if v := axisVal(with, "objective"); v != 62.5 {
+		t.Fatalf("Objective: want 62.5 (note moyenne telle quelle), got %v", v)
 	}
 	if got, exp := axisVal(with, "score"), axisVal(without, "score"); got != exp {
-		t.Fatalf("Score ne doit pas dépendre de l'index objectif: with=%v without=%v", got, exp)
+		t.Fatalf("Score ne doit pas dépendre de l'objectif: with=%v without=%v", got, exp)
 	}
 }
 
@@ -339,7 +331,7 @@ func TestBuildSessionParticipationProfile_ScoreZeroWithoutTime(t *testing.T) {
 	rows := []legacymatch.StatsMatchRow{
 		{MatchID: "m1", Kills: 10, Assists: 4, Deaths: 5, PersonalScore: &ps},
 	}
-	profile := buildSessionParticipationProfile(rows, nil, 225)
+	profile := buildSessionParticipationProfile(rows, sessionObjective{}, games.DefaultEffectiveHpToKill)
 	for _, a := range profile {
 		if a.Name == "score" && a.Value != 0 {
 			t.Fatalf("Score sans time_played: want 0, got %v", a.Value)

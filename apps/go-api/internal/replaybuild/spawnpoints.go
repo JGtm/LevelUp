@@ -38,7 +38,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // spawnPoints rend les points d'apparition non-arme de la carte du match, et L'ETAT du
@@ -104,6 +104,17 @@ func (b *Builder) spawnPoints(ctx context.Context, matchID, mapID string, mapNam
 		})
 	}
 	return out, replay.SpawnPointsEstablished
+}
+
+// WithPadsCatalog impose le catalogue des socles : `padsCatalog` ne lit alors plus ni le
+// catalogue versionne ni l'overlay du poste. C'est la porte du harnais d'equivalence
+// `cmd/replay-equiv`, dont le verdict ne doit pas dependre de ce que le runtime d'un poste a
+// rattrape. Nil est un catalogue impose comme un autre : toute carte est alors absente.
+// Chainable.
+func (b *Builder) WithPadsCatalog(cat *replay.MapWeaponPadsCatalog) *Builder {
+	b.pads = cat
+	b.padsTried = true
+	return b
 }
 
 // padsCatalog charge le catalogue des socles au plus une fois par Builder — meme motif et meme

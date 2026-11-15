@@ -30,7 +30,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // SonTirVehi : un tag de son designe par « Weapon Fire Sound », avec ce qu'il atteint.

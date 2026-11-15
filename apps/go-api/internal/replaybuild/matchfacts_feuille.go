@@ -10,7 +10,7 @@ package replaybuild
 import (
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // participantsDuTableau projette la feuille de match vers le TABLEAU que le registre d'identite

@@ -15,7 +15,6 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
-	"levelup/go-api/internal/prestige"
 )
 
 // defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
@@ -58,11 +57,11 @@ type AppConfig struct {
 	CORSOrigins   []string
 	Lang          string
 	AppVersion    string
-	// SharedProvider (commit 8g, retypé 8i) — injecté au boot par main.go en
-	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Provider du shared Halo
+	// SharedProvider — injecté au boot par main.go (B-swap, ADR 0016). Provider du shared Halo
 	// Infinite (DefaultSlug), source unique des writes Infinite + recherche
 	// gamertag. Passé aux PlayerPoolConfig (satisfait duckdb.SharedReader
-	// structurellement) et au SyncEngine via WithSharedProvider. nil en mode legacy.
+	// structurellement) et au SyncEngine via WithSharedProvider. nil hors serveur
+	// (outils en ligne de commande, tests) : les pools lisent alors le shared en direct.
 	SharedProvider sharedprovider.Provider
 	// SharedManager (multi-titre) — le Manager qui déduplique les Provider par
 	// chemin. Injecté au boot par main.go en même temps que SharedProvider (mode
@@ -143,8 +142,8 @@ type AppConfig struct {
 	// Activé par LEVELUP_BACKUP_ENABLED=true.
 	Backup BackupConfig
 	// PrestigeEnabled gate les 16 routes Prestige ET le hook post-sync (gate UNIQUE,
-	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json,
-	// override d'urgence PRESTIGE_ENABLED. Défaut : true (activation actée, ADR 0005).
+	// C7/DEC-4). Source : loadPrestigeEnabled → prestige_enabled dans app_settings.json.
+	// Défaut : true (activation actée, ADR 0005).
 	PrestigeEnabled bool
 	// WebDistDir : répertoire du build React (Vite) servi en SPA par le routeur.
 	// Lit LEVELUP_WEB_DIST (posé par le Dockerfile/compose → /app/apps/web/dist).
@@ -254,7 +253,7 @@ func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = st.backupConfig(roots.Data, appSettingsPath)
-	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
+	cfg.PrestigeEnabled = loadPrestigeEnabled(appSettingsPath)
 	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)

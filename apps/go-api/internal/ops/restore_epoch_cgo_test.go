@@ -115,7 +115,7 @@ func TestRestore_BaseJoueurClesVuesEtSequencesAlignees(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	for _, table := range []string{"schema_migrations", "sync_meta", "arc", "challenge", "streak", "match_skill_rank"} {
+	for _, table := range []string{"schema_migrations", "sync_meta", "arc", "challenge", "streak_history", "match_skill_rank"} {
 		var n int
 		if err := db.QueryRow(`SELECT count(*) FROM duckdb_constraints()
 			WHERE table_name = ? AND constraint_type = 'PRIMARY KEY'`, table).Scan(&n); err != nil {

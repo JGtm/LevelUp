@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/i18n"
 )
 
 // behavioral_engagement.go — détecteurs engagement_drop, accuracy_plateau, perf_ceiling.
@@ -13,7 +14,7 @@ import (
 // Séparé de behavioral.go pour respecter la limite de 500 lignes par fichier.
 
 // detectEngagementDrop détecte une chute combinée EngageScore + ResidualBrut.
-func detectEngagementDrop(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
+func detectEngagementDrop(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	minRows := cfg.MinMatchesPerGroup
 
 	var fullRows []MatchRow
@@ -66,16 +67,19 @@ func detectEngagementDrop(rows []MatchRow, cfg PatternConfig) (BehavioralPattern
 	}
 
 	return BehavioralPattern{
-		Type:      BehaviorEngagementDrop,
-		Trigger:   fmt.Sprintf("%d matchs récents sous les seuils habituels", dropCount),
-		Evidence:  fmt.Sprintf("Engagement perso : %.0f%% vs habitude ; %.0f%% vs le lobby", engagePct, residualPct),
+		Type:    BehaviorEngagementDrop,
+		Trigger: i18n.Msg(loc, "patterns.behavior.engagement_drop.trigger", i18n.Params{"n": dropCount}),
+		Evidence: i18n.Msg(loc, "patterns.behavior.engagement_drop.evidence", i18n.Params{
+			"self":  fmt.Sprintf("%.0f", engagePct),
+			"lobby": fmt.Sprintf("%.0f", residualPct),
+		}),
 		Severity:  sev,
 		Confirmed: false,
 	}, true
 }
 
 // detectAccuracyPlateau détecte une précision stable mais basse.
-func detectAccuracyPlateau(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
+func detectAccuracyPlateau(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	const plateauWindow = 30
 	window := rows
 	if len(window) > plateauWindow {
@@ -100,16 +104,19 @@ func detectAccuracyPlateau(rows []MatchRow, cfg PatternConfig) (BehavioralPatter
 		sev = SeverityHigh
 	}
 	return BehavioralPattern{
-		Type:      BehaviorAccuracyPlateau,
-		Trigger:   "30 matchs sans progression",
-		Evidence:  fmt.Sprintf("Précision stable à %.1f%% (σ=%.3f)", m*100, std),
+		Type:    BehaviorAccuracyPlateau,
+		Trigger: i18n.Msg(loc, "patterns.behavior.accuracy_plateau.trigger", i18n.Params{"n": plateauWindow}),
+		Evidence: i18n.Msg(loc, "patterns.behavior.accuracy_plateau.evidence", i18n.Params{
+			"acc":   fmt.Sprintf("%.1f", m*100),
+			"sigma": fmt.Sprintf("%.3f", std),
+		}),
 		Severity:  sev,
 		Confirmed: false,
 	}, true
 }
 
 // detectPerfCeiling détecte un plafond de performance via LOWESS.
-func detectPerfCeiling(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
+func detectPerfCeiling(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	var perfRows []MatchRow
 	for _, r := range rows {
 		if r.PerfScore != nil {
@@ -159,9 +166,13 @@ func detectPerfCeiling(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, b
 	}
 
 	return BehavioralPattern{
-		Type:      BehaviorPerfCeiling,
-		Trigger:   "Progression LOWESS plate sur 30+ matchs",
-		Evidence:  fmt.Sprintf("Plafond de performance à %.0f pts (top %d moyen : %.0f)", maxScore, cfg.PerfCeilingTopN, meanTop),
+		Type:    BehaviorPerfCeiling,
+		Trigger: i18n.Msg(loc, "patterns.behavior.perf_ceiling.trigger", i18n.Params{"n": cfg.PerfCeilingWindow}),
+		Evidence: i18n.Msg(loc, "patterns.behavior.perf_ceiling.evidence", i18n.Params{
+			"max":      fmt.Sprintf("%.0f", maxScore),
+			"topn":     cfg.PerfCeilingTopN,
+			"mean_top": fmt.Sprintf("%.0f", meanTop),
+		}),
 		Severity:  SeverityMedium,
 		Confirmed: false,
 	}, true

@@ -46,10 +46,9 @@ import (
 // racineBriqueHaloapi : la brique « API Halo », module `libs/haloapi` (ADR 0041), relative à la racine
 // du dépôt ; c'est aussi un chemin de garde-rail du double repère ([surDisque]) : les ratchets de la
 // brique en dérivent leurs racines. importBriqueHaloapi : son chemin d'import.
-const (
-	racineBriqueHaloapi = "libs/haloapi"
-	importBriqueHaloapi = prefixeBriques + "haloapi"
-)
+const racineBriqueHaloapi = "libs/haloapi"
+
+var importBriqueHaloapi = moduleBrique("haloapi")
 
 // fonctionsHTTPDeClientParDefaut : les fonctions de `net/http` qui passent par `DefaultClient`.
 var fonctionsHTTPDeClientParDefaut = map[string]bool{"Get": true, "Post": true, "Head": true, "PostForm": true}

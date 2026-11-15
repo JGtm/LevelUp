@@ -69,7 +69,7 @@ func TestGetSpartanCustomization_PublicViewFallback(t *testing.T) {
 		limiter:        fastLimiter(),
 	}
 
-	data, err := c.GetSpartanCustomization(context.Background(), "2535427927026623")
+	data, err := c.GetSpartanCustomization(context.Background(), "2548036979862261")
 	if err != nil {
 		t.Fatalf("GetSpartanCustomization: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 		limiter:        fastLimiter(),
 	}
 
-	data, err := c.GetCareerRank(context.Background(), "2535469190789936")
+	data, err := c.GetCareerRank(context.Background(), "2547408409520575")
 	if err != nil {
 		t.Fatalf("GetCareerRank: %v", err)
 	}
@@ -280,7 +280,7 @@ func TestGetCareerRank_BannerDerivedFromEmblemNameplate(t *testing.T) {
 		limiter:        fastLimiter(),
 	}
 
-	data, err := c.GetCareerRank(context.Background(), "2533274823110022")
+	data, err := c.GetCareerRank(context.Background(), "2603225103667623")
 	if err != nil {
 		t.Fatalf("GetCareerRank: %v", err)
 	}

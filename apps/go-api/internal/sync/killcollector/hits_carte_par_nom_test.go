@@ -36,11 +36,12 @@ package killcollector
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // carteTemoinDesJumelles / jumelleDeLaCarteTemoin : deux cartes du catalogue VERSIONNE de meme
@@ -164,7 +165,7 @@ func TestLesDeuxPassesPartagentLaMemeResolutionDeCarte(t *testing.T) {
 	if !ok {
 		t.Fatal("resolution des touches refusee la ou celle des positions a abouti")
 	}
-	if positions != touches {
+	if !reflect.DeepEqual(positions, touches) { // l'entree porte une table par index de region (tranche)
 		t.Errorf("les deux passes resolvent des cartes differentes :\n  positions %+v\n  touches   %+v",
 			positions, touches)
 	}

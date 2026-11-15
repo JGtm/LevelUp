@@ -54,7 +54,7 @@ schema_version = 1
 # objectifs (durées non fiables, impulses partiels) → not_exposed au lancement.
 # Promotion degraded (agrégation d'impulses) = chantier ultérieur distinct.
 "match.objective.stats"  = "not_exposed"
-# Artefact de rejeu 2D (data/cache/replays/{slug}/{match}.json) : DÉCLARÉE EXPLICITEMENT
+# Artefact de rejeu 2D (data/cache/replays/{slug}/{match}.json.gz) : DÉCLARÉE EXPLICITEMENT
 # not_exposed, là où les cinq autres clés film.* sont simplement absentes de ce fichier.
 # Pourquoi cette exception d'écriture : celle-ci ne gouverne pas qu'une production, elle
 # gouverne aussi DEUX ROUTES SERVIES (/objective-events, /positions) qui répondaient jusqu'ici

@@ -93,7 +93,7 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 		INSERT INTO media_files (player_slug, file_path, file_name, thumbnail_path)
 		VALUES ('JGtm', 'JGtm/clip.mp4', 'clip.mp4', 'JGtm/thumbs/clip.webp');
 		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-		VALUES ('JGtm/clip.mp4', 'Chocoboflor', 'Chocoboflor', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
+		VALUES ('JGtm/clip.mp4', 'Joueur90001', 'Joueur90001', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
 	`
 	if _, err := db.SQLDb().Exec(ddl); err != nil {
 		t.Fatalf("seed shared_social: %v", err)
@@ -118,9 +118,9 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: "JGtm"}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}),
+		})),
 		WithMediaFileRemover(ops.NewOSMediaFileRemover(func() string { return capturesBase })))
 
 	t.Cleanup(func() { _ = db.Close() })
@@ -233,7 +233,7 @@ func TestMediaService_DeleteMedia_ForeignRequesterRefused(t *testing.T) {
 
 	_, err := f.svc.DeleteMedia(context.Background(), domain.MediaDeleteRequest{
 		FilePath:      "JGtm/clip.mp4",
-		RequesterSlug: "Chocoboflor",
+		RequesterSlug: "Joueur90001",
 		AuthEnforced:  true,
 	})
 	if err == nil {
@@ -266,7 +266,7 @@ func TestMediaService_DeleteMedia_AdminAllowed(t *testing.T) {
 
 	resp, err := f.svc.DeleteMedia(context.Background(), domain.MediaDeleteRequest{
 		FilePath:         "JGtm/clip.mp4",
-		RequesterSlug:    "Chocoboflor",
+		RequesterSlug:    "Joueur90001",
 		RequesterIsAdmin: true,
 		AuthEnforced:     true,
 	})
@@ -323,7 +323,7 @@ func TestMediaService_DeleteMedia_LikeOnDeletedMediaFails(t *testing.T) {
 
 	_, err := f.svc.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
-		LikerSlug: "Madina97294",
+		LikerSlug: "Joueur90002",
 		Liked:     true,
 	})
 	if err == nil {
@@ -353,9 +353,9 @@ func TestMediaService_AssociateMedia_OwnerOnly(t *testing.T) {
 	// match_registry, la carte reste vide).
 	pdb := &duckdb.PlayerDB{SharedSocial: f.db, Shared: f.db, Gamertag: "JGtm"}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}))
+		})))
 	countAssoc := func() int {
 		var n int
 		if err := f.db.SQLDb().QueryRow(`SELECT count(*) FROM media_match_associations_history`).Scan(&n); err != nil {

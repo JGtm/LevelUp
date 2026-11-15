@@ -25,7 +25,7 @@ package replayartifacts
 //	                        milliers de matchs verrait le fil de l'eau réclamer indéfiniment
 //	                        des films expirés depuis des années. Le solde historique relève de
 //	                        `levelup backfill-replay`, et c'est déjà ce que dit `maxPerCycle`.
-//	présence du FICHIER     Le prédicat le moins cher qui existe : un `os.Stat`. Le prédicat
+//	présence du FICHIER     Le prédicat le moins cher qui existe : un `os.Stat` (par la porte, sous l'une ou l'autre forme). Le prédicat
 //	                        complet (version de schéma + compteurs de joueur) lit et
 //	                        désérialise l'artefact ENTIER — acceptable sur les quelques matchs
 //	                        insérés d'un cycle, ruineux sur soixante-quatre à chaque cycle.
@@ -47,7 +47,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -55,6 +54,8 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -164,7 +165,7 @@ func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[st
 // Rend le SQL et ses paramètres, sauf la limite — l'appelant l'ajoute en dernier.
 //
 // LE PRÉDICAT D'ÉLIGIBILITÉ EST PARTAGÉ avec la lecture tactique
-// (`analysis.SQLEligibleALaCuisson`), qui annonce à l'utilisateur ce que cette file
+// (`sqlfrag.SQLEligibleALaCuisson`), qui annonce à l'utilisateur ce que cette file
 // reprendra : deux formulations, et la page promet une cuisson que rien ne fait.
 //
 // ⚠ LE `IS NOT NULL` DU FRAGMENT RESSERRE CETTE REQUÊTE quand la rétention est ILLIMITÉE
@@ -178,11 +179,11 @@ func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[st
 // que l'utilisateur regarde. `start_time` brut trierait faux (règle 8) — d'où le COALESCE
 // canonique.
 func requeteQueueRecente(months int) (string, []any) {
-	predicat, args := analysis.SQLEligibleALaCuisson("r", months, int64(bitFilmAbsent))
+	predicat, args := sqlfrag.SQLEligibleALaCuisson("r", months, int64(bitFilmAbsent))
 	return `SELECT r.match_id, r.map_name, r.map_id
 		FROM match_registry r
 		WHERE ` + predicat + `
-		ORDER BY ` + analysis.SQLStartTimeCanonical("r") + ` DESC, r.match_id
+		ORDER BY ` + sqlfrag.SQLStartTimeCanonical("r") + ` DESC, r.match_id
 		LIMIT ?`, args
 }
 
@@ -191,8 +192,8 @@ func requeteQueueRecente(months int) (string, []any) {
 // cf. l'en-tête du fichier. La question des DÉRIVÉS a son propre prédicat, tout aussi bon
 // marché : `replaybuild.DerivationsUpToDate` (derivations_backlog.go, constat A2).
 func artefactPresent(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && !st.IsDir() && st.Size() > 0
+	f, err := replayartifact.Locate(path)
+	return err == nil && f.Info.Size() > 0
 }
 
 // budgetDuCycle rend le budget de durée effectif.
@@ -224,7 +225,7 @@ func selectBuildWork(
 	}
 	q := fmt.Sprintf(`SELECT match_id, map_name, map_id, %s AS start_canonical
 		FROM match_registry WHERE match_id IN (%s) AND NOT %s`,
-		analysis.SQLStartTimeCanonical("match_registry"), placeholders, analysis.SQLModeNonGere(""))
+		sqlfrag.SQLStartTimeCanonical("match_registry"), placeholders, sqlfrag.SQLModeNonGere(""))
 	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: sélection rejeu échouée", "err", err)

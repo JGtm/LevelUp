@@ -42,7 +42,7 @@ func TestExtractPlayerMatchStat(t *testing.T) {
 		"Players": []any{
 			map[string]any{"PlayerId": "xuid(999)"}, // autre joueur
 			map[string]any{
-				"PlayerId": "xuid(2533274895653213)",
+				"PlayerId": "xuid(2599816533977960)",
 				"Outcome":  float64(2), // Win
 				"PlayerTeamStats": []any{
 					map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
@@ -56,7 +56,7 @@ func TestExtractPlayerMatchStat(t *testing.T) {
 		},
 	}
 
-	st, ok := ExtractPlayerMatchStat(match, "2533274895653213")
+	st, ok := ExtractPlayerMatchStat(match, "2599816533977960")
 	if !ok {
 		t.Fatal("ExtractPlayerMatchStat: joueur introuvable alors qu'il est présent")
 	}

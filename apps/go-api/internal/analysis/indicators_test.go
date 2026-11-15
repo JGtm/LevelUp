@@ -218,3 +218,68 @@ func TestTier_Token(t *testing.T) {
 		})
 	}
 }
+
+// TestPerMinute_MemeValeurQueLeCalculEnLigne : PerMinute rend, bit pour bit, ce que le pipeline de progression
+// calculait en ligne (minutes := secondes/60 ; valeur/minutes, 0 sans durée).
+func TestPerMinute_MemeValeurQueLeCalculEnLigne(t *testing.T) {
+	enLigne := func(total, secs float64) float64 {
+		if secs > 0 {
+			minutes := secs / 60
+			return total / minutes
+		}
+		return 0
+	}
+	totaux := []float64{0, 1, 7, 12, 25.5, 1500, 1234.5678, 0.1}
+	durees := []float64{-5, 0, 1, 59, 60, 61, 300, 600, 777.7, 1199.999, 3600}
+	for _, v := range totaux {
+		for _, s := range durees {
+			if got, want := PerMinute(v, s), enLigne(v, s); got != want {
+				t.Fatalf("PerMinute(%v, %v) = %v, calcul en ligne %v", v, s, got, want)
+			}
+		}
+	}
+	if got := PerMinute(12, 600); got != 1.2 {
+		t.Errorf("PerMinute(12, 600) = %v, attendu 1,2", got)
+	}
+}
+
+// TestPerMinuteOfCount_UnSeulArrondi : la forme comptage * 60 / secondes rend, bit pour bit, le calcul en ligne
+// des profils d'escouade, et se distingue de PerMinute sur 3 frags en 800 s ; 0 sans durée positive.
+func TestPerMinuteOfCount_UnSeulArrondi(t *testing.T) {
+	for k := 0; k <= 60; k++ {
+		for s := 1; s <= 1800; s++ {
+			if got, want := PerMinuteOfCount(float64(k), float64(s)), float64(k)*60.0/float64(s); got != want {
+				t.Fatalf("PerMinuteOfCount(%d, %d) = %v, calcul en ligne %v", k, s, got, want)
+			}
+		}
+	}
+	if got := PerMinuteOfCount(3, 800); got != 0.225 {
+		t.Errorf("PerMinuteOfCount(3, 800) = %v, attendu 0,225", got)
+	}
+	if PerMinute(3, 800) == PerMinuteOfCount(3, 800) {
+		t.Error("les deux formes devraient différer au dernier bit sur 3 frags en 800 s")
+	}
+	for _, s := range []float64{0, -10} {
+		if got := PerMinuteOfCount(5, s); got != 0 {
+			t.Errorf("PerMinuteOfCount(5, %v) = %v, attendu 0", s, got)
+		}
+	}
+}
+
+// TestConversionsEnMinutes : secondes / 60 et millisecondes / 60000, sans garde ; la somme des conversions
+// diffère de la conversion de la somme sur 300 s + 344 s (25 frags : ...8506 contre ...851).
+func TestConversionsEnMinutes(t *testing.T) {
+	if got := SecondsToMinutes(90); got != 1.5 {
+		t.Errorf("SecondsToMinutes(90) = %v, attendu 1,5", got)
+	}
+	if got := MillisecondsToMinutes(90000); got != 1.5 {
+		t.Errorf("MillisecondsToMinutes(90000) = %v, attendu 1,5", got)
+	}
+	if got := SecondsToMinutes(-60); got != -1 {
+		t.Errorf("SecondsToMinutes(-60) = %v, attendu -1 (sans garde)", got)
+	}
+	somme := SecondsToMinutes(300) + SecondsToMinutes(344)
+	if 25/somme == 25/SecondsToMinutes(300+344) {
+		t.Error("la somme des conversions devrait différer de la conversion de la somme sur 300 s + 344 s")
+	}
+}

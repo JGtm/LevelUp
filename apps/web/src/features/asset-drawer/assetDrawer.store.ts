@@ -5,8 +5,16 @@ import { clampPanelWidth, loadPanelWidth, savePanelWidth } from './panelWidth'
 
 export type AssetTab = 'maps' | 'weapons' | 'medals'
 
+/** Version du format persisté : la 1 ajoute le mode épinglé (un ancien état « ouvert » devient épinglé). */
+const PERSIST_VERSION = 1
+
 interface AssetDrawerState {
   isOpen: boolean
+  /**
+   * Mode du volet ancré (application de bureau) : épinglé, il pousse le contenu ; sinon il se superpose
+   * à la page sous un voile et se ferme au clic dessus. Fermer le volet ne change pas le mode.
+   */
+  pinned: boolean
   activeTab: AssetTab
   search: string
   /** Largeur du volet ancré (application de bureau), en pixels ; mémorisée par `panelWidth`. */
@@ -20,6 +28,7 @@ interface AssetDrawerState {
   open: () => void
   close: () => void
   toggle: () => void
+  setPinned: (pinned: boolean) => void
   setTab: (tab: AssetTab) => void
   setSearch: (q: string) => void
   setPanelWidth: (width: number) => void
@@ -33,6 +42,7 @@ export const useAssetDrawerStore = create<AssetDrawerState>()(
   persist(
     (set) => ({
       isOpen: false,
+      pinned: false,
       activeTab: 'maps',
       search: '',
       panelWidth: loadPanelWidth(),
@@ -46,6 +56,7 @@ export const useAssetDrawerStore = create<AssetDrawerState>()(
           search: s.isOpen ? '' : s.search,
           focusToken: s.isOpen ? s.focusToken : s.focusToken + 1,
         })),
+      setPinned: (pinned) => set({ pinned }),
       setTab: (tab) => set({ activeTab: tab, search: '' }),
       setSearch: (q) => set({ search: q }),
       setPanelWidth: (width) => {
@@ -56,7 +67,14 @@ export const useAssetDrawerStore = create<AssetDrawerState>()(
     }),
     {
       name: 'levelup-asset-drawer',
-      partialize: (s) => ({ isOpen: s.isOpen, activeTab: s.activeTab }),
+      version: PERSIST_VERSION,
+      // Ouvert n'est mémorisé que s'il est épinglé : un volet superposé se rouvre fermé.
+      partialize: (s) => ({ isOpen: s.pinned && s.isOpen, pinned: s.pinned, activeTab: s.activeTab }),
+      migrate: (persisted, version) => {
+        const old = (persisted ?? {}) as { isOpen?: boolean }
+        // Avant la version 1, ouvert voulait dire poussant le contenu : c'est le mode épinglé.
+        return version < 1 ? { ...old, pinned: old.isOpen === true } : old
+      },
     },
   ),
 )

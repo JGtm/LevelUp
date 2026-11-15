@@ -75,8 +75,8 @@ const MsParSeconde = 1000
 // le rejeu 2D sait rejouer (`?frame=`). Sa conversion en millisecondes passe par
 // EntreeOccupation.IntervalleFrameMs.
 type PointPiste struct {
-	T    int
-	X, Y float64
+	T       int
+	X, Y, Z float64
 }
 
 // Piste est UNE VIE (un slot de biped entre deux reapparitions), pas un joueur : le
@@ -97,6 +97,14 @@ type Piste struct {
 	// les points la definir eux-memes ; declaree, elle ECARTE tout point qui en sort.
 	StartFrame int
 	EndFrame   int
+
+	// Equipe est le designateur d'equipe de la vie (-1 : aucune equipe connue). Il ne sert qu'aux
+	// lectures de reapparition (cf. reapparitions.go).
+	Equipe int
+
+	// Fin est la lecture, FACULTATIVE, de la maniere dont le film clot cette vie (cf.
+	// FinLue). Nil : le film n'en dit rien.
+	Fin *FinLue
 }
 
 // Embarquement est un EPISODE D'OCCUPATION de vehicule, projete pur : qui, de quand a
@@ -140,23 +148,11 @@ type EntreeOccupation struct {
 	// Embarquements sont les episodes d'occupation de vehicule du match, tous vehicules
 	// confondus (cf. Embarquement).
 	Embarquements []Embarquement
-}
 
-// SpawnPiste est le PREMIER point d'une vie : la reapparition.
-type SpawnPiste struct {
-	Frame int     `json:"frame"`
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
-	// PremiereVie marque le spawn de DEPART — celui de la premiere vie du joueur sur le
-	// match, et le seul que la lecture « ou je spawne » regarde (decision produit du plan :
-	// les reapparitions suivantes dependent de ou l'on vient de mourir, pas du placement
-	// d'ouverture).
-	//
-	// C'est la premiere vie NOMMEE : une vie que le fil des morts n'a pas nommee n'a pas de
-	// porteur, et les premieres vies d'un film sont parfois anterieures au debut reel du
-	// match. La borne est donc « la plus precoce que le film sache attribuer », pas « la
-	// premiere du film ».
-	PremiereVie bool `json:"premiere_vie,omitempty"`
+	// DebutsDeCompte sont les DEBUTS de compte a rebours de reapparition lus dans le film, deja
+	// rattaches a un xuid (cf. JoindreDebutsDeCompte). Vide : le document ne porte pas ce
+	// compte, et la reapparition se juge au repli nomme (cf. reapparitions.go).
+	DebutsDeCompte []DebutCompte
 }
 
 // EntreeCellule est la PREMIERE entree d'un joueur dans une cellule, sur l'ensemble de
@@ -176,6 +172,10 @@ type OccupationJoueur struct {
 	// embarquements confondus. C'est l'entree du rasterisage — un echantillon vaut
 	// PasOccupationMs de presence.
 	Echantillons []domain.PositionSample
+
+	// Equipe est le designateur d'equipe du joueur (celui de sa premiere vie qui en porte un),
+	// -1 quand le film n'en nomme aucun.
+	Equipe int
 
 	// Spawns : le premier point de chacune de ses VIES, trie par frame. Un embarquement
 	// n'en produit jamais : monter dans un vehicule n'est pas reapparaitre.
@@ -207,7 +207,9 @@ func Occupation(g Grille, e EntreeOccupation, pasMs int) []OccupationJoueur {
 	ech := echantillonneur{grille: g, entree: e, pasMs: pasMs}
 	etat := nouvelEtatOccupation()
 	embs := embarquementsParJoueur(e.Embarquements)
-	for _, p := range e.Pistes {
+	index := NouvelIndexVies(e)
+	spawns := index.Spawns()
+	for i, p := range e.Pistes {
 		if p.XUID == "" {
 			continue
 		}
@@ -216,7 +218,7 @@ func Occupation(g Grille, e EntreeOccupation, pasMs int) []OccupationJoueur {
 			continue
 		}
 		j, vues := etat.joueur(p.XUID)
-		j.Spawns = append(j.Spawns, SpawnPiste{Frame: points[0].T, X: points[0].X, Y: points[0].Y})
+		j.Spawns = append(j.Spawns, spawns[i])
 		ech.vie(points, j, vues, embs[p.XUID])
 	}
 	// LES EMBARQUEMENTS APRES LES VIES, et dans un ordre STABLE : la sortie d'un parcours
@@ -232,6 +234,9 @@ func Occupation(g Grille, e EntreeOccupation, pasMs int) []OccupationJoueur {
 	// maille de l'occupation — deux instants et une fenetre de 15 s — et partager sa boucle
 	// aurait fait un parcours que personne ne relit.
 	ech.enrichirVies(etat)
+	for xuid, j := range etat.parJoueur {
+		j.Equipe = index.EquipeDuJoueur(xuid)
+	}
 	return etat.assembler()
 }
 

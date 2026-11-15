@@ -83,3 +83,13 @@ func TestContientUneJonctionDetecteUnSymlink(t *testing.T) {
 		t.Fatal("un symlink dans l'arbre doit etre detecte")
 	}
 }
+
+// TestEnvironnementSansGOWORK : la compilation de la base n'hérite d'aucun GOWORK (ni valeur, ni
+// `off`), le reste de l'environnement passe tel quel.
+func TestEnvironnementSansGOWORK(t *testing.T) {
+	got := environnementSansGOWORK([]string{"PATH=/bin", "GOWORK=/tmp/x.work", "gowork=off", "GOWORKX=1"})
+	want := []string{"PATH=/bin", "GOWORKX=1"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("environnementSansGOWORK = %v, attendu %v", got, want)
+	}
+}

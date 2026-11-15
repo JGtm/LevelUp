@@ -18,8 +18,9 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // mockReplayService implémente port.ReplayService.
@@ -47,6 +48,8 @@ type mockReplayService struct {
 	imageMapContentType string
 	bgMapErr            error
 	vuMapID             string
+	// planErr : l'erreur des deux images plan (par match et par carte).
+	planErr error
 }
 
 // contentTypeOuDefaut rend "image/png" quand aucun type n'a été fixé explicitement — le
@@ -78,6 +81,17 @@ func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string)
 func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
 	m.vuMapID = mapID
 	return m.imageMap, contentTypeOuDefaut(m.imageMapContentType), m.bgMapErr
+}
+
+// MapBackgroundPlanImage et sa jumelle par carte rendent des octets distincts de ceux du fond : un
+// handler qui servirait le fond à la place du plan se verrait.
+func (m *mockReplayService) MapBackgroundPlanImage(_ context.Context, _ string) ([]byte, string, error) {
+	return []byte("plan-match"), "image/webp", m.planErr
+}
+
+func (m *mockReplayService) MapBackgroundPlanImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
+	m.vuMapID = mapID
+	return []byte("plan-carte"), "image/webp", m.planErr
 }
 
 func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {
@@ -355,5 +369,37 @@ func TestReplayBackground_PlayerNotFound(t *testing.T) {
 		if w.Code != http.StatusNotFound {
 			t.Errorf("%s: attendu 404, obtenu %d", suffixe, w.Code)
 		}
+	}
+}
+
+// TestReplayHandler_CadenceStaleHeader — le SERVEUR dit si le pas du document servi n'est plus le pas de
+// cuisson courant ; le badge admin recopie ce verdict. Un document sans pas se lit à 100 ms.
+func TestReplayHandler_CadenceStaleHeader(t *testing.T) {
+	cas := []struct {
+		nom     string
+		courant int
+		pas     int
+		veut    string
+	}{
+		{"100 ms face à 33 ms", 33, 100, "true"},
+		{"100 ms face à 100 ms", 100, 100, "false"},
+		{"pas absent face à 33 ms", 33, 0, "true"},
+		{"33 ms face à 33 ms", 33, 33, "false"},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			defer replaybuild.ForceCookFrameIntervalMS(c.courant)()
+			mock := &mockReplayService{doc: replaydoc.ReplayDocument{
+				SchemaVersion: replay.SchemaVersion, MatchID: "000d5950", TitleSlug: "halo_infinite", FrameIntervalMS: c.pas,
+			}}
+			factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+			w := doReplayGet(newReplayRouter(factory), testPlayerSlug, "000d5950")
+			if w.Code != http.StatusOK {
+				t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+			}
+			if got := w.Header().Get(middleware.ReplayCadenceStaleHeader); got != c.veut {
+				t.Errorf("%s = %q, attendu %q", middleware.ReplayCadenceStaleHeader, got, c.veut)
+			}
+		})
 	}
 }

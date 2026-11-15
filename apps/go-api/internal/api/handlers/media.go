@@ -144,17 +144,17 @@ type MediaHandler struct {
 	loadProfiles      MediaProfilesProvider
 	repoRoot          string
 	settingsStore     *settings.Store
-	notifierFor       NotificationsEmitterFactory // optionnel : émission media_added
-	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
-	deleteSource      func(*bool) bool            // politique de rétention de l'original (config.AppConfig.MediaDeleteSource) ; nil : défaut sans capacité
-	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
-	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
-	users             authz.UserLookup            // relecture du rôle admin (media_requester.go)
-	uploadSlots       *slots.Pool                 // envois en vol (défaut : pool global du process)
-	uploadSlotWait    time.Duration               // attente maximale d'une place d'envoi
-	uploadReadBudget  time.Duration               // délai de lecture du corps une fois la place obtenue
-	audience          MediaAudienceResolver       // auteurs visibles (nil : joueur de la page seul)
-	rescan            MediaRescan                 // passe lancée après la confirmation d'une disparition massive (media_missing.go)
+	notifierFor       notifications.EmitterFactory // optionnel : émission media_added
+	recipientResolver MediaRecipientResolver       // optionnel : fan-out aux autres joueurs
+	deleteSource      func(*bool) bool             // politique de rétention de l'original (config.AppConfig.MediaDeleteSource) ; nil : défaut sans capacité
+	authEnforced      bool                         // true = multi-user authentifié (like sans session refusé)
+	requester         RequesterSlugResolver        // joueur possédé par l'utilisateur de la session (media_requester.go)
+	users             authz.UserLookup             // relecture du rôle admin (media_requester.go)
+	uploadSlots       *slots.Pool                  // envois en vol (défaut : pool global du process)
+	uploadSlotWait    time.Duration                // attente maximale d'une place d'envoi
+	uploadReadBudget  time.Duration                // délai de lecture du corps une fois la place obtenue
+	audience          MediaAudienceResolver        // auteurs visibles (nil : joueur de la page seul)
+	rescan            MediaRescan                  // passe lancée après la confirmation d'une disparition massive (media_missing.go)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -205,7 +205,7 @@ func (h *MediaHandler) WithAuthorsContext(playerCtx MediaPlayerContextFactory, l
 
 // WithNotificationsEmitterFactory branche la factory d'émetteurs de notifications
 // pour publier media_added après un upload réussi.
-func (h *MediaHandler) WithNotificationsEmitterFactory(f NotificationsEmitterFactory) *MediaHandler {
+func (h *MediaHandler) WithNotificationsEmitterFactory(f notifications.EmitterFactory) *MediaHandler {
 	h.notifierFor = f
 	return h
 }

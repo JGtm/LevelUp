@@ -202,6 +202,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// sous la sentinelle de `memguard`, et mesure par `grammar.FrameClosure` — il ne decode rien
 	// pour la production et ne publie rien. Un seul paquet (`main`), sans bibliotheque a cote.
 	"libs/film/research/cmd_fermeture": horsCoucheFilm,
+	// Plan de la marche complete, A0.7 et A1 (2026-11-10) : la divergence de lecture contre le temoin
+	// libfilmshell (`divergence`) et la mesure de duree de decodage (`duree`). Memes nature et
+	// tag `research` que `cmd_fermeture` : ils lisent des films en place par les couches internes,
+	// et ne decodent ni ne publient rien pour la production.
+	"libs/film/research/divergence": horsCoucheFilm,
+	"libs/film/research/duree":      horsCoucheFilm,
 	// Lot J4.5 (2026-09-26) : l instrument de recherche du SWAP d arme, descendu de
 	// `cmd/rdata_weapon_scan` (tag `research`). Il lit le registre et les trames d UN film du cache
 	// par les couches internes — il etait le seul consommateur hors du decodeur de

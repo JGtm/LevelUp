@@ -168,12 +168,16 @@ func main() {
 		exitErr = runBackfillPadTiers(cfg, args)
 	case "backfill-vehicle-takes":
 		exitErr = runBackfillVehicleTakes(cfg, args)
+	case "backfill-lead-share":
+		exitErr = runBackfillLeadShare(cfg, args)
 	case "backfill-match-summaries":
 		exitErr = runBackfillMatchSummaries(cfg, args)
 	case "backfill-map-callouts":
 		exitErr = runBackfillMapCallouts(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
+	case "spawn-model":
+		exitErr = runSpawnModel(cfg, args)
 	case "replay-facts-export":
 		exitErr = runReplayFactsExport(cfg, args)
 	case "replay-parc-vies":
@@ -192,6 +196,8 @@ func main() {
 		exitErr = runPoolSharing(cfg, args)
 	case "film":
 		exitErr = runFilm(cfg, args)
+	case "replay":
+		exitErr = runReplay(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -278,6 +284,11 @@ Commandes:
   backfill-vehicle-takes  Projette en base la ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies par camp/joueur/famille) lue du calque
                   vehicules des artefacts de rejeu deja ranges (match_vehicle_takes append-only) : AUCUN decodage, AUCUNE recuisson. Un artefact
                   de schema < 67 est ecrit « non mesure ». Apres une recuisson, --force (--dry-run, --force, --match, --limit, serveur arrete)
+  backfill-lead-share  Projette en base la MAINMISE (part de la duree jouee passee en tete du score par camp, retournements) lue de la courbe
+                  de score des artefacts de rejeu deja ranges (match_lead_share append-only) : AUCUN decodage, AUCUNE recuisson. Un mode a
+                  peu de points, un score non couvert ou une horloge sans origine est ecrit « non mesure » avec sa raison. --dry-run ouvre la
+                  base en LECTURE SEULE (rien d ecrit, aucune migration). Apres une recuisson, --force (--dry-run, --force, --match, --limit,
+                  serveur arrete)
   backfill-map-callouts  Donne leurs ZONES NOMMEES (callouts) aux cartes Forge jouees qui n en ont pas : variante .mvar lue au cache,
                   sinon telechargee une fois (pool de jetons) et deposee au cache, zones rangees au catalogue GENERE
                   reference/generated/map_callouts.json (le versionne n est jamais ecrit). AUCUNE recuisson : les zones se
@@ -301,6 +312,9 @@ Commandes:
                   AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON ranges sous
                   data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
+  spawn-model   Mesure (evaluate) et ajuste (fit) le modele de reapparition : lit les artefacts de rejeu un a un (aucun film decode)
+                  et le registre de la base partagee en lecture seule ; fit ecrit data/titles/{slug}/reference/spawn_model.json
+                  (evaluate | fit ; --title, --sections m1,m2,m3,m4|poids, --famille, --limit, --par-carte, --variantes, --ligne-de-vue)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
   replay-parc-vies  Mesure les vies sans identite du parc : cuit chaque film nomme par un fichier de faits dans un enfant borne (un a la fois,
                   verrou solo), sans base ni ecriture sous le depot ; films.tsv + identites/<id>.tsv (--faits, --cache, --sortie, --ids) ;
@@ -329,6 +343,9 @@ Commandes:
                   film recompress [--dry-run] [--films ID,ID] (passe en zstd-3 les chunks bruts et zlib, un film a la fois,
                   ecriture atomique, reprenable ; --dry-run chiffre le gain sans ecrire) et film archive-move
                   (--to DIR | --default) [--resume] (range les films dans un autre dossier puis enregistre film_archive_dir)
+  replay          Rejeux, geste de l utilisateur (jamais lance automatiquement) : replay compress [--dry-run] [--title SLUG]
+                  [--dir DIR] (convertit en place les artefacts bruts {short8}.json en {short8}.json.gz, un a la fois, releus et
+                  verifies avant de supprimer le .json, idempotent ; --dry-run chiffre le gain sans ecrire ; le contenu ne change pas)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

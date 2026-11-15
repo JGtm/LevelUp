@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // Films lit les films d'Halo Infinite : cache disque d'abord, puis la brique (manifeste et blobs),

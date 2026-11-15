@@ -24,7 +24,7 @@
 //      - Comportement : ROUGE si Phase 1 du plan principal a regresse.
 //        VERT actuellement (Phase 1 mergee dans commit eec02eb6).
 //      - Reproduit le scenario exact observe en prod 2026-05-24 sur
-//        Chocoboflor + XxDaemonGamerxX.
+//        Joueur90001 + Joueur90000000f.
 //
 //   2. internal/sync/csr_art_repro_test.go (commit b0a51b97, WIP user)
 //      - TestCSR_ARTRepro_PlayerDB + TestCSR_ARTRepro_SharedDB

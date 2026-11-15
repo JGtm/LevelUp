@@ -1,5 +1,5 @@
 /**
- * Heatmap2DChart — wrapper ECharts pour `ChartSeries<ChartPointHeatmap>`.
+ * Heatmap2DChart — wrapper ECharts pour `ChartSeries<HeatmapCellPoint>`.
  *
  * Consomme :
  *   - 1 série dont les datapoints sont `{ x, y, value, detail? }`.
@@ -21,7 +21,7 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   buildHeatmap2DOption,
-  type ChartPointHeatmap,
+  type HeatmapCellPoint,
   type HeatmapAxisTuning,
   type HeatmapGridOverride,
   type HeatmapPaletteMode,
@@ -35,7 +35,7 @@ import {
 /* eslint-disable react-refresh/only-export-components */
 export { buildHeatmap2DOption } from './heatmap2DOption'
 export type {
-  ChartPointHeatmap,
+  HeatmapCellPoint,
   HeatmapPaletteMode,
   HeatmapAxisTuning,
   HeatmapGridOverride,
@@ -45,7 +45,7 @@ export type {
 
 export interface Heatmap2DChartProps {
   title?: string
-  series: ChartSeries<ChartPointHeatmap>[]
+  series: ChartSeries<HeatmapCellPoint>[]
   loading?: boolean
   error?: Error | null
   emptyMessage?: string
@@ -72,7 +72,7 @@ export interface Heatmap2DChartProps {
    *
    * L'appelant est responsable de l'échappement de ce qu'il injecte.
    */
-  formatTooltip?: (point: ChartPointHeatmap) => string
+  formatTooltip?: (point: HeatmapCellPoint) => string
   /**
    * Encre du NOMBRE ecrit dans la case — une couleur deja resolue.
    *
@@ -195,7 +195,7 @@ export function Heatmap2DChart({
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
   const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const buildOption = useCallback(
-    (s: ChartSeries<ChartPointHeatmap>[]) =>
+    (s: ChartSeries<HeatmapCellPoint>[]) =>
       buildHeatmap2DOption(s, {
         paletteMode,
         valueRange,

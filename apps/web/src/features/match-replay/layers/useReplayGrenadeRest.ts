@@ -36,6 +36,8 @@ export interface GrenadeRestHookInput {
   smoke: string
   halo: string
   reducedMotion: boolean
+  /** Seul et Masquer : les fins de vol d'un lanceur écarté ne se dessinent pas. */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 export interface ReplayGrenadeRest {
@@ -58,6 +60,7 @@ export function useReplayGrenadeRest({
   smoke,
   halo,
   reducedMotion,
+  shownAtSlot,
 }: GrenadeRestHookInput): ReplayGrenadeRest {
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number, dpr: number) => {
@@ -75,10 +78,10 @@ export function useReplayGrenadeRest({
           // reste figée à l'âge zéro sur un artefact ancien.
           frameMs: frameToMs(1, doc),
         },
-        { ink, smoke, halo, k: dpr, reducedMotion },
+        { ink, smoke, halo, k: dpr, reducedMotion, shownAtSlot },
       )
     },
-    [fx, view, window.holdHalo, window.holdDynamo, doc, ink, smoke, halo, reducedMotion],
+    [fx, view, window.holdHalo, window.holdDynamo, doc, ink, smoke, halo, reducedMotion, shownAtSlot],
   )
   return { id: 'fin-de-vol', paint }
 }

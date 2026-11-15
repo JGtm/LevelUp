@@ -41,11 +41,11 @@ func (s *TimeseriesService) WithWeaponRangeRepo(repo port.WeaponRangeRepository)
 // partagée par l'Emprise et les formes retenues. Câblé gated par film.usage_summary ; repo nil ⇒
 // l'Emprise dit `film_unsupported` et les formes se retirent.
 //
-// `repoRoot` sert aux CATALOGUES du titre (noms d'armes) : vide, les armes s'affichent sous leur
+// `labels` sert aux CATALOGUES du titre (noms d'armes) : nil, les armes s'affichent sous leur
 // cle — la degradation ecrite partout ailleurs.
-func (s *TimeseriesService) WithUsageSummary(repo port.SessionUsageRepository, repoRoot string) *TimeseriesService {
+func (s *TimeseriesService) WithUsageSummary(repo port.SessionUsageRepository, labels port.ReplayLabelSource) *TimeseriesService {
 	s.sessionUsageRepo = repo
-	s.repoRoot = repoRoot
+	s.labels = labels
 	return s
 }
 

@@ -33,7 +33,7 @@ func TestGetHomePage_AnalysisPending_DeBoutEnBout(t *testing.T) {
 		idAnalyseFinie:   synchroIlYA(time.Hour, nil),
 	}}
 	stub := &stubReplayService{shortIDs: []string{"bbbb2222"}}
-	svc := withHomeMock(NewHomeService(repo), repo).WithReplay(stub).
+	svc := withHomeMock(NewHomeService(repo, nil), repo).WithReplay(stub).
 		WithAnalysisPending(resolveurDeTest(sonde, true))
 
 	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
@@ -56,7 +56,7 @@ func TestGetHomePage_AnalysisPending_DeBoutEnBout(t *testing.T) {
 // résolveur) ou lecture en échec : la page est servie, aucun indicateur.
 func TestGetHomePage_AnalysisPending_SansResolveurOuEnEchec(t *testing.T) {
 	repo := homeReplayRepo(time.Now())
-	resp, err := withHomeMock(NewHomeService(repo), repo).GetHomePage(context.Background(), "TestGT", "fr")
+	resp, err := withHomeMock(NewHomeService(repo, nil), repo).GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("sans résolveur : %v", err)
 	}
@@ -68,7 +68,7 @@ func TestGetHomePage_AnalysisPending_SansResolveurOuEnEchec(t *testing.T) {
 
 	repo = homeReplayRepo(time.Now())
 	sonde := &probeRepoFactice{err: errors.New("registre illisible")}
-	resp, err = withHomeMock(NewHomeService(repo), repo).WithAnalysisPending(resolveurDeTest(sonde, true)).
+	resp, err = withHomeMock(NewHomeService(repo, nil), repo).WithAnalysisPending(resolveurDeTest(sonde, true)).
 		GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
 		t.Fatalf("lecture en échec : la page doit être servie, %v", err)

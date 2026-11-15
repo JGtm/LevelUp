@@ -4,7 +4,7 @@
 // une condition simple, propre au joueur. Le seuil est calculé depuis
 // PlayerProfile (V1), typiquement la médiane des 100 derniers matchs.
 //
-// Persistance : table `streak` dans stats.duckdb (par joueur).
+// Persistance : table `streak_history` (INSERT pur) lue par la vue `streak_latest`, dans stats.duckdb (par joueur).
 package streaks
 
 import "time"

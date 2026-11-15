@@ -24,6 +24,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	syncpkg "levelup/go-api/internal/sync"
@@ -196,16 +197,16 @@ func (r *ServiceRegistry) readReplayJobInputs(ctx context.Context, titleSlug, ma
 	if r.replayJobFactsFn != nil {
 		return r.replayJobFactsFn(ctx, titleSlug, matchID)
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return "", nil, port.MatchFacts{}, err
 	}
-	defer closeAll()
-	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
+	defer h.Close()
+	fullID, names, err := replayMatchIdentity(ctx, duckdb.NewReplayRegistryRepo(h.Shared, h.Meta), matchID)
 	if err != nil {
 		return "", nil, port.MatchFacts{}, err
 	}
-	return fullID, names, replayMatchFacts(ctx, sharedSQL, fullID), nil
+	return fullID, names, replayMatchFacts(ctx, duckdb.NewReplayFactsRepo(h.Shared), fullID), nil
 }
 
 // StoreBuildArtifact valide l'artefact rendu par un ouvrier et le range à la

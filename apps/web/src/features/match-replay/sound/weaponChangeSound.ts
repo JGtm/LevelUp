@@ -52,7 +52,7 @@
  * en plus le bruit du ramassage d'arme ferait entendre une arme là où il n'y en a pas.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { frameToMs } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**
@@ -86,14 +86,14 @@ export function weaponChangeSoundEvents(doc: ReplayDocumentReady): ReplaySoundEv
 }
 
 /**
- * NATIVE_PICKUP_MATCH_FRAMES — la fenêtre qui décide qu'un ramassage natif et un `taken` de
- * `weaponChanges` sont LE MÊME geste. Cinq frames = 500 ms sur la grille de 100 ms du rejeu,
- * c'est-à-dire la tolérance sous laquelle l'accord des deux canaux a été mesuré côté Go.
+ * NATIVE_PICKUP_MATCH_MS — la fenêtre qui décide qu'un ramassage natif et un `taken` de
+ * `weaponChanges` sont LE MÊME geste : 500 ms, la tolérance sous laquelle l'accord des deux canaux
+ * a été mesuré côté Go (sur la grille de 100 ms, cinq images).
  *
  * NON EXPORTÉ : rien hors de ce module n'a à connaître la fenêtre. La première version
  * l'exportait « au cas où » — personne ne l'importait, et `knip` l'aurait signalé.
  */
-const NATIVE_PICKUP_MATCH_FRAMES = 5
+const NATIVE_PICKUP_MATCH_MS = 500
 
 /**
  * nativePickupsNotAlreadyHeard — les ramassages natifs d'ARME que `weaponChanges` ne couvre
@@ -108,13 +108,14 @@ function nativePickupsNotAlreadyHeard(
   // rejeu doit se taire sur ce qu'il ne porte pas, pas lever.
   if (!doc.pickups?.length) return []
   const heard = doc.weaponChanges.filter((c) => c.kind !== 'dropped')
+  const matchFrames = durationToFrames(NATIVE_PICKUP_MATCH_MS, doc)
   return doc.pickups.filter((p) => {
     if (p.kind !== 'weapon') return false
     return !heard.some(
       (c) =>
         c.slot === p.slot &&
         c.w === p.w &&
-        Math.abs(c.t - p.t) <= NATIVE_PICKUP_MATCH_FRAMES,
+        Math.abs(c.t - p.t) <= matchFrames,
     )
   })
 }

@@ -6,7 +6,7 @@
  * barGap: "-100%" pour overlap. clip: false pour labels hors bornes.
  */
 import { useCallback, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
@@ -114,7 +114,7 @@ function buildBipolaireOption(
   metrics: ComparisonMetricItem[],
   fieldLabels: string[],
   names: BipolaireNames,
-): EChartsCoreOption {
+): ChartOption {
   if (metrics.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -246,7 +246,7 @@ export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children,
     <ChartCard
       title={title}
       series={series}
-      buildOption={buildOption as (s: ChartSeries<ComparisonMetricItem>[]) => EChartsCoreOption}
+      buildOption={buildOption as (s: ChartSeries<ComparisonMetricItem>[]) => ChartOption}
       height={height ?? Math.max(240, 36 * metrics.length)}
     >
       {children}

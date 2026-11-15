@@ -17,19 +17,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/i18n"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/dbfault"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
@@ -159,8 +156,8 @@ func homeJSONOutput(ctx context.Context, v any, ifNoneMatch, cacheControl string
 // `home_page_error`) passent par mapServiceError, comme les autres pages ; la page garde
 // ses deux 503 historiques, testés avant le repli.
 func homePageError(ctx context.Context, err error, gamertag string) error {
-	recovering := isHandleClosedOrInvalidated(err)
-	if isClientClosed(ctx) || (!recovering && !isSharedSwapContention(err)) {
+	recovering := dbfault.IsHandleClosedOrInvalidated(err)
+	if isClientClosed(ctx) || (!recovering && !dbfault.IsSharedSwapContention(err)) {
 		return mapServiceError(ctx, err, "home_page_error")
 	}
 	slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
@@ -184,32 +181,4 @@ func homePageError(ctx context.Context, err error, gamertag string) error {
 			"page d'accueil temporairement indisponible — base occupée par une synchronisation"),
 		http.Header{headerRetryAfter: []string{"2"}},
 	)
-}
-
-// isHandleClosedOrInvalidated reconnaît les erreurs DuckDB qui justifient
-// un 503 + Retry-After au lieu d'un 500. Couvre :
-//   - `sql: database is closed` (handle fermée mais reopen possible)
-//   - `database has been invalidated...` (FATAL DuckDB, cf. IsInvalidatedError)
-//
-// Le caller doit ré-essayer dans quelques secondes une fois le Reopen() effectué.
-func isHandleClosedOrInvalidated(err error) bool {
-	if err == nil {
-		return false
-	}
-	if duckdbpkg.IsInvalidatedError(err) {
-		return true
-	}
-	return strings.Contains(err.Error(), "database is closed")
-}
-
-// isSharedSwapContention reconnaît les erreurs du SharedDBProvider signalant que
-// la base partagée est momentanément indisponible car un sync tient le writer RW
-// (swap en cours ou provider en récupération). Elles justifient un 503 + Retry-After
-// court : la lecture est idempotente et repassera dès le retour en steady state RO.
-// Seul prédicat de contention du paquet : isDBBusy (helpers.go) le réutilise pour les
-// autres pages, qui répondent alors le 503 générique `db_busy` (plan perf 2026-09-23).
-func isSharedSwapContention(err error) bool {
-	return errors.Is(err, sharedprovider.ErrSwapTimeout) ||
-		errors.Is(err, sharedprovider.ErrSwapFailed) ||
-		errors.Is(err, sharedprovider.ErrProviderClosed)
 }

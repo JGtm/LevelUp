@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"

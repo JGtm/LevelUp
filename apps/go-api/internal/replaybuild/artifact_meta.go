@@ -8,7 +8,7 @@ package replaybuild
 // fichier voisin, `<short8>.meta`, ecrit par l'ecrivain d'artefact ([writeArtifactBytes]) a chaque
 // ecriture reelle.
 //
-// CE QUE PORTE LE FICHIER : la version de schema, les revisions de couche, la taille de l'artefact
+// CE QUE PORTE LE FICHIER : la version de schema, le pas de l artefact (absent = 100 ms), les revisions de couche, la taille de l'artefact
 // qu'il decrit, et la VERSION DE L'APPLICATION qui l'a produit (absente = inconnue, jamais « trop
 // recente »).
 //
@@ -27,8 +27,10 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // Compteurs de l'en-tete (expvar).
@@ -42,21 +44,26 @@ const (
 	CompteurMetaNonEcrit = "replay_artifact_meta_write_failed_total"
 )
 
-// SuffixeMeta : l'extension du fichier d'en-tete, posee a la place de `.json`.
+// SuffixeMeta : l'extension du fichier d'en-tete, posee a la place de l'extension d'artefact (`.json.gz` comme `.json` : le
+// nom `{short8}.meta` ne depend pas de la forme de l'artefact).
 const SuffixeMeta = ".meta"
 
 // MetaPath rend le chemin du fichier d'en-tete d'un artefact. Une seule source du nom : l'ecrivain, le
 // lecteur et la purge passent par ici.
 func MetaPath(artifactPath string) string {
-	return strings.TrimSuffix(artifactPath, ".json") + SuffixeMeta
+	return title.ReplayArtifactStem(artifactPath) + SuffixeMeta
 }
 
 // artifactMeta : le contenu du fichier d'en-tete.
 type artifactMeta struct {
-	MatchID       string            `json:"matchId,omitempty"`
-	SchemaVersion int               `json:"schemaVersion"`
-	Layers        map[string]string `json:"layers,omitempty"`
-	// Bytes : la taille de l'artefact decrit ; un artefact de taille differente n'est pas celui-la.
+	MatchID       string `json:"matchId,omitempty"`
+	SchemaVersion int    `json:"schemaVersion"`
+	// FrameIntervalMS : le pas de l artefact decrit ; absent (0) = 100 ms, comme un document sans `frameIntervalMs`
+	// (une meta d avant ce champ decrit un artefact de cette grille).
+	FrameIntervalMS int               `json:"frameIntervalMs,omitempty"`
+	Layers          map[string]string `json:"layers,omitempty"`
+	// Bytes : la TAILLE STOCKEE de l'artefact decrit (celle du fichier sur disque, compresse le cas echeant, cf.
+	// internal/replayartifact/gate.go) ; un artefact de taille differente n'est pas celui-la.
 	Bytes int64 `json:"bytes"`
 	// AppVersion : la version de l'application du processus qui a ecrit l'artefact ; vide = inconnue.
 	AppVersion string `json:"appVersion,omitempty"`
@@ -87,20 +94,21 @@ func AppVersion() string {
 // d'en-tete quand il fait foi, l'artefact entier une fois sinon (et le fichier d'en-tete est alors ecrit).
 // ok=false si l'artefact est absent ou illisible, comme [ArtifactDigest].
 func ArtifactHeader(ctx context.Context, path string) (Header, bool) {
-	st, err := os.Stat(path)
-	if err != nil || st.IsDir() {
+	f, err := replayartifact.Locate(path)
+	if err != nil {
 		return Header{}, false
 	}
-	if h, ok := lireEntete(path, st); ok {
+	st := f.Info
+	if h, ok := lireEntete(f.Path, st); ok {
 		return h, true
 	}
 	observability.IncCounter(CompteurArtefactsLusEnEntier)
 	observability.AddInt(CompteurOctetsLusEntetes, st.Size())
-	d, ok := ArtifactDigest(path)
+	d, ok := ArtifactDigest(f.Path)
 	if !ok {
 		return Header{}, false
 	}
-	ecrireEntete(ctx, path, d, "")
+	ecrireEntete(ctx, f.Path, d, "")
 	return Header{Digest: d}, true
 }
 
@@ -121,7 +129,7 @@ func lireEntete(path string, st os.FileInfo) (Header, bool) {
 		return Header{}, false
 	}
 	return Header{
-		Digest:     Digest{MatchID: m.MatchID, SchemaVersion: m.SchemaVersion, Layers: m.Layers, Bytes: int(m.Bytes)},
+		Digest:     Digest{MatchID: m.MatchID, SchemaVersion: m.SchemaVersion, FrameIntervalMS: m.FrameIntervalMS, Layers: m.Layers, Bytes: int(m.Bytes)},
 		AppVersion: m.AppVersion,
 	}, true
 }
@@ -135,7 +143,7 @@ var metaDejaAvertie atomic.Bool
 // se journalise.
 func ecrireEntete(ctx context.Context, artifactPath string, d Digest, appVersion string) {
 	blob, err := json.Marshal(artifactMeta{
-		MatchID: d.MatchID, SchemaVersion: d.SchemaVersion, Layers: d.Layers,
+		MatchID: d.MatchID, SchemaVersion: d.SchemaVersion, FrameIntervalMS: d.FrameIntervalMS, Layers: d.Layers,
 		Bytes: int64(d.Bytes), AppVersion: appVersion,
 	})
 	if err == nil {

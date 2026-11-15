@@ -19,6 +19,8 @@
 package archlint
 
 import (
+	resolveur "levelup/go-api/internal/briques"
+
 	"fmt"
 	"os"
 	"os/exec"
@@ -33,7 +35,7 @@ import (
 // shardLot — une ligne `lot` de go-shards.txt.
 type shardLot struct {
 	name     string
-	module   string // dossier du module Go du lot, relatif à la racine du dépôt (directive `module`)
+	module   string // module Go du lot (directive `module`) : dossier du dépôt ou chemin d'une brique publiée
 	filter   string // "-", "run:<liste>" ou "skip:<liste>"
 	patterns []string
 }
@@ -203,7 +205,7 @@ func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 			if strings.HasPrefix(pat, "!") || strings.HasSuffix(pat, "...") {
 				continue
 			}
-			dir := filepath.Join(root, filepath.FromSlash(lot.module), filepath.FromSlash(strings.TrimPrefix(pat, "./")))
+			dir := dossierDuMotif(t, root, lot.module, pat)
 			src := packageTestSources(t, dir)
 			for _, list := range strings.Split(filterLists, ",") {
 				checked += checkHeavyListExists(t, def, list, pat, src)
@@ -213,6 +215,17 @@ func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 	if checked == 0 {
 		t.Fatal("aucun test lourd vérifié : le garde-rail a perdu sa cible (ni lot run:/skip:, ni liste heavy)")
 	}
+}
+
+// dossierDuMotif rend le dossier, sur le disque, du paquet que désigne le motif pat d'un lot du module
+// mod : sous la racine du dépôt pour un dossier, par le résolveur des briques pour une brique publiée.
+func dossierDuMotif(t *testing.T, root, mod, pat string) string {
+	t.Helper()
+	suite := strings.TrimPrefix(pat, "./")
+	if rel, ok := resolveur.GardeRailDeImport(mod); ok {
+		return surDisque(t, rel+"/"+suite)
+	}
+	return filepath.Join(root, filepath.FromSlash(mod), filepath.FromSlash(suite))
 }
 
 // checkHeavyListExists signale chaque test de la liste `list` absent des sources `src` du paquet
@@ -337,8 +350,8 @@ func TestCIGoShardScriptRefusesBrokenDefinitions(t *testing.T) {
 		"complément vide":        {head + "lot a - ./...\nlot r - @reste\n", "complément"},
 		"pas de complément":      {head + "lot a - ./internal/archlint\n", "complément"},
 		"complément pas dernier": {head + "lot r - @reste\nlot a - ./internal/archlint\n", "dernier lot"},
-		"module sans complément": {head + "lot a - ./internal/archlint\nlot r - @reste\nmodule libs/film\nlot f - ./replay\n", "pas de complément"},
-		"motif hors module":      {head + "lot r - @reste\nmodule libs/film\nlot f - ./internal/archlint\nlot g - @reste\n", "ne désigne aucun paquet du module libs/film"},
+		"module sans complément": {head + "lot a - ./internal/archlint\nlot r - @reste\nmodule " + importBriqueFilm + "\nlot f - ./replay\n", "pas de complément"},
+		"motif hors module":      {head + "lot r - @reste\nmodule " + importBriqueFilm + "\nlot f - ./internal/archlint\nlot g - @reste\n", "ne désigne aucun paquet du module " + importBriqueFilm},
 	} {
 		_, stderr, err := runShardScript(t, root, write(tc.def), "--verifier")
 		if err == nil {

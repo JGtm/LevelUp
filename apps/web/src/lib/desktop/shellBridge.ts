@@ -1,11 +1,11 @@
 /**
  * shellBridge — le seul canal entre la page du serveur et la coquille de bureau (ADR 0045).
  *
- * La page tourne dans WebView2 sans aucune commande Tauri : la coquille n'expose à la page que le
- * protocole embarqué `levelup-shell`, que Windows adresse par `http://levelup-shell.localhost`. Une
- * demande est un GET sans lecture de réponse (`no-cors`) : la coquille agit — boîte native, mise à
- * jour — et la page reste où elle est (aucune navigation, donc aucun rechargement ni cookie à
- * rejouer).
+ * Hors la boîte « Parcourir » (`pickFolder.ts`, l'unique commande Tauri accordée à la page), la coquille
+ * n'expose à la page que le protocole embarqué `levelup-shell`, que Windows adresse par
+ * `http://levelup-shell.localhost`. Une demande est un GET sans lecture de réponse (`no-cors`) : la
+ * coquille agit — boîte native, mise à jour — et la page reste où elle est (aucune navigation, donc
+ * aucun rechargement ni cookie à rejouer).
  */
 
 /** Origine du protocole embarqué de la coquille, côté WebView2 (Windows seul). */

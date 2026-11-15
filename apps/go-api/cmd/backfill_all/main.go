@@ -4,7 +4,7 @@
 // depuis le MultiUserTokenStore (ADR 0023), liste les match_ids sans
 // personal_score_awards, et lance le pipeline en série.
 //
-// Lance ce CLI quand l'audit (cmd/audit_coverage) montre des trous, et que tu
+// Lance ce CLI quand l'audit de couverture montre des trous, et que tu
 // veux rattraper sans passer par /api/v1/backfill/start (pas besoin de session).
 //
 // LA MOITIÉ « WEAPONS » A ÉTÉ RETIRÉE le 2026-09-01 : son exécuteur (étape 1.55,

@@ -43,7 +43,6 @@ import { SKIP_SECONDS } from '../layers/replayCanvasConfig'
 import { ReplaySoundControls } from '../sound/ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
-import { SlidersIcon } from '../settings/SlidersIcon'
 import type { ReplayCapture } from '../export/useReplayCapture'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import type { ReplaySound } from '../sound/useReplaySound'
@@ -69,17 +68,13 @@ interface ReplayTransportProps {
   sound: ReplaySound
   capture: ReplayCapture
   locale: ReplayLocale
-  settingsOpen: boolean
-  onToggleSettings: () => void
-  settingsButtonRef: RefObject<HTMLButtonElement | null>
   /** Le mode plein écran de la page (useReplayFullscreen) : le bouton n'en est que la commande. */
   fullscreen: ReplayFullscreen
 }
 
 export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
-  speed, onSetSpeed, sound, capture, locale,
-  settingsOpen, onToggleSettings, settingsButtonRef, fullscreen,
+  speed, onSetSpeed, sound, capture, locale, fullscreen,
 }: ReplayTransportProps) {
   // LE DIALOGUE D'EXPORT s'ouvre depuis la barre et se pose au-dessus d'elle. Son ouverture
   // vit ICI et pas dans le canvas : c'est le bouton qui la commande, et le canvas est à son
@@ -249,22 +244,9 @@ export function ReplayTransport({
           )}
         </div>
 
+        {/* LE PLEIN ÉCRAN FERME LA BARRE, tout à droite. Les réglages d'affichage ne sont plus ici :
+            ils vivent sous le bouton « Vue » de la carte (settings/ReplayViewMenu). */}
         <FullscreenButton fullscreen={fullscreen} locale={locale} />
-
-        {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
-        <button
-          ref={settingsButtonRef}
-          type="button"
-          onClick={onToggleSettings}
-          aria-expanded={settingsOpen}
-          aria-label={t.settingsButton}
-          title={t.settingsButton}
-          className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors ${
-            settingsOpen ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-          }`}
-        >
-          <SlidersIcon />
-        </button>
       </div>
       </div>
     </div>

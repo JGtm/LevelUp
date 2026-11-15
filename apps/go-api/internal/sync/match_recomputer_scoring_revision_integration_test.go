@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -25,12 +26,21 @@ type scoringRevisionFixture struct {
 }
 
 func newScoringRevisionFixture(t *testing.T, provider func(base sharedprovider.Provider) sharedprovider.Provider) *scoringRevisionFixture {
+	return newScoringRevisionFixtureWith(t, provider, nil)
+}
+
+// newScoringRevisionFixtureWith : comme newScoringRevisionFixture ; prep, s'il est posé, abîme la base
+// partagée avant son ouverture par le fournisseur.
+func newScoringRevisionFixtureWith(t *testing.T, provider func(base sharedprovider.Provider) sharedprovider.Provider, prep func(sharedPath string)) *scoringRevisionFixture {
 	t.Helper()
 	dir := t.TempDir()
 	sharedPath := filepath.Join(dir, "shared_matches_v2.duckdb")
 	playerPath := filepath.Join(dir, "player", "stats.duckdb")
 	seedLUSRShared(t, sharedPath, scoringRevisionTestMatches)
 	seedLUSRPlayer(t, playerPath)
+	if prep != nil {
+		prep(sharedPath)
+	}
 	base, err := sharedprovider.New(sharedPath)
 	if err != nil {
 		t.Fatalf("sharedprovider.New: %v", err)
@@ -323,5 +333,102 @@ func TestMatchRecomputer_RecomputeAfterExclusion_MatchEnEchecNEchouePasEtResteEn
 	}
 	if f.rec.RecomputePending() {
 		t.Error("RecomputePending = true après un recalcul réussi")
+	}
+}
+
+// Monter DEUX révisions à la fois (note de performance et LUSR)
+// donne UN SEUL recalcul. La révision stockée par joueur est la valeur composée par
+// skill.ScoringRevision() : une seule comparaison, un seul recompute, qui rejoue la note de
+// performance ET le LUSR. Preuve : le recalcul d'une révision composée entièrement neuve écrit
+// exactement autant de lignes de notes qu'un recalcul seul (deux passes en écriraient le double).
+func TestMatchRecomputer_ApplyScoringRevision_DeuxMonteesUnSeulRecalcul(t *testing.T) {
+	f := newScoringRevisionFixture(t, identity)
+	ctx := context.Background()
+	const anciennes = "perf=perf-2026-11-08;lusr=lusr-2026-11-09"
+	nouvelles := skill.ScoringRevision()
+	if nouvelles == anciennes {
+		t.Fatal("les révisions courantes sont celles du jeu d'essai : le test ne prouve rien")
+	}
+
+	if applied, err := f.rec.ApplyScoringRevision(ctx, anciennes); err != nil || !applied {
+		t.Fatalf("premier recalcul : applied=%v err=%v", applied, err)
+	}
+	unRecalcul := f.count(t, lusrWritesQuery)
+	if unRecalcul == 0 {
+		t.Fatal("aucune ligne écrite par un recalcul : la fixture ne prouve rien")
+	}
+
+	applied, err := f.rec.ApplyScoringRevision(ctx, nouvelles)
+	if err != nil || !applied {
+		t.Fatalf("deux révisions montées : applied=%v err=%v, attendu true, nil", applied, err)
+	}
+	if got := f.count(t, lusrWritesQuery); got != 2*unRecalcul {
+		t.Fatalf("lignes de notes après deux montées = %d, attendu %d : UN recalcul de plus (%d lignes), pas deux", got, 2*unRecalcul, unRecalcul)
+	}
+	if got := f.storedRevision(t); got != nouvelles {
+		t.Fatalf("révision rangée = %q, attendu %q", got, nouvelles)
+	}
+	if applied, err := f.rec.ApplyScoringRevision(ctx, nouvelles); err != nil || applied {
+		t.Fatalf("révision à jour : applied=%v err=%v, attendu false, nil", applied, err)
+	}
+}
+
+// breakObjectiveRowsRead rend la LECTURE des lignes d'objectif de l'équipe impossible : la vue
+// `match_objective_stats_latest` est remplacée par une table sans les colonnes lues (la requête échoue,
+// la présence de la vue, elle, est constatée).
+func breakObjectiveRowsRead(t *testing.T) func(sharedPath string) {
+	return func(sharedPath string) {
+		t.Helper()
+		shared, err := OpenSharedDB(sharedPath)
+		if err != nil {
+			t.Fatalf("OpenSharedDB: %v", err)
+		}
+		defer shared.Close()
+		mustExec(t, shared.SQLDb(), `DROP VIEW IF EXISTS match_objective_stats_latest`)
+		mustExec(t, shared.SQLDb(), `DROP TABLE IF EXISTS match_objective_stats_latest`)
+		mustExec(t, shared.SQLDb(), `CREATE TABLE match_objective_stats_latest (match_id VARCHAR)`)
+	}
+}
+
+// Une panne de lecture des lignes d'équipe est une erreur du lot de notes (jamais des notes sans
+// objectif rangées en silence) et le recalcul de révision ne range aucune révision.
+func TestMatchRecomputer_ApplyScoringRevision_LigneDEquipeIllisibleNeNotePas(t *testing.T) {
+	f := newScoringRevisionFixtureWith(t, identity, breakObjectiveRowsRead(t))
+
+	applied, err := f.rec.ApplyScoringRevision(context.Background(), "rev-a")
+	if err == nil || applied {
+		t.Fatalf("lecture des lignes d'équipe en échec : applied=%v err=%v, attendu false et une erreur", applied, err)
+	}
+	if got := f.storedRevision(t); got != "" {
+		t.Fatalf("révision rangée = %q après une panne de lecture, attendu aucune", got)
+	}
+}
+
+// Le même défaut, au niveau du lot de notes : l'erreur remonte et aucune note n'est écrite.
+func TestBatchComputePerformanceScores_LigneDEquipeIllisibleEstUneErreur(t *testing.T) {
+	dir := t.TempDir()
+	sharedPath := filepath.Join(dir, "shared_matches_v2.duckdb")
+	playerPath := filepath.Join(dir, "player", "stats.duckdb")
+	seedLUSRShared(t, sharedPath, scoringRevisionTestMatches)
+	seedLUSRPlayer(t, playerPath)
+	breakObjectiveRowsRead(t)(sharedPath)
+
+	shared, err := OpenSharedDB(sharedPath)
+	if err != nil {
+		t.Fatalf("OpenSharedDB: %v", err)
+	}
+	defer shared.Close()
+	player, err := OpenPlayerDB(playerPath)
+	if err != nil {
+		t.Fatalf("OpenPlayerDB: %v", err)
+	}
+	defer player.Close()
+
+	n, err := batchComputePerformanceScores(context.Background(), player.SQLDb(), shared.SQLDb(), recomputerTestXUID, nil, true)
+	if err == nil || n != 0 {
+		t.Fatalf("n=%d err=%v, attendu 0 et une erreur", n, err)
+	}
+	if !strings.Contains(err.Error(), "lignes d'objectif") {
+		t.Fatalf("l'erreur ne vient pas de la lecture des lignes d'équipe : %v", err)
 	}
 }

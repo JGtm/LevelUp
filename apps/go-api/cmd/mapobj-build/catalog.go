@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // catalogSchemaVersion — incrémenter à tout changement incompatible de forme.

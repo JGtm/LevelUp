@@ -2,7 +2,7 @@
  * ReplaySettingsToggle — LES DEUX COMMANDES du tiroir de reglages, et la marque « (i) » de
  * reserve de mesure qui les accompagne parfois.
  *
- * EXTRAIT DE `ReplaySettingsDrawer.tsx` LE 2026-08-18 (lot R2-V) : le tiroir a franchi le seuil
+ * EXTRAIT DE `ReplaySettingsDrawer.tsx` (devenu `ReplayViewPanel.tsx`) LE 2026-08-18 (lot R2-V) : le tiroir a franchi le seuil
  * de taille du depot (CLAUDE.md n°5) en recevant la bascule de la trainee et la portee de la
  * carte de chaleur. La decoupe tombe sur une frontiere nette — ce fichier ne connait AUCUN
  * reglage du rejeu, il ne sait que dessiner un interrupteur ; le tiroir, lui, ne sait plus
@@ -73,12 +73,14 @@ export function InfoMark({ text }: { text: string }) {
  * bouton, et le doubler ferait entendre deux fois la même chose.
  */
 export function SettingsToggle({
-  label, pressed, onToggle, hint,
+  label, pressed, onToggle, hint, disabled = false,
 }: {
   label: string
   pressed: boolean
   onToggle: () => void
   hint?: string
+  /** Désactivé : le réglage ne peut pas être changé ici (la raison se dit dans `hint`). */
+  disabled?: boolean
 }) {
   return (
     <button
@@ -87,7 +89,8 @@ export function SettingsToggle({
       aria-checked={pressed}
       onClick={onToggle}
       title={hint}
-      className="flex h-7 w-full items-center justify-between gap-2 rounded px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      disabled={disabled}
+      className="flex h-7 w-full items-center justify-between gap-2 rounded px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <span className="truncate">{label}</span>
       <ToggleTrack on={pressed} />
@@ -184,12 +187,17 @@ export function SettingsSegments<T extends string>({
 }
 
 export function SettingsChoice({
-  label, pressed, onToggle, hint,
+  label, pressed, onToggle, hint, description,
 }: {
   label: string
   pressed: boolean
   onToggle: () => void
   hint?: string
+  /**
+   * Une seconde ligne sous le libellé (les préréglages de vue disent ce qu'ils montrent) : la
+   * commande passe alors sur deux lignes, le libellé reste le nom accessible.
+   */
+  description?: string
 }) {
   return (
     <Button
@@ -197,11 +205,21 @@ export function SettingsChoice({
       variant={pressed ? 'default' : 'ghost'}
       size="sm"
       onClick={onToggle}
-      className="h-7 justify-start px-2 text-xs"
+      className={
+        description === undefined
+          ? 'h-7 justify-start px-2 text-xs'
+          : 'h-auto flex-col items-start justify-start gap-0 px-2 py-1.5 text-left text-xs'
+      }
       title={hint}
       aria-pressed={pressed}
+      aria-label={description === undefined ? undefined : label}
     >
       {label}
+      {description !== undefined && (
+        <span className="block whitespace-normal text-[11px] font-normal opacity-80">
+          {description}
+        </span>
+      )}
     </Button>
   )
 }

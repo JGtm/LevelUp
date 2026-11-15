@@ -34,15 +34,17 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSessionContextStore } from '@/stores/sessionContextStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
+import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { sessionRowKeys } from './_sections'
 import { sessionColumnBlocks } from './sessionEmprise.logic'
 import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
+import { perMinuteDomains } from './sessionPerMinute.logic'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -61,6 +63,8 @@ export function SessionDetailPage() {
   // Locale envoyée au backend pour la résolution FR/EN des cartes/modes/playlists
   // (aligné Home/Explorer) ; incluse dans la queryKey → refetch au changement de locale.
   const locale = useAppShellStore((s) => s.locale)
+  // La Mainmise (carte « match par match ») n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
 
   // Le contexte filtre le périmètre (solo/escouade/mixte). On l'injecte dans les
   // filtres envoyés au backend (sessions listées, session par défaut, prev/next,
@@ -127,11 +131,12 @@ export function SessionDetailPage() {
   // Échelle PARTAGÉE A/B (mode comparaison) : bornes communes calculées une fois depuis les
   // deux sessions, passées aux DEUX colonnes → graphes directement comparables. Drawer fermé
   // (ou compare pas encore chargé) → undefined = auto-scale comme avant.
-  // Barème PV-pour-tuer du titre courant (225 Infinite, 115 H5) → conversion des
+  // Barème PV-pour-tuer du titre courant (bootstrap) → conversion des
   // dégâts en vies pour le domaine partagé de la balance des dégâts cumulée.
   const hp = useEffectiveHpToKill()
+  const withDamageTaken = useProvidesDamageTaken()
   const compareScale = useMemo<CompareScale | undefined>(() => {
-    if (!enableCompare || !data?.compare_session) return undefined
+    if (!enableCompare || !data?.compare_session || hp === undefined) return undefined
     return {
       ...computeCompareScale(
         data.matches ?? [],
@@ -143,8 +148,11 @@ export function SessionDetailPage() {
       // L'axe Y de la portée se calcule sur les BLOCS, pas sur les matchs : composé ici
       // plutôt que passé à `computeCompareScale` (cf. son en-tête, seuil de paramètres).
       rangeDelta: rangeDeltaDomain(data.range_profiles, data.compare_range_profiles),
+      // Même raison pour les cadences par minute : le choix « dégâts subis fournis ou non » est un
+      // paramètre de plus. Les deux axes (comptes à gauche, dégâts à droite) se bornent ensemble.
+      ...perMinuteDomains([data.matches ?? [], data.compare_matches ?? []], withDamageTaken),
     }
-  }, [enableCompare, data, hp])
+  }, [enableCompare, data, hp, withDamageTaken])
   // Les blocs de chaque colonne, stables tant que la réponse ne change pas (modèles mémoïsés des cartes).
   const currentBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'current') : null), [data])
   const compareBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'compare') : null), [data])
@@ -261,7 +269,7 @@ export function SessionDetailPage() {
   // session »). Les colonnes sont alors des `grid-rows: subgrid` de la grille racine :
   // la i-eme section de gauche et celle de droite partagent LA MEME rangee, donc la
   // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
-  const rowKeys = drawerOpen ? sessionRowKeys(data) : null
+  const rowKeys = drawerOpen ? sessionRowKeys(data, hasFilmDecoder) : null
   // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
   const gridRowsStyle = rowKeys ? { gridTemplateRows: `repeat(${rowKeys.length + 1}, auto)` } : undefined
 

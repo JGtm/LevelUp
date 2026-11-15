@@ -40,8 +40,9 @@ computation by hand. Before this ADR, that rerun was a manual tool.
 `batchComputePerformanceScores` returns its write error after the cleanup and the summary, instead of `nil`. A match that
 fails during the LUSR replay (state load, computation, score write, state persist) is counted, and the replay returns
 `ErrPartialRecompute`. A match whose solver does not converge is not such a failure: the outcome depends on the match
-inputs, so a retry would fail the same way and the revision would never be stored. It is logged, counted apart
-(`skipped_not_converged`) and gets no new score. `ApplyScoringRevision` stores nothing on any error, partial included. In the interactive path
+inputs, so a retry would fail the same way and the revision would never be stored. Before reaching that classification the
+computation falls back once on the same match without the kills and deaths observations (ADR 0024, amendment 2026-11-09);
+only a second non-convergence is logged, counted apart (`skipped_not_converged`) and gets no new score. `ApplyScoringRevision` stores nothing on any error, partial included. In the interactive path
 (`RecomputeAfterExclusion`), a partial replay is logged as a warning and the user action still succeeds, as before this ADR;
 the pending flag stays set, so a repeated request recomputes.
 
@@ -61,3 +62,42 @@ the pending flag stays set, so a repeated request recomputes.
 - A later startup with the same binary does nothing for a player whose revision matches.
 - Changing a formula or a parameter without bumping the revision is a review failure, enforced by the fingerprint test
   for the hashed parameters and by the delivery checklist for the rest.
+
+## Amendment 2026-11-15 — performance score of the objective chains and Spartan life at 229 (release v8.2.0)
+
+**Relates to** — the Decision above (one composed revision, one recomputation) and the fingerprint test.
+
+Both revisions rise in the same release: `PerformanceScoreRev` = `perf-2026-11-15b` and `LUSRRev` = `lusr-2026-11-15`. This is
+one recomputation, not two: `ApplyScoringRevision` compares the single composed value `skill.ScoringRevision()` with the one
+stored per player, and one `recompute` replays the performance scores and the LUSR together. Test
+`TestMatchRecomputer_ApplyScoringRevision_DeuxMonteesUnSeulRecalcul` proves it (two components change, the notes are written
+once more, not twice).
+
+**What changed.**
+- The performance score of the `arena_objectif` and `ranked_objectif` chains. The `objective_participation` metric (award
+  points per minute) leaves their weight profile, which keeps the 13 combat metrics (sum 0.92). The objective and the team's
+  support graft onto the combat score through the pure package `internal/sync/objectiveblend` (symmetric weighted mean, mid-rank
+  percentiles against the player's own history in the same mode family, `α_obj` = 0.12 + 0.38 × share of the team objective,
+  `α_sout` = 0.38 × share of the team support, sum capped at 0.50). Rows come from one query per player over both teams
+  (`LoadObjectiveTeamRowsForPlayer`), which also serves the full replay; Halo 5 and a match without `match_objective_stats`
+  have no facts, the metric is absent and the score is the combat score. When the same-family reference is under `MinFamilyMatches` and the window of all objective matches serves instead, `O_sout` keeps only the rank of the support share: the support rate per minute is not comparable across families. `PerformanceScoreRev` went to `perf-2026-11-15b` for this rule (same fingerprint: logic only), so a database that stored `perf-2026-11-15` recomputes once.
+- `games.DefaultEffectiveHpToKill` 225 → 229 (and `effective_hp_to_kill` of the Halo Infinite title), measured on the
+  "damage taken" counter of 1 614 films: 229 in 99.6 % of the lives without shield recharge, stable from October 2024 to
+  November 2026 and across the playlists. The relative performance score is unchanged by it (its percentiles are scale
+  invariant: 2 matches out of 684 differ, by rounding); the LUSR composite is unchanged beyond a player's first matches, where
+  its reference is the absolute P80; the displayed Efficiency and Resistance shift by about 2 %. The value is written once, in
+  `config/titles/halo_infinite/constants.toml` [damage_model]: the web reads it from `/bootstrap` (nothing is shown before it
+  loads), Go through `games.EffectiveHpToKill(slug)`, the LUSR and the diagnostic tool through the same resolver. The Go
+  constant `games.DefaultEffectiveHpToKill` survives only as the fallback of an unwired resolver (commands outside the
+  server, tests of other packages) and a test equals it to the TOML; an archlint guard forbids any other numeric literal
+  225 or 229 in untested Go and TypeScript code, and in any displayed text (feature dictionaries, i18n manifests, `fields.toml`,
+  server messages): those carry the `{{HP}}` token, substituted from the title value (web `substituteHpToken`, Go
+  `games.SubstituteHPToken`), except mentions qualified "Halo Infinite".
+
+**Hashed parameters.** The fingerprints hash the value LOADED from the title TOML (`TestScoringParameters_LEmpreinteSuitLaValeurDuTOML`), not the Go constant. The performance fingerprint now covers the objective blend settings (`AlphaMin`, `AlphaMax`,
+`SupportSlope`, `MinFamilyMatches`) and `narrative.ObjectiveSupportFragWeight`. The fingerprint does not see a change of logic
+without a change of number (the rank rule, the choice of the reference series, the support columns table): the maintainer bumps
+the revision by hand.
+
+**Measured effect** (copy of the local parc, 684 objective matches of tracked players): median change +0.6 point, 90th
+percentile of the absolute gap 11.8, 32 % of the matches change tier (35 / 50 / 65 / 80); the other chains do not move.

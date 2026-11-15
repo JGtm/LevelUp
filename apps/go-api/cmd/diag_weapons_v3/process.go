@@ -7,9 +7,9 @@ import (
 
 	"levelup/go-api/internal/platform/duckdb"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 // processMatch décode + résume (et persiste si cfg.write) un match.

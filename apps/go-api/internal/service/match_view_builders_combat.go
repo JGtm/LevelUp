@@ -65,18 +65,15 @@ func buildCombatTabFull(
 	kdDomain := convertKDPointsToDomain(kdPoints)
 
 	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné fondations narrative.
-	// Cadence intra-match + 8 rôles narratifs en parallèle des badges legacy.
+	// Cadence intra-match.
 	//
 	// MV4.A : si canonicalEvents est peuplé (loader unifié actif), on l'utilise
 	// directement. Sinon fallback sur la conversion à la volée depuis EventRaw.
 	var cadence *domain.ChartSeries[domain.ChartPointStacked]
-	var impactRoles []domain.MatchViewImpactRole
 	if len(canonicalEvents) > 0 {
 		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, durationMS)
-		impactRoles = BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
 	} else {
 		cadence = BuildMatchCadenceChart(events, scoreboard, matchID, durationMS)
-		impactRoles = BuildMatchImpactRoles8(events, scoreboard, matchID)
 	}
 
 	// Killer-victim aggregation (chart match_view.18 — antagonistes).
@@ -89,7 +86,6 @@ func buildCombatTabFull(
 		KDTimeline:      kdDomain,
 		NemesisDuels:    []domain.MatchNemesisRow{},
 		KillerVictim:    killerVictim,
-		ImpactRoles:     impactRoles,
 		Cadence:         cadence,
 	}
 }

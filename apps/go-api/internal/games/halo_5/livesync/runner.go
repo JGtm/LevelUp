@@ -61,7 +61,7 @@ type Deps struct {
 	// dominance/is_with_friends + LUSR) sur les nouveaux matchs, en INCRÉMENTAL
 	// (force=false), comme runScoringSteps Infinite + écrit le CSR par match classé
 	// (CurrentCsr du carnage, via src). Rend le sync live h5 autonome (plus besoin
-	// d'un cmd/h5-enrich/h5-csr-match manuel après chaque sync). Best-effort : une
+	// d'un enrichissement manuel après chaque sync). Best-effort : une
 	// erreur n'avorte JAMAIS le cycle. nil → runner unit-testable sans player DB.
 	PostScore func(ctx context.Context, src halo5.CaptureSource, insertedMatchIDs []string) error
 	// HasEnrichmentBacklog : sonde OPTIONNELLE « reste-t-il des matchs en shared SANS

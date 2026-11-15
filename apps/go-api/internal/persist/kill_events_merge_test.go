@@ -286,8 +286,8 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 // TestFusionRejoueLeTemoin9f9b19e5 — LE FILM QUI EST TOMBE, REJOUE LIGNE A LIGNE.
 //
 // `9f9b19e5-5df4-4268-aa32-900a4fc6725a@63757`, tranche 1 du backlog du 2026-09-17 : le credit
-// porte la mort d Artemlv2774 (2535413577167650, tue par Ritio3987), le film celle de
-// DANIELBOIMEXICO (2535427572079378, dont les morts de credit de ce match sont a 106 661 ms et
+// porte la mort d Joueur90003 (2713037253000017, tue par Joueur906), le film celle de
+// Joueur900000003 (2762190624883248, dont les morts de credit de ce match sont a 106 661 ms et
 // au-dela). DEUX MORTS A LA MEME MILLISECONDE. La fusion rendait « victime divergente » et la
 // passe refusait LE FILM ENTIER — 249 films ecrits sur 250.
 //
@@ -297,25 +297,25 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 	const (
 		match          = "9f9b19e5-5df4-4268-aa32-900a4fc6725a"
 		instant        = 63757
-		victimeCredit  = "2535413577167650"
-		victimeDuFilm  = "2535427572079378"
-		tueurDuCredit  = "2535451260456529"
+		victimeCredit  = "2713037253000017"
+		victimeDuFilm  = "2762190624883248"
+		tueurDuCredit  = "2688802980661678"
 		instantSuivant = 64854
 	)
 
 	credit := mortCredit(instant)
-	credit.VictimGamertag, credit.VictimXUID = "Artemlv2774", victimeCredit
-	credit.FeedKillerGamertag, credit.FeedKillerXUID = "Ritio3987", tueurDuCredit
+	credit.VictimGamertag, credit.VictimXUID = "Joueur90003", victimeCredit
+	credit.FeedKillerGamertag, credit.FeedKillerXUID = "Joueur906", tueurDuCredit
 	suivante := mortCredit(instantSuivant)
 
 	film := mortFilm(instant)
-	film.VictimGamertag, film.VictimXUID = "DANIELBOIMEXICO", victimeDuFilm
-	film.FeedKillerXUID = "2535430688244306"
+	film.VictimGamertag, film.VictimXUID = "Joueur900000003", victimeDuFilm
+	film.FeedKillerXUID = "2745647845750797"
 
 	base := batchCredit(credit, suivante)
 	base.MatchID = match
-	// Les morts de l API sur le match reel : UNE SEULE a 63 757 ms (Artemlv2774). Deux morts a cet
-	// instant n y sont pas prouvees — c est le cas des morts fantomes de DANIELBOIMEXICO.
+	// Les morts de l API sur le match reel : UNE SEULE a 63 757 ms (Joueur90003). Deux morts a cet
+	// instant n y sont pas prouvees — c est le cas des morts fantomes de Joueur900000003.
 	base.Evidence = MergeEvidence{Known: true,
 		APIDeaths: map[string][]int{victimeCredit: {instant + 1}, "xuid(2)": {instantSuivant + 1}}}
 	passe := batchFilm(film)
@@ -328,7 +328,7 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 	}
 	if len(out.Deaths) != 2 || st.Orphans != 0 || st.OrphansSharedInstant != 0 {
 		t.Fatalf("%d morts / %d orphelins / %d a instant partage, attendu 2 / 0 / 0 — la mort de "+
-			"DANIELBOIMEXICO n est pas prouvee par l API (un seul kill), elle ne s ajoute pas",
+			"Joueur900000003 n est pas prouvee par l API (un seul kill), elle ne s ajoute pas",
 			len(out.Deaths), st.Orphans, st.OrphansSharedInstant)
 	}
 	if out.Deaths[0].VictimXUID != victimeCredit || out.Deaths[0].SourceTag != 0 {

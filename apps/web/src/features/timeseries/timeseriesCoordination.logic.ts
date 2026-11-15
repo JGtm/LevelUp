@@ -22,6 +22,7 @@ import type {
   Couverture,
 } from '@/lib/api/types'
 import { shortSessionLabel } from '@/components/charts/sessionBarsTrendChart'
+import { movingMean } from '@/lib/charts/stats'
 
 /** Une grandeur, soirée par soirée, prête pour la frise partagée. */
 export interface SerieDeSoirees {
@@ -123,13 +124,9 @@ export const FENETRE_TENDANCE = 3
  * calculée sur un point serait la valeur elle-même, déguisée en tendance.
  */
 export function moyenneGlissante(serie: SerieDeSoirees): (number | null)[] {
-  return serie.valuesPct.map((_, i) => {
-    const fenetre: number[] = []
-    for (let j = Math.max(0, i - FENETRE_TENDANCE + 1); j <= i; j += 1) {
-      const v = serie.valuesPct[j]
-      if (v != null && !serie.echantillonFaible[j]) fenetre.push(v)
-    }
-    if (fenetre.length < FENETRE_TENDANCE) return null
-    return fenetre.reduce((a, b) => a + b, 0) / fenetre.length
-  })
+  return movingMean(
+    serie.valuesPct.map((v, j) => (v != null && !serie.echantillonFaible[j] ? v : null)),
+    FENETRE_TENDANCE,
+    { minValid: FENETRE_TENDANCE },
+  )
 }

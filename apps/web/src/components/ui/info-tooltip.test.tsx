@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 
+import { focusByKeyboard, focusByMouse } from '@/test/focus'
 import { InfoTooltip } from './info-tooltip'
 
 describe('InfoTooltip — portal (DEC-TOOLTIP)', () => {
@@ -34,13 +35,29 @@ describe('InfoTooltip — portal (DEC-TOOLTIP)', () => {
     expect(panel).toHaveStyle({ position: 'fixed' })
   })
 
-  it('ouvre au focus du bouton et ferme au clic extérieur', () => {
+  it('ouvre au focus CLAVIER du bouton et ferme au clic extérieur', () => {
     render(<InfoTooltip content="abc" />)
     const btn = screen.getByRole('button')
-    fireEvent.focus(btn)
+    focusByKeyboard(btn)
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
     fireEvent.mouseDown(document.body)
     expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('n’ouvre pas sur un focus qui ne vient pas du clavier', () => {
+    render(<InfoTooltip content="abc" />)
+    focusByMouse(screen.getByRole('button'))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('en mode trigger, le focus clavier d’un enfant ouvre et le focus souris non', () => {
+    render(<InfoTooltip content="aide" trigger={<button type="button">Trier</button>} />)
+    const enfant = screen.getByRole('button', { name: 'Trier' })
+    focusByMouse(enfant)
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    enfant.blur()
+    focusByKeyboard(enfant)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('aide')
   })
 
   it('ferme au scroll (listener capture ajouté à l’ouverture)', () => {

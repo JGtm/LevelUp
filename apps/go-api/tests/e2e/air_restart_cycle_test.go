@@ -94,8 +94,8 @@ func (p *rotationProvider) Exchange(_ context.Context, _ string) (*auth.Exchange
 			SpartanToken:   fmt.Sprintf("spartan-v%d", n),
 			ClearanceToken: fmt.Sprintf("clearance-v%d", n),
 		},
-		Gamertag: "Madina97294",
-		XUID:     "2533274858283686",
+		Gamertag: "Joueur90002",
+		XUID:     "2623439693412443",
 	}, nil
 }
 
@@ -121,8 +121,8 @@ func rotationCallback(t *testing.T, store *auth.MultiUserTokenStore, xuid string
 func TestAirRestartCycle_FullScenario(t *testing.T) {
 	tempDir := t.TempDir()
 	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
-	const xuid = "2533274858283686"
-	const gamertag = "Madina97294"
+	const xuid = "2623439693412443"
+	const gamertag = "Joueur90002"
 
 	provider := newRotationProvider()
 
@@ -220,11 +220,11 @@ func TestAirRestartCycle_FullScenario(t *testing.T) {
 func TestAirRestartCycle_StaleEnvVarIgnoredAfterFirstRotation(t *testing.T) {
 	tempDir := t.TempDir()
 	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
-	const xuid = "2533274858283686"
-	const gamertag = "Madina97294"
+	const xuid = "2623439693412443"
+	const gamertag = "Joueur90002"
 
 	// Setup : env var stale (= scénario .env.local jamais updaté)
-	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294", "rt-stale-from-env-NEVER_USE")
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JOUEUR90002", "rt-stale-from-env-NEVER_USE")
 
 	provider := newRotationProvider()
 	store := auth.NewMultiUserTokenStore(storeDir)
@@ -279,7 +279,7 @@ func (p *identityRotationProvider) TryOAuthRefresh(ctx context.Context, rt strin
 func TestAirRestartCycle_RotationNoOp_StoreUnchanged(t *testing.T) {
 	tempDir := t.TempDir()
 	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
-	const xuid = "2533274858283686"
+	const xuid = "2623439693412443"
 
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := store.UpdateOAuthRefreshToken(xuid, "rt-same"); err != nil {
@@ -296,7 +296,7 @@ func TestAirRestartCycle_RotationNoOp_StoreUnchanged(t *testing.T) {
 	// (pas de marquage usedRTs), donc rt-same reste utilisable.
 
 	src := pool.CredentialSource{
-		Gamertag:     "Madina97294",
+		Gamertag:     "Joueur90002",
 		XUID:         xuid,
 		RefreshToken: "rt-same",
 		Source:       "watcher_oauth",
@@ -335,8 +335,8 @@ func TestAirRestartCycle_RotationNoOp_StoreUnchanged(t *testing.T) {
 func TestAirRestartCycle_ConcurrentResolves_SingleflightDedup(t *testing.T) {
 	tempDir := t.TempDir()
 	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
-	const xuid = "2533274858283686"
-	const gamertag = "Madina97294"
+	const xuid = "2623439693412443"
+	const gamertag = "Joueur90002"
 
 	provider := newRotationProvider()
 	store := auth.NewMultiUserTokenStore(storeDir)
@@ -399,8 +399,8 @@ func TestAirRestartCycle_ConcurrentResolves_SingleflightDedup(t *testing.T) {
 func TestAirRestartCycle_ResolverRefresh_PersistsRotation(t *testing.T) {
 	tempDir := t.TempDir()
 	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
-	const xuid = "2533274858283686"
-	const gamertag = "Madina97294"
+	const xuid = "2623439693412443"
+	const gamertag = "Joueur90002"
 
 	provider := newRotationProvider()
 	store := auth.NewMultiUserTokenStore(storeDir)

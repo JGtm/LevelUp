@@ -1,6 +1,3 @@
-// cross-feature-allow: la sélection d'escouade de la page Escouade (coéquipiers et composition
-// stricte, persistées par joueur) — la même clé de stockage, donc la même sélection, dans les
-// deux pages.
 /**
  * useTendancesSquadSelection — la sélection d'escouade de la vue Escouade des Tendances : les
  * coéquipiers choisis et l'option « Composition stricte ». L'état initial est LU dans le
