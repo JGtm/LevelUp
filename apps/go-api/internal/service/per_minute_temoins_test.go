@@ -9,12 +9,25 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
-// Témoins de caractérisation des cadences par minute du package service : valeurs exactes (au bit près) sur des
-// entrées fixes dont une durée non multiple de 60, une durée nulle et une durée absente.
+// Témoins de caractérisation des cadences par minute du package service : valeurs attendues au bit près
+// (chaîne 'g', -1) sur des entrées fixes dont une durée non multiple de 60, une durée nulle et une durée
+// absente. Les valeurs sont celles que les sites rendaient avant leur passage par analysis.PerMinute.
 
-func temoinF(t *testing.T, label string, v float64) {
+func temoinF(t *testing.T, label string, v float64, want string) {
 	t.Helper()
-	t.Logf("%s = %s", label, strconv.FormatFloat(v, 'g', -1, 64))
+	got := strconv.FormatFloat(v, 'g', -1, 64)
+	t.Logf("%s = %s", label, got)
+	if got != want {
+		t.Errorf("%s = %s, attendu %s", label, got, want)
+	}
+}
+
+func temoinN(t *testing.T, label string, got, want int) {
+	t.Helper()
+	t.Logf("%s = %d", label, got)
+	if got != want {
+		t.Errorf("%s = %d, attendu %d", label, got, want)
+	}
 }
 
 func temoinRows() []legacymatch.StatsMatchRow {
@@ -33,25 +46,40 @@ func temoinRows() []legacymatch.StatsMatchRow {
 
 func TestTemoinMinute_OngletPrecision(t *testing.T) {
 	got := buildAccuracyTab(temoinRows())
-	t.Logf("precision.len = %d", len(got.ScorePerMin))
-	for i, v := range got.ScorePerMin {
-		temoinF(t, "precision.spm"+strconv.Itoa(i), v)
+	temoinN(t, "precision.len", len(got.ScorePerMin), 4)
+	for i, want := range []string{"79", "56.3", "600", "10"} {
+		if i < len(got.ScorePerMin) {
+			temoinF(t, "precision.spm"+strconv.Itoa(i), got.ScorePerMin[i], want)
+		}
 	}
 }
 
 func TestTemoinMinute_BucketsScoreParMinute(t *testing.T) {
 	got := buildScorePerMinBuckets(temoinRows())
-	t.Logf("buckets.len = %d", len(got))
-	for _, b := range got {
+	temoinN(t, "buckets.len", len(got), 4)
+	for i, lower := range []float64{10, 50, 70, 600} {
+		if i >= len(got) {
+			break
+		}
+		b := got[i]
+		if b.BucketLower != lower || b.BucketUpper != lower+10 {
+			t.Errorf("bucket %d = [%v,%v), attendu [%v,%v)", i, b.BucketLower, b.BucketUpper, lower, lower+10)
+		}
 		t.Logf("buckets [%v,%v) = %d", b.BucketLower, b.BucketUpper, b.Count)
+		if b.Count != 1 {
+			t.Errorf("bucket %d : %d matchs, attendu 1", i, b.Count)
+		}
 	}
 }
 
 func TestTemoinMinute_OngletIntensite(t *testing.T) {
 	got := buildIntensityTab(temoinRows())
-	t.Logf("intensite.len = %d", len(got.ScorePerMinData))
-	for _, p := range got.ScorePerMinData {
-		temoinF(t, "intensite.spm"+strconv.Itoa(p.Index), p.Value)
+	temoinN(t, "intensite.len", len(got.ScorePerMinData), 7)
+	for i, want := range []string{"79.02", "56.35", "600", "10", "0", "0", "0"} {
+		if i < len(got.ScorePerMinData) {
+			p := got.ScorePerMinData[i]
+			temoinF(t, "intensite.spm"+strconv.Itoa(p.Index), p.Value, want)
+		}
 	}
 }
 
@@ -68,10 +96,21 @@ func TestTemoinMinute_ContributionsParMinute(t *testing.T) {
 		"bravo": {mk(ip(0), 9, 4, 2)},
 		"carol": {mk(ip(601), 12, 6, 4)},
 	})
-	t.Logf("contrib.len = %d", len(got.Datapoints))
+	temoinN(t, "contrib.len", len(got.Datapoints), 2)
+	// Somme des secondes puis une division : sur ces entrées, le résultat est celui de l'ancienne somme des
+	// minutes (l'écart au dernier bit admis ne s'y manifeste pas).
+	attendu := map[string][3]string{
+		"alpha": {"1.1138251099169516", "0.6448461162677088", "0.26380068392769906"},
+		"carol": {"1.1980033277870215", "0.5990016638935107", "0.39933444259567386"},
+	}
 	for _, p := range got.Datapoints {
-		for _, k := range []string{"kills_per_min", "deaths_per_min", "assists_per_min"} {
-			temoinF(t, "contrib."+p.Category+"."+k, p.Components[k])
+		want, ok := attendu[p.Category]
+		if !ok {
+			t.Errorf("catégorie inattendue %q", p.Category)
+			continue
+		}
+		for i, k := range []string{"kills_per_min", "deaths_per_min", "assists_per_min"} {
+			temoinF(t, "contrib."+p.Category+"."+k, p.Components[k], want[i])
 		}
 	}
 }
