@@ -6,8 +6,6 @@
  *   - `toutes` : toutes les apparitions du joueur — première vie, réapparitions, débuts de manche.
  *     Avec une grappe choisie, la lecture des trajets ne compte que les vies parties de cette grappe.
  */
-import { lectureDeRejeu, type TacticalQuestion } from './tacticalView.logic'
-
 export type TacticalVies = 'depart' | 'toutes'
 
 export const VIES_PAR_DEFAUT: TacticalVies = 'depart'
@@ -24,16 +22,9 @@ export function viesPostees(vies: TacticalVies): TacticalVies | undefined {
 }
 
 /**
- * La bascule est proposée dès que la lecture peut servir des grappes : une lecture d'artefact (temps,
- * trajets), des grappes déjà servies, ou un réglage déjà posé — qu'il faut pouvoir ôter. Sous
- * « Départ », une carte peut n'avoir aucune grappe alors qu'« Toutes les vies » en aurait : la bascule
- * ne dépend donc pas des seules grappes servies.
+ * Les apparitions réellement demandées : un titre sans `spawn_forecast` (ses fichiers tactiques ne portent que
+ * la première vie) ne demande jamais `toutes`, même si le réglage local l'a retenue avant un changement de titre.
  */
-export function viesProposees(params: {
-  question: TacticalQuestion
-  nbGrappes: number
-  spawn: string
-  vies: TacticalVies
-}): boolean {
-  return params.nbGrappes > 0 || params.spawn !== '' || params.vies !== VIES_PAR_DEFAUT || lectureDeRejeu(params.question)
+export function viesEffectives(vies: TacticalVies, spawnForecast: boolean): TacticalVies {
+  return spawnForecast ? vies : VIES_PAR_DEFAUT
 }

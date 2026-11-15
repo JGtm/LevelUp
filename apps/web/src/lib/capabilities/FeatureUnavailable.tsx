@@ -37,6 +37,7 @@ const FEATURE_LABEL: Record<TitleCapability, Record<Locale, string>> = {
     en: 'engagement range',
   },
   citations: { fr: 'les citations calculées', en: 'computed citations' },
+  spawn_forecast: { fr: 'toutes les vies de la Tactique', en: 'the Tactics all-lives view' },
 }
 
 /** Titre et phrase du placeholder, par langue ; `feature` est le libellé de FEATURE_LABEL. */

@@ -161,9 +161,8 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	if err := validerLecture(carte, question, qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
-	vies, err := domain.NormaliserVies(scope.Vies)
+	vies, err := s.viesAcceptees(ctx, carte, scope.Vies)
 	if err != nil {
-		s.logger.WarnContext(ctx, "tactique: vies refusees", "player", s.xuid, "map_id", carte, "err", err)
 		return out, err
 	}
 	scope.Vies = vies

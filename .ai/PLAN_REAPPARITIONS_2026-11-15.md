@@ -243,6 +243,28 @@ Gate B passé le 2026-11-15 (lot B CLOS ; le contrôle à l'écran reste au user
   104 / 104 tests verts ; les tests du lot (`vies.logic.test.ts`, `TacticalAnalysisView.vies.test.tsx`) verts ;
 - témoin avant/après en mode `depart` sur trois cartes : identique octet pour octet (annexe `temoin_lot_B.md`).
 
+Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
+- [x] P2-1 `vies=toutes` exige `film.spawn_forecast` : `viesAcceptees` (`tactical_service_vies.go`) refuse `toutes` avec
+      `ErrCapabilityNotSupported` (503) pour la lecture et le détail quand la capability manque ; tests
+      `TestVies_ToutesExigeSpawnForecast` (capabilities RÉELLES du titre synthétique : refus ; `depart` servi ;
+      halo_infinite accepte) et `TestTacticalHandler_ToutesRefuseSurUnTitreSansSpawnForecast` (vrai service,
+      capabilities du titre synthétique, dépôt qui panique s'il est lu : 503 sur les deux routes).
+- [x] P2-2 isolation PAR MATCH de la jointure : `TestVies_LaJointureEstParMatch` (trois matchs aux instants de
+      réapparition différents, chacun avec une piste sans drapeau dont l'instant est celui d'un AUTRE match) et
+      `TestVies_DeuxViesDUnMemeMatchDansLaMemeGrappe` (les deux routes comptent, le match une fois). Mutation :
+      `viesDesSpawns` rendant l'union des instants de tous les matchs fait rougir le premier (la route de la
+      piste sans drapeau passe le filtre) ; code remis.
+- [x] P2-3 la bascule « Vies » reste offerte dès que le titre déclare la capability, sous « Départ » et sans grappe
+      servie, y compris sur la lecture « morts » ; elle n'est jamais offerte sans. Le bootstrap ne sert au web que les
+      capabilities de TITRE : ajout de la capability de titre `spawn_forecast` (`title.CapSpawnForecast`, déclarée par
+      halo_infinite, miroir TS `TITLE_CAPABILITIES`, lue par `useCapability`, jamais par le slug), pendant de la fine
+      `film.spawn_forecast`, égalité tenue par `TestSpawnForecastCoarseFineMirror` (trois titres). Sans la
+      capability, `vies` n'est jamais posté (`viesEffectives`). Tests : trois cas dans
+      `TacticalAnalysisView.vies.test.tsx`.
+- [x] P2-4 « Vies » ajouté au `it.each` « revient à la zone la plus chaude » de `TacticalAnalysisView.test.tsx` ;
+      mutation : sans `:${vies}` dans la clé de `useZone`, le cas rougit.
+- [x] P2-5 `ReglagesEnPilules` : 94 -> 79 lignes (`PilulesDeReapparition` extrait dans `TacticalPlanVies.tsx`).
+
 ## 5. Lot C — Tactique : réapparitions adverses selon la zone tenue (Go + web, effort M)
 
 - [ ] C.1 Maquette (page unique de D-6, onglet « Tactique »), choix du user consigné ici avec sa citation.

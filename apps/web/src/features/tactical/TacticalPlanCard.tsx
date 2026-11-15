@@ -85,8 +85,8 @@ import { useHauteurDuPlan } from './useHauteurDuPlan'
 import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
 import { ETIQUETTE, PILULE } from './pilules'
-import { ViesEnPilule } from './TacticalPlanVies'
-import { viesProposees, type TacticalVies } from './vies.logic'
+import { PilulesDeReapparition } from './TacticalPlanVies'
+import type { TacticalVies } from './vies.logic'
 import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
 /** Les trois réglages du bandeau (état local de la vue). */
@@ -303,8 +303,8 @@ const AUCUNE_ZONE: readonly CalloutZoneReady[] = []
 const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
 
 /**
- * ReglagesEnPilules — « Lecture », « Joueurs », « Réapparition » (celle-ci seulement s'il y a des
- * amas ou un filtre posé) et « Vies » (`viesProposees`), chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
+ * ReglagesEnPilules — « Lecture », « Joueurs », puis « Réapparition » et « Vies » (`PilulesDeReapparition`),
+ * chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
  * composition de la barre (`onQuiChange`, cf. `useReglages`), la valeur reste atténuée et un texte
  * visible dit qu'aucune composition n'est choisie — la lecture, elle, reste sur « Moi ».
  */
@@ -327,8 +327,6 @@ function ReglagesEnPilules({
   zonesDisponibles,
 }: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
-  // « Réapparition » n'a rien à choisir sans amas ; un filtre déjà posé reste visible pour pouvoir l'ôter.
-  const pilulePresente = grappes.length > 0 || spawn !== ''
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
       <label className={PILULE} onPointerEnter={onQuestionIntent} onFocus={onQuestionIntent}>
@@ -368,27 +366,14 @@ function ReglagesEnPilules({
           {t.planSquadPending}
         </span>
       )}
-      {pilulePresente && (
-        <label className={PILULE}>
-          <span className={ETIQUETTE}>{t.pillRespawn}</span>
-          <select
-            value={spawn}
-            onChange={(e) => onSpawnChange(e.target.value)}
-            aria-label={t.pillRespawn}
-            className="w-[72px] bg-transparent pl-1.5 pr-0.5 text-foreground"
-          >
-            <option value="">{t.pillRespawnAll}</option>
-            {grappes.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.nom}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {viesProposees({ question, nbGrappes: grappes.length, spawn, vies }) && (
-        <ViesEnPilule t={t} vies={vies} onViesChange={onViesChange} />
-      )}
+      <PilulesDeReapparition
+        t={t}
+        spawn={spawn}
+        onSpawnChange={onSpawnChange}
+        grappes={grappes}
+        vies={vies}
+        onViesChange={onViesChange}
+      />
       {zonesDisponibles && (
         <button
           type="button"

@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { TacticalContribution, TacticalRaster } from '@/lib/api/types'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { carteLue, type CarteEffective } from './cockpit.logic'
@@ -35,7 +36,7 @@ import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { basculerChoix } from './tueurs.logic'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
-import { VIES_PAR_DEFAUT, viesPostees, type TacticalVies } from './vies.logic'
+import { VIES_PAR_DEFAUT, viesEffectives, viesPostees, type TacticalVies } from './vies.logic'
 import { useVueDeMort } from './useVueDeMort'
 import {
   choixApresClic,
@@ -86,7 +87,9 @@ export function TacticalAnalysisView({
   onDemandeComposition,
 }: TacticalAnalysisViewProps) {
   const reglages = useReglages(coequipiers, onDemandeComposition)
-  const { question, qui, spawn, vies } = reglages
+  const { question, qui, spawn } = reglages
+  // Un titre sans `spawn_forecast` ne demande jamais « Toutes les vies » (le serveur la refuserait).
+  const vies = viesEffectives(reglages.vies, useCapability('spawn_forecast'))
 
   const params = useMemo(
     () => ({

@@ -13,7 +13,30 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 )
+
+// viesAcceptees valide le parametre `vies` d'une demande et rend sa valeur canonique : vide vaut
+// `depart`, une valeur hors vocabulaire est refusee (`ErrTacticalViesInconnue`).
+//
+// `toutes` EXIGE `film.spawn_forecast` : c'est la capacite qui dit que les sidecars du titre portent
+// les reapparitions et les debuts de manche. Un titre qui n'a que `film.replay_artifact` n'y ecrit
+// que la premiere vie ; le servir en `toutes` rendrait un 200 qui ne contient que les departs sous
+// un libelle « toutes les vies ». Il est refuse (`ErrCapabilityNotSupported`, 503 cote HTTP). La
+// capacite se lit sur la carte du titre, jamais sur son slug.
+func (s *TacticalService) viesAcceptees(ctx context.Context, carte, brut string) (string, error) {
+	vies, err := domain.NormaliserVies(brut)
+	if err != nil {
+		s.logger.WarnContext(ctx, "tactique: vies refusees", "player", s.xuid, "map_id", carte, "err", err)
+		return "", err
+	}
+	if vies == domain.TacticalViesToutes && !s.caps.Has(games.CapFilmSpawnForecast) {
+		s.logger.WarnContext(ctx, "tactique: toutes les vies demandees sur un titre sans reapparitions dans ses sidecars",
+			"player", s.xuid, "map_id", carte, "capability", string(games.CapFilmSpawnForecast))
+		return "", games.ErrCapabilityNotSupported
+	}
+	return vies, nil
+}
 
 // appliquerLeFiltreDeGrappe resout le filtre de grappe d'un detail de cellule, sous les deux
 // valeurs de `vies` : la liste de matchs du scope est reduite a ceux que la grappe retient, et les

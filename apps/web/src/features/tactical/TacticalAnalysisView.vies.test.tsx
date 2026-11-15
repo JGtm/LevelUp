@@ -8,6 +8,7 @@ import { fireEvent, screen } from '@testing-library/react'
 
 import type { TacticalRaster } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import type { CarteEffective } from './cockpit.logic'
 import { getTacticalText } from './i18n'
@@ -75,8 +76,21 @@ type Params = { spawn?: string; vies?: string }
 const dernierParams = () => useTacticalRaster.mock.calls.at(-1)?.[2] as Params
 const dernierParamsCellule = () => useTacticalCellule.mock.calls.at(-1)?.[3] as Params | undefined
 
+/** Le titre courant et les capabilities que le bootstrap en sert ; `null` = bootstrap pas encore chargé. */
+function servirCapabilities(capabilities: string[] | null) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'un_titre',
+    availableTitles: (capabilities === null
+      ? []
+      : [{ slug: 'un_titre', name: 'T', status: 'active', capabilities, is_default: false, effective_hp_to_kill: 225 }]) as unknown as ReturnType<
+      typeof useAppShellStore.getState
+    >['availableTitles'],
+  })
+}
+
 afterEach(() => {
   vi.clearAllMocks()
+  servirCapabilities(null)
 })
 
 describe('TacticalAnalysisView — la bascule « Départ / Toutes les vies »', () => {
@@ -115,12 +129,32 @@ describe('TacticalAnalysisView — la bascule « Départ / Toutes les vies »', 
     expect(dernierParams().vies).toBeUndefined()
   })
 
-  it('sans grappe, la bascule reste proposée sur une lecture d’artefact et se tait sur une lecture de la base', () => {
-    const { unmount } = monter({ ...RASTER, grappes: [] })
-    expect(screen.queryByTestId('tactical-plan-vies')).toBeNull()
-    fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), { target: { value: 'temps' } })
+  it('lecture « morts » (la lecture par défaut), « Départ » et aucune grappe servie : la bascule reste offerte', () => {
+    servirCapabilities(['replay', 'spawn_forecast'])
+    monter({ ...RASTER, grappes: [] })
+    expect(screen.queryByRole('combobox', { name: t.pillRespawn })).toBeNull()
+    expect(screen.getByRole('button', { name: t.livesAll })).toBeInTheDocument()
+    expect(dernierParams().vies).toBeUndefined()
+  })
+
+  it('revenir sur « Départ » sans grappe ne retire pas la bascule sous le curseur', () => {
+    servirCapabilities(['replay', 'spawn_forecast'])
+    monter({ ...RASTER, grappes: [] })
+    fireEvent.click(screen.getByRole('button', { name: t.livesAll }))
+    expect(dernierParams().vies).toBe('toutes')
+    fireEvent.click(screen.getByRole('button', { name: t.livesStart }))
     expect(screen.getByTestId('tactical-plan-vies')).toBeInTheDocument()
-    unmount()
+    expect(screen.getByRole('button', { name: t.livesStart })).toHaveAttribute('aria-pressed', 'true')
+    expect(dernierParams().vies).toBeUndefined()
+  })
+
+  it('un titre sans `spawn_forecast` : ni bascule, ni paramètre `vies`, même avec des grappes servies', () => {
+    servirCapabilities(['replay'])
+    monter()
+    expect(screen.queryByTestId('tactical-plan-vies')).toBeNull()
+    expect(screen.getByRole('combobox', { name: t.pillRespawn })).toBeInTheDocument()
+    expect(dernierParams().vies).toBeUndefined()
+    expect(dernierParamsCellule()?.vies).toBeUndefined()
   })
 
   it('les mots de la bascule, en français et en anglais', () => {

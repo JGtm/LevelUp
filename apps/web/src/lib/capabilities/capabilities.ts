@@ -43,6 +43,10 @@ export const TITLE_CAPABILITIES = [
   // Commendations. Miroir de title.CapCitations (registry.go), pendant title-level de la
   // capability data-level `citations.engine`.
   'citations',
+  // Apparitions du joueur dans les fichiers tactiques : bascule « Toutes les vies » de la Tactique
+  // (le serveur refuse `vies=toutes` sans elle). Miroir de title.CapSpawnForecast (registry.go), pendant
+  // title-level de la capability de donnée `film.spawn_forecast` : le bootstrap ne sert que celles-ci.
+  'spawn_forecast',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

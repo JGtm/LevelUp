@@ -56,10 +56,8 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	if err := validerLecture(req.MapID, req.Question, req.Qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
-	vies, err := domain.NormaliserVies(req.Scope.Vies)
+	vies, err := s.viesAcceptees(ctx, req.MapID, req.Scope.Vies)
 	if err != nil {
-		s.logger.WarnContext(ctx, "tactique: vies refusees (detail de cellule)",
-			"player", s.xuid, "map_id", req.MapID, "err", err)
 		return out, err
 	}
 	scope.Vies = vies

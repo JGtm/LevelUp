@@ -109,7 +109,7 @@ func aLaCellule(out domain.TacticalRaster, c int) bool {
 // grappes ne portent que la premiere vie.
 func TestVies_DepartEstLeDefaut(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	vide := lireEnVies(t, svc, domain.TacticalQuestionTemps, "", "", ids)
 	depart := lireEnVies(t, svc, domain.TacticalQuestionTemps, domain.TacticalViesDepart, "", ids)
 	if len(vide.Grappes) != 1 {
@@ -127,7 +127,7 @@ func TestVies_DepartEstLeDefaut(t *testing.T) {
 // forment trois grappes ; la piste sans drapeau n'en forme aucune.
 func TestVies_ToutesRegroupeToutesLesApparitions(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	out := lireEnVies(t, svc, domain.TacticalQuestionTemps, domain.TacticalViesToutes, "", ids)
 	if len(out.Grappes) != 3 {
 		t.Fatalf("grappes = %+v, attendu 3 (depart, reapparition, debut de manche)", out.Grappes)
@@ -146,7 +146,7 @@ func TestVies_ToutesRegroupeToutesLesApparitions(t *testing.T) {
 // la vie partie de cette grappe compte ; les routes des trois autres vies sortent de la lecture.
 func TestVies_ToutesRetientLaRouteDeLaVieDeLaGrappe(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, domain.TacticalViesToutes, "", ids).Grappes
 	reapparition := grappeAutour(t, grappes, 50, 50)
 
@@ -173,7 +173,7 @@ func TestVies_ToutesRetientLaRouteDeLaVieDeLaGrappe(t *testing.T) {
 // que la liste des grappes : les quatre routes comptent.
 func TestVies_ToutesSansFiltre_LesRoutesNeChangentPas(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	out := lireEnVies(t, svc, domain.TacticalQuestionRoutes, domain.TacticalViesToutes, "", ids)
 	for frame, c := range celluleDeLaVie {
 		if !aLaCellule(out, c) {
@@ -186,7 +186,7 @@ func TestVies_ToutesSansFiltre_LesRoutesNeChangentPas(t *testing.T) {
 // l'univers aux matchs et rien d'autre : TOUTES les routes de ces matchs comptent, comme avant.
 func TestVies_DepartSousFiltre_RoutesInchangees(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, "", "", ids).Grappes
 	out := lireEnVies(t, svc, domain.TacticalQuestionRoutes, "", grappes[0].ID, ids)
 	if out.MatchsRetenus != 4 {
@@ -204,7 +204,7 @@ func TestVies_DepartSousFiltre_RoutesInchangees(t *testing.T) {
 // reduire les routes se fait sur une copie.
 func TestVies_ToutesNeModifiePasLesSidecarsLus(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, domain.TacticalViesToutes, "", ids).Grappes
 	lireEnVies(t, svc, domain.TacticalQuestionRoutes, domain.TacticalViesToutes, grappeAutour(t, grappes, 50, 50), ids)
 	for id, sc := range store.sidecars {
@@ -218,7 +218,7 @@ func TestVies_ToutesNeModifiePasLesSidecarsLus(t *testing.T) {
 // jamais une lecture non filtree.
 func TestVies_ToutesGrappeInconnue(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
 		Scope: domain.TacticalScope{MatchIDs: ids, Spawn: "s+999999+999999", Vies: domain.TacticalViesToutes},
@@ -232,7 +232,7 @@ func TestVies_ToutesGrappeInconnue(t *testing.T) {
 // lecture agregee comme pour le detail d'une cellule ; jamais remplacee par `depart`.
 func TestVies_ValeurInconnue(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	_, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
 		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
 		Scope: domain.TacticalScope{MatchIDs: ids, Vies: "toutes-les-vies"},
@@ -265,7 +265,7 @@ func celluleEnVies(t *testing.T, svc *TacticalService, vies, spawn string, ids [
 // filtre de grappe, il ne liste que les vies parties de la grappe ; sans filtre, toutes.
 func TestVies_CelluleToutes(t *testing.T) {
 	store, univ, ids := viesFixture()
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, domain.TacticalViesToutes, "", ids).Grappes
 	reapparition := grappeAutour(t, grappes, 50, 50)
 
@@ -291,7 +291,7 @@ func TestVies_CelluleDepartSousFiltre(t *testing.T) {
 			DebutFrame: 0, Cases: []domain.TacticalRasterCase{{Col: 10, Lig: 10}},
 		}}
 	}
-	svc := svcArtefact(univ, store)
+	svc := svcVies(univ, store)
 	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, "", "", ids).Grappes
 	if len(grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", grappes)

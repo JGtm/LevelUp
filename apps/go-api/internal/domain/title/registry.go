@@ -185,6 +185,16 @@ const (
 	// même partage des rôles que `replay` / `film.replay_artifact`. Leur cohérence est
 	// verrouillée par TestCitationsCoarseFineMirror (internal/games).
 	CapCitations Capability = "citations"
+
+	// CapSpawnForecast — les fichiers tactiques par match du titre portent TOUTES les apparitions
+	// du joueur (premiere vie, reapparitions, debuts de manche), pas seulement la premiere vie.
+	// Elle gouverne la bascule « Toutes les vies » de la Tactique : le serveur refuse `vies=toutes`
+	// (503 capability_not_supported) sans elle, et la page ne propose pas la bascule.
+	//
+	// Pendant title-level de la capability data-level `film.spawn_forecast` (capabilities.toml),
+	// qui est la meme question : leur egalite est verrouillee par TestSpawnForecastCoarseFineMirror
+	// (internal/games). Le bootstrap ne sert au web que les capabilities de titre.
+	CapSpawnForecast Capability = "spawn_forecast"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -388,6 +398,9 @@ func NewRegistry() *Registry {
 			// Citations calculées (moteur dérivé) : page Citations, route /pages/citations,
 			// tuiles de la home. Halo 5 ne la déclare pas : il sert des commendations natives.
 			CapCitations,
+			// Reapparitions et debuts de manche dans les fichiers tactiques : bascule
+			// « Toutes les vies » de la Tactique. Halo 5 ne la declare pas.
+			CapSpawnForecast,
 			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
 			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
 			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au

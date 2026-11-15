@@ -53,6 +53,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapReplay:              {},
 	CapWeaponRange:         {},
 	CapCitations:           {},
+	CapSpawnForecast:       {},
 }
 
 func knownStatus(s Status) bool {
