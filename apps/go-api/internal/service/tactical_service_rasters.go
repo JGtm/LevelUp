@@ -128,7 +128,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	// `Raster`) : les recalculer sur l'univers DEJA RESTREINT reduirait la liste a la seule
 	// grappe choisie, et enfermerait l'utilisateur dans sa selection.
 	if out.Grappes == nil {
-		out.Grappes = grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
+		out.Grappes = grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID), scope.Vies)
 	}
 	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE — deja restreint par le filtre de spawn,
 	// qui est un filtre d'univers ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.
@@ -140,7 +140,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	out.Voisines = s.voisinesDesSidecars(ctx, out, univers, sidecars, scope, ignores)
 	s.logger.InfoContext(ctx, "tactique: lecture d'artefact",
 		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
-		"spawn", scope.Spawn, "grappes", len(out.Grappes),
+		"spawn", scope.Spawn, "vies", scope.Vies, "grappes", len(out.Grappes),
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
 		"matchs_en_attente", out.MatchsEnAttente, "matchs_non_cuisables", out.MatchsNonCuisables,
 		"coequipiers", len(scope.Coequipiers), "cellules", len(out.Cellules),

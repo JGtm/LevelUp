@@ -156,10 +156,17 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// qu'elle oublie est perdu en silence — la lecture repond alors sur l'univers
 		// entier en ayant l'air d'avoir filtre.
 		Spawn: req.Scope.Spawn,
+		Vies:  req.Scope.Vies,
 	}
 	if err := validerLecture(carte, question, qui, scope.Coequipiers); err != nil {
 		return out, err
 	}
+	vies, err := domain.NormaliserVies(scope.Vies)
+	if err != nil {
+		s.logger.WarnContext(ctx, "tactique: vies refusees", "player", s.xuid, "map_id", carte, "err", err)
+		return out, err
+	}
+	scope.Vies = vies
 	if s.repo == nil {
 		return out, games.ErrCapabilityNotSupported
 	}
@@ -181,7 +188,6 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// memes fichiers (revue P2).
 		dejaLus = per.Sidecars
 	}
-	var err error
 	switch {
 	case lectureDArtefact(question):
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.

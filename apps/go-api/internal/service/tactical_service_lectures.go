@@ -52,20 +52,21 @@ func comptesDesRoutes(sc *domain.TacticalRasterSidecar, matchID string,
 	return out
 }
 
-// grappesDeLUnivers calcule les amas de reapparition depuis les spawns de DEPART des
-// sidecars charges.
+// grappesDeLUnivers calcule les amas de reapparition depuis les spawns des sidecars charges.
 //
 // ELLES NE SONT PAS STOCKEES, et c'est la meme doctrine que le reste de l'onglet : une
 // grappe depend de l'UNIVERS (quels matchs le filtre retient), donc la figer dans un fichier
 // obligerait a l'invalider a chaque changement de filtre. Le calcul est pur et porte sur
 // quelques centaines de points.
 //
-// SEULE LA PREMIERE VIE COMPTE (decision produit) : les reapparitions suivantes dependent de
-// l'endroit ou l'on vient de mourir, pas du placement d'ouverture.
+// QUELLES APPARITIONS COMPTENT DEPEND DU PARAMETRE `vies` (cf. domain/tactical_vies.go) :
+// `depart` ne compte que la premiere vie (decision produit : les reapparitions suivantes
+// dependent de l'endroit ou l'on vient de mourir, pas du placement d'ouverture), `toutes`
+// compte aussi les reapparitions et les debuts de manche.
 func grappesDeLUnivers(loc i18n.Locale, sidecars map[string]*domain.TacticalRasterSidecar,
-	xuid string, zones []domain.ZoneNommee) []domain.TacticalGrappe {
+	xuid string, zones []domain.ZoneNommee, vies string) []domain.TacticalGrappe {
 	amas := tactical.GrappesDeSpawn(tactical.GrilleParDefaut(),
-		spawnsDeDepart(sidecars, xuid), zonesPures(zones))
+		spawnsSelonVies(sidecars, xuid, vies), zonesPures(zones))
 	out := make([]domain.TacticalGrappe, 0, len(amas))
 	for _, a := range amas {
 		out = append(out, domain.TacticalGrappe{
@@ -89,6 +90,27 @@ func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	return out
 }
 
+// spawnsDuJoueur parcourt les sidecars et rend, pour le joueur, les spawns que `retenu`
+// accepte. C'est la seule boucle de lecture des spawns : les deux definitions ci-dessous ne
+// different que par leur predicat.
+func spawnsDuJoueur(sidecars map[string]*domain.TacticalRasterSidecar, xuid string,
+	retenu func(domain.TacticalRasterSpawn) bool) []tactical.PointSpawn {
+	out := make([]tactical.PointSpawn, 0, len(sidecars))
+	for matchID, sc := range sidecars {
+		for _, j := range sc.Joueurs {
+			if j.XUID != xuid {
+				continue
+			}
+			for _, sp := range j.Spawns {
+				if retenu(sp) {
+					out = append(out, tactical.PointSpawn{MatchID: matchID, Frame: sp.Frame, X: sp.X, Y: sp.Y})
+				}
+			}
+		}
+	}
+	return out
+}
+
 // spawnsDeDepart rend les points de PREMIERE VIE du joueur, un par match.
 //
 // C'EST LE SEUL ENDROIT QUI SAIT CE QU'EST UN SPAWN DE DEPART. Le predicat a existe en
@@ -97,20 +119,33 @@ func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 // archlint/no_local_spawn_depart_test.go.
 func spawnsDeDepart(sidecars map[string]*domain.TacticalRasterSidecar,
 	xuid string) []tactical.PointSpawn {
-	out := make([]tactical.PointSpawn, 0, len(sidecars))
-	for matchID, sc := range sidecars {
-		for _, j := range sc.Joueurs {
-			if j.XUID != xuid {
-				continue
-			}
-			for _, sp := range j.Spawns {
-				if sp.PremiereVie {
-					out = append(out, tactical.PointSpawn{MatchID: matchID, X: sp.X, Y: sp.Y})
-				}
-			}
-		}
+	return spawnsDuJoueur(sidecars, xuid, func(sp domain.TacticalRasterSpawn) bool {
+		return sp.PremiereVie
+	})
+}
+
+// reapparitionsDuJoueur rend les points de TOUTES LES VIES du joueur : la premiere vie, chaque
+// reapparition apres une mort et chaque debut de manche — toutes les fois ou le jeu l'a fait
+// naitre, a plusieurs par match.
+//
+// UN DEBUT DE MANCHE N'EST PAS UNE REAPPARITION, mais c'est bien une apparition du joueur : il
+// entre ici. Une piste qui n'est rien de tout cela (vie coupee par un trou de replication) n'y
+// entre pas. Meme garde-rail que le depart : archlint/no_local_spawn_depart_test.go.
+func reapparitionsDuJoueur(sidecars map[string]*domain.TacticalRasterSidecar,
+	xuid string) []tactical.PointSpawn {
+	return spawnsDuJoueur(sidecars, xuid, func(sp domain.TacticalRasterSpawn) bool {
+		return sp.PremiereVie || sp.Reapparition || sp.DebutDeManche
+	})
+}
+
+// spawnsSelonVies choisit la definition du spawn selon le parametre `vies` : `toutes` rend les
+// apparitions de toutes les vies, tout autre valeur (`depart`) la premiere vie seule.
+func spawnsSelonVies(sidecars map[string]*domain.TacticalRasterSidecar,
+	xuid, vies string) []tactical.PointSpawn {
+	if vies == domain.TacticalViesToutes {
+		return reapparitionsDuJoueur(sidecars, xuid)
 	}
-	return out
+	return spawnsDeDepart(sidecars, xuid)
 }
 
 // perimetreDuSpawn resout le filtre de grappe en LISTE DE MATCHS, et rend les grappes de
@@ -147,19 +182,28 @@ func (s *TacticalService) perimetreDuSpawn(ctx context.Context, carte string,
 		return perimetreSpawn{}, domain.ErrTacticalCarteInconnue
 	}
 	sidecars, _ := s.chargerSidecars(ctx, univers, carte)
-	grappes := grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, carte))
+	grappes := grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, carte), scope.Vies)
 
-	amas, ok := amasParID(sidecars, s.xuid, scope.Spawn, grappes)
+	points := spawnsSelonVies(sidecars, s.xuid, scope.Vies)
+	amas, ok := amasParID(points, scope.Spawn, grappes)
 	if !ok {
 		s.logger.InfoContext(ctx, "tactique: grappe de spawn inconnue sous ce filtre",
-			"player", s.xuid, "map_id", carte, "spawn", scope.Spawn, "grappes", len(grappes))
+			"player", s.xuid, "map_id", carte, "spawn", scope.Spawn, "vies", scope.Vies, "grappes", len(grappes))
 		return perimetreSpawn{}, domain.ErrTacticalSpawnInconnu
 	}
-	ids := matchsDeLaGrappe(sidecars, s.xuid, amas)
+	dedans := spawnsDeLAmas(points, amas)
+	ids := matchsDesSpawns(dedans)
 	if len(ids) == 0 {
 		return perimetreSpawn{}, domain.ErrTacticalSpawnInconnu
 	}
-	return perimetreSpawn{Grappes: grappes, MatchIDs: ids, Sidecars: sidecars}, nil
+	lus := sidecars
+	if scope.Vies == domain.TacticalViesToutes {
+		// SOUS « TOUTES LES VIES », LE FILTRE EST UNE VIE, PAS SEULEMENT UN MATCH : un match peut
+		// compter plusieurs apparitions, dont une seule part de la grappe. Les routes des autres
+		// vies sortent des sidecars rendus a la lecture.
+		lus = sidecarsAuxVies(sidecars, s.xuid, viesDesSpawns(dedans))
+	}
+	return perimetreSpawn{Grappes: grappes, MatchIDs: ids, Sidecars: lus}, nil
 }
 
 // perimetreSpawn porte ce que la resolution d'un filtre de grappe a produit : les grappes a
@@ -170,12 +214,13 @@ type perimetreSpawn struct {
 	Sidecars map[string]*domain.TacticalRasterSidecar
 }
 
-// amasParID retrouve l'amas COMPLET (avec ses cellules) derriere un identifiant publie.
+// amasParID retrouve l'amas COMPLET (avec ses cellules) derriere un identifiant publie, parmi
+// les amas des points donnes.
 //
 // Les grappes publiees ne portent pas leurs cellules — le contrat n'en a pas besoin — mais
 // le filtre, lui, en depend : c'est l'emprise mesuree qui definit l'appartenance, jamais un
 // rayon autour du barycentre. On recalcule donc les amas, ce qui est pur et borne.
-func amasParID(sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID string,
+func amasParID(points []tactical.PointSpawn, spawnID string,
 	grappes []domain.TacticalGrappe) (tactical.GrappeSpawn, bool) {
 	connu := false
 	for _, gr := range grappes {
@@ -187,8 +232,7 @@ func amasParID(sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID 
 	if !connu {
 		return tactical.GrappeSpawn{}, false
 	}
-	for _, a := range tactical.GrappesDeSpawn(tactical.GrilleParDefaut(),
-		spawnsDeDepart(sidecars, xuid), nil) {
+	for _, a := range tactical.GrappesDeSpawn(tactical.GrilleParDefaut(), points, nil) {
 		if a.ID == spawnID {
 			return a, true
 		}
@@ -196,28 +240,84 @@ func amasParID(sidecars map[string]*domain.TacticalRasterSidecar, xuid, spawnID 
 	return tactical.GrappeSpawn{}, false
 }
 
-// matchsDeLaGrappe rend les match_id dont la PREMIERE vie du joueur tombe dans l'amas.
+// spawnsDeLAmas rend ceux des points qui tombent dans l'amas.
 //
 // L'APPARTENANCE SE LIT SUR LES CELLULES de l'amas, pas sur une distance au barycentre :
 // c'est l'emprise mesuree qui definit la grappe, et un rayon invente en changerait la forme.
-func matchsDeLaGrappe(sidecars map[string]*domain.TacticalRasterSidecar, xuid string,
-	amas tactical.GrappeSpawn) []string {
+func spawnsDeLAmas(points []tactical.PointSpawn, amas tactical.GrappeSpawn) []tactical.PointSpawn {
 	dedans := make(map[tactical.Cellule]bool, len(amas.Cellules))
 	for _, c := range amas.Cellules {
 		dedans[c] = true
 	}
 	g := tactical.GrilleParDefaut()
-	vus := make(map[string]bool)
-	out := make([]string, 0, len(sidecars))
-	for _, sp := range spawnsDeDepart(sidecars, xuid) {
-		if vus[sp.MatchID] {
-			continue
-		}
+	out := make([]tactical.PointSpawn, 0, len(points))
+	for _, sp := range points {
 		if c, ok := g.Cellule(sp.X, sp.Y); ok && dedans[c] {
+			out = append(out, sp)
+		}
+	}
+	return out
+}
+
+// matchsDesSpawns rend les match_id distincts des points, tries.
+func matchsDesSpawns(points []tactical.PointSpawn) []string {
+	vus := make(map[string]bool, len(points))
+	out := make([]string, 0, len(points))
+	for _, sp := range points {
+		if !vus[sp.MatchID] {
 			vus[sp.MatchID] = true
 			out = append(out, sp.MatchID)
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// viesDesSpawns range les apparitions par match : match_id -> instants (frames) des vies.
+func viesDesSpawns(points []tactical.PointSpawn) map[string]map[int]bool {
+	out := make(map[string]map[int]bool, len(points))
+	for _, sp := range points {
+		if out[sp.MatchID] == nil {
+			out[sp.MatchID] = make(map[int]bool)
+		}
+		out[sp.MatchID][sp.Frame] = true
+	}
+	return out
+}
+
+// sidecarsAuxVies rend des COPIES des sidecars où les routes du joueur sont réduites à celles
+// des vies retenues (`vies` : match_id -> frames d'apparition).
+//
+// LA JOINTURE EST L'INSTANT : une route porte `DebutFrame`, le spawn de la meme vie porte
+// `Frame`, et les deux sont le premier point de la meme piste (cf. analysis/tactical,
+// `NouvelIndexVies` et `enrichirVies`). Un invariant de la cuisson le tient.
+//
+// SEULES LES ROUTES DU JOUEUR SONT REDUITES : « ma vie part de cette grappe » ne dit rien des
+// vies des autres, dont le match est deja retenu par le filtre d'univers. Les originaux ne sont
+// pas modifies (le lecteur peut les partager).
+func sidecarsAuxVies(sidecars map[string]*domain.TacticalRasterSidecar, xuid string,
+	vies map[string]map[int]bool) map[string]*domain.TacticalRasterSidecar {
+	out := make(map[string]*domain.TacticalRasterSidecar, len(sidecars))
+	for matchID, sc := range sidecars {
+		copie := *sc
+		copie.Joueurs = append([]domain.TacticalRasterJoueur(nil), sc.Joueurs...)
+		for i := range copie.Joueurs {
+			if copie.Joueurs[i].XUID == xuid {
+				copie.Joueurs[i].Routes = routesDesVies(copie.Joueurs[i].Routes, vies[matchID])
+			}
+		}
+		out[matchID] = &copie
+	}
+	return out
+}
+
+// routesDesVies garde les routes dont la vie commence a l'un des instants donnes.
+func routesDesVies(routes []domain.TacticalRasterRoute, instants map[int]bool) []domain.TacticalRasterRoute {
+	out := make([]domain.TacticalRasterRoute, 0, len(routes))
+	for _, r := range routes {
+		if instants[r.DebutFrame] {
+			out = append(out, r)
+		}
+	}
 	return out
 }

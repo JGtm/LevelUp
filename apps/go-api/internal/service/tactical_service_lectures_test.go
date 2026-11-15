@@ -350,7 +350,7 @@ func TestFiltreSpawn_SappliqueAuxLecturesSQL(t *testing.T) {
 	}
 	// Les grappes ne sont PAS calculees hors filtre sur une lecture SQL : elles couteraient
 	// un chargement de sidecars que la lecture n'a pas besoin de faire.
-	grappes := grappesDeLUnivers(i18n.LocaleFR, store.sidecars, tsMoi, nil)
+	grappes := grappesDeLUnivers(i18n.LocaleFR, store.sidecars, tsMoi, nil, domain.TacticalViesDepart)
 	if len(grappes) != 2 {
 		t.Fatalf("grappes = %+v, attendu 2", grappes)
 	}

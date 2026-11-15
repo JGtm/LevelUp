@@ -264,6 +264,8 @@ type TacticalScope struct {
 	// d'un autre spawn ferait repondre « je passe peu de temps ici » a une carte ou l'on
 	// n'a simplement pas commence.
 	Spawn string
+	// Vies dit quelles apparitions forment les grappes (cf. tactical_vies.go) ; vide = depart.
+	Vies string
 }
 
 // TacticalRasterRequest est la demande d'une lecture de placement.

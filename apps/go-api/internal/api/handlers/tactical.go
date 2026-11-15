@@ -114,6 +114,7 @@ type tacticalRasterBody struct {
 	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions."`
 	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
 	Spawn       string   `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction."`
+	Vies        string   `json:"vies,omitempty" doc:"Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe."`
 }
 
 // scopeDepuis : LA traduction du corps vers le perimetre de service, pour les deux
@@ -127,9 +128,10 @@ func scopeDepuis(matchIDs, coequipiers []string) domain.TacticalScope {
 // LA GRILLE DES CARTES NE LA PREND PAS : une grappe est propre a UNE carte, et l'ecran
 // d'entree les liste toutes. L'accepter la aurait invite a filtrer une liste de cartes par
 // un identifiant qui n'a de sens que dans l'une d'elles.
-func scopeAvecSpawn(matchIDs, coequipiers []string, spawn string) domain.TacticalScope {
+func scopeAvecSpawn(matchIDs, coequipiers []string, spawn, vies string) domain.TacticalScope {
 	sc := scopeDepuis(matchIDs, coequipiers)
 	sc.Spawn = strings.TrimSpace(spawn)
+	sc.Vies = strings.TrimSpace(vies)
 	return sc
 }
 
@@ -183,7 +185,7 @@ func (h *TacticalHandler) handleGetRaster(ctx context.Context, in *tacticalRaste
 		MapID:    mapID,
 		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
 		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
-		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
+		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn, in.Body.Vies),
 	})
 	if err != nil {
 		return nil, mapTacticalError(ctx, err, "tactical.raster")
@@ -211,6 +213,7 @@ type tacticalCelluleBody struct {
 	Question    string                 `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts."`
 	Qui         string                 `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi."`
 	Spawn       string                 `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part."`
+	Vies        string                 `json:"vies,omitempty" doc:"Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe."`
 	Cellule     tacticalCelluleAdresse `json:"cellule" doc:"La cellule dont on demande le detail (col, lig)."`
 }
 
@@ -240,7 +243,7 @@ func (h *TacticalHandler) handleGetCellule(ctx context.Context, in *tacticalCell
 		MapID:    mapID,
 		Question: defautSiVide(in.Body.Question, domain.TacticalQuestionMorts),
 		Qui:      defautSiVide(in.Body.Qui, domain.TacticalQuiMoi),
-		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn),
+		Scope:    scopeAvecSpawn(in.Body.MatchIDs, in.Body.Coequipiers, in.Body.Spawn, in.Body.Vies),
 		Col:      in.Body.Cellule.Col,
 		Lig:      in.Body.Cellule.Lig,
 		PasM:     in.Body.Cellule.PasM,
@@ -425,6 +428,8 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 			domain.ErrTacticalCarteInconnue)
 	case errors.Is(err, domain.ErrTacticalQuestionInconnue):
 		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_question_unknown", err)
+	case errors.Is(err, domain.ErrTacticalViesInconnue):
+		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_lives_unknown", err)
 	case errors.Is(err, domain.ErrTacticalQuiInconnu):
 		return humacore.NewErrorFrom(ctx, http.StatusBadRequest, "tactical_axis_unknown", err)
 	case errors.Is(err, domain.ErrTacticalCompositionInvalide):

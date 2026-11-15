@@ -13,19 +13,36 @@
 //
 // La regle vit desormais dans `service.spawnsDeDepart`. Ce ratchet interdit d'en reecrire
 // une seconde ailleurs, sous la forme d'un test direct du drapeau.
+//
+// # LE MEME GARDE TIENT LA DEFINITION DE « TOUTES LES VIES »
+//
+// Le parametre `vies=toutes` ajoute une seconde definition — toutes les apparitions du joueur :
+// premiere vie, reapparition, debut de manche — qui vit dans `service.reapparitionsDuJoueur`,
+// a cote de la premiere et dans le meme fichier. Les trois drapeaux qui la composent sont
+// gardes comme le premier : les lire hors du proprietaire, c'est reecrire une definition
+// d'apparition que les grappes, le filtre et la route ne partageraient plus.
 package archlint
 
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-// motifSpawnDepart : le test direct du drapeau de premiere vie.
-const motifSpawnDepart = "PremiereVie"
+// motifsDApparition : le test direct des drapeaux qui disent « cette piste est une apparition
+// du joueur » — la premiere vie, la reapparition apres mort, le debut de manche. Les deux
+// derniers se reconnaissent par leur acces de champ (`sp.Reapparition`), ce qui laisse en paix
+// les constantes voisines (`TacticalFaceReapparition`) et le compte par source
+// (`DebutsDeManche`).
+var motifsDApparition = []*regexp.Regexp{
+	regexp.MustCompile(`PremiereVie`),
+	regexp.MustCompile(`\.Reapparition\b`),
+	regexp.MustCompile(`\.DebutDeManche\b`),
+}
 
 // proprietaireDuSpawnDepart : le seul fichier de production qui a le droit de le lire.
 //
@@ -40,8 +57,8 @@ const perimetreDuRatchetSpawn = "internal/service/"
 
 // TestUneSeuleDefinitionDuSpawnDeDepart — le ratchet.
 //
-// SELF-CHECK POSITIF : le proprietaire doit porter le motif, sinon le garde ne verifie plus
-// rien (le helper a-t-il ete renomme ou vide ?).
+// SELF-CHECK POSITIF : le proprietaire doit porter CHACUN des motifs, sinon le garde ne verifie
+// plus rien (un helper a-t-il ete renomme ou vide ?).
 func TestUneSeuleDefinitionDuSpawnDeDepart(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -50,7 +67,7 @@ func TestUneSeuleDefinitionDuSpawnDeDepart(t *testing.T) {
 	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
 
 	var violations []string
-	vuChezLeProprietaire := false
+	vusChezLeProprietaire := make([]bool, len(motifsDApparition))
 	err := filepath.WalkDir(apiRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -77,28 +94,32 @@ func TestUneSeuleDefinitionDuSpawnDeDepart(t *testing.T) {
 			if strings.HasPrefix(strings.TrimSpace(line), "//") {
 				continue
 			}
-			if !strings.Contains(line, motifSpawnDepart) {
-				continue
+			for k, motif := range motifsDApparition {
+				if !motif.MatchString(line) {
+					continue
+				}
+				if rel == proprietaireDuSpawnDepart {
+					vusChezLeProprietaire[k] = true
+					continue
+				}
+				violations = append(violations, rel+":"+strconv.Itoa(i+1)+"  "+strings.TrimSpace(line))
 			}
-			if rel == proprietaireDuSpawnDepart {
-				vuChezLeProprietaire = true
-				continue
-			}
-			violations = append(violations, rel+":"+strconv.Itoa(i+1)+"  "+strings.TrimSpace(line))
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("parcours apps/go-api: %v", err)
 	}
-	if !vuChezLeProprietaire {
-		t.Fatalf("le motif %q est introuvable dans %s : le helper a-t-il ete renomme ou "+
-			"deplace ? Le garde ne verifie plus rien", motifSpawnDepart, proprietaireDuSpawnDepart)
+	for k, vu := range vusChezLeProprietaire {
+		if !vu {
+			t.Fatalf("le motif %q est introuvable dans %s : un helper a-t-il ete renomme ou "+
+				"deplace ? Le garde ne verifie plus rien", motifsDApparition[k], proprietaireDuSpawnDepart)
+		}
 	}
 	if len(violations) > 0 {
-		t.Errorf("le spawn de DEPART est relu hors de %s (%d) — appeler spawnsDeDepart : le "+
-			"predicat a deja existe en trois exemplaires, et la definition du depart aurait "+
-			"fini par diverger de celle du filtre :\n  %s",
+		t.Errorf("une apparition du joueur est relue hors de %s (%d) — appeler spawnsDeDepart, "+
+			"reapparitionsDuJoueur ou spawnsSelonVies : le predicat a deja existe en trois "+
+			"exemplaires, et la definition aurait fini par diverger de celle du filtre :\n  %s",
 			proprietaireDuSpawnDepart, len(violations), strings.Join(violations, "\n  "))
 	}
 }
