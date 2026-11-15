@@ -84,12 +84,12 @@ fr = "Aucun match synchronisé pour l'instant"
 en = "No match synced yet"
 
 [home.first_sync.idle_description]
-fr = "Aucune synchronisation n'est en cours. La synchronisation automatique récupérera les matchs à son prochain passage, ou elle peut être lancée maintenant."
-en = "No sync is running. The automatic sync will retrieve the matches on its next pass, or it can be started now."
+fr = "Aucune synchronisation n'a été lancée depuis cet écran. La synchronisation automatique récupérera les matchs à son prochain passage, ou elle peut être lancée maintenant."
+en = "No sync has been started from this screen. The automatic sync will retrieve the matches on its next pass, or it can be started now."
 
 [home.first_sync.idle_description_readonly]
-fr = "Aucune synchronisation n'est en cours pour ce joueur. Ses matchs apparaîtront après la prochaine synchronisation de son propriétaire."
-en = "No sync is running for this player. Their matches will appear after the owner's next sync."
+fr = "Aucun match n'a encore été synchronisé pour ce joueur. Ses matchs apparaîtront après la prochaine synchronisation de son propriétaire."
+en = "No match has been synced for this player yet. Their matches will appear after the owner's next sync."
 
 [home.first_sync.start_action]
 fr = "Lancer la synchronisation"

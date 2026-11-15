@@ -41,25 +41,6 @@ Relevé le 2026-11-14 par la relecture du groupe « Rythme » de Tendances (plan
 
 ---
 
-### [bureau/auth] Le code d'appareil avale la cause de l'échec
-
-**Constaté le 2026-11-11.** « Impossible d'obtenir un accès Halo. Veuillez réessayer. » couvre toute erreur de l'échange XBL → XSTS → Spartan (`handlers/auth.go`, `pollDeviceFlow`, code `halo_exchange_error`), y compris un dépassement de délai des services Halo. Distinguer au moins « services Halo injoignables, réessayer plus tard » d'un refus du compte (pas de profil Xbox, mauvais compte).
-
----
-
-### [accueil] « Synchronisation en cours » affiché dès qu'il n'y a aucun match, qu'une synchronisation tourne ou non
-
-**Constaté le 2026-11-11** (issue #192). `features/home/HomePage.tsx` montre l'écran de première synchronisation sur `total_matches == 0`, sans lire l'état réel du sync. Un joueur dont aucune synchronisation ne part (cas corrigé par la 8.1.2) lisait ce message pendant une heure. Lire l'état du sync (job actif, dernière erreur) et le dire : « en cours », « en attente de connexion », « échec : … ».
-
----
-
-### [bureau/retours] « App version : unknown » dans les signalements envoyés depuis l'application
-
-**Constaté le 2026-11-11** (issue #192). Le tiroir de signalement ne connaît pas la version de l'application de bureau ; le navigateur se reconnaît à `Edg/` dans l'agent. Renseigner la version depuis `/bootstrap` ou la coquille.
-
----
-
-
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur — BLOQUÉS faute de donnée
 
 Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/archive/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
@@ -166,12 +147,6 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `components/u
 
 ---
 
-### [docs] ADR 0020 cite `PatternReport` ; ADR 0006 garde le quotient dans son corps
-
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. L'ADR 0020 cite encore `PatternReport` comme entrée du coach. L'ADR 0006 garde le quotient dans son corps, l'amendement étant censé l'annuler. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
-
----
-
 ### [licences/tests] Surnoms dérivés de pseudos réels dans des identifiants de tests
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pseudonymisation des fixtures sous `apps/` (v8.1.2, item 5.4), des surnoms tirés de gamertags réels restent dans des noms de tests et des libellés (plusieurs centaines d'occurrences, liste dans les tables hors dépôt de la pseudonymisation). La table de remplacement ne remplace que des gamertags entiers. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
@@ -190,41 +165,12 @@ Relevé le 2026-11-10 au premier démarrage de la 8.1.2 : pendant le rejeu des n
 
 ---
 
-### [ci/gate-push] Budget `-timeout=300s` trop court en mode intégration
-
-`make gate-push` sur machine chargée : `internal/archlint`, `internal/sync` et `internal/platform/duckdb` atteignent 300,2 à
-300,3 s ; `internal/sync` en intégration a été observé à environ 24 minutes. Le 2026-11-14, `go test -tags=integration ./...`
-(limite par défaut de 10 minutes) coupe aussi `internal/archlint`, `internal/ops` et `internal/sync` sous charge, sans test en
-échec ; rejoués seuls avec `-timeout 40m` : 428 s, 249 s et 699 s, verts. Reprend le diagnostic de l'ancienne entrée « Série Go
-`reste` : blocages sans test en échec » (2026-11-09, retirée) : ni paquet qui se bloque ni test rouge, un manque de temps sous
-charge. À revoir : budget par paquet ou exécution séparée des trois paquets lourds. **Effort : S.**
-
----
-
-### [web/tests] Le badge du rejeu n'est pas testé de bout en bout
-
-Le test `apps/web/src/lib/replay/queries.cadence.test.tsx` s'arrête à la valeur lue par la requête (l'en-tête de cadence). Retirer
-la prop `cadenceStale={data.cadenceStale}` de `ReplayPage.tsx` ne fait rougir aucun test : il faudrait monter toute la page.
-**Effort : S à M.**
-
----
-
 ### [sécurité/deps] Alerte Dependabot glib (Rust)
 
 `glib` 0.18.5 vient de `gtk` 0.18, dépendance Linux de Tauri (tauri 2.11.6, tao, wry, webkit2gtk, tray-icon, muda), non compilée
 sous Windows (`cargo tree --target x86_64-pc-windows-msvc` ne la trouve pas). `cargo update -p glib --precise 0.20.0` échoue (`gtk`
 exige `^0.18`). À écarter comme non applicable (Windows seul, ADR 0045) ou à régler à la prochaine montée de Tauri : décision du
 user. **Effort : S.**
-
----
-
-### [bureau/tests] `make desktop-test` laisse un binaire de serveur vide sous `binaries/`
-
-Relevé pendant la 8.2.0 (plan 8.1.2, étape 6.5), non traité. `apps/desktop/src-tauri/build.rs` (autour de la ligne 170) écrit un
-`levelup-server-x86_64-pc-windows-msvc.exe` vide sous `apps/desktop/src-tauri/binaries/` (ignoré par git) quand il est absent ; le
-test `TestLesBinairesDeAppsSontCouverts` (`apps/go-api/cmd/anonymise-gamertags/binaires_couverts_test.go`) refuse ensuite ce
-fichier, et la baseline de tests rougit tant qu'il n'est pas retiré à la main. À faire : que le test l'ignore, ou que `make
-desktop-test` nettoie après lui. **Effort : S.**
 
 ---
 
