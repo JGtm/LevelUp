@@ -47,14 +47,15 @@ const BrowserLoginCallbackPath = middleware.DesktopBrowserCallbackPath
 const browserLoginCodeParam = "code"
 
 // Codes d'échec d'une tentative de navigateur : posés sur la tentative (le sondage de la page les lit)
-// et montrés tels quels dans la page de retour.
+// et montrés tels quels dans la page de retour. Un échange Halo en échec pose browserErrHalo (refus du
+// compte) ou errCodeHaloUnreachable (services Halo injoignables), choisi par haloExchangeFailureCode.
 const (
 	browserErrDenied       = "oauth_denied"
 	browserErrState        = "state_invalid"
 	browserErrStateExpired = "state_expired"
 	browserErrMissing      = "missing_params"
 	browserErrCode         = "code_exchange_failed"
-	browserErrHalo         = "halo_exchange_failed"
+	browserErrHalo         = errCodeHaloExchangeFailed
 	browserErrIdentity     = "identity_missing"
 )
 
@@ -224,8 +225,10 @@ func (h *BrowserLoginHandler) complete(ctx context.Context, attempt *auth_platfo
 	}
 	exchange, err := h.provider.Exchange(ctx, tokenResult.AccessToken)
 	if err != nil {
-		slog.ErrorContext(ctx, "auth_browser_login: échange en jetons Halo refusé", "attempt_id", attempt.AttemptID, "err", err)
-		return browserErrHalo
+		failure := haloExchangeFailureCode(err, browserErrHalo)
+		slog.ErrorContext(ctx, "auth_browser_login: échange en jetons Halo refusé",
+			"attempt_id", attempt.AttemptID, "error_code", failure, "err", err)
+		return failure
 	}
 	rta, rerr := h.backend.AcquireRTA(ctx, tokenResult.AccessToken)
 	if rerr != nil {

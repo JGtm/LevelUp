@@ -12,6 +12,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
@@ -41,7 +42,11 @@ type XboxOAuthHandler struct {
 	postLoginURL string                       // où rediriger après succès (typiquement "/")
 	authStore    auth_platform.UserTokenStore // ADR 0023 : persister le RT post-SSO
 	invites      InviteValidator              // optionnel : flow d'invitation
+	exchangeCode codeExchanger                // échange du code d'autorisation (Microsoft ; remplaçable en test)
 }
+
+// codeExchanger échange le code d'autorisation du callback contre les jetons Microsoft.
+type codeExchanger func(ctx context.Context, code, redirectURI, codeVerifier string) (*auth_platform.AuthCodeResult, error)
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
 // redirectURI doit être strictement identique à celui configuré côté Azure.
@@ -57,7 +62,14 @@ func NewXboxOAuthHandler(
 		demoMode:     demoMode,
 		redirectURI:  redirectURI,
 		postLoginURL: "/",
+		exchangeCode: auth_platform.ExchangeAuthorizationCode,
 	}
+}
+
+// WithCodeExchange remplace l'échange du code d'autorisation avec Microsoft (tests : aucun appel réseau).
+func (h *XboxOAuthHandler) WithCodeExchange(f codeExchanger) *XboxOAuthHandler {
+	h.exchangeCode = f
+	return h
 }
 
 // WithLinkStrategy injecte la LinkStrategy (typiquement XboxSSOLinkStrategy).
@@ -306,7 +318,7 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 func (h *XboxOAuthHandler) exchangeCallbackTokens(
 	w http.ResponseWriter, r *http.Request, code, codeVerifier string,
 ) (*auth_platform.AuthCodeResult, *auth_platform.ExchangeResult, bool) {
-	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI, codeVerifier)
+	tokenResult, err := h.exchangeCode(r.Context(), code, h.redirectURI, codeVerifier)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
 		h.refuseCallback(w, r, "code_exchange_failed")
@@ -314,8 +326,9 @@ func (h *XboxOAuthHandler) exchangeCallbackTokens(
 	}
 	exchangeResult, err := h.provider.Exchange(r.Context(), tokenResult.AccessToken)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "err", err)
-		h.refuseCallback(w, r, "halo_exchange_failed")
+		failure := haloExchangeFailureCode(err, errCodeHaloExchangeFailed)
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "error_code", failure, "err", err)
+		h.refuseCallback(w, r, failure)
 		return nil, nil, false
 	}
 
