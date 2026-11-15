@@ -425,6 +425,7 @@ export function ReplayCanvas({
     doc, view: canvasView, frameRef, enabled: showPlacements,
     showUnnamed: showUnnamedPlacements,
     showDropped: showDroppedPlacements,
+    focusFilter: focusShown,
   })
 
   // LA VIE DES DRAPEAUX (schéma 15) : tracé, survol et infobulle dans un seul hook — et pas un
@@ -542,7 +543,7 @@ export function ReplayCanvas({
               // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
               // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
               // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
-              { placements: placements.all, lives: doc.tracks, campOfSlot },
+              { placements: placements.all, lives: doc.tracks, campOfSlot, shown: focusShown },
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.

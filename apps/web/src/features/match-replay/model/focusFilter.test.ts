@@ -76,3 +76,56 @@ describe('armes au sol — lâcheur et ramasseur', () => {
     expect(filter('solo').groundWeapon(arme({ dropper: 2, t0: 80 }))).toBe(false)
   })
 })
+
+describe('poses d’équipement — le poseur', () => {
+  it('une pose du joueur : Seul la garde, Masquer la retire', () => {
+    const { filter } = harness()
+    expect(filter('solo').placement({ owner: 1, t0: 20 })).toBe(true)
+    expect(filter('hide').placement({ owner: 1, t0: 20 })).toBe(false)
+  })
+
+  it('un objet lâché à la mort (une image après la fin de la vie) est au joueur qui vient de mourir', () => {
+    const { filter } = harness()
+    expect(filter('hide').placement({ owner: 1, t0: 51 })).toBe(false)
+    expect(filter('solo').placement({ owner: 1, t0: 51 })).toBe(true)
+  })
+
+  it('la pose d’un autre : Seul la retire, Masquer la garde', () => {
+    const { filter } = harness()
+    expect(filter('solo').placement({ owner: 2, t0: 20 })).toBe(false)
+    expect(filter('hide').placement({ owner: 2, t0: 20 })).toBe(true)
+  })
+
+  it('sans poseur mesuré (owner négatif) : à personne, elle reste', () => {
+    const { filter } = harness()
+    expect(filter('solo').placement({ owner: -1, t0: 20 })).toBe(true)
+    expect(filter('hide').placement({ owner: -1, t0: 20 })).toBe(true)
+  })
+})
+
+describe('faille et aller-retour du translocateur — le porteur à l’image de l’échange', () => {
+  it('le slot du joueur à cette image', () => {
+    const { filter } = harness()
+    expect(filter('solo').slotAt(3, 70)).toBe(true)
+    expect(filter('hide').slotAt(3, 70)).toBe(false)
+    expect(filter('solo').slotAt(2, 70)).toBe(false)
+    expect(filter('hide').slotAt(2, 70)).toBe(true)
+  })
+})
+
+describe('marque de révélation d’un capteur — le poseur ET le joueur révélé', () => {
+  it('Seul la garde si le joueur est le poseur ou le révélé', () => {
+    const { filter } = harness()
+    expect(filter('solo').reveal({ owner: 1, ownerFrame: 20, slot: 2 }, 30)).toBe(true)
+    expect(filter('solo').reveal({ owner: 2, ownerFrame: 20, slot: 1 }, 30)).toBe(true)
+    expect(filter('solo', 'B').reveal({ owner: 1, ownerFrame: 20, slot: 2 }, 30)).toBe(true)
+  })
+
+  it('Masquer la retire dans les deux cas, et garde celle qui ne le concerne pas', () => {
+    const { filter } = harness()
+    expect(filter('hide').reveal({ owner: 1, ownerFrame: 20, slot: 2 }, 30)).toBe(false)
+    expect(filter('hide').reveal({ owner: 2, ownerFrame: 20, slot: 1 }, 30)).toBe(false)
+    expect(filter('hide', 'B').reveal({ owner: 2, ownerFrame: 20, slot: 9 }, 30)).toBe(false)
+    expect(filter('hide').reveal({ owner: 2, ownerFrame: 20, slot: 2 }, 30)).toBe(true)
+  })
+})

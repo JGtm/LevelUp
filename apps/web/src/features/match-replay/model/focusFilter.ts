@@ -11,7 +11,7 @@
  * prédicat par genre d'élément et n'embarque aucune règle. Les calques de pions (pistes, tirs, traces des
  * vies, projectiles) gardent `shownAtSlot` : ils portent déjà un slot et une image dans la vie de leur auteur.
  */
-import type { ReplayGroundWeapon } from '@/lib/api/types'
+import type { ReplayEquipmentPlacement, ReplayGroundWeapon } from '@/lib/api/types'
 
 import type { KillFxEntry } from './killFx'
 import { lifeSlotAt } from './livesMarks'
@@ -30,6 +30,15 @@ export interface FocusFilter {
   killFx: (e: KillFxEntry) => boolean
   /** Une arme au sol : celui qui l'a lâchée et celui qui l'a reprise. */
   groundWeapon: (w: Pick<ReplayGroundWeapon, 'dropper' | 'picker' | 't0' | 't1'>) => boolean
+  /** Une pose d'équipement : son poseur (celui qui l'a posée ou lâchée), lu à l'image de la pose. */
+  placement: (p: Pick<ReplayEquipmentPlacement, 'owner' | 't0'>) => boolean
+  /** Un élément d'UN joueur daté à un instant (faille et aller-retour du translocateur) : son slot à cette image. */
+  slotAt: (slot: number, frame: number) => boolean
+  /**
+   * La marque d'un capteur sur une vie révélée : elle est au poseur ET au joueur révélé. `slot` est la vie
+   * révélée, lue à `frame` ; `owner` le poseur, lu à l'image de sa pose (`ownerFrame`).
+   */
+  reveal: (r: { owner: number; ownerFrame: number; slot: number }, frame: number) => boolean
 }
 
 /**
@@ -67,5 +76,9 @@ export function buildFocusFilter(
   return {
     killFx,
     groundWeapon: (w) => shown(present(slotParty(bySlot, w.dropper, w.t0), slotParty(bySlot, w.picker, w.t1))),
+    placement: (p) => shown(present(slotParty(bySlot, p.owner, p.t0))),
+    slotAt: (slot, frame) => shown(present(slotParty(bySlot, slot, frame))),
+    reveal: (r, frame) =>
+      shown(present(slotParty(bySlot, r.owner, r.ownerFrame), slotParty(bySlot, r.slot, frame))),
   }
 }

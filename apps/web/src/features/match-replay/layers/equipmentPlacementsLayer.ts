@@ -42,6 +42,7 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import type { FocusFilter } from '../model/focusFilter'
 import { drawRift, type RiftInk } from './placementRift'
 import { placementIsDroppedPower } from '../model/placementDropped'
 import {
@@ -278,6 +279,12 @@ export interface PlacementScene {
    * (poseur lu à sa pose, cible au ping — cf. threatSensor).
    */
   campOfSlot: (slot: number, frame: number) => number | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : une pose est à son poseur, une marque de révélation au poseur ET
+   * au joueur révélé. Un capteur retiré de la carte continue de révéler : sa révélation sur un joueur
+   * affiché reste une information de ce joueur. Absent = tout se dessine.
+   */
+  shown?: Pick<FocusFilter, 'placement' | 'reveal'>
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
@@ -470,11 +477,13 @@ export function drawEquipmentPlacementsLayer(
   for (const p of scene.placements) {
     const kind = placementKind(p, time)
     if (!kind || !isPlacementActive(p, kind, time.frame, time)) continue
-    drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
+    if (scene.shown && !scene.shown.placement(p)) continue
+    drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
   }
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
+    if (scene.shown && !scene.shown.reveal(reveal, time.frame)) continue
     // La marque porte la couleur du POSEUR, résolue à l'image de sa pose (`reveal.ownerFrame`) :
     // le slot du poseur peut appartenir à un autre joueur à l'image courante (manche suivante).
     const color = ink.colorOfSlot(reveal.owner, reveal.ownerFrame) ?? ink.neutral

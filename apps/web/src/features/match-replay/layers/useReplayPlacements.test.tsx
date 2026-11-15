@@ -20,7 +20,7 @@ const VIEW = { bounds: { minX: 0, minY: -20, maxX: 30, maxY: 0 }, width: 300, he
 /** Entre le repos (2176) et la fin lue (2252) du premier capteur de l'extrait. */
 const FRAME = 2200
 
-function rendre() {
+function rendre(focusFilter?: Parameters<typeof useReplayPlacements>[0]['focusFilter']) {
   const doc = SPAWNED_WITNESSES.sensor()
   return {
     doc,
@@ -32,6 +32,7 @@ function rendre() {
         enabled: true,
         showUnnamed: false,
         showDropped: true,
+        focusFilter,
       }),
     ),
   }
@@ -55,5 +56,31 @@ describe('useReplayPlacements — les objets engendrés', () => {
     } as unknown as PointerEvent<HTMLCanvasElement>
     act(() => hook.result.current.hover.onPointerMove(event))
     expect(hook.result.current.hover.hover?.placement.family).toBe('sensor')
+  })
+})
+
+describe('useReplayPlacements — Seul et Masquer', () => {
+  const tout = { placement: () => true, slotAt: () => true }
+  const rien = { placement: () => false, slotAt: () => false }
+
+  it('le survol ne désigne pas une pose retirée, et les comptes ne bougent pas', () => {
+    const { hook } = rendre(rien)
+    const c = project({ x: 15.2, y: -12.26 }, VIEW)
+    const event = {
+      clientX: c.x,
+      clientY: c.y,
+      currentTarget: { getBoundingClientRect: () => ({ left: 0, top: 0, width: VIEW.width, height: VIEW.height }) },
+    } as unknown as PointerEvent<HTMLCanvasElement>
+    act(() => hook.result.current.hover.onPointerMove(event))
+    expect(hook.result.current.hover.hover).toBeNull()
+    expect(hook.result.current.counts.drawable).toBe(rendre().hook.result.current.counts.drawable)
+  })
+
+  it('un filtre qui garde tout rend la même scène de failles, un filtre qui retire tout la vide', () => {
+    const base = rendre().hook.result.current.rift
+    expect(rendre(tout).hook.result.current.rift).toEqual(base)
+    const vide = rendre(rien).hook.result.current.rift
+    expect(vide.rifts).toHaveLength(0)
+    expect(vide.teleports).toHaveLength(0)
   })
 })
