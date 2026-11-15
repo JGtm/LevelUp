@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Règle de placement</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.app *{box-sizing:border-box}
+.app{width:1440px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.4;overflow:hidden;font-variant-numeric:tabular-nums;padding:32px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:20px;font-weight:600}
+h2{margin:0 0 10px;font-size:13px;font-weight:600;color:#e5e5e5}
+.steps{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px}
+.step{background:#121212;border:1px solid #1f1f1f;border-radius:12px;padding:12px 14px;display:flex;gap:10px;color:#c4c4c4}
+.step b{flex:none;width:22px;height:22px;border-radius:50%;background:#262626;color:#fafafa;display:grid;place-items:center;font-size:12px}
+.row{display:flex;gap:16px;align-items:flex-start}
+.cell{display:flex;flex-direction:column;gap:6px}
+.th{position:relative;background:#141414;border:1px solid #262626;border-radius:6px;overflow:hidden}
+.th.win{border-color:#60a5fa}
+.mw{position:absolute}
+.mw img{position:absolute;opacity:.85}
+.z{position:absolute;border-radius:3px}
+.z.a{background:rgba(74,222,128,.45)}.z.b{background:rgba(248,113,113,.45)}
+.z.f{background:rgba(220,220,220,.35)}
+.z.fo{background:rgba(220,220,220,.2);outline:1px dashed rgba(255,255,255,.55)}
+.cap{display:flex;align-items:center;gap:8px;font-size:12px;color:#a3a3a3}
+.cap b{color:#e5e5e5;font-weight:500}
+.win-chip{height:20px;padding:0 8px;border-radius:999px;background:rgba(96,165,250,.16);color:#93c5fd;font-size:11px;display:inline-flex;align-items:center}
+.legend{display:flex;gap:16px;font-size:12px;color:#a3a3a3}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
+.colhead{font-size:12px;color:#a3a3a3;height:18px}
+.tbl{background:#121212;border:1px solid #1f1f1f;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;width:330px;flex:none}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px 40px 40px;column-gap:6px;font-size:12.5px;align-items:center}
+.tr span:nth-child(n+2){text-align:right}
+.tr.hd{font-size:11px;color:#8a8a8a;align-items:end}
+.tr small{display:block;color:#8a8a8a;font-size:11px}
+.note{font-size:11.5px;color:#8a8a8a}
+</style>
+</helmet>
+<div class="app" style="height: 1040px">
+  <h1>Où mettre les équipes et le fil : un calcul à chaque redimensionnement</h1>
+  <div class="steps">
+    <div class="step"><b>1</b><span>Quatre placements candidats : équipes en colonnes opposées ou en rangées opposées, plan d'origine ou tourné de 90°.</span></div>
+    <div class="step"><b>2</b><span>On garde celui où le plan s'affiche le plus grand, une fois la place des équipes retirée.</span></div>
+    <div class="step"><b>3</b><span>On ne tourne le plan que s'il y gagne au moins 25 %. « Orientation d'origine » reste un choix dans Vue.</span></div>
+    <div class="step"><b>4</b><span>Le fil prend le plus grand espace libre restant ; à défaut, le coin le plus vide, en surimpression.</span></div>
+  </div>
+
+  <div>
+    <h2>Ronin dans le cadre Cinéma (1392 × 650) — les quatre candidats</h2>
+    <div class="row">
+      <sc-for list="{{cands}}" as="c" hint-placeholder-count="4">
+        <div class="cell">
+          <div class="{{c.thCls}}" style="width: {{c.tw}}; height: {{c.thh}}">
+            <div class="mw" style="left: {{c.bx}}; top: {{c.by}}; width: {{c.bw}}; height: {{c.bh}}">
+              <sc-if value="{{c.isD}}" hint-placeholder-val="{{false}}"><img src="/_blob/8d83755a7d648799773635fc993d5560" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+              <sc-if value="{{c.isR}}" hint-placeholder-val="{{true}}"><img src="/_blob/c877526d27789984efe68bccfa48cd5b" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+              <sc-if value="{{c.isN}}" hint-placeholder-val="{{false}}"><img src="/_blob/19f76417bf1e9e8cdaeee6beb41453a3" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+            </div>
+            <sc-for list="{{c.zones}}" as="z" hint-placeholder-count="3"><div class="{{z.cls}}" style="left: {{z.x}}; top: {{z.y}}; width: {{z.w}}; height: {{z.h}}"></div></sc-for>
+          </div>
+          <div class="cap"><b>{{c.label}}</b><span>plan ×{{c.rel}}</span><sc-if value="{{c.win}}" hint-placeholder-val="{{false}}"><span class="win-chip">retenu</span></sc-if></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background: rgba(74,222,128,.45)"></i>Eagle</span>
+    <span><i style="background: rgba(248,113,113,.45)"></i>Cobra</span>
+    <span><i style="background: rgba(220,220,220,.35)"></i>Fil dans un espace libre</span>
+    <span><i style="background: rgba(220,220,220,.2); outline: 1px dashed rgba(255,255,255,.55)"></i>Fil en surimpression</span>
+  </div>
+
+  <div class="row" style="gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0">Placement retenu, par carte et par cadre</h2>
+      <div class="row">
+        <sc-for list="{{maps}}" as="m" hint-placeholder-count="3"><div class="colhead" style="width: {{m.w}}">{{m.n}}</div></sc-for>
+      </div>
+      <sc-for list="{{grid}}" as="g" hint-placeholder-count="2">
+        <div class="cell" style="gap: 4px">
+          <div class="cap">{{g.frame}}</div>
+          <div class="row">
+            <sc-for list="{{g.items}}" as="c" hint-placeholder-count="3">
+              <div class="cell">
+                <div class="th" style="width: {{c.tw}}; height: {{c.thh}}">
+                  <div class="mw" style="left: {{c.bx}}; top: {{c.by}}; width: {{c.bw}}; height: {{c.bh}}">
+                    <sc-if value="{{c.isD}}" hint-placeholder-val="{{false}}"><img src="/_blob/8d83755a7d648799773635fc993d5560" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+                    <sc-if value="{{c.isR}}" hint-placeholder-val="{{false}}"><img src="/_blob/c877526d27789984efe68bccfa48cd5b" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+                    <sc-if value="{{c.isN}}" hint-placeholder-val="{{false}}"><img src="/_blob/19f76417bf1e9e8cdaeee6beb41453a3" alt="" style="left: {{c.il}}; top: {{c.it}}; width: {{c.iw}}; height: {{c.ih}}; transform: {{c.tr}}"></sc-if>
+                  </div>
+                  <sc-for list="{{c.zones}}" as="z" hint-placeholder-count="3"><div class="{{z.cls}}" style="left: {{z.x}}; top: {{z.y}}; width: {{z.w}}; height: {{z.h}}"></div></sc-for>
+                </div>
+                <div class="cap"><b>{{c.label}}</b></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="tbl">
+      <h2 style="margin: 0">Sur les 114 plans de cartes de LevelUp</h2>
+      <div class="tr hd"><span>Cadre</span><span>Col.</span><span>Col. tourné</span><span>Rang.</span><span>Rang. tourné</span></div>
+      <div class="tr"><span>Cinéma<small>1392 × 650</small></span><span>89</span><span>13</span><span>6</span><span>6</span></div>
+      <div class="tr"><span>Plein cadre<small>1440 × 900</small></span><span>81</span><span>0</span><span>23</span><span>10</span></div>
+      <div class="tr"><span>Plein cadre, fenêtre en hauteur<small>900 × 1000</small></span><span>0</span><span>0</span><span>114</span><span>0</span></div>
+      <div class="note">Le même plan ne se place pas pareil selon la taille de la fenêtre : c'est un calcul sur le cadre, jamais un réglage par carte. Le plan est tourné pour 10 cartes en Plein cadre et 19 en Cinéma, les plus allongées (Ronin, Warehouse, Urban Raid, Disciple…).</div>
+      <div class="note">Mesuré sur les dimensions des images de fond, marges transparentes comprises ; la version réelle utilisera l'emprise dessinée, plus juste.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const M = { D: { n: 'Detachment', w: 1526, h: 1666 }, R: { n: 'Ronin', w: 659, h: 1288 }, N: { n: 'Nadair', w: 2133, h: 947 } };
+    const px = (v) => v.toFixed(1) + 'px';
+    const cand = (W, H, key, L, rot) => {
+      const m = M[key];
+      const w = rot ? m.h : m.w;
+      const h = rot ? m.w : m.h;
+      const a = L === 'col' ? { x: 286, y: 0, w: W - 572, h: H } : { x: 0, y: 84, w: W, h: H - 168 };
+      const s = Math.min(a.w / w, a.h / h);
+      const bw = w * s, bh = h * s, bx = a.x + (a.w - bw) / 2, by = a.y + (a.h - bh) / 2;
+      let zones;
+      if (L === 'col') {
+        zones = [{ x: 12, y: 56, w: 262, h: 170, t: 'a' }, { x: W - 274, y: 56, w: 262, h: 170, t: 'b' }, { x: 12, y: H - 140, w: 262, h: 128, t: 'f' }];
+      } else {
+        const gap = (W - bw) / 2;
+        const sx = (W - 808) / 2;
+        zones = [{ x: sx, y: 12, w: 808, h: 56, t: 'a' }, { x: sx, y: H - 68, w: 808, h: 56, t: 'b' }, { x: W - 12 - 300, y: H / 2 - 64, w: 300, h: 128, t: gap >= 312 ? 'f' : 'fo' }];
+      }
+      return { key, L, rot, s, bw, bh, bx, by, zones, W, H };
+    };
+    const view = (c, k, label, win) => {
+      const iw = c.rot ? c.bh : c.bw, ih = c.rot ? c.bw : c.bh;
+      return {
+        tw: px(c.W * k), thh: px(c.H * k),
+        bx: px(c.bx * k), by: px(c.by * k), bw: px(c.bw * k), bh: px(c.bh * k),
+        il: px(((c.bw - iw) / 2) * k), it: px(((c.bh - ih) / 2) * k), iw: px(iw * k), ih: px(ih * k),
+        tr: c.rot ? 'rotate(90deg)' : 'none',
+        isD: c.key === 'D', isR: c.key === 'R', isN: c.key === 'N',
+        zones: c.zones.map((z) => ({ cls: 'z ' + z.t, x: px(z.x * k), y: px(z.y * k), w: px(z.w * k), h: px(z.h * k) })),
+        label, win, thCls: 'th' + (win ? ' win' : '')
+      };
+    };
+    const labelOf = (c) => (c.L === 'col' ? 'Colonnes' : 'Rangées') + (c.rot ? ', tourné' : ', d’origine');
+    const pick = (W, H, key) => {
+      const all = [cand(W, H, key, 'col', 0), cand(W, H, key, 'row', 0), cand(W, H, key, 'col', 1), cand(W, H, key, 'row', 1)];
+      const u = all.filter((c) => !c.rot).sort((a, b) => b.s - a.s)[0];
+      const r = all.filter((c) => c.rot).sort((a, b) => b.s - a.s)[0];
+      return { all, best: r.s > u.s * 1.25 ? r : u, base: u };
+    };
+    const K = 0.235;
+    const K2 = 0.22;
+    const ronin = pick(1392, 650, 'R');
+    const cands = ronin.all.map((c) => ({ ...view(c, K, labelOf(c), c === ronin.best), rel: (c.s / ronin.base.s).toFixed(2).replace('.', ',') }));
+    const frames = [['Cinéma (1392 × 650)', 1392, 650], ['Plein cadre (1440 × 900)', 1440, 900]];
+    const grid = frames.map(([frame, W, H]) => ({
+      frame,
+      items: ['D', 'R', 'N'].map((key) => { const p = pick(W, H, key); return view(p.best, K2, labelOf(p.best), false); })
+    }));
+    const maps = ['D', 'R', 'N'].map((key) => ({ n: M[key].n, w: px(1440 * K2) }));
+    return { cands, grid, maps };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Plein cadre, carte horizontale</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.app *{box-sizing:border-box}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;position:relative;width:1440px;background:#0d0d0d;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;overflow:hidden;font-variant-numeric:tabular-nums}
+.sp{flex:1}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:rgba(20,20,20,.8);border:1px solid rgba(255,255,255,.08)}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:#a3a3a3;font-size:12.5px;cursor:pointer}
+.seg button.on{background:rgba(255,255,255,.14);color:#fafafa}
+.seg button.off{color:#666}
+.btn{all:unset;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(20,20,20,.8);color:#e5e5e5;font-size:13px;cursor:pointer;white-space:nowrap}
+.ibtn{all:unset;min-width:32px;height:32px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:#e5e5e5;font-size:12.5px;font-weight:500;cursor:pointer}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:4px;border:1px solid rgba(255,255,255,.18);font-size:10.5px;color:#cfcfcf}
+.bar-top{position:absolute;left:0;right:0;top:0;height:60px;padding:12px 16px 0;display:flex;align-items:flex-start;gap:12px;background:linear-gradient(rgba(0,0,0,.7),rgba(0,0,0,0))}
+.title{display:flex;flex-direction:column;gap:1px}
+.title b{font-size:14px;font-weight:600}
+.title small{font-size:11.5px;color:#a3a3a3}
+.mapw{position:absolute}
+.mapw img{position:absolute;inset:0;width:100%;height:100%;opacity:.92}
+.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.pin i{display:block;width:12px;height:12px;border-radius:50%;border:2px solid #0b0b0b}
+.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
+.pin.f i{box-shadow:0 0 0 3px #0b0b0b,0 0 0 5px var(--follow)}
+.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:rgba(8,12,18,.82)}
+.float{position:absolute;display:flex;align-items:center;gap:6px;background:rgba(14,14,14,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;backdrop-filter:blur(10px)}
+.sb{top:10px;left:50%;transform:translateX(-50%);width:440px;padding:6px 8px;gap:8px}
+.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
+.strip{position:absolute;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+.tile{width:196px;height:56px;padding:7px 10px;border-radius:10px;background:rgba(12,12,12,.8);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:space-between}
+.tile .r1{display:flex;align-items:center;gap:7px;min-width:0}
+.tile .r1 b{font-weight:500;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.tile .r2{display:flex;align-items:center;gap:8px;color:#cfcfcf;font-size:11px}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.vit{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
+.vit i{position:absolute;left:0;top:0;bottom:0;background:var(--follow);border-radius:2px}
+.resp{flex:1;font-size:11px;color:var(--enemy)}
+.ic{display:inline-flex;align-items:center;gap:2px}
+.ic.off{color:#4a4a4a}
+.kda{font-size:12.5px}
+.kda span{color:#5c5c5c;margin:0 2px}
+.tile.dead .r1 b,.tile.dead .kda,.tile.dead .ic{opacity:.4}
+.tile.follow{background:rgba(30,52,86,.82);border-color:rgba(96,165,250,.4)}
+.cam{left:16px;top:140px;height:32px;padding:0 10px;font-size:12.5px;color:#d4d4d4}
+.zoom{left:16px;top:180px;padding:3px;gap:2px}
+.zoom button{all:unset;width:28px;height:26px;display:grid;place-items:center;border-radius:6px;color:#d4d4d4;font-size:12px}
+.hfeed{position:absolute;right:16px;top:140px;width:344px;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.fi{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:7px;font-size:12.5px;white-space:nowrap;background:rgba(12,12,12,.8);border:1px solid rgba(255,255,255,.05);backdrop-filter:blur(10px)}
+.fi .t{color:#8f8f8f;font-size:11.5px;width:30px;flex:none}
+.fi svg{color:#9a9a9a;flex:none}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fi .zn{padding-left:6px;color:#8f8f8f;font-size:11.5px}
+.fi.o1{opacity:.82}.fi.o2{opacity:.62}.fi.o3{opacity:.45}
+.fi.me{background:rgba(30,52,86,.82)}
+.bottom{position:absolute;left:0;right:0;bottom:0;padding:28px 24px 12px;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.8));display:flex;flex-direction:column;gap:4px}
+.scrub{position:relative;height:22px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:rgba(255,255,255,.18)}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#fafafa}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.16)}
+.ctrls{display:flex;align-items:center;gap:6px}
+.play{all:unset;width:36px;height:36px;border-radius:50%;background:#fafafa;color:#0b0b0b;display:grid;place-items:center;cursor:pointer}
+.time{font-size:13px;color:#bdbdbd;margin:0 6px}
+.time b{color:#fafafa;font-weight:600}
+</style>
+</helmet>
+<div class="app" style="height: 900px">
+  <div class="mapw" style="left: 44px; top: 134px; width: 1352px; height: 600px">
+    <img src="/_blob/19f76417bf1e9e8cdaeee6beb41453a3" alt="Plan de Nadair vu du dessus">
+    <sc-for list="{{pins}}" as="q" hint-placeholder-count="7">
+      <div class="{{q.cls}}" style="left: {{q.x}}; top: {{q.y}}"><i></i><span>{{q.n}}</span></div>
+    </sc-for>
+  </div>
+
+  <div class="bar-top">
+    <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg>Quitter <span class="kbd">Échap</span></button>
+    <div class="title"><b>Assassin en équipe — Nadair</b><small>Exemple de carte très horizontale</small></div>
+    <span class="sp"></span>
+    <div class="seg" aria-label="Cadre du lecteur"><button>Standard</button><button>Cinéma <span class="kbd">T</span></button><button class="on">Plein cadre <span class="kbd">F</span></button></div>
+    <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+    <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+  </div>
+
+  <div class="float sb" role="group" aria-label="Score">
+    <div class="sbar l"><i style="width: 46%"></i><b>23</b></div>
+    <div class="sclk">3:51</div>
+    <div class="sbar r"><i style="width: 30%"></i><b>15</b></div>
+  </div>
+
+  <div class="strip" style="top: 64px">
+    <sc-for list="{{A}}" as="p" hint-placeholder-count="4">
+      <div class="{{p.cls}}">
+        <div class="r1"><span class="dot a"></span><b>{{p.n}}</b><span class="kda">{{p.k}}<span>/</span>{{p.d}}<span>/</span>{{p.a}}</span></div>
+        <div class="r2">
+          <sc-if value="{{p.alive}}" hint-placeholder-val="{{true}}"><span class="vit"><i style="width: {{p.vw}}"></i></span></sc-if>
+          <sc-if value="{{p.isDead}}" hint-placeholder-val="{{false}}"><span class="resp">Réapparition dans {{p.resp}}</span></sc-if>
+          <span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span>
+          <span class="{{p.gcls}}"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>{{p.g}}</span>
+          <span class="{{p.ecls}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <button class="float cam">Caméra : suivre JGtm <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+  <div class="float zoom"><button aria-label="Dézoomer">−</button><button aria-label="Échelle">1×</button><button aria-label="Zoomer">+</button></div>
+
+  <div class="hfeed">
+    <sc-for list="{{feed}}" as="f" hint-placeholder-count="4">
+      <div class="{{f.cls}}">
+        <span class="t">{{f.t}}</span><span class="{{f.kc}}">{{f.k}}</span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="{{f.vc}}">{{f.v}}</span><span class="zn">{{f.z}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="strip" style="bottom: 100px">
+    <sc-for list="{{B}}" as="p" hint-placeholder-count="4">
+      <div class="{{p.cls}}">
+        <div class="r1"><span class="dot b"></span><b>{{p.n}}</b><span class="kda">{{p.k}}<span>/</span>{{p.d}}<span>/</span>{{p.a}}</span></div>
+        <div class="r2">
+          <sc-if value="{{p.alive}}" hint-placeholder-val="{{true}}"><span class="vit"><i style="width: {{p.vw}}"></i></span></sc-if>
+          <sc-if value="{{p.isDead}}" hint-placeholder-val="{{false}}"><span class="resp">Réapparition dans {{p.resp}}</span></sc-if>
+          <span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span>
+          <span class="{{p.gcls}}"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>{{p.g}}</span>
+          <span class="{{p.ecls}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="bottom">
+    <div class="scrub">
+      <div class="ticks"><sc-for list="{{ticks}}" as="k" hint-placeholder-count="20"><i class="{{k.cls}}" style="left: {{k.l}}"></i></sc-for></div>
+      <div class="rail"><i style="width: 49.7%"></i></div>
+      <span class="knob" style="left: calc(49.7% - 6px)"></span>
+    </div>
+    <div class="ctrls">
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span class="sp"></span>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = [
+      { n: 'Chocoboflor', t: 'a', k: 7, d: 2, a: 2, v: 92, g: 0, e: false, x: 27, y: 46 },
+      { n: 'Draconewt', t: 'a', k: 7, d: 4, a: 4, v: 64, g: 1, e: false, x: 41, y: 33 },
+      { n: 'Madina97294', t: 'a', k: 8, d: 5, a: 2, v: 100, g: 2, e: true, x: 50, y: 50 },
+      { n: 'JGtm', t: 'a', k: 1, d: 4, a: 1, v: 100, g: 2, e: false, f: true, x: 13, y: 44 },
+      { n: 'WDW Eclipse', t: 'b', k: 4, d: 6, a: 3, v: 0, g: 0, e: false, dead: '5,8 s' },
+      { n: 'ELOsk11', t: 'b', k: 3, d: 6, a: 0, v: 35, g: 2, e: false, x: 86, y: 48 },
+      { n: 'yougo77500', t: 'b', k: 3, d: 7, a: 1, v: 100, g: 2, e: false, x: 54, y: 72 },
+      { n: 'DubsDay', t: 'b', k: 5, d: 4, a: 1, v: 88, g: 2, e: true, x: 70, y: 48 }
+    ].map((p) => ({ ...p, cls: 'tile' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : ''), gcls: 'ic' + (p.g ? '' : ' off'), ecls: 'ic' + (p.e ? '' : ' off'), vw: p.v + '%', alive: !p.dead, isDead: !!p.dead, resp: p.dead || '' }));
+    const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
+    const F = [
+      ['3:49', 'Madina97294', 'a', 'WDW Eclipse', 'Centre'],
+      ['3:42', 'ELOsk11', 'b', 'JGtm', 'Base Eagle'],
+      ['3:37', 'Madina97294', 'a', 'WDW Eclipse', 'Tour nord'],
+      ['3:34', 'Madina97294', 'a', 'yougo77500', 'Tour sud']
+    ].map((f, i) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: f[2] === 'a' ? 'ka' : 'kb', vc: f[2] === 'a' ? 'kb' : 'ka', cls: 'fi' + (i > 0 ? ' o' + i : '') + ((f[1] === 'JGtm' || f[3] === 'JGtm') ? ' me' : '') }));
+    const T = [[18,'a'],[29,'b'],[44,'a'],[52,'a'],[70,'b'],[83,'a'],[97,'a'],[110,'b'],[121,'a'],[135,'a'],[150,'b'],[162,'a'],[169,'a'],[181,'a'],[182,'b'],[193,'a'],[202,'b'],[214,'a'],[217,'a'],[222,'b'],[229,'a'],[247,'a'],[256,'b'],[268,'a'],[281,'a'],[300,'b'],[312,'a'],[333,'a'],[351,'b'],[366,'a'],[384,'a'],[401,'b'],[420,'a'],[437,'a'],[455,'b']];
+    const ticks = T.map(([s, t]) => ({ l: (s / 465 * 100).toFixed(2) + '%', cls: 't' + t }));
+    return { A: P.filter((p) => p.t === 'a'), B: P.filter((p) => p.t === 'b'), pins, feed: F, ticks };
+  }
+}
+</script>
+</body>
+</html>

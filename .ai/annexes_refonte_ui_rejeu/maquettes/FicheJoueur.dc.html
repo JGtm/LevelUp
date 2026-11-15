@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Fiche joueur ouverte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.app *{box-sizing:border-box}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;width:1440px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
+.top{height:48px;flex:none;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid #1f1f1f;background:#0f0f0f}
+.logo{font-weight:700;font-size:15px}
+.nav{display:flex;gap:20px;color:#8f8f8f}
+.nav .on{color:#fafafa}
+.avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#2a2a2a}
+.head{flex:none;height:56px;display:grid;grid-template-columns:minmax(0,1fr) 440px minmax(0,1fr);align-items:center;gap:16px;padding:0 24px}
+.head .l{display:flex;align-items:center;gap:12px;min-width:0}
+.head .r{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.back{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;border:1px solid #262626;background:#141414;color:#d4d4d4}
+.crumb{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb small{color:#8f8f8f;font-size:12px;white-space:nowrap}
+.crumb b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:#141414;border:1px solid #262626}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:7px;color:#9a9a9a;font-size:12.5px;cursor:pointer}
+.seg button.on{background:#2a2a2a;color:#fafafa}
+.seg button.off{color:#5c5c5c}
+.btn{all:unset;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid #262626;background:#141414;color:#e5e5e5;font-size:13px;cursor:pointer;white-space:nowrap}
+.ibtn{all:unset;min-width:30px;height:30px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:#d4d4d4;font-size:12.5px;font-weight:500;cursor:pointer}
+.sb{display:flex;align-items:center;gap:8px}
+.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
+.vp{display:grid;grid-template-columns:minmax(0,1fr) 360px;border-radius:12px;background:#0f0f0f;border:1px solid #1f1f1f;overflow:hidden}
+.col{display:flex;flex-direction:column;gap:14px;padding:12px 14px;min-height:0;border-left:1px solid #1c1c1c}
+.stage{position:relative;min-width:0}
+.mapbox{position:absolute;top:12px;bottom:12px;left:50%;transform:translateX(-50%);aspect-ratio:1526 / 1666}
+.mapbox img{position:absolute;inset:0;width:100%;height:100%;opacity:.92}
+.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.pin i{display:block;width:12px;height:12px;border-radius:50%;border:2px solid #0b0b0b}
+.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
+.pin.f i{box-shadow:0 0 0 3px #0b0b0b,0 0 0 5px var(--follow)}
+.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:rgba(8,12,18,.82)}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.dhead{display:flex;flex-direction:column;gap:10px}
+.backrow{display:flex;align-items:center;gap:8px}
+.lnk{all:unset;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px 0 4px;border-radius:6px;color:#bdbdbd;font-size:12px;cursor:pointer}
+.lnk:hover{background:#1a1a1a;color:#fafafa}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:4px;border:1px solid #3a3a3a;font-size:10.5px;color:#a3a3a3;margin-left:auto}
+.who{display:flex;align-items:center;gap:8px}
+.who b{font-size:17px;font-weight:700}
+.who small{font-size:12px;color:#9a9a9a}
+.who .kda{margin-left:auto;font-size:15px;font-weight:600}
+.kda span{color:#5c5c5c;margin:0 2px;font-weight:400}
+.picks{display:flex;align-items:center;gap:5px}
+.pk{all:unset;width:34px;height:22px;border-radius:5px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#0b0b0b;cursor:pointer}
+.pk.a{background:var(--ally)}.pk.b{background:var(--enemy)}
+.pk.dead{opacity:.35}
+.pk.sel{box-shadow:0 0 0 2px #0f0f0f,0 0 0 4px #fafafa}
+.picks .gap{width:8px}
+.acts{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr))}
+.sec{display:flex;flex-direction:column;gap:8px}
+.st{display:flex;align-items:baseline;gap:8px;font-size:11px;font-weight:600;color:#a3a3a3;letter-spacing:.2px}
+.st small{font-weight:400;color:#7d7d7d}
+.lbar{display:grid;grid-template-columns:62px minmax(0,1fr) 30px;align-items:center;column-gap:8px;font-size:11.5px;color:#9a9a9a}
+.lbar .tk{height:5px;border-radius:3px;background:rgba(255,255,255,.1);position:relative;overflow:hidden}
+.lbar .tk i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.lbar .v{text-align:right;color:#d4d4d4}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:5px;column-gap:10px;font-size:12px}
+.kv span:nth-child(odd){color:#9a9a9a}
+.kv span:nth-child(even){text-align:right;color:#e5e5e5}
+.kv small{color:#7d7d7d}
+.slot{display:flex;align-items:center;gap:8px;font-size:12px;color:#d4d4d4}
+.slot svg{color:#cfcfcf}
+.slot small{color:#8a8a8a}
+.charge{width:44px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
+.charge i{position:absolute;left:0;top:0;bottom:0;background:#e5e5e5}
+.wbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 16px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
+.wbar .tk{height:4px;border-radius:2px;background:rgba(255,255,255,.08);position:relative}
+.wbar .tk i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#a3a3a3}
+.wbar span:last-child{text-align:right}
+.feed2{margin-top:auto;display:flex;flex-direction:column;border-top:1px solid #1c1c1c;padding-top:10px}
+.feed2 .st{margin-bottom:4px}
+.feed2 .st a{margin-left:auto;font-weight:400;font-size:11px;color:#9a9a9a;text-decoration:none}
+.fr{display:grid;grid-template-columns:30px 86px 20px 86px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
+.scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:6px;scrollbar-width:thin;scrollbar-color:#3a3a3a transparent}
+.fr > span{overflow:hidden;text-overflow:ellipsis}
+.fr .t{color:#7d7d7d;font-size:11.5px}
+.fr svg{color:#9a9a9a}
+.fr .zn{color:#8a8a8a;font-size:11.5px}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fr .me{font-weight:700}
+.tp{flex:none;height:56px;display:flex;align-items:center;gap:6px;padding:0 2px}
+.play{all:unset;width:36px;height:36px;border-radius:50%;background:#fafafa;color:#0b0b0b;display:grid;place-items:center;cursor:pointer;flex:none}
+.time{font-size:12.5px;color:#a3a3a3;margin:0 4px;white-space:nowrap}
+.time b{color:#fafafa;font-weight:600}
+.scrub{position:relative;height:30px;flex:1;margin:0 10px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.ticks i.off{opacity:.25}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#2a2a2a}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#e5e5e5}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.14)}
+.sel{all:unset;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid #262626;font-size:12.5px;color:#e5e5e5;cursor:pointer;white-space:nowrap}
+.vsep{width:1px;height:20px;background:#262626;margin:0 4px}
+</style>
+</helmet>
+<div class="app" style="height: 900px">
+  <header class="top">
+    <span class="logo">LevelUp</span>
+    <nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav>
+    <span class="avatar"></span>
+  </header>
+
+  <div class="head">
+    <div class="l">
+      <a class="back" href="#" aria-label="Retour"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+      <div class="crumb"><small>JGtm · Partie rapide · 10 nov. 2026, 21:40</small><b>Assassin en équipe — Detachment</b></div>
+    </div>
+    <div class="sb" role="group" aria-label="Score">
+      <div class="sbar l"><i style="width: 46%"></i><b>23</b></div>
+      <div class="sclk">3:51</div>
+      <div class="sbar r"><i style="width: 30%"></i><b>15</b></div>
+    </div>
+    <div class="r">
+      <div class="seg" aria-label="Cadre du lecteur"><button>Standard</button><button class="on">Cinéma</button><button>Plein cadre</button></div>
+      <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+      <button class="btn">Fiche</button>
+    </div>
+  </div>
+
+  <main style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 24px 8px">
+    <div class="vp" style="flex: 1; min-height: 0">
+      <div class="stage">
+        <div class="mapbox">
+          <img src="/_blob/8d83755a7d648799773635fc993d5560" alt="Plan de Detachment vu du dessus">
+          <sc-for list="{{pins}}" as="q" hint-placeholder-count="7">
+            <div class="{{q.cls}}" style="left: {{q.x}}; top: {{q.y}}"><i></i><span>{{q.n}}</span></div>
+          </sc-for>
+        </div>
+      </div>
+
+      <aside class="col" aria-label="Fiche de Madina97294">
+        <div class="scroll">
+        <div class="dhead">
+          <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
+          <div class="picks" aria-label="Changer de joueur">
+            <sc-for list="{{picks}}" as="k" hint-placeholder-count="8"><button class="{{k.cls}}" title="{{k.n}}" aria-label="{{k.n}}">{{k.i}}</button><sc-if value="{{k.gapAfter}}" hint-placeholder-val="{{false}}"><span class="gap"></span></sc-if></sc-for>
+          </div>
+          <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
+          <div class="seg acts" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
+        </div>
+
+        <div class="sec">
+          <div class="st">À L'INSTANT <small>3:51</small></div>
+          <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
+          <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
+          <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>36<small>/198 en main</small></div>
+          <div class="slot" style="color: #8a8a8a"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>8<small>/32 en réserve</small></div>
+          <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
+          <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Équipement · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
+        </div>
+
+        <div class="sec">
+          <div class="st">TOTAUX DU MATCH</div>
+          <div class="kv">
+            <span>Précision</span><span>41 % <small>· 118 / 288</small></span>
+            <span>Dégâts infligés / subis</span><span>2 140 / 1 610</span>
+            <span>Score</span><span>900</span>
+            <span>Éliminations à la tête</span><span>5</span>
+          </div>
+          <div class="wbar"><span>Fusil d'assaut</span><span class="tk"><i style="width: 75%"></i></span><span>6</span></div>
+          <div class="wbar"><span>Grenade</span><span class="tk"><i style="width: 25%"></i></span><span>2</span></div>
+        </div>
+
+        </div>
+        <div class="feed2">
+          <div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div>
+          <sc-for list="{{feed}}" as="f" hint-placeholder-count="2">
+            <div class="fr">
+              <span class="t">{{f.t}}</span><span class="{{f.kc}}">{{f.k}}</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="{{f.vc}}">{{f.v}}</span>
+              <span class="zn">{{f.z}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </aside>
+    </div>
+
+    <div class="tp">
+      <button class="ibtn" aria-label="Caméra : suivre Madina97294" title="Caméra : suivre Madina97294"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
+      <span class="vsep"></span>
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <div class="scrub" title="Repères de Madina97294 mis en avant">
+        <div class="ticks"><sc-for list="{{ticks}}" as="k" hint-placeholder-count="20"><i class="{{k.cls}}" style="left: {{k.l}}"></i></sc-for></div>
+        <div class="rail"><i style="width: 49.7%"></i></div>
+        <span class="knob" style="left: calc(49.7% - 6px)"></span>
+      </div>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Dézoomer">−</button><button class="ibtn" aria-label="Zoomer">+</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Capture"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+      <button class="ibtn" aria-label="Exporter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></button>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+      <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = [
+      { n: 'Chocoboflor', t: 'a', x: 30, y: 37 },
+      { n: 'Draconewt', t: 'a', x: 39, y: 44 },
+      { n: 'Madina97294', t: 'a', x: 49, y: 52, f: true },
+      { n: 'JGtm', t: 'a', x: 41, y: 22 },
+      { n: 'WDW Eclipse', t: 'b', dead: true },
+      { n: 'ELOsk11', t: 'b', x: 74, y: 53 },
+      { n: 'yougo77500', t: 'b', x: 18, y: 49 },
+      { n: 'DubsDay', t: 'b', x: 40, y: 80 }
+    ];
+    const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
+    const picks = P.map((p, i) => ({ n: p.n, i: p.n.slice(0, 2).toUpperCase(), cls: 'pk ' + p.t + (p.dead ? ' dead' : '') + (p.f ? ' sel' : ''), gapAfter: i === 3 }));
+    const F = [
+      ['3:49', 'Madina97294', 'a', 'WDW Eclipse', 'Îlot'],
+      ['3:42', 'ELOsk11', 'b', 'JGtm', 'Passerelle nord']
+    ];
+    const feed = F.map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'Madina97294' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'Madina97294' ? ' me' : '') }));
+    const T = [[18,'a',1],[29,'b',0],[44,'a',0],[52,'a',1],[70,'b',1],[83,'a',0],[97,'a',1],[110,'b',0],[121,'a',0],[135,'a',1],[150,'b',0],[162,'a',0],[169,'a',1],[181,'a',0],[182,'b',1],[193,'a',0],[202,'b',1],[214,'a',1],[217,'a',1],[222,'b',0],[229,'a',1],[247,'a',0],[256,'b',0],[268,'a',1],[281,'a',0],[300,'b',1],[312,'a',0],[333,'a',1],[351,'b',0],[366,'a',0],[384,'a',1],[401,'b',0],[420,'a',0],[437,'a',1],[455,'b',0]];
+    const ticks = T.map(([s, t, mine]) => ({ l: (s / 465 * 100).toFixed(2) + '%', cls: 't' + t + (mine ? '' : ' off') }));
+    return { pins, picks, feed, ticks };
+  }
+}
+</script>
+</body>
+</html>

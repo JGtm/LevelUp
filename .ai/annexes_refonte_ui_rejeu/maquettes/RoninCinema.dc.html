@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Cinéma, plan tourné</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.app *{box-sizing:border-box}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;width:1440px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
+.top{height:48px;flex:none;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid #1f1f1f;background:#0f0f0f}
+.logo{font-weight:700;font-size:15px}
+.nav{display:flex;gap:20px;color:#8f8f8f}
+.nav .on{color:#fafafa}
+.avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#2a2a2a}
+.head{flex:none;height:56px;display:grid;grid-template-columns:minmax(0,1fr) 440px minmax(0,1fr);align-items:center;gap:16px;padding:0 24px}
+.head .l{display:flex;align-items:center;gap:12px;min-width:0}
+.head .r{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.back{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;border:1px solid #262626;background:#141414;color:#d4d4d4}
+.crumb{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb small{color:#8f8f8f;font-size:12px;white-space:nowrap}
+.crumb b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:#141414;border:1px solid #262626}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:#9a9a9a;font-size:12.5px;cursor:pointer}
+.seg button.on{background:#2a2a2a;color:#fafafa}
+.seg button.off{color:#5c5c5c}
+.btn{all:unset;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid #262626;background:#141414;color:#e5e5e5;font-size:13px;cursor:pointer;white-space:nowrap}
+.ibtn{all:unset;min-width:30px;height:30px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:#d4d4d4;font-size:12.5px;font-weight:500;cursor:pointer}
+.sb{display:flex;align-items:center;gap:8px}
+.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
+.vp{display:grid;grid-template-columns:minmax(0,1fr) 360px;border-radius:12px;background:#0f0f0f;border:1px solid #1f1f1f;overflow:hidden}
+.col{display:flex;flex-direction:column;gap:14px;padding:12px 14px;min-height:0;border-left:1px solid #1c1c1c}
+.stage{position:relative;min-width:0}
+.mapw{position:absolute;left:calc(50% - 503px);top:calc(50% - 257.5px);width:1006px;height:515px}
+.mapw img{position:absolute;left:245.5px;top:-245.5px;width:515px;height:1006px;transform:rotate(90deg);opacity:.92}
+.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.pin i{display:block;width:12px;height:12px;border-radius:50%;border:2px solid #0b0b0b}
+.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
+.pin.f i{box-shadow:0 0 0 3px #0b0b0b,0 0 0 5px var(--follow)}
+.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:rgba(8,12,18,.82)}
+.sh{display:flex;align-items:center;gap:8px;height:20px;font-size:12px;font-weight:600;color:#c4c4c4}
+.sh .mut{margin-left:auto;font-weight:400;font-size:11px;color:#7d7d7d}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.roster{display:flex;flex-direction:column}
+.hr{display:grid;grid-template-columns:minmax(0,1fr) 22px 24px 14px 54px;align-items:center;column-gap:6px;height:34px}
+.hr.hd{height:16px;font-size:10.5px;color:#7d7d7d}
+.hr.hd span{text-align:right}
+.hr .nm{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hr .nm b{font-weight:500;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hr.follow .nm b{font-weight:700}
+.hr .nm b em{font-style:normal;font-weight:400;font-size:11px;color:var(--follow);margin-left:6px}
+.vit{height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden;width:110px}
+.vit i{position:absolute;left:0;top:0;bottom:0;background:var(--follow);border-radius:2px}
+.resp{font-size:11px;color:var(--enemy);height:13px;white-space:nowrap}
+.ic{color:#cfcfcf;display:flex;align-items:center;justify-content:flex-end;gap:2px;font-size:11px}
+.ic.off{color:#3f3f3f}
+.kda{text-align:right;font-size:12.5px}
+.kda span{color:#5c5c5c;margin:0 2px}
+.hr.dead .nm b,.hr.dead .kda,.hr.dead .ic{opacity:.4}
+.det{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:4px 10px;padding:2px 0 8px;font-size:11.5px;color:#bdbdbd}
+.det span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.det small{color:#8a8a8a;font-size:11px}
+.charge{width:36px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
+.charge i{position:absolute;left:0;top:0;bottom:0;background:#e5e5e5}
+.feed{display:flex;flex-direction:column;min-height:0;overflow:hidden;border-top:1px solid #1c1c1c;padding-top:12px}
+.fr{display:grid;grid-template-columns:30px 86px 20px 86px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
+.fr > span{overflow:hidden;text-overflow:ellipsis}
+.fr .t{color:#7d7d7d;font-size:11.5px}
+.fr svg{color:#9a9a9a}
+.fr .zn{color:#8a8a8a;font-size:11.5px}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fr .me{font-weight:700}
+.tp{flex:none;height:56px;display:flex;align-items:center;gap:6px;padding:0 2px}
+.play{all:unset;width:36px;height:36px;border-radius:50%;background:#fafafa;color:#0b0b0b;display:grid;place-items:center;cursor:pointer;flex:none}
+.time{font-size:12.5px;color:#a3a3a3;margin:0 4px;white-space:nowrap}
+.time b{color:#fafafa;font-weight:600}
+.scrub{position:relative;height:30px;flex:1;margin:0 10px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#2a2a2a}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#e5e5e5}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.14)}
+.sel{all:unset;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid #262626;font-size:12.5px;color:#e5e5e5;cursor:pointer;white-space:nowrap}
+.sel.on{border-color:rgba(96,165,250,.5);color:#bfdbfe}
+.vsep{width:1px;height:20px;background:#262626;margin:0 4px}
+</style>
+</helmet>
+<div class="app" style="height: 900px">
+  <header class="top">
+    <span class="logo">LevelUp</span>
+    <nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav>
+    <span class="avatar"></span>
+  </header>
+
+  <div class="head">
+    <div class="l">
+      <a class="back" href="#" aria-label="Retour"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+      <div class="crumb"><small>Exemple de carte très verticale</small><b>Assassin en équipe — Ronin</b></div>
+    </div>
+    <div class="sb" role="group" aria-label="Score">
+      <div class="sbar l"><i style="width: 46%"></i><b>23</b></div>
+      <div class="sclk">3:51</div>
+      <div class="sbar r"><i style="width: 30%"></i><b>15</b></div>
+    </div>
+    <div class="r">
+      <div class="seg" aria-label="Cadre du lecteur"><button>Standard</button><button class="on">Cinéma</button><button>Plein cadre</button></div>
+      <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+      <button class="btn">Fiche</button>
+    </div>
+  </div>
+
+  <main style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 24px 8px">
+    <div class="vp" style="flex: 1; min-height: 0">
+      <div class="stage">
+        <div class="mapw">
+          <img src="/_blob/c877526d27789984efe68bccfa48cd5b" alt="Plan de Ronin, tourné de 90 degrés">
+          <sc-for list="{{pins}}" as="q" hint-placeholder-count="7">
+            <div class="{{q.cls}}" style="left: {{q.x}}; top: {{q.y}}"><i></i><span>{{q.n}}</span></div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="roster">
+          <div class="sh"><span class="dot a"></span>Eagle</div>
+          <div class="hr hd"><span></span><span>Arme</span><span>Gr.</span><span>Éq.</span><span>F / M / A</span></div>
+          <sc-for list="{{A}}" as="p" hint-placeholder-count="4">
+            <div class="{{p.cls}}">
+              <div class="nm"><b>{{p.n}}<sc-if value="{{p.f}}" hint-placeholder-val="{{false}}"><em>suivi</em></sc-if></b>
+                <sc-if value="{{p.alive}}" hint-placeholder-val="{{true}}"><div class="vit"><i style="width: {{p.vw}}"></i></div></sc-if>
+                <sc-if value="{{p.isDead}}" hint-placeholder-val="{{false}}"><div class="resp">Réapparition dans {{p.resp}}</div></sc-if>
+              </div>
+              <span class="ic"><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span>
+              <span class="{{p.gcls}}"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>{{p.g}}</span>
+              <span class="{{p.ecls}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>
+              <div class="kda">{{p.k}}<span>/</span>{{p.d}}<span>/</span>{{p.a}}</div>
+            </div>
+            <sc-if value="{{p.f}}" hint-placeholder-val="{{false}}">
+              <div class="det">
+                <span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>1<small>/2</small></span>
+                <span style="color: #7d7d7d"><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>36<small>/108</small></span>
+                <span><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</span>
+                <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>1<span class="charge"><i style="width: 60%"></i></span></span>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+
+        <div class="roster">
+          <div class="sh"><span class="dot b"></span>Cobra</div>
+          <sc-for list="{{B}}" as="p" hint-placeholder-count="4">
+            <div class="{{p.cls}}">
+              <div class="nm"><b>{{p.n}}</b>
+                <sc-if value="{{p.alive}}" hint-placeholder-val="{{true}}"><div class="vit"><i style="width: {{p.vw}}"></i></div></sc-if>
+                <sc-if value="{{p.isDead}}" hint-placeholder-val="{{false}}"><div class="resp">Réapparition dans {{p.resp}}</div></sc-if>
+              </div>
+              <span class="ic"><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span>
+              <span class="{{p.gcls}}"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>{{p.g}}</span>
+              <span class="{{p.ecls}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>
+              <div class="kda">{{p.k}}<span>/</span>{{p.d}}<span>/</span>{{p.a}}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div class="feed">
+          <div class="sh">Éliminations<span class="mut">29 · Fil complet</span></div>
+          <sc-for list="{{feed}}" as="f" hint-placeholder-count="6">
+            <div class="fr">
+              <span class="t">{{f.t}}</span><span class="{{f.kc}}">{{f.k}}</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="{{f.vc}}">{{f.v}}</span>
+              <span class="zn">{{f.z}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div class="tp">
+      <button class="ibtn" aria-label="Caméra : suivre JGtm" title="Caméra : suivre JGtm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
+      <span class="vsep"></span>
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <div class="scrub">
+        <div class="ticks"><sc-for list="{{ticks}}" as="k" hint-placeholder-count="20"><i class="{{k.cls}}" style="left: {{k.l}}"></i></sc-for></div>
+        <div class="rail"><i style="width: 49.7%"></i></div>
+        <span class="knob" style="left: calc(49.7% - 6px)"></span>
+      </div>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span class="vsep"></span>
+      <button class="sel on" title="Plan tourné automatiquement : +42 % de taille. Cliquer pour revenir à l'orientation d'origine."><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>Plan tourné</button>
+      <button class="ibtn" aria-label="Dézoomer">−</button><button class="ibtn" aria-label="Zoomer">+</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Capture"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+      <button class="ibtn" aria-label="Exporter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></button>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+      <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = [
+      { n: 'Chocoboflor', t: 'a', k: 7, d: 2, a: 2, v: 92, g: 0, e: false, x: 30, y: 40 },
+      { n: 'Draconewt', t: 'a', k: 7, d: 4, a: 4, v: 64, g: 1, e: false, x: 35, y: 58 },
+      { n: 'Madina97294', t: 'a', k: 8, d: 5, a: 2, v: 100, g: 2, e: true, x: 48, y: 50 },
+      { n: 'JGtm', t: 'a', k: 1, d: 4, a: 1, v: 100, g: 2, e: true, f: true, x: 19, y: 47 },
+      { n: 'WDW Eclipse', t: 'b', k: 4, d: 6, a: 3, v: 0, g: 0, e: false, dead: '5,8 s' },
+      { n: 'ELOsk11', t: 'b', k: 3, d: 6, a: 0, v: 35, g: 2, e: false, x: 81, y: 47 },
+      { n: 'yougo77500', t: 'b', k: 3, d: 7, a: 1, v: 100, g: 2, e: false, x: 60, y: 38 },
+      { n: 'DubsDay', t: 'b', k: 5, d: 4, a: 1, v: 88, g: 2, e: true, x: 70, y: 60 }
+    ].map((p) => ({ ...p, f: !!p.f, cls: 'hr' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : ''), gcls: 'ic' + (p.g ? '' : ' off'), ecls: 'ic' + (p.e ? '' : ' off'), vw: p.v + '%', alive: !p.dead, isDead: !!p.dead, resp: p.dead || '' }));
+    const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
+    const F = [
+      ['3:49', 'Madina97294', 'a', 'WDW Eclipse', 'Place'],
+      ['3:42', 'ELOsk11', 'b', 'JGtm', 'Base Eagle'],
+      ['3:37', 'Madina97294', 'a', 'WDW Eclipse', 'Place'],
+      ['3:34', 'Madina97294', 'a', 'yougo77500', 'Couloir central'],
+      ['3:22', 'WDW Eclipse', 'b', 'Madina97294', 'Couloir central'],
+      ['3:22', 'JGtm', 'a', 'DubsDay', 'Base Cobra']
+    ].map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'JGtm' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'JGtm' ? ' me' : '') }));
+    const T = [[18,'a'],[29,'b'],[44,'a'],[52,'a'],[70,'b'],[83,'a'],[97,'a'],[110,'b'],[121,'a'],[135,'a'],[150,'b'],[162,'a'],[169,'a'],[181,'a'],[182,'b'],[193,'a'],[202,'b'],[214,'a'],[217,'a'],[222,'b'],[229,'a'],[247,'a'],[256,'b'],[268,'a'],[281,'a'],[300,'b'],[312,'a'],[333,'a'],[351,'b'],[366,'a'],[384,'a'],[401,'b'],[420,'a'],[437,'a'],[455,'b']];
+    const ticks = T.map(([s, t]) => ({ l: (s / 465 * 100).toFixed(2) + '%', cls: 't' + t }));
+    return { A: P.filter((p) => p.t === 'a'), B: P.filter((p) => p.t === 'b'), pins, feed: F, ticks };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Composants</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.app *{box-sizing:border-box}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;width:1440px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;overflow:hidden;font-variant-numeric:tabular-nums;padding:32px;display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:20px;align-content:start}
+.card{background:#121212;border:1px solid #1f1f1f;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-size:13px;font-weight:600;color:#e5e5e5}
+.lab{font-size:11px;color:#8a8a8a;margin-bottom:-6px}
+.seg{display:inline-flex;align-self:flex-start;padding:2px;gap:2px;border-radius:9px;background:#141414;border:1px solid #262626}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:#9a9a9a;font-size:12.5px}
+.seg button.on{background:#2a2a2a;color:#fafafa}
+.seg button.off{color:#5c5c5c}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:4px;border:1px solid #3a3a3a;font-size:10.5px;color:#cfcfcf}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.hr{display:grid;grid-template-columns:8px minmax(0,1fr) 22px 26px 16px 56px;align-items:center;column-gap:7px;height:38px;padding:0 10px;border-radius:7px;background:rgba(255,255,255,.02)}
+.hr .nm{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hr .nm b{font-weight:500;font-size:12.5px}
+.vit{height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden;max-width:130px}
+.vit i{position:absolute;left:0;top:0;bottom:0;background:var(--follow);border-radius:2px}
+.resp{font-size:11px;color:var(--enemy)}
+.ic{color:#cfcfcf;display:flex;align-items:center;justify-content:flex-end;gap:2px;font-size:11px}
+.ic.off{color:#4a4a4a}
+.ic.lit{color:#fafafa;filter:drop-shadow(0 0 4px rgba(96,165,250,.9))}
+.kda{text-align:right;font-size:12.5px}
+.kda span{color:#5c5c5c;margin:0 2px}
+.hr.dead .nm b,.hr.dead .kda,.hr.dead .ic{opacity:.4}
+.hr.follow{background:rgba(96,165,250,.12)}
+.tile{width:196px;height:56px;padding:7px 10px;border-radius:10px;background:#181818;border:1px solid #262626;display:flex;flex-direction:column;justify-content:space-between}
+.tile .r1{display:flex;align-items:center;gap:7px}
+.tile .r1 b{font-weight:500;font-size:12.5px;flex:1}
+.tile .r2{display:flex;align-items:center;gap:8px;color:#cfcfcf;font-size:11px}
+.tile .vit{flex:1;max-width:none}
+.tile.follow{background:rgba(30,52,86,.82);border-color:rgba(96,165,250,.4)}
+.tile.dead .r1 b,.tile.dead .kda,.tile.dead .ic{opacity:.4}
+.fi{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;column-gap:8px;min-height:30px;padding:3px 8px;border-radius:7px;font-size:12.5px}
+.fi .t{color:#7d7d7d;font-size:11.5px}
+.fi .ln{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.fi .ln svg{color:#9a9a9a}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fi .zn{color:#8f8f8f;font-size:11.5px;white-space:nowrap}
+.fi .zk{grid-column:2 / 4;color:#7d7d7d;font-size:11px;margin-top:-2px}
+.fi.now{background:#1d1d1d}
+.fi.me{background:rgba(96,165,250,.11)}
+.sb{display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(16,16,16,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px}
+.side{flex:1;display:flex;flex-direction:column;gap:3px}
+.sbar{position:relative;height:24px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.hold{position:relative;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.hold i{position:absolute;top:0;bottom:0}
+.hold.l i{right:0;background:var(--ally)}.hold.r i{left:0;background:var(--enemy)}
+.sclk{min-width:48px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;font-weight:700}
+.sclk small{font-size:10.5px;font-weight:600;color:#c4c4c4}
+.rdots{display:flex;gap:5px;justify-content:center}
+.rdots i{width:9px;height:9px;border-radius:50%;border:1px solid #8a8a8a}
+.rdots i.a{background:var(--ally);border-color:var(--ally)}.rdots i.b{background:var(--enemy);border-color:var(--enemy)}
+.sw{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px}
+.sw div{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#a3a3a3}
+.sw i{display:block;height:34px;border-radius:8px;border:1px solid #262626}
+.keys{display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#c4c4c4}
+.keys div{display:flex;align-items:center;gap:10px}
+.note{font-size:11.5px;color:#8a8a8a}
+</style>
+</helmet>
+<div class="app" style="height: 940px">
+  <section class="card">
+    <h2>Ligne joueur (équipes en colonnes)</h2>
+    <div class="lab">Vivant · arme, grenades, équipement</div>
+    <div class="hr"><span class="dot a"></span><div class="nm"><b>Madina97294</b><div class="vit"><i style="width: 100%"></i></div></div><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>2</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span><div class="kda">8<span>/</span>5<span>/</span>2</div></div>
+    <div class="lab">Équipement à l'instant de son usage (la case s'allume 1 s)</div>
+    <div class="hr"><span class="dot b"></span><div class="nm"><b>DubsDay</b><div class="vit"><i style="width: 88%"></i></div></div><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>2</span><span class="ic lit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span><div class="kda">5<span>/</span>4<span>/</span>1</div></div>
+    <div class="lab">Mort · la ligne s'éteint, le compte à rebours remplace la barre</div>
+    <div class="hr dead"><span class="dot b"></span><div class="nm"><b>WDW Eclipse</b><div class="resp">Réapparition dans 5,8 s</div></div><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic off"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>0</span><span class="ic off"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span><div class="kda">4<span>/</span>6<span>/</span>3</div></div>
+    <div class="lab">Suivi par la caméra · fond teinté, sans liseré</div>
+    <div class="hr follow"><span class="dot a"></span><div class="nm"><b>JGtm</b><div class="vit"><i style="width: 100%"></i></div></div><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>2</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span><div class="kda">1<span>/</span>4<span>/</span>1</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Tuile joueur (équipes en rangées)</h2>
+    <div class="lab">Vivant</div>
+    <div class="tile"><div class="r1"><span class="dot a"></span><b>Draconewt</b><span class="kda">7<span>/</span>4<span>/</span>4</span></div><div class="r2"><span class="vit"><i style="width: 64%"></i></span><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>1</span><span class="ic off"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span></div></div>
+    <div class="lab">Mort</div>
+    <div class="tile dead"><div class="r1"><span class="dot b"></span><b>WDW Eclipse</b><span class="kda">4<span>/</span>6<span>/</span>3</span></div><div class="r2"><span class="resp" style="flex: 1">Réapparition dans 5,8 s</span></div></div>
+    <div class="lab">Suivi</div>
+    <div class="tile follow"><div class="r1"><span class="dot a"></span><b>JGtm</b><span class="kda">1<span>/</span>4<span>/</span>1</span></div><div class="r2"><span class="vit"><i style="width: 100%"></i></span><span class="ic"><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg></span><span class="ic"><svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>2</span><span class="ic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Fil d'éliminations</h2>
+    <div class="lab">Dernière en date</div>
+    <div class="fi now"><span class="t">3:49</span><div class="ln"><span class="ka">Madina97294</span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span></div><span class="zn">Îlot</span></div>
+    <div class="lab">Implique le joueur suivi · fond teinté, plus de liseré à gauche</div>
+    <div class="fi me"><span class="t">3:42</span><div class="ln"><span class="kb">ELOsk11</span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span></div><span class="zn">Passerelle nord</span></div>
+    <div class="lab">Lieu = celui de la victime, là où tombe le repère sur la carte</div>
+    <div class="fi"><span class="t">3:37</span><div class="ln"><span class="ka">Madina97294</span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span></div><span class="zn">Atrium</span></div>
+    <div class="note">Les noms de lieux de Detachment sont fictifs : la carte n'a pas de zones nommées dans les données de référence.</div>
+  </section>
+
+  <section class="card" style="grid-column: span 2">
+    <h2>Barre de score — la version actuelle, resserrée pour tenir dans le lecteur</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div class="lab" style="margin: 0">Score et chrono</div>
+        <div class="sb"><div class="side"><div class="sbar l"><i style="width: 46%"></i><b>23</b></div></div><div class="sclk">3:51</div><div class="side"><div class="sbar r"><i style="width: 30%"></i><b>15</b></div></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div class="lab" style="margin: 0">Mode à manches</div>
+        <div class="sb"><div class="side"><div class="sbar l"><i style="width: 33%"></i><b>1</b></div></div><div class="sclk"><span class="rdots"><i class="a"></i><i></i><i></i></span>1:12<small>Manche 2</small></div><div class="side"><div class="sbar r"><i style="width: 0%"></i><b>0</b></div></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div class="lab" style="margin: 0">Roi de la colline · barre de capture sous le score</div>
+        <div class="sb"><div class="side"><div class="sbar l"><i style="width: 40%"></i><b>2</b></div><div class="hold l"><i style="width: 70%"></i></div></div><div class="sclk">5:08</div><div class="side"><div class="sbar r"><i style="width: 20%"></i><b>1</b></div><div class="hold r"><i style="width: 0%"></i></div></div></div>
+      </div>
+    </div>
+    <div class="note">Même logique qu'aujourd'hui : la barre part du chrono vers l'extérieur, le nombre reste côté chrono, le liseré extérieur marque la ligne d'arrivée. Seule la largeur change (420 à 440 px au lieu de la pleine largeur).</div>
+  </section>
+
+  <section class="card">
+    <h2>Couleurs</h2>
+    <div class="sw">
+      <div><i style="background: #4ade80"></i>team-ally</div>
+      <div><i style="background: #f87171"></i>team-enemy</div>
+      <div><i style="background: #60a5fa"></i>Suivi, bouclier</div>
+      <div><i style="background: #0b0b0b"></i>background</div>
+      <div><i style="background: #121212"></i>card</div>
+      <div><i style="background: #1f1f1f"></i>border</div>
+    </div>
+    <div class="note">Les teintes d'équipe sont les tokens de l'app, surchargés par la palette d'accessibilité choisie : la maquette montre la tienne, jamais des valeurs en dur.</div>
+    <h2 style="margin-top: 4px">Commutateurs et raccourcis</h2>
+    <div class="seg"><button class="on">Standard</button><button>Cinéma</button><button>Plein cadre</button></div>
+    <div class="keys">
+      <div><span class="kbd">T</span>Cinéma</div>
+      <div><span class="kbd">F</span>Plein cadre</div>
+      <div><span class="kbd">Échap</span>Sortir du plein cadre</div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
