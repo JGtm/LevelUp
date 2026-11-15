@@ -23,10 +23,10 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       nommé) et copie décalée « 43 Ritzy » (reste sans nom). Mesure parc : vies de bot nommées en plus,
       zéro nom humain changé (mesure faite, voir Journal). Relecture par levelup-1f : `[!]` à faire par levelup-1f,
       hors de cette session.
-- [!] Gate : `go build ./... && go vet ./...`, `go test ./...` (apps/go-api), vitest du rejeu, `make check-types`.
-      Tout vert sauf `archlint` `TestToutSiteDuRegistreExiste` : ancre périmée dans le registre des replis du
+- [x] Gate : `go build ./... && go vet ./...`, `go test ./...` (apps/go-api), vitest du rejeu, `make check-types`.
+      (rejoué vert en E2, ancre corrigée dans #27 ; texte d'origine : tout vert sauf `archlint` `TestToutSiteDuRegistreExiste` : ancre périmée dans le registre des replis du
       décodeur (`internal/facts/fallback/registre_objectifs.go:302` porte `unSi(auDernierNumero)`, le code dit
-      `unSi(tf.auDernierNumero)`). Correction acceptée par levelup-1f dans le commit de c2-manches (gel) ; gate rejoué en E2.
+      `unSi(tf.auDernierNumero)`). Correction acceptée par levelup-1f dans le commit de c2-manches (gel) ; gate rejoué en E2.)
       Sièges du roster de `4f77afc1` changés par le correctif des bots : vérifiés sur pièces par levelup-1f,
       ATTENDU (sans les bots, Narotlcs prenait à tort la place 1 ; avec eux il ouvre son siège listé 26).
       À dire dans les notes (E3) : places des arrivants corrigées quand des bots non épinglés sont déclarés.
@@ -37,14 +37,16 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       `feat/c2-manches` fusionnée (signal de levelup-1f) ET règle des croix des morts sans type de
       levelup-d0 fusionnée (« lâcher de commande OU compte à rebours de réapparition », accord du user du
       15/11 relayé par levelup-dd) ; aucune autre fusion jusqu'au tag.
-- [x] Rebase E1 sur le gel (E1 commité sur le worktree, le clone est au gel 52a72a8) ; miroirs des schémas 122 et 123 ;
+- [x] Rebase E1 sur le gel (E1 commité sur le worktree, le clone est au gel 0c3cc96, schéma 124) ; miroirs des schémas 122, 123 et 124 ;
       fixtures de contrat 123 refigées (racine = le worktree), `film-web-snapshot` régénéré.
-- [x] `go test ./...` du décodeur avec `DECODEUR_FILM_RACINE_DONNEES` = dépôt principal (lecture seule), sur 52a72a8 :
-      31 paquets ok ; seuls échecs : les quatre `TestContractFixtures*` (attendu sous cette racine, fixtures web du principal à l'ancien schéma).
-- [x] `replay-equiv` sans `-update`, GOWORK sur le clone, racine jetable `gate_work_equiv` : 20 identiques, 0 différent, 0 écarté,
-      0 échec ; aucun écart à attribuer, aucun `-update` lancé (références refigées par les auteurs).
-- [!] Gate du corpus : exécuté (voir Journal) ; PERTES et FAUX instruits et rapportés, AUCUNE décision inscrite dans
-      `[[decision]]` : c'est au user de trancher. Le témoin `f75e7053` est absent des faits du registre.
+- [x] `go test ./...` du décodeur avec `DECODEUR_FILM_RACINE_DONNEES` = dépôt principal (lecture seule), sur ed09770 (0c3cc96 plus
+      les références refigées) : 31 paquets ok ; seuls échecs : les quatre `TestContractFixtures*` (attendu sous cette racine).
+- [x] `replay-equiv`, racine jetable `gate_work_equiv`. Sur 0c3cc96 : 20 différents sur 20, une seule étape (`artifact`) sur 79, voir Journal ;
+      `-update` dans le clone (branche `chore/equiv-v139`, commit local ed09770, non poussé), seconde passe sans `-update` : 20 identiques sur 20.
+      Références commitées dans le décodeur : PR, CI verte et squash restent à ta charge.
+- [!] Gate du corpus : décisions du user inscrites (21 `[[decision]]`, voir Journal) ; 0 FAUX non accepté, 0 décision sans effet ;
+      RESTE 3 témoins en PERTE (`bcb6d393`, `c75f33b8`, `4f77afc1`) pour des mesures que le journal ne classe pas « à accepter » :
+      à instruire. `f75e7053` : purgé du registre et jamais cuit dans le parc, ne peut pas entrer.
 - [ ] Tag `v1.3.9` + release GitHub (`--generate-notes --verify-tag`, latest), corps qui dit chaque
       changement de sortie depuis v1.3.8 (117 à 122, médailles).
 
@@ -102,9 +104,18 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   - 11de8353 : compteurs neufs des lots 120, 121 et 123, et toMax du lot 119, à accepter. pickups.origin 15 -> 14 :
     artefact du gate (racine de parc jetable sans `reference/map_weapon_pads.json`, donc map_absent). Copier
     `reference/` dans la racine au prochain passage.
+  - Second passage (gate_corpus2), instruit par levelup-1f :
+    - a349fea8 : même cas que 50247b26 (rien de publié), à accepter.
+    - 084a804d : DÉFAUT, rattaché au point 1 (assistances au double, 8 au lieu de 4, comme a521164d 6 au lieu de 3).
+      La correction couvre les deux films, mesurée sur les 18 témoins.
+    - `repli_emission_hors_domaine_jetee` sur bcb6d393, c75f33b8, 111fa685, 60ae07c4 et 396cfc92 : rangé sous le
+      point 3, aucun FP, gains nets.
+    - Les deux vies de « Truly Elusive » rendues au bot (4f77afc1) : ce xuid est absent de match_participants. Gain.
   - Accord du user relayé par levelup-d0 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog
-    d'investiguer sur ces écarts restants… ») : à faire confirmer par le user dans cette session avant de
-    l'inscrire dans `[[decision]]`. La ligne de backlog est tenue par levelup-d0.
+    d'investiguer sur ces écarts restants… ») : CONFIRMÉ par le user dans cette session le 2026-11-15 (« Oui ok »).
+    Portée : les écarts classés « à accepter » ci-dessus ; les deux défauts (a521164d, 084a804d) restent à
+    corriger. Décisions inscrites dans `[[decision]]` APRÈS le passage du gate avec la correction, sous les noms
+    de mesure exacts du rapport. La ligne de backlog est tenue par levelup-d0.
 
 - 2026-11-15 : 122 fusionné (décodeur a36bf67, #27, ancre du registre corrigée dedans). Sortie : joueur de chaque
   ligne du tableau lu par le composant 57 et les listes de session, `stats` publié sur les films à plusieurs
@@ -150,3 +161,27 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   (`TestToutSiteDuRegistreExiste` vert), après ajout de `commande_*.bin.gz` à `binairesCouverts` ; vitest du rejeu 350 fichiers et
   4 794 tests verts (un premier passage a échoué sur des délais de 5 s et des démarrages de worker sous charge, rejoué avec 3 workers) ;
   `tsc -b` vert. Jonction `apps/web/node_modules` retirée.
+- 2026-11-15, E2 bis (gel rouvert, #29 0c3cc96, schéma 124, `objectives-2026-11-15.2`) : `replay-equiv` sur 0c3cc96, racine jetable :
+  20 différents sur 20, une seule étape sur 79, `artifact`, jamais les 78 autres (dont `score`). Écart par film (octets) : +12 sur
+  `000d5950`, `01e1f945`, `64e8adfa`, `7344d24f`, `696a9d7c`, `53ce4390`, `51101d1d`, `a349fea8`, `50247b26`, `11de8353`, `111fa685`,
+  `e5adf7b2`, `bcb6d393`, `fb1a1a72` (révision `objectives-2026-11-15.2` dans `coverage.decoder` et les entrées de `layers`, ligne de schéma 123
+  vers 124 de même longueur) ; +14 sur `d9781168` et `60ae07c4`, +20 sur `9f57c612` (davantage d'entrées de `layers`) ; -24 sur `084a804d`
+  et -52 sur `1c4c63c2` (assistances écartées, un repli de moins) ; -768 sur `a521164d` (`scoreTimeline.players` retiré, film sans deux
+  équipes lues). Vérifié sur les artefacts des témoins du corpus (123 contre 124) : aucun autre champ ne change. `-update`, commit
+  local `ed09770` dans le clone (branche `chore/equiv-v139`), seconde passe 20 sur 20 identiques. Miroir 124 : fixtures de contrat 124,
+  `film-web-snapshot`, aucune forme neuve.
+- 2026-11-15, E2 bis, gate du corpus (parc jetable, `--reference=parc`, replace vers le clone par `-modfile` hors dépôt, surcharge
+  `reference/generated` du parc posée dans la racine de travail) : 18 témoins sur 19 cuits au schéma 124. Les défauts du lot 122 sont corrigés
+  (`a521164d` et `084a804d` : plus de faux positifs O-K3). `11de8353` retrouve `spawnPointsState` established et 54 points, plus de perte
+  d'origine de ramassage. `f75e7053` : absent du registre actif (2 043 matchs après la purge du 2026-10-26, 10 026 avant ; la sauvegarde
+  d'avant purge le porte) et aucun artefact de parc ; hors gate. Registre des replis d'avant : l'outil du banc compilé à la base (`git archive` de
+  010e65bbc4, v1.3.7 publiée, GOWORK=off) donne 130 replis ; `replay-verite -registre-avant` sur les 18 artefacts : seuls les deux replis
+  jugés neufs le restent (`repli_bande_statborg_par_defaut` absent du registre ; `repli_emission_hors_domaine_jetee` présent mais de 0 à N, donc
+  FAUX), identique au gate. Décisions : 21 `[[decision]]` sous les noms exacts du rapport (2 replis R-1, O-S3 de `4f77afc1`, 15 feuilles de
+  couverture des lots 120, 121 et 123, `toMax` du lot 119, 2 mesures de pistes de `4f77afc1` sans xuid (`tracks.xuid/presents`, `tracks/xuids-distincts`) ; la mesure `tracks/par-xuid/<xuid>` porte un
+  vrai xuid : NON inscrite, à trancher) avec la phrase du user ; les 3 décisions v1.3.7
+  devenues sans effet et 3 des miennes (`refusedByRoster`, `tracks/vies-par-xuid/...`, `tracks/vies-nommees`, sans constat à requalifier)
+  retirées. Passage final (avant retrait de la mesure à xuid, sans effet sur ces statuts) : 0 FAUX non accepté, 0 décision sans effet, 15 témoins ok, 3 PERTE : `coverage.seats.relaisBornes` (`bcb6d393`
+  4 vers 0, `c75f33b8` 3 vers 0, `4f77afc1` 4 vers 1), les scores de deux joueurs (485 vers 200 et 220 vers 100)
+  (`bcb6d393`, le banc les range en gain : publié 485 contre officiel 200, maintenant exact), `coverage.seats.sansPresence` 1 vers 2 et
+  `coverage.teams.unread` 0 vers 1 (`4f77afc1`) : non classées « à accepter », rien d'inscrit.

@@ -287,22 +287,133 @@ raison  = "seul temoin a COLLINE UNIQUE : 3 zones, 72 intervalles `active` et ze
 # decision que le gate signale « sans effet » (la reference porte deja le changement) se retire.
 
 [[decision]]
-mesure   = "R-1 repli repli_visee_du_tir_lue_dans_le_record"
-decodeur = "v1.3.7"
-date     = "2026-11-14"
-raison   = "la direction d un tir vient de la visee du tireur ; le champ de l enregistrement de tir ne sert plus qu en repli, quand le tireur n a aucune visee tenable (0 a 3 tirs par film). Mesure : visee tenue a 1,3 degre en mediane du cap vers l ennemi le plus proche, champ de l enregistrement au niveau du hasard."
-
-# Les deux compteurs de la source de la direction des tirs (schema 116) naissent avec la meme
-# decision : sur une reference d avant v1.3.7 ils apparaissent, et leur polarite d echec en fait une
-# perte du filet. Sans effet des que la reference porte v1.3.7.
-[[decision]]
-mesure   = "coverage.shots.aim.record"
-decodeur = "v1.3.7"
-date     = "2026-11-14"
-raison   = "compteur du repli de visee du tir accepte le meme jour : les tirs dont la direction vient du champ de l enregistrement."
+mesure   = "R-1 repli repli_emission_hors_domaine_jetee"
+temoins  = ["bcb6d393", "c75f33b8", "111fa685", "60ae07c4", "396cfc92", "bfecd02b", "4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "lot 118 : le tableau des scores se lit pour tous les sieges, donc plus d emissions d assistances tombent hors du domaine du compteur et sont jetees ; aucun faux positif, gains nets. Le repli existe depuis v8.1.0 : il n est neuf que faute de registre d avant. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
 
 [[decision]]
-mesure   = "coverage.shots.aim.none"
-decodeur = "v1.3.7"
-date     = "2026-11-14"
-raison   = "compteur ne avec la direction des tirs par la visee du tireur : les tirs publies sans direction, qui existaient sans etre comptes."
+mesure   = "R-1 repli repli_bande_statborg_par_defaut"
+temoins  = ["a349fea8", "a521164d", "50247b26"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "lot 118 : repli nomme de la bande de lecture du statborg quand la table de datums du film manque ; il ne publie rien (films sans table lisible). Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "O-S3 score personnel (faux positifs)"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "ecart de l API : un joueur partant (1 frag, score personnel de l API a 0) ; les points lus dans le film sont ceux du jeu, le banc passe de 21 735 manques a 850 et compte 100 points de plus que l API. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.clockImpossible"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.clockUnmeasuredState"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.countdownImpossible"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.countdownIsolated"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.endDeduced"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.framesUnread"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.startDeduced"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.withheldOutsidePresence"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.withheldReusedIndex"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.clocks.withheldUnknownIndex"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 120 (horloge de manche et comptes a rebours) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.scoreActions.noTarget"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 121 (score par action) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.scoreActions.stoppedFrames"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 121 (score par action) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.scoreActions.unconfirmedRank"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 121 (score par action) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.tracks.lifeEnds.open"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 123 (fin de chaque vie) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.tracks.lifeEnds.unread"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "feuille de couverture neuve du lot 123 (fin de chaque vie) : un bloc qui n existait pas, son compteur d echec passe de absent a N. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "roster.presence.toMax/presents"
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "lot 119 : la presence d un humain est celle que le film liste, arrivee et depart exacts ; la borne d incertitude `toMax` n a plus lieu d etre. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "tracks.xuid/presents"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "deux vies rendues au bot 343 Byrontron : le joueur nomme avant ne tenait pas ce siege (listes de session du film), son xuid est absent de match_participants ; c est un gain de justesse, pas une perte de lecture. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "tracks/xuids-distincts"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "deux vies rendues au bot 343 Byrontron : le joueur nomme avant ne tenait pas ce siege (listes de session du film), son xuid est absent de match_participants ; c est un gain de justesse, pas une perte de lecture. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+

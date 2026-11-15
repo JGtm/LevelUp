@@ -126,3 +126,4 @@
 // v121 (2026-11-15, score par action). Le jeu envoie a chaque joueur une reponse de score personnel quand il agit (kill, assistance,
 // v122 (2026-11-15, le joueur d'une ligne du tableau des scores se lit). Le tableau des scores d'un film se nommait par le pont
 // v123 (2026-11-15, la fin de chaque vie se lit dans le film). Une piste dont le joueur meurt sans qu un frag l emporte (mort de
+// v124 (2026-11-15, le tableau des scores ne se nomme par ses entrees que quand le film en prouve la disposition). Sur un film dont la lecture
