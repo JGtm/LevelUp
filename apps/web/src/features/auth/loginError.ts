@@ -108,7 +108,9 @@ const DEVICE_FLOW_FAILURE_KEYS: Readonly<Record<string, DeviceFlowFailureKey>> =
   state_expired: 'common.auth.oauth_interrupted',
   missing_params: 'common.auth.oauth_interrupted',
   code_exchange_failed: 'common.auth.oauth_exchange_failed',
-  halo_exchange_failed: 'common.auth.oauth_exchange_failed',
+  // Échange Halo du navigateur : mêmes codes et mêmes textes que le code d'appareil (refus du
+  // compte, services Halo injoignables).
+  halo_exchange_failed: 'common.device_code.err_halo',
 }
 
 /**
@@ -125,7 +127,10 @@ export function deviceFlowFailureKey(status: string, errorCode: string | null | 
   return 'common.device_code.err_generic'
 }
 
-/** Clés i18n des refus du callback de connexion Xbox. */
+/**
+ * Clés i18n des refus du callback de connexion Xbox. Les deux messages de l'échange Halo sont ceux du
+ * code d'appareil (`common.device_code.err_halo*`), partagés par les trois chemins de connexion.
+ */
 export type OAuthErrorKey =
   | 'common.auth.register_instance_closed'
   | 'common.auth.oauth_invite_invalid'
@@ -133,6 +138,8 @@ export type OAuthErrorKey =
   | 'common.auth.oauth_interrupted'
   | 'common.auth.oauth_exchange_failed'
   | 'common.auth.oauth_failed'
+  | 'common.device_code.err_halo'
+  | 'common.device_code.err_halo_unreachable'
 
 /** Code de refus posé par le serveur dans `?oauth_error=` → message affiché. */
 const OAUTH_ERROR_KEYS: Readonly<Record<string, OAuthErrorKey>> = {
@@ -143,7 +150,8 @@ const OAUTH_ERROR_KEYS: Readonly<Record<string, OAuthErrorKey>> = {
   missing_params: 'common.auth.oauth_interrupted',
   no_session: 'common.auth.oauth_interrupted',
   code_exchange_failed: 'common.auth.oauth_exchange_failed',
-  halo_exchange_failed: 'common.auth.oauth_exchange_failed',
+  halo_exchange_failed: 'common.device_code.err_halo',
+  halo_unreachable: 'common.device_code.err_halo_unreachable',
   // Refus au départ de la connexion (GET /auth/xbox/login) : panne côté serveur, message générique.
   redirect_uri_not_configured: 'common.auth.oauth_failed',
   state_gen_failed: 'common.auth.oauth_failed',

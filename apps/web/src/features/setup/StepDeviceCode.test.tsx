@@ -30,6 +30,7 @@ describe('StepDeviceCode — échec du device-flow', () => {
     ['device_flow_acquire_error', "Erreur lors de l'authentification Microsoft."],
     ['halo_exchange_error', "Halo a refusé l'accès à ce compte. Vérifiez le compte choisi et son profil Xbox."],
     ['halo_unreachable', 'Les services Halo ne répondent pas pour le moment. Réessayez plus tard.'],
+    ['halo_exchange_failed', "Halo a refusé l'accès à ce compte. Vérifiez le compte choisi et son profil Xbox."],
     ['identity_missing', 'Impossible de résoudre le Gamertag. Réessaie dans quelques instants.'],
     ['instance_locked', 'Cette instance est fermée aux nouvelles inscriptions.'],
     ['invite_invalid', "Cette invitation n'est plus valable. Demande un nouveau lien à la personne qui t'a invité."],
@@ -44,6 +45,7 @@ describe('StepDeviceCode — échec du device-flow', () => {
   const en: Array<[string, string]> = [
     ['device_flow_acquire_error', 'Error during Microsoft authentication.'],
     ['halo_unreachable', 'The Halo services are not responding right now. Try again later.'],
+    ['halo_exchange_failed', 'Halo refused access for this account. Check the chosen account and its Xbox profile.'],
     ['identity_missing', 'Unable to resolve the Gamertag. Try again shortly.'],
     ['code_inconnu', 'Authentication failed.'],
   ]

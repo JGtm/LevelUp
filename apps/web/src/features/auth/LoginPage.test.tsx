@@ -124,6 +124,10 @@ describe('LoginPage — refus du callback de connexion Xbox (?oauth_error=)', ()
     ['state_mismatch', 'en', 'The sign-in expired or was interrupted. Please try again.'],
     ['code_exchange_failed', 'fr', "Microsoft ou Xbox n'a pas répondu. Réessaie dans un instant."],
     ['code_exchange_failed', 'en', 'Microsoft or Xbox did not respond. Please try again in a moment.'],
+    ['halo_exchange_failed', 'fr', "Halo a refusé l'accès à ce compte. Vérifiez le compte choisi et son profil Xbox."],
+    ['halo_exchange_failed', 'en', 'Halo refused access for this account. Check the chosen account and its Xbox profile.'],
+    ['halo_unreachable', 'fr', 'Les services Halo ne répondent pas pour le moment. Réessayez plus tard.'],
+    ['halo_unreachable', 'en', 'The Halo services are not responding right now. Try again later.'],
     ['link_failed', 'fr', "La connexion n'a pas pu aboutir. Réessaie."],
     ['link_failed', 'en', 'Sign-in could not be completed. Please try again.'],
   ])('%s (%s) : message localisé', (code, locale, message) => {

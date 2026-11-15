@@ -82,7 +82,8 @@ describe('oauthErrorKey', () => {
     ['missing_params', 'common.auth.oauth_interrupted'],
     ['no_session', 'common.auth.oauth_interrupted'],
     ['code_exchange_failed', 'common.auth.oauth_exchange_failed'],
-    ['halo_exchange_failed', 'common.auth.oauth_exchange_failed'],
+    ['halo_exchange_failed', 'common.device_code.err_halo'],
+    ['halo_unreachable', 'common.device_code.err_halo_unreachable'],
     ['link_failed', 'common.auth.oauth_failed'],
     ['redirect_uri_not_configured', 'common.auth.oauth_failed'],
     ['state_gen_failed', 'common.auth.oauth_failed'],
@@ -112,6 +113,8 @@ describe('deviceFlowFailureKey', () => {
     ['navigateur : state rejoué', 'failed', 'state_invalid', 'common.auth.oauth_interrupted'],
     ['navigateur : state expiré', 'failed', 'state_expired', 'common.auth.oauth_interrupted'],
     ['navigateur : échange du code', 'failed', 'code_exchange_failed', 'common.auth.oauth_exchange_failed'],
+    ['navigateur : refus Halo', 'failed', 'halo_exchange_failed', 'common.device_code.err_halo'],
+    ['navigateur : services Halo injoignables', 'failed', 'halo_unreachable', 'common.device_code.err_halo_unreachable'],
     ['code inconnu', 'failed', 'code_inconnu', 'common.device_code.err_generic'],
     ['aucun code', 'failed', null, 'common.device_code.err_generic'],
   ])('%s', (_label, status, code, expected) => {
