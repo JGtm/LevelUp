@@ -417,3 +417,33 @@ decodeur = "v1.3.9"
 date     = "2026-11-15"
 raison   = "deux vies rendues au bot 343 Byrontron : le joueur nomme avant ne tenait pas ce siege (listes de session du film), son xuid est absent de match_participants ; c est un gain de justesse, pas une perte de lecture. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
 
+
+# Motif (mesure finissant par /*) : la feuille porte un xuid de joueur, qui ne s ecrit pas dans ce
+# depot public ; le motif est borne a son temoin.
+[[decision]]
+mesure   = "tracks/par-xuid/*"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "les deux vies du joueur nomme avant sont rendues au bot qui tient l index 1 (listes de session du film) ; ce xuid est absent de match_participants pour ce match. Gain de justesse. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.seats.relaisBornes"
+temoins  = ["bcb6d393", "c75f33b8", "4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "lot 119 : les presences sont datees par les listes de session au lieu d etre bornees par l arrivee du successeur ; aucun chevauchement, depassement, place en trop, siege sans place ni sans equipe sur ces temoins. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.seats.sansPresence"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "l entree humaine declaree a l index 1 n a ni presence, ni equipe, ni vie, et son joueur est absent de match_participants ; ses vies d avant appartiennent au bot. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."
+
+[[decision]]
+mesure   = "coverage.teams.unread"
+temoins  = ["4f77afc1"]
+decodeur = "v1.3.9"
+date     = "2026-11-15"
+raison   = "meme ligne que coverage.seats.sansPresence : l entree humaine de l index 1, sans presence, n a pas d equipe lue. Accord du user du 2026-11-15 (« Oui ok je suis d'accord avec sa recommandation, mais ajouter au backlog d'investiguer sur ces ecarts restants car un film qu'on lit, y a pas de raisons d'avoir des ecarts comme ca »), confirme dans la session de la montee le meme jour."

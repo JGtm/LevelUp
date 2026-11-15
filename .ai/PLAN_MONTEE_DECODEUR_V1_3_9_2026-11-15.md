@@ -44,9 +44,9 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
 - [x] `replay-equiv`, racine jetable `gate_work_equiv`. Sur 0c3cc96 : 20 différents sur 20, une seule étape (`artifact`) sur 79, voir Journal ;
       `-update` dans le clone (branche `chore/equiv-v139`, commit local ed09770, non poussé), seconde passe sans `-update` : 20 identiques sur 20.
       Références commitées dans le décodeur : PR, CI verte et squash restent à ta charge.
-- [!] Gate du corpus : décisions du user inscrites (21 `[[decision]]`, voir Journal) ; 0 FAUX non accepté, 0 décision sans effet ;
-      RESTE 3 témoins en PERTE (`bcb6d393`, `c75f33b8`, `4f77afc1`) pour des mesures que le journal ne classe pas « à accepter » :
-      à instruire. `f75e7053` : purgé du registre et jamais cuit dans le parc, ne peut pas entrer.
+- [x] Gate du corpus sur fdd6f24 (parc et verrou jetables, `-modfile` vers le clone, 25 `[[decision]]`, motif de préfixe `/*` pour les filets) :
+      18 témoins ok sur 18, 0 FAUX, 0 PERTE, 0 décision sans effet, code de sortie 0. Tableau final dans le Journal ;
+      `f75e7053` hors gate (voir Découvertes).
 - [ ] Tag `v1.3.9` + release GitHub (`--generate-notes --verify-tag`, latest), corps qui dit chaque
       changement de sortie depuis v1.3.8 (117 à 122, médailles).
 
@@ -67,6 +67,9 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       geste du user, rien vers le VPS sans lui).
 
 ## Découvertes
+
+- `f75e7053` ne peut plus entrer au gate du corpus : absent du registre depuis la purge du 2026-10-26 (et aucun artefact de parc). Son remplacement
+  ou son retrait du manifeste est hors de cette montée, à porter au backlog.
 
 - Le gate du corpus retire GOWORK pour compiler HEAD et base (`compilerReplayBuild`, `environnementSansGOWORK`) : sous GOWORK il
   juge le décodeur PUBLIÉ, jamais le clone. Pour juger le clone, le mode `--reference=parc` avec `GOFLAGS=-modfile=<copie de go.mod
@@ -185,3 +188,10 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   4 vers 0, `c75f33b8` 3 vers 0, `4f77afc1` 4 vers 1), les scores de deux joueurs (485 vers 200 et 220 vers 100)
   (`bcb6d393`, le banc les range en gain : publié 485 contre officiel 200, maintenant exact), `coverage.seats.sansPresence` 1 vers 2 et
   `coverage.teams.unread` 0 vers 1 (`4f77afc1`) : non classées « à accepter », rien d'inscrit.
+- 2026-11-15, E2 ter (main du décodeur fdd6f24, #30 : références d'équivalence fusionnées) : gate du corpus, passage unique, même montage que le
+  passage 7, manifeste copié depuis `config/replay_corpus.toml` du worktree moins `f75e7053` (25 décisions, aucun nombre de 16 chiffres en 2533 ou 2535).
+  Décisions : 25, dont le motif `/*` (`tracks/par-xuid/*` sur `4f77afc1`, `coverage.seats.relaisBornes` sur `bcb6d393`, `c75f33b8` et `4f77afc1`,
+  `coverage.seats.sansPresence` et `coverage.teams.unread` sur `4f77afc1`), instruites par levelup-1f. Résultat : 18 ok, 0 FAUX, 0 MANQUE,
+  0 PERTE, 0 décision « sans effet » ; 11 constats « accepté » au banc. Témoins ok : `bcb6d393`, `fb1a1a72`, `d9781168`, `c75f33b8`, `bf15f7ab`, `51ebbc0f`,
+  `084a804d`, `0797ce72`, `111fa685`, `e5adf7b2`, `60ae07c4`, `a349fea8`, `a521164d`, `11de8353`, `50247b26`, `bfecd02b`, `4f77afc1`, `396cfc92`
+  (schéma 116 vers 124 pour tous).
