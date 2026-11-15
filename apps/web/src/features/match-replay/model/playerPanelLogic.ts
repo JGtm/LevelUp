@@ -155,7 +155,9 @@ export type OwnershipShown = (parties: readonly ElementParty[], shared?: boolean
  * chaleur des éliminations), une poussée, une révélation de capteur et une destruction de véhicule appartiennent
  * à leur auteur OU à leur victime : Seul les garde dès que le joueur de la fiche est l'une des parties, Masquer
  * les retire dès qu'il l'est. Seule exception, la croix de mort de la piste : elle ne suit que la victime, la
- * piste ne portant pas le tueur. Ce qui n'appartient à personne, ou dont aucune partie ne se lit, reste affiché.
+ * piste ne portant pas le tueur. Ce qui n'appartient à personne reste affiché, comme le décor ; il en va de
+ * même de tout élément dont le propriétaire est inconnu (aucune partie lue), sous Seul comme sous Masquer :
+ * c'est la règle des éléments à parties comme celle des pions, des projectiles et des marques des vies.
  *
  * Chaque calque ne fait que dire QUELLES sont ses parties (`model/focusFilter.ts`) : la règle n'est écrite qu'ici.
  */

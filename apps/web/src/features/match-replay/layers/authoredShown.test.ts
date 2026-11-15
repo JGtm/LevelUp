@@ -1,7 +1,7 @@
 /**
  * Les calques d'objectif honorent Seul et Masquer : ce qu'un joueur PORTE (couronne, crâne, bombe, drapeau)
- * ou ACCOMPLIT (capture, explosion, pulse) part avec lui ; ce qui n'est à personne (bombe libre, base et
- * drapeau tombé) reste.
+ * ou ACCOMPLIT (capture, explosion, pulse) part avec lui, y compris la bombe dessinée libre faute de position
+ * de son porteur ; ce qui n'est à personne (base et drapeau tombé) reste.
  */
 import { describe, expect, it } from 'vitest'
 
