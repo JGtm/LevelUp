@@ -10,11 +10,12 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [8.2.1] - 2026-11-15
 
-> Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise, rien de neuf n'est affiché.
+> Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise ; seule la croix des morts sans cause s'ajoute à l'écran, dans le rejeu.
 
 ### Modifié
 - **Briques publiées** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 en 8.2.0) ; les autres briques ne changent pas.
 - **Décodeur de film v1.3.9 (`SchemaVersion` 124)** — recopiés dans le document servi, le contrat OpenAPI et les types web : `medals[]` (157 médailles du jeu nommées, 117), le tableau des scores de tous les sièges avec ses compteurs nommés (`scoreTimeline.players[].stats`, 118, retenus sur les films à plusieurs manches), la présence exacte lue dans les listes de session (`coverage.seats.presencesListees`, 119), `roundClock[]`, `respawnCountdowns[]` et `rules` (120), `scoreActions[]` (121), `coverage.score.roundsUnplayed` (122), la fin de chaque vie (`tracks[].endReason`, `releaseFrame`, `coverage.tracks.lifeEnds`, 123) ; un tableau des scores ne se nomme par ses entrées que quand le film en prouve la disposition (124). Les bots nommés dont le siège tombe parmi ceux des humains sont passés au registre d'identité, qui tranche par les listes de session (compteurs `killsource_bots_non_epingles_passes` et `_refuses`) ; les places des arrivants sont corrigées. Références de `replay-equiv` et gate du corpus refigées, 25 entrées `[[decision]]` (motifs de préfixe `/*` pour les mesures de feuilles).
+- **Rejeu : une mort sans cause porte désormais sa croix** — une vie fermée sans frag est une mort prouvée quand le film montre son joueur lâcher la commande du corps (`tracks[].endReason` = `released`, `releaseFrame`) ou le compte à rebours de réapparition démarrer (`respawnCountdowns[]`), à -2 à +6 images de la fin de la piste ; une fin de manche, qui supprime le corps encore commandé sans compte à rebours, n’en reçoit pas. `lifeEndProof` (`model/lifeEndProof.ts`) porte la règle, `ReplayDeath.proven` et `deathFacts` l’appliquent ; un document sans ces champs se comporte comme avant.
 
 ## [8.2.0] - 2026-11-14
 

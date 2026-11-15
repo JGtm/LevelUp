@@ -6,6 +6,7 @@
 - **Un tableau des scores juste pour tous les joueurs** — chaque ligne du tableau des scores de fin de match est rattachée au bon joueur, y compris sur les matchs à plusieurs manches, et les compteurs de tous les sièges sont lus (au-delà de huit joueurs). Le rejeu n'affiche pas encore ces compteurs
 - **La présence exacte des joueurs** — qui était dans le match, et quand chacun est arrivé et parti, se lit dans les listes du jeu : un joueur arrivé en cours de match n'est plus montré avant son arrivée
 - **La bonne place des arrivants, et les bots nommés** — quand des bots complètent un match, un joueur qui arrive prend la place qu'il avait vraiment, et les bots gardent leur nom
+- **Une mort sans cause connue est maintenant marquée** — sur la carte du rejeu, le calque « Morts » pose désormais une croix partout où le film montre un joueur mourir, même s’il ne dit pas de quoi : le joueur lâche son corps, ou son compte à rebours de réapparition démarre. Une fin de manche, qui ferme toutes les vies sans mort, n’est toujours pas marquée. Un rejeu généré avant cette version garde ses croix telles qu’elles étaient.
 
 **v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
 

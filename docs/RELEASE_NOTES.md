@@ -6,6 +6,7 @@
 - **A right scoreboard for every player** — each line of the end-of-match scoreboard is tied to the right player, on matches with several rounds too, and the counters of every seat are read (more than eight players). The replay does not show these counters yet
 - **Exact presence of players** — who was in the match, and when they arrived and left, is read from the game's own lists: a player who joined late is no longer shown before they arrived
 - **The right place for late arrivals, and named bots** — when bots fill a match, a player who joins takes the seat they really had, and the bots keep their names
+- **A death with no known cause is now marked** — on the replay map, the "Deaths" layer now puts a cross wherever the film shows a player dying, even when it does not say from what: the player lets go of their body, or their respawn countdown starts. An end of round, which closes every life without a death, is still not marked. A replay generated before this version keeps its crosses as they were.
 
 **v8.2 — A fuller replay, truer map backgrounds, Lead share, new match charts and compressed replays**
 
