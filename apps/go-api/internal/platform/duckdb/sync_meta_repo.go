@@ -60,3 +60,25 @@ func WriteSyncMeta(ctx context.Context, pdb *PlayerDB, key, value string) error 
 		[]any{key, value},
 	)
 }
+
+// SyncMetaRevisionStore range une révision de mesure dans une clé de sync_meta d'un joueur (lecture
+// ReadSyncMeta, écriture WriteSyncMeta sous lease). Implémente campaign.RevisionStore.
+type SyncMetaRevisionStore struct {
+	pdb *PlayerDB
+	key string
+}
+
+// NewSyncMetaRevisionStore lie la clé `key` de sync_meta au joueur de `pdb`.
+func NewSyncMetaRevisionStore(pdb *PlayerDB, key string) SyncMetaRevisionStore {
+	return SyncMetaRevisionStore{pdb: pdb, key: key}
+}
+
+// Stored rend la révision rangée, "" si aucune.
+func (s SyncMetaRevisionStore) Stored(ctx context.Context) (string, error) {
+	return ReadSyncMeta(ctx, s.pdb, s.key)
+}
+
+// Store range la révision sous le lease d'écriture de la base joueur.
+func (s SyncMetaRevisionStore) Store(ctx context.Context, rev string) error {
+	return WriteSyncMeta(ctx, s.pdb, s.key, rev)
+}

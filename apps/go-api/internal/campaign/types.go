@@ -83,6 +83,13 @@ type ImprovementCampaign struct {
 	LinkedChallengeIDs []string `json:"linked_challenge_ids,omitempty"`
 }
 
+// startParams rend les paramètres de mesure de l'axe de la campagne (ceux de son StartCampaign).
+func (c *ImprovementCampaign) startParams() StartParams {
+	return StartParams{
+		UserID: c.UserID, TitleSlug: c.TitleSlug, Axis: c.Axis, AxisKind: c.AxisKind, PlaylistGroup: c.PlaylistGroup,
+	}
+}
+
 // IsActive retourne true si la campagne est en cours.
 func (c *ImprovementCampaign) IsActive() bool { return c.Status == StatusActive }
 

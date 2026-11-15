@@ -17,6 +17,10 @@ type fakeRepo struct {
 	active  map[string]ImprovementCampaign // key = userID|titleSlug
 	linked  map[string][]string
 	updates int
+	// recalage (recalibrate_test.go)
+	listErr    error
+	restartErr map[string]error
+	restarts   []string
 }
 
 func newFakeRepo() *fakeRepo {

@@ -56,6 +56,14 @@ func (f *fakeCampaignRepo) UpdateEvaluation(context.Context, string, campaign.Ev
 	return nil
 }
 
+func (f *fakeCampaignRepo) ListOpen(context.Context, string, string) ([]campaign.ImprovementCampaign, error) {
+	return nil, nil
+}
+
+func (f *fakeCampaignRepo) RestartMeasure(context.Context, string, campaign.MeasureStart) error {
+	return nil
+}
+
 func (f *fakeCampaignRepo) LinkedChallengeIDs(context.Context, string) ([]string, error) {
 	return nil, nil
 }

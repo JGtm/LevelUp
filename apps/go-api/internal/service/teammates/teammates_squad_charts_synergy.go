@@ -264,9 +264,9 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	skipObjectiveAxis := !allPlayersMeasured(players, objectiveByPlayer)
 
 	// Titre sans damage_taken (Halo 5) → l'axe Survie (résistance défensive) est
-	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar cohérent ;
-	// le front aligne indicateurs+valeurs sur series[0].axes). Même règle que le
-	// radar match-view (dropUncomputableRadarAxes).
+	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar cohérent : le
+	// front ne trace que les axes communs à toutes les séries, lus par clé). Même
+	// règle que le radar match-view (dropUncomputableRadarAxes).
 	skipSurvivalAxis := !games.ProvidesDamageTaken(s.titleSlug)
 	out := make([]domain.SquadSynergyRadarSeries, 0, len(players))
 	toSeries := func(player string, raw map[narrative.ParticipationAxis]float64) domain.SquadSynergyRadarSeries {
