@@ -118,3 +118,32 @@ func TestSpawnFamilies_OrdreDEssai(t *testing.T) {
 		t.Errorf("aucune famille ne convient : %q", got)
 	}
 }
+
+// La couverture est une decision ecrite dans le fichier : cinq familles couvertes, oddball non
+// (7 matchs, non mesurable), une famille sans la cle ne l'est jamais.
+func TestSpawnFamilies_Couverture(t *testing.T) {
+	set, err := spawnFamiliesDuDepot(t, "halo_infinite")
+	if err != nil {
+		t.Fatalf("le fichier versionné doit charger : %v", err)
+	}
+	for id, attendu := range map[string]bool{
+		"assassin": true, "fiesta": true, "drapeau": true, "bases": true, "colline": true,
+		"oddball": false, "": false, "inconnue": false,
+	} {
+		if got := set.Covered(id); got != attendu {
+			t.Errorf("Covered(%q) = %v, attendu %v", id, got, attendu)
+		}
+	}
+	var nul *SpawnFamilySet
+	if nul.Covered("assassin") {
+		t.Error("un ensemble nil ne couvre aucune famille")
+	}
+	sans, err := LoadSpawnFamiliesFromBytes("test.toml", []byte(
+		"[meta]\ntitle_slug = \"t\"\nschema_version = 1\n[[families]]\nid = \"a\"\nvariant_contains = [\"x\"]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sans.Covered("a") {
+		t.Error("sans `covered`, la famille n'est pas couverte")
+	}
+}

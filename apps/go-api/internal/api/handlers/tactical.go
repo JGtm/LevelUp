@@ -3,6 +3,7 @@
 //	POST /players/{player_slug}/tactical/maps                    (corps : perimetre)
 //	POST /players/{player_slug}/tactical/{map_id}/raster          (corps : perimetre + lecture)
 //	POST /players/{player_slug}/tactical/{map_id}/cellule         (corps : perimetre + lecture + cellule)
+//	POST /players/{player_slug}/tactical/{map_id}/reapparitions-adverses (tactical_reapparitions.go)
 //	GET  /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
 //	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
 //
@@ -78,6 +79,7 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.Op("getTacticalRaster", "Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps)", "tactical"))
 	huma.Post(api, "/tactical/{map_id}/cellule", h.handleGetCellule,
 		humacore.Op("getTacticalCellule", "Detail d'une cellule : les contributions ouvrables par l'appelant, pour ouvrir le rejeu au bon instant", "tactical"))
+	h.mountReapparitionsAdverses(api)
 	huma.Get(api, "/tactical/{map_id}/background", h.handleGetMapBackground,
 		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
 	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
@@ -411,6 +413,9 @@ func mapTacticalError(ctx context.Context, err error, probe string) error {
 		// matchs retenus, et changer de periode peut la faire passer sous le plancher.
 		// Ce n'est pas une entree invalide, c'est une selection devenue vide.
 		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_spawn_unknown", err)
+	case errors.Is(err, domain.ErrTacticalZoneInconnue):
+		// Une zone depend de la carte et de son catalogue : meme nature qu'une grappe devenue inconnue.
+		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "tactical_zone_unknown", err)
 	case errors.Is(err, domain.ErrTacticalCarteInconnue):
 		// LE MESSAGE CANONIQUE, JAMAIS `err.Error()` (revue R2, P1). Ce 404 a DEUX
 		// producteurs — le refus de `MapIDValide` (qui n'a rien a citer) et la carte

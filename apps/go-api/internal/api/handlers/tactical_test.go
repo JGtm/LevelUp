@@ -19,15 +19,16 @@ import (
 
 // fakeTacticalSvc double port.TacticalService et retient ce qu'on lui passe.
 type fakeTacticalSvc struct {
-	page          domain.TacticalMapsPage
-	raster        domain.TacticalRaster
-	cellule       domain.TacticalCelluleReponse
-	sequence      domain.TacticalSequence
-	errSeq        error
-	vuSequenceReq domain.TacticalSequenceRequest
-	errMaps       error
-	errRast       error
-	errCell       error
+	reapparitionsFake // la lecture « reapparitions adverses » (tactical_reapparitions_test.go)
+	page              domain.TacticalMapsPage
+	raster            domain.TacticalRaster
+	cellule           domain.TacticalCelluleReponse
+	sequence          domain.TacticalSequence
+	errSeq            error
+	vuSequenceReq     domain.TacticalSequenceRequest
+	errMaps           error
+	errRast           error
+	errCell           error
 
 	vuCarte    string
 	vuQuestion string

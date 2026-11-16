@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
@@ -62,6 +63,10 @@ type TacticalService struct {
 	callouts port.TacticalCalloutsStore
 	// sequences lit les pistes de l artefact de rejeu (sequence d une mort). Nil = Sequence indisponible.
 	sequences port.TacticalSequenceStore
+	// familles range un match dans sa famille de modes et dit si elle est couverte par la prevision de
+	// reapparition (spawn_families.toml). Nil = aucun mode couvert : la lecture « reapparitions adverses »
+	// rend alors un etat vide (mode non couvert).
+	familles *mappings.SpawnFamilySet
 	// analysisPending decide si l'absence d'un artefact de rejeu est une analyse EN COURS (sequence
 	// d une mort). Nil = jamais « en cours » : la sequence sans artefact est « film non analyse ».
 	analysisPending *AnalysisPendingResolver

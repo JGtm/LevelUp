@@ -17,6 +17,12 @@
 #    Assassin, mot le plus generique, passe en dernier.
 # 3. Aucune famille ne correspond : le match n'a pas de famille.
 #
+# COUVERTURE. `covered = true` : la prevision de reapparition (et les lectures qui s'y fondent) est
+# servie pour la famille. Une famille sans la cle n'est pas couverte : une lecture n'y est jamais
+# proposee (aucune action impossible). La liste est celle de la mesure du lot A : au moins 50 % des
+# trois premieres zones nommees a l'instant de la reapparition ; oddball n'est pas mesurable (7 matchs
+# du parc), le BTB et Husky Raid sont hors mesure.
+#
 # Les jetons sont des sous-chaines (« bases » reconnait « Capture the Bases »), les noms anglais du jeu
 # et leurs equivalents francais. Le nom d'une variante bouge au fil des saisons : une variante qui ne
 # ressemble a rien n'est pas mesuree, elle ne tombe pas dans une famille par defaut. Le nom « tous » est
@@ -36,18 +42,22 @@ category_contains = ["husky"]
 id = "fiesta"
 variant_contains = ["fiesta"]
 category_contains = ["fiesta"]
+covered = true
 
 [[families]]
 id = "drapeau"
 variant_contains = ["ctf", "flag", "drapeau"]
+covered = true
 
 [[families]]
 id = "bases"
 variant_contains = ["stronghold", "bases"]
+covered = true
 
 [[families]]
 id = "colline"
 variant_contains = ["king of the hill", "koth", "colline"]
+covered = true
 
 [[families]]
 id = "oddball"
@@ -56,3 +66,4 @@ variant_contains = ["oddball", "balle"]
 [[families]]
 id = "assassin"
 variant_contains = ["slayer", "assassin"]
+covered = true

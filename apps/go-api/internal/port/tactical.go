@@ -52,6 +52,14 @@ type TacticalService interface {
 	// l appelant, carte etrangere) -> port.ErrReplayNotAvailable (404 replay_not_available). Cause
 	// de donnees (match ouvrable, sequence absente) -> une erreur port.ErrSequence* (tactical_sequence_causes.go).
 	Sequence(ctx context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error)
+
+	// ReapparitionsAdverses rend, pour une zone nommee de la carte, la repartition par zone des
+	// reapparitions ADVERSES quand l'equipe du joueur tient la zone, avec la repartition sans condition
+	// pour reference. Une lecture sans assez de matchs, ou d'un mode non couvert, est une reponse vide
+	// qui dit pourquoi (domain.TacticalRaison*), jamais une erreur. Refus : domain.ErrTacticalCarteInconnue
+	// (404), domain.ErrTacticalZoneInconnue (404), domain.ErrTacticalCompositionInvalide (400) ;
+	// games.ErrCapabilityNotSupported quand le titre ne porte pas `film.spawn_forecast` (503).
+	ReapparitionsAdverses(ctx context.Context, req domain.TacticalReapparitionsAdversesRequest) (domain.TacticalReapparitionsAdverses, error)
 }
 
 // TacticalRepository — onglet Tactique : les trois lectures de base d'une analyse de placement par CARTE.

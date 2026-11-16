@@ -70,6 +70,8 @@ var demoLetThroughRoutes = []string{
 	"POST /api/v1/players/{player_slug}/tactical/maps",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/cellule",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/raster",
+	// Répartition des réapparitions adverses par zone (sidecars, base) : POST pour porter la liste de matchs, lecture seule.
+	"POST /api/v1/players/{player_slug}/tactical/{map_id}/reapparitions-adverses",
 	// Lecture d'une séquence de rejeu (pistes de l'artefact) : POST pour porter la clé de la mort, lecture seule.
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/sequence",
 	// État de navigation du visiteur, écrit sous <démo>/runtime/sessions.

@@ -172,6 +172,10 @@ var ratchetColonnesHorsPerimetre = map[string]string{
 		"Absente des trois seeds, suite verte : ce chemin n'est pas couvert par eux.",
 	"present_at_completion": "2026-08-30 — lue par qElapsedSecondsByMatchTpl (temps de jeu effectif). " +
 		"Absente des trois seeds, suite verte : ce chemin n'est pas couvert par eux.",
+	"mode_category": "2026-11-16 — lue par QTacticalUnivers (famille de modes d'un match, lecture « reapparitions " +
+		"adverses »). Absente des trois seeds (aucune occurrence dans player_repos_test.go ni pool_migration_test.go), " +
+		"suite verte : les tests du lecteur tactique tournent sur les VRAIES migrations (newTacticalTestPlayerDB), pas " +
+		"sur ces seeds, et TestTacticalRepo_Univers_PorteLaCategorieDeMode lit la colonne.",
 }
 
 // TestSeedParityEnrollmentRatchet : le cliquet de complétude. Toute colonne lue

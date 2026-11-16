@@ -16,6 +16,7 @@ package service
 
 import (
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -40,6 +41,13 @@ func (s *TacticalService) WithCalloutsStore(store port.TacticalCalloutsStore) *T
 // WithRadarRange injecte la table des portees de radar du titre. Chainable.
 func (s *TacticalService) WithRadarRange(parVariante map[string]int) *TacticalService {
 	s.radar = parVariante
+	return s
+}
+
+// WithSpawnFamilies injecte la table des familles de modes du titre (couverture de la prevision de
+// reapparition). nil = titre sans table : aucun mode couvert. Chainable.
+func (s *TacticalService) WithSpawnFamilies(familles *mappings.SpawnFamilySet) *TacticalService {
+	s.familles = familles
 	return s
 }
 

@@ -28,6 +28,7 @@ func TestTactical_CableChaqueDependanceSansCondition(t *testing.T) {
 		"WithCalloutsStore":        "callouts",
 		"WithRetentionMois":        "r.retentionMoisRejeu",
 		"WithRadarRange":           "r.radarRangeFor(pdb)",
+		"WithSpawnFamilies":        "r.spawnFamiliesFor(pdb.TitleSlug)",
 		"WithPlayerMatches":        "r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag",
 		"WithRoundsDecide":         "r.roundsDecideFor(pdb)",
 		"WithKillSourceClassifier": "r.killSourceClassifierFor(pdb)",

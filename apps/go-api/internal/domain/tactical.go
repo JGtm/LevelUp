@@ -286,11 +286,8 @@ type TacticalMatch struct {
 	// UN MATCH NON MESURE N'EST PAS UN MATCH A ZERO MORT, c'est un match ILLISIBLE :
 	// son film n'a jamais ete decode, ou il a EXPIRE cote serveur. Il ne peut
 	// alimenter aucun numerateur ; le compter au denominateur « par match » ferait
-	// varier la grandeur avec la COUVERTURE DE FILM au lieu du jeu — deux filtres a
-	// couverture differente (20 matchs sur 20 decodes contre 2 sur 20) rendraient
-	// 0,20 et 0,02 pour exactement le meme jeu. C'est le pendant du defaut P0 de la
-	// phase 1 : le zero LEGITIME compte au denominateur, l'ILLISIBLE est compte a
-	// part (correction G2, revue du 2026-09-06).
+	// varier la grandeur avec la COUVERTURE DE FILM au lieu du jeu. Le zero LEGITIME
+	// compte au denominateur, l'ILLISIBLE est compte a part (correction G2).
 	Mesure bool
 
 	// GameVariantName est le nom d'asset UGC de la variante jouee
@@ -302,6 +299,9 @@ type TacticalMatch struct {
 	// Vide quand le registre ne la nomme pas — la lecture qui en depend ECARTE alors le
 	// match et le compte (`matchs_sans_rayon`), plutot que de deviner une regle.
 	GameVariantName string
+
+	// ModeCategory : la categorie de mode du registre ; avec la variante, elle donne la famille de modes.
+	ModeCategory string
 
 	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
 	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
