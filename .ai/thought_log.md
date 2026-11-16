@@ -1,3 +1,9 @@
+## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
+
+- **Décision** : version 8.2.1 posée (coquille Windows, notes FR/EN, changelogs datés du 2026-11-16) ; ajout du fond plan transparent (brique map-images v1.3.1, 111 images refaites) et des défis de l'axe Objectif aux notes ; ligne de backlog des défis close.
+- **Résultats observés** : régénération des rejeux au schéma 124 faite (1 455 redécodés, 0 erreur, 1 614 films intacts), dérivés locaux à 0 échec.
+- **Suite** : CI verte, PR vers main, squash, tag v8.2.1, puis gestes de prod (restic, bascule des rejeux, dérivés, compression, redémarrage).
+
 ## [2026-11-16] Papier transparent des images de plan des cartes — Complété (branche `fix/plan-papier-transparent`, non poussée)
 
 - **Décision** : sur décision du user, le papier opaque (240, 241, 236) des images plan devient transparent (alpha 0), trous du maillage compris ; le trait des murs garde sa couleur. Changement dans la brique (`himap.PlanPNG`, commit `2cbf272` du dépôt `halo-infinite-map-images`, branche `fix/plan-papier-transparent`, à publier en v1.3.1) ; ici, les 111 images `.plan.webp` sont refaites par `mapfond-build --plan-seul` (sans `--rogne-publie`) puis `mapfond-webp -convertir`, avec un `replace` temporaire vers la brique modifiée, retiré avant le commit. Les blobs de maillage Forge (dépôt hors ligne `.ai/re_dump`, ignoré par git) ont été copiés depuis un autre worktree, sans jonction.

@@ -8,6 +8,8 @@
 - **The right place for late arrivals, and named bots** — when bots fill a match, a player who joins takes the seat they really had, and the bots keep their names
 - **A death with no known cause is now marked** — on the replay map, the "Deaths" layer now puts a cross wherever the film shows a player dying, even when it does not say from what: the player lets go of their body, or their respawn countdown starts. An end of round, which closes every life without a death, is still not marked. A replay generated before this version keeps its crosses as they were.
 - **Respawns read from the film** — the Tactics view now knows a respawn from what the film says (the player lets go of their body, or their respawn countdown starts), no longer from the gap between two lives. A round start is no longer counted as a respawn. A replay generated before this version keeps the estimate from the gap.
+- **A see-through "Plan" background** — the "Plan" background no longer sits on a white rectangle: around the playable floor and in its holes (rocks, pillars), the page shows through, as with the rendered background
+- **Challenges with no measured start** — a challenge whose starting window has no measured match shows a dash instead of "0.00", and Halo 5 challenges on the Objective axis are no longer reset when the scores are recomputed
 
 **v8.2 — A fuller replay, truer map backgrounds, Lead share, new match charts and compressed replays**
 

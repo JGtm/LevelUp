@@ -8,6 +8,8 @@
 - **La bonne place des arrivants, et les bots nommés** — quand des bots complètent un match, un joueur qui arrive prend la place qu'il avait vraiment, et les bots gardent leur nom
 - **Une mort sans cause connue est maintenant marquée** — sur la carte du rejeu, le calque « Morts » pose désormais une croix partout où le film montre un joueur mourir, même s’il ne dit pas de quoi : le joueur lâche son corps, ou son compte à rebours de réapparition démarre. Une fin de manche, qui ferme toutes les vies sans mort, n’est toujours pas marquée. Un rejeu généré avant cette version garde ses croix telles qu’elles étaient.
 - **Les réapparitions lues dans le film** — la vue Tactique reconnaît désormais une réapparition à ce que dit le film (le joueur lâche son corps, ou son compte à rebours de réapparition démarre), et non plus à l’écart entre deux vies. Un début de manche n’est plus compté comme une réapparition. Un rejeu généré avant cette version garde l’estimation par l’écart.
+- **Un fond « Plan » transparent** — le fond « Plan » ne repose plus sur un rectangle blanc : autour du sol jouable et dans ses trous (rochers, piliers), la page se voit au travers, comme avec le fond rendu
+- **Défis sans départ mesuré** — un défi dont la fenêtre de départ n’a aucun match mesuré affiche un tiret au lieu de « 0.00 », et les défis Halo 5 de l’axe Objectif ne sont plus remis à zéro quand les notes sont recalculées
 
 **v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
 

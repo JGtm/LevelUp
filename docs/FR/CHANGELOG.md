@@ -8,7 +8,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
-## [8.2.1] - 2026-11-15
+## [8.2.1] - 2026-11-16
 
 > Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise ; seule la croix des morts sans cause s'ajoute à l'écran, dans le rejeu.
 
@@ -16,9 +16,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Réapparitions lues dans le film** — avec le décodeur de film v1.3.9, le sidecar tactique décide d'une réapparition sur ce que le film écrit : la fin de chaque vie (`endReason`, `releaseFrame`) et les comptes à rebours de réapparition (`respawnCountdowns`, rattachés à un xuid par `identity.players[].filmIndex`) ; un corps supprimé encore commandé est un début de manche, ni une réapparition ni une entrée du modèle. Un document sans ces lectures garde le repli nommé sur l'écart de 4 à 15 s. `levelup spawn-model` imprime l'accord des deux définitions (film contre repli) et les comptes à rebours sans joueur. Mesuré sur cinq films cuits à la v1.3.9 (Assassin, Drapeau, Oddball en deux manches, Oddball classé, Grande bataille) : 645 réapparitions lues dans le film, le repli en retrouve 641 et en ajoute 7 fausses, toutes des débuts de manche.
 
 ### Modifié
-- **Briques publiées** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 en 8.2.0) ; les autres briques ne changent pas.
+- **Briques publiées** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 en 8.2.0), `halo-infinite-map-images` v1.3.1 (v1.3.0 en 8.2.0) ; les autres briques ne changent pas.
 - **Décodeur de film v1.3.9 (`SchemaVersion` 124)** — recopiés dans le document servi, le contrat OpenAPI et les types web : `medals[]` (157 médailles du jeu nommées, 117), le tableau des scores de tous les sièges avec ses compteurs nommés (`scoreTimeline.players[].stats`, 118, retenus sur les films à plusieurs manches), la présence exacte lue dans les listes de session (`coverage.seats.presencesListees`, 119), `roundClock[]`, `respawnCountdowns[]` et `rules` (120), `scoreActions[]` (121), `coverage.score.roundsUnplayed` (122), la fin de chaque vie (`tracks[].endReason`, `releaseFrame`, `coverage.tracks.lifeEnds`, 123) ; un tableau des scores ne se nomme par ses entrées que quand le film en prouve la disposition (124). Les bots nommés dont le siège tombe parmi ceux des humains sont passés au registre d'identité, qui tranche par les listes de session (compteurs `killsource_bots_non_epingles_passes` et `_refuses`) ; les places des arrivants sont corrigées. Références de `replay-equiv` et gate du corpus refigées, 25 entrées `[[decision]]` (motifs de préfixe `/*` pour les mesures de feuilles).
 - **Rejeu : une mort sans cause porte désormais sa croix** — une vie fermée sans frag est une mort prouvée quand le film montre son joueur lâcher la commande du corps (`tracks[].endReason` = `released`, `releaseFrame`) ou le compte à rebours de réapparition démarrer (`respawnCountdowns[]`), à -2 à +6 images de la fin de la piste ; une fin de manche, qui supprime le corps encore commandé sans compte à rebours, n’en reçoit pas. `lifeEndProof` (`model/lifeEndProof.ts`) porte la règle, `ReplayDeath.proven` et `deathFacts` l’appliquent ; un document sans ces champs se comporte comme avant.
+
+### Corrigé
+- **Image plan des fonds de carte** — `himap.PlanPNG` (map-images v1.3.1) laisse le vide et les trous du maillage à alpha 0 au lieu d’un papier opaque (240, 241, 236) ; les 111 `*.plan.webp` sont redessinées : tout ancien pixel de papier est transparent, tout autre pixel identique (110 cartes ; Vallaheim en Baston, resté dans un ancien style aplati, est redessinée en plan à hauteurs comme les autres).
+- **Campagnes : défis de l’axe Objectif au recalage** — une fenêtre de départ sans match mesuré est un « départ non mesuré » (`snapshot_sample = 0`, un tiret sur le suivi, aucune progression chiffrée) au lieu d’une moyenne à 0 ; un titre sans `match.objective.stats` (Halo 5) est sauté par capability au lieu d’être réécrit à 0/0 ; les étapes notes et campagnes de la révision de notation sont indépendantes, et l’erreur de lecture des échantillons est journalisée.
 
 ## [8.2.0] - 2026-11-14
 

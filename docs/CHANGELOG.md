@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [8.2.1] - 2026-11-15
+## [8.2.1] - 2026-11-16
 
 > The film decoder moves to v1.3.9 (`SchemaVersion` 124): medals, scoreboard, presence, clocks and ends of life are read; the web side types and normalises them; the only new thing on screen is the cross of deaths with no cause, in the replay.
 
@@ -16,9 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Respawns read from the film** — with the film decoder v1.3.9, the tactical sidecar decides a respawn from what the film writes: the end of each life (`endReason`, `releaseFrame`) and the respawn countdowns (`respawnCountdowns`, joined to a xuid through `identity.players[].filmIndex`); a body deleted while still controlled is a round start, neither a respawn nor a model input. A document without these readings keeps the named 4 to 15 s gap fallback. `levelup spawn-model` prints the agreement of the two definitions (film against fallback) and the countdowns with no player. Measured on five films cooked at v1.3.9 (Slayer, CTF, Oddball over two rounds, ranked Oddball, Big Team Battle): 645 respawns read from the film, the fallback agrees on 641 and adds 7 false ones, all round starts.
 
 ### Changed
-- **Published bricks** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 in 8.2.0); the other bricks are unchanged.
+- **Published bricks** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 in 8.2.0), `halo-infinite-map-images` v1.3.1 (v1.3.0 in 8.2.0); the other bricks are unchanged.
 - **Film decoder v1.3.9 (`SchemaVersion` 124)** — mirrored into the served document, the OpenAPI contract and the web types: `medals[]` (157 medals of the game named, 117), the scoreboard of every seat with named counters (`scoreTimeline.players[].stats`, 118, withheld on multi-round films), exact presence from the session lists (`coverage.seats.presencesListees`, 119), `roundClock[]`, `respawnCountdowns[]` and `rules` (120), `scoreActions[]` (121), `coverage.score.roundsUnplayed` (122), the end of each life (`tracks[].endReason`, `releaseFrame`, `coverage.tracks.lifeEnds`, 123); a scoreboard is named by its entries only when the film proves its layout (124). Named bots whose seat falls among the humans' are handed to the identity registry, which decides from the session lists (`killsource_bots_non_epingles_passes` and `_refuses` counters); the arrivals' seats are corrected. `replay-equiv` references and corpus gate re-frozen, 25 `[[decision]]` entries (prefix patterns `/*` for the leaf measures).
 - **Replay: a death with no cause now carries its cross** — a life closed by no frag is a proven death when the film shows its player releasing the control of the body (`tracks[].endReason` = `released`, `releaseFrame`) or the countdown to respawn starting (`respawnCountdowns[]`), each within -2 to +6 frames of the end of the track; an end of round, which deletes the body still controlled with no countdown, gets none. `lifeEndProof` (`model/lifeEndProof.ts`) carries the rule, `ReplayDeath.proven` and `deathFacts` apply it; a document without these fields behaves as before.
+
+### Fixed
+- **Plan image of the map backgrounds** — `himap.PlanPNG` (map-images v1.3.1) leaves the void and the mesh holes at alpha 0 instead of an opaque paper (240, 241, 236); the 111 `*.plan.webp` are redrawn: every former paper pixel is transparent, every other pixel identical (110 maps; Vallaheim Firefight, still in an older flat style, is redrawn as a height plan like the others).
+- **Campaigns: Objective axis challenges at recalibration** — a start window with no measured match is "start not measured" (`snapshot_sample = 0`, a dash on the tracker, no progress figure) instead of a 0 mean; a title without `match.objective.stats` (Halo 5) is skipped by capability instead of being rewritten to 0/0; the scores and campaigns steps of the scoring revision are independent, and the read error of the samples is logged.
 
 ## [8.2.0] - 2026-11-14
 
