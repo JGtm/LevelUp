@@ -29,15 +29,7 @@ const (
 // sansNavmeshDe dit si cette carte cuit sans s'appuyer sur son maillage de navigation (ni
 // référence, ni rognage). Journalisé. Le maillage reste chargé : le plan des murs n'en dépend pas.
 func (e *environnement) sansNavmeshDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SansNavmesh {
-		return false
-	}
-	slog.Info("mapfond: maillage de navigation desarme pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
+	return valeurDe(e, cle, levierSansNavmesh)
 }
 
 // optionsNavmeshNatif rend ce qu'une carte native fait de son maillage : rognage à la marge par
@@ -55,9 +47,9 @@ func (e *environnement) optionsNavmeshNatif(cle string, m *hinavmesh.Maillage) h
 		Maillage:   m,
 		Rogne:      rogne,
 		Mode:       d.Mode,
-		Marge:      e.margeNavmeshDe(cle),
-		Tolerance:  e.toleranceNavmeshDe(cle),
-		NiveauHaut: e.maillageNiveauHautDe(cle),
+		Marge:      valeurDe(e, cle, levierMargeNavmesh),
+		Tolerance:  valeurDe(e, cle, levierToleranceNavmesh),
+		NiveauHaut: valeurDe(e, cle, levierMaillageNiveauHaut),
 	}
 }
 
@@ -70,9 +62,9 @@ func (e *environnement) optionsNavmeshForge(cle string, m *hinavmesh.Maillage) h
 		Maillage:   m,
 		Rogne:      d.Rogne || e.rogneAuNavmeshDe(cle),
 		Mode:       d.Mode,
-		Marge:      e.margeNavmeshDe(cle),
-		Tolerance:  e.toleranceNavmeshDe(cle),
-		NiveauHaut: e.maillageNiveauHautDe(cle),
+		Marge:      valeurDe(e, cle, levierMargeNavmesh),
+		Tolerance:  valeurDe(e, cle, levierToleranceNavmesh),
+		NiveauHaut: valeurDe(e, cle, levierMaillageNiveauHaut),
 	}
 }
 

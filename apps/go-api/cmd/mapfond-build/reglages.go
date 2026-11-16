@@ -15,6 +15,7 @@ package main
 // s'il tient encore. `TestReglagesFondJustifies` les refuse.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,18 +69,12 @@ type reglageCarte struct {
 	CombleAuMaillage bool `json:"combleAuMaillage,omitempty"`
 	// RogneAuxComposantesAncrees : effacer les amas de matiere sans ancre, hors silhouette jouee
 	RogneAuxComposantesAncrees bool `json:"rogneAuxComposantesAncrees,omitempty"`
-	// CadreAuxZones : borner l image a l emprise des zones de callout
-	CadreAuxZones bool `json:"cadreAuxZones,omitempty"`
 	// CadreAuxAncres : borner l image a l emprise des ancres d objectifs
 	CadreAuxAncres bool `json:"cadreAuxAncres,omitempty"`
 	// MargeAncres : marge autour des ancres pour le cadrage, en metres (0 = 25 m)
 	MargeAncres float64 `json:"margeAncres,omitempty"`
 	// MaillageNiveauHaut : reference prise sur le niveau le plus haut du maillage
 	MaillageNiveauHaut bool `json:"maillageNiveauHaut,omitempty"`
-	// SansSubstitution : garder la surface haute telle que dessinee
-	SansSubstitution bool `json:"sansSubstitution,omitempty"`
-	// SeuilSubstitution : ecart minimal en metres pour rabattre une surface sur la reference
-	SeuilSubstitution float64 `json:"seuilSubstitution,omitempty"`
 
 	// SeuilCouverture : seuil de carte couverte propre a la carte, en part de matiere (0,25 =
 	// 25 pour cent). Zero = le seuil universel `himap.SeuilCarteCouverte`. A n armer que sur une
@@ -92,8 +87,6 @@ type reglageCarte struct {
 	// NavmeshMode : forme du masque de rognage au maillage (`faces` ou `silhouette`). Prime sur
 	// l avis du user (`-avis`), y compris sur un `publie` : la carte est alors cuite.
 	NavmeshMode string `json:"navmeshMode,omitempty"`
-	// MargeSolBas : profondeur acceptee sous le niveau de jeu pour le sol vu du dessous
-	MargeSolBas float64 `json:"margeSolBas,omitempty"`
 	// RogneAuxAltitudesProches : ne garder que ce qui est proche du niveau de jeu, plus une marge
 	RogneAuxAltitudesProches bool `json:"rogneAuxAltitudesProches,omitempty"`
 
@@ -111,36 +104,16 @@ type reglageCarte struct {
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
-	// SeuilArete : denivele en metres entre deux pixels voisins au-dela duquel on souligne un
-	// bord. Zero = 0,5 m. A RELEVER sur les cartes en pieces organiques, ou le seuil par
-	// defaut couvre l image d un gribouillis de traits.
-	SeuilArete float64 `json:"seuilArete,omitempty"`
-	// DessineCanevas : poser AUSSI la geometrie du canevas sous les objets de la variante
-	// Forge. Voir OptionsCuissonForge.DessineCanevas.
-	DessineCanevas bool `json:"dessineCanevas,omitempty"`
-	// PlafondTranche : hauteur en metres AU-DESSUS du niveau de jeu au-dela de laquelle la
-	// matiere n est meme pas projetee. Zero = tranche par defaut. Voir OptionsCuisson.
-	PlafondTranche float64 `json:"plafondTranche,omitempty"`
 	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
 	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
 	RogneAuxZones bool `json:"rogneAuxZones,omitempty"`
 	// MargeZones : dilatation du masque en metres. Zero = 4 m. Une valeur NEGATIVE demande
 	// explicitement aucune dilatation.
 	MargeZones float64 `json:"margeZones,omitempty"`
-	// ZonesContourSeul : ne garder que le CONTOUR principal de chaque zone, sans ses `parts`.
-	// Les parties d une zone en provenance « decoupe » suivent le masque praticable et peuvent
-	// s etendre loin — sur Catalyst elles longent les bras de la station. Les exclure serre le
-	// masque au coeur des zones, au risque d amputer des zones reelles.
-	ZonesContourSeul bool `json:"zonesContourSeul,omitempty"`
 	// RogneAuxVolumesDeMort : borner la matiere a l emprise des volumes de mort de la variante
 	// Forge. Equivalent Forge du rognage aux zones de callout, qui n existent que sur les
 	// cartes natives (22 cartes, toutes natives).
 	RogneAuxVolumesDeMort bool `json:"rogneAuxVolumesDeMort,omitempty"`
-	// DrapeauxExclus : valeurs du champ de drapeaux des objets Forge a ne pas dessiner.
-	DrapeauxExclus []int `json:"drapeauxExclus,omitempty"`
-	// PlafondObjets : ecarter les objets Forge POSES plus haut que N metres au-dessus du sol
-	// joue. Voir OptionsCuissonForge.PlafondObjets — ce n est ni l ecretage ni la tranche.
-	PlafondObjets float64 `json:"plafondObjets,omitempty"`
 	// NavmeshReference prend le maillage de navigation pour SURFACE DE REFERENCE, en gardant la
 	// geometrie ordinaire comme source du dessin.
 	NavmeshReference bool `json:"navmeshReference,omitempty"`
@@ -152,23 +125,10 @@ type reglageCarte struct {
 	// ToleranceNavmesh vide les surfaces qui s ecartent de plus de N metres du sol donne par le
 	// maillage de navigation. C est ce qui fait un PLAN D ETAGE plutot qu une vue de dessus.
 	ToleranceNavmesh float64 `json:"toleranceNavmesh,omitempty"`
-	// SourceNavmesh cuit la carte depuis son MAILLAGE DE NAVIGATION au lieu de sa geometrie de
-	// rendu. Reservee aux cartes Forge : elles seules publient un navmesh.blob.
-	SourceNavmesh bool `json:"sourceNavmesh,omitempty"`
 	// SansNavmesh : une carte NATIVE cuit sans s appuyer sur son maillage de navigation (ni
 	// reference, ni rognage) mais publie quand meme son plan des murs au sidecar. Par defaut une
 	// carte native est rognee a son maillage.
 	SansNavmesh bool `json:"sansNavmesh,omitempty"`
-	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue. Pour les cartes
-	// a ciel ferme, ou la voie haute ne montre que le plafond.
-	SolVuDuDessous bool `json:"solVuDuDessous,omitempty"`
-	// MinceurMin : seuil d aire rapportee au carre de l emprise sous lequel un modele Forge
-	// n est PAS dessine. Zero = tout dessiner. Voir OptionsCuissonForge.MinceurMin.
-	MinceurMin float64 `json:"minceurMin,omitempty"`
-	// TypesExclus : identifiants de TYPE d objet Forge a ne pas dessiner. Dernier recours,
-	// quand un modele balaie la carte et qu aucune coupe geometrique ne peut l atteindre. Les
-	// candidats se lisent dans le log « types les plus etendus » de chaque cuisson Forge.
-	TypesExclus []int32 `json:"typesExclus,omitempty"`
 	// BoiteUtile : rectangle monde [minX, minY, maxX, maxY] hors duquel la matiere est effacee.
 	// LEVIER MANUEL — voir OptionsCuisson.BoiteUtile.
 	BoiteUtile []float64 `json:"boiteUtile,omitempty"`
@@ -205,8 +165,12 @@ func chargeReglages(chemin string) (*reglagesFond, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Un champ inconnu est REFUSÉ : un levier retiré qu'une entrée déclarerait encore serait
+	// sinon ignoré en silence, et la carte cuite sans lui.
+	dec := json.NewDecoder(bytes.NewReader(blob))
+	dec.DisallowUnknownFields()
 	var r reglagesFond
-	if err := json.Unmarshal(blob, &r); err != nil {
+	if err := dec.Decode(&r); err != nil {
 		return nil, fmt.Errorf("réglages de fond illisibles : %w", err)
 	}
 	if r.Cartes == nil {
@@ -226,14 +190,137 @@ func chargeReglages(chemin string) (*reglagesFond, error) {
 	return &r, nil
 }
 
+// levier décrit un levier par carte : comment il se lit dans une entrée et comment il se journalise.
+// Tous les leviers qui se lisent par une valeur passent par `armeDe` : une carte sans entrée, ou dont
+// l'entrée ne l'arme pas, reçoit la valeur nulle, c'est-à-dire la valeur de production.
+type levier[T any] struct {
+	// libelle : message journalisé quand le levier s'applique à la carte. Supprimer de la matière ou
+	// peindre un aplat ne doit jamais passer inaperçu.
+	libelle string
+	// attribut : nom de la valeur journalisée avec le message ; vide pour un levier booléen.
+	attribut string
+	// lit rend la valeur du levier dans l'entrée et dit s'il y est armé.
+	lit func(reglageCarte) (T, bool)
+}
+
+// levierBool : armé quand le champ est vrai.
+func levierBool(libelle string, champ func(reglageCarte) bool) levier[bool] {
+	return levier[bool]{libelle: libelle, lit: func(c reglageCarte) (bool, bool) { v := champ(c); return v, v }}
+}
+
+// levierMesure : armé quand `arme` accepte la valeur du champ (strictement positive, non nulle ou
+// strictement négative selon le levier) ; la valeur journalisée porte le nom `attribut`.
+func levierMesure(libelle, attribut string, champ func(reglageCarte) float64, arme func(float64) bool) levier[float64] {
+	return levier[float64]{libelle: libelle, attribut: attribut,
+		lit: func(c reglageCarte) (float64, bool) { v := champ(c); return v, arme(v) }}
+}
+
+func positif(v float64) bool       { return v > 0 }
+func nonNul(v float64) bool        { return v != 0 }
+func strictNegatif(v float64) bool { return v < 0 }
+
+// Les leviers lus par valeur. Les autres (habillage, boîte utile, positions jouées, altitudes
+// proches, zones nommées) ont une règle propre, écrite plus bas.
+var (
+	levierEchelle = levierMesure("echelle propre a la carte", "mpp",
+		func(c reglageCarte) float64 { return c.Echelle }, positif)
+	levierEcreteToits = levierBool("ecretage des toits arme pour cette carte",
+		func(c reglageCarte) bool { return c.EcreteToits })
+	levierPlafondArene = levierMesure("plafond d arene propre a la carte", "plafond",
+		func(c reglageCarte) float64 { return c.PlafondArene }, positif)
+	levierSansEau = levierBool("habillage d eau ecarte pour cette carte",
+		func(c reglageCarte) bool { return c.SansEau })
+	levierSubstitutionSansPortee = levierBool("substitution etendue a tout le cadre",
+		func(c reglageCarte) bool { return c.SubstitutionSansPortee })
+	levierCombleTrous = levierBool("comblement des trous arme (aplat, pas un releve)",
+		func(c reglageCarte) bool { return c.CombleTrous })
+	levierCombleZonesEntieres = levierBool("comblement des vides OUVERTS arme pour cette carte (refute sur Illusion)",
+		func(c reglageCarte) bool { return c.CombleZonesEntieres })
+	levierCombleAuMaillage = levierBool("comblement dans l emprise du maillage arme pour cette carte",
+		func(c reglageCarte) bool { return c.CombleAuMaillage })
+	levierRogneAuxComposantesAncrees = levierBool("rognage aux composantes ancrees arme pour cette carte",
+		func(c reglageCarte) bool { return c.RogneAuxComposantesAncrees })
+	levierCadreAuxAncres = levierBool("cadrage a l emprise des ancres arme pour cette carte",
+		func(c reglageCarte) bool { return c.CadreAuxAncres })
+	levierMargeAncres = levierMesure("marge de cadrage aux ancres propre a la carte", "marge",
+		func(c reglageCarte) float64 { return c.MargeAncres }, positif)
+	levierSeuilCouverture = levierMesure("seuil de couverture propre a la carte", "seuil",
+		func(c reglageCarte) float64 { return c.SeuilCouverture }, positif)
+	levierPlancherTranche = levierMesure("plancher de tranche propre a la carte", "plancher",
+		func(c reglageCarte) float64 { return c.PlancherTranche }, strictNegatif)
+	levierRogneAuxZones = levierBool("rognage aux zones nommees arme pour cette carte",
+		func(c reglageCarte) bool { return c.RogneAuxZones })
+	levierMargeZones = levierMesure("marge du masque propre a la carte", "marge",
+		func(c reglageCarte) float64 { return c.MargeZones }, nonNul)
+	levierRogneAuxVolumesDeMort = levierBool("bornage aux volumes de mort arme pour cette carte",
+		func(c reglageCarte) bool { return c.RogneAuxVolumesDeMort })
+	levierSeuilRecollement = levierMesure("seuil de recollement propre a la carte", "seuil",
+		func(c reglageCarte) float64 { return c.SeuilRecollement }, nonNul)
+	levierModuleGeometrie = levier[string]{libelle: "geometrie prise dans un AUTRE module", attribut: "module",
+		lit: func(c reglageCarte) (string, bool) { return c.ModuleGeometrie, c.ModuleGeometrie != "" }}
+	levierNavmeshReference = levierBool("reference prise sur le maillage de navigation",
+		func(c reglageCarte) bool { return c.NavmeshReference })
+	levierMaillageNiveauHaut = levierBool("reference prise sur le niveau HAUT du maillage",
+		func(c reglageCarte) bool { return c.MaillageNiveauHaut })
+	levierMargeNavmesh = levierMesure("marge de rognage au maillage propre a la carte", "marge",
+		func(c reglageCarte) float64 { return c.MargeNavmesh }, positif)
+	levierToleranceNavmesh = levierMesure("tolerance au sol du maillage", "tolerance",
+		func(c reglageCarte) float64 { return c.ToleranceNavmesh }, positif)
+	levierSansNavmesh = levierBool("maillage de navigation desarme pour cette carte",
+		func(c reglageCarte) bool { return c.SansNavmesh })
+	levierNavmeshMode = levier[himap.ModeNavmesh]{libelle: "mode de rognage au maillage propre a la carte", attribut: "mode",
+		lit: func(c reglageCarte) (himap.ModeNavmesh, bool) {
+			return himap.ModeNavmesh(c.NavmeshMode), c.NavmeshMode != ""
+		}}
+	// Rognage au maillage : `true` explicite l'arme sur une carte Forge ; `false` explicite le
+	// désarme sur une carte native. L'absence de valeur laisse le défaut de la chaîne.
+	levierRogneAuNavmesh = levierBool("rognage au maillage de navigation",
+		func(c reglageCarte) bool { return c.RogneAuNavmesh != nil && *c.RogneAuNavmesh })
+	levierSansRogneAuNavmesh = levierBool("rognage au maillage desarme pour cette carte native",
+		func(c reglageCarte) bool { return c.RogneAuNavmesh != nil && !*c.RogneAuNavmesh })
+)
+
+// entreeDe rend l'entrée de réglage de la carte et dit si elle existe.
+func (e *environnement) entreeDe(cle string) (reglageCarte, bool) {
+	if e.reglages == nil {
+		return reglageCarte{}, false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	return c, ok
+}
+
+// armeDe est l'accesseur de tous les leviers par valeur : il rend la valeur du levier pour la carte
+// et dit s'il y est armé, et le journalise avec la date de son gate. Sans entrée ou levier non armé,
+// il rend la valeur nulle.
+func armeDe[T any](e *environnement, cle string, l levier[T]) (T, bool) {
+	var nul T
+	c, ok := e.entreeDe(cle)
+	if !ok {
+		return nul, false
+	}
+	v, arme := l.lit(c)
+	if !arme {
+		return nul, false
+	}
+	args := []any{"carte", cle}
+	if l.attribut != "" {
+		args = append(args, l.attribut, v)
+	}
+	slog.Info("mapfond: "+l.libelle, append(args, "gateLe", c.GateLe)...)
+	return v, true
+}
+
+// valeurDe rend la valeur du levier pour la carte, nulle quand il n'y est pas armé.
+func valeurDe[T any](e *environnement, cle string, l levier[T]) T {
+	v, _ := armeDe(e, cle, l)
+	return v
+}
+
 // styleDe rend l'habillage de cette carte : le sien s'il est déclaré, sinon celui de la
 // cuisson. Le choix retenu est JOURNALISÉ — un fond publié dans un habillage qu'on n'a pas vu
 // passer est un fond qu'on ne saura pas expliquer.
 func (e *environnement) styleDe(cle string) himap.StyleFond {
-	if e.reglages == nil {
-		return e.style
-	}
-	c, ok := e.reglages.Cartes[cle]
+	c, ok := e.entreeDe(cle)
 	if !ok || c.Style == "" {
 		return e.style
 	}
@@ -248,30 +335,10 @@ func (e *environnement) styleDe(cle string) himap.StyleFond {
 // echelleDe rend l'échelle de cette carte : la sienne si elle est déclarée, sinon celle de la
 // cuisson (elle-même à la valeur de production si aucune n'est demandée).
 func (e *environnement) echelleDe(cle string) float64 {
-	if e.reglages == nil {
-		return e.echelle
+	if v, ok := armeDe(e, cle, levierEchelle); ok {
+		return v
 	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.Echelle <= 0 {
-		return e.echelle
-	}
-	slog.Info("mapfond: echelle propre a la carte", "carte", cle, "mpp", c.Echelle,
-		"gateLe", c.GateLe)
-	return c.Echelle
-}
-
-// ecreteToitsDe dit si cette carte demande l'écrêtage des toits. Le choix est JOURNALISÉ :
-// c'est la seule voie qui SUPPRIME de la matière, elle ne doit jamais passer inaperçue.
-func (e *environnement) ecreteToitsDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.EcreteToits {
-		return false
-	}
-	slog.Info("mapfond: ecretage des toits arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
+	return e.echelle
 }
 
 // zonesNommeesDe rend les polygones des callouts d'une carte : le contour principal de chaque
@@ -290,18 +357,9 @@ func (e *environnement) zonesNommeesDe(cle string) [][][2]float64 {
 		return nil
 	}
 	var out [][][2]float64
-	contourSeul := false
-	if e.reglages != nil {
-		if c, ok := e.reglages.Cartes[cle]; ok {
-			contourSeul = c.ZonesContourSeul
-		}
-	}
 	for _, z := range entree.Zones {
 		if len(z.Polygon) >= 3 {
 			out = append(out, z.Polygon)
-		}
-		if contourSeul {
-			continue
 		}
 		for _, p := range z.Parts {
 			if len(p) >= 3 {
@@ -309,117 +367,13 @@ func (e *environnement) zonesNommeesDe(cle string) [][][2]float64 {
 			}
 		}
 	}
-	if contourSeul {
-		slog.Info("mapfond: masque limite au contour des zones, parties exclues", "carte", cle, "polygones", len(out))
-	}
 	return out
-}
-
-// rogneAuxZonesDe dit si cette carte demande le rognage sur ses zones nommées. Journalisé :
-// c'est, avec l'écrêtage, l'une des deux voies qui SUPPRIMENT de la matière.
-func (e *environnement) rogneAuxZonesDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.RogneAuxZones {
-		return false
-	}
-	slog.Info("mapfond: rognage aux zones nommees arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// plafondAreneDe rend le plafond d'arène propre à une carte, ou zéro pour celui de production.
-func (e *environnement) plafondAreneDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.PlafondArene <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: plafond d arene propre a la carte", "carte", cle, "plafond", c.PlafondArene,
-		"gateLe", c.GateLe)
-	return c.PlafondArene
-}
-
-// sansEauDe dit si cette carte écarte l'habillage d'eau. Journalisé : retirer un calque
-// entier de l'asset ne doit jamais passer inaperçu.
-func (e *environnement) sansEauDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SansEau {
-		return false
-	}
-	slog.Info("mapfond: habillage d eau ecarte pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// substitutionSansPorteeDe dit si cette carte etend la substitution a tout le cadre.
-func (e *environnement) substitutionSansPorteeDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SubstitutionSansPortee {
-		return false
-	}
-	slog.Info("mapfond: substitution etendue a tout le cadre", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// combleTrousDe dit si cette carte comble ses trous par un aplat. Journalisé : c'est du
-// dessin, pas du relevé.
-func (e *environnement) combleTrousDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.CombleTrous {
-		return false
-	}
-	slog.Info("mapfond: comblement des trous arme (aplat, pas un releve)", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// plancherTrancheDe rend le plancher de tranche propre à une carte (négatif), ou zéro pour
-// celui de production. Journalisé : il retire de la matière du bas de la carte.
-func (e *environnement) plancherTrancheDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.PlancherTranche >= 0 {
-		return 0
-	}
-	slog.Info("mapfond: plancher de tranche propre a la carte", "carte", cle,
-		"plancher", c.PlancherTranche, "gateLe", c.GateLe)
-	return c.PlancherTranche
-}
-
-// margeZonesDe rend la dilatation du masque propre à une carte, ou zéro pour celle de production.
-func (e *environnement) margeZonesDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.MargeZones == 0 {
-		return 0
-	}
-	slog.Info("mapfond: marge du masque propre a la carte", "carte", cle, "marge", c.MargeZones,
-		"gateLe", c.GateLe)
-	return c.MargeZones
 }
 
 // boiteUtileDe rend le rectangle monde declaré pour cette carte, ou zéro s'il n'y en a pas.
 func (e *environnement) boiteUtileDe(cle string) [4]float64 {
 	var out [4]float64
-	if e.reglages == nil {
-		return out
-	}
-	c, ok := e.reglages.Cartes[cle]
+	c, ok := e.entreeDe(cle)
 	if !ok || len(c.BoiteUtile) != 4 {
 		return out
 	}
@@ -430,376 +384,28 @@ func (e *environnement) boiteUtileDe(cle string) [4]float64 {
 // moduleGeometrieDe rend le chemin ABSOLU du module qui porte la geometrie de cette carte,
 // ou la chaine vide quand c'est le sien — le cas de toutes les cartes sauf une.
 func (e *environnement) moduleGeometrieDe(cle string) string {
-	if e.reglages == nil {
+	rel, ok := armeDe(e, cle, levierModuleGeometrie)
+	if !ok {
 		return ""
 	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.ModuleGeometrie == "" {
-		return ""
-	}
-	chemin := filepath.Join(e.racineJeu, filepath.FromSlash(c.ModuleGeometrie))
-	slog.Info("mapfond: geometrie prise dans un AUTRE module", "carte", cle,
-		"module", c.ModuleGeometrie, "gateLe", c.GateLe)
-	return chemin
-}
-
-// rogneAuxVolumesDeMortDe dit si cette carte Forge demande le bornage aux volumes de mort.
-// Journalise comme toute voie qui SUPPRIME de la matiere.
-func (e *environnement) rogneAuxVolumesDeMortDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.RogneAuxVolumesDeMort {
-		return false
-	}
-	slog.Info("mapfond: bornage aux volumes de mort arme pour cette carte", "carte", cle,
-		"gateLe", c.GateLe)
-	return true
-}
-
-// typesExclusDe rend les types d objet Forge ecartes du dessin pour cette carte.
-func (e *environnement) typesExclusDe(cle string) map[int32]bool {
-	if e.reglages == nil {
-		return nil
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || len(c.TypesExclus) == 0 {
-		return nil
-	}
-	m := make(map[int32]bool, len(c.TypesExclus))
-	for _, t := range c.TypesExclus {
-		m[t] = true
-	}
-	slog.Info("mapfond: types d objet ecartes pour cette carte", "carte", cle,
-		"types", len(m), "gateLe", c.GateLe)
-	return m
-}
-
-// plafondTrancheDe rend la hauteur de coupe HAUTE de cette carte, en metres au-dessus du
-// niveau de jeu. Zero = la tranche par defaut.
-func (e *environnement) plafondTrancheDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.PlafondTranche <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: tranche plafonnee pour cette carte", "carte", cle,
-		"plafond", c.PlafondTranche, "gateLe", c.GateLe)
-	return c.PlafondTranche
-}
-
-// dessineCanevasDe dit si cette carte Forge demande que son canevas soit dessine sous elle.
-func (e *environnement) dessineCanevasDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.DessineCanevas {
-		return false
-	}
-	slog.Info("mapfond: canevas dessine pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// seuilAreteDe rend le seuil d arete propre a cette carte, ou zero pour le defaut.
-func (e *environnement) seuilAreteDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.SeuilArete <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: seuil d arete propre a la carte", "carte", cle, "seuil", c.SeuilArete,
-		"gateLe", c.GateLe)
-	return c.SeuilArete
-}
-
-// minceurMinDe rend le seuil de minceur sous lequel les modeles filaires sont ecartes.
-func (e *environnement) minceurMinDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.MinceurMin <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: modeles filaires ecartes sous ce seuil", "carte", cle,
-		"minceurMin", c.MinceurMin, "gateLe", c.GateLe)
-	return c.MinceurMin
-}
-
-// solVuDuDessousDe dit si cette carte se rend par la surface basse.
-func (e *environnement) solVuDuDessousDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SolVuDuDessous {
-		return false
-	}
-	slog.Info("mapfond: sol vu du dessous arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// plafondObjetsDe rend la hauteur au-dessus du sol joue au-dela de laquelle un objet Forge
-// n est pas pose. Zero = les poser tous.
-func (e *environnement) plafondObjetsDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.PlafondObjets <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: plafond des objets propre a la carte", "carte", cle,
-		"plafond", c.PlafondObjets, "gateLe", c.GateLe)
-	return c.PlafondObjets
-}
-
-// drapeauxExclusDe rend les valeurs de drapeau d objet Forge a ecarter du dessin.
-func (e *environnement) drapeauxExclusDe(cle string) map[uint8]bool {
-	if e.reglages == nil {
-		return nil
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || len(c.DrapeauxExclus) == 0 {
-		return nil
-	}
-	m := make(map[uint8]bool, len(c.DrapeauxExclus))
-	for _, d := range c.DrapeauxExclus {
-		m[uint8(d)] = true
-	}
-	slog.Info("mapfond: drapeaux d objet ecartes pour cette carte", "carte", cle,
-		"drapeaux", c.DrapeauxExclus, "gateLe", c.GateLe)
-	return m
-}
-
-// sourceNavmeshDe dit si cette carte se cuit depuis son maillage de navigation.
-func (e *environnement) sourceNavmeshDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SourceNavmesh {
-		return false
-	}
-	slog.Info("mapfond: cuisson depuis le maillage de navigation", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// navmeshReferenceDe dit si cette carte prend sa surface de reference sur son maillage de
-// navigation. A distinguer de sourceNavmeshDe, qui dessine le maillage lui-meme : ici on garde
-// la geometrie ordinaire comme source du dessin, donc les structures, et on ne change que ce a
-// quoi les surfaces sont comparees.
-func (e *environnement) navmeshReferenceDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.NavmeshReference {
-		return false
-	}
-	slog.Info("mapfond: reference prise sur le maillage de navigation", "carte", cle, "gateLe", c.GateLe)
-	return true
+	return filepath.Join(e.racineJeu, filepath.FromSlash(rel))
 }
 
 // rogneAuNavmeshDe dit si cette carte se rogne a son maillage de navigation.
 func (e *environnement) rogneAuNavmeshDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.RogneAuNavmesh == nil || !*c.RogneAuNavmesh {
-		return false
-	}
-	slog.Info("mapfond: rognage au maillage de navigation", "carte", cle, "gateLe", c.GateLe)
-	return true
+	return valeurDe(e, cle, levierRogneAuNavmesh)
 }
 
 // rogneAuNavmeshNatifDe dit si une carte native se rogne a son maillage : oui, sauf si son
 // reglage dit `rogneAuNavmesh: false`.
 func (e *environnement) rogneAuNavmeshNatifDe(cle string) bool {
-	if e.reglages == nil {
-		return true
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.RogneAuNavmesh == nil || *c.RogneAuNavmesh {
-		return true
-	}
-	slog.Info("mapfond: rognage au maillage desarme pour cette carte native", "carte", cle, "gateLe", c.GateLe)
-	return false
-}
-
-// toleranceNavmeshDe rend l ecart au sol au-dela duquel une surface est videe.
-func (e *environnement) toleranceNavmeshDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.ToleranceNavmesh <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: tolerance au sol du maillage", "carte", cle, "tolerance", c.ToleranceNavmesh, "gateLe", c.GateLe)
-	return c.ToleranceNavmesh
-}
-
-// combleAuMaillageDe dit si cette carte comble le dessin dans l emprise de son maillage de
-// navigation. Journalise : peindre un aplat la ou rien n a ete mesure ne doit jamais passer
-// inapercu.
-func (e *environnement) combleAuMaillageDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.CombleAuMaillage {
-		return false
-	}
-	slog.Info("mapfond: comblement dans l emprise du maillage arme pour cette carte", "carte", cle,
-		"gateLe", c.GateLe)
-	return true
-}
-
-// rogneAuxComposantesAncreesDe dit si cette carte efface les amas qui ne portent pas d ancre.
-// Journalise : c est une voie qui SUPPRIME de la matiere, comme l ecretage et les autres
-// rognages.
-func (e *environnement) rogneAuxComposantesAncreesDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.RogneAuxComposantesAncrees {
-		return false
-	}
-	slog.Info("mapfond: rognage aux composantes ancrees arme pour cette carte", "carte", cle,
-		"gateLe", c.GateLe)
-	return true
-}
-
-// cadreAuxZonesDe dit si cette carte borne son image a l emprise de ses zones de callout.
-// Journalise : borner une image est une voie qui SUPPRIME de la matiere.
-func (e *environnement) cadreAuxZonesDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.CadreAuxZones {
-		return false
-	}
-	slog.Info("mapfond: cadrage a l emprise des zones arme pour cette carte", "carte", cle,
-		"gateLe", c.GateLe)
-	return true
-}
-
-// cadreAuxAncresDe dit si cette carte borne son image a l emprise de ses ancres d objectifs.
-func (e *environnement) cadreAuxAncresDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.CadreAuxAncres {
-		return false
-	}
-	slog.Info("mapfond: cadrage a l emprise des ancres arme pour cette carte", "carte", cle,
-		"gateLe", c.GateLe)
-	return true
-}
-
-// margeAncresDe rend la marge de cadrage aux ancres propre a une carte, ou zero pour celle de
-// production.
-func (e *environnement) margeAncresDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.MargeAncres <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: marge de cadrage aux ancres propre a la carte", "carte", cle,
-		"marge", c.MargeAncres, "gateLe", c.GateLe)
-	return c.MargeAncres
-}
-
-// maillageNiveauHautDe dit si cette carte prend la reference sur le niveau le plus haut du
-// maillage. Journalise : c est ce qui decide si ses etages survivent a la substitution.
-func (e *environnement) maillageNiveauHautDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.MaillageNiveauHaut {
-		return false
-	}
-	slog.Info("mapfond: reference prise sur le niveau HAUT du maillage", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// sansSubstitutionDe dit si cette carte renonce a la substitution par surface de reference.
-// Journalise : c est le levier qui decide si les coques tombent ou si les structures restent.
-func (e *environnement) sansSubstitutionDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.SansSubstitution {
-		return false
-	}
-	slog.Info("mapfond: substitution desarmee pour cette carte", "carte", cle, "gateLe", c.GateLe)
-	return true
-}
-
-// seuilSubstitutionDe rend l ecart minimal de substitution propre a une carte, ou zero.
-func (e *environnement) seuilSubstitutionDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.SeuilSubstitution <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: seuil de substitution propre a la carte", "carte", cle,
-		"seuil", c.SeuilSubstitution, "gateLe", c.GateLe)
-	return c.SeuilSubstitution
-}
-
-// margeNavmeshDe rend la marge de rognage au maillage propre a une carte, ou zero.
-func (e *environnement) margeNavmeshDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.MargeNavmesh <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: marge de rognage au maillage propre a la carte", "carte", cle,
-		"marge", c.MargeNavmesh, "gateLe", c.GateLe)
-	return c.MargeNavmesh
-}
-
-// margeSolBasDe rend la profondeur acceptee sous le niveau de jeu, ou zero.
-func (e *environnement) margeSolBasDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.MargeSolBas <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: profondeur du sol vu du dessous propre a la carte", "carte", cle,
-		"marge", c.MargeSolBas, "gateLe", c.GateLe)
-	return c.MargeSolBas
+	return !valeurDe(e, cle, levierSansRogneAuNavmesh)
 }
 
 // rogneAuxAltitudesProchesDe dit si cette carte n affiche que ce qui est proche du niveau de
 // jeu. Journalise : c est une voie qui SUPPRIME de la matiere.
 func (e *environnement) rogneAuxAltitudesProchesDe(cle string) (bool, float64, float64) {
-	if e.reglages == nil {
-		return false, 0, 0
-	}
-	c, ok := e.reglages.Cartes[cle]
+	c, ok := e.entreeDe(cle)
 	if !ok || !c.RogneAuxAltitudesProches {
 		return false, 0, 0
 	}
@@ -808,29 +414,11 @@ func (e *environnement) rogneAuxAltitudesProchesDe(cle string) (bool, float64, f
 	return true, c.SeuilAltitude, c.MargeAltitude
 }
 
-// seuilCouvertureDe rend le seuil de carte couverte propre à une carte, ou zéro pour celui de
-// production. Journalisé : abaisser ce seuil change la voie de rendu prise par la carte.
-func (e *environnement) seuilCouvertureDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.SeuilCouverture <= 0 {
-		return 0
-	}
-	slog.Info("mapfond: seuil de couverture propre a la carte", "carte", cle,
-		"seuil", c.SeuilCouverture, "gateLe", c.GateLe)
-	return c.SeuilCouverture
-}
-
 // positionsJoueesDe rend les positions réellement jouées de la carte, ou nil si le levier n'est
 // pas armé pour elle. Journalisé : ce rognage s'appuie sur un corpus observé, et le nombre de
 // positions retenues explique à lui seul l'agressivité du masque.
 func (e *environnement) positionsJoueesDe(cle string) ([]himap.PositionJouee, float64) {
-	if e.reglages == nil {
-		return nil, 0
-	}
-	c, ok := e.reglages.Cartes[cle]
+	c, ok := e.entreeDe(cle)
 	if !ok || !c.RogneAuxPositionsJouees {
 		return nil, 0
 	}
@@ -843,20 +431,6 @@ func (e *environnement) positionsJoueesDe(cle string) ([]himap.PositionJouee, fl
 	slog.Info("mapfond: rognage aux positions jouees arme pour cette carte", "carte", cle,
 		"positions", len(pos), "rayon", c.RayonPositions, "gateLe", c.GateLe)
 	return pos, c.RayonPositions
-}
-
-// seuilRecollementDe rend le seuil de recollement aux objets propre a une carte.
-func (e *environnement) seuilRecollementDe(cle string) float64 {
-	if e.reglages == nil {
-		return 0
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.SeuilRecollement == 0 {
-		return 0
-	}
-	slog.Info("mapfond: seuil de recollement propre a la carte", "carte", cle,
-		"seuil", c.SeuilRecollement, "gateLe", c.GateLe)
-	return c.SeuilRecollement
 }
 
 // chargePositionsJouees lit le catalogue des positions jouées. Son absence n'est pas une erreur :
@@ -888,19 +462,4 @@ func chargePositionsJouees(chemin string) map[string][]himap.PositionJouee {
 	}
 	slog.Info("mapfond: catalogue des positions jouees charge", "cartes", len(out), "path", chemin)
 	return out
-}
-
-// combleZonesEntieresDe dit si cette carte comble AUSSI ses vides ouverts. Journalisé : c'est le
-// levier qui avait noyé Illusion, il ne doit jamais s'armer en silence.
-func (e *environnement) combleZonesEntieresDe(cle string) bool {
-	if e.reglages == nil {
-		return false
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.CombleZonesEntieres {
-		return false
-	}
-	slog.Info("mapfond: comblement des vides OUVERTS arme pour cette carte (refute sur Illusion)",
-		"carte", cle, "gateLe", c.GateLe)
-	return true
 }
