@@ -111,6 +111,23 @@ describe('le chargement et la disponibilité', () => {
     expect(ops).toEqual([])
   })
 
+  it('« unavailable » : le motif est rendu, le message servi avant le dictionnaire de la page', () => {
+    const refuse = { ...READY, status: 'unavailable', deaths: null, zones: null } as const
+    query.mockReturnValue({ data: { ...refuse, reason: 'not_enough_matches' }, isError: false })
+    expect(mount().result.current.refusal).toBe(REPLAY_TEXT.fr.respawnForecast.refusal.byReason.not_enough_matches)
+    expect(mount({ locale: 'en' }).result.current.refusal).toBe(REPLAY_TEXT.en.respawnForecast.refusal.byReason.not_enough_matches)
+    query.mockReturnValue({ data: { ...refuse, reason: 'no_zone', message: 'Message du serveur.' }, isError: false })
+    expect(mount().result.current.refusal).toBe('Message du serveur.')
+  })
+
+  it('prête, en chargement ou en échec : aucun motif à écrire', () => {
+    expect(mount().result.current.refusal).toBeNull()
+    query.mockReturnValue({ data: undefined, isError: false })
+    expect(mount().result.current.refusal).toBeNull()
+    query.mockReturnValue({ data: undefined, isError: true })
+    expect(mount().result.current.refusal).toBeNull()
+  })
+
   it('échec de chargement : calque et interrupteur absents', () => {
     query.mockReturnValue({ data: undefined, isError: true })
     const { result } = mount()

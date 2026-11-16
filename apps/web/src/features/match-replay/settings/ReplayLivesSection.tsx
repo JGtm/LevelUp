@@ -14,8 +14,12 @@
  *
  * LA PROBABILITÉ DE RÉAPPARITION est un quatrième interrupteur du groupe, pas une trace : elle compte
  * dans le résumé, mais les affinages « Qui » et « Quand » ne la concernent pas (elle suit Seul et Masquer
- * du panneau de joueur, comme tout ce qui appartient à un joueur).
+ * du panneau de joueur, comme tout ce qui appartient à un joueur). Quand la réponse la REFUSE, le motif s'écrit
+ * sous l'en-tête dans un bloc pointillé (état vide, aucune action), replié ou non : un interrupteur absent
+ * sans rien dire ne s'expliquerait pas.
  */
+import { EmptyStateNotice } from '@/components/ui/empty-state'
+
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { LIVES_WHEN, LIVES_WHO, type LivesWhen, type LivesWho } from '../model/livesMarks'
 import { FORECAST_DRAWS, type ForecastDraw } from '../model/respawnForecast.logic'
@@ -33,6 +37,8 @@ export interface ReplayLivesLayerControls {
 export interface ReplayRespawnForecastControls extends ReplayLivesLayerControls {
   draw: ForecastDraw
   onSelectDraw: (draw: ForecastDraw) => void
+  /** Pourquoi aucune probabilité n'est servie : écrit à la place de l'interrupteur, qui n'est alors pas proposé. */
+  refusal: string | null
 }
 
 /** Ce que le panneau sait du groupe « Vies ». */
@@ -114,13 +120,15 @@ export function LivesSection({ locale, lives }: { locale: ReplayLocale; lives: R
     { key: 'killers', c: lives.killers, label: t.layerKillers, hint: t.layerKillersHint },
   ].filter((l) => l.c.available)
   const forecastShown = lives.respawnForecast.available
+  const refusal = lives.respawnForecast.refusal
   const total = layers.length + (forecastShown ? 1 : 0)
-  if (total === 0) return null
+  if (total === 0 && refusal === null) return null
   const tracesOn = layers.filter((l) => l.c.show).length
   const on = tracesOn + (forecastShown && lives.respawnForecast.show ? 1 : 0)
   return (
     <section className="space-y-0.5">
-      <GroupHeader locale={locale} open={open} onToggle={toggleOpen} summary={t.summaryFmt(on, total)} />
+      <GroupHeader locale={locale} open={open} onToggle={toggleOpen} summary={total > 0 ? t.summaryFmt(on, total) : ''} />
+      {refusal !== null && <EmptyStateNotice size="compact" title={forecast.title} description={refusal} />}
       {open && (
         <>
           {layers.length > 0 && (

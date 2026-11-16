@@ -30,7 +30,8 @@ export interface FilmLayerSources {
   /** Le fond retenu porte un plan des murs. */
   hasWallPlan: boolean
   lives: FilmLayerAvailability['lives']
-  respawnForecast: Availability
+  /** La probabilité de réapparition : de quoi se peindre, et le motif du refus quand la réponse en donne un. */
+  respawnForecast: Availability & { refusal?: string | null }
 }
 
 export function filmLayerAvailability(s: FilmLayerSources): FilmLayerAvailability {
@@ -52,5 +53,6 @@ export function filmLayerAvailability(s: FilmLayerSources): FilmLayerAvailabilit
     wallPlan: s.hasWallPlan,
     lives: s.lives,
     respawnForecast: s.respawnForecast.available,
+    respawnForecastRefusal: s.respawnForecast.refusal ?? null,
   }
 }

@@ -108,6 +108,23 @@ export interface ForecastMoment {
   opacity: number
 }
 
+/** Les raisons d'un refus que le serveur nomme (`SpawnForecast.reason`). */
+export type ForecastRefusalReason = NonNullable<ReplaySpawnForecast['reason']>
+
+/**
+ * forecastRefusal — le MOTIF d'une réponse qui n'est pas prête, dans la langue de la page : le `message` servi
+ * (déjà dans la langue de la requête) quand il existe, sinon la phrase du dictionnaire pour la `reason`, sinon la
+ * phrase d'une raison inconnue. `null` quand la réponse est prête ou pas encore là : il n'y a rien à expliquer.
+ */
+export function forecastRefusal(
+  res: ReplaySpawnForecast | null | undefined,
+  text: { byReason: Readonly<Record<ForecastRefusalReason, string>>; unknown: string },
+): string | null {
+  if (!res || res.status === 'ready') return null
+  if (res.message) return res.message
+  return (res.reason !== undefined ? text.byReason[res.reason] : undefined) ?? text.unknown
+}
+
 /**
  * normalizeSpawnForecast résout la nullabilité du transport UNE fois. `null` = aucun calque : réponse
  * absente, statut `unavailable`, ou aucune mort exploitable. Une mort sans échantillon, sans durée ou

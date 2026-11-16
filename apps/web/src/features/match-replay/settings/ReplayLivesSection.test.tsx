@@ -220,6 +220,43 @@ describe('ReplayLivesSection — la probabilité de réapparition', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Dessin' })).toBeNull()
   })
 
+  it('refusée : le motif s’écrit dans un bloc pointillé, sans interrupteur ni action, même replié', () => {
+    const refusal = 'Pas assez de matchs sur cette carte pour estimer la probabilité de réapparition.'
+    renderPanel({
+      lives: makeLives({
+        spawns: { available: false, show: false, onToggle: vi.fn() },
+        deaths: { available: false, show: false, onToggle: vi.fn() },
+        killers: { available: false, show: false, onToggle: vi.fn() },
+        respawnForecast: makeForecast({ available: false, show: true, refusal }),
+      }),
+    })
+    // Le groupe reste replié : le bloc se lit quand même.
+    expect(screen.getByRole('button', { name: /^Vies/ })).toHaveAttribute('aria-expanded', 'false')
+    const bloc = screen.getByText(refusal).closest('div')
+    expect(bloc).toHaveClass('border-dashed')
+    expect(bloc).toHaveTextContent('Probabilité de réapparition')
+    expect(screen.queryByRole('switch', { name: 'Probabilité de réapparition' })).toBeNull()
+    expect(bloc?.querySelector('button')).toBeNull()
+  })
+
+  it('refusée avec des traces à proposer : les interrupteurs restent, le bloc s’y ajoute', () => {
+    renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ available: false, refusal: 'Motif.' }) }) })
+    expect(screen.getByText('Motif.')).toBeTruthy()
+    deplier()
+    expect(screen.getByRole('switch', { name: 'Apparitions' })).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Probabilité de réapparition' })).toBeNull()
+  })
+
+  it('refusée, en anglais', () => {
+    renderPanel({
+      locale: 'en',
+      lives: makeLives({ respawnForecast: makeForecast({ available: false, refusal: 'This map has no named zones: no respawn probability.' }) }),
+    })
+    const bloc = screen.getByText('This map has no named zones: no respawn probability.').closest('div')
+    expect(bloc).toHaveClass('border-dashed')
+    expect(bloc).toHaveTextContent('Respawn probability')
+  })
+
   it('l’anglais : « Respawn probability »', () => {
     renderPanel({ locale: 'en', lives: makeLives({ respawnForecast: makeForecast({ show: false }) }) })
     fireEvent.click(screen.getByRole('button', { name: /^Lives/ }))
