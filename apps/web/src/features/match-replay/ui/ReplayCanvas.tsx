@@ -82,8 +82,8 @@ import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
 import { useReplayOrientation } from '../settings/useReplayOrientation'
 import { useReplaySound } from '../sound/useReplaySound'
-import { clipToMapPlan, drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
-import type { CanvasView } from '../model/replayView'
+import { drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
+import { usePlanClipMask } from '../layers/usePlanClipMask'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   drawGeometryLayer,
@@ -372,8 +372,7 @@ export function ReplayCanvas({
     doc, view: canvasView, store: playbackStore, scrimInk: scrim, labelInk: labelStroke,
     seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, shownAtSlot, redraw,
   })
-  // L'IMAGE PLAN de la carte (null sans vue plan) : rogne les zones nommées et la teinte de probabilité, quel que soit le fond affiché.
-  const planDuFond = mapImage?.zonesClip ?? null
+  const planDuFond = mapImage?.zonesClip ?? null // image plan (null sans vue plan) : rogne zones nommées et probabilité, quel que soit le fond
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
@@ -428,15 +427,10 @@ export function ReplayCanvas({
     doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke, shownAtSlot,
     identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
   })
-  // LE ROGNAGE AU PLAN de la teinte de probabilité : l'image plan de la carte, quel que soit le fond affiché ; sans vue plan, rien n'est rogné.
-  const forecastClipMask = useMemo(
-    () => (planDuFond ? (ctx: CanvasRenderingContext2D, v: CanvasView) => clipToMapPlan(ctx, planDuFond, v) : undefined),
-    [planDuFond],
-  )
   // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée seulement si le calque est allumé, teinte sous les pions et repères au-dessus.
   const respawnForecast = useReplayRespawnForecast({
     doc, view: canvasView, enabled: settings.showRespawnForecast, draw: settings.respawnForecastDraw, playerSlug, matchId, locale, callouts: calloutZones,
-    clipMask: forecastClipMask,
+    clipMask: usePlanClipMask(planDuFond), // la teinte est rognée au plan, comme les zones nommées
     identity: { colorOfXuid, nameOfXuid }, ink: { scrim, onScrim, labelStroke, neutral: neutralInk }, shownAuthor: focusShown?.author,
   })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
