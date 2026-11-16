@@ -379,3 +379,31 @@ describe('le rognage au plan', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })
+
+describe('la pilule « Fond »', () => {
+  it('Plan / Rendu, défaut Plan ; écrit la préférence du rejeu ; le rognage reste sur le plan', async () => {
+    window.localStorage.clear()
+    await ouvrirLaLecture()
+    const pilule = await screen.findByTestId('tactical-plan-fond-pilule')
+    expect(within(pilule).getByRole('button', { name: t.backgroundPlan })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(within(pilule).getByRole('button', { name: t.backgroundRender }))
+    expect(window.localStorage.getItem('replay-background-style')).toBe('rendu')
+    expect(within(pilule).getByRole('button', { name: t.backgroundRender })).toHaveAttribute('aria-pressed', 'true')
+    // Le fond affiché est le rendu, les zones restent rognées à l'image plan.
+    await waitFor(() =>
+      expect(getBlob.mock.calls.map((c) => c[0] as string)).toContain('/players/JGtm/tactical/streets/background.png'),
+    )
+    expect(screen.getByTestId('tactical-reapp-zones').getAttribute('data-rogne')).toBe('plan')
+  })
+
+  it('une carte sans vue plan : pas de pilule', async () => {
+    get.mockResolvedValue({ calibration: CALAGE })
+    await ouvrirLaLecture()
+    expect(screen.queryByTestId('tactical-plan-fond-pilule')).toBeNull()
+  })
+
+  it('présente aussi sur la carte de placement', async () => {
+    monter()
+    expect(await screen.findByTestId('tactical-plan-fond-pilule')).toBeInTheDocument()
+  })
+})

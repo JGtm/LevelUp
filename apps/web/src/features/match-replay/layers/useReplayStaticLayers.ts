@@ -65,8 +65,8 @@ export interface StaticLayersInput {
     fineInk: string
     locale: ReplayLocale
     /**
-     * Le fond posé quand c'est l'IMAGE PLAN (calage + image décodée) : l'alpha du plan rogne les FORMES des zones
-     * (`lib/replay/planMask`), jamais leurs libellés. `null`/absent = pas de vue plan posée : zones entières.
+     * L'IMAGE PLAN de la carte (calage + image décodée), quel que soit le fond affiché : l'alpha du plan rogne les FORMES des zones
+     * (`lib/replay/planMask`), jamais leurs libellés. `null`/absent = carte sans vue plan : zones entières.
      */
     plan?: MapBackgroundSource | null
   }

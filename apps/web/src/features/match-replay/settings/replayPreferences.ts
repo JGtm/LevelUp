@@ -189,12 +189,12 @@ export function persistOrientation(mapId: string, turns: QuarterTurns): void {
  * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `rendu` (défaut) ou `plan` (la vue
  * plan à hauteurs), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,
  * Tactique, « Occupation du terrain »). Retenu dans CE navigateur, jamais côté serveur. La lecture est
- * VALIDÉE contre les deux valeurs : absente, inconnue ou écrite par une autre version -> `rendu`.
+ * VALIDÉE contre les deux valeurs : absente, inconnue ou écrite par une autre version -> `plan` (le défaut).
  * Le choix `plan` ne s'applique qu'à un fond qui porte une image plan : sinon le rendu est servi.
  */
 export const BACKGROUND_STYLE_KEY = 'replay-background-style'
 
-/** Le style de fond retenu, ou le rendu. */
+/** Le style de fond retenu, ou le plan (le défaut). */
 export function readBackgroundStyle(): MapBackgroundVariant {
   return readStoredChoice(BACKGROUND_STYLE_KEY, DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS)
 }

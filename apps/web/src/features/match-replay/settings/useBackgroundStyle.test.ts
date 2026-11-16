@@ -11,25 +11,25 @@ import { useBackgroundStyle } from './useBackgroundStyle'
 beforeEach(() => window.localStorage.clear())
 
 describe('useBackgroundStyle', () => {
-  it('par défaut : rendu', () => {
+  it('par défaut : plan', () => {
     const { result } = renderHook(() => useBackgroundStyle())
-    expect(result.current[0]).toBe('rendu')
-    expect(readBackgroundStyle()).toBe('rendu')
+    expect(result.current[0]).toBe('plan')
+    expect(readBackgroundStyle()).toBe('plan')
   })
 
   it('la clé est replay-background-style', () => {
     expect(BACKGROUND_STYLE_KEY).toBe('replay-background-style')
   })
 
-  it('lit un choix plan déjà retenu', () => {
-    window.localStorage.setItem(BACKGROUND_STYLE_KEY, 'plan')
-    expect(renderHook(() => useBackgroundStyle()).result.current[0]).toBe('plan')
+  it('lit un choix rendu déjà retenu', () => {
+    window.localStorage.setItem(BACKGROUND_STYLE_KEY, 'rendu')
+    expect(renderHook(() => useBackgroundStyle()).result.current[0]).toBe('rendu')
   })
 
-  it('une valeur inconnue vaut rendu, sans rien effacer', () => {
+  it('une valeur inconnue vaut le défaut (plan), sans rien effacer', () => {
     window.localStorage.setItem(BACKGROUND_STYLE_KEY, 'n-importe-quoi')
-    expect(renderHook(() => useBackgroundStyle()).result.current[0]).toBe('rendu')
-    expect(readBackgroundStyle()).toBe('rendu')
+    expect(renderHook(() => useBackgroundStyle()).result.current[0]).toBe('plan')
+    expect(readBackgroundStyle()).toBe('plan')
     expect(window.localStorage.getItem(BACKGROUND_STYLE_KEY)).toBe('n-importe-quoi')
   })
 

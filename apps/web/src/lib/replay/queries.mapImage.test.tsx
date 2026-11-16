@@ -108,4 +108,26 @@ describe('useReplayMapImage — variante', () => {
     renderHook(() => useReplayMapImage('JGtm', 'm1', false, 'plan'), { wrapper })
     expect(getBlob).not.toHaveBeenCalled()
   })
+
+  it('le plan du masque des zones et le fond affiché partagent leurs clés : une seule demande par variante', async () => {
+    // Fond affiché = plan : le masque (plan) ne redemande rien.
+    const plan = renderHook(
+      () => ({ fond: useReplayMapImage('JGtm', 'm1', true, 'plan'), masque: useReplayMapImage('JGtm', 'm1', true, 'plan') }),
+      { wrapper },
+    )
+    await waitFor(() => expect(plan.result.current.masque.image).not.toBeNull())
+    expect(plan.result.current.masque.image).toBe(plan.result.current.fond.image)
+    expect(getBlob.mock.calls.map((c) => c[0])).toEqual([PLAN])
+  })
+
+  it('fond affiché = rendu : le plan du masque est la seule demande en plus', async () => {
+    const { result } = renderHook(
+      () => ({ fond: useReplayMapImage('JGtm', 'm1', true, 'rendu'), masque: useReplayMapImage('JGtm', 'm1', true, 'plan') }),
+      { wrapper },
+    )
+    await waitFor(() => expect(result.current.masque.image).not.toBeNull())
+    await waitFor(() => expect(result.current.fond.image).not.toBeNull())
+    expect(result.current.masque.variante).toBe('plan')
+    expect(getBlob.mock.calls.map((c) => c[0] as string).sort()).toEqual([PLAN, RENDU].sort())
+  })
 })

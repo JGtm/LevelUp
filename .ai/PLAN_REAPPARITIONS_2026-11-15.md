@@ -350,9 +350,9 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       (`features/tactical/TacticalReapparitions*.tsx`, `reapparitions.logic.ts`, `queriesReapparitions.ts`, textes
       `tactical.reapp.*`). Vignettes de « Cartes jouées » en vue plan (repli sur le rendu). Rognage partagé des zones au plan
       par l'alpha de l'image plan : `lib/replay/planMask.ts` et `PlanMaskDef.tsx`, appliqué à Tactique et au calque des zones
-      nommées du rejeu 2D (formes seulement), tant que l'image posée est le plan. Points ouverts retenus : carte sans vue plan
-      = vignette du rendu et zones entières ; pilule « Fond » de la maquette non reprise (préférence du rejeu, lue seulement
-      par Tactique) ; avec le fond « rendu » au rejeu, zones entières (charger le plan touche la page du rejeu).
+      nommées du rejeu 2D (formes seulement), quel que soit le fond affiché (l'image plan est chargée à part, même clé de cache que le
+      fond plan). Pilule « Fond » (Plan / Rendu) sur Tactique, même préférence que le rejeu (lue et écrite), défaut Plan. Carte sans
+      vue plan = vignette du rendu et zones entières.
 
 Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran par le user.
 

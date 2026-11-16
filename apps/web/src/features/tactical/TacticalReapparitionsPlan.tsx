@@ -34,6 +34,7 @@ import {
   type LectureReapparitions,
   type ZoneProposee,
 } from './reapparitions.logic'
+import { TacticalPiluleFond } from './TacticalPiluleFond'
 import { PuceDEcart } from './TacticalReapparitionsPuce'
 import { TacticalReapparitionsZones } from './TacticalReapparitionsZones'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
@@ -110,6 +111,7 @@ export function TacticalReapparitionsPlan({
             <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
               {pilule}
               <PiluleZoneTenue t={t} zones={zonesProposees} choisie={choisie} onChoisir={onChoisir} />
+              <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
               {modele && (
                 <span className="whitespace-nowrap text-[11.5px] font-normal text-muted-foreground">
                   {t.reappMeta(modele.reference.matchs, modele.reference.reapparitions)}

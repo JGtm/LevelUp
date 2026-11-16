@@ -10,10 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [8.3.0] - Unreleased
 
-> The film decoder moves to v1.4.1 (`SchemaVersion` 125): hits, damage in points, the flag return gauge and the seats of the film's table are read; the web side types them; nothing new on screen yet.
+> The film decoder moves to v1.4.1 (`SchemaVersion` 125): hits, damage in points, the flag return gauge and the seats of the film's table are read and the web side types them; on screen, Tactics gains the "Opposing respawns" reading and the plan view in the map thumbnails, the "Plan" background becomes the default, and the named zones are cut to the plan.
 
 ### Added
-- **Tactics: opposing respawns** — a new "Opposing respawns" reading on the Tactics plan: each named zone is tinted by the share of the opposing respawns that fall in it when the team holds the chosen zone, with the gap in points from the unconditional split, and bars compare the two (route `POST /players/{slug}/tactical/{map_id}/reapparitions-adverses`); below 3 matches or 20 respawns a dotted block shows the two gauges. The "Maps played" thumbnails show the plan view (the rendered thumbnail when a map has none), and the named zones are cut to the plan image's alpha on the Tactics plan and on the replay's named-zones layer when the plan is the background shown (`lib/replay/planMask`).
+- **Tactics: opposing respawns** — a new "Opposing respawns" reading on the Tactics plan: each named zone is tinted by the share of the opposing respawns that fall in it when the team holds the chosen zone, with the gap in points from the unconditional split, and bars compare the two (route `POST /players/{slug}/tactical/{map_id}/reapparitions-adverses`); below 3 matches or 20 respawns a dotted block shows the two gauges. The "Maps played" thumbnails show the plan view (the rendered thumbnail when a map has none), and the named zones are cut to the plan image's alpha on the Tactics plan and on the replay's named-zones layer, whichever background is shown (`lib/replay/planMask`). The "Background" (Plan / Render) pill is back on the Tactics plan and shares the replay's preference; the default is Plan.
 
 ### Changed
 - **Published bricks** — `halo-infinite-film-decoder` v1.4.1 (v1.3.9 in 8.2.1); the other bricks are unchanged.

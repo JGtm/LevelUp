@@ -86,6 +86,7 @@ import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
 import { ETIQUETTE, PILULE } from './pilules'
 import { LECTURE_REAPPARITIONS } from './reapparitions.logic'
+import { TacticalPiluleFond } from './TacticalPiluleFond'
 import { PiluleLecture } from './TacticalPiluleLecture'
 import { PilulesDeReapparition } from './TacticalPlanVies'
 import type { TacticalVies } from './vies.logic'
@@ -228,7 +229,7 @@ export function TacticalPlanCard({
         title={titre}
         label={titre || undefined}
         titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} {...reglages} />,
+          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} playerSlug={playerSlug} mapId={mapId} {...reglages} />,
           testId: 'tactical-plan-title',
         })}
       >
@@ -333,7 +334,9 @@ function ReglagesEnPilules({
   reapparitionsDisponibles = false,
   onReapparitions,
   zonesDisponibles,
-}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean }) {
+  playerSlug,
+  mapId,
+}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean; playerSlug: string; mapId: string }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
@@ -374,6 +377,7 @@ function ReglagesEnPilules({
         vies={vies}
         onViesChange={onViesChange}
       />
+      <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
       {zonesDisponibles && (
         <button
           type="button"

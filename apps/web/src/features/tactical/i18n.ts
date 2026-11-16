@@ -111,6 +111,9 @@ export function getTacticalText(locale: Locale) {
     livesStart: m('tactical.plan.lives_start'),
     livesAll: m('tactical.plan.lives_all'),
     livesHint: m('tactical.plan.lives_hint'),
+    pillBackground: m('tactical.plan.pill_background'),
+    backgroundPlan: m('tactical.plan.background_plan'),
+    backgroundRender: m('tactical.plan.background_render'),
     pillZones: m('tactical.plan.pill_zones'),
 
     // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────

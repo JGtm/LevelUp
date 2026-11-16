@@ -80,6 +80,8 @@ export interface ReplayMapBackgroundLayer {
   variante: MapBackgroundVariant
   /** Le fond porte-t-il une image plan ? La commande « Fond » n'est proposée que s'il en a une. */
   planAvailable: boolean
+  /** L'image plan décodée et le calage qui la pose : le masque des zones nommées (`lib/replay/planMask`) ; `null` = zones entières. */
+  zonesClip: { calibration: ReplayMapBackgroundCalibration; image: CanvasImageSource } | null
 }
 
 export interface ReplayViewOptions {

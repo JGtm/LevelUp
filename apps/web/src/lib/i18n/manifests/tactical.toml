@@ -277,6 +277,18 @@ en = "All lives"
 fr = "Départ : première vie seule. Toutes les vies : première vie, réapparitions et débuts de manche ; avec une réapparition choisie, les trajets ne comptent que les vies parties de cet endroit."
 en = "Start: first life only. All lives: first life, respawns and round starts; with a respawn chosen, routes only count the lives that left from that spot."
 
+[tactical.plan.pill_background]
+fr = "Fond"
+en = "Background"
+
+[tactical.plan.background_plan]
+fr = "Plan"
+en = "Plan"
+
+[tactical.plan.background_render]
+fr = "Rendu"
+en = "Render"
+
 [tactical.plan.pill_zones]
 fr = "Zones nommées"
 en = "Named zones"
