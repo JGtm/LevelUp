@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -29,6 +30,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/service/replayview"
 )
 
 const (
@@ -80,7 +82,7 @@ func fondVersionne(t *testing.T, repo string) {
 // routeurRejeu monte le handler de rejeu sur le service construit comme en production.
 func routeurRejeu(cfg *config.AppConfig) *chi.Mux {
 	svc := replayServiceFrom(cfg, title.DefaultSlug, identitesCarte{})
-	h := handlers.NewReplayHandler(func(context.Context, string) (port.ReplayService, error) { return svc, nil })
+	h := handlers.NewReplayHandler(func(context.Context, string) (port.ReplayService, error) { return svc, nil }, replayview.EncodeColumns)
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) { h.Mount(r) })
 	return r
@@ -158,5 +160,36 @@ func TestReplayService_HorsDemo_ToutSousLeDepot(t *testing.T) {
 	}
 	if w := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay"); w.Code != http.StatusOK {
 		t.Errorf("hors démo : artefact, statut %d, attendu 200 — corps %s", w.Code, w.Body.String())
+	}
+}
+
+// TestReplayService_ColonnesDeBoutEnBout : le service construit comme en production, le handler
+// branché sur le vrai encodeur. Sans paramètre la réponse est la forme normale ; avec
+// `encoding=columns`, le même document sort en colonnes (le contenu est prouvé par les tests de
+// `replayview`).
+func TestReplayService_ColonnesDeBoutEnBout(t *testing.T) {
+	repo := t.TempDir()
+	points := make([]string, 20)
+	for i := range points {
+		points[i] = `{"t":` + strconv.Itoa(i*33) + `,"x":1.5,"y":2.25}`
+	}
+	artefact := `{"schemaVersion":1,"matchId":"` + matchRejeuDemo + `","tracks":[{"slot":3,"team":0,"points":[` +
+		strings.Join(points, ",") + `]}]}`
+	ecrireFichier(t, title.NewPathResolver(repo).ReplayArtifactPath(title.DefaultSlug, matchRejeuDemo), artefact)
+	r := routeurRejeu(&config.AppConfig{RepoRoot: repo})
+
+	normal := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay")
+	cols := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay?encoding=columns")
+	if normal.Code != http.StatusOK || cols.Code != http.StatusOK {
+		t.Fatalf("statuts %d et %d, attendu 200 : %s", normal.Code, cols.Code, cols.Body.String())
+	}
+	if strings.Contains(normal.Body.String(), `"$enc"`) {
+		t.Errorf("sans paramètre : la réponse doit rester la forme normale : %.200s", normal.Body.String())
+	}
+	if !strings.HasPrefix(cols.Body.String(), `{"$enc":1,`) || !strings.Contains(cols.Body.String(), `"$c":20`) {
+		t.Errorf("encoding=columns : la réponse doit être en colonnes : %.300s", cols.Body.String())
+	}
+	if ct := cols.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("type de contenu %q, attendu application/json", ct)
 	}
 }
