@@ -92,12 +92,10 @@ type ProbaZone struct {
 }
 
 // EchantillonPrevision est la prevision a un instant du compte a rebours : les zones de la plus
-// probable a la moins probable (ex aequo : indice de volume croissant), et la part des candidats
-// qu'aucune zone nommee ne porte.
+// probable a la moins probable (ex aequo : indice de volume croissant).
 type EchantillonPrevision struct {
-	Frame    int
-	Zones    []ProbaZone
-	HorsZone float64
+	Frame int
+	Zones []ProbaZone
 	// PointsP est la probabilite de chaque point candidat, alignee sur PrevisionsDuMatch.Points, arrondie
 	// au millieme (somme egale a 1 a l'arrondi pres). La probabilite d'une zone est la somme de ses points.
 	PointsP []float64
@@ -249,15 +247,12 @@ func (p *previseur) echantillon(frame int, ev EvenementReapparition) Echantillon
 	}
 	proba := Probabilites(scores)
 	somme := map[int]float64{}
-	horsZone := 0.0
 	for i, pr := range proba {
 		if z := p.zonesCand[i]; z >= 0 {
 			somme[z] += pr
-		} else {
-			horsZone += pr
 		}
 	}
-	out := EchantillonPrevision{Frame: frame, HorsZone: arrondiProbabilite(horsZone), PointsP: make([]float64, len(proba))}
+	out := EchantillonPrevision{Frame: frame, PointsP: make([]float64, len(proba))}
 	for i, pr := range proba {
 		out.PointsP[i] = arrondiProbabilite(pr)
 	}

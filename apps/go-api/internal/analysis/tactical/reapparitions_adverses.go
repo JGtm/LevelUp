@@ -21,7 +21,8 @@ package tactical
 //
 // Dans la zone nommee qui nomme son point (NommerZone, avec sa hauteur) : la meme regle que la
 // lecture de placement, donc le meme nom que celui que l'utilisateur voit sur le plan. Une
-// reapparition qu'aucune zone ne nomme est comptee a part (SansZone), jamais rangee dans un nom de repli.
+// reapparition qu'aucune zone ne nomme est comptee dans le total sans zone (TacticalRepartitionZones.HorsZone),
+// jamais rangee dans un nom de repli.
 
 import (
 	"sort"
@@ -84,11 +85,10 @@ func LireReapparitionsAdverses(loc i18n.Locale, obs []ObservationAdverse, choisi
 
 // compteurDeZones accumule une repartition.
 type compteurDeZones struct {
-	matchs   map[string]bool
-	parZone  map[int]int
-	zones    map[int]ZoneNommee
-	sansZone int
-	total    int
+	matchs  map[string]bool
+	parZone map[int]int
+	zones   map[int]ZoneNommee
+	total   int
 }
 
 func newCompteur() *compteurDeZones {
@@ -99,7 +99,6 @@ func (c *compteurDeZones) ajouter(matchID string, r ZoneRetenue, nommee bool) {
 	c.matchs[matchID] = true
 	c.total++
 	if !nommee {
-		c.sansZone++
 		return
 	}
 	c.parZone[r.Zone.VolumeIndex]++
@@ -121,7 +120,6 @@ func (c *compteurDeZones) repartition(loc i18n.Locale) domain.TacticalRepartitio
 		return out
 	}
 	out.Suffisante = true
-	out.SansZone = c.sansZone
 	for idx, n := range c.parZone {
 		out.Zones = append(out.Zones, domain.TacticalPartDeZone{
 			VolumeIndex: idx, Nom: c.zones[idx].Nom.PickOptional(loc), Reapparitions: n,

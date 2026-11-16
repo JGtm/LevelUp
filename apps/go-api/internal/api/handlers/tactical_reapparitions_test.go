@@ -51,7 +51,7 @@ func TestTacticalHandler_ReapparitionsAdversesTransmetLeCorps(t *testing.T) {
 // La reponse d'une lecture vide reste un 200 : etat, raison, zones en liste (jamais null).
 func TestTacticalHandler_ReapparitionsAdversesVideEstUn200(t *testing.T) {
 	svc := &fakeTacticalSvc{reapparitionsFake: reapparitionsFake{reapparitions: domain.TacticalReapparitionsAdverses{
-		MapID: "streets", Etat: domain.TacticalEtatVide, Raison: domain.TacticalRaisonAucunMatchMesure,
+		Etat: domain.TacticalEtatVide, Raison: domain.TacticalRaisonAucunMatchMesure,
 		Reference: domain.TacticalRepartitionZones{Zones: []domain.TacticalPartDeZone{}},
 		Tenue:     domain.TacticalRepartitionZones{Zones: []domain.TacticalPartDeZone{}},
 	}}}

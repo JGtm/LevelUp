@@ -108,6 +108,19 @@ func lireAdverses(svc *TacticalService, ids []string, vol int) (domain.TacticalR
 		})
 }
 
+// Les comptes de matchs de la lecture (journalises, plus servis) : un match sans sidecar n'est dans aucun.
+func TestObservationsAdverses_ComptesDeMatchs(t *testing.T) {
+	univ, store := matchsAssassin(5, 4, 3)
+	svc, _ := svcAdverses(t, univ, store)
+	if obs, matchs := svc.observationsAdverses(univ, store.sidecars); matchs.retenus != 5 || matchs.sansEquipe != 0 || len(obs) != 35 {
+		t.Errorf("comptes = %+v (%d observations), attendu 5 retenus, 0 sans equipe, 35 observations", matchs, len(obs))
+	}
+	delete(store.sidecars, "m1")
+	if _, matchs := svc.observationsAdverses(univ, store.sidecars); matchs.retenus != 4 {
+		t.Errorf("un match sans sidecar n'est pas mesure : %+v", matchs)
+	}
+}
+
 func TestReapparitionsAdverses_LectureServie(t *testing.T) {
 	univ, store := matchsAssassin(5, 4, 3) // par match : 4 reapparitions « Hall tenu », 3 sans
 	svc, _ := svcAdverses(t, univ, store)
@@ -118,11 +131,8 @@ func TestReapparitionsAdverses_LectureServie(t *testing.T) {
 	if out.Etat != domain.TacticalEtatServie || out.Raison != "" {
 		t.Fatalf("etat = %q (%q), attendu servie : %+v", out.Etat, out.Raison, out)
 	}
-	if out.Zone.VolumeIndex != volHall || out.Zone.Nom != "Hall" {
+	if out.Zone.Nom != "Hall" {
 		t.Errorf("zone = %+v", out.Zone)
-	}
-	if out.MatchsFiltres != 5 || out.MatchsRetenus != 5 || out.MatchsSansEquipe != 0 {
-		t.Errorf("comptes de matchs = %+v", out)
 	}
 	if out.Reference.Reapparitions != 35 || !out.Reference.Suffisante {
 		t.Errorf("reference = %+v, attendu 35 reapparitions (la premiere vie n'en est pas une)", out.Reference)
@@ -195,8 +205,7 @@ func TestReapparitionsAdverses_AucunFiltreParMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.MatchsFiltres != 6 || out.MatchsRetenus != 6 || out.Reference.Reapparitions != 42 ||
-		out.Etat != domain.TacticalEtatServie {
+	if out.Reference.Reapparitions != 42 || out.Etat != domain.TacticalEtatServie {
 		t.Errorf("reponse = %+v", out)
 	}
 }
@@ -251,7 +260,7 @@ func TestReapparitionsAdverses_RaisonsDEtatVide(t *testing.T) {
 	univ, _ := matchsAssassin(5, 4, 3)
 	svc, _ := svcAdverses(t, univ, &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{}})
 	out, err := lireAdverses(svc, idsDe(5), volHall)
-	if err != nil || out.Raison != domain.TacticalRaisonAucunMatchMesure || out.MatchsFiltres != 5 {
+	if err != nil || out.Raison != domain.TacticalRaisonAucunMatchMesure {
 		t.Errorf("sans sidecar : (%+v, %v)", out, err)
 	}
 
@@ -262,8 +271,11 @@ func TestReapparitionsAdverses_RaisonsDEtatVide(t *testing.T) {
 	}
 	svc2, _ := svcAdverses(t, univ2, store2)
 	out2, _ := lireAdverses(svc2, idsDe(5), volHall)
-	if out2.Raison != domain.TacticalRaisonEquipeInconnue || out2.MatchsSansEquipe != 5 || out2.MatchsRetenus != 0 {
+	if out2.Raison != domain.TacticalRaisonEquipeInconnue {
 		t.Errorf("equipe inconnue : %+v", out2)
+	}
+	if _, matchs := svc2.observationsAdverses(univ2, store2.sidecars); matchs.sansEquipe != 5 || matchs.retenus != 0 {
+		t.Errorf("comptes de matchs sans equipe = %+v, attendu 5 sans equipe et 0 retenu", matchs)
 	}
 
 	// Une zone sans forme ne contient personne.
@@ -312,7 +324,7 @@ func TestReapparitionsAdverses_LeperimetreEstUneListeBlanche(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.MatchsFiltres != 3 || out.MatchsRetenus != 3 || out.Reference.Reapparitions != 21 {
+	if out.Reference.Reapparitions != 21 {
 		t.Errorf("reponse = %+v", out)
 	}
 }

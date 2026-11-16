@@ -7,7 +7,7 @@ package replaydoc
 // rejeu la montre ou la masque avec lui (Seul / Masquer). Les zones sont celles de
 // `GET /matches/{match_id}/replay/callouts` (meme `volume_index`) : la prevision ne repete pas leur
 // forme, elle les designe. Une probabilite de zone est la SOMME des probabilites de ses points
-// candidats ; la part des candidats qu'aucune zone ne porte est `outside_zone`.
+// candidats.
 //
 // UN REFUS EST UNE REPONSE : une prevision qui n'a pas lieu d'etre (carte trop pauvre, modele
 // absent) se sert en `status: unavailable` avec sa raison, jamais en erreur.
@@ -32,21 +32,6 @@ type SpawnForecast struct {
 	// libelle, dans la langue de la requete.
 	Reason  string `json:"reason,omitempty" enum:"no_model,map_unknown,not_enough_matches,no_zone,no_respawn"`
 	Message string `json:"message,omitempty"`
-	// Family est la famille de modes du match (cle de donnee du titre, pas un libelle) ; Model le
-	// jeu de poids employe (la famille, ou `tous` quand elle n'a pas ses propres poids) et ModelDate
-	// le jour de son ajustement.
-	Family    string `json:"family,omitempty"`
-	Model     string `json:"model,omitempty"`
-	ModelDate string `json:"model_date,omitempty"`
-	// MatchesOnMap : matchs de la famille sur la carte, ce match compris ; Candidates : points
-	// candidats de la carte, hors ce match (une prevision ne voit pas la reponse).
-	MatchesOnMap int `json:"matches_on_map"`
-	Candidates   int `json:"candidates"`
-	// DiscardedDeaths : reapparitions que la prevision ne peut pas servir (equipe inconnue, aucun
-	// adversaire vivant pendant le compte a rebours).
-	DiscardedDeaths int `json:"discarded_deaths"`
-	// SampleStepMs est l'ecart entre deux echantillons d'une mort.
-	SampleStepMs int `json:"sample_step_ms"`
 	// Zones : les zones nommees que les previsions et les points reels designent, libelle dans la
 	// langue de la requete, triees par `volume_index`.
 	Zones []SpawnForecastZone `json:"zones"`
@@ -70,11 +55,10 @@ type SpawnForecastCandidate struct {
 	ZoneIndex int     `json:"zone_index"`
 }
 
-// SpawnForecastPoint est une position en metres monde, au centimetre.
+// SpawnForecastPoint est une position au sol en metres monde, au centimetre.
 type SpawnForecastPoint struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
-	Z float64 `json:"z"`
 }
 
 // SpawnForecastDeath est la prevision d'une mort suivie d'une reapparition, de la mort
@@ -96,9 +80,8 @@ type SpawnForecastDeath struct {
 // SpawnForecastSample est la prevision a un instant du compte a rebours : les zones de la plus a la
 // moins probable (une probabilite arrondie a zero n'est pas servie).
 type SpawnForecastSample struct {
-	Frame       int                       `json:"frame"`
-	Zones       []SpawnForecastZoneChance `json:"zones"`
-	OutsideZone float64                   `json:"outside_zone"`
+	Frame int                       `json:"frame"`
+	Zones []SpawnForecastZoneChance `json:"zones"`
 	// PointsP est la probabilite de chaque point de `points`, dans le meme ordre, arrondie au millieme
 	// (somme egale a 1 a l'arrondi pres). La probabilite d'une zone est la somme de ses points.
 	PointsP []float64 `json:"points_p"`

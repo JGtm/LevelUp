@@ -74,7 +74,6 @@ type TacticalReapparitionsAdversesRequest struct {
 // TacticalReapparitionsAdverses est la reponse : la repartition par zone des reapparitions adverses
 // quand l'equipe tient la zone choisie, et la repartition sans condition qui sert de reference.
 type TacticalReapparitionsAdverses struct {
-	MapID string `json:"map_id"`
 	// Etat vaut TacticalEtatServie, ou TacticalEtatVide quand la repartition « zone tenue » n'est pas
 	// lisible ; Raison dit alors pourquoi (TacticalRaison*). Une lecture vide reste une reponse 200.
 	Etat   string `json:"etat"`
@@ -82,12 +81,6 @@ type TacticalReapparitionsAdverses struct {
 
 	// Zone : la zone choisie, dans la langue de la requete.
 	Zone TacticalZoneChoisie `json:"zone"`
-
-	// MatchsFiltres : l'univers. MatchsRetenus : ceux qui nourrissent la lecture (sidecar exploitable,
-	// equipe du joueur nommee). MatchsSansEquipe : mesures, mais sans equipe nommee pour le joueur.
-	MatchsFiltres    int `json:"matchs_filtres"`
-	MatchsRetenus    int `json:"matchs_retenus"`
-	MatchsSansEquipe int `json:"matchs_sans_equipe"`
 
 	// Plancher : les seuils appliques a chaque repartition.
 	Plancher TacticalPlancherReapparitions `json:"plancher"`
@@ -100,7 +93,6 @@ type TacticalReapparitionsAdverses struct {
 
 // TacticalZoneChoisie est la zone demandee.
 type TacticalZoneChoisie struct {
-	VolumeIndex int `json:"volume_index"`
 	// Nom : le libelle du lieu dans la langue de la requete (repli en) ; vide sans nom au catalogue.
 	Nom string `json:"nom"`
 }
@@ -121,11 +113,22 @@ type TacticalRepartitionZones struct {
 	// Suffisante : les deux planchers sont atteints. Faux : Zones est vide et Raison dit lequel manque.
 	Suffisante bool   `json:"suffisante"`
 	Raison     string `json:"raison,omitempty"`
-	// Zones : triees par nombre decroissant puis par indice de volume. SansZone compte les
-	// reapparitions qu'aucune zone nommee ne nomme. La somme des deux vaut Reapparitions quand la
-	// repartition est suffisante.
-	Zones    []TacticalPartDeZone `json:"zones"`
-	SansZone int                  `json:"sans_zone"`
+	// Zones : triees par nombre decroissant puis par indice de volume. Les reapparitions qu'aucune
+	// zone nommee ne nomme n'y figurent pas (HorsZone).
+	Zones []TacticalPartDeZone `json:"zones"`
+}
+
+// HorsZone rend le nombre de reapparitions qu'aucune zone nommee ne nomme : Reapparitions moins la
+// somme des zones servies. Zero quand la repartition n'est pas suffisante (ses zones ne sont pas servies).
+func (r TacticalRepartitionZones) HorsZone() int {
+	if !r.Suffisante {
+		return 0
+	}
+	n := r.Reapparitions
+	for _, z := range r.Zones {
+		n -= z.Reapparitions
+	}
+	return n
 }
 
 // TacticalPartDeZone est la part d'une zone nommee dans une repartition.
