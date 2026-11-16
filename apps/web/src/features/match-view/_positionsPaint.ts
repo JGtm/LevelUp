@@ -16,7 +16,7 @@
 import type { ReplayBounds } from '@/lib/api/types'
 import { flouDeLaChaleur, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
 import type { TacticalGrid } from '@/lib/replay/heatPaint'
-import { normalizeTurns, orientBoundsAbout, type QuarterTurns } from '@/lib/replay/orientation'
+import { normalizeTurns, orientBoundsAbout, rotateCanvasAbout, type QuarterTurns } from '@/lib/replay/orientation'
 import type { XY } from '@/lib/replay/replayLogic'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { strokeWallPlan } from '@/lib/replay/wallPlanPaint'
@@ -64,8 +64,7 @@ export function peindreLesPositions(
   const h0 = impair ? width : height
   if (p.turns !== 0) {
     ctx.save()
-    ctx.translate(width / 2, height / 2)
-    ctx.rotate((p.turns * Math.PI) / 2)
+    rotateCanvasAbout(ctx, p.turns, width / 2, height / 2)
     ctx.translate(-w0 / 2, -h0 / 2)
   }
   // LE FOND ET LE CALQUE PARTAGENT LE MÊME CADRE, ET C'EST LA FENÊTRE VISIBLE. À 1x elle vaut la scène
