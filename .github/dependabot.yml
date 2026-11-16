@@ -48,6 +48,11 @@ updates:
       - dependency-name: "@tanstack/react-table"
         update-types:
           - "version-update:semver-major"
+      # Versions majeures : jamais par PR automatique (bruit quotidien des PR rouges laissées ouvertes,
+      # décision du user du 2026-11-16) ; une montée majeure est un lot décidé et fait à la main.
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   # Backend (Go modules) — apps/go-api
   - package-ecosystem: "gomod"
@@ -66,6 +71,11 @@ updates:
       # Briques publiées (ADR 0043) : leur version se monte à la main, par un lot qui rejoue les
       # témoins du décodeur (replay-equiv, gate de corpus), jamais par une PR automatique.
       - dependency-name: "github.com/JGtm/*"
+      # Versions majeures : jamais par PR automatique (bruit quotidien des PR rouges laissées ouvertes,
+      # décision du user du 2026-11-16) ; une montée majeure est un lot décidé et fait à la main.
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   # Coquille desktop (Rust, ADR 0045 D-18) : Cargo.lock est versionne, les bumps passent par la CI
   # (cargo test contre le faux serveur, clippy, audit).
@@ -81,6 +91,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Versions majeures : jamais par PR automatique (bruit quotidien des PR rouges laissées ouvertes,
+      # décision du user du 2026-11-16) ; une montée majeure est un lot décidé et fait à la main.
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   # Workflows GitHub Actions
   - package-ecosystem: "github-actions"
