@@ -1,7 +1,8 @@
 # Plan — suites de l'audit des versions 8.2.0 à 8.3.0 (2026-11-16)
 
-État : écrit, relu contre la grille `plan-review`. Réponses du user du 2026-11-16 portées ci-dessous
-(« Réponses du user »). Restent à trancher : D-2 i, D-2 j, D-6, D-7, D-8 (réexpliquées), puis le go.
+État : écrit, relu contre la grille `plan-review`. Toutes les décisions sont tranchées (trois séries de
+réponses du user, 2026-11-16, ci-dessous) ; quand une réponse contredit une recommandation de D-1 à D-8, la
+réponse fait foi. Attend le go d'exécution.
 Source : `.ai/AUDIT_VERSIONS_8_2_0_A_8_3_0_2026-11-16.md` (8 P1, 4 familles de P2). Demande du user
 (2026-11-16) : traiter tous les points de la revue sans attendre, amender l'ADR 0048, valider une à une les
 données servies sans lecteur.
@@ -91,6 +92,13 @@ Secondes réponses du user (2026-11-16, soir) :
 | D-2 i | non tranchée (le user ne situait plus la Mainmise ; réexpliquée) | C.2 en attente |
 | Replis | remarque du user : « je n'aime pas fonctionner avec des replis alors qu'on ne fait que de la lecture » | PROPOSITION à confirmer (une remarque n'est pas une validation) : A.5 devient le RETRAIT du repli sur l'écart de 4 à 15 s (0,08 % des réapparitions du parc régénéré, 1 artefact resté à un ancien schéma) ; un match sans lecture du film n'a alors pas de réapparitions, dit comme tel ; les comptes de D-2 k partent avec lui |
 
+Troisièmes réponses du user (2026-11-16, soir) : toutes les décisions sont tranchées.
+
+| Décision | Réponse | Effet sur le plan |
+|---|---|---|
+| D-2 i | accord : la Mainmise par match n'est plus envoyée aux Séries temporelles ; le user veut juger le format de la Mainmise en conditions réelles | C.2 inchangée ; élément `suites-audit-mainmise-format` ajouté à l'artefact des vérifications ; H.2 le reprend |
+| Repli des réapparitions | accord : retiré | A.5 réécrite ; D-2 k devient un retrait (les comptes du repli partent avec lui, format 8 du fichier tactique, avec A.6) |
+
 Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure de fiabilité) :
 
 | Statistique du film (champ du rejeu) | Source déjà en place |
@@ -176,9 +184,14 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
 - [ ] A.4 D-2 e et g appliquées : champs retirés de `domain/replaydoc/spawn_forecast.go`,
       `domain/tactical_reapparitions.go`, des services et de leurs tests ; le journal `slog` les garde.
       D-2 f et h : les champs de motif restent (lecteur à l'étape E.7).
-- [ ] A.5 Repli sur l'écart de 4 à 15 s : commentaire au format de la règle 11 (date, cible de retrait, critère :
-      part du repli lue dans les comptes du sidecar, D-2 k) ; les comptes `film` / `repli_ecart` sont lus et
-      rendus par `spawn-model fit` dans son bilan.
+- [ ] A.5 Repli sur l'écart de 4 à 15 s RETIRÉ (accord du user) : `EcartReapparitionMinMs` / `MaxMs`,
+      `SourceRepliEcart`, la branche de `analysis/tactical/reapparitions.go`, `sansLecturesDuFilm` de la CLI et
+      leurs tests ; les comptes `film`, `repli_ecart`, `debuts_de_manche` du fichier tactique partent avec lui
+      (même montée de format que A.6). Un match sans lecture du film n'a pas de réapparitions : dégradation
+      nommée et journalisée, la Tactique et le calque du rejeu affichent leur état vide. La définition écrite
+      dans `spawn_model.json` est remise au vrai au prochain `fit`.
+      Gate : `git grep -nE "SourceRepliEcart|EcartReapparitionM(in|ax)Ms|repli_ecart" -- apps/go-api` vide ;
+      sur les trois matchs témoins (tous à lecture du film), réapparitions identiques à l'étape 0.
 - [ ] A.6 D-2 j appliquée : `source` et `debut_de_manche` retirés du sidecar, `TacticalRasterSchemaVersion` 7 -> 8,
       note au registre des reports : « part avec la régénération au schéma 125 ».
 - [ ] A.7 `SpawnFamilySet.TitleSlug()`, `SchemaVersion()` et leurs champs retirés avec leur test.
@@ -341,7 +354,7 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
       corrigés, P2 au backlog.
 - [ ] H.2 Contrôles à l'écran du user, dans l'artefact des vérifications : menus du rejeu (fermeture par Échap et
       clic dehors), calque de probabilité et son état vide, Tactique « Réapparitions adverses », fonds Plan et
-      Rendu tournés sur les trois vues.
+      Rendu tournés sur les trois vues, format de la Mainmise (élément déjà posé le 2026-11-16).
 - [ ] H.3 Tous les items statués ; fusion dans `release/v8.3.0` (CI verte).
 - [ ] H.4 Régénération du parc des rejeux (schéma 125, format 8 du fichier tactique) : dernier geste, lancé par
       le user après la fusion ; ce plan ne la lance pas.
