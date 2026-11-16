@@ -2,7 +2,7 @@ package main
 
 // reglages.go — LES RÉGLAGES DE CUISSON PAR CARTE.
 //
-// LA RÈGLE, ET ELLE EST LA RAISON D'ÊTRE DE CE FICHIER. `libs/himap/himap` ne contient AUCUNE
+// LA RÈGLE, ET ELLE EST LA RAISON D'ÊTRE DE CE FICHIER. La brique `himap` ne contient AUCUNE
 // branche par carte : c'est ce qui rend la chaîne transférable, et une seule carte possède
 // l'oracle fort des positions de joueur, donc régler dans le code serait invérifiable.
 // Mais le gate utilisateur du 2026-08-26 a établi, images à l'appui, que le meilleur rendu
