@@ -8,7 +8,8 @@
  * leur ouverture. Ce module est le seul point d'entrée des autres features : elles n'importent ni les
  * clés ni le stockage.
  *
- * LECTURE SEULE : la commande vit dans le panneau « Vue » du rejeu.
+ * Orientation et plan des murs : LECTURE SEULE, leur commande vit dans le panneau « Vue » du rejeu. Le style du fond se
+ * lit ET s'écrit (pilule « Fond » de Tactique) : la clé est la même, les deux côtés bougent ensemble.
  */
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import type { QuarterTurns } from '@/lib/replay/orientation'
@@ -28,12 +29,14 @@ export interface MapViewPreferences {
    * une image plan (`resolveBackgroundVariant`) ; le plan des murs, lui, est déjà dans cette image.
    */
   backgroundStyle: MapBackgroundVariant
+  /** Change et retient le style du fond : la MÊME clé que le panneau « Vue » du rejeu (une seule source, lue et écrite des deux côtés). */
+  setBackgroundStyle: (style: MapBackgroundVariant) => void
 }
 
 /** useMapViewPreferences lit l'orientation de `mapId`, l'interrupteur du plan des murs et le style du fond. */
 export function useMapViewPreferences(mapId: string | null | undefined): MapViewPreferences {
   const { turns } = useReplayOrientation(mapId)
   const [showWallPlan] = usePersistedFlag(SHOW_WALL_PLAN_KEY, SHOW_WALL_PLAN_DEFAULT)
-  const [backgroundStyle] = useBackgroundStyle()
-  return { turns, showWallPlan, backgroundStyle }
+  const [backgroundStyle, setBackgroundStyle] = useBackgroundStyle()
+  return { turns, showWallPlan, backgroundStyle, setBackgroundStyle }
 }

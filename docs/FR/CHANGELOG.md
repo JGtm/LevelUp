@@ -10,7 +10,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [8.3.0] - Non publiée
 
-> Le décodeur de film passe à la v1.4.1 (`SchemaVersion` 125) : touches, dégâts en points, jauge de retour du drapeau et sièges de la table du film sont lus ; le web les type ; rien de neuf à l'écran pour l'instant.
+> Le décodeur de film passe à la v1.4.1 (`SchemaVersion` 125) : touches, dégâts en points, jauge de retour du drapeau et sièges de la table du film sont lus ; le web les type ; à l'écran, Tactique gagne la lecture « Réapparitions adverses » et la vue plan dans les vignettes des cartes, le fond « Plan » devient le défaut, et les zones nommées sont rognées au plan.
+
+### Ajouté
+- **Tactique : réapparitions adverses** — une lecture « Réapparitions adverses » sur le plan de la page Tactique : chaque zone nommée est teintée selon la part des réapparitions adverses qui y tombent quand l'équipe tient la zone choisie, avec l'écart en points à la répartition sans condition, et des barres comparent les deux (route `POST /players/{slug}/tactical/{map_id}/reapparitions-adverses`) ; sous 3 matchs ou 20 réapparitions, un bloc pointillé montre les deux jauges. Les vignettes de « Cartes jouées » montrent la vue plan (la vignette du rendu quand une carte n'en a pas), et les zones nommées sont rognées à l'alpha de l'image plan sur le plan de la page Tactique et sur le calque des zones nommées du rejeu, quel que soit le fond affiché (`lib/replay/planMask`). La pilule « Fond » (Plan / Rendu) revient sur le plan de la page Tactique et partage la préférence du rejeu ; le défaut est Plan.
 
 ### Modifié
 - **Briques publiées** — `halo-infinite-film-decoder` v1.4.1 (v1.3.9 en 8.2.1) ; les autres briques ne changent pas.

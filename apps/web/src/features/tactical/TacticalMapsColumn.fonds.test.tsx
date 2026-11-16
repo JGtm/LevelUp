@@ -106,20 +106,38 @@ describe('TacticalMapsColumn — fonds', () => {
     expect(getBlob).not.toHaveBeenCalled()
   })
 
-  it('une vignette qui entre dans le champ de vision demande SON image, une fois', async () => {
+  it('une vignette qui entre dans le champ de vision demande SA vue plan, une fois', async () => {
     rendre()
     entrer('carte-0')
     entrer('carte-1')
     expect(await screen.findByTestId('tactical-map-fond-carte-0')).toBeInTheDocument()
     expect(await screen.findByTestId('tactical-map-fond-carte-1')).toBeInTheDocument()
     expect(getBlob.mock.calls.map((c) => c[0])).toEqual([
-      '/players/JGtm/tactical/carte-0/background.png',
-      '/players/JGtm/tactical/carte-1/background.png',
+      '/players/JGtm/tactical/carte-0/background.png?variante=plan',
+      '/players/JGtm/tactical/carte-1/background.png?variante=plan',
     ])
+    expect(screen.getByTestId('tactical-map-fond-carte-0')).toHaveAttribute('data-variante', 'plan')
+    // La vue plan se pose ENTIÈRE dans le cadre, comme le calque du mini-plan.
+    expect(screen.getByTestId('tactical-map-fond-carte-0').className).toContain('object-contain')
     expect(get).not.toHaveBeenCalled()
     // Une seconde entrée ne redemande rien (même clé de cache).
     entrer('carte-0')
     expect(getBlob).toHaveBeenCalledTimes(2)
+  })
+
+  it('une carte sans vue plan (404) garde la vignette du rendu', async () => {
+    getBlob.mockImplementation((chemin: string) =>
+      chemin.includes('variante=plan') ? Promise.reject(new Error('404')) : Promise.resolve(new Blob(['png'])),
+    )
+    rendre()
+    entrer('carte-0')
+    const image = await screen.findByTestId('tactical-map-fond-carte-0')
+    expect(image).toHaveAttribute('data-variante', 'rendu')
+    expect(image.className).toContain('object-cover')
+    expect(getBlob.mock.calls.map((c) => c[0])).toEqual([
+      '/players/JGtm/tactical/carte-0/background.png?variante=plan',
+      '/players/JGtm/tactical/carte-0/background.png',
+    ])
   })
 
   it('une carte sans calage (sans fond figé) ne demande jamais d’image, même visible', () => {

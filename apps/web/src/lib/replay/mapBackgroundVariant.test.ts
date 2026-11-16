@@ -9,13 +9,13 @@ import {
 } from './mapBackgroundVariant'
 
 describe('normalizeBackgroundStyle', () => {
-  it('ne reconnait que plan ; tout le reste est le rendu', () => {
+  it('reconnait plan et rendu ; tout le reste est le défaut, le plan', () => {
     expect(normalizeBackgroundStyle('plan')).toBe('plan')
     expect(normalizeBackgroundStyle('rendu')).toBe('rendu')
-    expect(normalizeBackgroundStyle('PLAN')).toBe('rendu')
-    expect(normalizeBackgroundStyle('autre')).toBe('rendu')
-    expect(normalizeBackgroundStyle(null)).toBe('rendu')
-    expect(normalizeBackgroundStyle(undefined)).toBe('rendu')
+    expect(normalizeBackgroundStyle('PLAN')).toBe('plan')
+    expect(normalizeBackgroundStyle('autre')).toBe('plan')
+    expect(normalizeBackgroundStyle(null)).toBe('plan')
+    expect(normalizeBackgroundStyle(undefined)).toBe('plan')
   })
 })
 

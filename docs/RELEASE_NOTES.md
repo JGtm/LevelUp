@@ -2,6 +2,7 @@
 
 **v8.3 — In preparation**
 
+- **Where the opposition respawns, by held zone** — a new "Opposing respawns" reading in Tactics: pick a zone the team holds and every zone is tinted by the share of opposing respawns that fall there, with the gap from the overall split; the map thumbnails now show the plan view, and the named zones stop at the edge of the plan's floor
 - **Hits and damage read from the film** — the film now gives each hit and the damage it dealt, to the shield and to the body, and the countdown before a dropped flag returns. The replay does not show them yet; they will be shown only for players whose film is complete enough to count them reliably
 - **Each player in the right seat** — the seat of each player in the film is read from the game's own lists
 

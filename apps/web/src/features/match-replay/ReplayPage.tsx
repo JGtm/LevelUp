@@ -101,6 +101,10 @@ export function ReplayPage() {
   const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
   // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
   const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
+  // L'IMAGE PLAN, SOURCE DU MASQUE DES ZONES NOMMÉES (`lib/replay/planMask`), chargée quel que soit le fond affiché : les
+  // zones se rognent au plan sur le rendu comme sur le plan. Même clé de cache que le fond plan : jamais téléchargée
+  // deux fois. Carte sans image plan, ou plan en échec (repli sur le rendu) : pas de masque, zones entières.
+  const { image: planImage, variante: variantePlan } = useReplayMapImage(playerSlug, matchId, !!background?.planImage, 'plan')
   const mapBackground = useMemo(
     () =>
       background && mapImage
@@ -110,9 +114,10 @@ export function ReplayPage() {
             plan: normalizeWallPlan(background.plan),
             variante,
             planAvailable: !!background.planImage,
+            zonesClip: planImage && variantePlan === 'plan' ? { calibration: background.calibration, image: planImage } : null,
           }
         : null,
-    [background, mapImage, variante],
+    [background, mapImage, variante, planImage, variantePlan],
   )
   // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
   // la zone du tueur du fil des éliminations. 404 = la carte n'en a pas (Forge) — liste vide, rien.

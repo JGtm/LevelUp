@@ -85,6 +85,9 @@ import { useHauteurDuPlan } from './useHauteurDuPlan'
 import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
 import { ETIQUETTE, PILULE } from './pilules'
+import { LECTURE_REAPPARITIONS } from './reapparitions.logic'
+import { TacticalPiluleFond } from './TacticalPiluleFond'
+import { PiluleLecture } from './TacticalPiluleLecture'
 import { PilulesDeReapparition } from './TacticalPlanVies'
 import type { TacticalVies } from './vies.logic'
 import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
@@ -109,6 +112,10 @@ export interface ReglagesDuPlan {
   /** Les contours et noms des zones nommées sont peints sur le plan. */
   zonesVisibles: boolean
   onZonesVisiblesChange: (visibles: boolean) => void
+  /** « Réapparitions adverses » est proposée dans la pilule « Lecture » (capability `spawn_forecast` du titre). */
+  reapparitionsDisponibles?: boolean
+  /** « Réapparitions adverses » est choisie dans la pilule : la vue d'analyse change de lecture. */
+  onReapparitions?: () => void
 }
 
 export interface TacticalPlanCardProps {
@@ -222,7 +229,7 @@ export function TacticalPlanCard({
         title={titre}
         label={titre || undefined}
         titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} {...reglages} />,
+          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} playerSlug={playerSlug} mapId={mapId} {...reglages} />,
           testId: 'tactical-plan-title',
         })}
       >
@@ -324,26 +331,22 @@ function ReglagesEnPilules({
   grappes,
   zonesVisibles,
   onZonesVisiblesChange,
+  reapparitionsDisponibles = false,
+  onReapparitions,
   zonesDisponibles,
-}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean }) {
+  playerSlug,
+  mapId,
+}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean; playerSlug: string; mapId: string }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
-      <label className={PILULE} onPointerEnter={onQuestionIntent} onFocus={onQuestionIntent}>
-        <span className={ETIQUETTE}>{t.pillReading}</span>
-        <select
-          value={question}
-          onChange={(e) => onQuestionChange(e.target.value as TacticalQuestion)}
-          aria-label={t.pillReading}
-          className="w-[146px] bg-transparent pl-1.5 pr-0.5 text-foreground"
-        >
-          {t.analysisQuestions.map((q) => (
-            <option key={q.id} value={q.id}>
-              {q.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <PiluleLecture
+        t={t}
+        valeur={question}
+        onChange={(lecture) => (lecture === LECTURE_REAPPARITIONS ? onReapparitions?.() : onQuestionChange(lecture))}
+        onIntent={onQuestionIntent}
+        avecReapparitions={reapparitionsDisponibles}
+      />
       <span role="group" aria-label={t.pillPlayers} className={PILULE}>
         <span className={ETIQUETTE}>{t.pillPlayers}</span>
         {QUI_VALEURS.map((valeur, i) => {
@@ -374,6 +377,7 @@ function ReglagesEnPilules({
         vies={vies}
         onViesChange={onViesChange}
       />
+      <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
       {zonesDisponibles && (
         <button
           type="button"

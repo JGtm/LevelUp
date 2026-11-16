@@ -49,7 +49,16 @@ beforeEach(() => {
 })
 
 describe('TacticalPlanFond — style du fond', () => {
-  it('par défaut : l’image rendu, même si la carte a un plan', async () => {
+  it('par défaut : l’image plan quand la carte en a une', async () => {
+    sidecar(true)
+    rendre()
+    await waitFor(() => expect(document.querySelector('img')).not.toBeNull())
+    expect(getBlob).toHaveBeenCalledWith(PLAN)
+    expect(getBlob).not.toHaveBeenCalledWith(RENDU)
+  })
+
+  it('réglage rendu : l’image rendu, même si la carte a un plan', async () => {
+    window.localStorage.setItem('replay-background-style', 'rendu')
     sidecar(true)
     rendre()
     await waitFor(() => expect(document.querySelector('img')).not.toBeNull())
@@ -87,11 +96,11 @@ describe('TacticalPlanFond — style du fond', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('valeur de réglage inconnue : le rendu', async () => {
+  it('valeur de réglage inconnue : le défaut, le plan', async () => {
     window.localStorage.setItem('replay-background-style', 'bizarre')
     sidecar(true)
     rendre()
-    await waitFor(() => expect(getBlob).toHaveBeenCalledWith(RENDU))
-    expect(getBlob).not.toHaveBeenCalledWith(PLAN)
+    await waitFor(() => expect(getBlob).toHaveBeenCalledWith(PLAN))
+    expect(getBlob).not.toHaveBeenCalledWith(RENDU)
   })
 })

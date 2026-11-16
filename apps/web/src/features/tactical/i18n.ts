@@ -11,6 +11,7 @@ import { tacticalManifest, type TacticalManifestKey } from '@/lib/i18n/generated
 import type { Locale } from '@/lib/i18n/locale'
 
 import { getMortText } from './mortText'
+import { getReapparitionsText } from './reapparitionsText'
 
 export function getTacticalText(locale: Locale) {
   const m = (key: TacticalManifestKey, values?: Record<string, unknown>) =>
@@ -110,6 +111,9 @@ export function getTacticalText(locale: Locale) {
     livesStart: m('tactical.plan.lives_start'),
     livesAll: m('tactical.plan.lives_all'),
     livesHint: m('tactical.plan.lives_hint'),
+    pillBackground: m('tactical.plan.pill_background'),
+    backgroundPlan: m('tactical.plan.background_plan'),
+    backgroundRender: m('tactical.plan.background_render'),
     pillZones: m('tactical.plan.pill_zones'),
 
     // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────
@@ -165,6 +169,7 @@ export function getTacticalText(locale: Locale) {
     tileOpenReplayNoInstant: (secondes: number) => m('tactical.tile.open_replay_no_instant', { secondes }),
     tileOpenReplay: (instant: string, secondes: number) => m('tactical.tile.open_replay', { instant, secondes }),
     ...getMortText(m),
+    ...getReapparitionsText(m),
   }
 }
 

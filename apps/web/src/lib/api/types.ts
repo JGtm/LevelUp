@@ -2631,6 +2631,14 @@ export type TacticalEquipeALaMort = components['schemas']['TacticalEquipeALaMort
 export type TacticalSequence = components['schemas']['TacticalSequence']
 export type TacticalSequenceBody = components['schemas']['TacticalSequenceBody']
 
+// La lecture « RÉAPPARITIONS ADVERSES » (lot C) : où l'adversaire réapparaît quand l'équipe tient la zone
+// choisie, à côté de la répartition sans condition. Les raisons d'un état vide sont des codes stables : le
+// texte s'écrit côté web.
+export type TacticalReapparitionsAdverses = components['schemas']['TacticalReapparitionsAdverses']
+export type TacticalReapparitionsAdversesBody = components['schemas']['TacticalReapparitionsAdversesBody']
+export type TacticalRepartitionZones = components['schemas']['TacticalRepartitionZones']
+export type TacticalPartDeZone = components['schemas']['TacticalPartDeZone']
+
 // Le bloc COORDINATION du lot N1 (appui reçu), servi tel quel par Sessions et
 // les Séries temporelles. Alias stricts du contrat généré : un renommage
 // côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution.

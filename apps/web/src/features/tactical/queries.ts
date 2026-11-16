@@ -154,7 +154,9 @@ export function useTacticalMaps(
 }
 
 /**
- * useTacticalMapBackgroundUrl — l'URL affichable du fond d'une carte, ou `null`.
+ * useTacticalMapBackgroundImage — l'URL affichable du fond d'une carte (`null` tant qu'elle n'est pas là) et QUELLE
+ * variante est réellement chargée (le plan demandé mais en échec rend le rendu de repli) : les murs se décident
+ * sur cette variante-là, pas sur celle qu'on a demandée.
  *
  * L'URL D'OBJET **EST** L'ENTRÉE DE CACHE, et c'est un choix, pas une facilité. Elle est
  * créée une fois dans la requête et gardée pour la session (`staleTime` et `gcTime`
@@ -181,21 +183,7 @@ export function useTacticalMaps(
  *
  * `variante` : `rendu` (défaut, l'image du fond) ou `plan` (la vue plan à hauteurs, même calage et mêmes
  * dimensions, donc le cadre et le calque ne bougent pas). Une clé de cache par variante. Les vignettes
- * de la grille gardent le rendu.
- */
-export function useTacticalMapBackgroundUrl(
-  playerSlug: string,
-  mapId: string,
-  actif = true,
-  variante: MapBackgroundVariant = 'rendu',
-): string | null {
-  return useTacticalMapBackgroundImage(playerSlug, mapId, actif, variante).url
-}
-
-/**
- * useTacticalMapBackgroundImage — comme `useTacticalMapBackgroundUrl`, et dit en plus QUELLE variante est
- * réellement chargée (le plan demandé mais en échec rend le rendu de repli) : les murs se décident sur
- * cette variante-là, pas sur celle qu'on a demandée.
+ * de la grille demandent le plan d'abord : une carte sans vue plan répond 404 et retombe sur le rendu.
  */
 export function useTacticalMapBackgroundImage(
   playerSlug: string,

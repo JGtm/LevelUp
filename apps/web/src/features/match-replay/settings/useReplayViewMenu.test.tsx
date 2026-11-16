@@ -178,6 +178,7 @@ describe('useReplayViewMenu', () => {
   it('le fond : la commande suit la présence d une image plan, et son choix est retenu', () => {
     const sans = mount(FULL_FILM)
     expect(sans.result.current.menu.panel.background.available).toBe(false)
+    window.localStorage.setItem('replay-background-style', 'rendu')
     const { result } = mount(FULL_FILM, { available: true, shown: false })
     expect(result.current.menu.panel.background).toMatchObject({ available: true, value: 'rendu' })
     act(() => result.current.menu.panel.background.onSelect('plan'))

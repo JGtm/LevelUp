@@ -341,8 +341,18 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       `service`, `api`, `archlint`, `cmd/levelup`, `games`, `platform/duckdb` (50 paquets ok, sortie 0) ;
       `golangci-lint run --new-from-rev=094693dbe5` : 0 issue. Deux ratchets ont demandé un statut (liste nommée des POST de
       lecture en démo ; colonne `mode_category` hors seeds, entrée datée de `ratchetColonnesHorsPerimetre`).
-- [ ] C.4 Web selon la maquette choisie : tokens de couleur uniquement, titres factuels sans possessif,
+- [x] C.4 Web selon la maquette choisie : tokens de couleur uniquement, titres factuels sans possessif,
       états vides (bloc + pointillé), FR et EN.
+      Fait (2026-11-16, branche `feat/reapp-web-c`, non poussée ; contrôle à l'écran du user restant) : option « Réapparitions
+      adverses » de la pilule « Lecture » (capability de titre `spawn_forecast`), plan annoté (zones teintées, puce d'écart en
+      points, zone tenue hachurée choisie d'un clic ou dans la pilule « Zone tenue »), colonne de barres comparées (épaisse =
+      tenue, fine = sans condition), état vide en bloc pointillé à deux jauges et plan en gris, légende en bas
+      (`features/tactical/TacticalReapparitions*.tsx`, `reapparitions.logic.ts`, `queriesReapparitions.ts`, textes
+      `tactical.reapp.*`). Vignettes de « Cartes jouées » en vue plan (repli sur le rendu). Rognage partagé des zones au plan
+      par l'alpha de l'image plan : `lib/replay/planMask.ts` et `PlanMaskDef.tsx`, appliqué à Tactique et au calque des zones
+      nommées du rejeu 2D (formes seulement), quel que soit le fond affiché (l'image plan est chargée à part, même clé de cache que le
+      fond plan). Pilule « Fond » (Plan / Rendu) sur Tactique, même préférence que le rejeu (lue et écrite), défaut Plan. Carte sans
+      vue plan = vignette du rendu et zones entières.
 
 Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran par le user.
 

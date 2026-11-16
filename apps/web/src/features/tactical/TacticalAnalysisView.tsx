@@ -31,6 +31,9 @@ import { carteLue, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { etatDuPlan } from './plan.logic'
 import { usePrechargementDesLectures, useTacticalCellule, useTacticalRaster } from './queries'
+import { LECTURE_REAPPARITIONS } from './reapparitions.logic'
+import { PiluleLecture } from './TacticalPiluleLecture'
+import { TacticalReapparitionsView } from './TacticalReapparitionsView'
 import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
@@ -88,8 +91,13 @@ export function TacticalAnalysisView({
 }: TacticalAnalysisViewProps) {
   const reglages = useReglages(coequipiers, onDemandeComposition)
   const { question, qui, spawn } = reglages
+  const spawnForecast = useCapability('spawn_forecast')
   // Un titre sans `spawn_forecast` ne demande jamais « Toutes les vies » (le serveur la refuserait).
-  const vies = viesEffectives(reglages.vies, useCapability('spawn_forecast'))
+  const vies = viesEffectives(reglages.vies, spawnForecast)
+  // LA LECTURE « RÉAPPARITIONS ADVERSES » remplace le plan et la colonne de zone ; elle n'existe que pour un
+  // titre qui déclare `spawn_forecast` (même capability que « Vies »).
+  const [reapparitions, setReapparitions] = useState(false)
+  const reapparitionsActives = reapparitions && spawnForecast
 
   const params = useMemo(
     () => ({
@@ -121,13 +129,49 @@ export function TacticalAnalysisView({
     mapId: carte.mapId,
     cle: `${carte.mapId}:${question}:${qui}:${spawn}:${vies}`,
     lecture: lectureAffichee,
-    pret: etatPlan === 'pret',
+    pret: etatPlan === 'pret' && !reapparitionsActives,
     params,
   })
   // La contribution mise en avant, partagée par la tuile et le plan ; remise à zéro avec la zone.
   const { survol, setSurvol, choisie, choisir } = useContributionChoisie(zone.cle)
   useEchapEcarteLaZone(zone.selected !== null && choisie === null, zone.ecarter)
   const { vue, etatSequence } = useVueDeMort(playerSlug, carte.mapId, zone.contributions, choisie)
+  const reglagesDuPlan = {
+    ...reglages,
+    onQuestionChange: (q: TacticalQuestion) => {
+      reglages.onQuestionChange(q)
+      setReapparitions(false)
+    },
+    onQuestionIntent: etatPlan === 'pret' ? precharger : undefined,
+    reapparitionsDisponibles: spawnForecast,
+    onReapparitions: () => setReapparitions(true),
+  }
+
+  if (reapparitionsActives) {
+    return (
+      <TacticalReapparitionsView
+        playerSlug={playerSlug}
+        carte={carte}
+        mapName={mapName}
+        locale={locale}
+        t={t}
+        matchIds={matchIds}
+        coequipiers={coequipiers}
+        lecture={lectureAffichee}
+        etat={etatPlan}
+        inconnus={coequipiersInconnus}
+        pilule={
+          <PiluleLecture
+            t={t}
+            valeur={LECTURE_REAPPARITIONS}
+            onChange={(lecture) => lecture !== LECTURE_REAPPARITIONS && reglagesDuPlan.onQuestionChange(lecture)}
+            onIntent={reglagesDuPlan.onQuestionIntent}
+            avecReapparitions
+          />
+        }
+      />
+    )
+  }
 
   return (
     <div
@@ -146,11 +190,7 @@ export function TacticalAnalysisView({
         etat={etatPlan}
         inconnus={coequipiersInconnus}
         etiquette={zone.cellule && zone.detail.data ? titreDeZone(t, true, zone.detail.data) : null}
-        reglages={{
-          ...reglages,
-          onQuestionIntent: etatPlan === 'pret' ? precharger : undefined,
-          grappes: lectureAffichee?.grappes ?? [],
-        }}
+        reglages={{ ...reglagesDuPlan, grappes: lectureAffichee?.grappes ?? [] }}
         selected={zone.selected}
         onPointSelect={zone.choisir}
         contributions={zone.contributions}

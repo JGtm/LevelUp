@@ -23,12 +23,14 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
+import { rognerAuPlan } from '../../../lib/replay/planMask'
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { drawWallPlanLayer } from './wallPlanLayer'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { drawMapBackground, placeMapBackground, type MapBackgroundSource } from './mapBackgroundDraw'
 import { orientHeatGrid } from '@/lib/replay/orientation'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
@@ -62,6 +64,11 @@ export interface StaticLayersInput {
     bigColors: string[]
     fineInk: string
     locale: ReplayLocale
+    /**
+     * L'IMAGE PLAN de la carte (calage + image décodée), quel que soit le fond affiché : l'alpha du plan rogne les FORMES des zones
+     * (`lib/replay/planMask`), jamais leurs libellés. `null`/absent = carte sans vue plan : zones entières.
+     */
+    plan?: MapBackgroundSource | null
   }
   heat: { grid: HeatGrid | null; ramp: string[] }
   /** Le plan des murs du fond retenu (`null` = pas de plan) et son encre. */
@@ -156,17 +163,20 @@ export function useReplayStaticLayers({
     redraw()
   }, [plan, wallInk, cookView, redraw])
 
-  const { zones: zoneList, bigColors, fineInk, locale } = zones
+  const { zones: zoneList, bigColors, fineInk, locale, plan: planDuFond = null } = zones
   useEffect(() => {
     if (zoneList.length === 0 || cookView.width === 0) {
       zonesRef.current = null
       return
     }
-    zonesRef.current = cookLayer(cookView, (ctx) =>
-      drawCalloutsLayer(ctx, zoneList, (p) => projectTo(cookView, p), { bigColors, fineInk, locale }),
-    )
+    zonesRef.current = cookLayer(cookView, (ctx) => {
+      const rect = placeMapBackground(planDuFond, cookView)
+      const rogner =
+        planDuFond && rect ? () => rognerAuPlan(ctx, () => drawMapBackground(ctx, planDuFond, rect, cookView)) : undefined
+      drawCalloutsLayer(ctx, zoneList, (p) => projectTo(cookView, p), { bigColors, fineInk, locale }, rogner)
+    })
     redraw()
-  }, [zoneList, bigColors, fineInk, locale, cookView, redraw])
+  }, [zoneList, bigColors, fineInk, locale, planDuFond, cookView, redraw])
 
   const { grid: heatGrid, ramp } = heat
   useEffect(() => {

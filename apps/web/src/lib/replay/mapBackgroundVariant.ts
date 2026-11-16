@@ -17,18 +17,18 @@ export type MapBackgroundVariant = 'rendu' | 'plan'
 /** Les variantes, dans l'ordre où la commande les propose. */
 export const MAP_BACKGROUND_VARIANTS: readonly MapBackgroundVariant[] = ['rendu', 'plan']
 
-/** Le rendu est le défaut : c'est le fond d'avant le plan. */
-export const DEFAULT_MAP_BACKGROUND_VARIANT: MapBackgroundVariant = 'rendu'
+/** Le plan est le défaut (décision du 2026-11-16, maquettes des réapparitions) ; une carte sans image plan sert le rendu. */
+export const DEFAULT_MAP_BACKGROUND_VARIANT: MapBackgroundVariant = 'plan'
 
 /** La valeur de `variante=` que l'API accepte pour l'image plan. */
 const PLAN_QUERY = 'variante=plan'
 
 /**
  * normalizeBackgroundStyle lit une valeur persistée de façon tolérante : tout ce qui n'est pas une
- * variante connue (absent, écrit par une autre version) vaut le rendu.
+ * variante connue (absent, écrit par une autre version) vaut le défaut (le plan).
  */
 export function normalizeBackgroundStyle(raw: unknown): MapBackgroundVariant {
-  return raw === 'plan' ? 'plan' : DEFAULT_MAP_BACKGROUND_VARIANT
+  return raw === 'rendu' || raw === 'plan' ? raw : DEFAULT_MAP_BACKGROUND_VARIANT
 }
 
 /**
