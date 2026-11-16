@@ -1,14 +1,15 @@
 /**
- * useReplayRespawnForecast — LA PROBABILITÉ DE RÉAPPARITION, câblée au canvas : le chargement (seulement
- * quand le calque est actif), la jointure des zones de la réponse avec leurs formes (`/replay/callouts`,
+ * useReplayRespawnForecast — LA PROBABILITÉ DE RÉAPPARITION, câblée au canvas : le chargement (dès que la carte
+ * a des zones nommées, calque allumé ou non), la jointure des zones de la réponse avec leurs formes (`/replay/callouts`,
  * même `volume_index`), les textes dans la langue de la page et les DEUX peintres que la scène ordonne
  * (la teinte sous les pions, les repères et la légende au-dessus).
  *
  * UN REFUS EST UN CALQUE ABSENT, pas une erreur ni une action impossible : réponse `unavailable`,
  * échec de chargement, carte sans zone nommée, aucune mort exploitable — le calque ne se peint pas et
- * son interrupteur n'est pas proposé. Tant que la réponse n'est pas connue, l'interrupteur n'est offert
- * que si le calque est ÉTEINT (sans lui, un lecteur qui l'a éteint ne pourrait jamais le rallumer) ; allumé
- * et en cours de chargement, il attend.
+ * son interrupteur n'est pas proposé. LA DISPONIBILITÉ NE SE DÉDUIT JAMAIS DE LA PRÉFÉRENCE : la réponse est
+ * demandée calque éteint comme allumé (une seule requête, même clé, jamais rechargée à l'allumage) et
+ * l'interrupteur n'est offert que lorsqu'elle est prête. Un rejeu dont la réponse sera `unavailable` ne
+ * l'offre donc jamais, et un rejeu servi ne l'offre qu'une fois la réponse arrivée : aucun clignotement.
  *
  * SEUL / MASQUER : la probabilité APPARTIENT au joueur mort. `shownAuthor` (`focusFilter.author`) la retire
  * avec ses autres traces, et le sans-joueur n'existe pas ici : chaque mort porte son xuid.
@@ -100,7 +101,7 @@ export function forecastWording(locale: ReplayLocale): ForecastWording {
 export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespawnForecast {
   const { doc, view, enabled, draw, playerSlug = '', matchId = '', locale, callouts, identity, ink, shownAuthor, clipMask } = o
   const hasZones = callouts.length > 0
-  const query = useReplaySpawnForecast(playerSlug, matchId, enabled && hasZones, locale)
+  const query = useReplaySpawnForecast(playerSlug, matchId, hasZones, locale)
   const forecast = useMemo(() => normalizeSpawnForecast(query.data), [query.data])
   const zones = useMemo(() => {
     const byIndex = new Map(callouts.map((c) => [c.volumeIndex, c]))
@@ -164,7 +165,6 @@ export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespa
     ] as const satisfies ReplayRespawnForecast['layers']
   }, [forecast, frameMs, shownAuthor, inputs, clip, view, draw])
 
-  const known = query.data !== undefined || query.isError
-  const available = !!playerSlug && !!matchId && hasZones && (known ? ready : !enabled)
+  const available = !!playerSlug && !!matchId && hasZones && ready
   return useMemo(() => ({ layers, show: enabled, ready, available }), [layers, enabled, ready, available])
 }

@@ -189,7 +189,7 @@ func TestReapparitionsAdverses_SousLePlancherDeMatchs(t *testing.T) {
 func TestReapparitionsAdverses_AucunFiltreParMode(t *testing.T) {
 	univ, store := matchsAssassin(6, 4, 3)
 	univ.Matchs[0].GameVariantName = "Oddball:Arena"
-	univ.Matchs[1].ModeCategory = "BTB"
+	univ.Matchs[1].GameVariantName = "BTB:Heavies"
 	svc, _ := svcAdverses(t, univ, store)
 	out, err := lireAdverses(svc, idsDe(6), volHall)
 	if err != nil {

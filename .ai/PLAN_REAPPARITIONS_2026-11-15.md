@@ -322,7 +322,7 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       au moins 2 vivants de l'équipe du joueur de la page dans le VOLUME de la zone choisie (forme au sol +
       tranche, marge `MargeTrancheZM`), lus dans l'instantané ; chaque réapparition est rangée dans la zone
       nommée par `NommerZone` avec sa hauteur. Mode (D-2, réécrit le 2026-11-16) : aucun filtre
-      par mode, tout match mesuré entre ; seuls les planchers décident (`mode_category` reste ajouté à `TacticalMatch`).
+      par mode, tout match mesuré entre ; seuls les planchers décident (le champ `TacticalMatch.ModeCategory` et sa lecture SQL, devenus sans lecteur, sont supprimés à la relecture du 2026-11-16).
       Capability `film.replay_artifact` ET `film.spawn_forecast`
       exigées (`ErrCapabilityNotSupported`, 503). `PoidsDeFamille` / `ChargerPoidsReapparition` restent SANS
       appelant : la lecture compte des réapparitions observées et n'en prévoit aucune, leur appelant est la prévision
@@ -340,7 +340,7 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       Porte passée le 2026-11-16 : `go build ./...` et `go vet ./...` verts ; `go test` sur `analysis/tactical`, `domain`,
       `service`, `api`, `archlint`, `cmd/levelup`, `games`, `platform/duckdb` (50 paquets ok, sortie 0) ;
       `golangci-lint run --new-from-rev=094693dbe5` : 0 issue. Deux ratchets ont demandé un statut (liste nommée des POST de
-      lecture en démo ; colonne `mode_category` hors seeds, entrée datée de `ratchetColonnesHorsPerimetre`).
+      lecture en démo ; l'entrée `mode_category` de `ratchetColonnesHorsPerimetre` est retirée avec le champ).
 - [x] C.4 Web selon la maquette choisie : tokens de couleur uniquement, titres factuels sans possessif,
       états vides (bloc + pointillé), FR et EN.
       Fait (2026-11-16, branche `feat/reapp-web-c`, non poussée ; contrôle à l'écran du user restant) : option « Réapparitions
@@ -508,7 +508,7 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
 - (C.2) « Zone tenue » est le CONTENU de la zone choisie (forme + tranche), pas le nom en jeu du point des joueurs : une
   grande zone tient pour les joueurs de ses zones imbriquées. Le rangement des réapparitions, lui, suit `NommerZone`
   (zone la plus précise) : choisir une grande zone donne des réapparitions réparties sur des zones fines.
-- (C.2) `domain/tactical.go` reste à 500 lignes (le champ `ModeCategory` a été payé par un commentaire resserré) :
+- (C.2) `domain/tactical.go` reste à 500 lignes (le champ `ModeCategory`, ajouté puis supprimé sans lecteur, a été retiré) :
   toute nouvelle déclaration du périmètre Tactique va dans un fichier voisin.
 - (C.2) Sur le parc local (sidecars en schéma 6) la lecture rend `aucun_match_mesure` tant que le rattrapage v7 (geste
   G7) n'est pas passé, comme les grappes du lot B.

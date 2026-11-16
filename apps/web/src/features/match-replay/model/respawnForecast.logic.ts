@@ -160,9 +160,13 @@ function normalizeSamples(raw: readonly ReplaySpawnForecastSample[] | null, poin
   return out.sort((a, b) => a.frame - b.frame)
 }
 
-/** L'échantillon d'une mort à une image : le plus récent qui ne la dépasse pas, le premier avant eux. */
-export function sampleAt(death: ForecastDeath, frame: number): ForecastSample {
-  let found = death.samples[0]
+/**
+ * L'échantillon d'une mort à une image : le plus récent qui ne la dépasse pas, `null` avant le premier. Le
+ * serveur saute une seconde sans adversaire vivant : le premier échantillon peut suivre `death_frame`, et
+ * montrer avant lui un échantillon calculé sur des positions postérieures serait afficher le futur.
+ */
+export function sampleAt(death: ForecastDeath, frame: number): ForecastSample | null {
+  let found: ForecastSample | null = null
   for (const s of death.samples) {
     if (s.frame > frame) break
     found = s
@@ -202,6 +206,7 @@ export function momentOf(
   if (frame < death.deathFrame) return null
   if (frame < death.respawnFrame) {
     const sample = sampleAt(death, frame)
+    if (!sample) return null
     const span = death.respawnFrame - death.deathFrame
     return {
       death, phase: 'countdown', sample, points,

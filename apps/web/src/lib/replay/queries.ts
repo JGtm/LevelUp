@@ -224,8 +224,9 @@ export function useReplayMapCallouts(playerSlug: string, matchId: string) {
 }
 
 /**
- * useReplaySpawnForecast charge la PROBABILITÉ DE RÉAPPARITION de chaque mort du match, quand le calque
- * est actif (`enabled`) : un calque éteint ne coûte aucune requête, et sa réponse déjà en cache reste lue.
+ * useReplaySpawnForecast charge la PROBABILITÉ DE RÉAPPARITION de chaque mort du match quand la page peut la
+ * porter (`enabled` : carte à zones nommées). La préférence d'affichage n'y entre pas : la réponse décide
+ * si l'interrupteur est offert, il faut donc la connaître calque éteint ; une seule requête par match.
  *
  * LA RÉPONSE PORTE SON PROPRE REFUS (`status: 'unavailable'` avec sa raison) : ce n'est pas une erreur, et
  * le calque est alors absent. Une vraie erreur (titre sans la capacité, 404 sans film) l'est aussi : jamais

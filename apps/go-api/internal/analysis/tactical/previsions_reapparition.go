@@ -234,7 +234,7 @@ func (p *previseur) prevoirUneMort(piste Piste, s SpawnPiste) (PrevisionDeMort, 
 	for f := s.Mort.Frame; f < s.Frame; f += p.pasFrames {
 		ev := evenementAuInstant(p.index.Vivants(piste.XUID, f), equipe, mort)
 		if len(ev.Ennemis) == 0 {
-			continue
+			continue // seconde sautee : le premier echantillon peut suivre la mort (contrat de replaydoc.SpawnForecastDeath)
 		}
 		out.Echantillons = append(out.Echantillons, p.echantillon(f, ev))
 	}

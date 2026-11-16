@@ -1,24 +1,24 @@
 # Messages du rejeu 2D. Catalogue des messages Go (ADR 0040) : une feuille par message, une valeur par
 # langue de config/locales.toml, variables `{nom}`.
 
-# --- Prévision de réapparition : pourquoi aucune prévision n'est servie pour un match ---------------
+# --- Probabilité de réapparition : pourquoi aucune probabilité n'est servie pour un match ---------------
 
 [replay.forecast.no_model]
-fr = "Le modèle de prévision de réapparition n'est pas disponible."
-en = "The respawn forecast model is not available."
+fr = "Le modèle de probabilité de réapparition n'est pas disponible."
+en = "The respawn probability model is not available."
 
 [replay.forecast.map_unknown]
-fr = "La carte de ce match n'est pas connue : aucune prévision de réapparition."
-en = "The map of this match is not known: no respawn forecast."
+fr = "La carte de ce match n'est pas connue : aucune probabilité de réapparition."
+en = "The map of this match is not known: no respawn probability."
 
 [replay.forecast.not_enough_matches]
-fr = "Pas assez de matchs sur cette carte pour prévoir les réapparitions."
-en = "Not enough matches on this map to forecast respawns."
+fr = "Pas assez de matchs sur cette carte pour estimer la probabilité de réapparition."
+en = "Not enough matches on this map to estimate the respawn probability."
 
 [replay.forecast.no_zone]
-fr = "Cette carte n'a pas de zones nommées : aucune prévision de réapparition."
-en = "This map has no named zones: no respawn forecast."
+fr = "Cette carte n'a pas de zones nommées : aucune probabilité de réapparition."
+en = "This map has no named zones: no respawn probability."
 
 [replay.forecast.no_respawn]
-fr = "Ce match n'a aucune réapparition à prévoir."
-en = "This match has no respawn to forecast."
+fr = "Ce match n'a aucune réapparition à analyser."
+en = "This match has no respawn to analyse."

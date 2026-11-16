@@ -367,6 +367,27 @@ func TestSpawnForecast_SeuilsDeDonnees(t *testing.T) {
 	}
 }
 
+// L'ecran parle de « probabilite de reapparition », jamais de « prevision » : aucun libelle d'une reponse
+// `unavailable` ne contient le mot, dans aucune langue.
+func TestSpawnForecast_LibellesParlentDeProbabilite(t *testing.T) {
+	raisons := []string{
+		replaydoc.SpawnForecastReasonNoModel, replaydoc.SpawnForecastReasonMapUnknown, replaydoc.SpawnForecastReasonNotEnough,
+		replaydoc.SpawnForecastReasonNoZone, replaydoc.SpawnForecastReasonNoRespawn,
+	}
+	for _, loc := range []string{"fr", "en"} {
+		ctx := ctxkeys.WithLocale(context.Background(), loc)
+		for _, r := range raisons {
+			msg := messageDeRaison(ctx, r)
+			if msg == "" {
+				t.Errorf("%s/%s : libelle vide", loc, r)
+			}
+			if bas := strings.ToLower(msg); strings.Contains(bas, "prévi") || strings.Contains(bas, "prevoi") || strings.Contains(bas, "forecast") {
+				t.Errorf("%s/%s : %q parle de prevision, attendu « probabilite de reapparition »", loc, r, msg)
+			}
+		}
+	}
+}
+
 func TestSpawnForecast_ModeleDeRepliTous(t *testing.T) {
 	d := nouveauDecor(t)
 	ecrire(t, title.NewPathResolver(d.root).SpawnModelPath(title.DefaultSlug),

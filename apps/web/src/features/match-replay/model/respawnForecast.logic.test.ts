@@ -123,15 +123,23 @@ describe('sampleAt et rankOfZone', () => {
   const death: ForecastDeath = ready().deaths[0]
 
   it('prend l’échantillon le plus récent qui ne dépasse pas l’image', () => {
-    expect(sampleAt(death, 100).frame).toBe(100)
-    expect(sampleAt(death, 109.9).frame).toBe(100)
-    expect(sampleAt(death, 110).frame).toBe(110)
-    expect(sampleAt(death, 125).frame).toBe(120)
-    expect(sampleAt(death, 500).frame).toBe(120)
+    expect(sampleAt(death, 100)?.frame).toBe(100)
+    expect(sampleAt(death, 109.9)?.frame).toBe(100)
+    expect(sampleAt(death, 110)?.frame).toBe(110)
+    expect(sampleAt(death, 125)?.frame).toBe(120)
+    expect(sampleAt(death, 500)?.frame).toBe(120)
   })
 
-  it('avant le premier échantillon, retombe sur le premier', () => {
-    expect(sampleAt(death, 50).frame).toBe(100)
+  it('avant le premier échantillon, rien : jamais un échantillon calculé sur des positions postérieures', () => {
+    expect(sampleAt(death, 50)).toBeNull()
+  })
+
+  it('une seconde sans adversaire vivant est sautée par le serveur : le calque reste muet jusqu’au premier échantillon', () => {
+    const d: ForecastDeath = { ...death, samples: death.samples.slice(1) } // premier échantillon à la frame 110
+    expect(d.samples[0].frame).toBeGreaterThan(d.deathFrame)
+    expect(momentOf(d, d.deathFrame, FRAME_MS)).toBeNull()
+    expect(momentOf(d, d.samples[0].frame - 1, FRAME_MS)).toBeNull()
+    expect(momentOf(d, d.samples[0].frame, FRAME_MS)?.sample.frame).toBe(d.samples[0].frame)
   })
 
   it('le rang du point réel : 1 = première zone, null hors des zones ou sans zone nommée', () => {

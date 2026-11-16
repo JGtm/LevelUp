@@ -300,9 +300,6 @@ type TacticalMatch struct {
 	// match et le compte (`matchs_sans_rayon`), plutot que de deviner une regle.
 	GameVariantName string
 
-	// ModeCategory : la categorie de mode du registre ; avec la variante, elle donne la famille de modes.
-	ModeCategory string
-
 	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
 	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
 	// retention (`sqlfrag.SQLEligibleALaCuisson`, le predicat de la file elle-meme).

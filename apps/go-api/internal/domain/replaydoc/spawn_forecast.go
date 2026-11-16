@@ -77,8 +77,10 @@ type SpawnForecastPoint struct {
 	Z float64 `json:"z"`
 }
 
-// SpawnForecastDeath est la prevision d'une mort suivie d'une reapparition : de l'instant de la
-// mort (`death_frame`, le premier echantillon) a celui de la reapparition (`respawn_frame`).
+// SpawnForecastDeath est la prevision d'une mort suivie d'une reapparition, de la mort
+// (`death_frame`) a la reapparition (`respawn_frame`). Un echantillon par seconde du compte a rebours, SAUF
+// les secondes sans adversaire vivant, qui sont sautees : le premier echantillon peut donc etre POSTERIEUR a
+// `death_frame`, et le lecteur ne montre rien avant lui (jamais un echantillon plus tardif).
 type SpawnForecastDeath struct {
 	XUID         string             `json:"xuid"`
 	DeathFrame   int                `json:"death_frame"`

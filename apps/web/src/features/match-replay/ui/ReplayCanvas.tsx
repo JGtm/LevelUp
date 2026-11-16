@@ -427,7 +427,7 @@ export function ReplayCanvas({
     doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke, shownAtSlot,
     identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
   })
-  // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée seulement si le calque est allumé, teinte sous les pions et repères au-dessus.
+  // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée dès que la carte a des zones (la réponse décide de l'interrupteur), teinte sous les pions et repères au-dessus.
   const respawnForecast = useReplayRespawnForecast({
     doc, view: canvasView, enabled: settings.showRespawnForecast, draw: settings.respawnForecastDraw, playerSlug, matchId, locale, callouts: calloutZones,
     clipMask: usePlanClipMask(planDuFond), // la teinte est rognée au plan, comme les zones nommées

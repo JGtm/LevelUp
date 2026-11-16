@@ -79,7 +79,7 @@ beforeEach(() => {
 })
 
 describe('le chargement et la disponibilité', () => {
-  it('calque actif et carte à zones : la réponse est demandée, le calque est prêt et proposé', () => {
+  it('carte à zones : la réponse est demandée, le calque est prêt et proposé', () => {
     const { result } = mount()
     expect(query).toHaveBeenCalledWith('jgtm', 'm1', true, 'fr')
     expect(result.current.ready).toBe(true)
@@ -87,9 +87,9 @@ describe('le chargement et la disponibilité', () => {
     expect(result.current.show).toBe(true)
   })
 
-  it('calque éteint : rien n’est demandé', () => {
+  it('calque éteint : la réponse est quand même demandée (la disponibilité ne se déduit pas de la préférence)', () => {
     mount({ enabled: false })
-    expect(query).toHaveBeenCalledWith('jgtm', 'm1', false, 'fr')
+    expect(query).toHaveBeenCalledWith('jgtm', 'm1', true, 'fr')
   })
 
   it('carte sans zone nommée : rien n’est demandé, pas de calque, pas d’interrupteur', () => {
@@ -124,11 +124,25 @@ describe('le chargement et la disponibilité', () => {
     expect(result.current.available).toBe(false)
   })
 
-  it('éteint sans réponse connue : l’interrupteur reste proposé (sans lui, le calque ne se rallumerait jamais)', () => {
+  it('éteint, en chargement : l’interrupteur n’est pas offert avant la réponse (jamais offert puis retiré)', () => {
     query.mockReturnValue({ data: undefined, isError: false })
     const { result } = mount({ enabled: false })
-    expect(result.current.available).toBe(true)
+    expect(result.current.available).toBe(false)
     expect(result.current.ready).toBe(false)
+  })
+
+  it('éteint et « unavailable » : l’interrupteur n’est jamais offert (action impossible)', () => {
+    query.mockReturnValue({ data: { ...READY, status: 'unavailable', reason: 'not_enough_matches', deaths: null, zones: null }, isError: false })
+    const { result } = mount({ enabled: false })
+    expect(result.current.available).toBe(false)
+  })
+
+  it('éteint puis allumé : la même réponse sert, l’interrupteur reste offert sans rechargement', () => {
+    const { result, rerender } = mount({ enabled: false })
+    expect(result.current.available).toBe(true)
+    rerender(options({ enabled: true }))
+    expect(result.current.available).toBe(true)
+    expect(query.mock.calls.every((c) => c[2] === true)).toBe(true)
   })
 
   it('éteint avec une réponse déjà en cache : l’interrupteur suit la réponse', () => {
