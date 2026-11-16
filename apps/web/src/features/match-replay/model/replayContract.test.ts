@@ -96,6 +96,11 @@ const NULLABLE_ARRAYS = [
   // lecture partielle, et la cellule de munitions se viderait — le defaut ferme en v19.
   'grenadeReads',
   'grenades',
+  // `hits`, `damage` et `shotStats` (schéma 125) : les touches, les dégâts en points et le bilan de tirs par joueur,
+  // des estimations comblées à vide par la frontière ; aucun tableau imbriqué.
+  'damage',
+  'hits',
+  'shotStats',
   'inventory',
   'loadouts',
   // `medals` (schéma 117), `scoreActions` (schéma 121), `roundClock` et `respawnCountdowns` (schéma 120) :
@@ -281,7 +286,9 @@ const NULLABLE_ARRAY_PATHS = [
   'grappleLines',
   'grenadeLabels',
   'grenadeReads',
+  'damage',
   'grenades',
+  'hits',
   'inventory',
   'loadouts',
   'medals',
@@ -294,6 +301,7 @@ const NULLABLE_ARRAY_PATHS = [
   'roster',
   'roundClock',
   'scoreActions',
+  'shotStats',
   'shots',
   'bursts',
   'bursts[].holes',

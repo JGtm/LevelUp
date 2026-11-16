@@ -8,6 +8,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [8.3.0] - Non publiée
+
+> Le décodeur de film passe à la v1.4.1 (`SchemaVersion` 125) : touches, dégâts en points, jauge de retour du drapeau et sièges de la table du film sont lus ; le web les type ; rien de neuf à l'écran pour l'instant.
+
+### Modifié
+- **Briques publiées** — `halo-infinite-film-decoder` v1.4.1 (v1.3.9 en 8.2.1) ; les autres briques ne changent pas.
+- **Décodeur de film v1.4.1 (`SchemaVersion` 125)** — recopiés dans le document servi, le contrat OpenAPI et les types web : `hits[]` (une entrée par touche, marquée estimation), `damage[]` (une entrée par coup avec ses points de bouclier et de corps, `measured`), `shotStats[]` par joueur (tirs, tirs écrits, touches, couverture, `sufficient`, `damageDealt`, `damageTaken`) avec ses seuils dans `coverage.hits`, la jauge de retour du drapeau lue trame par trame, `rules.flagReturnS`. `flagReturnZone.resetSeconds` devient facultatif : publié seulement depuis la variante, absent sinon ; sans lui, le rejeu ne dessine ni la zone de retour ni sa jauge, et le défaut `reset_seconds` du manifeste du titre (30 s), que le décodeur ne lit plus, est retiré avec son champ de chargeur. Le siège de chaque occupant de la table du film se lit aux listes de la session. Touches et dégâts sont des estimations : tirs, touches et dégâts d'un joueur ne s'affichent que sous `shotStats[].sufficient` (mesuré sur 193 films contre les statistiques officielles : 591 joueurs suffisants sur 2 560 ; pour eux, touches à 10 % près pour 81 %, tirs pour 86 %, dégâts infligés / subis pour 76 % / 75 %). La table des effets de dégât, la table des montants et la répartition bouclier / corps viennent de libfilmshell (Den), crédité dans le décodeur. Fixtures de contrat et instantané `film-source` régénérés au 125. Un rejeu généré avant cette version est reconnu « à refaire » ; la régénération reste une décision de l'utilisateur.
+
 ## [8.2.1] - 2026-11-16
 
 > Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise ; seule la croix des morts sans cause s'ajoute à l'écran, dans le rejeu.

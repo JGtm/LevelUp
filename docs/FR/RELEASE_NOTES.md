@@ -1,5 +1,10 @@
 ## Dernières nouveautés
 
+**v8.3 — En préparation**
+
+- **Touches et dégâts lus dans le film** — le film donne désormais chaque touche et les dégâts qu'elle a faits, au bouclier et au corps, ainsi que le compte à rebours avant le retour d'un drapeau lâché. Le rejeu ne les affiche pas encore ; ils ne s'afficheront que pour les joueurs dont le film est assez complet pour les compter de façon fiable
+- **Chaque joueur à sa place** — la place de chaque joueur dans le film est lue dans les listes du jeu
+
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 
 - **Toutes les médailles nommées** — les 157 médailles du jeu sont lues dans le film avec leur vrai nom. Le rejeu ne les affiche pas encore

@@ -75,6 +75,7 @@ func toMatchRules(v replay.MatchRules) replaydoc.MatchRules {
 		MinRespawnS:      v.MinRespawnS,
 		SuicidePenaltyS:  v.SuicidePenaltyS,
 		BetrayalPenaltyS: v.BetrayalPenaltyS,
+		FlagReturnS:      v.FlagReturnS,
 		FriendlyFire:     v.FriendlyFire,
 	}
 }

@@ -117,27 +117,15 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc
 
 ---
 
-### [rejeu/sièges] Pose des places : 13 films à siège vacant intercalé lus sans table
+### [rejeu/schéma] Deux films du parc avec des faits d'un ancien schéma
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. La pose des places (`sieges.go`, `siegesDuDebut`) lit encore `grammar.Lue()` et voit sans table les 13 films à siège vacant intercalé désormais confirmés. Film `23ffd885` : les chunks donnent au siège 2 l'index 8 ; une confirmation par les chunks pourrait le trancher. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
-
----
-
-### [rejeu/schéma] Sept films du parc avec des faits d'un ancien schéma
-
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Sept films du parc ont des faits d'un ancien schéma, illisibles par le binaire actuel. Le relevé en identifie six : `000d5950`, `51101d1d`, `9f57c612`, `a521164d`, `bcb6d393`, `edc5daf6`. Toute recuisson de ces films demande l'accord du user. **Condition de reprise :** à planifier après la 8.1.2, avec l'accord du user sur la recuisson. **Effort : S.**
+Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). Sur les sept films relevés, cinq ont été rafraîchis par la régénération du parc du 2026-11-14 (`000d5950`, `51101d1d`, `9f57c612`, `a521164d`, `bcb6d393`). Restent `edc5daf6` (faits au schéma 15) et `e96070e2` (aucun chunk sur le poste). Toute recuisson demande l'accord du user. **Condition de reprise :** la régénération du parc de la 8.3.0, avec l'accord du user. **Effort : S.**
 
 ---
 
-### [rejeu/ti=40] Bande ti=40 : 249 parents d'occupation exclus, 6 porteurs lus à plus de 15 m
+### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. La bande `ti=40` exclut 249 parents d'occupation recensés (slot ayant porté un autre archétype). Six porteurs de pièce sont aussi lus à plus de 15 m à la montée. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
-
----
-
-### [rejeu/identité] Film `5da6fd30` : six vies sans nom tant qu'il n'est pas régénéré
-
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Les faits actuels du film (`Kills` nil) restent frais ; les 6 vies ne seront nommées qu'après régénération de ce seul film (étape 7.5). En prod, sans chunks, elles restent sans nom. **Condition de reprise :** à planifier après la 8.1.2, régénération de ce film seul sur accord du user. **Effort : S.**
+Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.**
 
 ---
 

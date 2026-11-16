@@ -455,7 +455,11 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           `replay.EndReasonReleased` et `replay.EndReasonDeleted`, les deux
 //	                                           fins de vie que l'entree de l'occupation traduit
 //	                                           (`sync/replayartifacts`, `finDeLaPiste`). Aucun retrait.
-const plafondSurfaceReplay = 331 // 2026-11-15 — base 82e6969d12 re-mesuree a 329 + 2 (EndReasonReleased, EndReasonDeleted) ; cf. l historique ci-dessus
+//	335  schema 125 du decodeur (2026-11-16)       base `c96242b8aa` re-mesuree a 331. +4 :
+//	                                           `replay.Hit`, `replay.Damage`, `replay.ShotStat` et
+//	                                           `replay.HitCoverage`, les types des touches, des degats et du bilan de
+//	                                           tirs que le document servi projette (`service/replayview`). Aucun retrait.
+const plafondSurfaceReplay = 335 // 2026-11-16 — base c96242b8aa re-mesuree a 331 + 4 (Hit, Damage, ShotStat, HitCoverage) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

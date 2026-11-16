@@ -62,6 +62,9 @@ type ReplayDocument struct {
 	NeutralDeaths       []NeutralDeath           `json:"neutralDeaths,omitempty"`
 	Medals              []Medal                  `json:"medals,omitempty"`
 	ScoreActions        []ScoreAction            `json:"scoreActions,omitempty"`
+	Hits                []Hit                    `json:"hits,omitempty"`
+	Damage              []Damage                 `json:"damage,omitempty"`
+	ShotStats           []ShotStat               `json:"shotStats,omitempty"`
 	Roster              []RosterEntry            `json:"roster,omitempty"`
 	MapObjectives       *MapObjectives           `json:"mapObjectives,omitempty"`
 	MapWeaponPads       *MapWeaponPads           `json:"mapWeaponPads,omitempty"`

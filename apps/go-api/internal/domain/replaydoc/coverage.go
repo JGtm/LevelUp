@@ -30,6 +30,7 @@ type Coverage struct {
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
 	Medals            *MedalCoverage              `json:"medals,omitempty"`
 	ScoreActions      *ScoreActionCoverage        `json:"scoreActions,omitempty"`
+	Hits              *HitCoverage                `json:"hits,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`

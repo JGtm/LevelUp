@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [8.3.0] - Unreleased
+
+> The film decoder moves to v1.4.1 (`SchemaVersion` 125): hits, damage in points, the flag return gauge and the seats of the film's table are read; the web side types them; nothing new on screen yet.
+
+### Changed
+- **Published bricks** — `halo-infinite-film-decoder` v1.4.1 (v1.3.9 in 8.2.1); the other bricks are unchanged.
+- **Film decoder v1.4.1 (`SchemaVersion` 125)** — mirrored into the served document, the OpenAPI contract and the web types: `hits[]` (one entry per hit, marked as an estimate), `damage[]` (one entry per hit with its shield and body points, `measured`), per-player `shotStats[]` (shots, written shots, hits, coverage, `sufficient`, `damageDealt`, `damageTaken`) with its thresholds in `coverage.hits`, the flag return gauge read frame by frame, `rules.flagReturnS`. `flagReturnZone.resetSeconds` becomes optional: published only from the variant, absent otherwise; without it the replay draws neither the return zone nor its gauge, and the title manifest's `reset_seconds` default (30 s), no longer read by the decoder, is removed with its loader field. The seat of each occupant of the film's table is read from the session lists. Hits and damage are estimates: a player's shots, hits and damage are shown only under `shotStats[].sufficient` (measured on 193 films against the official statistics: 591 players out of 2 560 sufficient; for them, hits within 10% for 81%, shots for 86%, damage dealt / taken for 76% / 75%). The damage-effect table, the amounts table and the shield and body split come from libfilmshell (Den), credited in the decoder. Contract fixtures and `film-source` snapshot regenerated at 125. A replay generated before this version is recognised as "to redo"; regeneration stays a user decision.
+
 ## [8.2.1] - 2026-11-16
 
 > The film decoder moves to v1.3.9 (`SchemaVersion` 124): medals, scoreboard, presence, clocks and ends of life are read; the web side types and normalises them; the only new thing on screen is the cross of deaths with no cause, in the replay.

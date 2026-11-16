@@ -289,6 +289,12 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// `reponsesdejeu` : la table des reponses de jeu (nom, genre et points de chaque rang de l arbre des scripts d un
 	// mode), reprise de libfilmshell, comme `medalname` : un catalogue, il ne lit aucun octet de film.
 	"libs/film/reponsesdejeu": horsCoucheFilm,
+	// `damageeffects` : la table des effets de degat du jeu (cause et montants de chaque effet), reprise de libfilmshell,
+	// comme `medalname` : un catalogue, il ne lit aucun octet de film.
+	"libs/film/damageeffects": horsCoucheFilm,
+	// `internal/filmtest` : aide de TEST (films fabriques en memoire) que seuls des tests du decodeur importent ; elle ne
+	// decode ni ne publie rien.
+	"libs/film/internal/filmtest": horsCoucheFilm,
 	// `filmcache` : le CACHE DISQUE des films (chemins, index JSON). C est de l infrastructure de
 	// stockage local au-dessus de `source`, pas une etape de decodage — meme rangement par la
 	// note §2.2, et il reste hors de `film/internal/` pour rester accessible a ses appelants.

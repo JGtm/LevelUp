@@ -44,7 +44,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 124
+const SchemaVersion = 125
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -328,14 +328,16 @@ type ReplayDocument struct {
 	// aucun effet à un kill. Une clé absente = effet neutre, jamais celui d'une voisine.
 	// Source : replay_labels.toml du titre ([shot_effects]).
 	KillEffects map[string]string `json:"killEffects,omitempty"`
-	// NeutralDeaths dit, pour les morts que PERSONNE ne revendique, DE QUOI le joueur est
-	// mort. Le fil du rejeu en fait des lignes grises sans tueur ni arme ; sans cette table
-	// il n'a qu'un repère générique à y poser. Absente = aucune mort de ce type établie sur
-	// ce film — le fil garde son repère neutre, jamais l'icône d'une autre mort.
+	// NeutralDeaths dit, pour les morts que PERSONNE ne revendique, DE QUOI le joueur est mort (lignes grises du fil, sans tueur ni arme).
+	// Absente = aucune mort de ce type etablie : le fil garde son repere neutre, jamais l icone d une autre mort.
 	NeutralDeaths []NeutralDeath `json:"neutralDeaths,omitempty"`
-	// Medals (document_medals.go) : les medailles gagnees ; ScoreActions (document_score_actions.go) : le score personnel par action. Datees sur l axe ; absents si rien n est pose.
+	// Medals (document_medals.go), ScoreActions (document_score_actions.go), Hits, Damage et ShotStats (document_hits.go, document_damage.go) : les medailles gagnees,
+	// le score personnel par action, les touches (ESTIMATION) et le bilan de tirs par joueur. Datees sur l axe ; absents si rien n est pose.
 	Medals       []Medal       `json:"medals,omitempty"`
 	ScoreActions []ScoreAction `json:"scoreActions,omitempty"`
+	Hits         []Hit         `json:"hits,omitempty"`
+	Damage       []Damage      `json:"damage,omitempty"`
+	ShotStats    []ShotStat    `json:"shotStats,omitempty"`
 	// Roster est la liste des joueurs du film : leur identité et leur index de film.
 	//
 	// CE QU'IL SERT : le client y trouve l'ensemble des joueurs du match, y compris ceux dont
@@ -392,7 +394,7 @@ type ReplayDocument struct {
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
 	// FlagReturnZone est LA RÈGLE DE RETOUR du mode, telle que le manifeste du titre la donne
 	// (schéma 35) : le rayon de la zone autour d'un drapeau tombé, la minuterie qui le ramène
-	// tout seul, et la durée quand UN défenseur s'y tient. Le client en tire le cercle et la
+	// tout seul (celle de la variante du film, absente si elle ne l'écrit pas), et la durée quand UN défenseur s'y tient. Le client en tire le cercle et la
 	// jauge ; l'occupation, elle, se compte chez lui — l'équipe d'un joueur est publiée par
 	// l'artefact depuis le schéma 57 (cf. Track.Team et roster[].team), lue dans le film.
 	//

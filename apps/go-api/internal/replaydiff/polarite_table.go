@@ -108,10 +108,10 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.flagCarries."},
 		Echecs: "ambiguousCarrierKills ambiguousHomecomings ambiguousReturns ambiguousSlot " +
 			"carrierTeamUnknown closedOverlaps noBridge noTrack open outOfWindow overlaps " +
-			"filmBaseContradict ownFlagRefused unjudgedCarrierKills unresolved",
-		Succes: "carries closed dropsRepositioned filmBaseAgree gaugePaired gaugePoints gaugeReads gaugeSlots " +
+			"filmBaseContradict ownFlagRefused seatsBeyondBand unjudgedCarrierKills unresolved",
+		Succes: "carries closed dropsRepositioned filmBaseAgree gaugePaired gaugePoints gaugeReads gaugeSlots gaugeWalkReads " +
 			"gaugeSpans markerConfirmed objectLives openConfirmed",
-		Neutres: "assignedByPlay bursts captures closedByHandoff closedByHome closedByObject " +
+		Neutres: "assignedByPlay bursts captures closedByHandoff closedByHome closedByObject gaugeWalkSpans " +
 			"closedByReturn dropsWithheld homeByObject markerObserved neutralBirths openObserved " +
 			"filmBases openings spawns spawnsFromFilm steals teamBirths"},
 	{Blocs: []string{"coverage.grapple."},
@@ -178,6 +178,14 @@ var tablePolarites = []blocPolarites{
 		Succes: "published closedFrames",
 		Neutres: "frames messages copies scoreMessages unrelated namedWithoutPoints outsideTree " +
 			"scored"},
+	// Les touches (schema 125) : une estimation. Les seuils de suffisance sont un reglage de l outil ; la lecture
+	// arretee et les touches non posees sont ce que le calque n a pas su faire ; les unites sans piste et les touches
+	// ou degats sur soi sont des faits du jeu, comptes a part.
+	{Blocs: []string{"coverage.hits."},
+		Echecs:     "stoppedFrames vitalsUnread noShooter noVictim beforeOrigin afterEnd",
+		Succes:     "published sufficient damages damagesMeasured",
+		Neutres:    "frames messages weaponMessages hits damagesOffUnit selfHits selfDamages players",
+		Telemetrie: "minCoverage maxDuplicates maxStoppedShare"},
 	{Blocs: []string{"coverage.score."},
 		Echecs:  "roundsContradicted/n roundsContradictedRecords statsWithheld",
 		Succes:  "points",

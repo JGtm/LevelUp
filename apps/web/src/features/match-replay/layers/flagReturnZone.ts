@@ -63,6 +63,18 @@ export interface FlagReturnRule {
   soloSeconds: number
 }
 
+/**
+ * resolveFlagReturnRule rend la règle complète de la zone publiée. `resetSeconds` y est facultatif (schéma 125) :
+ * le décodeur ne le publie que quand la variante du film écrit son délai de retour. Sans lui, pas de règle, donc
+ * ni zone ni jauge — le délai n'est jamais deviné.
+ */
+export function resolveFlagReturnRule(
+  zone: { radiusM: number; resetSeconds?: number; soloSeconds: number } | null | undefined,
+): FlagReturnRule | null {
+  if (!zone || zone.resetSeconds === undefined) return null
+  return { radiusM: zone.radiusM, resetSeconds: zone.resetSeconds, soloSeconds: zone.soloSeconds }
+}
+
 /** Un lâcher instrumenté : sa position image par image, sa jauge et son occupation. */
 export interface FlagReturnDrop {
   /** Le rayon de la zone, dans les coordonnées monde. */

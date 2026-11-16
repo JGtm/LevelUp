@@ -74,13 +74,17 @@ type FlagCarriesCoverage struct {
 	DropsWithheld     int `json:"dropsWithheld"`
 	OwnFlagRefused    int `json:"ownFlagRefused"`
 	Unresolved        int `json:"unresolved"`
-	// LES SIX DENOMINATEURS DE LA JAUGE DE RETOUR (schema 63).
-	GaugeScanned bool `json:"gaugeScanned"`
-	GaugeSlots   int  `json:"gaugeSlots"`
-	GaugeReads   int  `json:"gaugeReads"`
-	GaugePaired  int  `json:"gaugePaired"`
-	GaugeSpans   int  `json:"gaugeSpans"`
-	GaugePoints  int  `json:"gaugePoints"`
+	// SeatsBeyondBand : les sieges du statborg que le calque ne lit pas (au-dela des huit premiers joueurs).
+	SeatsBeyondBand int `json:"seatsBeyondBand"`
+	// LES DENOMINATEURS DE LA JAUGE DE RETOUR (schema 63) ; `gaugeWalkReads` et `gaugeWalkSpans` : les echantillons lus par la marche des trames et les intervalles dont la serie est la sienne.
+	GaugeScanned   bool `json:"gaugeScanned"`
+	GaugeSlots     int  `json:"gaugeSlots"`
+	GaugeReads     int  `json:"gaugeReads"`
+	GaugePaired    int  `json:"gaugePaired"`
+	GaugeSpans     int  `json:"gaugeSpans"`
+	GaugePoints    int  `json:"gaugePoints"`
+	GaugeWalkReads int  `json:"gaugeWalkReads"`
+	GaugeWalkSpans int  `json:"gaugeWalkSpans"`
 }
 
 // VipCrownCoverage porte les denominateurs du calque. Sans eux, « 15 periodes » se lirait comme

@@ -88,9 +88,12 @@ type FlagSpan struct {
 // FlagReturnZone est LA REGLE DE RETOUR du drapeau, telle que le manifeste du titre la donne
 // (schema 35). Elle ne decrit PAS ce match-ci : elle decrit le MODE, et c'est pour cela qu'elle
 // est publiee une fois et non par lacher.
+//
+// `resetSeconds` est le delai que la variante du film ecrit (`rules.flagReturnS`) ; il est ABSENT quand la
+// variante ne l ecrit pas ou n a pas ete lue.
 type FlagReturnZone struct {
 	RadiusM      float32 `json:"radiusM"`
-	ResetSeconds float32 `json:"resetSeconds"`
+	ResetSeconds float32 `json:"resetSeconds,omitempty"`
 	SoloSeconds  float32 `json:"soloSeconds"`
 }
 

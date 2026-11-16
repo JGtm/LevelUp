@@ -6544,6 +6544,7 @@ export interface components {
             grenades: components["schemas"]["LayerCoverage"];
             groundWeaponItems?: components["schemas"]["GroundWeaponItemsCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
+            hits?: components["schemas"]["HitCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
             keyframes?: components["schemas"]["KeyframeCoverage"];
             knockbacks?: components["schemas"]["KnockbackCoverage"];
@@ -6671,6 +6672,19 @@ export interface components {
             swaps: number;
             /** Format: int64 */
             watchdog_fired: number;
+        };
+        Damage: {
+            attacker?: string;
+            /** Format: double */
+            body: number;
+            effect: string;
+            measured?: boolean;
+            /** Format: double */
+            shield: number;
+            /** Format: int64 */
+            t: number;
+            victim?: string;
+            w?: string;
         };
         DataBackupAttempt: {
             /**
@@ -7834,6 +7848,10 @@ export interface components {
             /** Format: int64 */
             gaugeSpans: number;
             /** Format: int64 */
+            gaugeWalkReads: number;
+            /** Format: int64 */
+            gaugeWalkSpans: number;
+            /** Format: int64 */
             homeByObject: number;
             /** Format: int64 */
             markerConfirmed: number;
@@ -7863,6 +7881,8 @@ export interface components {
             /** Format: int64 */
             ownFlagRefused: number;
             /** Format: int64 */
+            seatsBeyondBand: number;
+            /** Format: int64 */
             spawns: number;
             /** Format: int64 */
             spawnsFromFilm?: number;
@@ -7884,7 +7904,7 @@ export interface components {
             /** Format: float */
             radiusM: number;
             /** Format: float */
-            resetSeconds: number;
+            resetSeconds?: number;
             /** Format: float */
             soloSeconds: number;
         };
@@ -8223,6 +8243,59 @@ export interface components {
             /** Format: int64 */
             count: number;
             value: string;
+        };
+        Hit: {
+            effect: string;
+            shooter: string;
+            /** Format: int64 */
+            t: number;
+            victim: string;
+            w?: string;
+        };
+        HitCoverage: {
+            /** Format: int64 */
+            afterEnd: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            damages: number;
+            /** Format: int64 */
+            damagesMeasured: number;
+            /** Format: int64 */
+            damagesOffUnit: number;
+            estimated: boolean;
+            /** Format: int64 */
+            frames: number;
+            /** Format: int64 */
+            hits: number;
+            /** Format: double */
+            maxDuplicates: number;
+            /** Format: double */
+            maxStoppedShare: number;
+            /** Format: int64 */
+            messages: number;
+            /** Format: double */
+            minCoverage: number;
+            /** Format: int64 */
+            noShooter: number;
+            /** Format: int64 */
+            noVictim: number;
+            /** Format: int64 */
+            players: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            selfDamages: number;
+            /** Format: int64 */
+            selfHits: number;
+            /** Format: int64 */
+            stoppedFrames: number;
+            /** Format: int64 */
+            sufficient: number;
+            /** Format: int64 */
+            vitalsUnread: number;
+            /** Format: int64 */
+            weaponMessages: number;
         };
         HomeCareerRankSummary: {
             adornment_image_url?: string;
@@ -9718,6 +9791,8 @@ export interface components {
         MatchRules: {
             /** Format: int64 */
             betrayalPenaltyS?: number;
+            /** Format: double */
+            flagReturnS?: number;
             friendlyFire?: boolean;
             /** Format: int64 */
             minRespawnS?: number;
@@ -11708,6 +11783,7 @@ export interface components {
             bursts?: components["schemas"]["FireBurst"][] | null;
             carriedEquipment?: components["schemas"]["CarriedEquipment"][] | null;
             coverage?: components["schemas"]["Coverage"];
+            damage?: components["schemas"]["Damage"][] | null;
             /** Format: int64 */
             durationMs?: number;
             equipmentChanges?: components["schemas"]["EquipmentChange"][] | null;
@@ -11726,6 +11802,7 @@ export interface components {
             grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
             groundWeapons?: components["schemas"]["GroundWeapon"][] | null;
+            hits?: components["schemas"]["Hit"][] | null;
             identity?: components["schemas"]["IdentitySection"];
             inventory?: components["schemas"]["Inventory"][] | null;
             killEffects?: {
@@ -11757,6 +11834,7 @@ export interface components {
             schemaVersion: number;
             scoreActions?: components["schemas"]["ScoreAction"][] | null;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
+            shotStats?: components["schemas"]["ShotStat"][] | null;
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
             stances?: components["schemas"]["Stance"][] | null;
@@ -12634,6 +12712,26 @@ export interface components {
             sameTick: number;
             /** Format: int64 */
             track: number;
+        };
+        ShotStat: {
+            /** Format: double */
+            coverage: number;
+            /** Format: double */
+            damageDealt: number;
+            /** Format: double */
+            damageTaken: number;
+            /** Format: double */
+            duplicates: number;
+            /** Format: int64 */
+            hits: number;
+            /** Format: int64 */
+            messages: number;
+            /** Format: int64 */
+            shotEvents: number;
+            /** Format: int64 */
+            shots: number;
+            sufficient: boolean;
+            xuid: string;
         };
         SkillRatingSnapshot: {
             /** Format: double */

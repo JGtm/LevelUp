@@ -233,6 +233,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // rebours de réapparition (schéma 120) : des tableaux plats, absents = rien de posé sur ce film.
     medals: raw.medals ?? [],
     scoreActions: raw.scoreActions ?? [],
+    // Les touches, les dégâts et le bilan de tirs (schéma 125) : des estimations, qui ne se montrent que sous
+    // `shotStats[].sufficient`. Absents = rien de posé sur ce film.
+    hits: raw.hits ?? [],
+    damage: raw.damage ?? [],
+    shotStats: raw.shotStats ?? [],
     roundClock: raw.roundClock ?? [],
     respawnCountdowns: raw.respawnCountdowns ?? [],
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;

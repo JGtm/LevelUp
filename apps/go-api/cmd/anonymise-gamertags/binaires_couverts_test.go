@@ -48,7 +48,10 @@ var binairesCouverts = []binaireCouvert{
 	{regexp.MustCompile(`^replay/testdata/jeu_[0-9a-f]{8}\.bin\.gz$`),
 		"messages de jeu et noms de script : index de joueur du film, aucun champ xuid (golden_jeu_test.go) ; " +
 			"codec encodeJeu"},
-	{regexp.MustCompile(`^(medalname|reponsesdejeu)/data/LICENSE-libfilmshell$`),
+	{regexp.MustCompile(`^replay/testdata/degats_[0-9a-f]{8}\.bin\.gz$`),
+		"messages de degat : index de joueur du film et unite blessee, aucun champ xuid (golden_degats_test.go) ; " +
+			"codec encodeDegats"},
+	{regexp.MustCompile(`^(damageeffects|medalname|reponsesdejeu)/data/LICENSE-libfilmshell$`),
 		"texte de la licence MIT de libfilmshell, livre avec les tables reprises : aucun identifiant de joueur"},
 	{regexp.MustCompile(`^internal/grammar/testdata/fuzz/FuzzFilmRecordReaders/seed_[0-9]+$`),
 		"payloads de records de la mini-bobine fictive, sans table d identite ; mesure du 2026-11-08, " +

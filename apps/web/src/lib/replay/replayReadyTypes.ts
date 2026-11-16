@@ -210,7 +210,9 @@ export type ReplayDocumentReady = Omit<
   | 'groundWeapons'
   | 'grenadeLabels'
   | 'grenadeReads'
+  | 'damage'
   | 'grenades'
+  | 'hits'
   | 'identity'
   | 'inventory'
   | 'knockbacks'
@@ -228,6 +230,7 @@ export type ReplayDocumentReady = Omit<
   | 'roundClock'
   | 'scoreActions'
   | 'scoreTimeline'
+  | 'shotStats'
   | 'shots'
   | 'skullCarries'
   | 'structure'
@@ -374,7 +377,9 @@ export type ReplayDocumentReady = Omit<
    * retombe alors sur `inventory`, exactement comme avant.
    */
   grenadeReads: ReplayGrenadeReadReady[]
+  damage: NonNullable<ReplayDocument['damage']>
   grenades: NonNullable<ReplayDocument['grenades']>
+  hits: NonNullable<ReplayDocument['hits']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]
   medals: NonNullable<ReplayDocument['medals']>
@@ -385,6 +390,7 @@ export type ReplayDocumentReady = Omit<
   respawnCountdowns: NonNullable<ReplayDocument['respawnCountdowns']>
   roundClock: NonNullable<ReplayDocument['roundClock']>
   scoreActions: NonNullable<ReplayDocument['scoreActions']>
+  shotStats: NonNullable<ReplayDocument['shotStats']>
   roster: ReplayRosterEntryReady[]
   /**
    * LE CALQUE DE SCORE RESTE OPTIONNEL, et c'est la seule façon honnête de l'écrire : un

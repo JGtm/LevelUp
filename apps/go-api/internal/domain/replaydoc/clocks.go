@@ -25,12 +25,14 @@ type RespawnCountdown struct {
 }
 
 // MatchRules est ce que la variante du match ecrit : delai de reapparition, penalites de suicide et de
-// trahison (secondes) et tirs allies. Un champ que la variante n'ecrit pas est absent.
+// trahison (secondes), delai de retour d un drapeau tombe (`flagReturnS`, secondes) et tirs allies. Un champ
+// que la variante n ecrit pas est absent.
 type MatchRules struct {
-	MinRespawnS      *int64 `json:"minRespawnS,omitempty"`
-	SuicidePenaltyS  *int64 `json:"suicidePenaltyS,omitempty"`
-	BetrayalPenaltyS *int64 `json:"betrayalPenaltyS,omitempty"`
-	FriendlyFire     *bool  `json:"friendlyFire,omitempty"`
+	MinRespawnS      *int64   `json:"minRespawnS,omitempty"`
+	SuicidePenaltyS  *int64   `json:"suicidePenaltyS,omitempty"`
+	BetrayalPenaltyS *int64   `json:"betrayalPenaltyS,omitempty"`
+	FlagReturnS      *float64 `json:"flagReturnS,omitempty"`
+	FriendlyFire     *bool    `json:"friendlyFire,omitempty"`
 }
 
 // ClocksCoverage dit ce que la pose des horloges a lu et ce qu'elle a laisse de cote : trames lues,

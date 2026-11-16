@@ -319,6 +319,12 @@ var exceptionsDExtraction = []exceptionDExtractionDatee{
 		fonction: "func lireIndiceAvant", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "les 5 bits qui precedent le motif xuid (meme fichier, meme raison que " +
 			"`chercherDansChunk`)."},
+	{fichier: "libs/film/internal/filmtest/table_permutee.go",
+		fonction: "func PermuterDeuxLignesDeLaTable", date: "2026-11-16", retrait: retraitParPortage,
+		raison: "aide de TEST du decodeur (aucun fichier de production ne l importe) : echange en place, dans le registre d un film " +
+			"charge, les octets de deux lignes de la table des joueurs pour fabriquer un film dont le rang de la table n est pas " +
+			"le siege liste. Elle ecrit des octets de la table, elle n en lit aucun bit de valeur ; la facade `film.Source` ne " +
+			"rend pas le chunk modifiable."},
 }
 
 // exceptionDExtraction rend l exception qui couvre un site du motif `extraction-de-bits`, nil

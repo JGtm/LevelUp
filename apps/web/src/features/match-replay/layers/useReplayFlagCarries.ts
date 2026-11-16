@@ -49,7 +49,7 @@ import {
   type FlagCaptureStyle,
 } from './flagCaptureFx'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
-import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
+import { buildFlagReturnDrops, drawFlagReturnZones, resolveFlagReturnRule } from './flagReturnZone'
 import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
@@ -194,7 +194,7 @@ export function useReplayFlagCarries({
   const returnDrops = useMemo(
     () =>
       buildFlagReturnDrops(carries, {
-        rule: doc.flagReturnZone ?? null,
+        rule: resolveFlagReturnRule(doc.flagReturnZone),
         frameIntervalMs: doc.frameIntervalMs ?? 0,
         posOf,
         defendersOf,

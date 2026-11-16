@@ -1,5 +1,10 @@
 ## What's new
 
+**v8.3 — In preparation**
+
+- **Hits and damage read from the film** — the film now gives each hit and the damage it dealt, to the shield and to the body, and the countdown before a dropped flag returns. The replay does not show them yet; they will be shown only for players whose film is complete enough to count them reliably
+- **Each player in the right seat** — the seat of each player in the film is read from the game's own lists
+
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 
 - **Every medal named** — the 157 medals of the game are read from the film with their real names. The replay does not show them yet

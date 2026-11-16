@@ -35,6 +35,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Pickups:           ptrOf(v.Pickups, toPickupCoverage),
 		Medals:            ptrOf(v.Medals, toMedalCoverage),
 		ScoreActions:      ptrOf(v.ScoreActions, toScoreActionCoverage),
+		Hits:              ptrOf(v.Hits, toHitCoverage),
 		PadDating:         ptrOf(v.PadDating, toPadDatingStats),
 		EquipmentChanges:  ptrOf(v.EquipmentChanges, toEquipmentChangeCoverage),
 		Translocations:    ptrOf(v.Translocations, toTranslocationCoverage),

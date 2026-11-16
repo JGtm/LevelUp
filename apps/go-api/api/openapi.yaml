@@ -13189,6 +13189,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponItemsCoverage'
         groundWeapons:
           $ref: '#/components/schemas/GroundWeaponCoverage'
+        hits:
+          $ref: '#/components/schemas/HitCoverage'
         inventory:
           $ref: '#/components/schemas/InventoryCoverage'
         keyframes:
@@ -13474,6 +13476,34 @@ components:
         - max_rw_window_ms
         - watchdog_fired
         - holders
+      type: object
+    Damage:
+      additionalProperties: false
+      properties:
+        attacker:
+          type: string
+        body:
+          format: double
+          type: number
+        effect:
+          type: string
+        measured:
+          type: boolean
+        shield:
+          format: double
+          type: number
+        t:
+          format: int64
+          type: integer
+        victim:
+          type: string
+        w:
+          type: string
+      required:
+        - t
+        - effect
+        - shield
+        - body
       type: object
     DataBackupAttempt:
       additionalProperties: false
@@ -16065,6 +16095,12 @@ components:
         gaugeSpans:
           format: int64
           type: integer
+        gaugeWalkReads:
+          format: int64
+          type: integer
+        gaugeWalkSpans:
+          format: int64
+          type: integer
         homeByObject:
           format: int64
           type: integer
@@ -16107,6 +16143,9 @@ components:
           format: int64
           type: integer
         ownFlagRefused:
+          format: int64
+          type: integer
+        seatsBeyondBand:
           format: int64
           type: integer
         spawns:
@@ -16161,12 +16200,15 @@ components:
         - dropsWithheld
         - ownFlagRefused
         - unresolved
+        - seatsBeyondBand
         - gaugeScanned
         - gaugeSlots
         - gaugeReads
         - gaugePaired
         - gaugeSpans
         - gaugePoints
+        - gaugeWalkReads
+        - gaugeWalkSpans
       type: object
     FlagCarry:
       additionalProperties: false
@@ -16198,7 +16240,6 @@ components:
           type: number
       required:
         - radiusM
-        - resetSeconds
         - soloSeconds
       type: object
     FlagSpan:
@@ -16964,6 +17005,118 @@ components:
       required:
         - value
         - count
+      type: object
+    Hit:
+      additionalProperties: false
+      properties:
+        effect:
+          type: string
+        shooter:
+          type: string
+        t:
+          format: int64
+          type: integer
+        victim:
+          type: string
+        w:
+          type: string
+      required:
+        - t
+        - shooter
+        - victim
+        - effect
+      type: object
+    HitCoverage:
+      additionalProperties: false
+      properties:
+        afterEnd:
+          format: int64
+          type: integer
+        beforeOrigin:
+          format: int64
+          type: integer
+        damages:
+          format: int64
+          type: integer
+        damagesMeasured:
+          format: int64
+          type: integer
+        damagesOffUnit:
+          format: int64
+          type: integer
+        estimated:
+          type: boolean
+        frames:
+          format: int64
+          type: integer
+        hits:
+          format: int64
+          type: integer
+        maxDuplicates:
+          format: double
+          type: number
+        maxStoppedShare:
+          format: double
+          type: number
+        messages:
+          format: int64
+          type: integer
+        minCoverage:
+          format: double
+          type: number
+        noShooter:
+          format: int64
+          type: integer
+        noVictim:
+          format: int64
+          type: integer
+        players:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        selfDamages:
+          format: int64
+          type: integer
+        selfHits:
+          format: int64
+          type: integer
+        stoppedFrames:
+          format: int64
+          type: integer
+        sufficient:
+          format: int64
+          type: integer
+        vitalsUnread:
+          format: int64
+          type: integer
+        weaponMessages:
+          format: int64
+          type: integer
+      required:
+        - estimated
+        - minCoverage
+        - maxDuplicates
+        - frames
+        - stoppedFrames
+        - vitalsUnread
+        - maxStoppedShare
+        - messages
+        - weaponMessages
+        - hits
+        - published
+        - noShooter
+        - noVictim
+        - beforeOrigin
+        - afterEnd
+        - sufficient
+        - damages
+        - damagesMeasured
+        - damagesOffUnit
+        - selfHits
+        - selfDamages
+        - players
       type: object
     HomeCareerRankSummary:
       additionalProperties: false
@@ -20634,6 +20787,9 @@ components:
         betrayalPenaltyS:
           format: int64
           type: integer
+        flagReturnS:
+          format: double
+          type: number
         friendlyFire:
           type: boolean
         minRespawnS:
@@ -25314,6 +25470,12 @@ components:
             - "null"
         coverage:
           $ref: '#/components/schemas/Coverage'
+        damage:
+          items:
+            $ref: '#/components/schemas/Damage'
+          type:
+            - array
+            - "null"
         durationMs:
           format: int64
           type: integer
@@ -25384,6 +25546,12 @@ components:
         groundWeapons:
           items:
             $ref: '#/components/schemas/GroundWeapon'
+          type:
+            - array
+            - "null"
+        hits:
+          items:
+            $ref: '#/components/schemas/Hit'
           type:
             - array
             - "null"
@@ -25503,6 +25671,12 @@ components:
             - "null"
         scoreTimeline:
           $ref: '#/components/schemas/ScoreTimeline'
+        shotStats:
+          items:
+            $ref: '#/components/schemas/ShotStat'
+          type:
+            - array
+            - "null"
         shots:
           items:
             $ref: '#/components/schemas/Shot'
@@ -27633,6 +27807,49 @@ components:
         - sameTick
         - record
         - none
+      type: object
+    ShotStat:
+      additionalProperties: false
+      properties:
+        coverage:
+          format: double
+          type: number
+        damageDealt:
+          format: double
+          type: number
+        damageTaken:
+          format: double
+          type: number
+        duplicates:
+          format: double
+          type: number
+        hits:
+          format: int64
+          type: integer
+        messages:
+          format: int64
+          type: integer
+        shotEvents:
+          format: int64
+          type: integer
+        shots:
+          format: int64
+          type: integer
+        sufficient:
+          type: boolean
+        xuid:
+          type: string
+      required:
+        - xuid
+        - shots
+        - shotEvents
+        - messages
+        - hits
+        - damageDealt
+        - damageTaken
+        - coverage
+        - duplicates
+        - sufficient
       type: object
     SkillRatingSnapshot:
       additionalProperties: false

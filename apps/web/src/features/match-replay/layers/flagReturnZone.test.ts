@@ -6,6 +6,7 @@ import {
   flagReturnAt,
   gaugeRadiusPx,
   harmonic,
+  resolveFlagReturnRule,
   type FlagReturnDrop,
   type FlagReturnRule,
 } from './flagReturnZone'
@@ -311,5 +312,18 @@ describe('drawFlagReturnZones', () => {
     const d = dropOf(0, 0)
     d.progress[0] = 1
     expect(paintAt(d, 20)).toHaveLength(2)
+  })
+})
+
+describe('resolveFlagReturnRule', () => {
+  const zone = { radiusM: 1.3, soloSeconds: 3.1 }
+
+  it('garde le délai de la zone quand elle le publie', () => {
+    expect(resolveFlagReturnRule({ ...zone, resetSeconds: 30 })).toEqual(RULE)
+  })
+
+  it('ne devine pas le délai : sans lui, pas de règle', () => {
+    expect(resolveFlagReturnRule(zone)).toBeNull()
+    expect(resolveFlagReturnRule(null)).toBeNull()
   })
 })

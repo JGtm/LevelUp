@@ -53,12 +53,15 @@ func toFlagCarriesCoverage(v replay.FlagCarriesCoverage) replaydoc.FlagCarriesCo
 		DropsWithheld:         v.DropsWithheld,
 		OwnFlagRefused:        v.OwnFlagRefused,
 		Unresolved:            v.Unresolved,
+		SeatsBeyondBand:       v.SeatsBeyondBand,
 		GaugeScanned:          v.GaugeScanned,
 		GaugeSlots:            v.GaugeSlots,
 		GaugeReads:            v.GaugeReads,
 		GaugePaired:           v.GaugePaired,
 		GaugeSpans:            v.GaugeSpans,
 		GaugePoints:           v.GaugePoints,
+		GaugeWalkReads:        v.GaugeWalkReads,
+		GaugeWalkSpans:        v.GaugeWalkSpans,
 	}
 }
 

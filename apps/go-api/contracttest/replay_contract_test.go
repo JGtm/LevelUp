@@ -182,6 +182,11 @@ var replaySchemas = []struct {
 	{"RespawnCountdown", replaydoc.RespawnCountdown{}},
 	{"MatchRules", replaydoc.MatchRules{}},
 	{"ClocksCoverage", replaydoc.ClocksCoverage{}},
+	// AJOUTES A LA MONTEE DU DECODEUR (schema 125) : touches, degats et bilan de tirs.
+	{"Hit", replaydoc.Hit{}},
+	{"Damage", replaydoc.Damage{}},
+	{"ShotStat", replaydoc.ShotStat{}},
+	{"HitCoverage", replaydoc.HitCoverage{}},
 	{"LifeEndCoverage", replaydoc.LifeEndCoverage{}},
 }
 
@@ -763,9 +768,13 @@ var replaySchemas = []struct {
 //	                      `coverage.score.statsWithheld` et `scoreTimeline.players[].stats` naissent au
 //	                      meme commit SANS faire monter ce compte (types imbriques).
 //
+//	75 (2026-11-16) : `hits`, `damage` et `shotStats` (schema 125, touches, degats en points et bilan de tirs
+//	                      par joueur) : trois champs de tete, montee du decodeur de film. `coverage.hits`
+//	                      (HitCoverage) nait au meme commit SANS faire monter ce compte (type imbrique).
+//
 // Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 72
+const wantReplayDocumentFields = 75
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

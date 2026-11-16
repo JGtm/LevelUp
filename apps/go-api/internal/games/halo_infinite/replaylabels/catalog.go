@@ -241,14 +241,14 @@ func toLabel(slug string, l mappings.ReplayLabel) replay.Label {
 }
 
 // flagReturnZone projette la règle de retour du manifeste vers le document. Une règle non
-// déclarée reste à zéro, et le calque du drapeau ne publie alors rien.
+// déclarée reste à zéro, et le calque du drapeau ne publie alors rien. La minuterie nue n'en fait
+// pas partie : le décodeur la lit dans la variante du film.
 func flagReturnZone(z mappings.FlagReturnZone) replay.FlagReturnZone {
 	if !z.Declared() {
 		return replay.FlagReturnZone{}
 	}
 	return replay.FlagReturnZone{
-		RadiusM:      float32(z.RadiusM),
-		ResetSeconds: float32(z.ResetSeconds),
-		SoloSeconds:  float32(z.SoloSeconds),
+		RadiusM:     float32(z.RadiusM),
+		SoloSeconds: float32(z.SoloSeconds),
 	}
 }

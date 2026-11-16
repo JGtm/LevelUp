@@ -255,7 +255,6 @@ var frenchLabelAllowlist = map[string]int{
 	"games/mappings/loader_regulation.go":                   2,
 	"games/mappings/loader_replay_labels.go":                3,
 	"games/mappings/loader_replay_labels_equipment.go":      1,
-	"games/mappings/loader_replay_labels_flagzone.go":       2,
 	"games/mappings/registry.go":                            1,
 	"service/backfill_orchestrator.go":                      9,
 	"service/career_live_target.go":                         2,
