@@ -168,6 +168,16 @@ func (r *rapporteur) tableauParCarte(echs []tactical.Echantillon) {
 	fmt.Println()
 }
 
+// reglages rend les reglages des echantillons de la lecture, avec l'indice de zone nommee des
+// cartes lues.
+func (r *rapporteur) reglages() tactical.ReglagesEchantillons {
+	r.chargerZones()
+	return tactical.ReglagesEchantillons{
+		MatchsMinCarte: r.o.matchsMinCarte,
+		Zone:           func(carte string, p tactical.Point3) int { return tactical.IndiceDeZone(r.zones[carte], p) },
+	}
+}
+
 // chargerZones resout les zones nommees des cartes lues, une fois.
 func (r *rapporteur) chargerZones() {
 	if r.zones != nil {
@@ -194,8 +204,7 @@ func (r *rapporteur) lignesParFamille() []string {
 
 // parMode : M-3, famille par famille.
 func (r *rapporteur) parMode() {
-	r.chargerZones()
-	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: r.o.matchsMinCarte, Zone: fonctionZone(r.zones)}
+	reglages := r.reglages()
 	tous := make([]ligneFamille, 0, len(r.o.table.Families()))
 	for _, f := range r.lignesParFamille() {
 		evts := r.jeu.evenementsDeFamilles(map[string]bool{f: true})
@@ -235,8 +244,7 @@ func imprimerParMode(lignes []ligneFamille) {
 
 // instant : M-4, la prevision a l'instant de la mort contre celui de la reapparition.
 func (r *rapporteur) instant() {
-	r.chargerZones()
-	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: r.o.matchsMinCarte, Zone: fonctionZone(r.zones)}
+	reglages := r.reglages()
 	fmt.Println("## M-4 prevision a l'instant de la mort, contre l'instant de la reapparition")
 	fmt.Println("\nMemes evenements (les deux instantanes ont au moins un adversaire), memes candidats ; chaque modele est ajuste sur son propre instant.")
 	fmt.Println()

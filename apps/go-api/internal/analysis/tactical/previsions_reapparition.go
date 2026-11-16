@@ -232,7 +232,7 @@ func (p *previseur) prevoirUneMort(piste Piste, s SpawnPiste) (PrevisionDeMort, 
 		ZoneReelle: IndiceDeZone(p.zones, reel),
 	}
 	for f := s.Mort.Frame; f < s.Frame; f += p.pasFrames {
-		ev := evenementAuInstant(p.index.Vivants(piste.XUID, f), equipe, mort)
+		ev := EvenementAuInstant(p.index.Vivants(piste.XUID, f), equipe, mort)
 		if len(ev.Ennemis) == 0 {
 			continue // seconde sautee : le premier echantillon peut suivre la mort (contrat de replaydoc.SpawnForecastDeath)
 		}
@@ -309,10 +309,11 @@ func matchsDistincts(evts []EvenementReapparition) int {
 	return len(vus)
 }
 
-// evenementAuInstant separe les joueurs vivants en equipiers et adversaires du point de vue de
+// EvenementAuInstant separe les joueurs vivants en equipiers et adversaires du point de vue de
 // `equipe` ; un joueur dont l'equipe est inconnue ou la position non finie n'est compte dans
-// aucun des deux. `mort` est le lieu de la mort du joueur prevu.
-func evenementAuInstant(vivants []Vivant, equipe int, mort Point3) EvenementReapparition {
+// aucun des deux. `mort` est le lieu de la mort du joueur prevu ; l'appelant pose l'identite du
+// match, de la carte et le point reel s'il en a besoin.
+func EvenementAuInstant(vivants []Vivant, equipe int, mort Point3) EvenementReapparition {
 	e := EvenementReapparition{Mort: mort}
 	for _, v := range vivants {
 		pos := Point3{X: v.X, Y: v.Y, Z: v.Z}

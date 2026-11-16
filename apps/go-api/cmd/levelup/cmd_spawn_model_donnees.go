@@ -13,7 +13,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"math"
 	"time"
 
 	"levelup/go-api/internal/analysis/tactical"
@@ -140,43 +139,21 @@ func (j *jeuReapparitions) evenementsDuMatch(entree tactical.EntreeOccupation, i
 			j.bilan.sansEquipe++
 			continue
 		}
-		if !fini(reel) || !fini(mort) {
+		if !reel.Fini() || !mort.Fini() {
 			j.bilan.nonFinis++
 			continue
 		}
 		j.evts = append(j.evts, evenementDouble{
 			famille: info.famille,
-			reap:    evenementDe(info, reel, mort, equipe, s.Instantane),
-			mort:    evenementDe(info, reel, mort, equipe, ix.Vivants(p.XUID, s.Mort.Frame)),
+			reap:    info.evenement(tactical.EvenementAuInstant(s.Instantane, equipe, mort), reel),
+			mort:    info.evenement(tactical.EvenementAuInstant(ix.Vivants(p.XUID, s.Mort.Frame), equipe, mort), reel),
 		})
 	}
 }
 
-func fini(p tactical.Point3) bool {
-	for _, v := range []float64{p.X, p.Y, p.Z} {
-		if math.IsNaN(v) || math.IsInf(v, 0) {
-			return false
-		}
-	}
-	return true
-}
-
-// evenementDe separe un instantane en equipiers et adversaires du point de vue de `equipe` ; un
-// joueur dont l'equipe est inconnue n'est compte dans aucun des deux.
-func evenementDe(info infoMatch, reel, mort tactical.Point3, equipe int, vivants []tactical.Vivant) tactical.EvenementReapparition {
-	e := tactical.EvenementReapparition{MatchID: info.matchID, CarteID: info.carteID, Reel: reel, Mort: mort}
-	for _, v := range vivants {
-		p := tactical.Point3{X: v.X, Y: v.Y, Z: v.Z}
-		if !fini(p) || v.Equipe < 0 {
-			// Une equipe inconnue n'est ni coequipier ni adversaire.
-			continue
-		}
-		if v.Equipe == equipe {
-			e.Equipiers = append(e.Equipiers, p)
-		} else {
-			e.Ennemis = append(e.Ennemis, p)
-		}
-	}
+// evenement rattache a un instantane le match, la carte et le point reel de la reapparition.
+func (info infoMatch) evenement(e tactical.EvenementReapparition, reel tactical.Point3) tactical.EvenementReapparition {
+	e.MatchID, e.CarteID, e.Reel = info.matchID, info.carteID, reel
 	return e
 }
 

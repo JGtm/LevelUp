@@ -137,7 +137,7 @@ func echantillonDe(e EvenementReapparition, cs []Candidat, g geometrieCarte, r R
 			retenus = append(retenus, i)
 		}
 	}
-	if len(retenus) < 2 {
+	if len(retenus) < CandidatsMinPrevision {
 		return Echantillon{}, false
 	}
 	s := Echantillon{
