@@ -258,65 +258,6 @@ func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
 	return s
 }
 
-// ecritRapport écrit le tableau de cuisson, tel qu'il se colle dans un document de chantier.
-func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "# Cuisson des fonds de carte — %s\n\n", time.Now().UTC().Format("2006-01-02"))
-	// L'habillage et l'échelle annoncés sont ceux de la CUISSON ; les cartes qui portent leur
-	// propre réglage sont comptées à côté — sans ça le tableau annoncerait `jeu` pour une carte
-	// publiée en `encre`.
-	fmt.Fprintf(&sb, "Habillage `%s` · %.4f m/px · %d réglage(s) par carte · sortie `%s`\n\n",
-		env.style, env.echelleEffective(), len(env.reglages.Cartes), env.sortieDir)
-	fmt.Fprintln(&sb, "`ancres avec sol` est l'ORACLE FAIBLE : une ancre d'objectif sans sol dessine")
-	fmt.Fprintln(&sb, "sous elle est un trou de reconstruction. `matiere` compte les instances de bsp")
-	fmt.Fprintln(&sb, "dessinees pour une carte native, et les OBJETS poses pour une carte Forge — une")
-	fmt.Fprintln(&sb, "carte Forge n'a pas d'instance de bsp dessinee, sa carte EST son rack d'objets.")
-	fmt.Fprintln(&sb, "")
-	fmt.Fprintln(&sb, "`toits` est la part de matiere qui cache un sol praticable (voie de reference,")
-	fmt.Fprintln(&sb, "himap/rendu_reference.go) : au-dela d'un tiers la carte est COUVERTE et montre")
-	fmt.Fprintln(&sb, "l'etage de jeu au lieu du plafond, dans la portee des ancres.")
-	fmt.Fprintln(&sb, "")
-	fmt.Fprintln(&sb, "| carte | noms | px | Ko | ancres avec sol | matiere | frontiere | eau | toits | degradations |")
-	fmt.Fprintln(&sb, "|---|---|---|---:|---|---|---|---:|---|---|")
-	for _, b := range bilans {
-		if b.laissee() {
-			fmt.Fprintf(&sb, "| `%s` | %s | LAISSEE (%s) | | | | | | | |\n",
-				b.Cle, strings.Join(b.Noms, ", "), b.Suivi.Decision.Etat)
-			continue
-		}
-		if b.Err != nil {
-			etat := "ECHEC"
-			if b.NonCuisinable {
-				etat = "NON CUISINABLE"
-			}
-			fmt.Fprintf(&sb, "| `%s` | %s | %s | | | | | | | %v |\n",
-				b.Cle, strings.Join(b.Noms, ", "), etat, b.Err)
-			continue
-		}
-		frontiere := "non"
-		if b.Bilan.FrontiereAppliquee {
-			frontiere = fmt.Sprintf("%d plans", b.Bilan.PlansFrontiere)
-		}
-		matiere := fmt.Sprintf("%d instances", b.Bilan.Dessinees)
-		if b.Bilan.ObjetsForge > 0 {
-			matiere = fmt.Sprintf("%d/%d objets Forge", b.Bilan.ObjetsDessines, b.Bilan.ObjetsForge)
-		}
-		toits := fmt.Sprintf("%.0f %%", 100*b.Bilan.TauxCouverture)
-		if b.Bilan.CarteCouverte {
-			toits = fmt.Sprintf("COUVERTE %.0f %% (%d px)", 100*b.Bilan.TauxCouverture, b.Bilan.CellulesSubstituees)
-		}
-		fmt.Fprintf(&sb, "| `%s` | %s | %dx%d | %d | %d/%d | %s | %s | %d | %s | %s |\n",
-			b.Cle, strings.Join(b.Noms, ", "), b.LargeurPx, b.HauteurPx, b.OctetsPNG/1024,
-			b.Bilan.AncresAvecSol, b.Bilan.AncresDansLeCadre, matiere,
-			frontiere, b.Bilan.CellulesEau, toits, strings.Join(b.Bilan.Degradations, " · "))
-	}
-	if len(env.nonInstalle) > 0 {
-		fmt.Fprintf(&sb, "\n%d modules du catalogue non installes localement : %s\n",
-			len(env.nonInstalle), strings.Join(env.nonInstalle, ", "))
-	}
-	return os.WriteFile(chemin, []byte(sb.String()), 0o644) //nolint:gosec // rapport de chantier
-}
-
 // extraitSousImage rend une image RGBA autonome bornee a `r`, origine ramenee a (0,0).
 //
 // `SubImage` partagerait le tableau de pixels et garderait des bornes decalees : l'encodeur PNG

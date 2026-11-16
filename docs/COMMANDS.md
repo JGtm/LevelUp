@@ -696,7 +696,7 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
+  [--out-dir DIR] [--style jeu] [--mpp M] [--natives=false] [--forge=false] [--plan-seul]   [--avis FILE[,FILE...]] [--rapport-tsv FILE] [--avant-dir DIR]
 ```
 
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
