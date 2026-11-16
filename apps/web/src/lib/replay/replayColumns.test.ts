@@ -65,6 +65,21 @@ describe('decodeReplayColumns — fixtures écrites par le serveur', () => {
   }
 })
 
+describe('decodeReplayColumns — document plein (tous les champs du document courant)', () => {
+  it('chaque champ du document, y compris ceux que les films réels ne portent pas, revient identique', () => {
+    const lire = (nom: string): unknown =>
+      JSON.parse(gunzipSync(readFileSync(join(columnsDir, nom))).toString('utf8'))
+    const normal = lire('plein.json.gz')
+    const encoded = lire('columns_plein.json.gz') as Record<string, unknown>
+    expect(encoded.$enc).toBe(1)
+    const decoded = decodeReplayColumns(encoded)
+    expect(firstDifference(normal, decoded)).toBeNull()
+    expect(Object.keys(normal as object)).toEqual(
+      expect.arrayContaining(['respawnCountdowns', 'roundClock', 'rules', 'hits', 'damage', 'flagReturnZone']),
+    )
+  })
+})
+
 describe('decodeReplayColumns — cas écrits à la main', () => {
   it('un document sans $enc est rendu tel quel, même référence', () => {
     const doc = { matchId: 'm', tracks: [{ points: [{ x: 1 }] }] }

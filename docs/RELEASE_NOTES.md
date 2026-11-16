@@ -2,6 +2,7 @@
 
 **v8.3 — In preparation**
 
+- **A lighter replay to load** — the heaviest replays now arrive about four times smaller (8.5 MB down to 2.1 MB for the largest one), so the replay page opens faster, especially on a slow connection.
 - **Hits and damage read from the film** — the film now gives each hit and the damage it dealt, to the shield and to the body, and the countdown before a dropped flag returns. The replay does not show them yet; they will be shown only for players whose film is complete enough to count them reliably
 - **Each player in the right seat** — the seat of each player in the film is read from the game's own lists
 

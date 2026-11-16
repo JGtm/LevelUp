@@ -2,6 +2,7 @@
 
 **v8.3 — En préparation**
 
+- **Un rejeu plus léger à charger** — les plus gros rejeux arrivent environ quatre fois plus petits (8,5 Mo ramenés à 2,1 Mo pour le plus gros), la page du rejeu s'ouvre donc plus vite, surtout sur une connexion lente.
 - **Touches et dégâts lus dans le film** — le film donne désormais chaque touche et les dégâts qu'elle a faits, au bouclier et au corps, ainsi que le compte à rebours avant le retour d'un drapeau lâché. Le rejeu ne les affiche pas encore ; ils ne s'afficheront que pour les joueurs dont le film est assez complet pour les compter de façon fiable
 - **Chaque joueur à sa place** — la place de chaque joueur dans le film est lue dans les listes du jeu
 
