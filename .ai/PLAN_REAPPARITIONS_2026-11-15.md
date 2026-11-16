@@ -331,6 +331,26 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
   et D passent dans la version suivante (leur branche release, recalés sur elle). Le câblage de la lecture du
   film (A.1, A.8) reste dans la 8.2.0, au SHA de la montée du décodeur v1.3.9.
 
+## 7 bis. Orchestration des lots C et D (2026-11-16, pilote levelup-dd)
+
+Go du user le 2026-11-16 (« Tu as mon go pour "Réapparitions, deux étapes suivantes", pas pour le reste »).
+Base : `release/v8.3.0`. Agents sans commit ni push ; le pilote relit sur pièces, commite et pousse.
+
+| Piste | Items | Modèle | Worktree / branche | Attend |
+|---|---|---|---|---|
+| P1 | A.8 (mesure d'accord sur le parc régénéré au schéma 124, M-1 à M-4 sur la voie du film) | Sonnet | `C:\t\reapp-a8`, détaché, lecture seule du parc | rien |
+| P2 | C.1 + D.1 (page unique de maquettes, onglets « Tactique » et « Rejeu ») | Opus (rendu UI soigné demandé par le user) | aucun (fichier HTML hors dépôt) | rien |
+| P3 | C.2 + C.3 (lecture `reapparitions_adverses`, service, handler, tests) | Sonnet | `C:\t\reapp-c`, `feat/reapp-c` | rien |
+| P4 | D.2 (route des prévisions de réapparition, calcul dans `analysis/tactical`) | Sonnet | `C:\t\reapp-d`, `feat/reapp-d` | rien |
+| P5 | C.4 + D.3 (web) | Sonnet | worktrees de P3 et P4 | choix du user sur les maquettes (D-6) |
+| P6 | Revue finale du diff complet (une ronde) | Fable | lecture seule | P3 à P5 |
+| P7 | D.4 et contrôles à l'écran | user | — | P5, régénération de la 8.3.0 pour la prod |
+
+Bornes : quatre agents d'écriture à la fois, une seule tâche lourde en mémoire (P1 lit le parc un artefact à la
+fois), `GOCACHE=%LOCALAPPDATA%\go-build-<piste>` par piste. P3 et P4 écrivent dans des fichiers distincts de
+`analysis/tactical` et du service ; un fichier partagé (routes, OpenAPI, `generated.ts`) n'a qu'un écrivain à la
+fois : P3 d'abord, P4 se recale au moment de l'intégration.
+
 ## 8. Découvertes (hors périmètre, consignées sans être traitées)
 
 - Échelle du point exact (`rangsExacts`) : pour trois ex aequo ou plus, elle ne donne pas l'espérance
