@@ -10,13 +10,15 @@
  * bas, Début et Fin déplacent le focus (en boucle) ; Entrée choisit ; Échap et Tab ferment, et
  * Échap rend le focus au déclencheur. Échap et le clic dehors sont ceux de `useDismissable` (au
  * `pointerdown`, comme le menu de vitesse). La couche se signale au mode plein écran
- * (`data-replay-escape-layer`) : Échap ferme le menu AVANT de quitter le mode. Menu ouvert, AUCUNE touche ne traverse vers le clavier du
- * lecteur (`useReplayShortcuts`) : ni les flèches gauche et droite, ni J, L, F, M, R.
+ * (`data-replay-escape-layer`) : Échap ferme le menu AVANT de quitter le mode. Menu ouvert, AUCUNE
+ * touche ne traverse vers le clavier du lecteur (`useReplayShortcuts`) : ni les flèches gauche et
+ * droite, ni J, L, F, M, R. La navigation au clavier est dans `useFeedFilterMenuKeys`.
  */
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
 
-import { isEscapeKey, useDismissable } from '@/lib/hooks/useDismissable'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 
+import { useFeedFilterMenuKeys } from '../hooks/useFeedFilterMenuKeys'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { FeedFilterId, FeedFilterOption } from '../model/feedFilterLogic'
 import { FEED_FILTER_GLYPH } from '../model/feedGlyphs'
@@ -36,65 +38,21 @@ interface Props {
 export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Props) {
   const t = REPLAY_TEXT[locale]
   const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuId = useId()
 
   // Échap et clic dehors : le menu part au geste (`pointerdown`), pas au relâché ; Échap rend le
   // focus au déclencheur, le clic dehors le laisse où l'on a cliqué.
-  useDismissable(open, (reason) => {
-    setOpen(false)
-    if (reason === 'escape') triggerRef.current?.focus()
-  }, { ref: wrapRef, outside: 'pointerdown' })
-
-  // À l'ouverture, le focus va au filtre actif : le clavier part de là où l'on est.
-  useEffect(() => {
-    if (!open) return
-    const items = wrapRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]')
-    const current = wrapRef.current?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]')
-    ;(current ?? items?.[0])?.focus()
-  }, [open])
-
-  function moveFocus(to: 'next' | 'prev' | 'first' | 'last') {
-    const items = Array.from(
-      wrapRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [],
-    )
-    if (items.length === 0) return
-    const at = items.indexOf(document.activeElement as HTMLElement)
-    const next =
-      to === 'first' ? 0
-      : to === 'last' ? items.length - 1
-      : to === 'next' ? (at + 1) % items.length
-      : (at - 1 + items.length) % items.length
-    items[next]?.focus()
-  }
-
-  function onMenuKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    const to = { ArrowDown: 'next', ArrowUp: 'prev', Home: 'first', End: 'last' }[e.key] as
-      | 'next' | 'prev' | 'first' | 'last' | undefined
-    if (to) {
-      e.preventDefault()
-      moveFocus(to)
-    } else if (e.key === 'Tab') {
+  const wrapRef = useDismissable(
+    open,
+    (reason) => {
       setOpen(false)
-    } else if (!isEscapeKey(e)) {
-      // MENU OUVERT, LE CLAVIER EST AU MENU : Espace choisit l'entrée, et aucune autre touche
-      // (flèches gauche et droite, J, L, F, M, R...) ne doit atteindre le clavier du lecteur.
-      // Échap, lui, remonte jusqu'à la fermeture de la couche (`useDismissable`).
-      e.stopPropagation()
-    }
-  }
+      if (reason === 'escape') triggerRef.current?.focus()
+    },
+    { outside: 'pointerdown' },
+  )
 
-  function onTriggerKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
-    if (e.key === 'ArrowDown' && !open) {
-      e.preventDefault()
-      setOpen(true)
-    } else if (open || e.key === ' ') {
-      // Menu ouvert (focus resté sur le déclencheur) : rien ne traverse vers le clavier du lecteur.
-      // Menu fermé, seul Espace est retenu (il active le bouton).
-      e.stopPropagation()
-    }
-  }
+  const { onMenuKeyDown, onTriggerKeyDown } = useFeedFilterMenuKeys({ open, setOpen, wrapRef })
 
   function choose(id: FeedFilterId) {
     onChange(id)
@@ -124,39 +82,63 @@ export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Prop
         </button>
       </div>
       {open && (
-        <div
+        <FeedFilterList
           id={menuId}
-          role="menu"
-          aria-label={t.feedFilterMenuLabel}
-          // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
-          data-replay-escape-layer=""
+          options={options}
+          active={active}
+          onChoose={choose}
           onKeyDown={onMenuKeyDown}
-          className="absolute left-1.5 top-7 z-20 w-60 rounded-lg border border-border bg-popover p-1 shadow-xl"
-        >
-          {options.map((o) => (
-            <div key={o.id}>
-              {o.id === FIRST_EXTRA_FILTER && (
-                <div className="px-2 pb-0.5 pt-1.5 text-3xs uppercase tracking-wider text-muted-foreground">
-                  {t.feedFilterMoreHeading}
-                </div>
-              )}
-              <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={o.id === active}
-                onClick={() => choose(o.id)}
-                className={`flex h-7 w-full cursor-pointer items-center gap-2 rounded px-2 text-left text-xs transition-colors ${
-                  o.id === active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'
-                }`}
-              >
-                <EventGlyph glyph={FEED_FILTER_GLYPH[o.id]} />
-                {t.feedFilterLabel[o.id]}
-                <span className="ml-auto tabular-nums text-muted-foreground">{o.count}</span>
-              </button>
-            </div>
-          ))}
-        </div>
+          locale={locale}
+        />
       )}
+    </div>
+  )
+}
+
+interface FeedFilterListProps {
+  id: string
+  options: readonly FeedFilterOption[]
+  active: FeedFilterId
+  onChoose: (filter: FeedFilterId) => void
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void
+  locale: ReplayLocale
+}
+
+/** La liste des filtres : une entrée par filtre, le séparateur des « proposés en plus » avant la première. */
+function FeedFilterList({ id, options, active, onChoose, onKeyDown, locale }: FeedFilterListProps) {
+  const t = REPLAY_TEXT[locale]
+  return (
+    <div
+      id={id}
+      role="menu"
+      aria-label={t.feedFilterMenuLabel}
+      // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
+      data-replay-escape-layer=""
+      onKeyDown={onKeyDown}
+      className="absolute left-1.5 top-7 z-20 w-60 rounded-lg border border-border bg-popover p-1 shadow-xl"
+    >
+      {options.map((o) => (
+        <div key={o.id}>
+          {o.id === FIRST_EXTRA_FILTER && (
+            <div className="px-2 pb-0.5 pt-1.5 text-3xs uppercase tracking-wider text-muted-foreground">
+              {t.feedFilterMoreHeading}
+            </div>
+          )}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={o.id === active}
+            onClick={() => onChoose(o.id)}
+            className={`flex h-7 w-full cursor-pointer items-center gap-2 rounded px-2 text-left text-xs transition-colors ${
+              o.id === active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent'
+            }`}
+          >
+            <EventGlyph glyph={FEED_FILTER_GLYPH[o.id]} />
+            {t.feedFilterLabel[o.id]}
+            <span className="ml-auto tabular-nums text-muted-foreground">{o.count}</span>
+          </button>
+        </div>
+      ))}
     </div>
   )
 }
