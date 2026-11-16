@@ -140,9 +140,7 @@ func (e *environnement) cibleForge(carte himap.CarteForge) (cible, []mapvar.Obje
 	// par nom -> module de CANEVAS, et un canevas porte les noms de toutes les cartes qui y
 	// sont baties — le lire ici attacherait a Vagabond les noms de Dynasty et d'Origin.
 	c.ajouteNom(carte.Nom)
-	for _, o := range entree.Objectives {
-		c.ancres = append(c.ancres, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
-	}
+	c.ancres = ancresDesObjectifs(entree.Objectives)
 	return c, v.Objects, nil
 }
 

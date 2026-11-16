@@ -104,11 +104,7 @@ func (e *environnement) ancresDuCatalogue(cle string) ([][3]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([][3]float64, 0, len(entree.Objectives))
-	for _, o := range entree.Objectives {
-		out = append(out, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
-	}
-	return out, nil
+	return ancresDesObjectifs(entree.Objectives), nil
 }
 
 // noteResultat classe le résultat d'un plan dans le bilan : absent (maillage ou sidecar), échec,

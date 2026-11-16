@@ -29,10 +29,22 @@ import (
 	"github.com/JGtm/halo-infinite-map-images/himap"
 
 	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // sourceCuisson documente la chaîne dans chaque sidecar.
 const sourceCuisson = "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)"
+
+// ancresDesObjectifs rend la position monde de chaque objectif : les ancres qui cadrent une carte,
+// déduisent son niveau de jeu et servent à la juger. C'est le SEUL endroit où un objectif devient une
+// ancre (`TestAncresConstruitesEnUnSeulPoint`).
+func ancresDesObjectifs(objectifs []mapvar.Objective) [][3]float64 {
+	out := make([][3]float64, 0, len(objectifs))
+	for _, o := range objectifs {
+		out = append(out, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
+	}
+	return out
+}
 
 // cible est une carte à cuire : un dossier de module installé et les entrées de catalogue qui
 // s'y rattachent.
@@ -136,8 +148,7 @@ func (e *environnement) ciblesNatives() []cible {
 		// Ancres DÉDUPLIQUÉES par position : deux entrées de la même carte (classée et non
 		// classée) partagent la plupart de leurs objectifs. Les compter deux fois pèserait sur
 		// la médiane qui donne le niveau de jeu — un doublon n'est pas une mesure de plus.
-		for _, o := range entree.Objectives {
-			a := [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z}
+		for _, a := range ancresDesObjectifs(entree.Objectives) {
 			if !c.ancreConnue[a] {
 				c.ancreConnue[a] = true
 				c.ancres = append(c.ancres, a)
