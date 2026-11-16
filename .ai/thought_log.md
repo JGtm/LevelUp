@@ -1,3 +1,9 @@
+## [2026-11-16] LevelUp v8.2.1 publiée et en prod — Complété
+
+- **Décision** : squash fee334a039 (PR #211), tag v8.2.1, release GitHub latest. Gestes de prod faits par le pilote : restic frais (snapshot 006206bf), déploiement relancé une fois (coupure réseau du proxy Go pendant go mod download, prod non touchée), bascule des rejeux, passes de dérivés serveur arrêté.
+- **Résultats observés** : bascule « 1455 rejeux copiés (1455 remplacent un rejeu servi, 0 nouveaux), 0 erreurs » ; usage-summary, pad-tiers, vehicle-takes, flag-grabs-net, tactical-rasters à rc=0 ; 1 455 .meta au schéma 124 servis ; 3 537 .json.gz, 0 .json brut ; health 200 ; disque à 72 %.
+- **Suite** : contrôle à l'écran d'un rejeu régénéré par le user, puis suppression des dossiers d'attente 8.2.0 et 8.2.1 sur le VPS. release/v8.3.0 créée depuis main avec les plans et la montée v1.4.1.
+
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 
 - **Décision** : version 8.2.1 posée (coquille Windows, notes FR/EN, changelogs datés du 2026-11-16) ; ajout du fond plan transparent (brique map-images v1.3.1, 111 images refaites) et des défis de l'axe Objectif aux notes ; ligne de backlog des défis close.
@@ -9,7 +15,7 @@
 - **Décision** : sur décision du user, le papier opaque (240, 241, 236) des images plan devient transparent (alpha 0), trous du maillage compris ; le trait des murs garde sa couleur. Changement dans la brique (`himap.PlanPNG`, commit `2cbf272` du dépôt `halo-infinite-map-images`, branche `fix/plan-papier-transparent`, à publier en v1.3.1) ; ici, les 111 images `.plan.webp` sont refaites par `mapfond-build --plan-seul` (sans `--rogne-publie`) puis `mapfond-webp -convertir`, avec un `replace` temporaire vers la brique modifiée, retiré avant le commit. Les blobs de maillage Forge (dépôt hors ligne `.ai/re_dump`, ignoré par git) ont été copiés depuis un autre worktree, sans jonction.
 - **Résultats observés** : témoin avant/après (WebP sans perte, écart nul) sur 110 images : mêmes dimensions, 148 010 451 pixels de papier devenus alpha 0, 75 354 919 autres pixels identiques, 0 alpha partiel, aucun pixel à l'ancienne teinte. Les 110 sidecars `.json` n'ont pas bougé. Écart : l'image de Vallaheim Firefight (`e8268e75`) publiée était d'un ancien style (plan gris aplati, papier 245, 245, 242, aucun pixel à 240, 241, 236) ; refaite par le même outil, elle devient un plan à hauteurs comme les 110 autres (2 117 491 pixels transparents), son sidecar est inchangé.
 - **Suite** : bump de la brique en v1.3.1 par le pilote (relecture, push, tag), puis fusion de cette branche dans la `release/v8.2.1`.
-## [2026-11-16] Montée du décodeur de film v1.4.1 (schéma 125) — En cours (branche `feat/monte-decodeur-v140`, locale, release suivante)
+## [2026-11-16] Montée du décodeur de film v1.4.1 (schéma 125) — Complété (fusionnée dans `release/v8.3.0`, ef6f29b07f)
 
 - **Décision** : montée préparée hors de la 8.2.1 (pilote levelup-dd), notes sous 8.3.0 à titre provisoire. Miroir du schéma 125 (touches, dégâts, bilan de tirs, jauge du drapeau, `rules.flagReturnS`), sans UI : tirs, touches et dégâts ne s'affichent que sous `shotStats[].sufficient`. `resetSeconds` facultatif : sans délai de la variante, ni zone ni jauge ; la clé `reset_seconds` du manifeste du titre, morte depuis v1.4.0, est retirée. v1.4.1 publiée pour un instantané de test périmé livré en v1.4.0 (aucune sortie changée).
 - **Résultats observés** : fixtures de contrat 125 (8, 4 936 939 octets sous un plafond de 4 980 736, aucun xuid réel) ; `go test ./...` 226 paquets ok après retrait d'une entrée d'allowlist tombée à zéro ; `tsc` vert ; vitest du rejeu 4 982 tests verts.
