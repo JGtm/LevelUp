@@ -15,52 +15,51 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// paceSums : les sommes d'un joueur sur les matchs du périmètre. Frags, morts et assistances
-// se rapportent aux secondes de tous les matchs joués ; chaque dégât a ses propres secondes,
-// celles des seuls matchs où il est connu (un compte inconnu n'est pas un zéro : le match sort du
-// numérateur ET du dénominateur, comme dans le groupe « Rythme » de Tendances).
-type paceSums struct {
-	kills, deaths, assists, secs, matches int
+// paceCounts : les sommes de frags, morts et assistances d'un joueur sur les matchs du périmètre, et
+// les secondes de ces mêmes matchs (tous les matchs joués).
+type paceCounts struct{ kills, deaths, assists, secs, matches int }
 
-	damageDealt, damageDealtSecs float64
-	damageTaken, damageTakenSecs float64
+// paceDamage : les dégâts d'un match (nil = inconnu) et ses secondes jouées. Chaque dégât a ses propres
+// matchs retenus : un compte inconnu n'est pas un zéro, le match sort du numérateur ET du dénominateur
+// ([analysis.PooledPerMinute], la règle du groupe « Rythme » de Tendances).
+type paceDamage struct {
+	dealt, taken *int
+	secs         int
 }
 
-// addDamage ajoute les dégâts d'un match (nil = inconnu) et ses secondes jouées. Un match sans
-// seconde jouée n'entre pas : sa cadence n'est pas définie.
-func (a *paceSums) addDamage(dealt, taken *int, secs int, withTaken bool) {
-	if secs <= 0 {
-		return
+// paceEntry convertit les sommes en cadences, toutes par analysis.PerMinute. Les dégâts sont des
+// pointeurs : absents (nil) tant qu'aucun match du joueur n'en porte un ; les dégâts subis ne sont rendus
+// que si le titre les fournit (`withTaken`).
+func paceEntry(player string, c paceCounts, damage []paceDamage, withTaken bool) domain.SquadPerMinuteEntry {
+	e := domain.SquadPerMinuteEntry{Player: player, MatchCount: c.matches}
+	if c.secs > 0 {
+		secs := float64(c.secs)
+		e.KillsPerMinute = round2(analysis.PerMinute(float64(c.kills), secs))
+		e.DeathsPerMinute = round2(analysis.PerMinute(float64(c.deaths), secs))
+		e.AssistsPerMinute = round2(analysis.PerMinute(float64(c.assists), secs))
 	}
-	if dealt != nil {
-		a.damageDealt += float64(*dealt)
-		a.damageDealtSecs += float64(secs)
-	}
-	if withTaken && taken != nil {
-		a.damageTaken += float64(*taken)
-		a.damageTakenSecs += float64(secs)
-	}
-}
-
-// entry convertit les sommes en cadences, toutes par analysis.PerMinute. Les dégâts sont des
-// pointeurs : absents (nil) tant qu'aucun match du joueur n'en porte un.
-func (a paceSums) entry(player string) domain.SquadPerMinuteEntry {
-	e := domain.SquadPerMinuteEntry{Player: player, MatchCount: a.matches}
-	if a.secs > 0 {
-		secs := float64(a.secs)
-		e.KillsPerMinute = round2(analysis.PerMinute(float64(a.kills), secs))
-		e.DeathsPerMinute = round2(analysis.PerMinute(float64(a.deaths), secs))
-		e.AssistsPerMinute = round2(analysis.PerMinute(float64(a.assists), secs))
-	}
-	if a.damageDealtSecs > 0 {
-		v := round2(analysis.PerMinute(a.damageDealt, a.damageDealtSecs))
-		e.DamageDealtPerMinute = &v
-	}
-	if a.damageTakenSecs > 0 {
-		v := round2(analysis.PerMinute(a.damageTaken, a.damageTakenSecs))
-		e.DamageTakenPerMinute = &v
+	e.DamageDealtPerMinute = damageRate(damage, func(d paceDamage) *int { return d.dealt })
+	if withTaken {
+		e.DamageTakenPerMinute = damageRate(damage, func(d paceDamage) *int { return d.taken })
 	}
 	return e
+}
+
+// damageRate rend la cadence arrondie d'un dégât sur les matchs où il est connu, nil sans match retenu.
+func damageRate(damage []paceDamage, get func(paceDamage) *int) *float64 {
+	v, ok := analysis.PooledPerMinute(damage,
+		func(d paceDamage) (float64, bool) {
+			if p := get(d); p != nil {
+				return float64(*p), true
+			}
+			return 0, false
+		},
+		func(d paceDamage) float64 { return float64(d.secs) })
+	if !ok {
+		return nil
+	}
+	r := round2(v)
+	return &r
 }
 
 // perMinuteHasSignal : au moins une cadence non nulle (sinon le graphe n'a rien à dire).
@@ -86,10 +85,10 @@ func perMinuteMatchIDs(allSquadRows []domain.SquadMatchRow, sessionMatchIDs map[
 	return allowed
 }
 
-// mainPaceSums : frags, morts, assistances et secondes du joueur principal, lus dans les lignes
+// mainPaceCounts : frags, morts, assistances et secondes du joueur principal, lus dans les lignes
 // de l'escouade dédoublonnées par match (sa pipeline Q30).
-func mainPaceSums(allSquadRows []domain.SquadMatchRow, allowed map[string]struct{}) paceSums {
-	var agg paceSums
+func mainPaceCounts(allSquadRows []domain.SquadMatchRow, allowed map[string]struct{}) paceCounts {
+	var agg paceCounts
 	seen := make(map[string]struct{}, len(allSquadRows))
 	for _, m := range allSquadRows {
 		if _, dup := seen[m.MatchID]; dup {
@@ -131,17 +130,14 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	allowed := perMinuteMatchIDs(allSquadRows, sessionMatchIDs)
 	withTaken := games.ProvidesDamageTaken(s.titleSlug)
 
-	mainAgg := mainPaceSums(allSquadRows, allowed)
+	mainCounts := mainPaceCounts(allSquadRows, allowed)
 	// Le damage du main vient de ses lignes canoniques ; sans lecteur ou en cas d'échec, ses
 	// cadences de frags restent servies et ses dégâts sont absents (journalisé).
+	var mainDamage []paceDamage
 	if rows, ok := s.loadPaceRows(ctx, mainGamertag); ok {
-		for _, r := range rows {
-			if _, in := allowed[r.Summary.MatchID]; in {
-				mainAgg.addDamage(r.Self.DamageDealt, r.Self.DamageTaken, intPtrOrZero(r.Self.TimePlayed), withTaken)
-			}
-		}
+		mainDamage = paceDamageOf(rows, allowed)
 	}
-	entries := []domain.SquadPerMinuteEntry{mainAgg.entry(mainGamertag)}
+	entries := []domain.SquadPerMinuteEntry{paceEntry(mainGamertag, mainCounts, mainDamage, withTaken)}
 
 	// Coéquipiers : squadLoader est obligatoire — playerMatchesRepo est lié au gamertag principal
 	// et ignore l'argument gt (cf. doc TeammatesService) ; l'utiliser ici réagrégeait les stats du
@@ -152,26 +148,36 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
 			continue
 		}
-		var agg paceSums
+		var counts paceCounts
 		for _, r := range rows {
 			if _, in := allowed[r.Summary.MatchID]; !in {
 				continue
 			}
-			secs := intPtrOrZero(r.Self.TimePlayed)
-			agg.kills += intPtrOrZero(r.Self.Kills)
-			agg.deaths += intPtrOrZero(r.Self.Deaths)
-			agg.assists += intPtrOrZero(r.Self.Assists)
-			agg.secs += secs
-			agg.matches++
-			agg.addDamage(r.Self.DamageDealt, r.Self.DamageTaken, secs, withTaken)
+			counts.kills += intPtrOrZero(r.Self.Kills)
+			counts.deaths += intPtrOrZero(r.Self.Deaths)
+			counts.assists += intPtrOrZero(r.Self.Assists)
+			counts.secs += intPtrOrZero(r.Self.TimePlayed)
+			counts.matches++
 		}
-		entries = append(entries, agg.entry(gt))
+		entries = append(entries, paceEntry(gt, counts, paceDamageOf(rows, allowed), withTaken))
 	}
 
 	if !perMinuteHasSignal(entries) {
 		return nil
 	}
 	return entries
+}
+
+// paceDamageOf extrait les dégâts et les secondes des lignes canoniques d'un joueur, restreints aux
+// matchs du périmètre.
+func paceDamageOf(rows []canonical.PlayerMatchRow, allowed map[string]struct{}) []paceDamage {
+	var out []paceDamage
+	for _, r := range rows {
+		if _, in := allowed[r.Summary.MatchID]; in {
+			out = append(out, paceDamage{dealt: r.Self.DamageDealt, taken: r.Self.DamageTaken, secs: intPtrOrZero(r.Self.TimePlayed)})
+		}
+	}
+	return out
 }
 
 // loadPaceRows charge les lignes canoniques d'un joueur ; false sans lecteur ou sur erreur

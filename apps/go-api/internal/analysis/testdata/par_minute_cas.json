@@ -1,0 +1,57 @@
+{
+  "description": "Jeu de cas PARTAGE de la cadence d'un ensemble de matchs (somme des comptes / somme des minutes) : lu par analysis.PooledPerMinute (Go) et par pooledPerMinute (web, lib/charts/perMinute.ts). count null = compte inconnu, seconds null = duree inconnue ; un match inconnu sort du numerateur ET du denominateur. attendu null = pas de valeur (jamais zero). Tolerance de comparaison : 1e-9.",
+  "cas": [
+    {
+      "nom": "somme sur somme des seuls matchs complets",
+      "matchs": [
+        { "count": 3000, "seconds": 600 },
+        { "count": 900, "seconds": 180 },
+        { "count": null, "seconds": 600 },
+        { "count": 5000, "seconds": null }
+      ],
+      "attendu": 300
+    },
+    {
+      "nom": "pondere par les minutes, pas par les matchs",
+      "matchs": [
+        { "count": 10, "seconds": 60 },
+        { "count": 100, "seconds": 600 },
+        { "count": 0, "seconds": 600 }
+      ],
+      "attendu": 5.238095238095238
+    },
+    {
+      "nom": "duree non multiple de 60 secondes",
+      "matchs": [{ "count": 77, "seconds": 937 }],
+      "attendu": 4.930629669156883
+    },
+    {
+      "nom": "duree nulle ou negative exclue des deux sommes",
+      "matchs": [
+        { "count": 5, "seconds": 0 },
+        { "count": 6, "seconds": -3 },
+        { "count": 12, "seconds": 600 }
+      ],
+      "attendu": 1.2
+    },
+    {
+      "nom": "un compte zero connu compte comme zero",
+      "matchs": [{ "count": 0, "seconds": 600 }],
+      "attendu": 0
+    },
+    {
+      "nom": "aucun match retenu : pas de valeur",
+      "matchs": [
+        { "count": null, "seconds": 600 },
+        { "count": 7, "seconds": null },
+        { "count": 7, "seconds": 0 }
+      ],
+      "attendu": null
+    },
+    {
+      "nom": "ensemble vide : pas de valeur",
+      "matchs": [],
+      "attendu": null
+    }
+  ]
+}
