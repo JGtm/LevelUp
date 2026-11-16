@@ -1,9 +1,8 @@
 package wire
 
 import (
+	"levelup/go-api/internal/domain"
 	"testing"
-
-	"levelup/go-api/internal/progression/profile"
 )
 
 func TestPerfComponentAxis(t *testing.T) {
@@ -26,7 +25,7 @@ func TestPerfComponentAxis(t *testing.T) {
 }
 
 func TestComponentsToAxes_AggregatesByAxis(t *testing.T) {
-	comps := []profile.LUSRComponentBreakdown{
+	comps := []domain.LUSRComponentBreakdown{
 		{Name: "kills_vs_expected", CurrentAvg: 0.8},
 		{Name: "accuracy_delta", CurrentAvg: 0.6},     // combat avec kills → moyenne 0.7
 		{Name: "deaths_vs_expected", CurrentAvg: 0.3}, // survival

@@ -18,7 +18,7 @@ func TestPlayerService_JoueurIntrouvable(t *testing.T) {
 	_, err := svc.Build(context.Background(), "x", "halo_infinite", 30, time.Now())
 	assertPlayerNotFound(t, "Build", err, cause)
 	_, err = svc.ActivityCalendar(context.Background(), "x", time.Now().AddDate(0, 0, -7), time.Now())
-	assertPlayerNotFound(t, "ActivityCalendar", err, cause)
+	assertPlayerNotFound(t, "domain.ActivityCalendar", err, cause)
 }
 
 func assertPlayerNotFound(t *testing.T, op string, err, cause error) {

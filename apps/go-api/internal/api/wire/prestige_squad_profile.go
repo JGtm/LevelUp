@@ -101,7 +101,7 @@ func (p *squadPerfProfileProvider) memberAxes(ctx context.Context, slug string, 
 
 // componentsToAxes agrège les composantes de performance d'un membre par axe
 // (moyenne des CurrentAvg des composantes mappées sur le même axe).
-func componentsToAxes(comps []profile.LUSRComponentBreakdown) map[string]float64 {
+func componentsToAxes(comps []domain.LUSRComponentBreakdown) map[string]float64 {
 	sums := make(map[string]float64)
 	counts := make(map[string]int)
 	for _, c := range comps {

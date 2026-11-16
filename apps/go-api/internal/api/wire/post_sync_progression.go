@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/profilerepo"
@@ -141,7 +142,7 @@ func EvaluateProgressionAfterSync(
 		// non bloquant
 	}
 
-	var prof *profile.PlayerProfile
+	var prof *domain.PlayerProfile
 	if deps.ProfileService != nil {
 		p, err := deps.ProfileService.Load(ctx, userID, titleSlug, coach.LOWESSObservationWindow, now)
 		if err != nil {
@@ -290,7 +291,7 @@ func detectMilestones(
 func generateCoachAlerts(
 	ctx context.Context, deps ProgressionDeps,
 	userID, titleSlug string, now time.Time,
-	res *ProgressionResult, cb comebackContext, prof *profile.PlayerProfile,
+	res *ProgressionResult, cb comebackContext, prof *domain.PlayerProfile,
 	activities []streaks.MatchActivity,
 ) []coach.Alert {
 	coachInput := coach.GenerateInput{

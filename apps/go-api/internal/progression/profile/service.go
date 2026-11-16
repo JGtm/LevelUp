@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
@@ -47,8 +48,8 @@ func (s *Service) WithAwardMapping(set *mappings.AwardMappingSet) *Service {
 //
 // `now` est le timestamp de référence (cutoff de la fenêtre). En prod = time.Now() ;
 // en test = fixé pour déterminisme.
-func (s *Service) Load(ctx context.Context, userID, titleSlug string, lowessWindowDays int, now time.Time) (*PlayerProfile, error) {
-	profile := &PlayerProfile{
+func (s *Service) Load(ctx context.Context, userID, titleSlug string, lowessWindowDays int, now time.Time) (*domain.PlayerProfile, error) {
+	profile := &domain.PlayerProfile{
 		UserID:    userID,
 		TitleSlug: titleSlug,
 		UpdatedAt: now,
@@ -85,11 +86,11 @@ func (s *Service) Load(ctx context.Context, userID, titleSlug string, lowessWind
 // Si moins de MinMatchesForProfile matchs sont disponibles, HasEnoughData=false
 // et les sections A2/B/C sont vides ou partielles ; A1 (radar) dégrade
 // gracieusement (axes calculables uniquement).
-func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lowessWindowDays int, now time.Time) (*PlayerProfile, error) {
+func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lowessWindowDays int, now time.Time) (*domain.PlayerProfile, error) {
 	if s.store == nil {
 		return nil, errors.New("BuildProfile: service constructed without PlayerDB")
 	}
-	profile := &PlayerProfile{
+	profile := &domain.PlayerProfile{
 		UserID:    userID,
 		TitleSlug: titleSlug,
 		UpdatedAt: now,
@@ -145,7 +146,7 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 }
 
 // fillSectionB charge LUSR + tier + tendance + SkillRatingSnapshot.
-func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, lowessWindowDays int, now time.Time) error {
+func (s *Service) fillSectionB(ctx context.Context, profile *domain.PlayerProfile, lowessWindowDays int, now time.Time) error {
 	lusr, err := s.loadLUSRSnapshot(ctx)
 	if err != nil {
 		return err
@@ -174,7 +175,7 @@ func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, lowe
 // (computeObjectiveAxis : part du joueur dans l'objectif de son équipe, 0-100, seuil
 // ObjectiveScoreMax) — RETIRÉ si la fenêtre n'a aucun match à objectif ou si
 // le titre ne porte pas la capability match.objective.stats.
-func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
+func (s *Service) aggregateNarrative(ctx context.Context, profile *domain.PlayerProfile, userID string, since, until time.Time) error {
 	rawByAxis, err := s.computeRadarAxes(ctx, userID, since, until)
 	if err != nil {
 		return err
@@ -191,12 +192,12 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	thresholds := narrative.DefaultThresholds("custom")
 	thresholds.Objective = narrative.ObjectiveScoreMax
 	scores := narrative.ComputeParticipationProfile(rawByAxis, thresholds)
-	profile.RadarAxes = make([]ParticipationAxisValue, 0, len(scores))
+	profile.RadarAxes = make([]domain.ParticipationAxisValue, 0, len(scores))
 	for _, sc := range scores {
 		if sc.Axis == narrative.AxisObjective && objN == 0 {
 			continue // aucun match à objectif sur la fenêtre → axe retiré
 		}
-		profile.RadarAxes = append(profile.RadarAxes, ParticipationAxisValue{
+		profile.RadarAxes = append(profile.RadarAxes, domain.ParticipationAxisValue{
 			Axis:  string(sc.Axis),
 			Value: sc.Value,
 			Raw:   sc.Raw,
@@ -204,15 +205,15 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	}
 
 	// Strengths : 3 axes avec Value le plus haut. ImprovementAreas : 3 plus bas.
-	sortedAxes := append([]ParticipationAxisValue(nil), profile.RadarAxes...)
+	sortedAxes := append([]domain.ParticipationAxisValue(nil), profile.RadarAxes...)
 	sort.SliceStable(sortedAxes, func(i, j int) bool { return sortedAxes[i].Value > sortedAxes[j].Value })
 	topN := 3
 	if len(sortedAxes) < topN {
 		topN = len(sortedAxes)
 	}
-	profile.Strengths = make([]RadarAxisInsight, 0, topN)
+	profile.Strengths = make([]domain.RadarAxisInsight, 0, topN)
 	for i := 0; i < topN; i++ {
-		profile.Strengths = append(profile.Strengths, RadarAxisInsight{
+		profile.Strengths = append(profile.Strengths, domain.RadarAxisInsight{
 			Axis:    sortedAxes[i].Axis,
 			Value:   sortedAxes[i].Value,
 			Message: "profile.strength." + sortedAxes[i].Axis,
@@ -220,9 +221,9 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	}
 	// Bottom 3 (ne pas répéter ceux du top si len < 6)
 	if len(sortedAxes) >= 6 {
-		profile.ImprovementAreas = make([]RadarAxisInsight, 0, 3)
+		profile.ImprovementAreas = make([]domain.RadarAxisInsight, 0, 3)
 		for i := len(sortedAxes) - 3; i < len(sortedAxes); i++ {
-			profile.ImprovementAreas = append(profile.ImprovementAreas, RadarAxisInsight{
+			profile.ImprovementAreas = append(profile.ImprovementAreas, domain.RadarAxisInsight{
 				Axis:    sortedAxes[i].Axis,
 				Value:   sortedAxes[i].Value,
 				Message: "profile.improvement." + sortedAxes[i].Axis,
@@ -244,7 +245,7 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 // computeStyleSignature calcule FK / FD (premiers frags et premières morts du match, cf. computeFKFD).
 // Une erreur de lecture remonte à BuildProfile, qui la journalise ; la signature reste à zéro.
 // Sans événement pour la fenêtre, 0/0.
-func (s *Service) computeStyleSignature(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
+func (s *Service) computeStyleSignature(ctx context.Context, profile *domain.PlayerProfile, userID string, since, until time.Time) error {
 	fk, fd, err := s.computeFKFD(ctx, userID, since, until)
 	if err != nil {
 		return err
@@ -255,7 +256,7 @@ func (s *Service) computeStyleSignature(ctx context.Context, profile *PlayerProf
 	} else if fk > 0 {
 		ratio = float64(fk)
 	}
-	profile.StyleSignature = StyleSignature{
+	profile.StyleSignature = domain.StyleSignature{
 		FirstKillCount:  fk,
 		FirstDeathCount: fd,
 		FKFDRatio:       ratio,
@@ -265,7 +266,7 @@ func (s *Service) computeStyleSignature(ctx context.Context, profile *PlayerProf
 }
 
 // computeEngagement remplit la section A2 engagement.
-func (s *Service) computeEngagement(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
+func (s *Service) computeEngagement(ctx context.Context, profile *domain.PlayerProfile, userID string, since, until time.Time) error {
 	snap, err := s.computeEngagementSimple(ctx, userID, since, until)
 	if err != nil {
 		return err
@@ -279,17 +280,17 @@ func (s *Service) computeEngagement(ctx context.Context, profile *PlayerProfile,
 // target_for_tier : composite cible (entrée du tier suivant) via
 // analysis.RequiredCompositeForTier. La même cible s'applique aux 8
 // composantes (le composite est leur moyenne pondérée — affichage compact).
-func (s *Service) computeLUSRComponents(ctx context.Context, profile *PlayerProfile, userID string) error {
+func (s *Service) computeLUSRComponents(ctx context.Context, profile *domain.PlayerProfile, userID string) error {
 	rows, err := s.loadLUSRComponentsBreakdown(ctx)
 	if err != nil {
 		return err
 	}
 	target := requiredCompositeFor(profile.LUSR.Mu, profile.NextTier.LowerMu, profile.LUSR.Sigma)
 	weights := compositeWeightsExternal()
-	out := make([]LUSRComponentBreakdown, 0, len(weights))
+	out := make([]domain.LUSRComponentBreakdown, 0, len(weights))
 	for _, name := range orderedComponentNames(weights) {
 		row := rows[name]
-		out = append(out, LUSRComponentBreakdown{
+		out = append(out, domain.LUSRComponentBreakdown{
 			Name:          name,
 			Weight:        weights[name],
 			CurrentAvg:    row.currentAvg,
@@ -304,7 +305,7 @@ func (s *Service) computeLUSRComponents(ctx context.Context, profile *PlayerProf
 
 // identifyLeverages sélectionne les 2 composantes avec le plus fort levier =
 // (1 - current) × weight. Ce sont les axes où le joueur a le plus à gagner.
-func identifyLeverages(components []LUSRComponentBreakdown) []ProgressionLeverage {
+func identifyLeverages(components []domain.LUSRComponentBreakdown) []domain.ProgressionLeverage {
 	type leverage struct {
 		Component string
 		Value     float64
@@ -322,9 +323,9 @@ func identifyLeverages(components []LUSRComponentBreakdown) []ProgressionLeverag
 	if len(levers) < maxN {
 		maxN = len(levers)
 	}
-	out := make([]ProgressionLeverage, 0, maxN)
+	out := make([]domain.ProgressionLeverage, 0, maxN)
 	for i := 0; i < maxN; i++ {
-		out = append(out, ProgressionLeverage{
+		out = append(out, domain.ProgressionLeverage{
 			Component:       levers[i].Component,
 			LeverageValue:   levers[i].Value,
 			NarrativeAxes:   narrativeAxesForComponent(levers[i].Component),
@@ -336,7 +337,7 @@ func identifyLeverages(components []LUSRComponentBreakdown) []ProgressionLeverag
 
 // selectSuggestedChallenges sélectionne 3 templates dont les lusr_components
 // recoupent les leviers identifiés. Triés par : long-terme prioritaires.
-func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *PlayerProfile, titleSlug string) error {
+func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *domain.PlayerProfile, titleSlug string) error {
 	leverageSet := make(map[string]struct{}, len(profile.Leverages))
 	for _, lv := range profile.Leverages {
 		leverageSet[lv.Component] = struct{}{}
@@ -357,7 +358,7 @@ func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *Player
 		maxN = len(templates)
 	}
 	loc := i18n.FromContext(ctx)
-	out := make([]SuggestedChallenge, 0, maxN)
+	out := make([]domain.SuggestedChallenge, 0, maxN)
 	for i := 0; i < maxN; i++ {
 		out = append(out, suggestedChallengeFromTemplate(templates[i], loc))
 	}
@@ -396,8 +397,8 @@ func (s *Service) templatesByLUSRComponents(ctx context.Context, titleSlug strin
 // suggestedChallengeFromTemplate construit la suggestion d'un template. V2 §3 : hydrate le libellé et la
 // description depuis le template, dans la langue `loc` de la requête (repli `en`, ADR 0040 D-3), pour
 // que l'UI affiche un libellé humain sans round-trip au catalogue.
-func suggestedChallengeFromTemplate(t prestige.Template, loc i18n.Locale) SuggestedChallenge {
-	return SuggestedChallenge{
+func suggestedChallengeFromTemplate(t prestige.Template, loc i18n.Locale) domain.SuggestedChallenge {
+	return domain.SuggestedChallenge{
 		TemplateID:       t.ID,
 		TargetTier:       defaultTargetTierForTemplate(t),
 		HistoricalStreak: 0, // V1 placeholder ; V2 lira l'historique de complétions
@@ -443,12 +444,12 @@ func narrativeAxesForComponent(comp string) []string {
 
 // buildSkillRatingSnapshot construit le SkillRatingSnapshot d'affichage UI. `TierName` est le nom du
 // tier dans la langue `loc` (repli `en`), à défaut le nom canonique du tier.
-func buildSkillRatingSnapshot(lusr LUSRState, tier, nextTier TierState, loc i18n.Locale) SkillRatingSnapshot {
+func buildSkillRatingSnapshot(lusr domain.LUSRState, tier, nextTier domain.TierState, loc i18n.Locale) domain.SkillRatingSnapshot {
 	tierName := tier.Names.PickOptional(loc)
 	if tierName == "" {
 		tierName = tier.Name
 	}
-	out := SkillRatingSnapshot{
+	out := domain.SkillRatingSnapshot{
 		TierName: tierName,
 		SubTier:  tier.SubTier,
 		Label:    tier.Label,
@@ -548,11 +549,11 @@ func classifyStyle(fk, fd int, ratio float64) string {
 // ─── Existing helpers (V2 compat) ───────────────────────────────────────────
 
 // loadLUSRSnapshot lit le dernier rating LUSR + count total.
-func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
+func (s *Service) loadLUSRSnapshot(ctx context.Context) (domain.LUSRState, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	l, err := s.store.LatestLUSR(ctx)
-	return LUSRState{Mu: l.Mu, Sigma: l.Sigma, MatchesCount: l.MatchesCount, LastMatchAt: l.LastMatchAt}, err
+	return domain.LUSRState{Mu: l.Mu, Sigma: l.Sigma, MatchesCount: l.MatchesCount, LastMatchAt: l.LastMatchAt}, err
 }
 
 // loadMuSeriesPoints retourne les ratings LUSR DATÉS (ASC) sur la fenêtre, pour dater chaque point de la

@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/domain"
 )
 
 // lowess.go — calcul de la tendance lissée d'une série numérique.
@@ -17,8 +18,8 @@ import (
 // est trop courte ou que toutes les valeurs sont NaN.
 //
 // La métrique du résultat est toujours "mu" (le ratio LUSR composite).
-func ComputeMuTrend(muSeries []float64) LOWESSTrend {
-	out := LOWESSTrend{Metric: "mu"}
+func ComputeMuTrend(muSeries []float64) domain.LOWESSTrend {
+	out := domain.LOWESSTrend{Metric: "mu"}
 	if len(muSeries) < 3 {
 		return out
 	}
@@ -39,7 +40,7 @@ func ComputeMuTrend(muSeries []float64) LOWESSTrend {
 // projette chaque point lissé sur son jour UTC (DEC-5/D2). Retourne nil si < 3
 // points (LOWESS non fiable) — le front n'affiche alors rien. Ne sert QUE le lissé
 // (jamais le μ brut, DEC-6) ; réutilise temporal.LowessSmooth (règle n°14).
-func buildSkillTrend(pts []muPoint) []SkillTrendPoint {
+func buildSkillTrend(pts []muPoint) []domain.SkillTrendPoint {
 	if len(pts) < 3 {
 		return nil
 	}
@@ -48,12 +49,12 @@ func buildSkillTrend(pts []muPoint) []SkillTrendPoint {
 		values[i] = p.value
 	}
 	smoothed := temporal.LowessSmooth(values, LOWESSAlpha)
-	out := make([]SkillTrendPoint, 0, len(pts))
+	out := make([]domain.SkillTrendPoint, 0, len(pts))
 	for i := range pts {
 		if i >= len(smoothed) || math.IsNaN(smoothed[i]) {
 			continue
 		}
-		out = append(out, SkillTrendPoint{
+		out = append(out, domain.SkillTrendPoint{
 			Date:  pts[i].at.UTC().Format("2006-01-02"),
 			Value: smoothed[i],
 		})

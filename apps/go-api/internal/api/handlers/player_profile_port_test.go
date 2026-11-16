@@ -1,5 +1,5 @@
 // Package handlers_test — player_profile_port_test.go : les routes /profile et /activity-calendar sur un
-// faux profile.PlayerProfileService : bornes des fenêtres, refus typés, projection.
+// faux port.PlayerProfileService : bornes des fenêtres, refus typés, projection.
 package handlers_test
 
 import (
@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/progression/profile"
 )
 
 // fakeProfileService note la fenêtre demandée et rend la valeur préparée.
@@ -25,23 +25,23 @@ type fakeProfileService struct {
 	gotSince, gotUntil  time.Time
 }
 
-func (f *fakeProfileService) Build(_ context.Context, player, title string, window int, _ time.Time) (*profile.PlayerProfile, error) {
+func (f *fakeProfileService) Build(_ context.Context, player, title string, window int, _ time.Time) (*domain.PlayerProfile, error) {
 	f.gotPlayer, f.gotTitle, f.gotWindow = player, title, window
 	if f.err != nil {
 		return nil, f.err
 	}
-	return &profile.PlayerProfile{UserID: "xuid-1", TitleSlug: title}, nil
+	return &domain.PlayerProfile{UserID: "xuid-1", TitleSlug: title}, nil
 }
 
-func (f *fakeProfileService) ActivityCalendar(_ context.Context, player string, since, until time.Time) (profile.ActivityCalendar, error) {
+func (f *fakeProfileService) ActivityCalendar(_ context.Context, player string, since, until time.Time) (domain.ActivityCalendar, error) {
 	f.gotPlayer, f.gotSince, f.gotUntil = player, since, until
 	if f.err != nil {
-		return profile.ActivityCalendar{}, f.err
+		return domain.ActivityCalendar{}, f.err
 	}
-	return profile.ActivityCalendar{Since: "2026-08-01", Until: "2026-10-30", Days: []profile.ActivityDay{}}, nil
+	return domain.ActivityCalendar{Since: "2026-08-01", Until: "2026-10-30", Days: []domain.ActivityDay{}}, nil
 }
 
-func profileRouter(svc profile.PlayerProfileService) *chi.Mux {
+func profileRouter(svc port.PlayerProfileService) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewPlayerProfileHandler(svc, "")
 	r.Route("/api/v1/players/{player_slug}", func(sub chi.Router) { h.Mount(sub) })

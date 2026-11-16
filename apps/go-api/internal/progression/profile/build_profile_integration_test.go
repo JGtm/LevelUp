@@ -15,6 +15,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
@@ -329,7 +330,7 @@ func TestBuildProfile_ObjectiveAxisFromTeamShare(t *testing.T) {
 }
 
 // axisLookup retourne (valeur, présent) pour un axe du radar du profil.
-func axisLookup(prof *PlayerProfile, axis string) (float64, bool) {
+func axisLookup(prof *domain.PlayerProfile, axis string) (float64, bool) {
 	for _, a := range prof.RadarAxes {
 		if a.Axis == axis {
 			return a.Value, true

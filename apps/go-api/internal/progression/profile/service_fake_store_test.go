@@ -195,7 +195,7 @@ func TestService_SuggestionsFiltrentParLeviers(t *testing.T) {
 		tpl("d", false, "accuracy_delta"),
 		tpl("e", false, "win_factor"),
 	}}
-	prof := &PlayerProfile{Leverages: []ProgressionLeverage{{Component: "win_factor"}, {Component: "accuracy_delta"}}}
+	prof := &domain.PlayerProfile{Leverages: []domain.ProgressionLeverage{{Component: "win_factor"}, {Component: "accuracy_delta"}}}
 	ctx := context.Background()
 
 	if err := NewService(st).selectSuggestedChallenges(ctx, prof, "halo_infinite"); err != nil {
@@ -211,12 +211,12 @@ func TestService_SuggestionsFiltrentParLeviers(t *testing.T) {
 
 	// Sans levier : aucune lecture des modèles.
 	st.tplCalls = 0
-	if err := NewService(st).selectSuggestedChallenges(ctx, &PlayerProfile{}, "halo_infinite"); err != nil || st.tplCalls != 0 {
+	if err := NewService(st).selectSuggestedChallenges(ctx, &domain.PlayerProfile{}, "halo_infinite"); err != nil || st.tplCalls != 0 {
 		t.Errorf("sans levier : err=%v lectures=%d, attendu aucune", err, st.tplCalls)
 	}
 	// Référentiels indisponibles : aucune suggestion.
 	st.tplAvail = false
-	prof2 := &PlayerProfile{Leverages: prof.Leverages}
+	prof2 := &domain.PlayerProfile{Leverages: prof.Leverages}
 	if err := NewService(st).selectSuggestedChallenges(ctx, prof2, "halo_infinite"); err != nil || len(prof2.SuggestedChallenges) != 0 {
 		t.Errorf("référentiels absents : err=%v suggestions=%v", err, prof2.SuggestedChallenges)
 	}
