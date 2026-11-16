@@ -718,39 +718,76 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
 
 #### mapfond-build
 
+Trois gestes, et eux seuls (chaque option se rattache à l'un d'eux ; `go run ./cmd/mapfond-build -h` les liste
+rangées) :
+
+1. **Cuire des cartes** — l'image du fond et le sidecar de chaque carte retenue.
+2. **Refaire le plan sans recuire** (`--plan-seul`) — le plan des murs et l'image plan des sidecars déjà publiés.
+3. **Produire le tableau avant / après** (`--rapport-tsv`, avec `--avant-dir`) — une ligne TSV par carte traitée, à côté
+   d'une cuisson ou d'un plan seul.
+
+Communes aux gestes 1 et 2 (sélection et sortie) : `--maps` (carte native : son dossier installé, par exemple
+`ridgeline` ; carte Forge : son `map_id` ; vide = toutes les cartes du catalogue installées localement), `--title slug`,
+`--out-dir DIR` (défaut `PathResolver.MapBackgroundDir`), `--natives=false`, `--forge=false`, `--avis FICHIER[,FICHIER...]`
+(l'avis du user, carte par carte, sur le croisement fond / maillage de navigation : le premier fichier donne la règle, les
+suivants `ignorer` / `reprendre`). Cuisson seulement : `--style` (défaut `jeu`), `--mpp` (mètres par pixel, défaut
+0,0920). Une combinaison qu'un geste ignorerait en silence est refusée avant toute lecture : `--style` ou `--mpp` avec
+`--plan-seul`, `--avant-dir` sans `--rapport-tsv`, `--natives=false --forge=false`.
+
+##### 1. Cuire des cartes
+
 ```bash
-CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--mpp M] [--natives=false] [--forge=false] [--plan-seul]   [--avis FILE[,FILE...]] [--rapport-tsv FILE] [--avant-dir DIR]
+CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline,catalyst"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --natives=false          # toutes les cartes Forge
 ```
 
-- Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
-  calage) par carte — 218 fichiers aujourd'hui.
-- Maillage de navigation : une carte native est cuite avec le maillage de navigation de son
-  module `any` (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilaté de 1,5 m, est
-  effacée, et le sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au
-  millimètre). Un module sans maillage (Live Fire, le tutoriel de l'Académie) est cuit comme avant
-  et porte « aucun maillage de navigation dans le module any » dans `degradations`, sans `plan`.
-  Leviers par carte de `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe`) :
-  `rogneAuNavmesh` (sur une carte native : actif par défaut, `false` garde le maillage comme
-  surface de référence sans rogner ; sur une carte Forge : inactif par défaut), `margeNavmesh`
-  (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (cartes
-  natives) cuit sans le maillage (ni référence, ni rognage) mais publie quand même son `plan`. Une carte Forge reçoit
-  aussi `navmeshReference`, et publie un `plan` dès que le dépôt porte son `navmesh.blob`
-  (`mapnav-fetch`), que la cuisson s'en serve ou non.
-- `--plan-seul` ne cuit rien : pour chaque carte Forge dont le `navmesh.blob` est au dépôt, il
-  ajoute le `plan` au sidecar publié et laisse tout le reste (image, calage, statistiques,
-  dégradations, `generatedAt`) tel quel. Une carte sans blob, ou sans sidecar, est laissée
-  intacte. C'est ainsi qu'une carte dont la variante `.mvar` manque obtient son plan.
-- Après la cuisson, lancer `go run ./cmd/mapfond-webp -convertir` : il réécrit chaque sidecar par
-  `internal/mapfondsidecar`, qui conserve le `plan` (le `replay.MapBackground` du décodeur de film
-  ne le connaît pas).
-- Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
-  chaîne cgo/GPLv3 (`halo-infinite-map-images/himap` -> `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz`, jamais liée
-  dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
-  sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
-  / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
-- À rejouer : non documenté dans l'outil lui-même ; en pratique, une nouvelle carte (native ou
-  Forge) a besoin de son fond cuit.
+- Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` (le fond), `{cle}.plan.png` (l'image plan, seulement
+  si la carte a un maillage) et `{cle}.json` (le sidecar). Lancer ensuite `go run ./cmd/mapfond-webp -convertir` : il
+  convertit les images en WebP et réécrit chaque sidecar par `internal/mapfondsidecar`, qui conserve le `plan` (le
+  `replay.MapBackground` du décodeur de film ne le connaît pas). 339 fichiers publiés aujourd'hui : 114 sidecars, 114 fonds
+  et 111 images plan (ADR 0048).
+- Maillage de navigation : une carte native est cuite avec le maillage de son module `any`
+  (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilatée de 0,5 m (`himap.MargeNavmesh`), est effacée, et le
+  sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au millimètre) et son `planImage`. Une carte
+  sans maillage (Live Fire, le tutoriel de l'Académie, une carte Forge dont le `navmesh.blob` manque au dépôt) est cuite
+  comme avant, porte une dégradation nommée dans `degradations` et n'a pas de `plan`. Leviers par carte de
+  `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe` ; un champ que l'outil ne connaît pas est
+  refusé) : `rogneAuNavmesh` (carte native : actif par défaut, `false` garde le maillage comme surface de référence sans
+  rogner ; carte Forge : inactif par défaut), `margeNavmesh`, `toleranceNavmesh`, `maillageNiveauHaut`, `navmeshMode` ;
+  `sansNavmesh: true` (cartes natives) cuit sans le maillage mais publie quand même son `plan`. Une carte Forge reçoit
+  aussi `navmeshReference`.
+- Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ; chaîne cgo/GPLv3
+  (`halo-infinite-map-images/himap` -> `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz`, jamais
+  liée dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue sans lui) ; une carte
+  Forge exige aussi sa variante `.mvar` et, pour un plan, son `navmesh.blob` sous `.ai/re_dump/` (`mapnav-fetch`) ;
+  utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json` / `map_fond_reglages.json` s'ils
+  existent, dégrade avec un avertissement sinon.
+- À rejouer : une nouvelle carte (native ou Forge) a besoin de son fond cuit, ou un levier par carte change.
+
+##### 2. Refaire le plan sans recuire
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --maps "ridgeline"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --forge=false     # toutes les cartes natives
+```
+
+- Ne cuit rien : pour chaque carte retenue dont le maillage est lisible (un module natif qui en porte un, une carte Forge
+  dont le `navmesh.blob` est au dépôt) et dont le sidecar est publié dans `--out-dir`, il réécrit le `plan` ET l'image plan
+  (`{cle}.plan.png`), et laisse l'image du fond, le calage, les statistiques, les dégradations et `generatedAt` tels quels.
+  Une carte sans maillage, ou sans sidecar, est laissée intacte. C'est ainsi qu'une carte dont la variante `.mvar` manque
+  obtient son plan.
+- Lancer `go run ./cmd/mapfond-webp -convertir` ensuite, comme après une cuisson.
+
+##### 3. Produire le tableau avant / après
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres \
+  --rapport-tsv /tmp/rapport.tsv --avant-dir data/titles/halo_infinite/reference/map_backgrounds
+```
+
+- Écrit une ligne par carte traitée (action, mode et marge du rognage, composantes retenues, part de matière rognée,
+  ancres au sol avant / après, arêtes du plan, cartes à revoir). `--avant-dir` porte les sidecars d'avant le lancement ;
+  sans lui, les colonnes « avant » restent vides. Vaut pour une cuisson comme pour `--plan-seul`.
 
 #### mapobj-build
 
