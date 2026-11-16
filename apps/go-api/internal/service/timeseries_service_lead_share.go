@@ -23,8 +23,8 @@ func (s *TimeseriesService) WithLeadShare(repo port.LeadShareRepository) *Timese
 	return s
 }
 
-// attachLeadShare pose la Mainmise sur les lignes de match, les cartes et les mois de la réponse.
-// UNE lecture bornée par la liste des matchs du périmètre filtré et de la population solo complète
+// attachLeadShare pose la Mainmise sur les cartes et les mois de la réponse ; la page ne sert pas la
+// Mainmise match par match. UNE lecture bornée par la liste des matchs du périmètre filtré et de la population solo complète
 // (ADR 0036). Une lecture en échec est journalisée avant de dégrader : rien n'est posé, jamais un
 // zéro.
 func (s *TimeseriesService) attachLeadShare(
@@ -42,11 +42,6 @@ func (s *TimeseriesService) attachLeadShare(
 		"timeseries: mainmise illisible, page sans la mesure")
 	if !ok {
 		return
-	}
-	for i := range resp.MatchRows {
-		if v, ok := got[resp.MatchRows[i].MatchID]; ok {
-			resp.MatchRows[i].LeadShare, resp.MatchRows[i].LeadChanges = leadshareload.Pointers(v)
-		}
 	}
 	loc := i18n.FromContext(ctx)
 	current := leadShareByMap(filtered, got, groups, loc)

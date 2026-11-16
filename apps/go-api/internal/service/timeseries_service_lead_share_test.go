@@ -73,13 +73,12 @@ func TestLeadShareByMap_ParCleDeCarte(t *testing.T) {
 	}
 }
 
-func TestAttachLeadShare_LignesCartesEtMois(t *testing.T) {
+func TestAttachLeadShare_CartesEtMois(t *testing.T) {
 	rows, got := populationMainmise()
 	f := &leadShareFake{rendu: got}
 	s := &TimeseriesService{leadShareRepo: f, playerXUID: "xu1"}
 	filtered := rows[:3] // octobre seulement
 	resp := &domain.TimeseriesPageResponse{
-		MatchRows: []domain.TimeseriesMatchRow{{MatchID: "m1"}, {MatchID: "m3"}},
 		MapBreakdown: []domain.MapBreakdownRow{
 			{MapID: "Bazaar"}, {MapID: "Recharge"},
 		},
@@ -88,12 +87,6 @@ func TestAttachLeadShare_LignesCartesEtMois(t *testing.T) {
 
 	if f.nbLectures != 1 || len(f.vusIDs) != 5 || f.vuXUID != "xu1" {
 		t.Errorf("%d lecture(s) de %d matchs : attendu une seule, de 5 matchs sans doublon", f.nbLectures, len(f.vusIDs))
-	}
-	if r := resp.MatchRows[0]; r.LeadShare == nil || *r.LeadShare != 0.2 || r.LeadChanges == nil || *r.LeadChanges != 1 {
-		t.Errorf("ligne m1 = %+v", r)
-	}
-	if r := resp.MatchRows[1]; r.LeadShare != nil || r.LeadChanges != nil {
-		t.Errorf("ligne m3 non mesurée = %+v : jamais zéro", r)
 	}
 	baz := resp.MapBreakdown[0]
 	if baz.LeadShare == nil || math.Abs(*baz.LeadShare-0.4) > 1e-9 || baz.LeadShareMatches != 2 {
@@ -114,9 +107,9 @@ func TestAttachLeadShare_LignesCartesEtMois(t *testing.T) {
 func TestAttachLeadShare_SansLecteurNePoseRien(t *testing.T) {
 	rows, _ := populationMainmise()
 	s := &TimeseriesService{playerXUID: "xu1"}
-	resp := &domain.TimeseriesPageResponse{MatchRows: []domain.TimeseriesMatchRow{{MatchID: "m1"}}}
+	resp := &domain.TimeseriesPageResponse{MapBreakdown: []domain.MapBreakdownRow{{MapID: "Bazaar"}}}
 	s.attachLeadShare(context.Background(), resp, rows, rows, domain.GroupesDeCartes{})
-	if resp.MatchRows[0].LeadShare != nil || resp.LeadShareByMonth != nil {
+	if resp.MapBreakdown[0].LeadShare != nil || resp.LeadShareByMonth != nil {
 		t.Error("sans lecteur, la page ne porte rien")
 	}
 }
