@@ -36,7 +36,7 @@ func (s *SessionPageService) attachSessionLeadShare(ctx context.Context, resp *d
 		return
 	}
 	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, s.sessionXUID,
-		"session page: mainmise illisible, sessions sans la mesure")
+		"session_page")
 	if !ok {
 		return
 	}

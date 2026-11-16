@@ -18,11 +18,11 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// Load charge la Mainmise de l'équipe de `xuid` sur `ids` en UNE lecture. `message` est le texte du
-// journal quand la lecture échoue (hors capability absente). Rend faux quand l'appelant ne doit rien
+// Load charge la Mainmise de l'équipe de `xuid` sur `ids` en UNE lecture. `scope` nomme l'appelant dans
+// le journal quand la lecture échoue (hors capability absente). Rend faux quand l'appelant ne doit rien
 // poser : lecteur nil, joueur ou liste vide, lecture en échec.
 func Load(
-	ctx context.Context, repo port.LeadShareRepository, ids []string, xuid, message string,
+	ctx context.Context, repo port.LeadShareRepository, ids []string, xuid, scope string,
 ) (map[string]leadshare.PlayerShare, bool) {
 	if repo == nil || xuid == "" || len(ids) == 0 {
 		return nil, false
@@ -30,7 +30,7 @@ func Load(
 	got, err := repo.LoadLeadShare(ctx, ids, xuid)
 	if err != nil {
 		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, message, "matchs", len(ids), "err", err)
+			slog.WarnContext(ctx, "mainmise illisible, réponse servie sans la mesure", "scope", scope, "matchs", len(ids), "err", err)
 		}
 		return nil, false
 	}

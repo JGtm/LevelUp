@@ -32,18 +32,18 @@ func TestLoad_RienAPoser(t *testing.T) {
 		"capability absente": {&depotFactice{err: games.ErrCapabilityNotSupported}, "xu1", ids},
 		"lecture en échec":   {&depotFactice{err: errors.New("boom")}, "xu1", ids},
 	} {
-		if got, ok := Load(context.Background(), c.repo, c.ids, c.xuid, "msg"); ok || got != nil {
+		if got, ok := Load(context.Background(), c.repo, c.ids, c.xuid, "test"); ok || got != nil {
 			t.Errorf("%s : rien à poser attendu, obtenu ok=%v got=%v", nom, ok, got)
 		}
 	}
 }
 
 func TestLoad_DepotNilEtLecture(t *testing.T) {
-	if _, ok := Load(context.Background(), nil, []string{"m1"}, "xu1", "msg"); ok {
+	if _, ok := Load(context.Background(), nil, []string{"m1"}, "xu1", "test"); ok {
 		t.Fatal("un lecteur nil ne lit rien")
 	}
 	d := &depotFactice{rendu: map[string]leadshare.PlayerShare{"m1": {Share: 0.4, Changes: 2}}}
-	got, ok := Load(context.Background(), d, []string{"m1"}, "xu1", "msg")
+	got, ok := Load(context.Background(), d, []string{"m1"}, "xu1", "test")
 	if !ok || got["m1"].Changes != 2 || d.appel != 1 {
 		t.Fatalf("une lecture attendue : ok=%v got=%v appels=%d", ok, got, d.appel)
 	}

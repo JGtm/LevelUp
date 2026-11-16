@@ -33,7 +33,7 @@ func (s *TeammatesService) buildSquadLeadShare(
 	for i := range rows {
 		ids = append(ids, rows[i].MatchID)
 	}
-	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, mainXUID, "squad: mainmise illisible, page sans la série")
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, mainXUID, "squad")
 	if !ok {
 		return nil
 	}

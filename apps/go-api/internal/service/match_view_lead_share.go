@@ -26,7 +26,7 @@ func (s *MatchViewService) applyHeaderLeadShare(ctx context.Context, h *domain.M
 		return
 	}
 	got, ok := leadshareload.Load(ctx, s.leadShareRepo, []string{h.MatchID}, s.xuid,
-		"match_view: mainmise illisible, en-tête sans la mesure")
+		"match_view")
 	if !ok {
 		return
 	}

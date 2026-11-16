@@ -39,7 +39,7 @@ func (s *TimeseriesService) attachLeadShare(
 		return
 	}
 	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, s.playerXUID,
-		"timeseries: mainmise illisible, page sans la mesure")
+		"timeseries")
 	if !ok {
 		return
 	}
