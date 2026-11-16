@@ -54,7 +54,7 @@ func TestScanAllMedia_UnavailableRootIsRecorded(t *testing.T) {
 	err := NewDirMediaIndexer().ScanAllMedia(
 		ctxkeys.WithTitleSlug(context.Background(), rootStateTitle),
 		port.MediaIndexParams{
-			RepoRoot: root, CapturesBaseDir: filepath.Join(root, "disque-debranche"),
+			Root: root, CapturesBaseDir: filepath.Join(root, "disque-debranche"),
 			Jobs: store, JobID: "job-root-state",
 		})
 	if err != nil {

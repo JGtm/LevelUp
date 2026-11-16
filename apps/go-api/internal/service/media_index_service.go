@@ -34,7 +34,7 @@ func NewDirMediaIndexer() *DirMediaIndexer {
 func (d *DirMediaIndexer) ResetAndReindex(ctx context.Context, p port.MediaResetParams) error {
 	jobStore, jobID, timezone := p.Jobs, p.JobID, p.Timezone
 	reindexAfter, deleteSource := p.ReindexAfter, p.DeleteSource
-	pr := titlePkg.NewPathResolver(p.RepoRoot)
+	pr := titlePkg.NewPathResolver(p.Root)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir, policy := resolveMediaBase(ctx, pr, p.CapturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)
@@ -122,7 +122,7 @@ func (d *DirMediaIndexer) ResetAndReindex(ctx context.Context, p port.MediaReset
 // ScanAllMedia indexe les médias de tous les joueurs (non-destructif, ForceRescan=false).
 func (d *DirMediaIndexer) ScanAllMedia(ctx context.Context, p port.MediaIndexParams) error {
 	jobStore, jobID, timezone, deleteSource := p.Jobs, p.JobID, p.Timezone, p.DeleteSource
-	pr := titlePkg.NewPathResolver(p.RepoRoot)
+	pr := titlePkg.NewPathResolver(p.Root)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir, policy := resolveMediaBase(ctx, pr, p.CapturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)

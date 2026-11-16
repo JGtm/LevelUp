@@ -17,8 +17,8 @@ type MediaJobProgress interface {
 
 // MediaIndexParams : ce qu'une indexation de tous les joueurs reçoit de l'appelant.
 type MediaIndexParams struct {
-	// RepoRoot : racine du dépôt sous laquelle vivent les joueurs.
-	RepoRoot string
+	// Root : racine du dépôt sous laquelle vivent les joueurs.
+	Root string
 	// CapturesBaseDir : si non vide, les captures sont lues depuis {CapturesBaseDir}/{gamertag}/
 	// plutôt que depuis le chemin interne data/titles/.../captures/.
 	CapturesBaseDir string
@@ -45,7 +45,7 @@ type MediaResetParams struct {
 // substituer l'indexeur dans les tests. Implémenté par service.DirMediaIndexer.
 type MediaIndexer interface {
 	// ResetAndReindex supprime toutes les entrées media_files + media_match_associations pour tous les
-	// joueurs sous RepoRoot, puis réindexe si ReindexAfter. Rapporte la progression sur le job de p.
+	// joueurs sous Root, puis réindexe si ReindexAfter. Rapporte la progression sur le job de p.
 	ResetAndReindex(ctx context.Context, p MediaResetParams) error
 
 	// ScanAllMedia indexe les médias de tous les joueurs sans supprimer les entrées existantes

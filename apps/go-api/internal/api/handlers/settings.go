@@ -418,7 +418,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
 			port.MediaResetParams{
 				MediaIndexParams: port.MediaIndexParams{
-					RepoRoot: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
+					Root: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
 					DeleteSource: deleteSource, Jobs: h.jobStore, JobID: job.JobID,
 				},
 				ReindexAfter: req.ReindexAfterReset,
@@ -478,7 +478,7 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 		err := h.mediaIndexer.ScanAllMedia(
 			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
 			port.MediaIndexParams{
-				RepoRoot: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
+				Root: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
 				DeleteSource: deleteSource, Jobs: h.jobStore, JobID: job.JobID,
 			},
 		)
