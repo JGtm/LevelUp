@@ -397,3 +397,9 @@ apps/desktop/src-tauri/binaries/*.exe
 apps/desktop/src-tauri/bundle-staging/
 apps/desktop/src-tauri/pack-staging/
 apps/desktop/src-tauri/pack-staging.fingerprint
+
+# Données locales de l application de bureau et verrou d instance (jamais versionnés)
+data/desktop/
+data/levelup.lock
+# Annexes images des fonds au maillage (preuves locales, lourdes)
+.ai/annexes_fonds_navmesh/
