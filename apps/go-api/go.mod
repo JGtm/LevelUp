@@ -12,7 +12,7 @@ require (
 	github.com/JGtm/halo-api v1.0.1
 	github.com/JGtm/halo-infinite-files-reader v1.2.0
 	github.com/JGtm/halo-infinite-film-decoder v1.3.9
-	github.com/JGtm/halo-infinite-map-images v1.3.0
+	github.com/JGtm/halo-infinite-map-images v1.3.1
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/duckdb/duckdb-go/v2 v2.10506.0
 	github.com/getkin/kin-openapi v0.151.0
