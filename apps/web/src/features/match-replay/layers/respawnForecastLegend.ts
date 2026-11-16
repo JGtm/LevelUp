@@ -9,6 +9,8 @@
  * capture ou un export la porte avec elle. Voile et texte sur voile sont les jetons `scrim` et
  * `on-scrim` ; teinte et disques sont à la couleur du joueur, aux mêmes opacités que le dessin.
  */
+import { roundedRectPath } from '@/lib/replay/roundedRect'
+
 import {
   DISC_SCALE_P,
   discRadiusPx,
@@ -47,16 +49,6 @@ export function legendWho(m: ForecastMoment, p: Pick<ForecastPaint, 'zones' | 'w
     return p.wording.legendCountdown(p.nameOf(m.death.xuid), Math.ceil(m.remainingMs / 1000))
   }
   return revealLines(m, p).join(', ')
-}
-
-function panelPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
 }
 
 const hasPoints = (draw: ForecastDraw) => draw !== 'zones'
@@ -172,7 +164,7 @@ export function drawForecastLegend(
   ctx.save()
   ctx.globalAlpha = PANEL_ALPHA * m.opacity
   ctx.fillStyle = p.ink.panel
-  panelPath(ctx, x, y, w, h, PANEL_RADIUS_PX * k)
+  roundedRectPath(ctx, { x, y, w, h }, PANEL_RADIUS_PX * k)
   ctx.fill()
   ctx.globalAlpha = m.opacity
   ctx.textBaseline = 'top'

@@ -34,6 +34,7 @@
  * match. L'appelant résout une fois (`readInk`, `resolveToken` — cf. `useReplayInks`) et passe
  * les valeurs. C'est aussi ce qui rend ce fichier testable sans DOM.
  */
+import { roundedRectPath } from '@/lib/replay/roundedRect'
 
 /** Les encres du thème dont les surimpressions ont besoin, déjà résolues par l'appelant. */
 export interface OverlayInk {
@@ -155,20 +156,6 @@ function textWidth(ctx: CanvasRenderingContext2D, text: string, font: string, tr
   return w
 }
 
-/** roundedRect : `ctx.roundRect` quand il existe, un rectangle net sinon (jamais rien). */
-function roundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.beginPath()
-  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r)
-  else ctx.rect(x, y, w, h)
-}
-
 const statusFont = (f: OverlayFonts) => `700 ${STATUS_SIZE}px ${f.sans}`
 const labelFont = (f: OverlayFonts) => `600 ${LABEL_SIZE}px ${f.sans}`
 const scoreFont = (f: OverlayFonts) => `700 ${SCORE_SIZE}px ${f.mono}`
@@ -243,7 +230,7 @@ function paintStatusBlock(
   ctx.shadowBlur = SHADOW_BLUR
   ctx.shadowOffsetY = SHADOW_OFFSET_Y
   ctx.fillStyle = panel.statusStyle.background
-  roundedRect(ctx, x, top, w, h, BLOCK_RADIUS)
+  roundedRectPath(ctx, { x, y: top, w, h }, BLOCK_RADIUS)
   ctx.fill()
   // L'OMBRE NE DOIT PAS DOUBLER SUR LE BORD : elle appartient à la carte, pas à son trait.
   ctx.shadowColor = 'transparent'

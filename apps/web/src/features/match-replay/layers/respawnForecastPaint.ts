@@ -8,6 +8,7 @@
  * pixels d'écran multipliées par la densité `k`, comme celles des autres calques.
  */
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { roundedRectPath } from '@/lib/replay/roundedRect'
 
 import type { XY } from '../../../lib/replay/replayLogic'
 import { projectTo, type CanvasView } from '../model/replayView'
@@ -111,21 +112,6 @@ export interface PillStyle {
   gapPx: number
 }
 
-/** Le rectangle arrondi d'une pastille. */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.lineTo(x + w - r, y)
-  ctx.arcTo(x + w, y, x + w, y + r, r)
-  ctx.lineTo(x + w, y + h - r)
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-  ctx.lineTo(x + r, y + h)
-  ctx.arcTo(x, y + h, x, y + h - r, r)
-  ctx.lineTo(x, y + r)
-  ctx.arcTo(x, y, x + r, y, r)
-  ctx.closePath()
-}
-
 /**
  * drawPill pose une pastille de texte (une ou deux lignes) centrée sur `at` : voile sombre, liseré à la
  * couleur du joueur, texte sur voile. Rend la boîte posée, pour qu'un appelant s'y accroche.
@@ -147,7 +133,7 @@ export function drawPill(
   const y = s.anchor === 'above' ? at.y - s.gapPx * k - h : s.anchor === 'below' ? at.y + s.gapPx * k : at.y - h / 2
   ctx.globalAlpha = PILL_ALPHA * s.alpha
   ctx.fillStyle = s.ink.panel
-  roundRect(ctx, x, y, w, h, PILL_RADIUS_PX * k)
+  roundedRectPath(ctx, { x, y, w, h }, PILL_RADIUS_PX * k)
   ctx.fill()
   ctx.globalAlpha = s.alpha
   ctx.strokeStyle = s.border
