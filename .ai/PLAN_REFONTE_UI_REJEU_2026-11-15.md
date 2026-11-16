@@ -2,7 +2,8 @@
 
 Statut : **rédigé le 2026-11-15 sur go du user ; maquettes validées le 2026-11-15 ; D-1 à D-16 tranchés par
 le user le 2026-11-15 (D-11 corrigé par lui : le Standard reprend la maquette A, sauf la zone de lecture) ;
-aucun code écrit ; D-17 tranché (effets gardés) ; D-18 (frise inchangée) attend l'ok, puis le go d'exécution.**
+aucun code écrit ; D-17 tranché (effets gardés) ; D-18 (frise inchangée) validé ; D-19 à D-24 (fiche à l'instant, lot T)
+tranchés le 2026-11-16 ; puis le go d'exécution.**
 
 Contrat d'exécution : skill `plan-execution` (ordre strict par piste, aucun report, statut de chaque item,
 vérification sur pièces, aucun correctif hors périmètre). Les règles d'orchestration de la section 1 bis le
@@ -34,6 +35,7 @@ Objectif : la page du rejeu propose trois cadres pour un même lecteur. La mise 
 | B | Cinéma et Plein cadre : 4 fiches, le score, 4 fiches, en une rangée au-dessus du plan | Bouclier et santé en deux barres ; repli en colonne selon D-12 ; aucune couleur en dur |
 | C | Fil des éliminations posé en bas à gauche du plan, 5 lignes au plus, sans en-tête | Lieu = victime dans les trois cadres ; lisible sur une carte large ; masquable dans « Vue » |
 | D | Standard : clic sur une ligne joueur, la colonne devient la fiche (tableau J). Cinéma et Plein cadre : clic sur une fiche, fenêtre accrochée sous elle (tableau L) | Lecture non interrompue ; Échap ferme la fiche avant le cadre ; même contenu de fiche dans les deux formes |
+| T | La fiche détaillée compte à l'instant lu : FDA, séries, tirs à la tête, parfaits, répartition des éliminations, vies, boucliers perdus, médailles ; score et précision quand le match le permet | Chaque valeur exacte égale au tableau de score en fin de match ; une valeur estimée porte la mention « estimation » ; aucune valeur affichée sans lecture suffisante |
 | E | Barre de lecture d'une ligne en Cinéma et Plein cadre | Mêmes commandes que le Standard, repères d'éliminations et dominance sur la barre ; zone de lecture du Standard inchangée |
 | F | 2D / 3D en superposition à côté de « Vue » ; plan tourné automatiquement quand il y gagne | 2D / 3D invisible tant que la 3D n'existe pas (capacité) ; rotation selon D-7, bouton « Plan tourné » |
 | G | Plan plus grand sur grand écran en Cinéma et Plein cadre | Plafond de hauteur relevé seulement si M-1 le permet (D-15) |
@@ -129,9 +131,36 @@ Objectif : la page du rejeu propose trois cadres pour un même lecteur. La mise 
   d'arme, équipement qui s'allume à l'usage, bloc hachuré « ÉLIMINÉ » compris. Vaut pour B.2 (fiches reprises
   telles quelles) et S.2 (les lignes reprennent les mêmes effets, adaptés à leur hauteur).
 
-### Proposée, attend l'ok du user
+### Tranchées par le user le 2026-11-16 (contenu de la fiche à l'instant)
 
-- **D-18 — frise à pistes : rien de nouveau.** La première piste a déjà son menu de joueur (point de vue) et
+- **D-19 — valeurs exactes à l'instant**, dans « À l'instant » (lot T) : FDA (formule du jeu), meilleure série et
+  série en cours, tirs à la tête (quand le coup fatal est mesuré), éliminations parfaites (médaille datée),
+  réapparitions, durée de la vie en cours et moyenne des vies jusqu'à l'instant, médailles du joueur.
+- **D-20 — répartition des éliminations** : une seule répartition catégorisée (arme lourde, mêlée, grenade,
+  autres armes), chaque catégorie et chaque arme avec son nombre et sa part en pourcentage, à la place de trois
+  compteurs séparés (message du user : « un simple breakdown catégorisé pour dénombrer et avec un pourcentage »).
+- **D-21 — boucliers perdus** : nombre de fois où le bouclier du joueur est tombé à zéro, dérivé de la valeur de
+  bouclier publiée à chaque point (le film n'écrit pas d'événement « bouclier brisé », vérifié le 2026-11-16 dans
+  notre décodeur et dans libfilmshell). Seul le bouclier du joueur lui-même compte.
+- **D-22 — estimations** : précision, tirs et touches, dégâts infligés et subis, et par arme les tirs et les
+  dégâts, à l'instant, SEULEMENT pour un joueur dont la lecture des tirs est jugée suffisante par le document, et
+  marqués « estimation ». Score et rang dans le lobby à l'instant SEULEMENT quand le document déclare le score
+  complet. Sinon la ligne n'existe pas (aucun texte « non mesuré »).
+- **D-23 — repris d'OpenSpartan** : grenades lancées par type, ramassages (armes, grenades, équipement). Écartés :
+  rang compétitif à l'instant (fixe pendant le match, il reste dans « Totaux »), Rendement / Résistance, rivaux,
+  XUID, XP d'équipement. Reportés au backlog (chantier décodeur) : commandes de déplacement, sprints,
+  rechargements, visées et sauts en notes de bas de page ; répliques des Spartans ; idées tirées des boucliers
+  perdus (badge « os de verre », frags sans bouclier).
+- « Totaux du match » ne change pas : chiffres officiels de fin de match.
+- **D-24 — notes de bas de page anticipées** (message du user du 2026-11-16 : « on anticipe l'UI mais le travail
+  côté décodeur va aller dans le backlog »). La fiche réserve, sous « Totaux du match », une section « En
+  passant » : sprints, rechargements, visées, sauts, part du temps en mouvement, à l'instant. T.5 en fixe la
+  place et l'ordre dans la mise en page du corps de fiche, sans aucun code de lecture : le document de rejeu ne
+  porte pas ces données et son contrat refuse toute clé inconnue, donc une lecture écrite maintenant serait du
+  code mort (règle 7). La lecture et le rendu arrivent avec le chantier décodeur du backlog (« Commandes et
+  gestes du joueur »).
+- **D-18 — frise à pistes : rien de nouveau** (ok du user le 2026-11-16 : « la frise à piste c'est pas mal comme
+  c'est déjà »). La première piste a déjà son menu de joueur (point de vue) et
   montre ses éliminations et ses morts. La mise en avant des repères dessinée sur la maquette J ferait doublon :
   elle est retirée, la frise reste celle d'aujourd'hui (D-8). Ouvrir une fiche ne change pas la frise.
 
@@ -185,16 +214,23 @@ Règles d'exécution (elles précisent le contrat `plan-execution`) :
 | P6 | F.2 Auto, « Plan tourné », section Vue | Sonnet | F.1, C.3, E.3 | écrivain de `ReplayViewMenu.tsx` / `replayPreferences.ts` APRÈS C.3 |
 | P6 | F.3 emplacement 2D / 3D en superposition | Sonnet | F.2 | invisible sans capacité ; branché par le plan 3D (C.5) |
 | P7 Plafond | G.1 plafond par cadre | Sonnet | 0.2 validée, A.1 | `[!]` si M-1 refuse (D-15) |
-| P8 Clôture | R.1 revue finale | **Fable** | lots A à G et S clos | adversarial-review du diff complet |
+| P10 À l'instant | T.0 mesures sur le parc | Sonnet | 0.3 | lecture des documents de rejeu déjà générés, AUCUNE génération |
+| P10 | T.1 compteurs exacts à l'instant (pur) | Sonnet | 0.3 | `model/playerInstantStats.ts` |
+| P10 | T.2 répartition des éliminations (pur) | Haiku | T.1 | `model/killBreakdown.ts` |
+| P10 | T.3 score, rang et estimations (pur) | Sonnet | T.0, T.1 | gardes de suffisance et de score complet |
+| P10 | T.4 grenades lancées, ramassages (pur) | Haiku | T.1 | |
+| P10 | T.5 rendu dans le corps de fiche | Sonnet | D.1, T.2, T.3, T.4 | seul écrivain de `ReplayPlayerPanelBody.tsx` après D.1 |
+| P8 Clôture | R.1 revue finale | **Fable** | lots A à G, S et T clos | adversarial-review du diff complet |
 | P8 | R.2 corrections retenues | Sonnet ; Opus si l'écart est un algorithme | R.1 | une seule ronde |
 | P8 | R.3 journal, mémoire, registre des reports | pilote | R.2 | |
 
 Vagues :
 - **Dès le go** : 0.1 (Haiku), 0.2 (Sonnet), 0.3 (Fable).
-- **Après 0.3** : A.1, S.2, C.1, E.1, D.1 (cinq Sonnet), B.1, F.1 (deux Haiku) en parallèle.
+- **Après 0.3** : A.1, S.2, C.1, E.1, D.1, T.0, T.1 (sept Sonnet), B.1, F.1 (deux Haiku) en parallèle ;
+  puis T.2 et T.4 (Haiku) dès T.1, T.3 dès T.0 et T.1.
 - **Puis** : A.2 / A.3, E.2 → E.3 → E.4 ; S.1 dès A.3, S.3 dès C.1 et S.2, S.4 ; B.2 dès A.3 et S.2 ;
   C.2 dès A.3 et E.1.
-- **Fin** : D.2, D.3, C.3, F.2, F.3, G.1 ; R.1, R.2, R.3.
+- **Fin** : D.2, D.3, T.5, C.3, F.2, F.3, G.1 ; R.1, R.2, R.3.
 
 ## 1 ter. Points de contact avec le plan 3D
 
@@ -369,6 +405,45 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       Masquer.
 - **Gate D** : commandes du Gate A ; `escapeLayers.guard.test.ts` et `playerFocusWiring.guard.test.ts` verts.
 
+## 7 bis. Lot T — la fiche à l'instant (D-19 à D-23)
+
+Toutes les lectures sont pures, à l'image lue, pour le joueur de la fiche, bots compris (un bot a des vies et des
+éliminations). Aucune requête nouvelle, aucun changement du document de rejeu ni du décodeur. Les formules
+existantes se réutilisent (KDA du jeu, ADR 0006 ; catégorie « arme lourde » des niveaux d'armes du document) : 0.3
+les localise, rien n'est recalculé à côté.
+
+- [ ] T.0 Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
+      dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
+      suffisante ; sur trois films, boucliers tombés à zéro contre dégâts subis (plausibilité de D-21, recharges
+      comprises). Résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
+      l'affichage est rapportée au user avant T.3.
+- [ ] T.1 `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
+      (une élimination dont le coup fatal n'est pas mesuré ne compte ni oui ni non), parfaits (médaille datée),
+      réapparitions, durée de la vie en cours (absente quand le joueur est mort), moyenne des vies terminées
+      jusqu'à l'instant, boucliers perdus (D-21 : passages à zéro du bouclier du joueur, une recharge puis une
+      nouvelle chute comptent deux), médailles gagnées. Tests : début de match, joueur mort, bot, tir à la tête
+      non mesuré, deux boucliers perdus dans une vie, fin de match égale au tableau de score sur les valeurs
+      exactes (fixation d'un match réel).
+- [ ] T.2 `model/killBreakdown.ts` (D-20) : éliminations jusqu'à l'instant par catégorie (arme lourde, mêlée,
+      grenade, autres armes) puis par arme, nombre et part en pourcentage ; une élimination sans arme résolue
+      compte dans « autres » sous un libellé neutre, jamais sous l'arme d'une voisine. Tests : parts qui somment à
+      100, catégorie vide absente, arme inconnue.
+- [ ] T.3 Score, rang et estimations (D-22) : score à l'instant = somme des points par action quand le document
+      déclare le score complet ; rang dans le lobby seulement si tous les joueurs du lobby sont complets ;
+      précision, tirs, touches, dégâts infligés et subis, et par arme tirs et dégâts, pour un joueur à lecture
+      suffisante uniquement. Tests : score incomplet (pas de ligne), joueur insuffisant (pas de ligne), joueur
+      suffisant (valeurs), rang à égalité.
+- [ ] T.4 Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
+      aucun lancer (section absente), types mêlés.
+- [ ] T.5 Rendu dans `ReplayPlayerPanelBody` (D.1), donc dans J et dans L : « À l'instant » garde son bloc actuel
+      (bouclier, santé, armes, grenades, équipement) puis ajoute les compteurs de T.1, la répartition de T.2, les
+      lignes de T.3 (mention « estimation » sur les valeurs estimées) et les sections de T.4 ; « Totaux du match »
+      inchangé ; l'ordre des sections du corps de fiche laisse la place de « En passant » en dernier (D-24), rien
+      n'y est rendu. Libellés fr et en, sans anglicisme (« série », « tirs à la tête », « répartition des
+      éliminations ») ; tokens de couleur uniquement. Tests de rendu : joueur complet, joueur insuffisant, bot,
+      défilement de la fiche.
+- **Gate T** : commandes du Gate A ; fixation de fin de match de T.1 égale au tableau de score.
+
 ## 8. Lot E — la barre de lecture compacte
 
 - [ ] E.1 Slots de `ReplayCanvas.tsx` : `transport` (élément fourni par le cadre : la barre actuelle en Standard,
@@ -440,7 +515,7 @@ Ce qui est vu en route et hors périmètre se note ici, daté, sans être trait�
 
 - La refonte sort de la 8.2.0 et part dans la 8.3.0 (décision du user du 2026-11-15). L'exécution attend son go,
   dans une nouvelle session.
-- Avant le go : faire confirmer D-18 (frise inchangée, proposée le 2026-11-15) ; relire la section 2 sur
+- Avant le go : relire la section 2 sur
   `release/v8.3.0` (la 8.2.0, qui porte le code inventorié, doit y être fusionnée) ; vérifier l'état du plan 3D
   (point de contact sur `ReplayCanvas.tsx`, section 1 ter).
 - Maquettes : canevas https://claude.ai/artifact/GkqDthVG6jGxx3A5WLfXrr (version 26). Copie des tableaux dans
