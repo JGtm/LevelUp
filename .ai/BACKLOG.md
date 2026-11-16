@@ -29,6 +29,12 @@
 
 ---
 
+### [perf/rejeu] Probabilité de réapparition : tous les calques tactiques de la carte relus à chaque ouverture d'un rejeu
+
+Relevé le 2026-11-16 par la relecture finale des réapparitions (`apps/go-api/internal/service/replay_spawn_candidats.go:68-72`). Calque actif par défaut : chaque ouverture d'un rejeu lit et désérialise tous les sidecars de la carte et de la famille, sans borne ni cache. Mesuré à 0,46 s pour 50 matchs ; sur une carte de plusieurs centaines de matchs en prod, plusieurs secondes. Piste chiffrée par l'exécutant : garder en mémoire, par carte et famille, les événements de réapparition (une centaine de Ko), avec une clé de fraîcheur lue par un stat par sidecar ; la requête retombe à environ 0,2 s. **Condition de reprise :** un temps de réponse mesuré au-delà d'une seconde en prod. **Effort : S à M.**
+
+---
+
 ### [décodeur/objectifs] Ordre de rotation des collines du Roi de la colline
 
 Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. LevelUp n'a pas cet ordre. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. Piste : le déduire du film de chaque match (le marqueur de zone `mp_control_area` porte la lettre `control_point` et son état actif), à défaut le lire dans la liste d'objets de la variante `.mvar`. **Condition de reprise :** prochain chantier du décodeur. **Effort : S à M.**
