@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { EChartsThemeColors } from '@/components/charts/_utils'
+import { readOption, type OptionRead } from '@/lib/echarts/optionRead.testutil'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(--ac-${token})`,
@@ -26,8 +27,8 @@ const TC: EChartsThemeColors = {
   isDark: false,
 }
 
-function option(over: Partial<Parameters<typeof buildDivergentStepOption>[0]> = {}) {
-  return buildDivergentStepOption(
+function option(over: Partial<Parameters<typeof buildDivergentStepOption>[0]> = {}): OptionRead<number[]> {
+  return readOption(buildDivergentStepOption(
     {
       points: [
         { ms: 0, value: 0 },
@@ -42,7 +43,7 @@ function option(over: Partial<Parameters<typeof buildDivergentStepOption>[0]> = 
       ...over,
     },
     TC,
-  ) as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  ))
 }
 
 describe('buildDivergentStepOption — la forme', () => {

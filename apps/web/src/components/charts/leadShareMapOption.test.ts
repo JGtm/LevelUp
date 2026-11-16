@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { MapBreakdownRow } from '@/lib/api/types'
 import { LEAD_SHARE_TEXT } from '@/lib/charts/leadShare/text'
+import { readOption, type OptionRead } from '@/lib/echarts/optionRead.testutil'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(--ac-${token})`,
@@ -26,10 +27,10 @@ const ROWS: MapBreakdownRow[] = [
   row('Streets', { historical_lead_share: 0.6, historical_lead_share_matches: 1 }), // historique seul
 ]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function option(rows = ROWS): Record<string, any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return buildLeadShareMapOption(rows, { text, mapLabelOf: (m) => m.toUpperCase(), scopeLabel: 'Session', historyLabel: 'Historique' }) as Record<string, any>
+function option(rows = ROWS): OptionRead<number | null> {
+  return readOption(
+    buildLeadShareMapOption(rows, { text, mapLabelOf: (m) => m.toUpperCase(), scopeLabel: 'Session', historyLabel: 'Historique' }),
+  )
 }
 
 describe('leadShareMapRows — les cartes retenues', () => {
