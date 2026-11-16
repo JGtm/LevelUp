@@ -28,6 +28,9 @@ type SpawnFamily struct {
 	VariantContains []string
 	// CategoryContains : sous-chaines (minuscules) de la categorie de mode.
 	CategoryContains []string
+	// CountdownForecast : la prevision du compte a rebours du rejeu 2D couvre cette famille (cf. l'en-tete du
+	// fichier de donnees).
+	CountdownForecast bool
 }
 
 // SpawnFamilyExclusions est ce qui sort un match de toute famille.
@@ -53,9 +56,10 @@ type spawnFamiliesTOML struct {
 		CategoryContains []string `toml:"category_contains"`
 	} `toml:"exclusions"`
 	Families []struct {
-		ID               string   `toml:"id"`
-		VariantContains  []string `toml:"variant_contains"`
-		CategoryContains []string `toml:"category_contains"`
+		ID                string   `toml:"id"`
+		CountdownForecast bool     `toml:"countdown_forecast"`
+		VariantContains   []string `toml:"variant_contains"`
+		CategoryContains  []string `toml:"category_contains"`
 	} `toml:"families"`
 }
 
@@ -76,6 +80,20 @@ func (s *SpawnFamilySet) FamilyOf(variant, category string) string {
 		}
 	}
 	return ""
+}
+
+// CountdownForecast dit si la prevision du compte a rebours couvre la famille. Une famille inconnue, ou un
+// ensemble nil, n'est pas couverte.
+func (s *SpawnFamilySet) CountdownForecast(id string) bool {
+	if s == nil {
+		return false
+	}
+	for _, f := range s.families {
+		if f.ID == id {
+			return f.CountdownForecast
+		}
+	}
+	return false
 }
 
 func (s *SpawnFamilySet) exclut(v, c string) bool {
@@ -174,7 +192,10 @@ func LoadSpawnFamiliesFromBytes(path string, raw []byte) (*SpawnFamilySet, error
 		case vus[id]:
 			return nil, fmt.Errorf("%s: [[families]] #%d : id %q déjà déclaré", path, i, id)
 		}
-		f := SpawnFamily{ID: id, VariantContains: minuscules(e.VariantContains), CategoryContains: minuscules(e.CategoryContains)}
+		f := SpawnFamily{
+			ID: id, VariantContains: minuscules(e.VariantContains), CategoryContains: minuscules(e.CategoryContains),
+			CountdownForecast: e.CountdownForecast,
+		}
 		if len(f.VariantContains)+len(f.CategoryContains) == 0 {
 			return nil, fmt.Errorf("%s: [[families]] #%d (%s) : aucun jeton (la famille ne reconnaîtrait aucun match)", path, i, id)
 		}

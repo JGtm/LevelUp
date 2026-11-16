@@ -21,6 +21,14 @@
 # et leurs equivalents francais. Le nom d'une variante bouge au fil des saisons : une variante qui ne
 # ressemble a rien n'est pas mesuree, elle ne tombe pas dans une famille par defaut. Le nom « tous » est
 # reserve (famille qui regroupe toutes les autres, repli des poids).
+#
+# COUVERTURE DU COMPTE A REBOURS (countdown_forecast). Une famille n'est servie par la prevision de
+# reapparition du rejeu 2D que si la prevision y tient la regle D-2 (au moins 50 % dans les 3 premieres
+# zones nommees) a l'instant de la MORT, ou le compte a rebours commence (mesure M-4 de `levelup
+# spawn-model evaluate`), pas seulement a l'instant de la reapparition. Bases et Roi de la colline tiennent
+# la regle a la reapparition mais pas a la mort, Oddball n'a pas assez de matchs pour etre mesure : leur
+# couverture se decide en posant `true`, sans autre changement de code. Une famille sans la cle n'est
+# pas couverte.
 
 [meta]
 title_slug = "halo_infinite"
@@ -34,11 +42,13 @@ category_contains = ["husky"]
 
 [[families]]
 id = "fiesta"
+countdown_forecast = true
 variant_contains = ["fiesta"]
 category_contains = ["fiesta"]
 
 [[families]]
 id = "drapeau"
+countdown_forecast = true
 variant_contains = ["ctf", "flag", "drapeau"]
 
 [[families]]
@@ -55,4 +65,5 @@ variant_contains = ["oddball", "balle"]
 
 [[families]]
 id = "assassin"
+countdown_forecast = true
 variant_contains = ["slayer", "assassin"]

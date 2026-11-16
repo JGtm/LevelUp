@@ -35,13 +35,9 @@ var demoNameKeys = []string{"name", "gamertag"}
 // illisible REFUSE le rejeu (erreur) : servir le document sans masque publierait les noms
 // réels.
 func maskDemoReplay(ctx context.Context, indexPath string, doc replaydoc.ReplayDocument) (replaydoc.ReplayDocument, error) {
-	raw, err := os.ReadFile(indexPath)
+	index, err := lireIndexDemo(indexPath)
 	if err != nil {
-		return replaydoc.ReplayDocument{}, fmt.Errorf("index des rejeux démo: %w", err)
-	}
-	var index domain.DemoReplayIndex
-	if err := json.Unmarshal(raw, &index); err != nil {
-		return replaydoc.ReplayDocument{}, fmt.Errorf("index des rejeux démo illisible: %w", err)
+		return replaydoc.ReplayDocument{}, err
 	}
 	masked, err := maskReplayIdentities(doc, index.Identities)
 	if err != nil {
@@ -134,4 +130,18 @@ func replaceStrings(node any, repl map[string]string) any {
 	default:
 		return v
 	}
+}
+
+// lireIndexDemo lit l'index des rejeux figés de la démo. Un index absent ou illisible est une
+// erreur : l'appelant refuse de servir plutôt que de publier des identités réelles.
+func lireIndexDemo(indexPath string) (domain.DemoReplayIndex, error) {
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		return domain.DemoReplayIndex{}, fmt.Errorf("index des rejeux démo: %w", err)
+	}
+	var index domain.DemoReplayIndex
+	if err := json.Unmarshal(raw, &index); err != nil {
+		return domain.DemoReplayIndex{}, fmt.Errorf("index des rejeux démo illisible: %w", err)
+	}
+	return index, nil
 }

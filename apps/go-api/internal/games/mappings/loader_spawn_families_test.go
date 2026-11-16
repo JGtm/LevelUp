@@ -118,3 +118,24 @@ func TestSpawnFamilies_OrdreDEssai(t *testing.T) {
 		t.Errorf("aucune famille ne convient : %q", got)
 	}
 }
+
+// La couverture du compte a rebours est une donnee du titre : les trois familles dont la prevision
+// tient la regle a l'instant de la mort sont couvertes, les autres (et toute famille inconnue) non.
+func TestSpawnFamilies_CouvertureDuCompteARebours(t *testing.T) {
+	set, err := spawnFamiliesDuDepot(t, "halo_infinite")
+	if err != nil {
+		t.Fatalf("le fichier versionné doit charger : %v", err)
+	}
+	for id, attendu := range map[string]bool{
+		"assassin": true, "fiesta": true, "drapeau": true,
+		"bases": false, "colline": false, "oddball": false, "inconnue": false, "": false, SpawnFamilyAll: false,
+	} {
+		if got := set.CountdownForecast(id); got != attendu {
+			t.Errorf("CountdownForecast(%q) = %v, attendu %v", id, got, attendu)
+		}
+	}
+	var nul *SpawnFamilySet
+	if nul.CountdownForecast("assassin") {
+		t.Errorf("un ensemble nil ne couvre aucune famille")
+	}
+}

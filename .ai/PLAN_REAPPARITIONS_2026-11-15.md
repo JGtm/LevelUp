@@ -293,10 +293,26 @@ Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran
 - [ ] D.1 Maquette (même page, onglet « Rejeu ») : variantes du calque pendant le compte à rebours, du point
       réel à l'apparition, de la légende et du réglage dans le bouton « Vue ». Choix du user consigné ici.
       **Gate : aucun code de D.3 avant ce choix.**
-- [ ] D.2 Route `GET /matches/{match_id}/replay/reapparitions` : pour chaque mort suivie d'une
+- [x] D.2 Route `GET /matches/{match_id}/replay/reapparitions` : pour chaque mort suivie d'une
       réapparition, probabilités par zone échantillonnées chaque seconde du compte à rebours, et point réel.
       Les candidats excluent le match affiché (une prévision ne voit pas la réponse). Service par le port
       de rejeu existant, calcul dans `analysis/tactical`.
+      Fait (2026-11-16, branche `feat/reapp-d`, non commité) : calcul pur `analysis/tactical/previsions_reapparition.go`
+      (`PrevoirLesReapparitions` : pistes du match -> `IndexVies.Vivants` à chaque seconde depuis la mort, les sept
+      variables et les poids du lot A, somme des probabilités par zone, zone réelle) ; service `replay_spawn_forecast.go`
+      + `replay_spawn_candidats.go` (candidats lus dans les sidecars v7 des AUTRES matchs de la carte et de la famille,
+      lecture maigre) ; port `ReplayService.SpawnForecast` et capacité optionnelle `ReplaySpawnRegistry` (registre
+      partagé : carte, variante, catégorie) ; corps `domain/replaydoc/spawn_forecast.go` (`status` ready|unavailable,
+      `reason`, `message` localisé, zones nommées, morts avec `xuid`, `samples[]` de `{frame, zones[{zone,p}], outside_zone}`,
+      `actual`, `actual_zone`) ; handler sans logique ; 404 `replay_not_available`, 503 `capability_not_supported` (sans
+      `film.spawn_forecast`), 200 `unavailable` pour mode non couvert / modèle absent / carte inconnue / carte pauvre / sans zone
+      / sans réapparition. **Exclusion du match affiché à trois niveaux** : son sidecar n'est pas lu, ses événements sont retirés
+      avant la construction des candidats et des fréquences, et un test prouve qu'un sidecar du match affiché ne change pas la
+      prévision. **Modes couverts (D-2)** : donnée du titre, clé `countdown_forecast` de `spawn_families.toml` ; posée à
+      Assassin, Fiesta, Drapeau (la règle à 50 % tient à l'instant de la MORT, M-4), PAS à Bases (49,7 %) ni Roi de la colline
+      (48,3 %) qui la tiennent seulement à la réapparition : une ligne à passer à `true` si le user tranche autrement.
+      Contrat régénéré (`openapi.yaml`, `generated.ts`, ajout seul). Mesure de poids et proposition de cache : journal du
+      2026-11-16.
 - [ ] D.3 Calque web : `model/respawnForecast.logic.ts` (pur, testé) + calque dans `layers/` ; il suit
       Seul / Masquer (la prévision appartient au joueur mort) ; contrat des calques en delta respecté.
 - [ ] D.4 Vérification EN LECTURE (pas seulement à l'arrêt), sur trois rejeux choisis par le user.
@@ -383,3 +399,16 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
   d'aucune vie du meme joueur (sans effet) ; a verifier sur le parc regenere (A.8) avant d'afficher un debut de manche.
 - (Lecture du film) Le decodeur ne publie pas la frame d'une suppression : la fin retenue est celle de la piste, ce qui
   rend la tolerance sans objet pour `deleted`.
+- (D.2) La carte d'un match se lit par `match_registry.map_id` : une carte Forge dont les variantes ont des `map_id` distincts ne mutualise pas
+  ses candidats (même choix que la mesure `spawn-model`, qui les compte par `map_id` aussi).
+- (D.2) Trois lectures de la même règle existent désormais : « indice de zone d'un point » (`tactical.IndiceDeZone` et
+  `cmd_spawn_model_zones.go` `fonctionZone`) et « séparer les vivants en équipiers et adversaires » (`tactical.evenementAuInstant` et
+  `cmd_spawn_model_donnees.go` `evenementDe`) : deux copies chacune, une troisième impose de centraliser ; la CLI pourrait appeler les
+  versions du paquet `tactical`. Même remarque pour la projection des zones du port, restée à deux copies (service `zonesPures` et CLI) : la
+  prévision réutilise `zonesPures`, aucune troisième.
+- (D.2) La prévision est servie depuis des sidecars v7 : un match dont le sidecar est absent ou périmé (v6) ne nourrit pas les candidats, comptés
+  dans le journal (`sidecars_absents`, `sidecars_perimes`). Sans le rattrapage v7 d'une instance, ses cartes ressortent `not_enough_matches`.
+- (D.2) Le coût vient de la lecture des sidecars de la carte (une lecture maigre par match, sans cache) : voir la proposition de cache au journal
+  du 2026-11-16. Non implémenté, le plan ne le prévoit pas.
+- (D.2) Les zones servies par la prévision sont celles qui portent une probabilité non nulle ou un point réel ; les polygones se lisent dans
+  `/replay/callouts` par `volume_index` (D.3 doit joindre les deux réponses).

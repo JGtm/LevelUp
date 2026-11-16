@@ -1,0 +1,28 @@
+# Messages du rejeu 2D. Catalogue des messages Go (ADR 0040) : une feuille par message, une valeur par
+# langue de config/locales.toml, variables `{nom}`.
+
+# --- Prévision de réapparition : pourquoi aucune prévision n'est servie pour un match ---------------
+
+[replay.forecast.mode_not_covered]
+fr = "La prévision de réapparition ne couvre pas ce mode de jeu."
+en = "Respawn forecasting does not cover this game mode."
+
+[replay.forecast.no_model]
+fr = "Le modèle de prévision de réapparition n'est pas disponible."
+en = "The respawn forecast model is not available."
+
+[replay.forecast.map_unknown]
+fr = "La carte de ce match n'est pas connue : aucune prévision de réapparition."
+en = "The map of this match is not known: no respawn forecast."
+
+[replay.forecast.not_enough_matches]
+fr = "Pas assez de matchs sur cette carte pour prévoir les réapparitions."
+en = "Not enough matches on this map to forecast respawns."
+
+[replay.forecast.no_zone]
+fr = "Cette carte n'a pas de zones nommées : aucune prévision de réapparition."
+en = "This map has no named zones: no respawn forecast."
+
+[replay.forecast.no_respawn]
+fr = "Ce match n'a aucune réapparition à prévoir."
+en = "This match has no respawn to forecast."

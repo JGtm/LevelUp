@@ -321,3 +321,11 @@ func routesDesVies(routes []domain.TacticalRasterRoute, instants map[int]bool) [
 	}
 	return out
 }
+
+// reapparitionApresMort dit si le spawn est une REAPPARITION APRES UNE MORT dont la mort est connue :
+// la matiere du modele de reapparition (les points que la prevision retient comme candidats). Un
+// debut de manche, une premiere vie et une piste sans drapeau n'en sont pas. Meme garde-rail que les
+// definitions ci-dessus : archlint/no_local_spawn_depart_test.go.
+func reapparitionApresMort(sp domain.TacticalRasterSpawn) bool {
+	return sp.Reapparition && sp.Mort != nil
+}
