@@ -373,7 +373,7 @@ export function ReplayCanvas({
     redraw,
     frozen: drag.dragging,
     follow: playerFocus?.follow ?? false,
-    zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
+    zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale, plan: mapImage?.variante === 'plan' ? mapImage : null },
     heat: { grid: heat.grid, ramp: heat.ramp },
     // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
     wallPlan: { plan: wallPlanOn ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },

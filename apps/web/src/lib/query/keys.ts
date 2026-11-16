@@ -318,6 +318,10 @@ export const queryKeys = {
   // périmètre inclut en plus l'adresse de la cellule cliquée.
   tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string, locale: string) =>
     ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash, locale] as const,
+  // Lecture « réapparitions adverses » d'UNE carte pour UNE zone tenue : l'empreinte porte le périmètre, la
+  // composition et l'indice de la zone ; les noms de zones sont servis dans la langue de la requête.
+  tacticalReapparitionsAdverses: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string, locale: string) =>
+    ['tactical-reapparitions-adverses', playerSlug, titleSlug, mapId, paramHash, locale] as const,
   // Séquence d'UNE mort (vue D) : l'empreinte porte le match, la victime et l'instant.
   tacticalSequence: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
     ['tactical-sequence', playerSlug, titleSlug, mapId, paramHash] as const,

@@ -158,14 +158,20 @@ const LABEL_OUTLINE_WIDTH = 1.9
  * drawCalloutsLayer peint les zones nommées : fines d'abord (dessous), grandes ensuite,
  * libellés en dernier. Calque STATIQUE du rejeu — l'appelant le cuit hors écran et le recopie,
  * comme le sol.
+ *
+ * `rognerLesFormes` s'exécute APRÈS les formes et AVANT les libellés : l'appelant y rogne ce qui est peint
+ * à l'image plan (`lib/replay/planMask`, `rognerAuPlan`). Les libellés ne sont jamais rognés : un nom
+ * posé au bord du plan doit rester lisible.
  */
 export function drawCalloutsLayer(
   ctx: CanvasRenderingContext2D,
   zones: readonly CalloutZoneReady[],
   px: ProjectionMonde,
   style: CalloutsStyle,
+  rognerLesFormes?: () => void,
 ): void {
   drawCalloutsShapes(ctx, zones, px, style)
+  rognerLesFormes?.()
   drawCalloutsLabels(ctx, zones, px, style.locale)
 }
 

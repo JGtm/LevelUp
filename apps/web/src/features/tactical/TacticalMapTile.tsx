@@ -11,7 +11,8 @@
  *
  * ─── LE MINI-PLAN ──────────────────────────────────────────────────────────────────────────
  *
- * La vignette montre OÙ LE JOUEUR MEURT sur la carte. LE CADRE RESTE À HAUTEUR FIXE (16:9) : des
+ * Le FOND est la vue plan de la carte, entière dans le cadre (`object-contain`, le même repère que le calque) ; une
+ * carte sans vue plan garde la vignette du rendu. La vignette montre OÙ LE JOUEUR MEURT sur la carte. LE CADRE RESTE À HAUTEUR FIXE (16:9) : des
  * cartes de rapports différents donneraient des vignettes de hauteurs différentes. C'est donc le
  * CALQUE qui s'adapte — mis à l'échelle pour tenir en entier, centré, JAMAIS étiré
  * (`vueContain`) : une zone chaude ronde reste ronde. Sans bornes (carte sans mort mesurée, titre
@@ -32,7 +33,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { VIGNETTE_LARGEUR_PX } from './cockpit.logic'
 import type { TacticalText } from './i18n'
-import { useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalMapBackgroundImage } from './queries'
 import { barreResultats, libelleExplorateur, nomCarte } from './tacticalLogic'
 import { grilleDuPlan, repereDuPlan, vueContain } from './tacticalView.logic'
 
@@ -51,7 +52,14 @@ export function TacticalMapTile({ carte, playerSlug, t, selectionnee, onSelect }
   // calage : sans lui, elle n'a pas de fond figé (aucune requête vouée au 404). Même clé de cache
   // que le plan principal — l'image d'une carte déjà vue n'est jamais redemandée.
   const [refTuile, visible] = useVisibleUneFois<HTMLDivElement>()
-  const fond = useTacticalMapBackgroundUrl(playerSlug, carte.map_id, visible && carte.calage_fond != null)
+  // LA VUE PLAN D'ABORD : une carte sans vue plan répond 404 à cette demande et retombe sur le rendu (la
+  // vignette reste alors celle d'avant). Même clé de cache que le fond plan du plan principal.
+  const { url: fond, variante } = useTacticalMapBackgroundImage(
+    playerSlug,
+    carte.map_id,
+    visible && carte.calage_fond != null,
+    'plan',
+  )
   const bordure = selectionnee ? 'border-2 border-primary p-[3px]' : 'border border-border p-1 hover:border-primary'
 
   return (
@@ -74,7 +82,8 @@ export function TacticalMapTile({ carte, playerSlug, t, selectionnee, onSelect }
               src={fond}
               alt=""
               aria-hidden
-              className="h-full w-full object-cover"
+              className={`h-full w-full ${variante === 'plan' ? 'object-contain' : 'object-cover'}`}
+              data-variante={variante}
               data-testid={`tactical-map-fond-${carte.map_id}`}
             />
           )}

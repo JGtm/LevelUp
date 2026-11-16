@@ -123,6 +123,7 @@ describe('query keys des réponses localisées par le serveur (lot C, étape 6)'
     tacticalMaps: (l) => queryKeys.tacticalMaps(P, T, 'h', l),
     tacticalRaster: (l) => queryKeys.tacticalRaster(P, T, 'map-1', 'h', l),
     tacticalCellule: (l) => queryKeys.tacticalCellule(P, T, 'map-1', 'h', l),
+    tacticalReapparitionsAdverses: (l) => queryKeys.tacticalReapparitionsAdverses(P, T, 'map-1', 'h', l),
   }
 
   for (const [nom, fabrique] of Object.entries(fabriques)) {
@@ -226,6 +227,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   tacticalMaps: () => queryKeys.tacticalMaps(PL, TI, 'h', L),
   tacticalRaster: () => queryKeys.tacticalRaster(PL, TI, 'map-1', 'h', L),
   tacticalCellule: () => queryKeys.tacticalCellule(PL, TI, 'map-1', 'h', L),
+  tacticalReapparitionsAdverses: () => queryKeys.tacticalReapparitionsAdverses(PL, TI, 'map-1', 'h', L),
   synthesis: () => queryKeys.synthesis(PL, TI, 'h', L),
   media: () => queryKeys.media(PL, TI, 'h', L),
   mediaRail: () => queryKeys.mediaRail(PL, TI, 5, L),

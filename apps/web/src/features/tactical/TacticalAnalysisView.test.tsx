@@ -263,7 +263,8 @@ describe('TacticalAnalysisView — le bandeau', () => {
     expect(within(titre).getByRole('button')).toBeInTheDocument()
     const lecture = screen.getByRole('combobox', { name: t.pillReading })
     const options = within(lecture).getAllByRole('option').map((o) => o.getAttribute('value'))
-    expect(options).toEqual(['morts', 'kills', 'solde', 'gagne', 'temps', 'routes', 'isole'])
+    // « Réapparitions adverses » ferme la liste : le titre déclare `spawn_forecast` (permissif tant que le bootstrap manque).
+    expect(options).toEqual(['morts', 'kills', 'solde', 'gagne', 'temps', 'routes', 'isole', 'reapparitions_adverses'])
   })
 
   /** Le `qui` de la dernière lecture demandée. */
