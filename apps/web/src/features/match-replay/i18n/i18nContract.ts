@@ -15,6 +15,7 @@ import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { FeedLinesText } from './feedLines.i18n'
 import type { LivesText } from './lives.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
+import type { RespawnForecastText } from './respawnForecast.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -239,6 +240,8 @@ export interface ReplayText {
   playerPanel: PlayerPanelText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
+  /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
+  respawnForecast: RespawnForecastText
   /** Les lignes d'objectif du fil hors action nommée (badge, assistances, manche, crâne, colline) : `feedLines.i18n.ts`. */
   feedLines: FeedLinesText
   killFeedNoAssistHint: string

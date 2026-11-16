@@ -44,6 +44,16 @@ const CABLES_PAR_LE_HOOK_DES_VIES: ReadonlyArray<[ReplayLayerId, string]> = [
   ['vies-tueurs', 'useReplayLives.ts'],
 ]
 
+/**
+ * Les deux calques de la probabilité de réapparition : UN hook les câble, et lui seul — une lecture des
+ * morts par image pour deux peintres (teinte sous les pions, repères au-dessus). Chacun porte son `id` à
+ * côté de son `paint`.
+ */
+const CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE: ReadonlyArray<[ReplayLayerId, string]> = [
+  ['reapparition-zones', 'useReplayRespawnForecast.ts'],
+  ['reapparition-reperes', 'useReplayRespawnForecast.ts'],
+]
+
 /** Les onze calques dont le hook porte l'identité (id -> hook qui le câble). */
 const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
   ['socles-armes', 'useReplayWeaponPads.ts'],
@@ -109,6 +119,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
       ...CABLES_PAR_HOOK.map(([id]) => id),
       ...CABLES_PAR_LE_MEME_HOOK.map(([id]) => id),
       ...CABLES_PAR_LE_HOOK_DES_VIES.map(([id]) => id),
+      ...CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE.map(([id]) => id),
       ...FERMETURES.map(([id]) => id),
     ]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
@@ -141,6 +152,13 @@ describe('garde-rail : la liaison id -> peintre', () => {
     }
   })
 
+  it('le hook de la probabilité de réapparition déclare l’id de ses deux calques, chacun à côté de son peintre', () => {
+    for (const [id, hook] of CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE) {
+      const src = lire(fichierNomme(hook))
+      expect(src, `${hook} ne déclare pas l'id ${id}`).toContain(`id: '${id}',`)
+    }
+  })
+
   it('le hook des vies déclare l’id de ses trois calques, chacun à côté de son peintre', () => {
     for (const [id, hook] of CABLES_PAR_LE_HOOK_DES_VIES) {
       const src = lire(fichierNomme(hook))
@@ -150,7 +168,12 @@ describe('garde-rail : la liaison id -> peintre', () => {
 
   it('le canvas ne renomme AUCUN des calques câblés par hook : il dérive la liaison', () => {
     const table = tableDeLiaison()
-    for (const [id] of [...CABLES_PAR_HOOK, ...CABLES_PAR_LE_MEME_HOOK, ...CABLES_PAR_LE_HOOK_DES_VIES]) {
+    for (const [id] of [
+      ...CABLES_PAR_HOOK,
+      ...CABLES_PAR_LE_MEME_HOOK,
+      ...CABLES_PAR_LE_HOOK_DES_VIES,
+      ...CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE,
+    ]) {
       // La clé telle qu'elle s'écrirait dans la table, à son indentation exacte. Pas de
       // RegExp construite : dans un gabarit JS, `\s` vaut `s` — le motif serait inerte.
       const cle = id.includes('-') ? "'" + id + "':" : id + ':'

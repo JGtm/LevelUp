@@ -45,6 +45,7 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   modeObjectives: true,
   wallPlan: true,
   lives: { spawns: true, deaths: true, killers: true },
+  respawnForecast: true,
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
@@ -63,6 +64,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   objectivePulses: true,
   killFx: true,
   lives: { spawns: true, deaths: true, killers: true },
+  respawnForecast: true,
 }
 
 function scene(over: Partial<ReplayScene> = {}): ReplayScene {
@@ -102,6 +104,7 @@ const ORDRE_ATTENDU = [
   'plan-murs',
   'chaleur',
   'zones-nommees',
+  'reapparition-zones',
   'objectifs-cuits',
   'projectiles',
   'socles-armes',
@@ -126,12 +129,13 @@ const ORDRE_ATTENDU = [
   'deflagration',
   'pulses-objectif',
   'morts',
+  'reapparition-reperes',
   'mise-en-valeur',
   'etiquettes-mise-en-valeur',
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les trente et un calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les trente-trois calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -159,6 +163,12 @@ describe('sceneLayers — l’ordre de la scène', () => {
     }
     expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('tirs'))
     expect(ordre.indexOf('tirs')).toBeLessThan(ordre.indexOf('morts'))
+    // La probabilité de réapparition : la teinte avec les zones, sous tout ce qui bouge ; les repères
+    // (anneau, point réel, légende) au-dessus des pions et des morts, sous la mise en valeur d'un frag.
+    expect(ordre.indexOf('zones-nommees')).toBeLessThan(ordre.indexOf('reapparition-zones'))
+    expect(ordre.indexOf('reapparition-zones')).toBeLessThan(ordre.indexOf('trajectoires'))
+    expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('reapparition-reperes'))
+    expect(ordre.indexOf('reapparition-reperes')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
   })
 
   it('transmet À CHAQUE calque l’image courante et la densité de pixels', () => {
@@ -217,6 +227,22 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
     const coupe = peints(scene({ toggles: { ...TOUT_ALLUME, killFx: false } }))
     expect(coupe).toContain('chaleur')
     expect(coupe).not.toContain('morts')
+  })
+})
+
+describe('sceneLayers — la probabilité de réapparition : un interrupteur, deux calques', () => {
+  const DEUX: ReplayLayerId[] = ['reapparition-zones', 'reapparition-reperes']
+
+  it('interrupteur coupé : la teinte et les repères se retirent ensemble, rien d’autre', () => {
+    const complet = peints(scene())
+    const coupe = peints(scene({ toggles: { ...TOUT_ALLUME, respawnForecast: false } }))
+    expect(complet.filter((id) => !coupe.includes(id))).toEqual(DEUX)
+  })
+
+  it('réponse non prête : aucun des deux ne s’ouvre', () => {
+    const complet = peints(scene())
+    const sans = peints(scene({ has: { ...TOUT_A_PEINDRE, respawnForecast: false } }))
+    expect(complet.filter((id) => !sans.includes(id))).toEqual(DEUX)
   })
 })
 

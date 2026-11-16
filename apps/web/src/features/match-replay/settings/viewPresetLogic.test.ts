@@ -109,6 +109,7 @@ describe('layerAvailability : ce que le film porte, calque par calque', () => {
     vehicles: true,
     wallPlan: true,
     lives: { spawns: true, deaths: false, killers: true, followedKnown: false },
+    respawnForecast: false,
   }
 
   it('la visée et la traînée sont toujours disponibles', () => {

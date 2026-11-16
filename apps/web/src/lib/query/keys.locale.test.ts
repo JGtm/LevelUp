@@ -227,6 +227,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   tacticalRaster: () => queryKeys.tacticalRaster(PL, TI, 'map-1', 'h', L),
   tacticalCellule: () => queryKeys.tacticalCellule(PL, TI, 'map-1', 'h', L),
   synthesis: () => queryKeys.synthesis(PL, TI, 'h', L),
+  matchReplaySpawnForecast: () => queryKeys.matchReplaySpawnForecast(PL, TI, 'm', L),
   media: () => queryKeys.media(PL, TI, 'h', L),
   mediaRail: () => queryKeys.mediaRail(PL, TI, 5, L),
   mediaMatchCandidates: () => queryKeys.mediaMatchCandidates(PL, TI, null, 5, L),

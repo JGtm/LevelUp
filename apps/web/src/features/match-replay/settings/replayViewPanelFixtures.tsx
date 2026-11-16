@@ -64,6 +64,7 @@ export function makeLives(over: Partial<ReplayLivesControls> = {}): ReplayLivesC
     spawns: { available: true, show: false, onToggle: vi.fn() },
     deaths: { available: true, show: false, onToggle: vi.fn() },
     killers: { available: true, show: false, onToggle: vi.fn() },
+    respawnForecast: { available: false, show: true, onToggle: vi.fn() },
     who: 'all',
     onSelectWho: vi.fn(),
     followedAvailable: true,

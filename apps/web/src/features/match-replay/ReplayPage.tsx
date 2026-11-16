@@ -332,6 +332,8 @@ export function ReplayPage() {
               background={mapBackground}
               mapId={replayContext?.header.map_id}
               callouts={callouts}
+              playerSlug={playerSlug}
+              matchId={matchId}
               scoreboard={scoreboard}
               allegiance={model.allegiance}
               marks={marks}

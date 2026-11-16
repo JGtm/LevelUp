@@ -2559,6 +2559,11 @@ export type ReplayMapBackgroundPlan = components['schemas']['MapBackgroundPlan']
 export type ReplayMapCallouts = components['schemas']['MapCalloutsEntry']
 export type ReplayCalloutZone = components['schemas']['CalloutZone']
 
+// La PROBABILITÉ DE RÉAPPARITION de chaque mort du match (calque du rejeu) : zones nommées par
+// `volume_index` (celui de `ReplayCalloutZone`), un échantillon par seconde de compte à rebours.
+export type ReplaySpawnForecast = components['schemas']['SpawnForecast']
+export type ReplaySpawnForecastSample = components['schemas']['SpawnForecastSample']
+
 // Les OBJECTIFS STATIQUES du mode joué : zones (boîtes orientées, cylindres) et
 // marqueurs ponctuels (apparitions, livraisons, socles), joints par map_id au catalogue
 // versionné et servis AVEC le document (`mapObjectives` — rempli à la requête, jamais

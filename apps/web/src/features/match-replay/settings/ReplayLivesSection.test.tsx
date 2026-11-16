@@ -157,3 +157,56 @@ describe('ReplayLivesSection — les deux langues', () => {
     expect(screen.getByRole('radio', { name: 'So far' })).toBeTruthy()
   })
 })
+
+describe('ReplayLivesSection — la probabilité de réapparition', () => {
+  const OFF = { available: false, show: false, onToggle: vi.fn() }
+
+  it('un interrupteur du groupe, allumé ou éteint selon le réglage, qui appelle SON callback', () => {
+    const onToggle = vi.fn()
+    renderPanel({ lives: makeLives({ respawnForecast: { available: true, show: true, onToggle } }) })
+    deplier()
+    const sw = screen.getByRole('switch', { name: 'Probabilité de réapparition' })
+    expect(sw).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(sw)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('jamais proposé tant que la réponse n’est pas prête : pas de commande qui ne commande rien', () => {
+    renderPanel({ lives: makeLives({ respawnForecast: OFF }) })
+    deplier()
+    expect(screen.queryByRole('switch', { name: 'Probabilité de réapparition' })).toBeNull()
+  })
+
+  it('compte dans le résumé du groupe replié', () => {
+    renderPanel({ lives: makeLives({ respawnForecast: { available: true, show: true, onToggle: vi.fn() } }) })
+    expect(screen.getByRole('button', { name: /^Vies/ }).textContent).toContain('1 sur 4')
+  })
+
+  it('le groupe existe pour elle seule, sans aucune trace de vie, et sans affinage « Qui » / « Quand »', () => {
+    renderPanel({
+      lives: makeLives({ spawns: OFF, deaths: OFF, killers: OFF, respawnForecast: { available: true, show: true, onToggle: vi.fn() } }),
+    })
+    deplier()
+    expect(screen.getByRole('switch', { name: 'Probabilité de réapparition' })).toBeTruthy()
+    expect(screen.queryByRole('radiogroup', { name: 'Qui' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Morts' })).toBeNull()
+  })
+
+  it('allumée avec une trace éteinte : toujours pas d’affinage ; une trace allumée les rend', () => {
+    const forecast = { available: true, show: true, onToggle: vi.fn() }
+    const { unmount } = renderPanel({ lives: makeLives({ respawnForecast: forecast }) })
+    deplier()
+    expect(screen.queryByRole('radiogroup', { name: 'Qui' })).toBeNull()
+    unmount()
+    renderPanel({
+      lives: makeLives({ deaths: { available: true, show: true, onToggle: vi.fn() }, respawnForecast: forecast }),
+    })
+    expect(screen.getByRole('radiogroup', { name: 'Qui' })).toBeTruthy()
+  })
+
+  it('l’anglais : « Respawn probability »', () => {
+    renderPanel({ locale: 'en', lives: makeLives({ respawnForecast: { available: true, show: false, onToggle: vi.fn() } }) })
+    fireEvent.click(screen.getByRole('button', { name: /^Lives/ }))
+    expect(screen.getByRole('switch', { name: 'Respawn probability' })).toHaveAttribute('aria-checked', 'false')
+  })
+})

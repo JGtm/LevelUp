@@ -9,8 +9,12 @@
  *
  * PAS DE COMMANDE QUI NE COMMANDE RIEN (règle du panneau) : un calque sans marque à poser n'est pas
  * proposé, le groupe entier disparaît quand aucun ne l'est, et les affinages ne s'affichent qu'avec
- * au moins un calque ALLUMÉ — filtrer ce qu'on ne voit pas ne dit rien. « Joueur suivi » n'est
+ * au moins une TRACE allumée — filtrer ce qu'on ne voit pas ne dit rien. « Joueur suivi » n'est
  * proposé que s'il y a un joueur suivi dans ce match.
+ *
+ * LA PROBABILITÉ DE RÉAPPARITION est un quatrième interrupteur du groupe, pas une trace : elle compte
+ * dans le résumé, mais les affinages « Qui » et « Quand » ne la concernent pas (elle suit Seul et Masquer
+ * du panneau de joueur, comme tout ce qui appartient à un joueur).
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { LIVES_WHEN, LIVES_WHO, type LivesWhen, type LivesWho } from '../model/livesMarks'
@@ -29,6 +33,8 @@ export interface ReplayLivesControls {
   spawns: ReplayLivesLayerControls
   deaths: ReplayLivesLayerControls
   killers: ReplayLivesLayerControls
+  /** La probabilité de réapparition : un interrupteur, deux calques (teinte, repères). */
+  respawnForecast: ReplayLivesLayerControls
   who: LivesWho
   onSelectWho: (who: LivesWho) => void
   /** Il y a un joueur suivi dans ce match : l'option « Joueur suivi » a un sens. */
@@ -93,25 +99,39 @@ function Refinements({ locale, c }: { locale: ReplayLocale; c: ReplayLivesContro
 
 export function LivesSection({ locale, lives }: { locale: ReplayLocale; lives: ReplayLivesControls }) {
   const t = REPLAY_TEXT[locale].lives
+  const forecast = REPLAY_TEXT[locale].respawnForecast
   const [open, toggleOpen] = usePersistedFlag(LIVES_OPEN_KEY, false)
   const layers = [
     { key: 'spawns', c: lives.spawns, label: t.layerSpawns, hint: t.layerSpawnsHint },
     { key: 'deaths', c: lives.deaths, label: t.layerDeaths, hint: t.layerDeathsHint },
     { key: 'killers', c: lives.killers, label: t.layerKillers, hint: t.layerKillersHint },
   ].filter((l) => l.c.available)
-  if (layers.length === 0) return null
-  const on = layers.filter((l) => l.c.show).length
+  const forecastShown = lives.respawnForecast.available
+  const total = layers.length + (forecastShown ? 1 : 0)
+  if (total === 0) return null
+  const tracesOn = layers.filter((l) => l.c.show).length
+  const on = tracesOn + (forecastShown && lives.respawnForecast.show ? 1 : 0)
   return (
     <section className="space-y-0.5">
-      <GroupHeader locale={locale} open={open} onToggle={toggleOpen} summary={t.summaryFmt(on, layers.length)} />
+      <GroupHeader locale={locale} open={open} onToggle={toggleOpen} summary={t.summaryFmt(on, total)} />
       {open && (
         <>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-            {layers.map((l) => (
-              <SettingsToggle key={l.key} label={l.label} pressed={l.c.show} onToggle={l.c.onToggle} hint={l.hint} />
-            ))}
-          </div>
-          {on > 0 && <Refinements locale={locale} c={lives} />}
+          {layers.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+              {layers.map((l) => (
+                <SettingsToggle key={l.key} label={l.label} pressed={l.c.show} onToggle={l.c.onToggle} hint={l.hint} />
+              ))}
+            </div>
+          )}
+          {forecastShown && (
+            <SettingsToggle
+              label={forecast.title}
+              pressed={lives.respawnForecast.show}
+              onToggle={lives.respawnForecast.onToggle}
+              hint={forecast.hint}
+            />
+          )}
+          {tracesOn > 0 && <Refinements locale={locale} c={lives} />}
         </>
       )}
     </section>

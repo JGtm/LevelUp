@@ -10,7 +10,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/lib/api/types'
+import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts, ReplaySpawnForecast } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -210,6 +210,27 @@ export function useReplayMapCallouts(playerSlug: string, matchId: string) {
     staleTime: Infinity,
     enabled: !!playerSlug && !!matchId,
     // 404 nominal jamais rejoué (politique du client) ; un 503 transitoire l’est.
+  })
+}
+
+/**
+ * useReplaySpawnForecast charge la PROBABILITÉ DE RÉAPPARITION de chaque mort du match, quand le calque
+ * est actif (`enabled`) : un calque éteint ne coûte aucune requête, et sa réponse déjà en cache reste lue.
+ *
+ * LA RÉPONSE PORTE SON PROPRE REFUS (`status: 'unavailable'` avec sa raison) : ce n'est pas une erreur, et
+ * le calque est alors absent. Une vraie erreur (titre sans la capacité, 404 sans film) l'est aussi : jamais
+ * de nouvel essai ni de message, le rejeu se lit sans. Les noms de zone sont résolus par le serveur dans la
+ * langue de la requête : la locale est le dernier segment de la clé.
+ */
+export function useReplaySpawnForecast(playerSlug: string, matchId: string, enabled: boolean, locale: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  return useQuery({
+    queryKey: queryKeys.matchReplaySpawnForecast(playerSlug, titleSlug, matchId, locale),
+    queryFn: () => api.get<ReplaySpawnForecast>(`/players/${playerSlug}/matches/${matchId}/replay/reapparitions`),
+    // Dépend des autres matchs de la carte, qui n'arrivent qu'au sync : rien ne la périme pendant une session.
+    staleTime: Infinity,
+    retry: false,
+    enabled: enabled && !!playerSlug && !!matchId,
   })
 }
 

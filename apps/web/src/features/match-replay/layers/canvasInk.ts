@@ -32,6 +32,8 @@ export type InkVar =
   | '--replay-export-backdrop'
   /** Le VOILE noir du système de design, identique dans les deux thèmes (mise en valeur d'un frag). */
   | '--scrim'
+  /** Le texte posé sur le voile : jeton `on-scrim`, identique dans les deux thèmes (légende et étiquettes de la probabilité de réapparition). */
+  | '--on-scrim'
 
 /**
  * readInk lit une variable de mise en page du thème — celle du thème SOMBRE pendant un export

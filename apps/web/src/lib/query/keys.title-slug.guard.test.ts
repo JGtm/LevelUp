@@ -63,6 +63,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
   matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
+  matchReplaySpawnForecast: () => queryKeys.matchReplaySpawnForecast(P, T, 'm', 'fr'),
   // Engagement.
   engagementMatch: () => queryKeys.engagementMatch(P, T, 'm'),
   engagementProfile: () => queryKeys.engagementProfile(P, T),

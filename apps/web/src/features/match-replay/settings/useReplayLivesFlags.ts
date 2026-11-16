@@ -32,6 +32,15 @@ const SHOW_DEATHS_KEY = 'replay-show-deaths'
 const SHOW_KILLERS_KEY = 'replay-show-killers'
 const LIVES_WHO_KEY = 'replay-lives-who'
 const LIVES_WHEN_KEY = 'replay-lives-when'
+const SHOW_RESPAWN_FORECAST_KEY = 'replay-show-respawn-forecast'
+
+/**
+ * LA PROBABILITÉ DE RÉAPPARITION EST ALLUMÉE PAR DÉFAUT (maquette validée le 2026-11-16) : elle n'existe
+ * que pendant le compte à rebours d'un joueur mort, puis s'efface — elle ne charge pas la carte le reste
+ * du temps — et c'est elle qu'on vient lire. Ce n'est PAS un préréglage de la vue (`LAYER_KEYS`) : elle ne
+ * change ni « Complet » ni les autres, et reste à son état quel que soit le préréglage choisi.
+ */
+const SHOW_RESPAWN_FORECAST_DEFAULT = true
 
 /** Les trois calques des vies ; les treize autres sont ceux d'avant le lot. */
 type LivesLayerKey = 'spawns' | 'deaths' | 'killers'
@@ -84,6 +93,9 @@ export interface ReplayLivesFlags {
   /** Affinage commun « quand » — toujours une valeur de `LIVES_WHEN`. */
   livesWhen: LivesWhen
   setLivesWhen: (when: LivesWhen) => void
+  /** Probabilité de réapparition : zones teintées et point réel pendant le compte à rebours d'un joueur mort. */
+  showRespawnForecast: boolean
+  toggleRespawnForecast: () => void
 }
 
 export function useReplayLivesFlags(legacy: LegacyLayerFlags): ReplayLivesFlags {
@@ -96,6 +108,10 @@ export function useReplayLivesFlags(legacy: LegacyLayerFlags): ReplayLivesFlags 
   const [showSpawns, toggleSpawns] = usePersistedFlag(SHOW_SPAWNS_KEY, defaults.spawns)
   const [showDeaths, toggleDeaths] = usePersistedFlag(SHOW_DEATHS_KEY, defaults.deaths)
   const [showKillers, toggleKillers] = usePersistedFlag(SHOW_KILLERS_KEY, defaults.killers)
+  const [showRespawnForecast, toggleRespawnForecast] = usePersistedFlag(
+    SHOW_RESPAWN_FORECAST_KEY,
+    SHOW_RESPAWN_FORECAST_DEFAULT,
+  )
   const [livesWho, setWhoState] = useState(() => readStoredChoice(LIVES_WHO_KEY, DEFAULT_LIVES_WHO, LIVES_WHO))
   const [livesWhen, setWhenState] = useState(() => readStoredChoice(LIVES_WHEN_KEY, DEFAULT_LIVES_WHEN, LIVES_WHEN))
   const setLivesWho = useCallback((next: LivesWho) => {
@@ -108,6 +124,6 @@ export function useReplayLivesFlags(legacy: LegacyLayerFlags): ReplayLivesFlags 
   }, [])
   return {
     showSpawns, toggleSpawns, showDeaths, toggleDeaths, showKillers, toggleKillers,
-    livesWho, setLivesWho, livesWhen, setLivesWhen,
+    livesWho, setLivesWho, livesWhen, setLivesWhen, showRespawnForecast, toggleRespawnForecast,
   }
 }
