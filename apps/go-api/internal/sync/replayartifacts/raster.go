@@ -73,6 +73,10 @@ import (
 // derives de cache du depot — lisible, non executable.
 const permSidecarRaster = 0o644
 
+// degradationSansLectureDuFilm : le nom de la degradation d'un document sans aucune lecture de fin de
+// vie du film (cle `degradation` du journal).
+const degradationSansLectureDuFilm = "reapparitions_sans_lecture_du_film"
+
 // ProjeterRasterTactique lit UN artefact range et en tire son sidecar d'occupation.
 //
 // ELLE NE LIT QUE CE QUI EXISTE DEPUIS TOUJOURS : `matchId`, `frameCount`/`tracks` et,
@@ -91,12 +95,12 @@ const permSidecarRaster = 0o644
 // `previsionArmee` dit si le titre declare `film.spawn_forecast` : seulement alors le sidecar porte
 // la matiere de la prevision de reapparition (voir spawnsDeLOccupation). L'appelant la lit dans les
 // capabilities du titre ; ce paquet-ci ne devine rien.
-func ProjeterRasterTactique(path string, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
+func ProjeterRasterTactique(ctx context.Context, path string, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	doc, _, err := lireDocumentRange(path)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
-	return projeterRasterDepuisDocument(doc, previsionArmee)
+	return projeterRasterDepuisDocument(ctx, doc, previsionArmee)
 }
 
 // projeterRasterDepuisDocument est le calcul pur du sidecar, a partir d'un document DEJA
@@ -107,7 +111,7 @@ func ProjeterRasterTactique(path string, previsionArmee bool) (domain.TacticalRa
 // `frameIntervalMs` absent (artefacts anciens) : la cadence historique ([cadenceHistoriqueMS]) est
 // appliquee ICI, chez l'appelant du calcul pur — `analysis/tactical` ne devine aucune cadence.
 // Ce n'est pas la cadence de cuisson du decodeur : un artefact sans champ date de la grille a 100 ms.
-func projeterRasterDepuisDocument(doc *replay.ReplayDocument, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
+func projeterRasterDepuisDocument(ctx context.Context, doc *replay.ReplayDocument, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	if doc == nil {
 		// Ne devrait jamais arriver : `lireArtefacts` ne pose `artefactLu` qu'apres une
 		// lecture reussie, et `ProjeterRasterTactique` ne l'appelle qu'avec un document
@@ -122,6 +126,9 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument, previsionArmee boo
 	}
 	g := tactical.GrilleParDefaut()
 	entree := EntreeOccupationDeLArtefact(doc)
+	if previsionArmee && !tactical.LectureDuFilm(entree) {
+		signalerSansLectureDuFilm(ctx, doc.MatchID)
+	}
 	intervalle := entree.IntervalleFrameMs
 	joueurs, ignores, err := rasteriserParJoueur(g, entree, previsionArmee)
 	if err != nil {
@@ -138,10 +145,16 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument, previsionArmee boo
 		PointsIgnores:         ignores,
 		Joueurs:               joueurs,
 	}
-	if previsionArmee {
-		sidecar.Reapparitions = sourcesDesReapparitions(joueurs)
-	}
 	return sidecar, nil
+}
+
+// signalerSansLectureDuFilm nomme et compte la degradation d'un document sans aucune lecture de fin
+// de vie du film : son sidecar ne porte aucune reapparition, et la Tactique comme le calque du rejeu
+// disent « pas de reapparitions » pour ce match.
+func signalerSansLectureDuFilm(ctx context.Context, matchID string) {
+	slog.WarnContext(ctx, "raster tactique: aucune lecture du film dans le document, aucune reapparition",
+		"match_id", matchID, "degradation", degradationSansLectureDuFilm)
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurRastersSansLectureFilm)
 }
 
 // pistesDeLArtefact projette les pistes du document vers les types PURS du rasterisage.
@@ -334,7 +347,7 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 		return
 	}
 	for _, r := range rapports {
-		s, err := projeterRasterDepuisDocument(r.doc, prevision)
+		s, err := projeterRasterDepuisDocument(ctx, r.doc, prevision)
 		if err != nil {
 			slog.ErrorContext(ctx, "post-sync: artefact range mais raster tactique impossible",
 				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)

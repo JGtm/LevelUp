@@ -1,7 +1,7 @@
 package replayartifacts
 
 // raster_reapparitions.go — LA PART « REAPPARITION » DU SIDECAR : la traduction des spawns de
-// l'occupation vers le format du sidecar, et le compte des decisions par source.
+// l'occupation vers le format du sidecar, et la projection du document de rejeu vers l'entree pure.
 
 import (
 	"context"
@@ -58,26 +58,6 @@ func spawnsDeLOccupation(spawns []tactical.SpawnPiste, previsionArmee bool) []do
 	return out
 }
 
-// sourcesDesReapparitions compte, sur les joueurs d'un match, les reapparitions par source de
-// decision et les debuts de manche. C'est la couverture que le sidecar publie : un match dont
-// toutes les reapparitions viennent du repli se lit comme tel.
-func sourcesDesReapparitions(joueurs []domain.TacticalRasterJoueur) domain.TacticalRasterSources {
-	var c domain.TacticalRasterSources
-	for _, j := range joueurs {
-		for _, s := range j.Spawns {
-			switch {
-			case s.DebutDeManche:
-				c.DebutsDeManche++
-			case s.Reapparition && s.Source == tactical.SourceFilm:
-				c.Film++
-			case s.Reapparition && s.Source == tactical.SourceRepliEcart:
-				c.RepliEcart++
-			}
-		}
-	}
-	return c
-}
-
 // EntreeOccupationDeLArtefact projette un document de rejeu vers l'entree pure de
 // l'occupation. C'est l'UNIQUE projection : le sidecar de raster et les mesures de reapparition
 // (`levelup spawn-model`) lisent le meme document de la meme facon.
@@ -85,8 +65,7 @@ func sourcesDesReapparitions(joueurs []domain.TacticalRasterJoueur) domain.Tacti
 // Les lectures de fin de vie du film y passent telles que le document les publie : la fin de
 // chaque piste (`endReason`, `releaseFrame`) et les comptes a rebours de reapparition
 // (`respawnCountdowns`), rattaches a un xuid par l'identite des joueurs. Un document qui n'en
-// porte aucune (artefact anterieur a ces champs) laisse la decision au repli nomme (cf.
-// analysis/tactical, SourceRepliEcart).
+// porte aucune (artefact anterieur a ces champs) n'a aucune reapparition (cf. tactical.LectureDuFilm).
 func EntreeOccupationDeLArtefact(doc *replay.ReplayDocument) tactical.EntreeOccupation {
 	intervalle := doc.FrameIntervalMS
 	if intervalle <= 0 {

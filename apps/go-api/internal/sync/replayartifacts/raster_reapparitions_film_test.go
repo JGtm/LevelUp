@@ -106,9 +106,9 @@ func TestEntreeOccupationDeLArtefact_DecisionsAuFilm(t *testing.T) {
 	}
 }
 
-// Un document sans aucune lecture du film garde le repli : l'entree n'en porte aucune.
-func TestEntreeOccupationDeLArtefact_SansLectureResteAuRepli(t *testing.T) {
-	e := EntreeOccupationDeLArtefact(lireDocumentDeTest(t, artefactReapparition))
+// Un document sans aucune lecture du film n'a aucune reapparition : l'entree n'en porte aucune.
+func TestEntreeOccupationDeLArtefact_SansLectureAucuneReapparition(t *testing.T) {
+	e := EntreeOccupationDeLArtefact(lireDocumentDeTest(t, artefactReapparitionSansFilm))
 	if len(e.DebutsDeCompte) != 0 || e.ComptesSansJoueur != 0 {
 		t.Errorf("aucun compte attendu : %+v, %d", e.DebutsDeCompte, e.ComptesSansJoueur)
 	}
@@ -117,8 +117,11 @@ func TestEntreeOccupationDeLArtefact_SansLectureResteAuRepli(t *testing.T) {
 			t.Errorf("piste %d : fin %+v, attendu aucune", i, p.Fin)
 		}
 	}
-	if s := tactical.NouvelIndexVies(e).Spawns()[1]; !s.Reapparition || s.Source != tactical.SourceRepliEcart {
-		t.Errorf("reapparition de repli attendue : %+v", s)
+	if tactical.LectureDuFilm(e) {
+		t.Error("l'entree ne porte aucune lecture du film")
+	}
+	if s := tactical.NouvelIndexVies(e).Spawns()[1]; s.Reapparition {
+		t.Errorf("aucune reapparition attendue sans lecture du film : %+v", s)
 	}
 }
 

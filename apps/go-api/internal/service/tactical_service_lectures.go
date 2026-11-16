@@ -326,7 +326,7 @@ func routesDesVies(routes []domain.TacticalRasterRoute, instants map[int]bool) [
 // du joueur `xuid`, avec l'instantane qui les accompagne, et dit si l'equipe du joueur est connue du
 // sidecar (faux : le match ne peut pas servir la lecture, aucune observation).
 //
-// Une reapparition est celle que le sidecar a decidee (film ou repli sur l'ecart) : un debut de manche
+// Une reapparition est celle que le sidecar a decidee (lecture du film) : un debut de manche
 // n'en est pas une, une piste sans drapeau non plus. Un adversaire dont l'equipe n'est pas nommee n'est
 // ni adverse ni equipier : il est ecarte. Meme garde-rail que le depart :
 // archlint/no_local_spawn_depart_test.go.

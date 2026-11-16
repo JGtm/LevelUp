@@ -29,11 +29,8 @@ func imprimerBilan(w io.Writer, b bilanLecture) {
 	_, _ = fmt.Fprintf(w, "## Bilan de lecture\n\n")
 	_, _ = fmt.Fprintf(w, "| artefacts | lus | sans registre | hors familles | illisibles |\n|---|---|---|---|---|\n")
 	_, _ = fmt.Fprintf(w, "| %d | %d | %d | %d | %d |\n\n", b.artefacts, b.lus, b.sansRegistre, b.horsFamille, b.echecs)
-	_, _ = fmt.Fprintf(w, "| reapparitions (source film) | reapparitions (repli ecart 4-15 s) | debuts de manche | sans equipe | non finies |\n|---|---|---|---|---|\n")
-	_, _ = fmt.Fprintf(w, "| %d | %d | %d | %d | %d |\n\n", b.reapFilm, b.reapRepli, b.debutsManche, b.sansEquipe, b.nonFinis)
-	a := b.accord
-	_, _ = fmt.Fprintf(w, "| documents lus au film | accord film et repli | film seul | repli seul | dont debut de manche au film | comptes a rebours sans joueur |\n|---|---|---|---|---|---|\n")
-	_, _ = fmt.Fprintf(w, "| %d | %d | %d | %d | %d | %d |\n\n", a.documentsFilm, a.accord, a.filmSeul, a.repliSeul, a.repliSeulManche, b.comptesSansJoueur)
+	_, _ = fmt.Fprintf(w, "| reapparitions lues au film | documents sans lecture du film | sans equipe | non finies | comptes a rebours sans joueur |\n|---|---|---|---|---|\n")
+	_, _ = fmt.Fprintf(w, "| %d | %d | %d | %d | %d |\n\n", b.reapparitions, b.sansLectureFilm, b.sansEquipe, b.nonFinis, b.comptesSansJoueur)
 	fam := make([]string, 0, len(b.parFamille))
 	for f := range b.parFamille {
 		fam = append(fam, f)

@@ -130,19 +130,6 @@ type TacticalRasterSidecar struct {
 	// nommee : le fichier existe, donc le match est MESURE et il est mesure a zero — ce
 	// qui ne se confond pas avec « pas de sidecar », qui veut dire non mesure.
 	Joueurs []TacticalRasterJoueur `json:"joueurs"`
-
-	// Reapparitions compte les spawns du match par SOURCE de la decision « reapparition »
-	// (cf. TacticalRasterSources) : c'est ce qui dit, par match, si la mesure repose sur le film ou
-	// sur le repli. Nul quand le titre ne declare pas `film.spawn_forecast`.
-	Reapparitions TacticalRasterSources `json:"reapparitions"`
-}
-
-// TacticalRasterSources : les reapparitions d'un match par source de la decision, et les spawns
-// de debut de manche (jamais des reapparitions).
-type TacticalRasterSources struct {
-	Film           int `json:"film"`
-	RepliEcart     int `json:"repli_ecart"`
-	DebutsDeManche int `json:"debuts_de_manche"`
 }
 
 // TacticalRasterJoueur est ce qu'un joueur a produit sur ce match.
@@ -189,8 +176,8 @@ type TacticalRasterSpawn struct {
 	// l'on vient de mourir, pas du placement d'ouverture).
 	PremiereVie bool `json:"premiere_vie,omitempty"`
 
-	// Reapparition : la vie commence apres une MORT du joueur ; Source dit comment on l'a decide
-	// (`film` ou `repli_ecart`). DebutDeManche : la vie precedente a ete close par une fin de
+	// Reapparition : la vie commence apres une MORT du joueur, lue dans le film ; Source dit comment on
+	// l'a decide (`film`). DebutDeManche : la vie precedente a ete close par une fin de
 	// manche, ce n'est pas une reapparition. Ces champs, Mort et Instantane ne sont portes que si le
 	// titre declare `film.spawn_forecast`.
 	Reapparition  bool   `json:"reapparition,omitempty"`

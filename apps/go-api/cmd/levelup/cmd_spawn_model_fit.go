@@ -52,11 +52,11 @@ func definitionDesPoids(jeu *jeuReapparitions, o spawnModelOptions) string {
 		portee = fmt.Sprintf("AJUSTEMENT PARTIEL (famille %q, %d artefacts au plus)", o.famille, o.limite)
 	}
 	return fmt.Sprintf("reapparitions apres mort lues dans les artefacts de rejeu, %s. Lues avant filtres : %d par la lecture "+
-		"du film, %d par le repli sur l'ecart de 4 a 15 s. Retenue : une reapparition dont la carte est vue dans au moins %d matchs "+
+		"du film (%d documents sans lecture du film n'en donnent aucune). Retenue : une reapparition dont la carte est vue dans au moins %d matchs "+
 		"de la famille, qui a au moins un adversaire vivant, et qui a au moins deux points candidats vus dans au moins %d AUTRES matchs "+
 		"que le sien. Chaque famille est ajustee sur ses propres matchs, « tous » sur toutes. Les effectifs (reapparitions, cartes, "+
 		"matchs) comptent les reapparitions retenues ; les scores sont ceux de la validation croisee a %d plis par match",
-		portee, jeu.bilan.reapFilm, jeu.bilan.reapRepli, o.matchsMinCarte, tactical.MatchsMinCandidat, tactical.PlisValidation)
+		portee, jeu.bilan.reapparitions, jeu.bilan.sansLectureFilm, o.matchsMinCarte, tactical.MatchsMinCandidat, tactical.PlisValidation)
 }
 
 func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOptions) error {

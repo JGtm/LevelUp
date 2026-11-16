@@ -173,7 +173,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.sautes++
 			continue
 		}
-		s, err := replayartifacts.ProjeterRasterTactique(pr.ReplayArtifactPath(o.titleSlug, short), o.prevision)
+		s, err := replayartifacts.ProjeterRasterTactique(ctx, pr.ReplayArtifactPath(o.titleSlug, short), o.prevision)
 		if err != nil {
 			// Jamais avale : l'echec d'UN artefact n'arrete pas la passe, mais il se voit.
 			slog.ErrorContext(ctx, "rasters tactiques : artefact non projete",

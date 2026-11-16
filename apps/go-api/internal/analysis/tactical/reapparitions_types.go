@@ -9,10 +9,6 @@ const (
 	// SourceFilm : la fin de la vie precedente est LUE dans le film (liberation du corps ou
 	// debut de compte a rebours de reapparition).
 	SourceFilm = "film"
-	// SourceRepliEcart : le document ne porte aucune de ces lectures, et la decision tombe sur
-	// l'ecart entre deux vies (cf. EcartReapparitionMinMs). C'est un REPLI : chaque usage se
-	// compte, et il s'efface devant la lecture du film des qu'elle existe.
-	SourceRepliEcart = "repli_ecart"
 )
 
 // Raisons de fin de vie que le film ecrit pour un corps.
@@ -76,7 +72,7 @@ type SpawnPiste struct {
 	PremiereVie bool `json:"premiere_vie,omitempty"`
 
 	// Reapparition : cette vie commence apres une MORT du joueur (et non au debut du match
-	// ou d'une manche). Source dit comment on l'a decide (SourceFilm ou SourceRepliEcart).
+	// ou d'une manche). Source dit comment on l'a decide (SourceFilm).
 	Reapparition bool   `json:"reapparition,omitempty"`
 	Source       string `json:"source,omitempty"`
 	// DebutDeManche : la vie precedente a ete close par une suppression de corps (fin de

@@ -8,8 +8,8 @@ import "errors"
 //
 // # CE QUE LA LECTURE COMPTE
 //
-// Une reapparition adverse est la reapparition apres mort (definition du sidecar : lecture du film quand
-// le document la porte, repli sur l'ecart de 4 a 15 s sinon) d'un joueur dont l'equipe n'est pas celle
+// Une reapparition adverse est la reapparition apres mort (definition du sidecar : lecture du film ; un
+// match dont le document ne la porte pas n'en a aucune) d'un joueur dont l'equipe n'est pas celle
 // du joueur de la page, dans un match de l'univers. La repartition « de reference » les compte toutes,
 // sans condition ; la repartition « zone tenue » ne garde que celles qui tombent a un instant ou au moins
 // ReapparitionsAdversesJoueursPourTenir joueurs vivants de l'equipe du joueur de la page se trouvent dans

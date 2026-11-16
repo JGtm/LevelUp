@@ -17,8 +17,8 @@ package main
 // # CE QUE LES MESURES ECARTENT, ET COMMENT ON LE VOIT
 //
 // Le bilan de lecture compte, par cause, les artefacts sans registre, hors familles, illisibles,
-// les reapparitions par source de decision (film ou repli sur l'ecart), les debuts de manche et
-// les reapparitions sans equipe connue.
+// les documents sans lecture du film (aucune reapparition), les reapparitions lues au film et celles
+// sans equipe connue.
 
 import (
 	"context"

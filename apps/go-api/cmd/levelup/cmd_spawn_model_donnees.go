@@ -31,11 +31,11 @@ type evenementDouble struct {
 // bilanLecture compte ce que la lecture a vu et ecarte, pour qu'aucun ecart ne soit muet.
 type bilanLecture struct {
 	artefacts, sansRegistre, horsFamille, lus, echecs int
-	reapFilm, reapRepli, debutsManche                 int
-	sansEquipe, nonFinis                              int
-	parFamille                                        map[string]int
-	// accord : les deux definitions d'une reapparition comparees sur les documents lus au film.
-	accord accordDefinitions
+	// reapparitions : celles que la lecture du film decide ; sansLectureFilm : documents qui n'en portent
+	// aucune lecture, donc sans reapparition.
+	reapparitions, sansLectureFilm int
+	sansEquipe, nonFinis           int
+	parFamille                     map[string]int
 	// comptesSansJoueur : comptes a rebours qu'aucun xuid ne rattache (bots, index inconnu).
 	comptesSansJoueur int
 }
@@ -105,7 +105,9 @@ func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch) 
 	}
 	entree := replayartifacts.EntreeOccupationDeLArtefact(doc)
 	j.bilan.comptesSansJoueur += entree.ComptesSansJoueur
-	j.bilan.accord.comparer(entree)
+	if !tactical.LectureDuFilm(entree) {
+		j.bilan.sansLectureFilm++
+	}
 	j.evenementsDuMatch(entree, info)
 }
 
@@ -118,17 +120,10 @@ func (j *jeuReapparitions) evenementsDuMatch(entree tactical.EntreeOccupation, i
 		if !ok {
 			continue
 		}
-		if s.DebutDeManche {
-			j.bilan.debutsManche++
-		}
 		if !s.Reapparition || s.Mort == nil {
 			continue
 		}
-		if s.Source == tactical.SourceFilm {
-			j.bilan.reapFilm++
-		} else {
-			j.bilan.reapRepli++
-		}
+		j.bilan.reapparitions++
 		equipe := p.Equipe
 		if equipe < 0 {
 			equipe = ix.EquipeDuJoueur(p.XUID)
