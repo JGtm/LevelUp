@@ -24,6 +24,7 @@ import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { localeTextsOf, pickText } from '@/lib/i18n/pickText'
 
+import { isRing, zoneHasShape, zoneRings } from './calloutShape'
 import { type XY } from './replayLogic'
 
 /** Projection d'un point MONDE dans la toile de l'appelant (cadrage du rejeu, repère du plan). */
@@ -55,9 +56,9 @@ export interface CalloutZoneReady {
 
 /**
  * normalizeCallouts résout la nullabilité du transport UNE fois, à l'entrée (même règle
- * que replayNormalize). TOUTES les zones sont gardées, y compris sans polygone : les
- * volumes secondaires d'un même nom restent dans la liste — seul le DESSIN exige un contour ;
- * le nommage d'un point (`killerZone.ts`) ignore, lui, une zone sans contour ni partie.
+ * que replayNormalize). TOUTES les zones sont gardées, y compris sans forme : les
+ * volumes secondaires d'un même nom restent dans la liste — le dessin, comme le nommage d'un
+ * point (`killerZone.ts`), ignorent une zone sans forme (`zoneHasShape`).
  */
 export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): CalloutZoneReady[] {
   return normalizeCalloutZones(entry?.zones)
@@ -68,7 +69,7 @@ export function normalizeCalloutZones(zones: readonly ReplayCalloutZone[] | null
   if (!zones) return []
   return zones.map((z): CalloutZoneReady => {
     const polygon = ring(z.polygon)
-    const anchor = polygon.length >= 3 ? centroid(polygon) : { x: z.x, y: z.y }
+    const anchor = isRing(polygon) ? centroid(polygon) : { x: z.x, y: z.y }
     return {
       names: localeTextsOf(z),
       x: z.x,
@@ -101,7 +102,7 @@ function rings(list: ReplayCalloutZone['parts']): XY[][] {
   const out: XY[][] = []
   for (const r of list) {
     const done = ring(r ?? null)
-    if (done.length >= 3) out.push(done)
+    if (isRing(done)) out.push(done)
   }
   return out
 }
@@ -187,9 +188,9 @@ export function drawCalloutsShapes(
 ): void {
   // Les zones FINES, sous les grandes : contour pointillé, teinte neutre, aplat quasi nul.
   for (const c of zones) {
-    if (c.big || c.polygon.length < 3) continue
+    if (c.big || !zoneHasShape(c)) continue
     ctx.beginPath()
-    tracePoly(ctx, c.polygon, px)
+    tracePoly(ctx, zoneRings(c)[0], px)
     ctx.globalAlpha = FINE_FILL_ALPHA
     ctx.fillStyle = style.fineInk
     ctx.fill()
@@ -205,7 +206,7 @@ export function drawCalloutsShapes(
   // couleur de série par zone — la rotation de teinte du POC, en tokens résolus.
   let bigIndex = 0
   for (const c of zones) {
-    if (!c.big || c.polygon.length < 3) continue
+    if (!c.big || !zoneHasShape(c)) continue
     const color = style.bigColors[bigIndex % Math.max(style.bigColors.length, 1)] ?? style.fineInk
     bigIndex++
     ctx.beginPath()
@@ -223,7 +224,7 @@ export function drawCalloutsShapes(
   ctx.globalAlpha = 1
 }
 
-function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: ProjectionMonde): void {
+function tracePoly(ctx: CanvasRenderingContext2D, pts: readonly XY[], px: ProjectionMonde): void {
   pts.forEach((p, k) => {
     const c = px(p)
     if (k === 0) ctx.moveTo(c.x, c.y)
@@ -235,7 +236,7 @@ function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: ProjectionMonde
 /**
  * drawCalloutsLabels écrit chaque nom UNE fois, sur la zone dessinée la plus haute qui le porte
  * (tri z décroissant, règle du POC — sans dédoublonnage, « Tuyaux » s'écrirait quatre
- * fois). Seules les zones AVEC contour reçoivent un libellé : les volumes secondaires
+ * fois). Seules les zones AVEC forme reçoivent un libellé : les volumes secondaires
  * ne servent pas à l'affichage.
  */
 export function drawCalloutsLabels(
@@ -259,7 +260,7 @@ export function drawCalloutsLabels(
   // une couleur qui dit quelque chose : rien ici ne distingue un rôle métier.
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
   ctx.fillStyle = 'rgba(255, 255, 255, 1)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
-  const drawn = zones.filter((c) => c.polygon.length >= 3)
+  const drawn = zones.filter(zoneHasShape)
   drawn.sort((p, q) => q.z - p.z)
   for (const c of drawn) {
     const label = calloutLabel(c, locale)

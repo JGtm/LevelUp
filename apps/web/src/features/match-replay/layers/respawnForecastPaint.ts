@@ -8,6 +8,7 @@
  * pixels d'écran multipliées par la densité `k`, comme celles des autres calques.
  */
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { zoneHasShape } from '@/lib/replay/calloutShape'
 import { roundedRectPath } from '@/lib/replay/roundedRect'
 
 import type { XY } from '../../../lib/replay/replayLogic'
@@ -91,9 +92,9 @@ export function traceZone(ctx: CanvasRenderingContext2D, zone: CalloutZoneReady,
   for (const hole of zone.holes) ring([...hole].reverse())
 }
 
-/** La zone se dessine-t-elle : elle a un contour. */
+/** La zone se dessine-t-elle : elle a une forme (`zoneHasShape`). */
 export function hasShape(zone: CalloutZoneReady | undefined): zone is CalloutZoneReady {
-  return !!zone && zone.polygon.length >= 3
+  return !!zone && zoneHasShape(zone)
 }
 
 /** Où s'ancre une pastille par rapport à son point. */

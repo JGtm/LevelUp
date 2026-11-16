@@ -54,6 +54,7 @@
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { zoneHasShape, zoneRings } from '../../../lib/replay/calloutShape'
 import type { CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import { msToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
@@ -80,16 +81,6 @@ export interface NamedZone {
 
 type Ring = readonly XY[]
 
-/** Les anneaux d'une zone : contour, parties, trous. Moins de trois sommets : pas une surface. */
-function ringsOf(z: CalloutZoneReady): Ring[] {
-  return [z.polygon, ...z.parts, ...z.holes].filter((r) => r.length >= 3)
-}
-
-/** La zone porte-t-elle au moins un contour ou une partie exploitable ? */
-function hasShape(z: CalloutZoneReady): boolean {
-  return z.polygon.length >= 3 || z.parts.some((p) => p.length >= 3)
-}
-
 /** Le point est-il dans l'anneau (test du rayon, pair-impair) ? */
 function inRing(x: number, y: number, ring: Ring): boolean {
   let inside = false
@@ -104,7 +95,7 @@ function inRing(x: number, y: number, ring: Ring): boolean {
 /** Le point appartient-il à la forme (pair-impair sur ses anneaux) ? */
 function inShape(x: number, y: number, z: CalloutZoneReady): boolean {
   let inside = false
-  for (const r of ringsOf(z)) if (inRing(x, y, r)) inside = !inside
+  for (const r of zoneRings(z)) if (inRing(x, y, r)) inside = !inside
   return inside
 }
 
@@ -120,7 +111,7 @@ function distanceToSegment(x: number, y: number, a: XY, b: XY): number {
 /** Plus courte distance du point à une arête de la forme (Infinity sans forme). */
 function distanceToEdge(x: number, y: number, z: CalloutZoneReady): number {
   let best = Number.POSITIVE_INFINITY
-  for (const r of ringsOf(z)) {
+  for (const r of zoneRings(z)) {
     for (let i = 0, k = r.length - 1; i < r.length; k = i, i++) {
       best = Math.min(best, distanceToSegment(x, y, r[k], r[i]))
     }
@@ -196,7 +187,7 @@ export function nameZone(
   z: number | null,
   zones: readonly CalloutZoneReady[],
 ): NamedZone | null {
-  const shapes = zones.filter(hasShape)
+  const shapes = zones.filter(zoneHasShape)
   if (z === null) return nameWithoutHeight(x, y, shapes)
   const candidates = shapes.filter((c) => inShape(x, y, c) && inSlice(c, z))
   if (candidates.length === 0) return nearest(x, y, shapes, (c) => inSlice(c, z))
