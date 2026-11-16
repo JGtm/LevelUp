@@ -14,7 +14,7 @@ const vol = (t0: number): ReplayProjectileReady =>
 
 function strokes(shown?: (index: number) => boolean) {
   const { ctx, ops } = recordingContext()
-  drawProjectilesLayer(ctx, [vol(10), vol(10)], VIEW, { frame: 12, tailFrames: 7 }, '#c', shown)
+  drawProjectilesLayer(ctx, [vol(10), vol(10)], VIEW, { frame: 12, tailFrames: 7, color: '#c', shown })
   return ops.filter((o) => o.op === 'stroke').length
 }
 

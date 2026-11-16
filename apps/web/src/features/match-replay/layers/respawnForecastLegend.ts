@@ -72,11 +72,9 @@ function zonesBlockHeight(draw: ForecastDraw): number {
 function drawTintBar(
   ctx: CanvasRenderingContext2D,
   at: { x: number; y: number; w: number },
-  color: string,
-  draw: ForecastDraw,
-  opacity: number,
-  k: number,
+  style: { color: string; draw: ForecastDraw; opacity: number; k: number },
 ): void {
+  const { color, draw, opacity, k } = style
   const under = draw === 'both'
   const base = under ? TINT_BASE_ALPHA_UNDER_POINTS : TINT_BASE_ALPHA
   const amplitude = under ? TINT_AMPLITUDE_ALPHA_UNDER_POINTS : TINT_AMPLITUDE_ALPHA
@@ -123,7 +121,7 @@ function drawDiscScale(ctx: CanvasRenderingContext2D, at: { x: number; y: number
 /** L'échelle de teinte avec sa légende : bornes 0 % et part de la première zone quand elle est seule. */
 function drawZonesScale(ctx: CanvasRenderingContext2D, at: { x: number; y: number; w: number }, color: string, m: ForecastMoment, p: ForecastPaint): void {
   const { k } = p
-  drawTintBar(ctx, at, color, p.draw, m.opacity, k)
+  drawTintBar(ctx, at, { color, draw: p.draw, opacity: m.opacity, k })
   let cursor = at.y + (BAR_HEIGHT_PX + 2) * k
   ctx.fillStyle = p.ink.onPanel
   ctx.font = forecastFont(SMALL_PX, 500, k)
