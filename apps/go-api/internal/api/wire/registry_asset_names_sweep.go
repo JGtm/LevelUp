@@ -27,8 +27,7 @@ import (
 // restés en UUID vers asset_translations, via le pool unifié p, PUIS réinscrit
 // dans match_registry les noms désormais connus (convergeRegistryNames) : sans
 // cette seconde passe, une traduction obtenue après l'insertion d'un match ne
-// remonte pas dans son registre. Le gate LEVELUP_SYNC_RESOLVE_ASSETS est
-// appliqué côté sync. p nil → no-op. Best-effort : un échec de convergence est
+// remonte pas dans son registre. p nil → no-op. Best-effort : un échec de convergence est
 // journalisé, le résultat du balayage reste rendu.
 func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, titleSlug string, p pool.Pool) (assetnames.Result, error) {
 	if p == nil {

@@ -221,7 +221,6 @@ const cartesNeuvesAuDelaDuPlafond = 70
 // neuve, et rend les identifiants.
 func fetcherDeCartesNeuves(t *testing.T) []string {
 	t.Helper()
-	t.Setenv("LEVELUP_SYNC_RESOLVE_ASSETS", "1")
 	f := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
 	ids := make([]string, cartesNeuvesAuDelaDuPlafond)
 	for i := range ids {
