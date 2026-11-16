@@ -29,6 +29,18 @@
 
 ---
 
+### [décodeur/objectifs] Ordre de rotation des collines du Roi de la colline
+
+Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. LevelUp n'a pas cet ordre. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. Piste : le déduire du film de chaque match (le marqueur de zone `mp_control_area` porte la lettre `control_point` et son état actif), à défaut le lire dans la liste d'objets de la variante `.mvar`. **Condition de reprise :** prochain chantier du décodeur. **Effort : S à M.**
+
+---
+
+### [décodeur/marqueurs] Nommer les états des marqueurs d'objectifs par la liste de cartographer
+
+Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (MIT) liste environ 65 noms dont l'empreinte murmur3 en minuscules donne les identifiants des marqueurs d'objectifs (`NAVPOINT_NAMES` : types `mp_deliver_object`, `mp_control_area`, `item_pad`..., groupes `ownership_state`, `has_progress`, `control_point`, `tier_group`..., états `contested`, `capturing`, `incoming`, `flag_away`, `returning`...). Le décodeur peut s'en servir pour nommer les identifiants qu'il publie encore en hexadécimal et vérifier ceux qu'il nomme déjà (zones, drapeau, socles d'armes). Créditer la source. **Condition de reprise :** prochain chantier du décodeur. **Effort : S.**
+
+---
+
 ### [rejeu/fiche] Bouclier brisé : badge narratif « os de verre » et frags sans bouclier
 
 **Demande de l'utilisateur (2026-11-16).** La fiche détaillée du rejeu comptera, à l'instant lu, combien de fois le joueur a perdu son bouclier. Ce compte se dérive de la valeur de bouclier publiée à chaque point du film : un passage à zéro = un bouclier brisé. Le film n'écrit pas d'événement « bouclier brisé » (vérifié le 2026-11-16 dans le décodeur LevelUp et dans libfilmshell). Idées à instruire à partir de ce compte : un badge narratif de type « os de verre » dans la matrice d'impact de la page du match (joueur qui perd souvent son bouclier), et une stat « frags réalisés sans bouclier ». **Condition de reprise :** le compte des boucliers brisés livré dans la fiche (refonte de la page du rejeu, 8.3.0) et décision du user. **Effort : à estimer.**
