@@ -19,14 +19,14 @@ import {
   parseSource,
   SCAN_TIMEOUT_MS,
   scanSources,
-  type Hit,
+  type ScanHit,
   type ScannedSource,
 } from '@/lib/archScan.testutil'
 
 const CHARTS_DIR = ['components/charts/']
 const CHART_LIBRARY = /^echarts(?:$|\/)|^echarts-for-react(?:$|\/)/
 
-function libraryImports(source: ScannedSource): Hit[] {
+function libraryImports(source: ScannedSource): ScanHit[] {
   return moduleSpecifiers(source)
     .filter((m) => CHART_LIBRARY.test(m.specifier))
     .map((m) => ({ file: source.rel, line: m.line, detail: `importe « ${m.specifier} »` }))

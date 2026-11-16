@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import ts from 'typescript'
-import { formatHits, lineOf, parseSource, SCAN_TIMEOUT_MS, scanSources, visitAll, type Hit, type ScannedSource } from '../archScan.testutil'
+import { formatHits, lineOf, parseSource, SCAN_TIMEOUT_MS, scanSources, visitAll, type ScanHit, type ScannedSource } from '../archScan.testutil'
 
 const OWNER = 'lib/query/bootstrap.ts'
 const RECOGNISED_BY = 'lib/api/client.ts'
@@ -20,8 +20,8 @@ const RECOGNISED_BY = 'lib/api/client.ts'
 const TEST_SUPPORT = 'test/'
 const BOOTSTRAP_PATH = /^\/bootstrap(?:[/?]|$)/
 
-function bootstrapPathLiterals(source: ScannedSource): Hit[] {
-  const hits: Hit[] = []
+function bootstrapPathLiterals(source: ScannedSource): ScanHit[] {
+  const hits: ScanHit[] = []
   visitAll(source, (node) => {
     if (
       (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node)) &&

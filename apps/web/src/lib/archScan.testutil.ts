@@ -81,15 +81,15 @@ export function visitAll(source: ScannedSource, fn: (node: ts.Node) => void): vo
   walkNode(source.sf)
 }
 
-export interface Hit {
+export interface ScanHit {
   file: string
   line: number
   detail: string
 }
 
 /** Appels dont le nom appelé (identifiant seul, ou dernier segment d'un accès `a.b.c`) est dans `names`. */
-export function callsNamed(source: ScannedSource, names: ReadonlySet<string>): Hit[] {
-  const hits: Hit[] = []
+export function callsNamed(source: ScannedSource, names: ReadonlySet<string>): ScanHit[] {
+  const hits: ScanHit[] = []
   visitAll(source, (node) => {
     if (!ts.isCallExpression(node)) return
     const callee = node.expression
@@ -130,7 +130,7 @@ export function isUnder(rel: string, dirs: readonly string[]): boolean {
 }
 
 /** Message d'échec : une ligne par occurrence, plus la consigne. */
-export function formatHits(hits: readonly Hit[], hint: string): string {
+export function formatHits(hits: readonly ScanHit[], hint: string): string {
   if (hits.length === 0) return ''
   return [`${hits.length} occurrence(s), plafond 0 :`, ...hits.map((h) => `  ${h.file}:${h.line}  ${h.detail}`), hint].join('\n')
 }

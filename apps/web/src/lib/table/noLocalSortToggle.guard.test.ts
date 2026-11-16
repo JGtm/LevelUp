@@ -10,10 +10,10 @@
  */
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { formatHits, parseSource, SCAN_TIMEOUT_MS, scanSources, visitAll, lineOf, type Hit, type ScannedSource } from '@/lib/archScan.testutil'
+import { formatHits, parseSource, SCAN_TIMEOUT_MS, scanSources, visitAll, lineOf, type ScanHit, type ScannedSource } from '@/lib/archScan.testutil'
 
-function toggleSortNames(source: ScannedSource): Hit[] {
-  const hits: Hit[] = []
+function toggleSortNames(source: ScannedSource): ScanHit[] {
+  const hits: ScanHit[] = []
   visitAll(source, (node) => {
     if (ts.isIdentifier(node) && node.text === 'toggleSort') {
       hits.push({ file: source.rel, line: lineOf(source, node), detail: 'toggleSort' })

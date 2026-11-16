@@ -25,7 +25,7 @@ import {
   SCAN_TIMEOUT_MS,
   scanSources,
   visitAll,
-  type Hit,
+  type ScanHit,
   type ScannedSource,
 } from '../archScan.testutil'
 
@@ -50,8 +50,8 @@ const ALLOWED_RAW_FETCH: Readonly<Record<string, string>> = {
 
 const API_PREFIX_LITERAL = /^\/api\/v1(?:\/|$)/
 
-function apiBaseUrlReads(source: ScannedSource): Hit[] {
-  const hits: Hit[] = []
+function apiBaseUrlReads(source: ScannedSource): ScanHit[] {
+  const hits: ScanHit[] = []
   visitAll(source, (node) => {
     if (ts.isPropertyAccessExpression(node) && node.name.text === 'VITE_API_BASE_URL') {
       hits.push({ file: source.rel, line: lineOf(source, node), detail: 'lit VITE_API_BASE_URL' })

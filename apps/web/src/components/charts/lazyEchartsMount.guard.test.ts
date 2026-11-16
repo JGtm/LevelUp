@@ -25,7 +25,7 @@ import {
   SCAN_TIMEOUT_MS,
   scanSources,
   visitAll,
-  type Hit,
+  type ScanHit,
   type ScannedSource,
 } from '@/lib/archScan.testutil'
 
@@ -33,8 +33,8 @@ const CHARTS_DIR = ['components/charts/']
 const PALETTE_HOOK: ReadonlySet<string> = new Set(['useColorPaletteVersion'])
 
 /** Montages JSX de `<LazyECharts ...>` (ouvrant ou auto-fermant), jamais le nom dans un commentaire ou une chaîne. */
-function lazyEchartsMounts(source: ScannedSource): Hit[] {
-  const hits: Hit[] = []
+function lazyEchartsMounts(source: ScannedSource): ScanHit[] {
+  const hits: ScanHit[] = []
   visitAll(source, (node) => {
     const tag = ts.isJsxSelfClosingElement(node) ? node.tagName : ts.isJsxOpeningElement(node) ? node.tagName : null
     if (tag !== null && ts.isIdentifier(tag) && tag.text === 'LazyECharts') {
