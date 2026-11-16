@@ -23,14 +23,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
-import { rognerAuPlan } from '../../../lib/replay/planMask'
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { drawWallPlanLayer } from './wallPlanLayer'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
-import { drawMapBackground, placeMapBackground, type MapBackgroundSource } from './mapBackgroundDraw'
+import { clipToMapPlan, type MapBackgroundSource } from './mapBackgroundDraw'
 import { orientHeatGrid } from '@/lib/replay/orientation'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
@@ -170,9 +169,7 @@ export function useReplayStaticLayers({
       return
     }
     zonesRef.current = cookLayer(cookView, (ctx) => {
-      const rect = placeMapBackground(planDuFond, cookView)
-      const rogner =
-        planDuFond && rect ? () => rognerAuPlan(ctx, () => drawMapBackground(ctx, planDuFond, rect, cookView)) : undefined
+      const rogner = planDuFond ? () => clipToMapPlan(ctx, planDuFond, cookView) : undefined
       drawCalloutsLayer(ctx, zoneList, (p) => projectTo(cookView, p), { bigColors, fineInk, locale }, rogner)
     })
     redraw()

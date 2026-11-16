@@ -40,4 +40,12 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
     expect(canvas()).toContain("const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')")
     expect(canvas()).toContain('plan: wallPlanOn ? (mapImage?.plan ?? null) : null')
   })
+
+  it('la probabilité de réapparition est rognée à l’image plan, comme les zones nommées, et seulement s’il y a une vue plan', () => {
+    const c = canvas()
+    expect(c).toContain('const planDuFond = mapImage?.zonesClip ?? null')
+    expect(c).toMatch(/planDuFond \? \(ctx: CanvasRenderingContext2D, v: CanvasView\) => clipToMapPlan\(ctx, planDuFond, v\) : undefined/)
+    expect(c).toMatch(/useReplayRespawnForecast\(\{[^}]*clipMask: forecastClipMask/s)
+    expect(c).toContain('plan: planDuFond }')
+  })
 })

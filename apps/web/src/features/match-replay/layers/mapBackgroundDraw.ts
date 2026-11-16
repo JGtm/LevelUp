@@ -15,6 +15,7 @@
  * suit la fenêtre, pas la scène, sinon il resterait cadré large pendant que les joueurs zooment.
  */
 import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
+import { rognerAuPlan } from '@/lib/replay/planMask'
 
 import { turnsOfView, type CanvasView } from '../model/replayView'
 import { backgroundRect, type BackgroundRect } from './mapBackground'
@@ -66,3 +67,14 @@ export function drawMapBackground(
   ctx.restore()
 }
 
+/**
+ * clipToMapPlan retire de `ctx` ce qui sort de l'image plan posée pour ce cadrage (`rognerAuPlan`). C'est le
+ * rognage commun des zones nommées et de la teinte de probabilité : une seule composition, le même rectangle
+ * et la même rotation que le fond. Sans rectangle exploitable, rien n'est rogné (pas de fond plutôt qu'un fond
+ * posé n'importe où).
+ */
+export function clipToMapPlan(ctx: CanvasRenderingContext2D, plan: MapBackgroundSource, view: CanvasView): void {
+  const rect = placeMapBackground(plan, view)
+  if (!rect) return
+  rognerAuPlan(ctx, () => drawMapBackground(ctx, plan, rect, view))
+}

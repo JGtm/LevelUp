@@ -10,7 +10,7 @@ import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '@/lib/replay/
 import { projectTo, type CanvasView } from '../model/replayView'
 import { recordingContext } from '../test/recordingContext'
 import { worldExtent } from './mapBackground'
-import { drawMapBackground, placeMapBackground } from './mapBackgroundDraw'
+import { clipToMapPlan, drawMapBackground, placeMapBackground } from './mapBackgroundDraw'
 
 const CAL: ReplayMapBackgroundCalibration = {
   metersPerPixel: 0.5,
@@ -97,4 +97,23 @@ describe('drawMapBackground', () => {
       expect(b.y).toBeCloseTo(basDroite.y, 6)
     },
   )
+})
+
+describe('clipToMapPlan', () => {
+  it('garde ce que l’image plan couvre : composition destination-in, image au rectangle du fond, état rendu', () => {
+    const { ops, ctx } = recordingContext()
+    const v = viewAt(0)
+    clipToMapPlan(ctx, { calibration: CAL, image: IMAGE }, v)
+    const rect = placeMapBackground({ calibration: CAL }, v)!
+    const rangs = ops.map((o) => o.op)
+    expect(rangs).toEqual(['save', 'set globalCompositeOperation', 'drawImage', 'restore'])
+    expect(ops[1]?.args).toEqual(['destination-in'])
+    expect(ops[2]?.args).toEqual([IMAGE, rect.x, rect.y, rect.width, rect.height])
+  })
+
+  it('un calage inexploitable ne rogne rien', () => {
+    const { ops, ctx } = recordingContext()
+    clipToMapPlan(ctx, { calibration: { ...CAL, metersPerPixel: 0 }, image: IMAGE }, viewAt(0))
+    expect(ops).toEqual([])
+  })
 })

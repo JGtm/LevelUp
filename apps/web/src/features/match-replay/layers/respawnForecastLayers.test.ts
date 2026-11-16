@@ -32,6 +32,7 @@ import { drawForecastLegend } from './respawnForecastLegend'
 import { drawForecastMarks } from './respawnForecastMarks'
 import { drawForecastPoints } from './respawnForecastPoints'
 import type { ForecastPaint, ForecastWording, ForecastZone } from './respawnForecastPaint'
+import { clipToMapPlan } from './mapBackgroundDraw'
 import { drawForecastZones, type ZoneClip, type ZonesPaint } from './respawnForecastZones'
 
 /** 4 px par unité monde, Y inversé. */
@@ -323,6 +324,25 @@ describe('le rognage au plan', () => {
     // La scène ne reçoit que la recopie de la toile de travail.
     expect(count(r.zones, 'drawImage')).toBe(1)
     expect(count(r.zones, 'fill')).toBe(0)
+  })
+
+  it('avec le masque du plan (clipToMapPlan) : la teinte est rognée par l’image plan, sur la toile de travail', () => {
+    const work = context()
+    const plan = { calibration: { metersPerPixel: 1, originX: 0, originY: 100, widthPx: 100, heightPx: 100, convention: 'test' }, image: {} as CanvasImageSource }
+    const clip: ZoneClip = {
+      scratch: () => ({ canvas: {} as CanvasImageSource, ctx: work.ctx }),
+      mask: (ctx, view) => clipToMapPlan(ctx, plan, view),
+    }
+    const r = render(f, 105, { clip })
+    const rangs = work.ops.map((o) => (o.op === 'fill' ? 'teinte' : o.op === 'set globalCompositeOperation' ? String(o.args[0]) : o.op))
+    expect(rangs.filter((x) => x === 'teinte')).toHaveLength(4)
+    // Le rognage vient APRÈS toute la teinte : composition destination-in, puis l'image plan, puis retour d'état.
+    const apres = rangs.slice(rangs.lastIndexOf('teinte') + 1)
+    expect(apres).toContain('destination-in')
+    expect(apres.indexOf('destination-in')).toBeLessThan(apres.indexOf('drawImage'))
+    // La scène ne reçoit que la recopie rognée, jamais la teinte brute.
+    expect(count(r.zones, 'fill')).toBe(0)
+    expect(count(r.zones, 'drawImage')).toBe(1)
   })
 
   it('une toile de travail indisponible : la teinte se peint sans rognage', () => {
