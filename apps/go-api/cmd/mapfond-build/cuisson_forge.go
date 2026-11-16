@@ -42,12 +42,15 @@ func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge
 		slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
 		return bilanAsset{Cle: carte.MapID, Noms: []string{carte.Nom}, Err: err}
 	}
-	navRef, tout := e.maillageForge(ctx, carte)
+	navRef, tout, degradation := e.maillageForge(ctx, carte)
 	c.maillage, c.sourcePlan = tout, sourcePlanForge
 	rendu, bilan, err := himap.CuitCarteForge(ctx, e.optionsForge(carte, c, objets, navRef))
 	if err != nil {
 		slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
 		return bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err}
+	}
+	if degradation != "" {
+		bilan.Degradations = append(bilan.Degradations, degradation)
 	}
 	return e.publie(ctx, c, rendu, bilan)
 }
@@ -56,24 +59,29 @@ func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge
 // rend, d'une part la surface de référence et de rognage (nil si la carte ne la prend pas sur lui
 // et qu'aucun avis ne la rogne), d'autre part le maillage entier dont le plan est tiré (nil sans
 // maillage). Le plan se publie pour toute carte qui a un blob, que la cuisson s'en serve ou non.
-func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForge) (arme, tout *hinavmesh.Maillage) {
+// Une carte dont le blob est absent du dépôt cuit comme avant, sans plan, et rend la dégradation
+// nommée que son sidecar publie (`degradationSansBlob`).
+func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForge) (arme, tout *hinavmesh.Maillage, degradation string) {
 	reference := valeurDe(e, carte.MapID, levierNavmeshReference) || e.decisionFond(carte.MapID).Rogne
 	m, err := e.chargeNavmesh(carte)
 	switch {
 	case errors.Is(err, os.ErrNotExist) && !reference:
-		slog.DebugContext(ctx, "mapfond: pas de maillage de navigation au depot", "carte", carte.Nom)
-		return nil, nil
+		slog.InfoContext(ctx, "mapfond: carte Forge sans maillage de navigation au depot, cuite sans plan", "carte", carte.Nom)
+		return nil, nil, degradationSansBlob
+	case errors.Is(err, os.ErrNotExist):
+		slog.WarnContext(ctx, "maillage de navigation indisponible, reference laissee aux ancres", "err", err, "carte", carte.Nom)
+		return nil, nil, degradationSansBlob
 	case err != nil && reference:
 		slog.WarnContext(ctx, "maillage de navigation indisponible, reference laissee aux ancres", "err", err, "carte", carte.Nom)
-		return nil, nil
+		return nil, nil, ""
 	case err != nil:
 		slog.WarnContext(ctx, "maillage de navigation illisible, fond publie sans plan", "err", err, "carte", carte.Nom)
-		return nil, nil
+		return nil, nil, ""
 	}
 	if !reference {
-		return nil, m
+		return nil, m, ""
 	}
-	return m, m
+	return m, m, ""
 }
 
 // optionsForge assemble les options de cuisson d'une carte Forge. Ce sont les mêmes leviers que

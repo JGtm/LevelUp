@@ -50,9 +50,12 @@ unreadable without the walls, and a map is often easier to read turned.
   turns and pixel-space text stays upright. The choice is stored per map in the browser
   (`replay-orientation.<mapId>`) with the wall-plan switch (`replay-show-wall-plan`). The replay, the Tactical tab and
   "Terrain occupation" read the same two preferences through `useMapViewPreferences`; only the replay holds the control.
-- **D-5 — A map without a mesh is a named degradation.** Its module carries no mesh (Live Fire, `sgh_interlock`): the map is cooked by the historical chain, the sidecar lists the degradation in
-  `degradations` and carries no `plan`. The web client treats a missing plan as normal, not as an error. A read that fails while the
-  mesh exists is an error of the build, not a degradation.
+- **D-5 — A map without a mesh is a named degradation.** Either its module carries no mesh (Live Fire,
+  `sgh_interlock`) or, for a Forge map, the repository holds no `navmesh.blob`: the map is cooked by the historical
+  chain, the sidecar lists the degradation in `degradations` (`aucun maillage de navigation dans le module any`,
+  `aucun maillage de navigation au depot (navmesh.blob absent)`) and carries no `plan` and no `planImage`. The web client
+  treats a missing plan as normal, not as an error. A read that fails while the mesh exists is an error of the build, not
+  a degradation.
 - **D-6 — A secondary mesh is ignored and counted.** A module may carry several meshes; the largest readable one is
   used, the others are reported (`secondaires`) and the unreadable candidates too (`illisibles`).
 - **D-7 — `--plan-seul` redoes the plan without recooking.** For each map whose mesh is readable (a Forge map whose
@@ -71,7 +74,8 @@ Counted on the published directory `data/titles/halo_infinite/reference/map_back
 - 114 sidecars (`*.json`), 114 background images, 111 plan images (`*.plan.webp`, 7.3 MB), 111 sidecars that carry a
   `plan` and a `planImage`: 19 from a native module (`navmesh module any`), 92 from a Forge `navmesh.blob`.
 - Three sidecars carry neither: Live Fire (`sgh_interlock`; no mesh in its module) and the two Thunderhead variants
-  (`28a3ac28-...`, `37bc3df6-...`; no blob in the repository).
+  (`28a3ac28-...`, `37bc3df6-...`; no blob in the repository). The cooking names the Forge degradation since
+  2026-11-16; the two published Thunderhead sidecars do not list it yet and get it at their next cooking.
 - Of the 18 catalogue maps whose module is installed on the measuring machine, 17 hold a readable mesh. Secondary meshes
   are not decoded on Chasm (5), Launch Site (5) and Cliffhanger (1); 13 candidate resources on 9 of these maps are
   unreadable (`bloc N hors borne`, flags `0x6402`).
@@ -98,7 +102,10 @@ Counted on the published directory `data/titles/halo_infinite/reference/map_back
 ## Guard-rails
 
 - `internal/mapfondsidecar` tests: a rewrite keeps `plan`; a sidecar without `plan` serializes as `replay.MapBackground`.
-- `cmd/mapfond-build` tests: the per-map levers (`reglages_test.go`); `--plan-seul` leaves a map without a blob untouched.
+- `cmd/mapfond-build` tests: the per-map levers (`reglages_test.go`, where every declared lever has an entry in the
+  published file or a dated exemption); `--plan-seul` leaves a map without a blob untouched; the set of published
+  backgrounds without a plan is fixed at three, and a Forge map without a blob returns the named degradation
+  (`sans_plan_test.go`).
 - Web: `lib/replay/orientation.test.ts` fixes the quarter-turn direction, `wallPlan.test.ts` the normalization of the
   nullable transport, `useMapViewPreferences.test.ts` the sharing of the two preferences.
 

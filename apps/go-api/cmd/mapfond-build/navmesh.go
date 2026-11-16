@@ -22,6 +22,10 @@ const (
 	// maillage de navigation.
 	degradationSansMaillage = "aucun maillage de navigation dans le module any"
 
+	// degradationSansBlob : texte du bilan d'une carte Forge dont le dépôt hors ligne ne porte pas
+	// le `navmesh.blob` (`mapnav-fetch`).
+	degradationSansBlob = "aucun maillage de navigation au depot (navmesh.blob absent)"
+
 	// millimetre : le plan est publié au millimètre (voir aretesAuMillimetre).
 	millimetre = 1000.0
 )
