@@ -209,12 +209,6 @@ Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `t
 
 ---
 
-### [rejeu] Calque « Morts » : les morts sans type perdent leur croix, faute de signal de fin de manche dans le document
-
-Relevé le 2026-11-14 par la ronde 2 bis du calque « Vies ». Les vies des survivants se ferment sans mort à chaque fin de manche et le fil en fait des lignes neutres ; le calque ne marque donc que les morts neutres dont le film établit la cause (`kind` non vide, `model/livesMarks.ts`, `deathFacts`). Effet de bord : de vraies morts sans type perdent leur croix, soit une source de dégât sans pictogramme (`apps/go-api/internal/replaybuild/replaybuild.go:449-452`), soit surtout le refus d'attribution ligne par ligne (`replaybuild.go:436-440`, BTB ou alerte de santé du décodeur) où tous les suicides et toutes les chutes du match restent sans type. Compteur : `repli_repere_neutre_generique_conserve` ; exemple `58d09c44` : valeur 2, deux vraies morts sans croix. Le document ne porte pas de signal de fin de manche exploitable ici : `scoreTimeline` ne donne que le dernier palier de chaque manche (`model/roundsLogic.ts`), alors que les vies se ferment 7,6 à 9,1 s plus tard (mesure de l'en-tête de `roundsLogic.ts`, cinq bascules) ; une fenêtre fondée là-dessus serait une heuristique, pas une lecture. Piste : publier côté Go, par vie, « fin de manche » (réapparition groupée lue dans le film) et la lire dans `deathFacts` à la place du critère de type, ce qui demande une régénération. Les notes de la 8.2.0 disent que les morts sans type ne sont pas marquées. **Condition de reprise :** décision du user de régénérer (D-13 interdit un champ cuit dans le lot Vies). **Effort : M (champ de document, schéma, régénération).**
-
----
-
 ### [licences/tests] Surnoms dérivés de pseudos réels dans des identifiants de tests
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pseudonymisation des fixtures sous `apps/` (v8.1.2, item 5.4), des surnoms tirés de gamertags réels restent dans des noms de tests et des libellés (plusieurs centaines d'occurrences, liste dans les tables hors dépôt de la pseudonymisation). La table de remplacement ne remplace que des gamertags entiers. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
@@ -278,6 +272,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
+| 2026-11-16 | **[rejeu] Croix des vraies morts sans cause** (8.2.1) : la croix se pose quand le film prouve la mort (lâcher de commande ou compte à rebours du joueur, de -2 à +6 images) ; mesure sur les 1 455 rejeux : 0 croix à une fin de manche, 0 à la fin du match, accord avec la feuille 99,3 / 100 / 99,5 %. |
 | 2026-11-16 | **[campagnes] Défis de l'axe Objectif : départ non mesuré, Halo 5 sauté par capability au recalage, étapes notes et campagnes indépendantes** (commit 2b507b8c77, release 8.2.1). |
 | 2026-11-15 | **[logs] Avertissements répétés pendant un long recalcul** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1) : un dépassement de seuil du writer ou d'une lecture se dit une fois par épisode (franchissement, second seuil de 30 s, libération avec durée et lectures retenues), repli du solveur LUSR résumé en une ligne par rejeu avec sa cause, pannes 5xx des services Halo en une ligne par passe, 429 absorbés en INFO. |
 | 2026-11-15 | **[web/couleurs] Infobulle `info-tooltip` au focus clavier seulement, garde-rail de couleurs étendu** (même plan, étape 5) : couche globale des infobulles (survol et focus clavier, visibles en partage d'écran), `ring-offset`, `outline`, `decoration`, `accent`, `caret` et portée de `color-allow` ; reliquats au backlog. |
