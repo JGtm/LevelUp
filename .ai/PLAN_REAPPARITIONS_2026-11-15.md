@@ -390,8 +390,26 @@ Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran
       les deux premiers sont ceux de la lecture C (une seule valeur dans `domain`), le match affiché compte parmi les 3
       matchs mais jamais dans les 20 réapparitions (une prévision ne voit pas la réponse). Contrat régénéré (`openapi.yaml`, `generated.ts`, ajout seul). Mesure de poids et proposition de cache : journal du
       2026-11-16.
-- [ ] D.3 Calque web : `model/respawnForecast.logic.ts` (pur, testé) + calque dans `layers/` ; il suit
+- [x] D.3 Calque web : `model/respawnForecast.logic.ts` (pur, testé) + calque dans `layers/` ; il suit
       Seul / Masquer (la prévision appartient au joueur mort) ; contrat des calques en delta respecté.
+      Fait (2026-11-16, branche `feat/reapp-web-d`, depuis `ea3b862bdc`) : logique pure `model/respawnForecast.logic.ts`
+      (normalisation de la réponse, échantillon courant, trois premières zones, rang du point réel, fin du dessin
+      après 3 s) ; calques `reapparition-zones` (teinte, sous les pions) et `reapparition-reperes` (anneau du compte à
+      rebours, équerres du point réel, étiquettes, légende, au-dessus des morts), peintres `layers/respawnForecast{Zones,Marks,Legend,Paint}.ts`,
+      hook `layers/useReplayRespawnForecast.ts` ; requête `useReplaySpawnForecast` (clé `matchReplaySpawnForecast`, locale en
+      dernier segment, chargée seulement calque allumé) ; interrupteur « Probabilité de réapparition » (allumé par défaut, hors
+      préréglages) dans le groupe « Vies » du bouton « Vue », absent tant que la réponse n'est pas prête ; textes FR / EN
+      (`respawnForecast.i18n.ts`). Seul / Masquer par `focusFilter.author`. Rognage des zones au plan : paramètre optionnel
+      `clipMask` de `useReplayRespawnForecast` (à brancher dans `ReplayCanvas.tsx` quand la piste C livre son helper). Test
+      de lecture : `respawnForecastLayers.test.ts` fait défiler l'instant (avant la mort, pendant, à l'apparition, après
+      l'effacement). **Points pesés (même branche, demande du pilote du 2026-11-16, plus de report)** : la route sert les
+      points candidats UNE fois (`points[{x, y, zone_index}]`, `zone_index` = indice dans `zones[]`, -1 sinon) et, par
+      échantillon, leurs probabilités alignées (`samples[].points_p`, millième, somme 1 à l'arrondi près ; la probabilité d'une zone
+      reste la somme de ses points, testée). Web : disques pesés (rayon = 2,5 + 21 racine(p) px) par-dessus la teinte légère, disques
+      estompés et équerres sur le point réel à l'apparition, légende adaptée, choix « Zones et points » (défaut) / « Zones » /
+      « Points » dans « Vue » › « Vies » (clé `replay-respawn-forecast-draw`) ; calque renommé `reapparition-fond`. Test de
+      lecture étendu aux trois choix. Mesure va_behemoth (50 matchs, 95 morts, 857 échantillons, 135 points) : 823 Ko de JSON,
+      124 Ko en gzip (247 Ko et 28 Ko sans les points), 0,46 s.
 - [ ] D.4 Vérification EN LECTURE (pas seulement à l'arrêt), sur trois rejeux choisis par le user.
 
 Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user en lecture.

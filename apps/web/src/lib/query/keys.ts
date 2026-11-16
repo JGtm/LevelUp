@@ -191,6 +191,10 @@ export const queryKeys = {
   // match, figées entre deux régénérations du catalogue versionné.
   matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay-callouts', playerSlug, titleSlug, matchId] as const,
+  // Probabilité de réapparition des morts du match (calque du rejeu) : les noms de zone sont résolus par
+  // le serveur dans la langue de la requête, la locale est le dernier segment.
+  matchReplaySpawnForecast: (playerSlug: string, titleSlug: string, matchId: string, locale = '') =>
+    ['match-replay-spawn-forecast', playerSlug, titleSlug, matchId, locale] as const,
 
   // Engagement (Phase 4 plan engagement)
   // Le nom de la carte des matchs (engagementMatch, engagementTimeseries, engagementSquadSession) est servi

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -188,6 +189,43 @@ func TestSpawnForecast_Servie(t *testing.T) {
 	}
 	if en, _ := d.previsionDans(t, "en"); en.Zones[0].Name != "Zone One" {
 		t.Errorf("zone en anglais = %q, attendu le libelle de la langue de la requete", en.Zones[0].Name)
+	}
+}
+
+// Les points candidats se servent une fois (centimetre, indice de zone dans zones[], -1 si la zone n'est pas
+// servie) et chaque echantillon en porte la probabilite, alignee ; la probabilite d'une zone est leur somme.
+func TestSpawnForecast_PointsEtProbabilitesAlignees(t *testing.T) {
+	d := nouveauDecor(t)
+	d.autres(t, 3)
+	f := d.prevision(t)
+	if len(f.Points) != f.Candidates || len(f.Points) != 2 {
+		t.Fatalf("points = %d, candidats = %d, attendu 2", len(f.Points), f.Candidates)
+	}
+	// Un point en zone 1 (zones[0]) et un en zone 2, que la prevision ne sert pas : indice -1.
+	indices := map[int]int{}
+	for _, p := range f.Points {
+		indices[p.ZoneIndex]++
+	}
+	if indices[0] != 1 || indices[-1] != 1 {
+		t.Errorf("indices de zone = %v, attendu un point en zones[0] et un a -1", indices)
+	}
+	for _, s := range f.Deaths[0].Samples {
+		if len(s.PointsP) != len(f.Points) {
+			t.Fatalf("frame %d : %d probabilites pour %d points", s.Frame, len(s.PointsP), len(f.Points))
+		}
+		somme, zone0 := 0.0, 0.0
+		for i, p := range s.PointsP {
+			somme += p
+			if f.Points[i].ZoneIndex == 0 {
+				zone0 += p
+			}
+		}
+		if math.Abs(somme-1) > 0.002 {
+			t.Errorf("frame %d : somme des points = %v, attendu 1", s.Frame, somme)
+		}
+		if len(s.Zones) > 0 && math.Abs(zone0-s.Zones[0].P) > 0.002 {
+			t.Errorf("frame %d : somme des points de la zone = %v, probabilite servie %v", s.Frame, zone0, s.Zones[0].P)
+		}
 	}
 }
 

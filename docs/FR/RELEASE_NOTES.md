@@ -3,6 +3,7 @@
 **v8.3 — En préparation**
 
 - **Où l'adversaire réapparaît, selon la zone tenue** — une nouvelle lecture « Réapparitions adverses » dans Tactique : on choisit une zone que l'équipe tient et chaque zone se teinte selon la part des réapparitions adverses qui y tombent, avec l'écart à la répartition d'ensemble ; les vignettes des cartes montrent désormais la vue plan, et les zones nommées s'arrêtent au bord du sol du plan
+- **Où un joueur mort a des chances de réapparaître** — sur la carte du rejeu, pendant le compte à rebours d’un joueur mort, les zones où il avait le plus de chances de revenir se teintent, les trois plus probables portent leur part, et un anneau autour de la croix se vide jusqu’à la réapparition ; puis le point réel se verrouille avec sa zone et son rang, et tout s’efface après environ 3 secondes. Les points de réapparition pesés se dessinent par-dessus la teinte (choix Zones et points / Zones / Points). Interrupteur dans le bouton « Vue », groupe « Vies » (« Probabilité de réapparition », allumée par défaut) ; elle suit Seul et Masquer
 - **Touches et dégâts lus dans le film** — le film donne désormais chaque touche et les dégâts qu'elle a faits, au bouclier et au corps, ainsi que le compte à rebours avant le retour d'un drapeau lâché. Le rejeu ne les affiche pas encore ; ils ne s'afficheront que pour les joueurs dont le film est assez complet pour les compter de façon fiable
 - **Chaque joueur à sa place** — la place de chaque joueur dans le film est lue dans les listes du jeu
 

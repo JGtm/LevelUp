@@ -186,6 +186,8 @@ export interface ReplayInks {
   labelStroke: string
   /** Le voile noir de la mise en valeur d'un frag : jeton `scrim`, identique dans les deux thèmes. */
   scrim: string
+  /** Le texte posé sur ce voile : jeton `on-scrim`, identique dans les deux thèmes. */
+  onScrim: string
   /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
   self: string
   /** Le plan des murs du fond : l'encre de mise en page la plus contrastée du thème (`--foreground`). */
@@ -248,6 +250,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       grapple: readInk('--foreground'),
       labelStroke: readInk('--replay-label-stroke'),
       scrim: readInk('--scrim'),
+      onScrim: readInk('--on-scrim'),
       self: resolveToken(SELF_TOKEN),
       wallPlan: readInk('--foreground'),
       wall: resolveToken(WALL_TOKEN),

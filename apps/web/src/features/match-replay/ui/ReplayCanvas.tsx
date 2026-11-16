@@ -55,6 +55,7 @@ import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
 import { useReplayLives } from '../layers/useReplayLives'
+import { useReplayRespawnForecast } from '../layers/useReplayRespawnForecast'
 import { prepareStage } from '../layers/canvasStage'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
@@ -66,6 +67,7 @@ import { useReplayFx } from '../layers/useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { useReplayViewMenu } from '../settings/useReplayViewMenu'
+import { filmLayerAvailability } from '../settings/filmLayerAvailability'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
 import { ReplayViewMenu } from '../settings/ReplayViewMenu'
@@ -230,12 +232,16 @@ interface ReplayCanvasProps {
   playerFocus?: PlayerFocus | null
   /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
   onFollowStop?: () => void
+  /** Le match affiché : il désigne la probabilité de réapparition à charger. Absents = pas de calque. */
+  playerSlug?: string
+  matchId?: string
 }
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
+  playerSlug, matchId,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -281,7 +287,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk, wallPlan: wallPlanInk,
+    zone: zoneInk, wallPlan: wallPlanInk, onScrim,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
@@ -419,6 +425,11 @@ export function ReplayCanvas({
     doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke, shownAtSlot,
     identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
   })
+  // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée seulement si le calque est allumé, teinte sous les pions et repères au-dessus.
+  const respawnForecast = useReplayRespawnForecast({
+    doc, view: canvasView, enabled: settings.showRespawnForecast, draw: settings.respawnForecastDraw, playerSlug, matchId, locale, callouts: calloutZones,
+    identity: { colorOfXuid, nameOfXuid }, ink: { scrim, onScrim, labelStroke, neutral: neutralInk }, shownAuthor: focusShown?.author,
+  })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -480,7 +491,7 @@ export function ReplayCanvas({
       return {
         toggles: {
           zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives, wallPlan: wallPlanOn, lives: lives.show,
+          modeObjectives: showModeObjectives, wallPlan: wallPlanOn, lives: lives.show, respawnForecast: respawnForecast.show,
         },
         has: {
           background: !!mapImage && !!bgRect,
@@ -498,6 +509,7 @@ export function ReplayCanvas({
           objectivePulses: objectivePulses.length > 0,
           killFx: killFx.length > 0,
           lives: lives.available,
+          respawnForecast: respawnForecast.ready,
         },
         paint: {
           // LES ONZE CALQUES CABLES PAR HOOK SE NOMMENT EUX-MEMES (revue R1, C2) : leur `id`
@@ -519,6 +531,7 @@ export function ReplayCanvas({
             killFocus.veil,
             killFocus.labels,
             ...lives.layers,
+            ...respawnForecast.layers,
           ),
           // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
           'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect, canvasView),
@@ -634,7 +647,7 @@ export function ReplayCanvas({
     vipCrown,
     skullCarrier,
     bombCarrier,
-    bombBlast, killFocus, lives,
+    bombBlast, killFocus, lives, respawnForecast,
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
@@ -707,23 +720,10 @@ export function ReplayCanvas({
     // LE FOND : la commande n'est proposée que si le fond a une image plan ; posé, il retire le calque des murs.
     planBackground: { available: !!mapImage?.planAvailable, shown: mapImage?.variante === 'plan' },
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
-    available: {
-      zones: calloutZones.length > 0,
-      placements: {
-        drawable: placements.counts.drawable > 0,
-        unnamed: placements.counts.unnamed > 0,
-        dropped: placements.counts.dropped > 0,
-      },
-      weaponPads: weaponPads.available,
-      groundWeapons: groundWeapons.available,
-      modeObjectives: mapObjectives.length > 0,
-      flagCarries: flags.available,
-      vipCrown: vipCrown.available,
-      skullCarrier: skullCarrier.available,
-      bombCarrier: bombCarrier.available, vehicles: vehicles.available,
-      wallPlan: !!mapImage?.plan,
-      lives: lives.available,
-    },
+    available: filmLayerAvailability({
+      zoneCount: calloutZones.length, placements, weaponPads, groundWeapons, objectiveCount: mapObjectives.length, flags, vipCrown, skullCarrier,
+      bombCarrier, vehicles, hasWallPlan: !!mapImage?.plan, lives: lives.available, respawnForecast,
+    }),
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.

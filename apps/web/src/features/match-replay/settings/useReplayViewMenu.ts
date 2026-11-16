@@ -212,6 +212,10 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       spawns: { available: available.lives.spawns, show: s.showSpawns, onToggle: s.toggleSpawns },
       deaths: { available: available.lives.deaths, show: s.showDeaths, onToggle: s.toggleDeaths },
       killers: { available: available.lives.killers, show: s.showKillers, onToggle: s.toggleKillers },
+      respawnForecast: {
+        available: available.respawnForecast, show: s.showRespawnForecast, onToggle: s.toggleRespawnForecast,
+        draw: s.respawnForecastDraw, onSelectDraw: s.setRespawnForecastDraw,
+      },
       // Le choix mémorisé 'joueur suivi' retombe sur 'tous' pour un match sans joueur suivi (la préférence reste).
       who: effectiveLivesWho(s.livesWho, available.lives.followedKnown),
       onSelectWho: s.setLivesWho,

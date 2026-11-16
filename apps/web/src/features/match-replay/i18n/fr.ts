@@ -2,6 +2,7 @@
 import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_LIVES } from './lives.i18n'
+import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { FR_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const FR_TEXT = {
@@ -79,6 +80,7 @@ export const FR_TEXT = {
   killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
   playerPanel: FR_PLAYER_PANEL,
   lives: FR_LIVES,
+  respawnForecast: FR_RESPAWN_FORECAST,
   feedLines: FR_FEED_LINES,
   killFeedNoAssistHint:
     'Mort sans assistant : la mort porte son événement dans le film, et il ne déclare personne.',

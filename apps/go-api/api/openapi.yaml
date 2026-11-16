@@ -28235,6 +28235,12 @@ components:
           type: string
         model_date:
           type: string
+        points:
+          items:
+            $ref: '#/components/schemas/SpawnForecastCandidate'
+          type:
+            - array
+            - "null"
         reason:
           enum:
             - no_model
@@ -28264,7 +28270,25 @@ components:
         - discarded_deaths
         - sample_step_ms
         - zones
+        - points
         - deaths
+      type: object
+    SpawnForecastCandidate:
+      additionalProperties: false
+      properties:
+        x:
+          format: double
+          type: number
+        "y":
+          format: double
+          type: number
+        zone_index:
+          format: int64
+          type: integer
+      required:
+        - x
+        - "y"
+        - zone_index
       type: object
     SpawnForecastDeath:
       additionalProperties: false
@@ -28324,6 +28348,13 @@ components:
         outside_zone:
           format: double
           type: number
+        points_p:
+          items:
+            format: double
+            type: number
+          type:
+            - array
+            - "null"
         zones:
           items:
             $ref: '#/components/schemas/SpawnForecastZoneChance'
@@ -28334,6 +28365,7 @@ components:
         - frame
         - zones
         - outside_zone
+        - points_p
       type: object
     SpawnForecastZone:
       additionalProperties: false

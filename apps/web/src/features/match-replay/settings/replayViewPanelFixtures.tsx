@@ -16,6 +16,7 @@ import {
   type ReplayFlagControls,
   type ReplayBackgroundControls,
   type ReplayLivesControls,
+  type ReplayRespawnForecastControls,
   type ReplayWallPlanControls,
   type ReplayWeaponPadControls,
 } from './ReplayViewPanel'
@@ -59,11 +60,17 @@ export function makeWallPlan(over: Partial<ReplayWallPlanControls> = {}): Replay
   return { available: true, show: true, onToggle: vi.fn(), inPlan: false, ...over }
 }
 
+/** La probabilité de réapparition : disponible, éteinte, « Zones et points » ; `over` en change ce qu'un cas veut. */
+export function makeForecast(over: Partial<ReplayRespawnForecastControls> = {}): ReplayRespawnForecastControls {
+  return { available: true, show: false, onToggle: vi.fn(), draw: 'both', onSelectDraw: vi.fn(), ...over }
+}
+
 export function makeLives(over: Partial<ReplayLivesControls> = {}): ReplayLivesControls {
   return {
     spawns: { available: true, show: false, onToggle: vi.fn() },
     deaths: { available: true, show: false, onToggle: vi.fn() },
     killers: { available: true, show: false, onToggle: vi.fn() },
+    respawnForecast: makeForecast({ available: false, show: true }),
     who: 'all',
     onSelectWho: vi.fn(),
     followedAvailable: true,

@@ -119,6 +119,11 @@ export interface FilmLayerAvailability {
    */
   lives: { spawns: boolean; deaths: boolean; killers: boolean; followedKnown: boolean }
   /**
+   * La probabilité de réapparition : l'interrupteur se propose quand la réponse est prête (ou pas encore
+   * connue alors que le calque est éteint). Pas un calque de préréglage (`LAYER_KEYS`).
+   */
+  respawnForecast: boolean
+  /**
    * Le fond retenu porte un plan des murs. Ce n'est pas un calque de préréglage (`LAYER_KEYS`) :
    * il ne fait que conditionner l'affichage de sa bascule.
    */

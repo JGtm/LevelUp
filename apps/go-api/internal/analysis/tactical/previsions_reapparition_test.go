@@ -142,6 +142,46 @@ func TestPrevision_UneZoneRecoitLaSommeDeSesPoints(t *testing.T) {
 	}
 }
 
+// TestPrevision_LesPointsPortentLaProbabiliteDesZones : les points candidats se servent une fois, chaque
+// echantillon porte leur probabilite alignee dessus (somme 1 au millieme pres), et la probabilite d'une zone
+// est la somme de ses points.
+func TestPrevision_LesPointsPortentLaProbabiliteDesZones(t *testing.T) {
+	horsZone := Point3{X: 500}
+	r := PrevoirLesReapparitions(entreePrevision(evenementsCarte(troisAutres, Point3{X: 5}, Point3{X: 15}, pointZone2, horsZone)))
+	if len(r.Points) != r.Candidats || len(r.Points) != 4 {
+		t.Fatalf("points = %d, candidats = %d, attendu 4 points servis une fois", len(r.Points), r.Candidats)
+	}
+	zones := map[int]int{}
+	for _, p := range r.Points {
+		zones[p.Zone]++
+	}
+	if zones[1] != 2 || zones[2] != 1 || zones[-1] != 1 {
+		t.Errorf("zones des points = %v, attendu 2 en zone 1, 1 en zone 2, 1 hors zone", zones)
+	}
+	for _, e := range r.Morts[0].Echantillons {
+		if len(e.PointsP) != len(r.Points) {
+			t.Fatalf("frame %d : %d probabilites pour %d points", e.Frame, len(e.PointsP), len(r.Points))
+		}
+		somme, parZone := 0.0, map[int]float64{}
+		for i, pp := range e.PointsP {
+			somme += pp
+			parZone[r.Points[i].Zone] += pp
+		}
+		tolerance := 0.0005 * float64(len(r.Points))
+		if math.Abs(somme-1) > tolerance {
+			t.Errorf("frame %d : somme des points = %v, attendu 1 a %v pres", e.Frame, somme, tolerance)
+		}
+		for _, z := range e.Zones {
+			if math.Abs(parZone[z.Zone]-z.P) > tolerance {
+				t.Errorf("frame %d zone %d : somme de ses points = %v, probabilite servie %v", e.Frame, z.Zone, parZone[z.Zone], z.P)
+			}
+		}
+		if math.Abs(parZone[-1]-e.HorsZone) > tolerance {
+			t.Errorf("frame %d : points hors zone = %v, hors zone servi %v", e.Frame, parZone[-1], e.HorsZone)
+		}
+	}
+}
+
 // TestPrevision_NeVoitPasLeMatchPrevu : les reapparitions du match prevu n'entrent ni dans les
 // candidats ni dans la frequence. La prevision est la meme avec ou sans elles.
 func TestPrevision_NeVoitPasLeMatchPrevu(t *testing.T) {

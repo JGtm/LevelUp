@@ -98,6 +98,16 @@ type EchantillonPrevision struct {
 	Frame    int
 	Zones    []ProbaZone
 	HorsZone float64
+	// PointsP est la probabilite de chaque point candidat, alignee sur PrevisionsDuMatch.Points, arrondie
+	// au millieme (somme egale a 1 a l'arrondi pres). La probabilite d'une zone est la somme de ses points.
+	PointsP []float64
+}
+
+// PointPrevision est un point candidat de la carte, servi une fois pour tous les echantillons, avec la
+// zone qui le nomme (indice de volume, -1 si aucune).
+type PointPrevision struct {
+	Pos  Point3
+	Zone int
 }
 
 // PrevisionDeMort est la prevision d'une mort suivie d'une reapparition.
@@ -121,7 +131,9 @@ type PrevisionsDuMatch struct {
 	// points candidats hors le match prevu.
 	MatchsCarte int
 	Candidats   int
-	Morts       []PrevisionDeMort
+	// Points sont les points candidats, dans l'ordre des PointsP de chaque echantillon.
+	Points []PointPrevision
+	Morts  []PrevisionDeMort
 	// MortsEcartees : reapparitions que la prevision ne peut pas servir (cf. l'en-tete).
 	MortsEcartees int
 }
@@ -169,6 +181,10 @@ func PrevoirLesReapparitions(e EntreePrevision) PrevisionsDuMatch {
 	if len(res.Morts) == 0 {
 		res.Statut = PrevisionAucuneReapparition
 		return res
+	}
+	res.Points = make([]PointPrevision, len(cands))
+	for i, c := range cands {
+		res.Points[i] = PointPrevision{Pos: c.Pos, Zone: p.zonesCand[i]}
 	}
 	res.Statut = PrevisionPrete
 	return res
@@ -241,7 +257,10 @@ func (p *previseur) echantillon(frame int, ev EvenementReapparition) Echantillon
 			horsZone += pr
 		}
 	}
-	out := EchantillonPrevision{Frame: frame, HorsZone: arrondiProbabilite(horsZone)}
+	out := EchantillonPrevision{Frame: frame, HorsZone: arrondiProbabilite(horsZone), PointsP: make([]float64, len(proba))}
+	for i, pr := range proba {
+		out.PointsP[i] = arrondiProbabilite(pr)
+	}
 	for z, v := range somme {
 		if r := arrondiProbabilite(v); r > 0 {
 			out.Zones = append(out.Zones, ProbaZone{Zone: z, P: r})

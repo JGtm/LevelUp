@@ -26,6 +26,7 @@ const FULL_FILM: FilmLayerAvailability = {
   vehicles: true,
   wallPlan: true,
   lives: { spawns: true, deaths: true, killers: true, followedKnown: true },
+  respawnForecast: true,
 }
 
 /** Un Assassin : ni zone, ni socle, ni objectif ; la visée et la traînée restent. */
@@ -42,6 +43,7 @@ const SLAYER_FILM: FilmLayerAvailability = {
   vehicles: false,
   wallPlan: false,
   lives: { spawns: false, deaths: false, killers: false, followedKnown: false },
+  respawnForecast: false,
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
@@ -355,6 +357,30 @@ describe('useReplayViewMenu', () => {
     expect(sans.result.current.settings.livesWho).toBe('followed')
     const avec = mount(FULL_FILM)
     expect(avec.result.current.menu.panel.lives.who).toBe('followed')
+  })
+
+  it('la probabilité de réapparition : ALLUMÉE par défaut, retenue, proposée selon le film, hors préréglages', () => {
+    const { result } = mount(FULL_FILM)
+    expect(result.current.settings.showRespawnForecast).toBe(true)
+    expect(result.current.menu.panel.lives.respawnForecast).toMatchObject({ available: true, show: true })
+    // Ce n'est pas un calque de préréglage : ni « Combat » ni « Objectif » ne la touchent, la vue active non plus.
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    expect(result.current.settings.showRespawnForecast).toBe(true)
+    expect(result.current.menu.active).toBe('combat')
+    act(() => result.current.menu.panel.lives.respawnForecast.onToggle())
+    expect(result.current.menu.panel.lives.respawnForecast.show).toBe(false)
+    expect(window.localStorage.getItem('replay-show-respawn-forecast')).toBe('false')
+    expect(result.current.menu.active).toBe('combat')
+    expect(mount(FULL_FILM).result.current.settings.showRespawnForecast).toBe(false)
+    // Le choix du dessin : « Zones et points » par défaut, retenu, une valeur invalide est ignorée.
+    expect(result.current.menu.panel.lives.respawnForecast).toMatchObject({ draw: 'both' })
+    act(() => result.current.menu.panel.lives.respawnForecast.onSelectDraw('points'))
+    expect(result.current.menu.panel.lives.respawnForecast.draw).toBe('points')
+    expect(window.localStorage.getItem('replay-respawn-forecast-draw')).toBe('points')
+    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('points')
+    window.localStorage.setItem('replay-respawn-forecast-draw', 'n-importe-quoi')
+    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('both')
+    expect(mount(SLAYER_FILM).result.current.menu.panel.lives.respawnForecast.available).toBe(false)
   })
 
   it('les affinages et calques des vies sont retenus, et une valeur invalide est ignorée', () => {

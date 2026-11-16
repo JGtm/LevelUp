@@ -60,6 +60,9 @@ export const LAYER_ORDER = [
   // vocabulaire, l'enjeu primant sur les noms de lieux.
   'chaleur',
   'zones-nommees',
+  // LE FOND DE LA PROBABILITÉ DE RÉAPPARITION (teinte des zones, disques des points) : du vocabulaire sur le
+  // terrain, donc avec les zones et sous tout ce qui bouge ; ses repères (anneau, point réel, étiquettes, légende) viennent après les morts.
+  'reapparition-fond',
   'objectifs-cuits',
   // LES OBJETS DU TERRAIN, sous les joueurs : ils ne sont pas le sujet.
   'projectiles',
@@ -93,6 +96,9 @@ export const LAYER_ORDER = [
   'pulses-objectif',
   // LES MORTS : l'événement le plus lourd de sens du calque.
   'morts',
+  // LES REPÈRES DE LA PROBABILITÉ DE RÉAPPARITION : l'anneau entoure la croix de mort, le point réel se
+  // verrouille sur les pions ; sous la mise en valeur d'un frag, qui prime.
+  'reapparition-reperes',
   // LA MISE EN VALEUR D'UNE ÉLIMINATION (clic sur une ligne de frag du fil), tout en haut : le
   // voile et les équerres au-dessus des pions et des événements, puis les étiquettes de nom
   // au-dessus de tout — un nom de tueur ne passe jamais sous une équerre ni sous le voile.
@@ -124,6 +130,8 @@ export interface SceneToggles {
   wallPlan: boolean
   /** « Apparitions », « Morts », « Tueurs » (groupe « Vies ») : trois calques, trois interrupteurs. */
   lives: LivesFlags
+  /** « Probabilité de réapparition » (groupe « Vies ») : DEUX calques (fond : teinte et disques ; repères), UN interrupteur. */
+  respawnForecast: boolean
 }
 
 /**
@@ -152,6 +160,8 @@ export interface SceneMatter {
   killFx: boolean
   /** Les marques de chaque calque des vies : sans marque, le calque ne s'ouvre pas. */
   lives: LivesFlags
+  /** La probabilité de réapparition est prête (réponse servie, zones à teinter) : sans elle, rien ne s'ouvre. */
+  respawnForecast: boolean
 }
 
 /** La scène : ce qu'il y a à peindre, ce qui est allumé, et comment peindre chaque calque. */
@@ -222,6 +232,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'plan-murs': t.wallPlan && h.wallPlan,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,
+    'reapparition-fond': t.respawnForecast && h.respawnForecast,
     'objectifs-cuits': t.modeObjectives && h.objectivesCooked,
     projectiles: h.projectiles,
     'socles-armes': true,
@@ -246,6 +257,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     deflagration: true,
     'pulses-objectif': t.modeObjectives && h.objectivePulses,
     morts: t.killFx && h.killFx,
+    'reapparition-reperes': t.respawnForecast && h.respawnForecast,
     // Sans condition : le peintre ne pose rien tant qu'aucune élimination n'est mise en valeur.
     'mise-en-valeur': true,
     'etiquettes-mise-en-valeur': true,
