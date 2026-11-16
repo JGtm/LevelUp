@@ -29,7 +29,7 @@ func capabilityPrevisionArmee(ctx context.Context, d Deps) (armee, incident bool
 // restent a leur precision d'origine (les grappes les lisent telles quelles) ; tout ce que le
 // schema 7 ajoute est arrondi au centimetre.
 //
-// La matiere de la prevision de reapparition (reapparition, source, debut de manche, mort,
+// La matiere de la prevision de reapparition (reapparition, debut de manche, mort,
 // instantane) n'est portee que si `previsionArmee` : un titre qui n'a pas `film.spawn_forecast` n'en
 // recoit aucune, le reste du spawn (frame, position, premiere vie) est le meme.
 func spawnsDeLOccupation(spawns []tactical.SpawnPiste, previsionArmee bool) []domain.TacticalRasterSpawn {
@@ -42,7 +42,7 @@ func spawnsDeLOccupation(spawns []tactical.SpawnPiste, previsionArmee bool) []do
 			out = append(out, sp)
 			continue
 		}
-		sp.Reapparition, sp.Source, sp.DebutDeManche = s.Reapparition, s.Source, s.DebutDeManche
+		sp.Reapparition, sp.DebutDeManche = s.Reapparition, s.DebutDeManche
 		if s.Mort != nil {
 			sp.Mort = &domain.TacticalRasterMort{
 				Frame: s.Mort.Frame, X: arrondiCm(s.Mort.X), Y: arrondiCm(s.Mort.Y), Z: arrondiCm(s.Mort.Z),

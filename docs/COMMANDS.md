@@ -333,7 +333,9 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
 #    Schema 7 adds the team, the height and, per respawn, the death point and the snapshot of the
 #    other living players: sidecars of an older schema are rewritten from their artifact (no film
-#    read). Check: grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
+#    read). Schema 8 drops the decision source and the per-source counts: a respawn is only what the
+#    film reading decides, and a match without any film reading has none.
+#    Check: grep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 
 # 6. Respawn forecast model (capability film.spawn_forecast). Reads the replay ARTIFACTS one at a

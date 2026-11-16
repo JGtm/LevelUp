@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -52,8 +51,11 @@ func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
-	if domain.TacticalRasterSchemaVersion != 7 || s.SchemaVersion != 7 {
-		t.Fatalf("schema attendu 7, obtenu %d", s.SchemaVersion)
+	if domain.TacticalRasterSchemaVersion != 8 || s.SchemaVersion != 8 {
+		t.Fatalf("schema attendu 8, obtenu %d", s.SchemaVersion)
+	}
+	if raw, err := json.Marshal(s); err != nil || strings.Contains(string(raw), `"source"`) || strings.Contains(string(raw), `"reapparitions":{`) {
+		t.Errorf("le sidecar ne porte ni source de decision ni comptes de reapparitions (%v) : %s", err, raw)
 	}
 	var j111 domain.TacticalRasterJoueur
 	for _, j := range s.Joueurs {
@@ -68,7 +70,7 @@ func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
 		t.Errorf("la premiere vie n'est ni une reapparition ni porteuse d'instantane : %+v", sp)
 	}
 	sp := j111.Spawns[1]
-	if !sp.Reapparition || sp.Source != tactical.SourceFilm || sp.Z != 1.23 {
+	if !sp.Reapparition || sp.Z != 1.23 {
 		t.Fatalf("reapparition lue au film attendue, z arrondi a 1,23 : %+v", sp)
 	}
 	if sp.Mort == nil || sp.Mort.Frame != 100 || sp.Mort.X != 2 {
@@ -136,7 +138,7 @@ func TestSidecarV7_OctetsStables(t *testing.T) {
 }
 
 // Sans `film.spawn_forecast`, le sidecar ne porte aucune matiere de prevision : ni reapparition,
-// ni source, ni debut de manche, ni mort, ni instantane, ni couverture. Le reste (cellules,
+// ni debut de manche, ni mort, ni instantane, ni couverture. Le reste (cellules,
 // positions du spawn, premiere vie, equipe) est celui du sidecar d'un titre qui la declare.
 func TestSidecar_SansPrevisionNePorteAucuneMatiereDeReapparition(t *testing.T) {
 	chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
@@ -164,7 +166,7 @@ func TestSidecar_SansPrevisionNePorteAucuneMatiereDeReapparition(t *testing.T) {
 		}
 		for k, sp := range j.Spawns {
 			ref := avec.Joueurs[i].Spawns[k]
-			if sp.Reapparition || sp.Source != "" || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
+			if sp.Reapparition || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
 				t.Errorf("joueur %s, spawn %d : matiere de prevision sans capability : %+v", j.XUID, k, sp)
 			}
 			if sp.Frame != ref.Frame || sp.X != ref.X || sp.Y != ref.Y || sp.Z != ref.Z || sp.PremiereVie != ref.PremiereVie {

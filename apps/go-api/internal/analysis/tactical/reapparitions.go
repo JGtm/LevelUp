@@ -12,7 +12,7 @@ package tactical
 //
 //  1. mort : le corps est libere (RaisonLiberee) a au plus quelques frames de la fin de la
 //     piste, OU un compte a rebours de reapparition du joueur COMMENCE a ces frames-la. La piste
-//     suivante est une reapparition apres mort (SourceFilm) ;
+//     suivante est une reapparition apres mort ;
 //  2. fin de manche : le corps est supprime alors que le joueur le commande encore
 //     (RaisonSupprimee). La piste suivante est un spawn de DEBUT DE MANCHE : ni une
 //     reapparition, ni une entree du modele, au meme titre qu'une premiere vie ;
@@ -198,7 +198,7 @@ func (ix *IndexVies) qualifier(s *SpawnPiste, xuid string, v, prev vieIndexeeRea
 	if !mort {
 		return
 	}
-	s.Reapparition, s.Source = true, SourceFilm
+	s.Reapparition = true
 	equipe := v.equipe
 	if equipe < 0 {
 		equipe = ix.EquipeDuJoueur(xuid)

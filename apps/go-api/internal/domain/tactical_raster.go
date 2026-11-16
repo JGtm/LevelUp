@@ -65,6 +65,11 @@ import "levelup/go-api/internal/i18n"
 // compte les decisions par source. Un sidecar v6 n'est plus courant et se regenere depuis son
 // artefact (`levelup tactical-rasters --backfill`), sans relire aucun film.
 //
+// SCHEMA 7 -> 8 : la source de la decision et les comptes `reapparitions` disparaissent : la decision
+// ne vient que de la lecture du film, et un match sans lecture du film n'a aucune reapparition.
+// `debut_de_manche` reste, lu par la lecture « toutes les vies ». Un sidecar v7 se regenere depuis son
+// artefact, comme les precedents.
+//
 // # LA DISTANCE EST HORIZONTALE, ET DEUX ETAGES LISENT ZERO
 //
 // Les distances calculees a la lecture sont des `math.Hypot(dx, dy)` : Z est ignore. Un
@@ -83,7 +88,7 @@ import "levelup/go-api/internal/i18n"
 // temps » sous-estime le temps en vehicule, et c'est une propriete connue de la mesure —
 // pas un defaut a chercher. Elle ne peut pas se corriger ici : elle se corrigerait en
 // amont, dans la primitive d'attribution des episodes.
-const TacticalRasterSchemaVersion = 7
+const TacticalRasterSchemaVersion = 8
 
 // TacticalRasterSidecar est le fichier depose a cote de l'artefact
 // (title.PathResolver.TacticalRasterPath).
@@ -176,13 +181,12 @@ type TacticalRasterSpawn struct {
 	// l'on vient de mourir, pas du placement d'ouverture).
 	PremiereVie bool `json:"premiere_vie,omitempty"`
 
-	// Reapparition : la vie commence apres une MORT du joueur, lue dans le film ; Source dit comment on
-	// l'a decide (`film`). DebutDeManche : la vie precedente a ete close par une fin de
-	// manche, ce n'est pas une reapparition. Ces champs, Mort et Instantane ne sont portes que si le
-	// titre declare `film.spawn_forecast`.
-	Reapparition  bool   `json:"reapparition,omitempty"`
-	Source        string `json:"source,omitempty"`
-	DebutDeManche bool   `json:"debut_de_manche,omitempty"`
+	// Reapparition : la vie commence apres une MORT du joueur, lue dans le film. DebutDeManche : la vie
+	// precedente a ete close par une fin de manche, ce n'est pas une reapparition (mais une apparition
+	// que la lecture « toutes les vies » compte). Ces champs, Mort et Instantane ne sont portes que si
+	// le titre declare `film.spawn_forecast`.
+	Reapparition  bool `json:"reapparition,omitempty"`
+	DebutDeManche bool `json:"debut_de_manche,omitempty"`
 
 	// Mort : la fin de la vie precedente. Instantane : les AUTRES joueurs vivants a la frame de la
 	// reapparition, ceux apparus dans la meme seconde exclus. Portes par une reapparition dont

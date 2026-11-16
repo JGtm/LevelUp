@@ -4,13 +4,6 @@ package tactical
 // la maniere dont elle commence et dont la precedente a fini, et l'instantane des autres
 // joueurs a l'instant ou elle commence. La logique est dans reapparitions.go.
 
-// SourceReapparition dit D'OU VIENT la decision « cette vie est une reapparition ».
-const (
-	// SourceFilm : la fin de la vie precedente est LUE dans le film (liberation du corps ou
-	// debut de compte a rebours de reapparition).
-	SourceFilm = "film"
-)
-
 // Raisons de fin de vie que le film ecrit pour un corps.
 const (
 	// RaisonLiberee : le corps est LIBERE (le joueur est mort et attend son compte a rebours).
@@ -72,9 +65,8 @@ type SpawnPiste struct {
 	PremiereVie bool `json:"premiere_vie,omitempty"`
 
 	// Reapparition : cette vie commence apres une MORT du joueur (et non au debut du match
-	// ou d'une manche). Source dit comment on l'a decide (SourceFilm).
-	Reapparition bool   `json:"reapparition,omitempty"`
-	Source       string `json:"source,omitempty"`
+	// ou d'une manche), lue dans le film (liberation du corps ou debut de compte a rebours).
+	Reapparition bool `json:"reapparition,omitempty"`
 	// DebutDeManche : la vie precedente a ete close par une suppression de corps (fin de
 	// manche). Cette vie n'est PAS une reapparition et n'entre pas dans le modele, au meme
 	// titre qu'une premiere vie.

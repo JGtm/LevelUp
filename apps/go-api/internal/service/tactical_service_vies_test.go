@@ -40,7 +40,7 @@ func sidecarQuatreVies(matchID string, dx float64) *domain.TacticalRasterSidecar
 		XUID: tsMoi,
 		Spawns: []domain.TacticalRasterSpawn{
 			{Frame: frameDepart, X: 0.25 + dx, Y: 0.25, PremiereVie: true},
-			{Frame: frameReapparait, X: 50.25 + dx, Y: 50.25, Reapparition: true, Source: "film"},
+			{Frame: frameReapparait, X: 50.25 + dx, Y: 50.25, Reapparition: true},
 			{Frame: frameDebutManche, X: 100.25 + dx, Y: 100.25, DebutDeManche: true},
 			{Frame: frameSansDrapeau, X: 150.25 + dx, Y: 150.25},
 		},

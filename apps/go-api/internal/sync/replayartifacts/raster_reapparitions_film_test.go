@@ -100,9 +100,6 @@ func TestEntreeOccupationDeLArtefact_DecisionsAuFilm(t *testing.T) {
 		if s.Reapparition != c.reapparition || s.DebutDeManche != c.manche {
 			t.Errorf("%s : reapparition=%v manche=%v", c.quoi, s.Reapparition, s.DebutDeManche)
 		}
-		if s.Reapparition && s.Source != tactical.SourceFilm {
-			t.Errorf("%s : source %q, attendu %q", c.quoi, s.Source, tactical.SourceFilm)
-		}
 	}
 }
 

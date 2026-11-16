@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -117,7 +118,7 @@ func sidecarPlein(tours int) string {
 	for i := 0; i < tours; i++ {
 		xs = append(xs, 10, 110)
 	}
-	return sidecarAvecReapparitions(7, xs...)
+	return sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, xs...)
 }
 
 // autres ajoute `n` matchs d'Assassin sur la carte, chacun avec un sidecar plein de dix tours : trois
@@ -244,7 +245,7 @@ func TestSpawnForecast_NeLitPasLeSidecarDuMatchPrevu(t *testing.T) {
 	d.autres(t, 2)
 	sans := d.prevision(t)
 	ecrire(t, title.NewPathResolver(d.root).TacticalRasterPath(title.DefaultSlug, prevuID),
-		sidecarAvecReapparitions(7, 10, 110, 20, 25))
+		sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110, 20, 25))
 	avec := d.prevision(t)
 	if len(sans.Points) != 2 || len(avec.Points) != 2 {
 		t.Errorf("points candidats %d -> %d : le match prevu a fuite", len(sans.Points), len(avec.Points))
@@ -260,7 +261,7 @@ func TestSpawnForecast_UneAutreFamilleNAlimentePasLesCandidats(t *testing.T) {
 	d := nouveauDecor(t)
 	d.autres(t, 1)
 	for i := 2; i <= 3; i++ {
-		d.match(t, autreID(i), varianteBas, sidecarAvecReapparitions(7, 10, 110))
+		d.match(t, autreID(i), varianteBas, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110))
 	}
 	if f := d.prevision(t); f.Status != replaydoc.SpawnForecastStatusUnavailable || f.Reason != replaydoc.SpawnForecastReasonNotEnough {
 		t.Errorf("statut = %q (%s), attendu not_enough_matches : deux matchs d'une autre famille ne comptent pas", f.Status, f.Reason)
@@ -269,10 +270,10 @@ func TestSpawnForecast_UneAutreFamilleNAlimentePasLesCandidats(t *testing.T) {
 
 func TestSpawnForecast_SidecarPerimeOuAbsentIgnore(t *testing.T) {
 	d := nouveauDecor(t)
-	d.match(t, autreID(1), varianteAss, sidecarAvecReapparitions(7, 10, 110))
-	d.match(t, autreID(2), varianteAss, sidecarAvecReapparitions(6, 10, 110)) // schema anterieur
-	d.match(t, autreID(3), varianteAss, "")                                   // pas encore cuit
-	d.match(t, autreID(4), varianteAss, "pas du json")                        // illisible
+	d.match(t, autreID(1), varianteAss, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110))
+	d.match(t, autreID(2), varianteAss, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion-1, 10, 110)) // schema anterieur
+	d.match(t, autreID(3), varianteAss, "")                                                                      // pas encore cuit
+	d.match(t, autreID(4), varianteAss, "pas du json")                                                           // illisible
 	f := d.prevision(t)
 	if f.Status != replaydoc.SpawnForecastStatusUnavailable || f.Reason != replaydoc.SpawnForecastReasonNotEnough {
 		t.Errorf("statut = %q (%s), attendu not_enough_matches", f.Status, f.Reason)

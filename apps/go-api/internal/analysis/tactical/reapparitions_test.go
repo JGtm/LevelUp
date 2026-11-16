@@ -32,7 +32,7 @@ func TestReapparition_FilmLiberation(t *testing.T) {
 		pisteTest("b", 1, 0, 400, 20, nil),
 	)
 	s := spawnDe(t, e, 1)
-	if !s.Reapparition || s.Source != SourceFilm || s.DebutDeManche {
+	if !s.Reapparition || s.DebutDeManche {
 		t.Fatalf("reapparition film attendue, obtenu %+v", s)
 	}
 	if s.Mort == nil || s.Mort.Frame != 100 || s.Mort.X != 11 {
@@ -48,7 +48,7 @@ func TestReapparition_FilmCompteARebours(t *testing.T) {
 		pisteTest("a", 0, 0, 100, 10, nil),
 		pisteTest("a", 0, 150, 300, 50, nil),
 	)
-	if s := spawnDe(t, e, 1); !s.Reapparition || s.Source != SourceFilm {
+	if s := spawnDe(t, e, 1); !s.Reapparition {
 		t.Fatalf("un compte qui commence a la fin de la piste prouve la mort, obtenu %+v", s)
 	}
 }
@@ -131,7 +131,7 @@ func TestReapparition_CasMixte(t *testing.T) {
 		pisteTest("b", 1, 0, 100, 20, nil),
 		pisteTest("b", 1, 150, 300, 60, nil),
 	)
-	if s := spawnDe(t, e, 1); !s.Reapparition || s.Source != SourceFilm {
+	if s := spawnDe(t, e, 1); !s.Reapparition {
 		t.Errorf("a : reapparition film attendue, obtenu %+v", s)
 	}
 	if s := spawnDe(t, e, 3); s.Reapparition || s.DebutDeManche {

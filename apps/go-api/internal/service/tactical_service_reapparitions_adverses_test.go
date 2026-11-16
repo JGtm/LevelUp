@@ -47,7 +47,7 @@ func reappAdverse(frame int, x, y float64, equipiers int) domain.TacticalRasterS
 	}
 	inst = append(inst, domain.TacticalRasterVivant{Equipe: 1, X: 60, Y: 60})
 	return domain.TacticalRasterSpawn{
-		Frame: frame, X: x, Y: y, Reapparition: true, Source: "film",
+		Frame: frame, X: x, Y: y, Reapparition: true,
 		Mort: &domain.TacticalRasterMort{Frame: frame - 100}, Instantane: inst,
 	}
 }

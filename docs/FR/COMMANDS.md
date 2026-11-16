@@ -345,7 +345,9 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
 #    Le schéma 7 ajoute l'équipe, la hauteur et, par réapparition, le lieu de la mort et l'instantané
 #    des autres joueurs vivants : les sidecars d'un schéma plus ancien sont réécrits depuis leur
-#    artefact (aucun film relu). Contrôle : grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
+#    artefact (aucun film relu). Le schéma 8 retire la source de la décision et les comptes par source :
+#    une réapparition est ce que la lecture du film décide, et un match sans lecture du film n'en a aucune.
+#    Contrôle : grep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 
 # 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu
