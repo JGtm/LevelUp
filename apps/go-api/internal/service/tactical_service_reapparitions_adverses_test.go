@@ -304,15 +304,21 @@ func TestReapparitionsAdverses_QuiCompte(t *testing.T) {
 	sc.Joueurs = append(sc.Joueurs, domain.TacticalRasterJoueur{XUID: tsAdv2, Equipe: -1,
 		Spawns: []domain.TacticalRasterSpawn{reappAdverse(1700, 25, 5, 2)}}) // equipe inconnue
 
-	obs, connue := reapparitionsAdversesDuMatch("m1", sc, tsMoi)
-	if !connue || len(obs) != 1 {
-		t.Fatalf("(%d observations, equipe connue %v), attendu 1 (la seule reapparition adverse)", len(obs), connue)
+	univ := universVariantes(map[string]string{"m1": "Slayer:Arena"})
+	sidecars := map[string]*domain.TacticalRasterSidecar{"m1": sc}
+	svc, _ := svcAdverses(t, univ, &mockRasterStore{sidecars: sidecars})
+	obs, matchs := svc.observationsAdverses(univ, sidecars)
+	if matchs.retenus != 1 || len(obs) != 1 {
+		t.Fatalf("(%d observations, %+v), attendu 1 (la seule reapparition adverse)", len(obs), matchs)
 	}
 	if obs[0].EquipeActive != 0 || len(obs[0].Instantane) != 3 {
 		t.Errorf("observation = %+v", obs[0])
 	}
-	if _, connue := reapparitionsAdversesDuMatch("m1", sc, "inconnu"); connue {
-		t.Error("un joueur absent du sidecar n'a pas d'equipe connue")
+	// La regle elle-meme se teste sur les types d'analysis (tactical.TestObservationsAdversesDuMatch_QuiCompte) ;
+	// ici, la traduction du sidecar : un joueur absent n'a pas d'equipe connue.
+	inconnu := NewTacticalService(&mockTacticalRepo{univ: univ}, capsAvecReapparitions(), "inconnu")
+	if _, matchs := inconnu.observationsAdverses(univ, sidecars); matchs.sansEquipe != 1 || matchs.retenus != 0 {
+		t.Errorf("un joueur absent du sidecar n'a pas d'equipe connue : %+v", matchs)
 	}
 }
 

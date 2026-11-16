@@ -90,62 +90,42 @@ func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	return out
 }
 
-// spawnsDuJoueur parcourt les sidecars et rend, pour le joueur, les spawns que `retenu`
-// accepte. C'est la seule boucle de lecture des spawns : les deux definitions ci-dessous ne
-// different que par leur predicat.
-func spawnsDuJoueur(sidecars map[string]*domain.TacticalRasterSidecar, xuid string,
-	retenu func(domain.TacticalRasterSpawn) bool) []tactical.PointSpawn {
-	out := make([]tactical.PointSpawn, 0, len(sidecars))
+// joueurLu traduit un joueur du sidecar vers le type d'analysis qui porte la regle des spawns
+// (analysis/tactical/spawns_joueurs.go). `avecInstantane` : l'instantane de chaque reapparition suit ;
+// la lecture adverse le demande, celle des points de spawn non. C'est le SEUL endroit du service qui lit
+// les drapeaux de vie d'un spawn (garde-rail : archlint/no_local_spawn_depart_test.go).
+func joueurLu(j domain.TacticalRasterJoueur, avecInstantane bool) tactical.JoueurLu {
+	spawns := make([]tactical.SpawnLu, 0, len(j.Spawns))
+	for _, sp := range j.Spawns {
+		lu := tactical.SpawnLu{
+			Frame: sp.Frame, X: sp.X, Y: sp.Y, Z: sp.Z,
+			PremiereVie: sp.PremiereVie, Reapparition: sp.Reapparition, DebutDeManche: sp.DebutDeManche,
+		}
+		if avecInstantane && sp.Reapparition {
+			lu.Instantane = make([]tactical.Vivant, 0, len(sp.Instantane))
+			for _, v := range sp.Instantane {
+				lu.Instantane = append(lu.Instantane, tactical.Vivant(v))
+			}
+		}
+		spawns = append(spawns, lu)
+	}
+	return tactical.JoueurLu{XUID: j.XUID, Equipe: j.Equipe, Spawns: spawns}
+}
+
+// spawnsSelonVies rend les points de spawn du joueur selon le parametre `vies` : `toutes` rend les
+// apparitions de toutes les vies, tout autre valeur (`depart`) la premiere vie seule. La regle est celle
+// de tactical.SpawnsSelonVies ; ici, la traduction des sidecars.
+func spawnsSelonVies(sidecars map[string]*domain.TacticalRasterSidecar,
+	xuid, vies string) []tactical.PointSpawn {
+	matchs := make(map[string][]tactical.JoueurLu, len(sidecars))
 	for matchID, sc := range sidecars {
 		for _, j := range sc.Joueurs {
-			if j.XUID != xuid {
-				continue
-			}
-			for _, sp := range j.Spawns {
-				if retenu(sp) {
-					out = append(out, tactical.PointSpawn{MatchID: matchID, Frame: sp.Frame, X: sp.X, Y: sp.Y})
-				}
+			if j.XUID == xuid {
+				matchs[matchID] = append(matchs[matchID], joueurLu(j, false))
 			}
 		}
 	}
-	return out
-}
-
-// spawnsDeDepart rend les points de PREMIERE VIE du joueur, un par match.
-//
-// C'EST LE SEUL ENDROIT QUI SAIT CE QU'EST UN SPAWN DE DEPART. Le predicat a existe en
-// TROIS exemplaires (les grappes, la resolution d'un amas, le filtre) : a la troisieme
-// copie, la regle du depot impose un helper et un garde-rail (CLAUDE.md n 6). Garde-rail :
-// archlint/no_local_spawn_depart_test.go.
-func spawnsDeDepart(sidecars map[string]*domain.TacticalRasterSidecar,
-	xuid string) []tactical.PointSpawn {
-	return spawnsDuJoueur(sidecars, xuid, func(sp domain.TacticalRasterSpawn) bool {
-		return sp.PremiereVie
-	})
-}
-
-// reapparitionsDuJoueur rend les points de TOUTES LES VIES du joueur : la premiere vie, chaque
-// reapparition apres une mort et chaque debut de manche — toutes les fois ou le jeu l'a fait
-// naitre, a plusieurs par match.
-//
-// UN DEBUT DE MANCHE N'EST PAS UNE REAPPARITION, mais c'est bien une apparition du joueur : il
-// entre ici. Une piste qui n'est rien de tout cela (vie coupee par un trou de replication) n'y
-// entre pas. Meme garde-rail que le depart : archlint/no_local_spawn_depart_test.go.
-func reapparitionsDuJoueur(sidecars map[string]*domain.TacticalRasterSidecar,
-	xuid string) []tactical.PointSpawn {
-	return spawnsDuJoueur(sidecars, xuid, func(sp domain.TacticalRasterSpawn) bool {
-		return sp.PremiereVie || sp.Reapparition || sp.DebutDeManche
-	})
-}
-
-// spawnsSelonVies choisit la definition du spawn selon le parametre `vies` : `toutes` rend les
-// apparitions de toutes les vies, tout autre valeur (`depart`) la premiere vie seule.
-func spawnsSelonVies(sidecars map[string]*domain.TacticalRasterSidecar,
-	xuid, vies string) []tactical.PointSpawn {
-	if vies == domain.TacticalViesToutes {
-		return reapparitionsDuJoueur(sidecars, xuid)
-	}
-	return spawnsDeDepart(sidecars, xuid)
+	return tactical.SpawnsSelonVies(matchs, xuid, vies == domain.TacticalViesToutes)
 }
 
 // perimetreDuSpawn resout le filtre de grappe en LISTE DE MATCHS, et rend les grappes de
@@ -303,7 +283,7 @@ func sidecarsAuxVies(sidecars map[string]*domain.TacticalRasterSidecar, xuid str
 		copie.Joueurs = append([]domain.TacticalRasterJoueur(nil), sc.Joueurs...)
 		for i := range copie.Joueurs {
 			if copie.Joueurs[i].XUID == xuid {
-				copie.Joueurs[i].Routes = routesDesVies(copie.Joueurs[i].Routes, vies[matchID])
+				copie.Joueurs[i].Routes = routesAuxInstants(copie.Joueurs[i].Routes, vies[matchID])
 			}
 		}
 		out[matchID] = &copie
@@ -311,61 +291,25 @@ func sidecarsAuxVies(sidecars map[string]*domain.TacticalRasterSidecar, xuid str
 	return out
 }
 
-// routesDesVies garde les routes dont la vie commence a l'un des instants donnes.
-func routesDesVies(routes []domain.TacticalRasterRoute, instants map[int]bool) []domain.TacticalRasterRoute {
-	out := make([]domain.TacticalRasterRoute, 0, len(routes))
+// routesAuxInstants garde les routes dont la vie commence a l'un des instants donnes (la regle est
+// tactical.RoutesAuxVies).
+func routesAuxInstants(routes []domain.TacticalRasterRoute, instants map[int]bool) []domain.TacticalRasterRoute {
+	debuts := make([]int, 0, len(routes))
 	for _, r := range routes {
-		if instants[r.DebutFrame] {
-			out = append(out, r)
-		}
+		debuts = append(debuts, r.DebutFrame)
+	}
+	rangs := tactical.RoutesAuxVies(debuts, instants)
+	out := make([]domain.TacticalRasterRoute, 0, len(rangs))
+	for _, i := range rangs {
+		out = append(out, routes[i])
 	}
 	return out
 }
 
-// reapparitionsAdversesDuMatch rend les reapparitions APRES MORT des joueurs de l'autre equipe que celle
-// du joueur `xuid`, avec l'instantane qui les accompagne, et dit si l'equipe du joueur est connue du
-// sidecar (faux : le match ne peut pas servir la lecture, aucune observation).
-//
-// Une reapparition est celle que le sidecar a decidee (lecture du film) : un debut de manche
-// n'en est pas une, une piste sans drapeau non plus. Un adversaire dont l'equipe n'est pas nommee n'est
-// ni adverse ni equipier : il est ecarte. Meme garde-rail que le depart :
-// archlint/no_local_spawn_depart_test.go.
-func reapparitionsAdversesDuMatch(matchID string, sc *domain.TacticalRasterSidecar,
-	xuid string) (obs []tactical.ObservationAdverse, equipeConnue bool) {
-	equipe := tactical.EquipeInconnue
-	for _, j := range sc.Joueurs {
-		if j.XUID == xuid {
-			equipe = j.Equipe
-			break
-		}
-	}
-	if equipe < 0 {
-		return nil, false
-	}
-	for _, j := range sc.Joueurs {
-		if j.XUID == xuid || j.Equipe < 0 || j.Equipe == equipe {
-			continue
-		}
-		for _, sp := range j.Spawns {
-			if !sp.Reapparition {
-				continue
-			}
-			vivants := make([]tactical.Vivant, 0, len(sp.Instantane))
-			for _, v := range sp.Instantane {
-				vivants = append(vivants, tactical.Vivant(v))
-			}
-			obs = append(obs, tactical.ObservationAdverse{
-				MatchID: matchID, X: sp.X, Y: sp.Y, Z: sp.Z, EquipeActive: equipe, Instantane: vivants,
-			})
-		}
-	}
-	return obs, true
-}
-
 // reapparitionApresMort dit si le spawn est une REAPPARITION APRES UNE MORT dont la mort est connue :
 // la matiere du modele de reapparition (les points que la prevision retient comme candidats). Un
-// debut de manche, une premiere vie et une piste sans drapeau n'en sont pas. Meme garde-rail que les
-// definitions ci-dessus : archlint/no_local_spawn_depart_test.go.
+// debut de manche, une premiere vie et une piste sans drapeau n'en sont pas. Meme garde-rail que la
+// traduction ci-dessus : archlint/no_local_spawn_depart_test.go.
 func reapparitionApresMort(sp domain.TacticalRasterSpawn) bool {
 	return sp.Reapparition && sp.Mort != nil
 }

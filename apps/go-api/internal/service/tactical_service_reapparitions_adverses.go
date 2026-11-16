@@ -130,7 +130,11 @@ func (s *TacticalService) observationsAdverses(univers domain.TacticalUnivers,
 		if sc == nil {
 			continue
 		}
-		du, equipeConnue := reapparitionsAdversesDuMatch(m.MatchID, sc, s.xuid)
+		joueurs := make([]tactical.JoueurLu, 0, len(sc.Joueurs))
+		for _, j := range sc.Joueurs {
+			joueurs = append(joueurs, joueurLu(j, true))
+		}
+		du, equipeConnue := tactical.ObservationsAdversesDuMatch(m.MatchID, joueurs, s.xuid)
 		if !equipeConnue {
 			matchs.sansEquipe++
 			continue
