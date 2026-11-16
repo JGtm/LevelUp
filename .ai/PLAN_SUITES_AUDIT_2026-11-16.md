@@ -79,6 +79,18 @@ Chaque décision porte une recommandation ; les étapes ci-dessous sont écrites
 | Trois règles de doctrine (G.2) | accord | G.2 : à écrire telles quelles |
 | Commit du registre, du plan et du journal | accord | fait sur `chore/830-suites-audit` |
 
+Secondes réponses du user (2026-11-16, soir) :
+
+| Décision | Réponse | Effet sur le plan |
+|---|---|---|
+| D-2 d, règles | à garder : elles peuvent confirmer des lectures (réapparitions) | `rules` inscrit sur la liste datée de B.3, lecteur prévu « confirmation des lectures de réapparition » ; l'étape 0.5 mesure quand même la part des matchs où chaque règle est écrite |
+| D-2 j | accord | A.6 inchangée |
+| D-6 | accord, et demande d'aller plus loin : rationaliser et revoir l'outil | étape D.8 neuve |
+| D-7 | les zones nommées sont définies par le jeu, pas par LevelUp | E.5 : la règle unique suit le jeu, toute zone que le jeu définit (contour ou morceaux) compte ; aucune règle maison |
+| D-8 | la régénération des rejeux se fait à la toute fin | H.4 neuve : dernier geste, après la fusion |
+| D-2 i | non tranchée (le user ne situait plus la Mainmise ; réexpliquée) | C.2 en attente |
+| Replis | remarque du user : « je n'aime pas fonctionner avec des replis alors qu'on ne fait que de la lecture » | PROPOSITION à confirmer (une remarque n'est pas une validation) : A.5 devient le RETRAIT du repli sur l'écart de 4 à 15 s (0,08 % des réapparitions du parc régénéré, 1 artefact resté à un ancien schéma) ; un match sans lecture du film n'a alors pas de réapparitions, dit comme tel ; les comptes de D-2 k partent avec lui |
+
 Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure de fiabilité) :
 
 | Statistique du film (champ du rejeu) | Source déjà en place |
@@ -245,6 +257,15 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
       `lib/replay/orientation.ts`, appelées par le rejeu, la Tactique et « Occupation du terrain » ; garde-rail
       étendu aux trois vues (aucun `ctx.rotate(` ni `rotate(${turns` hors de ce fichier).
 - [ ] D.7 Commentaires de `main.go` et `reglages.go` qui citent `libs/` et `licence_test.go` remis au vrai.
+- [ ] D.8 Outil revu dans son ensemble (demande du user), après D.2 à D.4, sans changer une sortie :
+      - trois gestes nommés et documentés, et eux seuls : cuire des cartes, refaire le plan sans recuire,
+        produire le tableau avant / après ; toute option restante se rattache à l'un des trois ;
+      - `main.go` : les options groupées par geste, validation des combinaisons en un point ;
+      - réglages par carte : la table des leviers, l'accesseur générique et la validation dans trois fichiers
+        distincts, chacun sous 500 lignes ;
+      - `docs/COMMANDS.md` EN et FR : une section par geste, avec la commande exacte.
+      Gate : empreintes des 114 sidecars et des images identiques à l'étape 0 après une cuisson de 3 cartes
+      témoins (une native, une Forge, une sans maillage) et un `-plan-seul` ; `wc -l` de chaque fichier < 500.
 - Gate de piste : `go test ./cmd/mapfond-build/... ./internal/mapfondsidecar/...` ; empreintes des 114 sidecars
   et des images identiques à l'étape 0, hors D.5.
 
@@ -322,6 +343,8 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
       clic dehors), calque de probabilité et son état vide, Tactique « Réapparitions adverses », fonds Plan et
       Rendu tournés sur les trois vues.
 - [ ] H.3 Tous les items statués ; fusion dans `release/v8.3.0` (CI verte).
+- [ ] H.4 Régénération du parc des rejeux (schéma 125, format 8 du fichier tactique) : dernier geste, lancé par
+      le user après la fusion ; ce plan ne la lance pas.
 
 ## Découvertes
 
