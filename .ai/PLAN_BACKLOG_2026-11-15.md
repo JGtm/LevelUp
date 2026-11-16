@@ -264,6 +264,13 @@ Reprise de session : lire ce fichier (cases), puis `git log --oneline -10` sur l
   (`halo_exchange_error` au code d'appareil, `halo_exchange_failed` au navigateur). Unifier = changer un
   contrat servi ; hors périmètre.
 
+- 2026-11-16 (3.4) : les huit fixtures de contrat web au schéma 124 (`test/fixtures/go/replay_schema_124_*`) ne
+  portent ni `endReason` / `releaseFrame` ni `respawnCountdowns` ni `roundClock` : elles sont cuites sans la marche
+  des trames qui lit les commandes d'unité et les suppressions (en production, `film_scan_mouvement` du décodeur
+  les remplit). Aucun test de comptage des croix sur un vrai film n'est donc possible dans le dépôt ; un test figé
+  à 0 serait vert même sans la règle. Recuire ces fixtures avec la marche des trames sort du lot ; la preuve sur
+  film reste la vérification à l'écran après la régénération.
+
 ## 8. Répartition des modèles
 
 | Étape | Modèle | Pourquoi |
