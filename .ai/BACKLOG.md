@@ -29,6 +29,14 @@
 
 ---
 
+### [web/couches] Fermeture des couches par Échap ou clic dehors : migrer les 17 écrans restants vers le hook partagé
+
+**Relevé le 2026-11-16** (suites de l'audit des versions 8.2.0 à 8.3.0, plan `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, item E.1). Le motif « écouter Échap ou le clic dehors pour fermer une couche » est écrit à la main dans 22 fichiers `.tsx` de `apps/web/src/features/`. Le plan migre les 5 du rejeu vers un hook partagé et gèle le compte des autres par un garde-rail qui ne fait que descendre. Reste à faire : migrer les 17 autres fichiers vers ce hook, puis ramener le plafond du garde-rail à 0. Mesure : `grep -rlE "addEventListener\('(pointerdown|mousedown)'|\.key === 'Escape'" apps/web/src/features --include=*.tsx | grep -v "\.test\." | wc -l`
+
+**Décision : mis au backlog par le user le 2026-11-16. Effort : à estimer.**
+
+---
+
 ### [perf/rejeu] Probabilité de réapparition : tous les calques tactiques de la carte relus à chaque ouverture d'un rejeu
 
 Relevé le 2026-11-16 par la relecture finale des réapparitions (`apps/go-api/internal/service/replay_spawn_candidats.go:68-72`). Calque actif par défaut : chaque ouverture d'un rejeu lit et désérialise tous les sidecars de la carte et de la famille, sans borne ni cache. Mesuré à 0,46 s pour 50 matchs ; sur une carte de plusieurs centaines de matchs en prod, plusieurs secondes. Piste chiffrée par l'exécutant : garder en mémoire, par carte et famille, les événements de réapparition (une centaine de Ko), avec une clé de fraîcheur lue par un stat par sidecar ; la requête retombe à environ 0,2 s. **Condition de reprise :** un temps de réponse mesuré au-delà d'une seconde en prod. **Effort : S à M.**
