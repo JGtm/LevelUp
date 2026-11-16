@@ -4,13 +4,11 @@ package service
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 
 	"levelup/go-api/internal/analysis/leadshare"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/leadshareload"
 )
 
 // WithSessionLeadShare injecte la lecture de la Mainmise (câblée sous film.lead_share). Nil : aucune
@@ -37,11 +35,9 @@ func (s *SessionPageService) attachSessionLeadShare(ctx context.Context, resp *d
 	if len(ids) == 0 {
 		return
 	}
-	got, err := s.leadShareRepo.LoadLeadShare(ctx, ids, s.sessionXUID)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "session page: mainmise illisible, sessions sans la mesure", "err", err)
-		}
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, s.sessionXUID,
+		"session page: mainmise illisible, sessions sans la mesure")
+	if !ok {
 		return
 	}
 	applyLeadShareToRows(resp.Matches, got)
@@ -58,8 +54,7 @@ func applyLeadShareToRows(rows []domain.SessionDetailMatchRow, got map[string]le
 		if !ok {
 			continue
 		}
-		share, changes := v.Share, v.Changes
-		rows[i].LeadShare, rows[i].LeadChanges = &share, &changes
+		rows[i].LeadShare, rows[i].LeadChanges = leadshareload.Pointers(v)
 	}
 }
 

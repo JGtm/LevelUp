@@ -5,17 +5,15 @@ package service
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis/leadshare"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/leadshareload"
 )
 
 // WithLeadShare injecte la lecture de la Mainmise (câblée sous film.lead_share) et le joueur de la
@@ -40,17 +38,14 @@ func (s *TimeseriesService) attachLeadShare(
 	if len(ids) == 0 {
 		return
 	}
-	got, err := s.leadShareRepo.LoadLeadShare(ctx, ids, s.playerXUID)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "timeseries: mainmise illisible, page sans la mesure", "err", err)
-		}
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, s.playerXUID,
+		"timeseries: mainmise illisible, page sans la mesure")
+	if !ok {
 		return
 	}
 	for i := range resp.MatchRows {
 		if v, ok := got[resp.MatchRows[i].MatchID]; ok {
-			share, changes := v.Share, v.Changes
-			resp.MatchRows[i].LeadShare, resp.MatchRows[i].LeadChanges = &share, &changes
+			resp.MatchRows[i].LeadShare, resp.MatchRows[i].LeadChanges = leadshareload.Pointers(v)
 		}
 	}
 	loc := i18n.FromContext(ctx)

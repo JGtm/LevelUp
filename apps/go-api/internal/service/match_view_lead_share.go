@@ -5,12 +5,10 @@ package service
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/leadshareload"
 )
 
 // WithLeadShare injecte la lecture de la Mainmise (câblée sous film.lead_share). Nil : l'en-tête ne
@@ -27,16 +25,12 @@ func (s *MatchViewService) applyHeaderLeadShare(ctx context.Context, h *domain.M
 	if s.leadShareRepo == nil || h == nil || h.MatchID == "" || s.xuid == "" {
 		return
 	}
-	got, err := s.leadShareRepo.LoadLeadShare(ctx, []string{h.MatchID}, s.xuid)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "match_view: mainmise illisible, en-tête sans la mesure",
-				"match_id", h.MatchID, "err", err)
-		}
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, []string{h.MatchID}, s.xuid,
+		"match_view: mainmise illisible, en-tête sans la mesure")
+	if !ok {
 		return
 	}
-	if v, ok := got[h.MatchID]; ok {
-		share, changes := v.Share, v.Changes
-		h.LeadShare, h.LeadChanges = &share, &changes
+	if v, found := got[h.MatchID]; found {
+		h.LeadShare, h.LeadChanges = leadshareload.Pointers(v)
 	}
 }

@@ -4,14 +4,12 @@ package teammates
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/leadshareload"
 )
 
 // WithLeadShare injecte la lecture de la Mainmise (câblée sous film.lead_share). Nil : la page ne
@@ -28,18 +26,15 @@ func (s *TeammatesService) WithLeadShare(repo port.LeadShareRepository) *Teammat
 func (s *TeammatesService) buildSquadLeadShare(
 	ctx context.Context, rows []domain.SquadMatchRow, mainXUID string,
 ) []domain.SquadLeadSharePoint {
-	if s.leadShareRepo == nil || mainXUID == "" || len(rows) == 0 {
+	if len(rows) == 0 {
 		return nil
 	}
 	ids := make([]string, 0, len(rows))
 	for i := range rows {
 		ids = append(ids, rows[i].MatchID)
 	}
-	got, err := s.leadShareRepo.LoadLeadShare(ctx, ids, mainXUID)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "squad: mainmise illisible, page sans la série", "err", err)
-		}
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, mainXUID, "squad: mainmise illisible, page sans la série")
+	if !ok {
 		return nil
 	}
 	ordered := append([]domain.SquadMatchRow(nil), rows...)
@@ -52,8 +47,7 @@ func (s *TeammatesService) buildSquadLeadShare(
 			SessionLabel: r.SessionLabel, MapName: r.MapUI,
 		}
 		if v, ok := got[r.MatchID]; ok {
-			share, changes := v.Share, v.Changes
-			pt.LeadShare, pt.LeadChanges = &share, &changes
+			pt.LeadShare, pt.LeadChanges = leadshareload.Pointers(v)
 		}
 		out = append(out, pt)
 	}
