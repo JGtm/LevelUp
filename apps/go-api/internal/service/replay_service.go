@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/service/replayview"
@@ -47,6 +48,9 @@ type replayService struct {
 	// killIcons traduit la source de dégât d'une destruction de véhicule en weapon_key
 	// (replay_destruction_causes.go). Nil = le titre n'en fournit pas : aucune clé posée.
 	killIcons port.KillSourceIconResolver
+	// caps : les capabilities du titre (replay_spawn_forecast.go). Nil = aucune : la prevision de
+	// reapparition se refuse en ErrCapabilityNotSupported.
+	caps games.CapabilityMap
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).

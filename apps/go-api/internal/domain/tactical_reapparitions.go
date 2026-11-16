@@ -42,12 +42,9 @@ const (
 
 // Raisons d'un etat vide, en codes machine STABLES : le web ecrit lui-meme le texte (FR et EN).
 const (
-	// TacticalRaisonModeNonCouvert : aucun match mesure de l'univers n'est d'une famille de modes
-	// couverte par la prevision (ou le titre n'en declare aucune).
-	TacticalRaisonModeNonCouvert = "mode_non_couvert"
 	// TacticalRaisonAucunMatchMesure : aucun match de l'univers n'a de sidecar exploitable.
 	TacticalRaisonAucunMatchMesure = "aucun_match_mesure"
-	// TacticalRaisonEquipeInconnue : les matchs mesures et couverts ne nomment pas l'equipe du joueur
+	// TacticalRaisonEquipeInconnue : les matchs mesures ne nomment pas l'equipe du joueur
 	// de la page (il n'y a pas de piste a son nom).
 	TacticalRaisonEquipeInconnue = "equipe_inconnue"
 	// TacticalRaisonZoneSansForme : la zone choisie n'a aucune forme au sol : on ne peut pas dire qui
@@ -87,11 +84,9 @@ type TacticalReapparitionsAdverses struct {
 	Zone TacticalZoneChoisie `json:"zone"`
 
 	// MatchsFiltres : l'univers. MatchsRetenus : ceux qui nourrissent la lecture (sidecar exploitable,
-	// famille de modes couverte, equipe du joueur nommee). MatchsHorsMode : mesures mais d'un mode non
-	// couvert. MatchsSansEquipe : mesures et couverts, mais sans equipe nommee pour le joueur.
+	// equipe du joueur nommee). MatchsSansEquipe : mesures, mais sans equipe nommee pour le joueur.
 	MatchsFiltres    int `json:"matchs_filtres"`
 	MatchsRetenus    int `json:"matchs_retenus"`
-	MatchsHorsMode   int `json:"matchs_hors_mode"`
 	MatchsSansEquipe int `json:"matchs_sans_equipe"`
 
 	// Plancher : les seuils appliques a chaque repartition.

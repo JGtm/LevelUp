@@ -2265,6 +2265,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/reapparitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Respawn forecast of each death in the 2D replay of a match */
+        get: operations["getMatchReplaySpawnForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media": {
         parameters: {
             query?: never;
@@ -12864,6 +12881,64 @@ export interface components {
             direction: "asc" | "desc";
             field: string;
         };
+        SpawnForecast: {
+            /** Format: int64 */
+            candidates: number;
+            deaths: components["schemas"]["SpawnForecastDeath"][] | null;
+            /** Format: int64 */
+            discarded_deaths: number;
+            family?: string;
+            /** Format: int64 */
+            matches_on_map: number;
+            message?: string;
+            model?: string;
+            model_date?: string;
+            /** @enum {string} */
+            reason?: "no_model" | "map_unknown" | "not_enough_matches" | "no_zone" | "no_respawn";
+            /** Format: int64 */
+            sample_step_ms: number;
+            /** @enum {string} */
+            status: "ready" | "unavailable";
+            zones: components["schemas"]["SpawnForecastZone"][] | null;
+        };
+        SpawnForecastDeath: {
+            actual: components["schemas"]["SpawnForecastPoint"];
+            /** Format: int64 */
+            actual_zone?: number;
+            death: components["schemas"]["SpawnForecastPoint"];
+            /** Format: int64 */
+            death_frame: number;
+            /** Format: int64 */
+            respawn_frame: number;
+            samples: components["schemas"]["SpawnForecastSample"][] | null;
+            xuid: string;
+        };
+        SpawnForecastPoint: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: double */
+            z: number;
+        };
+        SpawnForecastSample: {
+            /** Format: int64 */
+            frame: number;
+            /** Format: double */
+            outside_zone: number;
+            zones: components["schemas"]["SpawnForecastZoneChance"][] | null;
+        };
+        SpawnForecastZone: {
+            name: string;
+            /** Format: int64 */
+            volume_index: number;
+        };
+        SpawnForecastZoneChance: {
+            /** Format: double */
+            p: number;
+            /** Format: int64 */
+            zone: number;
+        };
         Squad: {
             /** Format: date-time */
             created_at: string;
@@ -14219,8 +14294,6 @@ export interface components {
             map_id: string;
             /** Format: int64 */
             matchs_filtres: number;
-            /** Format: int64 */
-            matchs_hors_mode: number;
             /** Format: int64 */
             matchs_retenus: number;
             /** Format: int64 */
@@ -20388,6 +20461,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchReplayContext"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplaySpawnForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpawnForecast"];
                 };
             };
             /** @description Error */

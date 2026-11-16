@@ -55,6 +55,17 @@ coéquipier le plus proche -1,08 (la proximité favorise), distance au barycentr
   du rejeu et la lecture C n'apparaissent pas : afficher une action impossible est exclu (règle des états
   vides du 2026-10-17). Hors Arène (BTB), l'exclusion est d'emblée : 4c4 seulement.
   **Tranché (user, 2026-11-15) : ok sur la proposition.**
+  **RÉÉCRIT (user, 2026-11-16) : plus de liste de modes couverts.** « on est sur de l'analyse post match, c'est pas de la
+  prévision mais de la probabilité » ; puis « Sur mon scope on a peu de matchs, on a qu'a juste mettre un seuil, d'autres
+  joueurs auront un pool de matchs différent ». Aucun mode n'est écarté, ni dans la lecture C ni dans le calque du rejeu
+  (oddball, BTB et familles sans poids propres compris) : la famille ne choisit plus que le jeu de poids (repli « tous »)
+  et, pour le rejeu, les matchs de la carte qui fournissent les candidats. Ce sont les SEUILS DE DONNÉES du périmètre du
+  joueur qui décident : un plancher unique pour les deux lectures, 3 matchs distincts et 20 réapparitions (constantes
+  `domain.ReapparitionsAdversesPlancherMatchs` / `...PlancherReapparitions`, reprises par
+  `tactical.MatchsMinCartePrevision` / `ReapparitionsMinCartePrevision`). Les clés `covered` et `countdown_forecast` de
+  `spawn_families.toml`, leurs accesseurs, les raisons `mode_non_couvert` / `mode_not_covered` et le compte
+  `matchs_hors_mode` sont supprimés. Les mesures du lot A (M-3, M-4) restent la référence de ce que vaut le modèle par
+  famille ; elles n'écartent plus rien.
 - **D-3 — échelle de la prévision.** Proposition : le texte parle en ZONES nommées (les callouts déjà
   servis à Tactique et au rejeu) ; le dessin montre les points. Une zone reçoit la somme des probabilités
   de ses points.
@@ -288,6 +299,13 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
 ## 5. Lot C — Tactique : réapparitions adverses selon la zone tenue (Go + web, effort M)
 
 - [ ] C.1 Maquette (page unique de D-6, onglet « Tactique »), choix du user consigné ici avec sa citation.
+      - [x] Maquettes validées par le user le 2026-11-16 (« JE valide les maquettes ») : version 2 de
+        https://claude.ai/artifact/GEtrQjW7uDjanwNB8VmSvL, une seule variante (combinaison A+B) : Tactique = plan annoté
+        (teinte et écart par zone, zone tenue d'un clic) + barres comparées en colonne ; Rejeu = zones teintées en fond
+        léger + points pesés, choix Zones et points / Zones / Points dans Vue ; vignettes « Cartes jouées » en vue plan ;
+        zones nommées rognées au plan par l'alpha de l'image plan. Points ouverts retenus par défaut par le pilote, sauf
+        avis contraire du user : carte sans vue plan = vignette du rendu et zones non rognées ; fond du rejeu par défaut =
+        plan ; prévision active par défaut.
 - [x] C.2 Lecture `reapparitions_adverses` : pour la zone choisie, répartition des réapparitions adverses
       par zone quand l'équipe tient la zone (règle D-5), à côté de la répartition sans condition.
       Planchers : 3 matchs distincts et 20 réapparitions, sinon état vide.
@@ -295,18 +313,17 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       chaque réapparition porte `Instantane` (xuid, équipe, x, y, z de chaque joueur vivant) et chaque joueur son
       `Equipe`. Route `POST /players/{player_slug}/tactical/{map_id}/reapparitions-adverses` (corps : `match_ids`,
       `coequipiers`, `volume_index` = indice de la zone nommée dans `zones[]` de la lecture de placement).
-      Réponse `domain.TacticalReapparitionsAdverses` : `etat` (`servie` | `vide`) et `raison` (`mode_non_couvert`,
-      `aucun_match_mesure`, `equipe_inconnue`, `zone_sans_forme`, `sous_plancher_matchs`,
-      `sous_plancher_reapparitions`), `zone`, comptes de matchs (`filtres`, `retenus`, `hors_mode`, `sans_equipe`),
+      Réponse `domain.TacticalReapparitionsAdverses` : `etat` (`servie` | `vide`) et `raison` (`aucun_match_mesure`,, `equipe_inconnue`, `zone_sans_forme`, `sous_plancher_matchs`,
+      `sous_plancher_reapparitions`), `zone`, comptes de matchs (`filtres`, `retenus`, `sans_equipe`),
       `plancher`, `reference` (toutes les réapparitions adverses) et `tenue` (zone tenue), chacune
       `{matchs, reapparitions, suffisante, raison, zones[{volume_index, nom, reapparitions, part}], sans_zone}`.
       Réapparition adverse = `Reapparition` du sidecar (film, sinon repli sur l'écart) d'un joueur d'une AUTRE
       équipe nommée que celle du joueur de la page (un début de manche n'en est pas une). Zone tenue (D-5) :
       au moins 2 vivants de l'équipe du joueur de la page dans le VOLUME de la zone choisie (forme au sol +
       tranche, marge `MargeTrancheZM`), lus dans l'instantané ; chaque réapparition est rangée dans la zone
-      nommée par `NommerZone` avec sa hauteur. Mode (D-2) : famille du match par `spawn_families.toml`
-      (variante + `mode_category`, ajouté à `TacticalMatch`), clé `covered` ; un match d'un mode non couvert est
-      compté (`matchs_hors_mode`), jamais une erreur. Capability `film.replay_artifact` ET `film.spawn_forecast`
+      nommée par `NommerZone` avec sa hauteur. Mode (D-2, réécrit le 2026-11-16) : aucun filtre
+      par mode, tout match mesuré entre ; seuls les planchers décident (`mode_category` reste ajouté à `TacticalMatch`).
+      Capability `film.replay_artifact` ET `film.spawn_forecast`
       exigées (`ErrCapabilityNotSupported`, 503). `PoidsDeFamille` / `ChargerPoidsReapparition` restent SANS
       appelant : la lecture compte des réapparitions observées et n'en prévoit aucune, leur appelant est la prévision
       du rejeu (D.2). Fichiers : `analysis/tactical/reapparitions_adverses.go`, `domain/tactical_reapparitions.go`,
@@ -318,7 +335,7 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
       `tactical_zone_unknown` 404 ajouté à `mapTacticalError`), port `TacticalService.ReapparitionsAdverses`,
       OpenAPI régénérée (`make openapi-gen`) et `generated.ts` (openapi-typescript 7.13.0, +114 lignes). Tests :
       paquet pur (`reapparitions_adverses_test.go`), service sur mock du port (`..._reapparitions_adverses_test.go`),
-      handler `httptest` (`tactical_reapparitions_test.go`), `Covered` (`loader_spawn_families_test.go`), câblage
+      handler `httptest` (`tactical_reapparitions_test.go`), câblage
       (`registry_pages_tactical_wiring_test.go`).
       Porte passée le 2026-11-16 : `go build ./...` et `go vet ./...` verts ; `go test` sur `analysis/tactical`, `domain`,
       `service`, `api`, `archlint`, `cmd/levelup`, `games`, `platform/duckdb` (50 paquets ok, sortie 0) ;
@@ -334,10 +351,35 @@ Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran
 - [ ] D.1 Maquette (même page, onglet « Rejeu ») : variantes du calque pendant le compte à rebours, du point
       réel à l'apparition, de la légende et du réglage dans le bouton « Vue ». Choix du user consigné ici.
       **Gate : aucun code de D.3 avant ce choix.**
-- [ ] D.2 Route `GET /matches/{match_id}/replay/reapparitions` : pour chaque mort suivie d'une
+      - [x] Maquettes validées par le user le 2026-11-16 (« JE valide les maquettes ») : version 2 de
+        https://claude.ai/artifact/GEtrQjW7uDjanwNB8VmSvL, une seule variante (combinaison A+B) : Tactique = plan annoté
+        (teinte et écart par zone, zone tenue d'un clic) + barres comparées en colonne ; Rejeu = zones teintées en fond
+        léger + points pesés, choix Zones et points / Zones / Points dans Vue ; vignettes « Cartes jouées » en vue plan ;
+        zones nommées rognées au plan par l'alpha de l'image plan. Points ouverts retenus par défaut par le pilote, sauf
+        avis contraire du user : carte sans vue plan = vignette du rendu et zones non rognées ; fond du rejeu par défaut =
+        plan ; prévision active par défaut.
+- [x] D.2 Route `GET /matches/{match_id}/replay/reapparitions` : pour chaque mort suivie d'une
       réapparition, probabilités par zone échantillonnées chaque seconde du compte à rebours, et point réel.
       Les candidats excluent le match affiché (une prévision ne voit pas la réponse). Service par le port
       de rejeu existant, calcul dans `analysis/tactical`.
+      Fait (2026-11-16, branche `feat/reapp-d`, non commité) : calcul pur `analysis/tactical/previsions_reapparition.go`
+      (`PrevoirLesReapparitions` : pistes du match -> `IndexVies.Vivants` à chaque seconde depuis la mort, les sept
+      variables et les poids du lot A, somme des probabilités par zone, zone réelle) ; service `replay_spawn_forecast.go`
+      + `replay_spawn_candidats.go` (candidats lus dans les sidecars v7 des AUTRES matchs de la carte et de la famille,
+      lecture maigre) ; port `ReplayService.SpawnForecast` et capacité optionnelle `ReplaySpawnRegistry` (registre
+      partagé : carte, variante, catégorie) ; corps `domain/replaydoc/spawn_forecast.go` (`status` ready|unavailable,
+      `reason`, `message` localisé, zones nommées, morts avec `xuid`, `samples[]` de `{frame, zones[{zone,p}], outside_zone}`,
+      `actual`, `actual_zone`) ; handler sans logique ; 404 `replay_not_available`, 503 `capability_not_supported` (sans
+      `film.spawn_forecast`), 200 `unavailable` pour modèle absent / carte inconnue / carte pauvre / sans zone
+      / sans réapparition. **Exclusion du match affiché à trois niveaux** : son sidecar n'est pas lu, ses événements sont retirés
+      avant la construction des candidats et des fréquences, et un test prouve qu'un sidecar du match affiché ne change pas la
+      prévision. **Aucun mode écarté (D-2 réécrit le 2026-11-16)** : plus de clé de couverture ; la famille choisit les poids
+      (repli « tous ») et les candidats viennent des matchs de la carte et de la même famille (un match sans famille a pour
+      candidats les autres matchs sans famille). Seuils de données : `tactical.MatchsMinCartePrevision` = 3 matchs, le match
+      affiché compris, `ReapparitionsMinCartePrevision` = 20 réapparitions des AUTRES matchs, `CandidatsMinPrevision` = 2 points ;
+      les deux premiers sont ceux de la lecture C (une seule valeur dans `domain`), le match affiché compte parmi les 3
+      matchs mais jamais dans les 20 réapparitions (une prévision ne voit pas la réponse). Contrat régénéré (`openapi.yaml`, `generated.ts`, ajout seul). Mesure de poids et proposition de cache : journal du
+      2026-11-16.
 - [ ] D.3 Calque web : `model/respawnForecast.logic.ts` (pur, testé) + calque dans `layers/` ; il suit
       Seul / Masquer (la prévision appartient au joueur mort) ; contrat des calques en delta respecté.
 - [ ] D.4 Vérification EN LECTURE (pas seulement à l'arrêt), sur trois rejeux choisis par le user.
@@ -427,11 +469,11 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
   deux ou trois et 112 isolees : le libelle « debut de manche » n'est exact que pour les collectives. A trancher a l'affichage.
 - (Lecture du film) Le decodeur ne publie pas la frame d'une suppression : la fin retenue est celle de la piste, ce qui
   rend la tolerance sans objet pour `deleted`.
-- (C.2) Le champ `covered` de `spawn_families.toml` est la déclaration de couverture (D-2) : cinq familles vraies,
-  `oddball` absente donc fausse. D.2 doit la lire par `SpawnFamilySet.Covered`, jamais en dupliquer la liste. À
-  décider par le pilote pour le rejeu : à l'instant de la MORT, Bases (49,7 %) et Roi de la colline (48,3 %) passent
-  sous 50 % en zone nommée (annexe `mesures_lot_A.md`, M-4) ; `covered` est posé sur la mesure à l'instant de la
-  réapparition, qui est celle de la lecture C.
+- (C.2 + D.2, fusion `feat/reapp-cd`) Décision du user du 2026-11-16 : plus de liste de modes couverts (D-2 réécrit).
+  Les clés `covered` et `countdown_forecast` ont existé le temps d'une fusion (cinq familles pour C, trois pour le rejeu
+  parce que Bases 49,7 % et Roi de la colline 48,3 % passent sous 50 % à l'instant de la mort, M-4) puis ont été
+  supprimées avec leurs accesseurs : `spawn_families.toml` ne porte plus que les jetons et les exclusions. Rien d'autre ne
+  lit ce fichier côté lecture C (`TacticalService.familles` et `WithSpawnFamilies` retirés).
 - (C.2) L'instantané du sidecar exclut les joueurs apparus dans la même seconde que la réapparition : un équipier qui
   vient d'apparaître dans la zone n'est pas compté, la règle D-5 sous-compte donc « zone tenue » dans ces cas, jamais
   l'inverse. Le joueur de la page y figure quand il est vivant.
@@ -444,3 +486,16 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
   G7) n'est pas passé, comme les grappes du lot B.
 - (C.2) Toujours aucune troisième copie de la projection des zones du port : la lecture appelle `zonesPures` du service
   (copie 1), la CLI garde la sienne (copie 2) ; une troisième ailleurs impose le helper et son garde-rail.
+- (D.2) La carte d'un match se lit par `match_registry.map_id` : une carte Forge dont les variantes ont des `map_id` distincts ne mutualise pas
+  ses candidats (même choix que la mesure `spawn-model`, qui les compte par `map_id` aussi).
+- (D.2) Trois lectures de la même règle existent désormais : « indice de zone d'un point » (`tactical.IndiceDeZone` et
+  `cmd_spawn_model_zones.go` `fonctionZone`) et « séparer les vivants en équipiers et adversaires » (`tactical.evenementAuInstant` et
+  `cmd_spawn_model_donnees.go` `evenementDe`) : deux copies chacune, une troisième impose de centraliser ; la CLI pourrait appeler les
+  versions du paquet `tactical`. Même remarque pour la projection des zones du port, restée à deux copies (service `zonesPures` et CLI) : la
+  prévision réutilise `zonesPures`, aucune troisième.
+- (D.2) La prévision est servie depuis des sidecars v7 : un match dont le sidecar est absent ou périmé (v6) ne nourrit pas les candidats, comptés
+  dans le journal (`sidecars_absents`, `sidecars_perimes`). Sans le rattrapage v7 d'une instance, ses cartes ressortent `not_enough_matches`.
+- (D.2) Le coût vient de la lecture des sidecars de la carte (une lecture maigre par match, sans cache) : voir la proposition de cache au journal
+  du 2026-11-16. Non implémenté, le plan ne le prévoit pas.
+- (D.2) Les zones servies par la prévision sont celles qui portent une probabilité non nulle ou un point réel ; les polygones se lisent dans
+  `/replay/callouts` par `volume_index` (D.3 doit joindre les deux réponses).

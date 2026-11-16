@@ -215,6 +215,12 @@ type ReplayService interface {
 	// catalogue généré au fil de l'eau). Retourne ErrMapCalloutsNotAvailable quand la
 	// carte n'en a pas au catalogue.
 	MapCallouts(ctx context.Context, matchID string) (*replaydoc.MapCalloutsEntry, error)
+	// SpawnForecast retourne la PREVISION DE REAPPARITION de chaque mort du match : par zone nommee, une
+	// fois par seconde du compte a rebours, puis le point reel (cf. replaydoc.SpawnForecast). Un mode
+	// non couvert, une carte trop pauvre ou un modele absent se servent en statut `unavailable`, pas en
+	// erreur. [ErrReplayNotAvailable] sans artefact de rejeu ; games.ErrCapabilityNotSupported quand
+	// le titre ne declare pas `film.spawn_forecast`.
+	SpawnForecast(ctx context.Context, matchID string) (replaydoc.SpawnForecast, error)
 }
 
 // ErrMapBackgroundNotAvailable est renvoyé quand aucun fond de carte figé n'existe pour la

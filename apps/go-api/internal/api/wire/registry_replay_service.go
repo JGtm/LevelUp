@@ -25,7 +25,8 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		icons = a
 	}
-	return replayServiceFrom(r.cfg, pdb.TitleSlug, maps, service.WithReplayKillSourceIcons(icons))
+	return replayServiceFrom(r.cfg, pdb.TitleSlug, maps, service.WithReplayKillSourceIcons(icons),
+		service.WithReplayCapabilities(r.capabilitiesForPDB(pdb)))
 }
 
 // replayServiceFrom : la construction elle-même, sans base, pour qu'un test l'exerce telle

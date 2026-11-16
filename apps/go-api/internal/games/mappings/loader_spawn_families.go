@@ -28,9 +28,6 @@ type SpawnFamily struct {
 	VariantContains []string
 	// CategoryContains : sous-chaines (minuscules) de la categorie de mode.
 	CategoryContains []string
-	// Covered : la prevision et les lectures qui en dependent sont servies pour cette famille
-	// (decision de couverture ecrite dans le fichier ; faux par defaut).
-	Covered bool
 }
 
 // SpawnFamilyExclusions est ce qui sort un match de toute famille.
@@ -59,7 +56,6 @@ type spawnFamiliesTOML struct {
 		ID               string   `toml:"id"`
 		VariantContains  []string `toml:"variant_contains"`
 		CategoryContains []string `toml:"category_contains"`
-		Covered          bool     `toml:"covered"`
 	} `toml:"families"`
 }
 
@@ -100,20 +96,6 @@ func contientUn(texte string, jetons []string) bool {
 	for _, j := range jetons {
 		if strings.Contains(texte, j) {
 			return true
-		}
-	}
-	return false
-}
-
-// Covered dit si la famille est couverte par la prevision de reapparition. Une famille inconnue,
-// l'identifiant vide (match sans famille) et un ensemble nil ne le sont jamais.
-func (s *SpawnFamilySet) Covered(id string) bool {
-	if s == nil || id == "" {
-		return false
-	}
-	for _, f := range s.families {
-		if f.ID == id {
-			return f.Covered
 		}
 	}
 	return false
@@ -192,8 +174,7 @@ func LoadSpawnFamiliesFromBytes(path string, raw []byte) (*SpawnFamilySet, error
 		case vus[id]:
 			return nil, fmt.Errorf("%s: [[families]] #%d : id %q déjà déclaré", path, i, id)
 		}
-		f := SpawnFamily{ID: id, VariantContains: minuscules(e.VariantContains),
-			CategoryContains: minuscules(e.CategoryContains), Covered: e.Covered}
+		f := SpawnFamily{ID: id, VariantContains: minuscules(e.VariantContains), CategoryContains: minuscules(e.CategoryContains)}
 		if len(f.VariantContains)+len(f.CategoryContains) == 0 {
 			return nil, fmt.Errorf("%s: [[families]] #%d (%s) : aucun jeton (la famille ne reconnaîtrait aucun match)", path, i, id)
 		}

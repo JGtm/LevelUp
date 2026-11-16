@@ -7,7 +7,7 @@
 // match_id), declaree comme telle par le prefixe `/tactical/` de `middleware.readOnlyPostPrefixes`.
 //
 // ZERO LOGIQUE ICI. Le handler valide la forme du map_id, delegue, traduit un refus en statut. Une
-// lecture sans assez de matchs, ou d'un mode non couvert, est un 200 dont `etat` vaut « vide » et dont
+// lecture sans assez de matchs ou de réapparitions est un 200 dont `etat` vaut « vide » et dont
 // `raison` dit pourquoi : ce n'est pas un refus.
 package handlers
 

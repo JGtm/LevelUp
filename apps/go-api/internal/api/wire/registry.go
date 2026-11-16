@@ -74,7 +74,6 @@ type ServiceRegistry struct {
 	assetResolver  assets.Resolver     // nil si le resolver n'est pas configuré (mode legacy)
 	timezone       string              // IANA (ex: "Europe/Paris"), propagé aux services médias
 	notifiers      sync.Map            // xuid → port.SessionNotifier (HomeService par joueur)
-	spawnFamilies  sync.Map            // slug → *mappings.SpawnFamilySet (registry_spawn_families.go)
 	titleResolver  games.Resolver      // nil → services tournent sans semantic adapter (libellés via fallbacks)
 	hiCapabilities games.CapabilityMap // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
 	// playlistLabelOverrides : PAR TITRE (slug → nom brut → libellé court), chargé

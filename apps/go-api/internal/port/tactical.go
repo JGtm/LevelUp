@@ -55,7 +55,7 @@ type TacticalService interface {
 
 	// ReapparitionsAdverses rend, pour une zone nommee de la carte, la repartition par zone des
 	// reapparitions ADVERSES quand l'equipe du joueur tient la zone, avec la repartition sans condition
-	// pour reference. Une lecture sans assez de matchs, ou d'un mode non couvert, est une reponse vide
+	// pour reference. Une lecture sans assez de matchs ou de reapparitions est une reponse vide
 	// qui dit pourquoi (domain.TacticalRaison*), jamais une erreur. Refus : domain.ErrTacticalCarteInconnue
 	// (404), domain.ErrTacticalZoneInconnue (404), domain.ErrTacticalCompositionInvalide (400) ;
 	// games.ErrCapabilityNotSupported quand le titre ne porte pas `film.spawn_forecast` (503).

@@ -67,6 +67,10 @@ func (s *stubReplayService) MapBackgroundPlanImageForMap(context.Context, string
 	return nil, "", port.ErrMapBackgroundNotAvailable
 }
 
+func (s *stubReplayService) SpawnForecast(context.Context, string) (replaydoc.SpawnForecast, error) {
+	return replaydoc.SpawnForecast{}, port.ErrReplayNotAvailable
+}
+
 func (s *stubReplayService) MapCallouts(context.Context, string) (*replaydoc.MapCalloutsEntry, error) {
 	return nil, port.ErrMapCalloutsNotAvailable
 }

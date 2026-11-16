@@ -1,7 +1,7 @@
 package service
 
 // tactical_service_reapparitions_adverses_test.go — LA LECTURE « REAPPARITIONS ADVERSES » du service, sur
-// des sidecars poses a la main : la porte (capability, mode couvert), la regle de ce qu'est une
+// des sidecars poses a la main : la porte (capability), la regle de ce qu'est une
 // reapparition adverse, la zone tenue, les planchers et les raisons d'un etat vide.
 //
 // Le corpus : une carte, deux zones nommees — « Hall » (la zone choisie, carre de 0 a 10 m) et « Sortie »
@@ -16,7 +16,6 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 )
 
@@ -37,29 +36,6 @@ func zonesAdverses() *mockCallouts {
 		{Nom: i18n.FromColumns("Hall", "Hall"), VolumeIndex: volHall, Polygone: carreZone(0, 0, 10, 10), ZBas: -1, ZHaut: 3, Big: true},
 		{Nom: nomSortie, VolumeIndex: volSortie, Polygone: carreZone(20, 0, 30, 10), ZBas: -1, ZHaut: 3, Big: true},
 	}}
-}
-
-// famillesDeTest : l'assassin est couvert, oddball ne l'est pas, le BTB est exclu (comme le fichier du depot).
-func famillesDeTest(t *testing.T) *mappings.SpawnFamilySet {
-	t.Helper()
-	set, err := mappings.LoadSpawnFamiliesFromBytes("test.toml", []byte(`
-[meta]
-title_slug = "t"
-schema_version = 1
-[exclusions]
-categories = ["btb"]
-[[families]]
-id = "oddball"
-variant_contains = ["oddball"]
-[[families]]
-id = "assassin"
-variant_contains = ["slayer"]
-covered = true
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return set
 }
 
 // reappAdverse : une reapparition de l'adversaire au point (x, y), avec `equipiers` joueurs de l'equipe 0
@@ -105,12 +81,12 @@ func idsDe(n int) []string {
 	return out
 }
 
-// svcAdverses monte le service : titre qui porte les reapparitions, zones, familles de test.
+// svcAdverses monte le service : titre qui porte les reapparitions, zones.
 func svcAdverses(t *testing.T, univ domain.TacticalUnivers, store *mockRasterStore) (*TacticalService, *mockTacticalRepo) {
 	t.Helper()
 	repo := &mockTacticalRepo{univ: univ}
 	svc := NewTacticalService(repo, capsAvecReapparitions(), tsMoi).
-		WithRasterStore(store).WithCalloutsStore(zonesAdverses()).WithSpawnFamilies(famillesDeTest(t))
+		WithRasterStore(store).WithCalloutsStore(zonesAdverses())
 	return svc, repo
 }
 
@@ -145,7 +121,7 @@ func TestReapparitionsAdverses_LectureServie(t *testing.T) {
 	if out.Zone.VolumeIndex != volHall || out.Zone.Nom != "Hall" {
 		t.Errorf("zone = %+v", out.Zone)
 	}
-	if out.MatchsFiltres != 5 || out.MatchsRetenus != 5 || out.MatchsHorsMode != 0 || out.MatchsSansEquipe != 0 {
+	if out.MatchsFiltres != 5 || out.MatchsRetenus != 5 || out.MatchsSansEquipe != 0 {
 		t.Errorf("comptes de matchs = %+v", out)
 	}
 	if out.Reference.Reapparitions != 35 || !out.Reference.Suffisante {
@@ -208,62 +184,19 @@ func TestReapparitionsAdverses_SousLePlancherDeMatchs(t *testing.T) {
 	}
 }
 
-// Un mode non couvert n'est jamais une erreur : le match est compte a part, la reponse est vide et le dit.
-func TestReapparitionsAdverses_ModeNonCouvert(t *testing.T) {
-	univ, store := matchsAssassin(5, 4, 3)
-	for i := range univ.Matchs {
-		univ.Matchs[i].GameVariantName = "Oddball:Arena" // famille connue mais non couverte
-	}
-	svc, repo := svcAdverses(t, univ, store)
-	out, err := lireAdverses(svc, idsDe(5), volHall)
-	if err != nil {
-		t.Fatalf("un mode non couvert n'est pas une erreur : %v", err)
-	}
-	if out.Etat != domain.TacticalEtatVide || out.Raison != domain.TacticalRaisonModeNonCouvert ||
-		out.MatchsHorsMode != 5 || out.MatchsRetenus != 0 {
-		t.Errorf("reponse = %+v, attendu vide / mode_non_couvert, 5 matchs hors mode", out)
-	}
-	if out.Reference.Reapparitions != 0 {
-		t.Errorf("rien ne doit etre lu d'un mode non couvert : %+v", out.Reference)
-	}
-	if repo.vuUniv.PlayerXUID != tsMoi {
-		t.Error("l'univers est bien lu : c'est la famille qui ecarte, pas une porte en amont")
-	}
-
-	// Le BTB est exclu de toute famille par sa categorie : le registre en porte le nom, pas la variante.
-	univ2, store2 := matchsAssassin(5, 4, 3)
-	for i := range univ2.Matchs {
-		univ2.Matchs[i].ModeCategory = "BTB"
-	}
-	svc2, _ := svcAdverses(t, univ2, store2)
-	out2, _ := lireAdverses(svc2, idsDe(5), volHall)
-	if out2.Raison != domain.TacticalRaisonModeNonCouvert || out2.MatchsHorsMode != 5 {
-		t.Errorf("categorie BTB : %+v", out2)
-	}
-}
-
-// Un titre sans table de familles n'a aucun mode couvert.
-func TestReapparitionsAdverses_SansTableDeFamilles(t *testing.T) {
-	univ, store := matchsAssassin(5, 4, 3)
-	svc, _ := svcAdverses(t, univ, store)
-	svc.WithSpawnFamilies(nil)
-	out, err := lireAdverses(svc, idsDe(5), volHall)
-	if err != nil || out.Raison != domain.TacticalRaisonModeNonCouvert {
-		t.Fatalf("(%+v, %v), attendu vide / mode_non_couvert", out, err)
-	}
-}
-
-// Les modes se melangent : seuls les matchs d'un mode couvert nourrissent la lecture.
-func TestReapparitionsAdverses_ModesMelanges(t *testing.T) {
+// Aucun filtre par mode : tous les modes se melangent et tous les matchs mesures nourrissent la lecture,
+// l'oddball et le BTB comme l'assassin. Seuls les planchers de donnees decident.
+func TestReapparitionsAdverses_AucunFiltreParMode(t *testing.T) {
 	univ, store := matchsAssassin(6, 4, 3)
 	univ.Matchs[0].GameVariantName = "Oddball:Arena"
+	univ.Matchs[1].ModeCategory = "BTB"
 	svc, _ := svcAdverses(t, univ, store)
 	out, err := lireAdverses(svc, idsDe(6), volHall)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.MatchsFiltres != 6 || out.MatchsRetenus != 5 || out.MatchsHorsMode != 1 ||
-		out.Reference.Reapparitions != 35 || out.Etat != domain.TacticalEtatServie {
+	if out.MatchsFiltres != 6 || out.MatchsRetenus != 6 || out.Reference.Reapparitions != 42 ||
+		out.Etat != domain.TacticalEtatServie {
 		t.Errorf("reponse = %+v", out)
 	}
 }
@@ -278,7 +211,7 @@ func TestReapparitionsAdverses_CapabilityAbsente(t *testing.T) {
 	} {
 		repo := &mockTacticalRepo{univ: univ}
 		svc := NewTacticalService(repo, caps, tsMoi).WithRasterStore(store).
-			WithCalloutsStore(zonesAdverses()).WithSpawnFamilies(famillesDeTest(t))
+			WithCalloutsStore(zonesAdverses())
 		_, err := lireAdverses(svc, idsDe(5), volHall)
 		if !errors.Is(err, games.ErrCapabilityNotSupported) {
 			t.Errorf("%s : erreur %v, attendu ErrCapabilityNotSupported", nom, err)

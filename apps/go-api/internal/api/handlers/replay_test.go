@@ -38,6 +38,9 @@ type mockReplayService struct {
 	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
 	callouts    *replaydoc.MapCalloutsEntry
 	calloutsErr error
+	// forecast / forecastErr : la prevision de reapparition, independante du document.
+	forecast    replaydoc.SpawnForecast
+	forecastErr error
 	// bgMap / imageMap / bgMapErr : le fond servi PAR CARTE (grille de l'onglet Tactique).
 	// Champs DISTINCTS de ceux par match, et c'est le point : si les deux entrées
 	// partageaient leur double, rien ne prouverait que le handler appelle la bonne.
@@ -92,6 +95,10 @@ func (m *mockReplayService) MapBackgroundPlanImage(_ context.Context, _ string) 
 func (m *mockReplayService) MapBackgroundPlanImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
 	m.vuMapID = mapID
 	return []byte("plan-carte"), "image/webp", m.planErr
+}
+
+func (m *mockReplayService) SpawnForecast(_ context.Context, _ string) (replaydoc.SpawnForecast, error) {
+	return m.forecast, m.forecastErr
 }
 
 func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {

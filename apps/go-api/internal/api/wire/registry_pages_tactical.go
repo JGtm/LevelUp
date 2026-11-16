@@ -49,9 +49,6 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		WithCalloutsStore(callouts).
 		WithRetentionMois(r.retentionMoisRejeu).
 		WithRadarRange(r.radarRangeFor(pdb)).
-		// LES FAMILLES DE MODES COUVERTES par la prevision de reapparition (lecture « reapparitions
-		// adverses ») : nil sur un titre sans spawn_families.toml, donc aucun mode couvert.
-		WithSpawnFamilies(r.spawnFamiliesFor(pdb.TitleSlug)).
 		// LES SOURCES DU DÉTAIL D'UNE ZONE, toutes sans condition : chacune retire son champ quand elle
 		// manque. Le classificateur est nil sur un titre sans film.kill_source (killSourceClassifierFor
 		// le décide sur les capabilities du titre) : ni arme ni catégorie, jamais slug==.

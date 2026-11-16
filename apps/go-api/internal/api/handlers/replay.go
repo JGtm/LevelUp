@@ -54,6 +54,9 @@ func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	huma.Get(api, "/matches/{match_id}/replay/callouts", h.handleGetCallouts,
 		humacore.Op("getMatchReplayCallouts",
 			"Zones nommées (callouts) de la carte du rejeu 2D d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/replay/reapparitions", h.handleGetSpawnForecast,
+		humacore.Op("getMatchReplaySpawnForecast",
+			"Respawn forecast of each death in the 2D replay of a match", "match-view"))
 	r.Get("/matches/{match_id}/replay/background.png", h.handleGetBackgroundImage)
 }
 
@@ -157,6 +160,34 @@ func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) 
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
 	return &calloutsOutput{Body: *entry}, nil
+}
+
+type spawnForecastOutput struct{ Body replaydoc.SpawnForecast }
+
+// handleGetSpawnForecast retourne la PRÉVISION DE RÉAPPARITION de chaque mort du match : par zone
+// nommée, une fois par seconde du compte à rebours, puis le point réel. Une prévision qui n'a pas lieu
+// d'être (carte trop pauvre, modèle absent) est une réponse 200 de statut
+// `unavailable` avec sa raison ; 404 sans rejeu pour le match, 503 quand le titre ne sait pas prévoir.
+func (h *ReplayHandler) handleGetSpawnForecast(ctx context.Context, in *replayInput) (*spawnForecastOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
+	}
+	forecast, err := svc.SpawnForecast(ctx, in.MatchID)
+	if errors.Is(err, port.ErrReplayNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "replay_not_available",
+			"aucun rejeu 2D pour ce match")
+	}
+	if mapped, ok := MapCapabilityError(ctx, err, "replay.spawn_forecast"); ok {
+		return nil, mapped
+	}
+	if err != nil {
+		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
+	}
+	return &spawnForecastOutput{Body: forecast}, nil
 }
 
 // handleGetBackgroundImage sert l'image du fond de carte, ou son image plan avec `?variante=plan`.

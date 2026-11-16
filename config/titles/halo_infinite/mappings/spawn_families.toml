@@ -17,11 +17,15 @@
 #    Assassin, mot le plus generique, passe en dernier.
 # 3. Aucune famille ne correspond : le match n'a pas de famille.
 #
-# COUVERTURE. `covered = true` : la prevision de reapparition (et les lectures qui s'y fondent) est
-# servie pour la famille. Une famille sans la cle n'est pas couverte : une lecture n'y est jamais
-# proposee (aucune action impossible). La liste est celle de la mesure du lot A : au moins 50 % des
-# trois premieres zones nommees a l'instant de la reapparition ; oddball n'est pas mesurable (7 matchs
-# du parc), le BTB et Husky Raid sont hors mesure.
+# AUCUNE LISTE DE MODES COUVERTS. La famille ne sert qu'a choisir le jeu de poids (repli sur « tous »
+# quand une famille n'a pas de poids propres) et, pour la prevision du rejeu, a ne retenir comme points
+# candidats que les reapparitions des matchs de la meme famille sur la carte. Ce sont les SEUILS DE DONNEES
+# du perimetre du joueur qui decident si une lecture est servie (Tactique : 3 matchs distincts et 20
+# reapparitions ; rejeu : les memes, sur la carte et la famille), jamais une liste de modes ecrite ici :
+# decision du user du 2026-11-16, « sur mon scope on a peu de matchs, on a qu'a juste mettre un seuil,
+# d'autres joueurs auront un pool de matchs different ». La mesure de reference est celle du lot A (et
+# M-4 a l'instant de la mort : bases 49,7 %, colline 48,3 % aux trois premieres zones) ; elle dit
+# ce que le modele vaut par famille, elle n'ecarte aucune famille.
 #
 # Les jetons sont des sous-chaines (« bases » reconnait « Capture the Bases »), les noms anglais du jeu
 # et leurs equivalents francais. Le nom d'une variante bouge au fil des saisons : une variante qui ne
@@ -42,22 +46,18 @@ category_contains = ["husky"]
 id = "fiesta"
 variant_contains = ["fiesta"]
 category_contains = ["fiesta"]
-covered = true
 
 [[families]]
 id = "drapeau"
 variant_contains = ["ctf", "flag", "drapeau"]
-covered = true
 
 [[families]]
 id = "bases"
 variant_contains = ["stronghold", "bases"]
-covered = true
 
 [[families]]
 id = "colline"
 variant_contains = ["king of the hill", "koth", "colline"]
-covered = true
 
 [[families]]
 id = "oddball"
@@ -66,4 +66,3 @@ variant_contains = ["oddball", "balle"]
 [[families]]
 id = "assassin"
 variant_contains = ["slayer", "assassin"]
-covered = true
