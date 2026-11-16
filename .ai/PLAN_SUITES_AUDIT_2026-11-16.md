@@ -142,15 +142,37 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
 
 ## Étape 0 — témoins et vérification sur pièces (pilote, Fable)
 
-- [ ] 0.1 Rouvrir chaque `fichier:ligne` du registre ; noter ici tout constat déplacé ou déjà réglé.
-- [ ] 0.2 Témoins AVANT, sur trois matchs à rejeu et une carte, rangés hors dépôt : réponse du rejeu
-      (`encoding=columns`), des deux routes de réapparitions, de la page Séries temporelles, de la vue du match ;
-      empreintes des 114 sidecars et des images de `map_backgrounds/` ; prévisions de réapparition de trois
-      matchs (scores par candidat).
-- [ ] 0.3 Compteurs de départ : `grep` de chaque motif visé par un garde-rail neuf (copies de la Mainmise,
-      `polygon.length >= 3`, `ui-sans-serif`, `arcTo(`, `buildPlayers(`, fonctions à plus de 5 paramètres et de
-      plus de 80 lignes de code sous `apps/web/src`, paquets du décodeur importés par `internal/port`).
-- [ ] 0.4 D-7 : nombre de zones du catalogue sans contour mais avec une partie de 3 sommets ou plus.
+Go du user le 2026-11-16 (soir) : exécution en mode orchestrateur (le pilote n'écrit pas le code), Sonnet par
+défaut, Haiku quand c'est possible, Opus si nécessaire, relecture finale par un contexte Fable frais, périmètre
+fermé, tout report est soumis au user qui juge s'il va au backlog.
+
+- [x] 0.1 Constats P1 rouverts par le pilote avant le plan (registre, « Vérification ») ; les P2 sont rouverts
+      par l'exécuteur de chaque piste avant de coder (règle 4 du contrat), qui signale tout constat déplacé.
+- [x] 0.2 Témoins AVANT. Empreintes des 339 fichiers de `map_backgrounds/` (114 sidecars, 114 fonds, 111 images
+      plan), de `spawn_model.json` et de `map_fond_reglages.json`, rangées hors dépôt (dossier `temoins` de la
+      session). ADAPTATION dite : pas de témoin pris sur un serveur lancé. Lancer le serveur de cette branche sur
+      les données locales déclencherait ses migrations de démarrage, ses recalculs et son suivi en direct ; les
+      témoins des sorties servies sont donc des tests de caractérisation écrits par l'exécuteur AVANT sa
+      modification (sortie figée sur les fixtures du dépôt), qui doivent rester verts après, hors retraits
+      décidés.
+- [x] 0.3 Compteurs de départ (2026-11-16, hors tests) : copies de la Mainmise 4 ; `polygon.length >= 3` 6 ;
+      `ui-sans-serif` 7 ; `arcTo(` 8 ; `buildPlayers(` 9 ; `.tsx` de `features/` qui écoutent Échap ou le clic
+      dehors 22 ; `ctx.rotate(` et `rotate(${` 7 ; paquets du décodeur importés par `internal/port` 3
+      (`objectiveevent`, `playerposition`, `replay`) ; accesseurs de `reglages.go` 42, 906 lignes. Fonctions à
+      plus de 5 paramètres et de plus de 80 lignes de code sous `apps/web/src` : comptées par l'exécuteur de la
+      piste E avant E.11 (script à l'API TypeScript).
+- [x] 0.4 D-7 : 3 927 zones au catalogue (`map_callouts.json`) ; 0 zone sans contour ; 10 zones ont un contour et
+      des morceaux. La règle unique ne change donc rien à l'écran.
+
+Décisions du pilote à l'étape 0, consignées :
+- E.1 : 22 `.tsx` de `features/` écoutent Échap ou le clic dehors, pas 5. Le périmètre de E.1 reste celui du
+  constat (les 5 fichiers du rejeu et le hook du shell). Le garde-rail interdit le motif sous
+  `features/match-replay` et gèle le compte du reste de `features/` (ne fait que descendre). Les 17 autres
+  fichiers : report soumis au user.
+- B.2 : parc local 1 455 rejeux compressés, 0 brut ; prod 0 brut (journal). Le dossier des rejeux contient aussi
+  `rasters/*.json` (fichiers tactiques), qu'une suppression par motif emporterait. La migration de suppression
+  des bruts est donc ABANDONNÉE : risque réel, bénéfice nul sur les parcs connus. Un brut resté sur une
+  installation ancienne n'est plus lu ; les notes de version le disent.
 - [ ] 0.5 Comparaison des sources (réponse du user à D-2 a à d), sur 20 matchs du parc lus un par un, et pour
       les champs du schéma 125 sur 3 matchs générés hors du parc (`--garder-documents`), aucune régénération :
       - médailles du film contre médailles des événements du match : compte par joueur, médailles propres à
@@ -166,7 +188,8 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
       Sortie : un tableau « source, accord, cas où l'une a raison contre l'autre, source recommandée » dans
       `.ai/annexes_suites_audit/sources.md`, soumis au user. B.3 et B.4 n'avancent qu'après sa réponse ; les
       autres pistes n'attendent pas.
-- [ ] 0.6 D-3 : nombre de rejeux `.json` non compressés dans le parc local et en prod (lecture seule).
+- [x] 0.6 D-3 : 0 rejeu non compressé dans le parc local (1 455 `.json.gz`) ; 0 en prod d'après le journal du
+      2026-11-14 (non relu sur le serveur : aucune opération sur le VPS dans ce plan).
 - Gate : témoins écrits, compteurs notés dans ce fichier, tableau 0.5 remis au user.
 
 ## Piste A — réapparitions, côté Go (8.3.0 non publiée : aucun contrat à tenir)
@@ -209,9 +232,8 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
 - [ ] B.2 D-3 appliquée, retrait en 8.3.0 : `replayartifact` ne connaît plus que `.json.gz` (`Locate`, `Read`,
       détection par octets magiques, `RemoveLegacy`, `HasLegacySibling`, compteur, `ReplayArtifactCandidates`) ;
       `replaybuild/artifact_compress.go`, sa commande et leurs tests retirés ; un `.json` restant vaut « rejeu
-      absent » et se régénère (la 8.3.0 régénère de toute façon tout le parc au schéma 125). Migration de
-      démarrage unique qui supprime les `.json` de rejeu restés dans le dossier des rejeux et journalise leur
-      nombre (aucun autre fichier touché ; test sur un dossier temporaire). Notes de la 8.3.0.
+      absent » et se régénère (la 8.3.0 régénère de toute façon tout le parc au schéma 125). Aucune
+      suppression de fichier (décision de l'étape 0). Notes de la 8.3.0.
       Gate : `git grep -nE "RemoveLegacy|HasLegacySibling|PARC MIXTE" -- apps/go-api` vide.
 - [ ] B.3 Liste datée des champs du document sans lecteur web : un test web lit les clés de premier niveau de
       `replayDocumentSchema.ts` et exige, pour chacune, un lecteur hors schéma et normalisation, ou une entrée
@@ -287,8 +309,9 @@ Inventaire fait le 2026-11-16 pour l'étape 0.5 (sources en double, sans mesure 
 - [ ] E.1 Fermeture d'une couche (Échap, clic dehors) : `useDismissable` sort de
       `components/shell/_filter_pills/_hooks.ts` vers un hook partagé, avec le cas « couche intérieure ouverte » ;
       appelé par `ReplayFeedFilterMenu`, `ReplaySpeedMenu`, `ReplayViewPanel`, `ReplayPlayerPanel`,
-      `ReplayMediaLightbox` et par le shell. Garde-rail : aucun `addEventListener('pointerdown'` ni
-      `key === 'Escape'` dans un `.tsx` de `features/`.
+      `ReplayMediaLightbox` et par le shell. Garde-rail : aucun `addEventListener('pointerdown'`,
+      `addEventListener('mousedown'` ni `key === 'Escape'` dans un `.tsx` de `features/match-replay` ; compte
+      gelé pour le reste de `features/` (décision de l'étape 0).
 - [ ] E.2 `ReplayFeedFilterMenu` : navigation clavier du menu dans un hook testé seul ; composant sous 80 lignes
       de code.
 - [ ] E.3 Rectangle arrondi : une fonction dans `lib/replay` (repli sans `ctx.roundRect` compris), appelée par
