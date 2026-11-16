@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -34,15 +33,15 @@ func TestArtifactUpToDate(t *testing.T) {
 		"sans version":                  {`{"matchId":"m"}`, false},
 	}
 	for nom, c := range cas {
-		p := filepath.Join(dir, nom+".json")
-		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
+		p := filepath.Join(dir, nom+".json.gz")
+		if err := poserCompresseTest(p, []byte(c.contenu)); err != nil {
 			t.Fatalf("écriture fixture %s: %v", nom, err)
 		}
 		if got := ArtifactUpToDate(p); got != c.attendu {
 			t.Errorf("%s : ArtifactUpToDate = %v, attendu %v", nom, got, c.attendu)
 		}
 	}
-	if ArtifactUpToDate(filepath.Join(dir, "absent.json")) {
+	if ArtifactUpToDate(filepath.Join(dir, "absent.json.gz")) {
 		t.Error("artefact absent : attendu « à re-cuire », obtenu « à jour »")
 	}
 }
@@ -73,8 +72,8 @@ func TestDigestHasPlayerCounters(t *testing.T) {
 		"json illisible":         {`{pas du json`, false},
 	}
 	for nom, c := range cas {
-		p := filepath.Join(dir, nom+".json")
-		if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
+		p := filepath.Join(dir, nom+".json.gz")
+		if err := poserCompresseTest(p, []byte(c.contenu)); err != nil {
 			t.Fatalf("écriture fixture %s: %v", nom, err)
 		}
 		d, ok := ArtifactDigest(p)
@@ -82,7 +81,7 @@ func TestDigestHasPlayerCounters(t *testing.T) {
 			t.Errorf("%s : HasPlayerCounters = %v, attendu %v", nom, got, c.attendu)
 		}
 	}
-	if d, ok := ArtifactDigest(filepath.Join(dir, "absent.json")); ok && d.HasPlayerCounters() {
+	if d, ok := ArtifactDigest(filepath.Join(dir, "absent.json.gz")); ok && d.HasPlayerCounters() {
 		t.Error("artefact absent : attendu « sans faits », obtenu « avec faits »")
 	}
 }

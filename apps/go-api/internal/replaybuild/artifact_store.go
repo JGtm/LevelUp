@@ -81,9 +81,8 @@ func StoreArtifactAt(ctx context.Context, outPath, titleSlug, matchID string, bl
 	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
-	canonique, _ := title.ReplayArtifactCandidates(outPath)
 	return StoredArtifact{
-		Path: canonique, MatchID: matchID, Bytes: surDisque.Bytes,
+		Path: outPath, MatchID: matchID, Bytes: surDisque.Bytes,
 		Tracks: surDisque.Tracks, SchemaVersion: surDisque.SchemaVersion,
 	}, nil
 }
@@ -245,7 +244,6 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 	if err != nil {
 		return Digest{}, err
 	}
-	replayartifact.RemoveLegacy(ctx, ecritPath)
 	ecrit, _ := digestFromBytes(blob)
 	ecrit.Bytes = len(stocke) // taille stockee, cf. internal/replayartifact/gate.go
 	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),

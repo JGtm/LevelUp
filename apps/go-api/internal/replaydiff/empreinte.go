@@ -64,7 +64,7 @@ func (e *Empreinte) incr(axe, metrique string, v float64) {
 	e.Mesures[cle(axe, metrique)] = Mesure{Num: m.Num + v, EstNum: true}
 }
 
-// LireDocument lit un artefact (compresse ou brut, par la porte de replaybuild) SANS le typer.
+// LireDocument lit un artefact (`.json.gz`, par la porte `replayartifact`) SANS le typer.
 // `UseNumber` garde les entiers exacts : un compteur de 2 533 274 815 845 110 passe par `float64`
 // sans perte visible, mais un xuid lu comme nombre flottant deviendrait une identite fausse.
 func LireDocument(path string) (map[string]any, error) {

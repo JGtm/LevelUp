@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -22,10 +23,9 @@ import (
 func TestScannerArtefacts_IgnoreLesMarquesDeDerivation(t *testing.T) {
 	dir := t.TempDir()
 	for _, court := range []string{"aaaa0001", "bbbb0002"} {
-		artefact := filepath.Join(dir, court+".json")
-		if err := os.WriteFile(artefact,
-			[]byte(`{"schemaVersion":39,"matchId":"`+court+`","frameIntervalMs":100,"originMs":0}`),
-			0o600); err != nil {
+		artefact := filepath.Join(dir, court+".json.gz")
+		if _, _, err := replayartifact.Write(context.Background(), artefact,
+			[]byte(`{"schemaVersion":39,"matchId":"`+court+`","frameIntervalMs":100,"originMs":0}`)); err != nil {
 			t.Fatal(err)
 		}
 		if err := replaybuild.WriteDerivationsMark(artefact, 39, 42); err != nil {

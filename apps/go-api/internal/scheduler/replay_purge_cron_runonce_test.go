@@ -67,7 +67,7 @@ func prepareRunOnceFixture(t *testing.T, mois int) runOnceFixture {
 		t.Fatal(err)
 	}
 	// dddd0004 n'a AUCUNE ligne de registre : indatable, donc jamais détruit.
-	for _, n := range []string{"aaaa0001.json", "bbbb0002.json", "cccc0003.json", "dddd0004.json"} {
+	for _, n := range []string{"aaaa0001.json.gz", "bbbb0002.json.gz", "cccc0003.json.gz", "dddd0004.json.gz"} {
 		ecrireFichier(t, filepath.Join(artifactsDir, n))
 	}
 
@@ -78,23 +78,24 @@ func prepareRunOnceFixture(t *testing.T, mois int) runOnceFixture {
 	// d'extension ou le test `e.IsDir()` ne les emportait PAS (le nom tronqué, « aaaa0001.txt »
 	// et « sous-dossier », n'est dans aucun registre) — deux leurres qui ne prouvaient rien.
 	// Corrigés ici : un fichier SANS extension (le tronquage le laisse intact, donc datable
-	// et purgeable — seul le filtre `.json` le sauve) et un RÉPERTOIRE VIDE nommé comme un
+	// et purgeable — seul le filtre `.json.gz` le sauve) et un RÉPERTOIRE VIDE nommé comme un
 	// artefact purgeable (seul `e.IsDir()` le sauve ; vide, `os.Remove` réussirait).
 	// Les trois autres couvrent le voisinage : les films, IRREMPLAÇABLES (en-tête du cron),
 	// et le dossier PARENT du titre.
 	cache := filepath.Join(repoRoot, "data", "cache")
-	if err := os.MkdirAll(filepath.Join(artifactsDir, "eeee0005.json"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(artifactsDir, "eeee0005.json.gz"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	leurres := []string{
 		filepath.Join(cache, "film_chunks", "aaaa0001", "chunk_00.bin"),
 		filepath.Join(cache, "film_manifests", "aaaa0001.json"),
 		filepath.Join(cache, "replays", "aaaa0001.json"), // dossier PARENT du titre
-		filepath.Join(artifactsDir, "aaaa0001"),          // sans extension : seul le filtre `.json` le sauve
-		filepath.Join(artifactsDir, "eeee0005.json"),     // RÉPERTOIRE vide : seul `e.IsDir()` le sauve
+		filepath.Join(artifactsDir, "aaaa0001"),          // sans extension : seul le filtre `.json.gz` le sauve
+		filepath.Join(artifactsDir, "aaaa0001.json"),     // `.json` brut d'une version ancienne : pas un artefact, jamais purgé
+		filepath.Join(artifactsDir, "eeee0005.json.gz"),  // RÉPERTOIRE vide : seul `e.IsDir()` le sauve
 	}
 	for _, p := range leurres {
-		if p == filepath.Join(artifactsDir, "eeee0005.json") {
+		if p == filepath.Join(artifactsDir, "eeee0005.json.gz") {
 			continue // déjà créé, et c'est un répertoire
 		}
 		ecrireFichier(t, p)
@@ -157,7 +158,7 @@ func assertLeurresIntacts(t *testing.T, fx runOnceFixture) {
 	}
 }
 
-// presents rend les artefacts `.json` restants à la racine du dossier d'artefacts, triés.
+// presents rend les artefacts `.json.gz` restants à la racine du dossier d'artefacts, triés.
 func presents(t *testing.T, artifactsDir string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(artifactsDir)
@@ -166,7 +167,7 @@ func presents(t *testing.T, artifactsDir string) []string {
 	}
 	var out []string
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json.gz") {
 			out = append(out, e.Name())
 		}
 	}
@@ -183,7 +184,7 @@ func TestRunOnce_SelectionParAge(t *testing.T) {
 	cronDeTest(fx, 6).RunOnce(context.Background())
 
 	got := presents(t, fx.artifactsDir)
-	want := []string{"bbbb0002.json", "cccc0003.json", "dddd0004.json"}
+	want := []string{"bbbb0002.json.gz", "cccc0003.json.gz", "dddd0004.json.gz"}
 	if !slices.Equal(got, want) {
 		t.Errorf("artefacts restants %v, attendu %v", got, want)
 	}
@@ -200,7 +201,7 @@ func TestRunOnce_FenetreIllimitee(t *testing.T) {
 		cronDeTest(fx, mois).RunOnce(context.Background())
 
 		got := presents(t, fx.artifactsDir)
-		want := []string{"aaaa0001.json", "bbbb0002.json", "cccc0003.json", "dddd0004.json"}
+		want := []string{"aaaa0001.json.gz", "bbbb0002.json.gz", "cccc0003.json.gz", "dddd0004.json.gz"}
 		if !slices.Equal(got, want) {
 			t.Errorf("rétention %d mois : artefacts restants %v, attendu les 4 (aucune suppression)",
 				mois, got)

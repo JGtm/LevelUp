@@ -44,7 +44,7 @@ func TestVersionPlusRecente(t *testing.T) {
 func TestWriteArtifact_EcritLEnteteEtLaVersionDeLApplication(t *testing.T) {
 	SetAppVersion("8.1.0")
 	t.Cleanup(func() { SetAppVersion("") })
-	path := filepath.Join(t.TempDir(), "000d5950.json")
+	path := filepath.Join(t.TempDir(), "000d5950.json.gz")
 	if _, err := StoreArtifactAt(context.Background(), path, title.DefaultSlug, "000d5950", docJSON(t, "000d5950", true)); err != nil {
 		t.Fatal(err)
 	}
@@ -67,9 +67,9 @@ func TestWriteArtifact_EcritLEnteteEtLaVersionDeLApplication(t *testing.T) {
 // TestArtifactHeader_LitLArtefactQuandLEnteteNeFaitPasFoi : absent, plus ancien que l'artefact, ou de taille
 // différente : l'artefact est lu une fois et l'en-tete réécrit ; la lecture suivante n'ouvre plus l'artefact.
 func TestArtifactHeader_LitLArtefactQuandLEnteteNeFaitPasFoi(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "000d5950.json")
+	path := filepath.Join(t.TempDir(), "000d5950.json.gz")
 	blob := docJSON(t, "000d5950", true)
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresseTest(path, blob); err != nil {
 		t.Fatal(err)
 	}
 	lectures := func() int64 { return observability.LoadCounter(CompteurArtefactsLusEnEntier) }
@@ -88,7 +88,7 @@ func TestArtifactHeader_LitLArtefactQuandLEnteteNeFaitPasFoi(t *testing.T) {
 
 	// Artefact remplacé par un outil qui n'écrit pas l'en-tete : plus récent que lui.
 	futur := time.Now().Add(time.Hour)
-	if err := os.WriteFile(path, docJSON(t, "000d5950", false), 0o644); err != nil {
+	if err := poserCompresseTest(path, docJSON(t, "000d5950", false)); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(path, futur, futur); err != nil {

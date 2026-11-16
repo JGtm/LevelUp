@@ -12,7 +12,6 @@ package replaybuild
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -23,8 +22,8 @@ import (
 // des compteurs de joueur ; rend son chemin.
 func poserArtefactAuPas(t *testing.T, pas int, avecJoueurs bool) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "artefact.json")
-	if err := os.WriteFile(out, candidatAuPas(t, pas, avecJoueurs), 0o600); err != nil {
+	out := filepath.Join(t.TempDir(), "artefact.json.gz")
+	if err := poserCompresseTest(out, candidatAuPas(t, pas, avecJoueurs)); err != nil {
 		t.Fatalf("pose : %v", err)
 	}
 	return out

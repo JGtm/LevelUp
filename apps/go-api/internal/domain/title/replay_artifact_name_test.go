@@ -11,16 +11,16 @@ func TestReplayArtifactFileName_EstCompresse(t *testing.T) {
 	}
 }
 
-// TestIsReplayArtifactFile : le prédicat unique du nom d'un artefact. Il reconnaît la forme
-// compressée et la forme brute ancienne ; il refuse la marque de dérivation, l'en-tête, une
-// sauvegarde manuelle et un fichier d'un autre type.
+// TestIsReplayArtifactFile : le prédicat unique du nom d'un artefact. Il ne reconnaît que la forme
+// compressée ; il refuse le `.json` brut d'une version ancienne, la marque de dérivation, l'en-tête,
+// une sauvegarde manuelle et un fichier d'un autre type.
 func TestIsReplayArtifactFile(t *testing.T) {
 	cas := []struct {
 		name string
 		want bool
 	}{
 		{"000d5950.json.gz", true},
-		{"000d5950.json", true},
+		{"000d5950.json", false},
 		{"000d5950.derived.json", false},
 		{"000d5950.meta", false},
 		{"000d5950.json.ancien-11juillet", false},
@@ -40,25 +40,14 @@ func TestIsReplayArtifactFile(t *testing.T) {
 func TestReplayArtifactStem(t *testing.T) {
 	cas := []struct{ in, want string }{
 		{"000d5950.json.gz", "000d5950"},
-		{"000d5950.json", "000d5950"},
+		{"000d5950.json", "000d5950.json"},
 		{filepath.Join("d", "000d5950.json.gz"), filepath.Join("d", "000d5950")},
 		{"000d5950.meta", "000d5950.meta"},
-		{"000d5950.derived.json", "000d5950.derived"},
+		{"000d5950.derived.json", "000d5950.derived.json"},
 	}
 	for _, c := range cas {
 		if got := ReplayArtifactStem(c.in); got != c.want {
 			t.Errorf("ReplayArtifactStem(%q) = %q, attendu %q", c.in, got, c.want)
-		}
-	}
-}
-
-// TestReplayArtifactCandidates : un chemin d'artefact, sous l'une ou l'autre forme, désigne les
-// deux fichiers possibles du même match, la forme compressée d'abord.
-func TestReplayArtifactCandidates(t *testing.T) {
-	for _, in := range []string{filepath.Join("d", "a1b2c3d4.json.gz"), filepath.Join("d", "a1b2c3d4.json")} {
-		gz, brut := ReplayArtifactCandidates(in)
-		if gz != filepath.Join("d", "a1b2c3d4.json.gz") || brut != filepath.Join("d", "a1b2c3d4.json") {
-			t.Errorf("ReplayArtifactCandidates(%q) = %q, %q", in, gz, brut)
 		}
 	}
 }

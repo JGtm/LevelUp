@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaydiff"
 	"levelup/go-api/internal/replayverite"
@@ -143,8 +145,8 @@ func decompresserArtefactReel(t *testing.T) (string, replaybuild.FactsFile) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(t.TempDir(), "bcb6d393.json")
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	path := filepath.Join(t.TempDir(), "bcb6d393"+title.ReplayArtifactExt)
+	if _, _, err := replayartifact.Write(context.Background(), path, blob); err != nil {
 		t.Fatal(err)
 	}
 	faits, err := replaybuild.ReadFactsFile(filepath.Join(dir, "bcb6d393.facts.json"))
@@ -159,15 +161,18 @@ func decompresserArtefactReel(t *testing.T) (string, replaybuild.FactsFile) {
 func TestRapportDuGate_BancAvantLeDetailSurUnArtefactReel(t *testing.T) {
 	ref, faits := decompresserArtefactReel(t)
 	var doc map[string]any
-	blob, _ := os.ReadFile(ref) //nolint:gosec // chemin du test
+	blob, err := replayartifact.ReadBytes(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := json.Unmarshal(blob, &doc); err != nil {
 		t.Fatal(err)
 	}
 	pistes := doc["tracks"].([]any)
 	doc["tracks"] = append(pistes, pistes[0])
 	abime, _ := json.Marshal(doc)
-	head := filepath.Join(t.TempDir(), "head.json")
-	if err := os.WriteFile(head, abime, 0o600); err != nil {
+	head := filepath.Join(t.TempDir(), "head"+title.ReplayArtifactExt)
+	if _, _, err := replayartifact.Write(context.Background(), head, abime); err != nil {
 		t.Fatal(err)
 	}
 	c, err := juger(jugement{Reference: ref, HEAD: head, Faits: faits.MatchFacts})

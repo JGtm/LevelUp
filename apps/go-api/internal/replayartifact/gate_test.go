@@ -1,7 +1,7 @@
 package replayartifact
 
-// gate_test.go — LA PORTE UNIQUE DES OCTETS D'UN ARTEFACT : lecture des deux formes (détectées par les octets
-// magiques), parc mixte, listage par un seul prédicat de nom, copie, suppression.
+// gate_test.go — LA PORTE UNIQUE DES OCTETS D'UN ARTEFACT : un seul format (`.json.gz`), un `.json` brut vaut
+// « absent », listage par un seul prédicat de nom, copie, suppression.
 
 import (
 	"bytes"
@@ -22,9 +22,9 @@ const courtTest = "000d5950"
 var docTest = []byte(`{"schemaVersion":108,"matchId":"000d5950-1234-4abc-9def-0123456789ab","tracks":[{"xuid":"1"}]}`)
 
 func cheminCanonique(dir string) string { return filepath.Join(dir, courtTest+title.ReplayArtifactExt) }
-func cheminBrut(dir string) string {
-	return filepath.Join(dir, courtTest+title.ReplayArtifactLegacyExt)
-}
+
+// cheminBrut : le `.json` qu'une version ancienne rangeait à la place de l'artefact.
+func cheminBrut(dir string) string { return filepath.Join(dir, courtTest+".json") }
 
 func gzipTest(t *testing.T, raw []byte) []byte {
 	t.Helper()
@@ -76,57 +76,36 @@ func TestEcritureCompresseRelitIdentique(t *testing.T) {
 // TestEcritureEstDeterministe : deux écritures du même JSON rendent les mêmes octets (la somme d'un artefact
 // ne dépend pas de l'heure d'écriture).
 func TestEcritureEstDeterministe(t *testing.T) {
-	a, err := Encode(docTest)
+	a, err := encode(docTest)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, _ := Encode(docTest)
+	b, _ := encode(docTest)
 	if !bytes.Equal(a, b) {
 		t.Fatal("l'encodage n'est pas déterministe")
 	}
 }
 
-// TestLitUnJsonAncien : un artefact brut d'un parc ancien se lit par son chemin canonique comme par le sien.
-func TestLitUnJsonAncien(t *testing.T) {
+// TestUnJsonBrutVautAbsent : un `.json` laissé par une version ancienne n'est pas un artefact, même sans
+// `.json.gz` à côté : ni lu, ni vu par la présence, ni listé.
+func TestUnJsonBrutVautAbsent(t *testing.T) {
 	dir := t.TempDir()
 	ecrireTest(t, cheminBrut(dir), docTest)
-	for _, p := range []string{cheminCanonique(dir), cheminBrut(dir)} {
-		lu, err := ReadBytes(p)
-		if err != nil || !bytes.Equal(lu, docTest) {
-			t.Errorf("ReadBytes(%s) = %d octets, %v", filepath.Base(p), len(lu), err)
-		}
+	avant := observability.LoadCounter(CounterUnreadable)
+	if _, err := ReadBytes(cheminCanonique(dir)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("lecture par le chemin canonique : %v, attendu l'absence", err)
 	}
-	if !Exists(cheminCanonique(dir)) {
-		t.Error("Exists ne voit pas l'artefact brut")
+	if Exists(cheminCanonique(dir)) {
+		t.Error("Exists voit un artefact là où il n'y a qu'un .json brut")
 	}
-}
-
-// TestDetecteParLesOctetsMagiques : le nom ne décide rien.
-func TestDetecteParLesOctetsMagiques(t *testing.T) {
-	dir := t.TempDir()
-	ecrireTest(t, cheminBrut(dir), gzipTest(t, docTest)) // du gzip sous le nom brut
-	if lu, err := ReadBytes(cheminBrut(dir)); err != nil || !bytes.Equal(lu, docTest) {
-		t.Errorf("gzip sous un nom .json : %d octets, %v", len(lu), err)
+	if _, err := Locate(cheminCanonique(dir)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Locate : %v, attendu l'absence", err)
 	}
-	// Du JSON brut sous le nom compressé n'est pas un artefact : refusé (cf. TestLectureRefuseUnFichierVideOuSansEnteteGzip).
-}
-
-// TestParcMixte : le compressé gagne, et le doublon est compté.
-func TestParcMixte(t *testing.T) {
-	dir := t.TempDir()
-	ancien, recent := []byte(`{"schemaVersion":1}`), []byte(`{"schemaVersion":2}`)
-	ecrireTest(t, cheminBrut(dir), ancien)
-	ecrireTest(t, cheminCanonique(dir), gzipTest(t, recent))
-	avant := observability.LoadCounter(CounterDuplicate)
-	lu, err := ReadBytes(cheminCanonique(dir))
-	if err != nil || !bytes.Equal(lu, recent) {
-		t.Fatalf("le .json.gz doit gagner, lu : %s (%v)", lu, err)
+	if got, err := List(dir); err != nil || len(got) != 0 {
+		t.Errorf("List = %+v, %v : un .json brut n'est pas listé", got, err)
 	}
-	if observability.LoadCounter(CounterDuplicate) <= avant {
-		t.Error("le doublon n'est pas compté")
-	}
-	if f, err := Locate(cheminBrut(dir)); err != nil || f.Path != cheminCanonique(dir) {
-		t.Errorf("Locate depuis le chemin brut = %+v, %v", f, err)
+	if observability.LoadCounter(CounterUnreadable) != avant {
+		t.Error("une absence n'est pas un fichier illisible")
 	}
 }
 
@@ -153,25 +132,8 @@ func TestAbsentEtIllisible(t *testing.T) {
 	}
 }
 
-// TestEcritureRetireLeBrutAncien : réécrire un artefact qui existait en brut ne laisse pas deux fichiers.
-func TestEcritureRetireLeBrutAncien(t *testing.T) {
-	dir := t.TempDir()
-	ecrireTest(t, cheminBrut(dir), []byte(`{"schemaVersion":1}`))
-	written, _, err := Write(context.Background(), cheminCanonique(dir), docTest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !HasLegacySibling(written) {
-		t.Fatal("Write ne touche pas au .json ancien : c'est RemoveLegacy qui le retire")
-	}
-	RemoveLegacy(context.Background(), written)
-	if _, err := os.Stat(cheminBrut(dir)); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("le .json ancien doit disparaître : %v", err)
-	}
-}
-
 // TestListeUnSeulPredicat : un seul passage, un seul prédicat de nom ; ni marque, ni en-tête, ni sauvegarde, ni
-// dossier ; en parc mixte le compressé gagne ; trié par forme courte.
+// `.json` brut, ni dossier ; trié par forme courte.
 func TestListeUnSeulPredicat(t *testing.T) {
 	dir := t.TempDir()
 	for _, n := range []string{"aaaa0001.json.gz", "bbbb0002.json", "cccc0003.json", "cccc0003.json.gz",
@@ -186,7 +148,7 @@ func TestListeUnSeulPredicat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"aaaa0001": "aaaa0001.json.gz", "bbbb0002": "bbbb0002.json", "cccc0003": "cccc0003.json.gz"}
+	want := map[string]string{"aaaa0001": "aaaa0001.json.gz", "cccc0003": "cccc0003.json.gz"}
 	if len(got) != len(want) {
 		t.Fatalf("%d artefacts listés, attendu %d : %+v", len(got), len(want), got)
 	}
@@ -206,86 +168,55 @@ func TestListeUnSeulPredicat(t *testing.T) {
 // TestCopieRecompresse : la copie lit par la porte et réécrit sous le nom canonique.
 func TestCopieRecompresse(t *testing.T) {
 	src, dst := t.TempDir(), t.TempDir()
-	ecrireTest(t, cheminBrut(src), docTest)
+	ecrireTest(t, cheminCanonique(src), gzipTest(t, docTest))
 	if err := Copy(context.Background(), cheminCanonique(src), cheminCanonique(dst)); err != nil {
 		t.Fatal(err)
 	}
 	if lu, err := ReadBytes(cheminCanonique(dst)); err != nil || !bytes.Equal(lu, docTest) {
 		t.Fatalf("copie : %d octets, %v", len(lu), err)
 	}
-	if _, err := os.Stat(cheminCanonique(dst)); err != nil {
-		t.Errorf("la copie doit être rangée sous le nom compressé : %v", err)
+	if err := Copy(context.Background(), cheminCanonique(t.TempDir()), cheminCanonique(dst)); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("copie d'un artefact absent : %v", err)
 	}
 }
 
-// TestRemoveRetireLesDeuxFormes.
-func TestRemoveRetireLesDeuxFormes(t *testing.T) {
+// TestRemoveRetireLArtefact : la suppression retire l'artefact et rend l'absence nominale.
+func TestRemoveRetireLArtefact(t *testing.T) {
 	dir := t.TempDir()
-	ecrireTest(t, cheminBrut(dir), docTest)
 	ecrireTest(t, cheminCanonique(dir), gzipTest(t, docTest))
 	if err := Remove(cheminCanonique(dir)); err != nil {
 		t.Fatal(err)
 	}
 	if Exists(cheminCanonique(dir)) {
-		t.Error("l'artefact doit avoir disparu sous ses deux formes")
+		t.Error("l'artefact doit avoir disparu")
 	}
 	if err := Remove(cheminCanonique(dir)); err != nil {
 		t.Errorf("l'absence n'est pas une erreur : %v", err)
 	}
 }
 
-// TestEcritureSansEcraserNePoseJamaisParDessusUnCompresse : la pose exclusive ne remplace pas un `.json.gz`
-// existant (un serveur actif a pu en poser un plus récent), et ne laisse aucun temporaire.
-func TestEcritureSansEcraserNePoseJamaisParDessusUnCompresse(t *testing.T) {
-	dir := t.TempDir()
-	recent := []byte(`{"schemaVersion":2}`)
-	ecrireTest(t, cheminCanonique(dir), gzipTest(t, recent))
-	avant, _ := os.ReadFile(cheminCanonique(dir))
-	_, _, created, err := WriteIfAbsent(context.Background(), cheminCanonique(dir), docTest)
-	if err != nil || created {
-		t.Fatalf("created = %v, err = %v : l'existant doit être respecté sans erreur", created, err)
-	}
-	if apres, _ := os.ReadFile(cheminCanonique(dir)); !bytes.Equal(apres, avant) {
-		t.Fatal("le .json.gz existant a été écrasé")
-	}
-	entries, _ := os.ReadDir(dir)
-	if len(entries) != 1 {
-		t.Errorf("un temporaire a été laissé : %d entrées", len(entries))
-	}
-	other := t.TempDir()
-	w, stored, created, err := WriteIfAbsent(context.Background(), cheminCanonique(other), docTest)
-	if err != nil || !created || w != cheminCanonique(other) {
-		t.Fatalf("première pose : %s, %v, %v", w, created, err)
-	}
-	if c, err := Read(w); err != nil || !bytes.Equal(c.JSON, docTest) || c.StoredBytes != len(stored) {
-		t.Fatalf("relecture de la pose : %v", err)
-	}
-}
-
-// TestLectureRefuseUnFichierVideOuSansEnteteGzip : un `.json.gz` qui n'est pas du gzip, et tout fichier vide, sont des
-// erreurs journalisées et comptées ; un `.json` brut reste accepté.
+// TestLectureRefuseUnFichierVideOuSansEnteteGzip : un fichier vide, ou qui n'est pas du gzip, est une erreur
+// journalisée et comptée.
 func TestLectureRefuseUnFichierVideOuSansEnteteGzip(t *testing.T) {
 	cas := []struct {
-		nom, fichier string
-		octets       []byte
-		ok           bool
+		nom    string
+		octets []byte
+		ok     bool
 	}{
-		{"gz sans entete", courtTest + ".json.gz", docTest, false},
-		{"gz vide", courtTest + ".json.gz", nil, false},
-		{"brut vide", courtTest + ".json", nil, false},
-		{"brut valide", courtTest + ".json", docTest, true},
-		{"gz valide", courtTest + ".json.gz", nil, true}, // octets posés ci-dessous
+		{"json sans entete gzip", docTest, false},
+		{"vide", nil, false},
+		{"gz valide", nil, true}, // octets posés ci-dessous
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			dir := t.TempDir()
 			octets := c.octets
-			if c.nom == "gz valide" {
+			if c.ok {
 				octets = gzipTest(t, docTest)
 			}
-			ecrireTest(t, filepath.Join(dir, c.fichier), octets)
+			ecrireTest(t, cheminCanonique(dir), octets)
 			avant := observability.LoadCounter(CounterUnreadable)
-			_, err := ReadBytes(filepath.Join(dir, c.fichier))
+			_, err := ReadBytes(cheminCanonique(dir))
 			if c.ok {
 				if err != nil {
 					t.Fatalf("lecture refusée : %v", err)
@@ -299,5 +230,23 @@ func TestLectureRefuseUnFichierVideOuSansEnteteGzip(t *testing.T) {
 				t.Error("le fichier refusé n'est pas compté")
 			}
 		})
+	}
+}
+
+// TestLecture_RefuseUnGzipTronque : un `.json.gz` coupé à n'importe quel octet est une erreur journalisée et
+// comptée, jamais un document.
+func TestLecture_RefuseUnGzipTronque(t *testing.T) {
+	complet := gzipTest(t, docTest)
+	for _, n := range []int{2, 10, len(complet) / 2, len(complet) - 8, len(complet) - 1} {
+		dir := t.TempDir()
+		ecrireTest(t, cheminCanonique(dir), complet[:n])
+		avant := observability.LoadCounter(CounterUnreadable)
+		doc, err := ReadBytes(cheminCanonique(dir))
+		if err == nil || errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("coupé à %d octets sur %d : lu comme valide (%q) ou absent (%v)", n, len(complet), doc, err)
+		}
+		if observability.LoadCounter(CounterUnreadable) <= avant {
+			t.Errorf("coupé à %d octets : non compté", n)
+		}
 	}
 }

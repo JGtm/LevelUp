@@ -8,15 +8,28 @@ package replaydiff
 // d'Assaut : `bombStats.coverage` n'est tenu que par l'inventaire de la forme (ratchet).
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/replayartifact"
 )
 
 const artefactCouverture = "couverture_248972b2_s71.json"
 
 func empreinteArtefactCouverture(t *testing.T) Empreinte {
 	t.Helper()
-	doc, err := LireDocument(filepath.Join("testdata", artefactCouverture))
+	// Le fixture est du JSON brut : il passe par la porte sous la forme d'un artefact (`.json.gz`) rangé pour le test.
+	brut, err := os.ReadFile(filepath.Join("testdata", artefactCouverture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	artefact := filepath.Join(t.TempDir(), "couverture.json.gz")
+	if _, _, err := replayartifact.Write(context.Background(), artefact, brut); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := LireDocument(artefact)
 	if err != nil {
 		t.Fatal(err)
 	}
