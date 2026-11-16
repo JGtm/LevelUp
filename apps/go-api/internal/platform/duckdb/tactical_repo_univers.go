@@ -93,6 +93,7 @@ import (
 const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        COALESCE(mr.game_variant_name, '') AS game_variant_name,
+       COALESCE(mr.mode_category, '') AS mode_category,
        EXISTS (SELECT 1 FROM match_kill_heads_latest h
                WHERE h.match_id = mr.match_id AND h.publishable AND h.n_rows > 0` + journalPerimetre + `) AS mesure,
        ` + colonneT0 + ` AS t0_ms
@@ -301,7 +302,7 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 		var m domain.TacticalMatch
 		var t0 sql.NullInt64
 		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.EligibleALaCuisson,
-			&m.GameVariantName, &m.Mesure, &t0); err != nil {
+			&m.GameVariantName, &m.ModeCategory, &m.Mesure, &t0); err != nil {
 			return err
 		}
 		if t0.Valid {

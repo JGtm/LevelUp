@@ -3825,6 +3825,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/reapparitions-adverses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ou les adversaires reapparaissent quand l'equipe tient la zone choisie, avec la repartition sans condition en reference */
+        post: operations["getTacticalReapparitionsAdverses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/tactical/{map_id}/sequence": {
         parameters: {
             query?: never;
@@ -14127,10 +14144,27 @@ export interface components {
             /** Format: int64 */
             plancher_matchs: number;
         };
+        TacticalPartDeZone: {
+            nom: string;
+            /** Format: double */
+            part: number;
+            /** Format: int64 */
+            reapparitions: number;
+            /** Format: int64 */
+            volume_index: number;
+        };
         TacticalPlacement: {
             /** Format: double */
             distance_m?: number;
             seul: boolean;
+        };
+        TacticalPlancherReapparitions: {
+            /** Format: int64 */
+            joueurs_pour_tenir: number;
+            /** Format: int64 */
+            matchs: number;
+            /** Format: int64 */
+            reapparitions: number;
         };
         TacticalPoint: {
             /** Format: double */
@@ -14180,6 +14214,45 @@ export interface components {
             /** @description Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe). */
             vies?: string;
         };
+        TacticalReapparitionsAdverses: {
+            etat: string;
+            map_id: string;
+            /** Format: int64 */
+            matchs_filtres: number;
+            /** Format: int64 */
+            matchs_hors_mode: number;
+            /** Format: int64 */
+            matchs_retenus: number;
+            /** Format: int64 */
+            matchs_sans_equipe: number;
+            plancher: components["schemas"]["TacticalPlancherReapparitions"];
+            raison?: string;
+            reference: components["schemas"]["TacticalRepartitionZones"];
+            tenue: components["schemas"]["TacticalRepartitionZones"];
+            zone: components["schemas"]["TacticalZoneChoisie"];
+        };
+        TacticalReapparitionsAdversesBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe. */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /**
+             * Format: int64
+             * @description Indice de la zone nommee choisie dans le catalogue de la carte (zones[].volume_index de la lecture de placement).
+             */
+            volume_index: number;
+        };
+        TacticalRepartitionZones: {
+            /** Format: int64 */
+            matchs: number;
+            raison?: string;
+            /** Format: int64 */
+            reapparitions: number;
+            /** Format: int64 */
+            sans_zone: number;
+            suffisante: boolean;
+            zones: components["schemas"]["TacticalPartDeZone"][] | null;
+        };
         TacticalSequence: {
             acteurs: components["schemas"]["TacticalSequenceActeur"][] | null;
             etapes: components["schemas"]["TacticalSequenceEtape"][] | null;
@@ -14228,6 +14301,11 @@ export interface components {
             x: number;
             /** Format: double */
             y: number;
+        };
+        TacticalZoneChoisie: {
+            nom: string;
+            /** Format: int64 */
+            volume_index: number;
         };
         TacticalZoneNom: {
             nom: string;
@@ -23451,6 +23529,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TacticalRaster"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalReapparitionsAdverses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalReapparitionsAdversesBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalReapparitionsAdverses"];
                 };
             };
             /** @description Error */

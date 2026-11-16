@@ -279,10 +279,42 @@ Ronde de revue du lot B (2026-11-15, cinq P2, un seul commit) : tous `[x]`.
 ## 5. Lot C — Tactique : réapparitions adverses selon la zone tenue (Go + web, effort M)
 
 - [ ] C.1 Maquette (page unique de D-6, onglet « Tactique »), choix du user consigné ici avec sa citation.
-- [ ] C.2 Lecture `reapparitions_adverses` : pour la zone choisie, répartition des réapparitions adverses
+- [x] C.2 Lecture `reapparitions_adverses` : pour la zone choisie, répartition des réapparitions adverses
       par zone quand l'équipe tient la zone (règle D-5), à côté de la répartition sans condition.
       Planchers : 3 matchs distincts et 20 réapparitions, sinon état vide.
-- [ ] C.3 Handler sans logique, service, domaine ; tests mock du port et `httptest`.
+      Fait (2026-11-16, branche `feat/reapp-c`, non commité). **Le sidecar v7 suffit, aucun changement de format** :
+      chaque réapparition porte `Instantane` (xuid, équipe, x, y, z de chaque joueur vivant) et chaque joueur son
+      `Equipe`. Route `POST /players/{player_slug}/tactical/{map_id}/reapparitions-adverses` (corps : `match_ids`,
+      `coequipiers`, `volume_index` = indice de la zone nommée dans `zones[]` de la lecture de placement).
+      Réponse `domain.TacticalReapparitionsAdverses` : `etat` (`servie` | `vide`) et `raison` (`mode_non_couvert`,
+      `aucun_match_mesure`, `equipe_inconnue`, `zone_sans_forme`, `sous_plancher_matchs`,
+      `sous_plancher_reapparitions`), `zone`, comptes de matchs (`filtres`, `retenus`, `hors_mode`, `sans_equipe`),
+      `plancher`, `reference` (toutes les réapparitions adverses) et `tenue` (zone tenue), chacune
+      `{matchs, reapparitions, suffisante, raison, zones[{volume_index, nom, reapparitions, part}], sans_zone}`.
+      Réapparition adverse = `Reapparition` du sidecar (film, sinon repli sur l'écart) d'un joueur d'une AUTRE
+      équipe nommée que celle du joueur de la page (un début de manche n'en est pas une). Zone tenue (D-5) :
+      au moins 2 vivants de l'équipe du joueur de la page dans le VOLUME de la zone choisie (forme au sol +
+      tranche, marge `MargeTrancheZM`), lus dans l'instantané ; chaque réapparition est rangée dans la zone
+      nommée par `NommerZone` avec sa hauteur. Mode (D-2) : famille du match par `spawn_families.toml`
+      (variante + `mode_category`, ajouté à `TacticalMatch`), clé `covered` ; un match d'un mode non couvert est
+      compté (`matchs_hors_mode`), jamais une erreur. Capability `film.replay_artifact` ET `film.spawn_forecast`
+      exigées (`ErrCapabilityNotSupported`, 503). `PoidsDeFamille` / `ChargerPoidsReapparition` restent SANS
+      appelant : la lecture compte des réapparitions observées et n'en prévoit aucune, leur appelant est la prévision
+      du rejeu (D.2). Fichiers : `analysis/tactical/reapparitions_adverses.go`, `domain/tactical_reapparitions.go`,
+      `service/tactical_service_reapparitions_adverses.go`, lecture des drapeaux dans le propriétaire
+      `service/tactical_service_lectures.go` (`reapparitionsAdversesDuMatch`, garde-rail du spawn de départ
+      respecté), câblage `wire/registry_spawn_families.go`.
+- [x] C.3 Handler sans logique, service, domaine ; tests mock du port et `httptest`.
+      Fait : `api/handlers/tactical_reapparitions.go` (monté par `TacticalHandler.Mount`, refus
+      `tactical_zone_unknown` 404 ajouté à `mapTacticalError`), port `TacticalService.ReapparitionsAdverses`,
+      OpenAPI régénérée (`make openapi-gen`) et `generated.ts` (openapi-typescript 7.13.0, +114 lignes). Tests :
+      paquet pur (`reapparitions_adverses_test.go`), service sur mock du port (`..._reapparitions_adverses_test.go`),
+      handler `httptest` (`tactical_reapparitions_test.go`), `Covered` (`loader_spawn_families_test.go`), câblage
+      (`registry_pages_tactical_wiring_test.go`).
+      Porte passée le 2026-11-16 : `go build ./...` et `go vet ./...` verts ; `go test` sur `analysis/tactical`, `domain`,
+      `service`, `api`, `archlint`, `cmd/levelup`, `games`, `platform/duckdb` (50 paquets ok, sortie 0) ;
+      `golangci-lint run --new-from-rev=094693dbe5` : 0 issue. Deux ratchets ont demandé un statut (liste nommée des POST de
+      lecture en démo ; colonne `mode_category` hors seeds, entrée datée de `ratchetColonnesHorsPerimetre`).
 - [ ] C.4 Web selon la maquette choisie : tokens de couleur uniquement, titres factuels sans possessif,
       états vides (bloc + pointillé), FR et EN.
 
@@ -383,3 +415,20 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
   d'aucune vie du meme joueur (sans effet) ; a verifier sur le parc regenere (A.8) avant d'afficher un debut de manche.
 - (Lecture du film) Le decodeur ne publie pas la frame d'une suppression : la fin retenue est celle de la piste, ce qui
   rend la tolerance sans objet pour `deleted`.
+- (C.2) Le champ `covered` de `spawn_families.toml` est la déclaration de couverture (D-2) : cinq familles vraies,
+  `oddball` absente donc fausse. D.2 doit la lire par `SpawnFamilySet.Covered`, jamais en dupliquer la liste. À
+  décider par le pilote pour le rejeu : à l'instant de la MORT, Bases (49,7 %) et Roi de la colline (48,3 %) passent
+  sous 50 % en zone nommée (annexe `mesures_lot_A.md`, M-4) ; `covered` est posé sur la mesure à l'instant de la
+  réapparition, qui est celle de la lecture C.
+- (C.2) L'instantané du sidecar exclut les joueurs apparus dans la même seconde que la réapparition : un équipier qui
+  vient d'apparaître dans la zone n'est pas compté, la règle D-5 sous-compte donc « zone tenue » dans ces cas, jamais
+  l'inverse. Le joueur de la page y figure quand il est vivant.
+- (C.2) « Zone tenue » est le CONTENU de la zone choisie (forme + tranche), pas le nom en jeu du point des joueurs : une
+  grande zone tient pour les joueurs de ses zones imbriquées. Le rangement des réapparitions, lui, suit `NommerZone`
+  (zone la plus précise) : choisir une grande zone donne des réapparitions réparties sur des zones fines.
+- (C.2) `domain/tactical.go` reste à 500 lignes (le champ `ModeCategory` a été payé par un commentaire resserré) :
+  toute nouvelle déclaration du périmètre Tactique va dans un fichier voisin.
+- (C.2) Sur le parc local (sidecars en schéma 6) la lecture rend `aucun_match_mesure` tant que le rattrapage v7 (geste
+  G7) n'est pas passé, comme les grappes du lot B.
+- (C.2) Toujours aucune troisième copie de la projection des zones du port : la lecture appelle `zonesPures` du service
+  (copie 1), la CLI garde la sienne (copie 2) ; une troisième ailleurs impose le helper et son garde-rail.

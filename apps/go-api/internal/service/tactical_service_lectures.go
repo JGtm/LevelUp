@@ -321,3 +321,43 @@ func routesDesVies(routes []domain.TacticalRasterRoute, instants map[int]bool) [
 	}
 	return out
 }
+
+// reapparitionsAdversesDuMatch rend les reapparitions APRES MORT des joueurs de l'autre equipe que celle
+// du joueur `xuid`, avec l'instantane qui les accompagne, et dit si l'equipe du joueur est connue du
+// sidecar (faux : le match ne peut pas servir la lecture, aucune observation).
+//
+// Une reapparition est celle que le sidecar a decidee (film ou repli sur l'ecart) : un debut de manche
+// n'en est pas une, une piste sans drapeau non plus. Un adversaire dont l'equipe n'est pas nommee n'est
+// ni adverse ni equipier : il est ecarte. Meme garde-rail que le depart :
+// archlint/no_local_spawn_depart_test.go.
+func reapparitionsAdversesDuMatch(matchID string, sc *domain.TacticalRasterSidecar,
+	xuid string) (obs []tactical.ObservationAdverse, equipeConnue bool) {
+	equipe := tactical.EquipeInconnue
+	for _, j := range sc.Joueurs {
+		if j.XUID == xuid {
+			equipe = j.Equipe
+			break
+		}
+	}
+	if equipe < 0 {
+		return nil, false
+	}
+	for _, j := range sc.Joueurs {
+		if j.XUID == xuid || j.Equipe < 0 || j.Equipe == equipe {
+			continue
+		}
+		for _, sp := range j.Spawns {
+			if !sp.Reapparition {
+				continue
+			}
+			vivants := make([]tactical.Vivant, 0, len(sp.Instantane))
+			for _, v := range sp.Instantane {
+				vivants = append(vivants, tactical.Vivant(v))
+			}
+			obs = append(obs, tactical.ObservationAdverse{
+				MatchID: matchID, X: sp.X, Y: sp.Y, Z: sp.Z, EquipeActive: equipe, Instantane: vivants,
+			})
+		}
+	}
+	return obs, true
+}
