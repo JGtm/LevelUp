@@ -2,7 +2,8 @@
 // mesure (service scoringrevision). Deux étapes par joueur, chacune avec sa révision rangée dans
 // sync_meta : le rejeu des KPI après un changement de formule, sur le recalculateur de match (base
 // partagée du titre par son provider, base metadata du titre, base de chaque joueur sous son lease) ;
-// le recalage du départ des campagnes de l'axe Objectif après un changement de sa mesure.
+// le recalage du départ des campagnes de l'axe Objectif après un changement de sa mesure. Le câblage
+// n'injecte que les profils et ces deux étapes ; l'ordre et l'indépendance sont ceux du service.
 package wire
 
 import (
@@ -10,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"time"
 
@@ -27,85 +27,64 @@ import (
 )
 
 // NewScoringRevision construit le service de rejeu des KPI après un changement de formule. Le
-// serveur lance son passage unique sur le contexte des tâches de fond (cmd/server).
+// serveur lance son passage unique sur le contexte des tâches de fond (cmd/server). Le câblage injecte
+// les profils et les deux étapes ; l'ordre et l'indépendance des étapes sont décidés par le service.
 func (r *ServiceRegistry) NewScoringRevision() *scoringrevision.Service {
-	return scoringrevision.New(scoringRevisionApplier{r: r})
+	return scoringrevision.New(scoringRevisionPlayers{r: r}, kpiRevisionStep{r: r}, campaignRevisionStep{r: r})
 }
 
-// scoringRevisionApplier implémente port.ScoringRevisionApplier sur le registre. Les deux étapes sont
-// des champs pour qu'un test les remplace ; nil = l'étape du registre (applyKPI, applyCampaignObjectiveRev).
-type scoringRevisionApplier struct {
-	r            *ServiceRegistry
-	kpiStep      func(ctx context.Context, titleSlug string, player domain.PlayerSummary, playerPath string) (bool, error)
-	campaignStep func(ctx context.Context, titleSlug string, player domain.PlayerSummary) (bool, error)
+// scoringRevisionPlayers implémente port.ScoringRevisionPlayers sur le registre.
+type scoringRevisionPlayers struct{ r *ServiceRegistry }
+
+var _ port.ScoringRevisionPlayers = scoringRevisionPlayers{}
+
+func (p scoringRevisionPlayers) FollowedPlayers(titleSlug string) ([]domain.PlayerSummary, error) {
+	return p.r.cfg.LoadPlayers(titleSlug)
 }
 
-var _ port.ScoringRevisionApplier = scoringRevisionApplier{}
-
-func (a scoringRevisionApplier) FollowedPlayers(titleSlug string) ([]domain.PlayerSummary, error) {
-	return a.r.cfg.LoadPlayers(titleSlug)
-}
-
-// ApplyForPlayer applique les deux révisions du joueur : KPI (notes et LUSR rejoués si sa révision de
-// formule rangée diffère de celle du binaire) puis départ des campagnes de l'axe Objectif (recalé si sa
-// révision de mesure rangée diffère). Les étapes sont indépendantes : l'échec de l'une ne retient pas
-// l'autre, et chacune garde sa révision rangée tant qu'elle n'a pas réussi ; l'issue de chaque étape
-// est rendue séparément. Un profil sans base joueur (jamais synchronisé) n'a rien à recalculer : il
-// n'est pas créé ici et n'a aucune issue.
-func (a scoringRevisionApplier) ApplyForPlayer(
-	ctx context.Context, titleSlug string, player domain.PlayerSummary,
-) []port.RevisionOutcome {
-	playerPath := config.PlayerDBPath(a.r.cfg, titleSlug, player.Gamertag)
-	if _, err := os.Stat(playerPath); err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return []port.RevisionOutcome{{
-				Step: port.RevisionStepPlayerDB, Err: fmt.Errorf("base joueur illisible: %w", err),
-			}}
+// HasPlayerDB dit si le fichier de la base joueur existe, sans le créer.
+func (p scoringRevisionPlayers) HasPlayerDB(titleSlug string, player domain.PlayerSummary) (bool, error) {
+	if _, err := os.Stat(config.PlayerDBPath(p.r.cfg, titleSlug, player.Gamertag)); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
 		}
-		slog.InfoContext(ctx, "scoring revision: profil sans base joueur, rien à recalculer",
-			"player", player.Gamertag, "titleSlug", titleSlug)
-		return nil
+		return false, err
 	}
-	kpiStep, campaignStep := a.kpiStep, a.campaignStep
-	if kpiStep == nil {
-		kpiStep = a.applyKPI
-	}
-	if campaignStep == nil {
-		campaignStep = a.applyCampaignObjectiveRev
-	}
-	kpi, kpiErr := kpiStep(ctx, titleSlug, player, playerPath)
-	campaigns, campaignErr := campaignStep(ctx, titleSlug, player)
-	return []port.RevisionOutcome{
-		{Step: port.RevisionStepKPI, Applied: kpi, Err: kpiErr},
-		{Step: port.RevisionStepCampaigns, Applied: campaigns, Err: campaignErr},
-	}
+	return true, nil
 }
 
-// applyKPI rejoue les KPI du joueur si sa révision de formule rangée diffère de celle du binaire.
-func (a scoringRevisionApplier) applyKPI(
-	ctx context.Context, titleSlug string, player domain.PlayerSummary, playerPath string,
-) (bool, error) {
+// kpiRevisionStep : l'étape des notes, sur le recalculateur de match (base partagée du titre par son
+// provider, base metadata du titre, base du joueur sous son lease).
+type kpiRevisionStep struct{ r *ServiceRegistry }
+
+var _ port.ScoringRevisionStep = kpiRevisionStep{}
+
+// Apply rejoue les KPI du joueur si sa révision de formule rangée diffère de celle du binaire.
+func (s kpiRevisionStep) Apply(ctx context.Context, titleSlug string, player domain.PlayerSummary) (bool, error) {
 	return syncpkg.NewMatchRecomputer(
-		playerPath,
-		config.SharedDBPath(a.r.cfg, titleSlug),
-		config.MetadataDBPath(a.r.cfg, titleSlug),
+		config.PlayerDBPath(s.r.cfg, titleSlug, player.Gamertag),
+		config.SharedDBPath(s.r.cfg, titleSlug),
+		config.MetadataDBPath(s.r.cfg, titleSlug),
 		player.XUID,
 		player.Gamertag,
-		a.r.sharedProviderForTitle(titleSlug),
+		s.r.sharedProviderForTitle(titleSlug),
 	).WithTitle(titleSlug).ApplyScoringRevision(ctx, skill.ScoringRevision())
 }
 
-// applyCampaignObjectiveRev recale le départ des campagnes en cours du joueur sur l'axe Objectif si sa
-// révision de mesure rangée diffère de campaign.ObjectiveAxisRev ; rend true quand une campagne l'a été.
-func (a scoringRevisionApplier) applyCampaignObjectiveRev(
-	ctx context.Context, titleSlug string, player domain.PlayerSummary,
-) (bool, error) {
-	pdb, err := playerresolve.ResolvePlayer(ctx, a.r.cfg, player.PlayerSlug, titleSlug)
+// campaignRevisionStep : l'étape du départ des campagnes de l'axe Objectif.
+type campaignRevisionStep struct{ r *ServiceRegistry }
+
+var _ port.ScoringRevisionStep = campaignRevisionStep{}
+
+// Apply recale le départ des campagnes en cours du joueur sur l'axe Objectif si sa révision de mesure
+// rangée diffère de campaign.ObjectiveAxisRev ; rend true quand une campagne l'a été.
+func (s campaignRevisionStep) Apply(ctx context.Context, titleSlug string, player domain.PlayerSummary) (bool, error) {
+	pdb, err := playerresolve.ResolvePlayer(ctx, s.r.cfg, player.PlayerSlug, titleSlug)
 	if err != nil {
 		return false, fmt.Errorf("base joueur indisponible pour le recalage des campagnes: %w", err)
 	}
 	svc := campaign.NewService(duckdb.NewCampaignRepo(pdb.Player), duckdb.NewCampaignSampleProvider(pdb)).
-		WithObjectiveMeasure(a.r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats))
+		WithObjectiveMeasure(s.r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats))
 	store := duckdb.NewSyncMetaRevisionStore(pdb, campaign.SyncMetaObjectiveAxisRev)
 	n, err := svc.ApplyObjectiveAxisRev(ctx, store, player.XUID, titleSlug, time.Now().UTC())
 	return n > 0, err
