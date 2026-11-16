@@ -9,6 +9,7 @@
  */
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import { zoneHasShape } from '@/lib/replay/calloutShape'
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import { roundedRectPath } from '@/lib/replay/roundedRect'
 
 import type { XY } from '../../../lib/replay/replayLogic'
@@ -64,7 +65,6 @@ export interface ForecastPaint {
   nameOf: (xuid: string) => string
 }
 
-const FONT_FAMILY = 'ui-sans-serif, system-ui, sans-serif'
 const PILL_PAD_X_PX = 6
 const PILL_PAD_Y_PX = 3
 const PILL_RADIUS_PX = 5
@@ -73,7 +73,7 @@ const PILL_ALPHA = 0.78
 
 /** La police d'un texte du calque, à la densité du canevas. */
 export function forecastFont(px: number, weight: number, k: number): string {
-  return `${weight} ${px * k}px ${FONT_FAMILY}`
+  return `${weight} ${px * k}px ${CANVAS_FONT_FAMILY}`
 }
 
 /** Le tracé d'une zone : contour, parties supplémentaires et trous (remplissage pair-impair). */

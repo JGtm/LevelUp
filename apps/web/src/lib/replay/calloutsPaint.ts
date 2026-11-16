@@ -25,6 +25,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { localeTextsOf, pickText } from '@/lib/i18n/pickText'
 
 import { isRing, zoneHasShape, zoneRings } from './calloutShape'
+import { CANVAS_FONT_FAMILY } from './canvasFont'
 import { type XY } from './replayLogic'
 
 /** Projection d'un point MONDE dans la toile de l'appelant (cadrage du rejeu, repère du plan). */
@@ -152,7 +153,7 @@ const BIG_STROKE_ALPHA = 0.28
  * Le cerne suit la même proportion qu'avant (1/5 de la police), sans quoi un contour de 5 px
  * autour d'un texte de 9,5 px mangerait les lettres.
  */
-const LABEL_FONT = '600 9.5px ui-sans-serif, system-ui, sans-serif'
+const LABEL_FONT = `600 9.5px ${CANVAS_FONT_FAMILY}`
 const LABEL_OUTLINE_WIDTH = 1.9
 
 /**
