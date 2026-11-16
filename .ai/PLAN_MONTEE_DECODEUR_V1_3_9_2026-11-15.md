@@ -59,7 +59,8 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       `tsc`, `eslint`, `golangci-lint` (0 issue) verts ; `make gate-push` décomposé (jonction node_modules vs go test sur apps/web) : seule la
       baseline de présence échoue, `internal/platform/duckdb` dépasse `-timeout=300s` sous `-tags=integration` (177 tests absents du run) ; voir Journal.
 - [x] Notes de version et changelog FR/EN (ligne « Briques publiées ») rangés sous 8.2.1, `.ai/thought_log.md`.
-- [~] Rebase sur la tête de `origin/release/v8.2.0` fait (sans conflit) ; rebase sur `release/v8.2.1` et poussée : geste du pilote.
+- [x] Rebase sur `release/v8.2.1` (depuis main 248884e996, puis 2b507b8c77) sans conflit, poussée en avance rapide (91663fe872) sur instruction du pilote.
+- [x] CI rouge de `release/v8.2.1` corrigée : `internal/api/wire` (intégration + cgo), liste figée des joueurs publiés de `c0a82e88` 6 -> 8 (voir Journal).
 - [ ] Prévenir levelup-d0 (croix des morts sans type) ; artefact des vérifications (lignes du rejeu + médailles).
 
 ## E4 — Parc (gestes à accord du user) — REPORTÉ À LA 8.2.1 (décision du user, 2026-11-15 soir)
@@ -216,3 +217,7 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   uniquement (voir Découvertes), tous les autres paquets présents et verts. `make gate-push` décomposé en ses étapes (lint Go, `replay-equiv`, typecheck, lint web,
   baseline) parce que la jonction `node_modules` fait échouer un test Go qui parcourt `apps/web`. Notes de version et changelog FR/EN sous 8.2.1 (sections créées ;
   aucun numéro de version de l'application touché ; date de section 2026-11-15 à ajuster à la sortie).
+- 2026-11-16 : CI de `release/v8.2.1` rouge sur `internal/api/wire` `TestOuvrierReel_ConstruitEtLivre` (intégration + cgo, paquet absent de l'intégration jouée en E3) :
+  « 8 joueurs publiés, attendu 6 » sur `c0a82e88`. Les huit sont ceux de l'oracle de l'API et leurs séries finissent sur les triplets de l'API (aucune erreur
+  de la boucle `oracleAPI`) : gain du tableau des scores à toutes les places (schéma 118, ligne nommée par le composant 57 au 122), les deux entrants ayant le
+  même triplet 2 / 3 / 1. Attente mise à jour avec sa raison ; paquet vert en local (78 s). Pas un P0 du décodeur.
