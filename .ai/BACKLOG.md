@@ -29,6 +29,24 @@
 
 ---
 
+### [rejeu/fiche] Bouclier brisé : badge narratif « os de verre » et frags sans bouclier
+
+**Demande de l'utilisateur (2026-11-16).** La fiche détaillée du rejeu comptera, à l'instant lu, combien de fois le joueur a perdu son bouclier. Ce compte se dérive de la valeur de bouclier publiée à chaque point du film : un passage à zéro = un bouclier brisé. Le film n'écrit pas d'événement « bouclier brisé » (vérifié le 2026-11-16 dans le décodeur LevelUp et dans libfilmshell). Idées à instruire à partir de ce compte : un badge narratif de type « os de verre » dans la matrice d'impact de la page du match (joueur qui perd souvent son bouclier), et une stat « frags réalisés sans bouclier ». **Condition de reprise :** le compte des boucliers brisés livré dans la fiche (refonte de la page du rejeu, 8.3.0) et décision du user. **Effort : à estimer.**
+
+---
+
+### [décodeur] Commandes et gestes du joueur : notes de bas de page de la fiche du rejeu
+
+**Demande de l'utilisateur (2026-11-16), inspirée de la fiche d'OpenSpartan.** libfilmshell (décodeur de Dend, MIT, copie locale `C:\Users\Guillaume\Downloads\Scripts\libfilmshell`) lit et publie ce que notre décodeur ne publie pas : la direction et l'intensité des commandes de déplacement (avant/arrière et latéral, de -31 à 31 : `src/control.rs`, `src/model/state.rs`), les rechargements (événement weapon_reload), les visées (unit_zoom, niveau 0 à 2), les sprints (état 2 de la capacité du Spartan) et les sauts (`src/actions.rs`, `src/model/event.rs`). Le user les veut comme « notes de bas de page » de la fiche détaillée du rejeu (comptes de sprints, rechargements, visées, sauts ; part du temps en mouvement), pas comme statistiques mises en avant. Reprise dans notre décodeur (dépôt `JGtm/halo-infinite-film-decoder`) avec crédit à Dend, puis publication dans le document de rejeu. À confronter : notre ancienne conclusion « sprint non observable par la vitesse » contre la lecture de l'état de capacité de libfilmshell. L'interface est anticipée par le plan de refonte de la page du rejeu (8.3.0, décision D-24 du 2026-11-16) : la fiche réserve une section « En passant » sous « Totaux du match » ; ce chantier y ajoute la lecture et le rendu. **Condition de reprise :** chantier décodeur après la refonte de la page du rejeu. **Effort : moyen (décodeur, document et fiche). Priorité basse.**
+
+---
+
+### [décodeur] Répliques des Spartans (chatter) et voix, en FR ou EN
+
+**Demande de l'utilisateur (2026-11-16), très basse priorité.** Afficher dans la fiche détaillée du rejeu les dernières répliques prononcées par le joueur (« ennemi repéré »…). Notre décodeur ne les lit pas. libfilmshell publie l'événement `Chatter` (locuteur, identifiant du son, priorité, indice de la réplique dans les tables de dialogue du jeu ; `src/model/event.rs`) et `VoiceLine` (annonceur, script du mode), mais ne nomme aucun son. À instruire : retrouver le texte ou l'audio des répliques dans les fichiers du jeu, en français ou à défaut en anglais. **Condition de reprise :** décision du user, après le chantier des commandes et gestes. **Effort : à estimer (lecture des fichiers son du jeu inconnue).**
+
+---
+
 ### [données/précision] Touches et précision lues par l'ancien appariement des tirs
 
 Relevé le 2026-11-16 (montée du décodeur v1.4.1). Le killcollector et l'ingestion de la précision lisent encore l'ancien appariement des tirs : il retrouve 11 % des touches que compte l'API, contre 81 % pour les `shotStats[]` suffisants du décodeur. Les touches et la précision persistées sont donc fausses. **Condition de reprise :** un plan de passage de ces deux lecteurs à `shotStats[]` (changement de données persistées, rétro-remplissage à décider). **Effort : M.**
