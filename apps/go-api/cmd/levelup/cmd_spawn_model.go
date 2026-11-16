@@ -3,7 +3,7 @@ package main
 // cmd_spawn_model.go — sous-commande `levelup spawn-model` : la MESURE et l'AJUSTEMENT du
 // modele de reapparition (analysis/tactical, reapparition*.go).
 //
-//	levelup spawn-model evaluate   # les mesures : temoin, par mode, mort contre reapparition
+//	levelup spawn-model evaluate   # les mesures : par mode, mort contre reapparition
 //	levelup spawn-model fit        # ecrit le fichier de poids versionne (reference/spawn_model.json)
 //
 // # CE QU'ELLE LIT
@@ -55,7 +55,6 @@ const (
 
 // Sections de `evaluate`.
 const (
-	sectionTemoin  = "m1"
 	sectionParMode = "m3"
 	sectionInstant = "m4"
 	// sectionPoids : relit le fichier de poids tel que le service le lit, sans lire le parc.
@@ -68,7 +67,6 @@ type spawnModelOptions struct {
 	sections  string
 	famille   string
 	limite    int
-	parCarte  bool
 	variantes bool
 	// matchsMinCarte : une carte vue dans moins de matchs n'est pas mesuree ; 0 = le seuil de la
 	// sous-commande (matchsMinCarteMesure ou matchsMinCarteAjustement).
@@ -84,10 +82,9 @@ func lireOptionsSpawnModel(sous string, args []string) (spawnModelOptions, error
 	fs := flag.NewFlagSet("spawn-model "+sous, flag.ExitOnError)
 	o := spawnModelOptions{}
 	fs.StringVar(&o.titleSlug, "title", "halo_infinite", "slug du titre")
-	fs.StringVar(&o.sections, "sections", "m1,m3,m4", "evaluate : sections a produire (m1 temoin, m3 par mode, m4 mort contre reapparition)")
+	fs.StringVar(&o.sections, "sections", "m3,m4", "evaluate : sections a produire (m3 par mode, m4 mort contre reapparition)")
 	fs.StringVar(&o.famille, "famille", "", "restreint a une famille de modes (celles de spawn_families.toml)")
 	fs.IntVar(&o.limite, "limit", 0, "borne le nombre d'artefacts lus (0 = tous)")
-	fs.BoolVar(&o.parCarte, "par-carte", false, "evaluate : ajoute le tableau par carte du temoin")
 	fs.BoolVar(&o.variantes, "variantes", false, "liste les variantes du parc par famille puis s'arrete")
 	fs.IntVar(&o.matchsMinCarte, "matchs-min-carte", 0,
 		fmt.Sprintf("matchs minimum par carte pour qu'elle soit retenue (defaut : %d pour evaluate, %d pour fit)",
@@ -214,9 +211,6 @@ func evaluerLeParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 	defer release()
 	imprimerBilan(os.Stdout, jeu.bilan)
 	r := rapporteur{ctx: ctx, cfg: cfg, o: o, jeu: jeu, db: db, familles: familles}
-	if sectionActive(o, sectionTemoin) {
-		r.temoin()
-	}
 	if sectionActive(o, sectionParMode) {
 		r.parMode()
 	}

@@ -347,7 +347,7 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 #    The command that reproduces the shipped weights file (run from the repo root, LEVELUP_DATA_DIR
 #    pointing at the data folder that holds the replay artifacts):
 #      levelup spawn-model fit --matchs-min-carte 3
-go run ./cmd/levelup spawn-model evaluate [--sections m1,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model evaluate [--sections m3,m4|poids] [--famille F] [--matchs-min-carte N] [--variantes] [--limit N] [--title S]
 go run ./cmd/levelup spawn-model fit [[--matchs-min-carte N] [--famille F --sortie FILE] [--limit N --sortie FILE] [--title S]
 ```
 

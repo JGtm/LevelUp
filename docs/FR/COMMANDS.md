@@ -359,7 +359,7 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 #    La commande qui reproduit le fichier de poids livré (depuis la racine du dépôt, LEVELUP_DATA_DIR
 #    sur le dossier de données qui porte les artefacts de rejeu) :
 #      levelup spawn-model fit --matchs-min-carte 3
-go run ./cmd/levelup spawn-model evaluate [--sections m1,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model evaluate [--sections m3,m4|poids] [--famille F] [--matchs-min-carte N] [--variantes] [--limit N] [--title S]
 go run ./cmd/levelup spawn-model fit [[--matchs-min-carte N] [--famille F --sortie FICHIER] [--limit N --sortie FICHIER] [--title S]
 ```
 

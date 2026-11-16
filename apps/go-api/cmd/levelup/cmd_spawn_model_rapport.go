@@ -14,22 +14,6 @@ import (
 	"levelup/go-api/internal/config"
 )
 
-// Valeurs de la mesure de depart (Assassin 4c4 hors Fiesta et BTB), contre lesquelles le temoin
-// se compare.
-const (
-	refRayon1Hasard, refRayon1Freq, refRayon1Modele = 14.1, 15.6, 44.9
-	refRayon3Freq, refRayon3Modele                  = 38.4, 62.5
-	refTop1Freq, refTop3Freq                        = 4.5, 12.8
-	refTop1Modele, refTop3Modele                    = 11.0, 27.7
-	refReapparitions, refCartes                     = 43966, 45
-	// ecartTemoinMax : l'ecart toléré au temoin, en points.
-	ecartTemoinMax = 1.0
-)
-
-// familleTemoin est la famille de la mesure de depart : Assassin 4c4 hors Fiesta et BTB. C'est un
-// identifiant de la table des familles du titre ; un titre qui ne le declare pas n'a pas de temoin.
-const familleTemoin = "assassin"
-
 // rapporteur porte ce que les sections partagent.
 type rapporteur struct {
 	ctx      context.Context
@@ -88,84 +72,6 @@ func evaluerEchantillons(echs []tactical.Echantillon) resultat {
 	r.freq = tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.FrequenceSeule))
 	r.modele = tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.ToutesLesVariables))
 	return r
-}
-
-// temoin : M-1, la mesure de depart rejouee sur le depot.
-func (r *rapporteur) temoin() {
-	if !r.familles[familleTemoin] {
-		fmt.Printf("## M-1 temoin : la famille %q n'est pas lue (table des familles ou --famille), pas de temoin\n", familleTemoin)
-		return
-	}
-	fam := map[string]bool{familleTemoin: true}
-	evts := r.jeu.evenementsDeFamilles(fam)
-	echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts),
-		tactical.ReglagesEchantillons{MatchsMinCarte: matchsMinCarteMesure})
-	res := evaluerEchantillons(echs)
-	w := tactical.Ajuster(echs, func(tactical.Echantillon) bool { return true }, tactical.ToutesLesVariables)
-	fmt.Println("## M-1 temoin : Assassin hors Fiesta et BTB")
-	fmt.Printf("\n%d reapparitions sur %d cartes (annexe : %d sur %d), hors candidats : %d\n\n",
-		res.n, res.cartes, refReapparitions, refCartes, res.modele.HorsCandidats)
-	fmt.Println("| mesure | depot | annexe | ecart |\n|---|---|---|---|")
-	ligneTemoin("hasard, 1er tirage, a moins de 8 m", res.modele.HasardRayon1, refRayon1Hasard)
-	fmt.Printf("| hasard, 3 tirages, a moins de 8 m (esperance exacte) | %.1f %% | | |\n", res.modele.HasardRayon3)
-	ligneTemoin("frequence seule, 1er, a moins de 8 m", res.freq.Rayon1, refRayon1Freq)
-	ligneTemoin("frequence seule, 3 premiers, a moins de 8 m", res.freq.Rayon3, refRayon3Freq)
-	ligneTemoin("modele, 1er, a moins de 8 m", res.modele.Rayon1, refRayon1Modele)
-	ligneTemoin("modele, 3 premiers, a moins de 8 m", res.modele.Rayon3, refRayon3Modele)
-	ligneTemoin("frequence seule, point exact, 1er", res.freq.Top1, refTop1Freq)
-	ligneTemoin("frequence seule, point exact, 3 premiers", res.freq.Top3, refTop3Freq)
-	ligneTemoin("modele, point exact, 1er", res.modele.Top1, refTop1Modele)
-	ligneTemoin("modele, point exact, 3 premiers", res.modele.Top3, refTop3Modele)
-	fmt.Println("\n| variable | poids |\n|---|---|")
-	for j, nom := range tactical.NomsVariables {
-		fmt.Printf("| %s | %+.2f |\n", nom, w[j])
-	}
-	fmt.Println()
-	if r.o.parCarte {
-		r.tableauParCarte(echs)
-	}
-}
-
-func ligneTemoin(nom string, depot, annexe float64) {
-	marque := ""
-	if d := depot - annexe; d > ecartTemoinMax || d < -ecartTemoinMax {
-		marque = " **> 1 point**"
-	}
-	fmt.Printf("| %s | %.1f %% | %.1f %% | %+.1f%s |\n", nom, depot, annexe, depot-annexe, marque)
-}
-
-// tableauParCarte : le temoin par carte (frequence seule puis modele, 1er et 3 premiers).
-func (r *rapporteur) tableauParCarte(echs []tactical.Echantillon) {
-	pred := tactical.ScoresValides(echs, tactical.ToutesLesVariables)
-	predF := tactical.ScoresValides(echs, tactical.FrequenceSeule)
-	var idx = map[string][]int{}
-	for i, s := range echs {
-		idx[s.Carte] = append(idx[s.Carte], i)
-	}
-	type ligne struct {
-		nom        string
-		n          int
-		f1, m1     float64
-		f3, m3, kk float64
-	}
-	lignes := make([]ligne, 0, len(idx))
-	for carte, ii := range idx {
-		var es []tactical.Echantillon
-		var pm, pf [][]float64
-		k := 0.0
-		for _, i := range ii {
-			es, pm, pf = append(es, echs[i]), append(pm, pred[i]), append(pf, predF[i])
-			k += float64(len(echs[i].Feats))
-		}
-		mf, mm := tactical.Evaluer(es, pf), tactical.Evaluer(es, pm)
-		lignes = append(lignes, ligne{r.jeu.noms[carte], len(es), mf.Top1, mm.Top1, mf.Top3, mm.Top3, k / float64(len(es))})
-	}
-	sort.Slice(lignes, func(a, b int) bool { return lignes[a].m3-lignes[a].f3 > lignes[b].m3-lignes[b].f3 })
-	fmt.Println("| carte | n | top1 freq | top1 modele | top3 freq | top3 modele | candidats |\n|---|---|---|---|---|---|---|")
-	for _, l := range lignes {
-		fmt.Printf("| %s | %d | %.1f | %.1f | %.1f | %.1f | %.0f |\n", l.nom, l.n, l.f1, l.m1, l.f3, l.m3, l.kk)
-	}
-	fmt.Println()
 }
 
 // reglages rend les reglages des echantillons de la lecture, avec l'indice de zone nommee des
