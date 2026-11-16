@@ -174,6 +174,18 @@ Relevé le 2026-11-15 par la baseline de `make gate-push` (177 tests absents du 
 
 ---
 
+### [rejeu/gate] `replay-equiv` ne compare ni les joueurs du tableau des scores ni leurs stats
+
+Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de `cmd/replay-equiv` ignore `scoreTimeline.players[]` et `players[].stats` ; un défaut d'association ou de manches ne se voit que dans l'empreinte opaque `artifact`. Ajouter leur empreinte (étape neuve ou `score` étendue). **Effort : S.**
+
+---
+
+### [rejeu/gate] témoin `f75e7053` hors d'atteinte du gate du corpus
+
+Absent du registre depuis la purge du 2026-10-26, sans artefact de parc : le gate de la montée v1.3.9 a tourné sur une copie du manifeste sans lui. Le remplacer par un film de même famille ou le retirer de `config/replay_corpus.toml`. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

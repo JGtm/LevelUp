@@ -121351,3 +121351,10 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 - **Décision technique** : `EntreeOccupationDeLArtefact` traduit `endReason` / `releaseFrame` en `Piste.Fin` (une suppression sans frame publiée prend la fin de la piste) et `respawnCountdowns[].from` en débuts de compte, rattachés par `identity.players[].filmIndex` ; comptes sans xuid comptés. Montée `go.mod` à v1.3.9 portée par la branche (identique à celle de la session de montée). Plafond de surface `replay.*` : 329 -> 331 (`EndReasonReleased`, `EndReasonDeleted`), justification datée. `spawn-model evaluate` imprime l'accord des deux définitions.
 - **Résultats** : cinq films cuits un par un en racine temporaire : 645 réapparitions au film, le repli en retrouve 641 (99,4 %) et en ajoute 7 (débuts de manche du film à deux manches) ; lâcher à 0-99 ms de la fin de piste. Tests `replayartifacts`, `cmd/levelup`, `analysis/tactical`, `service/...`, `archlint` verts ; lint des paquets touchés propre.
 - **Suite** : rebase sur `release/v8.2.1` une fois la 8.2.0 squashée ; A.8 sur le parc régénéré (cuisson en lot : accord du user d'abord).
+
+## [2026-11-16] Montée du décodeur v1.3.9 : régénération du parc au schéma 124 et dossier d'attente du VPS — Complété
+
+- **Statut** : Complété (bascule prod = geste de la release 8.2.1, non appliquée).
+- **Décision technique** : une seule régénération locale (accord du user du 2026-11-16, relayé par la session pilote), binaire de `release/v8.2.1` à `e657d05bc8`, serveur arrêté, un film à la fois ; dérivés locaux dans l'ordre du G7 ; copie des rejeux SEULS (`.json.gz` + `.meta`) dans `data/replays-staging-v8.2.1/` du VPS, avec un `BASCULE.sh` qui remplace par temporaire + renommage.
+- **Résultats** : 1 455 rejeux au 124, 0 erreur, archive des films intacte (1 614) ; dérivés 0 échec (1 456 calques tactiques v7) ; simulation de la bascule : 1 455 remplacements, 0 erreur ; octets identiques entre local et VPS.
+- **Conclusion / prochaine étape** : à la sortie de la 8.2.1, `BASCULE.sh --apply` puis les dérivés serveur (`.ai/annexes_v8_1_2/gestes_prod_8_2_1.md`) ; vérification à l'écran ligne 931 de l'artefact des vérifications.

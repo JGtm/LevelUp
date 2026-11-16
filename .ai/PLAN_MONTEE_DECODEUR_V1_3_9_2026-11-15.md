@@ -61,15 +61,16 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
 - [x] Notes de version et changelog FR/EN (ligne « Briques publiées ») rangés sous 8.2.1, `.ai/thought_log.md`.
 - [x] Rebase sur `release/v8.2.1` (depuis main 248884e996, puis 2b507b8c77) sans conflit, poussée en avance rapide (91663fe872) sur instruction du pilote.
 - [x] CI rouge de `release/v8.2.1` corrigée : `internal/api/wire` (intégration + cgo), liste figée des joueurs publiés de `c0a82e88` 6 -> 8 (voir Journal).
-- [ ] Prévenir levelup-d0 (croix des morts sans type) ; artefact des vérifications (lignes du rejeu + médailles).
+- [x] levelup-d0 prévenu (2026-11-16, parc au 124, sa ligne 928 vérifiable) ; artefact des vérifications : ligne 931 (rejeux régénérés,
+      tableau des scores complet). Médailles : aucune ligne, le rejeu n'affiche pas `medals` (Découvertes).
 
 ## E4 — Parc (gestes à accord du user) — REPORTÉ À LA 8.2.1 (décision du user, 2026-11-15 soir)
 
-- [ ] (ACCORD DU USER 2026-11-15 : « tu as mon accord pour regen les rejeux » ; à lancer après E3, binaire sur
-      v1.3.9, sessions paires prévenues) Régénération du parc, UNE fois, sur accord explicite du user ; serveur local arrêté ; compte de films
-      avant et après (1 614).
-- [ ] `.ai/annexes_v8_1_2/gestes_prod_8_2_0.md` G6 et G7 mis à jour (dossier d'attente du VPS à renvoyer :
-      geste du user, rien vers le VPS sans lui).
+- [x] (ACCORD DU USER 2026-11-16 matin, relayé par levelup-dd : UNE régénération locale au schéma 124 dès la CI verte) Régénération du
+      parc, une fois, binaire de `release/v8.2.1` à `e657d05bc8`, serveur local arrêté, un film à la fois ; films 1 614 avant et après (voir Journal).
+- [x] Gestes prod : `.ai/annexes_v8_1_2/gestes_prod_8_2_1.md` (R1 régénération et dérivés locaux, R2 dossier d'attente du VPS et
+      `BASCULE.sh` simulé, R3 dérivés serveur) ; la 8.2.0 étant sortie, son annexe reste l'historique de la 8.2.0. Dossier d'attente
+      envoyé sur instruction du pilote (accord du user relayé), bascule NON appliquée.
 
 ## Découvertes
 
@@ -221,3 +222,10 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   « 8 joueurs publiés, attendu 6 » sur `c0a82e88`. Les huit sont ceux de l'oracle de l'API et leurs séries finissent sur les triplets de l'API (aucune erreur
   de la boucle `oracleAPI`) : gain du tableau des scores à toutes les places (schéma 118, ligne nommée par le composant 57 au 122), les deux entrants ayant le
   même triplet 2 / 3 / 1. Attente mise à jour avec sa raison ; paquet vert en local (78 s). Pas un P0 du décodeur.
+- 2026-11-16, E4 (accord du user du matin, relayé par levelup-dd) : régénération unique du parc, binaire de `release/v8.2.1` à `e657d05bc8` (worktree détaché
+  sans jonction, GOWORK=off), serveur local arrêté, `backfill-replay --only-existing`, un film à la fois : 1 455 construits (tous redécodés), 0 erreur,
+  0 mort mémoire, 0 mort subite ; 801 hors registre, 2 Firefight, 6 sans artefact ; 8 750 s. Comptes avant -> après : films 1 614 -> 1 614, manifestes
+  2 267 -> 2 267, `.json.gz` 1 455 -> 1 455 (tous au 124), faits 1 458 -> 1 458. Dérivés locaux, 0 échec, 25 min : usage-summary 1 455, pad-tiers 1 451,
+  killsource 1 460 matchs / 146 249 morts, vehicle-takes 1 456, flag-grabs-net 186, tactical-rasters 1 456 en v7. VPS : dossier d'attente
+  `replays-staging-v8.2.1` (1 455 `.json.gz` + 1 455 `.meta`, octets identiques au local), `BASCULE.sh` simulé : 1 455 remplacent un rejeu servi,
+  0 erreur ; rien dans le dossier servi, aucune base. Gestes : `.ai/annexes_v8_1_2/gestes_prod_8_2_1.md`. Machine rendue à levelup-1f (gate v1.4.0).
