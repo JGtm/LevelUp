@@ -60,9 +60,9 @@ export const LAYER_ORDER = [
   // vocabulaire, l'enjeu primant sur les noms de lieux.
   'chaleur',
   'zones-nommees',
-  // LA TEINTE DE LA PROBABILITÉ DE RÉAPPARITION : du vocabulaire sur le terrain, donc avec les zones et
-  // sous tout ce qui bouge ; ses repères (anneau, point réel, étiquettes, légende) viennent après les morts.
-  'reapparition-zones',
+  // LE FOND DE LA PROBABILITÉ DE RÉAPPARITION (teinte des zones, disques des points) : du vocabulaire sur le
+  // terrain, donc avec les zones et sous tout ce qui bouge ; ses repères (anneau, point réel, étiquettes, légende) viennent après les morts.
+  'reapparition-fond',
   'objectifs-cuits',
   // LES OBJETS DU TERRAIN, sous les joueurs : ils ne sont pas le sujet.
   'projectiles',
@@ -130,7 +130,7 @@ export interface SceneToggles {
   wallPlan: boolean
   /** « Apparitions », « Morts », « Tueurs » (groupe « Vies ») : trois calques, trois interrupteurs. */
   lives: LivesFlags
-  /** « Probabilité de réapparition » (groupe « Vies ») : DEUX calques (teinte, repères), UN interrupteur. */
+  /** « Probabilité de réapparition » (groupe « Vies ») : DEUX calques (fond : teinte et disques ; repères), UN interrupteur. */
   respawnForecast: boolean
 }
 
@@ -232,7 +232,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'plan-murs': t.wallPlan && h.wallPlan,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,
-    'reapparition-zones': t.respawnForecast && h.respawnForecast,
+    'reapparition-fond': t.respawnForecast && h.respawnForecast,
     'objectifs-cuits': t.modeObjectives && h.objectivesCooked,
     projectiles: h.projectiles,
     'socles-armes': true,

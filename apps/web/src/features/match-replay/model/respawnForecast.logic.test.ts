@@ -18,6 +18,11 @@ import {
   revealOpacity,
   sampleAt,
   tintAlpha,
+  discRadiusPx,
+  DISC_BASE_RADIUS_PX,
+  DISC_SPAN_RADIUS_PX,
+  TINT_AMPLITUDE_ALPHA_UNDER_POINTS,
+  TINT_BASE_ALPHA_UNDER_POINTS,
   TINT_AMPLITUDE_ALPHA,
   TINT_BASE_ALPHA,
   type ForecastDeath,
@@ -38,9 +43,9 @@ function wireDeath(over: Partial<WireDeath> = {}): WireDeath {
     actual: { x: 50, y: 60, z: 0 },
     actual_zone: 7,
     samples: [
-      { frame: 100, outside_zone: 0, zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
-      { frame: 110, outside_zone: 0, zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
-      { frame: 120, outside_zone: 0, zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
+      { frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
+      { frame: 110, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
+      { frame: 120, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
     ],
     ...over,
   }
@@ -54,6 +59,8 @@ function wire(over: Partial<ReplaySpawnForecast> = {}): ReplaySpawnForecast {
     matches_on_map: 5,
     sample_step_ms: 1000,
     zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }],
+    // Trois points : un en « Fosse » (zones[0]), un en « Pont » (zones[1]), un hors de toute zone servie.
+    points: [{ x: 1, y: 2, zone_index: 0 }, { x: 3, y: 4, zone_index: 1 }, { x: 5, y: 6, zone_index: -1 }],
     deaths: [wireDeath()],
     ...over,
   }
@@ -89,7 +96,7 @@ describe('normalizeSpawnForecast', () => {
     const f = normalizeSpawnForecast(
       wire({
         deaths: [
-          wireDeath({ xuid: 'xuid(late)', death_frame: 300, respawn_frame: 330, samples: [{ frame: 310, outside_zone: 0, zones: [{ zone: 1, p: 0.1 }, { zone: 2, p: 0.4 }] }, { frame: 300, outside_zone: 0, zones: [] }] }),
+          wireDeath({ xuid: 'xuid(late)', death_frame: 300, respawn_frame: 330, samples: [{ frame: 310, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 1, p: 0.1 }, { zone: 2, p: 0.4 }] }, { frame: 300, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [] }] }),
           wireDeath({ xuid: 'xuid(early)' }),
         ],
       }),
@@ -101,7 +108,7 @@ describe('normalizeSpawnForecast', () => {
   })
 
   it('ne garde pas une zone de probabilité nulle', () => {
-    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 1, zones: [{ zone: 1, p: 0 }] }] })] }))
+    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 1, points_p: null, zones: [{ zone: 1, p: 0 }] }] })] }))
     expect(f?.deaths[0].samples[0].zones).toEqual([])
   })
 
@@ -210,7 +217,7 @@ describe('momentsAt — Seul / Masquer et plusieurs morts à la fois', () => {
   const forecast = ready({
     deaths: [
       wireDeath({ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130 }),
-      wireDeath({ xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, samples: [{ frame: 110, outside_zone: 0, zones: [{ zone: 3, p: 0.9 }] }] }),
+      wireDeath({ xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, samples: [{ frame: 110, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }] }),
     ],
   })
 
@@ -257,5 +264,70 @@ describe('tintAlpha', () => {
 
   it('sans première zone, le fond seul', () => {
     expect(tintAlpha(0.3, 0)).toBe(TINT_BASE_ALPHA)
+  })
+})
+
+describe('les points candidats et leur probabilité', () => {
+  it('sont servis une fois, `zone_index` devient le volume_index de la zone, -1 aucune zone', () => {
+    const f = ready()
+    expect(f.points).toEqual([
+      { x: 1, y: 2, zone: 3 },
+      { x: 3, y: 4, zone: 7 },
+      { x: 5, y: 6, zone: null },
+    ])
+  })
+
+  it('chaque échantillon porte la probabilité des points, alignée, et chaque instant la reprend', () => {
+    const f = ready()
+    const d = f.deaths[0]
+    expect(d.samples.every((s) => s.pointsP.length === f.points.length)).toBe(true)
+    const m = momentOf(d, 105, FRAME_MS, f.points)!
+    expect(m.points).toBe(f.points)
+    expect(m.sample.pointsP).toEqual([0.5, 0.3, 0.2])
+    expect(momentsAt(f, 105, FRAME_MS)[0].points).toBe(f.points)
+    // À la réapparition : les points de la dernière probabilité.
+    expect(momentsAt(f, 131, FRAME_MS)[0].sample.pointsP).toHaveLength(3)
+  })
+
+  it('la probabilité d’une zone reste la somme de ses points (ici une zone par point)', () => {
+    const f = ready()
+    const s = f.deaths[0].samples[0]
+    expect(s.pointsP[0]).toBeCloseTo(s.zones.find((z) => z.zone === 3)!.p, 9)
+    expect(s.pointsP[1]).toBeCloseTo(s.zones.find((z) => z.zone === 7)!.p, 9)
+  })
+
+  it('une liste de probabilités qui n’est pas alignée sur les points est écartée, jamais devinée', () => {
+    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.5], zones: [{ zone: 3, p: 0.5 }] }] })] }))!
+    expect(f.deaths[0].samples[0].pointsP).toEqual([])
+    expect(f.deaths[0].samples[0].zones).toHaveLength(1)
+  })
+
+  it('une réponse sans point : aucune probabilité de point, le reste intact', () => {
+    const f = normalizeSpawnForecast(wire({ points: null, deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 0, points_p: null, zones: [{ zone: 3, p: 1 }] }] })] }))!
+    expect(f.points).toEqual([])
+    expect(f.deaths[0].samples[0].pointsP).toEqual([])
+  })
+})
+
+describe('le disque d’un point : le rayon suit la racine de la probabilité', () => {
+  it('croît avec la probabilité, base à 0, base + étendue à 1', () => {
+    expect(discRadiusPx(0)).toBe(DISC_BASE_RADIUS_PX)
+    expect(discRadiusPx(1)).toBeCloseTo(DISC_BASE_RADIUS_PX + DISC_SPAN_RADIUS_PX, 9)
+    expect(discRadiusPx(0.05)).toBeLessThan(discRadiusPx(0.2))
+    expect(discRadiusPx(0.2)).toBeLessThan(discRadiusPx(0.45))
+    // La racine : quadrupler la probabilité double la part variable du rayon.
+    expect(discRadiusPx(0.16) - DISC_BASE_RADIUS_PX).toBeCloseTo(2 * (discRadiusPx(0.04) - DISC_BASE_RADIUS_PX), 9)
+  })
+
+  it('une probabilité négative ne donne pas de rayon sous la base', () => {
+    expect(discRadiusPx(-0.5)).toBe(DISC_BASE_RADIUS_PX)
+  })
+})
+
+describe('tintAlpha selon le dessin', () => {
+  it('sous les points (« Zones et points »), la teinte reste plus légère que seule', () => {
+    expect(tintAlpha(0.5, 0.5, 'both')).toBeCloseTo(TINT_BASE_ALPHA_UNDER_POINTS + TINT_AMPLITUDE_ALPHA_UNDER_POINTS, 9)
+    expect(tintAlpha(0.5, 0.5, 'both')).toBeLessThan(tintAlpha(0.5, 0.5, 'zones'))
+    expect(tintAlpha(0, 0.5, 'both')).toBeLessThan(tintAlpha(0, 0.5, 'zones'))
   })
 })

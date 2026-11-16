@@ -40,14 +40,15 @@ const CALLOUTS = [zone(3, 0, 0), zone(7, 40, 40)]
 const READY: ReplaySpawnForecast = {
   status: 'ready', candidates: 20, discarded_deaths: 0, matches_on_map: 4, sample_step_ms: 1000,
   zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }],
+  points: [{ x: 10, y: 10, zone_index: 0 }, { x: 50, y: 50, zone_index: 1 }, { x: 90, y: 90, zone_index: -1 }],
   deaths: [
     {
       xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20, z: 0 }, actual: { x: 50, y: 60, z: 0 }, actual_zone: 7,
-      samples: [{ frame: 100, outside_zone: 0, zones: [{ zone: 3, p: 0.6 }, { zone: 7, p: 0.4 }] }],
+      samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.6 }, { zone: 7, p: 0.4 }] }],
     },
     {
       xuid: 'xuid(b)', death_frame: 100, respawn_frame: 130, death: { x: 70, y: 20, z: 0 }, actual: { x: 10, y: 10, z: 0 }, actual_zone: 3,
-      samples: [{ frame: 100, outside_zone: 0, zones: [{ zone: 3, p: 0.9 }] }],
+      samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }],
     },
   ],
 }
@@ -57,6 +58,7 @@ function options(over: Partial<RespawnForecastOptions> = {}): RespawnForecastOpt
     doc: { frameIntervalMs: 100 },
     view: VIEW,
     enabled: true,
+    draw: 'zones',
     playerSlug: 'jgtm',
     matchId: 'm1',
     locale: 'fr',
@@ -149,7 +151,7 @@ describe('le chargement et la disponibilité', () => {
 describe('les deux peintres', () => {
   it('portent leur id, dans l’ordre teinte puis repères', () => {
     const { result } = mount()
-    expect(result.current.layers.map((l) => l.id)).toEqual(['reapparition-zones', 'reapparition-reperes'])
+    expect(result.current.layers.map((l) => l.id)).toEqual(['reapparition-fond', 'reapparition-reperes'])
   })
 
   it('lisent les mêmes morts à la même image : teinte, anneaux, étiquettes et légende, puis plus rien après l’effacement', () => {
@@ -170,6 +172,29 @@ describe('les deux peintres', () => {
     zones.paint(apres.ctx, 1_000, 1)
     reperes.paint(apres.ctx, 1_000, 1)
     expect(apres.ops).toEqual([])
+  })
+
+  it('le choix du dessin décide ce que le calque « fond » peint : teinte, disques, ou les deux', () => {
+    const paint = (draw: 'both' | 'zones' | 'points') => {
+      const { result } = mount({ draw })
+      const z = recordingContext()
+      result.current.layers[0].paint(z.ctx, 105, 1)
+      return { teintes: count(z.ops, 'fill') - count(z.ops, 'arc'), disques: count(z.ops, 'arc') }
+    }
+    // Deux joueurs morts à 105 : trois zones teintées (2 + 1) ; les disques : trois points par joueur sans probabilité nulle.
+    expect(paint('zones')).toEqual({ teintes: 3, disques: 0 })
+    expect(paint('points').disques).toBe(6)
+    expect(paint('points').teintes).toBe(0)
+    expect(paint('both').disques).toBe(6)
+    expect(paint('both').teintes).toBe(3)
+  })
+
+  it('un changement de dessin repeint avec le nouveau choix', () => {
+    const { result, rerender } = mount({ draw: 'zones' })
+    rerender(options({ draw: 'points' }))
+    const z = recordingContext()
+    result.current.layers[0].paint(z.ctx, 105, 1)
+    expect(count(z.ops, 'arc')).toBe(6)
   })
 
   it('Seul et Masquer : la probabilité du joueur mort suit le prédicat « auteur »', () => {
@@ -226,6 +251,7 @@ describe('les textes', () => {
       const lines = [
         t.title, t.hint, w.chip('X', 3), w.rank(2), w.share(0.3), w.legendCountdown('X', 3), w.appearedIn('X', 'Z'),
         w.appearedOutside('X'), w.appearedRank('2e', '30 %'), w.appearedUnlikely, w.legendScale, w.legendFooter,
+        w.legendPoints, w.legendTintUnderPoints, t.drawLabel, ...Object.values(t.draw), ...Object.values(t.drawHint),
       ]
       for (const line of lines) expect(line.toLowerCase()).not.toMatch(/pr[ée]vision|pr[ée]dict|forecast/)
     }

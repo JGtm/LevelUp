@@ -427,7 +427,7 @@ export function ReplayCanvas({
   })
   // LA PROBABILITÉ DE RÉAPPARITION d'un joueur mort : chargée seulement si le calque est allumé, teinte sous les pions et repères au-dessus.
   const respawnForecast = useReplayRespawnForecast({
-    doc, view: canvasView, enabled: settings.showRespawnForecast, playerSlug, matchId, locale, callouts: calloutZones,
+    doc, view: canvasView, enabled: settings.showRespawnForecast, draw: settings.respawnForecastDraw, playerSlug, matchId, locale, callouts: calloutZones,
     identity: { colorOfXuid, nameOfXuid }, ink: { scrim, onScrim, labelStroke, neutral: neutralInk }, shownAuthor: focusShown?.author,
   })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un

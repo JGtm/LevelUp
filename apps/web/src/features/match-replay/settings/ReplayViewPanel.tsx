@@ -52,7 +52,7 @@ const PANEL_WIDTH = 416
 /** Réexportés : les sections ont déménagé, la surface d'appel du panneau n'a pas bougé. */
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
-export type { ReplayLivesControls, ReplayLivesLayerControls } from './ReplayLivesSection'
+export type { ReplayLivesControls, ReplayLivesLayerControls, ReplayRespawnForecastControls } from './ReplayLivesSection'
 export type {
   ReplayBackgroundControls,
   ReplayBombCarrierControls,

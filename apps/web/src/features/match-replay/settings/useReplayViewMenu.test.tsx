@@ -371,6 +371,14 @@ describe('useReplayViewMenu', () => {
     expect(window.localStorage.getItem('replay-show-respawn-forecast')).toBe('false')
     expect(result.current.menu.active).toBe('combat')
     expect(mount(FULL_FILM).result.current.settings.showRespawnForecast).toBe(false)
+    // Le choix du dessin : « Zones et points » par défaut, retenu, une valeur invalide est ignorée.
+    expect(result.current.menu.panel.lives.respawnForecast).toMatchObject({ draw: 'both' })
+    act(() => result.current.menu.panel.lives.respawnForecast.onSelectDraw('points'))
+    expect(result.current.menu.panel.lives.respawnForecast.draw).toBe('points')
+    expect(window.localStorage.getItem('replay-respawn-forecast-draw')).toBe('points')
+    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('points')
+    window.localStorage.setItem('replay-respawn-forecast-draw', 'n-importe-quoi')
+    expect(mount(FULL_FILM).result.current.settings.respawnForecastDraw).toBe('both')
     expect(mount(SLAYER_FILM).result.current.menu.panel.lives.respawnForecast.available).toBe(false)
   })
 

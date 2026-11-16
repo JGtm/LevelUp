@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
-import { makeLives, renderPanel } from './replayViewPanelFixtures'
+import { makeForecast, makeLives, renderPanel } from './replayViewPanelFixtures'
 
 const EN_TITRE = 'Lives'
 
@@ -163,7 +163,7 @@ describe('ReplayLivesSection — la probabilité de réapparition', () => {
 
   it('un interrupteur du groupe, allumé ou éteint selon le réglage, qui appelle SON callback', () => {
     const onToggle = vi.fn()
-    renderPanel({ lives: makeLives({ respawnForecast: { available: true, show: true, onToggle } }) })
+    renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ show: true, onToggle }) }) })
     deplier()
     const sw = screen.getByRole('switch', { name: 'Probabilité de réapparition' })
     expect(sw).toHaveAttribute('aria-checked', 'true')
@@ -172,19 +172,19 @@ describe('ReplayLivesSection — la probabilité de réapparition', () => {
   })
 
   it('jamais proposé tant que la réponse n’est pas prête : pas de commande qui ne commande rien', () => {
-    renderPanel({ lives: makeLives({ respawnForecast: OFF }) })
+    renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ available: false }) }) })
     deplier()
     expect(screen.queryByRole('switch', { name: 'Probabilité de réapparition' })).toBeNull()
   })
 
   it('compte dans le résumé du groupe replié', () => {
-    renderPanel({ lives: makeLives({ respawnForecast: { available: true, show: true, onToggle: vi.fn() } }) })
+    renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ show: true }) }) })
     expect(screen.getByRole('button', { name: /^Vies/ }).textContent).toContain('1 sur 4')
   })
 
   it('le groupe existe pour elle seule, sans aucune trace de vie, et sans affinage « Qui » / « Quand »', () => {
     renderPanel({
-      lives: makeLives({ spawns: OFF, deaths: OFF, killers: OFF, respawnForecast: { available: true, show: true, onToggle: vi.fn() } }),
+      lives: makeLives({ spawns: OFF, deaths: OFF, killers: OFF, respawnForecast: makeForecast({ show: true }) }),
     })
     deplier()
     expect(screen.getByRole('switch', { name: 'Probabilité de réapparition' })).toBeTruthy()
@@ -193,7 +193,7 @@ describe('ReplayLivesSection — la probabilité de réapparition', () => {
   })
 
   it('allumée avec une trace éteinte : toujours pas d’affinage ; une trace allumée les rend', () => {
-    const forecast = { available: true, show: true, onToggle: vi.fn() }
+    const forecast = makeForecast({ show: true })
     const { unmount } = renderPanel({ lives: makeLives({ respawnForecast: forecast }) })
     deplier()
     expect(screen.queryByRole('radiogroup', { name: 'Qui' })).toBeNull()
@@ -204,9 +204,26 @@ describe('ReplayLivesSection — la probabilité de réapparition', () => {
     expect(screen.getByRole('radiogroup', { name: 'Qui' })).toBeTruthy()
   })
 
+  it('le choix du dessin : trois options, la courante cochée, chacune appelle le callback ; absent éteint', () => {
+    const onSelectDraw = vi.fn()
+    const { unmount } = renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ show: true, draw: 'both', onSelectDraw }) }) })
+    deplier()
+    expect(screen.getByRole('radiogroup', { name: 'Dessin' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Zones et points' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('radio', { name: 'Points' }))
+    expect(onSelectDraw).toHaveBeenCalledWith('points')
+    fireEvent.click(screen.getByRole('radio', { name: 'Zones' }))
+    expect(onSelectDraw).toHaveBeenCalledWith('zones')
+    unmount()
+    renderPanel({ lives: makeLives({ respawnForecast: makeForecast({ show: false }) }) })
+    deplier()
+    expect(screen.queryByRole('radiogroup', { name: 'Dessin' })).toBeNull()
+  })
+
   it('l’anglais : « Respawn probability »', () => {
-    renderPanel({ locale: 'en', lives: makeLives({ respawnForecast: { available: true, show: false, onToggle: vi.fn() } }) })
+    renderPanel({ locale: 'en', lives: makeLives({ respawnForecast: makeForecast({ show: false }) }) })
     fireEvent.click(screen.getByRole('button', { name: /^Lives/ }))
     expect(screen.getByRole('switch', { name: 'Respawn probability' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByRole('radiogroup', { name: 'Drawing' })).toBeNull()
   })
 })

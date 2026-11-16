@@ -49,14 +49,25 @@ type SpawnForecast struct {
 	SampleStepMs int `json:"sample_step_ms"`
 	// Zones : les zones nommees que les previsions et les points reels designent, libelle dans la
 	// langue de la requete, triees par `volume_index`.
-	Zones  []SpawnForecastZone  `json:"zones"`
-	Deaths []SpawnForecastDeath `json:"deaths"`
+	Zones []SpawnForecastZone `json:"zones"`
+	// Points sont les points candidats de la carte, servis UNE fois : chaque echantillon de chaque mort
+	// en porte la probabilite, alignee sur cette liste (`points_p`).
+	Points []SpawnForecastCandidate `json:"points"`
+	Deaths []SpawnForecastDeath     `json:"deaths"`
 }
 
 // SpawnForecastZone designe une zone nommee de la carte (`volume_index` de `/replay/callouts`).
 type SpawnForecastZone struct {
 	VolumeIndex int    `json:"volume_index"`
 	Name        string `json:"name"`
+}
+
+// SpawnForecastCandidate est un point candidat de reapparition (metres monde, au centimetre) et la zone qui
+// le nomme : `zone_index` est son indice dans `zones[]`, -1 quand aucune zone servie ne le nomme.
+type SpawnForecastCandidate struct {
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	ZoneIndex int     `json:"zone_index"`
 }
 
 // SpawnForecastPoint est une position en metres monde, au centimetre.
@@ -86,6 +97,9 @@ type SpawnForecastSample struct {
 	Frame       int                       `json:"frame"`
 	Zones       []SpawnForecastZoneChance `json:"zones"`
 	OutsideZone float64                   `json:"outside_zone"`
+	// PointsP est la probabilite de chaque point de `points`, dans le meme ordre, arrondie au millieme
+	// (somme egale a 1 a l'arrondi pres). La probabilite d'une zone est la somme de ses points.
+	PointsP []float64 `json:"points_p"`
 }
 
 // SpawnForecastZoneChance est la probabilite d'une zone, entre 0 et 1.

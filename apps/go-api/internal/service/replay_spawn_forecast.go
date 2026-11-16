@@ -257,6 +257,7 @@ func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionC
 		out.Deaths = append(out.Deaths, mortServie(m))
 	}
 	out.Zones = zonesDeLaPrevision(res, calc.zones, i18n.FromContext(ctx))
+	out.Points = pointsDeLaPrevision(res, out.Zones)
 	if s.demoIndexPath != "" {
 		if err := masquerPrevisionDemo(s.demoIndexPath, &out); err != nil {
 			slog.ErrorContext(ctx, "rejeu demo : masque des joueurs impossible, prevision refusee", "err", err)
@@ -281,6 +282,7 @@ func mortServie(m tactical.PrevisionDeMort) replaydoc.SpawnForecastDeath {
 	for _, e := range m.Echantillons {
 		smp := replaydoc.SpawnForecastSample{
 			Frame: e.Frame, OutsideZone: e.HorsZone, Zones: make([]replaydoc.SpawnForecastZoneChance, 0, len(e.Zones)),
+			PointsP: e.PointsP,
 		}
 		for _, z := range e.Zones {
 			smp.Zones = append(smp.Zones, replaydoc.SpawnForecastZoneChance{Zone: z.Zone, P: z.P})
@@ -317,6 +319,25 @@ func zonesDeLaPrevision(res tactical.PrevisionsDuMatch, zones []domain.ZoneNomme
 		}
 	}
 	sort.Slice(out, func(a, b int) bool { return out[a].VolumeIndex < out[b].VolumeIndex })
+	return out
+}
+
+// pointsDeLaPrevision sert les points candidats une fois, au centimetre, avec l'indice dans `zones` de la
+// zone qui les nomme (-1 si aucune zone servie ne les nomme). L'ordre est celui des `points_p`.
+func pointsDeLaPrevision(res tactical.PrevisionsDuMatch, zones []replaydoc.SpawnForecastZone) []replaydoc.SpawnForecastCandidate {
+	indice := make(map[int]int, len(zones))
+	for i, z := range zones {
+		indice[z.VolumeIndex] = i
+	}
+	out := make([]replaydoc.SpawnForecastCandidate, len(res.Points))
+	for i, p := range res.Points {
+		pt := pointServi(p.Pos.X, p.Pos.Y, 0)
+		zi, ok := indice[p.Zone]
+		if p.Zone < 0 || !ok {
+			zi = -1
+		}
+		out[i] = replaydoc.SpawnForecastCandidate{X: pt.X, Y: pt.Y, ZoneIndex: zi}
+	}
 	return out
 }
 

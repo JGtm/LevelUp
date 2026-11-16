@@ -104,7 +104,7 @@ const ORDRE_ATTENDU = [
   'plan-murs',
   'chaleur',
   'zones-nommees',
-  'reapparition-zones',
+  'reapparition-fond',
   'objectifs-cuits',
   'projectiles',
   'socles-armes',
@@ -165,8 +165,8 @@ describe('sceneLayers — l’ordre de la scène', () => {
     expect(ordre.indexOf('tirs')).toBeLessThan(ordre.indexOf('morts'))
     // La probabilité de réapparition : la teinte avec les zones, sous tout ce qui bouge ; les repères
     // (anneau, point réel, légende) au-dessus des pions et des morts, sous la mise en valeur d'un frag.
-    expect(ordre.indexOf('zones-nommees')).toBeLessThan(ordre.indexOf('reapparition-zones'))
-    expect(ordre.indexOf('reapparition-zones')).toBeLessThan(ordre.indexOf('trajectoires'))
+    expect(ordre.indexOf('zones-nommees')).toBeLessThan(ordre.indexOf('reapparition-fond'))
+    expect(ordre.indexOf('reapparition-fond')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('reapparition-reperes'))
     expect(ordre.indexOf('reapparition-reperes')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
   })
@@ -231,7 +231,7 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
 })
 
 describe('sceneLayers — la probabilité de réapparition : un interrupteur, deux calques', () => {
-  const DEUX: ReplayLayerId[] = ['reapparition-zones', 'reapparition-reperes']
+  const DEUX: ReplayLayerId[] = ['reapparition-fond', 'reapparition-reperes']
 
   it('interrupteur coupé : la teinte et les repères se retirent ensemble, rien d’autre', () => {
     const complet = peints(scene())

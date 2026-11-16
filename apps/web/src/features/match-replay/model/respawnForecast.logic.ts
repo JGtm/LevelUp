@@ -22,6 +22,14 @@ import type { ReplaySpawnForecast, ReplaySpawnForecastSample } from '@/lib/api/t
 
 import type { XY } from '../../../lib/replay/replayLogic'
 
+/**
+ * CE QUE LE CALQUE DESSINE (réglage « Dessin » du bouton « Vue ») : les zones teintées ET les points pesés par-dessus
+ * (défaut, maquette validée le 2026-11-16), les zones seules (la teinte porte alors la lecture) ou les points seuls.
+ */
+export const FORECAST_DRAWS = ['both', 'zones', 'points'] as const
+export type ForecastDraw = (typeof FORECAST_DRAWS)[number]
+export const DEFAULT_FORECAST_DRAW: ForecastDraw = 'both'
+
 /** Combien de zones portent une étiquette pendant le compte à rebours. */
 export const FORECAST_TOP_ZONES = 3
 /** Durée d'affichage du point réel après la réapparition, puis tout s'efface. */
@@ -40,6 +48,13 @@ export interface ForecastSample {
   frame: number
   /** De la plus à la moins probable, probabilités strictement positives. */
   zones: readonly ForecastZoneChance[]
+  /** Probabilité de chaque point candidat, alignée sur `SpawnForecastReady.points` ; vide si la réponse n'en porte pas d'alignée. */
+  pointsP: readonly number[]
+}
+
+/** Un point candidat de la carte (mètres monde) et la zone qui le nomme (`volume_index`), `null` si aucune zone servie. */
+export interface ForecastPoint extends XY {
+  zone: number | null
 }
 
 export interface ForecastDeath {
@@ -62,6 +77,8 @@ export interface ForecastZoneName {
 /** La réponse du serveur, nullabilité résolue : il y a au moins une mort à montrer. */
 export interface SpawnForecastReady {
   zones: readonly ForecastZoneName[]
+  /** Les points candidats, servis une fois pour tous les échantillons. */
+  points: readonly ForecastPoint[]
   /** Par image de mort croissante. */
   deaths: readonly ForecastDeath[]
 }
@@ -73,6 +90,8 @@ export interface ForecastMoment {
   death: ForecastDeath
   phase: ForecastPhase
   sample: ForecastSample
+  /** Les points candidats (ceux de la réponse) : `sample.pointsP` en donne la probabilité. */
+  points: readonly ForecastPoint[]
   /** Les trois premières zones de l'échantillon. */
   top: readonly ForecastZoneChance[]
   /** Probabilité de la première zone (0 sans zone). */
@@ -96,9 +115,11 @@ export interface ForecastMoment {
  */
 export function normalizeSpawnForecast(res: ReplaySpawnForecast | null | undefined): SpawnForecastReady | null {
   if (!res || res.status !== 'ready') return null
+  const zones = (res.zones ?? []).map((z) => ({ volumeIndex: z.volume_index, name: z.name }))
+  const points = normalizePoints(res.points, zones)
   const deaths: ForecastDeath[] = []
   for (const d of res.deaths ?? []) {
-    const samples = normalizeSamples(d.samples)
+    const samples = normalizeSamples(d.samples, points.length)
     if (samples.length === 0 || !(d.respawn_frame > d.death_frame)) continue
     if (![d.death.x, d.death.y, d.actual.x, d.actual.y].every(Number.isFinite)) continue
     deaths.push({
@@ -113,17 +134,28 @@ export function normalizeSpawnForecast(res: ReplaySpawnForecast | null | undefin
   }
   if (deaths.length === 0) return null
   deaths.sort((a, b) => a.deathFrame - b.deathFrame)
-  return { zones: (res.zones ?? []).map((z) => ({ volumeIndex: z.volume_index, name: z.name })), deaths }
+  return { zones, points, deaths }
 }
 
-function normalizeSamples(raw: readonly ReplaySpawnForecastSample[] | null): ForecastSample[] {
+/** Les points candidats : `zone_index` (indice dans `zones[]`, -1 si aucun) devient le `volume_index` de la zone. */
+function normalizePoints(raw: ReplaySpawnForecast['points'], zones: readonly ForecastZoneName[]): ForecastPoint[] {
+  // Aucun point n'est écarté : `points_p` est aligné sur eux, un décalage fausserait chaque disque.
+  return (raw ?? []).map((p) => ({ x: p.x, y: p.y, zone: zones[p.zone_index]?.volumeIndex ?? null }))
+}
+
+/**
+ * Les échantillons d'une mort. Une liste de probabilités de points qui n'est pas alignée sur les points
+ * (longueur différente) ne se lit pas : elle est écartée, jamais devinée.
+ */
+function normalizeSamples(raw: readonly ReplaySpawnForecastSample[] | null, pointCount: number): ForecastSample[] {
   const out: ForecastSample[] = []
   for (const s of raw ?? []) {
     const zones = (s.zones ?? [])
       .filter((z) => Number.isFinite(z.p) && z.p > 0)
       .map((z) => ({ zone: z.zone, p: z.p }))
       .sort((a, b) => b.p - a.p || a.zone - b.zone)
-    out.push({ frame: s.frame, zones })
+    const pointsP = (s.points_p ?? []).length === pointCount ? [...(s.points_p ?? [])] : []
+    out.push({ frame: s.frame, zones, pointsP })
   }
   return out.sort((a, b) => a.frame - b.frame)
 }
@@ -161,13 +193,18 @@ export function revealOpacity(ageMs: number): number {
  * momentOf lit UNE mort à une image : `null` avant la mort ou après l'effacement. `frameMs` est la
  * durée d'une image du document.
  */
-export function momentOf(death: ForecastDeath, frame: number, frameMs: number): ForecastMoment | null {
+export function momentOf(
+  death: ForecastDeath,
+  frame: number,
+  frameMs: number,
+  points: readonly ForecastPoint[] = NO_POINTS,
+): ForecastMoment | null {
   if (frame < death.deathFrame) return null
   if (frame < death.respawnFrame) {
     const sample = sampleAt(death, frame)
     const span = death.respawnFrame - death.deathFrame
     return {
-      death, phase: 'countdown', sample,
+      death, phase: 'countdown', sample, points,
       top: sample.zones.slice(0, FORECAST_TOP_ZONES),
       peak: sample.zones[0]?.p ?? 0,
       remainingMs: (death.respawnFrame - frame) * frameMs,
@@ -180,7 +217,7 @@ export function momentOf(death: ForecastDeath, frame: number, frameMs: number): 
   const sample = lastSample(death)
   const rank = rankOfZone(sample, death.actualZone)
   return {
-    death, phase: 'reveal', sample,
+    death, phase: 'reveal', sample, points,
     top: sample.zones.slice(0, FORECAST_TOP_ZONES),
     peak: sample.zones[0]?.p ?? 0,
     remainingMs: 0, fraction: 0,
@@ -203,7 +240,7 @@ export function momentsAt(
   const out: ForecastMoment[] = []
   for (const death of forecast.deaths) {
     if (shownAuthor && !shownAuthor(death.xuid)) continue
-    const m = momentOf(death, frame, frameMs)
+    const m = momentOf(death, frame, frameMs, forecast.points)
     if (m) out.push(m)
   }
   return out
@@ -224,10 +261,33 @@ export function primaryMoment(moments: readonly ForecastMoment[]): ForecastMomen
   return best
 }
 
-/** L'opacité de remplissage d'une zone teintée : un fond léger, qui monte avec sa part de la première zone. */
+const NO_POINTS: readonly ForecastPoint[] = []
+
+/**
+ * L'opacité de remplissage d'une zone teintée : un fond léger qui monte avec sa part de la première zone. Sous
+ * les points pesés (« Zones et points »), la teinte reste plus légère : ce sont les disques qui portent la lecture.
+ */
 export const TINT_BASE_ALPHA = 0.05
 export const TINT_AMPLITUDE_ALPHA = 0.55
+export const TINT_BASE_ALPHA_UNDER_POINTS = 0.03
+export const TINT_AMPLITUDE_ALPHA_UNDER_POINTS = 0.3
 
-export function tintAlpha(p: number, peak: number): number {
-  return TINT_BASE_ALPHA + (peak > 0 ? TINT_AMPLITUDE_ALPHA * Math.min(1, p / peak) : 0)
+export function tintAlpha(p: number, peak: number, draw: ForecastDraw = 'zones'): number {
+  const under = draw === 'both'
+  const base = under ? TINT_BASE_ALPHA_UNDER_POINTS : TINT_BASE_ALPHA
+  const amplitude = under ? TINT_AMPLITUDE_ALPHA_UNDER_POINTS : TINT_AMPLITUDE_ALPHA
+  return base + (peak > 0 ? amplitude * Math.min(1, p / peak) : 0)
 }
+
+/** Le disque d'un point pesé : son rayon (pixels d'écran) suit la racine de sa probabilité, comme la maquette. */
+export const DISC_BASE_RADIUS_PX = 2.5
+export const DISC_SPAN_RADIUS_PX = 21
+/** En dessous, un point est trop improbable pour un disque : il ne se dessine pas. */
+export const DISC_MIN_P = 0.001
+
+export function discRadiusPx(p: number): number {
+  return DISC_BASE_RADIUS_PX + DISC_SPAN_RADIUS_PX * Math.sqrt(Math.max(0, p))
+}
+
+/** Les trois repères de l'échelle des disques de la légende, en probabilités. */
+export const DISC_SCALE_P = [0.05, 0.2, 0.45] as const

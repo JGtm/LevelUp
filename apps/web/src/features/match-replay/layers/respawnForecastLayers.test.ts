@@ -17,16 +17,20 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import type { CanvasView } from '../model/replayView'
 import {
+  DISC_MIN_P,
+  discRadiusPx,
   momentsAt,
   normalizeSpawnForecast,
   primaryMoment,
   REVEAL_HOLD_MS,
   tintAlpha,
+  type ForecastDraw,
   type SpawnForecastReady,
 } from '../model/respawnForecast.logic'
 import { count, recordingContext, type CanvasOp } from '../test/recordingContext'
 import { drawForecastLegend } from './respawnForecastLegend'
 import { drawForecastMarks } from './respawnForecastMarks'
+import { drawForecastPoints } from './respawnForecastPoints'
 import type { ForecastPaint, ForecastWording, ForecastZone } from './respawnForecastPaint'
 import { drawForecastZones, type ZoneClip, type ZonesPaint } from './respawnForecastZones'
 
@@ -66,6 +70,8 @@ const WORDING: ForecastWording = {
   appearedOutside: (name) => `${name} apparu hors zone nommée`,
   appearedRank: (rank, share) => `${rank} · ${share}`,
   appearedUnlikely: 'hors des zones probables',
+  legendPoints: 'Disque : probabilité du point',
+  legendTintUnderPoints: 'Teinte légère : probabilité de la zone',
   legendScale: 'Teinte : probabilité de la zone',
   legendFooter: 'Mise à jour chaque seconde',
 }
@@ -76,6 +82,7 @@ const COLORS: Record<string, string> = { 'xuid(a)': 'ink-a', 'xuid(b)': 'ink-b' 
 function paint(over: Partial<ForecastPaint> = {}): ForecastPaint {
   return {
     k: 1,
+    draw: 'zones',
     ink: { panel: 'ink-panel', onPanel: 'ink-on-panel', underlay: 'ink-under', neutral: 'ink-neutral' },
     wording: WORDING,
     zones: ZONES,
@@ -90,18 +97,23 @@ function forecast(): SpawnForecastReady {
   const f = normalizeSpawnForecast({
     status: 'ready', candidates: 30, discarded_deaths: 0, matches_on_map: 4, sample_step_ms: 1000,
     zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }, { volume_index: 4, name: 'Grenier' }, { volume_index: 9, name: 'Hydro' }],
+    // Un point par zone (zone_index 0 à 3), plus un point hors de toute zone servie (-1).
+    points: [
+      { x: 10, y: 10, zone_index: 0 }, { x: 50, y: 50, zone_index: 1 }, { x: 75, y: 10, zone_index: 2 },
+      { x: 10, y: 75, zone_index: 3 }, { x: 90, y: 90, zone_index: -1 },
+    ],
     deaths: [
       {
         xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20, z: 0 }, actual: { x: 50, y: 60, z: 0 }, actual_zone: 7,
         samples: [
-          { frame: 100, outside_zone: 0, zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
-          { frame: 110, outside_zone: 0, zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
-          { frame: 120, outside_zone: 0, zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
+          { frame: 100, outside_zone: 0.05, points_p: [0.5, 0.3, 0.1, 0.05, 0.05], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
+          { frame: 110, outside_zone: 0.2, points_p: [0.2, 0.6, 0, 0, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
+          { frame: 120, outside_zone: 0.2, points_p: [0.1, 0.7, 0, 0, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
         ],
       },
       {
         xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, death: { x: 80, y: 10, z: 0 }, actual: { x: 80, y: 10, z: 0 }, actual_zone: 4,
-        samples: [{ frame: 110, outside_zone: 0, zones: [{ zone: 4, p: 0.8 }] }],
+        samples: [{ frame: 110, outside_zone: 0.2, points_p: [0, 0, 0.8, 0, 0.2], zones: [{ zone: 4, p: 0.8 }] }],
       },
     ],
   })
@@ -119,21 +131,29 @@ function context() {
 
 interface Rendu {
   zones: CanvasOp[]
+  points: CanvasOp[]
   marks: CanvasOp[]
   legend: CanvasOp[]
 }
 
 /** Les trois peintres à une image, chacun sur son contexte : ce que la scène aurait émis. */
-function render(f: SpawnForecastReady, frame: number, over: { shown?: (x: string) => boolean; p?: ForecastPaint; clip?: ZoneClip } = {}): Rendu {
+function render(
+  f: SpawnForecastReady,
+  frame: number,
+  over: { shown?: (x: string) => boolean; p?: ForecastPaint; clip?: ZoneClip; draw?: ForecastDraw } = {},
+): Rendu {
   const moments = momentsAt(f, frame, FRAME_MS, over.shown)
-  const p = over.p ?? paint()
+  const p = over.p ?? paint({ draw: over.draw ?? 'zones' })
   const z = context()
-  drawForecastZones(z.ctx, moments, VIEW, { ...p, clip: over.clip } satisfies ZonesPaint)
+  // Ce que le calque « fond » fait : la teinte sauf en « Points », les disques sauf en « Zones ».
+  if (p.draw !== 'points') drawForecastZones(z.ctx, moments, VIEW, { ...p, clip: over.clip } satisfies ZonesPaint)
+  const d = context()
+  if (p.draw !== 'zones') drawForecastPoints(d.ctx, moments, VIEW, p)
   const m = context()
   drawForecastMarks(m.ctx, moments, VIEW, p)
   const l = context()
   drawForecastLegend(l.ctx, primaryMoment(moments), VIEW, p)
-  return { zones: z.ops, marks: m.ops, legend: l.ops }
+  return { zones: z.ops, points: d.ops, marks: m.ops, legend: l.ops }
 }
 
 const texts = (ops: CanvasOp[]) => ops.filter((o) => o.op === 'fillText').map((o) => String(o.args[0]))
@@ -144,6 +164,10 @@ describe('la probabilité de réapparition, lue à des instants successifs', () 
   const f = forecast()
 
   it('AVANT la mort : aucun peintre n’émet rien', () => {
+    for (const draw of ['both', 'zones', 'points'] as const) {
+      const avant = render(f, 90, { draw })
+      expect([avant.zones, avant.points, avant.marks, avant.legend]).toEqual([[], [], [], []])
+    }
     const r = render(f, 90)
     expect(r.zones).toEqual([])
     expect(r.marks).toEqual([])
@@ -338,8 +362,8 @@ describe('encres et zones', () => {
   it('un point réel hors de toute zone nommée : étiquette sans zone', () => {
     const horsZone = normalizeSpawnForecast({
       status: 'ready', candidates: 3, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
-      zones: [{ volume_index: 3, name: 'Fosse' }],
-      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 2, y: 2, z: 0 }, samples: [{ frame: 100, outside_zone: 0.5, zones: [{ zone: 3, p: 0.5 }] }] }],
+      zones: [{ volume_index: 3, name: 'Fosse' }], points: null,
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 2, y: 2, z: 0 }, samples: [{ frame: 100, outside_zone: 0.5, points_p: null, zones: [{ zone: 3, p: 0.5 }] }] }],
     })!
     expect(texts(render(horsZone, 131).marks)).toContain('Brume apparu hors zone nommée')
   })
@@ -347,8 +371,8 @@ describe('encres et zones', () => {
   it('un point réel hors des zones probables : l’étiquette le dit', () => {
     const horsProbables = normalizeSpawnForecast({
       status: 'ready', candidates: 3, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
-      zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }],
-      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 50, y: 50, z: 0 }, actual_zone: 7, samples: [{ frame: 100, outside_zone: 0, zones: [{ zone: 3, p: 1 }] }] }],
+      zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }], points: null,
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 50, y: 50, z: 0 }, actual_zone: 7, samples: [{ frame: 100, outside_zone: 0, points_p: null, zones: [{ zone: 3, p: 1 }] }] }],
     })!
     expect(texts(render(horsProbables, 131).marks)).toContain('hors des zones probables')
   })
@@ -356,6 +380,107 @@ describe('encres et zones', () => {
   it('les tailles suivent la densité de la scène', () => {
     const k1 = render(f, 105).marks.filter((o) => o.op === 'arc').map((o) => (o.args as number[])[2])
     const k2 = render(f, 105, { p: paint({ k: 2 }) }).marks.filter((o) => o.op === 'arc').map((o) => (o.args as number[])[2])
+    expect(k2[0]).toBeCloseTo(k1[0] * 2, 9)
+  })
+})
+
+describe('le choix du dessin : zones et points, zones, points — lu à des instants successifs', () => {
+  const f = forecast()
+  const seul = (x: string) => x === 'xuid(a)'
+  const rayons = (ops: CanvasOp[]) => arcs(ops).map((o) => (o.args as number[])[2])
+  const attendus = (ps: number[]) => ps.map((p) => +discRadiusPx(p).toFixed(6))
+
+  it('« Zones et points » (défaut) : teinte légère ET disques pesés par-dessus, légende des deux', () => {
+    const r = render(f, 105, { draw: 'both' })
+    // La teinte reste un fond léger : les opacités « sous les points », plus faibles que celles de « Zones ».
+    const tint = alphas(r.zones).filter((a) => a > 0 && a < 1).map((a) => +a.toFixed(4))
+    expect(tint).toEqual([0.5, 0.3, 0.1, 0.05].map((p) => +tintAlpha(p, 0.5, 'both').toFixed(4)))
+    expect(Math.max(...tint)).toBeLessThan(Math.max(...alphas(render(f, 105, { draw: 'zones' }).zones).filter((a) => a < 1)))
+    // Un disque par point, de rayon suivant la probabilité du point (les cinq points portent une probabilité).
+    expect(rayons(r.points).map((x) => +x.toFixed(6))).toEqual(attendus([0.5, 0.3, 0.1, 0.05, 0.05]))
+    expect(count(r.points, 'fill')).toBe(5)
+    expect(count(r.points, 'stroke')).toBe(5)
+    expect(texts(r.legend)).toContain('Disque : probabilité du point')
+    expect(texts(r.legend)).toContain('Teinte légère : probabilité de la zone')
+    expect(texts(r.legend)).not.toContain('Teinte : probabilité de la zone')
+  })
+
+  it('« Zones » : la teinte seule, aucun disque, légende de la teinte avec ses bornes', () => {
+    const r = render(f, 105, { draw: 'zones' })
+    expect(count(r.zones, 'fill')).toBe(4)
+    expect(r.points).toEqual([])
+    expect(texts(r.legend)).toContain('Teinte : probabilité de la zone')
+    expect(texts(r.legend)).toContain('50 %')
+    expect(texts(r.legend)).not.toContain('Disque : probabilité du point')
+  })
+
+  it('« Points » : les disques seuls, aucune teinte, légende des disques', () => {
+    const r = render(f, 105, { draw: 'points' })
+    expect(r.zones).toEqual([])
+    expect(count(r.points, 'arc')).toBe(5)
+    expect(texts(r.legend)).toContain('Disque : probabilité du point')
+    expect(texts(r.legend)).not.toContain('Teinte : probabilité de la zone')
+    expect(texts(r.legend)).not.toContain('Teinte légère : probabilité de la zone')
+  })
+
+  it('les disques SUIVENT l’échantillon : un point sans probabilité disparaît, les rayons changent à la seconde', () => {
+    // À l'image 112, l'échantillon est celui de 110 : trois points seulement portent une probabilité.
+    const r = render(f, 112, { draw: 'points', shown: seul })
+    expect(rayons(r.points).map((x) => +x.toFixed(6))).toEqual(attendus([0.2, 0.6, 0.2]))
+    // À 125 : celui de 120, « Pont » grossit.
+    expect(rayons(render(f, 125, { draw: 'points', shown: seul }).points)[1]).toBeGreaterThan(rayons(r.points)[1])
+    expect(DISC_MIN_P).toBeGreaterThan(0)
+  })
+
+  it('À LA RÉAPPARITION : disques estompés, équerres sur le point réel, quel que soit le choix', () => {
+    for (const draw of ['both', 'points'] as const) {
+      const avant = alphas(render(f, 129, { draw, shown: seul }).points)
+      const apres = alphas(render(f, 131, { draw, shown: seul }).points)
+      expect(Math.max(...apres.filter((a) => a < 1))).toBeLessThan(Math.max(...avant.filter((a) => a < 1)))
+      expect(Math.max(...apres.filter((a) => a < 1))).toBeLessThan(0.2)
+    }
+    for (const draw of ['both', 'zones', 'points'] as const) {
+      const r = render(f, 131, { draw, shown: seul })
+      expect(texts(r.marks)).toContain('Brume apparu en Pont')
+      // Quatre équerres : le départ de chaque polyligne d'angle (le rond fin du point s'y ajoute avec un arc).
+      expect(count(r.marks, 'moveTo')).toBeGreaterThanOrEqual(4)
+    }
+  })
+
+  it('le fondu puis l’effacement : plus aucun disque après la tenue', () => {
+    const apres = 130 + REVEAL_HOLD_MS / FRAME_MS + 1
+    for (const draw of ['both', 'zones', 'points'] as const) {
+      const r = render(f, apres, { draw, shown: seul })
+      expect([r.zones, r.points, r.marks, r.legend]).toEqual([[], [], [], []])
+    }
+    const plein = alphas(render(f, 131, { draw: 'points', shown: seul }).points).filter((a) => a < 1)
+    const fondu = alphas(render(f, 130 + 2_600 / FRAME_MS, { draw: 'points', shown: seul }).points).filter((a) => a < 1)
+    expect(Math.max(...fondu)).toBeLessThan(Math.max(...plein))
+  })
+
+  it('Seul / Masquer retirent aussi les disques du joueur mort', () => {
+    const tous = render(f, 115, { draw: 'points' })
+    expect(count(tous.points, 'arc')).toBe(3 + 2)
+    expect(count(render(f, 115, { draw: 'points', shown: seul }).points, 'arc')).toBe(3)
+    expect(count(render(f, 115, { draw: 'points', shown: (x) => x === 'xuid(b)' }).points, 'arc')).toBe(2)
+    expect(count(render(f, 115, { draw: 'points', shown: (x) => x !== 'xuid(a)' && x !== 'xuid(b)' }).points, 'arc')).toBe(0)
+  })
+
+  it('une réponse sans probabilité de point alignée : aucun disque, la teinte reste', () => {
+    const sansPoints = normalizeSpawnForecast({
+      status: 'ready', candidates: 2, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
+      zones: [{ volume_index: 3, name: 'Fosse' }], points: [{ x: 1, y: 1, zone_index: 0 }, { x: 2, y: 2, zone_index: -1 }],
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 2, y: 2, z: 0 }, actual_zone: 3,
+        samples: [{ frame: 100, outside_zone: 0, points_p: [1], zones: [{ zone: 3, p: 1 }] }] }],
+    })!
+    const r = render(sansPoints, 105, { draw: 'both' })
+    expect(r.points).toEqual([])
+    expect(count(r.zones, 'fill')).toBe(1)
+  })
+
+  it('les rayons suivent la densité de la scène', () => {
+    const k1 = rayons(render(f, 105, { draw: 'points' }).points)
+    const k2 = rayons(render(f, 105, { draw: 'points', p: paint({ draw: 'points', k: 2 }) }).points)
     expect(k2[0]).toBeCloseTo(k1[0] * 2, 9)
   })
 })

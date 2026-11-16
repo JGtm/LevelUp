@@ -69,7 +69,7 @@ function paintTints(ctx: CanvasRenderingContext2D, moments: readonly ForecastMom
       const zone = p.zones.get(z.zone)
       if (!hasShape(zone?.shape)) continue
       traceZone(ctx, zone.shape, view)
-      ctx.globalAlpha = tintAlpha(z.p, m.peak) * factor
+      ctx.globalAlpha = tintAlpha(z.p, m.peak, p.draw) * factor
       ctx.fill('evenodd')
     }
     if (m.phase !== 'reveal' || m.death.actualZone === null) continue

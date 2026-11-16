@@ -18,6 +18,7 @@
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { LIVES_WHEN, LIVES_WHO, type LivesWhen, type LivesWho } from '../model/livesMarks'
+import { FORECAST_DRAWS, type ForecastDraw } from '../model/respawnForecast.logic'
 import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
 import { usePersistedFlag } from './usePersistedFlag'
 
@@ -28,13 +29,19 @@ export interface ReplayLivesLayerControls {
   onToggle: () => void
 }
 
+/** L'interrupteur de la probabilité de réapparition et son choix de dessin (zones et points, zones, points). */
+export interface ReplayRespawnForecastControls extends ReplayLivesLayerControls {
+  draw: ForecastDraw
+  onSelectDraw: (draw: ForecastDraw) => void
+}
+
 /** Ce que le panneau sait du groupe « Vies ». */
 export interface ReplayLivesControls {
   spawns: ReplayLivesLayerControls
   deaths: ReplayLivesLayerControls
   killers: ReplayLivesLayerControls
   /** La probabilité de réapparition : un interrupteur, deux calques (teinte, repères). */
-  respawnForecast: ReplayLivesLayerControls
+  respawnForecast: ReplayRespawnForecastControls
   who: LivesWho
   onSelectWho: (who: LivesWho) => void
   /** Il y a un joueur suivi dans ce match : l'option « Joueur suivi » a un sens. */
@@ -124,12 +131,22 @@ export function LivesSection({ locale, lives }: { locale: ReplayLocale; lives: R
             </div>
           )}
           {forecastShown && (
-            <SettingsToggle
-              label={forecast.title}
-              pressed={lives.respawnForecast.show}
-              onToggle={lives.respawnForecast.onToggle}
-              hint={forecast.hint}
-            />
+            <>
+              <SettingsToggle
+                label={forecast.title}
+                pressed={lives.respawnForecast.show}
+                onToggle={lives.respawnForecast.onToggle}
+                hint={forecast.hint}
+              />
+              {lives.respawnForecast.show && (
+                <SettingsSegments
+                  label={forecast.drawLabel}
+                  value={lives.respawnForecast.draw}
+                  options={FORECAST_DRAWS.map((d) => ({ value: d, label: forecast.draw[d], hint: forecast.drawHint[d] }))}
+                  onSelect={lives.respawnForecast.onSelectDraw}
+                />
+              )}
+            </>
           )}
           {tracesOn > 0 && <Refinements locale={locale} c={lives} />}
         </>

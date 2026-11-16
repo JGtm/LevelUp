@@ -12893,6 +12893,7 @@ export interface components {
             message?: string;
             model?: string;
             model_date?: string;
+            points: components["schemas"]["SpawnForecastCandidate"][] | null;
             /** @enum {string} */
             reason?: "no_model" | "map_unknown" | "not_enough_matches" | "no_zone" | "no_respawn";
             /** Format: int64 */
@@ -12900,6 +12901,14 @@ export interface components {
             /** @enum {string} */
             status: "ready" | "unavailable";
             zones: components["schemas"]["SpawnForecastZone"][] | null;
+        };
+        SpawnForecastCandidate: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: int64 */
+            zone_index: number;
         };
         SpawnForecastDeath: {
             actual: components["schemas"]["SpawnForecastPoint"];
@@ -12926,6 +12935,7 @@ export interface components {
             frame: number;
             /** Format: double */
             outside_zone: number;
+            points_p: number[] | null;
             zones: components["schemas"]["SpawnForecastZoneChance"][] | null;
         };
         SpawnForecastZone: {

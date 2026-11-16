@@ -392,9 +392,14 @@ Gate C : tests verts, `make check-types`, `make test-web`, contrôle à l'écran
       (`respawnForecast.i18n.ts`). Seul / Masquer par `focusFilter.author`. Rognage des zones au plan : paramètre optionnel
       `clipMask` de `useReplayRespawnForecast` (à brancher dans `ReplayCanvas.tsx` quand la piste C livre son helper). Test
       de lecture : `respawnForecastLayers.test.ts` fait défiler l'instant (avant la mort, pendant, à l'apparition, après
-      l'effacement). **`[!]` partiel, justifié** : le choix « Zones et points / Zones / Points » et les points pesés de la
-      maquette ne sont pas livrés, la route D.2 ne sert pas de poids par point (zones seulement) ; la teinte porte seule la
-      lecture. Reprise : ajouter à `SpawnForecastSample` les points candidats et leur poids, puis le choix dans « Vue ».
+      l'effacement). **Points pesés (même branche, demande du pilote du 2026-11-16, plus de report)** : la route sert les
+      points candidats UNE fois (`points[{x, y, zone_index}]`, `zone_index` = indice dans `zones[]`, -1 sinon) et, par
+      échantillon, leurs probabilités alignées (`samples[].points_p`, millième, somme 1 à l'arrondi près ; la probabilité d'une zone
+      reste la somme de ses points, testée). Web : disques pesés (rayon = 2,5 + 21 racine(p) px) par-dessus la teinte légère, disques
+      estompés et équerres sur le point réel à l'apparition, légende adaptée, choix « Zones et points » (défaut) / « Zones » /
+      « Points » dans « Vue » › « Vies » (clé `replay-respawn-forecast-draw`) ; calque renommé `reapparition-fond`. Test de
+      lecture étendu aux trois choix. Mesure va_behemoth (50 matchs, 95 morts, 857 échantillons, 135 points) : 823 Ko de JSON,
+      124 Ko en gzip (247 Ko et 28 Ko sans les points), 0,46 s.
 - [ ] D.4 Vérification EN LECTURE (pas seulement à l'arrêt), sur trois rejeux choisis par le user.
 
 Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user en lecture.

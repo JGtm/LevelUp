@@ -2,7 +2,7 @@
 
 **v8.3 — En préparation**
 
-- **Où un joueur mort a des chances de réapparaître** — sur la carte du rejeu, pendant le compte à rebours d’un joueur mort, les zones où il avait le plus de chances de revenir se teintent, les trois plus probables portent leur part, et un anneau autour de la croix se vide jusqu’à la réapparition ; puis le point réel se verrouille avec sa zone et son rang, et tout s’efface après environ 3 secondes. Interrupteur dans le bouton « Vue », groupe « Vies » (« Probabilité de réapparition », allumée par défaut) ; elle suit Seul et Masquer
+- **Où un joueur mort a des chances de réapparaître** — sur la carte du rejeu, pendant le compte à rebours d’un joueur mort, les zones où il avait le plus de chances de revenir se teintent, les trois plus probables portent leur part, et un anneau autour de la croix se vide jusqu’à la réapparition ; puis le point réel se verrouille avec sa zone et son rang, et tout s’efface après environ 3 secondes. Les points de réapparition pesés se dessinent par-dessus la teinte (choix Zones et points / Zones / Points). Interrupteur dans le bouton « Vue », groupe « Vies » (« Probabilité de réapparition », allumée par défaut) ; elle suit Seul et Masquer
 - **Touches et dégâts lus dans le film** — le film donne désormais chaque touche et les dégâts qu'elle a faits, au bouclier et au corps, ainsi que le compte à rebours avant le retour d'un drapeau lâché. Le rejeu ne les affiche pas encore ; ils ne s'afficheront que pour les joueurs dont le film est assez complet pour les compter de façon fiable
 - **Chaque joueur à sa place** — la place de chaque joueur dans le film est lue dans les listes du jeu
 

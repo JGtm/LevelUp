@@ -26,12 +26,14 @@ import type { CanvasView } from '../model/replayView'
 import {
   momentsAt,
   normalizeSpawnForecast,
+  type ForecastDraw,
   primaryMoment,
   type ForecastMoment,
 } from '../model/respawnForecast.logic'
 import type { NamedLayerPainter } from './replayCompose'
 import { drawForecastLegend } from './respawnForecastLegend'
 import { drawForecastMarks } from './respawnForecastMarks'
+import { drawForecastPoints } from './respawnForecastPoints'
 import type { ForecastInk, ForecastPaint, ForecastWording, ForecastZone } from './respawnForecastPaint'
 import { createForecastScratch, drawForecastZones, type ZoneClip, type ZonesPaint } from './respawnForecastZones'
 import type { SlotIdentity } from './useSlotIdentity'
@@ -46,6 +48,8 @@ export interface RespawnForecastOptions {
   view: CanvasView
   /** L'interrupteur du calque : faux = rien n'est chargé ni peint. */
   enabled: boolean
+  /** Ce que le calque dessine : zones et points, zones seules, points seuls. */
+  draw: ForecastDraw
   /** Le match dont on lit la probabilité ; absents = pas de calque (page sans match). */
   playerSlug?: string
   matchId?: string
@@ -63,7 +67,7 @@ export interface RespawnForecastOptions {
 
 export interface ReplayRespawnForecast {
   /** Les deux peintres, à passer à `bindPainters`. */
-  layers: readonly [NamedLayerPainter<'reapparition-zones'>, NamedLayerPainter<'reapparition-reperes'>]
+  layers: readonly [NamedLayerPainter<'reapparition-fond'>, NamedLayerPainter<'reapparition-reperes'>]
   /** L'interrupteur du calque. */
   show: boolean
   /** La réponse est prête et la carte a de quoi teinter : le calque se peint. */
@@ -81,6 +85,8 @@ export function forecastWording(locale: ReplayLocale): ForecastWording {
     chip: t.chipFmt,
     rank: t.rankFmt,
     share: (p) => (p > 0 && p < 0.005 ? t.lessThanOnePercent : percent.format(p)),
+    legendPoints: t.legendPoints,
+    legendTintUnderPoints: t.legendTintUnderPoints,
     legendCountdown: t.legendCountdownFmt,
     appearedIn: t.appearedInFmt,
     appearedOutside: t.appearedOutsideFmt,
@@ -92,7 +98,7 @@ export function forecastWording(locale: ReplayLocale): ForecastWording {
 }
 
 export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespawnForecast {
-  const { doc, view, enabled, playerSlug = '', matchId = '', locale, callouts, identity, ink, shownAuthor, clipMask } = o
+  const { doc, view, enabled, draw, playerSlug = '', matchId = '', locale, callouts, identity, ink, shownAuthor, clipMask } = o
   const hasZones = callouts.length > 0
   const query = useReplaySpawnForecast(playerSlug, matchId, enabled && hasZones, locale)
   const forecast = useMemo(() => normalizeSpawnForecast(query.data), [query.data])
@@ -116,13 +122,14 @@ export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespa
   const inputs = useMemo(() => {
     const paintInk: ForecastInk = { panel: scrim, onPanel: onScrim, underlay: labelStroke, neutral }
     return {
+      draw,
       ink: paintInk,
       wording,
       zones,
       colorOf: (xuid: string) => colorOfXuid(xuid) ?? neutral,
       nameOf: (xuid: string) => nameOfXuid(xuid) ?? UNKNOWN_NAME,
     } satisfies Omit<ForecastPaint, 'k'>
-  }, [scrim, onScrim, labelStroke, neutral, wording, zones, colorOfXuid, nameOfXuid])
+  }, [draw, scrim, onScrim, labelStroke, neutral, wording, zones, colorOfXuid, nameOfXuid])
 
   const ready = forecast !== null && zones.size > 0
   // Les deux peintres lisent les mêmes morts à la même image : une lecture par image, pas deux. La mémoire
@@ -139,10 +146,11 @@ export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespa
     }
     return [
       {
-        id: 'reapparition-zones',
+        id: 'reapparition-fond',
         paint: (ctx, frame, k) => {
-          const p: ZonesPaint = { ...inputs, k, clip }
-          drawForecastZones(ctx, momentsOf(frame), view, p)
+          const moments = momentsOf(frame)
+          if (draw !== 'points') drawForecastZones(ctx, moments, view, { ...inputs, k, clip } satisfies ZonesPaint)
+          if (draw !== 'zones') drawForecastPoints(ctx, moments, view, { ...inputs, k })
         },
       },
       {
@@ -154,7 +162,7 @@ export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespa
         },
       },
     ] as const satisfies ReplayRespawnForecast['layers']
-  }, [forecast, frameMs, shownAuthor, inputs, clip, view])
+  }, [forecast, frameMs, shownAuthor, inputs, clip, view, draw])
 
   const known = query.data !== undefined || query.isError
   const available = !!playerSlug && !!matchId && hasZones && (known ? ready : !enabled)

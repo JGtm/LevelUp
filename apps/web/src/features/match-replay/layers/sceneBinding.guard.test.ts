@@ -50,7 +50,7 @@ const CABLES_PAR_LE_HOOK_DES_VIES: ReadonlyArray<[ReplayLayerId, string]> = [
  * côté de son `paint`.
  */
 const CABLES_PAR_LE_HOOK_DE_LA_PROBABILITE: ReadonlyArray<[ReplayLayerId, string]> = [
-  ['reapparition-zones', 'useReplayRespawnForecast.ts'],
+  ['reapparition-fond', 'useReplayRespawnForecast.ts'],
   ['reapparition-reperes', 'useReplayRespawnForecast.ts'],
 ]
 

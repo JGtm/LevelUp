@@ -11,6 +11,7 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import type { XY } from '../../../lib/replay/replayLogic'
 import { projectTo, type CanvasView } from '../model/replayView'
+import type { ForecastDraw } from '../model/respawnForecast.logic'
 
 /** Une zone nommée de la probabilité : son nom dans la langue de la page et sa forme (`volume_index`). */
 export interface ForecastZone {
@@ -33,6 +34,10 @@ export interface ForecastWording {
   rank: (rank: number) => string
   /** Une probabilité, `0.35` -> « 35 % ». */
   share: (p: number) => string
+  /** « Disque : probabilité du point · étiquette : somme de la zone ». */
+  legendPoints: string
+  /** « Teinte légère : probabilité de la zone » (sous les points). */
+  legendTintUnderPoints: string
   legendCountdown: (name: string, seconds: number) => string
   appearedIn: (name: string, zone: string) => string
   appearedOutside: (name: string) => string
@@ -46,6 +51,8 @@ export interface ForecastWording {
 export interface ForecastPaint {
   /** Densité du canevas. */
   k: number
+  /** Ce que le calque dessine : zones et points, zones seules, points seuls. */
+  draw: ForecastDraw
   ink: ForecastInk
   wording: ForecastWording
   /** Les zones du document par `volume_index`, nom et forme. */
