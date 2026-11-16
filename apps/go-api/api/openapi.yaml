@@ -32772,12 +32772,6 @@ components:
         kills_expected:
           format: double
           type: number
-        lead_changes:
-          format: int64
-          type: integer
-        lead_share:
-          format: double
-          type: number
         map_label:
           type: string
         map_name:
