@@ -6,7 +6,7 @@
 # fonctionnent independamment de ce fichier.
 #
 # Config sobre (apres l'incident des 15 PRs du scan initial) :
-#   - mensuel (pas hebdo) pour limiter les vagues
+#   - semestriel (décision du user du 2026-11-16) pour limiter les vagues ; les alertes de sécurité restent immédiates
 #   - groupe : 1 PR groupee par ecosysteme pour les bumps minor/patch
 #   - github-actions : on ignore les majors (sauts v4->v7 risquant de casser
 #     la CI / le deploy) ; ils restent traitables a la main si besoin.
@@ -21,7 +21,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/apps/web"
     schedule:
-      interval: "monthly"
+      interval: "semiannually"
     open-pull-requests-limit: 3
     groups:
       npm-minor-patch:
@@ -58,7 +58,7 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/apps/go-api"
     schedule:
-      interval: "monthly"
+      interval: "semiannually"
     open-pull-requests-limit: 3
     groups:
       go-minor-patch:
@@ -82,7 +82,7 @@ updates:
   - package-ecosystem: "cargo"
     directory: "/apps/desktop/src-tauri"
     schedule:
-      interval: "monthly"
+      interval: "semiannually"
     open-pull-requests-limit: 3
     groups:
       cargo-minor-patch:
@@ -102,7 +102,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "semiannually"
     open-pull-requests-limit: 3
     groups:
       actions-minor-patch:
@@ -120,7 +120,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "semiannually"
     open-pull-requests-limit: 3
     groups:
       docker-minor-patch:
