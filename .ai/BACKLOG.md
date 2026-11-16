@@ -29,6 +29,56 @@
 
 ---
 
+### [données/précision] Touches et précision lues par l'ancien appariement des tirs
+
+Relevé le 2026-11-16 (montée du décodeur v1.4.1). Le killcollector et l'ingestion de la précision lisent encore l'ancien appariement des tirs : il retrouve 11 % des touches que compte l'API, contre 81 % pour les `shotStats[]` suffisants du décodeur. Les touches et la précision persistées sont donc fausses. **Condition de reprise :** un plan de passage de ces deux lecteurs à `shotStats[]` (changement de données persistées, rétro-remplissage à décider). **Effort : M.**
+
+---
+
+### [rejeu/drapeau] Porteurs du drapeau faux en grande bataille (au-delà de 8 sièges)
+
+Relevé le 2026-11-16 (phase C du décodeur, C7). La bande au-delà de 8 sièges n'est pas ouverte : par les entrées du tableau, 210 s d'erreur contre 282 s pour le pont ; trois porteurs faux restent, dont un dans la bande déjà livrée (0 s à l'API, 94 s publiés). **Condition de reprise :** prochain chantier du décodeur, en commençant par le faux porteur de la bande livrée. **Effort : M.**
+
+---
+
+### [rejeu/dégâts] Auteur d'un dégât lu sur l'index brut du film
+
+Relevé le 2026-11-16 (phase C du décodeur, Découvertes). Quand l'index de l'auteur désigne un remplaçant « absent », le dégât est attribué sur l'index brut, donc parfois au mauvais joueur. Visible dès que la 8.3.0 affiche les dégâts. **Condition de reprise :** prochain chantier du décodeur, avec l'affichage des dégâts de la 8.3.0 au plus tard. **Effort : S à M.**
+
+---
+
+### [rejeu] Écarts restants du gate du corpus à la montée du décodeur v1.3.9
+
+**Demande de l'utilisateur (2026-11-15).** « Un film qu'on lit, y a pas de raisons d'avoir des écarts comme ça. » Le gate du corpus (6 témoins, parc au schéma 116 contre décodeur 123) a été accepté par le user le 2026-11-15 sur recommandation, mais il reste des écarts qu'un film lu entièrement ne devrait pas produire :
+
+- score personnel (O-S3) du film `4f77afc1` : 100 faux positifs neufs (les manques passent de 21 735 à 850) ;
+- assistances (O-K3) du film `a521164d` : 3 faux positifs neufs (manques 41 -> 38) ;
+- repli `repli_bande_statborg_par_defaut` devenu actif (films `a521164d`, `50247b26`) ;
+- repli `repli_emission_hors_domaine_jetee` devenu actif (`bfecd02b` : 1, `4f77afc1` : 27) ;
+- film `11de8353` : un ramassage perd son origine (`originSpawner` 1 -> 0, `originUnknown` 37 -> 38) ;
+- compteurs nommés faux relevés par levelup-1f sur des films où la disposition du tableau est prouvée : `11de8353` `grenadeKills` 16 pour 0 et `meleeKills` 0 pour 1 ; `51ebbc0f` `grenadeKills` 6 pour 1 ; `bcb6d393` `headshots` 4 pour 0 ;
+- film `4f77afc1` : écart avec l'API (1 frag et 0 point à l'API, 100 points de score personnel lus dans le film), à expliquer.
+
+Les deux vrais défauts du gate (`a521164d`, `084a804d`) sont corrigés par le décodeur 124 (df43d03), parti dans la v1.3.9 : hors de cette entrée.
+
+À faire : pour chaque écart, trouver la cause dans le film (lecture de la grammaire, pas d'heuristique) et la corriger par une règle générale validée sur le parc, jusqu'à zéro faux positif et zéro repli actif sur ces témoins. Note : le gate jugeait les replis sans registre de la version d'avant (« INCONNU ») ; à rejouer sans `GOWORK` sur v1.3.9 publiée, avant d'instruire. **Plan de référence :** `.ai/PLAN_MONTEE_DECODEUR_V1_3_9_2026-11-15.md` (worktree `LevelUp-wt-decodeur139`). **Effort : à estimer après instruction.**
+
+Note du 2026-11-16 : le décodeur v1.4.1 (phase C) a pu en réduire une partie ; remesurer ces témoins avant de reprendre.
+
+---
+
+### [rejeu/killfeed] Zone de callout du tueur dans le killfeed
+
+**Demande de l'utilisateur (2026-11-09).** Ajouter à chaque ligne du killfeed la zone de callout où se trouve le tueur au moment du frag : horodatage, zone, frag. Point de départ : `features/match-replay/ui/ReplayKillFeed.tsx` pour l'affichage, `lib/replay/calloutsPaint.ts` pour les callouts déjà présents au rejeu. À instruire : tueur sans position connue, carte sans callouts (rien d'inventé, ligne sans zone), libellé de zone dans chaque langue. **Effort : à estimer.**
+
+---
+
+### [assets] Planches d'icônes de Dend : armes, grenades et équipements plus nets
+
+**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `C:\Users\Guillaume\Downloads\feed.350c786f.png`. Une seconde planche, `C:\Users\Guillaume\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
+
+---
+
 ### [web/couleurs] Reliquats du garde-rail des couleurs
 
 Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 5). Le garde-rail couvre désormais `ring-offset`, `outline`, `decoration`, `accent`, `caret` et la portée de `color-allow`. Restent : 23 marqueurs `color-allow` nus qui n'excusent plus rien (marqueur sur une autre ligne que la couleur, ou ligne sans couleur), à retirer ; les préfixes `shadow`, `from`, `via`, `to` suivis d'une couleur nommée ne sont pas balayés (seuls le noir et le blanc absolus le sont). **Condition de reprise :** une passe de nettoyage web. **Effort : S.**
