@@ -1756,12 +1756,12 @@ func TestStatsRepo_LoadLUSRHistory_WithData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadLUSRHistory: %v", err)
 	}
-	// Le seed insere 2 rows dans match_skill_rank (m1 CSR + m2 LUSR).
-	// Q24LUSRHistory ne filtre pas par playlist_group : retourne tout l'historique
-	// (utilise par stats_repo pour le calcul enemy strength qui a besoin de
-	// tous les ratings, peu importe le type).
-	if len(rows) != 2 {
-		t.Errorf("attendu 2 (CSR + LUSR), obtenu %d", len(rows))
+	// Le seed insere 2 rows dans match_skill_rank (m1 CSR + m2 LUSR). Q24LUSRHistory ne rend
+	// que les lignes LUSR (la ligne CSR est d'une autre echelle) : une seule ici. Le detail
+	// (double ligne, reecriture, audit LUSR_V2, egalite de written_at) est tenu par
+	// TestStatsRepo_LoadLUSRHistory_UneLigneLUSRParMatch sur le schema reel.
+	if len(rows) != 1 || rows[0].MatchID != "m2" {
+		t.Errorf("attendu 1 ligne LUSR (m2), obtenu %+v", rows)
 	}
 }
 
