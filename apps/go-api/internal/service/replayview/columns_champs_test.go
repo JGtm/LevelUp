@@ -49,7 +49,7 @@ func (r *fabriquePleine) peupler(v reflect.Value, profondeur int) {
 	}
 	r.noeuds++
 	switch v.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		v.Set(reflect.New(v.Type().Elem()))
 		r.peupler(v.Elem(), profondeur+1)
 	case reflect.Struct:
@@ -170,7 +170,7 @@ func cheminsDeCles(v any, chemin string, mapPaths map[string]bool, out map[strin
 // cartesDuType rend les chemins (même notation) des champs de type carte du document.
 func cartesDuType(t reflect.Type, chemin string, vus map[reflect.Type]bool, out map[string]bool) {
 	switch t.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		cartesDuType(t.Elem(), chemin, vus, out)
 	case reflect.Slice, reflect.Array:
 		cartesDuType(t.Elem(), chemin+"[]", vus, out)
