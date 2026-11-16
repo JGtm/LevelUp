@@ -10,6 +10,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/jobs"
+	"levelup/go-api/internal/port"
 )
 
 const rootStateTitle = "halo_infinite"
@@ -52,7 +53,10 @@ func TestScanAllMedia_UnavailableRootIsRecorded(t *testing.T) {
 	store := jobs.NewStore(filepath.Join(root, "jobs.json"))
 	err := NewDirMediaIndexer().ScanAllMedia(
 		ctxkeys.WithTitleSlug(context.Background(), rootStateTitle),
-		root, filepath.Join(root, "disque-debranche"), "", false, store, "job-root-state")
+		port.MediaIndexParams{
+			RepoRoot: root, CapturesBaseDir: filepath.Join(root, "disque-debranche"),
+			Jobs: store, JobID: "job-root-state",
+		})
 	if err != nil {
 		t.Fatalf("ScanAllMedia: %v", err)
 	}

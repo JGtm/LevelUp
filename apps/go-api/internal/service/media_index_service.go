@@ -14,8 +14,8 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
-	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/platform/mediaaudio"
+	"levelup/go-api/internal/port"
 )
 
 // stepNoPlayerFound est le label de step renvoye quand aucun joueur n'a ete trouve.
@@ -31,19 +31,12 @@ func NewDirMediaIndexer() *DirMediaIndexer {
 }
 
 // ResetAndReindex supprime l'index médias de tous les joueurs, puis le reconstruit.
-func (d *DirMediaIndexer) ResetAndReindex(
-	ctx context.Context,
-	repoRoot string,
-	capturesBaseDir string,
-	timezone string,
-	reindexAfter bool,
-	deleteSource bool,
-	jobStore *jobs.Store,
-	jobID string,
-) error {
-	pr := titlePkg.NewPathResolver(repoRoot)
+func (d *DirMediaIndexer) ResetAndReindex(ctx context.Context, p port.MediaResetParams) error {
+	jobStore, jobID, timezone := p.Jobs, p.JobID, p.Timezone
+	reindexAfter, deleteSource := p.ReindexAfter, p.DeleteSource
+	pr := titlePkg.NewPathResolver(p.RepoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
-	capturesBaseDir, policy := resolveMediaBase(ctx, pr, capturesBaseDir)
+	capturesBaseDir, policy := resolveMediaBase(ctx, pr, p.CapturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)
@@ -127,18 +120,11 @@ func (d *DirMediaIndexer) ResetAndReindex(
 }
 
 // ScanAllMedia indexe les médias de tous les joueurs (non-destructif, ForceRescan=false).
-func (d *DirMediaIndexer) ScanAllMedia(
-	ctx context.Context,
-	repoRoot string,
-	capturesBaseDir string,
-	timezone string,
-	deleteSource bool,
-	jobStore *jobs.Store,
-	jobID string,
-) error {
-	pr := titlePkg.NewPathResolver(repoRoot)
+func (d *DirMediaIndexer) ScanAllMedia(ctx context.Context, p port.MediaIndexParams) error {
+	jobStore, jobID, timezone, deleteSource := p.Jobs, p.JobID, p.Timezone, p.DeleteSource
+	pr := titlePkg.NewPathResolver(p.RepoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
-	capturesBaseDir, policy := resolveMediaBase(ctx, pr, capturesBaseDir)
+	capturesBaseDir, policy := resolveMediaBase(ctx, pr, p.CapturesBaseDir)
 	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)

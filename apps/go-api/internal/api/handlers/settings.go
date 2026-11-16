@@ -416,13 +416,13 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 
 		err := h.mediaIndexer.ResetAndReindex(
 			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
-			h.cfg.RepoRoot,
-			capturesBaseDir,
-			timezone,
-			req.ReindexAfterReset,
-			deleteSource,
-			h.jobStore,
-			job.JobID,
+			port.MediaResetParams{
+				MediaIndexParams: port.MediaIndexParams{
+					RepoRoot: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
+					DeleteSource: deleteSource, Jobs: h.jobStore, JobID: job.JobID,
+				},
+				ReindexAfter: req.ReindexAfterReset,
+			},
 		)
 		if err != nil {
 			slog.ErrorContext(ctx, "settings: réinitialisation de l'index médias échouée", "job_id", job.JobID, "err", err)
@@ -477,12 +477,10 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 
 		err := h.mediaIndexer.ScanAllMedia(
 			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
-			h.cfg.RepoRoot,
-			capturesBaseDir,
-			timezone,
-			deleteSource,
-			h.jobStore,
-			job.JobID,
+			port.MediaIndexParams{
+				RepoRoot: h.cfg.RepoRoot, CapturesBaseDir: capturesBaseDir, Timezone: timezone,
+				DeleteSource: deleteSource, Jobs: h.jobStore, JobID: job.JobID,
+			},
 		)
 		if err != nil {
 			slog.ErrorContext(ctx, "settings: scan des médias échoué", "job_id", job.JobID, "err", err)
