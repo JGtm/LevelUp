@@ -20,41 +20,22 @@
  * pointeur immobile n'a pas d'infobulle à réconcilier ici (ce calque n'en porte aucune en V1),
  * il déclenche seulement `redraw()` pour que la prochaine image le montre.
  */
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent,
-  type RefObject,
-} from 'react'
+import { useCallback, useMemo, type PointerEvent, type RefObject } from 'react'
 
 import { pickText } from '@/lib/i18n/pickText'
-import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
-import { withLoadedImage } from './loadedImage'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
-import { outlinedSpriteCanvas, tintedIconCanvas } from './replayDraw'
 import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { Respawn } from '../model/respawnCountdown'
-import {
-  vehicleCycleLives,
-  vehicleCycleReadingAt,
-  type VehicleCycle,
-} from '../model/vehicleCycleTime'
-import {
-  parseVehicleManifest,
-  vehicleBodyPx,
-  vehicleManifestAssetId,
-  type VehicleManifestEntry,
-} from '../model/vehicleSpriteManifest'
-import { buildEmbarkedPredicate, vehicleIsDecor, vehicleIsHidden } from '../model/vehiclesLayer'
-import { drawVehicleCyclesLayer, vehicleCycleIndexAt } from './vehicleCyclesLayer'
+import type { VehicleCycle } from '../model/vehicleCycleTime'
+import { buildEmbarkedPredicate, vehicleIsHidden } from '../model/vehiclesLayer'
+import { drawVehicleCyclesLayer } from './vehicleCyclesLayer'
+import { useVehicleCycles } from './useVehicleCycles'
+import { useVehicleSprites } from './useVehicleSprites'
 import { drawVehiclesLayer, type VehicleSpriteSize, type VehicleStyle } from './vehiclesPaint'
 
 export interface VehiclesInput {
@@ -222,185 +203,21 @@ export function useReplayVehicles({
   // des artefacts sans échelle temporelle). Ne dépend que du document, jamais de l'image.
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 
-  // LA NATURE D'UNE FAMILLE, telle que le DOCUMENT la publie (lot 1.9.9) : `undefined` pour un
-  // véhicule, le cas général. Résolue ici UNE fois pour les deux consommateurs — le prédicat
-  // embarqué (un élément de carte ne porte personne) et le tracé (il a son pictogramme dédié).
-  // Le calque ne décide jamais seul qu'une famille n'est pas un véhicule : c'est le serveur qui
-  // le dit, depuis le manifeste du titre.
-  const kindOf = useCallback(
-    (family: string): string | undefined => labels?.[family]?.kind,
-    [labels],
-  )
+  const { kindOf, labelOfFamily, isEmbarkedAt } = useVehicleFamilies({ labels, locale, enabled, tracks })
 
-  // LE LIBELLÉ D'UNE FAMILLE dans la langue du lecteur, tel que le DOCUMENT le publie (lot
-  // 1.9.9). Vide pour dix-huit familles sur dix-neuf : un nom de véhicule est un nom propre du
-  // jeu et la clé EST le nom. Aucune chaîne n'est écrite ici — elles viennent du manifeste du
-  // titre, comme tous les libellés du rejeu.
-  const labelOfFamily = useCallback(
-    (family: string): string | null => {
-      const lbl = labels?.[family]
-      return pickText(lbl, locale) || null
-    },
-    [labels, locale],
-  )
+  // LES SPRITES (chargement, manifeste, bordures, teinture) : un hook à part, `useVehicleSprites`.
+  const { spriteOf, sizeOf } = useVehicleSprites({ enabled, labels, titleSlug, redraw })
 
-  // LE PRÉDICAT EMBARQUÉ SUIT LE TOGGLE DU CALQUE (revue adversariale 2026-09-02, point 7) :
-  // calque ÉTEINT, on rend les pions — supprimer un occupant sans dessiner son véhicule ferait
-  // disparaître des joueurs sans aucun réglage pour les récupérer.
-  const isEmbarkedAt = useMemo(() => {
-    if (!enabled) return () => false
-    return buildEmbarkedPredicate(tracks, kindOf)
-  }, [enabled, tracks, kindOf])
-
-  // LES SPRITES SOURCES, une par FAMILLE employée par `doc.vehicleLabels` — chargés UNE FOIS,
-  // jamais reteints ici (la teinture par équipe se fait à la demande, cf. `spriteOf`).
-  // LES FAMILLES DE DÉCOR SONT SAUTÉES : le calque ne les dessine pas (cf.
-  // `FAMILLES_NON_JOUABLES`), leur image n'a donc aucune raison de traverser le réseau.
-  const rawImagesRef = useRef<Map<string, HTMLImageElement>>(new Map())
-  useEffect(() => {
-    if (!enabled) return
-    const map = rawImagesRef.current
-    for (const family of Object.keys(labels ?? {})) {
-      if (map.has(family) || vehicleIsDecor(family)) continue
-      // PAS D'URL = AUCUNE REQUÊTE (lot 1.9.9). Le serveur ne compose plus d'`img` pour une
-      // famille qu'il sait sans asset (un élément de carte, aujourd'hui) : la sauter ici est ce
-      // qui évite un 404 par match — et le calque a déjà son pictogramme pour elle.
-      const url = labels?.[family]?.img
-      if (!url) continue
-      withLoadedImage(url, (im) => {
-        map.set(family, im)
-        redraw()
-      })
-    }
-  }, [enabled, labels, redraw])
-
-  // LE MANIFESTE DE MISE À L'ÉCHELLE : une seule requête par montage (il est petit, et sert
-  // toutes les familles quel que soit le match). Une absence (404, réseau) dégrade en « aucune
-  // famille dimensionnée » — les véhicules restent NON DESSINÉS (jamais une taille inventée),
-  // exactement le même contrat que `replayAudio.ts` sur un son manquant.
-  const manifestRef = useRef<Map<string, VehicleManifestEntry> | null>(null)
-  useEffect(() => {
-    if (!enabled || manifestRef.current) return
-    let cancelled = false
-    const url = staticAssetURL('vehicle', 'replay/index', '.json', titleSlug)
-    if (!url) return
-    fetch(url)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
-      .then((raw: unknown) => {
-        if (cancelled) return
-        manifestRef.current = parseVehicleManifest(raw)
-        redraw()
-      })
-      .catch((err: unknown) => {
-        console.warn('[replay-vehicles] manifeste de taille indisponible, silence :', url, err)
-        manifestRef.current = new Map()
-        redraw()
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, titleSlug, redraw])
-
-  // LES BORDURES (sprites redessinés du 2026-09-16) : `{famille}_outline.png`, nommée par le
-  // manifeste, chargée À LA DEMANDE au premier tracé de la famille (une famille absente du match
-  // ne coûte aucune requête). Valeur `null` = chargement lancé ; échec = entrée retirée de la
-  // table d'attente et marquée dans `outlineFailedRef` : le sprite se dessine alors SANS bordure
-  // plutôt que jamais (la bordure est un habillage, pas une donnée).
-  const outlineImagesRef = useRef<Map<string, HTMLImageElement | null>>(new Map())
-  const outlineFailedRef = useRef<Set<string>>(new Set())
-  const outlineOf = useCallback(
-    (family: string, entry: VehicleManifestEntry): HTMLImageElement | null | 'none' => {
-      if (!entry.outline || outlineFailedRef.current.has(family)) return 'none'
-      const images = outlineImagesRef.current
-      if (images.has(family)) return images.get(family) ?? null
-      const url = staticAssetURL('vehicle', vehicleManifestAssetId(entry.outline), '.png', titleSlug)
-      images.set(family, null)
-      // CHARGEMENT PAR `withLoadedImage` (garde-rail loadedImage.guard.test.ts). Il rend une image
-      // DEJA chargee SYNCHRONEMENT, et `outlineOf` est appele PENDANT le trace : redessiner a ce
-      // moment-la relancerait le trace dans le trace. On ne redessine donc que sur un chargement
-      // asynchrone ; le cas synchrone rend l'image directement.
-      let pending = true
-      withLoadedImage(
-        url,
-        (im) => {
-          images.set(family, im)
-          if (pending) return
-          redraw()
-        },
-        () => {
-          console.warn('[replay-vehicles] bordure indisponible, sprite sans bordure :', url)
-          images.delete(family)
-          outlineFailedRef.current.add(family)
-          redraw()
-        },
-      )
-      pending = false
-      return images.get(family) ?? null
-    },
-    [titleSlug, redraw],
-  )
-
-  // LES VIGNETTES TEINTÉES, cuites HORS ÉCRAN à la demande, par famille × COULEUR RÉSOLUE — la
-  // couleur d'équipe d'un véhicule change rarement en cours de lecture (changement de
-  // conducteur), le cache grossit donc lentement. `multiply`, jamais `source-in` : les sprites
-  // véhicules sont des silhouettes à arêtes sombres (décision de cadrage, cf. `tintedIconCanvas`).
-  // LA BORDURE EST CUITE DANS LA MÊME VIGNETTE, SOUS le sprite et APRÈS sa teinte : c'est ce qui
-  // la garde blanche (la teinte `multiply` ne voit que le sprite) sans seconde passe au tracé.
-  const tintedRef = useRef<Map<string, HTMLCanvasElement>>(new Map())
-  const spriteOf = useCallback(
-    (family: string, color: string): CanvasImageSource | null => {
-      const key = `${family}|${color}`
-      const cached = tintedRef.current.get(key)
-      if (cached) return cached
-      const raw = rawImagesRef.current.get(family)
-      const entry = manifestRef.current?.get(family)
-      if (!raw || !entry) return null
-      const outline = outlineOf(family, entry)
-      if (outline === null) return null
-      const tinted = tintedIconCanvas(raw, color, { composite: 'multiply' })
-      const sprite = outline === 'none' ? tinted : outlinedSpriteCanvas(outline, tinted)
-      tintedRef.current.set(key, sprite)
-      return sprite
-    },
-    [outlineOf],
-  )
-
-  // LA TAILLE EST CELLE DE LA BOÎTE DU VÉHICULE, marge de bordure retirée
-  // (`vehicleSpriteManifest.vehicleBodyPx`) : longueur à l'écran, ancres d'armes et rayon
-  // d'explosion restent ceux du sprite d'avant la bordure. L'échelle qui en découle est un
-  // facteur par pixel source : appliquée à l'image entière, elle pose la bordure AUTOUR du
-  // véhicule sans le grossir.
-  const sizeOf = useCallback((family: string): VehicleSpriteSize | null => {
-    const raw = rawImagesRef.current.get(family)
-    const entry = manifestRef.current?.get(family)
-    if (!raw || !entry) return null
-    return {
-      naturalWidthPx: vehicleBodyPx(raw.naturalWidth, entry.pad),
-      naturalHeightPx: vehicleBodyPx(raw.naturalHeight, entry.pad),
-      mmPerPx: entry.mmPerPx,
-    }
-  }, [])
-
-  // L'APPARIEMENT EMPLACEMENT -> VIES, UNE SEULE FOIS PAR DOCUMENT. C'est un balayage de toutes
-  // les vies pour chaque emplacement (la maille de l'amas, cf. `vehicleCycleTime`) : le refaire
-  // soixante fois par seconde serait un doublon de travail, et le refaire au survol un doublon de
-  // source. Le tableau est PARALLÈLE à `cycles` — c'est pourquoi le test de survol rend un RANG.
-  const cycleLives = useMemo(
-    () => cycles.map((cycle) => vehicleCycleLives(cycle, tracks)),
-    [cycles, tracks],
-  )
-  const livesOf = useCallback((index: number) => cycleLives[index] ?? [], [cycleLives])
-
-  // LE NOM D'UN EMPLACEMENT : la famille DOMINANTE telle que le document la nomme, sa clé à
-  // défaut (un nom de véhicule est un nom propre du jeu), et le titre générique quand
-  // l'emplacement ne porte aucune famille — jamais le nom d'un voisin.
-  const nameOfCycle = useCallback(
-    (cycle: VehicleCycle): string =>
-      cycle.family ? (labelOfFamily(cycle.family) ?? cycle.family) : t.vehicleCycleTitle,
-    [labelOfFamily, t.vehicleCycleTitle],
-  )
-
-  const [cycleHover, setCycleHover] = useState<VehicleCycleHover | null>(null)
+  const { livesOf, cycleHover, onPointerMove, onPointerLeave } = useVehicleCycles({
+    cycles,
+    tracks,
+    view,
+    frameRef,
+    frameMs,
+    enabled,
+    labelOfFamily,
+    cycleTitle: t.vehicleCycleTitle,
+  })
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number, k: number) => {
@@ -442,58 +259,6 @@ export function useReplayVehicles({
     ],
   )
 
-  /**
-   * LE SURVOL D'UN EMPLACEMENT DE NAISSANCE — le seul survol de ce calque (les véhicules
-   * eux-mêmes n'en portent aucun).
-   *
-   * MÊME AMORCE QUE CELLE DES SOCLES ET DES POSES : le rapport pixels CSS -> pixels du contexte
-   * se CALCULE plutôt qu'il ne se suppose (la mise en page peut remettre le canevas à l'échelle).
-   */
-  const onPointerMove = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
-      if (!enabled || cycles.length === 0 || view.width === 0) {
-        setCycleHover((prev) => (prev === null ? prev : null))
-        return
-      }
-      const rect = event.currentTarget.getBoundingClientRect()
-      const kx = rect.width > 0 ? view.width / rect.width : 1
-      const ky = rect.height > 0 ? view.height / rect.height : 1
-      const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
-      const i = vehicleCycleIndexAt(cycles, view, window.devicePixelRatio || 1, at)
-      setCycleHover((prev) => {
-        if (i < 0) return prev === null ? prev : null
-        const cycle = cycles[i]
-        const lu = vehicleCycleReadingAt(cycle, cycleLives[i] ?? [], frameRef.current, frameMs)
-        const next: VehicleCycleHover = {
-          cycle,
-          at,
-          name: nameOfCycle(cycle),
-          occupied: lu.occupant !== null,
-          respawn: lu.respawn,
-        }
-        // LE COMPTE SE COMPARE CHAMP À CHAMP, jamais par identité : la lecture construit un objet
-        // neuf à chaque appel, et l'infobulle se recréerait à chaque mouvement de pointeur.
-        if (
-          prev &&
-          prev.cycle === next.cycle &&
-          prev.occupied === next.occupied &&
-          prev.respawn?.seconds === next.respawn?.seconds &&
-          prev.respawn?.measured === next.respawn?.measured &&
-          prev.at.x === at.x &&
-          prev.at.y === at.y
-        ) {
-          return prev
-        }
-        return next
-      })
-    },
-    [enabled, cycles, view, cycleLives, frameRef, frameMs, nameOfCycle],
-  )
-
-  const onPointerLeave = useCallback(() => {
-    setCycleHover((prev) => (prev === null ? prev : null))
-  }, [])
-
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du
   // décor (Pelican & consorts, cf. `FAMILLES_NON_JOUABLES`) n'a pas de calque à commander : la
   // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide. Le DÉCOR DE CARTE
@@ -505,4 +270,46 @@ export function useReplayVehicles({
   // soit rendu ICI, en tete de l'objet — c'est ce qui rend impossible de peindre ce geste sous
   // l'identite d'un autre calque.
   return { id: 'vehicules', available, paint, isEmbarkedAt, sizeOf, cycleHover, onPointerMove, onPointerLeave }
+}
+
+interface VehicleFamiliesInput {
+  labels: ReplayDocumentReady['vehicleLabels']
+  locale: ReplayLocale
+  enabled: boolean
+  tracks: ReplayDocumentReady['vehicles']
+}
+
+/** Ce que le document dit d'une FAMILLE de véhicule : sa nature, son libellé, et le prédicat « embarqué à T ». */
+function useVehicleFamilies({ labels, locale, enabled, tracks }: VehicleFamiliesInput) {
+  // LA NATURE D'UNE FAMILLE, telle que le DOCUMENT la publie (lot 1.9.9) : `undefined` pour un
+  // véhicule, le cas général. Résolue ici UNE fois pour les deux consommateurs — le prédicat
+  // embarqué (un élément de carte ne porte personne) et le tracé (il a son pictogramme dédié).
+  // Le calque ne décide jamais seul qu'une famille n'est pas un véhicule : c'est le serveur qui
+  // le dit, depuis le manifeste du titre.
+  const kindOf = useCallback(
+    (family: string): string | undefined => labels?.[family]?.kind,
+    [labels],
+  )
+
+  // LE LIBELLÉ D'UNE FAMILLE dans la langue du lecteur, tel que le DOCUMENT le publie (lot
+  // 1.9.9). Vide pour dix-huit familles sur dix-neuf : un nom de véhicule est un nom propre du
+  // jeu et la clé EST le nom. Aucune chaîne n'est écrite ici — elles viennent du manifeste du
+  // titre, comme tous les libellés du rejeu.
+  const labelOfFamily = useCallback(
+    (family: string): string | null => {
+      const lbl = labels?.[family]
+      return pickText(lbl, locale) || null
+    },
+    [labels, locale],
+  )
+
+  // LE PRÉDICAT EMBARQUÉ SUIT LE TOGGLE DU CALQUE (revue adversariale 2026-09-02, point 7) :
+  // calque ÉTEINT, on rend les pions — supprimer un occupant sans dessiner son véhicule ferait
+  // disparaître des joueurs sans aucun réglage pour les récupérer.
+  const isEmbarkedAt = useMemo(() => {
+    if (!enabled) return () => false
+    return buildEmbarkedPredicate(tracks, kindOf)
+  }, [enabled, tracks, kindOf])
+
+  return { kindOf, labelOfFamily, isEmbarkedAt }
 }

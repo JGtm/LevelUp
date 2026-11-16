@@ -130,7 +130,6 @@ export function useReplayFlagCarries({
   shownAuthor,
 }: FlagCarriesHookInput): ReplayFlagCarries {
   const carries = doc.flagCarries
-  const [hover, setHover] = useState<FlagHover | null>(null)
 
   // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
   // sinon celle du bipède.
@@ -175,12 +174,6 @@ export function useReplayFlagCarries({
     [inkOfTeam, outline, reducedMotion, posOf, doc, shownAuthor],
   )
 
-  // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
-  // effets ponctuels. Elles ne rallument PAS les pulses substituts retirés (`flagPulsesRetired`
-  // reste tel quel) — cet effet n'écoute qu'une stat, `flag_captures`, et la pose au lieu RELU de
-  // son auteur, là où le substitut posait toute la famille `flag_` sur le socle le plus proche.
-  const captures = useMemo(() => buildFlagCaptureFx(doc, posOf), [doc, posOf])
-
   // LA ZONE DE RETOUR (schéma 35) : le cercle autour d'un drapeau tombé, et la jauge qui s'y
   // vide. Elle se construit UNE fois par document, comme les ondes de capture — l'occupation se
   // compte image par image, et la recompter à chaque peinture coûterait le match entier.
@@ -202,22 +195,7 @@ export function useReplayFlagCarries({
     [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
   )
 
-  // LE CAMP DE L'AUTEUR D'UNE CAPTURE : son allégeance du film (l'action ne porte que son xuid,
-  // un bot s'y relie par sa ligne de feuille). Sans allégeance, l'onde prend le neutre du thème
-  // plutôt qu'une équipe devinée, même règle que le glyphe.
-  const captureStyle = useMemo<FlagCaptureStyle>(
-    () => ({
-      inkOf: (xuid: string) => {
-        const ally = allegiance.ofXuid(xuid)
-        return ally === null ? neutral : teamColorOf(ally)
-      },
-      reducedMotion,
-      shownAuthor,
-    }),
-    [allegiance, neutral, teamColorOf, reducedMotion, shownAuthor],
-  )
-
-  const captureHold = useMemo(() => flagCaptureHoldFrames(doc), [doc])
+  const { captures, captureStyle, captureHold } = useFlagCaptures({ doc, posOf, allegiance, neutral, teamColorOf, reducedMotion, shownAuthor })
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
@@ -242,6 +220,25 @@ export function useReplayFlagCarries({
     [enabled, carries, layer, view, captures, captureStyle, captureHold, returnDrops, inkOfTeam],
   )
 
+  const { hover, onPointerMove, onPointerLeave } = useFlagHover({ enabled, carries, layer, view, frameRef, sideOf, nameOfXuid, doc })
+
+  return { id: 'drapeaux', available: carries.length > 0, paint, hover, onPointerMove, onPointerLeave }
+}
+
+interface FlagHoverInput {
+  enabled: boolean
+  carries: ReplayDocumentReady['flagCarries']
+  layer: FlagCarriesInput
+  view: CanvasView
+  frameRef: RefObject<number>
+  sideOf: (team: number) => FlagSide
+  nameOfXuid: ReadonlyMap<string, string>
+  doc: ReplayDocumentReady
+}
+
+/** Le survol d'un drapeau : le drapeau sous le pointeur et son état LU À CET INSTANT (cf. l'en-tête). */
+function useFlagHover({ enabled, carries, layer, view, frameRef, sideOf, nameOfXuid, doc }: FlagHoverInput) {
+  const [hover, setHover] = useState<FlagHover | null>(null)
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (!enabled || carries.length === 0 || view.width === 0) {
@@ -288,5 +285,43 @@ export function useReplayFlagCarries({
     setHover((prev) => (prev === null ? prev : null))
   }, [])
 
-  return { id: 'drapeaux', available: carries.length > 0, paint, hover, onPointerMove, onPointerLeave }
+  return { hover, onPointerMove, onPointerLeave }
+}
+
+interface FlagCapturesInput {
+  doc: ReplayDocumentReady
+  posOf: ReturnType<typeof useCarrierPosAt>
+  allegiance: FilmAllegiance
+  neutral: string
+  teamColorOf: (ally: boolean) => string
+  reducedMotion: boolean
+  shownAuthor?: (xuid: string) => boolean
+}
+
+/** Les ondes de capture : leur construction par document, leur encre par auteur et leur durée d'affichage. */
+function useFlagCaptures({ doc, posOf, allegiance, neutral, teamColorOf, reducedMotion, shownAuthor }: FlagCapturesInput) {
+  // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
+  // effets ponctuels. Elles ne rallument PAS les pulses substituts retirés (`flagPulsesRetired`
+  // reste tel quel) — cet effet n'écoute qu'une stat, `flag_captures`, et la pose au lieu RELU de
+  // son auteur, là où le substitut posait toute la famille `flag_` sur le socle le plus proche.
+  const captures = useMemo(() => buildFlagCaptureFx(doc, posOf), [doc, posOf])
+
+  // LE CAMP DE L'AUTEUR D'UNE CAPTURE : son allégeance du film (l'action ne porte que son xuid,
+  // un bot s'y relie par sa ligne de feuille). Sans allégeance, l'onde prend le neutre du thème
+  // plutôt qu'une équipe devinée, même règle que le glyphe.
+  const captureStyle = useMemo<FlagCaptureStyle>(
+    () => ({
+      inkOf: (xuid: string) => {
+        const ally = allegiance.ofXuid(xuid)
+        return ally === null ? neutral : teamColorOf(ally)
+      },
+      reducedMotion,
+      shownAuthor,
+    }),
+    [allegiance, neutral, teamColorOf, reducedMotion, shownAuthor],
+  )
+
+  const captureHold = useMemo(() => flagCaptureHoldFrames(doc), [doc])
+
+  return { captures, captureStyle, captureHold }
 }
