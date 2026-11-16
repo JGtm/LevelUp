@@ -58,7 +58,6 @@ export {
   detectActivePreset,
   isoDate,
   presetPeriod,
-  useDismissable,
 } from './_filter_pills/_hooks'
 export type { PresetId } from './_filter_pills/_hooks'
 

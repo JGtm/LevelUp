@@ -8,12 +8,14 @@
  * est un `role="menu"` d'entrées `menuitemradio` (`aria-checked` sur le filtre actif). Flèche
  * bas ouvre depuis le déclencheur ; à l'ouverture le focus va au filtre actif ; flèches haut et
  * bas, Début et Fin déplacent le focus (en boucle) ; Entrée choisit ; Échap et Tab ferment, et
- * Échap rend le focus au déclencheur. Un clic dehors ferme (au `pointerdown`, comme le menu de
- * vitesse). La couche se signale au mode plein écran (`data-replay-escape-layer`) : Échap ferme
- * le menu AVANT de quitter le mode. Menu ouvert, AUCUNE touche ne traverse vers le clavier du
+ * Échap rend le focus au déclencheur. Échap et le clic dehors sont ceux de `useDismissable` (au
+ * `pointerdown`, comme le menu de vitesse). La couche se signale au mode plein écran
+ * (`data-replay-escape-layer`) : Échap ferme le menu AVANT de quitter le mode. Menu ouvert, AUCUNE touche ne traverse vers le clavier du
  * lecteur (`useReplayShortcuts`) : ni les flèches gauche et droite, ni J, L, F, M, R.
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+
+import { isEscapeKey, useDismissable } from '@/lib/hooks/useDismissable'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { FeedFilterId, FeedFilterOption } from '../model/feedFilterLogic'
@@ -38,17 +40,12 @@ export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Prop
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuId = useId()
 
-  // Clic dehors : le menu part au geste (`pointerdown`), pas au relâché.
-  useEffect(() => {
-    if (!open) return
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node | null
-      if (target && wrapRef.current?.contains(target)) return
-      setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
+  // Échap et clic dehors : le menu part au geste (`pointerdown`), pas au relâché ; Échap rend le
+  // focus au déclencheur, le clic dehors le laisse où l'on a cliqué.
+  useDismissable(open, (reason) => {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  }, { ref: wrapRef, outside: 'pointerdown' })
 
   // À l'ouverture, le focus va au filtre actif : le clavier part de là où l'on est.
   useEffect(() => {
@@ -78,15 +75,12 @@ export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Prop
     if (to) {
       e.preventDefault()
       moveFocus(to)
-    } else if (e.key === 'Escape') {
-      e.stopPropagation()
-      setOpen(false)
-      triggerRef.current?.focus()
     } else if (e.key === 'Tab') {
       setOpen(false)
-    } else {
+    } else if (!isEscapeKey(e)) {
       // MENU OUVERT, LE CLAVIER EST AU MENU : Espace choisit l'entrée, et aucune autre touche
       // (flèches gauche et droite, J, L, F, M, R...) ne doit atteindre le clavier du lecteur.
+      // Échap, lui, remonte jusqu'à la fermeture de la couche (`useDismissable`).
       e.stopPropagation()
     }
   }

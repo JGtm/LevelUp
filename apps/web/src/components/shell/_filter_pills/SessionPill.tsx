@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from 'react'
 import type { SessionOption } from '@/lib/api/types'
-import { useDismissable } from './_hooks'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'

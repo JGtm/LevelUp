@@ -28,6 +28,8 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useDismissable } from '@/lib/hooks/useDismissable'
+
 import { InfoMark, SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
 import { useAnchoredPanel } from './useAnchoredPanel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -273,23 +275,8 @@ function usePanelDismiss(
 ): void {
   useEffect(() => {
     panelRef.current?.focus({ preventScroll: true })
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    function onPointerDown(event: PointerEvent) {
-      const target = event.target as Node | null
-      if (!target) return
-      if (panelRef.current?.contains(target)) return
-      if (triggerRef?.current?.contains(target)) return
-      onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('pointerdown', onPointerDown)
-    }
-  }, [panelRef, triggerRef, onClose])
+  }, [panelRef])
+  useDismissable(true, onClose, { ref: panelRef, outside: 'pointerdown', ignore: triggerRef })
 }
 
 export function ReplayViewPanel({
