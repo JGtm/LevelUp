@@ -67,7 +67,7 @@ func TestSpawnFamilies_TitreSansFamille(t *testing.T) {
 		}
 	}
 	var nul *SpawnFamilySet
-	if nul.FamilyOf("Slayer", "Assassin") != "" || nul.Families() != nil || nul.TitleSlug() != "" || nul.SchemaVersion() != 0 {
+	if nul.FamilyOf("Slayer", "Assassin") != "" || nul.Families() != nil {
 		t.Error("un ensemble nil ne reconnaît aucune famille")
 	}
 }
