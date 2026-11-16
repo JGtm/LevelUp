@@ -17,8 +17,8 @@ import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/mode
 import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
-import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
+import { buildMapBackgroundLayer } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
 import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
@@ -106,17 +106,7 @@ export function ReplayPage() {
   // deux fois. Carte sans image plan, ou plan en échec (repli sur le rendu) : pas de masque, zones entières.
   const { image: planImage, variante: variantePlan } = useReplayMapImage(playerSlug, matchId, !!background?.planImage, 'plan')
   const mapBackground = useMemo(
-    () =>
-      background && mapImage
-        ? {
-            calibration: background.calibration,
-            image: mapImage,
-            plan: normalizeWallPlan(background.plan),
-            variante,
-            planAvailable: !!background.planImage,
-            zonesClip: planImage && variantePlan === 'plan' ? { calibration: background.calibration, image: planImage } : null,
-          }
-        : null,
+    () => buildMapBackgroundLayer({ background, image: mapImage, variante, planImage, planVariante: variantePlan }),
     [background, mapImage, variante, planImage, variantePlan],
   )
   // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
