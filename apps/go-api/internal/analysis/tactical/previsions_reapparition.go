@@ -4,7 +4,7 @@ package tactical
 // chaque mort d'un match suivie d'une reapparition, la probabilite de chaque zone nommee, une fois
 // par seconde, a partir de la position des autres joueurs A CET INSTANT.
 //
-// C'est le modele de reapparition.go (memes sept variables, memes poids) applique a la place du
+// C'est le modele de reapparition.go (memes six variables, memes poids) applique a la place du
 // rejeu : a l'instant d'un echantillon, les joueurs vivants se lisent dans l'index des vies du
 // match (IndexVies.Vivants, la meme lecture que la mesure M-4 a l'instant de la mort), les
 // candidats sont les points de la carte, et la probabilite d'une ZONE est la SOMME des
@@ -245,7 +245,7 @@ func (p *previseur) prevoirUneMort(piste Piste, s SpawnPiste) (PrevisionDeMort, 
 func (p *previseur) echantillon(frame int, ev EvenementReapparition) EchantillonPrevision {
 	scores := make([]float64, len(p.cands))
 	for i, c := range p.cands {
-		scores[i] = Score(Variables(ev, c, c.Total, nil), p.poids)
+		scores[i] = Score(Variables(ev, c, c.Total), p.poids)
 	}
 	proba := Probabilites(scores)
 	somme := map[int]float64{}

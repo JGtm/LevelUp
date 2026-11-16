@@ -191,7 +191,7 @@ func TestPoidsDeGroupe_EffectifsSurLeJeuAjuste(t *testing.T) {
 	ajoute("grande", 30) // 540 reapparitions retenues
 	ajoute("petite", 2)  // sous le seuil de 3 matchs : ecartee
 	p, ok := poidsDeGroupe(context.Background(), jeu, "assassin", map[string]bool{"assassin": true},
-		tactical.ToutesLesVariables, spawnModelOptions{matchsMinCarte: 3})
+		spawnModelOptions{matchsMinCarte: 3})
 	if !ok {
 		t.Fatal("effectif suffisant : des poids propres sont attendus")
 	}
@@ -203,7 +203,7 @@ func TestPoidsDeGroupe_EffectifsSurLeJeuAjuste(t *testing.T) {
 	}
 }
 
-// Le rapport M-2 / M-3 compte les matchs sur les echantillons RETENUS, comme poidsDeGroupe : une
+// Le rapport M-3 compte les matchs sur les echantillons RETENUS, comme poidsDeGroupe : une
 // carte sous le seuil n'apporte ni carte, ni reapparition, ni match.
 func TestEvaluerEchantillons_MatchsSurLeJeuRetenu(t *testing.T) {
 	var evts []tactical.EvenementReapparition
@@ -219,7 +219,7 @@ func TestEvaluerEchantillons_MatchsSurLeJeuRetenu(t *testing.T) {
 	ajoute("grande", 6)
 	ajoute("petite", 2) // sous le seuil de 3 matchs : ecartee
 	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: 3}
-	r := evaluerEchantillons(tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages), false)
+	r := evaluerEchantillons(tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages))
 	if r.matchs != 6 || r.cartes != 1 || r.n != 24 {
 		t.Errorf("effectifs = %d matchs, %d cartes, %d reapparitions ; attendu 6, 1, 24", r.matchs, r.cartes, r.n)
 	}

@@ -62,8 +62,6 @@ func PliDuMatch(matchID string, plis int) int {
 type ReglagesEchantillons struct {
 	// MatchsMinCarte : une carte vue dans moins de matchs est ecartee.
 	MatchsMinCarte int
-	// Vue rend la visibilite d'une carte ; nil ou renvoie nil : pas de septieme variable.
-	Vue func(carte string) Visibilite
 	// Zone rend l'indice de zone nommee d'un point d'une carte, -1 si aucune ; nil : pas de zone.
 	Zone func(carte string, p Point3) int
 }
@@ -84,11 +82,10 @@ func CandidatsParCarte(evts []EvenementReapparition) map[string][]Candidat {
 }
 
 // geometrieCarte est ce que les echantillons d'une carte partagent : les positions et les
-// zones de l'ensemble maximal des candidats, et la visibilite.
+// zones de l'ensemble maximal des candidats.
 type geometrieCarte struct {
 	pos   []Point3
 	zones []int
-	vue   Visibilite
 }
 
 func geometriesDesCartes(cands map[string][]Candidat, r ReglagesEchantillons) map[string]geometrieCarte {
@@ -100,9 +97,6 @@ func geometriesDesCartes(cands map[string][]Candidat, r ReglagesEchantillons) ma
 			if r.Zone != nil {
 				g.zones = append(g.zones, r.Zone(carte, c.Pos))
 			}
-		}
-		if r.Vue != nil {
-			g.vue = r.Vue(carte)
 		}
 		out[carte] = g
 	}
@@ -169,7 +163,7 @@ func echantillonDe(e EvenementReapparition, cs []Candidat, g geometrieCarte, r R
 	s.Feats = make([][NbVariables]float64, len(retenus))
 	for j, i := range retenus {
 		c := cs[i]
-		s.Feats[j] = Variables(e, c, c.Total-c.ParMatch[e.MatchID], g.vue)
+		s.Feats[j] = Variables(e, c, c.Total-c.ParMatch[e.MatchID])
 		if c.Cle == cle {
 			s.Reel = j
 		}
@@ -219,12 +213,8 @@ func Ajuster(echs []Echantillon, garder func(Echantillon) bool, masque [NbVariab
 	return w
 }
 
-// ToutesLesVariables est le masque qui ajuste les six variables de la mesure de depart ; la
-// septieme s'y ajoute avec AvecVisibilite.
-var ToutesLesVariables = [NbVariables]bool{true, true, true, true, true, true, false}
-
-// AvecVisibilite est le masque des sept variables.
-var AvecVisibilite = [NbVariables]bool{true, true, true, true, true, true, true}
+// ToutesLesVariables est le masque qui ajuste les six variables.
+var ToutesLesVariables = [NbVariables]bool{true, true, true, true, true, true}
 
 // FrequenceSeule est le masque de la reference « frequence seule ».
 var FrequenceSeule = [NbVariables]bool{VarFrequence: true}

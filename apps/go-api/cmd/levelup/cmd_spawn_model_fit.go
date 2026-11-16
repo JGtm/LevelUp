@@ -67,15 +67,11 @@ func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOpt
 	if err != nil {
 		return err
 	}
-	jeu, _, release, err := donneesDuParc(ctx, cfg, o, familles, o.vue)
+	jeu, _, release, err := donneesDuParc(ctx, cfg, o, familles)
 	if err != nil {
 		return err
 	}
 	defer release()
-	masque := tactical.ToutesLesVariables
-	if o.vue {
-		masque = tactical.AvecVisibilite
-	}
 	fichier := domain.PoidsReapparition{
 		Revision: domain.SpawnModelRevision, Date: time.Now().Format("2006-01-02"),
 		Definition: definitionDesPoids(jeu, o), Familles: map[string]domain.PoidsFamille{},
@@ -85,7 +81,7 @@ func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOpt
 		groupes[f] = map[string]bool{f: true}
 	}
 	for nom, fams := range groupes {
-		if p, ok := poidsDeGroupe(ctx, jeu, nom, fams, masque, o); ok {
+		if p, ok := poidsDeGroupe(ctx, jeu, nom, fams, o); ok {
 			fichier.Familles[nom] = p
 		}
 	}
@@ -99,20 +95,17 @@ func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOpt
 // poidsDeGroupe ajuste un groupe de familles et mesure ce qu'il vaut en validation croisee. Les
 // effectifs rendus sont ceux des echantillons retenus.
 func poidsDeGroupe(ctx context.Context, jeu *jeuReapparitions, nom string, fams map[string]bool,
-	masque [tactical.NbVariables]bool, o spawnModelOptions) (domain.PoidsFamille, bool) {
+	o spawnModelOptions) (domain.PoidsFamille, bool) {
 	evts := jeu.evenementsDeFamilles(fams)
 	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: o.matchsMinCarte}
-	if o.vue {
-		reglages.Vue = fonctionVue(jeu.obstacles)
-	}
 	echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
 	if len(echs) < effectifMinFamille {
 		slog.WarnContext(ctx, "spawn-model fit : famille sous l'effectif minimal, pas de poids propres",
 			"famille", nom, "reapparitions", len(echs), "minimum", effectifMinFamille)
 		return domain.PoidsFamille{}, false
 	}
-	w := tactical.Ajuster(echs, func(tactical.Echantillon) bool { return true }, masque)
-	m := tactical.Evaluer(echs, tactical.ScoresValides(echs, masque))
+	w := tactical.Ajuster(echs, func(tactical.Echantillon) bool { return true }, tactical.ToutesLesVariables)
+	m := tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.ToutesLesVariables))
 	f := tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.FrequenceSeule))
 	cartes, matchs := map[string]bool{}, map[string]bool{}
 	for _, s := range echs {

@@ -60,7 +60,7 @@ id = "assassin"
 variant_contains = ["slayer"]
 `
 
-const poidsTest = `{"revision":1,"date":"2026-11-15","definition":"test","familles":{` +
+const poidsTest = `{"revision":2,"date":"2026-11-15","definition":"test","familles":{` +
 	`"assassin":{"poids":{"ennemi_le_plus_proche_10m":2}},"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`
 
 // artefactPrevu : « a » (equipe 0) meurt a la frame 100 en (50, 0, 0) et reapparait a la frame 340
@@ -391,7 +391,7 @@ func TestSpawnForecast_LibellesParlentDeProbabilite(t *testing.T) {
 func TestSpawnForecast_ModeleDeRepliTous(t *testing.T) {
 	d := nouveauDecor(t)
 	ecrire(t, title.NewPathResolver(d.root).SpawnModelPath(title.DefaultSlug),
-		`{"revision":1,"date":"2026-11-15","definition":"t","familles":{"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`)
+		`{"revision":2,"date":"2026-11-15","definition":"t","familles":{"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`)
 	d.autres(t, 3)
 	if f := d.prevision(t); f.Status != replaydoc.SpawnForecastStatusReady || f.Model != "tous" || f.Family != "assassin" {
 		t.Errorf("modele = %q famille = %q statut = %q, attendu le jeu « tous » pour la famille assassin", f.Model, f.Family, f.Status)

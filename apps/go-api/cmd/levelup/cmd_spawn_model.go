@@ -3,7 +3,7 @@ package main
 // cmd_spawn_model.go — sous-commande `levelup spawn-model` : la MESURE et l'AJUSTEMENT du
 // modele de reapparition (analysis/tactical, reapparition*.go).
 //
-//	levelup spawn-model evaluate   # les mesures : temoin, ligne de vue, par mode, mort contre reapparition
+//	levelup spawn-model evaluate   # les mesures : temoin, par mode, mort contre reapparition
 //	levelup spawn-model fit        # ecrit le fichier de poids versionne (reference/spawn_model.json)
 //
 // # CE QU'ELLE LIT
@@ -55,10 +55,9 @@ const (
 
 // Sections de `evaluate`.
 const (
-	sectionTemoin     = "m1"
-	sectionLigneDeVue = "m2"
-	sectionParMode    = "m3"
-	sectionInstant    = "m4"
+	sectionTemoin  = "m1"
+	sectionParMode = "m3"
+	sectionInstant = "m4"
 	// sectionPoids : relit le fichier de poids tel que le service le lit, sans lire le parc.
 	sectionPoids = "poids"
 )
@@ -71,7 +70,6 @@ type spawnModelOptions struct {
 	limite    int
 	parCarte  bool
 	variantes bool
-	vue       bool
 	// matchsMinCarte : une carte vue dans moins de matchs n'est pas mesuree ; 0 = le seuil de la
 	// sous-commande (matchsMinCarteMesure ou matchsMinCarteAjustement).
 	matchsMinCarte int
@@ -86,7 +84,7 @@ func lireOptionsSpawnModel(sous string, args []string) (spawnModelOptions, error
 	fs := flag.NewFlagSet("spawn-model "+sous, flag.ExitOnError)
 	o := spawnModelOptions{}
 	fs.StringVar(&o.titleSlug, "title", "halo_infinite", "slug du titre")
-	fs.StringVar(&o.sections, "sections", "m1,m2,m3,m4", "evaluate : sections a produire (m1 temoin, m2 ligne de vue, m3 par mode, m4 mort contre reapparition)")
+	fs.StringVar(&o.sections, "sections", "m1,m3,m4", "evaluate : sections a produire (m1 temoin, m3 par mode, m4 mort contre reapparition)")
 	fs.StringVar(&o.famille, "famille", "", "restreint a une famille de modes (celles de spawn_families.toml)")
 	fs.IntVar(&o.limite, "limit", 0, "borne le nombre d'artefacts lus (0 = tous)")
 	fs.BoolVar(&o.parCarte, "par-carte", false, "evaluate : ajoute le tableau par carte du temoin")
@@ -95,7 +93,6 @@ func lireOptionsSpawnModel(sous string, args []string) (spawnModelOptions, error
 		fmt.Sprintf("matchs minimum par carte pour qu'elle soit retenue (defaut : %d pour evaluate, %d pour fit)",
 			matchsMinCarteMesure, matchsMinCarteAjustement))
 	fs.StringVar(&o.sortie, "sortie", "", "fit : fichier de poids a ecrire (obligatoire avec --famille ou --limit)")
-	fs.BoolVar(&o.vue, "ligne-de-vue", false, "fit : ajuste la septieme variable (ligne de vue)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -147,7 +144,7 @@ func runSpawnModel(cfg *config.AppConfig, args []string) error {
 // donneesDuParc ouvre le registre en lecture, liste les artefacts et lit le parc. La poignee de
 // lecture est rendue pour les zones, avec sa liberation.
 func donneesDuParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptions,
-	familles map[string]bool, obstacles bool) (*jeuReapparitions, *sql.DB, func(), error) {
+	familles map[string]bool) (*jeuReapparitions, *sql.DB, func(), error) {
 	pr := cfg.PathResolver()
 	db, release, err := duckdb.OpenReadForQuery(pr.SharedDBPath(o.titleSlug))
 	if err != nil {
@@ -172,7 +169,7 @@ func donneesDuParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 	slog.InfoContext(ctx, "spawn-model : lecture du parc", "artefacts", len(shorts),
 		"registre", len(registre), "familles", len(familles))
 	jeu := lireLeParc(ctx, cfg, optionsLecture{
-		titleSlug: o.titleSlug, familles: familles, obstacles: obstacles, limite: o.limite,
+		titleSlug: o.titleSlug, familles: familles, limite: o.limite,
 		registre: registre, artefactsS: shorts,
 	})
 	return jeu, db, release, nil
@@ -210,7 +207,7 @@ func evaluerLeParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 	if err != nil {
 		return err
 	}
-	jeu, db, release, err := donneesDuParc(ctx, cfg, o, familles, sectionActive(o, sectionLigneDeVue))
+	jeu, db, release, err := donneesDuParc(ctx, cfg, o, familles)
 	if err != nil {
 		return err
 	}
@@ -222,9 +219,6 @@ func evaluerLeParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 	}
 	if sectionActive(o, sectionParMode) {
 		r.parMode()
-	}
-	if sectionActive(o, sectionLigneDeVue) {
-		r.ligneDeVue()
 	}
 	if sectionActive(o, sectionInstant) {
 		r.instant()

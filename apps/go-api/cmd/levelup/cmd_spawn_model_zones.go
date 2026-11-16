@@ -65,14 +65,3 @@ func fonctionZone(zones map[string][]tactical.ZoneNommee) func(string, tactical.
 		return r.Zone.VolumeIndex
 	}
 }
-
-// fonctionVue rend la fonction « visibilite d'une carte » des echantillons.
-func fonctionVue(obstacles map[string]*tactical.Obstacles) func(string) tactical.Visibilite {
-	return func(carte string) tactical.Visibilite {
-		o := obstacles[carte]
-		if o == nil {
-			return nil
-		}
-		return o.Voit
-	}
-}

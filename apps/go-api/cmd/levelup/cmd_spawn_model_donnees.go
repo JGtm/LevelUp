@@ -4,7 +4,7 @@ package main
 //
 // Chaque artefact est lu, projete vers ses evenements de reapparition (compacts : quelques
 // positions par evenement), puis relache : rien ne survit d'un match a l'autre que les
-// evenements et la geometrie de chaque carte. Le balayage du parc entier ne charge jamais les
+// evenements. Le balayage du parc entier ne charge jamais les
 // artefacts ensemble.
 //
 // Chaque reapparition porte DEUX instantanes des autres joueurs : a la reapparition, et a la
@@ -43,8 +43,7 @@ type bilanLecture struct {
 
 // jeuReapparitions : tout ce que les mesures lisent.
 type jeuReapparitions struct {
-	evts      []evenementDouble
-	obstacles map[string]*tactical.Obstacles
+	evts []evenementDouble
 	// noms : identifiant de carte -> nom, tel que le registre le donne.
 	noms  map[string]string
 	bilan bilanLecture
@@ -54,7 +53,6 @@ type jeuReapparitions struct {
 type optionsLecture struct {
 	titleSlug  string
 	familles   map[string]bool
-	obstacles  bool
 	limite     int
 	registre   map[string]infoMatch
 	artefactsS []string
@@ -63,7 +61,7 @@ type optionsLecture struct {
 // lireLeParc parcourt les artefacts demandes et rend les evenements. Un artefact en echec est
 // journalise et compte, jamais fatal.
 func lireLeParc(ctx context.Context, cfg *config.AppConfig, o optionsLecture) *jeuReapparitions {
-	jeu := &jeuReapparitions{obstacles: map[string]*tactical.Obstacles{}, noms: map[string]string{}}
+	jeu := &jeuReapparitions{noms: map[string]string{}}
 	jeu.bilan.parFamille = map[string]int{}
 	jeu.bilan.artefacts = len(o.artefactsS)
 	pr := cfg.PathResolver()
@@ -89,47 +87,27 @@ func lireLeParc(ctx context.Context, cfg *config.AppConfig, o optionsLecture) *j
 		}
 		jeu.bilan.lus++
 		jeu.bilan.parFamille[info.famille]++
-		jeu.absorber(doc, info, o.obstacles)
+		jeu.absorber(doc, info)
 		if jeu.bilan.lus%200 == 0 {
 			slog.InfoContext(ctx, "spawn-model : lecture du parc",
 				"lus", jeu.bilan.lus, "sur", len(o.artefactsS), "rang", i, "evenements", len(jeu.evts),
 				"duration", time.Since(debut).Round(time.Second))
 		}
 	}
-	boites := 0
-	for _, ob := range jeu.obstacles {
-		boites += ob.NbBoites()
-	}
 	slog.InfoContext(ctx, "spawn-model : lecture terminee", "lus", jeu.bilan.lus, "evenements", len(jeu.evts),
-		"cartes_avec_geometrie", len(jeu.obstacles), "boites", boites, "duration", time.Since(debut).Round(time.Second))
+		"duration", time.Since(debut).Round(time.Second))
 	return jeu
 }
 
-// absorber projette un document vers ses evenements et, si on le demande, retient la
-// geometrie de sa carte la premiere fois qu'elle est vue.
-func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch, avecObstacles bool) {
+// absorber projette un document vers ses evenements.
+func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch) {
 	if j.noms[info.carteID] == "" {
 		j.noms[info.carteID] = info.carteNom
-	}
-	if avecObstacles && j.obstacles[info.carteID] == nil && len(doc.Structure) > 0 {
-		j.obstacles[info.carteID] = obstaclesDuDocument(doc)
 	}
 	entree := replayartifacts.EntreeOccupationDeLArtefact(doc)
 	j.bilan.comptesSansJoueur += entree.ComptesSansJoueur
 	j.bilan.accord.comparer(entree)
 	j.evenementsDuMatch(entree, info)
-}
-
-// obstaclesDuDocument indexe la structure d'un document.
-func obstaclesDuDocument(doc *replay.ReplayDocument) *tactical.Obstacles {
-	boites := make([]tactical.Boite, 0, len(doc.Structure))
-	for _, s := range doc.Structure {
-		boites = append(boites, tactical.Boite{
-			X0: float64(s.X0), Y0: float64(s.Y0), X1: float64(s.X1), Y1: float64(s.Y1),
-			ZHaut: float64(s.Z), ZBas: float64(s.ZB),
-		})
-	}
-	return tactical.NouveauxObstacles(boites)
 }
 
 // evenementsDuMatch ajoute les reapparitions d'un match.

@@ -314,7 +314,7 @@ Commandes:
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   spawn-model   Mesure (evaluate) et ajuste (fit) le modele de reapparition : lit les artefacts de rejeu un a un (aucun film decode)
                   et le registre de la base partagee en lecture seule ; fit ecrit data/titles/{slug}/reference/spawn_model.json
-                  (evaluate | fit ; --title, --sections m1,m2,m3,m4|poids, --famille, --limit, --par-carte, --variantes, --ligne-de-vue)
+                  (evaluate | fit ; --title, --sections m1,m3,m4|poids, --famille, --limit, --par-carte, --variantes)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
   replay-parc-vies  Mesure les vies sans identite du parc : cuit chaque film nomme par un fichier de faits dans un enfant borne (un a la fois,
                   verrou solo), sans base ni ecriture sous le depot ; films.tsv + identites/<id>.tsv (--faits, --cache, --sortie, --ids) ;

@@ -70,12 +70,10 @@ type resultat struct {
 	matchs       int
 	kMoyen       float64
 	freq, modele tactical.Metriques
-	modeleVue    *tactical.Metriques
 }
 
-// evaluerEchantillons note un jeu d'echantillons : frequence seule, modele a six variables et,
-// si `avecVue`, modele a sept.
-func evaluerEchantillons(echs []tactical.Echantillon, avecVue bool) resultat {
+// evaluerEchantillons note un jeu d'echantillons : frequence seule et modele a six variables.
+func evaluerEchantillons(echs []tactical.Echantillon) resultat {
 	r := resultat{n: len(echs)}
 	cartes, matchs, k := map[string]bool{}, map[string]bool{}, 0.0
 	for _, s := range echs {
@@ -89,10 +87,6 @@ func evaluerEchantillons(echs []tactical.Echantillon, avecVue bool) resultat {
 	r.kMoyen = k / float64(len(echs))
 	r.freq = tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.FrequenceSeule))
 	r.modele = tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.ToutesLesVariables))
-	if avecVue {
-		m := tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.AvecVisibilite))
-		r.modeleVue = &m
-	}
 	return r
 }
 
@@ -106,7 +100,7 @@ func (r *rapporteur) temoin() {
 	evts := r.jeu.evenementsDeFamilles(fam)
 	echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts),
 		tactical.ReglagesEchantillons{MatchsMinCarte: matchsMinCarteMesure})
-	res := evaluerEchantillons(echs, false)
+	res := evaluerEchantillons(echs)
 	w := tactical.Ajuster(echs, func(tactical.Echantillon) bool { return true }, tactical.ToutesLesVariables)
 	fmt.Println("## M-1 temoin : Assassin hors Fiesta et BTB")
 	fmt.Printf("\n%d reapparitions sur %d cartes (annexe : %d sur %d), hors candidats : %d\n\n",
@@ -123,7 +117,7 @@ func (r *rapporteur) temoin() {
 	ligneTemoin("modele, point exact, 1er", res.modele.Top1, refTop1Modele)
 	ligneTemoin("modele, point exact, 3 premiers", res.modele.Top3, refTop3Modele)
 	fmt.Println("\n| variable | poids |\n|---|---|")
-	for j, nom := range tactical.NomsVariables[:tactical.VarVisibles] {
+	for j, nom := range tactical.NomsVariables {
 		fmt.Printf("| %s | %+.2f |\n", nom, w[j])
 	}
 	fmt.Println()
@@ -206,40 +200,11 @@ func (r *rapporteur) parMode() {
 	for _, f := range r.lignesParFamille() {
 		evts := r.jeu.evenementsDeFamilles(map[string]bool{f: true})
 		echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
-		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, false)})
+		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs)})
 	}
 	fmt.Println("## M-3 par mode (validation croisee par match, 5 plis, cartes vues dans au moins",
 		r.o.matchsMinCarte, "matchs)")
 	imprimerParMode(tous)
-}
-
-// ligneDeVue : M-2, la septieme variable (ennemis a vue) contre les six premieres, sur les SEULES
-// cartes dont les artefacts portent la structure (les autres n'ont pas de geometrie a lire).
-func (r *rapporteur) ligneDeVue() {
-	r.chargerZones()
-	reglages := tactical.ReglagesEchantillons{
-		MatchsMinCarte: r.o.matchsMinCarte, Zone: fonctionZone(r.zones), Vue: fonctionVue(r.jeu.obstacles),
-	}
-	cartes := map[string]bool{}
-	tous := make([]ligneFamille, 0, len(r.o.table.Families()))
-	for _, f := range r.lignesParFamille() {
-		var evts []tactical.EvenementReapparition
-		for _, e := range r.jeu.evenementsDeFamilles(map[string]bool{f: true}) {
-			if r.jeu.obstacles[e.CarteID] != nil {
-				evts, cartes[e.CarteID] = append(evts, e), true
-			}
-		}
-		echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
-		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, true)})
-	}
-	fmt.Println("## M-2 gain de la ligne de vue (7e variable) sur les 6 variables")
-	fmt.Println()
-	fmt.Printf("Cartes dont les artefacts portent la structure : %d sur %d lues.\n", len(r.jeu.obstacles), len(r.jeu.noms))
-	for id := range r.jeu.obstacles {
-		fmt.Printf("- %s (%d boites)\n", r.jeu.noms[id], r.jeu.obstacles[id].NbBoites())
-	}
-	fmt.Println()
-	imprimerGainVue(tous)
 }
 
 // ligneFamille est une famille mesuree, prete a etre imprimee.
@@ -264,26 +229,6 @@ func imprimerParMode(lignes []ligneFamille) {
 		fmt.Printf("| %s | %d | %d | %d | %.0f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.0f %% | %.1f | %.1f |\n",
 			l.nom, l.res.matchs, l.res.n, l.res.cartes, l.res.kMoyen, m.HasardRayon3, f.Rayon3, m.Rayon3,
 			f.Rayon1, m.Rayon1, m.HasardZone3, f.Zone3, m.Zone3, cov, m.Top1, m.Top3)
-	}
-	fmt.Println()
-}
-
-func imprimerGainVue(lignes []ligneFamille) {
-	fmt.Println("\n| mode | reapparitions | a 8 m, 3 premiers : 6 variables | 7 variables | gain | zone nommee, 3 premiers : 6 variables | 7 variables | gain | a 8 m, 1er : gain |")
-	fmt.Println("|---|---|---|---|---|---|---|---|---|")
-	var n, s8, sz, s1 float64
-	for _, l := range lignes {
-		if l.res.modeleVue == nil {
-			continue
-		}
-		a, b := l.res.modele, *l.res.modeleVue
-		fmt.Printf("| %s | %d | %.1f | %.1f | %+.1f | %.1f | %.1f | %+.1f | %+.1f |\n",
-			l.nom, l.res.n, a.Rayon3, b.Rayon3, b.Rayon3-a.Rayon3, a.Zone3, b.Zone3, b.Zone3-a.Zone3, b.Rayon1-a.Rayon1)
-		w := float64(l.res.n)
-		n, s8, sz, s1 = n+w, s8+w*(b.Rayon3-a.Rayon3), sz+w*(b.Zone3-a.Zone3), s1+w*(b.Rayon1-a.Rayon1)
-	}
-	if n > 0 {
-		fmt.Printf("| toutes familles (moyenne ponderee) | %.0f | | | %+.1f | | | %+.1f | %+.1f |\n", n, s8/n, sz/n, s1/n)
 	}
 	fmt.Println()
 }
