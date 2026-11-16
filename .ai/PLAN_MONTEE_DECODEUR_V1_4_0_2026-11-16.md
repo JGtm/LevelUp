@@ -95,3 +95,12 @@ que sous `shotStats[].sufficient`.
   pertes du filet instruites (M2). Reste : commit (accord du user), rebase au signal de dd, régénération.
 - 2026-11-16 : commit local 0c999a32c5 sur accord du user (hooks verts), non poussé. Reste : rebase au
   signal de dd, poussée et CI, régénération au go du user.
+- 2026-11-16 : signal de dd (8.2.1 squashée dans `main`, fee334a039) : rebase sur `origin/main` (conflits
+  résolus : `go.mod` garde la brique de cartes v1.3.1 de la 8.2.1, changelogs FR/EN). Manifeste du corpus :
+  les 25 décisions de la v1.3.9 (« sans effet » contre une base au 124) retirées ; 8 décisions inscrites
+  avec l'accord du user du 2026-11-16 (« oui ») : les quatre compteurs d'échec neufs du bloc des touches,
+  `seatsBeyondBand`, et les trois mesures de la jauge de 084a804d. Gates refaits contre fee334a039 :
+  `go mod verify`, build, vet, `go test ./...` 227 paquets ok ; `tsc -b --force`, vitest du rejeu 4 982,
+  eslint 0 erreur ; équivalence 20/20 ; gate du corpus `--strict` code 0, 18 témoins ok, aucune décision
+  sans effet (catalogue généré des socles posé dans les deux racines de cuisson). Reste : `release/v8.3.0`
+  par dd, rebase dessus, poussée et CI ; régénération au go du user.
