@@ -173,7 +173,7 @@ Décisions du pilote à l'étape 0, consignées :
   `rasters/*.json` (fichiers tactiques), qu'une suppression par motif emporterait. La migration de suppression
   des bruts est donc ABANDONNÉE : risque réel, bénéfice nul sur les parcs connus. Un brut resté sur une
   installation ancienne n'est plus lu ; les notes de version le disent.
-- [ ] 0.5 Comparaison des sources (réponse du user à D-2 a à d), sur 20 matchs du parc lus un par un, et pour
+- [x] 0.5 Comparaison des sources (réponse du user à D-2 a à d), sur 20 matchs du parc lus un par un, et pour
       les champs du schéma 125 sur 3 matchs générés hors du parc (`--garder-documents`), aucune régénération :
       - médailles du film contre médailles des événements du match : compte par joueur, médailles propres à
         chaque source, écart de date ;
@@ -194,20 +194,20 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Piste A — réapparitions, côté Go (8.3.0 non publiée : aucun contrat à tenir)
 
-- [ ] A.1 Ligne de vue retirée : `analysis/tactical/ligne_de_vue.go`, `VarVisibles`, `PorteeVueM`, `Visibilite`,
+- [x] A.1 Ligne de vue retirée : `analysis/tactical/ligne_de_vue.go`, `VarVisibles`, `PorteeVueM`, `Visibilite`,
       paramètre `vue` de `Variables`, `AvecVisibilite`, `ReglagesEchantillons.Vue` ; option `--ligne-de-vue`,
       `fonctionVue`, `obstaclesDuDocument`, section m2 ; clé `ennemis_a_vue_40m` de `spawn_model.json`
       (révision du fichier montée) ; `TestObstacles_Voit` ; `docs/COMMANDS.md` et sa version FR.
       Gate : `git grep -nwE "NouveauxObstacles|AvecVisibilite|VarVisibles|ligne-de-vue" -- apps docs data` vide ;
       prévisions des trois matchs témoins identiques au centième.
-- [ ] A.2 La CLI appelle les helpers d'`analysis/tactical` au lieu de les recoder : `fini` -> `Point3.Fini`,
+- [x] A.2 La CLI appelle les helpers d'`analysis/tactical` au lieu de les recoder : `fini` -> `Point3.Fini`,
       `evenementDe` -> une fonction exportée unique, `fonctionZone` -> `IndiceDeZone`, littéral `2` ->
       `CandidatsMinPrevision`. Gate : `git grep -nE "func (fini|evenementDe|fonctionZone)\b" -- apps/go-api` vide.
-- [ ] A.3 D-5 appliquée : section m1 et ses constantes de témoin retirées avec leurs tests.
-- [ ] A.4 D-2 e et g appliquées : champs retirés de `domain/replaydoc/spawn_forecast.go`,
+- [x] A.3 D-5 appliquée : section m1 et ses constantes de témoin retirées avec leurs tests.
+- [x] A.4 D-2 e et g appliquées : champs retirés de `domain/replaydoc/spawn_forecast.go`,
       `domain/tactical_reapparitions.go`, des services et de leurs tests ; le journal `slog` les garde.
       D-2 f et h : les champs de motif restent (lecteur à l'étape E.7).
-- [ ] A.5 Repli sur l'écart de 4 à 15 s RETIRÉ (accord du user) : `EcartReapparitionMinMs` / `MaxMs`,
+- [x] A.5 Repli sur l'écart de 4 à 15 s RETIRÉ (accord du user) : `EcartReapparitionMinMs` / `MaxMs`,
       `SourceRepliEcart`, la branche de `analysis/tactical/reapparitions.go`, `sansLecturesDuFilm` de la CLI et
       leurs tests ; les comptes `film`, `repli_ecart`, `debuts_de_manche` du fichier tactique partent avec lui
       (même montée de format que A.6). Un match sans lecture du film n'a pas de réapparitions : dégradation
@@ -215,10 +215,10 @@ Décisions du pilote à l'étape 0, consignées :
       dans `spawn_model.json` est remise au vrai au prochain `fit`.
       Gate : `git grep -nE "SourceRepliEcart|EcartReapparitionM(in|ax)Ms|repli_ecart" -- apps/go-api` vide ;
       sur les trois matchs témoins (tous à lecture du film), réapparitions identiques à l'étape 0.
-- [ ] A.6 D-2 j appliquée : `source` et `debut_de_manche` retirés du sidecar, `TacticalRasterSchemaVersion` 7 -> 8,
+- [x] A.6 D-2 j appliquée : `source` et `debut_de_manche` retirés du sidecar, `TacticalRasterSchemaVersion` 7 -> 8,
       note au registre des reports : « part avec la régénération au schéma 125 ».
-- [ ] A.7 `SpawnFamilySet.TitleSlug()`, `SchemaVersion()` et leurs champs retirés avec leur test.
-- [ ] A.8 Règles de jeu pures sorties de `service/tactical_service_lectures.go` vers `analysis/tactical`
+- [x] A.7 `SpawnFamilySet.TitleSlug()`, `SchemaVersion()` et leurs champs retirés avec leur test.
+- [x] A.8 Règles de jeu pures sorties de `service/tactical_service_lectures.go` vers `analysis/tactical`
       (`spawnsDuJoueur`, `sidecarsAuxVies`, `routesDesVies`, `reapparitionsAdversesDuMatch`) : le service traduit
       `domain` vers les entrées d'analysis, la règle se teste sur les types d'analysis ; garde
       `archlint/no_local_spawn_depart_test.go` mis à jour.
@@ -251,48 +251,48 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Piste C — indicateurs et couches, côté Go
 
-- [ ] C.1 Mainmise : un helper de lecture (charge, journalise sauf capacité absente, pose les deux pointeurs)
+- [x] C.1 Mainmise : un helper de lecture (charge, journalise sauf capacité absente, pose les deux pointeurs)
       appelé par les quatre services ; garde-rail qui interdit le bloc recopié.
       Gate : `grep -rn "share, changes := v.Share, v.Changes" apps/go-api/internal --include=*.go | wc -l` = 1.
-- [ ] C.2 D-2 i appliquée : champs retirés de `TimeseriesMatchRow`, du service et de son test.
-- [ ] C.3 D-2 l appliquée : `objectiveblend.Result` n'exporte que `Score` ; commentaire remis au vrai.
-- [ ] C.4 Harnais `sync/performance_objective_simulation_research_test.go` et `..._report_research_test.go`
+- [x] C.2 D-2 i appliquée : champs retirés de `TimeseriesMatchRow`, du service et de son test.
+- [x] C.3 D-2 l appliquée : `objectiveblend.Result` n'exporte que `Score` ; commentaire remis au vrai.
+- [x] C.4 Harnais `sync/performance_objective_simulation_research_test.go` et `..._report_research_test.go`
       retirés (578 lignes).
-- [ ] C.5 Agrégat « par minute » : une seule fonction Go dans `analysis/` appelée par `trends` et par
+- [x] C.5 Agrégat « par minute » : une seule fonction Go dans `analysis/` appelée par `trends` et par
       `teammates` (`paceSums` disparaît) ; jeu de cas partagé lu par le test Go et par le test de
       `lib/charts/perMinute.ts` (modèle : `testdata/meneur_cas.json`).
-- [ ] C.6 Famille d'objectif : `objectiveFamilyFromRaw` et `objectiveColumnValues` passent dans
+- [x] C.6 Famille d'objectif : `objectiveFamilyFromRaw` et `objectiveColumnValues` passent dans
       `analysis/narrative` ; test de parité avec le SQL `objectiveFamilyCaseSQL` sur une table de cas (DuckDB en
       mémoire), un cas par famille et un cas sans objectif.
-- [ ] C.7 Révisions de notation : l'ordre et l'indépendance des deux étapes passent de
+- [x] C.7 Révisions de notation : l'ordre et l'indépendance des deux étapes passent de
       `api/wire/registry_scoring_revision.go` à `service/scoringrevision` ; le câblage ne fait plus qu'injecter
       les deux étapes. Tests déplacés avec la règle.
-- [ ] C.8 `PlayerProfileService` : interface déplacée dans `port/`, `handlers/player_profile.go` n'importe plus
+- [x] C.8 `PlayerProfileService` : interface déplacée dans `port/`, `handlers/player_profile.go` n'importe plus
       `progression/profile` pour son service.
-- [ ] C.9 `port/media_indexer.go` : paramètres de `ResetAndReindex` et `ScanAllMedia` regroupés en une
+- [x] C.9 `port/media_indexer.go` : paramètres de `ResetAndReindex` et `ScanAllMedia` regroupés en une
       structure ; `*jobs.Store` remplacé par l'interface étroite que l'indexeur utilise.
 - Gate de piste : `go test ./internal/service/... ./internal/analysis/... ./internal/sync/...
   ./internal/api/...` ; témoins de la vue du match et des Séries temporelles identiques, hors C.2.
 
 ## Piste D — fonds de carte
 
-- [ ] D.1 D-1 appliquée : ADR 0048 amendé (D-3, D-7, « État courant », amendement daté) ; ligne 0048 de
+- [x] D.1 D-1 appliquée : ADR 0048 amendé (D-3, D-7, « État courant », amendement daté) ; ligne 0048 de
       `CLAUDE.md` corrigée par le pilote.
-- [ ] D.2 D-6 appliquée, options : `-rogne-publie` retiré avec `rogne_publie.go` et son test ; rapport Markdown
+- [x] D.2 D-6 appliquée, options : `-rogne-publie` retiré avec `rogne_publie.go` et son test ; rapport Markdown
       retiré ; `docs/COMMANDS.md` EN et FR.
-- [ ] D.3 D-6 appliquée, leviers : champs, accesseurs et câblage des leviers sans donnée retirés ; les
+- [x] D.3 D-6 appliquée, leviers : champs, accesseurs et câblage des leviers sans donnée retirés ; les
       accesseurs restants passent par UN accesseur générique ; `reglages.go` sous 500 lignes ; garde-rail :
       tout levier déclaré a au moins une entrée dans `map_fond_reglages.json` ou une exemption datée.
-- [ ] D.4 Ancres : `ancresDuCatalogue` appelée par les trois sites (`cuisson.go`, `cuisson_forge.go`,
+- [x] D.4 Ancres : `ancresDuCatalogue` appelée par les trois sites (`cuisson.go`, `cuisson_forge.go`,
       `plan_seul.go`). Gate : `grep -n "\[3\]float64{o.Pos.X" apps/go-api/cmd/mapfond-build/*.go | wc -l` = 1.
-- [ ] D.5 Carte Forge sans maillage : `cuisson_forge.go` pose la dégradation nommée ; test qui fixe l'ensemble
+- [x] D.5 Carte Forge sans maillage : `cuisson_forge.go` pose la dégradation nommée ; test qui fixe l'ensemble
       des fonds sans plan (trois, nommés). Les deux sidecars Thunderhead ne sont réécrits que si la commande
       rend une image identique à l'empreinte de l'étape 0 ; sinon `[!]` et ligne au registre (prochaine cuisson).
-- [ ] D.6 Rotation du fond : une fonction d'application pour le canvas et une pour le CSS dans
+- [x] D.6 Rotation du fond : une fonction d'application pour le canvas et une pour le CSS dans
       `lib/replay/orientation.ts`, appelées par le rejeu, la Tactique et « Occupation du terrain » ; garde-rail
       étendu aux trois vues (aucun `ctx.rotate(` ni `rotate(${turns` hors de ce fichier).
-- [ ] D.7 Commentaires de `main.go` et `reglages.go` qui citent `libs/` et `licence_test.go` remis au vrai.
-- [ ] D.8 Outil revu dans son ensemble (demande du user), après D.2 à D.4, sans changer une sortie :
+- [x] D.7 Commentaires de `main.go` et `reglages.go` qui citent `libs/` et `licence_test.go` remis au vrai.
+- [x] D.8 Outil revu dans son ensemble (demande du user), après D.2 à D.4, sans changer une sortie :
       - trois gestes nommés et documentés, et eux seuls : cuire des cartes, refaire le plan sans recuire,
         produire le tableau avant / après ; toute option restante se rattache à l'un des trois ;
       - `main.go` : les options groupées par geste, validation des combinaisons en un point ;
@@ -306,56 +306,56 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Piste E — front du rejeu et de la Tactique
 
-- [ ] E.1 Fermeture d'une couche (Échap, clic dehors) : `useDismissable` sort de
+- [x] E.1 Fermeture d'une couche (Échap, clic dehors) : `useDismissable` sort de
       `components/shell/_filter_pills/_hooks.ts` vers un hook partagé, avec le cas « couche intérieure ouverte » ;
       appelé par `ReplayFeedFilterMenu`, `ReplaySpeedMenu`, `ReplayViewPanel`, `ReplayPlayerPanel`,
       `ReplayMediaLightbox` et par le shell. Garde-rail : aucun `addEventListener('pointerdown'`,
       `addEventListener('mousedown'` ni `key === 'Escape'` dans un `.tsx` de `features/match-replay` ; compte
       gelé pour le reste de `features/` (décision de l'étape 0).
-- [ ] E.2 `ReplayFeedFilterMenu` : navigation clavier du menu dans un hook testé seul ; composant sous 80 lignes
+- [x] E.2 `ReplayFeedFilterMenu` : navigation clavier du menu dans un hook testé seul ; composant sous 80 lignes
       de code.
-- [ ] E.3 Rectangle arrondi : une fonction dans `lib/replay` (repli sans `ctx.roundRect` compris), appelée par
+- [x] E.3 Rectangle arrondi : une fonction dans `lib/replay` (repli sans `ctx.roundRect` compris), appelée par
       `respawnForecastLegend`, `respawnForecastPaint`, `export/overlayPaint` ; garde-rail sur `arcTo(`.
-- [ ] E.4 Les 4 signatures à plus de 5 paramètres ajoutées dans la fenêtre passent à un objet d'options
+- [x] E.4 Les 4 signatures à plus de 5 paramètres ajoutées dans la fenêtre passent à un objet d'options
       (`drawProjectilesLayer`, `drawTintBar`, et les deux rectangles, réglés par E.3).
-- [ ] E.5 D-7 appliquée : un prédicat et une énumération des contours d'une zone dans `lib/replay`, appelés par
+- [x] E.5 D-7 appliquée : un prédicat et une énumération des contours d'une zone dans `lib/replay`, appelés par
       `calloutsPaint`, `killerZone`, `respawnForecastPaint`, `reapparitions.logic`, `TacticalReapparitionsZones` ;
       garde-rail sur `polygon.length >= 3` hors de ce fichier.
-- [ ] E.6 Règle de rognage au plan sortie de `ReplayPage.tsx` vers un fichier de logique, avec son test (plan
+- [x] E.6 Règle de rognage au plan sortie de `ReplayPage.tsx` vers un fichier de logique, avec son test (plan
       choisi et image présente, plan choisi sans image, rendu).
-- [ ] E.7 D-2 f et h appliquées : le calque de probabilité et la lecture « Réapparitions adverses » affichent le
+- [x] E.7 D-2 f et h appliquées : le calque de probabilité et la lecture « Réapparitions adverses » affichent le
       motif du refus dans un état vide (bloc affiché, pointillé, aucune action impossible), en fr et en,
       couleurs par tokens sémantiques (skills `frontend-patterns`, `color-tokens`).
-- [ ] E.8 Police du canvas : une constante lue par les 7 sites ; garde-rail sur `ui-sans-serif`.
-- [ ] E.9 `buildPlayers` : appelé une seule fois (`model/replayModel.ts`) ; `ReplayTeams`, `useSlotIdentity`,
+- [x] E.8 Police du canvas : une constante lue par les 7 sites ; garde-rail sur `ui-sans-serif`.
+- [x] E.9 `buildPlayers` : appelé une seule fois (`model/replayModel.ts`) ; `ReplayTeams`, `useSlotIdentity`,
       `equipmentUsageLogic`, `killerZone` reçoivent `model.players` ; garde-rail qui rend vrai le commentaire
       « nulle part ailleurs ».
       `[~]` prévu pour le découpage de `ReplayCanvas`, `ReplayPlayerPanel` et `LayersSection` : la refonte du
       rejeu les réécrit. Une ligne est ajoutée à `PLAN_REFONTE_UI_REJEU_2026-11-15.md` : ces trois fonctions
       sortent de la refonte sous 80 lignes de code.
-- [ ] E.10 `useReplayPlayback` (110), `useReplayFlagCarries` (102), `useReplayVehicles` (186) : ramenées sous
+- [x] E.10 `useReplayPlayback` (110), `useReplayFlagCarries` (102), `useReplayVehicles` (186) : ramenées sous
       80 lignes de code par extraction, ou exemption commentée si le corps est une table.
-- [ ] E.11 Deux compteurs gelés sous `apps/web/src` (test) : fonctions à plus de 5 paramètres, fonctions de plus
+- [x] E.11 Deux compteurs gelés sous `apps/web/src` (test) : fonctions à plus de 5 paramètres, fonctions de plus
       de 80 lignes de code ; valeurs de l'étape 0.3 moins ce que cette piste retire ; ne font que descendre.
-- [ ] E.12 Les 8 `eslint-disable no-explicit-any` des tests de graphes remplacés par des types.
+- [x] E.12 Les 8 `eslint-disable no-explicit-any` des tests de graphes remplacés par des types.
 - Gate de piste : `make check-types`, `make test-web` COMPLET, `node tools/lint-cross-feature-imports.mjs`.
 
 ## Piste F — exceptions
 
-- [ ] F.1 D-4 appliquée : `LEVELUP_SYNC_RESOLVE_ASSETS` retiré avec sa branche ; entrée retirée de
+- [x] F.1 D-4 appliquée : `LEVELUP_SYNC_RESOLVE_ASSETS` retiré avec sa branche ; entrée retirée de
       `lecturesEnvAutorisees`.
-- [ ] F.2 Les trois lectures « à porter par AppConfig » passent par `internal/config`
+- [x] F.2 Les trois lectures « à porter par AppConfig » passent par `internal/config`
       (`registry_replay_notify.go`, `engine_highlight_events.go`, `snapshot_readiness_eval.go`) ; entrées
       retirées. Le contrôle de date de l'allowlist exige le format `AAAA-MM-JJ`.
-- [ ] F.3 `effective_hp_copies_test.go` : entrée datée, le test exige la date.
-- [ ] F.4 `Q24LUSRHistory` (`queries_career_encounters.go`) : lecture brute de `match_skill_rank` revérifiée ;
+- [x] F.3 `effective_hp_copies_test.go` : entrée datée, le test exige la date.
+- [x] F.4 `Q24LUSRHistory` (`queries_career_encounters.go`) : lecture brute de `match_skill_rank` revérifiée ;
       filtre `rating_type` et tie-break `written_at` ajoutés, test sur un match à double ligne ; l'entrée
       d'allowlist dit ce qui est vrai. Skill `db-schema` avant d'écrire.
-- [ ] F.5 `[~]` prévu : les deux entrées de `pool_no_shared_handle_test.go` sont datées, le risque est écrit,
+- [~] F.5 `[~]` prévu : les deux entrées de `pool_no_shared_handle_test.go` sont datées, le risque est écrit,
       le code est déplacé à l'identique ; aucun changement.
-- [ ] F.6 `[~]` prévu : plafond de surface du décodeur (316 -> 335), chaque marche datée et justifiée ;
+- [~] F.6 `[~]` prévu : plafond de surface du décodeur (316 -> 335), chaque marche datée et justifiée ;
       `CLAUDE.md` cite le garde-rail au lieu des nombres (pilote).
-- [ ] F.7 `[~]` prévu : liste des imports entre fonctionnalités (79 -> 99), seuil du cliquet à 0 ; aucun changement.
+- [~] F.7 `[~]` prévu : liste des imports entre fonctionnalités (79 -> 99), seuil du cliquet à 0 ; aucun changement.
 - Gate de piste : `go test ./internal/archlint/... ./internal/config/... ./internal/platform/duckdb/...`.
 
 ## Étape G — intégration (pilote)
@@ -384,4 +384,50 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Découvertes
 
-(vide)
+
+
+## Journal d'exécution
+
+### 2026-11-17 — pistes A, C, D, E, F closes (branches `sa/a`, `sa/c`, `sa/d`, `sa/e`, `sa/f`, non fusionnées)
+
+Chaque compte rendu a été rouvert sur pièces par le pilote (commits, `git status` vide, motifs visés comptés).
+
+- 0.5 : tableau remis au user (`.ai/annexes_suites_audit/sources.md`). Aucun vrai doublon ; réponse attendue pour
+  B.3 et B.4.
+- Piste A (8 commits). Écarts : A.3, l'accord est retiré aussi (il comparait le film au repli, retiré par A.5) ;
+  A.6, `source` retiré et format 7 -> 8, mais `debut_de_manche` GARDÉ : il est lu
+  (`analysis/tactical/spawns_joueurs.go`, définition « toutes les vies ») ; le constat D-2 j de l'audit était
+  faux sur ce champ. `spawn_model.json` passe à la révision 2.
+- Piste C (12 commits). C.5 : la fonction unique est appliquée aux dégâts ; frags, morts et assistances par
+  minute de l'Escouade gardent leur comportement (un match sans durée compte au numérateur), question posée au
+  user. C.8 : 15 types de réponse du profil déplacés dans `domain/` pour que l'interface entre dans `port/`.
+- Piste D (8 commits). 339 fichiers de fonds identiques à l'étape 0 ; cuissons témoins natives identiques.
+  D.5 : les deux sidecars Thunderhead ne sont pas réécrits (report : prochaine cuisson). La cuisson Forge n'a
+  pas tourné dans le worktree (dépôt hors ligne des variantes absent) : témoin AVANT pris par le pilote sur 3
+  cartes Forge, comparaison à faire en G.4.
+- Piste E (13 commits). E.9 adapté : un seul appel sur la page du rejeu ; quatre surfaces de la page Match sur
+  une liste datée en cliquet (plafond « 1 » impossible, elles n'ont pas de modèle de rejeu). E.7 : la `raison`
+  par répartition n'est pas lue (elle répète la raison de la réponse) : à retirer côté serveur en G. Compteurs
+  gelés : 46 fonctions à plus de 5 paramètres, 252 de plus de 80 lignes de code ; 17 `.tsx` hors rejeu écoutent
+  encore Échap ou le clic dehors (au backlog, accord du user).
+- Piste F (4 commits). F.4 : la requête rendait 9 lignes pour 5 matchs (autre échelle, lignes périmées) ;
+  corrigée ; elle n'a aucun appelant de production (question posée au user : la supprimer).
+
+## Découvertes (consignées, non traitées sauf mention)
+
+1. Test `MatchPositionsHeatmap.orientation.test.tsx` rouge sur `release/v8.3.0` (attend « rendu », le défaut est
+   « plan » depuis `47b316e39b`). Bloque le gate : corrigé en G.
+2. ADR 0048 D-2 annonce une marge de rognage de 1,5 m, le code applique 0,5 m : corrigé en G avec l'amendement.
+3. ADR 0048 D-5 : une carte Forge au maillage illisible avertit et publie sans plan, l'ADR dit « erreur de la
+   cuisson ». Question posée au user.
+4. Fichiers tactiques `rasters/*.json` non compressés : 1,2 Go pour 1 455 matchs. Question posée au user.
+5. Médailles absentes du rejeu dans 11,9 % des matchs (événements sans nom). Question posée au user.
+6. Décodeur : verdict « lecture complète » du score faux en BTB et en Assaut ; `flagReturnS` jamais écrit ;
+   lecture des tirs suffisante pour 12 % des joueurs d'un échantillon ; coup d'envoi de l'API à 5,3 s du film.
+7. `StatsRepository.LoadLUSRHistory` et `Q24LUSRHistory` sans appelant de production.
+8. Escouade : cadence de frags gonflée par les matchs sans durée (voir C.5).
+9. `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`cmd/levelup`) échoue sous charge, passe seul.
+10. Le hook `go-vet` affiche des erreurs de contraintes de build sur des commandes sans CGO et passe quand même.
+11. `sgh_interlock.json` porte des chemins Windows absolus dans `degradations`.
+12. `zonesPuresDuCatalogue` (CLI `spawn-model`) double la projection de zones du service.
+13. Caches de compilation `go-build-sa-*` à rendre à la clôture (`disk-hygiene.ps1 -Lot`).
