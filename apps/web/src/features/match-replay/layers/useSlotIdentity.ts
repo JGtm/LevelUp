@@ -35,13 +35,11 @@
  */
 import { useMemo } from 'react'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { buildSeats, seatedIndexOf, type SeatedIndex } from '../model/seatLogic'
 import {
-  buildPlayers,
   buildSlotOwnership,
   campResolver,
   colorByXuidResolver,
@@ -111,7 +109,8 @@ export interface SlotIdentity {
 
 export interface SlotIdentityInput {
   doc: ReplayDocumentReady
-  scoreboard: MatchScoreboardRow[] | undefined
+  /** La jointure film <-> base du match (`model.players`) : construite UNE fois par la page, jamais ici. */
+  players: readonly ReplayPlayer[]
   /** L'allégeance de chaque joueur, lue dans le film et vue de la référence (`model.allegiance`). */
   allegiance: FilmAllegiance
   marks: ReadonlyMap<string, PlayerMarkKind> | undefined
@@ -199,10 +198,9 @@ export function gatedByFiche(
 }
 
 export function useSlotIdentity({
-  doc, scoreboard, allegiance, marks, teamColorOf, neutral, distinctColors,
+  doc, players, allegiance, marks, teamColorOf, neutral, distinctColors,
 }: SlotIdentityInput): SlotIdentity {
-  // LA JOINTURE FILM <-> BASE, faite une fois : elle donne à chaque vie son propriétaire.
-  const players = useMemo(() => buildPlayers(doc, scoreboard ?? []), [doc, scoreboard])
+  // LA JOINTURE FILM <-> BASE (`players`) donne à chaque vie son propriétaire.
   // L'INDEX DE PROPRIÉTÉ PAR IMAGE : slot -> vies triées, résolu à `ownerAtFrame`. Construit une
   // fois par jointure ; les résolveurs ci-dessous ne font que le lire.
   const ownership = useMemo(() => buildSlotOwnership(players), [players])

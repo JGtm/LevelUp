@@ -138,7 +138,7 @@ export function ReplayPage() {
   // décident de ce que la carte dessine et d'où elle regarde, ni de l'encre de camp ni du roster.
   const playerPanel = usePlayerPanel(matchId, model.players)
   // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
-  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, scoreboard)
+  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, model.players)
   // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.
   const weaponIcons = useKillSourceIcons(params.titleSlug, locale)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
@@ -415,7 +415,7 @@ export function ReplayPage() {
                     (glyphe devant un nom), ses deux derniers lecteurs. */}
                 <ReplayTeams
                   doc={data}
-                  scoreboard={scoreboard}
+                  players={model.players}
                   frame={frame}
                   locale={locale}
                   allegiance={model.allegiance}

@@ -296,7 +296,7 @@ export function ReplayCanvas({
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
   const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
-    scoreboard,
+    players,
     allegiance,
     marks,
     teamColorOf,
