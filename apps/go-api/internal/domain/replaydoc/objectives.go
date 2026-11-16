@@ -48,6 +48,9 @@ type PlayerScore struct {
 	Kills   ScoreSeries `json:"kills"`
 	Deaths  ScoreSeries `json:"deaths"`
 	Assists ScoreSeries `json:"assists"`
+	// Stats : les autres compteurs du tableau des scores, par nom (suicides, betrayals, maxSpree, headshots,
+	// meleeKills, grenadeKills, powerWeaponKills, spawns). Absent sur un film a plusieurs manches.
+	Stats map[string]ScoreSeries `json:"stats,omitempty"`
 }
 
 // ScoreSeries est un compteur suivi dans le temps, sous ses deux formes.

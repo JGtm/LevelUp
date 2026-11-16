@@ -132,7 +132,7 @@ describe('alignFeedToTracks — le fil sur le référentiel des pistes', () => {
     const out = alignFeedToTracks(kills, 0, docWithLives())
     // W (5 000 ms) n'a pas de ligne de kill -> mort neutre. Les deux fins de vie de V
     // sont consommées par leurs kills : AUCUNE ligne neutre pour elles.
-    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false }])
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false, proven: false }])
   })
 
   it('un survivant de fin de partie ne meurt pas dans le fil', () => {
@@ -180,7 +180,7 @@ describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", (
 
   it('la mort sans kill fait une MORT NEUTRE ; une fin de vie revendiquée n\'en fait pas', () => {
     const out = alignFeedByOrigin(kills, 0, DOC_ORIGINE, HORLOGE)
-    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false }])
+    expect(out.deaths).toEqual([{ replayMs: 5_000, xuid: 'W', kind: '', img: '', tinted: false, proven: false }])
   })
 
   it('un survivant de fin de partie ne meurt pas dans le fil', () => {
@@ -233,7 +233,7 @@ describe('alignFeedByOrigin — une fin de vie prolongée à la mort écrite', (
   it('une fin au dernier point, hors de KILL_MATCH_TOL_MS, ne revendique pas le kill (tolérance non relâchée)', () => {
     const doc = docDe(3_920)
     const out = alignFeedByOrigin([kill(MORT, 'k1', 'V')], 0, doc, replayClock(doc)!)
-    expect(out.deaths).toEqual([{ replayMs: 392_000, xuid: 'V', kind: '', img: '', tinted: false }])
+    expect(out.deaths).toEqual([{ replayMs: 392_000, xuid: 'V', kind: '', img: '', tinted: false, proven: false }])
   })
 })
 
@@ -273,7 +273,7 @@ describe("alignFeedByOrigin — un joueur présent à la fin n'a pas de mort neu
   it('la même vie close au dernier point, bien avant le bout, reste une mort neutre (témoin de la ligne fantôme)', () => {
     const doc = docDe(636)
     const out = alignFeedByOrigin([], 0, doc, replayClock(doc)!)
-    expect(out.deaths).toEqual([{ replayMs: 63_600, xuid: 'P', kind: '', img: '', tinted: false }])
+    expect(out.deaths).toEqual([{ replayMs: 63_600, xuid: 'P', kind: '', img: '', tinted: false, proven: false }])
   })
 })
 
@@ -310,7 +310,7 @@ describe('le type des morts sans revendication', () => {
   it("pose le type sur la ligne, en absorbant le décalage du fil", () => {
     const out = alignFeed(kills, 0, docTypé())
     expect(out.deaths).toEqual([
-      { replayMs: 5_000, xuid: 'W', kind: 'environment', img: '/s/env.png', tinted: true },
+      { replayMs: 5_000, xuid: 'W', kind: 'environment', img: '/s/env.png', tinted: true, proven: false },
     ])
   })
 
@@ -465,4 +465,52 @@ describe('feedAt — le fil est PERMANENT', () => {
   it('vide avant le premier événement', () => {
     expect(feedAt(entries, 0)).toEqual([])
   })
+})
+
+/**
+ * La PREUVE de mort d’une mort neutre (`ReplayDeath.proven`) : le film la donne par le lâcher de commande du
+ * corps ou le début du compte à rebours de réapparition ; une fin de manche (corps supprimé encore commandé,
+ * sans compte) ne la donne pas. W finit à la frame 50 (5 000 ms), sans frag.
+ */
+describe('la preuve de mort d’une mort neutre', () => {
+  const spec = (endReason?: string, releaseFrame?: number) => {
+    const base = docSpec()
+    return {
+      ...base,
+      originMs: 0,
+      roster: [{ xuid: 'W', filmIndex: 3, name: 'Wiski' }],
+      tracks: base.tracks.map((t) => (t.xuid === 'W' ? { ...t, endReason, releaseFrame } : t)),
+    }
+  }
+  const proven = (over: Record<string, unknown>, path: 'origine' | 'pistes') => {
+    const doc = testReplayDoc({ ...over })
+    const kills = [kill(2_000, 'k1', 'V'), kill(8_000, 'k2', 'V')]
+    const out = path === 'origine' ? alignFeedByOrigin(kills, 0, doc, replayClock(doc)!) : alignFeedToTracks(kills, 0, doc)
+    return out.deaths.map((d) => [d.xuid, d.proven])
+  }
+
+  for (const path of ['origine', 'pistes'] as const) {
+    it(`un lâcher de commande à la fin de la vie prouve la mort (${path})`, () => {
+      expect(proven(spec('released', 51), path)).toEqual([['W', true]])
+    })
+
+    it(`un corps supprimé encore commandé, sans compte : fin de manche, aucune preuve (${path})`, () => {
+      expect(proven(spec('deleted'), path)).toEqual([['W', false]])
+    })
+
+    it(`un compte à rebours qui commence à la fin de la vie prouve la mort (${path})`, () => {
+      const countdown = { filmIndex: 3, from: 52, to: 132, seconds: 8, startRead: true, endRead: true }
+      expect(proven({ ...spec('deleted'), respawnCountdowns: [countdown] }, path)).toEqual([['W', true]])
+    })
+
+    it(`un bot (piste sans xuid) n’a jamais de mort neutre, lâcher ou non (${path})`, () => {
+      const base = spec('released', 51)
+      const bot = { slot: 9, team: -1, points: [{ t: 0, x: 0, y: 0 }], startFrame: 0, endFrame: 50, endReason: 'released', releaseFrame: 50 }
+      expect(proven({ ...base, tracks: [...base.tracks, bot] }, path)).toEqual([['W', true]])
+    })
+
+    it(`un ancien document (ni endReason ni compte) ne prouve rien (${path})`, () => {
+      expect(proven(spec(), path)).toEqual([['W', false]])
+    })
+  }
 })

@@ -73,6 +73,43 @@ func TestUneDecisionAccepteUnFiletDeSaFeuille(t *testing.T) {
 	}
 }
 
+// TestUnMotifAccepteLesFeuillesDeSonPrefixeSurSesTemoins : `tracks/par-xuid/*` accepte toute feuille
+// sous ce préfixe sur ses témoins, pas une feuille voisine ni un autre témoin ; un motif sans témoins est
+// refusé par le manifeste.
+func TestUnMotifAccepteLesFeuillesDeSonPrefixeSurSesTemoins(t *testing.T) {
+	ds := []Decision{{Mesure: "tracks/par-xuid/*", Temoins: []string{"aaaa0001"}, Decodeur: "v1.3.9", Date: "2026-11-15", Raison: "r"}}
+	filets := func() []replaydiff.Difference {
+		return []replaydiff.Difference{
+			{Metrique: "tracks/par-xuid/1000000000000001"}, {Metrique: "tracks/par-xuid-bis"}, {Metrique: "tracks/vies-nommees"},
+		}
+	}
+	vues := decisionsAppliquees{}
+	sien := ligneRapport{Temoin: Temoin{ID: "aaaa0001"}, Filets: filets()}
+	accepterLesFilets(&sien, ds, vues)
+	if len(sien.FiletsAcceptes) != 1 || sien.FiletsAcceptes[0].Metrique != "tracks/par-xuid/1000000000000001" {
+		t.Fatalf("filets acceptes par le motif : %+v", sien.FiletsAcceptes)
+	}
+	if len(sien.Filets) != 2 || vues[0] != 1 {
+		t.Fatalf("filets restants %+v, servi %d", sien.Filets, vues[0])
+	}
+	autre := ligneRapport{Temoin: Temoin{ID: "bbbb0002"}, Filets: filets()}
+	accepterLesFilets(&autre, ds, vues)
+	if len(autre.FiletsAcceptes) != 0 {
+		t.Fatalf("le motif borne a aaaa0001 s applique a un autre temoin : %+v", autre.FiletsAcceptes)
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.toml")
+	toml := "[meta]\ntitle_slug = \"halo_infinite\"\n[[temoin]]\nid = \"aaaa0001\"\nfamille = \"f\"\n" +
+		"[[decision]]\nmesure = \"tracks/par-xuid/*\"\ndecodeur = \"v1.3.9\"\ndate = \"2026-11-15\"\nraison = \"r\"\n"
+	if err := os.WriteFile(path, []byte(toml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadManifest(path); err == nil || !strings.Contains(err.Error(), "doit nommer ses temoins") {
+		t.Fatalf("motif sans temoins accepte : %v", err)
+	}
+}
+
 // TestLesDecisionsSansEffetNeSeJugentQueSurUneExecutionComplete : manifeste filtré, témoin absent ou
 // en erreur : pas de verdict « sans effet ».
 func TestLesDecisionsSansEffetNeSeJugentQueSurUneExecutionComplete(t *testing.T) {

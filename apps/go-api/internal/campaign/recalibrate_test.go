@@ -53,22 +53,6 @@ func (f *fakeRevisionStore) Store(_ context.Context, rev string) error {
 	return nil
 }
 
-// axisSamples : échantillons selon la fenêtre demandée. Fenêtre de départ (until = since + 180 j) :
-// `before` ; toute autre (depuis le départ) : `after`.
-type axisSamples struct {
-	before []float64
-	after  []float64
-}
-
-func (s axisSamples) LoadAxisSamples(
-	_ context.Context, _, _, _ string, _ AxisKind, _ string, since, until time.Time,
-) ([]float64, error) {
-	if until.Equal(since.AddDate(0, 0, startWindowDays)) {
-		return s.before, nil
-	}
-	return s.after, nil
-}
-
 var recalNow = time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
 
 // seedEvaluated : une campagne déjà évaluée (valeurs courantes, test, suggestion) à l'ancien départ.
@@ -84,9 +68,22 @@ func seedEvaluated(repo *fakeRepo, id, axis string, kind AxisKind, status Campai
 	}
 }
 
-func newRecalService(repo *fakeRepo) *Service {
-	return NewService(repo, axisSamples{before: []float64{10, 20, 30}, after: []float64{50, 60}})
+// Les campagnes de seedEvaluated démarrent le 2026-10-21 12:00 (recalNow - 30 jours) : fenêtre de départ
+// [2026-04-24 12:00, 2026-10-21 12:00], fenêtre depuis le départ [2026-10-21 12:00, recalNow].
+var (
+	recalStart       = utc(2026, 10, 21, 12)
+	recalStartWindow = window{utc(2026, 4, 24, 12), recalStart}
+	recalSinceWindow = window{recalStart, recalNow}
+)
+
+func newRecalSamples() *windowSamples {
+	return &windowSamples{byWindow: map[window][]float64{
+		recalStartWindow: {10, 20, 30},
+		recalSinceWindow: {50, 60},
+	}}
 }
+
+func newRecalService(repo *fakeRepo) *Service { return NewService(repo, newRecalSamples()) }
 
 // Une campagne active ou en pause sur l'axe Objectif repart d'un départ mesuré avec la mesure courante,
 // évaluation vide ; une campagne close, ou sur un autre axe (radar ou LUSR), ne bouge pas ; la révision
@@ -192,5 +189,84 @@ func TestApplyObjectiveAxisRev_ListeIllisible(t *testing.T) {
 	}
 	if store.rev != "" {
 		t.Errorf("révision rangée malgré l'échec : %q", store.rev)
+	}
+}
+
+// Le recalage lit, pour chaque campagne, la fenêtre de départ de son démarrage puis la fenêtre depuis le
+// départ : mêmes bornes que StartCampaign et l'évaluation (dates écrites en dur).
+func TestApplyObjectiveAxisRev_FenetresDeLecture(t *testing.T) {
+	repo := newFakeRepo()
+	seedEvaluated(repo, "active", AxisObjective, AxisKindRadar, StatusActive)
+	w := newRecalSamples()
+
+	if _, err := NewService(repo, w).ApplyObjectiveAxisRev(context.Background(), &fakeRevisionStore{}, "u1", "halo", recalNow); err != nil {
+		t.Fatal(err)
+	}
+	wantCalls(t, w.calls, recalStartWindow, recalSinceWindow)
+}
+
+// Plus de 100 échantillons dans la fenêtre de départ : le recalage garde les 100 derniers.
+func TestApplyObjectiveAxisRev_PlafondA100(t *testing.T) {
+	repo := newFakeRepo()
+	seedEvaluated(repo, "active", AxisObjective, AxisKindRadar, StatusActive)
+	w := &windowSamples{byWindow: map[window][]float64{recalStartWindow: sequence(150)}}
+
+	if _, err := NewService(repo, w).ApplyObjectiveAxisRev(context.Background(), &fakeRevisionStore{}, "u1", "halo", recalNow); err != nil {
+		t.Fatal(err)
+	}
+	if c := repo.byID["active"]; c.SnapshotSample != 100 || c.SnapshotValue != 100.5 {
+		t.Errorf("départ = %v sur %d, attendu 100,5 sur 100", c.SnapshotValue, c.SnapshotSample)
+	}
+}
+
+// Sans aucun match mesuré dans la fenêtre, le recalage écrit un départ NON MESURÉ (zéro échantillon) :
+// l'ancien départ chiffré ne survit pas, et le 0 qui l'accompagne ne se lit pas comme une mesure
+// (StartMeasured faux, aucun écart chiffré).
+func TestApplyObjectiveAxisRev_SansMatchMesureDepartNonMesure(t *testing.T) {
+	repo := newFakeRepo()
+	seedEvaluated(repo, "active", AxisObjective, AxisKindRadar, StatusActive)
+	store := &fakeRevisionStore{}
+
+	n, err := NewService(repo, &windowSamples{}).ApplyObjectiveAxisRev(context.Background(), store, "u1", "halo", recalNow)
+	if err != nil || n != 1 {
+		t.Fatalf("n=%d err=%v, attendu 1 campagne recalée", n, err)
+	}
+	c := repo.byID["active"]
+	if c.SnapshotSample != 0 || c.SnapshotValue != 0 || c.MatchesSinceStart != 0 || c.StartMeasured() {
+		t.Errorf("départ = %v sur %d (%d matchs depuis), mesuré = %v ; attendu 0 sur 0, non mesuré",
+			c.SnapshotValue, c.SnapshotSample, c.MatchesSinceStart, c.StartMeasured())
+	}
+	raw := 50.0
+	c.CurrentValueRaw = &raw
+	if c.Delta() != nil {
+		t.Errorf("écart chiffré contre un départ non mesuré : %v", *c.Delta())
+	}
+	if store.rev != ObjectiveAxisRev {
+		t.Errorf("révision rangée = %q, attendu %q", store.rev, ObjectiveAxisRev)
+	}
+}
+
+// Un titre sans statistiques d'objectif (capacité match.objective.stats absente) n'a rien à recaler : sa
+// campagne sur l'axe n'est pas réécrite à 0 sur 0, la révision est rangée et aucune mesure n'est lue.
+func TestApplyObjectiveAxisRev_TitreSansStatistiquesDObjectif(t *testing.T) {
+	repo := newFakeRepo()
+	seedEvaluated(repo, "active", AxisObjective, AxisKindRadar, StatusActive)
+	w := newRecalSamples()
+	store := &fakeRevisionStore{}
+
+	n, err := NewService(repo, w).WithObjectiveMeasure(false).
+		ApplyObjectiveAxisRev(context.Background(), store, "u1", "halo", recalNow)
+	if err != nil || n != 0 {
+		t.Fatalf("n=%d err=%v, attendu 0, nil", n, err)
+	}
+	c := repo.byID["active"]
+	if c.SnapshotValue != 40 || c.SnapshotSample != 12 || c.CurrentValueRaw == nil || !c.ProgressionConfirmed {
+		t.Errorf("campagne réécrite alors que le titre ne mesure pas l'axe : %+v", c)
+	}
+	if len(repo.restarts) != 0 || len(w.calls) != 0 {
+		t.Errorf("recalages = %v, mesures lues = %v, attendu aucun", repo.restarts, w.calls)
+	}
+	if store.rev != ObjectiveAxisRev {
+		t.Errorf("révision rangée = %q, attendu %q", store.rev, ObjectiveAxisRev)
 	}
 }

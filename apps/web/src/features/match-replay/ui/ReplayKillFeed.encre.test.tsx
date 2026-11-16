@@ -111,7 +111,7 @@ describe('ReplayKillFeed — l’encre de chaque nom est l’allégeance du film
   it('médaille seule, mort neutre et ligne de présence suivent la même règle', () => {
     afficher([
       ligne({ key: 'm', medal: medal('bid(44.0)', 'Sandwolf') }),
-      ligne({ key: 'd', replayMs: 2_000, death: { replayMs: 2_000, xuid: 'B', kind: '', img: '', tinted: false } }),
+      ligne({ key: 'd', replayMs: 2_000, death: { replayMs: 2_000, xuid: 'B', kind: '', img: '', tinted: false, proven: false } }),
       ligne({ key: 'p', replayMs: 3_000, presence: { kind: 'joined', xuid: 'M', name: 'Muet', bot: false, source: 'api' } }),
     ])
     expect(encreDe('Sandwolf')).toBe(ALLIE)

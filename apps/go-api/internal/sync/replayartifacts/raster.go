@@ -159,7 +159,7 @@ func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 		}
 		out = append(out, tactical.Piste{
 			XUID: t.XUID, Points: points, StartFrame: t.StartFrame, EndFrame: t.EndFrame,
-			Equipe: t.Team,
+			Equipe: t.Team, Fin: finDeLaPiste(t),
 		})
 	}
 	return out

@@ -187,15 +187,15 @@ Constat :
       dans le code et la note de version ; LevelUp ne fait que la lire. Si S2 suffit : rien à ajouter au
       décodeur. Dans les deux cas : tolérance d'appariement tirée de la mesure (constante nommée avec sa
       source), morts de fin de match, joueur sans `filmIndex` (bot ou roster incomplet : pas de croix, compté).
-- [ ] 3.3 (Sonnet) Dépendance : LevelUp monte un tag du décodeur qui publie le signal retenu en 3.2 (la montée
+- [x] 3.3 (Sonnet) Dépendance : LevelUp monte un tag du décodeur qui publie le signal retenu en 3.2 (la montée
       de la phase C, faite par sa propre session ; ce lot ne pose ni tag ni `require`). Vérifier auprès des
       sessions paires (pilote, décodeur) avant de commencer.
-- [ ] 3.4 (Sonnet) Web, fonction pure : `deathFacts` pose la croix d'une mort sans type quand la règle 3.2
+- [x] 3.4 (Sonnet) Web, fonction pure : `deathFacts` pose la croix d'une mort sans type quand la règle 3.2
       la prouve (passage roster `filmIndex` -> xuid), sinon la compte dans `unplacedDeaths` comme aujourd'hui.
       Document sans `respawnCountdowns` (ancien schéma) : comportement d'aujourd'hui, inchangé. Commentaires
       de `deathFacts` et de `killFeedLogic` réécrits (contrat, pas l'histoire). Tests vitest : fin de manche
       sans compte (pas de croix), mort sans type avec compte (croix), ancien document, bot.
-- [ ] 3.5 (Sonnet) Notes de version de la release qui porte la montée : la phrase de la 8.2.0 « les morts sans
+- [x] 3.5 (Sonnet) Notes de version de la release qui porte la montée : la phrase de la 8.2.0 « les morts sans
       type ne sont pas marquées » est remplacée. Vérification à l'écran ajoutée à l'artefact des vérifications
       du user (un BTB à attribution refusée, un Oddball à trois manches), pas dans un message.
 - [ ] 3.6 Régénération : UNE seule, celle de la montée de la phase C (D-3(b)), par la commande prévue,
@@ -264,6 +264,13 @@ Reprise de session : lire ce fichier (cases), puis `git log --oneline -10` sur l
   (`halo_exchange_error` au code d'appareil, `halo_exchange_failed` au navigateur). Unifier = changer un
   contrat servi ; hors périmètre.
 
+- 2026-11-16 (3.4) : les huit fixtures de contrat web au schéma 124 (`test/fixtures/go/replay_schema_124_*`) ne
+  portent ni `endReason` / `releaseFrame` ni `respawnCountdowns` ni `roundClock` : elles sont cuites sans la marche
+  des trames qui lit les commandes d'unité et les suppressions (en production, `film_scan_mouvement` du décodeur
+  les remplit). Aucun test de comptage des croix sur un vrai film n'est donc possible dans le dépôt ; un test figé
+  à 0 serait vert même sans la règle. Recuire ces fixtures avec la marche des trames sort du lot ; la preuve sur
+  film reste la vérification à l'écran après la régénération.
+
 ## 8. Répartition des modèles
 
 | Étape | Modèle | Pourquoi |
@@ -289,3 +296,7 @@ Reprise de session : lire ce fichier (cases), puis `git log --oneline -10` sur l
 - 2026-11-15 (lot 4, ronde 2 après relecture indépendante de la session pilote, 18 conditions tenues) : garde-rail de câblage lu dans les bornes de chaque appel (16 retraits prouvés rouges) ; test du filtre des armes au sol (rouge si supprimé ou inversé) ; révélation du capteur filtrée avant le dédoublonnage ; contrat de `PlacementScene.shown` réécrit selon le code ; bombe d'un porteur masqué retirée aussi quand elle se dessine libre ; règle des frags (validée par le user via la session pilote : tueur OU victime partout, sauf la croix de mort, victime seule) écrite comme contrat de `ownershipShown` et dans les notes. Constat 6 (propriétaire inconnu traité de trois façons) : en attente de la décision du user. Porte : 4 397 tests `match-replay` verts.
 - 2026-11-15 (3.2, agent Opus) : `[x]` règle écrite (`.ai/annexes_backlog_1115/regle_3_2.md`, mesure en `mesure_morts_sans_type.md`, sans xuid) : croix d'une vie close sans frag si lâcher de commande (`endReason == released`, `releaseFrame` dans [-2, +6] frames de la fin de piste) OU début d'un compte à rebours du même joueur dans [-2, +6] frames ; sur l'échantillon, 443 croix nouvelles, 0 fin de manche. Publication décodeur (3.3) en cours (`feat/fin-de-vie-par-commande`, schéma 123), « fenêtre de naissance de 5 s » de la spec remplacée par une borne lue.
 - 2026-11-15 (lot 4, ronde 3, constat 6) : décision du user (relayée par la session pilote) « B » : un élément dont le propriétaire est inconnu reste toujours affiché, sous Seul comme sous Masquer, comme le décor. Trois lectures alignées, test rouge avant / vert après chacune : projectiles sans auteur, marques des Vies sans slot, acteur sans slot de la mise en valeur d'une élimination (troisième cas trouvé par l'exécutant). Contrat de `ownershipShown`, notes et changelog FR/EN, inventaire à jour ; en-tête de `layers/authoredShown.test.ts` corrigé. Porte : 4 397 tests `match-replay` verts. Lot 4 clos.
+- 2026-11-15 (3.3) : `[x]` schéma 124 publié dans le décodeur v1.3.9 (tag fdd6f24), montée LevelUp par la session de la montée ; ce lot ne pose ni tag ni `require`. Les types web du schéma 124 sont repris provisoirement par deux commits `tmp(bl1115-3.4)` à retirer au rebase sur la montée officielle.
+- 2026-11-15 (3.4, `feat/bl1115-croix`, agent Sonnet) : `[x]`. Décision de livraison (coordinateur, 2026-11-15) : la 8.2.0 sort sans le nouveau décodeur, 3.4 et 3.5 partent en 8.2.1. `model/lifeEndProof.ts` (fonction pure `lifeEndProof`, table `countdownStartsByXuid` : `filmIndex` -> roster -> xuid, index porté par plusieurs entrées, bot ou sans xuid = comptes non servis et comptés ; constantes `UNIT_RELEASE_TOL_MS` et `RESPAWN_COUNTDOWN_TOL_MS` = -66 / +200 ms avec leur source) ; `lifeEndsOf` l'appelle, `ReplayDeath.proven` ; `deathFacts` pose la croix si `kind === ''` et `proven`. `startRead` n'est pas filtré (la règle 3.2 lit `from` tel quel). Tests : `lifeEndProof.test.ts` 20, `killFeedLogic.test.ts` +10 (deux chemins d'alignement), `livesMarks.test.ts` +3 ; porte `npx vitest run src/features/match-replay` : 326 fichiers passés, 4487 tests passés (4 fichiers et 7 tests de mesure déjà ignorés hors environnement : `*.mesure.test.ts`, `ReplayTeams.perf`), `npm run typecheck` (`tsc -b`) vert, eslint 0 erreur, knip-ratchet 0/0/0, `lint:colors` propre. Aucune fixture de contrat schéma 124 sous `test/fixtures/go/` (elles sont au schéma 116) : pas de test de comptage sur film réel, à faire à la régénération (3.6).
+- 2026-11-15 (3.5) : `[x]` section 8.2.1 ajoutée en tête de `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md` et `docs/FR/RELEASE_NOTES.md` (la phrase 8.2.0 « une mort sans cause connue n'est pas marquée » reste juste pour la 8.2.0 et n'est pas touchée) ; date de la 8.2.1 laissée vide (inconnue). La vérification à l'écran (un BTB à attribution refusée, un Oddball à trois manches) dans l'artefact `verifs` du user n'est pas faite par cet agent : à ajouter par la session pilote, après la régénération (3.6).
+- Découverte du lot 3 (non traitée) : `replayContract.test.ts` (liste exhaustive des tableaux nullables du contrat) ne compile plus avec les types du schéma 124 (quatre tableaux `medals`, `respawnCountdowns`, `roundClock`, `scoreActions` et le chemin `coverage.score.roundsUnplayed`) ; correction minimale dans le commit `tmp` de la branche, à remplacer par celle de la montée officielle.

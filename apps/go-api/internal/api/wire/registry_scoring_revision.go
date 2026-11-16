@@ -1,4 +1,4 @@
-// Package api — registry_scoring_revision.go : le câblage du passage de démarrage des révisions de
+// Package wire — registry_scoring_revision.go : le câblage du passage de démarrage des révisions de
 // mesure (service scoringrevision). Deux étapes par joueur, chacune avec sa révision rangée dans
 // sync_meta : le rejeu des KPI après un changement de formule, sur le recalculateur de match (base
 // partagée du titre par son provider, base metadata du titre, base de chaque joueur sous son lease) ;
@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
@@ -31,9 +32,12 @@ func (r *ServiceRegistry) NewScoringRevision() *scoringrevision.Service {
 	return scoringrevision.New(scoringRevisionApplier{r: r})
 }
 
-// scoringRevisionApplier implémente port.ScoringRevisionApplier sur le registre.
+// scoringRevisionApplier implémente port.ScoringRevisionApplier sur le registre. Les deux étapes sont
+// des champs pour qu'un test les remplace ; nil = l'étape du registre (applyKPI, applyCampaignObjectiveRev).
 type scoringRevisionApplier struct {
-	r *ServiceRegistry
+	r            *ServiceRegistry
+	kpiStep      func(ctx context.Context, titleSlug string, player domain.PlayerSummary, playerPath string) (bool, error)
+	campaignStep func(ctx context.Context, titleSlug string, player domain.PlayerSummary) (bool, error)
 }
 
 var _ port.ScoringRevisionApplier = scoringRevisionApplier{}
@@ -45,24 +49,36 @@ func (a scoringRevisionApplier) FollowedPlayers(titleSlug string) ([]domain.Play
 // ApplyForPlayer applique les deux révisions du joueur : KPI (notes et LUSR rejoués si sa révision de
 // formule rangée diffère de celle du binaire) puis départ des campagnes de l'axe Objectif (recalé si sa
 // révision de mesure rangée diffère). Les étapes sont indépendantes : l'échec de l'une ne retient pas
-// l'autre, et chacune garde sa révision rangée tant qu'elle n'a pas réussi. Rend true quand l'une a
-// recalculé quelque chose. Un profil sans base joueur (jamais synchronisé) n'a rien à recalculer : il
-// n'est pas créé ici.
+// l'autre, et chacune garde sa révision rangée tant qu'elle n'a pas réussi ; l'issue de chaque étape
+// est rendue séparément. Un profil sans base joueur (jamais synchronisé) n'a rien à recalculer : il
+// n'est pas créé ici et n'a aucune issue.
 func (a scoringRevisionApplier) ApplyForPlayer(
 	ctx context.Context, titleSlug string, player domain.PlayerSummary,
-) (bool, error) {
+) []port.RevisionOutcome {
 	playerPath := config.PlayerDBPath(a.r.cfg, titleSlug, player.Gamertag)
 	if _, err := os.Stat(playerPath); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			return false, fmt.Errorf("base joueur illisible: %w", err)
+			return []port.RevisionOutcome{{
+				Step: port.RevisionStepPlayerDB, Err: fmt.Errorf("base joueur illisible: %w", err),
+			}}
 		}
 		slog.InfoContext(ctx, "scoring revision: profil sans base joueur, rien à recalculer",
 			"player", player.Gamertag, "titleSlug", titleSlug)
-		return false, nil
+		return nil
 	}
-	kpi, kpiErr := a.applyKPI(ctx, titleSlug, player, playerPath)
-	campaigns, campaignErr := a.applyCampaignObjectiveRev(ctx, titleSlug, player)
-	return kpi || campaigns, errors.Join(kpiErr, campaignErr)
+	kpiStep, campaignStep := a.kpiStep, a.campaignStep
+	if kpiStep == nil {
+		kpiStep = a.applyKPI
+	}
+	if campaignStep == nil {
+		campaignStep = a.applyCampaignObjectiveRev
+	}
+	kpi, kpiErr := kpiStep(ctx, titleSlug, player, playerPath)
+	campaigns, campaignErr := campaignStep(ctx, titleSlug, player)
+	return []port.RevisionOutcome{
+		{Step: port.RevisionStepKPI, Applied: kpi, Err: kpiErr},
+		{Step: port.RevisionStepCampaigns, Applied: campaigns, Err: campaignErr},
+	}
 }
 
 // applyKPI rejoue les KPI du joueur si sa révision de formule rangée diffère de celle du binaire.
@@ -88,7 +104,8 @@ func (a scoringRevisionApplier) applyCampaignObjectiveRev(
 	if err != nil {
 		return false, fmt.Errorf("base joueur indisponible pour le recalage des campagnes: %w", err)
 	}
-	svc := campaign.NewService(duckdb.NewCampaignRepo(pdb.Player), duckdb.NewCampaignSampleProvider(pdb))
+	svc := campaign.NewService(duckdb.NewCampaignRepo(pdb.Player), duckdb.NewCampaignSampleProvider(pdb)).
+		WithObjectiveMeasure(a.r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats))
 	store := duckdb.NewSyncMetaRevisionStore(pdb, campaign.SyncMetaObjectiveAxisRev)
 	n, err := svc.ApplyObjectiveAxisRev(ctx, store, player.XUID, titleSlug, time.Now().UTC())
 	return n > 0, err

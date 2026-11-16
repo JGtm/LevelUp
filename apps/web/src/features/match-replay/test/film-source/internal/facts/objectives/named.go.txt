@@ -199,7 +199,7 @@ const (
 type NamedEvent struct {
 	// TimeMS est l'instant de l'emission qui porte cette action.
 	TimeMS int
-	// Slot identifie l'entite de joueur (10..24 pairs ; cf. IsTeamSlot).
+	// Slot identifie l'entite de joueur (10 jusqu'au dernier siege, pairs ; cf. IsTeamSlot).
 	Slot int
 	// Stat est le nom canonique de la statistique repliquee (cf. les constantes Stat*).
 	Stat string

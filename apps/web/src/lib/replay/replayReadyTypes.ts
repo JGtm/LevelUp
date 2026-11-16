@@ -217,12 +217,16 @@ export type ReplayDocumentReady = Omit<
   | 'carriedEquipment'
   | 'riftPoses'
   | 'loadouts'
+  | 'medals'
   | 'neutralDeaths'
   | 'objectiveObjects'
   | 'objectives'
   | 'padPickups'
   | 'projectiles'
+  | 'respawnCountdowns'
   | 'roster'
+  | 'roundClock'
+  | 'scoreActions'
   | 'scoreTimeline'
   | 'shots'
   | 'skullCarries'
@@ -373,10 +377,14 @@ export type ReplayDocumentReady = Omit<
   grenades: NonNullable<ReplayDocument['grenades']>
   inventory: ReplayInventoryReady[]
   loadouts: ReplayLoadoutReady[]
+  medals: NonNullable<ReplayDocument['medals']>
   neutralDeaths: NonNullable<ReplayDocument['neutralDeaths']>
   objectives: NonNullable<ReplayDocument['objectives']>
   padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
+  respawnCountdowns: NonNullable<ReplayDocument['respawnCountdowns']>
+  roundClock: NonNullable<ReplayDocument['roundClock']>
+  scoreActions: NonNullable<ReplayDocument['scoreActions']>
   roster: ReplayRosterEntryReady[]
   /**
    * LE CALQUE DE SCORE RESTE OPTIONNEL, et c'est la seule façon honnête de l'écrire : un

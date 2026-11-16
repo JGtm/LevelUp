@@ -158,13 +158,21 @@ var valeurViesParXUID = map[string]int{
 // compteur d'assistances DEROULE a 60 (deroulage aberrant) le mettait hors du triplet. Borne de
 // deroulage a 16 (lot 6.7-B1 item 6) et domaine des compteurs au niveau de l'enregistrement
 // (lot 6.11 item 3) : son triplet vaut (5, 0, 0), sa ligne de feuille, et le pont le nomme.
+//
+// Décodeur v1.3.9 (schéma 124) : les huit joueurs de l'oracle sont publiés. Le tableau des scores
+// couvre toutes les places et nomme la ligne par le joueur qu'elle désigne (composant 57), au lieu
+// de ne nommer que les triplets uniques ; `2603225103667623` et `2715607967843624` (2 / 3 / 1 tous
+// les deux, donc indiscernables par le triplet) entrent. Leurs séries finissent sur les valeurs de
+// l'API (boucle `oracleAPI` de [assertCompteursJoueurs]).
 var valeurJoueursApparies = []string{
+	"2603225103667623",
 	"2630521749790773",
 	"2588623217004373",
 	"2639041738602226",
 	"2643148600905879",
 	"2569104772637498",
 	"2805158871119453",
+	"2715607967843624",
 }
 
 // valeursDeGrille : ce que la grille du document change sur ce film, mesuré à chaque pas de cuisson que LevelUp a

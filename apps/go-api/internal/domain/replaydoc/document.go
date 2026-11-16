@@ -60,6 +60,8 @@ type ReplayDocument struct {
 	WeaponLabels        map[string]WeaponLabel   `json:"weaponLabels,omitempty"`
 	KillEffects         map[string]string        `json:"killEffects,omitempty"`
 	NeutralDeaths       []NeutralDeath           `json:"neutralDeaths,omitempty"`
+	Medals              []Medal                  `json:"medals,omitempty"`
+	ScoreActions        []ScoreAction            `json:"scoreActions,omitempty"`
 	Roster              []RosterEntry            `json:"roster,omitempty"`
 	MapObjectives       *MapObjectives           `json:"mapObjectives,omitempty"`
 	MapWeaponPads       *MapWeaponPads           `json:"mapWeaponPads,omitempty"`
@@ -77,6 +79,9 @@ type ReplayDocument struct {
 	BombStats           *BombMatchStats          `json:"bombStats,omitempty"`
 	BombEvents          []BombEvent              `json:"bombEvents,omitempty"`
 	Coverage            *Coverage                `json:"coverage,omitempty"`
+	RoundClock          []ClockSample            `json:"roundClock,omitempty"`
+	RespawnCountdowns   []RespawnCountdown       `json:"respawnCountdowns,omitempty"`
+	Rules               *MatchRules              `json:"rules,omitempty"`
 	Identity            *IdentitySection         `json:"identity,omitempty"`
 	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62).
 	// La cle est la balise JSON du calque a cette racine ; la valeur est `source-...`,
@@ -112,6 +117,11 @@ type Track struct {
 	Points     []Point `json:"points"`
 	StartFrame int     `json:"startFrame,omitempty"`
 	EndFrame   int     `json:"endFrame,omitempty"`
+	// EndReason dit comment le corps de la vie a fini, tel que le film l'ecrit : `released` (le joueur lache la
+	// commande) ou `deleted` (le corps est supprime). Absent quand le film ne le dit pas.
+	EndReason string `json:"endReason,omitempty"`
+	// ReleaseFrame est la frame du lacher de commande, sur l'axe de `startFrame` et `endFrame`.
+	ReleaseFrame *int `json:"releaseFrame,omitempty"`
 }
 
 // Point est une position echantillonnee au pas de temps T. X/Y = plan horizontal de la

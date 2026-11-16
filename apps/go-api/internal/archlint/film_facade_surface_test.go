@@ -441,7 +441,21 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           `replay.HistoricalFrameIntervalMS`, le pas d'un document sans
 //	                                           `frameIntervalMs` ; `replaybuild.HistoricalFrameIntervalMS` le relit
 //	                                           (le pas de cuisson, lui, est `CookFrameIntervalMS`). Aucun retrait.
-const plafondSurfaceReplay = 320 // 2026-11-13 — base 6bb63bff25 re-mesuree a 319 + 1 (HistoricalFrameIntervalMS) ; cf. l historique ci-dessus
+//	328  montee du decodeur (2026-11-15)        base `010e65bbc4` re-mesuree a 320. +8 : `replay.Medal`,
+//	                                           `replay.MedalCoverage`, `replay.ScoreAction`,
+//	                                           `replay.ScoreActionCoverage`, `replay.ClockSample`,
+//	                                           `replay.RespawnCountdown`, `replay.MatchRules` et
+//	                                           `replay.ClocksCoverage`, les types des calques des schemas
+//	                                           117 a 121 que le document servi projette (`service/replayview`) ;
+//	                                           la parite exige une decision par champ. Aucun retrait.
+//	329  fins de vie du schema 123 (2026-11-15)  base `ee35b45882` re-mesuree a 328. +1 :
+//	                                           `replay.LifeEndCoverage`, la couverture `coverage.tracks.lifeEnds`
+//	                                           que le document servi projette (`service/replayview`). Aucun retrait.
+//	331  reapparitions lues au film (2026-11-15)  base `82e6969d12` re-mesuree a 329. +2 :
+//	                                           `replay.EndReasonReleased` et `replay.EndReasonDeleted`, les deux
+//	                                           fins de vie que l'entree de l'occupation traduit
+//	                                           (`sync/replayartifacts`, `finDeLaPiste`). Aucun retrait.
+const plafondSurfaceReplay = 331 // 2026-11-15 — base 82e6969d12 re-mesuree a 329 + 2 (EndReasonReleased, EndReasonDeleted) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

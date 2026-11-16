@@ -29,12 +29,6 @@
 
 ---
 
-### [campagnes] Défis de l'axe Objectif : départ « 0.00 » sans mesure, Halo 5 remis à zéro au recalage
-
-Relevé le 2026-11-15 par la relecture du recalage des campagnes (commit 79de94b977) ; correctifs prêts sur la branche `feat/c820-campagne`, non poussés (consigne du user : la 8.2.0 sort, les correctifs passent en 8.2.1). (1) Quand la fenêtre de départ de 180 jours n'a aucun match mesuré, `mean(nil)` vaut 0 (`internal/campaign/recalibrate.go:113`, même cas dans `StartCampaign`) : `CampaignTracker.tsx:55` affiche « 0.00 » au départ et toute la valeur courante comme progression ; `snapshot_sample = 0` doit se lire « départ non mesuré » (tiret, pas de progression chiffrée). (2) Un titre sans `match.objective.stats` (Halo 5) qui porte une campagne sur l'axe `objective` est réécrit à 0/0 par le recalage : le sauter par capability (`HasCapability`, jamais le slug). (3) Si les notes réussissent et que le recalage des campagnes échoue, le log dit « retenté au prochain démarrage » alors que les notes ne seront pas rejouées, et `appliquee_total` ne compte pas l'étape réussie (`api/wire/registry_scoring_revision.go:65`, `service/scoringrevision/service.go` vers la ligne 88) ; l'erreur de lecture des échantillons est avalée (`internal/campaign/service.go:281`, `post, _ :=`). **Condition de reprise :** 8.2.1, en partant de la branche. **Effort : S.**
-
----
-
 ### [web/couleurs] Reliquats du garde-rail des couleurs
 
 Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 5). Le garde-rail couvre désormais `ring-offset`, `outline`, `decoration`, `accent`, `caret` et la portée de `color-allow`. Restent : 23 marqueurs `color-allow` nus qui n'excusent plus rien (marqueur sur une autre ligne que la couleur, ou ligne sans couleur), à retirer ; les préfixes `shadow`, `from`, `via`, `to` suivis d'une couleur nommée ne sont pas balayés (seuls le noir et le blanc absolus le sont). **Condition de reprise :** une passe de nettoyage web. **Effort : S.**
@@ -174,6 +168,24 @@ user. **Effort : S.**
 
 ---
 
+### [tests/local] `internal/platform/duckdb` dépasse 300 s sous `-tags=integration` en local
+
+Relevé le 2026-11-15 par la baseline de `make gate-push` (177 tests absents du run), déjà présent sur `release/v8.2.0` en v1.3.7, 132 s sans le tag, CI verte : à mesurer (test le plus lent) puis découper ou relever le délai du paquet. **Effort : S.**
+
+---
+
+### [rejeu/gate] `replay-equiv` ne compare ni les joueurs du tableau des scores ni leurs stats
+
+Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de `cmd/replay-equiv` ignore `scoreTimeline.players[]` et `players[].stats` ; un défaut d'association ou de manches ne se voit que dans l'empreinte opaque `artifact`. Ajouter leur empreinte (étape neuve ou `score` étendue). **Effort : S.**
+
+---
+
+### [rejeu/gate] témoin `f75e7053` hors d'atteinte du gate du corpus
+
+Absent du registre depuis la purge du 2026-10-26, sans artefact de parc : le gate de la montée v1.3.9 a tourné sur une copie du manifeste sans lui. Le remplacer par un film de même famille ou le retirer de `config/replay_corpus.toml`. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
@@ -198,6 +210,7 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
+| 2026-11-16 | **[campagnes] Défis de l'axe Objectif : départ non mesuré, Halo 5 sauté par capability au recalage, étapes notes et campagnes indépendantes** (commit 2b507b8c77, release 8.2.1). |
 | 2026-11-15 | **[logs] Avertissements répétés pendant un long recalcul** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1) : un dépassement de seuil du writer ou d'une lecture se dit une fois par épisode (franchissement, second seuil de 30 s, libération avec durée et lectures retenues), repli du solveur LUSR résumé en une ligne par rejeu avec sa cause, pannes 5xx des services Halo en une ligne par passe, 429 absorbés en INFO. |
 | 2026-11-15 | **[web/couleurs] Infobulle `info-tooltip` au focus clavier seulement, garde-rail de couleurs étendu** (même plan, étape 5) : couche globale des infobulles (survol et focus clavier, visibles en partage d'écran), `ring-offset`, `outline`, `decoration`, `accent`, `caret` et portée de `color-allow` ; reliquats au backlog. |
 | 2026-11-15 | **[kpi/notes] Vie d'un Spartan à 229 points, note de performance des modes à objectif** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7, branche `feat/c820-note`) : mesure sur 1 614 films (compteur « dégâts subis », 229 dans 99,6 % des vies sans recharge de bouclier, 230 dans 0,4 %), `games.DefaultEffectiveHpToKill` et `effective_hp_to_kill` à 229, aide FR/EN ; note à objectif (paquet `internal/sync/objectiveblend` : moyenne symétrique du combat, de l'objectif et du soutien de l'équipe, rangs à mi-rang contre l'historique du joueur dans la famille de mode), métrique `objective_participation` retirée ; `PerformanceScoreRev` et `LUSRRev` montées ensemble (un seul recalcul, test D-14), ADR 0047 et 0006 amendées, notes de version et changelog FR/EN avec les écarts mesurés (médiane +0,6, 90e centile 11,8, 32 % de paliers changés, après le repli de famille du soutien). |

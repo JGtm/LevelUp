@@ -92,7 +92,7 @@ const bornes = z.strictObject({
 })
 
 /**
- * replayDocumentSchema — les 58 clés de la racine, dans l'ordre du contrat généré.
+ * replayDocumentSchema — les 63 clés de la racine, dans l'ordre du contrat généré.
  *
  * L'ORDRE EST CELUI DU CONTRAT, et ce n'est pas de la coquetterie : c'est ce qui rend la
  * confrontation lisible en revue quand le contrat gagne une clé.
@@ -141,6 +141,7 @@ export const replayDocumentSchema = z.strictObject({
   mapObjectives: bloc<NonNullable<ReplayDocument['mapObjectives']>>(),
   mapWeaponPads: bloc<NonNullable<ReplayDocument['mapWeaponPads']>>(),
   matchId: z.string(),
+  medals: calque<Elem<'medals'>>(),
   neutralDeaths: calque<Elem<'neutralDeaths'>>(),
   objectiveObjects: calque<Elem<'objectiveObjects'>>(),
   objectives: calque<Elem<'objectives'>>(),
@@ -148,8 +149,12 @@ export const replayDocumentSchema = z.strictObject({
   padPickups: calque<Elem<'padPickups'>>(),
   pickups: calque<Elem<'pickups'>>(),
   projectiles: calque<Elem<'projectiles'>>(),
+  respawnCountdowns: calque<Elem<'respawnCountdowns'>>(),
   roster: calque<Elem<'roster'>>(),
+  roundClock: calque<Elem<'roundClock'>>(),
+  rules: bloc<NonNullable<ReplayDocument['rules']>>(),
   schemaVersion: z.number(),
+  scoreActions: calque<Elem<'scoreActions'>>(),
   scoreTimeline: bloc<NonNullable<ReplayDocument['scoreTimeline']>>(),
   shots: calque<Elem<'shots'>>(),
   skullCarries: calque<Elem<'skullCarries'>>(),

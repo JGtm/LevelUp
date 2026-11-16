@@ -97,6 +97,9 @@ type Service struct {
 	repo      Repo
 	samples   SampleProvider
 	leverages LeverageProvider // optionnel — active R5 "axe sort bottom-3"
+	// objectiveUnmeasured : le titre ne fournit pas de statistiques d'objectif (capacité
+	// match.objective.stats absente) ; le recalage de l'axe Objectif saute alors ses campagnes.
+	objectiveUnmeasured bool
 }
 
 // NewService construit le service.
@@ -108,6 +111,14 @@ func NewService(repo Repo, samples SampleProvider) *Service {
 // (V2 §4). Chainable. Si non câblé, R5 ne déclenche que sur plateau_60d.
 func (s *Service) WithLeverageProvider(p LeverageProvider) *Service {
 	s.leverages = p
+	return s
+}
+
+// WithObjectiveMeasure déclare si le titre du service fournit des statistiques d'objectif (capacité
+// match.objective.stats de l'adapter). Faux : le recalage de l'axe Objectif ne réécrit pas les campagnes
+// du titre. Vrai par défaut. Chainable.
+func (s *Service) WithObjectiveMeasure(measured bool) *Service {
+	s.objectiveUnmeasured = !measured
 	return s
 }
 
@@ -254,7 +265,11 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 	if !c.IsActive() {
 		return nil
 	}
-	pre, post := s.loadCampaignSnapshots(ctx, c, now)
+	pre, post, err := s.loadCampaignSnapshots(ctx, c, now)
+	if err != nil {
+		// Pas d'évaluation sur des échantillons illisibles : en écrire une vide effacerait la précédente.
+		return err
+	}
 
 	eval := Evaluation{
 		MatchesSinceStart: len(post),
@@ -272,14 +287,23 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 }
 
 // loadCampaignSnapshots charge pre (fenêtre de départ, cf. loadStartSamples) + post (depuis StartedAt).
-func (s *Service) loadCampaignSnapshots(ctx context.Context, c ImprovementCampaign, now time.Time) ([]float64, []float64) {
-	pre, err := s.loadStartSamples(ctx, c.startParams(), c.StartedAt)
+// Une population « avant » illisible dégrade l'évaluation (pas de test de progression) ; une population
+// « depuis le départ » illisible est une erreur : l'évaluation ne se calcule pas sans elle.
+func (s *Service) loadCampaignSnapshots(
+	ctx context.Context, c ImprovementCampaign, now time.Time,
+) (pre, post []float64, err error) {
+	pre, err = s.loadStartSamples(ctx, c.startParams(), c.StartedAt)
 	if err != nil {
 		slog.WarnContext(ctx, "campaign: échantillons de départ illisibles (évaluation sans test de progression)",
 			"campaign_id", c.ID, "axis", c.Axis, "err", err)
 	}
-	post, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, c.StartedAt, now)
-	return pre, post
+	post, err = s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, c.StartedAt, now)
+	if err != nil {
+		slog.ErrorContext(ctx, "campaign: échantillons depuis le départ illisibles (évaluation abandonnée)",
+			"campaign_id", c.ID, "axis", c.Axis, "err", err)
+		return nil, nil, fmt.Errorf("échantillons depuis le départ: %w", err)
+	}
+	return pre, post, nil
 }
 
 // Fenêtre qui fonde le point de départ d'une campagne : les startSampleCap derniers échantillons de
@@ -346,7 +370,8 @@ func (s *Service) applyCampaignAutoClosureRules(
 	if eval.ProgressionConfirmed {
 		return
 	}
-	if now.Sub(c.StartedAt) > PlateauWindowDays*24*time.Hour && eval.CurrentLOWESS.Valid {
+	// Plateau : mesuré contre un départ chiffré seulement (un départ non mesuré n'est pas une référence).
+	if c.StartMeasured() && now.Sub(c.StartedAt) > PlateauWindowDays*24*time.Hour && eval.CurrentLOWESS.Valid {
 		delta := math.Abs(eval.CurrentLOWESS.Float64 - c.SnapshotValue)
 		if delta < 0.02 {
 			eval.AutoClosureSuggested = true

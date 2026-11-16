@@ -1,5 +1,16 @@
 ## What's new
 
+**v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
+
+- **Every medal named** — the 157 medals of the game are read from the film with their real names. The replay does not show them yet
+- **A right scoreboard for every player** — each line of the end-of-match scoreboard is tied to the right player, on matches with several rounds too, and the counters of every seat are read (more than eight players). The replay does not show these counters yet
+- **Exact presence of players** — who was in the match, and when they arrived and left, is read from the game's own lists: a player who joined late is no longer shown before they arrived
+- **The right place for late arrivals, and named bots** — when bots fill a match, a player who joins takes the seat they really had, and the bots keep their names
+- **A death with no known cause is now marked** — on the replay map, the "Deaths" layer now puts a cross wherever the film shows a player dying, even when it does not say from what: the player lets go of their body, or their respawn countdown starts. An end of round, which closes every life without a death, is still not marked. A replay generated before this version keeps its crosses as they were.
+- **Respawns read from the film** — the Tactics view now knows a respawn from what the film says (the player lets go of their body, or their respawn countdown starts), no longer from the gap between two lives. A round start is no longer counted as a respawn. A replay generated before this version keeps the estimate from the gap.
+- **A see-through "Plan" background** — the "Plan" background no longer sits on a white rectangle: around the playable floor and in its holes (rocks, pillars), the page shows through, as with the rendered background
+- **Challenges with no measured start** — a challenge whose starting window has no measured match shows a dash instead of "0.00", and Halo 5 challenges on the Objective axis are no longer reset when the scores are recomputed
+
 **v8.2 — A fuller replay, truer map backgrounds, Lead share, new match charts and compressed replays**
 
 **The replay**

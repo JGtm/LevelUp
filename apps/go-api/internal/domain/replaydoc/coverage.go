@@ -28,6 +28,8 @@ type Coverage struct {
 	Keyframes         *KeyframeCoverage           `json:"keyframes,omitempty"`
 	BirthLoadouts     *BirthLoadoutCoverage       `json:"birthLoadouts,omitempty"`
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
+	Medals            *MedalCoverage              `json:"medals,omitempty"`
+	ScoreActions      *ScoreActionCoverage        `json:"scoreActions,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`
@@ -38,6 +40,7 @@ type Coverage struct {
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
 	Vehicles          *VehicleCoverage            `json:"vehicles,omitempty"`
 	ContinuousFire    *ContinuousFireCoverage     `json:"continuousFire,omitempty"`
+	Clocks            *ClocksCoverage             `json:"clocks,omitempty"`
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
 	FilmMajorVersion  *int                        `json:"filmMajorVersion,omitempty"`
@@ -250,6 +253,20 @@ type TrackCoverage struct {
 	HorsEmprise               int `json:"horsEmprise"`
 	SlotsArmes                int `json:"slotsArmes"`
 	SlotsDesarmes             int `json:"slotsDesarmes"`
+	// LifeEnds : ce que la lecture de la fin de chaque vie a trouve. Absent quand la marche des trames n'a pas lu.
+	LifeEnds *LifeEndCoverage `json:"lifeEnds,omitempty"`
+}
+
+// LifeEndCoverage dit comment finissent les vies publiees : lachees, supprimees, reprises par un autre joueur,
+// non lues, ouvertes, closes par la fin du film, et les suppressions que rien ne prouve.
+type LifeEndCoverage struct {
+	Released          int `json:"released"`
+	Deleted           int `json:"deleted"`
+	Retaken           int `json:"retaken"`
+	Unread            int `json:"unread"`
+	Open              int `json:"open"`
+	FilmEnd           int `json:"filmEnd"`
+	DeletionsUnproven int `json:"deletionsUnproven"`
 }
 
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,
@@ -344,6 +361,10 @@ type ScoreCoverage struct {
 	// RoundsDecreed : aucune manche n'a été admise et la manche 0 a été DÉCRÉTÉE pour que le
 	// film reste lisible (repli `repli_manche_zero_decretee`).
 	RoundsDecreed bool `json:"roundsDecreed,omitempty"`
+	// StatsWithheld : les joueurs prives de `players[].stats` parce que le film a plusieurs manches.
+	StatsWithheld int `json:"statsWithheld,omitempty"`
+	// RoundsUnplayed : les numeros de manche ecartes parce que les issues du film n'y montrent aucune manche jouee.
+	RoundsUnplayed []int `json:"roundsUnplayed,omitempty"`
 }
 
 // WeaponChangeCoverage dit ce que le calque a vu et ce qu'il a écarté, pour qu'un lecteur

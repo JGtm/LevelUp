@@ -35,6 +35,10 @@ type bilanLecture struct {
 	reapFilm, reapRepli, debutsManche                 int
 	sansEquipe, nonFinis                              int
 	parFamille                                        map[string]int
+	// accord : les deux definitions d'une reapparition comparees sur les documents lus au film.
+	accord accordDefinitions
+	// comptesSansJoueur : comptes a rebours qu'aucun xuid ne rattache (bots, index inconnu).
+	comptesSansJoueur int
 }
 
 // jeuReapparitions : tout ce que les mesures lisent.
@@ -111,6 +115,8 @@ func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch, 
 		j.obstacles[info.carteID] = obstaclesDuDocument(doc)
 	}
 	entree := replayartifacts.EntreeOccupationDeLArtefact(doc)
+	j.bilan.comptesSansJoueur += entree.ComptesSansJoueur
+	j.bilan.accord.comparer(entree)
 	j.evenementsDuMatch(entree, info)
 }
 

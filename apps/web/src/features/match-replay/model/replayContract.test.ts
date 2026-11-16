@@ -98,6 +98,10 @@ const NULLABLE_ARRAYS = [
   'grenades',
   'inventory',
   'loadouts',
+  // `medals` (schéma 117), `scoreActions` (schéma 121), `roundClock` et `respawnCountdowns` (schéma 120) :
+  // les calques datés des médailles, du score par action, de l'horloge de manche et des comptes à rebours
+  // de réapparition. Comblés à vide par la frontière ; aucun tableau imbriqué.
+  'medals',
   'neutralDeaths',
   // `objectiveObjects` : les vies LIBRES du crane d'Oddball (schema 21) — ou l'objet se trouve
   // quand PERSONNE ne le porte. Nullable au contrat comme les autres tableaux de tete ; son
@@ -111,7 +115,10 @@ const NULLABLE_ARRAYS = [
   // l'événement natif `biped_pickup` date l'occupation, `null` sinon.
   'padPickups',
   'projectiles',
+  'respawnCountdowns',
   'roster',
+  'roundClock',
+  'scoreActions',
   'shots',
   // `bursts` : LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) — comblées à vide, leurs passages
   // muets aussi (`holes`).
@@ -277,12 +284,16 @@ const NULLABLE_ARRAY_PATHS = [
   'grenades',
   'inventory',
   'loadouts',
+  'medals',
   'neutralDeaths',
   'objectiveObjects',
   'objectives',
   'padPickups',
   'projectiles',
+  'respawnCountdowns',
   'roster',
+  'roundClock',
+  'scoreActions',
   'shots',
   'bursts',
   'bursts[].holes',
@@ -360,6 +371,7 @@ const NULLABLE_ARRAY_PATHS = [
   // figurent donc dans l'allowlist hors frontière ci-dessous, pas dans la normalisation.
   'coverage.score.roundsWritten',
   'coverage.score.roundsContradicted',
+  'coverage.score.roundsUnplayed',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.
@@ -454,6 +466,7 @@ const PATHS_HORS_FRONTIERE = [
   // nullables du schéma 60 restent tels quels — les combler ici en ferait une seconde vérité.
   'coverage.score.roundsWritten',
   'coverage.score.roundsContradicted',
+  'coverage.score.roundsUnplayed',
   // `coverage.stances.mapWidths` (schema 65) : le TRIPLET de largeurs d'axe employe par la
   // marche, publie parce que c'est le pre-requis le plus facile a oublier. Il vit dans
   // `coverage`, donc hors frontiere pour la meme raison que les deux ci-dessus.

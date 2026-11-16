@@ -21,6 +21,7 @@ import type { ImprovementCampaign } from '@/lib/playerProfile'
 import { useCampaignMutations } from '@/features/ascension/profile/queries'
 import { useProfileI18n } from '@/features/ascension/profile/useProfileI18n'
 import { intlLocale } from '@/lib/formatters'
+import { campaignDelta, isStartMeasured } from './campaignTrackerLogic'
 
 const MIN_MATCHES_FOR_TREND = 20
 
@@ -50,10 +51,7 @@ export function CampaignTracker({ playerSlug, campaign, readOnly = false }: Camp
     campaign.playlist_group === 'all'
       ? t('campaign.tracker.playlist_all')
       : campaign.playlist_group
-  const delta =
-    campaign.current_value_lowess !== undefined
-      ? campaign.current_value_lowess - campaign.snapshot_value
-      : undefined
+  const delta = campaignDelta(campaign)
   const linkedCount = campaign.linked_challenge_ids?.length ?? 0
 
   return (
@@ -210,11 +208,12 @@ interface TrendBlockProps {
 
 function TrendBlock({ campaign, delta }: TrendBlockProps) {
   const { t } = useProfileI18n()
+  const startMeasured = isStartMeasured(campaign)
   return (
     <dl className="grid grid-cols-3 gap-3 text-sm">
       <Pair
         label={t('campaign.tracker.kpi_snapshot')}
-        value={campaign.snapshot_value.toFixed(2)}
+        value={startMeasured ? campaign.snapshot_value.toFixed(2) : '—'}
       />
       <Pair
         label={t('campaign.tracker.kpi_current')}

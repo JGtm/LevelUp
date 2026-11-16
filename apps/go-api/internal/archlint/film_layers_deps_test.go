@@ -256,6 +256,9 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// n importe pas `grammar` —, parce que des tests de `grammar` importent `facts/objectives`, qui
 	// la consomme.
 	"libs/film/internal/grammar/signaux": coucheGrammar,
+	// `datums` LIT le bloc de type 1 du chunk (la table de datums), sorti de `grammar` en sous-paquet : couche
+	// `grammar`, feuille de cette couche.
+	"libs/film/internal/grammar/datums": coucheGrammar,
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
@@ -283,6 +286,9 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	"libs/film/damagetag": horsCoucheFilm,
 	"libs/film/killicon":  horsCoucheFilm,
 	"libs/film/medalname": horsCoucheFilm,
+	// `reponsesdejeu` : la table des reponses de jeu (nom, genre et points de chaque rang de l arbre des scripts d un
+	// mode), reprise de libfilmshell, comme `medalname` : un catalogue, il ne lit aucun octet de film.
+	"libs/film/reponsesdejeu": horsCoucheFilm,
 	// `filmcache` : le CACHE DISQUE des films (chemins, index JSON). C est de l infrastructure de
 	// stockage local au-dessus de `source`, pas une etape de decodage — meme rangement par la
 	// note §2.2, et il reste hors de `film/internal/` pour rester accessible a ses appelants.

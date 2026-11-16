@@ -62,6 +62,8 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		WeaponLabels:        mapOf(v.WeaponLabels, toWeaponLabel),
 		KillEffects:         v.KillEffects,
 		NeutralDeaths:       sliceOf(v.NeutralDeaths, toNeutralDeath),
+		Medals:              sliceOf(v.Medals, toMedal),
+		ScoreActions:        sliceOf(v.ScoreActions, toScoreAction),
 		Roster:              sliceOf(v.Roster, toRosterEntry),
 		MapObjectives:       ptrOf(v.MapObjectives, toMapObjectives),
 		MapWeaponPads:       ptrOf(v.MapWeaponPads, toMapWeaponPads),
@@ -79,6 +81,9 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		BombStats:           ptrOf(v.BombStats, toBombMatchStats),
 		BombEvents:          sliceOf(v.BombEvents, toBombEvent),
 		Coverage:            ptrOf(v.Coverage, toCoverage),
+		RoundClock:          sliceOf(v.RoundClock, toClockSample),
+		RespawnCountdowns:   sliceOf(v.RespawnCountdowns, toRespawnCountdown),
+		Rules:               ptrOf(v.Rules, toMatchRules),
 		Identity:            ptrOf(v.Identity, toIdentitySection),
 		// `layers` VOYAGE TEL QUEL : une table de chaines courtes, dont les cles sont les balises
 		// JSON des calques et les valeurs des revisions de couche. Rien a traduire — et surtout pas
@@ -100,14 +105,16 @@ func toBounds(v replay.Bounds) replaydoc.Bounds {
 
 func toTrack(v replay.Track) replaydoc.Track {
 	return replaydoc.Track{
-		Slot:       v.Slot,
-		Team:       v.Team,
-		Name:       v.Name,
-		XUID:       v.XUID,
-		Bot:        v.Bot,
-		Points:     sliceOf(v.Points, toPoint),
-		StartFrame: v.StartFrame,
-		EndFrame:   v.EndFrame,
+		Slot:         v.Slot,
+		Team:         v.Team,
+		Name:         v.Name,
+		XUID:         v.XUID,
+		Bot:          v.Bot,
+		Points:       sliceOf(v.Points, toPoint),
+		StartFrame:   v.StartFrame,
+		EndFrame:     v.EndFrame,
+		EndReason:    v.EndReason,
+		ReleaseFrame: v.ReleaseFrame,
 	}
 }
 

@@ -153,6 +153,11 @@ type EntreeOccupation struct {
 	// rattaches a un xuid (cf. JoindreDebutsDeCompte). Vide : le document ne porte pas ce
 	// compte, et la reapparition se juge au repli nomme (cf. reapparitions.go).
 	DebutsDeCompte []DebutCompte
+
+	// ComptesSansJoueur compte les comptes a rebours que la jointure n'a rattaches a aucun xuid
+	// (bot, index inconnu) : ecartes de DebutsDeCompte, ils ne servent a aucune decision et ne
+	// sont la que pour etre comptes.
+	ComptesSansJoueur int
 }
 
 // EntreeCellule est la PREMIERE entree d'un joueur dans une cellule, sur l'ensemble de

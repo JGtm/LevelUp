@@ -39,11 +39,21 @@ type Decision struct {
 	Raison string `toml:"raison"`
 }
 
+// suffixeMotif : une mesure qui finit par ce suffixe désigne toutes les feuilles du document sous ce
+// préfixe (`tracks/par-xuid/*`). Le manifeste est versionné dans un dépôt public : une feuille dont le
+// nom porte un identifiant de joueur ne peut pas s'y écrire, le motif l'accepte sans la nommer.
+const suffixeMotif = "/*"
+
 // valider refuse une décision incomplète (sans mesure, décodeur, date ou raison, elle ne dit pas ce
-// qu'elle accepte ni qui l'a décidé) et une décision qui nomme un témoin hors du manifeste.
+// qu'elle accepte ni qui l'a décidé), une décision qui nomme un témoin hors du manifeste, et un motif
+// sans témoins : un motif accepte toute une famille de feuilles, il doit être borné aux témoins
+// instruits.
 func (d Decision) valider(i int, temoins map[string]bool) error {
 	if d.Mesure == "" || d.Date == "" || d.Raison == "" || d.Decodeur == "" {
 		return fmt.Errorf("decision #%d : mesure, decodeur, date et raison sont obligatoires", i)
+	}
+	if d.estUnMotif() && len(d.Temoins) == 0 {
+		return fmt.Errorf("decision #%d : le motif %q doit nommer ses temoins", i, d.Mesure)
 	}
 	for _, id := range d.Temoins {
 		if !temoins[id] {
@@ -56,6 +66,20 @@ func (d Decision) valider(i int, temoins map[string]bool) error {
 // concerne dit si la décision vaut pour le témoin `id`.
 func (d Decision) concerne(id string) bool {
 	return len(d.Temoins) == 0 || slices.Contains(d.Temoins, id)
+}
+
+// estUnMotif dit si la mesure désigne une famille de feuilles plutôt qu'une feuille.
+func (d Decision) estUnMotif() bool {
+	return strings.HasSuffix(d.Mesure, suffixeMotif)
+}
+
+// couvreLaFeuille dit si la décision accepte le filet de la feuille `metrique` : égalité stricte, ou
+// préfixe pour un motif (`tracks/par-xuid/*` couvre `tracks/par-xuid/<n'importe quoi>`).
+func (d Decision) couvreLaFeuille(metrique string) bool {
+	if d.estUnMotif() {
+		return strings.HasPrefix(metrique, strings.TrimSuffix(d.Mesure, "*"))
+	}
+	return d.Mesure == metrique
 }
 
 // motif est le détail ajouté au constat accepté.
@@ -91,7 +115,7 @@ func accepterLesFilets(l *ligneRapport, ds []Decision, vues decisionsAppliquees)
 	for _, f := range l.Filets {
 		accepte := f.Metrique == metriqueNombreDeReplis && hausseDesReplisAcceptes(l, f)
 		for i, d := range ds {
-			if d.concerne(l.Temoin.ID) && d.Mesure == f.Metrique {
+			if d.concerne(l.Temoin.ID) && d.couvreLaFeuille(f.Metrique) {
 				vues[i]++
 				accepte = true
 			}

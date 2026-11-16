@@ -1,5 +1,16 @@
 ## Dernières nouveautés
 
+**v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
+
+- **Toutes les médailles nommées** — les 157 médailles du jeu sont lues dans le film avec leur vrai nom. Le rejeu ne les affiche pas encore
+- **Un tableau des scores juste pour tous les joueurs** — chaque ligne du tableau des scores de fin de match est rattachée au bon joueur, y compris sur les matchs à plusieurs manches, et les compteurs de tous les sièges sont lus (au-delà de huit joueurs). Le rejeu n'affiche pas encore ces compteurs
+- **La présence exacte des joueurs** — qui était dans le match, et quand chacun est arrivé et parti, se lit dans les listes du jeu : un joueur arrivé en cours de match n'est plus montré avant son arrivée
+- **La bonne place des arrivants, et les bots nommés** — quand des bots complètent un match, un joueur qui arrive prend la place qu'il avait vraiment, et les bots gardent leur nom
+- **Une mort sans cause connue est maintenant marquée** — sur la carte du rejeu, le calque « Morts » pose désormais une croix partout où le film montre un joueur mourir, même s’il ne dit pas de quoi : le joueur lâche son corps, ou son compte à rebours de réapparition démarre. Une fin de manche, qui ferme toutes les vies sans mort, n’est toujours pas marquée. Un rejeu généré avant cette version garde ses croix telles qu’elles étaient.
+- **Les réapparitions lues dans le film** — la vue Tactique reconnaît désormais une réapparition à ce que dit le film (le joueur lâche son corps, ou son compte à rebours de réapparition démarre), et non plus à l’écart entre deux vies. Un début de manche n’est plus compté comme une réapparition. Un rejeu généré avant cette version garde l’estimation par l’écart.
+- **Un fond « Plan » transparent** — le fond « Plan » ne repose plus sur un rectangle blanc : autour du sol jouable et dans ses trous (rochers, piliers), la page se voit au travers, comme avec le fond rendu
+- **Défis sans départ mesuré** — un défi dont la fenêtre de départ n’a aucun match mesuré affiche un tiret au lieu de « 0.00 », et les défis Halo 5 de l’axe Objectif ne sont plus remis à zéro quand les notes sont recalculées
+
 **v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
 
 **Le rejeu**

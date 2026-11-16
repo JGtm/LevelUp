@@ -40,9 +40,13 @@ import (
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// MetricBotsNonEpingles : le compteur expvar des bots NON EPINGLES retires de la projection
-// (lot J7.2, constat FK-1).
-const MetricBotsNonEpingles = "killsource_bots_non_epingles"
+// Les deux parts du compteur expvar des bots NON EPINGLES (`UnpinnedBots` : leur slot tombe dans
+// l'espace des humains de la table du film) : ceux que [BotIdentities] passe au registre
+// d'identite du decodeur, et ceux qu'elle refuse.
+const (
+	MetricBotsNonEpinglesPasses  = "killsource_bots_non_epingles_passes"
+	MetricBotsNonEpinglesRefuses = "killsource_bots_non_epingles_refuses"
+)
 
 // BotIdentities projette le roster de bots declares par BOT_METADATA vers ce que le registre
 // d'identite consomme (`replay.IdentityInput.Bots`). PURE — aucune I/O, aucun re-decodage : elle
@@ -51,19 +55,27 @@ const MetricBotsNonEpingles = "killsource_bots_non_epingles"
 // # CE QUE LE FILTRE REFUSE
 //
 // Un bot dont le film ne donne AUCUN nom (`Name == ""`) n'a rien a publier — un consommateur ne
-// doit jamais confondre son absence de nom avec une identite. Un bot NON EPINGLE
-// (`UnpinnedBots` — son slot contredit l'espace des humains) est une anomalie DECLAREE, pas une
-// identite : le publier ferait porter un identifiant a un corps que le modele ne sait pas
-// placer.
+// doit jamais confondre son absence de nom avec une identite.
 //
-// CE RETRAIT N EST PLUS SILENCIEUX (lot J7.2, constat FK-1) : chaque bot non epingle retire ici
-// incremente [MetricBotsNonEpingles], chez les deux consommateurs (cuisson et collecteur). Le
-// JOURNAL vit a la source, la ou le contexte existe : `killsource` avertit par film au decodage et
-// publie le compte dans sa couverture (`Coverage.BotsNonEpingles`).
+// # CE QU'IL NE REFUSE PLUS : LE BOT NON EPINGLE NOMME
+//
+// Un bot non epingle dont le film donne un nom est PASSE, avec ses declarations. Qu'il tombe
+// dans l'espace des humains ne dit pas que ses vies n'ont pas de nom : le registre decide, par
+// les listes de session du film, si un humain tient ce siege a l'instant de la creation du
+// corps (aucun humain liste = la declaration du bot nomme la vie ; un humain liste = elle ne la
+// nomme pas). Le retrait en amont laissait sans nom des vies que le film nomme (`343 Byrontron`,
+// siege 1 des 1 101 s de `4f77afc1`) ; la copie decalee d'un nom (`43 Ritzy`, slot 0) reste sans
+// nom parce qu'un humain est liste a ce siege.
+//
+// Chaque bot non epingle est compte, chez les deux consommateurs (cuisson et collecteur) :
+// [MetricBotsNonEpinglesPasses] pour ceux qui voyagent jusqu'au registre,
+// [MetricBotsNonEpinglesRefuses] pour ceux que l'absence de nom retient. Le JOURNAL vit a la
+// source, la ou le contexte existe : `killsource` avertit par film au decodage et publie le
+// compte dans sa couverture (`Coverage.BotsNonEpingles`).
 //
 // UN BOT NON EPINGLE SE RECONNAIT A SON ENTREE, PAS A SON SEUL `bid` : la copie decalee d'un nom
 // (`43 Ritzy` au slot 0, `bid` lu 0) partage le `bid` 0 du vrai bot (`343 Ritzy`, `bid(0.0)` en
-// base) ; une cle par `bid` retirait les deux. Le `bid` projete est marque LU
+// base) ; une cle par `bid` les confondrait. Le `bid` projete est marque LU
 // (`replay.BotIdentity.BotIDLu`) : toute entree BOT_METADATA l'ecrit, zero compris.
 func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 	if res == nil || len(res.Roster.Bots) == 0 {
@@ -74,14 +86,17 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		unpinned[entreeDeBot{b.Slot, b.BotID, b.Name}] = true
 	}
 	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
-	retires := 0
+	passes, refuses := 0, 0
 	for _, b := range res.Roster.Bots {
-		if unpinned[entreeDeBot{b.Slot, b.BotID, b.Name}] {
-			retires++
+		nonEpingle := unpinned[entreeDeBot{b.Slot, b.BotID, b.Name}]
+		if b.Name == "" {
+			if nonEpingle {
+				refuses++
+			}
 			continue
 		}
-		if b.Name == "" {
-			continue
+		if nonEpingle {
+			passes++
 		}
 		// `BotID` VOYAGE (lot 4.3) : c'est la cle EXACTE que `BotIdentity.Bid()` publie
 		// (`bid(N.0)`), la meme forme que `RosterEntry.Bid` / `IdentityPlayer.Bid`. Les
@@ -98,8 +113,11 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		}
 		out = append(out, id)
 	}
-	if retires > 0 {
-		observability.AddInt(MetricBotsNonEpingles, int64(retires))
+	if passes > 0 {
+		observability.AddInt(MetricBotsNonEpinglesPasses, int64(passes))
+	}
+	if refuses > 0 {
+		observability.AddInt(MetricBotsNonEpinglesRefuses, int64(refuses))
 	}
 	return out
 }

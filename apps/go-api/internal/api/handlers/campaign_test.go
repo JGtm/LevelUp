@@ -18,7 +18,7 @@ func TestToCampaignHistoryItem(t *testing.T) {
 		Axis: "combat", AxisKind: campaign.AxisKindRadar,
 		PlaylistGroup: "ranked", Status: campaign.StatusCompleted,
 		StartedAt: started, EndedAt: &ended,
-		SnapshotValue: 1.0, CurrentValueLOWESS: &lowess,
+		SnapshotValue: 1.0, SnapshotSample: 10, CurrentValueLOWESS: &lowess,
 	}
 
 	item := toCampaignHistoryItem(&c)
@@ -37,6 +37,23 @@ func TestToCampaignHistoryItem(t *testing.T) {
 	}
 	if item.Delta == nil || *item.Delta != 0.8 {
 		t.Errorf("delta (final-snapshot): got %v, want 0.8", item.Delta)
+	}
+}
+
+// TestToCampaignHistoryItem_DepartNonMesure : un départ sans échantillon n'est pas une référence — la
+// valeur finale est servie, aucun delta n'est chiffré.
+func TestToCampaignHistoryItem_DepartNonMesure(t *testing.T) {
+	lowess := 1.8
+	c := campaign.ImprovementCampaign{
+		ID: "c3", Axis: "objective", AxisKind: campaign.AxisKindRadar, Status: campaign.StatusCompleted,
+		SnapshotValue: 0, SnapshotSample: 0, CurrentValueLOWESS: &lowess,
+	}
+	item := toCampaignHistoryItem(&c)
+	if item.FinalValue == nil || *item.FinalValue != 1.8 {
+		t.Errorf("final_value: got %v, want 1.8", item.FinalValue)
+	}
+	if item.Delta != nil {
+		t.Errorf("delta: want nil (départ non mesuré), got %v", *item.Delta)
 	}
 }
 

@@ -106,7 +106,7 @@ coéquipier le plus proche -1,08 (la proximité favorise), distance au barycentr
 
 Périmètre fermé :
 
-- [~] A.1 Sidecar v7 (partiel : voie de repli cablee ; les voies `film` et `fin de manche` sont pretes et testees cote pur, leur cablage attend la montee du decodeur v1.3.9, cf. la dependance ci-dessous et A.8) : `TacticalRasterSchemaVersion` 6 -> 7 ; par joueur, `Equipe` ; par spawn, `Z`,
+- [x] A.1 Sidecar v7 (voie de repli cablee dans la 8.2.0 ; voies `film` et `fin de manche` cablees le 2026-11-15 sur la montee du decodeur v1.3.9, branche `feat/reapp-film-v139`, livraison 8.2.1 (le pilote de la 8.2.0 relaie le 15/11 que la 8.2.0 sort sans le nouveau decodeur)) : `TacticalRasterSchemaVersion` 6 -> 7 ; par joueur, `Equipe` ; par spawn, `Z`,
       `Reapparition bool`, sa `Source` (`film` ou `repli_ecart`), `DebutDeManche`, la `Mort` qui
       précède et l'`Instantane` (xuid, équipe, x, y, z de chaque joueur vivant à cette frame, apparus dans
       la même seconde exclus) ; compte par source dans la couverture du sidecar (`reapparitions`).
@@ -127,6 +127,12 @@ Périmètre fermé :
       `respawnCountdowns[]` dès le schéma 120) sur `release/v8.2.0`, hors de ce lot. Les champs n'existent
       pas sur la base de ce lot (décodeur v1.3.7) : `EntreeOccupationDeLArtefact` ne câble que la voie de
       repli, et les trois autres voies sont prêtes et testées côté pur.
+      Fait (2026-11-15, 8.2.1) : `EntreeOccupationDeLArtefact` traduit `endReason` / `releaseFrame` en `Piste.Fin`
+      (`finDeLaPiste` ; `deleted` sans frame publiee prend la fin de la piste) et `respawnCountdowns[].from` en
+      `DebutsDeCompte` par `JoindreDebutsDeCompte` sur `identity.players[]` ; les comptes sans xuid sont comptes
+      (`EntreeOccupation.ComptesSansJoueur`). Tests `raster_reapparitions_film_test.go`. Cinq films cuits a la v1.3.9 :
+      lacher et debut de compte a 0 a 99 ms de la fin de piste (tolerance 198 ms tenue), annexe
+      `annexes_reapparitions/mesures_lecture_film.md`.
 - [x] A.2 `analysis/tactical/reapparition.go` (pur, sans I/O) : points candidats d'une carte (points
       observés dans au moins 2 AUTRES matchs que celui de l'événement évalué, clé à 0,5 m et 1 m de hauteur), les six variables de la mesure,
       score, probabilités (softmax), ajustement (montée de gradient), évaluation (point exact, rayon 8 m,
@@ -176,6 +182,11 @@ Périmètre fermé :
       `release/v8.2.0`, cablage de `EntreeOccupationDeLArtefact` sur ces champs, regeneration du parc.
       Non coche tant que ces trois conditions ne sont pas reunies ; les mesures M-1 a M-4 du lot A
       tournent sur le repli (annexe).
+      Avance (2026-11-15) : la mesure d'accord est dans `spawn-model evaluate` (bilan de lecture : documents lus au film,
+      accord, film seul, repli seul, dont debut de manche, comptes sans joueur ; `cmd_spawn_model_accord.go`, teste).
+      Premiere lecture sur cinq films cuits a la v1.3.9 (annexe `mesures_lecture_film.md`) : 645 reapparitions au film,
+      le repli en retrouve 641 et en ajoute 7, toutes des debuts de manche. Reste : la regeneration du parc (cuisson en
+      lot : accord du user requis avant de la lancer), puis la mesure du parc et M-1 a M-4 rejouees sur la voie du film.
 
 Gate A : `cd apps/go-api && go test ./internal/analysis/tactical/... ./internal/domain/... ./cmd/levelup/...
 ./internal/archlint/...` vert ; `make go-api-lint` sans hausse de la baseline ; annexe M-1 à M-4 écrite ;
@@ -346,3 +357,9 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
   lecture d'artefact ni grappe tant que le rattrapage v7 (geste G7) n'est pas passé.
 - (Lot B) `domain/tactical.go` est à 500 lignes (limite) : toute nouvelle déclaration du périmètre Tactique va dans
   un fichier voisin (`tactical_vies.go`).
+- (Lecture du film) `endReason: deleted` couvre la fin de manche, mais aussi la remise en place, le depart et le slot
+  repris par un autre joueur (`coverage.tracks.lifeEnds.retaken`) ; la regle du lot A lit toute suppression suivie
+  d'une vie comme un debut de manche. Sur les cinq films mesures, 3 suppressions en Grande bataille ne sont suivies
+  d'aucune vie du meme joueur (sans effet) ; a verifier sur le parc regenere (A.8) avant d'afficher un debut de manche.
+- (Lecture du film) Le decodeur ne publie pas la frame d'une suppression : la fin retenue est celle de la piste, ce qui
+  rend la tolerance sans objet pour `deleted`.

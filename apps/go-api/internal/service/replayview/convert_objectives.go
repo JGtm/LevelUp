@@ -58,6 +58,7 @@ func toPlayerScore(v replay.PlayerScore) replaydoc.PlayerScore {
 		Kills:   toScoreSeries(v.Kills),
 		Deaths:  toScoreSeries(v.Deaths),
 		Assists: toScoreSeries(v.Assists),
+		Stats:   mapOf(v.Stats, toScoreSeries),
 	}
 }
 
