@@ -174,7 +174,7 @@ Périmètre fermé :
       Revue du 2026-11-15 : la production du sidecar consulte aussi la capacite (`capabilityPrevisionArmee`) : sans
       `film.spawn_forecast`, le sidecar ne porte ni reapparition, ni source, ni debut de manche, ni mort, ni instantane, ni
       couverture ; le sidecar de `halo_infinite` est identique octet pour octet (20 rejeux, avant / apres).
-- [ ] A.8 Mesure d'accord entre les deux definitions d'une reapparition (lecture du film contre repli
+- [x] A.8 Mesure d'accord entre les deux definitions d'une reapparition (lecture du film contre repli
       sur l'ecart de 4 a 15 s), sur le parc regenere a la v1.3.9 : meme `spawn-model evaluate`, compteurs
       de source `film` et `repli_ecart`, part des reapparitions sur lesquelles les deux definitions
       s'accordent, et M-1 a M-4 rejouees sur la voie du film. **Dependance** : montee du decodeur v1.3.9
@@ -187,6 +187,15 @@ Périmètre fermé :
       Premiere lecture sur cinq films cuits a la v1.3.9 (annexe `mesures_lecture_film.md`) : 645 reapparitions au film,
       le repli en retrouve 641 et en ajoute 7, toutes des debuts de manche. Reste : la regeneration du parc (cuisson en
       lot : accord du user requis avant de la lancer), puis la mesure du parc et M-1 a M-4 rejouees sur la voie du film.
+      Fait (2026-11-16, piste P1, annexe `mesures_lecture_film_parc.md`) : parc regenere au schema 124 (1 455 `.json.gz` plus
+      1 artefact reste au 107), `spawn-model evaluate` sur les 1 306 artefacts des six familles, base partagee ouverte par
+      `OpenReadForQuery`, rien d'ecrit. 111 365 reapparitions lues au film (91 au repli, pour l'artefact au 107) ; le repli en
+      retrouve 110 952 (99,63 %), en ajoute 45 dont 36 debuts de manche, le film en porte 413 que le repli rejette (surtout
+      des attentes de plus de 15 s) ; 4 comptes a rebours sans joueur. M-1 a 0,2 point du temoin ; M-3 zone nommee, 3 premiers,
+      modele : assassin 74,9, fiesta 76,2, drapeau 71,2, bases 69,8, colline 67,0, a 0,3 point du repli ; M-2 +0,6 point au plus
+      (D-4 tient) ; M-4 ecart mort - reapparition inchange (+-0,3). **La liste des modes couverts par D-2 ne change pas**
+      (Assassin, Fiesta, Drapeau, Bases, Colline ; Oddball non mesurable) ; a l'instant de la mort Bases (49,8) et Colline (48,2)
+      restent sous 50 %, comme au repli : decision du user, rien n'est change.
 
 Gate A : `cd apps/go-api && go test ./internal/analysis/tactical/... ./internal/domain/... ./cmd/levelup/...
 ./internal/archlint/...` vert ; `make go-api-lint` sans hausse de la baseline ; annexe M-1 à M-4 écrite ;
@@ -381,5 +390,8 @@ fois : P3 d'abord, P4 se recale au moment de l'intégration.
   repris par un autre joueur (`coverage.tracks.lifeEnds.retaken`) ; la regle du lot A lit toute suppression suivie
   d'une vie comme un debut de manche. Sur les cinq films mesures, 3 suppressions en Grande bataille ne sont suivies
   d'aucune vie du meme joueur (sans effet) ; a verifier sur le parc regenere (A.8) avant d'afficher un debut de manche.
+  Verifie sur le parc (2026-11-16, annexe `mesures_lecture_film_parc.md`) : 1 248 suppressions nommees, 919 sans vie suivante
+  (sans effet sur la regle), 329 suivies d'une vie dont 151 collectives (4 joueurs ou plus dans la meme seconde), 66 par
+  deux ou trois et 112 isolees : le libelle « debut de manche » n'est exact que pour les collectives. A trancher a l'affichage.
 - (Lecture du film) Le decodeur ne publie pas la frame d'une suppression : la fin retenue est celle de la piste, ce qui
   rend la tolerance sans objet pour `deleted`.
