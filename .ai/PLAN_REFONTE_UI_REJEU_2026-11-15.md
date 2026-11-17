@@ -571,7 +571,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       de `model/playerCardReadings.ts`, aucune recalculée ; cotes dans `cardGabarit.ts` (troisième gabarit
       « ligne » si 0.3 le recommande). Clic sur une ligne : `playerPanel.onCard`. Tests : 4v4, joueur mort, place
       libre, joueur suivi déplié, Grande équipe (la part des équipes défile).
-- [ ] S.3 Fil de la colonne : `ReplayKillFeed` rendu au format d'une ligne aux colonnes fixes (instant | tueur |
+- [x] S.3 (fait le 2026-11-17 : ligne de 28 px, colonnes 30 / 70 / 70 / 18 / 70 du tableau N, ordre instant, lieu, tueur, arme, victime, médailles ; `hooks/useFeedView.ts` ; assistance et porteur en infobulle ; fixations « avant » remplacées par des « après » après preuve de contenu identique ; ÉCARTS de l'agent, acceptés et dits au user : la ligne choisie se lit par un fond, ses liserés de camp sont retirés ; plus de fond bleuté sur une élimination assistée ; horloge sans chasse fixe ; à trancher par le user : le liseré gauche du titre du fil (`hudBand`), la teinte de fond du bandeau d'objectif ; C.2 devra partager le filtre entre deux affichages du fil) Fil de la colonne : `ReplayKillFeed` rendu au format d'une ligne aux colonnes fixes (instant | tueur |
       arme | victime | lieu de la victime, C.1), sans fond ni bordure, plus récente en tête, défilant, titre = menu
       de filtre actuel. Les formes non-élimination du fil (objectifs, entrées et sorties, prises) gardent leur
       forme actuelle sur une ligne. Fixations des lignes comparées aux témoins 0.1 : seul le lieu change.
