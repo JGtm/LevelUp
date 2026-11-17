@@ -92,7 +92,7 @@ describe('garde-rail : les sons ne lisent jamais les poses fabriquées', () => {
 const LECTEURS_AUTORISES = new Set([
   'sound/replaySound.ts', // les sons : le mur seul sonne par ses poses, les quatre familles par `uses`
   'model/spawnedObjects.ts', // la source elle-même
-  'model/equipmentUsageLogic.ts', // les poses déployées du document, puis `spawnedObjectDeployments`
+  'model/equipmentGestures.ts', // le compte d'usage : les poses déployées et lâchées du document, datées
 ])
 
 /** Le code sans ses commentaires : un commentaire peut nommer le canal sans le lire. */

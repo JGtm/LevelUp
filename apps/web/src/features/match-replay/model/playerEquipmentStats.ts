@@ -42,7 +42,7 @@ import {
   keptOf,
   readEquipmentChanges,
   usageUsedOf,
-  type EquipmentChange,
+  type DatedEquipmentChange,
 } from './equipmentKeptLogic'
 import {
   emptyTally,
@@ -79,7 +79,7 @@ export interface PlayerEquipmentStats {
 }
 
 /** Un geste daté, avant l'attribution : un geste du total du match ou un changement d'équipement. */
-type DatedEvent = { t: number; gesture: EquipmentGesture } | { t: number; change: EquipmentChange }
+type DatedEvent = { t: number; gesture: EquipmentGesture } | { t: number; change: DatedEquipmentChange }
 
 /** Les comptes de toutes les familles juste après le geste daté `t` ; l'objet est rendu tel quel à chaque image. */
 interface EquipmentStep {

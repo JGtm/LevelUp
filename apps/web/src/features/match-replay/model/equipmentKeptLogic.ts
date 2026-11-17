@@ -197,7 +197,7 @@ export function equipmentChangeFamilyOf(
  * (`spent`) de charge, avec sa famille canonique (vocabulaire `KEPT_FAMILIES`), le slot du porteur
  * et l'image où le film l'écrit (`t`).
  */
-export interface EquipmentChange {
+export interface DatedEquipmentChange {
   kind: 'taken' | 'spent'
   family: string
   slot: number
@@ -220,8 +220,8 @@ export interface EquipmentChange {
  */
 export function readEquipmentChanges(
   doc: Pick<ReplayDocumentReady, 'equipmentChanges' | 'abilityLabels'>,
-): { changes: EquipmentChange[]; unnamedTaken: number } {
-  const changes: EquipmentChange[] = []
+): { changes: DatedEquipmentChange[]; unnamedTaken: number } {
+  const changes: DatedEquipmentChange[] = []
   let unnamedTaken = 0
   for (const c of doc.equipmentChanges) {
     if (c.kind === 'taken') {
@@ -253,7 +253,7 @@ export function readEquipmentChanges(
 export function applyEquipmentChange(
   tally: EquipmentUsageTally,
   taken: Record<string, number>,
-  c: EquipmentChange,
+  c: DatedEquipmentChange,
 ): void {
   bump(c.kind === 'spent' ? tally.spent : taken, c.family)
 }
