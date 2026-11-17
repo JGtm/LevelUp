@@ -141,7 +141,7 @@ func TestLibellesParLangue_MemeFilQueLAncienneForme(t *testing.T) {
 // le nom JSON `i18n.FlatMember` (celui que `openapigen` remplace par une propriété par langue), et le
 // type sait se relire (un type qui oublierait ses méthodes JSON écrirait ce nom sur le fil).
 func TestLibellesParLangue_ChampTextSousLeNomDuContrat(t *testing.T) {
-	for _, v := range []any{Label{}, WeaponLabel{}, VehicleLabel{}, CalloutZone{}, ObjectiveObjectLife{}, VehicleWeapon{}} {
+	for _, v := range []any{Label{}, WeaponLabel{}, VehicleLabel{}, CalloutZone{}, ObjectiveObjectLife{}, VehicleWeapon{}, MedalLabel{}, MedalDescription{}} {
 		typ := reflect.TypeOf(v)
 		var found int
 		for f := range typ.Fields() {

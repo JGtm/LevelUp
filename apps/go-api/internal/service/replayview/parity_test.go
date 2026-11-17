@@ -62,6 +62,22 @@ var champsNonServis = map[string]string{}
 // et ce n'est pas un oubli.
 var typesNonServis = map[string]string{}
 
+// champsServisSeuls liste les champs du document SERVI qui n'ont volontairement AUCUNE source dans le document
+// stocke, par `Type.Champ`, avec la DATE de la decision et son motif : des calques resolus a la requete
+// depuis le referentiel du titre, que la cuisson n'ecrit jamais (le decodeur de film n'en porte pas le champ).
+var champsServisSeuls = map[string]string{
+	"ReplayDocument.MedalLabels": "2026-11-17 : libelle, description, image et rarete de chaque medaille de `medals`, " +
+		"poses a la requete par service/replay_medal_labels.go depuis le referentiel du titre.",
+}
+
+// typesServisSeuls liste les TYPES du document servi qui n'existent que pour un champ de `champsServisSeuls`, par
+// nom de type, avec la date de la decision. Le parcours les visite sans leur chercher de source stockee.
+var typesServisSeuls = map[string]string{
+	"MedalLabel":       "2026-11-17 : valeur de `ReplayDocument.MedalLabels`.",
+	"MedalDescription": "2026-11-17 : description d'un `MedalLabel`.",
+	"MedalSprite":      "2026-11-17 : decoupe de feuille de sprites d'un `MedalLabel`.",
+}
+
 // racines : les trois corps de route derives du monde `games/halo_infinite/film/replay`.
 var racines = []struct {
 	nom    string
@@ -131,7 +147,15 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 // TestChaqueChampServiAUneSource : le contrat ne promet rien que la cuisson n'ecrive.
 func TestChaqueChampServiAUneSource(t *testing.T) {
 	stockes := indexerTypes(racinesStockees()...)
+	vusTypes, vusChamps := map[string]bool{}, map[string]bool{}
 	parcourir([]reflect.Type{racines[0].servi, racines[1].servi, racines[2].servi}, nil, func(ts reflect.Type) {
+		vusTypes[ts.Name()] = true
+		if motif, seul := typesServisSeuls[ts.Name()]; seul {
+			if strings.TrimSpace(motif) == "" {
+				t.Errorf("le type servi %q est inscrit sans source SANS justification datee", ts.Name())
+			}
+			return
+		}
 		source, ok := stockes[ts.Name()]
 		if !ok {
 			t.Errorf("type servi %q : AUCUNE source stockee — le contrat promet une forme que "+
@@ -139,12 +163,29 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 			return
 		}
 		for _, f := range champsSerialises(ts) {
+			vusChamps[ts.Name()+"."+f.Name] = true
+			if motif, seul := champsServisSeuls[ts.Name()+"."+f.Name]; seul {
+				if strings.TrimSpace(motif) == "" {
+					t.Errorf("%s.%s est inscrit sans source SANS justification datee", ts.Name(), f.Name)
+				}
+				continue
+			}
 			if _, ok := source.FieldByName(f.Name); !ok {
 				t.Errorf("%s.%s est decrit par le contrat et n'a AUCUNE source dans l'artefact — "+
 					"une promesse morte que le client lira comme optionnelle", ts.Name(), f.Name)
 			}
 		}
 	})
+	for cle := range champsServisSeuls {
+		if !vusChamps[cle] {
+			t.Errorf("champsServisSeuls cite %q, que le document servi ne publie plus", cle)
+		}
+	}
+	for nom := range typesServisSeuls {
+		if !vusTypes[nom] {
+			t.Errorf("typesServisSeuls cite %q, que le document servi ne porte plus", nom)
+		}
+	}
 }
 
 // TestProjectionCopieChaqueChamp : la projection est exhaustive, sur les TROIS classes de

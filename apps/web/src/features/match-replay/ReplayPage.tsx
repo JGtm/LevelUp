@@ -130,7 +130,7 @@ export function ReplayPage() {
   const viewpoint = useReplayViewpoint(replayContext?.scoreboard)
   // Objet memoise : `useReplayModel` memoise sur son identite ; un litteral neuf a chaque
   // rendu (150 ms en lecture) reconstruisait tout le modele a chaque tick (revue 2026-09-16).
-  const modelSettings = useMemo(() => ({ friendGamertags }), [friendGamertags])
+  const modelSettings = useMemo(() => ({ friendGamertags, locale }), [friendGamertags, locale])
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : un clic sur une fiche l'ouvre à la

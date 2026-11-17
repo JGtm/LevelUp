@@ -61,6 +61,7 @@ type ReplayDocument struct {
 	KillEffects         map[string]string        `json:"killEffects,omitempty"`
 	NeutralDeaths       []NeutralDeath           `json:"neutralDeaths,omitempty"`
 	Medals              []Medal                  `json:"medals,omitempty"`
+	MedalLabels         map[string]MedalLabel    `json:"medalLabels,omitempty"`
 	ScoreActions        []ScoreAction            `json:"scoreActions,omitempty"`
 	Hits                []Hit                    `json:"hits,omitempty"`
 	Damage              []Damage                 `json:"damage,omitempty"`
@@ -93,7 +94,7 @@ type ReplayDocument struct {
 	// Objet ABSENT = artefact anterieur au schema 62 ; entree ABSENTE dans un objet PRESENT = ce
 	// calque n a pas ete produit, et c est une reponse, pas un trou ; entree presente = produit
 	// sous la revision nommee. Les calques resolus a la requete (`mapObjectives`, `mapWeaponPads`,
-	// `weaponTiers`, `vehicleLabels`, `vehicleWeapons`, `vehicleScenery`) n y figurent jamais : la cuisson ne les
+	// `weaponTiers`, `vehicleLabels`, `medalLabels`, `vehicleWeapons`, `vehicleScenery`) n y figurent jamais : la cuisson ne les
 	// ecrit pas.
 	Layers map[string]string `json:"layers,omitempty"`
 }

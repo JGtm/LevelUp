@@ -51,6 +51,10 @@ type replayService struct {
 	// caps : les capabilities du titre (replay_spawn_forecast.go). Nil = aucune : la prevision de
 	// reapparition se refuse en ErrCapabilityNotSupported.
 	caps games.CapabilityMap
+	// medalNames et medalDefs : le référentiel des médailles du titre (replay_medal_labels.go). L'un des deux
+	// nul = aucune table de médailles.
+	medalNames port.MedalNameLookup
+	medalDefs  port.MedalDefinitionsRepository
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
@@ -192,6 +196,8 @@ func (s *replayService) retirerModesNonGeres(ctx context.Context, set port.Repla
 //     son et montage de chacune (cf. replay_vehicle_weapons.go, schéma 69).
 //   - le DÉCOR DE CARTE (VehicleScenery) : les vies posées par la carte hors de sa zone jouable
 //     (cf. replay_vehicle_scenery.go, lot M7).
+//   - le LIBELLÉ, la description, l'image et la rareté de chaque MÉDAILLE du document (MedalLabels), posés sur le
+//     document servi (cf. replay_medal_labels.go).
 //
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 //
@@ -246,6 +252,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (port.Ser
 	// replay_weapon_tier_check.go). Silencieux quand tout va bien.
 	s.checkWeaponTierJoin(ctx, matchID, &doc)
 	served := replayview.FromArtifact(doc)
+	// LE LIBELLÉ ET LE VISUEL DES MÉDAILLES, même règle et même raison : le référentiel du titre est lu à la
+	// requête, et le champ n'existe que dans le document SERVI (cf. replay_medal_labels.go).
+	s.resolveMedalLabels(ctx, &served)
 	// LA FRAÎCHEUR DE CADENCE se décide ici, sur le pas du document lu, et voyage avec lui : le masque de
 	// démo ne touche pas au pas.
 	stale := !replaybuild.CadenceUpToDate(served.FrameIntervalMS)

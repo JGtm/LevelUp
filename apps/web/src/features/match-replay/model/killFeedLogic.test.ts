@@ -10,14 +10,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
-import type { MatchHighlightEvent } from '@/lib/api/types'
 
 import {
   alignFeed,
   alignFeedByOrigin,
   alignFeedToTracks,
   buildFeedEntries,
-  collectMedalEvents,
   feedAt,
   toReplayKills,
   type MedalEvent,
@@ -343,47 +341,6 @@ describe('le type des morts sans revendication', () => {
     })
     const typés = alignFeed(kills, 0, doc).deaths.filter((d) => d.kind !== '')
     expect(typés).toHaveLength(1)
-  })
-})
-
-describe('collectMedalEvents', () => {
-  const ev = (over: Partial<MatchHighlightEvent>): MatchHighlightEvent => ({
-    event_type: 'medal',
-    event_time_ms: 1_000,
-    actor_xuid: 'x1',
-    medal_name: 'No Scope',
-    ...over,
-  })
-
-  it("lit les events medal avec leur identité résolue", () => {
-    const [m] = collectMedalEvents([
-      ev({
-        actor_gamertag: 'JGtm',
-        actor_team_id: 1,
-        medal_label: 'Sans lunette',
-        medal_description: 'Desc',
-        medal_image_url: '/static/medals/1.png',
-      }),
-    ])
-    expect(m).toMatchObject({
-      tMs: 1_000,
-      xuid: 'x1',
-      gamertag: 'JGtm',
-      name: 'No Scope',
-      label: 'Sans lunette',
-      imageUrl: '/static/medals/1.png',
-    })
-  })
-
-  it('écarte ce qui ne se montre pas : mauvais type, sans acteur, sans instant, sans nom', () => {
-    expect(
-      collectMedalEvents([
-        ev({ event_type: 'kill' }),
-        ev({ actor_xuid: undefined }),
-        ev({ event_time_ms: undefined }),
-        ev({ medal_name: undefined }),
-      ]),
-    ).toEqual([])
   })
 })
 

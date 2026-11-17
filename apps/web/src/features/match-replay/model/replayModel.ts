@@ -35,16 +35,17 @@
 import { collectKillEvents, type KillEvent } from '@/features/match-view/_momentum'
 import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 import {
   buildFeedEntries,
-  collectMedalEvents,
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
 import { buildFilmAllegiance, NO_ALLEGIANCE, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
+import { readMatchMedals } from './matchMedals'
 import { buildReplayMedia } from './replayMediaLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayMatchContext } from '../../../lib/replay/replayMatchContext'
@@ -61,6 +62,8 @@ import { replayClock, type ReplayClock } from './replayClock'
  */
 export interface ReplayModelSettings {
   friendGamertags?: readonly string[] | null
+  /** Langue des libellés de médaille lus dans le document ; la langue par défaut quand elle manque. */
+  locale?: Locale
 }
 
 /** La page de rejeu, jointe. Tous les champs sont dérivés — rien n'est mutable ici. */
@@ -164,7 +167,8 @@ export function buildReplayModel(
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM : le rejeu ne porte pas les kills ; la vue
   // match, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône).
   const kills: KillEvent[] = collectKillEvents(context?.highlight_events, identity)
-  const medals: MedalEvent[] = collectMedalEvents(context?.highlight_events)
+  // LES MÉDAILLES VIENNENT DU DOCUMENT, pas de la base : une seule lecture (`readMatchMedals`), sans repli.
+  const medals: MedalEvent[] = readMatchMedals(doc, settings?.locale)
 
   return {
     scoreboard,

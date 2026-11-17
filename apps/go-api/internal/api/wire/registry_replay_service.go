@@ -25,8 +25,12 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		icons = a
 	}
+	// Le nom anglais d'une médaille du film se résout par la lecture qui nomme les médailles du fil de la page du
+	// match, qui ne touche que la base de métadonnées ; textes et rareté sont ceux des autres pages.
+	medalNames := duckdb.NewMatchViewRepo(pdb, pdb.XUID)
 	return replayServiceFrom(r.cfg, pdb.TitleSlug, maps, service.WithReplayKillSourceIcons(icons),
-		service.WithReplayCapabilities(r.capabilitiesForPDB(pdb)))
+		service.WithReplayCapabilities(r.capabilitiesForPDB(pdb)),
+		service.WithReplayMedals(medalNames, duckdb.NewMedalDefinitionsRepo(pdb)))
 }
 
 // replayServiceFrom : la construction elle-même, sans base, pour qu'un test l'exerce telle

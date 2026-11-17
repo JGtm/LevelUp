@@ -21672,6 +21672,14 @@ components:
         - afterEnd
         - unknownName
       type: object
+    MedalDescription:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fr:
+          type: string
+      type: object
     MedalDigestEntry:
       additionalProperties: false
       properties:
@@ -21755,6 +21763,46 @@ components:
         - medal_id
         - total_count
         - match_count
+      type: object
+    MedalLabel:
+      additionalProperties: false
+      properties:
+        description:
+          $ref: '#/components/schemas/MedalDescription'
+        difficulty:
+          type: string
+        en:
+          type: string
+        fr:
+          type: string
+        img:
+          type: string
+        sprite:
+          $ref: '#/components/schemas/MedalSprite'
+      type: object
+    MedalSprite:
+      additionalProperties: false
+      properties:
+        height:
+          format: int64
+          type: integer
+        left:
+          format: int64
+          type: integer
+        sheet:
+          type: string
+        top:
+          format: int64
+          type: integer
+        width:
+          format: int64
+          type: integer
+      required:
+        - sheet
+        - left
+        - top
+        - width
+        - height
       type: object
     MedalSummaryItem:
       additionalProperties: false
@@ -25669,6 +25717,10 @@ components:
           $ref: '#/components/schemas/MapWeaponPads'
         matchId:
           type: string
+        medalLabels:
+          additionalProperties:
+            $ref: '#/components/schemas/MedalLabel'
+          type: object
         medals:
           items:
             $ref: '#/components/schemas/Medal'
