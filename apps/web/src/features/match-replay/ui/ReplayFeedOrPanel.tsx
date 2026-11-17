@@ -19,12 +19,20 @@ interface Props {
   feed: ReactNode
   /** Le panneau de joueur, ou `null` quand le fil est affiché. */
   panel: ReactNode | null
+  /**
+   * La hauteur minimale de la cellule, px, quand le fil est affiché : elle remplace le plancher par défaut. Le
+   * panneau ouvert garde le sien (`min-h-[16rem]`).
+   */
+  minHeightPx?: number
 }
 
-export function ReplayFeedOrPanel({ feed, panel }: Props) {
+export function ReplayFeedOrPanel({ feed, panel, minHeightPx }: Props) {
   const open = panel !== null
   return (
-    <div className={`relative flex min-h-0 flex-1 flex-col xl:min-h-[12rem]${open ? ' min-h-[16rem]' : ''}`}>
+    <div
+      className={`relative flex min-h-0 flex-1 flex-col xl:min-h-[12rem]${open ? ' min-h-[16rem]' : ''}`}
+      style={!open && minHeightPx !== undefined ? { minHeight: minHeightPx } : undefined}
+    >
       <div
         data-testid="replay-feed-slot"
         className={`flex min-h-0 flex-1 flex-col${open ? ' invisible' : ''}`}

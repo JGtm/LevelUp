@@ -1,44 +1,58 @@
 /**
  * ReplayStandardFrame — LE CONTENU DES ZONES DU CADRE STANDARD : l'en-tête en trois cellules (dont le
- * bandeau de score, qui ne coiffe plus le terrain) et la colonne des fiches et du fil. La scène et les avis
+ * bandeau de score, qui ne coiffe plus le terrain) et la colonne des équipes et du fil. La scène et les avis
  * sont ceux de la page, communs aux trois cadres ; la zone `rangee` reste vide (la rangée de fiches
- * appartient au Cinéma et au Plein cadre).
+ * appartient au Cinéma et au Plein cadre) et rien ne se pose sous le lecteur.
  *
- * # LA COLONNE : FICHES AU-DESSUS, FIL EN DESSOUS, MÊME LARGEUR
+ * # LA COLONNE : LES ÉQUIPES AU-DESSUS, LE FIL EN DESSOUS
  *
- * Un rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement. Les fiches gardent leur
- * hauteur naturelle (bornée, elles défilent au-delà : BTB) ; le fil remplit tout le reste et défile dedans.
- * Le panneau de joueur prend la place du fil sans le détruire (`ReplayFeedOrPanel`).
+ * Un rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement. La colonne a la largeur
+ * de `COTES_COLONNE_STANDARD` (grille de `ReplayFrameLayout`), un filet neutre à sa gauche, sa marge
+ * intérieure et l'écart entre ses deux blocs. Les équipes (`ReplayRosterColumn`) gardent leur hauteur
+ * naturelle et c'est ELLES qui cèdent quand la place manque : leur part défile (une Grande équipe tient
+ * sans défiler) ; le fil remplit tout le reste et ne descend jamais sous `FIL_STANDARD_HAUTEUR_MIN_PX`,
+ * soit cinq lignes. La fiche d'un joueur prend la place du fil sans le détruire (`ReplayFeedOrPanel`) ; la
+ * ligne du joueur dont la fiche est ouverte est marquée.
  *
- * LE PLAFOND DES FICHES EST EN PIXELS, borné par la place du fil : `xl:max-h-[30rem]` pour les fiches et le
- * plancher du fil dans sa cellule. Jamais un pourcentage de la carte : la hauteur du plan est élastique, et
- * un pourcentage tronquerait un 4v4 sur un écran contraint (`ui/rosterHeight.guard.test.ts`).
+ * LA COLONNE EST `absolute inset-0` à partir de `xl` : la carte impose la hauteur, jamais un pourcentage
+ * d'elle ni une formule CSS (`ui/rosterHeight.guard.test.ts`). Sous `xl` elle passe sous la carte, bornée à
+ * 80 % de la hauteur d'écran.
  */
+import { COTES_COLONNE_STANDARD, FIL_STANDARD_HAUTEUR_MIN_PX } from '../../model/cotesStandard'
 import { ReplayFeedOrPanel } from '../ReplayFeedOrPanel'
 import { ReplayKillFeed } from '../ReplayKillFeed'
 import { ReplayPlayerPanel } from '../ReplayPlayerPanel'
+import { ReplayRosterColumn } from '../ReplayRosterColumn'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
-import { ReplayTeams } from '../ReplayTeams'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
 import type { ReplayFrameChrome, ReplayFrameView, ReplayFrameZoneContent } from './replayFrameTypes'
 
-/** La colonne du Standard. Sous `xl` elle passe sous le plan, chaque bloc borné à 60 % de la hauteur d'écran. */
+const COLUMN_STYLE = Object.freeze({
+  padding: `${COTES_COLONNE_STANDARD.margeVerticalePx}px ${COTES_COLONNE_STANDARD.margeLateralePx}px`,
+  gap: COTES_COLONNE_STANDARD.ecartBlocsPx,
+})
+
+/** La colonne du Standard : les équipes, puis le fil (ou la fiche du joueur à sa place). */
 function standardColumn(view: ReplayFrameView) {
-  const { doc, model, playerPanel, header, playFrame, nowMs, locale } = view
+  const { doc, model, playerPanel, playFrame, nowMs, locale } = view
   return (
-    <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
-      <div className="flex max-h-[60vh] min-h-0 flex-col overflow-hidden xl:max-h-[30rem]">
-        <ReplayTeams
-          doc={doc}
-          players={model.players}
-          frame={playFrame}
-          locale={locale}
-          allegiance={model.allegiance}
-          header={header}
-          panel={{ xuid: playerPanel.focus?.player.xuid ?? null, onSelect: playerPanel.onCard }}
-        />
-      </div>
+    <div
+      className="flex max-h-[80vh] flex-col xl:absolute xl:inset-0 xl:max-h-none xl:border-l xl:border-border"
+      style={COLUMN_STYLE}
+      data-replay-column="standard"
+    >
+      <ReplayRosterColumn
+        doc={doc}
+        players={model.players}
+        frame={playFrame}
+        locale={locale}
+        allegiance={model.allegiance}
+        tracked={playerPanel.tracked}
+        onCard={playerPanel.onCard}
+        selectedXuid={playerPanel.focus?.player.xuid ?? null}
+      />
       <ReplayFeedOrPanel
+        minHeightPx={FIL_STANDARD_HAUTEUR_MIN_PX}
         feed={
           <ReplayKillFeed
             entries={model.feed}

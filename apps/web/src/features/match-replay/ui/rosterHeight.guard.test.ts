@@ -24,15 +24,16 @@ import { describe, expect, it } from 'vitest'
 import { racineWeb } from '../test/featureFiles'
 
 /**
- * Les fichiers qui posent la colonne des fiches et du fil : le Standard (celui qui fait foi) et le
- * Cinéma / Plein cadre, qui en gardent la même structure.
+ * Les fichiers qui posent la colonne des équipes et du fil : le Standard, dont la colonne est celle de
+ * `COTES_COLONNE_STANDARD`, et le Cinéma / Plein cadre, qui gardent le bloc des fiches plafonné à 30 rem.
  */
 const STANDARD = resolve(racineWeb(), 'src/features/match-replay/ui/frames/ReplayStandardFrame.tsx')
 const CINEMA = resolve(racineWeb(), 'src/features/match-replay/ui/frames/ReplayCinemaFrame.tsx')
 
 describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la carte', () => {
-  const src = readFileSync(STANDARD, 'utf8')
-  const sources = [src, readFileSync(CINEMA, 'utf8')]
+  const standard = readFileSync(STANDARD, 'utf8')
+  const src = readFileSync(CINEMA, 'utf8')
+  const sources = [standard, src]
 
   it('aucun plafond exprimé en pourcentage de la rangée sur le bloc des fiches', () => {
     // `xl:max-h-[NN%]` est la forme exacte qui a causé la régression : un pourcentage qui se
@@ -44,8 +45,8 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
     // Sans le second terme, une colonne courte donnerait tout aux fiches et rien au fil ;
     // sans le premier, un BTB à 24 fiches remplirait toute la colonne.
     expect(src).toContain('xl:max-h-[30rem]')
-    // Le plancher du fil vit dans la CELLULE DU FIL (`ReplayFeedOrPanel`, lot 4 du plan « maquettes du
-    // rejeu » : le panneau de joueur y prend la place du fil), que le cadre monte à sa place.
+    // Le plancher du fil vit dans la CELLULE DU FIL (`ReplayFeedOrPanel` : le panneau de joueur y prend la
+    // place du fil), que le cadre monte à sa place.
     expect(src).toContain('<ReplayFeedOrPanel')
     expect(readFileSync(resolve(__dirname, 'ReplayFeedOrPanel.tsx'), 'utf8')).toContain('xl:min-h-[12rem]')
   })
@@ -70,5 +71,26 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
     // alors à rien, puisque rien ne pourrait lui céder la place.
     expect(src).toMatch(/min-h-0[^"]*xl:max-h-\[30rem\]/)
     expect(src).not.toMatch(/shrink-0[^"]*xl:max-h-\[30rem\]/)
+  })
+})
+
+describe('garde-rail : la colonne du Standard n a plus de plafond en rem, ses équipes cèdent devant le fil', () => {
+  const source = readFileSync(STANDARD, 'utf8')
+
+  it('aucun plafond de 30 rem : la colonne a la largeur de ses cotes et les équipes ne sont plus bornées à part', () => {
+    expect(source).not.toContain('30rem')
+    expect(source).not.toMatch(/max-h-\[\d+rem\]/)
+  })
+
+  it('le fil a un plancher nommé, lu sur les cotes, jamais un nombre posé dans le JSX', () => {
+    expect(source).toContain('minHeightPx={FIL_STANDARD_HAUTEUR_MIN_PX}')
+    expect(readFileSync(resolve(__dirname, 'ReplayFeedOrPanel.tsx'), 'utf8')).toContain('minHeight: minHeightPx')
+  })
+
+  it('les équipes ne sont pas posées dans un bloc qui ne rétrécit pas : c est leur part qui défile', () => {
+    expect(source).not.toMatch(/shrink-0/)
+    expect(source).toContain('<ReplayRosterColumn')
+    const roster = readFileSync(resolve(__dirname, 'ReplayRosterColumn.tsx'), 'utf8')
+    expect(roster).toContain("' min-h-0 overflow-y-auto overflow-x-hidden'")
   })
 })

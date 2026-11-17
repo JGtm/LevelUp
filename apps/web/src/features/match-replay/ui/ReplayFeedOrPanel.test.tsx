@@ -121,4 +121,18 @@ describe('ReplayFeedOrPanel', () => {
     expect(store.focus()).not.toBeNull()
     expect(screen.getByRole('button', { pressed: true })).toBeTruthy()
   })
+
+  it('la hauteur minimale donnée remplace le plancher du fil, et le panneau ouvert garde le sien', () => {
+    const { rerender } = render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={null} minHeightPx={171} />)
+    const cellule = screen.getByTestId('replay-feed-slot').parentElement as HTMLElement
+    expect(cellule.style.minHeight).toBe('171px')
+    rerender(<ReplayFeedOrPanel feed={<p>fil</p>} panel={PANEL} minHeightPx={171} />)
+    expect(cellule.style.minHeight).toBe('')
+    expect(cellule.className).toContain('min-h-[16rem]')
+  })
+
+  it('sans hauteur donnée, aucun style n est posé : le plancher du cadre reste celui de la classe', () => {
+    render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={null} />)
+    expect((screen.getByTestId('replay-feed-slot').parentElement as HTMLElement).style.minHeight).toBe('')
+  })
 })

@@ -25,6 +25,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 import { REPLAY_FULLSCREEN_FRAME } from '../../hooks/useReplayFullscreen'
+import { COTES_COLONNE_STANDARD } from '../../model/cotesStandard'
 import type { ReplayFrame } from '../../model/replayFrame'
 import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
 
@@ -54,11 +55,26 @@ const FRAME_CLASSES: Record<ReplayFrame, { root: string; body: string; bodyStyle
  * `relative` et son contenu `absolute inset-0` à partir de `xl`, donc un fil de 80 éliminations ou un BTB
  * à 24 fiches ne peuvent pas l'étirer. Sous 1280 px (`xl`) le plan reprend toute la largeur et la colonne
  * passe dessous.
+ *
+ * LA LARGEUR DE LA COLONNE SE DIT PAR CADRE. Le Standard a une colonne fixe (`COTES_COLONNE_STANDARD`),
+ * passée par une variable CSS : une classe de Tailwind ne se compose pas depuis un nombre, et la variable
+ * garde le nombre dans la cote. Le Cinéma et le Plein cadre gardent la colonne souple de 30 rem.
  */
-const GRID_CLASSES = 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch'
+const GRID_CLASSES = 'grid gap-3 xl:items-stretch'
+const STANDARD_COLUMN_VAR = '--replay-colonne-standard'
+
+const GRID_BY_FRAME: Record<ReplayFrame, { className: string; style?: CSSProperties }> = {
+  standard: {
+    className: 'xl:grid-cols-[minmax(0,1fr)_var(--replay-colonne-standard)]',
+    style: { [STANDARD_COLUMN_VAR]: `${COTES_COLONNE_STANDARD.largeurPx}px` } as CSSProperties,
+  },
+  cinema: { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
+  'plein-cadre': { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
+}
 
 export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne }: ReplayFrameLayoutProps) {
   const classes = FRAME_CLASSES[frame]
+  const grid = GRID_BY_FRAME[frame]
   return (
     <div className={classes.root} data-replay-frame={frame}>
       {tete}
@@ -66,7 +82,7 @@ export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne }:
         {avis}
         {rangee}
         {scene != null && (
-          <div className={GRID_CLASSES}>
+          <div className={`${GRID_CLASSES} ${grid.className}`} style={grid.style} data-replay-grid={frame}>
             {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
                 contraindre — c'est elle que mesure le ResizeObserver de la toile. `relative` : le
                 repère de l'écran de victoire, qui coiffe toute la colonne du plan. */}

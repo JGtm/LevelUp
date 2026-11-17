@@ -342,8 +342,8 @@ describe('ReplayRosterColumn — clic', () => {
   })
 })
 
-/** Un match à deux camps de `parCamp` places chacun, vitalité pleine à la lecture. */
-function documentParCamp(parCamp: number) {
+/** Un match à deux camps de `parCamp` places chacun, vitalité pleine à la lecture ; le joueur 0 n'entre qu'à `debutJoueur0`. */
+function documentParCamp(parCamp: number, debutJoueur0 = 0) {
   const n = parCamp * 2
   return testReplayDoc({
     frameCount: 300,
@@ -351,7 +351,7 @@ function documentParCamp(parCamp: number) {
     originMs: 0,
     roster: Array.from({ length: n }, (_, i) => ({ xuid: `X${i}`, filmIndex: i, seat: i % parCamp, name: `Joueur${i}`, team: i < parCamp ? 0 : 1 })),
     tracks: Array.from({ length: n }, (_, i) => ({
-      slot: 512 + i, team: i < parCamp ? 0 : 1, xuid: `X${i}`, startFrame: 0, endFrame: 290, points: [{ t: 0, x: i, y: i, sh: 1, hp: 1 }],
+      slot: 512 + i, team: i < parCamp ? 0 : 1, xuid: `X${i}`, startFrame: i === 0 ? debutJoueur0 : 0, endFrame: 290, points: [{ t: 0, x: i, y: i, sh: 1, hp: 1 }],
     })),
   })
 }
@@ -408,6 +408,50 @@ describe('ReplayRosterColumn — Grande équipe, 12 contre 12', () => {
     const vue = render(<Colonne doc={documentParCamp(12)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} watched="X3" />)
     expect(vue.container.querySelectorAll('[data-replay-roster-detail]')).toHaveLength(0)
     expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Joueur3' }).style.borderColor).toBe('var(--ring)')
+  })
+})
+
+describe('ReplayRosterColumn — Grande équipe, une place sans rendu garde sa cellule', () => {
+  /** La position de chaque fiche dans la grille de son camp : son rang parmi les cellules. */
+  function rangs(container: HTMLElement) {
+    const grille = container.querySelector('section .grid') as HTMLElement
+    return {
+      cellules: grille.children.length,
+      rang: (nom: string) => [...grille.children].indexOf(screen.getByRole('button', { name: `Ouvrir la fiche de ${nom}` })),
+      vides: grille.querySelectorAll('[data-replay-seat-empty]').length,
+    }
+  }
+
+  it('avant l’entrée du joueur 0, sa cellule est vide et les autres gardent leur rang ; à son entrée, rien ne bouge', () => {
+    const doc = documentParCamp(12, 100)
+    const avant = render(<Colonne doc={doc} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    const t0 = rangs(avant.container)
+    expect(t0.cellules).toBe(12)
+    expect(t0.vides).toBe(1)
+    const rangsAvant = [1, 2, 7, 11].map((i) => t0.rang(`Joueur${i}`))
+    expect(rangsAvant).toEqual([1, 2, 7, 11])
+    avant.unmount()
+
+    const apres = render(<Colonne doc={doc} scoreboard={[]} frame={150} locale="fr" onCard={vi.fn()} />)
+    const t1 = rangs(apres.container)
+    expect(t1.cellules).toBe(12)
+    expect(t1.vides).toBe(0)
+    expect(t1.rang('Joueur0')).toBe(0)
+    expect([1, 2, 7, 11].map((i) => t1.rang(`Joueur${i}`))).toEqual(rangsAvant)
+  })
+
+  it('la cellule vide a la hauteur d’une fiche, n’est ni lue ni cliquable', () => {
+    const vue = render(<Colonne doc={documentParCamp(12, 100)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    const vide = vue.container.querySelector('[data-replay-seat-empty]') as HTMLElement
+    expect(vide.style.height).toBe(`${GABARIT_FICHE_COMPACTE.linePx}px`)
+    expect(vide.getAttribute('aria-hidden')).toBe('true')
+    expect(vide.hasAttribute('data-replay-player-card')).toBe(false)
+  })
+
+  it('hors Grande équipe, une place sans rendu ne produit toujours aucune ligne', () => {
+    const vue = render(<Colonne doc={documentParCamp(4, 100)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    expect(vue.container.querySelectorAll('[data-replay-seat-empty]')).toHaveLength(0)
+    expect(lignes(vue.container)).toHaveLength(7)
   })
 })
 

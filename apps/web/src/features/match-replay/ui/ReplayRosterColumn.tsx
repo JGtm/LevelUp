@@ -6,12 +6,14 @@
  * LES PLACES ET LES CAMPS SONT CEUX DU FILM, comme pour les fiches : une ligne est une PLACE, pas un
  * joueur (`buildSeats`, `groupSeatsByTeam`, `seatTileAt`) — son occupant à l'instant lu, ou la ligne
  * d'attente d'une place libre ou d'un occupant pas encore apparu. Jamais plus de lignes que de places,
- * jamais un joueur parti. Un camp sans désignateur (mode sans camps) n'a ni en-tête ni pastille.
+ * jamais un joueur parti. En Grande équipe, une place qui ne rend rien à l'image lue garde sa cellule
+ * (vide, de la taille d'une fiche) : les paires suivantes ne se décalent pas, chaque joueur garde sa
+ * position d'une image à l'autre. Un camp sans désignateur (mode sans camps) n'a ni en-tête ni pastille.
  *
  * UNE GRANDE ÉQUIPE (`grandeEquipe` : plus de `PLACES_PAR_CAMP_MAX_RANGEE` places dans un camp) se range
  * en PAIRES DE FICHES COMPACTES sur une ligne (`ReplayCompactCard`, forme `'line'`), côte à côte, sous
  * l'en-tête de camp : ni lignes, ni en-tête de colonnes (la fiche n'a ni arme, ni grenades, ni équipement,
- * ni F / M / A), et la colonne ne défile pas. Les autres effectifs gardent leurs lignes : la part des
+ * ni F / M / A), et la colonne ni ne défile ni ne se comprime. Les autres effectifs gardent leurs lignes : la part des
  * équipes est alors une zone à défilement vertical dont les lignes gardent leur hauteur, et l'en-tête de
  * chaque camp reste collé en haut pendant que ses lignes passent.
  *
@@ -98,6 +100,11 @@ function ColumnHeads({ locale }: { locale: ReplayLocale }) {
   )
 }
 
+/** La cellule d'une place sans rendu à cette image : vide, de la hauteur d'une fiche compacte sur une ligne. */
+function EmptyCompactCell() {
+  return <div aria-hidden data-replay-seat-empty="" style={{ height: C.linePx }} />
+}
+
 /** Ce que le rendu des places d'un camp partage : le document, l'image, la langue, la scène, le joueur suivi, le clic. */
 interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid'> {
   scene: CardScene
@@ -109,13 +116,14 @@ interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'local
 /**
  * Les places d'un camp : UNE LIGNE (ou une fiche compacte) PAR PLACE, À CHAQUE IMAGE — son occupant à
  * l'instant lu, « pas encore apparu » s'il n'a pas de corps, ou la place VIDE. Une place qui ne rend
- * RIEN à cette image (`seatTileAt` nul) ne produit aucune ligne.
+ * RIEN à cette image (`seatTileAt` nul) ne produit aucune ligne, sauf en Grande équipe : sa cellule est
+ * alors gardée, vide (`EmptyCompactCell`), pour que la paire reste une paire.
  */
 function seatsOf(group: ReplaySeatGroup, ctx: SeatCtx) {
   const { doc, frame, locale, scene, tracked, onCard, selectedXuid = null, compact, ally } = ctx
   return group.seats.map((seat) => {
     const lu = seatTileAt(seat, frame)
-    if (lu === null) return null
+    if (lu === null) return compact ? <EmptyCompactCell key={seat.key} /> : null
     if (lu.kind !== 'present' || lu.player === null) {
       return compact
         ? <ReplayCompactWaitingCard key={seat.key} occupant={lu.player} locale={locale} form="line" />
@@ -166,7 +174,7 @@ export function ReplayRosterColumn({
   return (
     <div
       data-replay-roster-column=""
-      className={`flex min-h-0 flex-col${compact ? '' : ' overflow-y-auto overflow-x-hidden'}`}
+      className={`flex flex-col${compact ? ' shrink-0' : ' min-h-0 overflow-y-auto overflow-x-hidden'}`}
       style={{ gap: G.teamsGapPx }}
     >
       {groups.map((group, gi) => {
