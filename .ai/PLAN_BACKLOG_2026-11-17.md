@@ -307,7 +307,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 Périmètre : placement local (application de bureau, poste de développement). Couches : handler, port, service,
 file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le nom du profil ni sur le slug.
 
-- [ ] G.0 (Opus) Conception écrite dans `.ai/annexes_backlog_1117/rejeu_a_la_demande.md` : port
+- [x] G.0 (fait le 2026-11-17 : conception relue par le pilote, vérification sur un match passée) (Opus) Conception écrite dans `.ai/annexes_backlog_1117/rejeu_a_la_demande.md` : port
       `port.ReplayGeneration` (demande, état par match), extension de `replayregen.Service` par une file de
       demandes explicites (un film à la fois, verrou `film_decode.lock`, mode jeu, pause), téléchargement et
       archivage du film d'un seul match, jeton du joueur de la page par `auth.RefreshHaloTokensViaStoreFirst`,
@@ -373,6 +373,8 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
   - profil suivi sans compte relié : aucun prêt du pool, état « non pris en charge » ; plafond de 10 demandes et 50 issues en constantes nommées ; film retiré après la génération quand l'archive est désactivée ; un échec n'est pas gardé après un redémarrage ; bouton de l'en-tête avec libellé ;
   - contrat : les deux routes ne sont montées que sous la capacité, donc absentes du contrat généré ; G.3 n'ajoute que `can_generate_replays`.
   Reste, avant G.1 : la vérification sur UN match (paragraphe 12 de la conception), avec l'accord du user, serveur et application arrêtés.
+
+- 2026-11-17 — G.0, vérification sur un match, avec l'accord du user (« go, tout est arrêté, cherche le match toi-même ») : aucun processus LevelUp ni port d'écoute relevé avant l'essai ; match sans rejeu du 2026-10-30 (court `33ef54a9`) ; la liste des morceaux du film se résout avec le jeton du joueur : 25 morceaux (1 de type 1, 23 de type 2, 1 de type 3), jeton renouvelé et rangé par le chemin normal ; programme jetable supprimé, arbre propre. À noter pour G.1 : dans `cfg.LoadPlayers`, le slug du profil est le pseudo avec sa casse (`JGtm`), pas sa forme en minuscules.
 
 ## Découvertes (consignées, non traitées)
 
