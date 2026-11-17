@@ -90,9 +90,20 @@ func (s *replayService) reapparitionsDesAutresMatchs(ctx context.Context, matchs
 	return out, bilan
 }
 
-// lireSidecarReapparitions lit la part du sidecar que la prevision decode. Un fichier absent se
-// reconnait par errors.Is(err, os.ErrNotExist).
+// sidecarsDeReapparitions garde la part decodee de chaque sidecar, par chemin et par processus : la
+// prevision relit les sidecars de toute la carte a chaque ouverture, et un sidecar ne change qu'au
+// recuit de son match. Relu des que sa date de modification ou sa taille bouge (catalogue_cache.go).
+var sidecarsDeReapparitions = nouveauCacheAEmpreinte(decoderSidecarReapparitions)
+
+// lireSidecarReapparitions rend la part du sidecar que la prevision decode, relue seulement si le
+// fichier a change. Un fichier absent se reconnait par errors.Is(err, os.ErrNotExist) ; un echec de
+// lecture ou de decodage n'est pas garde.
 func lireSidecarReapparitions(path string) (*sidecarReapparitions, error) {
+	return sidecarsDeReapparitions.lire(path)
+}
+
+// decoderSidecarReapparitions lit et decode le fichier d'un sidecar, sans cache.
+func decoderSidecarReapparitions(path string) (*sidecarReapparitions, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("lecture du sidecar %s: %w", path, err)
