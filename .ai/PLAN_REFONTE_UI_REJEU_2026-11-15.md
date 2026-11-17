@@ -292,6 +292,15 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **G0-6 — objectif sous le score : « Rien sous le score ».** L'ajout K-7 du 2026-11-17 est retiré : écart
   voulu V14.
 
+### Retours du user sur la maquette M (2026-11-17, second message)
+
+- **G0-7 — ordre de la ligne du fil** (« pour le fil c'est chrono - zone de callout - tueur - arme - victime ») : instant, lieu, tueur, arme, victime, dans la colonne, sur le plan et au pied de la fiche. Le lieu reste celui de la victime (D-5). Dans la colonne, les médailles suivent la victime (G0-3). Écart voulu V17 ; A-14 et K-9 sont amendés.
+- **G0-8 — équipement dans sa propre catégorie** (« manque ramassage et usage/perte équipements ») : la fiche gagne une section « Équipement », par famille : pris, utilisé, perdu (lâché en mourant). Item neuf **T.8** (Sonnet) : lecture pure à l'instant, bâtie sur les lectures d'usage de l'équipement déjà écrites pour la page du match (même définition de « utilisé » par famille) ; lire `.ai/archive/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` AVANT de coder. « Ramassages » ne garde que les armes et les grenades (T.4).
+- **G0-9 — médailles comme sur les tuiles de match** : icône de 32 px avec son halo de rareté, nom dessous, « ×n » (`components/ui/match-card.tsx`, `MedalIcon`). T.6 sert donc aussi l'image et la rareté de chaque médaille.
+- **G0-10 — « En passant » est refusé comme titre** (« que je déteste »). Proposé : « Gestes » ; attend l'accord du user.
+- **G0-11 — « Totaux du match » et « Répartition des éliminations » se ressemblent trop** : deux formes dessinées dans la version 2 du tableau M (une barre empilée et sa légende, totaux en liste sans barres ; ou un seul tableau par arme, l'instant et le match côte à côte). Le user choisit.
+- Reste aussi à choisir sur M : « armes de puissance » (mot actuel de la fiche, dessiné) ou « arme lourde » (D-20).
+
 ### Tranché par le pilote sur la règle « la maquette fait foi » (dit au user le 2026-11-17)
 
 - Fil posé sur le plan : éliminations seules (D-4 et K-9), sans le filtre du Standard ; il ne capte pas le

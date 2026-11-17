@@ -14,7 +14,7 @@
 body{margin:0;background:#0b0b0b}
 a{color:#bdbdbd}a:hover{color:#fafafa}
 .app *{box-sizing:border-box}
-.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;width:1280px;height:1620px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;display:grid;grid-template-columns:360px 360px 330px;justify-content:center;column-gap:56px;padding:32px 0;align-items:start;font-variant-numeric:tabular-nums}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;width:1660px;height:1760px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;display:grid;grid-template-columns:360px 360px 360px 330px;justify-content:center;column-gap:48px;padding:32px 0;align-items:start;font-variant-numeric:tabular-nums}
 .pan{display:flex;flex-direction:column;gap:10px}
 .lab{display:flex;flex-direction:column;gap:2px;min-height:44px}
 .lab b{font-size:14px;font-weight:600}
@@ -60,28 +60,35 @@ a{color:#bdbdbd}a:hover{color:#fafafa}
 .charge{width:44px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
 .charge i{position:absolute;left:0;top:0;bottom:0;background:#e5e5e5}
 .kv{display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:5px;column-gap:10px;font-size:12px}
-.kv span:nth-child(odd){color:#9a9a9a}
-.kv span:nth-child(even){text-align:right;color:#e5e5e5}
+.kv > span:nth-child(odd){color:#9a9a9a;display:flex;align-items:center;gap:6px}
+.kv > span:nth-child(even){text-align:right;color:#e5e5e5}
 .kv small{color:#8a8a8a}
-.brk{display:grid;grid-template-columns:minmax(0,1fr) 70px 18px 38px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
-.brk .tk{height:4px;border-radius:2px;background:rgba(255,255,255,.08);position:relative}
-.brk .tk i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#a3a3a3}
-.brk span:nth-child(3),.brk span:nth-child(4){text-align:right}
-.brk span:nth-child(4){color:#9a9a9a}
-.brk.w{padding-left:12px;color:#9a9a9a;font-size:11.5px}
-.brk.w .tk i{background:#5c5c5c}
-.wbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 16px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
-.wbar .tk{height:4px;border-radius:2px;background:rgba(255,255,255,.08);position:relative}
-.wbar .tk i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#a3a3a3}
-.wbar span:last-child{text-align:right}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 4px;border-radius:6px;background:#1a1a1a;border:1px solid #262626;font-size:11.5px;color:#d4d4d4}
-.chip i{width:18px;height:18px;border-radius:4px;background:#2f2f2f;display:block}
-.chip small{color:#9a9a9a}
+.stack{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px}
+.stack i{display:block;height:8px}
+.c1{background:#e5e5e5}.c2{background:#8a8a8a}.c3{background:#4a4a4a}
+.lg{display:grid;grid-template-columns:10px minmax(0,1fr) 18px 38px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
+.lg .sw{width:10px;height:10px;border-radius:2px;display:block}
+.lg span:nth-child(3),.lg span:nth-child(4){text-align:right}
+.lg span:nth-child(4){color:#9a9a9a}
+.lg.w{color:#9a9a9a;font-size:11.5px}
+.tb{display:grid;grid-template-columns:minmax(0,1fr) 62px 40px 40px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
+.tb span:not(:first-child){text-align:right}
+.tb.hd{font-size:10.5px;color:#8a8a8a}
+.tb.cat{font-weight:600}
+.tb.w{color:#9a9a9a;font-size:11.5px;padding-left:12px}
+.tb span:nth-child(3){color:#9a9a9a}
+.eq{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 44px;align-items:center;column-gap:8px;font-size:12px;color:#d4d4d4}
+.eq span:not(:first-child){text-align:right}
+.eq.hd{font-size:10.5px;color:#8a8a8a}
+.mds{display:flex;justify-content:center;gap:14px;padding-top:2px}
+.md{display:flex;flex-direction:column;align-items:center;gap:2px;width:44px}
+.md i{width:32px;height:32px;border-radius:50%;background:#2f2f2f;border:1px solid #454545;display:block}
+.md .nm{font-size:9px;color:#9a9a9a;line-height:1.2;text-align:center;max-width:44px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.md .ct{font-size:9px;font-weight:600;color:#bdbdbd;line-height:1}
 .feed2{display:flex;flex-direction:column;border-top:1px solid #1c1c1c;padding-top:10px}
 .feed2 .st{margin-bottom:4px}
 .feed2 .st a{margin-left:auto;font-weight:400;font-size:11px;text-decoration:none}
-.fr{display:grid;grid-template-columns:30px 86px 20px 86px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
+.fr{display:grid;grid-template-columns:30px 84px 84px 20px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
 .fr > span{overflow:hidden;text-overflow:ellipsis}
 .fr .t{color:#8a8a8a;font-size:11.5px}
 .fr svg{color:#9a9a9a}
@@ -91,313 +98,80 @@ a{color:#bdbdbd}a:hover{color:#fafafa}
 </style>
 </helmet>
 <div class="app">
-
-  <div class="pan">
-    <div class="lab"><b>Standard — la colonne devient la fiche</b><small>Joueur dont les tirs et le score sont lus en entier</small></div>
-    <aside class="col" aria-label="Fiche de Madina97294">
-      <div class="dhead">
-        <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
-        <div class="picks" aria-label="Changer de joueur">
-          <button class="pk a" aria-label="Chocoboflor">CH</button><button class="pk a" aria-label="Draconewt">DR</button><button class="pk a sel" aria-label="Madina97294">MA</button><button class="pk a" aria-label="JGtm">JG</button><span class="gap"></span><button class="pk b dead" aria-label="WDW Eclipse">WD</button><button class="pk b" aria-label="ELOsk11">EL</button><button class="pk b" aria-label="yougo77500">YO</button><button class="pk b" aria-label="DubsDay">DU</button>
-        </div>
-        <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
-        <div class="seg" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
-      </div>
-
-      <div class="sec">
-        <div class="st">À L'INSTANT <small>3:51</small></div>
-        <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
-        <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
-        <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
-        <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Sidekick 8<small>/32 en réserve</small></div>
-        <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
-        <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Équipement · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Depuis le début du match</div>
-        <div class="kv">
-          <span>FDA</span><span>3,67</span>
-          <span>Série en cours</span><span>2</span>
-          <span>Meilleure série</span><span>4</span>
-          <span>Tirs à la tête</span><span>3</span>
-          <span>Éliminations parfaites</span><span>1</span>
-          <span>Réapparitions</span><span>5</span>
-          <span>Vie en cours</span><span>0:27</span>
-          <span>Durée moyenne d'une vie</span><span>0:41</span>
-          <span>Boucliers perdus</span><span>11</span>
-          <span>Score</span><span>800 <small>· 2e sur 8</small></span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Répartition des éliminations</div>
-        <div class="brk"><span>Autres armes</span><span class="tk"><i style="width: 75%"></i></span><span>6</span><span>75 %</span></div>
-        <div class="brk w"><span>Fusil d'assaut</span><span class="tk"><i style="width: 50%"></i></span><span>4</span><span>50 %</span></div>
-        <div class="brk w"><span>Sidekick</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-        <div class="brk"><span>Grenade</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-        <div class="brk w"><span>Fragmentation</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Tirs et dégâts <span class="cap">estimation</span></div>
-        <div class="kv">
-          <span>Précision</span><span>43 % <small>· 61 / 142</small></span>
-          <span>Dégâts infligés / subis</span><span>1 480 / 1 120</span>
-          <span>Fusil d'assaut</span><span>118 tirs <small>· 1 050 dégâts</small></span>
-          <span>Sidekick</span><span>24 tirs <small>· 430 dégâts</small></span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Grenades lancées</div>
-        <div class="kv">
-          <span>Fragmentation</span><span>4</span>
-          <span>Plasma</span><span>1</span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Ramassages</div>
-        <div class="kv">
-          <span>Armes</span><span>2</span>
-          <span>Grenades</span><span>3</span>
-          <span>Équipement</span><span>1</span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Médailles</div>
-        <div class="chips">
-          <span class="chip"><i aria-hidden="true"></i>Doublé <small>×1</small></span>
-          <span class="chip"><i aria-hidden="true"></i>Parfait <small>×1</small></span>
-          <span class="chip"><i aria-hidden="true"></i>Grenadier <small>×2</small></span>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">TOTAUX DU MATCH</div>
-          <div class="kv">
-            <span>Précision</span><span>41 % <small>· 118 / 288</small></span>
-            <span>Dégâts infligés / subis</span><span>2 140 / 1 610</span>
-            <span>Score</span><span>1 450</span>
-            <span>Éliminations à la tête</span><span>6</span>
-          </div>
-          <div class="wbar"><span>Fusil d'assaut</span><span class="tk"><i style="width: 60%"></i></span><span>9</span></div>
-          <div class="wbar"><span>Sidekick</span><span class="tk"><i style="width: 20%"></i></span><span>3</span></div>
-          <div class="wbar"><span>Grenade</span><span class="tk"><i style="width: 20%"></i></span><span>3</span></div>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">EN PASSANT <small>3:51</small></div>
-          <div class="kv">
-            <span>Sprint, temps cumulé</span><span>1:04</span>
-            <span>Sauts <span class="cap">estimation</span></span><span>12</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="feed2">
-        <div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div>
-        <div class="fr"><span class="t">3:49</span><span class="ka me">Madina97294</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span><span class="zn">Îlot</span></div>
-        <div class="fr"><span class="t">3:42</span><span class="kb">ELOsk11</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span><span class="zn">Passerelle nord</span></div>
-      </div>
-    </aside>
+<div class="pan"><div class="lab"><b>Forme 1 — barre de répartition</b><small>La répartition est une seule barre et sa légende ; les totaux sont une liste sans barres</small></div>
+<aside class="col" aria-label="Fiche de Madina97294">
+  <div class="dhead">
+    <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
+    <div class="picks" aria-label="Changer de joueur"><button class="pk a" aria-label="Joueur CH">CH</button><button class="pk a" aria-label="Joueur DR">DR</button><button class="pk a sel" aria-label="Joueur MA">MA</button><button class="pk a" aria-label="Joueur JG">JG</button><span class="gap"></span><button class="pk b dead" aria-label="Joueur WD">WD</button><button class="pk b" aria-label="Joueur EL">EL</button><button class="pk b" aria-label="Joueur YO">YO</button><button class="pk b" aria-label="Joueur DU">DU</button></div>
+    <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
+    <div class="seg" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
   </div>
-
-  <div class="pan">
-    <div class="lab"><b>Standard — lecture partielle</b><small>Tirs trop peu lus, score incomplet : ces lignes n'existent pas</small></div>
-    <aside class="col" aria-label="Fiche de Draconewt">
-      <div class="dhead">
-        <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
-        <div class="picks" aria-label="Changer de joueur">
-          <button class="pk a" aria-label="Chocoboflor">CH</button><button class="pk a sel" aria-label="Draconewt">DR</button><button class="pk a" aria-label="Madina97294">MA</button><button class="pk a" aria-label="JGtm">JG</button><span class="gap"></span><button class="pk b dead" aria-label="WDW Eclipse">WD</button><button class="pk b" aria-label="ELOsk11">EL</button><button class="pk b" aria-label="yougo77500">YO</button><button class="pk b" aria-label="DubsDay">DU</button>
-        </div>
-        <div class="who"><span class="dot a"></span><b>Draconewt</b><small>Eagle</small><span class="kda">7<span>/</span>4<span>/</span>4</span></div>
-        <div class="seg" aria-label="Actions sur ce joueur"><button>Suivre</button><button>Seul</button><button>Masquer</button></div>
-      </div>
-
-      <div class="sec">
-        <div class="st">À L'INSTANT <small>3:51</small></div>
-        <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 28%; background: #60a5fa"></i></span><span class="v">28</span></div>
-        <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
-        <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Commando 14<small>/60 en main</small></div>
-        <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/108 en réserve</small></div>
-        <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×1</div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Depuis le début du match</div>
-        <div class="kv">
-          <span>FDA</span><span>4,33</span>
-          <span>Série en cours</span><span>3</span>
-          <span>Meilleure série</span><span>3</span>
-          <span>Tirs à la tête</span><span>2</span>
-          <span>Réapparitions</span><span>4</span>
-          <span>Vie en cours</span><span>1:12</span>
-          <span>Durée moyenne d'une vie</span><span>0:39</span>
-          <span>Boucliers perdus</span><span>9</span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Répartition des éliminations</div>
-        <div class="brk"><span>Autres armes</span><span class="tk"><i style="width: 86%"></i></span><span>6</span><span>86 %</span></div>
-        <div class="brk w"><span>Commando</span><span class="tk"><i style="width: 57%"></i></span><span>4</span><span>57 %</span></div>
-        <div class="brk w"><span>Fusil d'assaut</span><span class="tk"><i style="width: 29%"></i></span><span>2</span><span>29 %</span></div>
-        <div class="brk"><span>Mêlée</span><span class="tk"><i style="width: 14%"></i></span><span>1</span><span>14 %</span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Ramassages</div>
-        <div class="kv">
-          <span>Armes</span><span>1</span>
-          <span>Grenades</span><span>2</span>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">TOTAUX DU MATCH</div>
-          <div class="kv">
-            <span>Précision</span><span>38 % <small>· 96 / 252</small></span>
-            <span>Dégâts infligés / subis</span><span>1 980 / 1 420</span>
-            <span>Score</span><span>1 300</span>
-            <span>Éliminations à la tête</span><span>4</span>
-          </div>
-          <div class="wbar"><span>Commando</span><span class="tk"><i style="width: 54%"></i></span><span>7</span></div>
-          <div class="wbar"><span>Fusil d'assaut</span><span class="tk"><i style="width: 31%"></i></span><span>4</span></div>
-          <div class="wbar"><span>Mêlée</span><span class="tk"><i style="width: 15%"></i></span><span>2</span></div>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">EN PASSANT <small>3:51</small></div>
-          <div class="kv">
-            <span>Sprint, temps cumulé</span><span>0:48</span>
-            <span>Sauts <span class="cap">estimation</span></span><span>9</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="feed2">
-        <div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div>
-        <div class="fr"><span class="t">3:49</span><span class="ka">Madina97294</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span><span class="zn">Îlot</span></div>
-        <div class="fr"><span class="t">3:42</span><span class="kb">ELOsk11</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span><span class="zn">Passerelle nord</span></div>
-      </div>
-    </aside>
+  <div class="sec">
+  <div class="st">À L'INSTANT <small>3:51</small></div>
+  <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
+  <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
+  <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
+  <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil de sniper 3<small>/8 en réserve</small></div>
+  <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
+  <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Grappin · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
+</div><div class="sec"><div class="sub">Depuis le début du match</div><div class="kv"><span>FDA</span><span>3,67</span><span>Série en cours</span><span>2</span><span>Meilleure série</span><span>4</span><span>Tirs à la tête</span><span>3</span><span>Éliminations parfaites</span><span>1</span><span>Réapparitions</span><span>5</span><span>Vie en cours</span><span>0:27</span><span>Durée moyenne d'une vie</span><span>0:41</span><span>Boucliers perdus</span><span>11</span><span>Score</span><span>800 <small>· 2e sur 8</small></span></div></div><div class="sec"><div class="sub">Répartition des éliminations</div><div class="stack" role="img" aria-label="Autres armes 50 %, armes de puissance 25 %, grenade 25 %"><i class="c1" style="width: 50%"></i><i class="c2" style="width: 25%"></i><i class="c3" style="width: 25%"></i></div><div class="lg"><span class="sw c1"></span><span>Autres armes</span><span>4</span><span>50 %</span></div><div class="lg w"><span></span><span>Fusil d'assaut</span><span>4</span><span>50 %</span></div><div class="lg"><span class="sw c2"></span><span>Armes de puissance</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fusil de sniper</span><span>2</span><span>25 %</span></div><div class="lg"><span class="sw c3"></span><span>Grenade</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fragmentation</span><span>2</span><span>25 %</span></div></div><div class="sec"><div class="sub">Tirs et dégâts <span class="cap">estimation</span></div><div class="kv"><span>Précision</span><span>43 % <small>· 61 / 142</small></span><span>Dégâts infligés / subis</span><span>1 480 / 1 120</span><span>Fusil d'assaut</span><span>118 tirs <small>· 1 050 dégâts</small></span><span>Fusil de sniper</span><span>6 tirs <small>· 430 dégâts</small></span></div></div><div class="sec"><div class="sub">Grenades lancées</div><div class="kv"><span>Fragmentation</span><span>4</span><span>Plasma</span><span>1</span></div></div><div class="sec"><div class="sub">Ramassages</div><div class="kv"><span>Armes</span><span>2</span><span>Grenades</span><span>3</span></div></div><div class="sec"><div class="sub">Équipement</div><div class="eq hd"><span></span><span>Pris</span><span>Utilisé</span><span>Perdu</span></div><div class="eq "><span>Grappin</span><span>2</span><span>1</span><span>0</span></div><div class="eq "><span>Répulseur</span><span>1</span><span>0</span><span>1</span></div><div class="eq "><span>Surbouclier</span><span>1</span><span>1</span><span>0</span></div></div><div class="sec"><div class="sub">Médailles</div><div class="mds"><div class="md"><i aria-hidden="true"></i><span class="nm">Doublé</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Parfait</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Grenadier</span><span class="ct">×2</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Tireur d'élite</span><span class="ct">×2</span></div></div></div><div class="grp"><div class="sec"><div class="st">TOTAUX DU MATCH</div><div class="kv"><span>Précision</span><span>41 % <small>· 118 / 288</small></span><span>Dégâts infligés / subis</span><span>2 140 / 1 610</span><span>Score</span><span>1 450</span><span>Éliminations à la tête</span><span>6</span><span>Fusil d'assaut</span><span>9</span><span>Fusil de sniper</span><span>3</span><span>Grenade</span><span>3</span></div></div></div><div class="grp"><div class="sec"><div class="st">GESTES <small>3:51</small></div><div class="kv"><span>Sprint, temps cumulé</span><span>1:04</span><span>Sauts <span class="cap">estimation</span></span><span>12</span></div></div></div>
+  <div class="feed2"><div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div><div class="fr"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Madina97294</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span></div><div class="fr"><span class="t">3:42</span><span class="zn">Passerelle nord</span><span class="kb">ELOsk11</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span></div></div>
+</aside></div>
+<div class="pan"><div class="lab"><b>Forme 2 — un tableau par arme</b><small>L'instant et le match côte à côte ; les totaux ne répètent plus les armes</small></div>
+<aside class="col" aria-label="Fiche de Madina97294">
+  <div class="dhead">
+    <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
+    <div class="picks" aria-label="Changer de joueur"><button class="pk a" aria-label="Joueur CH">CH</button><button class="pk a" aria-label="Joueur DR">DR</button><button class="pk a sel" aria-label="Joueur MA">MA</button><button class="pk a" aria-label="Joueur JG">JG</button><span class="gap"></span><button class="pk b dead" aria-label="Joueur WD">WD</button><button class="pk b" aria-label="Joueur EL">EL</button><button class="pk b" aria-label="Joueur YO">YO</button><button class="pk b" aria-label="Joueur DU">DU</button></div>
+    <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
+    <div class="seg" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
   </div>
-
-  <div class="pan">
-    <div class="lab"><b>Cinéma et Plein cadre — fenêtre sous la fiche</b><small>Même contenu, sans sélecteur ni fil ; la fenêtre défile</small></div>
-    <div class="pop" role="dialog" aria-label="Fiche de Madina97294">
-      <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span><span class="kbd">Échap</span><button class="x" aria-label="Fermer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></div>
-      <div class="seg" aria-label="Actions sur ce joueur"><button>Suivre</button><button>Seul</button><button>Masquer</button></div>
-
-      <div class="sec">
-        <div class="st">À L'INSTANT <small>3:51</small></div>
-        <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
-        <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
-        <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
-        <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Sidekick 8<small>/32 en réserve</small></div>
-        <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
-        <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Équipement · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Depuis le début du match</div>
-        <div class="kv">
-          <span>FDA</span><span>3,67</span>
-          <span>Série en cours</span><span>2</span>
-          <span>Meilleure série</span><span>4</span>
-          <span>Tirs à la tête</span><span>3</span>
-          <span>Éliminations parfaites</span><span>1</span>
-          <span>Réapparitions</span><span>5</span>
-          <span>Vie en cours</span><span>0:27</span>
-          <span>Durée moyenne d'une vie</span><span>0:41</span>
-          <span>Boucliers perdus</span><span>11</span>
-          <span>Score</span><span>800 <small>· 2e sur 8</small></span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Répartition des éliminations</div>
-        <div class="brk"><span>Autres armes</span><span class="tk"><i style="width: 75%"></i></span><span>6</span><span>75 %</span></div>
-        <div class="brk w"><span>Fusil d'assaut</span><span class="tk"><i style="width: 50%"></i></span><span>4</span><span>50 %</span></div>
-        <div class="brk w"><span>Sidekick</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-        <div class="brk"><span>Grenade</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-        <div class="brk w"><span>Fragmentation</span><span class="tk"><i style="width: 25%"></i></span><span>2</span><span>25 %</span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Tirs et dégâts <span class="cap">estimation</span></div>
-        <div class="kv">
-          <span>Précision</span><span>43 % <small>· 61 / 142</small></span>
-          <span>Dégâts infligés / subis</span><span>1 480 / 1 120</span>
-          <span>Fusil d'assaut</span><span>118 tirs <small>· 1 050 dégâts</small></span>
-          <span>Sidekick</span><span>24 tirs <small>· 430 dégâts</small></span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Grenades lancées</div>
-        <div class="kv">
-          <span>Fragmentation</span><span>4</span>
-          <span>Plasma</span><span>1</span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Ramassages</div>
-        <div class="kv">
-          <span>Armes</span><span>2</span>
-          <span>Grenades</span><span>3</span>
-          <span>Équipement</span><span>1</span>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sub">Médailles</div>
-        <div class="chips">
-          <span class="chip"><i aria-hidden="true"></i>Doublé <small>×1</small></span>
-          <span class="chip"><i aria-hidden="true"></i>Parfait <small>×1</small></span>
-          <span class="chip"><i aria-hidden="true"></i>Grenadier <small>×2</small></span>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">TOTAUX DU MATCH</div>
-          <div class="kv">
-            <span>Précision</span><span>41 % <small>· 118 / 288</small></span>
-            <span>Dégâts infligés / subis</span><span>2 140 / 1 610</span>
-            <span>Score</span><span>1 450</span>
-          </div>
-          <div class="wbar"><span>Fusil d'assaut</span><span class="tk"><i style="width: 60%"></i></span><span>9</span></div>
-          <div class="wbar"><span>Sidekick</span><span class="tk"><i style="width: 20%"></i></span><span>3</span></div>
-          <div class="wbar"><span>Grenade</span><span class="tk"><i style="width: 20%"></i></span><span>3</span></div>
-        </div>
-      </div>
-
-      <div class="grp">
-        <div class="sec">
-          <div class="st">EN PASSANT <small>3:51</small></div>
-          <div class="kv">
-            <span>Sprint, temps cumulé</span><span>1:04</span>
-            <span>Sauts <span class="cap">estimation</span></span><span>12</span>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="sec">
+  <div class="st">À L'INSTANT <small>3:51</small></div>
+  <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
+  <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
+  <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
+  <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil de sniper 3<small>/8 en réserve</small></div>
+  <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
+  <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Grappin · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
+</div><div class="sec"><div class="sub">Depuis le début du match</div><div class="kv"><span>FDA</span><span>3,67</span><span>Série en cours</span><span>2</span><span>Meilleure série</span><span>4</span><span>Tirs à la tête</span><span>3</span><span>Éliminations parfaites</span><span>1</span><span>Réapparitions</span><span>5</span><span>Vie en cours</span><span>0:27</span><span>Durée moyenne d'une vie</span><span>0:41</span><span>Boucliers perdus</span><span>11</span><span>Score</span><span>800 <small>· 2e sur 8</small></span></div></div><div class="sec"><div class="sub">Éliminations par arme</div><div class="tb hd"><span></span><span>À l'instant</span><span>Part</span><span>Match</span></div><div class="tb cat"><span>Autres armes</span><span>4</span><span>50 %</span><span>9</span></div><div class="tb w"><span>Fusil d'assaut</span><span>4</span><span>50 %</span><span>9</span></div><div class="tb cat"><span>Armes de puissance</span><span>2</span><span>25 %</span><span>3</span></div><div class="tb w"><span>Fusil de sniper</span><span>2</span><span>25 %</span><span>3</span></div><div class="tb cat"><span>Grenade</span><span>2</span><span>25 %</span><span>3</span></div><div class="tb w"><span>Fragmentation</span><span>2</span><span>25 %</span><span>3</span></div></div><div class="sec"><div class="sub">Tirs et dégâts <span class="cap">estimation</span></div><div class="kv"><span>Précision</span><span>43 % <small>· 61 / 142</small></span><span>Dégâts infligés / subis</span><span>1 480 / 1 120</span><span>Fusil d'assaut</span><span>118 tirs <small>· 1 050 dégâts</small></span><span>Fusil de sniper</span><span>6 tirs <small>· 430 dégâts</small></span></div></div><div class="sec"><div class="sub">Grenades lancées</div><div class="kv"><span>Fragmentation</span><span>4</span><span>Plasma</span><span>1</span></div></div><div class="sec"><div class="sub">Ramassages</div><div class="kv"><span>Armes</span><span>2</span><span>Grenades</span><span>3</span></div></div><div class="sec"><div class="sub">Équipement</div><div class="eq hd"><span></span><span>Pris</span><span>Utilisé</span><span>Perdu</span></div><div class="eq "><span>Grappin</span><span>2</span><span>1</span><span>0</span></div><div class="eq "><span>Répulseur</span><span>1</span><span>0</span><span>1</span></div><div class="eq "><span>Surbouclier</span><span>1</span><span>1</span><span>0</span></div></div><div class="sec"><div class="sub">Médailles</div><div class="mds"><div class="md"><i aria-hidden="true"></i><span class="nm">Doublé</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Parfait</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Grenadier</span><span class="ct">×2</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Tireur d'élite</span><span class="ct">×2</span></div></div></div><div class="grp"><div class="sec"><div class="st">TOTAUX DU MATCH</div><div class="kv"><span>Précision</span><span>41 % <small>· 118 / 288</small></span><span>Dégâts infligés / subis</span><span>2 140 / 1 610</span><span>Score</span><span>1 450</span><span>Éliminations à la tête</span><span>6</span></div></div></div><div class="grp"><div class="sec"><div class="st">GESTES <small>3:51</small></div><div class="kv"><span>Sprint, temps cumulé</span><span>1:04</span><span>Sauts <span class="cap">estimation</span></span><span>12</span></div></div></div>
+  <div class="feed2"><div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div><div class="fr"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Madina97294</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span></div><div class="fr"><span class="t">3:42</span><span class="zn">Passerelle nord</span><span class="kb">ELOsk11</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span></div></div>
+</aside></div>
+<div class="pan"><div class="lab"><b>Lecture partielle (forme 1)</b><small>Tirs trop peu lus, score incomplet : ces lignes n'existent pas</small></div>
+<aside class="col" aria-label="Fiche de Madina97294">
+  <div class="dhead">
+    <div class="backrow"><button class="lnk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Équipes</button><span class="kbd">Échap</span></div>
+    <div class="picks" aria-label="Changer de joueur"><button class="pk a" aria-label="Joueur CH">CH</button><button class="pk a" aria-label="Joueur DR">DR</button><button class="pk a sel" aria-label="Joueur MA">MA</button><button class="pk a" aria-label="Joueur JG">JG</button><span class="gap"></span><button class="pk b dead" aria-label="Joueur WD">WD</button><button class="pk b" aria-label="Joueur EL">EL</button><button class="pk b" aria-label="Joueur YO">YO</button><button class="pk b" aria-label="Joueur DU">DU</button></div>
+    <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span></div>
+    <div class="seg" aria-label="Actions sur ce joueur"><button class="on">Suivre</button><button>Seul</button><button>Masquer</button></div>
   </div>
-
+  <div class="sec">
+  <div class="st">À L'INSTANT <small>3:51</small></div>
+  <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
+  <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
+  <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
+  <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil de sniper 3<small>/8 en réserve</small></div>
+  <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
+  <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Grappin · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
+</div><div class="sec"><div class="sub">Depuis le début du match</div><div class="kv"><span>FDA</span><span>3,67</span><span>Série en cours</span><span>2</span><span>Meilleure série</span><span>4</span><span>Tirs à la tête</span><span>3</span><span>Éliminations parfaites</span><span>1</span><span>Réapparitions</span><span>5</span><span>Vie en cours</span><span>0:27</span><span>Durée moyenne d'une vie</span><span>0:41</span><span>Boucliers perdus</span><span>11</span></div></div><div class="sec"><div class="sub">Répartition des éliminations</div><div class="stack" role="img" aria-label="Autres armes 50 %, armes de puissance 25 %, grenade 25 %"><i class="c1" style="width: 50%"></i><i class="c2" style="width: 25%"></i><i class="c3" style="width: 25%"></i></div><div class="lg"><span class="sw c1"></span><span>Autres armes</span><span>4</span><span>50 %</span></div><div class="lg w"><span></span><span>Fusil d'assaut</span><span>4</span><span>50 %</span></div><div class="lg"><span class="sw c2"></span><span>Armes de puissance</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fusil de sniper</span><span>2</span><span>25 %</span></div><div class="lg"><span class="sw c3"></span><span>Grenade</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fragmentation</span><span>2</span><span>25 %</span></div></div><div class="sec"><div class="sub">Grenades lancées</div><div class="kv"><span>Fragmentation</span><span>4</span><span>Plasma</span><span>1</span></div></div><div class="sec"><div class="sub">Ramassages</div><div class="kv"><span>Armes</span><span>2</span><span>Grenades</span><span>3</span></div></div><div class="sec"><div class="sub">Équipement</div><div class="eq hd"><span></span><span>Pris</span><span>Utilisé</span><span>Perdu</span></div><div class="eq "><span>Grappin</span><span>2</span><span>1</span><span>0</span></div><div class="eq "><span>Répulseur</span><span>1</span><span>0</span><span>1</span></div><div class="eq "><span>Surbouclier</span><span>1</span><span>1</span><span>0</span></div></div><div class="sec"><div class="sub">Médailles</div><div class="mds"><div class="md"><i aria-hidden="true"></i><span class="nm">Doublé</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Parfait</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Grenadier</span><span class="ct">×2</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Tireur d'élite</span><span class="ct">×2</span></div></div></div><div class="grp"><div class="sec"><div class="st">TOTAUX DU MATCH</div><div class="kv"><span>Précision</span><span>41 % <small>· 118 / 288</small></span><span>Dégâts infligés / subis</span><span>2 140 / 1 610</span><span>Score</span><span>1 450</span><span>Éliminations à la tête</span><span>6</span><span>Fusil d'assaut</span><span>9</span><span>Fusil de sniper</span><span>3</span><span>Grenade</span><span>3</span></div></div></div><div class="grp"><div class="sec"><div class="st">GESTES <small>3:51</small></div><div class="kv"><span>Sprint, temps cumulé</span><span>1:04</span><span>Sauts <span class="cap">estimation</span></span><span>12</span></div></div></div>
+  <div class="feed2"><div class="st">ÉLIMINATIONS <a href="#">Fil complet</a></div><div class="fr"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Madina97294</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">WDW Eclipse</span></div><div class="fr"><span class="t">3:42</span><span class="zn">Passerelle nord</span><span class="kb">ELOsk11</span><svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">JGtm</span></div></div>
+</aside></div>
+<div class="pan"><div class="lab"><b>Cinéma et Plein cadre — fenêtre</b><small>Même contenu (forme 1), sans sélecteur ni fil ; la fenêtre défile</small></div>
+<div class="pop" role="dialog" aria-label="Fiche de Madina97294">
+  <div class="who"><span class="dot a"></span><b>Madina97294</b><small>Eagle</small><span class="kda">8<span>/</span>5<span>/</span>2</span><span class="kbd">Échap</span><button class="x" aria-label="Fermer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></div>
+  <div class="seg" aria-label="Actions sur ce joueur"><button>Suivre</button><button>Seul</button><button>Masquer</button></div>
+  <div class="sec">
+  <div class="st">À L'INSTANT <small>3:51</small></div>
+  <div class="lbar"><span>Bouclier</span><span class="tk"><i style="width: 100%; background: #60a5fa"></i></span><span class="v">100</span></div>
+  <div class="lbar"><span>Santé</span><span class="tk"><i style="width: 100%; background: #e5e5e5"></i></span><span class="v">100</span></div>
+  <div class="slot"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil d'assaut 36<small>/198 en main</small></div>
+  <div class="slot res"><svg width="24" height="11" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg>Fusil de sniper 3<small>/8 en réserve</small></div>
+  <div class="slot"><svg width="11" height="13" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"></path></svg>Fragmentation ×2</div>
+  <div class="slot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Grappin · 1 charge<span class="charge"><i style="width: 60%"></i></span></div>
+</div><div class="sec"><div class="sub">Depuis le début du match</div><div class="kv"><span>FDA</span><span>3,67</span><span>Série en cours</span><span>2</span><span>Meilleure série</span><span>4</span><span>Tirs à la tête</span><span>3</span><span>Éliminations parfaites</span><span>1</span><span>Réapparitions</span><span>5</span><span>Vie en cours</span><span>0:27</span><span>Durée moyenne d'une vie</span><span>0:41</span><span>Boucliers perdus</span><span>11</span><span>Score</span><span>800 <small>· 2e sur 8</small></span></div></div><div class="sec"><div class="sub">Répartition des éliminations</div><div class="stack" role="img" aria-label="Autres armes 50 %, armes de puissance 25 %, grenade 25 %"><i class="c1" style="width: 50%"></i><i class="c2" style="width: 25%"></i><i class="c3" style="width: 25%"></i></div><div class="lg"><span class="sw c1"></span><span>Autres armes</span><span>4</span><span>50 %</span></div><div class="lg w"><span></span><span>Fusil d'assaut</span><span>4</span><span>50 %</span></div><div class="lg"><span class="sw c2"></span><span>Armes de puissance</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fusil de sniper</span><span>2</span><span>25 %</span></div><div class="lg"><span class="sw c3"></span><span>Grenade</span><span>2</span><span>25 %</span></div><div class="lg w"><span></span><span>Fragmentation</span><span>2</span><span>25 %</span></div></div><div class="sec"><div class="sub">Tirs et dégâts <span class="cap">estimation</span></div><div class="kv"><span>Précision</span><span>43 % <small>· 61 / 142</small></span><span>Dégâts infligés / subis</span><span>1 480 / 1 120</span><span>Fusil d'assaut</span><span>118 tirs <small>· 1 050 dégâts</small></span><span>Fusil de sniper</span><span>6 tirs <small>· 430 dégâts</small></span></div></div><div class="sec"><div class="sub">Grenades lancées</div><div class="kv"><span>Fragmentation</span><span>4</span><span>Plasma</span><span>1</span></div></div><div class="sec"><div class="sub">Ramassages</div><div class="kv"><span>Armes</span><span>2</span><span>Grenades</span><span>3</span></div></div><div class="sec"><div class="sub">Équipement</div><div class="eq hd"><span></span><span>Pris</span><span>Utilisé</span><span>Perdu</span></div><div class="eq "><span>Grappin</span><span>2</span><span>1</span><span>0</span></div><div class="eq "><span>Répulseur</span><span>1</span><span>0</span><span>1</span></div><div class="eq "><span>Surbouclier</span><span>1</span><span>1</span><span>0</span></div></div><div class="sec"><div class="sub">Médailles</div><div class="mds"><div class="md"><i aria-hidden="true"></i><span class="nm">Doublé</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Parfait</span><span class="ct">×1</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Grenadier</span><span class="ct">×2</span></div><div class="md"><i aria-hidden="true"></i><span class="nm">Tireur d'élite</span><span class="ct">×2</span></div></div></div><div class="grp"><div class="sec"><div class="st">TOTAUX DU MATCH</div><div class="kv"><span>Précision</span><span>41 % <small>· 118 / 288</small></span><span>Dégâts infligés / subis</span><span>2 140 / 1 610</span><span>Score</span><span>1 450</span><span>Fusil d'assaut</span><span>9</span><span>Fusil de sniper</span><span>3</span><span>Grenade</span><span>3</span></div></div></div><div class="grp"><div class="sec"><div class="st">GESTES <small>3:51</small></div><div class="kv"><span>Sprint, temps cumulé</span><span>1:04</span><span>Sauts <span class="cap">estimation</span></span><span>12</span></div></div></div>
+</div></div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1620}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1660,"height":1760}}'>
 class Component extends DCLogic {
   renderVals() {
     return {};

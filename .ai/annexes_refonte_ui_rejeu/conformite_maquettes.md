@@ -211,3 +211,7 @@ Réponses à des questions fermées, après l'audit 0.3. Elles prévalent sur le
 - « Suivi » (A-10, K-5) désigne le joueur regardé, celui de la page au départ ; « Suivre » est l'action de caméra, à part.
 - Fil posé sur le plan (K-9) : éliminations seules.
 - A-16 : rien sous le lecteur (la page n'a aucune section à cet endroit).
+
+| Réf | La maquette montre | Ce qui se fait | Décision |
+|---|---|---|---|
+| V17 | A-14, K-9, J-7 : instant, tueur, arme, victime, lieu | Instant, lieu, tueur, arme, victime, partout (colonne, plan, pied de fiche) ; le lieu reste celui de la victime | user, 2026-11-17 : « chrono - zone de callout - tueur - arme - victime » |

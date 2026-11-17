@@ -451,6 +451,11 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
       trois places de mini-carte (elles règlent la rencontre avec le fil posé en bas à gauche du lecteur),
       deux styles de contour, trois repères ; ligne posée dans l'artefact des vérifications. Fichier relu en
       entier par le pilote, rendu non vérifié à l'écran. Reste le choix du user.
+      **Choix du user (2026-11-17)** : repère des listes = variante C (icône neuve, un cube dans la boucle), avec la
+      couleur ambre proposée (« on distingue d'un coup d'œil ») : un token sémantique lui est donné en E.5 (skill
+      `color-tokens`). HUD, mini-carte et joueurs à travers les murs : NON choisis, le user attend de voir le
+      travail du contributeur (« ce sera du ThreeJS […] il bosse bien son sujet ») ; C.7, C.8, D.1 et D.3 attendent
+      donc le source, et la rencontre du fil et de la mini-carte (plan maître, N21) se tranche à ce moment-là.
 - [x] C.1 Dépendance `three` (MIT), version exacte figée. Le lecteur `features/match-replay/three/Replay3D.tsx`
       se charge en différé (import dynamique) : aucun poids ajouté à la 2D ni à l'hébergé.
       Fait le 2026-11-17 (`b1edd4d1bd` sur `feat/rejeu-3d`) : `three` et `@types/three` 0.187.0 exacts, point
