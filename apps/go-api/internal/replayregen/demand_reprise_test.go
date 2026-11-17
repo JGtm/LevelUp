@@ -93,3 +93,25 @@ func TestDemand_ArretPendantLaReconstructionGardeLaDemande(t *testing.T) {
 }
 
 // (9) le classement des issues, de bout en bout pour le film disparu et l'essai répété d'un décodage occupé.
+
+// (7 quater) une demande arrivée entre la liaison et la reprise ne perd jamais les demandes d'avant l'arrêt :
+// le fichier porte les trois, la file les reprend dans l'ordre (les anciennes d'abord).
+func TestDemand_DemandeAvantLaRepriseNEcrasePasLeFichier(t *testing.T) {
+	f := newDemandFixture(t, 0)
+	f.heavy.Store(false) // la file ne part pas : le fichier reste lisible tel qu'écrit
+	f.store.demands = []domain.ReplayGenerationDemand{demandFor(1), demandFor(2)}
+	if _, created, err := f.svc.Enqueue(demandFor(3)); err != nil || !created {
+		t.Fatalf("Enqueue avant la reprise : created=%v err=%v", created, err)
+	}
+	f.svc.ResumeDemands()
+	got := f.store.snapshot()
+	if len(got) != 3 || got[0].MatchID != demandFor(1).MatchID || got[1].MatchID != demandFor(2).MatchID ||
+		got[2].MatchID != demandFor(3).MatchID {
+		t.Fatalf("demandes au fichier après la reprise = %+v, attendu les trois dans l'ordre", got)
+	}
+	for n := 1; n <= 3; n++ {
+		if _, ok := f.status(n); !ok {
+			t.Errorf("la demande %d doit être en file", n)
+		}
+	}
+}

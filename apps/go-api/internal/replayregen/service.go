@@ -44,6 +44,8 @@ type Service struct {
 	wg   *sync.WaitGroup
 	// bound : Bind a été appelé.
 	bound bool
+	// demandsAdopted : les demandes que le fichier portait à la liaison sont passées dans la file ([Service.adoptPersistedDemandsLocked]).
+	demandsAdopted bool
 
 	// Décompte (hors file active). Il ne se lance QUE : au démarrage du serveur, à la fin de la file et sur
 	// demande explicite ([Service.Rescan]) ; Status ne le relance jamais.
@@ -91,7 +93,7 @@ func Default() *Service { return defaultService }
 func (s *Service) Bind(ctx context.Context, wg *sync.WaitGroup, deps Deps) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.ctx, s.wg, s.deps, s.bound = ctx, wg, deps, true
+	s.ctx, s.wg, s.deps, s.bound, s.demandsAdopted = ctx, wg, deps, true, false
 }
 
 // Status rend l'état courant, sans rien lancer : hors file, le décompte vient du cache (fait au démarrage, à la

@@ -196,18 +196,33 @@ func classifyDemand(err error, failedIn string) domain.ReplayGenerationStatus {
 // fichier illisible se journalise et laisse la file vide ; une demande incomplète est écartée.
 func (s *Service) ResumeDemands() {
 	s.mu.Lock()
-	bound, store, ctx := s.bound, s.deps.Demands, s.ctx
-	s.mu.Unlock()
-	if !bound || store == nil {
+	defer s.mu.Unlock()
+	if !s.bound || s.deps.Demands == nil {
 		return
 	}
-	loaded, err := store.LoadDemands(ctx)
+	s.adoptPersistedDemandsLocked(s.ctx)
+	s.kickDemandLoopLocked()
+}
+
+// adoptPersistedDemandsLocked passe dans la file les demandes que le fichier porte, UNE fois par liaison, avant
+// toute écriture du fichier : une demande arrivée avant la reprise ne l'écrase donc pas. Les demandes reprises
+// précèdent celles déjà en mémoire (ordre d'arrivée), une demande déjà en file est écartée en doublon. Un fichier
+// illisible se journalise et laisse la file telle quelle ; s.mu est tenu.
+func (s *Service) adoptPersistedDemandsLocked(ctx context.Context) {
+	if s.demandsAdopted || s.deps.Demands == nil {
+		return
+	}
+	s.demandsAdopted = true
+	loaded, err := s.deps.Demands.LoadDemands(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "replay_generation: demandes en vol illisibles, file vide", "err", err)
 		return
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	var adopted []*demandEntry
+	seen := make(map[string]bool, len(s.demands)+len(loaded))
+	for _, e := range s.demands {
+		seen[demandKey(e.d.TitleSlug, e.d.MatchID)] = true
+	}
 	kept := 0
 	for _, d := range loaded {
 		if d.TitleSlug == "" || d.MatchID == "" {
@@ -215,17 +230,19 @@ func (s *Service) ResumeDemands() {
 				"titleSlug", d.TitleSlug, "match_id", d.MatchID, "player", d.PlayerSlug)
 			continue
 		}
-		if s.findDemandLocked(demandKey(d.TitleSlug, d.MatchID)) != nil {
+		key := demandKey(d.TitleSlug, d.MatchID)
+		if seen[key] {
 			continue
 		}
-		s.demands = append(s.demands, &demandEntry{d: d})
+		seen[key] = true
+		adopted = append(adopted, &demandEntry{d: d})
 		kept++
 	}
+	s.demands = append(adopted, s.demands...)
 	if kept != len(loaded) {
 		s.persistDemandsLocked(ctx)
 	}
 	if kept > 0 {
 		slog.InfoContext(ctx, "replay_generation: reprise des demandes lancées avant l'arrêt", "demands", kept)
 	}
-	s.kickDemandLoopLocked()
 }

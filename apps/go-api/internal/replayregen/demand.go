@@ -35,7 +35,8 @@ func demandKey(titleSlug, matchID string) string {
 	return titleSlug + "/" + title.FilmShortMatchID(matchID)
 }
 
-// Enqueue met la demande en file. created=false : une demande du même match est déjà en file ou en cours (rend son
+// Enqueue met la demande en file. Les demandes que le fichier portait avant l'arrêt passent d'abord dans la file :
+// l'écriture qui suit ne les écrase jamais, même si elle précède [Service.ResumeDemands]. created=false : une demande du même match est déjà en file ou en cours (rend son
 // état). Un échec récent du même match est remplacé par la nouvelle demande. Le plafond est vérifié sous le verrou,
 // dans le même geste que l'ajout.
 func (s *Service) Enqueue(d domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, bool, error) {
@@ -44,6 +45,7 @@ func (s *Service) Enqueue(d domain.ReplayGenerationDemand) (domain.ReplayGenerat
 	if !s.bound {
 		return domain.ReplayGenerationStatus{}, false, domain.ErrReplayGenerationUnbound
 	}
+	s.adoptPersistedDemandsLocked(s.ctx)
 	key := demandKey(d.TitleSlug, d.MatchID)
 	if e := s.findDemandLocked(key); e != nil {
 		return s.demandStatusLocked(e), false, nil
