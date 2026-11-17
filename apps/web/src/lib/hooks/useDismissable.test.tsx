@@ -1,7 +1,8 @@
 /**
  * useDismissable — Échap et clic dehors ferment la couche ouverte ; rien n'est écouté couche fermée ;
  * le geste dehors se choisit (`mousedown`, `pointerdown`, aucun) ; un élément `ignore` n'est pas
- * « dehors » ; une autre couche d'Échap ouverte retient Échap.
+ * « dehors » ; une autre couche d'Échap ouverte retient Échap ; deux couches ouvertes, Échap ne
+ * ferme que celle du dessus.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
@@ -142,6 +143,99 @@ describe('useDismissable', () => {
     unmount()
     fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.mouseDown(document.body)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+/** Une couche nommée : `onClose` dit laquelle s'est fermée. */
+function Couche({
+  nom,
+  open = true,
+  onClose,
+  options,
+}: {
+  nom: string
+  open?: boolean
+  onClose: (nom: string) => void
+  options?: DismissableOptions<HTMLDivElement>
+}) {
+  const ref = useDismissable(open, () => onClose(nom), options)
+  return <div ref={ref} data-testid={nom} />
+}
+
+describe('useDismissable — deux couches ouvertes', () => {
+  const echap = () => fireEvent.keyDown(window, { key: 'Escape' })
+
+  it('Échap ne ferme que la couche ouverte en dernier ; la frappe suivante ferme celle du dessous', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <>
+        <Couche nom="dessous" onClose={onClose} />
+        <Couche nom="dessus" onClose={onClose} />
+      </>,
+    )
+    echap()
+    expect(onClose).toHaveBeenCalledExactlyOnceWith('dessus')
+
+    rerender(
+      <>
+        <Couche nom="dessous" onClose={onClose} />
+        <Couche nom="dessus" open={false} onClose={onClose} />
+      </>,
+    )
+    echap()
+    expect(onClose).toHaveBeenCalledTimes(2)
+    expect(onClose).toHaveBeenLastCalledWith('dessous')
+  })
+
+  it('le dessus est celui qui s’est ouvert en dernier, pas celui qui est rendu en dernier', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <>
+        <Couche nom="premiere" open={false} onClose={onClose} />
+        <Couche nom="seconde" onClose={onClose} />
+      </>,
+    )
+    rerender(
+      <>
+        <Couche nom="premiere" onClose={onClose} />
+        <Couche nom="seconde" onClose={onClose} />
+      </>,
+    )
+    echap()
+    expect(onClose).toHaveBeenCalledExactlyOnceWith('premiere')
+  })
+
+  it('une couche retenue par une couche intérieure hors registre laisse celle du dessous se fermer', () => {
+    const onClose = vi.fn()
+    const SELECTOR = '[data-test-layer]'
+    const interieure = document.createElement('div')
+    interieure.setAttribute('data-test-layer', '')
+    document.body.appendChild(interieure)
+    try {
+      render(
+        <>
+          <Couche nom="dessous" onClose={onClose} />
+          <Couche nom="retenue" onClose={onClose} options={{ innerLayerSelector: SELECTOR }} />
+        </>,
+      )
+      echap()
+      expect(onClose).toHaveBeenCalledExactlyOnceWith('dessous')
+    } finally {
+      interieure.remove()
+    }
+  })
+
+  it('la frappe n’est prise que par une couche : aucune ne la reçoit une fois toutes fermées', () => {
+    const onClose = vi.fn()
+    const { unmount } = render(
+      <>
+        <Couche nom="a" onClose={onClose} />
+        <Couche nom="b" onClose={onClose} />
+      </>,
+    )
+    unmount()
+    echap()
     expect(onClose).not.toHaveBeenCalled()
   })
 })

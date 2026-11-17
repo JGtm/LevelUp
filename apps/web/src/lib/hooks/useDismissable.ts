@@ -30,13 +30,54 @@ function otherLayerOpen(selector: string, self: Element | null): boolean {
   return Array.from(document.querySelectorAll(selector)).some((layer) => layer !== self)
 }
 
+/** Ce que le registre d'Échap lit d'une couche ouverte, à chaque frappe. */
+interface EscapeLayer {
+  ref: RefObject<HTMLElement | null>
+  current: () => { onClose: (reason: DismissReason) => void; innerLayerSelector?: string }
+}
+
+/**
+ * Les couches ouvertes, de la plus ancienne à la plus récente. UN SEUL écouteur d'Échap sert
+ * toutes les couches : à une frappe, la couche la plus récente se ferme SEULE, et la frappe est
+ * consommée. Un écouteur par couche fermerait aussi celles du dessous, ou, selon l'ordre
+ * d'abonnement, la mauvaise d'abord (React vide ses mises à jour entre deux écouteurs).
+ */
+const escapeLayers: EscapeLayer[] = []
+
+function onEscapeKeyDown(event: KeyboardEvent) {
+  if (!isEscapeKey(event)) return
+  for (let at = escapeLayers.length - 1; at >= 0; at--) {
+    const layer = escapeLayers[at]
+    const { onClose, innerLayerSelector } = layer.current()
+    // Une couche qui s'efface devant une couche intérieure hors registre laisse celle du dessous
+    // se fermer : la frappe ne se perd que si aucune couche ne la prend.
+    if (innerLayerSelector && otherLayerOpen(innerLayerSelector, layer.ref.current)) continue
+    onClose('escape')
+    return
+  }
+}
+
+function registerEscapeLayer(layer: EscapeLayer): () => void {
+  if (escapeLayers.length === 0) window.addEventListener('keydown', onEscapeKeyDown)
+  escapeLayers.push(layer)
+  return () => {
+    const at = escapeLayers.indexOf(layer)
+    if (at >= 0) escapeLayers.splice(at, 1)
+    if (escapeLayers.length === 0) window.removeEventListener('keydown', onEscapeKeyDown)
+  }
+}
+
 /**
  * useDismissable — la fermeture d'une couche (popover, menu, panneau, média agrandi) : Échap et,
  * selon `options.outside`, un clic hors de sa zone. Les écouteurs ne vivent que couche ouverte.
  *
+ * ÉCHAP NE FERME QUE LA COUCHE DU DESSUS : la plus récemment ouverte parmi celles qui utilisent ce
+ * hook (hors celles que `innerLayerSelector` retient), et la frappe s'arrête là. Une frappe
+ * suivante ferme la couche d'en dessous.
+ *
  * `onClose` reçoit la raison de la fermeture (rendre le focus au déclencheur sur Échap seulement,
  * par exemple). Il est lu à chaque événement : un `onClose` neuf ne rebranche pas les écouteurs,
- * donc l'ordre d'écoute entre deux couches reste celui de leur ouverture.
+ * donc l'ordre des couches reste celui de leur ouverture.
  */
 export function useDismissable<T extends HTMLElement = HTMLDivElement>(
   open: boolean,
@@ -53,13 +94,17 @@ export function useDismissable<T extends HTMLElement = HTMLDivElement>(
 
   useEffect(() => {
     if (!open) return
+    return registerEscapeLayer({
+      ref,
+      current: () => ({
+        onClose: latest.current.onClose,
+        innerLayerSelector: latest.current.options.innerLayerSelector,
+      }),
+    })
+  }, [open, ref])
 
-    function onKeyDown(event: KeyboardEvent) {
-      if (!isEscapeKey(event)) return
-      const { innerLayerSelector } = latest.current.options
-      if (innerLayerSelector && otherLayerOpen(innerLayerSelector, ref.current)) return
-      latest.current.onClose('escape')
-    }
+  useEffect(() => {
+    if (!open || !outsideEvent) return
     function onOutside(event: Event) {
       const target = event.target as Node | null
       if (!target || !ref.current) return
@@ -67,13 +112,8 @@ export function useDismissable<T extends HTMLElement = HTMLDivElement>(
       if (latest.current.options.ignore?.current?.contains(target)) return
       latest.current.onClose('outside')
     }
-
-    window.addEventListener('keydown', onKeyDown)
-    if (outsideEvent) document.addEventListener(outsideEvent, onOutside)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      if (outsideEvent) document.removeEventListener(outsideEvent, onOutside)
-    }
+    document.addEventListener(outsideEvent, onOutside)
+    return () => document.removeEventListener(outsideEvent, onOutside)
   }, [open, ref, outsideEvent])
 
   return ref
