@@ -91,6 +91,12 @@
 
 ---
 
+### [rejeu] Barre de lecture en surimpression en Cinéma et en Plein cadre
+
+**Relevé le 2026-11-17** (idée du user pendant la refonte de la page du rejeu, `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`). Le user veut poser les contrôles de lecture et la frise sur le plan, comme un lecteur vidéo de téléphone, et les faire disparaître quand la souris ne bouge plus. Il doute lui-même de la disparition (« sur ordinateur on bouge pas mal la souris ») et pense qu'un repli ou un autre comportement serait mieux. Il relève aussi que les pistes (score, dominance, objectifs, médias) compliquent la chose. Proposition du pilote, non validée : en Plein cadre seulement, pendant la lecture, la barre d'une ligne se replie en une fine ligne de progression au bas du plan (rail, repères d'éliminations, bande de dominance) ; elle se déplie au survol du bas du plan, à toute touche et en pause ; le fil des éliminations posé sur le plan remonte quand elle est dépliée ; le Cinéma et le Standard gardent leur barre fixe. Gain attendu : une cinquantaine de pixels de hauteur pour le plan, là où la hauteur limite sa taille. **Condition de reprise :** une MAQUETTE validée par le user avant tout code (demande du user : « il me faudra une maquette ») ; à faire après la barre de lecture d'une ligne de la refonte (plan `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`, lot E). **Effort : à estimer. Priorité basse.**
+
+---
+
 ### [divers] Six petites découvertes des suites de l'audit (2026-11-17)
 
 **Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). Six points indépendants, petits chacun :
