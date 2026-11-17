@@ -47,18 +47,18 @@ type pipelineEnv struct {
 	coverRepo  *ddb.CSRCoverageRepo
 }
 
-// setupPipelineEnv ouvre 3 DBs temp (copies des gabarits migrés player et metadata, shared
-// vierge), applique les schemas sync, et retourne un environnement câblé pour tester les repos
-// display.
+// setupPipelineEnv ouvre 3 DBs temp (player migrée à neuf après le schéma sync, copie du gabarit
+// migré pour metadata, shared vierge), applique les schemas sync, et retourne un environnement
+// câblé pour tester les repos display.
 func setupPipelineEnv(t *testing.T) *pipelineEnv {
 	t.Helper()
 	tmp := t.TempDir()
 
-	// Player DB : migrations player (ajoutent measurement_matches_remaining sur
-	// match_skill_rank, utilisée par CSRCoverageRepo + display), puis le schéma sync
-	// (IF NOT EXISTS).
+	// Player DB : ordre réel de création d'une base joueur, schéma sync (IF NOT EXISTS) PUIS
+	// migrations player (ajoutent measurement_matches_remaining sur match_skill_rank, utilisée
+	// par CSRCoverageRepo + display). Une copie du gabarit migré donne un autre schéma : ce test
+	// reste donc à migration neuve (freshMigrationAllowlist).
 	playerPath := filepath.Join(tmp, "stats.duckdb")
-	ddb.MigratedFileCopy(t, migration.TargetPlayer, playerPath)
 	playerDB, err := ddb.OpenReadWrite(playerPath)
 	if err != nil {
 		t.Fatalf("open player: %v", err)
@@ -66,6 +66,9 @@ func setupPipelineEnv(t *testing.T) *pipelineEnv {
 	t.Cleanup(func() { _ = playerDB.Close() })
 	if err := syncpkg.EnsurePlayerSchema(context.Background(), playerDB.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if err := migration.RunForDB(playerDB.SQLDb(), migration.TargetPlayer); err != nil {
+		t.Fatalf("RunForDB player: %v", err)
 	}
 
 	// Shared DB

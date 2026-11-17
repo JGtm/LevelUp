@@ -34,6 +34,8 @@ var freshMigrationAllowlist = map[string]string{
 
 	"career_progression_fresh_migrations_test.go": "2026-11-17 : l'objet du test est la promesse « une player DB reconstruite par la seule chaîne de migrations sert le chemin de persistance carrière » ; une copie de gabarit ne la prouverait pas.",
 
+	"csr_pipeline_e2e_integration_test.go": "2026-11-17 : le test de bout en bout exerce l'ordre réel de création d'une base joueur, schéma de synchronisation (EnsurePlayerSchema) puis migrations ; la copie d'un gabarit migré donne une base dont le schéma diffère (colonnes NOT NULL, défauts, types), et ce que prouvent les lecteurs CSR glisserait d'une forme de base à l'autre.",
+
 	"pool_shared_social_recovery_concurrent_test.go": "2026-11-17 : l'objet du test est la réapplication idempotente des migrations shared_social après réouverture (RunForDB rejoué sur la même base) ; le test pose lui-même le premier passage.",
 }
 
