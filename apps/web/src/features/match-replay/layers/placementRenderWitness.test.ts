@@ -104,7 +104,7 @@ describe('garde-rail : le câblage des poses passe par drawablePlacements', () =
   it('aucun module hors liste nommée ne lit doc.equipmentPlacements', () => {
     const sources = sourcesDeLaFeature()
     // Les modules à câbler existent bien : un garde qui ne les verrait pas resterait vert.
-    for (const nom of ['ReplayCanvas.tsx', 'ReplayTeams.tsx', 'useReplayPlacements.ts']) {
+    for (const nom of ['ReplayCanvas.tsx', 'useCardScene.ts', 'useReplayPlacements.ts']) {
       expect(sources.map(nomDe)).toContain(nom)
     }
     const fautifs = sources
@@ -117,7 +117,7 @@ describe('garde-rail : le câblage des poses passe par drawablePlacements', () =
   it('les trois consommateurs de dessin et de zones lisent la source des objets engendrés', () => {
     const lus = (nom: string) => sansCommentaires(lire(sourcesDeLaFeature().find((f) => nomDe(f) === nom)!))
     expect(lus('useReplayPlacements.ts')).toMatch(/drawablePlacements\(doc\)/)
-    expect(lus('ReplayTeams.tsx')).toMatch(/drawablePlacements\(doc\)/)
+    expect(lus('useCardScene.ts')).toMatch(/drawablePlacements\(doc\)/)
     expect(lus('ReplayCanvas.tsx')).toMatch(/placements\.all/)
   })
 })

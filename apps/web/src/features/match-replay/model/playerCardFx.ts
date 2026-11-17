@@ -15,7 +15,7 @@
  * 2026-09-07) — cadres et voiles épousent la tuile au lieu de dessiner un second anneau en retrait.
  * C'est elle qui reçoit `underStyle` et la classe d'éclat ; l'INCRUSTATION au-dessus
  * (nuage et éclairs de l'écran, croix du champ, anneau du capteur, fourreau de
- * translocation) vit dans ReplayTeams.ZoneFxOverlay, à la même géométrie.
+ * translocation) vit dans ReplayCardFx.ZoneFxOverlay, à la même géométrie.
  *
  * LA GRAMMAIRE DES EFFETS, telle qu'elle s'est fixée lot après lot :
  *  - un ÉTAT continu se porte par le FOND (mort, verre, voile sombre) ou par un CADRE
@@ -123,7 +123,7 @@ const OVERSHIELD_GLOW_PCT = 60
  * avec des mini croix de pharmacie qui flottent sur la fiche ») : même grammaire de CADRE que
  * le surbouclier — un état protecteur s'encadre — au token `success`, celui de la jauge de
  * SANTÉ (cf. VitalityBar) : l'objet soigne, la couleur dit la même chose des deux côtés de la
- * fiche. Les croix, elles, vivent dans l'incrustation de zone (ReplayTeams.ZoneFxOverlay).
+ * fiche. Les croix, elles, vivent dans l'incrustation de zone (ReplayCardFx.ZoneFxOverlay).
  */
 const REPAIR_FRAME_PX = 2
 const REPAIR_GLOW_PCT = 45
@@ -131,7 +131,7 @@ const REPAIR_GLOW_PCT = 45
 /**
  * L'ÉCRAN OCCULTANT sur la fiche (demande du 2026-08-27, itérée deux fois le même jour) :
  * un NUAGE NOIR passe AU-DESSUS du contenu, légèrement — c'est l'incrustation qui le porte
- * (ReplayTeams.ZoneFxOverlay, classe `replay-zone-cloud` ; les rayures du premier essai se
+ * (ReplayCardFx.ZoneFxOverlay, classe `replay-zone-cloud` ; les rayures du premier essai se
  * confondaient avec les reflets du verre) — et la couche d'effets ne garde que le versant
  * discret : un voile sombre LÉGER (le nuage et lui s'additionnent), un flou plus doux que
  * celui du verre (l'écran cache, il ne dépolit pas), et le contour sombre. Les deux effets

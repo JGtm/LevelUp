@@ -29,6 +29,7 @@ import { cheminCourt, fichierNomme, lire, nomDe, sourcesDeLaFeature } from '../t
 /** Les composants de la fiche : tout ce qui rend une cote du gabarit. */
 const COMPOSANTS_DE_LA_FICHE = new Set([
   'ReplayPlayerCard.tsx',
+  'ReplayCardFx.tsx',
   'ReplayWeaponsRow.tsx',
   'ReplayInventoryRow.tsx',
   'ReplayCountersBadge.tsx',
@@ -52,7 +53,7 @@ function composants(): string[] {
 }
 
 describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', () => {
-  it('les sept composants de la fiche existent tous — sans quoi ce garde ne garderait rien', () => {
+  it('les huit composants de la fiche existent tous — sans quoi ce garde ne garderait rien', () => {
     expect(new Set(composants().map(nomDe))).toEqual(COMPOSANTS_DE_LA_FICHE)
   })
 

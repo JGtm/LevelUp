@@ -405,9 +405,13 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     // `rounded-lg` en dur — seule la table `TILE_LAYOUT` le porte, pour le corps de 35.
     const src = lire(fichierNomme('ReplayPlayerCard.tsx'))
     expect(src).not.toMatch(/className="[^"]*rounded-lg/)
-    expect(src).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
-    expect(src).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
-    expect(src).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{L\.layerRadius\}/)
+    // Les couches d'effets vivent dans `ReplayCardFx.tsx` et reçoivent le rayon de la fiche en prop.
+    const fx = lire(fichierNomme('ReplayCardFx.tsx'))
+    expect(fx).not.toMatch(/className="[^"]*rounded-lg/)
+    expect(fx).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
+    expect(fx).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
+    expect(fx).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{radiusClass\}/)
+    expect(src.match(/radiusClass=\{L\.layerRadius\}/g)).toHaveLength(2)
     expect(src.match(/layerRadius: 'rounded-lg'/g)).toHaveLength(1)
     expect(src.match(/layerRadius: 'rounded-md'/g)).toHaveLength(1)
     expect(lire(fichierNomme('ReplayObjectiveMark.tsx'))).not.toMatch(/className="[^"]*rounded-lg/)

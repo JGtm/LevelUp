@@ -4,8 +4,9 @@
  * CE QUE CETTE COLONNE APPORTE, et que la carte ne peut pas dire : qui est qui. La carte
  * montre des traces ; les fiches montrent des gens, avec leur état à l'instant lu — vivant
  * ou mort, bouclier, armes portées, temps avant le retour. Ce fichier ne garde que ce qui est
- * PROPRE À LA COLONNE : les camps et leurs sièges, la scène des effets construite une fois
- * par document, et la grille dans laquelle les tuiles se rangent. Les tuiles elles-mêmes — la
+ * PROPRE À LA COLONNE : les camps et leurs sièges, et la grille dans laquelle les tuiles se
+ * rangent (la scène des effets, construite une fois par document, vient de `useCardScene`).
+ * Les tuiles elles-mêmes — la
  * fiche, la place libre, l'occupant pas encore apparu, dans un même squelette — vivent dans
  * `ReplayPlayerCard.tsx`, leurs lectures dans `model/playerCardReadings.ts` (extraction du
  * 2026-09-06, plan fiches compactes ; squelette partagé le 2026-10-06).
@@ -31,17 +32,13 @@
  */
 import { useMemo } from 'react'
 
-import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
+import { useCardScene } from '../hooks/useCardScene'
 import { cardDensity } from '../model/cardDensity'
-import { teleportMoments } from '../model/placementTeleport'
-import { drawablePlacements } from '../model/spawnedObjects'
-import type { CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { PresenceHeader } from '../model/presenceFeed'
 import {
   buildSeats,
@@ -51,34 +48,7 @@ import {
 } from '../model/seatLogic'
 import { campLabel } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import {
-  buildSlotOwnership,
-  campResolver,
-  vitalityPresence,
-  type ReplayPlayer,
-} from '../../../lib/replay/rosterLogic'
-
-/**
- * Estompage COMPLET d'une lecture de vitalité à 6 s : la même graduation que le bouclier
- * sur la carte. Le REPORT, lui, n'a pas de limite dans une vie — le flux est différentiel,
- * non retransmis veut dire inchangé — et les points appartiennent à la vie, donc il ne
- * franchit jamais une mort. Ce qui vieillit pâlit ; ce qui n'a jamais été mesuré reste
- * une lacune dite.
- */
-const VITALITY_FADE_MS = 6_000
-/**
- * Au-delà, une lecture d'inventaire est au plancher d'opacité. 20 s est l'écart médian entre
- * deux images-clés du film : c'est donc l'âge maximal ordinaire d'une lecture.
- */
-const READING_FULL_MS = 20_000
-/**
- * Durée des éclats d'événement (coup fatal, réapparition, translocation), en temps réel —
- * assez pour être vus sans être subis, calée sur la rémanence des lancers. L'état de mort,
- * lui, est porté en continu par le fond de la fiche. LA COMPOSITION DES EFFETS (éclats,
- * verre du camouflage, encadrés, voile de l'écran occultant) vit dans `playerCardFx.ts`
- * depuis le 2026-08-27 : la colonne ne fait plus que donner les âges.
- */
-const FLASH_MS = 1_400
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /**
  * Les sièges d'un camp : une colonne simple (gabarit normal — la chaîne d'aujourd'hui, à
@@ -138,42 +108,9 @@ export function ReplayTeams({
   const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOf(g), t)), [groups, t])
   // LE GABARIT DU MATCH, un seul pour toute la colonne (D1) : il ne dépend que de l'en-tête.
   const gabarit = cardDensity(header)
-  const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
-  const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
-  const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
-  const presence = useMemo(() => vitalityPresence(doc), [doc])
-  // LA SCÈNE DES EFFETS D'ÉQUIPEMENT : les camps par vie (le capteur adverse en a besoin,
-  // même contrat que le calque), l'axe de temps des fenêtres de pose, et les instants de
-  // translocation — une lecture de document, donc UNE FOIS par document et jamais par image
-  // (le canvas lit le même calque de son côté, par son propre besoin : lui veut les POSITIONS,
-  // la fiche ne veut que les INSTANTS).
-  // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
-  // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
-  // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
-  const campOfSlot = useMemo(() => campResolver(buildSlotOwnership(players)), [players])
-  // L'ÉCLAT DE TRANSLOCATION EST DATÉ PAR L'ÉVÉNEMENT DU FILM (schéma 38, 2026-09-03) :
-  // `translocations[]` porte l'instant EXACT de chaque usage — plus jamais le `spent`, qui date
-  // la FIN de l'équipement avec jusqu'à 16,5 s de retard mesuré, ni l'heuristique spatiale
-  // supprimée le même jour. Sur un artefact antérieur au schéma 38, `teleportMoments` retombe
-  // sur le repli daté du `spent` (kill-switch dans `placementTeleport.ts`). La fiche ne
-  // consomme que (slot, frame) : une translocation sans position l'allume comme les autres.
-  const teleports = useMemo(() => teleportMoments(doc), [doc])
-  const fxScene = useMemo<CardFxScene>(
-    () => ({
-      zones: {
-        placements: drawablePlacements(doc),
-        campOfSlot,
-      },
-      time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
-      teleports,
-    }),
-    [doc, campOfSlot, teleports],
-  )
-  // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
-  // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
-  // (cf. lib/replay/scoreTimeline.filmClockTrusted). Les fiches et les en-têtes n'ont alors
-  // de plus à dire qu'avant — aucune ligne ne se vide, aucun zéro n'apparaît.
-  const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
+  // CE QUE TOUTES LES FICHES PARTAGENT (âges de lecture, scène des effets, calque de score) : une
+  // lecture de document, calculée une fois pour toute la colonne (`useCardScene`).
+  const { presence, vitalityFade, readingFull, flashFrames, fxScene, scoreTimeline } = useCardScene(doc, players)
 
   if (groups.length === 0) {
     // LE DIAGNOSTIC DU PONT S'AFFICHE AVEC LE CONSTAT (coverage.bridge, consommé depuis le

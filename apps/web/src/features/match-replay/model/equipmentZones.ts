@@ -61,7 +61,7 @@ export interface ZonePresence {
    * ms depuis la POSE de l'écran occultant qui couvre le joueur — la plus récente quand
    * plusieurs se recouvrent (même règle que le capteur : deux horloges superposées ne
    * diraient rien de plus). C'est l'horloge des ÉCLAIRS de la fiche (délai négatif,
-   * cf. ReplayTeams.ZoneFxOverlay) : le scintillement reprend à son avancement réel
+   * cf. ReplayCardFx.ZoneFxOverlay) : le scintillement reprend à son avancement réel
    * après un saut de lecture, jamais sur un rythme inventé. Null = hors de tout écran.
    */
   shroudSinceMs: number | null
