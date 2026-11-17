@@ -513,7 +513,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       cadre, comme aujourd'hui). `fullscreenchange` reste la source de vérité du natif. Touches : `t` Cinéma,
       `f` Plein cadre, Échap selon les couches (`REPLAY_ESCAPE_LAYER_ATTR`). Export en cours : aucune bascule,
       comme aujourd'hui. Tests des deux gestes et des touches ; le garde-rail des couches d'Échap reste vert.
-- [ ] A.3 Page découpée : `ReplayPage.tsx` ne garde que chargement, modèle et choix du cadre ; la disposition de
+- [x] A.3 (fait le 2026-11-17 : `ui/frames/` — gabarit à cinq zones (une zone `avis` ajoutée pour le bandeau de génération, le chargement, l'erreur et l'absence), montage unique de la toile, en-têtes A, K, D ; test de non-remontage de la toile vérifié mordant ; le groupe de cadres est dans l'en-tête comme A, K et D le dessinent, E.2 le déplacera selon V1 ; la colonne existe en deux copies, Standard et Cinéma, jusqu'aux lots S et B ; `ReplayPage` 473 -> 231 lignes, sa fonction reste au-dessus de 80 lignes ; centrage du Plein cadre à regarder à l'écran) Page découpée : `ReplayPage.tsx` ne garde que chargement, modèle et choix du cadre ; la disposition de
       chaque cadre va dans `ui/frames/ReplayStandardFrame.tsx`, `ui/frames/ReplayCinemaFrame.tsx` (Cinéma et
       Plein cadre, qui partagent la structure D-2). Standard : disposition d'aujourd'hui déplacée telle quelle
       dans son fichier (le lot S la refait), zone de lecture identique aux témoins 0.1. Cinéma : en-tête de
