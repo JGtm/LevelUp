@@ -5,10 +5,10 @@
  * `lib/hooks/useDismissable`, jamais dans un composant.
  *
  * Motifs interdits dans un `.tsx` de `features/` : un écouteur `pointerdown` ou `mousedown` posé par
- * `addEventListener`, et une comparaison d'Échap (`===`, `!==`, `==`, `!=`). Les menus du rejeu les ont rendus par le hook ;
- * leur plafond est 0. Les autres features n'y sont pas migrées : leur compte (en fichiers) est gelé à
- * sa valeur mesurée et ne fait que descendre — il échoue aussi quand il baisse sans que
- * `PLAFOND_HORS_REJEU` le suive (cliquet).
+ * `addEventListener`, et une comparaison d'Échap (`===`, `!==`, `==`, `!=`). Plafond 0 partout, rejeu
+ * compris. Les seuls fichiers admis sont ceux de `EXEMPTIONS`, chacun avec une raison datée : un geste
+ * qui n'est pas la fermeture d'une couche, ou une fermeture que le hook ne sait pas exprimer. Une
+ * exemption qui ne correspond plus à rien fait échouer le test.
  */
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -24,8 +24,22 @@ import {
 
 const REPLAY = 'features/match-replay/'
 
-/** Le compte mesuré (fichiers `.tsx` de `features/` hors rejeu) à la clôture de E.1. */
-const PLAFOND_HORS_REJEU = 17
+/**
+ * Fichiers de `features/` (hors rejeu) admis à porter un motif, et pourquoi. Chaque raison commence par
+ * sa date (AAAA-MM-JJ).
+ */
+const EXEMPTIONS: Record<string, string> = {
+  'features/asset-drawer/AssetDockedPanel.tsx':
+    "2026-11-17 : Échap est lu par le gestionnaire clavier du volet lui-même et ne ferme que le volet ; un écouteur de document le ferait réagir hors du volet.",
+  'features/tactical/TacticalAnalysisView.tsx':
+    "2026-11-17 : deux Échap en pile avec condition (refermer la mort choisie, puis écarter la zone), ignorés quand la frappe est déjà traitée ou vient d'un champ de saisie.",
+  'features/tactical/TacticalPlanTueurs.tsx':
+    "2026-11-17 : appui sur la toile capté pour distinguer un clic d'un glisser ; aucune couche ne se ferme.",
+  'features/squad/SquadFocusStrip.tsx':
+    "2026-11-17 : Échap annule le renommage dans son champ de saisie ; aucune couche ne se ferme.",
+  'features/squad/useSquadPresets.tsx':
+    "2026-11-17 : Échap annule le renommage d'un préréglage dans son champ de saisie ; aucune couche ne se ferme.",
+}
 
 const GESTES_DEHORS = new Set(['pointerdown', 'mousedown'])
 
@@ -82,19 +96,24 @@ describe('garde-rail : la fermeture d’une couche passe par useDismissable', ()
     ).toEqual([])
   }, SCAN_TIMEOUT_MS)
 
-  it('le reste de features/ est gelé à sa valeur mesurée (cliquet : ne fait que descendre)', () => {
+  it('hors rejeu : seuls les fichiers exemptés portent un motif, et chaque exemption en porte encore un', () => {
     const files = new Set(
       tsxDeFeatures()
         .filter((s) => !s.rel.startsWith(REPLAY))
         .flatMap(dismissPatterns)
         .map((h) => h.file),
     )
-    expect(
-      files.size,
-      `${files.size} fichier(s) hors rejeu, plafond ${PLAFOND_HORS_REJEU} : migrer vers useDismissable, ` +
-        `et abaisser PLAFOND_HORS_REJEU à ${files.size} quand le compte baisse.\n${[...files].sort().join('\n')}`,
-    ).toBe(PLAFOND_HORS_REJEU)
+    const nonExemptes = [...files].filter((f) => !(f in EXEMPTIONS)).sort()
+    expect(nonExemptes, 'Fermer une couche : useDismissable (@/lib/hooks/useDismissable).').toEqual([])
+    const perimees = Object.keys(EXEMPTIONS).filter((f) => !files.has(f)).sort()
+    expect(perimees, 'Exemption sans objet : la retirer de EXEMPTIONS.').toEqual([])
   }, SCAN_TIMEOUT_MS)
+
+  it('chaque exemption porte une raison datée', () => {
+    for (const [file, raison] of Object.entries(EXEMPTIONS)) {
+      expect(raison, file).toMatch(/^\d{4}-\d{2}-\d{2} : \S/)
+    }
+  })
 
   it('auto-preuve : le détecteur voit les motifs, pas un autre événement ni un autre nom', () => {
     const n = (code: string): number => dismissPatterns(parseSource('features/x/a.tsx', code)).length
