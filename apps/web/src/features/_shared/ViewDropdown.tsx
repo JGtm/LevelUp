@@ -5,7 +5,8 @@
  * Extrait de useLocalFilterBar.tsx : ce dernier exporte un hook, donc ne peut pas
  * héberger un composant sans casser le fast refresh (react-refresh).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import type { LocalFilterBarViewLabels, MatchView } from './useLocalFilterBar'
 
 export function ViewDropdown({
@@ -18,15 +19,13 @@ export function ViewDropdown({
   labels: LocalFilterBarViewLabels
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  // Échap et un clic hors du menu le ferment ; Échap rend le focus au bouton, le clic dehors le laisse où l'on a cliqué.
+  const ref = useDismissable(open, (reason) => {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  })
 
   const options: { value: MatchView; label: string }[] = [
     { value: 'all', label: labels.viewAll },
@@ -39,6 +38,7 @@ export function ViewDropdown({
   return (
     <div ref={ref} className="relative" data-testid="relations-view-dropdown">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`rounded border px-2 py-1 text-xs bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
