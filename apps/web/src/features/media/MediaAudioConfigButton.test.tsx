@@ -55,6 +55,37 @@ describe('MediaAudioConfigButton', () => {
   })
 })
 
+describe('MediaAudioConfigButton — fermeture', () => {
+  function ouvre() {
+    renderWithProviders(<MediaAudioConfigButton playerSlug="p1" />)
+    const engrenage = screen.getByLabelText('Réglage des pistes audio')
+    fireEvent.click(engrenage)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    return engrenage
+  }
+
+  it('Échap ferme la modale et rend le focus à l’engrenage', () => {
+    const engrenage = ouvre()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(engrenage)
+  })
+
+  it('un clic hors du dialogue (le voile) ferme la modale', () => {
+    ouvre()
+    const voile = screen.getByRole('dialog').parentElement as HTMLElement
+    fireEvent.mouseDown(voile)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('un clic dans le dialogue ne ferme pas la modale', () => {
+    ouvre()
+    fireEvent.mouseDown(screen.getByText('Pistes audio des médias'))
+    fireEvent.click(screen.getByText('Manuel'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+})
+
 describe('MediaAudioConfigButton — profil d’un ami', () => {
   it('absent sur un profil en lecture seule', async () => {
     const { useAppShellStore } = await import('@/stores/appShellStore')

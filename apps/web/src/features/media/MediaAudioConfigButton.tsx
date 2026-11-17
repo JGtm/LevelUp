@@ -5,10 +5,11 @@
  *
  * Auto-contenu (query + mutation + i18n) — rendu dans MediaToolbar.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { apiErrorMessage } from '@/lib/api/client'
+import { useDismissable, type DismissReason } from '@/lib/hooks/useDismissable'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getMediaAudioConfigText, type MediaAudioConfigText } from './i18n-audio-config'
 import {
@@ -31,15 +32,23 @@ interface MediaAudioConfigButtonProps {
 
 export function MediaAudioConfigButton({ playerSlug }: MediaAudioConfigButtonProps) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const locale = useAppShellStore((s) => s.locale)
   const text = getMediaAudioConfigText(locale)
   // Réglage du profil : absent sur le profil d'un ami (lecture seule).
   const canWrite = useCanWritePlayer(playerSlug)
   if (!canWrite) return null
 
+  // Échap rend le focus au bouton engrenage ; le clic dehors, l'annulation et l'enregistrement le laissent.
+  function closeModal(reason?: DismissReason) {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  }
+
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={text.gearAriaLabel}
         title={text.gearAriaLabel}
@@ -49,7 +58,7 @@ export function MediaAudioConfigButton({ playerSlug }: MediaAudioConfigButtonPro
         <span aria-hidden="true">⚙</span>
       </button>
       {open && (
-        <MediaAudioConfigModal playerSlug={playerSlug} text={text} onClose={() => setOpen(false)} />
+        <MediaAudioConfigModal playerSlug={playerSlug} text={text} onClose={closeModal} />
       )}
     </>
   )
@@ -58,7 +67,7 @@ export function MediaAudioConfigButton({ playerSlug }: MediaAudioConfigButtonPro
 interface ModalProps {
   playerSlug: string
   text: MediaAudioConfigText
-  onClose: () => void
+  onClose: (reason?: DismissReason) => void
 }
 
 function MediaAudioConfigModal({ playerSlug, text, onClose }: ModalProps) {
@@ -76,14 +85,8 @@ function MediaAudioConfigModal({ playerSlug, text, onClose }: ModalProps) {
     setRoles(data.track_roles && data.track_roles.length > 0 ? data.track_roles : EMPTY_ROLES)
   }, [data])
 
-  // Escape ferme la modale.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  // Échap et un clic hors du dialogue (sur le voile) ferment la modale.
+  const dialogRef = useDismissable(true, onClose)
 
   function selectManual() {
     setMode('manual')
@@ -95,27 +98,26 @@ function MediaAudioConfigModal({ playerSlug, text, onClose }: ModalProps) {
     if (manualInvalid) return
     update.mutate(
       { mode, track_roles: mode === 'manual' ? roles : undefined },
-      { onSuccess: onClose },
+      { onSuccess: () => onClose() },
     )
   }
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70"
-      onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="mx-4 flex max-h-[85vh] w-full max-w-md flex-col rounded-lg bg-background shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-label={text.title}
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="text-base font-semibold">{text.title}</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose()}
             aria-label={text.closeAriaLabel}
             className="rounded p-1 text-sm text-muted-foreground hover:bg-accent"
           >
@@ -153,7 +155,7 @@ function MediaAudioConfigModal({ playerSlug, text, onClose }: ModalProps) {
         <footer className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose()}
             className="rounded-md border border-input px-3 py-1.5 text-sm text-foreground hover:bg-accent"
           >
             {text.cancel}
