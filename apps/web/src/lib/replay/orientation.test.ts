@@ -8,6 +8,7 @@ import type { ReplayBounds } from '@/lib/api/types'
 
 import type { HeatGrid } from './heatPaint'
 import {
+  autoTurns,
   normalizeTurns,
   orientBounds,
   orientAbout,
@@ -187,5 +188,54 @@ describe('l’application de la rotation à un dessin', () => {
     [3, 'rotate(270deg)'],
   ] as Array<[QuarterTurns, string]>)('le CSS à %i quart(s) de tour : %s', (turns, css) => {
     expect(cssRotation(turns)).toBe(css)
+  })
+})
+
+describe('autoTurns — la règle Auto, par surface ajustée à la boîte (D-7, D-14)', () => {
+  // Boîte du Standard et du Cinéma à 1440 x 900, moins la barre : 1390 x 700.
+  const BOITE = { largeur: 1390, hauteur: 700 }
+  const RONIN = { largeur: 659, hauteur: 1288 }
+  const NADAIR = { largeur: 2133, hauteur: 947 }
+  const DETACHMENT = { largeur: 1526, hauteur: 1666 }
+  // Gain de 22,1 % : la boîte 1105 x 1000 et la carte 100 x 200 donnent 1,221 fois la surface droite.
+  const CARTE_22 = { largeur: 100, hauteur: 200 }
+  const BOITE_22 = { largeur: 1105, hauteur: 1000 }
+
+  it('Ronin (659 x 1288, gain de plus de 25 %) tourne quand il est droit', () => {
+    expect(autoTurns(RONIN, BOITE, false)).toBe(1)
+  })
+
+  it('Nadair (2133 x 947) ne tourne pas : posé tourné, il tient moins bien', () => {
+    expect(autoTurns(NADAIR, BOITE, false)).toBe(0)
+  })
+
+  it('Detachment (1526 x 1666, gain de 19 %) ne tourne pas quand il est droit', () => {
+    expect(autoTurns(DETACHMENT, BOITE, false)).toBe(0)
+  })
+
+  it('Detachment déjà tourné (gain de 19 %, sous 20 %) revient droit', () => {
+    expect(autoTurns(DETACHMENT, BOITE, true)).toBe(0)
+  })
+
+  it('gain de 22 % : ne tourne pas quand il est droit (seuil 25 %)', () => {
+    expect(autoTurns(CARTE_22, BOITE_22, false)).toBe(0)
+  })
+
+  it('gain de 22 % : reste tourné quand il l’est déjà (retour seulement sous 20 %)', () => {
+    expect(autoTurns(CARTE_22, BOITE_22, true)).toBe(1)
+  })
+
+  it('un plan déjà tourné et très gagnant (Ronin) reste tourné', () => {
+    expect(autoTurns(RONIN, BOITE, true)).toBe(1)
+  })
+
+  it('carte de taille nulle : 0, sans division par zéro, tourné ou non', () => {
+    expect(autoTurns({ largeur: 0, hauteur: 0 }, BOITE, false)).toBe(0)
+    expect(autoTurns({ largeur: 0, hauteur: 1288 }, BOITE, true)).toBe(0)
+  })
+
+  it('boîte de taille nulle : 0, sans division par zéro, tourné ou non', () => {
+    expect(autoTurns(RONIN, { largeur: 0, hauteur: 0 }, false)).toBe(0)
+    expect(autoTurns(RONIN, { largeur: 1390, hauteur: 0 }, true)).toBe(0)
   })
 })
