@@ -510,6 +510,15 @@ Réponses du user du 2026-11-17 et suites :
 - Backlog : onze entrées du 2026-11-17 (rejeu absent à générer, maillage Forge et Thunderhead, compression des
   fichiers tactiques, quatre constats autour du décodeur, tests lents, médailles du rejeu, postures).
 - Sept valeurs intermédiaires de la note d'objectif lues par les tests seuls : gardées (accord du user).
+- Six petites découvertes (9 à 12, 14, 15) : une note groupée au backlog (accord du user).
+- Demande de fusion #212 vers `release/v8.3.0`, première CI rouge sur deux points, corrigés :
+  - C.1 (`2c2864252d`, `3bfcd7b073`) : deux tests de `cmd/replay-diff` déposaient encore des rejeux bruts ; ils
+    étaient rouges EN LOCAL aussi depuis B.2, dont le gate n'avait pas lancé ce paquet, et les contrôles du
+    pilote ne l'ont pas vu (le « aucun test en échec » de l'étape 4 du gate était donc faux pour ce paquet).
+    Fixtures écrites par la porte `replayartifact` ; texte d'usage de l'outil remis au vrai (`.json.gz`).
+    Aucun autre test dans ce cas (fixtures relues, paquets concernés relancés avec les variables de la CI).
+  - C.2 (`4da6ed5eab`) : le test supprimé par S.2 est retiré de la baseline selon la procédure (5 lignes, 1 paire,
+    bloc « RETRAIT DU 2026-11-17 » dans `scripts/check_test_baseline.sh`).
 
 ## Découvertes (consignées, non traitées sauf mention)
 
