@@ -1367,7 +1367,7 @@ with **no DB opened and nothing written under the repo** (the artifact goes thro
 temp file, film facts are not stored). It writes `films.tsv` (one line per film: match, build,
 outcome, variant, tracks, tracks without identity, bridge counters, `slot:start-end` of each
 nameless track) and `identites/<id>.tsv` (slot, bounds, team, identity and link provenance of every
-published track); `--garder-documents` also keeps `documents/<id>.json`. A film already in
+published track); `--garder-documents` also keeps `documents/<id>.json.gz`, written through the replay gate (`internal/replayartifact`) so `internal/replaydiff` and `cmd/replay-verite` can reopen the root. A film already in
 `films.tsv` is skipped: re-run to resume. `--comparer` reads two such roots and reports lives named,
 named lives lost, names changed, teams changed and re-cut tracks — the proof a naming fix must
 give on the whole park. Give the work root a `parc*` name in the scratchpad (disk hygiene).
