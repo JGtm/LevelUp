@@ -43,10 +43,10 @@ package main
 //
 // # LE STOCKAGE
 //
-// `<parc>/data/cache/replay_corpus_gate_base/<sha>/<temoin>-<empreinte>.artefact.json` (JSON brut, decompresse par la porte de
-// replaybuild ; somme et taille du meta portent sur ce JSON), `.filmfacts.bin` et
-// `.meta.json`. Les TROIS fichiers s'ecrivent par `atomicfile.WriteFileStrict` (temporaire du
-// meme dossier + fsync + rename), l'artefact, les faits du film, PUIS le meta : le meta est le
+// `<parc>/data/cache/replay_corpus_gate_base/<sha>/<temoin>-<empreinte>.artefact.json.gz` (un artefact comme les
+// autres, compresse et lu par la porte `replayartifact` ; somme et taille du meta portent sur le JSON
+// DECOMPRESSE), `.filmfacts.bin` et `.meta.json`. Les TROIS fichiers s'ecrivent atomiquement (temporaire du
+// meme dossier + rename), l'artefact, les faits du film, PUIS le meta : le meta est le
 // marqueur de validation. Un crash avant lui laisse des fichiers sans meta, ignores a la lecture.
 //
 // LES FAITS DU FILM (`<short8>.filmfacts.bin`, `PathResolver.FilmFactsPath`) sont ceux que la
@@ -182,7 +182,7 @@ type entreeBase struct {
 func (bc baseCache) chemins(c cleBase) entreeBase {
 	stem := filepath.Join(bc.Racine, c.BaseSHA, c.Temoin+"-"+c.empreinte())
 	return entreeBase{
-		Artefact: stem + ".artefact.json",
+		Artefact: stem + ".artefact" + title.ReplayArtifactExt,
 		Faits:    stem + title.ExtensionFilmFacts,
 		Meta:     stem + ".meta.json",
 	}
@@ -281,7 +281,7 @@ func verifierArtefactRange(chemin string, m metaCacheBase) error {
 // ranger copie l'artefact et les faits du film cuits dans le cache sous la cle `c` : artefact,
 // faits, PUIS meta (le marqueur de validation), chacun atomique. Une entree n'existe qu'avec les
 // DEUX fichiers : sans faits, l'appelant ne range rien (et le journalise).
-func (bc baseCache) ranger(c cleBase, artefactSource, faitsSource string) error {
+func (bc baseCache) ranger(ctx context.Context, c cleBase, artefactSource, faitsSource string) error {
 	if err := c.valider(); err != nil {
 		return err
 	}
@@ -297,7 +297,7 @@ func (bc baseCache) ranger(c cleBase, artefactSource, faitsSource string) error 
 	if err := os.MkdirAll(filepath.Dir(e.Artefact), 0o750); err != nil {
 		return fmt.Errorf("dossier du cache : %w", err)
 	}
-	if err := atomicfile.WriteFileStrict(e.Artefact, artefact, 0o600); err != nil {
+	if _, _, err := replayartifact.Write(ctx, e.Artefact, artefact); err != nil {
 		return fmt.Errorf("ecriture de l'artefact : %w", err)
 	}
 	if err := atomicfile.WriteFileStrict(e.Faits, faits, 0o600); err != nil {
@@ -442,7 +442,7 @@ func resoudreAvecCache(ctx context.Context, bc baseCache, c cleBase, forcer bool
 			"cuisson, serait fausse)", "temoin", c.Temoin, "base", c.BaseSHA, "faits", faits)
 		return res, nil
 	}
-	if err := bc.ranger(c, artefact, faits); err != nil {
+	if err := bc.ranger(ctx, c, artefact, faits); err != nil {
 		slog.WarnContext(ctx, "replay-corpus-gate: rangement de la base au cache impossible — "+
 			"le temoin continue avec la cuisson fraiche", "temoin", c.Temoin, "base", c.BaseSHA, "err", err)
 		return res, nil

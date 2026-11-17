@@ -25,8 +25,8 @@ type stubReplayService struct {
 	calls    int
 }
 
-func (s *stubReplayService) GetReplay(context.Context, string) (replaydoc.ReplayDocument, error) {
-	return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
+func (s *stubReplayService) GetReplay(context.Context, string) (port.ServedReplay, error) {
+	return port.ServedReplay{}, port.ErrReplayNotAvailable
 }
 
 func (s *stubReplayService) IsAvailable(context.Context, string) bool { return false }

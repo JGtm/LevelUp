@@ -1,12 +1,10 @@
 // Package archlint — no_artefact_bytes_outside_gate_test.go : les octets d'un artefact de rejeu ne se
 // lisent ni ne se testent que par la porte `internal/replayartifact`.
 //
-// POURQUOI. Un artefact est stocké `{short8}.json.gz` (gzip), et un parc ancien porte encore des
-// `{short8}.json` bruts : lire le chemin canonique avec `os.ReadFile` rend du gzip à un décodeur JSON,
-// et un `os.Stat` du chemin canonique répond « absent » sur un parc brut. La porte
-// (`replayartifact.Read`, `ReadBytes`, `Locate`, `Exists`, `List`, `Copy`, `Remove`, `Write`) détecte la
-// forme par les octets magiques et résout les deux noms. Un changement de stockage ne touche alors qu'un
-// fichier.
+// POURQUOI. Un artefact est stocké `{short8}.json.gz` (gzip) : lire le chemin canonique avec
+// `os.ReadFile` rend du gzip à un décodeur JSON. La porte (`replayartifact.Read`, `ReadBytes`, `Locate`,
+// `Exists`, `List`, `Copy`, `Remove`, `Write`) décompresse, et fixe seule ce qu'est un artefact (un
+// `{short8}.json` brut n'en est pas un). Un changement de stockage ne touche alors qu'un fichier.
 //
 // RÈGLE. Hors `internal/replayartifact/` (la porte) et `internal/replaybuild/` (qui possède en plus l'en-tête
 // `.meta`, la marque de dérivation et la purge d'un match),

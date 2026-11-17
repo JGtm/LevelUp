@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
@@ -42,12 +45,18 @@ func capturerLogs(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
-func artefactCuit(t *testing.T, contenu string) string {
+// poserArtefact range un artefact de test par la porte (gzip) ; l'echec est une erreur du test.
+func poserArtefact(t *testing.T, chemin, contenu string) {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "cuit.json")
-	if err := os.WriteFile(p, []byte(contenu), 0o600); err != nil {
+	if _, _, err := replayartifact.Write(context.Background(), chemin, []byte(contenu)); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func artefactCuit(t *testing.T, contenu string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "cuit"+title.ReplayArtifactExt)
+	poserArtefact(t, p, contenu)
 	return p
 }
 
@@ -82,7 +91,7 @@ func TestCleBaseInvalideQuandUnParametreChange(t *testing.T) {
 			t.Errorf("changer %s ne change pas l'empreinte : le cache servirait un artefact perime", v.Field(i).Name)
 		}
 		bc := baseCache{Racine: t.TempDir()}
-		if err := bc.ranger(ref, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
+		if err := bc.ranger(context.Background(), ref, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
 			t.Fatal(err)
 		}
 		if _, ok := bc.chercher(context.Background(), modif); ok {
@@ -105,7 +114,7 @@ func TestCleBaseIncompleteRefusee(t *testing.T) {
 		if c.valider() == nil {
 			t.Errorf("%s : cle incomplete acceptee", nom)
 		}
-		if err := (baseCache{Racine: t.TempDir()}).ranger(c, artefactCuit(t, artefactTest), faitsCuits(t)); err == nil {
+		if err := (baseCache{Racine: t.TempDir()}).ranger(context.Background(), c, artefactCuit(t, artefactTest), faitsCuits(t)); err == nil {
 			t.Errorf("%s : rangement sur cle incomplete", nom)
 		}
 	}
@@ -117,14 +126,14 @@ func TestRangerPuisChercherRelitLArtefactEtLesFaits(t *testing.T) {
 	if _, ok := bc.chercher(context.Background(), c); ok {
 		t.Fatal("hit sur un cache vide")
 	}
-	if err := bc.ranger(c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
+	if err := bc.ranger(context.Background(), c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
 		t.Fatal(err)
 	}
 	e, ok := bc.chercher(context.Background(), c)
 	if !ok {
 		t.Fatal("miss apres rangement")
 	}
-	got, _ := os.ReadFile(e.Artefact)
+	got, _ := replayartifact.ReadBytes(e.Artefact)
 	if string(got) != artefactTest {
 		t.Fatalf("artefact relu %q", got)
 	}
@@ -144,7 +153,7 @@ func TestCacheCorromptuIgnoreEtJournalise(t *testing.T) {
 	cas := map[string]func(e entreeBase){
 		"artefact tronque": func(e entreeBase) { _ = os.WriteFile(e.Artefact, []byte(`{"schemaV`), 0o600) },
 		"artefact altere": func(e entreeBase) {
-			_ = os.WriteFile(e.Artefact, []byte(strings.Replace(artefactTest, "1", "2", 1)), 0o600)
+			poserArtefact(t, e.Artefact, strings.Replace(artefactTest, "1", "2", 1))
 		},
 		"artefact supprime": func(e entreeBase) { _ = os.Remove(e.Artefact) },
 		"faits supprimes":   func(e entreeBase) { _ = os.Remove(e.Faits) },
@@ -167,7 +176,7 @@ func TestCacheCorromptuIgnoreEtJournalise(t *testing.T) {
 		t.Run(nom, func(t *testing.T) {
 			logs := capturerLogs(t)
 			bc := baseCache{Racine: t.TempDir()}
-			if err := bc.ranger(c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
+			if err := bc.ranger(context.Background(), c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
 				t.Fatal(err)
 			}
 			corrompre(bc.chemins(c))
@@ -186,7 +195,7 @@ func TestFichiersSansMetaSontUnMiss(t *testing.T) {
 	c := cleDeTest()
 	e := bc.chemins(c)
 	_ = os.MkdirAll(filepath.Dir(e.Artefact), 0o750)
-	_ = os.WriteFile(e.Artefact, []byte(artefactTest), 0o600)
+	poserArtefact(t, e.Artefact, artefactTest)
 	_ = os.WriteFile(e.Faits, []byte(faitsTest), 0o600)
 	if _, ok := bc.chercher(context.Background(), c); ok {
 		t.Fatal("des fichiers sans meta (crash avant le marqueur) sont servis")
@@ -203,7 +212,7 @@ func TestEcritureAtomique(t *testing.T) {
 		"artefact absent": {absent, faitsCuits(t)},
 		"faits absents":   {artefactCuit(t, artefactTest), absent},
 	} {
-		if err := bc.ranger(c, args[0], args[1]); err == nil {
+		if err := bc.ranger(context.Background(), c, args[0], args[1]); err == nil {
 			t.Fatalf("%s : rangement sans erreur", nom)
 		}
 		if _, ok := bc.chercher(context.Background(), c); ok {
@@ -213,7 +222,7 @@ func TestEcritureAtomique(t *testing.T) {
 			t.Fatalf("%s : un meta existe apres un rangement echoue", nom)
 		}
 	}
-	if err := bc.ranger(c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
+	if err := bc.ranger(context.Background(), c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
 		t.Fatal(err)
 	}
 	entrees, _ := os.ReadDir(filepath.Dir(bc.chemins(c).Meta))
@@ -225,7 +234,7 @@ func TestEcritureAtomique(t *testing.T) {
 		t.Fatalf("attendu exactement artefact + faits + meta, trouve %v", noms)
 	}
 	// Le rangement remplace une entree existante sans laisser de fichier partiel.
-	if err := bc.ranger(c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
+	if err := bc.ranger(context.Background(), c, artefactCuit(t, artefactTest), faitsCuits(t)); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := bc.chercher(context.Background(), c); !ok {
@@ -373,9 +382,11 @@ func modifierMeta(t *testing.T, m string, f func(*metaCacheBase)) {
 // octets : seule la decodabilite de l'artefact est alors en cause.
 func remplacerArtefactEtMeta(t *testing.T, e entreeBase, contenu string) {
 	t.Helper()
-	_ = os.WriteFile(e.Artefact, []byte(contenu), 0o600)
-	somme, n, _ := sha256Fichier(e.Artefact)
-	modifierMeta(t, e.Meta, func(mc *metaCacheBase) { mc.ArtefactSHA256, mc.ArtefactOctets = somme, n })
+	poserArtefact(t, e.Artefact, contenu)
+	somme := sha256.Sum256([]byte(contenu)) // la somme du meta porte sur le JSON DECOMPRESSE
+	modifierMeta(t, e.Meta, func(mc *metaCacheBase) {
+		mc.ArtefactSHA256, mc.ArtefactOctets = hex.EncodeToString(somme[:]), int64(len(contenu))
+	})
 }
 
 func faitsCuits(t *testing.T) string {

@@ -5,14 +5,10 @@ package replayregen
 
 import (
 	"context"
-	"errors"
-	"io/fs"
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/replayartifact"
 )
 
 func (s *Service) backgroundScan(seq int64) {
@@ -28,66 +24,27 @@ func (s *Service) backgroundScan(seq int64) {
 	s.publishCountLocked(seq, n)
 }
 
-// count : le résultat d'un décompte.
-type count struct {
-	// stale : rejeux en retard et régénérables ; raw : rejeux encore en JSON brut.
-	stale, raw int
-}
-
-// countUnderGate : le décompte (rejeux à refaire, rejeux bruts à compresser) sous la porte du mode jeu.
-func (s *Service) countUnderGate(ctx context.Context) (count, error) {
+// countUnderGate : le décompte des rejeux à refaire, sous la porte du mode jeu.
+func (s *Service) countUnderGate(ctx context.Context) (int, error) {
 	if !s.waitHeavy(ctx) {
-		return count{}, ctx.Err()
+		return 0, ctx.Err()
 	}
 	cands, err := s.scan(ctx)
 	if err != nil {
-		return count{}, err
+		return 0, err
 	}
-	raw, err := s.countRaw(ctx)
-	if err != nil {
-		return count{}, err
-	}
-	return count{stale: len(cands), raw: raw}, nil
-}
-
-// countRaw compte les rejeux encore en `.json` brut de tous les titres, par le listage de la porte : les NOMS, aucun
-// fichier n'est ouvert. Un match aux deux formes se range sous sa forme compressée et ne compte pas (la conversion le
-// juge à part : le compter ferait réapparaître l'offre tant qu'un doublon de contenus différents reste).
-func (s *Service) countRaw(ctx context.Context) (int, error) {
-	s.mu.Lock()
-	d := s.deps
-	s.mu.Unlock()
-	n := 0
-	for _, slug := range d.Titles() {
-		entries, err := replayartifact.List(d.Paths.ReplayArtifactsDir(slug))
-		if errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			return 0, err
-		}
-		for _, e := range entries {
-			if e.Name != e.Short+title.ReplayArtifactExt {
-				n++
-			}
-		}
-		if err := ctx.Err(); err != nil {
-			return 0, err
-		}
-	}
-	return n, nil
+	return len(cands), nil
 }
 
 // publishCountLocked publie un décompte, sauf s'il est plus ancien que le dernier publié.
-func (s *Service) publishCountLocked(seq int64, n count) {
+func (s *Service) publishCountLocked(seq int64, stale int) {
 	if seq < s.countApplied {
 		slog.Debug("replay_regen: décompte périmé jeté", "seq", seq, "publie", s.countApplied)
 		return
 	}
 	s.countApplied = seq
-	s.checked, s.stale, s.raw = true, n.stale, n.raw
-	observability.SetInt(MetricStale, int64(n.stale))
-	observability.SetInt(MetricRaw, int64(n.raw))
+	s.checked, s.stale = true, stale
+	observability.SetInt(MetricStale, int64(stale))
 }
 
 // waitHeavy attend la porte du mode jeu (ni la pause ni la synchronisation : un décompte ne décode rien). Rend

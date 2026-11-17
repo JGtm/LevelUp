@@ -109,8 +109,8 @@ func TestChaqueSchemaAnterieurSeLitARecuire(t *testing.T) {
 				t.Fatalf("un artefact au schema %d se lit « a jour » alors que le producteur "+
 					"ecrit %d — aucune recuisson ne le rattraperait", v, replay.SchemaVersion)
 			}
-			path := filepath.Join(dir, fmt.Sprintf("%d.json", v))
-			if err := os.WriteFile(path, artefactAuSchema(v, "000d5950", true), 0o600); err != nil {
+			path := filepath.Join(dir, fmt.Sprintf("%d.json.gz", v))
+			if err := poserCompresseTest(path, artefactAuSchema(v, "000d5950", true)); err != nil {
 				t.Fatalf("pose : %v", err)
 			}
 			if ArtifactUpToDate(path) {
@@ -163,9 +163,9 @@ func TestLePointDEcritureRefuseLAppauvrissementAChaqueSchema(t *testing.T) {
 	const matchID = "000d5950"
 	for _, v := range versionsAnterieures(t) {
 		t.Run(fmt.Sprintf("schema_%d", v), func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), matchID+".json")
+			path := filepath.Join(t.TempDir(), matchID+".json.gz")
 			riche := artefactAuSchema(v, matchID, true)
-			if err := os.WriteFile(path, riche, 0o600); err != nil {
+			if err := poserCompresseTest(path, riche); err != nil {
 				t.Fatalf("pose : %v", err)
 			}
 			enPlace, err := writeArtifactBytes(context.Background(), path, title.DefaultSlug, matchID,

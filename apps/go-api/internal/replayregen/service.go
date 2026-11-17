@@ -22,13 +22,8 @@ const (
 	MetricSkipped      = "replay_regen_skipped_total"
 	MetricFailed       = "replay_regen_failed_total"
 	MetricDeferredGame = "replay_regen_deferred_game_total"
-	// MetricCompressed / MetricCompressFailed : rejeux bruts compressés, et non compressés, à la fin des passes.
-	MetricCompressed     = "replay_regen_compressed_total"
-	MetricCompressFailed = "replay_regen_compress_failed_total"
 	// MetricStale : jauge, rejeux en retard au dernier décompte.
 	MetricStale = "replay_regen_stale"
-	// MetricRaw : jauge, rejeux bruts restants au dernier décompte.
-	MetricRaw = "replay_regen_raw"
 )
 
 // Erreurs de la file.
@@ -112,7 +107,6 @@ type Service struct {
 	// demande explicite ([Service.Rescan]) ; Status ne le relance jamais.
 	checked  bool
 	stale    int
-	raw      int
 	scanning bool
 	blocked  map[string]struct{}
 	// countSeq numérote les décomptes à leur lancement ; countApplied est le numéro du dernier publié. Un
@@ -127,11 +121,7 @@ type Service struct {
 	done        int
 	total       int
 	failed      int
-	// compressing, compressed, compressFailed : la compression des bruts, en fin de passe (compress.go).
-	compressing    bool
-	compressed     int
-	compressFailed int
-	wake           chan struct{}
+	wake        chan struct{}
 }
 
 // New crée un service non relié.
@@ -187,9 +177,8 @@ func (s *Service) statusLocked() domain.ReplayRegenStatus {
 		stale = max(s.total-s.done, 0)
 	}
 	return domain.ReplayRegenStatus{
-		Checked: s.checked || s.running, Stale: stale, Raw: s.raw, Running: s.running, Done: s.done, Total: s.total,
+		Checked: s.checked || s.running, Stale: stale, Running: s.running, Done: s.done, Total: s.total,
 		Paused: s.running && s.userPaused, WaitingForGame: s.running && s.waitingGame, Failed: s.failed,
-		Compressing: s.running && s.compressing, Compressed: s.compressed, CompressFailed: s.compressFailed,
 	}
 }
 
@@ -234,7 +223,6 @@ func (s *Service) start(resumed bool) (domain.ReplayRegenStatus, error) {
 	}
 	s.running, s.userPaused, s.waitingGame = true, false, false
 	s.done, s.total, s.failed = 0, 0, 0
-	s.compressing, s.compressed, s.compressFailed = false, 0, 0
 	st, ctx := s.statusLocked(), s.ctx
 	s.wg.Add(1)
 	if !resumed {
@@ -292,7 +280,7 @@ func (s *Service) persistPendingLocked(ctx context.Context, on bool) {
 	}
 }
 
-// run : la file. Prépare la liste, traite un film à la fois, puis compresse les rejeux bruts restants (compress.go).
+// run : la file. Prépare la liste, traite un film à la fois.
 func (s *Service) run(ctx context.Context) {
 	defer s.wg.Done()
 	cands, err := s.scan(ctx)
@@ -316,7 +304,7 @@ func (s *Service) run(ctx context.Context) {
 			return
 		}
 	}
-	s.finish(ctx, !s.compressRaw(ctx))
+	s.finish(ctx, false)
 }
 
 // finish clôt la file. interrupted : l'arrêt du serveur l'a coupée, le drapeau reste posé pour la reprise.

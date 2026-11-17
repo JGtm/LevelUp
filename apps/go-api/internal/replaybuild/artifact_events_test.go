@@ -120,7 +120,7 @@ func TestPuits_ErreurDEcritureNePublieRien(t *testing.T) {
 	if err := os.WriteFile(barrage, []byte("x"), 0o644); err != nil {
 		t.Fatalf("pose du barrage: %v", err)
 	}
-	if _, err := writeArtifactBytes(context.Background(), barrage+"/sous/000d5950.json",
+	if _, err := writeArtifactBytes(context.Background(), barrage+"/sous/000d5950.json.gz",
 		title.DefaultSlug, "000d5950", docJSON(t, "000d5950", true)); err == nil {
 		t.Skip("le système de fichiers a accepté un répertoire sous un fichier — cas non exerçable ici")
 	}

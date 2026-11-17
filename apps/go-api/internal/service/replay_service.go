@@ -12,11 +12,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service/replayview"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -199,22 +199,22 @@ func (s *replayService) retirerModesNonGeres(ctx context.Context, set port.Repla
 // forme de FICHIER (`games/halo_infinite/film/replay`), enrichi des trois résolutions ci-dessus, puis PROJETÉ
 // sur la forme de FIL (`domain/replaydoc`) — c'est la seule frontière où les deux se croisent
 // (cf. internal/service/replayview).
-func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error) {
+func (s *replayService) GetReplay(ctx context.Context, matchID string) (port.ServedReplay, error) {
 	// UN MODE NON GERE N'A PAS DE REJEU, MEME SI UN ARTEFACT TRAINE dans le cache : meme reponse
 	// que l'absence d'artefact (404 replay_not_available), jamais un 500.
 	if s.modeNonGere(ctx, matchID) {
-		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
+		return port.ServedReplay{}, port.ErrReplayNotAvailable
 	}
 	raw, err := replayartifact.ReadBytes(s.artifactPath(matchID))
 	if errors.Is(err, os.ErrNotExist) {
-		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
+		return port.ServedReplay{}, port.ErrReplayNotAvailable
 	}
 	if err != nil {
-		return replaydoc.ReplayDocument{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
+		return port.ServedReplay{}, fmt.Errorf("lecture artefact rejeu %s: %w", matchID, err)
 	}
 	var doc replay.ReplayDocument
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return replaydoc.ReplayDocument{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
+		return port.ServedReplay{}, fmt.Errorf("désérialisation artefact rejeu %s: %w", matchID, err)
 	}
 	// LES CLÉS DE CARTE, UNE SEULE FOIS : deux calques statiques les partagent, et la base
 	// ne doit pas être interrogée deux fois pour la même réponse.
@@ -246,9 +246,16 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydo
 	// replay_weapon_tier_check.go). Silencieux quand tout va bien.
 	s.checkWeaponTierJoin(ctx, matchID, &doc)
 	served := replayview.FromArtifact(doc)
+	// LA FRAÎCHEUR DE CADENCE se décide ici, sur le pas du document lu, et voyage avec lui : le masque de
+	// démo ne touche pas au pas.
+	stale := !replaybuild.CadenceUpToDate(served.FrameIntervalMS)
 	if s.demoIndexPath != "" {
 		// DÉMO : les joueurs réels sont masqués dans le document SERVI (cf. replay_demo_mask.go).
-		return maskDemoReplay(ctx, s.demoIndexPath, served)
+		masked, err := maskDemoReplay(ctx, s.demoIndexPath, served)
+		if err != nil {
+			return port.ServedReplay{}, err
+		}
+		return port.ServedReplay{ReplayDocument: masked, CadenceStale: stale}, nil
 	}
-	return served, nil
+	return port.ServedReplay{ReplayDocument: served, CadenceStale: stale}, nil
 }

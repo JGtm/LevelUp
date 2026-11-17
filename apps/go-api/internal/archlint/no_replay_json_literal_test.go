@@ -4,7 +4,7 @@
 // POURQUOI. L'artefact est `{short8}.json.gz`, sa marque de dérivation `{short8}.derived.json`, son
 // sidecar de raster `rasters/{short8}.json` ; `HasSuffix(name, ".json")` était recopié dans six
 // balayages de dossier, chacun avec sa façon d'écarter la marque. Les constantes
-// (`title.ReplayArtifactExt`, `ReplayArtifactLegacyExt`, `ReplayDerivationsMarkSuffix`,
+// (`title.ReplayArtifactExt`, `ReplayDerivationsMarkSuffix`,
 // `ReplaySidecarExt`) et le prédicat `title.IsReplayArtifactFile` sont la seule écriture de la règle.
 //
 // RÈGLE. Une fonction de production de `apps/go-api` qui construit ou balaie des chemins de rejeu (son
@@ -96,7 +96,7 @@ func TestNoReplayJSONLiteral(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("littéral d'extension de rejeu hors de %s — utiliser title.ReplayArtifactExt, "+
-			"ReplayArtifactLegacyExt, ReplayDerivationsMarkSuffix, ReplaySidecarExt ou "+
+			"ReplayDerivationsMarkSuffix, ReplaySidecarExt ou "+
 			"title.IsReplayArtifactFile :\n  %s", fichierDesExtensionsDeRejeu, strings.Join(violations, "\n  "))
 	}
 }

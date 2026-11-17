@@ -46,7 +46,7 @@ func prepareReplayPurgeFixture(t *testing.T) (sharedPath, artifactsDir string) {
 	if err := os.MkdirAll(artifactsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"aaaa0001.json", "bbbb0002.json", "cccc0003.json"} {
+	for _, name := range []string{"aaaa0001.json.gz", "bbbb0002.json.gz", "cccc0003.json.gz"} {
 		if err := os.WriteFile(filepath.Join(artifactsDir, name), []byte(`{"schemaVersion":3}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -69,10 +69,10 @@ func TestPurgeReplayArtifacts(t *testing.T) {
 	if purged != 1 || kept != 1 || unknown != 1 {
 		t.Errorf("purge = (purged %d, kept %d, unknown %d), attendu (1, 1, 1)", purged, kept, unknown)
 	}
-	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json.gz")); !os.IsNotExist(err) {
 		t.Error("l'artefact du match de 8 mois devait être purgé")
 	}
-	for _, garde := range []string{"bbbb0002.json", "cccc0003.json"} {
+	for _, garde := range []string{"bbbb0002.json.gz", "cccc0003.json.gz"} {
 		if _, err := os.Stat(filepath.Join(artifactsDir, garde)); err != nil {
 			t.Errorf("%s ne devait PAS être purgé : %v", garde, err)
 		}
@@ -172,7 +172,7 @@ func TestPurgeReplayArtifacts_MarquesDeDerivation(t *testing.T) {
 	sharedPath, artifactsDir := prepareReplayPurgeFixture(t)
 	for _, court := range []string{"aaaa0001", "bbbb0002", "cccc0003"} {
 		if err := replaybuild.WriteDerivationsMark(
-			filepath.Join(artifactsDir, court+".json"), 39, 42); err != nil {
+			filepath.Join(artifactsDir, court+".json.gz"), 39, 42); err != nil {
 			t.Fatalf("marque %s: %v", court, err)
 		}
 	}
@@ -221,7 +221,7 @@ func TestPurgeReplayArtifacts_MarqueOrpheline(t *testing.T) {
 	}
 	// Et une marque ACCOMPAGNÉE, sur un artefact conservé : elle, doit rester.
 	if err := replaybuild.WriteDerivationsMark(
-		filepath.Join(artifactsDir, "bbbb0002.json"), 39, 42); err != nil {
+		filepath.Join(artifactsDir, "bbbb0002.json.gz"), 39, 42); err != nil {
 		t.Fatalf("marque bbbb0002: %v", err)
 	}
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)

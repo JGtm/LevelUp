@@ -2,15 +2,13 @@ package replaybuild
 
 // artifact_stockage_test.go — LE STOCKAGE COMPRESSÉ VU DU PUITS : l'écriture range un `.json.gz`, l'en-tête
 // `.meta` et la marque de dérivation portent la TAILLE STOCKÉE et gardent leurs noms. La porte elle-même
-// (formes, parc mixte, listage) est éprouvée dans `internal/replayartifact`.
+// (format, listage) est éprouvée dans `internal/replayartifact`.
 
 import (
 	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,9 +25,6 @@ const (
 )
 
 func cheminCanonique(dir string) string { return filepath.Join(dir, courtTest+title.ReplayArtifactExt) }
-func cheminBrut(dir string) string {
-	return filepath.Join(dir, courtTest+title.ReplayArtifactLegacyExt)
-}
 
 func gzipTest(t *testing.T, raw []byte) []byte {
 	t.Helper()
@@ -42,6 +37,12 @@ func gzipTest(t *testing.T, raw []byte) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+// poserCompresseTest range un artefact de test par la porte (gzip, au chemin donné).
+func poserCompresseTest(path string, raw []byte) error {
+	_, _, err := replayartifact.Write(context.Background(), path, raw)
+	return err
 }
 
 func ecrireTest(t *testing.T, path string, data []byte) {
@@ -79,19 +80,6 @@ func TestPuits_RangeUnCompresseQuiSeRelitIdentique(t *testing.T) {
 	}
 }
 
-// TestPuits_RetireLeBrutAncien : réécrire un artefact qui existait en brut ne laisse pas deux fichiers.
-func TestPuits_RetireLeBrutAncien(t *testing.T) {
-	dir := t.TempDir()
-	ecrireTest(t, cheminBrut(dir), []byte(`{"schemaVersion":1}`))
-	if _, err := StoreArtifactAt(context.Background(), cheminCanonique(dir), title.DefaultSlug, matchTest,
-		docJSON(t, matchTest, true)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(cheminBrut(dir)); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("le .json ancien doit disparaître après l'écriture du .json.gz : %v", err)
-	}
-}
-
 // TestPuits_EnteteBytesEgalTailleStockee : le fichier d'en-tête déclare la taille du fichier stocké, il garde le
 // nom `{short8}.meta`, et il fait foi sans relire l'artefact.
 func TestPuits_EnteteBytesEgalTailleStockee(t *testing.T) {
@@ -101,8 +89,8 @@ func TestPuits_EnteteBytesEgalTailleStockee(t *testing.T) {
 		t.Fatal(err)
 	}
 	meta := filepath.Join(dir, courtTest+".meta")
-	if MetaPath(cheminCanonique(dir)) != meta || MetaPath(cheminBrut(dir)) != meta {
-		t.Errorf("MetaPath = %s / %s, attendu %s", MetaPath(cheminCanonique(dir)), MetaPath(cheminBrut(dir)), meta)
+	if MetaPath(cheminCanonique(dir)) != meta {
+		t.Errorf("MetaPath = %s, attendu %s", MetaPath(cheminCanonique(dir)), meta)
 	}
 	raw, err := os.ReadFile(meta)
 	if err != nil {
@@ -149,22 +137,18 @@ func TestPuits_EnteteAncienNeFaitPasFoi(t *testing.T) {
 	}
 }
 
-// TestPuits_DigestRendLaTailleStockee : le digest lu depuis le disque rend la taille du fichier, brut ou
-// compressé.
+// TestPuits_DigestRendLaTailleStockee : le digest lu depuis le disque rend la taille du fichier compressé, et un
+// `.json` brut posé à la place n'est pas un artefact.
 func TestPuits_DigestRendLaTailleStockee(t *testing.T) {
 	dir := t.TempDir()
 	blob := docJSON(t, matchTest, true)
-	ecrireTest(t, cheminBrut(dir), blob)
-	d, ok := ArtifactDigest(cheminCanonique(dir))
-	if !ok || d.Bytes != len(blob) {
-		t.Fatalf("digest d'un brut : %+v, %v", d, ok)
+	ecrireTest(t, filepath.Join(dir, courtTest+".json"), blob)
+	if d, ok := ArtifactDigest(cheminCanonique(dir)); ok {
+		t.Fatalf("un .json brut ne fait pas un artefact : %+v", d)
 	}
 	ecrireTest(t, cheminCanonique(dir), gzipTest(t, blob))
-	if err := os.Remove(cheminBrut(dir)); err != nil {
-		t.Fatal(err)
-	}
 	st, _ := os.Stat(cheminCanonique(dir))
-	d, ok = ArtifactDigest(cheminCanonique(dir))
+	d, ok := ArtifactDigest(cheminCanonique(dir))
 	if !ok || d.Bytes != int(st.Size()) || d.MatchID != matchTest || d.SchemaVersion == 0 {
 		t.Fatalf("digest d'un compressé : %+v, %v (taille stockée %d)", d, ok, st.Size())
 	}

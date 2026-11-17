@@ -169,7 +169,7 @@ func TestArtifactVerdictLitLeDisqueEtLaPresenceDesFaits(t *testing.T) {
 // schema le faisait passer par le silence delibere du garde a schema different.
 func TestWriteArtifactRefuseUneRegressionDeDecodage(t *testing.T) {
 	repo := t.TempDir()
-	out := filepath.Join(repo, "artefact.json")
+	out := filepath.Join(repo, "artefact.json.gz")
 	enPlace, err := json.Marshal(map[string]any{
 		"schemaVersion":   replay.SchemaVersion,
 		"frameIntervalMs": CookFrameIntervalMS(),
@@ -180,7 +180,7 @@ func TestWriteArtifactRefuseUneRegressionDeDecodage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
 	}
-	if err = os.WriteFile(out, enPlace, 0o600); err != nil {
+	if err = poserCompresseTest(out, enPlace); err != nil {
 		t.Fatalf("pose : %v", err)
 	}
 	perimees := couchesCourantes()

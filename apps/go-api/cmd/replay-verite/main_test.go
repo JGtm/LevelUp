@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/replayartifact"
 )
 
 // artefactMinimal : un match d'un joueur, deux vies, une mort ; `vieEnTrop` ajoute une vie qui
@@ -33,11 +36,22 @@ func ecrire(t *testing.T, dir, nom, contenu string) string {
 	return p
 }
 
+// ecrireArtefact range un artefact de test par la porte (gzip) ; `ecrire` pose les autres fichiers (faits, oracle,
+// registre), qui restent du JSON brut.
+func ecrireArtefact(t *testing.T, dir, nom, contenu string) string {
+	t.Helper()
+	p := filepath.Join(dir, nom)
+	if _, _, err := replayartifact.Write(context.Background(), p, []byte(contenu)); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
 // TestLancer_CodesDeSortie : ok (0), un faux nouveau (1), un drapeau manquant (2).
 func TestLancer_CodesDeSortie(t *testing.T) {
 	dir := t.TempDir()
-	avant := ecrire(t, dir, "a.json", artefactMinimal(false))
-	apres := ecrire(t, dir, "b.json", artefactMinimal(true))
+	avant := ecrireArtefact(t, dir, "a.json", artefactMinimal(false))
+	apres := ecrireArtefact(t, dir, "b.json", artefactMinimal(true))
 	faits := ecrire(t, dir, "f.facts.json", faitsMinimaux)
 	oracle := ecrire(t, dir, "o.oracle.json", `{"matchId":"m-1","players":[{"xuid":"111","personalScore":0}]}`)
 	vide := ecrire(t, dir, "v.oracle.json", `{"matchId":"m-1"}`)
@@ -76,7 +90,7 @@ func TestLancer_RegistreEtRegistreAvant(t *testing.T) {
 		t.Fatalf("registre illisible ou court (%d entrees) : %v", len(reg), err)
 	}
 	dir := t.TempDir()
-	a := ecrire(t, dir, "a.json", artefactMinimal(false))
+	a := ecrireArtefact(t, dir, "a.json", artefactMinimal(false))
 	f := ecrire(t, dir, "f.facts.json", faitsMinimaux)
 	r := ecrire(t, dir, "r.json", out.String())
 	out.Reset()
