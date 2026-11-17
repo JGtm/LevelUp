@@ -326,6 +326,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 
 ### Idée du user renvoyée au backlog (2026-11-17)
 
+- **G0-13 — « Ramassages » : la section reste, avec « estimation ».** Message du user du 2026-11-18 : « ok retire la section ramassages si le compte n'est pas précis ou alors on met un truc qui dit que c'est une estimation ». Retenu par le pilote : la seconde voie, capsule « estimation » à côté du titre, armes et grenades en totaux, les grenades sans type.
 - **G0-12 — barre de lecture en surimpression.** Idée du user (« juste une idée ») : en Cinéma et en Plein cadre, poser la barre de lecture sur le plan, comme un lecteur vidéo, et la faire disparaître sans mouvement de souris ; il doute lui-même de l'effacement (« sur ordinateur on bouge pas mal la souris […] un repli ou autre comportement serait mieux »). Proposition du pilote, NON validée : en Plein cadre seulement, la barre d'une ligne se replie en une fine ligne de progression (rail, repères, dominance) au bas du plan pendant la lecture, et se déplie au survol du bas du plan, à toute touche et en pause ; le fil posé sur le plan remonte quand elle est dépliée ; le Cinéma et le Standard gardent leur barre fixe. Décision du user (2026-11-17, « note au backlog, il me faudra une maquette ») : hors de ce plan ; entrée dans `.ai/BACKLOG.md`, reprise sur maquette validée, après la barre d'une ligne.
 
 ### Tranché par le pilote sur la règle « la maquette fait foi » (dit au user le 2026-11-17)
@@ -632,7 +633,7 @@ côté serveur : T.6, qui sert les médailles du document avec leur libellé et 
 existantes se réutilisent (KDA du jeu, ADR 0006 ; catégorie « arme lourde » des niveaux d'armes du document) : 0.3
 les localise, rien n'est recalculé à côté.
 
-- [ ] T.0 (mesures ajoutées le 2026-11-17 : part des frags classés par match avec rejeu — T.2b ; ramassages natifs, borne inférieure ou non — T.4 ; fixation « fin de match = tableau de score » de T.1 sur un match réel) (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
+- [~] T.0 (mesures sur les documents FAITES le 2026-11-17, `annexes_refonte_ui_rejeu/mesure_t0.md` : score complet 64,9 % des documents, lecture des tirs suffisante pour 46 % des joueurs, ramassages en borne inférieure dans 99,9 % des documents, postures et médailles à 100 % ; RESTE en base, après les dérivés : part des frags classés, fixation de T.1 sur un match réel) (mesures ajoutées le 2026-11-17 : part des frags classés par match avec rejeu — T.2b ; ramassages natifs, borne inférieure ou non — T.4 ; fixation « fin de match = tableau de score » de T.1 sur un match réel) (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
       schéma 125 (geste du user, dès la fusion du backlog : plan maître DM-1) et se rendent PAR BUILD du jeu.
       Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
       dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
@@ -650,7 +651,7 @@ les localise, rien n'est recalculé à côté.
       grenade, autres armes) puis par arme, nombre et part en pourcentage ; une élimination sans arme résolue
       compte dans « autres » sous un libellé neutre, jamais sous l'arme d'une voisine. Tests : parts qui somment à
       100, catégorie vide absente, arme inconnue.
-- [ ] T.3 Score, rang et estimations (D-22) : score à l'instant = somme des points par action quand le document
+- [x] T.3 (fait le 2026-11-18 : `readInstantEstimatesSeries`, `playerInstantEstimatesAt`, chaque absence avec sa cause ; score comparé à `board.score` à la fin du match, aucune liste de builds ; rang de compétition 1, 1, 3 ; le score peut reculer, les pénalités existent ; réserves : dans un match avec bots le rang est absent pour tous ; les tirs écrits par le film sous-comptent, donc T.5 calcule la précision sur les tirs ESTIMÉS du bilan) Score, rang et estimations (D-22) : score à l'instant = somme des points par action quand le document
       déclare le score complet ; rang dans le lobby seulement si tous les joueurs du lobby sont complets ;
       précision, tirs, touches, dégâts infligés et subis, et par arme tirs et dégâts, pour un joueur à lecture
       suffisante uniquement. Tests : score incomplet (pas de ligne), joueur insuffisant (pas de ligne), joueur
