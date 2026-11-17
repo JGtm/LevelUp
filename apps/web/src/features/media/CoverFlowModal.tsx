@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { NormalizedMediaItem } from '@/lib/api/types'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useHlsVideo, type HlsAudioTrack } from '@/lib/media/useHlsVideo'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
@@ -549,16 +550,18 @@ export function CoverFlowModal({
     })
   }, [currentItem])
 
+  // Échap : la couche du dessus seule (la confirmation de suppression avant le visualiseur) ; le clic dehors est le voile.
+  const dialogRef = useDismissable(true, onClose, { outside: null, innerLayerSelector: '[role="alertdialog"]' })
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
       if (e.key === 'ArrowLeft') navigate('prev')
       if (e.key === 'ArrowRight') navigate('next')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate volontairement non mémoïsé (cf. l.554) ; closure rafraîchie via committedIdx/items.length (2026-07-22)
-  }, [onClose, committedIdx, items.length])
+  }, [committedIdx, items.length])
 
   useEffect(() => {
     if (autoChainTimerRef.current) clearTimeout(autoChainTimerRef.current)
@@ -615,10 +618,7 @@ export function CoverFlowModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/90"
       onClick={onClose}
     >
-      <div
-        className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div ref={dialogRef} className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground rounded-t-xl overflow-hidden">
           <div className="flex min-w-0 items-center gap-3">
             <span className="truncate text-sm text-foreground/80">{heading}</span>
