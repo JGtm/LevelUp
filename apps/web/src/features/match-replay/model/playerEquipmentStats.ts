@@ -33,9 +33,9 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildSlotOwnership, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import {
   applyEquipmentGesture,
+  gestureOwner,
   readEquipmentGestures,
   type EquipmentGesture,
-  type GestureAt,
 } from './equipmentGestures'
 import {
   applyEquipmentChange,
@@ -139,7 +139,7 @@ function stepsOf(events: readonly DatedEvent[], order: readonly string[]): Equip
 /**
  * readEquipmentSeries lit, une fois par document, tout ce qui est daté pour chaque joueur d'une ligne
  * (`equipmentRowPlayers` : les mêmes que la grille du match). `players` est le roster du film (`buildPlayers`).
- * Un geste sans poseur mesuré, ou dont le slot n'a pas de propriétaire à l'image du geste, ne revient à personne.
+ * Le propriétaire d'un geste se résout par `gestureOwner` ; un geste sans poseur mesuré, ou dont le slot n'a pas de propriétaire connu, ne revient à personne.
  */
 export function readEquipmentSeries(
   doc: EquipmentSeriesSource,
@@ -148,18 +148,17 @@ export function readEquipmentSeries(
   const rows = equipmentRowPlayers(players)
   const ownership = buildSlotOwnership(rows)
   const eventsOf = new Map<string, DatedEvent[]>()
-  const give = (at: GestureAt, event: DatedEvent): void => {
-    const owner = ownership.ownerAtFrame(at.slot, at.t)
+  const give = (owner: ReplayPlayer | null, event: DatedEvent): void => {
     if (!owner) return
     const own = eventsOf.get(owner.xuid)
     if (own) own.push(event)
     else eventsOf.set(owner.xuid, [event])
   }
   for (const gesture of readEquipmentGestures(doc)) {
-    if (gesture.at) give(gesture.at, { t: gesture.at.t, gesture })
+    if (gesture.at) give(gestureOwner(ownership, gesture), { t: gesture.at.t, gesture })
   }
   for (const change of readEquipmentChanges(doc).changes) {
-    give({ slot: change.slot, t: change.t }, { t: change.t, change })
+    give(ownership.ownerAtFrame(change.slot, change.t), { t: change.t, change })
   }
 
   const order = equipmentFamilyOrder()

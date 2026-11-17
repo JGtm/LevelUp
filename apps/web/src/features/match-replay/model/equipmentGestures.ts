@@ -20,6 +20,7 @@ import type { EquipmentUsageEpisode, EquipmentUsageTally } from './equipmentUsag
 import { placementIsDroppedPower } from './placementDropped'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayPlayer, SlotOwnership } from '../../../lib/replay/rosterLogic'
 
 /** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */
 export const EPISODE_FAMILIES = [EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD] as const
@@ -92,6 +93,26 @@ export function readEquipmentGestures(
     }
   }
   return out
+}
+
+/**
+ * gestureOwner — LE JOUEUR À QUI REVIENT UN GESTE, la seule résolution de propriétaire de ces canaux : le
+ * total du match et la lecture à l'instant la lisent. `null` = aucun propriétaire (pas de poseur mesuré, ou
+ * slot sans propriétaire connu) : le geste ne revient à personne, il n'est jamais deviné.
+ *
+ * Un épisode ou une pose déployée se résout sur la vie qui occupe le slot à l'image du geste. UN LÂCHER SE
+ * DATE À LA FIN DE LA VIE DU MORT PLUS UNE IMAGE (ou deux, selon l'échantillonnage) : le poseur n'occupe déjà
+ * plus le slot, la résolution stricte à cette image rend le nouvel occupant, ou personne. Il revient donc au
+ * joueur qui occupait le slot à l'image PRÉCÉDENTE (la vie qui vient de finir ; une mort à la dernière image
+ * d'une manche, dont le slot est réattribué dès l'image suivante, reste au mort), et à défaut au dernier
+ * propriétaire connu du slot (`ownerAtFrameOrLast`, borné à la vie qui précède l'image : jamais un occupant
+ * plus tardif). Un lâcher à mi-vie (échange) tombe dans la vie du poseur, que les deux lectures rendent.
+ */
+export function gestureOwner(ownership: SlotOwnership, g: EquipmentGesture): ReplayPlayer | null {
+  if (!g.at) return null
+  const { slot, t } = g.at
+  if (g.kind !== 'dropped') return ownership.ownerAtFrame(slot, t)
+  return ownership.ownerAtFrame(slot, t - 1) ?? ownership.ownerAtFrameOrLast(slot, t)
 }
 
 /** Ajoute un épisode (un de plus, sa durée, ses frags) à une table par famille. */

@@ -275,6 +275,73 @@ describe('playerEquipmentStats — attribution', () => {
   })
 })
 
+describe('playerEquipmentStats — à qui revient un équipement lâché', () => {
+  // Un lâcher à la mort se date à la fin de la vie du mort plus une image : il lui revient, pas au suivant du slot.
+  const mur = (slot: number, t0: number) => poseAt(t0, 'wall', 'dropped', slot)
+
+  it('mort ordinaire et lâcher à mi-vie : le lâcher daté à la fin de vie + 1 revient au mort', () => {
+    const doc = docWith({
+      tracks: [vie(1, 'a1', 0, 50)],
+      equipmentChanges: [taken(5, 1, 5)],
+      equipmentPlacements: [mur(1, 51), mur(1, 20)],
+    })
+    const lire = lecteur(doc)
+    expect(lire('a1', 20)).toEqual({ families: [famille('wall', 1, 0, 1)] }) // lâcher à mi-vie (échange)
+    expect(lire('a1', 50)).toEqual({ families: [famille('wall', 1, 0, 1)] })
+    expect(lire('a1', 51)).toEqual({ families: [famille('wall', 2, 0, 2)] })
+    compare(doc, SB, 'mort ordinaire')
+  })
+
+  it('mort à la dernière image d’une manche, slot réattribué dès l’image suivante : le lâcher reste au mort', () => {
+    const doc = docWith({
+      tracks: [vie(1, 'a1', 0, 50), vie(1, 'a2', 51, 150)],
+      equipmentPlacements: [mur(1, 51)],
+    })
+    const lire = lecteur(doc)
+    expect(lire('a1', 51)).toEqual({ families: [famille('wall', 1, 0, 1)] })
+    expect(lire('a2', 199)).toEqual({ families: [] })
+    compare(doc, SB, 'slot réattribué aussitôt')
+  })
+
+  it('slot réattribué à la manche suivante : le lâcher du mort ne va pas au nouvel occupant, celui du nouvel occupant lui revient', () => {
+    const doc = docWith({
+      tracks: [vie(1, 'a1', 0, 50), vie(1, 'a2', 60, 150)],
+      equipmentPlacements: [mur(1, 51), mur(1, 70)],
+    })
+    const lire = lecteur(doc)
+    expect(lire('a1', 199)).toEqual({ families: [famille('wall', 1, 0, 1)] })
+    expect(lire('a2', 69)).toEqual({ families: [] })
+    expect(lire('a2', 70)).toEqual({ families: [famille('wall', 1, 0, 1)] })
+    compare(doc, SB, 'slot réattribué plus tard')
+  })
+
+  it('joueur qui quitte le match : son dernier lâcher lui revient, une ou deux images après sa fin de vie', () => {
+    const doc = docWith({
+      tracks: [vie(1, 'a1', 0, 50), vie(2, 'a2', 0, 150)],
+      equipmentPlacements: [mur(1, 51), mur(1, 52)],
+    })
+    const lire = lecteur(doc)
+    expect(lire('a1', 199)).toEqual({ families: [famille('wall', 2, 0, 2)] })
+    expect(lire('a2', 199)).toEqual({ families: [] })
+    compare(doc, SB, 'joueur parti')
+  })
+
+  it('place qui n’a jamais eu de propriétaire : le lâcher reste non attribué, jamais deviné', () => {
+    const doc = docWith({ equipmentPlacements: [mur(7, 51), mur(9, 101)] })
+    const lire = lecteur(doc)
+    for (const xuid of ['a1', 'a2', 'b1', 'orphelin']) expect(lire(xuid, 1_000)).toEqual({ families: [] })
+    compare(doc, SB, 'place sans propriétaire')
+  })
+
+  it('les épisodes et les poses déployées gardent la résolution stricte : une pose après la fin de vie ne revient à personne', () => {
+    const doc = docWith({
+      tracks: [vie(1, 'a1', 0, 50)],
+      equipmentPlacements: [poseAt(51, 'wall', 'deployed', 1, '0x528fce46')],
+    })
+    expect(lecteur(doc)('a1', 1_000)).toEqual({ families: [] })
+  })
+})
+
 describe('playerEquipmentStats — les comptes ne reculent jamais', () => {
   it('chaque famille ne fait que croître d’une image à l’autre, et pris vaut au moins utilisé + perdu', () => {
     const doc = docWith({
@@ -366,12 +433,8 @@ describe('playerEquipmentStats — fin de match égale à la grille du match (sc
       carriedEquipment: [{ slot: 1, r: 6, t0: 5, t1: 150, tracked: [{ t0: 10, t1: 40 }] }],
       equipmentPlacements: [pose('sensor', 'deployed', 1)],
     },
-    'panneaux du mur et appareil': {
-      equipmentPlacements: [pose('wall', 'deployed', 1, '0x528fce46'), pose('wall', 'deployed', 1, '0x8e2dc574')],
-    },
-    'origine de pose non établie': {
-      equipmentPlacements: [pose('sensor', 'unknown', 1), { ...pose('sensor', '', 1), origin: undefined }],
-    },
+    'panneaux du mur et appareil': { equipmentPlacements: [pose('wall', 'deployed', 1, '0x528fce46'), pose('wall', 'deployed', 1, '0x8e2dc574')] },
+    'origine de pose non établie': { equipmentPlacements: [pose('sensor', 'unknown', 1), { ...pose('sensor', '', 1), origin: undefined }] },
     'répulseur, propulseur, grenades et grappin': {
       equipmentChanges: [taken(5, 1, 10), taken(6, 1, 12)],
       equipmentPlacements: [
@@ -380,9 +443,7 @@ describe('playerEquipmentStats — fin de match égale à la grille du match (sc
       ],
       grappleLines: [{ slot: 1, t0: 1, t1: 5, ax: 0, ay: 0 }],
     },
-    'pose sans poseur mesuré': {
-      equipmentPlacements: [pose('sensor', 'deployed', -1), pose('sensor', 'deployed', 1)],
-    },
+    'pose sans poseur mesuré': { equipmentPlacements: [pose('sensor', 'deployed', -1), pose('sensor', 'deployed', 1)] },
     'mur pris, posé, lâché': {
       equipmentChanges: [taken(5, 1, 5), taken(6, 2, 5), taken(7, 3, 5)],
       equipmentPlacements: [pose('wall', 'deployed', 1, '0x528fce46'), pose('wall', 'dropped', 2)],
@@ -391,9 +452,7 @@ describe('playerEquipmentStats — fin de match égale à la grille du match (sc
       equipmentChanges: [taken(5, 1, 6)],
       equipmentPlacements: [pose('sensor', 'deployed', 1)],
     },
-    'capteur pris puis consommé, chaîne trouée': {
-      equipmentChanges: [taken(5, 1, 6), spent(8, 1, 6), taken(9, 2, 6), { ...spent(12, 2, 6), gap: 1 }],
-    },
+    'capteur pris puis consommé, chaîne trouée': { equipmentChanges: [taken(5, 1, 6), spent(8, 1, 6), taken(9, 2, 6), { ...spent(12, 2, 6), gap: 1 }] },
     'bonus activé, pris, lâché': {
       equipmentEpisodes: [{ slot: 1, fam: 'camo', t0: 10, t1: 60 }, { slot: 2, fam: 'overshield', t0: 12, t1: 40 }],
       equipmentChanges: [taken(5, 1, 1), taken(6, 2, 1)],

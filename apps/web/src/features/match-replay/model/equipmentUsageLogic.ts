@@ -69,6 +69,7 @@ import {
   applyEquipmentGesture,
   bump,
   EPISODE_FAMILIES,
+  gestureOwner,
   readEquipmentGestures,
   type EquipmentEpisodeFamily,
 } from './equipmentGestures'
@@ -289,9 +290,7 @@ export function buildEquipmentUsage(
   // LES ÉPISODES, LES POSES ET LES LÂCHERS passent par la lecture que partage la lecture à
   // l'instant (`equipmentGestures.ts`). Un geste sans poseur mesuré rejoint les gestes sans
   // propriétaire plutôt qu'une ligne au hasard.
-  for (const g of readEquipmentGestures(doc)) {
-    applyEquipmentGesture(g.at ? tallyOfSlotAt(g.at.slot, g.at.t) : unattributed, g)
-  }
+  for (const g of readEquipmentGestures(doc)) applyEquipmentGesture(tallyOf(gestureOwner(ownership, g)), g)
 
   // UN OBJET ENGENDRÉ (capteur, traqueur, écran, champ) EST UN DÉPLOIEMENT de sa famille, situé ou
   // non : le geste a eu lieu même quand son lieu n'a pas été lu (`spawnedObjects.ts`). Il se date à
