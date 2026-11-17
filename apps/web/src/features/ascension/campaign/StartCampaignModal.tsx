@@ -8,11 +8,12 @@
  * voit la phrase pédagogique R2 + une option "Skip — créer juste un défi".
  *
  * Pattern aligné sur AlertDialog : pas de Radix, ARIA `role="dialog"`,
- * fermeture Escape + clic backdrop.
+ * fermeture Escape + clic hors de la carte (hook `useDismissable`).
  */
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/api/client'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { AxisKind } from '@/lib/playerProfile'
 import { useCampaignMutations } from '@/features/ascension/profile/queries'
@@ -52,17 +53,10 @@ export function StartCampaignModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !muts.start.isPending) {
-        event.preventDefault()
-        onOpenChange(false)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, muts.start.isPending, onOpenChange])
+  // Échap et un clic hors de la carte (sur le fond) ferment la modale, sauf pendant l'envoi.
+  const cardRef = useDismissable(open, () => {
+    if (!muts.start.isPending) onOpenChange(false)
+  })
 
   if (!open) return null
 
@@ -80,13 +74,12 @@ export function StartCampaignModal({
     >
       <div
         aria-hidden="true"
-        onClick={() => !muts.start.isPending && onOpenChange(false)}
         className={
           'absolute inset-0 bg-scrim/60 backdrop-blur-sm' +
           (muts.start.isPending ? ' cursor-wait' : ' cursor-pointer')
         }
       />
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card text-card-foreground shadow-xl">
+      <div ref={cardRef} className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card text-card-foreground shadow-xl">
         <div className="px-6 py-5">
           <h2
             id="start-campaign-title"
