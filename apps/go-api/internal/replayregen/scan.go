@@ -8,8 +8,8 @@
 //
 // Il ne connaît aucune recette de cuisson : la reconstruction d'un film est une fonction injectée (`Deps.Rebuild`),
 // celle de l'action admin « construire le rejeu » (enfant borné, verrou solo, StoreArtifact). Il ne lance jamais
-// rien de lui-même : seul un démarrage demandé, ou la reprise d'une file que l'utilisateur avait lancée
-// (`replay_regen_pending`), met la file en marche.
+// rien de lui-même : seul un démarrage demandé, la reprise d'une file que l'utilisateur avait lancée
+// (`replay_regen_pending`) ou une demande explicite d'un match (seconde entrée, ci-dessous) met la file en marche.
 //
 // Seconde entrée : la demande EXPLICITE d'un match (`Service.Enqueue`, demand.go), pour un match qui n'a pas de rejeu.
 // Elle suit le même chemin (une file FIFO persistée, un film à la fois, les portes du mode jeu, de la pause et de la

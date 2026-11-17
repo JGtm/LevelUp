@@ -34,7 +34,7 @@ const (
 	codeReplayGenerationError         = "replay_generation_error"
 	probeReplayGeneration             = "replay.generation"
 	detailKeyReason                   = "reason"
-	errReplayGenerationInvalidMatchID = replayGenerationError("match_id mal formé")
+	errReplayGenerationInvalidMatchID = replayGenerationError("invalid match_id form")
 )
 
 // replayGenerationError : une erreur constante du handler.
