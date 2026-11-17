@@ -354,10 +354,10 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
     pourquoi) ; l'histoire (mesures datées, lots, comptes du jour) va dans l'ADR, la chronique
     ou le journal. S'applique au code neuf et à toute affirmation fausse rencontrée, pas de
     réécriture de masse. Détail : skill `arch-rules`.
-18. **Une donnée servie ou persistée a un lecteur.** Un champ de réponse d'API, du document de
-    rejeu ou d'un fichier dérivé a un lecteur de production, ou une ligne datée qui nomme son
-    lecteur prévu (modèle : `apps/web/src/lib/replay/replayDocumentReaders.guard.test.ts`, liste
-    qui ne fait que rétrécir). Une montée du décodeur qui ajoute un champ sans lecteur l'y inscrit.
+18. **Une donnée que LevelUp calcule et sert, ou persiste, a un lecteur.** Un champ de réponse
+    d'API ou d'un fichier dérivé produit par LevelUp a un lecteur de production. Les champs du
+    document de rejeu produits par le décodeur n'entrent pas dans cette règle : le décodeur est un
+    projet public, un champ que LevelUp ne lit pas y est légitime.
 19. **Décodeur : une montée par version de LevelUp.** La régénération du parc des rejeux se
     lance une fois, à la publication de la version, pas à chaque montée intermédiaire.
 

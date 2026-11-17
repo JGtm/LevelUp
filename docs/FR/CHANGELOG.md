@@ -32,6 +32,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 ### Supprimé
 - **Variable d'environnement `LEVELUP_SYNC_RESOLVE_ASSETS`** — la résolution des noms d'assets pendant la synchronisation est toujours active ; la variable n'est plus lue.
 - **Compression des rejeux** — la commande `levelup replay compress` et l'étape de compression en fin de file de régénération des rejeux, avec leurs compteurs (`replay_regen_compressed_total`, `replay_regen_compress_failed_total`, la jauge `replay_regen_raw`, `replay_artifact_duplicate_files_total`, `replay_artifact_link_fallback_total`, `replay_artifact_link_error_total`). `GET /desktop/replay-regen` ne rend plus `raw`, `compressing`, `compressed` ni `compress_failed`, et la carte Rejeux ne propose plus de compresser.
+- **Requête d'historique de note** — `StatsRepository.LoadLUSRHistory` et le SQL `Q24LUSRHistory`, sans appelant de production, sont supprimés avec leur interface, leurs faux, leurs tests et leur entrée d'allowlist.
+
+### Corrigé
+- **Escouade : frags, morts et assistances par minute sans les matchs sans durée** — un tel match ajoutait ses comptes sans ses minutes, ce qui gonflait le taux. Les trois valeurs suivent la règle des autres valeurs par minute (`analysis.PooledPerMinute` : somme des comptes sur somme des minutes jouées, matchs sans durée exclus).
 
 ## [8.2.1] - 2026-11-16
 

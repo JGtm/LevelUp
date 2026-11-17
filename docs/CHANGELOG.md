@@ -32,6 +32,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 - **Environment variable `LEVELUP_SYNC_RESOLVE_ASSETS`** — asset name resolution during sync is always active; the variable is no longer read.
 - **Replay compression** — the `levelup replay compress` command and the compression step at the end of the replay regeneration queue, with their counters (`replay_regen_compressed_total`, `replay_regen_compress_failed_total`, the gauge `replay_regen_raw`, `replay_artifact_duplicate_files_total`, `replay_artifact_link_fallback_total`, `replay_artifact_link_error_total`). `GET /desktop/replay-regen` no longer returns `raw`, `compressing`, `compressed` and `compress_failed`, and the Replays card no longer offers to compress.
+- **Rating history query** — `StatsRepository.LoadLUSRHistory` and the SQL `Q24LUSRHistory`, which had no production caller, are removed with their interface, fakes, tests and allowlist entry.
+
+### Fixed
+- **Squad: kills, deaths and assists per minute ignore matches with no played time** — such a match added its counts without its minutes, which inflated the rate. The three values now follow the rule of the other per-minute values (`analysis.PooledPerMinute`: sum of counts over sum of minutes played, matches without played time excluded).
 
 ## [8.2.1] - 2026-11-16
 

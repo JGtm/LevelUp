@@ -2,7 +2,8 @@
 
 État : écrit, relu contre la grille `plan-review`. Toutes les décisions sont tranchées (trois séries de
 réponses du user, 2026-11-16, ci-dessous) ; quand une réponse contredit une recommandation de D-1 à D-8, la
-réponse fait foi. Attend le go d'exécution.
+réponse fait foi. Exécuté le 2026-11-17 jusqu'à H.1 et G.3 ; restent H.2 (contrôles à l'écran du user), H.3
+(fusion dans `release/v8.3.0`) et H.4 (régénération du parc, geste du user).
 Source : `.ai/AUDIT_VERSIONS_8_2_0_A_8_3_0_2026-11-16.md` (8 P1, 4 familles de P2). Demande du user
 (2026-11-16) : traiter tous les points de la revue sans attendre, amender l'ADR 0048, valider une à une les
 données servies sans lecteur.
@@ -239,9 +240,12 @@ Décisions du pilote à l'étape 0, consignées :
       `replayDocumentSchema.ts` et exige, pour chacune, un lecteur hors schéma et normalisation, ou une entrée
       `{ clé: "AAAA-MM-JJ : lecteur prévu" }`. Entrées de départ : les champs que le user garde après le
       tableau de l'étape 0.5. La liste ne fait que rétrécir ; une montée du décodeur qui ajoute un champ sans
-      lecteur doit l'y inscrire.
+      lecteur doit l'y inscrire. ANNULÉ le 2026-11-17 sur décision du user : le test
+      (`replayDocumentReaders.guard.test.ts`) est supprimé, le décodeur est public et un champ que LevelUp ne
+      lit pas y est normal ; la règle 18 de `CLAUDE.md` est réduite à ce que LevelUp calcule et sert lui-même.
 - [~] B.4 Champs que le user ne garde pas après l'étape 0.5 : retirés du document servi (`replaydoc`,
-      `replayview`, contrat, types web, schéma et normalisation web), sans toucher au décodeur.
+      `replayview`, contrat, types web, schéma et normalisation web), sans toucher au décodeur. Sans objet
+      depuis la décision du 2026-11-17 sur B.3 : aucun champ n'est retiré.
 - [x] B.5 Types du décodeur dans `internal/port` : garde-rail qui gèle les paquets importés à l'état de
       l'étape 0.3 (plafond qui ne fait que descendre).
       `[!]` prévu pour le retrait lui-même : trois types traversent `port/` et 9 fichiers les consomment ; c'est
@@ -365,8 +369,12 @@ Décisions du pilote à l'étape 0, consignées :
       lecteur, ou une ligne datée qui nomme son lecteur prévu » (`CLAUDE.md`) ; (2) « à la clôture d'un plan,
       l'outillage d'une mesure close est retiré » (skill `plan-execution`) ; (3) « une version de LevelUp monte
       le décodeur une fois, la régénération du parc se lance à la publication » (`CLAUDE.md`).
-- [ ] G.3 Notes de la 8.3.0, `docs/CHANGELOG.md`, `.ai/BACKLOG.md` (P2 traités retirés), registre des reports
+- [x] G.3 Notes de la 8.3.0, `docs/CHANGELOG.md`, `.ai/BACKLOG.md` (P2 traités retirés), registre des reports
       (A.6, B.2, B.5, D.5 le cas échéant), registre de l'audit (colonne « Décision » remplie), `thought_log`.
+      Fait le 2026-11-17 : registre de l'audit rempli (8 P1 et familles P2, une décision par ligne) ; section du
+      registre des reports (format 7 des fichiers tactiques, Thunderhead, contrôles H.2, types du décodeur de
+      `port/`, renvoi au backlog) ; correctif S.1 et retrait S.2 au changelog, S.1 aux notes EN et FR ; entrée du
+      `thought_log`.
 - [x] G.4 Comparaison des témoins APRÈS aux témoins de l'étape 0 : écarts listés, chacun rattaché à une
       décision D-2 ou déclaré défaut.
 - Gate : `make gate-push` ; `cd apps/go-api && go test -tags=integration ./internal/sync/...` ; `make go-api-lint`.
@@ -467,21 +475,64 @@ Chaque compte rendu a été rouvert sur pièces par le pilote (commits, `git sta
 - Vérifications à l'écran posées dans l'artefact (`suites-audit-mainmise-format`, `-menus-rejeu`,
   `-motif-probabilite`, `-fonds-tournes`).
 
+### 2026-11-17 — réponses du user, correctifs S.1 à S.3, harnais rétabli
+
+Réponses du user du 2026-11-17 et suites :
+- Escouade, matchs sans durée : ignorés. S.1 `[x]` (`46a0f9870c`) : frags, morts et assistances par minute
+  passent par `analysis.PooledPerMinute` ; test rouge puis vert ; le témoin de cadence qui encodait le défaut
+  est corrigé (joueur principal 0,82/0,39/0,2 -> 0,66/0,31/0,12).
+- Requête d'historique de note sans appelant : supprimée. S.2 `[x]` (`d7286b0175`), avec l'interface, les faux,
+  les tests et l'entrée d'allowlist.
+- Carte Forge au maillage illisible : on garde l'avertissement, cause à investiguer (backlog). S.3 `[x]`
+  (`98d8f8ee76`) : ADR 0048 D-5 décrit le code, amendement daté.
+- Gate des trois correctifs (exécuteur) : `go build`, `go vet`, tests des paquets touchés, archlint, tests
+  `integration` de `platform/duckdb` (317 s), `golangci-lint` 0 problème.
+- Harnais d'équivalence du rejeu : le `[!]` est levé. La liste locale des identités (non versionnée) est
+  reconstruite depuis la base locale pour les 20 matchs du corpus (290 identités) ; `go run ./cmd/replay-equiv` :
+  20 identiques, 0 différent, code 0, 330 s. Fait établi : ce harnais ne tourne pas en CI (seul l'étage des
+  mini-bobines du décodeur y tourne) ; l'affirmation du pilote « la CI fera foi » était fausse.
+- Anciens rejeux bruts : le user ne connaît personne sur le bureau 8.1 ; rien à faire. Faits : la prod n'en a
+  pas, le poste non plus ; les versions bureau 8.1.0 à 8.1.3 (du 9 au 15 novembre) en écrivaient.
+- Thunderhead et Thunderhead Heavies : ce ne sont pas des cartes Firefight (9 matchs BTB, 7 rejeux) ; leur
+  maillage n'a jamais été récupéré au dépôt. Noté au backlog avec le maillage Forge.
+- Six clés du document sans lecteur web : étude faite. `vehicleScenery` EST lue (`replayNormalize.ts`), le
+  garde-fou la classait à tort ; `bombEvents`, `bombStats` et `identity` sont lues par le serveur sur le
+  fichier stocké ; `stances` et `structureBounds` ne sont lues par personne. Remarque du user : le décodeur est
+  public, un champ que LevelUp ne lit pas y est normal. Décision du user : le garde-fou
+  `replayDocumentReaders.guard.test.ts` est SUPPRIMÉ et la règle 18 de `CLAUDE.md` ne vise plus que ce que
+  LevelUp calcule et sert lui-même. Vérifié : la branche ne retire rien du décodeur (`require` inchangé,
+  `champsNonServis` et `typesNonServis` vides).
+- Médailles du rejeu : backlog, rattaché à la refonte de l'interface du rejeu.
+- Paquet `internal/platform/duckdb` : mesuré (419 s sous charge, 1 164 tests en série, cause principale la
+  migration rejouée par test). Décision du user : base migrée copiée par test, seule, hors périmètre de ce
+  plan : backlog.
+- Vrais identifiants de joueurs dans le dépôt public (constat d'enquête) : le user ne retient pas le sujet.
+- Backlog : onze entrées du 2026-11-17 (rejeu absent à générer, maillage Forge et Thunderhead, compression des
+  fichiers tactiques, quatre constats autour du décodeur, tests lents, médailles du rejeu, postures).
+- Sept valeurs intermédiaires de la note d'objectif lues par les tests seuls : gardées (accord du user).
+
 ## Découvertes (consignées, non traitées sauf mention)
 
 1. Test `MatchPositionsHeatmap.orientation.test.tsx` rouge sur `release/v8.3.0` (attend « rendu », le défaut est
    « plan » depuis `47b316e39b`). Bloque le gate : corrigé en G.
 2. ADR 0048 D-2 annonce une marge de rognage de 1,5 m, le code applique 0,5 m : corrigé en G avec l'amendement.
 3. ADR 0048 D-5 : une carte Forge au maillage illisible avertit et publie sans plan, l'ADR dit « erreur de la
-   cuisson ». Question posée au user.
-4. Fichiers tactiques `rasters/*.json` non compressés : 1,2 Go pour 1 455 matchs. Question posée au user.
-5. Médailles absentes du rejeu dans 11,9 % des matchs (événements sans nom). Question posée au user.
+   cuisson ». Traité : S.3 (on garde l'avertissement), cause au backlog.
+4. Fichiers tactiques `rasters/*.json` non compressés : 1,2 Go pour 1 455 matchs. Au backlog (accord du user).
+5. Médailles absentes du rejeu dans 11,9 % des matchs (événements sans nom). Au backlog, rattaché à la refonte du rejeu.
 6. Décodeur : verdict « lecture complète » du score faux en BTB et en Assaut ; `flagReturnS` jamais écrit ;
    lecture des tirs suffisante pour 12 % des joueurs d'un échantillon ; coup d'envoi de l'API à 5,3 s du film.
-7. `StatsRepository.LoadLUSRHistory` et `Q24LUSRHistory` sans appelant de production.
-8. Escouade : cadence de frags gonflée par les matchs sans durée (voir C.5).
+   Au backlog (accord du user).
+7. `StatsRepository.LoadLUSRHistory` et `Q24LUSRHistory` sans appelant de production. Traité : S.2.
+8. Escouade : cadence de frags gonflée par les matchs sans durée (voir C.5). Traité : S.1.
 9. `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`cmd/levelup`) échoue sous charge, passe seul.
 10. Le hook `go-vet` affiche des erreurs de contraintes de build sur des commandes sans CGO et passe quand même.
 11. `sgh_interlock.json` porte des chemins Windows absolus dans `degradations`.
 12. `zonesPuresDuCatalogue` (CLI `spawn-model`) double la projection de zones du service.
 13. Caches de compilation `go-build-sa-*` à rendre à la clôture (`disk-hygiene.ps1 -Lot`).
+14. Deux sondes de `internal/migration` (`psa_index_repro_msr_*_test.go`) citent encore `Q24LUSRHistory` en
+    commentaire (elles portent leur propre SQL).
+15. Escouade : un coéquipier dont les frags sont inconnus compte zéro frag au lieu d'être exclu du taux.
+16. Le paquet `internal/platform/duckdb` dépasse son budget de 300 s : au backlog (base migrée copiée par test).
+17. Le plan de refonte de l'interface du rejeu dit que le document ne porte ni sprints ni sauts : inexact
+    (`stances`) ; au backlog.

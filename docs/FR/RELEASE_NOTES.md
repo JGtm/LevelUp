@@ -12,6 +12,7 @@
 - **Pourquoi une réapparition ne peut pas être estimée** — quand la probabilité de réapparition sur la carte du rejeu, ou la lecture « Réapparitions adverses » de Tactique, ne peut pas être calculée, elle dit désormais pourquoi (pas de modèle, carte inconnue, pas assez de matchs sur la carte, pas de zone, pas de réapparition) au lieu de rester vide
 - **Les réapparitions ne s'appuient que sur le film** — un match dont le film n'a pas pu être lu n'a pas de lecture de réapparition, plutôt qu'une lecture devinée sur l'écart entre une mort et la vie suivante
 - **Les anciens rejeux non compressés ne sont plus lus** — un rejeu rangé en simple fichier `.json` par une ancienne version vaut « manquant », sans rien supprimer sur votre disque. Seuls les 64 matchs les plus récents voient leur rejeu refait tout seul (quelques-uns à chaque synchronisation, tant que le film est disponible) ; pour un match plus ancien, la page du rejeu dit qu'il n'y a pas de rejeu 2D, et l'application ne propose aucun bouton pour le générer. L'étape de compression et la commande `levelup replay compress` disparaissent, ainsi que le réglage `LEVELUP_SYNC_RESOLVE_ASSETS` (les noms sont toujours résolus)
+- **Escouade : un rythme plus juste** — les frags, morts et assistances par minute de l'Escouade ne comptent plus les matchs sans durée enregistrée, qui faisaient monter ces taux
 
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 
