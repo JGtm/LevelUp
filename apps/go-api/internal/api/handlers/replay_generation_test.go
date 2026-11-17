@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 )
 
@@ -193,5 +194,23 @@ func TestReplayGeneration_GetUnEtatParCas(t *testing.T) {
 	w = doGeneration(newGenerationRouter(&fakeReplayGeneration{err: errors.New("boom")}, nil), http.MethodGet, genTestMatch)
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("erreur interne : statut %d", w.Code)
+	}
+}
+
+// Base occupée par une synchronisation (bascule du fournisseur partagé en échec) : l'état comme la demande rendent
+// 503 db_busy avec Retry-After par le classement commun des erreurs, jamais 500 replay_generation_error.
+func TestReplayGeneration_BaseOccupeeRend503AvecRetryAfter(t *testing.T) {
+	occupee := fmt.Errorf("registre des matchs: %w", sharedprovider.ErrSwapTimeout)
+	for _, methode := range []string{http.MethodGet, http.MethodPost} {
+		w := doGeneration(newGenerationRouter(&fakeReplayGeneration{err: occupee}, nil), methode, genTestMatch)
+		if w.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s : statut %d, attendu 503 : %s", methode, w.Code, w.Body.String())
+		}
+		if got := decodeGeneration(t, w).Code; got != codeDBBusy {
+			t.Errorf("%s : code %q, attendu %q", methode, got, codeDBBusy)
+		}
+		if w.Header().Get("Retry-After") == "" {
+			t.Errorf("%s : Retry-After absent", methode)
+		}
 	}
 }

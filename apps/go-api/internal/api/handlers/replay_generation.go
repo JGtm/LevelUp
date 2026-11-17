@@ -106,7 +106,7 @@ func (h *ReplayGenerationHandler) handleStatus(ctx context.Context, in *replayGe
 		if mapped, ok := MapCapabilityError(ctx, err, probeReplayGeneration); ok {
 			return nil, mapped
 		}
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, codeReplayGenerationError, err)
+		return nil, mapServiceError(ctx, err, codeReplayGenerationError)
 	}
 	return &replayGenerationStatusOutput{Body: &st}, nil
 }
@@ -124,7 +124,9 @@ func (h *ReplayGenerationHandler) service(ctx context.Context, playerSlug, match
 }
 
 // refuseGeneration traduit un refus du service : capacité absente (503), file pleine (429, réessayable), film
-// indisponible et match non pris en charge (409, raison dans `details.reason`), file non reliée (503).
+// indisponible et match non pris en charge (409, raison dans `details.reason`), file non reliée (503). Toute autre erreur passe par
+// [mapServiceError] : base occupée par une synchronisation = 503 db_busy avec Retry-After, client parti = 499, le
+// reste 500 replay_generation_error.
 func refuseGeneration(ctx context.Context, err error) (*replayGenerationOutput, error) {
 	if mapped, ok := MapCapabilityError(ctx, err, probeReplayGeneration); ok {
 		return nil, mapped
@@ -142,7 +144,7 @@ func refuseGeneration(ctx context.Context, err error) (*replayGenerationOutput, 
 	case errors.Is(err, domain.ErrReplayGenerationUnbound):
 		return nil, humacore.NewErrorFrom(ctx, http.StatusServiceUnavailable, codeReplayGenerationUnavailable, err)
 	}
-	return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, codeReplayGenerationError, err)
+	return nil, mapServiceError(ctx, err, codeReplayGenerationError)
 }
 
 // replayGenerationRefusal : l'enveloppe d'erreur d'un refus à statut dynamique, de même forme que celle des erreurs Huma.
