@@ -540,7 +540,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [x] B.1 (fait le 2026-11-17 : `rowFits`, `largeurRequiseRangee`, cotes `COTES_RANGEE` ; un écart compté par fiche, soit 6 px de marge par camp) `model/rowLayout.ts`, pur : `rowFits({ camps, placesParCamp, largeurCorps, gabarit, largeurScore })`
       selon D-12 ; la largeur vient de `GABARIT_COMPACT` et des écarts de la rangée, aucun littéral de largeur
       de fiche. Tests : 4v4 à 1440 px (tient), 5v5 à 1440 px, 4v4 à 1280 px, Grande équipe, FFA.
-- [ ] B.2 `ui/ReplayTeamsRow.tsx` : `[fiches du camp de gauche] [bandeau de score] [fiches du camp de droite]` ;
+- [x] B.2 (fait le 2026-11-17 : `ui/ReplayTeamsRow.tsx`, `hooks/useCardRowLayout.ts` (largeur mesurée du corps), `dispositionEquipes` dans `model/rowLayout.ts` : rangée ordinaire jusqu'à 5 par camp (4 contre 4 = 1286 px), rangée Grande équipe de 6 à 12 par camp à partir de 1350 px (fiche minimale de 80 px, choix de l'agent), repli sur la colonne en lignes sinon, score alors sur la toile ; camp allié à gauche ; état « suivi » ajouté à la fiche ; au Plein cadre la rangée va bord à bord, sans les 24 px de K : à regarder à l'écran) `ui/ReplayTeamsRow.tsx` : `[fiches du camp de gauche] [bandeau de score] [fiches du camp de droite]` ;
       fiches = `ReplayPlayerCard` au gabarit compact (bouclier et santé en deux barres, grenades, équipement,
       tuiles d'attente comprises) ; `ReplayScoreBanner` au centre, à la largeur de sa cellule. Clic sur une fiche :
       `playerPanel.onCard` (ouvre D.3). Repli : quand `rowFits` est faux, le cadre rend la colonne du Standard
@@ -575,7 +575,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       arme | victime | lieu de la victime, C.1), sans fond ni bordure, plus récente en tête, défilant, titre = menu
       de filtre actuel. Les formes non-élimination du fil (objectifs, entrées et sorties, prises) gardent leur
       forme actuelle sur une ligne. Fixations des lignes comparées aux témoins 0.1 : seul le lieu change.
-- [ ] S.4 Montage : la grille du Standard devient carte | colonne de 360 px (équipes puis fil, le fil garde au
+- [x] S.4 (fait le 2026-11-17 : colonne de 360 px par `COTES_COLONNE_STANDARD`, équipes en lignes puis fil ; plancher du fil de 5 lignes (171 px, réserve de titre estimée et non mesurée) ; en Grande équipe une place sans rendu garde sa cellule ; le bloc arrondi commun carte et colonne de A-5 n'est PAS fait, la toile gardant son propre bloc (V5) : à juger à l'écran) Montage : la grille du Standard devient carte | colonne de 360 px (équipes puis fil, le fil garde au
       moins 5 lignes) ; la zone de lecture et le zoom restent ceux d'aujourd'hui ; les sections sous le lecteur
       (carte de chaleur, usage de l'équipement) inchangées. `ReplayTeams` et la colonne de 30 rem sortent du
       Standard ; ce qui n'a plus d'appelant est supprimé avec ses tests (règle 0 code mort), la fixation
