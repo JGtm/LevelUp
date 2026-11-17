@@ -170,7 +170,7 @@ func msrProbeForms(d msrProbeData) []msrProbeForm {
 	sq, sqArgs := msrProbeIn(d.matchIDs[n-1000:])
 	cur, curStart := d.matchIDs[n-1], d.starts[n-1]
 	return []msrProbeForm{
-		{"F1", "Q24LUSRHistory (platform/duckdb/queries_career_encounters.go)", `
+		{"F1", "instantané du 2026-09-27 ; requête supprimée le 2026-11-17", `
 SELECT msr.match_id, msr.rating_value, msr.rating_deviation, msr.playlist_group
 FROM match_skill_rank msr ORDER BY msr.match_id ASC`, nil, true},
 		{"F2", "Q26gPlaylistPhaseAMSRTpl, IN(200) (queries_home_citations.go)", `

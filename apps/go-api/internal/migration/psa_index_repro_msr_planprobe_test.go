@@ -31,7 +31,7 @@
 // mesurees et journalisees, hors critere.
 //
 // HISTORIQUE. Le critere d'origine (aucune forme > 10 ms sans index) a ete mesure NON
-// TENU le 2026-09-27 (poste a 87-100 % CPU) : F1 (Q24LUSRHistory, 12 000 lignes lues),
+// TENU le 2026-09-27 (poste a 87-100 % CPU) : F1 (instantané du 2026-09-27 ; requête supprimée le 2026-11-17, 12 000 lignes lues),
 // F2 (citations, IN(200)) et F3 (escouade, IN(1000)) depassaient 10 ms sans index, mais
 // AUTANT avec (meme plan sequentiel, 30/30) : le seuil absolu mesurait le cout de
 // lecture par le client Go et des listes IN, pas l'index. PROPOSITION de l'executant,
