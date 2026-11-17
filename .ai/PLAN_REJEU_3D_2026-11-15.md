@@ -349,6 +349,14 @@ Couches : la recherche vit dans la brique (`halo-infinite-map-images`), l'orches
       `himap.CandidatsInstallation(boutique)` (Steam : registre et `libraryfolders.vdf` ; Xbox : lecteurs fixes)
       et `himap.ValideDeploy(chemin)` (présence de `<racine>/<variante>/levels/multi`). Le littéral du chemin
       reste unique. Tests sur un faux arbre et un faux `libraryfolders.vdf`.
+      Fait le 2026-11-17, hors tag : code écrit et relu sur pièces par le pilote (vet et tests rejoués, aucun
+      chemin personnel), deux fonctions du lecteur `.vdf` découpées après un refus du lint, CI verte (tests
+      Linux et Windows, lint, vulnérabilités), demande de fusion 5 fusionnée dans `main` de la brique. Le tag
+      (version mineure) n'est PAS posé : il fige ces deux signatures sous la promesse de compatibilité ; il
+      se pose quand A.2 en a besoin, après la comparaison au source du contributeur (0.2). D'ici là LevelUp
+      peut viser une pseudo-version sur sa branche de travail (ADR 0043). Écarts retenus : `ValideDeploy` rend une erreur (nil = valide) qui dit ce qui manque ;
+      une bibliothèque Steam sans le jeu reste candidate, c'est `ValideDeploy` qui trie ; l'ancien format de
+      `libraryfolders.vdf` (sans clé `path`) n'est pas lu.
 - [ ] A.2 Réglage `replay_3d` (`etat` : `non_demande` | `refuse` | `actif` ; `deploy` : chemin absolu ; `plafond_cache` : octets, 20 Go par défaut ; `dossier` : chemin absolu,
       `<Data>/cache/replay3d` par défaut) :
   - champ `AppSettings`, types `domain.Replay3DSettings` / `Replay3DUpdate` ;
@@ -433,8 +441,17 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
       mini-carte (D-7, deux ou trois variantes, verrouillée au nord), contours à travers les murs (D-9) et
       repère « rejeu 3D » des listes (D-13, deux ou trois variantes sur une tuile, une ligne de tableau et
       le bouton de la page match).
-- [ ] C.1 Dépendance `three` (MIT), version exacte figée. Le lecteur `features/match-replay/three/Replay3D.tsx`
+      Publiée le 2026-11-17 : https://claude.ai/artifact/V3Ybivkczabep8oU7U15m8 (source :
+      `.ai/annexes_rejeu_3d/maquettes_c0.html`), dessinée dans les cadres validés de la refonte ; trois HUD,
+      trois places de mini-carte (elles règlent la rencontre avec le fil posé en bas à gauche du lecteur),
+      deux styles de contour, trois repères ; ligne posée dans l'artefact des vérifications. Fichier relu en
+      entier par le pilote, rendu non vérifié à l'écran. Reste le choix du user.
+- [x] C.1 Dépendance `three` (MIT), version exacte figée. Le lecteur `features/match-replay/three/Replay3D.tsx`
       se charge en différé (import dynamique) : aucun poids ajouté à la 2D ni à l'hébergé.
+      Fait le 2026-11-17 (`b1edd4d1bd` sur `feat/rejeu-3d`) : `three` et `@types/three` 0.187.0 exacts, point
+      d'entrée unique `Replay3DLazy`, garde-rail `threeImportBoundary.guard.test.ts` ; typecheck, 6 tests,
+      eslint, couleurs, imports entre features et knip verts, relus sur pièces par le pilote. À la réception
+      du source du contributeur (0.2) : comparer sa version de `three` à celle-ci.
 - [ ] C.2 Logique pure dans `features/match-replay/three/scene3dLogic.ts` (pose et animation d'un joueur à
       l'image fractionnaire, arme tenue, caméras), avec ses tests vitest. Le composant ne porte aucune
       logique métier. Code repris du contributeur avec crédit (D-1), adapté au document LevelUp (M-4).

@@ -318,7 +318,9 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 3. Lot 0 — préalables
 
-- [ ] 0.1 Témoins « avant » sur `feat/rejeu-refonte-ui` avant tout code : fixations DOM (vitest, rendu jsdom
+- [x] 0.1 (fait le 2026-11-17 : six fixations, 6 tests verts rejoués par le pilote ; la première livraison ne
+      couvrait ni le lieu du fil ni le bouton d'export, complétée sur relecture : `replayKillFeed.lieu`,
+      `replayTransport.export`, `replayTransport.exportEnCours`) Témoins « avant » sur `feat/rejeu-refonte-ui` avant tout code : fixations DOM (vitest, rendu jsdom
       avec le document de test `test/testDoc.ts`) de la ZONE DE LECTURE du Standard (`ReplayTransport` avec sa
       frise à pistes, et `ReplayZoomControl`), qui ne doit pas changer (D-8), et des lignes du fil, dont seul le
       lieu doit changer (D-5) ; rangées sous `apps/web/src/features/match-replay/ui/__fixtures__/` avec le suffixe
@@ -337,6 +339,10 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       fiche enrichie : un tableau de plus sur le canevas, la fiche J et la fenêtre L avec le contenu du lot T
       (compteurs, répartition des éliminations, estimations, grenades et ramassages, médailles, « En passant »).
       Validé par le user avant T.5 ; ses lignes entrent alors dans la grille.
+      Dessiné et publié le 2026-11-17 : tableau M du canevas (`FicheInstant.dc.html`, copie dans
+      `annexes_refonte_ui_rejeu/maquettes/`), trois panneaux (colonne du Standard pour un joueur lu en entier,
+      la même pour une lecture partielle, fenêtre du Cinéma et du Plein cadre) ; ligne posée dans l'artefact
+      des vérifications. Reste la validation du user.
 - **Gate 0** : 0.1 et 0.3 rendus ; écarts de 0.3 et éléments sans dessin tranchés par le user. 0.4 ne bloque
   que T.5.
 

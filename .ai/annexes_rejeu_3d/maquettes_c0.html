@@ -1,0 +1,832 @@
+<title>Maquettes rejeu 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0b0b; --bg-bar:#0f0f0f; --panel:#121212; --panel-2:#141414;
+  --line:#1f1f1f; --line-2:#262626; --line-3:#1c1c1c; --line-4:#3a3a3a;
+  --txt:#fafafa; --txt-2:#e5e5e5; --txt-3:#d4d4d4; --txt-4:#cfcfcf; --txt-5:#c4c4c4;
+  --mut:#9a9a9a; --mut-2:#8f8f8f; --mut-3:#7d7d7d; --mut-4:#5c5c5c; --mut-5:#3f3f3f;
+  --btn-on:#2a2a2a; --dom-neutral:#3a3a3a;
+  --ally:#4ade80; --enemy:#f87171; --follow:#60a5fa;
+  --ally-veil:rgba(74,222,128,.26); --enemy-veil:rgba(248,113,113,.26);
+  --follow-veil:rgba(96,165,250,.30); --follow-line:rgba(96,165,250,.6);
+  --shield:#5ec8f2; --health:#f2f2f2;
+  --accent:#fbbf24; --accent-ink:#1a1204;
+  --track:rgba(255,255,255,.12); --track-2:rgba(255,255,255,.1); --arc-track:rgba(255,255,255,.22);
+  --ring:rgba(255,255,255,.14);
+  --glass:rgba(11,11,11,.72); --glass-line:rgba(255,255,255,.14); --tag-bg:rgba(8,12,18,.82);
+  --black:#000; --white:#fff; --shade:rgba(0,0,0,.6);
+  --win-bg:rgba(74,222,128,.12); --win-line:rgba(74,222,128,.3);
+  --pill-bg:rgba(56,189,248,.15); --pill-ink:#38bdf8;
+  /* décor factice de la scène 3D */
+  --sc-sky:#18202b; --sc-ceil:#131a23; --sc-wall-l:#1e2835; --sc-wall-r:#233040; --sc-wall-b:#2a3647;
+  --sc-floor:#161c25; --sc-line:#2d3a4b; --sc-door:#0c1118; --sc-fig:#3a4656; --sc-fig-edge:#55657a;
+  --sc-crate:#2b3a4e; --sc-crate-top:#3a4c63; --sc-gun:#0e1218; --sc-gun-edge:#3b4859; --sc-vig:rgba(0,0,0,.55);
+  /* tracé « Plan » de la mini-carte */
+  --plan-wall:#b5b5b5; --plan-wall-2:#6c6c6c;
+}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+*{box-sizing:border-box}
+
+/* ---------- Page ---------- */
+.wrap{max-width:1472px;margin:0 auto;padding-block:0 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.ph{padding:24px 0 12px}
+.ph h1{font-size:22px;line-height:1.25;margin:0 0 6px;font-weight:700}
+.ph p{margin:0;color:var(--mut);max-width:78ch;font-size:14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;position:sticky;top:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line-2)}
+.tabs button{font:inherit;font-size:13.5px;font-weight:600;color:var(--mut);background:var(--panel-2);border:1px solid var(--line-2);border-radius:9px;padding:7px 14px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--btn-on);color:var(--txt);border-color:var(--line-4)}
+.tabs button:focus-visible{outline:2px solid var(--follow);outline-offset:2px}
+.panel[hidden]{display:none}
+.panel h2{font-size:18px;margin:22px 0 6px}
+.panel .lead{margin:0 0 4px;color:var(--txt-3);font-size:14px;max-width:84ch}
+.panel ul.cst{margin:6px 0 18px;padding-left:20px;color:var(--mut);font-size:13.5px;max-width:84ch}
+.panel ul.cst li{margin:2px 0}
+.var{margin:0 0 34px}
+.var figcaption{margin-top:10px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.vname{font-weight:700;font-size:15px;padding:2px 12px;border-radius:999px;background:var(--btn-on);color:var(--txt);white-space:nowrap}
+.vphr{color:var(--txt-3);font-size:14px;max-width:110ch}
+.grp{margin:0 0 8px;font-size:16px;font-weight:700;padding-top:8px;border-top:1px solid var(--line-2)}
+.note{margin:6px 0 28px;padding:10px 14px;border:1px dashed var(--line-4);border-radius:10px;color:var(--txt-3);font-size:13.5px;max-width:110ch}
+
+/* ---------- Mise à l'échelle des maquettes (dessinées à 1440 px) ---------- */
+:root{--s:1}
+.fit{width:calc(1440px * var(--s));height:calc(var(--h, 900px) * var(--s));overflow:hidden;border-radius:12px;box-shadow:0 0 0 1px var(--line-2)}
+.mock{width:1440px;height:var(--h, 900px);transform:scale(var(--s));transform-origin:0 0;background:var(--bg);color:var(--txt);font-size:13px;line-height:1.35;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums;position:relative}
+.mock *{box-sizing:border-box}
+.i{display:inline-block;flex:none;vertical-align:middle}
+
+/* ---------- Application (reprise des cadres validés) ---------- */
+.top{height:48px;flex:none;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--bg-bar)}
+.logo{font-weight:700;font-size:15px}
+.nav{display:flex;gap:20px;color:var(--mut-2)}
+.nav .on{color:var(--txt)}
+.avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;background:var(--btn-on)}
+.head{flex:none;height:52px;display:flex;align-items:center;gap:12px;padding:0 24px}
+.head .r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.page{width:1200px;margin:0 auto;display:flex;flex-direction:column}
+.head.std{height:64px;display:grid;grid-template-columns:minmax(0,1fr) 400px minmax(0,1fr);gap:16px;padding:0}
+.head.std .l{display:flex;align-items:center;gap:12px;min-width:0}
+.head.std .r{justify-content:flex-end}
+.back{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);color:var(--txt-3)}
+.crumb{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb small{color:var(--mut-2);font-size:12px;white-space:nowrap}
+.crumb b{font-size:15px;font-weight:600;white-space:nowrap}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line-2)}
+.seg span{height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:var(--mut);font-size:12.5px}
+.seg span.on{background:var(--btn-on);color:var(--txt)}
+.btn{height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);color:var(--txt-2);font-size:13px;white-space:nowrap}
+.ibtn{min-width:30px;height:30px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:var(--txt-3);font-size:12.5px;font-weight:500}
+.ibtn.on{background:var(--btn-on);color:var(--txt)}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--line-4);font-size:10.5px;color:var(--txt-4)}
+
+.mn{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 24px 8px}
+.mn.pc{padding:0 16px 6px}
+.band{flex:none;height:58px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 270px repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.tile{min-width:0;padding:7px 9px;border-radius:8px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between}
+.tile.follow{border-color:var(--follow-line)}
+.tile .r1{display:flex;align-items:center;gap:6px;min-width:0}
+.tile .r1 b{flex:1;min-width:0;font-weight:500;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.follow .r1 b{font-weight:700}
+.tile .r2{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--txt-4);height:13px}
+.tile.dead .r1 b,.tile.dead .kda,.tile.dead .ic{opacity:.4}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.kda{font-size:12px;white-space:nowrap}
+.kda span{color:var(--mut-4);margin:0 1px}
+.bars{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.bar{display:block;height:3px;border-radius:2px;background:var(--track);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.bar.bo i{background:var(--shield)}
+.bar.sa i{background:var(--health)}
+.resp{flex:1;font-size:11px;color:var(--enemy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{display:inline-flex;align-items:center;gap:2px;color:var(--txt-4);font-size:11px}
+.ic.off{color:var(--mut-5)}
+.score{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 4px}
+.sb{display:flex;align-items:center;gap:8px}
+.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:var(--track-2);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px var(--shade)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
+.score small{text-align:center;font-size:11px;color:var(--mut-3)}
+
+.vp{position:relative;border-radius:12px;background:var(--bg-bar);border:1px solid var(--line);overflow:hidden}
+.mn .vp{flex:1;min-height:0}
+.vp.std{height:600px;display:grid;grid-template-columns:minmax(0,1fr) 360px}
+.vp.full{flex:1}
+.stage{position:absolute;inset:0;overflow:hidden}
+.vp.std .stage{position:relative;inset:auto;min-width:0}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 55%,var(--sc-vig) 100%);pointer-events:none}
+.vctl{position:absolute;top:12px;right:16px;display:flex;align-items:center;gap:8px;z-index:4}
+.vctl .seg,.vctl .btn{background:var(--glass)}
+.zoom{position:absolute;right:16px;bottom:12px;z-index:4;display:flex;flex-direction:column;border-radius:8px;background:var(--glass);border:1px solid var(--glass-line);overflow:hidden}
+.zoom span{width:32px;height:30px;display:grid;place-items:center;color:var(--txt-3);font-size:16px}
+.zoom span + span{border-top:1px solid var(--glass-line)}
+
+.ofeed{position:absolute;left:16px;bottom:12px;width:350px;display:flex;flex-direction:column;z-index:3}
+.ofeed .fr{text-shadow:0 0 2px var(--black),0 0 6px var(--black),0 1px 2px var(--black)}
+.ofeed svg{filter:drop-shadow(0 0 2px var(--black))}
+.fr{display:grid;grid-template-columns:30px 86px 20px 86px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
+.fr > span{overflow:hidden;text-overflow:ellipsis}
+.fr .t{color:var(--mut-3);font-size:11.5px}
+.fr svg{color:var(--mut)}
+.fr .zn{color:var(--mut-2);font-size:11.5px}
+.fr.o1{opacity:.85}.fr.o2{opacity:.7}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fr .me{font-weight:700}
+
+.col{display:flex;flex-direction:column;gap:14px;padding:12px 14px;min-height:0;border-left:1px solid var(--line-3)}
+.sh{display:flex;align-items:center;gap:8px;height:20px;font-size:12px;font-weight:600;color:var(--txt-5)}
+.sh .mut{margin-left:auto;font-weight:400;font-size:11px;color:var(--mut-3)}
+.roster{display:flex;flex-direction:column}
+.hr{display:grid;grid-template-columns:minmax(0,1fr) 22px 24px 14px 54px;align-items:center;column-gap:6px;height:34px}
+.hr.hd{height:16px;font-size:10.5px;color:var(--mut-3)}
+.hr.hd span{text-align:right}
+.hr .nm{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hr .nm b{font-weight:500;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hr.follow .nm b{font-weight:700}
+.hr .nm b em{font-style:normal;font-weight:400;font-size:11px;color:var(--follow);margin-left:6px}
+.hr .bars{flex:none;width:130px}
+.hr .resp{flex:none;height:13px}
+.hr .ic{justify-content:flex-end}
+.hr .kda{text-align:right;font-size:12.5px}
+.hr.dead .nm b,.hr.dead .kda,.hr.dead .ic{opacity:.4}
+.feed{display:flex;flex-direction:column;min-height:0;overflow:hidden;border-top:1px solid var(--line-3);padding-top:12px}
+
+.tp{flex:none;height:56px;display:flex;align-items:center;gap:6px;padding:0 2px}
+.play{width:36px;height:36px;border-radius:50%;background:var(--txt);color:var(--bg);display:grid;place-items:center;flex:none}
+.time{font-size:12.5px;color:var(--mut);margin:0 4px;white-space:nowrap}
+.time b{color:var(--txt);font-weight:600}
+.scrub{position:relative;height:30px;flex:1;margin:0 10px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:var(--btn-on)}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--txt-2)}
+.dom{position:absolute;left:0;right:0;top:23px;height:3px;display:flex;border-radius:2px;overflow:hidden}
+.dom i{display:block;height:3px}
+.dom i.ta{background:var(--ally)}.dom i.tb{background:var(--enemy)}.dom i.tn{background:var(--dom-neutral)}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:var(--white);box-shadow:0 0 0 4px var(--ring)}
+.vsep{width:1px;height:20px;background:var(--line-2);margin:0 4px;flex:none}
+
+/* ---------- Décor factice ---------- */
+.s-sky{fill:var(--sc-sky)}
+.s-ceil{fill:var(--sc-ceil)}
+.s-wl{fill:var(--sc-wall-l)}
+.s-wr{fill:var(--sc-wall-r)}
+.s-wb{fill:var(--sc-wall-b)}
+.s-fl{fill:var(--sc-floor)}
+.s-door{fill:var(--sc-door)}
+.s-crate{fill:var(--sc-crate)}
+.s-crate-top{fill:var(--sc-crate-top)}
+.s-ln{stroke:var(--sc-line);stroke-width:1.4;fill:none}
+.fig{fill:var(--sc-fig);stroke:var(--sc-fig-edge);stroke-width:1.5;stroke-linejoin:round}
+.s-gun{fill:var(--sc-gun);stroke:var(--sc-gun-edge);stroke-width:2;stroke-linejoin:round}
+
+/* ---------- HUD ---------- */
+.hud{position:absolute;inset:0;z-index:2;pointer-events:none;color:var(--txt);text-shadow:0 0 2px var(--black),0 1px 3px var(--black)}
+.ret{position:absolute;left:50%;top:50%;width:0;height:0}
+.ret i{position:absolute;background:var(--white);box-shadow:0 0 2px var(--black)}
+.ret .h1{left:-14px;top:-1px;width:9px;height:2px}
+.ret .h2{left:5px;top:-1px;width:9px;height:2px}
+.ret .v1{top:-14px;left:-1px;width:2px;height:9px}
+.ret .v2{top:5px;left:-1px;width:2px;height:9px}
+.ret b{position:absolute;left:-1.5px;top:-1.5px;width:3px;height:3px;border-radius:50%;background:var(--white)}
+.jl{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--txt-5)}
+.jl span{width:52px;flex:none}
+.jl .bar{flex:1;height:6px}
+.eq{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700}
+.eq em{font-style:normal;font-weight:700}
+.chg{display:inline-block;width:34px;height:3px;border-radius:2px;background:var(--track);position:relative;overflow:hidden;vertical-align:middle}
+.chg i{position:absolute;left:0;top:0;bottom:0;background:var(--txt-2)}
+/* HUD A : bandeau bas centré */
+.ha{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:24px;padding:10px 18px;border-radius:12px;background:var(--glass);border:1px solid var(--glass-line);text-shadow:none}
+.ha .arme{display:flex;align-items:center;gap:10px}
+.ha .arme b{display:block;font-size:20px;font-weight:700;line-height:1.05}
+.ha .arme em{font-style:normal;font-size:13px;font-weight:500;color:var(--mut)}
+.ha .arme small{display:block;font-size:10.5px;color:var(--mut)}
+.ha .jauges{display:flex;flex-direction:column;gap:6px;width:240px}
+.ha .equip{display:flex;align-items:center;gap:14px}
+/* HUD B : coins */
+.hb-tl{position:absolute;left:16px;top:12px;width:210px;display:flex;flex-direction:column;gap:6px}
+.hb-br{position:absolute;right:24px;bottom:20px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.hb-br .mu{font-size:30px;font-weight:700;line-height:1}
+.hb-br .mu em{font-style:normal;font-size:16px;font-weight:500;color:var(--txt-5);margin-left:4px}
+.hb-br .an{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-5)}
+.hb-br .eqr{display:flex;align-items:center;gap:14px}
+/* HUD C : minimal, autour du réticule */
+.hc{position:absolute;left:50%;top:50%;width:0;height:0}
+.hc .arcs{position:absolute;left:-70px;top:-70px}
+.arc{fill:none;stroke-width:4;stroke-linecap:round}
+.arc.tr{stroke:var(--arc-track)}
+.arc.bo{stroke:var(--shield)}
+.arc.sa{stroke:var(--health)}
+.hc .tx{position:absolute;left:-70px;width:140px;top:60px;text-align:center}
+.hc .tx .mu{display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:700}
+.hc .tx .mu em{font-style:normal;font-weight:500;color:var(--txt-5);font-size:12px}
+.hc .tx .eqr{display:flex;justify-content:center;gap:12px;margin-top:3px}
+
+/* ---------- Mini-carte ---------- */
+.mm{position:absolute;z-index:3;border-radius:8px;background:var(--glass);border:1px solid var(--glass-line);overflow:hidden}
+.mm svg{display:block;width:100%;height:100%}
+.mm .n{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--txt-5);line-height:1;text-shadow:none}
+.mw{fill:none;stroke:var(--plan-wall);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.mw2{fill:none;stroke:var(--plan-wall-2);stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
+.mcone{fill:var(--follow-veil);stroke:var(--follow-line);stroke-width:.8;stroke-linejoin:round}
+.pa{fill:var(--ally);stroke:var(--bg);stroke-width:1}
+.pe{fill:var(--enemy);stroke:var(--bg);stroke-width:1}
+.pf{fill:var(--follow);stroke:var(--bg);stroke-width:1}
+.pfr{fill:none;stroke:var(--follow);stroke-width:1.2}
+
+/* ---------- Contours ---------- */
+.anno{position:absolute;z-index:5;padding:4px 10px;border-radius:6px;background:var(--tag-bg);border:1px solid var(--line-4);font-size:12.5px;color:var(--txt-3);white-space:nowrap}
+.s-hi{fill:var(--sc-crate-top)}
+.ct{fill:none;stroke-linejoin:round}
+.ct.al{stroke:var(--ally)}
+.ct.en{stroke:var(--enemy)}
+.ctA{stroke-width:2.5}
+.ctB{stroke-width:5}
+.ctB.al{fill:var(--ally-veil);filter:drop-shadow(0 0 6px var(--ally))}
+.ctB.en{fill:var(--enemy-veil);filter:drop-shadow(0 0 6px var(--enemy))}
+
+/* ---------- Repères des listes ---------- */
+.pl{flex:1;display:grid;grid-template-columns:444px minmax(0,1fr) 330px;gap:36px;padding:26px 40px 20px;background:var(--bg)}
+.pl h3{margin:0 0 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut-3);font-weight:700}
+.pair{display:flex;gap:24px}
+.lab{margin-top:10px;font-size:12px;color:var(--mut);text-align:center}
+.chip{display:inline-block;padding:1px 9px;border-radius:999px;background:var(--btn-on);color:var(--txt);font-size:11.5px;font-weight:700}
+.chip.v{background:var(--accent);color:var(--accent-ink)}
+.mtile{width:210px;border:1px solid var(--line-2);border-radius:12px;background:var(--panel);padding:12px;display:flex;flex-direction:column;gap:8px;text-align:center}
+.mtile h4{margin:0;font-size:13px;font-weight:600;line-height:1.25}
+.mtile small{color:var(--mut);font-size:11px;display:block}
+.mt-score{margin:0 -12px;padding:8px;font-size:22px;font-weight:700;line-height:1.1;background:var(--win-bg);border-top:1px solid var(--win-line);border-bottom:1px solid var(--win-line);color:var(--ally)}
+.mt-meta{min-height:32px;display:flex;align-items:center;justify-content:center;gap:10px}
+.pill{border-radius:999px;padding:2px 9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--pill-bg);color:var(--pill-ink)}
+.plc{font-size:10.5px;color:var(--mut)}
+.mt-kda{margin:0 -12px -12px;padding:8px;background:var(--panel-2);font-size:12px;color:var(--txt-4);border-radius:0 0 11px 11px}
+.mtab{border:1px solid var(--line-2);border-radius:10px;background:var(--panel);overflow:visible}
+.tr{display:grid;grid-template-columns:76px 78px minmax(0,1fr) 78px 70px;align-items:center;gap:8px;height:46px;padding:0 12px;font-size:12.5px;border-top:1px solid var(--line-3);color:var(--txt-3)}
+.tr.th{height:34px;border-top:0;font-size:11px;color:var(--mut-3);font-weight:600}
+.tr .rcell{display:flex;align-items:center;justify-content:center}
+.tr .win{color:var(--ally);font-weight:600}
+.mh{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.mh b{font-size:13px;font-weight:600;white-space:nowrap}
+.mh .sp{flex:1}
+.mh .btn{height:36px}
+.rows{display:flex;flex-direction:column;gap:12px}
+.rowlab{display:flex;align-items:center;gap:10px}
+.rowlab .chip{width:74px;text-align:center;flex:none}
+.rowlab .mh{flex:1}
+/* repère « rejeu » : actuel et variantes */
+.rb{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:28px;min-width:28px;border-radius:6px;border:1px solid var(--line-4);color:var(--mut)}
+.rb.w{padding:0 7px}
+.ri{position:relative;display:inline-flex;align-items:center;gap:3px;height:16px;color:var(--mut)}
+.rp{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-width:36px;border-radius:6px;border:1px solid var(--line-4);color:var(--txt-3)}
+.rp.w{padding:0 10px}
+.bdg{position:absolute;top:-6px;right:-7px;font-style:normal;font-size:8.5px;font-weight:800;line-height:1;padding:2px 3px;border-radius:4px;background:var(--accent);color:var(--accent-ink)}
+.ri .bdg{top:-6px;right:-10px}
+.lbl{font-style:normal;font-size:11px;font-weight:800;color:var(--accent);line-height:1}
+.rp .lbl{font-size:12.5px}
+.c3{color:var(--accent)}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ic-replay" viewBox="0 0 24 20">
+      <path d="M3.2 10.5C3.2 7 5.8 4.6 9.4 4.6H16.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M16 1.6 21.6 4.6 16 7.6Z" fill="currentColor"/>
+      <path d="M20.8 9.5C20.8 13 18.2 15.4 14.6 15.4H7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M8 12.4 2.4 15.4 8 18.4Z" fill="currentColor"/>
+      <path d="M10 7.4 15 10 10 12.6Z" fill="currentColor"/>
+    </symbol>
+    <symbol id="ic-replay3d" viewBox="0 0 24 20">
+      <path d="M3.2 10.5C3.2 7 5.8 4.6 9.4 4.6H16.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M16 1.6 21.6 4.6 16 7.6Z" fill="currentColor"/>
+      <path d="M20.8 9.5C20.8 13 18.2 15.4 14.6 15.4H7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M8 12.4 2.4 15.4 8 18.4Z" fill="currentColor"/>
+      <path d="M12 6.3 15.2 8.15V11.85L12 13.7 8.8 11.85V8.15Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      <path d="M12 10V13.7M12 10 8.8 8.15M12 10 15.2 8.15" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ic-gun" viewBox="0 0 22 10"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></symbol>
+    <symbol id="ic-nade" viewBox="0 0 12 14"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"/></symbol>
+    <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <g id="fig"><path d="M50 6C58 6 64 12 64 20C64 26 61 31 57 34L57 38L74 42C80 44 84 50 84 58L86 100L76 102L72 72L70 110L74 205L60 205L52 130L48 130L40 205L26 205L30 110L28 72L24 102L14 100L16 58C16 50 20 44 26 42L43 38L43 34C39 31 36 26 36 20C36 12 42 6 50 6Z"/></g>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="ph">
+    <h1>Rejeu 3D : les choix de dessin</h1>
+    <p>Quatre sujets, un par onglet. Réponds par exemple : « HUD B, mini-carte A, contours B, repère C ». Le décor est factice (formes abstraites) : seules comptent les places, les tailles et les formes. Les cadres de la page sont ceux de la refonte : cadres en icônes à droite de la barre de lecture, commutateur 2D / 3D et « Vue » superposés en haut à droite du lecteur, bouclier et santé en deux barres.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Sujets">
+    <button type="button" role="tab" id="t-hud" aria-controls="p-hud" aria-selected="true" data-tab="hud">1. HUD de la 3D</button>
+    <button type="button" role="tab" id="t-map" aria-controls="p-map" aria-selected="false" data-tab="map">2. Mini-carte</button>
+    <button type="button" role="tab" id="t-ctr" aria-controls="p-ctr" aria-selected="false" data-tab="ctr">3. Joueurs à travers les murs</button>
+    <button type="button" role="tab" id="t-rep" aria-controls="p-rep" aria-selected="false" data-tab="rep">4. Repère « rejeu 3D » des listes</button>
+  </div>
+
+  <!-- ========== 1. HUD ========== -->
+  <section class="panel" id="p-hud" role="tabpanel" aria-labelledby="t-hud">
+    <h2>HUD de la 3D</h2>
+    <p class="lead">Le HUD ne concerne que le joueur suivi : réticule, bouclier et santé, arme et munitions, grenades et équipement.</p>
+    <ul class="cst">
+      <li>Ni fil des éliminations ni score dans la 3D : la page les affiche déjà (fiches en rangée, score, fil posé sur le lecteur).</li>
+      <li>Les trois variantes sont montrées dans le cadre Cinéma ; la plus sobre (HUD C) l'est aussi en Standard et en Plein cadre.</li>
+      <li>La mini-carte n'est pas dessinée ici : elle a son onglet.</li>
+    </ul>
+
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-hud="a" data-label="HUD A dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">HUD A</span><span class="vphr">Un bandeau bas centré réunit tout (arme et munitions, deux barres, grenades, équipement) : le plus complet et le plus classique.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-hud="b" data-label="HUD B dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">HUD B</span><span class="vphr">Deux coins, sans fond : bouclier et santé en haut à gauche, arme, grenades et équipement en bas à droite, centre dégagé.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-hud="c" data-label="HUD C dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">HUD C</span><span class="vphr">Minimal : tout se lit autour du réticule (arcs pour le bouclier et la santé, munitions dessous) et aucun coin n'est occupé.</span></figcaption>
+    </figure>
+    <h3 class="grp">La variante la plus sobre (HUD C) dans les deux autres cadres</h3>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="standard" data-hud="c" data-label="HUD C dans le cadre Standard"></div>
+      <figcaption><span class="vname">HUD C · Standard</span><span class="vphr">Le même HUD dans la zone de 3D plus étroite : la colonne de droite garde les équipes et les éliminations.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="plein" data-hud="c" data-label="HUD C dans le cadre Plein cadre"></div>
+      <figcaption><span class="vname">HUD C · Plein cadre</span><span class="vphr">Le même HUD sur toute la fenêtre : la rangée de fiches et le fil restent à l'écran, le HUD n'y ajoute rien.</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== 2. Mini-carte ========== -->
+  <section class="panel" id="p-map" role="tabpanel" aria-labelledby="t-map" hidden>
+    <h2>Mini-carte</h2>
+    <p class="lead">Ce qui ne change pas : carrée, environ 22 % de la largeur du lecteur, écartée des bords, vue « Plan » (tracé des murs), centrée sur le joueur suivi, les autres joueurs en pions à la couleur de leur équipe, verrouillée au nord.</p>
+    <ul class="cst">
+      <li>Elle ne tourne jamais : seul le cône de vision (en bleu) tourne avec la caméra. Le « N » en haut rappelle le nord.</li>
+      <li>La question : en Cinéma et en Plein cadre, le fil des éliminations (5 lignes, sans fond) occupe déjà le bas gauche du lecteur. En Standard, le fil est dans la colonne et la commande de zoom est en bas à droite. « Vue » et 2D / 3D tiennent le haut droit.</li>
+      <li>Le Plein cadre se comporte comme le Cinéma ; le HUD n'est pas dessiné ici.</li>
+    </ul>
+
+    <h3 class="grp">Mini-carte A : bas gauche, le fil remonte au-dessus</h3>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-map="a" data-label="Mini-carte A dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">Mini-carte A</span><span class="vphr">En bas à gauche, à la place du fil, qui remonte juste au-dessus d'elle ; les trois autres coins ne bougent pas.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="standard" data-map="a" data-label="Mini-carte A dans le cadre Standard"></div>
+      <figcaption><span class="vname">Mini-carte A · Standard</span><span class="vphr">Le fil est dans la colonne : le bas gauche est libre, rien d'autre ne bouge.</span></figcaption>
+    </figure>
+
+    <h3 class="grp">Mini-carte B : bas droite, le fil reste en place</h3>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-map="b" data-label="Mini-carte B dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">Mini-carte B</span><span class="vphr">En bas à droite, loin du fil, qui reste exactement où il est aujourd'hui.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="standard" data-map="b" data-label="Mini-carte B dans le cadre Standard"></div>
+      <figcaption><span class="vname">Mini-carte B · Standard</span><span class="vphr">Elle prend le coin du zoom : la commande de zoom remonte juste au-dessus d'elle.</span></figcaption>
+    </figure>
+
+    <h3 class="grp">Mini-carte C : haut gauche, le fil reste en place</h3>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="cinema" data-map="c" data-label="Mini-carte C dans le cadre Cinéma"></div>
+      <figcaption><span class="vname">Mini-carte C</span><span class="vphr">En haut à gauche, le seul coin libre : le fil, le zoom et « Vue » ne bougent pas, mais elle s'éloigne du bas de l'écran où l'œil regarde le jeu.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="frame" data-cadre="standard" data-map="c" data-label="Mini-carte C dans le cadre Standard"></div>
+      <figcaption><span class="vname">Mini-carte C · Standard</span><span class="vphr">Même place en haut à gauche ; le zoom reste en bas à droite.</span></figcaption>
+    </figure>
+
+    <p class="note">Croisement avec le HUD : le HUD B (arme en bas à droite) et la mini-carte B (bas droite) se disputent le même coin ; le HUD A (bandeau bas centré) tient à côté de n'importe quelle mini-carte ; le HUD C ne touche aucun coin.</p>
+  </section>
+
+  <!-- ========== 3. Contours ========== -->
+  <section class="panel" id="p-ctr" role="tabpanel" aria-labelledby="t-ctr" hidden>
+    <h2>Joueurs vus à travers les murs</h2>
+    <p class="lead">Un joueur caché par un mur n'apparaît que par son contour, à la couleur de son équipe. Un joueur visible n'a pas de contour. Même scène dans les trois dessins : deux joueurs cachés (un coéquipier, un adversaire) et deux joueurs visibles.</p>
+    <ul class="cst">
+      <li>Seul et Masquer s'appliquent aussi aux contours.</li>
+      <li>Les étiquettes grises sont des annotations de maquette, pas de l'interface.</li>
+    </ul>
+    <figure class="var">
+      <div class="fit" data-kind="contour" data-v="avant" data-label="Avant : aucun contour"></div>
+      <figcaption><span class="vname">Avant</span><span class="vphr">Les joueurs cachés derrière un mur n'apparaissent pas du tout.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="contour" data-v="a" data-label="Contours A"></div>
+      <figcaption><span class="vname">Contours A</span><span class="vphr">Trait fin continu à la couleur de l'équipe, intérieur vide : discret, mais moins lisible sur un décor chargé.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="contour" data-v="b" data-label="Contours B"></div>
+      <figcaption><span class="vname">Contours B</span><span class="vphr">Trait épais, silhouette voilée à la couleur de l'équipe et léger halo : lisible de loin, mais plus présent à l'écran.</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== 4. Repères ========== -->
+  <section class="panel" id="p-rep" role="tabpanel" aria-labelledby="t-rep" hidden>
+    <h2>Repère « rejeu 3D » dans les listes</h2>
+    <p class="lead">Quand la 3D est disponible pour un match, le repère « rejeu 3D » prend la place du repère « rejeu » actuel ; sinon le repère actuel reste. Chaque variante est montrée sur une tuile de match, une ligne de tableau et le bouton de la page du match, avec le repère actuel à côté pour comparer.</p>
+    <ul class="cst">
+      <li>L'icône actuelle est celle de la boucle avec le triangle de lecture ; ses tailles sont celles de l'application (tuile : bouton de 28 px ; tableau : 20 par 16 px ; page du match : bouton de 36 px).</li>
+      <li>La couleur ambre n'est qu'un exemple pour la distinguer ; elle serait prise parmi les couleurs de l'application.</li>
+    </ul>
+    <figure class="var">
+      <div class="fit" data-kind="planche" data-v="a" data-label="Repère A sur une tuile, une ligne de tableau et le bouton de la page du match"></div>
+      <figcaption><span class="vname">Repère A</span><span class="vphr">Le dessin actuel, inchangé, avec une petite pastille « 3D » accrochée au coin.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="planche" data-v="b" data-label="Repère B sur une tuile, une ligne de tableau et le bouton de la page du match"></div>
+      <figcaption><span class="vname">Repère B</span><span class="vphr">Le dessin actuel suivi du mot « 3D » écrit à côté : le plus explicite, mais le plus large.</span></figcaption>
+    </figure>
+    <figure class="var">
+      <div class="fit" data-kind="planche" data-v="c" data-label="Repère C sur une tuile, une ligne de tableau et le bouton de la page du match"></div>
+      <figcaption><span class="vname">Repère C</span><span class="vphr">Un dessin neuf (un cube au centre de la boucle), teinté, sans texte : même encombrement qu'aujourd'hui.</span></figcaption>
+    </figure>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Outils ---------- */
+  var HEIGHTS = { cinema: 900, plein: 900, standard: 784 };
+
+  function ic(id, w, h) {
+    return '<svg class="i" width="' + w + '" height="' + h + '" aria-hidden="true"><use href="#' + id + '"/></svg>';
+  }
+  function bar(kind, pct) {
+    return '<span class="bar ' + kind + '"><i style="width:' + pct + '%"></i></span>';
+  }
+
+  /* ---------- Données factices ---------- */
+  var P = [
+    { n: 'Alpha',  t: 'a', k: 1, d: 4, a: 1, s: 80,  v: 100, g: 2, e: 1, f: 1 },
+    { n: 'Brume',  t: 'a', k: 8, d: 5, a: 2, s: 100, v: 100, g: 2, e: 1 },
+    { n: 'Cobalt', t: 'a', k: 7, d: 2, a: 2, s: 60,  v: 92,  g: 0, e: 0 },
+    { n: 'Dune',   t: 'a', k: 7, d: 4, a: 4, s: 0,   v: 64,  g: 1, e: 0 },
+    { n: 'Écume',  t: 'b', k: 5, d: 4, a: 1, s: 100, v: 88,  g: 2, e: 1 },
+    { n: 'Furie',  t: 'b', k: 4, d: 6, a: 3, dead: '5,8 s', g: 0, e: 0 },
+    { n: 'Givre',  t: 'b', k: 3, d: 6, a: 0, s: 20,  v: 35,  g: 2, e: 0 },
+    { n: 'Hélios', t: 'b', k: 3, d: 7, a: 1, s: 100, v: 100, g: 2, e: 0 }
+  ];
+  var FIL = [
+    ['3:14', 'Dune',  'a', 'Givre',  'Passerelle nord'],
+    ['3:22', 'Furie', 'b', 'Brume',  'Atrium'],
+    ['3:22', 'Alpha', 'a', 'Écume',  'Cour sud'],
+    ['3:37', 'Brume', 'a', 'Furie',  'Atrium'],
+    ['3:42', 'Givre', 'b', 'Alpha',  'Passerelle nord']
+  ];
+  var TICKS = [[18,'a'],[29,'b'],[44,'a'],[52,'a'],[70,'b'],[83,'a'],[97,'a'],[110,'b'],[121,'a'],[135,'a'],[150,'b'],[162,'a'],[169,'a'],[181,'a'],[182,'b'],[193,'a'],[202,'b'],[214,'a'],[217,'a'],[222,'b'],[229,'a'],[247,'a'],[256,'b'],[268,'a'],[281,'a'],[300,'b'],[312,'a'],[333,'a'],[351,'b'],[366,'a'],[384,'a'],[401,'b'],[420,'a'],[437,'a'],[455,'b']];
+  var DOM = [[3,'b'],[1,'n'],[16,'b'],[6,'n'],[74,'a']];
+  var PINS = [['a', 30, 38], ['a', 40, 70], ['a', 66, 33], ['b', 74, 56], ['b', 20, 58], ['b', 58, 84]];
+
+  /* ---------- Éléments d'interface repris des cadres validés ---------- */
+  var TOP = '<header class="top"><span class="logo">LevelUp</span><nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav><span class="avatar"></span></header>';
+  var BACK = '<span class="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></span>';
+  var CRUMB = '<div class="crumb"><small>Alpha · Partie rapide · 10 nov. 2026, 21:40</small><b>Assassin en équipe — Détachement</b></div>';
+  var FICHE = '<span class="btn">Fiche</span>';
+  var SLIDERS = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>';
+  var SCORE_BARS = '<div class="sb" role="group"><div class="sbar l"><i style="width:46%"></i><b>23</b></div><div class="sclk">3:51</div><div class="sbar r"><i style="width:30%"></i><b>15</b></div></div>';
+
+  function tile(p) {
+    var r2 = p.dead
+      ? '<span class="resp">Réapparition ' + p.dead + '</span>'
+      : '<span class="bars">' + bar('bo', p.s) + bar('sa', p.v) + '</span>';
+    return '<div class="tile' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : '') + '">'
+      + '<div class="r1"><span class="dot ' + p.t + '"></span><b>' + p.n + '</b><span class="kda">' + p.k + '<span>/</span>' + p.d + '<span>/</span>' + p.a + '</span></div>'
+      + '<div class="r2">' + r2
+      + '<span class="ic' + (p.g ? '' : ' off') + '">' + ic('ic-nade', 9, 11) + p.g + '</span>'
+      + '<span class="ic' + (p.e ? '' : ' off') + '">' + ic('ic-bolt', 11, 11) + '</span></div></div>';
+  }
+  function band() {
+    var A = P.filter(function (p) { return p.t === 'a'; }).map(tile).join('');
+    var B = P.filter(function (p) { return p.t === 'b'; }).map(tile).join('');
+    return '<div class="band">' + A
+      + '<div class="score" role="group">' + SCORE_BARS + '<small>Premier à 50 éliminations</small></div>'
+      + B + '</div>';
+  }
+  function filRow(f, cls) {
+    var kc = (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'Alpha' ? ' me' : '');
+    var vc = (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'Alpha' ? ' me' : '');
+    return '<div class="fr' + (cls || '') + '"><span class="t">' + f[0] + '</span><span class="' + kc + '">' + f[1] + '</span>'
+      + ic('ic-gun', 20, 9) + '<span class="' + vc + '">' + f[3] + '</span><span class="zn">' + f[4] + '</span></div>';
+  }
+  function filOverlay(bottom) {
+    var rows = FIL.map(function (f, i) { return filRow(f, i < 2 ? ' o' + (2 - i) : ''); }).join('');
+    return '<div class="ofeed" style="bottom:' + bottom + 'px">' + rows + '</div>';
+  }
+  function rosterRow(p) {
+    var body = p.dead
+      ? '<div class="resp">Réapparition dans ' + p.dead + '</div>'
+      : '<div class="bars">' + bar('bo', p.s) + bar('sa', p.v) + '</div>';
+    return '<div class="hr' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : '') + '">'
+      + '<div class="nm"><b>' + p.n + (p.f ? '<em>suivi</em>' : '') + '</b>' + body + '</div>'
+      + '<span class="ic">' + ic('ic-gun', 20, 9) + '</span>'
+      + '<span class="ic' + (p.g ? '' : ' off') + '">' + ic('ic-nade', 9, 11) + p.g + '</span>'
+      + '<span class="ic' + (p.e ? '' : ' off') + '">' + ic('ic-bolt', 11, 11) + '</span>'
+      + '<div class="kda">' + p.k + '<span>/</span>' + p.d + '<span>/</span>' + p.a + '</div></div>';
+  }
+  function column() {
+    function team(t, nom) {
+      var rows = P.filter(function (p) { return p.t === t; }).map(rosterRow).join('');
+      var head = t === 'a'
+        ? '<div class="hr hd"><span></span><span>Arme</span><span>Gr.</span><span>Éq.</span><span>F / M / A</span></div>'
+        : '';
+      return '<div class="roster"><div class="sh"><span class="dot ' + t + '"></span>' + nom + '</div>' + head + rows + '</div>';
+    }
+    var feed = FIL.slice().reverse().slice(0, 4).map(function (f) { return filRow(f, ''); }).join('');
+    return '<div class="col">' + team('a', 'Eagle') + team('b', 'Cobra')
+      + '<div class="feed"><div class="sh">Éliminations<span class="mut">Filtrer</span></div>' + feed + '</div></div>';
+  }
+
+  var CADRE_ICON = {
+    standard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M15 5v14"></path></svg>',
+    cinema: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 9.5h18"></path></svg>',
+    plein: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" fill-opacity=".35" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect></svg>'
+  };
+  var CADRE_TITLE = { standard: 'Cadre Standard', cinema: 'Cadre Cinéma (T)', plein: 'Cadre Plein cadre (F)' };
+
+  function transport(cadre) {
+    var cadres = ['standard', 'cinema', 'plein'].map(function (c) {
+      return '<span class="ibtn' + (c === cadre ? ' on' : '') + '" title="' + CADRE_TITLE[c] + '">' + CADRE_ICON[c] + '</span>';
+    }).join('');
+    var scrub = '<div class="scrub"><div class="ticks">'
+      + TICKS.map(function (k) { return '<i class="t' + k[1] + '" style="left:' + (k[0] / 465 * 100).toFixed(2) + '%"></i>'; }).join('')
+      + '</div><div class="rail"><i style="width:49.7%"></i></div><div class="dom">'
+      + DOM.map(function (d) { return '<i class="t' + d[1] + '" style="width:' + d[0] + '%"></i>'; }).join('')
+      + '</div><span class="knob" style="left:calc(49.7% - 6px)"></span></div>';
+    var milieu = cadre === 'standard'
+      ? '<span class="ibtn">1×</span><span style="flex:1"></span>'
+      : scrub + '<span class="ibtn">1×</span><span class="vsep"></span><span class="ibtn">−</span><span class="ibtn">+</span>';
+    return '<div class="tp">'
+      + '<span class="ibtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></span>'
+      + '<span class="ibtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></span>'
+      + '<span class="vsep"></span>'
+      + '<span class="play"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></span>'
+      + '<span class="ibtn">−10</span><span class="ibtn">+10</span>'
+      + '<span class="time"><b>3:51</b> / 7:45</span>'
+      + milieu
+      + '<span class="vsep"></span>'
+      + '<span class="ibtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></span>'
+      + '<span class="ibtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></span>'
+      + '<span class="ibtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></span>'
+      + '<span class="vsep"></span>' + cadres
+      + '</div>';
+  }
+
+  /* ---------- Décor factice de la scène 3D ---------- */
+  var SCENE = '<svg class="scene" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'
+    + '<rect class="s-sky" width="1000" height="500"/>'
+    + '<polygon class="s-ceil" points="0,0 1000,0 673,157 327,157"/>'
+    + '<polygon class="s-wl" points="0,0 327,157 327,330 0,500"/>'
+    + '<polygon class="s-wr" points="1000,0 673,157 673,330 1000,500"/>'
+    + '<polygon class="s-fl" points="0,500 327,330 673,330 1000,500"/>'
+    + '<rect class="s-wb" x="327" y="157" width="346" height="173"/>'
+    + '<rect class="s-door" x="462" y="205" width="76" height="125"/>'
+    + '<path class="s-ln" d="M0 192L327 192M0 243L327 243M0 295L327 295M1000 192L673 192M1000 243L673 243M1000 295L673 295"/>'
+    + '<path class="s-ln" d="M327 330L0 500M379 330L150 500M431 330L300 500M465 330L400 500M535 330L600 500M569 330L700 500M621 330L850 500M673 330L1000 500"/>'
+    + '<path class="s-ln" d="M289 350H711M231 380H769M154 420H846M58 470H942"/>'
+    + '<use href="#fig" class="fig" transform="translate(473 216) scale(.55)"/>'
+    + '<use href="#fig" class="fig" transform="translate(585 283) scale(.4)"/>'
+    + '<use href="#fig" class="fig" transform="translate(95 245) scale(.9)"/>'
+    + '<polygon class="s-crate-top" points="720,370 750,352 880,352 850,370"/>'
+    + '<rect class="s-crate" x="720" y="370" width="130" height="95"/>'
+    + '<g class="s-gun"><path d="M620 500L650 440L760 420L860 428L900 452L1000 462L1000 500Z"/><path d="M700 424L790 408L835 414L800 432Z"/></g>'
+    + '</svg>';
+
+  /* ---------- HUD ---------- */
+  var RET = '<div class="ret"><i class="h1"></i><i class="h2"></i><i class="v1"></i><i class="v2"></i><b></b></div>';
+
+  function hud(v) {
+    if (v === 'a') {
+      return '<div class="hud">' + RET + '<div class="ha">'
+        + '<div class="arme">' + ic('ic-gun', 34, 15) + '<div><b>24 <em>/ 192</em></b><small>Fusil d\'assaut</small></div></div>'
+        + '<div class="jauges"><div class="jl"><span>Bouclier</span>' + bar('bo', 80) + '</div><div class="jl"><span>Santé</span>' + bar('sa', 100) + '</div></div>'
+        + '<div class="equip"><span class="eq">' + ic('ic-nade', 11, 13) + '2</span><span class="eq">' + ic('ic-bolt', 14, 14) + '1</span></div>'
+        + '</div></div>';
+    }
+    if (v === 'b') {
+      return '<div class="hud">' + RET
+        + '<div class="hb-tl"><div class="jl"><span>Bouclier</span>' + bar('bo', 80) + '</div><div class="jl"><span>Santé</span>' + bar('sa', 100) + '</div></div>'
+        + '<div class="hb-br"><div class="mu">24<em>/ 192</em></div>'
+        + '<div class="an">' + ic('ic-gun', 26, 12) + 'Fusil d\'assaut</div>'
+        + '<div class="eqr"><span class="eq">' + ic('ic-nade', 11, 13) + '2</span><span class="eq">' + ic('ic-bolt', 14, 14) + '<span class="chg"><i style="width:100%"></i></span></span></div>'
+        + '</div></div>';
+    }
+    if (v === 'c') {
+      var arcs = '<svg class="arcs" width="140" height="140" viewBox="0 0 140 140" aria-hidden="true">'
+        + '<path class="arc tr" d="M25.9 42.4A52 52 0 0 0 25.9 97.6"/>'
+        + '<path class="arc tr" d="M114.1 42.4A52 52 0 0 1 114.1 97.6"/>'
+        + '<path class="arc bo" pathLength="100" stroke-dasharray="80 100" d="M25.9 42.4A52 52 0 0 0 25.9 97.6"/>'
+        + '<path class="arc sa" pathLength="100" stroke-dasharray="100 100" d="M114.1 42.4A52 52 0 0 1 114.1 97.6"/>'
+        + '</svg>';
+      return '<div class="hud"><div class="hc">' + arcs + RET
+        + '<div class="tx"><div class="mu">' + ic('ic-gun', 20, 9) + '24<em>/ 192</em></div>'
+        + '<div class="eqr"><span class="eq">' + ic('ic-nade', 9, 11) + '2</span><span class="eq">' + ic('ic-bolt', 12, 12) + '1</span></div></div>'
+        + '</div></div>';
+    }
+    return '';
+  }
+
+  /* ---------- Mini-carte ---------- */
+  function miniMap(v, stageW) {
+    var S = Math.round(stageW * 0.22);
+    var pos = v === 'a' ? 'left:16px;bottom:16px'
+      : v === 'b' ? 'right:16px;bottom:16px'
+      : 'left:16px;top:12px';
+    var pins = PINS.map(function (p) {
+      return '<circle class="' + (p[0] === 'a' ? 'pa' : 'pe') + '" cx="' + p[1] + '" cy="' + p[2] + '" r="3.2"/>';
+    }).join('');
+    var walls = 'M8 14H40V28H30V40H12V62H24V78H44V90H70V80H88V58H80V44H92V22H70V10H52V20H40'
+      + 'M30 40H44V52M44 62H60V72M60 52H76V62M52 28H62V40H56';
+    var inner = 'M16 48H24M84 68H72V74';
+    return '<div class="mm" style="width:' + S + 'px;height:' + S + 'px;' + pos + '">'
+      + '<svg viewBox="0 0 100 100" aria-hidden="true">'
+      + '<path class="mw" d="' + walls + '"/><path class="mw2" d="' + inner + '"/>'
+      + '<path class="mcone" d="M50 50L55 26.5A24 24 0 0 1 72.2 41Z"/>'
+      + pins
+      + '<circle class="pf" cx="50" cy="50" r="2.8"/><circle class="pfr" cx="50" cy="50" r="4.6"/>'
+      + '</svg><span class="n">N</span></div>';
+  }
+
+  function stage(cadre, hudV, mapV) {
+    var w = cadre === 'standard' ? 838 : (cadre === 'plein' ? 1408 : 1390);
+    var s = '<div class="stage">' + SCENE + '<div class="vig"></div>' + hud(hudV);
+    if (mapV !== 'none') s += miniMap(mapV, w);
+    if (cadre !== 'standard') {
+      var filBottom = (mapV === 'a') ? 16 + Math.round(w * 0.22) + 10 : 12;
+      s += filOverlay(filBottom);
+    }
+    s += '<div class="vctl"><div class="seg"><span>2D</span><span class="on">3D</span></div><span class="btn">' + SLIDERS + 'Vue</span></div>';
+    if (cadre === 'standard') {
+      var zb = (mapV === 'b') ? 16 + Math.round(w * 0.22) + 8 : 12;
+      s += '<div class="zoom" style="bottom:' + zb + 'px"><span>+</span><span>−</span></div>';
+    }
+    return s + '</div>';
+  }
+
+  function buildFrame(cadre, hudV, mapV) {
+    var st = stage(cadre, hudV, mapV);
+    if (cadre === 'standard') {
+      return TOP + '<div class="page">'
+        + '<div class="head std"><div class="l">' + BACK + CRUMB + '</div>' + SCORE_BARS + '<div class="r">' + FICHE + '</div></div>'
+        + '<div class="vp std">' + st + column() + '</div>'
+        + transport('standard') + '</div>';
+    }
+    if (cadre === 'plein') {
+      return '<div class="head" style="padding:0 16px"><span class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg>Quitter <span class="kbd">Échap</span></span>' + CRUMB + '</div>'
+        + '<main class="mn pc">' + band() + '<div class="vp">' + st + '</div>' + transport('plein') + '</main>';
+    }
+    return TOP + '<div class="head">' + BACK + CRUMB + '<div class="r">' + FICHE + '</div></div>'
+      + '<main class="mn">' + band() + '<div class="vp">' + st + '</div>' + transport('cinema') + '</main>';
+  }
+
+  /* ---------- Contours à travers les murs ---------- */
+  function buildContour(v) {
+    function fig(cls, x, y, sc) {
+      return '<use href="#fig" class="' + cls + '" transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"/>';
+    }
+    var svg = '<svg class="scene" viewBox="0 0 1440 520" preserveAspectRatio="none" aria-hidden="true">'
+      + '<rect class="s-sky" width="1440" height="520"/>'
+      + '<rect class="s-wb" x="0" y="110" width="1440" height="225"/>'
+      + '<polygon class="s-fl" points="0,335 1440,335 1440,520 0,520"/>'
+      + '<path class="s-ln" d="M0 365H1440M0 405H1440M0 455H1440M0 515H1440"/>'
+      + '<path class="s-ln" d="M720 335L0 520M720 335L240 520M720 335L480 520M720 335L720 520M720 335L960 520M720 335L1200 520M720 335L1440 520"/>'
+      + fig('fig', 325, 238, 1) + fig('fig', 1015, 242, 0.98)
+      + '<rect class="s-crate" x="230" y="70" width="300" height="430"/><rect class="s-hi" x="230" y="70" width="300" height="9"/>'
+      + '<rect class="s-crate" x="920" y="70" width="300" height="430"/><rect class="s-hi" x="920" y="70" width="300" height="9"/>'
+      + '<path class="s-ln" d="M230 200H530M230 340H530M920 200H1220M920 340H1220"/>'
+      + fig('fig', 690, 262, 1) + fig('fig', 1290, 268, 0.95);
+    var tags = '';
+    if (v === 'avant') {
+      tags = '<span class="anno" style="left:236px;top:22px">Coéquipier derrière le mur : rien à l\'écran</span>'
+        + '<span class="anno" style="left:926px;top:22px">Adversaire derrière le mur : rien à l\'écran</span>';
+    } else {
+      var k = v === 'a' ? 'ctA' : 'ctB';
+      svg += '<use href="#fig" class="ct ' + k + ' al" transform="translate(325 238) scale(1)"/>'
+        + '<use href="#fig" class="ct ' + k + ' en" transform="translate(1015 242) scale(.98)"/>';
+      tags = '<span class="anno" style="left:236px;top:22px">Coéquipier caché : contour vert</span>'
+        + '<span class="anno" style="left:926px;top:22px">Adversaire caché : contour rouge</span>';
+    }
+    svg += '</svg>';
+    tags += '<span class="anno" style="left:600px;top:222px">Joueur visible : aucun contour</span>'
+      + '<span class="anno" style="left:1236px;top:232px">Joueur visible : aucun contour</span>';
+    return '<div class="vp full">' + svg + '<div class="vig"></div>' + tags + '</div>';
+  }
+
+  /* ---------- Repères « rejeu » des listes ---------- */
+  function mark(kind, variant) {
+    /* kind : 'b' bouton de tuile, 'r' cellule de tableau, 'p' bouton de la page du match */
+    var sizes = { b: [18, 15], r: [20, 16], p: [24, 20] };
+    var wh = sizes[kind];
+    var cls = { b: 'rb', r: 'ri', p: 'rp' }[kind];
+    var base = ic('ic-replay', wh[0], wh[1]);
+    if (variant === 'cur') return '<span class="' + cls + '">' + base + '</span>';
+    if (variant === 'a') return '<span class="' + cls + '">' + base + '<em class="bdg">3D</em></span>';
+    if (variant === 'b') return '<span class="' + cls + ' w">' + base + '<em class="lbl">3D</em></span>';
+    return '<span class="' + cls + ' c3">' + ic('ic-replay3d', wh[0], wh[1]) + '</span>';
+  }
+  function matchTile(variant) {
+    return '<div class="mtile"><div><h4>Assassin en équipe</h4><small>Détachement · Partie rapide</small></div>'
+      + '<div class="mt-score">50 – 41</div>'
+      + '<div class="mt-meta"><span class="pill">Escouade</span><span class="plc">#2</span>' + mark('b', variant) + '</div>'
+      + '<div class="mt-kda">12 / 7 / 5</div></div>';
+  }
+  function tabRow(label, variant) {
+    return '<div class="tr"><span><span class="chip' + (variant === 'cur' ? '' : ' v') + '">' + label + '</span></span>'
+      + '<span>10 nov.</span><span>Assassin en équipe</span><span class="win">50 – 41</span>'
+      + '<span class="rcell">' + mark('r', variant) + '</span></div>';
+  }
+  function pageRow(label, variant) {
+    return '<div class="rowlab"><span class="chip' + (variant === 'cur' ? '' : ' v') + '">' + label + '</span>'
+      + '<div class="mh"><b>Assassin en équipe</b><span class="sp"></span>' + mark('p', variant) + '</div></div>';
+  }
+  function buildPlanche(v) {
+    var L = 'Repère ' + v.toUpperCase();
+    return '<div class="pl">'
+      + '<div><h3>Tuile de match</h3><div class="pair">'
+      + '<div>' + matchTile('cur') + '<div class="lab"><span class="chip">Actuel</span></div></div>'
+      + '<div>' + matchTile(v) + '<div class="lab"><span class="chip v">' + L + '</span></div></div>'
+      + '</div></div>'
+      + '<div><h3>Ligne de tableau</h3><div class="mtab">'
+      + '<div class="tr th"><span>Repère</span><span>Date</span><span>Mode — carte</span><span>Score</span><span style="text-align:center">Rejeu</span></div>'
+      + tabRow('Actuel', 'cur') + tabRow(L, v) + '</div></div>'
+      + '<div><h3>Bouton de la page du match</h3><div class="rows">'
+      + pageRow('Actuel', 'cur') + pageRow(L, v) + '</div></div>'
+      + '</div>';
+  }
+
+  /* ---------- Construction des maquettes ---------- */
+  function build() {
+    var els = document.querySelectorAll('.fit');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var kind = el.getAttribute('data-kind');
+      var html, h;
+      if (kind === 'frame') {
+        var cadre = el.getAttribute('data-cadre');
+        html = buildFrame(cadre, el.getAttribute('data-hud') || 'none', el.getAttribute('data-map') || 'none');
+        h = HEIGHTS[cadre];
+      } else if (kind === 'contour') {
+        html = buildContour(el.getAttribute('data-v'));
+        h = 520;
+      } else {
+        html = buildPlanche(el.getAttribute('data-v'));
+        h = 340;
+      }
+      el.style.setProperty('--h', h + 'px');
+      el.setAttribute('role', 'img');
+      el.setAttribute('aria-label', el.getAttribute('data-label') || '');
+      el.innerHTML = '<div class="mock">' + html + '</div>';
+    }
+  }
+
+  /* ---------- Échelle (les maquettes font 1440 px de large) ---------- */
+  function scaleAll() {
+    var w = document.documentElement.clientWidth - 32;
+    var s = Math.min(1, Math.max(0.2, w / 1440));
+    document.documentElement.style.setProperty('--s', s.toFixed(4));
+  }
+
+  /* ---------- Onglets ---------- */
+  function showTab(id) {
+    var tabs = document.querySelectorAll('[role="tab"]');
+    var panels = document.querySelectorAll('.panel');
+    var found = false;
+    for (var i = 0; i < tabs.length; i++) { if (tabs[i].getAttribute('data-tab') === id) found = true; }
+    if (!found) id = 'hud';
+    for (var j = 0; j < tabs.length; j++) {
+      tabs[j].setAttribute('aria-selected', tabs[j].getAttribute('data-tab') === id ? 'true' : 'false');
+    }
+    for (var k = 0; k < panels.length; k++) {
+      panels[k].hidden = panels[k].id !== 'p-' + id;
+    }
+    try { history.replaceState(null, '', '#' + id); } catch (e) { /* aperçu sans historique */ }
+  }
+
+  function init() {
+    scaleAll();
+    build();
+    var tabs = document.querySelectorAll('[role="tab"]');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].addEventListener('click', function (ev) {
+        showTab(ev.currentTarget.getAttribute('data-tab'));
+      });
+    }
+    window.addEventListener('resize', scaleAll);
+    showTab((location.hash || '').replace('#', '') || 'hud');
+  }
+
+  init();
+})();
+</script>
