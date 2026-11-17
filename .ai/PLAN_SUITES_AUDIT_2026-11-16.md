@@ -373,8 +373,8 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Étape H — relecture et clôture
 
-- [ ] H.1 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) ; P0 et P1
-      corrigés, P2 au backlog.
+- [x] H.1 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) ; P0 et P1
+      corrigés, P2 au backlog. Fait le 2026-11-17 : 0 P0, 2 P1, 5 P2 ; voir le journal.
 - [ ] H.2 Contrôles à l'écran du user, dans l'artefact des vérifications : menus du rejeu (fermeture par Échap et
       clic dehors), calque de probabilité et son état vide, Tactique « Réapparitions adverses », fonds Plan et
       Rendu tournés sur les trois vues, format de la Mainmise (élément déjà posé le 2026-11-16).
@@ -434,6 +434,38 @@ Chaque compte rendu a été rouvert sur pièces par le pilote (commits, `git sta
   typecheck web 0 erreur, vitest 13 191 tests verts, 0 échec. Diff depuis `release/v8.3.0`, hors `.ai/` :
   332 fichiers, +7 911 / -8 792.
 - Reste : G.3 (backlog et registres, après les réponses du user), `make gate-push`, étape H.
+
+### 2026-11-17 — relecture finale (H.1), corrections, gate
+
+- Relecture par un contexte Fable frais du diff `origin/release/v8.3.0...chore/830-suites-audit` : 44 conditions
+  vérifiées tiennent ; 0 P0, 2 P1, 5 P2. Non relu par elle : le découpage de `useReplayVehicles`, l'intérieur de
+  la cuisson des fonds (couvert par les cuissons témoins), la plupart des fichiers de test.
+- Corrections (branche `sa/g`, 5 commits, chaque constat rouvert avant correction, tous confirmés) :
+  - R.1 (P1) : un fichier tactique au format 7 d'un rejeu présent n'était jamais reprojeté (la marque de
+    dérivation n'avait pas bougé). `DerivationsRev` monte ; le rattrapage des dérivations le reprojette sans le
+    film, sur les 64 matchs éligibles les plus récents, cinq par cycle de synchronisation, jamais au démarrage.
+    Au-delà : régénération du rejeu, ou `levelup tactical-rasters --backfill` (non livrée avec le bureau).
+  - R.2 (P2) : Échap dans le filtre du fil fermait aussi le panneau ouvert derrière. Le hook partagé ferme la
+    couche du dessus, seule ; deux couches ouvertes se ferment une par frappe (seul changement voulu).
+  - R.3 (P2) : les gardes des couches voient les quatre comparaisons à `'Escape'` ; compte hors rejeu inchangé (17).
+  - R.4 (P2) : le nettoyage de la démo ne supprime plus que les `.json.gz` hors manifeste.
+  - R.5 (P1) : les documents disaient à tort qu'un rejeu brut « se régénère ». Faits établis : le rattrapage
+    après synchronisation ne couvre que les 64 matchs éligibles les plus récents ; la file de régénération ne
+    liste que les `.json.gz` ; aucun écran ne propose de générer un rejeu absent ; la commande
+    `levelup backfill-replay` n'est pas livrée avec le bureau. Documents corrigés. L'affirmation du pilote au
+    user (« vu comme absent et régénéré ») était fausse au-delà de ces 64 matchs : décision soumise au user.
+  - P2 non corrigés : six clés du document « à statuer par le user » ; sept champs non exportés de
+    `objectiveblend.Result` lus par les tests seuls (gardés : ils fixent les termes de la formule dans les tests).
+- Gate de l'exécuteur après corrections : `go build`, `go vet`, tests Go ciblés et `integration` verts, archlint
+  vert, `golangci-lint --new-from-merge-base=origin/main` 0 problème, vitest 13 199 tests verts.
+- `make gate-push` (pilote) : étape 1, lint Go : 2 `unparam` trouvés puis corrigés, 0 problème ensuite.
+  Étape 2, harnais d'équivalence du rejeu : `[!]` IMPOSSIBLE sur ce poste, le fichier local
+  `data/film_identites/xuids_originaux.txt` n'existe plus depuis l'incident du 2026-11-16 ; soumis au user.
+  Étape 3, typecheck et lint web : verts. Étape 4, baseline des tests Go : aucun test en échec ; le paquet
+  `internal/platform/duckdb` a dépassé son budget de 300 s pendant que d'autres compilations tournaient
+  (199 tests non joués) ; rejoué seul par le pilote avec les tests `integration` : 1 395 tests verts, 0 échec, en 307 s, soit au-dessus du budget de 300 s même seul (découverte : ce paquet est à la limite de son budget sur ce poste).
+- Vérifications à l'écran posées dans l'artefact (`suites-audit-mainmise-format`, `-menus-rejeu`,
+  `-motif-probabilite`, `-fonds-tournes`).
 
 ## Découvertes (consignées, non traitées sauf mention)
 
