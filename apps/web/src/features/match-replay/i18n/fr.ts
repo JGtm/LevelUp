@@ -5,6 +5,9 @@ import { FR_LIVES } from './lives.i18n'
 import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { FR_PLAYER_PANEL } from './playerPanel.i18n'
 import { FR_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
+import { FR_FRAMES } from './frames.i18n'
+import { FR_ROSTER } from './roster.i18n'
+import { FR_PLAYER_INSTANT } from './playerInstant.i18n'
 
 export const FR_TEXT = {
   title: 'Rejeu 2D',
@@ -80,6 +83,9 @@ export const FR_TEXT = {
   killFeedUnknownWeapon: 'Arme non identifiée',
   killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
   playerPanel: FR_PLAYER_PANEL,
+  frames: FR_FRAMES,
+  roster: FR_ROSTER,
+  playerInstant: FR_PLAYER_INSTANT,
   lives: FR_LIVES,
   respawnForecast: FR_RESPAWN_FORECAST,
   feedLines: FR_FEED_LINES,

@@ -5,6 +5,9 @@ import { EN_LIVES } from './lives.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 import { EN_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
+import { EN_FRAMES } from './frames.i18n'
+import { EN_ROSTER } from './roster.i18n'
+import { EN_PLAYER_INSTANT } from './playerInstant.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -80,6 +83,9 @@ export const EN_TEXT = {
   killFeedUnknownWeapon: 'Unidentified weapon',
   killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
   playerPanel: EN_PLAYER_PANEL,
+  frames: EN_FRAMES,
+  roster: EN_ROSTER,
+  playerInstant: EN_PLAYER_INSTANT,
   lives: EN_LIVES,
   respawnForecast: EN_RESPAWN_FORECAST,
   feedLines: EN_FEED_LINES,

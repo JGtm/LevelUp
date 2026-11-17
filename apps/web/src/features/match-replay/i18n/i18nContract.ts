@@ -14,9 +14,12 @@ import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { FeedLinesText } from './feedLines.i18n'
 import type { EquipmentUsageText } from './equipmentUsage.i18n'
+import type { FramesText } from './frames.i18n'
 import type { LivesText } from './lives.i18n'
+import type { PlayerInstantText } from './playerInstant.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { RespawnForecastText } from './respawnForecast.i18n'
+import type { RosterText } from './roster.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -189,6 +192,12 @@ export interface ReplayText {
   killFeedFocusHint: string
   /** Le panneau de joueur (lot 4) : ses textes vivent dans `playerPanel.i18n.ts`. */
   playerPanel: PlayerPanelText
+  /** Les trois cadres du lecteur : `frames.i18n.ts`. */
+  frames: FramesText
+  /** Les joueurs dans la colonne et la rangée : `roster.i18n.ts`. */
+  roster: RosterText
+  /** La fiche du joueur à l'instant lu : `playerInstant.i18n.ts`. */
+  playerInstant: PlayerInstantText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
