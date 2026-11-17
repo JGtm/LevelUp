@@ -149,3 +149,28 @@ export const COTES_RANGEE = Object.freeze({
   scoreCellW: 270,
   margeCorps: 24,
 } as const)
+
+/**
+ * LES COTES DU BLOC « À L'INSTANT » de la fiche du joueur (`ui/ReplayPlayerNow.tsx`), en px. Le bloc
+ * est une pile de rangées à écart constant : une rangée de jauge est une grille de trois colonnes
+ * (libellé, piste, valeur), une rangée d'arme, de grenade ou d'équipement porte une vignette suivie
+ * de son texte.
+ */
+export const COTES_BLOC_INSTANT = Object.freeze({
+  /** Écart entre deux rangées, et entre les colonnes d'une rangée. */
+  ecart: 8,
+  /** Hauteur de la piste d'une jauge et rayon de ses coins. */
+  jaugePx: 5,
+  jaugeRayonPx: 3,
+  /** Largeur de la colonne du libellé d'une jauge, et de celle de sa valeur. */
+  jaugeLibelleW: 62,
+  jaugeValeurW: 30,
+  /** Part de l'encre du thème dans la piste d'une jauge, en pour-cent. */
+  pistePct: 10,
+  /** Largeur et hauteur de la vignette d'une arme. */
+  armeIconeW: 24,
+  armeIconeH: 11,
+  /** Côté de la vignette d'une grenade et de celle de l'équipement. */
+  grenadeIconePx: 13,
+  equipementIconePx: 13,
+} as const)

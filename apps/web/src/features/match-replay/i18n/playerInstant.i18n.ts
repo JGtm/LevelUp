@@ -32,6 +32,11 @@ export interface PlayerInstantText {
   sprintTotal: string
   jumps: string
   matchTotals: string
+  /** Les deux états d'une arme dans le bloc « À l'instant » : dégainée, et rangée. */
+  weaponInHand: string
+  weaponStowed: string
+  /** Les charges restantes de l'équipement porté (« 1 charge », « 2 charges »). */
+  equipmentCharges: (n: number) => string
 }
 
 export const FR_PLAYER_INSTANT = {
@@ -48,6 +53,9 @@ export const FR_PLAYER_INSTANT = {
   sprintTotal: 'Sprint, temps cumulé',
   jumps: 'Sauts',
   matchTotals: 'Totaux du match',
+  weaponInHand: 'en main',
+  weaponStowed: 'en réserve',
+  equipmentCharges: (n) => (n === 1 ? '1 charge' : `${n} charges`),
 } satisfies PlayerInstantText
 
 export const EN_PLAYER_INSTANT = {
@@ -64,4 +72,7 @@ export const EN_PLAYER_INSTANT = {
   sprintTotal: 'Sprint, total time',
   jumps: 'Jumps',
   matchTotals: 'Match totals',
+  weaponInHand: 'in hand',
+  weaponStowed: 'in reserve',
+  equipmentCharges: (n) => (n === 1 ? '1 charge' : `${n} charges`),
 } satisfies PlayerInstantText

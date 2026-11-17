@@ -71,11 +71,24 @@ export interface CardScene {
   scoreTimeline: ReplayScoreTimelineReady | undefined
 }
 
-export function useCardScene(doc: ReplayDocumentReady, players: readonly ReplayPlayer[]): CardScene {
+/** Ce que lit une fiche pour estomper ses lectures : les vitalités publiées et les deux âges d'estompage. */
+export type ReadingAges = Pick<CardScene, 'presence' | 'vitalityFade' | 'readingFull'>
+
+/**
+ * useReadingAges — les âges de lecture et la présence des vitalités, pour toute surface qui rend
+ * l'état d'UN joueur sans monter la colonne des fiches (le panneau de joueur). Même source que
+ * `useCardScene` : une surface ne recalcule ni ne redéfinit ces seuils.
+ */
+export function useReadingAges(doc: ReplayDocumentReady): ReadingAges {
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
-  const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
   const presence = useMemo(() => vitalityPresence(doc), [doc])
+  return useMemo(() => ({ presence, vitalityFade, readingFull }), [presence, vitalityFade, readingFull])
+}
+
+export function useCardScene(doc: ReplayDocumentReady, players: readonly ReplayPlayer[]): CardScene {
+  const { presence, vitalityFade, readingFull } = useReadingAges(doc)
+  const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
   // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).

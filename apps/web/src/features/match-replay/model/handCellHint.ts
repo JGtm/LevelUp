@@ -68,8 +68,21 @@ export function ammoOfHand(
     // cause est connue (même règle que la cellule).
     return !equipped.holstered && !read?.empty ? { kind: 'unread' } : null
   }
-  const a = ammo[equipped.drawn] ?? {}
-  if (isChargeWeapon(doc, equipped.weapons[0]?.id)) return { kind: 'charge', pct: chargeLeftPct(a.gauge ?? 0) }
+  return ammoOfRecord(doc, equipped.weapons[0]?.id, ammo[equipped.drawn] ?? {})
+}
+
+/**
+ * ammoOfRecord — les munitions d'UN emplacement de l'inventaire, dans les trois natures de la
+ * main : charge restante (arme à charge), compte `mag / res` (arme à chargeur), ou « pleines »
+ * (emplacement jamais écrit). `weaponId` est l'arme qui occupe l'emplacement : sa famille dit si
+ * c'est une charge. Une seule définition, pour la main et pour l'arme rangée.
+ */
+export function ammoOfRecord(
+  doc: ReplayDocumentReady,
+  weaponId: string | undefined,
+  a: { mag?: number; res?: number; gauge?: number },
+): AmmoHint {
+  if (isChargeWeapon(doc, weaponId)) return { kind: 'charge', pct: chargeLeftPct(a.gauge ?? 0) }
   if (a.mag !== undefined) return { kind: 'count', mag: a.mag, res: a.res }
   if (a.gauge !== undefined) return { kind: 'charge', pct: chargeLeftPct(a.gauge) }
   return { kind: 'full' }

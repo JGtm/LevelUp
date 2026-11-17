@@ -9,6 +9,8 @@
  *    « Retour au fil » ;
  *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — boutons à bascule (`aria-pressed`) ;
  *    leurs exclusions et leur remise à zéro sont dans `playerPanelLogic` ;
+ *  - le bloc « À L'INSTANT » (`ReplayPlayerNow`) : bouclier, santé, armes, grenades et équipement du
+ *    joueur à l'image lue ;
  *  - les LISTES : précision, dégâts, détail du score, objectif, armes. Ce sont des TOTAUX DE FIN DE
  *    MATCH lus sur la feuille, et chaque titre dit « sur le match » : le film ne publie pas la
  *    précision en cours de partie. Un joueur sans ligne de feuille n'a pas de listes : un bloc
@@ -38,6 +40,7 @@ import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { playerCountersAt, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
+import { useReadingAges } from '../hooks/useCardScene'
 import { REPLAY_ESCAPE_LAYER_ATTR } from '../hooks/useReplayFullscreen'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { GABARIT_NORMAL } from '../model/cardGabarit'
@@ -46,6 +49,7 @@ import { cardName } from '../model/playerCardReadings'
 import { playerPanelSheet, type PlayerPanelAction } from '../model/playerPanelLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
+import { ReplayPlayerNow } from './ReplayPlayerNow'
 import { PanelSectionList } from './ReplayPlayerPanelList'
 import { PRESS_GUARDS } from './replayPressGuards'
 
@@ -104,7 +108,9 @@ export function ReplayPlayerPanel({
   const sheet = useMemo(() => playerPanelSheet(player.board), [player.board])
   const ally = allegiance.ofXuid(player.xuid)
   const accent = ally === null ? null : teamTokenCssVar(ally)
-  const caption = live ? text.atFmt(formatClock(displayClockMs(nowMs, playWindow))) : text.totals
+  const ages = useReadingAges(doc)
+  const clock = formatClock(displayClockMs(nowMs, playWindow))
+  const caption = live ? text.atFmt(clock) : text.totals
 
   return (
     <section
@@ -149,6 +155,7 @@ export function ReplayPlayerPanel({
         ))}
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
         {/* SANS LIGNE DE FEUILLE, OU AVEC UNE FEUILLE ENTIÈREMENT NON LUE : le bloc pointillé, jamais
             une liste de zéros. */}
         {sheet.sections.length > 0 ? (

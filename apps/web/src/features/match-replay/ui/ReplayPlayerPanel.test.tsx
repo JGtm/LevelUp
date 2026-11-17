@@ -7,6 +7,7 @@
  *     rappellent la page ; la souris ne leur prend pas le focus, Espace reste « Lecture ».
  *  3. LES LISTES SONT DES TOTAUX DE FIN DE MATCH, et le disent (« sur le match »), en FR comme en EN ;
  *     aucune précision « à l'instant ».
+ *  3 bis. LE BLOC « À L'INSTANT » est monté entre les actions et les listes, sur l'image lue.
  *  4. RIEN D'INVENTÉ : une valeur non lue est un tiret, une feuille absente ou entièrement non lue un
  *     bloc pointillé — jamais un zéro. Un bot sans feuille est dans ce cas ; avec une feuille, il a ses listes.
  */
@@ -184,7 +185,8 @@ describe('ReplayPlayerPanel — les listes : des totaux de fin de match', () => 
     ]) {
       expect(screen.getByRole('heading', { name: titre })).toBeTruthy()
     }
-    expect(screen.queryByText(/à l.instant/i)).toBeNull()
+    // Le bloc « À l'instant » existe (cf. plus bas) mais n'est le titre d'aucune de ces listes.
+    expect(screen.queryAllByRole('heading').filter((h) => /à l.instant/i.test(h.textContent ?? ''))).toEqual([])
   })
 
   it('la précision : pourcentage, touches et tirs, lus sur la feuille', () => {
@@ -225,6 +227,25 @@ describe('ReplayPlayerPanel — les listes : des totaux de fin de match', () => 
     setup({ locale: 'en' })
     expect(screen.getByRole('heading', { name: 'Accuracy over the match' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Score breakdown over the match' })).toBeTruthy()
+  })
+})
+
+describe('ReplayPlayerPanel — le bloc « À l’instant »', () => {
+  it('est monté entre les actions et les totaux, avec l’instant lu', () => {
+    setup()
+    const actions = screen.getByRole('group', { name: 'Alpha' })
+    const bloc = screen.getByRole('region', { name: "À l'instant" })
+    const premiereListe = screen.getByRole('region', { name: 'Précision sur le match' })
+    expect(actions.compareDocumentPosition(bloc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(bloc.compareDocumentPosition(premiereListe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // L'horloge du bloc est celle de la tête : 65 s de film, sans fenêtre de jeu.
+    expect(within(bloc).getByText('1:05')).toBeTruthy()
+  })
+
+  it('reste là quand le joueur n’a pas de ligne de feuille : les totaux seuls tombent au bloc pointillé', () => {
+    setup({ player: player(undefined) })
+    expect(screen.getByRole('region', { name: "À l'instant" })).toBeTruthy()
+    expect(screen.getByText('Pas de statistiques de match pour ce joueur')).toBeTruthy()
   })
 })
 
