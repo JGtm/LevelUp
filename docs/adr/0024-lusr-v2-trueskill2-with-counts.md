@@ -78,7 +78,7 @@ Pour chaque (player_i, count_type) avec obs :
   observed_count_i ~ N(expected_count_i, v)            (PriorFactor sur expected_count_i)
 ```
 
-Inférence : Expectation Propagation, runner round-robin, convergence sur max-delta < tolerance, MaxIters = 200 (bumped pour absorber les contradictions count-vs-outcome).
+Inférence : Expectation Propagation, runner round-robin, convergence sur max-delta < tolerance, MaxIters = 500 (bumped pour absorber les contradictions count-vs-outcome).
 
 Après convergence, τ² ajouté aux variances posterieures pour modéliser le random walk dynamique (parité avec le closed-form).
 
@@ -136,12 +136,12 @@ Chaque (xuid, playlist_group) a son posterior indépendant — le modèle ne cor
 ### Limites et dette
 
 1. **Calibration tier non faite** (Phase 3e backlog) — les seuils μ → Bronze/.../Onyx du cmd replay sont à l'œil. Doit être figé dans `lusr_hyperparams_v2.tier_boundary_*` après calibration empirique sur population réelle.
-2. **~10% des matchs ne convergent pas** en 200 itérations EP — équipes très déséquilibrées (4v6, 5v8+). Skippés silencieusement, retentés au prochain run. Solutions possibles : damping EP, MaxIters plus grand, ou skip explicite ratio > 2:1.
+2. **~10% des matchs ne convergent pas** en 500 itérations EP — équipes très déséquilibrées (4v6, 5v8+). Skippés silencieusement, retentés au prochain run. Solutions possibles : damping EP, MaxIters plus grand, ou skip explicite ratio > 2:1.
 3. **Truncated Gaussian non-impl** : MVP utilise Gaussien pur sur les count observations (pas le `max(0, ...)` du paper). Pour count = 0, le bias compense. Pour matchs très courts où count = 0 est fréquent : à monitorer.
-4. **Pas de mode correlation (TS2 §11)** : un nouveau joueur démarre à priors par groupe, pas avec l'info inférée des autres groupes.
-5. **Pas de squadOffset (TS2 §6)** : déprioritisé après Phase 3d (les counts règlent l'essentiel du carry intra-squad). Toujours utile pour la prédiction squad-vs-solo mais bloqué par l'absence de `party_id` dans l'API Halo publique — seul proxy disponible = `is_with_friends` + coéquipiers trackés (bruité).
-6. **Pas de quit penalty (TS2 §9)** : la capture `ParticipationInfo` (Mini-Phase 0.5) est en place mais le facteur n'est pas implémenté. Nécessaire surtout pour Ranked, moins pour LUSR (qui filtre les DNF en amont).
-7. **Cycle import sync↔service contourné par duplication** : `applyMatchToSkillV2` dans le package sync duplique la logique de `SkillV2Service.UpdateAfterMatch` parce que sync ne peut pas importer service (cycle existant via career_live_cache). À refactorer plus tard si on stabilise davantage.
+4. **Pas de mode correlation (TS2 §11)** : un nouveau joueur démarre à priors par groupe, pas avec l'info inférée des autres groupes. **Livrée** (`internal/analysis/skill_v2/mode_correlation.go`, `internal/analysis/skill_v2/mode_correlation_matrix.go`), voir l'amendement du 2026-11-17.
+5. **Pas de squadOffset (TS2 §6)** : déprioritisé après Phase 3d (les counts règlent l'essentiel du carry intra-squad). Toujours utile pour la prédiction squad-vs-solo mais bloqué par l'absence de `party_id` dans l'API Halo publique — seul proxy disponible = `is_with_friends` + coéquipiers trackés (bruité). **Livrée** (`internal/analysis/skill_v2/squad.go`, `internal/platform/duckdb/squad_offset_repo.go`), voir l'amendement du 2026-11-17.
+6. **Pas de quit penalty (TS2 §9)** : la capture `ParticipationInfo` (Mini-Phase 0.5) est en place mais le facteur n'est pas implémenté. Nécessaire surtout pour Ranked, moins pour LUSR (qui filtre les DNF en amont). **Livrée** (`internal/sync/skill/skill_v2_quit_penalty.go`, `internal/analysis/skill_v2/trueskill_ep.go`, `internal/domain/skill_v2.go`), voir l'amendement du 2026-11-17.
+7. **Cycle import sync↔service contourné par duplication** : `computeMatchToSkillV2` (nommée `applyMatchToSkillV2` à la rédaction de cette ADR) dans le package sync duplique la logique de `SkillV2Service.UpdateAfterMatch` parce que sync ne peut pas importer service (cycle existant via career_live_cache). À refactorer plus tard si on stabilise davantage.
 
 ---
 
@@ -189,12 +189,12 @@ The v1 TrueSkill-2 cascade and its rollback are gone; this amendment supersedes 
 - **The 8 performance components** (`lusr_component_history`, read by Prestige, the player profile and the squad profile) were written only by the v1; since the canonical cut-over (2026-05-30) they were frozen. They depend on match statistics and on rolling per-mode averages of the player, never on (mu, sigma), so the same calculation (`computeCompositeScoreWithBreakdown`) is now driven by the v2 (`skill_v2_components.go`): one INSERT-only write per rated match (`AppendOnlyLUSRPersister.PersistComponents`, read through `lusr_component_history_latest`), best-effort with a counter (`levelup.lusr_v2.component_write_errors_total`). Parity checked once against the v1 on a 40-match fixture: 275 component values identical to 1e-12. A full replay (`levelup backfill --lusr`) rebuilds them.
 
 - Herbrich, Minka, Graepel — TrueSkill: A Bayesian Skill Rating System (NIPS 2006)
-- Minka, Cleven, Zaykov — TrueSkill 2: An improved Bayesian skill rating system (MSR 2018) ([texte extrait](../../.ai/V7/LUSR%20v2/trueskill2.txt))
-- Menke (GDC) — Significantly Improving your Skill System with TrueSkill Through Time ([texte extrait](../../.ai/V7/LUSR%20v2/menke.txt))
+- Minka, Cleven, Zaykov — TrueSkill 2: An improved Bayesian skill rating system (MSR 2018) ([texte extrait](../../.ai/archive/V7/LUSR%20v2/trueskill2.txt))
+- Menke (GDC) — Significantly Improving your Skill System with TrueSkill Through Time ([texte extrait](../../.ai/archive/V7/LUSR%20v2/menke.txt))
 - Moserware/Skills (C#, BSD) — implémentation de référence des facteurs EP utilisée pour valider les formules
-- Rapport Phase 0 : [.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md)
-- Rapport Phase 1d : [.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md)
-- Rapport Phase 3d : [.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md)
+- Rapport Phase 0 : [.ai/archive/V7/LUSR%20v2/lusr_v2_phase0_metrics.md](../../.ai/archive/V7/LUSR%20v2/lusr_v2_phase0_metrics.md)
+- Rapport Phase 1d : [.ai/archive/V7/LUSR%20v2/lusr_v2_phase1d_replay.md](../../.ai/archive/V7/LUSR%20v2/lusr_v2_phase1d_replay.md)
+- Rapport Phase 3d : [.ai/archive/V7/LUSR%20v2/lusr_v2_phase3d_replay.md](../../.ai/archive/V7/LUSR%20v2/lusr_v2_phase3d_replay.md)
 
 ---
 
@@ -208,3 +208,14 @@ This amendment supersedes limit 2 of "Limites et dette" ("~10 % of the matches d
 - **Decision: fall back on the counts.** When `UpdateTwoTeamWithCountsEP` returns `ErrNotConverged` and the match carries kills or deaths observations, the match is computed a second time with `Kills` and `Deaths` set to nil for every player (`Weight`, `Quit` and `QuitPenaltyDelta` kept), in `sync/skill` (`solveWithCountFallback`, called by `computeMatchToSkillV2`). The fallback is logged at warning level with the match id and counted by the expvar `levelup.lusr_v2.solver_count_fallback_total`, which counts fallback attempts (a match can be retried by a later cycle or replay, so it can exceed the number of distinct matches). Only `ErrNotConverged` triggers it. If the second computation fails, the error is returned wrapped, still matches `ErrNotConverged` and is classified as before (`skipped_not_converged`, ADR 0047), logged by the caller and never swallowed. The solver itself is unchanged.
 - **Revision.** The fallback is logic, not a hashed number: `LUSRRev` moves to `lusr-2026-11-09` with the same parameter fingerprint as `lusr-2026-11-08`. This is not optional: replaying the chain with the fallback changes the notes that follow a rescued match (a single rescued match changes about 170 later notes of one player), so without the revision a manual or automatic replay would produce a history different from the stored one. ADR 0047 therefore replays every player once at the first startup. Measured on the three local players, 844 of 1 182 existing notes move for Madina97294 (922 of 1 148 for JGtm, 434 of 580 for Chocoboflor), 186 by at least 5 rating points and 85 by at least 20, with a maximum of 130 points.
 - **Check after the change.** The same replay with the fallback leaves 0 match without a score for the three players (15, 13 and 7 matches fall back, 35 in all).
+
+---
+
+## Amendment 2026-11-17 — ADR checked against the code (plan backlog 2026-11-17, C.7)
+
+No formula is changed. This amendment corrects statements that the code no longer matches; the body above keeps its original wording except where edited in place.
+
+- **Iterations.** `MaxIters` is 500, not 200 (`DefaultMatch2TeamConfig`, `internal/analysis/skill_v2/ep/match2team.go`). The two places that said 200 (the inference paragraph and limit 2) now say 500.
+- **Limits 4, 5 and 6 are delivered.** Mode correlation: `internal/analysis/skill_v2/mode_correlation.go`, `mode_correlation_matrix.go`. squadOffset: `internal/analysis/skill_v2/squad.go`, `internal/platform/duckdb/squad_offset_repo.go`. Quit penalty: `internal/sync/skill/skill_v2_quit_penalty.go`, `internal/analysis/skill_v2/trueskill_ep.go`, `internal/domain/skill_v2.go`.
+- **Limit 7 stays open.** The duplicated update still exists in `internal/sync/skill/skill_v2_shadow.go` (`computeMatchToSkillV2`), and the cause still holds (`internal/sync` cannot import `internal/service`). The name `applyMatchToSkillV2` no longer exists in the code.
+- **Links.** The LUSR v2 reports now live under `.ai/archive/V7/LUSR v2/`; the five links point there.
