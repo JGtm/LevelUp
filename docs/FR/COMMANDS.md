@@ -340,14 +340,16 @@ go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit
 go run ./cmd/levelup backfill-map-callouts --dry-run
 go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [--rps N] [--cache-dir D] [--title S]
 
-# 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
+# 5. Rasters d'occupation tactique -> fichiers sidecar JSON compressés (gzip), `{short8}.json.gz`, sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
 #    Le schéma 7 ajoute l'équipe, la hauteur et, par réapparition, le lieu de la mort et l'instantané
 #    des autres joueurs vivants : les sidecars d'un schéma plus ancien sont réécrits depuis leur
 #    artefact (aucun film relu). Le schéma 8 retire la source de la décision et les comptes par source :
 #    une réapparition est ce que la lecture du film décide, et un match sans lecture du film n'en a aucune.
-#    Contrôle : grep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
+#    Les sidecars s'écrivent compressés, comme les artefacts de rejeu ; un `{short8}.json` brut laissé par une
+#    ancienne version n'est jamais lu et se retire quand son `.json.gz` s'écrit ou que son rejeu est purgé.
+#    Contrôle : zgrep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json.gz | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 
 # 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu

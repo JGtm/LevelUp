@@ -307,7 +307,7 @@ Commandes:
                   est relue en base (match_kill_events_latest). Reprenable (anti-jointure passe courante / tête), lots avec journal de
                   progression, jauge finale (--title, --dry-run, --batch, serveur arrêté)
   tactical-rasters  Depose le sidecar d'occupation (« ou chaque joueur a passe son temps ») des artefacts de rejeu deja cuits :
-                  AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON ranges sous
+                  AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON compresses (.json.gz) ranges sous
                   data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   spawn-model   Mesure (evaluate) et ajuste (fit) le modele de reapparition : lit les artefacts de rejeu un a un (aucun film decode)
