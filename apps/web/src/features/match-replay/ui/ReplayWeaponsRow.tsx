@@ -58,7 +58,7 @@ import { LOADOUT_SRC_BIRTH, type PlayerState } from '../../../lib/replay/rosterL
 import { MIRROR_STYLE, weaponFullIcon } from '../model/weaponFullIcon'
 
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
-const SWAP_ANIM_MS = 340
+export const SWAP_ANIM_MS = 340
 
 /**
  * Cellule d'arme : GABARIT FIXE (la grille des fiches en dépend). La LARGEUR vient du gabarit
@@ -278,7 +278,7 @@ type ChipStyle = CSSProperties & { '--replay-dx'?: string }
  * la cellule ALLUMÉE (fond à l'encre diluée, icône en pleine encre) ; l'arme rangée
  * s'estompe quand le sélecteur est lu.
  */
-function WeaponChip({
+export function WeaponChip({
   doc,
   id,
   inHand,
@@ -287,6 +287,7 @@ function WeaponChip({
   hint,
   locale,
   cellW,
+  box,
 }: {
   doc: ReplayDocumentReady
   id: string
@@ -302,7 +303,10 @@ function WeaponChip({
   locale: ReplayLocale
   /** Largeur de la cellule, du gabarit de la fiche. */
   cellW: number
+  /** Autre boîte que celle de la fiche (hauteur de la cellule, taille de la vignette) : la ligne de la colonne. */
+  box?: { cellH: number; iconW: number; iconH: number }
 }) {
+  const cellH = box?.cellH ?? CELL_H
   const lbl = doc.weaponLabels?.[id]
   const name = catalogText(lbl, locale)
   // LA VERSION PLEINE, RETOURNÉE (option 2a) : l'atlas silhouette à la place du contour
@@ -310,7 +314,7 @@ function WeaponChip({
   const icon = lbl?.img ? weaponFullIcon(lbl.img) : null
   const style: ChipStyle = {
     width: cellW,
-    height: CELL_H,
+    height: cellH,
     background: inHand
       ? `color-mix(in srgb, var(--foreground) ${HAND_BG_PCT}%, transparent)`
       : undefined,
@@ -333,8 +337,8 @@ function WeaponChip({
           imageUrl={icon.url}
           tinted={lbl?.tinted}
           label={name ?? id}
-          width={ICON_W}
-          height={ICON_H}
+          width={box?.iconW ?? ICON_W}
+          height={box?.iconH ?? ICON_H}
           className={inHand ? 'text-foreground' : undefined}
           style={icon.mirrored ? MIRROR_STYLE : undefined}
         />

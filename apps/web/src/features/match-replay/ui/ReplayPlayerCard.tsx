@@ -32,7 +32,7 @@
  *      une toutes les ~20 s, et le faire passer pour l'instant courant était un défaut réel.
  *   3. Aucun littéral de couleur : les rôles passent par des tokens sémantiques.
  */
-import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import type { ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 
@@ -41,12 +41,12 @@ import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
-import { PRESS_GUARDS } from './replayPressGuards'
+import { PRESS_CLASS, pressProps, SELECTED_CLASS, type TilePress } from './replayCardPress'
 import type { CardGabarit } from '../model/cardGabarit'
 import type { EquippedReading } from '../model/equippedLogic'
 import { handCellHint } from '../model/handCellHint'
 import { cardChrome, SEAT_WAITING_CHROME } from '../model/playerCardFx'
-import { cardName, playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
+import { playerCardReadings, seatWaitingReading, type CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { PlayerState, ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
@@ -137,48 +137,6 @@ function nameClass(gabarit: CardGabarit, eteint: boolean): string {
     eteint ? 'text-muted-foreground' : 'text-foreground'
   }`
 }
-
-/**
- * LA FICHE EN BOUTON (panneau de joueur, lot 4) : ce que la page donne à une fiche pour qu'un clic
- * ouvre le panneau du joueur. `selected` = son panneau est ouvert (`aria-pressed`), `label` = son
- * nom accessible. SANS `press`, la tuile reste une boîte inerte, nœud pour nœud (fixation
- * `__fixtures__/replayTeams.4v4.html`) : les attributs de bouton ne s'ajoutent que quand la page
- * le demande.
- */
-export interface TilePress {
-  label: string
-  selected: boolean
-  onActivate: () => void
-}
-
-/**
- * LES ATTRIBUTS D'UNE TUILE-BOUTON : un `div` `role="button"` plutôt qu'un `<button>` — la tuile
- * contient des boîtes (jauges, rangées), qu'un bouton HTML n'admet pas. Entrée et Espace
- * activent ; la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture
- * (`PRESS_GUARDS`). La tuile choisie porte un anneau (ombre, aucune cote ne bouge).
- */
-function pressProps(press: TilePress) {
-  return {
-    role: 'button' as const,
-    // Repère de la fiche : le panneau de joueur lui rend le focus à sa fermeture.
-    'data-replay-player-card': '',
-    tabIndex: 0,
-    'aria-pressed': press.selected,
-    'aria-label': press.label,
-    onClick: press.onActivate,
-    onMouseDown: PRESS_GUARDS.onMouseDown,
-    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-      PRESS_GUARDS.onKeyDown(e)
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        press.onActivate()
-      }
-    },
-  }
-}
-
-const PRESS_CLASS = 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-const SELECTED_CLASS = 'ring-2 ring-ring'
 
 interface TileFrameProps {
   gabarit: CardGabarit
@@ -431,19 +389,18 @@ export function ReplaySeatWaiting({
   gabarit: CardGabarit
   locale: ReplayLocale
 }) {
-  const t = REPLAY_TEXT[locale]
-  const name = occupant ? cardName(occupant, t) : null
+  const { name, label, hint } = seatWaitingReading(occupant, REPLAY_TEXT[locale])
   return (
     <TileFrame
       gabarit={gabarit}
       chrome={SEAT_WAITING_CHROME}
-      title={name === null ? t.seatVacantHint : t.seatNotSpawnedHint}
+      title={hint}
       nameLine={
         <span aria-hidden={name === null || undefined} className={nameClass(gabarit, true)} title={name ?? undefined}>
           {name ?? '\u00a0'}
         </span>
       }
-      body={<WaitingState label={name === null ? t.seatVacant : t.seatNotSpawned} />}
+      body={<WaitingState label={label} />}
     />
   )
 }

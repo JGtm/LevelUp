@@ -14,6 +14,7 @@ import { formatKDA } from '@/lib/formatters/number'
 import type { PlayerCounters } from '@/lib/replay/scoreTimeline'
 
 import type { CardGabarit } from '../model/cardGabarit'
+import { countersShown } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
@@ -127,8 +128,8 @@ export function ReplayCountersBadge({
   gabarit: CardGabarit
 }) {
   const t = REPLAY_TEXT[locale]
-  if (!live && !board) return null
-  const counters = live ?? { kills: board?.kills, deaths: board?.deaths, assists: board?.assists }
+  const counters = countersShown(live, board)
+  if (!counters) return null
   const parts: [number | null | undefined, string][] = [
     [counters.kills, 'stat-kills'],
     [counters.deaths, 'stat-deaths'],

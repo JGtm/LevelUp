@@ -145,7 +145,7 @@ function nowWeapons(
   })
 }
 
-function nowGrenades(
+export function nowGrenades(
   doc: ReplayDocumentReady,
   locale: ReplayLocale,
   box: GrenadeBox | null,
@@ -167,7 +167,7 @@ function nowGrenades(
  * nowAbility — l'équipement porté : son nom du catalogue et ses charges. Un rang hors table n'est
  * pas rendu (aucun nom à écrire, la fiche de la colonne le dit en infobulle seulement).
  */
-function nowAbility(
+export function nowAbility(
   doc: ReplayDocumentReady,
   locale: ReplayLocale,
   slot: number,

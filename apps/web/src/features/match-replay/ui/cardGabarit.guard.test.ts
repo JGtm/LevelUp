@@ -36,6 +36,11 @@ const COMPOSANTS_DE_LA_FICHE = new Set([
   'ReplayAbilityCell.tsx',
   'ReplayVitality.tsx',
   'ReplayObjectiveMark.tsx',
+  // La ligne de la colonne des équipes (gabarit « ligne ») : ses cotes viennent de `GABARIT_LIGNE`.
+  'ReplayRosterRow.tsx',
+  'ReplayRosterCells.tsx',
+  'ReplayRosterColumn.tsx',
+  'ReplayRosterRowDetail.tsx',
 ])
 
 const COTE_LOCALE = /\bconst \w+_(CELL_W|BOX_W|ICON_PX|PX) =/
@@ -53,7 +58,7 @@ function composants(): string[] {
 }
 
 describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', () => {
-  it('les huit composants de la fiche existent tous — sans quoi ce garde ne garderait rien', () => {
+  it('les douze composants de la fiche et de la ligne existent tous — sans quoi ce garde ne garderait rien', () => {
     expect(new Set(composants().map(nomDe))).toEqual(COMPOSANTS_DE_LA_FICHE)
   })
 
@@ -80,10 +85,11 @@ describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', 
     expect(fautifs).toEqual([])
   })
 
-  it('et le foyer canonique déclare bien les deux gabarits', () => {
+  it('et le foyer canonique déclare bien les trois gabarits', () => {
     const src = lire(fichierNomme('cardGabarit.ts'))
     expect(src).toMatch(/export const GABARIT_NORMAL: CardGabarit/)
     expect(src).toMatch(/export const GABARIT_COMPACT: CardGabarit/)
+    expect(src).toMatch(/export const GABARIT_LIGNE: LigneGabarit/)
     // Le choix entre les deux n'a qu'un foyer, et il ne lit que l'en-tête.
     const densite = lire(fichierNomme('cardDensity.ts'))
     expect(densite).toMatch(/export function cardDensity\(header: PresenceHeader \| null \| undefined\)/)

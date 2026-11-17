@@ -174,3 +174,121 @@ export const COTES_BLOC_INSTANT = Object.freeze({
   grenadeIconePx: 13,
   equipementIconePx: 13,
 } as const)
+
+/**
+ * LE GABARIT « LIGNE » : les cotes d'une ligne de joueur de la colonne des équipes (Standard, et
+ * Cinéma quand la rangée ne tient pas), rendue par `ui/ReplayRosterRow.tsx`. Troisième forme d'un
+ * joueur après la fiche et la tuile, et la seule qui n'est PAS un `CardGabarit` : une ligne n'a ni
+ * corps à hauteur de tuile, ni cellules d'arme à largeur de fiche — elle a une grille de colonnes.
+ * Toutes les cotes sont appliquées en `style` (nombres), jamais en classe interpolée.
+ *
+ * LA GRILLE : nom et jauges (souple), arme, grenades, équipement, triplet F / M / A, séparés par
+ * `colGapPx`. L'en-tête de colonnes reprend les mêmes largeurs, pour que les titres tombent sur
+ * leurs colonnes.
+ */
+export interface LigneGabarit {
+  /** Hauteur d'une ligne de joueur, et d'une place en attente (même boîte). */
+  rowPx: number
+  /** Hauteur de l'en-tête de colonnes. */
+  headPx: number
+  /** Hauteur de l'en-tête d'un camp, côté de sa pastille et écart entre pastille et nom. */
+  teamHeadPx: number
+  teamDotPx: number
+  teamHeadGapPx: number
+  /** Écart vertical entre deux blocs de camp. */
+  teamsGapPx: number
+  /** Écart entre colonnes d'une ligne. */
+  colGapPx: number
+  weaponColW: number
+  grenadeColW: number
+  equipmentColW: number
+  kdaColW: number
+  /** Tailles de texte, px. */
+  namePx: number
+  mentionPx: number
+  teamNamePx: number
+  headTextPx: number
+  respawnPx: number
+  kdaPx: number
+  countPx: number
+  /** Hauteur de la ligne du compte à rebours, qui prend la place des jauges. */
+  respawnLinePx: number
+  /** Écart entre le nom et ce qui le suit (jauges ou compte à rebours). */
+  nameGapPx: number
+  /** Largeur de la pile de jauges ; hauteurs du bouclier (au-dessus) et de la santé ; écart entre les deux. */
+  gaugeWidthPx: number
+  gaugeShieldPx: number
+  gaugeHealthPx: number
+  gaugeGapPx: number
+  /** Vignette d'arme (largeur, hauteur) et hauteur de sa cellule ; vignettes de grenade et d'équipement. */
+  iconWeaponW: number
+  iconWeaponH: number
+  weaponCellH: number
+  iconGrenadePx: number
+  iconEquipmentPx: number
+  /** Opacité du nom, des icônes et du triplet d'un joueur mort. */
+  deadOpacity: number
+  /** Côté du filigrane de porteur d'objectif, et nombre d'éclairs de l'écran occultant. */
+  watermarkPx: number
+  boltCount: number
+  /** Le rayon des couches d'effets : celui de la ligne, en classe (un littéral en clair). */
+  layerRadius: string
+}
+
+/** La ligne du tableau A (Standard) : 34 px, grille 22 / 24 / 14 / 54, jauges de 130 px. */
+export const GABARIT_LIGNE: LigneGabarit = Object.freeze({
+  rowPx: 34,
+  headPx: 16,
+  teamHeadPx: 20,
+  teamDotPx: 8,
+  teamHeadGapPx: 8,
+  teamsGapPx: 14,
+  colGapPx: 6,
+  weaponColW: 22,
+  grenadeColW: 24,
+  equipmentColW: 14,
+  kdaColW: 54,
+  namePx: 12.5,
+  mentionPx: 11,
+  teamNamePx: 12,
+  headTextPx: 10.5,
+  respawnPx: 11,
+  kdaPx: 12.5,
+  countPx: 11,
+  respawnLinePx: 13,
+  nameGapPx: 4,
+  gaugeWidthPx: 130,
+  gaugeShieldPx: 3,
+  gaugeHealthPx: 3,
+  gaugeGapPx: 1,
+  iconWeaponW: 20,
+  iconWeaponH: 9,
+  weaponCellH: 16,
+  iconGrenadePx: 11,
+  iconEquipmentPx: 11,
+  deadOpacity: 0.4,
+  watermarkPx: 34,
+  boltCount: 2,
+  layerRadius: 'rounded-md',
+} as const)
+
+/**
+ * LES COTES DU DÉPLI de la ligne du joueur suivi (`ui/ReplayRosterRowDetail.tsx`) : deux colonnes
+ * de rangées (arme en main et arme en réserve, grenades, équipement), écart vertical puis
+ * horizontal, marges haute et basse. Reprend le bloc de détail du tableau H.
+ */
+export const COTES_DEPLI_LIGNE = Object.freeze({
+  colonnes: 2,
+  ecartV: 4,
+  ecartH: 10,
+  margeHaute: 2,
+  margeBasse: 8,
+  textePx: 11.5,
+  petitPx: 11,
+  /** Écart entre une vignette et son texte. */
+  ecartIcone: 6,
+  armeIconeW: 20,
+  armeIconeH: 9,
+  grenadeIconePx: 11,
+  equipementIconePx: 11,
+} as const)
