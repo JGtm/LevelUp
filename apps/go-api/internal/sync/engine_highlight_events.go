@@ -23,12 +23,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
@@ -56,12 +55,7 @@ const defaultFilmRetryWindow = 30 * 24 * time.Hour
 // après une panne longue connue, ou raccourcir en test. Valeur invalide / absente
 // → defaultFilmRetryWindow.
 func filmRetryWindow() time.Duration {
-	if v := os.Getenv("LEVELUP_FILM_RETRY_WINDOW_HOURS"); v != "" {
-		if h, err := strconv.Atoi(v); err == nil && h > 0 {
-			return time.Duration(h) * time.Hour
-		}
-	}
-	return defaultFilmRetryWindow
+	return config.FilmRetryWindowFromEnv(defaultFilmRetryWindow)
 }
 
 // isNoFilmDefinitive décide, sur film absent (404), si on marque
@@ -113,22 +107,8 @@ const freshFilmWaitWindow = 10 * time.Minute
 // est une VALEUR DE DÉPART pour laisser le film arriver, à affiner en prod selon
 // le taux de complétude au 1er passage.
 var freshFilmRetryDelays = func() []time.Duration {
-	v := os.Getenv("LEVELUP_FRESH_FILM_RETRY")
-	if v == "0" {
-		return nil
-	}
-	if v != "" {
-		var out []time.Duration
-		for _, p := range strings.Split(v, ",") {
-			if n, err := strconv.Atoi(strings.TrimSpace(p)); err == nil && n > 0 {
-				out = append(out, time.Duration(n)*time.Second)
-			}
-		}
-		if len(out) > 0 {
-			return out
-		}
-	}
-	return []time.Duration{30 * time.Second, 30 * time.Second, 30 * time.Second}
+	return config.FreshFilmRetryDelaysFromEnv(
+		[]time.Duration{30 * time.Second, 30 * time.Second, 30 * time.Second})
 }
 
 // fetchHighlightChunkResilient récupère le chunk highlight events ; pour un match

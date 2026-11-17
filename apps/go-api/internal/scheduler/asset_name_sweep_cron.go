@@ -40,9 +40,8 @@ type AssetNameSweepRunner func(ctx context.Context, titleSlug string) (assetname
 // résolus. DÉCOUPLÉ du drain catalogue (CatalogRefreshCron) à dessein : le balayage
 // de NOMS est ART-safe et n'a aucune raison d'être coupé quand le drain catalogue
 // l'est (bug ART « Failed to delete all rows from index » sur les UPSERT catalogue).
-// Gaté séparément par LEVELUP_SYNC_RESOLVE_ASSETS — le même interrupteur que la
-// résolution in-sync (halo.AssetNameResolutionEnabled). La résorption des noms reste
-// donc autonome même catalogue coupé.
+// Lancé séparément du drain catalogue, comme la résolution in-sync : la résorption des
+// noms reste donc autonome même catalogue coupé.
 //
 // Title-aware : itère les titres ACTIFS du registre et ne sweep QUE ceux dont la
 // résolution de NOMS passe par le fetcher discovery-infiniteugc, testé par la présence

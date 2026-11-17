@@ -100,7 +100,7 @@ func launchCatalogCrons(st *bootState) {
 			slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
 		}
 		// NB : le balayage des NOMS d'assets (asset_translations) vit dans
-		// asset_name_sweep_cron (découplé, gaté LEVELUP_SYNC_RESOLVE_ASSETS).
+		// asset_name_sweep_cron (découplé du drain catalogue).
 		return reg.RunCatalogUGCDrain(cctx, ts)
 	}, "", 0).
 		// Gate RÉEL (remplace le proxy CapForge) : ne draine QUE les titres dont le
@@ -114,20 +114,18 @@ func launchCatalogCrons(st *bootState) {
 	}
 
 	// Balayage de noms d'assets (filet de rattrapage de la traîne), distinct du cron
-	// catalogue : ART-safe (asset_translations via ops.UpsertAssetTranslation), gaté par
-	// LEVELUP_SYNC_RESOLVE_ASSETS (ON par défaut, kill-switch). 1er passage ~60s après le
-	// boot (le temps que le pool de tokens se réchauffe), puis hebdomadaire. La résolution
-	// PRIMAIRE des noms reste in-sync ; ce cron ne rattrape que les assets jamais rejoués.
-	if haloadapter.AssetNameResolutionEnabled() {
-		sweepCron := scheduler.NewAssetNameSweepCron(func(cctx context.Context, ts string) (assetnames.Result, error) {
-			return reg.ResolveUnresolvedAssetNames(cctx, ts, autoSyncPool)
-		}, "", 0).
-			// Même gate RÉEL que le drain catalogue : le sweep de noms passe par le
-			// même fetcher /hi/ hardcodé, donc même critère (catalog adapter résolvable).
-			WithCatalogAdapterCheck(reg.HasCatalogAdapter)
-		if boot.launch(loopTask(taskAssetNameSweep, true, schedulerCtx, sweepCron.Run)) {
-			slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
-		}
+	// catalogue : ART-safe (asset_translations via ops.UpsertAssetTranslation). 1er
+	// passage ~60s après le boot (le temps que le pool de tokens se réchauffe), puis
+	// hebdomadaire. La résolution PRIMAIRE des noms reste in-sync ; ce cron ne rattrape
+	// que les assets jamais rejoués.
+	sweepCron := scheduler.NewAssetNameSweepCron(func(cctx context.Context, ts string) (assetnames.Result, error) {
+		return reg.ResolveUnresolvedAssetNames(cctx, ts, autoSyncPool)
+	}, "", 0).
+		// Même gate RÉEL que le drain catalogue : le sweep de noms passe par le
+		// même fetcher /hi/ hardcodé, donc même critère (catalog adapter résolvable).
+		WithCatalogAdapterCheck(reg.HasCatalogAdapter)
+	if boot.launch(loopTask(taskAssetNameSweep, true, schedulerCtx, sweepCron.Run)) {
+		slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
 	}
 }
 

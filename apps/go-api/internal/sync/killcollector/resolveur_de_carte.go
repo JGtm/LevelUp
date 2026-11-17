@@ -6,7 +6,7 @@ package killcollector
 // # LA REGRESSION QU IL FERME
 //
 // Quand la synchro n a pas resolu le libelle de la carte (traduction absente au moment de
-// l ingestion : pool GameCMS non cable, echec reseau, `LEVELUP_SYNC_RESOLVE_ASSETS=0`),
+// l ingestion : pool GameCMS non cable, echec reseau),
 // `match_registry.map_name` porte l UUID de l asset (`ExtractRegistry`, repli nom -> id). Le
 // resolveur du post-sync etait construit SANS metadonnees : son seul candidat etait cet UUID,
 // absent du catalogue de bornes. Avant la carte obligatoire, le match etait decode (aux largeurs

@@ -99,8 +99,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	}
 	// Résolution autonome des noms d'assets au sync (primary write) — chemin V1
 	// engine.run (fallback quand V2 off + CLI). On passe le POOL UNIFIÉ (s.pool,
-	// la même source que tous les syncs) ; GameCMS exige un token. Gate
-	// LEVELUP_SYNC_RESOLVE_ASSETS appliqué côté sync. Le chemin prod V2 est câblé
+	// la même source que tous les syncs) ; GameCMS exige un token. Le chemin prod V2 est câblé
 	// séparément (persister).
 	engine.WithAssetNameResolution(s.pool)
 	// Hook Prestige post-sync (best-effort). Fire à engine.run() après le pipeline

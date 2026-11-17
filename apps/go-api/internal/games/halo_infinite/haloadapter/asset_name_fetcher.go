@@ -10,8 +10,6 @@ package haloadapter
 
 import (
 	"context"
-	"os"
-	"strings"
 
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/domain"
@@ -29,14 +27,6 @@ type assetNameFetcher struct{ p *Provider }
 // Halo-spécifique.
 func NewAssetNameFetcher(rateLimitPerMinute int, tokens *domain.HaloTokens) assetnames.Fetcher {
 	return assetNameFetcher{p: NewHaloProvider().WithRateLimit(rateLimitPerMinute).WithTokens(tokens)}
-}
-
-// AssetNameResolutionEnabled : kill-switch d'urgence. LEVELUP_SYNC_RESOLVE_ASSETS=0
-// (ou false) désactive la résolution autonome (ON par défaut). Temporaire — à
-// retirer une fois la feature éprouvée (échéance 2026-09-01).
-func AssetNameResolutionEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_SYNC_RESOLVE_ASSETS")))
-	return v != "0" && v != "false"
 }
 
 // FetchName récupère le PublicName localisé d'un asset. Nom vide si l'asset

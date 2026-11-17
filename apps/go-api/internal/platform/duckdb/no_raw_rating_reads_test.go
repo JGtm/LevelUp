@@ -30,10 +30,12 @@ var rawAppendOnlyReadAllowlist = map[string]string{
 	"internal/platform/duckdb/queries_home_citations.go": "2026-07-02 (revu 2026-11-12) : Q26g, lecture brute de " +
 		"match_skill_rank, filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + " +
 		"tie-break written_at/id déterministe (la requête porte le commentaire « allowlist B8 »).",
-	"internal/platform/duckdb/queries_career_encounters.go": "2026-07-02 (revu 2026-11-12) : Q24LUSRHistory " +
+	"internal/platform/duckdb/queries_career_encounters.go": "2026-07-02 (revu 2026-11-16) : Q24LUSRHistory " +
 		"(pipeline LUSR, échelle mu), raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur " +
 		"les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer. " +
-		"Non revérifié : la requête n'a ni filtre rating_type ni tie-break written_at (voir les découvertes du plan architecture).",
+		"Vérifié le 2026-11-16 : la requête filtre rating_type = 'LUSR' (ni CSR ni LUSR_V2) et ne garde que la dernière ligne " +
+		"par match (tie-break written_at DESC, id DESC) ; tenu par TestStatsRepo_LoadLUSRHistory_UneLigneLUSRParMatch " +
+		"(stats_repo_lusr_history_test.go).",
 	"internal/platform/duckdb/career_repo_csr_seasons.go": "2026-07-02 (revu 2026-11-12) : qDistinctMatchCSRSeasons, " +
 		"SELECT DISTINCT season_id sur match_csrs : stale-safe (season_id invariant entre versions).",
 }

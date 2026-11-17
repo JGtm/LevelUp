@@ -21,10 +21,9 @@ package wire
 import (
 	"context"
 	"log/slog"
-	"os"
-	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
@@ -140,7 +139,7 @@ func (r *ServiceRegistry) sendReplayBatch(ctx context.Context, b replaynotify.Ba
 // la base le donne, lien quand un joueur connu du match ET une base publique existent.
 func (r *ServiceRegistry) replayReadyItems(ctx context.Context, b replaynotify.Batch) []notify.ReplayReadyItem {
 	targets, slugByXUID := r.replayLinkTargets(ctx, b)
-	base := publicBaseURL()
+	base := config.PublicBaseURLFromEnv()
 	items := make([]notify.ReplayReadyItem, 0, len(b.MatchIDs))
 	sansLien := 0
 	for _, id := range b.MatchIDs {
@@ -213,14 +212,4 @@ func (r *ServiceRegistry) replayLinkTargets(
 		return nil, slugByXUID
 	}
 	return targets, slugByXUID
-}
-
-// publicBaseURL rend la base publique de l'application, sans « / » final. Vide = aucune
-// base configurée (cas nominal en local) : les messages sortent alors sans lien profond.
-//
-// SOURCE UNIQUE dans ce paquet : le relais externe des notifications lit la même variable
-// (registry_notifications.go). Deux lectures littérales auraient divergé au premier
-// changement de nom.
-func publicBaseURL() string {
-	return strings.TrimRight(strings.TrimSpace(os.Getenv("LEVELUP_PUBLIC_BASE_URL")), "/")
 }
