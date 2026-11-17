@@ -34,8 +34,8 @@ unreadable without the walls, and a map is often easier to read turned.
   through `hinavmesh` of `halo-infinite-files-reader` and the one `OptionsNavmesh` of `halo-infinite-map-images`
   (`himap`); the two cooking chains do not carry their own mesh code.
 - **D-2 — The rich background stays the base; the mesh frames and arbitrates.** The mesh never replaces the image. It
-  clips (matter outside the mesh, dilated by a margin, is erased; 1.5 m by default on a native map, off by default on a
-  Forge map) and it supplies the ground reference that a high surface is projected onto. Per-map levers in
+  clips (matter outside the mesh, dilated by a margin, is erased; 0.5 m by default, `himap.MargeNavmesh`, the margin of both chains; the clipping is on by default on a native
+  map and off by default on a Forge map) and it supplies the ground reference that a high surface is projected onto. Per-map levers in
   `map_fond_reglages.json`: `rogneAuNavmesh`, `margeNavmesh`, `toleranceNavmesh`, `maillageNiveauHaut`, `navmeshMode`, `sansNavmesh`,
   each with its `raison` and `gateLe`.
 - **D-3 — The wall plan has two forms drawn from the same mesh: an image and a vector.** The image,
@@ -122,3 +122,8 @@ validated on screen on 2026-11-13. This amendment brings the text to the code:
 - The "Consequences" no longer claim that no image is duplicated.
 
 No code, no published file and no served output changes with this amendment.
+
+## Amendment of 2026-11-17 — the clipping margin is 0.5 m
+
+D-2 gave the default clipping margin as 1.5 m. The margin is `himap.MargeNavmesh`, 0.5 m, for the native and the Forge chains alike
+(`OptionsNavmesh.Marge` at zero takes it; the per-map lever `margeNavmesh` overrides it). The text of D-2 states that value.
