@@ -12,7 +12,6 @@ import (
 	"database/sql"
 
 	"levelup/go-api/internal/analysis/tactical"
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -31,21 +30,7 @@ func zonesDesCartes(ctx context.Context, repoRoot, slug string, shared *sql.DB, 
 		duckdb.NewReplayMapRepo(lecteurPartage{db: shared}, nil))
 	out := make(map[string][]tactical.ZoneNommee, len(cartes))
 	for _, id := range cartes {
-		out[id] = zonesPuresDuCatalogue(store.ZonesDeLaCarte(ctx, id))
-	}
-	return out
-}
-
-// zonesPuresDuCatalogue projette les zones du port vers le type du paquet d'algo (seconde copie
-// de cette projection, apres celle du service Tactique ; une troisieme impose de la centraliser).
-func zonesPuresDuCatalogue(zones []domain.ZoneNommee) []tactical.ZoneNommee {
-	out := make([]tactical.ZoneNommee, 0, len(zones))
-	for _, z := range zones {
-		out = append(out, tactical.ZoneNommee{
-			Nom: z.Nom, X: z.X, Y: z.Y,
-			Polygone: z.Polygone, Parties: z.Parties, Trous: z.Trous,
-			ZBas: z.ZBas, ZHaut: z.ZHaut, VolumeIndex: z.VolumeIndex,
-		})
+		out[id] = tactical.ZonesDepuisLePort(store.ZonesDeLaCarte(ctx, id))
 	}
 	return out
 }

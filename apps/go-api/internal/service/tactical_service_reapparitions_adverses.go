@@ -62,7 +62,7 @@ func (s *TacticalService) ReapparitionsAdverses(ctx context.Context,
 		return out, domain.ErrTacticalCarteInconnue
 	}
 	zones := s.zonesDeLaCarte(ctx, req.MapID)
-	choisie, ok := zoneDuVolume(zonesPures(zones), req.VolumeIndex)
+	choisie, ok := zoneDuVolume(tactical.ZonesDepuisLePort(zones), req.VolumeIndex)
 	if !ok {
 		s.logger.InfoContext(ctx, "tactique: zone inconnue (reapparitions adverses)",
 			"player", s.xuid, "map_id", req.MapID, "volume_index", req.VolumeIndex, "zones", len(zones))
@@ -73,7 +73,7 @@ func (s *TacticalService) ReapparitionsAdverses(ctx context.Context,
 
 	sidecars, _ := s.chargerSidecars(ctx, univers, req.MapID)
 	obs, matchs := s.observationsAdverses(univers, sidecars)
-	out.Reference, out.Tenue = tactical.LireReapparitionsAdverses(loc, obs, choisie, zonesPures(zones))
+	out.Reference, out.Tenue = tactical.LireReapparitionsAdverses(loc, obs, choisie, tactical.ZonesDepuisLePort(zones))
 	s.verdictReapparitionsAdverses(&out, len(sidecars), matchs.retenus, tactical.ZoneAUneForme(choisie))
 	s.logger.InfoContext(ctx, "tactique: reapparitions adverses",
 		"player", s.xuid, "map_id", req.MapID, "volume_index", req.VolumeIndex, "etat", out.Etat, "raison", out.Raison,

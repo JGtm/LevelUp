@@ -82,7 +82,7 @@ func (s *TacticalService) nommerLaCellule(ctx context.Context, req domain.Tactic
 			zs = append(zs, *c.z)
 		}
 	}
-	retenue, ok := tactical.NommerZone(x, y, zs, zonesPures(zones))
+	retenue, ok := tactical.NommerZone(x, y, zs, tactical.ZonesDepuisLePort(zones))
 	if !ok {
 		s.logger.DebugContext(ctx, "tactique: zone sans nom (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "col", req.Col, "lig", req.Lig, "hauteurs", len(zs))

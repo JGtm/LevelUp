@@ -184,7 +184,7 @@ func (s *replayService) calculerLaPrevision(ctx context.Context, matchID string,
 	zones := s.zonesDeLaCartePrevue(ctx, matchID)
 	res := tactical.PrevoirLesReapparitions(tactical.EntreePrevision{
 		Match: replayartifacts.EntreeOccupationDeLArtefact(doc), MatchID: c.match.MatchID,
-		Evenements: evts, Poids: c.poids, Zones: zonesPures(zones),
+		Evenements: evts, Poids: c.poids, Zones: tactical.ZonesDepuisLePort(zones),
 	})
 	return previsionCalculee{res: res, zones: zones, bilan: bilan}, nil
 }

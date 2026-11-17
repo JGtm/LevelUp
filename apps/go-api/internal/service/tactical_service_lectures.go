@@ -66,25 +66,11 @@ func comptesDesRoutes(sc *domain.TacticalRasterSidecar, matchID string,
 func grappesDeLUnivers(loc i18n.Locale, sidecars map[string]*domain.TacticalRasterSidecar,
 	xuid string, zones []domain.ZoneNommee, vies string) []domain.TacticalGrappe {
 	amas := tactical.GrappesDeSpawn(tactical.GrilleParDefaut(),
-		spawnsSelonVies(sidecars, xuid, vies), zonesPures(zones))
+		spawnsSelonVies(sidecars, xuid, vies), tactical.ZonesDepuisLePort(zones))
 	out := make([]domain.TacticalGrappe, 0, len(amas))
 	for _, a := range amas {
 		out = append(out, domain.TacticalGrappe{
 			ID: a.ID, Nom: a.Nom.PickOptional(loc), X: a.X, Y: a.Y, Matchs: a.Matchs,
-		})
-	}
-	return out
-}
-
-// zonesPures projette les zones du port vers le type du paquet d'algo, qui reste pur : nom et
-// point de référence (grappes de spawn), forme et tranche (nom en jeu d'une cellule).
-func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
-	out := make([]tactical.ZoneNommee, 0, len(zones))
-	for _, z := range zones {
-		out = append(out, tactical.ZoneNommee{
-			Nom: z.Nom, X: z.X, Y: z.Y,
-			Polygone: z.Polygone, Parties: z.Parties, Trous: z.Trous,
-			ZBas: z.ZBas, ZHaut: z.ZHaut, VolumeIndex: z.VolumeIndex,
 		})
 	}
 	return out

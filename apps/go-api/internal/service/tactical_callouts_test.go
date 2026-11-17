@@ -35,7 +35,7 @@ func TestZonesNommees_FormeEtTranche(t *testing.T) {
 	if z.ZBas != -1.5 || z.ZHaut != 3.25 || z.VolumeIndex != 7 {
 		t.Fatalf("tranche / index non projetés : %+v", z)
 	}
-	pures := zonesPures(out)
+	pures := tactical.ZonesDepuisLePort(out)
 	if len(pures[0].Polygone) != 3 || len(pures[0].Parties) != 1 || len(pures[0].Trous) != 1 ||
 		pures[0].ZBas != -1.5 || pures[0].ZHaut != 3.25 || pures[0].VolumeIndex != 7 {
 		t.Fatalf("jumeau pur incomplet : %+v", pures[0])
@@ -58,7 +58,7 @@ func zonesDuCatalogue(t *testing.T, module string) []tactical.ZoneNommee {
 	if err != nil {
 		t.Fatalf("%s : %v", module, err)
 	}
-	return zonesPures(zonesNommees(entry.Zones))
+	return tactical.ZonesDepuisLePort(zonesNommees(entry.Zones))
 }
 
 // TestNommerZone_TemoinsDuCatalogueReel — les deux témoins du plan (D26). Les hauteurs sont celles
