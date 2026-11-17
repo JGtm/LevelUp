@@ -550,7 +550,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         // Contexte Solo/Escouade : tri booleen naturel (Solo puis Escouade en asc).
         sortingFn: 'basic',
         // Pastille reprise du style match-card.tsx (tuiles match home).
-        // Les couleurs hex sont autorisées (color-allow) car identifiants UX
+        // Les couleurs hex sont autorisées car identifiants UX
         // génériques de catégorie, pas de palette accessibility.
         // Pill "bot" affichée en plus quand had_bot_teammate=true (Career
         // best_matches uniquement, cf. backend asymétrie WIN/LOSS) — couleur

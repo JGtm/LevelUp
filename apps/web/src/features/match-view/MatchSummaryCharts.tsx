@@ -226,7 +226,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
     (): ChartOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelSpree, t.labelHeadshots, t.labelPerfectKills]
-      // color-allow: hex en commentaires de documentation token→couleur
+      // hex en commentaires de documentation token→couleur
       // Spree=#8B5CF6  Headshots=#33D6FF  Perfect=#00DC82
       const tokens: SemanticToken[] = [
         'outcome-dnf', // color-allow(hex): doc token (violet #8B5CF6)

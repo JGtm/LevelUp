@@ -135,7 +135,7 @@ export function buildFdaGapCumulativeOption(
         type: 'line',
         name: labels.series,
         data: values,
-        ...hoverRevealSymbol(tc.text), // color-allow: point neutre, l'aire porte le dégradé
+        ...hoverRevealSymbol(tc.text), // point neutre, l'aire porte le dégradé
         // Ligne + aire divergentes (vert = cumul au-dessus de l'attendu, rouge
         // en dessous), aire ancrée à 0 (même dégradé, bascule pile sur 0).
         lineStyle: { width: 2, color: gradient },

@@ -152,7 +152,7 @@ export function buildTimeseriesNetLivesOption(
         type: 'line',
         name: labels.series,
         data: values,
-        ...hoverRevealSymbol(tc.text), // color-allow: point neutre, l'aire porte le dégradé
+        ...hoverRevealSymbol(tc.text), // point neutre, l'aire porte le dégradé
         // Ligne + aire divergentes (positif = balance cumulée au-dessus de l'équilibre,
         // négatif en dessous), aire ancrée à 0 (même dégradé, bascule pile sur 0).
         lineStyle: { width: 2, color: gradient },
@@ -160,7 +160,7 @@ export function buildTimeseriesNetLivesOption(
         // Valeur d'arrivée du cumul, lisible sans survol.
         endLabel: {
           show: true,
-          color: tc.text, // color-allow: encre de texte du thème, pas une teinte de donnée
+          color: tc.text, // encre de texte du thème, pas une teinte de donnée
           fontWeight: 'bold',
           formatter: (p: { value?: unknown }) =>
             fmtBalance(typeof p.value === 'number' ? p.value : null),

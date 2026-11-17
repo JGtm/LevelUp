@@ -120,7 +120,7 @@ function LegendMark({ item }: { item: ObjectifLegendItem }) {
           className="inline-block h-0.5 w-[11px]"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(to right, var(--muted-foreground) 0 3px, transparent 3px 5px)', // color-allow: repère neutre de la légende (maquette C3EW)
+              'repeating-linear-gradient(to right, var(--muted-foreground) 0 3px, transparent 3px 5px)', // repère neutre de la légende (maquette C3EW)
           }}
           aria-hidden
         />

@@ -61,9 +61,9 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
       <span
         className="rounded-full px-1 text-2xs font-bold leading-tight"
         style={{
-          background: 'var(--muted)', // color-allow: structurel — badge count neutre
+          background: 'var(--muted)', // structurel — badge count neutre
           color: 'var(--foreground)',
-          border: '1.5px solid var(--background)', // color-allow: structurel — séparation badge/icône
+          border: '1.5px solid var(--background)', // structurel — séparation badge/icône
           minWidth: '1.1rem',
           textAlign: 'center',
         }}
@@ -104,9 +104,9 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
       <span
         className="rounded-full px-1 text-2xs font-bold leading-tight"
         style={{
-          background: 'var(--muted)', // color-allow: structurel — badge count neutre
+          background: 'var(--muted)', // structurel — badge count neutre
           color: 'var(--foreground)',
-          border: '1.5px solid var(--background)', // color-allow: structurel — séparation badge/icône
+          border: '1.5px solid var(--background)', // structurel — séparation badge/icône
           minWidth: '1.1rem',
           textAlign: 'center',
         }}

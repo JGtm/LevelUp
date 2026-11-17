@@ -43,7 +43,7 @@ interface Props {
 
 export function PickupSheetsCard({ sheets, identities, itemName, bare = false, t }: Props) {
   const legend = useMemo(() => {
-    const fg = 'var(--foreground)' // color-allow: encre neutre des marques de légende (maquette)
+    const fg = 'var(--foreground)' // encre neutre des marques de légende (maquette)
     return (
       <ObjectifLegend
         ariaLabel={t.sheets.title}

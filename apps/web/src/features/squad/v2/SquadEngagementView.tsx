@@ -111,7 +111,7 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
         <div className="flex flex-wrap gap-1 px-3 pb-3">
           {session.players.map((p, idx) => {
             const isActive = p.xuid === selectedXUID
-            // color-allow: hex résolu depuis semantic tokens via colorHex ou resolveToken
+            // hex résolu depuis semantic tokens via colorHex ou resolveToken
             const accentHex = p.colorHex ?? resolveToken(p.colorToken)
             return (
               <button

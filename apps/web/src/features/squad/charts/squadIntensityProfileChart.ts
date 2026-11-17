@@ -223,7 +223,7 @@ const OVERLAY_STYLE: Record<
  * l'appelant. Une courbe sans manche exploitable (0 frag sur toute la
  * population) est écartée → aucune courbe plate n'est tracée.
  *
- * color-allow: `color` reçoit `tc.text`, neutre de thème réservé aux séries
+ * `color` reçoit `tc.text`, neutre de thème réservé aux séries
  * partagées (précédent : courbe « MMR équipe » de squadPerformanceLineCharts) — il
  * ne peut entrer en collision avec aucune couleur joueur.
  */

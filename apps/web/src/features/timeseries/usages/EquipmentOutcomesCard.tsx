@@ -80,7 +80,7 @@ export function EquipmentOutcomesCard({ rows, familyLabel, player, ut, compact }
           { kind: 'square', label: e.used, color: tokenCssVar('divergent-pos') },
           { kind: 'square', label: e.kept, color: tokenCssVar('divergent-neutral') },
           { kind: 'square', label: e.dropped, color: tokenCssVar('divergent-neg') },
-          { kind: 'thin', label: e.thinLegend, color: 'var(--muted-foreground)' }, // color-allow: repère neutre de la légende (maquette)
+          { kind: 'thin', label: e.thinLegend, color: 'var(--muted-foreground)' }, // repère neutre de la légende (maquette)
         ]}
       />
     ),

@@ -47,7 +47,7 @@ export function LivesLegend({ ut }: { ut: UsagesCardsText }) {
       items={[
         { kind: 'square', label: l.near, color: LIVES_NEAR_INK },
         { kind: 'square', label: l.alone, color: LIVES_ALONE_INK },
-        { kind: 'thin', label: l.thinLegend, color: 'var(--muted-foreground)' }, // color-allow: repère neutre de la légende (maquette)
+        { kind: 'thin', label: l.thinLegend, color: 'var(--muted-foreground)' }, // repère neutre de la légende (maquette)
       ]}
     />
   )
