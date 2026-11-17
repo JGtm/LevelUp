@@ -224,7 +224,7 @@ Fichier `FicheInstant.dc.html`. Fait foi pour le contenu de la fiche, en colonne
 |---|---|---|---|
 | M-1 | État à l'instant | titre et instant lu ; bouclier et santé (barre et valeur) ; arme en main nommée avec munitions ; réserve grisée ; grenades ; équipement porté avec sa charge | D.0 |
 | M-2 | Depuis le début du match | lignes libellé à gauche, valeur à droite : FDA, série en cours, meilleure série, tirs à la tête, éliminations parfaites, réapparitions, vie en cours, durée moyenne d'une vie, boucliers perdus, score et rang (« 800 · 2e sur 8 ») | T.1, T.3 |
-| M-3 | Éliminations par arme | un tableau : catégorie en gras puis ses armes en retrait ; colonnes « À l'instant », « Part », « Match » ; catégorie vide absente ; catégories : autres armes, armes lourdes, grenade, mêlée | T.2 |
+| M-3 | Éliminations par arme | une barre empilée par classe d'arme, aux couleurs des classes de l'application (jetons `frag-*`), puis un tableau, pastille de la classe devant son nom : catégorie en gras puis ses armes en retrait ; colonnes « À l'instant », « Part », « Match » ; catégorie vide absente ; catégories : autres armes, armes lourdes, grenade, mêlée | T.2 |
 | M-4 | Tirs et dégâts | capsule « estimation » à côté du titre ; précision avec tirs touchés sur tirés ; dégâts infligés et subis ; par arme : tirs et dégâts ; section absente pour un joueur à lecture partielle | T.3 |
 | M-5 | Grenades lancées | une ligne par type | T.4 |
 | M-6 | Ramassages | armes, grenades | T.4 |
