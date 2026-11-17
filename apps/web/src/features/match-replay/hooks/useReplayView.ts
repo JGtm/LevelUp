@@ -31,6 +31,7 @@ import { type CanvasView } from '../model/replayView'
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { orientAbout, orientBounds, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
+import { useResolvedTurns } from './useResolvedTurns'
 import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { lockedZoom, useReplayZoom, withManualMove, type ReplayZoom } from './useReplayZoom'
@@ -89,11 +90,13 @@ export interface ReplayViewOptions {
   /** Fond de carte figé, tel que la page l'a chargé. Absent = la carte n'en a pas. */
   background?: ReplayMapBackgroundLayer | null
   /**
-   * L'ORIENTATION DE LA CARTE, en quarts de tour horaires (0 = non tournée). Les bornes du
-   * cadrage et `canvasView` la portent : tout ce qui projette par le cadrage — dessin, survol,
-   * export, chaleur — suit sans la connaître (cf. `lib/replay/orientation`).
+   * LE CHOIX RETENU POUR L'ORIENTATION DE LA CARTE, en quarts de tour horaires (0 = non tournée, valeur par
+   * défaut) ; `null` = aucun choix : l'Auto décide (`useResolvedTurns`), sur la boîte `width` x `freeHeight`.
+   * L'orientation EFFECTIVE (`ReplayView.turns`) est celle que les bornes du cadrage et `canvasView` portent :
+   * tout ce qui projette par le cadrage — dessin, survol, export, chaleur — suit sans la connaître
+   * (cf. `lib/replay/orientation`).
    */
-  turns?: QuarterTurns
+  turns?: QuarterTurns | null
   /** Largeur mesurée du conteneur, en px CSS. 0 = le canvas n'est pas encore mesuré. */
   width: number
   /**
@@ -115,6 +118,10 @@ export interface ReplayViewOptions {
 export interface ReplayView {
   /** Le fond RETENU (`null` = écarté ou absent) : c'est lui qui décide du reste. */
   mapImage: ReplayMapBackgroundLayer | null
+  /** L'orientation EFFECTIVE (choix retenu, sinon Auto) : l'unique point de résolution, lu par tout ce qui tourne avec la carte. */
+  turns: QuarterTurns
+  /** Vrai quand l'Auto a tourné le plan (jamais pour un choix retenu) : la barre propose alors de le redresser. */
+  autoTurned: boolean
   /**
    * Les bornes de la scène dans le repère MONDE, avant toute rotation : c'est le repère des
    * données du film (la grille de chaleur s'y accumule). Le cadrage tourné, lui, est
@@ -149,7 +156,7 @@ export interface ReplayView {
 export function useReplayView({
   doc,
   background,
-  turns = 0,
+  turns: choice = 0,
   width,
   freeHeight,
   onManualMove,
@@ -167,6 +174,9 @@ export function useReplayView({
   }, [background, doc.bounds])
   // Le cadrage se décide APRÈS le fond : une image posée écarte les props du cadre (sceneBounds).
   const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
+  // L'ORIENTATION EFFECTIVE se décide ICI, sur les bornes du monde et la boîte que l'écran offre (jamais sur
+  // la mise en page d'un export : le plan ne se retourne pas pendant qu'on l'enregistre).
+  const { turns, autoTurned } = useResolvedTurns(choice, bounds, width, freeHeight)
   // LA SCÈNE TOURNÉE : c'est elle, et non la scène du monde, que la hauteur utile, le cadre et le
   // zoom prennent pour référence — une carte tournée d'un quart de tour échange sa largeur et sa
   // hauteur. Les positions du film, elles, ne sont tournées qu'à la projection (`orient`).
@@ -254,5 +264,5 @@ export function useReplayView({
   )
   const screen = useMemo(() => ({ width: screenWidth, height: screenHeight }), [screenWidth, screenHeight])
 
-  return { mapImage, bounds, renderWidth, renderHeight, screen, zRange, canvasView, zoom }
+  return { mapImage, turns, autoTurned, bounds, renderWidth, renderHeight, screen, zRange, canvasView, zoom }
 }

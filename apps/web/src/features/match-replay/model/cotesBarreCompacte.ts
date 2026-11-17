@@ -8,6 +8,9 @@
  * (repères, rail, bande de dominance, curseur) y ont chacune leur ligne — le centre du curseur
  * tombe sur celui du rail.
  *
+ * Le bouton « Plan tourné » (`planTourne*`) vient de la maquette H (classe `.sel.on`) : capsule de 30 px, marge
+ * intérieure de 10 px, rayon de 8 px, icône de 14 px, bordure d'1 px à moitié de la couleur de suivi.
+ *
  * Toutes s'appliquent en `style` ou par une variable CSS (`friseVars`) : une classe Tailwind
  * arbitraire ne naît que si elle est écrite en clair, une interpolation ne produit aucune règle.
  */
@@ -43,6 +46,14 @@ export interface CotesBarreCompacte {
   /** Le curseur : diamètre visible, et halo autour. */
   curseurPx: number
   curseurHaloPx: number
+  /** Le bouton « Plan tourné » : hauteur, marge intérieure de chaque côté, rayon, écart icône-libellé, côté de l'icône, bordure (px) et part de couleur de suivi de la bordure (%). */
+  planTourneHauteurPx: number
+  planTourneMargeXPx: number
+  planTourneRayonPx: number
+  planTourneEcartPx: number
+  planTourneIconePx: number
+  planTourneBordurePx: number
+  planTourneBordurePct: number
   /** Un repère de média sur la bande des repères : largeur d'une photo et largeur minimale d'un clip. */
   mediaPhotoPx: number
   mediaClipMinPx: number
@@ -69,6 +80,13 @@ export const COTES_BARRE_COMPACTE: CotesBarreCompacte = Object.freeze({
   dominanceEpaisseurPx: 3,
   curseurPx: 12,
   curseurHaloPx: 4,
+  planTourneHauteurPx: 30,
+  planTourneMargeXPx: 10,
+  planTourneRayonPx: 8,
+  planTourneEcartPx: 6,
+  planTourneIconePx: 14,
+  planTourneBordurePx: 1,
+  planTourneBordurePct: 50,
   mediaPhotoPx: 10,
   mediaClipMinPx: 6,
 })

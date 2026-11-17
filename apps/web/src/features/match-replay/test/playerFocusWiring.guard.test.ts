@@ -40,7 +40,7 @@ function appelDe(source: string, nom: string): string {
 describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque élément propre au joueur', () => {
   it('le panneau de joueur est branché, et la main reprend le cadrage', () => {
     const src = canvas()
-    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns: orientation.turns })')
+    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })')
     expect(src).toContain('onManualMove: onFollowStop')
   })
 

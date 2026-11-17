@@ -34,8 +34,8 @@ import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { RestartIcon } from './ReplayTransportIcons'
 import type { ReplayTransportCommands } from './replayTransportCommands'
 
-/** Les commandes de la toile, moins le zoom : cette barre n'en porte pas (la croix flottante le fait). */
-type ReplayTransportProps = Omit<ReplayTransportCommands, 'zoom'>
+/** Les commandes de la toile, moins le zoom (la croix flottante le fait) et le plan tourné (le retour passe par la section Vue). */
+type ReplayTransportProps = Omit<ReplayTransportCommands, 'zoom' | 'autoRotation'>
 
 export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,

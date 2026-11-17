@@ -102,6 +102,16 @@ export function persistPreference(key: string, value: string): void {
   for (const fn of abonnes.get(key) ?? []) fn(value)
 }
 
+/** Efface une préférence ; les abonnés reçoivent la chaîne vide (aucune valeur retenue). */
+export function removePreference(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* stockage refusé : l'effacement vaut pour la session, comme l'écriture. */
+  }
+  for (const fn of abonnes.get(key) ?? []) fn('')
+}
+
 /**
  * LE FORMAT DE L'EXPORT VIDÉO (plan « formats vidéo standard », décision D4, 2026-09-16) :
  * retenu dans CE navigateur, jamais côté serveur. La lecture est VALIDÉE contre le catalogue
@@ -171,9 +181,12 @@ export function persistViewPreset(id: ViewPresetId): void {
 /**
  * L'ORIENTATION DE LA CARTE (`lib/replay/orientation`) est un réglage PAR CARTE : retenue dans CE
  * navigateur sous `replay-orientation.<mapId>`, jamais côté serveur. Une carte dont l'utilisateur
- * a tourné la vue s'ouvre ainsi toujours tournée, sans toucher aux autres. La lecture est
- * VALIDÉE contre les quatre positions : absente, hors liste ou écrite par une autre version ->
- * 0 quart de tour.
+ * a tourné la vue s'ouvre ainsi toujours tournée, sans toucher aux autres.
+ *
+ * TROIS ÉTATS : aucun choix retenu (« Auto », règle `autoTurns`), ou un des quatre nombres de
+ * quarts de tour (0 compris : un 0 retenu est un choix, pas une absence). La lecture est VALIDÉE
+ * contre les quatre positions : absente, hors liste ou écrite par une autre version -> aucun choix.
+ * Les valeurs écrites sont celles d'avant l'Auto, lues telles quelles.
  */
 export const ORIENTATION_KEY_PREFIX = 'replay-orientation.'
 
@@ -185,9 +198,10 @@ export function orientationKey(mapId: string): string {
   return `${ORIENTATION_KEY_PREFIX}${mapId}`
 }
 
-/** L'orientation retenue pour cette carte, ou 0 quart de tour. */
-export function readOrientation(mapId: string): QuarterTurns {
-  return normalizeTurns(Number(readStoredChoice(orientationKey(mapId), '0', ORIENTATION_VALUES)))
+/** L'orientation retenue pour cette carte, ou `null` quand aucun choix n'est retenu (Auto). */
+export function readOrientation(mapId: string): QuarterTurns | null {
+  const raw = readStoredChoice(orientationKey(mapId), '', ORIENTATION_VALUES)
+  return raw === '' ? null : normalizeTurns(Number(raw))
 }
 
 /** Retient l'orientation choisie pour cette carte. Stockage refusé : le choix vaut pour la session. */
@@ -195,6 +209,10 @@ export function persistOrientation(mapId: string, turns: QuarterTurns): void {
   persistPreference(orientationKey(mapId), String(turns))
 }
 
+/** Efface le choix retenu pour cette carte : elle revient en Auto. */
+export function clearOrientation(mapId: string): void {
+  removePreference(orientationKey(mapId))
+}
 /**
  * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `rendu` (défaut) ou `plan` (la vue
  * plan à hauteurs), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,

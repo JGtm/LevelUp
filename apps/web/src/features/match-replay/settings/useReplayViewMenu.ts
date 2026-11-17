@@ -30,6 +30,7 @@ import type { ReplayViewPanel } from './ReplayViewPanel'
 import { effectiveLivesWho } from '../model/livesMarks'
 import { persistViewPreset, readViewPreset } from './replayPreferences'
 import type { ReplaySettings } from './useReplaySettings'
+import { useReplayDimension, type ReplayDimensionState } from './useReplayDimension'
 import type { ReplayOrientation } from './useReplayOrientation'
 import {
   activeView,
@@ -80,6 +81,8 @@ export interface ReplayViewMenuState {
   active: ViewId
   /** Les props du panneau, SANS son déclencheur : `ReplayViewMenu` y pose `buttonRef`. */
   panel: ReplayViewPanelProps
+  /** Le commutateur 2D / 3D posé à gauche du bouton : n'existe que si le serveur offre la vue 3D. */
+  dimension: ReplayDimensionState
 }
 
 /** L'état des seize calques, lu des réglages. */
@@ -231,7 +234,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       value: s.backgroundStyle,
       onSelect: s.setBackgroundStyle,
     },
-    orientation: { available: orientation.available, turns: orientation.turns, onSelect: orientation.setTurns },
+    orientation: { available: orientation.available, retained: orientation.retained, onSelect: orientation.setTurns },
     planFeed: { available: planFeedAvailable, show: s.showPlanFeed, onToggle: s.togglePlanFeed },
     heatmap: {
       show: s.showHeatmap,
@@ -259,6 +262,7 @@ export function useReplayViewMenu(o: ReplayViewMenuOptions): ReplayViewMenuState
   const [open, setOpen] = useState(false)
   const [remembered, setRemembered] = useState(readViewPreset)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const dimension = useReplayDimension()
   const toggle = useCallback(() => setOpen((v) => !v), [])
   // LA FERMETURE REPREND LE FOCUS, et ce n'est pas un ornement : sans cela le focus retomberait
   // au document et la navigation au clavier repartirait du haut de la page.
@@ -280,5 +284,5 @@ export function useReplayViewMenu(o: ReplayViewMenuOptions): ReplayViewMenuState
   // L'OBJET EST REFABRIQUÉ À CHAQUE RENDU : `useReplaySettings` rend un objet neuf à chaque fois,
   // et le panneau n'est de toute façon monté que lorsqu'il est OUVERT.
   const panel = panelPropsOf({ ...o, onClose, view: { active, onSelect } })
-  return { open, toggle, buttonRef, active, panel }
+  return { open, toggle, buttonRef, active, panel, dimension }
 }

@@ -3,29 +3,45 @@
  * seulement quand le fond porte un plan) et la commande d'orientation de la carte.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 import { makeBackground, makeOrientation, makeWallPlan, renderPanel } from './replayViewPanelFixtures'
 
 describe('ReplayViewPanel — orientation de la carte', () => {
-  it('propose les quatre positions en choix exclusif, la courante cochée', () => {
-    renderPanel({ orientation: makeOrientation({ turns: 2 }) })
+  it('propose Auto puis les quatre positions en choix exclusif, la courante cochée', () => {
+    renderPanel({ orientation: makeOrientation({ retained: 2 }) })
     const group = screen.getByRole('radiogroup', { name: 'Orientation' })
     expect(group).toBeTruthy()
-    for (const nom of ['0°', '90°', '180°', '270°']) {
-      expect(screen.getByRole('radio', { name: nom })).toBeTruthy()
-    }
+    const noms = within(group).getAllByRole('radio').map((r) => r.textContent)
+    expect(noms).toEqual(['Auto', '0°', '90°', '180°', '270°'])
     expect(screen.getByRole('radio', { name: '180°' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: '0°' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('sans choix retenu, Auto est la position cochée', () => {
+    renderPanel({ orientation: makeOrientation({ retained: null }) })
+    expect(screen.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: '0°' })).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('un clic choisit SA position, en quarts de tour', () => {
+  it('un 0 retenu est un choix, pas Auto', () => {
+    renderPanel({ orientation: makeOrientation({ retained: 0 }) })
+    expect(screen.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: '0°' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('un clic choisit SA position, en quarts de tour ; Auto EFFACE le choix (null)', () => {
     const onSelect = vi.fn()
-    renderPanel({ orientation: makeOrientation({ onSelect }) })
+    renderPanel({ orientation: makeOrientation({ retained: 1, onSelect }) })
     fireEvent.click(screen.getByRole('radio', { name: '270°' }))
     expect(onSelect).toHaveBeenCalledWith(3)
     fireEvent.click(screen.getByRole('radio', { name: '90°' }))
     expect(onSelect).toHaveBeenLastCalledWith(1)
+    fireEvent.click(screen.getByRole('radio', { name: '0°' }))
+    expect(onSelect).toHaveBeenLastCalledWith(0)
+    fireEvent.click(screen.getByRole('radio', { name: 'Auto' }))
+    expect(onSelect).toHaveBeenLastCalledWith(null)
   })
 
   it('sans carte connue, la commande est absente', () => {
@@ -33,9 +49,10 @@ describe('ReplayViewPanel — orientation de la carte', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Orientation' })).toBeNull()
   })
 
-  it('le titre est dans la langue du panneau', () => {
+  it('le titre et Auto sont dans la langue du panneau', () => {
     renderPanel({ locale: 'en' })
     expect(screen.getByRole('radiogroup', { name: 'Orientation' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Auto' })).toBeTruthy()
   })
 })
 

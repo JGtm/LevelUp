@@ -6,7 +6,8 @@
  *  - le transport : lecture / pause (rond plein), recommencer, −10, +10, le temps « instant / durée »,
  *    l'interrupteur de lecture automatique ;
  *  - la FRISE (`ReplayTimelineCompact`), qui prend la largeur restante ;
- *  - la vitesse ; le zoom − et + (la commande de zoom flottante n'est pas rendue dans ces cadres) ;
+ *  - la vitesse ; le bouton « Plan tourné » quand l'Auto a tourné le plan (`ReplayRotatedButton`) ; le zoom − et +
+ *    (la commande de zoom flottante n'est pas rendue dans ces cadres) ;
  *  - capture et export (`ReplayCaptureButtons`), icônes de cadre et plein écran du système
  *    (`ReplayFrameButtons`).
  *
@@ -33,6 +34,7 @@ import { ReplayAutoPlayToggle } from './ReplayAutoPlayToggle'
 import { ReplayCaptureButtons } from './ReplayCaptureButtons'
 import { ReplayFrameButtons } from './ReplayFrameButtons'
 import { ReplayPlayButton } from './ReplayPlayButton'
+import { ReplayRotatedButton } from './ReplayRotatedButton'
 import { ReplayRoundButton } from './ReplayRoundButton'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineCompact } from './ReplayTimelineCompact'
@@ -57,7 +59,7 @@ function GroupSeparator() {
 
 export function ReplayTransportCompact({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
-  speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl, zoom, camera,
+  speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl, zoom, autoRotation, camera,
 }: ReplayTransportCompactProps) {
   const busy = isCaptureBusy(capture)
   const t = REPLAY_TEXT[locale]
@@ -103,6 +105,7 @@ export function ReplayTransportCompact({
 
       <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
       <GroupSeparator />
+      {autoRotation && <ReplayRotatedButton onKeepUpright={autoRotation.onKeepUpright} locale={locale} />}
       <div role="group" aria-label={t.zoomGroup} className="flex shrink-0 items-center" style={{ columnGap: C.ecartPx }}>
         <ReplayRoundButton onClick={zoom.zoomOut} label={t.zoomOut} ghost disabled={!zoom.canZoomOut}>
           <span className="text-[15px] leading-none">−</span>

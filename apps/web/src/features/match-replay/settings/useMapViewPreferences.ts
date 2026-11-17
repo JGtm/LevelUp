@@ -20,7 +20,10 @@ import { usePersistedFlag } from './usePersistedFlag'
 import { SHOW_WALL_PLAN_DEFAULT, SHOW_WALL_PLAN_KEY } from './useReplayTerrainFlags'
 
 export interface MapViewPreferences {
-  /** L'orientation retenue pour cette carte, en quarts de tour horaires (0 sans carte connue). */
+  /**
+   * L'orientation retenue pour cette carte, en quarts de tour horaires : 0 sans carte connue et sans choix retenu. L'Auto du lecteur
+   * (`autoTurns`) dépend de la boîte de SA toile : ces vues ne la résolvent pas et gardent le plan droit.
+   */
   turns: QuarterTurns
   /** Le plan des murs doit-il être tracé ? */
   showWallPlan: boolean
@@ -35,8 +38,8 @@ export interface MapViewPreferences {
 
 /** useMapViewPreferences lit l'orientation de `mapId`, l'interrupteur du plan des murs et le style du fond. */
 export function useMapViewPreferences(mapId: string | null | undefined): MapViewPreferences {
-  const { turns } = useReplayOrientation(mapId)
+  const { retained } = useReplayOrientation(mapId)
   const [showWallPlan] = usePersistedFlag(SHOW_WALL_PLAN_KEY, SHOW_WALL_PLAN_DEFAULT)
   const [backgroundStyle, setBackgroundStyle] = useBackgroundStyle()
-  return { turns, showWallPlan, backgroundStyle, setBackgroundStyle }
+  return { turns: retained ?? 0, showWallPlan, backgroundStyle, setBackgroundStyle }
 }

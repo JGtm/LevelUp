@@ -10,8 +10,11 @@ import type { FilmLayerAvailability } from './viewPresetLogic'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplaySound } from '../sound/useReplaySound'
 
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { testCapabilities } from '../../../test/capabilities'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const FILM: FilmLayerAvailability = {
   zones: true,
@@ -30,7 +33,7 @@ const FILM: FilmLayerAvailability = {
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
-const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
+const ORIENTATION = { retained: 0 as const, setTurns: () => {}, available: true }
 
 function Harness({ locale, planFeedAvailable = false }: { locale: ReplayLocale; planFeedAvailable?: boolean }) {
   const settings = useReplaySettings()
@@ -146,5 +149,53 @@ describe("ReplayViewMenu : l'option « Fil des éliminations »", () => {
     render(<Harness locale="en" planFeedAvailable />)
     ouvrir()
     expect(screen.getByRole('switch', { name: 'Elimination feed' })).toBeTruthy()
+  })
+})
+
+describe('ReplayViewMenu : l’emplacement du commutateur 2D / 3D', () => {
+  const groupe = () => screen.queryByRole('radiogroup', { name: 'Vue du rejeu' })
+  const avec3d = (valeur: unknown = true) =>
+    act(() => useAppShellStore.setState({ capabilities: Object.assign(testCapabilities(), { can_view_replay_3d: valeur }) }))
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    act(() => useAppShellStore.setState({ capabilities: testCapabilities() }))
+  })
+
+  afterEach(() => {
+    act(() => useAppShellStore.setState({ capabilities: null }))
+  })
+
+  it('capacité absente (le serveur ne la publie pas) : rien n’est rendu, le bouton Vue reste seul', () => {
+    render(<Harness locale="fr" />)
+    expect(groupe()).toBeNull()
+    expect(screen.queryByRole('radio', { name: '3D' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Vue Complet' })).toBeTruthy()
+  })
+
+  it('capacité vraie : le segment est rendu À GAUCHE du bouton Vue, dans le même conteneur', () => {
+    avec3d()
+    render(<Harness locale="fr" />)
+    const segment = groupe()
+    const vue = screen.getByRole('button', { name: 'Vue Complet' })
+    expect(segment).toBeTruthy()
+    expect(segment!.parentElement).toBe(vue.parentElement)
+    expect(segment!.compareDocumentPosition(vue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('la bascule change la vue choisie, sans toucher au panneau Vue', () => {
+    avec3d()
+    render(<Harness locale="fr" />)
+    expect(screen.getByRole('radio', { name: '2D' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('radio', { name: '3D' }))
+    expect(screen.getByRole('radio', { name: '3D' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: '2D' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('button', { name: 'Vue Complet' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('une capacité qui n’est pas un booléen vrai ne montre rien', () => {
+    avec3d('oui')
+    render(<Harness locale="fr" />)
+    expect(groupe()).toBeNull()
   })
 })

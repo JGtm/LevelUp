@@ -166,13 +166,14 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
     expect(Object.keys(commands).sort()).toEqual(
       [
         'autoPlay', 'cameraFollow', 'capture', 'clockRef', 'frameControl', 'fullscreen', 'locale', 'onRestart', 'onSeekBy',
-        'onSetSpeed', 'onTogglePlay', 'onToggleAutoPlay', 'planFeedShown', 'playing', 'sound', 'speed', 'timeline', 'zoom',
+        'onSetSpeed', 'onTogglePlay', 'onToggleAutoPlay', 'planFeedShown', 'playing', 'sound', 'speed', 'timeline', 'zoom', 'autoRotation',
       ].sort(),
     )
     expect(typeof commands.zoom.zoomIn).toBe('function')
     // La caméra : sans page autour de la toile, personne n'est suivi et le geste est inerte.
     expect(commands.cameraFollow.player).toBeNull()
     expect(commands.planFeedShown).toBe(false)
+    expect(commands.autoRotation).toBeNull()
   })
 })
 

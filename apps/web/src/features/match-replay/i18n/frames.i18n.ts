@@ -1,7 +1,7 @@
 /**
  * frames.i18n.ts — LES TEXTES DES TROIS CADRES DU LECTEUR (Standard, Cinéma, Plein cadre) : le
  * contrat (`FramesText`) et ses deux langues. Le choix du cadre, la sortie du Plein cadre, le retour, le lien vers la fiche et l'état
- * « plan tourné » de la vue.
+ * « plan tourné » de la vue, la position « Auto » de l'orientation et le commutateur 2D / 3D.
  *
  * UN SOUS-DICTIONNAIRE À PART, comme `playerPanel.i18n.ts` : `fr.ts` et `en.ts` sont au plafond de
  * taille du dépôt. Servi par `REPLAY_TEXT[locale].frames` ; la parité FR/EN reste tenue par le typage
@@ -27,6 +27,13 @@ export interface FramesText {
   sheet: string
   /** L'état de la vue quand le plan est tourné d'un quart de tour pour mieux remplir la zone. */
   rotatedPlan: string
+  /** L'infobulle du bouton « Plan tourné » de la barre d'une ligne : ce que l'Auto a fait, et ce que le clic rend. */
+  rotatedPlanTip: string
+  /** La position « Auto » de l'orientation dans le panneau Vue, et sa phrase d'aide (infobulle). */
+  orientationAuto: string
+  orientationAutoHint: string
+  /** Le nom accessible du groupe 2D / 3D posé à gauche du bouton Vue (les libellés « 2D » et « 3D » ne se traduisent pas). */
+  dimensionGroup: string
   /** L'option du panneau Vue qui pose le fil des éliminations sur le plan, et sa phrase d'aide (infobulle). */
   planFeed: string
   planFeedHint: string
@@ -54,6 +61,10 @@ export const FR_FRAMES = {
   back: 'Retour',
   sheet: 'Fiche',
   rotatedPlan: 'Plan tourné',
+  rotatedPlanTip: "Plan tourné automatiquement pour mieux remplir la zone. Cliquer pour revenir à l'orientation d'origine.",
+  orientationAuto: 'Auto',
+  orientationAutoHint: "Le plan se tourne tout seul quand il y gagne de la place à l'écran. Aucun choix n'est retenu pour cette carte.",
+  dimensionGroup: 'Vue du rejeu',
   planFeed: 'Fil des éliminations',
   planFeedHint: 'Les cinq dernières éliminations, posées en bas à gauche du plan.',
 } satisfies FramesText
@@ -66,6 +77,10 @@ export const EN_FRAMES = {
   back: 'Back',
   sheet: 'Details',
   rotatedPlan: 'Rotated map',
+  rotatedPlanTip: 'Map rotated automatically to fill the area better. Click to return to the original orientation.',
+  orientationAuto: 'Auto',
+  orientationAutoHint: 'The map turns by itself when it gains room on screen. No choice is remembered for this map.',
+  dimensionGroup: 'Replay view',
   planFeed: 'Elimination feed',
   planFeedHint: 'The last five eliminations, laid over the bottom left of the map.',
 } satisfies FramesText

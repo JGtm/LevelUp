@@ -132,6 +132,7 @@ export function makeCommands(over: Partial<ReplaySlotCommands> = {}): ReplaySlot
     zoom: makeZoom(),
     cameraFollow: { player: null, onFollow: vi.fn() },
     planFeedShown: false,
+    autoRotation: null,
     ...over,
   }
 }

@@ -48,7 +48,7 @@ const SLAYER_FILM: FilmLayerAvailability = {
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
 const HEAT = { mode: 'presence' as const, killsAvailable: true }
-const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
+const ORIENTATION = { retained: 0 as const, setTurns: () => {}, available: true }
 const NO_PLAN_BACKGROUND = { available: false, shown: false }
 
 function mount(available: FilmLayerAvailability, planBackground = NO_PLAN_BACKGROUND) {

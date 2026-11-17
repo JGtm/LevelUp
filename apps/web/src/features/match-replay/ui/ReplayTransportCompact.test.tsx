@@ -288,3 +288,44 @@ describe('Le menu de la caméra : posé par les cadres à barre d’une ligne, �
     expect(onSelectViewpoint).toHaveBeenCalledWith('x1')
   })
 })
+
+describe('ReplayTransportCompact — « Plan tourné » (l’Auto a tourné le plan)', () => {
+  const rotated = (onKeepUpright = vi.fn()) => ({ autoRotation: { onKeepUpright } })
+
+  it('absent tant que l’Auto n’a pas tourné le plan : ni bouton inerte, ni espace', () => {
+    const { container } = renderBar()
+    expect(screen.queryByRole('button', { name: T.frames.rotatedPlan })).toBeNull()
+    expect(buttonNames(container)).not.toContain(T.frames.rotatedPlan)
+  })
+
+  it('présent entre la vitesse et le zoom, après un séparateur, avec son infobulle', () => {
+    const { container } = renderBar(rotated())
+    const names = Array.from(container.querySelectorAll('button')).map((b) => b.getAttribute('aria-label') ?? b.textContent)
+    const i = names.indexOf(T.frames.rotatedPlan)
+    expect(names.indexOf(T.speed)).toBeLessThan(i)
+    expect(i).toBeLessThan(names.indexOf(T.zoomOut))
+    expect(screen.getByRole('button', { name: T.frames.rotatedPlan })).toHaveAttribute('title', T.frames.rotatedPlanTip)
+    expect(screen.getByRole('button', { name: T.frames.rotatedPlan }).previousElementSibling).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('prend les cotes de la maquette : capsule de 30 px, marge de 10 px, rayon de 8 px', () => {
+    renderBar(rotated())
+    const style = screen.getByRole('button', { name: T.frames.rotatedPlan }).style
+    expect(style.height).toBe('30px')
+    expect(style.padding).toBe('0px 10px')
+    expect(style.borderRadius).toBe('8px')
+  })
+
+  it('son clic redresse le plan (retient 0 quart de tour par l’objet de commandes)', () => {
+    const onKeepUpright = vi.fn()
+    renderBar(rotated(onKeepUpright))
+    fireEvent.click(screen.getByRole('button', { name: T.frames.rotatedPlan }))
+    expect(onKeepUpright).toHaveBeenCalledTimes(1)
+  })
+
+  it('la barre complète du Standard ne le porte pas', () => {
+    const commands = makeCommands(rotated())
+    render(<ReplayTransport {...commands} />)
+    expect(screen.queryByRole('button', { name: T.frames.rotatedPlan })).toBeNull()
+  })
+})

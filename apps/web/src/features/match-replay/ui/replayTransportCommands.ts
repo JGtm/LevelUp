@@ -25,6 +25,7 @@ import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplayZoom } from '../hooks/useReplayZoom'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { CameraFollow } from '../model/cameraMenu'
+import type { ReplayOrientation } from '../settings/useReplayOrientation'
 import type { ReplaySettings } from '../settings/useReplaySettings'
 import type { ReplaySound } from '../sound/useReplaySound'
 
@@ -56,6 +57,11 @@ export interface ReplayTransportCommands {
   frameControl: ReplayFrameControl
   /** Le zoom et le cadrage de la carte (paliers, déplacement). */
   zoom: ReplayZoom
+  /**
+   * L'Auto a tourné le plan : `{ onKeepUpright }` (retient 0 quart de tour pour la carte, le plan reste droit) ;
+   * `null` quand le plan est droit ou que son orientation est un choix retenu. Seule la barre d'une ligne le lit.
+   */
+  autoRotation: { onKeepUpright: () => void } | null
 }
 
 /** Ce que la toile remet aux fonctions de rendu de ses emplacements : les commandes de la barre, et la caméra. */
@@ -93,6 +99,9 @@ export interface ReplayTransportCommandSources {
   zoom: ReplayZoom
   cameraFollow: CameraFollow
   planFeedShown: boolean
+  /** Vrai quand l'Auto a tourné le plan (`useReplayView`) ; `orientation` retient le retour au plan droit. */
+  autoTurned: boolean
+  orientation: Pick<ReplayOrientation, 'setTurns'>
 }
 
 /**
@@ -102,16 +111,17 @@ export interface ReplayTransportCommandSources {
 export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplaySlotCommands {
   const { playing, togglePlay, restart, seekBy } = s.playback
   const { autoPlay, toggleAutoPlay, speed, setSpeed } = s.settings
-  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown } = s
+  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned } = s
+  const { setTurns } = s.orientation
   return useMemo(
     () => ({
       playing, onTogglePlay: togglePlay, onRestart: restart, onSeekBy: seekBy, clockRef, timeline,
       autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
-      cameraFollow, planFeedShown,
+      cameraFollow, planFeedShown, autoRotation: autoTurned ? { onKeepUpright: () => setTurns(0) } : null,
     }),
     [
       playing, togglePlay, restart, seekBy, clockRef, timeline,
-      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown,
+      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned, setTurns,
     ],
   )
 }

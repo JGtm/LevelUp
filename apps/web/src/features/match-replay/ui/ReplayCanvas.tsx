@@ -256,7 +256,7 @@ export function ReplayCanvas({
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayViewMenu).
   const settings = useReplaySettings()
   const planFeedShown = planFeed && settings.showPlanFeed
-  // L'ORIENTATION DE LA CARTE, retenue par carte : le cadrage la prend, le panneau de la vue la commande.
+  // LE CHOIX D'ORIENTATION, retenu par carte (null = Auto) : le cadrage le résout, le panneau de la vue le commande.
   const orientation = useReplayOrientation(mapId)
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
@@ -298,13 +298,13 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
+  const { mapImage, turns, autoTurned, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
+    doc, background, turns: orientation.retained, width, freeHeight, onManualMove: onFollowStop,
   })
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns: orientation.turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -574,7 +574,7 @@ export function ReplayCanvas({
 
   const commands = useReplayTransportCommands({
     playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
-    planFeedShown,
+    planFeedShown, autoTurned, orientation,
   })
 
   return (
