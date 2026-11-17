@@ -2,6 +2,9 @@
 
 **v8.3 — In preparation**
 
+- **Generate the replay of a match that has none** — in the desktop app, a match with no replay offers a "Generate replay" button, on the replay page and in the match page header. The film is downloaded then analysed on the machine, one film at a time; the page shows the place in the queue and the progress. When the film is no longer available, the page says so and no longer offers the button
+- **Escape and outside click, the same everywhere** — a dozen screens and menus (media, drawers, Spartan customizer, battle pass, campaign, header menus, gamertag search, notifications) close the same way: Escape closes one layer at a time, a click outside closes the screen
+- **Squad: a teammate with incomplete figures no longer skews the rates** — a match where a teammate's kills, deaths or assists are unknown no longer counts as zero in their per-minute rate
 - **Where the opposition respawns, by held zone** — a new "Opposing respawns" reading in Tactics: pick a zone the team holds and every zone is tinted by the share of opposing respawns that fall there, with the gap from the overall split
 - **Where a dead player is likely to respawn** — on the replay map, while a dead player's countdown runs, the zones where they were most likely to come back are tinted, the three likeliest are labelled with their share, and a ring around the cross empties down to the respawn; then the real spot is locked in with the zone and its rank, and everything fades after about 3 seconds. Weighted respawn points are drawn over the tint (choice Zones and points / Zones / Points). Switch and legend in the "View" panel, "Lives" group ("Respawn probability", on by default); it follows Solo and Hide
 - **Zones cut at the edge of the plan** — the named zones, in Tactics and on the replay map, and the respawn probability tint stop at the edge of the map's plan instead of spilling past it; a map without a plan view keeps its zones whole
