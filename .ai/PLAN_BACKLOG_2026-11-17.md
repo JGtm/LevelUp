@@ -368,6 +368,12 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
   - **F** : bloquée, voir F.1 (décision du user : reportée au chantier décodeur).
   - **G** : le profil `dev` n'a pas la capacité de régénération ; `can_generate_replays` se dérive du placement (bureau ou développement) et de la capacité du titre, pas de `ReplayRegen` : à écrire en G.0.
 
+- 2026-11-17 — G.0 : conception rendue (`.ai/annexes_backlog_1117/rejeu_a_la_demande.md`, branche `bl1117/g`, `66617729cc`), relue en entier par le pilote. Arbitrages du pilote sur ses questions ouvertes :
+  - jeton : le chemin serveur passe par `tokencache.ResolveFreshPlayerTokens(ctx, xuid)`, point d'entrée unique du chemin par joueur dans le processus (échange dédupliqué, aucun marquage « reconnexion requise » sur un échec concurrent), et non par `auth.RefreshHaloTokensViaStoreFirst`, helper des commandes. L'intention de D-4 est tenue : le jeton du joueur de la page, jamais celui d'un autre ;
+  - profil suivi sans compte relié : aucun prêt du pool, état « non pris en charge » ; plafond de 10 demandes et 50 issues en constantes nommées ; film retiré après la génération quand l'archive est désactivée ; un échec n'est pas gardé après un redémarrage ; bouton de l'en-tête avec libellé ;
+  - contrat : les deux routes ne sont montées que sous la capacité, donc absentes du contrat généré ; G.3 n'ajoute que `can_generate_replays`.
+  Reste, avant G.1 : la vérification sur UN match (paragraphe 12 de la conception), avec l'accord du user, serveur et application arrêtés.
+
 ## Découvertes (consignées, non traitées)
 
 Relevées par l'instruction du 2026-11-17, à porter au backlog en E.6 :
