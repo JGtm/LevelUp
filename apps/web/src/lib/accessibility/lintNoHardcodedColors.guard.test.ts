@@ -33,6 +33,28 @@ describe('lint des couleurs : motifs', () => {
     expect(scan(line)).toEqual([{ kind: 'tailwind', match }])
   })
 
+  it.each([
+    ['shadow', 'className="shadow-amber-500"', 'shadow-amber-500'],
+    ['from', 'className="bg-gradient-to-r from-red-500"', 'from-red-500'],
+    ['via', 'className="via-emerald-400"', 'via-emerald-400'],
+    ['to', 'className="to-sky-600"', 'to-sky-600'],
+    ['from avec opacité', 'className="from-slate-500/40"', 'from-slate-500'],
+    ['shadow noir', 'className="shadow-black/20"', 'shadow-black/20'],
+    ['to blanc', 'className="to-white"', 'to-white'],
+  ])('rougit le préfixe %s', (_nom, line, match) => {
+    expect(scan(line)).toEqual([{ kind: 'tailwind', match }])
+  })
+
+  it('laisse passer ces préfixes avec un jeton sémantique ou sans couleur nommée', () => {
+    for (const line of [
+      'className="shadow-md from-primary via-card to-background shadow-primary/20"',
+      'className="bg-gradient-to-br from-success/40 via-warning/30 to-destructive/50"',
+      'const dir = "to right"; const from = 1; const to = 2',
+    ]) {
+      expect(scan(line)).toEqual([])
+    }
+  })
+
   it('rougit toujours les motifs historiques', () => {
     expect(scan("const c = '#ff00aa'")).toEqual([{ kind: 'hex', match: '#ff00aa' }])
     expect(scan('className="text-red-500"')).toEqual([{ kind: 'tailwind', match: 'text-red-500' }])
@@ -90,5 +112,42 @@ describe('lint des couleurs : color-allow', () => {
     expect(scan("const c = '#f59e0b' // color-allow: étoile").map((v) => v.kind)).toEqual(['hex'])
     expect(scan("const c = '#f59e0b' // color-allow(): étoile").map((v) => v.kind)).toEqual(['hex'])
     expect(scan("const c = '#f59e0b' // color-allow(inconnu): étoile").map((v) => v.kind)).toEqual(['hex'])
+  })
+})
+
+describe('lint des couleurs : marqueur inerte (plafond 0)', () => {
+  const inerte = (match: string) => [{ kind: 'marqueur-inerte', match }]
+
+  it('refuse un marqueur sur une ligne de code sans couleur', () => {
+    expect(scan("const fg = 'var(--foreground)' // color-allow: encre neutre")).toEqual(inerte('color-allow'))
+    expect(scan('...hoverRevealSymbol(tc.text), // color-allow(hex): point neutre')).toEqual(inerte('color-allow(hex)'))
+    expect(scan('{/* color-allow: currentColor uniquement */}')).toEqual(inerte('color-allow'))
+  })
+
+  it('refuse un marqueur sur une ligne de commentaire, même quand elle cite une couleur', () => {
+    expect(scan('// color-allow: hex en commentaires de documentation')).toEqual(inerte('color-allow'))
+    expect(scan(" * color-allow: 'color' reçoit 'tc.text'")).toEqual(inerte('color-allow'))
+    expect(scan('// couleur #f59e0b, color-allow(hex): étoile')).toEqual(inerte('color-allow(hex)'))
+  })
+
+  it('un marqueur ne peut pas excuser le genre marqueur-inerte', () => {
+    expect(scan('const a = 1 // color-allow(marqueur-inerte): raison')).toEqual(inerte('color-allow(marqueur-inerte)'))
+  })
+
+  it('garde accepté un marqueur actif, qui couvre une vraie couleur', () => {
+    expect(scan("const c = '#f59e0b' // color-allow(hex): étoile favori")).toEqual([])
+    expect(scan('className="from-amber-500" // color-allow(tailwind): rareté')).toEqual([])
+    expect(scan("const c = 'rgba(0,0,0,0.4)' // color-allow(fonction-couleur): ombre")).toEqual([])
+  })
+
+  it('une ligne de commentaire sans marqueur reste tolérée, même avec une couleur', () => {
+    expect(scan('// ring-offset-red-500 #fff')).toEqual([])
+    expect(scan(' * bg-black/60 rgba(0,0,0,1)')).toEqual([])
+  })
+
+  it('un fichier autorisé ne rougit pas pour un marqueur', () => {
+    const palette = 'apps/web/src/lib/accessibility/palettes/default.ts'
+    expect(scan('// color-allow: raison', palette)).toEqual([])
+    expect(scan('// color-allow: raison', 'apps/web/src/features/x/Carte.test.tsx')).toEqual([])
   })
 })

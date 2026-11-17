@@ -14,10 +14,17 @@
  * n'excuse QUE les genres qu'il nomme. Une ligne qui porte un hex excusé et gagne ensuite une classe
  * Tailwind couleur rougit : l'exception ne couvre pas « toute couleur de la ligne ». Un `color-allow` sans
  * genre n'excuse rien.
+ *
+ * Quatrième genre, `marqueur-inerte` (plafond 0, jamais excusable) : un marqueur posé sur une ligne où, sans
+ * lui, le contrôle ne signalerait rien. Une ligne de commentaire pur est toujours dans ce cas (le contrôle la
+ * tolère avant tout motif). La raison se garde en commentaire, sans le mot du marqueur.
  */
 
 /** Genres de violation, tels qu'un `color-allow(...)` les nomme. */
 export const KINDS = ['hex', 'tailwind', 'fonction-couleur']
+
+/** Genre de la violation « marqueur inerte » : aucun marqueur ne peut l'excuser. */
+export const INERT_MARKER_KIND = 'marqueur-inerte'
 
 // 1. Hex colors.
 const HEX_PATTERN = /#[0-9a-fA-F]{3,8}\b/g
@@ -33,6 +40,7 @@ const TW_COLOR_NAMES = [
 const TW_PREFIXES = [
   'text', 'bg', 'border', 'ring', 'ring-offset', 'fill', 'stroke', 'divide', 'placeholder',
   'outline', 'decoration', 'accent', 'caret',
+  'shadow', 'from', 'via', 'to',
 ]
 const TW_PATTERN = new RegExp(
   `\\b(?:${TW_PREFIXES.join('|')})-(?:${TW_COLOR_NAMES.join('|')})-(?:50|100|200|300|400|500|600|700|800|900|950)\\b`,
@@ -114,17 +122,27 @@ function collect(line, pattern, kind, out) {
   if (matches) for (const match of matches) out.push({ kind, match })
 }
 
-/**
- * Violations d'UNE ligne : `[{ kind, match }]`, hors tolérances (fichier, ligne de commentaire, genres
- * nommés par un `color-allow(...)`).
- */
-export function scanLine(relPath, line) {
-  if (isAllowedFile(relPath) || isCommentLine(line)) return []
+/** Couleurs de la ligne avant toute tolérance de marqueur ou de commentaire : `[{ kind, match }]`. */
+function colorsOf(line) {
   const found = []
   collect(line, HEX_PATTERN, 'hex', found)
   collect(line, TW_PATTERN, 'tailwind', found)
   collect(line, ABSOLUTE_COLOR_PATTERN, 'tailwind', found)
   collect(line, CSS_COLOR_FN_PATTERN, 'fonction-couleur', found)
+  return found
+}
+
+/**
+ * Violations d'UNE ligne : `[{ kind, match }]`, hors tolérances (fichier, ligne de commentaire, genres
+ * nommés par un `color-allow(...)`). Un `color-allow` sur une ligne sans couleur à excuser, ligne de
+ * commentaire comprise, rend l'unique violation `marqueur-inerte`.
+ */
+export function scanLine(relPath, line) {
+  if (isAllowedFile(relPath)) return []
+  const comment = isCommentLine(line)
+  const found = comment ? [] : colorsOf(line)
+  const marker = ALLOW_MARKER.exec(line)
+  if (marker && found.length === 0) return [{ kind: INERT_MARKER_KIND, match: marker[0] }]
   const allowed = allowedKinds(line)
   return allowed ? found.filter((v) => !allowed.has(v.kind)) : found
 }

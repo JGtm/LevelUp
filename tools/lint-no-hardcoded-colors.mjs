@@ -20,6 +20,7 @@
  * Les motifs, les tolérances et l'analyse d'une ligne vivent dans `lint-no-hardcoded-colors.lib.mjs` (testé).
  * Exception ponctuelle : `color-allow(<genre>): <raison>` sur la ligne, qui n'excuse QUE le genre nommé
  * (hex, tailwind, fonction-couleur).
+ * Un marqueur posé là où le contrôle ne signalerait rien est lui-même une violation (genre `marqueur-inerte`).
  *
  * Usage :
  *   node tools/lint-no-hardcoded-colors.mjs
@@ -32,7 +33,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { scanLine, isAllowedFile } from './lint-no-hardcoded-colors.lib.mjs'
+import { scanLine, isAllowedFile, INERT_MARKER_KIND } from './lint-no-hardcoded-colors.lib.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
@@ -93,7 +94,7 @@ for (const rootDir of [featuresDir, componentsDir, libReplayDir]) {
 }
 
 if (violations.length === 0) {
-  console.log('lint-no-hardcoded-colors: clean (0 violation)')
+  console.log('lint-no-hardcoded-colors: clean (0 violation, 0 marqueur inerte)')
   process.exit(0)
 }
 
@@ -113,6 +114,13 @@ for (const [file, items] of byFile.entries()) {
   if (items.length > 5) {
     console.log(`  ... et ${items.length - 5} autre(s)`)
   }
+}
+
+if (violations.some((v) => v.kind === INERT_MARKER_KIND)) {
+  console.log(
+    '\nmarqueur inerte : un `color-allow` sur une ligne sans couleur à excuser (ou sur une ligne de ' +
+      'commentaire) ne sert à rien. Retirez le mot du marqueur et gardez la raison en commentaire.',
+  )
 }
 
 console.log(
