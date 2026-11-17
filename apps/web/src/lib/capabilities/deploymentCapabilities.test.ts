@@ -79,3 +79,16 @@ describe('passwordOnlyAccounts', () => {
     expect(passwordOnlyAccounts(null)).toBe(false)
   })
 })
+
+describe('capacité de génération d’un rejeu à la demande', () => {
+  it('fausse avant hydratation et sans capacités : aucun bouton ni requête avant que le serveur l’ait dit', () => {
+    for (const caps of [null, undefined, {}]) {
+      expect(deploymentCapabilityOf(caps, 'can_generate_replays')).toBe(false)
+    }
+  })
+
+  it('la valeur publiée par le serveur l’emporte sur le défaut', () => {
+    expect(deploymentCapabilityOf(testCapabilities({ can_generate_replays: true }), 'can_generate_replays')).toBe(true)
+    expect(deploymentCapabilityOf(testCapabilities(demoCapabilities()), 'can_generate_replays')).toBe(false)
+  })
+})

@@ -3,7 +3,7 @@
  * est impossible, relecture seulement pendant l'attente.
  */
 import { describe, it, expect } from 'vitest'
-import { generationInFlight, generationView } from './logic'
+import { generationInFlight, generationView, requestErrorKey } from './logic'
 import type { ReplayGenerationReason, ReplayGenerationState, ReplayGenerationStatus } from './queries'
 
 const st = (state: ReplayGenerationState, rest: Partial<ReplayGenerationStatus> = {}): ReplayGenerationStatus => ({
@@ -113,5 +113,17 @@ describe('generationInFlight', () => {
     for (const s of ['generatable', 'failed', 'film_unavailable', 'not_supported', 'ready'] as const) {
       expect(generationInFlight(st(s))).toBe(false)
     }
+  })
+})
+
+describe('requestErrorKey', () => {
+  it('file pleine : message propre ; 409 : l’état relu parle ; autre erreur : échec de la demande', () => {
+    expect(requestErrorKey(null)).toBeNull()
+    expect(requestErrorKey({ status: 429, code: 'replay_generation_queue_full' })).toBe('queueFull')
+    expect(requestErrorKey({ status: 429 })).toBe('queueFull')
+    expect(requestErrorKey({ status: 409, code: 'replay_film_unavailable' })).toBeNull()
+    expect(requestErrorKey({ status: 409, code: 'replay_generation_not_supported' })).toBeNull()
+    expect(requestErrorKey({ status: 503, code: 'replay_generation_unavailable' })).toBe('requestFailed')
+    expect(requestErrorKey(new Error('réseau'))).toBe('requestFailed')
   })
 })

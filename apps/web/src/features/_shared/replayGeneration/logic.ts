@@ -89,3 +89,18 @@ export function generationView(status: ReplayGenerationStatus | undefined): Repl
 export function generationInFlight(status: ReplayGenerationStatus | undefined): boolean {
   return status?.state === 'queued' || status?.state === 'running'
 }
+
+/** Ce que la demande elle-même (le POST) a de plus à dire que l'état relu : file pleine, ou échec sans suite. */
+export type ReplayGenerationRequestError = 'queueFull' | 'requestFailed'
+
+/**
+ * Un 409 (le match ne se génère plus) et un 429 relisent l'état, dont la phrase dit déjà tout : seule la file pleine
+ * garde un message propre, car l'état relu redevient « générable ». `null` : rien de plus à dire.
+ */
+export function requestErrorKey(err: unknown): ReplayGenerationRequestError | null {
+  if (!err) return null
+  const { status, code } = err as { status?: unknown; code?: unknown }
+  if (code === 'replay_generation_queue_full' || status === 429) return 'queueFull'
+  if (status === 409) return null
+  return 'requestFailed'
+}
