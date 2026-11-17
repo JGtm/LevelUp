@@ -8,7 +8,8 @@
  * Les labels sont passés en props pour rester i18n-agnostique : chaque
  * consommateur fournit son propre manifest (career / synthesis / autre).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 
 export type Experience = 'all' | 'ranked' | 'unranked'
 
@@ -28,15 +29,13 @@ interface ExperienceDropdownProps {
 
 export function ExperienceDropdown({ value, onChange, counts, labels, dense }: ExperienceDropdownProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  // Échap et un clic hors du menu le ferment ; Échap rend le focus au bouton, le clic dehors le laisse où l'on a cliqué.
+  const ref = useDismissable(open, (reason) => {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  })
 
   const countMap = new Map<string, number>()
   for (const c of counts) countMap.set(c.value, c.count)
@@ -53,6 +52,7 @@ export function ExperienceDropdown({ value, onChange, counts, labels, dense }: E
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`rounded border px-2 py-1 ${dense ? 'text-xs' : 'text-sm'} bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
