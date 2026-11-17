@@ -10,7 +10,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"reflect"
 	"strings"
@@ -211,19 +210,12 @@ func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
 // (titre sans decodeur) rend ErrCapabilityNotSupported — 503 propre en bout de
 // chaine, jamais un 500.
 func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
-	sharedSQL, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open shared mem: %v", err)
-	}
-	t.Cleanup(func() { _ = sharedSQL.Close() })
-	// LES VRAIES MIGRATIONS, PUIS ON RETIRE CE QU'ON VEUT ABSENT (revue P2). La DDL
+	// LES VRAIES MIGRATIONS (copie du gabarit shared migré), PUIS ON RETIRE CE QU'ON VEUT ABSENT (revue P2). La DDL
 	// recopiee a la main derivait du schema reel — elle avait deja manque
 	// `game_variant_name`, et rien ne le signalait tant qu'aucune requete n'y touchait.
 	// Ici on part du schema LIVRE et on supprime les tables du film : c'est exactement la
 	// situation d'un titre sans decodeur, et elle ne peut plus diverger.
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("migrations shared: %v", err)
-	}
+	sharedSQL := OpenMigratedMemory(t, migration.TargetShared)
 	for _, tbl := range []string{"kill_positions", "match_kill_events", "match_kill_heads", "match_kill_pairs", "match_assist_pairs"} {
 		if _, err := sharedSQL.Exec("DROP TABLE IF EXISTS " + tbl + " CASCADE"); err != nil {
 			t.Fatalf("drop %s: %v", tbl, err)

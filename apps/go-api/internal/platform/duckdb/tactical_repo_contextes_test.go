@@ -5,7 +5,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -80,14 +79,7 @@ func TestTacticalRepo_ContextesDeMort_ListeExigee(t *testing.T) {
 // TestTacticalRepo_ContextesDeMort_TableAbsente : un shared sans la table du film rend
 // ErrCapabilityNotSupported.
 func TestTacticalRepo_ContextesDeMort_TableAbsente(t *testing.T) {
-	sharedSQL, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open shared mem: %v", err)
-	}
-	t.Cleanup(func() { _ = sharedSQL.Close() })
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("migrations shared: %v", err)
-	}
+	sharedSQL := OpenMigratedMemory(t, migration.TargetShared)
 	if _, err := sharedSQL.Exec("DROP TABLE IF EXISTS match_death_context CASCADE"); err != nil {
 		t.Fatalf("drop: %v", err)
 	}

@@ -126,10 +126,7 @@ func newBaseNotee(t *testing.T) baseNotee {
 		_ = brute.Close()
 		_ = connector.Close()
 	})
-	_ = migration.All()
-	if err := migration.RunForDB(brute, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	FillMigratedMemory(t, brute, migration.TargetShared)
 	shared := newTestDB(notee, ":memory:")
 	pdb := &PlayerDB{
 		Shared:       shared,

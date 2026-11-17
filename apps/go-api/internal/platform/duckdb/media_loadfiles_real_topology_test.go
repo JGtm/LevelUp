@@ -12,7 +12,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -39,18 +38,11 @@ import (
 func TestLoadMediaFiles_RealTopology_NoCrossDBSQL(t *testing.T) {
 	dir := t.TempDir()
 
-	// Ouvrir 4 fichiers DB distincts comme en prod (player, shared, social, meta).
+	// Ouvrir 4 fichiers DB distincts comme en prod (player, shared, social, meta), chacun
+	// copie du gabarit migré de sa cible.
 	open := func(name string, target migration.TargetDB) *DB {
 		path := filepath.Join(dir, name+".duckdb")
-		raw, err := sql.Open("duckdb", path)
-		if err != nil {
-			t.Fatalf("open %s: %v", name, err)
-		}
-		if err := migration.RunForDB(raw, target); err != nil {
-			raw.Close()
-			t.Fatalf("migrate %s: %v", name, err)
-		}
-		raw.Close()
+		MigratedFileCopy(t, target, path)
 		db, err := OpenReadWrite(path)
 		if err != nil {
 			t.Fatalf("reopen %s: %v", name, err)

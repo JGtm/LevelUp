@@ -16,16 +16,11 @@ import (
 
 func openTelemetryDiagPlayerDB(t *testing.T) *DB {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "stats.duckdb")
-	db, err := OpenReadWrite(path)
+	db, err := OpenReadWrite(MigratedTempFile(t, migration.TargetPlayer, "stats.duckdb"))
 	if err != nil {
 		t.Fatalf("OpenReadWrite player: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(db.SQLDb(), migration.TargetPlayer); err != nil {
-		t.Fatalf("RunForDB(TargetPlayer): %v", err)
-	}
 	return db
 }
 

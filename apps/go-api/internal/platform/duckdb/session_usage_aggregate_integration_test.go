@@ -17,7 +17,6 @@ package duckdb_test
 import (
 	"context"
 	"math"
-	"path/filepath"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -34,17 +33,14 @@ import (
 // setupUsageSharedDB : DB shared temporaire, schéma réel + migrations réelles.
 func setupUsageSharedDB(t *testing.T) (*ddb.DB, *ddb.PlayerDB) {
 	t.Helper()
-	sharedDB, err := ddb.OpenReadWrite(filepath.Join(t.TempDir(), "shared.duckdb"))
+	// Migrations réelles D'ABORD (copie du gabarit migré sur base vierge, comme
+	// openUsageSummaryTestDB — les steps fr-cols échouent si match_registry préexiste sans ces
+	// colonnes), puis le schéma sync (IF NOT EXISTS) qui apporte match_participants.
+	sharedDB, err := ddb.OpenReadWrite(ddb.MigratedTempFile(t, migration.TargetShared, "shared.duckdb"))
 	if err != nil {
 		t.Fatalf("open shared: %v", err)
 	}
 	t.Cleanup(func() { _ = sharedDB.Close() })
-	// Migrations réelles D'ABORD (sur DB vierge, comme openUsageSummaryTestDB —
-	// les steps fr-cols échouent si match_registry préexiste sans ces colonnes),
-	// puis le schéma sync (IF NOT EXISTS) qui apporte match_participants.
-	if err := migration.RunForDB(sharedDB.SQLDb(), migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB shared: %v", err)
-	}
 	if err := syncpkg.EnsureSharedSchema(context.Background(), sharedDB.SQLDb()); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}

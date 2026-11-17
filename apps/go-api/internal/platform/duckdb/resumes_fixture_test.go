@@ -34,9 +34,7 @@ func ouvrirSharedMigree(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	t.Cleanup(func() { _ = db.Close() })
-	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	FillMigratedMemory(t, db, migration.TargetShared)
 	return db
 }
 

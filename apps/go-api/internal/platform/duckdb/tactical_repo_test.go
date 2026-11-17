@@ -27,7 +27,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -62,15 +61,7 @@ const (
 // test aveugle au defaut qu'il etait cense couvrir.
 func newTacticalTestPlayerDB(t *testing.T) *PlayerDB {
 	t.Helper()
-	sharedSQL, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open shared mem: %v", err)
-	}
-	t.Cleanup(func() { _ = sharedSQL.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	sharedSQL := OpenMigratedMemory(t, migration.TargetShared)
 	shared := newTestDB(sharedSQL, ":memory:")
 	return &PlayerDB{
 		Shared:       shared,

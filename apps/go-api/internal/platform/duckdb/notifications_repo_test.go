@@ -6,7 +6,6 @@ package duckdb_test
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,25 +14,12 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// newNotifTestDB crée shared_social.duckdb temporaire et applique la suite
-// complète des migrations TargetSharedSocial (création + drop_idx_pn_xuid_unread).
-// Le test reflète ainsi exactement le schéma de prod, ce qui garantit que tout
-// changement de migration est attrapé sans dérive de DDL inline.
+// newNotifTestDB rend le chemin d'une copie du gabarit shared_social migré (suite complète des
+// migrations TargetSharedSocial : création + drop_idx_pn_xuid_unread). Le test reflète ainsi
+// exactement le schéma de prod, sans dérive de DDL inline.
 func newNotifTestDB(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "shared_social.duckdb")
-
-	rw, err := duckdb.OpenReadWrite(dbPath)
-	if err != nil {
-		t.Fatalf("newNotifTestDB OpenReadWrite: %v", err)
-	}
-	defer rw.Close()
-
-	if err := migration.RunForDB(rw.SQLDb(), migration.TargetSharedSocial); err != nil {
-		t.Fatalf("newNotifTestDB RunForDB(TargetSharedSocial): %v", err)
-	}
-	return dbPath
+	return duckdb.MigratedTempFile(t, migration.TargetSharedSocial, "shared_social.duckdb")
 }
 
 // openNotifPlayerDB ouvre le shared_social.duckdb de test et construit un

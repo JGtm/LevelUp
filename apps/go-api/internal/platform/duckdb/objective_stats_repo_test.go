@@ -35,17 +35,16 @@ func (r memSharedReader) Get(_ context.Context) (*sql.DB, func(), error) {
 // vue _latest) ; false laisse la DB nue pour tester la dégradation.
 func newObjectiveStatsRepoOnMem(t *testing.T, migrate bool) (*ObjectiveStatsRepo, *sql.DB) {
 	t.Helper()
-	db, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open duckdb: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
+	var db *sql.DB
 	if migrate {
-		// Le provider de steps title-owned est câblé par le TestMain du package
-		// (migration_provider_test.go) — même chaîne qu'au boot.
-		if err := migration.RunForDB(db, migration.TargetShared); err != nil {
-			t.Fatalf("RunForDB(Shared): %v", err)
+		// Copie du gabarit shared migré par la même chaîne qu'au boot (migrated_template_test.go).
+		db = OpenMigratedMemory(t, migration.TargetShared)
+	} else {
+		var err error
+		if db, err = sql.Open("duckdb", ":memory:"); err != nil {
+			t.Fatalf("open duckdb: %v", err)
 		}
+		t.Cleanup(func() { _ = db.Close() })
 	}
 	pdb := &PlayerDB{SharedReader: memSharedReader{db: db}}
 	return NewObjectiveStatsRepo(pdb), db

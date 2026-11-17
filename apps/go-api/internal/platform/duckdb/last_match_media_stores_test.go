@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -23,16 +22,10 @@ import (
 // fermée (aucun handle en cache) pour que le dépôt testé l'ouvre lui-même.
 func migratedFile(t *testing.T, path string, target migration.TargetDB, stmts ...string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
+	MigratedFileCopy(t, target, path)
 	raw, err := sql.Open("duckdb", path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
-	}
-	if err := migration.RunForDB(raw, target); err != nil {
-		_ = raw.Close()
-		t.Fatalf("migrate %s: %v", target, err)
 	}
 	for _, s := range stmts {
 		if _, err := raw.Exec(s); err != nil {

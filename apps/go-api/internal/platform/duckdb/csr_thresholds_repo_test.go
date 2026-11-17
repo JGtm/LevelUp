@@ -3,25 +3,19 @@ package duckdb
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/migration"
 )
 
-// helper : crée une metadata DB temp + applique les migrations metadata.
+// helper : ouvre une copie du gabarit metadata migré.
 func openTempMetadataDBWithThresholds(t *testing.T) *DB {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "metadata.duckdb")
-	db, err := OpenReadWrite(path)
+	db, err := OpenReadWrite(MigratedTempFile(t, migration.TargetMetadata, "metadata.duckdb"))
 	if err != nil {
 		t.Fatalf("OpenReadWrite metadata: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(db.SQLDb(), migration.TargetMetadata); err != nil {
-		t.Fatalf("RunForDB(TargetMetadata): %v", err)
-	}
 	return db
 }
 

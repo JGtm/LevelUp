@@ -12,7 +12,6 @@
 package duckdb
 
 import (
-	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,22 +21,13 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-// setupPrestigeDB ouvre une DB temp et applique les migrations du target.
+// setupPrestigeDB ouvre une copie du gabarit migré du target (migrated_template_test.go).
 // Retourne un *DB (avec pool) prêt pour les repos. Nettoyage via t.Cleanup.
 func setupPrestigeDB(t *testing.T, target migration.TargetDB) *DB {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, string(target)+".duckdb")
-
-	raw, err := sql.Open("duckdb", path)
-	if err != nil {
-		t.Fatalf("sql.Open: %v", err)
-	}
-	if err := migration.RunForDB(raw, target); err != nil {
-		raw.Close()
-		t.Fatalf("RunForDB(%s): %v", target, err)
-	}
-	raw.Close()
+	MigratedFileCopy(t, target, path)
 
 	db, err := OpenReadWrite(path)
 	if err != nil {

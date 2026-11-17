@@ -9,7 +9,6 @@ package duckdb
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -21,15 +20,12 @@ import (
 // openMigratedFile ouvre une base de test sur fichier, migrée pour la cible donnée.
 func openMigratedFile(t *testing.T, name string, target migration.TargetDB) *DB {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), name)
+	path := MigratedTempFile(t, target, name)
 	sqlDB, err := sql.Open("duckdb", path)
 	if err != nil {
 		t.Fatalf("open %s: %v", name, err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
-	if err := migration.RunForDB(sqlDB, target); err != nil {
-		t.Fatalf("RunForDB(%s): %v", target, err)
-	}
 	return newTestDB(sqlDB, path)
 }
 

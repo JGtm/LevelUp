@@ -2,7 +2,6 @@ package duckdb
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,16 +11,11 @@ import (
 
 func openBattlePassTestDB(t *testing.T, filename string, target migration.TargetDB) *DB {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), filename)
-	db, err := OpenReadWrite(path)
+	db, err := OpenReadWrite(MigratedTempFile(t, target, filename))
 	if err != nil {
 		t.Fatalf("OpenReadWrite(%s): %v", filename, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(db.SQLDb(), target); err != nil {
-		t.Fatalf("RunForDB(%s): %v", filename, err)
-	}
 	return db
 }
 

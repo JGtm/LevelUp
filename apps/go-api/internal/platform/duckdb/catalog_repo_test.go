@@ -5,7 +5,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -15,14 +14,7 @@ import (
 
 func setupCatalogRepoDB(t *testing.T) *DB {
 	t.Helper()
-	db, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	db := OpenMigratedMemory(t, migration.TargetMetadata)
 	// La migration seed_ranked_playlists_catalog pré-remplit playlists_catalog
 	// avec les playlists ranked réelles HI. On repart d'un catalogue vide pour
 	// que les comptages des tests portent uniquement sur le jeu seedé ci-dessous.

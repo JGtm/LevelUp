@@ -22,7 +22,6 @@ package duckdb
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -31,18 +30,14 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-// newPlayerFixtureDB ouvre une player DB de test sur fichier, schéma par migrations.
+// newPlayerFixtureDB ouvre une copie du gabarit player migré (migrated_template_test.go).
 func newPlayerFixtureDB(t *testing.T) *sql.DB {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "stats.duckdb")
-	db, err := sql.Open("duckdb", path)
+	db, err := sql.Open("duckdb", MigratedTempFile(t, migration.TargetPlayer, "stats.duckdb"))
 	if err != nil {
 		t.Fatalf("open player fixture: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
-		t.Fatalf("RunForDB(player): %v", err)
-	}
 	return db
 }
 

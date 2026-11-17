@@ -7,7 +7,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -135,14 +134,7 @@ func TestTacticalRepo_MatesDesMorts_TableAbsente(t *testing.T) {
 // pdbSansTable : un shared migre dont la table du film donnee a ete retiree.
 func pdbSansTable(t *testing.T, table string) *PlayerDB {
 	t.Helper()
-	sharedSQL, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open shared mem: %v", err)
-	}
-	t.Cleanup(func() { _ = sharedSQL.Close() })
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("migrations shared: %v", err)
-	}
+	sharedSQL := OpenMigratedMemory(t, migration.TargetShared)
 	if _, err := sharedSQL.Exec("DROP TABLE IF EXISTS " + table + " CASCADE"); err != nil {
 		t.Fatalf("drop: %v", err)
 	}

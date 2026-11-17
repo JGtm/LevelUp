@@ -97,9 +97,7 @@ func newKillSourceTestPlayerDB(t *testing.T) *PlayerDB {
 	}
 	borneAUneConnexion(sharedSQL)
 	t.Cleanup(func() { _ = sharedSQL.Close() })
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	FillMigratedMemory(t, sharedSQL, migration.TargetShared)
 
 	metaSQL, err := sql.Open("duckdb", ":memory:")
 	if err != nil {

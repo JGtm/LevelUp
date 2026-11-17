@@ -12,7 +12,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -22,15 +21,7 @@ import (
 // newCarteRepo : shared `:memory:` migre + metadata portant `asset_translations`.
 func newCarteRepo(t *testing.T) (*ReplayMapRepo, *DB, *DB) {
 	t.Helper()
-	sharedSQL, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open shared mem: %v", err)
-	}
-	t.Cleanup(func() { _ = sharedSQL.Close() })
-	_ = migration.All()
-	if err := migration.RunForDB(sharedSQL, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	sharedSQL := OpenMigratedMemory(t, migration.TargetShared)
 	shared := newTestDB(sharedSQL, ":memory:")
 
 	meta, err := OpenReadWrite(":memory:")

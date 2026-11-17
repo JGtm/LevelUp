@@ -17,7 +17,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -36,15 +35,7 @@ const ppTestMatchID = "m_positions_001"
 // PlayerDB dont le SharedReader pointe sur cette conn (RW en legacy).
 func newPlayerPositionsTestPlayerDB(t *testing.T) *PlayerDB {
 	t.Helper()
-	sqlDB, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("open mem: %v", err)
-	}
-	t.Cleanup(func() { sqlDB.Close() })
-
-	if err := migration.RunForDB(sqlDB, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(Shared): %v", err)
-	}
+	sqlDB := OpenMigratedMemory(t, migration.TargetShared)
 	shared := newTestDB(sqlDB, ":memory:")
 
 	return &PlayerDB{
