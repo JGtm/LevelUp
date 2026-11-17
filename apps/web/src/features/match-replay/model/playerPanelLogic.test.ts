@@ -3,14 +3,16 @@
  *
  * Ce qu'ils protègent :
  *  1. LE JOUEUR CHOISI : un clic sur une fiche ouvre le panneau, un autre joueur REMPLACE le
- *     contenu (actions remises à zéro), recliquer la fiche ouverte referme.
- *  2. LES EXCLUSIONS (D-7) : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe Seul et
- *     Suivre. « Retour au fil » remet tout à zéro, Suivre compris.
- *  3. CE QUE LA CARTE MONTRE : sans Seul ni Masquer, aucun filtre (`null`, rien à brancher) ;
+ *     contenu (Seul et Masquer remis à zéro), recliquer la fiche ouverte referme.
+ *  2. SUIVRE EST LA CAMÉRA, INDÉPENDANTE DE LA FICHE : fermer ou changer de fiche ne l'éteint pas, la
+ *     demande est acceptée fiche fermée ; le joueur suivi est le joueur REGARDÉ (`trackedPlayerOf`).
+ *  3. LES EXCLUSIONS (D-7) : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe Seul et
+ *     le Suivre de ce joueur. « Retour au fil » remet Seul et Masquer à zéro.
+ *  4. CE QUE LA CARTE MONTRE : sans Seul ni Masquer, aucun filtre (`null`, rien à brancher) ;
  *     sinon le prédicat désigne les vies du joueur choisi, bot compris (par ses vies, jamais par
  *     un xuid qu'il n'a pas).
- *  4. LES ÉLÉMENTS À PARTIES (effets de mort…) : une règle, `ownershipShown`, pour tous les calques.
- *  5. CE QUE LE PANNEAU AFFICHE : les totaux de FIN DE MATCH lus sur la feuille, jamais un zéro
+ *  5. LES ÉLÉMENTS À PARTIES (effets de mort…) : une règle, `ownershipShown`, pour tous les calques.
+ *  6. CE QUE LE PANNEAU AFFICHE : les totaux de FIN DE MATCH lus sur la feuille, jamais un zéro
  *     inventé — une valeur non lue est une lacune, un joueur sans feuille n'a aucune section.
  */
 import { describe, expect, it } from 'vitest'
@@ -26,35 +28,96 @@ import {
   playerPanelSheet,
   reducePlayerPanel,
   shownSlotPredicate,
+  trackedPlayerOf,
   type PlayerPanelState,
 } from './playerPanelLogic'
 import { killFxEntry } from '../test/killFxEntry'
 import { scoreboardRow } from '../test/scoreboardRow'
 
-const OPEN_A: PlayerPanelState = { open: true, xuid: 'A', follow: false, solo: false, hide: false }
+const OPEN_A: PlayerPanelState = { open: true, xuid: 'A', followXuid: null, solo: false, hide: false }
 
 describe('reducePlayerPanel — le joueur choisi', () => {
   it('un clic sur une fiche ouvre le panneau sur ce joueur, actions éteintes', () => {
     expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'card', xuid: 'A' })).toEqual(OPEN_A)
   })
 
-  it('une AUTRE fiche remplace le joueur et remet les actions à zéro', () => {
-    const busy: PlayerPanelState = { ...OPEN_A, follow: true, solo: true }
-    expect(reducePlayerPanel(busy, { type: 'card', xuid: 'B' })).toEqual({ ...OPEN_A, xuid: 'B' })
+  it('une AUTRE fiche remplace le joueur et remet Seul et Masquer à zéro, la caméra garde son joueur', () => {
+    const busy: PlayerPanelState = { ...OPEN_A, followXuid: 'A', solo: true }
+    expect(reducePlayerPanel(busy, { type: 'card', xuid: 'B' })).toEqual({ ...OPEN_A, xuid: 'B', followXuid: 'A' })
+    const hidden: PlayerPanelState = { ...OPEN_A, hide: true }
+    expect(reducePlayerPanel(hidden, { type: 'card', xuid: 'B' })).toEqual({ ...OPEN_A, xuid: 'B' })
   })
 
-  it('recliquer la fiche OUVERTE referme et remet tout à zéro', () => {
+  it('recliquer la fiche OUVERTE referme et remet Seul et Masquer à zéro', () => {
     const busy: PlayerPanelState = { ...OPEN_A, hide: true }
     expect(reducePlayerPanel(busy, { type: 'card', xuid: 'A' })).toEqual(NO_PLAYER_PANEL)
   })
 
-  it('« Retour au fil » referme et arrête Suivre, Seul et Masquer', () => {
-    const busy: PlayerPanelState = { ...OPEN_A, follow: true, solo: true }
-    expect(reducePlayerPanel(busy, { type: 'close' })).toEqual(NO_PLAYER_PANEL)
+  it('recliquer la fiche ouverte referme sans éteindre la caméra', () => {
+    const busy: PlayerPanelState = { ...OPEN_A, followXuid: 'A', solo: true }
+    expect(reducePlayerPanel(busy, { type: 'card', xuid: 'A' })).toEqual({ ...NO_PLAYER_PANEL, followXuid: 'A' })
+  })
+
+  it('« Retour au fil » referme, arrête Seul et Masquer, et laisse la caméra allumée', () => {
+    const busy: PlayerPanelState = { ...OPEN_A, followXuid: 'A', solo: true }
+    expect(reducePlayerPanel(busy, { type: 'close' })).toEqual({ ...NO_PLAYER_PANEL, followXuid: 'A' })
   })
 
   it('fermer un panneau déjà fermé rend le même objet (personne n’est réveillé)', () => {
     expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'close' })).toBe(NO_PLAYER_PANEL)
+    const following: PlayerPanelState = { ...NO_PLAYER_PANEL, followXuid: 'A' }
+    expect(reducePlayerPanel(following, { type: 'close' })).toBe(following)
+  })
+})
+
+describe('reducePlayerPanel — Suivre, la caméra, indépendante de la fiche', () => {
+  it('« Suivre tel joueur » est accepté fiche fermée', () => {
+    expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'follow', xuid: 'B' })).toEqual({
+      ...NO_PLAYER_PANEL, followXuid: 'B',
+    })
+  })
+
+  it('suivre un joueur dont la fiche n’est pas ouverte ne touche pas à la fiche ouverte', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, solo: true }, { type: 'follow', xuid: 'B' })
+    expect(s).toEqual({ open: true, xuid: 'A', followXuid: 'B', solo: true, hide: false })
+  })
+
+  it('ouvrir une fiche sur le joueur suivi, puis une autre, laisse la caméra sur lui', () => {
+    let s = reducePlayerPanel(NO_PLAYER_PANEL, { type: 'follow', xuid: 'A' })
+    s = reducePlayerPanel(s, { type: 'card', xuid: 'A' })
+    s = reducePlayerPanel(s, { type: 'card', xuid: 'B' })
+    expect(s).toMatchObject({ open: true, xuid: 'B', followXuid: 'A' })
+  })
+
+  it('« Suivre » de la fiche allume la caméra sur son joueur, et rebasculé l’éteint', () => {
+    const on = reducePlayerPanel(OPEN_A, { type: 'toggle', action: 'follow' })
+    expect(on).toMatchObject({ followXuid: 'A', open: true })
+    expect(reducePlayerPanel(on, { type: 'toggle', action: 'follow' })).toMatchObject({ followXuid: null })
+  })
+
+  it('« Suivre » de la fiche B reprend la caméra à A', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, xuid: 'B', followXuid: 'A' }, { type: 'toggle', action: 'follow' })
+    expect(s).toMatchObject({ followXuid: 'B' })
+  })
+
+  it('« Suivre personne » éteint la caméra, fiche ouverte ou fermée', () => {
+    expect(reducePlayerPanel({ ...OPEN_A, followXuid: 'A' }, { type: 'follow', xuid: null }))
+      .toMatchObject({ followXuid: null, open: true })
+    expect(reducePlayerPanel({ ...NO_PLAYER_PANEL, followXuid: 'A' }, { type: 'follow', xuid: null }))
+      .toEqual(NO_PLAYER_PANEL)
+  })
+
+  it('suivre le joueur déjà suivi rend le même objet', () => {
+    const s: PlayerPanelState = { ...NO_PLAYER_PANEL, followXuid: 'A' }
+    expect(reducePlayerPanel(s, { type: 'follow', xuid: 'A' })).toBe(s)
+    expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'follow', xuid: null })).toBe(NO_PLAYER_PANEL)
+  })
+
+  it('un geste manuel sur la carte arrête Suivre seulement, fiche ouverte ou fermée', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, followXuid: 'A', solo: true }, { type: 'stopFollow' })
+    expect(s).toMatchObject({ followXuid: null, solo: true, open: true })
+    expect(reducePlayerPanel({ ...NO_PLAYER_PANEL, followXuid: 'A' }, { type: 'stopFollow' })).toEqual(NO_PLAYER_PANEL)
+    expect(reducePlayerPanel(OPEN_A, { type: 'stopFollow' })).toBe(OPEN_A)
   })
 })
 
@@ -66,29 +129,36 @@ describe('reducePlayerPanel — les exclusions de D-7', () => {
 
   it('Suivre coupe Masquer et laisse Seul', () => {
     const s = reducePlayerPanel({ ...OPEN_A, hide: true }, { type: 'toggle', action: 'follow' })
-    expect(s).toMatchObject({ follow: true, hide: false, solo: false })
+    expect(s).toMatchObject({ followXuid: 'A', hide: false, solo: false })
     const keep = reducePlayerPanel({ ...OPEN_A, solo: true }, { type: 'toggle', action: 'follow' })
-    expect(keep).toMatchObject({ follow: true, solo: true })
+    expect(keep).toMatchObject({ followXuid: 'A', solo: true })
   })
 
-  it('Masquer coupe Seul ET Suivre', () => {
-    const s = reducePlayerPanel({ ...OPEN_A, solo: true, follow: true }, { type: 'toggle', action: 'hide' })
-    expect(s).toMatchObject({ hide: true, solo: false, follow: false })
+  it('suivre, par la demande directe, le joueur masqué lève son masquage', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, hide: true }, { type: 'follow', xuid: 'A' })
+    expect(s).toMatchObject({ followXuid: 'A', hide: false })
+    const other = reducePlayerPanel({ ...OPEN_A, hide: true }, { type: 'follow', xuid: 'B' })
+    expect(other).toMatchObject({ followXuid: 'B', hide: true })
+  })
+
+  it('Masquer coupe Seul ET Suivre du joueur masqué', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, solo: true, followXuid: 'A' }, { type: 'toggle', action: 'hide' })
+    expect(s).toMatchObject({ hide: true, solo: false, followXuid: null })
+  })
+
+  it('Masquer ne coupe pas la caméra posée sur un AUTRE joueur', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, followXuid: 'B' }, { type: 'toggle', action: 'hide' })
+    expect(s).toMatchObject({ hide: true, followXuid: 'B' })
   })
 
   it('rebasculer une action allumée l’éteint, sans toucher aux autres', () => {
-    const s = reducePlayerPanel({ ...OPEN_A, solo: true, follow: true }, { type: 'toggle', action: 'solo' })
-    expect(s).toMatchObject({ solo: false, follow: true })
+    const s = reducePlayerPanel({ ...OPEN_A, solo: true, followXuid: 'A' }, { type: 'toggle', action: 'solo' })
+    expect(s).toMatchObject({ solo: false, followXuid: 'A' })
   })
 
-  it('une action sans panneau ouvert est sans effet', () => {
+  it('Seul et Masquer sans panneau ouvert sont sans effet', () => {
     expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'toggle', action: 'solo' })).toBe(NO_PLAYER_PANEL)
-  })
-
-  it('un geste manuel sur la carte arrête Suivre seulement', () => {
-    const s = reducePlayerPanel({ ...OPEN_A, follow: true, solo: true }, { type: 'stopFollow' })
-    expect(s).toMatchObject({ follow: false, solo: true, open: true })
-    expect(reducePlayerPanel(OPEN_A, { type: 'stopFollow' })).toBe(OPEN_A)
+    expect(reducePlayerPanel(NO_PLAYER_PANEL, { type: 'toggle', action: 'hide' })).toBe(NO_PLAYER_PANEL)
   })
 })
 
@@ -114,8 +184,44 @@ describe('panelFocusOf — le joueur dont le panneau est ouvert', () => {
   })
 
   it('un bot est un joueur comme les autres : sa clé de roster le retrouve', () => {
-    const s: PlayerPanelState = { ...OPEN_A, xuid: 'bot:Marc', follow: true }
+    const s: PlayerPanelState = { ...OPEN_A, xuid: 'bot:Marc', followXuid: 'bot:Marc' }
     expect(panelFocusOf(s, [A, BOT])?.player).toBe(BOT)
+  })
+
+  it('Suivre n’est vrai que pour le joueur de la fiche ouverte', () => {
+    expect(panelFocusOf({ ...OPEN_A, followXuid: 'A' }, [A, BOT])?.follow).toBe(true)
+    expect(panelFocusOf({ ...OPEN_A, followXuid: 'bot:Marc' }, [A, BOT])?.follow).toBe(false)
+  })
+
+  it('fiche fermée, la caméra garde son joueur dans l’état mais le canvas ne reçoit rien', () => {
+    const closed = reducePlayerPanel({ ...OPEN_A, followXuid: 'A' }, { type: 'close' })
+    expect(closed.followXuid).toBe('A')
+    expect(panelFocusOf(closed, [A, BOT])).toBeNull()
+  })
+})
+
+describe('trackedPlayerOf — le joueur suivi est le joueur regardé', () => {
+  const B_BOARD = player('B', [], { board: scoreboardRow('B', 'Beta', null) })
+  const BOT_BOARD = player('bot:Marc', [], { bot: true, board: scoreboardRow('bid(7.0)', 'Marc', null) })
+
+  it('rend le joueur dont la page prend le point de vue, par sa clé de roster', () => {
+    expect(trackedPlayerOf('A', [A, B_BOARD])).toBe(A)
+  })
+
+  it('un bot se retrouve par la clé de sa ligne de feuille, celle que le menu de point de vue rend', () => {
+    expect(trackedPlayerOf('bid(7.0)', [A, BOT_BOARD])).toBe(BOT_BOARD)
+    expect(trackedPlayerOf('bot:Marc', [A, BOT_BOARD])).toBe(BOT_BOARD)
+  })
+
+  it('personne n’est regardé, ou le joueur regardé n’est pas au roster : null, jamais un joueur deviné', () => {
+    expect(trackedPlayerOf(null, [A])).toBeNull()
+    expect(trackedPlayerOf('', [A])).toBeNull()
+    expect(trackedPlayerOf('Z', [A])).toBeNull()
+  })
+
+  it('changer de joueur regardé change le joueur suivi', () => {
+    expect(trackedPlayerOf('A', [A, B_BOARD])).toBe(A)
+    expect(trackedPlayerOf('B', [A, B_BOARD])).toBe(B_BOARD)
   })
 })
 

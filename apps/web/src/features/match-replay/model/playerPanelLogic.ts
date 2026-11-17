@@ -7,12 +7,21 @@
  * et change de contenu quand on clique une autre fiche. Rien de cela n'est mémorisé (D-4) : l'état
  * naît avec la page, il est tenu par elle.
  *
- * TROIS ACTIONS, UNE SEULE CHOSE À LA FOIS. Suivre cadre la carte sur le joueur à chaque image,
- * Seul n'affiche que lui, Masquer le retire. Exclusions (D-7) : Seul coupe Masquer ; Suivre coupe
- * Masquer ; Masquer coupe Seul ET Suivre. Elles s'appliquent à UN joueur à la fois : ouvrir le
- * panneau d'un autre joueur, comme le refermer, remet les trois à zéro — aucun état d'affichage
- * ne survit à son seul bouton, et un joueur masqué ne reste jamais masqué sans qu'on puisse le
- * voir. Les fiches, elles, ne sont jamais filtrées : un joueur présent reste dans la colonne.
+ * TROIS ACTIONS. Suivre cadre la carte sur le joueur à chaque image, Seul n'affiche que lui,
+ * Masquer le retire. Exclusions (D-7) : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe
+ * Seul ET Suivre de ce même joueur.
+ *
+ * SEUL ET MASQUER tiennent à la fiche : ils ne valent que pour son joueur, ne se basculent que
+ * fiche ouverte, et ouvrir une autre fiche comme refermer la fiche les remet à zéro — un joueur
+ * masqué ne reste jamais masqué sans qu'on puisse le voir. SUIVRE est la caméra, un état à part
+ * (`followXuid` : qui, ou personne) : il ne dépend pas de la fiche, que l'on ferme ou change sans
+ * l'éteindre, et `follow` l'accepte fiche fermée. Il s'éteint par le geste manuel de cadrage
+ * (`stopFollow`), par un nouveau choix, ou par Masquer sur le joueur suivi. Les fiches, elles, ne
+ * sont jamais filtrées : un joueur présent reste dans la colonne.
+ *
+ * LE JOUEUR SUIVI (`trackedPlayerOf`) n'est pas dans cet état : c'est le joueur REGARDÉ par la page,
+ * celui dont la page prend le point de vue (le joueur du match au départ, modifiable). Le modèle le
+ * lit, il n'en tient pas un second.
  *
  * CE QUE LE PANNEAU AFFICHE. Les TOTAUX DE FIN DE MATCH lus sur la ligne de feuille du contexte
  * (D-8) : précision, dégâts, détail du score, objectif, armes. Aucune précision « à l'instant » —
@@ -29,18 +38,22 @@ import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 /** Les trois actions du panneau sur la carte. */
 export type PlayerPanelAction = 'follow' | 'solo' | 'hide'
 
-/** L'état du panneau : ouvert ou non, sur quel joueur (clé de roster), et ses trois actions. */
+/**
+ * L'état du panneau : ouvert ou non, sur quel joueur (clé de roster), ses deux actions d'affichage
+ * (Seul, Masquer), et la caméra Suivre, qui n'est pas liée à la fiche.
+ */
 export interface PlayerPanelState {
   open: boolean
   /** Clé de roster du joueur choisi (`ReplayPlayer.xuid` : le xuid, ou `bot:<nom>` pour un bot). */
   xuid: string | null
-  follow: boolean
+  /** Clé de roster du joueur que la caméra suit ; `null` = personne. Indépendant de `open` et de `xuid`. */
+  followXuid: string | null
   solo: boolean
   hide: boolean
 }
 
 export const NO_PLAYER_PANEL: PlayerPanelState = {
-  open: false, xuid: null, follow: false, solo: false, hide: false,
+  open: false, xuid: null, followXuid: null, solo: false, hide: false,
 }
 
 export type PlayerPanelEvent =
@@ -48,10 +61,17 @@ export type PlayerPanelEvent =
   | { type: 'card'; xuid: string }
   /** « Retour au fil ». */
   | { type: 'close' }
-  /** Un des trois boutons d'action. */
+  /** Un des trois boutons d'action de la fiche ouverte. */
   | { type: 'toggle'; action: PlayerPanelAction }
+  /** Suivre ce joueur (clé de roster), fiche ouverte ou non ; `null` = ne suivre personne. */
+  | { type: 'follow'; xuid: string | null }
   /** Un geste manuel de zoom ou de déplacement sur la carte : Suivre s'arrête. */
   | { type: 'stopFollow' }
+
+/** La fiche refermée : Seul et Masquer retombent, la caméra garde son joueur. */
+function withoutCard(state: PlayerPanelState): PlayerPanelState {
+  return { ...NO_PLAYER_PANEL, followXuid: state.followXuid }
+}
 
 /**
  * reducePlayerPanel applique un événement à l'état. Un événement sans effet rend le MÊME objet,
@@ -60,28 +80,41 @@ export type PlayerPanelEvent =
 export function reducePlayerPanel(state: PlayerPanelState, event: PlayerPanelEvent): PlayerPanelState {
   switch (event.type) {
     case 'card':
-      if (state.open && state.xuid === event.xuid) return NO_PLAYER_PANEL
-      return { open: true, xuid: event.xuid, follow: false, solo: false, hide: false }
+      if (state.open && state.xuid === event.xuid) return withoutCard(state)
+      return { ...withoutCard(state), open: true, xuid: event.xuid }
     case 'close':
-      return state.open ? NO_PLAYER_PANEL : state
+      return state.open ? withoutCard(state) : state
+    case 'follow':
+      return followPlayer(state, event.xuid)
     case 'stopFollow':
-      return state.follow ? { ...state, follow: false } : state
+      return followPlayer(state, null)
     case 'toggle':
       return state.open ? toggleAction(state, event.action) : state
   }
 }
 
-/** Bascule une action en appliquant les exclusions de D-7. */
+/** Suivre un joueur (ou personne) ; suivre le joueur masqué lève son masquage (D-7). */
+function followPlayer(state: PlayerPanelState, xuid: string | null): PlayerPanelState {
+  if (state.followXuid === xuid) return state
+  const unhide = xuid !== null && state.hide && state.xuid === xuid
+  return { ...state, followXuid: xuid, hide: unhide ? false : state.hide }
+}
+
+/** Bascule une action de la fiche ouverte en appliquant les exclusions de D-7. */
 function toggleAction(state: PlayerPanelState, action: PlayerPanelAction): PlayerPanelState {
-  const next = !state[action]
-  if (!next) return { ...state, [action]: false }
-  if (action === 'hide') return { ...state, hide: true, solo: false, follow: false }
-  return { ...state, [action]: true, hide: false }
+  if (action === 'follow') return followPlayer(state, state.followXuid === state.xuid ? null : state.xuid)
+  if (state[action]) return { ...state, [action]: false }
+  if (action === 'hide') {
+    const stillFollowed = state.followXuid === state.xuid ? null : state.followXuid
+    return { ...state, hide: true, solo: false, followXuid: stillFollowed }
+  }
+  return { ...state, solo: true, hide: false }
 }
 
 /** Le joueur dont le panneau est ouvert, avec ses actions : ce que la page donne au canvas. */
 export interface PlayerFocus {
   player: ReplayPlayer
+  /** Vrai quand la caméra suit CE joueur : un autre joueur suivi ne s'applique pas tant que sa fiche est fermée. */
   follow: boolean
   solo: boolean
   hide: boolean
@@ -97,7 +130,27 @@ export function panelFocusOf(
 ): PlayerFocus | null {
   if (!state.open || state.xuid === null) return null
   const player = players.find((p) => p.xuid === state.xuid)
-  return player ? { player, follow: state.follow, solo: state.solo, hide: state.hide } : null
+  if (!player) return null
+  return { player, follow: state.followXuid === state.xuid, solo: state.solo, hide: state.hide }
+}
+
+/**
+ * trackedPlayerOf lit le JOUEUR SUIVI : le joueur regardé par la page, retrouvé dans le roster.
+ * `watchedXuid` est la valeur du point de vue de la page (le joueur du match au départ, puis le
+ * choix de l'utilisateur) : la ligne de feuille d'abord — c'est la clé que le menu de point de vue
+ * rend, y compris pour un bot —, la clé de roster à défaut. `null` : personne n'est regardé, ou le
+ * joueur regardé n'est pas au roster — jamais un joueur deviné.
+ */
+export function trackedPlayerOf(
+  watchedXuid: string | null,
+  players: readonly ReplayPlayer[],
+): ReplayPlayer | null {
+  if (!watchedXuid) return null
+  return (
+    players.find((p) => p.board?.xuid === watchedXuid) ??
+    players.find((p) => p.xuid === watchedXuid) ??
+    null
+  )
 }
 
 /**

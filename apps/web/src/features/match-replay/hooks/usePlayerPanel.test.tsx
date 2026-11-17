@@ -7,7 +7,8 @@
  *  2. LE JOUEUR SE RETROUVE AU ROSTER : `focus` porte le joueur et ses actions, `null` panneau fermé.
  *  3. UN AUTRE MATCH REPART À ZÉRO : l'état n'est jamais mémorisé (D-4) — pas d'un match à l'autre,
  *     alors que la route garde le même composant quand seul `$matchId` change.
- *  4. LES GESTES GARDENT LEUR IDENTITÉ : ils sont passés en props à tout le canvas.
+ *  4. SUIVRE EST LA CAMÉRA, À PART DE LA FICHE ; LE JOUEUR SUIVI EST LE JOUEUR REGARDÉ, passé par la page.
+ *  5. LES GESTES GARDENT LEUR IDENTITÉ : ils sont passés en props à tout le canvas.
  */
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -21,13 +22,13 @@ const B: ReplayPlayer = { xuid: 'B', lives: [] }
 
 describe('usePlayerPanel', () => {
   it('démarre fermé, sans joueur', () => {
-    const { result } = renderHook(() => usePlayerPanel('m1', [A, B]))
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     expect(result.current.state.open).toBe(false)
     expect(result.current.focus).toBeNull()
   })
 
   it('un clic de fiche ouvre le panneau sur ce joueur ; un autre le remplace', () => {
-    const { result } = renderHook(() => usePlayerPanel('m1', [A, B]))
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onCard('A'))
     expect(result.current.focus).toEqual({ player: A, follow: false, solo: false, hide: false })
     act(() => result.current.onCard('B'))
@@ -35,7 +36,7 @@ describe('usePlayerPanel', () => {
   })
 
   it('les actions suivent les exclusions, et « Retour au fil » remet tout à zéro', () => {
-    const { result } = renderHook(() => usePlayerPanel('m1', [A, B]))
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onCard('A'))
     act(() => result.current.onToggle('follow'))
     act(() => result.current.onToggle('solo'))
@@ -48,7 +49,7 @@ describe('usePlayerPanel', () => {
   })
 
   it('un geste manuel de cadrage arrête Suivre et rien d’autre', () => {
-    const { result } = renderHook(() => usePlayerPanel('m1', [A, B]))
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onCard('A'))
     act(() => result.current.onToggle('follow'))
     act(() => result.current.onToggle('solo'))
@@ -57,7 +58,7 @@ describe('usePlayerPanel', () => {
   })
 
   it('un autre match repart de zéro, même avec le même joueur au roster', () => {
-    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B]), {
+    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B], null), {
       initialProps: { scope: 'm1' },
     })
     act(() => result.current.onCard('A'))
@@ -71,7 +72,7 @@ describe('usePlayerPanel', () => {
   })
 
   it('aller du match A au match B puis revenir à A ne rouvre rien : ni panneau ni actions d’avant', () => {
-    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B]), {
+    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B], null), {
       initialProps: { scope: 'A' },
     })
     act(() => result.current.onCard('A'))
@@ -86,21 +87,72 @@ describe('usePlayerPanel', () => {
   })
 
   it('les gestes gardent leur identité d’un rendu à l’autre', () => {
-    const { result, rerender } = renderHook(() => usePlayerPanel('m1', [A, B]))
+    const { result, rerender } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     const first = result.current
     rerender()
     expect(result.current.onCard).toBe(first.onCard)
     expect(result.current.onToggle).toBe(first.onToggle)
     expect(result.current.onClose).toBe(first.onClose)
     expect(result.current.onFollowStop).toBe(first.onFollowStop)
+    expect(result.current.onFollow).toBe(first.onFollow)
   })
 
   it('un joueur absent du roster ferme le panneau à l’écran (jamais un joueur deviné)', () => {
-    const { result, rerender } = renderHook(({ players }) => usePlayerPanel('m1', players), {
+    const { result, rerender } = renderHook(({ players }) => usePlayerPanel('m1', players, null), {
       initialProps: { players: [A, B] },
     })
     act(() => result.current.onCard('B'))
     rerender({ players: [A] })
     expect(result.current.focus).toBeNull()
+  })
+  it('Suivre survit à « Retour au fil » dans l’état, mais le canvas ne reçoit rien fiche fermée', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('follow'))
+    act(() => result.current.onClose())
+    expect(result.current.state.followXuid).toBe('A')
+    expect(result.current.focus).toBeNull()
+    act(() => result.current.onCard('A'))
+    expect(result.current.focus).toMatchObject({ follow: true })
+  })
+
+  it('« Suivre tel joueur » est accepté fiche fermée, et un geste manuel l’arrête', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onFollow('B'))
+    expect(result.current.state).toMatchObject({ open: false, followXuid: 'B' })
+    act(() => result.current.onFollowStop())
+    expect(result.current.state.followXuid).toBeNull()
+  })
+
+  it('un autre match éteint aussi la caméra (rien n’est mémorisé)', () => {
+    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B], null), {
+      initialProps: { scope: 'm1' },
+    })
+    act(() => result.current.onFollow('A'))
+    rerender({ scope: 'm2' })
+    expect(result.current.state.followXuid).toBeNull()
+  })
+
+  it('le joueur suivi est le joueur regardé passé par la page, et suit son changement sans toucher à la caméra', () => {
+    const { result, rerender } = renderHook(({ watched }) => usePlayerPanel('m1', [A, B], watched), {
+      initialProps: { watched: 'A' as string | null },
+    })
+    expect(result.current.tracked).toBe(A)
+    act(() => result.current.onFollow('B'))
+    rerender({ watched: 'B' })
+    expect(result.current.tracked).toBe(B)
+    rerender({ watched: 'A' })
+    expect(result.current.tracked).toBe(A)
+    expect(result.current.state.followXuid).toBe('B')
+    rerender({ watched: null })
+    expect(result.current.tracked).toBeNull()
+  })
+
+  it('le joueur suivi ne dépend pas de la fiche : ouvrir ou fermer une fiche ne le change pas', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], 'A'))
+    act(() => result.current.onCard('B'))
+    expect(result.current.tracked).toBe(A)
+    act(() => result.current.onClose())
+    expect(result.current.tracked).toBe(A)
   })
 })

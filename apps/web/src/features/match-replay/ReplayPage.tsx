@@ -137,7 +137,9 @@ export function ReplayPage() {
   // place du fil ; Suivre, Seul et Masquer agissent sur la carte. Son état naît avec la page et avec
   // le match — jamais mémorisé (D-4) — et NE TOUCHE PAS au point de vue ci-dessus : ces actions
   // décident de ce que la carte dessine et d'où elle regarde, ni de l'encre de camp ni du roster.
-  const playerPanel = usePlayerPanel(matchId, model.players)
+  // Le joueur SUIVI de la page est ce même joueur regardé (`viewpoint.xuid`) : le panneau le retrouve
+  // au roster (`playerPanel.tracked`) sans en tenir un second.
+  const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)
   // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
   const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, model.players)
   // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.

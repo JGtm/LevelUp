@@ -4,6 +4,10 @@
  * Les règles (joueur choisi, exclusions de Suivre / Seul / Masquer, remise à zéro) sont pures et
  * vivent dans `model/playerPanelLogic` ; ce fichier ne porte que l'ÉTAT et ses gestes.
  *
+ * LE JOUEUR SUIVI n'est pas un état de ce hook : c'est le joueur regardé par la page, que la page
+ * lui passe (`watchedXuid`) et qu'il ne fait que retrouver au roster (`tracked`). Suivre (la
+ * caméra) est un état à part, `state.followXuid`, que la fiche ne tient plus.
+ *
  * RIEN N'EST MÉMORISÉ (D-4) : ni dans le navigateur, ni d'un match à l'autre. La route garde le même
  * composant quand seul `$matchId` change, donc l'état est rangé AVEC la clé du match (`scopeKey`) et
  * REMIS À ZÉRO dès qu'elle diffère : un autre match ne rouvre jamais le panneau du précédent, même
@@ -22,6 +26,7 @@ import {
   type PlayerPanelAction,
   type PlayerPanelEvent,
   type PlayerPanelState,
+  trackedPlayerOf,
 } from '../model/playerPanelLogic'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
@@ -31,8 +36,12 @@ export interface PlayerPanel {
   focus: PlayerFocus | null
   /** Un clic sur la fiche d'un joueur (clé de roster). */
   onCard: (xuid: string) => void
-  /** Une bascule de Suivre, Seul ou Masquer. */
+  /** Le joueur suivi (le joueur regardé par la page) retrouvé au roster ; `null` = personne, ou absent du roster. */
+  tracked: ReplayPlayer | null
+  /** Une bascule de Suivre, Seul ou Masquer de la fiche ouverte. */
   onToggle: (action: PlayerPanelAction) => void
+  /** Suivre ce joueur (clé de roster), fiche ouverte ou non ; `null` = ne suivre personne. */
+  onFollow: (xuid: string | null) => void
   /** « Retour au fil ». */
   onClose: () => void
   /** Un geste manuel de zoom ou de déplacement sur la carte : Suivre s'arrête. */
@@ -44,7 +53,11 @@ interface Scoped {
   state: PlayerPanelState
 }
 
-export function usePlayerPanel(scopeKey: string, players: readonly ReplayPlayer[]): PlayerPanel {
+export function usePlayerPanel(
+  scopeKey: string,
+  players: readonly ReplayPlayer[],
+  watchedXuid: string | null,
+): PlayerPanel {
   const [stored, setStored] = useState<Scoped>({ scopeKey, state: NO_PLAYER_PANEL })
   // L'effacement se fait AU RENDU, pas dans un effet : aucune image ne montre l'état d'un autre match.
   if (stored.scopeKey !== scopeKey) setStored({ scopeKey, state: NO_PLAYER_PANEL })
@@ -61,9 +74,11 @@ export function usePlayerPanel(scopeKey: string, players: readonly ReplayPlayer[
   )
   const onCard = useCallback((xuid: string) => dispatch({ type: 'card', xuid }), [dispatch])
   const onToggle = useCallback((action: PlayerPanelAction) => dispatch({ type: 'toggle', action }), [dispatch])
+  const onFollow = useCallback((xuid: string | null) => dispatch({ type: 'follow', xuid }), [dispatch])
   const onClose = useCallback(() => dispatch({ type: 'close' }), [dispatch])
   const onFollowStop = useCallback(() => dispatch({ type: 'stopFollow' }), [dispatch])
 
   const focus = useMemo(() => panelFocusOf(state, players), [state, players])
-  return { state, focus, onCard, onToggle, onClose, onFollowStop }
+  const tracked = useMemo(() => trackedPlayerOf(watchedXuid, players), [watchedXuid, players])
+  return { state, focus, tracked, onCard, onToggle, onFollow, onClose, onFollowStop }
 }
