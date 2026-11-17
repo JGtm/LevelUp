@@ -11,7 +11,7 @@
 - **Each player in the right seat** — the seat of each player in the film is read from the game's own lists
 - **Why a respawn cannot be estimated** — when the respawn probability on the replay map, or the "Opposing respawns" reading in Tactics, cannot be computed, it now says why (no model, unknown map, not enough matches on the map, no zone, no respawn) instead of staying empty
 - **Respawns rely on the film alone** — a match whose film could not be read has no respawn reading, rather than one guessed from the gap between a death and the next life
-- **Old uncompressed replays are rebuilt** — a replay stored as a plain `.json` file by an old version is no longer read: it counts as missing and is rebuilt like any other, and nothing is deleted from your disk. The compress step and the `levelup replay compress` command are gone, and so is the `LEVELUP_SYNC_RESOLVE_ASSETS` setting (names are always resolved)
+- **Old uncompressed replays are no longer read** — a replay stored as a plain `.json` file by an old version counts as missing, and nothing is deleted from your disk. Only the 64 most recent matches get their replay rebuilt on their own (a few at each synchronisation, while the film is still available); for an older match the replay page says there is no 2D replay, and the app offers no button to generate it. The compress step and the `levelup replay compress` command are gone, and so is the `LEVELUP_SYNC_RESOLVE_ASSETS` setting (names are always resolved)
 
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 

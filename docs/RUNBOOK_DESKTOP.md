@@ -122,7 +122,7 @@ rebuilds them by itself.
 - **While it runs**, the banner shows `done of total` with **Pause** / **Resume**. One film at a time, in the background. It never starts a film
   while the game runs (the line says it is waiting for the game to end). **Pause** lets the film in progress finish.
 - **Raw replays are not read.** Only `<match>.json.gz` is a replay: a raw `<match>.json` left in the replays folder
-  (`data/cache/replays/<title>/`) by an older version counts as no replay until it is rebuilt (`levelup backfill-replay`); nothing deletes it.
+  (`data/cache/replays/<title>/`) by an older version counts as no replay, and nothing deletes it. The banner and the Replays card never rebuild it (they list `<match>.json.gz` replays that are behind). Only the post-sync catch-up does, for the 64 most recent eligible matches of the registry, at most five per cycle, while the film is still available; an older match stays without replay ("No 2D replay available for this match") and no screen of the app generates it. `levelup backfill-replay` is not shipped with the Windows app; the admin action `POST /api/v1/admin/actions/replay-build/run` (API only, one match) is the other way.
 - **If you close LevelUp while it runs**, it picks up again at the next opening. A paused queue does not.
 - **A replay that cannot be rebuilt** (map outside the catalogue, unfinished film) is set aside and not counted again until the next launch; others
   that fail are counted ("N replays could not be regenerated") and can be offered again.

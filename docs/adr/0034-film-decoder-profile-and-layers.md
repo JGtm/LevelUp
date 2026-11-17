@@ -648,7 +648,7 @@ empty.
 goes through one gate, `internal/replayartifact` (`Read`, `ReadBytes`, `Locate`, `Exists`, `List`, `Write`, `Copy`,
 `Remove`): `{short8}.json.gz` is the only form it knows, written atomically (temporary file, then rename);
 a raw `{short8}.json` is neither read, listed nor counted, and for the gate that match has no artifact
-(it is rebuilt through the normal path). `{short8}.meta` keeps its name and its `bytes` is the stored size.
+(see the amendment of 2026-11-17 for what rebuilds it). `{short8}.meta` keeps its name and its `bytes` is the stored size.
 Reading artifact bytes outside the gate is refused by `archlint/no_artefact_bytes_outside_gate_test.go`.
 
 **Measured on the park (2026-11-14).** One regeneration of the local park at schema 116: 1 455 replays,
@@ -660,7 +660,7 @@ version.
 
 The gate `internal/replayartifact` reads and writes `{short8}.json.gz` only, and the server keeps no second form: a collection
 holds replays in one format, nothing converts a park, and the replay regeneration queue (ADR 0045) compresses nothing. A raw
-`.json` still on a disk is left in place and counts as an absent replay, rebuilt through the normal path.
+`.json` still on a disk is left in place and counts as an absent replay. An absent replay is rebuilt by the post-sync catch-up only for the 64 most recent eligible matches of the registry (five per cycle at most, film still available); the regeneration queue lists `.json.gz` replays only, and the web app has no action that generates a missing replay.
 
 ## Non-goals
 

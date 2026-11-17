@@ -548,8 +548,8 @@ Un artefact de rejeu se range `data/cache/replays/<titre>/<short8>.json.gz` (gzi
 bibliothèque standard Go). Son contenu décompressé est le document de rejeu, inchangé d'un octet : toute
 lecture et toute écriture des octets d'un artefact passent par une porte unique (`internal/replayartifact`).
 `.json.gz` est la seule forme qu'elle connaisse : un `<short8>.json` brut laissé par une version ancienne
-n'est ni lu, ni listé, ni compté, et ce match vaut « sans rejeu » jusqu'à ce qu'il soit refait par le chemin
-normal (`levelup backfill-replay`). Rien ne supprime un tel fichier ; il peut se retirer à la main.
+n'est ni lu, ni listé, ni compté, et ce match vaut « sans rejeu » jusqu'à ce que `levelup backfill-replay` le refasse (le rattrapage après
+synchronisation ne le fait seul que pour les 64 matchs éligibles les plus récents). Rien ne supprime un tel fichier ; il peut se retirer à la main.
 L'en-tête `.meta` et la marque `.derived.json` gardent leurs noms, et leur `bytes` est la taille stockée
 (celle du fichier sur disque).
 

@@ -588,8 +588,8 @@ rebuilds them **on the user's request only**.
   because the user had started it. A paused queue does not resume by itself.
 - **One storage form: `{short8}.json.gz`.** The queue, the count and every other reader or writer of a replay go through the gate `internal/replayartifact`, which
   knows only `{short8}.json.gz` (gzip, written atomically through `atomicfile.WriteFile`: a temporary file in the same folder, then a rename). A raw `{short8}.json` left
-  by a version before the compression of replays is neither read, listed nor counted: for the gate that match has no replay, and it is rebuilt through the
-  normal path of an absent replay. Nothing is deleted from the disk. The queue compresses nothing and the status carries no compression field; the offer shows
+  by a version before the compression of replays is neither read, listed nor counted: for the gate that match has no replay. The queue never rebuilds it (a replay that
+  does not exist is not a candidate); only the post-sync catch-up does, for the 64 most recent eligible matches. Nothing is deleted from the disk. The queue compresses nothing and the status carries no compression field; the offer shows
   when `stale > 0`. A file that is not a complete gzip is an error counted by `replay_artifact_unreadable_total`, never a document.
 - **Journal and expvar.** `replay_regen: ...` lines (start, end, interruption, skipped and failed films), counters `replay_regen_started_total`,
   `_done_total`, `_skipped_total`, `_failed_total`, `_deferred_game_total` and the gauge `replay_regen_stale`.
@@ -1068,7 +1068,7 @@ The server reads and writes `{short8}.json.gz` and nothing else (ADR 0034, amend
 - The status served by `GET /api/v1/desktop/replay-regen` is `{checked, stale, running, done, total, paused, waiting_for_game, failed}`; the web type and the
   Replays card carry the same eight fields and no compression text.
 - The queue rebuilds replays and converts nothing: no compression step, no compression counter.
-- A raw `{short8}.json` is not a replay for the gate: it is not counted, not read and not deleted.
+- A raw `{short8}.json` is not a replay for the gate: it is not counted, not read and not deleted. The queue lists `.json.gz` replays only, so it never rebuilds the match of a raw file; the desktop app has no screen that generates a missing replay.
 - The gate writes atomically (temporary file, then rename); a replay file is never laid by hard link, so no file-system fallback exists.
 
 ## Alternatives rejected

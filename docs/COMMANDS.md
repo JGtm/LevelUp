@@ -530,7 +530,7 @@ A replay artifact is stored as `data/cache/replays/<title>/<short8>.json.gz` (gz
 standard library). Its decompressed content is the replay document, unchanged byte for byte: reading and
 writing the bytes of an artifact goes through one gate (`internal/replayartifact`). `.json.gz` is the only
 form it knows: a raw `<short8>.json` left by an older version is neither read nor listed nor counted, and
-that match counts as having no replay until it is rebuilt by the normal path (`levelup backfill-replay`).
+that match counts as having no replay until `levelup backfill-replay` rebuilds it (the post-sync catch-up does so by itself only for the 64 most recent eligible matches).
 Nothing deletes such a file; it can be removed by hand. The `.meta` header and the `.derived.json` mark keep
 the same names, and their `bytes` is the stored size (the size of the file on disk).
 
