@@ -54,8 +54,10 @@ unreadable without the walls, and a map is often easier to read turned.
   `sgh_interlock`) or, for a Forge map, the repository holds no `navmesh.blob`: the map is cooked by the historical
   chain, the sidecar lists the degradation in `degradations` (`aucun maillage de navigation dans le module any`,
   `aucun maillage de navigation au depot (navmesh.blob absent)`) and carries no `plan` and no `planImage`. The web client
-  treats a missing plan as normal, not as an error. A read that fails while the mesh exists is an error of the build, not
-  a degradation.
+  treats a missing plan as normal, not as an error. A read that fails while the mesh exists splits by source (amendment
+  of 2026-11-17): on a native map it is an error of that map's cooking, which is reported and not published; on a Forge
+  map whose `navmesh.blob` is present but unreadable, the cooking logs a warning, publishes the background without a
+  plan, and lists no degradation in the sidecar.
 - **D-6 — A secondary mesh is ignored and counted.** A module may carry several meshes; the largest readable one is
   used, the others are reported (`secondaires`) and the unreadable candidates too (`illisibles`).
 - **D-7 — `--plan-seul` redoes the plan without recooking.** For each map whose mesh is readable (a Forge map whose
@@ -127,3 +129,16 @@ No code, no published file and no served output changes with this amendment.
 
 D-2 gave the default clipping margin as 1.5 m. The margin is `himap.MargeNavmesh`, 0.5 m, for the native and the Forge chains alike
 (`OptionsNavmesh.Marge` at zero takes it; the per-map lever `margeNavmesh` overrides it). The text of D-2 states that value.
+
+## Amendment of 2026-11-17 — an unreadable Forge mesh warns and publishes without a plan
+
+D-5 said that a read that fails while the mesh exists is an error of the build. That holds for a native map
+(`maillageNatif` returns the error, `cuitNative` reports it and publishes nothing for the map). It does not hold for a
+Forge map: `maillageForge` logs a warning (`maillage de navigation illisible, fond publie sans plan`), cooks the map
+without a plan (or, when the map takes its ground reference from the mesh, leaves the reference to the anchors), and
+returns no degradation, so the sidecar says nothing about the missing plan. `TestMaillageForgeBlobIllisibleNeDitPasSansMaillage`
+fixes that no degradation is returned.
+
+Decision: the warning stays. A background without a plan is worth more than no background. The cause of the unreadable
+blobs is still to be investigated; until it is, the only trace of such a map is the warning in the cooking log. The text
+of D-5 states the behaviour above. No code changes with this amendment.
