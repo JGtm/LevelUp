@@ -135,3 +135,17 @@ export const GABARIT_COMPACT: CardGabarit = Object.freeze({
   namePx: 11.5,
   seatGrid: true,
 } as const)
+
+/**
+ * LES COTES DE LA RANGÉE (Cinéma, Plein cadre) : deux camps de fiches autour du bandeau de score.
+ * Ce sont des cotes de mise en page, pas de fiche : `model/rowLayout.ts` les lit, et rien ne les
+ * recopie. `ficheMinW` est le MINIMUM d'une fiche de rangée ; au-delà, la rangée répartit la place
+ * du corps à parts égales. `scoreCellW` est la largeur de la cellule du score, `margeCorps` la marge
+ * latérale du corps, de chaque côté. `ecartFiches` sépare deux fiches voisines.
+ */
+export const COTES_RANGEE = Object.freeze({
+  ficheMinW: 115,
+  ecartFiches: 6,
+  scoreCellW: 270,
+  margeCorps: 24,
+} as const)
