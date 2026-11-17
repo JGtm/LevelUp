@@ -378,11 +378,11 @@ func TestDemand_RepriseEcarteLesDemandesIncompletes(t *testing.T) {
 	f := newDemandFixture(t, 0)
 	logs := captureLogs(t)
 	bad := demandFor(9)
-	bad.XUID = ""
+	bad.MatchID = ""
 	f.store.demands = []domain.ReplayGenerationDemand{bad}
 	f.svc.ResumeDemands()
-	if _, ok := f.status(9); ok {
-		t.Fatal("une demande sans joueur ne doit pas reprendre")
+	if _, ok := f.svc.DemandStatus(bad.TitleSlug, demandFor(9).MatchID); ok {
+		t.Fatal("une demande sans match ne doit pas reprendre")
 	}
 	if !strings.Contains(logs.String(), "incomplète") {
 		t.Fatalf("la demande écartée doit se journaliser : %s", logs.String())

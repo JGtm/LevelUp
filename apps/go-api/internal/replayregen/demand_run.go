@@ -210,7 +210,7 @@ func (s *Service) ResumeDemands() {
 	defer s.mu.Unlock()
 	kept := 0
 	for _, d := range loaded {
-		if d.TitleSlug == "" || d.MatchID == "" || d.XUID == "" {
+		if d.TitleSlug == "" || d.MatchID == "" {
 			slog.WarnContext(ctx, "replay_generation: demande persistée incomplète, écartée",
 				"titleSlug", d.TitleSlug, "match_id", d.MatchID, "player", d.PlayerSlug)
 			continue
