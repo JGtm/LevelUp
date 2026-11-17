@@ -15,12 +15,17 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// paceMatch : les frags, morts, assistances et secondes jouées d'un match du périmètre.
-type paceMatch struct{ kills, deaths, assists, secs int }
+// paceMatch : les frags, morts, assistances (nil = inconnu) et secondes jouées d'un match du périmètre.
+// Chaque compte a ses propres matchs retenus : un compte inconnu n'est pas un zéro, le match sort du
+// numérateur ET du dénominateur de ce taux ([analysis.PooledPerMinute], la règle du groupe « Rythme » de
+// Tendances).
+type paceMatch struct {
+	kills, deaths, assists *int
+	secs                   int
+}
 
-// paceDamage : les dégâts d'un match (nil = inconnu) et ses secondes jouées. Chaque dégât a ses propres
-// matchs retenus : un compte inconnu n'est pas un zéro, le match sort du numérateur ET du dénominateur
-// ([analysis.PooledPerMinute], la règle du groupe « Rythme » de Tendances).
+// paceDamage : les dégâts d'un match (nil = inconnu) et ses secondes jouées, sous la même règle que
+// [paceMatch].
 type paceDamage struct {
 	dealt, taken *int
 	secs         int
@@ -32,9 +37,9 @@ type paceDamage struct {
 // que si le titre les fournit (`withTaken`).
 func paceEntry(player string, matches []paceMatch, damage []paceDamage, withTaken bool) domain.SquadPerMinuteEntry {
 	e := domain.SquadPerMinuteEntry{Player: player, MatchCount: len(matches)}
-	e.KillsPerMinute = matchRate(matches, func(m paceMatch) int { return m.kills })
-	e.DeathsPerMinute = matchRate(matches, func(m paceMatch) int { return m.deaths })
-	e.AssistsPerMinute = matchRate(matches, func(m paceMatch) int { return m.assists })
+	e.KillsPerMinute = matchRate(matches, func(m paceMatch) *int { return m.kills })
+	e.DeathsPerMinute = matchRate(matches, func(m paceMatch) *int { return m.deaths })
+	e.AssistsPerMinute = matchRate(matches, func(m paceMatch) *int { return m.assists })
 	e.DamageDealtPerMinute = damageRate(damage, func(d paceDamage) *int { return d.dealt })
 	if withTaken {
 		e.DamageTakenPerMinute = damageRate(damage, func(d paceDamage) *int { return d.taken })
@@ -42,11 +47,23 @@ func paceEntry(player string, matches []paceMatch, damage []paceDamage, withTake
 	return e
 }
 
-// matchRate rend la cadence arrondie d'un compte sur les matchs qui ont une durée, 0 sans match retenu.
-func matchRate(matches []paceMatch, get func(paceMatch) int) float64 {
-	v, ok := analysis.PooledPerMinute(matches,
-		func(m paceMatch) (float64, bool) { return float64(get(m)), true },
-		func(m paceMatch) float64 { return float64(m.secs) })
+// knownPerMinute rend la cadence d'un compte sur les éléments où il est connu et qui ont une durée ;
+// false sans élément retenu. Seule porte vers [analysis.PooledPerMinute] pour les cadences de l'escouade.
+func knownPerMinute[T any](items []T, get func(T) *int, secs func(T) int) (float64, bool) {
+	return analysis.PooledPerMinute(items,
+		func(it T) (float64, bool) {
+			if p := get(it); p != nil {
+				return float64(*p), true
+			}
+			return 0, false
+		},
+		func(it T) float64 { return float64(secs(it)) })
+}
+
+// matchRate rend la cadence arrondie d'un compte sur les matchs où il est connu et qui ont une durée,
+// 0 sans match retenu.
+func matchRate(matches []paceMatch, get func(paceMatch) *int) float64 {
+	v, ok := knownPerMinute(matches, get, func(m paceMatch) int { return m.secs })
 	if !ok {
 		return 0
 	}
@@ -55,14 +72,7 @@ func matchRate(matches []paceMatch, get func(paceMatch) int) float64 {
 
 // damageRate rend la cadence arrondie d'un dégât sur les matchs où il est connu, nil sans match retenu.
 func damageRate(damage []paceDamage, get func(paceDamage) *int) *float64 {
-	v, ok := analysis.PooledPerMinute(damage,
-		func(d paceDamage) (float64, bool) {
-			if p := get(d); p != nil {
-				return float64(*p), true
-			}
-			return 0, false
-		},
-		func(d paceDamage) float64 { return float64(d.secs) })
+	v, ok := knownPerMinute(damage, get, func(d paceDamage) int { return d.secs })
 	if !ok {
 		return nil
 	}
@@ -106,7 +116,9 @@ func mainPaceMatches(allSquadRows []domain.SquadMatchRow, allowed map[string]str
 		if _, ok := allowed[m.MatchID]; !ok {
 			continue
 		}
-		out = append(out, paceMatch{kills: m.Kills, deaths: m.Deaths, assists: m.Assists, secs: m.TimePlayedSecs})
+		// SquadMatchRow porte des entiers : les comptes du joueur principal sont toujours connus.
+		kills, deaths, assists := m.Kills, m.Deaths, m.Assists
+		out = append(out, paceMatch{kills: &kills, deaths: &deaths, assists: &assists, secs: m.TimePlayedSecs})
 	}
 	return out
 }
@@ -158,8 +170,8 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 				continue
 			}
 			matches = append(matches, paceMatch{
-				kills: intPtrOrZero(r.Self.Kills), deaths: intPtrOrZero(r.Self.Deaths),
-				assists: intPtrOrZero(r.Self.Assists), secs: intPtrOrZero(r.Self.TimePlayed),
+				kills: r.Self.Kills, deaths: r.Self.Deaths,
+				assists: r.Self.Assists, secs: intPtrOrZero(r.Self.TimePlayed),
 			})
 		}
 		entries = append(entries, paceEntry(gt, matches, paceDamageOf(rows, allowed), withTaken))
