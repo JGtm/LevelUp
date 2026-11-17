@@ -111,7 +111,7 @@ export interface PlayerInstantInput {
 }
 
 /** Les clés sous lesquelles un joueur se lit : sa clé de roster, puis le xuid de sa ligne de feuille. */
-function identityKeys(player: ReplayPlayer): string[] {
+export function identityKeys(player: ReplayPlayer): string[] {
   const keys = [player.xuid]
   const board = player.board?.xuid
   if (board && board !== player.xuid) keys.push(board)
