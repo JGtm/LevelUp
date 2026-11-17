@@ -52,6 +52,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   explorer: () => queryKeys.explorer(P, T, 'h'),
   explorerPlayer: () => queryKeys.explorerPlayer(P, T, 'gt', 'x', 1, 'fr'),
   matchView: () => queryKeys.matchView(P, T, 'm', 'fr'),
+  matchViewAllLocales: () => queryKeys.matchViewAllLocales(P, T, 'm'),
+  matchReplayGeneration: () => queryKeys.matchReplayGeneration(P, T, 'm'),
   matchNeighbors: () => queryKeys.matchNeighbors(P, T, 'm'),
   // Calques décodés du film : un match_id ne vaut que dans son titre, et les trois
   // artefacts (timeline objectif, positions, rejeu 2D) sont produits par titre.

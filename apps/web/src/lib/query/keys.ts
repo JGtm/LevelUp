@@ -163,12 +163,19 @@ export const queryKeys = {
   // Vue du match : noms de cartes, modes, armes, médailles... servis dans la langue de la requête.
   matchView: (playerSlug: string, titleSlug: string, matchId: string, locale: string) =>
     ['match-view', playerSlug, titleSlug, matchId, locale] as const,
+  // Préfixe de `matchView` : la vue du match dans TOUTES les langues (invalidation sans connaître la langue).
+  matchViewAllLocales: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-view', playerSlug, titleSlug, matchId] as const,
   matchObjectiveEvents: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-objective-events', playerSlug, titleSlug, matchId] as const,
   matchPositions: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-positions', playerSlug, titleSlug, matchId] as const,
   matchReplay: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay', playerSlug, titleSlug, matchId] as const,
+  // État de la génération à la demande du rejeu d'un match (codes d'état seulement : aucun libellé, donc pas de
+  // langue dans la clé).
+  matchReplayGeneration: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-generation', playerSlug, titleSlug, matchId] as const,
   // Contexte de match de la page de rejeu (en-tête, tableau de score, fil, médias) : une forme
   // à lui, donc une clé à lui — jamais servie depuis le cache de la vue complète (`matchView`).
   matchReplayContext: (playerSlug: string, titleSlug: string, matchId: string) =>

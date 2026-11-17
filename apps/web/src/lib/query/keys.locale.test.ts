@@ -315,6 +315,8 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   careerRivals: 'némésis et souffre-douleur (gamertags, comptes)',
   matchObjectiveEvents: 'événements décodés du film (identifiants, instants)',
   matchPositions: 'positions décodées du film (coordonnées)',
+  matchViewAllLocales: PREFIXE_LARGE,
+  matchReplayGeneration: "état de la génération d'un rejeu (codes d'état ; les textes se choisissent à l'affichage)",
   matchReplay: "artefact de rejeu (toutes les langues y figurent, la page choisit)",
   matchReplayContext: 'contexte du rejeu (identifiants, équipes)',
   matchReplayBackground: "fond de carte du rejeu (métadonnées d'image)",
