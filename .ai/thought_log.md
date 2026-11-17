@@ -1,3 +1,9 @@
+## [2026-11-17] Évaluation d'OpenSpartan/mmr pour le LUSR — Complété (aucun code, une ligne au backlog)
+**Statut :** Complété.
+**Décision technique principale :** le projet (outil Rust, Windows seul) lit le MMR caché par joueur en interceptant le trafic du jeu par un proxy local et un certificat racine ; il ne contient ni formule ni table. Non retenu pour LevelUp (avis du user, 2026-11-17) : trop intrusif pour l'application, format non documenté, capture en direct seulement, rien pour l'instance hébergée.
+**Résultats observés :** le cœur du LUSR v2 ne lit ni MMR ni attendus ; l'API publique ne donne que le MMR d'équipe. La lecture a relevé trois écarts entre l'ADR 0024 et le code (itérations du solveur, limites annoncées comme absentes, liens vers un dossier déplacé), vérifiés sur pièces.
+**Conclusion / prochaine étape :** correction de l'ADR 0024 inscrite dans `.ai/BACKLOG.md` ; rien d'autre.
+
 ## [2026-11-17] Suites de l'audit : six pistes, intégration et relecture finale faites — En cours (branche `chore/830-suites-audit`, non poussée ; attend les décisions du user et ses contrôles à l'écran)
 **Statut :** En cours. Plan et journal détaillé : `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`.
 **Décision technique principale :** exécution en orchestrateur (go du user) : six exécuteurs Sonnet en worktrees sans jonction, un exécuteur d'intégration, Haiku pour les notes et un correctif de lint, une relecture finale par un contexte Fable frais, une seule ronde. Témoins : tests de caractérisation écrits avant chaque déplacement, empreintes des 339 fichiers de fonds, cuissons témoins natives et Forge avant et après. Aucun serveur lancé, aucune régénération.

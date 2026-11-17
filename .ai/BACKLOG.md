@@ -262,6 +262,12 @@ Absent du registre depuis la purge du 2026-10-26, sans artefact de parc : le gat
 
 ---
 
+### [docs/adr] ADR 0024 (LUSR v2) en partie périmée : la remettre d'accord avec le code
+
+**Relevé le 2026-11-17** en lisant le LUSR pour évaluer OpenSpartan/mmr. Trois écarts entre `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` et le code, vérifiés sur pièces ce jour-là : (1) l'ADR fixe `MaxIters = 200` (ligne 81, et ligne 139 de « Limites et dette » : « en 200 itérations EP »), le code en fait 500 (`MaxIters: 500` dans `apps/go-api/internal/analysis/skill_v2/ep/match2team.go`, ligne 111) ; (2) « Limites et dette » (lignes 141 à 143) annonce comme absents la corrélation entre modes (TS2 §11), le décalage d'escouade (TS2 §6) et la pénalité d'abandon (TS2 §9) : ils existent, dans `apps/go-api/internal/analysis/skill_v2/mode_correlation.go`, `apps/go-api/internal/sync/skill/skill_v2_shadow.go` (décalage d'escouade) et `apps/go-api/internal/sync/skill/skill_v2_quit_penalty.go` ; (3) les liens vers `.ai/V7/LUSR%20v2/` (lignes 192 à 197) pointent vers un dossier déplacé sous `.ai/archive/V7/LUSR%20v2/`. Correction de document seule : aucune formule touchée, pas de changement de `LUSRRev`. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
