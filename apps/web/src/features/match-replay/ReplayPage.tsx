@@ -1,20 +1,25 @@
 /**
  * ReplayPage — la page du Rejeu 2D d'un match (vue du dessus) : chargement de l'artefact, du contexte du
- * match et du fond de carte, jointure sur le xuid, canvas, fil des éliminations, équipes, panneau joueur.
+ * match et du fond de carte, jointure sur le xuid, puis choix du cadre (Standard, Cinéma, Plein cadre).
  *
  * La ROUTE (`routes/.../matches/$matchId/replay.tsx`) ne porte que l'adresse, la validation de
  * `?t=&clock=` et les deux portes de titre (`matchmaking`, `replay`) posées au-dessus de cette page :
  * un titre sans rejeu ne la monte pas, donc ne paie aucune requête. Ce fichier lit ses paramètres et sa
  * recherche par `getRouteApi`, sans importer le module de route.
+ *
+ * LA PAGE NE DISPOSE RIEN. Elle charge, joint, et remet le résultat à `ReplayFrameLayout` : la scène (la
+ * toile, montée UNE fois dans `ui/frames/ReplayStage`) et les avis sont les mêmes dans les trois cadres,
+ * seuls l'en-tête, la rangée et la colonne changent de contenu. Basculer de cadre ne démonte donc pas la
+ * toile.
  */
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi } from '@tanstack/react-router'
 import { useMemo } from 'react'
 
 import { normalizeCallouts } from '@/lib/replay/calloutsPaint'
 import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
-import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
-import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
+import { replayLoadState, type ReplayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
@@ -23,10 +28,7 @@ import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
-import {
-  REPLAY_FULLSCREEN_FRAME,
-  useReplayFullscreen,
-} from '@/features/match-replay/hooks/useReplayFullscreen'
+import { useReplayFullscreen } from '@/features/match-replay/hooks/useReplayFullscreen'
 import { useReplayFrame } from '@/features/match-replay/hooks/useReplayFrame'
 import {
   useMatchReplay,
@@ -35,222 +37,46 @@ import {
   useReplayMapCallouts,
   useReplayMapImage,
 } from '@/lib/replay/queries'
-import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
 import { ReplayRegenBanner } from '@/components/replay-regen/ReplayRegenBanner'
-import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
-import { ReplayFeedOrPanel } from '@/features/match-replay/ui/ReplayFeedOrPanel'
-import { ReplayPlayerPanel } from '@/features/match-replay/ui/ReplayPlayerPanel'
-import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
+import { ReplayFrameLayout } from '@/features/match-replay/ui/frames/ReplayFrameLayout'
+import { ReplayStage } from '@/features/match-replay/ui/frames/ReplayStage'
+import { cinemaFrameZones } from '@/features/match-replay/ui/frames/ReplayCinemaFrame'
+import { standardFrameZones } from '@/features/match-replay/ui/frames/ReplayStandardFrame'
+import type { ReplayFrameChrome, ReplayFrameView } from '@/features/match-replay/ui/frames/replayFrameTypes'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
-import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
-import { ReplayRoundBreakOverlay } from '@/features/match-replay/ui/ReplayRoundBreakOverlay'
-import { ReplaySchemaBadge } from '@/features/match-replay/ui/ReplaySchemaBadge'
-import { ReplayScoreBanner } from '@/features/match-replay/ui/ReplayScoreBanner'
-import { ReplayTeams } from '@/features/match-replay/ui/ReplayTeams'
-import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOverlay'
-import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { ReplayGenerateAction } from '@/features/_shared/replayGeneration/ReplayGenerateAction'
-import { themedIconSrc } from '@/lib/themedIcon'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 const routeApi = getRouteApi('/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay')
 
-export function ReplayPage() {
-  // routeApi.useParams() porte lang?/titleSlug/playerSlug/matchId (typés) — même forme
-  // que la cible matches/$matchId, réutilisable tel quel (préserve titre ET langue).
-  const params = routeApi.useParams()
-  const { playerSlug, matchId } = params
-  const locale = useAppShellStore((s) => s.locale)
-  const isAdmin = useAppShellStore((s) => s.isAdmin)
+interface ReplayNoticesProps {
+  loadState: ReplayLoadState
+  isFetching: boolean
+  refetch: () => unknown
+  playerSlug: string
+  matchId: string
+  locale: ReplayLocale
+}
+
+/**
+ * Ce que la page dit hors du rejeu, dans la zone `avis` de chaque cadre : le bandeau des rejeux en retard
+ * après une mise à jour (sous la capacité de l'application de bureau seulement ; le rejeu ouvert s'affiche
+ * comme avant, bandeau ou non), puis l'état de chargement, d'absence ou d'erreur.
+ */
+function ReplayNotices({ loadState, isFetching, refetch, playerSlug, matchId, locale }: ReplayNoticesProps) {
   const t = REPLAY_TEXT[locale]
-  // Le logo du rejeu est un raster à deux variantes (noire / blanche) : c'est le thème local
-  // qui choisit, comme pour les autres icônes du dépôt (cf. lib/themedIcon.ts).
-  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const { data, isLoading, error, refetch, isFetching } = useMatchReplay(playerSlug, matchId)
-  // LE LIEN TACTIQUE (`?t=&clock=`, cf. l'en-tête) : converti UNIQUEMENT quand le document est
-  // chargé — lui seul porte l'origine du film (`originMs`). Avant ça, `openAtFrame`
-  // reste `null` et le rejeu se comporte comme sans paramètre (`ReplayCanvas` cadre au coup
-  // d'envoi, cf. `useReplayPlayback`). Logique PURE et testée seule dans
-  // `lib/replay/replayLogic.resolveTacticalOpenAtFrame` — cette page ne fait que l'appeler.
-  const search = routeApi.useSearch()
-  const { openAtFrame, showMissingOriginNotice } = useMemo(
-    () => resolveTacticalOpenAtFrame(search, data),
-    [search, data],
-  )
-  // DEUX SOURCES, DEUX RÔLES. Le film porte ce qui se passe et l'identifie par XUID ; la
-  // base porte qui sont les gens. L'artefact ne mélange pas les deux — la jointure se fait
-  // ici, sur le xuid, qui est la seule clé qui ne suppose rien (surtout pas un ordre).
-  // La base est lue par le CONTEXTE DE MATCH du rejeu (en-tête, tableau de score, fil, médias),
-  // pas par la vue complète du match : le rejeu n'en lit que ces quatre morceaux.
-  const { data: replayContext, isPending: replayContextPending } = useMatchReplayContext(playerSlug, matchId)
-  // LA POSITION DE LECTURE VIENT DU MAGASIN, la page n'en garde plus de copie (2026-09-06,
-  // W1) : le canvas ecrit, cette page lit. L'abonnement suit la cadence de PUBLICATION
-  // (150 ms), pas celle de l'ecran — cf. `model/playbackStore`.
-  const playbackStore = usePlaybackStore()
-  const frame = usePlaybackFrame(playbackStore)
-
-  // LE FOND DE CARTE, en deux temps assumés : le CALAGE d'abord (quelques centaines
-  // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
-  // jusqu'à 1,4 Mio, qu'on ne va chercher que si le calage existe.
-  const { data: background } = useReplayMapBackground(playerSlug, matchId)
-  // LE STYLE DU FOND (réglage « Fond » du panneau Vue) : l'image plan se superpose au rendu (même calage,
-  // mêmes dimensions) et n'est demandée que si le fond en porte une ; sinon le rendu, sans rien dire.
-  const [backgroundStyle] = useBackgroundStyle()
-  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
-  // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
-  const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
-  // L'IMAGE PLAN, SOURCE DU MASQUE DES ZONES NOMMÉES (`lib/replay/planMask`), chargée quel que soit le fond affiché : les
-  // zones se rognent au plan sur le rendu comme sur le plan. Même clé de cache que le fond plan : jamais téléchargée
-  // deux fois. Carte sans image plan, ou plan en échec (repli sur le rendu) : pas de masque, zones entières.
-  const { image: planImage, variante: variantePlan } = useReplayMapImage(playerSlug, matchId, !!background?.planImage, 'plan')
-  const mapBackground = useMemo(
-    () => buildMapBackgroundLayer({ background, image: mapImage, variante, planImage, planVariante: variantePlan }),
-    [background, mapImage, variante, planImage, variantePlan],
-  )
-  // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
-  // la zone du tueur du fil des éliminations. 404 = la carte n'en a pas (Forge) — liste vide, rien.
-  const { data: calloutsEntry } = useReplayMapCallouts(playerSlug, matchId)
-  const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
-
-  // LE MODÈLE DE LA PAGE, JOINT ICI ET NULLE PART AILLEURS (2026-09-06, W1). L'artefact dit
-  // ce qui s'est passé et l'identifie par XUID ; le contexte du match dit qui sont les gens. La
-  // jointure des deux — identité, marques, horloge, fenêtre de gameplay, roster, fil recalé,
-  // médias, score final — vit dans `model/replayModel`, pure et testée sans React ; ce hook
-  // ne fait que la mémoïser. La page n'en garde que ce qui dépend de la LANGUE ou de
-  // l'affichage, plus bas.
-  const friendGamertags = useFriendGamertags(playerSlug)
-  // PAR LES YEUX DE QUI (2026-09-06, L2b) : un seul foyer, ici, et sa valeur descend en
-  // PARAMÈTRE à tout ce qui en dépend — modèle, calques d'objectif, écran de fin, export.
-  // Le défaut est le joueur de la page, à CHAQUE montage (décision 8 : rien n'est persisté).
-  // Depuis le 2026-09-07 (L3), le MENU de la première piste de la frise appelle `select` : il
-  // reçoit `model.players` pour ses sections et ne touche à rien d'autre que ce foyer.
-  const viewpoint = useReplayViewpoint(replayContext?.scoreboard)
-  // Objet memoise : `useReplayModel` memoise sur son identite ; un litteral neuf a chaque
-  // rendu (150 ms en lecture) reconstruisait tout le modele a chaque tick (revue 2026-09-16).
-  const modelSettings = useMemo(() => ({ friendGamertags, locale }), [friendGamertags, locale])
-  const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
-  const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
-  // LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : un clic sur une fiche l'ouvre à la
-  // place du fil ; Suivre, Seul et Masquer agissent sur la carte. Son état naît avec la page et avec
-  // le match — jamais mémorisé (D-4) — et NE TOUCHE PAS au point de vue ci-dessus : ces actions
-  // décident de ce que la carte dessine et d'où elle regarde, ni de l'encre de camp ni du roster.
-  // Le joueur SUIVI de la page est ce même joueur regardé (`viewpoint.xuid`) : le panneau le retrouve
-  // au roster (`playerPanel.tracked`) sans en tenir un second.
-  const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)
-  // LA ZONE DE LA VICTIME de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
-  const feedZoneOf = useFeedZones(feedEntries, data, callouts, locale, model.players)
-  // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.
-  const weaponIcons = useKillSourceIcons(params.titleSlug, locale)
-  // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
-  // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
-  // surchargeables par les réglages — et la MÊME allégeance, lue dans le film et vue du point de
-  // vue (`model.allegiance`, 2026-10-06). Chaque surface la reçoit ; aucune ne la recalcule.
-  const nowMs = data ? frameToMs(frame, data) : 0
-  // LA FIN DE PARTIE SONORE (lot C) reste À LA PAGE, et pour une raison précise : elle dépend
-  // de la LANGUE (voix d'annonceur), que le modèle ne connaît pas. C'est la MÊME lecture que
-  // l'écran de fin ci-dessous — `endMatchSoundSpec` s'appuie sur `readVictory`, il ne
-  // re-décode pas `outcome_code`.
-  //
-  // ET C'EST LA SEULE SURFACE QUI NE SUIT PAS LE POINT DE VUE (décision 3 du plan, 2026-09-06) :
-  // aucun sujet ne lui est passé, donc elle lit le résultat du JOUEUR DE LA PAGE. Inspecter un
-  // adversaire ne doit pas faire jouer « Défaite » sur un match gagné. L'écran, lui, suit ce
-  // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
-  // « corriger ».
-  const endMatchSound = useMemo(
-    () => endMatchSoundSpec(model.allegiance, scoreboard, replayContext?.header.outcome_code, locale),
-    [model.allegiance, scoreboard, replayContext?.header.outcome_code, locale],
-  )
-
-  const loadState = replayLoadState({
-    isLoading,
-    hasTracks: !!data && data.tracks.length > 0,
-    error,
-    identityPending: replayContextPending,
-  })
-  // LE CADRE ET LE PLEIN ÉCRAN DU SYSTÈME vivent ICI parce que le cadre change la mise en page de LA
-  // PAGE (cf. useReplayFrame) ; le canvas n'en reçoit que les commandes : touches T et F, bouton de la barre.
-  const frameControl = useReplayFrame()
-  const fullscreen = useReplayFullscreen(frameControl)
-
-  // Fil d'Ariane : même label que la vue match (mode + map). Il est calculé ICI et NULLE PART
-  // AILLEURS — le rappel du match, qui le recalculait, ne porte plus que la date et la playlist.
-  const matchLabel = buildMatchHeadingStr(replayContext?.header.map_ui, replayContext?.header.mode_ui, locale)
-
-  // TOUTE LA TÊTE TIENT SUR LA LIGNE DU FIL D'ARIANE (demande du 2026-09-02 : « la partie sous
-  // la L1 pourrait être compactée un peu »). Elle occupait ~84 px de plus en répétant ce que le
-  // fil disait déjà : un `h1` sous un fil qui nomme la page, et un rappel du match qui rappelait
-  // le libellé du fil. Le `h1` devient le SEGMENT FEUILLE (sémantique intacte, icône comprise),
-  // le rappel devient le complément de ce segment, et le lien vers la fiche s'aligne à droite.
-  //
-  // POURQUOI ÇA COMPTE ICI PLUS QU'AILLEURS : sur cette page, le budget vertical est la
-  // ressource rare. Le canvas est le seul élément élastique de la pile (le bloc transport est
-  // incompressible, ce sont des commandes) — chaque pixel rendu par la tête devient donc un
-  // pixel de terrain, via le clamp de `useReplayViewport`. Compaction et hauteur élastique ne
-  // s'opposent pas : la première alimente la seconde.
-  //
-  // « FICHE DU MATCH », PAS « RETOUR AU MATCH » : la flèche du fil, juste à gauche, fait
-  // `router.history.back()` — l'historique, donc n'importe quoi. Ce lien-ci vise une
-  // destination fixe, qu'on en vienne ou non. Deux choses différentes ne portent pas le même
-  // mot, et le libellé ne se conditionne PAS à l'historique : il clignoterait selon le parcours.
   return (
-    <div className="flex flex-col" data-replay-frame={frameControl.frame}>
-      <MatchBreadcrumb
-        playerSlug={playerSlug}
-        matchLabel={matchLabel}
-        locale={locale}
-        leaf={
-          <h1 className="flex items-center gap-1.5 text-sm font-semibold">
-            <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
-            {t.title}
-            {/* BADGE ADMIN « version de schéma » (lot A, 2026-09-11) : rien pour un joueur
-                ordinaire — `ReplaySchemaBadge` se gate lui-même sur `isAdmin`. `data` peut être
-                absent (chargement, 404) : le badge n'a alors ni version lue ni comparaison à
-                faire. */}
-            {data && (
-              <ReplaySchemaBadge
-                isAdmin={isAdmin}
-                schemaVersion={data.schemaVersion}
-                latestSchemaVersion={data.latestSchemaVersion}
-                contractIssue={data.contractIssue}
-                cadenceStale={data.cadenceStale}
-                locale={locale}
-                layers={data.layers}
-              />
-            )}
-          </h1>
-        }
-        detail={
-          <ReplayMatchRecall
-            startTimeLabel={replayContext?.header.start_time_label}
-            playlistLabel={replayContext?.header.playlist_label}
-          />
-        }
-        action={
-          <Link
-            to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId"
-            params={params}
-            className="inline-flex h-7 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t.back}
-          </Link>
-        }
-      />
-      <div className="space-y-4 px-6 pb-3">
-      {/* Rejeux en retard après une mise à jour : sous la capacité de l'application de bureau seulement ; le rejeu
-          ouvert ci-dessous s'affiche comme avant, bandeau ou non. */}
+    <>
       <ReplayRegenBanner />
       {(loadState === 'loading' || (loadState === 'error' && isFetching)) && (
         <p className="text-sm text-muted-foreground">{t.loading}</p>
       )}
-
       {loadState === 'empty' && (
         <ReplayGenerateAction variant="panel" playerSlug={playerSlug} matchId={matchId} emptyLabel={t.empty} />
       )}
-
       {loadState === 'error' && !isFetching && (
         <EmptyStateNotice
           title={t.loadErrorTitle}
@@ -259,215 +85,147 @@ export function ReplayPage() {
           onAction={() => void refetch()}
         />
       )}
+    </>
+  )
+}
 
-      {data && loadState === 'ready' && (
-        /* DEUX COLONNES : LA CARTE, PUIS FICHES + FIL EMPILÉS À DROITE (demande utilisateur
-           du 2026-08-24, qui remplace la rangée à trois colonnes du 16/08) : le fil passe
-           SOUS les fiches, à la même largeur qu'elles, et la carte récupère toute la place
-           libérée à gauche. La colonne de droite est passée de 28 à 30 rem (+7 %, « élargir
-           les fiches de 5 à 10 % »).
+export function ReplayPage() {
+  // routeApi.useParams() porte lang?/titleSlug/playerSlug/matchId (typés) — même forme
+  // que la cible matches/$matchId, réutilisable tel quel (préserve titre ET langue).
+  const params = routeApi.useParams()
+  const { playerSlug, matchId } = params
+  const locale = useAppShellStore((s) => s.locale)
+  const { data, isLoading, error, refetch, isFetching } = useMatchReplay(playerSlug, matchId)
+  // LE LIEN TACTIQUE (`?t=&clock=`) : converti UNIQUEMENT quand le document est chargé — lui seul porte
+  // l'origine du film. Avant ça `openAtFrame` reste `null` et le rejeu se comporte comme sans paramètre.
+  const search = routeApi.useSearch()
+  const { openAtFrame, showMissingOriginNotice } = useMemo(
+    () => resolveTacticalOpenAtFrame(search, data),
+    [search, data],
+  )
+  // DEUX SOURCES, DEUX RÔLES. Le film porte ce qui se passe et l'identifie par XUID ; la base porte qui
+  // sont les gens. La jointure se fait ici, sur le xuid. La base est lue par le CONTEXTE DE MATCH du rejeu
+  // (en-tête, tableau de score, fil, médias), pas par la vue complète du match.
+  const { data: replayContext, isPending: replayContextPending } = useMatchReplayContext(playerSlug, matchId)
+  // LA POSITION DE LECTURE VIENT DU MAGASIN : la toile écrit, cette page lit, à la cadence de PUBLICATION
+  // (150 ms), pas à celle de l'écran — cf. `model/playbackStore`.
+  const playbackStore = usePlaybackStore()
+  const playFrame = usePlaybackFrame(playbackStore)
 
-           C'EST LA CARTE QUI IMPOSE LA HAUTEUR DE LA RANGÉE, et c'est la technique du POC qui
-           l'obtient : la colonne de droite est `relative` et son contenu `absolute inset-0`
-           à partir de `xl`. Un contenu absolu ne participe pas au calcul de hauteur de son
-           parent — un fil de 80 kills ou un BTB à 24 fiches ne peuvent donc PAS étirer la
-           ligne. Dedans, les FICHES prennent leur hauteur naturelle (bornée, défilable) et le
-           FIL remplit le reste (« pour la hauteur faudrait que ça s'adapte »).
+  // LE FOND DE CARTE, en deux temps : le CALAGE d'abord (quelques centaines d'octets), l'IMAGE ensuite
+  // (jusqu'à 1,4 Mio), qu'on ne va chercher que si le calage existe.
+  const { data: background } = useReplayMapBackground(playerSlug, matchId)
+  // LE STYLE DU FOND (réglage « Fond » du panneau Vue) : l'image plan se superpose au rendu et n'est
+  // demandée que si le fond en porte une ; sinon le rendu, sans rien dire.
+  const [backgroundStyle] = useBackgroundStyle()
+  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
+  const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
+  // L'IMAGE PLAN, SOURCE DU MASQUE DES ZONES NOMMÉES (`lib/replay/planMask`), chargée quel que soit le fond
+  // affiché ; même clé de cache que le fond plan. Carte sans image plan, ou plan en échec : zones entières.
+  const { image: planImage, variante: variantePlan } = useReplayMapImage(playerSlug, matchId, !!background?.planImage, 'plan')
+  const mapBackground = useMemo(
+    () => buildMapBackgroundLayer({ background, image: mapImage, variante, planImage, planVariante: variantePlan }),
+    [background, mapImage, variante, planImage, variantePlan],
+  )
+  // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque de la toile et la zone de la
+  // victime du fil. 404 = la carte n'en a pas (Forge) — liste vide, rien.
+  const { data: calloutsEntry } = useReplayMapCallouts(playerSlug, matchId)
+  const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
-           SOUS 1280 px (`xl`) la rangée n'a plus la place : la carte reprend toute la largeur
-           et fiches puis fil passent dessous, chacun borné à 60 % de la hauteur d'écran.
+  // LE MODÈLE DE LA PAGE, JOINT ICI ET NULLE PART AILLEURS : identité, marques, horloge, fenêtre de
+  // gameplay, roster, fil recalé, médias, score final vivent dans `model/replayModel`, pure et testée sans
+  // React ; ce hook ne fait que la mémoïser.
+  const friendGamertags = useFriendGamertags(playerSlug)
+  // PAR LES YEUX DE QUI : un seul foyer, ici ; sa valeur descend en paramètre à tout ce qui en dépend.
+  // Le défaut est le joueur de la page, à CHAQUE montage (rien n'est persisté).
+  const viewpoint = useReplayViewpoint(replayContext?.scoreboard)
+  // Objet mémoïsé : `useReplayModel` mémoïse sur son identité ; un littéral neuf à chaque rendu (150 ms en
+  // lecture) reconstruirait tout le modèle à chaque tick.
+  const modelSettings = useMemo(() => ({ friendGamertags, locale }), [friendGamertags, locale])
+  const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
+  // LE PANNEAU DE JOUEUR : son état naît avec la page et avec le match, jamais mémorisé, et NE TOUCHE PAS
+  // au point de vue. Le joueur SUIVI est ce même joueur regardé (`viewpoint.xuid`).
+  const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)
+  // LA ZONE DE LA VICTIME de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
+  const feedZoneOf = useFeedZones(model.feed, data, callouts, locale, model.players)
+  // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.
+  const weaponIcons = useKillSourceIcons(params.titleSlug, locale)
+  const nowMs = data ? frameToMs(playFrame, data) : 0
+  // LA FIN DE PARTIE SONORE reste À LA PAGE : elle dépend de la LANGUE (voix d'annonceur), que le modèle ne
+  // connaît pas. C'est la MÊME lecture que l'écran de fin (`readVictory`). Et c'est la SEULE surface qui ne
+  // suit pas le point de vue : aucun sujet ne lui est passé, donc elle lit le résultat du JOUEUR DE LA PAGE
+  // (inspecter un adversaire ne doit pas faire jouer « Défaite » sur un match gagné). L'incohérence
+  // apparente avec l'écran, qui suit le point de vue, est voulue.
+  const endMatchSound = useMemo(
+    () => endMatchSoundSpec(model.allegiance, model.scoreboard, replayContext?.header.outcome_code, locale),
+    [model.allegiance, model.scoreboard, replayContext?.header.outcome_code, locale],
+  )
 
-           EN PLEIN CADRE, LA GRILLE DEVIENT LE CADRE (`REPLAY_FULLSCREEN_FRAME`) : sa hauteur est
-           celle de la fenêtre, la rangée s'y étire, et la colonne de droite — absolue dans sa
-           cellule — descend donc jusqu'en bas. Sous `xl`, le même empilement, dans le cadre. */
-        <div
-          className={`grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch${
-            frameControl.frame === 'plein-cadre' ? ` ${REPLAY_FULLSCREEN_FRAME}` : ''
-          }`}
-        >
-          {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
-              contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
-          {/* `relative` : c'est le repère de l'ÉCRAN DE VICTOIRE, qui coiffe toute la colonne
-              de la carte (bandeau, terrain, frise) à la fin du match. Il se monte ICI et non
-              dans le canvas, qui est déjà au plafond de taille du dépôt. */}
-          <section className="relative min-w-0">
-            {/* AVIS « INSTANT NON CALÉ » (lot M1b, 2026-09-08) : le lien tactique demandait un
-                instant sur l'horloge du match, mais cet artefact n'a pas d'origine du film
-                (`matchClock` rend `null`). Le rejeu s'ouvre
-                quand même — au début, jamais sur un saut approximatif présenté comme exact. */}
-            {showMissingOriginNotice && (
-              <EmptyStateNotice
-                className="mb-2"
-                title={t.openAtNoOriginTitle}
-                description={t.openAtNoOriginDescription}
-              />
-            )}
-            {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :
-                score des deux camps à l'image lue, de part et d'autre de l'horloge. Il est
-                DANS la colonne du canvas, et non en frère de celle-ci : la rangée est une
-                grille à trois colonnes ordonnées, où un frère supplémentaire prendrait une
-                cellule et décalerait le fil, le terrain et les fiches d'un cran. Ici il
-                coiffe la carte, à sa largeur exacte, sans toucher à la grille.
+  const loadState = replayLoadState({
+    isLoading,
+    hasTracks: !!data && data.tracks.length > 0,
+    error,
+    identityPending: replayContextPending,
+  })
+  // LE CADRE ET LE PLEIN ÉCRAN DU SYSTÈME vivent ICI parce que le cadre change la mise en page de LA PAGE
+  // (cf. useReplayFrame) ; la toile n'en reçoit que les commandes : touches T et F, bouton de la barre.
+  const frameControl = useReplayFrame()
+  const fullscreen = useReplayFullscreen(frameControl)
 
-                IL TIQUE SANS RIEN AJOUTER : la page tient déjà `frame` (le canvas le lui
-                publie toutes les 150 ms via `onFrameChange`) et `nowMs` en découle. C'est
-                la même horloge que le fil et que les scores en tête des colonnes — un
-                montage déclaratif suffit, aucun pilotage par ref n'est nécessaire. */}
-            <ReplayScoreBanner
-              doc={data}
-              allegiance={model.allegiance}
-              frame={frame}
-              nowMs={nowMs}
-              playWindow={playWindow}
-              locale={locale}
-            />
-            <ReplayCanvas
-              doc={data}
-              locale={locale}
-              playWindow={playWindow}
-              playbackStore={playbackStore}
-              openAtFrame={openAtFrame}
-              background={mapBackground}
-              mapId={replayContext?.header.map_id}
-              callouts={callouts}
-              playerSlug={playerSlug}
-              matchId={matchId}
-              scoreboard={scoreboard}
-              allegiance={model.allegiance}
-              marks={marks}
-              endMatch={endMatchSound}
-              viewpoint={viewpoint.xuid}
-              playerFocus={playerPanel.focus}
-              onFollowStop={playerPanel.onFollowStop}
-              fullscreen={fullscreen}
-              frameControl={frameControl}
-              players={model.players}
-              onSelectViewpoint={viewpoint.select}
-              outcome={{
-                // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
-                // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et
-                // c'est ici qu'il reçoit de quoi le faire — la MÊME source que l'écran affiché.
-                // Le CODE seul : le MOT se résout des deux côtés depuis les mappings du titre
-                // (2026-09-07), sur l'issue lue — un `outcome_label` de plus rouvrirait le
-                // second vocabulaire que ce chantier a fermé.
-                code: replayContext?.header.outcome_code,
-                finalScore: model.score,
-              }}
-              feedEntries={feedEntries}
-              media={model.media}
-              scoreTimelineKind={replayContext ? (replayContext.header.score_timeline_kind ?? '') : undefined}
-              /* LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR (2026-09-08,
-                 retour utilisateur : « message et image défaite/victoire centrer sur la hauteur
-                 de la map, là ça prend la hauteur du lecteur en compte, ce qui n'est pas
-                 correct »).
-
-                 Elles étaient montées ICI, sœurs de `ReplayCanvas` : leur `inset-0` couvrait
-                 alors la bannière de score, la carte ET la barre de lecture, et le bloc
-                 « DÉFAITE » tombait 106 px sous le centre du terrain. Les envelopper d'un
-                 `relative` à ce niveau ne suffisait pas — `ReplayCanvas` rend LUI AUSSI la barre
-                 de lecture. Elles descendent donc dans le conteneur de la toile, seul endroit
-                 dont les bornes sont celles de la carte (cf. `ReplayCanvasProps.mapOverlays`).
-
-                 LES TROIS, ET PAS LE SEUL ÉCRAN DE FIN : le message inter-manche partage son
-                 bloc et ses styles (`replayOverlayStyles.ts`) — n'en déplacer qu'un les aurait
-                 posés à deux hauteurs différentes ; et le compte à rebours de la bombe, qui se
-                 veut « en haut du terrain », se posait en haut du LECTEUR. */
-              mapOverlays={
-                <>
-                  <ReplayVictoryOverlay
-                    doc={data}
-                    scoreboard={scoreboard}
-                    allegiance={model.allegiance}
-                    outcomeCode={replayContext?.header.outcome_code}
-                    viewpoint={viewpoint.xuid}
-                    finalScore={model.score}
-                    playWindow={playWindow}
-                    frame={frame}
-                    titleSlug={params.titleSlug}
-                    locale={locale}
-                  />
-                  <ReplayRoundBreakOverlay doc={data} frame={frame} locale={locale} />
-                  <ReplayBombCountdownOverlay doc={data} frame={frame} locale={locale} />
-                </>
-              }
-            />
-          </section>
-          {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
-              rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.
-              Les fiches gardent leur hauteur naturelle (bornée, elles défilent au-delà — BTB) ;
-              le fil PERMANENT (verdict user 2026-08-13) remplit tout le reste et défile dedans.
-
-              LE PLAFOND DES FICHES N'EST PLUS UN POURCENTAGE DE LA CARTE (2026-09-02). Il valait
-              62 % de la rangée, dont la hauteur est celle de la colonne carte — donc, depuis que
-              cette carte est élastique, une promesse exprimée en fiches adossée à une hauteur
-              variable. Le calcul : une fiche coûte ~100 px, un en-tête d'équipe ~30, soit 442 px
-              pour un 4v4. La rangée valait 773 px (62 % = 479, il tenait à 37 px près) ; sur un
-              écran contraint elle tombe à 653 (62 % = 405, il ne tient plus). Et à 5v5 (542 px)
-              il ne tenait DÉJÀ pas avant — le défaut préexistait sur les gros effectifs, la
-              hauteur élastique n'a fait que l'étendre au 4v4.
-
-              LE PLAFOND EST DONC EN PIXELS, ET BORNÉ PAR LA PLACE DU FIL :
-              `min(30rem, 100% - 12rem)` dit les deux choses d'un coup — au plus 30 rem (de quoi
-              loger un 4v4 entier avec de la marge), et jamais au point de laisser moins de
-              12 rem au fil. Sur une colonne haute c'est le premier terme qui mord, sur une
-              colonne courte le second : aucun des deux ne peut être exprimé sans l'autre. */}
-          <aside className="relative">
-            <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
-              <div className="flex max-h-[60vh] min-h-0 flex-col overflow-hidden xl:max-h-[30rem]">
-                {/* PAS DE `marks` ICI (2026-08-25) : les fiches ne portent plus de glyphe
-                    d'identité. La table reste servie à la CARTE (forme du point) et au FIL
-                    (glyphe devant un nom), ses deux derniers lecteurs. */}
-                <ReplayTeams
-                  doc={data}
-                  players={model.players}
-                  frame={frame}
-                  locale={locale}
-                  allegiance={model.allegiance}
-                  header={replayContext?.header}
-                  panel={{ xuid: playerPanel.focus?.player.xuid ?? null, onSelect: playerPanel.onCard }}
-                />
-              </div>
-              {/* LE PANNEAU DE JOUEUR PREND LA PLACE DU FIL SANS LE DÉTRUIRE (cf. ReplayFeedOrPanel) :
-                  « Retour au fil » retrouve le filtre du menu et la position de défilement. */}
-              <ReplayFeedOrPanel
-                feed={
-                  <ReplayKillFeed
-                    entries={feedEntries}
-                    nowMs={nowMs}
-                    playWindow={playWindow}
-                    scoreboard={scoreboard}
-                    xuidMeta={xuidMeta}
-                    allegiance={model.allegiance}
-                    locale={locale}
-                    marks={marks}
-                    zoneOf={feedZoneOf}
-                    doc={data}
-                    playbackStore={playbackStore}
-                    weaponIcons={weaponIcons}
-                  />
-                }
-                panel={
-                  playerPanel.focus && (
-                    <ReplayPlayerPanel
-                      player={playerPanel.focus.player}
-                      actions={playerPanel.focus}
-                      onToggle={playerPanel.onToggle}
-                      onClose={playerPanel.onClose}
-                      doc={data}
-                      frame={frame}
-                      nowMs={nowMs}
-                      playWindow={playWindow}
-                      allegiance={model.allegiance}
-                      locale={locale}
-                    />
-                  )
-                }
-              />
-            </div>
-          </aside>
-        </div>
-      )}
-      </div>
-    </div>
+  const chrome: ReplayFrameChrome = {
+    locale,
+    params,
+    // Même libellé que la vue match (mode + carte), calculé ICI et nulle part ailleurs.
+    matchLabel: buildMatchHeadingStr(replayContext?.header.map_ui, replayContext?.header.mode_ui, locale),
+    header: replayContext?.header,
+    doc: data,
+    frameControl,
+    fullscreen,
+  }
+  const view: ReplayFrameView | null =
+    data && loadState === 'ready'
+      ? {
+          doc: data,
+          locale,
+          titleSlug: params.titleSlug,
+          playerSlug,
+          matchId,
+          model,
+          header: replayContext?.header,
+          viewpoint,
+          playerPanel,
+          playbackStore,
+          playFrame,
+          nowMs,
+          mapBackground,
+          callouts,
+          endMatchSound,
+          openAtFrame,
+          showMissingOriginNotice,
+          feedZoneOf,
+          weaponIcons,
+          fullscreen,
+          frameControl,
+        }
+      : null
+  const frame = frameControl.frame
+  const zones = frame === 'standard' ? standardFrameZones(chrome, view) : cinemaFrameZones(frame, chrome, view)
+  return (
+    <ReplayFrameLayout
+      frame={frame}
+      {...zones}
+      avis={
+        <ReplayNotices
+          loadState={loadState}
+          isFetching={isFetching}
+          refetch={refetch}
+          playerSlug={playerSlug}
+          matchId={matchId}
+          locale={locale}
+        />
+      }
+      scene={view && <ReplayStage view={view} />}
+    />
   )
 }

@@ -23,18 +23,21 @@ import { describe, expect, it } from 'vitest'
 
 import { racineWeb } from '../test/featureFiles'
 
-const ROUTE = resolve(
-  racineWeb(),
-  'src/features/match-replay/ReplayPage.tsx',
-)
+/**
+ * Les fichiers qui posent la colonne des fiches et du fil : le Standard (celui qui fait foi) et le
+ * Cinéma / Plein cadre, qui en gardent la même structure.
+ */
+const STANDARD = resolve(racineWeb(), 'src/features/match-replay/ui/frames/ReplayStandardFrame.tsx')
+const CINEMA = resolve(racineWeb(), 'src/features/match-replay/ui/frames/ReplayCinemaFrame.tsx')
 
 describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la carte', () => {
-  const src = readFileSync(ROUTE, 'utf8')
+  const src = readFileSync(STANDARD, 'utf8')
+  const sources = [src, readFileSync(CINEMA, 'utf8')]
 
   it('aucun plafond exprimé en pourcentage de la rangée sur le bloc des fiches', () => {
     // `xl:max-h-[NN%]` est la forme exacte qui a causé la régression : un pourcentage qui se
     // résout contre la colonne carte, donc contre une hauteur désormais élastique.
-    expect(src).not.toMatch(/xl:max-h-\[\d+%\]/)
+    for (const source of sources) expect(source).not.toMatch(/xl:max-h-\[\d+%\]/)
   })
 
   it('le plafond borne bien les DEUX cotés : la taille des fiches et la place laissée au fil', () => {
@@ -42,7 +45,7 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
     // sans le premier, un BTB à 24 fiches remplirait toute la colonne.
     expect(src).toContain('xl:max-h-[30rem]')
     // Le plancher du fil vit dans la CELLULE DU FIL (`ReplayFeedOrPanel`, lot 4 du plan « maquettes du
-    // rejeu » : le panneau de joueur y prend la place du fil), que la route monte à sa place.
+    // rejeu » : le panneau de joueur y prend la place du fil), que le cadre monte à sa place.
     expect(src).toContain('<ReplayFeedOrPanel')
     expect(readFileSync(resolve(__dirname, 'ReplayFeedOrPanel.tsx'), 'utf8')).toContain('xl:min-h-[12rem]')
   })
@@ -57,7 +60,7 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
   // Un test qui grep une chaîne ne peut pas juger du CSS qu'elle produit. Ce qu'il PEUT faire,
   // c'est interdire la construction qui l'a rendu aveugle.
   it('aucun calc() dans une valeur arbitraire — la syntaxe qui a rendu le grep aveugle', () => {
-    expect(src).not.toContain('calc(')
+    for (const source of sources) expect(source).not.toContain('calc(')
   })
 
   it('sur une colonne courte, c est le PLANCHER du fil qui fait céder les fiches', () => {
