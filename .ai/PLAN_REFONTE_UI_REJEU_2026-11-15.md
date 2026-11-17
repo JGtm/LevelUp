@@ -590,14 +590,14 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       `nommage_zone_cas.json` restent tels quels. `useKillerZones` devient `useFeedZones` (lieu de la victime),
       l'ancien hook est supprimé avec ses imports (règle 0 code mort). Tests : victime à pied, victime en
       véhicule, victime sans position, bot.
-- [ ] C.2 `ui/ReplayFeedOverlay.tsx` : les 5 dernières lignes à l'instant lu du fil FILTRÉ (même filtre que le
+- [x] C.2 (fait le 2026-11-17 : `ui/ReplayFeedOverlay.tsx`, `model/planFeed.ts` (éliminations seules, sans filtre), cotes `model/cotesFilPlan.ts` ; posé quand la rangée de fiches l'est, jamais en repli ni au Standard ; la colonne est alors cachée, le fil complet restant monté ; `KillLine` partagée avec la colonne (prop `onPlan`) ; ombre par le jeton `--scrim`, classes vérifiées par un build ; colonnes 30 / 70 / 70 / 18 / 70 de la ligne du fil, et non les 30 / 78 / 88 / 20 du tableau N) `ui/ReplayFeedOverlay.tsx` : les 5 dernières lignes à l'instant lu du fil FILTRÉ (même filtre que le
       Standard, `useFeedFilter`), plus récente en bas, sans en-tête ni menu, sans fond, ombre portée du texte
       (token, pas de couleur en dur), colonnes fixes partagées avec `ReplayKillLineParts`. Ancré en bas à gauche
       du BLOC de la toile (slot E.1), donc dans la marge d'une carte haute et sur le plan d'une carte large. La
       légende de la carte de chaleur passe en haut à gauche du bloc dans ces cadres. Tests : 0, 3, 5 et 8 lignes
       passées ; ordre ; filtre appliqué. (amendé le 2026-11-17, grille K-9) Les deux lignes les plus anciennes
       s'estompent (70 %, puis 85 %), par des cotes nommées ; test : estompage à 5 lignes, aucun à 3.
-- [ ] C.3 Option « Fil des éliminations » (affiché par défaut) dans le panneau Vue, retenue dans
+- [x] C.3 (fait le 2026-11-17 : clé `replay-show-plan-feed`, vraie par défaut, section du panneau Vue montrée seulement là où le fil du plan peut se poser ; option éteinte, le fil des éliminations n'est affiché nulle part dans ces cadres : choix du user) Option « Fil des éliminations » (affiché par défaut) dans le panneau Vue, retenue dans
       `replayPreferences.ts` (clé nouvelle, garde-rail `replayPreferences.guard.test.ts`). Sans effet en
       Standard (la colonne y garde son fil). Libellés fr et en.
 - **Gate C** : commandes du Gate A ; `killerZone.test.ts` / tests du nouveau module verts ; aucun fichier Go
