@@ -274,11 +274,11 @@ carte   = "Illusion"
 raison  = "seul temoin a ZONES SIMULTANEES : 3 zones appariees, 39 rampes de jauge (30 abouties, 9 avortees) et 29 bascules de proprietaire lues — la matiere exacte de `gauge`, `gaugeRamps` et `capturingTeam` (schema 64). Cuit et verifie a la main au lot 5.2-A (29 rampes abouties conformes au proprietaire suivant, 0 desaccord ; 0 rampe avortee ne nomme un camp) parce que le corpus ne pouvait pas le faire ; ajoute ici pour que la verification cesse d'etre manuelle. ~25 s de gate"
 
 [[temoin]]
-id      = "f75e7053"
+id      = "0a247154"
 famille = "koth_collines"
 mode    = "Ranked:King of the Hill"
 carte   = "Solitude - Ranked"
-raison  = "seul temoin a COLLINE UNIQUE : 3 zones, 72 intervalles `active` et zero point de jauge — le regime ou `buildHillStates` decoupe une periode par changement de proprietaire (`hillSpansOf`), et ou la jauge est ABSENTE par construction. C'est la moitie du calque des zones que le Bastion ne couvre pas, et celle dont depend le son de deplacement de colline (`newZone`, lot 5.2a.1). Choisi parmi les sept KOTH du cache pour sa densite d'intervalles et parce qu'il n'est PAS dans le corpus d'equivalence des 20 films (01e1f945 y est deja) : il ajoute de la matiere au lieu d'en doubler. ~30 s de gate"
+raison  = "remplace f75e7053, hors d'atteinte du poste (2026-11-17) : meme carte et meme mode, colline unique, 213 intervalles (releves sur le poste le 2026-11-17). Regime de `buildHillStates` par changement de proprietaire (`hillSpansOf`), sans point de jauge. Non mesure ici : la duree du gate."
 
 # --- Decisions de l utilisateur --------------------------------------------------------------
 # Un FAUX du banc que l utilisateur a accepte (une lecture qui change expres) s inscrit ici :
