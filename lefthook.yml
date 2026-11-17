@@ -21,9 +21,12 @@
 # contiennent que des tokens simples + le template {staged_files}.
 #
 # GRANULARITÉ DES STAGES :
-#   - pre-commit = checks RAPIDES et LOCAUX (fichiers stagés uniquement) :
-#     gofmt sur les fichiers stagés, marqueurs de conflit. Ne doit JAMAIS
-#     bloquer un commit sur de la dette située ailleurs dans l'arbre.
+#   - pre-commit = checks RAPIDES et LOCAUX : gofmt sur les fichiers stagés,
+#     marqueurs de conflit et secrets du diff stagé, et go vet, qui fait
+#     EXCEPTION : il vérifie trois arbres entiers (domain, analysis,
+#     games/weapons ; go-vet.sh) et bloque un commit sur une faute de vet
+#     située hors des fichiers stagés. Hors go vet, un check de pre-commit ne
+#     doit pas bloquer sur de la dette située ailleurs dans l'arbre.
 #   - pre-push = checks COÛTEUX / SCAN D'ARBRE COMPLET : linters ratchet JS
 #     (cross-feature, hardcoded-fields/colors), golangci-lint (module entier),
 #     tests Go, govulncheck, deploy dry-run. C'est ici que la dette globale
