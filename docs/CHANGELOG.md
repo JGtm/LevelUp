@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **Compressed tactical files** — the tactical file of a replay is written and read as `rasters/{short8}.json.gz`. A `{short8}.json` left by an older version is no longer read; it is deleted when its replay is rewritten and by the purges. Reading the respawns of the other matches of the map goes through a per-file cache (re-read when the date or size changes). Check: `zgrep -l '"schema_version":8' <data>/cache/replays/<title>/rasters/*.json.gz`.
-- **Closing with Escape and outside click** — twelve screens (media audio settings and viewer, authors list, asset and feedback drawers, Spartan customizer, battle pass viewer, campaign start, experience and view menus, gamertag search, notifications) share one mechanism: Escape closes one layer per key press and returns focus to the opening button. The experience and view menus, which only closed on an outside click, now close with Escape too.
+- **Closing with Escape and outside click** — twelve screens (media audio settings and viewer, authors list, asset and feedback drawers, Spartan customizer, battle pass viewer, campaign start, experience and view menus, gamertag search, notifications) share one mechanism: Escape closes one layer per key press; on the button menus (audio settings, authors list, experience and view menus, notifications), it returns focus to that button. The experience and view menus, which only closed on an outside click, now close with Escape too.
 - **Hardcoded colour check** — gradients and shadows in a named colour (`from-`, `via-`, `to-`, `shadow-`) are refused, and so is a `color-allow` marker on a line with no colour.
 - **Pre-commit `go vet` hook** — it vets the CI targets and blocks on a fault instead of always passing.
 - **Replay: a lighter document to load** — the replay page asks for the document in a column form (`?encoding=columns` on `GET /players/{slug}/matches/{id}/replay`, a transport encoding of the same document, generic over every field): the heaviest replay goes from 8.54 to 2.11 MB compressed, the median one from 1.09 to 0.30 MB. Without the parameter the response is unchanged; the web side undoes the columns before the contract check.
@@ -41,7 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - **Squad: an unknown count no longer drags a per-minute rate to zero** — a match where a teammate's kills, deaths or assists are unknown leaves the matching rate (numerator and denominator), as it already did for damage.
-- **Interlock map background: machine path removed** — two degradations of the published file carried an absolute path; `mapfond-build` no longer writes one and a guard refuses any absolute path in published backgrounds.
+- **Interlock map background: machine path removed** — two degradations of the published file carried an absolute path; `mapfond-build` keeps only the module name in a degradation, and a guard refuses drive-letter paths and home-directory paths in published backgrounds (it sees neither a network share nor other Unix paths).
 - **Squad: kills, deaths and assists per minute ignore matches with no played time** — such a match added its counts without its minutes, which inflated the rate. The three values now follow the rule of the other per-minute values (`analysis.PooledPerMinute`: sum of counts over sum of minutes played, matches without played time excluded).
 
 ## [8.2.1] - 2026-11-16
