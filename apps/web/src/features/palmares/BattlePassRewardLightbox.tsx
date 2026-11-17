@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -122,16 +123,18 @@ export function BattlePassRewardLightbox({
     window.setTimeout(() => { animatingRef.current = false }, ANIM_MS)
   }
 
+  // Échap ferme la visionneuse ; le clic dehors est celui du voile (les vignettes latérales naviguent sans fermer).
+  useDismissable(true, onClose, { outside: null })
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
       if (event.key === 'ArrowLeft') navigate('prev')
       if (event.key === 'ArrowRight') navigate('next')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clampedIdx, rewards.length, onClose])
+  }, [clampedIdx, rewards.length])
 
   if (!current) return null
 
