@@ -6,9 +6,9 @@
  * observateur de taille simulé. Ce que ces tests prouvent :
  *  - la rangée est posée quand la règle (`dispositionEquipes`) la retient : le score est AU CENTRE de la rangée
  *    (emplacement `rangee`), il n'est plus sur la toile, et le fil des éliminations passe SUR LE PLAN (la colonne
- *    est cachée tant qu'aucune fiche n'est ouverte, son fil complet reste monté) ;
+ *    n'est jamais affichée, son fil complet reste monté) ;
  *  - sinon (fenêtre trop étroite, largeur pas mesurée, chacun pour soi, Standard) les équipes sont dans la colonne
- *    et le score reste où il était ;
+ *    et le score est dans l'en-tête, sur la toile seulement si l'en-tête est trop étroit pour le loger ;
  *  - passer de la rangée au repli (la fenêtre rétrécit) et basculer de cadre ne remontent NI la toile NI la
  *    cellule du fil.
  */
@@ -23,6 +23,7 @@ import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { REPLAY_TEXT } from './i18n/i18n'
+import { LARGEUR_REQUISE_ENTETE_SCORE_PX } from './model/cotesEnteteScore'
 import { largeurRequiseRangee, largeurRequiseRangeeGrandeEquipe } from './model/rowLayout'
 import type { ReplayFrame } from './model/replayFrame'
 import { recordingContext } from './test/recordingContext'
@@ -181,15 +182,17 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(container.querySelector('[data-replay-body] > [data-replay-teams-row]')).not.toBeNull()
   })
 
-  it('la colonne ne montre plus les équipes : le fil complet reste monté (caché), et la fiche du joueur prend la colonne quand elle est ouverte', async () => {
+  it('la colonne ne montre plus les équipes : le fil complet reste monté (caché), et la fiche du joueur s’ouvre en fenêtre, hors de la colonne', async () => {
     const { container } = await mount(match(4), L4)
     goTo('cinema')
     expect(colonneDesEquipes(container)).toBeNull()
     expect(screen.getByTestId('replay-feed-slot')).toBeInTheDocument()
     fireEvent.click(within(rangee(container) as HTMLElement).getByRole('button', { name: 'Ouvrir la fiche de Joueur5' }))
     expect(within(rangee(container) as HTMLElement).getByRole('button', { name: 'Ouvrir la fiche de Joueur5' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByTestId('replay-feed-slot')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })).toBeInTheDocument()
+    expect(screen.getByTestId('replay-feed-slot')).not.toHaveAttribute('aria-hidden')
+    const fenetre = screen.getByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })
+    expect(fenetre).toHaveAttribute('data-replay-fiche-popover')
+    expect(container.contains(fenetre)).toBe(false)
   })
 
   it('le joueur de la page est le joueur suivi : sa fiche a la bordure de suivi', async () => {
@@ -200,15 +203,35 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(fiches.getByRole('button', { name: 'Ouvrir la fiche de Joueur1' }).style.borderColor).toBe('var(--border)')
   })
 
-  it('trop étroit (un pixel de moins que la demande) : le repli, équipes en lignes dans la colonne, score sur la toile', async () => {
+  it('trop étroit (un pixel de moins que la demande) : le repli, équipes en lignes dans la colonne, score dans l’en-tête', async () => {
     const { container } = await mount(match(4), L4 - 1)
     goTo('cinema')
     expect(rangee(container)).toBeNull()
     expect(colonneDesEquipes(container)).not.toBeNull()
     const [banniere, ...autres] = bandeaux(container)
     expect(autres).toHaveLength(0)
-    expect(banniere.getAttribute('data-replay-score-banner')).toBe('scene')
-    expect(container.querySelector('section')?.contains(banniere)).toBe(true)
+    expect(banniere.getAttribute('data-replay-score-banner')).toBe('entete')
+    expect(container.querySelector('section')?.contains(banniere)).toBe(false)
+    expect(container.querySelector('[data-replay-header="cinema"] [data-replay-header-cell="centre"]')?.contains(banniere)).toBe(true)
+  })
+
+  it.each(['cinema', 'plein-cadre'] as const)('%s, repli : le score est dans l’en-tête tant que le corps loge sa cellule de 440 px, sur la toile un pixel en dessous', async (frame) => {
+    const { container } = await mount(match(4), LARGEUR_REQUISE_ENTETE_SCORE_PX)
+    goTo(frame)
+    expect(rangee(container)).toBeNull()
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
+    expect(container.querySelector(`[data-replay-header="${frame}"][data-replay-header-score]`)).not.toBeNull()
+    redimensionner(LARGEUR_REQUISE_ENTETE_SCORE_PX - 1)
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['scene'])
+    expect(container.querySelector('section')?.contains(bandeaux(container)[0])).toBe(true)
+    expect(container.querySelector('[data-replay-header-score]')).toBeNull()
+  })
+
+  it('rangée posée : l’en-tête garde sa ligne de 52 px, sans cellule de score', async () => {
+    const { container } = await mount(match(4), L4)
+    goTo('cinema')
+    expect(container.querySelector('[data-replay-header-score]')).toBeNull()
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['rangee'])
   })
 
   it('largeur du corps non mesurée : le repli', async () => {
@@ -246,12 +269,13 @@ describe('ReplayPage : la rangée des équipes en Grande équipe', () => {
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['rangee'])
   })
 
-  it('trop étroit pour la Grande équipe : le repli, équipes en paires dans la colonne, score sur la toile', async () => {
+  it('trop étroit pour la Grande équipe : le repli, équipes en paires dans la colonne, score dans l’en-tête', async () => {
     const { container } = await mount(match(12), LGE - 1)
     goTo('plein-cadre')
     expect(rangee(container)).toBeNull()
     expect(colonneDesEquipes(container)).not.toBeNull()
-    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['scene'])
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
+    expect(container.querySelector('[data-replay-header="plein-cadre"] [data-replay-header-cell="centre"]')?.contains(bandeaux(container)[0])).toBe(true)
   })
 })
 
@@ -277,7 +301,7 @@ describe('ReplayPage : la rangée ne remonte ni la toile ni le fil', () => {
     redimensionner(L4 - 1)
     expect(rangee(container)).toBeNull()
     expect(colonneDesEquipes(container)).not.toBeNull()
-    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['scene'])
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
     expect(container.querySelector('canvas')).toBe(toile)
     expect(screen.getByTestId('replay-feed-slot')).toBe(fil)
 
@@ -319,15 +343,17 @@ describe('ReplayPage : le fil des éliminations posé sur le plan', () => {
     expect(container.querySelector('[data-replay-grid]')?.className).not.toContain('30rem')
   })
 
-  it("la colonne du Cinéma ne se montre que lorsqu'une fiche de joueur est ouverte, à la place d'aujourd'hui", async () => {
+  it('rangée posée : la colonne reste cachée fiche ouverte (la fiche est une fenêtre), le plan garde sa largeur', async () => {
     const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
     goTo('cinema')
     expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
     fireEvent.click(within(rangee(container) as HTMLElement).getByRole('button', { name: 'Ouvrir la fiche de Joueur5' }))
-    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
-    expect(container.querySelector('[data-replay-grid]')?.className).toContain('30rem')
-    expect(within(colonne(container) as HTMLElement).getByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })).toBeInTheDocument()
-    fireEvent.click(within(colonne(container) as HTMLElement).getByRole('button', { name: T.playerPanel.back }))
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
+    expect(container.querySelector('[data-replay-grid]')?.className).not.toContain('30rem')
+    expect(screen.getByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })).toBeInTheDocument()
+    expect(colonne(container)?.querySelector('[data-replay-fiche-popover]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: T.playerPanel.close }))
+    expect(screen.queryByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })).toBeNull()
     expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
   })
 

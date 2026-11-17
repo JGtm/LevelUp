@@ -2,7 +2,7 @@
  * useReplayPlayerFocus — CE QUE LE PANNEAU DE JOUEUR FAIT À LA CARTE, câblé au canvas en un point
  * (lot 4 du plan « maquettes du rejeu »).
  *
- * Trois actions, deux effets. SEUL et MASQUER valent pour TOUS les calques : ce qui appartient à un joueur
+ * Trois actions, deux effets, et un repère : la fiche ouverte cerne son pion d'un anneau (`openPlayer`). SEUL et MASQUER valent pour TOUS les calques : ce qui appartient à un joueur
  * (pion, tirs, croix et effets de mort, poses, véhicules occupés, objets portés…) suit ; ce qui n'est à
  * personne reste. Le hook rend le prédicat `shownAtSlot` que le canvas passe aux calques de pions (pistes,
  * marques de tir, éclairs de bouche, sillage du propulseur, fins de vol de grenade), `shownProjectile` pour
@@ -21,6 +21,8 @@ import { buildFocusFilter, type FocusFilter } from '../model/focusFilter'
 import { shownSlotPredicate, type PlayerFocus } from '../model/playerPanelLogic'
 import { projectileOwners } from '../model/projectileOwners'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { OpenPlayerRing } from '../layers/openPlayerRing'
+import { useReplayOpenPlayer } from '../layers/useReplayOpenPlayer'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { QuarterTurns } from '@/lib/replay/orientation'
 import { useReplayFollow } from './useReplayFollow'
@@ -54,6 +56,11 @@ export interface ReplayPlayerFocusLayers {
    * n'est filtré.
    */
   shown: FocusFilter | undefined
+  /**
+   * Le pion cerclé du joueur de la fiche ouverte : sa position à l'image et les encres de l'anneau. `undefined` =
+   * aucune fiche ouverte, ou joueur masqué.
+   */
+  openPlayer: OpenPlayerRing | undefined
 }
 
 export function useReplayPlayerFocus({ doc, focus, followPlayer, frameRef, zoom, turns }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
@@ -68,5 +75,6 @@ export function useReplayPlayerFocus({ doc, focus, followPlayer, frameRef, zoom,
     }
   }, [shownAtSlot, owners])
   const shown = useMemo(() => buildFocusFilter(doc, focus) ?? undefined, [doc, focus])
-  return { shownAtSlot, shownProjectile, shown }
+  const openPlayer = useReplayOpenPlayer(doc, focus)
+  return { shownAtSlot, shownProjectile, shown, openPlayer }
 }

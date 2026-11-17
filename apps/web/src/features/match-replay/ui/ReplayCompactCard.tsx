@@ -31,7 +31,7 @@ import type { Allegiance } from '@/lib/replay/filmAllegiance'
 import { CardUnderLayers, ZoneFxOverlay } from './ReplayCardFx'
 import { ReplayObjectiveGlyph } from './ReplayObjectiveMark'
 import { VitalityBar } from './ReplayVitality'
-import { PRESS_CLASS, pressProps, SELECTED_CLASS } from './replayCardPress'
+import { PRESS_CLASS, pressProps, selectedChrome } from './replayCardPress'
 import type { CardScene } from '../hooks/useCardScene'
 import { campInk } from '../model/campInk'
 import { GABARIT_FICHE_COMPACTE as G } from '../model/cardGabarit'
@@ -183,14 +183,15 @@ export function ReplayCompactCard({
   const press = onCard
     ? { label: t.playerPanel.cardOpenFmt(name), selected, onActivate: () => onCard(player.xuid) }
     : undefined
-  const chrome: CSSProperties = cardChrome(state.alive)
+  let chrome: CSSProperties = cardChrome(state.alive)
   if (tracked) chrome.borderColor = 'var(--ring)'
+  if (press && selected) chrome = selectedChrome(chrome)
   const marks = <Marks read={read} bot={bot} t={t} />
   const gauges = state.alive ? <Gauges read={read} scene={scene} t={t} form={form} /> : <Respawn read={read} doc={doc} frame={frame} t={t} />
   const nameEl = <Name text={name} bold={tracked} dim={!state.alive} muted={bot} title={name} />
   return (
     <div
-      className={`${BOX_CLASS}${press ? ` ${PRESS_CLASS}${selected ? ` ${SELECTED_CLASS}` : ''}` : ''}`}
+      className={`${BOX_CLASS}${press ? ` ${PRESS_CLASS}` : ''}`}
       style={boxStyle(form, chrome)}
       title={fx.title}
       {...(press ? pressProps(press) : {})}

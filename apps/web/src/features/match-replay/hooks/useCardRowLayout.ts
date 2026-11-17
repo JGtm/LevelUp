@@ -8,10 +8,10 @@
  * le corps (champ `bodyRef` de `ReplayFrameZoneContent`) ; la mesure est lue avant la première peinture, puis
  * suivie par un `ResizeObserver` (le redimensionnement de la fenêtre change la largeur du corps). Tant que le
  * corps n'est pas mesuré, ou hors du Cinéma et du Plein cadre (`canPlaceCardRow`), la disposition est la
- * colonne : le score reste sur la toile.
+ * colonne.
  *
  * Le hook ne rend rien : il ne monte ni ne démonte aucun nœud, la page distribue sa décision (disposition,
- * emplacement du score). Le calcul des places par camp est mémoïsé sur le document et les joueurs : la page se
+ * emplacement du score, qui dépend aussi de la largeur). Le calcul des places par camp est mémoïsé sur le document et les joueurs : la page se
  * rend à chaque image de lecture publiée, pas la règle.
  */
 import { useLayoutEffect, useMemo, useState } from 'react'
@@ -27,8 +27,8 @@ export interface CardRowLayout {
   bodyRef: (el: HTMLElement | null) => void
   /** Comment les équipes se rangent dans ce cadre, à cette largeur. */
   disposition: DispositionEquipes
-  /** Où le bandeau de score est posé ; `null` = pas sur la toile (en-tête du Standard, ou rangée). */
-  scorePlacement: EmplacementScore | null
+  /** Où le bandeau de score est posé : l'en-tête, la rangée ou la toile (`emplacementScoreDe`). */
+  scorePlacement: EmplacementScore
   /** Le fil des éliminations est posé sur le plan, et la colonne ne le montre plus (`planFeedPosed`). */
   planFeedPosed: boolean
 }
@@ -61,7 +61,7 @@ export function useCardRowLayout(frame: ReplayFrame, view: ReplayFrameView | nul
   return {
     bodyRef: ref,
     disposition,
-    scorePlacement: emplacementScoreDe(frame, disposition),
+    scorePlacement: emplacementScoreDe(frame, disposition, width),
     planFeedPosed: planFeedPosed(frame, disposition),
   }
 }

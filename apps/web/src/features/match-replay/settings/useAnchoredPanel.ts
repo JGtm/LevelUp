@@ -19,6 +19,15 @@
  *    le panneau qui défile, pas la page. Sans cette borne, un panneau plus haut que la fenêtre
  *    sortirait par le bas, là où rien ne le rattrape.
  *
+ * # DEUX OPTIONS, TOUTES DEUX FACULTATIVES (sans elles, rien ne change)
+ *
+ *  - `align: 'start'` aligne le bord GAUCHE du panneau sur celui du déclencheur (une fenêtre sous une
+ *    tuile de rangée) ; si le panneau débordait alors du bord droit de la page, il s'aligne par la DROITE
+ *    (bord droit sur celui du déclencheur), puis le `clamp` le ramène. Défaut `'end'` : le bord droit ;
+ *  - `boundRef` désigne l'élément dont le bord BAS borne la hauteur (le plan du rejeu) : le panneau ne
+ *    descend pas sous lui, moins la marge, et défile en interne au-delà. Sans elle, la borne est le bas
+ *    de la fenêtre. Un élément absent ou démonté retombe sur la fenêtre.
+ *
  * # POURQUOI `scroll` EN CAPTURE
  *
  * Le déclencheur vit dans un conteneur qui défile (`<main>` du shell), pas dans la fenêtre.
@@ -43,6 +52,22 @@ export interface AnchoredPosition {
   maxHeight: number
 }
 
+/** Le côté du déclencheur sur lequel le panneau s'aligne : son bord droit (défaut) ou son bord gauche. */
+export type AnchorAlign = 'end' | 'start'
+
+/** Ce que `anchoredPosition` lit en plus du déclencheur : le côté d'alignement et le bas de l'élément borne. */
+export interface AnchorOptions {
+  align?: AnchorAlign
+  /** Le bas (coordonnée de la fenêtre) de l'élément qui borne la hauteur ; absent = le bas de la fenêtre. */
+  boundBottom?: number
+}
+
+/** Les options du hook : les mêmes, mais l'élément borne se donne par sa référence. */
+export interface AnchoredPanelOptions {
+  align?: AnchorAlign
+  boundRef?: RefObject<HTMLElement | null>
+}
+
 /**
  * Le repli : centré dans la fenêtre. Il sert au premier rendu et au cas où le déclencheur n'est
  * pas mesurable (panneau monté seul, bouton démonté sous un panneau ouvert). On ne rend jamais
@@ -63,22 +88,31 @@ function centeredFallback(width: number): AnchoredPosition {
  * fenêtre `viewport`. Pure : c'est ce qu'on mesure en test.
  */
 export function anchoredPosition(
-  r: Pick<DOMRect, 'right' | 'bottom'>,
+  r: Pick<DOMRect, 'right' | 'bottom'> & { left?: number },
   viewport: { width: number; height: number },
   width: number,
+  options: AnchorOptions = {},
 ): AnchoredPosition {
   const maxLeft = Math.max(viewport.width - width - EDGE, EDGE)
+  const alignedEnd = r.right - width
+  // « start » : le bord gauche du déclencheur, sauf si le panneau sortirait alors par la droite de la page.
+  const aligned =
+    options.align === 'start' && r.left !== undefined && r.left <= maxLeft ? r.left : alignedEnd
+  const limit = Math.min(viewport.height, options.boundBottom ?? viewport.height)
   return {
-    left: Math.min(Math.max(r.right - width, EDGE), maxLeft),
+    left: Math.min(Math.max(aligned, EDGE), maxLeft),
     top: Math.max(r.bottom + GAP, EDGE),
-    maxHeight: Math.max(viewport.height - r.bottom - GAP - EDGE, MIN_HEIGHT),
+    maxHeight: Math.max(limit - r.bottom - GAP - EDGE, MIN_HEIGHT),
   }
 }
 
 export function useAnchoredPanel(
   triggerRef: RefObject<HTMLElement | null> | undefined,
   width: number,
+  options: AnchoredPanelOptions = {},
 ): AnchoredPosition {
+  // Les options se lisent par leurs valeurs : un objet neuf à chaque rendu ne doit pas rebrancher les écouteurs.
+  const { align, boundRef } = options
   // L'ÉTAT DÉMARRE CENTRÉ, JAMAIS NUL. Un premier rendu nul ferait naître le panneau APRÈS le
   // montage, et tout ce qui l'attend au montage — le focus qui doit y entrer, notamment —
   // s'exécuterait sur un panneau qui n'existe pas encore. Le `useLayoutEffect` ci-dessous
@@ -98,13 +132,14 @@ export function useAnchoredPanel(
         setPos(centeredFallback(width))
         return
       }
-      setPos(
-        anchoredPosition(
-          el.getBoundingClientRect(),
-          { width: window.innerWidth, height: window.innerHeight },
-          width,
-        ),
+      const next = anchoredPosition(
+        el.getBoundingClientRect(),
+        { width: window.innerWidth, height: window.innerHeight },
+        width,
+        { align, boundBottom: boundRef?.current?.getBoundingClientRect().bottom },
       )
+      // Une position inchangée garde l'objet : un placement répété (défilement, redimensionnement) ne rend pas pour rien.
+      setPos((prev) => (prev.left === next.left && prev.top === next.top && prev.maxHeight === next.maxHeight ? prev : next))
     }
 
     place()
@@ -114,7 +149,7 @@ export function useAnchoredPanel(
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [triggerRef, width])
+  }, [triggerRef, width, align, boundRef])
 
   return pos
 }

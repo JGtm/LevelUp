@@ -23,7 +23,7 @@
  * UN CLIC REND LA PAGE (`onCard`) : la ligne est un bouton, au même contrat que la fiche
  * (`data-replay-player-card`, gardes d'appui `PRESS_GUARDS`).
  */
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
@@ -31,7 +31,7 @@ import { CardUnderLayers, ZoneFxOverlay } from './ReplayCardFx'
 import { EquipmentCell, GrenadeCell, WeaponCell } from './ReplayRosterCells'
 import { ReplayRosterRowDetail } from './ReplayRosterRowDetail'
 import { VitalityBar } from './ReplayVitality'
-import { PRESS_CLASS, pressProps, SELECTED_CLASS } from './replayCardPress'
+import { PRESS_CLASS, pressProps, selectedChrome } from './replayCardPress'
 import type { CardScene } from '../hooks/useCardScene'
 import { GABARIT_LIGNE as G } from '../model/cardGabarit'
 import { SEAT_WAITING_CHROME } from '../model/playerCardFx'
@@ -195,10 +195,11 @@ export function ReplayRosterRow({ player, doc, frame, locale, scene, tracked, se
   const press = onCard
     ? { label: t.playerPanel.cardOpenFmt(read.name), selected, onActivate: () => onCard(player.xuid) }
     : undefined
-  const className = `${ROW_BASE} ${G.layerRadius}${press ? ` ${PRESS_CLASS}${selected ? ` ${SELECTED_CLASS}` : ''}` : ''}`
+  const className = `${ROW_BASE} ${G.layerRadius}${press ? ` ${PRESS_CLASS}` : ''}`
+  const style: CSSProperties = press && selected ? { height: G.rowPx, ...selectedChrome() } : { height: G.rowPx }
   return (
     <>
-      <div className={className} style={{ height: G.rowPx }} title={fx.title} {...(press ? pressProps(press) : {})}>
+      <div className={className} style={style} title={fx.title} {...(press ? pressProps(press) : {})}>
         <CardUnderLayers fx={fx} objective={objective} radiusClass={G.layerRadius} watermarkPx={G.watermarkPx} />
         <div
           className="relative grid h-full items-center"

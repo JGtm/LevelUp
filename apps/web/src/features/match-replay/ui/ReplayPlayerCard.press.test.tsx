@@ -111,9 +111,13 @@ describe('ReplayPlayerCard — fiches-boutons', () => {
     expect(titles(bouton.container)).toEqual(avant)
   })
 
-  it('la fiche choisie porte un anneau, qui ne change aucune cote (ombre)', () => {
+  it('la fiche choisie a le fond plus clair et la bordure claire, qui ne changent aucune cote ; les autres gardent la leur', () => {
     setup(vi.fn(), 'A')
-    expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' }).className).toContain('ring-2')
-    expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Bravo' }).className).not.toContain('ring-2 ring-ring')
+    const choisie = screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' })
+    const autre = screen.getByRole('button', { name: 'Ouvrir la fiche de Bravo' })
+    expect(choisie.style.borderColor).toBe('var(--foreground)')
+    expect(choisie.style.background).toContain('var(--foreground)')
+    expect(autre.style.borderColor).not.toBe('var(--foreground)')
+    expect(choisie.className).toBe(autre.className)
   })
 })

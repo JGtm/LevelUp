@@ -15,6 +15,7 @@ import {
   rowFits,
   rowFitsGrandeEquipe,
 } from './rowLayout'
+import { LARGEUR_REQUISE_ENTETE_SCORE_PX } from './cotesEnteteScore'
 
 const DEUX_CAMPS = 2
 const LARGEUR_1440 = 1440
@@ -169,16 +170,39 @@ describe('dispositionEquipes', () => {
 })
 
 describe('emplacementScoreDe', () => {
-  it('le Standard ne pose le score ni sur la toile ni en rangée', () => {
-    for (const d of ['rangee', 'rangee-grande-equipe', 'colonne'] as const) expect(emplacementScoreDe('standard', d)).toBeNull()
+  it('le Standard porte le score dans son en-tête, quelle que soit la disposition ou la largeur', () => {
+    for (const d of ['rangee', 'rangee-grande-equipe', 'colonne'] as const) {
+      expect(emplacementScoreDe('standard', d, 4000)).toBe('entete')
+      expect(emplacementScoreDe('standard', d, 0)).toBe('entete')
+    }
   })
 
-  it('Cinéma et Plein cadre : le score quitte la toile quand la rangée est posée, y reste dans le repli', () => {
+  it('Cinéma et Plein cadre, rangée posée : le score est au centre de la rangée', () => {
     for (const frame of ['cinema', 'plein-cadre'] as const) {
-      expect(emplacementScoreDe(frame, 'rangee')).toBeNull()
-      expect(emplacementScoreDe(frame, 'rangee-grande-equipe')).toBeNull()
-      expect(emplacementScoreDe(frame, 'colonne')).toBe('scene')
+      expect(emplacementScoreDe(frame, 'rangee', LARGEUR_1440)).toBe('rangee')
+      expect(emplacementScoreDe(frame, 'rangee-grande-equipe', LARGEUR_1440)).toBe('rangee')
     }
+  })
+
+  it('Cinéma et Plein cadre, repli : le score est dans l’en-tête, et plus sur la toile', () => {
+    for (const frame of ['cinema', 'plein-cadre'] as const) {
+      expect(emplacementScoreDe(frame, 'colonne', LARGEUR_1440)).toBe('entete')
+      expect(emplacementScoreDe(frame, 'colonne', LARGEUR_REQUISE_ENTETE_SCORE_PX)).toBe('entete')
+    }
+  })
+
+  it('repli : un pixel de moins que la place de la cellule du score dans l’en-tête, le score reste sur la toile', () => {
+    for (const frame of ['cinema', 'plein-cadre'] as const) {
+      expect(emplacementScoreDe(frame, 'colonne', LARGEUR_REQUISE_ENTETE_SCORE_PX - 1)).toBe('scene')
+    }
+  })
+
+  it('repli, largeur pas encore mesurée (0) : l’en-tête', () => {
+    expect(emplacementScoreDe('cinema', 'colonne', 0)).toBe('entete')
+  })
+
+  it('la place demandée est la somme de ses cotes : 440 px de cellule, deux écarts, deux cellules latérales, deux marges', () => {
+    expect(LARGEUR_REQUISE_ENTETE_SCORE_PX).toBe(440 + 2 * 16 + 2 * 150 + 2 * 24)
   })
 })
 

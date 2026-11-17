@@ -3,8 +3,9 @@
  * leur donne pour qu'un clic ouvre la fiche du joueur, et les attributs que ce bouton porte. Écrit une
  * seule fois pour `ReplayPlayerCard` (tuile) et `ReplayRosterRow` (ligne).
  */
-import type { KeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent } from 'react'
 
+import { COTES_FICHE_OUVERTE } from '../model/cotesFenetreFiche'
 import { PRESS_GUARDS } from './replayPressGuards'
 
 /**
@@ -23,7 +24,7 @@ export interface TilePress {
  * LES ATTRIBUTS D'UNE TUILE-BOUTON : un `div` `role="button"` plutôt qu'un `<button>` — la tuile
  * contient des boîtes (jauges, rangées), qu'un bouton HTML n'admet pas. Entrée et Espace
  * activent ; la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture
- * (`PRESS_GUARDS`). La tuile choisie porte un anneau (ombre, aucune cote ne bouge).
+ * (`PRESS_GUARDS`). La tuile choisie prend l'habit de `selectedChrome`.
  */
 export function pressProps(press: TilePress) {
   return {
@@ -46,4 +47,15 @@ export function pressProps(press: TilePress) {
 }
 
 export const PRESS_CLASS = 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-export const SELECTED_CLASS = 'ring-2 ring-ring'
+
+/**
+ * L'HABIT DE LA FICHE OUVERTE : le fond plus clair et la bordure claire, par jetons. Il se pose sur le `chrome` de
+ * la tuile (fond et bordure inline) : la part de premier plan est une couche posée AU-DESSUS du fond d'origine, qui
+ * garde sa teinte (une fiche morte reste rouge sombre). Sans `chrome` (une ligne, fond transparent), il ne reste
+ * que la couche claire. Aucune cote ne bouge.
+ */
+export function selectedChrome(chrome: CSSProperties = {}): CSSProperties {
+  const couche = `color-mix(in srgb, var(--foreground) ${COTES_FICHE_OUVERTE.fondPct}%, transparent)`
+  const dessous = chrome.background === undefined ? '' : `, ${chrome.background}`
+  return { ...chrome, borderColor: 'var(--foreground)', background: `linear-gradient(${couche}, ${couche})${dessous}` }
+}

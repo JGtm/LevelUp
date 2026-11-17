@@ -15,7 +15,8 @@
  * « Retour au fil ». Une couche plus intérieure ouverte (menu de vitesse, de filtre, panneau de la
  * vue) se ferme d'abord : Échap ne ferme qu'une couche à la fois.
  *
- * DEUX DISPOSITIONS, UN SEUL CONTENEUR. Sans `column`, la fiche remplit la cellule du fil (Cinéma, Plein cadre) :
+ * DEUX DISPOSITIONS, UN SEUL CONTENEUR. Sans `column` (aucun appelant de production : le Cinéma et le Plein cadre
+ * ouvrent `ReplayPlayerPopover`), la fiche remplit la cellule du fil :
  * « Retour au fil » à droite de la tête, la partie basse du corps défile d'elle-même. Avec `column` (cadre
  * Standard), elle remplit TOUTE la colonne : un en-tête (retour « Équipes » à gauche, capsule « Échap » à
  * droite), le sélecteur de joueurs et le corps défilent ENSEMBLE dans une seule zone, et le pied

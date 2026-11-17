@@ -222,15 +222,21 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
     }
   })
 
-  it('Cinéma : la fiche remplit seulement la cellule du fil, avec « Retour au fil », sans le sélecteur ni le pied', async () => {
+  it('Cinéma : la fiche s’ouvre en fenêtre, la colonne garde ses équipes et son fil, sans sélecteur ni pied', async () => {
     const { container } = await mountReady()
     goTo('cinema')
+    const feed = screen.getByTestId('replay-feed-slot')
+    const roster = container.querySelector('[data-replay-roster-column]')
     fireEvent.click(container.querySelector<HTMLElement>('[data-replay-roster-column] [data-replay-player-card]') as HTMLElement)
-    expect(screen.getByRole('button', { name: T.playerPanel.back })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: T.playerPanel.close })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: T.playerPanel.back })).toBeNull()
     expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
     expect(container.querySelector('[data-replay-player-picker]')).toBeNull()
     expect(container.querySelector('[data-replay-fiche-extract]')).toBeNull()
     expect(screen.queryByTestId('replay-above-slot')).toBeNull()
+    expect(screen.getByTestId('replay-feed-slot')).toBe(feed)
+    expect(feed).not.toHaveAttribute('aria-hidden')
+    expect(container.querySelector('[data-replay-roster-column]')).toBe(roster)
   })
 
   it('la cellule du fil survit au passage du Standard au Cinéma et retour', async () => {

@@ -78,8 +78,11 @@ const COTES_COMPACTES = Object.freeze({
   horlogePadXPx: 0,
 } as const)
 
-/** La cellule centrale de l'en-tête du Standard : 440 px (tableau A, retenue sur J), manches et garde comprises. */
-const COTES_ENTETE: CotesBandeauScore = Object.freeze({ ...COTES_COMPACTES, largeurPx: 440 } as const)
+/** La largeur de la cellule du score dans un en-tête : 440 px (tableau A, retenue sur J), manches et garde comprises. */
+export const LARGEUR_CELLULE_SCORE_ENTETE_PX = 440
+
+/** La cellule centrale de l'en-tête (Standard ; Cinéma et Plein cadre quand les équipes sont dans la colonne). */
+const COTES_ENTETE: CotesBandeauScore = Object.freeze({ ...COTES_COMPACTES, largeurPx: LARGEUR_CELLULE_SCORE_ENTETE_PX } as const)
 
 /** La cellule du score au centre de la rangée : la cote de `COTES_RANGEE`, jamais recopiée. */
 const COTES_RANGEE_SCORE: CotesBandeauScore = Object.freeze({

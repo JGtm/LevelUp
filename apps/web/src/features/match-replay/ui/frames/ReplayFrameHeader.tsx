@@ -7,6 +7,8 @@
  *    lien vers la fiche ;
  *  - PLEIN CADRE : aucune navigation de l'application (`showsAppNavigation`) ; une barre où « Quitter »
  *    (Échap) tient la place du retour, suivie du titre du match.
+ * Le Cinéma et le Plein cadre prennent aussi la forme à trois cellules du Standard quand le cadre leur donne un
+ * `score` (équipes dans la colonne) : la cellule du centre porte le bandeau, la barre est de 56 px.
  *
  * Aucun en-tête ne porte de sélecteur de cadre : les icônes de cadre sont à droite de la barre de
  * lecture (`ReplayFrameButtons`). « Quitter » reste actif pendant un export (la sortie du Plein cadre
@@ -19,6 +21,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
 import { COTES_BANDEAU_SCORE } from '../../model/cotesBandeauScore'
+import { COTES_ENTETE_SCORE } from '../../model/cotesEnteteScore'
 import { COTES_PAGE_STANDARD } from '../../model/cotesStandard'
 import { showsAppNavigation, type ReplayFrame } from '../../model/replayFrame'
 import { ReplaySchemaBadge } from '../ReplaySchemaBadge'
@@ -128,28 +131,64 @@ function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: R
   )
 }
 
-/** L'en-tête du Cinéma : retour, titre du match, lien vers la fiche. */
-function CinemaHeader({ chrome }: { chrome: ReplayFrameChrome }) {
-  const t = REPLAY_TEXT[chrome.locale]
+/**
+ * La forme à trois cellules d'un en-tête qui porte le score (Cinéma, Plein cadre) : la cellule du centre a la
+ * largeur du bandeau à l'emplacement `entete`, les deux autres se partagent le reste.
+ */
+function ScoreHeader({ frame, left, score, right, padding }: { frame: ReplayFrame; left: ReactNode; score: ReactNode; right: ReactNode; padding: string }) {
   return (
-    <div className="flex h-[52px] items-center gap-3 px-6">
-      <BackButton chrome={chrome} />
-      <MatchTitle chrome={chrome} />
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <Link to={SHEET_ROUTE} params={chrome.params} aria-label={t.back} className={SHEET_LINK_CLASS}>
-          {t.frames.sheet}
-        </Link>
+    <div
+      className={`grid shrink-0 items-center ${padding}`}
+      style={{
+        height: COTES_ENTETE_SCORE.hauteurPx,
+        columnGap: COTES_ENTETE_SCORE.ecartPx,
+        gridTemplateColumns: `minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)`,
+      }}
+      data-replay-header={frame}
+      data-replay-header-score=""
+    >
+      <div className="flex min-w-0 items-center gap-3" data-replay-header-cell="gauche">
+        {left}
+      </div>
+      <div className="min-w-0" data-replay-header-cell="centre">
+        {score}
+      </div>
+      <div className="flex min-w-0 items-center justify-end gap-2" data-replay-header-cell="droite">
+        {right}
       </div>
     </div>
   )
 }
 
-/** La barre du Plein cadre : « Quitter » (Échap) et titre du match. Aucune navigation de l'app. */
-function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
+/** L'en-tête du Cinéma : retour, titre du match, lien vers la fiche ; le score au centre quand le cadre le donne. */
+function CinemaHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode | undefined }) {
+  const t = REPLAY_TEXT[chrome.locale]
+  const sheet = (
+    <Link to={SHEET_ROUTE} params={chrome.params} aria-label={t.back} className={SHEET_LINK_CLASS}>
+      {t.frames.sheet}
+    </Link>
+  )
+  const left = (
+    <>
+      <BackButton chrome={chrome} />
+      <MatchTitle chrome={chrome} />
+    </>
+  )
+  if (score !== undefined) return <ScoreHeader frame="cinema" left={left} score={score} right={sheet} padding="px-6" />
+  return (
+    <div className="flex h-[52px] items-center gap-3 px-6">
+      {left}
+      <div className="ml-auto flex shrink-0 items-center gap-2">{sheet}</div>
+    </div>
+  )
+}
+
+/** La barre du Plein cadre : « Quitter » (Échap) et titre du match ; le score au centre quand le cadre le donne. Aucune navigation de l'app. */
+function FullFrameBar({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode | undefined }) {
   const { frameControl, fullscreen, locale } = chrome
   const labels = REPLAY_TEXT[locale].frames
-  return (
-    <div className="flex h-[52px] shrink-0 items-center gap-3 px-1">
+  const left = (
+    <>
       <button
         type="button"
         {...PRESS_GUARDS}
@@ -163,18 +202,23 @@ function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
         <kbd className="rounded border border-border px-1.5 text-xs text-muted-foreground">{labels.escapeKey}</kbd>
       </button>
       <MatchTitle chrome={chrome} />
-    </div>
+    </>
   )
+  if (score !== undefined) return <ScoreHeader frame="plein-cadre" left={left} score={score} right={null} padding="px-1" />
+  return <div className="flex h-[52px] shrink-0 items-center gap-3 px-1">{left}</div>
 }
 
 interface ReplayFrameHeaderProps {
   frame: ReplayFrame
   chrome: ReplayFrameChrome
-  /** Le bandeau de score de la cellule centrale du Standard ; les autres cadres ne le lisent pas. */
+  /**
+   * Le bandeau de score de la cellule centrale. Le Standard la porte toujours (`null` : la cellule garde sa
+   * place) ; le Cinéma et le Plein cadre ne passent à trois cellules que si `score` est donné (`undefined` : l'en-tête d'une ligne).
+   */
   score?: ReactNode
 }
 
-export function ReplayFrameHeader({ frame, chrome, score = null }: ReplayFrameHeaderProps) {
-  if (!showsAppNavigation(frame)) return <FullFrameBar chrome={chrome} />
-  return frame === 'standard' ? <StandardHeader chrome={chrome} score={score} /> : <CinemaHeader chrome={chrome} />
+export function ReplayFrameHeader({ frame, chrome, score }: ReplayFrameHeaderProps) {
+  if (!showsAppNavigation(frame)) return <FullFrameBar chrome={chrome} score={score} />
+  return frame === 'standard' ? <StandardHeader chrome={chrome} score={score ?? null} /> : <CinemaHeader chrome={chrome} score={score} />
 }

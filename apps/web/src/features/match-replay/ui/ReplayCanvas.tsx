@@ -304,7 +304,7 @@ export function ReplayCanvas({
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns: orientation.turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns: orientation.turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -481,7 +481,7 @@ export function ReplayCanvas({
         wall: wallInk, rift: riftInk, shroud: shroudInk, self: selfInk, labelStroke,
       },
       identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
-      focus: { shownAtSlot, shownProjectile, shown: focusShown },
+      focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer },
       fx: { shotFx, fireMarks, killFx, objectivePulses },
       zones,
       placements: {
@@ -503,7 +503,7 @@ export function ReplayCanvas({
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
       geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke,
       colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
-      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,
+      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer,
       shotFx, fireMarks, killFx, objectivePulses, zones,
       placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
       weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,

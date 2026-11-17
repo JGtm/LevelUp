@@ -7,7 +7,7 @@
  *  - chaque cadre rend son en-tête, sans sélecteur de cadre : les icônes « Cadre du lecteur » sont à droite de
  *    la barre de lecture, dans les trois cadres, et reflètent le cadre courant ;
  *  - l'en-tête du Standard a trois cellules (retour et titre, score, commandes) dans une page bornée et centrée ;
- *    le score n'est dans la scène qu'en Cinéma et en Plein cadre ;
+ *    au Cinéma et au Plein cadre il y est aussi (équipes dans la colonne), sauf si l'en-tête est trop étroit ;
  *  - les icônes de cadre envoient les gestes du modèle, et sont inertes pendant un export, sauf la sortie du Plein cadre ;
  *  - les états de chargement, d'erreur et d'absence ont leur place dans le Standard (sans toile, donc sans barre
  *    de lecture : aucune icône de cadre n'y mène ailleurs), avec le bouton « Générer le rejeu » ; l'avis
@@ -29,6 +29,7 @@ import { exportFormatOf, exportLayoutFor } from './export/exportFormats'
 import { requestExportLayout } from './export/exportLayoutStore'
 import { REPLAY_TEXT } from './i18n/i18n'
 import { COTES_BANDEAU_SCORE } from './model/cotesBandeauScore'
+import { COTES_ENTETE_SCORE } from './model/cotesEnteteScore'
 import { BOITE_PAGE_STANDARD_MAX_PX, COTES_PAGE_STANDARD } from './model/cotesStandard'
 import type { ReplayFrame } from './model/replayFrame'
 import { goFixtureEntries, loadGoFixture } from './test/goFixtures'
@@ -442,14 +443,18 @@ describe('ReplayPage : l’en-tête du Standard en trois cellules', () => {
     expect(container.querySelector('section')?.contains(banner)).toBe(false)
   })
 
-  it('Cinéma et Plein cadre : le score reste dans la scène, sur la toile', async () => {
+  it('Cinéma et Plein cadre, équipes dans la colonne : le score est dans la cellule centrale de l’en-tête, pas sur la toile', async () => {
     const { doc, context } = scoredMatch()
     const { container } = await mountReady(doc, context)
     for (const frame of ['cinema', 'plein-cadre'] as const) {
       goTo(frame)
       const banner = scoreBanner(container)
-      expect(banner).toHaveAttribute('data-replay-score-banner', 'scene')
-      expect(container.querySelector('section')?.contains(banner)).toBe(true)
+      expect(banner).toHaveAttribute('data-replay-score-banner', 'entete')
+      expect(container.querySelector('section')?.contains(banner)).toBe(false)
+      const entete = container.querySelector<HTMLElement>(`[data-replay-header="${frame}"]`)
+      expect(entete?.querySelector('[data-replay-header-cell="centre"]')?.contains(banner)).toBe(true)
+      expect(entete?.style.gridTemplateColumns).toBe(`minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)`)
+      expect(entete?.style.height).toBe(`${COTES_ENTETE_SCORE.hauteurPx}px`)
       expect(container.querySelector('[data-replay-header="standard"]')).toBeNull()
     }
     goTo('standard')
@@ -490,14 +495,14 @@ describe('ReplayPage : la page bornée et centrée du Standard', () => {
   })
 })
 
-describe('ReplayPage : le score change d’emplacement sans remonter la toile', () => {
-  it('Standard (en-tête), Cinéma (scène), Plein cadre (scène), retour : la même toile', async () => {
+describe('ReplayPage : le score change d’en-tête sans remonter la toile', () => {
+  it('Standard, Cinéma, Plein cadre, retour : le score reste dans un en-tête et la toile est la même', async () => {
     const { doc, context } = scoredMatch()
     const { container } = await mountReady(doc, context)
     const canvas = container.querySelector('canvas')
     for (const frame of ['cinema', 'plein-cadre', 'standard', 'cinema', 'standard'] as const) {
       goTo(frame)
-      expect(scoreBanner(container)).toHaveAttribute('data-replay-score-banner', frame === 'standard' ? 'entete' : 'scene')
+      expect(scoreBanner(container)).toHaveAttribute('data-replay-score-banner', 'entete')
       expect(container.querySelector('canvas')).toBe(canvas)
     }
   })

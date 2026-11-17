@@ -231,13 +231,13 @@ export function ReplayPage() {
           locale={locale}
         />
       }
-      // Le score est dans l'en-tête du Standard, ou au centre de la rangée des équipes quand elle est posée ; il
-      // ne reste sur la toile que si les équipes sont dans la colonne.
+      // Le score est dans l'en-tête (Standard, ou équipes dans la colonne), ou au centre de la rangée des équipes
+      // quand elle est posée ; il ne coiffe la toile que si l'en-tête est trop étroit pour le loger.
       scene={
         view && (
           <ReplayStage
             view={view}
-            scorePlacement={rowLayout.scorePlacement}
+            scorePlacement={rowLayout.scorePlacement === 'scene' ? 'scene' : null}
             slots={canvasSlotsOf(frame, rowLayout.planFeedPosed ? view : null)}
           />
         )

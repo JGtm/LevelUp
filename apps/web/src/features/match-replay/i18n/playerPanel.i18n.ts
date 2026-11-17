@@ -17,6 +17,8 @@ import type { PanelRowKey, PanelSectionId, PlayerPanelAction } from '../model/pl
 export interface PlayerPanelText {
   /** « Retour au fil » : referme le panneau et rend sa place au fil, filtre et défilement compris. */
   back: string
+  /** La croix de la fiche en fenêtre (Cinéma, Plein cadre) : son nom accessible et son infobulle. */
+  close: string
   /** Le nom accessible du panneau d'un joueur. */
   labelFmt: (name: string) => string
   /** Le nom accessible d'une fiche devenue bouton : ce que le clic ouvre. */
@@ -48,6 +50,7 @@ export interface PlayerPanelText {
 
 export const FR_PLAYER_PANEL = {
   back: 'Retour au fil',
+  close: 'Fermer',
   labelFmt: (name) => `Fiche de ${name}`,
   cardOpenFmt: (name) => `Ouvrir la fiche de ${name}`,
   atFmt: (clock) => `à ${clock}`,
@@ -101,6 +104,7 @@ export const FR_PLAYER_PANEL = {
 
 export const EN_PLAYER_PANEL = {
   back: 'Back to the feed',
+  close: 'Close',
   labelFmt: (name) => `${name}'s card`,
   cardOpenFmt: (name) => `Open ${name}'s card`,
   atFmt: (clock) => `at ${clock}`,

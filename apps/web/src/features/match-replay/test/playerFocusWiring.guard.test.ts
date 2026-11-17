@@ -102,6 +102,16 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
   it('la scène se relie quand le prédicat change (dépendance de la scène)', () => {
     expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,/)
   })
+
+  // LE PION CERCLÉ de la fiche ouverte : le canvas donne le repère au moteur, la scène se relie quand il change, et
+  // le moteur le peint avec les pions (même peintre, par-dessus eux).
+  it('le pion cerclé de la fiche ouverte est donné à la scène et peint avec les pions', () => {
+    const src = canvas()
+    expect(src).toMatch(/focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer }/)
+    expect(src).toMatch(/shownProjectile, focusShown, openPlayer,/)
+    expect(src).toContain('if (openPlayer) drawOpenPlayerRing(ctx, openPlayer, view, fr, k)')
+    expect(lire(fichierNomme('useReplayPlayerFocus.ts'))).toContain('useReplayOpenPlayer(doc, focus)')
+  })
 })
 
 describe('garde-rail : les actions du panneau ne touchent pas au point de vue (4.6)', () => {

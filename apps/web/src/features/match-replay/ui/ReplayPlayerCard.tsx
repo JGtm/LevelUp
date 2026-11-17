@@ -42,7 +42,7 @@ import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
-import { PRESS_CLASS, pressProps, SELECTED_CLASS, type TilePress } from './replayCardPress'
+import { PRESS_CLASS, pressProps, selectedChrome, type TilePress } from './replayCardPress'
 import { GABARIT_COMPACT as G } from '../model/cardGabarit'
 import type { EquippedReading } from '../model/equippedLogic'
 import { handCellHint } from '../model/handCellHint'
@@ -107,9 +107,9 @@ interface TileFrameProps {
  * `cardGabarit.guard.test.ts`, test DOM `ReplayTeamsRow.places.test.tsx`).
  */
 function TileFrame({ chrome, title, under, nameLine, body, over, press }: TileFrameProps) {
-  const className = press ? `${TILE} ${PRESS_CLASS}${press.selected ? ` ${SELECTED_CLASS}` : ''}` : TILE
+  const className = press ? `${TILE} ${PRESS_CLASS}` : TILE
   return (
-    <div className={className} style={chrome} title={title} {...(press ? pressProps(press) : {})}>
+    <div className={className} style={press?.selected ? selectedChrome(chrome) : chrome} title={title} {...(press ? pressProps(press) : {})}>
       {under}
       <div className={NAME_LINE}>{nameLine}</div>
       <div className={BODY_CLASS}>{body}</div>
