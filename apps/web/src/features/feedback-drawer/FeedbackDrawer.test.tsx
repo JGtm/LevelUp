@@ -81,6 +81,22 @@ describe('FeedbackDrawer — interactions', () => {
     expect(useFeedbackDrawerStore.getState().isOpen).toBe(false)
   })
 
+  it('un clic sur le voile ferme le drawer', () => {
+    useFeedbackDrawerStore.setState({ isOpen: true })
+    const { container } = renderWithProviders(<FeedbackDrawer />)
+    fireEvent.click(container.querySelector('div.fixed.inset-0') as HTMLElement)
+    expect(useFeedbackDrawerStore.getState().isOpen).toBe(false)
+  })
+
+  it('un clic dans le panneau ne ferme pas le drawer', () => {
+    useFeedbackDrawerStore.setState({ isOpen: true })
+    renderWithProviders(<FeedbackDrawer />)
+    const panneau = screen.getByRole('complementary')
+    fireEvent.mouseDown(panneau)
+    fireEvent.click(panneau)
+    expect(useFeedbackDrawerStore.getState().isOpen).toBe(true)
+  })
+
   it("submit désactivé si titre vide", () => {
     useFeedbackDrawerStore.setState({ isOpen: true })
     renderWithProviders(<FeedbackDrawer />)

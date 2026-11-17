@@ -24,6 +24,7 @@ import {
   getRecentConsoleEntries,
   getRecentFailedRequests,
 } from '@/lib/global-capture/buffers'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useFeedbackDrawerStore } from './feedbackDrawer.store'
 import {
   classifyFeedback,
@@ -73,15 +74,8 @@ export function FeedbackDrawer() {
   void submitTick // dépendance implicite : re-render après recordSubmit
   const remaining = isOpen ? getRemainingSubmits() : MAX_SUBMITS_PER_HOUR
 
-  // Escape ferme
-  useEffect(() => {
-    if (!isOpen) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, close])
+  // Échap ferme le tiroir ; le clic dehors est celui du voile, qui retient aussi le clic de la page.
+  const panelRef = useDismissable(isOpen, close, { outside: null })
 
   // Focus auto sur le titre à l'ouverture
   useEffect(() => {
@@ -194,6 +188,7 @@ export function FeedbackDrawer() {
       {/* Panneau — mobile : sheet pleine hauteur ; desktop (sm:) : carte flottante
           centrée verticalement (rendu desktop inchangé). */}
       <div
+        ref={panelRef}
         role="complementary"
         aria-label={t('feedback_drawer.title')}
         aria-hidden={!isOpen}
