@@ -76,3 +76,32 @@ describe('MediaToolbar — fichiers introuvables', () => {
     expect(screen.queryByRole('button', { name: 'Afficher les fichiers introuvables' })).not.toBeInTheDocument()
   })
 })
+
+describe('MediaToolbar — fermeture de la liste des auteurs', () => {
+  function ouvre() {
+    renderToolbar(0)
+    const declencheur = screen.getByRole('button', { name: getMediaText('fr').toolbar.authorsAriaLabel })
+    fireEvent.click(declencheur)
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    return declencheur
+  }
+
+  it('Échap ferme la liste et rend le focus au bouton', () => {
+    const declencheur = ouvre()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(document.activeElement).toBe(declencheur)
+  })
+
+  it('un clic hors du sélecteur ferme la liste', () => {
+    ouvre()
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('un clic dans la liste ne la ferme pas', () => {
+    ouvre()
+    fireEvent.mouseDown(screen.getByRole('listbox'))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+  })
+})

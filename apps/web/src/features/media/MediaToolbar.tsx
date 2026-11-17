@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { LabelValue, MediaAuthor } from '@/lib/api/types'
 import { Select } from '@/components/ui/select'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { MediaText } from './i18n'
 import { MediaAudioConfigButton } from './MediaAudioConfigButton'
@@ -50,25 +51,13 @@ const NONE_SENTINEL = '__no_authors_selected__'
 
 function AuthorsMultiSelect({ text, authors, selected, onChange }: AuthorsMultiSelectProps) {
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    function handlePointer(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', handlePointer)
-    document.addEventListener('keydown', handleEscape)
-    return () => {
-      document.removeEventListener('mousedown', handlePointer)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [open])
+  // Échap et un clic hors du sélecteur ferment la liste ; Échap rend le focus au bouton, le clic dehors le laisse où l'on a cliqué.
+  const containerRef = useDismissable(open, (reason) => {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  })
 
   const allChecked = selected.length === 0
   const noneChecked = selected.length === 1 && selected[0] === NONE_SENTINEL
@@ -119,6 +108,7 @@ function AuthorsMultiSelect({ text, authors, selected, onChange }: AuthorsMultiS
   return (
     <div ref={containerRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={text.toolbar.authorsAriaLabel}
         aria-haspopup="listbox"
