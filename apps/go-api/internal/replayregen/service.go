@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
@@ -36,63 +35,6 @@ var (
 	// attend et recommence le même film. Enveloppée par la fonction de reconstruction.
 	ErrBusy = errors.New("replayregen: un décodage de film est déjà en cours")
 )
-
-// PendingStore : le drapeau persisté « la file était active » (réglages, `replay_regen_pending`).
-type PendingStore interface {
-	ReplayRegenPending() (bool, error)
-	SetReplayRegenPending(pending bool) error
-}
-
-// Deps : tout ce que la file demande au serveur.
-type Deps struct {
-	Paths *title.PathResolver
-	// Titles : les titres dont les rejeux se régénèrent (ceux qui déclarent la capacité de rejeu).
-	Titles func() []string
-	// FilmPresent : le film du match est dans l'archive locale ; sans lui il n'y a rien à rejouer.
-	FilmPresent func(titleSlug, matchID string) bool
-	// RefusedByRule rend, pour un titre, l'ensemble des matchs (forme courte, celle du nom du fichier) que la cuisson
-	// refuse PAR RÈGLE : un mode que le rejeu ne gère pas (replaybuild.ErrModeNonGere, lu au registre par le même
-	// prédicat que la cuisson). Le décompte les écarte d'emblée au lieu d'attendre leur premier refus de cuisson ; une
-	// erreur est journalisée et le décompte retombe sur le comportement d'avant (refus au premier essai). nil = aucun.
-	RefusedByRule func(ctx context.Context, titleSlug string) (map[string]struct{}, error)
-	// Rebuild reconstruit et range le rejeu d'UN match, hors du processus (même chemin que l'action admin). Il
-	// enveloppe ErrBusy quand un autre décodage tient la machine.
-	Rebuild func(ctx context.Context, titleSlug, matchID string) error
-	Pending PendingStore
-	// HeavyAllowed : la porte du mode jeu (gameproc.Mode.HeavyWorkAllowed), consultée avant chaque film, avant
-	// chaque nouvel essai d'un film occupé et avant chaque décompte.
-	HeavyAllowed func() bool
-	// SyncRunning : un cycle de synchronisation est en cours. La file lui CÈDE LA PLACE : entre deux films elle
-	// attend la fin du cycle (le décodage de l'étape kill source et la cuisson après synchro prennent le même
-	// verrou solo, et se reportent au cycle suivant quand la file le tient). nil = jamais.
-	SyncRunning func() bool
-	// Rythmes ; zéro = valeur de production.
-	GateEvery      time.Duration
-	BusyRetryEvery time.Duration
-	BusyRetries    int
-}
-
-const (
-	defaultGateEvery      = 15 * time.Second
-	defaultBusyRetryEvery = 20 * time.Second
-	defaultBusyRetries    = 30
-)
-
-func orDefault(v, def time.Duration) time.Duration {
-	if v > 0 {
-		return v
-	}
-	return def
-}
-
-func (d Deps) gateEvery() time.Duration { return orDefault(d.GateEvery, defaultGateEvery) }
-func (d Deps) busyEvery() time.Duration { return orDefault(d.BusyRetryEvery, defaultBusyRetryEvery) }
-func (d Deps) busyRetries() int {
-	if d.BusyRetries > 0 {
-		return d.BusyRetries
-	}
-	return defaultBusyRetries
-}
 
 // Service : le décompte et la file. Un seul film à la fois, jamais deux en parallèle.
 type Service struct {
@@ -122,10 +64,23 @@ type Service struct {
 	total       int
 	failed      int
 	wake        chan struct{}
+
+	// Demandes explicites (demand.go, demand_run.go) : file FIFO persistée, issues terminales du processus (bornées),
+	// boucle hors lot. slot est le jeton « un film à la fois », tenu par toute demande et tout film du lot.
+	demands       []*demandEntry
+	results       map[string]domain.ReplayGenerationStatus
+	resultOrder   []string
+	demandLooping bool
+	slot          sync.Mutex
 }
 
 // New crée un service non relié.
-func New() *Service { return &Service{blocked: map[string]struct{}{}, wake: make(chan struct{}, 1)} }
+func New() *Service {
+	return &Service{
+		blocked: map[string]struct{}{}, wake: make(chan struct{}, 1),
+		results: map[string]domain.ReplayGenerationStatus{},
+	}
+}
 
 var defaultService = New()
 
@@ -294,17 +249,25 @@ func (s *Service) run(ctx context.Context) {
 	s.mu.Unlock()
 	slog.InfoContext(ctx, "replay_regen: file démarrée", "total", len(cands))
 	for _, c := range cands {
-		if !s.waitTurn(ctx) {
-			s.finish(ctx, true)
-			return
-		}
-		s.process(ctx, c)
-		if ctx.Err() != nil {
+		// Les demandes explicites passent avant le film suivant du lot.
+		if !s.serveDemands(ctx) || !s.runCandidate(ctx, c) {
 			s.finish(ctx, true)
 			return
 		}
 	}
 	s.finish(ctx, false)
+}
+
+// runCandidate traite UN film du lot sous le jeton « un film à la fois » : attend son tour, puis le régénère. Faux :
+// ctx annulé.
+func (s *Service) runCandidate(ctx context.Context, c Candidate) bool {
+	s.slot.Lock()
+	defer s.slot.Unlock()
+	if !s.waitTurn(ctx) {
+		return false
+	}
+	s.process(ctx, c)
+	return ctx.Err() == nil
 }
 
 // finish clôt la file. interrupted : l'arrêt du serveur l'a coupée, le drapeau reste posé pour la reprise.
@@ -328,6 +291,7 @@ func (s *Service) finish(ctx context.Context, interrupted bool) {
 	wasChecked := s.checked
 	s.checked = false
 	s.persistPendingLocked(ctx, false)
+	s.kickDemandLoopLocked() // les demandes arrivées pendant le lot reprennent hors lot
 	seq := s.beginCountLocked()
 	done, total, failed := s.done, s.total, s.failed
 	s.mu.Unlock()
