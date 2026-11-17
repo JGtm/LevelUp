@@ -37,8 +37,8 @@ package replayartifacts
 //
 // # POURQUOI `DerivationsRev` N'A PAS ETE MONTEE
 //
-// Meme choix que les familles `padtiers` et `flaggrabsnet` (ajoutees apres la revision
-// `derivations-2026-09-06`, qui n'a pas bouge) : monter la revision ferait rejouer TOUTES les
+// Meme choix que les familles `padtiers` et `flaggrabsnet` (ajoutees sans monter la revision ;
+// elle n'a monte ensuite que pour le format 8 du fichier tactique) : monter la revision ferait rejouer TOUTES les
 // derivations (dont les positions, les plus volumineuses) de tout le parc, cinq artefacts par
 // cycle, pour une seule famille neuve. Le parc existant passe par la commande de rattrapage de la
 // famille (`levelup backfill-vehicle-takes`), qui ne redecode rien ; les artefacts a venir passent
