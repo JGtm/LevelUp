@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replayregen"
@@ -65,11 +66,15 @@ func regenFixture(t *testing.T, pending bool) (replayregen.Deps, *atomic.Int32, 
 }
 
 func startedRegen(t *testing.T, deps replayregen.Deps) *replayregen.Service {
+	return startedRegenModes(t, deps, replayRegenModes{Batch: true})
+}
+
+func startedRegenModes(t *testing.T, deps replayregen.Deps, modes replayRegenModes) *replayregen.Service {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	svc := replayregen.New()
-	startReplayRegen(ctx, &wg, svc, deps)
+	startReplayRegen(ctx, &wg, svc, deps, modes)
 	t.Cleanup(func() { cancel(); wg.Wait() })
 	return svc
 }
@@ -123,5 +128,44 @@ func TestBootReplayRegen_ApresArmGameWatch(t *testing.T) {
 	bind := strings.Index(string(src), "\tbindReplayRegen(st)")
 	if arm < 0 || bind < 0 || arm > bind {
 		t.Fatalf("armGameWatch (%d) doit précéder bindReplayRegen (%d) dans main()", arm, bind)
+	}
+}
+
+// demandesEnMemoire : le magasin des demandes de génération en vol, en mémoire.
+type demandesEnMemoire struct {
+	demands []domain.ReplayGenerationDemand
+}
+
+func (d *demandesEnMemoire) LoadDemands(context.Context) ([]domain.ReplayGenerationDemand, error) {
+	return d.demands, nil
+}
+
+func (d *demandesEnMemoire) SaveDemands(_ context.Context, demands []domain.ReplayGenerationDemand) error {
+	d.demands = demands
+	return nil
+}
+
+// TestBootReplayRegen_PosteDeDeveloppementSeulementLesDemandes : sans la capacité du lot, le démarrage ne compte rien
+// et ne reprend aucune file de régénération ; avec celle des demandes, une demande en vol reprend.
+func TestBootReplayRegen_PosteDeDeveloppementSeulementLesDemandes(t *testing.T) {
+	deps, calls, _ := regenFixture(t, true) // un drapeau de lot posé : il ne doit pas reprendre
+	deps.Demands = &demandesEnMemoire{demands: []domain.ReplayGenerationDemand{{
+		TitleSlug: "halo_infinite", MatchID: "0000ab00-0000-0000-0000-000000000001", PlayerSlug: "P", XUID: "1",
+	}}}
+	var fetched atomic.Int32
+	deps.FetchFilm = func(context.Context, domain.ReplayGenerationDemand) error { fetched.Add(1); return nil }
+	svc := startedRegenModes(t, deps, replayRegenModes{Demands: true})
+	deadline := time.Now().Add(5 * time.Second)
+	for calls.Load() != 1 {
+		if time.Now().After(deadline) {
+			t.Fatalf("reconstructions = %d, attendu 1 (la demande reprise)", calls.Load())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if st := svc.Status(); st.Running || st.Checked {
+		t.Fatalf("état du lot = %+v : ni file reprise ni décompte hors de la capacité du lot", st)
+	}
+	if fetched.Load() != 1 {
+		t.Fatalf("téléchargements = %d, attendu 1", fetched.Load())
 	}
 }

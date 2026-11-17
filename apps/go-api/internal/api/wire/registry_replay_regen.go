@@ -24,7 +24,8 @@ import (
 )
 
 // ReplayRegenDeps assemble les dépendances de la file : rien d'autre que ce que le registre sait déjà (chemins,
-// titres, reconstruction d'un match). pending est le drapeau persisté de reprise.
+// titres, reconstruction d'un match, film et jeton d'une demande explicite de génération). pending est le drapeau
+// persisté de reprise.
 func (r *ServiceRegistry) ReplayRegenDeps(pending replayregen.PendingStore) replayregen.Deps {
 	paths := r.cfg.PathResolver()
 	return replayregen.Deps{
@@ -36,6 +37,9 @@ func (r *ServiceRegistry) ReplayRegenDeps(pending replayregen.PendingStore) repl
 		},
 		RefusedByRule: r.unmanagedModeMatches,
 		Rebuild:       r.regenerateReplay,
+		FetchFilm:     r.fetchFilmForDemand,
+		ReleaseFilm:   r.releaseFilmAfterBuild,
+		Demands:       replayregen.NewFileDemandStore(paths.ReplayGenerationQueuePath()),
 		Pending:       pending,
 		HeavyAllowed:  gameproc.Default().HeavyWorkAllowed,
 	}

@@ -58,6 +58,7 @@ var requestPathWriterAllowlist = map[string]struct {
 	"internal/api/wire/registry_actions.go":                 {1, "reset des lying bits : action admin (RequireAdmin), single-flight"},
 	"internal/api/wire/registry_asset_names_sweep.go":       {1, "balayage des noms d'assets : action admin, sérialisée"},
 	"internal/api/wire/registry_build_queue_derivations.go": {1, "protocole ouvrier de rejeu (jeton dédié RequireWorkerToken) : dérivations d'un artefact déposé, writer pris par sync.NewSharedWriterAcquirer, attente bornée à acquireWriterDepot (8 s, constat C7), un artefact à la fois"},
+	"internal/api/wire/registry_replay_generation_film.go":  {1, "2026-11-17 : file de génération à la demande (capacité GenerateReplays, bureau et poste de développement) : bit film absent posé depuis la goroutine de la file, jamais sous la requête, un film à la fois, attente bornée à 8 s"},
 	"internal/service/sync_jobs_recalc.go":                  {1, "POST /settings/sessions/recalculate : recalcul des sessions, réglage d'administration (extrait de settings.go le 2026-10-19, passé du handler au service des jobs de sync le 2026-11-12)"},
 	// 2026-10-16 : import OpenSpartan, RequireAuth, un import à la fois par compte, fichier
 	// validé avant la prise du writer (L5-4).
