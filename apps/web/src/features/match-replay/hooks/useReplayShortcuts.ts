@@ -3,7 +3,7 @@
  *
  * LES RACCOURCIS SONT CEUX QUE TOUT LE MONDE CONNAÎT DÉJÀ, et pas un de plus : Espace et K
  * pour lecture/pause, ←/→ et J/L pour ±10 s, M pour le son, R pour recommencer, « , » et « . »
- * pour l'image par image, F pour le plein écran ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
+ * pour l'image par image, F pour le Plein cadre, T pour le Cinéma ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
  * Maj + flèche pour se déplacer. Inventer une convention maison ferait apprendre ce que le lecteur
  * sait déjà.
  *
@@ -42,8 +42,10 @@ export interface ReplayShortcutHandlers {
   stepFrames: (frames: number) => void
   restart: () => void
   toggleSound: () => void
-  /** Ouvre ou ferme le mode plein écran (useReplayFullscreen) : la touche F. */
-  toggleFullscreen: () => void
+  /** Entre dans le Plein cadre ou en sort (useReplayFrame) : la touche F. Jamais le plein écran du système. */
+  toggleFullFrame: () => void
+  /** Entre dans le Cinéma ou en sort (useReplayFrame) : la touche T. */
+  toggleCinema: () => void
   /** Le saut des flèches, en secondes (cf. SKIP_SECONDS de la barre). */
   skipSeconds: number
   /** `false` quand la page n'a pas de rejeu chargé : rien n'est écouté. */
@@ -114,7 +116,8 @@ type PlayerKeyAction =
   | 'nextFrame'
   | 'sound'
   | 'restart'
-  | 'fullscreen'
+  | 'fullFrame'
+  | 'cinema'
 
 /**
  * LES TOUCHES DU LECTEUR, majuscules comprises : Verr. Maj allumé ne doit éteindre aucun
@@ -128,7 +131,8 @@ const PLAYER_KEYS = new Map<string, PlayerKeyAction>([
   [',', 'previousFrame'], ['.', 'nextFrame'],
   ['m', 'sound'], ['M', 'sound'],
   ['r', 'restart'], ['R', 'restart'],
-  ['f', 'fullscreen'], ['F', 'fullscreen'],
+  ['f', 'fullFrame'], ['F', 'fullFrame'],
+  ['t', 'cinema'], ['T', 'cinema'],
 ])
 
 export function isTypingTarget(target: EventTarget | null): boolean {
@@ -143,7 +147,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
-  const { togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds, enabled, zoom } = h
+  const { togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullFrame, toggleCinema, skipSeconds, enabled, zoom } = h
   // LE CADRAGE PAR RÉFÉRENCE, et pas en dépendance de l'effet : son objet est recréé à chaque
   // rendu, et le cadrage change soixante fois par seconde pendant la lecture. En dépendance,
   // l'écouteur clavier se réabonnerait à cette cadence. La référence s'écrit dans un effet —
@@ -162,7 +166,8 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
       nextFrame: () => stepFrames(1),
       sound: toggleSound,
       restart,
-      fullscreen: toggleFullscreen,
+      fullFrame: toggleFullFrame,
+      cinema: toggleCinema,
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -195,5 +200,5 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [enabled, togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds])
+  }, [enabled, togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullFrame, toggleCinema, skipSeconds])
 }

@@ -27,6 +27,7 @@ import {
   REPLAY_FULLSCREEN_FRAME,
   useReplayFullscreen,
 } from '@/features/match-replay/hooks/useReplayFullscreen'
+import { useReplayFrame } from '@/features/match-replay/hooks/useReplayFrame'
 import {
   useMatchReplay,
   useMatchReplayContext,
@@ -170,9 +171,10 @@ export function ReplayPage() {
     error,
     identityPending: replayContextPending,
   })
-  // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
-  // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
-  const fullscreen = useReplayFullscreen()
+  // LE CADRE ET LE PLEIN ÉCRAN DU SYSTÈME vivent ICI parce que le cadre change la mise en page de LA
+  // PAGE (cf. useReplayFrame) ; le canvas n'en reçoit que les commandes : touches T et F, bouton de la barre.
+  const frameControl = useReplayFrame()
+  const fullscreen = useReplayFullscreen(frameControl)
 
   // Fil d'Ariane : même label que la vue match (mode + map). Il est calculé ICI et NULLE PART
   // AILLEURS — le rappel du match, qui le recalculait, ne porte plus que la date et la playlist.
@@ -195,7 +197,7 @@ export function ReplayPage() {
   // destination fixe, qu'on en vienne ou non. Deux choses différentes ne portent pas le même
   // mot, et le libellé ne se conditionne PAS à l'historique : il clignoterait selon le parcours.
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" data-replay-frame={frameControl.frame}>
       <MatchBreadcrumb
         playerSlug={playerSlug}
         matchLabel={matchLabel}
@@ -275,12 +277,12 @@ export function ReplayPage() {
            SOUS 1280 px (`xl`) la rangée n'a plus la place : la carte reprend toute la largeur
            et fiches puis fil passent dessous, chacun borné à 60 % de la hauteur d'écran.
 
-           EN PLEIN ÉCRAN, LA GRILLE DEVIENT LE CADRE (`REPLAY_FULLSCREEN_FRAME`) : sa hauteur est
+           EN PLEIN CADRE, LA GRILLE DEVIENT LE CADRE (`REPLAY_FULLSCREEN_FRAME`) : sa hauteur est
            celle de la fenêtre, la rangée s'y étire, et la colonne de droite — absolue dans sa
            cellule — descend donc jusqu'en bas. Sous `xl`, le même empilement, dans le cadre. */
         <div
           className={`grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch${
-            fullscreen.active ? ` ${REPLAY_FULLSCREEN_FRAME}` : ''
+            frameControl.frame === 'plein-cadre' ? ` ${REPLAY_FULLSCREEN_FRAME}` : ''
           }`}
         >
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
@@ -338,6 +340,7 @@ export function ReplayPage() {
               playerFocus={playerPanel.focus}
               onFollowStop={playerPanel.onFollowStop}
               fullscreen={fullscreen}
+              frameControl={frameControl}
               players={model.players}
               onSelectViewpoint={viewpoint.select}
               outcome={{

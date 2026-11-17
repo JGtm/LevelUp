@@ -151,6 +151,7 @@ function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
   const viewpoint = players.find((p) => p.team !== undefined && p.team >= 0 && !p.xuid.startsWith('bot:'))?.xuid ?? null
   const allegiance = buildFilmAllegiance(players, viewpoint)
   const fullscreen = { active: false, disabled: false, toggle: () => {} }
+  const frameControl = { toggleCinema: () => {}, toggleFullFrame: () => {} }
   const view = renderWithProviders(
     <ReplayCanvas
       doc={doc}
@@ -162,6 +163,7 @@ function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
       players={players}
       viewpoint={viewpoint}
       fullscreen={fullscreen}
+      frameControl={frameControl}
       marks={viewpoint ? new Map([[viewpoint, 'me' as const]]) : undefined}
     />,
   )

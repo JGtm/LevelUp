@@ -85,6 +85,7 @@ import { useReplayTiming } from '../hooks/useReplayTiming'
 import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
+import type { ReplayFrameControl } from '../hooks/useReplayFrame'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
 import { useReducedMotion } from '../hooks/useReducedMotion'
@@ -171,10 +172,12 @@ interface ReplayCanvasProps {
    */
   viewpoint: string | null
   /**
-   * LE MODE PLEIN ÉCRAN, tenu par la page (il change le cadre de SA grille) : le canvas n'en
-   * relaie que la commande, au bouton de la barre de lecture et à la touche F.
+   * LE PLEIN ÉCRAN DU SYSTÈME, tenu par la page : le canvas n'en relaie que la commande, au bouton
+   * de la barre de lecture.
    */
   fullscreen: ReplayFullscreen
+  /** Les gestes de cadre : le canvas n'en relaie que les touches T (Cinéma) et F (Plein cadre). */
+  frameControl: Pick<ReplayFrameControl, 'toggleCinema' | 'toggleFullFrame'>
   /**
    * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
    * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
@@ -220,7 +223,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
-  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
+  allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
   playerSlug, matchId,
 }: ReplayCanvasProps) {
@@ -538,7 +541,8 @@ export function ReplayCanvas({
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, scoreTimelineKind, marks: marks ?? NO_MARKS, renderWidth, locale,
-    lead: teamCascades, playback, toggleSound: sound.toggle, toggleFullscreen: fullscreen.toggle, zoom,
+    lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
+    toggleFullFrame: frameControl.toggleFullFrame, toggleCinema: frameControl.toggleCinema,
     // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
     // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —
     // c'est elle qui dit qui est coéquipier du joueur regardé.

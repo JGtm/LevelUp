@@ -1,55 +1,58 @@
 /**
- * useReplayFullscreen — LE MODE PLEIN ÉCRAN DU REJEU : la carte, les fiches et le fil, seuls à
- * l'écran.
+ * useReplayFullscreen — LE PLEIN ÉCRAN DU SYSTÈME et la sortie du Plein cadre par Échap.
  *
- * # DEUX ÉTAGES, ET LE SECOND EST UN REPLI
+ * # DEUX GESTES DISTINCTS
  *
- * 1. Une SUPERPOSITION plein cadre : la page pose `REPLAY_FULLSCREEN_FRAME` sur le conteneur de
- *    sa grille, qui recouvre alors toute la fenêtre (en-tête et fil d'Ariane compris). C'est le
- *    mode lui-même, et il marche partout.
- * 2. Le plein écran NATIF de TOUTE LA PAGE (`document.documentElement`), demandé en même temps.
- *    La page entière et non la grille : le tiroir de réglages est rendu par portail dans
- *    `document.body`, hors de la grille — un plein écran sur la grille le laisserait derrière.
- *    API absente (navigateur, cadre sans permission) ou demande refusée : la superposition seule
- *    reste, et c'est déjà le mode.
+ * 1. Le PLEIN CADRE (touche F, bouton, `useReplayFrame`) est la superposition seule : la page pose
+ *    `REPLAY_FULLSCREEN_FRAME` sur le conteneur de sa grille, qui recouvre alors toute la fenêtre
+ *    (en-tête et fil d'Ariane compris). Il ne demande rien au navigateur.
+ * 2. Le PLEIN ÉCRAN DU SYSTÈME (`toggle`) est le natif seul : la page entière
+ *    (`document.documentElement`), jamais la grille — le tiroir de réglages est rendu par portail
+ *    dans `document.body`, hors de la grille, et un plein écran sur la grille le laisserait derrière.
+ *    Il s'ajoute à n'importe quel cadre. API absente (navigateur, cadre sans permission) ou demande
+ *    refusée : aucun natif, et le cadre reste ce qu'il est.
+ *
+ * DEPUIS LE STANDARD, le geste du système entre d'abord en Plein cadre : le natif seul sur la page
+ * à largeur bornée n'a aucun sens. Ce Plein cadre-là appartient au geste : il se referme avec lui
+ * (second geste, ou natif qui tombe). Un Plein cadre ouvert autrement (F) ne se referme jamais avec
+ * le natif ; et le geste du système depuis le Cinéma ou le Plein cadre n'en change pas.
  *
  * # COMMENT ON EN SORT
  *
- * - Le bouton ou la touche F : sortie du mode ET du plein écran natif.
- * - Échap en plein écran natif : le NAVIGATEUR en sort de lui-même, sans toujours livrer la
- *   frappe à la page. `fullscreenchange` est donc la source de vérité : le natif qui tombe ferme
- *   le mode.
- * - Échap en superposition seule : ce qui est ouvert LE PLUS À L'INTÉRIEUR se ferme d'abord
- *   (tiroir, média agrandi, menu de vitesse), le mode ensuite. Ces couches se signalent par
- *   l'attribut `REPLAY_ESCAPE_LAYER_ATTR` sur leur racine ; l'écouteur du mode est posé en
+ * - `fullscreenchange` est la source de vérité du natif : Échap en plein écran natif, le NAVIGATEUR
+ *   en sort de lui-même, sans toujours livrer la frappe à la page. Un natif qui tombe est suivi.
+ * - Échap en Plein cadre : ce qui est ouvert LE PLUS À L'INTÉRIEUR se ferme d'abord (tiroir, média
+ *   agrandi, menu de vitesse), le Plein cadre ensuite, qui rend le cadre d'où l'on vient. Ces couches
+ *   se signalent par l'attribut `REPLAY_ESCAPE_LAYER_ATTR` sur leur racine ; l'écouteur est posé en
  *   CAPTURE, donc il voit la frappe AVANT elles — la couche est encore dans le DOM, il s'abstient.
- *   En bulle, l'ordre dépendrait de l'ordre d'abonnement, et React vide ses mises à jour entre
- *   deux écouteurs : la couche aurait déjà disparu, et une seule frappe fermerait les deux.
+ *   En bulle, l'ordre dépendrait de l'ordre d'abonnement, et React vide ses mises à jour entre deux
+ *   écouteurs : la couche aurait déjà disparu, et une seule frappe fermerait les deux.
+ * - Échap hors Plein cadre (Standard, Cinéma) : rien. T et F en sortent.
  *
- * # PENDANT UN EXPORT VIDÉO, LE MODE NE BASCULE PAS
+ * # PENDANT UN EXPORT VIDÉO, LE GESTE NE BASCULE PAS
  *
- * Le bouton est désactivé et la touche F sans effet tant qu'un export tient la toile
- * (`useExportActive`). Échap, lui, sort toujours : en natif le navigateur le fait de toute façon,
- * et l'export dessine à son propre format — la mise en page de l'écran ne touche pas le clip.
+ * Le bouton est désactivé et le geste sans effet tant qu'un export tient la toile (`disabled`, lu
+ * sur le cadre). Échap, lui, sort toujours : en natif le navigateur le fait de toute façon, et
+ * l'export dessine à son propre format — la mise en page de l'écran ne touche pas le clip.
  *
  * # AUCUN ÉTAT DANS L'URL
  *
- * Le mode est une manière de regarder, pas un endroit : il ne survit ni à un rechargement ni à
- * une navigation, et quitter la page rend le plein écran natif au navigateur.
+ * Une manière de regarder, pas un endroit : ni un rechargement ni une navigation ne le gardent, et
+ * quitter la page rend le plein écran natif au navigateur.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { useExportActive } from '../export/exportLayoutStore'
+import type { ReplayFrameControl } from './useReplayFrame'
 
 /**
- * L'ATTRIBUT D'UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE. Posé en clair (`data-replay-escape-layer=""`)
+ * L'ATTRIBUT D'UNE COUCHE QU'ÉCHAP FERME AVANT LE PLEIN CADRE. Posé en clair (`data-replay-escape-layer=""`)
  * sur la racine du panneau de la vue, de la fiche de joueur, du média agrandi et des menus ; le garde-rail
  * `escapeLayers.guard.test.ts` exige qu'aucun écouteur d'Échap du rejeu ne s'en passe.
  */
 export const REPLAY_ESCAPE_LAYER_ATTR = 'data-replay-escape-layer'
 
 /**
- * LE CADRE DU MODE, posé sur le conteneur de la grille de la page. Il DÉFILE LUI-MÊME
+ * LE CADRE DU PLEIN CADRE, posé sur le conteneur de la grille de la page. Il DÉFILE LUI-MÊME
  * (`overflow-y-auto`) : `useReplayViewport` mesure la hauteur offerte au terrain par rapport au
  * premier ancêtre qui défile, et c'est ce cadre qu'il doit trouver. `z-40` : au-dessus des
  * languettes fixes de l'application, au-dessous du tiroir de réglages (`z-50`, en portail).
@@ -67,11 +70,11 @@ export const REPLAY_FULLSCREEN_FRAME =
   'fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background p-3 [align-content:safe_center]'
 
 export interface ReplayFullscreen {
-  /** Le mode est ouvert : la page pose `REPLAY_FULLSCREEN_FRAME` sur sa grille. */
+  /** Le plein écran du système est atteint, et par nous (le seul demandeur de la racine). */
   active: boolean
-  /** Un export vidéo tient la toile : le mode ne s'ouvre ni ne se ferme au bouton ou à F. */
+  /** Un export vidéo tient la toile : le geste du système est sans effet. */
   disabled: boolean
-  /** Ouvre ou ferme le mode. À appeler DANS le geste (clic, touche) : le natif l'exige. */
+  /** Entre dans le plein écran du système, ou en sort. À appeler DANS le geste (clic) : le natif l'exige. */
   toggle: () => void
 }
 
@@ -88,80 +91,85 @@ function leaveNative(): void {
   })
 }
 
-/** Demande le plein écran natif de la page ; sans API, la superposition seule fait le mode. */
+/** Demande le plein écran natif de la page ; sans API, aucun natif et le cadre reste ce qu'il est. */
 function requestNative(): void {
   const root = document.documentElement
   if (!document.fullscreenEnabled || typeof root.requestFullscreen !== 'function') return
   root.requestFullscreen().catch((err: unknown) => {
-    console.warn('[replay-fullscreen] plein écran natif refusé : superposition seule', err)
+    console.warn('[replay-fullscreen] plein écran natif refusé', err)
   })
 }
 
-export function useReplayFullscreen(): ReplayFullscreen {
-  const disabled = useExportActive()
+export function useReplayFullscreen(control: ReplayFrameControl): ReplayFullscreen {
+  const { frame, disabled, peek, toggleFullFrame, exit } = control
   const [active, setActive] = useState(false)
   // LA VÉRITÉ DU GESTE, lue hors rendu : `fullscreenchange` et Échap arrivent entre deux rendus.
-  const activeRef = useRef(false)
-  // LE NATIF A-T-IL ÉTÉ ATTEINT depuis l'ouverture ? Seule sa chute ferme le mode : un
+  // Le natif est-il VOULU (demandé, pas forcément encore accordé) ?
+  const wantedRef = useRef(false)
+  // LE NATIF A-T-IL ÉTÉ ATTEINT depuis la demande ? Seule sa chute est suivie : un
   // `fullscreenchange` qui ne nous concerne pas (une vidéo mise en plein écran) n'y touche pas.
   const reachedRef = useRef(false)
+  // LE PLEIN CADRE EN COURS A-T-IL ÉTÉ OUVERT PAR CE GESTE (depuis le Standard) ? Il se referme alors avec lui.
+  const ownsFrameRef = useRef(false)
 
-  const close = useCallback(() => {
-    activeRef.current = false
+  const release = useCallback(() => {
+    wantedRef.current = false
     reachedRef.current = false
     setActive(false)
     leaveNative()
-  }, [])
+    if (!ownsFrameRef.current) return
+    ownsFrameRef.current = false
+    exit()
+  }, [exit])
 
   const toggle = useCallback(() => {
     if (disabled) return
-    if (activeRef.current) {
-      close()
+    if (wantedRef.current || ownsFrameRef.current) {
+      release()
       return
     }
-    activeRef.current = true
-    setActive(true)
+    if (peek().frame === 'standard') {
+      toggleFullFrame()
+      ownsFrameRef.current = peek().frame === 'plein-cadre'
+    }
+    wantedRef.current = true
     requestNative()
-  }, [disabled, close])
+  }, [disabled, release, peek, toggleFullFrame])
 
   useEffect(() => {
     function onChange() {
       if (nativeIsOurs()) {
         reachedRef.current = true
-        // LA DEMANDE A ABOUTI APRÈS UNE SORTIE (F pressé deux fois avant la transition) : on
-        // la défait, sans quoi la page resterait en plein écran natif hors du mode.
-        if (!activeRef.current) leaveNative()
+        // LA DEMANDE A ABOUTI APRÈS UNE SORTIE (geste répété avant la transition) : on la défait,
+        // sans quoi la page resterait en plein écran natif sans que personne ne le veuille.
+        if (wantedRef.current) setActive(true)
+        else leaveNative()
         return
       }
-      if (document.fullscreenElement === null && reachedRef.current) close()
+      if (document.fullscreenElement === null && reachedRef.current) release()
     }
     document.addEventListener('fullscreenchange', onChange)
     return () => document.removeEventListener('fullscreenchange', onChange)
-  }, [close])
+  }, [release])
+
+  // UN PLEIN CADRE REFERMÉ AILLEURS (F, Échap, « Quitter ») N'EST PLUS CELUI DU GESTE.
+  useEffect(() => {
+    if (frame !== 'plein-cadre') ownsFrameRef.current = false
+  }, [frame])
 
   useEffect(() => {
-    if (!active) return
+    if (frame !== 'plein-cadre') return
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
       if (document.querySelector(`[${REPLAY_ESCAPE_LAYER_ATTR}]`)) return
-      close()
+      if (ownsFrameRef.current) release()
+      else exit()
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [active, close])
+  }, [frame, release, exit])
 
-  // LE CADRE CHANGE SANS QUE LA FENÊTRE CHANGE : en superposition seule, rien ne prévient ceux
-  // qui se calent sur la fenêtre (la hauteur offerte au terrain, la position du tiroir). Le
-  // basculement leur est donc annoncé comme un redimensionnement — c'en est un pour eux. Le
-  // premier rendu n'annonce rien : la page n'a pas encore changé de cadre.
-  const announcedRef = useRef(active)
-  useEffect(() => {
-    if (announcedRef.current === active) return
-    announcedRef.current = active
-    window.dispatchEvent(new Event('resize'))
-  }, [active])
-
-  // QUITTER LA PAGE REND LE NATIF : le mode n'existe plus, la page suivante ne l'a pas demandé.
+  // QUITTER LA PAGE REND LE NATIF : la page suivante ne l'a pas demandé.
   useEffect(() => () => leaveNative(), [])
 
   return { active, disabled, toggle }
