@@ -239,7 +239,7 @@ func (e *environnement) ecritSidecar(ctx context.Context, c cible, b himap.Bilan
 			WidthPx: cal.Largeur, HeightPx: cal.Hauteur, Convention: himap.ConventionCalage,
 		},
 		Stats:        statsDeBilan(b),
-		Degradations: b.Degradations,
+		Degradations: sansCheminAbsolu(b.Degradations),
 	}}
 	poseLePlan(ctx, e.sortieDir, c.cle, pf, &meta)
 	return mapfondsidecar.Write(filepath.Join(e.sortieDir, c.cle+".json"), meta)

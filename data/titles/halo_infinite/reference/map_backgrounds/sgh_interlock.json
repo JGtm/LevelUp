@@ -41,8 +41,8 @@
     "cellsAssumedFloor": 194671
   },
   "degradations": [
-    "sddt : module any/globals introuvable : GetFileAttributesEx C:\\XboxGames\\Halo Infinite\\Content\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
-    "eau : module any/globals introuvable : GetFileAttributesEx C:\\XboxGames\\Halo Infinite\\Content\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
+    "sddt : module any/globals introuvable : GetFileAttributesEx common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
+    "eau : module any/globals introuvable : GetFileAttributesEx common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
     "aucun maillage de navigation dans le module any"
   ]
 }

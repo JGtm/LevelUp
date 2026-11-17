@@ -49,6 +49,7 @@ var cheminsAbsolusDePoste = []*regexp.Regexp{
 	regexp.MustCompile(`/[a-z]/Users/`),
 	regexp.MustCompile(`/home/`),
 	regexp.MustCompile(`/Users/`),
+	regexp.MustCompile(`\\{1,2}Users\\{1,2}`), // dossier utilisateur Windows, brut ou échappé dans un JSON
 }
 
 // extensionsTexteCatalogue : les catalogues qui se lisent comme du texte. Les `.webp` et autres
@@ -58,22 +59,22 @@ var extensionsTexteCatalogue = map[string]bool{
 }
 
 // catalogesAvecCheminAbsoluTolere : la DETTE MESURÉE le 2026-09-17, chemins relatifs à la racine
-// du dépôt. Deux fichiers, tous deux produits par un outil HORS de la frontière du lot 2.10 —
-// les corriger demande de toucher leur fabricant, ce que la règle « zéro fix opportuniste »
-// interdit ici. Consignés au §4 du plan décodeur (D1 (2.10)).
+// du dépôt. Un fichier, produit par un outil HORS de la frontière du lot 2.10 — le corriger
+// demande de toucher son fabricant, ce que la règle « zéro fix opportuniste » interdit ici.
+// Consigné au §4 du plan décodeur (D1 (2.10)).
 //
-//   - data/titles/halo_infinite/reference/map_backgrounds/sgh_interlock.json : le champ de
-//     diagnostic d'un module ABSENT recopie le message d'erreur de Windows, chemin compris
-//     (`GetFileAttributesEx D:\<bibliotheque>\…`). Producteur : `cmd/mapfond-build`.
 //   - data/titles/halo_infinite/reference/map_callouts.json : le champ `source` cite
 //     `C:\Program Files (x86)\Steam\…` — le même défaut que `map_quant_bounds.json`, sur un
 //     autre poste. Producteur : la chaîne des zones (`cmd/callouts-*`).
 //
+// Les fonds de carte (`map_backgrounds/*.json`) n'ont PAS leur place ici : `cmd/mapfond-build`
+// réduit chaque dégradation au nom de son module avant d'écrire le fichier
+// (`TestFondsDeCartePublies_SansCheminAbsolu`).
+//
 // AGRANDIR CETTE LISTE EXIGE LA MÊME DÉMONSTRATION : pourquoi le chemin ne peut pas être
 // relatif, et la date. Un nouveau catalogue n'y a pas sa place — il naît propre.
 var catalogesAvecCheminAbsoluTolere = map[string]bool{
-	"data/titles/halo_infinite/reference/map_backgrounds/sgh_interlock.json": true,
-	"data/titles/halo_infinite/reference/map_callouts.json":                  true,
+	"data/titles/halo_infinite/reference/map_callouts.json": true,
 }
 
 // TestCatalogueVersionneSansCheminAbsolu — aucun catalogue versionné ne cite le disque de son
@@ -124,6 +125,40 @@ func TestCatalogueVersionneSansCheminAbsolu(t *testing.T) {
 		t.Fatal("aucun catalogue texte balayé — le balayage s'est cassé")
 	}
 	t.Logf("%d catalogue(s) texte balayé(s), %d toléré(s)", vus, len(catalogesAvecCheminAbsoluTolere))
+}
+
+// TestFondsDeCartePublies_SansCheminAbsolu — aucun fond de carte publié
+// (`data/titles/*/reference/map_backgrounds/*.json`) ne cite le disque du poste de cuisson :
+// une dégradation recopie le message d'une brique, qui porte le chemin du module absent. Le
+// test ne passe PAS par l'allowlist : un fond ne s'y ajoute jamais.
+//
+// Mutation qui doit le faire rougir : remettre un chemin `C:\…` dans une dégradation d'un fond.
+func TestFondsDeCartePublies_SansCheminAbsolu(t *testing.T) {
+	racine := racineDuDepot(t)
+	vus := 0
+	for _, dir := range dossiersReference(t, racine) {
+		fonds, err := filepath.Glob(filepath.Join(dir, "map_backgrounds", "*.json"))
+		if err != nil {
+			t.Fatalf("balayage de %s : %v", dir, err)
+		}
+		for _, chemin := range fonds {
+			buf, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
+			if rerr != nil {
+				t.Fatalf("lecture de %s : %v", chemin, rerr)
+			}
+			vus++
+			if m := premierCheminAbsolu(buf); m != nil {
+				rel, _ := filepath.Rel(racine, chemin)
+				t.Errorf("%s porte un chemin absolu de poste (%q) — une dégradation ne doit citer "+
+					"que le nom du module (cmd/mapfond-build, sansCheminAbsolu)",
+					filepath.ToSlash(rel), strings.TrimSpace(string(m)))
+			}
+		}
+	}
+	if vus == 0 {
+		t.Fatal("aucun fond de carte publié balayé — le balayage s'est cassé")
+	}
+	t.Logf("%d fond(s) de carte balayé(s)", vus)
 }
 
 // TestAllowlistDesCheminsAbsolusNEstPasPerimee : une entrée de `catalogesAvecCheminAbsoluTolere`
