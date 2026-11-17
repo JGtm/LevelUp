@@ -693,7 +693,7 @@ les localise, rien n'est recalculé à côté.
       la compacte ailleurs) et `blockOverlays` (posés dans le bloc, à côté de la légende et du zoom). Le fichier
       ne grossit pas : la différence nette de lignes est nulle ou négative (le choix de barre et de zoom sort du
       fichier). Zone de lecture du Standard identique aux témoins.
-- [ ] E.2 Extraire de `ReplayTransport.tsx` ce que la barre compacte partage : boutons de capture et d'export
+- [x] E.2 (fait le 2026-11-17 : `ReplayCaptureButtons`, `ReplayTransportIcons`, `ReplayFrameButtons` ; le segment de texte des cadres quitte les en-têtes ; `ReplayTransport.tsx` 445 -> 137 lignes, cliquet des fonctions longues à 248 ; icônes de cadre SANS maquette, formes de l'agent, à montrer au user ; deux reprises confiées à E.3 : sortie du Plein cadre par l'icône alignée sur « Quitter », cadre ramené au Standard sans toile et au changement de match) Extraire de `ReplayTransport.tsx` ce que la barre compacte partage : boutons de capture et d'export
       (`ui/ReplayCaptureButtons.tsx`, avec la règle de l'élargissement pendant l'export), boutons de cadre
       (`ui/ReplayFrameButtons.tsx`, D-10, remplace `FullscreenButton` ; infobulles avec les touches T et F,
       grille D-1). Zone de lecture du Standard identique aux témoins hors les icônes de cadre.
