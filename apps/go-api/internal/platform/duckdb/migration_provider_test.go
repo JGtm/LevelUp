@@ -13,7 +13,12 @@ import (
 // câblage, migration.RunForDB(...) ne voit que le registre global et les steps
 // relocalisés en voie B (Phase 1.5, ex. famille citation_mappings, battlepass,
 // challenge…) sont absents → tables manquantes dans les tests repo.
+//
+// Elle retire aussi le dossier des gabarits de bases migrées (migrated_template_test.go) :
+// os.Exit saute les defer, le retrait se fait donc entre m.Run et os.Exit.
 func TestMain(m *testing.M) {
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	os.Exit(m.Run())
+	code := m.Run()
+	removeMigratedTemplates()
+	os.Exit(code)
 }
