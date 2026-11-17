@@ -5,7 +5,7 @@
  * PLAN_MATCHVIEW_MOMENTUM Phase 2.
  */
 import { describe, it, expect } from 'vitest'
-import { computeMomentumBins } from './_momentum'
+import { collectKillEvents, computeMomentumBins } from './_momentum'
 import type { MatchHighlightEvent, MatchTugOfWarBin } from '@/lib/api/types'
 
 /** Bin de `[start, end)` secondes ; les counts backend sont ignorés (recompute front). */
@@ -149,5 +149,28 @@ describe('computeMomentumBins', () => {
     expect(momentum.map((b) => b.delta)).toEqual([-2, -5, -1])
     // -2(prev0)up, -5(prev-2)up (momentum ennemi se renforce), -1(prev-5)down
     expect(momentum.map((b) => b.trend)).toEqual(['up', 'up', 'down'])
+  })
+})
+
+describe('collectKillEvents — classe du frag', () => {
+  function withClass(weaponClass: string | undefined): MatchHighlightEvent {
+    return { ...killEvent('ally1', 1000), weapon_key: 'hinf_x', weapon_class: weaponClass }
+  }
+
+  it('lit la classe servie, y compris sur une mêlée sans clé d\'arme', () => {
+    const melee: MatchHighlightEvent = { ...killEvent('ally1', 2000), weapon_class: 'melee' }
+    const kills = collectKillEvents([withClass('heavy'), melee], META)
+    expect(kills.map((k) => [k.weaponKey, k.weaponClass])).toEqual([
+      ['hinf_x', 'heavy'],
+      ['', 'melee'],
+    ])
+  })
+
+  it('une classe absente, vide, inconnue ou résiduelle reste absente', () => {
+    const kills = collectKillEvents(
+      [withClass(undefined), withClass(''), withClass('ultra_lourde'), withClass('unattributed')],
+      META,
+    )
+    expect(kills.map((k) => k.weaponClass)).toEqual([undefined, undefined, undefined, undefined])
   })
 })

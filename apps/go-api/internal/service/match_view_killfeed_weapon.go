@@ -197,6 +197,7 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 			continue
 		}
 		e.WeaponKey = icon.WeaponKey
+		e.WeaponClass = icon.WeaponClass
 		e.WeaponLabel = icon.Label
 		e.WeaponImageURL = icon.ImageURL
 		e.WeaponImageTinted = icon.Tinted

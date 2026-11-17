@@ -5,11 +5,14 @@
  * les éliminations du fil et précalcule un instantané par élimination ; `killBreakdownAt` répond pour une image
  * par dichotomie, sans rien relire du document.
  *
- * LA CLASSE EST CELLE DE LA SYNTHÈSE, PAS UNE RÈGLE NOUVELLE. La classe d'un frag vient du registre d'armes du
- * titre (clé d'arme -> classe, le même registre que la Répartition des frags). Le document de rejeu ne porte pas
- * cette classe : l'appelant FOURNIT la table `weaponClassByKey`, et ce module n'écrit aucun classement. Une
- * élimination dont la clé d'arme est absente, ou absente de la table (mêlée générique, objet, arme inconnue),
- * tombe dans `unclassified` : jamais répartie au hasard, jamais jetée.
+ * LA CLASSE EST CELLE DE LA SYNTHÈSE, PAS UNE RÈGLE NOUVELLE. Chaque élimination du fil porte SA classe
+ * (`ReplayKill.weaponClass`), posée par le serveur sur le frag depuis le registre d'armes du titre et la source
+ * de dégât, les mêmes que la Répartition des frags ; ce module n'écrit aucun classement. Une élimination sans
+ * classe servie (source de dégât inconnue, chute, véhicule, objet) tombe dans `unclassified` : jamais répartie
+ * au hasard, jamais jetée.
+ *
+ * L'ARME DANS UNE CLASSE est la clé d'arme du frag. Une élimination classée sans clé d'arme (la mêlée générique,
+ * que le titre classe sans nommer d'arme) forme dans sa classe une entrée d'arme à clé VIDE.
  *
  * INVARIANTS (à chaque image) : la somme des classes plus `unclassified` vaut `totals.atInstant` ; la somme des
  * armes d'une classe vaut le compte de la classe. Une part est `null` quand le total à l'instant vaut zéro. Le
@@ -28,7 +31,7 @@ import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { identityKeys } from './playerInstantStats'
 
-/** Une arme du joueur : sa clé du registre, son compte à l'instant, son compte au match, sa part à l'instant. */
+/** Une arme du joueur : sa clé du registre (VIDE pour les éliminations classées sans arme nommée), son compte à l'instant, son compte au match, sa part à l'instant. */
 export interface KillBreakdownWeapon {
   weaponKey: string
   atInstant: number
@@ -67,8 +70,6 @@ export interface KillBreakdownInput {
   player: ReplayPlayer
   /** Le fil du rejeu (`ReplayModel.feed`). `null` = absent. */
   feed: readonly ReplayFeedEntry[] | null
-  /** Classe de chaque arme du registre du titre, par clé d'arme (`ReplayKill.weaponKey`). Fournie par l'appelant. */
-  weaponClassByKey: ReadonlyMap<string, FragClassKey>
 }
 
 /** Un instantané : comptes cumulés jusqu'à une élimination comprise. `perWeapon` suit l'index de `plan.weapons`. */
@@ -112,15 +113,19 @@ function shareOf(part: number, total: number): number | null {
   return total > 0 ? part / total : null
 }
 
-/** Les éliminations du joueur (ses clés d'identité), triées par instant, avec la clé de leur arme. */
-function killsOf(
-  feed: readonly ReplayFeedEntry[],
-  keys: readonly string[],
-): { t: number; weaponKey: string }[] {
-  const out: { t: number; weaponKey: string }[] = []
+/** Une élimination du joueur : son instant, la clé de son arme (vide si aucune) et sa classe servie. */
+interface PlayerKill {
+  t: number
+  weaponKey: string
+  classKey: FragClassKey | undefined
+}
+
+/** Les éliminations du joueur (ses clés d'identité), triées par instant. */
+function killsOf(feed: readonly ReplayFeedEntry[], keys: readonly string[]): PlayerKill[] {
+  const out: PlayerKill[] = []
   for (const e of feed) {
     const k = e.kill
-    if (k && keys.includes(k.xuid)) out.push({ t: k.replayMs, weaponKey: k.weaponKey })
+    if (k && keys.includes(k.xuid)) out.push({ t: k.replayMs, weaponKey: k.weaponKey, classKey: k.weaponClass })
   }
   return out.sort((a, b) => a.t - b.t)
 }
@@ -130,26 +135,26 @@ function byMatchThenKey<T extends { atMatch: number }>(keyOf: (x: T) => string):
   return (a: T, b: T) => b.atMatch - a.atMatch || keyOf(a).localeCompare(keyOf(b))
 }
 
-/** Compte au match par arme établie (classe connue), puis le plan des classes et des armes. */
-function buildPlan(
-  kills: readonly { weaponKey: string }[],
-  weaponClassByKey: ReadonlyMap<string, FragClassKey>,
-): BreakdownPlan {
-  const counts = new Map<string, { classKey: FragClassKey; atMatch: number }>()
+/** Identifiant d'une entrée d'arme du plan : la classe et la clé d'arme (vide pour une élimination sans arme). */
+function weaponEntryId(classKey: FragClassKey, weaponKey: string): string {
+  return `${classKey}|${weaponKey}`
+}
+
+/** Compte au match par arme classée, puis le plan des classes et des armes. */
+function buildPlan(kills: readonly PlayerKill[]): BreakdownPlan {
+  const counts = new Map<string, PlanWeapon>()
   let unclassifiedAtMatch = 0
   for (const k of kills) {
-    const classKey = weaponClassByKey.get(k.weaponKey)
-    if (classKey === undefined) {
+    if (k.classKey === undefined) {
       unclassifiedAtMatch++
       continue
     }
-    const c = counts.get(k.weaponKey) ?? { classKey, atMatch: 0 }
-    c.atMatch++
-    counts.set(k.weaponKey, c)
+    const id = weaponEntryId(k.classKey, k.weaponKey)
+    const w = counts.get(id) ?? { weaponKey: k.weaponKey, classKey: k.classKey, atMatch: 0 }
+    w.atMatch++
+    counts.set(id, w)
   }
-  const weapons: PlanWeapon[] = [...counts.entries()]
-    .map(([weaponKey, c]) => ({ weaponKey, classKey: c.classKey, atMatch: c.atMatch }))
-    .sort(byMatchThenKey<PlanWeapon>((w) => w.weaponKey))
+  const weapons: PlanWeapon[] = [...counts.values()].sort(byMatchThenKey<PlanWeapon>((w) => w.weaponKey))
   const byClass = new Map<FragClassKey, PlanClass>()
   weapons.forEach((w, index) => {
     const cls = byClass.get(w.classKey) ?? { classKey: w.classKey, atMatch: 0, weaponIndexes: [] }
@@ -167,17 +172,14 @@ function buildPlan(
 }
 
 /** Un instantané par élimination : comptes cumulés, arme par arme selon l'index du plan. */
-function buildSnapshots(
-  kills: readonly { t: number; weaponKey: string }[],
-  plan: BreakdownPlan,
-): KillSnapshot[] {
-  const indexOf = new Map(plan.weapons.map((w, i): [string, number] => [w.weaponKey, i]))
+function buildSnapshots(kills: readonly PlayerKill[], plan: BreakdownPlan): KillSnapshot[] {
+  const indexOf = new Map(plan.weapons.map((w, i): [string, number] => [weaponEntryId(w.classKey, w.weaponKey), i]))
   const perWeapon = plan.weapons.map(() => 0)
   let total = 0
   let unclassified = 0
   return kills.map((k) => {
     total++
-    const index = indexOf.get(k.weaponKey)
+    const index = k.classKey === undefined ? undefined : indexOf.get(weaponEntryId(k.classKey, k.weaponKey))
     if (index === undefined) unclassified++
     else perWeapon[index]++
     return { t: k.t, total, unclassified, perWeapon: [...perWeapon] }
@@ -186,10 +188,10 @@ function buildSnapshots(
 
 /** readKillBreakdownSeries lit, une fois, les éliminations du joueur et précalcule ses instantanés. */
 export function readKillBreakdownSeries(input: KillBreakdownInput): KillBreakdownSeries | null {
-  const { doc, player, feed, weaponClassByKey } = input
+  const { doc, player, feed } = input
   if (feed === null || !feed.some((e) => e.kill)) return null
   const kills = killsOf(feed, identityKeys(player))
-  const plan = buildPlan(kills, weaponClassByKey)
+  const plan = buildPlan(kills)
   return { doc, plan, snapshots: buildSnapshots(kills, plan) }
 }
 

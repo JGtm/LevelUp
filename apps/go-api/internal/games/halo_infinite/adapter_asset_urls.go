@@ -263,9 +263,10 @@ func (a *AssetURLAdapter) KillSourceIcon(sourceTag uint32) (canonical.KillSource
 		return canonical.KillSourceIcon{}, false
 	}
 	out := canonical.KillSourceIcon{
-		WeaponKey: ic.WeaponKey,
-		ImageURL:  static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+ic.Sprite, ".png"),
-		Tinted:    true,
+		WeaponKey:   ic.WeaponKey,
+		WeaponClass: killSourceClass(sourceTag, ic.WeaponKey),
+		ImageURL:    static.URL(static.KindWeapon, a.titleSlug, weaponIconDir+ic.Sprite, ".png"),
+		Tinted:      true,
 	}
 	// Le nom PROPRE vient de la même table embarquée que l'icône, et n'est publié que si
 	// elle autorise à l'afficher (statut AMBIGU exclu). Une mêlée ou une grenade n'a pas

@@ -2,9 +2,9 @@
  * killBreakdown.test.ts — LA RÉPARTITION DES ÉLIMINATIONS D'UN JOUEUR À L'IMAGE LUE.
  *
  * Un match écrit à la main : Alpha fait huit éliminations au fil du temps (deux armes d'épaule, une arme
- * lourde à deux armes, une grenade, une mêlée, deux éliminations sans arme ou hors table). Les clés d'arme et
- * la table de classes sont des clés du registre du titre ; la table est fournie à la lecture, comme en
- * production. Une élimination de Bravo et une de bot ne comptent que pour leur propre joueur.
+ * lourde à deux armes, une grenade, une mêlée sans arme, deux éliminations sans classe servie). Chaque frag
+ * porte la classe que le serveur a servie sur lui, avec la clé d'arme du registre du titre. Une élimination de
+ * Bravo et une de bot ne comptent que pour leur propre joueur.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -17,40 +17,37 @@ import { killBreakdownAt, readKillBreakdownSeries, type KillBreakdown } from './
 const STEP_MS = 100
 const DOC = { frameIntervalMs: STEP_MS }
 
-/** La table de classes fournie à la lecture (clés du registre du titre). */
-const CLASSES = new Map<string, FragClassKey>([
-  ['hinf_ma40_ar', 'shoulder'],
-  ['hinf_s7_sniper', 'heavy'],
-  ['hinf_gravity_hammer', 'heavy'],
-  ['hinf_frag_grenade', 'grenade'],
-  ['hinf_unarmed', 'melee'],
-])
-
 const ALPHA: ReplayPlayer = { xuid: 'A', lives: [] }
 const BOT: ReplayPlayer = { xuid: 'bot:Marc', bot: true, lives: [] }
 
-function killEntry(replayMs: number, killer: string, weaponKey: string): ReplayFeedEntry {
-  const kill = { xuid: killer, weaponKey, replayMs, medals: [] } as unknown as ReplayKill
+/** Un frag du fil : `weaponClass` est celle que le serveur a servie sur l'élimination (absente = non établie). */
+function killEntry(
+  replayMs: number,
+  killer: string,
+  weaponKey: string,
+  weaponClass?: FragClassKey,
+): ReplayFeedEntry {
+  const kill = { xuid: killer, weaponKey, weaponClass, replayMs, medals: [] } as unknown as ReplayKill
   return { key: `k${replayMs}`, replayMs, kill, medal: null, death: null }
 }
 
 /** Alpha : huit éliminations de 1 s à 8 s, puis une mêlée à 9 s. Bravo et le bot tuent aussi. */
 const FEED: ReplayFeedEntry[] = [
-  killEntry(1_000, 'A', 'hinf_ma40_ar'),
-  killEntry(1_500, 'B', 'hinf_ma40_ar'),
-  killEntry(2_000, 'A', 'hinf_ma40_ar'),
-  killEntry(3_000, 'A', 'hinf_s7_sniper'),
-  killEntry(4_000, 'A', 'hinf_frag_grenade'),
+  killEntry(1_000, 'A', 'hinf_ma40_ar', 'shoulder'),
+  killEntry(1_500, 'B', 'hinf_ma40_ar', 'shoulder'),
+  killEntry(2_000, 'A', 'hinf_ma40_ar', 'shoulder'),
+  killEntry(3_000, 'A', 'hinf_s7_sniper', 'heavy'),
+  killEntry(4_000, 'A', 'hinf_frag_grenade', 'grenade'),
   killEntry(5_000, 'A', ''),
   killEntry(6_000, 'A', 'hinf_arme_hors_table'),
-  killEntry(7_000, 'A', 'hinf_gravity_hammer'),
-  killEntry(8_000, 'A', 'hinf_ma40_ar'),
-  killEntry(9_000, 'A', 'hinf_unarmed'),
-  killEntry(1_200, 'bot:Marc', 'hinf_ma40_ar'),
+  killEntry(7_000, 'A', 'hinf_gravity_hammer', 'heavy'),
+  killEntry(8_000, 'A', 'hinf_ma40_ar', 'shoulder'),
+  killEntry(9_000, 'A', '', 'melee'),
+  killEntry(1_200, 'bot:Marc', 'hinf_ma40_ar', 'shoulder'),
 ]
 
 function lire(frame: number, feed: ReplayFeedEntry[] | null = FEED, player: ReplayPlayer = ALPHA): KillBreakdown | null {
-  const series = readKillBreakdownSeries({ doc: DOC, player, feed, weaponClassByKey: CLASSES })
+  const series = readKillBreakdownSeries({ doc: DOC, player, feed })
   return killBreakdownAt(series, frame)
 }
 
@@ -169,6 +166,18 @@ describe('killBreakdown — mêlée, grenade et arme lourde', () => {
     expect(classe(lire(90) as KillBreakdown, 'melee')).toMatchObject({ atInstant: 1, share: 1 / 9 })
   })
 
+  it("la mêlée sans arme est une entrée d'arme à clé vide dans sa classe", () => {
+    const b = lire(100) as KillBreakdown
+    expect(classe(b, 'melee').weapons).toEqual([{ weaponKey: '', atInstant: 1, atMatch: 1, share: 1 / 9 }])
+  })
+
+  it("une classe servie sur une arme hors du registre range quand même l'élimination, sous sa clé", () => {
+    const feed = [killEntry(1_000, 'A', 'hinf_arme_inconnue', 'sidearm')]
+    const b = lire(100, feed) as KillBreakdown
+    expect(classe(b, 'sidearm').weapons.map((w) => w.weaponKey)).toEqual(['hinf_arme_inconnue'])
+    expect(b.unclassified).toBeNull()
+  })
+
   it('la grenade est classée à part, par sa clé d\'arme', () => {
     const b = lire(40) as KillBreakdown
     expect(classe(b, 'grenade').weapons).toEqual([{ weaponKey: 'hinf_frag_grenade', atInstant: 1, atMatch: 1, share: 1 / 4 }])
@@ -181,7 +190,7 @@ describe('killBreakdown — mêlée, grenade et arme lourde', () => {
 })
 
 describe('killBreakdown — arme non établie et bot', () => {
-  it('une élimination sans clé d\'arme, ou hors de la table, tombe dans la catégorie non classée', () => {
+  it('une élimination sans classe servie, avec ou sans clé d\'arme, tombe dans la catégorie non classée', () => {
     const b = lire(70) as KillBreakdown
     expect(b.unclassified).toEqual({ atInstant: 2, atMatch: 2, share: 2 / 7 })
     expect(b.classes.flatMap((c) => c.weapons).map((w) => w.weaponKey)).not.toContain('hinf_arme_hors_table')

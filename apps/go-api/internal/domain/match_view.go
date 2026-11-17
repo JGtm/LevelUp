@@ -338,7 +338,14 @@ type MatchHighlightEvent struct {
 	//
 	// WeaponLabel est un nom PROPRE (BR75, Needler), pas un libellé traduit : il vient de
 	// la table de nommage embarquée du titre, pas d'un dictionnaire i18n.
-	WeaponKey         string `json:"weapon_key,omitempty"`
+	WeaponKey string `json:"weapon_key,omitempty"`
+	// WeaponClass : la classe de la Répartition des frags (`FragClass*` : shoulder, sidearm, heavy, melee,
+	// grenade...) du frag, la même que celle de la Synthèse pour la même arme. Posée avec `WeaponKey`, d'après
+	// la source de dégât : la classe de l'arme au registre quand la source en nomme une (épée et marteau :
+	// heavy ; grenade : grenade), `melee` pour la mêlée générique que le titre déclare sans arme, `grenade`
+	// pour une grenade hors registre. Vide quand la classe n'est pas établie : le lecteur range alors le frag
+	// « non classé », jamais dans une classe devinée.
+	WeaponClass       string `json:"weapon_class,omitempty"`
 	WeaponLabel       string `json:"weapon_label,omitempty"`
 	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
 	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`

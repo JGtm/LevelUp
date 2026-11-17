@@ -19782,6 +19782,8 @@ components:
           type: integer
         victim_xuid:
           type: string
+        weapon_class:
+          type: string
         weapon_image_tinted:
           type: boolean
         weapon_image_url:

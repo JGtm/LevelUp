@@ -9418,6 +9418,7 @@ export interface components {
             /** Format: int64 */
             victim_team_id?: number;
             victim_xuid?: string;
+            weapon_class?: string;
             weapon_image_tinted?: boolean;
             weapon_image_url?: string;
             weapon_key?: string;
