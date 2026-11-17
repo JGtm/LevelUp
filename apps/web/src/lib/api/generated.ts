@@ -5628,6 +5628,8 @@ export interface components {
             can_edit_settings: boolean;
             /** @description L'instance livre au joueur connecté ses données pour l'application de bureau. */
             can_export_for_desktop: boolean;
+            /** @description Génération à la demande du rejeu d'un match qui n'en a pas (bureau et poste de développement, titre qui sait fabriquer un rejeu). */
+            can_generate_replays: boolean;
             /** @description Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique). */
             can_import_from_site: boolean;
             /** @description Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows. */

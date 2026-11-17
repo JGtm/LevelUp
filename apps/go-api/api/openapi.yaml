@@ -10978,6 +10978,9 @@ components:
         can_export_for_desktop:
           description: L'instance livre au joueur connecté ses données pour l'application de bureau.
           type: boolean
+        can_generate_replays:
+          description: Génération à la demande du rejeu d'un match qui n'en a pas (bureau et poste de développement, titre qui sait fabriquer un rejeu).
+          type: boolean
         can_import_from_site:
           description: Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique).
           type: boolean
@@ -11114,6 +11117,7 @@ components:
         - can_report_diagnostic
         - can_limit_memory
         - can_regenerate_replays
+        - can_generate_replays
         - can_keep_media_sources
         - can_reveal_files_in_explorer
         - can_trash_media_sources
