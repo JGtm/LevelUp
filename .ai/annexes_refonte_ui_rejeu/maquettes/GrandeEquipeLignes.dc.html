@@ -54,12 +54,13 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
 .score small{text-align:center;font-size:11px;color:#7d7d7d}
 
 /* fiche compacte */
-.ft{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;height:34px;padding:0 6px 0 5px;border:1px solid #1f1f1f;border-left:3px solid var(--ally);border-radius:6px;background:#121212;cursor:pointer}
-.ft.b{border-left-color:var(--enemy)}
+.ft{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;height:34px;padding:0 6px;border:1px solid #1f1f1f;border-radius:6px;background:#121212;cursor:pointer}
 .ft:hover{background:#171717}
-.ft.follow{border-top-color:rgba(96,165,250,.6);border-right-color:rgba(96,165,250,.6);border-bottom-color:rgba(96,165,250,.6)}
-.ft .l1{display:block;min-width:0}
-.ft b{display:block;min-width:0;font-size:11.5px;font-weight:500;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ft.follow{border-color:rgba(96,165,250,.6)}
+.ft .l1{display:flex;align-items:center;gap:4px;min-width:0}
+.ft .l1::before,.ft.line::before{content:"";flex:none;width:6px;height:6px;border-radius:2px;background:var(--ally)}
+.ft.b .l1::before,.ft.b.line::before{background:var(--enemy)}
+.ft b{display:block;flex:1 1 auto;min-width:0;font-size:11.5px;font-weight:500;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ft.follow b{font-weight:700}
 .ft b.bot{color:#bdbdbd}
 .ft .l2{display:flex;align-items:center;gap:5px;min-height:7px}
@@ -448,15 +449,15 @@ a{color:#d4d4d4}a:hover{color:#fafafa}
 </div>
 
 <div class="notes">
-    <div class="nn"><span class="k">N-1</span><p><b>Fiche compacte.</b> Nom (points de suspension s'il est trop long), puis deux jauges : bouclier (bleu) au-dessus de la santé (gris), liseré de 3 px à la couleur du camp à la place de la pastille de K. Fond, bordure et rayon de K. Les deux panneaux emploient la même fiche : sur deux lignes dans la rangée du Cinéma, sur une ligne dans la colonne du Standard.</p></div>
+    <div class="nn"><span class="k">N-1</span><p><b>Fiche compacte.</b> Nom (points de suspension s'il est trop long), puis deux jauges : bouclier (bleu) au-dessus de la santé (gris), pastille de camp devant le nom, comme K (6 px ici). Fond, bordure et rayon de K, sans bordure de couleur. Les deux panneaux emploient la même fiche : sur deux lignes dans la rangée du Cinéma, sur une ligne dans la colonne du Standard.</p></div>
     <div class="nn"><span class="k">N-2</span><p><b>Masqué.</b> Frags / Morts / Assistances (F / M / A), arme, grenades et équipement ne sont plus dans la fiche : ils restent dans la fiche du joueur, un clic plus loin (M).</p></div>
-    <div class="nn"><span class="k">N-3</span><p><b>Cotes du panneau 1 (Cinéma).</b> Corps de K : 1440 − 2 × 24 = 1392 px. Moins le bandeau de score (270 px, au centre, comme K) et 12 écarts de 6 px (72 px) : 1050 px pour 12 emplacements, soit <b>87,5 px par fiche</b> (K : 4 fiches par camp, 8 au total ; ici 6 emplacements par camp). Nom : 87,5 − 4 (bordures) − 11 (marges) = 72,5 px, environ 11 caractères avant les points de suspension. Hauteur d'une fiche : 34 px ; rangée : 2 × 34 + 6 = <b>74 px</b>, contre 58 px dans K : <b>+16 px</b>. Le plan perd 16 px de haut : zone de lecture de 670 px (K) à 654 px, soit −2,4 %.</p></div>
+    <div class="nn"><span class="k">N-3</span><p><b>Cotes du panneau 1 (Cinéma).</b> Corps de K : 1440 − 2 × 24 = 1392 px. Moins le bandeau de score (270 px, au centre, comme K) et 12 écarts de 6 px (72 px) : 1050 px pour 12 emplacements, soit <b>87,5 px par fiche</b> (K : 4 fiches par camp, 8 au total ; ici 6 emplacements par camp). Nom : 87,5 − 2 (bordures) − 12 (marges) − 10 (pastille et écart) = 63,5 px, environ 9 caractères avant les points de suspension. Hauteur d'une fiche : 34 px ; rangée : 2 × 34 + 6 = <b>74 px</b>, contre 58 px dans K : <b>+16 px</b>. Le plan perd 16 px de haut : zone de lecture de 670 px (K) à 654 px, soit −2,4 %.</p></div>
     <div class="nn"><span class="k">N-4</span><p><b>Cotes du panneau 2 (Standard).</b> Colonne de A : 600 px de lecteur − 2 (bordure) − 24 (marges) = 574 px utiles. Contenu : 2 camps × (20 d'en-tête + 6 lignes de 24 + 5 écarts de 3 = 179) = 358, + 2 écarts de 14 entre blocs = 28, + fil (filet 1, marge 12, titre 20, 5 × 28 = 173) = <b>559 px</b>. Reste 15 px, sans défilement. Fiche : (332 − 6) / 2 = 163 px de large, 24 px de haut. Le score reste dans l'en-tête de la page, comme dans A.</p></div>
     <div class="nn"><span class="k">N-5</span><p><b>États, dans les deux panneaux.</b> Plein : jauges pleines. Bouclier entamé : barre bleue raccourcie. Santé entamée sans bouclier : barre bleue vide, barre grise raccourcie. Éliminé : fiche à 40 % et « Réapp. 5,8 s » en rouge à la place des jauges (K écrit « Réapparition 5,8 s », trop long ici). Suivi : bordure bleue et nom en gras, comme K. Porteur : drapeau à droite des jauges (<b>proposé</b>, aucun tableau validé n'a de marque). Bot : pastille « bot » (<b>proposé</b>). Nom long : « Sentinelle de garde Alpha » est tronqué.</p></div>
     <div class="nn"><span class="k">N-6</span><p><b>Clic.</b> Toute la fiche est cliquable : la fiche du joueur s'ouvre comme dans K, L et J (fenêtre sous la fiche en Cinéma et en Plein cadre, colonne remplacée par la fiche en Standard).</p></div>
     <div class="nn"><span class="k">N-7</span><p><b>Fil de 5 lignes.</b> Ordre : instant, lieu (celui de la victime), tueur, arme, victime. Panneau 1 : posé sur le plan comme dans K (350 px, plus récente en bas, deux plus anciennes estompées, ligne nue). Panneau 2 : dans la colonne comme dans A (plus récente en tête, 28 px), avec les médailles en fin de ligne (deux pictogrammes au plus, puis « +N »).</p></div>
     <div class="nn"><span class="k">N-8</span><p><b>Portée.</b> Ces deux formes ne valent que pour la Grande équipe (12 contre 12). Les autres effectifs gardent les fiches de K et les lignes de A, sans changement.</p></div>
-    <div class="nn"><span class="k">N-9</span><p><b>Ce qui ne tient pas.</b> Panneau 2 : la fiche sur deux lignes du panneau 1 (34 px) ne tient pas dans la colonne : 2 × (20 + 6 × 34 + 5 × 3) + 28 + 173 = 679 px pour 574 px utiles, 105 px de trop. D'où la fiche sur une ligne de 24 px. Panneau 1 : un nom de plus de 11 caractères environ est tronqué. Cadre de 900 px : dans le panneau 2, la page de A (1180 px) est coupée sous les pistes du match.</p></div>
+    <div class="nn"><span class="k">N-9</span><p><b>Ce qui ne tient pas.</b> Panneau 2 : la fiche sur deux lignes du panneau 1 (34 px) ne tient pas dans la colonne : 2 × (20 + 6 × 34 + 5 × 3) + 28 + 173 = 679 px pour 574 px utiles, 105 px de trop. D'où la fiche sur une ligne de 24 px. Panneau 1 : un nom de plus de 9 caractères environ est tronqué. Cadre de 900 px : dans le panneau 2, la page de A (1180 px) est coupée sous les pistes du match.</p></div>
 </div>
 </div>
 </x-dc>
