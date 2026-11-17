@@ -153,6 +153,18 @@ describe('ReplayPage : la toile n’est jamais remontée par une bascule de cadr
     }
   })
 
+  it('la barre de lecture et la commande de zoom gardent leurs nœuds d’un cadre à l’autre, en lecture', async () => {
+    await mountReady()
+    fireEvent.click(screen.getByRole('button', { name: T.play }))
+    const pause = screen.getByRole('button', { name: T.pause })
+    const zoomIn = screen.getByRole('button', { name: T.zoomIn })
+    for (const frame of ['cinema', 'plein-cadre', 'standard'] as const) {
+      goTo(frame)
+      expect(screen.getByRole('button', { name: T.pause })).toBe(pause)
+      expect(screen.getByRole('button', { name: T.zoomIn })).toBe(zoomIn)
+    }
+  })
+
   it('la colonne du fil garde aussi sa cellule d’un cadre à l’autre', async () => {
     const { container } = await mountReady()
     const feed = screen.getByTestId('replay-feed-slot')

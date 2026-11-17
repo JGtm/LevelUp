@@ -22,6 +22,7 @@ import { ReplayCanvas } from '../ReplayCanvas'
 import { ReplayRoundBreakOverlay } from '../ReplayRoundBreakOverlay'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import { ReplayVictoryOverlay } from '../ReplayVictoryOverlay'
+import type { ReplayCanvasSlots } from '../replayTransportCommands'
 import type { ReplayFrameView } from './replayFrameTypes'
 
 /** Les trois surcouches de la carte : l'écran de fin, le message inter-manche, le compte à rebours de la bombe. */
@@ -47,7 +48,16 @@ function StageMapOverlays({ view }: { view: ReplayFrameView }) {
   )
 }
 
-export function ReplayStage({ view, scorePlacement }: { view: ReplayFrameView; scorePlacement: EmplacementScore | null }) {
+/** `slots` : la barre de lecture et les superpositions du bloc que le cadre courant pose dans la toile. */
+export function ReplayStage({
+  view,
+  scorePlacement,
+  slots,
+}: {
+  view: ReplayFrameView
+  scorePlacement: EmplacementScore | null
+  slots: ReplayCanvasSlots
+}) {
   const { doc, model, header, locale } = view
   const t = REPLAY_TEXT[locale]
   return (
@@ -98,6 +108,8 @@ export function ReplayStage({ view, scorePlacement }: { view: ReplayFrameView; s
         media={model.media}
         scoreTimelineKind={header ? (header.score_timeline_kind ?? '') : undefined}
         mapOverlays={<StageMapOverlays view={view} />}
+        transport={slots.transport}
+        blockOverlays={slots.blockOverlays}
       />
     </>
   )

@@ -33,8 +33,6 @@
  * l'horloge, la vitesse et le son restent au canvas. Les icônes gardent leur libellé en
  * aria-label/title — un symbole sans nom serait une régression d'accessibilité.
  */
-import type { ComponentProps, RefObject } from 'react'
-
 import { useState } from 'react'
 
 import { ReplayExportDialog, isExportBusy } from '../export/ReplayExportDialog'
@@ -45,32 +43,10 @@ import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import type { ReplayCapture } from '../export/useReplayCapture'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
-import type { ReplaySound } from '../sound/useReplaySound'
+import type { ReplayTransportCommands } from './replayTransportCommands'
 
-interface ReplayTransportProps {
-  playing: boolean
-  onTogglePlay: () => void
-  onRestart: () => void
-  /** Le saut ±10 s, en secondes signées (cf. useReplayPlayback.seekBy). */
-  onSeekBy: (seconds: number) => void
-  /** L'horloge est écrite par la boucle de dessin (textContent), pas par React. */
-  clockRef: RefObject<HTMLSpanElement | null>
-  /**
-   * LA LECTURE AUTOMATIQUE, arrivée du tiroir le 2026-09-02. Elle ne commande PAS le lecteur
-   * ouvert : elle décide de son état de départ, lu une fois au montage (useReplayPlayback).
-   */
-  autoPlay: boolean
-  onToggleAutoPlay: () => void
-  /** La frise et ses pistes, en UN objet (même motif que `leadMarks` avant elle). */
-  timeline: Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
-  speed: number
-  onSetSpeed: (speed: number) => void
-  sound: ReplaySound
-  capture: ReplayCapture
-  locale: ReplayLocale
-  /** Le mode plein écran de la page (useReplayFullscreen) : le bouton n'en est que la commande. */
-  fullscreen: ReplayFullscreen
-}
+/** Les commandes de la toile, moins le zoom : cette barre n'en porte pas (la croix flottante le fait). */
+type ReplayTransportProps = Omit<ReplayTransportCommands, 'zoom'>
 
 export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,

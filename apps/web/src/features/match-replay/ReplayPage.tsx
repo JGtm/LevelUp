@@ -42,6 +42,7 @@ import { ReplayFrameLayout } from '@/features/match-replay/ui/frames/ReplayFrame
 import { ReplayStage } from '@/features/match-replay/ui/frames/ReplayStage'
 import { cinemaFrameZones } from '@/features/match-replay/ui/frames/ReplayCinemaFrame'
 import { standardFrameZones } from '@/features/match-replay/ui/frames/ReplayStandardFrame'
+import { canvasSlotsOf } from '@/features/match-replay/ui/frames/replayFrameSlots'
 import type { ReplayFrameChrome, ReplayFrameView } from '@/features/match-replay/ui/frames/replayFrameTypes'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
@@ -226,7 +227,15 @@ export function ReplayPage() {
         />
       }
       // Le Standard porte le score dans son en-tête ; Cinéma et Plein cadre le gardent sur la toile.
-      scene={view && <ReplayStage view={view} scorePlacement={frame === 'standard' ? null : 'scene'} />}
+      scene={
+        view && (
+          <ReplayStage
+            view={view}
+            scorePlacement={frame === 'standard' ? null : 'scene'}
+            slots={canvasSlotsOf(frame)}
+          />
+        )
+      }
     />
   )
 }

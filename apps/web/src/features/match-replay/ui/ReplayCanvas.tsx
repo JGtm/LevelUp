@@ -31,8 +31,7 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import type { PlaybackStore } from '../model/playbackStore'
-import { ReplayTransport } from './ReplayTransport'
-import { ReplayZoomControl } from './ReplayZoomControl'
+import { useReplayTransportCommands, type ReplayCommandsRender } from './replayTransportCommands'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { normalizeMapObjectives } from '../layers/objectivesLayer'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
@@ -219,13 +218,17 @@ interface ReplayCanvasProps {
   /** Le match affiché : il désigne la probabilité de réapparition à charger. Absents = pas de calque. */
   playerSlug?: string
   matchId?: string
+  /** LA BARRE DE LECTURE, fournie par le cadre : rendue sous le bloc, dans la colonne que mesure `useReplayViewport`. */
+  transport: ReplayCommandsRender
+  /** CE QUI SE POSE DANS LE BLOC, après la légende (commande de zoom, fil, commutateur de vue) ; absent = rien. */
+  blockOverlays?: ReplayCommandsRender
 }
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
-  playerSlug, matchId,
+  playerSlug, matchId, transport, blockOverlays,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -568,6 +571,10 @@ export function ReplayCanvas({
     redraw, playWindow, scoreboard, allegiance, outcome, viewpoint, locale, zoomLevel: zoom.level,
   })
 
+  const commands = useReplayTransportCommands({
+    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, zoom,
+  })
+
   return (
     // RELATIVE + OVERFLOW-HIDDEN : `overflow-hidden` retient les coins carrés de la carte dans
     // son rayon arrondi ; le panneau de la vue en sort donc par un portail (useAnchoredPanel).
@@ -623,20 +630,11 @@ export function ReplayCanvas({
                 flottait donc au milieu du cadre, à gauche de la carte mais loin du bord.
                 Remontée d'un cran, elle se cale sur le bord gauche du bloc, où on la cherche. */}
             {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
-            <ReplayZoomControl zoom={zoom} locale={locale} />
+            {blockOverlays?.(commands)}
           </div>
-          {/* LA BARRE DE LECTURE, SORTIE DU `p-3` LE 2026-09-02 : dedans, 12 px de carte
-              l'encadraient de trois côtés ; ici elle va bord à bord. Elle reste DANS
-              `containerRef` — c'est ce qui permet à `useReplayViewport` de déduire le chrome
-              par soustraction, donc de rendre au terrain ce que la barre économise. */}
-          <ReplayTransport
-            playing={playback.playing} onTogglePlay={playback.togglePlay}
-            onRestart={playback.restart} onSeekBy={playback.seekBy}
-            clockRef={clockRef} timeline={timeline}
-            autoPlay={settings.autoPlay} onToggleAutoPlay={settings.toggleAutoPlay}
-            speed={multiplier} onSetSpeed={settings.setSpeed}
-            sound={sound} capture={capture} locale={locale} fullscreen={fullscreen}
-          />
+          {/* LA BARRE DE LECTURE va bord à bord, hors du `p-3`, mais DANS `containerRef` : `useReplayViewport`
+              déduit le chrome par soustraction, donc rend au terrain ce que la barre économise. */}
+          {transport(commands)}
         </div>
       </div>
     </div>

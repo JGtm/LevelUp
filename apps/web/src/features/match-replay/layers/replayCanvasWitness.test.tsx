@@ -164,6 +164,7 @@ function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
       viewpoint={viewpoint}
       fullscreen={fullscreen}
       frameControl={frameControl}
+      transport={() => null}
       marks={viewpoint ? new Map([[viewpoint, 'me' as const]]) : undefined}
     />,
   )
