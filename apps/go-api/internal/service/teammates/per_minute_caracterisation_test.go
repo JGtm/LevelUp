@@ -13,7 +13,8 @@ import (
 // Témoin de caractérisation des stats par minute de l'escouade : les cadences rendues sur un jeu de
 // matchs aux durées inégales (937 s, non multiple de 60), à dégâts connus sur une partie seulement, avec
 // un doublon de ligne, un match sans seconde jouée et un match hors session. Les valeurs sont celles que
-// rendait le code avant le passage par analysis.PooledPerMinute (chaîne 'g', -1).
+// rendait le code avant le passage par analysis.PooledPerMinute (chaîne 'g', -1), sauf les frags, morts et
+// assistances du joueur principal : le match sans seconde jouée (m3) n'y entre plus au numérateur.
 
 func ptr(v int) *int { return &v }
 
@@ -64,7 +65,7 @@ func TestTemoinCadence_StatsParMinuteDeLEscouade(t *testing.T) {
 		matches               int
 		k, d, a, dealt, taken string
 	}{
-		"main":   {3, "0.82", "0.39", "0.2", "300", "136.63"},
+		"main":   {3, "0.66", "0.31", "0.12", "300", "136.63"},
 		"friend": {2, "0.23", "0.35", "0.35", "48.8", "19.21"},
 	}
 	for _, e := range got {

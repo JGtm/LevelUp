@@ -15,9 +15,8 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// paceCounts : les sommes de frags, morts et assistances d'un joueur sur les matchs du périmètre, et
-// les secondes de ces mêmes matchs (tous les matchs joués).
-type paceCounts struct{ kills, deaths, assists, secs, matches int }
+// paceMatch : les frags, morts, assistances et secondes jouées d'un match du périmètre.
+type paceMatch struct{ kills, deaths, assists, secs int }
 
 // paceDamage : les dégâts d'un match (nil = inconnu) et ses secondes jouées. Chaque dégât a ses propres
 // matchs retenus : un compte inconnu n'est pas un zéro, le match sort du numérateur ET du dénominateur
@@ -27,22 +26,31 @@ type paceDamage struct {
 	secs         int
 }
 
-// paceEntry convertit les sommes en cadences, toutes par analysis.PerMinute. Les dégâts sont des
+// paceEntry convertit les matchs en cadences, toutes par [analysis.PooledPerMinute] : un match sans durée
+// n'entre ni au numérateur ni au dénominateur, mais reste compté dans MatchCount. Les dégâts sont des
 // pointeurs : absents (nil) tant qu'aucun match du joueur n'en porte un ; les dégâts subis ne sont rendus
 // que si le titre les fournit (`withTaken`).
-func paceEntry(player string, c paceCounts, damage []paceDamage, withTaken bool) domain.SquadPerMinuteEntry {
-	e := domain.SquadPerMinuteEntry{Player: player, MatchCount: c.matches}
-	if c.secs > 0 {
-		secs := float64(c.secs)
-		e.KillsPerMinute = round2(analysis.PerMinute(float64(c.kills), secs))
-		e.DeathsPerMinute = round2(analysis.PerMinute(float64(c.deaths), secs))
-		e.AssistsPerMinute = round2(analysis.PerMinute(float64(c.assists), secs))
-	}
+func paceEntry(player string, matches []paceMatch, damage []paceDamage, withTaken bool) domain.SquadPerMinuteEntry {
+	e := domain.SquadPerMinuteEntry{Player: player, MatchCount: len(matches)}
+	e.KillsPerMinute = matchRate(matches, func(m paceMatch) int { return m.kills })
+	e.DeathsPerMinute = matchRate(matches, func(m paceMatch) int { return m.deaths })
+	e.AssistsPerMinute = matchRate(matches, func(m paceMatch) int { return m.assists })
 	e.DamageDealtPerMinute = damageRate(damage, func(d paceDamage) *int { return d.dealt })
 	if withTaken {
 		e.DamageTakenPerMinute = damageRate(damage, func(d paceDamage) *int { return d.taken })
 	}
 	return e
+}
+
+// matchRate rend la cadence arrondie d'un compte sur les matchs qui ont une durée, 0 sans match retenu.
+func matchRate(matches []paceMatch, get func(paceMatch) int) float64 {
+	v, ok := analysis.PooledPerMinute(matches,
+		func(m paceMatch) (float64, bool) { return float64(get(m)), true },
+		func(m paceMatch) float64 { return float64(m.secs) })
+	if !ok {
+		return 0
+	}
+	return round2(v)
 }
 
 // damageRate rend la cadence arrondie d'un dégât sur les matchs où il est connu, nil sans match retenu.
@@ -85,10 +93,10 @@ func perMinuteMatchIDs(allSquadRows []domain.SquadMatchRow, sessionMatchIDs map[
 	return allowed
 }
 
-// mainPaceCounts : frags, morts, assistances et secondes du joueur principal, lus dans les lignes
-// de l'escouade dédoublonnées par match (sa pipeline Q30).
-func mainPaceCounts(allSquadRows []domain.SquadMatchRow, allowed map[string]struct{}) paceCounts {
-	var agg paceCounts
+// mainPaceMatches : frags, morts, assistances et secondes du joueur principal, un élément par match, lus
+// dans les lignes de l'escouade dédoublonnées par match (sa pipeline Q30).
+func mainPaceMatches(allSquadRows []domain.SquadMatchRow, allowed map[string]struct{}) []paceMatch {
+	var out []paceMatch
 	seen := make(map[string]struct{}, len(allSquadRows))
 	for _, m := range allSquadRows {
 		if _, dup := seen[m.MatchID]; dup {
@@ -98,13 +106,9 @@ func mainPaceCounts(allSquadRows []domain.SquadMatchRow, allowed map[string]stru
 		if _, ok := allowed[m.MatchID]; !ok {
 			continue
 		}
-		agg.kills += m.Kills
-		agg.deaths += m.Deaths
-		agg.assists += m.Assists
-		agg.secs += m.TimePlayedSecs
-		agg.matches++
+		out = append(out, paceMatch{kills: m.Kills, deaths: m.Deaths, assists: m.Assists, secs: m.TimePlayedSecs})
 	}
-	return agg
+	return out
 }
 
 // buildSquadPerMinuteStats agrège sur le scope filtré, par joueur :
@@ -130,14 +134,14 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	allowed := perMinuteMatchIDs(allSquadRows, sessionMatchIDs)
 	withTaken := games.ProvidesDamageTaken(s.titleSlug)
 
-	mainCounts := mainPaceCounts(allSquadRows, allowed)
+	mainMatches := mainPaceMatches(allSquadRows, allowed)
 	// Le damage du main vient de ses lignes canoniques ; sans lecteur ou en cas d'échec, ses
 	// cadences de frags restent servies et ses dégâts sont absents (journalisé).
 	var mainDamage []paceDamage
 	if rows, ok := s.loadPaceRows(ctx, mainGamertag); ok {
 		mainDamage = paceDamageOf(rows, allowed)
 	}
-	entries := []domain.SquadPerMinuteEntry{paceEntry(mainGamertag, mainCounts, mainDamage, withTaken)}
+	entries := []domain.SquadPerMinuteEntry{paceEntry(mainGamertag, mainMatches, mainDamage, withTaken)}
 
 	// Coéquipiers : squadLoader est obligatoire — playerMatchesRepo est lié au gamertag principal
 	// et ignore l'argument gt (cf. doc TeammatesService) ; l'utiliser ici réagrégeait les stats du
@@ -148,18 +152,17 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
 			continue
 		}
-		var counts paceCounts
+		var matches []paceMatch
 		for _, r := range rows {
 			if _, in := allowed[r.Summary.MatchID]; !in {
 				continue
 			}
-			counts.kills += intPtrOrZero(r.Self.Kills)
-			counts.deaths += intPtrOrZero(r.Self.Deaths)
-			counts.assists += intPtrOrZero(r.Self.Assists)
-			counts.secs += intPtrOrZero(r.Self.TimePlayed)
-			counts.matches++
+			matches = append(matches, paceMatch{
+				kills: intPtrOrZero(r.Self.Kills), deaths: intPtrOrZero(r.Self.Deaths),
+				assists: intPtrOrZero(r.Self.Assists), secs: intPtrOrZero(r.Self.TimePlayed),
+			})
 		}
-		entries = append(entries, paceEntry(gt, counts, paceDamageOf(rows, allowed), withTaken))
+		entries = append(entries, paceEntry(gt, matches, paceDamageOf(rows, allowed), withTaken))
 	}
 
 	if !perMinuteHasSignal(entries) {
