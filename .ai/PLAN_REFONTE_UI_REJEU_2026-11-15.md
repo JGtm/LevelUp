@@ -697,7 +697,7 @@ les localise, rien n'est recalculé à côté.
       (`ui/ReplayCaptureButtons.tsx`, avec la règle de l'élargissement pendant l'export), boutons de cadre
       (`ui/ReplayFrameButtons.tsx`, D-10, remplace `FullscreenButton` ; infobulles avec les touches T et F,
       grille D-1). Zone de lecture du Standard identique aux témoins hors les icônes de cadre.
-- [ ] E.3 `ui/ReplayTransportCompact.tsx` : une ligne. À gauche caméra (icône seule, E.4) et son ; puis lecture,
+- [x] E.3 (fait le 2026-11-17 : `ui/ReplayTransportCompact.tsx`, `ui/ReplayTimelineCompact.tsx`, cotes `model/cotesBarreCompacte.ts` ; `timeline.fragMarks` (frags de tous les joueurs) construit par `useReplayTimeline` ; emplacement `camera` pour E.4 ; `usesCompactBar` décide de la barre ; deux reprises faites : `leaveFullFrame` chemin unique de sortie, `useReplayFrame(scopeKey)` ramène au Standard sans toile et au changement de match ; ÉCARTS avec K à montrer au user : boutons ronds de la barre complète réutilisés, curseur de volume gardé, capture et export dans leur cartouche, pas de croix de déplacement dans la barre d'une ligne) `ui/ReplayTransportCompact.tsx` : une ligne. À gauche caméra (icône seule, E.4) et son ; puis lecture,
       −10, +10, temps, frise compacte (repères d'éliminations et de morts du joueur regardé et de ses alliés,
       bande de dominance, lues dans le même objet `timeline` que `ReplayTimelineTracks`), vitesse, zoom − / +
       (la commande de zoom flottante n'est pas rendue dans ces cadres) ; à droite capture, export, boutons de
