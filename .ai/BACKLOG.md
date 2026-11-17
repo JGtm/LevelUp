@@ -91,6 +91,21 @@
 
 ---
 
+### [divers] Six petites découvertes des suites de l'audit (2026-11-17)
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). Six points indépendants, petits chacun :
+
+1. `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul : test sensible au temps, à stabiliser.
+2. Le hook `go-vet` de lefthook affiche des erreurs de contraintes de build sur les commandes sans CGO et passe quand même : le faire échouer pour de bon ou restreindre sa cible.
+3. Le sidecar du fond de carte `sgh_interlock.json` porte des chemins Windows absolus du poste dans `degradations` : écrire des chemins relatifs ou des noms.
+4. `zonesPuresDuCatalogue` (CLI `spawn-model`) refait la projection de zones que le service fait déjà : réutiliser celle du service.
+5. Deux sondes de `apps/go-api/internal/migration` (`psa_index_repro_msr_fixture_test.go`, `psa_index_repro_msr_planprobe_test.go`) citent en commentaire `Q24LUSRHistory`, requête supprimée le 2026-11-17 : corriger le renvoi.
+6. Escouade, valeurs par minute : un coéquipier dont les frags sont inconnus compte pour zéro frag (`intPtrOrZero`) au lieu d'être écarté du taux, alors que les dégâts écartent un compte inconnu : aligner.
+
+**Effort : à estimer.**
+
+---
+
 ### [web/couches] Fermeture des couches par Échap ou clic dehors : migrer les 17 écrans restants vers le hook partagé
 
 **Relevé le 2026-11-16** (suites de l'audit des versions 8.2.0 à 8.3.0, plan `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, item E.1). Le motif « écouter Échap ou le clic dehors pour fermer une couche » est écrit à la main dans 22 fichiers `.tsx` de `apps/web/src/features/`. Le plan migre les 5 du rejeu vers un hook partagé et gèle le compte des autres par un garde-rail qui ne fait que descendre. Reste à faire : migrer les 17 autres fichiers vers ce hook, puis ramener le plafond du garde-rail à 0. Mesure : `grep -rlE "addEventListener\('(pointerdown|mousedown)'|\.key === 'Escape'" apps/web/src/features --include=*.tsx | grep -v "\.test\." | wc -l`
