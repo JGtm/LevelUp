@@ -47,9 +47,10 @@ pre-commit:
         - "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/gofmt.sh {staged_files}
 
-    # go vet — informatif, non bloquant (|| true dans le script). Aveugle aux
-    # fichiers tagges //go:build cgo (CGO=0) : cette classe est gatee par le hook
-    # pre-push go-vet-cgo (bloquant) puis par la CI (job go-coverage).
+    # go vet — bloquant sur les cibles que la CI vete (domain, analysis, games/weapons ;
+    # CGO=0, script go-vet.sh). Aveugle aux fichiers tagges //go:build cgo (CGO=0) : cette
+    # classe est gatee par le hook pre-push go-vet-cgo (bloquant, module entier) puis par la
+    # CI (job go-coverage).
     go-vet:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/go-vet.sh
