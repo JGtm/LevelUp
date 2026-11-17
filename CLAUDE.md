@@ -354,6 +354,12 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
     pourquoi) ; l'histoire (mesures datées, lots, comptes du jour) va dans l'ADR, la chronique
     ou le journal. S'applique au code neuf et à toute affirmation fausse rencontrée, pas de
     réécriture de masse. Détail : skill `arch-rules`.
+18. **Une donnée servie ou persistée a un lecteur.** Un champ de réponse d'API, du document de
+    rejeu ou d'un fichier dérivé a un lecteur de production, ou une ligne datée qui nomme son
+    lecteur prévu (modèle : `apps/web/src/lib/replay/replayDocumentReaders.guard.test.ts`, liste
+    qui ne fait que rétrécir). Une montée du décodeur qui ajoute un champ sans lecteur l'y inscrit.
+19. **Décodeur : une montée par version de LevelUp.** La régénération du parc des rejeux se
+    lance une fois, à la publication de la version, pas à chaque montée intermédiaire.
 
 ## Diagnostic de revue de code — anti-patterns interdits
 
@@ -426,8 +432,8 @@ git commit -m "refactor(phase2): ..."
   2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
   `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `internal/` du dépôt du décodeur (`halo-infinite-film-decoder`),
   fermées par le compilateur ; hors du module du décodeur, on passe par sa façade `decfilm`, dont la
-  surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
-  identifiants `replay.X` hors du décodeur au 2026-09-30 ; réduction non retenue, V25) ;
+  surface est tenue par `archlint/film_facade_surface_test.go` (les plafonds de symboles et
+  d'identifiants `replay.X` se lisent dans ce test ; réduction non retenue, V25) ;
   porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
   révision par couche, empreinte insensible aux commentaires ; faits PERSISTÉS, la
   publication rejoue depuis eux quand ils sont frais ; équipe = le film seul ; replis
@@ -497,7 +503,8 @@ git commit -m "refactor(phase2): ..."
   changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée) ·
   `0048` **fonds de carte tenus par le maillage de navigation** (même décodeur pour le natif, module `any`, et le Forge,
   `navmesh.blob` ; le fond riche reste la base, le maillage cadre par rognage et arbitre par la référence de sol ; plan des
-  murs = vecteur `plan` du sidecar, jamais une seconde image ; orientation par quarts de tour horaires dans la projection
+  murs sous deux formes tirées du même maillage : l'image `<clé>.plan.webp`, fond « Plan » et défaut, et le vecteur `plan`
+  du sidecar, dessiné par-dessus le fond « Rendu » ; orientation par quarts de tour horaires dans la projection
   unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
   nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
   `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet).

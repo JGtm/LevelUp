@@ -226,23 +226,23 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Piste B — rejeu servi, côté Go
 
-- [ ] B.1 Fraîcheur du document décidée par le service : `port.ReplayService.GetReplay` rend l'état de cadence ;
+- [x] B.1 Fraîcheur du document décidée par le service : `port.ReplayService.GetReplay` rend l'état de cadence ;
       `handlers/replay.go` n'importe plus `replaybuild`. Test de service qui échoue si la règle s'inverse.
       Gate : `grep -n "replaybuild" apps/go-api/internal/api/handlers/replay.go` vide.
-- [ ] B.2 D-3 appliquée, retrait en 8.3.0 : `replayartifact` ne connaît plus que `.json.gz` (`Locate`, `Read`,
+- [x] B.2 D-3 appliquée, retrait en 8.3.0 : `replayartifact` ne connaît plus que `.json.gz` (`Locate`, `Read`,
       détection par octets magiques, `RemoveLegacy`, `HasLegacySibling`, compteur, `ReplayArtifactCandidates`) ;
       `replaybuild/artifact_compress.go`, sa commande et leurs tests retirés ; un `.json` restant vaut « rejeu
       absent » et se régénère (la 8.3.0 régénère de toute façon tout le parc au schéma 125). Aucune
       suppression de fichier (décision de l'étape 0). Notes de la 8.3.0.
       Gate : `git grep -nE "RemoveLegacy|HasLegacySibling|PARC MIXTE" -- apps/go-api` vide.
-- [ ] B.3 Liste datée des champs du document sans lecteur web : un test web lit les clés de premier niveau de
+- [x] B.3 Liste datée des champs du document sans lecteur web : un test web lit les clés de premier niveau de
       `replayDocumentSchema.ts` et exige, pour chacune, un lecteur hors schéma et normalisation, ou une entrée
       `{ clé: "AAAA-MM-JJ : lecteur prévu" }`. Entrées de départ : les champs que le user garde après le
       tableau de l'étape 0.5. La liste ne fait que rétrécir ; une montée du décodeur qui ajoute un champ sans
       lecteur doit l'y inscrire.
-- [ ] B.4 Champs que le user ne garde pas après l'étape 0.5 : retirés du document servi (`replaydoc`,
+- [~] B.4 Champs que le user ne garde pas après l'étape 0.5 : retirés du document servi (`replaydoc`,
       `replayview`, contrat, types web, schéma et normalisation web), sans toucher au décodeur.
-- [ ] B.5 Types du décodeur dans `internal/port` : garde-rail qui gèle les paquets importés à l'état de
+- [x] B.5 Types du décodeur dans `internal/port` : garde-rail qui gèle les paquets importés à l'état de
       l'étape 0.3 (plafond qui ne fait que descendre).
       `[!]` prévu pour le retrait lui-même : trois types traversent `port/` et 9 fichiers les consomment ; c'est
       un chantier à part, à ranger avec les évolutions du décodeur (ligne au registre des reports).
@@ -360,14 +360,14 @@ Décisions du pilote à l'étape 0, consignées :
 
 ## Étape G — intégration (pilote)
 
-- [ ] G.1 Fusion des pistes dans `chore/830-suites-audit` ; `openapi.yaml` et `make generate-types` une fois.
-- [ ] G.2 Doctrine, trois ajouts soumis au user avant écriture : (1) « une donnée servie ou persistée a un
+- [x] G.1 Fusion des pistes dans `chore/830-suites-audit` ; `openapi.yaml` et `make generate-types` une fois.
+- [x] G.2 Doctrine, trois ajouts soumis au user avant écriture : (1) « une donnée servie ou persistée a un
       lecteur, ou une ligne datée qui nomme son lecteur prévu » (`CLAUDE.md`) ; (2) « à la clôture d'un plan,
       l'outillage d'une mesure close est retiré » (skill `plan-execution`) ; (3) « une version de LevelUp monte
       le décodeur une fois, la régénération du parc se lance à la publication » (`CLAUDE.md`).
 - [ ] G.3 Notes de la 8.3.0, `docs/CHANGELOG.md`, `.ai/BACKLOG.md` (P2 traités retirés), registre des reports
       (A.6, B.2, B.5, D.5 le cas échéant), registre de l'audit (colonne « Décision » remplie), `thought_log`.
-- [ ] G.4 Comparaison des témoins APRÈS aux témoins de l'étape 0 : écarts listés, chacun rattaché à une
+- [x] G.4 Comparaison des témoins APRÈS aux témoins de l'étape 0 : écarts listés, chacun rattaché à une
       décision D-2 ou déclaré défaut.
 - Gate : `make gate-push` ; `cd apps/go-api && go test -tags=integration ./internal/sync/...` ; `make go-api-lint`.
 
@@ -381,10 +381,6 @@ Décisions du pilote à l'étape 0, consignées :
 - [ ] H.3 Tous les items statués ; fusion dans `release/v8.3.0` (CI verte).
 - [ ] H.4 Régénération du parc des rejeux (schéma 125, format 8 du fichier tactique) : dernier geste, lancé par
       le user après la fusion ; ce plan ne la lance pas.
-
-## Découvertes
-
-
 
 ## Journal d'exécution
 
@@ -412,6 +408,32 @@ Chaque compte rendu a été rouvert sur pièces par le pilote (commits, `git sta
   encore Échap ou le clic dehors (au backlog, accord du user).
 - Piste F (4 commits). F.4 : la requête rendait 9 lignes pour 5 matchs (autre échelle, lignes périmées) ;
   corrigée ; elle n'a aucun appelant de production (question posée au user : la supprimer).
+
+### 2026-11-17 — piste B close, intégration faite (étape G)
+
+- Piste B (4 commits). B.2 a entraîné plus que prévu : `write_exclusive.go`, l'étape de compression de la file
+  de régénération et ses compteurs, le cache du banc `replay-corpus-gate` (désormais en `.json.gz`), les fixtures
+  de dix paquets. B.4 : `[~]`, aucun champ retiré du document (recommandation du pilote après la mesure 0.5 :
+  garder les sept ; confirmation du user attendue).
+- Fusion des six pistes dans `chore/830-suites-audit` sans conflit ; `go build ./...` et `go vet` verts sur
+  l'arbre fusionné.
+- Intégration (branche `sa/g`, 11 commits) : types du front régénérés et fixtures corrigées ; `raison` par
+  répartition retirée (celle de la réponse est lue) ; test périmé du fond par défaut corrigé ; test de parité
+  « par minute » Go / TS (8 cas, aucune divergence) ; quatre champs de compression retirés de l'état de la file
+  de régénération, du contrat et de l'écran ; `--garder-documents` dépose en `.json.gz` par la porte ; liste
+  datée des champs du document sans lecteur (`lib/replay/replayDocumentReaders.guard.test.ts`) ; ADR 0048 (marge
+  réelle 0,5 m), 0034 et 0045 amendés ; notes de version et changelog de la 8.3.0.
+- B.3 : la mesure trouve six clés sans lecteur en plus des sept attendues : `bombEvents`, `bombStats`,
+  `identity`, `stances`, `structureBounds`, `vehicleScenery`, inscrites « à statuer par le user ».
+- G.2 : les trois règles approuvées par le user sont écrites (`CLAUDE.md` règles 18 et 19, skill
+  `plan-execution` règle 6) ; ligne de l'ADR 0048 et chiffres de la façade du décodeur remis au vrai dans
+  `CLAUDE.md`.
+- G.4 : cuisson Forge de 3 cartes avec le code fusionné : images et tableau identiques à l'octet au témoin
+  d'avant ; seules différences, l'horodatage et la dégradation nommée des deux Thunderhead (effet voulu de D.5).
+- Gate de l'intégration (exécuteur) : `go test` 192 paquets verts, tests `integration` 20 paquets verts,
+  typecheck web 0 erreur, vitest 13 191 tests verts, 0 échec. Diff depuis `release/v8.3.0`, hors `.ai/` :
+  332 fichiers, +7 911 / -8 792.
+- Reste : G.3 (backlog et registres, après les réponses du user), `make gate-push`, étape H.
 
 ## Découvertes (consignées, non traitées sauf mention)
 
