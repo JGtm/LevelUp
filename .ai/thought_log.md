@@ -1,3 +1,16 @@
+## [2026-11-17] Backlog des 14 au 17 novembre : exécution, relectures et clôture — Complété (fusion dans `release/v8.3.0` ; reste le contrôle à l'écran du bouton « Générer le rejeu » par le user)
+**Statut :** Complété. Plan : `.ai/PLAN_BACKLOG_2026-11-17.md` (toutes les cases statuées ; piste F reportée, G.4 reporté après la fusion par le user).
+**Décision technique principale :** exécution en pistes parallèles par agents Sonnet et Haiku dans des dossiers de travail sans données, une conception Opus pour le rejeu à la demande, deux relectures adverses (générale par Fable, ciblée sur les jetons et la file par Sonnet), une seule ronde de corrections. Le jeton du rejeu à la demande passe par `tokencache.ResolveFreshPlayerTokens`, le point d'entrée par joueur du serveur, et non par le helper des commandes que nommait le plan.
+**Résultats observés :**
+- Tests du paquet DuckDB : base migrée copiée par test ; 564 s puis 264 s sous charge, 191 s après les corrections ; 1 259 réussis, 2 sautés.
+- Fichiers tactiques en `.json.gz`, cache par fichier des réapparitions (39 fichiers : environ 320 ms sans cache, 3 ms avec) ; l'ancien format n'est jamais relu.
+- Douze écrans sur le mécanisme commun de fermeture, garde-rail à cinq exemptions datées ; contrôle des couleurs étendu aux dégradés et aux marqueurs sans effet.
+- Rejeu à la demande : deux routes sous la capacité `can_generate_replays` (bureau et développement), file de demandes persistée, vérification du manifeste sur un match avec l'accord du user (25 morceaux).
+- Relectures : 0 P0 ; 1 P1 (garde-rail des fichiers tactiques trop étroit) corrigé ; 8 autres corrections ; le reste au backlog. Contrôles : 20 films identiques, 20 735 tests Go sans échec, témoin du corpus sans gain ni perte.
+- Piste F (retrait de la précision par film) bloquée par deux replis que le décodeur v1.4.1 déclare tenus par l'hôte : reportée au chantier décodeur par le user.
+- Erreurs du pilote : la CI de `release/v8.3.0` est restée rouge de 14 h 30 à 17 h 20 après la fusion de l'extraction du moteur 2D (plafond du garde-rail de taille des fonctions non abaissé) ; l'arbitrage de rebrancher `setupPipelineEnv` sur le gabarit changeait la base de test (37 lignes de schéma), le plan d'origine l'exemptait à raison.
+**Conclusion / prochaine étape :** régénération du parc par le user (les fichiers tactiques sont compressés), puis contrôles du registre ; refonte de la page du rejeu : préalables (dictionnaires, joueur suivi, effets des fiches). Leçon : un gate web lance tous les tests du web, et la CI se lit après chaque poussée sur la branche de version.
+
 ## [2026-11-17] 8.3.0, vague 1 : extraction du moteur 2D fusionnée, Gate 0 de la refonte, étape 0 du backlog — En cours (pistes du backlog ouvertes)
 **Statut :** En cours. Plans : `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md` et les quatre plans pilotés.
 **Décision technique principale :** la refonte de la page du rejeu passe à un seul gabarit à zones où la toile n'est montée qu'une fois (l'audit de conception a montré que deux composants de cadre auraient démonté le lecteur à chaque bascule) ; la barre et les superpositions deviennent des fonctions de rendu alimentées par un objet de commandes né dans la toile.

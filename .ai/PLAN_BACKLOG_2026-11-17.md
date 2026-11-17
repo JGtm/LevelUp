@@ -156,48 +156,48 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Piste A — paquet `internal/platform/duckdb` : base migrée copiée par test (Sonnet)
 
-- [ ] A.1 `migrated_template_test.go` : un gabarit par cible (`shared`, `player`, `metadata`, `shared_social`,
+- [x] A.1 (fait le 2026-11-17 : quatre gabarits (`shared_pve` non construit, aucun test ne l'utilise)) `migrated_template_test.go` : un gabarit par cible (`shared`, `player`, `metadata`, `shared_social`,
       `shared_pve`), construit une fois (`sync.Once`, erreur mémorisée et rendue à chaque appelant), dans un
       dossier temporaire créé et retiré par le `TestMain` existant (`migration_provider_test.go`) ; base fermée et
       absence de `.wal` vérifiée avant toute copie ; deux accès : copie du fichier dans `t.TempDir()`, ou base en
       mémoire remplie par `ATTACH` en lecture seule, `COPY FROM DATABASE`, `DETACH`.
-- [ ] A.2 Test de fidélité : pour chaque cible, tables, vues, index, séquences et contraintes du gabarit copié
+- [x] A.2 (fait le 2026-11-17) Test de fidélité : pour chaque cible, tables, vues, index, séquences et contraintes du gabarit copié
       (fichier et mémoire) égaux à ceux d'une migration neuve ; `RunForDB` rejoué sur la copie n'applique rien.
-- [ ] A.3 Helpers rebranchés, liste fermée : `newKillSourceTestPlayerDB`, `newTacticalTestPlayerDB`,
+- [x] A.3 (fait le 2026-11-17 : 11 helpers et 13 appels hors liste rebranchés ; `setupPipelineEnv` revenu à sa construction d'origine après la relecture (R.2)) Helpers rebranchés, liste fermée : `newKillSourceTestPlayerDB`, `newTacticalTestPlayerDB`,
       `newBaseNotee`, `newObjectiveStatsRepoOnMem`, `newNotifTestDB`, `openBattlePassTestDB`, `setupPrestigeDB`,
       `migratedFile`, `openTempMetadataDBWithThresholds`, `setupCatalogRepoDB`, `setupPipelineEnv`, plus les
       appels directs restants recensés en 0.3 (liste écrite au journal avant de coder).
-- [ ] A.4 Garde-rail `no_fresh_migration_in_tests_test.go` : `migration.RunForDB(` et `RunForTitleDB(` interdits
+- [x] A.4 (fait le 2026-11-17 : quatre exemptions datées) Garde-rail `no_fresh_migration_in_tests_test.go` : `migration.RunForDB(` et `RunForTitleDB(` interdits
       dans les `*_test.go` du paquet hors une liste dont chaque raison commence par une date, avec son test de
       date. Liste de départ : le fichier du gabarit, `career_progression_fresh_migrations_test.go`,
       `pool_shared_social_recovery_concurrent_test.go`, `csr_pipeline_e2e_integration_test.go`,
       `media_loadfiles_real_topology_test.go`.
-- [ ] A.5 Mesure APRÈS, au calme, paquet seul : durée et nombre de réussites, comparés à 0.2.
+- [x] A.5 (fait le 2026-11-17 : 564 s puis 264 s sous charge ; 191 s après les corrections, 1 259 réussis, 2 sautés) Mesure APRÈS, au calme, paquet seul : durée et nombre de réussites, comparés à 0.2.
 - **Gate A** : `cd apps/go-api && go test -tags=integration -timeout 300s ./internal/platform/duckdb/` vert, même
   nombre de réussites qu'en 0.2, aucun test sauté en plus ; `go test ./internal/platform/duckdb/...` (sans le
   tag) vert ; durée sous 220 s. Au-delà de 220 s : écrit au journal avec la mesure, sans relever le budget.
 
 ## Piste B — fichiers tactiques compressés et cache des réapparitions (Sonnet)
 
-- [ ] B.1 Cache par fichier dans `service/replay_spawn_candidats.go`, sur `cacheAEmpreinte` : clé = chemin,
+- [x] B.1 (fait le 2026-11-17) Cache par fichier dans `service/replay_spawn_candidats.go`, sur `cacheAEmpreinte` : clé = chemin,
       valeur = la structure maigre des réapparitions, invalidation par date et taille. Tests : le second appel ne
       relit aucun fichier (compteur), un fichier réécrit est relu, un fichier disparu compte « absent ».
-- [ ] B.2 `title.ReplaySidecarExt = ".json.gz"` (`internal/domain/title/film_id.go`) ; l'écrivain
+- [x] B.2 (fait le 2026-11-17) `title.ReplaySidecarExt = ".json.gz"` (`internal/domain/title/film_id.go`) ; l'écrivain
       (`replayartifacts.EcrireSidecarRaster`) passe par `replayartifact.Write` ; les trois lecteurs
       (`service/tactical_service_rasters.go`, `service/replay_spawn_candidats.go`,
       `cmd/levelup/cmd_tactical_rasters.go`) passent par `replayartifact.Read` ou `ReadBytes`. Aucune lecture des
       `.json` bruts (même doctrine que les rejeux).
-- [ ] B.3 Purges : `scheduler/replay_purge_cron.go` ne reconstruit plus le chemin à la main (fonction du
+- [x] B.3 (fait le 2026-11-17) Purges : `scheduler/replay_purge_cron.go` ne reconstruit plus le chemin à la main (fonction du
       résolveur) ; elle et `replaybuild/artifact_purge.go` retirent les deux extensions. À l'écriture d'un
       `.json.gz`, le `.json` voisin est supprimé, avec une ligne de journal ; une suppression en échec est
       journalisée, jamais muette.
-- [ ] B.4 Garde-rail : test qui interdit `os.ReadFile` et `os.WriteFile` sur un chemin de fichier tactique hors
+- [x] B.4 (fait le 2026-11-17 : étendu en R.2 aux autres formes d'accès) Garde-rail : test qui interdit `os.ReadFile` et `os.WriteFile` sur un chemin de fichier tactique hors
       `internal/replayartifact`. Tests adaptés, liste fermée : `cmd_tactical_rasters_test.go`, `raster_test.go`,
       `replay_purge_cron_test.go`, `replay_spawn_forecast_test.go`, `tactical_service_rasters_test.go`, test du
       `PathResolver`.
-- [ ] B.5 Mesure écrite au journal : lecture de la Tactique et des réapparitions sur 39 fichiers compressés,
+- [x] B.5 (fait le 2026-11-17 : `.ai/annexes_backlog_1117/mesure_B5.md` : 39 fichiers, environ 320 ms sans cache, 3 ms avec) Mesure écrite au journal : lecture de la Tactique et des réapparitions sur 39 fichiers compressés,
       avec et sans cache (banc dans le paquet, retiré à la clôture s'il n'a pas d'usage courant).
-- [ ] B.6 `docs/COMMANDS.md` FR et EN si l'extension des fichiers tactiques y est citée.
+- [x] B.6 (fait le 2026-11-17) `docs/COMMANDS.md` FR et EN si l'extension des fichiers tactiques y est citée.
 - **Gate B** : gate commun Go sur `./internal/domain/title/... ./internal/sync/replayartifacts/...
   ./internal/service/... ./internal/scheduler/... ./internal/replaybuild/... ./internal/replayartifact/...
   ./cmd/levelup/...` ; `grep -rn '"\.json"' apps/go-api/internal/sync/replayartifacts apps/go-api/internal/scheduler/replay_purge_cron.go`
@@ -207,29 +207,29 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Piste C — petits correctifs Go
 
-- [ ] C.1 (Haiku) `tactical.ZonesDepuisLePort([]domain.ZoneNommee)` dans `internal/analysis/tactical`, avec son
+- [x] C.1 (fait le 2026-11-17 : 7 sites migrés) (Haiku) `tactical.ZonesDepuisLePort([]domain.ZoneNommee)` dans `internal/analysis/tactical`, avec son
       test ; remplace `zonesPures` (`service/tactical_service_lectures.go`, 6 appels) et
       `zonesPuresDuCatalogue` (`cmd/levelup/cmd_spawn_model_zones.go`). Garde-rail : test qui refuse une
       seconde projection de zones hors de ce paquet.
-- [ ] C.2 (Haiku) `internal/migration/psa_index_repro_msr_fixture_test.go:173` et
+- [x] C.2 (fait le 2026-11-17) (Haiku) `internal/migration/psa_index_repro_msr_fixture_test.go:173` et
       `psa_index_repro_msr_planprobe_test.go:34` : la mention de `Q24LUSRHistory` devient « instantané du
       2026-09-27 ; requête supprimée le 2026-11-17 ».
-- [ ] C.3 (Sonnet) Escouade : `paceMatch` (`service/teammates/teammates_squad_per_minute.go`) porte frags, morts
+- [x] C.3 (fait le 2026-11-17 : branche des coéquipiers ; témoins inchangés) (Sonnet) Escouade : `paceMatch` (`service/teammates/teammates_squad_per_minute.go`) porte frags, morts
       et assistances en pointeurs ; un compte inconnu sort le match du taux (numérateur et dénominateur), comme
       les dégâts. Test rouge puis vert : coéquipier aux frags inconnus. Les témoins de 0.2 ne bougent pas ; s'ils
       bougent, arrêt et retour au user.
-- [ ] C.4 (Haiku) `scripts/git-hooks/lefthook/go-vet.sh` : cibles `./internal/domain/... ./internal/analysis/...
+- [x] C.4 (fait le 2026-11-17 : preuve par faute glissée puis retirée) (Haiku) `scripts/git-hooks/lefthook/go-vet.sh` : cibles `./internal/domain/... ./internal/analysis/...
       ./internal/games/weapons/...`, sans `|| true` ; commentaires de `lefthook.yml` mis d'accord.
-- [ ] C.5 (Sonnet) `cmd/mapfond-build/cuisson.go` (`ecritSidecar`) : une dégradation ne porte plus de chemin
+- [x] C.5 (fait le 2026-11-17 : rempart côté LevelUp, garde-rail existant étendu) (Sonnet) `cmd/mapfond-build/cuisson.go` (`ecritSidecar`) : une dégradation ne porte plus de chemin
       absolu (nom du module seul) ; test. Les deux lignes de
       `data/titles/halo_infinite/reference/map_backgrounds/sgh_interlock.json` sont corrigées à la valeur que
       produit le rempart. Garde-rail : aucun sidecar publié ne contient de chemin absolu.
-- [ ] C.6 (Haiku) `config/replay_corpus.toml` : le témoin `f75e7053` est remplacé par `0a247154`, raison
+- [x] C.6 (fait le 2026-11-17) (Haiku) `config/replay_corpus.toml` : le témoin `f75e7053` est remplacé par `0a247154`, raison
       réécrite. La ligne fausse de `.ai/REGISTRE_REPORTS.md` sur ce témoin est corrigée par le pilote (E.5).
-- [ ] C.7 (Haiku) `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` (en anglais seulement) : 500 itérations
+- [x] C.7 (fait le 2026-11-17) (Haiku) `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` (en anglais seulement) : 500 itérations
       (lignes 81 et 139) ; limites 4, 5 et 6 marquées livrées avec leurs fichiers ; limite 7 vérifiée puis
       corrigée ou retirée ; cinq liens vers `.ai/archive/V7/LUSR%20v2/`. Amendement daté. Aucune formule touchée.
-- [ ] C.8 (Haiku) Thunderhead : le commentaire de `cmd/mapfond-build/sans_plan_test.go:63`,
+- [x] C.8 (fait le 2026-11-17) (Haiku) Thunderhead : le commentaire de `cmd/mapfond-build/sans_plan_test.go:63`,
       `map_fond_reglages.json` et `REGISTRE_CARTES.md` disent « la carte ne publie aucun maillage (vérifié le
       2026-11-17) » et ne citent plus le seuil de 1 000 objets pour ces deux cartes.
 - **Gate C** : gate commun Go sur `./internal/analysis/tactical/... ./internal/service/... ./internal/migration/...
@@ -238,7 +238,7 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Piste D — web
 
-- [ ] D.1 (Sonnet, trois lots sans fichier commun) Migration vers `useDismissable`
+- [x] D.1 (fait le 2026-11-17 : 12 écrans, 12 commits) (Sonnet, trois lots sans fichier commun) Migration vers `useDismissable`
       (`apps/web/src/lib/hooks/useDismissable.ts`), un test de fermeture par écran :
       lot 1 `media/MediaAudioConfigButton.tsx`, `media/CoverFlowModal.tsx` (le fichier ne grossit pas),
       `media/MediaToolbar.tsx` ;
@@ -247,18 +247,18 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
       `ascension/campaign/StartCampaignModal.tsx` (la condition « envoi en cours » passe dans `onClose`) ;
       lot 3 `_shared/ExperienceDropdown.tsx`, `_shared/ViewDropdown.tsx`, `explorer/GamertagSearchInput.tsx`
       (`open` = liste visible), `notifications/NotificationsBell.tsx`. Les flèches gardent leur écouteur.
-- [ ] D.2 (pilote, après D.1) `dismissableLayers.guard.test.ts` : le plafond chiffré devient une liste
+- [x] D.2 (fait le 2026-11-17 : 5 exemptions datées) (pilote, après D.1) `dismissableLayers.guard.test.ts` : le plafond chiffré devient une liste
       d'exemptions datée de 5 fichiers (`AssetDockedPanel.tsx`, `TacticalAnalysisView.tsx`,
       `TacticalPlanTueurs.tsx`, `SquadFocusStrip.tsx`, `useSquadPresets.tsx`), chacune avec sa raison ; test de
       date.
-- [ ] D.3 (Haiku) Les 19 marqueurs `color-allow` inertes sont retirés (la raison reste en commentaire, sans le
+- [x] D.3 (fait le 2026-11-17 : 110 marqueurs puis 91) (Haiku) Les 19 marqueurs `color-allow` inertes sont retirés (la raison reste en commentaire, sans le
       mot du marqueur) ; liste fermée dans `.ai/annexes_backlog_1117/marqueurs_inertes.md`, écrite en 0.3.
-- [ ] D.4 (Haiku) Commentaires faux sur le sprint : `apps/go-api/internal/domain/replaydoc/inventory.go:96-103`
+- [x] D.4 (fait le 2026-11-17) (Haiku) Commentaires faux sur le sprint : `apps/go-api/internal/domain/replaydoc/inventory.go:96-103`
       et `apps/web/src/features/match-replay/model/replayContract.test.ts:131-133`.
-- [ ] D.5 (Sonnet, après D.3) `tools/lint-no-hardcoded-colors.lib.mjs` : `shadow`, `from`, `via`, `to` entrent
+- [x] D.5 (fait le 2026-11-17) (Sonnet, après D.3) `tools/lint-no-hardcoded-colors.lib.mjs` : `shadow`, `from`, `via`, `to` entrent
       dans les préfixes balayés ; genre neuf « marqueur inerte » au plafond 0, câblé dans le script ; tests dans
       `lintNoHardcodedColors.guard.test.ts`, dont la preuve qu'un marqueur inerte est refusé.
-- [ ] D.6 (Haiku) Vérification : `palmares/rarity.ts` reste le seul fichier à dégradés nommés, par sa ligne de la
+- [x] D.6 (fait le 2026-11-17 : vérifié, aucun commit) (Haiku) Vérification : `palmares/rarity.ts` reste le seul fichier à dégradés nommés, par sa ligne de la
       liste des fichiers autorisés.
 - **Gate D** : gate commun web ; `npx vitest run src/features/dismissableLayers.guard.test.ts
   src/lib/accessibility` vert ; la mesure de l'entrée du backlog rend 5 fichiers.
@@ -277,10 +277,10 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 - [x] E.4 (fait le 2026-11-17 : T.0 et T.3 amendés) Plan de refonte, T.0 et T.3 : les mesures se font par build du jeu, après la régénération ; la somme
       des points par action ne s'affiche que si elle égale le score personnel de l'API, en plus du verdict du
       document.
-- [ ] E.5 `.ai/REGISTRE_REPORTS.md` : contrôle après la régénération (part des matchs avec rejeu dont le coup
+- [x] E.5 (fait le 2026-11-17 : section « Reports du plan du backlog du 2026-11-17 », deux lignes corrigées) `.ai/REGISTRE_REPORTS.md` : contrôle après la régénération (part des matchs avec rejeu dont le coup
       d'envoi vient du film, attendue proche de 100 %, sinon diagnostic du report avant tout code) ; ligne
       Thunderhead corrigée ; ligne du témoin `f75e7053` corrigée ; les fichiers tactiques s'écrivent compressés.
-- [ ] E.6 `.ai/BACKLOG.md` (Haiku, texte dicté par le pilote) : entrées closes (maillage Forge, Thunderhead,
+- [x] E.6 (fait le 2026-11-17 : 13 entrées closes, 8 reformulées, 14 neuves) `.ai/BACKLOG.md` (Haiku, texte dicté par le pilote) : entrées closes (maillage Forge, Thunderhead,
       `flagReturnS`, postures, doublon des tests, et celles des pistes A à D, F, G une fois fusionnées) ;
       entrées reformulées selon la section 1 (tirs lus, arme d'une touche, écarts du gate, ordre des collines,
       marqueurs et lettres des zones, temps forts « mode », commandes et gestes, test instable, médailles) ;
@@ -314,41 +314,41 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
       pose du bit « film absent » sur un film introuvable par le persister existant, états servis (générable, en
       file, en cours, échec, film indisponible, non pris en charge). Vérification sur UN match du poste, avec
       le go du user : le manifeste du film se résout avec ce jeton. Relue par le pilote avant G.1.
-- [ ] G.1 (Sonnet) Go : port, service sous `internal/service/` (contrôles : capacité `film.replay_artifact`,
+- [x] G.1 (fait le 2026-11-17 : 9 commits ; jeton par `tokencache.ResolveFreshPlayerTokens`) (Sonnet) Go : port, service sous `internal/service/` (contrôles : capacité `film.replay_artifact`,
       mode géré, film absent, plafond de demandes en vol), handler `POST
       /players/{player_slug}/matches/{match_id}/replay/generate` (202, sous `RequirePlayerOwnership`), capacité
       `can_generate_replays` du bootstrap dérivée du placement et de la capacité du titre (ADR 0044). Un titre
       sans la capacité répond 503 propre (`ErrCapabilityNotSupported`). Journal `slog` à chaque refus et à chaque
       échec. Tests : service sur faux ports (chaque refus, doublon idempotent), handler `httptest` (droits,
       capacité absente), file (ordre, reprise, film introuvable).
-- [ ] G.2 (Sonnet) Web : bouton « Générer le rejeu » dans l'état vide de `ReplayPage` et dans l'en-tête de la
+- [x] G.2 (fait le 2026-11-17 : 4 commits) (Sonnet) Web : bouton « Générer le rejeu » dans l'état vide de `ReplayPage` et dans l'en-tête de la
       page du match quand le rejeu manque et que la capacité est vraie ; hook dans la feature, clés dans
       `lib/query/keys.ts` ; états repris de l'indicateur « analyse en cours » ; aucun bouton quand l'action est
       impossible ; textes fr et en ; tokens de couleur uniquement ; commentaire périmé de `MatchHeader.replayLink.tsx` corrigé. Tests du hook
       et du rendu par état.
-- [ ] G.3 (pilote) `openapi.yaml`, `make generate-types`, instantané de la surface du contrat ; notes de version
+- [x] G.3 (fait le 2026-11-17 : contrat régénéré (`can_generate_replays`), changelog et notes de version FR et EN) (pilote) `openapi.yaml`, `make generate-types`, instantané de la surface du contrat ; notes de version
       de la 8.3.0 et `docs/CHANGELOG.md` FR et EN ; `docs/COMMANDS.md` si une commande change.
-- [ ] G.4 (pilote, avec le go du user) Un match du poste généré de bout en bout par la route, serveur de
+- [!] G.4 (reporté APRÈS la fusion par décision du user du 2026-11-17, « je cliquerai après la fusion » : lancer un second serveur sur les données réelles depuis un dossier de travail sans les fichiers locaux n'est pas souhaitable ; ligne posée dans l'artefact des vérifications) (pilote, avec le go du user) Un match du poste généré de bout en bout par la route, serveur de
       développement ; une ligne dans l'artefact des vérifications pour le contrôle à l'écran du user.
 - **Gate G** : gate commun Go sur les paquets touchés, `go test ./internal/archlint/...` ; gate commun web ; une
   relecture adversariale dédiée (skill `adversarial-review`, lot à risque : jetons et file), P0 et P1 corrigés.
 
 ## Étape I — intégration (pilote)
 
-- [ ] I.1 Fusion des sous-branches dans `chore/830-backlog-1117` ; `openapi.yaml` et `make generate-types` une
+- [x] I.1 (fait le 2026-11-17 : 49 commits intégrés, puis 8 de corrections) Fusion des sous-branches dans `chore/830-backlog-1117` ; `openapi.yaml` et `make generate-types` une
       seule fois.
-- [ ] I.2 Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
-- [ ] I.3 `go run ./cmd/replay-corpus-gate` sur le seul témoin `0a247154`, avec le go du user (une cuisson).
-- [ ] I.4 `.ai/thought_log.md`, registre des reports, backlog (E.6) ; `docs/CHANGELOG.md` et notes de version
+- [x] I.2 (fait le 2026-11-17 : comparaison au journal de clôture) Témoins APRÈS comparés à 0.2 : écarts listés, chacun rattaché à un item ou déclaré défaut.
+- [x] I.3 (fait le 2026-11-17 : accord du user du 2026-11-17 : aucun gain, aucune perte, aucun changement, cuisson de 48 s) `go run ./cmd/replay-corpus-gate` sur le seul témoin `0a247154`, avec le go du user (une cuisson).
+- [x] I.4 (fait le 2026-11-17) `.ai/thought_log.md`, registre des reports, backlog (E.6) ; `docs/CHANGELOG.md` et notes de version
       de la 8.3.0, FR et EN, pour C.3 (taux par minute de l'Escouade) ; caches dédiés rendus.
 - **Gate I** : `make gate-push` ; `cd apps/go-api && go test -tags=integration ./internal/sync/... ./internal/platform/duckdb/...` ;
   `make go-api-lint` ; `cd apps/web && npx vitest run` complet.
 
 ## Étape R — relecture et clôture
 
-- [ ] R.1 Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) ; P0 et P1
+- [x] R.1 (fait le 2026-11-17 : deux relectures : générale (Fable) 0 P0, 1 P1, 11 P2 ; ciblée sur les jetons et la file (Sonnet) 0 P0, 0 P1, 9 P2) Une ronde de relecture adversariale du diff complet (skill `adversarial-review`, Fable) ; P0 et P1
       corrigés, P2 au backlog seulement s'ils valent le coup.
-- [ ] R.2 Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0`, CI
+- [x] R.2 (fait le 2026-11-17 : 9 corrections, une ronde ; le reste au backlog) Tous les items statués ; outillage de mesure retiré ou documenté ; fusion dans `release/v8.3.0`, CI
       verte. La régénération du parc reste le geste du user, après cette fusion.
 
 ## Journal d'exécution
@@ -375,6 +375,10 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
   Reste, avant G.1 : la vérification sur UN match (paragraphe 12 de la conception), avec l'accord du user, serveur et application arrêtés.
 
 - 2026-11-17 — G.0, vérification sur un match, avec l'accord du user (« go, tout est arrêté, cherche le match toi-même ») : aucun processus LevelUp ni port d'écoute relevé avant l'essai ; match sans rejeu du 2026-10-30 (court `33ef54a9`) ; la liste des morceaux du film se résout avec le jeton du joueur : 25 morceaux (1 de type 1, 23 de type 2, 1 de type 3), jeton renouvelé et rangé par le chemin normal ; programme jetable supprimé, arbre propre. À noter pour G.1 : dans `cfg.LoadPlayers`, le slug du profil est le pseudo avec sa casse (`JGtm`), pas sa forme en minuscules.
+
+- 2026-11-17 — clôture. Pistes A, B, C, D et G intégrées dans `chore/830-backlog-1117` ; piste F reportée (décision du user). Contrôles : style Go sur le code neuf 0 remarque ; comparaison de 20 films à leurs références, 20 identiques (lancée avec les données du dépôt principal : un dossier de travail sans données rend 20 « impossible à comparer ») ; types et style du web verts ; base de tests complète, 20 735 tests, aucun échec ; après les corrections : compilation, vet, tests des paquets corrigés, couleurs et imports verts, tous les tests du web verts sauf le plafond du garde-rail de taille des fonctions.
+- 2026-11-17 — erreur du pilote : la CI de `release/v8.3.0` était rouge depuis la fusion de l'extraction du moteur 2D (`4f6f249458`), plafond du garde-rail de taille des fonctions non abaissé (251, compte 250). Le gate de l'extraction ne lançait que les tests du rejeu, et la CI n'avait pas été relue après la poussée. Corrigé par `3cb664a1bf`. Leçon : tout gate web d'un lot lance `npx vitest run` complet, et la CI se lit après chaque poussée sur la branche de version.
+- 2026-11-17 — relectures : voir R.1 ; constats non retenus portés au backlog (entrées du 2026-11-17).
 
 ## Découvertes (consignées, non traitées)
 
