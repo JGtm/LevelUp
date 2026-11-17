@@ -175,7 +175,7 @@ Hors périmètre de ce plan : sons extraits de l'installation (annonces, recharg
     brique sont délégués à sa session. Amendement de l'ADR 0043 (cinquième brique) et ligne de la table
     `archlint/briques_imports_test.go`.
 
-- **D-13 — repère « rejeu 3D » dans les listes.** **Demandé par le user (2026-11-15).** Les surfaces qui
+- **D-13 — repère « rejeu 3D » dans les listes.** **Demandé par le user (2026-11-15).** **Règle validée par le user le 2026-11-17 (« règle du repère ok ») ; dessin : variante C, couleur ambre.** Les surfaces qui
   disent ou filtrent « rejeu disponible » ont une variante « rejeu 3D disponible » : filtre de l'Explorer,
   tuiles de match, tableaux, page match. Proposition, **à valider** :
   - un match a un rejeu 3D quand son rejeu 2D existe ET que l'export sait construire sa carte depuis le jeu

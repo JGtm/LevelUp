@@ -215,3 +215,22 @@ Réponses à des questions fermées, après l'audit 0.3. Elles prévalent sur le
 | Réf | La maquette montre | Ce qui se fait | Décision |
 |---|---|---|---|
 | V17 | A-14, K-9, J-7 : instant, tueur, arme, victime, lieu | Instant, lieu, tueur, arme, victime, partout (colonne, plan, pied de fiche) ; le lieu reste celui de la victime | user, 2026-11-17 : « chrono - zone de callout - tueur - arme - victime » |
+
+## Tableau M — fiche enrichie (validé par le user le 2026-11-17)
+
+Fichier `FicheInstant.dc.html`. Fait foi pour le contenu de la fiche, en colonne (J) et en fenêtre (L).
+
+| Réf | Élément | Relevé | Item |
+|---|---|---|---|
+| M-1 | État à l'instant | titre et instant lu ; bouclier et santé (barre et valeur) ; arme en main nommée avec munitions ; réserve grisée ; grenades ; équipement porté avec sa charge | D.0 |
+| M-2 | Depuis le début du match | lignes libellé à gauche, valeur à droite : FDA, série en cours, meilleure série, tirs à la tête, éliminations parfaites, réapparitions, vie en cours, durée moyenne d'une vie, boucliers perdus, score et rang (« 800 · 2e sur 8 ») | T.1, T.3 |
+| M-3 | Éliminations par arme | un tableau : catégorie en gras puis ses armes en retrait ; colonnes « À l'instant », « Part », « Match » ; catégorie vide absente ; catégories : autres armes, armes lourdes, grenade, mêlée | T.2 |
+| M-4 | Tirs et dégâts | capsule « estimation » à côté du titre ; précision avec tirs touchés sur tirés ; dégâts infligés et subis ; par arme : tirs et dégâts ; section absente pour un joueur à lecture partielle | T.3 |
+| M-5 | Grenades lancées | une ligne par type | T.4 |
+| M-6 | Ramassages | armes, grenades | T.4 |
+| M-7 | Équipement | tableau par famille : pris, utilisé, perdu | T.8 |
+| M-8 | Médailles | comme sur les tuiles de match : icône de 32 px, nom dessous sur une ligne tronquée, « ×n » ; rangée centrée | T.6 |
+| M-9 | Totaux du match | séparé par un filet ; précision, dégâts, score, éliminations à la tête ; pas d'armes | D.1 |
+| M-10 | Gestes | séparé par un filet ; titre et instant lu ; sprint (temps cumulé) ; sauts avec la capsule « estimation » | T.7 |
+| M-11 | Lecture partielle | ni score, ni tirs et dégâts ; aucun texte de remplacement | T.3 |
+| M-12 | Pied de la colonne | « Éliminations » et « Fil complet » ; 2 lignes dans l'ordre instant, lieu, tueur, arme, victime | D.2 |

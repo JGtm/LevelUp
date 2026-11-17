@@ -301,6 +301,14 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **G0-11 — « Totaux du match » et « Répartition des éliminations » se ressemblent trop** : deux formes dessinées dans la version 2 du tableau M (une barre empilée et sa légende, totaux en liste sans barres ; ou un seul tableau par arme, l'instant et le match côte à côte). Le user choisit.
 - Reste aussi à choisir sur M : « armes de puissance » (mot actuel de la fiche, dessiné) ou « arme lourde » (D-20).
 
+### Validation de la maquette M par le user (2026-11-17, « Forme 2, Gestes ok, armes de lourdes »)
+
+- **Tableau M validé** (`FicheInstant.dc.html`) : il fait foi pour le contenu de la fiche, en colonne (J) et en fenêtre (L). L'item 0.4 est clos.
+- **Forme 2 retenue** : un seul tableau « Éliminations par arme », par catégorie puis par arme, avec trois colonnes : à l'instant, part, match. « Totaux du match » ne répète plus les armes (précision, dégâts, score, éliminations à la tête). G0-11 clos.
+- **« Gestes »** remplace « En passant » (D-24, T.5, T.7). G0-10 clos.
+- **« Armes lourdes »** est le nom de la catégorie (D-20) ; le libellé « armes de puissance » de la fiche actuelle est remplacé dans la fiche.
+- Ordre des sections de la fiche, de haut en bas : état à l'instant ; depuis le début du match (compteurs, score et rang) ; éliminations par arme ; tirs et dégâts (estimation) ; grenades lancées ; ramassages (armes, grenades) ; équipement (pris, utilisé, perdu par famille) ; médailles ; totaux du match ; gestes ; en colonne seulement, les deux dernières lignes du fil.
+
 ### Tranché par le pilote sur la règle « la maquette fait foi » (dit au user le 2026-11-17)
 
 - Fil posé sur le plan : éliminations seules (D-4 et K-9), sans le filtre du Standard ; il ne capte pas le
@@ -458,7 +466,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       fiche compacte actuelle à la tuile de K (K-3, K-4), dit si le document porte l'objectif du match (K-7),
       vérifie A-2 et L-4, propose une forme pour chacun des 10 éléments sans dessin, et dit où extraire les
       dictionnaires `i18n/fr.ts` et `i18n/en.ts`.
-- [ ] 0.4 (ajouté le 2026-11-17, plan maître DM-3, réponse du user : « Oui, une maquette ») Maquette de la
+- [x] 0.4 (validé par le user le 2026-11-17, forme 2 ; voir section 1 quater) (ajouté le 2026-11-17, plan maître DM-3, réponse du user : « Oui, une maquette ») Maquette de la
       fiche enrichie : un tableau de plus sur le canevas, la fiche J et la fenêtre L avec le contenu du lot T
       (compteurs, répartition des éliminations, estimations, grenades et ramassages, médailles, « En passant »).
       Validé par le user avant T.5 ; ses lignes entrent alors dans la grille.
