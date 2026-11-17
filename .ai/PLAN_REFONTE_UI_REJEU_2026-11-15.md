@@ -557,7 +557,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 5 bis. Lot S — le Standard selon le tableau A
 
-- [ ] S.1 `ReplayStandardFrame.tsx` : contenu borné et centré (constante nommée de largeur, D-11) ; en-tête en
+- [x] S.1 (fait le 2026-11-17 : page bornée à 1200 px, en-tête de 64 px en trois cellules, score de 440 px au centre par `COTES_BANDEAU_SCORE` (emplacements `entete`, `rangee`, `scene`) ; le score reste sur la toile en Cinéma et en Plein cadre ; `ReplayMatchRecall`, sans appelant, supprimé avec sa dérogation d'import ; reste le liseré de bord des barres de score, hérité de la maquette A, à montrer au user) `ReplayStandardFrame.tsx` : contenu borné et centré (constante nommée de largeur, D-11) ; en-tête en
       trois cellules : retour et titre du match à gauche, `ReplayScoreBanner` resserré au centre (environ 440 px,
       manches et barre de prise de zone comprises, sans changer sa lecture `readScoreBanner`), lien vers la fiche
       du match à droite. Le bandeau de score ne coiffe plus le terrain en Standard. Tests : en-tête rendu, score
@@ -689,7 +689,7 @@ les localise, rien n'est recalculé à côté.
 
 ## 8. Lot E — la barre de lecture compacte
 
-- [ ] E.1 Slots de `ReplayCanvas.tsx` : `transport` (élément fourni par le cadre : la barre actuelle en Standard,
+- [x] E.1 (fait le 2026-11-17 : `ui/replayTransportCommands.ts` (objet de commandes typé), emplacements `transport` et `blockOverlays` en fonctions de rendu, `ui/frames/replayFrameSlots.tsx` ; le zoom flottant vit dans `blockOverlays` ; `ReplayCanvas.tsx` 644 -> 642 lignes ; fixations et témoin identiques) Slots de `ReplayCanvas.tsx` : `transport` (élément fourni par le cadre : la barre actuelle en Standard,
       la compacte ailleurs) et `blockOverlays` (posés dans le bloc, à côté de la légende et du zoom). Le fichier
       ne grossit pas : la différence nette de lignes est nulle ou négative (le choix de barre et de zoom sort du
       fichier). Zone de lecture du Standard identique aux témoins.
