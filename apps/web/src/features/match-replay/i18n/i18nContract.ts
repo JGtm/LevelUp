@@ -306,7 +306,7 @@ export interface ReplayText {
   /** Dit pourquoi la vue est « Personnalisé » : un calque a été basculé à la main. */
   viewCustomNote: string
   /**
-   * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture, touche F) : un bouton à état, comme
+   * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture : le plein écran du système ; la touche F ouvre le Plein cadre) : un bouton à état, comme
    * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le
    * raccourci entre parenthèses, comme les autres commandes de la barre.
    */

@@ -483,11 +483,11 @@ describe('ReplayTransport — lecture automatique', () => {
  * bascule pas tant qu'un export tient la toile (cf. useReplayFullscreen).
  */
 describe('ReplayTransport — plein écran', () => {
-  it('fermé : « Plein écran (F) », et le clic bascule le mode', () => {
+  it('fermé : « Plein écran », et le clic bascule le mode', () => {
     const toggle = vi.fn()
     renderTransport({ fullscreen: { active: false, disabled: false, toggle } })
     const btn = screen.getByRole('button', { name: 'Plein écran' })
-    expect(btn).toHaveAttribute('title', 'Plein écran (F)')
+    expect(btn).toHaveAttribute('title', 'Plein écran')
     fireEvent.click(btn)
     expect(toggle).toHaveBeenCalledTimes(1)
   })
@@ -496,7 +496,7 @@ describe('ReplayTransport — plein écran', () => {
     renderTransport({ fullscreen: { active: true, disabled: false, toggle: vi.fn() } })
     expect(screen.getByRole('button', { name: 'Quitter le plein écran' })).toHaveAttribute(
       'title',
-      'Quitter le plein écran (F)',
+      'Quitter le plein écran',
     )
   })
 

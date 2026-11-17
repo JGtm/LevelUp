@@ -267,7 +267,7 @@ function FullscreenButton({ fullscreen, locale }: { fullscreen: ReplayFullscreen
       onClick={fullscreen.toggle}
       disabled={fullscreen.disabled}
       aria-label={label}
-      title={`${label} (F)`}
+      title={label}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
         fullscreen.disabled
           ? 'cursor-not-allowed text-muted-foreground opacity-40'
