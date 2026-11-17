@@ -107,3 +107,10 @@ func (e *ReplayGenerationNotSupportedError) Error() string {
 func (e *ReplayGenerationNotSupportedError) Is(target error) bool {
 	return target == ErrReplayGenerationNotSupported
 }
+
+// ReplayGenerationRequestResponse : la réponse du POST de génération : l'état et si la demande vient d'être créée
+// (faux : elle était déjà en file ou en cours).
+type ReplayGenerationRequestResponse struct {
+	Created bool                   `json:"created" doc:"Vrai si la demande vient d'être mise en file ; faux si elle était déjà en file, en cours, ou si le rejeu est déjà rangé."`
+	Status  ReplayGenerationStatus `json:"status" doc:"État de la génération après la demande."`
+}

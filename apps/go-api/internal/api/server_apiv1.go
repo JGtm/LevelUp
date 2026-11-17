@@ -889,6 +889,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// seule page de rejeu, il vit sous ses gardes — même handler que la vue match, dont
 			// il partage le service et la transformation des médias.
 			mv.MountReplayContext(r.With(participated), playerOpt)
+			// La GENERATION a la demande du rejeu d un match qui n en a pas (bureau et poste de developpement) : sous les
+			// memes gardes, et seulement sous la capacite GenerateReplays.
+			mountReplayGeneration(r, cfg, reg.ReplayGeneration, participated, playerOpt)
 			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
 			// les MEMES gardes que le rejeu, pour qu elle soit servie dans les memes conditions.
 			handlers.NewTacticalSequenceHandler(reg.Tactical).Mount(r, playerOpt)
