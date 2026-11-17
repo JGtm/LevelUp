@@ -191,10 +191,19 @@ interface ReplayPlayerCardProps {
    * est ouvert. Absent = fiche inerte (page sans panneau).
    */
   panel?: { selected: boolean; onSelect: () => void }
+  /** Vrai = le joueur suivi (le joueur regardé par la page) : la bordure prend la couleur de suivi. */
+  tracked?: boolean
+}
+
+/** L'habit d'une fiche vivante ou morte ; le joueur suivi y prend la bordure à la couleur de suivi. */
+function chromeOf(alive: boolean, tracked: boolean): CSSProperties {
+  const chrome = cardChrome(alive)
+  return tracked ? { ...chrome, borderColor: 'var(--ring)' } : chrome
 }
 
 export function ReplayPlayerCard({
   player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene, gabarit, panel,
+  tracked = false,
 }: ReplayPlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   const { live, state, name, equipped, filmIndex, zones, objective, fx } = playerCardReadings({
@@ -219,7 +228,7 @@ export function ReplayPlayerCard({
     // ne le lit pas.
     <TileFrame
       gabarit={gabarit}
-      chrome={cardChrome(state.alive)}
+      chrome={chromeOf(state.alive, tracked)}
       title={fx.title}
       press={panel ? { label: t.playerPanel.cardOpenFmt(name), selected: panel.selected, onActivate: panel.onSelect } : undefined}
       under={

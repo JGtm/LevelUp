@@ -4,7 +4,16 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { grandeEquipe, largeurRequiseRangee, rowFits } from './rowLayout'
+import {
+  colonnesGrandeEquipe,
+  dispositionEquipes,
+  emplacementScoreDe,
+  grandeEquipe,
+  largeurRequiseRangee,
+  largeurRequiseRangeeGrandeEquipe,
+  rowFits,
+  rowFitsGrandeEquipe,
+} from './rowLayout'
 
 const DEUX_CAMPS = 2
 const LARGEUR_1440 = 1440
@@ -87,5 +96,87 @@ describe('grandeEquipe', () => {
 
   it('le seuil est celui de la rangée : au-delà, elle ne se rend plus', () => {
     expect(rowFits({ camps: DEUX_CAMPS, placesParCamp: [6, 6], largeurCorps: LARGEUR_4000 })).toBe(false)
+  })
+})
+
+describe('largeurRequiseRangeeGrandeEquipe', () => {
+  it('6 emplacements par camp de 80 px demandent 1350 px : 2 × 6 × (80 + 6) + 270 + 2 × 24', () => {
+    expect(largeurRequiseRangeeGrandeEquipe()).toBe(1350)
+  })
+})
+
+describe('rowFitsGrandeEquipe', () => {
+  it('12 contre 12 tient à 1440 px (demande 1350 px)', () => {
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [12, 12], largeurCorps: LARGEUR_1440 })).toBe(true)
+  })
+
+  it('cas limite : 1350 px tient, 1349 px ne tient pas', () => {
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [12, 12], largeurCorps: 1350 })).toBe(true)
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [12, 12], largeurCorps: 1349 })).toBe(false)
+  })
+
+  it('la largeur demandée est celle du pire cas : 7 contre 7 demande autant que 12 contre 12', () => {
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [7, 7], largeurCorps: 1349 })).toBe(false)
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [7, 7], largeurCorps: 1350 })).toBe(true)
+  })
+
+  it('un camp de 13 places ne tient jamais, même à 4000 px', () => {
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [13, 12], largeurCorps: LARGEUR_4000 })).toBe(false)
+  })
+
+  it('ce n’est pas une Grande équipe (5 par camp) : refusée, la règle ordinaire la juge', () => {
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [5, 5], largeurCorps: LARGEUR_4000 })).toBe(false)
+  })
+
+  it('chacun pour soi et une liste de places qui ne compte pas deux camps sont refusés', () => {
+    expect(rowFitsGrandeEquipe({ camps: 8, placesParCamp: [8, 8], largeurCorps: LARGEUR_4000 })).toBe(false)
+    expect(rowFitsGrandeEquipe({ camps: 1, placesParCamp: [12], largeurCorps: LARGEUR_4000 })).toBe(false)
+    expect(rowFitsGrandeEquipe({ camps: DEUX_CAMPS, placesParCamp: [12], largeurCorps: LARGEUR_4000 })).toBe(false)
+  })
+})
+
+describe('colonnesGrandeEquipe', () => {
+  it('un emplacement par deux places du plus grand camp, au moins un', () => {
+    expect(colonnesGrandeEquipe([12, 12])).toBe(6)
+    expect(colonnesGrandeEquipe([7, 7])).toBe(4)
+    expect(colonnesGrandeEquipe([7, 3])).toBe(4)
+    expect(colonnesGrandeEquipe([])).toBe(1)
+  })
+})
+
+describe('dispositionEquipes', () => {
+  it('4 contre 4 : rangée à 1440 px, colonne à 1280 px', () => {
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [4, 4], largeurCorps: LARGEUR_1440 })).toBe('rangee')
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [4, 4], largeurCorps: LARGEUR_1280 })).toBe('colonne')
+  })
+
+  it('12 contre 12 : rangée de Grande équipe à 1440 px, colonne à 1300 px', () => {
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [12, 12], largeurCorps: LARGEUR_1440 })).toBe('rangee-grande-equipe')
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [12, 12], largeurCorps: 1300 })).toBe('colonne')
+  })
+
+  it('13 places dans un camp, chacun pour soi, un seul camp, aucune largeur mesurée : la colonne', () => {
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [13, 13], largeurCorps: LARGEUR_4000 })).toBe('colonne')
+    expect(dispositionEquipes({ camps: 8, placesParCamp: [1, 1, 1, 1, 1, 1, 1, 1], largeurCorps: LARGEUR_4000 })).toBe('colonne')
+    expect(dispositionEquipes({ camps: 1, placesParCamp: [8], largeurCorps: LARGEUR_4000 })).toBe('colonne')
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [4, 4], largeurCorps: 0 })).toBe('colonne')
+  })
+
+  it('5 contre 5 trop étroit pour la rangée ordinaire : la colonne, jamais la forme Grande équipe', () => {
+    expect(dispositionEquipes({ camps: DEUX_CAMPS, placesParCamp: [5, 5], largeurCorps: LARGEUR_1440 })).toBe('colonne')
+  })
+})
+
+describe('emplacementScoreDe', () => {
+  it('le Standard ne pose le score ni sur la toile ni en rangée', () => {
+    for (const d of ['rangee', 'rangee-grande-equipe', 'colonne'] as const) expect(emplacementScoreDe('standard', d)).toBeNull()
+  })
+
+  it('Cinéma et Plein cadre : le score quitte la toile quand la rangée est posée, y reste dans le repli', () => {
+    for (const frame of ['cinema', 'plein-cadre'] as const) {
+      expect(emplacementScoreDe(frame, 'rangee')).toBeNull()
+      expect(emplacementScoreDe(frame, 'rangee-grande-equipe')).toBeNull()
+      expect(emplacementScoreDe(frame, 'colonne')).toBe('scene')
+    }
   })
 })

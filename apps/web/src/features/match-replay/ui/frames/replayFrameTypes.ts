@@ -9,7 +9,7 @@
  *
  * Un cadre choisit la DISPOSITION de ces deux paquets ; il n'en lit rien dans un store ni une requête.
  */
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import type { MatchViewHeader } from '@/lib/api/types'
@@ -82,4 +82,6 @@ export interface ReplayFrameZoneContent {
   tete: ReactNode
   rangee: ReactNode
   colonne: ReactNode
+  /** Mesure du corps du cadre (`useCardRowLayout`) : posée sur le corps du gabarit ; absente = rien n'est mesuré. */
+  bodyRef?: Ref<HTMLDivElement>
 }

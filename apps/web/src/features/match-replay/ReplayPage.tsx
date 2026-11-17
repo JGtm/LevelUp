@@ -25,6 +25,7 @@ import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { buildMapBackgroundLayer } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
 import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
+import { useCardRowLayout } from '@/features/match-replay/hooks/useCardRowLayout'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
@@ -211,7 +212,8 @@ export function ReplayPage() {
         }
       : null
   const frame = frameControl.frame
-  const zones = frame === 'standard' ? standardFrameZones(chrome, view) : cinemaFrameZones(frame, chrome, view)
+  const rowLayout = useCardRowLayout(frame, view)
+  const zones = frame === 'standard' ? standardFrameZones(chrome, view) : cinemaFrameZones(frame, chrome, view, rowLayout)
   return (
     <ReplayFrameLayout
       frame={frame}
@@ -226,12 +228,13 @@ export function ReplayPage() {
           locale={locale}
         />
       }
-      // Le Standard porte le score dans son en-tête ; Cinéma et Plein cadre le gardent sur la toile.
+      // Le score est dans l'en-tête du Standard, ou au centre de la rangée des équipes quand elle est posée ; il
+      // ne reste sur la toile que si les équipes sont dans la colonne.
       scene={
         view && (
           <ReplayStage
             view={view}
-            scorePlacement={frame === 'standard' ? null : 'scene'}
+            scorePlacement={rowLayout.scorePlacement}
             slots={canvasSlotsOf(frame)}
           />
         )

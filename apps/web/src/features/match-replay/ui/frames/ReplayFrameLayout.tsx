@@ -22,7 +22,7 @@
  * l'application ; le Standard est de plus une page bornée et centrée (`standardPage`), son en-tête et son
  * corps dans la même boîte.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
 
 import { REPLAY_FULLSCREEN_FRAME } from '../../hooks/useReplayFullscreen'
 import { COTES_COLONNE_STANDARD } from '../../model/cotesStandard'
@@ -37,6 +37,8 @@ export interface ReplayFrameLayoutProps {
   /** Absente tant que le rejeu n'est pas prêt : ni la grille ni la colonne ne se montent alors. */
   scene: ReactNode
   colonne: ReactNode
+  /** Le corps du cadre, quand le cadre le mesure (la rangée des équipes dépend de sa largeur). */
+  bodyRef?: Ref<HTMLDivElement>
 }
 
 /** Les classes de chaque zone par cadre : la table est fermée, un cadre ajouté la complète à la compilation. */
@@ -72,13 +74,13 @@ const GRID_BY_FRAME: Record<ReplayFrame, { className: string; style?: CSSPropert
   'plein-cadre': { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
 }
 
-export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne }: ReplayFrameLayoutProps) {
+export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne, bodyRef }: ReplayFrameLayoutProps) {
   const classes = FRAME_CLASSES[frame]
   const grid = GRID_BY_FRAME[frame]
   return (
     <div className={classes.root} data-replay-frame={frame}>
       {tete}
-      <div className={classes.body} style={classes.bodyStyle} data-replay-body={frame}>
+      <div ref={bodyRef} className={classes.body} style={classes.bodyStyle} data-replay-body={frame}>
         {avis}
         {rangee}
         {scene != null && (

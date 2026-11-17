@@ -151,6 +151,24 @@ export const COTES_RANGEE = Object.freeze({
 } as const)
 
 /**
+ * LES COTES DE LA RANGÉE EN GRANDE ÉQUIPE : par camp, des EMPLACEMENTS de deux fiches compactes empilées
+ * (`ReplayCompactCard`, forme `'stacked'`) au lieu d'une fiche par place. `emplacementsParCamp` est le
+ * nombre d'emplacements que la règle de tenue (`model/rowLayout.ts`) compte par camp, `fichesParEmplacement`
+ * le nombre de fiches empilées dans chacun : un camp se range donc jusqu'à leur produit, au-delà la rangée
+ * cède la place à la colonne. `ficheMinW` est le MINIMUM d'une fiche compacte (au-delà, les emplacements se
+ * partagent la place à parts égales : 87,5 px à 1440 px de corps), `ecartEmplacementPx` l'écart entre deux
+ * fiches d'un même emplacement. L'écart entre emplacements, le score et les marges sont ceux de
+ * `COTES_RANGEE` ; la hauteur de la rangée est celle de deux fiches (`GABARIT_FICHE_COMPACTE.stackedPx`) et
+ * de cet écart, soit 74 px.
+ */
+export const COTES_RANGEE_GRANDE_EQUIPE = Object.freeze({
+  emplacementsParCamp: 6,
+  fichesParEmplacement: 2,
+  ficheMinW: 80,
+  ecartEmplacementPx: 6,
+} as const)
+
+/**
  * LES COTES DU BLOC « À L'INSTANT » de la fiche du joueur (`ui/ReplayPlayerNow.tsx`), en px. Le bloc
  * est une pile de rangées à écart constant : une rangée de jauge est une grille de trois colonnes
  * (libellé, piste, valeur), une rangée d'arme, de grenade ou d'équipement porte une vignette suivie

@@ -31,7 +31,7 @@ import { useCardScene, type CardScene } from '../hooks/useCardScene'
 import { campInk } from '../model/campInk'
 import { GABARIT_FICHE_COMPACTE as C, GABARIT_LIGNE as G } from '../model/cardGabarit'
 import { grandeEquipe } from '../model/rowLayout'
-import { buildSeats, groupSeatsByTeam, seatTileAt, type ReplaySeatGroup } from '../model/seatLogic'
+import { buildSeats, groupSeatsByTeam, seatTileAt, sheetRowsOfGroup, type ReplaySeatGroup } from '../model/seatLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { campLabel } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -51,11 +51,6 @@ export interface ReplayRosterColumnProps {
   onCard?: (xuid: string) => void
   /** La clé de roster du joueur dont la fiche est ouverte (`aria-pressed`). */
   selectedXuid?: string | null
-}
-
-/** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme. */
-function sheetRowsOf(group: ReplaySeatGroup) {
-  return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
 }
 
 /** L'en-tête d'un camp : sa pastille carrée et son nom ; collé en haut de la zone qui défile. */
@@ -150,7 +145,7 @@ export function ReplayRosterColumn({
   const seats = useMemo(() => buildSeats(players, doc), [players, doc])
   // LES COLONNES SONT LES CAMPS DU FILM : un camp par désignateur, jamais un camp « sans équipe ».
   const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
-  const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOf(g), t)), [groups, t])
+  const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOfGroup(g), t)), [groups, t])
   const scene = useCardScene(doc, players)
 
   if (groups.length === 0) {
