@@ -60,7 +60,7 @@ func TestBuildCapabilities_CombinaisonsActuellesInchangees(t *testing.T) {
 			for _, auth := range []string{"", "none", "password", "xbox"} {
 				t.Run(fmt.Sprintf("env=%q/demo=%q/auth=%q", env, demo, auth), func(t *testing.T) {
 					cfg := chargerPourBootstrap(t, config.LaunchModeDefault, env, demo, auth)
-					caps := buildCapabilities(cfg, map[string]interface{}{})
+					caps := buildCapabilities(cfg, map[string]interface{}{}, false)
 					want := capacitesAvantLeProfil(demo == "true", cfg.AuthMode, true)
 					if got := neufCapacites(caps); got != want {
 						t.Errorf("neuf capacités d'avant changées :\n got %+v\nwant %+v", got, want)
@@ -88,7 +88,7 @@ func TestBuildCapabilities_CombinaisonsActuellesInchangees(t *testing.T) {
 // création de profil (aucune propriété à appliquer) ; ni compte, ni mise en commun, ni sauvegarde.
 func TestBuildCapabilities_Desktop(t *testing.T) {
 	cfg := chargerPourBootstrap(t, config.LaunchModeDesktop, "production", "", "xbox")
-	caps := buildCapabilities(cfg, map[string]interface{}{})
+	caps := buildCapabilities(cfg, map[string]interface{}{}, false)
 	want := capacitesAvantLeProfil(false, "none", true)
 	if got := neufCapacites(caps); got != want {
 		t.Errorf("neuf capacités en desktop :\n got %+v\nwant %+v", got, want)
@@ -134,7 +134,7 @@ func TestBuildCapabilities_ChromeDeBureauSeulementEnDesktop(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
 			cfg.AppVersion = "9.8.7"
-			if got := buildCapabilities(cfg, map[string]interface{}{}).CanUseCompactChrome; got != c.wantChrome {
+			if got := buildCapabilities(cfg, map[string]interface{}{}, false).CanUseCompactChrome; got != c.wantChrome {
 				t.Errorf("can_use_compact_chrome = %v, attendu %v", got, c.wantChrome)
 			}
 			info := buildAppInfo(cfg)
@@ -168,7 +168,7 @@ func TestBuildCapabilities_ConnexionNavigateurEtComparaisonDeComptes(t *testing.
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
-			caps := buildCapabilities(cfg, map[string]interface{}{})
+			caps := buildCapabilities(cfg, map[string]interface{}{}, false)
 			if caps.CanLoginViaBrowser != c.wantBrowser || caps.CanCompareAccounts != c.wantCompare {
 				t.Errorf("can_login_via_browser = %v, can_compare_accounts = %v ; attendu %v, %v",
 					caps.CanLoginViaBrowser, caps.CanCompareAccounts, c.wantBrowser, c.wantCompare)
@@ -196,7 +196,7 @@ func TestBuildCapabilities_IntegrationDuPoste(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
-			caps := buildCapabilities(cfg, map[string]interface{}{})
+			caps := buildCapabilities(cfg, map[string]interface{}{}, false)
 			if caps.CanWatchGameProcess != c.want || caps.CanIntegrateShell != c.want || caps.CanScheduleRefresh != c.want {
 				t.Errorf("can_watch_game_process = %v, can_integrate_shell = %v, can_schedule_refresh = %v ; attendu %v",
 					caps.CanWatchGameProcess, caps.CanIntegrateShell, caps.CanScheduleRefresh, c.want)
@@ -222,7 +222,7 @@ func TestBuildCapabilities_CapacitesMediaSeulementEnDesktop(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{})
+			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{}, false)
 			if caps.CanKeepMediaSources != c.want || caps.CanRevealFilesInExplorer != c.want ||
 				caps.CanTrashMediaSources != c.want {
 				t.Errorf("capacités média = keep:%v reveal:%v trash:%v, attendu %v partout",
@@ -249,10 +249,52 @@ func TestBuildCapabilities_ChoixDeDossierSeulementEnDesktop(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{})
+			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{}, false)
 			if caps.CanPickFolder != c.want {
 				t.Errorf("can_pick_folder = %v, attendu %v", caps.CanPickFolder, c.want)
 			}
 		})
+	}
+}
+
+// TestBuildCapabilities_GenerationDeRejeuSelonPlacementEtTitre : la génération à la demande d'un rejeu s'offre
+// sur le bureau et le poste de développement, et seulement quand le titre courant sait fabriquer un rejeu.
+func TestBuildCapabilities_GenerationDeRejeuSelonPlacementEtTitre(t *testing.T) {
+	cas := []struct {
+		nom       string
+		launch    string
+		env       string
+		demo      string
+		avecRejeu bool
+		want      bool
+	}{
+		{"hosted avec titre", config.LaunchModeDefault, "production", "", true, false},
+		{"demo avec titre", config.LaunchModeDefault, "", "true", true, false},
+		{"dev avec titre", config.LaunchModeDefault, "", "", true, true},
+		{"desktop avec titre", config.LaunchModeDesktop, "", "", true, true},
+		{"dev sans titre", config.LaunchModeDefault, "", "", false, false},
+		{"desktop sans titre", config.LaunchModeDesktop, "", "", false, false},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg := chargerPourBootstrap(t, c.launch, c.env, c.demo, "")
+			caps := buildCapabilities(cfg, map[string]interface{}{}, c.avecRejeu)
+			if caps.CanGenerateReplays != c.want {
+				t.Errorf("can_generate_replays = %v, attendu %v", caps.CanGenerateReplays, c.want)
+			}
+		})
+	}
+}
+
+// TestTitleHasReplay_SansPredicatFaux : sans prédicat injecté, aucun titre ne sait fabriquer un rejeu ; avec
+// lui, la réponse suit le titre demandé.
+func TestTitleHasReplay_SansPredicatFaux(t *testing.T) {
+	s := &BootstrapService{}
+	if s.titleHasReplay("a") {
+		t.Error("sans prédicat, titleHasReplay doit être faux")
+	}
+	s.WithReplayArtifactTitleCheck(func(slug string) bool { return slug == "a" })
+	if !s.titleHasReplay("a") || s.titleHasReplay("b") {
+		t.Error("le prédicat injecté doit décider par titre")
 	}
 }

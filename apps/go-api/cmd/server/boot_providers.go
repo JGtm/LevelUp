@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -17,6 +18,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -190,6 +192,7 @@ func bootBuildServices(st *bootState) {
 	reauthStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired).
 		WithPoolSharingResolver(reauthStore.PoolSharingState)
+	bootSvc = bootSvc.WithReplayArtifactTitleCheck(replayArtifactTitleCheck(cfg.Roots().Resources))
 	st.bootRepo, st.bootSvc, st.us, st.groupStore, st.friendStore = bootRepo, bootSvc, us, groupStore, friendStore
 }
 
@@ -391,4 +394,24 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 		players = nil
 	}
 	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
+}
+
+// replayArtifactTitleCheck rend le prédicat « ce titre déclare la capacité `film.replay_artifact` », mémoïsé par titre
+// (games.LoadCapabilityMap relit les fichiers de mappings à chaque appel, et /bootstrap l'appelle à chaque requête).
+// Une configuration de titre illisible se journalise et rend faux (non mémorisé : elle peut se réparer).
+func replayArtifactTitleCheck(resourcesRoot string) func(titleSlug string) bool {
+	var memo sync.Map
+	return func(titleSlug string) bool {
+		if v, ok := memo.Load(titleSlug); ok {
+			return v.(bool)
+		}
+		caps, err := games.LoadCapabilityMap(resourcesRoot, titleSlug)
+		if err != nil {
+			slog.Warn("bootstrap: capacités du titre illisibles, génération de rejeu indisponible", "titleSlug", titleSlug, "err", err)
+			return false
+		}
+		has := caps.Has(games.CapFilmReplayArtifact)
+		memo.Store(titleSlug, has)
+		return has
+	}
 }

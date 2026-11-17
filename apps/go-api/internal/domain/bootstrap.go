@@ -58,6 +58,7 @@ type CapabilityMap struct {
 	CanReportDiagnostic      bool `json:"can_report_diagnostic" doc:"Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement."`
 	CanLimitMemory           bool `json:"can_limit_memory" doc:"Plafond mémoire des bases réglable, mémoire du processus affichée."`
 	CanRegenerateReplays     bool `json:"can_regenerate_replays" doc:"Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois)."`
+	CanGenerateReplays       bool `json:"can_generate_replays" doc:"Génération à la demande du rejeu d'un match qui n'en a pas (film téléchargé avec le jeton du joueur de la page ; application de bureau et poste de développement, titre qui sait fabriquer un rejeu)."`
 	CanKeepMediaSources      bool `json:"can_keep_media_sources" doc:"L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué)."`
 	CanRevealFilesInExplorer bool `json:"can_reveal_files_in_explorer" doc:"Ouverture de l'explorateur de fichiers du système sur un média."`
 	CanTrashMediaSources     bool `json:"can_trash_media_sources" doc:"Suppression d'un média : l'original part à la Corbeille du système quand le support en a une."`

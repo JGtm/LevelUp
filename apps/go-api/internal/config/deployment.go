@@ -166,6 +166,10 @@ type DeploymentCapabilities struct {
 	// régénère, un film à la fois, sur demande de l'utilisateur (file de fond, mode jeu respecté ; ADR 0045).
 	// Faux sur un serveur hébergé, dont les rejeux se cuisent au fil de la synchronisation ou par un ouvrier.
 	ReplayRegen bool
+	// GenerateReplays : le serveur génère à la demande le rejeu d'UN match qui n'en a pas, dans la file des
+	// demandes explicites de `replayregen` (film téléchargé avec le jeton du joueur de la page). Placement
+	// local seulement (application de bureau, poste de développement) : l'hébergé garde l'action d'administration.
+	GenerateReplays bool
 	// ResourcePackFatal : le paquet de ressources installé DOIT être celui du moteur : l'empreinte du manifeste est
 	// comparée à celle que le binaire embarque au démarrage, et une différence refuse le démarrage (même discipline
 	// qu'une migration fatale). Vraie sur un serveur hébergé et sur la démo, dont l'image embarque moteur et paquet
@@ -310,6 +314,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		DiagnosticReport:       desktop,
 		MemoryLimit:            desktop,
 		ReplayRegen:            desktop,
+		GenerateReplays:        desktop || cfg.Deployment == DeploymentDev,
 		KeepMediaSources:       desktop,
 		RevealFilesInExplorer:  desktop,
 		TrashMediaSources:      desktop,

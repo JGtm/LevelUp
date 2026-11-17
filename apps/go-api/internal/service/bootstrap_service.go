@@ -53,6 +53,9 @@ type BootstrapService struct {
 	// mediaH264Missing : aucun encodeur H.264 utilisable dans le ffmpeg de l'instance, sondé une fois au
 	// démarrage (WithMediaH264Missing).
 	mediaH264Missing bool
+	// replayArtifactTitle : le titre sait fabriquer un rejeu (capacité `film.replay_artifact`), injecté au câblage
+	// (WithReplayArtifactTitleCheck). nil = faux : sans lui, can_generate_replays est faux.
+	replayArtifactTitle func(titleSlug string) bool
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -99,6 +102,18 @@ func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *Bootstr
 func (s *BootstrapService) WithMediaH264Missing(missing bool) *BootstrapService {
 	s.mediaH264Missing = missing
 	return s
+}
+
+// WithReplayArtifactTitleCheck injecte le prédicat « ce titre déclare la capacité `film.replay_artifact` »,
+// qui conditionne `can_generate_replays` (le service ne lit aucune configuration de titre lui-même).
+func (s *BootstrapService) WithReplayArtifactTitleCheck(fn func(titleSlug string) bool) *BootstrapService {
+	s.replayArtifactTitle = fn
+	return s
+}
+
+// titleHasReplay : le titre sait-il fabriquer un rejeu ? Faux sans prédicat injecté.
+func (s *BootstrapService) titleHasReplay(titleSlug string) bool {
+	return s.replayArtifactTitle != nil && s.replayArtifactTitle(titleSlug)
 }
 
 // WithUserLookup injecte le user store pour le filtrage ownership des joueurs
@@ -158,7 +173,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	// setupRequired / setupState reflètent l'état de l'INSTANCE (joueurs configurés),
 	// pas la propriété : on les calcule sur la liste complète.
 	setupRequired := !s.cfg.DemoMode && len(players) == 0
-	capabilities := buildCapabilities(s.cfg, appSettings)
+	capabilities := buildCapabilities(s.cfg, appSettings, s.titleHasReplay(currentTitleSlug))
 	settingsExcerpt := buildSettingsExcerpt(s.cfg, appSettings)
 	flags := buildFeatureFlags(s.cfg, appSettings)
 
@@ -407,7 +422,9 @@ func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
 	return out
 }
 
-func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
+// buildCapabilities : titleHasReplay dit que le titre courant sait fabriquer un rejeu (capacité `film.replay_artifact`) ;
+// la génération à la demande en dépend en plus du profil de déploiement.
+func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}, titleHasReplay bool) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)
 	dc := cfg.Capabilities
 	return domain.CapabilityMap{
@@ -451,6 +468,7 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanReportDiagnostic:      dc.DiagnosticReport,
 		CanLimitMemory:           dc.MemoryLimit,
 		CanRegenerateReplays:     dc.ReplayRegen,
+		CanGenerateReplays:       dc.GenerateReplays && titleHasReplay,
 		CanKeepMediaSources:      dc.KeepMediaSources,
 		CanRevealFilesInExplorer: dc.RevealFilesInExplorer,
 		CanTrashMediaSources:     dc.TrashMediaSources,

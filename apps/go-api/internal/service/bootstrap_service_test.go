@@ -398,7 +398,7 @@ func TestResolveLinkedIdentity_WithIdentity(t *testing.T) {
 func TestBuildCapabilities_DemoMode(t *testing.T) {
 	cfg := &config.AppConfig{DemoMode: true}
 	settings := map[string]interface{}{}
-	caps := buildCapabilities(cfg, settings)
+	caps := buildCapabilities(cfg, settings, false)
 	if caps.CanRunSync {
 		t.Error("DemoMode should disable sync")
 	}
@@ -410,7 +410,7 @@ func TestBuildCapabilities_DemoMode(t *testing.T) {
 func TestBuildCapabilities_Normal(t *testing.T) {
 	cfg := &config.AppConfig{DemoMode: false}
 	settings := map[string]interface{}{"media_enabled": false}
-	caps := buildCapabilities(cfg, settings)
+	caps := buildCapabilities(cfg, settings, false)
 	if !caps.CanRunSync {
 		t.Error("normal mode should allow sync")
 	}
