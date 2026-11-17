@@ -4,12 +4,14 @@
  * Monte la vraie page, la vraie toile (contexte 2D enregistreur) et le vrai document de rejeu : seuls le
  * routeur et le serveur de réseau sont simulés. Ce que ces tests prouvent :
  *  - basculer de cadre ne remonte pas la toile : c'est le MÊME nœud DOM avant et après chaque bascule ;
- *  - chaque cadre rend son en-tête, et le groupe « Cadre du lecteur » reflète le cadre courant ;
+ *  - chaque cadre rend son en-tête, sans sélecteur de cadre : les icônes « Cadre du lecteur » sont à droite de
+ *    la barre de lecture, dans les trois cadres, et reflètent le cadre courant ;
  *  - l'en-tête du Standard a trois cellules (retour et titre, score, commandes) dans une page bornée et centrée ;
  *    le score n'est dans la scène qu'en Cinéma et en Plein cadre ;
- *  - les boutons de cadre envoient les gestes du modèle, et sont inertes pendant un export ;
- *  - les états de chargement, d'erreur et d'absence ont leur place dans les trois cadres, avec le bouton
- *    « Générer le rejeu » ; l'avis « instant non calé » se rend dans la scène.
+ *  - les icônes de cadre envoient les gestes du modèle, et sont inertes pendant un export, sauf la sortie du Plein cadre ;
+ *  - les états de chargement, d'erreur et d'absence ont leur place dans le Standard (sans toile, donc sans barre
+ *    de lecture : aucune icône de cadre n'y mène ailleurs), avec le bouton « Générer le rejeu » ; l'avis
+ *    « instant non calé » se rend dans la scène des trois cadres.
  */
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
@@ -84,12 +86,17 @@ afterEach(() => {
   act(() => useAppShellStore.setState({ capabilities: null }))
 })
 
+/** Les icônes de cadre de la barre de lecture. */
 function frameSwitch() {
   return within(screen.getByRole('group', { name: FRAMES.groupLabel }))
 }
 
+function frameIcon(frame: ReplayFrame) {
+  return frameSwitch().getByRole('button', { name: FRAMES.frameTip(frame) })
+}
+
 function goTo(frame: ReplayFrame) {
-  fireEvent.click(frameSwitch().getByRole('button', { name: FRAMES.frame[frame] }))
+  fireEvent.click(frameIcon(frame))
 }
 
 function currentFrame(container: HTMLElement) {
@@ -209,12 +216,12 @@ describe('ReplayPage : l’en-tête de chaque cadre', () => {
   })
 })
 
-describe('ReplayPage : le groupe « Cadre du lecteur »', () => {
+describe('ReplayPage : les icônes « Cadre du lecteur » de la barre de lecture', () => {
   it('reflète le cadre courant et envoie les bons gestes', async () => {
     const { container } = await mountReady()
     const pressed = () =>
       FRAME_ORDER.filter(
-        (f) => frameSwitch().getByRole('button', { name: FRAMES.frame[f] }).getAttribute('aria-pressed') === 'true',
+        (f) => frameIcon(f).getAttribute('aria-pressed') === 'true',
       )
     expect(pressed()).toEqual(['standard'])
     goTo('cinema')
@@ -239,12 +246,39 @@ describe('ReplayPage : le groupe « Cadre du lecteur »', () => {
     expect(currentFrame(container)).toBe('standard')
   })
 
-  it('les trois boutons sont inertes pendant un export, et se rouvrent après', async () => {
+  it('les icônes sont dans la barre de lecture, jamais dans un en-tête, dans les trois cadres', async () => {
+    const { container } = await mountReady()
+    for (const frame of FRAME_ORDER) {
+      goTo(frame)
+      const groupe = screen.getByRole('group', { name: FRAMES.groupLabel })
+      expect(screen.getAllByRole('group', { name: FRAMES.groupLabel })).toHaveLength(1)
+      expect(container.querySelector('[data-replay-header]')?.contains(groupe) ?? false).toBe(false)
+      // La rangée de la barre porte à la fois « Recommencer » (transport) et le groupe, à droite.
+      const rangee = screen.getByRole('button', { name: /^Recommencer/ }).parentElement?.parentElement
+      expect(rangee?.contains(groupe)).toBe(true)
+    }
+  })
+
+  it('Plein cadre : l’icône courante sort, même pendant un export ; les deux autres restent inertes', async () => {
+    const { container } = await mountReady()
+    goTo('cinema')
+    goTo('plein-cadre')
+    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
+    expect(frameIcon('standard')).toBeDisabled()
+    expect(frameIcon('cinema')).toBeDisabled()
+    expect(frameIcon('plein-cadre')).toBeEnabled()
+    fireEvent.click(frameIcon('cinema'))
+    expect(currentFrame(container)).toBe('plein-cadre')
+    fireEvent.click(frameIcon('plein-cadre'))
+    expect(currentFrame(container)).toBe('cinema')
+  })
+
+  it('les trois icônes sont inertes pendant un export, et se rouvrent après', async () => {
     const { container } = await mountReady()
     goTo('cinema')
     act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
     for (const frame of FRAME_ORDER) {
-      const button = frameSwitch().getByRole('button', { name: FRAMES.frame[frame] })
+      const button = frameIcon(frame)
       expect(button).toBeDisabled()
       fireEvent.click(button)
     }
@@ -255,11 +289,12 @@ describe('ReplayPage : le groupe « Cadre du lecteur »', () => {
   })
 })
 
-describe.each(FRAME_ORDER)('ReplayPage : les états hors rejeu dans le cadre %s', (frame) => {
+describe('ReplayPage : les états hors rejeu dans le Standard', () => {
+  const frame: ReplayFrame = 'standard'
+
   it('chargement : la phrase d’attente, sous l’en-tête du cadre', async () => {
     server.use(http.get(API, async () => delay('infinite')))
     const { container } = renderWithProviders(<ReplayPage />)
-    goTo(frame)
     expect(currentFrame(container)).toBe(frame)
     expect(await screen.findByText(T.loading)).toBeInTheDocument()
     expect(container.querySelector('canvas')).toBeNull()
@@ -269,7 +304,6 @@ describe.each(FRAME_ORDER)('ReplayPage : les états hors rejeu dans le cadre %s'
     server.use(http.get(API, () => HttpResponse.json({ code: 'boom', message: 'x', retryable: true }, { status: 500 })))
     const { container } = renderWithProviders(<ReplayPage />)
     expect(await screen.findByText(T.loadErrorTitle)).toBeInTheDocument()
-    goTo(frame)
     expect(currentFrame(container)).toBe(frame)
     expect(screen.getByText(T.loadErrorTitle)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: T.loadErrorRetry })).toBeInTheDocument()
@@ -283,13 +317,15 @@ describe.each(FRAME_ORDER)('ReplayPage : les états hors rejeu dans le cadre %s'
     )
     const { container } = renderWithProviders(<ReplayPage />)
     expect(await screen.findByText(T.empty)).toBeInTheDocument()
-    goTo(frame)
     expect(currentFrame(container)).toBe(frame)
     expect(screen.getByText(T.empty)).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Générer le rejeu' })).toBeInTheDocument()
   })
 
-  it('instant non calé : l’avis se rend dans la scène, avec la toile', async () => {
+})
+
+describe.each(FRAME_ORDER)('ReplayPage : l’avis « instant non calé » dans le cadre %s', (frame) => {
+  it('l’avis se rend dans la scène, avec la toile', async () => {
     hoisted.search = { t: '5000', clock: 'match' }
     serveDoc({ ...smallDoc(), originMs: null })
     const { container } = renderWithProviders(<ReplayPage />)
@@ -313,7 +349,7 @@ function headerCell(container: HTMLElement, cell: 'gauche' | 'centre' | 'droite'
 }
 
 describe('ReplayPage : l’en-tête du Standard en trois cellules', () => {
-  it('à gauche le retour et le titre du match, au centre le score, à droite les cadres et la fiche', async () => {
+  it('à gauche le retour et le titre du match, au centre le score, à droite la fiche : aucun sélecteur de cadre', async () => {
     const { doc, context } = scoredMatch()
     const { container } = await mountReady(doc, context)
     const gauche = within(headerCell(container, 'gauche'))
@@ -323,7 +359,8 @@ describe('ReplayPage : l’en-tête du Standard en trois cellules', () => {
     const centre = within(headerCell(container, 'centre'))
     expect(centre.getByRole('group', { name: T.scoreBannerLabel })).toBeInTheDocument()
     const droite = within(headerCell(container, 'droite'))
-    expect(droite.getByRole('group', { name: FRAMES.groupLabel })).toBeInTheDocument()
+    expect(droite.queryByRole('group', { name: FRAMES.groupLabel })).not.toBeInTheDocument()
+    expect(droite.queryByRole('button', { name: /^(Standard|Cinéma|Plein cadre)/ })).not.toBeInTheDocument()
     expect(droite.getByRole('link', { name: T.back })).toHaveTextContent(FRAMES.sheet)
   })
 
@@ -357,7 +394,7 @@ describe('ReplayPage : l’en-tête du Standard en trois cellules', () => {
     expect(scoreBanner(container)).toBeNull()
     expect(headerCell(container, 'centre')).toBeEmptyDOMElement()
     expect(within(headerCell(container, 'gauche')).getByRole('button', { name: FRAMES.back })).toBeInTheDocument()
-    expect(within(headerCell(container, 'droite')).getByRole('group', { name: FRAMES.groupLabel })).toBeInTheDocument()
+    expect(within(headerCell(container, 'droite')).getByRole('link', { name: T.back })).toHaveTextContent(FRAMES.sheet)
   })
 
   it('la grille de l’en-tête réserve la cellule du score : 440 px au centre, deux cellules souples autour', async () => {

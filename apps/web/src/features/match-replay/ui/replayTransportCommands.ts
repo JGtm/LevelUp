@@ -15,6 +15,7 @@
 import { useMemo, type ReactNode, type RefObject } from 'react'
 
 import type { ReplayCapture } from '../export/useReplayCapture'
+import type { ReplayFrameControl } from '../hooks/useReplayFrame'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import type { ReplayPlayback } from '../hooks/useReplayPlayback'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
@@ -47,6 +48,8 @@ export interface ReplayTransportCommands {
   locale: ReplayLocale
   /** Le mode plein écran de la page (useReplayFullscreen) : la commande, pas l'état de la page. */
   fullscreen: ReplayFullscreen
+  /** Le cadre courant et les gestes qui y mènent (useReplayFrame) : les icônes de cadre de la barre les lisent. */
+  frameControl: ReplayFrameControl
   /** Le zoom et le cadrage de la carte (paliers, déplacement). */
   zoom: ReplayZoom
 }
@@ -70,6 +73,7 @@ export interface ReplayTransportCommandSources {
   capture: ReplayCapture
   locale: ReplayLocale
   fullscreen: ReplayFullscreen
+  frameControl: ReplayFrameControl
   zoom: ReplayZoom
 }
 
@@ -80,15 +84,15 @@ export interface ReplayTransportCommandSources {
 export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplayTransportCommands {
   const { playing, togglePlay, restart, seekBy } = s.playback
   const { autoPlay, toggleAutoPlay, speed, setSpeed } = s.settings
-  const { clockRef, timeline, sound, capture, locale, fullscreen, zoom } = s
+  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom } = s
   return useMemo(
     () => ({
       playing, onTogglePlay: togglePlay, onRestart: restart, onSeekBy: seekBy, clockRef, timeline,
-      autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, zoom,
+      autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
     }),
     [
       playing, togglePlay, restart, seekBy, clockRef, timeline,
-      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, zoom,
+      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
     ],
   )
 }

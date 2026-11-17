@@ -175,8 +175,8 @@ interface ReplayCanvasProps {
    * de la barre de lecture.
    */
   fullscreen: ReplayFullscreen
-  /** Les gestes de cadre : le canvas n'en relaie que les touches T (Cinéma) et F (Plein cadre). */
-  frameControl: Pick<ReplayFrameControl, 'toggleCinema' | 'toggleFullFrame'>
+  /** Le cadre et ses gestes : la toile câble les touches T (Cinéma) et F (Plein cadre) et remet le tout à sa barre. */
+  frameControl: ReplayFrameControl
   /**
    * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
    * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
@@ -572,7 +572,7 @@ export function ReplayCanvas({
   })
 
   const commands = useReplayTransportCommands({
-    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, zoom,
+    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom,
   })
 
   return (

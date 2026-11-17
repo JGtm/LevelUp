@@ -20,6 +20,7 @@ import { buildPlayers } from '../../../lib/replay/rosterLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { createPlaybackStore } from '../model/playbackStore'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
+import { makeFrameControl } from '../test/frameControlStub'
 import { recordingContext } from '../test/recordingContext'
 import { testReplayDoc } from '../test/testDoc'
 import { canvasSlotsOf } from './frames/replayFrameSlots'
@@ -56,7 +57,7 @@ function baseProps(doc: ReplayDocumentReady): BaseProps {
     players,
     viewpoint,
     fullscreen: { active: false, disabled: false, toggle: () => {} },
-    frameControl: { toggleCinema: () => {}, toggleFullFrame: () => {} },
+    frameControl: makeFrameControl(),
   }
   BASE_PROPS.set(doc, props)
   return props
@@ -152,7 +153,7 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
     const commands = seen[seen.length - 1]
     expect(Object.keys(commands).sort()).toEqual(
       [
-        'autoPlay', 'capture', 'clockRef', 'fullscreen', 'locale', 'onRestart', 'onSeekBy', 'onSetSpeed',
+        'autoPlay', 'capture', 'clockRef', 'frameControl', 'fullscreen', 'locale', 'onRestart', 'onSeekBy', 'onSetSpeed',
         'onTogglePlay', 'onToggleAutoPlay', 'playing', 'sound', 'speed', 'timeline', 'zoom',
       ].sort(),
     )

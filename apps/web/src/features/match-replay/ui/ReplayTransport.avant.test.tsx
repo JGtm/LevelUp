@@ -12,7 +12,11 @@
  * Aucune valeur ne varie : l'horloge est écrite par la boucle de dessin (`clockRef` reste vide) et aucun
  * identifiant généré n'entre dans le rendu. Si un lancement en faisait apparaître un, le neutraliser dans le test.
  *
- * Régénération : `npx vitest run <ce fichier> -u`, à la création seulement. Jamais pour faire passer une divergence.
+ * LES FIXTURES RESTENT CELLES D'AVANT LES ICÔNES DE CADRE, jamais régénérées. Le rendu actuel ne diffère
+ * d'elles que par UN groupe : l'ancien bouton de plein écran (`button[aria-label="Plein écran"]`, seul de
+ * son espèce) est devenu le groupe des icônes de cadre (`[data-replay-frame-buttons]`), posé au même endroit.
+ * La comparaison retire ce seul élément de chaque côté, puis exige le même HTML : tout le reste de la zone de
+ * lecture est identique, octet pour octet. Les icônes de cadre ont leurs propres tests (ReplayFrameButtons.test.tsx).
  */
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -21,6 +25,10 @@ import { render, within } from '@testing-library/react'
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTransport } from './ReplayTransport'
+import avantNormal from './__fixtures__/replayTransport.avant.html?raw'
+import avantExport from './__fixtures__/replayTransport.export.avant.html?raw'
+import avantExportEnCours from './__fixtures__/replayTransport.exportEnCours.avant.html?raw'
+import { makeFrameControl } from '../test/frameControlStub'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplayExport, ReplayExportState } from '../export/useReplayExport'
 import type { ReplaySound } from '../sound/useReplaySound'
@@ -118,6 +126,24 @@ function frise(): ReplayTimeline {
   }
 }
 
+/** Le HTML, ré-analysé puis privé de l'élément que le sélecteur désigne : exactement un, ou le test échoue. */
+function sansUnique(html: string, selecteur: string): string {
+  const gabarit = document.createElement('div')
+  gabarit.innerHTML = html
+  const trouves = gabarit.querySelectorAll(selecteur)
+  expect(trouves, `un seul '${selecteur}' attendu`).toHaveLength(1)
+  trouves[0].remove()
+  return gabarit.innerHTML
+}
+
+/** Le rendu actuel et la fixture d'avant, chacun privé de ce qui les distingue : le groupe d'icônes de cadre, l'ancien bouton de plein écran. */
+function comparables(rendu: HTMLElement, avant: string) {
+  return {
+    actuel: sansUnique(rendu.innerHTML, '[data-replay-frame-buttons]'),
+    ancien: sansUnique(avant, 'button[aria-label="Plein écran"]'),
+  }
+}
+
 /** Rend la zone de lecture, lecture en cours, avec l'export vidéo donné (ou son absence). */
 function rendreTransport(videoExport: ReplayExport | null) {
   return render(
@@ -142,35 +168,39 @@ function rendreTransport(videoExport: ReplayExport | null) {
       }}
       locale="fr"
       fullscreen={{ active: false, disabled: false, toggle: vi.fn() }}
+      frameControl={makeFrameControl()}
     />,
   )
 }
 
 describe('ReplayTransport — fixation de la zone de lecture', () => {
-  it('le HTML de la barre et de la frise à pistes est celui de la fixture', async () => {
+  it('le HTML de la barre et de la frise à pistes est celui de la fixture, hors les icônes de cadre', () => {
     const vue = rendreTransport(null)
     // Les éléments attendus sont là : sans eux la fixture comparerait un rendu vide ou partiel.
     expect(vue.getByRole('button', { name: 'Pause' })).toBeTruthy()
     expect(vue.getByRole('button', { name: /^Recommencer/ })).toBeTruthy()
     expect(vue.getByLabelText('Joueur suivi')).toBeTruthy()
     expect(vue.getByText('Médias')).toBeTruthy()
-    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayTransport.avant.html')
+    const { actuel, ancien } = comparables(vue.container, avantNormal)
+    expect(actuel).toBe(ancien)
   })
 })
 
 describe('ReplayTransport — fixation du bouton d’export vidéo', () => {
-  it('au repos : le bouton « Exporter la vidéo » est présent, sans pourcentage', async () => {
+  it('au repos : le bouton « Exporter la vidéo » est présent, sans pourcentage', () => {
     const vue = rendreTransport(exporteur({ phase: 'idle', done: 0, total: 0, pct: 0 }))
     const bouton = within(vue.container).getByRole('button', { name: 'Exporter la vidéo' })
     expect(bouton.textContent).not.toContain('%')
-    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayTransport.export.avant.html')
+    const { actuel, ancien } = comparables(vue.container, avantExport)
+    expect(actuel).toBe(ancien)
   })
 
-  it('pendant l’encodage : le bouton affiche le pourcentage et les commandes de lecture sont neutralisées', async () => {
+  it('pendant l’encodage : le bouton affiche le pourcentage et les commandes de lecture sont neutralisées', () => {
     const vue = rendreTransport(exporteur({ phase: 'encode', done: 300, total: 1200, pct: 25 }))
     const bouton = within(vue.container).getByRole('button', { name: 'Exporter la vidéo' })
     expect(bouton.textContent).toContain('25 %')
     expect(within(vue.container).getByRole('button', { name: 'Pause' })).toBeDisabled()
-    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayTransport.exportEnCours.avant.html')
+    const { actuel, ancien } = comparables(vue.container, avantExportEnCours)
+    expect(actuel).toBe(ancien)
   })
 })

@@ -12,8 +12,11 @@ import type { ReplayFrame } from '../model/replayFrame'
 export interface FramesText {
   /** Le nom accessible du groupe de boutons qui choisit le cadre. */
   groupLabel: string
-  /** Le nom de chaque cadre, tel que son bouton l'écrit. */
-  frame: Record<ReplayFrame, string>
+  /**
+   * Le nom accessible et l'infobulle de l'icône d'un cadre : le nom du cadre suivi de la touche qui
+   * y mène, entre parenthèses (« Cinéma (T) ») ; le nom seul pour un cadre sans touche.
+   */
+  frameTip: (frame: ReplayFrame) => string
   /** Le bouton qui sort du Plein cadre et rend le cadre d'où l'on vient. */
   exit: string
   /** Le nom de la touche qui sort du Plein cadre, écrit dans la capsule du bouton « Quitter ». */
@@ -26,9 +29,23 @@ export interface FramesText {
   rotatedPlan: string
 }
 
+/** La touche de chaque cadre qui en a une : celles que `useReplayShortcuts` câble sur T et F. */
+const FRAME_KEYS: Partial<Record<ReplayFrame, string>> = { cinema: 'T', 'plein-cadre': 'F' }
+
+/** Compose le nom d'un cadre et le rappel de sa touche, dans une langue. */
+function tipOf(names: Record<ReplayFrame, string>) {
+  return (frame: ReplayFrame): string => {
+    const key = FRAME_KEYS[frame]
+    return key ? `${names[frame]} (${key})` : names[frame]
+  }
+}
+
+const FR_FRAME_NAMES: Record<ReplayFrame, string> = { standard: 'Standard', cinema: 'Cinéma', 'plein-cadre': 'Plein cadre' }
+const EN_FRAME_NAMES: Record<ReplayFrame, string> = { standard: 'Standard', cinema: 'Cinema', 'plein-cadre': 'Full frame' }
+
 export const FR_FRAMES = {
   groupLabel: 'Cadre du lecteur',
-  frame: { standard: 'Standard', cinema: 'Cinéma', 'plein-cadre': 'Plein cadre' },
+  frameTip: tipOf(FR_FRAME_NAMES),
   exit: 'Quitter',
   escapeKey: 'Échap',
   back: 'Retour',
@@ -38,7 +55,7 @@ export const FR_FRAMES = {
 
 export const EN_FRAMES = {
   groupLabel: 'Player layout',
-  frame: { standard: 'Standard', cinema: 'Cinema', 'plein-cadre': 'Full frame' },
+  frameTip: tipOf(EN_FRAME_NAMES),
   exit: 'Exit',
   escapeKey: 'Esc',
   back: 'Back',

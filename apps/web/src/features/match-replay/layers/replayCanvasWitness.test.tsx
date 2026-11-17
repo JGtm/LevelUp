@@ -27,6 +27,7 @@ import { renderWithProviders } from '../../../test/render-utils'
 import { buildPlayers } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { createPlaybackStore } from '../model/playbackStore'
+import { makeFrameControl } from '../test/frameControlStub'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { recordingContext, type CanvasOp } from '../test/recordingContext'
 import { testReplayDoc } from '../test/testDoc'
@@ -151,7 +152,7 @@ function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
   const viewpoint = players.find((p) => p.team !== undefined && p.team >= 0 && !p.xuid.startsWith('bot:'))?.xuid ?? null
   const allegiance = buildFilmAllegiance(players, viewpoint)
   const fullscreen = { active: false, disabled: false, toggle: () => {} }
-  const frameControl = { toggleCinema: () => {}, toggleFullFrame: () => {} }
+  const frameControl = makeFrameControl()
   const view = renderWithProviders(
     <ReplayCanvas
       doc={doc}

@@ -44,7 +44,7 @@
  * # PENDANT LE CALCUL, LE PANNEAU NE SE FERME PAS TOUT SEUL
  *
  * Il devient une progression et un bouton « Annuler ». Et si l'utilisateur le referme quand
- * même par le bouton, c'est CELUI-CI qui porte alors la progression (cf. `ReplayTransport`) :
+ * même par le bouton, c'est CELUI-CI qui porte alors la progression (cf. `ReplayCaptureButtons`) :
  * aucun état de la page ne doit perdre à la fois le retour et le moyen d'annuler.
  */
 import { useState } from 'react'

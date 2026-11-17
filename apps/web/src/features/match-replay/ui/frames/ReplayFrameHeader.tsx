@@ -1,19 +1,16 @@
 /**
- * ReplayFrameHeader — LES EN-TÊTES DES TROIS CADRES de la page du rejeu, et le groupe de trois boutons
- * « Cadre du lecteur » qu'ils portent tous.
+ * ReplayFrameHeader — LES EN-TÊTES DES TROIS CADRES de la page du rejeu.
  *
  *  - STANDARD : trois cellules dans la page bornée : retour et titre du match sur deux lignes, bandeau de
- *    score, puis le badge de version de schéma de l'administrateur, le groupe de cadres et le lien vers la
- *    fiche du match ;
- *  - CINÉMA : une ligne réduite, à l'intérieur de la page : retour, titre du match sur deux lignes,
- *    groupe de cadres et lien vers la fiche ;
+ *    score, puis le badge de version de schéma de l'administrateur et le lien vers la fiche du match ;
+ *  - CINÉMA : une ligne réduite, à l'intérieur de la page : retour, titre du match sur deux lignes et
+ *    lien vers la fiche ;
  *  - PLEIN CADRE : aucune navigation de l'application (`showsAppNavigation`) ; une barre où « Quitter »
- *    (Échap) tient la place du retour, suivie du titre du match et du groupe de cadres.
+ *    (Échap) tient la place du retour, suivie du titre du match.
  *
- * Le groupe reflète le cadre courant (`aria-pressed`) et envoie les gestes du modèle (`selectFrame`) ;
- * ses trois boutons sont inertes pendant un export vidéo. « Quitter », lui, reste actif pendant un export
- * (la sortie du Plein cadre ne touche pas le clip) et referme aussi le plein écran du système quand il
- * est actif, comme le fait Échap.
+ * Aucun en-tête ne porte de sélecteur de cadre : les icônes de cadre sont à droite de la barre de
+ * lecture (`ReplayFrameButtons`). « Quitter » reste actif pendant un export (la sortie du Plein cadre
+ * ne touche pas le clip) et referme aussi le plein écran du système quand il est actif, comme le fait Échap.
  */
 import { Link, useRouter } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
@@ -27,45 +24,13 @@ import { showsAppNavigation, type ReplayFrame } from '../../model/replayFrame'
 import { ReplaySchemaBadge } from '../ReplaySchemaBadge'
 import { PRESS_GUARDS } from '../replayPressGuards'
 import type { ReplayFrameChrome } from './replayFrameTypes'
-import { selectFrame } from './selectFrame'
 import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
-
-const FRAMES: readonly ReplayFrame[] = ['standard', 'cinema', 'plein-cadre']
 
 /** Le bouton de lien vers la fiche du match : même gabarit dans les deux en-têtes qui le portent. */
 const SHEET_LINK_CLASS =
   'inline-flex h-7 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 const SHEET_ROUTE = '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId'
-
-/** Le groupe de trois boutons qui choisit le cadre du lecteur. */
-function FrameSwitch({ frame, chrome }: { frame: ReplayFrame; chrome: ReplayFrameChrome }) {
-  const { frameControl, locale } = chrome
-  const labels = REPLAY_TEXT[locale].frames
-  return (
-    <div
-      role="group"
-      aria-label={labels.groupLabel}
-      className="inline-flex gap-0.5 rounded-lg border border-border bg-card p-0.5"
-    >
-      {FRAMES.map((id) => (
-        <button
-          key={id}
-          type="button"
-          {...PRESS_GUARDS}
-          aria-pressed={frame === id}
-          disabled={frameControl.disabled}
-          onClick={() => selectFrame(frameControl, id)}
-          className={`inline-flex h-7 items-center rounded-md px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
-            frame === id ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {labels.frame[id]}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 /** Le titre du match sur deux lignes : joueur, playlist et date au-dessus, mode et carte dessous. */
 function MatchTitle({ chrome }: { chrome: ReplayFrameChrome }) {
@@ -114,7 +79,7 @@ function BackButton({ chrome }: { chrome: ReplayFrameChrome }) {
 /**
  * L'en-tête du Standard, en trois cellules de page bornée : à gauche le retour et le titre du match, au
  * centre le bandeau de score (`score`, que le cadre construit ; la cellule garde sa place quand il ne
- * rend rien), à droite le badge de schéma de l'administrateur, le groupe de cadres et le lien vers la fiche.
+ * rend rien), à droite le badge de schéma de l'administrateur et le lien vers la fiche.
  */
 function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode }) {
   const isAdmin = useAppShellStore((s) => s.isAdmin)
@@ -151,7 +116,6 @@ function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: R
               layers={doc.layers}
             />
           )}
-          <FrameSwitch frame="standard" chrome={chrome} />
           {/* « Fiche du match », PAS « retour au match » : la flèche du retour fait `history.back()`, donc
               n'importe quoi ; ce lien vise une destination fixe, qu'on en vienne ou non. */}
           <Link to={SHEET_ROUTE} params={params} aria-label={t.back} className={SHEET_LINK_CLASS}>
@@ -163,7 +127,7 @@ function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: R
   )
 }
 
-/** L'en-tête du Cinéma : retour, titre du match, groupe de cadres, lien vers la fiche. */
+/** L'en-tête du Cinéma : retour, titre du match, lien vers la fiche. */
 function CinemaHeader({ chrome }: { chrome: ReplayFrameChrome }) {
   const t = REPLAY_TEXT[chrome.locale]
   return (
@@ -171,7 +135,6 @@ function CinemaHeader({ chrome }: { chrome: ReplayFrameChrome }) {
       <BackButton chrome={chrome} />
       <MatchTitle chrome={chrome} />
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <FrameSwitch frame="cinema" chrome={chrome} />
         <Link to={SHEET_ROUTE} params={chrome.params} aria-label={t.back} className={SHEET_LINK_CLASS}>
           {t.frames.sheet}
         </Link>
@@ -180,7 +143,7 @@ function CinemaHeader({ chrome }: { chrome: ReplayFrameChrome }) {
   )
 }
 
-/** La barre du Plein cadre : « Quitter » (Échap), titre du match, groupe de cadres. Aucune navigation de l'app. */
+/** La barre du Plein cadre : « Quitter » (Échap) et titre du match. Aucune navigation de l'app. */
 function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
   const { frameControl, fullscreen, locale } = chrome
   const labels = REPLAY_TEXT[locale].frames
@@ -204,9 +167,6 @@ function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
         <kbd className="rounded border border-border px-1.5 text-xs text-muted-foreground">{labels.escapeKey}</kbd>
       </button>
       <MatchTitle chrome={chrome} />
-      <div className="ml-auto shrink-0">
-        <FrameSwitch frame="plein-cadre" chrome={chrome} />
-      </div>
     </div>
   )
 }
