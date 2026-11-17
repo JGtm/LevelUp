@@ -11,8 +11,14 @@
  * La carte n'est jamais couverte : le panneau (`absolute inset-0`) remplit seulement cette cellule,
  * dans la colonne de droite. La hauteur de la cellule est celle du fil ; `min-h-[16rem]` ne vaut que
  * panneau ouvert, pour qu'il ne s'effondre pas quand le fil est court sous `xl`.
+ *
+ * LE PANNEAU PEUT REMPLIR TOUTE LA COLONNE (`above`). Ce qui se tient au-dessus du fil dans la colonne — les
+ * équipes du Standard — se donne par `above` : il est monté avant la cellule, et le panneau ouvert le recouvre
+ * avec le fil. Comme le fil, il reste MONTÉ sous le panneau, `invisible` (boîte et défilement gardés, hors
+ * focus et hors lecture d'écran), et le panneau se place alors contre la colonne elle-même, que son
+ * conteneur pose en `relative` : la cellule du fil ne l'est plus. Sans `above`, rien ne change.
  */
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
 interface Props {
   /** Le fil des événements : toujours monté. */
@@ -24,23 +30,41 @@ interface Props {
    * panneau ouvert garde le sien (`min-h-[16rem]`).
    */
   minHeightPx?: number
+  /**
+   * Ce qui se tient au-dessus du fil dans la colonne, et que le panneau ouvert recouvre avec lui ; absent = le
+   * panneau ne remplit que la cellule du fil.
+   */
+  above?: ReactNode
 }
 
-export function ReplayFeedOrPanel({ feed, panel, minHeightPx }: Props) {
+export function ReplayFeedOrPanel({ feed, panel, minHeightPx, above }: Props) {
   const open = panel !== null
+  const wholeColumn = above !== undefined
   return (
-    <div
-      className={`relative flex min-h-0 flex-1 flex-col xl:min-h-[12rem]${open ? ' min-h-[16rem]' : ''}`}
-      style={!open && minHeightPx !== undefined ? { minHeight: minHeightPx } : undefined}
-    >
+    <Fragment>
+      {wholeColumn && (
+        // `contents` : la boîte du bloc est celle de son contenu, comme sans l'enveloppe ; la visibilité, elle, se transmet.
+        <div
+          data-testid="replay-above-slot"
+          className={`contents${open ? ' invisible' : ''}`}
+          aria-hidden={open ? true : undefined}
+        >
+          {above}
+        </div>
+      )}
       <div
-        data-testid="replay-feed-slot"
-        className={`flex min-h-0 flex-1 flex-col${open ? ' invisible' : ''}`}
-        aria-hidden={open ? true : undefined}
+        className={`${wholeColumn ? '' : 'relative '}flex min-h-0 flex-1 flex-col xl:min-h-[12rem]${open ? ' min-h-[16rem]' : ''}`}
+        style={!open && minHeightPx !== undefined ? { minHeight: minHeightPx } : undefined}
       >
-        {feed}
+        <div
+          data-testid="replay-feed-slot"
+          className={`flex min-h-0 flex-1 flex-col${open ? ' invisible' : ''}`}
+          aria-hidden={open ? true : undefined}
+        >
+          {feed}
+        </div>
+        {open && <div className="absolute inset-0">{panel}</div>}
       </div>
-      {open && <div className="absolute inset-0">{panel}</div>}
-    </div>
+    </Fragment>
   )
 }

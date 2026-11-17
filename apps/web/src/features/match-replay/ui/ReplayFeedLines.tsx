@@ -62,6 +62,14 @@ function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
   return kind === 'environment' || kind === 'suicide' ? t.killFeedDeathKind[kind] : ''
 }
 
+/**
+ * Le poids d'un nom : l'acteur d'une ligne est en `font-medium`, un nom qui est celui du joueur mis en avant
+ * (`strongXuids`, la fiche ouverte) est en gras, quel que soit son emplacement. `base` : le poids de l'emplacement.
+ */
+function nameWeight(xuid: string, strongXuids: ReadonlySet<string> | undefined, base?: string): string | undefined {
+  return strongXuids?.has(xuid) ? 'font-bold' : base
+}
+
 /** Ce que reçoit une ligne du fil : l'entrée, l'encre et les noms, et ce qui rend un frag cliquable. */
 interface FeedLineProps {
   entry: ReplayFeedEntry
@@ -74,6 +82,11 @@ interface FeedLineProps {
   teams: ReplayTeamCascades
   /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
   focus?: FeedLineFocus
+  /**
+   * Les clés du joueur dont le nom s'écrit en gras là où il apparaît (acteur d'un frag, victime, mort, médaillé) : la
+   * fiche ouverte dans le pied de la colonne. Les lignes d'événement (objectif, prise, véhicule) ne le lisent pas.
+   */
+  strongXuids?: ReadonlySet<string>
 }
 
 /**
@@ -93,6 +106,7 @@ export function FeedLine({
   zoneOf,
   teams,
   focus,
+  strongXuids,
 }: FeedLineProps) {
   if (entry.event) {
     return (
@@ -130,6 +144,7 @@ export function FeedLine({
         xuidMeta={xuidMeta}
         marks={marks}
         locale={locale}
+        strongXuids={strongXuids}
       />
     )
   }
@@ -142,7 +157,7 @@ export function FeedLine({
     return (
       <li className={FEED_ROW}>
         <FeedClock ms={entry.replayMs} />
-        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className="font-medium"
+        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className={nameWeight(m.xuid, strongXuids, 'font-medium')}
           name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
         <MedalBadges medals={[m]} />
       </li>
@@ -159,6 +174,7 @@ export function FeedLine({
       zone={zoneOf?.(entry.key)}
       carrier={entry.flagCarrierKill === true}
       focus={focus}
+      strongXuids={strongXuids}
     />
   )
 }
@@ -185,6 +201,7 @@ function DeathLine({
   xuidMeta,
   marks,
   locale,
+  strongXuids,
 }: {
   death: ReplayDeath
   replayMs: number
@@ -192,6 +209,7 @@ function DeathLine({
   xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
+  strongXuids?: ReadonlySet<string>
 }) {
   const t = REPLAY_TEXT[locale]
   const color = inkOf(death.xuid)
@@ -227,7 +245,7 @@ function DeathLine({
           }}
         />
       )}
-      <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className="font-medium"
+      <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className={nameWeight(death.xuid, strongXuids, 'font-medium')}
         name={displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)} />
       <span className="shrink-0 text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
     </li>
@@ -246,6 +264,7 @@ interface KillLineProps {
   /** Vrai quand la victime portait le drapeau : la ligne d'objectif s'est repliée en infobulle. */
   carrier?: boolean
   focus?: FeedLineFocus
+  strongXuids?: ReadonlySet<string>
 }
 
 /**
@@ -271,6 +290,7 @@ function KillLine({
   zone,
   carrier,
   focus,
+  strongXuids,
 }: KillLineProps) {
   const t = REPLAY_TEXT[locale]
   const killerColor = inkOf(k.xuid)
@@ -279,12 +299,12 @@ function KillLine({
     <>
       <FeedClock ms={replayMs} />
       {zone !== undefined && <KillZone name={zone} locale={locale} />}
-      <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
+      <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className={nameWeight(k.xuid, strongXuids, 'font-medium')}
         name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
       <KillWeapon kill={k} color={killerColor} locale={locale} />
       {k.victimGamertag ? (
         <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
-          color={inkOf(k.victimXuid)} />
+          color={inkOf(k.victimXuid)} className={nameWeight(k.victimXuid, strongXuids)} />
       ) : (
         <span aria-hidden />
       )}

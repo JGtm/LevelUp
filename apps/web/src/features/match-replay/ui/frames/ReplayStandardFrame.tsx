@@ -11,17 +11,22 @@
  * intérieure et l'écart entre ses deux blocs. Les équipes (`ReplayRosterColumn`) gardent leur hauteur
  * naturelle et c'est ELLES qui cèdent quand la place manque : leur part défile (une Grande équipe tient
  * sans défiler) ; le fil remplit tout le reste et ne descend jamais sous `FIL_STANDARD_HAUTEUR_MIN_PX`,
- * soit cinq lignes. La fiche d'un joueur prend la place du fil sans le détruire (`ReplayFeedOrPanel`) ; la
- * ligne du joueur dont la fiche est ouverte est marquée.
+ * soit cinq lignes. LA FICHE D'UN JOUEUR REMPLACE TOUTE LA COLONNE (`ReplayFeedOrPanel`, `above`) : les équipes et
+ * le fil restent montés dessous, masqués, pour retrouver leur défilement et le filtre du fil au retour ; la
+ * ligne du joueur dont la fiche est ouverte est marquée. La fiche reçoit son sélecteur de joueurs et le pied
+ * « Éliminations », qui lisent le MÊME fil que la colonne (`feedSource`). La cellule du fil occupe le même rang
+ * dans la colonne que dans le Cinéma : elle survit au changement de cadre.
  *
  * LA COLONNE EST `absolute inset-0` à partir de `xl` : la carte impose la hauteur, jamais un pourcentage
  * d'elle ni une formule CSS (`ui/rosterHeight.guard.test.ts`). Sous `xl` elle passe sous la carte, bornée à
- * 80 % de la hauteur d'écran.
+ * 80 % de la hauteur d'écran. Elle est toujours positionnée (`relative` sous `xl`) : la fiche s'y place.
  */
 import { COTES_COLONNE_STANDARD, FIL_STANDARD_HAUTEUR_MIN_PX } from '../../model/cotesStandard'
+import { ReplayFeedExtract } from '../ReplayFeedExtract'
 import { ReplayFeedOrPanel } from '../ReplayFeedOrPanel'
 import { ReplayKillFeed } from '../ReplayKillFeed'
 import { ReplayPlayerPanel } from '../ReplayPlayerPanel'
+import { ReplayPlayerPicker } from '../ReplayPlayerPicker'
 import { ReplayRosterColumn } from '../ReplayRosterColumn'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
@@ -32,48 +37,53 @@ const COLUMN_STYLE = Object.freeze({
   gap: COTES_COLONNE_STANDARD.ecartBlocsPx,
 })
 
-/** La colonne du Standard : les équipes, puis le fil (ou la fiche du joueur à sa place). */
+/** La colonne du Standard : les équipes, puis le fil ; la fiche d'un joueur les remplace toutes les deux. */
 function standardColumn(view: ReplayFrameView) {
   const { doc, model, playerPanel, playFrame, nowMs, locale } = view
+  // Le fil de la colonne et l'extrait de la fiche lisent la même source.
+  const feedSource = {
+    entries: model.feed,
+    nowMs,
+    playWindow: model.window,
+    scoreboard: model.scoreboard,
+    xuidMeta: model.identity,
+    allegiance: model.allegiance,
+    locale,
+    marks: model.marks,
+    zoneOf: view.feedZoneOf,
+    doc,
+    playbackStore: view.playbackStore,
+    weaponIcons: view.weaponIcons,
+  }
+  const focus = playerPanel.focus
   return (
     <div
-      className="flex max-h-[80vh] flex-col xl:absolute xl:inset-0 xl:max-h-none xl:border-l xl:border-border"
+      className="relative flex max-h-[80vh] flex-col xl:absolute xl:inset-0 xl:max-h-none xl:border-l xl:border-border"
       style={COLUMN_STYLE}
       data-replay-column="standard"
     >
-      <ReplayRosterColumn
-        doc={doc}
-        players={model.players}
-        frame={playFrame}
-        locale={locale}
-        allegiance={model.allegiance}
-        tracked={playerPanel.tracked}
-        onCard={playerPanel.onCard}
-        selectedXuid={playerPanel.focus?.player.xuid ?? null}
-      />
+      {/* La place des équipes du Cinéma reste vide : la cellule du fil garde sa position, donc son instance, d'un cadre à l'autre. */}
+      {null}
       <ReplayFeedOrPanel
         minHeightPx={FIL_STANDARD_HAUTEUR_MIN_PX}
-        feed={
-          <ReplayKillFeed
-            entries={model.feed}
-            nowMs={nowMs}
-            playWindow={model.window}
-            scoreboard={model.scoreboard}
-            xuidMeta={model.identity}
-            allegiance={model.allegiance}
-            locale={locale}
-            marks={model.marks}
-            zoneOf={view.feedZoneOf}
+        above={
+          <ReplayRosterColumn
             doc={doc}
-            playbackStore={view.playbackStore}
-            weaponIcons={view.weaponIcons}
+            players={model.players}
+            frame={playFrame}
+            locale={locale}
+            allegiance={model.allegiance}
+            tracked={playerPanel.tracked}
+            onCard={playerPanel.onCard}
+            selectedXuid={focus?.player.xuid ?? null}
           />
         }
+        feed={<ReplayKillFeed {...feedSource} />}
         panel={
-          playerPanel.focus && (
+          focus && (
             <ReplayPlayerPanel
-              player={playerPanel.focus.player}
-              actions={playerPanel.focus}
+              player={focus.player}
+              actions={focus}
               onToggle={playerPanel.onToggle}
               onClose={playerPanel.onClose}
               doc={doc}
@@ -82,6 +92,19 @@ function standardColumn(view: ReplayFrameView) {
               playWindow={model.window}
               allegiance={model.allegiance}
               locale={locale}
+              column={{
+                picker: (
+                  <ReplayPlayerPicker
+                    players={model.players}
+                    frame={playFrame}
+                    locale={locale}
+                    allegiance={model.allegiance}
+                    selectedXuid={focus.player.xuid}
+                    onCard={playerPanel.onCard}
+                  />
+                ),
+                footer: (close) => <ReplayFeedExtract {...feedSource} player={focus.player} onFullFeed={close} />,
+              }}
             />
           )
         }

@@ -123,7 +123,10 @@ describe('ReplayPage : la colonne du Standard', () => {
   it('de haut en bas : les équipes, puis le fil', async () => {
     const { container } = await mountReady()
     const [equipes, fil] = Array.from(columnOf(container)?.children ?? [])
-    expect(equipes).toHaveAttribute('data-replay-roster-column')
+    // L'enveloppe des équipes (`contents` : sa boîte est celle de son contenu) porte le bloc des équipes.
+    expect(equipes).toHaveAttribute('data-testid', 'replay-above-slot')
+    expect(equipes.className).toContain('contents')
+    expect(equipes.firstElementChild).toHaveAttribute('data-replay-roster-column')
     expect(fil.contains(screen.getByTestId('replay-feed-slot'))).toBe(true)
     // Plus aucune colonne de fiches en plafond de 30 rem dans le Standard.
     expect(columnOf(container)?.querySelector('[data-replay-player-card]')).not.toBeNull()
@@ -145,30 +148,63 @@ describe('ReplayPage : la colonne du Standard', () => {
     expect(columnOf(container)?.querySelectorAll('[data-replay-roster-detail]')).toHaveLength(1)
   })
 
-  it('un clic sur une ligne ouvre la fiche à la place du fil, marque la ligne ; « Retour au fil » la referme', async () => {
+  it('un clic sur une ligne remplace TOUTE la colonne par la fiche : équipes et fil restent montés, masqués ; « Équipes » la referme', async () => {
     const { container } = await mountReady()
     const ligne = columnOf(container)?.querySelector<HTMLElement>('[data-replay-player-card]') as HTMLElement
     expect(ligne.getAttribute('aria-pressed')).toBe('false')
     const feedSlot = screen.getByTestId('replay-feed-slot')
+    const equipes = screen.getByTestId('replay-above-slot')
+    const roster = container.querySelector('[data-replay-roster-column]')
+    expect(equipes.hasAttribute('aria-hidden')).toBe(false)
     fireEvent.click(ligne)
     expect(ligne.getAttribute('aria-pressed')).toBe('true')
+    // Les équipes ne restent plus au-dessus : masquées, comme le fil, mais toujours montées.
+    expect(equipes.getAttribute('aria-hidden')).toBe('true')
+    expect(equipes.className).toContain('invisible')
     expect(feedSlot.getAttribute('aria-hidden')).toBe('true')
-    // Les équipes restent au-dessus : la fiche ne prend que la cellule du fil, dans la même colonne.
-    expect(columnOf(container)?.contains(ligne)).toBe(true)
-    const retour = screen.getByRole('button', { name: T.playerPanel.back })
-    expect(feedSlot.parentElement?.contains(retour)).toBe(true)
-    fireEvent.click(retour)
+    // La fiche est dans la colonne, et c'est elle qui la remplit : retour « Équipes » (et non « Retour au fil »).
+    const fiche = columnOf(container)?.querySelector<HTMLElement>('[data-replay-fiche-column]') as HTMLElement
+    expect(fiche).not.toBeNull()
+    expect(fiche.parentElement?.className).toContain('absolute inset-0')
+    expect(feedSlot.parentElement?.contains(fiche)).toBe(true)
+    expect(columnOf(container)?.className).toContain('relative')
     expect(screen.queryByRole('button', { name: T.playerPanel.back })).toBeNull()
-    expect(screen.getByTestId('replay-feed-slot').hasAttribute('aria-hidden')).toBe(false)
+    const retour = within(fiche).getByRole('button', { name: T.playerPanel.backToTeams })
+    fireEvent.click(retour)
+    expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
+    expect(screen.getByTestId('replay-feed-slot')).toBe(feedSlot)
+    expect(screen.getByTestId('replay-above-slot')).toBe(equipes)
+    expect(container.querySelector('[data-replay-roster-column]')).toBe(roster)
+    expect(feedSlot.hasAttribute('aria-hidden')).toBe(false)
+    expect(equipes.hasAttribute('aria-hidden')).toBe(false)
     expect(ligne.getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('Échap ferme la fiche ouverte dans la colonne', async () => {
+  it('Échap rend la colonne, une couche à la fois, sans quitter le cadre', async () => {
     const { container } = await mountReady()
     fireEvent.click(columnOf(container)?.querySelector<HTMLElement>('[data-replay-player-card]') as HTMLElement)
-    expect(screen.getByRole('button', { name: T.playerPanel.back })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: T.playerPanel.backToTeams })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('button', { name: T.playerPanel.back })).toBeNull()
+    expect(screen.queryByRole('button', { name: T.playerPanel.backToTeams })).toBeNull()
+    // La fiche fermée, la colonne est celle du Standard : le cadre n'a pas été quitté par la même frappe.
+    expect(columnOf(container)).not.toBeNull()
+  })
+
+  it('« Fil complet » rend la colonne, et le fil retrouve la même cellule', async () => {
+    const { container } = await mountReady()
+    const feedSlot = screen.getByTestId('replay-feed-slot')
+    fireEvent.click(columnOf(container)?.querySelector<HTMLElement>('[data-replay-player-card]') as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: T.playerPanel.fullFeed }))
+    expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
+    expect(screen.getByTestId('replay-feed-slot')).toBe(feedSlot)
+  })
+
+  it('la toile ne se remonte pas à l’ouverture de la fiche', async () => {
+    const { container } = await mountReady()
+    const canvas = container.querySelector('canvas')
+    fireEvent.click(columnOf(container)?.querySelector<HTMLElement>('[data-replay-player-card]') as HTMLElement)
+    expect(container.querySelector('canvas')).toBe(canvas)
+    expect(container.querySelectorAll('canvas')).toHaveLength(1)
   })
 })
 
@@ -184,6 +220,17 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
       expect(container.querySelector('[data-replay-roster-column]')).not.toBeNull()
       expect(container.querySelector('aside .xl\\:max-h-\\[30rem\\]')).not.toBeNull()
     }
+  })
+
+  it('Cinéma : la fiche remplit seulement la cellule du fil, avec « Retour au fil », sans le sélecteur ni le pied', async () => {
+    const { container } = await mountReady()
+    goTo('cinema')
+    fireEvent.click(container.querySelector<HTMLElement>('[data-replay-roster-column] [data-replay-player-card]') as HTMLElement)
+    expect(screen.getByRole('button', { name: T.playerPanel.back })).toBeInTheDocument()
+    expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
+    expect(container.querySelector('[data-replay-player-picker]')).toBeNull()
+    expect(container.querySelector('[data-replay-fiche-extract]')).toBeNull()
+    expect(screen.queryByTestId('replay-above-slot')).toBeNull()
   })
 
   it('la cellule du fil survit au passage du Standard au Cinéma et retour', async () => {

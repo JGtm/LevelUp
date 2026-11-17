@@ -10,6 +10,9 @@
  *  3. LE PANNEAU REMPLIT LA CELLULE du fil, rien d'autre : la carte n'est jamais couverte.
  *  4. LA MISE EN VALEUR D'UNE ÉLIMINATION (lot 2) ET LE PANNEAU COEXISTENT : ouvrir le panneau ne
  *     l'efface pas (elle reste sur la carte), et la ligne choisie est retrouvée au retour.
+ *  5. AVEC `above` (colonne du Standard), LE PANNEAU RECOUVRE TOUTE LA COLONNE : les équipes, comme le fil,
+ *     restent montées (mêmes nœuds, défilement gardé), masquées et cachées aux lecteurs d'écran ; la cellule du
+ *     fil n'est plus le bloc de référence du panneau. Sans `above`, rien ne change.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -129,6 +132,52 @@ describe('ReplayFeedOrPanel', () => {
     rerender(<ReplayFeedOrPanel feed={<p>fil</p>} panel={PANEL} minHeightPx={171} />)
     expect(cellule.style.minHeight).toBe('')
     expect(cellule.className).toContain('min-h-[16rem]')
+  })
+
+  it('sans `above`, aucune enveloppe d’équipes, et la cellule du fil reste le bloc de référence du panneau', () => {
+    render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={PANEL} />)
+    expect(screen.queryByTestId('replay-above-slot')).toBeNull()
+    expect((screen.getByTestId('replay-feed-slot').parentElement as HTMLElement).className).toContain('relative')
+  })
+
+  it('sans panneau, `above` est affiché normalement, avant la cellule du fil, dans une enveloppe sans boîte', () => {
+    render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={null} above={<p>équipes</p>} />)
+    const equipes = screen.getByTestId('replay-above-slot')
+    expect(equipes.className).toBe('contents')
+    expect(equipes.hasAttribute('aria-hidden')).toBe(false)
+    expect(equipes.nextElementSibling).toBe(screen.getByTestId('replay-feed-slot').parentElement)
+  })
+
+  it('avec le panneau, `above` et le fil restent montés mais masqués ; le panneau se pose contre la colonne', () => {
+    render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={PANEL} above={<p>équipes</p>} />)
+    const equipes = screen.getByTestId('replay-above-slot')
+    expect(screen.getByText('équipes')).toBeTruthy()
+    expect(equipes.className).toContain('invisible')
+    expect(equipes.getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByTestId('replay-feed-slot').className).toContain('invisible')
+    // La cellule du fil n'est plus positionnée : le panneau, `absolute inset-0`, remplit la colonne qui l'est.
+    const cellule = screen.getByTestId('replay-feed-slot').parentElement as HTMLElement
+    expect(cellule.className).not.toContain('relative')
+    expect(screen.getByTestId('panneau').parentElement?.className).toContain('absolute inset-0')
+  })
+
+  it('ouvrir puis fermer ne remonte ni `above` ni le fil : mêmes nœuds, défilement retrouvé', () => {
+    const equipes = <div data-testid="equipes" style={{ overflowY: 'auto' }}>équipes</div>
+    const { rerender } = render(<ReplayFeedOrPanel feed={<p>fil</p>} panel={null} above={equipes} />)
+    const enveloppe = screen.getByTestId('replay-above-slot')
+    const bloc = screen.getByTestId('equipes')
+    const cellule = screen.getByTestId('replay-feed-slot')
+    bloc.scrollTop = 77
+    rerender(<ReplayFeedOrPanel feed={<p>fil</p>} panel={PANEL} above={equipes} />)
+    expect(screen.getByTestId('replay-above-slot')).toBe(enveloppe)
+    expect(screen.getByTestId('equipes')).toBe(bloc)
+    expect(screen.getByTestId('replay-feed-slot')).toBe(cellule)
+    rerender(<ReplayFeedOrPanel feed={<p>fil</p>} panel={null} above={equipes} />)
+    expect(screen.getByTestId('replay-above-slot')).toBe(enveloppe)
+    expect(screen.getByTestId('equipes')).toBe(bloc)
+    expect(screen.getByTestId('replay-feed-slot')).toBe(cellule)
+    expect(enveloppe.hasAttribute('aria-hidden')).toBe(false)
+    expect(enveloppe.className).toBe('contents')
   })
 
   it('sans hauteur donnée, aucun style n est posé : le plancher du cadre reste celui de la classe', () => {

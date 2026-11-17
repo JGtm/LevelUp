@@ -7,8 +7,8 @@
  *    du match —, ou les totaux de la feuille quand le film ne publie pas ce joueur), puis `headEnd` ;
  *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — boutons à bascule (`aria-pressed`) ;
  *    leurs exclusions et leur remise à zéro sont dans `playerPanelLogic` ;
- *  - une région qui DÉFILE : le bloc « À L'INSTANT » (`ReplayPlayerNow` : bouclier, santé, armes,
- *    grenades et équipement du joueur à l'image lue), puis les LISTES de totaux de fin de match
+ *  - une région qui DÉFILE (par défaut : `scroll: 'internal'`) : le bloc « À L'INSTANT »
+ *    (`ReplayPlayerNow` : bouclier, santé, armes, grenades et équipement du joueur à l'image lue), puis les LISTES de totaux de fin de match
  *    (précision, dégâts, détail du score, objectif, armes) lues sur la feuille. Chaque titre dit « sur
  *    le match » : le film ne publie pas la précision en cours de partie. Un joueur sans ligne de
  *    feuille n'a pas de listes : un bloc pointillé le dit, plutôt que des zéros.
@@ -17,7 +17,8 @@
  * fermeture, le sélecteur de joueur, l'écoute d'Échap, le nom accessible de la surface, sa hauteur.
  * Le conteneur donne une colonne flex de hauteur bornée (`min-h-0`) et, s'il veut un bouton à droite
  * de la tête, le passe par `headEnd`. Le corps rend un fragment : ses trois blocs sont les enfants
- * directs du conteneur.
+ * directs du conteneur. Quand le conteneur fait défiler TOUTE la fiche (`scroll: 'outer'`), la région
+ * basse ne défile plus d'elle-même : elle prend sa hauteur naturelle et c'est le conteneur qui défile.
  *
  * Le corps reçoit tout par props et ne lit que ce qu'on lui donne. Ses boutons suivent la règle des
  * boutons du rejeu : la souris ne prend pas le focus, Espace reste « Lecture » (`PRESS_GUARDS`).
@@ -64,10 +65,21 @@ export interface ReplayPlayerPanelBodyProps {
   locale: ReplayLocale
   /** Ce que le conteneur pose à droite de la bande de tête (retour, fermeture) ; rien par défaut. */
   headEnd?: ReactNode
+  /**
+   * Qui fait défiler la partie basse : le corps lui-même (`'internal'`, défaut : la tête et les actions
+   * restent en place) ou son conteneur (`'outer'` : la région garde sa hauteur naturelle).
+   */
+  scroll?: 'internal' | 'outer'
+}
+
+/** La région basse du corps, selon qui la fait défiler. */
+const LOWER_CLASS: Record<NonNullable<ReplayPlayerPanelBodyProps['scroll']>, string> = {
+  internal: 'min-h-0 flex-1 space-y-3 overflow-y-auto pr-1',
+  outer: 'space-y-3',
 }
 
 export function ReplayPlayerPanelBody({
-  player, actions, onToggle, doc, frame, nowMs, playWindow, allegiance, locale, headEnd,
+  player, actions, onToggle, doc, frame, nowMs, playWindow, allegiance, locale, headEnd, scroll = 'internal',
 }: ReplayPlayerPanelBodyProps) {
   const t = REPLAY_TEXT[locale]
   const text = t.playerPanel
@@ -115,7 +127,7 @@ export function ReplayPlayerPanelBody({
           </Button>
         ))}
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+      <div className={LOWER_CLASS[scroll]}>
         <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
         {/* SANS LIGNE DE FEUILLE, OU AVEC UNE FEUILLE ENTIÈREMENT NON LUE : le bloc pointillé, jamais
             une liste de zéros. */}

@@ -40,6 +40,10 @@ export interface PlayerPanelText {
   noSheetHint: string
   /** Une arme de la feuille hors référentiel : son numéro, jamais le nom d'une autre. */
   weaponFmt: (weaponId: number) => string
+  /** La fiche du cadre Standard : le retour à la colonne des équipes (et du fil), le titre de l'extrait du fil et son lien. */
+  backToTeams: string
+  extractTitle: string
+  fullFeed: string
 }
 
 export const FR_PLAYER_PANEL = {
@@ -90,6 +94,9 @@ export const FR_PLAYER_PANEL = {
   noSheet: 'Pas de statistiques de match pour ce joueur',
   noSheetHint: "La feuille de score du match n'a pas de ligne pour lui : rien n'est affiché plutôt qu'un zéro.",
   weaponFmt: (weaponId) => `Arme n° ${weaponId}`,
+  backToTeams: 'Équipes',
+  extractTitle: 'Éliminations',
+  fullFeed: 'Fil complet',
 } satisfies PlayerPanelText
 
 export const EN_PLAYER_PANEL = {
@@ -140,4 +147,7 @@ export const EN_PLAYER_PANEL = {
   noSheet: 'No match statistics for this player',
   noSheetHint: 'The match scoreboard has no row for them: nothing is shown rather than a zero.',
   weaponFmt: (weaponId) => `Weapon #${weaponId}`,
+  backToTeams: 'Teams',
+  extractTitle: 'Kills',
+  fullFeed: 'Full feed',
 } satisfies PlayerPanelText
