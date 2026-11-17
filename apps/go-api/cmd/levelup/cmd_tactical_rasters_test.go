@@ -123,7 +123,7 @@ func TestTacticalRasters_SidecarPerime(t *testing.T) {
 	perime := `{"schema_version":1,"match_id":"aaaaaaaa","short_id":"aaaaaaaa",
 	  "artifact_schema_version":20,"pas_m":0.5,"frame_interval_ms":100,
 	  "pas_echantillon_ms":250,"joueurs":[]}`
-	if err := os.WriteFile(cible, []byte(perime), 0o644); err != nil {
+	if err := poserCompresse(cible, []byte(perime), 0o644); err != nil {
 		t.Fatalf("ecrire sidecar perime: %v", err)
 	}
 	b := projeterCorpusRasters(ctx, cfg, trOptions(false), []string{"aaaaaaaa"})
@@ -148,7 +148,7 @@ func TestTacticalRasters_SidecarDUnAutreFormat(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(cible), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(cible, []byte(`{"schema_version":99,"artifact_schema_version":39}`), 0o644); err != nil {
+	if err := poserCompresse(cible, []byte(`{"schema_version":99,"artifact_schema_version":39}`), 0o644); err != nil {
 		t.Fatalf("ecrire: %v", err)
 	}
 	if sidecarAJour(context.Background(), cible) {
@@ -307,7 +307,7 @@ func TestTacticalRasters_SidecarCorrompu(t *testing.T) {
 	root := t.TempDir()
 	trPoserArtefacts(t, root, "aaaaaaaa")
 	cible := trSidecarAuBonSchema(t, root, "aaaaaaaa")
-	if err := os.WriteFile(cible, []byte(`{"schema_version":`), 0o644); err != nil {
+	if err := poserCompresse(cible, []byte(`{"schema_version":`), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
@@ -351,7 +351,7 @@ func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
 	v2 := `{"schema_version":2,"match_id":"aaaaaaaa","short_id":"aaaaaaaa",
 	  "artifact_schema_version":39,"pas_m":0.5,"frame_interval_ms":100,
 	  "pas_echantillon_ms":250,"points_ignores":0,"joueurs":[]}`
-	if err := os.WriteFile(cible, []byte(v2), 0o644); err != nil {
+	if err := poserCompresse(cible, []byte(v2), 0o644); err != nil {
 		t.Fatalf("ecrire sidecar v2: %v", err)
 	}
 	if _, ok := lireSidecarRaster(context.Background(), cible); ok {
@@ -410,25 +410,13 @@ func TestTacticalRasters_RaccourciExigeLePasCourant(t *testing.T) {
 	root := t.TempDir()
 	cible := trSidecarAuBonSchema(t, root, "aaaaaaaa")
 	sc := trSidecarCourant("aaaaaaaa")
-	ecrireSidecarBrut(t, cible, sc)
+	trEcrireSidecar(t, cible, sc)
 	if !sidecarAJour(context.Background(), cible) {
 		t.Fatal("un sidecar au schéma et au pas courants doit être à jour")
 	}
 	sc.FrameIntervalMs = replaybuild.HistoricalFrameIntervalMS
-	ecrireSidecarBrut(t, cible, sc)
+	trEcrireSidecar(t, cible, sc)
 	if sidecarAJour(context.Background(), cible) {
 		t.Fatal("un sidecar à un pas périmé a été pris pour à jour par le raccourci")
-	}
-}
-
-// ecrireSidecarBrut pose un sidecar en JSON clair, tel que `lireSidecarRaster` le relit.
-func ecrireSidecarBrut(t *testing.T, path string, sc domain.TacticalRasterSidecar) {
-	t.Helper()
-	raw, err := json.Marshal(sc)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
-		t.Fatalf("write: %v", err)
 	}
 }

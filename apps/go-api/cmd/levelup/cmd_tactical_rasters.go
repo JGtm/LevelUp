@@ -38,6 +38,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -49,6 +50,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
 
@@ -240,9 +242,9 @@ func dejaProjete(ctx context.Context, path string, schemaArtefact, pasArtefact i
 // absence, et le taire ferait disparaitre un incident derriere une reecriture muette
 // (CLAUDE.md n 3, anti-patron n 10).
 func lireSidecarRaster(ctx context.Context, path string) (domain.TacticalRasterSidecar, bool) {
-	raw, err := os.ReadFile(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, os.ErrNotExist) {
 			slog.WarnContext(ctx, "rasters tactiques : sidecar illisible, il sera reecrit",
 				"path", path, "raison", "lecture", "err", err)
 		}

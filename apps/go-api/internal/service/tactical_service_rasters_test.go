@@ -21,11 +21,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 )
 
@@ -415,5 +418,41 @@ func TestOccupation_SidecarVideCompteAuDenominateur(t *testing.T) {
 	// 24 echantillons x 0,25 s / 4 matchs = 1,5 s. Avec 3 au denominateur ce serait 2,0.
 	if out.Cellules[0].Valeur != 1.5 {
 		t.Fatalf("valeur = %v s, attendu 1,5 (24 x 0,25 s / 4 matchs mesures)", out.Cellules[0].Valeur)
+	}
+}
+
+// Le lecteur de fichiers tactiques lit le fichier compresse que le recuit ecrit ; l'absence est un match
+// non mesure (nil, nil) ; un fichier present mais illisible (gzip tronque) est une erreur, jamais une absence.
+func TestTacticalRasterStore_LitLeFichierCompresse(t *testing.T) {
+	root := t.TempDir()
+	store := NewTacticalRasterStore(root, title.DefaultSlug)
+	chemins := title.NewPathResolver(root)
+
+	attendu := sidecarPose("aaaaaaaa", joueurEn(tsMoi, 2, 3, 8))
+	raw, err := json.Marshal(attendu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ecrire(t, chemins.TacticalRasterPath(title.DefaultSlug, "aaaaaaaa"), string(raw))
+
+	lu, err := store.Charger(context.Background(), "aaaaaaaa")
+	if err != nil || lu == nil {
+		t.Fatalf("Charger = (%v, %v), attendu le sidecar", lu, err)
+	}
+	if lu.MatchID != "aaaaaaaa" || len(lu.Joueurs) != 1 || lu.Joueurs[0].Cellules[0].Echantillons != 8 {
+		t.Errorf("sidecar relu different de l'ecrit : %+v", lu)
+	}
+
+	if absent, err := store.Charger(context.Background(), "bbbbbbbb"); absent != nil || err != nil {
+		t.Errorf("fichier absent : Charger = (%v, %v), attendu (nil, nil)", absent, err)
+	}
+
+	tronque := chemins.TacticalRasterPath(title.DefaultSlug, "cccccccc")
+	ecrire(t, tronque, string(raw))
+	if err := os.Truncate(tronque, 5); err != nil {
+		t.Fatal(err)
+	}
+	if lu, err := store.Charger(context.Background(), "cccccccc"); err == nil || lu != nil {
+		t.Errorf("fichier tronque : Charger = (%v, %v), attendu une erreur", lu, err)
 	}
 }

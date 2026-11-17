@@ -2,7 +2,7 @@
 // UN endroit, `internal/domain/title/film_id.go`.
 //
 // POURQUOI. L'artefact est `{short8}.json.gz`, sa marque de dérivation `{short8}.derived.json`, son
-// sidecar de raster `rasters/{short8}.json` ; `HasSuffix(name, ".json")` était recopié dans six
+// sidecar de raster `rasters/{short8}.json.gz` (compressé comme l'artefact) ; `HasSuffix(name, ".json")` était recopié dans six
 // balayages de dossier, chacun avec sa façon d'écarter la marque. Les constantes
 // (`title.ReplayArtifactExt`, `ReplayDerivationsMarkSuffix`,
 // `ReplaySidecarExt`) et le prédicat `title.IsReplayArtifactFile` sont la seule écriture de la règle.

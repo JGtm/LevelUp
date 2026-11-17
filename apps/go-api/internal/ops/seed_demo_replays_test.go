@@ -204,12 +204,12 @@ func TestPruneDemoReplays_NeRetireQueLesRejeuxAuFormatCourantHorsManifeste(t *te
 	ecrireTest(t, layout.ReplayArtifactPath(slug, garde), []byte("gz-garde"))
 	ecrireTest(t, layout.ReplayArtifactPath(slug, hors), []byte("gz-hors"))
 	intacts := []string{
-		filepath.Join(dir, garde+".json"),                  // brut ancien d'un match du manifeste
-		filepath.Join(dir, hors+".json"),                   // brut ancien d'un match hors manifeste
-		filepath.Join(dir, garde+".meta"),                  // en-tête
-		filepath.Join(dir, garde+".derived.json"),          // marque de dérivation
-		filepath.Join(dir, "rasters", garde+".json"),       // fichier tactique, dans son sous-dossier
-		filepath.Join(dir, "sauvegarde-manuelle.json.bak"), // fichier étranger
+		filepath.Join(dir, garde+".json"),                              // brut ancien d'un match du manifeste
+		filepath.Join(dir, hors+".json"),                               // brut ancien d'un match hors manifeste
+		filepath.Join(dir, garde+".meta"),                              // en-tête
+		filepath.Join(dir, garde+".derived.json"),                      // marque de dérivation
+		filepath.Join(dir, "rasters", garde+titlePkg.ReplaySidecarExt), // fichier tactique, dans son sous-dossier
+		filepath.Join(dir, "sauvegarde-manuelle.json.bak"),             // fichier étranger
 	}
 	for _, f := range intacts {
 		ecrireTest(t, f, []byte("a-garder"))

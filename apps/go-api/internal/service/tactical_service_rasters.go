@@ -47,6 +47,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // ─── LE STORE : LA SEULE LECTURE DE FICHIER ────────────────────────────────────
@@ -67,7 +68,7 @@ func NewTacticalRasterStore(repoRoot, titleSlug string) port.TacticalRasterStore
 // erreur — il ne doit pas se confondre en silence avec une absence.
 func (s *tacticalRasterStore) Charger(_ context.Context, matchID string) (*domain.TacticalRasterSidecar, error) {
 	path := title.NewPathResolver(s.repoRoot).TacticalRasterPath(s.titleSlug, matchID)
-	raw, err := os.ReadFile(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

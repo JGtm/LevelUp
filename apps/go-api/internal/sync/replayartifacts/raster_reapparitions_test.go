@@ -16,6 +16,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // artefactReapparition : 100 ms par frame.
@@ -198,7 +199,7 @@ func TestProjeterRastersTactiques_PorteDeLaPrevision(t *testing.T) {
 			projeterRastersTactiques(context.Background(), d, []artefactLu{
 				{matchID: doc.MatchID, path: chemin, doc: doc, octets: octets},
 			})
-			raw, err := os.ReadFile(titlePkg.NewPathResolver(racine).TacticalRasterPath(titlePkg.DefaultSlug, titlePkg.FilmShortMatchID(doc.MatchID)))
+			raw, err := replayartifact.ReadBytes(titlePkg.NewPathResolver(racine).TacticalRasterPath(titlePkg.DefaultSlug, titlePkg.FilmShortMatchID(doc.MatchID)))
 			if err != nil {
 				t.Fatalf("sidecar absent : %v", err)
 			}

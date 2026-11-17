@@ -34,7 +34,7 @@ const SousDossierRasters = "rasters"
 // garde les deux ensemble (une purge de titre, une copie de poste, un diagnostic). Le
 // SOUS-dossier, lui, est ce qui rend la cohabitation sure — les deux parcours du dossier
 // d'artefacts (service.replayService.AvailableSet et scheduler.purgeReplayArtifacts-
-// ForTitle) ne comptent QUE les fichiers `.json` de premier niveau et sautent les
+// ForTitle) ne comptent QUE les artefacts de premier niveau et sautent les
 // repertoires (`e.IsDir()`). Un sidecar pose a plat aurait donc ete lu comme l'artefact
 // d'un match inexistant par le premier, et supprime comme un artefact indatable par le
 // second.
@@ -43,7 +43,7 @@ func (p *PathResolver) TacticalRasterDir(titleSlug string) string {
 }
 
 // TacticalRasterPath retourne le chemin du sidecar de raster tactique d'un match.
-// Ex: data/cache/replays/halo_infinite/rasters/000d5950.json
+// Ex: data/cache/replays/halo_infinite/rasters/000d5950.json.gz
 //
 // MEME CLE QUE L'ARTEFACT : la forme COURTE (cf. FilmShortMatchID), donc le match_id
 // complet et sa forme courte donnent le MEME chemin. C'est ce qui permet au rattrapage

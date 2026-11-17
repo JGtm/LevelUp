@@ -88,8 +88,9 @@ const (
 	// ReplayDerivationsMarkSuffix : le suffixe de la marque de dérivation, voisine de l'artefact
 	// dans le même dossier. Elle n'est pas un artefact.
 	ReplayDerivationsMarkSuffix = ".derived.json"
-	// ReplaySidecarExt : l'extension d'un sidecar de rejeu (raster tactique), JSON brut.
-	ReplaySidecarExt = ".json"
+	// ReplaySidecarExt : l'extension d'un sidecar de rejeu (raster tactique), JSON compressé (gzip) comme
+	// l'artefact : `rasters/{short8}.json.gz`, écrit et lu par la porte `internal/replayartifact`.
+	ReplaySidecarExt = ".json.gz"
 )
 
 // ReplayArtifactFileName rend le nom de fichier de l'artefact de rejeu d'un match :

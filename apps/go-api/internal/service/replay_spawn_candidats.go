@@ -3,7 +3,7 @@ package service
 // replay_spawn_candidats.go — LES REAPPARITIONS DES AUTRES MATCHS DE LA CARTE, d'ou la prevision
 // deduit ses points candidats.
 //
-// Elles se lisent dans les sidecars de raster (un par match, schema courant), qui portent chaque
+// Elles se lisent dans les sidecars de raster (un par match, compresses, schema courant), qui portent chaque
 // reapparition apres mort avec sa position : c'est la meme matiere que la mesure du modele
 // (`levelup spawn-model`, qui la lit dans les artefacts). La lecture est MAIGRE : seuls l'equipe du
 // joueur et, par spawn, la position, le drapeau de reapparition et la mort sont decodes ; les
@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // sidecarReapparitions est la part du sidecar que la prevision lit.
@@ -102,9 +103,10 @@ func lireSidecarReapparitions(path string) (*sidecarReapparitions, error) {
 	return sidecarsDeReapparitions.lire(path)
 }
 
-// decoderSidecarReapparitions lit et decode le fichier d'un sidecar, sans cache.
+// decoderSidecarReapparitions lit (par la porte des fichiers de rejeu) et decode le fichier d'un
+// sidecar, sans cache.
 func decoderSidecarReapparitions(path string) (*sidecarReapparitions, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		return nil, fmt.Errorf("lecture du sidecar %s: %w", path, err)
 	}

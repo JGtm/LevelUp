@@ -5,7 +5,7 @@ package replayartifacts
 // # CE QUE CE FICHIER FAIT
 //
 // Chaque artefact CUIT DANS CE CYCLE est projete en sidecar d'occupation
-// (`data/cache/replays/{slug}/rasters/{short}.json`, cf.
+// (`data/cache/replays/{slug}/rasters/{short}.json.gz`, cf.
 // title.PathResolver.TacticalRasterPath) : par joueur nomme, le temps passe dans chaque
 // cellule de 0,5 m, ses reapparitions, et sa premiere entree dans chaque cellule. C'est la
 // matiere de la lecture « ou je passe mon temps » de l'onglet Tactique.
@@ -54,24 +54,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
 	"context"
 )
-
-// permSidecarRaster : les droits a la CREATION du sidecar. Meme regime que les autres
-// derives de cache du depot — lisible, non executable.
-const permSidecarRaster = 0o644
 
 // degradationSansLectureDuFilm : le nom de la degradation d'un document sans aucune lecture de fin de
 // vie du film (cle `degradation` du journal).
@@ -299,9 +293,9 @@ func entreesDeLOccupation(entrees []tactical.EntreeCellule) []domain.TacticalRas
 	return out
 }
 
-// EcrireSidecarRaster serialise et depose le sidecar, ATOMIQUEMENT quand l'environnement
-// le permet (platform/atomicfile). Le dossier est cree au besoin : le rattrapage tourne
-// sur des postes ou aucun sidecar n'a jamais ete ecrit.
+// EcrireSidecarRaster serialise le sidecar et le depose COMPRESSE (gzip) et ATOMIQUEMENT, par la
+// porte `replayartifact.Write`, qui cree aussi le dossier : le rattrapage tourne sur des postes ou aucun
+// sidecar n'a jamais ete ecrit.
 //
 // Exportee pour le rattrapage CLI, meme raison que ProjeterRasterTactique : une seconde
 // ecriture du meme fichier divergerait.
@@ -310,10 +304,7 @@ func EcrireSidecarRaster(path string, s domain.TacticalRasterSidecar) error {
 	if err != nil {
 		return fmt.Errorf("serialisation du sidecar: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("creation du dossier des rasters: %w", err)
-	}
-	if err := atomicfile.WriteFile(context.Background(), path, raw, permSidecarRaster); err != nil {
+	if _, _, err := replayartifact.Write(context.Background(), path, raw); err != nil {
 		return fmt.Errorf("ecriture du sidecar: %w", err)
 	}
 	return nil

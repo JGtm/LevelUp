@@ -10,8 +10,17 @@ import (
 	"levelup/go-api/internal/cronstore"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
+
+// poserFichierTactique dépose un fichier tactique (compressé) au chemin donné.
+func poserFichierTactique(t *testing.T, path string) {
+	t.Helper()
+	if _, _, err := replayartifact.Write(context.Background(), path, []byte(`{"schema_version":2}`)); err != nil {
+		t.Fatalf("poser le fichier tactique %s: %v", path, err)
+	}
+}
 
 // prepareReplayPurgeFixture construit une shared DB minimale (match_registry avec les
 // deux colonnes de temps du fragment canonique) et un dossier d'artefacts.
@@ -104,12 +113,10 @@ func TestPurge_ArtefactPurgeEmporteSonSidecar(t *testing.T) {
 	if err := os.MkdirAll(rasters, 0o755); err != nil {
 		t.Fatalf("mkdir rasters: %v", err)
 	}
-	purgeable := filepath.Join(rasters, "aaaa0001.json") // artefact date AVANT le seuil
-	garde := filepath.Join(rasters, "bbbb0002.json")     // artefact date APRES le seuil
+	purgeable := filepath.Join(rasters, "aaaa0001"+titlePkg.ReplaySidecarExt) // artefact date AVANT le seuil
+	garde := filepath.Join(rasters, "bbbb0002"+titlePkg.ReplaySidecarExt)     // artefact date APRES le seuil
 	for _, p := range []string{purgeable, garde} {
-		if err := os.WriteFile(p, []byte(`{"schema_version":2}`), 0o644); err != nil {
-			t.Fatalf("write sidecar: %v", err)
-		}
+		poserFichierTactique(t, p)
 	}
 
 	purged, kept, _, err := purgeReplayArtifactsForTitle(
@@ -141,11 +148,7 @@ func TestPurge_DossierSansArtefactNOuvrePasLaBase(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(artifactsDir, titlePkg.SousDossierRasters), 0o755); err != nil {
 		t.Fatalf("mkdir rasters: %v", err)
 	}
-	if err := os.WriteFile(
-		filepath.Join(artifactsDir, titlePkg.SousDossierRasters, "aaaa0001.json"),
-		[]byte(`{}`), 0o644); err != nil {
-		t.Fatalf("write sidecar: %v", err)
-	}
+	poserFichierTactique(t, filepath.Join(artifactsDir, titlePkg.SousDossierRasters, "aaaa0001"+titlePkg.ReplaySidecarExt))
 	sharedInexistant := filepath.Join(t.TempDir(), "pas_de_shared.duckdb")
 
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
@@ -260,7 +263,6 @@ func TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierT
 		filepath.Join(artifactsDir, "aaaa0001.json"),       // brut du match hors fenêtre, voisin de son .json.gz purgé
 		filepath.Join(artifactsDir, "bbbb0002.json"),       // brut d'un match de la fenêtre
 		filepath.Join(artifactsDir, "dddd0004.meta"),       // en-tête sans artefact dans le dossier
-		filepath.Join(rasters, "bbbb0002.json"),            // fichier tactique de l'artefact conservé
 		filepath.Join(artifactsDir, "notes-manuelles.txt"), // fichier étranger
 	}
 	for _, f := range intacts {
@@ -268,6 +270,10 @@ func TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierT
 			t.Fatal(err)
 		}
 	}
+	// Le fichier tactique de l'artefact conservé.
+	tactique := filepath.Join(rasters, "bbbb0002"+titlePkg.ReplaySidecarExt)
+	poserFichierTactique(t, tactique)
+	intacts = append(intacts, tactique)
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
 
 	if _, _, _, err := purgeReplayArtifactsForTitle(

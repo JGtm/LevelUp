@@ -88,7 +88,7 @@ func TestUneSeuleTroncatureDeMatchID(t *testing.T) {
 //
 // LE SOUS-DOSSIER EST LA CONDITION DE COHABITATION, pas une preference de rangement :
 // les deux parcours du dossier d'artefacts (AvailableSet, purge recurrente) ne comptent
-// que les `.json` de PREMIER NIVEAU. A plat, un sidecar aurait ete lu comme l'artefact
+// que les artefacts de PREMIER NIVEAU. A plat, un sidecar aurait ete lu comme l'artefact
 // d'un match inexistant par l'un, et supprime comme un artefact indatable par l'autre.
 func TestTacticalRasterPath(t *testing.T) {
 	p := NewPathResolver("/depot")
@@ -97,7 +97,7 @@ func TestTacticalRasterPath(t *testing.T) {
 	if court != complet {
 		t.Errorf("les deux formes du match_id donnent deux chemins :\n  court   %s\n  complet %s", court, complet)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(court), "data/cache/replays/halo_infinite/rasters/000d5950.json") {
+	if !strings.HasSuffix(filepath.ToSlash(court), "data/cache/replays/halo_infinite/rasters/000d5950.json.gz") {
 		t.Errorf("chemin inattendu : %s", court)
 	}
 	// Le sidecar est SOUS le dossier des artefacts, et n'est PAS un fichier de son

@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // artefactImmobile pose un artefact minimal : deux joueurs qui ne bougent pas, de la frame
@@ -174,7 +175,7 @@ func TestEcrireSidecarRaster_CreeLeDossierEtRelit(t *testing.T) {
 	if err := EcrireSidecarRaster(path, s); err != nil {
 		t.Fatalf("ecriture: %v", err)
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}

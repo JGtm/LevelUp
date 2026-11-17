@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -73,7 +74,7 @@ func poserMarqueDeLAncienneRevision(t *testing.T, artefact string) {
 // lireFichierTactique relit le fichier tactique tel que le service le lit.
 func lireFichierTactique(t *testing.T, chemin string) domain.TacticalRasterSidecar {
 	t.Helper()
-	raw, err := os.ReadFile(chemin) //nolint:gosec // chemin posé par le test
+	raw, err := replayartifact.ReadBytes(chemin)
 	if err != nil {
 		t.Fatalf("lecture du fichier tactique: %v", err)
 	}

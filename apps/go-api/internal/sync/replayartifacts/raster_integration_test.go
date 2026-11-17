@@ -34,6 +34,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
@@ -123,7 +124,7 @@ func TestRun_DeposeLeSidecarDeRaster(t *testing.T) {
 	Run(context.Background(), d, []string{matchID})
 
 	sidecar := titlePkg.NewPathResolver(racine).TacticalRasterPath(titlePkg.DefaultSlug, matchID)
-	raw, err := os.ReadFile(sidecar)
+	raw, err := replayartifact.ReadBytes(sidecar)
 	if err != nil {
 		t.Fatalf("aucun sidecar de raster depose par la cuisson (%s) : %v — le cablage de "+
 			"`Run` n'est traverse par rien d'autre", sidecar, err)
