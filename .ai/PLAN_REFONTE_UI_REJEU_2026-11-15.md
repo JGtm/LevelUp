@@ -349,6 +349,12 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   donc PAR FRAG, sur l'événement de frag du contexte du match, là où le serveur pose déjà la clé d'arme
   (`weapon_class`, registre des armes ; mêlée sans arme par une propriété déclarée de la règle du pont) ;
   `weaponLabels[].class` n'est pas livré ; `killBreakdown` lit la classe du frag, sans table.
+  **T.2b [x] fait le 2026-11-17** : `weapon_class` sur `MatchHighlightEvent`, posé par `service/match_view_killfeed_weapon.go`
+  depuis `games/halo_infinite/killsource_class.go` ; 189 des 193 sources que le pont résout reçoivent une classe.
+  RÉSERVE À MESURER EN T.0, avant T.5 : un frag dont la source de dégât n'est pas appariée reste « non classé » ;
+  la dernière mesure connue (2026-08-11, tout le parc) ne donnait une source qu'à un tiers des frags. Mesurer sur
+  le parc régénéré la part de frags classés des matchs AVEC rejeu ; si elle est basse, la section « Éliminations
+  par arme » se décide avec le user (masquée sous un seuil de données, ou affichée avec sa part non classée).
 
 ### Amendements techniques de l'audit (par item)
 
@@ -383,7 +389,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **S.3** : ordre et largeurs de la ligne changent (pas « seul le lieu ») ; les fixations 0.1 du fil servent de
   référence de contenu, pas d'identité ; la liste filtrée sort dans `hooks/useFeedView.ts` ; ligne cliquable et
   ligne choisie gardées ; médailles selon G0-3.
-- **S.4** : rien sous le lecteur. **S.5 (neuf)** : suppression de ce qui n'a plus d'appelant après S.4 et B.2
+- **S.4** : rien sous le lecteur. **S.5 (neuf) [x] fait le 2026-11-17** (`ReplayTeams`, `ReplayTeamHeader`, `cardDensity`, leurs 7 tests et les fixations 4v4 et 6v6 supprimés, 2 921 lignes ; cas vivants reportés dans cinq fichiers de test ; `GABARIT_NORMAL` et `EliminatedRow` RESTENT, lus par le bloc « À l'instant » ; S.5 bis faite le même soir : cellule de munitions, boîte de grenades, marques d'inventaire et seconde cellule d'arme retirées de la fiche, `ReplayInventoryRow` 460 -> 189 lignes, trois textes sans lecteur retirés, cliquet des fonctions longues à 247 ; reste noté : cinq valeurs de `GABARIT_NORMAL` sans lecteur, à solder en scindant le type des gabarits) : suppression de ce qui n'a plus d'appelant après S.4 et B.2
   (`ui/ReplayTeams.tsx`, gabarit normal, `model/cardDensity.ts` si plus lu, tests et fixations associés), avec
   report des cas de test sur les lignes ; `ui/ReplayPlayerCard.tsx` reste (rangée, G0-1).
 - **B.1** : cotes nommées dans `cardGabarit.ts` (largeur minimale de fiche, écart, largeur du score, marges) ;
@@ -534,7 +540,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [x] B.1 (fait le 2026-11-17 : `rowFits`, `largeurRequiseRangee`, cotes `COTES_RANGEE` ; un écart compté par fiche, soit 6 px de marge par camp) `model/rowLayout.ts`, pur : `rowFits({ camps, placesParCamp, largeurCorps, gabarit, largeurScore })`
       selon D-12 ; la largeur vient de `GABARIT_COMPACT` et des écarts de la rangée, aucun littéral de largeur
       de fiche. Tests : 4v4 à 1440 px (tient), 5v5 à 1440 px, 4v4 à 1280 px, Grande équipe, FFA.
-- [ ] B.2 `ui/ReplayTeamsRow.tsx` : `[fiches du camp de gauche] [bandeau de score] [fiches du camp de droite]` ;
+- [x] B.2 (fait le 2026-11-17 : `ui/ReplayTeamsRow.tsx`, `hooks/useCardRowLayout.ts` (largeur mesurée du corps), `dispositionEquipes` dans `model/rowLayout.ts` : rangée ordinaire jusqu'à 5 par camp (4 contre 4 = 1286 px), rangée Grande équipe de 6 à 12 par camp à partir de 1350 px (fiche minimale de 80 px, choix de l'agent), repli sur la colonne en lignes sinon, score alors sur la toile ; camp allié à gauche ; état « suivi » ajouté à la fiche ; au Plein cadre la rangée va bord à bord, sans les 24 px de K : à regarder à l'écran) `ui/ReplayTeamsRow.tsx` : `[fiches du camp de gauche] [bandeau de score] [fiches du camp de droite]` ;
       fiches = `ReplayPlayerCard` au gabarit compact (bouclier et santé en deux barres, grenades, équipement,
       tuiles d'attente comprises) ; `ReplayScoreBanner` au centre, à la largeur de sa cellule. Clic sur une fiche :
       `playerPanel.onCard` (ouvre D.3). Repli : quand `rowFits` est faux, le cadre rend la colonne du Standard
@@ -551,7 +557,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 5 bis. Lot S — le Standard selon le tableau A
 
-- [ ] S.1 `ReplayStandardFrame.tsx` : contenu borné et centré (constante nommée de largeur, D-11) ; en-tête en
+- [x] S.1 (fait le 2026-11-17 : page bornée à 1200 px, en-tête de 64 px en trois cellules, score de 440 px au centre par `COTES_BANDEAU_SCORE` (emplacements `entete`, `rangee`, `scene`) ; le score reste sur la toile en Cinéma et en Plein cadre ; `ReplayMatchRecall`, sans appelant, supprimé avec sa dérogation d'import ; reste le liseré de bord des barres de score, hérité de la maquette A, à montrer au user) `ReplayStandardFrame.tsx` : contenu borné et centré (constante nommée de largeur, D-11) ; en-tête en
       trois cellules : retour et titre du match à gauche, `ReplayScoreBanner` resserré au centre (environ 440 px,
       manches et barre de prise de zone comprises, sans changer sa lecture `readScoreBanner`), lien vers la fiche
       du match à droite. Le bandeau de score ne coiffe plus le terrain en Standard. Tests : en-tête rendu, score
@@ -565,11 +571,11 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       de `model/playerCardReadings.ts`, aucune recalculée ; cotes dans `cardGabarit.ts` (troisième gabarit
       « ligne » si 0.3 le recommande). Clic sur une ligne : `playerPanel.onCard`. Tests : 4v4, joueur mort, place
       libre, joueur suivi déplié, Grande équipe (la part des équipes défile).
-- [ ] S.3 Fil de la colonne : `ReplayKillFeed` rendu au format d'une ligne aux colonnes fixes (instant | tueur |
+- [x] S.3 (fait le 2026-11-17 : ligne de 28 px, colonnes 30 / 70 / 70 / 18 / 70 du tableau N, ordre instant, lieu, tueur, arme, victime, médailles ; `hooks/useFeedView.ts` ; assistance et porteur en infobulle ; fixations « avant » remplacées par des « après » après preuve de contenu identique ; ÉCARTS de l'agent, acceptés et dits au user : la ligne choisie se lit par un fond, ses liserés de camp sont retirés ; plus de fond bleuté sur une élimination assistée ; horloge sans chasse fixe ; à trancher par le user : le liseré gauche du titre du fil (`hudBand`), la teinte de fond du bandeau d'objectif ; C.2 devra partager le filtre entre deux affichages du fil) Fil de la colonne : `ReplayKillFeed` rendu au format d'une ligne aux colonnes fixes (instant | tueur |
       arme | victime | lieu de la victime, C.1), sans fond ni bordure, plus récente en tête, défilant, titre = menu
       de filtre actuel. Les formes non-élimination du fil (objectifs, entrées et sorties, prises) gardent leur
       forme actuelle sur une ligne. Fixations des lignes comparées aux témoins 0.1 : seul le lieu change.
-- [ ] S.4 Montage : la grille du Standard devient carte | colonne de 360 px (équipes puis fil, le fil garde au
+- [x] S.4 (fait le 2026-11-17 : colonne de 360 px par `COTES_COLONNE_STANDARD`, équipes en lignes puis fil ; plancher du fil de 5 lignes (171 px, réserve de titre estimée et non mesurée) ; en Grande équipe une place sans rendu garde sa cellule ; le bloc arrondi commun carte et colonne de A-5 n'est PAS fait, la toile gardant son propre bloc (V5) : à juger à l'écran) Montage : la grille du Standard devient carte | colonne de 360 px (équipes puis fil, le fil garde au
       moins 5 lignes) ; la zone de lecture et le zoom restent ceux d'aujourd'hui ; les sections sous le lecteur
       (carte de chaleur, usage de l'équipement) inchangées. `ReplayTeams` et la colonne de 30 rem sortent du
       Standard ; ce qui n'a plus d'appelant est supprimé avec ses tests (règle 0 code mort), la fixation
@@ -584,14 +590,14 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       `nommage_zone_cas.json` restent tels quels. `useKillerZones` devient `useFeedZones` (lieu de la victime),
       l'ancien hook est supprimé avec ses imports (règle 0 code mort). Tests : victime à pied, victime en
       véhicule, victime sans position, bot.
-- [ ] C.2 `ui/ReplayFeedOverlay.tsx` : les 5 dernières lignes à l'instant lu du fil FILTRÉ (même filtre que le
+- [x] C.2 (fait le 2026-11-17 : `ui/ReplayFeedOverlay.tsx`, `model/planFeed.ts` (éliminations seules, sans filtre), cotes `model/cotesFilPlan.ts` ; posé quand la rangée de fiches l'est, jamais en repli ni au Standard ; la colonne est alors cachée, le fil complet restant monté ; `KillLine` partagée avec la colonne (prop `onPlan`) ; ombre par le jeton `--scrim`, classes vérifiées par un build ; colonnes 30 / 70 / 70 / 18 / 70 de la ligne du fil, et non les 30 / 78 / 88 / 20 du tableau N) `ui/ReplayFeedOverlay.tsx` : les 5 dernières lignes à l'instant lu du fil FILTRÉ (même filtre que le
       Standard, `useFeedFilter`), plus récente en bas, sans en-tête ni menu, sans fond, ombre portée du texte
       (token, pas de couleur en dur), colonnes fixes partagées avec `ReplayKillLineParts`. Ancré en bas à gauche
       du BLOC de la toile (slot E.1), donc dans la marge d'une carte haute et sur le plan d'une carte large. La
       légende de la carte de chaleur passe en haut à gauche du bloc dans ces cadres. Tests : 0, 3, 5 et 8 lignes
       passées ; ordre ; filtre appliqué. (amendé le 2026-11-17, grille K-9) Les deux lignes les plus anciennes
       s'estompent (70 %, puis 85 %), par des cotes nommées ; test : estompage à 5 lignes, aucun à 3.
-- [ ] C.3 Option « Fil des éliminations » (affiché par défaut) dans le panneau Vue, retenue dans
+- [x] C.3 (fait le 2026-11-17 : clé `replay-show-plan-feed`, vraie par défaut, section du panneau Vue montrée seulement là où le fil du plan peut se poser ; option éteinte, le fil des éliminations n'est affiché nulle part dans ces cadres : choix du user) Option « Fil des éliminations » (affiché par défaut) dans le panneau Vue, retenue dans
       `replayPreferences.ts` (clé nouvelle, garde-rail `replayPreferences.guard.test.ts`). Sans effet en
       Standard (la colonne y garde son fil). Libellés fr et en.
 - **Gate C** : commandes du Gate A ; `killerZone.test.ts` / tests du nouveau module verts ; aucun fichier Go
@@ -602,7 +608,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [x] D.1 (fait le 2026-11-17 : quatre fixations du panneau posées avant, identiques à l'octet après ; la tête est dans le corps commun, le retour et Échap au conteneur ; seule la partie basse défile, alors que J fait défiler toute la fiche : à trancher en D.2) `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
       Masquer, « À l'instant », « Totaux du match »), sans changer son rendu (fixation avant / après). Tests de
       comportement existants verts sans modification.
-- [ ] D.2 Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
+- [x] D.2 (fait le 2026-11-17 : `ui/ReplayPlayerPicker.tsx`, `ui/ReplayFeedExtract.tsx`, cotes `model/cotesFicheStandard.ts` ; la fiche couvre la colonne, équipes et fil restant montés et masqués ; `ReplayPlayerPanelBody` prend `scroll` interne ou confié au conteneur ; le retour « Équipes » défile avec le contenu, comme J-1 ; l'identité J-4 (nom en 17 px, camp) n'est PAS refaite : le corps commun garde sa tête, à trancher avec T.5) Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
       `ReplayFeedOrPanel` (le fil reste monté dessous, mécanisme conservé). En-tête « Fiche » avec retour
       « Équipes » (couche `REPLAY_ESCAPE_LAYER_ATTR` : Échap rend la colonne avant de quitter un cadre) ;
       sélecteur des joueurs en rectangles arrondis ; `ReplayPlayerPanelBody` ; section « Éliminations » = les
@@ -610,7 +616,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       d'une ligne de S.3, lien « Fil complet » qui rend la colonne ; frise à pistes inchangée
       (D-18). Tests : ouverture depuis une ligne, changement par le sélecteur, retour Équipes, Échap, 2 dernières
       lignes du fil, frise égale aux témoins 0.1 fiche ouverte.
-- [ ] D.3 `ui/ReplayPlayerPopover.tsx` (tableau L, Cinéma et Plein cadre) : `ReplayPlayerPanelBody` dans un
+- [x] D.3 (fait le 2026-11-17 : `ui/ReplayPlayerPopover.tsx`, options `align` et `boundRef` de `useAnchoredPanel`, fermeture par `useDismissable` sans clic dehors ; la colonne ne se montre plus quand la rangée est posée ; anneau du pion par `layers/openPlayerRing.ts`, encres `--foreground` et `--background`, peint aussi à l'export ; reprise du score : en repli il est dans l'en-tête (H-2), sur la toile seulement sous 820 px de corps ; ÉCARTS avec L, acceptés et dits au user : fenêtre 8 px sous la fiche, tête et actions fixes avec défilement du bas seulement, ombre et fond par jetons ; suite D.3 bis lancée : la fiche « de cellule » et « Retour au fil » n'ont plus d'appelant) `ui/ReplayPlayerPopover.tsx` (tableau L, Cinéma et Plein cadre) : `ReplayPlayerPanelBody` dans un
       panneau ancré sous la fiche cliquée (`useAnchoredPanel`), portail, `REPLAY_ESCAPE_LAYER_ATTR`, croix,
       défilement interne. Lecture non interrompue, aucun voile. Clic sur une autre fiche : change de joueur. La
       fiche et le pion du joueur ouvert sont cerclés (token de focus). Tests : ouverture depuis la rangée et
@@ -626,7 +632,7 @@ côté serveur : T.6, qui sert les médailles du document avec leur libellé et 
 existantes se réutilisent (KDA du jeu, ADR 0006 ; catégorie « arme lourde » des niveaux d'armes du document) : 0.3
 les localise, rien n'est recalculé à côté.
 
-- [ ] T.0 (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
+- [ ] T.0 (mesures ajoutées le 2026-11-17 : part des frags classés par match avec rejeu — T.2b ; ramassages natifs, borne inférieure ou non — T.4 ; fixation « fin de match = tableau de score » de T.1 sur un match réel) (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
       schéma 125 (geste du user, dès la fusion du backlog : plan maître DM-1) et se rendent PAR BUILD du jeu.
       Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
       dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
@@ -671,7 +677,7 @@ les localise, rien n'est recalculé à côté.
       la langue (`lib/query/keys.ts`). `openapi.yaml` et `generated.ts` par le pilote. Tests : Go (libellé
       résolu en fr et en, médaille inconnue journalisée et servie sans libellé inventé), web (fil alimenté par
       le document, match sans `medals` : aucune médaille, aucun repli sur l'ancienne source).
-- [ ] T.7 (ajouté le 2026-11-17, item E.3 du plan backlog, décision D-3) `model/playerMovementStats.ts`, pur :
+- [x] T.7 (fait le 2026-11-17 : témoin `11de8353` relu sur le rejeu régénéré, verdict cohérent — 1 527 sprints tous dans une vie, aucun pendant la mort, vitesse médiane 2,86 en sprint contre 2,02 hors sprint ; 1 159 sauts dérivés dont 91 % à la hauteur attendue ; deux réserves bornées à 0,4 % : un sprint resté ouvert à l'arrêt, cinq sauts aberrants ; `playerMovementStatsAt`, sauts TOUJOURS estimés, le document n'en publiant qu'une dérivation) (ajouté le 2026-11-17, item E.3 du plan backlog, décision D-3) `model/playerMovementStats.ts`, pur :
       temps cumulé de sprint et nombre de sauts jusqu'à l'instant, pour le joueur de la fiche. Précédé de la
       relecture du témoin `11de8353` (les sprints et les sauts du document y sont comparés à ce que montre le
       rejeu ; un écart est rapporté au user avant le code). Le nombre de sauts porte la mention « estimation ».
@@ -683,21 +689,21 @@ les localise, rien n'est recalculé à côté.
 
 ## 8. Lot E — la barre de lecture compacte
 
-- [ ] E.1 Slots de `ReplayCanvas.tsx` : `transport` (élément fourni par le cadre : la barre actuelle en Standard,
+- [x] E.1 (fait le 2026-11-17 : `ui/replayTransportCommands.ts` (objet de commandes typé), emplacements `transport` et `blockOverlays` en fonctions de rendu, `ui/frames/replayFrameSlots.tsx` ; le zoom flottant vit dans `blockOverlays` ; `ReplayCanvas.tsx` 644 -> 642 lignes ; fixations et témoin identiques) Slots de `ReplayCanvas.tsx` : `transport` (élément fourni par le cadre : la barre actuelle en Standard,
       la compacte ailleurs) et `blockOverlays` (posés dans le bloc, à côté de la légende et du zoom). Le fichier
       ne grossit pas : la différence nette de lignes est nulle ou négative (le choix de barre et de zoom sort du
       fichier). Zone de lecture du Standard identique aux témoins.
-- [ ] E.2 Extraire de `ReplayTransport.tsx` ce que la barre compacte partage : boutons de capture et d'export
+- [x] E.2 (fait le 2026-11-17 : `ReplayCaptureButtons`, `ReplayTransportIcons`, `ReplayFrameButtons` ; le segment de texte des cadres quitte les en-têtes ; `ReplayTransport.tsx` 445 -> 137 lignes, cliquet des fonctions longues à 248 ; icônes de cadre SANS maquette, formes de l'agent, à montrer au user ; deux reprises confiées à E.3 : sortie du Plein cadre par l'icône alignée sur « Quitter », cadre ramené au Standard sans toile et au changement de match) Extraire de `ReplayTransport.tsx` ce que la barre compacte partage : boutons de capture et d'export
       (`ui/ReplayCaptureButtons.tsx`, avec la règle de l'élargissement pendant l'export), boutons de cadre
       (`ui/ReplayFrameButtons.tsx`, D-10, remplace `FullscreenButton` ; infobulles avec les touches T et F,
       grille D-1). Zone de lecture du Standard identique aux témoins hors les icônes de cadre.
-- [ ] E.3 `ui/ReplayTransportCompact.tsx` : une ligne. À gauche caméra (icône seule, E.4) et son ; puis lecture,
+- [x] E.3 (fait le 2026-11-17 : `ui/ReplayTransportCompact.tsx`, `ui/ReplayTimelineCompact.tsx`, cotes `model/cotesBarreCompacte.ts` ; `timeline.fragMarks` (frags de tous les joueurs) construit par `useReplayTimeline` ; emplacement `camera` pour E.4 ; `usesCompactBar` décide de la barre ; deux reprises faites : `leaveFullFrame` chemin unique de sortie, `useReplayFrame(scopeKey)` ramène au Standard sans toile et au changement de match ; ÉCARTS avec K à montrer au user : boutons ronds de la barre complète réutilisés, curseur de volume gardé, capture et export dans leur cartouche, pas de croix de déplacement dans la barre d'une ligne) `ui/ReplayTransportCompact.tsx` : une ligne. À gauche caméra (icône seule, E.4) et son ; puis lecture,
       −10, +10, temps, frise compacte (repères d'éliminations et de morts du joueur regardé et de ses alliés,
       bande de dominance, lues dans le même objet `timeline` que `ReplayTimelineTracks`), vitesse, zoom − / +
       (la commande de zoom flottante n'est pas rendue dans ces cadres) ; à droite capture, export, boutons de
       cadre. Raccourcis inchangés. Tests : commandes présentes, frise compacte alimentée par le même fil que la
       frise à pistes, export en cours neutralise la lecture.
-- [ ] E.4 Menu caméra (D-13) : « Suivre » (liste des joueurs, même action que Suivre de la fiche, plus « Aucun ») et
+- [x] E.4 (fait le 2026-11-17 : `ui/ReplayCameraMenu.tsx`, deux listes sur la même source d'options que la frise (`rosterKey` ajouté à `ViewpointOption`) ; `ReplaySlotCommands` porte `cameraFollow` ; la toile suit `followXuid` fiche ouverte ou fermée par `useReplayPlayerFocus({followPlayer})`, garde `playerFocusWiring` suivi ; fond d'accent du bouton quand un joueur est suivi, non dessiné : à montrer au user) Menu caméra (D-13) : « Suivre » (liste des joueurs, même action que Suivre de la fiche, plus « Aucun ») et
       « Point de vue » (`useReplayViewpoint.select`). Tests des deux sections.
 - **Gate E** : commandes du Gate A ; fixations Standard égales aux témoins hors icônes de cadre.
 
@@ -706,10 +712,10 @@ les localise, rien n'est recalculé à côté.
 - [x] F.1 (fait le 2026-11-17 : `autoTurns(carte, boite, dejaTourne)`, seuils 25 % pour tourner et 20 % pour revenir ; testé sur une boîte de 1390 x 700) `autoTurns(carte, boîte)` dans `lib/replay/orientation.ts`, pur : 0 ou 1 quart de tour selon le gain
       de surface (seuil 25 %, retour sous 20 %, D-14). Tests sur Detachment (1526 × 1666), Ronin (659 × 1288),
       Nadair (2133 × 947) dans les boîtes du Standard et du Cinéma à 1440 × 900.
-- [ ] F.2 Orientation « Auto » par défaut (D-14) : `useReplayOrientation` distingue « aucun choix » (Auto) d'un
+- [x] F.2 (fait le 2026-11-17 : `readOrientation` rend un quart de tour ou `null` (Auto), stockage inchangé, valeur retenue gardée ; `hooks/useResolvedTurns.ts` seul appelant d'`autoTurns`, résolu dans `useReplayView` sur la boîte de la toile, jamais sur le cadre d'un export ; `autoRotation` dans l'objet de commandes ; `ui/ReplayRotatedButton.tsx` dans la barre compacte ; « Auto » dans le panneau Vue ; ÉCARTS : l'infobulle n'écrit pas le gain en pour-cent de la maquette H, la règle pure ne le rendant pas ; l'onglet Tactique et « Occupation du terrain » lisent le choix RETENU, une carte en Auto y reste droite) Orientation « Auto » par défaut (D-14) : `useReplayOrientation` distingue « aucun choix » (Auto) d'un
       choix retenu ; section Vue avec « Auto » ; bouton « Plan tourné » dans la barre COMPACTE quand l'Auto a
       tourné, qui retient 0° (en Standard, la barre ne change pas, D-8 : le retour passe par la section Vue). Une carte déjà retenue garde son choix. Tests : Auto, choix retenu, bouton, hystérésis.
-- [ ] F.3 Emplacement 2D / 3D en superposition à gauche du bouton « Vue », dans le coin haut droit de la toile :
+- [x] F.3 (fait le 2026-11-17 : `ui/ReplayDimensionSwitch.tsx` à gauche du bouton « Vue », `settings/useReplayDimension.ts`, capacité lue par `replay3dCapabilityOf` sous le nom SUPPOSÉ `can_view_replay_3d`, à confirmer par le plan 3D ; rien n'est rendu aujourd'hui) Emplacement 2D / 3D en superposition à gauche du bouton « Vue », dans le coin haut droit de la toile :
       segment 2D / 3D rendu seulement si la capacité de la 3D est vraie (capacité absente aujourd'hui : rien ne
       s'affiche ; pas de drapeau, l'emplacement n'existe à l'écran que par la capacité). Le plan 3D (C.5) le
       branche. Test : capacité absente, rien ; capacité simulée vraie, segment rendu.
