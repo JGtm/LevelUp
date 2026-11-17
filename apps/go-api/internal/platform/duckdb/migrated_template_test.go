@@ -447,12 +447,16 @@ func TestMigratedTemplate_Fidelite(t *testing.T) {
 				exigerMemeEmpreinte(t, "copie mémoire", want, empreinteBase(t, OpenMigratedMemory(t, target)))
 			})
 			t.Run("rejeu_sans_effet", func(t *testing.T) {
+				// Le gabarit se construit AVANT la pose du releveur : sa propre migration ne compte pas
+				// parmi les étapes du rejeu, y compris quand le sous-test est lancé seul.
+				cheminCopie := MigratedTempFile(t, target, "rejeu.duckdb")
+
 				releveur := &releveurApplied{}
 				avant := slog.Default()
 				slog.SetDefault(slog.New(releveur))
 				t.Cleanup(func() { slog.SetDefault(avant) })
 
-				copie, err := sql.Open("duckdb", MigratedTempFile(t, target, "rejeu.duckdb"))
+				copie, err := sql.Open("duckdb", cheminCopie)
 				if err != nil {
 					t.Fatalf("open copie: %v", err)
 				}
