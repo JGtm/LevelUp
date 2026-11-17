@@ -1243,7 +1243,7 @@ aucun ratelier. Seuls les maillages manquaient : **52 rapatries, 0 echec**, par 
 commande `cmd/mapnav-fetch` (resolution anonyme, ecriture en flux, reprise par saut).
 
 Trois cas hors recette, ecrits dans leur reglage : **Thunderhead** et **Thunderhead Heavies**
-n'ont pas de maillage publie (sous le seuil des ~1 000 objets) ; **Absolution**, **Insolence** et
+n'ont pas de maillage publie (verifie le 2026-11-17 par mapnav-fetch -dry-run) ; **Absolution**, **Insolence** et
 **Insolence Heavies** en ont un que notre decodeur ne lit pas (`fichier-tag sans section TST1`).
 Ces cinq-la sont cuites aux seules zones de callout.
 
