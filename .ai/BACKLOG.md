@@ -29,6 +29,79 @@
 
 ---
 
+### [rejeu/cadres] Rangée de fiches et colonne qui oscillent au seuil de largeur
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-1, `C:/t/ui-revue-scratch/revue_finale.md`). Aucune marge entre « la rangée tient » et « elle ne tient plus ». Quand la rangée fait apparaître la barre de défilement, le corps rétrécit, la rangée se replie, la barre disparaît, la rangée revient. Cas relevé : 4 contre 4 au Cinéma ou au Plein cadre, corps entre 1286 et 1302 px environ, plan à son plancher de 360 px. Bande étroite, non reproduit à l'écran. Piste : une marge d'une vingtaine de pixels entre les deux sens, dans `useCardRowLayout`. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/cadres] Plein écran du navigateur laissé actif après le retour au Standard
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-5). Depuis le Standard, bouton du plein écran du système (Plein cadre du geste et natif), puis touche F ou icône « Standard » : le cadre se referme, le plein écran natif reste, alors que `leaveFullFrame` doit l'éviter. Variante : plein écran refusé par le navigateur ou API absente, puis « Quitter » : `wantedRef` reste vrai, et le clic suivant sur le bouton ne fait rien. Piste : passer la sortie d'un Plein cadre du geste par `release`, quel que soit le chemin (`hooks/useReplayFullscreen.ts`). **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/fiche] La fenêtre de fiche relit tout le lobby à chaque changement de joueur
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-7). La clé de la fenêtre (`xuid:disposition`, `ui/frames/ReplayCinemaFrame.tsx`) remonte le composant à chaque changement de joueur : tirs, touches et dégâts du document sont relus à chaque clic, ce que l'en-tête de `playerInstantSources.ts` dit éviter. Coût seulement, aucun nombre faux. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/fiche] Clé de liste par nom d'arme dans « Tirs et dégâts »
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-8). `ui/fiche/FicheTirs.tsx` prend le nom de l'arme comme clé React ; deux armes au même libellé donneraient deux lignes de même clé. Piste : une clé qui ne repose pas sur le libellé. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu] Soupçons de la relecture finale, non démontrés
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, section 3 de `C:/t/ui-revue-scratch/revue_finale.md`). Aucun de ces huit soupçons n'a été reproduit : ils sont à vérifier à l'écran ou par un test avant toute correction.
+
+- `hooks/useResolvedTurns.ts` : `turnedBefore` survit à un changement de match quand le document est déjà en cache ; une carte entre 20 % et 25 % de gain s'ouvre tournée ou droite selon la précédente.
+- Horloge de la barre vide après une bascule Standard / Cinéma en pause, si la toile ne change pas de taille.
+- Auto pendant un export : la résolution lit la boîte de l'écran ; un redimensionnement pendant l'export peut retourner le plan.
+- `equipmentGestures.ts`, `gestureOwner` : lâcher daté à fin de vie + 2 alors que le slot est réattribué à fin de vie + 1 (voir aussi l'entrée « Équipements lâchés en mourant »).
+- Deux scores « à l'instant » pour un joueur : infobulle de la tuile (calque de score, sans garde) et fiche (points par action, gardée).
+- Barre d'une ligne sur écran étroit : les commandes fixes dépassent la largeur, la frise tombe à zéro.
+- `replay_medal_labels.go`, `medalLabelOf` : `Difficulty` prise à la première langue d'un parcours de carte (ordre non fixé).
+- `playerInstantStats.ts` : `respawns` compte une vie entièrement antérieure au début du match (la moyenne l'écarte).
+
+**Effort : à estimer après vérification. Priorité basse.**
+
+---
+
+### [rejeu/fiche] Cinq cotes de l'ancien gabarit de fiche sans lecteur
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu). Constat antérieur, signalé le 2026-11-17 au nettoyage des anciennes fiches : `GABARIT_NORMAL` garde cinq valeurs qu'aucun chemin de production ne lit (largeur de cellule d'arme, épaisseurs de jauge, filigrane, nombre d'éclairs). Les retirer demande de scinder le type des gabarits en deux. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/maquette] Écarts avec les maquettes à juger à l'écran après livraison
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, conformité aux maquettes non relue ligne à ligne). Points à juger à l'écran :
+
+- icônes de cadre dessinées sans maquette ;
+- boutons ronds, curseur de volume et cartouche de capture gardés dans la barre d'une ligne ;
+- pas de croix de déplacement dans la barre d'une ligne ;
+- fenêtre de fiche accrochée 8 px sous la fiche, et dont seul le bas défile ;
+- bloc arrondi commun à la carte et à la colonne du Standard non fait ;
+- infobulle de « Plan tourné » sans le gain en pour-cent ;
+- ligne choisie du fil marquée par un fond ;
+- tirs à la tête écrits « 3 · sur 5 mesurées » ;
+- F / M / A de la tête de fiche sans couleur ;
+- fond d'accent du bouton caméra quand un joueur est suivi ;
+- au Plein cadre, la rangée va d'un bord à l'autre.
+
+Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un défaut constaté. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [tactique/orientation] L'onglet Tactique et « Occupation du terrain » ne suivent pas l'orientation « Auto » du rejeu
+
+**Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu). Ces vues lisent le choix RETENU pour la carte ; une carte en Auto y reste droite alors que le rejeu peut la tourner. À trancher par le user. **Effort : à estimer. Priorité basse.**
+
+---
+
 ### [match/équipement] Équipements « lâchés en mourant » sous-comptés dans la grille d'usage
 
 **Relevé le 2026-11-17** (refonte de la page du rejeu, lecture de l'équipement à l'instant). Un lâcher est daté à la fin de la vie plus une image, mais il est attribué par le propriétaire de la place À CETTE IMAGE, lecture stricte : quand la place n'a plus de propriétaire à cet instant, le lâcher n'est attribué à personne. Sur le seul document de test complet, 19 lâchers sur 29 sont attribués ; avec la lecture « dernier propriétaire connu » (`ownerAtFrameOrLast`, prévue pour ce cas dans `rosterLogic`), les 29 le seraient. Les sept autres documents de test, amincis, vont de 0 sur 4 à 21 sur 89. La grille « Usage d'équipement, par joueur » de la page du match et la future section « Équipement » de la fiche du joueur du rejeu lisent la même fonction : corriger l'une corrige l'autre, et change les totaux affichés (plus de « lâchés », donc plus d'« objets pris »). Aucun rejeu à régénérer. **Décision du user du 2026-11-17 : « ok corrige le sous-compte des équipements lâchés »** ; correction lancée le soir même sur la branche de la refonte de la page du rejeu (attribution au joueur qui vient de mourir, cas limites testés) ; **Corrigé le 2026-11-17** sur la branche de la refonte (`gestureOwner` : occupant de l'image précédente, sinon dernier propriétaire connu) : 79 lâchers attribués sur 338 avant, 338 sur 338 après, sur huit documents réels. Contrôlé le 2026-11-17 par lecture du code : les résumés d'usage des Sessions, de l'Escouade et des Tendances sont calculés par le décodeur (`replay.BuildUsageSummary`, attribution par « la vie qui couvre l'image, sinon la dernière vie terminée avant »), qui n'a PAS ce défaut. Reste un cas de bord côté décodeur, sans test : une place reprise à l'image même du lâcher crédite le nouvel occupant, là où le site crédite le mort ; et, pour les poses déployées, le décodeur lit « ou juste avant » quand le site lit strictement, donc l'« utilisé » du mur peut différer entre la page du match et les Sessions. Fréquence non mesurée ; à verser au chantier décodeur.
@@ -45,7 +118,7 @@
 
 ### [rejeu/fiche] Fiche du joueur : « Suivre » un joueur et « Seul » sur un autre à la fois
 
-**Relevé le 2026-11-17.** Le modèle l'autorise depuis que la caméra « Suivre » ne dépend plus de la fiche ouverte : la caméra peut suivre un joueur que « Seul » n'affiche pas. À trancher par le user (interdire, ou laisser). **Effort : à estimer. Priorité basse.**
+**Relevé le 2026-11-17.** Le modèle l'autorise depuis que la caméra « Suivre » ne dépend plus de la fiche ouverte : la caméra peut suivre un joueur que « Seul » n'affiche pas. À trancher par le user (interdire, ou laisser). **Complété le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-4) : la combinaison est possible aujourd'hui. Menu caméra : « Suivre » X, puis fiche de Y, puis « Seul » : `followXuid` reste X, la carte ne dessine que Y et se cadre à chaque image sur X, qui n'est pas dessiné. Aucun test ne croise une action de fiche avec un suivi tiers. Piste du relecteur : « Seul » éteint le suivi d'un autre joueur (symétrique de Masquer). **Effort : à estimer. Priorité basse.**
 
 ---
 
