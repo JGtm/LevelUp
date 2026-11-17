@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Grande équipe, lignes resserrées</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.board *{box-sizing:border-box}
+.board{width:1440px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;--shield:#60a5fa;--health:#d4d4d4;width:1440px;height:900px;background:#0b0b0b;display:flex;flex-direction:column;overflow:hidden}
+.top{height:48px;flex:none;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid #1f1f1f;background:#0f0f0f}
+.logo{font-weight:700;font-size:15px}
+.nav{display:flex;gap:20px;color:#8f8f8f}
+.nav .on{color:#fafafa}
+.avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#2a2a2a}
+.head{flex:none;height:52px;display:flex;align-items:center;gap:12px;padding:0 24px}
+.head .r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.back{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;border:1px solid #262626;background:#141414;color:#d4d4d4}
+.crumb{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb small{color:#8f8f8f;font-size:12px;white-space:nowrap}
+.crumb b{font-size:15px;font-weight:600;white-space:nowrap}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:#141414;border:1px solid #262626}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:#9a9a9a;font-size:12.5px;cursor:pointer}
+.seg button.on{background:#2a2a2a;color:#fafafa}
+.seg button.off{color:#5c5c5c}
+.btn{all:unset;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid #262626;background:#141414;color:#e5e5e5;font-size:13px;cursor:pointer;white-space:nowrap}
+.ibtn{all:unset;min-width:30px;height:30px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:#d4d4d4;font-size:12.5px;font-weight:500;cursor:pointer}
+
+.vp{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 360px;border-radius:12px;background:#0f0f0f;border:1px solid #1f1f1f;overflow:hidden}
+.stage{position:relative;min-width:0}
+.hint{position:absolute;left:16px;top:12px;font-size:11px;color:#6f6f6f}
+.mapbox{position:absolute;top:12px;bottom:12px;left:50%;transform:translateX(-50%);aspect-ratio:1526 / 1666}
+.mapbox img{position:absolute;inset:0;width:100%;height:100%;opacity:.92}
+.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.pin i{display:block;width:10px;height:10px;border-radius:50%;border:2px solid #0b0b0b}
+.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
+.pin.f i{width:12px;height:12px;box-shadow:0 0 0 3px #0b0b0b,0 0 0 5px var(--follow)}
+.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:rgba(8,12,18,.82)}
+
+/* colonne : 12 + 12 lignes de 21 px, deux en-tetes de 20 px, fil de 5 lignes de 28 px */
+.col{display:flex;flex-direction:column;padding:12px 14px;min-height:0;border-left:1px solid #1c1c1c}
+.ros{display:flex;flex-direction:column}
+.ros + .ros{margin-top:6px}
+.ch,.pr{display:grid;grid-template-columns:minmax(0,1fr) 60px 20px 20px 20px;column-gap:6px;align-items:center}
+.ch{height:20px;padding:0 6px;font-size:12px;font-weight:600;color:#c4c4c4}
+.ch .tn{display:flex;align-items:center;gap:8px;min-width:0}
+.ch .tn em{font-style:normal;font-size:13px;font-weight:700}
+.ch .cl{text-align:right;font-size:10.5px;font-weight:400;color:#7d7d7d}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+.pr{height:21px;padding:0 5px;border:1px solid transparent;border-radius:4px;font-size:12px;cursor:pointer}
+.pr:hover{background:rgba(255,255,255,.05)}
+.pr.follow{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.6)}
+.pr .nm{display:flex;align-items:center;gap:5px;min-width:0}
+.pr .nm b{flex:0 1 auto;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr.follow .nm b{font-weight:700}
+.pr .nm.bot b{color:#bdbdbd}
+.pr .flag{flex:none;display:inline-flex;color:#fafafa}
+.cap{flex:none;display:inline-grid;place-items:center;height:14px;padding:0 4px;border-radius:3px;border:1px solid #3a3a3a;font-size:9.5px;font-weight:400;color:#a3a3a3;line-height:1}
+.pr .n3{text-align:right;font-size:12px;color:#e5e5e5}
+.jg{display:flex;flex-direction:column;gap:1px}
+.b{display:block;height:4px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
+.b i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.b.s i{background:var(--shield)}.b.h i{background:var(--health)}
+.jg.mini .b{height:3px;opacity:.55}
+.resp{font-size:11px;color:var(--enemy);white-space:nowrap}
+.pr.dead .nm,.pr.dead .n3{opacity:.4}
+
+.feed{margin-top:8px;border-top:1px solid #1c1c1c;padding-top:6px;display:flex;flex-direction:column}
+.fr{display:grid;grid-template-columns:28px 76px 70px 18px 70px minmax(0,1fr);align-items:center;column-gap:4px;height:28px;font-size:12px;white-space:nowrap}
+.fr > span{overflow:hidden;text-overflow:ellipsis}
+.fr .t{color:#7d7d7d;font-size:11.5px}
+.fr svg{color:#9a9a9a}
+.fr .zn{color:#8a8a8a;font-size:11.5px}
+.fr .md{display:flex;align-items:center;gap:3px;overflow:visible}
+.fr .md i{display:block;width:13px;height:13px;border-radius:50%;background:#2f2f2f;border:1px solid #454545;flex:none}
+.fr .md small{font-size:10px;color:#9a9a9a}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fr .me{font-weight:700}
+
+.tp{flex:none;height:56px;display:flex;align-items:center;gap:6px;padding:0 2px}
+.play{all:unset;width:36px;height:36px;border-radius:50%;background:#fafafa;color:#0b0b0b;display:grid;place-items:center;cursor:pointer;flex:none}
+.time{font-size:12.5px;color:#a3a3a3;margin:0 4px;white-space:nowrap}
+.time b{color:#fafafa;font-weight:600}
+.scrub{position:relative;height:30px;flex:1;margin:0 10px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#2a2a2a}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#e5e5e5}
+.dom{position:absolute;left:0;right:0;top:23px;height:3px;display:flex;border-radius:2px;overflow:hidden}
+.dom i{display:block;height:3px}
+.dom i.ta{background:var(--ally)}.dom i.tb{background:var(--enemy)}.dom i.tn{background:#3a3a3a}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.14)}
+.vsep{width:1px;height:20px;background:#262626;margin:0 4px}
+
+.notes{height:360px;padding:24px 24px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:column;grid-template-rows:repeat(4,auto);column-gap:48px;row-gap:12px;align-content:start;border-top:1px solid #1f1f1f}
+.nn{display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:6px}
+.nn .k{font-size:12px;font-weight:700;color:#fafafa}
+.nn p{margin:0;font-size:12px;line-height:1.45;color:#bdbdbd}
+.nn p b{color:#fafafa;font-weight:600}
+</style>
+</helmet>
+<div class="board">
+<div class="app">
+  <header class="top">
+    <span class="logo">LevelUp</span>
+    <nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav>
+    <span class="avatar"></span>
+  </header>
+
+  <div class="head">
+    <a class="back" href="#" aria-label="Retour"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+    <div class="crumb"><small>Vigie_Kestrel · Partie rapide · 10 nov. 2026, 21:40</small><b>Grande équipe : Capture de drapeau — Detachment</b></div>
+    <div class="r">
+      <div class="seg" aria-label="Cadre du lecteur"><button>Standard</button><button class="on">Cinéma</button><button>Plein cadre</button></div>
+      <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+      <button class="btn">Fiche</button>
+    </div>
+  </div>
+
+  <main style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 24px 8px">
+    <div class="vp" style="flex: 1; min-height: 0">
+      <div class="stage">
+        <div class="hint">Clic sur une ligne : fiche du joueur (L)</div>
+        <div class="mapbox">
+          <img src="/_blob/8d83755a7d648799773635fc993d5560" alt="Plan de Detachment vu du dessus">
+          <div class="pin a f" style="left: 18.0%; top: 83.7%"><i></i><span>Vigie_Kestrel</span></div>
+          <div class="pin a" style="left: 35.9%; top: 53.8%"><i></i></div>
+          <div class="pin a" style="left: 63.2%; top: 67.4%"><i></i></div>
+          <div class="pin a" style="left: 38.4%; top: 76.6%"><i></i></div>
+          <div class="pin a" style="left: 64.8%; top: 67.8%"><i></i></div>
+          <div class="pin a" style="left: 60.4%; top: 71.7%"><i></i></div>
+          <div class="pin a" style="left: 68.6%; top: 55.2%"><i></i></div>
+          <div class="pin a" style="left: 41.2%; top: 74.7%"><i></i></div>
+          <div class="pin a" style="left: 61.3%; top: 47.3%"><i></i></div>
+          <div class="pin a" style="left: 60.4%; top: 64.7%"><i></i></div>
+          <div class="pin a" style="left: 75.2%; top: 78.9%"><i></i></div>
+          <div class="pin b" style="left: 25.6%; top: 35.5%"><i></i></div>
+          <div class="pin b" style="left: 75.2%; top: 42.9%"><i></i></div>
+          <div class="pin b" style="left: 57.9%; top: 38.3%"><i></i></div>
+          <div class="pin b" style="left: 74.5%; top: 52.2%"><i></i></div>
+          <div class="pin b" style="left: 41.1%; top: 28.1%"><i></i></div>
+          <div class="pin b" style="left: 69.9%; top: 28.0%"><i></i></div>
+          <div class="pin b" style="left: 27.5%; top: 26.5%"><i></i></div>
+          <div class="pin b" style="left: 44.6%; top: 26.4%"><i></i></div>
+          <div class="pin b" style="left: 76.1%; top: 37.4%"><i></i></div>
+          <div class="pin b" style="left: 63.2%; top: 50.9%"><i></i></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="ros">
+      <div class="ch"><span class="tn"><span class="dot a"></span>Eagle<em class="ka">2</em></span><span class="jg mini" title="Bouclier, puis santé"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="cl" title="Frags">F</span><span class="cl" title="Morts">M</span><span class="cl" title="Assistances">A</span></div>
+        <div class="pr follow"><span class="nm"><b>Vigie_Kestrel</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">9</span><span class="n3">3</span><span class="n3">2</span></div>
+        <div class="pr"><span class="nm"><b>Brindille44</b><span class="flag" title="Porte le drapeau adverse"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg></span></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">6</span><span class="n3">2</span><span class="n3">4</span></div>
+        <div class="pr"><span class="nm"><b>Quartz_Hibou</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">8</span><span class="n3">4</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Mistral_Roux</b></span><span class="jg"><span class="b s"><i style="width: 46%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">5</span><span class="n3">5</span><span class="n3">3</span></div>
+        <div class="pr"><span class="nm"><b>Tamarin74</b></span><span class="jg"><span class="b s"><i style="width: 0%"></i></span><span class="b h"><i style="width: 38%"></i></span></span><span class="n3">4</span><span class="n3">6</span><span class="n3">2</span></div>
+        <div class="pr dead"><span class="nm"><b>Orage_Lent</b></span><span class="resp" title="Réapparition dans 4,2 s">4,2 s</span><span class="n3">2</span><span class="n3">7</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Cumulus_Net</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">7</span><span class="n3">3</span><span class="n3">0</span></div>
+        <div class="pr"><span class="nm"><b>Pavane_B</b></span><span class="jg"><span class="b s"><i style="width: 80%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">3</span><span class="n3">3</span><span class="n3">5</span></div>
+        <div class="pr"><span class="nm"><b>Nacelle_Zed</b></span><span class="jg"><span class="b s"><i style="width: 22%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">5</span><span class="n3">4</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Fenouil_9</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">4</span><span class="n3">5</span><span class="n3">2</span></div>
+        <div class="pr"><span class="nm"><b>Harpon_Vif</b></span><span class="jg"><span class="b s"><i style="width: 0%"></i></span><span class="b h"><i style="width: 71%"></i></span></span><span class="n3">1</span><span class="n3">6</span><span class="n3">3</span></div>
+        <div class="pr"><span class="nm"><b>Lichen_Bleu</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">2</span><span class="n3">4</span><span class="n3">6</span></div>
+        </div>
+        <div class="ros">
+      <div class="ch"><span class="tn"><span class="dot b"></span>Cobra<em class="kb">1</em></span><span class="jg mini" title="Bouclier, puis santé"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="cl" title="Frags">F</span><span class="cl" title="Morts">M</span><span class="cl" title="Assistances">A</span></div>
+        <div class="pr"><span class="nm"><b>Rouille_Nord</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">8</span><span class="n3">3</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Zephyr_Cuivre</b></span><span class="jg"><span class="b s"><i style="width: 60%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">6</span><span class="n3">5</span><span class="n3">2</span></div>
+        <div class="pr dead"><span class="nm"><b>Mortier_81</b></span><span class="resp" title="Réapparition dans 8,9 s">8,9 s</span><span class="n3">5</span><span class="n3">8</span><span class="n3">0</span></div>
+        <div class="pr"><span class="nm"><b>Chardon_Ocre</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">7</span><span class="n3">4</span><span class="n3">3</span></div>
+        <div class="pr"><span class="nm bot"><b>Sentinelle de garde Alpha</b><span class="cap" title="Joueur contrôlé par l'ordinateur">bot</span></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">3</span><span class="n3">6</span><span class="n3">0</span></div>
+        <div class="pr"><span class="nm"><b>Vexille_K</b></span><span class="jg"><span class="b s"><i style="width: 0%"></i></span><span class="b h"><i style="width: 25%"></i></span></span><span class="n3">4</span><span class="n3">5</span><span class="n3">2</span></div>
+        <div class="pr"><span class="nm"><b>Pluvier_Sec</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">5</span><span class="n3">4</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Gabarit_3</b></span><span class="jg"><span class="b s"><i style="width: 35%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">3</span><span class="n3">6</span><span class="n3">4</span></div>
+        <div class="pr"><span class="nm"><b>Ombrelle_Q</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">2</span><span class="n3">5</span><span class="n3">2</span></div>
+        <div class="pr"><span class="nm"><b>Tison_Rapide</b></span><span class="jg"><span class="b s"><i style="width: 90%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">6</span><span class="n3">4</span><span class="n3">1</span></div>
+        <div class="pr"><span class="nm"><b>Cascade_Nue</b></span><span class="jg"><span class="b s"><i style="width: 100%"></i></span><span class="b h"><i style="width: 100%"></i></span></span><span class="n3">1</span><span class="n3">7</span><span class="n3">3</span></div>
+        <div class="pr dead"><span class="nm"><b>Bruine_77</b></span><span class="resp" title="Réapparition dans 1,6 s">1,6 s</span><span class="n3">4</span><span class="n3">6</span><span class="n3">1</span></div>
+        </div>
+        <div class="feed" aria-label="Éliminations">
+        <div class="fr"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Vigie_Kestrel</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Gabarit_3</span><span class="md" title="Tir à la tête"><i title="Tir à la tête"></i></span></div>
+        <div class="fr"><span class="t">3:45</span><span class="zn">Passerelle nord</span><span class="kb">Rouille_Nord</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Nacelle_Zed</span><span class="md"></span></div>
+        <div class="fr"><span class="t">3:41</span><span class="zn">Cour sud</span><span class="ka">Quartz_Hibou</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Zephyr_Cuivre</span><span class="md" title="Doublé, Tireur d'élite"><i title="Doublé"></i><i title="Tireur d'élite"></i></span></div>
+        <div class="fr"><span class="t">3:36</span><span class="zn">Couloir ouest</span><span class="kb">Chardon_Ocre</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Orage_Lent</span><span class="md" title="Triplé, Vengeance, Grenadier"><i title="Triplé"></i><i title="Vengeance"></i><small>+1</small></span></div>
+        <div class="fr"><span class="t">3:30</span><span class="zn">Atrium</span><span class="ka">Mistral_Roux</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Bruine_77</span><span class="md"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tp">
+      <button class="ibtn" aria-label="Caméra : suivre Vigie_Kestrel" title="Caméra : suivre Vigie_Kestrel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
+      <span class="vsep"></span>
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <div class="scrub">
+        <div class="ticks"><i class="ta" style="left: 3.87%"></i><i class="tb" style="left: 6.24%"></i><i class="ta" style="left: 9.46%"></i><i class="ta" style="left: 11.18%"></i><i class="tb" style="left: 15.05%"></i><i class="ta" style="left: 17.85%"></i><i class="ta" style="left: 20.86%"></i><i class="tb" style="left: 23.66%"></i><i class="ta" style="left: 26.02%"></i><i class="ta" style="left: 29.03%"></i><i class="tb" style="left: 32.26%"></i><i class="ta" style="left: 34.84%"></i><i class="ta" style="left: 36.34%"></i><i class="ta" style="left: 38.92%"></i><i class="tb" style="left: 39.14%"></i><i class="ta" style="left: 41.51%"></i><i class="tb" style="left: 43.44%"></i><i class="ta" style="left: 46.02%"></i><i class="ta" style="left: 46.67%"></i><i class="tb" style="left: 47.74%"></i><i class="ta" style="left: 49.25%"></i><i class="ta" style="left: 53.12%"></i><i class="tb" style="left: 55.05%"></i><i class="ta" style="left: 57.63%"></i><i class="ta" style="left: 60.43%"></i><i class="tb" style="left: 64.52%"></i><i class="ta" style="left: 67.10%"></i><i class="ta" style="left: 71.61%"></i><i class="tb" style="left: 75.48%"></i><i class="ta" style="left: 78.71%"></i><i class="ta" style="left: 82.58%"></i><i class="tb" style="left: 86.24%"></i><i class="ta" style="left: 90.32%"></i><i class="ta" style="left: 93.98%"></i><i class="tb" style="left: 97.85%"></i></div>
+        <div class="rail"><i style="width: 49.7%"></i></div>
+        <div class="dom"><i class="tb" style="width: 3%"></i><i class="tn" style="width: 1%"></i><i class="tb" style="width: 16%"></i><i class="tn" style="width: 6%"></i><i class="ta" style="width: 74%"></i></div>
+        <span class="knob" style="left: calc(49.7% - 6px)"></span>
+      </div>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Dézoomer">−</button><button class="ibtn" aria-label="Zoomer">+</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Capture"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+      <button class="ibtn" aria-label="Exporter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></button>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+      <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+    </div>
+  </main>
+</div>
+
+<div class="notes">
+    <div class="nn"><span class="k">N-1</span><p><b>Contenu d'une ligne.</b> Nom (points de suspension s'il est trop long), jauges (bouclier au-dessus, santé en dessous), puis Frags, Morts et Assistances en trois colonnes de 20 px. Une seule ligne par joueur. L'en-tête de chaque camp porte son nom, son score et les titres F, M, A.</p></div>
+    <div class="nn"><span class="k">N-2</span><p><b>Ce qui disparaît.</b> L'arme en main, les grenades, l'équipement, et le bloc déplié du joueur suivi (munitions, arme en réserve, charge). Tout cela reste dans la fiche du joueur (M), un clic plus loin.</p></div>
+    <div class="nn"><span class="k">N-3</span><p><b>Hauteur de ligne : 21 px</b> (texte de 12 px ; plancher : texte de 11 px, ligne de 20 px). Zone utile de la colonne : 736 (lecteur à 900 px de cadre) − 2 (bordure) − 24 (marges) = 710 px. Contenu : 20 (en-tête Eagle) + 12 × 21 + 6 + 20 (en-tête Cobra) + 12 × 21 + 8 + 147 (fil : filet 1, marge 6, 5 × 28) = 705 px. Tout tient sans défilement, avec 5 px de reste. À 22 px, il faudrait 729 px : ça ne tient plus.</p></div>
+    <div class="nn"><span class="k">N-4</span><p><b>États.</b> Plein : deux jauges pleines. Bouclier entamé : barre bleue raccourcie. Santé entamée sans bouclier : barre bleue vide, barre grise raccourcie. Éliminé : ligne à 40 %, compte à rebours en rouge (« 4,2 s ») à la place des jauges, comme dans K. Suivi : fond et bordure bleus, nom en gras, comme dans K. Porteur d'objectif : drapeau après le nom (K n'a pas de marque, celle-ci est proposée). Bot : pastille « bot » après le nom (marque proposée).</p></div>
+    <div class="nn"><span class="k">N-5</span><p><b>Clic.</b> Toute la ligne est cliquable : la fiche du joueur s'ouvre comme dans K et L (fenêtre sous la ligne en Cinéma et en Plein cadre ; en Standard, la colonne devient la fiche, J). La ligne ouverte garde sa marque.</p></div>
+    <div class="nn"><span class="k">N-6</span><p><b>Fil de 5 lignes.</b> Plus récente en tête, 28 px : instant, lieu (celui de la victime), tueur, arme, victime, puis médailles de l'élimination (deux pictogrammes au plus, puis « +N » ; noms en infobulle). Assistance et badge « porteur » restent en infobulle.</p></div>
+    <div class="nn"><span class="k">N-7</span><p><b>Portée.</b> Cette forme ne vaut que pour la Grande équipe (12 contre 12). Les autres effectifs gardent leurs lignes de 34 px (A, J) ou les fiches en rangée de K.</p></div>
+    <div class="nn"><span class="k">N-8</span><p><b>Cadre.</b> En-tête et barre de lecture de K. La rangée de K ne peut pas porter 24 fiches (24 × 115 px + 270 px de score = plus de 3 000 px pour 1 392 px de large) : en Grande équipe, la colonne de 360 px de C prend sa place, avec le score de chaque camp dans son en-tête. Sous 871 px de cadre, le plancher de 20 px est atteint : non dessiné, à décider (fil de 3 lignes).</p></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
