@@ -337,7 +337,13 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - Menu de la caméra : petit panneau à deux listes, « Suivre » (avec « Aucun ») et « Point de vue ».
 - T.6 suit le patron réel de `service/replay_vehicle_labels.go` : une table `medalLabels` par nom de médaille
   et par langue DANS le document, lue par `pickText` ; la clé de requête du document ne porte pas la langue.
-- T.2 lit la catégorie « arme lourde » dans `weaponLabels[].role`, mêlée et grenade dans `killEffects`.
+- ~~T.2 lit la catégorie « arme lourde » dans `weaponLabels[].role`, mêlée et grenade dans `killEffects`.~~ FAUX,
+  constaté sur pièces le 2026-11-17 à l'exécution de T.2 : `role` ne vaut jamais « lourde » (un fusil de précision
+  a le rôle `sniper` et la classe `heavy`), et `killEffects` ne porte que des familles d'effet (la grenade et le
+  lance-roquettes y partagent `explosive`). Remplacé par l'item **T.2b** (Sonnet) : le serveur pose `class` sur
+  `weaponLabels[]` à la requête, depuis le registre des armes (`weapons.ClassesByKey()`, la source de la
+  Synthèse), par le chemin qui pose déjà `role` ; le web en tire la table arme -> classe ; mêlée sans arme et
+  grenade rangées comme la Synthèse si le fil le permet, sinon « non classées ». Aucun rejeu régénéré.
 
 ### Amendements techniques de l'audit (par item)
 
@@ -588,7 +594,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 7. Lot D — la fiche détaillée (J en Standard, L en Cinéma et Plein cadre)
 
-- [ ] D.1 `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
+- [x] D.1 (fait le 2026-11-17 : quatre fixations du panneau posées avant, identiques à l'octet après ; la tête est dans le corps commun, le retour et Échap au conteneur ; seule la partie basse défile, alors que J fait défiler toute la fiche : à trancher en D.2) `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
       Masquer, « À l'instant », « Totaux du match »), sans changer son rendu (fixation avant / après). Tests de
       comportement existants verts sans modification.
 - [ ] D.2 Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
@@ -629,7 +635,7 @@ les localise, rien n'est recalculé à côté.
       nouvelle chute comptent deux), médailles gagnées. Tests : début de match, joueur mort, bot, tir à la tête
       non mesuré, deux boucliers perdus dans une vie, fin de match égale au tableau de score sur les valeurs
       exactes (fixation d'un match réel).
-- [ ] T.2 `model/killBreakdown.ts` (D-20) : éliminations jusqu'à l'instant par catégorie (arme lourde, mêlée,
+- [x] T.2 (fait le 2026-11-17 : `killBreakdownAt`, table arme -> classe reçue en paramètre, entrée « non classée » tenue ; la source de la table est l'item T.2b) `model/killBreakdown.ts` (D-20) : éliminations jusqu'à l'instant par catégorie (arme lourde, mêlée,
       grenade, autres armes) puis par arme, nombre et part en pourcentage ; une élimination sans arme résolue
       compte dans « autres » sous un libellé neutre, jamais sous l'arme d'une voisine. Tests : parts qui somment à
       100, catégorie vide absente, arme inconnue.
@@ -641,7 +647,7 @@ les localise, rien n'est recalculé à côté.
       verdict du document : la somme des points par action ne s'affiche que si elle égale le score personnel de
       l'API (le verdict « complet » est faux en Assaut et en Grande bataille du build `HI_1_11_0`). Test : somme
       différente du score de l'API, pas de ligne.
-- [ ] T.4 Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
+- [x] T.4 (fait le 2026-11-17 : `playerThrowsPickupsAt` ; lancers par `doc.grenades`, ramassages par `doc.pickups` — une BORNE INFÉRIEURE quand `coverage.pickups.multiEvent`, à dire ou à mesurer en T.0 avant T.5 ; les ramassages de grenades ne se relient à aucun libellé, `grenadeLabels[].family` étant vide) Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
       aucun lancer (section absente), types mêlés.
 - [ ] T.5 Rendu dans `ReplayPlayerPanelBody` (D.1), donc dans J et dans L : « À l'instant » garde son bloc actuel
       (bouclier, santé, armes, grenades, équipement) puis ajoute les compteurs de T.1, la répartition de T.2, les
