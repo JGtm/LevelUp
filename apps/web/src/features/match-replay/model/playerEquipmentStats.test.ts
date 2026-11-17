@@ -14,11 +14,12 @@ import { describe, expect, it } from 'vitest'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 import { buildPlayers, type ReplayPlayer } from '@/lib/replay/rosterLogic'
 
-import { normalizeReplayDocument, type ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { pose, SB, temoin, vie } from '../test/equipmentUsageFixtures'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { scoreboardRow } from '../test/scoreboardRow'
+import { testReplayDoc } from '../test/testDoc'
 import { usageColumnGroups } from './equipmentUsageColumns'
 import { buildEquipmentUsage } from './equipmentUsageLogic'
 import {
@@ -429,7 +430,7 @@ describe('playerEquipmentStats — fin de match égale à la grille du match (do
   it('chaque document, joueur par joueur, famille par famille', () => {
     let compared = 0
     for (const entry of goFixtureEntries()) {
-      const doc = normalizeReplayDocument(loadGoFixture(entry).doc)
+      const doc = testReplayDoc(loadGoFixture(entry).doc)
       compared += compare(doc, undefined, `${entry.film} (${entry.build})`)
     }
     // Sans matière dans les documents réels, l'égalité ne prouverait rien.

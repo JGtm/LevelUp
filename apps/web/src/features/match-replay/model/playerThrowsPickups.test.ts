@@ -12,7 +12,7 @@ import { buildPlayers, rosterEntryKey, type ReplayPlayer } from '@/lib/replay/ro
 import { weaponLabelKeyOf } from '../layers/useReplayWeaponPads'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { testReplayDoc } from '../test/testDoc'
-import { normalizeReplayDocument, type ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayDocument } from '@/lib/api/types'
 import {
   GRENADE_PICKUP_KIND_SCHEMA,
@@ -238,7 +238,7 @@ describe('playerThrowsPickups — documents publiés par Go', () => {
   it('le total de lancers à la dernière image égale le nombre de lancers du joueur dans le document', () => {
     let checked = 0
     for (const entry of goFixtureEntries()) {
-      const doc = normalizeReplayDocument(loadGoFixture(entry).doc)
+      const doc = testReplayDoc(loadGoFixture(entry).doc)
       const players = playersOf(doc)
       for (const p of players) {
         const films = new Set(doc.roster.filter((r) => rosterEntryKey(r) === p.xuid).map((r) => r.filmIndex))

@@ -15,7 +15,7 @@ import { buildPlayers, vitalityPresence, type ReplayPlayer } from '@/lib/replay/
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
-import { normalizeReplayDocument } from '../../../lib/replay/replayNormalize'
+
 import { buildFeedEntries, type MedalEvent, type ReplayFeedEntry, type ReplayKill } from './killFeedLogic'
 import { readMatchMedals } from './matchMedals'
 import {
@@ -313,7 +313,7 @@ describe('playerInstantStats — fin de match égale à la feuille', () => {
 describe('playerInstantStats — documents réels publiés par Go', () => {
   for (const entry of goFixtureEntries()) {
     it(`${entry.film} (${entry.build}) : médailles, vies et bouclier cohérents sur tout le film`, () => {
-      const doc = normalizeReplayDocument(loadGoFixture(entry).doc)
+      const doc = testReplayDoc(loadGoFixture(entry).doc)
       const players = buildPlayers(doc, [])
       const presence = vitalityPresence(doc)
       const feed = buildFeedEntries([], readMatchMedals(doc, 'fr'), 0, doc)
