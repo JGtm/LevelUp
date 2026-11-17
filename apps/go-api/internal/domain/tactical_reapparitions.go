@@ -110,12 +110,25 @@ type TacticalRepartitionZones struct {
 	// Matchs : les matchs distincts qui y contribuent. Reapparitions : leur nombre.
 	Matchs        int `json:"matchs"`
 	Reapparitions int `json:"reapparitions"`
-	// Suffisante : les deux planchers sont atteints. Faux : Zones est vide et Raison dit lequel manque.
-	Suffisante bool   `json:"suffisante"`
-	Raison     string `json:"raison,omitempty"`
+	// Suffisante : les deux planchers sont atteints. Faux : Zones est vide (RaisonSousPlancher dit lequel
+	// manque).
+	Suffisante bool `json:"suffisante"`
 	// Zones : triees par nombre decroissant puis par indice de volume. Les reapparitions qu'aucune
 	// zone nommee ne nomme n'y figurent pas (HorsZone).
 	Zones []TacticalPartDeZone `json:"zones"`
+}
+
+// RaisonSousPlancher rend le code du plancher qui manque a la repartition, ou "" quand les deux sont
+// atteints. Les matchs passent avant les reapparitions : c'est leur manque qui rend une repartition
+// trompeuse. Les effectifs servis suffisent a le dire, la repartition ne porte pas de raison.
+func (r TacticalRepartitionZones) RaisonSousPlancher() string {
+	switch {
+	case r.Matchs < ReapparitionsAdversesPlancherMatchs:
+		return TacticalRaisonSousPlancherMatchs
+	case r.Reapparitions < ReapparitionsAdversesPlancherReapparitions:
+		return TacticalRaisonSousPlancherReapparitions
+	}
+	return ""
 }
 
 // HorsZone rend le nombre de reapparitions qu'aucune zone nommee ne nomme : Reapparitions moins la

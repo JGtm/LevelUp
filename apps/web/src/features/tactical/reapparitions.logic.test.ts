@@ -29,7 +29,6 @@ function repartition(
   return {
     matchs: 6,
     reapparitions: total,
-    sans_zone: 0,
     suffisante: true,
     zones: zones.map(([volume_index, nom, reapparitions, part]) => ({ volume_index, nom, reapparitions, part })),
     ...extra,
@@ -39,10 +38,6 @@ function repartition(
 function reponse(over: Partial<TacticalReapparitionsAdverses> = {}): TacticalReapparitionsAdverses {
   return {
     etat: 'servie',
-    map_id: 'carte',
-    matchs_filtres: 10,
-    matchs_retenus: 9,
-    matchs_sans_equipe: 0,
     plancher: { matchs: 3, reapparitions: 20, joueurs_pour_tenir: 2 },
     reference: repartition([
       [1, 'Hydro', 40, 0.4],
@@ -54,7 +49,7 @@ function reponse(over: Partial<TacticalReapparitionsAdverses> = {}): TacticalRea
       [1, 'Hydro', 15, 0.3],
       [4, 'Pont', 10, 0.2],
     ]),
-    zone: { volume_index: 3, nom: 'Fosse' },
+    zone: { nom: 'Fosse' },
     ...over,
   }
 }
@@ -83,7 +78,7 @@ describe('construireLaLecture', () => {
     const rep = reponse({
       etat: 'vide',
       raison: 'sous_plancher_matchs',
-      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false, raison: 'sous_plancher_matchs' }),
+      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }),
     })
     const l = construireLaLecture(rep, 3)
     expect(l?.etat).toBe('vide')
@@ -113,7 +108,7 @@ describe('construireLaLecture', () => {
 
   it('une répartition de référence vide (sous le plancher) ne donne aucune ligne', () => {
     const rep = reponse({
-      reference: repartition([], { reapparitions: 5, suffisante: false, raison: 'sous_plancher_reapparitions' }),
+      reference: repartition([], { reapparitions: 5, suffisante: false }),
     })
     const l = construireLaLecture(rep, null)
     expect(l?.lignes).toEqual([])
@@ -167,7 +162,7 @@ describe('mesures d’affichage', () => {
     const sans = construireLaLecture(reponse(), null)
     expect(sans && lignesEtiquetees(sans)).toEqual([])
     const tenue = construireLaLecture(
-      reponse({ zone: { volume_index: 1, nom: 'Hydro' }, tenue: repartition([[1, 'Hydro', 10, 0.5]]) }),
+      reponse({ zone: { nom: 'Hydro' }, tenue: repartition([[1, 'Hydro', 10, 0.5]]) }),
       1,
     )
     expect(tenue && lignesEtiquetees(tenue)).toEqual([])

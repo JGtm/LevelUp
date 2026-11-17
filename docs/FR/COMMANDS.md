@@ -1431,7 +1431,7 @@ mémoire, priorité basse), un film à la fois, **sans ouvrir de base ni rien é
 Elle écrit `films.tsv` (une ligne par film : match, build, issue, variante, pistes, pistes sans
 identité, compteurs du pont, `slot:début-fin` de chaque piste sans nom) et `identites/<id>.tsv`
 (slot, bornes, équipe, identité et provenance du lien de chaque piste publiée) ;
-`--garder-documents` dépose aussi `documents/<id>.json`. Un film déjà présent dans `films.tsv` est
+`--garder-documents` dépose aussi `documents/<id>.json.gz`, écrit par la porte des rejeux (`internal/replayartifact`) : `internal/replaydiff` et `cmd/replay-verite` peuvent rouvrir le dossier. Un film déjà présent dans `films.tsv` est
 sauté : on reprend en relançant. `--comparer` relit deux racines et rend les vies nommées, les vies
 nommées perdues, les noms changés, les équipes changées et les pistes redécoupées — la preuve qu'un
 correctif du nommage doit apporter sur le parc entier. Nommer la racine de travail `parc*` dans le

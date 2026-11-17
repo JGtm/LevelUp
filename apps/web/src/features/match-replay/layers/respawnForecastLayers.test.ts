@@ -96,7 +96,7 @@ function paint(over: Partial<ForecastPaint> = {}): ForecastPaint {
 /** Brume meurt à l'image 100 et réapparaît à 130 dans « Pont » (2e puis 1re zone) ; Orage meurt à 110 et réapparaît à 150. */
 function forecast(): SpawnForecastReady {
   const f = normalizeSpawnForecast({
-    status: 'ready', candidates: 30, discarded_deaths: 0, matches_on_map: 4, sample_step_ms: 1000,
+    status: 'ready',
     zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }, { volume_index: 4, name: 'Grenier' }, { volume_index: 9, name: 'Hydro' }],
     // Un point par zone (zone_index 0 à 3), plus un point hors de toute zone servie (-1).
     points: [
@@ -105,16 +105,16 @@ function forecast(): SpawnForecastReady {
     ],
     deaths: [
       {
-        xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20, z: 0 }, actual: { x: 50, y: 60, z: 0 }, actual_zone: 7,
+        xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20 }, actual: { x: 50, y: 60 }, actual_zone: 7,
         samples: [
-          { frame: 100, outside_zone: 0.05, points_p: [0.5, 0.3, 0.1, 0.05, 0.05], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
-          { frame: 110, outside_zone: 0.2, points_p: [0.2, 0.6, 0, 0, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
-          { frame: 120, outside_zone: 0.2, points_p: [0.1, 0.7, 0, 0, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
+          { frame: 100, points_p: [0.5, 0.3, 0.1, 0.05, 0.05], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
+          { frame: 110, points_p: [0.2, 0.6, 0, 0, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
+          { frame: 120, points_p: [0.1, 0.7, 0, 0, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
         ],
       },
       {
-        xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, death: { x: 80, y: 10, z: 0 }, actual: { x: 80, y: 10, z: 0 }, actual_zone: 4,
-        samples: [{ frame: 110, outside_zone: 0.2, points_p: [0, 0, 0.8, 0, 0.2], zones: [{ zone: 4, p: 0.8 }] }],
+        xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, death: { x: 80, y: 10 }, actual: { x: 80, y: 10 }, actual_zone: 4,
+        samples: [{ frame: 110, points_p: [0, 0, 0.8, 0, 0.2], zones: [{ zone: 4, p: 0.8 }] }],
       },
     ],
   })
@@ -381,18 +381,18 @@ describe('encres et zones', () => {
 
   it('un point réel hors de toute zone nommée : étiquette sans zone', () => {
     const horsZone = normalizeSpawnForecast({
-      status: 'ready', candidates: 3, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
+      status: 'ready',
       zones: [{ volume_index: 3, name: 'Fosse' }], points: null,
-      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 2, y: 2, z: 0 }, samples: [{ frame: 100, outside_zone: 0.5, points_p: null, zones: [{ zone: 3, p: 0.5 }] }] }],
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1 }, actual: { x: 2, y: 2 }, samples: [{ frame: 100, points_p: null, zones: [{ zone: 3, p: 0.5 }] }] }],
     })!
     expect(texts(render(horsZone, 131).marks)).toContain('Brume apparu hors zone nommée')
   })
 
   it('un point réel hors des zones probables : l’étiquette le dit', () => {
     const horsProbables = normalizeSpawnForecast({
-      status: 'ready', candidates: 3, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
+      status: 'ready',
       zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }], points: null,
-      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 50, y: 50, z: 0 }, actual_zone: 7, samples: [{ frame: 100, outside_zone: 0, points_p: null, zones: [{ zone: 3, p: 1 }] }] }],
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1 }, actual: { x: 50, y: 50 }, actual_zone: 7, samples: [{ frame: 100, points_p: null, zones: [{ zone: 3, p: 1 }] }] }],
     })!
     expect(texts(render(horsProbables, 131).marks)).toContain('hors des zones probables')
   })
@@ -488,10 +488,10 @@ describe('le choix du dessin : zones et points, zones, points — lu à des inst
 
   it('une réponse sans probabilité de point alignée : aucun disque, la teinte reste', () => {
     const sansPoints = normalizeSpawnForecast({
-      status: 'ready', candidates: 2, discarded_deaths: 0, matches_on_map: 3, sample_step_ms: 1000,
+      status: 'ready',
       zones: [{ volume_index: 3, name: 'Fosse' }], points: [{ x: 1, y: 1, zone_index: 0 }, { x: 2, y: 2, zone_index: -1 }],
-      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1, z: 0 }, actual: { x: 2, y: 2, z: 0 }, actual_zone: 3,
-        samples: [{ frame: 100, outside_zone: 0, points_p: [1], zones: [{ zone: 3, p: 1 }] }] }],
+      deaths: [{ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 1, y: 1 }, actual: { x: 2, y: 2 }, actual_zone: 3,
+        samples: [{ frame: 100, points_p: [1], zones: [{ zone: 3, p: 1 }] }] }],
     })!
     const r = render(sansPoints, 105, { draw: 'both' })
     expect(r.points).toEqual([])

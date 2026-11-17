@@ -143,7 +143,7 @@ func TestLireReapparitionsAdverses_Planchers(t *testing.T) {
 	for _, c := range cas {
 		ref, tenue := LireReapparitionsAdverses(i18n.Default, repeter(c.matchs, c.parMatch), zoneChoisie(), zones)
 		for nom, r := range map[string]domain.TacticalRepartitionZones{"reference": ref, "tenue": tenue} {
-			if r.Suffisante != c.suffisante || r.Raison != c.raison || r.Reapparitions != c.reapparitionsAtt ||
+			if r.Suffisante != c.suffisante || r.RaisonSousPlancher() != c.raison || r.Reapparitions != c.reapparitionsAtt ||
 				r.Matchs != c.matchsAttendus || len(r.Zones) != c.zonesServiesAtten {
 				t.Errorf("%s / %s : %+v", c.nom, nom, r)
 			}

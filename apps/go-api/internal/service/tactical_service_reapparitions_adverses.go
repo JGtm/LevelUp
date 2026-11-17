@@ -158,7 +158,7 @@ func (s *TacticalService) verdictReapparitionsAdverses(out *domain.TacticalReapp
 	case !zoneAForme:
 		out.Raison = domain.TacticalRaisonZoneSansForme
 	case !out.Tenue.Suffisante:
-		out.Raison = out.Tenue.Raison
+		out.Raison = out.Tenue.RaisonSousPlancher()
 	default:
 		out.Etat = domain.TacticalEtatServie
 	}

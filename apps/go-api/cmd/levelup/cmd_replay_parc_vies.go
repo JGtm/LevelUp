@@ -48,6 +48,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaychild"
 
@@ -65,8 +66,8 @@ const parcViesAttenteVerrou = 10 * time.Minute
 // optionsParcVies : les drapeaux de la mesure.
 type optionsParcVies struct {
 	faits, cache, sortie, ids, titre string
-	// garderDocuments : depose aussi le document cuit sous <sortie>/documents/<id>.json (enquete
-	// sur pieces d'un sous-ensemble ; plusieurs Mo par film).
+	// garderDocuments : depose aussi le document cuit sous <sortie>/documents/<id>.json.gz, par la porte des
+	// rejeux (enquete sur pieces d'un sous-ensemble ; replaydiff et replay-verite relisent ce dossier).
 	garderDocuments bool
 }
 
@@ -120,7 +121,7 @@ func runReplayParcVies(cfg *config.AppConfig, args []string) error {
 	fs.StringVar(&o.sortie, "sortie", "", "dossier de sortie (films.tsv, identites/)")
 	fs.StringVar(&o.ids, "ids", "", "fichier listant les films a mesurer (defaut : tous les faits)")
 	fs.StringVar(&o.titre, "title", titlePkg.DefaultSlug, "slug du titre")
-	fs.BoolVar(&o.garderDocuments, "garder-documents", false, "deposer aussi <sortie>/documents/<id>.json")
+	fs.BoolVar(&o.garderDocuments, "garder-documents", false, "deposer aussi <sortie>/documents/<id>.json.gz (porte des rejeux, relisible par replaydiff et replay-verite)")
 	comparer := fs.Bool("comparer", false, "compare deux sorties : --comparer <avant> <apres>")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -259,7 +260,8 @@ func mesurerUnFilm(ctx context.Context, repoRoot string, o optionsParcVies, id s
 	return ligneParcVies(id, f.MatchID, build, "ok", f.GameVariantName, &doc), &idents
 }
 
-// deposerLeDocument ecrit le document cuit sous <sortie>/documents/ ; un echec se journalise et
+// deposerLeDocument ecrit le document cuit sous <sortie>/documents/<id>.json.gz par la porte des rejeux, la
+// seule forme que les outils d'enquete (replaydiff, replay-verite) savent relire ; un echec se journalise et
 // n'arrete pas la mesure (le document n'est qu'une piece d'enquete).
 func deposerLeDocument(ctx context.Context, sortie, id string, blob []byte) {
 	dir := filepath.Join(sortie, "documents")
@@ -267,7 +269,7 @@ func deposerLeDocument(ctx context.Context, sortie, id string, blob []byte) {
 		slog.ErrorContext(ctx, "replay-parc-vies : dossier des documents", "film", id, "err", err)
 		return
 	}
-	if err := os.WriteFile(filepath.Join(dir, id+".json"), blob, 0o600); err != nil {
+	if _, _, err := replayartifact.Write(ctx, filepath.Join(dir, id+titlePkg.ReplayArtifactExt), blob); err != nil {
 		slog.ErrorContext(ctx, "replay-parc-vies : document non depose", "film", id, "err", err)
 	}
 }

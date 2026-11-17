@@ -38,17 +38,17 @@ function zone(volumeIndex: number, x0: number, y0: number): CalloutZoneReady {
 const CALLOUTS = [zone(3, 0, 0), zone(7, 40, 40)]
 
 const READY: ReplaySpawnForecast = {
-  status: 'ready', candidates: 20, discarded_deaths: 0, matches_on_map: 4, sample_step_ms: 1000,
+  status: 'ready',
   zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }],
   points: [{ x: 10, y: 10, zone_index: 0 }, { x: 50, y: 50, zone_index: 1 }, { x: 90, y: 90, zone_index: -1 }],
   deaths: [
     {
-      xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20, z: 0 }, actual: { x: 50, y: 60, z: 0 }, actual_zone: 7,
-      samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.6 }, { zone: 7, p: 0.4 }] }],
+      xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130, death: { x: 10, y: 20 }, actual: { x: 50, y: 60 }, actual_zone: 7,
+      samples: [{ frame: 100, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.6 }, { zone: 7, p: 0.4 }] }],
     },
     {
-      xuid: 'xuid(b)', death_frame: 100, respawn_frame: 130, death: { x: 70, y: 20, z: 0 }, actual: { x: 10, y: 10, z: 0 }, actual_zone: 3,
-      samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }],
+      xuid: 'xuid(b)', death_frame: 100, respawn_frame: 130, death: { x: 70, y: 20 }, actual: { x: 10, y: 10 }, actual_zone: 3,
+      samples: [{ frame: 100, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }],
     },
   ],
 }

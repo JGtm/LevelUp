@@ -103,7 +103,6 @@ function repartition(zones: Array<[number, string, number, number]>, extra = {})
   return {
     matchs: 9,
     reapparitions: total,
-    sans_zone: 0,
     suffisante: true,
     zones: zones.map(([volume_index, nom, reapparitions, part]) => ({ volume_index, nom, reapparitions, part })),
     ...extra,
@@ -119,17 +118,13 @@ const REFERENCE = repartition([
 function reponse(over: Partial<TacticalReapparitionsAdverses> = {}): TacticalReapparitionsAdverses {
   return {
     etat: 'servie',
-    map_id: 'streets',
-    matchs_filtres: 12,
-    matchs_retenus: 10,
-    matchs_sans_equipe: 0,
     plancher: { matchs: 3, reapparitions: 20, joueurs_pour_tenir: 2 },
     reference: REFERENCE,
     tenue: repartition([
       [7, 'Pont', 24, 0.6],
       [5, 'Hydro', 16, 0.4],
     ]),
-    zone: { volume_index: 3, nom: 'Fosse' },
+    zone: { nom: 'Fosse' },
     ...over,
   }
 }
@@ -154,7 +149,7 @@ beforeEach(() => {
   get.mockResolvedValue({ calibration: CALAGE, planImage: 'streets.plan.webp' })
   getBlob.mockResolvedValue(new Blob(['webp']))
   post.mockImplementation((_chemin: string, corps: { volume_index: number }) =>
-    Promise.resolve(reponses[corps.volume_index] ?? reponse({ zone: { volume_index: corps.volume_index, nom: `Zone ${corps.volume_index}` } })),
+    Promise.resolve(reponses[corps.volume_index] ?? reponse({ zone: { nom: `Zone ${corps.volume_index}` } })),
   )
   vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:plan')
 })
@@ -241,7 +236,7 @@ describe('une zone tenue servie', () => {
   async function choisirPont() {
     await ouvrirLaLecture()
     await screen.findByTestId('tactical-reapp-barres')
-    reponses[7] = reponse({ zone: { volume_index: 7, nom: 'Pont' } })
+    reponses[7] = reponse({ zone: { nom: 'Pont' } })
     fireEvent.click(chemin(7))
     await waitFor(() => expect(screen.getByTestId('tactical-reapp-zone-nom')).toHaveTextContent('Pont'))
   }
@@ -308,8 +303,8 @@ describe('l’état vide', () => {
     reponses[7] = reponse({
       etat: 'vide',
       raison: 'sous_plancher_matchs',
-      zone: { volume_index: 7, nom: 'Pont' },
-      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false, raison: 'sous_plancher_matchs' }),
+      zone: { nom: 'Pont' },
+      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }),
     })
     await ouvrirLaLecture()
     await screen.findByTestId('tactical-reapp-barres')

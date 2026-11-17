@@ -31788,8 +31788,6 @@ components:
         matchs:
           format: int64
           type: integer
-        raison:
-          type: string
         reapparitions:
           format: int64
           type: integer
