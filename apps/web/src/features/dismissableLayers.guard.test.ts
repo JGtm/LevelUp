@@ -5,7 +5,7 @@
  * `lib/hooks/useDismissable`, jamais dans un composant.
  *
  * Motifs interdits dans un `.tsx` de `features/` : un écouteur `pointerdown` ou `mousedown` posé par
- * `addEventListener`, et un test `key === 'Escape'`. Les menus du rejeu les ont rendus par le hook ;
+ * `addEventListener`, et une comparaison d'Échap (`===`, `!==`, `==`, `!=`). Les menus du rejeu les ont rendus par le hook ;
  * leur plafond est 0. Les autres features n'y sont pas migrées : leur compte (en fichiers) est gelé à
  * sa valeur mesurée et ne fait que descendre — il échoue aussi quand il baisse sans que
  * `PLAFOND_HORS_REJEU` le suive (cliquet).
@@ -29,11 +29,22 @@ const PLAFOND_HORS_REJEU = 17
 
 const GESTES_DEHORS = new Set(['pointerdown', 'mousedown'])
 
+/** Les quatre comparaisons : `===`, `!==`, `==`, `!=`. */
+const COMPARAISONS = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+])
+
 function isLiteral(node: ts.Node, value: string): boolean {
   return ts.isStringLiteralLike(node) && node.text === value
 }
 
-/** Un `addEventListener('pointerdown' | 'mousedown', ...)` ou un `x === 'Escape'` / `'Escape' === x`. */
+/**
+ * Un `addEventListener('pointerdown' | 'mousedown', ...)` ou une comparaison d'Échap (`===`, `!==`,
+ * `==`, `!=`, dans un sens ou dans l'autre, guillemets simples ou doubles).
+ */
 function dismissPatterns(source: ScannedSource): ScanHit[] {
   const hits: ScanHit[] = []
   visitAll(source, (node) => {
@@ -49,11 +60,10 @@ function dismissPatterns(source: ScannedSource): ScanHit[] {
     }
     if (
       ts.isBinaryExpression(node) &&
-      (node.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken ||
-        node.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken) &&
+      COMPARAISONS.has(node.operatorToken.kind) &&
       (isLiteral(node.left, 'Escape') || isLiteral(node.right, 'Escape'))
     ) {
-      hits.push({ file: source.rel, line: lineOf(source, node), detail: "=== 'Escape'" })
+      hits.push({ file: source.rel, line: lineOf(source, node), detail: `${node.operatorToken.getText(node.getSourceFile())} 'Escape'` })
     }
   })
   return hits
@@ -86,14 +96,20 @@ describe('garde-rail : la fermeture d’une couche passe par useDismissable', ()
     ).toBe(PLAFOND_HORS_REJEU)
   }, SCAN_TIMEOUT_MS)
 
-  it('auto-preuve : le détecteur voit les trois motifs, pas un autre événement ni un autre nom', () => {
+  it('auto-preuve : le détecteur voit les motifs, pas un autre événement ni un autre nom', () => {
     const n = (code: string): number => dismissPatterns(parseSource('features/x/a.tsx', code)).length
     expect(n("document.addEventListener('pointerdown', f)")).toBe(1)
     expect(n("el.addEventListener('mousedown', f)")).toBe(1)
     expect(n("if (e.key === 'Escape') close()")).toBe(1)
     expect(n("if ('Escape' === e.key) close()")).toBe(1)
+    expect(n('if (e.key === "Escape") close()')).toBe(1)
+    expect(n("if (e.key !== 'Escape') return")).toBe(1)
+    expect(n('if (e.key !== "Escape") return')).toBe(1)
+    expect(n("if (e.key == 'Escape') close()")).toBe(1)
+    expect(n("if (e.key != 'Escape') return")).toBe(1)
+    expect(n("if ('Escape' !== e.key) return")).toBe(1)
     expect(n("document.addEventListener('keydown', f)")).toBe(0)
-    expect(n("if (e.key !== 'Escape') return")).toBe(0)
+    expect(n("if (e.key === 'Enter') return")).toBe(0)
     expect(n("const s = \"key === 'Escape'\"")).toBe(0)
   })
 })
