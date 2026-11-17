@@ -4,6 +4,7 @@ import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_LIVES } from './lives.i18n'
 import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { FR_PLAYER_PANEL } from './playerPanel.i18n'
+import { FR_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
 
 export const FR_TEXT = {
   title: 'Rejeu 2D',
@@ -429,28 +430,7 @@ export const FR_TEXT = {
     zone: 'Vient de prendre une base',
     bomb: 'Porte la bombe — ou vient de la faire sauter',
   },
-  equipmentUsage: {
-    title: "Usages d'équipement",
-    viewByPlayer: "Usage d'équipements, par joueur",
-    infoByPlayer:
-      "Objets pris par chaque joueur du match, une pile par issue : servi (activé pour un bonus, posé pour le mur, charge consommée pour le reste), gardé sans servir, lâché en mourant ; le grappin compte ses tractions. Chaque colonne a sa propre échelle.",
-    legendUsed: 'Servi',
-    legendKept: 'Gardé sans servir',
-    legendDropped: 'Lâché',
-    legendGrapple: 'Tractions de grappin',
-    gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
-    groupGrapple: 'Grappin',
-    outcomeUsedFmt: (count) => `Servi : ${count}`,
-    outcomeKeptFmt: (count) => `Gardé sans servir : ${count}`,
-    outcomeDroppedFmt: (count) => `Lâché : ${count}`,
-    outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
-    killBadgeFmt: {
-      camo: (kills) => `${kills} frags sous camouflage`,
-      overshield: (kills) => `${kills} frags sous surbouclier`,
-    },
-    killBadgeHint:
-      "Le meilleur épisode du match pour cette famille. Même réserve que les états actifs : la source de l'épisode n'est pas distinguée (ramassage ou capacité déclenchée), ses bornes sont à la précision de la retransmission près, et le camo seul reste sous le seuil de mesure en lecture large.",
-  },
+  equipmentUsage: FR_EQUIPMENT_USAGE,
   ammoFullLabel: 'Munitions pleines',
   gaugeLabel: 'charge restante',
   exportVideo: 'Exporter la vidéo',

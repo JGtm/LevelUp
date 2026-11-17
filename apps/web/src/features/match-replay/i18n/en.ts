@@ -4,6 +4,7 @@ import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_LIVES } from './lives.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
+import { EN_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -424,28 +425,7 @@ export const EN_TEXT = {
     zone: 'Just captured a stronghold',
     bomb: 'Carrying the bomb — or just detonated it',
   },
-  equipmentUsage: {
-    title: 'Equipment usage',
-    viewByPlayer: 'Equipment use, by player',
-    infoByPlayer:
-      'Objects taken by each player of the match, one stack per outcome: used (activated for a power-up, placed for the drop wall, charge spent for the rest), kept without use, dropped on death; the grappleshot counts its pulls. Each column has its own scale.',
-    legendUsed: 'Used',
-    legendKept: 'Kept without use',
-    legendDropped: 'Dropped',
-    legendGrapple: 'Grapple pulls',
-    gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
-    groupGrapple: 'Grappleshot',
-    outcomeUsedFmt: (count) => `Used: ${count}`,
-    outcomeKeptFmt: (count) => `Kept without use: ${count}`,
-    outcomeDroppedFmt: (count) => `Dropped: ${count}`,
-    outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
-    killBadgeFmt: {
-      camo: (kills) => `${kills} kills under camo`,
-      overshield: (kills) => `${kills} kills under overshield`,
-    },
-    killBadgeHint:
-      "The best episode of the match for this family. Same reserve as active states: the episode's source is not told apart (picked up or triggered), its bounds are at broadcast precision, and camo alone stays under the measurement threshold in broad reading.",
-  },
+  equipmentUsage: EN_EQUIPMENT_USAGE,
   ammoFullLabel: 'Ammo full',
   gaugeLabel: 'charge left',
   exportVideo: 'Export video',
