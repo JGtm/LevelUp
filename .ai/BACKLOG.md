@@ -29,6 +29,14 @@
 
 ---
 
+### [match/équipement] Équipements « lâchés en mourant » sous-comptés dans la grille d'usage
+
+**Relevé le 2026-11-17** (refonte de la page du rejeu, lecture de l'équipement à l'instant). Un lâcher est daté à la fin de la vie plus une image, mais il est attribué par le propriétaire de la place À CETTE IMAGE, lecture stricte : quand la place n'a plus de propriétaire à cet instant, le lâcher n'est attribué à personne. Sur le seul document de test complet, 19 lâchers sur 29 sont attribués ; avec la lecture « dernier propriétaire connu » (`ownerAtFrameOrLast`, prévue pour ce cas dans `rosterLogic`), les 29 le seraient. Les sept autres documents de test, amincis, vont de 0 sur 4 à 21 sur 89. La grille « Usage d'équipement, par joueur » de la page du match et la future section « Équipement » de la fiche du joueur du rejeu lisent la même fonction : corriger l'une corrige l'autre, et change les totaux affichés (plus de « lâchés », donc plus d'« objets pris »). Aucun rejeu à régénérer. Décision du user attendue avant correction.
+
+**Effort : faible (une lecture, ses tests). Priorité moyenne : un compte affiché est faux par défaut.**
+
+---
+
 ### [rejeu] Point de vue du rejeu gardé d'un match à l'autre
 
 **Relevé le 2026-11-17** (refonte de la page du rejeu). Le choix du point de vue est un état de la page qui n'est pas remis à zéro quand on passe à un autre match : il persiste si le même joueur figure dans le match suivant, alors que rien ne doit être mémorisé d'un match à l'autre. **Effort : à estimer. Priorité basse.**
