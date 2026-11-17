@@ -91,26 +91,29 @@ const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
   ['morts', 'drawKillFxLayer('],
 ]
 
+/** Le moteur de la toile : c'est lui qui lie les ids aux peintres. */
+const moteur = () => lire(fichierNomme('replayRenderer.ts'))
+
 /**
- * La seule TABLE DE LIAISON du canvas — le bloc `paint: {` de `buildScene`. Le découpage
- * commence là et pas au fichier entier : le bloc `has:` juste au-dessus porte des clés de même
- * nom (`projectiles`) pour des booléens, et les confondre ferait lire une condition à la place
+ * La TABLE DE LIAISON du moteur — les fermetures de `terrainPainters` et `actionPainters`. Le
+ * découpage commence là et pas au fichier entier : `sceneMatter` porte des clés de même nom
+ * (`projectiles`) pour des booléens, et les confondre ferait lire une condition à la place
  * d'un peintre.
  */
 function tableDeLiaison(): string {
-  const src = lire(fichierNomme('ReplayCanvas.tsx'))
-  const debut = src.indexOf('        paint: {')
-  expect(debut, 'la table de liaison est introuvable dans le canvas').toBeGreaterThan(0)
+  const src = moteur()
+  const debut = src.indexOf('function terrainPainters(')
+  expect(debut, 'la table de liaison est introuvable dans le moteur').toBeGreaterThan(0)
   return src.slice(debut)
 }
 
 /** Le corps de l'entrée `id` de la table, jusqu'à l'entrée suivante. */
 function entreeDeTable(table: string, id: ReplayLayerId): string {
   const cle = id.includes('-') ? `'${id}':` : `${id}:`
-  const debut = table.indexOf(`\n          ${cle}`)
+  const debut = table.indexOf(`\n    ${cle}`)
   expect(debut, `l'entrée ${id} est absente de la table de liaison`).toBeGreaterThan(0)
   const suite = table.slice(debut + 1)
-  const fin = suite.search(/\n {10}(?:'[a-z-]+'|[a-z]+):/)
+  const fin = suite.search(/\n {4}(?:'[a-z-]+'|[a-z]+):/)
   return fin > 0 ? suite.slice(0, fin) : suite.slice(0, 600)
 }
 describe('garde-rail : la liaison id -> peintre', () => {
@@ -166,7 +169,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     }
   })
 
-  it('le canvas ne renomme AUCUN des calques câblés par hook : il dérive la liaison', () => {
+  it('le moteur ne renomme AUCUN des calques câblés par hook : il dérive la liaison', () => {
     const table = tableDeLiaison()
     for (const [id] of [
       ...CABLES_PAR_HOOK,
@@ -178,11 +181,11 @@ describe('garde-rail : la liaison id -> peintre', () => {
       // RegExp construite : dans un gabarit JS, `\s` vaut `s` — le motif serait inerte.
       const cle = id.includes('-') ? "'" + id + "':" : id + ':'
       expect(
-        table.indexOf('\n          ' + cle),
-        `le canvas réécrit à la main la liaison de ${id} : elle doit venir du hook`,
+        table.indexOf('\n    ' + cle),
+        `le moteur réécrit à la main la liaison de ${id} : elle doit venir du hook`,
       ).toBe(-1)
     }
-    expect(table).toContain('...bindPainters(')
+    expect(moteur()).toContain('...bindPainters(')
   })
 
   it('chacune des quinze fermetures peint bien ce que son id annonce', () => {

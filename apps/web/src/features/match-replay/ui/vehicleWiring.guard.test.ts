@@ -41,7 +41,8 @@ function valeur(corps: string, cle: string): string | undefined {
 }
 
 describe('ReplayCanvas — câblage des véhicules', () => {
-  const src = lire(fichierNomme('ReplayCanvas.tsx'))
+  // Le composant câble le hook des véhicules ; le moteur de la toile lie les peintres qui le lisent.
+  const src = lire(fichierNomme('ReplayCanvas.tsx')) + '\n' + lire(fichierNomme('replayRenderer.ts'))
 
   it('le prédicat embarqué vient du hook des véhicules', () => {
     expect(src).toMatch(/const vehicles = useReplayVehicles\(/)

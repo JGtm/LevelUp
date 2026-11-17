@@ -34,12 +34,8 @@ import type { PlaybackStore } from '../model/playbackStore'
 import { ReplayTransport } from './ReplayTransport'
 import { ReplayZoomControl } from './ReplayZoomControl'
 import { useTeamCascades } from '../hooks/useTeamCascades'
-import { drawObjectivePulses, normalizeMapObjectives } from '../layers/objectivesLayer'
-import { drawZoneStates } from '../layers/zoneStatesLayer'
-import { drawFireMarks } from '../layers/fireMark'
+import { normalizeMapObjectives } from '../layers/objectivesLayer'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
-import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
-import { drawRiftLayer } from '../layers/placementRift'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
 import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT } from '../layers/replayCanvasConfig'
@@ -56,7 +52,6 @@ import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
 import { useReplayLives } from '../layers/useReplayLives'
 import { useReplayRespawnForecast } from '../layers/useReplayRespawnForecast'
-import { prepareStage } from '../layers/canvasStage'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -82,25 +77,10 @@ import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
 import { useReplayOrientation } from '../settings/useReplayOrientation'
 import { useReplaySound } from '../sound/useReplaySound'
-import { drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
 import { usePlanClipMask } from '../layers/usePlanClipMask'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import {
-  drawGeometryLayer,
-  drawKillFxLayer,
-  drawShotsLayer,
-} from '../layers/replayDraw'
-import {
-  bindPainters,
-  composeScene,
-  sceneLayers,
-  type LayerPaint,
-  type ReplayScene,
-} from '../layers/replayCompose'
-import { durationToFrames, frameToMs, layerOffset } from '../../../lib/replay/replayLogic'
 import type { ReplayWindowBounds } from '../model/replayWindow'
-import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from '../layers/replayProjectiles'
-import { drawTracksLayer } from '../layers/replayMarkers'
+import { paintReplayFrame, type ReplaySceneInputs } from '../layers/replayRenderer'
 import { useReplayTiming } from '../hooks/useReplayTiming'
 import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
@@ -466,226 +446,76 @@ export function ReplayCanvas({
   const bombBlast = useReplayBombBlast({ doc, view: canvasView, allegiance, teamColorOf, neutral: floorStyle.edge, reducedMotion, shownAuthor: focusShown?.author })
 
   /**
-   * buildScene LIE chaque calque a l'etat courant du canvas.
+   * `scene` rassemble ce que le moteur de la toile (`layers/replayRenderer`) lit pour peindre une
+   * image : le composant ne fait que lier les hooks à cette entrée, le moteur ne connaît pas React.
    *
-   * C'EST UNE TABLE, PAS UN ALGORITHME (exemption R5 assumee) : une entree par calque, aucun
-   * embranchement, aucun ordre — l'ordre et les conditions vivent dans `replayCompose`, ou
-   * ils sont testes. La decouper par famille n'en ferait pas trois fonctions plus courtes
-   * mais trois listes de vingt liaisons a tenir en phase, pour la meme table.
-   *
-   * TOUT CE QUI DEPEND DE L'IMAGE arrive en ARGUMENT du peintre (`frame`, `dpr`) : la table,
-   * elle, ne se relie qu'a ce qui change avec les donnees ou le theme.
+   * TOUT CE QUI DÉPEND DE L'IMAGE arrive en argument du peintre : la scène ne se recalcule que
+   * quand les données, le cadrage ou le thème changent.
    */
-  const buildScene = useCallback(
-    (ctx: CanvasRenderingContext2D, frame: number): ReplayScene => {
-      const view = canvasView
-      // LE FOND SUIT LA FENETRE, PAS LA SCENE : sinon il resterait cadre large pendant que les
-      // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
-      // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (layerOffset).
-      const lo = layerOffset(cookedRef.current, canvasView)
-      const bgRect = placeMapBackground(mapImage, canvasView)
-      // La FENETRE D'EVENEMENT, commune aux tirs, aux pulses et aux morts.
-      const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
-      // Un calque CUIT se repose tel quel, decale de `lo` : sa geometrie ne bouge pas.
-      const cuit = (c: HTMLCanvasElement | null): LayerPaint => () => {
-        if (c) ctx.drawImage(c, lo.x, lo.y, renderWidth, viewH)
-      }
-
-      return {
-        toggles: {
-          zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives, wallPlan: wallPlanOn, lives: lives.show, respawnForecast: respawnForecast.show,
-        },
-        has: {
-          background: !!mapImage && !!bgRect,
-          floor: !!doc.geometry?.length,
-          wallPlan: !!wallPlanRef.current,
-          heat: !!heatRef.current,
-          zoneNames: !!zonesRef.current,
-          objectivesCooked: !!objectivesRef.current,
-          projectiles: !!doc.projectiles?.length,
-          placements: placements.counts.drawable > 0,
-          rifts: placements.rift.rifts.length > 0 || placements.rift.teleports.length > 0,
-          fireMarks: fireMarks.length > 0,
-          shotFx: shotFx.length > 0,
-          zoneStates: doc.zoneStates.length > 0,
-          objectivePulses: objectivePulses.length > 0,
-          killFx: killFx.length > 0,
-          lives: lives.available,
-          respawnForecast: respawnForecast.ready,
-        },
-        paint: {
-          // LES ONZE CALQUES CABLES PAR HOOK SE NOMMENT EUX-MEMES (revue R1, C2) : leur `id`
-          // vit dans le hook, a cote de son `paint`, et `bindPainters` en derive la liaison.
-          // Ecrire ici `'couronne-vip': skullCarrier.paint` n'est plus possible : cette table
-          // ne nomme plus aucun d'eux.
-          ...bindPainters(
-            weaponPads,
-            groundWeapons,
-            vehicles,
-            abilityFx,
-            grenadeRest,
-            flags,
-            objectiveObjects,
-            vipCrown,
-            skullCarrier,
-            bombCarrier,
-            bombBlast,
-            killFocus.veil,
-            killFocus.labels,
-            ...lives.layers,
-            ...respawnForecast.layers,
-          ),
-          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
-          'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect, canvasView),
-          'sol-forge': () =>
-            drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
-          'plan-murs': cuit(wallPlanRef.current),
-          chaleur: cuit(heatRef.current),
-          'zones-nommees': cuit(zonesRef.current),
-          'objectifs-cuits': cuit(objectivesRef.current),
-          projectiles: (_c, fr) =>
-            drawProjectilesLayer(
-              ctx,
-              doc.projectiles ?? [],
-              view,
-              { frame: fr, tailFrames: durationToFrames(PROJECTILE_TAIL_MS, doc), color: grenadeColor, shown: shownProjectile },
-            ),
-          // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
-          // disparition (placementEndFrame) ; le ping bat en TEMPS de match, pas en images.
-          'poses-equipement': (_c, fr, k) =>
-            drawEquipmentPlacementsLayer(
-              ctx,
-              // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
-              // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
-              // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
-              { placements: placements.all, lives: doc.tracks, campOfSlot, shown: focusShown },
-              view,
-              { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
-              // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
-              { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk, shroud: shroudInk },
-            ),
-          trajectoires: (_c, fr, k) =>
-            drawTracksLayer(ctx, doc.tracks, view, {
-              colorOfSlot,
-              ink: floorStyle.edge,
-              frame: fr,
-              timing,
-              z: zRange,
-              k,
-              showAim,
-              markOfSlot,
-              nameOfSlot,
-              showTrail,
-              selfInk,
-              deathInk: shotColor,
-              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, shownAtSlot, // PION EMBARQUE (C7) ; PION SANS FICHE ; SEUL / MASQUER.
-              nameHiddenAtSlot: killFocus.nameHiddenAtSlot,
-              // BORNAGE HORS CADRE (chantier B, decision D2, 2026-09-10) : la flèche porte le
-              // nom ET la distance ; le texte est resolu ICI (langue de la page), le calque ne
-              // connait aucune locale.
-              offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
-            }),
-          // LES FAILLES, AU-DESSUS DES PISTES : la station et le passage du translocateur.
-          failles: (_c, fr, k) =>
-            drawRiftLayer(
-              ctx,
-              placements.rift,
-              view,
-              { frame: fr, ...placements.windowTime, k, reducedMotion },
-              riftInk,
-            ),
-          'marques-de-tir': (_c, fr, k) =>
-            drawFireMarks(ctx, fireMarks, view, {
-              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt, shownAtSlot,
-            }),
-          // vehicleSizeOf : origine des tirs en vehicule sur LA MEME source de tailles que le
-          // calque vehicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
-          tirs: (_c, _fr, k) =>
-            drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
-              ink: fxInk, k, reducedMotion, vehicleSizeOf: vehicles.sizeOf, shownAtSlot,
-            }),
-          'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
-          'pulses-objectif': () =>
-            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam, shownAuthor: focusShown?.author }, reducedMotion),
-          morts: (_c, _fr, k) =>
-            drawKillFxLayer(ctx, killFx, view, win, {
-              colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
-              fallback: shotColor, reducedMotion, k, shown: focusShown?.killFx,
-            }),
-        },
-      }
-    },
+  const scene = useMemo<ReplaySceneInputs>(
+    () => ({
+      doc,
+      locale,
+      reducedMotion,
+      view: canvasView,
+      size: { width: renderWidth, height: viewH },
+      zRange,
+      background: mapImage,
+      cooked: { origin: cookedRef, wallPlan: wallPlanRef, zones: zonesRef, heat: heatRef, objectives: objectivesRef },
+      timing,
+      eventHoldFrames,
+      shotHoldFrames,
+      show: {
+        zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
+        modeObjectives: showModeObjectives, wallPlan: wallPlanOn, aim: showAim, trail: showTrail,
+      },
+      ink: {
+        geometry: geometryColor, grenade: grenadeColor, shot: shotColor, fx: fxInk, floorEdge: floorStyle.edge,
+        wall: wallInk, rift: riftInk, shroud: shroudInk, self: selfInk, labelStroke,
+      },
+      identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
+      focus: { shownAtSlot, shownProjectile, shown: focusShown },
+      fx: { shotFx, fireMarks, killFx, objectivePulses },
+      zones,
+      placements: {
+        all: placements.all, windowTime: placements.windowTime, toggles: placements.toggles,
+        rift: placements.rift, drawableCount: placements.counts.drawable,
+      },
+      // Le TRACÉ seul, jamais l'objet `hover` d'un hook : il change à chaque mouvement de pointeur,
+      // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
+      layers: {
+        weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
+        vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast,
+      },
+    }),
     [
-      doc, geometryColor, zRange, timing, wallInk, riftInk, shroudInk,
-    // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef,
-    renderWidth, viewH, canvasView,
-    placements.counts.drawable,
-    placements.all,
-    placements.windowTime,
-    placements.toggles,
-    showPlacements,
-    // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
-    // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
-    weaponPads,
-    groundWeapons, vehicles,
-    shotColor,
-    grenadeColor,
-    eventHoldFrames,
-    shotHoldFrames,
-    shotFx,
-    fireMarks,
-    fxInk,
-    abilityFx,
-    killFx,
-    grenadeRest,
-    objectivePulses,
-    placements.rift,
-    zones,
-    flags,
-    objectiveObjects,
-    vipCrown,
-    skullCarrier,
-    bombCarrier,
-    bombBlast, killFocus, lives, respawnForecast,
-    floorStyle.edge,
-    colorOfSlot,
-    colorOfSlotOrLast,
-    campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,
-    markOfSlot,
-    nameOfSlot,
-    showTrail,
-    selfInk,
-    labelStroke,
-    reducedMotion,
-    showAim,
-    showZones,
-    showModeObjectives,
-    wallPlanOn,
-    showShotFx,
-    showKillFx,
-    mapImage,
-    locale,
+      doc, locale, reducedMotion, canvasView, renderWidth, viewH, zRange, mapImage,
+      // Refs STABLES : la règle de dépendances ne le sait pas d'un hook maison.
+      cookedRef, wallPlanRef, zonesRef, heatRef, objectivesRef,
+      timing, eventHoldFrames, shotHoldFrames,
+      showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
+      geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke,
+      colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
+      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,
+      shotFx, fireMarks, killFx, objectivePulses, zones,
+      placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
+      weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
+      vipCrown, skullCarrier, bombCarrier, bombBlast, killFocus, lives, respawnForecast,
     ],
   )
 
   /**
-   * draw DIMENSIONNE, EFFACE, COMPOSE, TIQUE — et rien d'autre.
-   *
-   * La scene se lie juste avant (`buildScene`), l'ordre et les bascules se decident dans
-   * `replayCompose` : cette fonction n'a plus a savoir ce qu'il y a a peindre.
+   * draw peint l'image courante sur la toile, puis fait avancer l'horloge — et rien d'autre : la
+   * liaison des calques, l'ordre et les bascules vivent dans le moteur (`paintReplayFrame`).
    */
   const draw = useCallback(() => {
-    const stage = prepareStage(canvasRef.current, renderWidth, viewH)
-    if (!stage) return
     const frame = frameRef.current
-    composeScene(stage.ctx, sceneLayers(buildScene(stage.ctx, frame)), frame, stage.dpr)
+    if (!paintReplayFrame(canvasRef.current, frame, scene)) return
 
     // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent ou en est la scene
     // qu'on vient de peindre (cf. useReplayClock).
     clockTick(frame)
-  }, [buildScene, clockTick, renderWidth, viewH])
+  }, [scene, clockTick])
 
 
   // Redraw hors animation (thème, resize, données, pause), et publication de la version

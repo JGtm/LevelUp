@@ -18,7 +18,8 @@ import { describe, expect, it } from 'vitest'
 
 import { fichierNomme, lire } from './featureFiles'
 
-const canvas = () => lire(fichierNomme('ReplayCanvas.tsx'))
+/** Le canvas = le composant ET son moteur : le composant câble les hooks, le moteur lie les peintres. */
+const canvas = () => lire(fichierNomme('ReplayCanvas.tsx')) + '\n' + lire(fichierNomme('replayRenderer.ts'))
 
 /**
  * appelDe rend le texte de l'appel `nom(...)` jusqu'à sa parenthèse fermante, commentaires retirés.
@@ -87,7 +88,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     expect(canvas()).toMatch(/useReplayStaticLayers\(\{[^]*?frozen: drag\.dragging,\s*follow: playerFocus\?\.follow \?\? false,/)
   })
 
-  it('la scène se relie quand le prédicat change (dépendance de buildScene)', () => {
+  it('la scène se relie quand le prédicat change (dépendance de la scène)', () => {
     expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,/)
   })
 })
