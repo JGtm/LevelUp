@@ -111,3 +111,28 @@ func TestTacticalRasterPath(t *testing.T) {
 			"AvailableSet le compterait comme un match, la purge le supprimerait", court)
 	}
 }
+
+// Le fichier tactique courant et celui d'une version ancienne se construisent au meme endroit, par le
+// resolveur ou depuis le seul dossier d'artefacts (la purge), et ne different que par l'extension.
+func TestTacticalRasterLegacyPath(t *testing.T) {
+	p := NewPathResolver("/depot")
+	const complet = "000d5950-1234-4abc-9def-0123456789ab"
+	courant := p.TacticalRasterPath(DefaultSlug, complet)
+	ancien := p.TacticalRasterLegacyPath(DefaultSlug, complet)
+	if filepath.Dir(courant) != filepath.Dir(ancien) {
+		t.Errorf("deux dossiers : %s et %s", courant, ancien)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(ancien), "rasters/000d5950.json") {
+		t.Errorf("chemin ancien inattendu : %s", ancien)
+	}
+	if got := TacticalRasterLegacyOf(courant); got != ancien {
+		t.Errorf("TacticalRasterLegacyOf(%s) = %s, attendu %s", courant, got, ancien)
+	}
+	if got := TacticalRasterLegacyOf(ancien); got != "" {
+		t.Errorf("un chemin sans l'extension courante n'a pas de voisin ancien : %q", got)
+	}
+	dir := p.ReplayArtifactsDir(DefaultSlug)
+	if TacticalRasterFileIn(dir, "000d5950") != courant || TacticalRasterLegacyFileIn(dir, "000d5950") != ancien {
+		t.Errorf("la construction depuis le dossier d'artefacts diverge du resolveur")
+	}
+}

@@ -20,7 +20,7 @@ func ecrireFichier(t *testing.T, path string) {
 	}
 }
 
-// TestPurgeMatchFiles — la purge retire l'artefact, sa marque et son raster, jamais ceux d'un
+// TestPurgeMatchFiles — la purge retire l'artefact, sa marque, son raster (courant et ancien), jamais ceux d'un
 // autre match ; `dryRun` liste sans supprimer ; un match sans fichier n'est pas une erreur.
 func TestPurgeMatchFiles(t *testing.T) {
 	root := t.TempDir()
@@ -32,19 +32,20 @@ func TestPurgeMatchFiles(t *testing.T) {
 	ecrireFichier(t, art)
 	ecrireFichier(t, DerivationsMarkPath(art))
 	ecrireFichier(t, pr.TacticalRasterPath(slug, cible))
+	ecrireFichier(t, pr.TacticalRasterLegacyPath(slug, cible)) // fichier tactique d'une version ancienne
 	ecrireFichier(t, pr.ReplayArtifactPath(slug, autre))
 
 	vus, err := PurgeMatchFiles(pr, slug, cible, true)
-	if err != nil || len(vus) != 3 {
-		t.Fatalf("dry-run : %v, %v (attendu 3 chemins)", vus, err)
+	if err != nil || len(vus) != 4 {
+		t.Fatalf("dry-run : %v, %v (attendu 4 chemins)", vus, err)
 	}
 	if _, err := os.Stat(art); err != nil {
 		t.Fatalf("dry-run ne doit rien supprimer : %v", err)
 	}
 
 	supprimes, err := PurgeMatchFiles(pr, slug, cible, false)
-	if err != nil || len(supprimes) != 3 {
-		t.Fatalf("purge : %v, %v (attendu 3 chemins)", supprimes, err)
+	if err != nil || len(supprimes) != 4 {
+		t.Fatalf("purge : %v, %v (attendu 4 chemins)", supprimes, err)
 	}
 	for _, p := range supprimes {
 		if _, err := os.Stat(p); !errors.Is(err, fs.ErrNotExist) {

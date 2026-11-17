@@ -11,16 +11,17 @@ package title
 // Le paquet est le meme : `PathResolver` reste UN type, avec UNE racine, et rien de ce qui
 // suit ne peut diverger de ses voisins.
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // SousDossierRasters est le segment de chemin des sidecars de raster, SOUS le dossier des
 // artefacts d'un titre.
 //
-// EXPORTE parce qu'il a un second consommateur : la purge recurrente
-// (`scheduler.replay_purge_cron`) supprime le sidecar d'un artefact qu'elle efface, et
-// elle ne connait que le DOSSIER d'artefacts — jamais la racine du depot, donc jamais un
-// PathResolver. Recopier « rasters » chez elle aurait fait deux definitions du meme
-// segment, dont l'une aurait cesse de trouver l'autre au premier renommage.
+// EXPORTE parce que la purge recurrente (`scheduler.replay_purge_cron`) ne connait que le
+// DOSSIER d'artefacts — jamais la racine du depot, donc jamais un PathResolver : elle passe par
+// [TacticalRasterFileIn] et [TacticalRasterLegacyFileIn], qui portent ce segment.
 const SousDossierRasters = "rasters"
 
 // TacticalRasterDir retourne le dossier des SIDECARS de raster tactique d'un titre — la
@@ -50,7 +51,38 @@ func (p *PathResolver) TacticalRasterDir(titleSlug string) string {
 // de nommer un sidecar depuis un simple listing du dossier d'artefacts, et a la lecture
 // de le retrouver depuis le match_id complet du registre.
 func (p *PathResolver) TacticalRasterPath(titleSlug, matchID string) string {
-	return filepath.Join(p.TacticalRasterDir(titleSlug), FilmShortMatchID(matchID)+ReplaySidecarExt)
+	return TacticalRasterFileIn(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID))
+}
+
+// TacticalRasterLegacyPath retourne le chemin du fichier tactique d'une version ancienne
+// (`rasters/{short8}.json`, JSON brut) d'un match. Aucune lecture ne le sert : seules la purge et la
+// reecriture du fichier courant le retirent.
+func (p *PathResolver) TacticalRasterLegacyPath(titleSlug, matchID string) string {
+	return TacticalRasterLegacyFileIn(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID))
+}
+
+// TacticalRasterFileIn rend le chemin du fichier tactique de la forme courte `short` sous le dossier
+// d'artefacts `artifactsDir`. C'est la seule construction de ce chemin : [PathResolver.TacticalRasterPath]
+// la porte, et la purge recurrente, qui ne tient que le dossier, l'appelle directement.
+func TacticalRasterFileIn(artifactsDir, short string) string {
+	return filepath.Join(artifactsDir, SousDossierRasters, short+ReplaySidecarExt)
+}
+
+// TacticalRasterLegacyFileIn est le pendant de [TacticalRasterFileIn] pour le fichier d'une version
+// ancienne ([ReplaySidecarLegacyExt]).
+func TacticalRasterLegacyFileIn(artifactsDir, short string) string {
+	return filepath.Join(artifactsDir, SousDossierRasters, short+ReplaySidecarLegacyExt)
+}
+
+// TacticalRasterLegacyOf rend, d'un chemin de fichier tactique courant (`{short8}.json.gz`), le chemin
+// du fichier d'une version ancienne qui lui est voisin. Un chemin qui n'a pas l'extension courante est
+// rendu vide : il n'a pas de voisin ancien.
+func TacticalRasterLegacyOf(path string) string {
+	stem, ok := strings.CutSuffix(path, ReplaySidecarExt)
+	if !ok {
+		return ""
+	}
+	return stem + ReplaySidecarLegacyExt
 }
 
 // SpawnModelPath retourne le chemin du fichier des POIDS DU MODELE DE REAPPARITION d'un titre

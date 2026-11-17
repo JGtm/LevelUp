@@ -420,3 +420,37 @@ func TestTacticalRasters_RaccourciExigeLePasCourant(t *testing.T) {
 		t.Fatal("un sidecar à un pas périmé a été pris pour à jour par le raccourci")
 	}
 }
+
+// Le fichier tactique d'une version ancienne (JSON brut, meme au schema courant) n'est jamais lu comme a jour :
+// la passe le laisse de cote, ecrit le fichier courant et retire l'ancien.
+func TestTacticalRasters_FichierAncienJamaisLu(t *testing.T) {
+	root := t.TempDir()
+	trPoserArtefacts(t, root, "aaaaaaaa")
+	pr := titlePkg.NewPathResolver(root)
+	ancien := pr.TacticalRasterLegacyPath(titlePkg.DefaultSlug, "aaaaaaaa")
+	raw, err := json.Marshal(trSidecarCourant("aaaaaaaa"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(ancien), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ancien, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cible := pr.TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa")
+	if sidecarAJour(context.Background(), cible) {
+		t.Fatal("le fichier ancien a ete pris pour le fichier courant")
+	}
+	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
+		trOptions(false), []string{"aaaaaaaa"})
+	if b.ecrits != 1 || b.sautes != 0 {
+		t.Fatalf("passe = %+v, attendu 1 ecrit", b)
+	}
+	if _, ok := lireSidecarRaster(context.Background(), cible); !ok {
+		t.Error("le fichier courant n'a pas ete ecrit")
+	}
+	if _, err := os.Stat(ancien); !os.IsNotExist(err) {
+		t.Errorf("le fichier ancien devait etre retire par l'ecriture (err = %v)", err)
+	}
+}

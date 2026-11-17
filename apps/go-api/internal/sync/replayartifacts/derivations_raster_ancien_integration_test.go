@@ -46,7 +46,7 @@ func poserFichierTactiqueAncien(t *testing.T, d Deps, matchID string) string {
 		PasM:             domain.TacticalRasterPasM,
 		PasEchantillonMs: domain.TacticalRasterPasEchantillonMs,
 	}
-	if err := EcrireSidecarRaster(chemin, ancien); err != nil {
+	if err := EcrireSidecarRaster(t.Context(), chemin, ancien); err != nil {
 		t.Fatalf("écriture du fichier tactique ancien: %v", err)
 	}
 	return chemin

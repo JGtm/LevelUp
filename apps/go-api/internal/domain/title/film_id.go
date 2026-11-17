@@ -91,6 +91,10 @@ const (
 	// ReplaySidecarExt : l'extension d'un sidecar de rejeu (raster tactique), JSON compressé (gzip) comme
 	// l'artefact : `rasters/{short8}.json.gz`, écrit et lu par la porte `internal/replayartifact`.
 	ReplaySidecarExt = ".json.gz"
+	// ReplaySidecarLegacyExt : l'extension du fichier tactique d'une version ancienne, JSON brut. Aucune
+	// lecture ne le sert : il n'existe ici que pour être retiré (purge d'un match, réécriture du fichier
+	// tactique), voir TacticalRasterLegacyPath.
+	ReplaySidecarLegacyExt = ".json"
 )
 
 // ReplayArtifactFileName rend le nom de fichier de l'artefact de rejeu d'un match :

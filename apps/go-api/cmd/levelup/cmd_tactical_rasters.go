@@ -193,7 +193,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.ecrits++
 			continue
 		}
-		if err := replayartifacts.EcrireSidecarRaster(cible, s); err != nil {
+		if err := replayartifacts.EcrireSidecarRaster(ctx, cible, s); err != nil {
 			slog.ErrorContext(ctx, "rasters tactiques : sidecar non ecrit",
 				"short_id", short, "err", err)
 			b.echecs++

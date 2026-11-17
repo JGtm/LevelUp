@@ -422,7 +422,7 @@ func TestOccupation_SidecarVideCompteAuDenominateur(t *testing.T) {
 }
 
 // Le lecteur de fichiers tactiques lit le fichier compresse que le recuit ecrit ; l'absence est un match
-// non mesure (nil, nil) ; un fichier present mais illisible (gzip tronque) est une erreur, jamais une absence.
+// non mesure (nil, nil), meme quand le fichier d'une version ancienne existe ; un fichier present mais illisible (gzip tronque) est une erreur, jamais une absence.
 func TestTacticalRasterStore_LitLeFichierCompresse(t *testing.T) {
 	root := t.TempDir()
 	store := NewTacticalRasterStore(root, title.DefaultSlug)
@@ -445,6 +445,14 @@ func TestTacticalRasterStore_LitLeFichierCompresse(t *testing.T) {
 
 	if absent, err := store.Charger(context.Background(), "bbbbbbbb"); absent != nil || err != nil {
 		t.Errorf("fichier absent : Charger = (%v, %v), attendu (nil, nil)", absent, err)
+	}
+
+	// Le fichier d'une version ancienne (JSON brut valide) n'est jamais lu : pour le lecteur, le match n'est
+	// pas mesure.
+	ancien := chemins.TacticalRasterLegacyPath(title.DefaultSlug, "dddddddd")
+	ecrire(t, ancien, string(raw))
+	if lu, err := store.Charger(context.Background(), "dddddddd"); lu != nil || err != nil {
+		t.Errorf("fichier ancien : Charger = (%v, %v), attendu (nil, nil)", lu, err)
 	}
 
 	tronque := chemins.TacticalRasterPath(title.DefaultSlug, "cccccccc")

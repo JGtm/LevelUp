@@ -118,6 +118,11 @@ func TestPurge_ArtefactPurgeEmporteSonSidecar(t *testing.T) {
 	for _, p := range []string{purgeable, garde} {
 		poserFichierTactique(t, p)
 	}
+	// Le fichier d'une version ancienne (JSON brut) du match purge part avec lui.
+	ancienPurgeable := titlePkg.TacticalRasterLegacyFileIn(artifactsDir, "aaaa0001")
+	if err := os.WriteFile(ancienPurgeable, []byte(`{"schema_version":7}`), 0o644); err != nil {
+		t.Fatalf("poser le fichier tactique ancien: %v", err)
+	}
 
 	purged, kept, _, err := purgeReplayArtifactsForTitle(
 		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, time.Now().UTC().AddDate(0, -6, 0))
@@ -129,6 +134,9 @@ func TestPurge_ArtefactPurgeEmporteSonSidecar(t *testing.T) {
 	}
 	if _, err := os.Stat(purgeable); !os.IsNotExist(err) {
 		t.Fatalf("le sidecar de l'artefact purge survit (err = %v) : il est orphelin a jamais", err)
+	}
+	if _, err := os.Stat(ancienPurgeable); !os.IsNotExist(err) {
+		t.Fatalf("le fichier tactique ancien (JSON brut) de l'artefact purge survit (err = %v)", err)
 	}
 	if _, err := os.Stat(garde); err != nil {
 		t.Fatalf("le sidecar d'un artefact GARDE a ete supprime : %v", err)

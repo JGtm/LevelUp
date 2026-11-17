@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -238,16 +239,21 @@ func contientUnArtefact(entries []os.DirEntry) bool {
 	return false
 }
 
-// supprimerSidecarRaster efface le sidecar d'occupation d'un match purgé.
+// supprimerSidecarRaster efface le sidecar d'occupation d'un match purgé, sous son extension courante
+// et sous celle d'une version ancienne (JSON brut, jamais lu).
 //
 // BEST-EFFORT ET JAMAIS BLOQUANT : l'absence est le cas NOMINAL (la grande majorité des
 // artefacts n'ont pas encore été projetés), et toute autre erreur est un WARN — la purge
 // de l'artefact, elle, a déjà réussi, et la rejouer n'est pas possible.
 func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
-	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+titlePkg.ReplaySidecarExt)
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		slog.WarnContext(ctx, "replay_purge_cron: sidecar de raster non supprimé",
-			"sidecar", path, "err", err)
+	for _, path := range []string{
+		titlePkg.TacticalRasterFileIn(artifactsDir, short),
+		titlePkg.TacticalRasterLegacyFileIn(artifactsDir, short),
+	} {
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.WarnContext(ctx, "replay_purge_cron: sidecar de raster non supprimé",
+				"sidecar", path, "err", err)
+		}
 	}
 }
 

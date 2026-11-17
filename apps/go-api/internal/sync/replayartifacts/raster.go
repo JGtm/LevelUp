@@ -52,8 +52,11 @@ package replayartifacts
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/ctxkeys"
@@ -295,19 +298,39 @@ func entreesDeLOccupation(entrees []tactical.EntreeCellule) []domain.TacticalRas
 
 // EcrireSidecarRaster serialise le sidecar et le depose COMPRESSE (gzip) et ATOMIQUEMENT, par la
 // porte `replayartifact.Write`, qui cree aussi le dossier : le rattrapage tourne sur des postes ou aucun
-// sidecar n'a jamais ete ecrit.
+// sidecar n'a jamais ete ecrit. Le fichier d'une version ancienne qui lui est voisin (JSON brut, jamais
+// lu) est retire une fois l'ecriture reussie ([retirerSidecarAncien]).
 //
 // Exportee pour le rattrapage CLI, meme raison que ProjeterRasterTactique : une seconde
 // ecriture du meme fichier divergerait.
-func EcrireSidecarRaster(path string, s domain.TacticalRasterSidecar) error {
+func EcrireSidecarRaster(ctx context.Context, path string, s domain.TacticalRasterSidecar) error {
 	raw, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("serialisation du sidecar: %w", err)
 	}
-	if _, _, err := replayartifact.Write(context.Background(), path, raw); err != nil {
+	if _, _, err := replayartifact.Write(ctx, path, raw); err != nil {
 		return fmt.Errorf("ecriture du sidecar: %w", err)
 	}
+	retirerSidecarAncien(ctx, path)
 	return nil
+}
+
+// retirerSidecarAncien supprime le fichier tactique d'une version ancienne voisin de `path`. Son absence
+// est le cas nominal (silence) ; un retrait fait se dit, et un retrait en echec se dit aussi : l'ecriture,
+// elle, a reussi, et le fichier ancien ne sera de toute facon jamais lu.
+func retirerSidecarAncien(ctx context.Context, path string) {
+	ancien := titlePkg.TacticalRasterLegacyOf(path)
+	if ancien == "" {
+		return
+	}
+	err := os.Remove(ancien)
+	switch {
+	case err == nil:
+		slog.InfoContext(ctx, "rasters tactiques : fichier d'une version ancienne retire", "path", ancien)
+	case !errors.Is(err, fs.ErrNotExist):
+		slog.WarnContext(ctx, "rasters tactiques : fichier d'une version ancienne non retire",
+			"path", ancien, "err", err)
+	}
 }
 
 // projeterRastersTactiques projette et depose les sidecars des artefacts cuits du cycle.
@@ -345,7 +368,7 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 			echecs++
 			continue
 		}
-		if err := EcrireSidecarRaster(pr.TacticalRasterPath(d.TitleSlug, r.matchID), s); err != nil {
+		if err := EcrireSidecarRaster(ctx, pr.TacticalRasterPath(d.TitleSlug, r.matchID), s); err != nil {
 			slog.ErrorContext(ctx, "post-sync: sidecar de raster tactique non ecrit",
 				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)
 			echecs++
