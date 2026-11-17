@@ -712,10 +712,10 @@ les localise, rien n'est recalculé à côté.
 - [x] F.1 (fait le 2026-11-17 : `autoTurns(carte, boite, dejaTourne)`, seuils 25 % pour tourner et 20 % pour revenir ; testé sur une boîte de 1390 x 700) `autoTurns(carte, boîte)` dans `lib/replay/orientation.ts`, pur : 0 ou 1 quart de tour selon le gain
       de surface (seuil 25 %, retour sous 20 %, D-14). Tests sur Detachment (1526 × 1666), Ronin (659 × 1288),
       Nadair (2133 × 947) dans les boîtes du Standard et du Cinéma à 1440 × 900.
-- [ ] F.2 Orientation « Auto » par défaut (D-14) : `useReplayOrientation` distingue « aucun choix » (Auto) d'un
+- [x] F.2 (fait le 2026-11-17 : `readOrientation` rend un quart de tour ou `null` (Auto), stockage inchangé, valeur retenue gardée ; `hooks/useResolvedTurns.ts` seul appelant d'`autoTurns`, résolu dans `useReplayView` sur la boîte de la toile, jamais sur le cadre d'un export ; `autoRotation` dans l'objet de commandes ; `ui/ReplayRotatedButton.tsx` dans la barre compacte ; « Auto » dans le panneau Vue ; ÉCARTS : l'infobulle n'écrit pas le gain en pour-cent de la maquette H, la règle pure ne le rendant pas ; l'onglet Tactique et « Occupation du terrain » lisent le choix RETENU, une carte en Auto y reste droite) Orientation « Auto » par défaut (D-14) : `useReplayOrientation` distingue « aucun choix » (Auto) d'un
       choix retenu ; section Vue avec « Auto » ; bouton « Plan tourné » dans la barre COMPACTE quand l'Auto a
       tourné, qui retient 0° (en Standard, la barre ne change pas, D-8 : le retour passe par la section Vue). Une carte déjà retenue garde son choix. Tests : Auto, choix retenu, bouton, hystérésis.
-- [ ] F.3 Emplacement 2D / 3D en superposition à gauche du bouton « Vue », dans le coin haut droit de la toile :
+- [x] F.3 (fait le 2026-11-17 : `ui/ReplayDimensionSwitch.tsx` à gauche du bouton « Vue », `settings/useReplayDimension.ts`, capacité lue par `replay3dCapabilityOf` sous le nom SUPPOSÉ `can_view_replay_3d`, à confirmer par le plan 3D ; rien n'est rendu aujourd'hui) Emplacement 2D / 3D en superposition à gauche du bouton « Vue », dans le coin haut droit de la toile :
       segment 2D / 3D rendu seulement si la capacité de la 3D est vraie (capacité absente aujourd'hui : rien ne
       s'affiche ; pas de drapeau, l'emplacement n'existe à l'écran que par la capacité). Le plan 3D (C.5) le
       branche. Test : capacité absente, rien ; capacité simulée vraie, segment rendu.
