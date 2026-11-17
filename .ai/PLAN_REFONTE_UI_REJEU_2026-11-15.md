@@ -677,7 +677,7 @@ les localise, rien n'est recalculé à côté.
       la langue (`lib/query/keys.ts`). `openapi.yaml` et `generated.ts` par le pilote. Tests : Go (libellé
       résolu en fr et en, médaille inconnue journalisée et servie sans libellé inventé), web (fil alimenté par
       le document, match sans `medals` : aucune médaille, aucun repli sur l'ancienne source).
-- [ ] T.7 (ajouté le 2026-11-17, item E.3 du plan backlog, décision D-3) `model/playerMovementStats.ts`, pur :
+- [x] T.7 (fait le 2026-11-17 : témoin `11de8353` relu sur le rejeu régénéré, verdict cohérent — 1 527 sprints tous dans une vie, aucun pendant la mort, vitesse médiane 2,86 en sprint contre 2,02 hors sprint ; 1 159 sauts dérivés dont 91 % à la hauteur attendue ; deux réserves bornées à 0,4 % : un sprint resté ouvert à l'arrêt, cinq sauts aberrants ; `playerMovementStatsAt`, sauts TOUJOURS estimés, le document n'en publiant qu'une dérivation) (ajouté le 2026-11-17, item E.3 du plan backlog, décision D-3) `model/playerMovementStats.ts`, pur :
       temps cumulé de sprint et nombre de sauts jusqu'à l'instant, pour le joueur de la fiche. Précédé de la
       relecture du témoin `11de8353` (les sprints et les sauts du document y sont comparés à ce que montre le
       rejeu ; un écart est rapporté au user avant le code). Le nombre de sauts porte la mention « estimation ».
