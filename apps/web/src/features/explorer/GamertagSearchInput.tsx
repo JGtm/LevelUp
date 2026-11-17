@@ -6,10 +6,11 @@
  *   2. Coéquipiers fréquents (si fournis)
  *   3. Recherche serveur xuid_aliases (fuzzy, debounce 250 ms, ≥ 2 chars)
  */
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { useGamertagSuggestions } from '@/components/ui/useGamertagSuggestions'
 import type { TeammateOption } from '@/lib/api/types'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -35,7 +36,6 @@ export function GamertagSearchInput({
 }: Props) {
   const [query, setQuery] = useState(initialValue ?? '')
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(explorerManifest, key, locale, vars)
@@ -54,16 +54,6 @@ export function GamertagSearchInput({
     liveAttempted,
     triggerLiveSearch,
   } = useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
 
   const trimmed = query.trim()
   // Gamertag tapé absent de toutes les suggestions → propose la recherche libre
@@ -92,6 +82,9 @@ export function GamertagSearchInput({
       canSearchFree ||
       canSearchLive)
 
+  // Échap et un clic hors du champ ferment la liste visible ; le champ garde le focus, Entrée reste au champ.
+  const ref = useDismissable(showDropdown, () => setOpen(false))
+
   function pick(gt: string) {
     onSelect(gt)
     setQuery(gt)
@@ -110,8 +103,6 @@ export function GamertagSearchInput({
           configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
         if (first) pick(first)
       }
-    } else if (e.key === 'Escape') {
-      setOpen(false)
     }
   }
 

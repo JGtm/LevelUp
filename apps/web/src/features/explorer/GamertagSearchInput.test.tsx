@@ -132,3 +132,66 @@ describe('GamertagSearchInput', () => {
     expect(onSelect).toHaveBeenCalledWith('NeverSeen')
   })
 })
+
+describe('GamertagSearchInput — fermeture de la liste', () => {
+  beforeEach(() => {
+    useAppShellStore.setState({
+      availablePlayers: [asPlayer('AlphaPlayer'), asPlayer('BravoGamer')],
+    })
+  })
+
+  function ouvre() {
+    renderWithProviders(
+      <div>
+        <p>hors du champ</p>
+        <GamertagSearchInput onSelect={() => {}} />
+      </div>,
+    )
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'Alpha' } })
+    expect(screen.getByText('AlphaPlayer')).toBeInTheDocument()
+    return input
+  }
+
+  it('Échap ferme la liste', () => {
+    const input = ouvre()
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByText('AlphaPlayer')).toBeNull()
+  })
+
+  it('un clic hors du champ ferme la liste', () => {
+    ouvre()
+    fireEvent.mouseDown(screen.getByText('hors du champ'))
+    expect(screen.queryByText('AlphaPlayer')).toBeNull()
+  })
+
+  it('un clic dans la liste ne la ferme pas', () => {
+    ouvre()
+    fireEvent.mouseDown(screen.getByText('Joueurs configurés'))
+    expect(screen.getByText('AlphaPlayer')).toBeInTheDocument()
+  })
+
+  it('Échap sans liste visible n écoute rien', () => {
+    renderWithProviders(<GamertagSearchInput onSelect={() => {}} />)
+    const ajouteFenetre = vi.spyOn(window, 'addEventListener')
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(ajouteFenetre.mock.calls.filter(([type]) => type === 'keydown')).toHaveLength(0)
+    ajouteFenetre.mockRestore()
+  })
+
+  it('les flèches ne ferment pas la liste et Entrée choisit la première suggestion', () => {
+    const onSelect = vi.fn()
+    renderWithProviders(<GamertagSearchInput onSelect={onSelect} />)
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'AlphaPlayer' } })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'ArrowUp' })
+    expect(screen.getByText('AlphaPlayer')).toBeInTheDocument()
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSelect).toHaveBeenCalledWith('AlphaPlayer')
+    expect(screen.queryByText('Joueurs configurés')).toBeNull()
+  })
+})
