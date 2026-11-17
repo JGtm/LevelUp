@@ -29,6 +29,36 @@
 
 ---
 
+### [rejeu] Point de vue du rejeu gardé d'un match à l'autre
+
+**Relevé le 2026-11-17** (refonte de la page du rejeu). Le choix du point de vue est un état de la page qui n'est pas remis à zéro quand on passe à un autre match : il persiste si le même joueur figure dans le match suivant, alors que rien ne doit être mémorisé d'un match à l'autre. **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/fiche] Fiche du joueur : « Suivre » un joueur et « Seul » sur un autre à la fois
+
+**Relevé le 2026-11-17.** Le modèle l'autorise depuis que la caméra « Suivre » ne dépend plus de la fiche ouverte : la caméra peut suivre un joueur que « Seul » n'affiche pas. À trancher par le user (interdire, ou laisser). **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu] Nom de grenade de repli écrit en français dans la logique
+
+**Relevé le 2026-11-17.** Quand un type de grenade n'a pas de nom au catalogue, le code écrit « rang N » en dur, dans une fonction de lecture, sans passer par les textes par langue. Visible dans les fiches et dans le bloc « À l'instant ». **Effort : à estimer. Priorité basse.**
+
+---
+
+### [rejeu/médailles] Événements de médaille du contexte du match : trois champs servis sans lecteur
+
+**Relevé le 2026-11-17.** Depuis que le fil du rejeu lit ses médailles dans le document de rejeu, plus aucun code du site ne lit `medal_label`, `medal_description` ni `medal_image_url` des événements de type médaille servis par le contexte du rejeu et la page du match (`medal_name_id` reste lu ailleurs, par les tuiles de médailles). Le serveur les calcule encore à chaque requête. À retirer du serveur et du contrat de l'API, ou à leur rendre un lecteur. **Effort : à estimer. Priorité moyenne (règle : une donnée servie a un lecteur).**
+
+---
+
+### [rejeu] Médailles du fil du rejeu pour un titre qui sert des planches d'images
+
+**Relevé le 2026-11-17.** Le fil dessine la médaille à partir de son image seule ; pour un titre dont les médailles viennent d'une planche (Halo 5), l'image est vide et le fil n'affiche que le nom, comme avant. La découpe de planche est servie dans le document mais le fil ne la lit pas. **Effort : à estimer. Priorité basse.**
+
+---
+
 ### [rejeu] Clé de requête du contexte du rejeu sans la langue
 
 **Relevé le 2026-11-17** (plan `.ai/PLAN_BACKLOG_2026-11-17.md`, section 1). `queryKeys.matchReplayContext` ne porte pas la langue alors que la réponse contient des libellés traduits. La refonte du rejeu retire les médailles de ce contexte. **Effort : à estimer. Priorité basse.**

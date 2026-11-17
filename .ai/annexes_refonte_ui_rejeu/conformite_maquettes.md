@@ -206,7 +206,7 @@ Réponses à des questions fermées, après l'audit 0.3. Elles prévalent sur le
 | V13 | K-10 : barre d'une ligne sans lecture automatique, sans « Recommencer », sans repères de médias | Les trois entrent dans la barre d'une ligne | « Tout reprendre » |
 | V14 | K-7 : objectif du match sous le score | Rien sous le score | « Rien sous le score » |
 | V15 | A-14 : ligne du fil à cinq colonnes | Colonne du Standard : médailles entre la victime et le lieu, assistance et badge « porteur » en infobulle ; sur le plan : ligne nue | « Médailles gardées » |
-| V16 | Lignes de 34 px pour tous les effectifs | Grande équipe : lignes resserrées (nom, jauges, F / M / A), sur maquette à valider | « Lignes resserrées » |
+| V16 | Lignes de 34 px et fiches de K pour tous les effectifs | Grande équipe : fiches compactes (nom, bouclier, santé, sans F / M / A), deux joueurs par emplacement ; rangée de K gardée en Cinéma, paires dans la colonne en Standard ; pastille de camp, aucune bordure colorée à gauche ; tableau N validé dans la forme le 2026-11-17 | « ok pour la maquette N version 2 dans la forme » |
 
 - « Suivi » (A-10, K-5) désigne le joueur regardé, celui de la page au départ ; « Suivre » est l'action de caméra, à part.
 - Fil posé sur le plan (K-9) : éliminations seules.

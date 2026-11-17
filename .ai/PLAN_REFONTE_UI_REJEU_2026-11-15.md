@@ -289,6 +289,20 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **G0-5 — Grande équipe : « Lignes resserrées ».** En Grande équipe seulement, des lignes plus basses (nom,
   bouclier et santé, F / M / A, sans arme ni grenades) pour voir une vingtaine de joueurs sans défiler. Forme
   sans maquette : montrée au user AVANT le code (item 0.5).
+- **G0-5 bis — Grande équipe : fiches compactes, deux joueurs par emplacement (remplace « lignes resserrées »).**
+  Retours du user du 2026-11-17 sur le tableau N : « Pourquoi […] déplacerait on le score ? et ne peut on pas
+  faire une rangée avec deux joueurs ? on masque les stats FDA […] c'est comme le mode 4v4 mais plus compact »,
+  puis « ok pour la maquette N version 2 dans la forme mais […] j'aimais pas les bordure colorée sur la gauche ».
+  Décidé : le score ne bouge jamais ; fiche compacte = nom, bouclier, santé, SANS frags, morts ni assistances,
+  sans arme, grenades ni équipement (visibles dans la fiche du joueur au clic) ; couleur du camp = pastille
+  devant le nom comme K, AUCUNE bordure colorée à gauche. Cinéma et Plein cadre : la rangée de K est gardée,
+  6 emplacements de deux fiches empilées par camp (fiche de 87,5 px sur 34 px à 1440 px, rangée de 74 px, soit
+  16 px de plus que K). Standard : dans la colonne, 6 lignes de deux fiches côte à côte par camp, fiche sur UNE
+  ligne de 24 px (nom puis jauges), puis le fil. Conséquences : B.1 ne refuse plus la Grande équipe en rangée
+  (règle propre : 6 emplacements par camp au gabarit compact) et B.2 la dessine ; S.2 rend la Grande équipe en
+  paires de fiches compactes dans la colonne, sans défilement ; un gabarit « compact Grande équipe » nommé dans
+  `cardGabarit.ts` porte ces cotes. Restent proposés, non tranchés par le user : le drapeau du porteur, la
+  pastille « bot », « Réapp. 4,2 s » abrégé.
 - **G0-6 — objectif sous le score : « Rien sous le score ».** L'ajout K-7 du 2026-11-17 est retiré : écart
   voulu V14.
 
@@ -366,7 +380,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   pas (1528 px) ; colonnes de la grille par `style`.
 - **C.1** : `model/feedZone.ts` et `hooks/useFeedZones.ts` remplacent `killerZone.ts` et `useKillerZones.ts`.
 - **C.2** : attend E.1 ; éliminations seules ; sans pointeur ; sous les surcouches.
-- **D.1** : le bloc « À l'instant » de J et L n'existe pas aujourd'hui : **D.0 (neuf)** `ui/ReplayPlayerNow.tsx`
+- **D.1** : le bloc « À l'instant » de J et L n'existe pas aujourd'hui : **D.0 (neuf)** [x] fait le 2026-11-17 (pour-cent du plein faute de points dans le document, charges en nombre sans barre, santé en encre du thème comme M) : `ui/ReplayPlayerNow.tsx`
   le construit (titre et instant lu, bouclier et santé chiffrés, armes, grenades, équipement) ; la forme des
   « Totaux » change (L-5), dessinée avec 0.4.
 - **D.2** : J remplace TOUTE la colonne (pas la seule cellule du fil) ; `ui/ReplayPlayerPanel.tsx` reste le
@@ -387,7 +401,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **0.4** : la maquette M tranche aussi le mot (« arme lourde » ou « armes de puissance », écrit aujourd'hui
   dans la fiche) et la forme des « Totaux ».
 
-- [ ] 0.5 (ajouté le 2026-11-17, G0-5 ; DESSINÉE et publiée le 2026-11-17, tableau N du canevas, `maquettes/GrandeEquipeLignes.dc.html` : ligne de 21 px, 5 px de reste à 900 px de haut ; attend la validation du user) Maquette des lignes resserrées de la Grande équipe : un tableau de plus
+- [x] 0.5 (ajouté le 2026-11-17, G0-5 ; FORME VALIDÉE par le user le 2026-11-17 sur la version 2 du tableau N, `maquettes/GrandeEquipeLignes.dc.html` : fiches compactes à deux joueurs par emplacement, voir « G0-5 bis » en section 1 quater) Maquette des lignes resserrées de la Grande équipe : un tableau de plus
       sur le canevas (colonne de 360 px, 24 joueurs, fil de 5 lignes) ; validé par le user avant la partie
       « Grande équipe » de S.2.
 
@@ -553,7 +567,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 6. Lot C — le fil sur le plan
 
-- [ ] C.1 Lieu de la victime : `model/victimZone.ts` (ou extension de `killerZone.ts` si 0.3 le recommande),
+- [x] C.1 (fait le 2026-11-17 : `model/feedZone.ts` (`victimZones`), `hooks/useFeedZones.ts`, libellé `killFeedVictimZone` ; fixation du fil avec lieu : seule l'infobulle change) Lieu de la victime : `model/victimZone.ts` (ou extension de `killerZone.ts` si 0.3 le recommande),
       même règle de nommage (a)-(d) appliquée à la position de la VICTIME à l'instant du frag (dernier point de
       sa vie, même résolveur de porteur, même règle de `z`). Le nommage du point ne change pas : le jumeau Go et
       `nommage_zone_cas.json` restent tels quels. `useKillerZones` devient `useFeedZones` (lieu de la victime),
@@ -637,7 +651,7 @@ les localise, rien n'est recalculé à côté.
       viennent de T.6 ; la mise en page suit la maquette 0.4. Libellés fr et en, sans anglicisme (« série », « tirs à la tête », « répartition des
       éliminations ») ; tokens de couleur uniquement. Tests de rendu : joueur complet, joueur insuffisant, bot,
       défilement de la fiche.
-- [ ] T.6 (ajouté le 2026-11-17, item E.2 du plan backlog, décision D-2 : seule voie qui règle aussi la prod)
+- [x] T.6 (fait le 2026-11-17 : `medalLabels` posé à la lecture par `service/replay_medal_labels.go`, lecture web unique `model/matchMedals.ts` ; contrat et types régénérés ; reste une découverte au backlog : trois champs de médaille du contexte sans lecteur) (ajouté le 2026-11-17, item E.2 du plan backlog, décision D-2 : seule voie qui règle aussi la prod)
       Médailles du match lues dans `medals` du document de rejeu, pour le fil et pour la fiche : UNE lecture.
       Serveur : libellé et image résolus dans la langue de la requête, sur le patron de
       `service/replay_vehicle_labels.go` ; champ servi déclaré dans `internal/domain/replaydoc` ; textes par
