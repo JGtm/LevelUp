@@ -10,14 +10,18 @@ package main
 // ce fichier la garde desormais, sur `executer`, le point d'entree que main() appelle.
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/replayartifact"
 )
 
-// artefactMinimal ecrit un artefact de rejeu minimal mais valide (schema + un calque simple) —
+// artefactMinimal range par la porte `replayartifact` (`.json.gz`, le seul format d'artefact) un artefact de
+// rejeu minimal mais valide (schema + un calque simple) —
 // suffisant pour LireDocument/Empreindre/Comparer sans dependre d'un vrai fichier cuit.
 func artefactMinimal(t *testing.T, path string, schema int, valeur float64) {
 	t.Helper()
@@ -32,7 +36,7 @@ func artefactMinimal(t *testing.T, path string, schema int, valeur float64) {
 	if err != nil {
 		t.Fatalf("marshal fixture : %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if _, _, err := replayartifact.Write(context.Background(), path, blob); err != nil {
 		t.Fatalf("ecriture fixture : %v", err)
 	}
 }
@@ -42,8 +46,8 @@ func artefactMinimal(t *testing.T, path string, schema int, valeur float64) {
 // polluer la sortie du test).
 func TestExecuterCompareDeuxArtefactsSansErreur(t *testing.T) {
 	dir := t.TempDir()
-	ancien := filepath.Join(dir, "ancien.json")
-	nouveau := filepath.Join(dir, "nouveau.json")
+	ancien := filepath.Join(dir, "ancien.json.gz")
+	nouveau := filepath.Join(dir, "nouveau.json.gz")
 	artefactMinimal(t, ancien, 40, 3)
 	artefactMinimal(t, nouveau, 41, 3)
 
@@ -56,8 +60,8 @@ func TestExecuterCompareDeuxArtefactsSansErreur(t *testing.T) {
 // schemas compares, sous les noms de champ attendus par internal/replaydiff.Rapport.
 func TestExecuterEcritLeRapportJSON(t *testing.T) {
 	dir := t.TempDir()
-	ancien := filepath.Join(dir, "ancien.json")
-	nouveau := filepath.Join(dir, "nouveau.json")
+	ancien := filepath.Join(dir, "ancien.json.gz")
+	nouveau := filepath.Join(dir, "nouveau.json.gz")
 	sortie := filepath.Join(dir, "rapport.json")
 	artefactMinimal(t, ancien, 40, 3)
 	artefactMinimal(t, nouveau, 41, 5) // GAIN attendu (valeur montee, jamais une perte)
@@ -82,10 +86,10 @@ func TestExecuterEcritLeRapportJSON(t *testing.T) {
 // message que main() relaie tel quel via slog.Error avant os.Exit(1).
 func TestExecuterArtefactAncienIntrouvableEstUneErreurNommee(t *testing.T) {
 	dir := t.TempDir()
-	nouveau := filepath.Join(dir, "nouveau.json")
+	nouveau := filepath.Join(dir, "nouveau.json.gz")
 	artefactMinimal(t, nouveau, 41, 3)
 
-	err := executer(filepath.Join(dir, "absent.json"), nouveau, "", false, true)
+	err := executer(filepath.Join(dir, "absent.json.gz"), nouveau, "", false, true)
 	if err == nil {
 		t.Fatal("attendu une erreur (artefact ancien introuvable)")
 	}
