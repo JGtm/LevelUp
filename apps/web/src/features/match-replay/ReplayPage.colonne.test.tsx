@@ -173,7 +173,7 @@ describe('ReplayPage : la colonne du Standard', () => {
 })
 
 describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
-  it('colonne souple de 30 rem, bloc des fiches plafonné, pas de colonne du Standard', async () => {
+  it('colonne souple de 30 rem, sans la largeur de colonne du Standard ; sans rangée posée, les équipes y sont en lignes', async () => {
     const { container } = await mountReady()
     for (const frame of ['cinema', 'plein-cadre'] as const) {
       goTo(frame)
@@ -181,7 +181,7 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
       expect(grid?.className).toContain('minmax(0,30rem)')
       expect(grid?.style.getPropertyValue('--replay-colonne-standard')).toBe('')
       expect(columnOf(container)).toBeNull()
-      expect(container.querySelector('[data-replay-roster-column]')).toBeNull()
+      expect(container.querySelector('[data-replay-roster-column]')).not.toBeNull()
       expect(container.querySelector('aside .xl\\:max-h-\\[30rem\\]')).not.toBeNull()
     }
   })

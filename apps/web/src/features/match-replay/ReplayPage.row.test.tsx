@@ -208,10 +208,10 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(colonneDesEquipes(container)).not.toBeNull()
   })
 
-  it('le Standard ne change pas : colonne des fiches d’avant, score dans l’en-tête, jamais de rangée', async () => {
+  it('le Standard : équipes en lignes dans sa colonne, score dans l’en-tête, jamais de rangée', async () => {
     const { container } = await mount(match(4), 4000)
     expect(rangee(container)).toBeNull()
-    expect(colonneDesEquipes(container)).toBeNull()
+    expect(colonneDesEquipes(container)).not.toBeNull()
     expect(container.querySelectorAll('[data-replay-player-card]')).toHaveLength(8)
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
   })
