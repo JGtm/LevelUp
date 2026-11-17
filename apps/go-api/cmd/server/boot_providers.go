@@ -398,19 +398,23 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 
 // replayArtifactTitleCheck rend le prédicat « ce titre déclare la capacité `film.replay_artifact` », mémoïsé par titre
 // (games.LoadCapabilityMap relit les fichiers de mappings à chaque appel, et /bootstrap l'appelle à chaque requête).
-// Une configuration de titre illisible se journalise et rend faux (non mémorisé : elle peut se réparer).
+// Une configuration de titre illisible se journalise UNE fois par titre et rend faux ; l'échec est mémorisé comme
+// une réponse (les fichiers de mappings sont livrés avec l'application : une réparation passe par un redémarrage),
+// sans quoi chaque requête de /bootstrap relirait les fichiers et rejournaliserait l'avertissement.
 func replayArtifactTitleCheck(resourcesRoot string) func(titleSlug string) bool {
 	var memo sync.Map
 	return func(titleSlug string) bool {
 		if v, ok := memo.Load(titleSlug); ok {
 			return v.(bool)
 		}
+		has := false
 		caps, err := games.LoadCapabilityMap(resourcesRoot, titleSlug)
 		if err != nil {
-			slog.Warn("bootstrap: capacités du titre illisibles, génération de rejeu indisponible", "titleSlug", titleSlug, "err", err)
-			return false
+			slog.WarnContext(context.Background(), "bootstrap: capacités du titre illisibles, génération de rejeu indisponible",
+				"titleSlug", titleSlug, "err", err)
+		} else {
+			has = caps.Has(games.CapFilmReplayArtifact)
 		}
-		has := caps.Has(games.CapFilmReplayArtifact)
 		memo.Store(titleSlug, has)
 		return has
 	}

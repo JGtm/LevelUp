@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 )
 
@@ -22,5 +26,39 @@ func TestReplayArtifactTitleCheck(t *testing.T) {
 		if check("titre_inexistant") {
 			t.Error("un titre inconnu : attendu faux")
 		}
+	}
+}
+
+// compteurWarn compte les enregistrements de niveau Warn reçus.
+type compteurWarn struct {
+	slog.Handler
+	n *atomic.Int32
+}
+
+func (c compteurWarn) Enabled(context.Context, slog.Level) bool { return true }
+
+func (c compteurWarn) Handle(_ context.Context, r slog.Record) error {
+	if r.Level == slog.LevelWarn {
+		c.n.Add(1)
+	}
+	return nil
+}
+
+// TestReplayArtifactTitleCheck_EchecMemorise : une configuration de titre illisible se journalise UNE fois
+// par titre (pas à chaque requête de /bootstrap) et reste fausse aux appels suivants.
+func TestReplayArtifactTitleCheck_EchecMemorise(t *testing.T) {
+	n := &atomic.Int32{}
+	avant := slog.Default()
+	slog.SetDefault(slog.New(compteurWarn{Handler: slog.NewTextHandler(io.Discard, nil), n: n}))
+	t.Cleanup(func() { slog.SetDefault(avant) })
+
+	check := replayArtifactTitleCheck(t.TempDir()) // racine sans mappings : toute lecture échoue
+	for range 5 {
+		if check("titre_inexistant") {
+			t.Fatal("configuration illisible : attendu faux")
+		}
+	}
+	if got := n.Load(); got != 1 {
+		t.Errorf("avertissements journalisés = %d, want 1 (échec mémorisé)", got)
 	}
 }
