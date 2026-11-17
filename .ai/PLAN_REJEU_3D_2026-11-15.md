@@ -406,7 +406,12 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
       construction à la fois, attente pendant le mode jeu, reprise au redémarrage, journal de début, de fin
       (durée, octets) et d'échec. À l'activation : bibliothèques communes. À l'ouverture d'un rejeu en 3D : sa
       carte, et rien d'autre (aucune construction anticipée). La 2D n'est jamais bloquée.
-- [ ] B.4b Anti-saturation (D-11), règles pures dans `internal/analysis/replay3dcache/`, testées sans
+- [ ] B.4b (partie pure faite le 2026-11-17, sur `feat/rejeu-3d` : `PlanEviction` et `CheckFreeSpace`,
+      plafond par défaut de 20 Go et minimum libre de 10 Go comptés en multiples de 2^30 ; build, vet, tests,
+      archlint, gofmt et golangci-lint verts, code relu et tests rejoués par le pilote. L'index des dernières
+      ouvertures et le déplacement de dossier, qui touchent le disque, partent avec le service B.4 :
+      `internal/analysis/` n'a pas droit au stockage. La case se coche avec B.4.)
+      Anti-saturation (D-11), règles pures dans `internal/analysis/replay3dcache/`, testées sans
       disque :
   - choix des cartes à supprimer au-delà du plafond (dernière ouverture la plus ancienne d'abord ; jamais la
     carte ouverte ni une bibliothèque) ;

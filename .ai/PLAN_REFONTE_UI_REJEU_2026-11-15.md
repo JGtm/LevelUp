@@ -266,6 +266,113 @@ Vagues :
 - **Nord de la mini-carte 3D (D-7 du plan 3D)** : c'est l'orientation EFFECTIVE de la 2D, Auto comprise (D-14).
 - **D-8 du plan 3D** reste vrai : la 3D prend la place de la toile 2D, les trois cadres l'accueillent tels quels.
 
+## 1 quater. Gate 0 (2026-11-17) : décisions du user et amendements de l'audit
+
+Source : `.ai/annexes_refonte_ui_rejeu/audit_conception.md` (audit 0.3, Fable, constats recoupés sur pièces
+par le pilote sur quatre points). **Cette section prévaut sur le texte des items quand ils diffèrent.**
+
+### Décisions du user (2026-11-17, réponses à des questions fermées)
+
+- **G0-1 — fiches de la rangée : « Garder l'arme dans la fiche ».** La rangée du Cinéma et du Plein cadre garde
+  la fiche compacte actuelle à trois lignes, arme comprise, avec TOUS ses effets (D-17 tient en entier). De la
+  maquette K restent : la rangée qui remplit la largeur (parts égales), la bordure à la couleur de suivi sur la
+  fiche du joueur suivi, le fond clair et la bordure claire de la fiche ouverte. L'ajout K-4 du 2026-11-17
+  (contenu de la tuile de K) est retiré : écart voulu V12 de la grille.
+- **G0-2 — « suivi » = le joueur regardé.** C'est le joueur de la page au départ, modifiable. « Suivre » reste
+  l'action de caméra, à part, éteinte au départ comme aujourd'hui.
+- **G0-3 — ligne du fil : « Médailles gardées ».** Dans la colonne du Standard, les médailles restent sur la
+  ligne, entre la victime et le lieu ; l'assistance et le badge « porteur » passent en infobulle. Sur le plan :
+  ligne nue, comme la maquette.
+- **G0-4 — barre d'une ligne : « Tout reprendre ».** L'interrupteur de lecture automatique, « Recommencer » et
+  les repères de médias entrent dans la barre d'une ligne : mêmes commandes dans les trois cadres. Écart voulu
+  V13 (la barre est plus chargée que K-10).
+- **G0-5 — Grande équipe : « Lignes resserrées ».** En Grande équipe seulement, des lignes plus basses (nom,
+  bouclier et santé, F / M / A, sans arme ni grenades) pour voir une vingtaine de joueurs sans défiler. Forme
+  sans maquette : montrée au user AVANT le code (item 0.5).
+- **G0-6 — objectif sous le score : « Rien sous le score ».** L'ajout K-7 du 2026-11-17 est retiré : écart
+  voulu V14.
+
+### Tranché par le pilote sur la règle « la maquette fait foi » (dit au user le 2026-11-17)
+
+- Fil posé sur le plan : éliminations seules (D-4 et K-9), sans le filtre du Standard ; il ne capte pas le
+  pointeur et passe SOUS les surcouches de carte (écran de fin).
+- Sous le lecteur du Standard : rien (la page n'a aucune section sous le lecteur ; D-11 parlait de sections
+  « actuelles » qui n'existent pas).
+- Menu de la caméra : petit panneau à deux listes, « Suivre » (avec « Aucun ») et « Point de vue ».
+- T.6 suit le patron réel de `service/replay_vehicle_labels.go` : une table `medalLabels` par nom de médaille
+  et par langue DANS le document, lue par `pickText` ; la clé de requête du document ne porte pas la langue.
+- T.2 lit la catégorie « arme lourde » dans `weaponLabels[].role`, mêlée et grenade dans `killEffects`.
+
+### Amendements techniques de l'audit (par item)
+
+- **Préalables neufs, avant tout item qui les attend :**
+  - **I.1** (Haiku) `equipmentUsage` sort de `i18n/fr.ts`, `i18n/en.ts` et du contrat vers
+    `i18n/equipmentUsage.i18n.ts` (patron de `playerPanel.i18n.ts`), aucun appelant ne change.
+  - **I.2** (pilote, même commit) sous-dictionnaires montés une fois : `i18n/frames.i18n.ts` (lots A, E, F,
+    C.3), `i18n/roster.i18n.ts` (S.2, B.2, sélecteur de J), `i18n/playerInstant.i18n.ts` (« À l'instant », lot
+    T). Ensuite aucun lot ne touche `fr.ts`, `en.ts` ni le contrat : un écrivain par sous-dictionnaire.
+  - **M.1** (Sonnet, avant S.2, B.2, E.4) joueur suivi indépendant de la fiche dans `model/playerPanelLogic.ts`
+    (G0-2) : valeur de départ = joueur de la page ; la caméra « Suivre » reste un état à part. Tests du
+    réducteur ; `playerFocusWiring.guard.test.ts` vert.
+  - **X.1** (Sonnet, avant S.2) effets des fiches extraits sans changer le rendu : `hooks/useCardScene.ts`
+    (depuis `ui/ReplayTeams.tsx`) et `ui/ReplayCardFx.tsx` (depuis `ui/ReplayPlayerCard.tsx`) ; fixations
+    `replayTeams.4v4.html` et `6v6.html` inchangées.
+- **A.1** : aucun test de la touche Échap dans le module pur ; Échap en Plein cadre rend le cadre d'où l'on
+  vient, Échap en Cinéma ne fait rien.
+- **A.2** : la touche T passe par les trois relais de F (`ui/ReplayCanvas.tsx`, `hooks/useReplayTimeline.ts`,
+  `hooks/useReplayShortcuts.ts`) ; toute bascule de cadre annonce un redimensionnement ; aucune bascule
+  pendant un export, T et boutons neufs compris (test).
+- **A.3 : UN gabarit à zones**, la toile montée une seule fois. `ui/frames/ReplayFrameLayout.tsx` (zones
+  `tete`, `rangee`, `scene`, `colonne`), `ui/frames/ReplayStage.tsx` (l'unique montage de la toile),
+  `ui/frames/ReplayFrameHeader.tsx` (en-têtes A, K, D ; titre de page et badge d'administration),
+  `ReplayStandardFrame.tsx` et `ReplayCinemaFrame.tsx` ne fournissent que le contenu des zones. Test
+  obligatoire : basculer de cadre ne remonte pas la toile. Le garde `ui/rosterHeight.guard.test.ts` suit le
+  code déplacé. Bandeau de régénération, avis « instant non calé » et états de chargement gardent une place
+  dans les trois cadres.
+- **S.1** : cotes nommées du bandeau de score par emplacement (en-tête, rangée), `readScoreBanner` intact.
+- **S.2** : gabarit « ligne » dans `cardGabarit.ts` ; `ui/ReplayRosterRowDetail.tsx` pour le dépli ; lignes
+  resserrées de la Grande équipe selon 0.5 (G0-5) ; lignes et tuiles portent `data-replay-player-card` et
+  `PRESS_GUARDS`.
+- **S.3** : ordre et largeurs de la ligne changent (pas « seul le lieu ») ; les fixations 0.1 du fil servent de
+  référence de contenu, pas d'identité ; la liste filtrée sort dans `hooks/useFeedView.ts` ; ligne cliquable et
+  ligne choisie gardées ; médailles selon G0-3.
+- **S.4** : rien sous le lecteur. **S.5 (neuf)** : suppression de ce qui n'a plus d'appelant après S.4 et B.2
+  (`ui/ReplayTeams.tsx`, gabarit normal, `model/cardDensity.ts` si plus lu, tests et fixations associés), avec
+  report des cas de test sur les lignes ; `ui/ReplayPlayerCard.tsx` reste (rangée, G0-1).
+- **B.1** : cotes nommées dans `cardGabarit.ts` (largeur minimale de fiche, écart, largeur du score, marges) ;
+  attendus écrits : 4v4 à 1440 px tient, 4v4 à 1280 px ne tient pas (1286 px demandés), 5v5 à 1440 px ne tient
+  pas (1528 px) ; colonnes de la grille par `style`.
+- **C.1** : `model/feedZone.ts` et `hooks/useFeedZones.ts` remplacent `killerZone.ts` et `useKillerZones.ts`.
+- **C.2** : attend E.1 ; éliminations seules ; sans pointeur ; sous les surcouches.
+- **D.1** : le bloc « À l'instant » de J et L n'existe pas aujourd'hui : **D.0 (neuf)** `ui/ReplayPlayerNow.tsx`
+  le construit (titre et instant lu, bouclier et santé chiffrés, armes, grenades, équipement) ; la forme des
+  « Totaux » change (L-5), dessinée avec 0.4.
+- **D.2** : J remplace TOUTE la colonne (pas la seule cellule du fil) ; `ui/ReplayPlayerPanel.tsx` reste le
+  fichier qui écoute Échap ; `ui/ReplayPlayerPicker.tsx`, `ui/ReplayFeedExtract.tsx`.
+- **D.3** : deux options à `useAnchoredPanel` (côté d'alignement, élément borne) ; le pion cerclé est un
+  peintre du moteur (`layers/replayRenderer.ts`), pas du JSX.
+- **E.1** : la barre et les superpositions du bloc sont des FONCTIONS DE RENDU qui reçoivent un objet de
+  commandes né dans la toile ; `hooks/useReplayView.ts` et `hooks/useReplayViewport.ts` entrent dans les
+  fichiers à un seul écrivain (E.1, puis F.2, puis G.1).
+- **E.2** : `ui/ReplayTransportIcons.tsx` en plus.
+- **E.3** : barre d'une ligne avec les commandes de G0-4 ; les frags de tous les joueurs entrent dans l'objet
+  `timeline` ; le curseur compact porte `data-replay-timeline`.
+- **E.4** : attend M.1 ; rend le focus après le choix (les raccourcis restent actifs).
+- **F.2** : lecteur d'orientation qui distingue « absent » ; l'Auto se résout dans `useReplayView` ; les deux
+  gardes qui lisent `turns: orientation.turns` suivent dans le même commit.
+- **Section 2** : `ui/ReplayCanvas.tsx` n'est pas sous baseline (498 lignes comptées par le lint avant
+  l'extraction du moteur, fusionnée le 2026-11-17 : 640 lignes brutes) ; « sous la zone de lecture » : rien.
+- **0.4** : la maquette M tranche aussi le mot (« arme lourde » ou « armes de puissance », écrit aujourd'hui
+  dans la fiche) et la forme des « Totaux ».
+
+- [ ] 0.5 (ajouté le 2026-11-17, G0-5) Maquette des lignes resserrées de la Grande équipe : un tableau de plus
+      sur le canevas (colonne de 360 px, 24 joueurs, fil de 5 lignes) ; validé par le user avant la partie
+      « Grande équipe » de S.2.
+
+Ordre qui en découle : I.1 et I.2, puis M.1, X.1, A.1, C.1, D.0, T.6, T.7, B.1, F.1 ; A.3 après A.1 et la
+fusion du backlog (bouton « Générer le rejeu ») ; E.1 après A.3 (même zone de la page) ; le reste selon la
+table 1 bis.
+
 ## 2. Ce qui existe (relu sur pièces, `origin/release/v8.2.0` au 2026-11-15, `db11e95da1` ; À RELIRE sur `release/v8.3.0` au go, une fois la 8.2.0 fusionnée dans main)
 
 Relu le 2026-11-17 sur `release/v8.3.0` (`22a1a951ad`, qui contient tout `main`) : tous les fichiers cités
@@ -328,7 +435,14 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [ ] 0.2 M-1 : script de mesure (page de démonstration du rejeu, toile à 720 puis 1080 px de haut sur une
       carte haute et une carte large) qui relève le tas JS au pic et la durée des cuissons au redimensionnement.
       L'agent l'écrit ; le user le lance à son écran ; résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_m1.md`.
-- [ ] 0.3 Audit de conception (Fable, lecture seule) : relit ce plan contre le code, propose le découpage des
+      Préparé le 2026-11-17 sur la branche de mesure `ui/m1` (`eac9627e47`, worktree `C:/t/ui-m1`, jamais
+      fusionnée) : plafond et hauteur forcés par deux clés du stockage local (5 lignes marquées dans
+      `hooks/useReplayViewport.ts`), script de console, mode d'emploi en 10 étapes et tableau vide ; ligne
+      posée dans l'artefact des vérifications. Limite écrite : le tas JavaScript ne voit pas les pixels des
+      toiles ; le gestionnaire de tâches du navigateur est relevé en complément. Reste le lancement par le
+      user ; sans mesure, G.1 se clôt `[!]` et le plafond reste à 720 px.
+- [x] 0.3 (rendu le 2026-11-17 : `annexes_refonte_ui_rejeu/audit_conception.md`, grille complétée de 50
+      annotations ; écarts et questions tranchés le jour même, section 1 quater) Audit de conception (Fable, lecture seule) : relit ce plan contre le code, propose le découpage des
       composants par cadre sans franchir 500 lignes ni grossir `ReplayCanvas.tsx`, liste les risques (Échap,
       export vidéo qui suit la mise en page, couches z, portails). Écarts au plan rapportés au user avant A.1.
       (amendé le 2026-11-17) L'audit complète et corrige la grille de conformité contre le code : il compare la

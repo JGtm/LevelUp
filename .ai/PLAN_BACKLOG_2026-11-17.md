@@ -144,14 +144,14 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Étape 0 — témoins et vérification sur pièces (pilote)
 
-- [ ] 0.1 Branche `chore/830-backlog-1117` recalée sur la tête de `origin/release/v8.3.0` du jour du go ;
+- [x] 0.1 (fait le 2026-11-17, recalée sur `4f6f249458`) Branche `chore/830-backlog-1117` recalée sur la tête de `origin/release/v8.3.0` du jour du go ;
       création des worktrees des pistes.
-- [ ] 0.2 Témoins AVANT, dans `.ai/annexes_backlog_1117/temoins_avant.md` : nombre de tests et de réussites du
+- [x] 0.2 (fait le 2026-11-17 par un agent Sonnet en lecture, recoupé par le pilote ; durée du paquet DuckDB mesurée SOUS CHARGE, 578,7 s : la mesure au calme se refait en tête de la piste A) Témoins AVANT, dans `.ai/annexes_backlog_1117/temoins_avant.md` : nombre de tests et de réussites du
       paquet `internal/platform/duckdb` (`go test -tags=integration -json`), sa durée seule au calme ; sorties des
       tests de caractérisation par minute de l'Escouade (`per_minute_caracterisation_test.go`,
       `per_minute_temoins_test.go`) ; compte du garde-rail des couches (17) et des marqueurs de couleur (95, dont
       19 inertes) ; nombre de tests vitest des dossiers touchés par D.
-- [ ] 0.3 Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au journal
+- [x] 0.3 (fait le 2026-11-17 : `.ai/annexes_backlog_1117/verification_0_3.md`, écarts et arbitrages au journal) Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au journal
       avant tout code. Pour F : inventaire fermé des symboles à retirer (F.0) figé au journal.
 
 ## Piste A — paquet `internal/platform/duckdb` : base migrée copiée par test (Sonnet)
@@ -289,14 +289,14 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Piste F — précision par film : retrait du chemin non exécuté (Sonnet, selon D-5)
 
-- [ ] F.0 Inventaire fermé écrit au journal : symboles, fichiers, tests, allowlists et commentaires de
+- [x] F.0 (fait le 2026-11-17 dans `verification_0_3.md`, section F) Inventaire fermé écrit au journal : symboles, fichiers, tests, allowlists et commentaires de
       `sync/killcollector/hits.go`, `games/halo_infinite/ingest/weapon_accuracy_film.go`,
       `persist` (`WeaponHitDistancePersister`) et de leurs appelants ; preuve qu'aucun lecteur de
       `match_weapon_hit_distance` n'existe.
-- [ ] F.1 Suppression des lecteurs, de l'écrivain, de leurs tests et de leurs entrées d'allowlist.
-- [ ] F.2 Ce qui reste est mis d'accord : commentaire de `match.weapon.accuracy` dans `capabilities.toml`
+- [!] F.1 (non traité, décision du user du 2026-11-17 : « Reporter au chantier décodeur ». Retirer `hits.go` casse `internal/filmreplis` tant que le décodeur v1.4.1 déclare deux replis tenus par l'hôte ; le plan interdit toute montée de brique. Reporté au registre et au backlog en E.5 et E.6) Suppression des lecteurs, de l'écrivain, de leurs tests et de leurs entrées d'allowlist.
+- [!] F.2 (même motif que F.1) Ce qui reste est mis d'accord : commentaire de `match.weapon.accuracy` dans `capabilities.toml`
       (Halo 5 garde ses compteurs natifs), plafond de `archlint/film_facade_surface_test.go` descendu.
-- [ ] F.3 La table `match_weapon_hit_distance` n'est pas supprimée (aucune écriture destructive sur la base
+- [~] F.3 (couvert par l'entrée de report de F.1 : la table part avec le chemin, au chantier décodeur) La table `match_weapon_hit_distance` n'est pas supprimée (aucune écriture destructive sur la base
       partagée dans ce plan) : une ligne au backlog.
 - **Gate F** : gate commun Go sur `./internal/sync/... ./internal/persist/... ./internal/games/...` ;
   `go test -tags=integration ./internal/sync/...` ; `grep -rn "PairWeaponHits\|WeaponHitDistancePersister" apps/go-api`
@@ -360,6 +360,14 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
   de résolution des libellés est `service/replay_vehicle_labels.go`, et le commentaire de
   `domain/replaydoc/inventory.go:99` dit encore le sprint « réfuté » (D.4 le corrige).
 
+- 2026-11-17 — étape 0 close. Écarts relevés par la vérification sur pièces et arbitrages du pilote :
+  - **A** : 30 appels directs dans 26 fichiers (pas 31 dans 27) ; A.3 s'étend aux 13 appels hors des listes (liste dans `verification_0_3.md`) ; `setupPipelineEnv` est rebranché et son fichier ne reste exempté que si une migration neuve y est justifiée, raison datée ; le gabarit `shared_pve` n'est pas construit (aucun test ne l'utilise) ; les migrations neuves indirectes (`GetOrOpen`, `ForTarget` avec `ApplySchema`, `ExecScript`) restent hors du garde-rail et sont notées en découverte.
+  - **B** : la liste de tests de B.4 s'étend aux 6 fichiers relevés ; le grep du gate B ne discrimine pas, il est remplacé par `archlint/no_replay_json_literal_test.go` et le garde-rail neuf ; les commentaires de `film_id.go` et de ce test sont mis d'accord ; la commande de contrôle de `docs/COMMANDS.md` (FR et EN) est mise à jour en B.6 ; le gate ajoute `go test ./...` sur tout le module (leçon du 2026-11-17 : un changement de format de fichier se valide sur le module entier).
+  - **C** : `zonesPures` a 7 sites d'appel dans le paquet `service` ; C.3 ne vise que la branche des coéquipiers (le joueur principal est en entiers) ; C.5 se corrige côté LevelUp seulement (le chemin absolu naît dans la brique des cartes) ; `REGISTRE_CARTES.md` est sous `.ai/archive/V7.5/cartes/`.
+  - **D** : `shadow`, `from`, `via`, `to` entrent dans `TW_PREFIXES` seulement ; `ExperienceDropdown` et `ViewDropdown` gagnent la fermeture par Échap (changement voulu) ; deux entrées mortes de `ALLOWED_FILES` : découverte.
+  - **F** : bloquée, voir F.1 (décision du user : reportée au chantier décodeur).
+  - **G** : le profil `dev` n'a pas la capacité de régénération ; `can_generate_replays` se dérive du placement (bureau ou développement) et de la capacité du titre, pas de `ReplayRegen` : à écrire en G.0.
+
 ## Découvertes (consignées, non traitées)
 
 Relevées par l'instruction du 2026-11-17, à porter au backlog en E.6 :
@@ -373,3 +381,6 @@ Relevées par l'instruction du 2026-11-17, à porter au backlog en E.6 :
    aux joueurs sur l'hébergé.
 4. La régénération du bureau ne reprend que les rejeux dont le film est encore dans l'archive : un fichier
    tactique d'un rejeu au film expiré resterait à l'ancien format. Vide sur le poste, non vérifié en prod.
+5. (2026-11-17) Huit ouvertures `GetOrOpen`, deux `ForTarget` avec `ApplySchema` et un `ExecScript` migrent à neuf dans les tests du paquet DuckDB sans être vus par le garde-rail de A.4.
+6. (2026-11-17) `ALLOWED_FILES` de `tools/lint-no-hardcoded-colors.lib.mjs` porte deux entrées mortes (`features/home/rarity.ts`, `features/battlepass/rarity.ts`).
+7. (2026-11-17) `ConfigureFilmAccuracy` n'a aucun appelant de production : la passe de précision par film est morte deux fois.
