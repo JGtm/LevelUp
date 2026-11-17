@@ -1,5 +1,7 @@
 /**
- * ReplayScoreBanner — LE SCORE DU MATCH AU-DESSUS DU TERRAIN.
+ * ReplayScoreBanner — LE SCORE DU MATCH : au-dessus du terrain, ou dans la cellule centrale de l'en-tête
+ * du Standard. L'emplacement (`placement`) ne choisit que les cotes (`model/cotesBandeauScore.ts`), jamais
+ * la lecture.
  *
  * `[ barre alliée, son score écrit dedans ] — [ horloge ] — [ barre adverse ]`, demande
  * utilisateur du 2026-08-20. Le rejeu montrait le score en tête des colonnes de fiches
@@ -38,6 +40,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 import { formatClock } from '../../../lib/replay/replayLogic'
+import { COTES_BANDEAU_SCORE, type CotesBandeauScore, type EmplacementScore } from '../model/cotesBandeauScore'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { readHillHold, type HillHoldDocument } from '../model/hillHoldLogic'
 import { readScoreBanner, type ScoreBannerFilm, type ScoreBannerSide } from '../model/scoreBannerLogic'
@@ -67,6 +70,8 @@ interface Props {
    */
   playWindow: ReplayWindowBounds | null
   locale: ReplayLocale
+  /** Où le bandeau est posé : ses cotes (`COTES_BANDEAU_SCORE`) en dépendent, jamais sa lecture. */
+  placement: EmplacementScore
 }
 
 export function ReplayScoreBanner({
@@ -76,8 +81,10 @@ export function ReplayScoreBanner({
   nowMs,
   playWindow,
   locale,
+  placement,
 }: Props) {
   const t = REPLAY_TEXT[locale]
+  const cotes = COTES_BANDEAU_SCORE[placement]
   const reading = useMemo(
     () => readScoreBanner(scoreTimelineOf(doc), allegiance, frame),
     [doc, allegiance, frame],
@@ -95,15 +102,23 @@ export function ReplayScoreBanner({
   )
   if (!reading) return null
   return (
-    <div className="mb-2">
+    <div
+      data-replay-score-banner={placement}
+      style={{ width: cotes.largeurPx ?? undefined, maxWidth: '100%', marginBottom: cotes.margeBassePx }}
+    >
       {/* LES PASTILLES DE MANCHE COIFFENT LE SCORE (demande utilisateur : « au-dessus du score
           des dots vides pour les manches, pleines pour les gagnées »). UNE RANGÉE COMMUNE,
           centrée sur l'horloge, teintée au camp gagnant plutôt que deux rangées par équipe :
           entre deux camps, « l'allié a gagné la manche 1 » et « l'adverse ne l'a pas gagnée »
           sont la même information — la dédoubler prendrait le double de largeur pour ne rien
           dire de plus. La couleur, elle, dit d'un coup d'œil QUI a pris chaque manche. */}
-      <RoundDots dots={reading.dots} t={t} />
-      <div role="group" aria-label={t.scoreBannerLabel} className="flex items-stretch gap-2">
+      <RoundDots dots={reading.dots} t={t} cotes={cotes} />
+      <div
+        role="group"
+        aria-label={t.scoreBannerLabel}
+        className="flex items-stretch"
+        style={{ gap: cotes.ecartPx }}
+      >
         <ScoreBar
           side={reading.ally}
           label={t.scoreBannerAlly}
@@ -111,10 +126,15 @@ export function ReplayScoreBanner({
           anchor="left"
           hold={hold?.ally ?? null}
           holdLabel={t.hillHoldAlly}
+          cotes={cotes}
         />
-        <div className="flex shrink-0 flex-col items-center justify-center px-1">
+        <div
+          className="flex shrink-0 flex-col items-center justify-center"
+          style={{ minWidth: cotes.horlogeMinW, paddingInline: cotes.horlogePadXPx }}
+        >
           <span
-            className="font-mono text-sm font-bold leading-none tabular-nums"
+            className="font-mono font-bold leading-none tabular-nums"
+            style={{ fontSize: cotes.horlogePx }}
             aria-label={t.scoreBannerClock}
           >
             {formatClock(displayClockMs(nowMs, playWindow))}
@@ -125,7 +145,8 @@ export function ReplayScoreBanner({
               jamais en chiffres. */}
           {reading.round && (
             <span
-              className="mt-0.5 text-[11px] font-bold leading-none tabular-nums text-foreground"
+              className="font-bold leading-none tabular-nums text-foreground"
+              style={{ marginTop: cotes.mancheMargeHautePx, fontSize: cotes.manchePx }}
               title={t.roundOfCountFmt(reading.round.index, reading.round.count)}
             >
               {t.roundNumberFmt(reading.round.index)}
@@ -139,6 +160,7 @@ export function ReplayScoreBanner({
           anchor="right"
           hold={hold?.enemy ?? null}
           holdLabel={t.hillHoldEnemy}
+          cotes={cotes}
         />
       </div>
     </div>
@@ -149,16 +171,17 @@ export function ReplayScoreBanner({
  * La rangée de pastilles de manche, centrée au-dessus du score. Ne rend RIEN sur un mode à
  * manche unique (`dots` vide) : une seule pastille ne dirait rien que le total ne dise déjà.
  */
-function RoundDots({ dots, t }: { dots: RoundDot[]; t: ReplayText }) {
+function RoundDots({ dots, t, cotes }: { dots: RoundDot[]; t: ReplayText; cotes: CotesBandeauScore }) {
   if (dots.length === 0) return null
   return (
     <div
       role="group"
       aria-label={t.roundDotsLabel}
-      className="mb-1 flex items-center justify-center gap-1.5"
+      className="flex items-center justify-center"
+      style={{ marginBottom: cotes.pastillesMargeBassePx, gap: cotes.pastillesEcartPx }}
     >
       {dots.map((dot, i) => (
-        <RoundDotMark key={dot.round} dot={dot} index={i + 1} t={t} />
+        <RoundDotMark key={dot.round} dot={dot} index={i + 1} t={t} cotes={cotes} />
       ))}
     </div>
   )
@@ -171,7 +194,17 @@ function RoundDots({ dots, t }: { dots: RoundDot[]; t: ReplayText }) {
  * vide emprunte le token neutre du thème. Le libellé dit l'état — l'œil lit la couleur, le
  * lecteur d'écran lit le mot.
  */
-function RoundDotMark({ dot, index, t }: { dot: RoundDot; index: number; t: ReplayText }) {
+function RoundDotMark({
+  dot,
+  index,
+  t,
+  cotes,
+}: {
+  dot: RoundDot
+  index: number
+  t: ReplayText
+  cotes: CotesBandeauScore
+}) {
   const token = dot.winner === 'ally' ? 'team-ally' : dot.winner === 'enemy' ? 'team-enemy' : null
   const label =
     dot.winner === 'ally'
@@ -179,15 +212,17 @@ function RoundDotMark({ dot, index, t }: { dot: RoundDot; index: number; t: Repl
       : dot.winner === 'enemy'
         ? t.roundDotEnemyFmt(index)
         : t.roundDotPendingFmt(index)
-  const style: CSSProperties = token
-    ? { background: tokenCssVar(token), borderColor: tokenCssVar(token) }
-    : {}
+  const style: CSSProperties = {
+    width: cotes.pastillePx,
+    height: cotes.pastillePx,
+    ...(token ? { background: tokenCssVar(token), borderColor: tokenCssVar(token) } : {}),
+  }
   return (
     <span
       role="img"
       aria-label={label}
       title={label}
-      className={`h-2.5 w-2.5 rounded-full border ${token ? '' : 'border-muted-foreground bg-transparent'}`}
+      className={`rounded-full border ${token ? '' : 'border-muted-foreground bg-transparent'}`}
       style={style}
     />
   )
@@ -209,6 +244,7 @@ interface BarProps {
    */
   hold: number | null
   holdLabel: string
+  cotes: CotesBandeauScore
 }
 
 /**
@@ -219,7 +255,7 @@ interface BarProps {
  * `scoreBannerLogic`), qui n'est pas une donnée publiée. Le pourcentage décrit la barre,
  * le `valuetext` dit la mesure.
  */
-function ScoreBar({ side, label, token, anchor, hold, holdLabel }: BarProps) {
+function ScoreBar({ side, label, token, anchor, hold, holdLabel, cotes }: BarProps) {
   const accent = tokenCssVar(token)
   const pct = Math.round(side.fill * 100)
   const holdPct = hold === null ? null : Math.round(hold * 100)
@@ -230,10 +266,14 @@ function ScoreBar({ side, label, token, anchor, hold, holdLabel }: BarProps) {
     background: accent,
     ...(anchor === 'left' ? { right: 0 } : { left: 0 }),
   }
-  const trackStyle: CSSProperties =
-    anchor === 'left' ? { borderLeft: `3px solid ${accent}` } : { borderRight: `3px solid ${accent}` }
+  const lisere = `${cotes.lisereBordPx}px solid ${accent}`
+  const trackStyle: CSSProperties = {
+    height: cotes.barreHauteurPx,
+    borderRadius: cotes.barreRayonPx,
+    ...(anchor === 'left' ? { borderLeft: lisere } : { borderRight: lisere }),
+  }
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+    <div className="flex min-w-0 flex-1 flex-col" style={{ gap: cotes.gardeEcartPx }}>
       <div
         role="progressbar"
         aria-label={label}
@@ -241,16 +281,17 @@ function ScoreBar({ side, label, token, anchor, hold, holdLabel }: BarProps) {
         aria-valuemax={100}
         aria-valuenow={pct}
         aria-valuetext={String(side.score)}
-        className="relative h-7 w-full overflow-hidden rounded-sm bg-muted"
+        className="relative w-full overflow-hidden bg-muted"
         style={trackStyle}
       >
         <span className="absolute inset-y-0 block" style={fillStyle} />
         {/* Le nombre CÔTÉ HORLOGE : bord droit de la barre de gauche, bord gauche de celle
             de droite — l'inverse de `anchor`, qui nomme le bord extérieur. */}
         <span
-          className={`absolute inset-y-0 flex items-center px-2 font-mono text-[15px] font-bold tabular-nums text-foreground ${
+          className={`absolute inset-y-0 flex items-center font-mono font-bold tabular-nums text-foreground ${
             anchor === 'left' ? 'right-0' : 'left-0'
           }`}
+          style={{ fontSize: cotes.scorePx, paddingInline: cotes.scorePadXPx }}
         >
           {side.score}
         </span>
@@ -269,7 +310,8 @@ function ScoreBar({ side, label, token, anchor, hold, holdLabel }: BarProps) {
           aria-valuemax={100}
           aria-valuenow={holdPct}
           title={holdLabel}
-          className="relative h-1 w-full overflow-hidden rounded-sm bg-muted"
+          className="relative w-full overflow-hidden bg-muted"
+          style={{ height: cotes.gardeHauteurPx, borderRadius: cotes.barreRayonPx }}
         >
           <span
             className="absolute inset-y-0 block"

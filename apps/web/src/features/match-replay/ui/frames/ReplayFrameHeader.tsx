@@ -2,9 +2,9 @@
  * ReplayFrameHeader — LES EN-TÊTES DES TROIS CADRES de la page du rejeu, et le groupe de trois boutons
  * « Cadre du lecteur » qu'ils portent tous.
  *
- *  - STANDARD : le fil d'Ariane de l'application, dont le dernier segment est le titre de la page
- *    (avec le badge de version de schéma de l'administrateur), le rappel du match, puis le groupe de
- *    cadres et le lien vers la fiche du match ;
+ *  - STANDARD : trois cellules dans la page bornée : retour et titre du match sur deux lignes, bandeau de
+ *    score, puis le badge de version de schéma de l'administrateur, le groupe de cadres et le lien vers la
+ *    fiche du match ;
  *  - CINÉMA : une ligne réduite, à l'intérieur de la page : retour, titre du match sur deux lignes,
  *    groupe de cadres et lien vers la fiche ;
  *  - PLEIN CADRE : aucune navigation de l'application (`showsAppNavigation`) ; une barre où « Quitter »
@@ -16,19 +16,19 @@
  * est actif, comme le fait Échap.
  */
 import { Link, useRouter } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 
-import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
-import { themedIconSrc } from '@/lib/themedIcon'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
+import { COTES_BANDEAU_SCORE } from '../../model/cotesBandeauScore'
+import { COTES_PAGE_STANDARD } from '../../model/cotesStandard'
 import { showsAppNavigation, type ReplayFrame } from '../../model/replayFrame'
-import { ReplayMatchRecall } from '../ReplayMatchRecall'
 import { ReplaySchemaBadge } from '../ReplaySchemaBadge'
 import { PRESS_GUARDS } from '../replayPressGuards'
 import type { ReplayFrameChrome } from './replayFrameTypes'
 import { selectFrame } from './selectFrame'
+import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
 
 const FRAMES: readonly ReplayFrame[] = ['standard', 'cinema', 'plein-cadre']
 
@@ -111,22 +111,33 @@ function BackButton({ chrome }: { chrome: ReplayFrameChrome }) {
   )
 }
 
-/** L'en-tête du Standard : le fil d'Ariane de l'application, le titre de la page et le badge de schéma. */
-function StandardHeader({ chrome }: { chrome: ReplayFrameChrome }) {
+/**
+ * L'en-tête du Standard, en trois cellules de page bornée : à gauche le retour et le titre du match, au
+ * centre le bandeau de score (`score`, que le cadre construit ; la cellule garde sa place quand il ne
+ * rend rien), à droite le badge de schéma de l'administrateur, le groupe de cadres et le lien vers la fiche.
+ */
+function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode }) {
   const isAdmin = useAppShellStore((s) => s.isAdmin)
-  // Le logo du rejeu est un raster à deux variantes (noire / blanche) : le thème local choisit.
-  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const { doc, header, params, locale, matchLabel } = chrome
+  const { doc, params, locale } = chrome
   const t = REPLAY_TEXT[locale]
   return (
-    <MatchBreadcrumb
-      playerSlug={params.playerSlug}
-      matchLabel={matchLabel}
-      locale={locale}
-      leaf={
-        <h1 className="flex items-center gap-1.5 text-sm font-semibold">
-          <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
-          {t.title}
+    <div className={STANDARD_PAGE_CLASS} style={STANDARD_PAGE_STYLE} data-replay-header="standard">
+      <div
+        className="grid items-center"
+        style={{
+          height: COTES_PAGE_STANDARD.enteteHauteurPx,
+          columnGap: COTES_PAGE_STANDARD.enteteEcartPx,
+          gridTemplateColumns: `minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)`,
+        }}
+      >
+        <div className="flex min-w-0 items-center gap-3" data-replay-header-cell="gauche">
+          <BackButton chrome={chrome} />
+          <MatchTitle chrome={chrome} />
+        </div>
+        <div className="min-w-0" data-replay-header-cell="centre">
+          {score}
+        </div>
+        <div className="flex min-w-0 items-center justify-end gap-2" data-replay-header-cell="droite">
           {/* Rien pour un joueur ordinaire : le badge se gate lui-même sur `isAdmin`. Le document peut
               être absent (chargement, 404) : le badge n'a alors rien à lire. */}
           {doc && (
@@ -140,22 +151,15 @@ function StandardHeader({ chrome }: { chrome: ReplayFrameChrome }) {
               layers={doc.layers}
             />
           )}
-        </h1>
-      }
-      detail={
-        <ReplayMatchRecall startTimeLabel={header?.start_time_label} playlistLabel={header?.playlist_label} />
-      }
-      action={
-        <span className="flex items-center gap-2">
           <FrameSwitch frame="standard" chrome={chrome} />
-          {/* « Fiche du match », PAS « retour au match » : la flèche du fil fait `history.back()`, donc
+          {/* « Fiche du match », PAS « retour au match » : la flèche du retour fait `history.back()`, donc
               n'importe quoi ; ce lien vise une destination fixe, qu'on en vienne ou non. */}
-          <Link to={SHEET_ROUTE} params={params} className={SHEET_LINK_CLASS}>
-            {t.back}
+          <Link to={SHEET_ROUTE} params={params} aria-label={t.back} className={SHEET_LINK_CLASS}>
+            {t.frames.sheet}
           </Link>
-        </span>
-      }
-    />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -207,7 +211,14 @@ function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
   )
 }
 
-export function ReplayFrameHeader({ frame, chrome }: { frame: ReplayFrame; chrome: ReplayFrameChrome }) {
+interface ReplayFrameHeaderProps {
+  frame: ReplayFrame
+  chrome: ReplayFrameChrome
+  /** Le bandeau de score de la cellule centrale du Standard ; les autres cadres ne le lisent pas. */
+  score?: ReactNode
+}
+
+export function ReplayFrameHeader({ frame, chrome, score = null }: ReplayFrameHeaderProps) {
   if (!showsAppNavigation(frame)) return <FullFrameBar chrome={chrome} />
-  return frame === 'standard' ? <StandardHeader chrome={chrome} /> : <CinemaHeader chrome={chrome} />
+  return frame === 'standard' ? <StandardHeader chrome={chrome} score={score} /> : <CinemaHeader chrome={chrome} />
 }

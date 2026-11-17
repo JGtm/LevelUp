@@ -1,7 +1,8 @@
 /**
- * ReplayStandardFrame — LE CONTENU DES ZONES DU CADRE STANDARD : l'en-tête du fil d'Ariane et la colonne
- * des fiches et du fil. La scène et les avis sont ceux de la page, communs aux trois cadres ; la zone
- * `rangee` reste vide (la rangée de fiches appartient au Cinéma et au Plein cadre).
+ * ReplayStandardFrame — LE CONTENU DES ZONES DU CADRE STANDARD : l'en-tête en trois cellules (dont le
+ * bandeau de score, qui ne coiffe plus le terrain) et la colonne des fiches et du fil. La scène et les avis
+ * sont ceux de la page, communs aux trois cadres ; la zone `rangee` reste vide (la rangée de fiches
+ * appartient au Cinéma et au Plein cadre).
  *
  * # LA COLONNE : FICHES AU-DESSUS, FIL EN DESSOUS, MÊME LARGEUR
  *
@@ -16,6 +17,7 @@
 import { ReplayFeedOrPanel } from '../ReplayFeedOrPanel'
 import { ReplayKillFeed } from '../ReplayKillFeed'
 import { ReplayPlayerPanel } from '../ReplayPlayerPanel'
+import { ReplayScoreBanner } from '../ReplayScoreBanner'
 import { ReplayTeams } from '../ReplayTeams'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
 import type { ReplayFrameChrome, ReplayFrameView, ReplayFrameZoneContent } from './replayFrameTypes'
@@ -74,9 +76,25 @@ function standardColumn(view: ReplayFrameView) {
   )
 }
 
+/** Le bandeau de la cellule centrale de l'en-tête ; absent tant que le rejeu n'est pas prêt. */
+function standardScore(view: ReplayFrameView | null) {
+  if (!view) return null
+  return (
+    <ReplayScoreBanner
+      doc={view.doc}
+      allegiance={view.model.allegiance}
+      frame={view.playFrame}
+      nowMs={view.nowMs}
+      playWindow={view.model.window}
+      locale={view.locale}
+      placement="entete"
+    />
+  )
+}
+
 export function standardFrameZones(chrome: ReplayFrameChrome, view: ReplayFrameView | null): ReplayFrameZoneContent {
   return {
-    tete: <ReplayFrameHeader frame="standard" chrome={chrome} />,
+    tete: <ReplayFrameHeader frame="standard" chrome={chrome} score={standardScore(view)} />,
     rangee: null,
     colonne: view && standardColumn(view),
   }

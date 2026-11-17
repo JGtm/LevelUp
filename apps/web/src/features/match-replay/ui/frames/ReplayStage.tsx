@@ -5,7 +5,8 @@
  *
  * Ce que la scène contient, dans l'ordre : l'avis « instant non calé » (le lien tactique demandait un
  * instant que ce rejeu ne peut pas caler : il s'ouvre au début, jamais sur un saut approximatif), le
- * bandeau de score, puis la toile et ses surcouches.
+ * bandeau de score quand le cadre le pose ici (`scorePlacement` ; le Standard le porte dans son
+ * en-tête et passe `null`), puis la toile et ses surcouches.
  *
  * LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR : l'écran de fin, le message
  * inter-manche et le compte à rebours de la bombe descendent dans le conteneur de la toile (`mapOverlays`),
@@ -15,6 +16,7 @@
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
+import type { EmplacementScore } from '../../model/cotesBandeauScore'
 import { ReplayBombCountdownOverlay } from '../ReplayBombCountdownOverlay'
 import { ReplayCanvas } from '../ReplayCanvas'
 import { ReplayRoundBreakOverlay } from '../ReplayRoundBreakOverlay'
@@ -45,7 +47,7 @@ function StageMapOverlays({ view }: { view: ReplayFrameView }) {
   )
 }
 
-export function ReplayStage({ view }: { view: ReplayFrameView }) {
+export function ReplayStage({ view, scorePlacement }: { view: ReplayFrameView; scorePlacement: EmplacementScore | null }) {
   const { doc, model, header, locale } = view
   const t = REPLAY_TEXT[locale]
   return (
@@ -53,14 +55,19 @@ export function ReplayStage({ view }: { view: ReplayFrameView }) {
       {view.showMissingOriginNotice && (
         <EmptyStateNotice className="mb-2" title={t.openAtNoOriginTitle} description={t.openAtNoOriginDescription} />
       )}
-      <ReplayScoreBanner
-        doc={doc}
-        allegiance={model.allegiance}
-        frame={view.playFrame}
-        nowMs={view.nowMs}
-        playWindow={model.window}
-        locale={locale}
-      />
+      {/* `null` : le cadre pose le score ailleurs (cellule centrale de l'en-tête du Standard). La place
+          de l'élément dans le fragment ne change pas, donc la toile qui suit n'est jamais remontée. */}
+      {scorePlacement && (
+        <ReplayScoreBanner
+          doc={doc}
+          allegiance={model.allegiance}
+          frame={view.playFrame}
+          nowMs={view.nowMs}
+          playWindow={model.window}
+          locale={locale}
+          placement={scorePlacement}
+        />
+      )}
       <ReplayCanvas
         doc={doc}
         locale={locale}

@@ -19,12 +19,14 @@
  * lui-même, `useReplayViewport` mesure la hauteur offerte au terrain par rapport à lui. Son corps se
  * centre dans la hauteur restante sous l'en-tête (marge automatique : elle se réduit à zéro quand le
  * contenu déborde, et c'est le cadre qui défile). Standard et Cinéma restent dans le flux de
- * l'application.
+ * l'application ; le Standard est de plus une page bornée et centrée (`standardPage`), son en-tête et son
+ * corps dans la même boîte.
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import { REPLAY_FULLSCREEN_FRAME } from '../../hooks/useReplayFullscreen'
 import type { ReplayFrame } from '../../model/replayFrame'
+import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
 
 export interface ReplayFrameLayoutProps {
   frame: ReplayFrame
@@ -37,8 +39,9 @@ export interface ReplayFrameLayoutProps {
 }
 
 /** Les classes de chaque zone par cadre : la table est fermée, un cadre ajouté la complète à la compilation. */
-const FRAME_CLASSES: Record<ReplayFrame, { root: string; body: string }> = {
-  standard: { root: 'flex flex-col', body: 'space-y-4 px-6 pb-3' },
+const FRAME_CLASSES: Record<ReplayFrame, { root: string; body: string; bodyStyle?: CSSProperties }> = {
+  // Le Standard est une page bornée et centrée : la boîte de `standardPage` porte la largeur et les marges.
+  standard: { root: 'flex flex-col', body: `space-y-4 pb-3 ${STANDARD_PAGE_CLASS}`, bodyStyle: STANDARD_PAGE_STYLE },
   cinema: { root: 'flex flex-col', body: 'space-y-2 px-6 pb-2' },
   'plein-cadre': {
     root: `${REPLAY_FULLSCREEN_FRAME} flex flex-col`,
@@ -59,7 +62,7 @@ export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne }:
   return (
     <div className={classes.root} data-replay-frame={frame}>
       {tete}
-      <div className={classes.body}>
+      <div className={classes.body} style={classes.bodyStyle} data-replay-body={frame}>
         {avis}
         {rangee}
         {scene != null && (

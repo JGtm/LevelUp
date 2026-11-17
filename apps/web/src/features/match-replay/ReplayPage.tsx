@@ -225,7 +225,8 @@ export function ReplayPage() {
           locale={locale}
         />
       }
-      scene={view && <ReplayStage view={view} />}
+      // Le Standard porte le score dans son en-tête ; Cinéma et Plein cadre le gardent sur la toile.
+      scene={view && <ReplayStage view={view} scorePlacement={frame === 'standard' ? null : 'scene'} />}
     />
   )
 }
