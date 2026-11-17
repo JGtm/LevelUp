@@ -32,7 +32,7 @@ func matchPathConstructors(root string) []struct {
 			func(id string) string { return p.ReplayArtifactPath(DefaultSlug, id) }},
 		{"FilmFactsPath", p.FilmFactsDir(DefaultSlug),
 			func(id string) string { return p.FilmFactsPath(DefaultSlug, id) }},
-		{"TacticalRasterPath", p.TacticalRasterDir(DefaultSlug),
+		{"TacticalRasterPath", filepath.Join(p.ReplayArtifactsDir(DefaultSlug), SousDossierRasters),
 			func(id string) string { return p.TacticalRasterPath(DefaultSlug, id) }},
 		{"DemoLayout.ReplayArtifactPath", d.ReplayArtifactsDir(DefaultSlug),
 			func(id string) string { return d.ReplayArtifactPath(DefaultSlug, id) }},

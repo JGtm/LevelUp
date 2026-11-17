@@ -235,7 +235,7 @@ func TestProjeterRastersTactiques_LotVide(t *testing.T) {
 	root := t.TempDir()
 	projeterRastersTactiques(context.Background(),
 		Deps{RepoRoot: root, TitleSlug: titlePkg.DefaultSlug}, nil)
-	if _, err := os.Stat(titlePkg.NewPathResolver(root).TacticalRasterDir(titlePkg.DefaultSlug)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(titlePkg.NewPathResolver(root).ReplayArtifactsDir(titlePkg.DefaultSlug), titlePkg.SousDossierRasters)); !os.IsNotExist(err) {
 		t.Fatalf("dossier des rasters cree sans aucun artefact a projeter (err = %v)", err)
 	}
 }

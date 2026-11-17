@@ -16,32 +16,23 @@ import (
 	"strings"
 )
 
-// SousDossierRasters est le segment de chemin des sidecars de raster, SOUS le dossier des
-// artefacts d'un titre.
-//
-// EXPORTE parce que la purge recurrente (`scheduler.replay_purge_cron`) ne connait que le
-// DOSSIER d'artefacts — jamais la racine du depot, donc jamais un PathResolver : elle passe par
-// [TacticalRasterFileIn] et [TacticalRasterLegacyFileIn], qui portent ce segment.
-const SousDossierRasters = "rasters"
-
-// TacticalRasterDir retourne le dossier des SIDECARS de raster tactique d'un titre — la
-// projection « ou chaque joueur a passe son temps » d'un match, calculee UNE FOIS a la
-// cuisson (cf. internal/sync/replayartifacts/raster.go).
-// Ex: data/cache/replays/halo_infinite/rasters/
+// SousDossierRasters est le segment de chemin des sidecars de raster tactique (la projection « où chaque
+// joueur a passé son temps » d'un match, calculée une fois à la cuisson), SOUS le dossier des artefacts d'un
+// titre : data/cache/replays/halo_infinite/rasters/.
 //
 // # POURQUOI SOUS LE DOSSIER DES ARTEFACTS, ET EN SOUS-DOSSIER
 //
-// Un raster est un DERIVE de l'artefact et n'a aucun sens sans lui : le ranger a cote
-// garde les deux ensemble (une purge de titre, une copie de poste, un diagnostic). Le
-// SOUS-dossier, lui, est ce qui rend la cohabitation sure — les deux parcours du dossier
-// d'artefacts (service.replayService.AvailableSet et scheduler.purgeReplayArtifacts-
-// ForTitle) ne comptent QUE les artefacts de premier niveau et sautent les
-// repertoires (`e.IsDir()`). Un sidecar pose a plat aurait donc ete lu comme l'artefact
-// d'un match inexistant par le premier, et supprime comme un artefact indatable par le
-// second.
-func (p *PathResolver) TacticalRasterDir(titleSlug string) string {
-	return filepath.Join(p.ReplayArtifactsDir(titleSlug), SousDossierRasters)
-}
+// Un raster est un DÉRIVÉ de l'artefact et n'a aucun sens sans lui : le ranger à côté garde les deux
+// ensemble (une purge de titre, une copie de poste, un diagnostic). Le SOUS-dossier, lui, rend la cohabitation
+// sûre : les deux parcours du dossier d'artefacts (service.replayService.AvailableSet et la purge récurrente)
+// ne comptent QUE les artefacts de premier niveau et sautent les répertoires (e.IsDir()). Un sidecar posé à
+// plat aurait été lu comme l'artefact d'un match inexistant par le premier, et supprimé comme un artefact
+// indatable par le second.
+//
+// EXPORTÉ parce que la purge récurrente (scheduler.replay_purge_cron) ne connaît que le DOSSIER d'artefacts,
+// jamais la racine du dépôt, donc jamais un PathResolver : elle passe par [TacticalRasterFileIn] et
+// [TacticalRasterLegacyFileIn], qui portent ce segment.
+const SousDossierRasters = "rasters"
 
 // TacticalRasterPath retourne le chemin du sidecar de raster tactique d'un match.
 // Ex: data/cache/replays/halo_infinite/rasters/000d5950.json.gz

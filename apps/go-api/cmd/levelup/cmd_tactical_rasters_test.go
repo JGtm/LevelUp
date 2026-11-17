@@ -171,7 +171,7 @@ func TestTacticalRasters_DryRunNEcritRien(t *testing.T) {
 	if b.ecrits != 2 || b.echecs != 0 {
 		t.Fatalf("dry-run = %+v, attendu 2 « a ecrire »", b)
 	}
-	dir := titlePkg.NewPathResolver(root).TacticalRasterDir(titlePkg.DefaultSlug)
+	dir := filepath.Join(titlePkg.NewPathResolver(root).ReplayArtifactsDir(titlePkg.DefaultSlug), titlePkg.SousDossierRasters)
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("--dry-run a cree le dossier des rasters (err = %v)", err)
 	}
@@ -202,7 +202,7 @@ func TestTacticalRasters_SansBackfill(t *testing.T) {
 	if err := runTacticalRasters(&config.AppConfig{RepoRoot: root}, nil); err == nil {
 		t.Fatal("sans --backfill : attendu un refus explicite")
 	}
-	dir := titlePkg.NewPathResolver(root).TacticalRasterDir(titlePkg.DefaultSlug)
+	dir := filepath.Join(titlePkg.NewPathResolver(root).ReplayArtifactsDir(titlePkg.DefaultSlug), titlePkg.SousDossierRasters)
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("une invocation nue a ecrit des sidecars (err = %v)", err)
 	}

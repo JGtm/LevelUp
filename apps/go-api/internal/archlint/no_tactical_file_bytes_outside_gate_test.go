@@ -38,7 +38,7 @@ var allowlistOctetsFichierTactique = map[string]bool{}
 
 // motifFichierTactique : ce qui désigne un chemin de fichier tactique dans une expression.
 var motifFichierTactique = regexp.MustCompile(
-	`TacticalRasterPath|TacticalRasterDir|TacticalRasterFileIn|SousDossierRasters|EcrireSidecarRaster`)
+	`TacticalRasterPath|TacticalRasterFileIn|SousDossierRasters|EcrireSidecarRaster`)
 
 // appelsFichierTactiqueInterdits : par paquet, les fonctions qui lisent, écrivent, ouvrent ou créent les octets
 // d'un fichier : celles de `no_artefact_bytes_outside_gate_test.go` (`appelsFichierInterdits`) moins `Stat` et

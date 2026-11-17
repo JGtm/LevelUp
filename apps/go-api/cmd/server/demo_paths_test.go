@@ -141,7 +141,7 @@ func cheminsDeBootEtDeCfg(t *testing.T, cfg *config.AppConfig, depot string) map
 		"runtime.WALDir":                  rt.WALDir(),
 		"runtime.SyncCacheDir":            rt.SyncCacheDir(),
 		"runtime.ReplayArtifactsDir":      rt.ReplayArtifactsDir(title.DefaultSlug),
-		"runtime.TacticalRasterDir":       rt.TacticalRasterDir(title.DefaultSlug),
+		"runtime.rasters":                 filepath.Join(rt.ReplayArtifactsDir(title.DefaultSlug), title.SousDossierRasters),
 		"runtime.FilmFactsDir":            rt.FilmFactsDir(title.DefaultSlug),
 		"config.SharedDBPath(halo_5)":     config.SharedDBPath(cfg, "halo_5"),
 		"config.MetadataDBPath(halo_5)":   config.MetadataDBPath(cfg, "halo_5"),
