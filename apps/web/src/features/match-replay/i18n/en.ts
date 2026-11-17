@@ -96,7 +96,6 @@ export const EN_TEXT = {
   killFeedKillerShare: (pct) => `killer ${pct}%`,
   killFeedVictimZone: (zone) => `Victim's location: ${zone}`,
   killFeedAssistMark: 'Assist',
-  killFeedAssistShare: (pct) => `${pct}%`,
   killFeedDeathLabel: 'died',
   killFeedDeathHint:
     'Death with no credited killer (suicide, fall or leaving), read from the film trails.',

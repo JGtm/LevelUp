@@ -215,8 +215,6 @@ export interface ReplayText {
    * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
    */
   killFeedAssistMark: string
-  /** Part de participation de l'assistant, telle que la ligne l'écrit : « 37 % ». */
-  killFeedAssistShare: (pct: number) => string
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
   killFeedDeathHint: string
