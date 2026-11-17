@@ -30,8 +30,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -258,5 +261,213 @@ func TestMigratedTemplate_CopiesIndependantes(t *testing.T) {
 
 	if _, err := gabaritPath(migration.TargetSharedPvE); err == nil {
 		t.Error("la cible shared_pve n'a pas de gabarit : une erreur était attendue")
+	}
+}
+
+// --- Fidélité du gabarit à une migration neuve ---------------------------------------------
+
+// empreinteBase décrit une base par ce qu'une migration y laisse : tables (DDL, contraintes
+// comprises), vues, index, séquences, contraintes et nombre de lignes de chaque table. Les
+// lignes sont triées : deux bases sont équivalentes quand leurs empreintes sont égales.
+func empreinteBase(t *testing.T, db *sql.DB) []string {
+	t.Helper()
+	requetes := []struct{ genre, sql string }{
+		{"table", `SELECT schema_name || '.' || table_name, coalesce(sql, '')
+			FROM duckdb_tables() WHERE database_name = current_database() AND NOT internal`},
+		{"vue", `SELECT schema_name || '.' || view_name, coalesce(sql, '')
+			FROM duckdb_views() WHERE database_name = current_database() AND NOT internal`},
+		{"index", `SELECT schema_name || '.' || index_name, table_name || ' ' || coalesce(sql, '')
+			FROM duckdb_indexes() WHERE database_name = current_database()`},
+		{"sequence", `SELECT schema_name || '.' || sequence_name,
+				start_value || ' ' || increment_by || ' ' || min_value || ' ' || max_value || ' ' ||
+				cycle || ' ' || coalesce(last_value::VARCHAR, '')
+			FROM duckdb_sequences() WHERE database_name = current_database()`},
+		{"contrainte", `SELECT schema_name || '.' || table_name,
+				constraint_type || ' ' || coalesce(constraint_column_names::VARCHAR, '') || ' ' ||
+				coalesce(constraint_text, '')
+			FROM duckdb_constraints() WHERE database_name = current_database()`},
+	}
+	var lignes []string
+	for _, q := range requetes {
+		rows, err := db.Query(q.sql)
+		if err != nil {
+			t.Fatalf("empreinte %s: %v", q.genre, err)
+		}
+		for rows.Next() {
+			var nom, detail string
+			if err := rows.Scan(&nom, &detail); err != nil {
+				_ = rows.Close()
+				t.Fatalf("empreinte %s: scan: %v", q.genre, err)
+			}
+			lignes = append(lignes, q.genre+" "+nom+" | "+detail)
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			t.Fatalf("empreinte %s: %v", q.genre, err)
+		}
+		_ = rows.Close()
+	}
+	return append(lignes, comptesDeLignes(t, db)...)
+}
+
+// comptesDeLignes rend « lignes <table> | <n> » pour chaque table de la base.
+func comptesDeLignes(t *testing.T, db *sql.DB) []string {
+	t.Helper()
+	rows, err := db.Query(`SELECT schema_name, table_name FROM duckdb_tables()
+		WHERE database_name = current_database() AND NOT internal`)
+	if err != nil {
+		t.Fatalf("liste des tables: %v", err)
+	}
+	var tables []string
+	for rows.Next() {
+		var schema, table string
+		if err := rows.Scan(&schema, &table); err != nil {
+			_ = rows.Close()
+			t.Fatalf("liste des tables: scan: %v", err)
+		}
+		tables = append(tables, `"`+schema+`"."`+table+`"`)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		t.Fatalf("liste des tables: %v", err)
+	}
+	_ = rows.Close()
+	var lignes []string
+	for _, tbl := range tables {
+		var n int64
+		if err := db.QueryRow("SELECT count(*) FROM " + tbl).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", tbl, err)
+		}
+		lignes = append(lignes, fmt.Sprintf("lignes %s | %d", tbl, n))
+	}
+	return lignes
+}
+
+// exigerMemeEmpreinte échoue en listant les lignes présentes d'un seul côté.
+func exigerMemeEmpreinte(t *testing.T, quoi string, want, got []string) {
+	t.Helper()
+	w, g := append([]string(nil), want...), append([]string(nil), got...)
+	sort.Strings(w)
+	sort.Strings(g)
+	if slices.Equal(w, g) {
+		return
+	}
+	var ecarts []string
+	for _, l := range w {
+		if _, ok := slices.BinarySearch(g, l); !ok {
+			ecarts = append(ecarts, "manque  : "+l)
+		}
+	}
+	for _, l := range g {
+		if _, ok := slices.BinarySearch(w, l); !ok {
+			ecarts = append(ecarts, "en trop : "+l)
+		}
+	}
+	if len(ecarts) > 12 {
+		ecarts = append(ecarts[:12], fmt.Sprintf("... et %d autres", len(ecarts)-12))
+	}
+	t.Errorf("%s : empreinte différente de la migration neuve (%d lignes attendues, %d obtenues) :\n%s",
+		quoi, len(w), len(g), strings.Join(ecarts, "\n"))
+}
+
+// releveurApplied note la valeur « applied » de chaque ligne « migration: cycle terminé » : le
+// nombre d'étapes qu'un RunForDB a réellement appliquées.
+type releveurApplied struct {
+	mu      sync.Mutex
+	valeurs []int64
+}
+
+func (h *releveurApplied) Enabled(context.Context, slog.Level) bool { return true }
+func (h *releveurApplied) WithAttrs([]slog.Attr) slog.Handler       { return h }
+func (h *releveurApplied) WithGroup(string) slog.Handler            { return h }
+func (h *releveurApplied) Handle(_ context.Context, r slog.Record) error {
+	if r.Message != "migration: cycle terminé" {
+		return nil
+	}
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "applied" {
+			h.mu.Lock()
+			h.valeurs = append(h.valeurs, a.Value.Int64())
+			h.mu.Unlock()
+		}
+		return true
+	})
+	return nil
+}
+
+// empreinteMigrationNeuve migre une base neuve, la ferme puis la rouvre avant d'en prendre
+// l'empreinte : le gabarit est lui aussi relu depuis le disque, et DuckDB réécrit alors le texte
+// de ses vues et le point de départ de ses séquences. Comparer à une base encore ouverte
+// mesurerait cette réécriture, pas la fidélité de la copie.
+func empreinteMigrationNeuve(t *testing.T, target migration.TargetDB) []string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "neuve.duckdb")
+	raw, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if err := migration.RunForDB(raw, target); err != nil {
+		_ = raw.Close()
+		t.Fatalf("RunForDB(%s): %v", target, err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	relue, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("réouverture: %v", err)
+	}
+	defer relue.Close()
+	return empreinteBase(t, relue)
+}
+
+// TestMigratedTemplate_Fidelite : pour chaque cible, la copie du gabarit (fichier et mémoire) a
+// les mêmes tables, vues, index, séquences, contraintes et nombres de lignes qu'une migration
+// neuve, et rejouer RunForDB sur la copie n'applique aucune étape. Ce test migre à neuf : il
+// figure sur la liste de no_fresh_migration_in_tests_test.go.
+func TestMigratedTemplate_Fidelite(t *testing.T) {
+	for _, target := range []migration.TargetDB{
+		migration.TargetShared, migration.TargetPlayer, migration.TargetMetadata, migration.TargetSharedSocial,
+	} {
+		t.Run(string(target), func(t *testing.T) {
+			want := empreinteMigrationNeuve(t, target)
+			if len(want) == 0 {
+				t.Fatalf("empreinte vide pour %s : le test ne prouverait rien", target)
+			}
+
+			t.Run("fichier", func(t *testing.T) {
+				copie, err := sql.Open("duckdb", MigratedTempFile(t, target, "copie.duckdb"))
+				if err != nil {
+					t.Fatalf("open copie: %v", err)
+				}
+				t.Cleanup(func() { _ = copie.Close() })
+				exigerMemeEmpreinte(t, "copie fichier", want, empreinteBase(t, copie))
+			})
+			t.Run("memoire", func(t *testing.T) {
+				exigerMemeEmpreinte(t, "copie mémoire", want, empreinteBase(t, OpenMigratedMemory(t, target)))
+			})
+			t.Run("rejeu_sans_effet", func(t *testing.T) {
+				releveur := &releveurApplied{}
+				avant := slog.Default()
+				slog.SetDefault(slog.New(releveur))
+				t.Cleanup(func() { slog.SetDefault(avant) })
+
+				copie, err := sql.Open("duckdb", MigratedTempFile(t, target, "rejeu.duckdb"))
+				if err != nil {
+					t.Fatalf("open copie: %v", err)
+				}
+				t.Cleanup(func() { _ = copie.Close() })
+				if err := migration.RunForDB(copie, target); err != nil {
+					t.Fatalf("RunForDB sur la copie: %v", err)
+				}
+				releveur.mu.Lock()
+				valeurs := append([]int64(nil), releveur.valeurs...)
+				releveur.mu.Unlock()
+				if len(valeurs) != 1 || valeurs[0] != 0 {
+					t.Errorf("étapes appliquées au rejeu = %v, want [0]", valeurs)
+				}
+				exigerMemeEmpreinte(t, "après rejeu", want, empreinteBase(t, copie))
+			})
+		})
 	}
 }
