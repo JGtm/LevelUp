@@ -78,7 +78,7 @@ describe('construireLaLecture', () => {
     const rep = reponse({
       etat: 'vide',
       raison: 'sous_plancher_matchs',
-      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false, raison: 'sous_plancher_matchs' }),
+      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }),
     })
     const l = construireLaLecture(rep, 3)
     expect(l?.etat).toBe('vide')
@@ -108,7 +108,7 @@ describe('construireLaLecture', () => {
 
   it('une répartition de référence vide (sous le plancher) ne donne aucune ligne', () => {
     const rep = reponse({
-      reference: repartition([], { reapparitions: 5, suffisante: false, raison: 'sous_plancher_reapparitions' }),
+      reference: repartition([], { reapparitions: 5, suffisante: false }),
     })
     const l = construireLaLecture(rep, null)
     expect(l?.lignes).toEqual([])

@@ -304,7 +304,7 @@ describe('l’état vide', () => {
       etat: 'vide',
       raison: 'sous_plancher_matchs',
       zone: { nom: 'Pont' },
-      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false, raison: 'sous_plancher_matchs' }),
+      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }),
     })
     await ouvrirLaLecture()
     await screen.findByTestId('tactical-reapp-barres')

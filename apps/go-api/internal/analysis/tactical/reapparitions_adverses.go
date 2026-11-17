@@ -105,18 +105,12 @@ func (c *compteurDeZones) ajouter(matchID string, r ZoneRetenue, nommee bool) {
 	c.zones[r.Zone.VolumeIndex] = r.Zone
 }
 
-// repartition fige le compteur. Sous un plancher, les zones ne sont pas servies et la raison le dit :
-// les matchs avant les reapparitions (c'est le manque de matchs qui rend une repartition trompeuse).
+// repartition fige le compteur. Sous un plancher (RaisonSousPlancher), les zones ne sont pas servies.
 func (c *compteurDeZones) repartition(loc i18n.Locale) domain.TacticalRepartitionZones {
 	out := domain.TacticalRepartitionZones{
 		Matchs: len(c.matchs), Reapparitions: c.total, Zones: []domain.TacticalPartDeZone{},
 	}
-	switch {
-	case out.Matchs < domain.ReapparitionsAdversesPlancherMatchs:
-		out.Raison = domain.TacticalRaisonSousPlancherMatchs
-		return out
-	case out.Reapparitions < domain.ReapparitionsAdversesPlancherReapparitions:
-		out.Raison = domain.TacticalRaisonSousPlancherReapparitions
+	if out.RaisonSousPlancher() != "" {
 		return out
 	}
 	out.Suffisante = true

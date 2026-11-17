@@ -14309,7 +14309,6 @@ export interface components {
         TacticalRepartitionZones: {
             /** Format: int64 */
             matchs: number;
-            raison?: string;
             /** Format: int64 */
             reapparitions: number;
             suffisante: boolean;
