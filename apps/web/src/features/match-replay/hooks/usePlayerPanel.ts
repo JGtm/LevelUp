@@ -44,7 +44,7 @@ export interface PlayerPanel {
   onToggle: (action: PlayerPanelAction) => void
   /** Suivre ce joueur (clé de roster), fiche ouverte ou non ; `null` = ne suivre personne. */
   onFollow: (xuid: string | null) => void
-  /** « Retour au fil ». */
+  /** Fermer la fiche (la croix de la fenêtre, « Équipes » de la colonne, Échap). */
   onClose: () => void
   /** Un geste manuel de zoom ou de déplacement sur la carte : Suivre s'arrête. */
   onFollowStop: () => void

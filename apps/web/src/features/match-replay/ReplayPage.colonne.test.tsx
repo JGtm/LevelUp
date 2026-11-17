@@ -8,62 +8,27 @@
  * hauteur du fil et le défilement des équipes se résolvent dans le navigateur : ici on lit les cotes que
  * le rendu porte, jamais une mise en page.
  */
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
-import type { ReactNode } from 'react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { testCapabilities } from '@/test/capabilities'
-import { renderWithProviders } from '@/test/render-utils'
-import { server } from '@/test/setup'
-import { useAppShellStore } from '@/stores/appShellStore'
 
 import { REPLAY_TEXT } from './i18n/i18n'
 import { COTES_LIGNE_FIL } from './model/cotesFeedLine'
 import { COTES_COLONNE_STANDARD, FIL_STANDARD_HAUTEUR_MIN_PX } from './model/cotesStandard'
-import type { ReplayFrame } from './model/replayFrame'
-import { goFixtureEntries, loadGoFixture } from './test/goFixtures'
-import { recordingContext } from './test/recordingContext'
+import { goToFrame, mountReplayPage, smallDoc, stubReplayPage, unstubReplayPage } from './test/replayPageHarness'
 import { scoreboardRow } from './test/scoreboardRow'
-import { ReplayPage } from './ReplayPage'
 
-vi.mock('@tanstack/react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return {
-    ...actual,
-    getRouteApi: () => ({
-      useParams: () => ({ titleSlug: 'halo_infinite', playerSlug: 'jgtm', matchId: 'match-1' }),
-      useSearch: () => ({}),
-    }),
-    useRouter: () => ({ history: { length: 2, back: vi.fn() }, navigate: vi.fn() }),
-    Link: ({ children, ...rest }: { children?: ReactNode; 'aria-label'?: string }) => (
-      <a href="#fiche" aria-label={rest['aria-label']}>
-        {children}
-      </a>
-    ),
-  }
-})
+vi.mock('@tanstack/react-router', async (importOriginal) =>
+  (await import('./test/replayPageRouter')).routerMock(await importOriginal<typeof import('@tanstack/react-router')>()),
+)
 
-const API = '/api/v1/players/jgtm/matches/match-1/replay'
 const T = REPLAY_TEXT.fr
 
-function smallDoc() {
-  const smallest = [...goFixtureEntries()].sort((a, b) => a.bytes - b.bytes)[0]
-  return loadGoFixture(smallest).doc
-}
-
 beforeEach(() => {
-  vi.stubGlobal('requestAnimationFrame', () => 0)
-  vi.stubGlobal('cancelAnimationFrame', () => {})
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => recordingContext().ctx as never)
-  act(() => useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_generate_replays: false }) }))
+  stubReplayPage()
 })
 
 afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-  act(() => useAppShellStore.setState({ capabilities: null }))
+  unstubReplayPage()
 })
 
 /** Le joueur de la page est le premier du roster : sa ligne est la ligne suivie. */
@@ -77,19 +42,7 @@ async function mountReady() {
     media: null,
     source_unavailable: false,
   }
-  server.use(
-    http.get(API, () => HttpResponse.json(doc)),
-    http.get(`${API}/context`, () => HttpResponse.json(context)),
-  )
-  const view = renderWithProviders(<ReplayPage />)
-  await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
-  return view
-}
-
-function goTo(frame: ReplayFrame) {
-  fireEvent.click(
-    within(screen.getByRole('group', { name: T.frames.groupLabel })).getByRole('button', { name: T.frames.frameTip(frame) }),
-  )
+  return mountReplayPage(doc, context)
 }
 
 function columnOf(container: HTMLElement) {
@@ -168,7 +121,6 @@ describe('ReplayPage : la colonne du Standard', () => {
     expect(fiche.parentElement?.className).toContain('absolute inset-0')
     expect(feedSlot.parentElement?.contains(fiche)).toBe(true)
     expect(columnOf(container)?.className).toContain('relative')
-    expect(screen.queryByRole('button', { name: T.playerPanel.back })).toBeNull()
     const retour = within(fiche).getByRole('button', { name: T.playerPanel.backToTeams })
     fireEvent.click(retour)
     expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
@@ -212,7 +164,7 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
   it('colonne souple de 30 rem, sans la largeur de colonne du Standard ; sans rangée posée, les équipes y sont en lignes', async () => {
     const { container } = await mountReady()
     for (const frame of ['cinema', 'plein-cadre'] as const) {
-      goTo(frame)
+      goToFrame(frame)
       const grid = container.querySelector<HTMLElement>(`[data-replay-grid="${frame}"]`)
       expect(grid?.className).toContain('minmax(0,30rem)')
       expect(grid?.style.getPropertyValue('--replay-colonne-standard')).toBe('')
@@ -224,12 +176,11 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
 
   it('Cinéma : la fiche s’ouvre en fenêtre, la colonne garde ses équipes et son fil, sans sélecteur ni pied', async () => {
     const { container } = await mountReady()
-    goTo('cinema')
+    goToFrame('cinema')
     const feed = screen.getByTestId('replay-feed-slot')
     const roster = container.querySelector('[data-replay-roster-column]')
     fireEvent.click(container.querySelector<HTMLElement>('[data-replay-roster-column] [data-replay-player-card]') as HTMLElement)
     expect(screen.getByRole('button', { name: T.playerPanel.close })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: T.playerPanel.back })).toBeNull()
     expect(container.querySelector('[data-replay-fiche-column]')).toBeNull()
     expect(container.querySelector('[data-replay-player-picker]')).toBeNull()
     expect(container.querySelector('[data-replay-fiche-extract]')).toBeNull()
@@ -243,7 +194,7 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
     await mountReady()
     const feed = screen.getByTestId('replay-feed-slot')
     for (const frame of ['cinema', 'standard', 'plein-cadre', 'standard'] as const) {
-      goTo(frame)
+      goToFrame(frame)
       expect(screen.getByTestId('replay-feed-slot')).toBe(feed)
     }
   })

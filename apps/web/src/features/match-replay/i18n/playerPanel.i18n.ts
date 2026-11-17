@@ -1,7 +1,7 @@
 /**
  * playerPanel.i18n.ts — LES TEXTES DU PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») :
- * le contrat (`PlayerPanelText`) et ses deux langues. Un clic sur une fiche ouvre un panneau à la
- * place du fil ; « Retour au fil » le referme.
+ * le contrat (`PlayerPanelText`) et ses deux langues. Un clic sur une fiche ouvre la fiche du joueur :
+ * une fenêtre au Cinéma et au Plein cadre, la colonne entière au Standard.
  *
  * UN SOUS-DICTIONNAIRE À PART : `fr.ts` et `en.ts` sont au plafond de taille du dépôt, et ces textes
  * forment un tout (le panneau). Ils sont servis par `ReplayText.playerPanel`, donc par
@@ -15,8 +15,6 @@
 import type { PanelRowKey, PanelSectionId, PlayerPanelAction } from '../model/playerPanelLogic'
 
 export interface PlayerPanelText {
-  /** « Retour au fil » : referme le panneau et rend sa place au fil, filtre et défilement compris. */
-  back: string
   /** La croix de la fiche en fenêtre (Cinéma, Plein cadre) : son nom accessible et son infobulle. */
   close: string
   /** Le nom accessible du panneau d'un joueur. */
@@ -49,7 +47,6 @@ export interface PlayerPanelText {
 }
 
 export const FR_PLAYER_PANEL = {
-  back: 'Retour au fil',
   close: 'Fermer',
   labelFmt: (name) => `Fiche de ${name}`,
   cardOpenFmt: (name) => `Ouvrir la fiche de ${name}`,
@@ -103,7 +100,6 @@ export const FR_PLAYER_PANEL = {
 } satisfies PlayerPanelText
 
 export const EN_PLAYER_PANEL = {
-  back: 'Back to the feed',
   close: 'Close',
   labelFmt: (name) => `${name}'s card`,
   cardOpenFmt: (name) => `Open ${name}'s card`,

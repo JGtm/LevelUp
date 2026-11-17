@@ -2,8 +2,8 @@
  * playerPanelLogic.ts — LE PANNEAU DE JOUEUR : qui est choisi, ce que ses trois actions font à la
  * carte, et ce qu'il affiche. Logique pure, sans React ni canvas (playerPanelLogic.test.ts).
  *
- * LE GESTE. Un clic sur une fiche de la colonne des équipes ouvre un panneau à la place du fil
- * d'événements ; « Retour au fil » le referme. Le panneau garde son joueur quand le temps avance
+ * LE GESTE. Un clic sur une fiche de la colonne des équipes ouvre la fiche du joueur (une
+ * fenêtre au Cinéma et au Plein cadre, la colonne entière au Standard) ; fermer la fiche la referme. Le panneau garde son joueur quand le temps avance
  * et change de contenu quand on clique une autre fiche. Rien de cela n'est mémorisé (D-4) : l'état
  * naît avec la page, il est tenu par elle.
  *
@@ -59,7 +59,7 @@ export const NO_PLAYER_PANEL: PlayerPanelState = {
 export type PlayerPanelEvent =
   /** Un clic sur la fiche d'un joueur : ouvre, remplace le joueur, ou referme si elle est déjà ouverte. */
   | { type: 'card'; xuid: string }
-  /** « Retour au fil ». */
+  /** Fermer la fiche (la croix de la fenêtre, « Équipes » de la colonne, Échap). */
   | { type: 'close' }
   /** Un des trois boutons d'action de la fiche ouverte. */
   | { type: 'toggle'; action: PlayerPanelAction }

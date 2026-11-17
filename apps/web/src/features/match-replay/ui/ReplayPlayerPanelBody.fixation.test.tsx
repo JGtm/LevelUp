@@ -1,11 +1,11 @@
 /**
- * ReplayPlayerPanel.avant.test.tsx — fixations du panneau de joueur.
+ * ReplayPlayerPanelBody.fixation.test.tsx — fixations du corps commun de la fiche du joueur.
  *
- * Ce que les fixations couvrent : quatre fiches rendues dans la colonne, chacune dans son fichier de
+ * Ce que les fixations couvrent : quatre corps de fiche, chacun dans son fichier de
  * `__fixtures__/` — un joueur complet (feuille lue, compteurs de l'instant), un joueur sans ligne de
  * feuille (le bloc pointillé), un bot avec feuille, un joueur mort à l'image lue (l'encadré « Éliminé »
- * à la place des jauges). Le HTML sérialisé est celui du panneau entier : tête, actions, bloc
- * « À l'instant », listes de totaux.
+ * à la place des jauges). Le HTML sérialisé est celui du corps seul (sans conteneur) : tête, actions,
+ * bloc « À l'instant », listes de totaux. Elles servent de témoin « avant » à tout lot qui ajoute une section au corps.
  *
  * Aucune valeur ne varie : l'image et l'instant sont fixés par les props, et les identifiants générés
  * par React (`useId`) sont normalisés avant la comparaison, car leur numéro dépend de l'ordre des rendus.
@@ -21,7 +21,7 @@ import { buildPlayers, type ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
-import { ReplayPlayerPanel } from './ReplayPlayerPanel'
+import { ReplayPlayerPanelBody } from './ReplayPlayerPanelBody'
 
 /** Alpha vit sur [0, 100] ; Echo meurt à l'image 30 et ne revient qu'à 130 ; Marc est un bot vivant. */
 const DOC = testReplayDoc({
@@ -81,14 +81,13 @@ function joueur(xuid: string, board?: MatchScoreboardRow): ReplayPlayer {
   return { ...p, board }
 }
 
-/** Le HTML du panneau monté sur ce joueur, à l'image donnée (un dixième de seconde par image). */
-function htmlDuPanneau(player: ReplayPlayer, frame: number, over: { follow?: boolean } = {}): string {
+/** Le HTML du corps monté sur ce joueur, à l'image donnée (un dixième de seconde par image). */
+function htmlDuCorps(player: ReplayPlayer, frame: number, over: { follow?: boolean } = {}): string {
   const vue = render(
-    <ReplayPlayerPanel
+    <ReplayPlayerPanelBody
       player={player}
       actions={{ follow: over.follow ?? false, solo: false, hide: false }}
       onToggle={vi.fn()}
-      onClose={vi.fn()}
       doc={DOC}
       frame={frame}
       nowMs={frame * 100}
@@ -100,29 +99,29 @@ function htmlDuPanneau(player: ReplayPlayer, frame: number, over: { follow?: boo
   return vue.container.innerHTML.replace(/:r[0-9a-z]+:/g, ':id:')
 }
 
-describe('ReplayPlayerPanel — fixations du panneau (avant l’extraction du corps)', () => {
+describe('ReplayPlayerPanelBody — fixations du corps', () => {
   it('un joueur complet : feuille lue, compteurs de l’instant, Suivre pressé', async () => {
-    const html = htmlDuPanneau(joueur('A', FEUILLE), 50, { follow: true })
-    expect(html).toContain('Fiche de Alpha')
+    const html = htmlDuCorps(joueur('A', FEUILLE), 50, { follow: true })
+    expect(html).toContain('aria-label="Alpha"')
     expect(html).toContain('Précision sur le match')
-    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanel.complet.avant.html')
+    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanelBody.complet.html')
   })
 
   it('un joueur sans ligne de feuille : le bloc pointillé, jamais une liste de zéros', async () => {
-    const html = htmlDuPanneau(joueur('A'), 50)
+    const html = htmlDuCorps(joueur('A'), 50)
     expect(html).toContain('Pas de statistiques de match pour ce joueur')
-    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanel.sansFeuille.avant.html')
+    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanelBody.sansFeuille.html')
   })
 
   it('un bot avec feuille : ses listes, sous la clé de roster synthétique', async () => {
-    const html = htmlDuPanneau(joueur('bot:Marc', scoreboardRow('bid(2.0)', 'Marc', 'b', { accuracy: 30, shots_hit: 3, shots_fired: 10 })), 50)
-    expect(html).toContain('Fiche de Marc')
-    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanel.bot.avant.html')
+    const html = htmlDuCorps(joueur('bot:Marc', scoreboardRow('bid(2.0)', 'Marc', 'b', { accuracy: 30, shots_hit: 3, shots_fired: 10 })), 50)
+    expect(html).toContain('aria-label="Marc"')
+    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanelBody.bot.html')
   })
 
   it('un joueur mort à l’image lue : l’encadré « Éliminé » à la place des jauges', async () => {
-    const html = htmlDuPanneau(joueur('E', scoreboardRow('E', 'Echo', 'b', { accuracy: 20, shots_hit: 2, shots_fired: 10 })), 50)
-    expect(html).toContain('Fiche de Echo')
-    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanel.mort.avant.html')
+    const html = htmlDuCorps(joueur('E', scoreboardRow('E', 'Echo', 'b', { accuracy: 20, shots_hit: 2, shots_fired: 10 })), 50)
+    expect(html).toContain('aria-label="Echo"')
+    await expect(html).toMatchFileSnapshot('./__fixtures__/replayPlayerPanelBody.mort.html')
   })
 })

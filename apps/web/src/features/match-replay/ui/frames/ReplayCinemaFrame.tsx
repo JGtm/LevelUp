@@ -71,7 +71,6 @@ function cinemaColumn(view: ReplayFrameView, withTeams: boolean, popover: ReactN
             weaponIcons={view.weaponIcons}
           />
         }
-        panel={null}
       />
       {popover}
     </div>

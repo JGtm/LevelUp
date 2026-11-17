@@ -13,45 +13,21 @@
  *    par le bas du plan ;
  *  - le Standard garde sa fiche en colonne, et la toile n'est jamais remontée.
  */
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
-import type { ReactNode } from 'react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { testCapabilities } from '@/test/capabilities'
-import { renderWithProviders } from '@/test/render-utils'
-import { server } from '@/test/setup'
-import { useAppShellStore } from '@/stores/appShellStore'
 
 import { REPLAY_TEXT } from './i18n/i18n'
 import { COTES_FENETRE_FICHE } from './model/cotesFenetreFiche'
 import { largeurRequiseRangee } from './model/rowLayout'
-import type { ReplayFrame } from './model/replayFrame'
-import { recordingContext } from './test/recordingContext'
+import { goToFrame, mountReplayPage, stubReplayPage, unstubReplayPage } from './test/replayPageHarness'
 import { scoreboardRow } from './test/scoreboardRow'
 import { testReplayDoc } from './test/testDoc'
-import { ReplayPage } from './ReplayPage'
 
-vi.mock('@tanstack/react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return {
-    ...actual,
-    getRouteApi: () => ({
-      useParams: () => ({ titleSlug: 'halo_infinite', playerSlug: 'jgtm', matchId: 'match-1' }),
-      useSearch: () => ({}),
-    }),
-    useRouter: () => ({ history: { length: 2, back: vi.fn() }, navigate: vi.fn() }),
-    Link: ({ children, ...rest }: { children?: ReactNode; 'aria-label'?: string }) => (
-      <a href="#fiche" aria-label={rest['aria-label']}>
-        {children}
-      </a>
-    ),
-  }
-})
+vi.mock('@tanstack/react-router', async (importOriginal) =>
+  (await import('./test/replayPageRouter')).routerMock(await importOriginal<typeof import('@tanstack/react-router')>()),
+)
 
-const API = '/api/v1/players/jgtm/matches/match-1/replay'
 const T = REPLAY_TEXT.fr
-const FRAMES = T.frames
 const PP = T.playerPanel
 const L4 = largeurRequiseRangee(4)
 
@@ -83,10 +59,8 @@ beforeEach(() => {
   rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
   basDuPlan = 500
   observateurs.length = 0
-  vi.stubGlobal('requestAnimationFrame', () => 0)
-  vi.stubGlobal('cancelAnimationFrame', () => {})
+  stubReplayPage()
   vi.stubGlobal('ResizeObserver', ObservateurDeTaille)
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => recordingContext().ctx as never)
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     if (this.hasAttribute('data-replay-body')) return rect({ width: largeurCorps, right: largeurCorps })
     if (this.getAttribute('aria-pressed') === 'true' && this.hasAttribute('data-replay-player-card')) return rect(rectFiche)
@@ -94,14 +68,10 @@ beforeEach(() => {
     // Le reste du cadre a une taille : sans elle la toile n'aurait aucune largeur et le clavier du lecteur serait inerte.
     return rect({ width: 960, height: 540, right: 960, bottom: 540 })
   })
-  act(() => useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_generate_replays: false }) }))
 })
 
 afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-  act(() => useAppShellStore.setState({ capabilities: null }))
+  unstubReplayPage()
 })
 
 /** Un match à deux camps de `parCamp` places ; tous les joueurs sont vivants de l'image 0 à l'image 290. */
@@ -135,14 +105,7 @@ function match(parCamp: number) {
 async function mount(largeur: number) {
   largeurCorps = largeur
   const { doc, context } = match(4)
-  server.use(http.get(API, () => HttpResponse.json(doc)), http.get(`${API}/context`, () => HttpResponse.json(context)))
-  const view = renderWithProviders(<ReplayPage />)
-  await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
-  return view
-}
-
-function goTo(frame: ReplayFrame) {
-  fireEvent.click(within(screen.getByRole('group', { name: FRAMES.groupLabel })).getByRole('button', { name: FRAMES.frameTip(frame) }))
+  return mountReplayPage(doc, context)
 }
 
 const carte = (nom: string) => screen.getByRole('button', { name: PP.cardOpenFmt(nom) })
@@ -154,7 +117,7 @@ const frappe = (key: string) => fireEvent.keyDown(document.body, { key })
 describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
   it.each(['cinema', 'plein-cadre'] as const)('%s : un clic sur une fiche de la rangée ouvre une fenêtre en portail, couche d’Échap, avec le corps commun', async (frame) => {
     const { container } = await mount(L4)
-    goTo(frame)
+    goToFrame(frame)
     fireEvent.click(carte('Joueur5'))
     const f = fenetre('Joueur5') as HTMLElement
     expect(f).not.toBeNull()
@@ -172,7 +135,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('la colonne ne se montre jamais, fiche ouverte ou non ; le fil complet garde son nœud, non masqué', async () => {
     const { container } = await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     const fil = screen.getByTestId('replay-feed-slot')
     expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
     fireEvent.click(carte('Joueur5'))
@@ -184,7 +147,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('une autre fiche change de joueur sans fermer ; la même fiche, rouverte, ferme', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     fireEvent.click(carte('Joueur2'))
     expect(fenetre('Joueur5')).toBeNull()
@@ -198,7 +161,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('la croix ferme la fenêtre', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     fireEvent.click(within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: PP.close }))
     expect(document.querySelector('[data-replay-fiche-popover]')).toBeNull()
@@ -207,7 +170,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('Échap ferme la fenêtre ; au Plein cadre, la frappe suivante sort du cadre (une frappe, une couche)', async () => {
     const { container } = await mount(L4)
-    goTo('plein-cadre')
+    goToFrame('plein-cadre')
     fireEvent.click(carte('Joueur5'))
     frappe('Escape')
     expect(document.querySelector('[data-replay-fiche-popover]')).toBeNull()
@@ -218,7 +181,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('un geste sur le plan ou sur la barre ne ferme pas la fenêtre ; la lecture continue, Espace reste actif', async () => {
     const { container } = await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     const toile = container.querySelector('canvas') as HTMLCanvasElement
     fireEvent.pointerDown(toile)
@@ -235,7 +198,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('Suivre, Seul et Masquer agissent depuis la fenêtre, avec leurs exclusions', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     const bouton = (action: 'follow' | 'solo' | 'hide') => within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: PP.action[action] })
     fireEvent.click(bouton('follow'))
@@ -250,7 +213,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('la fiche ouverte de la rangée prend le fond clair et la bordure claire (jetons)', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     expect(carte('Joueur5').style.borderColor).toBe('var(--foreground)')
     expect(carte('Joueur5').style.background).toContain('var(--foreground)')
@@ -259,7 +222,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
   it('la toile ne se remonte ni à l’ouverture, ni au changement de joueur, ni à la fermeture', async () => {
     const { container } = await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     const toile = container.querySelector('canvas')
     fireEvent.click(carte('Joueur5'))
     fireEvent.click(carte('Joueur2'))
@@ -272,7 +235,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () => {
   it.each(['cinema', 'plein-cadre'] as const)('%s : un clic sur une ligne de la colonne ouvre la fenêtre ; la colonne garde équipes et fil', async (frame) => {
     const { container } = await mount(L4 - 1)
-    goTo(frame)
+    goToFrame(frame)
     const fil = screen.getByTestId('replay-feed-slot')
     const equipes = container.querySelector('[data-replay-roster-column]')
     fireEvent.click(carte('Joueur5'))
@@ -289,7 +252,7 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
 
   it('changer de ligne change de joueur ; Échap, la croix et la même ligne ferment', async () => {
     await mount(L4 - 1)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     fireEvent.click(carte('Joueur2'))
     expect(fenetre('Joueur5')).toBeNull()
@@ -306,7 +269,7 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
 
   it('la fenêtre ouverte survit au passage de la rangée au repli : elle se ré-ancre sur la ligne', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
     largeurCorps = L4 - 1
     act(() => {
@@ -321,7 +284,7 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
 describe('ReplayPage : où la fenêtre se pose', () => {
   it('bord gauche aligné sur la fiche, 8 px dessous', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
     const f = fenetre('Joueur5') as HTMLElement
@@ -331,7 +294,7 @@ describe('ReplayPage : où la fenêtre se pose', () => {
 
   it('près du bord droit de la page, elle s’aligne par la droite de la fiche et ne sort pas', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     const largeurPage = window.innerWidth
     rectFiche = { left: largeurPage - 120, right: largeurPage - 20, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
@@ -343,7 +306,7 @@ describe('ReplayPage : où la fenêtre se pose', () => {
 
   it('la hauteur est bornée par le bas du plan, moins la marge', async () => {
     await mount(L4)
-    goTo('cinema')
+    goToFrame('cinema')
     basDuPlan = 400
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
