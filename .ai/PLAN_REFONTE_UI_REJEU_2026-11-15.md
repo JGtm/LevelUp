@@ -502,7 +502,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       (bascule Cinéma, bascule Plein cadre, Échap), état initial `standard` à chaque montage (aucun stockage,
       même règle que le plein écran actuel : « une manière de regarder, pas un endroit »). Tests unitaires de
       toutes les transitions.
-- [ ] A.2 `useReplayFullscreen.ts` scindé en deux gestes : Plein cadre = la superposition seule ; plein écran
+- [x] A.2 (fait le 2026-11-17 : `hooks/useReplayFrame.ts` porte l'état du cadre et annonce le redimensionnement ; le natif pris depuis le Standard ouvre un Plein cadre qui se referme avec lui ; `data-replay-frame` sur la racine ; l'infobulle du plein écran du système ne cite plus F) `useReplayFullscreen.ts` scindé en deux gestes : Plein cadre = la superposition seule ; plein écran
       système = le natif seul, qui peut s'ajouter à n'importe quel cadre (en Standard il entre d'abord en Plein
       cadre, comme aujourd'hui). `fullscreenchange` reste la source de vérité du natif. Touches : `t` Cinéma,
       `f` Plein cadre, Échap selon les couches (`REPLAY_ESCAPE_LAYER_ATTR`). Export en cours : aucune bascule,
@@ -622,7 +622,7 @@ les localise, rien n'est recalculé à côté.
       suffisante ; sur trois films, boucliers tombés à zéro contre dégâts subis (plausibilité de D-21, recharges
       comprises). Résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
       l'affichage est rapportée au user avant T.3.
-- [ ] T.1 `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
+- [ ] T.1 (CODE FAIT le 2026-11-17, `readPlayerInstantSeries` puis `playerInstantStatsAt` ; RESTE, case ouverte : la fixation « fin de match = tableau de score » sur un match RÉEL, aucun document du dépôt ne portant à la fois le calque de score et la feuille ; à faire avec T.0 sur un rejeu régénéré — dépendance : fin de la régénération du parc) `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
       (une élimination dont le coup fatal n'est pas mesuré ne compte ni oui ni non), parfaits (médaille datée),
       réapparitions, durée de la vie en cours (absente quand le joueur est mort), moyenne des vies terminées
       jusqu'à l'instant, boucliers perdus (D-21 : passages à zéro du bouclier du joueur, une recharge puis une
