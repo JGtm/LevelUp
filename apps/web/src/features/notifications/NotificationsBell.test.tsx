@@ -219,3 +219,60 @@ describe('NotificationsBell', () => {
     expect(markedRead[0]).toEqual([303])
   })
 })
+
+describe('NotificationsBell — fermeture du panneau', () => {
+  beforeEach(() => {
+    useAppShellStore.setState({ locale: 'fr' })
+  })
+
+  async function ouvre(onMarkRead?: (ids: number[]) => void) {
+    mockApi({ count: 2, badgeCount: 2, items: [notif(101), notif(102)], onMarkRead })
+    renderWithProviders(
+      <div>
+        <p>hors de la cloche</p>
+        <NotificationsBell playerSlug={SLUG} />
+      </div>,
+    )
+    const cloche = await screen.findByRole('button', { name: /notification/i })
+    fireEvent.click(cloche)
+    await waitFor(() => {
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThanOrEqual(2)
+    })
+    return cloche
+  }
+
+  it('Échap ferme le panneau et rend le focus à la cloche', async () => {
+    const cloche = await ouvre()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(cloche)
+  })
+
+  it('un clic hors de la cloche ferme le panneau et marque les non-lues', async () => {
+    const markedRead: number[][] = []
+    await ouvre((ids) => markedRead.push(ids))
+    fireEvent.mouseDown(screen.getByText('hors de la cloche'))
+    expect(screen.queryByRole('menu')).toBeNull()
+    await waitFor(() => {
+      expect(markedRead.length).toBe(1)
+    })
+  })
+
+  it('un clic dans le panneau ne le ferme pas', async () => {
+    await ouvre()
+    fireEvent.mouseDown(screen.getByRole('menu'))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('les flèches naviguent toujours entre les éléments, sans fermer le panneau', async () => {
+    await ouvre()
+    const elements = screen.getAllByRole('menuitem')
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(elements[0])
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(elements[1])
+    fireEvent.keyDown(document, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(elements[0])
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+})

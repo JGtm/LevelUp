@@ -1,12 +1,13 @@
 /**
  * Cloche cliquable dans la NavL1 + dropdown des notifs récentes.
  *
- * Pattern : réutilise la structure de SettingsSplitButton (NavL1.tsx) — ref +
- * mousedown listener pour click-outside, panneau positionné absolute right-0,
+ * Pattern : réutilise la structure de SettingsSplitButton (NavL1.tsx) — Échap et
+ * clic dehors par useDismissable, panneau positionné absolute right-0,
  * tokens design system (bg-popover, border-border, z-50).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getNotificationsText } from './i18n'
@@ -33,7 +34,12 @@ export function NotificationsBell({ playerSlug, panelAlign = 'end' }: Notificati
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  // Échap et un clic hors de la cloche ferment le panneau ; Échap rend le focus à la cloche, le clic dehors le laisse où l'on a cliqué.
+  const ref = useDismissable(open, (reason) => {
+    setOpen(false)
+    if (reason === 'escape') triggerRef.current?.focus()
+  })
 
   const { data: countData } = useUnreadCount(playerSlug, !!playerSlug)
   // DP6 : badge cloche = non-lues signifiantes (severity != info). Fallback sur
@@ -109,23 +115,10 @@ export function NotificationsBell({ playerSlug, panelAlign = 'end' }: Notificati
     }
   }, [playerSlug])
 
-  // Click-outside
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  // Clavier : Esc ferme, ArrowUp/Down navigue entre items
+  // Clavier : ArrowUp/Down navigue entre items (Échap : useDismissable)
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        return
-      }
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
       if (!ref.current) return
       const items = Array.from(
@@ -143,7 +136,7 @@ export function NotificationsBell({ playerSlug, panelAlign = 'end' }: Notificati
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open, ref])
 
   const ariaLabel =
     unreadCount > 0
@@ -153,6 +146,7 @@ export function NotificationsBell({ playerSlug, panelAlign = 'end' }: Notificati
   return (
     <div ref={ref} className="relative ml-1">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={ariaLabel}
