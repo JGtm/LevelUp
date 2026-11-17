@@ -385,7 +385,6 @@ export const FR_TEXT = {
   loadoutBirth: 'Dotation de naissance',
   loadoutAhead:
     'Armes de la première image-clé de cette vie, lue dans',
-  weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
   weaponStowedFmt: (name) => `Arme rangée : ${name}`,
   playerScoreLiveFmt: (score) => `Score personnel à l'instant lu : ${score}`,
   ammoHintFmt: (ammo) =>
@@ -437,7 +436,6 @@ export const FR_TEXT = {
   },
   equipmentUsage: FR_EQUIPMENT_USAGE,
   ammoFullLabel: 'Munitions pleines',
-  gaugeLabel: 'charge restante',
   exportVideo: 'Exporter la vidéo',
   exportHint:
     "L'export recalcule le film aussi vite que la machine le permet : le fichier ne se paie pas en temps de match.",
@@ -465,8 +463,6 @@ export const FR_TEXT = {
   exportTrackSfx: 'Bruitages',
   exportTrackVoice: 'Voix',
   exportTrackMusic: 'Musique',
-  ammoDrawnHint:
-    'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
   drawnUnknown: 'dégainée ?',
   inventoryDeadLabel: 'Mort',
   inventoryDeadHint:

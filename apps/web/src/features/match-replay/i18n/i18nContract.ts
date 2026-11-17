@@ -26,7 +26,7 @@ import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
  * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
  * fiches compactes) : un compte `mag / res` (arme à chargeur), une charge restante en pour-cent
  * (familles plasma / mêlée / énergie), ou « pleines » (emplacement jamais écrit — flux
- * différentiel, le plein est la valeur par défaut). Les mêmes trois natures que `AmmoCell`.
+ * différentiel, le plein est la valeur par défaut).
  */
 export type AmmoHint =
   | { kind: 'count'; mag: number; res?: number }
@@ -861,7 +861,6 @@ export interface ReplayText {
    */
   loadoutBirth: string
   loadoutAhead: string
-  weaponSecondaryHint: string
   /**
    * LES REPORTS DE LA TUILE COMPACTE (plan fiches compactes 2026-09-06, I9) : ce qui quitte la
    * tuile passe en infobulle AVEC SA VALEUR. `weaponStowedFmt` nomme l'arme rangée (la seconde
@@ -954,7 +953,6 @@ export interface ReplayText {
   equipmentUsage: EquipmentUsageText
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
-  ammoDrawnHint: string
   drawnUnknown: string
   /**
    * Lecture d'inventaire VIDE (schéma 19, `inventory[].empty`). Le LIBELLÉ se lit à l'écran,
@@ -977,7 +975,6 @@ export interface ReplayText {
   inventoryEmptyHint: string
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
-  gaugeLabel: string
   /**
    * L'EXPORT HORS TEMPS REEL — la commande, son dialogue, et ce qu'il annonce pendant qu'il
    * calcule.

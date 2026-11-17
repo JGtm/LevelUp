@@ -380,7 +380,6 @@ export const EN_TEXT = {
   loadoutAge: 'Weapons read',
   loadoutBirth: 'Spawn loadout',
   loadoutAhead: 'Weapons from the first keyframe of this life, read in',
-  weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
   weaponStowedFmt: (name) => `Stowed weapon: ${name}`,
   playerScoreLiveFmt: (score) => `Personal score at the moment being played: ${score}`,
   ammoHintFmt: (ammo) =>
@@ -432,7 +431,6 @@ export const EN_TEXT = {
   },
   equipmentUsage: EN_EQUIPMENT_USAGE,
   ammoFullLabel: 'Ammo full',
-  gaugeLabel: 'charge left',
   exportVideo: 'Export video',
   exportHint:
     'The export recomputes the film as fast as the machine allows: the file does not cost you a match length.',
@@ -460,8 +458,6 @@ export const EN_TEXT = {
   exportTrackSfx: 'Sound effects',
   exportTrackVoice: 'Voice',
   exportTrackMusic: 'Music',
-  ammoDrawnHint:
-    'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
   drawnUnknown: 'drawn ?',
   inventoryDeadLabel: 'Dead',
   inventoryDeadHint:
