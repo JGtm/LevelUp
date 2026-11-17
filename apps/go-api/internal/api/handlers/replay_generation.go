@@ -145,14 +145,22 @@ func refuseGeneration(ctx context.Context, err error) (*replayGenerationOutput, 
 	return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, codeReplayGenerationError, err)
 }
 
+// replayGenerationRefusal : l'enveloppe d'erreur d'un refus à statut dynamique, de même forme que celle des erreurs Huma.
+type replayGenerationRefusal struct {
+	Code      string            `json:"code"`
+	Message   string            `json:"message"`
+	Retryable bool              `json:"retryable"`
+	Details   map[string]string `json:"details,omitempty"`
+}
+
 // refusal construit l'enveloppe d'erreur {code, message, retryable[, details]} d'un refus à statut dynamique ; le
 // message est le message FIXE du code et la cause est journalisée.
 func refusal(ctx context.Context, status int, code, reason string, retryable bool, cause error) *replayGenerationOutput {
 	msg := humacore.FixedMessage(status, code)
 	humacore.LogErrorResponse(ctx, status, code, msg, cause)
-	body := map[string]any{"code": code, "message": msg, "retryable": retryable}
+	body := replayGenerationRefusal{Code: code, Message: msg, Retryable: retryable}
 	if reason != "" {
-		body["details"] = map[string]string{detailKeyReason: reason}
+		body.Details = map[string]string{detailKeyReason: reason}
 	}
 	return &replayGenerationOutput{Status: status, Body: body}
 }
