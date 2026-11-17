@@ -11,11 +11,13 @@
  * ET DES BOOLÉENS, jamais un mot de densité : ils rendent ce qu'on leur donne, et c'est
  * l'appelant qui choisit lequel des objets donner.
  *
- * `GABARIT_NORMAL` porte les cotes de la fiche à deux lignes (tuile de 235 px, corps de 35).
- * `GABARIT_COMPACT` porte les cotes de la maquette A2 (tuile 115 × 62, corps de 31).
+ * `GABARIT_NORMAL` porte les cotes d'une fiche à corps de 35 : le triplet à score du panneau du
+ * joueur (`ReplayPlayerPanelBody`) et l'encadré « Éliminé » du bloc « À l'instant »
+ * (`ReplayPlayerNow`). `GABARIT_COMPACT` porte les cotes de la tuile de la rangée des équipes
+ * (maquette A2, tuile 115 × 62, corps de 31).
  *
  * TROIS COTES RESTENT DES CLASSES, PAS DES NOMBRES APPLIQUÉS EN STYLE : la hauteur du corps
- * (`h-[35px]` / `h-[31px]`), la taille du nom (`text-[11.5px]`) et la typographie du triplet
+ * (`h-[31px]`), la taille du nom (`text-[11.5px]`) et la typographie du triplet
  * (corps, gap, marge du fond FDA) sont des valeurs arbitraires Tailwind, qui n'existent que si
  * le littéral est écrit en clair dans une classe — une interpolation ne produit AUCUNE règle,
  * en silence (`rosterHeight.guard.test.ts` documente le piège). `bodyPx`, `namePx` et
@@ -27,26 +29,8 @@
  */
 
 export interface CardGabarit {
-  /** Nombre de cellules d'arme : deux (main + rangée) ou une (main seule, l'autre en infobulle). */
-  weaponCells: 1 | 2
-  /** Largeur d'UNE cellule d'arme, px. */
+  /** Largeur de la cellule d'arme (celle de la main), px. */
   weaponCellW: number
-  /** Cellule de munitions de la main rendue (sinon : dans l'infobulle de l'arme). */
-  showAmmo: boolean
-  /** Largeur de la cellule de munitions, px — sans effet quand `showAmmo` est faux. */
-  ammoCellW: number
-  /** Boîte des trois stocks de grenades rendue (sinon : la grenade sélectionnée seule). */
-  showGrenadeStock: boolean
-  /** Largeur de la boîte de grenades, px — sans effet quand `showGrenadeStock` est faux. */
-  grenadesBoxW: number
-  /**
-   * Les MARQUES SOUPLES de la rangée d'inventaire rendues en texte à côté des cellules (vrai) —
-   * « Mort » / « Inventaire indisponible », « ×N » / « plein » des charges — ou reportées dans
-   * les infobulles des cellules concernées (faux, décision D5). Les deux autres marques
-   * (« dégainée ? », « grenade en main : inconnue ») suivent la cellule qui les porte : `showAmmo`,
-   * `showGrenadeStock`.
-   */
-  showInventoryMarks: boolean
   /** Cellule du score personnel rendue (toujours, même vide — c'est elle qui aligne). */
   showScore: boolean
   /** Largeur minimale de la cellule de score, px — sans effet quand `showScore` est faux. */
@@ -63,9 +47,9 @@ export interface CardGabarit {
   gaugeHealthPx: number
   /**
    * Hauteur FIXE du corps de la fiche, px — la même vivant et mort (règle du 2026-08-24). C'est
-   * aussi la cote STRUCTURELLE de la tuile : la mise en page de `ReplayPlayerCard` (deux lignes
-   * sur un corps de 35, trois sur un corps de 31) et celle de l'encadré « Éliminé » se lisent
-   * dans une table fermée par cette valeur.
+   * aussi la cote STRUCTURELLE de l'encadré « Éliminé » (une ligne sur un corps de 35, deux sur
+   * un corps de 31), lue dans une table fermée par cette valeur ; la tuile de `ReplayPlayerCard`
+   * est de corps 31.
    */
   bodyPx: 35 | 31
   /** Côté de la vignette d'un type de grenade, px. */
@@ -78,19 +62,11 @@ export interface CardGabarit {
   boltCount: number
   /** Taille du nom, px — une seule valeur aujourd'hui, en classe (`text-[11.5px]`). */
   namePx: 11.5
-  /** Sièges d'un camp en grille à remplissage automatique (vrai) ou en colonne simple (faux). */
-  seatGrid: boolean
 }
 
-/** La fiche d'aujourd'hui, valeur pour valeur — 235 px de large, corps de 35 px. */
+/** Les cotes d'une fiche à corps de 35 px : triplet avec cellule de score (15 / 30), jauges de 5 / 3 px. */
 export const GABARIT_NORMAL: CardGabarit = Object.freeze({
-  weaponCells: 2,
   weaponCellW: 40,
-  showAmmo: true,
-  ammoCellW: 32,
-  showGrenadeStock: true,
-  grenadesBoxW: 56,
-  showInventoryMarks: true,
   showScore: true,
   scoreCellW: 30,
   countCellW: 15,
@@ -102,24 +78,16 @@ export const GABARIT_NORMAL: CardGabarit = Object.freeze({
   watermarkPx: 46,
   boltCount: 3,
   namePx: 11.5,
-  seatGrid: false,
 } as const)
 
 /**
  * La tuile compacte de la maquette A2 (plan 2026-09-06, « Le gabarit tranché ») : 115 × 62,
  * trois lignes (nom 14 · jauges + triplet 12 · arme 48 + grenade 14 + capacité 16 sur 16),
- * corps fixe de 31 px. Ce qui quitte la tuile passe en infobulle avec sa valeur. Rendu par
- * `ReplayPlayerCard` (trois lignes, table `TILE_LAYOUT`) et par l'encadré « Éliminé » à deux
- * lignes (`ReplayVitality`) depuis l'étape 2 du plan (2026-09-07).
+ * corps fixe de 31 px. Ce qui n'est pas sur la tuile passe en infobulle avec sa valeur. Rendu par
+ * `ReplayPlayerCard` (trois lignes) et par l'encadré « Éliminé » à deux lignes (`ReplayVitality`).
  */
 export const GABARIT_COMPACT: CardGabarit = Object.freeze({
-  weaponCells: 1,
   weaponCellW: 48,
-  showAmmo: false,
-  ammoCellW: 32,
-  showGrenadeStock: false,
-  grenadesBoxW: 56,
-  showInventoryMarks: false,
   showScore: false,
   scoreCellW: 30,
   countCellW: 10,
@@ -131,7 +99,6 @@ export const GABARIT_COMPACT: CardGabarit = Object.freeze({
   watermarkPx: 34,
   boltCount: 2,
   namePx: 11.5,
-  seatGrid: true,
 } as const)
 
 /**

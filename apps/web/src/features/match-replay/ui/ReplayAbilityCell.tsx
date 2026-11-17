@@ -1,29 +1,20 @@
 /**
  * ReplayAbilityCell.tsx — la CELLULE DE CAPACITÉ de la rangée d'inventaire : la vignette de
- * l'équipement porté, et — depuis le lot P6 — les CHARGES qui lui restent.
+ * l'équipement porté, et les CHARGES qui lui restent, dites dans son infobulle.
  *
- * EXTRAITE DE `ReplayInventoryRow.tsx` LE 2026-09-04, et l'extraction PAIE l'addition (la
- * règle du cliquet du canvas, appliquée à la rangée) : le fichier était à 496 lignes pour un
- * plafond de 500, et le lot P6 devait y brancher l'affichage des charges. La cellule part
- * donc entière — vignette, glyphe de rang non résolu, infobulle d'âge — et les charges
- * naissent ici, jamais une ligne de logique au composant de rangée.
+ * CE QUE L'INFOBULLE DIT DES CHARGES, et pourquoi :
+ *  - le COMPTE, quand une lecture du canal i56 couvre la vie et l'équipement courants, avec
+ *    l'âge de SA lecture ;
+ *  - « PLEIN » QUALITATIF avant la première lecture : le film ne transmet RIEN au ramassage, un
+ *    maximum déduit serait inventé ;
+ *  - RIEN pour une famille que le canal ne mesure pas (camouflage, surbouclier, répulseur…) :
+ *    ni compte, ni « plein » — rien d'affirmé.
+ * Le tri entre ces trois états vit dans `abilityChargesAt` / `carriedUsesAt` (purs, testés sans rendu).
  *
- * CE QUE LA CELLULE AFFICHE DES CHARGES, et pourquoi (décisions P6.1, arbitrage utilisateur) :
- *  - le CHIFFRE du compte, en petit, en SURIMPRESSION sur le coin bas droit de la vignette,
- *    quand une lecture du canal i56 couvre la vie et l'équipement courants ;
- *  - « PLEIN » QUALITATIF, sans chiffre, avant la première lecture : le film ne transmet
- *    RIEN au ramassage, un maximum déduit serait inventé. Il ne s'écrit plus à l'écran, il se
- *    lit dans l'infobulle de la vignette ;
- *  - RIEN pour une famille que le canal ne mesure pas (camouflage, surbouclier,
- *    répulseur…) : ni chiffre, ni « plein » — rien d'affirmé.
- * Le tri entre ces trois états vit dans `abilityChargeLogic.ts` (pur, testé sans rendu).
- *
- * LA CELLULE GARDE SA LARGEUR FIXE ET N'EN AJOUTE AUCUNE : la rangée n'a pas d'espace souple
- * après ses cellules fixes (elle rogne ce qui déborde), donc un compte posé à côté de la
- * vignette serait coupé. Le chiffre (`ReplayIconCount`, rendu partagé avec les grenades) se pose sur le coin de la
- * vignette (`iconAbilityPx`), hors du flux : la grille ne bouge pas d'un pixel. Il pâlit avec l'âge de SA lecture (la doctrine
- * de la rangée), indépendamment de la vignette, qui pâlit avec celle de la capacité. La tuile
- * compacte (`showInventoryMarks: false`) n'écrit rien : tout passe par l'infobulle.
+ * LA CELLULE GARDE SA LARGEUR FIXE (`iconAbilityPx`) ET N'EN AJOUTE AUCUNE : la rangée n'a pas
+ * d'espace souple après ses cellules fixes (elle rogne ce qui déborde), donc un compte posé à
+ * côté de la vignette serait coupé. Rien n'est écrit sur la cellule : le compte et le « plein »
+ * passent par l'infobulle de la vignette, qui pâlit avec l'âge de la lecture de la capacité.
  */
 import type { ReactNode } from 'react'
 
@@ -37,7 +28,6 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { abilityAt } from '../../../lib/replay/rosterLogic'
-import { ReplayIconCount } from './ReplayIconCount'
 
 // LA BOÎTE DE LA VIGNETTE DE CAPACITÉ (16 px, la hauteur de la ligne) VIENT DU GABARIT de la
 // fiche (`model/cardGabarit.ts`, `iconAbilityPx`, 2026-09-06) — aucune cote locale ici.
@@ -75,8 +65,7 @@ export function ReplayAbilityCell({
     abilityRead !== null
       ? (abilityChargesAt(doc, slot, frame, abilityRead.rank) ?? carriedUsesAt(doc, slot, frame, abilityRead.rank))
       : null
-  // LES CHARGES SE DISENT DANS L'INFOBULLE DE LA VIGNETTE, sur les deux gabarits, avec la même
-  // composition ; le chiffre en surimpression (fiche normale) n'en est que la lecture rapide.
+  // LES CHARGES SE DISENT DANS L'INFOBULLE DE LA VIGNETTE.
   const chargeInTitle = charge ? chargeTitle(charge, doc, t) : null
   return (
     <span className="relative inline-flex shrink-0 items-center" style={{ width: px }}>
@@ -110,17 +99,13 @@ export function ReplayAbilityCell({
         )
       ) : null /* AUCUNE LECTURE DANS LA VIE EN COURS : rien n'est rendu, ni glyphe ni texte — jamais
            la capacité d'une vie précédente du slot (correctif P0-2), jamais une lacune écrite. */}
-      {ability && abilityRead && charge?.kind === 'count' && gabarit.showInventoryMarks && (
-        <ReplayIconCount count={charge.charges} fade={freshness(charge.age, readingFull, READING_FADE)} />
-      )}
     </span>
   )
 }
 
 /**
  * chargeTitle — ce que l'infobulle de la vignette dit des charges : le compte et l'âge de SA
- * lecture, ou d'où vient l'affirmation « plein » (rien transmis = rien consommé). Une seule
- * composition pour les deux gabarits.
+ * lecture, ou d'où vient l'affirmation « plein » (rien transmis = rien consommé).
  */
 function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: ReplayText): string {
   if (charge.kind === 'full') return t.abilityChargesFullHint
@@ -128,12 +113,10 @@ function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: 
 }
 
 /**
- * StateMark — le socle des pictogrammes d'état MESURÉ rendus muets (décision produit 4 du
- * plan parité) : « munitions pleines » (emplacement jamais écrit — flux différentiel, le
- * plein est la valeur par défaut). Un dessin discret, UNE infobulle simple. Encre en
+ * StateMark — le socle d'un pictogramme muet : un dessin discret, UNE infobulle simple. Encre en
  * currentColor : la couleur vient du texte environnant, aucun littéral.
  */
-export function StateMark({ label, children }: { label: string; children: ReactNode }) {
+function StateMark({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span role="img" aria-label={label} title={label} className="inline-flex items-center opacity-70">
       {children}

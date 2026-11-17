@@ -41,9 +41,8 @@ import type { ObjectiveMarkKind } from '../model/objectiveMark'
  */
 const WATERMARK_OPACITY = 0.22
 
-// LE CÔTÉ DU GLYPHE VIENT DU GABARIT DE LA FICHE (`model/cardGabarit.ts`, `watermarkPx`,
-// 2026-09-06) : 46 px sur un corps de 35 (la fiche normale), 34 px sur un corps de 31 (la
-// tuile compacte) — le critère est le même dans les deux cas : le glyphe RESTE UN FOND.
+// LE CÔTÉ DU GLYPHE VIENT DU GABARIT DE LA FICHE (`model/cardGabarit.ts`, `watermarkPx`) : 34 px
+// sur la tuile compacte — le critère : le glyphe RESTE UN FOND.
 
 /**
  * Les six glyphes, en repère 16×16.
@@ -92,7 +91,7 @@ export function ReplayObjectiveMark({
 }: {
   kind: ObjectiveMarkKind
   sizePx: number
-  /** Le rayon de la tuile, en classe (`ReplayPlayerCard.TILE_LAYOUT.layerRadius`) : le filigrane l'épouse. */
+  /** Le rayon de la tuile, en classe (`ReplayPlayerCard.LAYER_RADIUS`) : le filigrane l'épouse. */
   radiusClass: string
 }) {
   return (

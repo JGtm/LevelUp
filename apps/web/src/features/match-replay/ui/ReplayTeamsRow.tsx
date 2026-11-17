@@ -30,7 +30,7 @@ import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { ReplayCompactCard, ReplayCompactWaitingCard } from './ReplayCompactCard'
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { useCardScene, type CardScene } from '../hooks/useCardScene'
-import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE, GABARIT_COMPACT } from '../model/cardGabarit'
+import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE } from '../model/cardGabarit'
 import { alliesAGauche, colonnesGrandeEquipe, NB_CAMPS_RANGEE } from '../model/rowLayout'
 import {
   buildSeats,
@@ -80,7 +80,7 @@ function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNo
     return grandeEquipe ? (
       <ReplayCompactWaitingCard key={seat.key} occupant={lu.player} locale={locale} form="stacked" />
     ) : (
-      <ReplaySeatWaiting key={seat.key} occupant={lu.player} gabarit={GABARIT_COMPACT} locale={locale} />
+      <ReplaySeatWaiting key={seat.key} occupant={lu.player} locale={locale} />
     )
   }
   const player = lu.player
@@ -110,7 +110,6 @@ function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNo
       doc={doc}
       frame={frame}
       locale={locale}
-      gabarit={GABARIT_COMPACT}
       presence={scene.presence}
       vitalityFade={scene.vitalityFade}
       readingFull={scene.readingFull}

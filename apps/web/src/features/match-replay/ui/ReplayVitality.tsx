@@ -124,7 +124,7 @@ interface EliminatedProps {
 
 /**
  * L'ENCADRÉ PAR HAUTEUR DE CORPS — une table fermée sur la cote structurelle du gabarit
- * (`cardGabarit.ts`). 35 : la ligne d'aujourd'hui, nœud pour nœud (fixation 4v4). 31 : la
+ * (`cardGabarit.ts`). 35 : la ligne unique du bloc « À l'instant » (`ReplayPlayerNow`). 31 : la
  * pile à deux lignes de la tuile compacte. Deux composants plutôt qu'un seul truffé de
  * conditions : le DOM du premier ne doit pas bouger d'un attribut.
  */

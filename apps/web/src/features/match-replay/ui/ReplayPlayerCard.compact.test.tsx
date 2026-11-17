@@ -359,7 +359,7 @@ describe('ReplayPlayerCard — la tuile compacte : mise en page', () => {
     expect(vue.queryByRole('progressbar')).toBeNull()
   })
 
-  it('(i) DEUX éclairs et TROIS croix en compacte (les tests existants restent à 3 / 3 sur le gabarit normal)', () => {
+  it('(i) DEUX éclairs et TROIS croix en compacte', () => {
     const { vue } = renderBTB(12)
     const eclairs = [...tuile(vue, 'Charlie').querySelectorAll('.replay-zone-bolt')] as HTMLElement[]
     expect(eclairs).toHaveLength(2)
@@ -405,18 +405,17 @@ describe('ReplayPlayerCard — la tuile compacte : mise en page', () => {
     expect(filigrane.className).toContain('overflow-hidden rounded-md')
     // Les deux couches que ce document ne pose pas (anneau du capteur, fourreau de
     // translocation) reçoivent le même rayon : au source, aucune classe de couche n'écrit plus
-    // `rounded-lg` en dur — seule la table `TILE_LAYOUT` le porte, pour le corps de 35.
+    // `rounded-lg` en dur — la tuile ne porte que la constante `LAYER_RADIUS`.
     const src = lire(fichierNomme('ReplayPlayerCard.tsx'))
-    expect(src).not.toMatch(/className="[^"]*rounded-lg/)
+    expect(src).not.toMatch(/rounded-lg/)
     // Les couches d'effets vivent dans `ReplayCardFx.tsx` et reçoivent le rayon de la fiche en prop.
     const fx = lire(fichierNomme('ReplayCardFx.tsx'))
     expect(fx).not.toMatch(/className="[^"]*rounded-lg/)
     expect(fx).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
     expect(fx).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
     expect(fx).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{radiusClass\}/)
-    expect(src.match(/radiusClass=\{L\.layerRadius\}/g)).toHaveLength(2)
-    expect(src.match(/layerRadius: 'rounded-lg'/g)).toHaveLength(1)
-    expect(src.match(/layerRadius: 'rounded-md'/g)).toHaveLength(1)
+    expect(src.match(/radiusClass=\{LAYER_RADIUS\}/g)).toHaveLength(2)
+    expect(src.match(/const LAYER_RADIUS = 'rounded-md'/g)).toHaveLength(1)
     expect(lire(fichierNomme('ReplayObjectiveMark.tsx'))).not.toMatch(/className="[^"]*rounded-lg/)
   })
 })

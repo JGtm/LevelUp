@@ -513,19 +513,12 @@
   from { background-color: color-mix(in srgb, var(--ac-success) 52%, transparent); }
   to   { background-color: transparent; }
 }
-/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx, 46 px par
-   défaut : la distance entre les DEUX cellules d'arme de la fiche normale) : c'est la seule
-   distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
-   indiscernable d'un changement d'arme. Sur la tuile compacte (une seule cellule, plan fiches
-   compactes 2026-09-06, I6), la vignette ENTRANTE pose elle-même --replay-dx à la largeur de
-   sa cellule (48 px, `ReplayWeaponsRow`) et elle seule s'anime (replay-wswap-l) : l'échange
-   reste visible, il ne croise plus rien. */
+/* La permutation translate la vignette ENTRANTE de la largeur de sa cellule (--replay-dx, posé par
+   la vignette : 48 px sur la tuile, `ReplayWeaponsRow` ; la largeur de la colonne sur la ligne) et
+   elle seule s'anime (replay-wswap-l). Sans mouvement, un échange est indiscernable d'un
+   changement d'arme. */
 @keyframes replay-wswap-left {
   from { transform: translateX(var(--replay-dx, 46px)); opacity: 0.25; }
-  to   { transform: none; opacity: 1; }
-}
-@keyframes replay-wswap-right {
-  from { transform: translateX(calc(-1 * var(--replay-dx, 46px))); opacity: 0.25; }
   to   { transform: none; opacity: 1; }
 }
 /* Le POP du badge de lancer (le `.gic` du POC) : une apparition, pas un mouvement — le
@@ -540,7 +533,6 @@
    RESPAWN_FLASH_S dans playerCardFx.ts, qui en dérive le délai négatif de reprise. */
 .replay-flash-respawn { animation: replay-respawn-flash 1.2s ease-out 1; }
 .replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-.replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 .replay-gpop { animation: replay-gpop 0.18s ease-out 1; }
 
 /* Le FOURREAU de TRANSLOCATION : rien que la BORDURE, avec une lumière qui la parcourt
@@ -662,7 +654,6 @@
   .replay-zone-cross,
   .replay-zone-bolt,
   .replay-wswap-l,
-  .replay-wswap-r,
   .replay-gpop { animation: none; }
 }
 

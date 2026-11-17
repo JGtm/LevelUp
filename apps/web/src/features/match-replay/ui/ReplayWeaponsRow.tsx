@@ -1,38 +1,27 @@
 /**
- * ReplayWeaponsRow — les CELLULES D'ARME d'une fiche joueur, lues aux images-clés, l'arme EN
- * MAIN à gauche : DEUX cellules sur la fiche normale, UNE SEULE sur la tuile compacte.
+ * ReplayWeaponsRow — LA CELLULE D'ARME d'une fiche joueur, lue aux images-clés : l'arme EN MAIN.
+ * Elle est seule ; l'arme rangée se dit dans l'infobulle de la rangée.
  *
- * LA RANGÉE EST UNE GRILLE À CELLULES FIXES depuis le 2026-08-24 (demande utilisateur :
- * « que les armes, grenades et équipements soient comme sur une grille pour faciliter la
- * lecture de plusieurs fiches ») : les cellules d'arme sont toujours rendues, toujours à la
- * même largeur — une arme absente laisse sa cellule vide plutôt que de décaler les
- * colonnes voisines. C'est ce qui aligne les fiches entre elles : les icônes d'armes ont
- * des largeurs naturelles différentes, et une rangée fluide décalait tout.
+ * LA CELLULE EST À LARGEUR FIXE (`weaponCellW`) : toujours rendue, une arme absente la laisse
+ * vide plutôt que de décaler les colonnes voisines. C'est ce qui aligne les fiches entre elles :
+ * les icônes d'armes ont des largeurs naturelles différentes, et une rangée fluide décalait tout.
  *
- * L'ORDRE EST CELUI DU JEU : l'arme dégainée d'abord, la secondaire ensuite. Il vient du
- * sélecteur d'emplacement (`Inventory.D`, cf. equippedLogic) — quand il n'est pas lisible,
- * ou qu'il désigne un emplacement hors de la rangée (D ≥ 2 : les mains nues d'avant le départ, ou
- * un objet tenu), l'ordre reste celui des emplacements et rien n'est marqué.
+ * L'ORDRE EST CELUI DU JEU : l'arme dégainée est la première de la lecture, la secondaire la
+ * suivante. Il vient du sélecteur d'emplacement (`Inventory.D`, cf. equippedLogic) — quand il
+ * n'est pas lisible, ou qu'il désigne un emplacement hors de la rangée (D ≥ 2 : les mains nues
+ * d'avant le départ, ou un objet tenu), l'ordre reste celui des emplacements et rien n'est marqué.
  *
- * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » (option 2a du handoff 2026-08-27) : la cellule
- * de l'arme dégainée s'ALLUME — un fond à l'encre du thème très diluée, coins 2 px — et
- * l'icône reste en pleine encre ; l'arme rangée s'estompe, sans fond. Le souligné vert
- * d'avant empruntait le token `success` à la jauge de santé pour dire autre chose.
- * Sans sélecteur lu, les deux cellules gardent la même encre, aucune ne s'allume.
+ * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » : la cellule de l'arme dégainée s'ALLUME — un fond à
+ * l'encre du thème très diluée, coins 2 px — et l'icône reste en pleine encre ; une arme rangée
+ * s'estompe, sans fond. Sans sélecteur lu, la cellule garde sa pleine encre, rien ne s'allume.
  *
- * UNE SEULE CELLULE SUR LA TUILE COMPACTE (`weaponCells: 1`, plan fiches compactes 2026-09-06,
- * étape 3) : celle de la main. L'arme rangée est NOMMÉE dans l'infobulle (`weaponStowedFmt`),
- * avec les munitions et les marques de la main que la fiche compose (`handHint`, cf.
- * `model/handCellHint.ts`) et l'âge de la lecture — le tout sur la RANGÉE, dont la boîte est
- * alors exactement la cellule : la vignette ne porte pas d'infobulle propre, pour ne pas
- * masquer celle-là.
+ * L'INFOBULLE EST CELLE DE LA RANGÉE, dont la boîte est exactement la cellule : l'arme rangée y est
+ * NOMMÉE (`weaponStowedFmt`), avec les munitions et les marques de la main que la fiche compose
+ * (`handHint`, cf. `model/handCellHint.ts`) et l'âge de la lecture. La vignette ne porte pas
+ * d'infobulle propre, pour ne pas masquer celle-là.
  *
- * L'ÉCHANGE D'ARME RESTE ANIMÉ — c'est LUI qui dit la permutation. À deux cellules, les deux
- * vignettes permutent en se croisant (`--replay-dx` par défaut : la place de l'autre). À une
- * cellule, seule la vignette ENTRANTE glisse, de la largeur de la cellule (`--replay-dx` posé
- * par la vignette) : l'échange reste visible, il ne croise plus rien (I6). Le libellé
- * « échange » qui doublait cet effet est SUPPRIMÉ (demande utilisateur du 2026-08-24), avec sa
- * lecture (`loadoutSwapAt`).
+ * L'ÉCHANGE D'ARME EST ANIMÉ — c'est LUI qui dit la permutation : la vignette ENTRANTE glisse,
+ * de la largeur de la cellule (`--replay-dx` posé par la vignette).
  *
  * LE BADGE DE LANCER (le `.gic` du POC) SE SUPERPOSE à la cellule de la main : l'objet
  * réellement actif à cet instant n'est plus une arme, c'est la grenade — elle prend la
@@ -62,8 +51,7 @@ export const SWAP_ANIM_MS = 340
 
 /**
  * Cellule d'arme : GABARIT FIXE (la grille des fiches en dépend). La LARGEUR vient du gabarit
- * (`weaponCellW` : 40 en normal, 48 en compact — `model/cardGabarit.ts`, 2026-09-06) ; la
- * hauteur est celle de la ligne.
+ * (`weaponCellW`, `model/cardGabarit.ts`) ; la hauteur est celle de la ligne.
  */
 const CELL_H = 16
 /** L'icône dans sa cellule : 38 × 13, centrée — la cellule allumée garde une marge d'encre. */
@@ -98,17 +86,13 @@ export function ReplayWeaponsRow({
   /** Index de film du joueur (roster) — la clé des LANCERS ; null si le roster le tait. */
   filmIndex: number | null
   locale: ReplayLocale
-  /** Les cotes de la fiche : le nombre de cellules d'arme et leur largeur. */
+  /** Les cotes de la fiche : la largeur de la cellule d'arme. */
   gabarit: CardGabarit
-  /**
-   * Ce que la MAIN a à dire quand la rangée n'a qu'une cellule (munitions, marques de la
-   * lecture d'inventaire — `model/handCellHint.ts`) ; jamais donné à deux cellules.
-   */
+  /** Ce que la MAIN a à dire (munitions, marques de la lecture d'inventaire — `model/handCellHint.ts`). */
   handHint?: string
 }) {
   const t = REPLAY_TEXT[locale]
   const cellW = gabarit.weaponCellW
-  const seule = gabarit.weaponCells === 1
   if (!state.life) return null
   // Le badge de lancer : un ÉVÉNEMENT daté, jamais estompé par l'âge de lecture.
   const throwHold = Math.max(1, msToFrames(GRENADE_THROW_HOLD_MS, doc))
@@ -125,7 +109,6 @@ export function ReplayWeaponsRow({
           <EmptyWeaponCell width={cellW} />
           {gic}
         </span>
-        {!seule && <EmptyWeaponCell width={cellW} />}
       </span>
     )
   }
@@ -142,46 +125,39 @@ export function ReplayWeaponsRow({
   ]
     .filter((p): p is string => !!p)
     .join(' · ')
-  const cells: (typeof read.weapons[number] | null)[] = seule
-    ? [read.weapons[0] ?? null]
-    : [read.weapons[0] ?? null, read.weapons[1] ?? null]
+  const hand = read.weapons[0] ?? null
   return (
     <div
       className="flex items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
-      title={seule ? handCellTitle({ t, doc, read, locale, handHint, ageTxt }) : ageTxt}
+      title={handCellTitle({ t, doc, read, locale, handHint, ageTxt })}
     >
-      {cells.map((w, k) => (
-        <span key={k} className="relative inline-flex">
-          {w ? (
-            <WeaponChip
-              doc={doc}
-              id={w.id}
-              inHand={w.inHand}
-              dimmed={drawnKnown && !w.inHand}
-              swap={
-                swapAge !== null
-                  ? { cls: k === 0 ? 'replay-wswap-l' : 'replay-wswap-r', age: swapAge, span: swapFrames, dx: seule ? cellW : null }
-                  : null
-              }
-              hint={!seule && !w.inHand && drawnKnown ? t.weaponSecondaryHint : undefined}
-              locale={locale}
-              cellW={cellW}
-            />
-          ) : (
-            <EmptyWeaponCell width={cellW} />
-          )}
-          {/* Le badge de lancer COUVRE la cellule de la main (k = 0) : les opacités CSS se
-              multiplient, le sortir du bloc estompé le garderait à pleine encre. */}
-          {k === 0 && gic}
-        </span>
-      ))}
+      <span className="relative inline-flex">
+        {hand ? (
+          <WeaponChip
+            doc={doc}
+            id={hand.id}
+            inHand={hand.inHand}
+            dimmed={drawnKnown && !hand.inHand}
+            swap={
+              swapAge !== null ? { cls: 'replay-wswap-l', age: swapAge, span: swapFrames, dx: cellW } : null
+            }
+            locale={locale}
+            cellW={cellW}
+          />
+        ) : (
+          <EmptyWeaponCell width={cellW} />
+        )}
+        {/* Le badge de lancer COUVRE la cellule de la main : les opacités CSS se multiplient, le
+            sortir du bloc estompé le garderait à pleine encre. */}
+        {gic}
+      </span>
     </div>
   )
 }
 
 /**
- * handCellTitle — l'infobulle de la cellule SEULE : l'arme rangée NOMMÉE (quand le sélecteur
+ * handCellTitle — l'infobulle de la cellule : l'arme rangée NOMMÉE (quand le sélecteur
  * est lu, c'est bien une arme rangée ; sinon la seconde arme est nommée sans le dire), puis ce
  * que la main dit (munitions, marques), puis l'âge de la lecture.
  */
@@ -219,10 +195,10 @@ function EmptyWeaponCell({ width }: { width: number }) {
 
 /**
  * GrenadeThrowBadge — le `.gic` du POC : la vignette du TYPE lancé, à l'encre `warning` du type
- * équipé (même rendu que `GrenadeChip` : ni liseré ni fond teinté), avec un POP d'apparition,
- * posée SUR la cellule de la main, dont le fond `card` opaque masque l'arme. La clé porte la frame du
- * lancer : React garde l'identité du nœud pendant la rémanence, l'animation ne repart pas
- * à chaque image publiée.
+ * équipé (même rendu que la cellule de grenade de la rangée d'inventaire : ni liseré ni fond
+ * teinté), avec un POP d'apparition, posée SUR la cellule de la main, dont le fond `card` opaque
+ * masque l'arme. La clé porte la frame du lancer : React garde l'identité du nœud pendant la
+ * rémanence, l'animation ne repart pas à chaque image publiée.
  */
 function GrenadeThrowBadge({
   doc,
@@ -284,7 +260,6 @@ export function WeaponChip({
   inHand,
   dimmed,
   swap,
-  hint,
   locale,
   cellW,
   box,
@@ -293,13 +268,8 @@ export function WeaponChip({
   id: string
   inHand: boolean
   dimmed: boolean
-  /**
-   * L'échange en cours : sa classe (entrante / sortante), son avancement, et `dx` — la
-   * distance posée sur la vignette (la largeur de la cellule, à une cellule) ou null pour la
-   * distance par défaut de la feuille de style (la place de l'autre cellule).
-   */
-  swap: { cls: string; age: number; span: number; dx: number | null } | null
-  hint?: string
+  /** L'échange en cours : sa classe (vignette entrante), son avancement, et `dx` — la distance posée sur la vignette. */
+  swap: { cls: string; age: number; span: number; dx: number } | null
   locale: ReplayLocale
   /** Largeur de la cellule, du gabarit de la fiche. */
   cellW: number
@@ -324,13 +294,12 @@ export function WeaponChip({
     // Délai négatif = avancement réel : l'animation reprend où elle en était malgré les
     // re-rendus, et reste juste après un saut de lecture.
     style.animationDelay = `${(-(Math.min(swap.age, swap.span) / swap.span) * (SWAP_ANIM_MS / 1000)).toFixed(3)}s`
-    if (swap.dx !== null) style['--replay-dx'] = `${swap.dx}px`
+    style['--replay-dx'] = `${swap.dx}px`
   }
   return (
     <span
       className={`inline-flex items-center justify-center overflow-hidden rounded-[2px] ${swap ? swap.cls : ''}`}
       style={style}
-      title={hint}
     >
       {icon ? (
         <WeaponIcon
