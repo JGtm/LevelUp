@@ -1,13 +1,13 @@
 /**
- * killerZone.ts — LA ZONE NOMMÉE OÙ SE TROUVAIT LE TUEUR, pour chaque frag du fil.
+ * feedZone.ts — LA ZONE NOMMÉE OÙ SE TROUVAIT LA VICTIME, pour chaque frag du fil.
  *
  * C'EST LE JUMEAU, ÉCRIT EN TYPESCRIPT, DE `NommerZone` (apps/go-api/internal/analysis/tactical/
  * zones.go et geometrie.go). Les deux ports tiennent le même contrat, prouvé par un jeu de cas
  * UNIQUE (apps/go-api/internal/testfixtures/testdata/cartes/nommage_zone_cas.json) que
- * `zones_test.go` et `killerZone.test.ts` lisent chacun : modifier une règle ici sans la modifier
+ * `zones_test.go` et `feedZone.test.ts` lisent chacun : modifier une règle ici sans la modifier
  * dans le fichier Go (ou l'inverse) fait échouer l'un des deux tests.
  *
- * LA RÈGLE, DANS L'ORDRE (un point du plan, et le z du tueur à cet instant) :
+ * LA RÈGLE, DANS L'ORDRE (un point du plan, et le z de la victime à cet instant) :
  *
  *   (a) polygone  les zones dont la FORME contient le point ET dont la tranche
  *                 [zBottom − 0,25 ; zTop + 0,25] contient le z : une seule, c'est elle ;
@@ -39,18 +39,19 @@
  * conception.
  *
  * L'INSTANT EST BRUT : `replayMs` du fil, AVANT `displayClockMs` (qui ne recale que l'affiché).
- * La position vient du résolveur de porteur (un tueur au volant est sur son véhicule). Le z suit
- * la position : celui du véhicule quand elle en vient (null si le véhicule n'a pas d'altitude ou
- * si sa position vient de sa naissance), jamais celui du bipède embarqué ; sinon celui de la
- * piste du bipède, sous la même règle de vie. Un tueur sans position à cet instant n'a pas de
- * zone : la carte n'a pas d'entrée, la ligne n'écrit rien.
+ * La position vient du résolveur de porteur (une victime au volant est sur son véhicule) : c'est
+ * le dernier point de sa vie à l'instant du frag. Le z suit la position : celui du véhicule quand
+ * elle en vient (null si le véhicule n'a pas d'altitude ou si sa position vient de sa naissance),
+ * jamais celui du bipède embarqué ; sinon celui de la piste du bipède, sous la même règle de vie.
+ * Une victime inconnue (frag sans victime nommée) ou sans position à cet instant n'a pas de zone :
+ * la carte n'a pas d'entrée, la ligne n'écrit rien.
  *
- * LES BOTS comptent : un bot du fil porte un xuid de BASE (`bid(N.0)`), que la jointure de
+ * LES BOTS comptent : un bot victime du fil porte un xuid de BASE (`bid(N.0)`), que la jointure de
  * `buildPlayers` (gamertag de la feuille, nom nu) relie à ses vies. Il est lu sans véhicule : ses
  * épisodes d'occupation n'ont pas de xuid, comme pour tous les calques du rejeu. Sans feuille
  * pour le joindre, il n'a pas d'entrée.
  *
- * Pas de React, pas de canvas : logique pure, testée (killerZone.test.ts).
+ * Pas de React, pas de canvas : logique pure, testée (feedZone.test.ts).
  */
 
 import { zoneHasShape, zoneRings } from '../../../lib/replay/calloutShape'
@@ -215,12 +216,12 @@ function botLivesByBaseXuid(players: readonly ReplayPlayer[]): Map<string, Repla
 }
 
 /**
- * killerZones — la zone du tueur de chaque frag du fil, PAR CLÉ DE LIGNE (`ReplayFeedEntry.key`).
- * Un frag dont le tueur n'a pas de position à son instant, ou que le nommage laisse sans nom, n'a
+ * victimZones — la zone de la victime de chaque frag du fil, PAR CLÉ DE LIGNE (`ReplayFeedEntry.key`).
+ * Un frag sans victime nommée, dont la victime n'a pas de position à son instant, ou que le nommage laisse sans nom, n'a
  * PAS d'entrée : jamais un nom deviné. Les lignes qui ne sont pas des frags n'en ont pas non plus.
  * `players` (la jointure du match, `model.players`) joint les bots du fil à leurs vies (cf. l'en-tête).
  */
-export function killerZones(
+export function victimZones(
   entries: readonly ReplayFeedEntry[],
   doc: ReplayDocumentReady,
   zones: readonly CalloutZoneReady[],
@@ -237,10 +238,12 @@ export function killerZones(
     const k = e.kill
     if (!k) continue
     const frame = Math.round(msToFrames(k.replayMs, doc))
-    const botLives = bots.get(k.xuid)
-    const at = botLives ? posOfPlayerAt(botLives, frame, deathFrames) : posOf(k.xuid, frame)
+    const victim = k.victimXuid
+    if (!victim) continue
+    const botLives = bots.get(victim)
+    const at = botLives ? posOfPlayerAt(botLives, frame, deathFrames) : posOf(victim, frame)
     if (!at) continue
-    const z = botLives ? altitudeOfPlayerAt(botLives, frame, deathFrames) : altOf(k.xuid, frame)
+    const z = botLives ? altitudeOfPlayerAt(botLives, frame, deathFrames) : altOf(victim, frame)
     const zone = nameZone(at.x, at.y, z, named)
     if (zone) out.set(e.key, zone.zone)
   }

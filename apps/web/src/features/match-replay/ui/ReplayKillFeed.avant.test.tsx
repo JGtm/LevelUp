@@ -3,7 +3,7 @@
  *
  * Ce que les fixations couvrent : quatre éliminations dans les deux sens et dans les deux camps, plus
  * une ligne d'événement (capture de drapeau, portée par `objectives` du document de test). La seconde
- * fixation rend la même entrée avec le lieu du tueur (`zoneOf`) : trois éliminations nommées, une sans lieu.
+ * fixation rend la même entrée avec le lieu de la victime (`zoneOf`) : trois éliminations nommées, une sans lieu.
  *
  * Aucune valeur ne varie : l'instant est fixé par `nowMs`, aucune date ni identifiant généré n'entre
  * dans le rendu. Si un lancement en faisait apparaître un, le neutraliser dans le test, sans toucher au composant.
@@ -91,7 +91,7 @@ describe('ReplayKillFeed — fixation des lignes du fil (avant la refonte)', () 
   })
 })
 
-describe('ReplayKillFeed — fixation avec le lieu du tueur (avant la refonte)', () => {
+describe('ReplayKillFeed — fixation avec le lieu de la victime (avant la refonte)', () => {
   it('le même fil avec la gouttière du lieu : trois éliminations nommées, une sans lieu', async () => {
     const entries = buildFeedEntries(KILLS, [], 0, DOC)
     const cles = entries.filter((e) => e.kill).map((e) => e.key)

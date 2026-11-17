@@ -22,7 +22,7 @@ const ICON_H = 10
 export const DOT_PX = 7
 
 /**
- * KillZone — LA GOUTTIÈRE DE ZONE d'une ligne de frag : la zone nommée où se trouvait le tueur, à
+ * KillZone — LA GOUTTIÈRE DE ZONE d'une ligne de frag : la zone nommée où se trouvait la victime, à
  * l'instant du frag, tronquée si elle déborde (le nom complet est dans l'infobulle). Largeur FIXE
  * (~5,5 rem), pour que les colonnes des lignes de frag s'alignent d'un regard. Zone inconnue : la
  * gouttière reste, VIDE — aucun texte, jamais un nom de repli.
@@ -32,7 +32,7 @@ export function KillZone({ name, locale }: { name: string; locale: ReplayLocale 
   return (
     <span
       className="w-[5.5rem] shrink-0 truncate text-3xs text-muted-foreground"
-      title={name ? t.killFeedKillerZone(name) : undefined}
+      title={name ? t.killFeedVictimZone(name) : undefined}
     >
       {name}
     </span>

@@ -16,7 +16,7 @@ import { displayPlayerName } from '@/lib/players/displayName'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { FEED_ROW, FEED_ROW_BUTTON, FEED_ROW_ITEM } from '../model/feedRow'
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
-import type { KillerZoneOf } from '../hooks/useKillerZones'
+import type { FeedZoneOf } from '../hooks/useFeedZones'
 import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { MedalBadges } from './MedalBadges'
@@ -70,7 +70,7 @@ interface FeedLineProps {
   marks: ReadonlyMap<string, PlayerMarkKind>
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
-  zoneOf?: KillerZoneOf
+  zoneOf?: FeedZoneOf
   /** Le nom et l'encre d'un camp du film : les lignes de manche et de colline écrivent des camps, pas des joueurs. */
   teams: ReplayTeamCascades
   /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
@@ -255,9 +255,9 @@ interface KillLineProps {
 }
 
 /**
- * KillLine — une mort : zone du tueur (si la carte en a), tueur (son encre), arme, victime (SON
+ * KillLine — une mort : zone de la victime (si la carte en a), tueur (son encre), arme, victime (SON
  * encre), badge « porteur » (la victime portait le drapeau), médailles, assistance. `zone` : le nom
- * de la zone du tueur, vide quand elle n'est pas établie, `undefined` quand la carte n'a aucune
+ * de la zone de la victime, vide quand elle n'est pas établie, `undefined` quand la carte n'a aucune
  * zone (pas de gouttière).
  *
  * AVEC `focus`, LA LIGNE EST UN BOUTON (plan « maquettes du rejeu », lot 2) : le clic pose la

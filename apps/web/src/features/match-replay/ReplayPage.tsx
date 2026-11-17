@@ -19,7 +19,7 @@ import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { buildMapBackgroundLayer } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
-import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
+import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
@@ -140,8 +140,8 @@ export function ReplayPage() {
   // Le joueur SUIVI de la page est ce même joueur regardé (`viewpoint.xuid`) : le panneau le retrouve
   // au roster (`playerPanel.tracked`) sans en tenir un second.
   const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)
-  // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
-  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, model.players)
+  // LA ZONE DE LA VICTIME de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
+  const feedZoneOf = useFeedZones(feedEntries, data, callouts, locale, model.players)
   // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.
   const weaponIcons = useKillSourceIcons(params.titleSlug, locale)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
@@ -437,7 +437,7 @@ export function ReplayPage() {
                     allegiance={model.allegiance}
                     locale={locale}
                     marks={marks}
-                    zoneOf={killerZoneOf}
+                    zoneOf={feedZoneOf}
                     doc={data}
                     playbackStore={playbackStore}
                     weaponIcons={weaponIcons}

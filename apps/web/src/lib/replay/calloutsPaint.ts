@@ -1,7 +1,7 @@
 /**
  * calloutsPaint.ts — les ZONES NOMMÉES (« callouts ») de la carte : normalisation et peintre
  * canvas. L'affectation d'un point à sa zone n'est PAS ici : elle vit dans
- * `features/match-replay/model/killerZone.ts`. PARTAGÉ (comme heatPaint.ts) par le rejeu 2D et par
+ * `features/match-replay/model/feedZone.ts`. PARTAGÉ (comme heatPaint.ts) par le rejeu 2D et par
  * le plan de l'onglet Tactique : un seul peintre, donc un seul aspect (garde-rail
  * calloutsPaint.guard.test.ts). Chaque appelant fournit sa projection monde → toile. Portage du POC (artefact eb7b8af2,
  * l.1033-1094 et l.780-789), qui est LA spec de rendu — pas une réinvention.
@@ -18,7 +18,7 @@
  *   fond sombre, SANS dépendre du thème ;
  * - une zone existe en version haute ET basse (« Fer à cheval » / « Fer à cheval inférieur ») et les étages
  *   se confondent en 2D. Le nommage d'un point (polygone, tranche de hauteur) est le jumeau de
- *   `NommerZone` côté Go : `killerZone.ts`.
+ *   `NommerZone` côté Go : `feedZone.ts`.
  */
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -59,7 +59,7 @@ export interface CalloutZoneReady {
  * normalizeCallouts résout la nullabilité du transport UNE fois, à l'entrée (même règle
  * que replayNormalize). TOUTES les zones sont gardées, y compris sans forme : les
  * volumes secondaires d'un même nom restent dans la liste — le dessin, comme le nommage d'un
- * point (`killerZone.ts`), ignorent une zone sans forme (`zoneHasShape`).
+ * point (`feedZone.ts`), ignorent une zone sans forme (`zoneHasShape`).
  */
 export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): CalloutZoneReady[] {
   return normalizeCalloutZones(entry?.zones)

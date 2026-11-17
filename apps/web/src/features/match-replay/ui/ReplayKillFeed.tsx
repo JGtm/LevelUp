@@ -36,7 +36,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { normalizeGamertagKey } from '@/lib/players/displayName'
 
-import type { KillerZoneOf } from '../hooks/useKillerZones'
+import type { FeedZoneOf } from '../hooks/useFeedZones'
 import { useFeedEventEntries } from '../hooks/useFeedEventEntries'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -86,11 +86,11 @@ interface Props {
    */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
-   * La zone nommée où se trouvait le tueur de chaque frag (`useKillerZones`), par clé de ligne.
+   * La zone nommée où se trouvait la victime de chaque frag (`useFeedZones`), par clé de ligne.
    * Absent = la carte n'a aucune zone : les lignes de frag ne réservent pas de gouttière. Présent,
    * la gouttière suit l'horloge sur CHAQUE ligne de frag et reste vide quand la zone est inconnue.
    */
-  zoneOf?: KillerZoneOf
+  zoneOf?: FeedZoneOf
   /**
    * Le document de rejeu, source des lignes d'événement (objectifs, prises, montées). Absent = le
    * fil ne porte que les éliminations, médailles, morts et présences de `entries`.
