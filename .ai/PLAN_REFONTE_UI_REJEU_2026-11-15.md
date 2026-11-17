@@ -307,7 +307,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **Forme 2 retenue** : un seul tableau « Éliminations par arme », par catégorie puis par arme, avec trois colonnes : à l'instant, part, match. « Totaux du match » ne répète plus les armes (précision, dégâts, score, éliminations à la tête). G0-11 clos.
 - **« Gestes »** remplace « En passant » (D-24, T.5, T.7). G0-10 clos.
 - **« Armes lourdes »** est le nom de la catégorie (D-20) ; le libellé « armes de puissance » de la fiche actuelle est remplacé dans la fiche.
-- **Barre composite et classes d'armes** (user, 2026-11-17 : « j'aimais bien aussi la barre composite de la forme 1 […] on respectera le code couleur des classes d'armes qu'on utilise partout comme la page Synthèse ») : au-dessus du tableau, une barre empilée des éliminations à l'instant par classe. Les catégories de T.2 sont donc les CLASSES DE FRAG de l'application, pas les quatre catégories de D-20 : jetons `frag-shoulder`, `frag-sidearm`, `frag-heavy`, `frag-melee`, `frag-grenade` et suivants (`lib/accessibility/semantic-tokens.ts`), libellés du manifeste `frags.class.*` (« Arme d'épaule », « Arme de poing », « Lourde », « Mêlée », « Grenade »…). T.2 réutilise le classement existant d'un frag dans sa classe (celui de la page du match et de la Synthèse), sans en écrire un second. Le mot choisi par le user, « armes lourdes », désigne la classe que le manifeste nomme « Lourde » : le libellé du manifeste fait foi tant que le user ne demande pas de le changer partout.
+- **Barre composite et classes d'armes** (user, 2026-11-17 : « j'aimais bien aussi la barre composite de la forme 1 […] on respectera le code couleur des classes d'armes qu'on utilise partout comme la page Synthèse ») : au-dessus du tableau, une barre empilée des éliminations à l'instant par classe. Les catégories de T.2 sont donc les CLASSES DE FRAG de l'application, pas les quatre catégories de D-20 : jetons `frag-shoulder`, `frag-sidearm`, `frag-heavy`, `frag-melee`, `frag-grenade` et suivants (`lib/accessibility/semantic-tokens.ts`), libellés du manifeste `frags.class.*` (« Arme d'épaule », « Arme de poing », « Lourde », « Mêlée », « Grenade »…). T.2 réutilise le classement existant d'un frag dans sa classe (celui de la page du match et de la Synthèse), sans en écrire un second. Le mot choisi par le user, « armes lourdes », désigne la classe que le manifeste nomme « Lourde » : le libellé du manifeste fait foi. Confirmé par le user le 2026-11-17 : « pour la classe d'arme on garde "lourde" comme c'est déjà là ».
 - Ordre des sections de la fiche, de haut en bas : état à l'instant ; depuis le début du match (compteurs, score et rang) ; éliminations par arme ; tirs et dégâts (estimation) ; grenades lancées ; ramassages (armes, grenades) ; équipement (pris, utilisé, perdu par famille) ; médailles ; totaux du match ; gestes ; en colonne seulement, les deux dernières lignes du fil.
 
 ### Idée du user renvoyée au backlog (2026-11-17)
@@ -328,15 +328,15 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 ### Amendements techniques de l'audit (par item)
 
 - **Préalables neufs, avant tout item qui les attend :**
-  - **I.1** (Haiku) `equipmentUsage` sort de `i18n/fr.ts`, `i18n/en.ts` et du contrat vers
+  - **I.1** [x] fait le 2026-11-17, `fr.ts` 494 -> 474 lignes (Haiku) `equipmentUsage` sort de `i18n/fr.ts`, `i18n/en.ts` et du contrat vers
     `i18n/equipmentUsage.i18n.ts` (patron de `playerPanel.i18n.ts`), aucun appelant ne change.
-  - **I.2** (pilote, même commit) sous-dictionnaires montés une fois : `i18n/frames.i18n.ts` (lots A, E, F,
+  - **I.2** [x] fait le 2026-11-17, libellés relevés sur les maquettes validées (pilote, même commit) sous-dictionnaires montés une fois : `i18n/frames.i18n.ts` (lots A, E, F,
     C.3), `i18n/roster.i18n.ts` (S.2, B.2, sélecteur de J), `i18n/playerInstant.i18n.ts` (« À l'instant », lot
     T). Ensuite aucun lot ne touche `fr.ts`, `en.ts` ni le contrat : un écrivain par sous-dictionnaire.
-  - **M.1** (Sonnet, avant S.2, B.2, E.4) joueur suivi indépendant de la fiche dans `model/playerPanelLogic.ts`
+  - **M.1** [x] fait le 2026-11-17, le joueur suivi est le point de vue de la page (aucun second état) ; `followXuid` survit à la fermeture et au changement de fiche ; tant que E.4 ne câble pas la caméra fiche fermée, elle ne suit que si la fiche du joueur suivi est ouverte (Sonnet, avant S.2, B.2, E.4) joueur suivi indépendant de la fiche dans `model/playerPanelLogic.ts`
     (G0-2) : valeur de départ = joueur de la page ; la caméra « Suivre » reste un état à part. Tests du
     réducteur ; `playerFocusWiring.guard.test.ts` vert.
-  - **X.1** (Sonnet, avant S.2) effets des fiches extraits sans changer le rendu : `hooks/useCardScene.ts`
+  - **X.1** [x] fait le 2026-11-17, fixations identiques à l'octet ; cliquet des fonctions longues abaissé à 249 (Sonnet, avant S.2) effets des fiches extraits sans changer le rendu : `hooks/useCardScene.ts`
     (depuis `ui/ReplayTeams.tsx`) et `ui/ReplayCardFx.tsx` (depuis `ui/ReplayPlayerCard.tsx`) ; fixations
     `replayTeams.4v4.html` et `6v6.html` inchangées.
 - **A.1** : aucun test de la touche Échap dans le module pur ; Échap en Plein cadre rend le cadre d'où l'on
@@ -387,7 +387,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **0.4** : la maquette M tranche aussi le mot (« arme lourde » ou « armes de puissance », écrit aujourd'hui
   dans la fiche) et la forme des « Totaux ».
 
-- [ ] 0.5 (ajouté le 2026-11-17, G0-5) Maquette des lignes resserrées de la Grande équipe : un tableau de plus
+- [ ] 0.5 (ajouté le 2026-11-17, G0-5 ; DESSINÉE et publiée le 2026-11-17, tableau N du canevas, `maquettes/GrandeEquipeLignes.dc.html` : ligne de 21 px, 5 px de reste à 900 px de haut ; attend la validation du user) Maquette des lignes resserrées de la Grande équipe : un tableau de plus
       sur le canevas (colonne de 360 px, 24 joueurs, fil de 5 lignes) ; validé par le user avant la partie
       « Grande équipe » de S.2.
 
@@ -484,7 +484,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 4. Lot A — les cadres
 
-- [ ] A.1 `model/replayFrame.ts`, pur : type `ReplayFrame = 'standard' | 'cinema' | 'plein-cadre'`, transitions
+- [x] A.1 (fait le 2026-11-17 : `ReplayFrameState{frame, returnTo}`, `reduceReplayFrame`, lecteurs `showsAppNavigation`, `usesCompactBar`, `canPlaceCardRow`) `model/replayFrame.ts`, pur : type `ReplayFrame = 'standard' | 'cinema' | 'plein-cadre'`, transitions
       (bascule Cinéma, bascule Plein cadre, Échap), état initial `standard` à chaque montage (aucun stockage,
       même règle que le plein écran actuel : « une manière de regarder, pas un endroit »). Tests unitaires de
       toutes les transitions.
@@ -506,7 +506,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 5. Lot B — fiches en rangée (Cinéma, Plein cadre)
 
-- [ ] B.1 `model/rowLayout.ts`, pur : `rowFits({ camps, placesParCamp, largeurCorps, gabarit, largeurScore })`
+- [x] B.1 (fait le 2026-11-17 : `rowFits`, `largeurRequiseRangee`, cotes `COTES_RANGEE` ; un écart compté par fiche, soit 6 px de marge par camp) `model/rowLayout.ts`, pur : `rowFits({ camps, placesParCamp, largeurCorps, gabarit, largeurScore })`
       selon D-12 ; la largeur vient de `GABARIT_COMPACT` et des écarts de la rangée, aucun littéral de largeur
       de fiche. Tests : 4v4 à 1440 px (tient), 5v5 à 1440 px, 4v4 à 1280 px, Grande équipe, FFA.
 - [ ] B.2 `ui/ReplayTeamsRow.tsx` : `[fiches du camp de gauche] [bandeau de score] [fiches du camp de droite]` ;
@@ -678,7 +678,7 @@ les localise, rien n'est recalculé à côté.
 
 ## 9. Lot F — plan tourné et superpositions
 
-- [ ] F.1 `autoTurns(carte, boîte)` dans `lib/replay/orientation.ts`, pur : 0 ou 1 quart de tour selon le gain
+- [x] F.1 (fait le 2026-11-17 : `autoTurns(carte, boite, dejaTourne)`, seuils 25 % pour tourner et 20 % pour revenir ; testé sur une boîte de 1390 x 700) `autoTurns(carte, boîte)` dans `lib/replay/orientation.ts`, pur : 0 ou 1 quart de tour selon le gain
       de surface (seuil 25 %, retour sous 20 %, D-14). Tests sur Detachment (1526 × 1666), Ronin (659 × 1288),
       Nadair (2133 × 947) dans les boîtes du Standard et du Cinéma à 1440 × 900.
 - [ ] F.2 Orientation « Auto » par défaut (D-14) : `useReplayOrientation` distingue « aucun choix » (Auto) d'un
