@@ -344,6 +344,11 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   `weaponLabels[]` à la requête, depuis le registre des armes (`weapons.ClassesByKey()`, la source de la
   Synthèse), par le chemin qui pose déjà `role` ; le web en tire la table arme -> classe ; mêlée sans arme et
   grenade rangées comme la Synthèse si le fil le permet, sinon « non classées ». Aucun rejeu régénéré.
+  **Révisé le 2026-11-17 au retour de T.2b** : la table tirée de `weaponLabels` est incomplète par construction
+  (grenades fragmentation et plasma, armes jamais tenues, mêlée sans arme n'y figurent pas). La classe se pose
+  donc PAR FRAG, sur l'événement de frag du contexte du match, là où le serveur pose déjà la clé d'arme
+  (`weapon_class`, registre des armes ; mêlée sans arme par une propriété déclarée de la règle du pont) ;
+  `weaponLabels[].class` n'est pas livré ; `killBreakdown` lit la classe du frag, sans table.
 
 ### Amendements techniques de l'audit (par item)
 
