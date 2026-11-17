@@ -51,6 +51,7 @@ import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { ReplayGenerateAction } from '@/features/_shared/replayGeneration/ReplayGenerateAction'
 import { themedIconSrc } from '@/lib/themedIcon'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
@@ -243,9 +244,7 @@ export function ReplayPage() {
       )}
 
       {loadState === 'empty' && (
-        <div className="rounded-lg border border-border bg-card px-3 py-12 text-center">
-          <p className="text-sm text-muted-foreground">{t.empty}</p>
-        </div>
+        <ReplayGenerateAction variant="panel" playerSlug={playerSlug} matchId={matchId} emptyLabel={t.empty} />
       )}
 
       {loadState === 'error' && !isFetching && (

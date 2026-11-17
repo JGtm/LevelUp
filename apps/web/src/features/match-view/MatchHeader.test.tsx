@@ -1,7 +1,8 @@
 /* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : suite de cas d'un meme module, qui partagent leur montage : la decouper separerait des cas que le lecteur lit ensemble. */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 
 import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
@@ -9,6 +10,8 @@ import { MatchHeaderCard, MatchNavigationBar } from './MatchHeader'
 import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities } from '@/test/capabilities'
+import { server } from '@/test/setup'
 
 // Mocks shared
 vi.mock('@/lib/accessibility', () => ({
@@ -542,6 +545,63 @@ describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
   it('ne porte aucun logo quand le match n’a pas d’artefact', () => {
     const { container } = renderHeader({ ...baseHeader, replay_available: false }, 'fr')
     expect(replayLogoSrc(container)).toBeUndefined()
+  })
+})
+
+// GÉNÉRER LE REJEU D'UN MATCH QUI N'EN A PAS : sous la capacité `can_generate_replays` seulement, et seulement quand
+// l'artefact manque. Sans la capacité, l'en-tête est celui d'avant (rien) ; avec l'artefact, le lien seul.
+describe('MatchHeaderCard — générer le rejeu', () => {
+  const GENERATION_URL = '/api/v1/players/MonGT/matches/m1/replay/generation'
+  let reads = 0
+
+  function renderHeader(header: MatchViewHeader) {
+    return renderWithQueryClient(
+      <MatchHeaderCard
+        header={header}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+  }
+
+  beforeEach(() => {
+    reads = 0
+    server.use(
+      http.get(GENERATION_URL, () => {
+        reads += 1
+        return HttpResponse.json({ state: 'generatable' })
+      }),
+    )
+    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_generate_replays: true }) })
+  })
+  afterEach(() => {
+    useAppShellStore.setState({ capabilities: null })
+  })
+
+  it('capacité vraie et artefact absent : bouton contour « Générer le rejeu »', async () => {
+    renderHeader({ ...baseHeader, replay_available: false })
+    const button = await screen.findByRole('button', { name: 'Générer le rejeu' })
+    expect(button.className).toContain('border-border')
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
+  })
+
+  it('capacité vraie et artefact présent : le lien seul, aucune lecture de l’état', async () => {
+    renderHeader({ ...baseHeader, replay_available: true })
+    expect(screen.getByRole('link', { name: /rejeu 2D/i })).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('button', { name: 'Générer le rejeu' })).not.toBeInTheDocument()
+    expect(reads).toBe(0)
+  })
+
+  it('capacité fausse : rien, aucune lecture de l’état', async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ can_generate_replays: false }) })
+    renderHeader({ ...baseHeader, replay_available: false })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('button', { name: 'Générer le rejeu' })).not.toBeInTheDocument()
+    expect(reads).toBe(0)
   })
 })
 
