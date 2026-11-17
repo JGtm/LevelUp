@@ -349,6 +349,12 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   donc PAR FRAG, sur l'événement de frag du contexte du match, là où le serveur pose déjà la clé d'arme
   (`weapon_class`, registre des armes ; mêlée sans arme par une propriété déclarée de la règle du pont) ;
   `weaponLabels[].class` n'est pas livré ; `killBreakdown` lit la classe du frag, sans table.
+  **T.2b [x] fait le 2026-11-17** : `weapon_class` sur `MatchHighlightEvent`, posé par `service/match_view_killfeed_weapon.go`
+  depuis `games/halo_infinite/killsource_class.go` ; 189 des 193 sources que le pont résout reçoivent une classe.
+  RÉSERVE À MESURER EN T.0, avant T.5 : un frag dont la source de dégât n'est pas appariée reste « non classé » ;
+  la dernière mesure connue (2026-08-11, tout le parc) ne donnait une source qu'à un tiers des frags. Mesurer sur
+  le parc régénéré la part de frags classés des matchs AVEC rejeu ; si elle est basse, la section « Éliminations
+  par arme » se décide avec le user (masquée sous un seuil de données, ou affichée avec sa part non classée).
 
 ### Amendements techniques de l'audit (par item)
 
@@ -626,7 +632,7 @@ côté serveur : T.6, qui sert les médailles du document avec leur libellé et 
 existantes se réutilisent (KDA du jeu, ADR 0006 ; catégorie « arme lourde » des niveaux d'armes du document) : 0.3
 les localise, rien n'est recalculé à côté.
 
-- [ ] T.0 (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
+- [ ] T.0 (mesures ajoutées le 2026-11-17 : part des frags classés par match avec rejeu — T.2b ; ramassages natifs, borne inférieure ou non — T.4 ; fixation « fin de match = tableau de score » de T.1 sur un match réel) (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
       schéma 125 (geste du user, dès la fusion du backlog : plan maître DM-1) et se rendent PAR BUILD du jeu.
       Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
       dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
