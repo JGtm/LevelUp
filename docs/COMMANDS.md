@@ -694,39 +694,76 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
 
 #### mapfond-build
 
+Three gestures, and only these (every option belongs to one of them; `go run ./cmd/mapfond-build -h`
+lists them grouped):
+
+1. **Cook maps** — the background image and the sidecar of each selected map.
+2. **Redo the plan without recooking** (`--plan-seul`) — the wall plan and the plan image of sidecars already
+   published.
+3. **Produce the before / after table** (`--rapport-tsv`, with `--avant-dir`) — one TSV line per map processed, next to
+   a cooking or a plan-only run.
+
+Common to gestures 1 and 2 (selection and output): `--maps` (native map: its installed folder, e.g. `ridgeline`;
+Forge map: its `map_id`; empty = every catalogue map installed locally), `--title slug`, `--out-dir DIR` (default
+`PathResolver.MapBackgroundDir`), `--natives=false`, `--forge=false`, `--avis FILE[,FILE...]` (the user's verdict, map
+by map, on the background / navigation-mesh crossing: the first file gives the rule, the next ones `ignorer` /
+`reprendre`). Cooking only: `--style` (default `jeu`), `--mpp` (metres per pixel, default 0.0920). A combination that a
+gesture would silently ignore is refused before anything is read: `--style` or `--mpp` with `--plan-seul`,
+`--avant-dir` without `--rapport-tsv`, `--natives=false --forge=false`.
+
+##### 1. Cook maps
+
 ```bash
-CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
+CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline,catalyst"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --natives=false          # every Forge map
 ```
 
-- Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
-  map (218 files today) — the top-down background image and its calibration.
-- Navigation mesh: a native map is cooked with the navmesh of its `any` module
-  (`himap.ChargeMaillageNatif`): the matter outside the mesh, dilated by 1.5 m, is erased, and the
-  sidecar publishes a `plan` (the boundary edges of the mesh, in world metres, to the millimetre).
-  A module without a mesh (Live Fire, the Academy tutorial) is cooked as before and reports
-  "aucun maillage de navigation dans le module any" in `degradations`, with no `plan`. Per-map
-  levers in `map_fond_reglages.json` (each entry still carries its `raison` and `gateLe`):
-  `rogneAuNavmesh` (on a native map: on by default, `false` keeps the mesh as the reference
-  surface without clipping ; on a Forge map: off by default), `margeNavmesh` (dilation, metres),
-  `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (native maps) cooks without the mesh
-  (no reference, no clipping) but still publishes its `plan`. A Forge map also takes `navmeshReference`, and
-  publishes a `plan` whenever the repository holds its `navmesh.blob` (`mapnav-fetch`), whether
-  or not the cooking uses it.
-- `--plan-seul` cooks nothing: for each Forge map whose `navmesh.blob` is in the repository, it
-  adds the `plan` to the published sidecar and leaves everything else (image, calibration, stats,
-  degradations, `generatedAt`) as it was. A map with no blob, or no sidecar, is left untouched.
-  It is how a map whose `.mvar` variant is not at hand gets its plan.
-- After cooking, run `go run ./cmd/mapfond-webp -convertir`: it rewrites each sidecar through
-  `internal/mapfondsidecar`, which keeps the `plan` (the film decoder's `replay.MapBackground`
-  does not know it).
-- Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
-  chain (`halo-infinite-map-images/himap` → `halo-infinite-files-reader/himodule` → `halo-infinite-files-reader/ooz`, never linked into
-  `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
-  without it) ; uses `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
-  / `map_fond_reglages.json` when present, degrades with a warning otherwise.
-- Replay when: not documented in the tool itself ; in practice, a new native or Forge map
-  needs its background cooked.
+- Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` (the background), `{key}.plan.png` (the plan image,
+  only when the map has a mesh) and `{key}.json` (the sidecar). Then run `go run ./cmd/mapfond-webp -convertir`: it
+  converts the images to WebP and rewrites each sidecar through `internal/mapfondsidecar`, which keeps the `plan` (the
+  film decoder's `replay.MapBackground` does not know it). 339 published files today: 114 sidecars, 114 backgrounds and
+  111 plan images (ADR 0048).
+- Navigation mesh: a native map is cooked with the mesh of its `any` module (`himap.ChargeMaillageNatif`): the matter
+  outside the mesh, dilated by 0.5 m (`himap.MargeNavmesh`), is erased, and the sidecar publishes a `plan` (the boundary
+  edges of the mesh, in world metres, to the millimetre) and its `planImage`. A map without a mesh (Live Fire, the
+  Academy tutorial, a Forge map whose `navmesh.blob` is absent from the repository) is cooked as before, carries a named
+  degradation in `degradations` and no `plan`. Per-map levers in `map_fond_reglages.json` (each entry carries its
+  `raison` and `gateLe`; a field the tool does not know is refused): `rogneAuNavmesh` (native map: on by default,
+  `false` keeps the mesh as the reference surface without clipping; Forge map: off by default), `margeNavmesh`,
+  `toleranceNavmesh`, `maillageNiveauHaut`, `navmeshMode`; `sansNavmesh: true` (native maps) cooks without the mesh
+  but still publishes its `plan`. A Forge map also takes `navmeshReference`.
+- Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run; cgo/GPLv3 chain
+  (`halo-infinite-map-images/himap` → `halo-infinite-files-reader/himodule` → `halo-infinite-files-reader/ooz`, never
+  linked into `cmd/server`); requires `map_objectives.json` already built (hard dependency, fails without it); a Forge
+  map also needs its `.mvar` variant and, for a plan, its `navmesh.blob` under `.ai/re_dump/` (`mapnav-fetch`); uses
+  `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json` / `map_fond_reglages.json` when present,
+  degrades with a warning otherwise.
+- Replay when: a new native or Forge map needs its background cooked, or a per-map lever changes.
+
+##### 2. Redo the plan without recooking
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --maps "ridgeline"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --forge=false     # every native map
+```
+
+- Cooks nothing: for each selected map whose mesh is readable (a native module that carries one, a Forge map whose
+  `navmesh.blob` is in the repository) and whose sidecar is published in `--out-dir`, it rewrites the `plan` AND the
+  plan image (`{key}.plan.png`), and leaves the background image, the calibration, the statistics, the degradations and
+  `generatedAt` as they were. A map without a mesh or without a sidecar is left untouched. It is how a map whose `.mvar`
+  variant is not at hand gets its plan.
+- Run `go run ./cmd/mapfond-webp -convertir` afterwards, as after a cooking.
+
+##### 3. Produce the before / after table
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres \
+  --rapport-tsv /tmp/rapport.tsv --avant-dir data/titles/halo_infinite/reference/map_backgrounds
+```
+
+- Writes one line per map processed (action, rounding mode and margin, retained components, share of matter clipped,
+  anchors on the ground before / after, edges of the plan, maps to review). `--avant-dir` holds the sidecars from before
+  the run; without it the "before" columns stay empty. Works with a cooking and with `--plan-seul`.
 
 #### mapobj-build
 

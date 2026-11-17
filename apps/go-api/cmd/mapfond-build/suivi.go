@@ -1,6 +1,6 @@
 package main
 
-// Le suivi d'une recuisson : ce que l'outil a décidé et mesuré carte par carte, et le rapport
+// Le suivi d'une cuisson : ce que l'outil a décidé et mesuré carte par carte, et le rapport
 // TSV qui le range en colonnes (`-rapport-tsv`), à comparer au sidecar d'avant (`-avant-dir`).
 
 import (
@@ -22,9 +22,7 @@ import (
 const (
 	actionRecuite  = "recuite"
 	actionPlanSeul = "plan seul"
-	// actionPublieRogne : plan seul, et le fond publié rogné à la silhouette du maillage.
-	actionPublieRogne = "publie rogne"
-	actionSautee      = "sautee"
+	actionSautee   = "sautee"
 	// actionIgnoree : l'avis complémentaire demande de laisser la carte entièrement telle qu'elle est.
 	actionIgnoree = "ignoree (existant garde)"
 )
@@ -37,8 +35,6 @@ type suiviFond struct {
 	PartRognee *float64
 	// Plan : le plan écrit au sidecar ; nil quand la carte n'en a pas.
 	Plan *planFond
-	// Rognage : ce que le rognage du fond publié a retiré ; nil sans rognage.
-	Rognage *rognagePublie
 }
 
 // planDeCible calcule le plan d'une carte qu'on vient de cuire. Un plan impossible est journalisé
@@ -154,11 +150,8 @@ func ligneTSV(b bilanAsset, avantDir string, env *environnement) string {
 		}
 		gardees, ecartees = fmt.Sprint(nav.Gardees), fmt.Sprint(nav.Ecartees)
 		eau, finales, sauvees = fmt.Sprint(nav.EauRetiree), fmt.Sprint(nav.CellulesFinales), fmt.Sprint(b.Bilan.CellulesSauveesParPlan)
-	case (s.Action == actionPlanSeul || s.Action == actionPublieRogne) && s.Plan != nil:
+	case s.Action == actionPlanSeul && s.Plan != nil:
 		gardees, ecartees = fmt.Sprint(s.Plan.Retenues.Gardees), fmt.Sprint(s.Plan.Retenues.Ecartees)
-	}
-	if s.Rognage != nil {
-		mode, marge = string(s.Decision.Mode), fmt.Sprintf("%g", s.Rognage.Marge)
 	}
 	if s.PartRognee != nil {
 		part = fmt.Sprintf("%.1f", 100**s.PartRognee)

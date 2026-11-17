@@ -15,6 +15,7 @@
  * suit la fenêtre, pas la scène, sinon il resterait cadré large pendant que les joueurs zooment.
  */
 import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
+import { rotateCanvasAbout } from '@/lib/replay/orientation'
 import { rognerAuPlan } from '@/lib/replay/planMask'
 
 import { turnsOfView, type CanvasView } from '../model/replayView'
@@ -60,9 +61,7 @@ export function drawMapBackground(
   const w = turns % 2 === 1 ? rect.height : rect.width
   const h = turns % 2 === 1 ? rect.width : rect.height
   ctx.save()
-  ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2)
-  // L'axe Y de la toile descend : un angle positif tourne dans le sens horaire vu à l'écran.
-  ctx.rotate((turns * Math.PI) / 2)
+  rotateCanvasAbout(ctx, turns, rect.x + rect.width / 2, rect.y + rect.height / 2)
   ctx.drawImage(background.image, -w / 2, -h / 2, w, h)
   ctx.restore()
 }

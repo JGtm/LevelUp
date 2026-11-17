@@ -12,17 +12,23 @@
 // et pour se juger — que le catalogue de bornes ne porte pas. Fondre les deux orchestrations
 // dans un même binaire mêlerait deux chaînes sans rien mutualiser.
 //
-// LICENCE — CONTRAINTE STRUCTURANTE : la chaîne passe par libs/himap/himap -> libs/gamefiles/himodule
-// -> libs/gamefiles/ooz, **GPLv3**. Ce binaire est de l'outillage HORS LIGNE ; l'application lit
-// l'asset figé, elle ne le fabrique jamais. `licence_test.go` interdit à cmd/server d'en
+// LICENCE — CONTRAINTE STRUCTURANTE : la chaîne passe par la brique `halo-infinite-map-images`
+// (`himap`), puis par `himodule` et `ooz` de la brique `halo-infinite-files-reader`, **GPLv3**. Ce
+// binaire est de l'outillage HORS LIGNE ; l'application lit l'asset figé, elle ne le fabrique
+// jamais. `TestServeurNeLinkePasDeCodeGPL` (cmd/server/licence_gplv3_test.go) interdit à cmd/server d'en
 // dépendre.
 //
-// Usage :
+// TROIS GESTES, et eux seuls (chaque option de la ligne de commande se rattache à l'un d'eux, voir
+// options.go) :
 //
-//	CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "ridgeline,catalyst"] [--title slug]
-//	                                         [--out-dir DIR] [--style jeu] [--rapport FILE]
-//	                                         [--natives=false] [--forge=false] [--plan-seul]
-//	                                         [--avis FILE] [--rogne-publie] [--rapport-tsv FILE] [--avant-dir DIR]
+//  1. CUIRE des cartes : l'image et le sidecar de chaque carte retenue.
+//     CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline,catalyst"
+//  2. REFAIRE LE PLAN SANS RECUIRE : le plan des murs et l'image plan des sidecars déjà publiés,
+//     le fond, le calage, les statistiques et la date de génération restant ceux de la cuisson.
+//     CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --maps "ridgeline"
+//  3. PRODUIRE LE TABLEAU AVANT / APRÈS : une ligne TSV par carte traitée, à côté d'une cuisson ou
+//     d'un plan seul ; --avant-dir porte les sidecars d'avant, pour comparer les ancres au sol.
+//     CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --rapport-tsv rapport.tsv --avant-dir DIR
 //
 // --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
 // NATIVE se désigne par son dossier installé (`ridgeline`), une carte FORGE par son map_id
@@ -30,16 +36,16 @@
 //
 // --avis lit l'avis du user carte par carte sur le croisement fond / maillage de navigation (voir
 // avis.go) : le rognage au maillage s'arme dans la forme que l'avis donne, une carte « publiee »
-// n'est pas recuite. --plan-seul refait le plan et l'image plan des sidecars publiés sans toucher
-// au fond ; avec --rogne-publie il rogne aussi le fond publié à la silhouette du maillage
-// (rogne_publie.go). --rapport-tsv écrit une ligne par carte traitée ; --avant-dir porte les sidecars
-// d'avant, pour comparer les ancres au sol.
+// n'est pas recuite.
 package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -55,83 +61,76 @@ import (
 )
 
 func main() {
-	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
-	maps := flag.String("maps", "", "clés de carte séparées par des virgules — dossier installé (native) "+
-		"ou map_id UGC (Forge) ; vide = tout ce qui est installé")
-	outDir := flag.String("out-dir", "", "répertoire de sortie (défaut : PathResolver.MapBackgroundDir)")
-	style := flag.String("style", string(himap.StyleFondParDefaut), "habillage : "+stylesConnus())
-	mpp := flag.Float64("mpp", 0, "cote du pixel en metres (0 = "+fmt.Sprintf("%.4f", himap.EchelleFondCarte)+", celle de production)")
-	rapport := flag.String("rapport", "", "écrit un rapport Markdown à ce chemin")
-	natives := flag.Bool("natives", true, "cuire les cartes cuites dans un module")
-	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
-	planSeul := flag.Bool("plan-seul", false, "refait le plan des murs et l'image plan des sidecars publies, depuis leur maillage de navigation, sans recuire")
-	roguePublie := flag.Bool("rogne-publie", false, "avec -plan-seul et -avis : rogne aussi le fond publie a la silhouette du maillage, sans recuire (cartes dont l'avis est silhouette)")
-	avis := flag.String("avis", "", "fichier(s) d'avis du user, separes par des virgules : le premier donne la regle (forme du rognage au maillage par carte), les suivants ignorer / reprendre ; vide = comportement d'avant")
-	rapports := rapportsDemandes{}
-	flag.StringVar(&rapports.tsv, "rapport-tsv", "", "ecrit le rapport de recuisson en TSV a ce chemin")
-	flag.StringVar(&rapports.avantDir, "avant-dir", "", "dossier des sidecars d'avant la recuisson (colonne « ancres avant » du rapport TSV)")
-	flag.Parse()
+	os.Exit(execute(context.Background(), os.Args[1:], os.Stderr))
+}
 
-	ctx := context.Background()
-	if !himap.StyleFondValide(himap.StyleFond(*style)) {
-		slog.ErrorContext(ctx, "habillage inconnu", "style", *style, "connus", stylesConnus())
-		os.Exit(1)
+// execute lit la ligne de commande, la valide, prépare l'environnement et lance le geste demandé.
+// Il rend le code de sortie : 0, 1 pour un échec de la cuisson ou une option refusée, 2 pour une
+// erreur de syntaxe (le paquet flag l'a déjà écrite).
+func execute(ctx context.Context, args []string, sortie io.Writer) int {
+	opts, err := litOptions(args, sortie)
+	if errors.Is(err, flag.ErrHelp) {
+		return 0
 	}
-	env, err := prepare(*titleSlug, *outDir)
+	if err != nil {
+		return 2
+	}
+	if err := opts.valide(); err != nil {
+		slog.ErrorContext(ctx, "options", "err", err)
+		return 1
+	}
+	env, err := opts.environnement()
 	if err != nil {
 		slog.ErrorContext(ctx, "préparation", "err", err)
-		os.Exit(1)
+		return 1
 	}
-	env.style = himap.StyleFond(*style)
-	env.filtre = filtreDe(*maps)
-	env.echelle = *mpp
-	env.sansNatives, env.sansForge = !*natives, !*forge
-	env.rognePublie = *roguePublie
-	if *roguePublie && (!*planSeul || *avis == "") {
-		slog.ErrorContext(ctx, "-rogne-publie exige -plan-seul et -avis")
-		os.Exit(1)
+	if opts.planSeul {
+		return executePlanSeul(ctx, env, opts.rapports)
 	}
-	if *avis != "" {
-		if env.avis, err = chargeAvis(strings.Split(*avis, ",")...); err != nil {
-			slog.ErrorContext(ctx, "avis", "err", err, "path", *avis)
-			os.Exit(1)
+	return cuit(ctx, env, opts)
+}
+
+// environnement résout ce que les options désignent : racines, catalogues, réglages, avis.
+func (o options) environnement() (*environnement, error) {
+	env, err := prepare(o.titleSlug, o.outDir)
+	if err != nil {
+		return nil, err
+	}
+	env.style = himap.StyleFond(o.style)
+	env.filtre = filtreDe(o.maps)
+	env.echelle = o.mpp
+	env.sansNatives, env.sansForge = !o.natives, !o.forge
+	if o.avis != "" {
+		if env.avis, err = chargeAvis(strings.Split(o.avis, ",")...); err != nil {
+			return nil, fmt.Errorf("avis %q : %w", o.avis, err)
 		}
 	}
+	return env, nil
+}
 
-	if *planSeul {
-		os.Exit(executePlanSeul(ctx, env, rapports))
-	}
-
+// cuit est le geste « cuire des cartes » : les natives puis les Forge retenues, le bilan, et le
+// rapport TSV s'il est demandé. Rend le code de sortie.
+func cuit(ctx context.Context, env *environnement, o options) int {
 	var bilans []bilanAsset
-	if *natives {
+	if o.natives {
 		bilans = append(bilans, env.cuitNatives(ctx)...)
 	}
-	if *forge {
+	if o.forge {
 		bilans = append(bilans, env.cuitForge(ctx)...)
 	}
 	sort.Slice(bilans, func(i, j int) bool { return bilans[i].Cle < bilans[j].Cle })
 
 	echecs := resume(ctx, bilans, env)
-	if rapports.tsv != "" {
-		if err := ecritRapportTSV(rapports.tsv, rapports.avantDir, bilans, env); err != nil {
-			slog.ErrorContext(ctx, "rapport tsv", "err", err, "path", rapports.tsv)
-			echecs++
-		}
-	}
-	if *rapport != "" {
-		if err := ecritRapport(*rapport, bilans, env); err != nil {
-			slog.ErrorContext(ctx, "rapport", "err", err, "path", *rapport)
+	if o.rapports.tsv != "" {
+		if err := ecritRapportTSV(o.rapports.tsv, o.rapports.avantDir, bilans, env); err != nil {
+			slog.ErrorContext(ctx, "rapport tsv", "err", err, "path", o.rapports.tsv)
 			echecs++
 		}
 	}
 	if echecs > 0 {
-		os.Exit(1)
+		return 1
 	}
-}
-
-// rapportsDemandes : où écrire le rapport de recuisson en TSV, et où lire les sidecars d'avant.
-type rapportsDemandes struct {
-	tsv, avantDir string
+	return 0
 }
 
 // environnement porte ce qui est résolu une fois pour toutes.
@@ -156,8 +155,6 @@ type environnement struct {
 	filtre  map[string]bool
 	// avis : l'avis du user sur le croisement fond / maillage (`-avis`). Nil sans l'option.
 	avis *avisFond
-	// rognePublie : `-rogne-publie`, voir rogne_publie.go.
-	rognePublie bool
 	// sansNatives et sansForge : `-natives=false` et `-forge=false`.
 	sansNatives, sansForge bool
 	// nomsAffiches : module installé -> noms de carte affichés, lus dans
@@ -340,4 +337,35 @@ func chargeCallouts(chemin string) *replay.MapCalloutsCatalog {
 		return nil
 	}
 	return cat
+}
+
+// chargePositionsJouees lit le catalogue des positions jouées. Son absence n'est pas une erreur :
+// aucune carte n'a alors ce levier disponible, et `positionsJoueesDe` le dira carte par carte.
+func chargePositionsJouees(chemin string) map[string][]himap.PositionJouee {
+	brut, err := os.ReadFile(chemin)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("mapfond: catalogue des positions jouees illisible", "err", err, "path", chemin)
+		}
+		return nil
+	}
+	var cat struct {
+		Maps map[string]struct {
+			Positions [][2]float64 `json:"positions"`
+		} `json:"maps"`
+	}
+	if err := json.Unmarshal(brut, &cat); err != nil {
+		slog.Warn("mapfond: catalogue des positions jouees invalide", "err", err, "path", chemin)
+		return nil
+	}
+	out := make(map[string][]himap.PositionJouee, len(cat.Maps))
+	for cle, m := range cat.Maps {
+		pts := make([]himap.PositionJouee, 0, len(m.Positions))
+		for _, p := range m.Positions {
+			pts = append(pts, himap.PositionJouee{X: p[0], Y: p[1]})
+		}
+		out[cle] = pts
+	}
+	slog.Info("mapfond: catalogue des positions jouees charge", "cartes", len(out), "path", chemin)
+	return out
 }

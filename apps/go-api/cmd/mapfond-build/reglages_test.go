@@ -10,11 +10,13 @@ package main
 // Ce test lit l'asset PUBLIÉ, celui que la cuisson consomme.
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -218,5 +220,117 @@ func TestSansNavmeshGardeLePlanDesMurs(t *testing.T) {
 	pf, err := calculePlan(sourcePlanNatif, maillage, nil, cadre, nil)
 	if err != nil || pf == nil || len(pf.Plan.Edges) != 4 {
 		t.Errorf("plan = %+v, %v ; attendu les 4 aretes du carre", pf, err)
+	}
+}
+
+// exemptionsLevierSansEntree : les leviers déclarés que le fichier publié ne pose sur aucune carte.
+// Une entrée dit sa date et ce qui la tient (ADR, test qui le fait tourner) ; elle se retire dès
+// qu'une carte pose le levier, ou avec le levier.
+var exemptionsLevierSansEntree = map[string]string{
+	"sansNavmesh": "2026-11-16 : cité par l'ADR 0048 D-2 ; TestSansNavmeshGardeLePlanDesMurs le fait tourner",
+	"navmeshMode": "2026-11-16 : cité par l'ADR 0048 D-2 ; TestReglageNavmeshModePrimeSurLAvis le fait tourner",
+}
+
+var formatExemptionDatee = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} : \S`)
+
+// nomsDeLeviers rend le nom JSON de chaque levier déclaré (tous les champs sauf l'identité).
+func nomsDeLeviers() []string {
+	var out []string
+	typ := reflect.TypeOf(reglageCarte{})
+	for i := 0; i < typ.NumField(); i++ {
+		nom, _, _ := strings.Cut(typ.Field(i).Tag.Get("json"), ",")
+		if nom == "carte" || nom == "raison" || nom == "gateLe" {
+			continue
+		}
+		out = append(out, nom)
+	}
+	return out
+}
+
+// problemesLeviersSansEntree rend ce qui interdit de garder les leviers déclarés : un levier qu'aucune
+// carte ne pose et qui n'a pas d'exemption datée, une exemption sans date, une exemption pour un
+// levier qui a des entrées ou qui n'existe plus.
+func problemesLeviersSansEntree(leviers []string, entrees map[string]map[string]json.RawMessage, exemptions map[string]string) []string {
+	var out []string
+	existe := map[string]bool{}
+	for _, nom := range leviers {
+		existe[nom] = true
+		n := 0
+		for _, entree := range entrees {
+			if _, ok := entree[nom]; ok {
+				n++
+			}
+		}
+		raison, exempte := exemptions[nom]
+		switch {
+		case n == 0 && !exempte:
+			out = append(out, fmt.Sprintf("levier %q : aucune entrée dans le fichier de réglages et aucune exemption datée — le retirer, ou le poser sur une carte", nom))
+		case n > 0 && exempte:
+			out = append(out, fmt.Sprintf("levier %q : exemption sans objet, %d entrée(s) le posent — la retirer", nom, n))
+		case exempte && !formatExemptionDatee.MatchString(raison):
+			out = append(out, fmt.Sprintf("levier %q : exemption %q, attendu « AAAA-MM-JJ : raison »", nom, raison))
+		}
+	}
+	for nom := range exemptions {
+		if !existe[nom] {
+			out = append(out, fmt.Sprintf("exemption %q : ce levier n'existe plus — la retirer", nom))
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Un levier déclaré que le fichier publié ne pose sur aucune carte est du code mort : il se retire,
+// ou il porte une exemption datée qui dit ce qui le tient.
+func TestChaqueLevierADesDonneesOuUneExemptionDatee(t *testing.T) {
+	racine, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
+	}
+	blob, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(cheminReglagesPublies)))
+	if err != nil {
+		t.Skipf("aucun reglage publie (%v)", err)
+	}
+	var brut struct {
+		Cartes map[string]map[string]json.RawMessage `json:"cartes"`
+	}
+	if err := json.Unmarshal(blob, &brut); err != nil {
+		t.Fatalf("réglages publiés illisibles : %v", err)
+	}
+	for _, p := range problemesLeviersSansEntree(nomsDeLeviers(), brut.Cartes, exemptionsLevierSansEntree) {
+		t.Error(p)
+	}
+}
+
+func TestProblemesLeviersSansEntreeRefuseLesTroisCas(t *testing.T) {
+	entrees := map[string]map[string]json.RawMessage{"a": {"pose": json.RawMessage("1")}}
+	leviers := []string{"pose", "orphelin", "exempte", "sansDate"}
+	exemptions := map[string]string{
+		"pose":     "2026-11-16 : inutile",
+		"exempte":  "2026-11-16 : tenu par un test",
+		"sansDate": "tenu par un test",
+		"disparu":  "2026-11-16 : levier retire",
+	}
+	got := strings.Join(problemesLeviersSansEntree(leviers, entrees, exemptions), " | ")
+	for _, attendu := range []string{`levier "orphelin"`, `levier "pose" : exemption sans objet`, `levier "sansDate"`, `exemption "disparu"`} {
+		if !strings.Contains(got, attendu) {
+			t.Errorf("problème %q non relevé dans : %s", attendu, got)
+		}
+	}
+	if strings.Contains(got, `levier "exempte"`) {
+		t.Errorf("une exemption datée sur un levier sans entrée doit passer : %s", got)
+	}
+}
+
+// Un champ inconnu fait ÉCHOUER le chargement : un levier retiré qu'une entrée déclarerait encore
+// serait sinon ignoré en silence.
+func TestChargeReglagesRefuseUnLevierInconnu(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "r.json")
+	blob := `{"schemaVersion":1,"cartes":{"x":{"sourceNavmesh":true,"raison":"...","gateLe":"2026-11-16"}}}`
+	if err := os.WriteFile(p, []byte(blob), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chargeReglages(p); err == nil {
+		t.Fatal("un levier inconnu a été accepté")
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
@@ -186,7 +185,7 @@ func (a *avisFond) deEtat(libelle, etat string) decisionFond {
 // carte garde son comportement d'avant (rognage natif seul, Forge selon son réglage). Le réglage
 // `navmeshMode` de la carte prime sur l'avis, y compris sur « publie ».
 func (e *environnement) decisionFond(cle string) decisionFond {
-	reglage := e.navmeshModeDe(cle)
+	reglage := valeurDe(e, cle, levierNavmeshMode)
 	if e.avis == nil {
 		return decisionFond{Etat: etatReglage, Mode: reglage}
 	}
@@ -195,21 +194,6 @@ func (e *environnement) decisionFond(cle string) decisionFond {
 		d = decisionFond{Etat: etatReglage, Rogne: true, Mode: reglage}
 	}
 	return d
-}
-
-// navmeshModeDe rend le mode de rognage propre à la carte (`navmeshMode`), vide si absent.
-// Journalisé : il prime sur l'avis.
-func (e *environnement) navmeshModeDe(cle string) himap.ModeNavmesh {
-	if e.reglages == nil {
-		return ""
-	}
-	c, ok := e.reglages.Cartes[cle]
-	if !ok || c.NavmeshMode == "" {
-		return ""
-	}
-	slog.Info("mapfond: mode de rognage au maillage propre a la carte", "carte", cle,
-		"mode", c.NavmeshMode, "gateLe", c.GateLe)
-	return himap.ModeNavmesh(c.NavmeshMode)
 }
 
 // modeNavmeshValide dit si le mode d'un réglage est l'un de ceux de la brique.
