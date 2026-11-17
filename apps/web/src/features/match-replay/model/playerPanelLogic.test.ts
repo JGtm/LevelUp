@@ -12,12 +12,9 @@
  *     sinon le prédicat désigne les vies du joueur choisi, bot compris (par ses vies, jamais par
  *     un xuid qu'il n'a pas).
  *  5. LES ÉLÉMENTS À PARTIES (effets de mort…) : une règle, `ownershipShown`, pour tous les calques.
- *  6. CE QUE LE PANNEAU AFFICHE : les totaux de FIN DE MATCH lus sur la feuille, jamais un zéro
- *     inventé — une valeur non lue est une lacune, un joueur sans feuille n'a aucune section.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import {
@@ -26,7 +23,6 @@ import {
   NO_PLAYER_PANEL,
   ownershipShown,
   panelFocusOf,
-  playerPanelSheet,
   reducePlayerPanel,
   shownSlotPredicate,
   trackedPlayerOf,
@@ -376,88 +372,5 @@ describe('ownershipShown — la règle unique des éléments à parties', () => 
     expect(shown([{ life: { slot: 3, frame: 70 } }])).toBe(true)
     expect(shown([{ life: { slot: 9, frame: 70 }, xuid: 'A' }])).toBe(true)
     expect(shown([{ life: { slot: 9, frame: 70 }, xuid: 'B' }])).toBe(false)
-  })
-})
-
-function sheet(over: Partial<MatchScoreboardRow> = {}): MatchScoreboardRow {
-  return scoreboardRow('A', 'Alpha', 'a', over)
-}
-
-describe('playerPanelSheet — les totaux de fin de match, sans rien inventer', () => {
-  it('sans ligne de feuille : aucune section, et il le dit', () => {
-    expect(playerPanelSheet(undefined)).toEqual({ hasSheet: false, sections: [] })
-  })
-
-  it('une feuille entièrement non lue ne produit AUCUNE section — jamais de zéro', () => {
-    const r = playerPanelSheet(sheet({ score: undefined, headshot_kills: undefined, power_weapon_kills: undefined, melee_kills: undefined }))
-    expect(r.hasSheet).toBe(true)
-    expect(r.sections).toEqual([])
-  })
-
-  it('la précision : pourcentage, touches et tirs', () => {
-    const r = playerPanelSheet(sheet({ accuracy: 42.5, shots_hit: 85, shots_fired: 200 }))
-    expect(r.sections[0]).toEqual({
-      id: 'precision',
-      rows: [
-        { key: 'precision', format: 'percent', value: 42.5 },
-        { key: 'shotsHit', format: 'integer', value: 85 },
-        { key: 'shotsFired', format: 'integer', value: 200 },
-      ],
-    })
-  })
-
-  it('une valeur non lue AU MILIEU d’une section est une lacune (null), pas un zéro', () => {
-    const r = playerPanelSheet(sheet({ accuracy: 40, shots_hit: undefined, shots_fired: 100 }))
-    expect(r.sections[0].rows.map((x) => x.value)).toEqual([40, null, 100])
-  })
-
-  it('un vrai zéro MESURÉ reste un zéro', () => {
-    const r = playerPanelSheet(sheet({ damage_dealt: 0, damage_taken: 120 }))
-    const damage = r.sections.find((s) => s.id === 'damage')!
-    expect(damage.rows.map((x) => x.value)).toEqual([0, 120])
-  })
-
-  it('les dégâts sont arrondis à l’entier', () => {
-    const r = playerPanelSheet(sheet({ damage_dealt: 3456.7, damage_taken: 99.2 }))
-    const damage = r.sections.find((s) => s.id === 'damage')!
-    expect(damage.rows.map((x) => x.value)).toEqual([3457, 99])
-  })
-
-  it('le détail du score : score, tête, arme de puissance, corps à corps ; la grenade seulement si la feuille la porte', () => {
-    const r = playerPanelSheet(sheet({ score: 1800, headshot_kills: 4, power_weapon_kills: 2, melee_kills: 1 }))
-    const score = r.sections.find((s) => s.id === 'score')!
-    expect(score.rows.map((x) => x.key)).toEqual(['score', 'headshotKills', 'powerWeaponKills', 'meleeKills'])
-    const withGrenade = playerPanelSheet(sheet({ score: 1800, grenade_kills: 3 }))
-    expect(withGrenade.sections.find((s) => s.id === 'score')!.rows.map((x) => x.key)).toContain('grenadeKills')
-  })
-
-  it('l’objectif : seuls les champs de la table fermée que la feuille porte, zéro mesuré compris', () => {
-    const r = playerPanelSheet(sheet({ objective: { flag_captures: 2, flag_returns: 0, mystery_stat: 9 } as never }))
-    const obj = r.sections.find((s) => s.id === 'objective')!
-    expect(obj.rows).toEqual([
-      { key: 'flag_captures', format: 'integer', value: 2 },
-      { key: 'flag_returns', format: 'integer', value: 0 },
-    ])
-  })
-
-  it('sans objectif sur la feuille, pas de section d’objectif', () => {
-    expect(playerPanelSheet(sheet({ objective: undefined })).sections.find((s) => s.id === 'objective')).toBeUndefined()
-  })
-
-  it('les armes : les cinq plus meurtrières, les zéros écartés', () => {
-    const weapon = (id: number, kills: number) => ({ weapon_id: id, label: `W${id}`, kills })
-    const r = playerPanelSheet(sheet({
-      weapon_kills: [weapon(1, 2), weapon(2, 9), weapon(3, 0), weapon(4, 5), weapon(5, 1), weapon(6, 3), weapon(7, 4)],
-    }))
-    const w = r.sections.find((s) => s.id === 'weapons')!
-    expect(w.weapons?.map((x) => x.weaponId)).toEqual([2, 4, 7, 6, 1])
-  })
-
-  it('l’ordre des sections est celui de la maquette : précision, dégâts, détail du score, objectif, armes', () => {
-    const r = playerPanelSheet(sheet({
-      accuracy: 50, shots_hit: 1, shots_fired: 2, damage_dealt: 10, damage_taken: 5, score: 100,
-      objective: { flag_captures: 1 } as never, weapon_kills: [{ weapon_id: 1, kills: 1 }],
-    }))
-    expect(r.sections.map((s) => s.id)).toEqual(['precision', 'damage', 'score', 'objective', 'weapons'])
   })
 })

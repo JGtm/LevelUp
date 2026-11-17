@@ -92,6 +92,9 @@ function standardColumn(view: ReplayFrameView) {
               playWindow={model.window}
               allegiance={model.allegiance}
               locale={locale}
+              players={model.players}
+              feed={model.feed}
+              weaponIcons={view.weaponIcons}
               column={{
                 picker: (
                   <ReplayPlayerPicker

@@ -117,7 +117,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
 describe('garde-rail : les actions du panneau ne touchent pas au point de vue (4.6)', () => {
   const FICHIERS = [
     'playerPanelLogic.ts', 'followLogic.ts', 'usePlayerPanel.ts', 'useReplayPlayerFocus.ts',
-    'useReplayFollow.ts', 'ReplayPlayerPanel.tsx', 'ReplayPlayerPanelList.tsx', 'ReplayFeedOrPanel.tsx',
+    'useReplayFollow.ts', 'ReplayPlayerPanel.tsx', 'ReplayPlayerPanelBody.tsx', 'ReplayFeedOrPanel.tsx',
   ]
 
   it.each(FICHIERS)('%s ne lit ni n’écrit le point de vue', (nom) => {

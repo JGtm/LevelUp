@@ -320,9 +320,9 @@ describe('playerInstantEstimates — tirs : valeurs', () => {
   it('par arme : tirs et dégâts, arme non résolue comprise, du plus tiré au moins tiré', () => {
     const s = at(A, 100).shots!
     expect(s.byWeapon).toEqual([
-      { weapon: 'W1', fired: 2, damage: 35.3 },
-      { weapon: 'W2', fired: 1, damage: 40 },
-      { weapon: null, fired: 1, damage: 0 },
+      { weapon: 'W1', fired: 2, firedEstimated: 2, damage: 35.3 },
+      { weapon: 'W2', fired: 1, firedEstimated: 1, damage: 40 },
+      { weapon: null, fired: 1, firedEstimated: 1, damage: 0 },
     ])
   })
 
@@ -368,6 +368,51 @@ describe('playerInstantEstimates — tirs : valeurs', () => {
   })
 })
 
+describe('playerInstantEstimates — tirs estimés (rapport du bilan)', () => {
+  /** A a écrit 4 tirs dans le film pour 20 tirs du jeu : le rapport est 5. */
+  const bilan = { ...stat('A', true), shots: 20, shotEvents: 4 }
+  const doc = docWith({ shotStats: [bilan, stat('B', true), stat('C', false)] })
+  const { at } = lobby(doc)
+
+  it('à la dernière image, les tirs estimés égalent ceux du bilan et la précision est touches sur tirs estimés du bilan', () => {
+    const s = at(A, 199).shots!
+    expect(s.fired).toBe(bilan.shotEvents)
+    expect(s.firedEstimated).toBe(bilan.shots)
+    expect(s.accuracy).toBeCloseTo(s.hit / bilan.shots, 10)
+    expect(s.accuracy).toBeCloseTo(0.1, 10)
+  })
+
+  it('à l instant : les tirs écrits au rapport du bilan, arrondis à l entier', () => {
+    expect(at(A, 5).shots!).toMatchObject({ fired: 1, firedEstimated: 5, hit: 0, accuracy: 0 })
+    expect(at(A, 16).shots!).toMatchObject({ fired: 2, firedEstimated: 10, hit: 2 })
+    expect(at(A, 16).shots!.accuracy).toBeCloseTo(0.2, 10)
+  })
+
+  it('début de match : aucun tir estimé, précision absente', () => {
+    expect(at(A, 0).shots!).toMatchObject({ fired: 0, firedEstimated: 0, accuracy: null })
+  })
+
+  it('par arme : le même rapport s applique aux tirs de chaque arme', () => {
+    expect(at(A, 100).shots!.byWeapon.map((w) => [w.weapon, w.fired, w.firedEstimated])).toEqual([
+      ['W1', 2, 10],
+      ['W2', 1, 5],
+      [null, 1, 5],
+    ])
+  })
+
+  it('un rapport non entier est arrondi', () => {
+    const rapport = lobby(docWith({ shotStats: [{ ...stat('A', true), shots: 10, shotEvents: 4 }, stat('B', true)] })).at
+    // 1 tir écrit x 2,5 = 2,5 -> 3 ; 4 tirs écrits x 2,5 = 10.
+    expect(rapport(A, 5).shots!.firedEstimated).toBe(3)
+    expect(rapport(A, 199).shots!.firedEstimated).toBe(10)
+  })
+
+  it('un bilan sans tirs écrits ne donne pas de rapport : les tirs estimés sont les tirs écrits', () => {
+    const sans = lobby(docWith({ shotStats: [{ ...stat('A', true), shots: 20, shotEvents: 0 }, stat('B', true)] })).at
+    expect(sans(A, 199).shots).toMatchObject({ fired: 4, firedEstimated: 4 })
+  })
+})
+
 /** La feuille d'un match de fixture : le score de chaque joueur est la somme de ses points par action. */
 function sheetFromActions(doc: ReturnType<typeof testReplayDoc>) {
   const totals = new Map<string, number>()
@@ -391,6 +436,8 @@ describe('playerInstantEstimates — films réels (fixtures Go)', () => {
         expect(end.shots === null).toBe(stat?.sufficient !== true)
         if (!end.shots || !stat) continue
         expect(end.shots.fired).toBeLessThanOrEqual(stat.shotEvents)
+        // Les tirs estimés ne dépassent pas les tirs du jeu du bilan.
+        expect(end.shots.firedEstimated).toBeLessThanOrEqual(Math.max(stat.shots, stat.shotEvents) + 1)
         expect(end.shots.hit).toBeLessThanOrEqual(stat.hits)
         expect(end.shots.damageDealt).toBeLessThanOrEqual(stat.damageDealt + 0.1)
         expect(end.shots.damageTaken).toBeLessThanOrEqual(stat.damageTaken + 0.1)

@@ -10,6 +10,7 @@
  *     focus est rendu à la fiche de la colonne, y compris quand elle n'est de nouveau visible qu'au retrait du
  *     panneau.
  *  4. LE PIED REÇOIT LA SORTIE du panneau : « Fil complet » ferme comme « Équipes ».
+ *  5. LE CORPS COMMUN : les sections de la fiche enrichie y sont, dans l'ordre, dans la zone qui défile.
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
@@ -20,6 +21,9 @@ import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { COTES_FICHE_STANDARD } from '../model/cotesFicheStandard'
 import { COTES_COLONNE_STANDARD } from '../model/cotesStandard'
+import {
+  INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers,
+} from '../test/instantFixture'
 import { testReplayDoc } from '../test/testDoc'
 import { ReplayPlayerPanel, type ReplayPlayerPanelProps } from './ReplayPlayerPanel'
 
@@ -43,6 +47,9 @@ function props(over: Partial<ReplayPlayerPanelProps> = {}): ReplayPlayerPanelPro
     playWindow: null,
     allegiance: filmAllegianceOf(DOC, [], 'A'),
     locale: 'fr',
+    players: [PLAYER],
+    feed: [],
+    weaponIcons: new Map(),
     column: {
       picker: <div data-testid="selecteur">sélecteur</div>,
       footer: (close) => (
@@ -236,5 +243,25 @@ describe('fiche de la colonne — la sortie', () => {
     } finally {
       fiche.remove()
     }
+  })
+})
+
+describe('fiche de la colonne — le corps commun, enrichi', () => {
+  it('toutes les sections de la fiche, de « À l’instant » à « Gestes », dans la zone qui défile ; le pied reste fixé', () => {
+    const doc = instantDoc()
+    const players = instantPlayers(doc)
+    setup({
+      doc, player: instantPlayer(players, 'A'), players, feed: instantFeed(), weaponIcons: INSTANT_ICONS,
+      frame: INSTANT_LAST_FRAME, nowMs: INSTANT_LAST_FRAME * 100, allegiance: filmAllegianceOf(doc, [], 'A'),
+    })
+    const titres = [...zone().querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label'))
+    expect(titres).toEqual([
+      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
+      'Ramassages', 'Équipement', 'Médailles', 'Totaux du match', 'Gestes',
+    ])
+    expect(zone().contains(screen.getByTestId('pied'))).toBe(false)
+    // La colonne fait défiler toute la fiche : le corps ne porte aucun défilement propre, et son nom est à 17 px.
+    expect(zone().querySelectorAll('.overflow-y-auto')).toHaveLength(0)
+    expect(within(zone()).getByText('Alpha').style.fontSize).toBe('17px')
   })
 })

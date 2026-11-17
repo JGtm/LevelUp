@@ -37,6 +37,54 @@ export interface PlayerInstantText {
   weaponStowed: string
   /** Les charges restantes de l'équipement porté (« 1 charge », « 2 charges »). */
   equipmentCharges: (n: number) => string
+  /** La section de ce que le joueur a fait depuis le début du match, et ses lignes. */
+  sinceStart: string
+  fda: string
+  currentStreak: string
+  bestStreak: string
+  headshots: string
+  /** Ce qui suit le nombre de tirs à la tête : le nombre d'éliminations dont le coup fatal est lu. */
+  headshotsOfFmt: (measured: number) => string
+  perfects: string
+  respawns: string
+  currentLife: string
+  averageLife: string
+  shieldsLost: string
+  score: string
+  /** La place dans le lobby (« 2e sur 8 »). */
+  rankFmt: (place: number, of: number) => string
+  /** La capsule des valeurs estimées, et son infobulle. */
+  estimate: string
+  estimateHint: string
+  /** La section des tirs et des dégâts, et ses lignes. */
+  shotsAndDamage: string
+  shotAccuracy: string
+  damageDealtTaken: string
+  shotsFmt: (n: number) => string
+  /** Les dégâts d'une arme, le nombre étant déjà écrit dans la langue de la page. */
+  damageFmt: (written: string) => string
+  /** La section des grenades lancées. */
+  grenadesThrown: string
+  /** La section des ramassages, l'infobulle de sa capsule (le compte du film est un minimum) et ses deux lignes. */
+  pickups: string
+  pickupsHint: string
+  pickupWeapons: string
+  pickupGrenades: string
+  /** Une arme du tableau des éliminations dont aucun nom n'est connu : jamais sa clé. */
+  unnamedWeapon: string
+  /** Les éliminations à la tête, dans les totaux du match. */
+  headshotKills: string
+}
+
+/** Le rang en français : « 1er », puis « 2e », « 3e »… */
+const frOrdinal = (n: number): string => (n === 1 ? '1er' : `${n}e`)
+
+/** Le rang en anglais : « 1st », « 2nd », « 3rd », « 4th », « 11th »… */
+function enOrdinal(n: number): string {
+  const lastTwo = n % 100
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`
+  const suffix = { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10]
+  return `${n}${suffix ?? 'th'}`
 }
 
 export const FR_PLAYER_INSTANT = {
@@ -56,6 +104,33 @@ export const FR_PLAYER_INSTANT = {
   weaponInHand: 'en main',
   weaponStowed: 'en réserve',
   equipmentCharges: (n) => (n === 1 ? '1 charge' : `${n} charges`),
+  sinceStart: 'Depuis le début du match',
+  fda: 'FDA',
+  currentStreak: 'Série en cours',
+  bestStreak: 'Meilleure série',
+  headshots: 'Tirs à la tête',
+  headshotsOfFmt: (measured) => `sur ${measured} mesurées`,
+  perfects: 'Éliminations parfaites',
+  respawns: 'Réapparitions',
+  currentLife: 'Vie en cours',
+  averageLife: "Durée moyenne d'une vie",
+  shieldsLost: 'Boucliers perdus',
+  score: 'Score',
+  rankFmt: (place, of) => `${frOrdinal(place)} sur ${of}`,
+  estimate: 'estimation',
+  estimateHint: "Valeur estimée à partir du film, pas un total officiel",
+  shotsAndDamage: 'Tirs et dégâts',
+  shotAccuracy: 'Précision',
+  damageDealtTaken: 'Dégâts infligés / subis',
+  shotsFmt: (n) => (n === 1 ? '1 tir' : `${n} tirs`),
+  damageFmt: (written) => `${written} dégâts`,
+  grenadesThrown: 'Grenades lancées',
+  pickups: 'Ramassages',
+  pickupsHint: 'Le film ne montre pas tous les ramassages : ce compte est un minimum',
+  pickupWeapons: 'Armes',
+  pickupGrenades: 'Grenades',
+  unnamedWeapon: 'Sans arme nommée',
+  headshotKills: 'Éliminations à la tête',
 } satisfies PlayerInstantText
 
 export const EN_PLAYER_INSTANT = {
@@ -75,4 +150,31 @@ export const EN_PLAYER_INSTANT = {
   weaponInHand: 'in hand',
   weaponStowed: 'in reserve',
   equipmentCharges: (n) => (n === 1 ? '1 charge' : `${n} charges`),
+  sinceStart: 'Since the start of the match',
+  fda: 'KDA',
+  currentStreak: 'Current streak',
+  bestStreak: 'Best streak',
+  headshots: 'Headshots',
+  headshotsOfFmt: (measured) => `of ${measured} measured`,
+  perfects: 'Perfect kills',
+  respawns: 'Respawns',
+  currentLife: 'Current life',
+  averageLife: 'Average life',
+  shieldsLost: 'Shields lost',
+  score: 'Score',
+  rankFmt: (place, of) => `${enOrdinal(place)} of ${of}`,
+  estimate: 'estimate',
+  estimateHint: 'Value estimated from the film, not an official total',
+  shotsAndDamage: 'Shots and damage',
+  shotAccuracy: 'Accuracy',
+  damageDealtTaken: 'Damage dealt / taken',
+  shotsFmt: (n) => (n === 1 ? '1 shot' : `${n} shots`),
+  damageFmt: (written) => `${written} damage`,
+  grenadesThrown: 'Grenades thrown',
+  pickups: 'Pickups',
+  pickupsHint: 'The film does not show every pickup: this count is a minimum',
+  pickupWeapons: 'Weapons',
+  pickupGrenades: 'Grenades',
+  unnamedWeapon: 'No named weapon',
+  headshotKills: 'Headshot kills',
 } satisfies PlayerInstantText

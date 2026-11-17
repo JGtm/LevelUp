@@ -25,10 +25,15 @@
  * TIRS ET DÉGÂTS. Pour un joueur dont la lecture des tirs est jugée SUFFISANTE par le document
  * (`shotStats[].sufficient`) et pour lui seul, tout est cumulé sur les événements DATÉS : un tir écrit par le film
  * est rattaché à son tireur par la vie qui occupe le slot à l'image du tir (`buildSlotOwnership`) ; une touche et
- * une ligne de dégât le sont par xuid. Ces valeurs sont des ESTIMATIONS (`estimated: true`), et deux biais sont
- * connus. Les tirs comptés sont ceux que le film écrit, soit au moins `coverage.hits.minCoverage` des tirs réels
- * pour un joueur suffisant : la précision (touches sur tirs) tend donc à être surestimée. Et les compteurs d'un
- * joueur ne dépassent jamais les totaux de match de `shotStats` (qui comptent aussi hors de l'axe).
+ * une ligne de dégât le sont par xuid. Ces valeurs sont des ESTIMATIONS (`estimated: true`).
+ *
+ * LES TIRS ESTIMÉS. Le film n'écrit qu'une part des tirs réels : le bilan du joueur publie les tirs écrits
+ * (`shotEvents`) et les tirs du jeu (`shots`, la numérotation du jeu). À l'instant, les tirs estimés sont les tirs
+ * écrits à l'instant au rapport `shots / shotEvents` du bilan, arrondis à l'entier ; la précision est les touches
+ * sur ces tirs estimés, jamais sur les tirs écrits (ils sous-comptent : la précision serait trop haute et
+ * contredirait celle de fin de match). Un bilan sans tirs ou sans tirs écrits ne donne pas de rapport : les tirs
+ * estimés sont alors les tirs écrits. Les compteurs d'un joueur ne dépassent jamais les totaux de match de
+ * `shotStats` (qui comptent aussi hors de l'axe).
  *
  * Les BOTS comptent comme tout joueur pour le score et le rang (clés d'identité : `identityKeys`). Le film ne
  * publie ni tir, ni touche, ni dégât pour un bot : ses tirs sont absents.
@@ -80,6 +85,8 @@ export interface WeaponEstimate {
   weapon: string | null
   /** Tirs écrits par le film avec cette arme. */
   fired: number
+  /** Tirs estimés avec cette arme : les tirs écrits au rapport du bilan du joueur, arrondis. */
+  firedEstimated: number
   /** Points de dégât infligés avec cette arme (au dixième près). */
   damage: number
 }
@@ -93,9 +100,11 @@ export interface PlayerShotEstimates {
   estimated: true
   /** Tirs écrits par le film, toutes armes. */
   fired: number
+  /** Tirs estimés, toutes armes : les tirs écrits au rapport `shots / shotEvents` du bilan du joueur, arrondis. */
+  firedEstimated: number
   /** Touches estimées (une par tireur, unité touchée et image). */
   hit: number
-  /** `hit / fired`, entre 0 et un peu plus de 1 (une touche d'arme à zone n'est pas un tir). `null` quand aucun tir. */
+  /** `hit / firedEstimated`, entre 0 et un peu plus de 1 (une touche d'arme à zone n'est pas un tir). `null` quand aucun tir estimé. */
   accuracy: number | null
   /** Points de dégât infligés aux autres joueurs et aux bots, hors soi-même (au dixième près). */
   damageDealt: number
@@ -149,6 +158,8 @@ interface WeaponSeries {
 }
 
 interface ShotSeries {
+  /** Le rapport tirs estimés sur tirs écrits du bilan du joueur ; 1 quand le bilan n'en donne pas. */
+  scale: number
   hit: Dated[]
   taken: TenthsStep[]
   weapons: Map<string | null, WeaponSeries>
@@ -257,11 +268,16 @@ function openAccumulators(
   const owner = new Map<string, string>()
   for (const p of players) {
     if (shotStatOf(doc, p)?.sufficient !== true) continue
-    acc.set(p.xuid, { hit: [], taken: [], weapons: new Map() })
+    acc.set(p.xuid, { scale: estimatedShotsScale(shotStatOf(doc, p)), hit: [], taken: [], weapons: new Map() })
     raw.set(p.xuid, { dealt: new Map(), taken: [] })
     for (const k of identityKeys(p)) owner.set(k, p.xuid)
   }
   return { acc, raw, owner }
+}
+
+/** Le rapport tirs estimés sur tirs écrits d'un bilan ; 1 quand l'un des deux manque (aucun rapport à tirer). */
+function estimatedShotsScale(stat: { shots: number; shotEvents: number } | undefined): number {
+  return stat && stat.shots > 0 && stat.shotEvents > 0 ? stat.shots / stat.shotEvents : 1
 }
 
 /** Un tireur ou une victime : le joueur à lecture suffisante que désigne ce xuid de film, ou `undefined`. */
@@ -374,16 +390,18 @@ function shotsAt(s: ShotSeries, frame: number): PlayerShotEstimates {
     const f = countUpTo(w.fired, frame)
     const d = tenthsAt(w.damage, frame)
     if (f === 0 && d === 0) continue
-    byWeapon.push({ weapon, fired: f, damage: d / 10 })
+    byWeapon.push({ weapon, fired: f, firedEstimated: Math.round(f * s.scale), damage: d / 10 })
     fired += f
     dealtTenths += d
   }
   const hit = countUpTo(s.hit, frame)
+  const firedEstimated = Math.round(fired * s.scale)
   return {
     estimated: true,
     fired,
+    firedEstimated,
     hit,
-    accuracy: fired > 0 ? hit / fired : null,
+    accuracy: firedEstimated > 0 ? hit / firedEstimated : null,
     damageDealt: dealtTenths / 10,
     damageTaken: tenthsAt(s.taken, frame) / 10,
     byWeapon: byWeapon.sort(byWeaponOrder),
