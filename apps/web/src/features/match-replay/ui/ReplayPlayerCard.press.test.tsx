@@ -1,22 +1,21 @@
 /**
- * Tests — la fiche de joueur est un bouton qui ouvre le panneau (lot 4 du plan « maquettes du
- * rejeu »).
+ * Tests — la fiche de joueur est un bouton qui ouvre le panneau (rangée des équipes, forme « fiches »).
  *
  * Ce qu'ils protègent :
- *  1. LA PAGE DEMANDE LA FICHE-BOUTON : sans `panel`, aucune fiche n'est cliquable (la fixation DOM
- *     `ReplayTeams.dom4v4` tient nœud pour nœud) ; avec, chaque fiche d'un joueur présent l'est.
- *  2. ACCESSIBLE : `role="button"`, nom accessible, `aria-pressed` sur la fiche dont le panneau est
- *     ouvert, focalisable ; Entrée et Espace activent, Espace ne remonte pas au raccourci de lecture,
- *     la souris ne prend pas le focus.
+ *  1. LA PAGE DEMANDE LA FICHE-BOUTON : sans `onCard`, aucune fiche n'est cliquable (nœud pour nœud) ; avec,
+ *     chaque fiche d'un joueur présent l'est.
+ *  2. ACCESSIBLE : `role="button"`, nom accessible, `aria-pressed` sur la fiche dont le panneau est ouvert,
+ *     focalisable ; Entrée et Espace activent, Espace ne remonte pas au raccourci de lecture, la souris ne
+ *     prend pas le focus.
  *  3. LE CLIC RAPPELLE LA PAGE avec le joueur de la fiche — un bot par sa clé de roster.
- *  4. L'INFOBULLE DE LA FICHE RESTE (`title`), et la place libre n'est jamais cliquable.
+ *  4. L'INFOBULLE DE LA FICHE RESTE (`title`).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
+import { ReplayRowFromBoard } from '../test/replayRowFromBoard'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -36,22 +35,30 @@ const DOC = testReplayDoc({
 const SCOREBOARD = [scoreboardRow('A', 'Alpha', 'a'), scoreboardRow('B', 'Bravo', 'b')]
 const ALLEGIANCE = filmAllegianceOf(DOC, SCOREBOARD, 'A')
 
-function setup(panel?: { xuid: string | null; onSelect: (xuid: string) => void }) {
+function setup(onCard?: (xuid: string) => void, selectedXuid: string | null = null) {
   return render(
-    <ReplayTeamsFromBoard doc={DOC} scoreboard={SCOREBOARD} frame={10} locale="fr" allegiance={ALLEGIANCE} panel={panel} />,
+    <ReplayRowFromBoard
+      doc={DOC}
+      scoreboard={SCOREBOARD}
+      frame={10}
+      locale="fr"
+      allegiance={ALLEGIANCE}
+      onCard={onCard}
+      selectedXuid={selectedXuid}
+    />,
   )
 }
 
-describe('ReplayTeams — fiches inertes sans panneau', () => {
-  it('sans `panel`, aucune fiche n’est un bouton', () => {
+describe('ReplayPlayerCard — fiches inertes sans geste de clic', () => {
+  it('sans `onCard`, aucune fiche n’est un bouton', () => {
     setup()
     expect(screen.queryAllByRole('button')).toEqual([])
   })
 })
 
-describe('ReplayTeams — fiches-boutons', () => {
+describe('ReplayPlayerCard — fiches-boutons', () => {
   it('chaque fiche d’un joueur présent est un bouton nommé, la choisie est enfoncée', () => {
-    setup({ xuid: 'B', onSelect: vi.fn() })
+    setup(vi.fn(), 'B')
     const boutons = screen.getAllByRole('button')
     expect(boutons.map((b) => b.getAttribute('aria-label')).sort()).toEqual([
       'Ouvrir la fiche de Alpha',
@@ -63,28 +70,28 @@ describe('ReplayTeams — fiches-boutons', () => {
   })
 
   it('un clic rappelle la page avec le joueur — un bot par sa clé de roster', () => {
-    const onSelect = vi.fn()
-    setup({ xuid: null, onSelect })
+    const onCard = vi.fn()
+    setup(onCard)
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la fiche de Marc' }))
-    expect(onSelect).toHaveBeenNthCalledWith(1, 'A')
-    expect(onSelect).toHaveBeenNthCalledWith(2, 'bot:Marc')
+    expect(onCard).toHaveBeenNthCalledWith(1, 'A')
+    expect(onCard).toHaveBeenNthCalledWith(2, 'bot:Marc')
   })
 
   it('Entrée et Espace activent ; la fiche est focalisable au clavier', () => {
-    const onSelect = vi.fn()
-    setup({ xuid: null, onSelect })
+    const onCard = vi.fn()
+    setup(onCard)
     const fiche = screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' })
     expect(fiche.tabIndex).toBe(0)
     fireEvent.keyDown(fiche, { key: 'Enter' })
     fireEvent.keyDown(fiche, { key: ' ' })
-    expect(onSelect).toHaveBeenCalledTimes(2)
+    expect(onCard).toHaveBeenCalledTimes(2)
     fireEvent.keyDown(fiche, { key: 'a' })
-    expect(onSelect).toHaveBeenCalledTimes(2)
+    expect(onCard).toHaveBeenCalledTimes(2)
   })
 
   it('Espace ne remonte pas au raccourci de lecture, et la souris ne prend pas le focus', () => {
-    setup({ xuid: null, onSelect: vi.fn() })
+    setup(vi.fn())
     const fiche = screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' })
     expect(fireEvent.mouseDown(fiche)).toBe(false)
     const global = vi.fn()
@@ -94,18 +101,18 @@ describe('ReplayTeams — fiches-boutons', () => {
     expect(global).not.toHaveBeenCalled()
   })
 
-  it('les infobulles (title) de la colonne sont celles d’avant : la fiche-bouton n’en retire aucune', () => {
+  it('les infobulles (title) des fiches sont celles d’avant : la fiche-bouton n’en retire aucune', () => {
     const titles = (c: HTMLElement) => Array.from(c.querySelectorAll('[title]')).map((el) => el.getAttribute('title'))
     const inerte = setup()
     const avant = titles(inerte.container)
     inerte.unmount()
-    const bouton = setup({ xuid: null, onSelect: vi.fn() })
+    const bouton = setup(vi.fn())
     expect(avant.length).toBeGreaterThan(0)
     expect(titles(bouton.container)).toEqual(avant)
   })
 
   it('la fiche choisie porte un anneau, qui ne change aucune cote (ombre)', () => {
-    setup({ xuid: 'A', onSelect: vi.fn() })
+    setup(vi.fn(), 'A')
     expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Alpha' }).className).toContain('ring-2')
     expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Bravo' }).className).not.toContain('ring-2 ring-ring')
   })

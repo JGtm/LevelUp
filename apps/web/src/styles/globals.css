@@ -634,7 +634,7 @@
 /* Les ÉCLAIRS de l'écran occultant (option 2a du handoff 2026-08-27) : trois décharges
    traversent la fiche de haut en bas et SCINTILLENT — un double battement bref dans un
    cycle de 2,6 s, décalé par éclair (délais négatifs posés par la fiche, calés sur
-   l'horloge de la POSE de l'écran : ReplayTeams.ZoneFxOverlay). La forme est un polygone
+   l'horloge de la POSE de l'écran : ReplayCardFx.ZoneFxOverlay). La forme est un polygone
    d'éclair découpé au clip-path ; l'encre va d'`info` au bleu profond de l'échelle de
    fréquence (`heatmap-freq-low`) — l'électricité bleue de l'objet du jeu, en tokens.
    Sous mouvement réduit ils restent éteints (opacité 0 de base) : le nuage, le voile et

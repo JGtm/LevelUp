@@ -1,14 +1,9 @@
 /**
  * playerCardReadings.ts — TOUT CE QU'UNE FICHE LIT À UNE IMAGE, sans React.
  *
- * EXTRAIT DE `ReplayTeams.tsx` LE 2026-09-06 (plan fiches compactes, item 1.3) : ces lectures
- * vivaient dans le corps du composant `PlayerCard`, mêlées au rendu. Les sortir donne deux
- * choses : une tuile qui ne fait plus que rendre ce qu'on lui dit, et une mesure du MODÈLE
- * SEUL (`ui/ReplayTeams.perf.test.tsx`) qui ne passe pas par la réconciliation.
- *
- * AUCUNE RÈGLE N'A CHANGÉ AU PASSAGE — les commentaires qui suivent sont ceux de la fiche,
- * déplacés avec le code qu'ils expliquent. La règle n° 1 des fiches vaut ici : une valeur non
- * lue est une LACUNE (`null`), jamais un zéro.
+ * Ces lectures sont sorties du rendu : la tuile (`ui/ReplayPlayerCard.tsx`) ne fait que rendre ce
+ * qu'on lui dit, et le modèle se mesure seul, sans la réconciliation de React. La règle n° 1
+ * des fiches vaut ici : une valeur non lue est une LACUNE (`null`), jamais un zéro.
  */
 import {
   playerCountersAt,

@@ -9,12 +9,10 @@
  * la forme que le commit `10fe3228a` (2026-08-25) a supprimée : une prop `compact` drillée
  * avec sa branche `if (compact)` dans chaque rangée. Ici, les composants reçoivent DES NOMBRES
  * ET DES BOOLÉENS, jamais un mot de densité : ils rendent ce qu'on leur donne, et c'est
- * `cardDensity.ts` — et lui seul — qui choisit lequel des deux objets donner.
+ * l'appelant qui choisit lequel des objets donner.
  *
- * `GABARIT_NORMAL` porte EXACTEMENT les constantes d'aujourd'hui : c'est ce qui garantit que
- * la fiche d'un match qui n'est pas une Grande équipe rend le même DOM, nœud pour nœud
- * (fixation `ui/__fixtures__/replayTeams.4v4.html`, prise avant ce module).
- * `GABARIT_COMPACT` porte les cotes de la maquette A2 (tuile 115 × 62, deux colonnes par camp).
+ * `GABARIT_NORMAL` porte les cotes de la fiche à deux lignes (tuile de 235 px, corps de 35).
+ * `GABARIT_COMPACT` porte les cotes de la maquette A2 (tuile 115 × 62, corps de 31).
  *
  * TROIS COTES RESTENT DES CLASSES, PAS DES NOMBRES APPLIQUÉS EN STYLE : la hauteur du corps
  * (`h-[35px]` / `h-[31px]`), la taille du nom (`text-[11.5px]`) et la typographie du triplet

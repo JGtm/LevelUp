@@ -9,7 +9,7 @@
  * lot prouvent la règle sur des fixtures ; cette mesure la prouve sur le PARC ENTIER, avant /
  * après, en passant par les VRAIS modules du rejeu (aucune copie de logique) :
  *
- *  - L1.1 : la colonne des fiches (`ReplayTeams`, rendue en jsdom) à des instants échantillonnés
+ *  - L1.1 : la rangée des fiches (`ReplayTeamsRow`, rendue en jsdom) à des instants échantillonnés
  *    — nombre de libellés d'état de mouvement affichés, et HTML identique au reste près ;
  *  - L1.2 : `scoreTimelineOf` -> `leaderStates` -> `buildScoreDominance` (la composition de
  *    `buildScoreTrack`, hors règle déclarée du titre) et `readScoreBanner` sur un tableau de score SYNTHÉTIQUE tiré du
@@ -51,7 +51,7 @@ import { shotSoundStem } from '../sound/replaySound'
 import { lireArtefact, listerArtefacts } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
-import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
+import { ReplayRowFromBoard } from '../test/replayRowFromBoard'
 import { buildScoreDominance, trackScale } from './replayTimelineTracksLogic'
 import { readScoreBanner } from './scoreBannerLogic'
 import { buildShotFx } from './shotFx'
@@ -201,7 +201,7 @@ function instantsFiches(doc: ReplayDocumentReady): number[] {
 
 function mesurerFiches(doc: ReplayDocumentReady): InstantFiche[] {
   return instantsFiches(doc).map((frame) => {
-    const { container, unmount } = render(createElement(ReplayTeamsFromBoard, { doc, scoreboard: [], frame, locale: 'fr', allegiance: NO_ALLEGIANCE }))
+    const { container, unmount } = render(createElement(ReplayRowFromBoard, { doc, scoreboard: [], frame, locale: 'fr', allegiance: NO_ALLEGIANCE }))
     const html = container.innerHTML
     const texte = container.textContent ?? ''
     unmount()

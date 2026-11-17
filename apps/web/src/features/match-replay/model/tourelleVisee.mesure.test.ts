@@ -37,7 +37,7 @@
  *     TOURELLE_MESURE_DIR=<abs>/data/cache/replays/halo_infinite   (défaut : celui du dépôt)
  *
  * Lecture seule sur des documents DÉJÀ CUITS : aucun décodage de film, aucune base ouverte.
- * Sans `TOURELLE_MESURE`, la suite est ignorée — même porte que `ReplayTeams.perf.test.tsx`.
+ * Sans `TOURELLE_MESURE`, la suite est ignorée — même porte que `retoursRejeuL1.mesure.test.ts`.
  * DEPUIS LE SCHÉMA 69 (lot M4a) les montages viennent du registre `vehicleWeapons`, RÉSOLU À LA
  * REQUÊTE : un artefact lu sur disque n'en porte pas. L'instrument y repose donc la table telle
  * que l'API la sert, relue dans le registre versionné du titre (`test/vehicleWeaponsTitre.ts`) —
@@ -298,7 +298,7 @@ function lectureDeVisee(ride: ReplayVehicleRide, frame: number, frameMs: number)
 /**
  * sortie — UN SEUL FOYER D'ÉCRITURE, et c'est `process.stdout` et non `console.log` : vitest
  * intercepte la console et n'en rend rien en `run`, alors que le flux passe (même geste que
- * `ReplayTeams.perf.test.tsx`, seul autre instrument de mesure de la feature).
+ * `retoursRejeuL1.mesure.test.ts`, seul autre instrument de mesure de la feature).
  */
 function sortie(ligne: string): void {
   process.stdout.write(`${ligne}\n`)

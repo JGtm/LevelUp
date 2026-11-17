@@ -2,20 +2,18 @@
  * ReplayPlayerCard — LA TUILE d'un siège : ce qu'un joueur est à l'instant lu, vivant ou mort,
  * bouclier, armes portées, temps avant le retour, et les effets qui l'habillent.
  *
- * EXTRAITE DE `ReplayTeams.tsx` LE 2026-09-06 (plan fiches compactes, item 1.3). Les couches
- * d'effets (sous le contenu, incrustation, tables d'éclairs et de croix) vivent dans
+ * Les couches d'effets (sous le contenu, incrustation, tables d'éclairs et de croix) vivent dans
  * `ReplayCardFx.tsx`, que la tuile pose sans leur prêter sa forme. Les LECTURES (compteurs, état
- * vital, armes, zones, objectif, composition des effets) sont parties le même jour dans
- * `model/playerCardReadings.ts` : cette tuile ne calcule plus rien, elle rend. La colonne
- * (`ReplayTeams.tsx`) ne garde que les camps et la grille des sièges ; la scène des effets
- * vient de `hooks/useCardScene.ts`.
+ * vital, armes, zones, objectif, composition des effets) vivent dans
+ * `model/playerCardReadings.ts` : cette tuile ne calcule plus rien, elle rend. La rangée des
+ * équipes (`ReplayTeamsRow.tsx`) ne garde que les camps et la grille des places ; la scène des
+ * effets vient de `hooks/useCardScene.ts`.
  *
  * LES COTES VIENNENT DU GABARIT (`model/cardGabarit.ts`) — des nombres et des booléens, jamais
- * un mot de densité : la même tuile rend la fiche normale (235 px, corps de 35) et, sur une
- * Grande équipe, la tuile compacte (115 × 62, corps de 31). La MISE EN PAGE se lit dans une
- * table FERMÉE par la hauteur du corps (`TILE_LAYOUT`, 2026-09-07) : un corps de 35 rend la
- * fiche d'aujourd'hui classe pour classe (fixation `__fixtures__/replayTeams.4v4.html`), un
- * corps de 31 la tuile à trois lignes. La profondeur du DOM autour du nom ne bouge dans aucun
+ * un mot de densité : la même tuile rend le gabarit normal (235 px, corps de 35) ou le gabarit
+ * compact (115 × 62, corps de 31, celui de la rangée des équipes). La MISE EN PAGE se lit dans
+ * une table FERMÉE par la hauteur du corps (`TILE_LAYOUT`) : un corps de 35 rend la fiche à deux
+ * lignes, un corps de 31 la tuile à trois lignes. La profondeur du DOM autour du nom ne bouge dans aucun
  * des deux : dix tests atteignent la tuile par `getByText(nom).parentElement.parentElement`.
  *
  * TROIS SORTES DE TUILE, UNE SEULE BOÎTE (2026-10-06, retour utilisateur : la tuile « pas encore
@@ -158,7 +156,7 @@ interface TileFrameProps {
 /**
  * TileFrame — LE SQUELETTE d'une tuile de place : la boîte, la ligne du nom, le corps à hauteur
  * fixe. Les trois sortes de tuile y passent ; aucune ne réécrit une cote (garde-rail
- * `cardGabarit.guard.test.ts`, test DOM `ReplayTeams.places.test.tsx`).
+ * `cardGabarit.guard.test.ts`, test DOM `ReplayTeamsRow.places.test.tsx`).
  */
 function TileFrame({ gabarit, chrome, title, under, nameLine, body, over, press }: TileFrameProps) {
   const L = TILE_LAYOUT[gabarit.bodyPx]

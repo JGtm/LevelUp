@@ -10,9 +10,8 @@ import { PRESS_GUARDS } from './replayPressGuards'
 /**
  * LA FICHE EN BOUTON (panneau de joueur, lot 4) : ce que la page donne à une fiche pour qu'un clic
  * ouvre le panneau du joueur. `selected` = son panneau est ouvert (`aria-pressed`), `label` = son
- * nom accessible. SANS `press`, la tuile reste une boîte inerte, nœud pour nœud (fixation
- * `__fixtures__/replayTeams.4v4.html`) : les attributs de bouton ne s'ajoutent que quand la page
- * le demande.
+ * nom accessible. SANS `press`, la tuile reste une boîte inerte, nœud pour nœud : les attributs
+ * de bouton ne s'ajoutent que quand la page le demande.
  */
 export interface TilePress {
   label: string

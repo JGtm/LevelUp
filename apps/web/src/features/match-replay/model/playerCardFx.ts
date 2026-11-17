@@ -1,12 +1,11 @@
 /**
  * playerCardFx.ts — TOUS LES EFFETS VISUELS D'UNE FICHE JOUEUR, composés en un seul endroit.
  *
- * EXTRAIT DE `ReplayTeams.tsx` LE 2026-08-27, quand les effets de ZONE (champ de réparation,
- * écran occultant, capteur adverse) et l'éclat de TRANSLOCATION ont rejoint les quatre
- * existants (mort, deux éclats d'événement, verre du camouflage, encadré du surbouclier) :
- * la composition dépassait le gabarit d'une fonction de composant. Ici elle est PURE — des
- * chaînes CSS et des noms de classe, pas de React — donc testée directement
- * (playerCardFx.test.ts), et la fiche ne garde que le rendu.
+ * Les effets sont ceux de la MORT, des deux éclats d'événement, du verre du camouflage, de
+ * l'encadré du surbouclier, des ZONES (champ de réparation, écran occultant, capteur adverse) et
+ * de l'éclat de TRANSLOCATION : leur composition dépasserait le gabarit d'une fonction de
+ * composant. Ici elle est PURE — des chaînes CSS et des noms de classe, pas de React — donc
+ * testée directement (playerCardFx.test.ts), et la fiche ne garde que le rendu.
  *
  * LES EFFETS VIVENT SUR UNE COUCHE SOUS LE CONTENU, POSÉE SUR LA BORDURE DE LA TUILE
  * (option 2a du handoff 2026-08-27) : depuis que chaque fiche est une tuile autonome

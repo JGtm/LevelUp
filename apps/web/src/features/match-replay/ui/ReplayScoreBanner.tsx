@@ -4,9 +4,9 @@
  * la lecture.
  *
  * `[ barre alliée, son score écrit dedans ] — [ horloge ] — [ barre adverse ]`, demande
- * utilisateur du 2026-08-20. Le rejeu montrait le score en tête des colonnes de fiches
- * (`ReplayTeamHeader`), à droite du terrain : lisible quand on lit les fiches, pas quand on
- * regarde jouer. Le bandeau le remet là où va le regard pendant la lecture.
+ * utilisateur du 2026-08-20. Le score écrit en tête des colonnes de fiches, à droite du terrain,
+ * était lisible quand on lit les fiches, pas quand on regarde jouer. Le bandeau le met là où va le
+ * regard pendant la lecture.
  *
  * IL NE DÉCIDE RIEN. Tout ce qui se calcule — les deux camps, lequel est allié, les scores
  * au frame lu, les fractions de barre, la manche — vient de `readScoreBanner`

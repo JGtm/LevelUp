@@ -1,8 +1,5 @@
 /**
  * ReplayCountersBadge — LES COMPTEURS D'UNE FICHE, et les deux horloges qu'ils peuvent suivre.
- *
- * Extrait de ReplayTeams.tsx quand ce fichier a franchi le seuil de taille du dépôt en
- * recevant les compteurs vivants (même découpage que ReplayWeaponsRow).
  */
 import { Fragment } from 'react'
 

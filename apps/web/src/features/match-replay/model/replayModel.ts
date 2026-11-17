@@ -94,9 +94,8 @@ export interface ReplayModel {
   marks: ReadonlyMap<string, PlayerMarkKind>
   /**
    * Le roster du film joint au scoreboard. Consommé ici par les lignes d'entrée/sortie ;
-   * `ReplayTeams` en rebâtit encore un pour son propre usage — même fonction pure, mêmes
-   * entrées, donc même résultat (mesuré, V-WEB-1 constat 2) : sa migration suit le lot des
-   * canoniques.
+   * la colonne et la rangée des équipes le reçoivent tout fait (`ReplayRosterColumn`,
+   * `ReplayTeamsRow`) : la jointure se construit une fois par page.
    */
   players: ReplayPlayer[]
   /** L'horloge de la page, ou `null` : un seul verdict pour toutes les surfaces (P0-5). */

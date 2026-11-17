@@ -17,8 +17,7 @@
  *      des constantes migrées ;
  *   2. un littéral de densité (`'compacte'` / `'normale'`) — les composants reçoivent des
  *      nombres et des booléens, jamais un mot (la forme que `10fe3228a` a supprimée) ;
- *   3. un import depuis `../settings/` — la densité n'est pas un réglage (D1 : elle se lit sur
- *      la catégorie de mode, sans drapeau).
+ *   3. un import depuis `../settings/` — la densité n'est pas un réglage, sans drapeau.
  *
  * Et la contre-épreuve : le foyer canonique déclare bien les deux gabarits.
  */
@@ -81,9 +80,8 @@ describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', 
     expect(fautifs).toEqual([])
   })
 
-  it('le mot de densité n’est admis, dans tout le rejeu, que dans model/cardDensity.ts', () => {
+  it('le mot de densité n’est admis nulle part dans le rejeu', () => {
     const fautifs = sourcesDeLaFeature()
-      .filter((f) => nomDe(f) !== 'cardDensity.ts')
       .filter((f) => LITTERAL_DE_DENSITE.test(lire(f)))
       .map(cheminCourt)
     expect(fautifs).toEqual([])
@@ -97,9 +95,5 @@ describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', 
     expect(src).toMatch(/export const GABARIT_FICHE_COMPACTE: FicheCompacteGabarit/)
     expect(src).toMatch(/export const COTES_RANGEE = /)
     expect(src).toMatch(/export const COTES_RANGEE_GRANDE_EQUIPE = /)
-    // Le choix entre les deux n'a qu'un foyer, et il ne lit que l'en-tête.
-    const densite = lire(fichierNomme('cardDensity.ts'))
-    expect(densite).toMatch(/export function cardDensity\(header: PresenceHeader \| null \| undefined\)/)
-    expect(densite).toContain("BTB: GABARIT_COMPACT")
   })
 })

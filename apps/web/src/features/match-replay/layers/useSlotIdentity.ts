@@ -208,7 +208,7 @@ export function useSlotIdentity({
   // même réponse pour un bot (clé `bot:<nom>`) que pour un humain, ce que la table d'identité de
   // la feuille, clée par xuid de base, ne savait pas donner.
   const allyOf = allegiance.ofPlayer
-  // LES FICHES, lues au document comme la feuille les lit (`ReplayTeams`) : une seule définition de
+  // LES FICHES, lues au document comme la feuille les lit (`ReplayRosterColumn`, `ReplayTeamsRow`) : une seule définition de
   // « occupe une fiche », pour la tuile et pour le pion.
   const seated = useMemo(() => seatedIndexOf(buildSeats(players, doc)), [players, doc])
   const seatedAtSlot = useMemo(() => seatedSlotResolver(ownership, seated), [ownership, seated])
