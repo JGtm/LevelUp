@@ -301,15 +301,15 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   ligne de 24 px (nom puis jauges), puis le fil. Conséquences : B.1 ne refuse plus la Grande équipe en rangée
   (règle propre : 6 emplacements par camp au gabarit compact) et B.2 la dessine ; S.2 rend la Grande équipe en
   paires de fiches compactes dans la colonne, sans défilement ; un gabarit « compact Grande équipe » nommé dans
-  `cardGabarit.ts` porte ces cotes. Restent proposés, non tranchés par le user : le drapeau du porteur, la
-  pastille « bot », « Réapp. 4,2 s » abrégé.
+  `cardGabarit.ts` porte ces cotes. Le drapeau du porteur, la pastille « bot » et « Réapp. 4,2 s » abrégé sont validés avec
+  le tableau (« ok bien je valide la maquette », user, 2026-11-17, après retrait du liseré).
 - **G0-6 — objectif sous le score : « Rien sous le score ».** L'ajout K-7 du 2026-11-17 est retiré : écart
   voulu V14.
 
 ### Retours du user sur la maquette M (2026-11-17, second message)
 
 - **G0-7 — ordre de la ligne du fil** (« pour le fil c'est chrono - zone de callout - tueur - arme - victime ») : instant, lieu, tueur, arme, victime, dans la colonne, sur le plan et au pied de la fiche. Le lieu reste celui de la victime (D-5). Dans la colonne, les médailles suivent la victime (G0-3). Écart voulu V17 ; A-14 et K-9 sont amendés.
-- **G0-8 — équipement dans sa propre catégorie** (« manque ramassage et usage/perte équipements ») : la fiche gagne une section « Équipement », par famille : pris, utilisé, perdu (lâché en mourant). Item neuf **T.8** (Sonnet) : lecture pure à l'instant, bâtie sur les lectures d'usage de l'équipement déjà écrites pour la page du match (même définition de « utilisé » par famille) ; lire `.ai/archive/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` AVANT de coder. « Ramassages » ne garde que les armes et les grenades (T.4).
+- **G0-8 — équipement dans sa propre catégorie** (« manque ramassage et usage/perte équipements ») : la fiche gagne une section « Équipement », par famille : pris, utilisé, perdu (lâché en mourant). Item neuf **T.8** (Sonnet) : lecture pure à l'instant, bâtie sur les lectures d'usage de l'équipement déjà écrites pour la page du match (même définition de « utilisé » par famille) ; lire `.ai/archive/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` AVANT de coder. « Ramassages » ne garde que les armes et les grenades (T.4). **T.8 [x] fait le 2026-11-17** : `model/playerEquipmentStats.ts`, lectures datées partagées avec la grille du match (`model/equipmentGestures.ts`), fin de match égale à la grille sur 8 documents réels ; découverte au backlog : les lâchers sont sous-comptés par la grille (attribution stricte), décision du user attendue.
 - **G0-9 — médailles comme sur les tuiles de match** : icône de 32 px avec son halo de rareté, nom dessous, « ×n » (`components/ui/match-card.tsx`, `MedalIcon`). T.6 sert donc aussi l'image et la rareté de chaque médaille.
 - **G0-10 — « En passant » est refusé comme titre** (« que je déteste »). Proposé : « Gestes » ; attend l'accord du user.
 - **G0-11 — « Totaux du match » et « Répartition des éliminations » se ressemblent trop** : deux formes dessinées dans la version 2 du tableau M (une barre empilée et sa légende, totaux en liste sans barres ; ou un seul tableau par arme, l'instant et le match côte à côte). Le user choisit.
@@ -337,7 +337,18 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - Menu de la caméra : petit panneau à deux listes, « Suivre » (avec « Aucun ») et « Point de vue ».
 - T.6 suit le patron réel de `service/replay_vehicle_labels.go` : une table `medalLabels` par nom de médaille
   et par langue DANS le document, lue par `pickText` ; la clé de requête du document ne porte pas la langue.
-- T.2 lit la catégorie « arme lourde » dans `weaponLabels[].role`, mêlée et grenade dans `killEffects`.
+- ~~T.2 lit la catégorie « arme lourde » dans `weaponLabels[].role`, mêlée et grenade dans `killEffects`.~~ FAUX,
+  constaté sur pièces le 2026-11-17 à l'exécution de T.2 : `role` ne vaut jamais « lourde » (un fusil de précision
+  a le rôle `sniper` et la classe `heavy`), et `killEffects` ne porte que des familles d'effet (la grenade et le
+  lance-roquettes y partagent `explosive`). Remplacé par l'item **T.2b** (Sonnet) : le serveur pose `class` sur
+  `weaponLabels[]` à la requête, depuis le registre des armes (`weapons.ClassesByKey()`, la source de la
+  Synthèse), par le chemin qui pose déjà `role` ; le web en tire la table arme -> classe ; mêlée sans arme et
+  grenade rangées comme la Synthèse si le fil le permet, sinon « non classées ». Aucun rejeu régénéré.
+  **Révisé le 2026-11-17 au retour de T.2b** : la table tirée de `weaponLabels` est incomplète par construction
+  (grenades fragmentation et plasma, armes jamais tenues, mêlée sans arme n'y figurent pas). La classe se pose
+  donc PAR FRAG, sur l'événement de frag du contexte du match, là où le serveur pose déjà la clé d'arme
+  (`weapon_class`, registre des armes ; mêlée sans arme par une propriété déclarée de la règle du pont) ;
+  `weaponLabels[].class` n'est pas livré ; `killBreakdown` lit la classe du frag, sans table.
 
 ### Amendements techniques de l'audit (par item)
 
@@ -502,12 +513,12 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       (bascule Cinéma, bascule Plein cadre, Échap), état initial `standard` à chaque montage (aucun stockage,
       même règle que le plein écran actuel : « une manière de regarder, pas un endroit »). Tests unitaires de
       toutes les transitions.
-- [ ] A.2 `useReplayFullscreen.ts` scindé en deux gestes : Plein cadre = la superposition seule ; plein écran
+- [x] A.2 (fait le 2026-11-17 : `hooks/useReplayFrame.ts` porte l'état du cadre et annonce le redimensionnement ; le natif pris depuis le Standard ouvre un Plein cadre qui se referme avec lui ; `data-replay-frame` sur la racine ; l'infobulle du plein écran du système ne cite plus F) `useReplayFullscreen.ts` scindé en deux gestes : Plein cadre = la superposition seule ; plein écran
       système = le natif seul, qui peut s'ajouter à n'importe quel cadre (en Standard il entre d'abord en Plein
       cadre, comme aujourd'hui). `fullscreenchange` reste la source de vérité du natif. Touches : `t` Cinéma,
       `f` Plein cadre, Échap selon les couches (`REPLAY_ESCAPE_LAYER_ATTR`). Export en cours : aucune bascule,
       comme aujourd'hui. Tests des deux gestes et des touches ; le garde-rail des couches d'Échap reste vert.
-- [ ] A.3 Page découpée : `ReplayPage.tsx` ne garde que chargement, modèle et choix du cadre ; la disposition de
+- [x] A.3 (fait le 2026-11-17 : `ui/frames/` — gabarit à cinq zones (une zone `avis` ajoutée pour le bandeau de génération, le chargement, l'erreur et l'absence), montage unique de la toile, en-têtes A, K, D ; test de non-remontage de la toile vérifié mordant ; le groupe de cadres est dans l'en-tête comme A, K et D le dessinent, E.2 le déplacera selon V1 ; la colonne existe en deux copies, Standard et Cinéma, jusqu'aux lots S et B ; `ReplayPage` 473 -> 231 lignes, sa fonction reste au-dessus de 80 lignes ; centrage du Plein cadre à regarder à l'écran) Page découpée : `ReplayPage.tsx` ne garde que chargement, modèle et choix du cadre ; la disposition de
       chaque cadre va dans `ui/frames/ReplayStandardFrame.tsx`, `ui/frames/ReplayCinemaFrame.tsx` (Cinéma et
       Plein cadre, qui partagent la structure D-2). Standard : disposition d'aujourd'hui déplacée telle quelle
       dans son fichier (le lot S la refait), zone de lecture identique aux témoins 0.1. Cinéma : en-tête de
@@ -545,7 +556,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       manches et barre de prise de zone comprises, sans changer sa lecture `readScoreBanner`), lien vers la fiche
       du match à droite. Le bandeau de score ne coiffe plus le terrain en Standard. Tests : en-tête rendu, score
       présent, score absent en FFA (rien n'est rendu, comme aujourd'hui).
-- [ ] S.2 `ui/ReplayRosterRow.tsx` et `ui/ReplayRosterColumn.tsx` : une ligne par place (nom ; bouclier et santé
+- [x] S.2 (fait le 2026-11-17 : lignes `ReplayRosterRow` / `ReplayRosterColumn` / `ReplayRosterRowDetail`, gabarit « ligne » ; Grande équipe selon G0-5 bis : `ReplayCompactCard` en formes empilée et ligne, seuil `grandeEquipe` dans `model/rowLayout.ts` ; écarts acceptés par le pilote et dits au user : colonnes d'arme, de grenades et d'équipement vides pour un mort, charge en nombre sans barre, « suivi » en couleur d'accent du thème ; non monté avant S.4) `ui/ReplayRosterRow.tsx` et `ui/ReplayRosterColumn.tsx` : une ligne par place (nom ; bouclier et santé
       en deux barres via `VitalityBar` ; « Réapparition dans … » à la place des barres quand le joueur est mort ;
       arme en main ; grenades ; équipement ; F / M / A), en-tête de colonnes Arme / Gr. / Éq. / F / M / A ; places
       libres et occupants pas encore apparus rendus comme lignes d'attente (même règle que `ReplaySeatWaiting`) ;
@@ -588,7 +599,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 
 ## 7. Lot D — la fiche détaillée (J en Standard, L en Cinéma et Plein cadre)
 
-- [ ] D.1 `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
+- [x] D.1 (fait le 2026-11-17 : quatre fixations du panneau posées avant, identiques à l'octet après ; la tête est dans le corps commun, le retour et Échap au conteneur ; seule la partie basse défile, alors que J fait défiler toute la fiche : à trancher en D.2) `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
       Masquer, « À l'instant », « Totaux du match »), sans changer son rendu (fixation avant / après). Tests de
       comportement existants verts sans modification.
 - [ ] D.2 Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
@@ -622,14 +633,14 @@ les localise, rien n'est recalculé à côté.
       suffisante ; sur trois films, boucliers tombés à zéro contre dégâts subis (plausibilité de D-21, recharges
       comprises). Résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
       l'affichage est rapportée au user avant T.3.
-- [ ] T.1 `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
+- [ ] T.1 (CODE FAIT le 2026-11-17, `readPlayerInstantSeries` puis `playerInstantStatsAt` ; RESTE, case ouverte : la fixation « fin de match = tableau de score » sur un match RÉEL, aucun document du dépôt ne portant à la fois le calque de score et la feuille ; à faire avec T.0 sur un rejeu régénéré — dépendance : fin de la régénération du parc) `model/playerInstantStats.ts` : à l'image lue, FDA, meilleure série et série en cours, tirs à la tête
       (une élimination dont le coup fatal n'est pas mesuré ne compte ni oui ni non), parfaits (médaille datée),
       réapparitions, durée de la vie en cours (absente quand le joueur est mort), moyenne des vies terminées
       jusqu'à l'instant, boucliers perdus (D-21 : passages à zéro du bouclier du joueur, une recharge puis une
       nouvelle chute comptent deux), médailles gagnées. Tests : début de match, joueur mort, bot, tir à la tête
       non mesuré, deux boucliers perdus dans une vie, fin de match égale au tableau de score sur les valeurs
       exactes (fixation d'un match réel).
-- [ ] T.2 `model/killBreakdown.ts` (D-20) : éliminations jusqu'à l'instant par catégorie (arme lourde, mêlée,
+- [x] T.2 (fait le 2026-11-17 : `killBreakdownAt`, table arme -> classe reçue en paramètre, entrée « non classée » tenue ; la source de la table est l'item T.2b) `model/killBreakdown.ts` (D-20) : éliminations jusqu'à l'instant par catégorie (arme lourde, mêlée,
       grenade, autres armes) puis par arme, nombre et part en pourcentage ; une élimination sans arme résolue
       compte dans « autres » sous un libellé neutre, jamais sous l'arme d'une voisine. Tests : parts qui somment à
       100, catégorie vide absente, arme inconnue.
@@ -641,7 +652,7 @@ les localise, rien n'est recalculé à côté.
       verdict du document : la somme des points par action ne s'affiche que si elle égale le score personnel de
       l'API (le verdict « complet » est faux en Assaut et en Grande bataille du build `HI_1_11_0`). Test : somme
       différente du score de l'API, pas de ligne.
-- [ ] T.4 Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
+- [x] T.4 (fait le 2026-11-17 : `playerThrowsPickupsAt` ; lancers par `doc.grenades`, ramassages par `doc.pickups` — une BORNE INFÉRIEURE quand `coverage.pickups.multiEvent`, à dire ou à mesurer en T.0 avant T.5 ; les ramassages de grenades ne se relient à aucun libellé, `grenadeLabels[].family` étant vide) Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
       aucun lancer (section absente), types mêlés.
 - [ ] T.5 Rendu dans `ReplayPlayerPanelBody` (D.1), donc dans J et dans L : « À l'instant » garde son bloc actuel
       (bouclier, santé, armes, grenades, équipement) puis ajoute les compteurs de T.1, la répartition de T.2, les
