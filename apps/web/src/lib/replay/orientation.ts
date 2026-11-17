@@ -14,7 +14,10 @@
  * `(dx, dy)` devient `(dy, -dx)`. Les caps (degrés, 0° = +X, 90° = +Y) PERDENT donc 90° par quart
  * de tour (`shiftHeadingDeg`). C'est ICI, et dans `orientAbout`, que le sens est défini : le
  * dessin du fond (`mapBackgroundDraw`) et la table des cellules de chaleur (`cellAfterTurns`) n'en
- * sont que la traduction.
+ * sont que la traduction. Les deux seules façons d'appliquer cette rotation à un dessin sont ICI :
+ * `rotateCanvasAbout` (toile) et `cssRotation` (image posée en CSS) ; la rotation du fond de la
+ * lecture, du plan de l'onglet Tactique et du plan d'« Occupation du terrain » passe par elles
+ * (`orientation.guard.test.ts` interdit de la réécrire ailleurs).
  *
  * Pas de React, pas de canvas : géométrie pure, testée dans `orientation.test.ts`.
  */
@@ -111,6 +114,30 @@ export function viewOrientation(turns: QuarterTurns, scene: ReplayBounds): ViewO
 /** Le nombre de quarts de tour d'une orientation optionnelle (0 quand elle est absente). */
 export function turnsOf(orient: ViewOrientation | undefined): QuarterTurns {
   return orient ? orient.turns : 0
+}
+
+/**
+ * rotateCanvasAbout fait tourner le repère de la toile de `turns` quarts de tour HORAIRES autour de
+ * (cx, cy), en pixels. L'axe Y de la toile descend : un angle positif tourne dans le sens horaire vu
+ * à l'écran. L'appelant encadre l'appel de `save()` / `restore()`.
+ */
+export function rotateCanvasAbout(
+  ctx: Pick<CanvasRenderingContext2D, 'translate' | 'rotate'>,
+  turns: QuarterTurns,
+  cx: number,
+  cy: number,
+): void {
+  ctx.translate(cx, cy)
+  ctx.rotate((turns * Math.PI) / 2)
+}
+
+/**
+ * cssRotation est la même rotation pour une image posée en CSS : `turns` quarts de tour horaires
+ * autour du centre de l'élément. À n'appeler que pour un nombre de quarts de tour non nul (à 0, ne
+ * pas poser de `transform`).
+ */
+export function cssRotation(turns: QuarterTurns): string {
+  return `rotate(${turns * 90}deg)`
 }
 
 /**

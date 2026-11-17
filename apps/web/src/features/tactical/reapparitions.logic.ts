@@ -17,6 +17,7 @@
 import type { TacticalPartDeZone, TacticalReapparitionsAdverses, TacticalRepartitionZones } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
+import { zoneHasShape, zoneRings } from '@/lib/replay/calloutShape'
 import { calloutLabel, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import type { MapFrame } from '@/lib/replay/heatPaint'
 
@@ -236,9 +237,9 @@ export function jaugeContrePlancher(
 
 // ─── Les zones nommées du catalogue : choix de la zone tenue, sonde, géométrie ─────────────────────────
 
-/** Une zone qu'on peut tenir : un contour au sol (sans lui, le serveur ne peut pas dire qui s'y trouve). */
+/** Une zone qu'on peut tenir : une zone qui a une forme (la règle du jeu, `zoneHasShape`). */
 function choisissable(z: CalloutZoneReady): boolean {
-  return z.polygon.length >= 3
+  return zoneHasShape(z)
 }
 
 /** Une zone proposée dans la pilule « Zone tenue » : son indice de volume et son nom. */
@@ -276,7 +277,7 @@ export function cheminDeLaZone(zone: CalloutZoneReady): string {
   const anneau = (pts: readonly { x: number; y: number }[]) =>
     `M${pts.map((p) => `${nombre(p.x)} ${nombre(-p.y)}`).join('L')}Z`
   if (!choisissable(zone)) return ''
-  return [zone.polygon, ...zone.parts, ...zone.holes].map(anneau).join('')
+  return zoneRings(zone).map(anneau).join('')
 }
 
 /** Les bornes de la lecture de placement, telles que le serveur les publie. */

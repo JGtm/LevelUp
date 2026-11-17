@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/replayartifact"
 )
 
 // La ligne d'un film liste ses pistes sans identite (ni xuid ni bot) et les compteurs du pont.
@@ -84,5 +88,29 @@ func TestRepriseEtIdentitesSeRelisent(t *testing.T) {
 	}
 	if len(relues) != 2 || relues[0].identite != "bot:343 Ritzy" || relues[0].team != 1 || relues[1].identite != "" {
 		t.Fatalf("pistes relues = %+v", relues)
+	}
+}
+
+// --garder-documents depose le document par la porte des rejeux : le fichier se relit par elle (c'est ce que font
+// replaydiff et replay-verite), se liste sous le nom du film, et aucun JSON brut n'est laisse a cote.
+func TestDeposerLeDocumentSeRelitParLaPorte(t *testing.T) {
+	sortie := t.TempDir()
+	blob := []byte(`{"matchId":"3f048bf3-x","schemaVersion":1}`)
+	deposerLeDocument(context.Background(), sortie, "3f048bf3", blob)
+
+	dir := filepath.Join(sortie, "documents")
+	relu, err := replayartifact.ReadBytes(filepath.Join(dir, "3f048bf3.json.gz"))
+	if err != nil {
+		t.Fatalf("le document depose n'est pas relu par la porte : %v", err)
+	}
+	if !bytes.Equal(relu, blob) {
+		t.Fatalf("document relu = %q, depose = %q", relu, blob)
+	}
+	liste, err := replayartifact.List(dir)
+	if err != nil || len(liste) != 1 || liste[0].Short != "3f048bf3" {
+		t.Fatalf("la porte doit lister le seul document depose : %v, %v", liste, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "3f048bf3.json")); !os.IsNotExist(err) {
+		t.Fatalf("aucun JSON brut ne doit etre depose (stat : %v)", err)
 	}
 }

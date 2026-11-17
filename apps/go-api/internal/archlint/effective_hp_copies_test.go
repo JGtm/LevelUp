@@ -29,7 +29,7 @@ var effectiveHpTSLiteral = regexp.MustCompile(`\b22[59](\.0+)?\b`)
 var effectiveHpAllowlist = map[string]string{
 	// Repli du resolver quand il n'est pas câblé (commandes hors serveur, tests des autres paquets) ;
 	// égalé au TOML d'Infinite par games.TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite.
-	"internal/games/damage_model.go": "repli du resolver, égalé au TOML par un test",
+	"internal/games/damage_model.go": "2026-11-16 : repli du resolver, égalé au TOML par un test",
 }
 
 var (
@@ -140,11 +140,11 @@ func TestEffectiveHpToKill_LesDetecteursDistinguentCodeEtProse(t *testing.T) {
 	}
 }
 
-// L'allowlist reste justifiée : un fichier listé existe et porte encore le littéral.
+// L'allowlist reste justifiée et datée : un fichier listé existe et porte encore le littéral.
 func TestEffectiveHpToKill_AllowlistJustifieeEtVivante(t *testing.T) {
 	for rel, why := range effectiveHpAllowlist {
-		if strings.TrimSpace(why) == "" {
-			t.Errorf("%s : justification vide", rel)
+		if !debutRaisonDatee.MatchString(why) {
+			t.Errorf("%s : la justification doit commencer par `AAAA-MM-JJ : `", rel)
 		}
 		raw, err := os.ReadFile(filepath.Join(apiModuleRoot(t), filepath.FromSlash(rel)))
 		if err != nil {

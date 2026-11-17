@@ -28,7 +28,13 @@ describe('filmLayerAvailability', () => {
       vehicles: true, wallPlan: true,
       lives: { spawns: true, deaths: true, killers: false, followedKnown: true },
       respawnForecast: true,
+      respawnForecastRefusal: null,
     })
+  })
+
+  it('le motif du refus de la probabilité de réapparition est rangé à sa clé', () => {
+    const a = filmLayerAvailability({ ...FULL, respawnForecast: { available: false, refusal: 'Motif.' } })
+    expect([a.respawnForecast, a.respawnForecastRefusal]).toEqual([false, 'Motif.'])
   })
 
   it('un compte nul n’ouvre pas son calque', () => {

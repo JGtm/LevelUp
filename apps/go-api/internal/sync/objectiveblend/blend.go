@@ -82,18 +82,20 @@ func DefaultParams(minFamilyMatches int) Params {
 	return Params{AlphaMin: 0.12, AlphaMax: 0.50, SupportSlope: 0.38, MinFamilyMatches: minFamilyMatches}
 }
 
-// Result détaille une note (la simulation et les tests la rapportent).
+// Result est la note d'un match. Seul Score est servi aux appelants ; les autres champs détaillent le
+// calcul (la forme de la note) et ne sont lus que par les tests du paquet.
 type Result struct {
 	// Score : la note, NON arrondie (l'appelant applique l'arrondi unique de la note stockée).
 	Score float64
-	// HasObjective : false quand la métrique est absente (Score == combat).
-	HasObjective bool
-	// Percentile : O_obj, 0-100 ; Alpha : son poids ; Part : la part qui a réglé Alpha.
-	Percentile, Alpha, Part float64
-	// SupportPercentile, SupportAlpha : O_sout et son poids.
-	SupportPercentile, SupportAlpha float64
-	// FamilyScope : vrai si la référence est la famille du match, faux en repli sur la chaîne.
-	FamilyScope bool
+
+	// hasObjective : false quand la métrique est absente (Score == combat).
+	hasObjective bool
+	// percentile : O_obj, 0-100 ; alpha : son poids ; part : la part qui a réglé alpha.
+	percentile, alpha, part float64
+	// supportPercentile, supportAlpha : O_sout et son poids.
+	supportPercentile, supportAlpha float64
+	// familyScope : vrai si la référence est la famille du match, faux en repli sur la chaîne.
+	familyScope bool
 }
 
 // RankMid calcule le percentile d'une valeur à MI-RANG : les valeurs strictement inférieures
@@ -174,9 +176,9 @@ func Compute(combat float64, cur *Facts, history []*Facts, p Params) Result {
 		alphaObj *= p.AlphaMax / total
 		alphaSup *= p.AlphaMax / total
 	}
-	res.HasObjective, res.FamilyScope = true, familyScope
-	res.Percentile, res.Alpha, res.Part = oObj, alphaObj, part
-	res.SupportPercentile, res.SupportAlpha = oSup, alphaSup
+	res.hasObjective, res.familyScope = true, familyScope
+	res.percentile, res.alpha, res.part = oObj, alphaObj, part
+	res.supportPercentile, res.supportAlpha = oSup, alphaSup
 	res.Score = (1-alphaObj-alphaSup)*combat + alphaObj*oObj + alphaSup*oSup
 	return res
 }

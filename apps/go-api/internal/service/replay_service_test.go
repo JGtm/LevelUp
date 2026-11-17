@@ -154,15 +154,18 @@ func TestApplyMatchHeaderReplay_SansService(t *testing.T) {
 func TestAvailableSet_UnSeulListing(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "000d5950-1234-4abc-9def-0123456789ab", `{}`)
 	dir := title.NewPathResolver(root).ReplayArtifactsDir(title.DefaultSlug)
-	// Un second artefact, un intrus non-JSON et un sous-répertoire : seuls les
-	// {short8}.json comptent.
-	if err := os.WriteFile(filepath.Join(dir, "abcd1234.json"), []byte(`{}`), 0o644); err != nil {
+	// Un second artefact, un `.json` brut d'une version ancienne, un intrus non-JSON et un
+	// sous-répertoire : seuls les {short8}.json.gz comptent.
+	if _, _, err := replayartifact.Write(context.Background(), filepath.Join(dir, "abcd1234.json.gz"), []byte(`{}`)); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ffff0001.json"), []byte(`{}`), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "sous-dossier.json"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "sous-dossier.json.gz"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 
@@ -179,6 +182,9 @@ func TestAvailableSet_UnSeulListing(t *testing.T) {
 	}
 	if !set.Has("000d5950") || !set.Has("abcd1234") {
 		t.Error("la forme courte doit résoudre vers son artefact")
+	}
+	if set.Has("ffff0001") {
+		t.Error("un .json brut n'est pas un artefact : il ne rend pas son match disponible")
 	}
 	if set.Has("deadbeef") {
 		t.Error("un match sans artefact ne doit jamais être annoncé disponible")

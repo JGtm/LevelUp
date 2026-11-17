@@ -21,10 +21,14 @@ package archlint
 import (
 	"go/ast"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
 )
+
+// debutRaisonDatee : début exigé de la raison d'une entrée d'allowlist datée, `AAAA-MM-JJ : `.
+var debutRaisonDatee = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} : `)
 
 // lectureEnvInterdite dit si un appel `os.Getenv(...)` / `os.LookupEnv(...)` apparaît dans la
 // source ; rend le nombre d'appels. nomOS est le nom local du paquet `os` (alias compris), ""
@@ -66,20 +70,16 @@ func lectureEnvInterdite(src goSource) int {
 // eux-mêmes, avec la raison. Gelée le 2026-11-11 (plan architecture, étape 2) ; ne doit que
 // rétrécir.
 var lecturesEnvAutorisees = map[string]string{
-	"internal/api/middleware/slog_logger.go":                         "2026-11-11 : seuil de lenteur des requêtes (LEVELUP_SLOW_REQUEST_MS) lu par le middleware de journal ; réglage de diagnostic, pas une donnée de déploiement ; à rapatrier avec l'étape cadre HTTP.",
-	"internal/api/wire/registry_replay_notify.go":                    "2026-11-11 : base publique des liens de notification (LEVELUP_PUBLIC_BASE_URL) ; donnée de déploiement lue au câblage ; à porter par AppConfig.",
-	"internal/domain/title/repo_root.go":                             "2026-11-11 : racine du dépôt (LEVELUP_REPO_ROOT), résolue avant toute configuration (le chargeur de configuration s'en sert) ; point d'amorçage, ne peut pas passer par AppConfig.",
-	"internal/games/halo_infinite/haloadapter/asset_name_fetcher.go": "2026-11-11 : résolution des noms d'assets au sync (LEVELUP_SYNC_RESOLVE_ASSETS) ; réglage de sync lu à l'usage ; à porter par AppConfig.",
-	"internal/media/binpath.go":                                      "2026-11-11 : dossier de ffmpeg (EnvFFmpegDir), chemin système résolu avant la configuration ; lecteur unique gardé par media_binpath_single_resolver_test.go.",
-	"internal/observability/logging/config.go":                       "2026-11-11 : configuration du journal (LEVELUP_LOGS_*, LEVELUP_LOG_FORMAT, LEVELUP_LOG_MAX_LINE, LEVELUP_LOG_COLOR) ; le paquet est importé par internal/config, il ne peut pas l'importer.",
-	"pkg/duckdbbackup/config.go":                                     "2026-11-11 : configuration de sauvegarde (BACKUP_ENABLED, RESTIC_*) du paquet public pkg/duckdbbackup, autonome : il ne doit pas importer internal/config ; secrets restic lus ici uniquement.",
-	"internal/platform/auth/azure_credentials.go":                    "2026-11-11 : secret du client Azure (variable SPNKR, voir le garde-rail de ce paquet), lecteur unique gardé par auth/sentinel_test.go ; un secret ne passe pas par AppConfig.",
-	"internal/platform/duckdb/db.go":                                 "2026-11-11 : bornes de mémoire, de threads et de pool DuckDB (envOr, envIntOr) lues à l'ouverture de chaque connexion ; le paquet n'importe pas AppConfig (config l'importe).",
-	"internal/platform/schedtask/runner.go":                          "2026-11-11 : racine système de Windows (SystemRoot) pour retrouver schtasks.exe ; donnée du système, pas de LevelUp.",
-	"internal/platform/syslocale/syslocale_posix.go":                 "2026-11-11 : TZ, LANGUAGE et LC_* du système (fuseau et langue de l'hôte) ; donnée du système, pas de LevelUp.",
-	"internal/sync/engine_highlight_events.go":                       "2026-11-11 : fenêtre de reprise des films et reprise des films frais (LEVELUP_FILM_RETRY_WINDOW_HOURS, LEVELUP_FRESH_FILM_RETRY) ; réglages de sync lus à l'usage ; à porter par AppConfig.",
-	"internal/sync/snapshot/snapshot_readiness_eval.go":              "2026-11-11 : délai de grâce de l'instantané (LEVELUP_SNAPSHOT_GRACE_HOURS) ; réglage lu à l'usage ; à porter par AppConfig.",
-	"internal/testfixtures/external_chunks.go":                       "2026-11-11 : dossiers de films de test hors dépôt (LEVELUP_TEST_FILM_DATA_DIR, LEVELUP_TEST_FILM_MANIFESTS_DIR) ; paquet de fixtures réservé aux tests, jamais lié au serveur.",
+	"internal/api/middleware/slog_logger.go":         "2026-11-11 : seuil de lenteur des requêtes (LEVELUP_SLOW_REQUEST_MS) lu par le middleware de journal ; réglage de diagnostic, pas une donnée de déploiement ; à rapatrier avec l'étape cadre HTTP.",
+	"internal/domain/title/repo_root.go":             "2026-11-11 : racine du dépôt (LEVELUP_REPO_ROOT), résolue avant toute configuration (le chargeur de configuration s'en sert) ; point d'amorçage, ne peut pas passer par AppConfig.",
+	"internal/media/binpath.go":                      "2026-11-11 : dossier de ffmpeg (EnvFFmpegDir), chemin système résolu avant la configuration ; lecteur unique gardé par media_binpath_single_resolver_test.go.",
+	"internal/observability/logging/config.go":       "2026-11-11 : configuration du journal (LEVELUP_LOGS_*, LEVELUP_LOG_FORMAT, LEVELUP_LOG_MAX_LINE, LEVELUP_LOG_COLOR) ; le paquet est importé par internal/config, il ne peut pas l'importer.",
+	"pkg/duckdbbackup/config.go":                     "2026-11-11 : configuration de sauvegarde (BACKUP_ENABLED, RESTIC_*) du paquet public pkg/duckdbbackup, autonome : il ne doit pas importer internal/config ; secrets restic lus ici uniquement.",
+	"internal/platform/auth/azure_credentials.go":    "2026-11-11 : secret du client Azure (variable SPNKR, voir le garde-rail de ce paquet), lecteur unique gardé par auth/sentinel_test.go ; un secret ne passe pas par AppConfig.",
+	"internal/platform/duckdb/db.go":                 "2026-11-11 : bornes de mémoire, de threads et de pool DuckDB (envOr, envIntOr) lues à l'ouverture de chaque connexion ; le paquet n'importe pas AppConfig (config l'importe).",
+	"internal/platform/schedtask/runner.go":          "2026-11-11 : racine système de Windows (SystemRoot) pour retrouver schtasks.exe ; donnée du système, pas de LevelUp.",
+	"internal/platform/syslocale/syslocale_posix.go": "2026-11-11 : TZ, LANGUAGE et LC_* du système (fuseau et langue de l'hôte) ; donnée du système, pas de LevelUp.",
+	"internal/testfixtures/external_chunks.go":       "2026-11-11 : dossiers de films de test hors dépôt (LEVELUP_TEST_FILM_DATA_DIR, LEVELUP_TEST_FILM_MANIFESTS_DIR) ; paquet de fixtures réservé aux tests, jamais lié au serveur.",
 }
 
 func TestAucuneLectureEnvHorsConfig(t *testing.T) {
@@ -106,8 +106,8 @@ func TestAucuneLectureEnvHorsConfig(t *testing.T) {
 	}
 	var perimees []string
 	for rel, raison := range lecturesEnvAutorisees {
-		if strings.TrimSpace(raison) == "" || !strings.HasPrefix(raison, "2026-") {
-			t.Errorf("lecturesEnvAutorisees[%s] : la raison doit commencer par une date (AAAA-MM-JJ) et être non vide", rel)
+		if !debutRaisonDatee.MatchString(raison) {
+			t.Errorf("lecturesEnvAutorisees[%s] : la raison doit commencer par `AAAA-MM-JJ : `", rel)
 		}
 		if !vues[rel] {
 			perimees = append(perimees, path.Clean(rel))

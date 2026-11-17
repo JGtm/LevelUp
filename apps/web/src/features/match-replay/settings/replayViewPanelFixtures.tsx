@@ -62,7 +62,7 @@ export function makeWallPlan(over: Partial<ReplayWallPlanControls> = {}): Replay
 
 /** La probabilité de réapparition : disponible, éteinte, « Zones et points » ; `over` en change ce qu'un cas veut. */
 export function makeForecast(over: Partial<ReplayRespawnForecastControls> = {}): ReplayRespawnForecastControls {
-  return { available: true, show: false, onToggle: vi.fn(), draw: 'both', onSelectDraw: vi.fn(), ...over }
+  return { available: true, show: false, onToggle: vi.fn(), draw: 'both', onSelectDraw: vi.fn(), refusal: null, ...over }
 }
 
 export function makeLives(over: Partial<ReplayLivesControls> = {}): ReplayLivesControls {

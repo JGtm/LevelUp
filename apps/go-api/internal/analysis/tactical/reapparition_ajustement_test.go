@@ -62,7 +62,7 @@ func TestConstruireEchantillons_FrequenceHorsDuMatchEvalue(t *testing.T) {
 	}
 	echs := ConstruireEchantillons(evts, CandidatsParCarte(evts), ReglagesEchantillons{MatchsMinCarte: 1})
 	// p : 8 reapparitions au total dont 2 en m1 -> 6 hors m1 ; log1p(6).
-	attendu := Variables(evts[0], Candidat{Pos: p}, 6, nil)[VarFrequence]
+	attendu := Variables(evts[0], Candidat{Pos: p}, 6)[VarFrequence]
 	if got := echs[0].Feats[0][VarFrequence]; got != attendu {
 		t.Errorf("frequence de p pour m1 = %v, attendu %v (hors m1)", got, attendu)
 	}

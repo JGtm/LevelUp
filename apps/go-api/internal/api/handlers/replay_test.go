@@ -18,7 +18,6 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -27,6 +26,8 @@ import (
 type mockReplayService struct {
 	doc replaydoc.ReplayDocument
 	err error
+	// cadenceStale : le verdict de fraîcheur de cadence que le SERVICE rend avec le document.
+	cadenceStale bool
 	// bg / image / bgErr : le fond de carte, indépendant de l'artefact — un rejeu peut
 	// exister sans fond, et le contraire n'a pas de sens.
 	bg    *replaydoc.MapBackground
@@ -64,8 +65,8 @@ func contentTypeOuDefaut(ct string) string {
 	return ct
 }
 
-func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replaydoc.ReplayDocument, error) {
-	return m.doc, m.err
+func (m *mockReplayService) GetReplay(_ context.Context, _ string) (port.ServedReplay, error) {
+	return port.ServedReplay{ReplayDocument: m.doc, CadenceStale: m.cadenceStale}, m.err
 }
 
 func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replaydoc.MapBackground, error) {
@@ -380,23 +381,22 @@ func TestReplayBackground_PlayerNotFound(t *testing.T) {
 }
 
 // TestReplayHandler_CadenceStaleHeader — le SERVEUR dit si le pas du document servi n'est plus le pas de
-// cuisson courant ; le badge admin recopie ce verdict. Un document sans pas se lit à 100 ms.
+// cuisson courant ; le badge admin recopie ce verdict. Le service le décide et le rend avec le document
+// (la règle se teste dans le service) : le handler ne fait que l'encoder en en-tête, sans le recalculer
+// du pas du document.
 func TestReplayHandler_CadenceStaleHeader(t *testing.T) {
 	cas := []struct {
 		nom     string
-		courant int
+		verdict bool
 		pas     int
 		veut    string
 	}{
-		{"100 ms face à 33 ms", 33, 100, "true"},
-		{"100 ms face à 100 ms", 100, 100, "false"},
-		{"pas absent face à 33 ms", 33, 0, "true"},
-		{"33 ms face à 33 ms", 33, 33, "false"},
+		{"verdict périmé", true, 33, "true"},
+		{"verdict à jour", false, 100, "false"},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			defer replaybuild.ForceCookFrameIntervalMS(c.courant)()
-			mock := &mockReplayService{doc: replaydoc.ReplayDocument{
+			mock := &mockReplayService{cadenceStale: c.verdict, doc: replaydoc.ReplayDocument{
 				SchemaVersion: replay.SchemaVersion, MatchID: "000d5950", TitleSlug: "halo_infinite", FrameIntervalMS: c.pas,
 			}}
 			factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }

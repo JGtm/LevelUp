@@ -43,7 +43,7 @@
 //
 // Usage :
 //
-//	replay-diff -ancien <a.json> -nouveau <b.json> [-json <sortie.json>] [-tout] [-quiet]
+//	replay-diff -ancien <a.json.gz> -nouveau <b.json.gz> [-json <sortie.json>] [-tout] [-quiet]
 //
 // Codes de sortie : 0 = compare (avec ou sans difference), 1 = erreur d'entree/sortie,
 // 2 = usage. La PRESENCE de differences n'est pas un echec : c'est le resultat.
@@ -70,7 +70,7 @@ func main() {
 	flag.Parse()
 	if *ancien == "" || *nouveau == "" {
 		fmt.Fprintln(os.Stderr,
-			"usage: replay-diff -ancien <a.json> -nouveau <b.json> [-json <sortie.json>] [-tout] [-quiet]")
+			"usage: replay-diff -ancien <a.json.gz> -nouveau <b.json.gz> [-json <sortie.json>] [-tout] [-quiet]")
 		os.Exit(2)
 	}
 	if err := executer(*ancien, *nouveau, *sortieJSON, *tout, *quiet); err != nil {

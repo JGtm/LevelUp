@@ -12,15 +12,14 @@ package tactical
 //
 //  1. mort : le corps est libere (RaisonLiberee) a au plus quelques frames de la fin de la
 //     piste, OU un compte a rebours de reapparition du joueur COMMENCE a ces frames-la. La piste
-//     suivante est une reapparition apres mort (SourceFilm) ;
+//     suivante est une reapparition apres mort ;
 //  2. fin de manche : le corps est supprime alors que le joueur le commande encore
 //     (RaisonSupprimee). La piste suivante est un spawn de DEBUT DE MANCHE : ni une
 //     reapparition, ni une entree du modele, au meme titre qu'une premiere vie ;
-//  3. aucune de ces lectures dans TOUT le document : repli sur l'ecart entre les deux pistes,
-//     EcartReapparitionMinMs a EcartReapparitionMaxMs (SourceRepliEcart). Le repli est une
-//     heuristique : il se NOMME, se COMPTE a chaque usage, et ne s'applique jamais dans un
-//     document qui porte au moins une lecture du film (une piste sans preuve y est
-//     simplement « pas une reapparition »).
+//  3. aucune de ces lectures pour cette piste : pas une reapparition. Un document qui ne porte
+//     AUCUNE lecture de fin de vie du film (LectureDuFilm : artefact anterieur a ces champs) n'a
+//     donc aucune reapparition ; l'ecart entre deux pistes ne decide jamais (c'est un trou de
+//     replication autant qu'une mort).
 //
 // # L'INSTANTANE
 //
@@ -43,14 +42,6 @@ import (
 const (
 	ToleranceFinAvantMs = 66
 	ToleranceFinApresMs = 198
-)
-
-// Bornes du REPLI : l'ecart entre la fin d'une piste et le debut de la suivante d'un meme
-// joueur, en millisecondes. En deca de 4 s, c'est un trou de replication (la vie continue) ;
-// au-dela de 15 s, ce n'est plus une reapparition (le joueur est reste hors jeu).
-const (
-	EcartReapparitionMinMs = 4_000
-	EcartReapparitionMaxMs = 15_000
 )
 
 // FenetreApparitionSimultaneeMs : de part et d'autre de la frame de la reapparition, une
@@ -78,8 +69,25 @@ type IndexVies struct {
 	intervalleMs int
 	vies         []vieIndexeeReapp
 	debuts       map[string][]int
-	// filmLu : le document porte au moins une lecture de fin de vie du film.
+	// filmLu : le document porte au moins une lecture de fin de vie du film (LectureDuFilm).
 	filmLu bool
+}
+
+// LectureDuFilm dit si l'entree porte au moins une lecture de fin de vie du film : un debut de
+// compte a rebours rattache a un xuid, ou la fin lue d'une piste qui a des points. Sans elle, aucune
+// piste n'est une reapparition (cf. l'en-tete).
+func LectureDuFilm(e EntreeOccupation) bool {
+	for _, d := range e.DebutsDeCompte {
+		if d.XUID != "" {
+			return true
+		}
+	}
+	for _, p := range e.Pistes {
+		if p.Fin != nil && len(pointsDansLaFenetre(p)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // NouvelIndexVies indexe les pistes d'un match. Une piste sans point est ecartee.
@@ -91,7 +99,7 @@ func NouvelIndexVies(e EntreeOccupation) *IndexVies {
 		}
 		ix.debuts[d.XUID] = append(ix.debuts[d.XUID], d.Frame)
 	}
-	ix.filmLu = len(ix.debuts) > 0
+	ix.filmLu = LectureDuFilm(e)
 	for i, p := range e.Pistes {
 		points := pointsDansLaFenetre(p)
 		if len(points) == 0 {
@@ -101,9 +109,6 @@ func NouvelIndexVies(e EntreeOccupation) *IndexVies {
 		if p.EndFrame > p.StartFrame && p.EndFrame > fin {
 			// La fin declaree fait foi : le film a pu cesser de repliquer la position avant.
 			fin = p.EndFrame
-		}
-		if p.Fin != nil {
-			ix.filmLu = true
 		}
 		ix.vies = append(ix.vies, vieIndexeeReapp{
 			index: i, xuid: p.XUID, equipe: p.Equipe, points: points,
@@ -185,20 +190,15 @@ func (ix *IndexVies) Spawns() map[int]SpawnPiste {
 
 // qualifier decide si la vie `v` est une reapparition apres `prev` et la remplit.
 func (ix *IndexVies) qualifier(s *SpawnPiste, xuid string, v, prev vieIndexeeReapp) {
-	if ix.filmLu {
-		mort, manche := ix.lireFin(xuid, prev)
-		s.DebutDeManche = manche && !mort
-		if !mort {
-			return
-		}
-		s.Reapparition, s.Source = true, SourceFilm
-	} else {
-		ecartMs := (v.debut - prev.fin) * ix.intervalleMs
-		if ecartMs < EcartReapparitionMinMs || ecartMs > EcartReapparitionMaxMs {
-			return
-		}
-		s.Reapparition, s.Source = true, SourceRepliEcart
+	if !ix.filmLu {
+		return
 	}
+	mort, manche := ix.lireFin(xuid, prev)
+	s.DebutDeManche = manche && !mort
+	if !mort {
+		return
+	}
+	s.Reapparition = true
 	equipe := v.equipe
 	if equipe < 0 {
 		equipe = ix.EquipeDuJoueur(xuid)

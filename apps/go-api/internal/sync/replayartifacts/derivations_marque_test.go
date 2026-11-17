@@ -25,7 +25,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -60,8 +59,8 @@ func artefactADeriver(t *testing.T, dir, matchID string) string {
 	if err != nil {
 		t.Fatalf("marshal artefact: %v", err)
 	}
-	path := filepath.Join(dir, matchID+".json")
-	if err := os.WriteFile(path, raw, 0o600); err != nil {
+	path := filepath.Join(dir, matchID+".json.gz")
+	if err := poserCompresse(path, raw, 0o600); err != nil {
 		t.Fatalf("write artefact: %v", err)
 	}
 	return path
@@ -79,8 +78,8 @@ func artefactSansRienADeriver(t *testing.T, dir, matchID string) string {
 	if err != nil {
 		t.Fatalf("marshal artefact: %v", err)
 	}
-	path := filepath.Join(dir, matchID+".json")
-	if err := os.WriteFile(path, raw, 0o600); err != nil {
+	path := filepath.Join(dir, matchID+".json.gz")
+	if err := poserCompresse(path, raw, 0o600); err != nil {
 		t.Fatalf("write artefact: %v", err)
 	}
 	return path

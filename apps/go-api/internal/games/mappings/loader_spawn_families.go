@@ -39,10 +39,8 @@ type SpawnFamilyExclusions struct {
 
 // SpawnFamilySet porte la table d'un titre, familles dans l'ordre du fichier.
 type SpawnFamilySet struct {
-	titleSlug     string
-	schemaVersion int
-	exclusions    SpawnFamilyExclusions
-	families      []SpawnFamily
+	exclusions SpawnFamilyExclusions
+	families   []SpawnFamily
 }
 
 type spawnFamiliesTOML struct {
@@ -113,22 +111,6 @@ func (s *SpawnFamilySet) Families() []string {
 	return out
 }
 
-// TitleSlug retourne le slug declare.
-func (s *SpawnFamilySet) TitleSlug() string {
-	if s == nil {
-		return ""
-	}
-	return s.titleSlug
-}
-
-// SchemaVersion retourne la version de schema declaree.
-func (s *SpawnFamilySet) SchemaVersion() int {
-	if s == nil {
-		return 0
-	}
-	return s.schemaVersion
-}
-
 // LoadSpawnFamiliesFromFile lit et valide un spawn_families.toml a un chemin donne.
 func LoadSpawnFamiliesFromFile(path string) (*SpawnFamilySet, error) {
 	raw, err := os.ReadFile(path)
@@ -156,7 +138,6 @@ func LoadSpawnFamiliesFromBytes(path string, raw []byte) (*SpawnFamilySet, error
 		return nil, fmt.Errorf("%s: aucune entrée [[families]] — un titre sans famille n'a pas ce fichier", path)
 	}
 	set := &SpawnFamilySet{
-		titleSlug: doc.Meta.TitleSlug, schemaVersion: doc.Meta.SchemaVersion,
 		exclusions: SpawnFamilyExclusions{
 			VariantPrefixes:  minuscules(doc.Exclusions.VariantPrefixes),
 			Categories:       minuscules(doc.Exclusions.Categories),

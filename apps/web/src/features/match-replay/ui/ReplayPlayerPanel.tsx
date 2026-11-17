@@ -26,17 +26,19 @@
  *
  * Aucun littéral de couleur : l'encre du camp et les neutres sont des jetons sémantiques.
  */
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, type RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatClock } from '@/lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { playerCountersAt, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
+import { REPLAY_ESCAPE_LAYER_ATTR } from '../hooks/useReplayFullscreen'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { GABARIT_NORMAL } from '../model/cardGabarit'
 import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
@@ -69,11 +71,6 @@ export interface ReplayPlayerPanelProps {
 /** La fiche du joueur dont le panneau est ouvert : la tuile-bouton choisie (`aria-pressed`). */
 const OPEN_CARD_SELECTOR = '[data-replay-player-card][aria-pressed="true"]'
 
-/** Une AUTRE couche d'Échap est-elle ouverte que ce panneau ? Elle se ferme avant lui. */
-function innerLayerOpen(self: Element | null): boolean {
-  return Array.from(document.querySelectorAll('[data-replay-escape-layer]')).some((layer) => layer !== self)
-}
-
 /**
  * usePanelClose — LA SORTIE DU PANNEAU : « Retour au fil » et Échap ferment par le même chemin, qui
  * rend le focus à la fiche (sans quoi il tomberait sur la page avec le panneau retiré). Échap ne
@@ -86,13 +83,11 @@ function usePanelClose(rootRef: RefObject<HTMLElement | null>, onClose: () => vo
     onClose()
     card?.focus({ preventScroll: true })
   }, [onClose])
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !innerLayerOpen(rootRef.current)) close()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [rootRef, close])
+  useDismissable(true, close, {
+    ref: rootRef,
+    outside: null,
+    innerLayerSelector: `[${REPLAY_ESCAPE_LAYER_ATTR}]`,
+  })
   return close
 }
 

@@ -1,7 +1,7 @@
 package replayartifacts
 
-// raster_reapparitions_test.go — LA PART « REAPPARITION » DU SIDECAR (schema 7) : l'equipe, la
-// hauteur, la decision « reapparition » et sa source, la mort et l'instantane des autres joueurs.
+// raster_reapparitions_test.go — LA PART « REAPPARITION » DU SIDECAR : l'equipe, la hauteur, la
+// decision « reapparition » et sa source, la mort et l'instantane des autres joueurs.
 
 import (
 	"bytes"
@@ -12,15 +12,15 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 )
 
 // artefactReapparition : 100 ms par frame.
 //
-//	111 (equipe 0) : vie [0,100] puis vie [150,300] — 5 s d'ecart, donc une reapparition.
+//	111 (equipe 0) : vie [0,100] lachee a la frame 100, puis vie [150,300] : une reapparition lue au film.
 //	222 (equipe 1) : une vie [0,400], vivant a la frame 150, z = 3,456 (arrondi au centimetre).
 //	333 (equipe 0) : une vie [0,400], coequipier de 111.
 //	sans xuid (equipe 1) : une vie [0,400], vivante (un bot), qui compte dans l'instantane.
@@ -30,7 +30,7 @@ const artefactReapparition = `{
   "frameCount": 401,
   "frameIntervalMs": 100,
   "tracks": [
-    {"slot":1,"team":0,"xuid":"111","startFrame":0,"endFrame":100,
+    {"slot":1,"team":0,"xuid":"111","startFrame":0,"endFrame":100,"endReason":"released","releaseFrame":100,
      "points":[{"t":0,"x":1,"y":1,"z":0.5},{"t":100,"x":2,"y":2,"z":0.5}]},
     {"slot":2,"team":0,"xuid":"111","startFrame":150,"endFrame":300,
      "points":[{"t":150,"x":30.123,"y":4,"z":1.234},{"t":300,"x":31,"y":4,"z":1.234}]},
@@ -43,13 +43,19 @@ const artefactReapparition = `{
   ]
 }`
 
+// artefactReapparitionSansFilm : le meme match sans aucune lecture de fin de vie du film.
+var artefactReapparitionSansFilm = strings.Replace(artefactReapparition, `,"endReason":"released","releaseFrame":100`, "", 1)
+
 func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactReapparition), true)
+	s, err := ProjeterRasterTactique(context.Background(), ecrireFichier(t, "artefact.json", artefactReapparition), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
-	if domain.TacticalRasterSchemaVersion != 7 || s.SchemaVersion != 7 {
-		t.Fatalf("schema attendu 7, obtenu %d", s.SchemaVersion)
+	if domain.TacticalRasterSchemaVersion != 8 || s.SchemaVersion != 8 {
+		t.Fatalf("schema attendu 8, obtenu %d", s.SchemaVersion)
+	}
+	if raw, err := json.Marshal(s); err != nil || strings.Contains(string(raw), `"source"`) || strings.Contains(string(raw), `"reapparitions":{`) {
+		t.Errorf("le sidecar ne porte ni source de decision ni comptes de reapparitions (%v) : %s", err, raw)
 	}
 	var j111 domain.TacticalRasterJoueur
 	for _, j := range s.Joueurs {
@@ -64,8 +70,8 @@ func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
 		t.Errorf("la premiere vie n'est ni une reapparition ni porteuse d'instantane : %+v", sp)
 	}
 	sp := j111.Spawns[1]
-	if !sp.Reapparition || sp.Source != tactical.SourceRepliEcart || sp.Z != 1.23 {
-		t.Fatalf("reapparition de repli attendue, z arrondi a 1,23 : %+v", sp)
+	if !sp.Reapparition || sp.Z != 1.23 {
+		t.Fatalf("reapparition lue au film attendue, z arrondi a 1,23 : %+v", sp)
 	}
 	if sp.Mort == nil || sp.Mort.Frame != 100 || sp.Mort.X != 2 {
 		t.Errorf("mort = %+v", sp.Mort)
@@ -80,8 +86,33 @@ func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
 	if v := sp.Instantane[0]; v.XUID != "" || v.Equipe != 1 {
 		t.Errorf("la vie anonyme compte, sans identite : %+v", v)
 	}
-	if s.Reapparitions.RepliEcart != 1 || s.Reapparitions.Film != 0 || s.Reapparitions.DebutsDeManche != 0 {
-		t.Errorf("sources = %+v", s.Reapparitions)
+}
+
+// Un document sans aucune lecture de fin de vie du film n'a aucune reapparition : la degradation se
+// compte, le reste du sidecar (positions, premieres vies) est celui du match lu au film.
+func TestSidecar_SansLectureDuFilmAucuneReapparition(t *testing.T) {
+	avant := observability.LoadCounterT("", CompteurRastersSansLectureFilm)
+	s, err := ProjeterRasterTactique(context.Background(), ecrireFichier(t, "artefact.json", artefactReapparitionSansFilm), true)
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	for _, j := range s.Joueurs {
+		for k, sp := range j.Spawns {
+			if sp.Reapparition || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
+				t.Errorf("joueur %s, spawn %d : aucune reapparition sans lecture du film : %+v", j.XUID, k, sp)
+			}
+		}
+	}
+	if apres := observability.LoadCounterT("", CompteurRastersSansLectureFilm); apres != avant+1 {
+		t.Errorf("compteur de la degradation = %d, attendu %d", apres, avant+1)
+	}
+	// Un titre qui ne declare pas la prevision ne projette aucune reapparition : pas de degradation a dire.
+	avant = observability.LoadCounterT("", CompteurRastersSansLectureFilm)
+	if _, err := ProjeterRasterTactique(context.Background(), ecrireFichier(t, "artefact2.json", artefactReapparitionSansFilm), false); err != nil {
+		t.Fatal(err)
+	}
+	if apres := observability.LoadCounterT("", CompteurRastersSansLectureFilm); apres != avant {
+		t.Errorf("sans prevision, le compteur ne bouge pas : %d -> %d", avant, apres)
 	}
 }
 
@@ -91,7 +122,7 @@ func TestSidecarV7_OctetsStables(t *testing.T) {
 	chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
 	var avant []byte
 	for i := 0; i < 5; i++ {
-		s, err := ProjeterRasterTactique(chemin, true)
+		s, err := ProjeterRasterTactique(context.Background(), chemin, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,35 +137,26 @@ func TestSidecarV7_OctetsStables(t *testing.T) {
 	}
 }
 
-func TestSourcesDesReapparitions(t *testing.T) {
-	c := sourcesDesReapparitions([]domain.TacticalRasterJoueur{{Spawns: []domain.TacticalRasterSpawn{
-		{Reapparition: true, Source: tactical.SourceFilm},
-		{Reapparition: true, Source: tactical.SourceRepliEcart},
-		{DebutDeManche: true},
-		{PremiereVie: true},
-	}}})
-	if c.Film != 1 || c.RepliEcart != 1 || c.DebutsDeManche != 1 {
-		t.Errorf("sources = %+v", c)
-	}
-}
-
 // Sans `film.spawn_forecast`, le sidecar ne porte aucune matiere de prevision : ni reapparition,
-// ni source, ni debut de manche, ni mort, ni instantane, ni couverture. Le reste (cellules,
+// ni debut de manche, ni mort, ni instantane, ni couverture. Le reste (cellules,
 // positions du spawn, premiere vie, equipe) est celui du sidecar d'un titre qui la declare.
 func TestSidecar_SansPrevisionNePorteAucuneMatiereDeReapparition(t *testing.T) {
 	chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
-	avec, err := ProjeterRasterTactique(chemin, true)
+	avec, err := ProjeterRasterTactique(context.Background(), chemin, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sans, err := ProjeterRasterTactique(chemin, false)
+	sans, err := ProjeterRasterTactique(context.Background(), chemin, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sans.Reapparitions != (domain.TacticalRasterSources{}) {
-		t.Errorf("couverture sans prevision : %+v", sans.Reapparitions)
+	porte := false
+	for _, j := range avec.Joueurs {
+		for _, sp := range j.Spawns {
+			porte = porte || sp.Reapparition
+		}
 	}
-	if avec.Reapparitions == (domain.TacticalRasterSources{}) {
+	if !porte {
 		t.Fatal("le jeu d'essai doit porter une reapparition avec la prevision")
 	}
 	for i, j := range sans.Joueurs {
@@ -144,7 +166,7 @@ func TestSidecar_SansPrevisionNePorteAucuneMatiereDeReapparition(t *testing.T) {
 		}
 		for k, sp := range j.Spawns {
 			ref := avec.Joueurs[i].Spawns[k]
-			if sp.Reapparition || sp.Source != "" || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
+			if sp.Reapparition || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
 				t.Errorf("joueur %s, spawn %d : matiere de prevision sans capability : %+v", j.XUID, k, sp)
 			}
 			if sp.Frame != ref.Frame || sp.X != ref.X || sp.Y != ref.Y || sp.Z != ref.Z || sp.PremiereVie != ref.PremiereVie {
@@ -184,7 +206,13 @@ func TestProjeterRastersTactiques_PorteDeLaPrevision(t *testing.T) {
 			if err := json.Unmarshal(raw, &s); err != nil {
 				t.Fatal(err)
 			}
-			if porte := s.Reapparitions != (domain.TacticalRasterSources{}); porte != c.attendue {
+			porte := false
+			for _, j := range s.Joueurs {
+				for _, sp := range j.Spawns {
+					porte = porte || sp.Reapparition
+				}
+			}
+			if porte != c.attendue {
 				t.Errorf("matiere de prevision presente = %v, attendue %v", porte, c.attendue)
 			}
 		})

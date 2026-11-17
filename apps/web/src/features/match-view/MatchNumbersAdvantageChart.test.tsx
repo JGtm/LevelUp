@@ -18,13 +18,14 @@ import { MATCH_VIEW_TEXT } from './i18n'
 import { MatchNumbersAdvantageChart } from './MatchNumbersAdvantageChart'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import { readOption, type OptionRead } from '@/lib/echarts/optionRead.testutil'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(--ac-${token})`,
   tokenCssVar: (token: string) => `var(--ac-${token})`,
 }))
 
-const options = vi.hoisted(() => [] as Record<string, any>[]) // eslint-disable-line @typescript-eslint/no-explicit-any
+const options = vi.hoisted(() => [] as Record<string, unknown>[])
 vi.mock('echarts-for-react', () => ({
   default: ({ option }: { option: Record<string, unknown> }) => {
     options.push(option)
@@ -117,7 +118,7 @@ async function derniereOption() {
   return waitFor(() => {
     const o = options.at(-1)
     if (!o?.series) throw new Error('option non rendue')
-    return o
+    return readOption<number[]>(o)
   })
 }
 
@@ -128,9 +129,10 @@ async function aideDuTitre(view: ReturnType<typeof render>): Promise<string> {
 }
 
 /** La valeur de l'option (moitié positive + moitié négative) à un instant d'échantillonnage. */
-function valeurA(o: Record<string, any>, ms: number): number { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const pos = o.series[0].data.find((d: number[]) => d[0] === ms)
-  const neg = o.series[1].data.find((d: number[]) => d[0] === ms)
+function valeurA(o: OptionRead<number[]>, ms: number): number {
+  const pos = o.series[0].data.find((d) => d[0] === ms)
+  const neg = o.series[1].data.find((d) => d[0] === ms)
+  if (!pos || !neg) throw new Error(`aucun point à ${ms} ms`)
   return pos[1] + neg[1]
 }
 

@@ -220,9 +220,6 @@ type mockTimeseriesRepo struct {
 func (m *mockTimeseriesRepo) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.err
 }
-func (m *mockTimeseriesRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
-	return nil, nil
-}
 func (m *mockTimeseriesRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
 	return nil, nil
 }

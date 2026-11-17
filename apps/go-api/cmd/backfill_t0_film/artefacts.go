@@ -138,7 +138,7 @@ func lireUnArtefact(ctx context.Context, path string) verdictArtefact {
 	return v
 }
 
-// decoderMinimal lit l'artefact par la porte de replaybuild (compresse ou brut) et n'en decode
+// decoderMinimal lit l'artefact par la porte `replayartifact` et n'en decode
 // que les champs de artefactMinimal. Un seul artefact est en memoire a la fois.
 func decoderMinimal(path string) (artefactMinimal, error) {
 	raw, err := replayartifact.ReadBytes(path)

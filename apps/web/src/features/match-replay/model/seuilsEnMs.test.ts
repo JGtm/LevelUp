@@ -99,7 +99,7 @@ describe('durées des effets : la même durée réelle à 100 et à 33 ms', () =
     const tailFrames = msToFrames(PROJECTILE_TAIL_MS, d)
     const peint = (frame: number) => {
       const { ctx, ops } = recordingContext()
-      drawProjectilesLayer(ctx, [pr], vue, { frame, tailFrames }, 'c')
+      drawProjectilesLayer(ctx, [pr], vue, { frame, tailFrames, color: 'c' })
       return ops.some((o) => o.op === 'stroke')
     }
     // Le vol finit à l'image 5 : visible jusqu'à 5 + tailFrames inclus.

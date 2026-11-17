@@ -117,7 +117,7 @@ func juger(o options) (replayverite.Comparaison, string, error) {
 	return c, temoin, nil
 }
 
-// lireArtefact lit un artefact de rejeu (compresse ou brut) par la porte de replaybuild et le
+// lireArtefact lit un artefact de rejeu (`.json.gz`) par la porte `replayartifact` et le
 // decode par le lecteur du banc.
 func lireArtefact(path string) (*replayverite.Document, error) {
 	blob, err := replayartifact.ReadBytes(path)

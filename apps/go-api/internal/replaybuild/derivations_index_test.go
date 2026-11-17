@@ -15,7 +15,7 @@ import (
 // artefactDe pose un artefact de contenu donné et rend son chemin.
 func artefactDe(t *testing.T, contenu string) string {
 	t.Helper()
-	p := filepath.Join(t.TempDir(), "abcd1234.json")
+	p := filepath.Join(t.TempDir(), "abcd1234.json.gz")
 	if err := os.WriteFile(p, []byte(contenu), 0o600); err != nil {
 		t.Fatalf("write artefact: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestRemoveDerivationsMark(t *testing.T) {
 
 // TestDerivationsMarkPath : la marque vit À CÔTÉ de l'artefact, pas ailleurs.
 func TestDerivationsMarkPath(t *testing.T) {
-	got := DerivationsMarkPath(filepath.Join("data", "cache", "replays", "halo_infinite", "abcd1234.json"))
+	got := DerivationsMarkPath(filepath.Join("data", "cache", "replays", "halo_infinite", "abcd1234.json.gz"))
 	want := filepath.Join("data", "cache", "replays", "halo_infinite", "abcd1234.derived.json")
 	if got != want {
 		t.Errorf("DerivationsMarkPath = %q, attendu %q", got, want)

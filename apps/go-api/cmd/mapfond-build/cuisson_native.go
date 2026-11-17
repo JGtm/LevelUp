@@ -50,31 +50,28 @@ func (e *environnement) cuitNative(ctx context.Context, c cible) bilanAsset {
 	return e.publie(ctx, c, rendu, bilan)
 }
 
-// optionsNative assemble les options de cuisson d'une carte native.
+// optionsNative assemble les options de cuisson d'une carte native. Les leviers sont les mêmes que
+// sur la chaîne Forge (`optionsForge`).
 func (e *environnement) optionsNative(c cible, maillage *hinavmesh.Maillage) himap.OptionsCuisson {
+	cle := c.cle
 	return himap.OptionsCuisson{
-		RacineDeploy:           e.racineJeu,
-		CheminModule:           e.moduleDeCuisson(c),
-		Ancres:                 c.ancres,
-		Echelle:                e.echelleDe(c.cle),
-		CibleCadrePx:           himap.CibleCadrePx,
-		EcreteToits:            e.ecreteToitsDe(c.cle),
-		PlafondArene:           e.plafondAreneDe(c.cle),
-		SansEau:                e.sansEauDe(c.cle),
-		SubstitutionSansPortee: e.substitutionSansPorteeDe(c.cle),
-		CombleTrous:            e.combleTrousDe(c.cle),
-		CombleZonesEntieres:    e.combleZonesEntieresDe(c.cle),
-		PlancherTranche:        e.plancherTrancheDe(c.cle),
-		PlafondTranche:         e.plafondTrancheDe(c.cle),
-		SeuilArete:             e.seuilAreteDe(c.cle),
-		ZonesNommees:           e.zonesNommeesDe(c.cle),
-		RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
-		MargeZones:             e.margeZonesDe(c.cle),
-		BoiteUtile:             e.boiteUtileDe(c.cle),
-		// Le MEME reglage que sur le chemin Forge, et c est tout le point : il est declare
-		// pour toutes les cartes et n etait cable que la, donc sans effet et en silence sur
-		// une carte native.
-		RogneAuxComposantesAncrees: e.rogneAuxComposantesAncreesDe(c.cle),
-		Navmesh:                    e.optionsNavmeshNatif(c.cle, maillage),
+		RacineDeploy:               e.racineJeu,
+		CheminModule:               e.moduleDeCuisson(c),
+		Ancres:                     c.ancres,
+		Echelle:                    e.echelleDe(cle),
+		CibleCadrePx:               himap.CibleCadrePx,
+		EcreteToits:                valeurDe(e, cle, levierEcreteToits),
+		PlafondArene:               valeurDe(e, cle, levierPlafondArene),
+		SansEau:                    valeurDe(e, cle, levierSansEau),
+		SubstitutionSansPortee:     valeurDe(e, cle, levierSubstitutionSansPortee),
+		CombleTrous:                valeurDe(e, cle, levierCombleTrous),
+		CombleZonesEntieres:        valeurDe(e, cle, levierCombleZonesEntieres),
+		PlancherTranche:            valeurDe(e, cle, levierPlancherTranche),
+		ZonesNommees:               e.zonesNommeesDe(cle),
+		RogneAuxZones:              valeurDe(e, cle, levierRogneAuxZones),
+		MargeZones:                 valeurDe(e, cle, levierMargeZones),
+		BoiteUtile:                 e.boiteUtileDe(cle),
+		RogneAuxComposantesAncrees: valeurDe(e, cle, levierRogneAuxComposantesAncrees),
+		Navmesh:                    e.optionsNavmeshNatif(cle, maillage),
 	}
 }

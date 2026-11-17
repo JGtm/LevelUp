@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -72,8 +71,8 @@ func ecrireArtefactBombe(t *testing.T, dir, matchID string, doc replay.ReplayDoc
 	if err != nil {
 		t.Fatalf("marshal artefact: %v", err)
 	}
-	path := filepath.Join(dir, matchID+".json")
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	path := filepath.Join(dir, matchID+".json.gz")
+	if err := poserCompresse(path, raw, 0o644); err != nil {
 		t.Fatalf("write artefact: %v", err)
 	}
 	return path

@@ -5,17 +5,15 @@ package service
 
 import (
 	"context"
-	"errors"
-	"log/slog"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis/leadshare"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/leadshareload"
 )
 
 // WithLeadShare injecte la lecture de la Mainmise (câblée sous film.lead_share) et le joueur de la
@@ -25,8 +23,8 @@ func (s *TimeseriesService) WithLeadShare(repo port.LeadShareRepository) *Timese
 	return s
 }
 
-// attachLeadShare pose la Mainmise sur les lignes de match, les cartes et les mois de la réponse.
-// UNE lecture bornée par la liste des matchs du périmètre filtré et de la population solo complète
+// attachLeadShare pose la Mainmise sur les cartes et les mois de la réponse ; la page ne sert pas la
+// Mainmise match par match. UNE lecture bornée par la liste des matchs du périmètre filtré et de la population solo complète
 // (ADR 0036). Une lecture en échec est journalisée avant de dégrader : rien n'est posé, jamais un
 // zéro.
 func (s *TimeseriesService) attachLeadShare(
@@ -40,18 +38,10 @@ func (s *TimeseriesService) attachLeadShare(
 	if len(ids) == 0 {
 		return
 	}
-	got, err := s.leadShareRepo.LoadLeadShare(ctx, ids, s.playerXUID)
-	if err != nil {
-		if !errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "timeseries: mainmise illisible, page sans la mesure", "err", err)
-		}
+	got, ok := leadshareload.Load(ctx, s.leadShareRepo, ids, s.playerXUID,
+		"timeseries")
+	if !ok {
 		return
-	}
-	for i := range resp.MatchRows {
-		if v, ok := got[resp.MatchRows[i].MatchID]; ok {
-			share, changes := v.Share, v.Changes
-			resp.MatchRows[i].LeadShare, resp.MatchRows[i].LeadChanges = &share, &changes
-		}
 	}
 	loc := i18n.FromContext(ctx)
 	current := leadShareByMap(filtered, got, groups, loc)

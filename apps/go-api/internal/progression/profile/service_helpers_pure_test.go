@@ -3,6 +3,7 @@ package profile
 import (
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 	syncpkg "levelup/go-api/internal/sync"
@@ -47,9 +48,9 @@ func TestRequiredCompositeFor_SigmaNonPositiveDefaultsToOne(t *testing.T) {
 
 func TestBuildSkillRatingSnapshot_NextTierEmpty_NoGap(t *testing.T) {
 	// NextTier vide (joueur au max) → pas de NextTierLabel/Gap.
-	lusr := LUSRState{Mu: 2500, Sigma: 100}
-	tier := TierState{Name: "Onyx", Names: i18n.FromColumns("", "Onyx"), SubTier: 0, Label: "Onyx", LowerMu: 2000, UpperMu: 9999}
-	got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleEN)
+	lusr := domain.LUSRState{Mu: 2500, Sigma: 100}
+	tier := domain.TierState{Name: "Onyx", Names: i18n.FromColumns("", "Onyx"), SubTier: 0, Label: "Onyx", LowerMu: 2000, UpperMu: 9999}
+	got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleEN)
 	if got.NextTierLabel != "" {
 		t.Errorf("NextTierLabel = %q, want empty (pas de tier suivant)", got.NextTierLabel)
 	}
@@ -63,9 +64,9 @@ func TestBuildSkillRatingSnapshot_NextTierEmpty_NoGap(t *testing.T) {
 
 func TestBuildSkillRatingSnapshot_ProgressClampLow(t *testing.T) {
 	// μ sous LowerMu → ratio négatif → clamp à 0.
-	lusr := LUSRState{Mu: 1380} // sous LowerMu=1400
-	tier := TierState{Name: "Gold", LowerMu: 1400, UpperMu: 1600}
-	got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleEN)
+	lusr := domain.LUSRState{Mu: 1380} // sous LowerMu=1400
+	tier := domain.TierState{Name: "Gold", LowerMu: 1400, UpperMu: 1600}
+	got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleEN)
 	if got.ProgressRatio != 0 {
 		t.Errorf("ProgressRatio = %v, want 0 (clamp bas)", got.ProgressRatio)
 	}
@@ -73,9 +74,9 @@ func TestBuildSkillRatingSnapshot_ProgressClampLow(t *testing.T) {
 
 func TestBuildSkillRatingSnapshot_ProgressClampHigh(t *testing.T) {
 	// μ au-dessus de UpperMu → ratio > 1 → clamp à 1.
-	lusr := LUSRState{Mu: 1700} // au-dessus de UpperMu=1600
-	tier := TierState{Name: "Gold", LowerMu: 1400, UpperMu: 1600}
-	got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleEN)
+	lusr := domain.LUSRState{Mu: 1700} // au-dessus de UpperMu=1600
+	tier := domain.TierState{Name: "Gold", LowerMu: 1400, UpperMu: 1600}
+	got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleEN)
 	if got.ProgressRatio != 1 {
 		t.Errorf("ProgressRatio = %v, want 1 (clamp haut)", got.ProgressRatio)
 	}
@@ -83,9 +84,9 @@ func TestBuildSkillRatingSnapshot_ProgressClampHigh(t *testing.T) {
 
 func TestBuildSkillRatingSnapshot_NoProgressWhenDegenerateBounds(t *testing.T) {
 	// UpperMu == LowerMu (pas d'intervalle) → ProgressRatio reste 0 (pas de div/0).
-	lusr := LUSRState{Mu: 1500}
-	tier := TierState{Name: "X", LowerMu: 1500, UpperMu: 1500}
-	got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleEN)
+	lusr := domain.LUSRState{Mu: 1500}
+	tier := domain.TierState{Name: "X", LowerMu: 1500, UpperMu: 1500}
+	got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleEN)
 	if got.ProgressRatio != 0 {
 		t.Errorf("ProgressRatio = %v, want 0 (bornes dégénérées)", got.ProgressRatio)
 	}
@@ -132,7 +133,7 @@ func TestLOWESSTrend_IsPositive(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tr := LOWESSTrend{Slope: tt.slope, Window: tt.window}
+			tr := domain.LOWESSTrend{Slope: tt.slope, Window: tt.window}
 			if got := tr.IsPositive(tt.minWindow); got != tt.want {
 				t.Errorf("IsPositive = %v, want %v", got, tt.want)
 			}

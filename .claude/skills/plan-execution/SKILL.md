@@ -42,6 +42,9 @@ bloque une de ces dérives. Elles sont NON NÉGOCIABLES.
    c. Le fichier plan mis à jour (cases + journal) et inclus dans le commit ;
    d. Entrée `.ai/thought_log.md` ;
    e. Point d'étape à l'utilisateur : fait / skippé+pourquoi / découvert.
+   À la clôture du PLAN s'ajoute : l'outillage d'une mesure close (commande ou section de
+   mesure, harnais de simulation, option à usage unique) est retiré avec ses tests, ou gardé
+   avec son usage courant écrit dans la documentation des commandes.
 7. **Zéro fix opportuniste hors périmètre.** Toute découverte (bug, dette, idée) se note
    dans la section « Découvertes » du plan et N'EST PAS traitée — sauf si elle bloque le
    gate de l'étape courante.

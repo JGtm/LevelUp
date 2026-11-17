@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -60,7 +61,7 @@ id = "assassin"
 variant_contains = ["slayer"]
 `
 
-const poidsTest = `{"revision":1,"date":"2026-11-15","definition":"test","familles":{` +
+const poidsTest = `{"revision":2,"date":"2026-11-15","definition":"test","familles":{` +
 	`"assassin":{"poids":{"ennemi_le_plus_proche_10m":2}},"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`
 
 // artefactPrevu : « a » (equipe 0) meurt a la frame 100 en (50, 0, 0) et reapparait a la frame 340
@@ -117,7 +118,7 @@ func sidecarPlein(tours int) string {
 	for i := 0; i < tours; i++ {
 		xs = append(xs, 10, 110)
 	}
-	return sidecarAvecReapparitions(7, xs...)
+	return sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, xs...)
 }
 
 // autres ajoute `n` matchs d'Assassin sur la carte, chacun avec un sidecar plein de dix tours : trois
@@ -148,6 +149,17 @@ func (d *decorPrevision) previsionDans(t *testing.T, langue string) (replaydoc.S
 	return svc.SpawnForecast(ctxkeys.WithLocale(context.Background(), langue), prevuID)
 }
 
+// cadre rend la famille de modes et le jeu de poids que la prevision du match retient.
+func (d *decorPrevision) cadre(t *testing.T) cadrePrevision {
+	t.Helper()
+	svc := NewReplayService(title.DefaultSlug, d.root, d.reg, nil, WithReplayCapabilities(d.caps)).(*replayService)
+	c, raison, err := svc.cadreDePrevision(context.Background(), prevuID)
+	if err != nil || raison != "" {
+		t.Fatalf("cadreDePrevision = (%q, %v), attendu un cadre complet", raison, err)
+	}
+	return c
+}
+
 func (d *decorPrevision) prevision(t *testing.T) replaydoc.SpawnForecast {
 	t.Helper()
 	f, err := d.previsionDans(t, "fr")
@@ -164,11 +176,8 @@ func TestSpawnForecast_Servie(t *testing.T) {
 	if f.Status != replaydoc.SpawnForecastStatusReady || f.Reason != "" || f.Message != "" {
 		t.Fatalf("statut = %q (%s), attendu ready", f.Status, f.Reason)
 	}
-	if f.Family != "assassin" || f.Model != "assassin" || f.ModelDate != "2026-11-15" || f.SampleStepMs != 1000 {
-		t.Errorf("modele = %q/%q/%q/%d", f.Family, f.Model, f.ModelDate, f.SampleStepMs)
-	}
-	if f.MatchesOnMap != 4 || f.Candidates != 2 {
-		t.Errorf("matchs = %d, candidats = %d, attendu 4 et 2", f.MatchesOnMap, f.Candidates)
+	if len(f.Points) != 2 {
+		t.Errorf("points candidats = %d, attendu 2", len(f.Points))
 	}
 	if len(f.Deaths) != 1 {
 		t.Fatalf("morts = %d, attendu 1", len(f.Deaths))
@@ -198,8 +207,8 @@ func TestSpawnForecast_PointsEtProbabilitesAlignees(t *testing.T) {
 	d := nouveauDecor(t)
 	d.autres(t, 3)
 	f := d.prevision(t)
-	if len(f.Points) != f.Candidates || len(f.Points) != 2 {
-		t.Fatalf("points = %d, candidats = %d, attendu 2", len(f.Points), f.Candidates)
+	if len(f.Points) != 2 {
+		t.Fatalf("points = %d, attendu 2", len(f.Points))
 	}
 	// Un point en zone 1 (zones[0]) et un en zone 2, que la prevision ne sert pas : indice -1.
 	indices := map[int]int{}
@@ -236,11 +245,10 @@ func TestSpawnForecast_NeLitPasLeSidecarDuMatchPrevu(t *testing.T) {
 	d.autres(t, 2)
 	sans := d.prevision(t)
 	ecrire(t, title.NewPathResolver(d.root).TacticalRasterPath(title.DefaultSlug, prevuID),
-		sidecarAvecReapparitions(7, 10, 110, 20, 25))
+		sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110, 20, 25))
 	avec := d.prevision(t)
-	if sans.Candidates != 2 || avec.Candidates != 2 || avec.MatchesOnMap != sans.MatchesOnMap {
-		t.Errorf("candidats %d -> %d, matchs %d -> %d : le match prevu a fuite", sans.Candidates, avec.Candidates,
-			sans.MatchesOnMap, avec.MatchesOnMap)
+	if len(sans.Points) != 2 || len(avec.Points) != 2 {
+		t.Errorf("points candidats %d -> %d : le match prevu a fuite", len(sans.Points), len(avec.Points))
 	}
 	a, _ := json.Marshal(avec.Deaths)
 	b, _ := json.Marshal(sans.Deaths)
@@ -253,7 +261,7 @@ func TestSpawnForecast_UneAutreFamilleNAlimentePasLesCandidats(t *testing.T) {
 	d := nouveauDecor(t)
 	d.autres(t, 1)
 	for i := 2; i <= 3; i++ {
-		d.match(t, autreID(i), varianteBas, sidecarAvecReapparitions(7, 10, 110))
+		d.match(t, autreID(i), varianteBas, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110))
 	}
 	if f := d.prevision(t); f.Status != replaydoc.SpawnForecastStatusUnavailable || f.Reason != replaydoc.SpawnForecastReasonNotEnough {
 		t.Errorf("statut = %q (%s), attendu not_enough_matches : deux matchs d'une autre famille ne comptent pas", f.Status, f.Reason)
@@ -262,10 +270,10 @@ func TestSpawnForecast_UneAutreFamilleNAlimentePasLesCandidats(t *testing.T) {
 
 func TestSpawnForecast_SidecarPerimeOuAbsentIgnore(t *testing.T) {
 	d := nouveauDecor(t)
-	d.match(t, autreID(1), varianteAss, sidecarAvecReapparitions(7, 10, 110))
-	d.match(t, autreID(2), varianteAss, sidecarAvecReapparitions(6, 10, 110)) // schema anterieur
-	d.match(t, autreID(3), varianteAss, "")                                   // pas encore cuit
-	d.match(t, autreID(4), varianteAss, "pas du json")                        // illisible
+	d.match(t, autreID(1), varianteAss, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion, 10, 110))
+	d.match(t, autreID(2), varianteAss, sidecarAvecReapparitions(domain.TacticalRasterSchemaVersion-1, 10, 110)) // schema anterieur
+	d.match(t, autreID(3), varianteAss, "")                                                                      // pas encore cuit
+	d.match(t, autreID(4), varianteAss, "pas du json")                                                           // illisible
 	f := d.prevision(t)
 	if f.Status != replaydoc.SpawnForecastStatusUnavailable || f.Reason != replaydoc.SpawnForecastReasonNotEnough {
 		t.Errorf("statut = %q (%s), attendu not_enough_matches", f.Status, f.Reason)
@@ -340,8 +348,9 @@ func TestSpawnForecast_AucunFiltreParMode(t *testing.T) {
 			d := nouveauDecor(t)
 			c.poser(t, d)
 			f := d.prevision(t)
-			if f.Status != replaydoc.SpawnForecastStatusReady || f.Family != c.famille || f.Model != "tous" {
-				t.Errorf("statut = %q (%s) famille = %q modele = %q, attendu ready, %q, tous", f.Status, f.Reason, f.Family, f.Model, c.famille)
+			cadre := d.cadre(t)
+			if f.Status != replaydoc.SpawnForecastStatusReady || cadre.famille != c.famille || cadre.modele != "tous" {
+				t.Errorf("statut = %q (%s) famille = %q modele = %q, attendu ready, %q, tous", f.Status, f.Reason, cadre.famille, cadre.modele, c.famille)
 			}
 		})
 	}
@@ -354,8 +363,8 @@ func TestSpawnForecast_SeuilsDeDonnees(t *testing.T) {
 	for i := 1; i <= 2; i++ {
 		d.match(t, autreID(i), varianteAss, sidecarPlein(4)) // 16 reapparitions : sous le plancher de 20
 	}
-	if f := d.prevision(t); f.Reason != replaydoc.SpawnForecastReasonNotEnough || f.MatchesOnMap != 3 {
-		t.Errorf("statut = %q (%s), matchs = %d, attendu not_enough_matches (16 reapparitions sous 20)", f.Status, f.Reason, f.MatchesOnMap)
+	if f := d.prevision(t); f.Reason != replaydoc.SpawnForecastReasonNotEnough {
+		t.Errorf("statut = %q (%s), attendu not_enough_matches (16 reapparitions sous 20)", f.Status, f.Reason)
 	}
 	d.match(t, autreID(3), varianteAss, sidecarPlein(1)) // 18 reapparitions : encore sous 20
 	if f := d.prevision(t); f.Reason != replaydoc.SpawnForecastReasonNotEnough {
@@ -391,10 +400,11 @@ func TestSpawnForecast_LibellesParlentDeProbabilite(t *testing.T) {
 func TestSpawnForecast_ModeleDeRepliTous(t *testing.T) {
 	d := nouveauDecor(t)
 	ecrire(t, title.NewPathResolver(d.root).SpawnModelPath(title.DefaultSlug),
-		`{"revision":1,"date":"2026-11-15","definition":"t","familles":{"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`)
+		`{"revision":2,"date":"2026-11-15","definition":"t","familles":{"tous":{"poids":{"ennemi_le_plus_proche_10m":1}}}}`)
 	d.autres(t, 3)
-	if f := d.prevision(t); f.Status != replaydoc.SpawnForecastStatusReady || f.Model != "tous" || f.Family != "assassin" {
-		t.Errorf("modele = %q famille = %q statut = %q, attendu le jeu « tous » pour la famille assassin", f.Model, f.Family, f.Status)
+	f, cadre := d.prevision(t), d.cadre(t)
+	if f.Status != replaydoc.SpawnForecastStatusReady || cadre.modele != "tous" || cadre.famille != "assassin" {
+		t.Errorf("modele = %q famille = %q statut = %q, attendu le jeu « tous » pour la famille assassin", cadre.modele, cadre.famille, f.Status)
 	}
 }
 

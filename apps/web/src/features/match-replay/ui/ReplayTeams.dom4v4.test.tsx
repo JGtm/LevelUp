@@ -78,7 +78,7 @@ import { render } from '@testing-library/react'
 import type { ReplayDocument } from '@/lib/api/types'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeams } from './ReplayTeams'
+import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -253,7 +253,7 @@ describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', ()
     const board = tableau(4)
     const doc = documentRiche()
     const vue = render(
-      <ReplayTeams
+      <ReplayTeamsFromBoard
         doc={doc}
         scoreboard={board}
         frame={FRAME}
@@ -273,7 +273,7 @@ describe('ReplayTeams — fixation du DOM 4v4 (aucune régression hors BTB)', ()
     const board = tableau(6)
     const doc = documentSixParCamp()
     const vue = render(
-      <ReplayTeams
+      <ReplayTeamsFromBoard
         doc={doc}
         scoreboard={board}
         frame={FRAME}

@@ -51,7 +51,7 @@ import { shotSoundStem } from '../sound/replaySound'
 import { lireArtefact, listerArtefacts } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
-import { ReplayTeams } from '../ui/ReplayTeams'
+import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
 import { buildScoreDominance, trackScale } from './replayTimelineTracksLogic'
 import { readScoreBanner } from './scoreBannerLogic'
 import { buildShotFx } from './shotFx'
@@ -201,7 +201,7 @@ function instantsFiches(doc: ReplayDocumentReady): number[] {
 
 function mesurerFiches(doc: ReplayDocumentReady): InstantFiche[] {
   return instantsFiches(doc).map((frame) => {
-    const { container, unmount } = render(createElement(ReplayTeams, { doc, scoreboard: [], frame, locale: 'fr', allegiance: NO_ALLEGIANCE }))
+    const { container, unmount } = render(createElement(ReplayTeamsFromBoard, { doc, scoreboard: [], frame, locale: 'fr', allegiance: NO_ALLEGIANCE }))
     const html = container.innerHTML
     const texte = container.textContent ?? ''
     unmount()

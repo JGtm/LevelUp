@@ -22,6 +22,7 @@
  * contour puis un remplissage), à une ENCRE résolue par l'appelant — jamais un littéral, jamais
  * `readInk` appelé d'ici (cf. `canvasInk.ts`, la règle color-tokens).
  */
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { XY } from '../../../lib/replay/replayLogic'
 
 /**
@@ -108,7 +109,7 @@ export function drawOffscreenLabel(
 ): void {
   const k = style.k
   const anchor = offscreenLabelAnchor(at, angle, k)
-  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ui-sans-serif, system-ui, sans-serif`
+  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${CANVAS_FONT_FAMILY}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.globalAlpha = 1

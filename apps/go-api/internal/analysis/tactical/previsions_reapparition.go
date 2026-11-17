@@ -4,7 +4,7 @@ package tactical
 // chaque mort d'un match suivie d'une reapparition, la probabilite de chaque zone nommee, une fois
 // par seconde, a partir de la position des autres joueurs A CET INSTANT.
 //
-// C'est le modele de reapparition.go (memes sept variables, memes poids) applique a la place du
+// C'est le modele de reapparition.go (memes six variables, memes poids) applique a la place du
 // rejeu : a l'instant d'un echantillon, les joueurs vivants se lisent dans l'index des vies du
 // match (IndexVies.Vivants, la meme lecture que la mesure M-4 a l'instant de la mort), les
 // candidats sont les points de la carte, et la probabilite d'une ZONE est la SOMME des
@@ -92,12 +92,10 @@ type ProbaZone struct {
 }
 
 // EchantillonPrevision est la prevision a un instant du compte a rebours : les zones de la plus
-// probable a la moins probable (ex aequo : indice de volume croissant), et la part des candidats
-// qu'aucune zone nommee ne porte.
+// probable a la moins probable (ex aequo : indice de volume croissant).
 type EchantillonPrevision struct {
-	Frame    int
-	Zones    []ProbaZone
-	HorsZone float64
+	Frame int
+	Zones []ProbaZone
 	// PointsP est la probabilite de chaque point candidat, alignee sur PrevisionsDuMatch.Points, arrondie
 	// au millieme (somme egale a 1 a l'arrondi pres). La probabilite d'une zone est la somme de ses points.
 	PointsP []float64
@@ -232,7 +230,7 @@ func (p *previseur) prevoirUneMort(piste Piste, s SpawnPiste) (PrevisionDeMort, 
 		ZoneReelle: IndiceDeZone(p.zones, reel),
 	}
 	for f := s.Mort.Frame; f < s.Frame; f += p.pasFrames {
-		ev := evenementAuInstant(p.index.Vivants(piste.XUID, f), equipe, mort)
+		ev := EvenementAuInstant(p.index.Vivants(piste.XUID, f), equipe, mort)
 		if len(ev.Ennemis) == 0 {
 			continue // seconde sautee : le premier echantillon peut suivre la mort (contrat de replaydoc.SpawnForecastDeath)
 		}
@@ -245,19 +243,16 @@ func (p *previseur) prevoirUneMort(piste Piste, s SpawnPiste) (PrevisionDeMort, 
 func (p *previseur) echantillon(frame int, ev EvenementReapparition) EchantillonPrevision {
 	scores := make([]float64, len(p.cands))
 	for i, c := range p.cands {
-		scores[i] = Score(Variables(ev, c, c.Total, nil), p.poids)
+		scores[i] = Score(Variables(ev, c, c.Total), p.poids)
 	}
 	proba := Probabilites(scores)
 	somme := map[int]float64{}
-	horsZone := 0.0
 	for i, pr := range proba {
 		if z := p.zonesCand[i]; z >= 0 {
 			somme[z] += pr
-		} else {
-			horsZone += pr
 		}
 	}
-	out := EchantillonPrevision{Frame: frame, HorsZone: arrondiProbabilite(horsZone), PointsP: make([]float64, len(proba))}
+	out := EchantillonPrevision{Frame: frame, PointsP: make([]float64, len(proba))}
 	for i, pr := range proba {
 		out.PointsP[i] = arrondiProbabilite(pr)
 	}
@@ -309,10 +304,11 @@ func matchsDistincts(evts []EvenementReapparition) int {
 	return len(vus)
 }
 
-// evenementAuInstant separe les joueurs vivants en equipiers et adversaires du point de vue de
+// EvenementAuInstant separe les joueurs vivants en equipiers et adversaires du point de vue de
 // `equipe` ; un joueur dont l'equipe est inconnue ou la position non finie n'est compte dans
-// aucun des deux. `mort` est le lieu de la mort du joueur prevu.
-func evenementAuInstant(vivants []Vivant, equipe int, mort Point3) EvenementReapparition {
+// aucun des deux. `mort` est le lieu de la mort du joueur prevu ; l'appelant pose l'identite du
+// match, de la carte et le point reel s'il en a besoin.
+func EvenementAuInstant(vivants []Vivant, equipe int, mort Point3) EvenementReapparition {
 	e := EvenementReapparition{Mort: mort}
 	for _, v := range vivants {
 		pos := Point3{X: v.X, Y: v.Y, Z: v.Z}

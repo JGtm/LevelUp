@@ -892,8 +892,8 @@ func (p *PathResolver) JobsCachePath() string {
 
 // ReplayArtifactPath retourne le chemin de l'artefact de rejeu 2D d'un match (produit
 // hors ligne par cmd/replay-build, servi tel quel par l'API).
-// Ex: data/cache/replays/halo_infinite/000d5950.json.gz (un parc ancien porte encore des .json bruts,
-// que la porte de replaybuild lit aussi).
+// Ex: data/cache/replays/halo_infinite/000d5950.json.gz (seule forme d'artefact que la porte
+// `replayartifact` connaisse).
 // Sous data/cache/* (non versionné, regénérable depuis capture + film).
 //
 // La clé est la forme COURTE (cf. FilmShortMatchID) : l'artefact est un dérivé du film,

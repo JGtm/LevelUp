@@ -237,8 +237,8 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
 		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
 
-	assertCalquesDObjectif(t, doc, fx)
-	assertValeursDuDocument(t, doc, fx)
+	assertCalquesDObjectif(t, doc.ReplayDocument, fx)
+	assertValeursDuDocument(t, doc.ReplayDocument, fx)
 }
 
 // chargerFixture lit le mini-film versionné (fixture.json + chunks) résolu PAR LE PAQUET

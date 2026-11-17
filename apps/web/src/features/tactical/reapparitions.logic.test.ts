@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayCalloutZone as CalloutZone, TacticalReapparitionsAdverses, TacticalRepartitionZones } from '@/lib/api/types'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
 
+import { getTacticalText } from './i18n'
 import {
+  blocVideDeLaLecture,
   cadreDeLaCouche,
   cheminDeLaZone,
   construireLaLecture,
@@ -27,7 +29,6 @@ function repartition(
   return {
     matchs: 6,
     reapparitions: total,
-    sans_zone: 0,
     suffisante: true,
     zones: zones.map(([volume_index, nom, reapparitions, part]) => ({ volume_index, nom, reapparitions, part })),
     ...extra,
@@ -37,10 +38,6 @@ function repartition(
 function reponse(over: Partial<TacticalReapparitionsAdverses> = {}): TacticalReapparitionsAdverses {
   return {
     etat: 'servie',
-    map_id: 'carte',
-    matchs_filtres: 10,
-    matchs_retenus: 9,
-    matchs_sans_equipe: 0,
     plancher: { matchs: 3, reapparitions: 20, joueurs_pour_tenir: 2 },
     reference: repartition([
       [1, 'Hydro', 40, 0.4],
@@ -52,7 +49,7 @@ function reponse(over: Partial<TacticalReapparitionsAdverses> = {}): TacticalRea
       [1, 'Hydro', 15, 0.3],
       [4, 'Pont', 10, 0.2],
     ]),
-    zone: { volume_index: 3, nom: 'Fosse' },
+    zone: { nom: 'Fosse' },
     ...over,
   }
 }
@@ -81,7 +78,7 @@ describe('construireLaLecture', () => {
     const rep = reponse({
       etat: 'vide',
       raison: 'sous_plancher_matchs',
-      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false, raison: 'sous_plancher_matchs' }),
+      tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }),
     })
     const l = construireLaLecture(rep, 3)
     expect(l?.etat).toBe('vide')
@@ -111,7 +108,7 @@ describe('construireLaLecture', () => {
 
   it('une répartition de référence vide (sous le plancher) ne donne aucune ligne', () => {
     const rep = reponse({
-      reference: repartition([], { reapparitions: 5, suffisante: false, raison: 'sous_plancher_reapparitions' }),
+      reference: repartition([], { reapparitions: 5, suffisante: false }),
     })
     const l = construireLaLecture(rep, null)
     expect(l?.lignes).toEqual([])
@@ -165,7 +162,7 @@ describe('mesures d’affichage', () => {
     const sans = construireLaLecture(reponse(), null)
     expect(sans && lignesEtiquetees(sans)).toEqual([])
     const tenue = construireLaLecture(
-      reponse({ zone: { volume_index: 1, nom: 'Hydro' }, tenue: repartition([[1, 'Hydro', 10, 0.5]]) }),
+      reponse({ zone: { nom: 'Hydro' }, tenue: repartition([[1, 'Hydro', 10, 0.5]]) }),
       1,
     )
     expect(tenue && lignesEtiquetees(tenue)).toEqual([])
@@ -270,5 +267,40 @@ describe('le cadre de la couche et les étiquettes', () => {
     if (!repere) return
     // Un quart de tour horaire : le coin haut-gauche du monde passe en haut à droite.
     expect(positionDeLEtiquette({ x: 10, y: 60 }, repere)).toEqual({ left: '100.00%', top: '0.00%' })
+  })
+})
+
+describe('blocVideDeLaLecture — l’état vide dit la raison, dans les deux langues', () => {
+  const vide = (raison: string) =>
+    construireLaLecture(reponse({ etat: 'vide', raison, tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }) }), 3)
+
+  it.each(['fr', 'en'] as const)('une cause nommée : un titre et une phrase propres, sans jauge (%s)', (locale) => {
+    const t = getTacticalText(locale)
+    const attendus: Record<string, string> = {
+      aucun_match_mesure: t.reappEmptyNoMatchTitle,
+      equipe_inconnue: t.reappEmptyTeamTitle,
+      zone_sans_forme: t.reappEmptyShapeTitle,
+    }
+    for (const [raison, titre] of Object.entries(attendus)) {
+      const bloc = blocVideDeLaLecture(t, vide(raison)!)
+      expect(bloc?.titre, raison).toBe(titre)
+      expect(bloc?.corps.length, raison).toBeGreaterThan(0)
+      expect(bloc?.jauges, raison).toEqual([])
+    }
+  })
+
+  it('un manque de mesures : le titre de la zone et les deux jauges contre les planchers', () => {
+    const t = getTacticalText('fr')
+    for (const raison of ['sous_plancher_matchs', 'sous_plancher_reapparitions', 'code_futur']) {
+      const bloc = blocVideDeLaLecture(t, vide(raison)!)
+      expect(bloc?.titre, raison).toBe(t.reappEmptyFloorTitle('Fosse'))
+      expect(bloc?.jauges.map((j) => j.cle), raison).toEqual(['matchs', 'reapparitions'])
+    }
+  })
+
+  it('une lecture servie n’a pas de bloc ; sans zone, la phrase qui dit comment choisir', () => {
+    const t = getTacticalText('fr')
+    expect(blocVideDeLaLecture(t, construireLaLecture(reponse(), 3)!)).toBeNull()
+    expect(blocVideDeLaLecture(t, construireLaLecture(reponse(), null)!)?.titre).toBe(t.reappEmptyNoneTitle)
   })
 })

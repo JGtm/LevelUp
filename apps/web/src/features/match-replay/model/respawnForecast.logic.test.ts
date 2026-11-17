@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplaySpawnForecast } from '@/lib/api/types'
 
+import { REPLAY_TEXT } from '../i18n/i18n'
 import {
+  forecastRefusal,
   momentOf,
   momentsAt,
   normalizeSpawnForecast,
@@ -39,13 +41,13 @@ function wireDeath(over: Partial<WireDeath> = {}): WireDeath {
     xuid: 'xuid(1)',
     death_frame: 100,
     respawn_frame: 130,
-    death: { x: 10, y: 20, z: 0 },
-    actual: { x: 50, y: 60, z: 0 },
+    death: { x: 10, y: 20 },
+    actual: { x: 50, y: 60 },
     actual_zone: 7,
     samples: [
-      { frame: 100, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
-      { frame: 110, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
-      { frame: 120, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
+      { frame: 100, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.5 }, { zone: 7, p: 0.3 }, { zone: 4, p: 0.1 }, { zone: 9, p: 0.05 }] },
+      { frame: 110, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.6 }, { zone: 3, p: 0.2 }] },
+      { frame: 120, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 7, p: 0.7 }, { zone: 3, p: 0.1 }] },
     ],
     ...over,
   }
@@ -54,10 +56,6 @@ function wireDeath(over: Partial<WireDeath> = {}): WireDeath {
 function wire(over: Partial<ReplaySpawnForecast> = {}): ReplaySpawnForecast {
   return {
     status: 'ready',
-    candidates: 40,
-    discarded_deaths: 0,
-    matches_on_map: 5,
-    sample_step_ms: 1000,
     zones: [{ volume_index: 3, name: 'Fosse' }, { volume_index: 7, name: 'Pont' }],
     // Trois points : un en « Fosse » (zones[0]), un en « Pont » (zones[1]), un hors de toute zone servie.
     points: [{ x: 1, y: 2, zone_index: 0 }, { x: 3, y: 4, zone_index: 1 }, { x: 5, y: 6, zone_index: -1 }],
@@ -87,7 +85,7 @@ describe('normalizeSpawnForecast', () => {
 
   it('écarte une mort sans coordonnées finies, garde les autres', () => {
     const f = normalizeSpawnForecast(
-      wire({ deaths: [wireDeath({ xuid: 'xuid(bad)', death: { x: Number.NaN, y: 0, z: 0 } }), wireDeath({ xuid: 'xuid(ok)' })] }),
+      wire({ deaths: [wireDeath({ xuid: 'xuid(bad)', death: { x: Number.NaN, y: 0 } }), wireDeath({ xuid: 'xuid(ok)' })] }),
     )
     expect(f?.deaths.map((d) => d.xuid)).toEqual(['xuid(ok)'])
   })
@@ -96,7 +94,7 @@ describe('normalizeSpawnForecast', () => {
     const f = normalizeSpawnForecast(
       wire({
         deaths: [
-          wireDeath({ xuid: 'xuid(late)', death_frame: 300, respawn_frame: 330, samples: [{ frame: 310, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 1, p: 0.1 }, { zone: 2, p: 0.4 }] }, { frame: 300, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [] }] }),
+          wireDeath({ xuid: 'xuid(late)', death_frame: 300, respawn_frame: 330, samples: [{ frame: 310, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 1, p: 0.1 }, { zone: 2, p: 0.4 }] }, { frame: 300, points_p: [0.5, 0.3, 0.2], zones: [] }] }),
           wireDeath({ xuid: 'xuid(early)' }),
         ],
       }),
@@ -108,7 +106,7 @@ describe('normalizeSpawnForecast', () => {
   })
 
   it('ne garde pas une zone de probabilité nulle', () => {
-    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 1, points_p: null, zones: [{ zone: 1, p: 0 }] }] })] }))
+    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, points_p: null, zones: [{ zone: 1, p: 0 }] }] })] }))
     expect(f?.deaths[0].samples[0].zones).toEqual([])
   })
 
@@ -225,7 +223,7 @@ describe('momentsAt — Seul / Masquer et plusieurs morts à la fois', () => {
   const forecast = ready({
     deaths: [
       wireDeath({ xuid: 'xuid(a)', death_frame: 100, respawn_frame: 130 }),
-      wireDeath({ xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, samples: [{ frame: 110, outside_zone: 0, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }] }),
+      wireDeath({ xuid: 'xuid(b)', death_frame: 110, respawn_frame: 150, samples: [{ frame: 110, points_p: [0.5, 0.3, 0.2], zones: [{ zone: 3, p: 0.9 }] }] }),
     ],
   })
 
@@ -305,13 +303,13 @@ describe('les points candidats et leur probabilité', () => {
   })
 
   it('une liste de probabilités qui n’est pas alignée sur les points est écartée, jamais devinée', () => {
-    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 0, points_p: [0.5, 0.5], zones: [{ zone: 3, p: 0.5 }] }] })] }))!
+    const f = normalizeSpawnForecast(wire({ deaths: [wireDeath({ samples: [{ frame: 100, points_p: [0.5, 0.5], zones: [{ zone: 3, p: 0.5 }] }] })] }))!
     expect(f.deaths[0].samples[0].pointsP).toEqual([])
     expect(f.deaths[0].samples[0].zones).toHaveLength(1)
   })
 
   it('une réponse sans point : aucune probabilité de point, le reste intact', () => {
-    const f = normalizeSpawnForecast(wire({ points: null, deaths: [wireDeath({ samples: [{ frame: 100, outside_zone: 0, points_p: null, zones: [{ zone: 3, p: 1 }] }] })] }))!
+    const f = normalizeSpawnForecast(wire({ points: null, deaths: [wireDeath({ samples: [{ frame: 100, points_p: null, zones: [{ zone: 3, p: 1 }] }] })] }))!
     expect(f.points).toEqual([])
     expect(f.deaths[0].samples[0].pointsP).toEqual([])
   })
@@ -337,5 +335,39 @@ describe('tintAlpha selon le dessin', () => {
     expect(tintAlpha(0.5, 0.5, 'both')).toBeCloseTo(TINT_BASE_ALPHA_UNDER_POINTS + TINT_AMPLITUDE_ALPHA_UNDER_POINTS, 9)
     expect(tintAlpha(0.5, 0.5, 'both')).toBeLessThan(tintAlpha(0.5, 0.5, 'zones'))
     expect(tintAlpha(0, 0.5, 'both')).toBeLessThan(tintAlpha(0, 0.5, 'zones'))
+  })
+})
+
+describe('forecastRefusal — le motif d’une réponse qui n’est pas prête', () => {
+  const fr = REPLAY_TEXT.fr.respawnForecast.refusal
+  const en = REPLAY_TEXT.en.respawnForecast.refusal
+  const refuse = (over: Partial<ReplaySpawnForecast>): ReplaySpawnForecast => wire({ status: 'unavailable', ...over })
+
+  it('prête, ou pas encore là : rien à expliquer', () => {
+    expect(forecastRefusal(wire(), fr)).toBeNull()
+    expect(forecastRefusal(undefined, fr)).toBeNull()
+    expect(forecastRefusal(null, fr)).toBeNull()
+  })
+
+  it('le message servi (déjà dans la langue de la requête) passe avant le dictionnaire', () => {
+    expect(forecastRefusal(refuse({ reason: 'no_zone', message: 'Message du serveur.' }), fr)).toBe('Message du serveur.')
+  })
+
+  it('sans message : la phrase du dictionnaire pour chacune des cinq raisons, dans la langue de la page', () => {
+    for (const reason of ['no_model', 'map_unknown', 'not_enough_matches', 'no_zone', 'no_respawn'] as const) {
+      expect(forecastRefusal(refuse({ reason }), fr)).toBe(fr.byReason[reason])
+      expect(forecastRefusal(refuse({ reason }), en)).toBe(en.byReason[reason])
+      expect(fr.byReason[reason]).not.toBe(en.byReason[reason])
+    }
+  })
+
+  it('une raison que ce client ne connaît pas, ou aucune raison : la phrase générale, jamais un motif muet', () => {
+    expect(forecastRefusal(refuse({ reason: 'code_futur' as never }), fr)).toBe(fr.unknown)
+    expect(forecastRefusal(refuse({}), en)).toBe(en.unknown)
+  })
+
+  it('« probabilité », jamais « prévision », dans les deux langues', () => {
+    const texts = [...Object.values(fr.byReason), fr.unknown, ...Object.values(en.byReason), en.unknown]
+    expect(texts.filter((x) => /pr[ée]vision|forecast/i.test(x))).toEqual([])
   })
 })

@@ -50,6 +50,7 @@
  * Pas de React : géométrie pure + un CanvasRenderingContext2D, comme les calques voisins.
  * L'encre arrive de l'appelant, qui la tient des variables du thème.
  */
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
 import { project, UNCERTAIN_DASH, type PlacementView } from './placementShapes'
 import type { PadScale } from '../model/weaponPadFamilies'
@@ -396,7 +397,7 @@ export function drawCountdown(
   style: { fill: string; outline: string; k: number },
 ): void {
   ctx.globalAlpha = 1
-  ctx.font = `600 ${PAD_COUNTDOWN_FONT_PX * style.k}px ui-sans-serif, system-ui, sans-serif`
+  ctx.font = `600 ${PAD_COUNTDOWN_FONT_PX * style.k}px ${CANVAS_FONT_FAMILY}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
   const y = topY - PAD_GAP_PX * style.k

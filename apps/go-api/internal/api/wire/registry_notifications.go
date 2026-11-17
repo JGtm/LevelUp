@@ -73,7 +73,7 @@ func notifServiceFor(pdb *duckdb.PlayerDB, appSettingsPath string) *notification
 		Player:          pdb.Gamertag,
 		XUID:            pdb.XUID,
 		TitleSlug:       pdb.TitleSlug,
-		AppBaseURL:      publicBaseURL(),
+		AppBaseURL:      config.PublicBaseURLFromEnv(),
 	})
 	// Le relais natif (notifications Windows de l'application de bureau) se branche sur le même point :
 	// inerte tant que le boot du profil desktop n'a pas installé son sink (native.Default().Install), et

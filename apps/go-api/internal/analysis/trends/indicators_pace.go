@@ -35,26 +35,10 @@ func optCount(get func(Match) *float64) func(Match) (float64, bool) {
 	}
 }
 
-// perMinute : somme des comptes / somme des minutes jouées. Un match sans seconde jouée
-// (durée inconnue) ou sans compte (valeur inconnue) est exclu du numérateur ET du
-// dénominateur ; sans aucun match retenu, l'ensemble n'a pas de valeur.
+// perMinute : somme des comptes / somme des minutes jouées ([analysis.PooledPerMinute]) de l'ensemble
+// évalué.
 func perMinute(count func(Match) (float64, bool)) evalFunc {
 	return func(ms []Match) (float64, bool) {
-		var sum, seconds float64
-		for _, m := range ms {
-			if m.Seconds <= 0 {
-				continue
-			}
-			v, ok := count(m)
-			if !ok {
-				continue
-			}
-			sum += v
-			seconds += m.Seconds
-		}
-		if seconds <= 0 {
-			return 0, false
-		}
-		return analysis.PerMinute(sum, seconds), true
+		return analysis.PooledPerMinute(ms, count, func(m Match) float64 { return m.Seconds })
 	}
 }

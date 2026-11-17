@@ -123,6 +123,8 @@ export interface FilmLayerAvailability {
    * connue alors que le calque est éteint). Pas un calque de préréglage (`LAYER_KEYS`).
    */
   respawnForecast: boolean
+  /** Pourquoi aucune probabilité n'est servie, quand la réponse la refuse ; le panneau le dit à la place de l'interrupteur. */
+  respawnForecastRefusal?: string | null
   /**
    * Le fond retenu porte un plan des murs. Ce n'est pas un calque de préréglage (`LAYER_KEYS`) :
    * il ne fait que conditionner l'affichage de sa bascule.

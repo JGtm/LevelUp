@@ -170,10 +170,20 @@ type MatchViewService interface {
 // tard » — règle 11 projet). Le handler le mappe en 404 propre.
 var ErrReplayNotAvailable = errors.New("replay: aucun artefact disponible pour ce match")
 
+// ServedReplay est le document de rejeu SERVI, avec ce que le service sait de lui et que le document
+// ne dit pas : la fraîcheur de sa cadence. Le champ est décidé par le service, rendu avec le document
+// (jamais par un second appel) ; le transport ne fait que l'encoder.
+type ServedReplay struct {
+	replaydoc.ReplayDocument
+	// CadenceStale : le pas du document n'est pas le pas de cuisson courant. Un document sans pas se lit
+	// au pas historique.
+	CadenceStale bool
+}
+
 // ReplayService sert l'artefact de rejeu 2D pré-construit d'un match (trajectoires
 // joueurs vue du dessus, produit hors ligne par cmd/replay-build).
 type ReplayService interface {
-	GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error)
+	GetReplay(ctx context.Context, matchID string) (ServedReplay, error)
 	// IsAvailable dit si l'artefact du match existe, SANS le lire. La Match View
 	// s'en sert pour ne poser un lien « Rejeu 2D » que là où il mène quelque part :
 	// un lien vers une page vide serait pire que pas de lien.

@@ -8,6 +8,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
+import { DEFAULT_MAP_BACKGROUND_VARIANT } from '@/lib/replay/mapBackgroundVariant'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { peindreLesPositions } from './_positionsPaint'
@@ -104,7 +105,14 @@ describe('MatchPositionsHeatmap — orientation et plan des murs du rejeu', () =
     expect(dernierTrace().peinture?.plan).toBeNull()
   })
 
-  it('fond rendu par défaut : l’image est demandée en variante rendu', () => {
+  it('sans réglage : l’image est demandée dans la variante par défaut', () => {
+    background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
+    rendre()
+    expect(image.mock.calls.at(-1)?.[3]).toBe(DEFAULT_MAP_BACKGROUND_VARIANT)
+  })
+
+  it('fond rendu choisi : l’image est demandée en variante rendu, les murs sont dessinés', () => {
+    window.localStorage.setItem('replay-background-style', 'rendu')
     background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
     rendre()
     expect(image.mock.calls.at(-1)?.[3]).toBe('rendu')

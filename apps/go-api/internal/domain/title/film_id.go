@@ -85,11 +85,8 @@ func FilmShortMatchID(matchID string) string {
 const (
 	// ReplayArtifactExt : l'extension de l'artefact tel qu'il s'écrit (JSON compressé, gzip).
 	ReplayArtifactExt = ".json.gz"
-	// ReplayArtifactLegacyExt : l'extension d'un artefact brut, tel que les versions antérieures
-	// l'écrivaient. Un parc peut en porter encore ; il se lit, il ne s'écrit plus.
-	ReplayArtifactLegacyExt = ".json"
 	// ReplayDerivationsMarkSuffix : le suffixe de la marque de dérivation, voisine de l'artefact
-	// dans le même dossier. Elle finit par l'extension brute sans être un artefact.
+	// dans le même dossier. Elle n'est pas un artefact.
 	ReplayDerivationsMarkSuffix = ".derived.json"
 	// ReplaySidecarExt : l'extension d'un sidecar de rejeu (raster tactique), JSON brut.
 	ReplaySidecarExt = ".json"
@@ -102,39 +99,18 @@ func ReplayArtifactFileName(matchID string) string {
 	return FilmShortMatchID(matchID) + ReplayArtifactExt
 }
 
-// IsReplayArtifactFile dit si ce NOM DE FICHIER est un artefact de rejeu : `{x}.json.gz`, ou
-// `{x}.json` d'un parc ancien. Ni la marque de dérivation (`{x}.derived.json`), ni l'en-tête
-// (`{x}.meta`), ni une sauvegarde manuelle ne le sont. Le nom, pas le chemin : les balayages de
-// dossier n'ont que l'entrée. Prédicat unique de tous les listages d'artefacts.
+// IsReplayArtifactFile dit si ce NOM DE FICHIER est un artefact de rejeu : `{x}.json.gz`, et rien d'autre.
+// Ni la marque de dérivation (`{x}.derived.json`), ni l'en-tête (`{x}.meta`), ni un `{x}.json` brut, ni une
+// sauvegarde manuelle ne le sont. Le nom, pas le chemin : les balayages de dossier n'ont que l'entrée.
+// Prédicat unique de tous les listages d'artefacts.
 func IsReplayArtifactFile(name string) bool {
-	if strings.HasSuffix(name, ReplayDerivationsMarkSuffix) {
-		return false
-	}
 	stem := ReplayArtifactStem(name)
 	return stem != name && stem != "" && !strings.HasSuffix(stem, string(filepath.Separator))
 }
 
-// ReplayArtifactStem retire l'extension d'artefact (compressée ou brute) d'un nom ou d'un chemin :
-// `{dir}/000d5950.json.gz` et `{dir}/000d5950.json` rendent `{dir}/000d5950`. Un nom sans
-// extension d'artefact est rendu tel quel. C'est la base commune de l'en-tête (`.meta`) et de la
-// marque de dérivation : elles gardent le même nom quelle que soit la forme de l'artefact.
+// ReplayArtifactStem retire l'extension d'artefact d'un nom ou d'un chemin : `{dir}/000d5950.json.gz` rend
+// `{dir}/000d5950`. Un nom sans extension d'artefact est rendu tel quel. C'est la base commune de l'en-tête
+// (`.meta`) et de la marque de dérivation.
 func ReplayArtifactStem(nameOrPath string) string {
-	if s, ok := strings.CutSuffix(nameOrPath, ReplayArtifactExt); ok {
-		return s
-	}
-	if s, ok := strings.CutSuffix(nameOrPath, ReplayArtifactLegacyExt); ok {
-		return s
-	}
-	return nameOrPath
-}
-
-// ReplayArtifactCandidates rend les deux fichiers possibles de l'artefact désigné par `path`
-// (donné sous l'une ou l'autre forme) : le compressé d'abord, le brut ancien ensuite. Un chemin
-// sans extension d'artefact ne désigne que lui-même : (path, "").
-func ReplayArtifactCandidates(path string) (compressed, legacy string) {
-	stem := ReplayArtifactStem(path)
-	if stem == path {
-		return path, ""
-	}
-	return stem + ReplayArtifactExt, stem + ReplayArtifactLegacyExt
+	return strings.TrimSuffix(nameOrPath, ReplayArtifactExt)
 }

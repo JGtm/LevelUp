@@ -12885,22 +12885,11 @@ export interface components {
             field: string;
         };
         SpawnForecast: {
-            /** Format: int64 */
-            candidates: number;
             deaths: components["schemas"]["SpawnForecastDeath"][] | null;
-            /** Format: int64 */
-            discarded_deaths: number;
-            family?: string;
-            /** Format: int64 */
-            matches_on_map: number;
             message?: string;
-            model?: string;
-            model_date?: string;
             points: components["schemas"]["SpawnForecastCandidate"][] | null;
             /** @enum {string} */
             reason?: "no_model" | "map_unknown" | "not_enough_matches" | "no_zone" | "no_respawn";
-            /** Format: int64 */
-            sample_step_ms: number;
             /** @enum {string} */
             status: "ready" | "unavailable";
             zones: components["schemas"]["SpawnForecastZone"][] | null;
@@ -12930,14 +12919,10 @@ export interface components {
             x: number;
             /** Format: double */
             y: number;
-            /** Format: double */
-            z: number;
         };
         SpawnForecastSample: {
             /** Format: int64 */
             frame: number;
-            /** Format: double */
-            outside_zone: number;
             points_p: number[] | null;
             zones: components["schemas"]["SpawnForecastZoneChance"][] | null;
         };
@@ -14304,13 +14289,6 @@ export interface components {
         };
         TacticalReapparitionsAdverses: {
             etat: string;
-            map_id: string;
-            /** Format: int64 */
-            matchs_filtres: number;
-            /** Format: int64 */
-            matchs_retenus: number;
-            /** Format: int64 */
-            matchs_sans_equipe: number;
             plancher: components["schemas"]["TacticalPlancherReapparitions"];
             raison?: string;
             reference: components["schemas"]["TacticalRepartitionZones"];
@@ -14331,11 +14309,8 @@ export interface components {
         TacticalRepartitionZones: {
             /** Format: int64 */
             matchs: number;
-            raison?: string;
             /** Format: int64 */
             reapparitions: number;
-            /** Format: int64 */
-            sans_zone: number;
             suffisante: boolean;
             zones: components["schemas"]["TacticalPartDeZone"][] | null;
         };
@@ -14390,8 +14365,6 @@ export interface components {
         };
         TacticalZoneChoisie: {
             nom: string;
-            /** Format: int64 */
-            volume_index: number;
         };
         TacticalZoneNom: {
             nom: string;
@@ -14686,10 +14659,6 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
-            /** Format: int64 */
-            lead_changes?: number;
-            /** Format: double */
-            lead_share?: number;
             map_label?: string;
             map_name?: string;
             match_id: string;

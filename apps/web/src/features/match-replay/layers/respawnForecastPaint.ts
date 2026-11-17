@@ -8,6 +8,9 @@
  * pixels d'écran multipliées par la densité `k`, comme celles des autres calques.
  */
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { zoneHasShape } from '@/lib/replay/calloutShape'
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
+import { roundedRectPath } from '@/lib/replay/roundedRect'
 
 import type { XY } from '../../../lib/replay/replayLogic'
 import { projectTo, type CanvasView } from '../model/replayView'
@@ -62,7 +65,6 @@ export interface ForecastPaint {
   nameOf: (xuid: string) => string
 }
 
-const FONT_FAMILY = 'ui-sans-serif, system-ui, sans-serif'
 const PILL_PAD_X_PX = 6
 const PILL_PAD_Y_PX = 3
 const PILL_RADIUS_PX = 5
@@ -71,7 +73,7 @@ const PILL_ALPHA = 0.78
 
 /** La police d'un texte du calque, à la densité du canevas. */
 export function forecastFont(px: number, weight: number, k: number): string {
-  return `${weight} ${px * k}px ${FONT_FAMILY}`
+  return `${weight} ${px * k}px ${CANVAS_FONT_FAMILY}`
 }
 
 /** Le tracé d'une zone : contour, parties supplémentaires et trous (remplissage pair-impair). */
@@ -90,9 +92,9 @@ export function traceZone(ctx: CanvasRenderingContext2D, zone: CalloutZoneReady,
   for (const hole of zone.holes) ring([...hole].reverse())
 }
 
-/** La zone se dessine-t-elle : elle a un contour. */
+/** La zone se dessine-t-elle : elle a une forme (`zoneHasShape`). */
 export function hasShape(zone: CalloutZoneReady | undefined): zone is CalloutZoneReady {
-  return !!zone && zone.polygon.length >= 3
+  return !!zone && zoneHasShape(zone)
 }
 
 /** Où s'ancre une pastille par rapport à son point. */
@@ -109,21 +111,6 @@ export interface PillStyle {
   fontPx: number
   /** Décalage vertical entre le point et la pastille, en pixels d'écran. */
   gapPx: number
-}
-
-/** Le rectangle arrondi d'une pastille. */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.lineTo(x + w - r, y)
-  ctx.arcTo(x + w, y, x + w, y + r, r)
-  ctx.lineTo(x + w, y + h - r)
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-  ctx.lineTo(x + r, y + h)
-  ctx.arcTo(x, y + h, x, y + h - r, r)
-  ctx.lineTo(x, y + r)
-  ctx.arcTo(x, y, x + r, y, r)
-  ctx.closePath()
 }
 
 /**
@@ -147,7 +134,7 @@ export function drawPill(
   const y = s.anchor === 'above' ? at.y - s.gapPx * k - h : s.anchor === 'below' ? at.y + s.gapPx * k : at.y - h / 2
   ctx.globalAlpha = PILL_ALPHA * s.alpha
   ctx.fillStyle = s.ink.panel
-  roundRect(ctx, x, y, w, h, PILL_RADIUS_PX * k)
+  roundedRectPath(ctx, { x, y, w, h }, PILL_RADIUS_PX * k)
   ctx.fill()
   ctx.globalAlpha = s.alpha
   ctx.strokeStyle = s.border

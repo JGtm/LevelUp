@@ -1,39 +1,28 @@
 package profile
 
-// player_service.go : le profil d'un joueur résolu par son slug, pour la couche HTTP.
-//
-// L'interface vit ici et non dans `internal/port` : les types de réponse (PlayerProfile,
-// ActivityCalendar) sont ceux de ce paquet, qui importe `port` (first_events.go) ; `port` ne peut donc
-// pas les nommer sans cycle.
+// player_service.go : le profil d'un joueur résolu par son slug, pour la couche HTTP
+// (port.PlayerProfileService ; les types de réponse sont ceux de `domain`).
 
 import (
 	"context"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
-
-// PlayerProfileService : ce que consomme le handler des routes /profile et /activity-calendar. Un
-// joueur introuvable est un *port.ProgressionError de nature ProgErrPlayerNotFound.
-type PlayerProfileService interface {
-	// Build assemble le profil complet (sections A1, A2, B, C) sur la fenêtre de LOWESS donnée.
-	Build(ctx context.Context, playerSlug, titleSlug string, windowDays int, now time.Time) (*PlayerProfile, error)
-	// ActivityCalendar rend le nombre de matchs par jour UTC entre `since` et `until`.
-	ActivityCalendar(ctx context.Context, playerSlug string, since, until time.Time) (ActivityCalendar, error)
-}
 
 // PlayerResolver résout un slug de joueur en son magasin de profil et son xuid ; une erreur = joueur
 // introuvable.
 type PlayerResolver func(ctx context.Context, slug string) (store port.ProfileStore, xuid string, err error)
 
-// PlayerService implémente PlayerProfileService.
+// PlayerService implémente port.PlayerProfileService.
 type PlayerService struct {
 	resolve PlayerResolver
 	awards  *mappings.AwardMappingSet
 }
 
-var _ PlayerProfileService = (*PlayerService)(nil)
+var _ port.PlayerProfileService = (*PlayerService)(nil)
 
 // NewPlayerService construit le service. `awards` (optionnel, nil permis) est le mapping awards -> axes
 // qui rend le radar fidèle ; sans lui, l'axe Objectif reste à 0.
@@ -55,7 +44,7 @@ func (s *PlayerService) service(ctx context.Context, playerSlug string) (*Servic
 }
 
 // Build assemble le profil complet du joueur.
-func (s *PlayerService) Build(ctx context.Context, playerSlug, titleSlug string, windowDays int, now time.Time) (*PlayerProfile, error) {
+func (s *PlayerService) Build(ctx context.Context, playerSlug, titleSlug string, windowDays int, now time.Time) (*domain.PlayerProfile, error) {
 	svc, xuid, err := s.service(ctx, playerSlug)
 	if err != nil {
 		return nil, err
@@ -64,10 +53,10 @@ func (s *PlayerService) Build(ctx context.Context, playerSlug, titleSlug string,
 }
 
 // ActivityCalendar rend les jours joués du joueur sur la fenêtre.
-func (s *PlayerService) ActivityCalendar(ctx context.Context, playerSlug string, since, until time.Time) (ActivityCalendar, error) {
+func (s *PlayerService) ActivityCalendar(ctx context.Context, playerSlug string, since, until time.Time) (domain.ActivityCalendar, error) {
 	svc, xuid, err := s.service(ctx, playerSlug)
 	if err != nil {
-		return ActivityCalendar{}, err
+		return domain.ActivityCalendar{}, err
 	}
 	return svc.LoadActivityCalendar(ctx, xuid, since, until)
 }

@@ -196,8 +196,6 @@ func main() {
 		exitErr = runPoolSharing(cfg, args)
 	case "film":
 		exitErr = runFilm(cfg, args)
-	case "replay":
-		exitErr = runReplay(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -314,7 +312,7 @@ Commandes:
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   spawn-model   Mesure (evaluate) et ajuste (fit) le modele de reapparition : lit les artefacts de rejeu un a un (aucun film decode)
                   et le registre de la base partagee en lecture seule ; fit ecrit data/titles/{slug}/reference/spawn_model.json
-                  (evaluate | fit ; --title, --sections m1,m2,m3,m4|poids, --famille, --limit, --par-carte, --variantes, --ligne-de-vue)
+                  (evaluate | fit ; --title, --sections m3,m4|poids, --famille, --limit, --variantes)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
   replay-parc-vies  Mesure les vies sans identite du parc : cuit chaque film nomme par un fichier de faits dans un enfant borne (un a la fois,
                   verrou solo), sans base ni ecriture sous le depot ; films.tsv + identites/<id>.tsv (--faits, --cache, --sortie, --ids) ;
@@ -343,9 +341,6 @@ Commandes:
                   film recompress [--dry-run] [--films ID,ID] (passe en zstd-3 les chunks bruts et zlib, un film a la fois,
                   ecriture atomique, reprenable ; --dry-run chiffre le gain sans ecrire) et film archive-move
                   (--to DIR | --default) [--resume] (range les films dans un autre dossier puis enregistre film_archive_dir)
-  replay          Rejeux, geste de l utilisateur (jamais lance automatiquement) : replay compress [--dry-run] [--title SLUG]
-                  [--dir DIR] (convertit en place les artefacts bruts {short8}.json en {short8}.json.gz, un a la fois, releus et
-                  verifies avant de supprimer le .json, idempotent ; --dry-run chiffre le gain sans ecrire ; le contenu ne change pas)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

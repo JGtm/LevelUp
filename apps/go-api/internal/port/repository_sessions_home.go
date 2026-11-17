@@ -25,9 +25,6 @@ type SessionsRepository interface {
 // P4.3 finale : LoadStatsMatches a été retiré (les services chargent canonical
 // via PlayerMatchesRepository).
 type StatsRepository interface {
-	// LoadLUSRHistory retourne le rating LUSR par match depuis match_skill_rank (Q24).
-	LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRating, error)
-
 	// LoadMatchParticipants retourne les participants de tous les matchs du joueur (Q25).
 	LoadMatchParticipants(ctx context.Context) ([]domain.ParticipantRow, error)
 }
@@ -67,9 +64,6 @@ func (n *noopSessionsRepo) LookupFriendXUIDs(_ context.Context, _ []string) ([]s
 // noopStatsRepo — impl nulle pour le check de compilation uniquement.
 type noopStatsRepo struct{}
 
-func (n *noopStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
-	return nil, nil
-}
 func (n *noopStatsRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
 	return nil, nil
 }

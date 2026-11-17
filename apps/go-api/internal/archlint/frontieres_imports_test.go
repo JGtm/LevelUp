@@ -258,7 +258,7 @@ import (
 
 // TestHandlersSansStockageDuckDB : aucun handler HTTP n'importe `platform/duckdb` ni ses sous-paquets,
 // hors `handlersAvecStockageAutorises`. Les lectures de progression, de campagne et de profil passent par
-// `port.ProgressionService`, `port.CampaignService` et `profile.PlayerProfileService` ; le plafond mémoire
+// `port.ProgressionService`, `port.CampaignService` et `port.PlayerProfileService` ; le plafond mémoire
 // des bases par `port.DatabaseMemory`.
 func TestHandlersSansStockageDuckDB(t *testing.T) {
 	violations := violationsImportsHandlers(t, racinesStockageInterditesAuxHandlers, handlersAvecStockageAutorises, "handlersAvecStockageAutorises")
@@ -268,12 +268,14 @@ func TestHandlersSansStockageDuckDB(t *testing.T) {
 	}
 }
 
-// racinesServiceInterditesAuxHandlers : le paquet `service` et ses sous-paquets. Un handler tient une
-// interface de `internal/port` (ou un type de `domain`) ; il ne nomme aucun type concret de `service` :
-// ni service, ni résultat, ni erreur sentinelle, ni constructeur. Les erreurs que la couche HTTP classe
-// et les types qu'elle échange sont déclarés avec le port qui les rend.
+// racinesServiceInterditesAuxHandlers : le paquet `service` et ses sous-paquets, et le service du profil
+// joueur (`progression/profile`). Un handler tient une interface de `internal/port` (ou un type de
+// `domain`) ; il ne nomme aucun type concret de `service` : ni service, ni résultat, ni erreur sentinelle,
+// ni constructeur. Les erreurs que la couche HTTP classe et les types qu'elle échange sont déclarés avec
+// le port qui les rend.
 var racinesServiceInterditesAuxHandlers = []string{
 	cheminModuleAPI + "service",
+	cheminModuleAPI + "progression/profile",
 }
 
 // handlersAvecServiceAutorises : handlers qui importent encore `service`, avec la date et la raison. Vide

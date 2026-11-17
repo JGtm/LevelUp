@@ -11,16 +11,23 @@
 // de celle du filtre, et un lien `?spawn=` aurait designe des matchs que la grappe ne
 // contient pas.
 //
-// La regle vit desormais dans `service.spawnsDeDepart`. Ce ratchet interdit d'en reecrire
-// une seconde ailleurs, sous la forme d'un test direct du drapeau.
+// La regle vit desormais dans `tactical.SpawnsDeDepart` (analysis/tactical/spawns_joueurs.go) ; le
+// service ne fait que TRADUIRE le sidecar vers les types de la regle (`service.joueurLu`). Ce ratchet
+// interdit d'en reecrire une seconde ailleurs dans le service, sous la forme d'un test direct du
+// drapeau.
 //
 // # LE MEME GARDE TIENT LA DEFINITION DE « TOUTES LES VIES »
 //
 // Le parametre `vies=toutes` ajoute une seconde definition — toutes les apparitions du joueur :
-// premiere vie, reapparition, debut de manche — qui vit dans `service.reapparitionsDuJoueur`,
-// a cote de la premiere et dans le meme fichier. Les trois drapeaux qui la composent sont
-// gardes comme le premier : les lire hors du proprietaire, c'est reecrire une definition
-// d'apparition que les grappes, le filtre et la route ne partageraient plus.
+// premiere vie, reapparition, debut de manche — qui vit dans `tactical.ApparitionsDuJoueur`, a cote
+// de la premiere et dans le meme fichier. Les trois drapeaux qui la composent sont gardes comme le
+// premier : les lire hors de la traduction, c'est reecrire une definition d'apparition que les
+// grappes, le filtre et la route ne partageraient plus. La regle de la reapparition adverse
+// (`tactical.ObservationsAdversesDuMatch`) vit dans le meme fichier d'analysis.
+//
+// DEUX PROPRIETAIRES, CHACUN VERIFIE : la traduction cote service (seul fichier de service qui nomme
+// les drapeaux) et la regle cote analysis (le fichier qui porte les predicats). Un garde qui ne voit
+// plus l'un des deux ne verifie plus rien et echoue.
 package archlint
 
 import (
@@ -44,12 +51,17 @@ var motifsDApparition = []*regexp.Regexp{
 	regexp.MustCompile(`\.DebutDeManche\b`),
 }
 
-// proprietaireDuSpawnDepart : le seul fichier de production qui a le droit de le lire.
+// proprietaireDuSpawnDepart : le seul fichier de service qui a le droit de nommer les drapeaux : la
+// traduction du sidecar vers les types de la regle.
 //
 // Le paquet `sync/replayartifacts` le POSE a la cuisson et `analysis/tactical` le PRODUIT :
 // ce sont des producteurs, pas des lecteurs, et ils sont donc hors perimetre. Ce que ce
 // ratchet garde, c'est la LECTURE cote service.
 const proprietaireDuSpawnDepart = "internal/service/tactical_service_lectures.go"
+
+// proprietaireDeLaRegle : le fichier d'analysis qui porte les predicats « depart », « toutes les vies » et
+// « reapparition adverse ». Le garde exige qu'il porte chacun des trois drapeaux et chacune des regles.
+const proprietaireDeLaRegle = "internal/analysis/tactical/spawns_joueurs.go"
 
 // perimetreDuRatchetSpawn : on ne balaye que le service — le producteur a ses propres
 // raisons de nommer le champ.
@@ -117,9 +129,41 @@ func TestUneSeuleDefinitionDuSpawnDeDepart(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Errorf("une apparition du joueur est relue hors de %s (%d) — appeler spawnsDeDepart, "+
-			"reapparitionsDuJoueur ou spawnsSelonVies : le predicat a deja existe en trois "+
+		t.Errorf("une apparition du joueur est relue hors de %s (%d) — appeler tactical.SpawnsDeDepart, "+
+			"tactical.ApparitionsDuJoueur ou tactical.SpawnsSelonVies : le predicat a deja existe en trois "+
 			"exemplaires, et la definition aurait fini par diverger de celle du filtre :\n  %s",
 			proprietaireDuSpawnDepart, len(violations), strings.Join(violations, "\n  "))
+	}
+}
+
+// TestLaRegleDuSpawnDeDepartVitDansAnalysis — SELF-CHECK POSITIF de l'autre proprietaire : le fichier
+// d'analysis lit chacun des trois drapeaux et porte les cinq regles que le service appelle.
+func TestLaRegleDuSpawnDeDepartVitDansAnalysis(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+	data, err := os.ReadFile(filepath.Join(apiRoot, filepath.FromSlash(proprietaireDeLaRegle)))
+	if err != nil {
+		t.Fatalf("la regle des spawns est introuvable (%s) : %v", proprietaireDeLaRegle, err)
+	}
+	var code []string
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "//") {
+			code = append(code, line)
+		}
+	}
+	src := strings.Join(code, "\n")
+	for _, motif := range motifsDApparition {
+		if !motif.MatchString(src) {
+			t.Errorf("le motif %q est introuvable dans %s : le garde ne verifie plus la regle", motif, proprietaireDeLaRegle)
+		}
+	}
+	for _, regle := range []string{"func SpawnsDeDepart(", "func ApparitionsDuJoueur(", "func SpawnsSelonVies(",
+		"func RoutesAuxVies(", "func ObservationsAdversesDuMatch("} {
+		if !strings.Contains(src, regle) {
+			t.Errorf("%s ne porte plus %q", proprietaireDeLaRegle, regle)
+		}
 	}
 }

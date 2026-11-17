@@ -78,9 +78,9 @@ func compteurRefus(t *testing.T) int64 {
 // échoue.
 func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "000d5950.json")
+	path := filepath.Join(dir, "000d5950.json.gz")
 	riche := docJSON(t, "000d5950", true)
-	if err := os.WriteFile(path, riche, 0o644); err != nil {
+	if err := poserCompresseTest(path, riche); err != nil {
 		t.Fatalf("pose de l'artefact riche: %v", err)
 	}
 
@@ -107,9 +107,13 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 	}
 	// La taille rendue doit être celle du disque : annoncer celle du candidat ferait croire à
 	// une écriture qui n'a pas eu lieu.
-	if taille != len(riche) {
-		t.Errorf("taille rendue = %d, attendu %d (celle de l'artefact réellement en place)",
-			taille, len(riche))
+	enPlace, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if taille != int(enPlace.Size()) {
+		t.Errorf("taille rendue = %d, attendu %d (la taille stockée de l'artefact réellement en place)",
+			taille, enPlace.Size())
 	}
 	if apres := compteurRefus(t); apres != avant+1 {
 		t.Errorf("compteur de refus = %d, attendu %d : un refus doit être compté, jamais muet",
@@ -124,10 +128,10 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 // figerait tout le cache au premier incrément de version.
 func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "000d5950.json")
+	path := filepath.Join(dir, "000d5950.json.gz")
 	// En place : RICHE, mais à un schéma ANTÉRIEUR.
 	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533491259474651"}]}}`
-	if err := os.WriteFile(path, []byte(ancien), 0o644); err != nil {
+	if err := poserCompresseTest(path, []byte(ancien)); err != nil {
 		t.Fatalf("pose: %v", err)
 	}
 	nouveau := replay.ReplayDocument{

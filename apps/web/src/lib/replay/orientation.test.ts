@@ -13,7 +13,9 @@ import {
   orientAbout,
   orientHeatGrid,
   pivotOf,
+  cssRotation,
   QUARTER_TURNS,
+  rotateCanvasAbout,
   shiftHeadingDeg,
   turnsToDegrees,
   viewOrientation,
@@ -162,5 +164,28 @@ describe('orientHeatGrid', () => {
   it('à 1 quart de tour, les dimensions s’échangent ; à 2, elles restent', () => {
     expect([orientHeatGrid(grid, 1, pivot).nx, orientHeatGrid(grid, 1, pivot).ny]).toEqual([2, 3])
     expect([orientHeatGrid(grid, 2, pivot).nx, orientHeatGrid(grid, 2, pivot).ny]).toEqual([3, 2])
+  })
+})
+
+describe('l’application de la rotation à un dessin', () => {
+  it('la toile se translate au pivot puis tourne de turns x 90 degrés horaires', () => {
+    const ops: Array<[string, ...number[]]> = []
+    const ctx = {
+      translate: (x: number, y: number) => ops.push(['translate', x, y]),
+      rotate: (a: number) => ops.push(['rotate', a]),
+    }
+    rotateCanvasAbout(ctx, 3, 40, 25)
+    expect(ops).toEqual([
+      ['translate', 40, 25],
+      ['rotate', (3 * Math.PI) / 2],
+    ])
+  })
+
+  it.each([
+    [1, 'rotate(90deg)'],
+    [2, 'rotate(180deg)'],
+    [3, 'rotate(270deg)'],
+  ] as Array<[QuarterTurns, string]>)('le CSS à %i quart(s) de tour : %s', (turns, css) => {
+    expect(cssRotation(turns)).toBe(css)
   })
 })

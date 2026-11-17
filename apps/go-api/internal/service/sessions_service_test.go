@@ -165,17 +165,12 @@ func (m *mockSessionCompareSessionsRepo) LoadSessionMatches(_ context.Context) (
 type mockSessionCompareStatsRepo struct {
 	matches      []legacymatch.StatsMatchRow
 	matchErr     error
-	lusr         []domain.LUSRMatchRating
-	lusrErr      error
 	participants []domain.ParticipantRow
 	partErr      error
 }
 
 func (m *mockSessionCompareStatsRepo) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.matchErr
-}
-func (m *mockSessionCompareStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
-	return m.lusr, m.lusrErr
 }
 func (m *mockSessionCompareStatsRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
 	return m.participants, m.partErr

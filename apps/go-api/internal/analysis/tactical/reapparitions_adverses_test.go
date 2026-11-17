@@ -90,21 +90,21 @@ func TestLireReapparitionsAdverses_ReferenceEtTenue(t *testing.T) {
 	if tenue.Reapparitions != 20 || tenue.Matchs != 5 || !tenue.Suffisante {
 		t.Fatalf("tenue = %+v, attendu 20 reapparitions (3 a Sortie + 1 hors zone, par match) sur 5 matchs", tenue)
 	}
-	if len(tenue.Zones) != 1 || tenue.Zones[0].VolumeIndex != 2 || tenue.Zones[0].Reapparitions != 15 || tenue.SansZone != 5 {
-		t.Fatalf("zones tenues = %+v, sans zone = %d : attendu Sortie x15 et 5 hors zone", tenue.Zones, tenue.SansZone)
+	if len(tenue.Zones) != 1 || tenue.Zones[0].VolumeIndex != 2 || tenue.Zones[0].Reapparitions != 15 || tenue.HorsZone() != 5 {
+		t.Fatalf("zones tenues = %+v, sans zone = %d : attendu Sortie x15 et 5 hors zone", tenue.Zones, tenue.HorsZone())
 	}
 	if p := tenue.Zones[0].Part; p != 15.0/20.0 {
 		t.Errorf("part = %v, attendu 0,75", p)
 	}
 	// Reference : Sortie 20, Cour 10, hors zone 5 ; Sortie d'abord.
 	if len(ref.Zones) != 2 || ref.Zones[0].VolumeIndex != 2 || ref.Zones[0].Reapparitions != 20 ||
-		ref.Zones[1].VolumeIndex != 3 || ref.Zones[1].Reapparitions != 10 || ref.SansZone != 5 {
-		t.Fatalf("zones de reference = %+v (sans zone %d)", ref.Zones, ref.SansZone)
+		ref.Zones[1].VolumeIndex != 3 || ref.Zones[1].Reapparitions != 10 || ref.HorsZone() != 5 {
+		t.Fatalf("zones de reference = %+v (sans zone %d)", ref.Zones, ref.HorsZone())
 	}
 	if ref.Zones[0].Nom != "Sortie" {
 		t.Errorf("nom = %q, attendu Sortie", ref.Zones[0].Nom)
 	}
-	somme := ref.SansZone
+	somme := ref.HorsZone()
 	for _, z := range ref.Zones {
 		somme += z.Reapparitions
 	}
@@ -143,7 +143,7 @@ func TestLireReapparitionsAdverses_Planchers(t *testing.T) {
 	for _, c := range cas {
 		ref, tenue := LireReapparitionsAdverses(i18n.Default, repeter(c.matchs, c.parMatch), zoneChoisie(), zones)
 		for nom, r := range map[string]domain.TacticalRepartitionZones{"reference": ref, "tenue": tenue} {
-			if r.Suffisante != c.suffisante || r.Raison != c.raison || r.Reapparitions != c.reapparitionsAtt ||
+			if r.Suffisante != c.suffisante || r.RaisonSousPlancher() != c.raison || r.Reapparitions != c.reapparitionsAtt ||
 				r.Matchs != c.matchsAttendus || len(r.Zones) != c.zonesServiesAtten {
 				t.Errorf("%s / %s : %+v", c.nom, nom, r)
 			}

@@ -7,7 +7,7 @@
  */
 import { useMemo } from 'react'
 import type { CascadeInput, LabelValue } from '@/lib/api/types'
-import { useDismissable } from './_hooks'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { CheckboxGroup } from './CheckboxGroup'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'

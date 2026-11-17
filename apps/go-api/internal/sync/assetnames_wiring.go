@@ -42,7 +42,7 @@ const assetFirstWriteMaxAssets = 0
 // WithAssetNameResolution branche le POOL unifié de tokens (auth/pool — la même
 // source que tous les syncs) pour la résolution autonome des noms d'assets au
 // sync (pré-pass primary-write). p nil → résolution désactivée (parité legacy).
-// Le kill-switch LEVELUP_SYNC_RESOLVE_ASSETS=0 désactive aussi (cf. resolveRefsWithPool).
+// Sans pool, aucune résolution n'a lieu (cf. resolveRefsWithPool).
 func (e *SyncEngine) WithAssetNameResolution(p pool.Pool) *SyncEngine {
 	e.assetPool = p
 	return e
@@ -138,8 +138,7 @@ var newPoolAssetFetcher = func(tokens *domain.HaloTokens) assetnames.Fetcher {
 
 // resolveRefsWithPool est l'UNIQUE point d'acquisition de token + résolution.
 // Acquiert un token du POOL unifié (PolicyAnyPublic, comme le watcher/drain),
-// construit le fetcher authentifié, résout, libère le lease. Gaté par le
-// kill-switch LEVELUP_SYNC_RESOLVE_ASSETS. logCtx identifie la source dans les
+// construit le fetcher authentifié, résout, libère le lease. logCtx identifie la source dans les
 // logs (gamertag V1, "v2_cycle", "sweep"). maxAssets 0 → aucun plafond.
 func resolveRefsWithPool(
 	ctx context.Context,
@@ -150,7 +149,7 @@ func resolveRefsWithPool(
 	maxAssets int,
 ) assetnames.Result {
 	var res assetnames.Result
-	if p == nil || metaDB == nil || len(refs) == 0 || !haloadapter.AssetNameResolutionEnabled() {
+	if p == nil || metaDB == nil || len(refs) == 0 {
 		return res
 	}
 	lease, err := p.Acquire(ctx, pool.PolicyAnyPublic, "")

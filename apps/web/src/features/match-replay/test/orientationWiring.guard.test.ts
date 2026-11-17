@@ -32,7 +32,8 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
   it('la variante du fond posé est celle RÉELLEMENT chargée, pas celle qui est demandée', () => {
     const page = lire(fichierNomme('ReplayPage.tsx'))
     expect(page).toMatch(/const \{ image: mapImage, variante \} = useReplayMapImage\(/)
-    expect(page).toMatch(/plan: normalizeWallPlan\(background\.plan\),\s*variante,/)
+    expect(page).toMatch(/buildMapBackgroundLayer\(\{[^}]*\bimage: mapImage, variante,/)
+    expect(lire(fichierNomme('mapBackgroundLayerLogic.ts'))).toMatch(/plan: normalizeWallPlan\(background\.plan\),\s*variante,/)
     expect(canvas()).toContain("shown: mapImage?.variante === 'plan'")
   })
 

@@ -9,6 +9,8 @@
  * capture ou un export la porte avec elle. Voile et texte sur voile sont les jetons `scrim` et
  * `on-scrim` ; teinte et disques sont à la couleur du joueur, aux mêmes opacités que le dessin.
  */
+import { roundedRectPath } from '@/lib/replay/roundedRect'
+
 import {
   DISC_SCALE_P,
   discRadiusPx,
@@ -49,16 +51,6 @@ export function legendWho(m: ForecastMoment, p: Pick<ForecastPaint, 'zones' | 'w
   return revealLines(m, p).join(', ')
 }
 
-function panelPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
-}
-
 const hasPoints = (draw: ForecastDraw) => draw !== 'zones'
 const hasZones = (draw: ForecastDraw) => draw !== 'points'
 
@@ -80,11 +72,9 @@ function zonesBlockHeight(draw: ForecastDraw): number {
 function drawTintBar(
   ctx: CanvasRenderingContext2D,
   at: { x: number; y: number; w: number },
-  color: string,
-  draw: ForecastDraw,
-  opacity: number,
-  k: number,
+  style: { color: string; draw: ForecastDraw; opacity: number; k: number },
 ): void {
+  const { color, draw, opacity, k } = style
   const under = draw === 'both'
   const base = under ? TINT_BASE_ALPHA_UNDER_POINTS : TINT_BASE_ALPHA
   const amplitude = under ? TINT_AMPLITUDE_ALPHA_UNDER_POINTS : TINT_AMPLITUDE_ALPHA
@@ -131,7 +121,7 @@ function drawDiscScale(ctx: CanvasRenderingContext2D, at: { x: number; y: number
 /** L'échelle de teinte avec sa légende : bornes 0 % et part de la première zone quand elle est seule. */
 function drawZonesScale(ctx: CanvasRenderingContext2D, at: { x: number; y: number; w: number }, color: string, m: ForecastMoment, p: ForecastPaint): void {
   const { k } = p
-  drawTintBar(ctx, at, color, p.draw, m.opacity, k)
+  drawTintBar(ctx, at, { color, draw: p.draw, opacity: m.opacity, k })
   let cursor = at.y + (BAR_HEIGHT_PX + 2) * k
   ctx.fillStyle = p.ink.onPanel
   ctx.font = forecastFont(SMALL_PX, 500, k)
@@ -172,7 +162,7 @@ export function drawForecastLegend(
   ctx.save()
   ctx.globalAlpha = PANEL_ALPHA * m.opacity
   ctx.fillStyle = p.ink.panel
-  panelPath(ctx, x, y, w, h, PANEL_RADIUS_PX * k)
+  roundedRectPath(ctx, { x, y, w, h }, PANEL_RADIUS_PX * k)
   ctx.fill()
   ctx.globalAlpha = m.opacity
   ctx.textBaseline = 'top'

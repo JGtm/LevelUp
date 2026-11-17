@@ -29,6 +29,91 @@
 
 ---
 
+### [rejeu] Générer à la demande un rejeu absent
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Aucun écran ne propose de générer le rejeu d'un match qui n'en a pas. La file automatique après synchronisation ne couvre que les 64 matchs les plus récents, et l'application de bureau n'embarque pas la commande de rattrapage. À faire : une action « Générer le rejeu » sur un match sans rejeu. **Effort : à estimer.**
+
+---
+
+### [fonds de carte] Carte Forge au maillage de navigation illisible : comprendre pourquoi
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Décision du 2026-11-17 : la cuisson garde l'avertissement et produit un fond sans plan (ADR 0048 D-5 corrigé en ce sens). Reste à investiguer la cause de l'illisibilité sur les cartes concernées, et si le lecteur du maillage peut les lire. **Effort : à estimer.**
+
+**Ajout du 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Cas voisin : les deux cartes BTB Thunderhead (`28a3ac28`) et Thunderhead Heavies (`37bc3df6`) n'ont pas de plan des murs parce que leur fichier de maillage n'a jamais été récupéré au dépôt. Ce ne sont PAS des cartes Firefight (9 matchs BTB dans la base locale, 7 rejeux générés). À faire : récupérer leur maillage, puis recuire ces deux fonds.
+
+---
+
+### [tactique/disque] Compresser les fichiers tactiques `rasters/*.json`
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Les fichiers `rasters/*.json` pèsent 1,2 Go non compressés pour 1 455 matchs ; les rejeux voisins sont déjà en `.json.gz`. À étudier : même compression, avec un lecteur et un écrivain uniques. **Effort : à estimer.**
+
+---
+
+### [décodeur] Actions de score : verdict « lecture complète » faux en BTB et en Assaut
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Le verdict « lecture complète » est faux en BTB (11 matchs sur 16) et en Assaut (4 matchs). Tant que c'est le cas, ne pas afficher le détail daté des actions de score dans ces modes. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+
+---
+
+### [décodeur] Règles de la variante : délai de retour du drapeau absent du parc
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). `flagReturnS` (délai de retour du drapeau) n'est écrit dans aucun match du parc ; les pénalités valent toujours 0. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+
+---
+
+### [décodeur] Tirs, touches et dégâts lus dans le film : lecture suffisante pour 12 % des joueurs seulement
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). La lecture est jugée suffisante pour 12 % des joueurs seulement (13 sur 111 dans l'échantillon). Les totaux de l'API restent la référence ; le film ne sert que pour ces joueurs. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+
+---
+
+### [rejeu/horloge] Coup d'envoi estimé depuis l'API : décalé de l'horloge du film
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Le coup d'envoi estimé depuis l'API est à 5,3 s de l'horloge du film en médiane (jusqu'à 155 s) ; celui lu dans le film est à 0,36 s. À étudier : prendre partout le coup d'envoi du film quand il existe. Mesure : `.ai/annexes_suites_audit/sources.md`. **Effort : à estimer.**
+
+---
+
+### [tests/durée] Paquet `internal/platform/duckdb` au-delà de son budget : construire la base migrée une fois par cible et la copier pour chaque test
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Mesure du 2026-11-17 (`-tags=integration`, paquet seul) : 307 s au calme, 419 s sous charge, pour un budget de 300 s dans `scripts/check_test_baseline.sh` (600 s en CI) ; 1 258 tests dont 1 164 en série. Le paquet est passé de 634 tests et 118 s (2026-06-26) à plus de 400 s. Cause principale (estimée à 250 s sur 416) : chaque test rejoue la migration complète d'une base neuve (52 appels à `RunForDB` / `RunForTitleDB` dans 28 fichiers de test ; migration de 0,3 à 2,7 s selon la cible, contre 20 à 28 ms pour copier un fichier déjà migré et l'ouvrir). Décision du user : ce correctif seul, sans relèvement du budget. À faire : un gabarit migré par cible, construit une fois (`sync.Once`, dossier temporaire de `TestMain`), copié par test ; rebrancher les helpers (`migrated_db_test_helper_test.go`, `achievements_repo_test.go`, `fenetres_perimetre_helpers_test.go`) ; garder la vraie migration pour les tests qui la vérifient (`career_progression_fresh_migrations_test.go`, `migration_provider_test.go`) ; garde-rail interdisant `RunForDB` en test hors liste datée ; vérifier le cas des bases en mémoire. **Ordre de grandeur : 150 à 250 lignes ; cible : 170 à 220 s.** Tant que ce n'est pas fait, `make gate-push` peut couper ce paquet sous charge (le rejouer seul).
+
+---
+
+### [rejeu/médailles] Médailles absentes du rejeu dans 11,9 % des matchs : lire les médailles datées du document
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). Le fil du rejeu passe par les événements du match, qui exigent un nom ; quand le nom manque (173 matchs, 6 200 médailles sur le parc local), `collectMedalEvents` (`apps/web/src/features/match-replay/model/killFeedLogic.ts`) les écarte. Le document de rejeu porte déjà `medals` (instant, joueur, indice du jeu, nom anglais) : 62 537 médailles sur 1 454 documents, aucune sans nom. À faire, RATTACHÉ à la refonte de l'interface du rejeu (fiche du joueur à l'instant, `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`, étape T.1) : une seule lecture « médailles du match » pour le fil et pour la fiche ; le serveur résout le libellé traduit et l'image à partir du nom anglais (patron de la résolution des véhicules dans le service du rejeu) ; substituer, ne pas fusionner (sinon double affichage). **Ordre de grandeur : 300 à 450 lignes, tests compris.** Piste sans code à vérifier d'abord : la commande `levelup backfill-medailles-feed` nomme les événements anciens ; savoir si elle a tourné sur le poste et en prod. Les pages Match et statistiques ne sont pas concernées (comptes de l'API du jeu). Mesure : `.ai/annexes_suites_audit/sources.md`.
+
+---
+
+### [rejeu/postures] Le document de rejeu porte déjà les sprints et les sauts
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`). La clé `stances` publie `sprint` (lu dans le film), `jumpDerived` (calculé) et `clamber`, par vie (environ 1 % du poids d'un rejeu) ; personne ne la lit aujourd'hui. Le plan de refonte de l'interface du rejeu (`.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`, section « En passant », D-23 et D-24) et l'entrée « Commandes et gestes du joueur » de ce backlog disent que le document ne les porte pas : c'est inexact, à corriger quand ce plan sera repris. Avant d'afficher : mesurer le défaut connu des sprints restés ouverts trop longtemps (`.ai/REGISTRE_REPORTS.md`, entrée sur les postures) sur le décodeur courant. **Effort : à estimer.**
+
+---
+
+### [divers] Six petites découvertes des suites de l'audit (2026-11-17)
+
+**Relevé le 2026-11-17** (suites de l'audit des versions 8.2.0 à 8.3.0, `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, section Découvertes). Six points indépendants, petits chacun :
+
+1. `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`apps/go-api/cmd/levelup`) échoue quand la machine est chargée et passe seul : test sensible au temps, à stabiliser.
+2. Le hook `go-vet` de lefthook affiche des erreurs de contraintes de build sur les commandes sans CGO et passe quand même : le faire échouer pour de bon ou restreindre sa cible.
+3. Le sidecar du fond de carte `sgh_interlock.json` porte des chemins Windows absolus du poste dans `degradations` : écrire des chemins relatifs ou des noms.
+4. `zonesPuresDuCatalogue` (CLI `spawn-model`) refait la projection de zones que le service fait déjà : réutiliser celle du service.
+5. Deux sondes de `apps/go-api/internal/migration` (`psa_index_repro_msr_fixture_test.go`, `psa_index_repro_msr_planprobe_test.go`) citent en commentaire `Q24LUSRHistory`, requête supprimée le 2026-11-17 : corriger le renvoi.
+6. Escouade, valeurs par minute : un coéquipier dont les frags sont inconnus compte pour zéro frag (`intPtrOrZero`) au lieu d'être écarté du taux, alors que les dégâts écartent un compte inconnu : aligner.
+
+**Effort : à estimer.**
+
+---
+
+### [web/couches] Fermeture des couches par Échap ou clic dehors : migrer les 17 écrans restants vers le hook partagé
+
+**Relevé le 2026-11-16** (suites de l'audit des versions 8.2.0 à 8.3.0, plan `.ai/PLAN_SUITES_AUDIT_2026-11-16.md`, item E.1). Le motif « écouter Échap ou le clic dehors pour fermer une couche » est écrit à la main dans 22 fichiers `.tsx` de `apps/web/src/features/`. Le plan migre les 5 du rejeu vers un hook partagé et gèle le compte des autres par un garde-rail qui ne fait que descendre. Reste à faire : migrer les 17 autres fichiers vers ce hook, puis ramener le plafond du garde-rail à 0. Mesure : `grep -rlE "addEventListener\('(pointerdown|mousedown)'|\.key === 'Escape'" apps/web/src/features --include=*.tsx | grep -v "\.test\." | wc -l`
+
+**Décision : mis au backlog par le user le 2026-11-16. Effort : à estimer.**
+
+---
+
 ### [perf/rejeu] Probabilité de réapparition : tous les calques tactiques de la carte relus à chaque ouverture d'un rejeu
 
 Relevé le 2026-11-16 par la relecture finale des réapparitions (`apps/go-api/internal/service/replay_spawn_candidats.go:68-72`). Calque actif par défaut : chaque ouverture d'un rejeu lit et désérialise tous les sidecars de la carte et de la famille, sans borne ni cache. Mesuré à 0,46 s pour 50 matchs ; sur une carte de plusieurs centaines de matchs en prod, plusieurs secondes. Piste chiffrée par l'exécutant : garder en mémoire, par carte et famille, les événements de réapparition (une centaine de Ko), avec une clé de fraîcheur lue par un stat par sidecar ; la requête retombe à environ 0,2 s. **Condition de reprise :** un temps de réponse mesuré au-delà d'une seconde en prod. **Effort : S à M.**
@@ -62,6 +147,12 @@ Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (
 ### [décodeur] Répliques des Spartans (chatter) et voix, en FR ou EN
 
 **Demande de l'utilisateur (2026-11-16), très basse priorité.** Afficher dans la fiche détaillée du rejeu les dernières répliques prononcées par le joueur (« ennemi repéré »…). Notre décodeur ne les lit pas. libfilmshell publie l'événement `Chatter` (locuteur, identifiant du son, priorité, indice de la réplique dans les tables de dialogue du jeu ; `src/model/event.rs`) et `VoiceLine` (annonceur, script du mode), mais ne nomme aucun son. À instruire : retrouver le texte ou l'audio des répliques dans les fichiers du jeu, en français ou à défaut en anglais. **Condition de reprise :** décision du user, après le chantier des commandes et gestes. **Effort : à estimer (lecture des fichiers son du jeu inconnue).**
+
+---
+
+### [décodeur] Temps forts de type « mode » du film : ce qu'ils recouvrent, et qui a détruit quel véhicule
+
+Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. À instruire : compter sur le parc ce que recouvrent nos temps forts de type « mode », mode par mode, et voir s'ils attribuent les destructions de véhicules à un joueur (non vérifié : le décodeur attribue peut-être déjà ces destructions par une autre voie). Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. **Effort : faible pour le comptage ; à estimer pour la suite. Priorité basse.**
 
 ---
 
@@ -251,6 +342,12 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 ### [rejeu/gate] témoin `f75e7053` hors d'atteinte du gate du corpus
 
 Absent du registre depuis la purge du 2026-10-26, sans artefact de parc : le gate de la montée v1.3.9 a tourné sur une copie du manifeste sans lui. Le remplacer par un film de même famille ou le retirer de `config/replay_corpus.toml`. **Effort : S.**
+
+---
+
+### [docs/adr] ADR 0024 (LUSR v2) en partie périmée : la remettre d'accord avec le code
+
+**Relevé le 2026-11-17** en lisant le LUSR pour évaluer OpenSpartan/mmr. Trois écarts entre `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` et le code, vérifiés sur pièces ce jour-là : (1) l'ADR fixe `MaxIters = 200` (ligne 81, et ligne 139 de « Limites et dette » : « en 200 itérations EP »), le code en fait 500 (`MaxIters: 500` dans `apps/go-api/internal/analysis/skill_v2/ep/match2team.go`, ligne 111) ; (2) « Limites et dette » (lignes 141 à 143) annonce comme absents la corrélation entre modes (TS2 §11), le décalage d'escouade (TS2 §6) et la pénalité d'abandon (TS2 §9) : ils existent, dans `apps/go-api/internal/analysis/skill_v2/mode_correlation.go`, `apps/go-api/internal/sync/skill/skill_v2_shadow.go` (décalage d'escouade) et `apps/go-api/internal/sync/skill/skill_v2_quit_penalty.go` ; (3) les liens vers `.ai/V7/LUSR%20v2/` (lignes 192 à 197) pointent vers un dossier déplacé sous `.ai/archive/V7/LUSR%20v2/`. Correction de document seule : aucune formule touchée, pas de changement de `LUSRRev`. **Effort : S.**
 
 ---
 

@@ -13,10 +13,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
@@ -28,12 +27,7 @@ import (
 // se résoudre avant le forçage. Override : LEVELUP_SNAPSHOT_GRACE_HOURS.
 func snapshotGraceWindow() time.Duration {
 	const defaultHours = 60 * 24
-	if v := os.Getenv("LEVELUP_SNAPSHOT_GRACE_HOURS"); v != "" {
-		if h, err := strconv.Atoi(v); err == nil && h > 0 {
-			return time.Duration(h) * time.Hour
-		}
-	}
-	return defaultHours * time.Hour
+	return config.SnapshotGraceWindowFromEnv(defaultHours * time.Hour)
 }
 
 // slugProducesWeaponKills : le titre produit-il le détail kills-par-arme

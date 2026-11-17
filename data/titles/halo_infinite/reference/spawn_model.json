@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 2,
   "date": "2026-11-15",
   "definition": "reapparitions apres mort lues dans les artefacts de rejeu, toutes les familles de modes du titre. Lues avant filtres : 0 par la lecture du film, 111088 par le repli sur l'ecart de 4 a 15 s. Retenue : une reapparition dont la carte est vue dans au moins 3 matchs de la famille, qui a au moins un adversaire vivant, et qui a au moins deux points candidats vus dans au moins 2 AUTRES matchs que le sien. Chaque famille est ajustee sur ses propres matchs, « tous » sur toutes. Les effectifs (reapparitions, cartes, matchs) comptent les reapparitions retenues ; les scores sont ceux de la validation croisee a 5 plis par match",
   "familles": {
@@ -9,7 +9,6 @@
         "distance_au_lieu_de_la_mort_10m": 0.1545,
         "ennemi_le_plus_proche_10m": 1.9979,
         "ennemis_a_moins_de_20m": -0.6479,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -1.0799,
         "frequence_log": 0.4839
       },
@@ -32,7 +31,6 @@
         "distance_au_lieu_de_la_mort_10m": 0.2356,
         "ennemi_le_plus_proche_10m": 2.3887,
         "ennemis_a_moins_de_20m": -0.3594,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -0.9111,
         "frequence_log": 0.3664
       },
@@ -55,7 +53,6 @@
         "distance_au_lieu_de_la_mort_10m": 0.2232,
         "ennemi_le_plus_proche_10m": 1.9296,
         "ennemis_a_moins_de_20m": -0.7524,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -1.4872,
         "frequence_log": -0.0313
       },
@@ -78,7 +75,6 @@
         "distance_au_lieu_de_la_mort_10m": -0.0483,
         "ennemi_le_plus_proche_10m": 1.6606,
         "ennemis_a_moins_de_20m": -0.2901,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -0.9327,
         "frequence_log": 0.8247
       },
@@ -101,7 +97,6 @@
         "distance_au_lieu_de_la_mort_10m": 0.1486,
         "ennemi_le_plus_proche_10m": 1.5032,
         "ennemis_a_moins_de_20m": -0.7892,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -1.1667,
         "frequence_log": 0.5616
       },
@@ -124,7 +119,6 @@
         "distance_au_lieu_de_la_mort_10m": 0.117,
         "ennemi_le_plus_proche_10m": 1.7539,
         "ennemis_a_moins_de_20m": -0.6392,
-        "ennemis_a_vue_40m": 0,
         "equipier_le_plus_proche_10m": -1.0921,
         "frequence_log": 0.6097
       },

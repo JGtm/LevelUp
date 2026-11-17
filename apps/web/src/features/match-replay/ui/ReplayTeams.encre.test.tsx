@@ -11,7 +11,7 @@ import { render } from '@testing-library/react'
 
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeams } from './ReplayTeams'
+import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -51,7 +51,7 @@ function partie(muet = false) {
 function titres(reference: string, muet = false) {
   const { doc, board } = partie(muet)
   const vue = render(
-    <ReplayTeams allegiance={filmAllegianceOf(doc, board, reference)} doc={doc} scoreboard={board} frame={10} locale="fr" />,
+    <ReplayTeamsFromBoard allegiance={filmAllegianceOf(doc, board, reference)} doc={doc} scoreboard={board} frame={10} locale="fr" />,
   )
   const titre = (libelle: string) => vue.getByText(libelle).parentElement as HTMLElement
   return { eagle: titre('Équipe Eagle'), cobra: titre('Équipe Cobra') }

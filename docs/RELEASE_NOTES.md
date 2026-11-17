@@ -9,6 +9,10 @@
 - **A lighter replay to load** — the heaviest replays now arrive about four times smaller (8.5 MB down to 2.1 MB for the largest one), so the replay page opens faster, especially on a slow connection.
 - **Hits and damage read from the film** — the film now gives each hit and the damage it dealt, to the shield and to the body, and the countdown before a dropped flag returns. The replay does not show them yet; they will be shown only for players whose film is complete enough to count them reliably
 - **Each player in the right seat** — the seat of each player in the film is read from the game's own lists
+- **Why a respawn cannot be estimated** — when the respawn probability on the replay map, or the "Opposing respawns" reading in Tactics, cannot be computed, it now says why (no model, unknown map, not enough matches on the map, no zone, no respawn) instead of staying empty
+- **Respawns rely on the film alone** — a match whose film could not be read has no respawn reading, rather than one guessed from the gap between a death and the next life
+- **Old uncompressed replays are no longer read** — a replay stored as a plain `.json` file by an old version counts as missing, and nothing is deleted from your disk. Only the 64 most recent matches get their replay rebuilt on their own (a few at each synchronisation, while the film is still available); for an older match the replay page says there is no 2D replay, and the app offers no button to generate it. The compress step and the `levelup replay compress` command are gone, and so is the `LEVELUP_SYNC_RESOLVE_ASSETS` setting (names are always resolved)
+- **Squad: a truer pace** — kills, deaths and assists per minute in the Squad no longer count matches that have no recorded duration, which used to push these rates up
 
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 

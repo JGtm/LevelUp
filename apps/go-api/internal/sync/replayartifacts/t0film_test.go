@@ -18,15 +18,19 @@ package replayartifacts
 
 import (
 	"context"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
+// ecrireFichier range un artefact de test (contenu quelconque) par la porte, sous le nom canonique `.json.gz` de `nom`.
 func ecrireFichier(t *testing.T, nom, contenu string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), nom)
-	if err := os.WriteFile(path, []byte(contenu), 0o644); err != nil {
+	path := filepath.Join(t.TempDir(), strings.TrimSuffix(nom, ".json")+titlePkg.ReplayArtifactExt)
+	if _, _, err := replayartifact.Write(context.Background(), path, []byte(contenu)); err != nil {
 		t.Fatalf("write %s: %v", nom, err)
 	}
 	return path

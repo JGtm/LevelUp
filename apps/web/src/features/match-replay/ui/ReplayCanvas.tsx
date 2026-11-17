@@ -296,7 +296,7 @@ export function ReplayCanvas({
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
   const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
-    scoreboard,
+    players,
     allegiance,
     marks,
     teamColorOf,
@@ -549,9 +549,7 @@ export function ReplayCanvas({
               ctx,
               doc.projectiles ?? [],
               view,
-              { frame: fr, tailFrames: durationToFrames(PROJECTILE_TAIL_MS, doc) },
-              grenadeColor,
-              shownProjectile,
+              { frame: fr, tailFrames: durationToFrames(PROJECTILE_TAIL_MS, doc), color: grenadeColor, shown: shownProjectile },
             ),
           // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
           // disparition (placementEndFrame) ; le ping bat en TEMPS de match, pas en images.

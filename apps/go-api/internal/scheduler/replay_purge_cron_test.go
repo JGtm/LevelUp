@@ -46,7 +46,7 @@ func prepareReplayPurgeFixture(t *testing.T) (sharedPath, artifactsDir string) {
 	if err := os.MkdirAll(artifactsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"aaaa0001.json", "bbbb0002.json", "cccc0003.json"} {
+	for _, name := range []string{"aaaa0001.json.gz", "bbbb0002.json.gz", "cccc0003.json.gz"} {
 		if err := os.WriteFile(filepath.Join(artifactsDir, name), []byte(`{"schemaVersion":3}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -69,10 +69,10 @@ func TestPurgeReplayArtifacts(t *testing.T) {
 	if purged != 1 || kept != 1 || unknown != 1 {
 		t.Errorf("purge = (purged %d, kept %d, unknown %d), attendu (1, 1, 1)", purged, kept, unknown)
 	}
-	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json.gz")); !os.IsNotExist(err) {
 		t.Error("l'artefact du match de 8 mois devait être purgé")
 	}
-	for _, garde := range []string{"bbbb0002.json", "cccc0003.json"} {
+	for _, garde := range []string{"bbbb0002.json.gz", "cccc0003.json.gz"} {
 		if _, err := os.Stat(filepath.Join(artifactsDir, garde)); err != nil {
 			t.Errorf("%s ne devait PAS être purgé : %v", garde, err)
 		}
@@ -172,7 +172,7 @@ func TestPurgeReplayArtifacts_MarquesDeDerivation(t *testing.T) {
 	sharedPath, artifactsDir := prepareReplayPurgeFixture(t)
 	for _, court := range []string{"aaaa0001", "bbbb0002", "cccc0003"} {
 		if err := replaybuild.WriteDerivationsMark(
-			filepath.Join(artifactsDir, court+".json"), 39, 42); err != nil {
+			filepath.Join(artifactsDir, court+".json.gz"), 39, 42); err != nil {
 			t.Fatalf("marque %s: %v", court, err)
 		}
 	}
@@ -221,7 +221,7 @@ func TestPurgeReplayArtifacts_MarqueOrpheline(t *testing.T) {
 	}
 	// Et une marque ACCOMPAGNÉE, sur un artefact conservé : elle, doit rester.
 	if err := replaybuild.WriteDerivationsMark(
-		filepath.Join(artifactsDir, "bbbb0002.json"), 39, 42); err != nil {
+		filepath.Join(artifactsDir, "bbbb0002.json.gz"), 39, 42); err != nil {
 		t.Fatalf("marque bbbb0002: %v", err)
 	}
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
@@ -242,5 +242,45 @@ func TestPurgeReplayArtifacts_MarqueOrpheline(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(artifactsDir, "bbbb0002"+replaybuild.SuffixeMarqueDerivations)); err != nil {
 		t.Errorf("la marque d'un artefact CONSERVÉ a été supprimée : %v — le rattrapage "+
 			"rejouerait ses dérivations", err)
+	}
+}
+
+// TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierTactiqueConserve — le
+// cron ne retire que le rejeu `{short8}.json.gz` d'un match hors fenêtre et ses dérivés (marque,
+// en-tête, fichier tactique) : un rejeu `.json` brut d'un ancien format, même d'un match hors
+// fenêtre, un en-tête dont l'artefact n'est pas dans le dossier et le fichier tactique d'un
+// artefact conservé restent sur le disque.
+func TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierTactiqueConserve(t *testing.T) {
+	sharedPath, artifactsDir := prepareReplayPurgeFixture(t)
+	rasters := filepath.Join(artifactsDir, titlePkg.SousDossierRasters)
+	if err := os.MkdirAll(rasters, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	intacts := []string{
+		filepath.Join(artifactsDir, "aaaa0001.json"),       // brut du match hors fenêtre, voisin de son .json.gz purgé
+		filepath.Join(artifactsDir, "bbbb0002.json"),       // brut d'un match de la fenêtre
+		filepath.Join(artifactsDir, "dddd0004.meta"),       // en-tête sans artefact dans le dossier
+		filepath.Join(rasters, "bbbb0002.json"),            // fichier tactique de l'artefact conservé
+		filepath.Join(artifactsDir, "notes-manuelles.txt"), // fichier étranger
+	}
+	for _, f := range intacts {
+		if err := os.WriteFile(f, []byte("a-garder"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cutoff := time.Now().UTC().AddDate(0, -6, 0)
+
+	if _, _, _, err := purgeReplayArtifactsForTitle(
+		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, cutoff); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json.gz")); !os.IsNotExist(err) {
+		t.Error("l'artefact du match hors fenêtre devait être purgé (le test ne mordrait pas sinon)")
+	}
+	for _, f := range intacts {
+		if _, err := os.Stat(f); err != nil {
+			t.Errorf("%s supprimé par la purge : %v", filepath.Base(f), err)
+		}
 	}
 }

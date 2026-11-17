@@ -645,20 +645,22 @@ rebuild the same 33 ms document as a full decode. Thresholds are durations, neve
 empty.
 
 **Storage.** A replay artifact is written `{short8}.json.gz` (gzip). Every read and write of artifact bytes
-goes through one gate, `internal/replayartifact` (`Read`, `ReadBytes`, `Locate`, `Exists`, `List`,
-`Write`, `WriteIfAbsent`, `ValidateStored`): the form is detected by its magic bytes, not by the name; a
-legacy `.json` stays readable; when both forms exist the compressed one wins; `{short8}.meta` keeps its
-name and its `bytes` is the stored size. `WriteIfAbsent` never lays a file over an existing `.json.gz`
-(hard link, with an exclusive-create fallback on file systems without hard links, see ADR 0045). The
-conversion of a raw park is a user command, `levelup replay compress`, or the end of a replay update the
-user started in the desktop app; never at startup (guard-rail `archlint/no_auto_replay_compress_test.go`,
-two named callers). Reading artifact bytes outside the gate is refused by
-`archlint/no_artefact_bytes_outside_gate_test.go`.
+goes through one gate, `internal/replayartifact` (`Read`, `ReadBytes`, `Locate`, `Exists`, `List`, `Write`, `Copy`,
+`Remove`): `{short8}.json.gz` is the only form it knows, written atomically (temporary file, then rename);
+a raw `{short8}.json` is neither read, listed nor counted, and for the gate that match has no artifact
+(see the amendment of 2026-11-17 for what rebuilds it). `{short8}.meta` keeps its name and its `bytes` is the stored size.
+Reading artifact bytes outside the gate is refused by `archlint/no_artefact_bytes_outside_gate_test.go`.
 
 **Measured on the park (2026-11-14).** One regeneration of the local park at schema 116: 1 455 replays,
 every one at 33 ms and compressed. The served size grows about 2.5 times at 33 ms (tracks carry about
 85 % of the weight); the transport encoding that brings it back down is a separate lot for the next
 version.
+
+## Amendment of 2026-11-17 - one storage form
+
+The gate `internal/replayartifact` reads and writes `{short8}.json.gz` only, and the server keeps no second form: a collection
+holds replays in one format, nothing converts a park, and the replay regeneration queue (ADR 0045) compresses nothing. A raw
+`.json` still on a disk is left in place and counts as an absent replay. An absent replay is rebuilt by the post-sync catch-up only for the 64 most recent eligible matches of the registry (five per cycle at most, film still available); the regeneration queue lists `.json.gz` replays only, and the web app has no action that generates a missing replay.
 
 ## Non-goals
 

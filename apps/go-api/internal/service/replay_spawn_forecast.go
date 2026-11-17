@@ -94,20 +94,21 @@ func (s *replayService) SpawnForecast(ctx context.Context, matchID string) (repl
 		return replaydoc.SpawnForecast{}, err
 	}
 	if raison != "" {
-		return s.previsionIndisponible(ctx, raison, cadre), nil
+		return s.previsionIndisponible(ctx, raison), nil
 	}
 	calc, err := s.calculerLaPrevision(ctx, matchID, cadre)
 	if err != nil {
 		return replaydoc.SpawnForecast{}, err
 	}
-	out, err := s.habillerLaPrevision(ctx, calc, cadre)
+	out, err := s.habillerLaPrevision(ctx, calc)
 	if err != nil {
 		return replaydoc.SpawnForecast{}, err
 	}
 	slog.InfoContext(ctx, "rejeu 2D : prevision de reapparition",
 		"match_id", matchID, "map_id", cadre.match.MapID, "famille", cadre.famille, "modele", cadre.modele,
-		"statut", out.Status, "raison", out.Reason, "matchs_carte", out.MatchesOnMap, "candidats", out.Candidates,
-		"morts", len(out.Deaths), "morts_ecartees", out.DiscardedDeaths,
+		"date_modele", cadre.fichierPoids.Date, "pas_echantillon_ms", tactical.PasPrevisionMs,
+		"statut", out.Status, "raison", out.Reason, "matchs_carte", calc.res.MatchsCarte, "candidats", calc.res.Candidats,
+		"morts", len(out.Deaths), "morts_ecartees", calc.res.MortsEcartees,
 		"sidecars_lus", calc.bilan.Lus, "sidecars_absents", calc.bilan.Absents, "sidecars_perimes", calc.bilan.Perimes,
 		"sidecars_illisibles", calc.bilan.Illisibles, "titleSlug", s.titleSlug, "duration", time.Since(debut))
 	return out, nil
@@ -212,10 +213,9 @@ func raisonDuStatut(statut string) string {
 }
 
 // previsionIndisponible sert la reponse d'une prevision qui n'a pas lieu, avec son libelle.
-func (s *replayService) previsionIndisponible(ctx context.Context, raison string, c cadrePrevision) replaydoc.SpawnForecast {
+func (s *replayService) previsionIndisponible(ctx context.Context, raison string) replaydoc.SpawnForecast {
 	return replaydoc.SpawnForecast{
 		Status: replaydoc.SpawnForecastStatusUnavailable, Reason: raison, Message: messageDeRaison(ctx, raison),
-		Family: c.famille, Model: c.modele, SampleStepMs: tactical.PasPrevisionMs,
 		Zones: []replaydoc.SpawnForecastZone{}, Deaths: []replaydoc.SpawnForecastDeath{},
 	}
 }
@@ -240,18 +240,13 @@ func messageDeRaison(ctx context.Context, raison string) string {
 
 // habillerLaPrevision projette le resultat pur sur le corps servi : libelles de zone dans la langue
 // de la requete, coordonnees au centimetre, identites masquees en demo.
-func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionCalculee,
-	c cadrePrevision) (replaydoc.SpawnForecast, error) {
+func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionCalculee) (replaydoc.SpawnForecast, error) {
 	res := calc.res
 	if raison := raisonDuStatut(res.Statut); raison != "" {
-		out := s.previsionIndisponible(ctx, raison, c)
-		out.MatchesOnMap, out.Candidates, out.DiscardedDeaths = res.MatchsCarte, res.Candidats, res.MortsEcartees
-		return out, nil
+		return s.previsionIndisponible(ctx, raison), nil
 	}
 	out := replaydoc.SpawnForecast{
-		Status: replaydoc.SpawnForecastStatusReady, Family: c.famille, Model: c.modele, ModelDate: c.fichierPoids.Date,
-		MatchesOnMap: res.MatchsCarte, Candidates: res.Candidats, DiscardedDeaths: res.MortsEcartees,
-		SampleStepMs: tactical.PasPrevisionMs, Deaths: make([]replaydoc.SpawnForecastDeath, 0, len(res.Morts)),
+		Status: replaydoc.SpawnForecastStatusReady, Deaths: make([]replaydoc.SpawnForecastDeath, 0, len(res.Morts)),
 	}
 	for _, m := range res.Morts {
 		out.Deaths = append(out.Deaths, mortServie(m))
@@ -271,8 +266,8 @@ func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionC
 func mortServie(m tactical.PrevisionDeMort) replaydoc.SpawnForecastDeath {
 	d := replaydoc.SpawnForecastDeath{
 		XUID: m.XUID, DeathFrame: m.Mort.Frame, RespawnFrame: m.FrameReapparition,
-		Death:   pointServi(m.Mort.X, m.Mort.Y, m.Mort.Z),
-		Actual:  pointServi(m.Reel.X, m.Reel.Y, m.Reel.Z),
+		Death:   pointServi(m.Mort.X, m.Mort.Y),
+		Actual:  pointServi(m.Reel.X, m.Reel.Y),
 		Samples: make([]replaydoc.SpawnForecastSample, 0, len(m.Echantillons)),
 	}
 	if m.ZoneReelle >= 0 {
@@ -281,8 +276,7 @@ func mortServie(m tactical.PrevisionDeMort) replaydoc.SpawnForecastDeath {
 	}
 	for _, e := range m.Echantillons {
 		smp := replaydoc.SpawnForecastSample{
-			Frame: e.Frame, OutsideZone: e.HorsZone, Zones: make([]replaydoc.SpawnForecastZoneChance, 0, len(e.Zones)),
-			PointsP: e.PointsP,
+			Frame: e.Frame, Zones: make([]replaydoc.SpawnForecastZoneChance, 0, len(e.Zones)), PointsP: e.PointsP,
 		}
 		for _, z := range e.Zones {
 			smp.Zones = append(smp.Zones, replaydoc.SpawnForecastZoneChance{Zone: z.Zone, P: z.P})
@@ -292,9 +286,9 @@ func mortServie(m tactical.PrevisionDeMort) replaydoc.SpawnForecastDeath {
 	return d
 }
 
-func pointServi(x, y, z float64) replaydoc.SpawnForecastPoint {
+func pointServi(x, y float64) replaydoc.SpawnForecastPoint {
 	cm := func(v float64) float64 { return math.Round(v*100) / 100 }
-	return replaydoc.SpawnForecastPoint{X: cm(x), Y: cm(y), Z: cm(z)}
+	return replaydoc.SpawnForecastPoint{X: cm(x), Y: cm(y)}
 }
 
 // zonesDeLaPrevision nomme, dans la langue de la requete, les zones que les previsions et les
@@ -331,7 +325,7 @@ func pointsDeLaPrevision(res tactical.PrevisionsDuMatch, zones []replaydoc.Spawn
 	}
 	out := make([]replaydoc.SpawnForecastCandidate, len(res.Points))
 	for i, p := range res.Points {
-		pt := pointServi(p.Pos.X, p.Pos.Y, 0)
+		pt := pointServi(p.Pos.X, p.Pos.Y)
 		zi, ok := indice[p.Zone]
 		if p.Zone < 0 || !ok {
 			zi = -1

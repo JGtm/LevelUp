@@ -15,17 +15,12 @@ import (
 type mockStatsRepoForStats struct {
 	matches  []legacymatch.StatsMatchRow
 	matchErr error
-	lusr     []domain.LUSRMatchRating
-	lusrErr  error
 	parts    []domain.ParticipantRow
 	partErr  error
 }
 
 func (m *mockStatsRepoForStats) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.matchErr
-}
-func (m *mockStatsRepoForStats) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
-	return m.lusr, m.lusrErr
 }
 func (m *mockStatsRepoForStats) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
 	return m.parts, m.partErr
@@ -102,9 +97,6 @@ func TestStatsService_GetPage_LUSR(t *testing.T) {
 		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3},
 		},
-		lusr: []domain.LUSRMatchRating{
-			{MatchID: "m1", RatingValue: 25.0, RatingDeviation: 8.0},
-		},
 	}
 	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
 	svc.titleSlug = "halo_infinite"
@@ -152,9 +144,6 @@ func TestStatsService_GetPage_All(t *testing.T) {
 	repo := &mockStatsRepoForStats{
 		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Outcome: &win, Kills: 10, Deaths: 3, Accuracy: float64Ptr(0.5), PersonalScore: intPtr(500), PerfScoreComputed: float64Ptr(1.1), TimePlayedSeconds: intPtr(600)},
-		},
-		lusr: []domain.LUSRMatchRating{
-			{MatchID: "m1", RatingValue: 25.0, RatingDeviation: 8.0},
 		},
 	}
 	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")

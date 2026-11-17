@@ -171,6 +171,10 @@ const (
 	// sidecar (celui-la est NON MESURE pour la lecture d'occupation).
 	CompteurRastersEcrits = "postsync_replay_rasters_ecrits_total"
 	CompteurRastersEchecs = "postsync_replay_rasters_echecs_total"
+	// CompteurRastersSansLectureFilm : sidecars projetes depuis un document sans aucune lecture de fin
+	// de vie du film (artefact anterieur a ces champs) : ils ne portent aucune reapparition. Une
+	// degradation nommee, jamais un echec ; elle s'eteint avec la regeneration du parc.
+	CompteurRastersSansLectureFilm = "postsync_replay_rasters_sans_lecture_du_film_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite

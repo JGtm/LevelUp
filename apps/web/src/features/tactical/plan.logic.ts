@@ -10,7 +10,7 @@
 import type { EchelleTactique, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import type { QuarterTurns } from '@/lib/replay/orientation'
+import { cssRotation, type QuarterTurns } from '@/lib/replay/orientation'
 
 import { LEGENDE_MARGE_PX, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
@@ -111,7 +111,7 @@ export interface CadrageDuFond {
   top: string
   width: string
   height: string
-  /** `rotate(<turns x 90>deg)` autour du centre de l'image : absent à 0 quart de tour. */
+  /** La rotation CSS de `cssRotation` (`lib/replay/orientation`) autour du centre de l'image : absent à 0 quart de tour. */
   transform?: string
 }
 
@@ -148,7 +148,7 @@ export function cadrageDuFond(scene: FenetreDuPlan, fenetre: FenetreDuPlan, turn
     top: pct(top + height / 2 - h0 / 2),
     width: pct(w0),
     height: pct(h0),
-    transform: `rotate(${turns * 90}deg)`,
+    transform: cssRotation(turns),
   }
 }
 

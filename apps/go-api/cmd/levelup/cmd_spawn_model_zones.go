@@ -49,30 +49,3 @@ func zonesPuresDuCatalogue(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	}
 	return out
 }
-
-// fonctionZone rend la fonction « indice de zone d'un point » des echantillons : l'indice de
-// volume de la zone qui nomme le point, -1 si la carte n'a pas de zone ou si aucune ne le nomme.
-func fonctionZone(zones map[string][]tactical.ZoneNommee) func(string, tactical.Point3) int {
-	return func(carte string, p tactical.Point3) int {
-		zs := zones[carte]
-		if len(zs) == 0 {
-			return -1
-		}
-		r, ok := tactical.NommerZone(p.X, p.Y, []float64{p.Z}, zs)
-		if !ok {
-			return -1
-		}
-		return r.Zone.VolumeIndex
-	}
-}
-
-// fonctionVue rend la fonction « visibilite d'une carte » des echantillons.
-func fonctionVue(obstacles map[string]*tactical.Obstacles) func(string) tactical.Visibilite {
-	return func(carte string) tactical.Visibilite {
-		o := obstacles[carte]
-		if o == nil {
-			return nil
-		}
-		return o.Voit
-	}
-}

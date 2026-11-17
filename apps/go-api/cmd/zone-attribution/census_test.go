@@ -11,10 +11,12 @@ package main
 // fonctions disent deja.
 
 import (
-	"os"
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/replayartifact"
 )
 
 func TestArtifactSchema(t *testing.T) {
@@ -33,8 +35,8 @@ func TestArtifactSchema(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			p := filepath.Join(dir, c.nom+".json")
-			if err := os.WriteFile(p, []byte(c.contenu), 0o644); err != nil {
+			p := filepath.Join(dir, c.nom+".json.gz")
+			if _, _, err := replayartifact.Write(context.Background(), p, []byte(c.contenu)); err != nil {
 				t.Fatalf("ecriture : %v", err)
 			}
 			got, ok := artifactSchema(p)

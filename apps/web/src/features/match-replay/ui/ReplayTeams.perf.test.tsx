@@ -10,7 +10,7 @@
  * CSS — le risque réel du lot — sont le volet navigateur, remis à l'utilisateur (DevTools).
  *
  * PROTOCOLE (fermé par le plan) : document construit par `testReplayDoc(JSON.parse(...))` ;
- * tableau bâti depuis `doc.roster` ; `<Profiler>` autour de `<ReplayTeams>` ; 20 rendus
+ * tableau bâti depuis `doc.roster` ; `<Profiler>` autour de `<ReplayTeamsFromBoard>` ; 20 rendus
  * d'échauffement puis 100 `rerender` aux images `floor(base + k × 1,5)` (la cadence de
  * publication réelle, 150 ms pour des images de 100 ms) ; métrique `actualDuration` en
  * p50 / p95 / total ; 5 répétitions, médiane des médianes. Puis la même boucle sur le modèle
@@ -33,7 +33,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import { stripBotSuffix } from '@/lib/players/displayName'
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeams } from './ReplayTeams'
+import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { teleportMoments } from '../model/placementTeleport'
 import { playerCardReadings, type CardFxScene } from '../model/playerCardReadings'
@@ -140,7 +140,7 @@ function mesurerColonne(doc: ReplayDocumentReady, base: number, header?: Presenc
   }
   const arbre = (frame: number) => (
     <Profiler id="ReplayTeams" onRender={onRender}>
-      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" header={header} />
+      <ReplayTeamsFromBoard allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={scoreboard} frame={frame} locale="fr" header={header} />
     </Profiler>
   )
   const vue = render(arbre(base))

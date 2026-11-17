@@ -14,6 +14,7 @@ import { MATCH_VIEW_TEXT } from './i18n'
 import { MatchScoreDeltaChart } from './MatchScoreDeltaChart'
 
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import { readOption } from '@/lib/echarts/optionRead.testutil'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(--ac-${token})`,
@@ -22,7 +23,7 @@ vi.mock('@/lib/accessibility', () => ({
 
 // Un chart ECharts monté en jsdom crashe le canvas : on stubbe le wrapper et on GARDE l'option
 // vivante (avec ses fonctions : l'infobulle s'éprouve en l'appelant).
-const options = vi.hoisted(() => [] as Record<string, any>[]) // eslint-disable-line @typescript-eslint/no-explicit-any
+const options = vi.hoisted(() => [] as Record<string, unknown>[])
 vi.mock('echarts-for-react', () => ({
   default: ({ option }: { option: Record<string, unknown> }) => {
     options.push(option)
@@ -94,7 +95,7 @@ async function derniereOption() {
   return waitFor(() => {
     const o = options.at(-1)
     if (!o?.series) throw new Error('option non rendue')
-    return o
+    return readOption<number[]>(o)
   })
 }
 

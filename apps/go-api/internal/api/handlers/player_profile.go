@@ -23,8 +23,9 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/progression/profile"
+	"levelup/go-api/internal/port"
 )
 
 // ProfileWindowDays : fenêtre par défaut pour les agrégats (Section A1/A2/B/C).
@@ -35,12 +36,12 @@ const ActivityCalendarWindowDays = 90
 
 // PlayerProfileHandler regroupe le endpoint /profile.
 type PlayerProfileHandler struct {
-	svc       profile.PlayerProfileService
+	svc       port.PlayerProfileService
 	titleSlug string
 }
 
 // NewPlayerProfileHandler construit le handler.
-func NewPlayerProfileHandler(svc profile.PlayerProfileService, titleSlug string) *PlayerProfileHandler {
+func NewPlayerProfileHandler(svc port.PlayerProfileService, titleSlug string) *PlayerProfileHandler {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
@@ -66,7 +67,7 @@ type profileInput struct {
 	WindowDays string `query:"window_days"`
 }
 
-type profileOutput struct{ Body *profile.PlayerProfile }
+type profileOutput struct{ Body *domain.PlayerProfile }
 
 // activityCalendarInput : {player_slug} parent + ?days= (parse tolérant maison,
 // même contrat que window_days : valeur invalide → défaut).
@@ -75,7 +76,7 @@ type activityCalendarInput struct {
 	Days       string `query:"days" doc:"Fenêtre en jours (clampé 7..180, défaut 90)"`
 }
 
-type activityCalendarOutput struct{ Body *profile.ActivityCalendar }
+type activityCalendarOutput struct{ Body *domain.ActivityCalendar }
 
 // ─── Endpoints ─────────────────────────────────────────────────────────────
 

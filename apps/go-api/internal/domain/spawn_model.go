@@ -8,7 +8,7 @@ package domain
 
 // SpawnModelRevision est la version du FORMAT du fichier de poids. Un fichier d'une autre
 // revision n'est pas exploitable.
-const SpawnModelRevision = 1
+const SpawnModelRevision = 2
 
 // FamilleToutesModes est la famille qui regroupe tous les modes mesures ; elle sert de repli
 // quand un mode n'a pas ses propres poids (analysis/tactical.PoidsPourFamille). Les familles

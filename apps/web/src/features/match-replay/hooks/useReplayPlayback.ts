@@ -97,6 +97,8 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { readStoredFlag } from '../settings/replayPreferences'
 import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from '../settings/useReplaySettings'
 import type { ReplayWindowBounds } from '../model/replayWindow'
+import { usePlaybackCommands } from './useReplayPlaybackCommands'
+import { useInitialCursor, useLatestSeek, useOpenAtFrame, usePlaybackLoop, useSeekRequests } from './useReplayPlaybackEffects'
 
 /**
  * LA PART PARCOURUE, EN POURCENTAGE — le remplissage du dégradé de la piste, tel qu'il existe
@@ -256,12 +258,66 @@ export interface ReplayPlayback {
   seekToFrame: (frame: number) => void
 }
 
+/** Les bornes de la lecture : le coup d'envoi, la fin, et le préambule où la lecture se pose (cf. l'en-tête). */
+function playbackBounds(
+  doc: ReplayDocumentReady,
+  playWindow: ReplayWindowBounds | null,
+): { startFrame: number; endFrame: number; leadInFrame: number } {
+  const lastFrame = Math.max(doc.frameCount - 1, 0)
+  return {
+    startFrame: playWindow?.startFrame ?? 0,
+    endFrame: playWindow?.endFrame ?? lastFrame,
+    // OÙ LA LECTURE SE POSE (cf. l'en-tête, § du préambule) : une seconde en deçà du coup
+    // d'envoi. Sans fenêtre, c'est l'image zéro — exactement le comportement d'avant ce lot.
+    leadInFrame: playWindow?.leadInFrame ?? 0,
+  }
+}
+
+/**
+ * placeCursor POSE LE CURSEUR : la valeur du champ, et la POSITION que toute la frise
+ * habillée consomme — remplissage du dégradé, bulle de temps, trait de lecture.
+ *
+ * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
+ * consomme depuis les classes du champ (`ReplayTimelineTracks.tsx`, variantes
+ * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
+ * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
+ * rendu React pour un remplissage qui suit la lecture. `--played-r` est la MÊME position en
+ * ratio nu, celle qu'attend la géométrie de curseur (cf. `CURSOR_RATIO_VAR`). Les deux
+ * s'écrivent ICI et nulle part ailleurs — un chemin qui déplacerait le curseur sans elles
+ * laisserait la frise figée sur la position précédente, et un second chemin d'écriture
+ * les ferait diverger l'une de l'autre.
+ *
+ * ELLES SE POSENT SUR LA RACINE DE LA FRISE, ET PAS SUR LE CHAMP (2026-09-02, remonté d'un
+ * cran le 2026-09-06 — cf. `CURSOR_HOST_ATTR`). Les propriétés personnalisées HÉRITENT : le
+ * champ les reçoit donc exactement comme avant, son dégradé ne change pas d'un pixel. Ce qui
+ * change, c'est que la BULLE DE TEMPS et les PISTES — qui ne sont pas des descendants du
+ * champ, ni même de sa rangée — peuvent les lire elles aussi. Posées sur le champ, elles
+ * seraient restées invisibles à tout ce qui n'est pas lui : un `input` n'a pas de descendants.
+ */
+function placeCursor(el: HTMLInputElement | null, frame: number, startFrame: number, endFrame: number): void {
+  if (!el) return
+  el.value = String(Math.round(frame))
+  const span = endFrame - startFrame
+  // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
+  // un appelant lui sert une image hors fenêtre (le préambule d'avant coup d'envoi est
+  // précisément ce cas-là, et il doit lire zéro plutôt qu'un ratio négatif).
+  const ratio = Math.min(1, Math.max(0, span > 0 ? (frame - startFrame) / span : 0))
+  // L'HÔTE EST CHERCHÉ À CHAQUE POSE, et c'est volontaire : le mémoriser demanderait de
+  // savoir quand la frise se remonte (repli/dépli, changement de mode). `closest` sur un
+  // attribut coûte trois sauts de parent — moins qu'un rendu React, et cette fonction
+  // tourne déjà soixante fois par seconde sans que rien ne s'en plaigne.
+  const racine = el.closest(`[${CURSOR_HOST_ATTR}]`) as HTMLElement | null
+  const host = racine ?? el.parentElement ?? el
+  host.style.setProperty(CURSOR_PLAYED_VAR, `${ratio * 100}%`)
+  host.style.setProperty(CURSOR_RATIO_VAR, String(ratio))
+}
+
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
   const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange, onStarted } = o
   const { onSeekRequest, onUserMove } = o
-  // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir l'effet plus bas) : empêche le
-  // cadrage au coup d'envoi (juste en dessous) d'écraser un lien tactique déjà positionné si
+  // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir `useOpenAtFrame`) : empêche le
+  // cadrage au coup d'envoi (`useInitialCursor`) d'écraser un lien tactique déjà positionné si
   // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
   // au coup d'envoi.
   const appliedOpenAtFrameRef = useRef(false)
@@ -272,118 +328,13 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   useEffect(() => {
     onPlayingChange?.(playing)
   }, [playing, onPlayingChange])
-  const lastFrame = Math.max(doc.frameCount - 1, 0)
-  const startFrame = playWindow?.startFrame ?? 0
-  const endFrame = playWindow?.endFrame ?? lastFrame
-  // OÙ LA LECTURE SE POSE (cf. l'en-tête, § du préambule) : une seconde en deçà du coup
-  // d'envoi. Sans fenêtre, c'est l'image zéro — exactement le comportement d'avant ce lot.
-  const leadInFrame = playWindow?.leadInFrame ?? 0
-
-  /**
-   * writeCursor POSE LE CURSEUR : la valeur du champ, et la POSITION que toute la frise
-   * habillée consomme — remplissage du dégradé, bulle de temps, trait de lecture.
-   *
-   * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
-   * consomme depuis les classes du champ (`ReplayTimelineTracks.tsx`, variantes
-   * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
-   * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
-   * rendu React pour un remplissage qui suit la lecture. `--played-r` est la MÊME position en
-   * ratio nu, celle qu'attend la géométrie de curseur (cf. `CURSOR_RATIO_VAR`). Les deux
-   * s'écrivent ICI et nulle part ailleurs — un chemin qui déplacerait le curseur sans elles
-   * laisserait la frise figée sur la position précédente, et un second chemin d'écriture
-   * les ferait diverger l'une de l'autre.
-   *
-   * ELLES SE POSENT SUR LA RACINE DE LA FRISE, ET PAS SUR LE CHAMP (2026-09-02, remonté d'un
-   * cran le 2026-09-06 — cf. `CURSOR_HOST_ATTR`). Les propriétés personnalisées HÉRITENT : le
-   * champ les reçoit donc exactement comme avant, son dégradé ne change pas d'un pixel. Ce qui
-   * change, c'est que la BULLE DE TEMPS et les PISTES — qui ne sont pas des descendants du
-   * champ, ni même de sa rangée — peuvent les lire elles aussi. Posées sur le champ, elles
-   * seraient restées invisibles à tout ce qui n'est pas lui : un `input` n'a pas de descendants.
-   */
+  const { startFrame, endFrame, leadInFrame } = playbackBounds(doc, playWindow)
   const writeCursor = useCallback(
-    (frame: number) => {
-      const el = sliderRef.current
-      if (!el) return
-      el.value = String(Math.round(frame))
-      const span = endFrame - startFrame
-      // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
-      // un appelant lui sert une image hors fenêtre (le préambule d'avant coup d'envoi est
-      // précisément ce cas-là, et il doit lire zéro plutôt qu'un ratio négatif).
-      const ratio = Math.min(1, Math.max(0, span > 0 ? (frame - startFrame) / span : 0))
-      // L'HÔTE EST CHERCHÉ À CHAQUE POSE, et c'est volontaire : le mémoriser demanderait de
-      // savoir quand la frise se remonte (repli/dépli, changement de mode). `closest` sur un
-      // attribut coûte trois sauts de parent — moins qu'un rendu React, et cette fonction
-      // tourne déjà soixante fois par seconde sans que rien ne s'en plaigne.
-      const racine = el.closest(`[${CURSOR_HOST_ATTR}]`) as HTMLElement | null
-      const host = racine ?? el.parentElement ?? el
-      host.style.setProperty(CURSOR_PLAYED_VAR, `${ratio * 100}%`)
-      host.style.setProperty(CURSOR_RATIO_VAR, String(ratio))
-    },
+    (frame: number) => placeCursor(sliderRef.current, frame, startFrame, endFrame),
     [startFrame, endFrame],
   )
-
-  // LE COUP D'ENVOI (moins son préambule), DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle
-  // arrive avec la Match View, donc après le premier rendu. On ne pose le curseur que s'il est
-  // encore EN DEÇÀ — le repositionnement ne recule jamais la lecture.
-  //
-  // `!appliedOpenAtFrameRef.current` (lot M1b) : un lien tactique déjà positionné ne doit
-  // JAMAIS être repris par ce cadrage, même sur un instant antérieur au coup d'envoi (la
-  // fenêtre de gameplay, asynchrone, peut arriver APRÈS l'application du lien).
-  useEffect(() => {
-    if (appliedOpenAtFrameRef.current) return
-    if (frameRef.current < leadInFrame) {
-      frameRef.current = leadInFrame
-      writeCursor(leadInFrame)
-      draw()
-      return
-    }
-    // LE REMPLISSAGE SE POSE MÊME SANS REPOSITIONNEMENT : sans cet appel, un montage où la
-    // lecture est déjà au bon endroit (cas nominal sans fenêtre) laisserait `--played` vide,
-    // et la frise s'afficherait creuse jusqu'au premier pas de la boucle.
-    writeCursor(frameRef.current)
-  }, [leadInFrame, frameRef, draw, writeCursor])
-
-  // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
-  //
-  // LE SON BAT AVEC ELLE, et nulle part ailleurs : hors lecture (pause, onglet en
-  // arrière-plan, redessin au changement de thème) il n'y a pas de battement, donc pas un
-  // son. C'est ce qui rend le silence d'un lecteur à l'arrêt structurel, pas conditionnel.
-  useEffect(() => {
-    if (!playing || renderWidth === 0) return
-    const fps = baseFps * speed
-    let raf = 0
-    let last = 0
-    const step = (ts: number) => {
-      if (last === 0) last = ts
-      const dtSec = (ts - last) / 1000
-      last = ts
-      const from = frameRef.current
-      let next = from + dtSec * fps
-      // LA FIN DU FILM : on borne à la dernière image, on la PEINT, puis on s'arrête (cf.
-      // l'en-tête). L'ordre compte — sortir avant le tracé laisserait la scène une image en
-      // arrière, et sortir avant le curseur laisserait la frise mentir.
-      const ended = next >= endFrame
-      if (ended) next = endFrame
-      frameRef.current = next
-      writeCursor(next)
-      soundTick(frameToMs(next, doc))
-      draw()
-      if (ended) {
-        // FRANCHIR LA BORNE, PAS Y ÊTRE. `from < endFrame` est ce qui distingue une ARRIVÉE
-        // d'un simple constat : une frise tirée jusqu'au bout pose déjà le curseur sur la
-        // borne, et le pas suivant conclurait « fin » sans que la lecture ait rien parcouru.
-        // C'est la décision D-C1 (« pas de son sur un scrub qui atteint la fin ») ; l'unicité,
-        // elle, est structurelle — la boucle s'arrête ici, et repartir passe par un rembobinage
-        // ou une position en deçà de la borne.
-        if (from < endFrame) onEnded()
-        setPlaying(false)
-        return
-      }
-      raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef, writeCursor])
+  useInitialCursor({ appliedOpenAtFrameRef, leadInFrame, frameRef, draw, writeCursor })
+  usePlaybackLoop({ playing, setPlaying, doc, baseFps, speed, renderWidth, endFrame, frameRef, writeCursor, draw, soundTick, onEnded })
 
   /**
    * onScrub — LE GLISSÉ DE LA FRISE, et depuis le lot 5.8.7 il PRÉVIENT LE SON.
@@ -431,77 +382,13 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     soundTick(frameToMs(next, doc))
     draw()
   }
+  const seekToRef = useLatestSeek(seekTo)
+  useOpenAtFrame(openAtFrame, appliedOpenAtFrameRef, seekToRef)
+  useSeekRequests(onSeekRequest, setPlaying, seekToRef)
 
-  // OUVRIR AU LIEN TACTIQUE (lot M1b, 2026-09-08) : appliqué UNE SEULE FOIS — `openAtFrame`
-  // peut arriver dès le premier rendu (frame déjà convertie par la route) ou rester `null`
-  // tant que le document ne l'a pas résolu, mais une fois posé il ne doit jamais être répété
-  // (un utilisateur qui a depuis déplacé la frise ne doit pas y être ramené). Passe par le
-  // MÊME `seekTo` que la frise et les repères d'entrée/sortie — pas un chemin de pose séparé.
-  // `seekTo` se recrée à chaque rendu (fermeture sur `leadInFrame`/`endFrame`) ; le garde
-  // `appliedOpenAtFrameRef` rend la ré-exécution inoffensive, l'inclure en dépendance ferait
-  // tourner cet effet à chaque rendu pour rien.
-  useEffect(() => {
-    if (openAtFrame == null || appliedOpenAtFrameRef.current) return
-    appliedOpenAtFrameRef.current = true
-    seekTo(openAtFrame)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openAtFrame])
-
-  // LE CANAL DE SAUT (cf. `onSeekRequest`). La référence tient le `seekTo` du dernier rendu — il se
-  // recrée à chaque rendu — sans réinscrire l'exécuteur à chaque fois.
-  const seekToRef = useRef(seekTo)
-  useEffect(() => {
-    seekToRef.current = seekTo
+  const { togglePlay, restart, seekBy, stepFrames, seekToFrame } = usePlaybackCommands({
+    playing, setPlaying, frameRef, baseFps, endFrame, leadInFrame, seekTo, rewind, onUserMove, onTransportGesture, onStarted,
   })
-  useEffect(() => {
-    if (!onSeekRequest) return
-    return onSeekRequest((frame) => {
-      setPlaying(false)
-      seekToRef.current(frame)
-    })
-  }, [onSeekRequest])
-
-  const seekBy = (seconds: number) => {
-    onUserMove?.()
-    seekTo(frameRef.current + seconds * baseFps)
-  }
-
-  const seekToFrame = (frame: number) => {
-    onUserMove?.()
-    seekTo(frame)
-  }
-
-  const stepFrames = (frames: number) => {
-    onUserMove?.()
-    // EN PAUSE D'ABORD (cf. l'en-tête) : sous la boucle, le pas d'image serait écrasé à la
-    // frame suivante et le geste n'aurait aucun effet visible.
-    setPlaying(false)
-    seekTo(Math.round(frameRef.current) + frames)
-  }
-
-  // LES DEUX COMMANDES DE TRANSPORT PRÉVIENNENT LE SON, en PREMIER : ce sont des gestes
-  // utilisateur, la seule fenêtre où un AudioContext démarre en marche. C'est ce qui rend son
-  // son à un rejeu rechargé dont la préférence était restée à « activé » (cf. useReplaySound).
-  const restart = () => {
-    onUserMove?.()
-    onTransportGesture()
-    rewind()
-    onStarted?.() // toujours au préambule après le rembobinage
-    setPlaying(true)
-  }
-
-  const togglePlay = () => {
-    onTransportGesture()
-    // LA REPRISE EFFACE LA MISE EN VALEUR, PAS LA PAUSE (cf. `onUserMove`).
-    if (!playing) onUserMove?.()
-    // REPARTIR DU DÉBUT SUR UN REJEU TERMINÉ (cf. l'en-tête) : sans ce rembobinage, la boucle
-    // relancée à `endFrame` conclurait « fin » à son premier pas et se rendormirait — le bouton
-    // « Lecture » n'aurait aucun effet visible.
-    if (!playing && frameRef.current >= endFrame) rewind()
-    // UN DÉPART, PAS UNE PAUSE, ET DEPUIS LE PRÉAMBULE (cf. `onStarted`).
-    if (!playing && frameRef.current <= leadInFrame) onStarted?.()
-    setPlaying((p) => !p)
-  }
 
   return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames, seekToFrame }
 }

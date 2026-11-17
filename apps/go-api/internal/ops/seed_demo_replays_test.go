@@ -189,6 +189,47 @@ func TestSeedDemoReplays_InstalleIndexeEtElague(t *testing.T) {
 	}
 }
 
+// TestPruneDemoReplays_NeRetireQueLesRejeuxAuFormatCourantHorsManifeste — le nettoyage ne considère
+// que les rejeux `{short8}.json.gz` : le gardé reste, celui hors manifeste est retiré, et tout le reste
+// du dossier (un rejeu `.json` brut d'un ancien format, un en-tête, une marque de dérivation, le
+// sous-dossier des fichiers tactiques) reste intact. Aucun fichier de rejeu brut n'est supprimé du
+// disque par le serveur.
+func TestPruneDemoReplays_NeRetireQueLesRejeuxAuFormatCourantHorsManifeste(t *testing.T) {
+	demo := t.TempDir()
+	slug := titlePkg.DefaultSlug
+	layout := titlePkg.NewDemoLayout(demo)
+	dir := layout.ReplayArtifactsDir(slug)
+	const garde, hors = "aaaa0001", "bbbb0002"
+
+	ecrireTest(t, layout.ReplayArtifactPath(slug, garde), []byte("gz-garde"))
+	ecrireTest(t, layout.ReplayArtifactPath(slug, hors), []byte("gz-hors"))
+	intacts := []string{
+		filepath.Join(dir, garde+".json"),                  // brut ancien d'un match du manifeste
+		filepath.Join(dir, hors+".json"),                   // brut ancien d'un match hors manifeste
+		filepath.Join(dir, garde+".meta"),                  // en-tête
+		filepath.Join(dir, garde+".derived.json"),          // marque de dérivation
+		filepath.Join(dir, "rasters", garde+".json"),       // fichier tactique, dans son sous-dossier
+		filepath.Join(dir, "sauvegarde-manuelle.json.bak"), // fichier étranger
+	}
+	for _, f := range intacts {
+		ecrireTest(t, f, []byte("a-garder"))
+	}
+
+	pruneDemoReplays(context.Background(), layout, t.TempDir(), slug, map[string]bool{garde: true})
+
+	if !fileExists(layout.ReplayArtifactPath(slug, garde)) {
+		t.Error("rejeu du manifeste retiré")
+	}
+	if fileExists(layout.ReplayArtifactPath(slug, hors)) {
+		t.Error("rejeu au format courant hors manifeste non retiré")
+	}
+	for _, f := range intacts {
+		if !fileExists(f) {
+			t.Errorf("%s supprimé : le nettoyage ne touche qu'aux rejeux au format courant", filepath.Base(f))
+		}
+	}
+}
+
 func TestSeedDemoReplays_SansRejeuNiDossierNeCreeRien(t *testing.T) {
 	demo := t.TempDir()
 	layout := titlePkg.NewDemoLayout(demo)

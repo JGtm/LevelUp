@@ -52,12 +52,12 @@
  *
  * Pas de React, pas de canvas : logique pure, testée (killerZone.test.ts).
  */
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { zoneHasShape, zoneRings } from '../../../lib/replay/calloutShape'
 import type { CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import { msToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
-import { buildPlayers } from '../../../lib/replay/rosterLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { buildCarrierAltitudeAt, buildCarrierPosAt } from './carrierPosition'
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { altitudeOfPlayerAt, deathWindowFrames, posOfPlayerAt } from './livesPosition'
@@ -80,16 +80,6 @@ export interface NamedZone {
 
 type Ring = readonly XY[]
 
-/** Les anneaux d'une zone : contour, parties, trous. Moins de trois sommets : pas une surface. */
-function ringsOf(z: CalloutZoneReady): Ring[] {
-  return [z.polygon, ...z.parts, ...z.holes].filter((r) => r.length >= 3)
-}
-
-/** La zone porte-t-elle au moins un contour ou une partie exploitable ? */
-function hasShape(z: CalloutZoneReady): boolean {
-  return z.polygon.length >= 3 || z.parts.some((p) => p.length >= 3)
-}
-
 /** Le point est-il dans l'anneau (test du rayon, pair-impair) ? */
 function inRing(x: number, y: number, ring: Ring): boolean {
   let inside = false
@@ -104,7 +94,7 @@ function inRing(x: number, y: number, ring: Ring): boolean {
 /** Le point appartient-il à la forme (pair-impair sur ses anneaux) ? */
 function inShape(x: number, y: number, z: CalloutZoneReady): boolean {
   let inside = false
-  for (const r of ringsOf(z)) if (inRing(x, y, r)) inside = !inside
+  for (const r of zoneRings(z)) if (inRing(x, y, r)) inside = !inside
   return inside
 }
 
@@ -120,7 +110,7 @@ function distanceToSegment(x: number, y: number, a: XY, b: XY): number {
 /** Plus courte distance du point à une arête de la forme (Infinity sans forme). */
 function distanceToEdge(x: number, y: number, z: CalloutZoneReady): number {
   let best = Number.POSITIVE_INFINITY
-  for (const r of ringsOf(z)) {
+  for (const r of zoneRings(z)) {
     for (let i = 0, k = r.length - 1; i < r.length; k = i, i++) {
       best = Math.min(best, distanceToSegment(x, y, r[k], r[i]))
     }
@@ -196,7 +186,7 @@ export function nameZone(
   z: number | null,
   zones: readonly CalloutZoneReady[],
 ): NamedZone | null {
-  const shapes = zones.filter(hasShape)
+  const shapes = zones.filter(zoneHasShape)
   if (z === null) return nameWithoutHeight(x, y, shapes)
   const candidates = shapes.filter((c) => inShape(x, y, c) && inSlice(c, z))
   if (candidates.length === 0) return nearest(x, y, shapes, (c) => inSlice(c, z))
@@ -213,16 +203,12 @@ function hasName(z: CalloutZoneReady): boolean {
 }
 
 /**
- * Les vies des bots, par xuid de BASE (`bid(N.0)`) : la jointure de `buildPlayers` relie le bot du
+ * Les vies des bots, par xuid de BASE (`bid(N.0)`) : la jointure du match (`players`) relie le bot du
  * film (clé `bot:<nom>`, vies sans xuid) à sa ligne de feuille, dont le xuid est celui du fil.
  */
-function botLivesByBaseXuid(
-  doc: ReplayDocumentReady,
-  scoreboard: readonly MatchScoreboardRow[],
-): Map<string, ReplayTrackReady[]> {
+function botLivesByBaseXuid(players: readonly ReplayPlayer[]): Map<string, ReplayTrackReady[]> {
   const out = new Map<string, ReplayTrackReady[]>()
-  if (scoreboard.length === 0) return out
-  for (const p of buildPlayers(doc, [...scoreboard])) {
+  for (const p of players) {
     if (p.bot && p.board?.xuid && p.lives.length > 0) out.set(p.board.xuid, p.lives)
   }
   return out
@@ -232,19 +218,19 @@ function botLivesByBaseXuid(
  * killerZones — la zone du tueur de chaque frag du fil, PAR CLÉ DE LIGNE (`ReplayFeedEntry.key`).
  * Un frag dont le tueur n'a pas de position à son instant, ou que le nommage laisse sans nom, n'a
  * PAS d'entrée : jamais un nom deviné. Les lignes qui ne sont pas des frags n'en ont pas non plus.
- * `scoreboard` joint les bots du fil à leurs vies (cf. l'en-tête).
+ * `players` (la jointure du match, `model.players`) joint les bots du fil à leurs vies (cf. l'en-tête).
  */
 export function killerZones(
   entries: readonly ReplayFeedEntry[],
   doc: ReplayDocumentReady,
   zones: readonly CalloutZoneReady[],
-  scoreboard: readonly MatchScoreboardRow[] = [],
+  players: readonly ReplayPlayer[] = [],
 ): ReadonlyMap<string, CalloutZoneReady> {
   const named = zones.filter(hasName)
   if (named.length === 0 || doc.tracks.length === 0) return NO_ZONES
   const posOf = buildCarrierPosAt(doc)
   const altOf = buildCarrierAltitudeAt(doc)
-  const bots = botLivesByBaseXuid(doc, scoreboard)
+  const bots = botLivesByBaseXuid(players)
   const deathFrames = deathWindowFrames(doc)
   const out = new Map<string, CalloutZoneReady>()
   for (const e of entries) {

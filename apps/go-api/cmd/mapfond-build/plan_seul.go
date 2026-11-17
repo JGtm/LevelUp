@@ -104,11 +104,7 @@ func (e *environnement) ancresDuCatalogue(cle string) ([][3]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([][3]float64, 0, len(entree.Objectives))
-	for _, o := range entree.Objectives {
-		out = append(out, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
-	}
-	return out, nil
+	return ancresDesObjectifs(entree.Objectives), nil
 }
 
 // noteResultat classe le résultat d'un plan dans le bilan : absent (maillage ou sidecar), échec,
@@ -158,15 +154,10 @@ func (e *environnement) refaitLePlan(ctx context.Context, c carteDuPlan, b *bila
 	if s.Plan == nil {
 		return errors.New("image plan impossible")
 	}
-	suivi := suiviFond{Decision: e.decisionFond(c.cle), Action: actionPlanSeul, Plan: pf}
-	if e.rognePublie {
-		if err := e.rogneLePublie(ctx, c, s, fond, cal, &suivi); err != nil {
-			return err
-		}
-	}
 	if err := mapfondsidecar.Write(chemin, *s); err != nil {
 		return err
 	}
+	suivi := suiviFond{Decision: e.decisionFond(c.cle), Action: actionPlanSeul, Plan: pf}
 	b.Bilans = append(b.Bilans, bilanAsset{Cle: c.cle, Noms: c.noms, Suivi: suivi})
 	return nil
 }

@@ -28222,28 +28222,13 @@ components:
     SpawnForecast:
       additionalProperties: false
       properties:
-        candidates:
-          format: int64
-          type: integer
         deaths:
           items:
             $ref: '#/components/schemas/SpawnForecastDeath'
           type:
             - array
             - "null"
-        discarded_deaths:
-          format: int64
-          type: integer
-        family:
-          type: string
-        matches_on_map:
-          format: int64
-          type: integer
         message:
-          type: string
-        model:
-          type: string
-        model_date:
           type: string
         points:
           items:
@@ -28259,9 +28244,6 @@ components:
             - no_zone
             - no_respawn
           type: string
-        sample_step_ms:
-          format: int64
-          type: integer
         status:
           enum:
             - ready
@@ -28275,10 +28257,6 @@ components:
             - "null"
       required:
         - status
-        - matches_on_map
-        - candidates
-        - discarded_deaths
-        - sample_step_ms
         - zones
         - points
         - deaths
@@ -28341,13 +28319,9 @@ components:
         "y":
           format: double
           type: number
-        z:
-          format: double
-          type: number
       required:
         - x
         - "y"
-        - z
       type: object
     SpawnForecastSample:
       additionalProperties: false
@@ -28355,9 +28329,6 @@ components:
         frame:
           format: int64
           type: integer
-        outside_zone:
-          format: double
-          type: number
         points_p:
           items:
             format: double
@@ -28374,7 +28345,6 @@ components:
       required:
         - frame
         - zones
-        - outside_zone
         - points_p
       type: object
     SpawnForecastZone:
@@ -31771,17 +31741,6 @@ components:
       properties:
         etat:
           type: string
-        map_id:
-          type: string
-        matchs_filtres:
-          format: int64
-          type: integer
-        matchs_retenus:
-          format: int64
-          type: integer
-        matchs_sans_equipe:
-          format: int64
-          type: integer
         plancher:
           $ref: '#/components/schemas/TacticalPlancherReapparitions'
         raison:
@@ -31793,12 +31752,8 @@ components:
         zone:
           $ref: '#/components/schemas/TacticalZoneChoisie'
       required:
-        - map_id
         - etat
         - zone
-        - matchs_filtres
-        - matchs_retenus
-        - matchs_sans_equipe
         - plancher
         - reference
         - tenue
@@ -31833,12 +31788,7 @@ components:
         matchs:
           format: int64
           type: integer
-        raison:
-          type: string
         reapparitions:
-          format: int64
-          type: integer
-        sans_zone:
           format: int64
           type: integer
         suffisante:
@@ -31854,7 +31804,6 @@ components:
         - reapparitions
         - suffisante
         - zones
-        - sans_zone
       type: object
     TacticalSequence:
       additionalProperties: false
@@ -31981,11 +31930,7 @@ components:
       properties:
         nom:
           type: string
-        volume_index:
-          format: int64
-          type: integer
       required:
-        - volume_index
         - nom
       type: object
     TacticalZoneNom:
@@ -32770,12 +32715,6 @@ components:
           format: int64
           type: integer
         kills_expected:
-          format: double
-          type: number
-        lead_changes:
-          format: int64
-          type: integer
-        lead_share:
           format: double
           type: number
         map_label:

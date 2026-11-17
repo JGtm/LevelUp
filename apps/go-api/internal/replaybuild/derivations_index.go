@@ -52,13 +52,18 @@ import (
 // DerivationsRev — LA VERSION DES DERIVATIONS, ecrite sur chaque marque.
 //
 // LA FAIRE EVOLUER a chaque changement qui modifie CE QUE les derivations ecrivent : nouvelle
-// famille projetee, correction d'une projection, changement de forme d'une table derivee. Le
-// rattrapage rejouera alors les derivations de tout le corpus, cinq artefacts par cycle.
+// famille projetee, correction d'une projection, changement de forme d'une table derivee, ou
+// changement du FORMAT du fichier tactique (`domain.TacticalRasterSchemaVersion`, ecrit par la
+// quatrieme famille). Le rattrapage rejoue alors toutes les familles sur les artefacts deja ranges de
+// l'horizon qu'il regarde (`replayartifacts.BacklogHorizon` matchs les plus recents, cinq
+// artefacts par cycle de synchronisation), sans relire aucun film. Un artefact hors de cet horizon
+// ne se reprend que par la commande propre a la famille (`levelup tactical-rasters --backfill`
+// pour le fichier tactique).
 //
 // MEME DOCTRINE QUE `killcollector.KillSourceDecoderRev`, et pour la meme raison : sans
 // revision, une correction de projection ne repare que les matchs a venir, et le parc reste
 // servi avec l'ancienne — sans compteur et sans reprise possible.
-const DerivationsRev = "derivations-2026-09-06"
+const DerivationsRev = "derivations-2026-11-17"
 
 // SuffixeMarqueDerivations : le suffixe du fichier de marque, pose a la place de l'extension d'artefact (`.json.gz` comme
 // `.json` : le nom `{short8}.derived.json` ne depend pas de la forme de l'artefact).
@@ -78,9 +83,8 @@ func EstMarqueDerivations(name string) bool {
 }
 
 // ArtefactDeLaMarque rend le chemin (ou le nom) CANONIQUE (`.json.gz`) de l ARTEFACT que cette marque
-// decrit — l inverse de [DerivationsMarkPath] pour un artefact compresse. Un artefact brut d un parc ancien porte
-// le meme nom de marque : pour savoir si l artefact existe, passer ce chemin a [replayartifact.Exists], qui voit les deux
-// formes.
+// decrit — l inverse de [DerivationsMarkPath] pour un artefact compresse. Pour savoir si l artefact existe,
+// passer ce chemin a [replayartifact.Exists].
 //
 // ELLE EXISTE POUR QUE LA RELATION MARQUE <-> ARTEFACT NE SOIT ECRITE QU'ICI. Le cron de purge
 // doit pouvoir dire si une marque est ORPHELINE (son artefact a disparu : purge anterieure a la

@@ -90,6 +90,13 @@
 # TestBuildMatchRadarFromScoreboard_*, présents dans le run courant. 88 lignes JSONL, exactement 11 paires
 # (Package, Test), vérifié par différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
 #
+# RETRAIT DU 2026-11-17 (suites de l'audit 8.2.0 à 8.3.0, S.2, commit d7286b0175) : 1 test de
+# `internal/platform/duckdb` retiré, TestStatsRepo_LoadLUSRHistory_WithData. `StatsRepository.LoadLUSRHistory` et la
+# requête `Q24LUSRHistory` n'avaient aucun appelant de production : ils ont été supprimés comme code mort avec leur
+# test. 5 lignes JSONL, exactement 1 paire (Package, Test), vérifié par différence avant/après. Contrôle de présence
+# fait sur toute la baseline : c'est le seul test de `apps/go-api` dont la fonction n'existe plus dans le code. Compte
+# PARTIEL d'absences volontaires → remède prescrit ici même.
+#
 # RETRAIT DU 2026-09-16 (lot annuaire des joueurs, ADR 0035, commit 53d19824c) : 3 tests de
 # `internal/api/handlers` retirés — TestFileExists_Exists, TestFileExists_NotExists et
 # TestSetupHandler_CreatePlayer_ProfileServiceError. Le lot a fait d Onboard le SEUL chemin de
