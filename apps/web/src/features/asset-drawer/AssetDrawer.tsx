@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { useAssetDrawerStore } from './assetDrawer.store'
@@ -15,15 +15,8 @@ export function AssetDrawer() {
 
   const t = (key: keyof typeof assetDrawerManifest) => formatMessage(assetDrawerManifest, key, locale)
 
-  // Phase 3 — fermeture au clavier Escape
-  useEffect(() => {
-    if (!isOpen) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, close])
+  // Échap ferme le tiroir ; le clic dehors est celui du voile, qui retient aussi le clic de la page.
+  const panelRef = useDismissable(isOpen, close, { outside: null })
 
   return (
     <>
@@ -44,6 +37,7 @@ export function AssetDrawer() {
       {/* Panneau drawer — mobile : sheet pleine hauteur ; desktop (sm:) : carte
           flottante centrée verticalement (rendu desktop inchangé). */}
       <div
+        ref={panelRef}
         role="complementary"
         aria-label={t('asset_drawer.toggle.open')}
         aria-hidden={!isOpen}
