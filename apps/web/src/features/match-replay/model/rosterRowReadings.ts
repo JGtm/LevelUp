@@ -39,6 +39,21 @@ export function respawnText(
   return `${t.respawnIn} ${formatSeconds(frameToMs(state.respawnFrame - frame, doc))}`
 }
 
+/**
+ * respawnShort — la forme ABRÉGÉE du compte à rebours, pour la fiche compacte : « Réapp. 4.2 s ». Même
+ * lecture que `respawnText` (le retour est l'image de départ de la vie suivante) ; le texte long
+ * reste celui de l'infobulle. Sans vie suivante, le mot court existant « Hors film », jamais un délai deviné.
+ */
+export function respawnShort(
+  state: Pick<PlayerState, 'respawnFrame'>,
+  doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>,
+  frame: number,
+  t: Pick<ReplayText, 'goneLabel'> & { roster: Pick<ReplayText['roster'], 'respawnShort'> },
+): string {
+  if (state.respawnFrame < 0) return t.goneLabel
+  return `${t.roster.respawnShort} ${formatSeconds(frameToMs(state.respawnFrame - frame, doc))}`
+}
+
 /** La cellule de grenades : le type qui partira (icône, nom, stock) ou, à défaut, le total porté. */
 export interface RowGrenade {
   /** Le nombre affiché : le stock du type désigné, ou le total des types portés. */

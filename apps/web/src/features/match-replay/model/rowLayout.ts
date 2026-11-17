@@ -19,6 +19,16 @@ export const NB_CAMPS_RANGEE = 2
 /** Le nombre de places par camp au-delà duquel la rangée ne se rend pas (Grande équipe exclue). */
 export const PLACES_PAR_CAMP_MAX_RANGEE = 5
 
+/**
+ * grandeEquipe rend vrai quand un match à deux camps a, dans l'un d'eux, plus de
+ * `PLACES_PAR_CAMP_MAX_RANGEE` places : c'est le seuil de la forme COMPACTE des fiches (la colonne les
+ * range par paires), le même que celui au-delà duquel la rangée de fiches ordinaires ne se rend pas.
+ * Elle lit le nombre de places, jamais un nom de mode ni un libellé.
+ */
+export function grandeEquipe(placesParCamp: readonly number[]): boolean {
+  return placesParCamp.length === NB_CAMPS_RANGEE && Math.max(...placesParCamp) > PLACES_PAR_CAMP_MAX_RANGEE
+}
+
 /** Ce que la règle lit d'un match : ses camps, les places de chaque camp, la largeur du corps. */
 export interface RowFitInput {
   camps: number

@@ -23,6 +23,11 @@ export interface RosterText {
   colEquipmentTitle: string
   colKda: string
   colKdaTitle: string
+  /** Le début abrégé du compte à rebours d'une fiche compacte : « Réapp. 4,2 s ». */
+  respawnShort: string
+  /** La pastille d'un joueur contrôlé par l'ordinateur, et son infobulle. */
+  bot: string
+  botHint: string
 }
 
 export const FR_ROSTER = {
@@ -37,6 +42,9 @@ export const FR_ROSTER = {
   colEquipmentTitle: 'Équipement',
   colKda: 'F / M / A',
   colKdaTitle: 'Frags / Morts / Assistances',
+  respawnShort: 'Réapp.',
+  bot: 'bot',
+  botHint: "Joueur contrôlé par l'ordinateur",
 } satisfies RosterText
 
 export const EN_ROSTER = {
@@ -51,4 +59,7 @@ export const EN_ROSTER = {
   colEquipmentTitle: 'Equipment',
   colKda: 'K / D / A',
   colKdaTitle: 'Kills / Deaths / Assists',
+  respawnShort: 'Resp.',
+  bot: 'bot',
+  botHint: 'Player controlled by the computer',
 } satisfies RosterText

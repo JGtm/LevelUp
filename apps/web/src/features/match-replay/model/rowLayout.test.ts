@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { largeurRequiseRangee, rowFits } from './rowLayout'
+import { grandeEquipe, largeurRequiseRangee, rowFits } from './rowLayout'
 
 const DEUX_CAMPS = 2
 const LARGEUR_1440 = 1440
@@ -70,5 +70,22 @@ describe('rowFits', () => {
 
   it('une liste de places qui ne compte pas deux camps ne tient pas', () => {
     expect(rowFits({ camps: DEUX_CAMPS, placesParCamp: [3], largeurCorps: LARGEUR_4000 })).toBe(false)
+  })
+})
+
+describe('grandeEquipe', () => {
+  it('5 places par camp : forme ordinaire ; 6 places par camp : forme compacte', () => {
+    expect(grandeEquipe([5, 5])).toBe(false)
+    expect(grandeEquipe([6, 6])).toBe(true)
+  })
+
+  it('un seul camp plus grand suffit ; ni un camp seul ni plus de deux camps ne sont une Grande équipe', () => {
+    expect(grandeEquipe([4, 12])).toBe(true)
+    expect(grandeEquipe([12])).toBe(false)
+    expect(grandeEquipe([12, 12, 12])).toBe(false)
+  })
+
+  it('le seuil est celui de la rangée : au-delà, elle ne se rend plus', () => {
+    expect(rowFits({ camps: DEUX_CAMPS, placesParCamp: [6, 6], largeurCorps: LARGEUR_4000 })).toBe(false)
   })
 })

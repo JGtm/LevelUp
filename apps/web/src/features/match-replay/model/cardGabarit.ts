@@ -292,3 +292,79 @@ export const COTES_DEPLI_LIGNE = Object.freeze({
   grenadeIconePx: 11,
   equipementIconePx: 11,
 } as const)
+
+/**
+ * LE GABARIT DE LA FICHE COMPACTE d'une Grande équipe (`ui/ReplayCompactCard.tsx`) : nom, bouclier et
+ * santé, sans frags / morts / assistances, sans arme, grenades ni équipement. Une seule fiche, deux
+ * formes : SUR DEUX LIGNES (`stackedPx` : le nom, puis les jauges) pour la rangée du Cinéma, SUR UNE
+ * LIGNE (`linePx` : pastille, nom, jauges de `gaugeLineW`) pour la colonne du Standard, où les fiches se
+ * rangent par paires (`pairColGapPx`, `pairRowGapPx`). Cotes en `style` (nombres), jamais en classe
+ * interpolée ; le rayon des couches d'effets est une classe en clair.
+ */
+export interface FicheCompacteGabarit {
+  /** Hauteur de la fiche sur deux lignes, et sur une ligne. */
+  stackedPx: number
+  linePx: number
+  /** Marge latérale intérieure. */
+  padX: number
+  /** Côté de la pastille de camp, écart entre pastille et nom (deux lignes), écart entre éléments (une ligne). */
+  dotPx: number
+  dotGapPx: number
+  lineGapPx: number
+  /** Écart entre la ligne du nom et celle des jauges (deux lignes) et entre jauges et marques (deuxième ligne). */
+  stackGapPx: number
+  marksGapPx: number
+  /** Nom : taille et interligne ; compte à rebours : taille et interligne. */
+  namePx: number
+  nameLeadingPx: number
+  respawnPx: number
+  respawnLeadingPx: number
+  /** Pile de jauges : largeur sur une ligne, hauteurs bouclier et santé, écart entre les deux. */
+  gaugeLineW: number
+  gaugeShieldPx: number
+  gaugeHealthPx: number
+  gaugeGapPx: number
+  /** Marque de porteur d'objectif (côté) ; pastille « bot » (hauteur, marge latérale, taille de texte). */
+  markPx: number
+  capHeightPx: number
+  capPadX: number
+  capTextPx: number
+  /** Opacité du nom d'un joueur éliminé. */
+  deadOpacity: number
+  /** Nombre d'éclairs de l'écran occultant. */
+  boltCount: number
+  /** Rayon des couches d'effets : celui de la fiche, en classe (un littéral en clair). */
+  layerRadius: string
+  /** Écarts entre deux fiches d'une même paire, et entre deux paires. */
+  pairColGapPx: number
+  pairRowGapPx: number
+}
+
+/** La fiche compacte du tableau N : 34 px sur deux lignes, 24 px sur une ligne, pastille de 6 px, jauges de 3 px. */
+export const GABARIT_FICHE_COMPACTE: FicheCompacteGabarit = Object.freeze({
+  stackedPx: 34,
+  linePx: 24,
+  padX: 6,
+  dotPx: 6,
+  dotGapPx: 4,
+  lineGapPx: 6,
+  stackGapPx: 3,
+  marksGapPx: 5,
+  namePx: 11.5,
+  nameLeadingPx: 14,
+  respawnPx: 11,
+  respawnLeadingPx: 13,
+  gaugeLineW: 44,
+  gaugeShieldPx: 3,
+  gaugeHealthPx: 3,
+  gaugeGapPx: 1,
+  markPx: 11,
+  capHeightPx: 13,
+  capPadX: 4,
+  capTextPx: 9.5,
+  deadOpacity: 0.4,
+  boltCount: 2,
+  layerRadius: 'rounded-md',
+  pairColGapPx: 6,
+  pairRowGapPx: 3,
+} as const)

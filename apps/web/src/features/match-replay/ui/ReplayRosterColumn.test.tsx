@@ -17,7 +17,7 @@ import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import { buildPlayers } from '@/lib/replay/rosterLogic'
 
 import { ReplayRosterColumn } from './ReplayRosterColumn'
-import { GABARIT_LIGNE } from '../model/cardGabarit'
+import { GABARIT_FICHE_COMPACTE, GABARIT_LIGNE } from '../model/cardGabarit'
 import { trackedPlayerOf } from '../model/playerPanelLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { scoreboardRow } from '../test/scoreboardRow'
@@ -342,32 +342,77 @@ describe('ReplayRosterColumn — clic', () => {
   })
 })
 
-describe('ReplayRosterColumn — Grande équipe', () => {
-  const NB = 24
-  const docGrande = () =>
-    testReplayDoc({
-      frameCount: 300,
-      frameIntervalMs: 100,
-      originMs: 0,
-      roster: Array.from({ length: NB }, (_, i) => ({ xuid: `X${i}`, filmIndex: i, seat: i % 12, name: `Joueur${i}`, team: i < 12 ? 0 : 1 })),
-      tracks: Array.from({ length: NB }, (_, i) => ({
-        slot: 512 + i, team: i < 12 ? 0 : 1, xuid: `X${i}`, startFrame: 0, endFrame: 290, points: [{ t: 0, x: i, y: i, sh: 1, hp: 1 }],
-      })),
-    })
+/** Un match à deux camps de `parCamp` places chacun, vitalité pleine à la lecture. */
+function documentParCamp(parCamp: number) {
+  const n = parCamp * 2
+  return testReplayDoc({
+    frameCount: 300,
+    frameIntervalMs: 100,
+    originMs: 0,
+    roster: Array.from({ length: n }, (_, i) => ({ xuid: `X${i}`, filmIndex: i, seat: i % parCamp, name: `Joueur${i}`, team: i < parCamp ? 0 : 1 })),
+    tracks: Array.from({ length: n }, (_, i) => ({
+      slot: 512 + i, team: i < parCamp ? 0 : 1, xuid: `X${i}`, startFrame: 0, endFrame: 290, points: [{ t: 0, x: i, y: i, sh: 1, hp: 1 }],
+    })),
+  })
+}
 
-  it('vingt-quatre lignes ordinaires dans UNE zone qui défile ; les en-têtes de camp restent collés en haut', () => {
-    const vue = render(<Colonne doc={docGrande()} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
-    const defile = vue.container.querySelectorAll('.overflow-y-auto')
-    expect(defile).toHaveLength(1)
-    expect(defile[0].hasAttribute('data-replay-roster-column')).toBe(true)
-    expect(lignes(defile[0] as HTMLElement)).toHaveLength(NB)
+describe('ReplayRosterColumn — seuil de la Grande équipe', () => {
+  it('5 places par camp : des lignes ordinaires, la part des équipes défile, en-tête de colonnes présent', () => {
+    const vue = render(<Colonne doc={documentParCamp(5)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    expect(vue.container.querySelectorAll('.overflow-y-auto')).toHaveLength(1)
+    expect(screen.getAllByText(T.roster.colKda)).toHaveLength(1)
     for (const l of lignes(vue.container)) expect(l.style.height).toBe(`${GABARIT_LIGNE.rowPx}px`)
-    const entetes = vue.container.querySelectorAll('h3')
-    expect(entetes).toHaveLength(2)
-    for (const h of entetes) expect(h.className).toContain('sticky')
+    expect(lignes(vue.container)).toHaveLength(10)
   })
 
-  it('le même gabarit qu’un 4 contre 4 : aucune forme compacte', () => {
+  it('6 places par camp : des fiches compactes par paires, sans en-tête de colonnes ni défilement', () => {
+    const vue = render(<Colonne doc={documentParCamp(6)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    expect(vue.container.querySelectorAll('.overflow-y-auto')).toHaveLength(0)
+    expect(screen.queryByText(T.roster.colKda)).toBeNull()
+    for (const l of lignes(vue.container)) expect(l.style.height).toBe(`${GABARIT_FICHE_COMPACTE.linePx}px`)
+    expect(lignes(vue.container)).toHaveLength(12)
+  })
+})
+
+describe('ReplayRosterColumn — Grande équipe, 12 contre 12', () => {
+  it('six paires de fiches côte à côte par camp, l’en-tête de camp au-dessus', () => {
+    const vue = render(<Colonne doc={documentParCamp(12)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    const camps = vue.container.querySelectorAll('section')
+    expect(camps).toHaveLength(2)
+    for (const camp of camps) {
+      expect(camp.querySelectorAll('h3')).toHaveLength(1)
+      const grille = camp.querySelector('.grid') as HTMLElement
+      expect(grille.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
+      expect(grille.style.columnGap).toBe(`${GABARIT_FICHE_COMPACTE.pairColGapPx}px`)
+      expect(grille.style.rowGap).toBe(`${GABARIT_FICHE_COMPACTE.pairRowGapPx}px`)
+      expect(grille.children).toHaveLength(12)
+    }
+    expect(lignes(vue.container)).toHaveLength(24)
+  })
+
+  it('aucune zone défilante, aucun en-tête de colonnes, aucune statistique F / M / A', () => {
+    const vue = render(<Colonne doc={documentParCamp(12)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} />)
+    expect(vue.container.querySelectorAll('.overflow-y-auto')).toHaveLength(0)
+    expect(screen.queryByText(T.roster.colWeapon)).toBeNull()
+    expect(vue.container.textContent).not.toMatch(/\d\/\d\/\d/)
+  })
+
+  it('un clic sur une fiche rend la page avec la bonne clé', () => {
+    const onCard = vi.fn()
+    render(<Colonne doc={documentParCamp(12)} scoreboard={[]} frame={10} locale="fr" onCard={onCard} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la fiche de Joueur13' }))
+    expect(onCard).toHaveBeenCalledWith('X13')
+  })
+
+  it('le joueur suivi a la bordure de suivi mais pas de dépli', () => {
+    const vue = render(<Colonne doc={documentParCamp(12)} scoreboard={[]} frame={10} locale="fr" onCard={vi.fn()} watched="X3" />)
+    expect(vue.container.querySelectorAll('[data-replay-roster-detail]')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: 'Ouvrir la fiche de Joueur3' }).style.borderColor).toBe('var(--ring)')
+  })
+})
+
+describe('ReplayRosterColumn — 4 contre 4 inchangé', () => {
+  it('le même gabarit de ligne et la même zone qui défile', () => {
     const vue = render(<Colonne doc={document4v4()} scoreboard={FEUILLE} frame={10} locale="fr" onCard={vi.fn()} />)
     expect(vue.container.querySelectorAll('.overflow-y-auto')).toHaveLength(1)
     expect((lignes(vue.container)[0] as HTMLElement).style.height).toBe(`${GABARIT_LIGNE.rowPx}px`)

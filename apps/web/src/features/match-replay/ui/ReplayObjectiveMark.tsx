@@ -101,9 +101,19 @@ export function ReplayObjectiveMark({
       className={`pointer-events-none absolute inset-y-0 right-[-6px] flex items-center overflow-hidden ${radiusClass}`}
       style={{ color: tokenCssVar('extreme'), opacity: WATERMARK_OPACITY }}
     >
-      <svg width={sizePx} height={sizePx} viewBox="0 0 16 16" fill="currentColor">
-        <path d={GLYPH_PATHS[kind]} fillRule={NONZERO_KINDS.has(kind) ? 'nonzero' : 'evenodd'} />
-      </svg>
+      <ReplayObjectiveGlyph kind={kind} sizePx={sizePx} />
     </span>
+  )
+}
+
+/**
+ * ReplayObjectiveGlyph — le glyphe seul, à l'encre courante : la marque d'une fiche qui n'a pas de
+ * place pour un filigrane (la fiche compacte la pose à droite des jauges).
+ */
+export function ReplayObjectiveGlyph({ kind, sizePx }: { kind: ObjectiveMarkKind; sizePx: number }) {
+  return (
+    <svg width={sizePx} height={sizePx} viewBox="0 0 16 16" fill="currentColor">
+      <path d={GLYPH_PATHS[kind]} fillRule={NONZERO_KINDS.has(kind) ? 'nonzero' : 'evenodd'} />
+    </svg>
   )
 }

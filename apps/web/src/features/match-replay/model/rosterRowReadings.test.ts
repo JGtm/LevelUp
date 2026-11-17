@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import type { NowGrenade, NowWeapon } from './playerNowReadings'
 import { seatWaitingReading } from './playerCardReadings'
-import { ammoParts, respawnText, rowGrenade } from './rosterRowReadings'
+import { ammoParts, respawnShort, respawnText, rowGrenade } from './rosterRowReadings'
 
 const T = REPLAY_TEXT.fr
 const DOC = { frameIntervalMs: 100 }
@@ -71,5 +71,15 @@ describe('ammoParts', () => {
 describe('seatWaitingReading', () => {
   it('sans occupant : la place est libre et ne montre aucun nom', () => {
     expect(seatWaitingReading(null, T)).toEqual({ name: null, label: T.seatVacant, hint: T.seatVacantHint })
+  })
+})
+
+describe('respawnShort', () => {
+  it('la forme abrégée dit le même retour que le texte long', () => {
+    expect(respawnShort({ respawnFrame: 180 }, DOC, 140, T)).toBe(`${T.roster.respawnShort} 4.0 s`)
+  })
+
+  it('sans vie suivante : le mot court « Hors film », jamais un délai', () => {
+    expect(respawnShort({ respawnFrame: -1 }, DOC, 140, T)).toBe(T.goneLabel)
   })
 })

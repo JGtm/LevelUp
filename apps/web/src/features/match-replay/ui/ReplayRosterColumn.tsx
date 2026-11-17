@@ -8,9 +8,12 @@
  * d'attente d'une place libre ou d'un occupant pas encore apparu. Jamais plus de lignes que de places,
  * jamais un joueur parti. Un camp sans désignateur (mode sans camps) n'a ni en-tête ni pastille.
  *
- * LA PART DES ÉQUIPES DÉFILE, et elle seule : la colonne est une zone à défilement vertical dont les
- * lignes gardent leur hauteur (24 joueurs d'une Grande équipe tiennent par défilement, sans forme
- * compacte), et l'en-tête de chaque camp reste collé en haut pendant que ses lignes passent.
+ * UNE GRANDE ÉQUIPE (`grandeEquipe` : plus de `PLACES_PAR_CAMP_MAX_RANGEE` places dans un camp) se range
+ * en PAIRES DE FICHES COMPACTES sur une ligne (`ReplayCompactCard`, forme `'line'`), côte à côte, sous
+ * l'en-tête de camp : ni lignes, ni en-tête de colonnes (la fiche n'a ni arme, ni grenades, ni équipement,
+ * ni F / M / A), et la colonne ne défile pas. Les autres effectifs gardent leurs lignes : la part des
+ * équipes est alors une zone à défilement vertical dont les lignes gardent leur hauteur, et l'en-tête de
+ * chaque camp reste collé en haut pendant que ses lignes passent.
  *
  * LE JOUEUR SUIVI ARRIVE PAR PROP (`tracked`, `playerPanel.tracked`) : la colonne ne le recalcule pas.
  * Les âges de lecture et la scène des effets sont construits une fois pour toute la colonne
@@ -18,12 +21,14 @@
  */
 import { useMemo } from 'react'
 
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { Allegiance, FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
+import { ReplayCompactCard, ReplayCompactWaitingCard } from './ReplayCompactCard'
 import { ReplayRosterRow, ReplayRosterWaitingRow, ROW_COLUMNS } from './ReplayRosterRow'
-import { useCardScene } from '../hooks/useCardScene'
-import { GABARIT_LIGNE as G } from '../model/cardGabarit'
+import { useCardScene, type CardScene } from '../hooks/useCardScene'
+import { campInk } from '../model/campInk'
+import { GABARIT_FICHE_COMPACTE as C, GABARIT_LIGNE as G } from '../model/cardGabarit'
+import { grandeEquipe } from '../model/rowLayout'
 import { buildSeats, groupSeatsByTeam, seatTileAt, type ReplaySeatGroup } from '../model/seatLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { campLabel } from '../../../lib/replay/replayCamps'
@@ -49,11 +54,6 @@ export interface ReplayRosterColumnProps {
 /** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme. */
 function sheetRowsOf(group: ReplaySeatGroup) {
   return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
-}
-
-/** L'encre d'un camp : la couleur d'allié ou d'adversaire, ou la bordure quand l'allégeance n'est pas connue. */
-function campInk(ally: Allegiance): string {
-  return ally === null ? 'var(--border)' : tokenCssVar(ally ? 'team-ally' : 'team-enemy')
 }
 
 /** L'en-tête d'un camp : sa pastille carrée et son nom ; collé en haut de la zone qui défile. */
@@ -98,6 +98,42 @@ function ColumnHeads({ locale }: { locale: ReplayLocale }) {
   )
 }
 
+/** Ce que le rendu des places d'un camp partage : le document, l'image, la langue, la scène, le joueur suivi, le clic. */
+interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid'> {
+  scene: CardScene
+  /** Vrai = Grande équipe : une fiche compacte par place, au lieu d'une ligne. */
+  compact: boolean
+  ally: Allegiance
+}
+
+/**
+ * Les places d'un camp : UNE LIGNE (ou une fiche compacte) PAR PLACE, À CHAQUE IMAGE — son occupant à
+ * l'instant lu, « pas encore apparu » s'il n'a pas de corps, ou la place VIDE. Une place qui ne rend
+ * RIEN à cette image (`seatTileAt` nul) ne produit aucune ligne.
+ */
+function seatsOf(group: ReplaySeatGroup, ctx: SeatCtx) {
+  const { doc, frame, locale, scene, tracked, onCard, selectedXuid = null, compact, ally } = ctx
+  return group.seats.map((seat) => {
+    const lu = seatTileAt(seat, frame)
+    if (lu === null) return null
+    if (lu.kind !== 'present' || lu.player === null) {
+      return compact
+        ? <ReplayCompactWaitingCard key={seat.key} occupant={lu.player} locale={locale} form="line" />
+        : <ReplayRosterWaitingRow key={seat.key} occupant={lu.player} locale={locale} />
+    }
+    const player = lu.player
+    const shared = {
+      player, doc, frame, locale, scene,
+      tracked: tracked !== null && tracked.xuid === player.xuid,
+      selected: selectedXuid === player.xuid,
+      onCard,
+    }
+    return compact
+      ? <ReplayCompactCard key={seat.key} {...shared} form="line" ally={ally} />
+      : <ReplayRosterRow key={seat.key} {...shared} />
+  })
+}
+
 export function ReplayRosterColumn({
   doc, players, frame, locale, allegiance, tracked, onCard, selectedXuid = null,
 }: ReplayRosterColumnProps) {
@@ -125,42 +161,36 @@ export function ReplayRosterColumn({
     )
   }
 
+  // LE SEUIL SE LIT SUR LE NOMBRE DE PLACES PAR CAMP, jamais sur un nom de mode (`grandeEquipe`).
+  const compact = grandeEquipe(groups.map((g) => g.seats.length))
   return (
     <div
       data-replay-roster-column=""
-      className="flex min-h-0 flex-col overflow-y-auto overflow-x-hidden"
+      className={`flex min-h-0 flex-col${compact ? '' : ' overflow-y-auto overflow-x-hidden'}`}
       style={{ gap: G.teamsGapPx }}
     >
-      {groups.map((group, gi) => (
-        <section key={`camp:${group.team}`} aria-label={labels[gi]} className="flex shrink-0 flex-col">
-          {group.team >= 0 && <TeamHead label={labels[gi]} ally={allegiance.ofTeam(group.team)} />}
-          {gi === 0 && <ColumnHeads locale={locale} />}
-          {/* UNE LIGNE PAR PLACE, À CHAQUE IMAGE : son occupant à l'instant lu, « pas encore apparu » s'il
-              n'a pas de corps, ou la place VIDE. Une place qui ne rend RIEN à cette image
-              (`seatTileAt` nul) ne produit aucune ligne. */}
-          {group.seats.map((seat) => {
-            const lu = seatTileAt(seat, frame)
-            if (lu === null) return null
-            if (lu.kind !== 'present' || lu.player === null) {
-              return <ReplayRosterWaitingRow key={seat.key} occupant={lu.player} locale={locale} />
-            }
-            const player = lu.player
-            return (
-              <ReplayRosterRow
-                key={seat.key}
-                player={player}
-                doc={doc}
-                frame={frame}
-                locale={locale}
-                scene={scene}
-                tracked={tracked !== null && tracked.xuid === player.xuid}
-                selected={selectedXuid === player.xuid}
-                onCard={onCard}
-              />
-            )
-          })}
-        </section>
-      ))}
+      {groups.map((group, gi) => {
+        const ally = allegiance.ofTeam(group.team)
+        const places = seatsOf(group, { doc, frame, locale, scene, tracked, onCard, selectedXuid, compact, ally })
+        return (
+          <section key={`camp:${group.team}`} aria-label={labels[gi]} className="flex shrink-0 flex-col">
+            {group.team >= 0 && <TeamHead label={labels[gi]} ally={ally} />}
+            {compact ? (
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: C.pairColGapPx, rowGap: C.pairRowGapPx }}
+              >
+                {places}
+              </div>
+            ) : (
+              <>
+                {gi === 0 && <ColumnHeads locale={locale} />}
+                {places}
+              </>
+            )}
+          </section>
+        )
+      })}
     </div>
   )
 }
