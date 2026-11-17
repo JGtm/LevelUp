@@ -551,7 +551,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       manches et barre de prise de zone comprises, sans changer sa lecture `readScoreBanner`), lien vers la fiche
       du match à droite. Le bandeau de score ne coiffe plus le terrain en Standard. Tests : en-tête rendu, score
       présent, score absent en FFA (rien n'est rendu, comme aujourd'hui).
-- [ ] S.2 `ui/ReplayRosterRow.tsx` et `ui/ReplayRosterColumn.tsx` : une ligne par place (nom ; bouclier et santé
+- [x] S.2 (fait le 2026-11-17 : lignes `ReplayRosterRow` / `ReplayRosterColumn` / `ReplayRosterRowDetail`, gabarit « ligne » ; Grande équipe selon G0-5 bis : `ReplayCompactCard` en formes empilée et ligne, seuil `grandeEquipe` dans `model/rowLayout.ts` ; écarts acceptés par le pilote et dits au user : colonnes d'arme, de grenades et d'équipement vides pour un mort, charge en nombre sans barre, « suivi » en couleur d'accent du thème ; non monté avant S.4) `ui/ReplayRosterRow.tsx` et `ui/ReplayRosterColumn.tsx` : une ligne par place (nom ; bouclier et santé
       en deux barres via `VitalityBar` ; « Réapparition dans … » à la place des barres quand le joueur est mort ;
       arme en main ; grenades ; équipement ; F / M / A), en-tête de colonnes Arme / Gr. / Éq. / F / M / A ; places
       libres et occupants pas encore apparus rendus comme lignes d'attente (même règle que `ReplaySeatWaiting`) ;
