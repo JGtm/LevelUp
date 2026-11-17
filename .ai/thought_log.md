@@ -1,3 +1,9 @@
+## [2026-11-17] Veille libfilmshell : PR 17 sur les temps forts de type « mode » — Complété (aucun code, une ligne au backlog)
+**Statut :** Complété.
+**Décision technique principale :** aucune reprise de code. La copie locale de libfilmshell est au dernier commit de sa branche principale (fusion de la PR 16) ; la seule nouveauté est la PR 17, ouverte le 2026-11-16 par nuzzles, une correction de documentation non fusionnée.
+**Résultats observés :** d'après le relevé de l'auteur, le temps fort de type « mode » marque en Slayer une destruction de véhicule, en Bases une zone capturée ou sécurisée, en Oddball le contrôle et la prise de la balle et le porteur arrêté. Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent`). Non vérifié : si ces temps forts attribuent les destructions de véhicules à un joueur chez nous.
+**Conclusion / prochaine étape :** comptage sur le parc inscrit dans `.ai/BACKLOG.md`, priorité basse, à l'occasion d'un chantier décodeur.
+
 ## [2026-11-17] Évaluation d'OpenSpartan/mmr pour le LUSR — Complété (aucun code, une ligne au backlog)
 **Statut :** Complété.
 **Décision technique principale :** le projet (outil Rust, Windows seul) lit le MMR caché par joueur en interceptant le trafic du jeu par un proxy local et un certificat racine ; il ne contient ni formule ni table. Non retenu pour LevelUp (avis du user, 2026-11-17) : trop intrusif pour l'application, format non documenté, capture en direct seulement, rien pour l'instance hébergée.

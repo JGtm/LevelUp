@@ -135,6 +135,12 @@ Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (
 
 ---
 
+### [décodeur] Temps forts de type « mode » du film : ce qu'ils recouvrent, et qui a détruit quel véhicule
+
+Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. À instruire : compter sur le parc ce que recouvrent nos temps forts de type « mode », mode par mode, et voir s'ils attribuent les destructions de véhicules à un joueur (non vérifié : le décodeur attribue peut-être déjà ces destructions par une autre voie). Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. **Effort : faible pour le comptage ; à estimer pour la suite. Priorité basse.**
+
+---
+
 ### [données/précision] Touches et précision lues par l'ancien appariement des tirs
 
 Relevé le 2026-11-16 (montée du décodeur v1.4.1). Le killcollector et l'ingestion de la précision lisent encore l'ancien appariement des tirs : il retrouve 11 % des touches que compte l'API, contre 81 % pour les `shotStats[]` suffisants du décodeur. Les touches et la précision persistées sont donc fausses. **Condition de reprise :** un plan de passage de ces deux lecteurs à `shotStats[]` (changement de données persistées, rétro-remplissage à décider). **Effort : M.**
