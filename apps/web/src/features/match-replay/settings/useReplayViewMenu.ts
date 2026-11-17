@@ -56,6 +56,8 @@ export interface ReplayViewMenuOptions {
    * l'image posée est-elle le plan (qui porte déjà les murs : leur calque se désactive) ?
    */
   planBackground: { available: boolean; shown: boolean }
+  /** Le cadre pose le fil des éliminations sur le plan : l'option « Fil des éliminations » n'est proposée qu'alors. */
+  planFeedAvailable: boolean
   /** La lecture de la carte de chaleur RÉELLEMENT servie, et si les morts sont localisables. */
   heat: { mode: ReplayHeatmapMode; killsAvailable: boolean }
   locale: ReplayLocale
@@ -135,7 +137,7 @@ interface PanelInput extends ReplayViewMenuOptions {
  * elles TRANSPORTENT les états et les bascules de `useReplaySettings` vers les commandes.
  */
 function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
-  const { settings: s, orientation, sound, available, heat, locale, onClose, view, planBackground } = o
+  const { settings: s, orientation, sound, available, heat, locale, onClose, view, planBackground, planFeedAvailable } = o
   return {
     locale,
     onClose,
@@ -230,6 +232,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       onSelect: s.setBackgroundStyle,
     },
     orientation: { available: orientation.available, turns: orientation.turns, onSelect: orientation.setTurns },
+    planFeed: { available: planFeedAvailable, show: s.showPlanFeed, onToggle: s.togglePlanFeed },
     heatmap: {
       show: s.showHeatmap,
       onToggle: s.toggleHeatmap,

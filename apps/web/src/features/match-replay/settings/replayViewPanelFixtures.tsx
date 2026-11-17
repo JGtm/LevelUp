@@ -168,6 +168,7 @@ export function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]>
       background={makeBackground()}
       lives={makeLives()}
       orientation={makeOrientation()}
+      planFeed={{ available: false, show: true, onToggle: vi.fn() }}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}

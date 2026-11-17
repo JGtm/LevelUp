@@ -139,6 +139,16 @@ export function persistFeedFilter(id: FeedFilterId): void {
 }
 
 /**
+ * LE FIL DES ÉLIMINATIONS POSÉ SUR LE PLAN (option « Fil des éliminations » du panneau Vue) : un OUI/NON retenu
+ * dans CE navigateur, jamais côté serveur, lu et écrit comme les autres interrupteurs par `usePersistedFlag`
+ * (`readStoredFlag` ci-dessus : absent ou stockage refusé -> la valeur par défaut). AFFICHÉ par défaut : c'est
+ * le fil que le Cinéma et le Plein cadre montrent quand la rangée de fiches est posée. L'option n'a d'effet que
+ * là où ce fil peut se poser (le panneau ne la propose pas ailleurs) ; la clé et sa valeur valent pour tous les cadres.
+ */
+export const PLAN_FEED_KEY = 'replay-show-plan-feed'
+export const PLAN_FEED_DEFAULT = true
+
+/**
  * LE PRÉRÉGLAGE DE VUE CHOISI en dernier (plan « maquettes du rejeu », lot 3) : retenu dans CE
  * navigateur. La vue active se DÉDUIT de l'état des calques (`activeView`) ; cette valeur ne
  * sert qu'à départager deux préréglages égaux sur les calques d'un match. Les clés `replay-*`

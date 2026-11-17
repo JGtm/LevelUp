@@ -111,6 +111,7 @@ export function ReplayStage({
         mapOverlays={<StageMapOverlays view={view} />}
         transport={slots.transport}
         blockOverlays={slots.blockOverlays}
+        planFeed={slots.planFeed}
       />
     </>
   )

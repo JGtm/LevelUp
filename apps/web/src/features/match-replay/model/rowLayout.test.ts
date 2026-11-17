@@ -11,6 +11,7 @@ import {
   grandeEquipe,
   largeurRequiseRangee,
   largeurRequiseRangeeGrandeEquipe,
+  planFeedPosed,
   rowFits,
   rowFitsGrandeEquipe,
 } from './rowLayout'
@@ -177,6 +178,20 @@ describe('emplacementScoreDe', () => {
       expect(emplacementScoreDe(frame, 'rangee')).toBeNull()
       expect(emplacementScoreDe(frame, 'rangee-grande-equipe')).toBeNull()
       expect(emplacementScoreDe(frame, 'colonne')).toBe('scene')
+    }
+  })
+})
+
+describe('planFeedPosed', () => {
+  it('le Standard ne pose jamais le fil sur le plan : sa colonne le porte', () => {
+    for (const d of ['rangee', 'rangee-grande-equipe', 'colonne'] as const) expect(planFeedPosed('standard', d)).toBe(false)
+  })
+
+  it("Cinéma et Plein cadre : posé quand la rangée de fiches l'est (ordinaire ou Grande équipe), absent dans le repli", () => {
+    for (const frame of ['cinema', 'plein-cadre'] as const) {
+      expect(planFeedPosed(frame, 'rangee')).toBe(true)
+      expect(planFeedPosed(frame, 'rangee-grande-equipe')).toBe(true)
+      expect(planFeedPosed(frame, 'colonne')).toBe(false)
     }
   })
 })

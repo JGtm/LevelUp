@@ -82,6 +82,11 @@ export interface ReplayFrameZoneContent {
   tete: ReactNode
   rangee: ReactNode
   colonne: ReactNode
+  /**
+   * La colonne est montée mais cachée, et le plan prend sa largeur : le fil complet qu'elle porte reste monté
+   * (même nœud, mêmes défilement et filtre) sans être affiché. Absent = la colonne est affichée.
+   */
+  colonneCachee?: boolean
   /** Mesure du corps du cadre (`useCardRowLayout`) : posée sur le corps du gabarit ; absente = rien n'est mesuré. */
   bodyRef?: Ref<HTMLDivElement>
 }

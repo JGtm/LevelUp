@@ -9,6 +9,9 @@
  *  - `rangee`  : la rangée au-dessus du plan, que seuls le Cinéma et le Plein cadre peuvent poser ;
  *  - `scene`   : la toile et ce qui la coiffe ;
  *  - `colonne` : la colonne à côté du plan.
+ * `colonne` peut être CACHÉE (`colonneCachee`) : elle reste dans l'arbre, avec le fil qu'elle porte, mais n'est
+ * pas affichée et le plan prend sa largeur (Cinéma et Plein cadre quand la rangée de fiches est posée et qu'aucune
+ * fiche de joueur n'est ouverte).
  * `scene` est rendue au MÊME endroit de l'arbre quel que soit le cadre : React en garde l'instance, et
  * avec elle la position de lecture, le son, le zoom, un export en cours et les calques cuits. Basculer de
  * cadre ne change que les classes de la table ci-dessous et le contenu de `tete`, `rangee` et `colonne`.
@@ -37,6 +40,8 @@ export interface ReplayFrameLayoutProps {
   /** Absente tant que le rejeu n'est pas prêt : ni la grille ni la colonne ne se montent alors. */
   scene: ReactNode
   colonne: ReactNode
+  /** La colonne reste dans l'arbre, cachée : le plan prend toute la largeur. */
+  colonneCachee?: boolean
   /** Le corps du cadre, quand le cadre le mesure (la rangée des équipes dépend de sa largeur). */
   bodyRef?: Ref<HTMLDivElement>
 }
@@ -74,7 +79,10 @@ const GRID_BY_FRAME: Record<ReplayFrame, { className: string; style?: CSSPropert
   'plein-cadre': { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
 }
 
-export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne, bodyRef }: ReplayFrameLayoutProps) {
+/** Le gabarit à une seule colonne : le plan prend la largeur que la colonne cachée ne réclame plus. */
+const GRID_SANS_COLONNE = 'xl:grid-cols-[minmax(0,1fr)]'
+
+export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne, colonneCachee = false, bodyRef }: ReplayFrameLayoutProps) {
   const classes = FRAME_CLASSES[frame]
   const grid = GRID_BY_FRAME[frame]
   return (
@@ -84,12 +92,18 @@ export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne, b
         {avis}
         {rangee}
         {scene != null && (
-          <div className={`${GRID_CLASSES} ${grid.className}`} style={grid.style} data-replay-grid={frame}>
+          <div
+            className={`${GRID_CLASSES} ${colonneCachee ? GRID_SANS_COLONNE : grid.className}`}
+            style={colonneCachee ? undefined : grid.style}
+            data-replay-grid={frame}
+          >
             {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
                 contraindre — c'est elle que mesure le ResizeObserver de la toile. `relative` : le
                 repère de l'écran de victoire, qui coiffe toute la colonne du plan. */}
             <section className="relative min-w-0">{scene}</section>
-            <aside className="relative">{colonne}</aside>
+            <aside className={colonneCachee ? 'relative hidden' : 'relative'} data-replay-column={colonneCachee ? 'cachee' : 'affichee'}>
+              {colonne}
+            </aside>
           </div>
         )}
       </div>

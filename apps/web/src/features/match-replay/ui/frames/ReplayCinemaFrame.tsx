@@ -5,8 +5,9 @@
  * # DEUX DISPOSITIONS DES ÉQUIPES, UNE SEULE DÉCISION (`useCardRowLayout`, règle pure `dispositionEquipes`)
  *
  *  - RANGÉE posée (deux camps, la largeur du corps suffit) : la zone `rangee` porte `ReplayTeamsRow`, le score
- *    est au centre de la rangée et PLUS sur la toile, et la colonne ne garde que le fil (ou la fiche du joueur
- *    ouverte, à sa place) ;
+ *    est au centre de la rangée et PLUS sur la toile, et le fil des éliminations est posé SUR LE PLAN
+ *    (`ReplayFeedOverlay`, emplacement de la toile). La colonne ne s'affiche alors que lorsqu'une fiche de joueur
+ *    est ouverte, et le plan prend sa largeur sinon ; le fil complet y reste monté, caché, avec sa position ;
  *  - COLONNE (chacun pour soi, fenêtre trop étroite, largeur pas encore mesurée) : la zone `rangee` est vide,
  *    le score reste sur la toile, et la colonne range les équipes en lignes (`ReplayRosterColumn`) au-dessus
  *    du fil, comme le Standard.
@@ -126,6 +127,7 @@ export function cinemaFrameZones(
     tete: <ReplayFrameHeader frame={frame} chrome={chrome} />,
     rangee: view && inRow ? teamsRow(view, row.disposition === 'rangee-grande-equipe') : null,
     colonne: view && cinemaColumn(view, !inRow),
+    colonneCachee: row.planFeedPosed && !view?.playerPanel.focus,
     bodyRef: row.bodyRef,
   }
 }

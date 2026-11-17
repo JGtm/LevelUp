@@ -131,6 +131,7 @@ export function makeCommands(over: Partial<ReplaySlotCommands> = {}): ReplaySlot
     frameControl: makeFrameControl('cinema'),
     zoom: makeZoom(),
     cameraFollow: { player: null, onFollow: vi.fn() },
+    planFeedShown: false,
     ...over,
   }
 }

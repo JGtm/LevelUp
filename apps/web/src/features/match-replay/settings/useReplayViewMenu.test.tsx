@@ -54,7 +54,7 @@ const NO_PLAN_BACKGROUND = { available: false, shown: false }
 function mount(available: FilmLayerAvailability, planBackground = NO_PLAN_BACKGROUND) {
   return renderHook(() => {
     const settings = useReplaySettings()
-    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', planBackground })
+    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', planBackground, planFeedAvailable: false })
     return { settings, menu }
   })
 }

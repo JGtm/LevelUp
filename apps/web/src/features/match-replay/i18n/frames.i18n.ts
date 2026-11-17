@@ -27,6 +27,9 @@ export interface FramesText {
   sheet: string
   /** L'état de la vue quand le plan est tourné d'un quart de tour pour mieux remplir la zone. */
   rotatedPlan: string
+  /** L'option du panneau Vue qui pose le fil des éliminations sur le plan, et sa phrase d'aide (infobulle). */
+  planFeed: string
+  planFeedHint: string
 }
 
 /** La touche de chaque cadre qui en a une : celles que `useReplayShortcuts` câble sur T et F. */
@@ -51,6 +54,8 @@ export const FR_FRAMES = {
   back: 'Retour',
   sheet: 'Fiche',
   rotatedPlan: 'Plan tourné',
+  planFeed: 'Fil des éliminations',
+  planFeedHint: 'Les cinq dernières éliminations, posées en bas à gauche du plan.',
 } satisfies FramesText
 
 export const EN_FRAMES = {
@@ -61,4 +66,6 @@ export const EN_FRAMES = {
   back: 'Back',
   sheet: 'Details',
   rotatedPlan: 'Rotated map',
+  planFeed: 'Elimination feed',
+  planFeedHint: 'The last five eliminations, laid over the bottom left of the map.',
 } satisfies FramesText

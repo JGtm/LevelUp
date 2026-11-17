@@ -265,6 +265,11 @@ interface KillLineProps {
   carrier?: boolean
   focus?: FeedLineFocus
   strongXuids?: ReadonlySet<string>
+  /**
+   * La forme posée sur le plan : ligne NUE (sans médailles), en lecture seule, à l'opacité donnée. Les
+   * mêmes colonnes et les mêmes cellules que la ligne du fil ; `focus` et `carrier` n'y ont pas d'effet.
+   */
+  onPlan?: { opacity: number }
 }
 
 /**
@@ -279,8 +284,11 @@ interface KillLineProps {
  * `aria-pressed` — la couleur ne porte jamais seule. La souris ne prend pas le focus (`mousedown`
  * annulé) : après un clic, Espace reste « Lecture » ; au clavier, Entrée et Espace activent la ligne,
  * et Espace ne remonte pas au raccourci global de lecture.
+ *
+ * AVEC `onPlan`, c'est la ligne du fil posé sur le plan (`ReplayFeedOverlay`) : nue, sans médailles ni
+ * infobulle, jamais cliquable, estompée à l'opacité donnée.
  */
-function KillLine({
+export function KillLine({
   kill: k,
   replayMs,
   inkOf,
@@ -291,6 +299,7 @@ function KillLine({
   carrier,
   focus,
   strongXuids,
+  onPlan,
 }: KillLineProps) {
   const t = REPLAY_TEXT[locale]
   const killerColor = inkOf(k.xuid)
@@ -308,9 +317,16 @@ function KillLine({
       ) : (
         <span aria-hidden />
       )}
-      <FeedMedals medals={k.medals} locale={locale} />
+      {!onPlan && <FeedMedals medals={k.medals} locale={locale} />}
     </>
   )
+  if (onPlan) {
+    return (
+      <li className={FEED_GRID_ROW} style={{ ...columns, opacity: onPlan.opacity }}>
+        {content}
+      </li>
+    )
+  }
   if (!focus) {
     return (
       <li className={FEED_GRID_ROW} style={columns} title={killLineHint(k, carrier === true, t, false)}>

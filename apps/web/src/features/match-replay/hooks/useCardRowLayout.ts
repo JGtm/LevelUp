@@ -18,7 +18,7 @@ import { useLayoutEffect, useMemo, useState } from 'react'
 
 import type { ReplayFrameView } from '../ui/frames/replayFrameTypes'
 import { canPlaceCardRow, type ReplayFrame } from '../model/replayFrame'
-import { dispositionEquipes, emplacementScoreDe, type DispositionEquipes } from '../model/rowLayout'
+import { dispositionEquipes, emplacementScoreDe, planFeedPosed, type DispositionEquipes } from '../model/rowLayout'
 import { placesParCamp } from '../model/seatLogic'
 import type { EmplacementScore } from '../model/cotesBandeauScore'
 
@@ -29,6 +29,8 @@ export interface CardRowLayout {
   disposition: DispositionEquipes
   /** Où le bandeau de score est posé ; `null` = pas sur la toile (en-tête du Standard, ou rangée). */
   scorePlacement: EmplacementScore | null
+  /** Le fil des éliminations est posé sur le plan, et la colonne ne le montre plus (`planFeedPosed`). */
+  planFeedPosed: boolean
 }
 
 /** La largeur du corps en pixels entiers, relue à chaque changement de taille ; 0 tant qu'il n'est pas mesuré. */
@@ -56,5 +58,10 @@ export function useCardRowLayout(frame: ReplayFrame, view: ReplayFrameView | nul
   const disposition: DispositionEquipes = canPlaceCardRow(frame)
     ? dispositionEquipes({ camps: places.length, placesParCamp: places, largeurCorps: width })
     : 'colonne'
-  return { bodyRef: ref, disposition, scorePlacement: emplacementScoreDe(frame, disposition) }
+  return {
+    bodyRef: ref,
+    disposition,
+    scorePlacement: emplacementScoreDe(frame, disposition),
+    planFeedPosed: planFeedPosed(frame, disposition),
+  }
 }

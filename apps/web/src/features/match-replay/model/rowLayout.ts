@@ -16,7 +16,7 @@
  */
 import type { EmplacementScore } from './cotesBandeauScore'
 import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE } from './cardGabarit'
-import type { ReplayFrame } from './replayFrame'
+import { canPlaceCardRow, type ReplayFrame } from './replayFrame'
 
 /** Le nombre de camps d'une rangée ; il compte aussi ses deux côtés (marges, camps). */
 export const NB_CAMPS_RANGEE = 2
@@ -123,6 +123,16 @@ export function dispositionEquipes(entree: RowFitInput): DispositionEquipes {
 export function emplacementScoreDe(frame: ReplayFrame, disposition: DispositionEquipes): EmplacementScore | null {
   if (frame === 'standard') return null
   return disposition === 'colonne' ? 'scene' : null
+}
+
+/**
+ * planFeedPosed dit si le fil des éliminations se pose sur le plan (`ReplayFeedOverlay`) : exactement quand la
+ * rangée de fiches est posée, au Cinéma et au Plein cadre. La colonne ne porte alors plus le fil et le plan le
+ * remplace ; dans le repli (équipes en colonne) et au Standard, la colonne porte le fil complet et le plan n'en
+ * pose aucun.
+ */
+export function planFeedPosed(frame: ReplayFrame, disposition: DispositionEquipes): boolean {
+  return canPlaceCardRow(frame) && disposition !== 'colonne'
 }
 
 /**

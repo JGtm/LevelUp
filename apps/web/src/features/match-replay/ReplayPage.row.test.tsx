@@ -5,7 +5,8 @@
  * score ; la largeur du corps du cadre est posée par le test (jsdom ne met rien en page) et suivie par un
  * observateur de taille simulé. Ce que ces tests prouvent :
  *  - la rangée est posée quand la règle (`dispositionEquipes`) la retient : le score est AU CENTRE de la rangée
- *    (emplacement `rangee`), il n'est plus sur la toile, et la colonne ne garde que le fil ;
+ *    (emplacement `rangee`), il n'est plus sur la toile, et le fil des éliminations passe SUR LE PLAN (la colonne
+ *    est cachée tant qu'aucune fiche n'est ouverte, son fil complet reste monté) ;
  *  - sinon (fenêtre trop étroite, largeur pas mesurée, chacun pour soi, Standard) les équipes sont dans la colonne
  *    et le score reste où il était ;
  *  - passer de la rangée au repli (la fenêtre rétrécit) et basculer de cadre ne remontent NI la toile NI la
@@ -80,6 +81,7 @@ function redimensionner(largeur: number) {
 }
 
 beforeEach(() => {
+  window.localStorage.clear()
   hoisted.search = {}
   largeurCorps = 0
   observateurs.length = 0
@@ -102,8 +104,16 @@ afterEach(() => {
   act(() => useAppShellStore.setState({ capabilities: null }))
 })
 
-/** Un match à `nbCamps` camps de `parCamp` places (équipe 0, 1, ...), avec calque de score pour les deux premiers. */
-function match(parCamp: number, nbCamps = 2) {
+/** Une élimination du joueur 0 sur le joueur 5 à `secondes` : le fil de la base, que la page recale sur le film. */
+function elimination(secondes: number) {
+  return { event_type: 'kill', actor_xuid: 'X0', victim_xuid: 'X5', victim_gamertag: 'Joueur5', event_time_ms: secondes * 1_000 }
+}
+
+/**
+ * Un match à `nbCamps` camps de `parCamp` places (équipe 0, 1, ...), avec calque de score pour les deux premiers.
+ * `highlights` : les événements de la base (les éliminations du fil).
+ */
+function match(parCamp: number, nbCamps = 2, highlights: object[] = []) {
   const n = parCamp * nbCamps
   const equipe = (i: number) => (nbCamps === 1 ? -1 : Math.floor(i / parCamp))
   const serie = (teamId: number, v: number) => {
@@ -128,7 +138,7 @@ function match(parCamp: number, nbCamps = 2) {
   const context = {
     header: { map_ui: 'Detachment', mode_ui: 'Assassin en équipe', playlist_label: 'Partie rapide', start_time_label: '10 nov. 2026' },
     scoreboard,
-    highlight_events: [],
+    highlight_events: highlights,
     media: null,
     source_unavailable: false,
   }
@@ -171,7 +181,7 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(container.querySelector('[data-replay-body] > [data-replay-teams-row]')).not.toBeNull()
   })
 
-  it('la colonne ne montre plus les équipes : le fil seul, et la fiche du joueur à sa place quand elle est ouverte', async () => {
+  it('la colonne ne montre plus les équipes : le fil complet reste monté (caché), et la fiche du joueur prend la colonne quand elle est ouverte', async () => {
     const { container } = await mount(match(4), L4)
     goTo('cinema')
     expect(colonneDesEquipes(container)).toBeNull()
@@ -277,5 +287,149 @@ describe('ReplayPage : la rangée ne remonte ni la toile ni le fil', () => {
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['rangee'])
     expect(container.querySelector('canvas')).toBe(toile)
     expect(screen.getByTestId('replay-feed-slot')).toBe(fil)
+  })
+})
+
+const filDuPlan = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-replay-plan-feed]')
+const colonne = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-replay-column]')
+/** Trois éliminations au coup d'envoi : le rejeu s'ouvre en pause à l'image 0, elles sont déjà passées. */
+const TROIS_ELIMINATIONS = [elimination(0), elimination(0), elimination(0)]
+
+describe('ReplayPage : le fil des éliminations posé sur le plan', () => {
+  it.each(['cinema', 'plein-cadre'] as const)('%s, rangée posée : les éliminations passées sont SUR LE PLAN, dans le bloc de la toile', async (frame) => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo(frame)
+    const fil = filDuPlan(container)
+    expect(fil).not.toBeNull()
+    expect(fil?.querySelectorAll('li')).toHaveLength(3)
+    expect(container.querySelector('[data-replay-grid] > section')?.contains(fil)).toBe(true)
+    expect(fil?.contains(container.querySelector('canvas'))).toBe(false)
+  })
+
+  it('rangée posée : la colonne est cachée (le plan prend sa largeur) mais le fil complet y reste monté, même nœud', async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    const fil = screen.getByTestId('replay-feed-slot')
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+    goTo('cinema')
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
+    expect(colonne(container)?.classList.contains('hidden')).toBe(true)
+    expect(colonne(container)?.contains(screen.getByTestId('replay-feed-slot'))).toBe(true)
+    expect(screen.getByTestId('replay-feed-slot')).toBe(fil)
+    expect(container.querySelector('[data-replay-grid]')?.className).toContain('xl:grid-cols-[minmax(0,1fr)]')
+    expect(container.querySelector('[data-replay-grid]')?.className).not.toContain('30rem')
+  })
+
+  it("la colonne du Cinéma ne se montre que lorsqu'une fiche de joueur est ouverte, à la place d'aujourd'hui", async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('cinema')
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
+    fireEvent.click(within(rangee(container) as HTMLElement).getByRole('button', { name: 'Ouvrir la fiche de Joueur5' }))
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+    expect(container.querySelector('[data-replay-grid]')?.className).toContain('30rem')
+    expect(within(colonne(container) as HTMLElement).getByRole('region', { name: T.playerPanel.labelFmt('Joueur5') })).toBeInTheDocument()
+    fireEvent.click(within(colonne(container) as HTMLElement).getByRole('button', { name: T.playerPanel.back }))
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
+  })
+
+  it('repli (équipes en colonne) : pas de fil sur le plan, la colonne garde les équipes et le fil complet', async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4 - 1)
+    goTo('cinema')
+    expect(filDuPlan(container)).toBeNull()
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+    expect(colonne(container)?.contains(colonneDesEquipes(container))).toBe(true)
+    expect(within(screen.getByTestId('replay-feed-slot')).getAllByRole('listitem').length).toBeGreaterThan(0)
+  })
+
+  it('largeur non mesurée : le repli aussi', async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), 0)
+    goTo('plein-cadre')
+    expect(filDuPlan(container)).toBeNull()
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+  })
+
+  it('le Standard : jamais de fil sur le plan, sa colonne porte le fil et reste affichée', async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), 4000)
+    expect(filDuPlan(container)).toBeNull()
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+    expect(within(screen.getByTestId('replay-feed-slot')).getAllByRole('listitem').length).toBeGreaterThan(0)
+  })
+
+  it("la fenêtre rétrécit puis s'élargit : le fil du plan apparaît et disparaît avec la rangée, sans remonter la toile ni le fil complet", async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('cinema')
+    const toile = container.querySelector('canvas')
+    const fil = screen.getByTestId('replay-feed-slot')
+    expect(filDuPlan(container)).not.toBeNull()
+    redimensionner(L4 - 1)
+    expect(filDuPlan(container)).toBeNull()
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('affichee')
+    redimensionner(L4)
+    expect(filDuPlan(container)).not.toBeNull()
+    expect(container.querySelector('canvas')).toBe(toile)
+    expect(screen.getByTestId('replay-feed-slot')).toBe(fil)
+  })
+
+  it("rien n'est remonté pendant la lecture : le fil du plan et la cellule du fil complet gardent leur nœud", async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('cinema')
+    const fil = filDuPlan(container)
+    const cellule = screen.getByTestId('replay-feed-slot')
+    fireEvent.click(screen.getByRole('button', { name: 'Lecture' }))
+    expect(filDuPlan(container)).toBe(fil)
+    expect(screen.getByTestId('replay-feed-slot')).toBe(cellule)
+  })
+})
+
+describe("ReplayPage : l'option « Fil des éliminations » du panneau Vue", () => {
+  const option = () => screen.queryByRole('switch', { name: T.frames.planFeed })
+  const ouvrirLaVue = () => fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
+
+  it("Cinéma, rangée posée : l'option est proposée, allumée ; l'éteindre retire le fil du plan, le rallumer le rend", async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('cinema')
+    expect(filDuPlan(container)).not.toBeNull()
+    ouvrirLaVue()
+    expect(option()).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(option() as HTMLElement)
+    expect(filDuPlan(container)).toBeNull()
+    fireEvent.click(option() as HTMLElement)
+    expect(filDuPlan(container)).not.toBeNull()
+  })
+
+  it('éteinte, elle le reste au remontage de la page', async () => {
+    const premier = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('plein-cadre')
+    ouvrirLaVue()
+    fireEvent.click(option() as HTMLElement)
+    expect(filDuPlan(premier.container)).toBeNull()
+    premier.unmount()
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('plein-cadre')
+    expect(filDuPlan(container)).toBeNull()
+    ouvrirLaVue()
+    expect(option()).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it("Standard : l'option n'est pas montrée (aucun effet à l'écran)", async () => {
+    await mount(match(4, 2, TROIS_ELIMINATIONS), 4000)
+    ouvrirLaVue()
+    expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
+    expect(option()).toBeNull()
+  })
+
+  it("repli (équipes en colonne) au Cinéma : l'option n'est pas montrée", async () => {
+    await mount(match(4, 2, TROIS_ELIMINATIONS), L4 - 1)
+    goTo('cinema')
+    ouvrirLaVue()
+    expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
+    expect(option()).toBeNull()
+  })
+
+  it("option éteinte au Cinéma, rangée posée : la colonne reste cachée (elle ne sert qu'à une fiche ouverte)", async () => {
+    const { container } = await mount(match(4, 2, TROIS_ELIMINATIONS), L4)
+    goTo('cinema')
+    ouvrirLaVue()
+    fireEvent.click(option() as HTMLElement)
+    expect(colonne(container)?.getAttribute('data-replay-column')).toBe('cachee')
   })
 })

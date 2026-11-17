@@ -32,7 +32,7 @@ const FILM: FilmLayerAvailability = {
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
 const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
 
-function Harness({ locale }: { locale: ReplayLocale }) {
+function Harness({ locale, planFeedAvailable = false }: { locale: ReplayLocale; planFeedAvailable?: boolean }) {
   const settings = useReplaySettings()
   const view = useReplayViewMenu({
     settings,
@@ -41,6 +41,7 @@ function Harness({ locale }: { locale: ReplayLocale }) {
     available: FILM,
     heat: { mode: 'presence', killsAvailable: true },
     planBackground: { available: false, shown: false },
+    planFeedAvailable,
     locale,
   })
   return (
@@ -94,5 +95,56 @@ describe('ReplayViewMenu', () => {
   it('en anglais : View Full', () => {
     render(<Harness locale="en" />)
     expect(screen.getByRole('button', { name: 'View Full' })).toBeTruthy()
+  })
+})
+
+describe("ReplayViewMenu : l'option « Fil des éliminations »", () => {
+  const KEY = 'replay-show-plan-feed'
+  const option = () => screen.queryByRole('switch', { name: 'Fil des éliminations' })
+  const ouvrir = () => fireEvent.click(screen.getByRole('button', { name: /^(Vue|View) / }))
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it("affichée par défaut : l'interrupteur est allumé, sans rien avoir retenu", () => {
+    render(<Harness locale="fr" planFeedAvailable />)
+    ouvrir()
+    expect(option()).toHaveAttribute('aria-checked', 'true')
+    expect(window.localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it("là où le fil du plan ne peut pas se poser (Standard, repli), l'option n'est pas montrée", () => {
+    render(<Harness locale="fr" />)
+    ouvrir()
+    expect(screen.getByRole('region', { name: 'Vue' })).toBeTruthy()
+    expect(option()).toBeNull()
+  })
+
+  it("l'éteindre est retenu, et l'allumer aussi", () => {
+    render(<Harness locale="fr" planFeedAvailable />)
+    ouvrir()
+    fireEvent.click(option()!)
+    expect(option()).toHaveAttribute('aria-checked', 'false')
+    expect(window.localStorage.getItem(KEY)).toBe('false')
+    fireEvent.click(option()!)
+    expect(option()).toHaveAttribute('aria-checked', 'true')
+    expect(window.localStorage.getItem(KEY)).toBe('true')
+  })
+
+  it('éteinte, elle le reste après remontage', () => {
+    const premier = render(<Harness locale="fr" planFeedAvailable />)
+    ouvrir()
+    fireEvent.click(option()!)
+    premier.unmount()
+    render(<Harness locale="fr" planFeedAvailable />)
+    ouvrir()
+    expect(option()).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it("en anglais, l'option porte son libellé anglais", () => {
+    render(<Harness locale="en" planFeedAvailable />)
+    ouvrir()
+    expect(screen.getByRole('switch', { name: 'Elimination feed' })).toBeTruthy()
   })
 })

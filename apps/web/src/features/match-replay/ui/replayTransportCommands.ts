@@ -6,7 +6,8 @@
  * (`ReplayTransportCommands`) et le remet à deux FONCTIONS DE RENDU que le cadre lui fournit :
  *  - `transport` : la barre de lecture, posée sous le bloc de la toile, dans la colonne que mesure
  *    `useReplayViewport` ;
- *  - `blockOverlays` : ce qui se pose DANS le bloc de la toile, à côté de la légende de la chaleur.
+ *  - `blockOverlays` : ce qui se pose DANS le bloc de la toile, à côté de la légende de la chaleur (la
+ *    commande de zoom du Standard, le fil des éliminations du Cinéma et du Plein cadre).
  *
  * Une autre barre ou une autre superposition pilote la même toile par ces commandes, sans que la toile la
  * connaisse. Les fonctions de rendu reçoivent en plus la CAMÉRA (`cameraFollow` : le joueur que la carte suit
@@ -60,6 +61,8 @@ export interface ReplayTransportCommands {
 /** Ce que la toile remet aux fonctions de rendu de ses emplacements : les commandes de la barre, et la caméra. */
 export interface ReplaySlotCommands extends ReplayTransportCommands {
   cameraFollow: CameraFollow
+  /** Le fil des éliminations est-il montré sur le plan ? Le cadre le pose ET l'option de la vue est allumée : la toile le décide. */
+  planFeedShown: boolean
 }
 
 /** Une fonction de rendu d'un emplacement de la toile : pure, sans hook, elle ne retient aucune commande. */
@@ -69,6 +72,11 @@ export type ReplayCommandsRender = (commands: ReplaySlotCommands) => ReactNode
 export interface ReplayCanvasSlots {
   transport: ReplayCommandsRender
   blockOverlays?: ReplayCommandsRender
+  /**
+   * Le cadre pose le fil des éliminations sur le plan, dans `blockOverlays` : la toile propose alors l'option
+   * « Fil des éliminations » de la vue et libère le coin bas gauche en posant la légende de la chaleur en haut.
+   */
+  planFeed?: boolean
 }
 
 /** Ce que la toile assemble en commandes : les sorties de ses hooks, telles quelles. */
@@ -84,6 +92,7 @@ export interface ReplayTransportCommandSources {
   frameControl: ReplayFrameControl
   zoom: ReplayZoom
   cameraFollow: CameraFollow
+  planFeedShown: boolean
 }
 
 /**
@@ -93,16 +102,16 @@ export interface ReplayTransportCommandSources {
 export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplaySlotCommands {
   const { playing, togglePlay, restart, seekBy } = s.playback
   const { autoPlay, toggleAutoPlay, speed, setSpeed } = s.settings
-  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow } = s
+  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown } = s
   return useMemo(
     () => ({
       playing, onTogglePlay: togglePlay, onRestart: restart, onSeekBy: seekBy, clockRef, timeline,
       autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
-      cameraFollow,
+      cameraFollow, planFeedShown,
     }),
     [
       playing, togglePlay, restart, seekBy, clockRef, timeline,
-      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
+      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown,
     ],
   )
 }
