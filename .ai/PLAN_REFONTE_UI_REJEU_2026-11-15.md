@@ -301,8 +301,8 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
   ligne de 24 px (nom puis jauges), puis le fil. Conséquences : B.1 ne refuse plus la Grande équipe en rangée
   (règle propre : 6 emplacements par camp au gabarit compact) et B.2 la dessine ; S.2 rend la Grande équipe en
   paires de fiches compactes dans la colonne, sans défilement ; un gabarit « compact Grande équipe » nommé dans
-  `cardGabarit.ts` porte ces cotes. Restent proposés, non tranchés par le user : le drapeau du porteur, la
-  pastille « bot », « Réapp. 4,2 s » abrégé.
+  `cardGabarit.ts` porte ces cotes. Le drapeau du porteur, la pastille « bot » et « Réapp. 4,2 s » abrégé sont validés avec
+  le tableau (« ok bien je valide la maquette », user, 2026-11-17, après retrait du liseré).
 - **G0-6 — objectif sous le score : « Rien sous le score ».** L'ajout K-7 du 2026-11-17 est retiré : écart
   voulu V14.
 
