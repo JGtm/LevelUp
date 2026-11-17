@@ -1022,8 +1022,8 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 //
 // Appelé explicitement par les tests qui asserent tier_label / rating_value
 // (vs ceux qui veulent observer la phase de placement avec 1 match).
-// Ne pas mettre dans seedPlayerSchema : briserait TestStatsRepo_LoadLUSRHistory
-// et TestCareerRepo_GetLUSRHistory qui comptent exactement les rows seed.
+// Ne pas mettre dans seedPlayerSchema : briserait TestCareerRepo_GetLUSRHistory
+// qui compte exactement les rows seed.
 func seedMaturedSkillRankGroups(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
 	ctx := context.Background()
@@ -1746,22 +1746,6 @@ func TestStatsRepo_LoadStatsMatches_WithData(t *testing.T) {
 	}
 	if got := *rows[0].DefensiveResistance; math.Abs(got-wantDR) > 1e-9 {
 		t.Fatalf("defensive_resistance = %.16f, want %.16f", got, wantDR)
-	}
-}
-
-func TestStatsRepo_LoadLUSRHistory_WithData(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewStatsRepo(pdb)
-	rows, err := repo.LoadLUSRHistory(context.Background())
-	if err != nil {
-		t.Fatalf("LoadLUSRHistory: %v", err)
-	}
-	// Le seed insere 2 rows dans match_skill_rank (m1 CSR + m2 LUSR). Q24LUSRHistory ne rend
-	// que les lignes LUSR (la ligne CSR est d'une autre echelle) : une seule ici. Le detail
-	// (double ligne, reecriture, audit LUSR_V2, egalite de written_at) est tenu par
-	// TestStatsRepo_LoadLUSRHistory_UneLigneLUSRParMatch sur le schema reel.
-	if len(rows) != 1 || rows[0].MatchID != "m2" {
-		t.Errorf("attendu 1 ligne LUSR (m2), obtenu %+v", rows)
 	}
 }
 

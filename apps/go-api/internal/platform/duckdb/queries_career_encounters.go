@@ -391,30 +391,6 @@ SELECT match_id, performance_score, session_id, session_label
 FROM player_match_enrichment_latest
 WHERE match_id IN (%s)`
 
-// Q24 : LUSR — chargement du rating par match depuis match_skill_rank.
-// Aucun parametre : la player DB (stats.duckdb) est mono-joueur, match_skill_rank
-// ne contient que ses propres ratings — pas de filtre xuid necessaire.
-//
-// LECTURE BRUTE VOLONTAIRE (allowlist de no_raw_rating_reads_test.go) : la vue
-// match_skill_rank_latest arbitre CSR > LUSR par match et servirait la valeur CSR
-// (echelle ~1500) sur un match classe a double ligne. La requete choisit donc elle-meme
-// la ligne : rating_type = 'LUSR' (ni la ligne CSR, ni la ligne d'audit LUSR_V2), la
-// derniere ecrite par match — written_at puis id, la table etant append-only (une ligne
-// par passe d'ecriture, ADR 0026).
-const Q24LUSRHistory = `
-SELECT
-    msr.match_id,
-    msr.rating_value,
-    msr.rating_deviation,
-    msr.playlist_group
-FROM match_skill_rank msr
-WHERE msr.rating_type = 'LUSR'
-QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY msr.match_id
-    ORDER BY msr.written_at DESC, msr.id DESC
-) = 1
-ORDER BY msr.match_id ASC`
-
 // Q25 : Stats series — participants d un ensemble de matchs (pour LUSR enemy strength).
 // Parametre : ?1 = xuid joueur (pour filtrer son equipe).
 // Utilise les matchs de Q23 comme sous-requete.

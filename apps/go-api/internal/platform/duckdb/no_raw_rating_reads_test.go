@@ -19,6 +19,8 @@ import (
 // graphe veut TOUS les checkpoints » rendait le graphe d'évolution non réparable par
 // un replay append-only (résidu h5_arena du 2026-06-26 encore tracé après la
 // réparation d'août). L'allowlist est décroissante : 5 → 4 entrées.
+// 2026-11-17 (suites de l'audit, S.2) : `queries_career_encounters.go` RETIRÉ, sa seule lecture brute
+// (Q24LUSRHistory) n'ayant aucun appelant de production et ayant été supprimée : 4 → 3 entrées.
 // 2026-09-26 (lot A, décision DA.10 du plan perf « lectures par périmètre ») : 4 → 5, une
 // entrée pour le SEUL site de « locating read » de l'ADR 0036 (AnnuaireKillFeedLocaliserSQL).
 // 2026-11-10 (plan architecture, 1.6) : `queries_squad.go` RETIRÉ, sa seule lecture brute (la probabilité
@@ -30,12 +32,6 @@ var rawAppendOnlyReadAllowlist = map[string]string{
 	"internal/platform/duckdb/queries_home_citations.go": "2026-07-02 (revu 2026-11-12) : Q26g, lecture brute de " +
 		"match_skill_rank, filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + " +
 		"tie-break written_at/id déterministe (la requête porte le commentaire « allowlist B8 »).",
-	"internal/platform/duckdb/queries_career_encounters.go": "2026-07-02 (revu 2026-11-16) : Q24LUSRHistory " +
-		"(pipeline LUSR, échelle mu), raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur " +
-		"les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer. " +
-		"Vérifié le 2026-11-16 : la requête filtre rating_type = 'LUSR' (ni CSR ni LUSR_V2) et ne garde que la dernière ligne " +
-		"par match (tie-break written_at DESC, id DESC) ; tenu par TestStatsRepo_LoadLUSRHistory_UneLigneLUSRParMatch " +
-		"(stats_repo_lusr_history_test.go).",
 	"internal/platform/duckdb/career_repo_csr_seasons.go": "2026-07-02 (revu 2026-11-12) : qDistinctMatchCSRSeasons, " +
 		"SELECT DISTINCT season_id sur match_csrs : stale-safe (season_id invariant entre versions).",
 }

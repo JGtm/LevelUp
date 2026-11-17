@@ -136,36 +136,6 @@ func (r *StatsRepo) mergeStatsMatchesPME(ctx context.Context, results []legacyma
 	return nil
 }
 
-// LoadLUSRHistory charge l'historique LUSR depuis match_skill_rank (Q24).
-func (r *StatsRepo) LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRating, error) {
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-
-	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q24LUSRHistory)
-	if err != nil {
-		return nil, fmt.Errorf("StatsRepo.LoadLUSRHistory: %w", err)
-	}
-	defer rows.Close()
-
-	var results []domain.LUSRMatchRating
-	for rows.Next() {
-		var m domain.LUSRMatchRating
-		if err := rows.Scan(
-			&m.MatchID,
-			&m.RatingValue,
-			&m.RatingDeviation,
-			&m.PlaylistGroup,
-		); err != nil {
-			return nil, fmt.Errorf("StatsRepo.LoadLUSRHistory scan: %w", err)
-		}
-		results = append(results, m)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("StatsRepo.LoadLUSRHistory rows: %w", err)
-	}
-	return results, nil
-}
-
 // LoadMatchParticipants charge tous les participants des matchs du joueur (Q25).
 // Utilisé pour l'estimation enemy strength dans le calcul LUSR.
 // Exécutée sur SharedReader (ADR 0016, shared-only).

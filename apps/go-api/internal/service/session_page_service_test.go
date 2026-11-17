@@ -314,10 +314,6 @@ func (m *mockSessionPageStatsRepo) LoadStatsMatches(_ context.Context) ([]legacy
 	return m.matches, m.err
 }
 
-func (m *mockSessionPageStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
-	return nil, nil
-}
-
 func (m *mockSessionPageStatsRepo) LoadMatchParticipants(_ context.Context) ([]domain.ParticipantRow, error) {
 	return nil, nil
 }
