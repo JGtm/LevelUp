@@ -91,7 +91,7 @@ function renderFeed(locale: 'fr' | 'en', zoneOf?: (key: string) => string) {
   )
 }
 
-const gutters = (container: HTMLElement) => container.querySelectorAll('span.w-\\[5\\.5rem\\]')
+const gutters = (container: HTMLElement) => container.querySelectorAll('[data-feed-col="lieu"]')
 
 describe('ReplayKillFeed — zone de la victime', () => {
   it('fr : le nom de la zone s’écrit après l’horloge, son nom complet en infobulle', () => {

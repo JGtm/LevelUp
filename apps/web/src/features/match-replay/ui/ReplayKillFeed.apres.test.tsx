@@ -1,14 +1,19 @@
 /**
- * ReplayKillFeed.avant.test.tsx — fixations des lignes du fil d'éliminations.
+ * ReplayKillFeed.apres.test.tsx — fixations du fil d'éliminations au format d'une ligne de 28 px aux
+ * colonnes fixes, et le CONTENU de chaque ligne (instant, lieu, noms, ligne d'événement).
  *
- * Ce que les fixations couvrent : quatre éliminations dans les deux sens et dans les deux camps, plus
- * une ligne d'événement (capture de drapeau, portée par `objectives` du document de test). La seconde
- * fixation rend la même entrée avec le lieu de la victime (`zoneOf`) : trois éliminations nommées, une sans lieu.
+ * LE CONTENU EST CELUI D'AVANT LA REFONTE : avant de remplacer les fixations `replayKillFeed*.avant.html`
+ * (DOM de l'ancienne ligne), le contenu textuel de chaque ligne — textes des feuilles et noms accessibles
+ * des images, dans l'ordre du document — a été comparé à celui de ces fixations, sur les deux scènes
+ * ci-dessous : identique, ligne à ligne. Les tableaux `CONTENU_*` sont ce contenu ; seul l'ordre des colonnes
+ * du DOM a changé.
+ *
+ * Ce que les fixations couvrent : quatre éliminations dans les deux sens et dans les deux camps, plus une
+ * ligne d'événement (capture de drapeau, portée par `objectives` du document de test). La seconde fixation
+ * rend la même entrée avec le lieu de la victime (`zoneOf`) : trois éliminations nommées, une sans lieu.
  *
  * Aucune valeur ne varie : l'instant est fixé par `nowMs`, aucune date ni identifiant généré n'entre
- * dans le rendu. Si un lancement en faisait apparaître un, le neutraliser dans le test, sans toucher au composant.
- *
- * Régénération : `npx vitest run <ce fichier> -u`, à la création seulement. Jamais pour faire passer une divergence.
+ * dans le rendu. Régénération : `npx vitest run <ce fichier> -u`, jamais pour faire passer une divergence.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
@@ -66,8 +71,40 @@ const DOC = testReplayDoc({
 
 const ALLEGIANCE = filmAllegianceOf(DOC, [], 'me')
 
-describe('ReplayKillFeed — fixation des lignes du fil (avant la refonte)', () => {
-  it('le HTML du fil (quatre éliminations et une ligne d’événement) est celui de la fixture prise avant la refonte', async () => {
+/** Le contenu d'une ligne : les textes des feuilles, dans l'ordre du document, sans les textes réservés aux lecteurs d'écran. */
+function contenu(li: Element): string[] {
+  const out: string[] = []
+  const visit = (el: Element) => {
+    if (el.getAttribute('aria-hidden') === 'true' || el.classList.contains('sr-only')) return
+    if (el.children.length === 0 && (el.textContent ?? '') !== '') out.push(el.textContent ?? '')
+    for (const c of Array.from(el.children)) visit(c)
+  }
+  visit(li)
+  return out
+}
+
+const contenus = (racine: HTMLElement) => Array.from(racine.querySelectorAll('li')).map(contenu)
+
+/** Le contenu des lignes de la scène sans lieu, la plus récente en tête. */
+const CONTENU_SANS_LIEU = [
+  ['0:12', 'Viper', 'Ally02'],
+  ['0:09', 'Cobra01', 'JGtm'],
+  ['0:06', 'JGtm', 'a capturé le drapeau'],
+  ['0:05', 'Ally02', 'Viper'],
+  ['0:02', 'JGtm', 'Cobra01'],
+]
+
+/** Le contenu des lignes de la scène avec lieu : la quatrième élimination, sans lieu, garde sa colonne (vide). */
+const CONTENU_AVEC_LIEU = [
+  ['0:12', 'Viper', 'Ally02'],
+  ['0:09', 'Pont Est', 'Cobra01', 'JGtm'],
+  ['0:06', 'JGtm', 'a capturé le drapeau'],
+  ['0:05', 'Rampe Nord', 'Ally02', 'Viper'],
+  ['0:02', 'Fer à cheval', 'JGtm', 'Cobra01'],
+]
+
+describe('ReplayKillFeed — fixation des lignes du fil (format d’une ligne)', () => {
+  it('le HTML du fil (quatre éliminations et une ligne d’événement) est celui de la fixture, et le contenu celui d’avant la refonte', async () => {
     const vue = render(
       <ReplayKillFeed
         entries={buildFeedEntries(KILLS, [], 0, DOC)}
@@ -80,19 +117,15 @@ describe('ReplayKillFeed — fixation des lignes du fil (avant la refonte)', () 
         doc={DOC}
       />,
     )
-    // Les lignes sont là, en nombre : au moins les quatre éliminations et la capture. Sans cela la
-    // fixture comparerait une liste vide.
-    const lignes = screen.getAllByRole('listitem')
-    expect(lignes.length).toBeGreaterThanOrEqual(5)
-    expect(screen.getAllByText('Cobra01').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Viper').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(5)
     expect(vue.container.textContent).toMatch(/capturé le drapeau/)
-    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayKillFeed.avant.html')
+    expect(contenus(vue.container)).toEqual(CONTENU_SANS_LIEU)
+    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayKillFeed.apres.html')
   })
 })
 
-describe('ReplayKillFeed — fixation avec le lieu de la victime (avant la refonte)', () => {
-  it('le même fil avec la gouttière du lieu : trois éliminations nommées, une sans lieu', async () => {
+describe('ReplayKillFeed — fixation avec le lieu de la victime (format d’une ligne)', () => {
+  it('le même fil avec la colonne du lieu : trois éliminations nommées, une sans lieu', async () => {
     const entries = buildFeedEntries(KILLS, [], 0, DOC)
     const cles = entries.filter((e) => e.kill).map((e) => e.key)
     expect(cles).toHaveLength(4)
@@ -114,8 +147,8 @@ describe('ReplayKillFeed — fixation avec le lieu de la victime (avant la refon
         zoneOf={(key) => lieux.get(key) ?? ''}
       />,
     )
-    // Les trois lieux nommés sont dans le rendu : sans eux la gouttière ne serait pas fixée.
     for (const nom of lieux.values()) expect(within(vue.container).getByText(nom)).toBeTruthy()
-    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayKillFeed.lieu.avant.html')
+    expect(contenus(vue.container)).toEqual(CONTENU_AVEC_LIEU)
+    await expect(vue.container.innerHTML).toMatchFileSnapshot('./__fixtures__/replayKillFeed.lieu.apres.html')
   })
 })

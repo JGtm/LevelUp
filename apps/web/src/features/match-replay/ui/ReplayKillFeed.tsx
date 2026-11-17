@@ -1,15 +1,16 @@
 /**
- * ReplayKillFeed — le fil des éliminations de la page de rejeu, SYNCHRONISÉ sur l'horloge du
- * rejeu : la liste, le menu de filtre et les états vides. Les formes de ligne vivent dans
- * `ReplayFeedLines.tsx`.
+ * ReplayKillFeed — le fil des éliminations de la page de rejeu, SYNCHRONISÉ sur l'horloge du rejeu :
+ * la liste, le menu de filtre et les états vides. Les formes de ligne vivent dans `ReplayFeedLines.tsx`
+ * et la liste filtrée dans `hooks/useFeedView.ts`, que tout autre affichage du fil lit aussi.
  *
  *  - FIL PERMANENT : toutes les lignes depuis le début du match, la plus récente en tête, dans
  *    une liste qui DÉFILE — les événements passés restent lisibles. On ne remonte en tête que si
  *    le lecteur y était déjà : une nouvelle ligne ne lui arrache pas sa position de lecture.
- *  - CHAQUE LIGNE : l'HORODATAGE EN TÊTE, dans une gouttière fixe ; puis TUEUR (encre de son
- *    camp), ICÔNE de l'arme, VICTIME (encre de SON camp), les MÉDAILLES du kill, puis l'ASSISTANCE
- *    quand elle est nommée. Médaille seule, mort neutre, entrée/sortie de partie : leurs propres
- *    formes.
+ *  - CHAQUE LIGNE FAIT 28 PX, sans fond ni bordure. L'élimination est une grille à colonnes fixes :
+ *    INSTANT, LIEU de la victime, TUEUR (encre de son camp), ICÔNE de l'arme, VICTIME (encre de SON
+ *    camp), puis les MÉDAILLES. L'assistance et le porteur du drapeau sont dans l'infobulle. Médaille
+ *    seule, mort neutre, entrée/sortie de partie, événements : leurs propres formes, sur la même
+ *    gouttière d'instant (cotes : `model/cotesFeedLine.ts`).
  *  - L'ENCRE DE CAMP D'UN NOM EST L'ALLÉGEANCE DU FILM (`FilmAllegiance.ofXuid`, l'équipe du film
  *    de l'acteur comparée à celle du joueur regardé). Un acteur dont le film tait l'équipe — ou
  *    absent du film — prend l'encre neutre : aucun repli deviné.
@@ -21,12 +22,9 @@
  *  - UNE LIGNE, UNE SEULE, ET SANS RETOUR : ce qui déborde est tronqué, jamais renvoyé à la ligne
  *    (cf. `model/feedRow.ts`). Aucun compteur total dans le titre.
  *
- * LE MENU DE FILTRE ET LES LIGNES D'ÉVÉNEMENT. Le titre est un menu (`ReplayFeedFilterMenu`), et
- * la liste AFFICHÉE est le fil complet (`entries`) plus les lignes d'événement du document
- * (objectifs en bandeaux, prises d'armes et de bonus, montées en véhicule), passé au filtre.
- * `entries` n'est JAMAIS modifié : la frise et les effets de mort lisent ce fil-là, entier. Deux
- * états vides distincts, en bloc pointillé : « Rien à cet instant » (le filtre a des lignes plus
- * loin dans le match) et « Aucune entrée pour ce match » (il n'en a aucune).
+ * LE MENU DE FILTRE. Le titre est un menu (`ReplayFeedFilterMenu`). Deux états vides distincts, en
+ * bloc pointillé : « Rien à cet instant » (le filtre a des lignes plus loin dans le match) et
+ * « Aucune entrée pour ce match » (il n'en a aucune).
  */
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -34,24 +32,15 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
-import { normalizeGamertagKey } from '@/lib/players/displayName'
 
 import type { FeedZoneOf } from '../hooks/useFeedZones'
-import { useFeedEventEntries } from '../hooks/useFeedEventEntries'
+import { useFeedView } from '../hooks/useFeedView'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { withEventLines } from '../model/feedEventLines'
-import {
-  availableFeedFilters,
-  effectiveFeedFilter,
-  filterFeedEntries,
-} from '../model/feedFilterLogic'
-import { feedAt, type ReplayFeedEntry } from '../model/killFeedLogic'
-import { focusTargetOf } from '../model/killFocusLogic'
+import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { NO_WEAPON_ICONS, type WeaponIconsByKey } from '../model/killSourceIcons'
-import { usePlaybackFocus, type PlaybackStore } from '../model/playbackStore'
+import type { PlaybackStore } from '../model/playbackStore'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
-import { useFeedFilter } from '../settings/useFeedFilter'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
@@ -87,8 +76,8 @@ interface Props {
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
    * La zone nommée où se trouvait la victime de chaque frag (`useFeedZones`), par clé de ligne.
-   * Absent = la carte n'a aucune zone : les lignes de frag ne réservent pas de gouttière. Présent,
-   * la gouttière suit l'horloge sur CHAQUE ligne de frag et reste vide quand la zone est inconnue.
+   * Absent = la carte n'a aucune zone : les lignes de frag ne réservent pas de colonne de lieu.
+   * Présent, la colonne suit l'instant sur CHAQUE ligne de frag et reste vide quand la zone est inconnue.
    */
   zoneOf?: FeedZoneOf
   /**
@@ -117,55 +106,22 @@ export function ReplayKillFeed({
   // UNE SEULE RÈGLE POUR TOUTES LES FORMES DE LIGNE : l'allégeance du film, `team-ally` /
   // `team-enemy`, l'encre neutre quand elle est inconnue (`teamTokenCssVar(null)`).
   const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
-  // L'ASSISTANT N'A PAS DE XUID dans l'événement du film : il n'est nommé que par son
-  // gamertag (cf. `KillEvent`). Pour qu'il porte la MÊME marque que les autres, les marques
-  // sont réindexées par gamertag normalisé — via le scoreboard, la seule table qui porte les
-  // deux clés à la fois. Sans lui, l'assistant serait le seul nom du fil sans glyphe.
-  const marksByGamertag = useMemo(() => {
-    const byName = new Map<string, PlayerMarkKind>()
-    for (const r of scoreboard ?? []) {
-      const kind = (marks ?? NO_MARKS).get(r.xuid)
-      if (kind) byName.set(normalizeGamertagKey(r.gamertag), kind)
-    }
-    return byName
-  }, [scoreboard, marks])
-
-  // LA LISTE AFFICHÉE : le fil complet plus les lignes d'événement, puis le filtre. `entries`
-  // (le fil de la page) n'est jamais modifié.
-  const campIds = useMemo(() => allegiance.camps.map((c) => c.team), [allegiance])
-  const events = useFeedEventEntries(doc, locale, weaponIcons, campIds)
   const teams = useTeamCascades(scoreboard ?? undefined, allegiance, locale)
-  const fullFeed = useMemo(() => withEventLines(entries, events), [entries, events])
-  const options = useMemo(() => availableFeedFilters(fullFeed), [fullFeed])
-  const [storedFilter, chooseFilter] = useFeedFilter()
-  const filter = effectiveFeedFilter(storedFilter, options)
-  const shown = useMemo(() => filterFeedEntries(fullFeed, filter), [fullFeed, filter])
-  const visibles = feedAt(shown, nowMs)
-  const matchHasNone = (options.find((o) => o.id === filter)?.count ?? 0) === 0
-
-  // LE CLIC SUR UNE LIGNE DE FRAG : la ligne choisie vient de la mise en valeur du magasin, et le
-  // geste fait deux demandes — la mise en valeur d'abord, puis le saut (pause sur l'image du frag).
-  // La cible se lit sur la ligne ORIGINALE : la copie affichée porte l'horloge recalée.
-  const selectedKey = usePlaybackFocus(playbackStore)?.entryKey ?? null
-  const selectKill = (entry: ReplayFeedEntry) => {
-    const target = playbackStore && doc ? focusTargetOf(entry, doc) : null
-    if (!playbackStore || !target) return
-    playbackStore.focusKill(target)
-    playbackStore.requestSeek(target.frame)
-  }
+  const { lines, options, filter, chooseFilter, matchHasNone, selectedKey, select } = useFeedView({
+    entries, nowMs, doc, locale, allegiance, weaponIcons, playbackStore,
+  })
 
   // POSITION DE LECTURE (règle du POC) : on ne colle en tête que si le lecteur y était.
   const listRef = useRef<HTMLUListElement>(null)
   const atTopRef = useRef(true)
-  const count = visibles.length
+  const count = lines.length
   useEffect(() => {
     const el = listRef.current
     if (el && atTopRef.current) el.scrollTop = 0
   }, [count])
 
   return (
-    // `relative` ancre la liste déroulante du menu ; le titre est un bandeau HUD neutre et les
-    // lignes se séparent par leur filet, pas par une boîte.
+    // `relative` ancre la liste déroulante du menu ; le titre est un bandeau HUD neutre.
     <div className="relative flex h-full min-h-0 flex-col">
       <ReplayFeedFilterMenu options={options} active={filter} onChange={chooseFilter} locale={locale} />
       <ul
@@ -185,22 +141,18 @@ export function ReplayKillFeed({
             />
           </li>
         )}
-        {visibles.map((entry) => (
+        {lines.map((entry) => (
           <FeedLine
             key={entry.key}
+            // La copie affichée porte l'horloge recalée ; la cible d'un clic se lit sur la ligne ORIGINALE.
             entry={{ ...entry, replayMs: displayClockMs(entry.replayMs, playWindow) }}
             inkOf={inkOf}
             xuidMeta={xuidMeta}
             marks={marks ?? NO_MARKS}
-            marksByGamertag={marksByGamertag}
             locale={locale}
             zoneOf={zoneOf}
             teams={teams}
-            focus={
-              playbackStore && doc
-                ? { selected: selectedKey === entry.key, onSelect: () => selectKill(entry) }
-                : undefined
-            }
+            focus={select ? { selected: selectedKey === entry.key, onSelect: () => select(entry) } : undefined}
           />
         ))}
       </ul>

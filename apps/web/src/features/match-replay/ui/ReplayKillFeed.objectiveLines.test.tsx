@@ -3,8 +3,8 @@
  * nouvelles (fin de manche, crâne, colline).
  *
  * Ce qu'ils protègent :
- *  1. « PORTEUR ÉLIMINÉ » n'est plus une ligne : c'est un badge sur la ligne du frag du même tueur,
- *     que le filtre Objectifs retient ; sans frag apparié l'action garde sa ligne.
+ *  1. « PORTEUR ÉLIMINÉ » n'est plus une ligne : c'est une mention dans l'infobulle de la ligne du frag
+ *     du même tueur, que le filtre Objectifs retient ; sans frag apparié l'action garde sa ligne.
  *  2. LES ASSISTANCES DE CAPTURE nomment leurs crédités sur la ligne de la capture de leur équipe ;
  *     sans capture de leur équipe elles gardent leur ligne.
  *  3. LA FIN DE MANCHE écrit le score de manche de chaque camp, jamais le meneur du match, et
@@ -125,6 +125,9 @@ function renderFeed(locale: 'fr' | 'en' = 'fr') {
 }
 
 const rowsText = () => screen.getAllByRole('listitem').map((r) => r.textContent ?? '')
+/** Les lignes de frag dont l'infobulle dit que la victime portait le drapeau (fr ou en). */
+const carrierRows = (hint: string) =>
+  screen.getAllByRole('listitem').filter((r) => (r.getAttribute('title') ?? '').includes(hint))
 
 function choose(name: RegExp) {
   fireEvent.click(screen.getByRole('button', { name: /Filtrer le fil|Filter the feed/ }))
@@ -134,15 +137,17 @@ function choose(name: RegExp) {
 beforeEach(() => window.localStorage.removeItem(FEED_FILTER_KEY))
 afterEach(() => window.localStorage.removeItem(FEED_FILTER_KEY))
 
-describe('porteur éliminé : un badge sur le frag, plus une ligne', () => {
-  it('la ligne du frag porte le badge, et la ligne d’objectif correspondante disparaît', () => {
+describe('porteur éliminé : une mention en infobulle sur le frag, plus une ligne', () => {
+  it('l’infobulle du frag le dit, et la ligne d’objectif correspondante disparaît', () => {
     renderFeed()
-    const rows = rowsText()
-    const frag = rows.filter((r) => r.includes('Cobra01') && r.includes('Porteur'))
+    const frag = carrierRows('La victime portait le drapeau')
     expect(frag).toHaveLength(1)
-    expect(frag[0]).toContain('JGtm')
-    // Le second frag n'est pas celui d'un porteur : pas de badge.
-    expect(rows.filter((r) => r.includes('Porteur'))).toHaveLength(1)
+    expect(frag[0].textContent).toContain('Cobra01')
+    expect(frag[0].textContent).toContain('JGtm')
+    // La mention n'ajoute aucun texte à la ligne : le badge a quitté la rangée.
+    expect(frag[0].textContent).not.toContain('Porteur')
+    // Le second frag n'est pas celui d'un porteur : pas de mention.
+    expect(rowsText().filter((r) => r.includes('Porteur'))).toHaveLength(0)
   })
 
   it('une action sans frag apparié garde sa ligne : on ne perd jamais une information', () => {
@@ -150,15 +155,15 @@ describe('porteur éliminé : un badge sur le frag, plus une ligne', () => {
     expect(rowsText().filter((r) => r.includes('a éliminé un porteur de drapeau'))).toHaveLength(1)
   })
 
-  it('le filtre Objectifs retient le frag badgé', () => {
+  it('le filtre Objectifs retient le frag du porteur', () => {
     renderFeed()
     choose(/Objectifs/)
-    expect(rowsText().some((r) => r.includes('Porteur'))).toBe(true)
+    expect(carrierRows('La victime portait le drapeau')).toHaveLength(1)
   })
 
-  it('en anglais, le badge et la phrase suivent la langue', () => {
+  it('en anglais, la mention et la phrase suivent la langue', () => {
     renderFeed('en')
-    expect(rowsText().some((r) => r.includes('Carrier'))).toBe(true)
+    expect(carrierRows('The victim was carrying the flag')).toHaveLength(1)
     expect(rowsText().some((r) => r.includes('killed a flag carrier'))).toBe(true)
   })
 })

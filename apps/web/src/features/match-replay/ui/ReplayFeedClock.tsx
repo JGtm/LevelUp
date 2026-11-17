@@ -1,16 +1,17 @@
 /**
- * FeedClock — la GOUTTIÈRE D'HORLOGE en tête de ligne : largeur fixe, chiffres tabulaires, encre
- * discrète. Toutes les formes de ligne l'ouvrent — c'est la colonne qui rend le fil balayable
- * d'un regard.
+ * FeedClock — la GOUTTIÈRE D'INSTANT en tête de ligne : largeur fixe (`COTES_LIGNE_FIL`), chiffres
+ * tabulaires, encre discrète. Toutes les formes de ligne l'ouvrent — c'est la colonne qui rend le fil
+ * balayable d'un regard.
  */
 import { formatClock } from '../../../lib/replay/replayLogic'
-import { FEED_CLOCK_W } from '../model/feedRow'
+import { COTES_LIGNE_FIL } from '../model/cotesFeedLine'
 
 export function FeedClock({ ms }: { ms: number }) {
   return (
     <span
-      className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground"
-      style={{ width: FEED_CLOCK_W }}
+      data-feed-col="instant"
+      className="shrink-0 tabular-nums text-muted-foreground"
+      style={{ width: COTES_LIGNE_FIL.colonnes.instantPx, fontSize: COTES_LIGNE_FIL.tailleSecondairePx }}
     >
       {formatClock(ms)}
     </span>

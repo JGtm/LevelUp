@@ -654,13 +654,6 @@
   animation: replay-zone-bolt 2.6s linear infinite;
 }
 
-/* La ligne du fil des éliminations (option 2a) : un filet séparateur ENTRE `background`
-   et `border` — assez présent pour structurer la liste, jamais autant qu'une bordure de
-   carte. Classe et non style inline : la couleur composée vit à UN endroit. */
-.replay-feed-row {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, var(--background));
-}
-
 @media (prefers-reduced-motion: reduce) {
   .replay-flash-death,
   .replay-flash-respawn,

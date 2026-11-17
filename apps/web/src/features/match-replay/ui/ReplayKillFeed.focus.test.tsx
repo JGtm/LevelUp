@@ -165,13 +165,20 @@ describe('le clic', () => {
     expect(ligne.getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('la ligne « sélectionnée » se voit par ses deux filets de camp (tokens), pas par une teinte seule', () => {
+  it('la ligne « sélectionnée » se voit par un fond de jeton et aria-pressed, sans aucun liseré de camp', () => {
     renderFeed()
     const [ligne] = screen.getAllByRole('button', { pressed: false })
     fireEvent.click(ligne)
     const li = ligne.closest('li') as HTMLElement
     expect(li.getAttribute('data-selected')).toBe('true')
-    expect(li.style.boxShadow).toContain('var(--ac-')
+    expect(li.className).toContain('bg-muted')
+    expect(ligne.getAttribute('aria-pressed')).toBe('true')
+    // Ni bord ni ombre portée : le camp est dit par la couleur des noms.
+    expect(li.style.boxShadow).toBe('')
+    expect(li.style.borderLeft).toBe('')
+    // Une ligne qui n'est pas choisie n'a pas de fond.
+    const autre = screen.getAllByRole('button', { pressed: false })[0].closest('li') as HTMLElement
+    expect(autre.className).not.toContain('bg-muted')
   })
 })
 
@@ -219,10 +226,13 @@ describe('le filtre du lot 1 reste intact', () => {
 })
 
 describe('ce que le fil ne change pas', () => {
-  it('la ligne garde ses règles : une seule ligne, sans retour', () => {
+  it('la ligne garde ses règles : une grille de 28 px, une seule ligne, sans retour', () => {
     renderFeed()
     const [ligne] = screen.getAllByRole('button', { pressed: false })
-    expect(ligne.className).toContain('flex-nowrap')
+    expect(ligne.className).toContain('grid')
+    expect(ligne.className).toContain('whitespace-nowrap')
     expect(ligne.className).toContain('overflow-hidden')
+    expect(ligne.className).toContain('h-[28px]')
+    expect(ligne.style.gridTemplateColumns).toBe('30px 70px 18px 70px minmax(0, 1fr)')
   })
 })

@@ -1,7 +1,8 @@
 /**
- * feedLines.i18n.ts — LES TEXTES DES LIGNES D'OBJECTIF DU FIL qui ne sont pas une action nommée du
- * joueur : le badge « porteur » d'une ligne de frag, les assistances d'une capture, la fin de manche,
- * le crâne d'Oddball et la colline. Le contrat (`FeedLinesText`) et ses deux langues.
+ * feedLines.i18n.ts — LES TEXTES DES LIGNES DU FIL qui ne sont pas une action nommée du joueur :
+ * l'infobulle d'une ligne d'élimination (assistance, victime porteuse du drapeau, médailles en trop),
+ * les assistances d'une capture, la fin de manche, le crâne d'Oddball et la colline. Le contrat
+ * (`FeedLinesText`) et ses deux langues.
  *
  * UN SOUS-DICTIONNAIRE À PART, comme `lives.i18n.ts` : `fr.ts` et `en.ts` sont au plafond de taille
  * du dépôt. Servis par `REPLAY_TEXT[locale].feedLines` ; la parité FR/EN est tenue par le typage
@@ -9,9 +10,13 @@
  * lignes du fil (`feedObjectiveAction`) : passé composé, après le nom, aucun possessif.
  */
 export interface FeedLinesText {
-  /** Le badge d'une ligne de frag dont la victime portait le drapeau, et son infobulle. */
-  carrierBadge: string
+  /** Infobulle d'une ligne de frag dont la victime portait le drapeau. */
   carrierBadgeHint: string
+  /** Infobulle d'une ligne de frag assistée : l'assistant nommé et sa part de dégâts, quand elle est connue. */
+  assistedBy: (name: string, sharePct: number | null) => string
+  /** Les médailles d'une ligne au-delà des deux pictogrammes : « +N », puis ce que l'infobulle liste. */
+  medalsMore: (n: number) => string
+  medalsMoreHint: (names: string) => string
   /** Infobulle d'une capture qui porte des assistances : `names` sont les joueurs crédités. */
   captureAssistedBy: (names: string) => string
   /** La fin d'une manche : `n` est son rang d'affichage, à partir de 1. */
@@ -24,8 +29,10 @@ export interface FeedLinesText {
 }
 
 export const FR_FEED_LINES = {
-  carrierBadge: 'Porteur',
   carrierBadgeHint: 'La victime portait le drapeau',
+  assistedBy: (name, sharePct) => `Assistance : ${name}${sharePct == null ? '' : ` (${sharePct} %)`}`,
+  medalsMore: (n) => `+${n}`,
+  medalsMoreHint: (names) => `Autres médailles : ${names}`,
   captureAssistedBy: (names) => `Assistances : ${names}`,
   roundEnd: (n) => `Fin de la manche ${n}`,
   skullTaken: 'a pris le crâne',
@@ -34,8 +41,10 @@ export const FR_FEED_LINES = {
 } satisfies FeedLinesText
 
 export const EN_FEED_LINES = {
-  carrierBadge: 'Carrier',
   carrierBadgeHint: 'The victim was carrying the flag',
+  assistedBy: (name, sharePct) => `Assist: ${name}${sharePct == null ? '' : ` (${sharePct}%)`}`,
+  medalsMore: (n) => `+${n}`,
+  medalsMoreHint: (names) => `More medals: ${names}`,
   captureAssistedBy: (names) => `Assists: ${names}`,
   roundEnd: (n) => `Round ${n} over`,
   skullTaken: 'picked up the skull',
