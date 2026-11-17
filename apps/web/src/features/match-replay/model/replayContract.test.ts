@@ -128,9 +128,9 @@ const NULLABLE_ARRAYS = [
   // `bursts` : LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) — comblées à vide, leurs passages
   // muets aussi (`holes`).
   'bursts',
-  // `stances` : les ETATS DE MOUVEMENT du Spartan (schema 65, 2026-09-21) — un intervalle plat
-  // par (vie, genre), aucun tableau imbrique. Trois genres seulement : le sprint est refute
-  // comme observable par la vitesse et le saut n'est pas prouve (lot 5.3.5).
+  // `stances` : les ETATS DE MOUVEMENT du Spartan (schema 65) — un intervalle plat
+  // par (vie, genre), aucun tableau imbrique. Genres : `crouch`, `slide`, `clamber`, `sprint`
+  // (LUS dans un composant) et `jumpDerived` (DÉRIVÉ, une estimation).
   'stances',
   'structure',
   'tracks',
