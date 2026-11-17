@@ -32,7 +32,7 @@ func TestReapparition_FilmLiberation(t *testing.T) {
 		pisteTest("b", 1, 0, 400, 20, nil),
 	)
 	s := spawnDe(t, e, 1)
-	if !s.Reapparition || s.Source != SourceFilm || s.DebutDeManche {
+	if !s.Reapparition || s.DebutDeManche {
 		t.Fatalf("reapparition film attendue, obtenu %+v", s)
 	}
 	if s.Mort == nil || s.Mort.Frame != 100 || s.Mort.X != 11 {
@@ -48,7 +48,7 @@ func TestReapparition_FilmCompteARebours(t *testing.T) {
 		pisteTest("a", 0, 0, 100, 10, nil),
 		pisteTest("a", 0, 150, 300, 50, nil),
 	)
-	if s := spawnDe(t, e, 1); !s.Reapparition || s.Source != SourceFilm {
+	if s := spawnDe(t, e, 1); !s.Reapparition {
 		t.Fatalf("un compte qui commence a la fin de la piste prouve la mort, obtenu %+v", s)
 	}
 }
@@ -88,36 +88,42 @@ func TestReapparition_ToleranceDeLaPreuve(t *testing.T) {
 	}
 }
 
-func TestReapparition_RepliSurLEcart(t *testing.T) {
-	cas := []struct {
-		nom     string
-		debut   int
-		attendu bool
-	}{
-		{"3,9 s : trou de replication", 100 + 118, false},
-		{"4 s : borne basse", 100 + 122, true},
-		{"15 s : borne haute", 100 + 454, true},
-		{"15,1 s : hors jeu", 100 + 458, false},
-	}
-	for _, c := range cas {
-		t.Run(c.nom, func(t *testing.T) {
-			e := entreeTest(nil,
-				pisteTest("a", 0, 0, 100, 10, nil),
-				pisteTest("a", 0, c.debut, c.debut+100, 50, nil),
-			)
-			s := spawnDe(t, e, 1)
-			if s.Reapparition != c.attendu {
-				t.Fatalf("Reapparition = %v, attendu %v", s.Reapparition, c.attendu)
-			}
-			if c.attendu && s.Source != SourceRepliEcart {
-				t.Errorf("source = %q, attendu le repli", s.Source)
-			}
-		})
+// Un document sans aucune lecture de fin de vie du film n'a aucune reapparition, quel que soit
+// l'ecart entre deux pistes : il n'y a pas de repli sur l'ecart.
+func TestReapparition_SansLectureDuFilmAucuneReapparition(t *testing.T) {
+	for _, debut := range []int{100 + 118, 100 + 122, 100 + 454, 100 + 458} {
+		e := entreeTest(nil,
+			pisteTest("a", 0, 0, 100, 10, nil),
+			pisteTest("a", 0, debut, debut+100, 50, nil),
+		)
+		if LectureDuFilm(e) {
+			t.Fatal("l'entree ne porte aucune lecture du film")
+		}
+		s := spawnDe(t, e, 1)
+		if s.Reapparition || s.DebutDeManche || s.Mort != nil || s.Instantane != nil {
+			t.Errorf("debut a la frame %d : aucune reapparition attendue sans lecture du film, obtenu %+v", debut, s)
+		}
 	}
 }
 
-// Un document qui porte une lecture du film, meme pour un seul joueur, n'emploie JAMAIS le
-// repli : une piste sans preuve n'y est pas une reapparition.
+func TestLectureDuFilm(t *testing.T) {
+	sans := entreeTest(nil, pisteTest("a", 0, 0, 100, 10, nil))
+	if LectureDuFilm(sans) {
+		t.Error("aucune fin lue, aucun compte a rebours")
+	}
+	if !LectureDuFilm(entreeTest(nil, pisteTest("a", 0, 0, 100, 10, &FinLue{Raison: RaisonLiberee, Frame: 100}))) {
+		t.Error("une fin lue est une lecture du film")
+	}
+	if !LectureDuFilm(entreeTest([]DebutCompte{{XUID: "a", Frame: 100}}, pisteTest("a", 0, 0, 100, 10, nil))) {
+		t.Error("un debut de compte a rebours rattache a un xuid est une lecture du film")
+	}
+	if LectureDuFilm(entreeTest([]DebutCompte{{XUID: "", Frame: 100}}, pisteTest("a", 0, 0, 100, 10, nil))) {
+		t.Error("un compte a rebours sans xuid ne prouve rien")
+	}
+}
+
+// Un document qui porte une lecture du film, meme pour un seul joueur : une piste sans preuve n'y est
+// pas une reapparition.
 func TestReapparition_CasMixte(t *testing.T) {
 	e := entreeTest(nil,
 		pisteTest("a", 0, 0, 100, 10, &FinLue{Raison: RaisonLiberee, Frame: 100}),
@@ -125,7 +131,7 @@ func TestReapparition_CasMixte(t *testing.T) {
 		pisteTest("b", 1, 0, 100, 20, nil),
 		pisteTest("b", 1, 150, 300, 60, nil),
 	)
-	if s := spawnDe(t, e, 1); !s.Reapparition || s.Source != SourceFilm {
+	if s := spawnDe(t, e, 1); !s.Reapparition {
 		t.Errorf("a : reapparition film attendue, obtenu %+v", s)
 	}
 	if s := spawnDe(t, e, 3); s.Reapparition || s.DebutDeManche {
@@ -205,7 +211,7 @@ func TestInstantane_Deterministe(t *testing.T) {
 
 func TestOccupation_PorteLEquipeEtLeSpawn(t *testing.T) {
 	e := entreeTest(nil,
-		pisteTest("a", 3, 0, 100, 10, nil),
+		pisteTest("a", 3, 0, 100, 10, &FinLue{Raison: RaisonLiberee, Frame: 100}),
 		pisteTest("a", 3, 230, 380, 50, nil),
 	)
 	joueurs := Occupation(GrilleParDefaut(), e, PasOccupationMs)
@@ -213,7 +219,7 @@ func TestOccupation_PorteLEquipeEtLeSpawn(t *testing.T) {
 		t.Fatalf("equipe du joueur = %+v", joueurs)
 	}
 	sp := joueurs[0].Spawns
-	if len(sp) != 2 || !sp[0].PremiereVie || !sp[1].Reapparition || sp[1].Source != SourceRepliEcart {
+	if len(sp) != 2 || !sp[0].PremiereVie || !sp[1].Reapparition {
 		t.Fatalf("spawns = %+v", sp)
 	}
 }

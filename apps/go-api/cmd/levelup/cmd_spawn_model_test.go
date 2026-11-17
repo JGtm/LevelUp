@@ -17,11 +17,13 @@ import (
 
 func TestEvenementsDuMatch_DeuxInstantanes(t *testing.T) {
 	pistes := []tactical.Piste{
-		{XUID: "a", Equipe: 0, Points: []tactical.PointPiste{{T: 0, X: 1}, {T: 100, X: 2}}},
+		{XUID: "a", Equipe: 0, Points: []tactical.PointPiste{{T: 0, X: 1}, {T: 100, X: 2}},
+			Fin: &tactical.FinLue{Raison: tactical.RaisonLiberee, Frame: 100}},
 		{XUID: "a", Equipe: 0, Points: []tactical.PointPiste{{T: 150, X: 30}, {T: 300, X: 31}}},
 		{XUID: "e", Equipe: 1, Points: []tactical.PointPiste{{T: 0, X: 50}, {T: 400, X: 60}}},
 		{XUID: "m", Equipe: 0, Points: []tactical.PointPiste{{T: 0, X: 10}, {T: 400, X: 10}}},
-		{XUID: "sans", Equipe: tactical.EquipeInconnue, Points: []tactical.PointPiste{{T: 0, X: 5}, {T: 100, X: 5}}},
+		{XUID: "sans", Equipe: tactical.EquipeInconnue, Points: []tactical.PointPiste{{T: 0, X: 5}, {T: 100, X: 5}},
+			Fin: &tactical.FinLue{Raison: tactical.RaisonLiberee, Frame: 100}},
 		{XUID: "sans", Equipe: tactical.EquipeInconnue, Points: []tactical.PointPiste{{T: 150, X: 6}, {T: 300, X: 6}}},
 	}
 	e := tactical.EntreeOccupation{MatchID: "m1", IntervalleFrameMs: 100, Pistes: pistes}
@@ -32,7 +34,7 @@ func TestEvenementsDuMatch_DeuxInstantanes(t *testing.T) {
 	if len(jeu.evts) != 1 {
 		t.Fatalf("une reapparition mesurable attendue (celle de \"sans\" n'a pas d'equipe), obtenu %d", len(jeu.evts))
 	}
-	if jeu.bilan.reapRepli != 2 || jeu.bilan.sansEquipe != 1 {
+	if jeu.bilan.reapparitions != 2 || jeu.bilan.sansEquipe != 1 {
 		t.Errorf("bilan = %+v", jeu.bilan)
 	}
 	ev := jeu.evts[0]
@@ -159,7 +161,7 @@ func TestSpawnModel_TitreSansFamilleDeclaree(t *testing.T) {
 }
 
 func TestDefinitionDesPoids_DitLeSeuilEtLePerimetre(t *testing.T) {
-	jeu := &jeuReapparitions{bilan: bilanLecture{reapFilm: 3, reapRepli: 7}}
+	jeu := &jeuReapparitions{bilan: bilanLecture{reapparitions: 3, sansLectureFilm: 7}}
 	d := definitionDesPoids(jeu, spawnModelOptions{matchsMinCarte: 3})
 	for _, attendu := range []string{"toutes les familles", "au moins 3 matchs", "avant filtres", "AUTRES matchs", "retenues"} {
 		if !strings.Contains(d, attendu) {
@@ -191,7 +193,7 @@ func TestPoidsDeGroupe_EffectifsSurLeJeuAjuste(t *testing.T) {
 	ajoute("grande", 30) // 540 reapparitions retenues
 	ajoute("petite", 2)  // sous le seuil de 3 matchs : ecartee
 	p, ok := poidsDeGroupe(context.Background(), jeu, "assassin", map[string]bool{"assassin": true},
-		tactical.ToutesLesVariables, spawnModelOptions{matchsMinCarte: 3})
+		spawnModelOptions{matchsMinCarte: 3})
 	if !ok {
 		t.Fatal("effectif suffisant : des poids propres sont attendus")
 	}
@@ -203,7 +205,7 @@ func TestPoidsDeGroupe_EffectifsSurLeJeuAjuste(t *testing.T) {
 	}
 }
 
-// Le rapport M-2 / M-3 compte les matchs sur les echantillons RETENUS, comme poidsDeGroupe : une
+// Le rapport M-3 compte les matchs sur les echantillons RETENUS, comme poidsDeGroupe : une
 // carte sous le seuil n'apporte ni carte, ni reapparition, ni match.
 func TestEvaluerEchantillons_MatchsSurLeJeuRetenu(t *testing.T) {
 	var evts []tactical.EvenementReapparition
@@ -219,7 +221,7 @@ func TestEvaluerEchantillons_MatchsSurLeJeuRetenu(t *testing.T) {
 	ajoute("grande", 6)
 	ajoute("petite", 2) // sous le seuil de 3 matchs : ecartee
 	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: 3}
-	r := evaluerEchantillons(tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages), false)
+	r := evaluerEchantillons(tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages))
 	if r.matchs != 6 || r.cartes != 1 || r.n != 24 {
 		t.Errorf("effectifs = %d matchs, %d cartes, %d reapparitions ; attendu 6, 1, 24", r.matchs, r.cartes, r.n)
 	}

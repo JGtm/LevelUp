@@ -112,19 +112,22 @@ func TestPrevision_LesProbabilitesSuiventLesPositionsAChaqueInstant(t *testing.T
 }
 
 func TestPrevision_LaSommeDesProbabilitesFaitUn(t *testing.T) {
-	// Un troisieme point, hors de toute zone, retient une part : HorsZone la porte.
+	// Un troisieme point, hors de toute zone, retient une part : les zones ne portent pas tout.
 	horsZone := Point3{X: 500}
 	m := PrevoirLesReapparitions(entreePrevision(evenementsCarte(troisAutres, pointZone1, pointZone2, horsZone))).Morts[0]
 	for _, e := range m.Echantillons {
-		somme := e.HorsZone
+		zones, points := 0.0, 0.0
 		for _, z := range e.Zones {
-			somme += z.P
+			zones += z.P
 		}
-		if math.Abs(somme-1) > 0.003 {
-			t.Errorf("frame %d : zones + hors zone = %v, attendu 1 (aux arrondis du millieme pres)", e.Frame, somme)
+		for _, p := range e.PointsP {
+			points += p
 		}
-		if e.HorsZone <= 0 {
-			t.Errorf("frame %d : le point hors zone doit porter une part", e.Frame)
+		if math.Abs(points-1) > 0.003 {
+			t.Errorf("frame %d : somme des points = %v, attendu 1 (aux arrondis du millieme pres)", e.Frame, points)
+		}
+		if zones >= points-0.001 {
+			t.Errorf("frame %d : zones = %v pour %v au total, le point hors zone doit porter une part", e.Frame, zones, points)
 		}
 	}
 }
@@ -175,9 +178,6 @@ func TestPrevision_LesPointsPortentLaProbabiliteDesZones(t *testing.T) {
 			if math.Abs(parZone[z.Zone]-z.P) > tolerance {
 				t.Errorf("frame %d zone %d : somme de ses points = %v, probabilite servie %v", e.Frame, z.Zone, parZone[z.Zone], z.P)
 			}
-		}
-		if math.Abs(parZone[-1]-e.HorsZone) > tolerance {
-			t.Errorf("frame %d : points hors zone = %v, hors zone servi %v", e.Frame, parZone[-1], e.HorsZone)
 		}
 	}
 }

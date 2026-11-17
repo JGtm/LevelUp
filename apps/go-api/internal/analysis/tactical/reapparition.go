@@ -21,10 +21,9 @@ package tactical
 //
 // # LES VARIABLES
 //
-// Sept variables, dans l'ordre de NomsVariables. Les six premieres sont des distances ou des
-// comptes de la position des autres joueurs ; la septieme (VarVisibles) n'existe que si la
-// geometrie de la carte est fournie. Les distances sont plafonnees (DistanceMaxM, DistanceMaxMortM)
-// et exprimees en dizaines de metres pour que les poids restent lisibles.
+// Six variables, dans l'ordre de NomsVariables : des distances ou des comptes de la position des
+// autres joueurs. Les distances sont plafonnees (DistanceMaxM, DistanceMaxMortM) et exprimees en
+// dizaines de metres pour que les poids restent lisibles.
 //
 // LA FREQUENCE (VarFrequence) SE LIT HORS DU MATCH EVALUE : un point observe dans ce match ne
 // peut pas servir a le predire lui-meme.
@@ -52,7 +51,6 @@ const (
 	VarDistanceMort
 	VarFrequence
 	VarBarycentreEnnemi
-	VarVisibles
 	NbVariables
 )
 
@@ -64,7 +62,6 @@ var NomsVariables = [NbVariables]string{
 	"distance_au_lieu_de_la_mort_10m",
 	"frequence_log",
 	"distance_au_barycentre_ennemi_10m",
-	"ennemis_a_vue_40m",
 }
 
 // Seuils du modele.
@@ -78,8 +75,6 @@ const (
 	DistanceMaxMortM = 60.0
 	// RayonEnnemisProchesM : le rayon du compte d'ennemis proches.
 	RayonEnnemisProchesM = 20.0
-	// PorteeVueM : au-dela, un ennemi n'est pas compte parmi ceux qui voient le point.
-	PorteeVueM = 40.0
 	// DizaineM convertit des metres en unites de variable.
 	DizaineM = 10.0
 )
@@ -168,23 +163,16 @@ func PointsCandidats(evts []EvenementReapparition) []Candidat {
 	return out
 }
 
-// Visibilite dit si un ennemi (position du pied) voit une cible (position du pied) : la
-// geometrie de la carte, quand on l'a. Nil : la septieme variable vaut zero.
-type Visibilite func(ennemi, cible Point3) bool
-
 // Variables calcule les variables d'un point candidat pour un evenement. `freq` est le compte de
 // reapparitions vues en ce point HORS du match de l'evenement.
-func Variables(e EvenementReapparition, c Candidat, freq int, vue Visibilite) [NbVariables]float64 {
-	minE, minM, proches, visibles := DistanceMaxM, DistanceMaxM, 0.0, 0.0
+func Variables(e EvenementReapparition, c Candidat, freq int) [NbVariables]float64 {
+	minE, minM, proches := DistanceMaxM, DistanceMaxM, 0.0
 	var cx, cy, cz float64
 	for _, p := range e.Ennemis {
 		d := p.Distance(c.Pos)
 		minE = math.Min(minE, d)
 		if d < RayonEnnemisProchesM {
 			proches++
-		}
-		if vue != nil && d <= PorteeVueM && vue(p, c.Pos) {
-			visibles++
 		}
 		cx, cy, cz = cx+p.X, cy+p.Y, cz+p.Z
 	}
@@ -202,7 +190,6 @@ func Variables(e EvenementReapparition, c Candidat, freq int, vue Visibilite) [N
 	v[VarDistanceMort] = math.Min(e.Mort.Distance(c.Pos), DistanceMaxMortM) / DizaineM
 	v[VarFrequence] = math.Log1p(float64(freq))
 	v[VarBarycentreEnnemi] = bary
-	v[VarVisibles] = visibles
 	return v
 }
 

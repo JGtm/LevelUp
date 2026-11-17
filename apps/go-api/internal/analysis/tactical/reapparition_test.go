@@ -40,7 +40,7 @@ func TestVariables_CasConstruit(t *testing.T) {
 	c := Candidat{Pos: Point3{0, 0, 0}}
 	e := evtTest("m", c.Pos, Point3{30, 0, 0},
 		[]Point3{{10, 0, 0}, {0, 30, 0}}, []Point3{{0, 0, 5}})
-	v := Variables(e, c, 3, nil)
+	v := Variables(e, c, 3)
 	attendu := [NbVariables]float64{
 		1,                      // ennemi le plus proche : 10 m
 		1,                      // un seul ennemi a moins de 20 m
@@ -48,7 +48,6 @@ func TestVariables_CasConstruit(t *testing.T) {
 		3,                      // mort a 30 m
 		math.Log1p(3),          // frequence
 		math.Hypot(5, 15) / 10, // barycentre (5, 15, 0)
-		0,                      // pas de geometrie
 	}
 	for j := range v {
 		if math.Abs(v[j]-attendu[j]) > 1e-9 {
@@ -59,21 +58,12 @@ func TestVariables_CasConstruit(t *testing.T) {
 
 func TestVariables_PlafondsEtAbsences(t *testing.T) {
 	c := Candidat{Pos: Point3{}}
-	v := Variables(evtTest("m", c.Pos, Point3{500, 0, 0}, []Point3{{300, 0, 0}}, nil), c, 0, nil)
+	v := Variables(evtTest("m", c.Pos, Point3{500, 0, 0}, []Point3{{300, 0, 0}}, nil), c, 0)
 	if v[VarEnnemiProche] != DistanceMaxM/DizaineM || v[VarEquipierProche] != DistanceMaxM/DizaineM {
 		t.Errorf("plafond de 40 m attendu : %v", v)
 	}
 	if v[VarDistanceMort] != DistanceMaxMortM/DizaineM || v[VarBarycentreEnnemi] != DistanceMaxMortM/DizaineM {
 		t.Errorf("plafond de 60 m attendu : %v", v)
-	}
-}
-
-func TestVariables_Visibles(t *testing.T) {
-	c := Candidat{Pos: Point3{}}
-	e := evtTest("m", c.Pos, c.Pos, []Point3{{10, 0, 0}, {20, 0, 0}, {50, 0, 0}}, nil)
-	vue := func(en, _ Point3) bool { return en.X != 20 }
-	if got := Variables(e, c, 0, vue)[VarVisibles]; got != 1 {
-		t.Errorf("seul l'ennemi a 10 m voit le point (20 m bloque, 50 m hors portee), obtenu %v", got)
 	}
 }
 
@@ -110,9 +100,6 @@ func TestAjuster_RetrouveLaPreferenceEtEstDeterministe(t *testing.T) {
 	w2 := Ajuster(echs, tout, ToutesLesVariables)
 	if w1 != w2 {
 		t.Fatalf("ajustement non deterministe : %v puis %v", w1, w2)
-	}
-	if w1[VarVisibles] != 0 {
-		t.Errorf("la septieme variable est hors masque, poids %v", w1[VarVisibles])
 	}
 	// Les quatre points sont reels a egalite : aucune variable ne doit separer, la
 	// vraisemblance est deja maximale a poids nuls pour une distribution uniforme.
@@ -173,37 +160,8 @@ func TestPliDuMatch_StableEtBorne(t *testing.T) {
 	}
 }
 
-func TestObstacles_Voit(t *testing.T) {
-	mur := Boite{X0: 9, Y0: -5, X1: 11, Y1: 5, ZBas: 0, ZHaut: 4}
-	o := NouveauxObstacles([]Boite{mur})
-	a, b := Point3{0, 0, 0}, Point3{20, 0, 0}
-	if o.Voit(a, b) {
-		t.Error("un mur de 4 m entre les deux bloque la vue")
-	}
-	if !o.Voit(a, Point3{0, 20, 0}) {
-		t.Error("hors du mur, la vue est libre")
-	}
-	haut := NouveauxObstacles([]Boite{{X0: 9, Y0: -5, X1: 11, Y1: 5, ZBas: 3, ZHaut: 4}})
-	if !haut.Voit(a, b) {
-		t.Error("une boite au-dessus de la tete ne bloque pas")
-	}
-	// Une boite qui contient une extremite est ignoree (emprise alignee d'une piece tournee).
-	enferme := NouveauxObstacles([]Boite{{X0: -1, Y0: -1, X1: 1, Y1: 1, ZBas: -1, ZHaut: 3}})
-	if !enferme.Voit(a, b) {
-		t.Error("une boite qui enferme le point de depart est ignoree")
-	}
-	// Un mur plus bas que la cible : sous la ligne de vue (yeux 1,6 m, cible 1 m).
-	bas := NouveauxObstacles([]Boite{{X0: 9, Y0: -5, X1: 11, Y1: 5, ZBas: 0, ZHaut: 0.5}})
-	if !bas.Voit(a, b) {
-		t.Error("un muret de 0,5 m ne bloque pas la ligne des yeux au torse")
-	}
-	if o.NbBoites() != 1 || NouveauxObstacles([]Boite{{X0: 1, X1: 1}}).NbBoites() != 0 {
-		t.Error("une emprise vide n'est pas une boite")
-	}
-}
-
 func TestPoidsNommesEtPoidsDeFamille_AllerRetour(t *testing.T) {
-	w := [NbVariables]float64{1, -2, 3, 0.5, -0.25, 0, 0}
+	w := [NbVariables]float64{1, -2, 3, 0.5, -0.25, 0}
 	f := domain.PoidsFamille{Poids: PoidsNommes(w)}
 	if got := PoidsDeFamille(f); got != w {
 		t.Errorf("aller-retour = %v, attendu %v", got, w)

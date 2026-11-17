@@ -47,7 +47,7 @@ func reappAdverse(frame int, x, y float64, equipiers int) domain.TacticalRasterS
 	}
 	inst = append(inst, domain.TacticalRasterVivant{Equipe: 1, X: 60, Y: 60})
 	return domain.TacticalRasterSpawn{
-		Frame: frame, X: x, Y: y, Reapparition: true, Source: "film",
+		Frame: frame, X: x, Y: y, Reapparition: true,
 		Mort: &domain.TacticalRasterMort{Frame: frame - 100}, Instantane: inst,
 	}
 }
@@ -108,6 +108,19 @@ func lireAdverses(svc *TacticalService, ids []string, vol int) (domain.TacticalR
 		})
 }
 
+// Les comptes de matchs de la lecture (journalises, plus servis) : un match sans sidecar n'est dans aucun.
+func TestObservationsAdverses_ComptesDeMatchs(t *testing.T) {
+	univ, store := matchsAssassin(5, 4, 3)
+	svc, _ := svcAdverses(t, univ, store)
+	if obs, matchs := svc.observationsAdverses(univ, store.sidecars); matchs.retenus != 5 || matchs.sansEquipe != 0 || len(obs) != 35 {
+		t.Errorf("comptes = %+v (%d observations), attendu 5 retenus, 0 sans equipe, 35 observations", matchs, len(obs))
+	}
+	delete(store.sidecars, "m1")
+	if _, matchs := svc.observationsAdverses(univ, store.sidecars); matchs.retenus != 4 {
+		t.Errorf("un match sans sidecar n'est pas mesure : %+v", matchs)
+	}
+}
+
 func TestReapparitionsAdverses_LectureServie(t *testing.T) {
 	univ, store := matchsAssassin(5, 4, 3) // par match : 4 reapparitions « Hall tenu », 3 sans
 	svc, _ := svcAdverses(t, univ, store)
@@ -118,11 +131,8 @@ func TestReapparitionsAdverses_LectureServie(t *testing.T) {
 	if out.Etat != domain.TacticalEtatServie || out.Raison != "" {
 		t.Fatalf("etat = %q (%q), attendu servie : %+v", out.Etat, out.Raison, out)
 	}
-	if out.Zone.VolumeIndex != volHall || out.Zone.Nom != "Hall" {
+	if out.Zone.Nom != "Hall" {
 		t.Errorf("zone = %+v", out.Zone)
-	}
-	if out.MatchsFiltres != 5 || out.MatchsRetenus != 5 || out.MatchsSansEquipe != 0 {
-		t.Errorf("comptes de matchs = %+v", out)
 	}
 	if out.Reference.Reapparitions != 35 || !out.Reference.Suffisante {
 		t.Errorf("reference = %+v, attendu 35 reapparitions (la premiere vie n'en est pas une)", out.Reference)
@@ -195,8 +205,7 @@ func TestReapparitionsAdverses_AucunFiltreParMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.MatchsFiltres != 6 || out.MatchsRetenus != 6 || out.Reference.Reapparitions != 42 ||
-		out.Etat != domain.TacticalEtatServie {
+	if out.Reference.Reapparitions != 42 || out.Etat != domain.TacticalEtatServie {
 		t.Errorf("reponse = %+v", out)
 	}
 }
@@ -251,7 +260,7 @@ func TestReapparitionsAdverses_RaisonsDEtatVide(t *testing.T) {
 	univ, _ := matchsAssassin(5, 4, 3)
 	svc, _ := svcAdverses(t, univ, &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{}})
 	out, err := lireAdverses(svc, idsDe(5), volHall)
-	if err != nil || out.Raison != domain.TacticalRaisonAucunMatchMesure || out.MatchsFiltres != 5 {
+	if err != nil || out.Raison != domain.TacticalRaisonAucunMatchMesure {
 		t.Errorf("sans sidecar : (%+v, %v)", out, err)
 	}
 
@@ -262,8 +271,11 @@ func TestReapparitionsAdverses_RaisonsDEtatVide(t *testing.T) {
 	}
 	svc2, _ := svcAdverses(t, univ2, store2)
 	out2, _ := lireAdverses(svc2, idsDe(5), volHall)
-	if out2.Raison != domain.TacticalRaisonEquipeInconnue || out2.MatchsSansEquipe != 5 || out2.MatchsRetenus != 0 {
+	if out2.Raison != domain.TacticalRaisonEquipeInconnue {
 		t.Errorf("equipe inconnue : %+v", out2)
+	}
+	if _, matchs := svc2.observationsAdverses(univ2, store2.sidecars); matchs.sansEquipe != 5 || matchs.retenus != 0 {
+		t.Errorf("comptes de matchs sans equipe = %+v, attendu 5 sans equipe et 0 retenu", matchs)
 	}
 
 	// Une zone sans forme ne contient personne.
@@ -292,15 +304,21 @@ func TestReapparitionsAdverses_QuiCompte(t *testing.T) {
 	sc.Joueurs = append(sc.Joueurs, domain.TacticalRasterJoueur{XUID: tsAdv2, Equipe: -1,
 		Spawns: []domain.TacticalRasterSpawn{reappAdverse(1700, 25, 5, 2)}}) // equipe inconnue
 
-	obs, connue := reapparitionsAdversesDuMatch("m1", sc, tsMoi)
-	if !connue || len(obs) != 1 {
-		t.Fatalf("(%d observations, equipe connue %v), attendu 1 (la seule reapparition adverse)", len(obs), connue)
+	univ := universVariantes(map[string]string{"m1": "Slayer:Arena"})
+	sidecars := map[string]*domain.TacticalRasterSidecar{"m1": sc}
+	svc, _ := svcAdverses(t, univ, &mockRasterStore{sidecars: sidecars})
+	obs, matchs := svc.observationsAdverses(univ, sidecars)
+	if matchs.retenus != 1 || len(obs) != 1 {
+		t.Fatalf("(%d observations, %+v), attendu 1 (la seule reapparition adverse)", len(obs), matchs)
 	}
 	if obs[0].EquipeActive != 0 || len(obs[0].Instantane) != 3 {
 		t.Errorf("observation = %+v", obs[0])
 	}
-	if _, connue := reapparitionsAdversesDuMatch("m1", sc, "inconnu"); connue {
-		t.Error("un joueur absent du sidecar n'a pas d'equipe connue")
+	// La regle elle-meme se teste sur les types d'analysis (tactical.TestObservationsAdversesDuMatch_QuiCompte) ;
+	// ici, la traduction du sidecar : un joueur absent n'a pas d'equipe connue.
+	inconnu := NewTacticalService(&mockTacticalRepo{univ: univ}, capsAvecReapparitions(), "inconnu")
+	if _, matchs := inconnu.observationsAdverses(univ, sidecars); matchs.sansEquipe != 1 || matchs.retenus != 0 {
+		t.Errorf("un joueur absent du sidecar n'a pas d'equipe connue : %+v", matchs)
 	}
 }
 
@@ -312,7 +330,7 @@ func TestReapparitionsAdverses_LeperimetreEstUneListeBlanche(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.MatchsFiltres != 3 || out.MatchsRetenus != 3 || out.Reference.Reapparitions != 21 {
+	if out.Reference.Reapparitions != 21 {
 		t.Errorf("reponse = %+v", out)
 	}
 }

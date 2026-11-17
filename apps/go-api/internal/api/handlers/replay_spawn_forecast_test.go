@@ -22,9 +22,8 @@ func previsionMock(mock *mockReplayService) func(context.Context, string) (port.
 func TestReplaySpawnForecast_Servie(t *testing.T) {
 	zone := 3
 	mock := &mockReplayService{forecast: replaydoc.SpawnForecast{
-		Status: replaydoc.SpawnForecastStatusReady, Family: "assassin", Model: "assassin",
-		MatchesOnMap: 12, Candidates: 80, SampleStepMs: 1000,
-		Zones: []replaydoc.SpawnForecastZone{{VolumeIndex: 3, Name: "Fer à cheval"}},
+		Status: replaydoc.SpawnForecastStatusReady,
+		Zones:  []replaydoc.SpawnForecastZone{{VolumeIndex: 3, Name: "Fer à cheval"}},
 		Deaths: []replaydoc.SpawnForecastDeath{{
 			XUID: "xuid(1)", DeathFrame: 100, RespawnFrame: 400, ActualZone: &zone,
 			Samples: []replaydoc.SpawnForecastSample{{Frame: 100, Zones: []replaydoc.SpawnForecastZoneChance{{Zone: 3, P: 0.6}}}},

@@ -37,7 +37,7 @@ const artefactImmobile = `{
 
 // TestProjeterRasterTactique_ComptesExacts — la projection nominale.
 func TestProjeterRasterTactique_ComptesExacts(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "artefact.json", artefactImmobile), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestProjeterRasterTactique_SchemaAncien(t *testing.T) {
          "points":[{"t":0,"x":0.25,"y":0.25},{"t":20,"x":0.25,"y":0.25}]}
       ]
     }`
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "v20.json", v20), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "v20.json", v20), true)
 	if err != nil {
 		t.Fatalf("projection d'un artefact de schema 20: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestProjeterRasterTactique_SchemaAncien(t *testing.T) {
 func TestProjeterRasterTactique_SansPisteNommee(t *testing.T) {
 	const anonyme = `{"schemaVersion":39,"matchId":"abc","frameCount":21,"frameIntervalMs":100,
       "tracks":[{"slot":1,"team":-1,"points":[{"t":0,"x":1,"y":1},{"t":20,"x":1,"y":1}]}]}`
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "anonyme.json", anonyme), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "anonyme.json", anonyme), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -149,15 +149,15 @@ func TestProjeterRasterTactique_SansPisteNommee(t *testing.T) {
 // TestProjeterRasterTactique_Refus — les deux entrees qui ne peuvent rien produire, et qui
 // le DISENT (elles comptent en echec, jamais en silence).
 func TestProjeterRasterTactique_Refus(t *testing.T) {
-	if _, err := ProjeterRasterTactique(filepath.Join(t.TempDir(), "absent.json"), true); err == nil {
+	if _, err := ProjeterRasterTactique(t.Context(), filepath.Join(t.TempDir(), "absent.json"), true); err == nil {
 		t.Fatal("artefact absent : attendu une erreur")
 	}
-	if _, err := ProjeterRasterTactique(ecrireFichier(t, "casse.json", `{"schemaVersion":`), true); err == nil {
+	if _, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "casse.json", `{"schemaVersion":`), true); err == nil {
 		t.Fatal("artefact illisible : attendu une erreur")
 	}
 	// Sans matchId, le raster n'a pas de cle : le plancher de rarete se compte en matchs
 	// DISTINCTS, et un raster anonyme ne pourrait jamais y entrer.
-	if _, err := ProjeterRasterTactique(ecrireFichier(t, "sansid.json", `{"schemaVersion":39,"tracks":[]}`), true); err == nil {
+	if _, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "sansid.json", `{"schemaVersion":39,"tracks":[]}`), true); err == nil {
 		t.Fatal("artefact sans matchId : attendu une erreur")
 	}
 }
@@ -165,7 +165,7 @@ func TestProjeterRasterTactique_Refus(t *testing.T) {
 // TestEcrireSidecarRaster_CreeLeDossierEtRelit — le rattrapage tourne sur des postes ou
 // aucun sidecar n'a jamais ete ecrit : le dossier doit naitre, et le fichier se relire.
 func TestEcrireSidecarRaster_CreeLeDossierEtRelit(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "artefact.json", artefactImmobile), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -269,7 +269,7 @@ const artefactAvecVehicule = `{
 // Sans le calque des episodes, ce match sortait avec les seuls echantillons du bipede : le
 // trajet en vehicule etait perdu en silence, et le match comptait pourtant comme MESURE.
 func TestProjeterRasterTactique_TempsEnVehicule(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "vehicule.json", artefactAvecVehicule), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "vehicule.json", artefactAvecVehicule), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestProjeterRasterTactique_VehiculeSansOccupantNomme(t *testing.T) {
       "vehicles":[{"slot":771,"gen":1,"t0":0,"t1":50,"t1max":50,"end":"unknown",
         "samples":[{"t":10,"x":30.25,"y":0.25}],
         "rides":[{"t0":10,"t1":50,"slot":1,"src":"gap"}]}]}`
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "anon.json", anonyme), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "anon.json", anonyme), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -335,7 +335,7 @@ func TestProjeterRasterTactique_VehiculeSansOccupantNomme(t *testing.T) {
 // ou un producteur autre que ce JSON alimenterait le sidecar, la mesure serait vraie sans
 // rien changer. Ce test-ci FIGE le fait, pour qu'il ne soit pas redecouvert comme un bug.
 func TestProjeterRasterTactique_PointsIgnoresEstStructurellementNul(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "artefact.json", artefactImmobile), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -348,7 +348,7 @@ func TestProjeterRasterTactique_PointsIgnoresEstStructurellementNul(t *testing.T
 	const horsBornes = `{"schemaVersion":39,"matchId":"abc","frameCount":21,"frameIntervalMs":100,
       "tracks":[{"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":20,
         "points":[{"t":0,"x":1e39,"y":0.25}]}]}`
-	if _, err := ProjeterRasterTactique(ecrireFichier(t, "hb.json", horsBornes), true); err == nil {
+	if _, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "hb.json", horsBornes), true); err == nil {
 		t.Fatal("une coordonnee hors bornes float32 doit faire echouer la projection entiere")
 	}
 }
@@ -362,7 +362,7 @@ func TestSidecarSchemaVersion_SuitLaFormule(t *testing.T) {
 		t.Fatalf("schema du sidecar = %d : l'ajout du temps en vehicule change la formule, "+
 			"la version doit avoir bouge", domain.TacticalRasterSchemaVersion)
 	}
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactImmobile), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "artefact.json", artefactImmobile), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -397,7 +397,7 @@ const artefactMortsEtRoutes = `{
 
 // TestProjeterRasterTactique_SpawnDeDepart — seule la PREMIERE vie porte le drapeau.
 func TestProjeterRasterTactique_SpawnDeDepart(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "spawn.json", artefactMortsEtRoutes), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "spawn.json", artefactMortsEtRoutes), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestProjeterRasterTactique_RouteBorneeA15Secondes(t *testing.T) {
 	corps := `{"schemaVersion":39,"matchId":"route001","frameCount":201,"frameIntervalMs":100,
       "tracks":[{"slot":1,"team":-1,"xuid":"111","startFrame":0,"endFrame":200,
         "points":[` + strings.Join(pts, ",") + `]}]}`
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "route.json", corps), true)
+	s, err := ProjeterRasterTactique(t.Context(), ecrireFichier(t, "route.json", corps), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}

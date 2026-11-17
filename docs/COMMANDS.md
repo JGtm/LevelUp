@@ -333,7 +333,9 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
 #    Schema 7 adds the team, the height and, per respawn, the death point and the snapshot of the
 #    other living players: sidecars of an older schema are rewritten from their artifact (no film
-#    read). Check: grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
+#    read). Schema 8 drops the decision source and the per-source counts: a respawn is only what the
+#    film reading decides, and a match without any film reading has none.
+#    Check: grep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 
 # 6. Respawn forecast model (capability film.spawn_forecast). Reads the replay ARTIFACTS one at a
@@ -347,8 +349,8 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 #    The command that reproduces the shipped weights file (run from the repo root, LEVELUP_DATA_DIR
 #    pointing at the data folder that holds the replay artifacts):
 #      levelup spawn-model fit --matchs-min-carte 3
-go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
-go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--matchs-min-carte N] [--famille F --sortie FILE] [--limit N --sortie FILE] [--title S]
+go run ./cmd/levelup spawn-model evaluate [--sections m3,m4|poids] [--famille F] [--matchs-min-carte N] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model fit [[--matchs-min-carte N] [--famille F --sortie FILE] [--limit N --sortie FILE] [--title S]
 ```
 
 `backfill-replay` never cooks matches of a mode the replay does not handle (PvE Firefight —

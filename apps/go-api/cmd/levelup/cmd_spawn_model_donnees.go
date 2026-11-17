@@ -4,7 +4,7 @@ package main
 //
 // Chaque artefact est lu, projete vers ses evenements de reapparition (compacts : quelques
 // positions par evenement), puis relache : rien ne survit d'un match a l'autre que les
-// evenements et la geometrie de chaque carte. Le balayage du parc entier ne charge jamais les
+// evenements. Le balayage du parc entier ne charge jamais les
 // artefacts ensemble.
 //
 // Chaque reapparition porte DEUX instantanes des autres joueurs : a la reapparition, et a la
@@ -13,7 +13,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"math"
 	"time"
 
 	"levelup/go-api/internal/analysis/tactical"
@@ -32,19 +31,18 @@ type evenementDouble struct {
 // bilanLecture compte ce que la lecture a vu et ecarte, pour qu'aucun ecart ne soit muet.
 type bilanLecture struct {
 	artefacts, sansRegistre, horsFamille, lus, echecs int
-	reapFilm, reapRepli, debutsManche                 int
-	sansEquipe, nonFinis                              int
-	parFamille                                        map[string]int
-	// accord : les deux definitions d'une reapparition comparees sur les documents lus au film.
-	accord accordDefinitions
+	// reapparitions : celles que la lecture du film decide ; sansLectureFilm : documents qui n'en portent
+	// aucune lecture, donc sans reapparition.
+	reapparitions, sansLectureFilm int
+	sansEquipe, nonFinis           int
+	parFamille                     map[string]int
 	// comptesSansJoueur : comptes a rebours qu'aucun xuid ne rattache (bots, index inconnu).
 	comptesSansJoueur int
 }
 
 // jeuReapparitions : tout ce que les mesures lisent.
 type jeuReapparitions struct {
-	evts      []evenementDouble
-	obstacles map[string]*tactical.Obstacles
+	evts []evenementDouble
 	// noms : identifiant de carte -> nom, tel que le registre le donne.
 	noms  map[string]string
 	bilan bilanLecture
@@ -54,7 +52,6 @@ type jeuReapparitions struct {
 type optionsLecture struct {
 	titleSlug  string
 	familles   map[string]bool
-	obstacles  bool
 	limite     int
 	registre   map[string]infoMatch
 	artefactsS []string
@@ -63,7 +60,7 @@ type optionsLecture struct {
 // lireLeParc parcourt les artefacts demandes et rend les evenements. Un artefact en echec est
 // journalise et compte, jamais fatal.
 func lireLeParc(ctx context.Context, cfg *config.AppConfig, o optionsLecture) *jeuReapparitions {
-	jeu := &jeuReapparitions{obstacles: map[string]*tactical.Obstacles{}, noms: map[string]string{}}
+	jeu := &jeuReapparitions{noms: map[string]string{}}
 	jeu.bilan.parFamille = map[string]int{}
 	jeu.bilan.artefacts = len(o.artefactsS)
 	pr := cfg.PathResolver()
@@ -89,47 +86,29 @@ func lireLeParc(ctx context.Context, cfg *config.AppConfig, o optionsLecture) *j
 		}
 		jeu.bilan.lus++
 		jeu.bilan.parFamille[info.famille]++
-		jeu.absorber(doc, info, o.obstacles)
+		jeu.absorber(doc, info)
 		if jeu.bilan.lus%200 == 0 {
 			slog.InfoContext(ctx, "spawn-model : lecture du parc",
 				"lus", jeu.bilan.lus, "sur", len(o.artefactsS), "rang", i, "evenements", len(jeu.evts),
 				"duration", time.Since(debut).Round(time.Second))
 		}
 	}
-	boites := 0
-	for _, ob := range jeu.obstacles {
-		boites += ob.NbBoites()
-	}
 	slog.InfoContext(ctx, "spawn-model : lecture terminee", "lus", jeu.bilan.lus, "evenements", len(jeu.evts),
-		"cartes_avec_geometrie", len(jeu.obstacles), "boites", boites, "duration", time.Since(debut).Round(time.Second))
+		"duration", time.Since(debut).Round(time.Second))
 	return jeu
 }
 
-// absorber projette un document vers ses evenements et, si on le demande, retient la
-// geometrie de sa carte la premiere fois qu'elle est vue.
-func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch, avecObstacles bool) {
+// absorber projette un document vers ses evenements.
+func (j *jeuReapparitions) absorber(doc *replay.ReplayDocument, info infoMatch) {
 	if j.noms[info.carteID] == "" {
 		j.noms[info.carteID] = info.carteNom
 	}
-	if avecObstacles && j.obstacles[info.carteID] == nil && len(doc.Structure) > 0 {
-		j.obstacles[info.carteID] = obstaclesDuDocument(doc)
-	}
 	entree := replayartifacts.EntreeOccupationDeLArtefact(doc)
 	j.bilan.comptesSansJoueur += entree.ComptesSansJoueur
-	j.bilan.accord.comparer(entree)
-	j.evenementsDuMatch(entree, info)
-}
-
-// obstaclesDuDocument indexe la structure d'un document.
-func obstaclesDuDocument(doc *replay.ReplayDocument) *tactical.Obstacles {
-	boites := make([]tactical.Boite, 0, len(doc.Structure))
-	for _, s := range doc.Structure {
-		boites = append(boites, tactical.Boite{
-			X0: float64(s.X0), Y0: float64(s.Y0), X1: float64(s.X1), Y1: float64(s.Y1),
-			ZHaut: float64(s.Z), ZBas: float64(s.ZB),
-		})
+	if !tactical.LectureDuFilm(entree) {
+		j.bilan.sansLectureFilm++
 	}
-	return tactical.NouveauxObstacles(boites)
+	j.evenementsDuMatch(entree, info)
 }
 
 // evenementsDuMatch ajoute les reapparitions d'un match.
@@ -141,17 +120,10 @@ func (j *jeuReapparitions) evenementsDuMatch(entree tactical.EntreeOccupation, i
 		if !ok {
 			continue
 		}
-		if s.DebutDeManche {
-			j.bilan.debutsManche++
-		}
 		if !s.Reapparition || s.Mort == nil {
 			continue
 		}
-		if s.Source == tactical.SourceFilm {
-			j.bilan.reapFilm++
-		} else {
-			j.bilan.reapRepli++
-		}
+		j.bilan.reapparitions++
 		equipe := p.Equipe
 		if equipe < 0 {
 			equipe = ix.EquipeDuJoueur(p.XUID)
@@ -162,43 +134,21 @@ func (j *jeuReapparitions) evenementsDuMatch(entree tactical.EntreeOccupation, i
 			j.bilan.sansEquipe++
 			continue
 		}
-		if !fini(reel) || !fini(mort) {
+		if !reel.Fini() || !mort.Fini() {
 			j.bilan.nonFinis++
 			continue
 		}
 		j.evts = append(j.evts, evenementDouble{
 			famille: info.famille,
-			reap:    evenementDe(info, reel, mort, equipe, s.Instantane),
-			mort:    evenementDe(info, reel, mort, equipe, ix.Vivants(p.XUID, s.Mort.Frame)),
+			reap:    info.evenement(tactical.EvenementAuInstant(s.Instantane, equipe, mort), reel),
+			mort:    info.evenement(tactical.EvenementAuInstant(ix.Vivants(p.XUID, s.Mort.Frame), equipe, mort), reel),
 		})
 	}
 }
 
-func fini(p tactical.Point3) bool {
-	for _, v := range []float64{p.X, p.Y, p.Z} {
-		if math.IsNaN(v) || math.IsInf(v, 0) {
-			return false
-		}
-	}
-	return true
-}
-
-// evenementDe separe un instantane en equipiers et adversaires du point de vue de `equipe` ; un
-// joueur dont l'equipe est inconnue n'est compte dans aucun des deux.
-func evenementDe(info infoMatch, reel, mort tactical.Point3, equipe int, vivants []tactical.Vivant) tactical.EvenementReapparition {
-	e := tactical.EvenementReapparition{MatchID: info.matchID, CarteID: info.carteID, Reel: reel, Mort: mort}
-	for _, v := range vivants {
-		p := tactical.Point3{X: v.X, Y: v.Y, Z: v.Z}
-		if !fini(p) || v.Equipe < 0 {
-			// Une equipe inconnue n'est ni coequipier ni adversaire.
-			continue
-		}
-		if v.Equipe == equipe {
-			e.Equipiers = append(e.Equipiers, p)
-		} else {
-			e.Ennemis = append(e.Ennemis, p)
-		}
-	}
+// evenement rattache a un instantane le match, la carte et le point reel de la reapparition.
+func (info infoMatch) evenement(e tactical.EvenementReapparition, reel tactical.Point3) tactical.EvenementReapparition {
+	e.MatchID, e.CarteID, e.Reel = info.matchID, info.carteID, reel
 	return e
 }
 

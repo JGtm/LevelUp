@@ -31,7 +31,7 @@ import (
 func (s *TacticalService) ReapparitionsAdverses(ctx context.Context,
 	req domain.TacticalReapparitionsAdversesRequest) (domain.TacticalReapparitionsAdverses, error) {
 	out := domain.TacticalReapparitionsAdverses{
-		MapID: req.MapID, Etat: domain.TacticalEtatVide,
+		Etat: domain.TacticalEtatVide,
 		Plancher: domain.TacticalPlancherReapparitions{
 			Matchs:           domain.ReapparitionsAdversesPlancherMatchs,
 			Reapparitions:    domain.ReapparitionsAdversesPlancherReapparitions,
@@ -69,18 +69,19 @@ func (s *TacticalService) ReapparitionsAdverses(ctx context.Context,
 		return out, domain.ErrTacticalZoneInconnue
 	}
 	loc := i18n.FromContext(ctx)
-	out.Zone = domain.TacticalZoneChoisie{VolumeIndex: choisie.VolumeIndex, Nom: choisie.Nom.PickOptional(loc)}
-	out.MatchsFiltres = len(univers.Matchs)
+	out.Zone = domain.TacticalZoneChoisie{Nom: choisie.Nom.PickOptional(loc)}
 
 	sidecars, _ := s.chargerSidecars(ctx, univers, req.MapID)
-	obs := s.observationsAdverses(&out, univers, sidecars)
+	obs, matchs := s.observationsAdverses(univers, sidecars)
 	out.Reference, out.Tenue = tactical.LireReapparitionsAdverses(loc, obs, choisie, zonesPures(zones))
-	s.verdictReapparitionsAdverses(&out, len(sidecars), tactical.ZoneAUneForme(choisie))
+	s.verdictReapparitionsAdverses(&out, len(sidecars), matchs.retenus, tactical.ZoneAUneForme(choisie))
 	s.logger.InfoContext(ctx, "tactique: reapparitions adverses",
 		"player", s.xuid, "map_id", req.MapID, "volume_index", req.VolumeIndex, "etat", out.Etat, "raison", out.Raison,
-		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
-		"matchs_sans_equipe", out.MatchsSansEquipe,
-		"reference", out.Reference.Reapparitions, "tenue", out.Tenue.Reapparitions, "duration", time.Since(debut))
+		"matchs_filtres", len(univers.Matchs), "matchs_retenus", matchs.retenus,
+		"matchs_sans_equipe", matchs.sansEquipe,
+		"reference", out.Reference.Reapparitions, "tenue", out.Tenue.Reapparitions,
+		"sans_zone_reference", out.Reference.HorsZone(), "sans_zone_tenue", out.Tenue.HorsZone(),
+		"duration", time.Since(debut))
 	return out, nil
 }
 
@@ -113,37 +114,46 @@ func zoneDuVolume(zones []tactical.ZoneNommee, volume int) (tactical.ZoneNommee,
 	return tactical.ZoneNommee{}, false
 }
 
+// comptesAdverses : les matchs de la lecture. retenus nourrissent la lecture (sidecar exploitable, equipe
+// du joueur nommee) ; sansEquipe sont mesures mais sans equipe nommee pour le joueur. Un match sans
+// sidecar n'est pas mesure : il n'est dans aucun des deux.
+type comptesAdverses struct{ retenus, sansEquipe int }
+
 // observationsAdverses rassemble les reapparitions adverses des matchs qui peuvent servir la lecture et
-// pose les comptes de matchs de la reponse. Un match sans sidecar n'est pas mesure (ecart entre
-// matchs_filtres et la somme des deux comptes).
-func (s *TacticalService) observationsAdverses(out *domain.TacticalReapparitionsAdverses,
-	univers domain.TacticalUnivers, sidecars map[string]*domain.TacticalRasterSidecar) []tactical.ObservationAdverse {
+// compte les matchs retenus et ceux sans equipe.
+func (s *TacticalService) observationsAdverses(univers domain.TacticalUnivers,
+	sidecars map[string]*domain.TacticalRasterSidecar) ([]tactical.ObservationAdverse, comptesAdverses) {
 	var obs []tactical.ObservationAdverse
+	var matchs comptesAdverses
 	for _, m := range univers.Matchs {
 		sc := sidecars[m.MatchID]
 		if sc == nil {
 			continue
 		}
-		du, equipeConnue := reapparitionsAdversesDuMatch(m.MatchID, sc, s.xuid)
+		joueurs := make([]tactical.JoueurLu, 0, len(sc.Joueurs))
+		for _, j := range sc.Joueurs {
+			joueurs = append(joueurs, joueurLu(j, true))
+		}
+		du, equipeConnue := tactical.ObservationsAdversesDuMatch(m.MatchID, joueurs, s.xuid)
 		if !equipeConnue {
-			out.MatchsSansEquipe++
+			matchs.sansEquipe++
 			continue
 		}
-		out.MatchsRetenus++
+		matchs.retenus++
 		obs = append(obs, du...)
 	}
-	return obs
+	return obs, matchs
 }
 
 // verdictReapparitionsAdverses pose l'etat de la reponse : servie quand la repartition « zone tenue »
 // est lisible, sinon vide avec la raison la plus precise. `mesures` est le nombre de matchs au sidecar
-// exploitable.
+// exploitable, `retenus` celui des matchs qui nourrissent la lecture.
 func (s *TacticalService) verdictReapparitionsAdverses(out *domain.TacticalReapparitionsAdverses,
-	mesures int, zoneAForme bool) {
+	mesures, retenus int, zoneAForme bool) {
 	switch {
 	case mesures == 0:
 		out.Raison = domain.TacticalRaisonAucunMatchMesure
-	case out.MatchsRetenus == 0:
+	case retenus == 0:
 		out.Raison = domain.TacticalRaisonEquipeInconnue
 	case !zoneAForme:
 		out.Raison = domain.TacticalRaisonZoneSansForme

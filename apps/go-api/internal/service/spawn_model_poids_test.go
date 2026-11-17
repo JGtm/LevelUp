@@ -25,7 +25,7 @@ func TestChargerPoidsReapparition(t *testing.T) {
 		path    string
 		attendu bool
 	}{
-		{"valide", ecrire("ok.json", `{"revision":1,"date":"2026-11-15","familles":{"tous":{"poids":{"frequence_log":0.5}}}}`), true},
+		{"valide", ecrire("ok.json", `{"revision":2,"date":"2026-11-15","familles":{"tous":{"poids":{"frequence_log":0.5}}}}`), true},
 		{"absent", filepath.Join(dir, "absent.json"), false},
 		{"illisible", ecrire("mauvais.json", `{`), false},
 		{"autre revision", ecrire("rev.json", `{"revision":99}`), false},

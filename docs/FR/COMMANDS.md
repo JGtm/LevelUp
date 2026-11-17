@@ -345,7 +345,9 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
 #    Le schéma 7 ajoute l'équipe, la hauteur et, par réapparition, le lieu de la mort et l'instantané
 #    des autres joueurs vivants : les sidecars d'un schéma plus ancien sont réécrits depuis leur
-#    artefact (aucun film relu). Contrôle : grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
+#    artefact (aucun film relu). Le schéma 8 retire la source de la décision et les comptes par source :
+#    une réapparition est ce que la lecture du film décide, et un match sans lecture du film n'en a aucune.
+#    Contrôle : grep -l '"schema_version":8' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 
 # 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu
@@ -359,8 +361,8 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 #    La commande qui reproduit le fichier de poids livré (depuis la racine du dépôt, LEVELUP_DATA_DIR
 #    sur le dossier de données qui porte les artefacts de rejeu) :
 #      levelup spawn-model fit --matchs-min-carte 3
-go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
-go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--matchs-min-carte N] [--famille F --sortie FICHIER] [--limit N --sortie FICHIER] [--title S]
+go run ./cmd/levelup spawn-model evaluate [--sections m3,m4|poids] [--famille F] [--matchs-min-carte N] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model fit [[--matchs-min-carte N] [--famille F --sortie FICHIER] [--limit N --sortie FICHIER] [--title S]
 ```
 
 `backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —
