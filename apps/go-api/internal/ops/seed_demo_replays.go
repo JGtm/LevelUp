@@ -224,14 +224,17 @@ func sameSize(a, b string) bool {
 // pruneDemoReplays retire les artefacts de la démo et les films du magasin qui ne sont plus
 // au manifeste : la démo et son magasin reflètent la liste figée, et rien d'autre (un
 // artefact orphelin ferait apparaître une icône de rejeu menant à un refus).
+//
+// SEULS LES REJEUX AU FORMAT COURANT (`titlePkg.IsReplayArtifactFile`) SONT CONSIDÉRÉS : un rejeu
+// brut `{short8}.json` d'une ancienne version, un en-tête, une marque de dérivation, un fichier
+// tactique (sous-dossier) ou un fichier étranger ne se supprime jamais d'ici.
 func pruneDemoReplays(ctx context.Context, layout titlePkg.DemoLayout, films, slug string, keep map[string]bool) {
 	entries, err := os.ReadDir(layout.ReplayArtifactsDir(slug))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		slog.ErrorContext(ctx, "seed-demo: dossier des artefacts démo illisible", "err", err)
 	}
 	for _, e := range entries {
-		short := titlePkg.ReplayArtifactStem(e.Name())
-		if e.IsDir() || keep[short] {
+		if e.IsDir() || !titlePkg.IsReplayArtifactFile(e.Name()) || keep[titlePkg.ReplayArtifactStem(e.Name())] {
 			continue
 		}
 		removeLogged(ctx, filepath.Join(layout.ReplayArtifactsDir(slug), e.Name()))
