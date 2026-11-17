@@ -33,43 +33,26 @@ type mockMediaIndexer struct {
 	simulateError bool
 }
 
-func (m *mockMediaIndexer) ResetAndReindex(
-	_ context.Context,
-	_ string,
-	_ string,
-	_ string,
-	_ bool,
-	_ bool,
-	jobStore *jobs.Store,
-	jobID string,
-) error {
+func (m *mockMediaIndexer) ResetAndReindex(_ context.Context, p port.MediaResetParams) error {
 	if m.simulateError {
 		return &mediaIndexError{msg: "erreur simulée"}
 	}
 	pct := 100
 	step := "Index médias réinitialisé (mock)"
-	jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+	p.Jobs.Update(p.JobID, func(j *domain.AsyncJobStatus) {
 		j.ProgressPct = &pct
 		j.CurrentStep = &step
 	})
 	return nil
 }
 
-func (m *mockMediaIndexer) ScanAllMedia(
-	_ context.Context,
-	_ string,
-	_ string,
-	_ string,
-	_ bool,
-	jobStore *jobs.Store,
-	jobID string,
-) error {
+func (m *mockMediaIndexer) ScanAllMedia(_ context.Context, p port.MediaIndexParams) error {
 	if m.simulateError {
 		return &mediaIndexError{msg: "erreur simulée"}
 	}
 	pct := 100
 	step := "Scan médias terminé (mock)"
-	jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+	p.Jobs.Update(p.JobID, func(j *domain.AsyncJobStatus) {
 		j.ProgressPct = &pct
 		j.CurrentStep = &step
 	})
@@ -93,14 +76,14 @@ type titleCapturingIndexer struct {
 	scan  string
 }
 
-func (m *titleCapturingIndexer) ResetAndReindex(ctx context.Context, _ string, _ string, _ string, _ bool, _ bool, _ *jobs.Store, _ string) error {
+func (m *titleCapturingIndexer) ResetAndReindex(ctx context.Context, _ port.MediaResetParams) error {
 	m.mu.Lock()
 	m.reset = ctxkeys.TitleSlug(ctx)
 	m.mu.Unlock()
 	return nil
 }
 
-func (m *titleCapturingIndexer) ScanAllMedia(ctx context.Context, _ string, _ string, _ string, _ bool, _ *jobs.Store, _ string) error {
+func (m *titleCapturingIndexer) ScanAllMedia(ctx context.Context, _ port.MediaIndexParams) error {
 	m.mu.Lock()
 	m.scan = ctxkeys.TitleSlug(ctx)
 	m.mu.Unlock()

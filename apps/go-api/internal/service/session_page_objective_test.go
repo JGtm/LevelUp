@@ -84,3 +84,6 @@ func TestSessionPageService_ObjectiveForIgnoreLesMatchsNonTermines(t *testing.T)
 		t.Fatalf("(%v, %d matchs), want (50, 1) : l'abandon n'entre pas dans la moyenne", got.Score, got.Matches)
 	}
 }
+
+// colFlagCaptures : nom de la colonne des captures de drapeau de match_objective_stats.
+const colFlagCaptures = "flag_captures"

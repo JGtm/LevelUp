@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 )
 
@@ -185,10 +186,10 @@ func (s *Service) computeObjectiveAxis(
 //   - score = min(100, matches_per_day_avg × 25)
 //   - tier  = low / regular / high / intense par paliers
 //   - max_gap_days = plus longue interruption entre deux matchs
-func (s *Service) computeEngagementSimple(ctx context.Context, userID string, since, until time.Time) (EngagementSnapshot, error) {
+func (s *Service) computeEngagementSimple(ctx context.Context, userID string, since, until time.Time) (domain.EngagementSnapshot, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
-	var snap EngagementSnapshot
+	var snap domain.EngagementSnapshot
 
 	times, err := s.store.MatchStartTimes(ctx, userID, since, until)
 	if err != nil {

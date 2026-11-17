@@ -3,6 +3,7 @@ package profile
 import (
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 )
 
@@ -64,7 +65,7 @@ func TestIdentifyLeverages_TopTwo(t *testing.T) {
 	// kills_vs_expected  (1-0.5)*0.27 = 0.135 → top2
 	// offensive_conversion (1-0.6)*0.16 = 0.064
 	// win_factor (1-0.9)*0.05 = 0.005
-	components := []LUSRComponentBreakdown{
+	components := []domain.LUSRComponentBreakdown{
 		{Name: "kills_vs_expected", Weight: 0.27, CurrentAvg: 0.5},
 		{Name: "deaths_vs_expected", Weight: 0.24, CurrentAvg: 0.2},
 		{Name: "offensive_conversion", Weight: 0.16, CurrentAvg: 0.6},
@@ -93,9 +94,9 @@ func TestIdentifyLeverages_Empty(t *testing.T) {
 }
 
 func TestBuildSkillRatingSnapshot(t *testing.T) {
-	lusr := LUSRState{Mu: 1500, Sigma: 120, MatchesCount: 50}
-	tier := TierState{Name: "Platinum", Names: i18n.FromColumns("", "Platine"), SubTier: 3, Label: "Platinum III", LowerMu: 1400, UpperMu: 1600}
-	next := TierState{Name: "Diamond", Names: i18n.FromColumns("", "Diamant"), SubTier: 1, Label: "Diamond I", LowerMu: 1700, UpperMu: 1800}
+	lusr := domain.LUSRState{Mu: 1500, Sigma: 120, MatchesCount: 50}
+	tier := domain.TierState{Name: "Platinum", Names: i18n.FromColumns("", "Platine"), SubTier: 3, Label: "Platinum III", LowerMu: 1400, UpperMu: 1600}
+	next := domain.TierState{Name: "Diamond", Names: i18n.FromColumns("", "Diamant"), SubTier: 1, Label: "Diamond I", LowerMu: 1700, UpperMu: 1800}
 	got := buildSkillRatingSnapshot(lusr, tier, next, i18n.LocaleEN)
 
 	if got.TierName != "Platinum" {

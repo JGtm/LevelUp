@@ -3,6 +3,7 @@ package profile
 import (
 	"fmt"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/sync"
 )
 
@@ -15,13 +16,13 @@ import (
 var romanI = map[int]string{1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
 
 // TierFromMu construit le TierState pour un μ donné, ou empty si hors plage.
-func TierFromMu(mu float64) TierState {
+func TierFromMu(mu float64) domain.TierState {
 	tier, sub := sync.GetTierForRating(mu)
 	if tier == nil {
-		return TierState{}
+		return domain.TierState{}
 	}
 	lower, upper := subTierBounds(tier, sub)
-	return TierState{
+	return domain.TierState{
 		Name:    tier.Name,
 		Names:   tier.Label,
 		SubTier: sub,
@@ -35,19 +36,19 @@ func TierFromMu(mu float64) TierState {
 // est sur le dernier sub-tier). TierState vide si déjà au max (Onyx).
 //
 // La sortie sert pour l'alerte LUSRTierApproach (gap = NextTier.LowerMu - μ).
-func NextTierFromMu(mu float64) TierState {
+func NextTierFromMu(mu float64) domain.TierState {
 	current := TierFromMu(mu)
 	if current.IsEmpty() {
 		// Hors plage → on prend le 1er sub-tier comme « cible » si possible.
 		if len(sync.SkillTiers) > 0 {
 			first := &sync.SkillTiers[0]
-			return TierState{
+			return domain.TierState{
 				Name: first.Name, Names: first.Label, SubTier: 1,
 				Label:   formatLabel(first.Name, 1),
 				LowerMu: first.MinRating, UpperMu: subTierUpper(first, 1),
 			}
 		}
-		return TierState{}
+		return domain.TierState{}
 	}
 
 	// Trouver le tier dans la slice.
@@ -59,13 +60,13 @@ func NextTierFromMu(mu float64) TierState {
 		}
 	}
 	if tierIdx < 0 {
-		return TierState{}
+		return domain.TierState{}
 	}
 	tier := &sync.SkillTiers[tierIdx]
 
 	// Si on n'est pas sur le dernier sub-tier → passer au sub suivant.
 	if current.SubTier > 0 && current.SubTier < tier.SubTiers {
-		return TierState{
+		return domain.TierState{
 			Name: tier.Name, Names: tier.Label, SubTier: current.SubTier + 1,
 			Label:   formatLabel(tier.Name, current.SubTier+1),
 			LowerMu: subTierLower(tier, current.SubTier+1),
@@ -75,10 +76,10 @@ func NextTierFromMu(mu float64) TierState {
 
 	// Sinon, passer au tier suivant (sub-tier 1).
 	if tierIdx+1 >= len(sync.SkillTiers) {
-		return TierState{} // déjà au max (Onyx)
+		return domain.TierState{} // déjà au max (Onyx)
 	}
 	next := &sync.SkillTiers[tierIdx+1]
-	return TierState{
+	return domain.TierState{
 		Name: next.Name, Names: next.Label, SubTier: 1,
 		Label:   formatLabel(next.Name, 1),
 		LowerMu: next.MinRating,

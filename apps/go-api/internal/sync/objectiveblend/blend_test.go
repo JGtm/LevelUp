@@ -31,14 +31,14 @@ func TestRankMid_EgalitesAuMilieu(t *testing.T) {
 // Sans faits ou sans référence suffisante, la métrique est absente : la note est le combat.
 func TestCompute_MetriqueAbsente(t *testing.T) {
 	p := DefaultParams(10)
-	if r := Compute(62.5, nil, history(30), p); r.HasObjective || r.Score != 62.5 {
+	if r := Compute(62.5, nil, history(30), p); r.hasObjective || r.Score != 62.5 {
 		t.Errorf("sans faits : %+v", r)
 	}
 	cur := &Facts{Family: narrative.FamilyCTF, Index: 1, Share: 0.5}
-	if r := Compute(62.5, cur, history(9), p); r.HasObjective || r.Score != 62.5 {
+	if r := Compute(62.5, cur, history(9), p); r.hasObjective || r.Score != 62.5 {
 		t.Errorf("référence trop courte : %+v", r)
 	}
-	if r := Compute(62.5, cur, []*Facts{nil, nil}, p); r.HasObjective {
+	if r := Compute(62.5, cur, []*Facts{nil, nil}, p); r.hasObjective {
 		t.Errorf("historique sans faits : %+v", r)
 	}
 }
@@ -47,10 +47,10 @@ func TestCompute_MetriqueAbsente(t *testing.T) {
 func TestCompute_ReferenceFamillePuisRepli(t *testing.T) {
 	p := DefaultParams(10)
 	hist := history(30) // 30 Drapeau
-	if r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 1, Share: 0.5}, hist, p); !r.HasObjective || !r.FamilyScope {
+	if r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 1, Share: 0.5}, hist, p); !r.hasObjective || !r.familyScope {
 		t.Errorf("famille : %+v", r)
 	}
-	if r := Compute(60, &Facts{Family: narrative.FamilyOddball, Index: 1, Share: 0.5}, hist, p); !r.HasObjective || r.FamilyScope {
+	if r := Compute(60, &Facts{Family: narrative.FamilyOddball, Index: 1, Share: 0.5}, hist, p); !r.hasObjective || r.familyScope {
 		t.Errorf("repli sur la fenêtre : %+v", r)
 	}
 }
@@ -66,13 +66,13 @@ func TestCompute_Formule(t *testing.T) {
 	share := rank(0.2, hist, func(f *Facts) float64 { return f.Share })
 	perMin := rank(1.5, hist, func(f *Facts) float64 { return f.SupportPerMin })
 	supShare := rank(0.4, hist, func(f *Facts) float64 { return f.SupportShare })
-	if math.Abs(r.Percentile-(idx+share)/2) > 1e-9 || math.Abs(r.SupportPercentile-(perMin+supShare)/2) > 1e-9 {
-		t.Fatalf("O_obj %v O_sout %v ; rangs %v %v %v %v", r.Percentile, r.SupportPercentile, idx, share, perMin, supShare)
+	if math.Abs(r.percentile-(idx+share)/2) > 1e-9 || math.Abs(r.supportPercentile-(perMin+supShare)/2) > 1e-9 {
+		t.Fatalf("O_obj %v O_sout %v ; rangs %v %v %v %v", r.percentile, r.supportPercentile, idx, share, perMin, supShare)
 	}
-	if math.Abs(r.Alpha-(0.12+0.38*0.2)) > 1e-9 || math.Abs(r.SupportAlpha-0.38*0.4) > 1e-9 {
-		t.Fatalf("alphas %v / %v", r.Alpha, r.SupportAlpha)
+	if math.Abs(r.alpha-(0.12+0.38*0.2)) > 1e-9 || math.Abs(r.supportAlpha-0.38*0.4) > 1e-9 {
+		t.Fatalf("alphas %v / %v", r.alpha, r.supportAlpha)
 	}
-	want := (1-r.Alpha-r.SupportAlpha)*60 + r.Alpha*r.Percentile + r.SupportAlpha*r.SupportPercentile
+	want := (1-r.alpha-r.supportAlpha)*60 + r.alpha*r.percentile + r.supportAlpha*r.supportPercentile
 	if math.Abs(r.Score-want) > 1e-9 {
 		t.Errorf("note %v, want %v", r.Score, want)
 	}
@@ -86,8 +86,8 @@ func TestCompute_Formule(t *testing.T) {
 // Sans action de soutien dans l'équipe, alpha_sout est nul : la note ne dépend que de l'objectif.
 func TestCompute_SansSoutienPasDePoidsDuSoutien(t *testing.T) {
 	r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.3, SupportShare: 0, SupportPerMin: 0}, history(40), DefaultParams(10))
-	if r.SupportAlpha != 0 {
-		t.Errorf("alpha soutien = %v, want 0", r.SupportAlpha)
+	if r.supportAlpha != 0 {
+		t.Errorf("alpha soutien = %v, want 0", r.supportAlpha)
 	}
 }
 
@@ -96,13 +96,13 @@ func TestCompute_SansSoutienPasDePoidsDuSoutien(t *testing.T) {
 func TestCompute_PlafonneLaSomme(t *testing.T) {
 	p := DefaultParams(10)
 	r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 0.6, Share: 1, SupportShare: 1, SupportPerMin: 1.5}, history(40), p)
-	if math.Abs(r.Alpha+r.SupportAlpha-p.AlphaMax) > 1e-9 || math.Abs(r.Alpha/r.SupportAlpha-0.50/0.38) > 1e-9 {
-		t.Fatalf("alphas %v / %v", r.Alpha, r.SupportAlpha)
+	if math.Abs(r.alpha+r.supportAlpha-p.AlphaMax) > 1e-9 || math.Abs(r.alpha/r.supportAlpha-0.50/0.38) > 1e-9 {
+		t.Fatalf("alphas %v / %v", r.alpha, r.supportAlpha)
 	}
 	for i := 0; i < 60; i++ {
 		c := &Facts{Family: narrative.FamilyCTF, Index: 0.05 * float64(i%30), Share: float64(i%11) / 10, SupportShare: float64(i%7) / 6, SupportPerMin: 0.1 * float64(i%25)}
-		if r := Compute(60, c, history(40), p); r.Alpha+r.SupportAlpha > p.AlphaMax+1e-9 {
-			t.Errorf("i=%d : somme %v au-dessus du plafond", i, r.Alpha+r.SupportAlpha)
+		if r := Compute(60, c, history(40), p); r.alpha+r.supportAlpha > p.AlphaMax+1e-9 {
+			t.Errorf("i=%d : somme %v au-dessus du plafond", i, r.alpha+r.supportAlpha)
 		}
 	}
 }
@@ -130,14 +130,14 @@ func TestCompute_SeuilsExactsDeLaReference(t *testing.T) {
 		}
 		return out
 	}
-	if r := Compute(60, cur, history(10), p); !r.HasObjective || !r.FamilyScope {
+	if r := Compute(60, cur, history(10), p); !r.hasObjective || !r.familyScope {
 		t.Errorf("10 matchs de la famille : %+v, want la référence de famille", r)
 	}
 	repli := append(history(9), other(1)...)
-	if r := Compute(60, cur, repli, p); !r.HasObjective || r.FamilyScope {
+	if r := Compute(60, cur, repli, p); !r.hasObjective || r.familyScope {
 		t.Errorf("9 de la famille + 1 autre : %+v, want le repli sur la fenêtre (10 matchs)", r)
 	}
-	if r := Compute(60, cur, history(9), p); r.HasObjective {
+	if r := Compute(60, cur, history(9), p); r.hasObjective {
 		t.Errorf("9 matchs au total : %+v, want la métrique absente", r)
 	}
 }
@@ -152,7 +152,7 @@ func TestCompute_RepliSoutienIgnoreLeDebitParMinute(t *testing.T) {
 		return &Facts{Family: narrative.FamilyCTF, Index: 0.3, Share: 0.3, SupportShare: 0.4, SupportPerMin: v}
 	}
 	famLo, famHi := Compute(60, rate(0), hist, p), Compute(60, rate(9), hist, p)
-	if !famLo.FamilyScope || famLo.SupportPercentile == famHi.SupportPercentile {
+	if !famLo.familyScope || famLo.supportPercentile == famHi.supportPercentile {
 		t.Errorf("dans la famille le débit doit compter : %+v / %+v", famLo, famHi)
 	}
 	other := func(v float64) *Facts {
@@ -161,11 +161,11 @@ func TestCompute_RepliSoutienIgnoreLeDebitParMinute(t *testing.T) {
 		return f
 	}
 	repLo, repHi := Compute(60, other(0), hist, p), Compute(60, other(9), hist, p)
-	if repLo.FamilyScope || repHi.FamilyScope {
+	if repLo.familyScope || repHi.familyScope {
 		t.Fatalf("le repli était attendu : %+v / %+v", repLo, repHi)
 	}
-	if repLo.SupportPercentile != repHi.SupportPercentile || math.Abs(repLo.SupportPercentile-supShare) > 1e-9 {
-		t.Errorf("en repli O_sout = rang de la part seul : %v / %v, want %v", repLo.SupportPercentile, repHi.SupportPercentile, supShare)
+	if repLo.supportPercentile != repHi.supportPercentile || math.Abs(repLo.supportPercentile-supShare) > 1e-9 {
+		t.Errorf("en repli O_sout = rang de la part seul : %v / %v, want %v", repLo.supportPercentile, repHi.supportPercentile, supShare)
 	}
 	if repLo.Score != repHi.Score {
 		t.Errorf("le débit ne doit pas bouger la note en repli : %v / %v", repLo.Score, repHi.Score)

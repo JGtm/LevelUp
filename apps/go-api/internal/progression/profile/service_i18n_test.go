@@ -3,6 +3,7 @@ package profile
 import (
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 )
@@ -10,18 +11,18 @@ import (
 // Le nom du tier suit la langue demandée (ADR 0040 D-3) : un seul champ `tier_name`, plus de
 // `tier_name_fr`. Sans nom par langue, c'est le nom canonique du tier.
 func TestBuildSkillRatingSnapshot_TierNameParLangue(t *testing.T) {
-	lusr := LUSRState{Mu: 1500, Sigma: 100}
-	tier := TierState{Name: "Diamond", Names: i18n.FromColumns("Diamond", "Diamant"), SubTier: 3, Label: "Diamond III", LowerMu: 1400, UpperMu: 1600}
+	lusr := domain.LUSRState{Mu: 1500, Sigma: 100}
+	tier := domain.TierState{Name: "Diamond", Names: i18n.FromColumns("Diamond", "Diamant"), SubTier: 3, Label: "Diamond III", LowerMu: 1400, UpperMu: 1600}
 
-	if got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleFR).TierName; got != "Diamant" {
+	if got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleFR).TierName; got != "Diamant" {
 		t.Errorf("TierName(fr) = %q, want Diamant", got)
 	}
-	if got := buildSkillRatingSnapshot(lusr, tier, TierState{}, i18n.LocaleEN).TierName; got != "Diamond" {
+	if got := buildSkillRatingSnapshot(lusr, tier, domain.TierState{}, i18n.LocaleEN).TierName; got != "Diamond" {
 		t.Errorf("TierName(en) = %q, want Diamond", got)
 	}
 
-	sansNoms := TierState{Name: "Onyx", Label: "Onyx", LowerMu: 2000, UpperMu: 9999}
-	if got := buildSkillRatingSnapshot(lusr, sansNoms, TierState{}, i18n.LocaleFR).TierName; got != "Onyx" {
+	sansNoms := domain.TierState{Name: "Onyx", Label: "Onyx", LowerMu: 2000, UpperMu: 9999}
+	if got := buildSkillRatingSnapshot(lusr, sansNoms, domain.TierState{}, i18n.LocaleFR).TierName; got != "Onyx" {
 		t.Errorf("TierName sans noms par langue = %q, want le nom canonique Onyx", got)
 	}
 }

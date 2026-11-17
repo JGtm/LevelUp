@@ -237,11 +237,6 @@ type TimeseriesMatchRow struct {
 	// ne dessine alors aucun marqueur sur la bande de résultats (titre sans
 	// timeline de score, ex. Halo 5 → dégradation silencieuse et correcte).
 	DominanceFlag int `json:"dominance_flag,omitempty"`
-	// LeadShare : la MAINMISE du match — part de la durée jouée passée EN TÊTE du score par l'équipe du
-	// joueur, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré, jamais zéro. LeadChanges : retournements,
-	// absent avec LeadShare.
-	LeadShare   *float64 `json:"lead_share,omitempty"`
-	LeadChanges *int     `json:"lead_changes,omitempty"`
 	// Métriques alimentant les charts Forme (timeseries.16) — sync depuis
 	// match_participants (max_killing_spree, headshot_kills, perfect_kills).
 	MaxKillingSpree *int `json:"max_killing_spree,omitempty"`

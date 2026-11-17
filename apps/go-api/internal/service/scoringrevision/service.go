@@ -8,10 +8,14 @@
 // ancienne révision et reste à rejouer au démarrage suivant (les étapes réussies du même joueur ne le
 // sont pas) ; son échec ne retient ni les autres étapes ni les autres joueurs. Les compteurs et le
 // journal sont par étape.
+//
+// Ce paquet décide de l'ordre des étapes (notes, puis campagnes) et de leur indépendance : le câblage
+// du serveur ne fait qu'injecter les étapes.
 package scoringrevision
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
@@ -27,16 +31,43 @@ const (
 	CompteurErreurs   = "scoring_revision_erreurs_total"
 )
 
+// Step nomme une étape du passage par joueur ; chaque étape a sa propre révision rangée dans `sync_meta`,
+// réussit ou échoue indépendamment des autres.
+type Step string
+
+const (
+	// StepPlayerDB : l'accès à la base du joueur, avant toute étape (fichier illisible).
+	StepPlayerDB Step = "base_joueur"
+	// StepKPI : rejeu des notes de performance et du LUSR après un changement de formule.
+	StepKPI Step = "kpi"
+	// StepCampaigns : recalage du départ des campagnes de l'axe Objectif après un changement de sa mesure.
+	StepCampaigns Step = "campagnes"
+)
+
+// Outcome est l'issue d'une étape pour un joueur : recalcul effectué (Applied), à jour (ni Applied ni
+// Err) ou échec (Err). Une étape en échec garde sa révision rangée et est retentée au démarrage suivant ;
+// les étapes réussies du même joueur ne le sont pas.
+type Outcome struct {
+	Step    Step
+	Applied bool
+	Err     error
+}
+
 // Service : le passage unique de rejeu.
 type Service struct {
-	a      port.ScoringRevisionApplier
-	titres func() []string
+	players   port.ScoringRevisionPlayers
+	kpi       port.ScoringRevisionStep
+	campaigns port.ScoringRevisionStep
+	titres    func() []string
 }
 
 // New construit le service ; [Service.Run] le fait travailler sur les titres du registre qui
-// portent la capacité LUSR.
-func New(a port.ScoringRevisionApplier) *Service {
-	return &Service{a: a, titres: func() []string { return titresLUSR(title.DefaultRegistry().All()) }}
+// portent la capacité LUSR. `kpi` et `campaigns` sont les deux étapes, jouées dans cet ordre.
+func New(players port.ScoringRevisionPlayers, kpi, campaigns port.ScoringRevisionStep) *Service {
+	return &Service{
+		players: players, kpi: kpi, campaigns: campaigns,
+		titres: func() []string { return titresLUSR(title.DefaultRegistry().All()) },
+	}
 }
 
 // titresLUSR rend les titres qui portent la capacité LUSR, dans l'ordre du registre.
@@ -56,7 +87,7 @@ func titresLUSR(tous []*title.TitleDescriptor) []string {
 // recalcul se joint sur le xuid, il n'y trouverait aucun match et effacerait toutes les notes.
 func (s *Service) Run(ctx context.Context) {
 	for _, slug := range s.titres() {
-		players, err := s.a.FollowedPlayers(slug)
+		players, err := s.players.FollowedPlayers(slug)
 		if err != nil {
 			observability.IncCounterT(slug, CompteurErreurs)
 			slog.WarnContext(ctx, "scoring revision: liste des joueurs illisible, titre sauté",
@@ -85,7 +116,7 @@ func (s *Service) Run(ctx context.Context) {
 // comme appliquée même si une autre du même joueur échoue (elle a rangé sa révision et ne sera pas
 // rejouée), et un échec nomme son étape dans le journal, puisque seule celle-là est retentée.
 func (s *Service) appliquer(ctx context.Context, slug string, p domain.PlayerSummary) {
-	for _, o := range s.a.ApplyForPlayer(ctx, slug, p) {
+	for _, o := range s.etapesDuJoueur(ctx, slug, p) {
 		switch {
 		case o.Err != nil:
 			observability.IncCounterT(slug, CompteurErreurs)
@@ -98,5 +129,29 @@ func (s *Service) appliquer(ctx context.Context, slug string, p domain.PlayerSum
 		default:
 			observability.IncCounterT(slug, CompteurAJour)
 		}
+	}
+}
+
+// etapesDuJoueur joue les deux étapes du joueur et rend l'issue de chacune, dans l'ordre : notes (rejeu des
+// KPI si sa révision de formule rangée diffère de celle du binaire), puis campagnes (départ de l'axe
+// Objectif recalé si sa révision de mesure rangée diffère). Les étapes sont indépendantes : l'échec de
+// l'une ne retient pas l'autre, et chacune garde sa révision rangée tant qu'elle n'a pas réussi. Un
+// profil sans base joueur (jamais synchronisé) n'a rien à recalculer : il n'est pas créé et n'a aucune
+// issue ; une base illisible rend une seule issue en échec, avant toute étape.
+func (s *Service) etapesDuJoueur(ctx context.Context, slug string, p domain.PlayerSummary) []Outcome {
+	present, err := s.players.HasPlayerDB(slug, p)
+	if err != nil {
+		return []Outcome{{Step: StepPlayerDB, Err: fmt.Errorf("base joueur illisible: %w", err)}}
+	}
+	if !present {
+		slog.InfoContext(ctx, "scoring revision: profil sans base joueur, rien à recalculer",
+			"player", p.Gamertag, "titleSlug", slug)
+		return nil
+	}
+	kpi, kpiErr := s.kpi.Apply(ctx, slug, p)
+	campaigns, campaignErr := s.campaigns.Apply(ctx, slug, p)
+	return []Outcome{
+		{Step: StepKPI, Applied: kpi, Err: kpiErr},
+		{Step: StepCampaigns, Applied: campaigns, Err: campaignErr},
 	}
 }
