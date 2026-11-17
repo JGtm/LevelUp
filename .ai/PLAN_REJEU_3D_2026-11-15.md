@@ -7,6 +7,23 @@ Contrat d'exécution : skill `plan-execution` (ordre strict dans chaque piste, u
 aucune case vide à la clôture, zéro fix hors périmètre, découvertes en section 8). Grille relue : skill
 `plan-review`.
 
+**Amendé le 2026-11-17** par le plan maître `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md`, qui fixe l'ordre entre
+plans, les fichiers partagés et la borne machine. Réponse du user du 2026-11-17 (plan maître, DM-2 : « Tout ce
+que le plan permet ») : les items ouverts « dès le go, sans le source » démarrent. Restent attendus du user :
+le source du contributeur, la validation de D-13, puis le go du reste du plan. Règles du plan maître qui
+s'appliquent ici :
+- rien de ce plan n'entre dans `release/v8.3.0` avant la Gate 0 (source reçu et mesuré), sauf D.2 ;
+- D.2 part sur sa branche `refactor/rejeu-moteur-2d` et fusionne dans `release/v8.3.0` dès son gate, avant
+  l'item E.1 de la refonte ;
+- les items web qui se posent dans les cadres (C.5, C.8, D.3, E.5) attendent la fusion de la refonte ;
+- A.4 attend l'intégration de la piste G du plan backlog (mêmes fichiers de capacités) ;
+- un écart qui demanderait de changer le décodeur ou le document de rejeu (mesure M-4 comprise) revient au
+  user avant tout code : une seule montée du décodeur et une seule régénération par version ;
+- worktrees `C:/t/3d-<piste>`, sans aucune jonction ; borne de 4 agents d'écriture commune aux quatre plans.
+Faits mis à jour le 2026-11-17 : `release/v8.3.0` porte le décodeur v1.4.1 et la brique des cartes v1.3.1 ;
+`ui/ReplayCanvas.tsx` fait 810 lignes ; l'item 0.1 est `[~]` (le pilote de la 8.3.0 est la session du plan
+maître).
+
 Constats relus sur pièces le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le binaire
 `infinite-theater-3d-0.1.0-test.8` du contributeur llampwall (lu, non lancé). L'exécutant les RE-VÉRIFIE
 sur la tête de `release/v8.3.0` avant de coder (base déplacée le 2026-11-15, voir D-2).
@@ -111,9 +128,13 @@ Hors périmètre de ce plan : sons extraits de l'installation (annonces, recharg
   - **Verrouillée au nord (user, 2026-11-15) : elle ne tourne jamais avec la caméra.** Le « nord » est
     l'orientation par quarts de tour choisie pour la carte en 2D. Seul le cône de la caméra tourne.
     Le user a transmis ce point au contributeur : vérifier à l'intégration s'il l'a traité (item 0.7).
+    (amendé le 2026-11-17, plan de refonte D-14) Le « nord » est l'orientation EFFECTIVE de la 2D, rotation
+    automatique comprise.
   - Clic sur la mini-carte = recentrer la caméra libre.
 - **D-8 — emplacement.** **Tranché (user, 2026-11-15) : ok.** La 3D occupe l'emplacement de `ReplayCanvas`,
-  donc les cadres Standard / Cinéma / Plein cadre l'accueillent sans changement. Le commutateur va dans
+  donc les cadres Standard / Cinéma / Plein cadre l'accueillent sans changement. (amendé le 2026-11-17, plan
+  de refonte D-9 et F.3, validés par le user le 2026-11-15) Le commutateur 2D / 3D va dans l'emplacement en
+  superposition à gauche du bouton « Vue », posé par l'item F.3 de la refonte, et non dans le panneau de
   `settings/ReplayViewMenu.tsx`.
 - **D-9 — joueurs vus à travers les murs.** **Demandé par le user (2026-11-15), transmis au contributeur.**
   Un joueur caché par un mur reste visible par son seul contour (silhouette surlignée), à la couleur de son
@@ -124,8 +145,10 @@ Hors périmètre de ce plan : sons extraits de l'installation (annonces, recharg
   Sur la page de rejeu, le fil, les fiches joueurs et le bandeau de score le répètent. Proposition :
   - HUD réduit au joueur suivi : réticule, vie et bouclier, arme et munitions, grenades et équipement ;
   - ni fil des éliminations ni score dans la 3D, car la page les montre déjà ;
-  - en Plein cadre, si la refonte y cache le fil et les fiches, le HUD reprend le fil et le score ; la
-    maquette le montre.
+  - (amendé le 2026-11-17, plan de refonte D-2 et D-4) en Cinéma et en Plein cadre, les fiches et le fil
+    restent à l'écran : le HUD ne reprend ni le fil ni le score, dans aucun cadre. La maquette C.0 se dessine
+    DANS les cadres validés de la refonte (tableaux A, K et D du canevas de la refonte), jamais sur l'ancienne
+    page.
 
 - **D-12 — où vit le code.** **Tranché (user, 2026-11-15, « ok parfait, à voir comment le contributeur a pensé les choses ») : proposition retenue, confrontée en 0.2 au découpage du source du contributeur ; un écart est rapporté au user avant le lot B.**
   - **Une cinquième brique Go** pour l'export 3D depuis le jeu : cartes, armes, armures, corps et
@@ -219,7 +242,7 @@ Règles d'exécution (elles précisent le contrat `plan-execution` pour ce plan)
 | P8 | C.2 + C.4 logique de scène et caméras | Sonnet ; **Opus** si M-4 relève un écart de structure (pose, animation, repère) | 0.6, C.1 | |
 | P8 | C.3 horloge, joueur suivi, Seul / Masquer | Sonnet | C.2 | |
 | P8 | C.7 contours à travers les murs | **Opus** (passe de rendu avec profondeur) ; sans objet si 0.7 les trouve faits | C.0 validé, C.2 | |
-| P8 | C.5 + C.6 commutateur, progression | Sonnet | Gate B, C.3 | seul écrivain de `ReplayViewMenu.tsx` et `replayPreferences.ts` |
+| P8 | C.5 + C.6 commutateur, progression | Sonnet | Gate B, C.3, refonte fusionnée (F.3) | seul écrivain de `ReplayViewMenu.tsx` et `replayPreferences.ts`, après les items C.3, F.2 et F.3 de la refonte |
 | P8 | C.8 HUD | Sonnet | C.0 validé, C.3 | puis Gate C |
 | P3 | D.1 + D.3 mini-carte | Sonnet | C.0 validé, D.2, C.3 | puis Gate D |
 | P9 Listes | E.3 + E.4 Go (règle, champs, filtre) | Sonnet | D-13 validé | port `Replay3DAvailability` simulé jusqu'à E.2 |
@@ -287,8 +310,9 @@ Vagues qui en découlent, pour lecture rapide :
 
 ## 3. Lot 0 — préalables (aucun code LevelUp)
 
-- [ ] 0.1 Le pilote de la 8.3.0 est
-      prévenu que la release attend ce plan (D-2).
+- [~] 0.1 Le pilote de la 8.3.0 est
+      prévenu que la release attend ce plan (D-2). Couvert le 2026-11-17 : le pilote de la 8.3.0 est la session
+      du plan maître, qui porte cette attente (sa section « Sortie de la 8.3.0 »).
 - [ ] 0.2 Source du contributeur reçu (dépôt privé partagé ou archive) ; son découpage en paquets comparé à D-12, écarts rapportés au user ; licence, clause 7(b) et fichiers portés d'Ekur relus. La liste des
       fichiers repris et leur destination (brique ou LevelUp) est rangée dans `.ai/annexes_rejeu_3d/provenance.md`.
 - [ ] 0.3 M-1 : taille et durée de construction d'une carte native (Recharge) et
@@ -299,7 +323,8 @@ Vagues qui en découlent, pour lecture rapide :
 - [ ] 0.5 M-3 : son lecteur branché sur un document de rejeu LevelUp dans la fenêtre WebView2 de l'app :
       images par seconde et mémoire GPU, réglages de rendu au plus haut et au plus bas. Seuil : 60 i/s sur le poste du user.
 - [ ] 0.6 M-4 : écart entre son document de rejeu et le nôtre (champs qu'il lit et que le nôtre n'a pas).
-      Chaque écart devient un item des lots B ou C, ou une découverte.
+      Chaque écart devient un item des lots B ou C, ou une découverte. (amendé le 2026-11-17) Un écart qui
+      demanderait de changer le décodeur ou le document de rejeu revient au user avant tout code.
 - [ ] 0.7 Les deux demandes transmises au contributeur sont-elles traitées dans le source reçu ? Il s'agit
       des contours à travers les murs (D-9) et de la mini-carte verrouillée au nord (D-7). Chacune est notée
       « faite par lui » (fichier et ligne) ou « à faire » (items C.7 et D.3).
@@ -419,7 +444,9 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
 - [ ] C.4 Caméras : libre (souris et clavier), 3e personne, 1re personne avec bras et arme. Les tirs et
       projectiles sans `z` partent de la hauteur des yeux du tireur ; ce choix est écrit dans le code et dans
       la note de version.
-- [ ] C.5 Commutateur 2D / 3D dans `ReplayViewMenu.tsx`. Il n'est visible que si `can_use_game_install` est
+- [ ] C.5 (amendé le 2026-11-17) Commutateur 2D / 3D dans l'emplacement en superposition posé par l'item F.3
+      de la refonte (à gauche du bouton « Vue »), et non dans le panneau de `ReplayViewMenu.tsx` ; les réglages
+      de rendu de D-3, eux, restent dans le panneau « Vue ». Il n'est visible que si `can_use_game_install` est
       vrai, que « Rejeu 3D » est actif et que le titre a `replay_3d`. Sinon le bloc affiche son état vide,
       jamais un bouton inactif. Le choix est mémorisé dans `replayPreferences.ts`.
 - [ ] C.6 Progression « Préparation de la 3D » (lecture de `/desktop/replay-3d/state`) ; la 2D reste
@@ -437,13 +464,19 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
 - [ ] D.1 Variante de la mini-carte choisie en C.0, recopiée ici avec la date du choix. Rien en D
       avant ce choix.
 - [ ] D.2 Extraction du moteur 2D : `buildScene` et `draw` sortent de `ReplayCanvas.tsx` vers
-      `layers/replayRenderer.ts`, sans changement de rendu. Témoin avant / après : captures de 3 rejeux à 3
-      instants, identiques au pixel.
+      `layers/replayRenderer.ts`, sans changement de rendu. (amendé le 2026-11-17 : un agent n'ouvre pas de
+      navigateur) Témoin avant / après : suites d'appels de dessin enregistrées par le contexte enregistreur
+      existant (`features/match-replay/test/recordingContext`), 3 documents de test à 3 instants, capturées
+      AVANT l'extraction et identiques APRÈS. Branche `refactor/rejeu-moteur-2d`, fusionnée dans
+      `release/v8.3.0` dès son gate (plan maître, P-5).
 - [ ] D.3 `ui/ReplayMiniMap.tsx` :
   - vue Plan forcée (`variante=plan`), repli sur le Rendu sans erreur ;
   - `CanvasView` centrée selon D-7 ;
   - calques réduits (fond, joueurs, morts, objectifs) ;
   - orientation de la carte, marge aux bords par token.
+- **Gate D.2 (ajoutée le 2026-11-17, l'item fusionne seul) :** `make check-types`, `npx vitest run
+  src/features/match-replay`, `node tools/lint-cross-feature-imports.mjs`, témoins identiques ;
+  `ReplayCanvas.tsx` plus court qu'avant, aucun fichier neuf au-delà de 500 lignes.
 - **Gate D :** `make check-types`, `make test-web`, témoins D.2 identiques, `make gate-push`. Puis
   vérification à l'écran par le user dans `verifs`, en lecture.
 

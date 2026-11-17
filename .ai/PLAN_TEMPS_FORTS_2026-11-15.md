@@ -7,6 +7,16 @@ Contrat d'exécution : skill `plan-execution` (ordre strict dans chaque piste, u
 aucune case vide à la clôture, zéro fix hors périmètre, découvertes en section 8). Grille relue : skill
 `plan-review`.
 
+**Amendé le 2026-11-17** par le plan maître `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md` (ordre entre plans, fichiers
+partagés, borne de 4 agents d'écriture commune aux quatre plans, worktrees `C:/t/tf-<piste>` sans jonction).
+Ce plan garde son propre go. Points portés ici :
+- les maquettes B.1 et D.1 se dessinent DANS les cadres validés de la refonte du rejeu (Standard, Cinéma,
+  Plein cadre) ; les repères de la barre de lecture y figurent dans les DEUX barres (celle du Standard et la
+  barre d'une ligne) ;
+- B.3 écrit `ui/ReplayTransport.tsx` après l'item E.2 de la refonte ;
+- la table des médailles du film est montée : `release/v8.3.0` porte le décodeur v1.4.1 ;
+- un besoin de changer le décodeur ou le document de rejeu revient au user avant tout code.
+
 Constats relus le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le projet csstat
 (`C:\Users\Guillaume\Downloads\Scripts\csstat`, `docs/highlights-pipeline.md`). L'exécutant les RE-VÉRIFIE
 sur sa base, `release/v8.3.0` (le user a sorti la 3D et les temps forts de la 8.2.0 pour la 8.3.0 le

@@ -3,7 +3,17 @@
 Statut : **rédigé le 2026-11-15 sur go du user ; maquettes validées le 2026-11-15 ; D-1 à D-16 tranchés par
 le user le 2026-11-15 (D-11 corrigé par lui : le Standard reprend la maquette A, sauf la zone de lecture) ;
 aucun code écrit ; D-17 tranché (effets gardés) ; D-18 (frise inchangée) validé ; D-19 à D-24 (fiche à l'instant, lot T)
-tranchés le 2026-11-16 ; puis le go d'exécution.**
+tranchés le 2026-11-16 ; go d'exécution donné par le user le 2026-11-17 (plan maître, DM-4).**
+
+**Amendé le 2026-11-17** par le plan maître `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md` (ordre entre plans, fichiers
+partagés, borne machine, conformité aux maquettes) et par le plan `.ai/PLAN_BACKLOG_2026-11-17.md` (items E.1 à
+E.4 : sprints et sauts, médailles du fil, mesures par build, garde du score). Les amendements sont marqués
+« (amendé le 2026-11-17) » à leur place. Worktrees : `C:/t/ui-<piste>`, sans aucune jonction.
+
+**Conformité aux maquettes** : la grille `.ai/annexes_refonte_ui_rejeu/conformite_maquettes.md` fait partie de
+ce plan. Hors de ses 11 écarts voulus, la maquette fait foi. Le brief de tout agent d'interface porte les
+fichiers de maquette de son tableau et les lignes de la grille qu'il réalise ; son compte rendu statue chaque
+ligne avec sa preuve ; le pilote relit la fixation DOM contre la grille avant de cocher.
 
 Contrat d'exécution : skill `plan-execution` (ordre strict par piste, aucun report, statut de chaque item,
 vérification sur pièces, aucun correctif hors périmètre). Les règles d'orchestration de la section 1 bis le
@@ -148,17 +158,21 @@ Objectif : la page du rejeu propose trois cadres pour un même lecteur. La mise 
   complet. Sinon la ligne n'existe pas (aucun texte « non mesuré »).
 - **D-23 — repris d'OpenSpartan** : grenades lancées par type, ramassages (armes, grenades, équipement). Écartés :
   rang compétitif à l'instant (fixe pendant le match, il reste dans « Totaux »), Rendement / Résistance, rivaux,
-  XUID, XP d'équipement. Reportés au backlog (chantier décodeur) : commandes de déplacement, sprints,
-  rechargements, visées et sauts en notes de bas de page ; répliques des Spartans ; idées tirées des boucliers
-  perdus (badge « os de verre », frags sans bouclier).
+  XUID, XP d'équipement. Reportés au backlog (chantier décodeur) : commandes de déplacement, bouton de saut et
+  rechargements en notes de bas de page ; répliques des Spartans ; idées tirées des boucliers perdus (badge
+  « os de verre », frags sans bouclier). (amendé le 2026-11-17) Sprints, sauts et visée ne sont PAS reportés :
+  le document les publie déjà (`stances` : `sprint` lu, `jumpDerived` calculé ; visée publiée ; instruction du
+  backlog du 2026-11-17, 15 656 sprints sur 30 rejeux).
 - « Totaux du match » ne change pas : chiffres officiels de fin de match.
 - **D-24 — notes de bas de page anticipées** (message du user du 2026-11-16 : « on anticipe l'UI mais le travail
   côté décodeur va aller dans le backlog »). La fiche réserve, sous « Totaux du match », une section « En
   passant » : sprints, rechargements, visées, sauts, part du temps en mouvement, à l'instant. T.5 en fixe la
-  place et l'ordre dans la mise en page du corps de fiche, sans aucun code de lecture : le document de rejeu ne
-  porte pas ces données et son contrat refuse toute clé inconnue, donc une lecture écrite maintenant serait du
-  code mort (règle 7). La lecture et le rendu arrivent avec le chantier décodeur du backlog (« Commandes et
-  gestes du joueur »).
+  place et l'ordre dans la mise en page du corps de fiche. (amendé le 2026-11-17, décision D-3 du plan backlog,
+  user : « ok avec tes recos ») Le document porte déjà les sprints et les sauts : « En passant » affiche dès la
+  refonte le temps cumulé de sprint et le nombre de sauts, ce dernier marqué « estimation » (item T.7). Les
+  rechargements, les commandes de déplacement et la part du temps en mouvement restent sans lecture : rien
+  n'est rendu pour eux (une lecture écrite maintenant serait du code mort, règle 7) ; ils arrivent avec le
+  chantier décodeur du backlog (« Commandes et gestes du joueur »).
 - **D-18 — frise à pistes : rien de nouveau** (ok du user le 2026-11-16 : « la frise à piste c'est pas mal comme
   c'est déjà »). La première piste a déjà son menu de joueur (point de vue) et
   montre ses éliminations et ses morts. La mise en avant des repères dessinée sur la maquette J ferait doublon :
@@ -190,7 +204,8 @@ Règles d'exécution (elles précisent le contrat `plan-execution`) :
 |---|---|---|---|---|
 | P0 Préalables | 0.1 témoins « avant » (fixations DOM du Standard) | Haiku | go | sorties capturées, aucun code applicatif |
 | P0 | 0.2 M-1 mémoire de la toile à 720 / 1080 px | Sonnet | go | l'agent prépare la mesure, le user la lance à l'écran |
-| P0 | 0.3 audit de conception | **Fable** | go | lecture seule ; découpage des composants, risques, écarts à ce plan |
+| P0 | 0.3 audit de conception | **Fable** | go | lecture seule ; découpage des composants, risques, écarts à ce plan ; complète la grille de conformité |
+| P0 | 0.4 maquette de la fiche enrichie (lot T) | pilote | go | un tableau de plus sur le canevas ; validé par le user avant T.5 (plan maître, DM-3) |
 | P1 Cadres | A.1 modèle des cadres (pur) | Sonnet | 0.3 | `model/replayFrame.ts` |
 | P1 | A.2 plein cadre / plein écran système | Sonnet | A.1 | seul écrivain de `useReplayFullscreen.ts`, `useReplayShortcuts.ts` |
 | P1 | A.3 page découpée par cadre | Sonnet | A.1, 0.1 | seul écrivain de `ReplayPage.tsx` ; zone de lecture identique aux témoins |
@@ -214,20 +229,24 @@ Règles d'exécution (elles précisent le contrat `plan-execution`) :
 | P6 | F.2 Auto, « Plan tourné », section Vue | Sonnet | F.1, C.3, E.3 | écrivain de `ReplayViewMenu.tsx` / `replayPreferences.ts` APRÈS C.3 |
 | P6 | F.3 emplacement 2D / 3D en superposition | Sonnet | F.2 | invisible sans capacité ; branché par le plan 3D (C.5) |
 | P7 Plafond | G.1 plafond par cadre | Sonnet | 0.2 validée, A.1 | `[!]` si M-1 refuse (D-15) |
-| P10 À l'instant | T.0 mesures sur le parc | Sonnet | 0.3 | lecture des documents de rejeu déjà générés, AUCUNE génération |
-| P10 | T.1 compteurs exacts à l'instant (pur) | Sonnet | 0.3 | `model/playerInstantStats.ts` |
+| P10 À l'instant | T.0 mesures sur le parc | Sonnet | 0.3, régénération du parc par le user | lecture des documents de rejeu déjà générés, AUCUNE génération ; mesures par build du jeu |
+| P10 | T.6 médailles du match lues dans le document | Sonnet | 0.3 | Go (libellé et image résolus par le serveur) puis lecture web unique ; `openapi.yaml` et `generated.ts` par le pilote |
+| P10 | T.7 sprints et sauts (pur) | Sonnet | 0.3 | relecture du témoin `11de8353` d'abord |
+| P10 | T.1 compteurs exacts à l'instant (pur) | Sonnet | 0.3, T.6 | `model/playerInstantStats.ts` ; médailles par la lecture de T.6 |
 | P10 | T.2 répartition des éliminations (pur) | Haiku | T.1 | `model/killBreakdown.ts` |
 | P10 | T.3 score, rang et estimations (pur) | Sonnet | T.0, T.1 | gardes de suffisance et de score complet |
 | P10 | T.4 grenades lancées, ramassages (pur) | Haiku | T.1 | |
-| P10 | T.5 rendu dans le corps de fiche | Sonnet | D.1, T.2, T.3, T.4 | seul écrivain de `ReplayPlayerPanelBody.tsx` après D.1 |
+| P10 | T.5 rendu dans le corps de fiche | Sonnet | D.1, T.2, T.3, T.4, T.6, T.7, 0.4 validée | seul écrivain de `ReplayPlayerPanelBody.tsx` après D.1 |
 | P8 Clôture | R.1 revue finale | **Fable** | lots A à G, S et T clos | adversarial-review du diff complet |
 | P8 | R.2 corrections retenues | Sonnet ; Opus si l'écart est un algorithme | R.1 | une seule ronde |
 | P8 | R.3 journal, mémoire, registre des reports | pilote | R.2 | |
 
 Vagues :
 - **Dès le go** : 0.1 (Haiku), 0.2 (Sonnet), 0.3 (Fable).
-- **Après 0.3** : A.1, S.2, C.1, E.1, D.1, T.0, T.1 (sept Sonnet), B.1, F.1 (deux Haiku) en parallèle ;
-  puis T.2 et T.4 (Haiku) dès T.1, T.3 dès T.0 et T.1.
+- **Après 0.3** : A.1, S.2, C.1, E.1, D.1, T.6, T.7 (Sonnet), B.1, F.1 (Haiku), sous la borne commune de 4
+  agents d'écriture du plan maître ; T.1 dès T.6 ; T.2 et T.4 (Haiku) dès T.1 ; T.0 dès la régénération du
+  parc ; T.3 dès T.0 et T.1. E.1 repart de `ReplayCanvas.tsx` allégé par l'extraction du moteur 2D (item D.2 du
+  plan 3D, fusionné d'abord : plan maître, P-5).
 - **Puis** : A.2 / A.3, E.2 → E.3 → E.4 ; S.1 dès A.3, S.3 dès C.1 et S.2, S.4 ; B.2 dès A.3 et S.2 ;
   C.2 dès A.3 et E.1.
 - **Fin** : D.2, D.3, T.5, C.3, F.2, F.3, G.1 ; R.1, R.2, R.3.
@@ -235,9 +254,12 @@ Vagues :
 ## 1 ter. Points de contact avec le plan 3D
 
 - **`ReplayCanvas.tsx`.** Le plan 3D extrait `buildScene` et `draw` du fichier (D.2, piste P3). E.1 ne touche
-  que le rendu JSX (slots), pas la scène. Un seul écrivain à la fois : si D.2 du plan 3D est en cours, E.1
-  attend son intégration et repart du fichier intégré ; sinon E.1 passe d'abord et D.2 repart de lui.
-- **Amendement du plan 3D, item C.5** (à porter dans ce plan-là par R.3) : le commutateur 2D / 3D ne va pas
+  que le rendu JSX (slots), pas la scène. Un seul écrivain à la fois. (amendé le 2026-11-17, plan maître P-5)
+  Ordre fixé : D.2 d'abord, sur sa branche `refactor/rejeu-moteur-2d`, fusionné dans `release/v8.3.0` dès son
+  gate ; E.1 repart du fichier intégré.
+- (amendé le 2026-11-17) Les deux amendements ci-dessous sont portés dans le plan 3D le 2026-11-17, sans
+  attendre R.3 : les maquettes de la 3D se dessinent sur le plan amendé.
+- **Amendement du plan 3D, item C.5** : le commutateur 2D / 3D ne va pas
   DANS le panneau de `ReplayViewMenu.tsx` mais dans l'emplacement en superposition posé par F.3 (D-9).
 - **Amendement du plan 3D, D-10 (HUD)** : en Cinéma et en Plein cadre, les fiches et le fil restent à l'écran
   (D-2, D-4) ; le HUD 3D n'a donc à reprendre ni le fil ni le score, dans aucun cadre.
@@ -245,6 +267,12 @@ Vagues :
 - **D-8 du plan 3D** reste vrai : la 3D prend la place de la toile 2D, les trois cadres l'accueillent tels quels.
 
 ## 2. Ce qui existe (relu sur pièces, `origin/release/v8.2.0` au 2026-11-15, `db11e95da1` ; À RELIRE sur `release/v8.3.0` au go, une fois la 8.2.0 fusionnée dans main)
+
+Relu le 2026-11-17 sur `release/v8.3.0` (`22a1a951ad`, qui contient tout `main`) : tous les fichiers cités
+existent ; `ReplayPage.tsx` 469 lignes, `ui/ReplayCanvas.tsx` 810, `ui/ReplayTransport.tsx` 469,
+`ui/ReplayPlayerCard.tsx` 606, `ui/ReplayScoreBanner.tsx` 286, `i18n/fr.ts` 494 et `i18n/en.ts` 489 (tout ajout
+de chaîne passe par une extraction en sous-dictionnaire) ; fixations `replayTeams.4v4.html` et
+`replayTeams.6v6.html`. L'audit 0.3 fait la relecture de fond.
 
 Chemins relatifs à `apps/web/src/features/match-replay/`.
 
@@ -301,7 +329,16 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [ ] 0.3 Audit de conception (Fable, lecture seule) : relit ce plan contre le code, propose le découpage des
       composants par cadre sans franchir 500 lignes ni grossir `ReplayCanvas.tsx`, liste les risques (Échap,
       export vidéo qui suit la mise en page, couches z, portails). Écarts au plan rapportés au user avant A.1.
-- **Gate 0** : 0.1 et 0.3 rendus ; écarts de 0.3 tranchés par le user.
+      (amendé le 2026-11-17) L'audit complète et corrige la grille de conformité contre le code : il compare la
+      fiche compacte actuelle à la tuile de K (K-3, K-4), dit si le document porte l'objectif du match (K-7),
+      vérifie A-2 et L-4, propose une forme pour chacun des 10 éléments sans dessin, et dit où extraire les
+      dictionnaires `i18n/fr.ts` et `i18n/en.ts`.
+- [ ] 0.4 (ajouté le 2026-11-17, plan maître DM-3, réponse du user : « Oui, une maquette ») Maquette de la
+      fiche enrichie : un tableau de plus sur le canevas, la fiche J et la fenêtre L avec le contenu du lot T
+      (compteurs, répartition des éliminations, estimations, grenades et ramassages, médailles, « En passant »).
+      Validé par le user avant T.5 ; ses lignes entrent alors dans la grille.
+- **Gate 0** : 0.1 et 0.3 rendus ; écarts de 0.3 et éléments sans dessin tranchés par le user. 0.4 ne bloque
+  que T.5.
 
 ## 4. Lot A — les cadres
 
@@ -319,7 +356,8 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       Plein cadre, qui partagent la structure D-2). Standard : disposition d'aujourd'hui déplacée telle quelle
       dans son fichier (le lot S la refait), zone de lecture identique aux témoins 0.1. Cinéma : en-tête de
       page réduit au retour, au titre et au lien vers la fiche du match (tableau K). Plein cadre : sans navigation de l'app, une barre : Quitter / Échap,
-      titre du match. Fichiers sous 500 lignes.
+      titre du match. Fichiers sous 500 lignes. (amendé le 2026-11-17, grille D-1) Les touches T et F sont
+      rappelées dans les infobulles des icônes de cadre (E.2).
 - **Gate A** : `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run test:run -- src/features/match-replay`,
   `npm --prefix apps/web run lint`, `npm --prefix apps/web run lint:colors` verts ; fixations Standard égales
   aux témoins, hors différences listées dans le compte rendu.
@@ -336,6 +374,12 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       (`ReplayRosterColumn`, lot S).
       Les cotes nouvelles éventuelles vont dans `cardGabarit.ts` (garde-rail existant). Tests : rendu 4v4, repli,
       tuile du joueur suivi, joueur mort.
+      (amendé le 2026-11-17, grille K-3, K-4, K-7) La rangée remplit la largeur du corps : les tuiles se
+      partagent la place à parts égales, 115 px n'est que le minimum de la règle B.1. Contenu et ordre de la
+      tuile = ceux de K (pastille du camp, nom, F / M / A ; puis bouclier et santé, grenades avec leur nombre,
+      équipement ; pas d'arme) ; l'écart avec la fiche compacte actuelle est relevé par 0.3 et tranché à
+      Gate 0. Sous le score, la ligne d'objectif du match (« Premier à 50 éliminations »), si le document la
+      porte (0.3) ; sinon retour au user avant B.2. Tests en plus : largeur partagée, ligne d'objectif.
 - **Gate B** : commandes du Gate A ; `cardGabarit.guard.test.ts` vert.
 
 ## 5 bis. Lot S — le Standard selon le tableau A
@@ -349,7 +393,8 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       en deux barres via `VitalityBar` ; « Réapparition dans … » à la place des barres quand le joueur est mort ;
       arme en main ; grenades ; équipement ; F / M / A), en-tête de colonnes Arme / Gr. / Éq. / F / M / A ; places
       libres et occupants pas encore apparus rendus comme lignes d'attente (même règle que `ReplaySeatWaiting`) ;
-      la ligne du joueur suivi se déplie (armes et munitions, grenades, charge de l'équipement). Lectures reprises
+      la ligne du joueur suivi se déplie (armes et munitions, grenades, charge de l'équipement ; dessin = bloc
+      `.det` du tableau H, grille A-10). Lectures reprises
       de `model/playerCardReadings.ts`, aucune recalculée ; cotes dans `cardGabarit.ts` (troisième gabarit
       « ligne » si 0.3 le recommande). Clic sur une ligne : `playerPanel.onCard`. Tests : 4v4, joueur mort, place
       libre, joueur suivi déplié, Grande équipe (la part des équipes défile).
@@ -377,12 +422,13 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       (token, pas de couleur en dur), colonnes fixes partagées avec `ReplayKillLineParts`. Ancré en bas à gauche
       du BLOC de la toile (slot E.1), donc dans la marge d'une carte haute et sur le plan d'une carte large. La
       légende de la carte de chaleur passe en haut à gauche du bloc dans ces cadres. Tests : 0, 3, 5 et 8 lignes
-      passées ; ordre ; filtre appliqué.
+      passées ; ordre ; filtre appliqué. (amendé le 2026-11-17, grille K-9) Les deux lignes les plus anciennes
+      s'estompent (70 %, puis 85 %), par des cotes nommées ; test : estompage à 5 lignes, aucun à 3.
 - [ ] C.3 Option « Fil des éliminations » (affiché par défaut) dans le panneau Vue, retenue dans
       `replayPreferences.ts` (clé nouvelle, garde-rail `replayPreferences.guard.test.ts`). Sans effet en
       Standard (la colonne y garde son fil). Libellés fr et en.
-- **Gate C** : commandes du Gate A ; `killerZone.test.ts` / tests du nouveau module verts ; aucun test Go touché
-  (`git diff --stat -- apps/go-api` vide).
+- **Gate C** : commandes du Gate A ; `killerZone.test.ts` / tests du nouveau module verts ; aucun fichier Go
+  touché par les commits du lot C (amendé le 2026-11-17 : la branche porte par ailleurs le Go de T.6).
 
 ## 7. Lot D — la fiche détaillée (J en Standard, L en Cinéma et Plein cadre)
 
@@ -408,11 +454,14 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 ## 7 bis. Lot T — la fiche à l'instant (D-19 à D-23)
 
 Toutes les lectures sont pures, à l'image lue, pour le joueur de la fiche, bots compris (un bot a des vies et des
-éliminations). Aucune requête nouvelle, aucun changement du document de rejeu ni du décodeur. Les formules
+éliminations). Aucune requête nouvelle, aucun changement du décodeur ; (amendé le 2026-11-17) seule exception
+côté serveur : T.6, qui sert les médailles du document avec leur libellé et leur image. Les formules
 existantes se réutilisent (KDA du jeu, ADR 0006 ; catégorie « arme lourde » des niveaux d'armes du document) : 0.3
 les localise, rien n'est recalculé à côté.
 
-- [ ] T.0 Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
+- [ ] T.0 (amendé le 2026-11-17, item E.4 du plan backlog) Les mesures se font APRÈS la régénération du parc au
+      schéma 125 (geste du user, dès la fusion du backlog : plan maître DM-1) et se rendent PAR BUILD du jeu.
+      Mesures sur le parc, en lisant les documents de rejeu DÉJÀ générés (aucune génération) : part des matchs
       dont le score par action est déclaré complet ; part des joueurs dont la lecture des tirs est jugée
       suffisante ; sur trois films, boucliers tombés à zéro contre dégâts subis (plausibilité de D-21, recharges
       comprises). Résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_t0.md`. Une part trop faible pour valoir
@@ -432,17 +481,38 @@ les localise, rien n'est recalculé à côté.
       déclare le score complet ; rang dans le lobby seulement si tous les joueurs du lobby sont complets ;
       précision, tirs, touches, dégâts infligés et subis, et par arme tirs et dégâts, pour un joueur à lecture
       suffisante uniquement. Tests : score incomplet (pas de ligne), joueur insuffisant (pas de ligne), joueur
-      suffisant (valeurs), rang à égalité.
+      suffisant (valeurs), rang à égalité. (amendé le 2026-11-17, item E.4 du plan backlog) Garde en plus du
+      verdict du document : la somme des points par action ne s'affiche que si elle égale le score personnel de
+      l'API (le verdict « complet » est faux en Assaut et en Grande bataille du build `HI_1_11_0`). Test : somme
+      différente du score de l'API, pas de ligne.
 - [ ] T.4 Grenades lancées par type et ramassages (armes, grenades, équipement) jusqu'à l'instant (D-23). Tests :
       aucun lancer (section absente), types mêlés.
 - [ ] T.5 Rendu dans `ReplayPlayerPanelBody` (D.1), donc dans J et dans L : « À l'instant » garde son bloc actuel
       (bouclier, santé, armes, grenades, équipement) puis ajoute les compteurs de T.1, la répartition de T.2, les
       lignes de T.3 (mention « estimation » sur les valeurs estimées) et les sections de T.4 ; « Totaux du match »
-      inchangé ; l'ordre des sections du corps de fiche laisse la place de « En passant » en dernier (D-24), rien
-      n'y est rendu. Libellés fr et en, sans anglicisme (« série », « tirs à la tête », « répartition des
+      inchangé ; l'ordre des sections du corps de fiche met « En passant » en dernier (D-24) ; (amendé le
+      2026-11-17) elle rend le temps cumulé de sprint et le nombre de sauts de T.7, rien d'autre ; les médailles
+      viennent de T.6 ; la mise en page suit la maquette 0.4. Libellés fr et en, sans anglicisme (« série », « tirs à la tête », « répartition des
       éliminations ») ; tokens de couleur uniquement. Tests de rendu : joueur complet, joueur insuffisant, bot,
       défilement de la fiche.
-- **Gate T** : commandes du Gate A ; fixation de fin de match de T.1 égale au tableau de score.
+- [ ] T.6 (ajouté le 2026-11-17, item E.2 du plan backlog, décision D-2 : seule voie qui règle aussi la prod)
+      Médailles du match lues dans `medals` du document de rejeu, pour le fil et pour la fiche : UNE lecture.
+      Serveur : libellé et image résolus dans la langue de la requête, sur le patron de
+      `service/replay_vehicle_labels.go` ; champ servi déclaré dans `internal/domain/replaydoc` ; textes par
+      langue ; aucun SQL dans `service/` ni `api/`. Web : une lecture unique « médailles du match » ; le fil
+      SUBSTITUE cette source à l'ancienne, sans fusion avec les événements du match ; la clé de requête porte
+      la langue (`lib/query/keys.ts`). `openapi.yaml` et `generated.ts` par le pilote. Tests : Go (libellé
+      résolu en fr et en, médaille inconnue journalisée et servie sans libellé inventé), web (fil alimenté par
+      le document, match sans `medals` : aucune médaille, aucun repli sur l'ancienne source).
+- [ ] T.7 (ajouté le 2026-11-17, item E.3 du plan backlog, décision D-3) `model/playerMovementStats.ts`, pur :
+      temps cumulé de sprint et nombre de sauts jusqu'à l'instant, pour le joueur de la fiche. Précédé de la
+      relecture du témoin `11de8353` (les sprints et les sauts du document y sont comparés à ce que montre le
+      rejeu ; un écart est rapporté au user avant le code). Le nombre de sauts porte la mention « estimation ».
+      Tests : aucun sprint (ligne absente), sprint en cours à l'instant lu, joueur mort.
+- **Gate T** : commandes du Gate A ; fixation de fin de match de T.1 égale au tableau de score ; pour T.6, gate
+  Go : `cd apps/go-api && GOWORK=off go build ./... && go vet ./... && go test ./internal/service/...
+  ./internal/domain/replaydoc/... ./internal/api/handlers/... ./internal/archlint/...`, puis
+  `make generate-types` et `make check-types`.
 
 ## 8. Lot E — la barre de lecture compacte
 
@@ -452,8 +522,8 @@ les localise, rien n'est recalculé à côté.
       fichier). Zone de lecture du Standard identique aux témoins.
 - [ ] E.2 Extraire de `ReplayTransport.tsx` ce que la barre compacte partage : boutons de capture et d'export
       (`ui/ReplayCaptureButtons.tsx`, avec la règle de l'élargissement pendant l'export), boutons de cadre
-      (`ui/ReplayFrameButtons.tsx`, D-10, remplace `FullscreenButton`). Zone de lecture du Standard identique aux
-      témoins hors les icônes de cadre.
+      (`ui/ReplayFrameButtons.tsx`, D-10, remplace `FullscreenButton` ; infobulles avec les touches T et F,
+      grille D-1). Zone de lecture du Standard identique aux témoins hors les icônes de cadre.
 - [ ] E.3 `ui/ReplayTransportCompact.tsx` : une ligne. À gauche caméra (icône seule, E.4) et son ; puis lecture,
       −10, +10, temps, frise compacte (repères d'éliminations et de morts du joueur regardé et de ses alliés,
       bande de dominance, lues dans le même objet `timeline` que `ReplayTimelineTracks`), vitesse, zoom − / +
@@ -488,17 +558,21 @@ les localise, rien n'est recalculé à côté.
 ## 11. Revue et clôture
 
 - [ ] R.1 Revue finale (Fable) : skill `adversarial-review` sur le diff complet `release/v8.3.0...feat/rejeu-refonte-ui`.
+      (amendé le 2026-11-17) La conformité à la grille des maquettes est un axe de la revue : chaque ligne de
+      la grille a sa preuve, aucun écart hors de la liste des écarts voulus.
 - [ ] R.2 Corrections retenues, une seule ronde.
 - [ ] R.3 `make gate-push` vert ; entrée `.ai/thought_log.md` ; amendements C.5 et D-10 portés dans
       `.ai/PLAN_REJEU_3D_2026-11-15.md` ; `[!]` reportés dans `.ai/REGISTRE_REPORTS.md` ; mémoire du chantier.
 - [ ] R.4 Validation à l'écran par le user (artefact de vérifications), témoins nommés par lui : Standard
       selon A (zone de lecture inchangée), Cinéma 4v4 sur Detachment, Cinéma sur Nadair (fil sur le plan), Plein cadre, fiche du Standard (J), fiche en fenêtre (L),
       Grande équipe en repli, carte tournée. La fusion dans `release/v8.3.0` attend cette validation.
+      (amendé le 2026-11-17) Support : une page de comparaison, un témoin par tableau, la maquette d'un côté et
+      la capture de l'app de l'autre, chaque témoin renvoyant aux lignes de la grille.
 
 Chaînes UI : toute chaîne nouvelle existe en fr et en (`i18n/fr.ts`, `i18n/en.ts`, typage
 `Record<ReplayLocale, ReplayText>`), sans anglicisme côté fr. Couleurs : tokens uniquement (skill
-`color-tokens`). Aucune requête nouvelle, aucune route, aucun code Go : `lib/query/keys.ts`, `openapi.yaml` et
-`generated.ts` ne bougent pas.
+`color-tokens`). Aucune requête nouvelle, aucune route, aucun code Go, sauf T.6 (amendé le 2026-11-17) : hors
+T.6, `lib/query/keys.ts`, `openapi.yaml` et `generated.ts` ne bougent pas.
 
 ## 12. Découvertes
 

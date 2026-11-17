@@ -1,8 +1,10 @@
 # PLAN — Entrées du backlog des 14 au 17 novembre (2026-11-17)
 
 Statut : **écrit le 2026-11-17, relu contre la grille `plan-review` ; décisions D-1 à D-6 tranchées par le user
-le 2026-11-17 (« ok avec tes recos ») : les six recommandations sont retenues. Attend le go d'exécution.**
-Aucun code écrit.
+le 2026-11-17 (« ok avec tes recos ») : les six recommandations sont retenues. Go d'exécution donné par le user
+le 2026-11-17 (plan maître `.ai/PLAN_MAITRE_8_3_0_2026-11-17.md`, DM-4), qui fixe aussi le moment de la
+régénération : dès la fusion de ce plan (DM-1).**
+Ordre entre plans, fichiers partagés et borne de 4 agents d'écriture : plan maître.
 Contrat d'exécution : skill `plan-execution` (ordre strict dans une piste, aucun report, statut de chaque item,
 vérification sur pièces, zéro correctif hors périmètre). Statuts : `[x]` fait, `[~]` couvert ailleurs
 (référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture.
@@ -263,16 +265,16 @@ Tranché par le pilote (conventions du dépôt, modifiable par le user) :
 
 ## Piste E — rattachements écrits (pilote ; Haiku pour le backlog)
 
-- [ ] E.1 Plan de refonte du rejeu : D-23, D-24, « En passant » et T.5 ne disent plus que le document ne porte
-      ni sprints ni sauts ; la visée y est citée comme déjà publiée.
-- [ ] E.2 Plan de refonte, item neuf du lot T (selon D-2) : une seule lecture « médailles du match » depuis
+- [x] E.1 Plan de refonte du rejeu : D-23, D-24, « En passant » et T.5 ne disent plus que le document ne porte
+      ni sprints ni sauts ; la visée y est citée comme déjà publiée. Fait le 2026-11-17.
+- [x] E.2 (fait le 2026-11-17 : item T.6 du plan de refonte) Plan de refonte, item neuf du lot T (selon D-2) : une seule lecture « médailles du match » depuis
       `medals` du document, pour le fil et la fiche ; libellé et image résolus par le serveur (patron de
       `resolveVehicleLabels`, champ servi déclaré dans `internal/domain/replaydoc`, textes par langue) ;
       substitution, sans fusion avec les événements du match. La phrase « aucune requête nouvelle, aucun
       changement du document » du lot T est amendée.
-- [ ] E.3 Plan de refonte, item neuf du lot T (selon D-3) : temps cumulé de sprint et nombre de sauts
+- [x] E.3 (fait le 2026-11-17 : item T.7 du plan de refonte) Plan de refonte, item neuf du lot T (selon D-3) : temps cumulé de sprint et nombre de sauts
       (« estimation ») dans « En passant », modèle pur ; précédé de la relecture du témoin `11de8353`.
-- [ ] E.4 Plan de refonte, T.0 et T.3 : les mesures se font par build du jeu, après la régénération ; la somme
+- [x] E.4 (fait le 2026-11-17 : T.0 et T.3 amendés) Plan de refonte, T.0 et T.3 : les mesures se font par build du jeu, après la régénération ; la somme
       des points par action ne s'affiche que si elle égale le score personnel de l'API, en plus du verdict du
       document.
 - [ ] E.5 `.ai/REGISTRE_REPORTS.md` : contrôle après la régénération (part des matchs avec rejeu dont le coup
@@ -351,7 +353,12 @@ file existante ; aucun SQL dans `api/` ni `service/` ; rien ne se décide sur le
 
 ## Journal d'exécution
 
-(vide)
+- 2026-11-17 — go du user (plan maître, DM-4). E.1 à E.4 exécutés par le pilote dans le plan de refonte, avant
+  son audit de conception : D-23 et D-24 corrigés, T.0 et T.3 amendés, items T.6 (médailles lues dans le
+  document) et T.7 (sprints et sauts) ajoutés, phrases « aucun code Go » et « aucune requête nouvelle »
+  amendées. Vérifié sur pièces avant d'écrire : `Medals` existe dans `domain/replaydoc/document.go`, le patron
+  de résolution des libellés est `service/replay_vehicle_labels.go`, et le commentaire de
+  `domain/replaydoc/inventory.go:99` dit encore le sprint « réfuté » (D.4 le corrige).
 
 ## Découvertes (consignées, non traitées)
 
