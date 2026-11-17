@@ -14,14 +14,17 @@ const PROJECTILE_ALPHA = 0.5
 const PROJECTILE_WIDTH = 1.2
 /**
  * Le vol reste visible 700 ms après son dernier point répliqué, puis s'efface. Le tracé reçoit la
- * durée en images (`ProjectileWindow.tailFrames`), convertie avec le pas du document.
+ * durée en images (`ProjectilePaint.tailFrames`), convertie avec le pas du document.
  */
 export const PROJECTILE_TAIL_MS = 700
 
-/** Fenêtre d'affichage : l'image courante et la durée de la traînée, en images. */
-export interface ProjectileWindow {
+/** Ce que le calque peint : la fenêtre (l'image courante, la durée de la traînée en images), l'encre et le filtre. */
+export interface ProjectilePaint {
   frame: number
   tailFrames: number
+  color: string
+  /** Seul, Masquer : faux pour l'index d'un projectile = le vol n'est pas tracé. */
+  shown?: (index: number) => boolean
 }
 
 /**
@@ -31,17 +34,15 @@ export interface ProjectileWindow {
  * la dernière position RÉPLIQUÉE — pour une grenade, la réplication cesse ~1,4 s après le
  * lancer alors que la mèche court jusqu'à ~3 s. Le vol s'efface donc, il n'explose pas.
  *
- * `shown` (Seul, Masquer) : faux pour l'index d'un projectile = le vol n'est pas tracé.
+ * `paint.shown` (Seul, Masquer) : faux pour l'index d'un projectile = le vol n'est pas tracé.
  */
 export function drawProjectilesLayer(
   ctx: CanvasRenderingContext2D,
   projectiles: ReplayProjectileReady[],
   view: CanvasView,
-  win: ProjectileWindow,
-  color: string,
-  shown?: (index: number) => boolean,
+  paint: ProjectilePaint,
 ): void {
-  const { frame, tailFrames } = win
+  const { frame, tailFrames, color, shown } = paint
   ctx.strokeStyle = color
   ctx.lineWidth = PROJECTILE_WIDTH
   for (const [index, pr] of projectiles.entries()) {

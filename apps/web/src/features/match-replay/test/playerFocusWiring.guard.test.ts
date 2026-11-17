@@ -47,7 +47,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['pistes (pion, nom, cône, traînée)', /embarkedAtSlot: vehicles\.isEmbarkedAt, seatedAtSlot, shownAtSlot,/],
     ['marques de tir', /k, embarkedAtSlot: vehicles\.isEmbarkedAt, shownAtSlot,/],
     ['éclairs de bouche', /vehicleSizeOf: vehicles\.sizeOf, shownAtSlot,/],
-    ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shownProjectile,?\s*\)/],
+    ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shown: shownProjectile,?\s*\},?\s*\)/],
   ])('%s', (_nom, motif) => {
     expect(canvas()).toMatch(motif)
   })

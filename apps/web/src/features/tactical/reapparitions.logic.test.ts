@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayCalloutZone as CalloutZone, TacticalReapparitionsAdverses, TacticalRepartitionZones } from '@/lib/api/types'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
 
+import { getTacticalText } from './i18n'
 import {
+  blocVideDeLaLecture,
   cadreDeLaCouche,
   cheminDeLaZone,
   construireLaLecture,
@@ -270,5 +272,40 @@ describe('le cadre de la couche et les étiquettes', () => {
     if (!repere) return
     // Un quart de tour horaire : le coin haut-gauche du monde passe en haut à droite.
     expect(positionDeLEtiquette({ x: 10, y: 60 }, repere)).toEqual({ left: '100.00%', top: '0.00%' })
+  })
+})
+
+describe('blocVideDeLaLecture — l’état vide dit la raison, dans les deux langues', () => {
+  const vide = (raison: string) =>
+    construireLaLecture(reponse({ etat: 'vide', raison, tenue: repartition([], { matchs: 2, reapparitions: 12, suffisante: false }) }), 3)
+
+  it.each(['fr', 'en'] as const)('une cause nommée : un titre et une phrase propres, sans jauge (%s)', (locale) => {
+    const t = getTacticalText(locale)
+    const attendus: Record<string, string> = {
+      aucun_match_mesure: t.reappEmptyNoMatchTitle,
+      equipe_inconnue: t.reappEmptyTeamTitle,
+      zone_sans_forme: t.reappEmptyShapeTitle,
+    }
+    for (const [raison, titre] of Object.entries(attendus)) {
+      const bloc = blocVideDeLaLecture(t, vide(raison)!)
+      expect(bloc?.titre, raison).toBe(titre)
+      expect(bloc?.corps.length, raison).toBeGreaterThan(0)
+      expect(bloc?.jauges, raison).toEqual([])
+    }
+  })
+
+  it('un manque de mesures : le titre de la zone et les deux jauges contre les planchers', () => {
+    const t = getTacticalText('fr')
+    for (const raison of ['sous_plancher_matchs', 'sous_plancher_reapparitions', 'code_futur']) {
+      const bloc = blocVideDeLaLecture(t, vide(raison)!)
+      expect(bloc?.titre, raison).toBe(t.reappEmptyFloorTitle('Fosse'))
+      expect(bloc?.jauges.map((j) => j.cle), raison).toEqual(['matchs', 'reapparitions'])
+    }
+  })
+
+  it('une lecture servie n’a pas de bloc ; sans zone, la phrase qui dit comment choisir', () => {
+    const t = getTacticalText('fr')
+    expect(blocVideDeLaLecture(t, construireLaLecture(reponse(), 3)!)).toBeNull()
+    expect(blocVideDeLaLecture(t, construireLaLecture(reponse(), null)!)?.titre).toBe(t.reappEmptyNoneTitle)
   })
 })

@@ -17,6 +17,7 @@ import { useKillerZones } from '../hooks/useKillerZones'
 import { buildFeedEntries, type MedalEvent } from '../model/killFeedLogic'
 import { testReplayDoc } from '../test/testDoc'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
+import { buildPlayers } from '@/lib/replay/rosterLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
 
 vi.mock('@/lib/accessibility', () => ({
@@ -164,7 +165,7 @@ describe('useKillerZones', () => {
     const botEntries = buildFeedEntries([kill({ tMs: 1_000, xuid: 'bid(1.0)' })], [], 0, null)
     const key = botEntries[0].key
     const row = { xuid: 'bid(1.0)', gamertag: 'Spark', is_bot: true } as unknown as MatchScoreboardRow
-    const avec = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr', [row]))
+    const avec = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr', buildPlayers(botDoc, [row])))
     expect(avec.result.current?.(key)).toBe('Fer à cheval')
     const sans = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr'))
     expect(sans.result.current?.(key)).toBe('')

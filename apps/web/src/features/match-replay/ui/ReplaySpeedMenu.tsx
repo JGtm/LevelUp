@@ -13,8 +13,9 @@
  * lecteur (replaySoundCursor.ts). Une constante locale de plus aurait été la troisième copie
  * de la même règle — et celle qui se serait tue le jour où la borne bouge.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { soundPlaysAtSpeed } from '../sound/replaySoundCursor'
 import { SPEED_MULTIPLIERS } from '../settings/useReplaySettings'
@@ -28,27 +29,10 @@ interface ReplaySpeedMenuProps {
 export function ReplaySpeedMenu({ speed, onSetSpeed, locale }: ReplaySpeedMenuProps) {
   const t = REPLAY_TEXT[locale]
   const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
 
   // Mêmes sorties que le tiroir de réglages : Échap et clic dehors (`pointerdown`, pas
   // `click` — le menu part au geste, pas au relâché).
-  useEffect(() => {
-    if (!open) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node | null
-      if (target && wrapRef.current?.contains(target)) return
-      setOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('pointerdown', onPointerDown)
-    }
-  }, [open])
+  const wrapRef = useDismissable(open, () => setOpen(false), { outside: 'pointerdown' })
 
   return (
     <div ref={wrapRef} className="relative">

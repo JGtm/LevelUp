@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplaySpawnForecast } from '@/lib/api/types'
 
+import { REPLAY_TEXT } from '../i18n/i18n'
 import {
+  forecastRefusal,
   momentOf,
   momentsAt,
   normalizeSpawnForecast,
@@ -337,5 +339,39 @@ describe('tintAlpha selon le dessin', () => {
     expect(tintAlpha(0.5, 0.5, 'both')).toBeCloseTo(TINT_BASE_ALPHA_UNDER_POINTS + TINT_AMPLITUDE_ALPHA_UNDER_POINTS, 9)
     expect(tintAlpha(0.5, 0.5, 'both')).toBeLessThan(tintAlpha(0.5, 0.5, 'zones'))
     expect(tintAlpha(0, 0.5, 'both')).toBeLessThan(tintAlpha(0, 0.5, 'zones'))
+  })
+})
+
+describe('forecastRefusal — le motif d’une réponse qui n’est pas prête', () => {
+  const fr = REPLAY_TEXT.fr.respawnForecast.refusal
+  const en = REPLAY_TEXT.en.respawnForecast.refusal
+  const refuse = (over: Partial<ReplaySpawnForecast>): ReplaySpawnForecast => wire({ status: 'unavailable', ...over })
+
+  it('prête, ou pas encore là : rien à expliquer', () => {
+    expect(forecastRefusal(wire(), fr)).toBeNull()
+    expect(forecastRefusal(undefined, fr)).toBeNull()
+    expect(forecastRefusal(null, fr)).toBeNull()
+  })
+
+  it('le message servi (déjà dans la langue de la requête) passe avant le dictionnaire', () => {
+    expect(forecastRefusal(refuse({ reason: 'no_zone', message: 'Message du serveur.' }), fr)).toBe('Message du serveur.')
+  })
+
+  it('sans message : la phrase du dictionnaire pour chacune des cinq raisons, dans la langue de la page', () => {
+    for (const reason of ['no_model', 'map_unknown', 'not_enough_matches', 'no_zone', 'no_respawn'] as const) {
+      expect(forecastRefusal(refuse({ reason }), fr)).toBe(fr.byReason[reason])
+      expect(forecastRefusal(refuse({ reason }), en)).toBe(en.byReason[reason])
+      expect(fr.byReason[reason]).not.toBe(en.byReason[reason])
+    }
+  })
+
+  it('une raison que ce client ne connaît pas, ou aucune raison : la phrase générale, jamais un motif muet', () => {
+    expect(forecastRefusal(refuse({ reason: 'code_futur' as never }), fr)).toBe(fr.unknown)
+    expect(forecastRefusal(refuse({}), en)).toBe(en.unknown)
+  })
+
+  it('« probabilité », jamais « prévision », dans les deux langues', () => {
+    const texts = [...Object.values(fr.byReason), fr.unknown, ...Object.values(en.byReason), en.unknown]
+    expect(texts.filter((x) => /pr[ée]vision|forecast/i.test(x))).toEqual([])
   })
 })

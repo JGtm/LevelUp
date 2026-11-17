@@ -28,6 +28,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { formatClockMMSS } from '@/lib/formatters'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useHlsVideo } from '@/lib/media/useHlsVideo'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -56,12 +57,9 @@ export function ReplayMediaLightbox({ item, locale, onClose }: ReplayMediaLightb
 
   useEffect(() => {
     panelRef.current?.focus({ preventScroll: true })
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [])
+  // Échap seul : le clic dehors est le voile (`onPointerDown` ci-dessous), qui ne ferme que sur lui-même.
+  useDismissable(true, onClose, { ref: panelRef, outside: null })
 
   return (
     <div

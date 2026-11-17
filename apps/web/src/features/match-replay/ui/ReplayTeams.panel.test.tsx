@@ -16,7 +16,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeams } from './ReplayTeams'
+import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -38,7 +38,7 @@ const ALLEGIANCE = filmAllegianceOf(DOC, SCOREBOARD, 'A')
 
 function setup(panel?: { xuid: string | null; onSelect: (xuid: string) => void }) {
   return render(
-    <ReplayTeams doc={DOC} scoreboard={SCOREBOARD} frame={10} locale="fr" allegiance={ALLEGIANCE} panel={panel} />,
+    <ReplayTeamsFromBoard doc={DOC} scoreboard={SCOREBOARD} frame={10} locale="fr" allegiance={ALLEGIANCE} panel={panel} />,
   )
 }
 

@@ -6,7 +6,8 @@
  *
  * UN REFUS EST UN CALQUE ABSENT, pas une erreur ni une action impossible : réponse `unavailable`,
  * échec de chargement, carte sans zone nommée, aucune mort exploitable — le calque ne se peint pas et
- * son interrupteur n'est pas proposé. LA DISPONIBILITÉ NE SE DÉDUIT JAMAIS DE LA PRÉFÉRENCE : la réponse est
+ * son interrupteur n'est pas proposé. Quand la réponse refuse (`unavailable`), son MOTIF est rendu (`refusal`) :
+ * le panneau de la vue l'écrit à la place de l'interrupteur, jamais un calque qui manque sans rien dire. LA DISPONIBILITÉ NE SE DÉDUIT JAMAIS DE LA PRÉFÉRENCE : la réponse est
  * demandée calque éteint comme allumé (une seule requête, même clé, jamais rechargée à l'allumage) et
  * l'interrupteur n'est offert que lorsqu'elle est prête. Un rejeu dont la réponse sera `unavailable` ne
  * l'offre donc jamais, et un rejeu servi ne l'offre qu'une fois la réponse arrivée : aucun clignotement.
@@ -25,6 +26,7 @@ import { useReplaySpawnForecast } from '../../../lib/replay/queries'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { CanvasView } from '../model/replayView'
 import {
+  forecastRefusal,
   momentsAt,
   normalizeSpawnForecast,
   type ForecastDraw,
@@ -75,6 +77,8 @@ export interface ReplayRespawnForecast {
   ready: boolean
   /** L'interrupteur se propose au panneau de la vue (cf. l'en-tête). */
   available: boolean
+  /** Pourquoi aucune probabilité n'est servie, quand la réponse la refuse ; `null` sinon. Le panneau le dit à la place de l'interrupteur. */
+  refusal: string | null
 }
 
 /** Les textes de la page, résolus : une probabilité s'écrit selon la langue (`35 %`, `35%`). */
@@ -166,5 +170,6 @@ export function useReplayRespawnForecast(o: RespawnForecastOptions): ReplayRespa
   }, [forecast, frameMs, shownAuthor, inputs, clip, view, draw])
 
   const available = !!playerSlug && !!matchId && hasZones && ready
-  return useMemo(() => ({ layers, show: enabled, ready, available }), [layers, enabled, ready, available])
+  const refusal = useMemo(() => forecastRefusal(query.data, REPLAY_TEXT[locale].respawnForecast.refusal), [query.data, locale])
+  return useMemo(() => ({ layers, show: enabled, ready, available, refusal }), [layers, enabled, ready, available, refusal])
 }

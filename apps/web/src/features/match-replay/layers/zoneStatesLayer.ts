@@ -75,6 +75,7 @@
  */
 import { drawZoneFloorContours, type ObjectiveElementReady } from './objectivesLayer'
 import { floorInRange } from './floorRings'
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
@@ -291,7 +292,7 @@ export interface ZoneStatesLayerInput {
 // métier, elle porte du contraste sur les aplats de la carte, exactement comme le HUD du jeu —,
 // donc la même exception documentée que `canvasInk.ts` s'applique. Plus grande que les callouts :
 // une lettre de base est un repère de premier plan, pas une annotation.
-const ZONE_LETTER_FONT = '700 13px ui-sans-serif, system-ui, sans-serif'
+const ZONE_LETTER_FONT = `700 13px ${CANVAS_FONT_FAMILY}`
 const ZONE_LETTER_OUTLINE_WIDTH = 2.4
 const ZONE_LETTER_FILL = 'rgba(255, 255, 255, 1)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
 const ZONE_LETTER_STROKE = 'rgba(0, 0, 0, 0.92)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete

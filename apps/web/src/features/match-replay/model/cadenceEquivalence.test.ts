@@ -109,8 +109,11 @@ describe('drawProjectilesLayer — la traînée d’un vol est une durée', () =
       ctx,
       [vol],
       VIEW,
-      { frame: t0 + dernier + Math.floor(apresLeDernierPointMs / pas), tailFrames: msToFrames(PROJECTILE_TAIL_MS, doc) },
-      '#c',
+      {
+        frame: t0 + dernier + Math.floor(apresLeDernierPointMs / pas),
+        tailFrames: msToFrames(PROJECTILE_TAIL_MS, doc),
+        color: '#c',
+      },
     )
     return ops.filter((o) => o.op === 'stroke').length
   }

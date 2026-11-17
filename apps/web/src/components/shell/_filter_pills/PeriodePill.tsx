@@ -6,7 +6,8 @@
  * (logique dans FilterOmnibar via `onSetPeriod`).
  */
 import type { PeriodInput, PeriodPresetCount } from '@/lib/api/types'
-import { PERIOD_PRESETS, detectActivePreset, presetPeriod, useDismissable } from './_hooks'
+import { PERIOD_PRESETS, detectActivePreset, presetPeriod } from './_hooks'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'

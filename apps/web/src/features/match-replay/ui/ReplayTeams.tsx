@@ -32,7 +32,6 @@
 import { useMemo } from 'react'
 
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
@@ -53,10 +52,10 @@ import {
 import { campLabel } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
-  buildPlayers,
   buildSlotOwnership,
   campResolver,
   vitalityPresence,
+  type ReplayPlayer,
 } from '../../../lib/replay/rosterLogic'
 
 /**
@@ -99,7 +98,8 @@ const SEATS_GRID_CLASS =
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady
-  scoreboard: MatchScoreboardRow[]
+  /** La jointure film <-> base du match (`model.players`) : la page la construit une fois, la colonne ne la refait pas. */
+  players: readonly ReplayPlayer[]
   frame: number
   locale: ReplayLocale
   /**
@@ -122,10 +122,9 @@ interface ReplayTeamsProps {
 }
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, allegiance, header, panel,
+  doc, players, frame, locale, allegiance, header, panel,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
-  const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
   // LA FICHE EST UNE PLACE, PAS UN JOUEUR (retour user 2026-09-02, règle des places du
   // 2026-09-23) : un partant libère sa place pour son remplaçant — un 4v4 garde huit places,
   // quel que soit le nombre de relais. LA PLACE ET LA PRÉSENCE VIENNENT DU DOCUMENT

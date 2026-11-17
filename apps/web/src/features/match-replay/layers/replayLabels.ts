@@ -15,6 +15,7 @@
  * POURQUOI UN FICHIER À PART : `replayMarkers.ts` frôlait le seuil de taille du dépôt, et
  * l'étiquette est une préoccupation distincte du marqueur (typographie contre géométrie).
  */
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { XY } from '../../../lib/replay/replayLogic'
 
 /** Corps de la police, en pixels d'ÉCRAN (comme tout ce qui s'adresse à l'œil ici). */
@@ -55,7 +56,7 @@ export function drawNameLabel(
   markerEdge: number,
 ): void {
   const k = style.k
-  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ui-sans-serif, system-ui, sans-serif`
+  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${CANVAS_FONT_FAMILY}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
   const y = c.y + markerEdge + LABEL_GAP_PX * k

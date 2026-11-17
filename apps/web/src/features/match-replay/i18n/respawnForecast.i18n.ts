@@ -8,7 +8,7 @@
  * réapparaître. Un sous-dictionnaire à part, comme `lives.i18n.ts` : `fr.ts` et `en.ts` sont au plafond
  * de taille. Servis par `REPLAY_TEXT[locale].respawnForecast`, parité tenue par `satisfies`.
  */
-import type { ForecastDraw } from '../model/respawnForecast.logic'
+import type { ForecastDraw, ForecastRefusalReason } from '../model/respawnForecast.logic'
 
 export interface RespawnForecastText {
   /** Libellé de l'interrupteur du panneau et titre de la légende. */
@@ -39,6 +39,11 @@ export interface RespawnForecastText {
   legendTintUnderPoints: string
   legendScale: string
   legendFooter: string
+  /**
+   * Pourquoi aucune probabilité n'est servie : le repli quand la réponse ne porte pas de `message`, une
+   * phrase par raison du serveur, et une phrase pour une raison que ce client ne connaît pas encore.
+   */
+  refusal: { byReason: Record<ForecastRefusalReason, string>; unknown: string }
 }
 
 export const FR_RESPAWN_FORECAST = {
@@ -64,6 +69,16 @@ export const FR_RESPAWN_FORECAST = {
   legendTintUnderPoints: 'Teinte légère : probabilité de la zone',
   legendScale: 'Teinte : probabilité de la zone',
   legendFooter: 'Mise à jour chaque seconde',
+  refusal: {
+    byReason: {
+      no_model: 'Le modèle de probabilité de réapparition n’est pas disponible.',
+      map_unknown: 'La carte de ce match n’est pas connue : aucune probabilité de réapparition.',
+      not_enough_matches: 'Pas assez de matchs sur cette carte pour estimer la probabilité de réapparition.',
+      no_zone: 'Cette carte n’a pas de zones nommées : aucune probabilité de réapparition.',
+      no_respawn: 'Ce match n’a aucune réapparition à analyser.',
+    },
+    unknown: 'La probabilité de réapparition n’est pas disponible pour ce match.',
+  },
 } satisfies RespawnForecastText
 
 /** « 1st », « 2nd », « 3rd », « 4th », « 11th »… */
@@ -105,4 +120,14 @@ export const EN_RESPAWN_FORECAST = {
   legendTintUnderPoints: 'Light tint: zone probability',
   legendScale: 'Tint: zone probability',
   legendFooter: 'Updated every second',
+  refusal: {
+    byReason: {
+      no_model: 'The respawn probability model is not available.',
+      map_unknown: 'The map of this match is not known: no respawn probability.',
+      not_enough_matches: 'Not enough matches on this map to estimate the respawn probability.',
+      no_zone: 'This map has no named zones: no respawn probability.',
+      no_respawn: 'This match has no respawn to analyse.',
+    },
+    unknown: 'The respawn probability is not available for this match.',
+  },
 } satisfies RespawnForecastText

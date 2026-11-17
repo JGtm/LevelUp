@@ -22,6 +22,7 @@ import { useId } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { Locale } from '@/lib/i18n/locale'
+import { zoneHasShape } from '@/lib/replay/calloutShape'
 import { calloutLabel, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import { PlanMaskDef } from '@/lib/replay/PlanMaskDef'
 import { planMaskId, planMaskUrl } from '@/lib/replay/planMask'
@@ -52,7 +53,7 @@ export interface TacticalReapparitionsZonesProps {
 /** Les grandes zones d'abord (dessous), les fines ensuite : une zone fine imbriquée reste visible et cliquable. */
 function zonesDansLOrdre(zones: readonly CalloutZoneReady[]): CalloutZoneReady[] {
   return zones
-    .filter((z) => z.polygon.length >= 3)
+    .filter(zoneHasShape)
     .sort((a, b) => Number(b.big) - Number(a.big) || a.volumeIndex - b.volumeIndex)
 }
 

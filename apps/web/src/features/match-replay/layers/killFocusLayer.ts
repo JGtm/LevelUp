@@ -23,6 +23,7 @@
  * Tailles en pixels d'ÉCRAN, multipliées par la densité `k` comme tous les calques. Aucune couleur
  * écrite ici : les encres arrivent du hook (`canvasInk`, tokens d'équipe).
  */
+import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { XY } from '../../../lib/replay/replayLogic'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import type { FocusActor, ResolvedKillFocus } from '../model/killFocusLogic'
@@ -40,7 +41,6 @@ const BRACKET_WIDTH_PX = 3
 
 const LABEL_FONT_PX = 13
 const LABEL_WEIGHT = 900
-const LABEL_FAMILY = 'ui-sans-serif, system-ui, sans-serif'
 /** Distance entre le centre du pion et le haut de l'étiquette, et hauteur de l'étiquette. */
 const LABEL_OFFSET_PX = 27
 const LABEL_HEIGHT_PX = 22
@@ -196,7 +196,7 @@ function drawLabel(
 ): void {
   if (!actor.name) return
   const k = o.k
-  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${LABEL_FAMILY}`
+  ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${CANVAS_FONT_FAMILY}`
   const textW = ctx.measureText(actor.name).width
   const glyphW = (isKiller ? (o.weaponIcon ? WEAPON_ICON_W_PX : 0) : CROSS_PX) * k
   const gap = glyphW > 0 ? LABEL_GAP_PX * k : 0

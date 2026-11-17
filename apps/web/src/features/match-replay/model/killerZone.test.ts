@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow, ReplayCalloutZone } from '@/lib/api/types'
 import { calloutLabel, normalizeCalloutZones, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { buildPlayers } from '@/lib/replay/rosterLogic'
 
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
@@ -275,13 +276,13 @@ describe('killerZones — zones sans nom, bots', () => {
   it('tueur BOT : le xuid de base du fil est relié à sa piste par la feuille (gamertag nu), sans table nouvelle', () => {
     const doc = testReplayDoc({ tracks: [BOT_FILM] as never })
     const entries = feedOf({ tMs: 1_000, xuid: 'bid(1.0)' })
-    expect(nameOf(killerZones(entries, doc, ETAGES, [ROW_BOT]), entries[0].key)).toBe('Bas')
+    expect(nameOf(killerZones(entries, doc, ETAGES, buildPlayers(doc, [ROW_BOT])), entries[0].key)).toBe('Bas')
   })
 
   it('tueur bot SANS ligne de feuille pour le joindre : pas d’entrée', () => {
     const doc = testReplayDoc({ tracks: [BOT_FILM] as never })
     const entries = feedOf({ tMs: 1_000, xuid: 'bid(1.0)' })
     expect(killerZones(entries, doc, ETAGES).size).toBe(0)
-    expect(killerZones(entries, doc, ETAGES, [{ ...ROW_BOT, gamertag: 'Autre' } as MatchScoreboardRow]).size).toBe(0)
+    expect(killerZones(entries, doc, ETAGES, buildPlayers(doc, [{ ...ROW_BOT, gamertag: 'Autre' } as MatchScoreboardRow])).size).toBe(0)
   })
 })

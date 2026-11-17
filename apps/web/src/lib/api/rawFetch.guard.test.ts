@@ -44,7 +44,7 @@ const ALLOWED_RAW_FETCH: Readonly<Record<string, string>> = {
     "sons du rejeu (fichiers statiques binaires, décodés par WebAudio, silence propre sur absence)",
   'features/match-replay/sound/replayAudioMix.ts':
     "sons du rejeu à l'export (mêmes fichiers statiques binaires que replayAudio)",
-  'features/match-replay/layers/useReplayVehicles.ts':
+  'features/match-replay/layers/useVehicleSprites.ts':
     "manifeste statique des véhicules du rejeu (absence = aucune famille dimensionnée, avertissement)",
 }
 

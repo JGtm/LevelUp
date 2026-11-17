@@ -6,7 +6,7 @@
  * dans la langue de la page. Un hook à part, parce qu'un hook exporté depuis un fichier de
  * composant coûte un avertissement `react-refresh`.
  *
- * LA FEUILLE DE MATCH (`scoreboard`) est ce qui relie un BOT du fil (xuid de base `bid(N.0)`) à ses
+ * LA JOINTURE DU MATCH (`players`, la feuille jointe au film) est ce qui relie un BOT du fil (xuid de base `bid(N.0)`) à ses
  * vies du film : les bots comptent, ils ont donc leur zone comme tout tueur.
  *
  * `undefined` = la carte n'a AUCUNE zone nommée (Forge, par construction) : le fil ne réserve
@@ -16,9 +16,9 @@
  */
 import { useMemo } from 'react'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
 import { calloutLabel, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
@@ -32,12 +32,12 @@ export function useKillerZones(
   doc: ReplayDocumentReady | null | undefined,
   zones: readonly CalloutZoneReady[],
   locale: ReplayLocale,
-  scoreboard?: readonly MatchScoreboardRow[],
+  players?: readonly ReplayPlayer[],
 ): KillerZoneOf | undefined {
-  // La feuille joint les bots du fil (xuid de base) à leurs vies : sans elle, un bot n'a pas de zone.
+  // La jointure du match joint les bots du fil (xuid de base) à leurs vies : sans elle, un bot n'a pas de zone.
   const byKey = useMemo(
-    () => (doc ? killerZones(entries, doc, zones, scoreboard) : null),
-    [entries, doc, zones, scoreboard],
+    () => (doc ? killerZones(entries, doc, zones, players) : null),
+    [entries, doc, zones, players],
   )
   return useMemo(() => {
     if (zones.length === 0) return undefined

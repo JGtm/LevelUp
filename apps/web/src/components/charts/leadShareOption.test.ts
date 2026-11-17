@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { LeadSharePoint } from '@/lib/charts/leadShare/model'
 import { LEAD_SHARE_TEXT } from '@/lib/charts/leadShare/text'
+import { readOption, type OptionRead } from '@/lib/echarts/optionRead.testutil'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(--ac-${token})`,
@@ -23,10 +24,8 @@ const POINTS: LeadSharePoint[] = [
   { key: 'c', label: '#3\nPrism', share: 0, changes: 0 },
 ]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function option(variant: 'bars' | 'line' = 'bars', points = POINTS): Record<string, any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return buildLeadShareOption(points, { text, locale: 'fr', variant }) as Record<string, any>
+function option(variant: 'bars' | 'line' = 'bars', points = POINTS): OptionRead<number | null> {
+  return readOption(buildLeadShareOption(points, { text, locale: 'fr', variant }))
 }
 
 describe('buildLeadShareOption — l’axe est NORMALISÉ', () => {

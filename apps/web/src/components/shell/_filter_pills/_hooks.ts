@@ -3,7 +3,6 @@
  *
  * Extrait de FilterOmnibar.tsx pour respecter la limite 500L/module.
  */
-import { useEffect, useRef } from 'react'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 import type {
@@ -75,28 +74,6 @@ export function detectActivePreset(period: PeriodInput | undefined): PresetId {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function isUUIDLabel(label: string): boolean {
   return UUID_RE.test(label.trim())
-}
-
-// ─── Hook : popover dismissable (click-outside + Escape) ─────────────────────
-
-export function useDismissable(open: boolean, onClose: () => void) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', onDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, onClose])
-  return ref
 }
 
 // ─── Hash de l'état pending — détection de dirty ─────────────────────────────
