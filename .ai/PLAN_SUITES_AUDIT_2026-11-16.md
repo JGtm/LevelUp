@@ -2,8 +2,8 @@
 
 État : écrit, relu contre la grille `plan-review`. Toutes les décisions sont tranchées (trois séries de
 réponses du user, 2026-11-16, ci-dessous) ; quand une réponse contredit une recommandation de D-1 à D-8, la
-réponse fait foi. Exécuté le 2026-11-17 jusqu'à H.1 et G.3 ; restent H.2 (contrôles à l'écran du user), H.3
-(fusion dans `release/v8.3.0`) et H.4 (régénération du parc, geste du user).
+réponse fait foi. Exécuté et fusionné dans `release/v8.3.0` le 2026-11-17 (#212) ; restent H.2 (contrôles à l'écran du user)
+et H.4 (régénération du parc, geste du user).
 Source : `.ai/AUDIT_VERSIONS_8_2_0_A_8_3_0_2026-11-16.md` (8 P1, 4 familles de P2). Demande du user
 (2026-11-16) : traiter tous les points de la revue sans attendre, amender l'ADR 0048, valider une à une les
 données servies sans lecteur.
@@ -386,7 +386,9 @@ Décisions du pilote à l'étape 0, consignées :
 - [ ] H.2 Contrôles à l'écran du user, dans l'artefact des vérifications : menus du rejeu (fermeture par Échap et
       clic dehors), calque de probabilité et son état vide, Tactique « Réapparitions adverses », fonds Plan et
       Rendu tournés sur les trois vues, format de la Mainmise (élément déjà posé le 2026-11-16).
-- [ ] H.3 Tous les items statués ; fusion dans `release/v8.3.0` (CI verte).
+- [x] H.3 Tous les items statués ; fusion dans `release/v8.3.0` (CI verte). Fait le 2026-11-17 : demande de
+      fusion #212, CI verte au second passage (32 contrôles verts, 2 sautés), fusion en un commit
+      (`26fd304fe4`).
 - [ ] H.4 Régénération du parc des rejeux (schéma 125, format 8 du fichier tactique) : dernier geste, lancé par
       le user après la fusion ; ce plan ne la lance pas.
 
