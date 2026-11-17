@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '@/lib/api/client'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { SPARTAN_PALETTE } from '@/lib/accessibility/palettes/spartan'
@@ -106,14 +107,8 @@ export function SpartanCustomizerModal({
     }
   }, [base])
 
-  // Fermeture au clavier
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  // Échap et un clic hors de la carte (sur le voile) ferment la modale.
+  const cardRef = useDismissable(true, onClose)
 
   const isEmblemTab = tab === 'emblem'
   const browseIds = isEmblemTab ? emblemIds : nameplateIds
@@ -161,11 +156,10 @@ export function SpartanCustomizerModal({
       aria-label={t('home.spartan_customizer.title')}
       data-testid="spartan-customizer-modal"
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm"
-      onClick={onClose}
     >
       <div
+        ref={cardRef}
         className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 px-5 py-3">
