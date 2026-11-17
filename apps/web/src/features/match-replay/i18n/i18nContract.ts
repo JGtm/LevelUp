@@ -915,7 +915,7 @@ export interface ReplayText {
   /**
    * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
    * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des
-   * charges Notion 21.1, rendu par `ReplayTeams.tsx`). La clé est l'identifiant
+   * charges Notion 21.1, rendu par `ui/ReplayPlayerCard.tsx`). La clé est l'identifiant
    * stable publié par le document (`fam`) — une famille inconnue n'a pas de libellé et
    * ne reçoit aucun effet.
    */
