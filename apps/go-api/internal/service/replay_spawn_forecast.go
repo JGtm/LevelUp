@@ -94,13 +94,13 @@ func (s *replayService) SpawnForecast(ctx context.Context, matchID string) (repl
 		return replaydoc.SpawnForecast{}, err
 	}
 	if raison != "" {
-		return s.previsionIndisponible(ctx, raison, cadre), nil
+		return s.previsionIndisponible(ctx, raison), nil
 	}
 	calc, err := s.calculerLaPrevision(ctx, matchID, cadre)
 	if err != nil {
 		return replaydoc.SpawnForecast{}, err
 	}
-	out, err := s.habillerLaPrevision(ctx, calc, cadre)
+	out, err := s.habillerLaPrevision(ctx, calc)
 	if err != nil {
 		return replaydoc.SpawnForecast{}, err
 	}
@@ -213,7 +213,7 @@ func raisonDuStatut(statut string) string {
 }
 
 // previsionIndisponible sert la reponse d'une prevision qui n'a pas lieu, avec son libelle.
-func (s *replayService) previsionIndisponible(ctx context.Context, raison string, c cadrePrevision) replaydoc.SpawnForecast {
+func (s *replayService) previsionIndisponible(ctx context.Context, raison string) replaydoc.SpawnForecast {
 	return replaydoc.SpawnForecast{
 		Status: replaydoc.SpawnForecastStatusUnavailable, Reason: raison, Message: messageDeRaison(ctx, raison),
 		Zones: []replaydoc.SpawnForecastZone{}, Deaths: []replaydoc.SpawnForecastDeath{},
@@ -240,11 +240,10 @@ func messageDeRaison(ctx context.Context, raison string) string {
 
 // habillerLaPrevision projette le resultat pur sur le corps servi : libelles de zone dans la langue
 // de la requete, coordonnees au centimetre, identites masquees en demo.
-func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionCalculee,
-	c cadrePrevision) (replaydoc.SpawnForecast, error) {
+func (s *replayService) habillerLaPrevision(ctx context.Context, calc previsionCalculee) (replaydoc.SpawnForecast, error) {
 	res := calc.res
 	if raison := raisonDuStatut(res.Statut); raison != "" {
-		return s.previsionIndisponible(ctx, raison, c), nil
+		return s.previsionIndisponible(ctx, raison), nil
 	}
 	out := replaydoc.SpawnForecast{
 		Status: replaydoc.SpawnForecastStatusReady, Deaths: make([]replaydoc.SpawnForecastDeath, 0, len(res.Morts)),

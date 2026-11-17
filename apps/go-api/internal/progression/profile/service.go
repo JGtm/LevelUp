@@ -133,7 +133,7 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 
 	// ── Section C : leviers + suggestions (nécessite Section B remplie)
 	if profile.HasEnoughData && !profile.Tier.IsEmpty() {
-		if err := s.computeLUSRComponents(ctx, profile, userID); err != nil {
+		if err := s.computeLUSRComponents(ctx, profile); err != nil {
 			slog.WarnContext(ctx, "profile: LUSR components partial", "err", err)
 		}
 		profile.Leverages = identifyLeverages(profile.LUSRComponents)
@@ -280,7 +280,7 @@ func (s *Service) computeEngagement(ctx context.Context, profile *domain.PlayerP
 // target_for_tier : composite cible (entrée du tier suivant) via
 // analysis.RequiredCompositeForTier. La même cible s'applique aux 8
 // composantes (le composite est leur moyenne pondérée — affichage compact).
-func (s *Service) computeLUSRComponents(ctx context.Context, profile *domain.PlayerProfile, userID string) error {
+func (s *Service) computeLUSRComponents(ctx context.Context, profile *domain.PlayerProfile) error {
 	rows, err := s.loadLUSRComponentsBreakdown(ctx)
 	if err != nil {
 		return err
