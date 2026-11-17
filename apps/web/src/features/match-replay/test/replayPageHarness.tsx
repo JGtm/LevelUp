@@ -11,6 +11,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { http, HttpResponse } from 'msw'
 import { expect, vi } from 'vitest'
 
+import { API_BASE_URL } from '@/lib/api/client'
 import { testCapabilities } from '@/test/capabilities'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
@@ -24,7 +25,7 @@ import { recordingContext } from './recordingContext'
 import { resetRoute } from './replayPageRouter'
 
 /** L'adresse du document de rejeu du match affiché par défaut. */
-export const REPLAY_API = '/api/v1/players/jgtm/matches/match-1/replay'
+export const REPLAY_API = `${API_BASE_URL}/players/jgtm/matches/match-1/replay`
 
 /** Le contexte du match de départ : de quoi nommer le match dans les en-têtes, sans tableau de score. */
 export const MATCH_CONTEXT = {
