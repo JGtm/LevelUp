@@ -8,8 +8,9 @@
 // format.
 //
 // RÈGLE. Hors `internal/replayartifact/`, aucun fichier Go de `apps/go-api`, test compris, n'appelle
-// `os.ReadFile` ni `os.WriteFile` sur un chemin de fichier tactique. Un appel est tenu pour tel quand le texte de
-// son premier argument, ou un identifiant affecté depuis une expression qui nomme le fichier tactique
+// aucune des fonctions de [appelsFichierTactiqueInterdits] (`os.ReadFile`, `Open`, `OpenFile`, `Create`,
+// `WriteFile`, `atomicfile.WriteFile`) sur un chemin de fichier tactique. Un appel est tenu pour tel quand le texte
+// de son argument de chemin, ou un identifiant affecté depuis une expression qui nomme le fichier tactique
 // ([motifFichierTactique], même passe de contamination que `no_artefact_bytes_outside_gate_test.go`), en
 // désigne un. L'allowlist est vide. Le chemin du fichier d'une version ancienne (`TacticalRasterLegacyPath`,
 // jamais lu) n'est pas un chemin de fichier tactique : un test le dépose en JSON brut pour prouver qu'on ne le lit
@@ -39,11 +40,24 @@ var allowlistOctetsFichierTactique = map[string]bool{}
 var motifFichierTactique = regexp.MustCompile(
 	`TacticalRasterPath|TacticalRasterDir|TacticalRasterFileIn|SousDossierRasters|EcrireSidecarRaster`)
 
-// appelsFichierTactiqueInterdits : les fonctions de `os` qui lisent ou écrivent les octets d'un fichier.
-var appelsFichierTactiqueInterdits = map[string]bool{"ReadFile": true, "WriteFile": true}
+// appelsFichierTactiqueInterdits : par paquet, les fonctions qui lisent, écrivent, ouvrent ou créent les octets
+// d'un fichier : celles de `no_artefact_bytes_outside_gate_test.go` (`appelsFichierInterdits`) moins `Stat` et
+// `Lstat`, plus `os.Create` et l'écrivain atomique de la maison (`atomicfile`), forme que l'écrivain du fichier
+// tactique utilisait avant la porte. `Stat` et `Lstat` testent une présence, pas des octets, et ne sont pas
+// visés : la règle porte sur le format du fichier, que seule la porte fixe.
+var appelsFichierTactiqueInterdits = map[string]map[string]bool{
+	"os": {
+		"ReadFile": true, "Open": true, "OpenFile": true, "WriteFile": true, "Create": true,
+	},
+	"atomicfile": {"WriteFile": true, "WriteFileStrict": true},
+}
 
-// appelsSurUnFichierTactique rend les appels `os.ReadFile` / `os.WriteFile` d'une source qui portent sur un
-// fichier tactique, sous la forme « fichier:ligne os.X ».
+// indexCheminAppelFichierTactique : position de l'argument qui porte le chemin, quand ce n'est pas le premier
+// (`atomicfile.WriteFile(ctx, chemin, ...)`).
+var indexCheminAppelFichierTactique = map[string]int{"atomicfile.WriteFile": 1}
+
+// appelsSurUnFichierTactique rend les appels de [appelsFichierTactiqueInterdits] d'une source qui portent sur un
+// fichier tactique, sous la forme « fichier:ligne paquet.X ».
 func appelsSurUnFichierTactique(s goSource) []string {
 	var out []string
 	for _, d := range s.File.Decls {
@@ -62,16 +76,20 @@ func appelsSurUnFichierTactique(s goSource) []string {
 				return true
 			}
 			pkg, ok := sel.X.(*ast.Ident)
-			if !ok || pkg.Name != "os" || !appelsFichierTactiqueInterdits[sel.Sel.Name] {
+			if !ok || !appelsFichierTactiqueInterdits[pkg.Name][sel.Sel.Name] {
 				return true
 			}
-			arg := texteDeLExpression(s, call.Args[0])
+			idx := indexCheminAppelFichierTactique[pkg.Name+"."+sel.Sel.Name]
+			if idx >= len(call.Args) {
+				return true
+			}
+			arg := texteDeLExpression(s, call.Args[idx])
 			vise := motifFichierTactique.MatchString(arg)
 			for id := range tainted {
 				vise = vise || contientIdentifiant(arg, id)
 			}
 			if vise {
-				out = append(out, fmt.Sprintf("%s:%d os.%s", s.Rel, s.Fset.Position(call.Pos()).Line, sel.Sel.Name))
+				out = append(out, fmt.Sprintf("%s:%d %s.%s", s.Rel, s.Fset.Position(call.Pos()).Line, pkg.Name, sel.Sel.Name))
 			}
 			return true
 		})
@@ -98,6 +116,36 @@ func parcourir(pr *title.PathResolver) {
 `)
 	if got := appelsSurUnFichierTactique(copie); len(got) != 3 {
 		t.Errorf("le garde-rail doit voir les trois appels, vu %v", got)
+	}
+	// Chaque autre forme d'accès aux octets d'un fichier tactique fait rougir le garde-rail.
+	autresFormes := map[string]string{
+		"os.Open":                    `f, err := os.Open(pr.TacticalRasterPath("s", "m")); _ = f; return err`,
+		"os.OpenFile":                `f, err := os.OpenFile(pr.TacticalRasterPath("s", "m"), os.O_RDONLY, 0); _ = f; return err`,
+		"os.Create":                  `f, err := os.Create(pr.TacticalRasterPath("s", "m")); _ = f; return err`,
+		"atomicfile.WriteFile":       `return atomicfile.WriteFile(ctx, pr.TacticalRasterPath("s", "m"), raw, 0o644)`,
+		"atomicfile.WriteFileStrict": `return atomicfile.WriteFileStrict(pr.TacticalRasterPath("s", "m"), raw, 0o644)`,
+	}
+	for forme, corps := range autresFormes {
+		src := parseGoSnippet(t, "cmd/x/main.go", "package main\nimport (\"context\"; \"os\")\n"+
+			"func f(ctx context.Context, pr *title.PathResolver, raw []byte) error {\n"+corps+"\n}\n")
+		if got := appelsSurUnFichierTactique(src); len(got) != 1 {
+			t.Errorf("%s sur un fichier tactique doit rougir le garde-rail, vu %v", forme, got)
+		}
+	}
+	// Une forme voisine mais sur un chemin qui n'est pas tactique ne rougit pas.
+	neutre := parseGoSnippet(t, "cmd/x/main.go", `package main
+import "os"
+func f(ctx context.Context, p string, raw []byte) error {
+	f, err := os.Open(p)
+	_ = f
+	if err != nil {
+		return err
+	}
+	return atomicfile.WriteFile(ctx, p, raw, 0o644)
+}
+`)
+	if got := appelsSurUnFichierTactique(neutre); len(got) != 0 {
+		t.Errorf("faux positif : %v", got)
 	}
 	innocent := parseGoSnippet(t, "cmd/x/main.go", `package main
 import "os"
