@@ -11,6 +11,15 @@
  * L'état naît `standard` à chaque montage. Rien n'est mémorisé d'un match à l'autre, ni dans
  * l'URL, ni dans le stockage du navigateur.
  *
+ * # UN CADRE SANS TOILE EST TOUJOURS LE STANDARD
+ *
+ * Les icônes de cadre vivent dans la barre de lecture, donc dans la toile : sans toile (rejeu en
+ * chargement, en erreur ou absent) aucune n'est joignable, et la route garde le même composant d'un
+ * match à l'autre. L'état est donc rangé avec sa PORTÉE (`scopeKey`) : la clé du match quand la page a un
+ * rejeu à montrer, `null` sinon. Quand la portée change, l'état revient à `standard` AU RENDU, sans
+ * effet (patron de `usePlayerPanel`) : aucune image ne montre le cadre d'un autre match ni un Cinéma
+ * sans barre pour en sortir.
+ *
  * # TOUTE BASCULE EST ANNONCÉE COMME UN REDIMENSIONNEMENT
  *
  * Le cadre change sans que la fenêtre change : rien ne prévient ceux qui se calent sur elle (la
@@ -23,7 +32,7 @@
  * Le modèle ignore alors les deux bascules ; `disabled` le dit aux boutons. La sortie du Plein
  * cadre reste admise (cf. le modèle).
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { useExportActive } from '../export/exportLayoutStore'
 import {
@@ -49,25 +58,44 @@ export interface ReplayFrameControl {
   peek: () => ReplayFrameState
 }
 
-export function useReplayFrame(): ReplayFrameControl {
+/** L'état et la portée où il a été posé : hors de sa portée, il vaut l'état de départ. */
+interface Scoped {
+  scopeKey: string | null
+  state: ReplayFrameState
+}
+
+/**
+ * @param scopeKey la clé du match quand la page a un rejeu à montrer (toile montée), `null` sinon : tout
+ *   changement de portée ramène le cadre au Standard.
+ */
+export function useReplayFrame(scopeKey: string | null): ReplayFrameControl {
   const disabled = useExportActive()
-  const [state, setState] = useState<ReplayFrameState>(INITIAL_REPLAY_FRAME)
+  const [stored, setStored] = useState<Scoped>({ scopeKey, state: INITIAL_REPLAY_FRAME })
   // LA VÉRITÉ DU GESTE, lue hors rendu : deux frappes peuvent arriver entre deux rendus.
-  const stateRef = useRef<ReplayFrameState>(INITIAL_REPLAY_FRAME)
+  const truthRef = useRef<Scoped>(stored)
+  // LE RETOUR AU STANDARD SE FAIT AU RENDU, pas dans un effet : aucune image ne montre l'état d'une autre portée.
+  if (stored.scopeKey !== scopeKey) setStored({ scopeKey, state: INITIAL_REPLAY_FRAME })
+  const state = stored.scopeKey === scopeKey ? stored.state : INITIAL_REPLAY_FRAME
+  // LA VÉRITÉ DU GESTE SUIT L'ÉTAT VALIDÉ : à chaque validation elle reprend l'état rangé (donc le retour au
+  // Standard d'un changement de portée), et les gestes qui arrivent ensuite l'écrivent avant le rendu suivant.
+  useLayoutEffect(() => {
+    truthRef.current = stored
+  }, [stored])
 
   const send = useCallback(
     (event: ReplayFrameEvent) => {
-      const next = reduceReplayFrame(stateRef.current, event, { exportActive: disabled })
-      if (next === stateRef.current) return
-      stateRef.current = next
-      setState(next)
+      const current = truthRef.current.state
+      const next = reduceReplayFrame(current, event, { exportActive: disabled })
+      if (next === current) return
+      truthRef.current = { scopeKey, state: next }
+      setStored(truthRef.current)
     },
-    [disabled],
+    [disabled, scopeKey],
   )
   const toggleCinema = useCallback(() => send({ type: 'toggleCinema' }), [send])
   const toggleFullFrame = useCallback(() => send({ type: 'toggleFullFrame' }), [send])
   const exit = useCallback(() => send({ type: 'exit' }), [send])
-  const peek = useCallback(() => stateRef.current, [])
+  const peek = useCallback(() => truthRef.current.state, [])
 
   const announcedRef = useRef(state.frame)
   useEffect(() => {

@@ -112,6 +112,26 @@ describe('ReplayFrameButtons — les gestes', () => {
   })
 })
 
+describe('ReplayFrameButtons — la sortie du Plein cadre est celle de « Quitter »', () => {
+  it('l’icône courante rend le cadre ET referme le plein écran du système quand il est atteint', () => {
+    const control = makeFrameControl('plein-cadre')
+    const fullscreen: ReplayFullscreen = { active: true, disabled: false, toggle: vi.fn() }
+    renderButtons(control, { fullscreen })
+    fireEvent.click(screen.getByRole('button', { name: 'Plein cadre (F)' }))
+    expect(control.exit).toHaveBeenCalledTimes(1)
+    expect(fullscreen.toggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('sans plein écran du système atteint, seule la sortie du cadre a lieu', () => {
+    const control = makeFrameControl('plein-cadre')
+    const fullscreen: ReplayFullscreen = { active: false, disabled: false, toggle: vi.fn() }
+    renderButtons(control, { fullscreen })
+    fireEvent.click(screen.getByRole('button', { name: 'Plein cadre (F)' }))
+    expect(control.exit).toHaveBeenCalledTimes(1)
+    expect(fullscreen.toggle).not.toHaveBeenCalled()
+  })
+})
+
 describe('ReplayFrameButtons — pendant un export', () => {
   it('les trois icônes sont inertes et leurs clics ne font rien', () => {
     const control = makeFrameControl('standard', { disabled: true })

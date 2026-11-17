@@ -19,7 +19,8 @@
  */
 import { useState } from 'react'
 
-import { ReplayExportDialog, isExportBusy } from '../export/ReplayExportDialog'
+import { isCaptureBusy } from '../export/captureBusy'
+import { ReplayExportDialog } from '../export/ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayCapture } from '../export/useReplayCapture'
 import { CameraIcon, ExportIcon, ExportSpinner } from './ReplayTransportIcons'
@@ -32,7 +33,7 @@ function exportBadge(exporter: ReplayCapture['videoExport']): string {
 
 export function ReplayCaptureButtons({ capture, locale }: { capture: ReplayCapture; locale: ReplayLocale }) {
   const [exportOpen, setExportOpen] = useState(false)
-  const busy = capture.videoExport ? isExportBusy(capture.videoExport.state) : false
+  const busy = isCaptureBusy(capture)
   const t = REPLAY_TEXT[locale]
   return (
     <div className="relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-1">

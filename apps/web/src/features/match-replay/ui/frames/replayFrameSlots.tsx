@@ -4,11 +4,14 @@
  * niveau du module : leur identité ne change pas d'un rendu à l'autre, ni d'une bascule de cadre à l'autre
  * pour un même contenu.
  *
- * La table est fermée : un cadre ajouté doit dire ce qu'il pose. Aujourd'hui les trois cadres posent la
- * barre de lecture complète et la commande de zoom flottante, dans le coin bas-droit du bloc de la carte.
+ * DEUX JEUX D'EMPLACEMENTS, et le modèle décide lequel (`usesCompactBar`), jamais un nom de cadre écrit ici :
+ *  - la barre complète et la commande de zoom flottante, dans le coin bas-droit du bloc de la carte (Standard) ;
+ *  - la barre d'une ligne (Cinéma, Plein cadre), qui porte son propre zoom : aucune superposition de bloc.
+ * Un cadre ajouté dit sa barre dans le modèle, et reçoit le jeu d'emplacements qui va avec.
  */
-import type { ReplayFrame } from '../../model/replayFrame'
+import { usesCompactBar, type ReplayFrame } from '../../model/replayFrame'
 import { ReplayTransport } from '../ReplayTransport'
+import { ReplayTransportCompact } from '../ReplayTransportCompact'
 import { ReplayZoomControl } from '../ReplayZoomControl'
 import type { ReplayCanvasSlots } from '../replayTransportCommands'
 
@@ -17,12 +20,10 @@ const FULL_BAR_SLOTS: ReplayCanvasSlots = {
   blockOverlays: ({ zoom, locale }) => <ReplayZoomControl zoom={zoom} locale={locale} />,
 }
 
-const SLOTS_BY_FRAME: Record<ReplayFrame, ReplayCanvasSlots> = {
-  standard: FULL_BAR_SLOTS,
-  cinema: FULL_BAR_SLOTS,
-  'plein-cadre': FULL_BAR_SLOTS,
+const COMPACT_BAR_SLOTS: ReplayCanvasSlots = {
+  transport: (commands) => <ReplayTransportCompact {...commands} />,
 }
 
 export function canvasSlotsOf(frame: ReplayFrame): ReplayCanvasSlots {
-  return SLOTS_BY_FRAME[frame]
+  return usesCompactBar(frame) ? COMPACT_BAR_SLOTS : FULL_BAR_SLOTS
 }

@@ -18,7 +18,7 @@ import { useReplayShortcuts } from './useReplayShortcuts'
 
 /** Le cadre, le plein écran et le clavier, câblés comme la page et le canvas les câblent. */
 function useBanc() {
-  const frame = useReplayFrame()
+  const frame = useReplayFrame('match-test')
   const fullscreen = useReplayFullscreen(frame)
   useReplayShortcuts({
     togglePlay: () => {},
@@ -102,6 +102,54 @@ describe('useReplayFrame — l’état', () => {
       expect(result.current.peek()).toEqual({ frame: 'plein-cadre', returnTo: 'cinema' })
     })
     expect(result.current.frame).toBe('plein-cadre')
+  })
+})
+
+describe('useReplayFrame — un cadre sans toile est toujours le Standard', () => {
+  /** Le cadre vu à CHAQUE rendu : aucune image ne doit montrer le cadre d'une autre portée. */
+  function banc(initial: string | null) {
+    const rendus: ReplayFrame[] = []
+    const vue = renderHook(
+      ({ scope }: { scope: string | null }) => {
+        const control = useReplayFrame(scope)
+        rendus.push(control.frame)
+        return control
+      },
+      { initialProps: { scope: initial } },
+    )
+    return { ...vue, rendus }
+  }
+
+  it('changement de match : le cadre revient au Standard AU RENDU, sans image intermédiaire dans l’ancien cadre', () => {
+    const { result, rerender, rendus } = banc('match-a')
+    act(() => result.current.toggleCinema())
+    expect(result.current.frame).toBe('cinema')
+    rendus.length = 0
+    rerender({ scope: 'match-b' })
+    expect(result.current.frame).toBe('standard')
+    expect(rendus).not.toContain('cinema')
+    // L'état d'avant est oublié, et les gestes repartent du Standard.
+    expect(result.current.peek()).toEqual({ frame: 'standard', returnTo: 'standard' })
+    act(() => result.current.toggleFullFrame())
+    expect(result.current.frame).toBe('plein-cadre')
+    expect(result.current.peek().returnTo).toBe('standard')
+  })
+
+  it('pas de rejeu à montrer (portée nulle) : Standard, et le retour du même match repart du Standard', () => {
+    const { result, rerender } = banc('match-a')
+    act(() => result.current.toggleCinema())
+    rerender({ scope: null })
+    expect(result.current.frame).toBe('standard')
+    rerender({ scope: 'match-a' })
+    expect(result.current.frame).toBe('standard')
+    expect(result.current.peek().frame).toBe('standard')
+  })
+
+  it('une portée inchangée garde le cadre', () => {
+    const { result, rerender } = banc('match-a')
+    act(() => result.current.toggleCinema())
+    rerender({ scope: 'match-a' })
+    expect(result.current.frame).toBe('cinema')
   })
 })
 

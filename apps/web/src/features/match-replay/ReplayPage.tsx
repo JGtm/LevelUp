@@ -172,7 +172,10 @@ export function ReplayPage() {
   })
   // LE CADRE ET LE PLEIN ÉCRAN DU SYSTÈME vivent ICI parce que le cadre change la mise en page de LA PAGE
   // (cf. useReplayFrame) ; la toile n'en reçoit que les commandes : touches T et F, bouton de la barre.
-  const frameControl = useReplayFrame()
+  // SA PORTÉE : le match, tant que la page a un rejeu à montrer (une toile, donc une barre et ses icônes de
+  // cadre). Chargement, erreur et absence n'en ont pas, et le match qui change non plus : le cadre revient
+  // alors au Standard (cf. useReplayFrame).
+  const frameControl = useReplayFrame(data && loadState === 'ready' ? `${playerSlug}/${matchId}` : null)
   const fullscreen = useReplayFullscreen(frameControl)
 
   const chrome: ReplayFrameChrome = {

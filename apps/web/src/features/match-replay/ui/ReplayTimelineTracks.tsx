@@ -91,10 +91,10 @@
  */
 import { useState, type ChangeEvent, type RefObject } from 'react'
 
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
+import { dominanceInk } from '../model/campInk'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { ReplayMarkTrack } from './ReplayMarkTrack'
 import { ReplayMediaLightbox } from './ReplayMediaLightbox'
@@ -502,22 +502,6 @@ function LeadTrack({
       ))}
     </div>
   )
-}
-
-/**
- * L'encre d'une bande de dominance. TROIS CAS, ET TROIS ENCRES DISTINCTES :
- *  - ÉGALITÉ (`teamId === null`) : l'encre d'égalité DU DÉPÔT (`outcome-draw`, le bleu des
- *    matchs nuls, des tuiles neutres et des barres de bilan) — demande utilisateur du
- *    2026-08-28. Une quatrième couleur inventée ici ferait diverger le vocabulaire.
- *  - CAMP CONNU : allié ou adverse, les deux encres du rejeu.
- *  - CAMP NON RÉSOLU (`allyOf` rend `null`, joueur hors scoreboard) : la bordure neutre —
- *    jamais l'une des deux couleurs par défaut, qui désignerait un camp au hasard.
- */
-function dominanceInk(teamId: number | null, allyOf: (teamId: number) => boolean | null): string {
-  if (teamId == null) return tokenCssVar('outcome-draw')
-  const ally = allyOf(teamId)
-  if (ally === null) return 'var(--border)'
-  return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
 }
 
 function TrackLabel({ children }: { children: React.ReactNode }) {

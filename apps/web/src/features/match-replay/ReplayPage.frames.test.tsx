@@ -13,12 +13,14 @@
  *    de lecture : aucune icône de cadre n'y mène ailleurs), avec le bouton « Générer le rejeu » ; l'avis
  *    « instant non calé » se rend dans la scène des trois cadres.
  */
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse, delay } from 'msw'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { testCapabilities } from '@/test/capabilities'
+import { createTestQueryClient } from '@/test/render-utils'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -34,7 +36,7 @@ import { recordingContext } from './test/recordingContext'
 import { scoreboardRow } from './test/scoreboardRow'
 import { ReplayPage } from './ReplayPage'
 
-const hoisted = vi.hoisted(() => ({ search: {} as Record<string, string> }))
+const hoisted = vi.hoisted(() => ({ search: {} as Record<string, string>, matchId: 'match-1' }))
 const back = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -42,7 +44,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     getRouteApi: () => ({
-      useParams: () => ({ titleSlug: 'halo_infinite', playerSlug: 'jgtm', matchId: 'match-1' }),
+      useParams: () => ({ titleSlug: 'halo_infinite', playerSlug: 'jgtm', matchId: hoisted.matchId }),
       useSearch: () => hoisted.search,
     }),
     useRouter: () => ({ history: { length: 2, back }, navigate: vi.fn() }),
@@ -71,6 +73,7 @@ function serveDoc(doc: object) {
 
 beforeEach(() => {
   hoisted.search = {}
+  hoisted.matchId = 'match-1'
   // Aucune boucle d'animation, aucun dessin réel : la toile se monte, c'est tout ce qu'on regarde.
   vi.stubGlobal('requestAnimationFrame', () => 0)
   vi.stubGlobal('cancelAnimationFrame', () => {})
@@ -160,16 +163,23 @@ describe('ReplayPage : la toile n’est jamais remontée par une bascule de cadr
     }
   })
 
-  it('la barre de lecture et la commande de zoom gardent leurs nœuds d’un cadre à l’autre, en lecture', async () => {
+  it('la lecture continue d’un cadre à l’autre : la barre d’une ligne est gardée entre Cinéma et Plein cadre, le zoom flottant est propre au Standard', async () => {
     await mountReady()
     fireEvent.click(screen.getByRole('button', { name: T.play }))
+    expect(screen.getByRole('button', { name: T.pause })).toBeInTheDocument()
+    // Standard : la barre complète et sa croix de zoom flottante.
+    expect(screen.getByRole('group', { name: T.zoomGroup })).toBeInTheDocument()
+    goTo('cinema')
+    // Cinéma : la barre d'une ligne, le zoom dans la barre ; la lecture n'a pas été interrompue.
     const pause = screen.getByRole('button', { name: T.pause })
-    const zoomIn = screen.getByRole('button', { name: T.zoomIn })
-    for (const frame of ['cinema', 'plein-cadre', 'standard'] as const) {
-      goTo(frame)
-      expect(screen.getByRole('button', { name: T.pause })).toBe(pause)
-      expect(screen.getByRole('button', { name: T.zoomIn })).toBe(zoomIn)
-    }
+    expect(screen.getAllByRole('button', { name: T.zoomIn })).toHaveLength(1)
+    expect(document.querySelector('[data-replay-transport="compact"]')?.contains(pause)).toBe(true)
+    goTo('plein-cadre')
+    expect(screen.getByRole('button', { name: T.pause })).toBe(pause)
+    goTo('standard')
+    expect(screen.getByRole('button', { name: T.pause })).toBeInTheDocument()
+    expect(document.querySelector('[data-replay-transport="compact"]')).toBeNull()
+    expect(screen.getByRole('group', { name: T.zoomGroup })).toBeInTheDocument()
   })
 
   it('la colonne du fil garde aussi sa cellule d’un cadre à l’autre', async () => {
@@ -286,6 +296,63 @@ describe('ReplayPage : les icônes « Cadre du lecteur » de la barre de lecture
     act(() => requestExportLayout(null))
     goTo('standard')
     expect(currentFrame(container)).toBe('standard')
+  })
+})
+
+describe('ReplayPage : un cadre sans toile est toujours le Standard', () => {
+  const NEXT_API = '/api/v1/players/jgtm/matches/match-2/replay'
+
+  /** La page, montée sous un client de requêtes STABLE : changer de match ne doit pas, par ailleurs, vider le cache. */
+  function mountStable() {
+    const client = createTestQueryClient()
+    // Un élément NEUF à chaque rendu : le même élément ne referait pas rendre la page.
+    const tree = () => (
+      <QueryClientProvider client={client}>
+        <ReplayPage />
+      </QueryClientProvider>
+    )
+    const view = render(tree())
+    return { view, switchMatch: (id: string) => { hoisted.matchId = id; view.rerender(tree()) } }
+  }
+
+  it('changement de match en Cinéma : la page revient au Standard, d’abord sans rejeu, puis avec le nouveau', async () => {
+    serveDoc(smallDoc())
+    server.use(
+      http.get(`${API}/context`, () => HttpResponse.json(CONTEXT)),
+      http.get(NEXT_API, () => HttpResponse.json(smallDoc())),
+      http.get(`${NEXT_API}/context`, () => HttpResponse.json(CONTEXT)),
+    )
+    const { view, switchMatch } = mountStable()
+    await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
+    goTo('cinema')
+    expect(currentFrame(view.container)).toBe('cinema')
+
+    switchMatch('match-2')
+    expect(currentFrame(view.container)).toBe('standard')
+    expect(view.container.querySelector('[data-replay-header="standard"]')).not.toBeNull()
+    await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
+    expect(currentFrame(view.container)).toBe('standard')
+    expect(frameIcon('standard').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('rejeu absent après un Cinéma : l’en-tête et le corps du Standard, avec la phrase d’état vide', async () => {
+    serveDoc(smallDoc())
+    server.use(
+      http.get(`${API}/context`, () => HttpResponse.json(CONTEXT)),
+      http.get(NEXT_API, () => HttpResponse.json({ code: 'not_found', message: 'aucun rejeu', retryable: false }, { status: 404 })),
+      http.get(`${NEXT_API}/generation`, () => HttpResponse.json({ state: 'not_generatable' })),
+    )
+    const { view, switchMatch } = mountStable()
+    await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
+    goTo('plein-cadre')
+    expect(currentFrame(view.container)).toBe('plein-cadre')
+
+    switchMatch('match-2')
+    expect(await screen.findByText(T.empty)).toBeInTheDocument()
+    expect(currentFrame(view.container)).toBe('standard')
+    expect(view.container.querySelector('[data-replay-header="standard"]')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: new RegExp(FRAMES.exit) })).not.toBeInTheDocument()
+    expect(view.container.querySelector('canvas')).toBeNull()
   })
 })
 

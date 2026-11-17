@@ -24,6 +24,7 @@ import { showsAppNavigation, type ReplayFrame } from '../../model/replayFrame'
 import { ReplaySchemaBadge } from '../ReplaySchemaBadge'
 import { PRESS_GUARDS } from '../replayPressGuards'
 import type { ReplayFrameChrome } from './replayFrameTypes'
+import { leaveFullFrame } from './selectFrame'
 import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
 
 /** Le bouton de lien vers la fiche du match : même gabarit dans les deux en-têtes qui le portent. */
@@ -147,17 +148,12 @@ function CinemaHeader({ chrome }: { chrome: ReplayFrameChrome }) {
 function FullFrameBar({ chrome }: { chrome: ReplayFrameChrome }) {
   const { frameControl, fullscreen, locale } = chrome
   const labels = REPLAY_TEXT[locale].frames
-  function quit() {
-    // Comme Échap : le plein écran du système, s'il est atteint, se referme avec le cadre.
-    frameControl.exit()
-    if (fullscreen.active) fullscreen.toggle()
-  }
   return (
     <div className="flex h-[52px] shrink-0 items-center gap-3 px-1">
       <button
         type="button"
         {...PRESS_GUARDS}
-        onClick={quit}
+        onClick={() => leaveFullFrame(frameControl, fullscreen)}
         className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4" aria-hidden="true">

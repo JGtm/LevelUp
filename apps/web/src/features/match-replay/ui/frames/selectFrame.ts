@@ -11,6 +11,7 @@
  * bascules, et la sortie du Plein cadre, qu'il admet, ne se demande pas par ce bouton.
  */
 import type { ReplayFrameControl } from '../../hooks/useReplayFrame'
+import type { ReplayFullscreen } from '../../hooks/useReplayFullscreen'
 import type { ReplayFrame } from '../../model/replayFrame'
 
 export type FrameSelector = Pick<ReplayFrameControl, 'disabled' | 'peek' | 'toggleCinema' | 'toggleFullFrame' | 'exit'>
@@ -28,4 +29,21 @@ export function selectFrame(control: FrameSelector, target: ReplayFrame): void {
       if (control.peek().frame === 'plein-cadre') control.exit()
       if (control.peek().frame === 'cinema') control.toggleCinema()
   }
+}
+
+/**
+ * leaveFullFrame — LA SORTIE DU PLEIN CADRE par un geste de l'utilisateur (le bouton « Quitter » de l'en-tête,
+ * l'icône du Plein cadre courant) : rend le cadre d'où l'on vient et, comme Échap, referme le plein écran du
+ * système s'il est atteint. Un seul chemin pour les deux gestes : une sortie qui ne referme que le cadre
+ * laisserait la page en plein écran natif sans cadre qui le motive.
+ *
+ * La sortie reste admise pendant un export vidéo (le modèle l'admet) ; le plein écran du système, lui, est
+ * inerte alors (`fullscreen.toggle` ne fait rien si `disabled`) : le cadre se referme, le natif attend la fin.
+ */
+export function leaveFullFrame(
+  control: Pick<ReplayFrameControl, 'exit'>,
+  fullscreen: Pick<ReplayFullscreen, 'active' | 'toggle'>,
+): void {
+  control.exit()
+  if (fullscreen.active) fullscreen.toggle()
 }

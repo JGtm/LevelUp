@@ -79,7 +79,7 @@ async function settle(): Promise<void> {
 
 /** Le cadre et le plein écran du système, câblés comme la page les câble. */
 function useBanc() {
-  const frame = useReplayFrame()
+  const frame = useReplayFrame('match-test')
   const fullscreen = useReplayFullscreen(frame)
   return { frame, fullscreen }
 }

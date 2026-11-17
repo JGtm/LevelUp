@@ -19,6 +19,7 @@ import { renderWithProviders } from '../../../test/render-utils'
 import { buildPlayers } from '../../../lib/replay/rosterLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { createPlaybackStore } from '../model/playbackStore'
+import { usesCompactBar } from '../model/replayFrame'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { makeFrameControl } from '../test/frameControlStub'
 import { recordingContext } from '../test/recordingContext'
@@ -118,9 +119,17 @@ describe('ReplayCanvas : la barre du Standard passe par l’emplacement `transpo
     expect(clock()).not.toBe(before)
   })
 
-  it('le Cinéma et le Plein cadre posent la même barre', () => {
-    expect(canvasSlotsOf('cinema').transport).toBe(canvasSlotsOf('standard').transport)
-    expect(canvasSlotsOf('plein-cadre').transport).toBe(canvasSlotsOf('standard').transport)
+  it('le Cinéma et le Plein cadre posent la barre d’une ligne, sans zoom flottant ; le Standard garde la barre complète et son zoom', () => {
+    const complete = canvasSlotsOf('standard')
+    const compacte = canvasSlotsOf('cinema')
+    expect(complete.blockOverlays).toBeDefined()
+    expect(compacte.transport).not.toBe(complete.transport)
+    expect(compacte.blockOverlays).toBeUndefined()
+    expect(canvasSlotsOf('plein-cadre')).toBe(compacte)
+    // Le modèle décide, pas un nom de cadre : chaque cadre reçoit le jeu que `usesCompactBar` désigne.
+    for (const frame of ['standard', 'cinema', 'plein-cadre'] as const) {
+      expect(canvasSlotsOf(frame)).toBe(usesCompactBar(frame) ? compacte : complete)
+    }
   })
 })
 
@@ -220,5 +229,59 @@ describe('ReplayCanvas : la barre n’est jamais remontée', () => {
     fireEvent.click(screen.getByRole('button', { name: 'minimal-lecture' }))
     fireEvent.click(screen.getByRole('button', { name: 'minimal-vitesse' }))
     expect(screen.getByTestId('minimal-bar')).toBe(bar)
+  })
+})
+
+describe('ReplayCanvas : la barre d’une ligne (Cinéma, Plein cadre) pilote la toile', () => {
+  const compact = canvasSlotsOf('cinema').transport
+  const clock = () => screen.getByText(/^\d+:\d{2} \/ \d+:\d{2}$/).textContent
+
+  it('lecture, pause et saut passent par l’objet de commandes', () => {
+    renderWithProviders(canvasWith(smallDoc(), compact))
+    fireEvent.click(screen.getByRole('button', { name: 'Lecture' }))
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    const before = clock()
+    fireEvent.click(screen.getByRole('button', { name: /Avancer de 10 s/ }))
+    expect(clock()).not.toBe(before)
+  })
+
+  it('aller à un instant : le champ de la frise compacte déplace l’horloge et pose la progression sur sa racine', () => {
+    const { container } = renderWithProviders(canvasWith(smallDoc(), compact))
+    const field = container.querySelector<HTMLInputElement>('input[data-replay-timeline]')!
+    expect(field).not.toBeNull()
+    const before = clock()
+    fireEvent.change(field, { target: { value: field.max } })
+    expect(clock()).not.toBe(before)
+    const host = field.closest<HTMLElement>('[data-replay-cursor-host]')!
+    expect(host.style.getPropertyValue('--played-r')).toBe('1')
+  })
+
+  it('le zoom de la barre pilote le cadrage de la carte', () => {
+    renderWithProviders(canvasWith(smallDoc(), compact))
+    expect(screen.getByRole('button', { name: T.zoomOut })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: T.zoomIn }))
+    expect(screen.getByRole('button', { name: T.zoomOut })).toBeEnabled()
+  })
+
+  it('rien n’est remonté pendant la lecture : mêmes nœuds de barre, de frise et de champ', () => {
+    const { container } = renderWithProviders(canvasWith(smallDoc(), compact))
+    const play = screen.getByRole('button', { name: 'Lecture' })
+    const field = container.querySelector('input[data-replay-timeline]')
+    const bar = container.querySelector('[data-replay-transport="compact"]')
+    fireEvent.click(play)
+    fireEvent.click(screen.getByRole('button', { name: /Avancer de 10 s/ }))
+    fireEvent.click(screen.getByRole('button', { name: T.zoomIn }))
+    expect(screen.getByRole('button', { name: 'Pause' })).toBe(play)
+    expect(container.querySelector('input[data-replay-timeline]')).toBe(field)
+    expect(container.querySelector('[data-replay-transport="compact"]')).toBe(bar)
+  })
+
+  it('la lecture automatique est un interrupteur de la barre', () => {
+    renderWithProviders(canvasWith(smallDoc(), compact))
+    const toggle = screen.getByRole('switch', { name: T.autoPlay })
+    const was = toggle.getAttribute('aria-checked')
+    fireEvent.click(toggle)
+    expect(screen.getByRole('switch', { name: T.autoPlay }).getAttribute('aria-checked')).not.toBe(was)
   })
 })

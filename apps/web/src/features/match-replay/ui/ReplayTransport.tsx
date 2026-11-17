@@ -20,15 +20,18 @@
  * PENDANT UN EXPORT, LES COMMANDES DE LECTURE SONT NEUTRALISÉES : la boucle d'export écrit `frameRef`
  * image par image, et la boucle de lecture, les sauts et le glisser de la frise écrivent le MÊME ref.
  */
-import { isExportBusy } from '../export/ReplayExportDialog'
+import { isCaptureBusy } from '../export/captureBusy'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { SKIP_SECONDS } from '../layers/replayCanvasConfig'
 import { ReplaySoundControls } from '../sound/ReplaySoundControls'
+import { ReplayAutoPlayToggle } from './ReplayAutoPlayToggle'
 import { ReplayCaptureButtons } from './ReplayCaptureButtons'
 import { ReplayFrameButtons } from './ReplayFrameButtons'
+import { ReplayPlayButton } from './ReplayPlayButton'
+import { ReplayRoundButton } from './ReplayRoundButton'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
-import { AutoPlayIcon, PauseIcon, PlayIcon, RestartIcon } from './ReplayTransportIcons'
+import { RestartIcon } from './ReplayTransportIcons'
 import type { ReplayTransportCommands } from './replayTransportCommands'
 
 /** Les commandes de la toile, moins le zoom : cette barre n'en porte pas (la croix flottante le fait). */
@@ -38,7 +41,7 @@ export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
   speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl,
 }: ReplayTransportProps) {
-  const busy = capture.videoExport ? isExportBusy(capture.videoExport.state) : false
+  const busy = isCaptureBusy(capture)
   const t = REPLAY_TEXT[locale]
   return (
     // LE SOCLE SOMBRE sépare le lecteur de la carte ; il va bord à bord, chaque pixel qu'il ne prend pas
@@ -52,49 +55,23 @@ export function ReplayTransport({
 
       <div className="mt-1.5 flex items-center gap-3.5">
         <div className="flex flex-1 items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleAutoPlay}
-            role="switch"
-            aria-checked={autoPlay}
-            aria-label={t.autoPlay}
-            title={`${t.autoPlay} — ${t.autoPlayHint}`}
-            className={`inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-full px-2 text-[10.5px] font-medium transition-colors ${
-              autoPlay
-                ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-          >
-            <AutoPlayIcon on={autoPlay} />
-          </button>
+          <ReplayAutoPlayToggle autoPlay={autoPlay} onToggle={onToggleAutoPlay} locale={locale} />
           <ReplaySoundControls sound={sound} locale={locale} />
           <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <RoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
+          <ReplayRoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
             <RestartIcon />
-          </RoundButton>
-          <RoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
+          </ReplayRoundButton>
+          <ReplayRoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
             <span className="text-[10.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
-          </RoundButton>
-          {/* LE SEUL BOUTON PLEIN DE LA BARRE. Le nom accessible dit ce que le CLIC va faire,
-              l'icône dit où l'on en est. */}
-          <button
-            type="button"
-            onClick={onTogglePlay}
-            disabled={busy}
-            aria-label={playing ? t.pause : t.play}
-            title={`${playing ? t.pause : t.play} (${t.keySpace})`}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors ${
-              busy ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-primary/90 active:bg-primary/80'
-            }`}
-          >
-            {playing ? <PauseIcon /> : <PlayIcon />}
-          </button>
-          <RoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
+          </ReplayRoundButton>
+          {/* LE SEUL BOUTON PLEIN DE LA BARRE. */}
+          <ReplayPlayButton playing={playing} onTogglePlay={onTogglePlay} disabled={busy} locale={locale} sizeClass="h-10 w-10" />
+          <ReplayRoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
             <span className="text-[10.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
-          </RoundButton>
+          </ReplayRoundButton>
         </div>
 
         <div className="flex flex-1 items-center justify-end">
@@ -103,35 +80,5 @@ export function ReplayTransport({
         </div>
       </div>
     </div>
-  )
-}
-
-/** Un bouton rond de la barre : fantôme (recommencer) ou bordé (les sauts). */
-function RoundButton({
-  onClick, label, children, ghost, bordered, disabled,
-}: {
-  onClick: () => void
-  label: string
-  children: React.ReactNode
-  ghost?: boolean
-  bordered?: boolean
-  /** Neutralise pendant un export : la lecture et l'export se disputeraient l'image courante. */
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-full transition-colors ${
-        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
-      } ${bordered ? 'border border-input hover:bg-accent' : ''} ${
-        ghost ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' : ''
-      }`}
-    >
-      {children}
-    </button>
   )
 }

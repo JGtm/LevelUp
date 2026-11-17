@@ -6,8 +6,9 @@
  *  - L'icône du cadre courant est marquée (`aria-pressed`). Chaque icône est nommée par le
  *    dictionnaire (`frames.frameTip`), qui y rappelle la touche : « Cinéma (T) », « Plein cadre (F) ».
  *  - Un clic mène au cadre par `selectFrame`, jamais par une règle de cadre écrite ici. Seule
- *    l'icône du Plein cadre COURANT est autre chose : elle en SORT (`exit`), l'événement que le
- *    modèle admet même pendant un export.
+ *    l'icône du Plein cadre COURANT est autre chose : elle en SORT par `leaveFullFrame`, le chemin
+ *    de « Quitter » (le cadre d'où l'on vient, et le plein écran du système refermé), que le modèle
+ *    admet même pendant un export.
  *  - PENDANT UN EXPORT VIDÉO les trois icônes sont inertes (`frameControl.disabled`), sauf cette
  *    sortie : le cadre ne change pas sous la toile qui produit le clip.
  *  - Le plein écran du système n'est pas un cadre : il s'ajoute à n'importe lequel, son nom dit ce
@@ -19,7 +20,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayFrameControl } from '../hooks/useReplayFrame'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import type { ReplayFrame } from '../model/replayFrame'
-import { selectFrame } from './frames/selectFrame'
+import { leaveFullFrame, selectFrame } from './frames/selectFrame'
 import { PRESS_GUARDS } from './replayPressGuards'
 import { CinemaFrameIcon, FullFrameIcon, FullscreenIcon, StandardFrameIcon } from './ReplayTransportIcons'
 
@@ -64,7 +65,7 @@ export function ReplayFrameButtons({ frameControl, fullscreen, locale }: ReplayF
               aria-label={label}
               title={label}
               disabled={disabled}
-              onClick={leavesFullFrame ? frameControl.exit : () => selectFrame(frameControl, frame)}
+              onClick={leavesFullFrame ? () => leaveFullFrame(frameControl, fullscreen) : () => selectFrame(frameControl, frame)}
               className={iconClass(pressed, disabled)}
             >
               <Icon />
