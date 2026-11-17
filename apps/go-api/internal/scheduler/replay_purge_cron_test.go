@@ -281,7 +281,7 @@ func TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierT
 	// Le fichier tactique de l'artefact conservé.
 	tactique := filepath.Join(rasters, "bbbb0002"+titlePkg.ReplaySidecarExt)
 	poserFichierTactique(t, tactique)
-	intacts = append(intacts, tactique)
+	tous := append([]string{tactique}, intacts...)
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
 
 	if _, _, _, err := purgeReplayArtifactsForTitle(
@@ -292,9 +292,9 @@ func TestPurgeReplayArtifacts_NeSupprimeAucunRejeuBrutNiEnTeteOrphelinNiFichierT
 	if _, err := os.Stat(filepath.Join(artifactsDir, "aaaa0001.json.gz")); !os.IsNotExist(err) {
 		t.Error("l'artefact du match hors fenêtre devait être purgé (le test ne mordrait pas sinon)")
 	}
-	for _, f := range intacts {
-		if _, err := os.Stat(f); err != nil {
-			t.Errorf("%s supprimé par la purge : %v", filepath.Base(f), err)
+	for _, restant := range tous {
+		if _, err := os.Stat(restant); err != nil {
+			t.Errorf("%s supprimé par la purge : %v", filepath.Base(restant), err)
 		}
 	}
 }

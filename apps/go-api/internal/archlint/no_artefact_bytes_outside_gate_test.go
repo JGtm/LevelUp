@@ -46,9 +46,15 @@ func contientIdentifiant(texte, id string) bool {
 // `=`, `var`, `range`) depuis une expression qui nomme un artefact (motifArtefact) ou depuis un autre identifiant
 // contaminé. Une passe à point fixe, dans la seule fonction : c'est la limite de la règle.
 func identifiantsContamines(s goSource, fn *ast.FuncDecl) map[string]bool {
+	return identifiantsContaminesPar(s, fn, motifArtefact)
+}
+
+// identifiantsContaminesPar est [identifiantsContamines] pour un autre repère de source : le motif dont la
+// présence dans l'expression affectée contamine l'identifiant.
+func identifiantsContaminesPar(s goSource, fn *ast.FuncDecl, motif *regexp.Regexp) map[string]bool {
 	tainted := map[string]bool{}
 	atteint := func(texte string) bool {
-		if motifArtefact.MatchString(texte) {
+		if motif.MatchString(texte) {
 			return true
 		}
 		for id := range tainted {
