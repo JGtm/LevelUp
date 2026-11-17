@@ -389,7 +389,7 @@ par le pilote sur quatre points). **Cette section prévaut sur le texte des item
 - **S.3** : ordre et largeurs de la ligne changent (pas « seul le lieu ») ; les fixations 0.1 du fil servent de
   référence de contenu, pas d'identité ; la liste filtrée sort dans `hooks/useFeedView.ts` ; ligne cliquable et
   ligne choisie gardées ; médailles selon G0-3.
-- **S.4** : rien sous le lecteur. **S.5 (neuf)** : suppression de ce qui n'a plus d'appelant après S.4 et B.2
+- **S.4** : rien sous le lecteur. **S.5 (neuf) [x] fait le 2026-11-17** (`ReplayTeams`, `ReplayTeamHeader`, `cardDensity`, leurs 7 tests et les fixations 4v4 et 6v6 supprimés, 2 921 lignes ; cas vivants reportés dans cinq fichiers de test ; `GABARIT_NORMAL` et `EliminatedRow` RESTENT, lus par le bloc « À l'instant » ; suite S.5 bis lancée : branches du gabarit normal de la fiche sans chemin de production) : suppression de ce qui n'a plus d'appelant après S.4 et B.2
   (`ui/ReplayTeams.tsx`, gabarit normal, `model/cardDensity.ts` si plus lu, tests et fixations associés), avec
   report des cas de test sur les lignes ; `ui/ReplayPlayerCard.tsx` reste (rangée, G0-1).
 - **B.1** : cotes nommées dans `cardGabarit.ts` (largeur minimale de fiche, écart, largeur du score, marges) ;
@@ -608,7 +608,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
 - [x] D.1 (fait le 2026-11-17 : quatre fixations du panneau posées avant, identiques à l'octet après ; la tête est dans le corps commun, le retour et Échap au conteneur ; seule la partie basse défile, alors que J fait défiler toute la fiche : à trancher en D.2) `ui/ReplayPlayerPanelBody.tsx` : contenu commun extrait de `ReplayPlayerPanel` (Suivre / Seul /
       Masquer, « À l'instant », « Totaux du match »), sans changer son rendu (fixation avant / après). Tests de
       comportement existants verts sans modification.
-- [ ] D.2 Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
+- [x] D.2 (fait le 2026-11-17 : `ui/ReplayPlayerPicker.tsx`, `ui/ReplayFeedExtract.tsx`, cotes `model/cotesFicheStandard.ts` ; la fiche couvre la colonne, équipes et fil restant montés et masqués ; `ReplayPlayerPanelBody` prend `scroll` interne ou confié au conteneur ; le retour « Équipes » défile avec le contenu, comme J-1 ; l'identité J-4 (nom en 17 px, camp) n'est PAS refaite : le corps commun garde sa tête, à trancher avec T.5) Fiche du Standard (tableau J, D-6) : clic sur une ligne de la colonne, la colonne devient la fiche via
       `ReplayFeedOrPanel` (le fil reste monté dessous, mécanisme conservé). En-tête « Fiche » avec retour
       « Équipes » (couche `REPLAY_ESCAPE_LAYER_ATTR` : Échap rend la colonne avant de quitter un cadre) ;
       sélecteur des joueurs en rectangles arrondis ; `ReplayPlayerPanelBody` ; section « Éliminations » = les
@@ -703,7 +703,7 @@ les localise, rien n'est recalculé à côté.
       (la commande de zoom flottante n'est pas rendue dans ces cadres) ; à droite capture, export, boutons de
       cadre. Raccourcis inchangés. Tests : commandes présentes, frise compacte alimentée par le même fil que la
       frise à pistes, export en cours neutralise la lecture.
-- [ ] E.4 Menu caméra (D-13) : « Suivre » (liste des joueurs, même action que Suivre de la fiche, plus « Aucun ») et
+- [x] E.4 (fait le 2026-11-17 : `ui/ReplayCameraMenu.tsx`, deux listes sur la même source d'options que la frise (`rosterKey` ajouté à `ViewpointOption`) ; `ReplaySlotCommands` porte `cameraFollow` ; la toile suit `followXuid` fiche ouverte ou fermée par `useReplayPlayerFocus({followPlayer})`, garde `playerFocusWiring` suivi ; fond d'accent du bouton quand un joueur est suivi, non dessiné : à montrer au user) Menu caméra (D-13) : « Suivre » (liste des joueurs, même action que Suivre de la fiche, plus « Aucun ») et
       « Point de vue » (`useReplayViewpoint.select`). Tests des deux sections.
 - **Gate E** : commandes du Gate A ; fixations Standard égales aux témoins hors icônes de cadre.
 
