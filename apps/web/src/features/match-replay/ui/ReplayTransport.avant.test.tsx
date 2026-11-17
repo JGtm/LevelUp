@@ -106,8 +106,8 @@ function frise(): ReplayTimeline {
         key: 'camp:0',
         label: 'Cobalt',
         options: [
-          { value: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
-          { value: 'bot-base', label: 'Cortana', disabled: false, title: 'Cortana' },
+          { value: 'me-1', rosterKey: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
+          { value: 'bot-base', rosterKey: 'bot:Cortana', label: 'Cortana', disabled: false, title: 'Cortana' },
         ],
       },
     ],

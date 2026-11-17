@@ -9,7 +9,9 @@
  *  - `blockOverlays` : ce qui se pose DANS le bloc de la toile, à côté de la légende de la chaleur.
  *
  * Une autre barre ou une autre superposition pilote la même toile par ces commandes, sans que la toile la
- * connaisse. Une fonction de rendu est appelée pendant le rendu de la toile : elle est PURE, rend un
+ * connaisse. Les fonctions de rendu reçoivent en plus la CAMÉRA (`cameraFollow` : le joueur que la carte suit
+ * et le geste « Suivre »), que seul le menu de la caméra de la barre compacte lit ; la barre complète
+ * l'ignore. Une fonction de rendu est appelée pendant le rendu de la toile : elle est PURE, rend un
  * élément à partir des commandes, et n'appelle aucun hook (le hook serait celui de la toile).
  */
 import { useMemo, type ReactNode, type RefObject } from 'react'
@@ -21,6 +23,7 @@ import type { ReplayPlayback } from '../hooks/useReplayPlayback'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplayZoom } from '../hooks/useReplayZoom'
 import type { ReplayLocale } from '../i18n/i18n'
+import type { CameraFollow } from '../model/cameraMenu'
 import type { ReplaySettings } from '../settings/useReplaySettings'
 import type { ReplaySound } from '../sound/useReplaySound'
 
@@ -54,8 +57,13 @@ export interface ReplayTransportCommands {
   zoom: ReplayZoom
 }
 
+/** Ce que la toile remet aux fonctions de rendu de ses emplacements : les commandes de la barre, et la caméra. */
+export interface ReplaySlotCommands extends ReplayTransportCommands {
+  cameraFollow: CameraFollow
+}
+
 /** Une fonction de rendu d'un emplacement de la toile : pure, sans hook, elle ne retient aucune commande. */
-export type ReplayCommandsRender = (commands: ReplayTransportCommands) => ReactNode
+export type ReplayCommandsRender = (commands: ReplaySlotCommands) => ReactNode
 
 /** Ce que la toile reçoit d'un cadre : sa barre de lecture, et les superpositions de son bloc. */
 export interface ReplayCanvasSlots {
@@ -75,24 +83,26 @@ export interface ReplayTransportCommandSources {
   fullscreen: ReplayFullscreen
   frameControl: ReplayFrameControl
   zoom: ReplayZoom
+  cameraFollow: CameraFollow
 }
 
 /**
  * useReplayTransportCommands regroupe les commandes de la toile en un objet dont l'identité ne change
  * qu'avec l'une d'elles. Les valeurs sont celles des hooks : rien n'est copié, retenu ni décidé ici.
  */
-export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplayTransportCommands {
+export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplaySlotCommands {
   const { playing, togglePlay, restart, seekBy } = s.playback
   const { autoPlay, toggleAutoPlay, speed, setSpeed } = s.settings
-  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom } = s
+  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow } = s
   return useMemo(
     () => ({
       playing, onTogglePlay: togglePlay, onRestart: restart, onSeekBy: seekBy, clockRef, timeline,
       autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
+      cameraFollow,
     }),
     [
       playing, togglePlay, restart, seekBy, clockRef, timeline,
-      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
+      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
     ],
   )
 }

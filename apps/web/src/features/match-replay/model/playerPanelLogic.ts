@@ -114,7 +114,7 @@ function toggleAction(state: PlayerPanelState, action: PlayerPanelAction): Playe
 /** Le joueur dont le panneau est ouvert, avec ses actions : ce que la page donne au canvas. */
 export interface PlayerFocus {
   player: ReplayPlayer
-  /** Vrai quand la caméra suit CE joueur : un autre joueur suivi ne s'applique pas tant que sa fiche est fermée. */
+  /** Vrai quand la caméra suit CE joueur (l'état du bouton « Suivre » de la fiche ; la toile lit `followedPlayerOf`). */
   follow: boolean
   solo: boolean
   hide: boolean
@@ -132,6 +132,19 @@ export function panelFocusOf(
   const player = players.find((p) => p.xuid === state.xuid)
   if (!player) return null
   return { player, follow: state.followXuid === state.xuid, solo: state.solo, hide: state.hide }
+}
+
+/**
+ * followedPlayerOf retrouve au roster le joueur que la CAMÉRA suit (`followXuid`), fiche ouverte ou non.
+ * `null` : personne n'est suivi, ou le joueur n'est plus au roster (un autre document) — jamais un joueur
+ * deviné.
+ */
+export function followedPlayerOf(
+  state: PlayerPanelState,
+  players: readonly ReplayPlayer[],
+): ReplayPlayer | null {
+  if (state.followXuid === null) return null
+  return players.find((p) => p.xuid === state.followXuid) ?? null
 }
 
 /**

@@ -105,13 +105,15 @@ describe('usePlayerPanel', () => {
     rerender({ players: [A] })
     expect(result.current.focus).toBeNull()
   })
-  it('Suivre survit à « Retour au fil » dans l’état, mais le canvas ne reçoit rien fiche fermée', () => {
+  it('Suivre survit à « Retour au fil » : la fiche ne rend rien, mais la caméra garde son joueur', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onCard('A'))
     act(() => result.current.onToggle('follow'))
+    expect(result.current.camera.player).toBe(A)
     act(() => result.current.onClose())
     expect(result.current.state.followXuid).toBe('A')
     expect(result.current.focus).toBeNull()
+    expect(result.current.camera.player).toBe(A)
     act(() => result.current.onCard('A'))
     expect(result.current.focus).toMatchObject({ follow: true })
   })
@@ -120,8 +122,39 @@ describe('usePlayerPanel', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onFollow('B'))
     expect(result.current.state).toMatchObject({ open: false, followXuid: 'B' })
+    expect(result.current.camera.player).toBe(B)
     act(() => result.current.onFollowStop())
     expect(result.current.state.followXuid).toBeNull()
+    expect(result.current.camera.player).toBeNull()
+  })
+
+  it('la caméra : le menu suit un joueur par le geste de la fiche (onFollow), « Aucun » l’éteint, Seul et Masquer ne bougent pas', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('solo'))
+    act(() => result.current.camera.onFollow('B'))
+    expect(result.current.camera.player).toBe(B)
+    expect(result.current.focus).toMatchObject({ player: A, follow: false, solo: true, hide: false })
+    act(() => result.current.camera.onFollow(null))
+    expect(result.current.camera.player).toBeNull()
+    expect(result.current.focus).toMatchObject({ solo: true })
+  })
+
+  it('suivre depuis le menu le joueur masqué de la fiche lève son masquage (règle du modèle)', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('hide'))
+    act(() => result.current.camera.onFollow('A'))
+    expect(result.current.focus).toMatchObject({ hide: false, follow: true })
+  })
+
+  it('la caméra garde son identité tant que le joueur suivi ne change pas, même quand la fiche change', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onFollow('B'))
+    const camera = result.current.camera
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('solo'))
+    expect(result.current.camera).toBe(camera)
   })
 
   it('un autre match éteint aussi la caméra (rien n’est mémorisé)', () => {

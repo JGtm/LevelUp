@@ -14,7 +14,7 @@ import type { ReplayExportState } from '../export/useReplayExport'
 import type { ReplayExport } from '../export/useReplayExport'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplayZoom } from '../hooks/useReplayZoom'
-import type { ReplayTransportCommands } from '../ui/replayTransportCommands'
+import type { ReplaySlotCommands } from '../ui/replayTransportCommands'
 import type { ReplaySound } from '../sound/useReplaySound'
 import { makeFrameControl } from './frameControlStub'
 
@@ -106,7 +106,7 @@ export function makeZoom(over: Partial<ReplayZoom> = {}): ReplayZoom {
 }
 
 /** L'objet de commandes complet, en lecture, sans export. */
-export function makeCommands(over: Partial<ReplayTransportCommands> = {}): ReplayTransportCommands {
+export function makeCommands(over: Partial<ReplaySlotCommands> = {}): ReplaySlotCommands {
   return {
     playing: true,
     onTogglePlay: vi.fn(),
@@ -130,6 +130,7 @@ export function makeCommands(over: Partial<ReplayTransportCommands> = {}): Repla
     fullscreen: { active: false, disabled: false, toggle: vi.fn() },
     frameControl: makeFrameControl('cinema'),
     zoom: makeZoom(),
+    cameraFollow: { player: null, onFollow: vi.fn() },
     ...over,
   }
 }

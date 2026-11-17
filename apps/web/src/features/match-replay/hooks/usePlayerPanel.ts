@@ -18,7 +18,9 @@
  */
 import { useCallback, useMemo, useState } from 'react'
 
+import type { CameraFollow } from '../model/cameraMenu'
 import {
+  followedPlayerOf,
   NO_PLAYER_PANEL,
   panelFocusOf,
   reducePlayerPanel,
@@ -46,6 +48,11 @@ export interface PlayerPanel {
   onClose: () => void
   /** Un geste manuel de zoom ou de déplacement sur la carte : Suivre s'arrête. */
   onFollowStop: () => void
+  /**
+   * La caméra, telle que la toile la lit : le joueur suivi (fiche ouverte ou non) et le geste « Suivre ce
+   * joueur ». L'objet garde son identité tant que le joueur suivi et le roster ne changent pas.
+   */
+  camera: CameraFollow
 }
 
 interface Scoped {
@@ -80,5 +87,7 @@ export function usePlayerPanel(
 
   const focus = useMemo(() => panelFocusOf(state, players), [state, players])
   const tracked = useMemo(() => trackedPlayerOf(watchedXuid, players), [watchedXuid, players])
-  return { state, focus, tracked, onCard, onToggle, onFollow, onClose, onFollowStop }
+  const followed = useMemo(() => followedPlayerOf(state, players), [state, players])
+  const camera = useMemo(() => ({ player: followed, onFollow }), [followed, onFollow])
+  return { state, focus, tracked, onCard, onToggle, onFollow, onClose, onFollowStop, camera }
 }

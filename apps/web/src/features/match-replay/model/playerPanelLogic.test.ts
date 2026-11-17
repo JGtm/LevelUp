@@ -21,6 +21,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import {
+  followedPlayerOf,
   killFxShown,
   NO_PLAYER_PANEL,
   ownershipShown,
@@ -193,10 +194,28 @@ describe('panelFocusOf — le joueur dont le panneau est ouvert', () => {
     expect(panelFocusOf({ ...OPEN_A, followXuid: 'bot:Marc' }, [A, BOT])?.follow).toBe(false)
   })
 
-  it('fiche fermée, la caméra garde son joueur dans l’état mais le canvas ne reçoit rien', () => {
+  it('fiche fermée, la caméra garde son joueur dans l’état et la fiche ne rend rien', () => {
     const closed = reducePlayerPanel({ ...OPEN_A, followXuid: 'A' }, { type: 'close' })
     expect(closed.followXuid).toBe('A')
     expect(panelFocusOf(closed, [A, BOT])).toBeNull()
+    expect(followedPlayerOf(closed, [A, BOT])).toBe(A)
+  })
+})
+
+describe('followedPlayerOf — le joueur que la caméra suit, fiche ouverte ou non', () => {
+  it('rend le joueur de followXuid, par sa clé de roster, bot compris', () => {
+    expect(followedPlayerOf({ ...NO_PLAYER_PANEL, followXuid: 'A' }, [A, BOT])).toBe(A)
+    expect(followedPlayerOf({ ...NO_PLAYER_PANEL, followXuid: 'bot:Marc' }, [A, BOT])).toBe(BOT)
+  })
+
+  it('ne dépend pas de la fiche : un autre joueur peut être suivi pendant que la fiche en montre un autre', () => {
+    expect(followedPlayerOf({ ...OPEN_A, followXuid: 'bot:Marc' }, [A, BOT])).toBe(BOT)
+    expect(panelFocusOf({ ...OPEN_A, followXuid: 'bot:Marc' }, [A, BOT])?.player).toBe(A)
+  })
+
+  it('personne n’est suivi, ou le joueur suivi n’est plus au roster : null, jamais un joueur deviné', () => {
+    expect(followedPlayerOf(NO_PLAYER_PANEL, [A])).toBeNull()
+    expect(followedPlayerOf({ ...NO_PLAYER_PANEL, followXuid: 'Z' }, [A])).toBeNull()
   })
 })
 

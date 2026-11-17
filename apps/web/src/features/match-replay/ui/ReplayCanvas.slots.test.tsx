@@ -14,10 +14,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { renderWithProviders } from '../../../test/render-utils'
 import { buildPlayers } from '../../../lib/replay/rosterLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
+import { FOLLOW_MIN_LEVEL } from '../model/followLogic'
 import { createPlaybackStore } from '../model/playbackStore'
 import { usesCompactBar } from '../model/replayFrame'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
@@ -26,7 +28,7 @@ import { recordingContext } from '../test/recordingContext'
 import { testReplayDoc } from '../test/testDoc'
 import { canvasSlotsOf } from './frames/replayFrameSlots'
 import { ReplayCanvas } from './ReplayCanvas'
-import type { ReplayCommandsRender, ReplayTransportCommands } from './replayTransportCommands'
+import type { ReplayCommandsRender, ReplaySlotCommands } from './replayTransportCommands'
 
 const T = REPLAY_TEXT.fr
 
@@ -152,7 +154,7 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
   })
 
   it('l’objet de commandes porte ce que la barre actuelle reçoit, zoom compris', () => {
-    const seen: ReplayTransportCommands[] = []
+    const seen: ReplaySlotCommands[] = []
     renderWithProviders(
       canvasWith(smallDoc(), (c) => {
         seen.push(c)
@@ -162,11 +164,13 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
     const commands = seen[seen.length - 1]
     expect(Object.keys(commands).sort()).toEqual(
       [
-        'autoPlay', 'capture', 'clockRef', 'frameControl', 'fullscreen', 'locale', 'onRestart', 'onSeekBy', 'onSetSpeed',
-        'onTogglePlay', 'onToggleAutoPlay', 'playing', 'sound', 'speed', 'timeline', 'zoom',
+        'autoPlay', 'cameraFollow', 'capture', 'clockRef', 'frameControl', 'fullscreen', 'locale', 'onRestart', 'onSeekBy',
+        'onSetSpeed', 'onTogglePlay', 'onToggleAutoPlay', 'playing', 'sound', 'speed', 'timeline', 'zoom',
       ].sort(),
     )
     expect(typeof commands.zoom.zoomIn).toBe('function')
+    // La caméra : sans page autour de la toile, personne n'est suivi et le geste est inerte.
+    expect(commands.cameraFollow.player).toBeNull()
   })
 })
 
@@ -283,5 +287,68 @@ describe('ReplayCanvas : la barre d’une ligne (Cinéma, Plein cadre) pilote la
     const was = toggle.getAttribute('aria-checked')
     fireEvent.click(toggle)
     expect(screen.getByRole('switch', { name: T.autoPlay }).getAttribute('aria-checked')).not.toBe(was)
+  })
+})
+
+describe('ReplayCanvas : la caméra suit le joueur de `cameraFollow`, fiche ouverte ou fermée', () => {
+  /** Un joueur dont une vie couvre toute la durée du film : la carte a toujours une position à suivre. */
+  function followable(doc: ReplayDocumentReady): ReplayPlayer {
+    const end = doc.frameCount
+    const points = [{ t: 0, x: 10, y: 20 }, { t: end, x: 30, y: 40 }]
+    return { xuid: 'suivi', lives: [{ slot: 1, team: 0, xuid: 'suivi', startFrame: 0, endFrame: end, points }] as never }
+  }
+
+  function mount(doc: ReplayDocumentReady, extra: Partial<ComponentProps<typeof ReplayCanvas>>) {
+    const seen: ReplaySlotCommands[] = []
+    renderWithProviders(
+      <ReplayCanvas
+        {...baseProps(doc)}
+        transport={(c) => {
+          seen.push(c)
+          return null
+        }}
+        {...extra}
+      />,
+    )
+    return () => seen[seen.length - 1]
+  }
+
+  it('personne n’est suivi : la carte reste entière', () => {
+    const doc = smallDoc()
+    const last = mount(doc, {})
+    expect(last().zoom.level).toBe(1)
+  })
+
+  it('un joueur suivi, AUCUNE fiche ouverte (playerFocus absent) : la carte se cadre sur lui', () => {
+    const doc = smallDoc()
+    const last = mount(doc, { cameraFollow: { player: followable(doc), onFollow: vi.fn() } })
+    expect(last().zoom.level).toBeGreaterThanOrEqual(FOLLOW_MIN_LEVEL)
+  })
+
+  it('la fiche ouverte d’un AUTRE joueur, avec Seul, ne retire pas la caméra du joueur suivi', () => {
+    const doc = smallDoc()
+    const players = baseProps(doc).players ?? []
+    const suivi = followable(doc)
+    const autre = players.find((p) => p !== suivi) ?? suivi
+    const last = mount(doc, {
+      cameraFollow: { player: suivi, onFollow: vi.fn() },
+      playerFocus: { player: autre, follow: false, solo: true, hide: false },
+    })
+    expect(last().zoom.level).toBeGreaterThanOrEqual(FOLLOW_MIN_LEVEL)
+  })
+
+  it('le drapeau « suivre » d’une fiche ouverte ne cadre rien sans joueur suivi côté caméra', () => {
+    const doc = smallDoc()
+    const last = mount(doc, { playerFocus: { player: followable(doc), follow: true, solo: false, hide: false } })
+    expect(last().zoom.level).toBe(1)
+  })
+
+  it('un geste manuel de zoom arrête le suivi : la page est prévenue (onFollowStop) ; le cadrage du suivi, lui, ne l’est pas', () => {
+    const doc = smallDoc()
+    const onFollowStop = vi.fn()
+    const last = mount(doc, { cameraFollow: { player: followable(doc), onFollow: vi.fn() }, onFollowStop })
+    expect(onFollowStop).not.toHaveBeenCalled()
+    act(() => last().zoom.zoomIn())
+    expect(onFollowStop).toHaveBeenCalled()
   })
 })

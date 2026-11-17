@@ -240,3 +240,51 @@ describe('Les cadres posent leur barre : Standard = complète + zoom flottant, C
     expect(screen.queryByRole('button', { name: T.zoomIn })).toBeNull()
   })
 })
+
+describe('Le menu de la caméra : posé par les cadres à barre d’une ligne, à gauche du son', () => {
+  const groups = [
+    {
+      key: 'camp:0',
+      label: 'Cobalt',
+      options: [{ value: 'x1', rosterKey: 'x1', label: 'JGtm', disabled: false, title: 'JGtm' }],
+    },
+  ]
+
+  function renderSlot(frame: 'standard' | 'cinema' | 'plein-cadre', over: Parameters<typeof makeCommands>[0] = {}) {
+    const commands = makeCommands({
+      frameControl: makeFrameControl(frame),
+      timeline: makeTimeline({ viewpointGroups: groups, viewpoint: 'x1' }),
+      ...over,
+    })
+    return { commands, ...render(<div>{canvasSlotsOf(frame).transport(commands)}</div>) }
+  }
+
+  it.each(['cinema', 'plein-cadre'] as const)('%s : le bouton « Caméra » est le premier de la barre, avant le son', (frame) => {
+    const { container } = renderSlot(frame)
+    const names = buttonNames(container)
+    expect(names[0]).toBe('Caméra')
+    expect(names[1]).toBe(T.sound)
+  })
+
+  it('le Standard n’a pas ce menu : sa barre complète ne change pas', () => {
+    renderSlot('standard')
+    expect(screen.queryByRole('button', { name: /^Caméra/ })).toBeNull()
+  })
+
+  it('le joueur suivi par la toile se lit dans le nom du bouton, et le menu ouvert commande la caméra de la toile', () => {
+    const onFollow = vi.fn()
+    renderSlot('cinema', { cameraFollow: { player: { xuid: 'x1', lives: [] }, onFollow } })
+    const trigger = screen.getByRole('button', { name: 'Caméra : suivre JGtm' })
+    fireEvent.click(trigger)
+    fireEvent.click(within(screen.getByRole('group', { name: 'Suivre' })).getByRole('button', { name: 'Aucun' }))
+    expect(onFollow).toHaveBeenCalledWith(null)
+  })
+
+  it('le point de vue du menu est celui de la frise : `select` de la frise est appelé', () => {
+    const onSelectViewpoint = vi.fn()
+    renderSlot('plein-cadre', { timeline: makeTimeline({ viewpointGroups: groups, viewpoint: null, onSelectViewpoint }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Caméra' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Point de vue' })).getByRole('button', { name: 'JGtm' }))
+    expect(onSelectViewpoint).toHaveBeenCalledWith('x1')
+  })
+})

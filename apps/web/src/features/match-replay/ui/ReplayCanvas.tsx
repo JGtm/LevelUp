@@ -89,6 +89,7 @@ import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useReplayPlayerFocus } from '../hooks/useReplayPlayerFocus'
+import { NO_CAMERA_FOLLOW, type CameraFollow } from '../model/cameraMenu'
 import type { PlayerFocus } from '../model/playerPanelLogic'
 
 interface ReplayCanvasProps {
@@ -206,13 +207,10 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
-  /**
-   * LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : le joueur dont le panneau est
-   * ouvert et ses actions, tenus par la page. Suivre cadre la carte sur lui, Seul et Masquer filtrent
-   * ce que la carte dessine de lui (cf. `useReplayPlayerFocus`). `null`/absent = rien n'est changé.
-   * Le point de vue (`viewpoint`) n'en dépend pas.
-   */
+  /** LA FICHE OUVERTE : son joueur et ses actions Seul et Masquer, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absent = rien n'est filtré. */
   playerFocus?: PlayerFocus | null
+  /** LA CAMÉRA : le joueur que la carte suit, fiche ouverte ou non, et le geste « Suivre » du menu de la barre ; absent = personne. */
+  cameraFollow?: CameraFollow
   /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
   onFollowStop?: () => void
   /** Le match affiché : il désigne la probabilité de réapparition à charger. Absents = pas de calque. */
@@ -227,7 +225,7 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
   playerSlug, matchId, transport, blockOverlays,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -303,7 +301,7 @@ export function ReplayCanvas({
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns: orientation.turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -366,7 +364,7 @@ export function ReplayCanvas({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
-    follow: playerFocus?.follow ?? false,
+    follow: cameraFollow.player !== null,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale, plan: planDuFond },
     heat: { grid: heat.grid, ramp: heat.ramp },
     // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
@@ -572,7 +570,7 @@ export function ReplayCanvas({
   })
 
   const commands = useReplayTransportCommands({
-    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom,
+    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
   })
 
   return (

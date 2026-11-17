@@ -45,6 +45,11 @@ import { groupByTeam, playerName, type ReplayPlayer, type ReplayTeamGroup } from
 export interface ViewpointOption {
   /** Le xuid à passer au point de vue — celui de la BASE dès que la jointure a abouti. */
   value: string
+  /**
+   * La clé du joueur au roster (`ReplayPlayer.xuid` : le xuid, ou `bot:<nom>` pour un bot), que la caméra
+   * « Suivre » attend. Elle diffère de `value` pour un bot, dont le point de vue est la ligne de feuille.
+   */
+  rosterKey: string
   /** Le gamertag, sans le suffixe « [bot] » que le film accroche aux siens. */
   label: string
   /** Vrai quand ce joueur n'a pas de ligne de tableau de score (cf. l'en-tête, règle 2). */
@@ -95,6 +100,7 @@ export function buildViewpointOptions(
       options.push({
         // LE PIÈGE DES BOTS EST ICI, EN UNE LIGNE (cf. l'en-tête, règle 1).
         value: p.board?.xuid ?? p.xuid,
+        rosterKey: p.xuid,
         label,
         disabled,
         title: disabled ? labels.noData : label,

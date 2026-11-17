@@ -12,6 +12,10 @@ export interface RosterText {
   changePlayer: string
   /** Le bouton de caméra d'un joueur : la carte se cadre sur lui à chaque image. */
   cameraFollowFmt: (name: string) => string
+  /** Le menu de la caméra de la barre compacte : son nom (aucun joueur suivi), l'entrée « personne », et la liste du point de vue. */
+  camera: string
+  cameraNone: string
+  cameraViewpointHeading: string
   /** La mention à côté du nom du joueur suivi (le joueur regardé), sur sa ligne. */
   followed: string
   /** L'en-tête des colonnes de la ligne d'un joueur : texte court et nom entier (infobulle). */
@@ -33,6 +37,9 @@ export interface RosterText {
 export const FR_ROSTER = {
   changePlayer: 'Changer de joueur',
   cameraFollowFmt: (name) => `Caméra : suivre ${name}`,
+  camera: 'Caméra',
+  cameraNone: 'Aucun',
+  cameraViewpointHeading: 'Point de vue',
   followed: 'suivi',
   colWeapon: 'Arme',
   colWeaponTitle: 'Arme en main',
@@ -50,6 +57,9 @@ export const FR_ROSTER = {
 export const EN_ROSTER = {
   changePlayer: 'Change player',
   cameraFollowFmt: (name) => `Camera: follow ${name}`,
+  camera: 'Camera',
+  cameraNone: 'None',
+  cameraViewpointHeading: 'Viewpoint',
   followed: 'followed',
   colWeapon: 'Weapon',
   colWeaponTitle: 'Weapon in hand',

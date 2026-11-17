@@ -204,3 +204,21 @@ export function FullFrameIcon() {
     </svg>
   )
 }
+
+/** Caméra de suivi : le corps d'une caméra vidéo et son objectif. Distincte de l'appareil photo de la capture d'image. */
+export function VideoCameraIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 10l5-3v10l-5-3z" />
+      <rect x="2" y="6" width="13" height="12" rx="2" />
+    </svg>
+  )
+}
