@@ -393,7 +393,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       Maquette des commandes, sans code : trois fonds, interrupteur des traits, commande d'étage. Elle est
       dessinée DANS les cadres validés de la refonte du rejeu (Standard, Cinéma, Plein cadre), plus la pilule
       de fond de la Tactique. Le user la valide. Les fichiers de la maquette sont joints au brief de D.3 et D.4.
-- [ ] D.2 `lib/replay/relief/` : lecture de l'image (sans gestion des couleurs ni prémultiplication), teinte par
+- [x] D.2 (fait le 2026-11-18, `23ec703e5e` sur `feat/fonds-relief-d2` : 20 modules, 160 tests verts relancés par
+      le pilote, typecheck propre à cache purgé ; worker vérifié dans le build Vite et dans un vrai Chromium sur
+      Recharge et Behemoth (contrôle §6.1 passé, mode worker), rien à changer à la CSP de la coquille Tauri.
+      À contrôler au Gate D sur une machine au repos : ombrage et teinte 300 à 400 ms par rendu sous charge. API
+      et branchements attendus de D.3 : compte rendu de l'agent, repris au journal.) `lib/replay/relief/` : lecture de l'image (sans gestion des couleurs ni prémultiplication), teinte par
       table depuis le jeton, coupe par étage (sols empilés tirés des faces, dans un Web Worker), chemins des
       traits filtrés par la coupe, cache par carte. Logique pure testée (vitest) : décodage, coupe, filtre des
       traits, toit sur sol.
@@ -404,14 +408,21 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 - [ ] D.4 Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
       positions filtrées par étage sur `MatchPositionDTO.z`. Tactique : calques filtrés selon la liste de 0.1,
       mention dans la légende des autres.
-- [ ] D.7 Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
+- [~] D.7 (couvert par D.5 et D.7 réunis, ci-dessus, `d98ebe857f`) Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
       les marqueurs d'objectif qui partagent ce langage (`floorRings.ts`, `objectivesLayer.ts` : relire), sur
       les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
       `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
       les quatre visions, par palette et par thème.
 - [ ] D.6 Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
-- [ ] D.5 Jetons `map-relief-*` dans chaque palette (`semantic-tokens.ts`, `palettes/`), valeurs de 0.3. Garde-rail
+- [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
+      `marker-outline-band`, `marker-outline-rim` dans les 4 palettes ; rampe UNIQUE `lib/accessibility/reliefRamp.ts`
+      (`reliefRampHex`, `reliefRampStops`), sur laquelle `lib/replay/relief/tint.ts` de D.2 pointera à
+      l'intégration ; cerne deux tons des pions sur les trois fonds, pire contraste 4,43:1 ; garde-rail
+      `mapReliefTokens.test.ts` (177 tests) ; témoins du rejeu réécrits, seul le contour change ; `replayMarkers.ts`
+      ramené de 605 à 478 lignes ; 1 373 tests ciblés relancés par le pilote, verts. À regarder à l'écran au
+      Gate D : anneau de la fiche ouverte contre les anneaux d'étage au 2e étage ; empilement des anneaux du
+      joueur de la page sur plusieurs étages.) Jetons `map-relief-*` dans chaque palette (`semantic-tokens.ts`, `palettes/`), valeurs de 0.3. Garde-rail
       `lib/accessibility/mapReliefTokens.test.ts` : seuil de D-3 contre les encres des marqueurs, par palette,
       sous les quatre visions, dans les deux thèmes.
 - i18n : chaque libellé neuf dans chaque langue de `config/locales.toml` (fr et en), dans les dictionnaires
