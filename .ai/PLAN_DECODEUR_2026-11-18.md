@@ -287,6 +287,16 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 - [x] C.3 (fait le 2026-11-18, commit `f426cf4` du clone. CAUSE PROUVÉE, une seule pour les 19 joueurs : le balayage ancrait de FAUX enregistrements du tableau dans une liste répétitive d'une autre structure (motif de 73 bits, mêmes décalages dans les 21 émissions fautives de 18 films, 16 des 18 en Fiesta) ; leur premier composant lu vaut toujours (corps à corps 0, grenades 16) : le 16 est la partie constante de cette autre structure, pas une valeur du tableau. RÈGLE DE LECTURE : un enregistrement dont un composant 0 à 27, que toute émission du moteur relit en entier, ne se décode pas est abandonné en entier ; un arrêt sur un composant d'un autre lecteur garde ce qui précède. Banc sur 70 films : joueurs à 16 grenades 4 → 0 (19 → 0 avec la garde), aucun joueur perdu, grenades 550 sur 550. La garde de C.2 écarte encore 25 émissions d'une autre forme : elle reste) Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
       émission perd. Sortie : cause prouvée dans la lecture du tableau et correction écrite ici, ou `[!]`.
 - [x] C.4 (fait le 2026-11-18 sur 70 films, 922 joueurs : couples violés 27 → 0, séries aberrantes 23 → 0, joueurs à 16 grenades 19 → 4 ; gagnés : série +23, grenades +22, corps à corps +10, tête +3 ; perdus : 0 ; aucun build ne baisse ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS par C.1.
+- [ ] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
+      SANS NOM. Le tableau a 28 emplacements par joueur, deux valeurs chacun ; le décodeur n'en nomme qu'environ
+      la moitié, par confrontation aux récompenses de score et aux statistiques d'objectif. Balayage des
+      emplacements sans nom contre TOUTES les colonnes par joueur de l'API disponibles dans la copie de la base
+      (tirs tirés, tirs au but, dégâts infligés et subis, et les autres), par mode, avec l'outil existant
+      (`cmd/statnames-sweep`) et la méthode établie : valeur finale par joueur après pont d'identité, candidats
+      croisés sur les films, et un nom n'est retenu que s'il tient sur deux moitiés de films disjointes. Mesure
+      d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
+      en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
+      sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
@@ -423,6 +433,8 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — C.5 ajouté et lancé en mesure seule (emplacements sans nom du tableau contre les colonnes de
+  l'API), accord du user.
 - 2026-11-18 — C.3 rendu (Opus), relu, commité (`f426cf4` sur `piste/c`). Fait rougir en plus : la révision de
   la grammaire (à monter à l'intégration), les références d'équivalence de l'étape du tableau. À rejouer par le
   banc sur le parc régénéré (L.7) : la règle n'est mesurée que sur 70 films. La structure qui porte le motif de
