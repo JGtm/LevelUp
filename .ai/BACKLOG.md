@@ -475,6 +475,12 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ---
 
+### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
+
+**Relevé le 2026-11-18** (conception du fond Relief, `.ai/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
