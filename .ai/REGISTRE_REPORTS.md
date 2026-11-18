@@ -398,3 +398,13 @@ Un seul item `[!]` (B.5, retrait des types du décodeur de `internal/port`, lign
 | **Contrôle après régénération : part des joueurs dont la lecture des tirs est suffisante, par build du jeu** | Plan `.ai/PLAN_BACKLOG_2026-11-17.md`, E.4 (mesure T.0 de la refonte de la page du rejeu) | L'échantillon actuel (8 fixtures) n'est pas représentatif ; la mesure sur le parc régénéré est à refaire | Régénération du parc faite par le user |
 | **Retrait de l'ancienne précision par film et de la table `match_weapon_hit_distance`** | Plan `.ai/PLAN_BACKLOG_2026-11-17.md`, piste F (décision D-5) ; entrée « Touches et précision lues par l'ancien appariement des tirs » du backlog | Le décodeur v1.4.1 déclare encore deux replis tenus par LevelUp ; le retrait casserait `internal/filmreplis` | Une version du décodeur sans les deux replis |
 | **Les fichiers tactiques s'écrivent compressés depuis ce plan** : la régénération du parc les réécrit tous une seule fois | Plan `.ai/PLAN_BACKLOG_2026-11-17.md`, piste B (2026-11-17) | Pas de réécriture de masse hors régénération ; les fichiers du poste restent non compressés jusque-là | Régénération du parc faite par le user |
+
+## Reports de la refonte de la page du rejeu (2026-11-18, `.ai/PLAN_REFONTE_UI_REJEU_2026-11-15.md`)
+
+| Item | Origine | Pourquoi reporté | Condition de reprise |
+|---|---|---|---|
+| **Mesure de mémoire de la toile à 720 puis 1080 px de haut** | Plan de la refonte, 0.2 | La mesure se fait à l'écran du user ; l'outil est prêt sur la branche `ui/m1` (guide dans `mesure_m1.md` de cette branche) | Le user lance la mesure |
+| **Plafond de hauteur de la toile par cadre** | Plan de la refonte, G.1 | Dépend de la mesure ci-dessus ; le plafond d'aujourd'hui vaut pour les trois cadres | Mesure faite et coût accepté |
+| **Validation à l'écran de la refonte, témoin par témoin** | Plan de la refonte, R.4 | Le plan fait attendre l'intégration à `release/v8.3.0` de cette validation | Le user valide sur la page de comparaison |
+| **Rang absent pour tous dans un match avec des bots** | Plan de la refonte, T.3 | Le score d'un bot n'est pas établi (pas de ligne de feuille jointe) ; le rang exige tout le lobby | Décision du user : rang parmi les joueurs humains, ou rien |
+| **Capacité de la vue 3D** | Plan de la refonte, F.3 | L'emplacement 2D / 3D lit une capacité au nom supposé `can_view_replay_3d`, que le serveur ne sert pas | Plan de la 3D : nommer la capacité et la servir |

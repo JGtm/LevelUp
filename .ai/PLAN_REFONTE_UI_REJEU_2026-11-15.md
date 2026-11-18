@@ -486,7 +486,7 @@ Chemins relatifs à `apps/web/src/features/match-replay/`.
       frise à pistes, et `ReplayZoomControl`), qui ne doit pas changer (D-8), et des lignes du fil, dont seul le
       lieu doit changer (D-5) ; rangées sous `apps/web/src/features/match-replay/ui/__fixtures__/` avec le suffixe
       `.avant.html`. Gate : les fixations existent et un test les relit à l'identique.
-- [ ] 0.2 M-1 : script de mesure (page de démonstration du rejeu, toile à 720 puis 1080 px de haut sur une
+- [!] 0.2 (outil de mesure PRÊT sur la branche `ui/m1`, jamais lancé : la mesure se fait à l'écran du user, qui ne l'a pas encore lancée ; reportée au registre) M-1 : script de mesure (page de démonstration du rejeu, toile à 720 puis 1080 px de haut sur une
       carte haute et une carte large) qui relève le tas JS au pic et la durée des cuissons au redimensionnement.
       L'agent l'écrit ; le user le lance à son écran ; résultats dans `.ai/annexes_refonte_ui_rejeu/mesure_m1.md`.
       Préparé le 2026-11-17 sur la branche de mesure `ui/m1` (`eac9627e47`, worktree `C:/t/ui-m1`, jamais
@@ -724,17 +724,17 @@ les localise, rien n'est recalculé à côté.
 
 ## 10. Lot G — plafond de hauteur
 
-- [ ] G.1 Selon M-1 et D-15 : plafond par cadre (`CANVAS_HEIGHT_CEILING` reste la valeur du Standard ; une valeur
+- [!] G.1 (non traité : dépend de la mesure 0.2 ; le plafond de hauteur reste celui d'aujourd'hui dans les trois cadres ; reporté au registre) Selon M-1 et D-15 : plafond par cadre (`CANVAS_HEIGHT_CEILING` reste la valeur du Standard ; une valeur
       nommée pour Cinéma et Plein cadre), ou `[!]` avec la mesure si le coût est refusé. Tests de
       `useReplayViewport` mis à jour.
 - **Gate G** : commandes du Gate A.
 
 ## 11. Revue et clôture
 
-- [ ] R.1 Revue finale (Fable) : skill `adversarial-review` sur le diff complet `release/v8.3.0...feat/rejeu-refonte-ui`.
+- [x] R.1 (fait le 2026-11-18 : `annexes_refonte_ui_rejeu/revue_finale_2026-11-18.md`, 0 P0, 3 P1, 8 P2, 8 soupçons ; aucun test exécuté par le relecteur ; la grille des maquettes n'a PAS été relue ligne à ligne, les écarts connus sont listés au backlog et dans l'artefact des vérifications) Revue finale (Fable) : skill `adversarial-review` sur le diff complet `release/v8.3.0...feat/rejeu-refonte-ui`.
       (amendé le 2026-11-17) La conformité à la grille des maquettes est un axe de la revue : chaque ligne de
       la grille a sa preuve, aucun écart hors de la liste des écarts voulus.
-- [ ] R.2 Corrections retenues, une seule ronde.
+- [x] R.2 (fait le 2026-11-18 : les 3 P1 et 3 P2 corrigés, chacun avec un test rouge avant ; 5 P2 et les soupçons au backlog) Corrections retenues, une seule ronde.
 - [ ] R.3 `make gate-push` vert ; entrée `.ai/thought_log.md` ; amendements C.5 et D-10 portés dans
       `.ai/PLAN_REJEU_3D_2026-11-15.md` ; `[!]` reportés dans `.ai/REGISTRE_REPORTS.md` ; mémoire du chantier.
 - [ ] R.4 Validation à l'écran par le user (artefact de vérifications), témoins nommés par lui : Standard
