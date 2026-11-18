@@ -578,6 +578,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
+  écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
+  attendait C.4 et K.2, et met le code sous les yeux du user pour sa validation à l'écran. Vérifications du pilote
+  sur l'intégration, deux passes : types, lint, lints d'imports et de couleurs, contrat de l'API, compilation et
+  `vet` verts ; `go test ./...` 228 paquets verts (archlint avec un délai de 40 minutes) ; tests d'intégration en
+  `-p 1` verts (synchronisation, DuckDB, persist, replayregen, replayartifacts) ; suite complète du web : 14 379
+  réussis, un vrai rouge corrigé (type du fil homonyme d'un schéma du contrat), huit dépassements de délai sous
+  charge rejoués seuls et verts. M.1 refait en prototype interactif après le retour du user (« aucune animation
+  ni rien, je vois pas du tout ce qu'on vise »), même lien. Restent à cueillir sur l'intégration : D, K (K.1, K.3,
+  K.4, K.5) ; en cours : T (écriture), S.
+
 - 2026-11-18 — M.1 rendu, lu par le pilote (feuille de style, balises et attributs énumérés, texte entier) et
   publié ; choix du user attendu (porte de M.2 et M.3). Seconde passe de vérifications : suite complète du web
   14 379 réussis, 9 échecs : 1 vrai (type `MedalSprite` du fil homonyme d'un schéma du contrat, renommé en
@@ -670,6 +681,13 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (intégration) — `internal/mapcatalog`, `TestAddOverlayEntryConcurrentNePerdPasDEntree` : instable, 1
+  échec sur 10 passages sur le code d'AVANT le plan. Quand le verrou d'écriture ne se pose pas à temps, le code
+  force le passage et une écriture concurrente du catalogue est perdue : c'est un vrai défaut, pas seulement un
+  test fragile. À porter au backlog à la clôture (R.1), priorité moyenne.
+- 2026-11-18 (intégration) — sous charge, huit garde-rails du site qui parcourent tous les fichiers dépassent le
+  délai de 5 s d'un test dans une suite complète (ils passent seuls en moins de 30 s au total).
 
 - 2026-11-18 (Q.1) — une décision datée du user n'est pas réalisée dans le code : le fond teinté des lignes du
   joueur suivi dans le fil (décision D-5 de la refonte, 2026-11-15) ; seul le gras de la fiche ouverte existe.
