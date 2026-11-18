@@ -377,6 +377,19 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — 0.3 fait (export de vérité sous `C:/t/verite/` : `participants.tsv` 29 107 lignes,
+  `registre.tsv` 2 045, `evenements_mode.tsv` 58 ; hors dépôt, copie de la base, original jamais ouvert). La
+  question des 22 coups d'envoi (Gate 0) est TRANCHÉE par l'audit du plan du backlog : l'horloge a raison. Dans
+  ces 22 rejeux, le troisième joueur à bouger réellement le fait 0,17 à 0,84 s après le départ de l'horloge et
+  16,8 à 21,6 s après le « premier mouvement » ; première élimination de l'API 16,1 s après l'horloge contre
+  32,5 s ; arrivées des joueurs de l'API 0,2 s après l'horloge. A.1 suit donc sa première branche. À savoir
+  pour les pistes : le registre n'a pas de colonne de build ; le code d'un temps fort de mode est `type_hint`
+  (10), son détail dans `raw_json`, pas dans `details_json`.
+- 2026-11-18 — 0.1 fait : clone neuf `C:/t/dec/main`, tête `037ec4d` = tag `v1.4.1` ; worktree LevelUp de la
+  montée `C:/t/dec-lu` (`chore/830-decodeur-v150`, depuis `1a7329e625`), sans jonction. Lancés : la marche à
+  blanc (0.2, 0.5, 0.6 ; un agent Sonnet, consigne : aucune jonction, trouver la voie par paramètres) ; l'export
+  de vérité de l'API (0.3), fait par l'agent d'audit du coup d'envoi du plan du backlog, sur une copie de la
+  base sous `C:/t/verite/` (serveur local à l'arrêt, vérifié). 0.4 attend ces deux retours.
 - 2026-11-18 — go du user (« ok avec tes recos, go pour les deux plans ») ; DD-1 à DD-5 retenues ; piste D
   renforcée (comparaison à trois voix, relèvement de la part des joueurs bien lus) ; H.5 étendu à l'audio.
 - 2026-11-18 — plan écrit après trois instructions en lecture seule et deux mesures du pilote ; aucun code.
