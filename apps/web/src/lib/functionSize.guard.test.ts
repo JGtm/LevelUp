@@ -23,7 +23,7 @@ const MAX_CODE_LINES = 80
 
 /** Valeurs mesurées à la clôture de E.11 : ne font que descendre. */
 const PLAFOND_PARAMETRES = 46
-const PLAFOND_LONGUEUR = 247
+const PLAFOND_LONGUEUR = 245
 
 interface FunctionHit {
   file: string
