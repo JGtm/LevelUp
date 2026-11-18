@@ -361,9 +361,9 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste I — temps forts de type « mode » (Haiku ; Sonnet)
 
-- [ ] I.1 Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
+- [x] I.1 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/temps_forts_mode.md` ; 23 683 événements, 527 matchs, un seul code réel, 10) Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
       les destructions de véhicule et les actions de score du document.
-- [ ] I.2 Selon I.1 : ce que la moitié inexpliquée en Slayer recouvre, ou `[!]` avec le décompte ; l'entrée
+- [x] I.2 (fait le 2026-11-18, sans code : un temps fort « mode » est l'écho d'une ACTION DE SCORE propre au mode, du même joueur, dans la même image (plage de 0 à 40 ms) : 76 % des événements de code 10 appariés. Par mode : zone capturée ou sécurisée en Bases, contrôle de la colline, vol, prise, retour, capture du drapeau et élimination du porteur en Drapeau, contrôle de la balle ; en Slayer : destruction de véhicule (12 noms), aide par IEM, quelques éliminations. Sens inverse : 85 à 100 % des actions de score de ces noms ont leur temps fort. Non appariés : 3 410 en Drapeau, 691 en Total Control (aucune action de score publiée pour ce mode), 303 en Extraction, dont le sens reste inconnu. Le décodeur n'a rien à publier de plus : `scoreActions` nomme déjà l'événement. Entrée du backlog mise à jour : la lecture « zone capturée » de LevelUp est fausse hors Bases) Selon I.1 : ce que la moitié inexpliquée en Slayer recouvre, ou `[!]` avec le décompte ; l'entrée
       du backlog est mise à jour, avec le crédit à nuzzles et à Den si leur lecture est reprise.
 - **Gate I** : aucun code de production.
 
@@ -397,6 +397,14 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste I close (I.1, I.2), aucun code. Découverte pour LevelUp : 2 330 temps forts « mode » de
+  la base n'ont pas de code ; sur les 33 matchs qui ont les deux, ce sont des DOUBLONS des événements de code
+  10 (1 284 sur 1 284, même joueur, même instant) ; 43 matchs de juin à septembre 2026 n'ont que ceux-là.
+  Piste A commitée dans le clone (`702bfe0`) : la piste de précision par « premier battement » est RÉFUTÉE
+  par la mesure (l'horloge se lit par pas d'environ 0,55 s, le coup d'envoi est connu à ce pas près), règle
+  inchangée ; lectures d'horloge ajoutées aux entrées figées des 8 goldens (69 Ko). À l'intégration de A, le
+  plafond des fixtures de contrat sera dépassé de 11 720 octets (elles gagnent `roundClock` et
+  `respawnCountdowns`) : relèvement daté à écrire. Intégration de la piste J lancée (schéma 126).
 - 2026-11-18 — J.7 rendu, relu, commité (`2b7d7f7`). Il fait rougir 4 fixtures de contrat et 4 goldens
   d'assemblage (`a521164d`, `11de8353`, `111fa685`, `e5adf7b2`) sur le seul compteur du repli du premier
   occupant du siège, en baisse (82→68, 87→75, 89→84, 125→112) : à refiger à l'intégration, attribué à J.7.
