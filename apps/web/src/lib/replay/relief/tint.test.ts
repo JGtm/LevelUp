@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { reliefRampHex, reliefRampStops } from '@/lib/accessibility/reliefRamp'
+
 import { FLAG_KNOWN, FLAG_ON_MAP } from './constants'
 import { buildTintTable, parseHexColor, reliefRamp, rgbToCss, tintRelief, toRgb } from './tint'
 
@@ -90,5 +92,38 @@ describe('tintRelief', () => {
       table,
     )
     expect(Array.from(out.rgba)).toEqual([0, 0, 0, 0])
+  })
+})
+
+// import.meta.glob (Vite) charge la source comme chaîne brute — pas de dépendance à node:fs.
+const sources = import.meta.glob('./tint.ts', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
+
+describe('reliefRamp : la rampe de clarté est UNIQUE (lib/accessibility/reliefRamp)', () => {
+  const BASES = ['#6b7078', '#7559b5', '#3f8c4f', '#ffffff', '#000000', '#0a0b0c']
+
+  it.each(BASES)('les trois crans de la base %s sont ceux de reliefRampStops, au bit près', (base) => {
+    const ramp = reliefRamp(base)
+    const stops = reliefRampStops(base)
+    expect(ramp?.low).toEqual(parseHexColor(stops.low))
+    expect(ramp?.mid).toEqual(parseHexColor(stops.mid))
+    expect(ramp?.high).toEqual(parseHexColor(stops.high))
+  })
+
+  it.each(BASES)('la table de teinte de %s suit reliefRampHex sur toute la plage de gris', (base) => {
+    const ramp = reliefRamp(base)
+    if (!ramp) throw new Error('base illisible')
+    const table = buildTintTable(ramp)
+    for (const grey of [0, 64, 127, 128, 200, 255]) {
+      const hex = reliefRampHex(base, grey / 255)
+      const want = parseHexColor(hex) as unknown as number[]
+      for (let i = 0; i < 3; i++) expect(Math.abs(table[grey * 3 + i] - want[i])).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('tint.ts lit la rampe unique et n’en tient aucune seconde copie (pas de part de noir ni de blanc des trois crans)', () => {
+    const source = sources['./tint.ts']
+    expect(source).toMatch(/from '@\/lib\/accessibility\/reliefRamp'/)
+    expect(source).not.toMatch(/LOW_SHARE|MID_SHARE|HIGH_LIGHTEN|towardBlack/)
+    expect(source).not.toMatch(/0\.78/)
   })
 })

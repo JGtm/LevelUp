@@ -64,12 +64,14 @@ export type {
   ReplayGroundWeaponControls,
   ReplayModeObjectivesControls,
   ReplayPlacementControls,
+  ReplayReliefControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
+export type { ReplayFloorControls } from './ReplayFloorControls'
 
 import type {
   ReplayBackgroundControls,
@@ -78,6 +80,7 @@ import type {
   ReplayGroundWeaponControls,
   ReplayModeObjectivesControls,
   ReplayPlacementControls,
+  ReplayReliefControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
@@ -122,8 +125,10 @@ interface ReplayViewPanelProps {
   wallPlan: ReplayWallPlanControls
   /** Les TRACES DES VIES (apparitions, morts, tueurs) : un groupe qui se replie, et deux affinages communs. */
   lives: ReplayLivesControls
-  /** Le STYLE DU FOND (rendu ou plan) : n'existe qu'avec un fond qui porte une image plan. */
+  /** Le STYLE DU FOND (plan, rendu, relief) : n'existe que s'il y a un choix entre au moins deux fonds. */
   background: ReplayBackgroundControls
+  /** Le RELIEF : l'interrupteur « Traits du relief » et la commande d'étage ; n'existe qu'avec un fond qui porte un relief lisible. */
+  relief: ReplayReliefControls
   /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
   orientation: ReplayOrientationControls
   /** Le FIL DES ÉLIMINATIONS posé sur le plan : n'existe que là où le cadre peut le poser. */
@@ -305,6 +310,7 @@ export function ReplayViewPanel({
   vehicles,
   wallPlan,
   background,
+  relief,
   lives,
   orientation,
   planFeed,
@@ -371,6 +377,7 @@ export function ReplayViewPanel({
         vehicles={vehicles}
         wallPlan={wallPlan}
         background={background}
+        relief={relief}
       />
       <LivesSection locale={locale} lives={lives} />
       <OrientationSection locale={locale} orientation={orientation} />

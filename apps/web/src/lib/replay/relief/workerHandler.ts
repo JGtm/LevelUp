@@ -8,11 +8,11 @@
 import type { ReliefEngine, ReliefFrame } from './engine'
 import { isReliefError } from './errors'
 import { lineSetBuffers } from './lineSet'
-import type { ReliefRequest, ReliefResponse } from './protocol'
+import type { ReliefRequest, ReliefReply } from './protocol'
 
 /** Une réponse et les buffers à transférer avec elle. */
 export interface HandledRequest {
-  response: ReliefResponse
+  response: ReliefReply
   transfer: ArrayBuffer[]
 }
 

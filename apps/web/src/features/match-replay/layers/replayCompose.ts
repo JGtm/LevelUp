@@ -52,6 +52,10 @@ export const LAYER_ORDER = [
   // Forge — 3,4 % du terrain, et c'est mieux qu'un fond vide.
   'fond-carte',
   'sol-forge',
+  // LES TRAITS DU RELIEF (ruptures, courbes de niveau, murs de la coupe, liseré) : du dessin vectoriel
+  // posé SUR le fond, quel qu'il soit, donc au-dessus de lui ; sous le plan des murs, qui reste le trait
+  // le plus net du terrain.
+  'traits-relief',
   // LE PLAN DES MURS, en vecteurs par-dessus l'image du fond : il se lit comme un trait de
   // dessin sur la carte, donc au-dessus d'elle et sous tout ce que le terrain porte.
   'plan-murs',
@@ -146,6 +150,8 @@ export interface SceneMatter {
   floor: boolean
   /** Le fond retenu porte un plan des murs et il est cuit (`useReplayStaticLayers`). */
   wallPlan: boolean
+  /** Les traits du relief sont allumés, lus et cuits (`useReplayStaticLayers`). */
+  reliefLines: boolean
   heat: boolean
   zoneNames: boolean
   objectivesCooked: boolean
@@ -229,6 +235,8 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
   const on: Record<ReplayLayerId, boolean> = {
     'fond-carte': h.background,
     'sol-forge': !h.background && h.floor,
+    // L'interrupteur « Traits du relief » ferme le calque en n'y laissant rien à cuire : une seule condition.
+    'traits-relief': h.reliefLines,
     'plan-murs': t.wallPlan && h.wallPlan,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,

@@ -21,9 +21,9 @@ import { REPLAY_TEXT, type ReplayLocale } from '@/features/match-replay/i18n/i18
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { replayLoadState, type ReplayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
-import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { baseImageVariant, resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
-import { buildMapBackgroundLayer } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
+import { buildMapBackgroundLayer, hasRelief } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
 import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
 import { useFullWidthPage } from '@/components/shell/useFullWidthPage'
 import { useCardRowLayout } from '@/features/match-replay/hooks/useCardRowLayout'
@@ -119,9 +119,12 @@ export function ReplayPage() {
   // (jusqu'à 1,4 Mio), qu'on ne va chercher que si le calage existe.
   const { data: background } = useReplayMapBackground(playerSlug, matchId)
   // LE STYLE DU FOND (réglage « Fond » du panneau Vue) : l'image plan se superpose au rendu et n'est
-  // demandée que si le fond en porte une ; sinon le rendu, sans rien dire.
+  // demandée que si le fond en porte une ; sinon le rendu, sans rien dire. Le RELIEF n'est pas une image de
+  // cette liste : il se charge et se dessine dans le canvas (`useReplayRelief`), et la page ne charge alors
+  // que l'image de base (le plan s'il existe), posée en attendant le relief ou à sa place s'il échoue.
   const [backgroundStyle] = useBackgroundStyle()
-  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  const voulu = resolveBackgroundVariant(backgroundStyle, background?.planImage, { available: hasRelief(background), failed: false })
+  const demandee = baseImageVariant(voulu, background?.planImage)
   // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
   const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
   // L'IMAGE PLAN, SOURCE DU MASQUE DES ZONES NOMMÉES (`lib/replay/planMask`), chargée quel que soit le fond

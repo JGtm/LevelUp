@@ -4,20 +4,20 @@
  * Elle n'est proposée que pour une carte qui porte une image plan : sans elle, le choix ne changerait rien.
  */
 import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
-import { resolveBackgroundVariant, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { resolveBackgroundVariant, type MapBackgroundImageVariant } from '@/lib/replay/mapBackgroundVariant'
 
 import type { TacticalText } from './i18n'
 import { ETIQUETTE, PILULE } from './pilules'
 import { useTacticalMapPlanImage } from './queries'
 
-const VALEURS: readonly MapBackgroundVariant[] = ['plan', 'rendu']
+const VALEURS: readonly MapBackgroundImageVariant[] = ['plan', 'rendu']
 
 export function TacticalPiluleFond({ t, playerSlug, mapId }: { t: TacticalText; playerSlug: string; mapId: string }) {
   const { backgroundStyle, setBackgroundStyle } = useMapViewPreferences(mapId)
   const { planImage } = useTacticalMapPlanImage(playerSlug, mapId)
   if (!planImage) return null
   const posee = resolveBackgroundVariant(backgroundStyle, planImage)
-  const libelle: Record<MapBackgroundVariant, string> = { plan: t.backgroundPlan, rendu: t.backgroundRender }
+  const libelle: Record<MapBackgroundImageVariant, string> = { plan: t.backgroundPlan, rendu: t.backgroundRender }
   return (
     <span role="group" aria-label={t.pillBackground} className={PILULE} data-testid="tactical-plan-fond-pilule">
       <span className={ETIQUETTE}>{t.pillBackground}</span>

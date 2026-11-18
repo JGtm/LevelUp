@@ -91,6 +91,14 @@ const MARKER_OUTLINE_BAND_TOKEN: SemanticToken = 'marker-outline-band'
 const MARKER_OUTLINE_RIM_TOKEN: SemanticToken = 'marker-outline-rim'
 
 /**
+ * LE FOND RELIEF : sa teinte de base est le token `map-relief-base` (une valeur par palette), dont la
+ * rampe de clarté et les encres de traits se tirent par calcul (`lib/replay/relief/tint.ts`). Le LISERÉ
+ * de la zone jouable est le filet clair du cerne des pions (`marker-outline-rim`, blanc dans toutes les
+ * palettes) : le même blanc se lit contre le bord teinté du relief et contre le vide au-delà.
+ */
+const RELIEF_BASE_TOKEN: SemanticToken = 'map-relief-base'
+
+/**
  * LE MUR DE PROTECTION (W1/R2-5, verdict du 2026-08-18 : « je préférerais un orange doré »).
  *
  * DEUX TOKENS ÉTAIENT CANDIDATS et la planche les a montrés côte à côte : `legendary` (l'or,
@@ -200,6 +208,8 @@ export interface ReplayInks {
   onScrim: string
   /** Le cerne deux tons des pions : bande sombre et filet clair (cf. MARKER_OUTLINE_BAND_TOKEN). */
   markerOutline: MarkerOutlineInk
+  /** Les deux encres du fond Relief : la teinte de base de sa rampe, et le liseré de la zone jouable (cf. RELIEF_BASE_TOKEN). */
+  relief: { base: string; outline: string }
   /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
   self: string
   /** Le plan des murs du fond : l'encre de mise en page la plus contrastée du thème (`--foreground`). */
@@ -264,6 +274,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       scrim: readInk('--scrim'),
       onScrim: readInk('--on-scrim'),
       markerOutline: { band: resolveToken(MARKER_OUTLINE_BAND_TOKEN), rim: resolveToken(MARKER_OUTLINE_RIM_TOKEN) },
+      relief: { base: resolveToken(RELIEF_BASE_TOKEN), outline: resolveToken(MARKER_OUTLINE_RIM_TOKEN) },
       self: resolveToken(SELF_TOKEN),
       wallPlan: readInk('--foreground'),
       wall: resolveToken(WALL_TOKEN),

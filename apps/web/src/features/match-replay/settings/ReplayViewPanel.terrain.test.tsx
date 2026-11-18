@@ -96,7 +96,7 @@ describe('ReplayViewPanel — fond de carte (rendu ou plan)', () => {
   })
 
   it('fond sans image plan : la commande est absente', () => {
-    renderPanel({ background: makeBackground({ available: false }) })
+    renderPanel({ background: makeBackground({ options: [] }) })
     expect(screen.queryByRole('radiogroup', { name: 'Fond' })).toBeNull()
   })
 

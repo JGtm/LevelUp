@@ -12,7 +12,7 @@ import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { layerOffset } from '../../../lib/replay/replayLogic'
-import type { CanvasView } from '../model/replayView'
+import { projectTo, type CanvasView } from '../model/replayView'
 import { recordingContext } from '../test/recordingContext'
 import type { ObjectiveElementReady } from './objectivesLayer'
 import { useReplayStaticLayers, type StaticLayersInput } from './useReplayStaticLayers'
@@ -21,6 +21,8 @@ const paintObjectives = vi.hoisted(() => vi.fn())
 vi.mock('./objectivesLayer', () => ({ drawObjectivesLayer: paintObjectives }))
 const paintWallPlan = vi.hoisted(() => vi.fn())
 vi.mock('./wallPlanLayer', () => ({ drawWallPlanLayer: paintWallPlan }))
+const paintRelief = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/replay/relief/reliefLinesLayer', () => ({ drawReliefLinesLayer: paintRelief }))
 
 /** Un cadrage de 400 x 400 px sur 100 x 100 unités : 4 px par unité, marge de 10 % = 40 px. */
 function viewAt(dx: number, span = 100): CanvasView {
@@ -33,6 +35,12 @@ const ZONES = { zones: [], bigColors: [], fineInk: 'i', locale: 'fr' } as const
 const HEAT = { grid: null, ramp: [] }
 const NO_WALL_PLAN = { plan: null, ink: 'w' }
 const WALL_PLAN = { plan: { edges: [[0, 0, 10, 10]], dropped: 0 }, ink: 'w' } as const
+const EMPTY_SET = { points: new Float32Array(0), offsets: new Uint32Array(1) }
+const RELIEF_LINES = {
+  calibration: { metersPerPixel: 1, originX: 0, originY: 0, widthPx: 1, heightPx: 1 },
+  steps: EMPTY_SET, contours: EMPTY_SET, walls: EMPTY_SET, outline: EMPTY_SET,
+  ink: { edge: 'e', contour: 'c', wall: 'w', outline: 'o' },
+}
 const COLOR_OF_TEAM = () => 'c'
 const Z = { min: 0, max: 1 }
 const ELEMENT: ObjectiveElementReady = { role: 'zone', team: 0, x: 10, y: 10, z: 0, kind: 'zone', halfX: 1, halfY: 1 } as ObjectiveElementReady
@@ -45,6 +53,7 @@ function entree(view: CanvasView, over: Partial<StaticLayersInput> = {}): Static
     zones: ZONES as never,
     heat: HEAT,
     wallPlan: NO_WALL_PLAN,
+    reliefLines: null,
     objectives: { elements: ELEMENTS, colorOfTeam: COLOR_OF_TEAM, neutralOutline: 'o', z: Z },
     ...over,
   }
@@ -53,6 +62,7 @@ function entree(view: CanvasView, over: Partial<StaticLayersInput> = {}): Static
 beforeEach(() => {
   paintObjectives.mockReset()
   paintWallPlan.mockReset()
+  paintRelief.mockReset()
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => recordingContext().ctx as never,
   )
@@ -189,5 +199,46 @@ describe('le plan des murs est un calque statique comme les autres', () => {
     const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
     h.rerender(entree(viewAt(0), { wallPlan: NO_WALL_PLAN }))
     expect(h.result.current.wallPlanRef.current).toBeNull()
+  })
+})
+
+describe('les traits du relief sont un calque statique comme les autres', () => {
+  it('éteints (null), rien n’est cuit et la référence reste vide', () => {
+    const h = monter(entree(viewAt(0)))
+    expect(paintRelief).not.toHaveBeenCalled()
+    expect(h.result.current.reliefLinesRef.current).toBeNull()
+  })
+
+  it('allumés, ils sont cuits une fois contre le cadrage courant, avec leurs données', () => {
+    const h = monter(entree(viewAt(0), { reliefLines: RELIEF_LINES }))
+    expect(paintRelief).toHaveBeenCalledTimes(1)
+    expect(paintRelief.mock.calls[0][1]).toBe(RELIEF_LINES)
+    // La projection de la vue est passée au calque : elle place le coin du cadrage où `projectTo` le met.
+    const project = paintRelief.mock.calls[0][2] as (p: { x: number; y: number }) => { x: number; y: number }
+    expect(project({ x: 0, y: 100 })).toEqual(projectTo(viewAt(0), { x: 0, y: 100 }))
+    expect(h.result.current.reliefLinesRef.current).not.toBeNull()
+  })
+
+  it('une nouvelle coupe (nouveaux traits) recuit, sans toucher aux autres calques', () => {
+    // Le MÊME cadrage (même objet) : seul le calque des traits change de donnée.
+    const view = viewAt(0)
+    const h = monter(entree(view, { reliefLines: RELIEF_LINES }))
+    h.rerender(entree(view, { reliefLines: { ...RELIEF_LINES } }))
+    expect(paintRelief).toHaveBeenCalledTimes(2)
+    expect(paintObjectives).toHaveBeenCalledTimes(1)
+  })
+
+  it('ils se recuisent au changement de cadrage (zoom, déplacement), et gardent leur cuisson pendant un glisser', () => {
+    const h = monter(entree(viewAt(0), { reliefLines: RELIEF_LINES }))
+    h.rerender(entree(viewAt(0, 50), { reliefLines: RELIEF_LINES }))
+    expect(paintRelief).toHaveBeenCalledTimes(2)
+    for (let i = 1; i <= 10; i++) h.rerender(entree(viewAt(i * 1.5, 50), { reliefLines: RELIEF_LINES, frozen: true }))
+    expect(paintRelief).toHaveBeenCalledTimes(2)
+  })
+
+  it('éteints après avoir été allumés, ils vident le calque', () => {
+    const h = monter(entree(viewAt(0), { reliefLines: RELIEF_LINES }))
+    h.rerender(entree(viewAt(0), { reliefLines: null }))
+    expect(h.result.current.reliefLinesRef.current).toBeNull()
   })
 })

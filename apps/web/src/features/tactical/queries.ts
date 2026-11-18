@@ -47,7 +47,7 @@ import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPend
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
-import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { backgroundImagePath, loadedBackground, type MapBackgroundImageVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -189,10 +189,10 @@ export function useTacticalMapBackgroundImage(
   playerSlug: string,
   mapId: string,
   actif = true,
-  variante: MapBackgroundVariant = 'rendu',
-): { url: string | null; variante: MapBackgroundVariant } {
+  variante: MapBackgroundImageVariant = 'rendu',
+): { url: string | null; variante: MapBackgroundImageVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const load = (v: MapBackgroundVariant) => ({
+  const load = (v: MapBackgroundImageVariant) => ({
     queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId, v),
     queryFn: async () => {
       const blob = await api.getBlob(

@@ -419,7 +419,7 @@ function drawMarker(
 
   if (alpha === 1) drawFloorRings(ctx, c, fl, color, { k: style.k, first: firstFloorRingRadius(fl) })
 
-  drawMarkerOutline(ctx, (r) => shapeSubPath(ctx, c, r, shape), fl, style.k, style.outline, alpha)
+  drawMarkerOutline(ctx, (r) => shapeSubPath(ctx, c, r, shape), fl, { k: style.k, ink: style.outline, alpha })
 
   ctx.globalAlpha = alpha
   ctx.fillStyle = color

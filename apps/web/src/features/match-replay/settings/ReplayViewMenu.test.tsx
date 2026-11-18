@@ -9,6 +9,7 @@ import { ReplayViewMenu } from './ReplayViewMenu'
 import type { FilmLayerAvailability } from './viewPresetLogic'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplaySound } from '../sound/useReplaySound'
+import { makeReplayRelief } from '../test/reliefFixtures'
 
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -43,7 +44,8 @@ function Harness({ locale, planFeedAvailable = false }: { locale: ReplayLocale; 
     sound: SOUND,
     available: FILM,
     heat: { mode: 'presence', killsAvailable: true },
-    planBackground: { available: false, shown: false },
+    relief: makeReplayRelief(),
+    drawn: 'rendu',
     planFeedAvailable,
     locale,
   })

@@ -50,6 +50,7 @@ type Placements = ReturnType<typeof useReplayPlacements>
 export interface CookedLayers {
   origin: RefObject<CanvasView | null>
   wallPlan: RefObject<HTMLCanvasElement | null>
+  reliefLines: RefObject<HTMLCanvasElement | null>
   zones: RefObject<HTMLCanvasElement | null>
   heat: RefObject<HTMLCanvasElement | null>
   objectives: RefObject<HTMLCanvasElement | null>

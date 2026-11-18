@@ -64,6 +64,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   playerSyncStatus: () => queryKeys.playerSyncStatus(P, T),
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
+  matchReplayReliefData: () => queryKeys.matchReplayReliefData(P, T, 'm'),
+  matchReplayReliefImage: () => queryKeys.matchReplayReliefImage(P, T, 'm'),
   matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
   matchReplaySpawnForecast: () => queryKeys.matchReplaySpawnForecast(P, T, 'm', 'fr'),
   // Engagement.

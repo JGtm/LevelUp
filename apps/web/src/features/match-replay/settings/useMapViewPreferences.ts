@@ -43,8 +43,10 @@ export interface MapViewPreferences {
   /** Le plan des murs doit-il être tracé ? */
   showWallPlan: boolean
   /**
-   * Le style de fond voulu : `rendu` ou `plan`. C'est un VOULOIR : il ne vaut que pour un fond qui a
-   * une image plan (`resolveBackgroundVariant`) ; le plan des murs, lui, est déjà dans cette image.
+   * Le style de fond voulu : `plan`, `rendu` ou `relief`. C'est un VOULOIR : il ne vaut que pour un fond qui a
+   * l'image demandée (`resolveBackgroundVariant`) ; le plan des murs, lui, est déjà dans l'image plan. Les vues
+   * qui n'ont pas encore le relief (Tactique, « Occupation du terrain ») l'appellent sans offre de relief : un
+   * `relief` voulu s'y lit alors `plan`, puis `rendu`.
    */
   backgroundStyle: MapBackgroundVariant
   /** Change et retient le style du fond : la MÊME clé que le panneau « Vue » du rejeu (une seule source, lue et écrite des deux côtés). */

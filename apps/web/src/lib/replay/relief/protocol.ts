@@ -19,7 +19,7 @@ export type ReliefRequest =
   | { id: number; op: 'dispose' }
 
 /** La réponse du worker à une demande. */
-export type ReliefResponse =
+export type ReliefReply =
   | { id: number; ok: true; op: 'load'; info: ReliefInfo }
   | { id: number; ok: true; op: 'render'; frame: ReliefFrame }
   | { id: number; ok: true; op: 'dispose' }
@@ -31,7 +31,7 @@ export interface ReliefReadyMessage {
 }
 
 /** Tout ce que le worker envoie au fil principal. */
-export type ReliefWorkerMessage = ReliefResponse | ReliefReadyMessage
+export type ReliefWorkerMessage = ReliefReply | ReliefReadyMessage
 
 /** isReadyMessage reconnaît le message de démarrage. */
 export function isReadyMessage(message: unknown): message is ReliefReadyMessage {
