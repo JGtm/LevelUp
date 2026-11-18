@@ -668,6 +668,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — barre de lecture (M.2, M.3) : la session du fond Relief RELAIE une phrase du user reçue chez
+  elle, « pour la maquette du lecteur en superposition je valide l'option C+B » (C : barre fine et translucide en
+  surimpression au Plein cadre ; B : deux lignes quand la place manque). Relais, pas un message du user dans
+  cette session : la porte de M.2 et M.3 ne s'ouvre qu'à sa confirmation ici. L'écriture attend de toute façon
+  l'intégration du D.3 de l'autre plan (`settings/replayPreferences.ts`, nœud N25).
+- 2026-11-18 — piste T, écriture (T.2, T.4, T.5) rendue et commitée sur sa branche (`87910a4602`) ; relecture
+  adverse des écritures lancée (agent neuf, lecture seule) AVANT la migration des lecteurs (T.3). Mesure sur la
+  copie : 2 045 matchs, sources film 1 447, estimation 587, inconnue 11 ; 13 coups d'envoi changent ; 9 873
+  temps de jeu changent (médiane −8 s) ; second passage : 0 écriture. Écarts au modèle : les trois colonnes
+  mortes restent en base (DuckDB refuse le retrait sans reconstruire la table) ; `playable_duration_seconds`
+  reste écrite tant que la Dominance la lit.
 - 2026-11-18 — pistes D, K (K.1, K.3 à K.5) et S rendues, relues sur pièces, commitées sur leurs branches et
   cueillies sur l'intégration (`e7f8ff4ae4`, `bddd4751a6`, `b976137ffc`). S : 16 lignes d'écart de forme avant,
   11 colonnes alignées pour les bases neuves, 5 écarts résiduels nommés (voir Découvertes), exemption de
