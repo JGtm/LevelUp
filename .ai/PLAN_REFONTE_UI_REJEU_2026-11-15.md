@@ -735,7 +735,7 @@ les localise, rien n'est recalculé à côté.
       (amendé le 2026-11-17) La conformité à la grille des maquettes est un axe de la revue : chaque ligne de
       la grille a sa preuve, aucun écart hors de la liste des écarts voulus.
 - [x] R.2 (fait le 2026-11-18 : les 3 P1 et 3 P2 corrigés, chacun avec un test rouge avant ; 5 P2 et les soupçons au backlog) Corrections retenues, une seule ronde.
-- [ ] R.3 `make gate-push` vert ; entrée `.ai/thought_log.md` ; amendements C.5 et D-10 portés dans
+- [x] R.3 (fait le 2026-11-18 : `make gate-push` vert au second passage, tête `a102723ca8`, 20 films identiques, 20 760 tests Go sans échec — le premier passage avait relevé le garde des formes jumelles du document, qui ne connaissait pas le champ servi seul `medalLabels`, corrigé par une liste datée unique ; suite complète du web : 14 215 réussis ; journal, registre et mémoire écrits ; les amendements C.5 et D-10 étaient portés au plan 3D depuis le 2026-11-17) `make gate-push` vert ; entrée `.ai/thought_log.md` ; amendements C.5 et D-10 portés dans
       `.ai/PLAN_REJEU_3D_2026-11-15.md` ; `[!]` reportés dans `.ai/REGISTRE_REPORTS.md` ; mémoire du chantier.
 - [ ] R.4 Validation à l'écran par le user (artefact de vérifications), témoins nommés par lui : Standard
       selon A (zone de lecture inchangée), Cinéma 4v4 sur Detachment, Cinéma sur Nadair (fil sur le plan), Plein cadre, fiche du Standard (J), fiche en fenêtre (L),
