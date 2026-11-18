@@ -36,11 +36,18 @@ import (
 // briques).
 var cheminGoldenDeForme = filepath.Join("replay", "testdata", "document_shape.golden")
 
-// TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles ?
+// TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles, hors les champs et
+// les types SERVIS SEULS de la liste datee ?
 //
 // Elles le doivent : `domain/replaydoc` est le jumeau de fil de `replay.ReplayDocument`, meme
 // noms de types, memes tags JSON, memes `omitempty` (cf. son `doc.go`). Une divergence signifie
 // qu'un calque cuit n'atteint plus le client, ou qu'un champ servi n'a plus de source.
+//
+// UNE SEULE EXCEPTION : les champs et les types de `testutil.ReplayChampsServisSeuls` et
+// `testutil.ReplayTypesServisSeuls` (calques resolus a la requete, sans source stockee), la liste datee que
+// lit aussi `service/replayview/parity_test.go`. Elle est retiree de la forme SERVIE seule : un champ servi
+// hors liste, sans jumeau stocke, fait toujours echouer le test, et une entree qui ne designe plus rien dans
+// le document servi aussi.
 //
 // ELLES SE COMPARENT SUR CE QUI SE SERIALISE. Un champ non exporte n'atteint jamais le client : le type
 // qu'il est seul a porter (le dead-state qu'une vie de vehicule garde pour batir sa destruction) n'a pas
@@ -48,13 +55,45 @@ var cheminGoldenDeForme = filepath.Join("replay", "testdata", "document_shape.go
 // (cf. `TestRenduDesFormesJumeauxSuitLeGolden`) : la comparaison des jumeaux suit donc les seuls champs
 // exportes, et le golden la forme complete.
 func TestDocumentShapeTwinsAgree(t *testing.T) {
-	stockee := documentShapeRenderSerialise(reflect.TypeFor[replay.ReplayDocument]())
-	servie := documentShapeRenderSerialise(reflect.TypeFor[replaydoc.ReplayDocument]())
-	if stockee == servie {
-		return
+	stocke := reflect.TypeFor[replay.ReplayDocument]()
+	servi := reflect.TypeFor[replaydoc.ReplayDocument]()
+	for _, pb := range testutil.ReplayServisSeulsIncoherents(inventaireServi(servi)) {
+		t.Error(pb)
 	}
-	t.Errorf("la forme STOCKEE et la forme SERVIE divergent (empreintes %s et %s).\n%s",
-		empreinteDe(stockee), empreinteDe(servie), premierEcartTexte(stockee, servie))
+	if msg := ecartDesFormesJumelles(stocke, servi, testutil.ReplayChampsServisSeuls, testutil.ReplayTypesServisSeuls); msg != "" {
+		t.Error(msg)
+	}
+}
+
+// ecartDesFormesJumelles rend le message d'ecart entre la forme serialisee de `stocke` et celle de `servi`
+// privee des champs (`Type.Champ`) et des types `servisSeuls` nommes, ou "" quand elles coincident. Les
+// listes ne retirent rien de la forme stockee.
+func ecartDesFormesJumelles(stocke, servi reflect.Type, champsServisSeuls, typesServisSeuls map[string]string) string {
+	a := documentShapeRenderSerialise(stocke, nil, nil)
+	b := documentShapeRenderSerialise(servi, champsServisSeuls, typesServisSeuls)
+	if a == b {
+		return ""
+	}
+	return fmt.Sprintf("la forme STOCKEE et la forme SERVIE divergent (empreintes %s et %s).\n%s",
+		empreinteDe(a), empreinteDe(b), premierEcartTexte(a, b))
+}
+
+// inventaireServi recense, pour la forme SERVIE entiere (listes non retirees), les champs exportes par
+// `Type.Champ` et les types struct nommes : ce que `testutil.ReplayServisSeulsIncoherents` confronte aux
+// listes.
+func inventaireServi(servi reflect.Type) (champs, types map[string]bool) {
+	atteints := map[string]reflect.Type{}
+	collecterTypes(servi, atteints, map[reflect.Type]bool{}, true, nil, nil)
+	champs, types = map[string]bool{}, map[string]bool{}
+	for nom, t := range atteints {
+		types[nom] = true
+		for f := range t.Fields() {
+			if f.PkgPath == "" {
+				champs[nom+"."+f.Name] = true
+			}
+		}
+	}
+	return champs, types
 }
 
 // TestDocumentShapeSchemaHasChronicleEntry : la version courante a-t-elle son entree de
@@ -105,18 +144,18 @@ func empreinteDe(render string) string {
 // declaration est deliberement ignore (l'ordre des champs n'est pas le contrat d'un lecteur JSON,
 // et c'est ce qui rend les deux jumeaux comparables).
 func documentShapeRender(root reflect.Type) string {
-	return documentShapeRenderChamps(root, false)
+	return documentShapeRenderChamps(root, false, nil, nil)
 }
 
 // documentShapeRenderSerialise est la forme des seuls types atteints par un champ EXPORTE : ce qui
-// peut atteindre un lecteur JSON.
-func documentShapeRenderSerialise(root reflect.Type) string {
-	return documentShapeRenderChamps(root, true)
+// peut atteindre un lecteur JSON, sans les champs ni les types servis seuls nommes (nil : aucun retrait).
+func documentShapeRenderSerialise(root reflect.Type, champsHors, typesHors map[string]string) string {
+	return documentShapeRenderChamps(root, true, champsHors, typesHors)
 }
 
-func documentShapeRenderChamps(root reflect.Type, exportesSeuls bool) string {
+func documentShapeRenderChamps(root reflect.Type, exportesSeuls bool, champsHors, typesHors map[string]string) string {
 	types := map[string]reflect.Type{}
-	collecterTypes(root, types, map[reflect.Type]bool{}, exportesSeuls)
+	collecterTypes(root, types, map[reflect.Type]bool{}, exportesSeuls, champsHors, typesHors)
 	noms := make([]string, 0, len(types))
 	for nom := range types {
 		noms = append(noms, nom)
@@ -125,19 +164,23 @@ func documentShapeRenderChamps(root reflect.Type, exportesSeuls bool) string {
 	var b strings.Builder
 	for _, nom := range noms {
 		b.WriteString(nom + "\n")
-		for _, ligne := range champsDe(types[nom]) {
+		for _, ligne := range champsDe(types[nom], champsHors) {
 			b.WriteString("  " + ligne + "\n")
 		}
 	}
 	return b.String()
 }
 
-// champsDe : les champs exportes d'un type, rendus et tries par nom.
-func champsDe(t reflect.Type) []string {
+// champsDe : les champs exportes d'un type, rendus et tries par nom, hors ceux que `hors` nomme
+// (`Type.Champ`).
+func champsDe(t reflect.Type, hors map[string]string) []string {
 	out := make([]string, 0, t.NumField())
 	for f := range t.Fields() {
 		if f.PkgPath != "" {
 			continue // champ non exporte : jamais serialise
+		}
+		if _, retire := hors[t.Name()+"."+f.Name]; retire {
+			continue
 		}
 		out = append(out, fmt.Sprintf("%s json:%q %s", f.Name, f.Tag.Get("json"), nomDeType(f.Type)))
 	}
@@ -146,19 +189,24 @@ func champsDe(t reflect.Type) []string {
 }
 
 // collecterTypes recense les types struct NOMMES atteignables. La carte des types deja vus
-// borne la recursion : le document porte des structures qui se referencent.
-func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect.Type]bool, exportesSeuls bool) {
+// borne la recursion : le document porte des structures qui se referencent. Un champ de `champsHors`
+// (`Type.Champ`) n'est pas suivi ; un type de `typesHors` n'est ni recense ni descendu.
+func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect.Type]bool, exportesSeuls bool,
+	champsHors, typesHors map[string]string) {
 	if t == nil || vus[t] {
 		return
 	}
 	vus[t] = true
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Slice, reflect.Array:
-		collecterTypes(t.Elem(), out, vus, exportesSeuls)
+		collecterTypes(t.Elem(), out, vus, exportesSeuls, champsHors, typesHors)
 	case reflect.Map:
-		collecterTypes(t.Key(), out, vus, exportesSeuls)
-		collecterTypes(t.Elem(), out, vus, exportesSeuls)
+		collecterTypes(t.Key(), out, vus, exportesSeuls, champsHors, typesHors)
+		collecterTypes(t.Elem(), out, vus, exportesSeuls, champsHors, typesHors)
 	case reflect.Struct:
+		if _, retire := typesHors[t.Name()]; retire {
+			return
+		}
 		if nom := t.Name(); nom != "" {
 			out[nom] = t
 		}
@@ -166,7 +214,10 @@ func collecterTypes(t reflect.Type, out map[string]reflect.Type, vus map[reflect
 			if exportesSeuls && field.PkgPath != "" {
 				continue
 			}
-			collecterTypes(field.Type, out, vus, exportesSeuls)
+			if _, retire := champsHors[t.Name()+"."+field.Name]; retire {
+				continue
+			}
+			collecterTypes(field.Type, out, vus, exportesSeuls, champsHors, typesHors)
 		}
 	default:
 	}
@@ -199,5 +250,5 @@ func nomDeType(t reflect.Type) string {
 // structAnonyme rend une structure sans nom en clair : elle n'entre pas dans la table des
 // types, donc sa forme doit voyager avec le champ qui la porte.
 func structAnonyme(t reflect.Type) string {
-	return "struct{" + strings.Join(champsDe(t), "; ") + "}"
+	return "struct{" + strings.Join(champsDe(t, nil), "; ") + "}"
 }

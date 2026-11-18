@@ -8,7 +8,9 @@
 //
 //  1. tout champ exporte du document STOCKE a une decision (servi, ou inscrit dans la liste
 //     datee `champsNonServis` avec sa justification) ;
-//  2. tout champ du document SERVI a une source dans le document stocke ;
+//  2. tout champ du document SERVI a une source dans le document stocke, hors la liste datee des
+//     champs servis seuls (`testutil.ReplayChampsServisSeuls`, partagee avec le garde des formes
+//     jumelles de `filmcorpus`) ;
 //  3. la projection COPIE effectivement — un document stocke rempli de valeurs distinctes
 //     se serialise a l'octet pres comme sa projection, une fois retires les champs de la
 //     liste. Un champ oublie dans un `to*` est attrape ici, pas en production.
@@ -33,6 +35,7 @@ import (
 	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/replaytext"
 	"levelup/go-api/internal/service/replayview"
+	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -62,21 +65,10 @@ var champsNonServis = map[string]string{}
 // et ce n'est pas un oubli.
 var typesNonServis = map[string]string{}
 
-// champsServisSeuls liste les champs du document SERVI qui n'ont volontairement AUCUNE source dans le document
-// stocke, par `Type.Champ`, avec la DATE de la decision et son motif : des calques resolus a la requete
-// depuis le referentiel du titre, que la cuisson n'ecrit jamais (le decodeur de film n'en porte pas le champ).
-var champsServisSeuls = map[string]string{
-	"ReplayDocument.MedalLabels": "2026-11-17 : libelle, description, image et rarete de chaque medaille de `medals`, " +
-		"poses a la requete par service/replay_medal_labels.go depuis le referentiel du titre.",
-}
-
-// typesServisSeuls liste les TYPES du document servi qui n'existent que pour un champ de `champsServisSeuls`, par
-// nom de type, avec la date de la decision. Le parcours les visite sans leur chercher de source stockee.
-var typesServisSeuls = map[string]string{
-	"MedalLabel":       "2026-11-17 : valeur de `ReplayDocument.MedalLabels`.",
-	"MedalDescription": "2026-11-17 : description d'un `MedalLabel`.",
-	"MedalSprite":      "2026-11-17 : decoupe de feuille de sprites d'un `MedalLabel`.",
-}
+// CHAMPS ET TYPES SERVIS SEULS. Les champs du document SERVI qui n'ont volontairement aucune source dans le
+// document stocke (calques resolus a la requete) vivent dans `testutil.ReplayChampsServisSeuls` et
+// `testutil.ReplayTypesServisSeuls`, la liste datee UNIQUE que lit aussi le garde des formes jumelles
+// (`filmcorpus`). Le parcours visite les types servis seuls sans leur chercher de source stockee.
 
 // racines : les trois corps de route derives du monde `games/halo_infinite/film/replay`.
 var racines = []struct {
@@ -150,10 +142,7 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 	vusTypes, vusChamps := map[string]bool{}, map[string]bool{}
 	parcourir([]reflect.Type{racines[0].servi, racines[1].servi, racines[2].servi}, nil, func(ts reflect.Type) {
 		vusTypes[ts.Name()] = true
-		if motif, seul := typesServisSeuls[ts.Name()]; seul {
-			if strings.TrimSpace(motif) == "" {
-				t.Errorf("le type servi %q est inscrit sans source SANS justification datee", ts.Name())
-			}
+		if _, seul := testutil.ReplayTypesServisSeuls[ts.Name()]; seul {
 			return
 		}
 		source, ok := stockes[ts.Name()]
@@ -164,10 +153,7 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 		}
 		for _, f := range champsSerialises(ts) {
 			vusChamps[ts.Name()+"."+f.Name] = true
-			if motif, seul := champsServisSeuls[ts.Name()+"."+f.Name]; seul {
-				if strings.TrimSpace(motif) == "" {
-					t.Errorf("%s.%s est inscrit sans source SANS justification datee", ts.Name(), f.Name)
-				}
+			if _, seul := testutil.ReplayChampsServisSeuls[ts.Name()+"."+f.Name]; seul {
 				continue
 			}
 			if _, ok := source.FieldByName(f.Name); !ok {
@@ -176,15 +162,8 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 			}
 		}
 	})
-	for cle := range champsServisSeuls {
-		if !vusChamps[cle] {
-			t.Errorf("champsServisSeuls cite %q, que le document servi ne publie plus", cle)
-		}
-	}
-	for nom := range typesServisSeuls {
-		if !vusTypes[nom] {
-			t.Errorf("typesServisSeuls cite %q, que le document servi ne porte plus", nom)
-		}
+	for _, pb := range testutil.ReplayServisSeulsIncoherents(vusChamps, vusTypes) {
+		t.Error(pb)
 	}
 }
 
