@@ -428,18 +428,18 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste K — garde-rails et outillage (Haiku ; Sonnet pour K.2 et K.5)
 
-- [ ] K.1 Trois entrées mortes retirées de `ALLOWED_FILES` ; test « chaque chemin de la liste existe ».
+- [x] K.1 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) Trois entrées mortes retirées de `ALLOWED_FILES` ; test « chaque chemin de la liste existe ».
 - [x] K.2 (fait le 2026-11-18, `8cb85efc25` sur `bl1118/k` ; gate : build, vet, `go test ./cmd/mapfond-build/...`
       et `./internal/archlint/...` verts, 133 catalogues et 114 fonds publiés sans faux positif ; relu sur
       pièces par le pilote) Rempart des fonds de carte : retrait de la racine d'installation connue en plus du motif ; dossiers
       à point et à espaces ; garde-rail étendu (partage réseau, `/opt/`, `/mnt/`, `/tmp/`, `/var/`,
       `/Volumes/`). Aucune recuisson.
-- [ ] K.3 `scripts/disk-hygiene.ps1` : base résolue (amont de la branche courante, sinon branche par défaut
+- [x] K.3 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) `scripts/disk-hygiene.ps1` : base résolue (amont de la branche courante, sinon branche par défaut
       du dépôt), paramètre `-BaseRef`, « base introuvable » journalisé sans arrêt. Contrôle : simulation sans
       erreur.
-- [ ] K.4 Test du processus qui tient la base : sortie d'erreur du fils branchée, lecture du « prêt » sous
+- [x] K.4 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) Test du processus qui tient la base : sortie d'erreur du fils branchée, lecture du « prêt » sous
       délai explicite, sortie du fils jointe à l'échec.
-- [ ] K.5 `bootstrap_service.go` : trois blocs déplacés sans renommage (`bootstrap_setup_state.go`,
+- [x] K.5 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) `bootstrap_service.go` : trois blocs déplacés sans renommage (`bootstrap_setup_state.go`,
       `bootstrap_ownership.go`, `bootstrap_helpers.go`) ; `buildCapabilities` et `buildFeatureFlags` ne
       bougent pas ; compteurs des trois garde-rails indexés sur le chemin ajustés, somme inchangée.
 - **Gate K** : gate commun Go et web selon l'item ; `wc -l` de `bootstrap_service.go` sous 500.
@@ -462,12 +462,12 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste Q — écarts avec les maquettes (Sonnet)
 
-- [ ] Q.1 Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
+- [x] Q.1 (fait le 2026-11-18 : `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; 8 écarts à corriger, 3 points conformes à une décision datée, 3 points sans dessin posés au user ; liste fermée ci-dessous, soumise au user le 2026-11-18) Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
       (`.ai/annexes_refonte_ui_rejeu/maquettes/`) et la grille (`conformite_maquettes.md`) : chaque point classé
       « conforme à une décision datée », « écart à corriger » (avec la cote ou le dessin attendu) ou « sans
       dessin, au user ». Résultat dans `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
       sont inscrits ici en liste fermée avant tout code, et montrés au user.
-- [ ] Q.2 (porte : liste lue par le user) Corrections de la liste fermée de Q.1 et des retours de la
+- [ ] Q.2 (porte : liste lue par le user ; LISTE FERMÉE du 2026-11-18, sous réserve de sa lecture : a) boutons de la barre d'une ligne en carrés de 30 px, lecture en rond plein de 36 px ; b) capture et export en boutons ordinaires, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du plan ; d) la fenêtre de fiche défile en entier ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; f) infobulle de « Plan tourné » avec le gain en pour-cent ; g) « Tirs à la tête | 3 », sans « sur N mesurées » ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas. Les points a et b, qui redessinent la barre d'une ligne, se décident avec la planche de la piste M. c et e touchent tous deux `ReplayCanvas.tsx` : l'un après l'autre) Corrections de la liste fermée de Q.1 et des retours de la
       validation à l'écran du user, un commit par point.
 - **Gate Q** : gate commun web sur `MR/` ; grille de conformité mise à jour ligne par ligne.
 
@@ -578,6 +578,10 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste K rendue (K.1, K.3, K.4, K.5), relue, commitée (`c79566f3e8` sur `bl1118/k2`) : toute la piste
+  K est faite. Q.1 rendu : liste fermée des écarts de maquette soumise au user avec trois questions (icônes de
+  cadre, curseur de volume, bouton caméra pendant un suivi). M.1 (planche de la barre de lecture) lancé.
+
 - 2026-11-18 — piste D rendue, relue, commitée (`14e69f8124`, au-dessus de A et B). Pistes S (`C:/t/bl18-s`) et
   Q.1 (lecture seule) lancées. Seconde passe des vérifications lourdes en cours sur l'intégration (K.2, E, H, C,
   G, B, A, F ; plafond des fonctions longues à 245).
@@ -660,6 +664,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (Q.1) — une décision datée du user n'est pas réalisée dans le code : le fond teinté des lignes du
+  joueur suivi dans le fil (décision D-5 de la refonte, 2026-11-15) ; seul le gras de la fiche ouverte existe.
+  Soumis au user avec la liste de Q.2.
+- 2026-11-18 (Q.1) — hors des onze points : au Cinéma et au Plein cadre la barre de lecture est dans le bloc du
+  plan alors que les maquettes la dessinent dessous ; « Suivre / Seul / Masquer » sont trois boutons séparés
+  là où les maquettes dessinent un segment de trois colonnes. Soumis au user.
+- 2026-11-18 (K) — `docs/COMMANDS.md` (vers la ligne 1678) cite encore `origin/feat/v75` comme base par défaut
+  d'un outil de comparaison de rejeux. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (K) — sur ce poste, `go list` a échoué une fois avec « Ressources système insuffisantes » sur un
+  fichier lisible par ailleurs : état de Windows, pas du code.
 
 - 2026-11-18 (F) — après un échec de jeton, la page redevient « générable » dès que le jeton est présent, même
   s'il ne se rafraîchit pas : un second clic échouera de même. Sans gravité ; noté.
