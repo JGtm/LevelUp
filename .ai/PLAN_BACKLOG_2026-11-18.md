@@ -513,15 +513,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       l'arrivée du film ; (5) une seule commande de rattrapage ; (6) la durée jouable de l'API n'a plus de
       lecteur. Le modèle dit aussi ce que devient chaque ligne de l'inventaire de T.0 (gardée, fusionnée,
       retirée), et s'écrit en ADR (anglais) avec ses garde-rails.
-- [ ] T.2 Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
+- [x] T.2 (fait le 2026-11-18, `87910a4602` puis `28137cda38` sur `bl1118/t` : `timeline.ResolveKickoff`, ordre fixe film, estimation, inconnu ; trois états du rejeu, un coup d'envoi du film ne redescend jamais faute de rejeu lisible ; valeur du rejeu hors de la fenêtre du match refusée et comptée ; ADR 0050) Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
       deviennent un diagnostic journalisé et compté, plus une valeur que les lecteurs interprètent.
 - [ ] T.3 Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
       l'item G.5 est couvert ici) ; garde-rail : aucune lecture de la durée jouable de l'API ni du coup
       d'envoi brut hors de la résolution.
-- [ ] T.4 Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
+- [x] T.4 (fait le 2026-11-18 : `persist.KickoffPersister`, une transaction par match ; la synchronisation pose les valeurs sur ses lignes avant l'INSERT ; colonne `real_start_source` amorcée par la migration ; garde-rail `archlint/kickoff_write_guard_test.go` ; relecture adverse faite, 1 bloquant et 5 constats corrigés) Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
       anti-corruption du dépôt, jamais d'écriture directe) ; le report du film et la synchronisation
       l'appellent tous deux.
-- [ ] T.5 Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
+- [x] T.5 (fait le 2026-11-18 : `levelup backfill-kickoff`, simulation comprise ; rattrapage au démarrage par révision `KickoffRev`, liée aux révisions des notes ; `cmd/backfill_t0`, `backfill_t0_film`, `backfill_time_played` et `analysis/spawn_detection.go` supprimés avec leurs tests et leurs 38 paires de la baseline ; mesure sur copie : 2 045 matchs, 1 447 film, 587 estimation, 11 inconnus, second passage sans écriture, 50 rejeux retirés : 50 coups d'envoi gardés) Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
       avec leurs tests (aucun code mort).
 - [ ] T.6 (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
       la note LUSR si T.0 l'a jugé nécessaire. La prod reçoit le même geste à la publication.
@@ -705,6 +705,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (T) — les colonnes `t0_quality`, `film_match_start_ms` et, à terme, `playable_duration_seconds` du
+  registre n'ont plus d'écrivain ou n'en auront plus : DuckDB refuse `DROP COLUMN` sur une table à clé primaire
+  et index, le retrait demande de reconstruire la table. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (T) — deux rejeux (`ed3b6497`, `dd29957c`, matchs de 21 et 24 s) publient un coup d'envoi après la
+  fin du match : refusés par la résolution et comptés. À recouper avec le plan du décodeur (coup d'envoi par
+  l'horloge).
+- 2026-11-18 (T) — une publication de rejeu qui change un temps de jeu de quelques secondes ne rejoue pas les
+  notes (limite écrite dans l'ADR 0050).
+- 2026-11-18 (T) — les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/`
+  un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
 
 - 2026-11-18 (S) — cinq écarts de forme restent entre une base joueur née de la synchronisation et une base
   née des migrations (`performance_score` FLOAT contre DOUBLE, table et vue ; défaut de `sync_meta.updated_at` ;
