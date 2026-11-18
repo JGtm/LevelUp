@@ -742,6 +742,10 @@ les localise, rien n'est recalculé à côté.
       Grande équipe en repli, carte tournée. La fusion dans `release/v8.3.0` attend cette validation.
       (amendé le 2026-11-17) Support : une page de comparaison, un témoin par tableau, la maquette d'un côté et
       la capture de l'app de l'autre, chaque témoin renvoyant aux lignes de la grille.
+      (amendé le 2026-11-18) Message du user du 2026-11-18, après la bascule de son dossier sur la branche de la
+      refonte : « nan mais tout sur la bran v8.0.3 » (lu : `release/v8.3.0`). La refonte est donc fusionnée dans
+      `release/v8.3.0` AVANT la validation à l'écran ; la validation reste due, elle se fait sur la branche de
+      version et précède toute fusion vers `main`. La page de comparaison n'a pas été construite.
 
 Chaînes UI : toute chaîne nouvelle existe en fr et en (`i18n/fr.ts`, `i18n/en.ts`, typage
 `Record<ReplayLocale, ReplayText>`), sans anglicisme côté fr. Couleurs : tokens uniquement (skill

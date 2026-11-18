@@ -405,6 +405,6 @@ Un seul item `[!]` (B.5, retrait des types du décodeur de `internal/port`, lign
 |---|---|---|---|
 | **Mesure de mémoire de la toile à 720 puis 1080 px de haut** | Plan de la refonte, 0.2 | La mesure se fait à l'écran du user ; l'outil est prêt sur la branche `ui/m1` (guide dans `mesure_m1.md` de cette branche) | Le user lance la mesure |
 | **Plafond de hauteur de la toile par cadre** | Plan de la refonte, G.1 | Dépend de la mesure ci-dessus ; le plafond d'aujourd'hui vaut pour les trois cadres | Mesure faite et coût accepté |
-| **Validation à l'écran de la refonte, témoin par témoin** | Plan de la refonte, R.4 | Le plan fait attendre l'intégration à `release/v8.3.0` de cette validation | Le user valide sur la page de comparaison |
+| **Validation à l'écran de la refonte, témoin par témoin** | Plan de la refonte, R.4 | Refonte fusionnée dans `release/v8.3.0` le 2026-11-18 à la demande du user, avant sa validation ; la validation reste due avant `main` | Le user valide à l'écran sur la branche de version |
 | **Rang absent pour tous dans un match avec des bots** | Plan de la refonte, T.3 | Le score d'un bot n'est pas établi (pas de ligne de feuille jointe) ; le rang exige tout le lobby | Décision du user : rang parmi les joueurs humains, ou rien |
 | **Capacité de la vue 3D** | Plan de la refonte, F.3 | L'emplacement 2D / 3D lit une capacité au nom supposé `can_view_replay_3d`, que le serveur ne sert pas | Plan de la 3D : nommer la capacité et la servir |

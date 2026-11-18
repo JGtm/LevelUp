@@ -1,3 +1,9 @@
+## [2026-11-18] Refonte de la page du rejeu fusionnée dans `release/v8.3.0` à la demande du user — Complété (validation à l'écran due avant `main`)
+**Statut :** Complété pour l'intégration ; R.4 (validation à l'écran) reste ouvert.
+**Décision technique principale :** le plan faisait attendre l'intégration de la validation à l'écran ; le user a demandé le 2026-11-18 que tout soit sur la branche de version. Fusion sans avance rapide de `feat/rejeu-refonte-ui` (`37c7b15bf8`) dans `release/v8.3.0`, comme les intégrations précédentes de la branche.
+**Résultats observés :** depuis leur ancêtre commun, la branche de version n'avait reçu que des écritures sous `.ai/` ; le code fusionné est octet pour octet celui de la branche de la refonte (écart nul hors `.ai/`), déjà couvert par la suite complète du web (14 215 tests), `make gate-push` et une CI verte.
+**Conclusion / prochaine étape :** lire la CI de `release/v8.3.0` après la poussée ; le user valide à l'écran depuis son dossier principal, remis sur `release/v8.3.0` ; rien ne part vers `main` sans cette validation.
+
 ## [2026-11-18] Coup d'envoi lu dans le film reporté au registre des matchs ; dossier principal basculé sur la branche de la refonte pour la validation à l'écran — Complété
 **Statut :** Complété (l'écriture) ; la validation à l'écran de la refonte reste au user.
 **Décision technique principale :** la mesure d'après régénération donnait 186 matchs avec rejeu sur 1 455 au coup d'envoi du film (13 %), inchangée par la régénération : le report vers le registre ne se fait qu'au fil de l'eau, et l'outil de rattrapage `cmd/backfill_t0_film --commit` n'avait jamais été lancé sur ce parc. Lancé le 2026-11-18 avec l'accord du user, serveur arrêté, après une copie de la base partagée.
