@@ -6,12 +6,13 @@
 //
 // In-process, fidèle au CLI populate-playlists-catalog (chaîne provider →
 // fetcher → adapter → resolver → CatalogFetcherService.Drain). Spécifique Halo
-// Infinite — comme ops/catalog_refresh.go. Single-flight + tokens chargés via
-// le MultiUserTokenStore (ADR 0023, n'importe quel joueur authentifié).
+// Infinite — comme ops/catalog_refresh.go. Single-flight ; le jeton vient de la
+// source de lecture publique de la mise en commun (ADR 0038), jamais d'un profil.
 package wire
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	gosync "sync"
 
@@ -22,7 +23,6 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/adminstate"
-	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -64,7 +64,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	res.Seeded = seeded.Total()
 
 	// 2. Tokens Halo (DiscoveryUGC nécessite un Spartan token valide).
-	tokens, err := jetonsCatalogue(r, ctx, titleSlug)
+	tokens, err := jetonsCatalogue(r, ctx)
 	if err != nil {
 		return res, err
 	}
@@ -145,31 +145,39 @@ func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, title
 		"title", titleSlug)
 }
 
-// haloTokensForDrain charge des tokens Halo via le MultiUserTokenStore (premier
-// joueur authentifié). L'API DiscoveryUGC est par-asset, pas par-joueur — tout
-// joueur valide convient.
-func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug string) (*domain.HaloTokens, error) {
-	pr := r.cfg.PathResolver()
-	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
-	provider := auth.NewSISUProvider()
+// ErrNoPublicReadToken : aucun jeton Halo ne peut servir un téléchargement de fond (catalogue,
+// configuration des playlists, manifeste de film). Deux causes, toutes deux un refus : la source de
+// lecture publique de la mise en commun n'est pas câblée, ou elle ne rend aucun jeton parce qu'aucun
+// compte n'a accepté la mise en commun (ADR 0038 : aucune décision = refus).
+var ErrNoPublicReadToken = errors.New("wire: aucun jeton de lecture publique disponible")
 
-	players, err := r.cfg.LoadPlayers(titleSlug)
+// haloTokensForDrain rend un jeton Halo pour un téléchargement de fond dont le contenu ne dépend
+// d'aucun joueur (DiscoveryUGC, configuration d'une playlist, manifeste d'un film). Le jeton vient
+// UNIQUEMENT de la source de lecture publique de la mise en commun, qui exclut les comptes sans
+// accord : le jeton d'un joueur ne sert jamais le contenu d'un autre sans son consentement.
+// Source non câblée ou aucun compte consentant : ErrNoPublicReadToken, journalisée ; le jeton d'un
+// profil n'est jamais pris en repli.
+func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context) (*domain.HaloTokens, error) {
+	if r.publicReadTokenSrc == nil {
+		monitoringLog.WarnContext(ctx, "jeton de lecture publique : source de la mise en commun non câblée, rien n'est téléchargé")
+		return nil, fmt.Errorf("%w: source non câblée", ErrNoPublicReadToken)
+	}
+	acquireCtx, cancel := context.WithTimeout(ctx, publicReadPoolAcquireTimeout)
+	defer cancel()
+	tokens, _, err := r.publicReadTokenSrc.ResolveAny(acquireCtx)
 	if err != nil {
-		return nil, fmt.Errorf("load players: %w", err)
+		monitoringLog.WarnContext(ctx, "jeton de lecture publique : aucun compte consentant ou sain dans la mise en commun, rien n'est téléchargé",
+			"err", err)
+		return nil, fmt.Errorf("%w: %w", ErrNoPublicReadToken, err)
 	}
-	for _, p := range players {
-		if p.XUID == "" {
-			continue
-		}
-		result, refreshErr := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, p.XUID, p.Gamertag)
-		if refreshErr == nil && result != nil && result.Tokens != nil {
-			return result.Tokens, nil
-		}
+	if tokens == nil {
+		monitoringLog.WarnContext(ctx, "jeton de lecture publique : la source n'a rendu aucun jeton, rien n'est téléchargé")
+		return nil, fmt.Errorf("%w: jeton vide", ErrNoPublicReadToken)
 	}
-	return nil, fmt.Errorf("aucun token Halo valide (le drain UGC nécessite un joueur authentifié — re-capturer un token)")
+	return tokens, nil
 }
 
 // jetonsCatalogue : prise des jetons Halo du catalogue (expansion des playlists, drain UGC), le
 // premier accès réseau de ces deux tâches. Variable de paquet : les tests y substituent une prise
-// factice, sans réseau ni magasin de jetons.
+// factice, sans réseau ni source de jetons.
 var jetonsCatalogue = (*ServiceRegistry).haloTokensForDrain

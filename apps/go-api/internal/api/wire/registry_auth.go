@@ -266,8 +266,8 @@ func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid strin
 //
 // ADR 0023 Phase 5 (2026-08-25) : le fallback legacy (sync_meta.msal_token_cache /
 // sync_meta.oauth_refresh_token / variable d'environnement) est
-// supprimé. Un joueur absent du store n'a plus de token — il doit se reconnecter
-// (SSO Xbox) ou passer par cmd/token-capture.
+// supprimé. Un joueur absent du store n'a pas de jeton : seul un premier enrôlement
+// (connexion Xbox du site, ou cmd/token-import) lui en donne un.
 func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
 	if r.authStore == nil || xuid == "" {
 		slog.WarnContext(ctx, "halo_auth: store auth non câblé ou xuid absent",
@@ -288,7 +288,7 @@ func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.P
 	}
 	slog.WarnContext(ctx, "halo_auth: aucun refresh token dans le store pour le joueur",
 		"xuid", xuid, "gamertag", pdb.Gamertag,
-		"hint", "SSO Xbox ou `go run ./cmd/token-capture/ <GT>`")
+		"hint", "premier enrôlement : connexion Xbox du site, ou `go run ./cmd/token-import/ <GT>` (jeton de rafraîchissement sur stdin)")
 	return nil
 }
 
