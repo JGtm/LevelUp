@@ -169,6 +169,15 @@ describe('playerInstantStats — joueur vivant', () => {
     expect(lire(A, 200).respawns).toBe(1)
   })
 
+  it('une vie finie avant le début du match n’est pas une réapparition', () => {
+    const [premiere] = A.lives
+    const avant = { ...premiere, startFrame: 10, endFrame: 40 }
+    const dedans = { ...premiere, startFrame: 41, endFrame: 200 }
+    const joueur = { ...A, lives: [avant, dedans] }
+    expect(lire(joueur, 100, { matchStartFrame: 50 }).respawns).toBe(0)
+    expect(lire(joueur, 100).respawns).toBe(1)
+  })
+
   it('moyenne des vies terminées : celles qui finissent avant l’image', () => {
     expect(lire(A, 100).averageLifeMs).toBeNull()
     expect(lire(A, 101).averageLifeMs).toBe(10_000)

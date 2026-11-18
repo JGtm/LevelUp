@@ -298,7 +298,16 @@ describe('ReplayPlayerCard — compteurs : publiés, ou ceux de la base', () => 
   }
 
   it('ils TIQUENT : à l’image 10, seuls les paliers déjà passés comptent — zéro est une valeur, pas une lacune', () => {
-    const vue = renderCard({ scoreTimeline: timeline }, 10, board())
+    // Le score de l'infobulle est celui de la fiche : les points par action, gardés par la feuille (350 au total).
+    const actions = {
+      coverage: { scoreActions: { complete: true } } as never,
+      scoreActions: [
+        { t: 5, xuid: 'A', name: 'killPersonalScore', points: 120 },
+        { t: 40, xuid: 'A', name: 'killPersonalScore', points: 230 },
+      ],
+    }
+    const feuille = [scoreboardRow('A', 'Alpha', 't0', { score: 350 }), scoreboardRow('B', 'Bravo', 't1')]
+    const vue = renderCard({ scoreTimeline: timeline, ...actions }, 10, feuille)
     const live = within(tuile(vue)).getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     expect(live.textContent).toBe('1/0/0')
     expect(live.title).toContain("Score personnel à l'instant lu : 120")

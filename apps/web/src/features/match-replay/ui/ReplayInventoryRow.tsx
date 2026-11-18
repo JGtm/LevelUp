@@ -80,7 +80,7 @@ export function ReplayInventoryRow({
   // information passee (meme doctrine que la « lecture vide A VENIR »), et le composant ne
   // fait qu afficher ce que la fonction pure a tranche.
   const box = grenadeBoxAt(doc, slot, frame, read)
-  const grenades = box ? grenadesCarriedFrom(box.g, doc.grenadeLabels, locale) : []
+  const grenades = box ? grenadesCarriedFrom(box.g, doc.grenadeLabels, locale, t.grenadeRank) : []
   const selected = box ? selectedGrenadeFrom(box.g, box.gs) : null
   // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. inventoryAt) :
   // l'infobulle le dit — l'estompage porte déjà sur la valeur absolue.

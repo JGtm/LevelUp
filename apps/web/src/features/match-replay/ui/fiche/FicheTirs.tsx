@@ -32,7 +32,7 @@ export function FicheTirs({ shots, locale }: { shots: ShotsView; locale: ReplayL
           {count(shots.damageDealt)} / {count(shots.damageTaken)}
         </FicheRow>
         {shots.weapons.map((w) => (
-          <FicheRow key={w.name} label={w.name}>
+          <FicheRow key={w.key} label={w.name}>
             {t.shotsFmt(w.fired)}
             <Note>{t.damageFmt(count(w.damage))}</Note>
           </FicheRow>

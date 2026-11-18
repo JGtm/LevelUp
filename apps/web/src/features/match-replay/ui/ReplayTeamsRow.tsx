@@ -31,6 +31,7 @@ import { ReplayCompactCard, ReplayCompactWaitingCard } from './ReplayCompactCard
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { useCardScene, type CardScene } from '../hooks/useCardScene'
 import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE } from '../model/cardGabarit'
+import { readInstantScoreSeries, type InstantScoreSeries } from '../model/playerInstantScore'
 import { alliesAGauche, colonnesGrandeEquipe, NB_CAMPS_RANGEE } from '../model/rowLayout'
 import {
   buildSeats,
@@ -69,11 +70,13 @@ export interface ReplayTeamsRowProps {
 interface CampCtx
   extends Pick<ReplayTeamsRowProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid' | 'grandeEquipe'> {
   scene: CardScene
+  /** Le score personnel de chaque joueur, rangé une fois par document et par liste de joueurs. */
+  scores: InstantScoreSeries
 }
 
 /** Une place : la fiche de son occupant, la boîte d'attente, ou rien (la colonne reste, vide). */
 function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNode {
-  const { doc, frame, locale, scene, tracked, onCard, selectedXuid = null, grandeEquipe } = ctx
+  const { doc, frame, locale, scene, scores, tracked, onCard, selectedXuid = null, grandeEquipe } = ctx
   const lu = seatTileAt(seat, frame)
   if (lu === null) return grandeEquipe ? null : <div key={seat.key} aria-hidden />
   if (lu.kind !== 'present' || lu.player === null) {
@@ -115,6 +118,7 @@ function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNo
       readingFull={scene.readingFull}
       flashFrames={scene.flashFrames}
       scoreTimeline={scene.scoreTimeline}
+      scores={scores}
       fxScene={scene.fxScene}
       tracked={isTracked}
       panel={onCard ? { selected, onSelect: () => onCard(player.xuid) } : undefined}
@@ -161,11 +165,12 @@ export function ReplayTeamsRow({
   )
   const labels = useMemo(() => groups.map((g) => campLabel(g, sheetRowsOfGroup(g), t)), [groups, t])
   const scene = useCardScene(doc, players)
+  const scores = useMemo(() => readInstantScoreSeries(doc, players), [doc, players])
   // La règle de tenue n'admet que deux camps ; sans eux, la rangée n'a rien à dire.
   if (groups.length !== NB_CAMPS_RANGEE) return null
   const places = groups.map((g) => g.seats.length)
   const columns = grandeEquipe ? colonnesGrandeEquipe(places) : Math.max(...places)
-  const ctx: CampCtx = { doc, frame, locale, tracked, onCard, selectedXuid, grandeEquipe, scene }
+  const ctx: CampCtx = { doc, frame, locale, tracked, onCard, selectedXuid, grandeEquipe, scene, scores }
   return (
     <div
       data-replay-teams-row={grandeEquipe ? 'grande-equipe' : 'fiches'}

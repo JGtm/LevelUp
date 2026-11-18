@@ -23,7 +23,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import type { ReadingAges } from '../hooks/useCardScene'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { COTES_BLOC_INSTANT as C, GABARIT_NORMAL } from '../model/cardGabarit'
+import { COTES_BLOC_INSTANT as C } from '../model/cardGabarit'
 import { grenadeBoxHint } from '../model/inventoryReading'
 import {
   playerNowReadings,
@@ -247,8 +247,8 @@ export function ReplayPlayerNow({ player, doc, frame, clock, ages, locale }: Rep
         <span className="font-normal normal-case tabular-nums">{clock}</span>
       </div>
       {read.eliminated ? (
-        <div style={{ height: GABARIT_NORMAL.bodyPx }}>
-          <EliminatedBox state={read.state} doc={doc} frame={frame} locale={locale} bodyPx={GABARIT_NORMAL.bodyPx} />
+        <div style={{ height: C.corpsEliminePx }}>
+          <EliminatedBox state={read.state} doc={doc} frame={frame} locale={locale} bodyPx={C.corpsEliminePx} />
         </div>
       ) : (
         <>

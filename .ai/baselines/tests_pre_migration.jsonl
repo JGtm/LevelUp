@@ -14182,10 +14182,6 @@
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_WeaponImageURL","Output":"=== RUN   TestAssetURLAdapter_WeaponImageURL\n"}
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_WeaponImageURL","Output":"--- PASS: TestAssetURLAdapter_WeaponImageURL (0.00s)\n"}
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_WeaponImageURL","Elapsed":0}
-{"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_MedalImageURL_Empty"}
-{"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_MedalImageURL_Empty","Output":"=== RUN   TestAssetURLAdapter_MedalImageURL_Empty\n"}
-{"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_MedalImageURL_Empty","Output":"--- PASS: TestAssetURLAdapter_MedalImageURL_Empty (0.00s)\n"}
-{"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_MedalImageURL_Empty","Elapsed":0}
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_CSRRankImageURL"}
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_CSRRankImageURL","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL\n"}
 {"Time":"2026-06-26T23:46:18.1135722+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_5","Test":"TestAssetURLAdapter_CSRRankImageURL","Output":"--- PASS: TestAssetURLAdapter_CSRRankImageURL (0.00s)\n"}
@@ -14873,10 +14869,6 @@
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL","Output":"=== RUN   TestAssetURLAdapter_MapImageURL\n"}
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL","Output":"=== PAUSE TestAssetURLAdapter_MapImageURL\n"}
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"pause","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL"}
-{"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL"}
-{"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL","Output":"=== RUN   TestAssetURLAdapter_MedalImageURL\n"}
-{"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL","Output":"=== PAUSE TestAssetURLAdapter_MedalImageURL\n"}
-{"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"pause","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL"}
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL"}
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL\n"}
 {"Time":"2026-06-26T23:46:24.1893084+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL","Output":"=== PAUSE TestAssetURLAdapter_CSRRankImageURL\n"}
@@ -15483,16 +15475,10 @@
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL/gold_3\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestLoadMatchSummaries_NotImplemented","Output":"=== CONT  TestLoadMatchSummaries_NotImplemented\n"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL","Output":"=== CONT  TestAssetURLAdapter_MedalImageURL\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Output":"--- PASS: TestAssetURLAdapter_CSRRankImageURL/gold_3 (0.00s)\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/gold_3","Elapsed":0}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/numeric"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/numeric","Output":"=== RUN   TestAssetURLAdapter_MedalImageURL/numeric\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL","Output":"=== CONT  TestAssetURLAdapter_MapImageURL\n"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/numeric","Output":"--- PASS: TestAssetURLAdapter_MedalImageURL/numeric (0.00s)\n"}
-{"Time":"2026-06-26T23:46:24.2113+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/numeric","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL/png_map_known"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MapImageURL/png_map_known","Output":"=== RUN   TestAssetURLAdapter_MapImageURL/png_map_known\n"}
 {"Time":"2026-06-26T23:46:24.2113+02:00","Action":"cont","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestComputeWarthogDestroyer_Sum"}
@@ -15609,16 +15595,10 @@
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/empty_tier_→_empty","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL/empty_tier_→_empty\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestSemanticAdapter_AssetsAndOutcomes_Injected","Output":"--- PASS: TestSemanticAdapter_AssetsAndOutcomes_Injected (0.00s)\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestSemanticAdapter_AssetsAndOutcomes_Injected","Elapsed":0}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/zero"}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/zero","Output":"=== RUN   TestAssetURLAdapter_MedalImageURL/zero\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/empty_tier_→_empty","Output":"--- PASS: TestAssetURLAdapter_CSRRankImageURL/empty_tier_→_empty (0.00s)\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/empty_tier_→_empty","Elapsed":0}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/zero","Output":"--- PASS: TestAssetURLAdapter_MedalImageURL/zero (0.00s)\n"}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL/zero","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestClassifyModeCanonical/Team_Slayer"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestClassifyModeCanonical/Team_Slayer","Output":"=== RUN   TestClassifyModeCanonical/Team_Slayer\n"}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL","Output":"--- PASS: TestAssetURLAdapter_MedalImageURL (0.00s)\n"}
-{"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_MedalImageURL","Elapsed":0}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"run","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/whitespace_tier_→_empty"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestAssetURLAdapter_CSRRankImageURL/whitespace_tier_→_empty","Output":"=== RUN   TestAssetURLAdapter_CSRRankImageURL/whitespace_tier_→_empty\n"}
 {"Time":"2026-06-26T23:46:24.2118117+02:00","Action":"output","Package":"levelup/go-api/internal/games/halo_infinite","Test":"TestClassifyModeCanonical/Team_Slayer","Output":"--- PASS: TestClassifyModeCanonical/Team_Slayer (0.00s)\n"}

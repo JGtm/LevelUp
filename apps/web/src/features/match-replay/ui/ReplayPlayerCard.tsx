@@ -48,6 +48,7 @@ import type { EquippedReading } from '../model/equippedLogic'
 import { handCellHint } from '../model/handCellHint'
 import { cardChrome, SEAT_WAITING_CHROME } from '../model/playerCardFx'
 import { playerCardReadings, seatWaitingReading, type CardFxScene } from '../model/playerCardReadings'
+import { playerScoreAt, type InstantScoreSeries } from '../model/playerInstantScore'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { PlayerState, ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
@@ -129,6 +130,8 @@ interface ReplayPlayerCardProps {
   locale: ReplayLocale
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
+  /** Le score personnel de chaque joueur du lobby, rangé une fois par document (`readInstantScoreSeries`) : la même valeur que la fiche. */
+  scores: InstantScoreSeries
   fxScene: CardFxScene
   /**
    * Le panneau de joueur : la fiche devient un bouton qui l'ouvre. `selected` = le panneau de CE joueur
@@ -146,7 +149,7 @@ function chromeOf(state: Pick<PlayerState, 'alive' | 'departed'>, tracked: boole
 }
 
 export function ReplayPlayerCard({
-  player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene, panel,
+  player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, scores, fxScene, panel,
   tracked = false,
 }: ReplayPlayerCardProps) {
   const t = REPLAY_TEXT[locale]
@@ -155,7 +158,9 @@ export function ReplayPlayerCard({
   })
   // LE TRIPLET vit sur la ligne des jauges — ou dans l'encadré « Éliminé » sur une fiche morte :
   // la mort ne retire pas les compteurs, il reste visible mort ou vif.
-  const counters = <ReplayCountersBadge board={player.board} live={live} locale={locale} gabarit={G} />
+  const counters = (
+    <ReplayCountersBadge board={player.board} live={live} score={playerScoreAt(scores, player, frame)} locale={locale} gabarit={G} />
+  )
   return (
     // LA TUILE : chaque fiche porte sa bordure et son fond — dégradé court autour de `card` en
     // vie, `card` teinté destructive en mort (cf. playerCardFx.cardChrome). `shrink-0` : une

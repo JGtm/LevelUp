@@ -86,10 +86,20 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
       damageDealt: 160,
       damageTaken: 25,
       weapons: [
-        { name: "Fusil d'assaut", fired: 30, damage: 60 },
-        { name: 'SPNKr', fired: 5, damage: 100 },
+        { key: '0xAAAA', name: "Fusil d'assaut", fired: 30, damage: 60 },
+        { key: '0xBBBB', name: 'SPNKr', fired: 5, damage: 100 },
       ],
     })
+  })
+
+  it('tirs et dégâts : les familles de même nom font UNE ligne, additionnée, sous la clé de la première ; les totaux restent', () => {
+    const base = instantDoc()
+    const doc = instantDoc({ weaponLabels: { ...base.weaponLabels, '0xBBBB': { fr: "Fusil d'assaut", en: 'Assault rifle' } } })
+    const s = lecteur('A', { doc })(FIN).shots
+    expect(s?.weapons).toEqual([{ key: '0xAAAA', name: "Fusil d'assaut", fired: 35, damage: 160 }])
+    expect(s?.weapons[0].fired).toBe(s?.accuracy?.fired)
+    expect(s?.weapons[0].damage).toBe(s?.damageDealt)
+    expect(s?.weapons.map((w) => w.key)).toHaveLength(new Set(s?.weapons.map((w) => w.key)).size)
   })
 
   it('grenades lancées par type, ramassages d’armes et de grenades', () => {

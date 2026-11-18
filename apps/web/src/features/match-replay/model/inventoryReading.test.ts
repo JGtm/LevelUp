@@ -8,6 +8,7 @@ import {
   inventoryAt,
   selectedGrenadeFrom,
 } from './inventoryReading'
+import { REPLAY_TEXT } from '../i18n/i18n'
 import { testReplayDoc as doc } from '../test/testDoc'
 
 /** Une vie couvrant [start, end] sur un slot — même patron que rosterLogic.test.ts. */
@@ -420,18 +421,23 @@ describe('grenadesCarriedFrom', () => {
   it("n'affiche que les types réellement portés, et garde le rang sans table", () => {
     // Le tableau publié est complet : un zéro y dit « ce type, aucune en réserve ». Montrer
     // quatre types dont trois à zéro noierait celui qui compte.
-    expect(grenadesCarriedFrom([0, 2, 0, 1], undefined, 'fr')).toEqual([
+    expect(grenadesCarriedFrom([0, 2, 0, 1], undefined, 'fr', REPLAY_TEXT.fr.grenadeRank)).toEqual([
       { rank: 1, name: 'rang 1', count: 2 },
       { rank: 3, name: 'rang 3', count: 1 },
     ])
   })
 
+  it('sans nom au catalogue, le rang s’écrit dans la langue du lecteur', () => {
+    expect(grenadesCarriedFrom([0, 2], undefined, 'en', REPLAY_TEXT.en.grenadeRank)).toEqual([{ rank: 1, name: 'rank 1', count: 2 }])
+    expect(grenadesCarriedFrom([0, 2], [{ en: 'Frag', fr: 'Fragmentation' }], 'en', REPLAY_TEXT.en.grenadeRank)[0].name).toBe('rank 1')
+  })
+
   it('rend le nom dans la langue du lecteur', () => {
-    expect(grenadesCarriedFrom([2, 0], labels, 'fr')[0].name).toBe('Fragmentation')
-    expect(grenadesCarriedFrom([2, 0], labels, 'en')[0].name).toBe('Frag')
+    expect(grenadesCarriedFrom([2, 0], labels, 'fr', REPLAY_TEXT.fr.grenadeRank)[0].name).toBe('Fragmentation')
+    expect(grenadesCarriedFrom([2, 0], labels, 'en', REPLAY_TEXT.en.grenadeRank)[0].name).toBe('Frag')
   })
 
   it('sans compteurs lus, ne rend rien — jamais quatre types à zéro', () => {
-    expect(grenadesCarriedFrom([], labels, 'fr')).toEqual([])
+    expect(grenadesCarriedFrom([], labels, 'fr', REPLAY_TEXT.fr.grenadeRank)).toEqual([])
   })
 })

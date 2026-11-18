@@ -20,7 +20,7 @@
  */
 import type { AmmoHint } from '../i18n/i18nContract'
 import { catalogText } from '../i18n/catalogLabel'
-import type { ReplayLocale } from '../i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { abilityChargesAt, type AbilityChargeDisplay } from './abilityChargeLogic'
 import { carriedUsesAt } from './carriedUsesLogic'
 import { departuresOf, hasLeftAt } from './departureLogic'
@@ -154,7 +154,7 @@ export function nowGrenades(
   if (!box) return []
   const selected = selectedGrenadeFrom(box.g, box.gs)
   const known = typeof selected === 'object' && selected !== null ? selected : null
-  return grenadesCarriedFrom(box.g, doc.grenadeLabels, locale).map((g) => {
+  return grenadesCarriedFrom(box.g, doc.grenadeLabels, locale, REPLAY_TEXT[locale].grenadeRank).map((g) => {
     const label = doc.grenadeLabels?.[g.rank]
     return {
       ...g,
