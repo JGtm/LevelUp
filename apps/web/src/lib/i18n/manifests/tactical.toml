@@ -277,18 +277,6 @@ en = "All lives"
 fr = "Départ : première vie seule. Toutes les vies : première vie, réapparitions et débuts de manche ; avec une réapparition choisie, les trajets ne comptent que les vies parties de cet endroit."
 en = "Start: first life only. All lives: first life, respawns and round starts; with a respawn chosen, routes only count the lives that left from that spot."
 
-[tactical.plan.pill_background]
-fr = "Fond"
-en = "Background"
-
-[tactical.plan.background_plan]
-fr = "Plan"
-en = "Plan"
-
-[tactical.plan.background_render]
-fr = "Rendu"
-en = "Render"
-
 [tactical.plan.pill_zones]
 fr = "Zones nommées"
 en = "Named zones"
@@ -321,6 +309,27 @@ en = "Updating…"
 [tactical.plan.legend_label]
 fr = "Échelle de la lecture, de {lo} à {hi}"
 en = "Reading scale, from {lo} to {hi}"
+
+# ── Coupe par étage : ce que la légende dit des calques qui ne portent pas la hauteur ─────────
+[tactical.plan.legend_no_height]
+fr = "{layer} : ce calque ne porte pas la hauteur, il reste affiché sur tous les étages."
+en = "{layer}: this layer carries no height and stays shown on every floor."
+
+[tactical.plan.no_height_heat]
+fr = "Chaleur"
+en = "Heat"
+
+[tactical.plan.no_height_walls]
+fr = "Plan des murs"
+en = "Wall plan"
+
+[tactical.plan.no_height_killers]
+fr = "Tueurs et victimes"
+en = "Killers and victims"
+
+[tactical.plan.no_height_mates]
+fr = "Coéquipiers et trajets"
+en = "Teammates and routes"
 
 [tactical.status.pending]
 fr = "{n, plural, one {# match en attente de traitement} other {# matchs en attente de traitement}}"

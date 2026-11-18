@@ -325,6 +325,13 @@ export const queryKeys = {
   // La VARIANTE (rendu ou plan) est le dernier segment, comme pour l'image du fond du rejeu.
   tacticalMapBackground: (titleSlug: string, mapId: string, variante: MapBackgroundImageVariant = 'rendu') =>
     ['tactical-map-background', titleSlug, mapId, variante] as const,
+  // LE RELIEF du fond d'une carte (deux fichiers, deux clés, comme celui du fond d'un match) : propre à la CARTE,
+  // jamais au joueur ni à la langue (aucun libellé), figé entre deux cuissons. L'élément décodé du fond de base n'est
+  // demandé que lorsqu'une coupe doit le moduler.
+  tacticalMapReliefData: (titleSlug: string, mapId: string) => ['tactical-map-relief-data', titleSlug, mapId] as const,
+  tacticalMapReliefImage: (titleSlug: string, mapId: string) => ['tactical-map-relief-image', titleSlug, mapId] as const,
+  tacticalMapBackgroundElement: (titleSlug: string, mapId: string, variante: MapBackgroundImageVariant = 'rendu') =>
+    ['tactical-map-background-element', titleSlug, mapId, variante] as const,
   /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
    *  régime : versionnée par titre, jamais par joueur. */
   tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>
