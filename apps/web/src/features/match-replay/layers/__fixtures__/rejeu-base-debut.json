@@ -1,4 +1,4 @@
-{"variant":"base","instant":"debut","frame":1812,"opCount":7703}
+{"variant":"base","instant":"debut","frame":1812,"opCount":7751}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,720]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":8665,"sha":"f02a3bec2d803907fc22b66aa87314631d03adb177ce03a828027505953efe3c"}},1.0658141036401503e-14,1.0658141036401503e-14,960,720]}
@@ -2464,9 +2464,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[554.4314110650567,263.1782303117679]}
+{"op":"arc","args":[549.3314110650567,263.1782303117679,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[553.4814110650567,263.1782303117679]}
+{"op":"arc","args":[549.3314110650567,263.1782303117679,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[553.7314110650567,263.1782303117679]}
 {"op":"arc","args":[549.3314110650567,263.1782303117679,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2482,9 +2490,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["J00 0086",549.3314110650567,270.07823031176787]}
+{"op":"strokeText","args":["J00 0086",549.3314110650567,270.7782303117679]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["J00 0086",549.3314110650567,270.07823031176787]}
+{"op":"fillText","args":["J00 0086",549.3314110650567,270.7782303117679]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -3563,12 +3571,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[421.93115876734555,312.70931699405304,6.5,0,6.283185307179586]}
+{"op":"arc","args":[421.93115876734555,312.70931699405304,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[427.73115876734556,312.70931699405304]}
+{"op":"arc","args":[421.93115876734555,312.70931699405304,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[426.7811587673456,312.70931699405304]}
+{"op":"arc","args":[421.93115876734555,312.70931699405304,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[427.0311587673456,312.70931699405304]}
 {"op":"arc","args":[421.93115876734555,312.70931699405304,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3584,9 +3600,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur00 000006",421.93115876734555,322.20931699405304]}
+{"op":"strokeText","args":["Joueur00 000006",421.93115876734555,322.70931699405304]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur00 000006",421.93115876734555,322.20931699405304]}
+{"op":"fillText","args":["Joueur00 000006",421.93115876734555,322.70931699405304]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08352564102564103]}
@@ -4381,9 +4397,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[501.87275184717964,327.2416651648946]}
+{"op":"arc","args":[496.7727518471796,327.2416651648946,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[500.9227518471796,327.2416651648946]}
+{"op":"arc","args":[496.7727518471796,327.2416651648946,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[501.1727518471796,327.2416651648946]}
 {"op":"arc","args":[496.7727518471796,327.2416651648946,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -4399,9 +4423,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joue ur00118",496.7727518471796,334.14166516489456]}
+{"op":"strokeText","args":["Joue ur00118",496.7727518471796,334.8416651648946]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joue ur00118",496.7727518471796,334.14166516489456]}
+{"op":"fillText","args":["Joue ur00118",496.7727518471796,334.8416651648946]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -5480,12 +5504,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[435.8579924310687,390.3362768066318,6.5,0,6.283185307179586]}
+{"op":"arc","args":[435.8579924310687,390.3362768066318,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[441.6579924310687,390.3362768066318]}
+{"op":"arc","args":[435.8579924310687,390.3362768066318,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[440.7079924310687,390.3362768066318]}
+{"op":"arc","args":[435.8579924310687,390.3362768066318,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[440.9579924310687,390.3362768066318]}
 {"op":"arc","args":[435.8579924310687,390.3362768066318,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -5501,9 +5533,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000007",435.8579924310687,399.8362768066318]}
+{"op":"strokeText","args":["Joueur000007",435.8579924310687,400.3362768066318]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000007",435.8579924310687,399.8362768066318]}
+{"op":"fillText","args":["Joueur000007",435.8579924310687,400.3362768066318]}
 {"op":"set strokeStyle","args":["#70f01f"]}
 {"op":"set globalAlpha","args":[0.7218000000000001]}
 {"op":"set lineWidth","args":[2.6]}
@@ -6592,12 +6624,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[587.115516309245,217.8857451793116,6.5,0,6.283185307179586]}
+{"op":"arc","args":[587.115516309245,217.8857451793116,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[592.9155163092449,217.8857451793116]}
+{"op":"arc","args":[587.115516309245,217.8857451793116,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[591.965516309245,217.8857451793116]}
+{"op":"arc","args":[587.115516309245,217.8857451793116,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[592.215516309245,217.8857451793116]}
 {"op":"arc","args":[587.115516309245,217.8857451793116,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -6613,9 +6653,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000094",587.115516309245,227.3857451793116]}
+{"op":"strokeText","args":["Joueur000000094",587.115516309245,227.8857451793116]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000000094",587.115516309245,227.3857451793116]}
+{"op":"fillText","args":["Joueur000000094",587.115516309245,227.8857451793116]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08578947368421053]}
@@ -7105,9 +7145,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[188.33734006127233,256.0331591277708]}
+{"op":"arc","args":[183.23734006127233,256.0331591277708,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[187.38734006127234,256.0331591277708]}
+{"op":"arc","args":[183.23734006127233,256.0331591277708,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[187.63734006127234,256.0331591277708]}
 {"op":"arc","args":[183.23734006127233,256.0331591277708,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -7123,9 +7171,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000203",183.23734006127233,262.93315912777075]}
+{"op":"strokeText","args":["Joueur000203",183.23734006127233,263.6331591277708]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000203",183.23734006127233,262.93315912777075]}
+{"op":"fillText","args":["Joueur000203",183.23734006127233,263.6331591277708]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineCap","args":["round"]}
 {"op":"set strokeStyle","args":["#7604ad"]}

@@ -80,6 +80,7 @@ export interface SceneInks {
   shroud: Inks['shroud']
   self: Inks['self']
   labelStroke: Inks['labelStroke']
+  markerOutline: Inks['markerOutline']
 }
 
 /** Les poses d'équipement et les failles, tels que `useReplayPlacements` les sert. */

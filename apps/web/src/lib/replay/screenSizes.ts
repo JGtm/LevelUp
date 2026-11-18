@@ -73,7 +73,11 @@
  * s'ancrent sur le pion et ont besoin de CETTE valeur pour ne pas la redéclarer en dur.
  */
 export const CORE_RADIUS = 3.4
-/** Liseré de lisibilité : la carte va du clair au sombre, un point coloré s'y perd sans lui. */
+/**
+ * Épaisseur de la BANDE sombre du cerne du pion : la carte va du clair au sombre, un point coloré s'y
+ * perd sans elle. Un filet clair la borde vers l'extérieur (`MARKER_RIM_PX`,
+ * `features/match-replay/layers/markerOutline.ts`).
+ */
 export const OUTLINE_PAD = 1.0
 /**
  * PION_VISIBLE_DIAMETER_PX — le diametre REELLEMENT VU d un pion au rez-de-chaussee : le
@@ -87,6 +91,11 @@ export const OUTLINE_PAD = 1.0
  * le Mongoose sortait a 7,25 px de large — PLUS ETROIT que le pion dont il est cense faire
  * 1,75 fois la longueur. D ou le retour utilisateur du 2026-09-09 : « le Ghost est plus
  * petit que le pion du joueur ».
+ *
+ * C est une UNITE DE CADRAGE, plus le diametre dessine : avec le cerne deux tons,
+ * le pion dessine deborde de cette valeur d un filet clair de chaque cote (`MARKER_RIM_PX`). Elle
+ * ne bouge pas, pour ne pas changer la taille des vehicules (decision du 2026-09-19 : la
+ * reference du pion ne bouge pas).
  */
 export const PION_VISIBLE_DIAMETER_PX = (CORE_RADIUS + OUTLINE_PAD) * 2
 

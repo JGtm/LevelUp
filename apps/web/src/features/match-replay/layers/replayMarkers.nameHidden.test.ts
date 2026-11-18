@@ -29,7 +29,7 @@ function vie(over: Partial<ReplayTrackReady> = {}): ReplayTrackReady {
 function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
   return {
     colorOfSlot: () => 'rgb(1 2 3)',
-    ink: 'rgb(9 9 9)',
+    outline: { band: 'rgb(9 9 9)', rim: 'rgb(250 250 250)' },
     frame: 50,
     timing: { trail: 30, aimHold: 60, death: 20, spawn: 5 },
     z: { min: 0, max: 10 },
