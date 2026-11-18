@@ -495,8 +495,8 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       mesures sur le parc : écart entre l'horloge de manche du film, le premier mouvement et l'estimation de
       l'API ; matchs sans film, par source restante ; écart de temps de jeu par joueur ; dépendance de la note
       de performance et du LUSR (ADR 0047).
-- [ ] T.1 (modèle écrit le 2026-11-18 : `.ai/annexes_backlog_1118/modele_coup_d_envoi.md` ; présenté au
-      user, validation attendue ; il fait foi sur T.2 à T.6 là où il les précise : rattrapage au démarrage
+- [x] T.1 (modèle écrit le 2026-11-18 : `.ai/annexes_backlog_1118/modele_coup_d_envoi.md` ; VALIDÉ par le
+      user le 2026-11-18, « Oui je valide », avec ses quatre points ; il fait foi sur T.2 à T.6 là où il les précise : rattrapage au démarrage
       par révision ET par commande, montée des deux révisions de notation, rattrapage du poste UNE fois après
       la régénération du plan du décodeur, colonnes retirées seulement si la recette de migration ne
       reconstruit pas la table) Modèle cible, écrit par le pilote et VALIDÉ PAR LE USER avant tout code. Principes proposés :
@@ -574,6 +574,9 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — T.0 clos ; modèle du coup d'envoi (T.1) validé par le user. T.2 à T.5 partent dès qu'un
+  écrivain se libère ET que la piste G est intégrée (mêmes fichiers : `service/match_view_shared_build.go`,
+  `domain/match_view.go`). Lien inscrit au plan du décodeur : sa piste A publie le coup d'envoi lu sur l'horloge.
 - 2026-11-18 — GO du user. Plans commités sur `release/v8.3.0` (`1a7329e625`). 0.1 fait : branche
   `chore/830-backlog-1118` et worktrees `C:/t/bl1118` (intégration, étape 0), `C:/t/bl18-c` (piste C),
   `C:/t/bl18-k` (K.2), tous depuis `1a7329e625`, sans jonction.
@@ -607,6 +610,11 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Découvertes (consignées, non traitées)
 
+- 2026-11-18 (T.0) — hors du système du coup d'envoi, validé comme tel par le user : ce que font les notes
+  quand le temps de jeu d'un joueur manque (600 s supposées pour la note de performance, poids et ordre des
+  joueurs partis pour le LUSR ; replis R11 à R14 de l'audit). À porter au backlog à la clôture (R.1).
+- 2026-11-18 (T.0) — 437 matchs ont une durée de l'API qui diffère de « fin moins début » de plus d'une
+  seconde ; non instruit. À porter au backlog à la clôture (R.1).
 - 2026-11-18 (K.2) — le rempart des fonds de carte prend un nom de fichier suivi d'un texte et d'un chemin
   relatif pour un dossier : « x.module vers any/globals » devient « globals », le nom du module est perdu.
   Défaut d'avant côté Windows, étendu aux chemins Unix par l'assouplissement. Rien ne fuit ; le message perd

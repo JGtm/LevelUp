@@ -1,6 +1,8 @@
 # Coup d'envoi du match : modèle cible (item T.1 du plan du backlog du 2026-11-18)
 
-Statut : **proposé par le pilote le 2026-11-18, à valider par le user avant tout code (porte de T.2).**
+Statut : **proposé par le pilote le 2026-11-18 ; VALIDÉ par le user le 2026-11-18 (« Oui je valide »), avec
+les quatre points soumis : estimation gardée pour les anciens matchs sans rejeu, notes rejouées une fois au
+premier démarrage de la 8.3.0, rattrapage automatique au démarrage, réglages des notes hors périmètre.**
 Demande du user : « faut remettre au propre, qu'on ait pas plusieurs paramètres et de fallback, je veux un
 système cohérent ». Pièces : audit `coup_d_envoi.md` (inventaire fermé : 11 sources S1 à S11, 7 qualités,
 22 replis R1 à R22, 4 durées), mesures `mesure_coup_d_envoi.md`.
