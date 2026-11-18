@@ -316,7 +316,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       `ExampleCalculeRelief`. PR https://github.com/JGtm/halo-infinite-map-images/pull/6, CI verte, squash-fusionnée dans `main` de la brique en `9913d0b`.) Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
       `*_gamefiles_test.go` sous le tag `gamefiles` sur Recharge. README de la brique (section et crédit,
       D-9) et `example_test.go`.
-- [ ] A.5 (amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
+- [x] A.5 (fait le 2026-11-18 : tag `v1.4.0` sur `9913d0b`, release https://github.com/JGtm/halo-infinite-map-images/releases/tag/v1.4.0, LevelUp monté à `v1.4.0` sur `feat/fonds-relief` (`c0851b38e5`). Amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
       pseudo-version sur sa branche de travail, ce que l'ADR 0043 permet, et le TAG `v1.4.0` se pose après B.3,
       une fois le relief vérifié sur les témoins dans LevelUp, pour ne pas publier une API à corriger aussitôt.)
       PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
@@ -344,7 +344,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       près (test). Journal `slog` par carte : poids écrit, part du sol tirée du maillage, dégradations.
 - [ ] B.2 `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
       règle existante).
-- [ ] B.3 Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
+- [x] B.3 (fait le 2026-11-18 par le pilote sur la branche d'intégration `feat/fonds-relief`, `83139343b6` :
+      Recharge, Streets, Behemoth, Lattice en `--relief-seul` puis `mapfond-webp -convertir` ; diff limité à 8
+      fichiers neufs et 2 lignes par sidecar, aucun WebP existant modifié ; données compressées 23, 44, 81 et 38 Ko ;
+      fond publié sans hauteur 11,9 / 8,7 / 4,7 / 1,4 %, chiffres de la conception. Le dépôt hors ligne `.ai/re_dump`
+      est COPIÉ (jamais en jonction) dans le worktree pour les cartes Forge.) Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
       `map_backgrounds/` ; diff : seuls les fichiers du relief et deux champs par sidecar changent.
 - [ ] B.4 Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
       relief. Les leviers de `map_fond_reglages.json` sont relus (la `boiteUtile` peut céder la place au
@@ -358,7 +362,12 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 6. Lot C — contrat et routes
 
-- [ ] C.1 Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
+- [x] C.1 à C.3 (faits le 2026-11-18, `f41fe1586c` sur `feat/fonds-relief-c` : champs `reliefImage` / `reliefData`,
+      convention de nommage dans `mapfondsidecar` (`<clé>.relief.png|webp`, `<clé>.relief.json.gz`), service et
+      routes `?variante=relief` et `background.relief.json` sur le rejeu et la Tactique, données décompressées
+      puis contrôlées (nom, `schemaVersion`, calage), relief périmé ou invalide = absent ; Cache-Control centralisé
+      avec garde-rail ; `openapi.yaml` régénéré par `openapi-gen`, `generated.ts` à régénérer par le pilote à
+      l'intégration ; archlint entier vert, tests ciblés relancés par le pilote.) Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
       sans relief), et `mapfondsidecar` les lit et les écrit. Règle 18 : chaque champ a son lecteur, le web au lot D.
 - [ ] C.2 Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
       sur le modèle de `replay_map_background_plan.go` : même résolution de clé, mêmes gardes sur le nom de
