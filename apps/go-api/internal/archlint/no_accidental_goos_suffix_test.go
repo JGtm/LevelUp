@@ -76,6 +76,8 @@ var goosSuffixAllowed = map[string]string{
 		"aleatoire (HKCU), ajoute le 2026-11-04 (L22c.1)",
 	"apps/go-api/internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
+	"libs/himap/himap/candidats_installation_windows.go": "recherche des installations du jeu : registre " +
+		"Windows et lecteurs fixes (golang.org/x/sys/windows/registry), ajoute le 2026-11-18",
 }
 
 // TestAucunSuffixeDePlateformeAccidentel balaie l'espace de travail (`apps/go-api` et `libs/**`) et

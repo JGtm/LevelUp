@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -128,13 +129,21 @@ func lisLeRelief(t *testing.T, dir string, s *mapfondsidecar.MapBackground) (*im
 	if !ok {
 		t.Fatalf("image du relief de type %T, attendu NRGBA", img)
 	}
-	blob, err := os.ReadFile(filepath.Join(dir, s.ReliefData))
+	fz, err := os.Open(filepath.Join(dir, s.ReliefData))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer fz.Close()
+	zr, err := gzip.NewReader(fz)
+	if err != nil {
+		t.Fatalf("les données du relief ne sont pas du gzip : %v", err)
+	}
 	var d himap.DonneesRelief
-	if err := json.Unmarshal(blob, &d); err != nil {
+	if err := json.NewDecoder(zr).Decode(&d); err != nil {
 		t.Fatal(err)
+	}
+	if d.SchemaVersion != himap.SchemaVersionRelief {
+		t.Errorf("schemaVersion = %d, attendu %d", d.SchemaVersion, himap.SchemaVersionRelief)
 	}
 	return nrgba, d
 }
@@ -161,7 +170,7 @@ func TestRefaitLeReliefNeChangeQueLesDeuxChampsDuSidecar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if apres.ReliefImage != "carte.relief.png" || apres.ReliefData != "carte.relief.json" {
+	if apres.ReliefImage != "carte.relief.png" || apres.ReliefData != "carte.relief.json.gz" {
 		t.Errorf("champs du relief = %q, %q", apres.ReliefImage, apres.ReliefData)
 	}
 	if !bytes.Equal(sansLeRelief(t, chemin), avant) {
@@ -231,7 +240,7 @@ func TestRefaitLeReliefEchelleDifferenteEstUnEchecQuiNEcritRien(t *testing.T) {
 	if apres, _ := os.ReadFile(filepath.Join(dir, "carte.json")); !bytes.Equal(apres, avant) {
 		t.Error("le sidecar a été réécrit")
 	}
-	for _, nom := range []string{"carte.relief.png", "carte.relief.json"} {
+	for _, nom := range []string{"carte.relief.png", "carte.relief.json.gz"} {
 		if _, err := os.Stat(filepath.Join(dir, nom)); !os.IsNotExist(err) {
 			t.Errorf("%s écrit malgré l'échec (%v)", nom, err)
 		}
@@ -279,7 +288,7 @@ func TestRefaitLeReliefUneCuissonEnEchecNEstPasUneCarteIntacte(t *testing.T) {
 func TestPublieRefaitLeReliefAvecLeFond(t *testing.T) {
 	dir := t.TempDir()
 	// Les données d'un relief d'une cuisson d'avant sont remplacées, pas gardées.
-	if err := os.WriteFile(filepath.Join(dir, "carte.relief.json"), []byte("perime"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "carte.relief.json.gz"), []byte("perime"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	e := &environnement{sortieDir: dir, style: himap.StyleFondParDefaut, reglages: &reglagesFond{Cartes: map[string]reglageCarte{}}}
@@ -294,7 +303,7 @@ func TestPublieRefaitLeReliefAvecLeFond(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.ReliefImage != "carte.relief.png" || s.ReliefData != "carte.relief.json" {
+	if s.ReliefImage != "carte.relief.png" || s.ReliefData != "carte.relief.json.gz" {
 		t.Fatalf("champs du relief = %q, %q", s.ReliefImage, s.ReliefData)
 	}
 	img, donnees := lisLeRelief(t, dir, s)
@@ -310,7 +319,7 @@ func TestPublieRefaitLeReliefAvecLeFond(t *testing.T) {
 // sans relief, jamais avec celui d'un autre fond.
 func TestEcritSidecarSansReliefRetireLeReliefPerime(t *testing.T) {
 	dir := t.TempDir()
-	for _, nom := range []string{"carte.relief.png", "carte.relief.webp", "carte.relief.json"} {
+	for _, nom := range []string{"carte.relief.png", "carte.relief.webp", "carte.relief.json.gz"} {
 		if err := os.WriteFile(filepath.Join(dir, nom), []byte("perime"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -327,7 +336,7 @@ func TestEcritSidecarSansReliefRetireLeReliefPerime(t *testing.T) {
 	if s.ReliefImage != "" || s.ReliefData != "" {
 		t.Errorf("champs du relief = %q, %q, attendu vides", s.ReliefImage, s.ReliefData)
 	}
-	for _, nom := range []string{"carte.relief.png", "carte.relief.webp", "carte.relief.json"} {
+	for _, nom := range []string{"carte.relief.png", "carte.relief.webp", "carte.relief.json.gz"} {
 		if _, err := os.Stat(filepath.Join(dir, nom)); !os.IsNotExist(err) {
 			t.Errorf("%s périmé non retiré (%v)", nom, err)
 		}

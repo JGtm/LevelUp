@@ -19,7 +19,7 @@ import (
 )
 
 // ajouteReliefs calcule, pour chaque carte retenue dont le sidecar et le fond sont publiés, le relief
-// dans le calage publié, écrit `<cle>.relief.png` et `<cle>.relief.json` et pose `reliefImage` et
+// dans le calage publié, écrit `<cle>.relief.png` et `<cle>.relief.json.gz` et pose `reliefImage` et
 // `reliefData` dans le sidecar. Les autres champs du sidecar, l'image du fond, l'image plan et le
 // plan des murs restent ceux de la cuisson qui les a produits. Une carte sans sidecar ou sans fond est
 // laissée intacte ; une carte sans maillage reçoit un relief dégradé (`sans-maillage`) ; une échelle

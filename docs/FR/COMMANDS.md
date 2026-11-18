@@ -787,7 +787,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --
   (mêmes leviers qu'une cuisson), le relief est projeté dans le calage du sidecar **publié** (une recuisson peut sortir
   plus petite ou décalée : Recharge recuite fait 35 lignes de moins), et l'outil écrit `{cle}.relief.png` (hauteur du
   dessus par pixel : `q = R + 256 G` par pas de 1/256 d'unité du jeu, drapeaux dans `B`, `A` vaut 0 ou 255),
-  `{cle}.relief.json` (calage, bornes de hauteur, étages, sols du maillage, traits vectoriels) et les champs `reliefImage`
+  `{cle}.relief.json.gz` (JSON compressé en gzip, car un `.json` serait lu comme un sidecar : calage, bornes de hauteur, étages, sols du maillage, traits vectoriels) et les champs `reliefImage`
   et `reliefData` du sidecar, par `internal/mapfondsidecar` seul. L'image du fond, l'image plan, le plan des murs, le
   calage et tous les autres champs du sidecar restent identiques à l'octet. Une carte sans sidecar ou sans fond est
   laissée intacte et n'est pas cuite.

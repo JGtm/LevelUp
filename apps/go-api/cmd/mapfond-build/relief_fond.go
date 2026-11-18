@@ -2,13 +2,15 @@ package main
 
 // Le relief d'une carte : hauteur du dessus par pixel, sols du maillage et traits, calculés par la
 // brique `himap` dans le calage du fond PUBLIÉ, puis écrits à côté du fond (`<cle>.relief.png`,
-// `<cle>.relief.json`) avec leurs deux noms dans le sidecar. Un seul calcul pour la cuisson complète
+// `<cle>.relief.json.gz`) avec leurs deux noms dans le sidecar. Un seul calcul pour la cuisson complète
 // et pour `-relief-seul`.
 //
 // Le relief ne survit pas à son fond : une cuisson complète le refait dans le même geste (elle a le
 // rendu en mémoire) ou, à défaut, retire ses deux champs du sidecar et ses fichiers.
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -40,7 +42,7 @@ type reliefFond struct {
 	Relief *himap.Relief
 	Traits himap.BilanTraits
 	Duree  time.Duration
-	// OctetsImage et OctetsDonnees : poids de `<cle>.relief.png` et de `<cle>.relief.json` écrits.
+	// OctetsImage et OctetsDonnees : poids de `<cle>.relief.png` et de `<cle>.relief.json.gz` écrits.
 	OctetsImage, OctetsDonnees int64
 }
 
@@ -88,7 +90,7 @@ func calculeRelief(ctx context.Context, in entreesRelief) (*reliefFond, error) {
 	return &reliefFond{Relief: rel, Traits: traits, Duree: time.Since(debut)}, nil
 }
 
-// ecritLeRelief écrit `<cle>.relief.png` et `<cle>.relief.json` dans `dir`, pose leurs noms dans le
+// ecritLeRelief écrit `<cle>.relief.png` et `<cle>.relief.json.gz` dans `dir`, pose leurs noms dans le
 // sidecar `s` et journalise la carte : poids écrits, part du relief tirée du maillage, pixels du fond
 // publié sans hauteur, dégradations. Une erreur d'écriture laisse `s` sans relief.
 func ecritLeRelief(ctx context.Context, dir, cle string, rf *reliefFond, s *mapfondsidecar.MapBackground) error {
@@ -100,11 +102,10 @@ func ecritLeRelief(ctx context.Context, dir, cle string, rf *reliefFond, s *mapf
 		return fmt.Errorf("écriture de l'image du relief %s : %w", nomImage, err)
 	}
 	rf.OctetsImage = octets
-	blob, err := json.Marshal(rf.Relief.Donnees)
+	blob, err := donneesCompressees(rf.Relief.Donnees)
 	if err != nil {
 		return fmt.Errorf("sérialisation des données du relief %s : %w", nomDonnees, err)
 	}
-	blob = append(blob, '\n')
 	if err := os.WriteFile(filepath.Join(dir, nomDonnees), blob, 0o644); err != nil { //nolint:gosec // asset versionné
 		return fmt.Errorf("écriture des données du relief %s : %w", nomDonnees, err)
 	}
@@ -112,6 +113,28 @@ func ecritLeRelief(ctx context.Context, dir, cle string, rf *reliefFond, s *mapf
 	s.ReliefImage, s.ReliefData = nomImage, nomDonnees
 	journaliseLeRelief(ctx, cle, rf)
 	return nil
+}
+
+// donneesCompressees rend les données du relief en JSON sur une ligne, compressé en gzip : le fichier
+// (`<cle>.relief.json.gz`) ne finit pas en `.json`, qu'un lecteur du dossier des fonds prendrait pour un
+// sidecar. L'en-tête gzip ne porte ni date ni nom : même relief, mêmes octets.
+func donneesCompressees(d himap.DonneesRelief) ([]byte, error) {
+	brut, err := json.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+	var b bytes.Buffer
+	zw, err := gzip.NewWriterLevel(&b, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := zw.Write(brut); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
 // journaliseLeRelief écrit la ligne de journal d'une carte.

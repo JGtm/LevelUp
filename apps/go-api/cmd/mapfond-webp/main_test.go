@@ -349,7 +349,7 @@ func TestConvertitUnFond_ImageReliefMetAJourReliefImage(t *testing.T) {
 		PlanImage:   "carte.plan.webp",
 		Plan:        &replaydoc.MapBackgroundPlan{Source: "t", Vertices: 4, Faces: 1, Edges: [][4]float64{{0, 0, 1, 0}}},
 		ReliefImage: "carte.relief.png",
-		ReliefData:  "carte.relief.json",
+		ReliefData:  "carte.relief.json.gz",
 	}
 	if err := mapfondsidecar.Write(cheminJSON, avant); err != nil {
 		t.Fatal(err)
@@ -380,7 +380,7 @@ func TestConvertitUnFond_ImageReliefMetAJourReliefImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if relu.ReliefImage != "carte.relief.webp" || relu.ReliefData != "carte.relief.json" ||
+	if relu.ReliefImage != "carte.relief.webp" || relu.ReliefData != "carte.relief.json.gz" ||
 		relu.Image != "carte.webp" || relu.PlanImage != "carte.plan.webp" || relu.Plan == nil {
 		t.Errorf("sidecar = image %q, planImage %q, reliefImage %q, reliefData %q, plan %v",
 			relu.Image, relu.PlanImage, relu.ReliefImage, relu.ReliefData, relu.Plan)
