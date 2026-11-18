@@ -6,8 +6,8 @@ github.com/JGtm/halo-infinite-files-reader v1.2.0 h1:pXYdK1cLlEk5d8+U8qvPDL9vWTx
 github.com/JGtm/halo-infinite-files-reader v1.2.0/go.mod h1:fDmZrBN1FdwdNpixkG1yRqhokOfkV2D4AkFyEE5d2Rs=
 github.com/JGtm/halo-infinite-film-decoder v1.4.1 h1:hGOxkzOQs2ENS//kQDKyU4TybBN1zTAO4vywqxsqKkU=
 github.com/JGtm/halo-infinite-film-decoder v1.4.1/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
-github.com/JGtm/halo-infinite-map-images v1.3.2-0.20261118131744-9913d0b353b2 h1:LeEcXBMtwIHFZIQdSwpsy9Ku55jQAJxq7yhQHlre9vY=
-github.com/JGtm/halo-infinite-map-images v1.3.2-0.20261118131744-9913d0b353b2/go.mod h1:+vVLqWEV5YzSLAnB4LycnKyKeG02I1OwoVy1No9NROE=
+github.com/JGtm/halo-infinite-map-images v1.4.0 h1:cs6ZjLn63esFNUIpyvmAGpnF5WcJ1qINyGMClVPM1aY=
+github.com/JGtm/halo-infinite-map-images v1.4.0/go.mod h1:+vVLqWEV5YzSLAnB4LycnKyKeG02I1OwoVy1No9NROE=
 github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=
 github.com/andybalholm/brotli v1.2.2/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/apache/arrow-go/v18 v18.5.1 h1:yaQ6zxMGgf9YCYw4/oaeOU3AULySDlAYDOcnr4LdHdI=
