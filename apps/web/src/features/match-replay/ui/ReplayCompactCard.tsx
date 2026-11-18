@@ -183,7 +183,7 @@ export function ReplayCompactCard({
   const press = onCard
     ? { label: t.playerPanel.cardOpenFmt(name), selected, onActivate: () => onCard(player.xuid) }
     : undefined
-  let chrome: CSSProperties = cardChrome(state.alive)
+  let chrome: CSSProperties = cardChrome(state.alive, state.departed)
   if (tracked) chrome.borderColor = 'var(--ring)'
   if (press && selected) chrome = selectedChrome(chrome)
   const marks = <Marks read={read} bot={bot} t={t} />

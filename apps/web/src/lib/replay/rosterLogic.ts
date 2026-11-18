@@ -470,6 +470,12 @@ export interface PlayerState {
    * délai deviné.
    */
   respawnFrame: number
+  /**
+   * Le joueur est PARTI : sa dernière vie est finie par un départ et sa présence au tableau n'est pas
+   * encore fermée. Il n'est pas mort — la fiche dit qu'il a quitté la partie, sans compte à rebours.
+   * Décidé par l'appelant (`departed` de `playerStateAt`) ; toujours faux en vie.
+   */
+  departed: boolean
 }
 
 /**
@@ -515,11 +521,15 @@ export function vitalityPresence(doc: ReplayDocumentReady): VitalityPresence {
  * mort, 82 avec un retour lisible, médiane 8,0 s et 66 sur 82 exactement à 7,9-8,0 s. C'est un
  * palier net — mais mesuré sur UN match, ce qui n'en fait pas une constante du jeu. Les 8
  * épisodes sans retour restent sans délai affiché.
+ *
+ * `departed` : l'appelant dit que ce joueur a QUITTÉ la partie à cette image (cf. `PlayerState.departed`) ;
+ * ce fichier ne lit pas la présence du tableau, il porte l'état.
  */
 export function playerStateAt(
   player: ReplayPlayer,
   frame: number,
   presence: VitalityPresence,
+  departed = false,
 ): PlayerState {
   const live = player.lives.find((l) => isAliveAt(l, frame)) ?? null
   if (live) {
@@ -533,6 +543,7 @@ export function playerStateAt(
       health: health ?? (presence.health ? spawnFull : null),
       sinceDeath: -1,
       respawnFrame: -1,
+      departed: false,
     }
   }
   // Mort : la dernière vie CLOSE avant cette image date la mort ; la suivante, si elle existe,
@@ -551,6 +562,7 @@ export function playerStateAt(
     health: null,
     sinceDeath: last ? frame - trackWindow(last).end : -1,
     respawnFrame: next,
+    departed,
   }
 }
 

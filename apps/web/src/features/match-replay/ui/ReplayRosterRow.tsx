@@ -119,7 +119,7 @@ function NameCell({ read, tracked, scene, doc, frame, t }: {
       {state.alive ? (
         <Gauges read={read} scene={scene} t={t} />
       ) : (
-        <RespawnLine text={respawnText(state, doc, frame, t)} title={t.eliminatedLabel} />
+        <RespawnLine text={respawnText(state, doc, frame, t)} title={state.departed ? t.presenceLeft : t.eliminatedLabel} />
       )}
     </div>
   )

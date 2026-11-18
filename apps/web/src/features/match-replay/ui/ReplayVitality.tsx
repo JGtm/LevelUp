@@ -133,9 +133,12 @@ const ELIMINATED_BY_BODY: Record<CardGabarit['bodyPx'], (p: EliminatedProps) => 
   31: EliminatedStack,
 }
 
-/** L'encre et le fond de l'encadré : `destructive` très dilué, hachures de la même encre. */
-function eliminatedChrome(): { rouge: string; fond: CSSProperties } {
-  const rouge = tokenCssVar('destructive')
+/**
+ * L'encre et le fond de l'encadré : `destructive` très dilué, hachures de la même encre. Un joueur PARTI
+ * n'est pas mort : l'encadré prend l'encre neutre du texte secondaire, pas l'alerte.
+ */
+function eliminatedChrome(departed: boolean): { rouge: string; fond: CSSProperties } {
+  const rouge = departed ? 'var(--muted-foreground)' : tokenCssVar('destructive')
   return {
     rouge,
     fond: {
@@ -147,9 +150,15 @@ function eliminatedChrome(): { rouge: string; fond: CSSProperties } {
   }
 }
 
-/** EliminatedRow — UNE ligne dans un corps de 35 : le mot à gauche, le décompte à droite. */
+/** Le mot de l'encadré : le départ, la lacune « hors film » (aucune vie ne suit) ou l'élimination. */
+function boxLabel(state: PlayerState, t: EliminatedProps['t']): string {
+  if (state.departed) return t.presenceLeft
+  return state.respawnFrame < 0 ? t.goneLabel : t.eliminatedLabel
+}
+
+/** EliminatedRow — UNE ligne dans un corps de 35 : le mot à gauche, le décompte à droite (rien pour un départ). */
 function EliminatedRow({ state, doc, frame, t }: EliminatedProps): ReactElement {
-  const { rouge, fond } = eliminatedChrome()
+  const { rouge, fond } = eliminatedChrome(state.departed)
   return (
     <div
       className="flex h-full items-center justify-between overflow-hidden rounded-sm px-2"
@@ -159,9 +168,9 @@ function EliminatedRow({ state, doc, frame, t }: EliminatedProps): ReactElement 
         className="shrink-0 text-[9.5px] font-bold uppercase tracking-[.18em]"
         style={{ color: rouge }}
       >
-        {state.respawnFrame < 0 ? t.goneLabel : t.eliminatedLabel}
+        {boxLabel(state, t)}
       </span>
-      {state.respawnFrame < 0 ? (
+      {state.departed ? null : state.respawnFrame < 0 ? (
         // SANS VIE SUIVANTE, LE JOUEUR NE REVIENT PLUS DANS LE FILM — et c'est TOUT ce que la
         // donnée dit (mort de fin de partie, départ en cours de match, vie jamais nommée). Le
         // « Réapparition ? » d'avant affirmait une attente qui n'existait pas : un partant
@@ -193,20 +202,20 @@ function EliminatedRow({ state, doc, frame, t }: EliminatedProps): ReactElement 
  * cherche le décompte. Aucun `progressbar`, aucun délai deviné : le décompte est lu ou absent.
  */
 function EliminatedStack({ state, doc, frame, t, counters }: EliminatedProps): ReactElement {
-  const { rouge, fond } = eliminatedChrome()
-  const gone = state.respawnFrame < 0
+  const { rouge, fond } = eliminatedChrome(state.departed)
+  const gone = state.departed || state.respawnFrame < 0
   return (
     <div
       className="flex h-full flex-col justify-between overflow-hidden rounded-sm px-[5px] py-[2px]"
       style={fond}
-      title={gone ? t.goneValue : undefined}
+      title={state.departed ? t.presenceLeft : gone ? t.goneValue : undefined}
     >
       <div className="flex h-[13px] items-center justify-between gap-1">
         <span
-          className="shrink-0 text-[7px] font-bold uppercase leading-none tracking-[.15em]"
+          className={`${state.departed ? 'min-w-0 truncate' : 'shrink-0'} text-[7px] font-bold uppercase leading-none tracking-[.15em]`}
           style={{ color: rouge }}
         >
-          {gone ? t.goneLabel : t.eliminatedLabel}
+          {boxLabel(state, t)}
         </span>
         {counters}
       </div>

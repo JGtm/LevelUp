@@ -139,9 +139,9 @@ interface ReplayPlayerCardProps {
   tracked?: boolean
 }
 
-/** L'habit d'une fiche vivante ou morte ; le joueur suivi y prend la bordure à la couleur de suivi. */
-function chromeOf(alive: boolean, tracked: boolean): CSSProperties {
-  const chrome = cardChrome(alive)
+/** L'habit d'une fiche vivante, morte ou partie ; le joueur suivi y prend la bordure à la couleur de suivi. */
+function chromeOf(state: Pick<PlayerState, 'alive' | 'departed'>, tracked: boolean): CSSProperties {
+  const chrome = cardChrome(state.alive, state.departed)
   return tracked ? { ...chrome, borderColor: 'var(--ring)' } : chrome
 }
 
@@ -166,7 +166,7 @@ export function ReplayPlayerCard({
     // colonne d'équipe et le nom disent déjà tout ce qu'il y a à savoir. AUCUN ÉTAT DE MOUVEMENT
     // non plus : le document garde `stances[]`, la fiche ne le lit pas.
     <TileFrame
-      chrome={chromeOf(state.alive, tracked)}
+      chrome={chromeOf(state, tracked)}
       title={fx.title}
       press={panel ? { label: t.playerPanel.cardOpenFmt(name), selected: panel.selected, onActivate: panel.onSelect } : undefined}
       under={<CardUnderLayers fx={fx} objective={objective} radiusClass={LAYER_RADIUS} watermarkPx={G.watermarkPx} />}

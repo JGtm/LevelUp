@@ -38,6 +38,7 @@ export function readMatchMedals(
       label: pickText(entry, locale),
       description: pickText(entry?.description, locale),
       imageUrl: entry?.img ?? '',
+      sprite: entry?.sprite ?? null,
     })
   }
   return out.sort((a, b) => a.tMs - b.tMs)
