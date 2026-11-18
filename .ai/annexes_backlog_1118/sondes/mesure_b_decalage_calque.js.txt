@@ -1,0 +1,25 @@
+const fs=require('fs'),z=require('zlib');
+const dir=process.argv[2];
+const lags=[]; let pairs=0, unmatchedCal=0, unmatchedSum=0, docs=0;
+const ex=[];
+for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'))){
+  const d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+'/'+f)));
+  const tl=d.scoreTimeline; const acts=d.scoreActions||[];
+  if(!tl||!tl.players||!acts.length) continue;
+  docs++;
+  const by=new Map(); for(const a of acts){(by.get(a.xuid)||by.set(a.xuid,[]).get(a.xuid)).push(a)}
+  const iv=d.frameIntervalMs;
+  for(const p of tl.players){
+    const A=(by.get(p.xuid)||[]).slice().sort((x,y)=>x.t-y.t);
+    const sum=[];let tot=0;for(const a of A){tot+=a.points;sum.push({t:a.t,v:tot})}
+    const cal=(p.score&&p.score.total)||[];
+    // pour chaque valeur du calque, instant ou la somme atteint la meme valeur
+    const firstSum=new Map(); for(const s of sum) if(!firstSum.has(s.v)) firstSum.set(s.v,s.t);
+    for(const c of cal){
+      if(firstSum.has(c.v)){ const lag=c.t-firstSum.get(c.v); lags.push(lag); pairs++; if(Math.abs(lag)>60&&ex.length<5) ex.push({m:f.slice(0,8),lag,iv}) } else unmatchedCal++;
+    }
+  }
+}
+lags.sort((a,b)=>a-b);const q=p=>lags[Math.floor((lags.length-1)*p)];
+const hist={};for(const l of lags){const k=l<-30?'<-30':l<-6?'-30..-7':l<-1?'-6..-2':l<=1?'-1..1':l<=6?'2..6':l<=30?'7..30':'>30';hist[k]=(hist[k]||0)+1}
+console.log(JSON.stringify({docs,pairs,unmatchedCal,min:q(0),p5:q(.05),p25:q(.25),p50:q(.5),p75:q(.75),p95:q(.95),max:q(1),hist,ex}));

@@ -1,0 +1,62 @@
+// @vitest-environment node
+// JETABLE (étape 0.3 d) : durée de readInstantDocSeries sur des rejeux réels, 5 exécutions chacun.
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import zlib from 'node:zlib'
+import { it } from 'vitest'
+
+import { normalizeReplayDocument } from '../lib/replay/replayNormalize'
+import { buildPlayers, type ReplayPlayer } from '../lib/replay/rosterLogic'
+import { readInstantDocSeries } from '../features/match-replay/model/playerInstantSources'
+import { identityKeys } from '../features/match-replay/model/playerInstantStats'
+
+const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const OUT = path.join(os.tmpdir(), 'bl1118_mesure_d.json')
+
+const CAS = [
+  { etiquette: '4 contre 4', match: '7863ad21' },
+  { etiquette: 'Grande bataille (26 joueurs)', match: '81019bcb' },
+  { etiquette: 'match long (le plus long du parc, 24 joueurs)', match: '1c4c63c2' },
+  { etiquette: 'complement : 4 contre 4 le plus long', match: '4a93f0e2' },
+  { etiquette: 'complement : Grande bataille, score par action complet (29 joueurs)', match: '9dfd3c24' },
+  { etiquette: 'complement : Grande bataille longue, score par action complet (26 joueurs)', match: '58d09c44' },
+]
+
+it('durée readInstantDocSeries', () => {
+  const res: unknown[] = []
+  for (const cas of CAS) {
+    const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, cas.match + '.json.gz'))).toString('utf8'))
+    const doc = normalizeReplayDocument(raw)
+    const base = buildPlayers(doc, [])
+    const byRecipient = new Map<string, number>()
+    for (const a of doc.scoreActions ?? []) byRecipient.set(a.xuid, (byRecipient.get(a.xuid) ?? 0) + a.points)
+    // feuille de l'API : le score final est la somme, pour que la lecture du score s'exécute comme en vrai
+    const players: ReplayPlayer[] = base.map((p) => ({
+      ...p,
+      board: { ...(p.board ?? {}), score: identityKeys(p).reduce((s, k) => s + (byRecipient.get(k) ?? 0), 0) } as never,
+    }))
+    const temps: number[] = []
+    for (let i = 0; i < 5; i++) {
+      const t0 = performance.now()
+      const r = readInstantDocSeries(doc, players)
+      temps.push(performance.now() - t0)
+      if (!r) throw new Error('lecture vide')
+    }
+    const s = temps.slice().sort((a, b) => a - b)
+    res.push({
+      etiquette: cas.etiquette,
+      match: cas.match,
+      joueurs: players.length,
+      images: doc.frameCount,
+      tirs: doc.shots.length,
+      touches: doc.hits.length,
+      degats: doc.damage.length,
+      actionsDeScore: (doc.scoreActions ?? []).length,
+      couvertureScoreComplete: doc.coverage?.scoreActions?.complete ?? null,
+      executionsMs: temps.map((x) => Math.round(x * 100) / 100),
+      medianeMs: Math.round(s[2] * 100) / 100,
+    })
+  }
+  fs.writeFileSync(OUT, JSON.stringify(res, null, 1))
+}, 600_000)
