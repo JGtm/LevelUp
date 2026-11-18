@@ -11,6 +11,7 @@
 //
 //	go run ./cmd/replay-verite -avant <a.json> -apres <b.json> -faits <id>.facts.json [-temoin id] [-registre-avant r.json]
 //	go run ./cmd/replay-verite -registre > registre.json
+//	go run ./cmd/replay-verite -compteurs -verite participants.tsv [-serie series.tsv] [-apres-dossier d] [-detail] <rejeux...>
 //
 // Code de sortie : 0 ok, 1 FAUX ou MANQUE, 2 usage ou lecture impossible.
 package main
@@ -45,6 +46,8 @@ func main() {
 type options struct {
 	avant, apres, faits, oracle, temoin, registreAvant string
 	registre                                           bool
+	compteurs                                          optionsCompteurs
+	modeCompteurs                                      bool
 }
 
 func lancer(args []string, out, errw io.Writer) int {
@@ -58,8 +61,17 @@ func lancer(args []string, out, errw io.Writer) int {
 	fs.StringVar(&o.temoin, "temoin", "", "nom du temoin dans le rapport (defaut : matchId)")
 	fs.StringVar(&o.registreAvant, "registre-avant", "", "registre des replis de la revision d'avant (-registre)")
 	fs.BoolVar(&o.registre, "registre", false, "ecrire le registre des replis de CETTE revision (JSON) et sortir")
+	fs.BoolVar(&o.modeCompteurs, "compteurs", false, "comparer les compteurs nommes de rejeux deja cuits (arguments : fichiers ou dossiers) a l'export de l'API")
+	fs.StringVar(&o.compteurs.verite, "verite", "", "(-compteurs) export des participants de l'API (participants.tsv)")
+	fs.StringVar(&o.compteurs.series, "serie", "", "(-compteurs) export des series maximales de l'API (match_id, xuid, max_killing_spree)")
+	fs.StringVar(&o.compteurs.apres, "apres-dossier", "", "(-compteurs) dossier des rejeux d'APRES, de memes noms que les arguments : sortie avant / apres")
+	fs.BoolVar(&o.compteurs.detail, "detail", false, "(-compteurs) liste les rejeux a defaut (8 premiers caracteres du match)")
 	if err := fs.Parse(args); err != nil {
 		return codeUsage
+	}
+	if o.modeCompteurs {
+		o.compteurs.rejeux = fs.Args()
+		return lancerCompteurs(o.compteurs, out, errw)
 	}
 	if o.registre {
 		return ecrireRegistre(out, errw)
