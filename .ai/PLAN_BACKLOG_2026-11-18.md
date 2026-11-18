@@ -425,7 +425,9 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 ## Piste K — garde-rails et outillage (Haiku ; Sonnet pour K.2 et K.5)
 
 - [ ] K.1 Trois entrées mortes retirées de `ALLOWED_FILES` ; test « chaque chemin de la liste existe ».
-- [ ] K.2 Rempart des fonds de carte : retrait de la racine d'installation connue en plus du motif ; dossiers
+- [x] K.2 (fait le 2026-11-18, `8cb85efc25` sur `bl1118/k` ; gate : build, vet, `go test ./cmd/mapfond-build/...`
+      et `./internal/archlint/...` verts, 133 catalogues et 114 fonds publiés sans faux positif ; relu sur
+      pièces par le pilote) Rempart des fonds de carte : retrait de la racine d'installation connue en plus du motif ; dossiers
       à point et à espaces ; garde-rail étendu (partage réseau, `/opt/`, `/mnt/`, `/tmp/`, `/var/`,
       `/Volumes/`). Aucune recuisson.
 - [ ] K.3 `scripts/disk-hygiene.ps1` : base résolue (amont de la branche courante, sinon branche par défaut
@@ -486,12 +488,18 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 - dans le rejeu : l'origine, le coup d'envoi « premier mouvement », et l'horloge de manche du jeu, lue chaque
   seconde, qui date elle aussi le coup d'envoi.
 
-- [ ] T.0 Audit (lecture seule ; base lue sur une COPIE), dans `.ai/annexes_backlog_1118/coup_d_envoi.md` :
+- [x] T.0 (fait le 2026-11-18 : inventaire fermé de 11 sources, 7 qualités, 22 replis, 4 durées ; verdict
+      sur les 22 rejeux : l'horloge a raison, prouvé par les positions des joueurs ; annexe sur la branche
+      d'intégration) Audit (lecture seule ; base lue sur une COPIE), dans `.ai/annexes_backlog_1118/coup_d_envoi.md` :
       inventaire FERMÉ de chaque source, seuil, qualité, repli, écrivain, lecteur (Go, SQL, web) et commande ;
       mesures sur le parc : écart entre l'horloge de manche du film, le premier mouvement et l'estimation de
       l'API ; matchs sans film, par source restante ; écart de temps de jeu par joueur ; dépendance de la note
       de performance et du LUSR (ADR 0047).
-- [ ] T.1 Modèle cible, écrit par le pilote et VALIDÉ PAR LE USER avant tout code. Principes proposés :
+- [ ] T.1 (modèle écrit le 2026-11-18 : `.ai/annexes_backlog_1118/modele_coup_d_envoi.md` ; présenté au
+      user, validation attendue ; il fait foi sur T.2 à T.6 là où il les précise : rattrapage au démarrage
+      par révision ET par commande, montée des deux révisions de notation, rattrapage du poste UNE fois après
+      la régénération du plan du décodeur, colonnes retirées seulement si la recette de migration ne
+      reconstruit pas la table) Modèle cible, écrit par le pilote et VALIDÉ PAR LE USER avant tout code. Principes proposés :
       (1) une définition : le coup d'envoi est l'instant où l'horloge du jeu démarre ; (2) une source par
       match, dans un ordre fixe écrit une fois : le film quand il existe, l'estimation de l'API sinon,
       « inconnu » sinon, et la source est rangée avec la valeur ; (3) un seul point de résolution, qui rend la
@@ -579,6 +587,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   l'export de vérité de l'API sur une copie de la base (`C:/t/verite/`, partagé avec le plan du décodeur) ;
   et, pour le plan du décodeur, sa marche à blanc. Deux agents d'écriture seulement (C et K.2) : la session
   du fond Relief en tient deux.
+- 2026-11-18 — K.2 rendu, relu sur pièces et commité (`8cb85efc25`, branche `bl1118/k`). La session du fond
+  Relief n'a plus d'écrivain : pistes E, G et H lancées (worktrees `C:/t/bl18-e`, `-g`, `-h`), soit 4
+  écrivains Sonnet avec C. Écart au tableau des modèles, voulu : G.3, G.4 et H.4 (prévus Haiku) sont faits
+  par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
+  le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
+  l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
 - 2026-11-18 — plan écrit ; trois instructions en lecture seule et une mesure sur le parc ; aucun code.
 - 2026-11-18 — réponses du user : D-2, D-3, D-4, D-5, D-7 retenues ; silhouette de l'arme écartée pour le
   ramassage, planche de quatre tracés publiée (D-1 rouverte) ; correction de périmètre : les neuf entrées
@@ -593,4 +607,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Découvertes (consignées, non traitées)
 
-(vide)
+- 2026-11-18 (K.2) — le rempart des fonds de carte prend un nom de fichier suivi d'un texte et d'un chemin
+  relatif pour un dossier : « x.module vers any/globals » devient « globals », le nom du module est perdu.
+  Défaut d'avant côté Windows, étendu aux chemins Unix par l'assouplissement. Rien ne fuit ; le message perd
+  de l'information. Non porté au backlog (aucun fond publié concerné).
