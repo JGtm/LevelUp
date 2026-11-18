@@ -534,15 +534,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Piste S — schéma d'une base joueur et tests du paquet DuckDB (Sonnet)
 
-- [ ] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
+- [x] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
       seules ») sur types, défauts et `NOT NULL` ; écart listé dans `.ai/annexes_backlog_1118/schema_joueur.md` ;
       forme des bases existantes relevée sur une COPIE d'une base joueur du poste.
-- [ ] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
+- [x] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
       aucune migration d'une base existante ; si l'alignement demande de modifier une étape de migration déjà
       jouée en production, arrêt et retour au user.
-- [ ] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
+- [x] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
       inutile ; sinon elle garde sa date et son motif.
-- [ ] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
+- [x] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
       (`pool_attach_swap_integration_test.go:116`, `pool_shared_reader_integration_test.go:71`, `:125`, `:186`,
       `pool_swap_multititre_integration_test.go:103`) reçoivent la base migrée copiée avant `GetOrOpen` ;
       `pool_migration_test.go` (dont l'objet est la migration) passe sur la liste d'exemptions datée ; le
@@ -668,6 +668,11 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — pistes D, K (K.1, K.3 à K.5) et S rendues, relues sur pièces, commitées sur leurs branches et
+  cueillies sur l'intégration (`e7f8ff4ae4`, `bddd4751a6`, `b976137ffc`). S : 16 lignes d'écart de forme avant,
+  11 colonnes alignées pour les bases neuves, 5 écarts résiduels nommés (voir Découvertes), exemption de
+  `csr_pipeline_e2e` retirée, garde-rail des migrations neuves élargi. Piste T : écriture en cours (Opus).
+  Plan du décodeur : pistes J et A lancées dans deux dossiers de travail du clone.
 - 2026-11-18 — plan écrit ; trois instructions en lecture seule et une mesure sur le parc ; aucun code.
 - 2026-11-18 — réponses du user : D-2, D-3, D-4, D-5, D-7 retenues ; silhouette de l'arme écartée pour le
   ramassage, planche de quatre tracés publiée (D-1 rouverte) ; correction de périmètre : les neuf entrées
@@ -681,6 +686,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (S) — cinq écarts de forme restent entre une base joueur née de la synchronisation et une base
+  née des migrations (`performance_score` FLOAT contre DOUBLE, table et vue ; défaut de `sync_meta.updated_at` ;
+  défaut FALSE de `is_with_friends` et `is_excluded`). Les fermer demande de modifier une étape de migration
+  déjà jouée en production, ce que S.2 interdit : ils sont nommés et datés dans le test de forme. Trois options
+  écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser », soumis au user.
 
 - 2026-11-18 (intégration) — `internal/mapcatalog`, `TestAddOverlayEntryConcurrentNePerdPasDEntree` : instable, 1
   échec sur 10 passages sur le code d'AVANT le plan. Quand le verrou d'écriture ne se pose pas à temps, le code

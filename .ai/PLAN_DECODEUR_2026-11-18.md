@@ -377,6 +377,11 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — pistes J (J.1, J.2, J.3, J.5, contrôles de J.6) et A lancées, un agent Sonnet chacune, dans
+  deux dossiers de travail du clone (`C:/t/dec-j` branche `piste/j`, `C:/t/dec-a` branche `piste/a`, tous deux
+  partis de `feat/v1.5.0`). Aucun agent ne monte le schéma, ne régénère un golden hors de sa porte, ne commite
+  ni ne pousse : la piste A rend la liste exacte de ce qu'elle fait rougir, le pilote l'attribue à
+  l'intégration. J.4 (étape `scoreTimeline` de l'équivalence, côté LevelUp) reste au pilote.
 - 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 : marche à blanc à 20 identiques ; `avant.md` complet ; coup d'envoi
   tranché). Valeurs de départ à retenir : accord exact des points publiés avec le score de l'API 98,42 % sur
   les rejeux « complets » (69,33 % au build 1.11) ; compteurs nommés 99,63 à 99,97 % d'accord, défaut concentré
