@@ -80,10 +80,10 @@ describe('ReplayPlayerCard — grenade équipée', () => {
 })
 
 /**
- * LE BRANCHEMENT CLIENT DE L'AXE `grenadeReads` (schéma 20, lot 4 du suivi delta).
+ * LE BRANCHEMENT CLIENT DE L'AXE `grenadeReads` (schéma 20).
  *
  * Une inversion COMPLÈTE de la préférence — la cellule retombant sur l'inventaire au lieu de l'axe, donc
- * l'annulation pure et simple du bénéfice du lot — laissait la suite verte : aucun test de rendu n'éprouvait
+ * l'annulation pure et simple du bénéfice de l'axe — laissait la suite verte : aucun test de rendu n'éprouvait
  * la cellule de grenades sur cet axe. Les quatre cas sont les quatre branches de `grenadeBoxAt` : l'axe gagne
  * quand il est PASSÉ, l'artefact ancien retombe sur l'inventaire, une lecture À VENIR ne prime pas une
  * information passée, et une lecture à venir SEULE s'affiche en le disant.

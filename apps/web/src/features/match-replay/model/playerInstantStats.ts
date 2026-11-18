@@ -64,13 +64,16 @@ export interface PlayerInstantStats {
   headshots: { count: number; measured: number } | null
   /**
    * Éliminations parfaites : médailles `PERFECT_MEDAL_NAME` gagnées jusqu'à l'image. `null` quand les
-   * médailles du joueur ne s'établissent pas (cf. `medals`).
+   * médailles du joueur ne s'établissent pas (cf. `medals`) : un document qui ne déclare pas le calque des
+   * médailles ne dit pas que le joueur n'en a gagné aucune.
    */
   perfects: number | null
   /**
    * Médailles gagnées jusqu'à l'image, dans l'ordre du temps (lecture unique `readMatchMedals`). Un document
-   * sans `medals` donne une liste vide. `null` pour un bot que le document ne nomme sur aucune médaille : le
-   * film ne date pas les médailles d'un bot, une liste vide serait un zéro inventé.
+   * qui déclare le calque (`coverage.medals`) sans médaille donne une liste vide. `null` quand le document ne
+   * déclare pas le calque (cuisson antérieure : le tableau normalisé est vide sans que rien ait été lu), et pour
+   * un bot que le document ne nomme sur aucune médaille : le film ne date pas les médailles d'un bot, une
+   * liste vide serait un zéro inventé.
    */
   medals: readonly MedalEvent[] | null
   /**
@@ -98,7 +101,7 @@ export interface PlayerInstantStats {
 }
 
 export interface PlayerInstantInput {
-  doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>
+  doc: Pick<ReplayDocumentReady, 'frameIntervalMs' | 'coverage'>
   player: ReplayPlayer
   /** Quels champs de vitalité le document publie (`vitalityPresence`) : sans bouclier publié, aucun compte. */
   presence: VitalityPresence
@@ -226,7 +229,7 @@ function lifeStart(life: ReplayTrackReady, matchStartFrame: number | null | unde
  */
 function closedLives(
   lives: readonly ReplayTrackReady[],
-  doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>,
+  doc: Pick<ReplayDocumentReady, 'frameIntervalMs' | 'coverage'>,
   matchStartFrame: number | null | undefined,
 ): ClosedLife[] {
   const spans = lives
@@ -268,7 +271,7 @@ function shieldDrops(lives: readonly ReplayTrackReady[]): Dated[] {
  * ils sont l'état interne d'une lecture, exposé pour le typage seulement.
  */
 export interface PlayerInstantSeries {
-  readonly doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>
+  readonly doc: Pick<ReplayDocumentReady, 'frameIntervalMs' | 'coverage'>
   readonly timeline: ReplayScoreTimelineReady | undefined
   /** Clé sous laquelle le calque de score publie le joueur ; `null` = non publié. */
   readonly scoreKey: string | null
@@ -283,11 +286,18 @@ export interface PlayerInstantSeries {
 }
 
 /**
- * Le joueur est-il nommé sur une médaille du document ? Les médailles d'un humain s'établissent toujours (le
- * document sans médaille donne une liste vide) ; celles d'un bot seulement si le document le nomme au moins une
- * fois — sinon il n'y a rien à compter.
+ * Les médailles du joueur s'établissent-elles ? Il faut que le document DÉCLARE le calque (`coverage.medals`,
+ * posé par la cuisson quand le morceau des temps forts a été lu : le tableau normalisé vide ne distingue pas
+ * « aucune médaille » de « calque non lu »). Celles d'un humain s'établissent alors toujours (aucune médaille
+ * donne une liste vide) ; celles d'un bot seulement si le document le nomme au moins une fois — sinon il n'y a
+ * rien à compter.
  */
-function medalsEstablished(player: ReplayPlayer, steps: readonly MedalStep[]): boolean {
+function medalsEstablished(
+  doc: Pick<ReplayDocumentReady, 'coverage'>,
+  player: ReplayPlayer,
+  steps: readonly MedalStep[],
+): boolean {
+  if (doc.coverage?.medals === undefined) return false
   return !player.bot || steps.length > 0
 }
 
@@ -306,7 +316,7 @@ export function readPlayerInstantSeries(input: PlayerInstantInput): PlayerInstan
     scoreKey,
     streaks: score ? streakSteps(score) : null,
     headshots: feed !== null && hasKills ? headshotSteps(feed, keys) : null,
-    medals: medals && medalsEstablished(player, medals) ? medals : null,
+    medals: medals && medalsEstablished(doc, player, medals) ? medals : null,
     lifeStarts: lives.map((l) => ({ t: trackWindow(l).start })).sort((a, b) => a.t - b.t),
     lives,
     matchStartFrame,

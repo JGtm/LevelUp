@@ -72,7 +72,11 @@ export function instantDoc(over: Partial<Doc> = {}) {
         },
       ],
     } as never,
-    coverage: { scoreActions: { complete: true }, stances: { scanned: true, absent: false, jumpEpisodes: 10 } } as never,
+    coverage: {
+      scoreActions: { complete: true },
+      stances: { scanned: true, absent: false, jumpEpisodes: 10 },
+      medals: { decoded: 0, published: 0, noOrigin: 0, beforeOrigin: 0, afterEnd: 0, unknownName: 0 },
+    } as never,
     scoreActions: [
       action(20, 'A', 100), action(60, 'A', 100), action(100, 'A', 100),
       action(25, 'E', 200), action(50, 'E', 200), action(40, 'bid(7.0)', 100),

@@ -78,7 +78,7 @@ const COTES_COMPACTES = Object.freeze({
   horlogePadXPx: 0,
 } as const)
 
-/** La largeur de la cellule du score dans un en-tête : 440 px (tableau A, retenue sur J), manches et garde comprises. */
+/** La largeur de la cellule du score dans un en-tête : 440 px, manches et garde comprises. */
 export const LARGEUR_CELLULE_SCORE_ENTETE_PX = 440
 
 /** La cellule centrale de l'en-tête (Standard ; Cinéma et Plein cadre quand les équipes sont dans la colonne). */

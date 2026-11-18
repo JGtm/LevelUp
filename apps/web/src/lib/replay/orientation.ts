@@ -197,12 +197,12 @@ function cellAfterTurns(col: number, row: number, nx: number, ny: number, turns:
 }
 
 /**
- * Le gain de surface à partir duquel un plan droit se tourne (D-7 : au moins +25 %).
+ * Le gain de surface à partir duquel un plan droit se tourne (au moins +25 %).
  */
 export const SEUIL_TOURNER_AUTO = 0.25
 
 /**
- * Le gain sous lequel un plan déjà tourné revient droit (D-14 : +20 %). Entre les deux seuils, le
+ * Le gain sous lequel un plan déjà tourné revient droit (+20 %). Entre les deux seuils, le
  * plan garde sa position : c'est l'hystérésis qui évite le va-et-vient au redimensionnement.
  */
 export const SEUIL_REVENIR_AUTO = 0.2
@@ -228,7 +228,7 @@ function surfaceAjustee(carte: Dimensions, boite: Dimensions): number {
 }
 
 /**
- * autoTurns rend le nombre de quarts de tour (0 ou 1) de la règle Auto (D-7, D-14). Il compare la
+ * autoTurns rend le nombre de quarts de tour (0 ou 1) de la règle Auto. Il compare la
  * surface du plan posé droit à celle du plan posé tourné d'un quart de tour, chacun ajusté à la
  * boîte. Droit, il tourne quand le gain atteint `SEUIL_TOURNER_AUTO` ; tourné, il ne revient droit
  * que sous `SEUIL_REVENIR_AUTO`. Une carte ou une boîte de taille nulle rend 0.

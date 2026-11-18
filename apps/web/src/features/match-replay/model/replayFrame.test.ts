@@ -1,5 +1,5 @@
 /**
- * Tests — les trois cadres de la page du rejeu (lot A, item A.1 du plan « refonte UI du rejeu »).
+ * Tests — les trois cadres de la page du rejeu .
  *
  * Ce qu'ils protègent :
  *  1. L'ÉTAT DE DÉPART : `standard`, à chaque montage, sans mémoire.

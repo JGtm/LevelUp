@@ -1,5 +1,5 @@
 /**
- * Tests — rowLayout : la rangée de fiches tient (D-12). Les largeurs demandées sont écrites dans
+ * Tests — rowLayout : la rangée de fiches tient. Les largeurs demandées sont écrites dans
  * les noms des tests : 2 × n × 115 + 270 + 2 × n × 6 + 2 × 24 (4 contre 4 = 1286, 5 contre 5 = 1528).
  */
 import { describe, expect, it } from 'vitest'
@@ -170,10 +170,22 @@ describe('dispositionEquipes', () => {
 })
 
 describe('emplacementScoreDe', () => {
-  it('le Standard porte le score dans son en-tête, quelle que soit la disposition ou la largeur', () => {
-    for (const d of ['rangee', 'rangee-grande-equipe', 'colonne'] as const) {
-      expect(emplacementScoreDe('standard', d, 4000)).toBe('entete')
-      expect(emplacementScoreDe('standard', d, 0)).toBe('entete')
+  it('le Standard porte le score dans son en-tête tant que le corps loge la cellule de 440 px', () => {
+    for (const largeur of [0, LARGEUR_REQUISE_ENTETE_SCORE_PX, LARGEUR_1440, 4000]) {
+      expect(emplacementScoreDe('standard', 'colonne', largeur)).toBe('entete')
+    }
+  })
+
+  it('le Standard, un pixel sous la place de la cellule du score : le score coiffe la toile, comme au Cinéma', () => {
+    expect(emplacementScoreDe('standard', 'colonne', LARGEUR_REQUISE_ENTETE_SCORE_PX - 1)).toBe('scene')
+    expect(emplacementScoreDe('standard', 'colonne', 1)).toBe('scene')
+  })
+
+  it('une seule règle de largeur pour les trois cadres, aux deux côtés du seuil', () => {
+    for (const frame of ['standard', 'cinema', 'plein-cadre'] as const) {
+      expect(emplacementScoreDe(frame, 'colonne', LARGEUR_REQUISE_ENTETE_SCORE_PX - 1), frame).toBe('scene')
+      expect(emplacementScoreDe(frame, 'colonne', LARGEUR_REQUISE_ENTETE_SCORE_PX), frame).toBe('entete')
+      expect(emplacementScoreDe(frame, 'colonne', 0), frame).toBe('entete')
     }
   })
 

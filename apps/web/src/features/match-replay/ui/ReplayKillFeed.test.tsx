@@ -569,7 +569,7 @@ describe('ReplayKillFeed — le fil DÉFILE (régression C1, 2026-08-18)', () =>
     for (const row of rows) {
       // Sans `shrink-0`, les 40 rangées se partagent la hauteur et se rognent elles-mêmes.
       expect(row.className, 'une rangée du fil doit refuser de se tasser').toContain('shrink-0')
-      // Et la règle « une ligne » de V5 ne bouge pas : une grille qui ne passe jamais à la ligne.
+      // Et la règle « une ligne » ne bouge pas : une grille qui ne passe jamais à la ligne.
       expect(row.className).toContain('whitespace-nowrap')
       expect(row.className).toContain('overflow-hidden')
       expect(row.className).toContain('h-[28px]')

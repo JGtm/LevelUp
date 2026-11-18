@@ -117,6 +117,15 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
   it('gestes : temps de sprint cumulé et sauts', () => {
     expect(v.gestures).toEqual({ sprintMs: 4000, jumps: 3 })
   })
+
+  it('un document qui ne déclare pas le calque des médailles : ni éliminations parfaites ni médaille, jamais un zéro', () => {
+    const base = instantDoc()
+    const doc = instantDoc({ coverage: { ...base.coverage, medals: undefined } as never })
+    const sansCalque = lecteur('A', { doc })(FIN)
+    expect(sansCalque.since).not.toBeNull()
+    expect(sansCalque.since?.perfects).toBeNull()
+    expect(sansCalque.medals).toEqual([])
+  })
 })
 
 describe('playerInstantView — la fiche suit l’image lue', () => {

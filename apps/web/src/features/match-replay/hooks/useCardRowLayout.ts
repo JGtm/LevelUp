@@ -1,6 +1,7 @@
 /**
  * useCardRowLayout — COMMENT LES ÉQUIPES SE RANGENT, au Cinéma et au Plein cadre : en rangée au-dessus du
- * plan, ou dans la colonne. Il mesure le corps du cadre et applique la règle pure de `model/rowLayout.ts`
+ * plan, ou dans la colonne ; et OÙ EST LE SCORE, aux trois cadres (le Standard mesure son corps pour cette seule
+ * question). Il mesure le corps du cadre et applique la règle pure de `model/rowLayout.ts`
  * (`dispositionEquipes`) aux camps et aux places du film.
  *
  * LA LARGEUR EST CELLE DU CORPS DU CADRE, bord à bord, marges latérales comprises : c'est la grandeur que

@@ -6,7 +6,7 @@
  *     contenu (Seul et Masquer remis à zéro), recliquer la fiche ouverte referme.
  *  2. SUIVRE EST LA CAMÉRA, INDÉPENDANTE DE LA FICHE : fermer ou changer de fiche ne l'éteint pas, la
  *     demande est acceptée fiche fermée ; le joueur suivi est le joueur REGARDÉ (`trackedPlayerOf`).
- *  3. LES EXCLUSIONS (D-7) : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe Seul et
+ *  3. LES EXCLUSIONS : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe Seul et
  *     le Suivre de ce joueur. « Retour au fil » remet Seul et Masquer à zéro.
  *  4. CE QUE LA CARTE MONTRE : sans Seul ni Masquer, aucun filtre (`null`, rien à brancher) ;
  *     sinon le prédicat désigne les vies du joueur choisi, bot compris (par ses vies, jamais par

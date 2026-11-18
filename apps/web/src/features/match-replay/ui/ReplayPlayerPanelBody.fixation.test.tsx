@@ -36,6 +36,7 @@ import { ReplayPlayerPanelBody } from './ReplayPlayerPanelBody'
 /** Alpha vit sur [0, 100] ; Echo meurt à l'image 30 et ne revient qu'à 130 ; Marc est un bot vivant. */
 const DOC = testReplayDoc({
   frameIntervalMs: 100,
+  coverage: { medals: { decoded: 0, published: 0, noOrigin: 0, beforeOrigin: 0, afterEnd: 0, unknownName: 0 } } as never,
   roster: [
     { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
     { xuid: 'E', filmIndex: 1, name: 'Echo', team: 1 },

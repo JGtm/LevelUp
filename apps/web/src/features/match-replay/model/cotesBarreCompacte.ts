@@ -8,7 +8,7 @@
  * (repères, rail, bande de dominance, curseur) y ont chacune leur ligne — le centre du curseur
  * tombe sur celui du rail.
  *
- * Le bouton « Plan tourné » (`planTourne*`) vient de la maquette H (classe `.sel.on`) : capsule de 30 px, marge
+ * Le bouton « Plan tourné » (`planTourne*`, classe `.sel.on`) : capsule de 30 px, marge
  * intérieure de 10 px, rayon de 8 px, icône de 14 px, bordure d'1 px à moitié de la couleur de suivi.
  *
  * Toutes s'appliquent en `style` ou par une variable CSS (`friseVars`) : une classe Tailwind

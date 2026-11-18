@@ -207,6 +207,20 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
   })
 
+  it('le Standard étroit (sous la place de la cellule du score) : le score est sur la toile, l’en-tête tient sur une ligne', async () => {
+    const { container } = await mount(match(4), LARGEUR_REQUISE_ENTETE_SCORE_PX - 1)
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['scene'])
+    expect(container.querySelector('section')?.contains(bandeaux(container)[0])).toBe(true)
+    const entete = container.querySelector('[data-replay-header="standard"]') as HTMLElement
+    expect(entete).not.toBeNull()
+    expect(entete.querySelector('[data-replay-header-cell="centre"]')).toBeNull()
+    expect(entete.querySelector('[data-replay-header-cell="gauche"]')).not.toBeNull()
+    expect(entete.querySelector('[data-replay-header-cell="droite"]')).not.toBeNull()
+    redimensionner(LARGEUR_REQUISE_ENTETE_SCORE_PX)
+    expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
+    expect(container.querySelector('[data-replay-header="standard"] [data-replay-header-cell="centre"]')).not.toBeNull()
+  })
+
   it('chacun pour soi (un seul camp) : le repli, même sur un corps très large', async () => {
     const { container } = await mount(match(8, 1), 4000)
     goToFrame('cinema')

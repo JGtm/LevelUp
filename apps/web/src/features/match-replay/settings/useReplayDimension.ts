@@ -12,7 +12,7 @@
  * constante change, ou la lecture passe par `useDeploymentCapability`.
  *
  * Ce hook ne porte AUCUNE logique de vue 3D : il tient le choix (`value`, 2D au départ) que le segment montre
- * et que le lot 3D lira pour poser son contenu à la place de la toile.
+ * et que la vue 3D lira pour poser son contenu à la place de la toile.
  */
 import { useState } from 'react'
 

@@ -1,5 +1,5 @@
 /**
- * rowLayout — LES ÉQUIPES SE RANGENT-ELLES EN RANGÉE, ET LAQUELLE ? (règle D-12, pure).
+ * rowLayout — LES ÉQUIPES SE RANGENT-ELLES EN RANGÉE, ET LAQUELLE ? (règle pure).
  *
  * La rangée affiche `[fiches du camp A] [score] [fiches du camp B]`. Elle n'est retenue que si le
  * match a exactement deux camps et si la largeur du corps loge les fiches à leur largeur minimale, les
@@ -117,18 +117,18 @@ export function dispositionEquipes(entree: RowFitInput): DispositionEquipes {
 }
 
 /**
- * emplacementScoreDe dit où le bandeau de score est posé. Le Standard le porte dans son en-tête. Au Cinéma et au
- * Plein cadre, il est au centre de la rangée quand elle est posée ; quand les équipes sont dans la colonne il est
- * dans l'EN-TÊTE (cellule de 440 px), sauf si le corps est trop étroit pour la loger (`LARGEUR_REQUISE_ENTETE_SCORE_PX`) :
- * il coiffe alors la toile. Une largeur nulle est une largeur pas encore mesurée : l'en-tête est présumé assez large.
+ * emplacementScoreDe dit où le bandeau de score est posé, UNE SEULE RÈGLE DE LARGEUR POUR LES TROIS CADRES. Au
+ * Cinéma et au Plein cadre, il est au centre de la rangée quand elle est posée. Sinon (équipes dans la colonne,
+ * et toujours au Standard) il est dans l'EN-TÊTE (cellule de 440 px), sauf si le corps est trop étroit pour la
+ * loger (`LARGEUR_REQUISE_ENTETE_SCORE_PX`) : il coiffe alors la toile. Une largeur nulle est une largeur pas
+ * encore mesurée : l'en-tête est présumé assez large.
  */
 export function emplacementScoreDe(
   frame: ReplayFrame,
   disposition: DispositionEquipes,
   largeurCorps: number,
 ): EmplacementScore {
-  if (frame === 'standard') return 'entete'
-  if (disposition !== 'colonne') return 'rangee'
+  if (canPlaceCardRow(frame) && disposition !== 'colonne') return 'rangee'
   return largeurCorps > 0 && largeurCorps < LARGEUR_REQUISE_ENTETE_SCORE_PX ? 'scene' : 'entete'
 }
 

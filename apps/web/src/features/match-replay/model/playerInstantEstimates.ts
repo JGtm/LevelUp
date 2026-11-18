@@ -93,7 +93,8 @@ export interface WeaponEstimate {
 
 /**
  * Les tirs et les dégâts d'un joueur à lecture suffisante, jusqu'à l'image. Tout est estimé (`estimated`).
- * Les totaux sont les sommes de `byWeapon` : une arme non résolue y figure sous `weapon: null`.
+ * Les totaux sont les sommes de `byWeapon` : une arme non résolue y figure sous `weapon: null`. Les tirs
+ * estimés par arme sont répartis au plus grand reste : ils somment à `firedEstimated`.
  */
 export interface PlayerShotEstimates {
   /** Toujours vrai : ces valeurs sont des estimations, le rendu l'écrit. */
@@ -104,7 +105,10 @@ export interface PlayerShotEstimates {
   firedEstimated: number
   /** Touches estimées (une par tireur, unité touchée et image). */
   hit: number
-  /** `hit / firedEstimated`, entre 0 et un peu plus de 1 (une touche d'arme à zone n'est pas un tir). `null` quand aucun tir estimé. */
+  /**
+   * `hit / firedEstimated`, entre 0 et 1. `null` quand aucun tir n'est estimé, et quand les touches dépassent les
+   * tirs estimés (une touche d'arme à zone n'est pas un tir : la précision n'est pas établie, jamais au-dessus de 100 %).
+   */
   accuracy: number | null
   /** Points de dégât infligés aux autres joueurs et aux bots, hors soi-même (au dixième près). */
   damageDealt: number
@@ -372,6 +376,31 @@ function tenthsAt(steps: readonly TenthsStep[], frame: number): number {
   return i >= 0 ? steps[i].v : 0
 }
 
+/** Deux parties fractionnaires plus proches que cela sont égales (le bruit des flottants ne décide pas d'un rang). */
+const FRACTION_EPSILON = 1e-9
+
+/**
+ * apportionEstimates répartit `total` entre les armes au plus grand reste : chaque arme reçoit la partie entière
+ * de ses tirs écrits au rapport `scale`, puis le reste va une unité à la fois aux plus grandes parties
+ * fractionnaires. À égalité, l'arme vue la première par le film passe devant (ordre stable). Les parts
+ * somment à `total`.
+ */
+function apportionEstimates(fired: readonly number[], scale: number, total: number): number[] {
+  const quotas = fired.map((f) => f * scale)
+  const shares = quotas.map((q) => Math.floor(q + FRACTION_EPSILON))
+  let remainder = total - shares.reduce((n, v) => n + v, 0)
+  const byRest = fired
+    .map((f, i) => ({ i, f, rest: quotas[i] - shares[i] }))
+    .filter((e) => e.f > 0)
+    .sort((a, b) => (Math.abs(a.rest - b.rest) < FRACTION_EPSILON ? a.i - b.i : b.rest - a.rest))
+  for (const e of byRest) {
+    if (remainder <= 0) break
+    shares[e.i]++
+    remainder--
+  }
+  return shares
+}
+
 /** Tri des armes : tirs décroissants, dégâts décroissants, clé croissante, arme non résolue en dernier. */
 function byWeaponOrder(a: WeaponEstimate, b: WeaponEstimate): number {
   if (a.fired !== b.fired) return b.fired - a.fired
@@ -390,18 +419,21 @@ function shotsAt(s: ShotSeries, frame: number): PlayerShotEstimates {
     const f = countUpTo(w.fired, frame)
     const d = tenthsAt(w.damage, frame)
     if (f === 0 && d === 0) continue
-    byWeapon.push({ weapon, fired: f, firedEstimated: Math.round(f * s.scale), damage: d / 10 })
+    byWeapon.push({ weapon, fired: f, firedEstimated: 0, damage: d / 10 })
     fired += f
     dealtTenths += d
   }
   const hit = countUpTo(s.hit, frame)
   const firedEstimated = Math.round(fired * s.scale)
+  apportionEstimates(byWeapon.map((w) => w.fired), s.scale, firedEstimated).forEach((n, i) => {
+    byWeapon[i] = { ...byWeapon[i], firedEstimated: n }
+  })
   return {
     estimated: true,
     fired,
     firedEstimated,
     hit,
-    accuracy: firedEstimated > 0 ? hit / firedEstimated : null,
+    accuracy: firedEstimated > 0 && hit <= firedEstimated ? hit / firedEstimated : null,
     damageDealt: dealtTenths / 10,
     damageTaken: tenthsAt(s.taken, frame) / 10,
     byWeapon: byWeapon.sort(byWeaponOrder),

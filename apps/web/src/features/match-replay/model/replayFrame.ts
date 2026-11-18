@@ -93,7 +93,7 @@ export function reduceReplayFrame(
 
 /**
  * Ce cadre montre-t-il la navigation de l'application (en-tête, fil d'Ariane, languettes) ?
- * Seul le Plein cadre la recouvre (D-1).
+ * Seul le Plein cadre la recouvre.
  */
 export function showsAppNavigation(frame: ReplayFrame): boolean {
   return frame !== 'plein-cadre'
@@ -101,7 +101,7 @@ export function showsAppNavigation(frame: ReplayFrame): boolean {
 
 /**
  * Ce cadre utilise-t-il la barre de lecture d'une ligne ? Le Standard garde la zone de lecture
- * d'aujourd'hui ; le Cinéma et le Plein cadre prennent la barre compacte (D-2).
+ * d'aujourd'hui ; le Cinéma et le Plein cadre prennent la barre compacte.
  */
 export function usesCompactBar(frame: ReplayFrame): boolean {
   return frame !== 'standard'
@@ -109,8 +109,8 @@ export function usesCompactBar(frame: ReplayFrame): boolean {
 
 /**
  * Ce cadre peut-il poser la rangée de fiches (un camp, le score, l'autre camp) au-dessus du plan ?
- * Le Cinéma et le Plein cadre, qui partagent la structure D-2 ; le Standard a sa colonne
- * d'équipes. Que la rangée TIENNE (deux camps, places, largeur) est une autre question, D-12.
+ * Le Cinéma et le Plein cadre, qui partagent la barre compacte ; le Standard a sa colonne
+ * d'équipes. Que la rangée TIENNE (deux camps, places, largeur) est une autre question (`rowLayout`).
  */
 export function canPlaceCardRow(frame: ReplayFrame): boolean {
   return frame !== 'standard'

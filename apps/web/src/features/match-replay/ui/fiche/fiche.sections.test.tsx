@@ -221,7 +221,7 @@ describe('FicheTirs', () => {
     ])
   })
 
-  it('aucun tir estimé : pas de ligne de précision, les dégâts demeurent', () => {
+  it('précision non établie (aucun tir estimé, ou plus de touches que de tirs) : pas de ligne de précision, les dégâts demeurent', () => {
     const { container } = render(<FicheTirs shots={{ ...SHOTS, accuracy: null, damageDealt: 0, damageTaken: 0, weapons: [] }} locale="fr" />)
     expect(lignes(container)).toEqual([['Dégâts infligés / subis', '0 / 0']])
   })

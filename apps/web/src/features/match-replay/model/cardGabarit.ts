@@ -14,7 +14,7 @@
  * `GABARIT_NORMAL` porte les cotes d'une fiche à corps de 35 : le triplet à score du panneau du
  * joueur (`ReplayPlayerPanelBody`) et l'encadré « Éliminé » du bloc « À l'instant »
  * (`ReplayPlayerNow`). `GABARIT_COMPACT` porte les cotes de la tuile de la rangée des équipes
- * (maquette A2, tuile 115 × 62, corps de 31).
+ * (tuile 115 × 62, corps de 31).
  *
  * TROIS COTES RESTENT DES CLASSES, PAS DES NOMBRES APPLIQUÉS EN STYLE : la hauteur du corps
  * (`h-[31px]`), la taille du nom (`text-[11.5px]`) et la typographie du triplet
@@ -218,7 +218,7 @@ export interface LigneGabarit {
   layerRadius: string
 }
 
-/** La ligne du tableau A (Standard) : 34 px, grille 22 / 24 / 14 / 54, jauges de 130 px. */
+/** La ligne du Standard : 34 px, grille 22 / 24 / 14 / 54, jauges de 130 px. */
 export const GABARIT_LIGNE: LigneGabarit = Object.freeze({
   rowPx: 34,
   headPx: 16,
@@ -258,7 +258,7 @@ export const GABARIT_LIGNE: LigneGabarit = Object.freeze({
 /**
  * LES COTES DU DÉPLI de la ligne du joueur suivi (`ui/ReplayRosterRowDetail.tsx`) : deux colonnes
  * de rangées (arme en main et arme en réserve, grenades, équipement), écart vertical puis
- * horizontal, marges haute et basse. Reprend le bloc de détail du tableau H.
+ * horizontal, marges haute et basse. Reprend le bloc de détail de la ligne.
  */
 export const COTES_DEPLI_LIGNE = Object.freeze({
   colonnes: 2,
@@ -323,7 +323,7 @@ export interface FicheCompacteGabarit {
   pairRowGapPx: number
 }
 
-/** La fiche compacte du tableau N : 34 px sur deux lignes, 24 px sur une ligne, pastille de 6 px, jauges de 3 px. */
+/** La fiche compacte : 34 px sur deux lignes, 24 px sur une ligne, pastille de 6 px, jauges de 3 px. */
 export const GABARIT_FICHE_COMPACTE: FicheCompacteGabarit = Object.freeze({
   stackedPx: 34,
   linePx: 24,

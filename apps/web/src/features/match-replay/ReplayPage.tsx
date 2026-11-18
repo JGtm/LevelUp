@@ -25,6 +25,7 @@ import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { buildMapBackgroundLayer } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
 import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
+import { useFullWidthPage } from '@/components/shell/useFullWidthPage'
 import { useCardRowLayout } from '@/features/match-replay/hooks/useCardRowLayout'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
@@ -215,8 +216,10 @@ export function ReplayPage() {
         }
       : null
   const frame = frameControl.frame
+  // Le Cinéma est dessiné sur toute la fenêtre : la coquille ne borne pas son corps à 1320 px.
+  useFullWidthPage(frame === 'cinema')
   const rowLayout = useCardRowLayout(frame, view)
-  const zones = frame === 'standard' ? standardFrameZones(chrome, view) : cinemaFrameZones(frame, chrome, view, rowLayout)
+  const zones = frame === 'standard' ? standardFrameZones(chrome, view, rowLayout) : cinemaFrameZones(frame, chrome, view, rowLayout)
   return (
     <ReplayFrameLayout
       frame={frame}

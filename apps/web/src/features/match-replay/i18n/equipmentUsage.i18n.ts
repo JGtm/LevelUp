@@ -35,16 +35,16 @@ export interface EquipmentUsageText {
   /** En-tête de la colonne des tractions de grappin (la seule ACTIVATION de capacité attribuée). */
   groupGrapple: string
   /**
-   * LES TROIS ISSUES D'UNE PILE (P1), formatées pour l'infobulle d'UN segment — pas pour un
+   * LES TROIS ISSUES D'UNE PILE, formatées pour l'infobulle d'UN segment — pas pour un
    * en-tête de colonne (celui-ci reste `equipmentFamilyLabel`). Le total de la cellule
-   * s'écrit « N objets pris », JAMAIS « ramassés » (P12) : `outcomeTotalTakenFmt`.
+   * s'écrit « N objets pris », JAMAIS « ramassés » : `outcomeTotalTakenFmt`.
    */
   outcomeUsedFmt: (count: number) => string
   outcomeKeptFmt: (count: number) => string
   outcomeDroppedFmt: (count: number) => string
   outcomeTotalTakenFmt: (count: number) => string
   /**
-   * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
+   * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
    * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
    * `match-view/i18n`) pour la même raison que le reste du vocabulaire d'équipement : les

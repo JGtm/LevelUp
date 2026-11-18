@@ -212,8 +212,8 @@ export interface DatedEquipmentChange {
  * ce même résultat.
  *
  * Une prise dont la table ou la famille manque (artefact ancien) rejoint la réserve — repli
- * EXPLICITE (lot 5.7), jamais une famille devinée par une racine de libellé. Une prise labellisée
- * mais hors bilan (grappin, propulseur, répulseur) est une exclusion PRODUIT (P4) : elle se tait.
+ * EXPLICITE, jamais une famille devinée par une racine de libellé. Une prise labellisée
+ * mais hors bilan (grappin, propulseur, répulseur) est une exclusion PRODUIT : elle se tait.
  * Une consommation sur chaîne de compteur trouée (`gap`) n'est pas une identité fiable (même garde
  * que le Go, `Gap > 0` — `SpentUnreliableFrom`) ; son rang est sur `from`, jamais sur `r` (vide sur
  * un `spent`) ; celle du mur se lit sur SES poses, jamais ici (cf. `usageUsedOf`).
@@ -259,7 +259,7 @@ export function applyEquipmentChange(
 }
 
 /**
- * keptOf — LE GARDÉ d'une famille : `max(0, pris - utilisé - lâché)`. L'écart résiduel mesuré par E0.4
+ * keptOf — LE GARDÉ d'une famille : `max(0, pris - utilisé - lâché)`. L'écart résiduel mesuré
  * (2,45 % toutes familles, médiane 0,00 %) est absorbé par le clamp à zéro plutôt qu'affiché comme un
  * gardé négatif. Seule écriture de cette règle : le total du match et la lecture à l'instant la lisent.
  */
@@ -274,7 +274,7 @@ export function keptOf(taken: number, used: number, dropped: number): number {
  * `spent` sur le tally (canal EXPOSÉ, jumeau de `SpentByFamily` côté Go — la colonne « utilisé »
  * de la vue l'emploie aussi, via `usageUsedOf`), puis dérive
  * `tally.kept[famille] = keptOf(pris, usageUsedOf(famille), lâché)` une fois `episodes` /
- * `deployed` / `dropped` / `spent` déjà posés pour ce compteur (règle validée par E0.4).
+ * `deployed` / `dropped` / `spent` déjà posés pour ce compteur.
  *
  * Rend le compte des objets PRIS dont le rang n'a AUCUNE famille dans CE film.
  */

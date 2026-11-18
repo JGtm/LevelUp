@@ -1,6 +1,6 @@
 /**
  * ReplayStandardFrame — LE CONTENU DES ZONES DU CADRE STANDARD : l'en-tête en trois cellules (dont le
- * bandeau de score, qui ne coiffe plus le terrain) et la colonne des équipes et du fil. La scène et les avis
+ * bandeau de score, qui ne coiffe le terrain que si le corps est trop étroit pour la cellule) et la colonne des équipes et du fil. La scène et les avis
  * sont ceux de la page, communs aux trois cadres ; la zone `rangee` reste vide (la rangée de fiches
  * appartient au Cinéma et au Plein cadre) et rien ne se pose sous le lecteur.
  *
@@ -29,6 +29,7 @@ import { ReplayPlayerPanel } from '../ReplayPlayerPanel'
 import { ReplayPlayerPicker } from '../ReplayPlayerPicker'
 import { ReplayRosterColumn } from '../ReplayRosterColumn'
 import { ReplayScoreBanner } from '../ReplayScoreBanner'
+import type { CardRowLayout } from '../../hooks/useCardRowLayout'
 import { ReplayFrameHeader } from './ReplayFrameHeader'
 import type { ReplayFrameChrome, ReplayFrameView, ReplayFrameZoneContent } from './replayFrameTypes'
 
@@ -132,10 +133,25 @@ function standardScore(view: ReplayFrameView | null) {
   )
 }
 
-export function standardFrameZones(chrome: ReplayFrameChrome, view: ReplayFrameView | null): ReplayFrameZoneContent {
+/**
+ * Les zones du Standard. Le corps est mesuré comme celui du Cinéma (`bodyRef`) : sous la place de la cellule du
+ * score (`emplacementScoreDe`), le score coiffe la toile et l'en-tête tient sur une ligne, sans cellule de score.
+ */
+export function standardFrameZones(
+  chrome: ReplayFrameChrome,
+  view: ReplayFrameView | null,
+  row: CardRowLayout,
+): ReplayFrameZoneContent {
   return {
-    tete: <ReplayFrameHeader frame="standard" chrome={chrome} score={standardScore(view)} />,
+    tete: (
+      <ReplayFrameHeader
+        frame="standard"
+        chrome={chrome}
+        score={row.scorePlacement === 'entete' ? standardScore(view) : undefined}
+      />
+    ),
     rangee: null,
     colonne: view && standardColumn(view),
+    bodyRef: row.bodyRef,
   }
 }

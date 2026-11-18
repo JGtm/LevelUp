@@ -8,7 +8,7 @@
  * naît avec la page, il est tenu par elle.
  *
  * TROIS ACTIONS. Suivre cadre la carte sur le joueur à chaque image, Seul n'affiche que lui,
- * Masquer le retire. Exclusions (D-7) : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe
+ * Masquer le retire. Exclusions : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe
  * Seul ET Suivre de ce même joueur.
  *
  * SEUL ET MASQUER tiennent à la fiche : ils ne valent que pour son joueur, ne se basculent que
@@ -85,14 +85,14 @@ export function reducePlayerPanel(state: PlayerPanelState, event: PlayerPanelEve
   }
 }
 
-/** Suivre un joueur (ou personne) ; suivre le joueur masqué lève son masquage (D-7). */
+/** Suivre un joueur (ou personne) ; suivre le joueur masqué lève son masquage. */
 function followPlayer(state: PlayerPanelState, xuid: string | null): PlayerPanelState {
   if (state.followXuid === xuid) return state
   const unhide = xuid !== null && state.hide && state.xuid === xuid
   return { ...state, followXuid: xuid, hide: unhide ? false : state.hide }
 }
 
-/** Bascule une action de la fiche ouverte en appliquant les exclusions de D-7. */
+/** Bascule une action de la fiche ouverte en appliquant les exclusions (Seul coupe Masquer, Suivre coupe Masquer, Masquer coupe Seul et Suivre). */
 function toggleAction(state: PlayerPanelState, action: PlayerPanelAction): PlayerPanelState {
   if (action === 'follow') return followPlayer(state, state.followXuid === state.xuid ? null : state.xuid)
   if (state[action]) return { ...state, [action]: false }

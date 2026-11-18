@@ -245,6 +245,57 @@ describe('ReplayPage : les icônes « Cadre du lecteur » de la barre de lecture
   })
 })
 
+describe('ReplayPage : la pleine largeur de la coquille suit le Cinéma', () => {
+  const NEXT_API = '/api/v1/players/jgtm/matches/match-2/replay'
+  const pleineLargeur = () => useAppShellStore.getState().fullWidthPage
+
+  afterEach(() => act(() => useAppShellStore.setState({ fullWidthPage: false })))
+
+  it('posée au Cinéma seulement : retirée au Standard et au Plein cadre, jamais posée avant', async () => {
+    await mountReplayPage()
+    expect(pleineLargeur()).toBe(false)
+    goToFrame('cinema')
+    expect(pleineLargeur()).toBe(true)
+    goToFrame('plein-cadre')
+    expect(pleineLargeur()).toBe(false)
+    goToFrame('cinema')
+    expect(pleineLargeur()).toBe(true)
+    goToFrame('standard')
+    expect(pleineLargeur()).toBe(false)
+  })
+
+  it('retirée au démontage de la page', async () => {
+    const { unmount } = await mountReplayPage()
+    goToFrame('cinema')
+    expect(pleineLargeur()).toBe(true)
+    unmount()
+    expect(pleineLargeur()).toBe(false)
+  })
+
+  it('retirée au changement de match (retour au Standard)', async () => {
+    serveDoc(smallDoc())
+    server.use(
+      http.get(`${REPLAY_API}/context`, () => HttpResponse.json(MATCH_CONTEXT)),
+      http.get(NEXT_API, () => HttpResponse.json(smallDoc())),
+      http.get(`${NEXT_API}/context`, () => HttpResponse.json(MATCH_CONTEXT)),
+    )
+    const client = createTestQueryClient()
+    const tree = () => (
+      <QueryClientProvider client={client}>
+        <ReplayPage />
+      </QueryClientProvider>
+    )
+    const view = render(tree())
+    await waitFor(() => expect(view.container.querySelector('canvas')).not.toBeNull())
+    goToFrame('cinema')
+    expect(pleineLargeur()).toBe(true)
+    ROUTE.matchId = 'match-2'
+    view.rerender(tree())
+    expect(currentFrame(view.container)).toBe('standard')
+    expect(pleineLargeur()).toBe(false)
+  })
+})
+
 describe('ReplayPage : un cadre sans toile est toujours le Standard', () => {
   const NEXT_API = '/api/v1/players/jgtm/matches/match-2/replay'
 

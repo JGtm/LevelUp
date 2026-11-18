@@ -5,8 +5,8 @@
  *
  * Ce que la scène contient, dans l'ordre : l'avis « instant non calé » (le lien tactique demandait un
  * instant que ce rejeu ne peut pas caler : il s'ouvre au début, jamais sur un saut approximatif), le
- * bandeau de score quand le cadre le pose ici (`scorePlacement` ; le Standard le porte dans son
- * en-tête et passe `null`), puis la toile et ses surcouches.
+ * bandeau de score quand le cadre le pose ici (`scorePlacement`, sur n'importe quel cadre dont
+ * le corps est trop étroit pour la cellule de l'en-tête ; sinon `null`), puis la toile et ses surcouches.
  *
  * LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR : l'écran de fin, le message
  * inter-manche et le compte à rebours de la bombe descendent dans le conteneur de la toile (`mapOverlays`),

@@ -1,6 +1,5 @@
 /**
- * Tests — la fiche du joueur prend la place de la colonne du Standard SANS détruire le fil (lot 4 du plan
- * « maquettes du rejeu »).
+ * Tests — la fiche du joueur prend la place de la colonne du Standard SANS détruire le fil.
  *
  * Ce qu'ils protègent :
  *  1. LE FIL RESTE MONTÉ : ouvrir puis fermer la fiche ne remonte ni la liste ni le menu — le DOM
@@ -9,7 +8,7 @@
  *     gardée, hors focus et hors lecture d'écran) et `aria-hidden`.
  *  3. LA FICHE RECOUVRE TOUTE LA COLONNE (`above`) : les équipes, comme le fil, restent montées (mêmes nœuds,
  *     défilement gardé), masquées et cachées aux lecteurs d'écran ; la fiche se place contre la colonne.
- *  4. LA MISE EN VALEUR D'UNE ÉLIMINATION (lot 2) ET LA FICHE COEXISTENT : ouvrir la fiche ne l'efface pas (elle
+ *  4. LA MISE EN VALEUR D'UNE ÉLIMINATION ET LA FICHE COEXISTENT : ouvrir la fiche ne l'efface pas (elle
  *     reste sur la carte), et la ligne choisie est retrouvée au retour.
  *  5. SANS `above` (Cinéma, Plein cadre), la cellule ne porte que le fil.
  */

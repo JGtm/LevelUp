@@ -83,30 +83,39 @@ function BackButton({ chrome }: { chrome: ReplayFrameChrome }) {
 /**
  * L'en-tête du Standard, en trois cellules de page bornée : à gauche le retour et le titre du match, au
  * centre le bandeau de score (`score`, que le cadre construit ; la cellule garde sa place quand il ne
- * rend rien), à droite le badge de schéma de l'administrateur et le lien vers la fiche.
+ * rend rien), à droite le badge de schéma de l'administrateur et le lien vers la fiche. `score` absent
+ * (`undefined`) : le corps est trop étroit pour la cellule, l'en-tête tient sur une ligne (retour, titre,
+ * actions) et le score est sur la toile.
  */
-function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode }) {
+function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: ReactNode | undefined }) {
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const { doc, params, locale } = chrome
   const t = REPLAY_TEXT[locale]
   return (
     <div className={STANDARD_PAGE_CLASS} style={STANDARD_PAGE_STYLE} data-replay-header="standard">
       <div
-        className="grid items-center"
+        className={score === undefined ? 'flex items-center' : 'grid items-center'}
         style={{
           height: COTES_PAGE_STANDARD.enteteHauteurPx,
           columnGap: COTES_PAGE_STANDARD.enteteEcartPx,
-          gridTemplateColumns: `minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)`,
+          ...(score === undefined
+            ? null
+            : { gridTemplateColumns: `minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)` }),
         }}
       >
         <div className="flex min-w-0 items-center gap-3" data-replay-header-cell="gauche">
           <BackButton chrome={chrome} />
           <MatchTitle chrome={chrome} />
         </div>
-        <div className="min-w-0" data-replay-header-cell="centre">
-          {score}
-        </div>
-        <div className="flex min-w-0 items-center justify-end gap-2" data-replay-header-cell="droite">
+        {score !== undefined && (
+          <div className="min-w-0" data-replay-header-cell="centre">
+            {score}
+          </div>
+        )}
+        <div
+          className={`flex min-w-0 items-center justify-end gap-2${score === undefined ? ' ml-auto shrink-0' : ''}`}
+          data-replay-header-cell="droite"
+        >
           {/* Rien pour un joueur ordinaire : le badge se gate lui-même sur `isAdmin`. Le document peut
               être absent (chargement, 404) : le badge n'a alors rien à lire. */}
           {doc && (
@@ -212,13 +221,13 @@ interface ReplayFrameHeaderProps {
   frame: ReplayFrame
   chrome: ReplayFrameChrome
   /**
-   * Le bandeau de score de la cellule centrale. Le Standard la porte toujours (`null` : la cellule garde sa
-   * place) ; le Cinéma et le Plein cadre ne passent à trois cellules que si `score` est donné (`undefined` : l'en-tête d'une ligne).
+   * Le bandeau de score de la cellule centrale (`null` : la cellule garde sa place, sans bandeau). Les trois cadres
+   * suivent la même règle : `undefined` = l'en-tête d'une ligne, le score est ailleurs (sur la toile, ou dans la rangée).
    */
   score?: ReactNode
 }
 
 export function ReplayFrameHeader({ frame, chrome, score }: ReplayFrameHeaderProps) {
   if (!showsAppNavigation(frame)) return <FullFrameBar chrome={chrome} score={score} />
-  return frame === 'standard' ? <StandardHeader chrome={chrome} score={score ?? null} /> : <CinemaHeader chrome={chrome} score={score} />
+  return frame === 'standard' ? <StandardHeader chrome={chrome} score={score} /> : <CinemaHeader chrome={chrome} score={score} />
 }

@@ -9,7 +9,7 @@ import { COTES_FICHE_OUVERTE } from '../model/cotesFenetreFiche'
 import { PRESS_GUARDS } from './replayPressGuards'
 
 /**
- * LA FICHE EN BOUTON (panneau de joueur, lot 4) : ce que la page donne à une fiche pour qu'un clic
+ * LA FICHE EN BOUTON (panneau de joueur) : ce que la page donne à une fiche pour qu'un clic
  * ouvre le panneau du joueur. `selected` = son panneau est ouvert (`aria-pressed`), `label` = son
  * nom accessible. SANS `press`, la tuile reste une boîte inerte, nœud pour nœud : les attributs
  * de bouton ne s'ajoutent que quand la page le demande.

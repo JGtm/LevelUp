@@ -4,7 +4,9 @@
  * le film écrit, ramenés au bilan de tirs du joueur.
  *
  * La section n'existe que pour un joueur dont la lecture des tirs est suffisante ; sinon la fiche ne l'écrit pas. La
- * précision n'a de ligne que lorsqu'un tir est estimé, une arme sans nom connu n'a pas de ligne. Le rendu ne lit rien.
+ * précision n'a de ligne que lorsqu'un tir est estimé ET que les touches n'en dépassent pas le nombre : sinon elle
+ * n'est pas établie (une touche d'arme à zone n'est pas un tir) et la ligne manque, jamais un pour-cent au-dessus
+ * de 100. Une arme sans nom connu n'a pas de ligne. Le rendu ne lit rien.
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../../i18n/i18n'
 import { formatCount, formatPercent } from '../../model/ficheFormat'

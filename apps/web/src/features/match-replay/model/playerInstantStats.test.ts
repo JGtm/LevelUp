@@ -54,9 +54,13 @@ const A_SCORE = {
   assists: series([60, 1], [420, 3]),
 }
 
+/** Le calque des médailles est déclaré (la cuisson l'a lu) : `coverage.medals` est présent, même à zéro. */
+const MEDALS_DECLARED = { medals: { decoded: 0, published: 0, noOrigin: 0, beforeOrigin: 0, afterEnd: 0, unknownName: 0 } } as never
+
 const DOC = testReplayDoc({
   frameIntervalMs: STEP_MS,
   frameCount: 600,
+  coverage: MEDALS_DECLARED,
   roster: [
     { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
     { xuid: 'B', filmIndex: 1, name: 'Bravo', team: 1 },
@@ -241,9 +245,23 @@ describe('playerInstantStats — médailles et éliminations parfaites', () => {
     expect(lire(A, 71).medals?.map((m) => m.name)).toEqual([PERFECT_MEDAL_NAME, PERFECT_MEDAL_NAME, 'Double Kill'])
   })
 
-  it('sans feed, les médailles ne s’établissent pas ; un document sans médaille donne une liste vide', () => {
+  it('sans feed, les médailles ne s’établissent pas', () => {
     expect([lire(A, 90, { feed: null }).perfects, lire(A, 90, { feed: null }).medals]).toEqual([null, null])
+  })
+
+  it('calque des médailles déclaré et vide : liste vide et zéro mesuré', () => {
     expect(lire(B, 10, { feed: [killEntry(killOf(1_000, 'B'))] })).toMatchObject({ perfects: 0, medals: [] })
+  })
+
+  it('calque des médailles non déclaré : absentes, jamais à zéro, même pour un humain', () => {
+    const sansCalque = testReplayDoc({ frameIntervalMs: STEP_MS, frameCount: 600 })
+    const feed = [killEntry(killOf(1_000, 'B'))]
+    expect(sansCalque.coverage?.medals).toBeUndefined()
+    const s = lire(B, 10, { doc: sansCalque, feed })
+    expect([s.perfects, s.medals]).toEqual([null, null])
+    // Un document sans couverture du tout (artefact ancien) ne déclare rien non plus.
+    const s2 = lire(A, 90, { doc: sansCalque })
+    expect([s2.perfects, s2.medals]).toEqual([null, null])
   })
 })
 
