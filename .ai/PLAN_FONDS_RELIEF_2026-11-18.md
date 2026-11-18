@@ -414,7 +414,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       et `resolveBackgroundVariant` qui retombe sur le Plan sans relief), dessin dans `mapBackgroundDraw.ts`,
       couche des traits dans `useReplayStaticLayers.ts`, commande d'étage conforme à D.1, état sans maillage
       (D-7). La coupe passe aussi au Plan et au Rendu (D-2).
-- [ ] D.4 Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
+- [x] D.4 (fait le 2026-11-18, `5943d1d9d7`, intégré à `feat/fonds-relief` : pilules Fond, Traits et Étage dans la Tactique et l'Occupation, zones nommées filtrées par étage, mention de légende des autres calques, positions hors étage masquées avec leur compte, repli sur le Plan ; 5 131 tests ciblés relancés par le pilote. Écart accepté : l'Occupation a ses propres commandes mais partage la préférence de fond du rejeu et de la Tactique, comme la maquette. Doublons de logique avec le rejeu et deux exceptions datées de la frontière des features : item D.8.) Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
       positions filtrées par étage sur `MatchPositionDTO.z`. Tactique : calques filtrés selon la liste de 0.1,
       mention dans la légende des autres.
 - [~] D.7 (couvert par D.5 et D.7 réunis, ci-dessus, `d98ebe857f`) Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
@@ -422,6 +422,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
       `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
       les quatre visions, par palette et par thème.
+- [ ] D.8 (ajouté le 2026-11-18 par le pilote, relevé de D.4) Une seule logique du relief pour les trois vues : `useReplayRelief` délègue à `lib/replay/useReliefView` ; `useReliefLines`, `useScopedCut`, `linesInkOf` et la logique des pastilles vivent une fois dans `lib/` ; les deux exceptions datées de `tools/lint-cross-feature-imports.mjs` (tactical et match-view vers `useReliefLines`) sont retirées ; commentaire périmé de `useMapViewPreferences.ts` corrigé. Témoins du rejeu inchangés.
 - [x] D.6 (fait le 2026-11-18, `a3de73967e`, intégré à `feat/fonds-relief` : interrupteur sous le curseur, coupe sur l'étage du sol porteur à chaque image, délai de 300 ms en temps du rejeu (même comportement à toute vitesse, rien ne bouge en pause), mort et saut de lecture gérés, choix manuel qui coupe le suivi, aucun joueur masqué ; 3 020 tests ciblés relancés par le pilote. Limites notées : à l'export vidéo la coupe peut avoir une image de retard ; un rejeu ancien sans hauteur garde l'étage bas.) Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
 - [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
