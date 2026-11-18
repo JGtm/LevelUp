@@ -82,6 +82,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/i18n\/fieldMappings\.test\.ts$/, // le test du hook
   /\/test\/handlers\.ts$/,                  // fixtures MSW (mocks API, pas un libellé UI)
   /\/features\/squad\/emprise\/emprise\.fixtures\.ts$/, // 2026-09-27 : soirée témoin du 22/09 (noms de cartes = données), importée par les seuls *.test.*
+  /\/features\/match-replay\/test\/instantFixture\.ts$/, // 2026-11-18 : document de rejeu fabriqué pour les tests de la fiche du joueur (rareté de médaille = donnée d'API), importé par les seuls *.test.*
   /\/lib\/api\/types\.ts$/,                 // types TS purs (commentaires explicatifs)
   /\/lib\/api\/generated\.ts$/,             // types generes par openapi-typescript (enums du contrat OpenAPI)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
