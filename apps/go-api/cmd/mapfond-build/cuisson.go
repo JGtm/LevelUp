@@ -165,6 +165,11 @@ func (e *environnement) ciblesNatives() []cible {
 // publie écrit le PNG et son sidecar de calage.
 func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu, b himap.BilanCuisson) bilanAsset {
 	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b}
+	if err := e.verifieLeMaillageAvantPublication(ctx, c.cle, c.maillage); err != nil {
+		ba.Err = err
+		slog.ErrorContext(ctx, "mapfond: carte non publiee", "err", err, "carte", c.cle)
+		return ba
+	}
 	img := himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, e.styleDe(c.cle))
 	// LE CADRE PUBLIÉ EST CELUI DE LA MATIÈRE, pas celui de la grille : la coquille de mort a
 	// effacé hors frontière et personne ne recalculait le cadre après elle (cadre_utile.go).

@@ -99,7 +99,8 @@ func (s *replayService) MapBackgroundReliefDataForMap(ctx context.Context, mapID
 }
 
 // readReliefImage lit l'image du relief d'une clé de fond. Le sidecar doit être lisible : une image
-// sans calage ne se superpose à rien.
+// sans calage ne se superpose à rien. L'image ne se sert que si les données du même relief sont
+// servables (même contrôle que readReliefData) : un relief périmé est absent pour les deux routes.
 func (s *replayService) readReliefImage(ctx context.Context, key string) ([]byte, string, error) {
 	full, err := s.loadFullSidecar(ctx, key)
 	if err != nil {
@@ -107,6 +108,9 @@ func (s *replayService) readReliefImage(ctx context.Context, key string) ([]byte
 	}
 	if full.ReliefImage == "" {
 		return nil, "", port.ErrMapBackgroundNotAvailable
+	}
+	if _, err := s.readReliefDataOf(ctx, key, full); err != nil {
+		return nil, "", err
 	}
 	chemin, mime, err := s.imageFileNamed(ctx, key, full.ReliefImage)
 	if err != nil {
@@ -123,6 +127,11 @@ func (s *replayService) readReliefData(ctx context.Context, key string) ([]byte,
 	if err != nil {
 		return nil, err
 	}
+	return s.readReliefDataOf(ctx, key, full)
+}
+
+// readReliefDataOf lit et contrôle les données du relief que le sidecar `full` nomme.
+func (s *replayService) readReliefDataOf(ctx context.Context, key string, full *mapfondsidecar.MapBackground) ([]byte, error) {
 	if full.ReliefData == "" {
 		return nil, port.ErrMapBackgroundNotAvailable
 	}

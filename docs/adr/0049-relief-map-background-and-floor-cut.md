@@ -64,7 +64,10 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
   calibration do not change. A scale that differs from the published one by more than 1e-6 (relative) is an error of that
   map (`himap.ErrEchelleDifferente`) and nothing is written: sampling a fine grid into a coarse one would invent steps, hence
   false contour lines. A map without sidecar or background is left untouched. A complete baking redoes the relief in the
-  same gesture; when it cannot, it publishes the background without relief and removes the stale files. The need is
+  same gesture; when it cannot, it publishes the background without relief and removes the stale files. A map whose
+  published sidecar carries a wall plan but whose baking finds no mesh (blob absent or unreadable on the workstation) is
+  an error of that map, named, in both gestures: nothing is written for it and the exit code is not zero, so that a
+  relief "without mesh" is never published for a map that has one (D-9 is for the maps that have none). The need is
   measured: the rebake of Recharge on 2026-11-18 came out at 1605 x 1736 px where the published background is 1605 x 1771 px.
 - **D-6 — Files `<key>.relief.webp` and `<key>.relief.json.gz`.**
   - The image is lossless WebP, with the size and the calibration of the background. Per pixel: A is 0 (height unknown, R, G
@@ -79,7 +82,12 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
     coding and bounds, the floors (storeys, bounds of the slider, merge gap and tolerance, share taken from the mesh, mesh
     vertices in hundredths of a unit and the kept faces as triangles) and the lines (polylines in tenths of a pixel, the first
     point absolute and the others delta-encoded, the integer naming the pixel centre), and the degradations as closed codes
-    (`sans-maillage`, `hauteurs-ecretees`, `pile-tronquee`) that the client translates.
+    (`sans-maillage`, `hauteurs-ecretees`, `pile-tronquee`). The format is that of a public brick, which produces the
+    flag "floor taken from the mesh" and the three codes for any consumer: LevelUp reads only what it needs, the share
+    taken from the mesh (`floors.meshShare`) and the code `sans-maillage`; the flag in the image is validated, not read,
+    and the codes `hauteurs-ecretees` and `pile-tronquee` are decoded, not translated. A field of a public format that
+    LevelUp does not read is legitimate, by the same rule as the replay document of the film decoder (rule 18 of
+    `CLAUDE.md`).
   - **Not `.json`.** The decoder's background index (`replay.MapBackgroundIndexFor`) reads every file with the `.json`
     extension of the directory as a sidecar: a `<key>.relief.json` would register a phantom key `<key>.relief`. The extension
     of the data is `.json.gz`; the service decompresses (bounded at 32 MiB), checks the schema version and the calibration,
@@ -96,7 +104,8 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
   (natural terrain filled flat in the published background), the height comes from the mesh and the pixel carries the same
   flag. The Rendu is unchanged: it stays the raw image of the geometry, with its flat fill. The tooltip of the Relief
   background says the share of the zone taken from the mesh ("relief taken from the navigation mesh over 46 % of the
-  map"), which is the reader of the flag and of `floors.meshShare`.
+  map"). That share is the one the brick writes in `floors.meshShare`, and it is what the tooltip reads; the per-pixel
+  flag that the image carries for the same fact is not read by LevelUp (see D-6).
 - **D-9 — A map without a mesh keeps a Relief, without cut.** The kept zone is the footprint of the matter, the file carries
   no floor and the degradation `sans-maillage`; the client hides the storey control and shows an explanation block (dotted
   border). The two Thunderhead variants are in this case: no `navmesh.blob` is published for them (`mapnav-fetch` reports none,
@@ -135,7 +144,7 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
   per orientation. A map turned by 180 degrees and lit from the bottom right would invert to the eye.
 - **D-15 — A stale relief is an absent relief.** The data copy the calibration the relief was projected to. The service compares it
   to the sidecar, checks the schema version, and answers as for an absent relief (404, logged) when the calibration differs, the
-  version is unknown or the file is unreadable; the client then draws the Plan. A relief never outlives its background (D-5).
+  version is unknown or the file is unreadable; the client then draws the Plan. A relief never outlives its background (D-5). The rule is the same for the data route and for the image route.
 - **D-16 — Credit.** The principles (height per pixel, shading, contour lines, cut by storey) and the starting thresholds come from
   OpenSpartan Cartographer, by Den, under the MIT licence. The algorithm is written again in Go in the brick, in game units
   (the thresholds in feet are not copied; they were measured again on four maps); no line of the original is copied. The credit

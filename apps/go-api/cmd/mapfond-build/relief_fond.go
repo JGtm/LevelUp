@@ -40,6 +40,7 @@ type entreesRelief struct {
 // reliefFond est le relief calculé d'une carte et ce que son écriture a pesé.
 type reliefFond struct {
 	Relief *himap.Relief
+	// Traits : ce que le calcul des traits a mesuré ; lu par journaliseLeRelief.
 	Traits himap.BilanTraits
 	Duree  time.Duration
 	// OctetsImage et OctetsDonnees : poids de `<cle>.relief.png` et de `<cle>.relief.json.gz` écrits.
@@ -139,12 +140,15 @@ func donneesCompressees(d himap.DonneesRelief) ([]byte, error) {
 
 // journaliseLeRelief écrit la ligne de journal d'une carte.
 func journaliseLeRelief(ctx context.Context, cle string, rf *reliefFond) {
-	b := rf.Relief.Bilan
+	b, t := rf.Relief.Bilan, rf.Traits
 	slog.InfoContext(ctx, "mapfond: relief ecrit", "carte", cle,
 		"octets_image_png", rf.OctetsImage, "octets_donnees", rf.OctetsDonnees,
 		"part_maillage", b.PartMaillage, "zone", b.Zone,
 		"fond_matiere", b.FondPublieMatiere, "fond_sans_hauteur", b.FondPublieSansHauteur,
 		"etages", len(rf.Relief.Donnees.Floors.Niveaux),
+		"traits_polylignes", t.Ruptures.Polylignes+t.Courbes.Polylignes+t.Liseres.Polylignes,
+		"traits_points", t.Ruptures.Points+t.Courbes.Points+t.Liseres.Points,
+		"traits_ruptures_miettes", t.Ruptures.Miettes, "traits_jonctions_gardees", t.JonctionsGardees,
 		"degradations", rf.Relief.Donnees.Degradations, "duree", rf.Duree)
 }
 

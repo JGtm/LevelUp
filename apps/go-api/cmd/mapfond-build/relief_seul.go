@@ -23,7 +23,8 @@ import (
 // `reliefData` dans le sidecar. Les autres champs du sidecar, l'image du fond, l'image plan et le
 // plan des murs restent ceux de la cuisson qui les a produits. Une carte sans sidecar ou sans fond est
 // laissée intacte ; une carte sans maillage reçoit un relief dégradé (`sans-maillage`) ; une échelle
-// de cuisson différente de celle du fond publié met la carte en échec et n'écrit rien.
+// de cuisson différente de celle du fond publié, ou un maillage introuvable pour un fond dont le sidecar
+// publié porte un plan (plan_publie_sans_maillage.go), met la carte en échec et n'écrit rien.
 func (e *environnement) ajouteReliefs(ctx context.Context) bilanSeul {
 	return e.parcourtLesCartes(ctx, e.ajouteReliefForge, e.ajouteReliefNatif)
 }
@@ -55,6 +56,9 @@ func (e *environnement) refaitLeRelief(ctx context.Context, cle string, noms []s
 	if err != nil {
 		// Aplati : une variante ou un maillage absents de l'outillage ne sont pas un sidecar absent.
 		return fmt.Errorf("cuisson en memoire de %s : %s", cle, err)
+	}
+	if err := verifieLeMaillageDuPlanPublie(cle, s, cc.c.maillage); err != nil {
+		return err
 	}
 	garde := gardeDuMaillage(cc.c.maillage, cc.c.ancres, matiereDeImage(fond, cal))
 	rf, err := calculeRelief(ctx, entreesRelief{rendu: cc.rendu, maillage: cc.c.maillage, garde: garde, cal: cal, fond: fond})

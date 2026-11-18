@@ -143,11 +143,12 @@ func TestMapBackgroundRelief_AbsenceEstUnFondAbsent(t *testing.T) {
 
 // Le nom de l'image du relief est un contenu de fichier : même garde que l'image du fond (nom simple,
 // extension en liste blanche). Un fichier est écrit à chaque endroit où une lecture sans garde irait
-// le chercher : sans la garde, la lecture le trouverait et le test rougirait.
+// le chercher : sans la garde, la lecture le trouverait et le test rougirait. Les données du relief
+// sont valides : le refus ne peut venir que de la garde du nom de l'image.
 // Mutation jouée : retirer le refus de imageFileNamed.
 func TestMapBackgroundRelief_ImageRefuseUnNomDangereux(t *testing.T) {
 	for _, nom := range []string{"../ridgeline.webp", "ridgeline.relief.exe", "sous/dossier.webp"} {
-		root, svc := fondAvecRelief(t, strings.ReplaceAll(nom, `\`, ""), "ridgeline.relief.json.gz", false, "")
+		root, svc := fondAvecRelief(t, strings.ReplaceAll(nom, `\`, ""), "ridgeline.relief.json.gz", false, gzipTest(t, donneesReliefAuCalage("")))
 		res := title.NewPathResolver(root)
 		ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, nom), "RIFFhostile")
 		ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, filepath.Base(nom)), "RIFFhostile")
@@ -175,8 +176,8 @@ func TestMapBackgroundRelief_DonneesRefuseUnNomDangereux(t *testing.T) {
 }
 
 // Un relief dont le calage recopié n'est plus celui du sidecar est périmé : réponse comme pour un
-// relief absent, un champ du calage à la fois. L'image, elle, reste servie : seul le contrôle des
-// données porte le calage.
+// relief absent, un champ du calage à la fois, pour les données ET pour l'image : les deux routes
+// appliquent le même contrôle (port, ADR 0049 D-15).
 // Mutation jouée : retirer l'un des cinq termes de calageDuRelief.estCelui.
 func TestMapBackgroundRelief_CalageDifferentEstUnReliefPerime(t *testing.T) {
 	calages := map[string]string{
@@ -195,8 +196,11 @@ func TestMapBackgroundRelief_CalageDifferentEstUnReliefPerime(t *testing.T) {
 		if _, err := svc.MapBackgroundReliefData(context.Background(), "match-1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("calage différent (%s) servi par match : %v", nom, err)
 		}
-		if _, _, err := svc.MapBackgroundReliefImageForMap(context.Background(), "asset-cliffhanger"); err != nil {
-			t.Errorf("calage différent (%s) : l'image n'est pas soumise au contrôle : %v", nom, err)
+		if _, _, err := svc.MapBackgroundReliefImageForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+			t.Errorf("calage différent (%s) : image d'un relief périmé servie par carte : %v", nom, err)
+		}
+		if _, _, err := svc.MapBackgroundReliefImage(context.Background(), "match-1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+			t.Errorf("calage différent (%s) : image d'un relief périmé servie par match : %v", nom, err)
 		}
 	}
 }
@@ -219,6 +223,9 @@ func TestMapBackgroundRelief_DonneesIllisiblesSontUnReliefAbsent(t *testing.T) {
 		_, svc := fondAvecRelief(t, "ridgeline.relief.webp", "ridgeline.relief.json.gz", true, contenu)
 		if _, err := svc.MapBackgroundReliefDataForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("%s : %v, attendu ErrMapBackgroundNotAvailable", nom, err)
+		}
+		if _, _, err := svc.MapBackgroundReliefImageForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+			t.Errorf("%s : image servie malgré des données illisibles : %v", nom, err)
 		}
 	}
 }

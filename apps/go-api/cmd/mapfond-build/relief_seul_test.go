@@ -207,10 +207,26 @@ func TestRefaitLeReliefNeChangeQueLesDeuxChampsDuSidecar(t *testing.T) {
 	}
 }
 
-// Une carte sans maillage reçoit un relief, avec la dégradation « sans-maillage » (D-7).
+// retireLePlanDuSidecar réécrit le sidecar publié de `dir` sans plan des murs ni image plan : une carte
+// qui n'a pas de maillage n'a jamais eu de plan.
+func retireLePlanDuSidecar(t *testing.T, dir string) {
+	t.Helper()
+	chemin := filepath.Join(dir, "carte.json")
+	s, err := mapfondsidecar.Load(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Plan, s.PlanImage = nil, ""
+	if err := mapfondsidecar.Write(chemin, *s); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Une carte sans maillage et sans plan publié reçoit un relief, avec la dégradation « sans-maillage » (D-7).
 func TestRefaitLeReliefSansMaillageDegrade(t *testing.T) {
 	dir := t.TempDir()
 	publieUnFondEssai(t, dir)
+	retireLePlanDuSidecar(t, dir)
 	e := &environnement{sortieDir: dir}
 	var b bilanSeul
 	if err := e.refaitLeRelief(context.Background(), "carte", nil, &b, cuisEssai(renduEssai(pasEssai), nil)); err != nil {
@@ -226,6 +242,79 @@ func TestRefaitLeReliefSansMaillageDegrade(t *testing.T) {
 	}
 }
 
+// Un fond dont le sidecar publié porte un plan a un maillage : une cuisson qui n'en trouve pas (blob absent
+// ou illisible sur le poste) met la carte en échec nommé, rien n'est écrit et le code de sortie n'est pas
+// nul. Sans la garde, la carte recevrait un relief « sans-maillage » et le code 0.
+// Mutation jouée : retirer verifieLeMaillageDuPlanPublie de refaitLeRelief.
+func TestRefaitLeReliefSansMaillageAvecPlanPublieEstUnEchecQuiNEcritRien(t *testing.T) {
+	dir := t.TempDir()
+	avant := publieUnFondEssai(t, dir)
+	e := &environnement{sortieDir: dir}
+	var b bilanSeul
+	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, cuisEssai(renduEssai(pasEssai), nil))
+	if !errors.Is(err, errPlanPublieSansMaillage) {
+		t.Fatalf("erreur = %v, attendu errPlanPublieSansMaillage", err)
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		t.Fatal("une carte sans maillage n'est pas une carte laissée intacte")
+	}
+	if apres, _ := os.ReadFile(filepath.Join(dir, "carte.json")); !bytes.Equal(apres, avant) {
+		t.Error("le sidecar a été réécrit")
+	}
+	for _, nom := range []string{"carte.relief.png", "carte.relief.json.gz"} {
+		if _, err := os.Stat(filepath.Join(dir, nom)); !os.IsNotExist(err) {
+			t.Errorf("%s écrit malgré l'échec (%v)", nom, err)
+		}
+	}
+	e.noteResultat(context.Background(), &b, "carte", nil, err)
+	if b.Echecs != 1 {
+		t.Errorf("échecs = %d, ajoutés = %d : attendu 1 échec", b.Echecs, b.Ajoutes)
+	}
+	if code := termineUnGesteSeul(context.Background(), e, rapportsDemandes{}, "relief seul termine", b); code == 0 {
+		t.Error("code de sortie 0 malgré une carte en échec")
+	}
+}
+
+// La cuisson complète a la même garde : le sidecar déjà publié dans le dossier de sortie porte un plan, la
+// cuisson n'a pas de maillage ; ni le fond ni le sidecar ne sont réécrits. Une carte sans sidecar publié
+// (premier jet) ou sans plan publié passe : c'est une carte qui n'a vraiment pas de maillage.
+// Mutation jouée : retirer verifieLeMaillageAvantPublication de publie.
+func TestPublieSansMaillageAvecPlanPublieNEcritRien(t *testing.T) {
+	dir := t.TempDir()
+	avant := publieUnFondEssai(t, dir)
+	fondAvant, err := os.ReadFile(filepath.Join(dir, "carte.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := &environnement{sortieDir: dir, style: himap.StyleFondParDefaut, reglages: &reglagesFond{Cartes: map[string]reglageCarte{}}}
+	c := cible{cle: "carte", noms: []string{"Carte"}, ancres: [][3]float64{{0.5, 0.5, 1.5}}, sourcePlan: sourcePlanNatif}
+	ba := e.publie(context.Background(), c, renduEssai(pasEssai), himap.BilanCuisson{})
+	if !errors.Is(ba.Err, errPlanPublieSansMaillage) {
+		t.Fatalf("erreur = %v, attendu errPlanPublieSansMaillage", ba.Err)
+	}
+	if apres, _ := os.ReadFile(filepath.Join(dir, "carte.json")); !bytes.Equal(apres, avant) {
+		t.Error("le sidecar a été réécrit")
+	}
+	if fondApres, _ := os.ReadFile(filepath.Join(dir, "carte.png")); !bytes.Equal(fondApres, fondAvant) {
+		t.Error("le fond publié a été réécrit")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "carte.relief.json.gz")); !os.IsNotExist(err) {
+		t.Errorf("relief écrit malgré l'échec (%v)", err)
+	}
+	if code := resume(context.Background(), []bilanAsset{ba}, e); code != 1 {
+		t.Errorf("échecs de la cuisson = %d, attendu 1", code)
+	}
+
+	retireLePlanDuSidecar(t, dir)
+	if ba := e.publie(context.Background(), c, renduEssai(pasEssai), himap.BilanCuisson{}); ba.Err != nil {
+		t.Errorf("carte sans plan publié refusée : %v", ba.Err)
+	}
+	if ba := (&environnement{sortieDir: t.TempDir(), style: himap.StyleFondParDefaut, reglages: &reglagesFond{Cartes: map[string]reglageCarte{}}}).
+		publie(context.Background(), c, renduEssai(pasEssai), himap.BilanCuisson{}); ba.Err != nil {
+		t.Errorf("carte sans sidecar publié refusée : %v", ba.Err)
+	}
+}
+
 // Une cuisson à une échelle différente de celle du fond publié met la carte en échec nommé : rien n'est
 // écrit, ni fichier du relief ni sidecar.
 func TestRefaitLeReliefEchelleDifferenteEstUnEchecQuiNEcritRien(t *testing.T) {
@@ -233,7 +322,7 @@ func TestRefaitLeReliefEchelleDifferenteEstUnEchecQuiNEcritRien(t *testing.T) {
 	avant := publieUnFondEssai(t, dir)
 	e := &environnement{sortieDir: dir}
 	var b bilanSeul
-	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, cuisEssai(renduEssai(2*pasEssai), nil))
+	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, cuisEssai(renduEssai(2*pasEssai), carresDeTest([][2]float64{{0, 0}})))
 	if !errors.Is(err, himap.ErrEchelleDifferente) {
 		t.Fatalf("erreur = %v, attendu ErrEchelleDifferente", err)
 	}
