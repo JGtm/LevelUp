@@ -469,6 +469,12 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ---
 
+### [fonds de carte/plan] Plan par mode : découper le plan d'une carte selon le mode joué
+
+**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

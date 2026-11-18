@@ -134,7 +134,8 @@ Règles (mémoire `feedback_workflows_et_sous_agents_opus`) :
 | P2 | A.3 sols du maillage | Sonnet | A.1 | |
 | P2 | A.4 tests, README, exemple | Sonnet | A.2, A.3 | |
 | P2 | A.5 PR, tag v1.4.0, release | pilote | A.4 | puis Gate A |
-| P3 Cuisson | B.1 geste `--relief-seul` | Sonnet | Gate A | |
+| P3 Cuisson | B.0 variantes Forge manquantes | Sonnet | go | ajouté le 2026-11-18 après l'inventaire 0.2 ; réseau anonyme seulement |
+| P3 | B.1 geste `--relief-seul` | Sonnet | Gate A | |
 | P3 | B.2 WebP du relief | Haiku | B.1 | modèle existant (`mapfond-webp`) |
 | P3 | B.3 cuisson des 4 témoins | pilote | B.2 | dossier de sortie temporaire, copie par le pilote |
 | P3 | B.4 Live Fire recuite en entier | pilote | B.2, A.0 | validation à l'écran du user ; puis Gate B |
@@ -206,13 +207,19 @@ et R.2.
         orientation par quarts de tour (ADR 0048 D-4) ;
       - la liste fermée des calques de la Tactique dont les données portent une hauteur (D-2) ;
       - le seuil du suivi d'étage du joueur ouvert (D-2), mesuré sur des pistes réelles des 4 témoins.
-- [ ] 0.2 Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
+- [x] 0.2 (fait le 2026-11-18, `inventaire.md` : 68 cartes cuisables sur 114. Non cuisables : Live Fire (traitée
+      par A.0 et B.4), Thunderhead et Heavies (aucun maillage, 0.4), et 43 cartes Forge dont la variante `.mvar`
+      manque à `.ai/re_dump/mapvar/` ; d'où l'item B.0.) Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
       fichiers Forge présents, maillage présent. Rendu : `.ai/annexes_fonds_relief/inventaire.md`. Une carte non
       cuisable est nommée, avec la raison.
 - [ ] 0.3 Mesure de la teinte (D-3) : candidates (les 7 préréglages de Den et le gris du thème) contre les
       encres réelles des marqueurs et des objectifs, sous les quatre visions et dans les deux thèmes, avec
       `colorDistance.ts`. Table en annexe ; page de choix publiée (artefact `verifs`) avec les 4 témoins.
-- [ ] 0.4 Thunderhead et Thunderhead Heavies (`28a3ac28-…`, `37bc3df6-…`) : `mapnav-fetch` pour leur
+- [x] 0.4 (fait le 2026-11-18 : aucun maillage publié par l'auteur pour l'une ni l'autre. `mapnav-fetch` sort
+      « pas de navmesh publié » ; la page de chaque asset liste `map.mvar`, `lightprobes.blob`,
+      `audioocclusion.blob` et le canevas `fo08_wetland.mvar`, sans `navmesh.blob` ; GET direct en HTTP 404
+      `BlobNotFound` à 11:04:36 et 11:04:39 UTC. D-7 s'applique : relief sans découpe ni coupe, dégradation
+      nommée.) Thunderhead et Thunderhead Heavies (`28a3ac28-…`, `37bc3df6-…`) : `mapnav-fetch` pour leur
       `navmesh.blob` ; s'il existe, la cuisson normale les recuit (fond, plan) avant E.1 ; s'il n'existe pas chez
       l'auteur, le constat (réponse du service, date) est écrit dans l'inventaire et D-7 s'applique.
 - **Gate 0 :** annexes écrites ; format, seuils et teinte validés par le user ; constat de 0.4 écrit. Aucun code
@@ -223,13 +230,27 @@ et R.2.
 Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `scripts/briques-workspace.sh` et
 `GOWORK` (CLAUDE.md, « Briques »). Ajout d'API seulement : version mineure, aucun changement cassant.
 
-- [ ] A.0 Maillage d'une carte native dont la géométrie vit dans le module partagé (Live Fire) :
+- [x] A.0 (fait le 2026-11-18, brique `feat/maillage-module-partage` `6a2bd82` : fonction sœur
+      `ChargeMaillageNatifGeometriePartagee(ctx, racine, module, moduleGeometrie, ancres)`, `ChargeMaillageNatif`
+      inchangée ; Live Fire rend la ressource 20390, 786 faces ; gates relancés par le pilote. Les 100 illisibles
+      sont toutes des entrées dont les octets ne sont pas dans le fichier (`DataOffset >= dataSize`, bit `0x02`
+      de `Flags`), pas un défaut de décompression : section 9.) Maillage d'une carte native dont la géométrie vit dans le module partagé (Live Fire) :
       `ChargeMaillageNatif` cherche aussi dans `any/globals/common-rtx-new.module`, et retient le maillage dont
       les sommets tombent dans l'arène choisie par `ChoisitBSP` (même règle que la géométrie). Un test
       `*_gamefiles_test.go` sur Live Fire : ressource 20390, 786 faces. Les 100 candidates illisibles du module
       partagé sont classées dans le compte rendu (arène, taille, erreur). Si l'une relève d'un défaut du lecteur
       de modules, la correction se fait dans `halo-infinite-files-reader` (tag mineur, release, posé avant
       celui des images de carte).
+- [x] A.0b (fait le 2026-11-18, brique `af2b0cf` : `ModuleVariante` rend `any/globals/<nom>` pour un module
+      partagé ; mesure sur Live Fire : un seul sddt de 124 triangles, surface fermée autour de plusieurs arènes,
+      qui retirerait 0,39 m² de praticable au bord est ; 42 volumes d'eau sous le plancher, dont 84 % de ce qu'ils
+      peindraient tombe sur du praticable sans matière. Ni frontière ni eau appliquées pour un module partagé,
+      deux dégradations mesurées à la place ; test `gamefiles` qui l'épingle.) Zone jouable (sddt) et eau d'une carte dont la géométrie vit dans le module partagé : `ModuleVariante`
+      calcule `any/levels/multi/globals/…` pour un module `pc/globals/…`, chemin qui n'existe pas (dégradations
+      « module any/globals introuvable » du sidecar de Live Fire). Il rend désormais `any/globals/<nom>`. Le sddt
+      du module partagé porte les frontières de plusieurs arènes : l'item mesure lesquelles s'appliquent à Live
+      Fire. Il ne les branche que si elles bornent l'arène retenue sans rien retirer du praticable du maillage ;
+      sinon la dégradation reste, réécrite avec la mesure. Tests, dont un `gamefiles` sur Live Fire.
 - [ ] A.1 `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
       sol sans matière prend la hauteur du maillage (D-6). Aucune constante magique : seuils nommés,
       documentés en unités du jeu.
@@ -249,6 +270,17 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 5. Lot B — cuisson
 
+- [x] B.0 (fait le 2026-11-18, `c9c7ec8355` sur `feat/fonds-relief-b0` : option `-nom-cuisson` de `mapnav-fetch`,
+      2 tests, docs EN et FR ; 43 variantes sur 43 rapatriées, 0 échec, `.ai/re_dump/mapvar/` passe de 71 à 114
+      fichiers. 29 à la version de l'inventaire versionné, 14 absentes de cet inventaire et servies à leur version
+      courante. Inventaire : 111 cartes cuisables sur 114 ; restent Live Fire (A.0b, B.4) et les deux Thunderhead
+      (D-7). Contrôle du nombre d'objets de la variante : à B.3 et E.1.) Les 43 variantes Forge manquantes (liste de `inventaire.md`) : téléchargement ANONYME par le chemin
+      existant (`cmd/mapcallouts-build/forge_fetch.go`, `mapcatalog.Client.FetchFileAt`, inventaire versionné
+      `donnees/inventaire_rotation_ugc_*.json`), déposées dans `.ai/re_dump/mapvar/` sous le nom que lit la
+      cuisson (`cartes_forge.go`). Aucune commande neuve si une option d'une commande existante suffit ; sinon,
+      une option de plus à `mapnav-fetch`, testée. Une carte absente de l'inventaire versionné ou dont la
+      version a changé depuis la publication de son fond est nommée dans l'inventaire (le relief se projette
+      dans le calage publié, D-5 : un écart de version se voit au contrôle de B.3 et E.1).
 - [ ] B.1 `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
       validations ; lecture du calage publié ; écriture du relief et des champs `reliefImage` et `reliefData`
       du sidecar par `internal/mapfondsidecar` seul. Les autres champs restent identiques à l'octet
@@ -284,7 +316,24 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 7. Lot D — web
 
-- [ ] D.1 Maquette des commandes, sans code : trois fonds, interrupteur des traits, commande d'étage. Elle est
+- [x] D.1 (fait le 2026-11-18 : `.ai/annexes_fonds_relief/maquette_commandes.html`, publiée
+      https://claude.ai/artifact/BDcT8eLynSt2X74j5Yb9aF ; VALIDÉE par le user le 2026-11-18, « ok pour tes recos »,
+      avec ces choix qui font foi pour D.3, D.4 et D.6 :
+      (1) toutes les commandes dans le panneau « Vue » du rejeu, aucun raccourci sur la toile ;
+      (2) ordre des fonds partout : Plan, Rendu, Relief (le rejeu passe de « Rendu, Plan » à cet ordre) ;
+      (3) « Plan des murs » reste disponible sur le Relief, indépendant des traits ;
+      (4) « Traits du relief » retenu PAR FOND : allumé d'office sur le Relief, éteint sur Plan et Rendu ;
+      (5) suivi du joueur ouvert : un choix manuel d'étage coupe le suivi ; à la mort du joueur, l'étage reste
+          jusqu'à sa réapparition, puis suit sa nouvelle position ;
+      (6) l'Occupation du terrain reçoit son propre choix de fond (amende ADR 0048 D-4, porté par l'ADR 0049) ;
+      (7) calques de la Tactique filtrés selon la liste fermée de 0.1 ;
+      (8) infobulle des pastilles d'étage : lien avec les anneaux des marqueurs (« +2,0 m : 1 anneau ») ;
+      (9) la coupe ne masque aucun joueur dans le rejeu ; seule l'Occupation masque les positions hors étage ;
+      (10) carte sans maillage : bloc d'explication en pointillé (variante B) ;
+      (11) plus de six étages : pastilles en défilement horizontal ;
+      (12) curseur de hauteur gardé dans la Tactique et l'Occupation.
+      Libellés FR et EN : annexe 1 de la maquette. Teinte de la maquette provisoire, remplacée par 0.3.)
+      Maquette des commandes, sans code : trois fonds, interrupteur des traits, commande d'étage. Elle est
       dessinée DANS les cadres validés de la refonte du rejeu (Standard, Cinéma, Plein cadre), plus la pilule
       de fond de la Tactique. Le user la valide. Les fichiers de la maquette sont joints au brief de D.3 et D.4.
 - [ ] D.2 `lib/replay/relief/` : lecture de l'image (sans gestion des couleurs ni prémultiplication), teinte par
@@ -344,6 +393,11 @@ Consignées ici, jamais traitées dans ce plan.
   sans décalage. La ressource 20391 (287 faces) est l'arène voisine ; 100 candidates du module ne s'extraient
   pas. `himap.ChargeMaillageNatif` ne cherche que dans `any/levels/multi/<module>/`. Le maillage déborde aussi
   du fond publié, en bas à gauche et en bas à droite : le fond de Live Fire manque des zones praticables.
+- 2026-11-18 (A.0) : dans `any/globals/common-rtx-new.module`, 151 entrées sans groupe pointent hors du fichier
+  (`DataOffset >= dataSize`, bit `0x02` de l'octet bas de `File.Flags`) ; aucun fichier compagnon trouvé.
+  `halo-infinite-files-reader` `himodule/module.go:352-353` (`Extract`) rend alors « bloc N hors borne » au lieu
+  d'une erreur typée qui dirait « octets hors du fichier ». Défaut de diagnostic seulement, sans effet sur Live
+  Fire. Non traité.
 - 2026-11-18 : Den coupe le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points
   d'apparition : `libfilmshell` `NavMesh::rings_within`). Nous avons un plan par carte.
 - 2026-11-18 : le fond publié comble à plat le sol sans géométrie (un tiers de Behemoth). Le relief le

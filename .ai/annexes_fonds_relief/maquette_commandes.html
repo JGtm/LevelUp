@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commandes du fond Relief : maquette D.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+<style>
+/*
+  Maquette D.1 du plan PLAN_FONDS_RELIEF_2026-11-18 : commandes du fond Relief. AUCUN code de l'application.
+  Les valeurs ci-dessous sont posees pour la maquette ; chaque couleur nomme en commentaire le jeton d'application
+  qu'elle represente. Fond sombre seul (les maquettes validees de la refonte du rejeu sont sombres).
+*/
+:root {
+  color-scheme: dark;
+  /* jeton background */ --background: #0b0b0b;
+  /* jeton card */ --card: #141414;
+  /* jeton card, variante surelevee des fenetres */ --card-raised: #181818;
+  /* jeton surface de la toile du rejeu */ --stage: #0f0f0f;
+  /* jeton border */ --border: #262626;
+  /* jeton input (bordure des pilules) */ --input: #343434;
+  /* jeton muted */ --muted: #1f1f1f;
+  /* jeton muted-foreground */ --muted-foreground: #9a9a9a;
+  /* jeton foreground */ --foreground: #fafafa;
+  /* jeton primary */ --primary: #60a5fa;
+  /* jeton primary-foreground */ --primary-foreground: #06121f;
+  /* jeton accent (bouton Vue ouvert, survol) */ --accent: #2a2a2a;
+  /* jeton accent-foreground */ --accent-foreground: #fafafa;
+  /* jeton ring (focus) */ --ring: #60a5fa;
+  /* jeton team-ally */ --team-ally: #3b82f6;
+  /* jeton team-enemy */ --team-enemy: #ef4444;
+  /* jeton warning (notes d'etat) */ --warning: #e0b04a;
+  /* NOUVEAU jeton map-relief-base (teinte provisoire, choisie a l'item 0.3) */ --map-relief-base: #5a6f8c;
+  --font: "Roboto", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--background); color: var(--foreground); font: 14px/1.5 var(--font);
+  padding: 20px max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left));
+}
+.wrap { max-width: 1480px; margin: 0 auto; }
+a { color: var(--primary); }
+h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 14px; font-weight: 600; margin: 22px 0 6px; }
+.lead { color: var(--muted-foreground); max-width: 100ch; margin: 0 0 8px; }
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; align-items: flex-end; margin-bottom: 10px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; padding: 0; list-style: none; }
+.toc a { display: inline-block; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-foreground); text-decoration: none; font-size: 12.5px; }
+.toc a:hover { color: var(--foreground); background: var(--muted); }
+.langsw { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted-foreground); }
+code { font-family: Consolas, ui-monospace, monospace; font-size: 12.5px; background: var(--muted); padding: 1px 5px; border-radius: 4px; }
+section.pl { margin-top: 38px; padding-top: 18px; border-top: 1px solid var(--border); }
+.demo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 10px 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); font-size: 12.5px; color: var(--muted-foreground); }
+.demo .tag { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; }
+.notes { margin: 12px 0 0; padding-left: 18px; color: var(--muted-foreground); max-width: 120ch; }
+.notes li { margin: 3px 0; }
+.notes b, .lead b { color: var(--foreground); font-weight: 500; }
+
+/* ---------- Mise a l'echelle des cadres de rejeu ---------- */
+.fit { width: 100%; position: relative; overflow: hidden; border-radius: 10px; border: 1px solid var(--border); }
+.frame { transform-origin: 0 0; }
+.panel-host:empty { display: none; }
+.panel-host { margin: 10px 0 0; }
+.panel-host::before { content: attr(data-label); display: block; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 6px; }
+
+/* ---------- Cadres du rejeu (reprise des maquettes validees A, K, D) ---------- */
+.app { width: 1440px; background: var(--background); color: var(--foreground); font: 13px/1.35 var(--font); display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.app .nav { height: 48px; flex: none; display: flex; align-items: center; gap: 28px; padding: 0 20px; border-bottom: 1px solid #1f1f1f; background: #0f0f0f; }
+.app .logo { font-weight: 700; font-size: 15px; }
+.app .nv { display: flex; gap: 20px; color: #8f8f8f; }
+.app .avatar { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: #2a2a2a; }
+.app .page { width: 1200px; margin: 0 auto; display: flex; flex-direction: column; }
+.app .wide { padding: 0 24px; display: flex; flex-direction: column; }
+.app .wide.pc { padding: 0 16px; }
+.app .head { flex: none; height: 64px; display: grid; grid-template-columns: minmax(0, 1fr) 400px minmax(0, 1fr); align-items: center; gap: 16px; }
+.app .head.k { height: 52px; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.app .head .l { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.app .head .r { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.app .back { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; border: 1px solid #262626; background: #141414; color: #d4d4d4; }
+.app .quit { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; border: 1px solid #262626; background: #141414; color: #e5e5e5; font-size: 13px; }
+.app .quit kbd { font: 11px var(--font); border: 1px solid #333; border-radius: 4px; padding: 0 5px; color: #9a9a9a; }
+.app .crumb { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.app .crumb small { color: #8f8f8f; font-size: 12px; white-space: nowrap; }
+.app .crumb b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .btn { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; border-radius: 8px; border: 1px solid #262626; background: #141414; color: #e5e5e5; font-size: 13px; white-space: nowrap; }
+.app .ibtn { min-width: 30px; height: 30px; padding: 0 4px; display: inline-grid; place-items: center; border-radius: 8px; color: #d4d4d4; font-size: 12.5px; font-weight: 500; }
+.app .ibtn.on { background: #2a2a2a; }
+.app .sb { display: flex; align-items: center; gap: 8px; }
+.app .sbar { position: relative; flex: 1; height: 24px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.app .sbar i { position: absolute; top: 0; bottom: 0; }
+.app .sbar.l i { right: 0; background: var(--team-ally); }
+.app .sbar.r i { left: 0; background: var(--team-enemy); }
+.app .sbar b { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 8px; font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.app .sbar.l b { right: 0; }
+.app .sbar.r b { left: 0; }
+.app .sclk { min-width: 44px; text-align: center; font-size: 13px; font-weight: 700; }
+.app .vp { position: relative; border-radius: 12px; background: var(--stage); border: 1px solid #1f1f1f; overflow: hidden; }
+.app .vp.std { height: 600px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
+.app .cell { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.app .stage { position: relative; flex: 1; min-height: 0; }
+.app .vp.k { height: 540px; }
+.app .vp.k .stage { position: absolute; inset: 0; }
+.mapbox { position: absolute; top: 12px; bottom: 12px; left: 50%; transform: translateX(-50%); aspect-ratio: 180 / 196; }
+.mapbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.app .col { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; min-height: 0; border-left: 1px solid #1c1c1c; overflow: hidden; }
+.app .sh { display: flex; align-items: center; gap: 8px; height: 20px; font-size: 12px; font-weight: 600; color: #c4c4c4; }
+.app .dot { width: 8px; height: 8px; border-radius: 2px; flex: none; display: inline-block; }
+.app .dot.a { background: var(--team-ally); }
+.app .dot.b { background: var(--team-enemy); }
+.app .hr { display: grid; grid-template-columns: minmax(0, 1fr) 22px 24px 54px; align-items: center; column-gap: 6px; height: 34px; }
+.app .hr.hd { height: 16px; font-size: 10.5px; color: #7d7d7d; }
+.app .hr.hd span { text-align: right; }
+.app .hr .nm { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.app .hr .nm b { font-weight: 500; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .hr.open { background: #1a1a1a; border-radius: 6px; margin: 0 -6px; padding: 0 6px; }
+.app .vit { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .12); position: relative; overflow: hidden; width: 130px; }
+.app .vit i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--primary); border-radius: 2px; }
+.app .resp { font-size: 11px; color: var(--team-enemy); height: 13px; white-space: nowrap; }
+.app .ic { color: #cfcfcf; display: flex; align-items: center; justify-content: flex-end; }
+.app .kda { text-align: right; font-size: 12.5px; }
+.app .hr.dead .nm b, .app .hr.dead .kda, .app .hr.dead .ic { opacity: .4; }
+.app .feed { display: flex; flex-direction: column; min-height: 0; overflow: hidden; border-top: 1px solid #1c1c1c; padding-top: 10px; }
+.app .fr { display: grid; grid-template-columns: 30px 86px 20px 86px minmax(0, 1fr); align-items: center; column-gap: 6px; height: 28px; font-size: 12.5px; white-space: nowrap; }
+.app .fr > span { overflow: hidden; text-overflow: ellipsis; }
+.app .fr .t { color: #7d7d7d; font-size: 11.5px; }
+.app .fr .zn { color: #8a8a8a; font-size: 11.5px; }
+.app .ka { color: var(--team-ally); font-weight: 500; }
+.app .kb { color: var(--team-enemy); font-weight: 500; }
+.app .band { flex: none; height: 58px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 270px repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.app .tile { min-width: 0; padding: 7px 9px; border-radius: 8px; background: #121212; border: 1px solid #1f1f1f; display: flex; flex-direction: column; justify-content: space-between; }
+.app .tile.open { background: #1c1c1c; border-color: #6b6b6b; }
+.app .tile .r1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.app .tile .r1 b { flex: 1; min-width: 0; font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .tile .r2 { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #cfcfcf; height: 13px; }
+.app .tile.dead .r1 b, .app .tile.dead .kda { opacity: .4; }
+.app .tile .vit { flex: 1; width: auto; }
+.app .tile .resp { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.app .score { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 4px; }
+.app .ofeed { position: absolute; left: 16px; bottom: 12px; width: 350px; display: flex; flex-direction: column; z-index: 2; pointer-events: none; }
+.app .ofeed .fr { text-shadow: 0 0 2px #000, 0 0 6px #000, 0 1px 2px #000; }
+.app .ofeed .fr.o2 { opacity: .7; }
+.app .ofeed .fr.o1 { opacity: .85; }
+.app .tp { flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; color: #d4d4d4; }
+.app .tp.in { height: 48px; border-top: 1px solid #1f1f1f; }
+.app .tp.out { height: 56px; }
+.app .play { width: 36px; height: 36px; border-radius: 50%; background: #fafafa; color: #0b0b0b; display: grid; place-items: center; flex: none; }
+.app .time { font-size: 12.5px; white-space: nowrap; color: #cfcfcf; padding: 0 4px; }
+.app .scrub { position: relative; flex: 1; height: 28px; min-width: 60px; }
+.app .scrub .rail { position: absolute; left: 0; right: 0; top: 13px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.app .scrub .rail i { display: block; height: 100%; background: #e5e5e5; }
+.app .scrub .dom { position: absolute; left: 0; right: 0; top: 21px; height: 3px; display: flex; }
+.app .scrub .dom i { height: 100%; }
+.app .scrub .dom .a { background: var(--team-ally); }
+.app .scrub .dom .b { background: var(--team-enemy); }
+.app .scrub .knob { position: absolute; top: 9px; width: 12px; height: 12px; border-radius: 50%; background: #fafafa; }
+.app .vsep { width: 1px; height: 20px; background: #262626; margin: 0 4px; flex: none; }
+
+/* ---------- Composants de l'application dessines pour la maquette ---------- */
+.vue-over { position: absolute; right: 8px; top: 8px; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; }
+.vue-btn { display: inline-flex; height: 32px; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font: 12px var(--font); background: rgba(20, 20, 20, .85); color: var(--muted-foreground); }
+.vue-btn b { color: var(--foreground); font-weight: 600; }
+.vue-btn.open { background: var(--accent); color: var(--accent-foreground); }
+.vue-btn.open b { color: var(--accent-foreground); }
+.vue-panel {
+  position: absolute; right: 0; top: 38px; width: 416px; max-width: calc(100vw - 32px); max-height: var(--panel-max, 520px); overflow-y: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+  display: flex; flex-direction: column; gap: 12px; font: 14px/1.4 var(--font); color: var(--foreground); text-align: left;
+}
+.vue-panel.detached { position: static; width: 100%; max-width: 440px; max-height: none; box-shadow: none; }
+.vp-head { display: flex; align-items: center; justify-content: space-between; }
+.vp-head h2 { font-size: 14px; margin: 0; }
+.vp-x { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 4px; color: var(--muted-foreground); }
+.ui-sec { display: flex; flex-direction: column; gap: 4px; }
+.ui-sec > h3 { font-size: 12px; font-weight: 500; color: var(--muted-foreground); margin: 0; display: flex; align-items: center; gap: 4px; }
+.ui-gt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: rgba(154, 154, 154, .7); margin: 0; display: flex; align-items: center; gap: 4px; }
+.ui-grp { display: flex; flex-direction: column; gap: 2px; }
+.ui-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.ui-span { grid-column: 1 / -1; }
+.ui-toggle { display: flex; height: 28px; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--foreground); font: 12px var(--font); text-align: left; cursor: pointer; }
+.ui-toggle:hover:not(:disabled) { background: var(--muted); }
+.ui-toggle:disabled { cursor: not-allowed; opacity: .5; }
+.ui-toggle span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-track { flex: none; width: 28px; height: 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--muted); padding: 0 2px; display: flex; align-items: center; }
+.ui-track i { display: block; width: 12px; height: 12px; border-radius: 50%; background: var(--muted-foreground); transition: transform .15s; }
+.ui-toggle[aria-checked="true"] .ui-track { background: var(--primary); border-color: var(--primary); }
+.ui-toggle[aria-checked="true"] .ui-track i { transform: translateX(10px); background: var(--primary-foreground); }
+.ui-segrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.ui-segrow > span { flex: none; font-size: 12px; color: var(--muted-foreground); }
+.ui-segs { display: flex; border: 1px solid var(--border); border-radius: 6px; padding: 1px; }
+.ui-segs button { border: 0; background: transparent; color: var(--muted-foreground); font: 500 11px var(--font); padding: 4px 8px; border-radius: 5px; cursor: pointer; }
+.ui-segs button:hover { background: var(--accent); color: var(--accent-foreground); }
+.ui-segs button[aria-checked="true"] { background: var(--primary); color: var(--primary-foreground); }
+.ui-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; }
+.ui-chip { height: 26px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted-foreground); font: 500 11.5px var(--font); font-variant-numeric: tabular-nums; cursor: pointer; }
+.ui-chip:hover { background: var(--accent); color: var(--accent-foreground); }
+.ui-chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.ui-range { display: flex; align-items: center; gap: 10px; padding: 2px 8px; font-size: 12px; }
+.ui-range > span { color: var(--muted-foreground); flex: none; }
+.ui-range input { flex: 1; min-width: 0; accent-color: var(--primary); }
+.ui-range output { flex: none; min-width: 6ch; text-align: right; font-variant-numeric: tabular-nums; }
+.ui-range.idle input { opacity: .55; }
+.ui-note { margin: 0; padding: 0 8px; font-size: 11.5px; color: var(--muted-foreground); }
+.ui-note.live { color: var(--foreground); }
+.ui-empty { margin: 2px 0 0; padding: 8px 10px; border: 1px dashed var(--input); border-radius: 6px; font-size: 11.5px; color: var(--muted-foreground); }
+.ui-inert { opacity: .45; pointer-events: none; }
+.ui-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ui-presets span { text-align: center; font-size: 11px; padding: 5px 2px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted-foreground); }
+.ui-presets span.on { background: var(--accent); color: var(--accent-foreground); }
+.ui-more { font-size: 11px; color: var(--muted-foreground); padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--muted); }
+.ui-info { display: inline-flex; color: var(--muted-foreground); }
+
+/* ---------- Cartes de page (Tactique, Occupation du terrain) ---------- */
+.ui-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; max-width: 980px; }
+.ui-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.ui-card-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; margin-right: auto; }
+.pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pill { display: inline-flex; height: 28px; align-items: stretch; overflow: hidden; border-radius: 6px; border: 1px solid var(--input); background: var(--background); font: 400 11.5px var(--font); }
+.pill .lb { display: flex; align-items: center; white-space: nowrap; border-right: 1px solid var(--input); background: var(--muted); padding: 0 6px; color: var(--muted-foreground); }
+.pill button { border: 0; background: transparent; padding: 0 7px; color: var(--foreground); font: inherit; cursor: pointer; white-space: nowrap; }
+.pill button + button { border-left: 1px solid var(--input); }
+.pill button[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); font-weight: 500; }
+.pill button.mute { color: var(--muted-foreground); }
+.pill .rg { display: flex; align-items: center; gap: 6px; padding: 0 7px; border-left: 1px solid var(--input); }
+.pill .rg input { width: 84px; accent-color: var(--primary); }
+.pill .rg output { min-width: 5.2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.pill .rg.idle input { opacity: .55; }
+.pbtn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--input); background: var(--background); color: var(--muted-foreground); font: 400 11.5px var(--font); cursor: pointer; }
+.pbtn[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); font-weight: 500; }
+.card-body { padding: 10px 12px 12px; }
+.mapwrap { position: relative; display: flex; justify-content: center; gap: 12px; }
+.mapbox2 { position: relative; width: 100%; max-width: 520px; aspect-ratio: 180 / 196; border-radius: 6px; overflow: hidden; background: var(--muted); }
+.mapbox2 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.zoomc { position: absolute; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 3px; }
+.zoomc span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 5px; background: rgba(20, 20, 20, .85); color: var(--muted-foreground); font-size: 14px; }
+.ramp { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; font-size: 11px; color: var(--muted-foreground); padding: 4px 0; }
+.ramp i { display: block; width: 10px; flex: 1; margin: 4px 0; border-radius: 3px; /* jeton heatmap (rampe d'intensite) */ background: linear-gradient(to top, #2b3a67, #7a3f8f, #e0663d, #ffd54a); }
+.legend { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 11.5px; color: var(--muted-foreground); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend .gl { width: 12px; height: 12px; flex: none; }
+.statusline { margin: 8px 0 0; font-size: 11.5px; color: var(--muted-foreground); min-height: 18px; }
+
+/* ---------- Annexes ---------- */
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted-foreground); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.tw { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--border); }
+ol.q { padding-left: 20px; max-width: 120ch; }
+ol.q li { margin: 10px 0; }
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 10px; }
+.states .st { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.states .st > p { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+.sideby { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; margin-top: 10px; }
+.sideby > div > p { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+.sideby .vue-panel { position: static; width: 100%; max-width: 440px; max-height: none; box-shadow: none; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <div>
+    <h1>Commandes du fond Relief : maquette D.1</h1>
+    <p class="lead">Maquette sans code de l'application, pour validation avant les items D.3 et D.4 du plan du fond Relief. Les commandes sont posées DANS les cadres validés de la refonte du rejeu (Standard, Cinéma, Plein cadre), à l'endroit où l'application range déjà les réglages de vue : le panneau « Vue » en haut à droite de la toile. La carte dessinée est <b>factice</b> (trois étages, une cour couverte, une colline) ; le rendu réel est celui de la maquette du 2026-11-18. Tout est manipulable : fonds, interrupteur des traits, étages, curseur, suivi du joueur ouvert.</p>
+  <ul class="toc" aria-label="Planches">
+    <li><a href="#p1a">1a Standard</a></li><li><a href="#p1b">1b Cinéma</a></li><li><a href="#p1c">1c Plein cadre</a></li>
+    <li><a href="#p2">2 Carte sans maillage</a></li><li><a href="#p3">3 Tactique</a></li><li><a href="#p4">4 Occupation du terrain</a></li>
+    <li><a href="#a1">Libellés FR / EN</a></li><li><a href="#a2">Jetons de couleur</a></li><li><a href="#a3">Questions de conception</a></li>
+  </ul>
+</div>
+<div class="langsw" id="langsw" role="group" aria-label="Langue des libellés dessinés"></div>
+<p class="lead" style="margin-top:6px">La bascule de langue ne change que les libellés des commandes dessinées (panneau, pilules, légende). Les cadres repris des maquettes validées restent en français.</p>
+
+<div id="planches"></div>
+
+<section class="pl" id="a1">
+  <h2>Annexe 1 : libellés neufs, français et anglais</h2>
+  <p class="lead">Chaque texte neuf existe dans chaque langue de <code>config/locales.toml</code> (fr et en). Destination : dictionnaires de feature typés <code>Record&lt;Locale, T&gt;</code> du rejeu, manifeste <code>tactical.toml</code> de la Tactique, dictionnaire de « Occupation du terrain ». Les hauteurs s'écrivent avec la virgule en français et le point en anglais.</p>
+  <div class="tw"><table id="tbl-new"><thead><tr><th>Texte</th><th>Français</th><th>Anglais</th><th>Où</th></tr></thead><tbody></tbody></table></div>
+  <h3>Libellés existants repris tels quels</h3>
+  <div class="tw"><table id="tbl-old"><thead><tr><th>Texte</th><th>Français</th><th>Anglais</th><th>Source</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="pl" id="a2">
+  <h2>Annexe 2 : jetons de couleur</h2>
+  <p class="lead">Les valeurs sont posées pour la maquette. Aucune valeur hexadécimale ni classe de couleur ne sort dans le code : seuls les jetons sémantiques. Les jetons <code>map-relief-*</code> sont les seuls neufs (item D.5, valeurs de l'item 0.3).</p>
+  <div class="tw"><table><thead><tr><th>Jeton</th><th>Valeur de la maquette</th><th>Emploi</th></tr></thead><tbody>
+    <tr><td><code>map-relief-base</code> (neuf)</td><td><i class="sw" style="background:#5a6f8c"></i>#5a6f8c</td><td>Teinte unique du relief ; bas = base à 30 % du noir, milieu = 78 %, haut = base éclaircie de 30 %. Teinte provisoire.</td></tr>
+    <tr><td><code>map-relief-edge</code> (neuf)</td><td><i class="sw" style="background:#c6cfdb"></i>base éclaircie de 65 %</td><td>Ruptures de hauteur.</td></tr>
+    <tr><td><code>map-relief-contour</code> (neuf)</td><td><i class="sw" style="background:#a8b6c8"></i>base éclaircie de 45 %, opacité 0,35</td><td>Courbes de niveau sur les pentes.</td></tr>
+    <tr><td><code>map-relief-outline</code> (neuf)</td><td><i class="sw" style="background:#ffffff"></i>#ffffff</td><td>Liseré de la zone jouable.</td></tr>
+    <tr><td><code>team-ally</code> / <code>team-enemy</code></td><td><i class="sw" style="background:#3b82f6"></i>#3b82f6 / <i class="sw" style="background:#ef4444"></i>#ef4444</td><td>Noyau des marqueurs et barres de score (contour du marqueur : encre sombre, comme <code>style.ink</code>).</td></tr>
+    <tr><td><code>card</code>, <code>border</code>, <code>input</code>, <code>muted</code>, <code>muted-foreground</code>, <code>foreground</code></td><td colspan="2">Surfaces, filets et textes du panneau « Vue », des pilules et des cartes de page (existants).</td></tr>
+    <tr><td><code>primary</code> / <code>primary-foreground</code></td><td><i class="sw" style="background:#60a5fa"></i>#60a5fa / #06121f</td><td>Pastille d'étage retenue, option retenue d'un segmenté, rail d'un interrupteur allumé, pilule pressée (existants).</td></tr>
+    <tr><td><code>accent</code> / <code>accent-foreground</code></td><td>#2a2a2a / #fafafa</td><td>Bouton « Vue » ouvert, survol (existants).</td></tr>
+    <tr><td><code>heatmap</code> (rampe)</td><td>#2b3a67, #7a3f8f, #e0663d, #ffd54a</td><td>Chaleur de la Tactique et de l'occupation (existant).</td></tr>
+    <tr><td colspan="3">Les teintes des fonds Plan et Rendu dessinés ici (bleu-gris, brun sombre) ne sont que des images factices : les fonds réels sont les fichiers publiés. Aucun nouveau jeton pour elles.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="pl" id="a3">
+  <h2>Annexe 3 : questions de conception pour le user</h2>
+  <p class="lead">Points que ni la maquette du fond Relief ni les maquettes validées de la refonte du rejeu ne tranchent. Pour chacun, la maquette a retenu une proposition, nommée ci-dessous.</p>
+  <ol class="q">
+    <li><b>Place de la commande d'étage.</b> Aucune maquette de la refonte ne dessine le contenu du panneau « Vue » (écart V3 : le bouton reste en superposition en haut à droite de la toile). La proposition range le fond, l'interrupteur des traits et un groupe « Étage » dans le groupe « Terrain » du panneau. Contrepartie : le panneau se pose sur la moitié droite de la toile et se ferme au clic dehors ; changer d'étage en cours de lecture demande donc d'ouvrir le panneau. Alternative non dessinée : un accès rapide sur le bord de la toile (pastilles d'étage), en plus du panneau. Faut-il l'ajouter ?</li>
+    <li><b>Ordre des fonds.</b> Le panneau du rejeu affiche aujourd'hui « Rendu, Plan » ; la Tactique affiche « Plan, Rendu ». La maquette aligne le rejeu sur la Tactique et pose « Plan, Rendu, Relief » (le défaut en premier). Confirmer le changement d'ordre dans le rejeu.</li>
+    <li><b>« Plan des murs » sur le fond Relief.</b> Aujourd'hui l'interrupteur est désactivé sur le Plan (« Déjà dans le plan ») et actif sur le Rendu. La maquette le garde actif sur le Relief, par la règle existante : le fond posé ne porte pas l'image des murs. Il double en partie les ruptures de hauteur des traits du relief. Garder les deux, ou désactiver « Plan des murs » sur le Relief avec une raison « Déjà dans le relief » quand les traits sont allumés ?</li>
+    <li><b>Défaut de « Traits du relief ».</b> Allumé d'office sur le Relief, éteint sur Plan et Rendu. La maquette modélise : changer de fond remet l'interrupteur à son défaut, un geste manuel tient jusqu'au prochain changement de fond. Alternative : une préférence retenue par fond. Quelle règle ?</li>
+    <li><b>Suivi de l'étage du joueur ouvert.</b> Un choix manuel (pastille ou curseur) coupe le suivi dans la maquette. Alternative : le suivi reste actif et verrouille pastilles et curseur. Quelle règle ? Même question pour le joueur qui meurt : l'étage reste celui de la dernière position connue (proposition) ou la coupe revient à « Tout ».</li>
+    <li><b>Occupation du terrain n'a aucun réglage de fond aujourd'hui</b> (le bloc lit la préférence du rejeu, sans la commander). Le plan veut les mêmes commandes dans les trois vues ; la maquette ajoute une rangée de pilules au-dessus de la carte. Confirmer l'ajout d'un choix de fond dans ce bloc, plutôt que de ne poser que « Étage » et « Traits du relief ».</li>
+    <li><b>Calques de la Tactique filtrés ou non par étage.</b> La liste fermée vient de l'item 0.1, pas encore lue. La maquette suppose : trame de chaleur sans hauteur (mention dans la légende), points d'élimination avec hauteur (filtrés). À recaler sur 0.1. Formulation de la mention à valider : « {calque} : ce calque ne porte pas la hauteur, il reste affiché sur tous les étages. »</li>
+    <li><b>Lien avec le langage d'étage des marqueurs.</b> Les marqueurs portent déjà un nombre d'anneaux par étage (<code>floorRings.ts</code>). Les pastilles disent une hauteur relative (« +2,0 m »). La maquette ne fait pas le lien à l'écran (marqueurs sans coupe, anneaux inchangés) ; l'infobulle d'une pastille pourrait écrire « 1 anneau ». Faut-il l'écrire ?</li>
+    <li><b>Marqueurs et coupe dans le rejeu.</b> La maquette ne masque aucun marqueur quand la coupe est active (un joueur présent reste toujours affiché). Seule « Occupation du terrain » masque les positions hors étage, comme le plan D-2. À confirmer.</li>
+    <li><b>Carte sans maillage.</b> La planche 2 montre deux variantes : rien à la place de la commande d'étage, ou bloc d'explication en pointillé. Laquelle retenir ? L'interrupteur « Traits du relief » reste proposé (ruptures et courbes) ; seul le liseré de zone disparaît. Confirmer.</li>
+    <li><b>Beaucoup d'étages.</b> Streets peut en détecter davantage que trois. Les pastilles passent à la ligne ; au-delà de six, faut-il un défilement horizontal ou ne garder que le curseur ?</li>
+    <li><b>Curseur dans la Tactique et l'occupation.</b> Le curseur de hauteur loge dans la pilule « Étage » (84 px). Sur téléphone la pilule passe à la ligne. Garder le curseur dans ces deux vues, ou seulement les pastilles ?</li>
+  </ol>
+</section>
+
+</div>
+
+<script>
+'use strict';
+/* ====================== Calcul pur : carte factice (testable hors navigateur) ====================== */
+//#PURE-START
+const GW = 180, GH = 196, N = GW * GH;
+const BAND = 0.7, FADE = 0.25, BELOW = 0.28, ABOVE = 0.10, ROOF = 1.0, STEP = 0.35, CONTOUR = 0.5, WALL_STEP = 1.0, ZMAX = 4;
+const LEVELS = [0, 2, 4];
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const inRect = (x, y, a, b, c, d) => x >= a && x < c && y >= b && y < d;
+const lerp = (a, b, t) => a + (b - a) * t;
+const groundAt = (x, y) => 1.1 * Math.exp(-(((x - 132) ** 2 + (y - 140) ** 2) / 500)) + 0.55 * Math.exp(-(((x - 42) ** 2 + (y - 168) ** 2) / 260));
+function insideAt(x, y) {
+  const dx = (x - 90) / 86, dy = (y - 98) / 94, a = Math.atan2(dy, dx);
+  return Math.abs(dx) ** 3 + Math.abs(dy) ** 3 < 1 + 0.10 * Math.sin(5 * a + 0.7) + 0.05 * Math.sin(9 * a);
+}
+/* Sols praticables d'une cellule, du plus bas au plus haut : sol, plateforme (2), tour (4), rampes, escalier. */
+function layersAt(x, y) {
+  const g = groundAt(x, y);
+  if (inRect(x, y, 52, 38, 76, 54)) return [4];
+  if (inRect(x, y, 76, 40, 90, 52)) return [lerp(4, 2, (x - 76) / 14)];
+  if (inRect(x, y, 48, 62, 92, 84)) return [g, 2];            /* cour couverte : sol sous un toit */
+  if (inRect(x, y, 34, 34, 104, 90)) return [2];
+  if (inRect(x, y, 104, 52, 128, 76)) return [lerp(2, g, (x - 104) / 24)];
+  if (inRect(x, y, 20, 120, 46, 150)) return [2];
+  if (inRect(x, y, 26, 150, 40, 172)) return [lerp(2, g, (y - 150) / 22)];
+  return [g];
+}
+function buildScene() {
+  const lay = new Float32Array(N * 2), cnt = new Uint8Array(N), top = new Float32Array(N), ins = new Uint8Array(N), ground = new Float32Array(N), shade = new Float32Array(N).fill(1);
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const i = y * GW + x; ground[i] = groundAt(x, y); top[i] = ground[i];
+    if (!insideAt(x, y)) continue;
+    ins[i] = 1; const L = layersAt(x, y); cnt[i] = L.length; lay[i * 2] = L[0]; if (L.length > 1) lay[i * 2 + 1] = L[1];
+    top[i] = Math.max(...L);
+  }
+  for (let y = 1; y < GH - 1; y++) for (let x = 1; x < GW - 1; x++) {
+    const i = y * GW + x, gx = (top[i + 1] - top[i - 1]) / 2, gy = (top[i + GW] - top[i - GW]) / 2;
+    shade[i] = Math.min(1.25, Math.max(0.55, (0.7 + 0.5 * (gx + gy) * 12) / 0.7));   /* ombre portee du nord-ouest */
+  }
+  return { lay, cnt, top, ins, ground, shade };
+}
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mixRgb = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const cssRgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+function lutOf(stops) {
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let g = 0; g < 256; g++) {
+    const f = g / 255, a = f < 0.5 ? stops[0] : stops[1], b = f < 0.5 ? stops[1] : stops[2], k = f < 0.5 ? f * 2 : f * 2 - 1;
+    for (let i = 0; i < 3; i++) lut[g * 3 + i] = a[i] + (b[i] - a[i]) * k;
+  }
+  return lut;
+}
+function lutFor(bg, base) {
+  if (bg === 'plan') return lutOf([hexRgb('#16243a'), hexRgb('#33506f'), hexRgb('#6f93bd')]);
+  if (bg === 'rendu') return lutOf([hexRgb('#1d1a16'), hexRgb('#4d4435'), hexRgb('#8d8068')]);
+  const B = hexRgb(base);
+  return lutOf([mixRgb([0, 0, 0], B, 0.3), mixRgb([0, 0, 0], B, 0.78), mixRgb(B, [255, 255, 255], 0.3)]);
+}
+const wgt = (v, z) => { const lo = z - BAND, hi = z + BAND; return Math.max(0, v < lo ? 1 - (lo - v) / FADE : v > hi ? 1 - (v - hi) / FADE : 1); };
+const noise = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % 1000 / 1000;
+/* Image d'une carte : fond (plan, rendu, relief), coupe (cut = hauteur ou null), maillage present ou non. */
+function renderGrid(S, bg, cut, mesh, base) {
+  const lut = lutFor(bg, base), px = new Uint8ClampedArray(N * 4), vis = new Uint8Array(N), relief = bg === 'relief';
+  for (let i = 0; i < N; i++) {
+    const inside = S.ins[i] === 1;
+    if (!inside && !(relief && !mesh)) continue;
+    const top = inside ? S.top[i] : S.ground[i], n = inside ? S.cnt[i] : 1;
+    let lvl = top, alpha = 1;
+    if (cut !== null && mesh) {
+      let bz = NaN, bw = 0;
+      for (let k = 0; k < n; k++) { const v = inside ? S.lay[i * 2 + k] : S.ground[i], w = wgt(v, cut); if (w > bw) { bw = w; bz = v; } }
+      let inn;
+      if (bw > 0 && relief && top > bz + ROOF) { lvl = bz; inn = bw; } else inn = wgt(top, cut);   /* sol sous toit : visible sur le Relief seul */
+      alpha = inn + (1 - inn) * (top > cut ? ABOVE : BELOW);
+    }
+    vis[i] = alpha > 0.5 ? 1 : 0;
+    const t = Math.min(1, Math.max(0, lvl / ZMAX)), sh = S.shade[i];
+    let g;
+    if (relief) g = (0.36 + 0.64 * t) * (0.62 + 0.38 * sh);
+    else if (bg === 'plan') g = (0.25 + 0.75 * t) * (0.85 + 0.15 * sh);
+    else g = (0.3 + 0.7 * t) * (0.55 + 0.45 * sh) + (noise(i % GW, (i / GW) | 0) - 0.5) * 0.08;
+    const gi = Math.round(Math.min(1, Math.max(0, g)) * 255) * 3, q = i * 4;
+    px[q] = lut[gi]; px[q + 1] = lut[gi + 1]; px[q + 2] = lut[gi + 2]; px[q + 3] = Math.round(255 * alpha);
+  }
+  return { px, vis };
+}
+/* Traits vectoriels : ruptures, courbes, liseré (avec maillage seulement), murs. Coordonnees en cellules. */
+function segments(S, vis, cut, mesh) {
+  const e = [], c = [], o = [], w = [];
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const i = y * GW + x;
+    for (let d = 0; d < 2; d++) {
+      const nx = x + (d === 0 ? 1 : 0), ny = y + (d === 1 ? 1 : 0);
+      if (nx >= GW || ny >= GH) continue;
+      const j = ny * GW + nx, a = S.ins[i], b = S.ins[j];
+      const sg = d === 0 ? [x + 1, y, x + 1, y + 1] : [x, y + 1, x + 1, y + 1];
+      if (a !== b) { if (mesh && (cut === null || vis[a ? i : j])) o.push(...sg); continue; }
+      if (!a) continue;
+      if (cut !== null && !(vis[i] || vis[j])) continue;
+      const dz = Math.abs(S.top[i] - S.top[j]);
+      if (dz > STEP) { e.push(...sg); if (dz > WALL_STEP) w.push(...sg); }
+      else if (dz > 0.01 && Math.floor(S.top[i] / CONTOUR) !== Math.floor(S.top[j] / CONTOUR)) c.push(...sg);
+    }
+  }
+  return { e, c, o, w };
+}
+function makePositions(S, n, seed) {
+  const r = mulberry32(seed), out = [], centers = [[64, 46, 5], [64, 46, 5], [70, 74, 8], [96, 52, 9], [60, 60, 12], [30, 135, 6], [124, 70, 6]];
+  while (centers.length < 15) { const x = r() * GW, y = r() * GH; if (S.ins[(y | 0) * GW + (x | 0)]) centers.push([x, y, 4 + r() * 10]); }
+  let guard = 0;
+  while (out.length < n && guard++ < n * 60) {
+    const c = centers[(r() * centers.length) | 0];
+    const g = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+    const x = c[0] + g() * c[2], y = c[1] + g() * c[2];
+    if (x < 0 || y < 0 || x >= GW || y >= GH) continue;
+    const i = (y | 0) * GW + (x | 0);
+    if (!S.ins[i]) continue;
+    const k = S.cnt[i] > 1 ? (r() < 0.5 ? 0 : 1) : 0;
+    out.push({ x, y, z: S.lay[i * 2 + k] });
+  }
+  return out;
+}
+function heatGrid(pos, cell) {
+  const cw = Math.ceil(GW / cell), ch = Math.ceil(GH / cell), g = new Float32Array(cw * ch);
+  for (const p of pos) g[((p.y / cell) | 0) * cw + ((p.x / cell) | 0)]++;
+  const sorted = Array.from(g).filter(v => v > 0).sort((a, b) => a - b);
+  const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : 1;
+  return { g, cw, ch, p95: Math.max(1, p95) };
+}
+/* Joueurs d'essai : x, y en cellules, z = hauteur du sol occupe. */
+const MARKERS = [
+  { n: 'Ardent', t: 'a', x: 96, y: 48, z: 2, open: true },
+  { n: 'Brume', t: 'a', x: 64, y: 45, z: 4 },
+  { n: 'Cobalt', t: 'a', x: 70, y: 74, z: 0 },
+  { n: 'Dune', t: 'a', x: 30, y: 135, z: 2 },
+  { n: 'Fauve', t: 'b', x: 112, y: 64, z: 1.3 },
+  { n: 'Givre', t: 'b', x: 26, y: 62, z: 0 },
+  { n: 'Halo', t: 'b', x: 146, y: 98, z: 0 },
+  { n: 'Iris', t: 'b', x: 124, y: 142, z: 1 },
+];
+//#PURE-END
+
+/* ====================== Libellés (fr et en) ====================== */
+let LANG = 'fr';
+/* n = 1 : texte neuf. src : emplacement du texte une fois en code. */
+const D = {
+  view: { fr: 'Vue', en: 'View', src: 'rejeu, i18n du rejeu (viewButton)' },
+  viewPresets: { fr: 'Préréglages', en: 'Presets', src: 'rejeu (viewPresetsTitle)' },
+  layers: { fr: 'Calques', en: 'Layers', src: 'rejeu (layers)' },
+  grpPlayers: { fr: 'Joueurs', en: 'Players', src: 'rejeu (layerGroupPlayers)' },
+  aim: { fr: 'Visée', en: 'Aim', src: 'rejeu (layerAim)' },
+  trail: { fr: 'Traînée', en: 'Trail', src: 'rejeu (layerTrail)' },
+  grpTerrain: { fr: 'Terrain', en: 'Terrain', src: 'rejeu (layerGroupTerrain)' },
+  zones: { fr: 'Zones', en: 'Zones', src: 'rejeu (layerZones)' },
+  background: { fr: 'Fond', en: 'Background', src: 'rejeu (layerBackground) ; Tactique (pill_background)' },
+  fondPlan: { fr: 'Plan', en: 'Plan', src: 'rejeu (layerBackgroundPlan) ; Tactique (background_plan)' },
+  fondRender: { fr: 'Rendu', en: 'Render', src: 'rejeu (layerBackgroundRender) ; Tactique (background_render)' },
+  wallPlan: { fr: 'Plan des murs', en: 'Wall plan', src: 'rejeu (layerWallPlan)' },
+  wallPlanIn: { fr: 'Déjà dans le plan', en: 'Already in the plan', src: 'rejeu (layerWallPlanInPlanHint)' },
+  orientation: { fr: 'Orientation', en: 'Orientation', src: 'rejeu (orientationTitle)' },
+  auto: { fr: 'Auto', en: 'Auto', src: 'rejeu (orientationAuto)' },
+  moreSections: { fr: 'Vies, fil des éliminations, effets, chaleur, couleur des points, son : inchangés.', en: 'Lives, kill feed, effects, heat map, marker colours, sound: unchanged.', src: 'maquette seulement (note)' },
+  tacRead: { fr: 'Lecture', en: 'Reading', src: 'Tactique (pill_reading)' },
+  tacPlayers: { fr: 'Joueurs', en: 'Players', src: 'Tactique (pill_players)' },
+  tacZones: { fr: 'Zones nommées', en: 'Named zones', src: 'Tactique (pill_zones)' },
+  occTitle: { fr: 'Occupation du terrain', en: 'Ground occupancy', src: 'match-view (title)' },
+  occAll: { fr: 'Tous', en: 'All', src: 'match-view (teamAll)' },
+  occTeamA: { fr: 'Équipe A', en: 'Team A', src: 'match-view (team0)' },
+  occTeamB: { fr: 'Équipe B', en: 'Team B', src: 'match-view (team1)' },
+  occTactics: { fr: 'Tactique', en: 'Tactics', src: 'match-view (tactics)' },
+  heat: { fr: 'Chaleur', en: 'Heat', src: 'Tactique (nom du calque de la lecture affichée)' },
+  kills: { fr: 'Éliminations', en: 'Eliminations', src: 'Tactique (nom du calque des tueurs)' },
+
+  fondRelief: { n: 1, fr: 'Relief', en: 'Relief', src: 'rejeu (layerBackgroundRelief) ; Tactique (background_relief)' },
+  fondReliefHint: { n: 1, fr: 'Le terrain vu de dessus, en gris teinté : plus clair plus haut, ombré du nord-ouest, découpé à la zone jouable.', en: 'The terrain seen from above, in tinted grey: lighter where higher, shaded from the north-west, cut to the playable area.', src: 'rejeu (layerBackgroundReliefHint), infobulle' },
+  lines: { n: 1, fr: 'Traits du relief', en: 'Relief lines', src: 'rejeu (layerReliefLines) ; Tactique (pill_relief_lines) ; Occupation' },
+  linesHint: { n: 1, fr: 'Ruptures de hauteur, courbes de niveau sur les pentes et liseré de la zone jouable, nets à tout zoom. Allumés d’office sur le fond Relief.', en: 'Height breaks, contour lines on slopes and an outline of the playable area, sharp at any zoom. On by default with the Relief background.', src: 'rejeu (layerReliefLinesHint), infobulle' },
+  floor: { n: 1, fr: 'Étage', en: 'Floor', src: 'rejeu (layerGroupFloor) ; Tactique (pill_floor) ; Occupation' },
+  floorInfo: { n: 1, fr: 'Coupe du terrain par hauteur : l’étage choisi s’affiche en plein, les étages du dessous pâles, ceux du dessus presque effacés.', en: 'Terrain cut by height: the chosen floor is drawn in full, floors below pale, floors above almost erased.', src: 'rejeu (floorInfo), infobulle du (i)' },
+  floorAll: { n: 1, fr: 'Tout', en: 'All', src: 'rejeu (floorAll) ; Tactique ; Occupation' },
+  floorAllHint: { n: 1, fr: 'Aucune coupe : tous les étages en plein.', en: 'No cut: every floor drawn in full.', src: 'infobulle de la pastille « Tout »' },
+  floorChipHint: { n: 1, fr: 'Étage à {h} au-dessus du point le plus bas de la carte.', en: 'Floor {h} above the lowest point of the map.', src: 'infobulle d’une pastille d’étage' },
+  height: { n: 1, fr: 'Hauteur', en: 'Height', src: 'rejeu (floorHeight) ; Tactique ; Occupation' },
+  heightAria: { n: 1, fr: 'Hauteur de la coupe', en: 'Cut height', src: 'nom accessible du curseur' },
+  follow: { n: 1, fr: 'Suivre le joueur ouvert', en: 'Follow the open player', src: 'rejeu (floorFollow)' },
+  followHint: { n: 1, fr: 'La coupe prend l’étage du joueur dont la fiche est ouverte, à chaque instant.', en: 'The cut takes the floor of the player whose card is open, at every moment.', src: 'rejeu (floorFollowHint), infobulle' },
+  followNone: { n: 1, fr: 'Aucun joueur ouvert : ouvrir la fiche d’un joueur pour activer le suivi.', en: 'No player open: open a player’s card to turn following on.', src: 'rejeu (floorFollowNone), note sous l’interrupteur désactivé' },
+  followOn: { n: 1, fr: 'Étage suivi : {h}', en: 'Followed floor: {h}', src: 'rejeu (floorFollowOn), note sous l’interrupteur allumé' },
+  noMesh: { n: 1, fr: 'Carte sans maillage de navigation : le relief est affiché en entier, sans coupe par étage.', en: 'Map without a navigation mesh: the relief is shown whole, with no floor cut.', src: 'rejeu (floorNoMesh), bloc en pointillé (variante B de la planche 2)' },
+  legendNoHeight: { n: 1, fr: '{layer} : ce calque ne porte pas la hauteur, il reste affiché sur tous les étages.', en: '{layer}: this layer carries no height and stays shown on every floor.', src: 'Tactique (legend_no_height), pied du plan' },
+  occHidden: { n: 1, fr: 'Positions hors de l’étage choisi : masquées ({n} sur {total}).', en: 'Positions outside the chosen floor: hidden ({n} of {total}).', src: 'Occupation (hiddenPositions), ligne d’état sous la carte' },
+};
+const T = (k, v) => { let s = D[k][LANG]; if (v) for (const [a, b] of Object.entries(v)) s = s.replace('{' + a + '}', b); return s; };
+const fmtM = z => { const s = (z < 0 ? '−' : '+') + Math.abs(z).toFixed(1); return (LANG === 'fr' ? s.replace('.', ',') : s) + ' m'; };
+
+/* ====================== Outils DOM ====================== */
+const IC = {
+  sliders: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>',
+  info: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="4.6"/><path d="M6 5.4v3M6 3.6v.2"/></svg>',
+  layers: '<svg class="gl" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" aria-hidden="true"><path d="M6 1.5 11 4 6 6.5 1 4z"/><path d="M1 6.3 6 8.8l5-2.5M1 8.6 6 11l5-2.4"/></svg>',
+  cross: '<svg class="gl" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>',
+  heat: '<svg class="gl" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="2" fill="#e0663d" opacity=".8"/></svg>',
+  back: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+  play: '<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>',
+  cam: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg>',
+  snd: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  cap: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  cine: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 15h20"/></svg>',
+  full: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  gren: '<svg width="9" height="11" viewBox="0 0 12 14" aria-hidden="true"><path d="M4 0h4v2H4zM6 3a5 5 0 1 1 0 10A5 5 0 0 1 6 3z" fill="currentColor"/></svg>',
+  bolt: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
+  weapon: '<svg width="20" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg>',
+};
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === 'class') e.className = v; else if (k === 'html') e.innerHTML = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, ''); else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(c));
+  return e;
+}
+const $ = id => document.getElementById(id);
+const infoMark = text => h('span', { class: 'ui-info', role: 'img', 'aria-label': text, title: text, html: IC.info });
+
+/* ====================== État d'une planche ====================== */
+const PLAYER_Z = 2;   /* étage du joueur ouvert d'essai (Ardent) */
+const STATES = {};
+function stateOf(id, init) {
+  if (!STATES[id]) {
+    const st = Object.assign({ bg: 'plan', lines: false, walls: true, cut: null, follow: false, open: false, nomesh: false, subs: [] }, init);
+    st.set = (p) => {
+      if (p.bg && p.bg !== st.bg && p.lines === undefined) p.lines = p.bg === 'relief';     /* défaut des traits : allumés sur le Relief seul */
+      Object.assign(st, p);
+      if (!st.open) st.follow = false;
+      if (st.follow && st.open) st.cut = PLAYER_Z;
+      if (st.nomesh) { st.cut = null; st.follow = false; }
+      st.subs.forEach(f => f());
+    };
+    STATES[id] = st;
+  }
+  STATES[id].subs.length = 0;
+  return STATES[id];
+}
+
+/* ====================== Dessin de la carte ====================== */
+const SCENE = buildScene();
+const IMG_CACHE = new Map();
+function gridImage(bg, cut, mesh) {
+  const key = bg + '|' + cut + '|' + mesh;
+  let r = IMG_CACHE.get(key);
+  if (r) return r;
+  const base = getComputedStyle(document.documentElement).getPropertyValue('--map-relief-base').trim() || '#5a6f8c';
+  const g = renderGrid(SCENE, bg, cut, mesh, base);
+  const c = document.createElement('canvas'); c.width = GW; c.height = GH;
+  const ctx = c.getContext('2d'); const id = ctx.createImageData(GW, GH); id.data.set(g.px); ctx.putImageData(id, 0, 0);
+  r = { canvas: c, vis: g.vis, seg: null, base };
+  IMG_CACHE.set(key, r);
+  if (IMG_CACHE.size > 40) IMG_CACHE.delete(IMG_CACHE.keys().next().value);
+  return r;
+}
+function strokeSegs(ctx, arr, color, width, alpha, k, dash) {
+  if (!arr.length) return;
+  ctx.beginPath();
+  for (let i = 0; i < arr.length; i += 4) { ctx.moveTo(arr[i] * k, arr[i + 1] * k); ctx.lineTo(arr[i + 2] * k, arr[i + 3] * k); }
+  ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []); ctx.stroke(); ctx.globalAlpha = 1; ctx.setLineDash([]);
+}
+function paintMap(canvas, st, extras) {
+  const dpr = window.devicePixelRatio || 1, cw = canvas.clientWidth, ch = canvas.clientHeight;
+  if (cw < 4 || ch < 4) return;
+  const W = Math.round(cw * dpr), Hh = Math.round(ch * dpr);
+  if (canvas.width !== W || canvas.height !== Hh) { canvas.width = W; canvas.height = Hh; }
+  const ctx = canvas.getContext('2d'), k = W / GW, u = W / 520;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, Hh);
+  const cut = st.nomesh ? null : st.cut, mesh = !st.nomesh;
+  const img = gridImage(st.bg, cut, mesh);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img.canvas, 0, 0, W, Hh);
+  if (!img.seg) img.seg = segments(SCENE, img.vis, cut, mesh);
+  const B = hexRgb(img.base), white = [255, 255, 255], sg = img.seg;
+  if (st.bg === 'plan') {   /* le Plan porte ses murs et dessine les étages recouverts en pointillé */
+    strokeSegs(ctx, sg.w.concat(sg.o), cssRgb(mixRgb(B, white, 0.8)), 1.1 * u, 0.7, k);
+    ctx.setLineDash([4 * u, 3 * u]); ctx.strokeStyle = cssRgb(mixRgb(B, white, 0.65)); ctx.globalAlpha = 0.6; ctx.lineWidth = 1 * u;
+    ctx.strokeRect(48 * k, 62 * k, 44 * k, 22 * k); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  } else if (st.walls) {    /* interrupteur « Plan des murs » : trait fin par-dessus Rendu et Relief */
+    strokeSegs(ctx, sg.w.concat(sg.o), cssRgb(mixRgb(B, white, 0.8)), 1 * u, 0.6, k);
+  }
+  if (st.lines) {           /* « Traits du relief » : sur n'importe lequel des trois fonds */
+    strokeSegs(ctx, sg.c, cssRgb(mixRgb(B, white, 0.45)), 0.8 * u, 0.4, k);
+    strokeSegs(ctx, sg.e, cssRgb(mixRgb(B, white, 0.65)), 1 * u, 0.75, k);
+    strokeSegs(ctx, sg.o, '#ffffff', 1.5 * u, 0.95, k);
+  }
+  if (extras) extras(ctx, k, u, st);
+}
+const ringsOf = z => z >= 3 ? 2 : z >= 1.5 ? 1 : 0;
+function drawMarkers(ctx, k, u) {
+  const css = getComputedStyle(document.documentElement);
+  const col = { a: css.getPropertyValue('--team-ally').trim(), b: css.getPropertyValue('--team-enemy').trim() };
+  for (const m of MARKERS) {
+    const x = m.x * k, y = m.y * k, r = 5.2 * u;
+    for (let i = 1; i <= ringsOf(m.z); i++) { ctx.beginPath(); ctx.arc(x, y, r + 2.6 * u + (i - 1) * 2.8 * u, 0, 7); ctx.strokeStyle = col[m.t]; ctx.globalAlpha = 0.9 - 0.18 * (i - 1); ctx.lineWidth = 1 * u; ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.beginPath(); ctx.arc(x, y, r + 1.3 * u, 0, 7); ctx.fillStyle = '#0b0b0b'; ctx.fill();   /* contour d'encre sous le noyau */
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col[m.t]; ctx.fill();
+    if (m.open) { ctx.beginPath(); ctx.arc(x, y, r + 9.5 * u + ringsOf(m.z) * 2.8 * u, 0, 7); ctx.strokeStyle = '#f2f2f2'; ctx.lineWidth = 1.6 * u; ctx.stroke(); }
+  }
+}
+const markersOnly = st => (ctx, k, u) => { if (!st.open) { /* sans joueur ouvert, aucun cerclage */ MARKERS.forEach(m => { m.open = false; }); } else { MARKERS.forEach(m => { m.open = m.n === 'Ardent'; }); } drawMarkers(ctx, k, u); };
+const POS = makePositions(SCENE, 420, 7);
+const KILLS = makePositions(SCENE, 46, 21);
+const keepZ = (p, cut) => cut === null || wgt(p.z, cut) > 0.5;
+const HEAT_STOPS = [[43, 58, 103], [122, 63, 143], [224, 102, 61], [255, 213, 74]];
+function heatColor(f) {
+  const s = Math.min(0.999, f) * (HEAT_STOPS.length - 1), i = Math.floor(s), t = s - i;
+  return mixRgb(HEAT_STOPS[i], HEAT_STOPS[i + 1], t);
+}
+function paintHeat(ctx, k, pos, alpha) {
+  const cell = 6, hg = heatGrid(pos, cell);
+  for (let y = 0; y < hg.ch; y++) for (let x = 0; x < hg.cw; x++) {
+    const v = hg.g[y * hg.cw + x]; if (!v) continue;
+    const c = heatColor(Math.min(1, v / hg.p95)); ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${alpha * (0.45 + 0.55 * Math.min(1, v / hg.p95))})`;
+    ctx.fillRect(x * cell * k, y * cell * k, cell * k, cell * k);
+  }
+}
+
+/* ====================== Composants de commande ====================== */
+function toggle(label, get, set, o = {}) {
+  const track = h('span', { class: 'ui-track', 'aria-hidden': 'true' }, h('i'));
+  const b = h('button', { type: 'button', role: 'switch', class: 'ui-toggle', title: o.hint, onclick: () => set(!get()) }, h('span', null, label), track);
+  const sync = () => { b.setAttribute('aria-checked', String(!!(o.shown ? o.shown() : get()))); b.disabled = !!(o.disabled && o.disabled()); if (o.hintFn) b.title = o.hintFn(); };
+  sync(); return { el: b, sync };
+}
+function segRow(label, opts, get, set) {
+  const btns = opts.map(o => h('button', { type: 'button', role: 'radio', title: o.hint, onclick: () => set(o.value) }, o.label));
+  const grp = h('div', { class: 'ui-segs', role: 'radiogroup', 'aria-label': label }, btns);
+  const sync = () => btns.forEach((b, i) => b.setAttribute('aria-checked', String(get() === opts[i].value)));
+  sync(); return { el: h('div', { class: 'ui-segrow' }, h('span', null, label), grp), sync };
+}
+/* Groupe « Étage » : pastilles, curseur, suivi du joueur ouvert. Un seul composant pour le panneau, les pilules reprennent la même logique. */
+function floorGroup(st) {
+  const chips = [h('button', { type: 'button', class: 'ui-chip', title: T('floorAllHint'), onclick: () => st.set({ cut: null, follow: false }) }, T('floorAll'))];
+  LEVELS.forEach(z => chips.push(h('button', { type: 'button', class: 'ui-chip', title: T('floorChipHint', { h: fmtM(z) }), onclick: () => st.set({ cut: z, follow: false }) }, fmtM(z))));
+  const input = h('input', { type: 'range', min: '0', max: String(ZMAX), step: '0.25', 'aria-label': T('heightAria'), oninput: e => st.set({ cut: parseFloat(e.target.value), follow: false }) });
+  const out = h('output');
+  const range = h('div', { class: 'ui-range' }, h('span', null, T('height')), input, out);
+  const fol = toggle(T('follow'), () => st.follow, v => st.set({ follow: v }), { hint: T('followHint'), disabled: () => !st.open });
+  const note = h('p', { class: 'ui-note' });
+  const sync = () => {
+    chips.forEach((c, i) => c.setAttribute('aria-pressed', String(i === 0 ? st.cut === null : st.cut !== null && Math.abs(st.cut - LEVELS[i - 1]) < 0.01)));
+    input.value = st.cut === null ? '0' : String(st.cut);
+    out.textContent = st.cut === null ? T('floorAll') : fmtM(st.cut);
+    range.classList.toggle('idle', st.cut === null);
+    fol.sync();
+    note.textContent = !st.open ? T('followNone') : st.follow ? T('followOn', { h: fmtM(PLAYER_Z) }) : '';
+    note.classList.toggle('live', st.open && st.follow); note.hidden = !note.textContent;
+  };
+  st.subs.push(sync); sync();
+  return h('div', { class: 'ui-grp ui-span' },
+    h('p', { class: 'ui-gt' }, T('floor'), infoMark(T('floorInfo'))),
+    h('div', { class: 'ui-chips', role: 'group', 'aria-label': T('floor') }, chips), range, fol.el, note);
+}
+/* Panneau « Vue » : les sections inchangées sont grisées, Terrain et Étage portent les commandes neuves. */
+function vuePanel(st, o = {}) {
+  const sync = [];
+  const add = c => { sync.push(c.sync); return c.el; };
+  const bgSeg = segRow(T('background'), [
+    { value: 'plan', label: T('fondPlan') }, { value: 'rendu', label: T('fondRender') }, { value: 'relief', label: T('fondRelief'), hint: T('fondReliefHint') }], () => st.bg, v => st.set({ bg: v }));
+  const lines = toggle(T('lines'), () => st.lines, v => st.set({ lines: v }), { hint: T('linesHint') });
+  const walls = toggle(T('wallPlan'), () => st.walls, v => st.set({ walls: v }), { shown: () => st.walls && st.bg !== 'plan', disabled: () => st.bg === 'plan', hintFn: () => st.bg === 'plan' ? T('wallPlanIn') : '' });
+  const zones = toggle(T('zones'), () => true, () => {}, {});
+  const aim = toggle(T('aim'), () => true, () => {}, {});
+  const trail = toggle(T('trail'), () => true, () => {}, {});
+  st.subs.push(() => sync.forEach(f => f()));
+  const floorBlock = o.nomesh
+    ? (o.variant === 'B' ? h('div', { class: 'ui-grp ui-span' }, h('p', { class: 'ui-gt' }, T('floor')), h('p', { class: 'ui-empty' }, T('noMesh'))) : null)
+    : floorGroup(st);
+  const panel = h('div', { class: 'vue-panel', role: 'region', 'aria-label': T('view') },
+    h('div', { class: 'vp-head' }, h('h2', null, T('view')), h('span', { class: 'vp-x', 'aria-hidden': 'true' }, '×')),
+    h('div', { class: 'ui-sec ui-inert' }, h('h3', null, T('viewPresets')), h('div', { class: 'ui-presets' }, h('span', { class: 'on' }, 'Complet'), h('span', null, 'Combat'), h('span', null, 'Déplacements'), h('span', null, 'Objectif'))),
+    h('div', { class: 'ui-sec' }, h('h3', null, T('layers')),
+      h('div', { class: 'ui-grp ui-inert' }, h('p', { class: 'ui-gt' }, T('grpPlayers')), h('div', { class: 'ui-grid' }, add(aim), add(trail))),
+      h('div', { class: 'ui-grp' }, h('p', { class: 'ui-gt' }, T('grpTerrain')),
+        h('div', { class: 'ui-grid' }, add(zones), add(bgSeg), add(lines), add(walls), floorBlock))),
+    h('div', { class: 'ui-sec ui-inert' }, h('div', { class: 'ui-segrow' }, h('span', null, T('orientation')), h('div', { class: 'ui-segs' }, ...[T('auto'), '0°', '90°', '180°', '270°'].map((l, i) => h('button', { type: 'button', 'aria-checked': String(i === 0) }, l))))),
+    h('p', { class: 'ui-more' }, T('moreSections')));
+  zones.sync(); aim.sync(); trail.sync();
+  return panel;
+}
+function vueOverlay(st, o) {
+  const panel = vuePanel(st, o);
+  return { el: h('div', { class: 'vue-over' }, h('span', { class: 'vue-btn open', html: IC.sliders + '<span>' + T('view') + '</span><b>Complet</b>' }), panel), panel };
+}
+/* Pilules de la Tactique et de l'occupation (mêmes classes que `TacticalPiluleFond`). */
+function pill(label, opts, get, set, extra) {
+  const btns = opts.map(o => h('button', { type: 'button', title: o.hint, class: o.mute ? 'mute' : '', onclick: () => set(o.value) }, o.label));
+  const root = h('span', { class: 'pill', role: 'group', 'aria-label': label }, h('span', { class: 'lb' }, label), btns, extra || null);
+  const sync = () => btns.forEach((b, i) => b.setAttribute('aria-pressed', String(get() === opts[i].value)));
+  sync(); return { el: root, sync };
+}
+function pbtn(label, get, set, hint) {
+  const b = h('button', { type: 'button', class: 'pbtn', title: hint, onclick: () => set(!get()) }, label);
+  const sync = () => b.setAttribute('aria-pressed', String(!!get())); sync(); return { el: b, sync };
+}
+function pillRow(st) {
+  const sync = [];
+  const add = c => { sync.push(c.sync); return c.el; };
+  const fond = pill(T('background'), [{ value: 'plan', label: T('fondPlan') }, { value: 'rendu', label: T('fondRender') }, { value: 'relief', label: T('fondRelief'), hint: T('fondReliefHint') }], () => st.bg, v => st.set({ bg: v }));
+  const lines = pbtn(T('lines'), () => st.lines, v => st.set({ lines: v }), T('linesHint'));
+  const input = h('input', { type: 'range', min: '0', max: String(ZMAX), step: '0.25', 'aria-label': T('heightAria'), oninput: e => st.set({ cut: parseFloat(e.target.value) }) });
+  const out = h('output');
+  const rg = h('span', { class: 'rg' }, input, out);
+  const flo = pill(T('floor'), [{ value: null, label: T('floorAll'), hint: T('floorAllHint') }, ...LEVELS.map(z => ({ value: z, label: fmtM(z), hint: T('floorChipHint', { h: fmtM(z) }) }))],
+    () => { if (st.cut === null) return null; const l = LEVELS.find(z => Math.abs(z - st.cut) < 0.01); return l === undefined ? 'libre' : l; }, v => st.set({ cut: v }), rg);
+  sync.push(flo.sync);
+  const root = h('span', { class: 'pills' },
+    h('span', { class: 'pill ui-inert' }, h('span', { class: 'lb' }, T('tacRead')), h('button', { type: 'button', 'aria-pressed': 'true' }, 'Morts'), h('button', { type: 'button' }, 'Frags')),
+    h('span', { class: 'pill ui-inert' }, h('span', { class: 'lb' }, T('tacPlayers')), h('button', { type: 'button', 'aria-pressed': 'true' }, 'Moi'), h('button', { type: 'button' }, 'Escouade')),
+    add(fond), add(lines), flo.el, h('button', { type: 'button', class: 'pbtn ui-inert', 'aria-pressed': 'false' }, T('tacZones')));
+  st.subs.push(() => { sync.forEach(f => f()); input.value = st.cut === null ? '0' : String(st.cut); out.textContent = st.cut === null ? T('floorAll') : fmtM(st.cut); rg.classList.toggle('idle', st.cut === null); });
+  input.value = '0'; out.textContent = T('floorAll'); rg.classList.add('idle');
+  return root;
+}
+function occRow(st) {
+  const row = pillRow(st);
+  row.querySelectorAll('.ui-inert').forEach(e => e.remove());
+  return row;
+}
+
+/* ====================== Cadres du rejeu ====================== */
+const TA = [['Ardent', 8, 3, 2, 100], ['Brume', 7, 2, 2, 92], ['Cobalt', 7, 4, 4, 64], ['Dune', 6, 4, 1, 88]];
+const TB = [['Écho', 4, 6, 3, 0, 'dead'], ['Fauve', 5, 4, 1, 88], ['Givre', 3, 6, 0, 35], ['Halo', 3, 7, 1, 100]];
+const FEED = [['3:14', 'Brume', 'a', 'Givre', 'Passerelle nord'], ['3:22', 'Écho', 'b', 'Cobalt', 'Atrium'], ['3:22', 'Ardent', 'a', 'Fauve', 'Cour sud'], ['3:37', 'Cobalt', 'a', 'Écho', 'Atrium'], ['3:42', 'Halo', 'b', 'Ardent', 'Passerelle nord']];
+const feedHtml = cls => FEED.map((f, i) => `<div class="fr${i < 2 && cls ? ' o' + (2 - i) : ''}"><span class="t">${f[0]}</span><span class="${f[2] === 'a' ? 'ka' : 'kb'}">${f[1]}</span>${IC.weapon}<span class="${f[2] === 'a' ? 'kb' : 'ka'}">${f[3]}</span><span class="zn">${f[4]}</span></div>`).join('');
+const nav = () => '<div class="nav"><span class="logo">LevelUp</span><span class="nv"><span>Accueil</span><span>Matchs</span><span>Tactique</span></span><span class="avatar"></span></div>';
+const scoreHtml = () => '<div class="sb"><div class="sbar l"><i style="width:76%"></i><b>38</b></div><span class="sclk">3:51</span><div class="sbar r"><i style="width:62%"></i><b>31</b></div></div>';
+const cadres = (nof) => '<span class="ibtn" title="Cinéma (T)">' + IC.cine + '</span><span class="ibtn" title="Plein cadre (F)">' + IC.full + '</span>' + (nof ? '' : '<span class="btn">Fiche</span>');
+const transport = cls => `<div class="tp ${cls}"><span class="ibtn">${IC.cam}</span><span class="ibtn">${IC.snd}</span><span class="vsep"></span><span class="play">${IC.play}</span><span class="ibtn">−10</span><span class="ibtn">+10</span><span class="time"><b>3:51</b> / 7:45</span><div class="scrub"><div class="rail"><i style="width:49.7%"></i></div><div class="dom"><i class="b" style="width:3%"></i><i style="width:17%"></i><i class="b" style="width:16%"></i><i class="a" style="width:64%"></i></div><span class="knob" style="left:calc(49.7% - 6px)"></span></div><span class="ibtn">1×</span><span class="vsep"></span><span class="ibtn">−</span><span class="ibtn">+</span><span class="vsep"></span><span class="ibtn">${IC.cap}</span><span class="ibtn on" title="Cadre">${IC.cine}</span><span class="ibtn">${IC.full}</span></div>`;
+const tiles = st => TA.concat(TB).map(p => `<div class="tile${p[5] ? ' dead' : ''}" data-n="${p[0]}"><div class="r1"><i class="dot ${TA.includes(p) ? 'a' : 'b'}"></i><b>${p[0]}</b><span class="kda">${p[1]} / ${p[2]} / ${p[3]}</span></div><div class="r2">${p[5] ? '<span class="resp">Réapparition 5,8 s</span>' : '<span class="vit"><i style="width:' + p[4] + '%"></i></span>'}<span>${IC.gren} 2</span><span>${IC.bolt}</span></div></div>`);
+function rosterHtml(st) {
+  const row = (p, t) => `<div class="hr${p[5] ? ' dead' : ''}" data-n="${p[0]}"><div class="nm"><b>${p[0]}</b>${p[5] ? '<span class="resp">Réapparition 5,8 s</span>' : '<span class="vit"><i style="width:' + p[4] + '%"></i></span>'}</div><span class="ic">${IC.weapon}</span><span class="ic">${IC.gren}</span><span class="kda">${p[1]} / ${p[2]} / ${p[3]}</span></div>`;
+  return `<div class="sh"><i class="dot a"></i>Aigle</div><div class="hr hd"><div></div><span>Arme</span><span>Gr.</span><span>F / M / A</span></div>${TA.map(p => row(p)).join('')}<div class="sh"><i class="dot b"></i>Cobra</div>${TB.map(p => row(p)).join('')}`;
+}
+function frameFor(kind, st, ov) {
+  const f = h('div', { class: 'app frame' });
+  const title = '<div class="crumb"><small>Joueur d’essai · Classé · 12 nov. 2026</small><b>Combat par équipes — Carte d’essai</b></div>';
+  if (kind === 'std') {
+    f.innerHTML = nav() + `<div class="page"><div class="head"><div class="l"><span class="back">${IC.back}</span>${title}</div>${scoreHtml()}<div class="r">${cadres()}</div></div>
+      <div class="vp std"><div class="cell"><div class="stage"><div class="mapbox"><canvas></canvas></div></div>${transport('in')}</div><div class="col">${rosterHtml(st)}<div class="feed"><div class="sh">Éliminations</div>${feedHtml(false)}</div></div></div></div>`;
+    f.style.setProperty('--panel-max', '500px');
+    f.querySelector('.stage').append(ov.el);
+  } else {
+    const pc = kind === 'pc';
+    const left = pc ? `<span class="quit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Quitter<kbd>Échap</kbd></span>` : `<span class="back">${IC.back}</span>`;
+    f.innerHTML = (pc ? '' : nav()) + `<div class="wide${pc ? ' pc' : ''}"><div class="head k"><div class="l">${left}${title}</div><span></span><div class="r">${cadres(pc)}</div></div>
+      <div class="band"></div>
+      <div class="vp k"><div class="stage"><div class="mapbox"><canvas></canvas></div></div><div class="ofeed">${feedHtml(true)}</div></div>${transport('out')}</div>`;
+    f.style.setProperty('--panel-max', '480px');
+    const t = tiles(st), band = f.querySelector('.band');
+    band.innerHTML = t.slice(0, 4).join('') + `<div class="score">${scoreHtml()}</div>` + t.slice(4).join('');
+    f.querySelector('.stage').append(ov.el);
+  }
+  return f;
+}
+
+/* ====================== Montage des planches ====================== */
+const PLANCHES = [];
+function demoBar(st, extra) {
+  const bar = h('div', { class: 'demo' }, h('span', { class: 'tag' }, 'Démonstration'));
+  const sw = segRow('Joueur ouvert', [{ value: false, label: 'Aucun' }, { value: true, label: 'Ardent' }], () => st.open, v => st.set({ open: v }));
+  st.subs.push(sw.sync);
+  bar.append(sw.el);
+  if (extra) bar.append(extra);
+  bar.append(h('span', null, 'Fiche du joueur ouvert non dessinée : la tuile ou la ligne ouverte est seulement marquée.'));
+  return bar;
+}
+function mountFrame(id, kind, title, lead, notes, init, o = {}) {
+  const st = stateOf(id, init);
+  const ov = vueOverlay(st, o);
+  const frame = frameFor(kind, st, ov);
+  const fit = h('div', { class: 'fit' }, frame);
+  const host = h('div', { class: 'panel-host', 'data-label': 'Panneau « Vue » à taille réelle' });
+  const canv = frame.querySelector('canvas');
+  const sec = h('section', { class: 'pl', id }, h('h2', null, title), h('p', { class: 'lead', html: lead }), o.noDemo ? null : demoBar(st), fit, host, h('ul', { class: 'notes', html: notes.map(n => '<li>' + n + '</li>').join('') }));
+  const repaint = () => requestAnimationFrame(() => paintMap(canv, st, markersOnly(st)));
+  st.subs.push(repaint);
+  const markOpen = () => frame.querySelectorAll('[data-n]').forEach(e => e.classList.toggle('open', st.open && e.dataset.n === 'Ardent'));
+  st.subs.push(markOpen); markOpen();
+  PLANCHES.push({ fit, frame, panel: ov.panel, host, inHost: ov.el, det: false, fw: 1440, repaint });
+  return sec;
+}
+function tactiquePlanche() {
+  const st = stateOf('p3', { bg: 'plan' });
+  const legend = h('ul', { class: 'legend' });
+  const canvas = h('canvas');
+  const card = h('div', { class: 'ui-card' },
+    h('div', { class: 'ui-card-head' }, h('div', { class: 'ui-card-title' }, 'Morts sur la carte d’essai', infoMark('Titre factice')), pillRow(st)),
+    h('div', { class: 'card-body' },
+      h('div', { class: 'mapwrap' }, h('div', { class: 'mapbox2' }, canvas, h('div', { class: 'zoomc' }, h('span', null, '+'), h('span', null, '−'))), h('div', { class: 'ramp' }, h('span', null, '12'), h('i'), h('span', null, '0'))),
+      legend));
+  const syncLegend = () => {
+    legend.innerHTML = '';
+    legend.append(h('li', { html: IC.cross + '<span>' + T('kills') + '</span>' }), h('li', { html: IC.heat + '<span>' + T('heat') + '</span>' }));
+    if (st.cut !== null) legend.append(h('li', { html: IC.layers + '<span>' + T('legendNoHeight', { layer: T('heat') }) + '</span>' }));
+  };
+  const extras = (ctx, k, u) => {
+    paintHeat(ctx, k, POS, 0.8);                 /* trame de chaleur : aucune hauteur, jamais filtrée */
+    ctx.lineCap = 'round';
+    for (const p of KILLS) {                     /* points d'élimination : hauteur connue, filtrés par étage */
+      if (!keepZ(p, st.cut)) continue;
+      const x = p.x * k, y = p.y * k, r = 3.2 * u;
+      ctx.strokeStyle = '#0b0b0b'; ctx.lineWidth = 3.4 * u; ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+      ctx.strokeStyle = '#f4f4f4'; ctx.lineWidth = 1.6 * u; ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+    }
+  };
+  st.subs.push(syncLegend, () => requestAnimationFrame(() => paintMap(canvas, st, extras)));
+  syncLegend();
+  PLANCHES.push({ plain: true, repaint: () => requestAnimationFrame(() => paintMap(canvas, st, extras)) });
+  return h('section', { class: 'pl', id: 'p3' }, h('h2', null, 'Planche 3 : Tactique, pilules de fond, de traits et d’étage'),
+    h('p', { class: 'lead', html: 'Le bandeau du plan de la Tactique reçoit trois ajouts, avec les classes de pilule existantes : « Relief » comme troisième valeur de la pilule « Fond », un bouton « Traits du relief » (même forme que « Zones nommées »), et une pilule « Étage » (« Tout », une valeur par étage, curseur). Les pilules grisées ne changent pas. La coupe vaut pour le fond ; la <b>légende du pied du plan</b> nomme les calques qui ne sont pas filtrés par étage.' }),
+    card,
+    h('ul', { class: 'notes', html: [
+      '<b>Légende</b> : la mention n’apparaît que lorsqu’un étage est choisi et qu’un calque affiché ne porte pas la hauteur. Ici : trame de chaleur sans hauteur ; points d’élimination avec hauteur, donc filtrés (hypothèse à recaler sur l’item 0.1, question 7).',
+      '<b>Pas de « Suivre le joueur ouvert »</b> dans la Tactique : aucune fiche de joueur n’y est ouverte (lecture agrégée sur plusieurs matchs).',
+      'Le titre de la carte et les pilules de lecture sont factices ; la colonne des cartes à gauche de la carte n’est pas dessinée.'].map(n => '<li>' + n + '</li>').join('') }));
+}
+function occupationPlanche() {
+  const st = stateOf('p4', { bg: 'plan' });
+  const status = h('p', { class: 'statusline', 'aria-live': 'polite' });
+  const canvas = h('canvas');
+  const card = h('div', { class: 'ui-card' },
+    h('div', { class: 'ui-card-head' }, h('div', { class: 'ui-card-title' }, T('occTitle'), infoMark('…')),
+      h('span', { class: 'pills' }, h('button', { type: 'button', class: 'pbtn', 'aria-pressed': 'true' }, T('occAll')), h('button', { type: 'button', class: 'pbtn' }, T('occTeamA')), h('button', { type: 'button', class: 'pbtn' }, T('occTeamB')), h('span', { class: 'pbtn', style: 'display:inline-flex;align-items:center;border-color:transparent' }, T('occTactics')))),
+    h('div', { class: 'card-body' }, h('div', { class: 'pills', style: 'margin-bottom:10px' }, occRow(st)),
+      h('div', { class: 'mapwrap' }, h('div', { class: 'mapbox2' }, canvas, h('div', { class: 'zoomc' }, h('span', null, '+'), h('span', null, '−')))), status));
+  const kept = () => POS.filter(p => keepZ(p, st.cut));
+  const syncStatus = () => { const n = POS.length - kept().length; status.textContent = st.cut === null ? '' : T('occHidden', { n: String(n), total: String(POS.length) }); };
+  const extras = (ctx, k) => paintHeat(ctx, k, kept(), 0.85);
+  st.subs.push(syncStatus, () => requestAnimationFrame(() => paintMap(canvas, st, extras)));
+  syncStatus();
+  PLANCHES.push({ plain: true, repaint: () => requestAnimationFrame(() => paintMap(canvas, st, extras)) });
+  return h('section', { class: 'pl', id: 'p4' }, h('h2', null, 'Planche 4 : Occupation du terrain, mêmes commandes, positions hors étage masquées'),
+    h('p', { class: 'lead', html: 'Le bloc n’a aujourd’hui <b>aucun réglage de fond</b> : il lit la préférence du rejeu (question 6). La maquette ajoute au-dessus de la carte la rangée de pilules de la Tactique (« Fond », « Traits du relief », « Étage »), sous le bandeau du titre qui garde le filtre d’équipe et le lien « Tactique ». Les positions portent leur hauteur (<code>MatchPositionDTO.z</code>) : celles hors de l’étage choisi sont masquées, et la ligne d’état sous la carte dit combien.' }),
+    card,
+    h('ul', { class: 'notes', html: [
+      'La carte de chaleur est recalculée sans les positions masquées (grille de 6 cellules ici, 0,5 m dans l’application).',
+      'Pas de « Suivre le joueur ouvert » : le bloc n’a pas de joueur ouvert.',
+      'Le bloc reste caché sans fond figé ni position (portes 1 à 3 inchangées) ; la commande d’étage disparaît aussi sans maillage (planche 2).'].map(n => '<li>' + n + '</li>').join('') }));
+}
+function noMeshPlanche() {
+  const sec = h('section', { class: 'pl', id: 'p2' }, h('h2', null, 'Planche 2 : carte sans maillage de navigation, commande d’étage absente'),
+    h('p', { class: 'lead', html: 'Décision D-7 : sans maillage, le relief est servi sans découpe ni coupe (dégradation nommée) et le web cache la commande d’étage. Le fond « Relief » reste proposé, avec ses traits (ruptures et courbes ; le liseré de zone disparaît, faute de zone gardée). Plus de pastilles, de curseur ni de « Suivre le joueur ouvert » : aucune action impossible n’est offerte. Deux variantes du panneau « Vue » côte à côte ; la carte est dessinée sans découpe et sans coupe.' }));
+  const stA = stateOf('p2a', { bg: 'relief', lines: true, nomesh: true });
+  const stB = stateOf('p2b', { bg: 'relief', lines: true, nomesh: true });
+  const mk = (st, variant, label) => {
+    const panel = vuePanel(st, { nomesh: true, variant });
+    const canvas = h('canvas');
+    const wrap = h('div', { class: 'mapbox2', style: 'margin-top:10px' }, canvas);
+    st.subs.push(() => requestAnimationFrame(() => paintMap(canvas, st, markersOnly(st))));
+    PLANCHES.push({ plain: true, repaint: () => requestAnimationFrame(() => paintMap(canvas, st, markersOnly(st))) });
+    return h('div', null, h('p', null, label), panel, wrap);
+  };
+  sec.append(h('div', { class: 'sideby' }, mk(stA, 'A', 'Variante A : rien à la place de la commande d’étage'), mk(stB, 'B', 'Variante B : bloc d’explication en pointillé')));
+  sec.append(h('ul', { class: 'notes', html: [
+    'Règle des états vides : le bloc de la variante B est affiché, bordure en pointillé, sans bouton ni lien. La variante A ne dit rien ; elle laisse supposer un oubli quand on sait que d’autres cartes ont des étages.',
+    'Sur ces cartes (Live Fire avant recuisson, Thunderhead si aucun maillage n’existe), les fonds Plan et Rendu se comportent comme aujourd’hui.',
+    'Même règle dans la Tactique et « Occupation du terrain » : la pilule « Étage » n’est pas posée.'].map(n => '<li>' + n + '</li>').join('') }));
+  return sec;
+}
+function statesStrip() {
+  const wrap = h('div', null, h('h3', null, 'États de la commande d’étage, à taille réelle'), h('div', { class: 'states' }));
+  const defs = [
+    ['Tout, aucun joueur ouvert : suivi désactivé et expliqué', { cut: null, open: false }],
+    ['Étage choisi à la pastille, joueur ouvert : suivi proposé', { cut: 0, open: true }],
+    ['Hauteur libre au curseur : aucune pastille retenue', { cut: 1.3, open: true }],
+    ['Suivi actif : étage du joueur ouvert, note d’état', { open: true, follow: true }],
+  ];
+  defs.forEach(([cap, init], i) => {
+    const st = stateOf('p1s' + i, Object.assign({ bg: 'relief', lines: true }, init));
+    if (init.follow) st.cut = PLAYER_Z;
+    const p = h('div', { class: 'ui-grid' }, floorGroup(st));
+    st.subs.push(() => {});
+    wrap.lastChild.append(h('div', { class: 'st' }, h('p', null, cap), p));
+  });
+  return wrap;
+}
+function buildAll() {
+  PLANCHES.length = 0;
+  const root = $('planches'); root.innerHTML = '';
+  const nA = ['<b>Où</b> : panneau « Vue », bouton en haut à droite de la toile (écart V3 de la grille de conformité), groupe « Terrain » puis groupe « Étage ». Ni la barre de lecture (écart V5 : zone d’aujourd’hui) ni la colonne ne changent.',
+    '<b>Fond</b> : segmenté à trois valeurs, « Plan » (défaut), « Rendu », « Relief ». « Traits du relief » : interrupteur allumé d’office sur le Relief, éteint sur les deux autres ; « Plan des murs » reste désactivé sur le Plan (« Déjà dans le plan »).',
+    '<b>Coupe</b> : sur le Relief, l’étage choisi est en plein, les étages du dessous pâles, ceux du dessus presque effacés, et le sol d’une cour couverte réapparaît sous son toit. Sur Plan et Rendu, la coupe agit par le masque d’opacité seulement : l’image porte le dessus.',
+    '<b>Marqueurs</b> : tous restent affichés, avec leurs anneaux d’étage actuels ; le joueur ouvert est cerclé de clair.',
+    '<b>Hauteurs</b> : libellé relatif au point le plus bas, « +2,0 m » ; le curseur donne aussi des valeurs entre deux étages.'];
+  const lead1 = 'Panneau « Vue » ouvert sur la carte factice. Le Standard borne la page à 1200 px et la colonne à 360 px (tableau A) ; le panneau de 416 px recouvre alors la moitié droite de la toile. Choisir « Relief » puis un étage pour voir la coupe.';
+  root.append(
+    mountFrame('p1a', 'std', 'Planche 1a : rejeu, cadre Standard, panneau « Vue » ouvert', lead1, nA, {}, {}),
+    statesStrip(),
+    mountFrame('p1b', 'k', 'Planche 1b : rejeu, cadre Cinéma, panneau « Vue » ouvert', 'Cinéma (tableau K) : en-tête de 52 px, rangée de fiches de 58 px autour du score, toile sur toute la largeur, fil des éliminations en bas à gauche, barre de lecture hors du bloc. Le panneau se pose à droite de la toile, sans recouvrir la carte. Les commandes sont celles de la planche 1a.',
+      ['Joueur ouvert : la tuile du joueur est marquée par un fond plus clair et une bordure entière (tableau L), jamais par un liseré à gauche.', 'Le panneau est le même composant que dans le Standard : une seule implémentation, trois cadres.'], { bg: 'relief', lines: true, cut: 2 }, {}),
+    mountFrame('p1c', 'pc', 'Planche 1c : rejeu, cadre Plein cadre, panneau « Vue » ouvert', 'Plein cadre (tableau D) : aucune navigation de l’application, « Quitter » avec la capsule « Échap » à gauche, marges de 16 px ; rangée, toile, fil et barre comme en Cinéma.',
+      ['Même panneau, mêmes commandes : rien de propre au Plein cadre.', 'Échap ferme d’abord le panneau (couche d’échappement existante), puis quitte le cadre.'], { bg: 'relief', lines: true, cut: 4 }, {}),
+    noMeshPlanche(), tactiquePlanche(), occupationPlanche());
+  /* Annexe 1 */
+  const nb = document.querySelector('#tbl-new tbody'), ob = document.querySelector('#tbl-old tbody');
+  nb.innerHTML = ''; ob.innerHTML = '';
+  for (const [k, v] of Object.entries(D)) {
+    const tr = h('tr', null, h('td', null, h('code', null, k)), h('td', null, v.fr), h('td', null, v.en), h('td', null, v.src));
+    (v.n ? nb : ob).append(tr);
+  }
+  const hr = (a, b, src) => nb.append(h('tr', null, h('td', null, h('code', null, 'floorChipLabel')), h('td', null, a), h('td', null, b), h('td', null, src)));
+  hr('+2,0 m (virgule, signe, espace insécable, « m »)', '+2.0 m (point)', 'pastille d’étage, valeur du curseur, note de suivi');
+  /* Langue */
+  const ls = $('langsw'); ls.innerHTML = '<span>Langue des libellés :</span>';
+  const g = h('div', { class: 'ui-segs', role: 'radiogroup', 'aria-label': 'Langue' });
+  ['fr', 'en'].forEach(l => g.append(h('button', { type: 'button', role: 'radio', 'aria-checked': String(LANG === l), onclick: () => { LANG = l; buildAll(); } }, l.toUpperCase())));
+  ls.append(g);
+  Object.values(STATES).forEach(st => { st.subs.forEach(f => f()); });
+  requestAnimationFrame(layout);
+}
+function layout() {
+  for (const p of PLANCHES) {
+    if (p.plain) continue;
+    const w = p.fit.clientWidth, s = Math.min(1, w / p.fw);
+    p.frame.style.transform = `scale(${s})`;
+    p.fit.style.height = Math.ceil(p.frame.offsetHeight * s) + 'px';
+    const det = s < 0.72;
+    if (det !== p.det) { p.det = det; (det ? p.host : p.inHost).appendChild(p.panel); p.panel.classList.toggle('detached', det); }
+  }
+  PLANCHES.forEach(p => p.repaint());
+}
+let rz = 0;
+window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(layout); });
+buildAll();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(layout));
+</script>
+</body>
+</html>
