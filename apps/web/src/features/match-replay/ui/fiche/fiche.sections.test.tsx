@@ -205,7 +205,10 @@ describe('FicheEliminations', () => {
 const SHOTS: ShotsView = {
   accuracy: { ratio: 61 / 142, hit: 61, fired: 142 },
   damageDealt: 1480, damageTaken: 1120,
-  weapons: [{ name: "Fusil d'assaut", fired: 118, damage: 1050 }, { name: 'SPNKr', fired: 6, damage: 430 }],
+  weapons: [
+    { key: '0xAAAA', name: "Fusil d'assaut", fired: 118, damage: 1050 },
+    { key: '0xBBBB', name: 'SPNKr', fired: 6, damage: 430 },
+  ],
 }
 
 describe('FicheTirs', () => {

@@ -9,7 +9,7 @@ import type { CSSProperties, ReactElement, ReactNode } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import type { CardGabarit } from '../model/cardGabarit'
+import type { CorpsEncadrePx } from '../model/cardGabarit'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -102,7 +102,7 @@ export function EliminatedBox({
   frame: number
   locale: ReplayLocale
   /** La hauteur du corps que l'encadré remplit : une ligne à 35, deux lignes à 31. */
-  bodyPx: CardGabarit['bodyPx']
+  bodyPx: CorpsEncadrePx
   /**
    * Le triplet F/M/A, quand la fiche le CONFIE à l'encadré : sur un corps de 31 le nom occupe
    * seul sa ligne, et le triplet — qui reste visible mort ou vif — descend dans le corps.
@@ -124,11 +124,11 @@ interface EliminatedProps {
 
 /**
  * L'ENCADRÉ PAR HAUTEUR DE CORPS — une table fermée sur la cote structurelle du gabarit
- * (`cardGabarit.ts`). 35 : la ligne unique du bloc « À l'instant » (`ReplayPlayerNow`). 31 : la
- * pile à deux lignes de la tuile compacte. Deux composants plutôt qu'un seul truffé de
- * conditions : le DOM du premier ne doit pas bouger d'un attribut.
+ * (`cardGabarit.ts`). 35 (`COTES_BLOC_INSTANT.corpsEliminePx`) : la ligne unique du bloc « À l'instant »
+ * (`ReplayPlayerNow`). 31 : la pile à deux lignes de la tuile compacte. Deux composants plutôt qu'un seul
+ * truffé de conditions : le DOM du premier ne doit pas bouger d'un attribut.
  */
-const ELIMINATED_BY_BODY: Record<CardGabarit['bodyPx'], (p: EliminatedProps) => ReactElement> = {
+const ELIMINATED_BY_BODY: Record<CorpsEncadrePx, (p: EliminatedProps) => ReactElement> = {
   35: EliminatedRow,
   31: EliminatedStack,
 }

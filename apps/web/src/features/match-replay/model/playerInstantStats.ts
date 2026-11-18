@@ -267,6 +267,17 @@ function shieldDrops(lives: readonly ReplayTrackReady[]): Dated[] {
 }
 
 /**
+ * Les débuts des vies jouées dans le match : une vie qui finit avant le début du match n'est pas une
+ * réapparition (même sélection que les vies terminées de la moyenne).
+ */
+function lifeStartsOf(lives: readonly ReplayTrackReady[], matchStartFrame: number | null | undefined): Dated[] {
+  return lives
+    .filter((l) => matchStartFrame == null || trackWindow(l).end > matchStartFrame)
+    .map((l) => ({ t: trackWindow(l).start }))
+    .sort((a, b) => a.t - b.t)
+}
+
+/**
  * Ce que `readPlayerInstantSeries` range pour `playerInstantStatsAt`. Les champs ne se lisent pas ailleurs :
  * ils sont l'état interne d'une lecture, exposé pour le typage seulement.
  */
@@ -317,7 +328,7 @@ export function readPlayerInstantSeries(input: PlayerInstantInput): PlayerInstan
     streaks: score ? streakSteps(score) : null,
     headshots: feed !== null && hasKills ? headshotSteps(feed, keys) : null,
     medals: medals && medalsEstablished(doc, player, medals) ? medals : null,
-    lifeStarts: lives.map((l) => ({ t: trackWindow(l).start })).sort((a, b) => a.t - b.t),
+    lifeStarts: lifeStartsOf(lives, matchStartFrame),
     lives,
     matchStartFrame,
     closedLives: closedLives(lives, doc, matchStartFrame),
