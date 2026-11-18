@@ -16,6 +16,7 @@ import type { ReliefRender } from '@/lib/replay/useReliefRender'
 import type { ReliefFrame, ReliefRenderRequest } from '@/lib/replay/relief'
 
 import type { ReplayMapBackgroundLayer } from './useReplayView'
+import { testReplayDoc } from '../test/testDoc'
 import { useReplayRelief, type ReplayReliefOptions } from './useReplayRelief'
 
 const mocks = vi.hoisted(() => ({
@@ -49,9 +50,11 @@ function baseLayer(over: Partial<ReplayMapBackgroundLayer> = {}): ReplayMapBackg
 
 const INK = { base: '#6b7078', outline: '#ffffff' }
 const Z = { min: 0, max: 5 }
+/** Le suivi du joueur ouvert, sans joueur ouvert : les tests du suivi sont dans `useReplayRelief.follow.test.tsx`. */
+const NO_FOLLOW = { doc: testReplayDoc(), player: null, frameRef: { current: 0 } }
 
 function options(over: Partial<ReplayReliefOptions> = {}): ReplayReliefOptions {
-  return { base: baseLayer(), playerSlug: 'jg', matchId: 'm1', scopeKey: 'carte-a', style: 'plan', turns: 0, zRange: Z, ink: INK, ...over }
+  return { base: baseLayer(), playerSlug: 'jg', matchId: 'm1', scopeKey: 'carte-a', style: 'plan', turns: 0, zRange: Z, ink: INK, follow: NO_FOLLOW, ...over }
 }
 
 function frame(over: Partial<ReliefFrame> = {}): ReliefFrame {
@@ -301,8 +304,8 @@ describe('useReplayRelief — la coupe ne masque AUCUN joueur', () => {
   it('le hook ne rend que des fonds, des traits et des commandes : aucun filtre ni masque de position ou de joueur', () => {
     const { result } = renderHook(() => useReplayRelief(options({ style: 'relief' })))
     act(() => result.current.floor.selectRank(2.2))
-    expect(Object.keys(result.current).sort()).toEqual(['background', 'floor', 'linesLayer', 'lines', 'meshPercent', 'options', 'selected'].sort())
-    expect(Object.keys(result.current.floor).sort()).toEqual(['cut', 'selectAll', 'selectRank', 'setHeight', 'state'])
+    expect(Object.keys(result.current).sort()).toEqual(['background', 'floor', 'followStep', 'linesLayer', 'lines', 'meshPercent', 'options', 'selected'].sort())
+    expect(Object.keys(result.current.floor).sort()).toEqual(['cut', 'follow', 'selectAll', 'selectRank', 'setHeight', 'state'])
   })
 })
 

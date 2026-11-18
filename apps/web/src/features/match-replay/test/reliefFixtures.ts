@@ -22,8 +22,9 @@ export function makeReplayRelief(over: Partial<ReplayRelief> = {}): ReplayRelief
     options: [],
     meshPercent: null,
     lines: { available: false, show: false, onToggle: vi.fn() },
-    floor: { state: { state: 'none' }, cut: null, selectAll: vi.fn(), selectRank: vi.fn(), setHeight: vi.fn() },
+    floor: { state: { state: 'none' }, cut: null, selectAll: vi.fn(), selectRank: vi.fn(), setHeight: vi.fn(), follow: { available: false, on: false, onToggle: vi.fn() } },
     linesLayer: null,
+    followStep: vi.fn(),
     ...over,
   }
 }

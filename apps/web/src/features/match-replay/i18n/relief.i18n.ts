@@ -7,6 +7,9 @@
  * du dépôt, et ces textes forment un tout. Servis par `REPLAY_TEXT[locale].relief` ; la parité FR/EN est
  * tenue par le typage (`satisfies ReliefText` dans chaque langue).
  *
+ * « SUIVRE LE JOUEUR OUVERT » (item D.6) : l'interrupteur du groupe « Étage », son infobulle et ses deux notes —
+ * sans joueur ouvert (interrupteur désactivé et expliqué) et suivi allumé (le rang de l'étage suivi).
+ *
  * LES ÉTAGES SONT DES RANGS, JAMAIS DES HAUTEURS (décision D-14) : une unité du jeu vaut environ 3 m,
  * un « +2,2 m » serait faux. Le rang 0 est « Bas », les suivants « Étage 1 », « Étage 2 »… Le nombre
  * d'anneaux que porte un pion à cet étage (le langage d'étage des marqueurs) se dit à l'infobulle.
@@ -35,6 +38,13 @@ export interface ReliefText {
   floorHeightAria: string
   /** Carte sans maillage de navigation : le bloc d'explication à la place de la commande d'étage (D-7). */
   floorNoMesh: string
+  /** « Suivre le joueur ouvert » : l'interrupteur et son infobulle. */
+  floorFollow: string
+  floorFollowHint: string
+  /** La note sous l'interrupteur désactivé : aucune fiche de joueur n'est ouverte. */
+  floorFollowNone: string
+  /** La note sous l'interrupteur allumé : le libellé du rang de l'étage suivi (« Bas », « Étage 1 »…). */
+  floorFollowOnFmt: (label: string) => string
 }
 
 export const FR_RELIEF = {
@@ -56,6 +66,10 @@ export const FR_RELIEF = {
   floorHeight: 'Hauteur',
   floorHeightAria: 'Hauteur de la coupe',
   floorNoMesh: 'Carte sans maillage de navigation : le relief est affiché en entier, sans coupe par étage.',
+  floorFollow: 'Suivre le joueur ouvert',
+  floorFollowHint: 'La coupe prend l’étage du joueur dont la fiche est ouverte, à chaque instant.',
+  floorFollowNone: 'Aucun joueur ouvert : ouvrir la fiche d’un joueur pour activer le suivi.',
+  floorFollowOnFmt: (label) => `Étage suivi : ${label}`,
 } satisfies ReliefText
 
 export const EN_RELIEF = {
@@ -76,4 +90,8 @@ export const EN_RELIEF = {
   floorHeight: 'Height',
   floorHeightAria: 'Cut height',
   floorNoMesh: 'Map without a navigation mesh: the relief is shown whole, with no floor cut.',
+  floorFollow: 'Follow the open player',
+  floorFollowHint: 'The cut takes the floor of the player whose card is open, at every moment.',
+  floorFollowNone: 'No player open: open a player’s card to turn following on.',
+  floorFollowOnFmt: (label) => `Followed floor: ${label}`,
 } satisfies ReliefText

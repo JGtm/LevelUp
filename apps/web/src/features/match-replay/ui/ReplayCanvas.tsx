@@ -306,8 +306,10 @@ export function ReplayCanvas({
   // ou reste posé, modulé par la coupe. Ni les bornes ni l'orientation n'en dépendent ; la coupe ne masque aucun joueur.
   const relief = useReplayRelief({
     base: baseImage, playerSlug, matchId, scopeKey: mapId ?? matchId ?? '', style: backgroundStyle, turns, zRange, ink: reliefInk,
+    follow: { doc, player: playerFocus?.player ?? null, frameRef },
   })
   const mapImage = relief.background
+  const followStep = relief.followStep // le pas de « Suivre le joueur ouvert » : appelé par `draw`, à chaque image lue
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
@@ -525,12 +527,13 @@ export function ReplayCanvas({
    */
   const draw = useCallback(() => {
     const frame = frameRef.current
+    followStep(frame) // « Suivre le joueur ouvert » : la coupe prend l'étage du joueur à l'image lue (rien si éteint)
     if (!paintReplayFrame(canvasRef.current, frame, scene)) return
 
     // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent ou en est la scene
     // qu'on vient de peindre (cf. useReplayClock).
     clockTick(frame)
-  }, [scene, clockTick])
+  }, [scene, clockTick, followStep])
 
 
   // Redraw hors animation (thème, resize, données, pause), et publication de la version

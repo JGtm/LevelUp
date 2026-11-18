@@ -6,7 +6,7 @@
  * la part tirée du maillage (D-16) ; « Plan des murs » disponible sur le Relief ; l'absence de toute commande
  * d'étage sans maillage ; l'absence de toute commande de relief sans relief ; fr ET en.
  */
-import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { floorChips } from '../hooks/reliefLogic'
@@ -22,6 +22,7 @@ function floorReady(over: Partial<ReplayFloorControls> = {}): ReplayFloorControl
     onSelectAll: vi.fn(),
     onSelectRank: vi.fn(),
     onHeight: vi.fn(),
+    follow: { available: false, on: false, onToggle: vi.fn() },
     ...over,
   }
 }
@@ -118,7 +119,7 @@ describe('panneau de la vue — la commande d’étage', () => {
     renderPanel({
       relief: makeRelief({
         lines: { available: true, show: true, onToggle: vi.fn() },
-        floor: { state: { state: 'noMesh' }, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn() },
+        floor: { state: { state: 'noMesh' }, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), follow: { available: false, on: false, onToggle: vi.fn() } },
       }),
     })
     expect(screen.getByText(/Carte sans maillage de navigation/)).toBeTruthy()
@@ -127,9 +128,14 @@ describe('panneau de la vue — la commande d’étage', () => {
     expect(screen.queryByRole('button', { name: 'Tout' })).toBeNull()
   })
 
-  it('« Suivre le joueur ouvert » n’est pas posé par ce lot (item D.6)', () => {
+  it('« Suivre le joueur ouvert » ferme le groupe Étage : désactivé sans fiche ouverte, il bascule avec une fiche', () => {
     renderPanel({ relief: makeRelief({ floor: floorReady() }) })
-    expect(screen.queryByText(/Suivre le joueur ouvert/)).toBeNull()
+    expect(screen.getByRole('switch', { name: 'Suivre le joueur ouvert' })).toBeDisabled()
+    cleanup()
+    const onToggle = vi.fn()
+    renderPanel({ relief: makeRelief({ floor: floorReady({ follow: { available: true, on: false, onToggle } }) }) })
+    fireEvent.click(screen.getByRole('switch', { name: 'Suivre le joueur ouvert' }))
+    expect(onToggle).toHaveBeenCalledTimes(1)
   })
 })
 

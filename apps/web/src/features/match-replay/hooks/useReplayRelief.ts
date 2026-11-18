@@ -15,6 +15,9 @@
  * masque d'opacité du relief. Elle est un état de CETTE page (jamais persistée : « Tout » à l'ouverture) et ne
  * masque AUCUN joueur. Sans maillage de navigation, il n'y a pas de coupe : la commande dit pourquoi.
  *
+ * « SUIVRE LE JOUEUR OUVERT » pose la coupe à la place de l'utilisateur (`useReplayReliefFollow`) : à chaque image
+ * lue, l'étage de ses pieds. Il partage l'état de la coupe (`useReplayFloorChoice`), et un choix manuel le coupe.
+ *
  * LES TRAITS DU RELIEF sont retenus PAR FOND (`useReliefLines`) : allumés d'office sur le Relief, éteints sur
  * le Plan et le Rendu. Leur calque est cuit hors écran avec les autres (`useReplayStaticLayers`).
  *
@@ -41,6 +44,8 @@ import {
   type FloorState,
   type ReliefImages,
 } from './reliefLogic'
+import { useReplayFloorChoice } from './useReplayFloorChoice'
+import { useReplayReliefFollow, type ReliefFollowInput } from './useReplayReliefFollow'
 import type { ReplayMapBackgroundLayer } from './useReplayView'
 
 /** Les encres du relief, résolues par jeton par l'appelant. */
@@ -66,9 +71,14 @@ export interface ReplayReliefOptions {
   /** L'amplitude verticale du document : elle dit combien d'anneaux porte un pion à chaque étage. */
   zRange: { min: number; max: number }
   ink: ReliefInks
+  /** Ce que « Suivre le joueur ouvert » lit : le document, le joueur de la fiche ouverte, la cellule de dessin. */
+  follow: ReliefFollowInput
 }
 
-/** La commande d'étage et la coupe retenue (`null` = « Tout »). */
+/**
+ * La commande d'étage et la coupe retenue (`null` = « Tout »). Les trois gestes de choix (« Tout », pastille,
+ * curseur) sont MANUELS : chacun coupe le suivi du joueur ouvert.
+ */
 export interface ReplayFloorState {
   state: FloorState
   cut: number | null
@@ -77,6 +87,8 @@ export interface ReplayFloorState {
   selectRank: (z: number) => void
   /** Retient une hauteur libre, arrondie au quart d'unité (le curseur). */
   setHeight: (z: number) => void
+  /** « Suivre le joueur ouvert » : disponible quand une fiche est ouverte, allumé ou non, et son interrupteur. */
+  follow: { available: boolean; on: boolean; onToggle: () => void }
 }
 
 /** Ce que le hook rend. */
@@ -94,6 +106,8 @@ export interface ReplayRelief {
   floor: ReplayFloorState
   /** Les traits à cuire dans le calque statique ; `null` = pas de traits. */
   linesLayer: ReliefLinesInput | null
+  /** Le pas du suivi de l'étage : à appeler à chaque dessin avec l'image lue ; ne fait rien suivi éteint. */
+  followStep: (frame: number) => void
 }
 
 const NO_IMAGES: ReliefImages = { relief: null, masked: null }
@@ -106,26 +120,20 @@ function linesInkOf(ink: ReliefInks): ReliefLinesInk | null {
   return { edge: rgbToCss(ramp.edge), contour: rgbToCss(ramp.contour), wall: rgbToCss(ramp.wall), outline: ink.outline }
 }
 
-/** La coupe retenue, rangée avec sa portée : une autre portée repart de « Tout ». */
-function useScopedCut(scopeKey: string): [number | null, (z: number | null) => void] {
-  const [state, setState] = useState<{ key: string; cut: number | null }>({ key: scopeKey, cut: null })
-  const set = useCallback((z: number | null) => setState({ key: scopeKey, cut: z }), [scopeKey])
-  return [state.key === scopeKey ? state.cut : null, set]
-}
-
 /** La part du relief tirée du maillage, en pourcentage entier, ou `null` quand le fichier ne la porte pas. */
 function meshPercentOf(data: ReliefData | null): number | null {
   return data ? (meshShareOf(data)?.percent ?? null) : null
 }
 
 export function useReplayRelief(o: ReplayReliefOptions): ReplayRelief {
-  const { base, playerSlug = '', matchId = '', scopeKey, style, turns, zRange, ink } = o
+  const { base, playerSlug = '', matchId = '', scopeKey, style, turns, zRange, ink, follow } = o
   const planAvailable = !!base?.planAvailable
   const offered = !!base?.reliefAvailable
   // LE FOND VOULU, avant tout échec de lecture : il décide des traits retenus et de ce qu'il faut charger.
   const wanted = resolveBackgroundVariant(style, planAvailable, { available: offered, failed: false })
   const [linesOn, toggleLines] = useReliefLines(wanted)
-  const [cut, setCut] = useScopedCut(scopeKey)
+  const choice = useReplayFloorChoice(scopeKey, follow.player !== null)
+  const cut = choice.cut
   const needImage = offered && (wanted === 'relief' || linesOn || cut !== null)
   const files = useReplayReliefFiles(playerSlug, matchId, offered, needImage)
   const request = useMemo(
@@ -170,16 +178,25 @@ export function useReplayRelief(o: ReplayReliefOptions): ReplayRelief {
   }, [linesOn, data, frame, linesInk])
 
   const state = useMemo(() => (data ? floorStateOf(data, zRange) : NO_FLOOR), [data, zRange])
-  const selectAll = useCallback(() => setCut(null), [setCut])
-  const selectRank = useCallback((z: number) => setCut(z), [setCut])
-  const setHeight = useCallback((z: number) => setCut(quantizeCut(z)), [setCut])
+  // Le suivi ne tourne que sur une carte avec des étages ; sa coupe passe par le même état que les choix manuels.
+  const followOn = choice.follow && state.state === 'ready'
+  const followStep = useReplayReliefFollow({ ...follow, on: followOn, data, onCut: choice.followTo })
+  const { choose, setFollow } = choice
+  const selectAll = useCallback(() => choose(null), [choose])
+  const selectRank = useCallback((z: number) => choose(z), [choose])
+  const setHeight = useCallback((z: number) => choose(quantizeCut(z)), [choose])
+  const onToggle = useCallback(() => setFollow(!followOn), [setFollow, followOn])
   return {
     background,
     selected,
     options,
     meshPercent: meshPercentOf(data),
     lines: { available: data !== null, show: linesOn, onToggle: toggleLines },
-    floor: { state, cut: state.state === 'ready' ? cut : null, selectAll, selectRank, setHeight },
+    floor: {
+      state, cut: state.state === 'ready' ? cut : null, selectAll, selectRank, setHeight,
+      follow: { available: follow.player !== null, on: followOn, onToggle },
+    },
     linesLayer,
+    followStep,
   }
 }

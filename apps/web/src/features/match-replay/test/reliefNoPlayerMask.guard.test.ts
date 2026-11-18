@@ -20,6 +20,12 @@ const DE_QUOI_MASQUER = /tracks|shownAtSlot|focusShown|playerFocus|useReplayPlay
 
 const MODULES_DE_LA_COUPE = ['useReplayRelief.ts', 'reliefLogic.ts', 'ReplayFloorControls.tsx']
 
+/**
+ * Les modules de « Suivre le joueur ouvert » (D.6) : ils lisent la piste du joueur de la fiche pour poser la
+ * coupe, ce que les modules ci-dessus s'interdisent. Ils n'ont, eux non plus, aucun accès aux filtres de joueur.
+ */
+const MODULES_DU_SUIVI = ['useReplayReliefFollow.ts', 'useReplayFloorChoice.ts', 'reliefFollowSample.ts']
+
 describe('garde-rail : la coupe par étage ne masque aucun joueur', () => {
   it.each(MODULES_DE_LA_COUPE)('%s ne lit rien qui permette de masquer un joueur', (nom) => {
     const code = lire(fichierNomme(nom))
@@ -33,9 +39,17 @@ describe('garde-rail : la coupe par étage ne masque aucun joueur', () => {
     const canvas = lire(fichierNomme('ReplayCanvas.tsx'))
     const usages = [...canvas.matchAll(/\brelief\b[.,\s]/g)].length
     expect(usages).toBeGreaterThan(0)
-    // Les seules lectures de `relief.<champ>` : le fond composé et les traits à cuire.
+    // Les seules lectures de `relief.<champ>` : le fond composé, les traits à cuire et le pas du suivi de l'étage
+    // (`followStep`, qui pose la coupe sur l'étage du joueur ouvert : il LIT un joueur, il n'en filtre aucun).
     const champs = new Set([...canvas.matchAll(/\brelief\.(\w+)/g)].map((m) => m[1]))
-    expect([...champs].sort()).toEqual(['background', 'linesLayer'])
+    expect([...champs].sort()).toEqual(['background', 'followStep', 'linesLayer'])
+  })
+
+  it.each(MODULES_DU_SUIVI)("%s lit un joueur pour choisir l'étage, jamais pour en filtrer un", (nom) => {
+    const code = lire(fichierNomme(nom))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(code).not.toMatch(/shownAtSlot|shownProjectile|focusShown|useReplayPlayerFocus|useSlotIdentity|\bhide\b|\bsolo\b/)
   })
 
   it('le relief ne passe jamais par les filtres de joueur de la toile', () => {
