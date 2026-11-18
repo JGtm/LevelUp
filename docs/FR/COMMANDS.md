@@ -854,6 +854,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
 ```bash
 go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
 go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+go run ./cmd/mapnav-fetch -fichier map.mvar -nom-cuisson -out-dir .ai/re_dump/mapvar -map-id <uuid> [...]
 ```
 
 - Sortie : `<out-dir, defaut .ai/re_dump/navmesh>/<mapID>.blob` — **pas un asset versionné en
@@ -865,6 +866,12 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
   présents) et limité en débit.
 - À rejouer : une nouvelle carte Forge a besoin de son navmesh avant que `mapfond-build` ne
   puisse cuire son fond ; `-refaire` force un nouveau téléchargement.
+- Variante (`.mvar`) : `-fichier map.mvar` rapatrie la variante de carte par le même chemin anonyme ;
+  `-suffixe` fixe l'extension écrite ; `-nom-cuisson` l'écrit sous le nom exact que lit la cuisson
+  (`FichierMvar` de `himap.CartesForge`, ex. `absolution_map.mvar`) au lieu de `<mapID><ext>`, et
+  compte en échec, sans requête, une carte absente de ce catalogue. À employer avec
+  `-out-dir .ai/re_dump/mapvar` (`himap.DepotVariantesCarte`). `-v` journalise le préfixe de
+  stockage résolu (il porte l'identifiant de la version publiée).
 
 #### vehicle-sprite
 

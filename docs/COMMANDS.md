@@ -824,6 +824,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NAME] [--title slug] [--pas M] 
 ```bash
 go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
 go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+go run ./cmd/mapnav-fetch -fichier map.mvar -nom-cuisson -out-dir .ai/re_dump/mapvar -map-id <uuid> [...]
 ```
 
 - Output: `<out-dir, default .ai/re_dump/navmesh>/<mapID>.blob` — **not itself a versioned
@@ -833,6 +834,12 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
   UGC pages (two requests, no auth) ; resumable (skips existing blobs) and rate-limited.
 - Replay when: a new Forge map needs its navmesh before `mapfond-build` can cook its
   background ; `-refaire` forces a re-fetch.
+- Variant (`.mvar`): `-fichier map.mvar` fetches the map variant through the same anonymous path ;
+  `-suffixe` sets the extension written ; `-nom-cuisson` writes it under the exact name the baking
+  reads (`FichierMvar` of `himap.CartesForge`, e.g. `absolution_map.mvar`) instead of `<mapID><ext>`,
+  and counts a map missing from that catalog as a failure without any request. Use with
+  `-out-dir .ai/re_dump/mapvar` (`himap.DepotVariantesCarte`). `-v` logs the resolved storage prefix
+  (it carries the published version id).
 
 #### vehicle-sprite
 
