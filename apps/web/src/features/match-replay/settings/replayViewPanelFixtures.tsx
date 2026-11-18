@@ -89,7 +89,7 @@ export function makeBackground(over: Partial<ReplayBackgroundControls> = {}): Re
 export function makeRelief(over: Partial<ReplayReliefControls> = {}): ReplayReliefControls {
   return {
     lines: { available: false, show: false, onToggle: vi.fn() },
-    floor: { state: { state: 'none' }, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn() },
+    floor: { state: { state: 'none' }, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), follow: { available: false, on: false, onToggle: vi.fn() } },
     ...over,
   }
 }

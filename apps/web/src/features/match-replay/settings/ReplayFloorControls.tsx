@@ -12,13 +12,18 @@
  * CARTE SANS MAILLAGE DE NAVIGATION : un bloc d'explication en pointillé remplace la commande (D-7, maquette
  * D.1, choix 10) — jamais de pastille ni de curseur qui ne commanderaient rien.
  *
+ * « SUIVRE LE JOUEUR OUVERT » ferme le groupe, sous le curseur (maquette D.1) : un interrupteur, désactivé et
+ * expliqué tant qu'aucune fiche de joueur n'est ouverte ; allumé, une note dit le rang de l'étage suivi. Un
+ * choix manuel (« Tout », pastille, curseur) l'éteint : c'est l'état qui le décide, pas ce composant.
+ *
  * LA COUPE NE MASQUE AUCUN JOUEUR : le fond, ses traits et le relief suivent la coupe, les marqueurs restent
- * tous affichés. « Suivre le joueur ouvert » n'est PAS dans ce groupe (item D.6 du plan du fond Relief).
+ * tous affichés.
  */
 import type { FloorChip, FloorState } from '../hooks/reliefLogic'
 import { isChipSelected } from '../hooks/reliefLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { InfoMark } from './ReplaySettingsToggle'
+import type { ReliefText } from '../i18n/relief.i18n'
+import { InfoMark, SettingsToggle } from './ReplaySettingsToggle'
 
 /** Au-delà de ce nombre de pastilles d'étage, la rangée défile horizontalement. */
 export const FLOOR_CHIPS_WRAP_MAX = 6
@@ -33,6 +38,8 @@ export type ReplayFloorControls = {
   onSelectRank: (z: number) => void
   /** Retient une hauteur libre (le curseur). */
   onHeight: (z: number) => void
+  /** « Suivre le joueur ouvert » : `available` = une fiche de joueur est ouverte ; `on` = le suivi est allumé. */
+  follow: { available: boolean; on: boolean; onToggle: () => void }
 }
 
 const CHIP_CLASS =
@@ -45,6 +52,12 @@ function nearestChip(chips: readonly FloorChip[], cut: number): FloorChip | null
     if (best === null || Math.abs(chip.z - cut) < Math.abs(best.z - cut)) best = chip
   }
   return best
+}
+
+/** La note sous l'interrupteur de suivi : l'explication du désactivé, ou le rang de l'étage suivi ; rien sinon. */
+function followNote(t: ReliefText, follow: ReplayFloorControls['follow'], named: FloorChip | null): string | null {
+  if (!follow.available) return t.floorFollowNone
+  return follow.on && named ? t.floorFollowOnFmt(t.floorRankFmt(named.rank)) : null
 }
 
 export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: ReplayFloorControls }) {
@@ -68,6 +81,7 @@ export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: Rep
   const { chips, min, max } = state
   const cut = floor.cut
   const named = cut === null ? null : nearestChip(chips, cut)
+  const note = followNote(t, floor.follow, named)
   return (
     <div className="col-span-2 space-y-1">
       {title}
@@ -111,6 +125,14 @@ export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: Rep
           {named === null ? t.floorAll : t.floorRankFmt(named.rank)}
         </output>
       </label>
+      <SettingsToggle
+        label={t.floorFollow}
+        pressed={floor.follow.on}
+        onToggle={floor.follow.onToggle}
+        hint={t.floorFollowHint}
+        disabled={!floor.follow.available}
+      />
+      {note && <p className={`px-2 text-[11.5px] ${floor.follow.on ? 'text-foreground' : 'text-muted-foreground'}`}>{note}</p>}
     </div>
   )
 }

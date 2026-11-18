@@ -13,6 +13,11 @@ import { floorChips, type FloorState } from '../hooks/reliefLogic'
 import type { ReplayLocale } from '../i18n/i18n'
 import { FloorGroup, type ReplayFloorControls } from './ReplayFloorControls'
 
+/** Le suivi du joueur ouvert, éteint et indisponible : aucune fiche ouverte. */
+function noFollow(): ReplayFloorControls['follow'] {
+  return { available: false, on: false, onToggle: vi.fn() }
+}
+
 function ready(levels: number[], over: Partial<ReplayFloorControls> = {}): ReplayFloorControls {
   const state: FloorState = {
     state: 'ready',
@@ -20,11 +25,11 @@ function ready(levels: number[], over: Partial<ReplayFloorControls> = {}): Repla
     min: levels[0],
     max: levels[levels.length - 1],
   }
-  return { state, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), ...over }
+  return { state, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), follow: noFollow(), ...over }
 }
 
 function stateOnly(state: FloorState): ReplayFloorControls {
-  return { state, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn() }
+  return { state, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), follow: noFollow() }
 }
 
 function mount(floor: ReplayFloorControls, locale: ReplayLocale = 'fr') {
@@ -124,5 +129,51 @@ describe('FloorGroup — en anglais', () => {
     expect(screen.getByRole('slider', { name: 'Cut height' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Floor 1' }).getAttribute('title')).toMatch(/^Floor 1: \d rings?$/)
     expect(screen.getByRole('button', { name: 'Low' })).toHaveAttribute('title', 'Low: no rings')
+  })
+})
+
+describe('FloorGroup — « Suivre le joueur ouvert »', () => {
+  it('sous le curseur : un interrupteur, désactivé et expliqué quand aucune fiche n’est ouverte', () => {
+    mount(ready([0, 2.2, 4.4]))
+    const toggle = screen.getByRole('switch', { name: 'Suivre le joueur ouvert' })
+    expect(toggle).toBeDisabled()
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Aucun joueur ouvert : ouvrir la fiche d’un joueur pour activer le suivi.')).toBeTruthy()
+    const slider = screen.getByRole('slider')
+    expect(slider.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('avec une fiche ouverte : activé, éteint, sans note ; un clic le bascule', () => {
+    const onToggle = vi.fn()
+    mount(ready([0, 2.2, 4.4], { follow: { available: true, on: false, onToggle } }))
+    const toggle = screen.getByRole('switch', { name: 'Suivre le joueur ouvert' })
+    expect(toggle).toBeEnabled()
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    expect(toggle).toHaveAttribute('title', 'La coupe prend l’étage du joueur dont la fiche est ouverte, à chaque instant.')
+    expect(screen.queryByText(/Étage suivi/)).toBeNull()
+    fireEvent.click(toggle)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('allumé : la note dit le rang de l’étage suivi, sans unité', () => {
+    mount(ready([0, 2.2, 4.4], { cut: 2.25, follow: { available: true, on: true, onToggle: vi.fn() } }))
+    expect(screen.getByRole('switch', { name: 'Suivre le joueur ouvert' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Étage suivi : Étage 1')).toBeTruthy()
+  })
+
+  it('allumé avant la première prise d’étage (joueur mort) : pas de note', () => {
+    mount(ready([0, 2.2], { cut: null, follow: { available: true, on: true, onToggle: vi.fn() } }))
+    expect(screen.queryByText(/Étage suivi/)).toBeNull()
+  })
+
+  it('en anglais', () => {
+    mount(ready([0, 2.2], { cut: 0, follow: { available: true, on: true, onToggle: vi.fn() } }), 'en')
+    expect(screen.getByRole('switch', { name: 'Follow the open player' })).toBeTruthy()
+    expect(screen.getByText('Followed floor: Low')).toBeTruthy()
+  })
+
+  it('sans maillage : aucun interrupteur', () => {
+    mount(stateOnly({ state: 'noMesh' }))
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 })

@@ -248,6 +248,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
         onSelectAll: relief.floor.selectAll,
         onSelectRank: relief.floor.selectRank,
         onHeight: relief.floor.setHeight,
+        follow: relief.floor.follow,
       },
     },
     orientation: { available: orientation.available, retained: orientation.retained, onSelect: orientation.setTurns },

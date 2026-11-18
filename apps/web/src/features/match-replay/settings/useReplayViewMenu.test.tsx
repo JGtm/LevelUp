@@ -194,7 +194,7 @@ describe('useReplayViewMenu', () => {
   it('le relief du fond est transporté tel quel : traits et commande d’étage', () => {
     const relief = makeReplayRelief({
       lines: { available: true, show: true, onToggle: () => {} },
-      floor: { state: { state: 'noMesh' }, cut: null, selectAll: () => {}, selectRank: () => {}, setHeight: () => {} },
+      floor: { state: { state: 'noMesh' }, cut: null, selectAll: () => {}, selectRank: () => {}, setHeight: () => {}, follow: { available: false, on: false, onToggle: () => {} } },
     })
     const { result } = mount(FULL_FILM, relief)
     expect(result.current.menu.panel.relief.lines).toMatchObject({ available: true, show: true })
