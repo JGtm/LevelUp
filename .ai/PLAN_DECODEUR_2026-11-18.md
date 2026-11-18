@@ -397,6 +397,18 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — INTÉGRATION DE J dans `feat/v1.5.0` (`4e33bd9`) : schéma 126, chronique, golden de forme, 8 goldens
+  d'assemblage, 8 fixtures de contrat (dans `C:/t/dec-lu/apps/web`, non commitées : elles seront refigées par
+  A et C), 20 références d'équivalence. Écarts attribués : `schemaVersion`, l'étiquette `publication-126`, et
+  le compteur du repli du premier occupant du siège en baisse sur 8 films à véhicules ; aucun trajet ne change
+  sur le corpus ; aucune révision de couche ne bouge ; 20 identiques après refige ; suite du clone verte (33
+  paquets). Contrôle du second film touché, `3abf0258` : 3 trajets sur 191 perdent leur nom faux, 188
+  inchangés ; 2 changent aussi de borne de fin et 1 de visée, parce qu'un trajet est coupé à la vie suivante de
+  SON occupant (`vehicle_rides_next_life.go`) : sous le nom d'un autre joueur il était coupé par la vie de ce
+  joueur-là. Mécanisme vérifié sur pièces par le pilote et écrit dans la chronique. Piste A fusionnée
+  (`ea2a089`), son intégration est lancée ; plafond de poids des fixtures de contrat à relever à 5 111 808
+  octets (décision du pilote, datée : les entrées figées portent désormais les lectures d'horloge). C.3 lancé
+  (Opus, recherche bornée).
 - 2026-11-18 — piste C : C.1, C.2 et C.4 rendus, relus, commités (`d0911fb` dans le clone, banc dans
   `C:/t/dec-lu`). Fait rougir, à refiger à l'intégration : la révision de la couche objectives, son empreinte
   au golden des révisions, le golden de forme (champ `statsGuarded`) ; aucun golden d'assemblage, aucune
