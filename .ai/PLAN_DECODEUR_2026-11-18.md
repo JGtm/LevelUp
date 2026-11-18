@@ -371,8 +371,17 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       le compteur daté du tableau (`scoreTimeline.players[].stats.headshots`, 99,85 % d'accord avec l'API) : une
       élimination est à la tête si le compteur du même joueur monte à la même image. Une marque candidate se juge
       sur tout le corpus, élimination par élimination. Sortie : la lecture et un champ par élimination publié avec
-      sa couverture, ou `[!]` avec ce qui a été écarté. Jamais de dérivation du champ depuis le compteur : le
-      compteur vérifie, il ne publie pas.
+      sa couverture, ou `[!]` avec ce qui a été écarté.
+      AMENDÉ LE 2026-11-18 PAR LE USER (« on attend d'être sûr pour les tirs à la tête et les frags parfaits, je
+      préfère lire ces infos depuis les compteurs. Comme ça l'expérience est complète et cohérente ») : la SOURCE
+      voulue de ce qui s'affiche est le compteur du jeu, pas une lecture partielle. La session mesure donc
+      D'ABORD l'appariement : pour chaque montée du compteur daté de tirs à la tête, y a-t-il exactement UNE
+      élimination du même joueur à la même image (part appariée sans ambiguïté, cas à deux éliminations dans
+      l'image, montées sans élimination, par version du jeu) ; de même pour chaque médaille « Parfait » et son
+      élimination. Si l'appariement est sûr sur le parc, le champ par élimination se publie depuis lui (complet,
+      cohérent avec les totaux de la fiche) ; la marque native du message d'élimination, si elle se trouve, sert
+      de contre-preuve. Les icônes du fil de LevelUp (tête, parfait) ne reviennent QU'APRÈS ce verdict : rien
+      n'est affiché d'ici là.
 - **Gate H** : poids ajouté au document mesuré sur 20 films (cible : moins de 2 %) ; budget des fixtures
   relevé et daté ; équivalence en deux passes pour le canal de faits neuf.
 
@@ -414,6 +423,11 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — icônes de tir à la tête et de frag parfait dans le fil du rejeu : présentes jusqu'à la 8.2.0,
+  perdues à la refonte de l'interface sans décision ni maquette. Le user ne veut PAS les remettre sur une
+  lecture partielle : elles attendent le verdict de H.7 (amendé : source = compteurs du jeu). Machine : la
+  mémoire est retombée à 0,3 Go libre (éditions de liens Go en parallèle entre sessions) ; agents Go bornés à
+  une ou deux tâches à la fois, mesure avant chaque suite large.
 - 2026-11-18 — hypothèse du user sur les tirs (le film n'écrirait que les tirs au but) inscrite à D.2 comme
   question à trancher par la mesure à trois voix, plutôt qu'au backlog : la piste D est déjà au plan et D.2 ne
   touche aucun code de production.
