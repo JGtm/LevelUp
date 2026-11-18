@@ -12,6 +12,7 @@
 import { useRef, useState, useEffect } from 'react'
 import type { TeammateOption } from '@/lib/api/types'
 import { useGamertagSuggestions } from './useGamertagSuggestions'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -144,15 +145,8 @@ export function GamertagCombobox({
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // ─── Fermeture click-outside ────────────────────────────────────────────────
-  useEffect(() => {
-    function handleMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [])
+  // Clic dehors seul : Échap est lu par le champ de saisie (`handleKeyDown`).
+  useDismissable(isOpen, () => setIsOpen(false), { ref: containerRef, escape: false })
 
   // Notifie le parent à chaque fermeture du popover (transition open → closed),
   // quel que soit le chemin (clic-extérieur, Échap, chargement preset). Permet

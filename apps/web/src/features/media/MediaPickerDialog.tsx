@@ -10,6 +10,8 @@
  */
 import type { ReactNode } from 'react'
 
+import { useDismissable } from '@/lib/hooks/useDismissable'
+
 interface MediaPickerDialogProps {
   title: string
   subtitle?: ReactNode
@@ -31,6 +33,8 @@ export function MediaPickerDialog({
   footer,
   children,
 }: MediaPickerDialogProps) {
+  // Échap ferme la fenêtre ; le clic sur la superposition a son propre gestionnaire.
+  useDismissable(true, onClose, { outside: null })
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70"

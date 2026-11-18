@@ -178,8 +178,9 @@ export const queryKeys = {
     ['match-replay-generation', playerSlug, titleSlug, matchId] as const,
   // Contexte de match de la page de rejeu (en-tête, tableau de score, fil, médias) : une forme
   // à lui, donc une clé à lui — jamais servie depuis le cache de la vue complète (`matchView`).
-  matchReplayContext: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['match-replay-context', playerSlug, titleSlug, matchId] as const,
+  // Carte, mode, playlist, rang et équipe y sont servis dans la langue de la requête : la langue scope la clé.
+  matchReplayContext: (playerSlug: string, titleSlug: string, matchId: string, locale: string) =>
+    ['match-replay-context', playerSlug, titleSlug, matchId, locale] as const,
   // Fond de carte du rejeu : clé DISTINCTE de l'artefact. Les deux ne s'invalident pas
   // ensemble — l'artefact est propre au match, le fond est propre à la carte et ne change
   // qu'à une re-cuisson.

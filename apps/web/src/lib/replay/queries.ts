@@ -111,8 +111,10 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
  */
 export function useMatchReplayContext(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // La locale scope la clé : carte, mode, playlist, rang et équipe sont servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.matchReplayContext(playerSlug, titleSlug, matchId),
+    queryKey: queryKeys.matchReplayContext(playerSlug, titleSlug, matchId, locale),
     queryFn: async () =>
       normalizeReplayMatchContext(
         await api.get<ReplayMatchContextWire>(`/players/${playerSlug}/matches/${matchId}/replay/context`),

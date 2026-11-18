@@ -23,6 +23,7 @@ import {
   type RefObject,
 } from 'react'
 import { isKeyboardFocus } from '@/lib/dom/focusVisible'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 
 const TIP_GAP_PX = 8
 const VIEWPORT_MARGIN_PX = 8
@@ -121,18 +122,6 @@ function useFocusFirstItem(menuRef: RefObject<HTMLDivElement | null>, token: num
   }, [menuRef, token])
 }
 
-/** Un clic hors de l'entrée ferme le menu épinglé. */
-function useDismissOnOutsidePress(ref: RefObject<HTMLDivElement | null>, active: boolean, close: () => void) {
-  useEffect(() => {
-    if (!active) return
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) close()
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [active, close, ref])
-}
-
 /**
  * L'état d'un menu volant : ouvert par le survol (`hovered`) ou épinglé (`pinned`, clic ou clavier), focus
  * de l'entrée, jeton qui donne le focus à la première entrée à une ouverture au clavier, et les gestes
@@ -155,7 +144,17 @@ function useRailMenu() {
   }, [])
 
   useFocusFirstItem(menuRef, focusToken)
-  useDismissOnOutsidePress(ref, pinned, close)
+  // Échap ferme le menu ouvert (survol ou épinglé) et rend le focus au déclencheur quand il était dans
+  // l'entrée ; un clic hors de l'entrée ne ferme que le menu épinglé.
+  useDismissable(
+    open,
+    (reason) => {
+      const focusInside = ref.current?.contains(document.activeElement) === true
+      close()
+      if (reason === 'escape' && focusInside) triggerRef.current?.focus()
+    },
+    { ref, outside: pinned ? 'mousedown' : null },
+  )
 
   function openFromKeyboard() {
     measure()
@@ -164,11 +163,6 @@ function useRailMenu() {
   }
 
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    // Menu épinglé à la souris, focus resté sur le bouton : Échap le ferme comme au clavier dans le menu.
-    if (e.key === 'Escape' && open) {
-      close()
-      return
-    }
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
       openFromKeyboard()
@@ -187,11 +181,6 @@ function useRailMenu() {
   }
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      close()
-      triggerRef.current?.focus()
-      return
-    }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
     const list = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])

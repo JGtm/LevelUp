@@ -11,9 +11,10 @@
  * sélecteur de joueur et la cloche restent visibles dans le bandeau (hors de ce menu).
  */
 import { Link } from '@tanstack/react-router'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { useLogout } from '@/features/auth/queries'
 import { useAssetDrawerStore } from '@/features/asset-drawer/assetDrawer.store'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
@@ -50,14 +51,8 @@ export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1Mob
   const openAssets = useAssetDrawerStore((s) => s.open)
   const openFeedback = useFeedbackDrawerStore((s) => s.open)
 
-  useEffect(() => {
-    if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open])
+  // Échap ferme le panneau ; le clic sur le voile a son propre gestionnaire.
+  useDismissable(open, () => setOpen(false), { outside: null })
 
   function openMenu() {
     setOpen(true)

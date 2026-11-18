@@ -22,6 +22,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 
 export interface AlertDialogProps {
   open: boolean
@@ -60,17 +61,15 @@ export function AlertDialog({
 }: AlertDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) {
-        event.preventDefault()
-        onOpenChange(false)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, busy, onOpenChange])
+  // Occupé, la couche garde sa place dans la pile : la frappe est consommée sans fermer, et ne
+  // ferme pas la couche du dessous.
+  useDismissable(
+    open,
+    () => {
+      if (!busy) onOpenChange(false)
+    },
+    { outside: null },
+  )
 
   useEffect(() => {
     if (open && autoFocusConfirm) {
