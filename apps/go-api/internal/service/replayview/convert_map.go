@@ -99,6 +99,8 @@ func toMapBackground(v mapfondsidecar.MapBackground) replaydoc.MapBackground {
 		Degradations:  v.Degradations,
 		Plan:          v.Plan,
 		PlanImage:     v.PlanImage,
+		ReliefImage:   v.ReliefImage,
+		ReliefData:    v.ReliefData,
 	}
 }
 
