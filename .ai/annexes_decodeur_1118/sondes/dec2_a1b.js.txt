@@ -1,0 +1,10 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse).filter(r=>r.flag&&r.flag.flagFilm);
+const res=[]; let homeCarries=0;
+for(const r of rows){ const d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+r.id+'.json.gz')));
+  d.flagCarries.forEach((fc,fi)=>{ const sp=fc.spans; for(let i=1;i<sp.length;i++){ const s=sp[i]; if(s.state!=='carried') continue; if(sp[i-1].state!=='home') continue; homeCarries++; const dist=Math.hypot(sp[i-1].x-s.x,sp[i-1].y-s.y); const dur=(s.t1-s.t0+1)*d.frameIntervalMS/1000; if(dist>8) res.push({id:r.id,beyond:r.flag.beyond,fi,t0:s.t0,dur:+dur.toFixed(1),dist:+dist.toFixed(1)}); } });
+}
+console.log('home->carried carries',homeCarries,'with start >8m from home:',res.length,'; total sec',res.reduce((a,x)=>a+x.dur,0).toFixed(1));
+res.sort((a,b)=>b.dur-a.dur); for(const x of res.slice(0,20)) console.log(JSON.stringify(x));
+const byBeyond=res.reduce((m,x)=>{const k=x.beyond>0?'BTB':'arena';m[k]=(m[k]||0)+1;return m;},{}); console.log(byBeyond);

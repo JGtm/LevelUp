@@ -1,0 +1,15 @@
+const fs=require('fs'),zlib=require('zlib'),path=require('path')
+const dir=process.argv[2], n=+process.argv[3]
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort()
+const step=Math.floor(files.length/n)
+const rows=[]
+for(let i=0;i<files.length&&rows.length<n;i+=step){
+ const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,files[i]))).toString())
+ const h=(d.coverage||{}).hits||{}
+ rows.push({f:files[i].slice(0,8),frames:h.frames,stopped:h.stoppedFrames,share:h.frames?h.stoppedFrames/h.frames:null,vit:h.vitalsUnread,suff:h.sufficient,players:h.players,
+   covKeys:Object.keys(d.coverage||{}).length, doc: Object.keys(d).length})
+}
+const q=(a,p)=>{const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(p*s.length))]}
+const sh=rows.map(r=>r.share).filter(x=>x!=null)
+console.log('n',rows.length,'stopped share p10',q(sh,.1).toFixed(4),'p50',q(sh,.5).toFixed(4),'p90',q(sh,.9).toFixed(4),'max',q(sh,1).toFixed(4))
+console.log('top-level keys of doc[0]', Object.keys(JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,files[0]))).toString())).join(','))

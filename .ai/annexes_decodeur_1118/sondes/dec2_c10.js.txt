@@ -1,0 +1,5 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+console.log(JSON.stringify(d.vehicles.filter(v=>v.slot>=745&&v.slot<=760)).slice(0,900));
+const tr=d.tracks.find(t=>t.slot===754); console.log(Object.keys(tr), tr.points.length, JSON.stringify(tr.points[0]));

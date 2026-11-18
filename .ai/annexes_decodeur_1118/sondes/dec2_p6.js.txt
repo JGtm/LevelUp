@@ -1,0 +1,8 @@
+const fs=require('fs'),z=require('zlib');
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+console.log('frames',d.frameCount, JSON.stringify(d.coverage.seats));
+for(const r of d.roster){ if(r.name&&/ELOsk11|Mickey/.test(r.name)||r.seat===2) console.log(JSON.stringify(r)); }
+const x=d.roster.find(r=>/ELOsk11/.test(r.name||''));
+if(x){ for(const t of d.tracks.filter(t=>t.xuid===x.xuid)) console.log(t.slot,t.startFrame,t.endFrame,t.endReason,t.releaseFrame,t.points[0].t,t.points[t.points.length-1].t); 
+ console.log(JSON.stringify(d.respawnCountdowns.filter(c=>c.xuid===x.xuid).slice(-3)));
+ console.log(JSON.stringify(d.identity.players.find(p=>p.xuid===x.xuid)));}

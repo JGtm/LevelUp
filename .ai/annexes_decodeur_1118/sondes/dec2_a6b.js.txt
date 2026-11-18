@@ -1,0 +1,4 @@
+const fs=require('fs');
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse);
+const ids=process.argv.slice(2);
+for(const r of rows){ if(!ids.includes(r.id)) continue; console.log(r.id,'frames',r.frames,'roster',r.nRoster,JSON.stringify(r.dep)); }

@@ -1,0 +1,19 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const a={};const inc=(k,n=1)=>a[k]=(a[k]||0)+n;
+let seatKeys=null;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=(d.coverage.decoder&&d.coverage.decoder.build)||'(inconnu)';
+  const s=d.coverage.seats||{};if(!seatKeys)seatKeys=Object.keys(s);
+  if(s.tirsIndexNonPlace>0){inc('tirsIndexNonPlace>0|'+b);}
+  const h=d.coverage.hits; if(h){const share=(h.stoppedFrames+h.vitalsUnread)/Math.max(1,h.frames);
+    inc('doc|'+b);
+    if(share>h.maxStoppedShare)inc('docStopped>0.5%|'+b);
+    if(h.stoppedFrames>0)inc('docStoppedFrames>0|'+b);
+    if(h.vitalsUnread>0)inc('docVitalsUnread>0|'+b);
+    const k=share<0.0001?'<0.01%':share<0.005?'<0.5%':share<0.05?'<5%':share<0.2?'<20%':'>=20%';inc('share|'+b+'|'+k);
+  }
+}
+console.log(seatKeys.join(','));console.log(JSON.stringify(a,null,0).replace(/,"/g,'\n"'));

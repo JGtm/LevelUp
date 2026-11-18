@@ -1,0 +1,16 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort();
+let nT=0,withCar=0,noCar=0,noSpawn=0,cmp=0; const far=[]; const sp=[];
+for(const f of files){ const id=f.slice(0,-8); let d; try{d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+f)));}catch(e){continue;}
+  const V=d.vehicles||[]; const by=new Map(V.map(v=>[v.slot+':'+v.gen,v]));
+  for(const v of V){ if(v.part!=='turret') continue; nT++; if(!v.carrier){noCar++;continue;} withCar++; const car=by.get(v.carrier.slot+':'+v.carrier.gen); if(!car) continue;
+    if(!v.spawn||!car.spawn) noSpawn++;
+    if(v.spawn&&car.spawn){ const sd=Math.hypot(v.spawn.x-car.spawn.x,v.spawn.y-car.spawn.y); sp.push(sd); }
+    // distance turret spawn to carrier sample at turret t0 (or nearest)
+    if(v.spawn&&car.samples&&car.samples.length){ let best=null; for(const s of car.samples){ if(!best||Math.abs(s.t-v.t0)<Math.abs(best.t-v.t0)) best=s; } if(best&&Math.abs(best.t-v.t0)<=15){ cmp++; const dd=Math.hypot(v.spawn.x-best.x,v.spawn.y-best.y); if(dd>15) far.push({id,turret:v.slot,carrier:v.carrier.slot,tFam:v.family||v.chassis,cFam:car.family,dd:+dd.toFixed(1),t0:v.t0}); } }
+  }
+}
+sp.sort((a,b)=>a-b);
+console.log({turrets:nT,withCarrier:withCar,noCarrier:noCar,pairsWithAMissingSpawn:noSpawn,spawnDistPairs:sp.length,spawnDistMax:sp[sp.length-1],over1m:sp.filter(x=>x>1).length,compared:cmp,over15:far.length});
+console.log(JSON.stringify(far.slice(0,12))); console.log('films',new Set(far.map(x=>x.id)).size,'58d09c44',JSON.stringify(far.filter(x=>x.id==='58d09c44')));

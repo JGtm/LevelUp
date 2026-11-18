@@ -1,0 +1,6 @@
+const fs=require('fs'),z=require('zlib');
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+console.log(JSON.stringify(d.rules), JSON.stringify(d.flagReturnZone), d.durationMs);
+// dropped spans longer than flagReturnS
+const lim=(d.rules.flagReturnS||30);
+d.flagCarries.forEach((fc,fi)=>fc.spans.forEach((s,i)=>{ if(s.state==='dropped'&&(s.t1-s.t0)*0.033>lim) console.log('flag',fi,'dropped',s.t0,s.t1,((s.t1-s.t0)*0.033).toFixed(1),'s', Object.keys(s).join(','), s.returnProgress); }));

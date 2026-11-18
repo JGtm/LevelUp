@@ -1,0 +1,4 @@
+const fs=require('fs'),z=require('zlib');
+const f=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync(f)));
+for(const k of Object.keys(d)){const v=d[k];console.log(k, Array.isArray(v)?'arr['+v.length+']':typeof v==='object'&&v?'obj{'+Object.keys(v).slice(0,12).join(',')+'}':String(v).slice(0,60));}

@@ -1,0 +1,9 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+',s'+p.seat+')':x};
+const [fx,fy]=[+process.argv[3],+process.argv[4]]; const a=+process.argv[5], b=+process.argv[6];
+const res=[];
+for(const tr of d.tracks){ let best=1e9,bt=0; for(const p of tr.points){ if(p.t<a||p.t>b) continue; const dd=Math.hypot(p.x-fx,p.y-fy); if(dd<best){best=dd;bt=p.t;} } if(best<12) res.push({n:nm(tr.xuid),slot:tr.slot,best:+best.toFixed(1),t:bt,end:tr.endFrame,er:tr.endReason}); }
+res.sort((x,y)=>x.t-y.t);
+console.log(res.map(r=>JSON.stringify(r)).join('\n'));

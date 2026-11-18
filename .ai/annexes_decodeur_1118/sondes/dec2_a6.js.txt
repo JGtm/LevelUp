@@ -1,0 +1,24 @@
+const fs=require('fs');
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse);
+let n=0,withdep=0,deps=[];
+for(const r of rows){ if(r.err) {console.log('err',r.id);continue;} n++; if(r.dep&&r.dep.length){withdep++; for(const d of r.dep) deps.push({id:r.id,fiv:r.fiv,frames:r.frames,...d});}}
+console.log('films',n,'withdep',withdep,'deps',deps.length);
+const sec=d=>d.le===null?null:(d.to-d.le)*d.fiv/1000;
+const withle=deps.filter(d=>d.le!==null);
+const gaps=withle.map(sec).sort((a,b)=>a-b);
+const q=p=>gaps[Math.floor(p*(gaps.length-1))];
+console.log('with last life',withle.length,'q50',q(.5).toFixed(1),'q90',q(.9).toFixed(1),'q99',q(.99).toFixed(1),'max',gaps[gaps.length-1].toFixed(1));
+console.log('gap>30s',gaps.filter(g=>g>30).length,'gap>10',gaps.filter(g=>g>10).length,'neg',gaps.filter(g=>g<0).length);
+// byreason
+const by={};
+for(const d of withle){ const k=d.er||'none'; (by[k]=by[k]||[]).push(sec(d)); }
+for(const k in by){ const a=by[k].sort((x,y)=>x-y); console.log(k,a.length,'med',a[Math.floor(a.length/2)].toFixed(1),'>30:',a.filter(x=>x>30).length); }
+// arrival-1 pattern
+const hasN=deps.filter(d=>d.nxt!==null);
+console.log('with successor on seat',hasN.length,'to+1==nxt',hasN.filter(d=>d.nxt===d.to+1).length, 'toMax present',deps.filter(d=>d.toMax!==null).length);
+console.log('no successor',deps.filter(d=>d.nxt===null).length, 'presMode', JSON.stringify(rows.reduce((m,r)=>{m[r.presMode]=(m[r.presMode]||0)+1;return m;},{})));
+// big ones
+const big=withle.filter(d=>sec(d)>30).sort((a,b)=>sec(b)-sec(a));
+console.log('big list'); for(const d of big.slice(0,25)) console.log(d.id,d.x,'to',d.to,'le',d.le,d.er,'gap',sec(d).toFixed(1),'nxt',d.nxt,'toMax',d.toMax,'src',d.src,'seat',d.seat,'pres',d.pres);
+// among big, how many with successor == to+1
+console.log('big with to+1==nxt',big.filter(d=>d.nxt===d.to+1).length,'/',big.length,' without successor',big.filter(d=>d.nxt===null).length);

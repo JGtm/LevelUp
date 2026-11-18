@@ -1,0 +1,18 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort();
+let nT=0,nC=0,nFar=0,nSamples=0; const far=[]; const perFilm=[]; let hasSamples=0;
+for(const f of files){ const id=f.slice(0,-8); let d; try{d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+f)));}catch(e){continue;}
+  const V=d.vehicles||[]; const key=v=>v.slot+':'+v.gen; const by=new Map(V.map(v=>[key(v),v]));
+  let t=0,c=0,fa=0;
+  for(const v of V){ if(v.part!=='turret') continue; nT++; t++; if(!v.carrier) continue; const car=by.get(v.carrier.slot+':'+v.carrier.gen); if(!car||!car.samples||!v.samples){ continue; } nC++; c++; hasSamples++;
+    // compare at overlapping times: nearest carrier sample (by t) within 3 frames
+    const cs=car.samples; let j=0; let maxd=0, n=0, nfar=0, birth=null;
+    for(const s of v.samples){ while(j+1<cs.length&&cs[j+1].t<=s.t) j++; const q=cs[j]; if(!q||Math.abs(q.t-s.t)>3) continue; const dd=Math.hypot(s.x-q.x,s.y-q.y,(s.z-q.z)||0); n++; if(dd>maxd) maxd=dd; if(dd>15) nfar++; }
+    nSamples+=n; if(nfar>0){ nFar++; fa++; far.push({id,turret:v.slot,carrier:v.carrier.slot,carFam:car.family,tFam:v.family,n,nfar,maxd:+maxd.toFixed(1),spawnD:(v.spawn&&car.spawn)?+Math.hypot(v.spawn.x-car.spawn.x,v.spawn.y-car.spawn.y).toFixed(2):null}); }
+  }
+  if(t) perFilm.push([id,t,c,fa]);
+}
+console.log({turrets:nT,withCarrierAndSamples:nC,turretsWithAnySampleOver15m:nFar,compared:nSamples});
+far.sort((a,b)=>b.nfar-a.nfar); for(const x of far.slice(0,15)) console.log(JSON.stringify(x));
+console.log('films with far',new Set(far.map(x=>x.id)).size, '58d09c44',JSON.stringify(far.filter(x=>x.id==='58d09c44')));

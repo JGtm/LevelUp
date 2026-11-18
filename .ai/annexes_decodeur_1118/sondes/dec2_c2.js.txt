@@ -1,0 +1,7 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+',s'+p.seat+')':x};
+const fi=+process.argv[3];
+console.log('team',d.flagCarries[fi].team);
+for(const s of d.flagCarries[fi].spans){ const o={...s}; delete o.x; delete o.y; o.xuid=s.xuid?nm(s.xuid):null; if(o.t0>=(+process.argv[4]||0)&&o.t0<=(+process.argv[5]||1e9)) console.log(JSON.stringify(o)); }

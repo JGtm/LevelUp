@@ -1,0 +1,19 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const H={headshots:{},meleeKills:{},grenadeKills:{},powerWeaponKills:{},suicides:{},betrayals:{}};
+const spikes=[];
+const last=s=>{if(!s||!s.total||!s.total.length)return null;return s.total[s.total.length-1].v};
+let single16=0,n16=0;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=(d.coverage.decoder&&d.coverage.decoder.build)||'?';
+  for(const p of (d.scoreTimeline&&d.scoreTimeline.players)||[]){
+    const k=last(p.kills);const st=p.stats||{};
+    for(const n of Object.keys(H)){const v=last(st[n]);if(v===null)continue;H[n][v]=(H[n][v]||0)+1;
+      if(v===16&&n!=='powerWeaponKills'){n16++;const pts=st[n].total;spikes.push({id:f.slice(0,8),b,stat:n,xuid:p.xuid.slice(-4),kills:k,npts:pts.length,pts:pts.map(q=>q.v).join('>')});}}
+  }
+}
+for(const n of Object.keys(H)){const e=Object.entries(H[n]).map(([v,c])=>[+v,c]).sort((a,b)=>a[0]-b[0]);console.log(n,'total',e.reduce((s,x)=>s+x[1],0),'>=12:',JSON.stringify(e.filter(x=>x[0]>=12)))}
+console.log('value16 by stat',spikes.reduce((m,s)=>{m[s.stat]=(m[s.stat]||0)+1;return m},{}));
+console.log(JSON.stringify(spikes.slice(0,40)));

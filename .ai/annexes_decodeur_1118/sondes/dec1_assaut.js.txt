@@ -1,0 +1,15 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const rows=[];
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const sa=d.coverage&&d.coverage.scoreActions; if(!sa||sa.group!=='slayerevents.lua') continue;
+  const ok=d.objectives&&Object.keys(d.objectives).length>0;
+  if(!ok) continue;
+  const sums={};for(const a of d.scoreActions||[])sums[a.xuid]=(sums[a.xuid]||0)+a.points;
+  let bad=0,tot=0;for(const p of (d.scoreTimeline||{}).players||[]){const t=(p.score&&p.score.total)||[];const last=t.length?t[t.length-1].v:0;tot++;if((sums[p.xuid]||0)!==last)bad++;}
+  const kinds=Object.keys(d.objectives);
+  rows.push({id:f.slice(0,8),build:d.coverage.decoder.build,complete:sa.complete,tot,bad,objKeys:kinds.join(','),objSample:JSON.stringify(d.objectives[kinds[0]]).slice(0,160)});
+}
+for(const r of rows)console.log(JSON.stringify(r));console.log(rows.length);

@@ -1,0 +1,15 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+',s'+p.seat+')':x};
+const fi=+process.argv[3], t0=+process.argv[4], t1=+process.argv[5];
+const sp=d.flagCarries[fi].spans.find(s=>s.t0===t0);
+console.log(JSON.stringify(sp));
+console.log('statborg slots:', d.identity.statborgSlots.map(s=>s.slot+':'+nm(s.xuid)+':'+s.link.method).join(' | '));
+// distances at t0 and mid and t1
+for(const T of [t0,Math.floor((t0+t1)/2),t1]){
+ const arr=[];
+ for(const tr of d.tracks){ const pts=tr.points; const p=pts.find(q=>q.t===T); if(!p) continue; arr.push({n:nm(tr.xuid),slot:tr.slot,team:tr.team,dx:+(Math.hypot(p.x-sp.x,p.y-sp.y)).toFixed(1),x:p.x,y:p.y,end:tr.endFrame,er:tr.endReason});}
+ arr.sort((a,b)=>a.dx-b.dx);
+ console.log('T',T,'flag@',sp.x,sp.y, JSON.stringify(arr.slice(0,4)));
+}

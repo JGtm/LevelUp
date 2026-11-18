@@ -1,0 +1,8 @@
+const fs=require('fs'),z=require('zlib');
+const f='/c/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz';
+const d=JSON.parse(z.gunzipSync(fs.readFileSync(f.replace('/c/','C:/'))));
+console.log(JSON.stringify(d.coverage.flagCarries));
+console.log(JSON.stringify(d.roster.slice(0,3)));
+console.log(JSON.stringify(d.flagCarries.map(c=>({keys:Object.keys(c), n:(c.spans||[]).length}))).slice(0,600));
+console.log(JSON.stringify(d.flagCarries[0]).slice(0,1800));
+console.log(JSON.stringify(d.identity.coverage));

@@ -1,0 +1,11 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+d.flagCarries.forEach((fc,i)=>console.log(i,fc.team,fc.spans.filter(s=>s.state==='home').map(s=>s.t0+'-'+s.t1+'@'+s.x+','+s.y).join(' ')));
+const lt=d.tracks.filter(t=>t.xuid==='XUID_DU_JOUEUR_A_RENSEIGNER');
+for(const tr of lt){ const p=tr.points; console.log(tr.slot,tr.endFrame,tr.endReason,tr.releaseFrame,p[0].t,p[p.length-1].t); }
+const tr=lt.find(t=>t.points[0].t<=21348&&t.points[t.points.length-1].t>=21348);
+const pts=tr.points; 
+for(let T=21340;T<=24260;T+=120){const p=pts.find(q=>q.t===T); if(p) console.log(T,p.x,p.y,p.z);}
+console.log(JSON.stringify(d.flagCarries[3].spans.filter(s=>s.state==='dropped').slice(-1)));
+console.log(JSON.stringify(d.roundClock.slice(0,3)), d.roundClock.slice(-2));

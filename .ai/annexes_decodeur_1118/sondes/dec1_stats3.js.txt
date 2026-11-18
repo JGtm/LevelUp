@@ -1,0 +1,15 @@
+const fs=require('fs'),zlib=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const last=s=>{ if(!s) return null; const t=s.total||[]; if(t.length) return t[t.length-1].v; const r=(s.rounds||[]); const x=r.map(q=>q.points.length?q.points[q.points.length-1].v:0); return 'R'+x.join('/')};
+console.log(id,d.coverage.decoder.build,'group',d.coverage.scoreActions&&d.coverage.scoreActions.group,'score cov',JSON.stringify(d.coverage.score), 'roster',d.roster.length,'players',d.scoreTimeline.players.length);
+const medalCount={};
+for(const m of d.medals||[]){ const k=m.xuid+'|'+m.name; medalCount[k]=(medalCount[k]||0)+1;}
+const names={};for(const m of d.medals||[])names[m.name]=(names[m.name]||0)+1;
+console.log('medal names',JSON.stringify(names).slice(0,800));
+for(const p of d.scoreTimeline.players){
+ const st=p.stats||{};
+ const r=d.roster.find(x=>x.xuid===p.xuid)||{};
+ console.log(p.xuid.slice(-4),'idx',r.filmIndex,'kills',last(p.kills),'deaths',last(p.deaths),'ast',last(p.assists),'score',last(p.score),
+  'HS',last(st.headshots),'MEL',last(st.meleeKills),'GRE',last(st.grenadeKills),'PWR',last(st.powerWeaponKills),'spree',last(st.maxSpree),'spw',last(st.spawns),'susp',last(st.suicides),'betr',last(st.betrayals));
+}

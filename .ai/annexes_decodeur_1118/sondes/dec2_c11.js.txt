@@ -1,0 +1,9 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+',s'+p.seat+')':x};
+console.log(JSON.stringify(d.medals[0]));
+const a=+process.argv[3],b=+process.argv[4];
+for(const m of d.medals){ const t=m.t??m.frame; if(t>=a&&t<=b) console.log(JSON.stringify({...m,xuid:nm(m.xuid)})); }
+console.log(JSON.stringify(d.roundClock.filter(r=>r.t>=a-200&&r.t<=b).slice(0,3)));
+console.log('kills of carrier near end 24207:'); 

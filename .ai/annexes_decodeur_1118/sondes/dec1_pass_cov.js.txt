@@ -1,0 +1,21 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const agg={};let docs=0;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  if(!(d.coverage&&d.coverage.decoder&&d.coverage.decoder.build==='HI_1_13_0'))continue;
+  if(!d.shotStats||!d.shots)continue; docs++;
+  const bySlot={};for(const t of d.tracks){if(!t.xuid)continue;(bySlot[t.slot]=bySlot[t.slot]||[]).push([t.startFrame,t.endFrame||1e9,t.xuid])}
+  const wc={};// xuid -> weapon -> n
+  for(const s of d.shots){const arr=bySlot[s.slot];if(!arr)continue;const m=arr.find(a=>s.t>=a[0]&&s.t<=a[1]);if(!m)continue;const x=m[2];const w=(s.w||'').slice(0,10);(wc[x]=wc[x]||{})[w]=(wc[x][w]||0)+1}
+  for(const st of d.shotStats){
+    const m=wc[st.xuid];if(!m)continue;
+    let top=null,tn=0,tot=0;for(const [w,n] of Object.entries(m)){tot+=n;if(n>tn){tn=n;top=w}}
+    const name=(d.weaponLabels[top]&&d.weaponLabels[top].en)||top;
+    const a=agg[name]=agg[name]||{n:0,suff:0,cov:[],dup:[]};a.n++;if(st.sufficient)a.suff++;if(st.shots>0)a.cov.push(st.coverage);if(st.hits>0)a.dup.push(st.duplicates);
+  }
+}
+const med=a=>{a=[...a].sort((x,y)=>x-y);return a.length?+a[Math.floor(a.length/2)].toFixed(2):null};
+const rows=Object.entries(agg).filter(([k,v])=>v.n>=60).sort((a,b)=>b[1].n-a[1].n).map(([k,v])=>[k,v.n,(100*v.suff/v.n).toFixed(0)+'%','cov',med(v.cov),'dup',med(v.dup)]);
+console.log('docs 1.13',docs);console.log(rows.map(r=>r.join(' | ')).join('\n'));

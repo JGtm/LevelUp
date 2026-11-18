@@ -1,0 +1,7 @@
+const fs=require('fs');
+const rows=fs.readFileSync('usage.jsonl','utf8').trim().split('\n').map(JSON.parse);
+let t={films:rows.length,dropN:0,dropA:0,dropNew:0,dropOther:0,depN:0,depDiff:0};
+const exs=[];
+for(const r of rows){ t.dropN+=r.dropN; t.dropA+=r.dropA; t.dropNew+=r.dropNew; t.dropOther+=r.dropOther; t.depN+=r.depN; t.depDiff+=r.depDiff; if(r.dropNew||r.depDiff) exs.push(r); }
+console.log(t); console.log('films with dropNew',rows.filter(r=>r.dropNew).length,'films with depDiff',rows.filter(r=>r.depDiff).length);
+for(const r of exs.slice(0,8)) console.log(r.id,'dropNew',r.dropNew,'dropOther',r.dropOther,'depDiff',r.depDiff,JSON.stringify(r.ex).slice(0,400));

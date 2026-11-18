@@ -1,0 +1,47 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const lastTot=s=>{if(!s||!s.total||!s.total.length)return null;return s.total[s.total.length-1].v};
+const peak=s=>{if(!s||!s.rounds)return null;let m=null;for(const r of s.rounds){for(const p of r.points){m=m===null?p.v:Math.max(m,p.v)}}return m};
+const agg={shot:{},counters:{},t0:[],builds:{}};
+const inc=(o,k,n=1)=>{o[k]=(o[k]||0)+n};
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const id=f.slice(0,8);
+  const b=(d.coverage&&d.coverage.decoder&&d.coverage.decoder.build)||'(inconnu)';
+  inc(agg.builds,b);
+  // ---- shots
+  const h=d.coverage&&d.coverage.hits;
+  if(h&&d.shotStats){
+    const lp=h.frames>0&&(h.stoppedFrames+h.vitalsUnread)<=h.maxStoppedShare*h.frames;
+    for(const s of d.shotStats){
+      let r;
+      if(s.sufficient) r='suffisant';
+      else if(!lp) r='lecture_arretee_doc';
+      else if(!(s.shots>0)) r='aucun_tir';
+      else if(!(s.hits>0)) r='aucune_touche';
+      else{const c=s.coverage<0.7,dd=!(s.duplicates<1.2); r=c&&dd?'couverture+doublons':c?'couverture':dd?'doublons':'autre';}
+      inc(agg.shot,'ALL|'+r);inc(agg.shot,b+'|'+r);
+    }
+    inc(agg.shot,'DOC_lp_'+lp);
+  } else inc(agg.shot,'nodoc_hits');
+  // ---- counters invariants
+  const fb={};for(const x of (d.coverage&&d.coverage.fallbacks)||[])fb[x.name]=x.hits;
+  const arr=fb['repli_composants_statborg_arretes']||0;
+  for(const p of (d.scoreTimeline&&d.scoreTimeline.players)||[]){
+    const k=lastTot(p.kills);const st=p.stats||{};
+    if(k===null) continue;
+    const hs=lastTot(st.headshots),me=lastTot(st.meleeKills),gr=lastTot(st.grenadeKills),pw=lastTot(st.powerWeaponKills),sp=peak(st.maxSpree);
+    const keyB=b;
+    inc(agg.counters,keyB+'|players');
+    const flag=(n,v,lim)=>{if(v!==null&&v>lim){inc(agg.counters,keyB+'|'+n);inc(agg.counters,'ALL|'+n);agg.counters['ex_'+n]=(agg.counters['ex_'+n]||[]);if(agg.counters['ex_'+n].length<12)agg.counters['ex_'+n].push(id+':'+p.xuid.slice(-4)+' '+v+'>'+lim);}};
+    flag('HS>kills',hs,k);flag('MEL>kills',me,k);flag('GRE>kills',gr,k);flag('PWR>kills',pw,k);flag('spree>kills',sp,k);
+    if(me!==null&&gr!==null&&me+gr>k){inc(agg.counters,keyB+'|MEL+GRE>kills');inc(agg.counters,'ALL|MEL+GRE>kills');}
+    inc(agg.counters,'ALL|players');
+  }
+  // ---- t0
+  const t0=d.coverage&&d.coverage.t0Film;
+  if(!t0||!t0.detected) agg.t0.push({id,build:b,t0Film:t0,t0FilmMs:d.t0FilmMs,originMs:d.originMs,rc0:(d.roundClock||[]).slice(0,3),group:d.coverage.scoreActions&&d.coverage.scoreActions.group,tracks:d.tracks&&d.tracks.length});
+  else inc(agg.builds,'t0det');
+}
+console.log(JSON.stringify(agg,null,1));

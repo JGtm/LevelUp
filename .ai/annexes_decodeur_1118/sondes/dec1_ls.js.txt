@@ -1,0 +1,25 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const ids=['2b10340d','5fbecd0f','6b5de1d7','6b7c596c','6ee59440','97b34406','9dfd3c24','a808c389','b54b8326','d22a5577','e5adf7b2','f58b857e'];
+const X=[],Y=[];const names=new Set();
+const rows=[];
+for(const id of ids){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+id+'.json.gz')));
+  const sums={},cnt={};
+  for(const a of d.scoreActions||[]){sums[a.xuid]=(sums[a.xuid]||0)+a.points;(cnt[a.xuid]=cnt[a.xuid]||{})[a.name]=(cnt[a.xuid][a.name]||0)+1;names.add(a.name);}
+  for(const p of d.scoreTimeline.players){const t=(p.score&&p.score.total)||[];const last=t.length?t[t.length-1].v:0;rows.push({c:cnt[p.xuid]||{},y:last-(sums[p.xuid]||0)});}
+}
+const nm=[...names].filter(n=>!/^(kill|assist)PersonalScore$/.test(n));
+// drop zero-variance names
+const use=nm.filter(n=>rows.some(r=>r.c[n]));
+const A=rows.map(r=>use.map(n=>r.c[n]||0));const y=rows.map(r=>r.y);
+// normal equations
+const m=use.length;const M=Array.from({length:m},()=>new Array(m+1).fill(0));
+for(let i=0;i<A.length;i++)for(let a=0;a<m;a++){for(let b=0;b<m;b++)M[a][b]+=A[i][a]*A[i][b];M[a][m]+=A[i][a]*y[i];}
+for(let a=0;a<m;a++)M[a][a]+=1e-6;
+for(let i=0;i<m;i++){let p=i;for(let r=i+1;r<m;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;[M[i],M[p]]=[M[p],M[i]];for(let r=0;r<m;r++){if(r===i)continue;const f=M[r][i]/M[i][i];for(let c=i;c<=m;c++)M[r][c]-=f*M[i][c];}}
+const coef=use.map((n,i)=>[n,(M[i][m]/M[i][i]).toFixed(1),A.filter(r=>r[i]).length]);
+console.log('players',rows.length,'nonzero diff',y.filter(v=>v).length);
+console.log(coef.map(c=>c.join(' ')).join('\n'));
+let ss=0,res0=0;for(let i=0;i<A.length;i++){let f=0;for(let a=0;a<m;a++)f+=A[i][a]*M[a][m]/M[a][a];ss+=(y[i]-f)**2;res0+=y[i]**2}
+console.log('SS before',res0,'after',Math.round(ss));

@@ -1,0 +1,39 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort();
+const out=fs.openSync('scan.jsonl','w');
+let n=0;
+for(const f of files){
+  const id=f.slice(0,-8);
+  let d;
+  try{ d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+f))); }catch(e){ fs.writeSync(out,JSON.stringify({id,err:String(e)})+'\n'); continue; }
+  d.roster=d.roster||[]; d.tracks=d.tracks||[];
+  const r={id,schema:d.schemaVersion,frames:d.frameCount,fiv:d.frameIntervalMs,nRoster:d.roster?d.roster.length:0};
+  // flag
+  const cf=d.coverage&&d.coverage.flagCarries;
+  if(cf){ r.flag={flagFilm:cf.flagFilm,beyond:cf.seatsBeyondBand,carries:cf.carries,ownRefused:cf.ownFlagRefused,teamUnk:cf.carrierTeamUnknown,spawns:cf.spawns,unresolved:cf.unresolved,noBridge:cf.noBridge};
+    const far=[]; let tot=0;
+    (d.flagCarries||[]).forEach((fc,fi)=>{const sp=fc.spans; for(let i=0;i<sp.length;i++){const s=sp[i]; if(s.state!=='carried') continue; const dur=(s.t1-s.t0+1)*d.frameIntervalMs/1000; tot+=dur; const prev=sp[i-1]; const dist=prev?Math.hypot(prev.x-s.x,prev.y-s.y):null; if(dist!==null&&dist>8) far.push([fi,s.t0,+dur.toFixed(1),+dist.toFixed(1)]);}});
+    r.flag.carrySec=+tot.toFixed(1); r.flag.far=far;
+  }
+  // zones
+  const cz=d.coverage&&d.coverage.zones;
+  if(cz){ r.zones={method:cz.method,roles:cz.roles,catalog:cz.catalog,letters:cz.letters,hillPeriods:cz.hillPeriods,spans:cz.spans};
+    r.bounds=[Math.round(d.bounds.minX),Math.round(d.bounds.maxX),Math.round(d.bounds.minY),Math.round(d.bounds.maxY)];
+    if(d.zoneStates){ r.zoneStates=d.zoneStates.map(z=>({ref:z.zoneRef,lr:z.letterRank,n:(z.spans||[]).length}));
+      if(cz.method==='designator+geometry'){ const act=[]; for(const z of d.zoneStates) for(const s of (z.spans||[])) if(s.active) act.push([s.t0,s.t1,z.zoneRef]); act.sort((a,b)=>a[0]-b[0]); const seq=[]; for(const a of act){ if(!seq.length||seq[seq.length-1][0]!==a[2]) seq.push([a[2],a[0]]); } r.hillSeq=seq; }
+    }
+  }
+  // presence
+  const dep=[];
+  const lastEnd={};
+  for(const t of d.tracks){ if(t.xuid){ const e=(t.endFrame!==undefined&&t.endFrame!==null)?t.endFrame:null; const cur=lastEnd[t.xuid]; if(e!==null&&(!cur||e>cur.e)) lastEnd[t.xuid]={e,er:t.endReason||null}; } }
+  const bySeat={};
+  for(const p of d.roster){ (bySeat[p.seat]=bySeat[p.seat]||[]).push(p); }
+  for(const p of d.roster){ if(p.bot||!p.presence||!p.presence.length) continue; const lp=p.presence[p.presence.length-1]; if(lp.to>=d.frameCount-1-300) continue;
+    const le=lastEnd[p.xuid]; const nxt=(bySeat[p.seat]||[]).filter(q=>q!==p&&q.presence&&q.presence.length&&q.presence[0].from>lp.to).map(q=>q.presence[0].from).sort((a,b)=>a-b)[0];
+    dep.push({x:p.xuid.slice(-4),to:lp.to,toMax:lp.toMax??null,le:le?le.e:null,er:le?le.er:null,seat:p.seat,src:p.seatSource,nxt:nxt??null,pres:p.presence.length}); }
+  r.dep=dep; r.presMode=d.coverage&&d.coverage.seats&&d.coverage.seats.presences;
+  fs.writeSync(out,JSON.stringify(r)+'\n'); n++;
+}
+fs.closeSync(out); console.log('done',n);

@@ -1,0 +1,48 @@
+// Mesure en lecture seule : dernière vie des joueurs dont la présence se ferme avant la fin du document.
+const fs = require('fs'), zlib = require('zlib'), path = require('path')
+const dir = process.argv[2]
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json.gz'))
+const out = { docs: 0, docsAvecDepart: 0, departs: 0, parRaison: {}, avecCompte: 0, ecartsS: [], exemples: [], deletedTotal: 0, deletedDernierDeDepart: 0, deletedAutres: 0, deletedAutresFinDoc: 0, sansPresence: 0, erreurs: 0 }
+for (const f of files) {
+  let d
+  try { d = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f)))) } catch { out.erreurs++; continue }
+  out.docs++
+  const last = (d.frameCount || 0) - 1
+  const sec = (fr) => (fr * d.frameIntervalMs) / 1000
+  const roster = d.roster || []
+  if (!roster.some((r) => (r.presence || []).length)) { out.sansPresence++; continue }
+  const parXuid = new Map()
+  for (const t of d.tracks || []) { if (!t.xuid) continue; const l = parXuid.get(t.xuid); if (l) l.push(t); else parXuid.set(t.xuid, [t]) }
+  const departs = new Set()
+  let vu = false
+  for (const r of roster) {
+    if (r.bot || !r.xuid || !(r.presence || []).length) continue
+    const fin = Math.max(...r.presence.map((p) => p.to))
+    if (sec(last - fin) < 10) continue
+    const vies = (parXuid.get(r.xuid) || []).slice().sort((a, b) => a.endFrame - b.endFrame)
+    const der = vies[vies.length - 1]
+    if (!der) continue
+    vu = true
+    out.departs++
+    const raison = der.endReason || 'absente'
+    out.parRaison[raison] = (out.parRaison[raison] || 0) + 1
+    const compte = (d.respawnCountdowns || []).some((c) => c.filmIndex === r.filmIndex && Math.abs(c.from - der.endFrame) <= 10)
+    if (compte) out.avecCompte++
+    const ecart = sec(fin - der.endFrame)
+    out.ecartsS.push(Math.round(ecart * 10) / 10)
+    if (raison === 'deleted') departs.add(r.xuid + ':' + der.endFrame)
+    if (out.exemples.length < 12) out.exemples.push({ match: f.slice(0, 8), nom: r.name, raison, compte, ecartS: Math.round(ecart * 10) / 10, viePoints: der.points.length })
+  }
+  if (vu) out.docsAvecDepart++
+  for (const t of d.tracks || []) {
+    if (t.endReason !== 'deleted') continue
+    out.deletedTotal++
+    if (t.xuid && departs.has(t.xuid + ':' + t.endFrame)) out.deletedDernierDeDepart++
+    else { out.deletedAutres++; if (sec(last - t.endFrame) < 10) out.deletedAutresFinDoc++ }
+  }
+}
+out.ecartsS.sort((a, b) => a - b)
+const q = (p) => out.ecartsS[Math.floor((out.ecartsS.length - 1) * p)]
+out.ecarts = { min: q(0), p25: q(0.25), mediane: q(0.5), p75: q(0.75), p95: q(0.95), max: q(1), negatifs: out.ecartsS.filter((x) => x < 0).length, auDela30s: out.ecartsS.filter((x) => x > 30).length }
+delete out.ecartsS
+console.log(JSON.stringify(out, null, 1))

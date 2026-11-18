@@ -1,0 +1,11 @@
+const fs=require('fs');
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse);
+const ff=rows.filter(r=>r.flag&&r.flag.flagFilm);
+console.log('films with flag cov',rows.filter(r=>r.flag).length,'flagFilm true',ff.length);
+const btb=ff.filter(r=>r.flag.beyond>0); console.log('flagFilm with seatsBeyondBand>0',btb.length,'; flagFilm with beyond==0',ff.length-btb.length);
+console.log('BTB list: id beyond carries carrySec far>8m(count) teamUnk spawns');
+for(const r of btb) console.log(r.id,r.flag.beyond,r.flag.carries,r.flag.carrySec,r.flag.far.length,r.flag.teamUnk,r.flag.spawns,'own',r.flag.ownRefused,'unres',r.flag.unresolved,'noBridge',r.flag.noBridge);
+// far carries: distribution of long ones
+const longs=[]; for(const r of ff){ for(const f of r.flag.far){ if(f[2]>20) longs.push([r.id,r.flag.beyond,...f]); } }
+console.log('carries starting >8m from the flag with duration>20s:',longs.length); for(const l of longs.slice(0,30)) console.log(JSON.stringify(l));
+const allfar=ff.reduce((a,r)=>a+r.flag.far.length,0); const allc=ff.reduce((a,r)=>a+r.flag.carries,0); console.log('far total',allfar,'carries total',allc);

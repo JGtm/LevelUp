@@ -1,0 +1,18 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const L=require('fs').readFileSync('slay.out','utf8').trim().split('\n').slice(0,-1).map(JSON.parse).filter(x=>x.bad===1&&x.under===1&&x.avgMiss===100);
+const owner={};let rows=[];
+for(const x of L){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+x.id+'.json.gz')));
+  const sums={},kc={},ac={};for(const a of d.scoreActions||[]){sums[a.xuid]=(sums[a.xuid]||0)+a.points;if(a.name==='killPersonalScore')kc[a.xuid]=(kc[a.xuid]||0)+1;if(a.name==='assistPersonalScore')ac[a.xuid]=(ac[a.xuid]||0)+1}
+  for(const p of d.scoreTimeline.players){const t=p.score.total||[];const last=t.length?t[t.length-1].v:0;if((sums[p.xuid]||0)!==last){
+    const kl=p.kills.total&&p.kills.total.length?p.kills.total[p.kills.total.length-1].v:0;
+    const al=p.assists&&p.assists.total&&p.assists.total.length?p.assists.total[p.assists.total.length-1].v:0;
+    const r=d.roster.find(q=>q.xuid===p.xuid);
+    const dup=(d.scoreActions||[]).filter(a=>a.xuid===p.xuid&&a.name==='killPersonalScore');
+    rows.push({id:x.id,xuid:p.xuid.slice(-6),boardKills:kl,actionKills:kc[p.xuid]||0,boardAst:al,actionAst:ac[p.xuid]||0,diff:last-(sums[p.xuid]||0),copies:d.coverage.scoreActions.copies,noTarget:d.coverage.scoreActions.noTarget,idx:r&&r.filmIndex});
+  }}
+}
+console.log(rows.map(r=>JSON.stringify(r)).join('\n'));
+const xs={};for(const r of rows)xs[r.xuid]=(xs[r.xuid]||0)+1;console.log('xuid freq',JSON.stringify(xs));
+console.log('killDiff==1',rows.filter(r=>r.boardKills-r.actionKills===1).length,'of',rows.length);

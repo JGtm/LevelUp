@@ -1,0 +1,8 @@
+const fs=require('fs'),z=require('zlib');
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+console.log('schema',d.schemaVersion,'frames',d.frameCount,'tracks',d.tracks.length,'vehicles',(d.vehicles||[]).length);
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(s'+p.seat+')':x};
+for(const t of d.tracks){ if(t.slot===+process.argv[3]) console.log('track',t.slot,t.xuid&&nm(t.xuid),t.bot,t.startFrame,t.endFrame,t.endReason,t.points.length, t.points[0].t,t.points[t.points.length-1].t, Object.keys(t).join(',')); }
+console.log(Object.keys(d.vehicles[0]||{}).join(','));
+for(const v of d.vehicles){ if(v.slot===+process.argv[3]||v.seat===+process.argv[3]) console.log(JSON.stringify(v).slice(0,400)); }
+console.log(JSON.stringify(d.coverage.tracks||'').slice(0,600));

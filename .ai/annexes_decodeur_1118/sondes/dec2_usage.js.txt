@@ -1,0 +1,35 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort();
+const out=fs.openSync('usage.jsonl','w');
+for(const f of files){
+  const id=f.slice(0,-8); let d;
+  try{ d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+f))); }catch(e){continue;}
+  const pl=d.equipmentPlacements||[]; if(!pl.length) continue;
+  const tracks=d.tracks||[];
+  const key=t=>t.xuid?t.xuid:('bot:'+(t.bot||'?'));
+  const par={};
+  for(const t of tracks){ const from=t.startFrame??(t.points&&t.points.length?t.points[0].t:0); const to=t.endFrame??(t.points&&t.points.length?t.points[t.points.length-1].t:from); (par[t.slot]=par[t.slot]||[]).push({from,to,key:key(t),named:!!t.xuid,rel:t.releaseFrame}); }
+  for(const s of Object.keys(par)) par[s].sort((a,b)=>a.from-b.from);
+  const cover=(slot,f)=>{ for(const v of (par[slot]||[])) if(f>=v.from&&f<=v.to) return v; return null; };
+  const goAtOrJust=(slot,f)=>{ const vies=par[slot]||[]; let last=null; for(const v of vies){ if(f<v.from) break; if(f<=v.to) return v; last=v;} if(last) return last; return vies[0]||null; };
+  const lastBefore=(slot,f)=>{ let last=null; for(const v of (par[slot]||[])){ if(v.to<f) last=v; } return last; };
+  const r={id,nPl:pl.length,dropA:0,dropAcase:0,dropNew:0,depDiff:0,depN:0,dropN:0,dropOther:0,ex:[]};
+  for(const p of pl){
+    if(p.owner<0) continue; const fam=p.family||''; if(fam.startsWith('grenade_')) continue;
+    const go=goAtOrJust(p.owner,p.t0);
+    if(p.origin==='dropped'){
+      r.dropN++;
+      const web=cover(p.owner,p.t0-1)||lastBefore(p.owner,p.t0);
+      const goK=go&&go.key, webK=web&&web.key;
+      if(goK!==webK){ r.dropA++; const cv=cover(p.owner,p.t0); const dead=cover(p.owner,p.t0-1);
+        if(cv&&dead&&cv!==dead){ r.dropNew++; if(r.ex.length<3) r.ex.push({slot:p.owner,t0:p.t0,fam,dead:dead.key.slice(-4),new:cv.key.slice(-4),deadTo:dead.to,newFrom:cv.from}); } else r.dropOther++; }
+    } else if(p.origin==='deployed'){
+      r.depN++;
+      const strict=cover(p.owner,p.t0); const goK=go&&go.key, sK=strict&&strict.key;
+      if(goK!==sK){ r.depDiff++; const v={slot:p.owner,t0:p.t0,fam,go:goK&&goK.slice(-4),strict:sK&&sK.slice(-4)}; if(r.ex.length<6) r.ex.push(v); }
+    }
+  }
+  fs.writeSync(out,JSON.stringify(r)+'\n');
+}
+fs.closeSync(out); console.log('done');

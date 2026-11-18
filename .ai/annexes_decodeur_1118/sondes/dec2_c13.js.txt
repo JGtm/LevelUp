@@ -1,0 +1,8 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(t'+p.team+',s'+p.seat+')':x};
+// flag position before each carried span = previous span's x,y (home or dropped)
+let n=0;
+d.flagCarries.forEach((fc,fi)=>{ const sp=fc.spans; for(let i=0;i<sp.length;i++){ const s=sp[i]; if(s.state!=='carried') continue; const prev=sp[i-1]; const dist=prev?Math.hypot(prev.x-s.x,prev.y-s.y):null; n++; if(dist===null||dist>8) console.log('flag',fi,'team',fc.team,'t0',s.t0,'dur',((s.t1-s.t0)*0.033).toFixed(1),nm(s.xuid),'prev',prev&&prev.state,'dist',dist&&dist.toFixed(1)); } });
+console.log('carries',n);

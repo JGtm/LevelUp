@@ -1,0 +1,11 @@
+const fs=require('fs'),zlib=require('zlib'),path=require('path')
+const dir=process.argv[2], n=+process.argv[3]
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort()
+const step=Math.floor(files.length/n); const sh=[]; let fr=0, st=0
+for(let i=0;i<files.length&&sh.length<n;i+=step){
+ const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,files[i]))).toString())
+ const h=(d.coverage||{}).hits||{}
+ if(h.frames){sh.push(h.stoppedFrames/h.frames); fr+=h.frames; st+=h.stoppedFrames}
+}
+const q=(a,p)=>{const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(p*s.length))]}
+console.log('films',sh.length,'pooled stopped share',(st/fr).toFixed(5),'p50',q(sh,.5).toFixed(4),'p90',q(sh,.9).toFixed(4),'p95',q(sh,.95).toFixed(4),'max',q(sh,1).toFixed(4),'films>1%:',sh.filter(x=>x>0.01).length,'films>10%:',sh.filter(x=>x>0.1).length)

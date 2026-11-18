@@ -1,0 +1,15 @@
+const fs=require('fs');
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse);
+const deps=[]; for(const r of rows){ for(const d of (r.dep||[])) deps.push({id:r.id,fiv:r.fiv,frames:r.frames,...d}); }
+const withle=deps.filter(d=>d.le!==null); const sec=d=>(d.to-d.le)*d.fiv/1000;
+const big=withle.filter(d=>sec(d)>30);
+const cat={startBody:0,released:0,deletedMid:0,other:0}; const lists={startBody:[],released:[],deletedMid:[]};
+for(const d of big){ if(d.le<=30){cat.startBody++;lists.startBody.push(d);} else if(d.er==='released'){cat.released++;lists.released.push(d);} else if(d.er==='deleted'){cat.deletedMid++;lists.deletedMid.push(d);} else cat.other++; }
+console.log(cat);
+for(const k in lists){ const a=lists[k]; console.log(k,'n',a.length,'with nxt',a.filter(d=>d.nxt!==null).length,'nxt==to+1',a.filter(d=>d.nxt===d.to+1).length,'gap med',a.map(sec).sort((x,y)=>x-y)[Math.floor(a.length/2)]?.toFixed(1)); }
+// over all deps: those with le<=30
+const all30=withle.filter(d=>d.le<=30); console.log('all deps with last life ending <=frame 30:',all30.length,'of',withle.length,'; of them gap>30:',all30.filter(d=>sec(d)>30).length);
+// gap distribution for 'deleted' leavers with successor: to+1==nxt share
+for(const er of ['deleted','released']){ const a=withle.filter(d=>d.er===er&&d.nxt!==null); console.log(er,'with successor',a.length,'to+1==nxt',a.filter(d=>d.nxt===d.to+1).length,'nxt-to within 5',a.filter(d=>d.nxt-d.to<=5).length,'median nxt-to', a.map(d=>d.nxt-d.to).sort((x,y)=>x-y)[Math.floor(a.length/2)]); }
+// in the bounded view: deleted-last-life leavers, gap q
+const dl=withle.filter(d=>d.er==='deleted'&&d.le>30).map(sec).sort((x,y)=>x-y); console.log('deleted(le>30) n',dl.length,'q50',dl[Math.floor(dl.length*.5)].toFixed(1),'q90',dl[Math.floor(dl.length*.9)].toFixed(1),'>30',dl.filter(x=>x>30).length);

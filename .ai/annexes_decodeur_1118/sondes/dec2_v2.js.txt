@@ -1,0 +1,7 @@
+const fs=require('fs'),z=require('zlib');
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+const nm=x=>{const p=d.roster.find(q=>q.xuid===x);return p?p.name+'(s'+p.seat+',t'+p.team+')':x||'-'};
+const a=+process.argv[3], b=+process.argv[4];
+const v0=d.vehicles.find(v=>v.rides&&v.rides.length); console.log(JSON.stringify(v0).slice(0,700));
+for(const v of d.vehicles){ for(const r of (v.rides||[])){ if(r.t1>=a&&r.t0<=b) console.log('veh',v.slot,v.family,v.t0,v.t1,'ride',JSON.stringify(r).slice(0,200)); } }
+// tracks of humans in that window & their positions

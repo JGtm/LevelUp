@@ -1,0 +1,6 @@
+const fs=require('fs'),z=require('zlib');
+const cases={'1bd990f0':[583,10023],'34bb3bc8':[666,14895],'6b7c596c':[635,10703],'7482e583':[603,11225],'82f29378':[543,4466],'a808c389':[625,9308],'b3d9bcfa':[518,494]};
+for(const id in cases){ const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+ const [slot,t0]=cases[id]; const p=d.equipmentPlacements.filter(q=>q.owner===slot&&q.t0===t0&&q.origin==='deployed');
+ const lives=d.tracks.filter(t=>t.slot===slot).map(t=>[t.startFrame??t.points[0].t,t.endFrame,t.endReason,t.xuid?t.xuid.slice(-4):'bot']);
+ console.log(id,JSON.stringify(p.map(q=>({fam:q.family,id:q.id,until:q.until}))),'lives of slot',JSON.stringify(lives)); }

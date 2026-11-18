@@ -1,0 +1,12 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const a={};const inc=k=>a[k]=(a[k]||0)+1;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=(d.coverage.decoder&&d.coverage.decoder.build)||'?';inc('docs|'+b);
+  for(const x of d.coverage.fallbacks||[]){ if(/statborg|emission_hors|bande/.test(x.name)) inc(x.name+'|'+b); }
+  const sc=d.coverage.score||{}; if(sc.statsWithheld)inc('statsWithheld|'+b);
+  const pl=(d.scoreTimeline&&d.scoreTimeline.players)||[]; if(pl.length&&pl.every(p=>!p.stats))inc('noStatsAtAll|'+b);
+}
+console.log(Object.entries(a).sort().map(e=>e.join('=')).join('\n'));

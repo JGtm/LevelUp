@@ -1,0 +1,3 @@
+const fs=require("fs"),zlib=require("zlib");
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync("C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/000d5950.json.gz")).toString());
+console.log(JSON.stringify(d.coverage.stances));

@@ -1,0 +1,12 @@
+const fs=require('fs');
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse);
+const zr=rows.filter(r=>r.zones);
+const meth={}; for(const r of zr){ const k=r.zones.method+'|'+r.zones.roles; meth[k]=(meth[k]||0)+1;} console.log('films with coverage.zones',zr.length, meth);
+// strongholds: letters
+const sh=zr.filter(r=>r.zones.method==='captures+geometry');
+console.log('captures+geometry films',sh.length,'letters>0',sh.filter(r=>r.zones.letters>0).length);
+const lr={}; for(const r of sh){ const key=(r.zoneStates||[]).map(z=>z.lr===undefined?'-':z.lr).join(','); lr[key]=(lr[key]||0)+1; } console.log('letterRank vectors (by zone order)',lr);
+// KOTH: hill seq per bounds
+const k=zr.filter(r=>r.hillSeq); console.log('designator films',k.length);
+const by={}; for(const r of k){ const key=r.bounds.join('/')+'|cat'+r.zones.catalog; (by[key]=by[key]||[]).push(r); }
+for(const key of Object.keys(by)){ const g=by[key]; console.log('MAP',key,'films',g.length); for(const r of g.slice(0,12)) console.log('  ',r.id,'periods',r.zones.hillPeriods,'seq',r.hillSeq.map(s=>s[0]).join('')); }

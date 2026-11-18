@@ -1,0 +1,35 @@
+// Lecture seule : le coup d'envoi daté par l'horloge de manche du film, contre celui du premier mouvement (t0FilmMs).
+const fs = require('fs'), zlib = require('zlib'), path = require('path')
+const dir = process.argv[2]
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json.gz'))
+const out = { docs: 0, sansHorloge: 0, sansT0Film: 0, sansDepart: 0, compares: 0, etats: {}, ecarts: [], horlogeSeule: 0, exemplesGrands: [], premierEtat: {}, limiteZero: 0 }
+for (const f of files) {
+  let d
+  try { d = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f)))) } catch { continue }
+  out.docs++
+  const rc = d.roundClock || []
+  if (!rc.length) { out.sansHorloge++; if (d.t0FilmMs === undefined) out.sansT0Film++; continue }
+  for (const s of rc) out.etats[s.state] = (out.etats[s.state] || 0) + 1
+  out.premierEtat[rc[0].state] = (out.premierEtat[rc[0].state] || 0) + 1
+  const pas = d.frameIntervalMs / 1000
+  // Première lecture où l'horloge court : départ = instant où elle valait sa limite (descend) ou zéro (monte).
+  const run = rc.find((s) => s.state === 6 || s.state === 19)
+  let depart = null
+  if (run) {
+    const ecoule = run.state === 6 ? run.limit - run.left : run.left
+    if (run.state === 6 && !run.limit) out.limiteZero++
+    else depart = run.t - ecoule / pas
+  }
+  if (depart === null) { out.sansDepart++; if (d.t0FilmMs === undefined) out.sansT0Film++; continue }
+  if (d.t0FilmMs === undefined || d.t0FilmMs === null) { out.sansT0Film++; out.horlogeSeule++; continue }
+  const mouvement = (d.t0FilmMs - (d.originMs || 0)) / d.frameIntervalMs
+  const ecartS = Math.round((mouvement - depart) * pas * 100) / 100
+  out.compares++
+  out.ecarts.push(ecartS)
+  if (Math.abs(ecartS) > 3 && out.exemplesGrands.length < 15) out.exemplesGrands.push({ match: f.slice(0, 8), ecartS, departFrame: Math.round(depart), mouvementFrame: Math.round(mouvement), premiereLecture: rc[0], lectureQuiCourt: run })
+}
+out.ecarts.sort((a, b) => a - b)
+const q = (p) => out.ecarts[Math.floor((out.ecarts.length - 1) * p)]
+out.ecartMouvementMoinsHorloge = { min: q(0), p05: q(0.05), p25: q(0.25), mediane: q(0.5), p75: q(0.75), p95: q(0.95), max: q(1), dansUneDemiSeconde: out.ecarts.filter((x) => Math.abs(x) <= 0.5).length, dansUneSeconde: out.ecarts.filter((x) => Math.abs(x) <= 1).length, auDela3s: out.ecarts.filter((x) => Math.abs(x) > 3).length }
+delete out.ecarts
+console.log(JSON.stringify(out, null, 1))

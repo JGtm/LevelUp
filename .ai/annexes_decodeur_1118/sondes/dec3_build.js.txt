@@ -1,0 +1,13 @@
+const fs=require('fs'),zlib=require('zlib'),path=require('path')
+const dir=process.argv[2], n=+process.argv[3]
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')).sort()
+const step=Math.floor(files.length/n); const by={}; const cl={}
+for(let i=0;i<files.length&&Object.keys(by).length+1>0;i+=step){
+ if((by.__n||0)>=n)break; by.__n=(by.__n||0)+1
+ const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir,files[i]))).toString())
+ const c=d.coverage||{}; const b=(c.decoder&&c.decoder.build)||'?'
+ by[b]=(by[b]||0)+1
+ const cf=c.continuousFire||{}; cl[b]=cl[b]||[0,0]; cl[b][0]+=cf.closed||0; cl[b][1]+=cf.packets||0
+}
+delete by.__n
+console.log(by); for(const [b,[c,p]] of Object.entries(cl)) console.log(b,'view C closed share',(c/p).toFixed(4),'packets',p)

@@ -1,0 +1,28 @@
+// Echantillon de rejeux : poids, nombre d'objets par calque, couverture des etats de mouvement et du tir continu.
+const fs = require('fs'), zlib = require('zlib'), path = require('path')
+const dir = process.argv[2]
+const n = parseInt(process.argv[3] || '60', 10)
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.json.gz')).sort()
+const step = Math.max(1, Math.floor(files.length / n))
+const out = []
+for (let i = 0; i < files.length && out.length < n; i += step) {
+  const f = files[i]
+  const raw = zlib.gunzipSync(fs.readFileSync(path.join(dir, f)))
+  const d = JSON.parse(raw.toString('utf8'))
+  const cov = d.coverage || {}
+  const st = cov.stances || {}
+  const cf = cov.continuousFire || {}
+  const sizeOf = (k) => d[k] === undefined ? 0 : Buffer.byteLength(JSON.stringify(d[k]))
+  out.push({
+    f: f.slice(0, 8), schema: d.schemaVersion, rawBytes: raw.length, gz: fs.statSync(path.join(dir, f)).size,
+    frames: d.frameCount, step: d.frameIntervalMs, dur: d.durationMs, roster: (d.roster || []).length, tracks: (d.tracks || []).length,
+    stances: (d.stances || []).length, stBytes: sizeOf('stances'), byKind: st.byKind, scanned: st.scanned, absent: st.absent,
+    jumpEp: st.jumpEpisodes, jumps: st.jumpsDerived, records: st.records, desyncs: st.desyncs, unloc: st.eventPacketsUnlocated,
+    shots: (d.shots || []).length, shotBytes: sizeOf('shots'), hits: (d.hits || []).length, damage: (d.damage || []).length,
+    medals: (d.medals || []).length, pickups: (d.pickups || []).length, scoreActions: (d.scoreActions || []).length,
+    bursts: (d.bursts || []).length, trackBytes: sizeOf('tracks'),
+    cf: cf,
+  })
+}
+fs.writeFileSync(process.argv[4], JSON.stringify(out))
+console.log('ok', out.length)

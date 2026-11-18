@@ -1,0 +1,11 @@
+const fs=require('fs'),zlib=require('zlib')
+const f=process.argv[2]
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(f)).toString())
+const total=zlib.gzipSync(JSON.stringify(d)).length
+console.log('doc gz total',total,'frames',d.frameCount,'roster',(d.roster||[]).length)
+for(const k of ['stances','medals','scoreActions','pickups','shots','hits','damage','grenades','weaponChanges','equipmentChanges']){
+  const a=d[k]||[]; const s=JSON.stringify(a)
+  console.log(k.padEnd(18),'n',String(a.length).padStart(5),'raw',String(s.length).padStart(7),'gz',String(zlib.gzipSync(s).length).padStart(6),'raw/elt',a.length?(s.length/a.length).toFixed(1):'-','gz/elt',a.length?(zlib.gzipSync(s).length/a.length).toFixed(1):'-')
+}
+console.log(JSON.stringify((d.stances||[]).slice(0,3)), JSON.stringify((d.medals||[]).slice(0,2)))
+console.log(JSON.stringify(d.shotStats&&d.shotStats[0]))

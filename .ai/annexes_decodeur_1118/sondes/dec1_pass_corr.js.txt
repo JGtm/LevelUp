@@ -1,0 +1,17 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const last=s=>{if(!s||!s.total||!s.total.length)return null;return s.total[s.total.length-1].v};
+const A=[],B=[];
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=(d.coverage.decoder&&d.coverage.decoder.build);if(b!=='HI_1_13_0')continue;
+  const fb={};for(const x of d.coverage.fallbacks||[])fb[x.name]=x.hits;
+  let bad=0,n=0;for(const p of (d.scoreTimeline&&d.scoreTimeline.players)||[]){const k=last(p.kills);const g=last((p.stats||{}).grenadeKills);n++;if(g===16||(g!==null&&k!==null&&g>k))bad++}
+  const rec={id:f.slice(0,8),arr:fb['repli_composants_statborg_arretes']||0,aband:fb['repli_enregistrement_statborg_abandonne']||0,ehd:fb['repli_emission_hors_domaine_jetee']||0,n,bad,sizeFrames:d.frameCount};
+  (bad>0?A:B).push(rec);
+}
+const med=(a,k)=>{const v=a.map(x=>x[k]).sort((x,y)=>x-y);return v[Math.floor(v.length/2)]};
+const mean=(a,k)=>(a.reduce((s,x)=>s+x[k],0)/a.length).toFixed(1);
+console.log('docs with a fake GRE (1.13):',A.length,'others',B.length);
+for(const k of ['arr','aband','ehd','n','sizeFrames'])console.log(k,'bad: med',med(A,k),'mean',mean(A,k),'| ok: med',med(B,k),'mean',mean(B,k));

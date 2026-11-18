@@ -1,0 +1,21 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const out=[];
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const sa=d.coverage&&d.coverage.scoreActions;
+  if(!sa||!sa.complete||!/bigteam/.test(sa.group||'')) continue;
+  const b=d.coverage.decoder&&d.coverage.decoder.build;
+  const sums={};const names={};
+  for(const a of d.scoreActions||[]){sums[a.xuid]=(sums[a.xuid]||0)+a.points;(names[a.xuid]=names[a.xuid]||{})[a.name]=((names[a.xuid]||{})[a.name]||0)+1;}
+  let bad=0,tot=0,over=0,under=0; const rows=[];
+  for(const p of d.scoreTimeline.players||[]){
+    const t=(p.score&&p.score.total)||[]; const last=t.length?t[t.length-1].v:0;
+    const s=sums[p.xuid]||0; tot++;
+    const r=d.roster.find(x=>x.xuid===p.xuid)||{};
+    if(s!==last){bad++; if(s>last)over++; else under++; rows.push({idx:r.filmIndex,seat:r.seat,diff:s-last});}
+  }
+  out.push({id:f.slice(0,8),build:b,roster:d.roster.length,players:tot,bad,over,under,cov:{frames:sa.frames,stopped:sa.stoppedFrames,msgs:sa.messages,copies:sa.copies,scoreMsgs:sa.scoreMessages,outsideTree:sa.outsideTree,unconfirmed:sa.unconfirmedRank,scored:sa.scored,pub:sa.published,noRecipient:sa.noRecipient,notPresent:sa.notPresent},rows});
+}
+for(const o of out) console.log(JSON.stringify(o));

@@ -1,0 +1,6 @@
+const fs=require('fs'),z=require('zlib');
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+process.argv[2]+'.json.gz')));
+console.log(Object.keys(d).join(' '));
+console.log(JSON.stringify(d.coverage.zones));
+const zs=d.zoneStates; console.log(Array.isArray(zs)?zs.length:typeof zs);
+if(zs) for(const z of zs){ console.log(z.zoneRef,z.letterRank,Object.keys(z).join(','),(z.intervals||z.spans||[]).length, JSON.stringify((z.intervals||z.spans||[]).slice(0,3)));}

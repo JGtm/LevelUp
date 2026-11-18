@@ -1,0 +1,13 @@
+const fs=require('fs'),z=require('zlib');
+const dir='C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const rows=fs.readFileSync('scan.jsonl','utf8').trim().split('\n').map(JSON.parse).filter(r=>r.hillSeq);
+let unp=0,sizes={}; const out=[];
+for(const r of rows){ const d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+r.id+'.json.gz'))); const c=d.coverage.zones; 
+  const act=[]; for(const zz of d.zoneStates) for(const s of zz.spans) act.push([s.t0,s.t1,zz.zoneRef,s.active]);
+  const inactive=act.filter(a=>!a[3]).length;
+  out.push({id:r.id,cat:c.catalog,slots:c.slots,paired:c.paired,unpaired:c.unpaired,periods:c.hillPeriods,seq:r.hillSeq.length,inactive,spans:c.spans,distinctHills:new Set(r.hillSeq.map(s=>s[0])).size}); }
+console.log('unpaired>0',out.filter(o=>o.unpaired>0).length,'periods!=seq',out.filter(o=>o.periods!==o.seq).length,'inactive spans>0',out.filter(o=>o.inactive>0).length);
+console.log('paired<catalog',out.filter(o=>o.paired<o.cat).length);
+console.log(JSON.stringify(out.slice(0,6)));
+// repeated consecutive? seq with repeats
+console.log('films whose seq repeats a hill', out.filter(o=>o.distinctHills<o.seq).length,'/',out.length);

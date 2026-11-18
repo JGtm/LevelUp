@@ -1,0 +1,24 @@
+const fs=require('fs'),zlib=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const fi=d.frameIntervalMs;
+const p0=d.tracks.find(t=>t.points&&t.points.length)?.points[0];
+const deps=[];
+for(const tr of d.tracks){
+  const pts=[...(tr.points||[])].sort((a,b)=>a.t-b.t); if(pts.length<2)continue;
+  // steps
+  const starts=[],dists=[];let sum=0,first=-1;
+  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];const dist=Math.hypot(b.x-a.x,b.y-a.y,(b.z||0)-(a.z||0));const el=(b.t-a.t)*fi;
+    const rup=el>1000||dist>50*el/1000;
+    if(rup){starts.length=0;dists.length=0;sum=0;continue}
+    starts.push(a.t);dists.push(dist);sum+=dist;
+    while(dists.length>1&&(b.t-starts[0])*fi>1000){sum-=dists[0];starts.shift();dists.shift()}
+    if(sum>0.5){first=b.t;break}
+  }
+  if(first>=0)deps.push({f:first,x:tr.xuid||('slot'+tr.slot),slot:tr.slot,pts:pts.length,start:tr.startFrame});
+}
+deps.sort((a,b)=>a.f-b.f);
+console.log(id,'frameInterval',fi,'tracks',d.tracks.length,'deps',deps.length);
+const base=deps[0].f;
+console.log('first 12 departures (ms after first):',deps.slice(0,12).map(x=>((x.f-base)*fi)+'ms/slot'+x.slot).join(' '));
+const seen=new Set();let n=0;for(const x of deps){if((x.f-base)*fi>1000)break;if(!seen.has(x.x)){seen.add(x.x);n++}}console.log('burst1s',n,'first frame',base,'ms',base*fi,'roster humans',d.roster.filter(r=>!r.bot).length,'bots',d.roster.filter(r=>r.bot).length);

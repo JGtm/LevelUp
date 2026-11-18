@@ -1,0 +1,19 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const ids=['2b10340d','5fbecd0f','6b5de1d7','6b7c596c','6ee59440','97b34406','9dfd3c24','a808c389','b54b8326','d22a5577','e5adf7b2','f58b857e','6ceaf3b8','ac97753c','bff0c899','d5bbf57c'];
+const names11={},names12={};
+let perName={}; // for 1.11 : name -> {n, overPlayers n}
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz')&&ids.includes(f.slice(0,8)));
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=d.coverage.decoder.build; const tgt=b==='HI_1_11_0'?names11:names12;
+  const sums={};const byP={};
+  for(const a of d.scoreActions||[]){const k=a.name+'@'+a.points;tgt[k]=(tgt[k]||0)+1;sums[a.xuid]=(sums[a.xuid]||0)+a.points;(byP[a.xuid]=byP[a.xuid]||{})[k]=(byP[a.xuid][k]||0)+1;}
+  if(b!=='HI_1_11_0') continue;
+  for(const p of d.scoreTimeline.players){const t=(p.score&&p.score.total)||[];const last=t.length?t[t.length-1].v:0;const diff=(sums[p.xuid]||0)-last;
+    for(const [k,n] of Object.entries(byP[p.xuid]||{})){ if(/@(25|-25|50|75|10|15|20)$/.test(k)||/ehicle|Hijack|Destroy|Splat|Pilot/i.test(k)){const o=perName[k]=perName[k]||{n:0,players:0,diffs:[]};o.n+=n;o.players++;o.diffs.push(diff);} }
+  }
+}
+console.log('1.11 distinct action name@points (count):');console.log(JSON.stringify(Object.entries(names11).sort((a,b)=>b[1]-a[1])));
+console.log('1.12:');console.log(JSON.stringify(Object.entries(names12).sort((a,b)=>b[1]-a[1])));
+for(const [k,o] of Object.entries(perName)){const z=o.diffs.filter(x=>x!==0).length;console.log(k,'n',o.n,'players',o.players,'withDiff',z);}

@@ -1,0 +1,11 @@
+const fs=require('fs'),zlib=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(zlib.gunzipSync(fs.readFileSync('c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+console.log('killEffects',JSON.stringify(d.killEffects).slice(0,800));
+console.log('layers',JSON.stringify(d.layers).slice(0,600));
+console.log('track0',JSON.stringify(Object.keys(d.tracks[0])));
+const t=d.tracks.find(x=>x.endReason||x.kill);console.log(JSON.stringify(t&&Object.fromEntries(Object.entries(t).filter(([k])=>k!='points'))).slice(0,900));
+console.log('shotStats0',JSON.stringify(d.shotStats[0]));
+console.log('medals0',JSON.stringify(d.medals[0]));
+console.log('roster0',JSON.stringify(d.roster[0]));
+console.log('hits',JSON.stringify((d.hits||[])[0]));

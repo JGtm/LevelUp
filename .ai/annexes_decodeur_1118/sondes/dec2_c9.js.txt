@@ -1,0 +1,8 @@
+const fs=require('fs'),z=require('zlib');
+const id=process.argv[2];
+const d=JSON.parse(z.gunzipSync(fs.readFileSync('C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/'+id+'.json.gz')));
+const o=d.layers.objectiveObjects; console.log(typeof o, Array.isArray(o)?o.length:Object.keys(o||{}));
+console.log(JSON.stringify(o).slice(0,700));
+console.log(JSON.stringify(d.layers.objectives||'').slice(0,700));
+console.log(JSON.stringify(d.vehicles[0]).slice(0,400));
+console.log(JSON.stringify(d.vehicles.filter(v=>v.slot===754||v.biped===754)).slice(0,500));

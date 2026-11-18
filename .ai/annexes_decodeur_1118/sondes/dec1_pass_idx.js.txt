@@ -1,0 +1,24 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+let docs=0,docsRep=0,idxRep=0,gaps=[];let hitsTot=0,hitsW=0,hitsByRepIdx=0,hitsRepSoon=0;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  docs++;
+  const by={};for(const r of d.roster||[]){if(r.bot||!r.xuid)continue;(by[r.filmIndex]=by[r.filmIndex]||[]).push(r)}
+  const rep={};let any=false;
+  for(const [i,arr] of Object.entries(by)){if(arr.length<2)continue;any=true;idxRep++;rep[i]=arr;
+    const iv=arr.flatMap(r=>(r.presence||[]).map(p=>({x:r.xuid,from:p.from,to:p.toMax!=null&&p.toMax>p.to?p.toMax:p.to}))).sort((a,b)=>a.from-b.from);
+    for(let k=1;k<iv.length;k++){if(iv[k].x!==iv[k-1].x)gaps.push((iv[k].from-iv[k-1].to)*(d.frameIntervalMs||33));}
+  }
+  if(any)docsRep++;
+  // hits whose shooter xuid belongs to a replaced index: first 2s after join
+  const fi=d.frameIntervalMs||33;
+  const idxOfX={};for(const r of d.roster||[]){if(!r.bot&&r.xuid)idxOfX[r.xuid]=r.filmIndex}
+  for(const h of d.hits||[]){hitsTot++;if(h.w)hitsW++;const i=idxOfX[h.shooter];if(rep[i]){hitsByRepIdx++;
+     // hit within 2s of the shooter's presence start?
+     const mine=(by[i]||[]).filter(r=>r.xuid===h.shooter).flatMap(r=>r.presence||[]);
+     if(mine.some(p=>h.t>=p.from&&(h.t-p.from)*fi<=2000)) hitsRepSoon++;}}
+}
+const q=(a,p)=>{a=[...a].sort((x,y)=>x-y);return a.length?a[Math.min(a.length-1,Math.floor(p*a.length))]:null};
+console.log({docs,docsRep,idxRep,hitsTot,hitsW,hitsByRepIdx,hitsRepSoon,gapN:gaps.length,gapMed:q(gaps,.5),gapMin:q(gaps,0),gapP10:q(gaps,.1),gapUnder2s:gaps.filter(g=>g<=2000).length});

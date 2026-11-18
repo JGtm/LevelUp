@@ -1,0 +1,24 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const rows=[];let noRC=0,noState6=0;
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const t0=d.coverage&&d.coverage.t0Film; if(!t0){continue}
+  const rc=d.roundClock||[]; const fi=d.frameIntervalMs||33;
+  if(!rc.length){noRC++;rows.push({id:f.slice(0,8),det:t0.detected,rc:false});continue}
+  // first transition to state 6
+  let t6=null;for(const e of rc){if(e.state===6){t6=e.t;break}}
+  if(t6===null){noState6++;rows.push({id:f.slice(0,8),det:t0.detected,rc:true,s6:false,states:[...new Set(rc.map(e=>e.state))].join(',')});continue}
+  const states=[...new Set(rc.map(e=>e.state))].join(',');
+  rows.push({id:f.slice(0,8),det:t0.detected,reason:t0.reason,margin:t0.marginMs,t6ms:t6*fi,err:t0.marginMs-t6*fi,burst:t0.burst,states,rcn:rc.length,mult:(d.coverage.score&&d.coverage.score.rounds)||1,build:d.coverage.decoder.build,group:d.coverage.scoreActions&&d.coverage.scoreActions.group});
+}
+fs.writeFileSync('pass_t0.json',JSON.stringify(rows));
+const det=rows.filter(r=>r.det&&r.err!==undefined),ref=rows.filter(r=>!r.det);
+const q=(a,p)=>{a=[...a].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.floor(p*a.length))]};
+console.log('docs',rows.length,'noRC',noRC,'noState6',noState6,'det with s6',det.length,'refused',ref.length);
+const errs=det.map(r=>r.err);
+console.log('err(margin - t6) detected: p5',q(errs,.05),'p25',q(errs,.25),'med',q(errs,.5),'p75',q(errs,.75),'p95',q(errs,.95),'min',Math.min(...errs),'max',Math.max(...errs));
+for(const r of ref) console.log(JSON.stringify(r));
+const within=(a,ms)=>a.filter(e=>Math.abs(e)<=ms).length; console.log('|err|<=500ms',within(errs,500),'<=1000',within(errs,1000),'<=2000',within(errs,2000),'of',errs.length);
+const bs={};for(const r of det){const k=r.build;(bs[k]=bs[k]||[]).push(r.err)};for(const k in bs)console.log(k,bs[k].length,'med',q(bs[k],.5),'p5',q(bs[k],.05),'p95',q(bs[k],.95));

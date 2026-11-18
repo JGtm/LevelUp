@@ -1,0 +1,23 @@
+const fs=require('fs'),zlib=require('zlib');
+const dir='c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite/';
+const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'));
+const out={};const inc=k=>out[k]=(out[k]||0)+1;const ex=[];
+const fin=(s,r)=>{if(!s||!s.rounds)return null;const q=s.rounds.find(x=>x.round===r);if(!q||!q.points.length)return null;return q.points[q.points.length-1].v};
+for(const f of files){
+  const d=JSON.parse(zlib.gunzipSync(fs.readFileSync(dir+f)));
+  const b=(d.coverage.decoder&&d.coverage.decoder.build)||'?';
+  for(const p of (d.scoreTimeline&&d.scoreTimeline.players)||[]){
+    const st=p.stats||{};if(!p.kills||!p.kills.rounds)continue;
+    inc('playerRounds_checked');
+    for(const n of ['headshots','meleeKills','grenadeKills','powerWeaponKills']){
+      if(!st[n]||!st[n].rounds)continue;
+      for(const r of st[n].rounds){const v=r.points.length?r.points[r.points.length-1].v:null;const k=fin(p.kills,r.round);
+        if(v!==null&&k!==null&&v>k){inc('viol|'+n);inc('violBuild|'+b+'|'+n);if(ex.length<25&&(n!=='grenadeKills'||ex.length<8))ex.push(f.slice(0,8)+':'+p.xuid.slice(-4)+' '+n+' r'+r.round+' '+v+'>'+k)}
+        if(v!==null&&k===null&&v>0){inc('noKillsRound|'+n)}
+      }
+    }
+    const a=st.headshots&&st.headshots.rounds;
+  }
+  inc('docs');
+}
+console.log(JSON.stringify(out,null,1));console.log(ex.join('\n'));
