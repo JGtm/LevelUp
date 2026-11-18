@@ -299,6 +299,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       de celle du témoin (sa sonde, bâtie hors dépôt) et de l'API (export 0.3) ; part des joueurs à 10 % près
       de l'API pour chacune des deux lectures ; ce que donne le compte « événements de tir et objets
       projectile ». Résultat dans `.ai/annexes_decodeur_1118/tirs.md` et présenté au user.
+      HYPOTHÈSE DU USER À TRANCHER PAR CETTE MESURE (2026-11-18 : « je me demande si le jeu n'enregistre pas que
+      les tirs qui ont atteint leur but, les valeurs sont un peu élevées si c'est ça mais ça ressemble pas mal à
+      la précision » ; déjà tentée par le passé) : par joueur et par arme, le nombre d'événements de tir du film
+      est comparé AUX DEUX valeurs de l'API, tirs tirés et tirs au but ; rendre, par arme, la part des joueurs
+      dont le compte du film est à 10 % des tirs tirés, la part à 10 % des tirs au but, et la distribution du
+      rapport film / tirs tirés et film / tirs au but. Si le film suit les tirs au but, le dire, avec ce que cela
+      change pour la précision (qui ne se calculerait alors plus par le film seul). Verdict écrit, quel qu'il soit.
 - [ ] D.3 Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
       projectile ajoutés aux événements de tir s'ils ne se recoupent pas (preuve par D.2) ; messages
       multiples d'une même touche reconnus par ce que le film écrit (même auteur, même victime, même image),
@@ -407,6 +414,9 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — hypothèse du user sur les tirs (le film n'écrirait que les tirs au but) inscrite à D.2 comme
+  question à trancher par la mesure à trois voix, plutôt qu'au backlog : la piste D est déjà au plan et D.2 ne
+  touche aucun code de production.
 - 2026-11-18 — H.7 ajouté (marque de tir à la tête par élimination), accord du user (« ok »). Côté LevelUp, la
   fiche du joueur lira dès maintenant le compteur daté du tableau (plan du backlog, Q.2-g). Page Notion demandée
   par le user, créée en brouillon privé : « Compteurs lus dans le film : ce qu'on a et leur justesse »
