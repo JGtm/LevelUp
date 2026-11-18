@@ -328,6 +328,18 @@ single projection (`CanvasView.orient`), so text and icons stay upright. Both ch
 "Terrain occupation" only read them through `useMapViewPreferences`. A new 2D view reads the same hook and draws through
 the same projection; it never defines its own orientation.
 
+**The Relief background (ADR 0049).** A third background beside "Plan" (the default) and "Rendu": the top surface of the map seen from
+above, in one grey tinted per accessibility palette (token `map-relief-base`), lighter when higher, shaded from the upper left of the
+screen. It comes with a layer of vector "relief lines" (height breaks, contour lines, outline) and with the **floor cut** of the three 2D
+views (the chosen storey in full, the others pale). Two files per map sit next to the background: `{key}.relief.webp` (height per pixel
+on 16 bits, two flags, alpha 0 or 255 only) and `{key}.relief.json.gz` (calibration, floors, lines; never `.json`, which the decoder's
+background index would take for a sidecar); the sidecar names them (`reliefImage`, `reliefData`). Everything heavy is computed once at
+baking time, in the `halo-infinite-map-images` brick, and the browser only tints, cuts and draws (`lib/replay/relief/`, in a Web
+Worker). `mapfond-build --relief-seul` adds the relief to a published background by projecting it into the **published** calibration;
+the service serves a relief whose calibration no longer matches its sidecar as absent, and the client falls back on the Plan. Heights are
+game units (about 3 m), so storeys are shown as ranks, never as metres. Principles and starting thresholds follow OpenSpartan
+Cartographer (Den, MIT); the algorithm is written in Go.
+
 **Adding a map.** No code change.
 
 1. Forge map: `go run ./cmd/mapnav-fetch ...` brings its `navmesh.blob`.
@@ -338,7 +350,8 @@ the same projection; it never defines its own orientation.
 5. A change of the mesh decoder or of the cooking options is made in the brick repositories
    (`halo-infinite-files-reader`, `halo-infinite-map-images`) and adopted by a `require` bump (ADR 0043).
 
-Reference: `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/COMMANDS.md` section "mapfond-build".
+Reference: `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/adr/0049-relief-map-background-and-floor-cut.md`,
+`docs/COMMANDS.md` section "mapfond-build".
 
 ---
 
@@ -506,6 +519,7 @@ A: The admin dashboard (2026-07 overhaul) has its own canonical primitives under
 | `docs/adr/0040-i18n-n-locales.md` | Why one list of languages (`config/locales.toml`) and how to add a language (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Why 8 roles + 6-axis radar |
 | `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md` | Map backgrounds held by the navigation mesh, wall plan, orientation (§ 3.6) |
+| `docs/adr/0049-relief-map-background-and-floor-cut.md` | Relief background, relief lines, floor cut (§ 3.6) |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Master plan (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Layer rules + multi-title contract |
 | `.claude/skills/canonical-types/SKILL.md` | Type catalog |

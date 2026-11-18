@@ -336,6 +336,18 @@ préférences par visiteur (`replay-orientation.<mapId>` et `replay-show-wall-pl
 Tactique et « Occupation du terrain » ne font que les lire par `useMapViewPreferences`. Une nouvelle vue 2D lit le même
 hook et dessine par la même projection ; elle ne définit jamais sa propre orientation.
 
+**Le fond Relief (ADR 0049).** Un troisième fond à côté de « Plan » (le défaut) et de « Rendu » : la surface du dessus de la carte vue de
+dessus, en un seul gris teinté par palette d'accessibilité (jeton `map-relief-base`), plus clair plus haut, ombré depuis le haut à gauche de
+l'écran. Il s'accompagne d'une couche de « traits du relief » vectoriels (ruptures de hauteur, courbes de niveau, liseré) et de la **coupe par
+étage** des trois vues 2D (l'étage choisi en plein, les autres pâles). Deux fichiers par carte, à côté du fond : `{key}.relief.webp`
+(hauteur par pixel sur 16 bits, deux drapeaux, alpha 0 ou 255 seulement) et `{key}.relief.json.gz` (calage, sols, traits ; jamais `.json`,
+que l'index des fonds du décodeur prendrait pour un sidecar) ; le sidecar les nomme (`reliefImage`, `reliefData`). Tout le lourd est calculé
+une fois à la cuisson, dans la brique `halo-infinite-map-images` : le navigateur ne fait que teinter, couper et dessiner
+(`lib/replay/relief/`, dans un Web Worker). `mapfond-build --relief-seul` ajoute le relief à un fond publié en le projetant dans le calage
+**publié** ; le service sert comme absent un relief dont le calage ne correspond plus à son sidecar, et le client retombe sur le Plan. Les
+hauteurs sont des unités du jeu (environ 3 m) : les étages s'affichent en rangs, jamais en mètres. Les principes et les seuils de départ
+suivent OpenSpartan Cartographer (Den, MIT) ; l'algorithme est écrit en Go.
+
 **Ajouter une carte.** Aucun changement de code.
 
 1. Carte Forge : `go run ./cmd/mapnav-fetch ...` rapporte son `navmesh.blob`.
@@ -346,7 +358,8 @@ hook et dessine par la même projection ; elle ne définit jamais sa propre orie
 5. Un changement du décodeur de maillage ou des options de cuisson se fait dans les dépôts des briques
    (`halo-infinite-files-reader`, `halo-infinite-map-images`) et s'adopte par une montée de `require` (ADR 0043).
 
-Référence : `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/COMMANDS.md` section « mapfond-build ».
+Référence : `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/adr/0049-relief-map-background-and-floor-cut.md`,
+`docs/COMMANDS.md` section « mapfond-build ».
 
 ---
 
@@ -514,6 +527,7 @@ composants locaux (garde-rail : `admin-ui.guard.test.ts`) :
 | `docs/adr/0040-i18n-n-locales.md` | Pourquoi une seule liste de langues (`config/locales.toml`) et comment ajouter une langue (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Pourquoi 8 rôles + radar 6 axes |
 | `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md` | Fonds de carte tenus par le maillage de navigation, plan des murs, orientation (§ 3.6) |
+| `docs/adr/0049-relief-map-background-and-floor-cut.md` | Fond Relief, traits du relief, coupe par étage (§ 3.6) |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Plan maître (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Règles de couches + contrat multi-titres |
 | `.claude/skills/canonical-types/SKILL.md` | Catalogue des types |
