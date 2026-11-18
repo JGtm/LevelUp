@@ -42,11 +42,15 @@ type MatchRegistryRow struct {
 	IsFirefight             bool
 	DurationSeconds         *int
 	PlayableDurationSeconds *int
-	RealStartTime           *time.Time
-	Team0Score              *int
-	Team1Score              *int
-	Team0PSScore            *int // somme des PersonalScore équipe 0
-	Team1PSScore            *int // somme des PersonalScore équipe 1
+	// RealStartTime / RealStartSource : le coup d'envoi du match et sa source (`film`, `api`,
+	// vide = inconnu), posés ensemble par la résolution unique (kickoff.ApplyToRows,
+	// timeline.ResolveKickoff) avant l'insertion. Nil / vide = inconnu.
+	RealStartTime   *time.Time
+	RealStartSource string
+	Team0Score      *int
+	Team1Score      *int
+	Team0PSScore    *int // somme des PersonalScore équipe 0
+	Team1PSScore    *int // somme des PersonalScore équipe 1
 
 	// Team0RoundsWon / Team1RoundsWon / RoundsTotal — les MANCHES du match
 	// (`CoreStats.RoundsWon/RoundsLost/RoundsTied`). Sur un mode qui se décide aux

@@ -3,6 +3,11 @@
 // et recale le départ de ses campagnes sur l'axe Objectif quand la révision de cette mesure diffère
 // (campaign.ObjectiveAxisRev) ; le port décide de ce que fait un passage par joueur.
 //
+// AVANT les joueurs, la base PARTAGÉE de chaque titre rattrape coup d'envoi et temps de jeu quand sa
+// révision diffère (timeline.KickoffRev, ADR 0049) : les notes lisent ce que ce rattrapage écrit. Un titre
+// dont le rattrapage échoue ne rejoue pas ses joueurs à ce démarrage (leur révision reste, le démarrage
+// suivant reprend les deux), pour qu'aucune note ne se range sur des temps de jeu périmés.
+//
 // Une mise à jour qui change une formule n'a besoin d'aucun outil manuel : le premier démarrage
 // qui suit recalcule l'historique de chaque joueur, une fois. Une étape qui échoue garde son
 // ancienne révision et reste à rejouer au démarrage suivant (les étapes réussies du même joueur ne le
@@ -29,6 +34,10 @@ const (
 	CompteurAppliquee = "scoring_revision_appliquee_total"
 	CompteurAJour     = "scoring_revision_a_jour_total"
 	CompteurErreurs   = "scoring_revision_erreurs_total"
+	// Issues de l'étape de la base partagée, une par titre et par démarrage.
+	CompteurPartageeAppliquee = "scoring_revision_base_partagee_appliquee_total"
+	CompteurPartageeAJour     = "scoring_revision_base_partagee_a_jour_total"
+	CompteurPartageeErreurs   = "scoring_revision_base_partagee_erreurs_total"
 )
 
 // Step nomme une étape du passage par joueur ; chaque étape a sa propre révision rangée dans `sync_meta`,
@@ -36,6 +45,8 @@ const (
 type Step string
 
 const (
+	// StepShared : le rattrapage de la base partagée du titre (coup d'envoi et temps de jeu).
+	StepShared Step = "base_partagee"
 	// StepPlayerDB : l'accès à la base du joueur, avant toute étape (fichier illisible).
 	StepPlayerDB Step = "base_joueur"
 	// StepKPI : rejeu des notes de performance et du LUSR après un changement de formule.
@@ -56,16 +67,18 @@ type Outcome struct {
 // Service : le passage unique de rejeu.
 type Service struct {
 	players   port.ScoringRevisionPlayers
+	shared    port.SharedRevisionStep
 	kpi       port.ScoringRevisionStep
 	campaigns port.ScoringRevisionStep
 	titres    func() []string
 }
 
 // New construit le service ; [Service.Run] le fait travailler sur les titres du registre qui
-// portent la capacité LUSR. `kpi` et `campaigns` sont les deux étapes, jouées dans cet ordre.
-func New(players port.ScoringRevisionPlayers, kpi, campaigns port.ScoringRevisionStep) *Service {
+// portent la capacité LUSR. `shared` est l'étape de la base partagée du titre, jouée d'abord ; `kpi` et
+// `campaigns` sont les deux étapes par joueur, jouées ensuite dans cet ordre.
+func New(players port.ScoringRevisionPlayers, shared port.SharedRevisionStep, kpi, campaigns port.ScoringRevisionStep) *Service {
 	return &Service{
-		players: players, kpi: kpi, campaigns: campaigns,
+		players: players, shared: shared, kpi: kpi, campaigns: campaigns,
 		titres: func() []string { return titresLUSR(title.DefaultRegistry().All()) },
 	}
 }
@@ -87,6 +100,12 @@ func titresLUSR(tous []*title.TitleDescriptor) []string {
 // recalcul se joint sur le xuid, il n'y trouverait aucun match et effacerait toutes les notes.
 func (s *Service) Run(ctx context.Context) {
 	for _, slug := range s.titres() {
+		if ctx.Err() != nil {
+			return
+		}
+		if !s.rattraperBasePartagee(ctx, slug) {
+			continue
+		}
 		players, err := s.players.FollowedPlayers(slug)
 		if err != nil {
 			observability.IncCounterT(slug, CompteurErreurs)
@@ -110,6 +129,25 @@ func (s *Service) Run(ctx context.Context) {
 			s.appliquer(ctx, slug, p)
 		}
 	}
+}
+
+// rattraperBasePartagee joue l'étape de la base partagée du titre et dit si les joueurs peuvent suivre.
+func (s *Service) rattraperBasePartagee(ctx context.Context, slug string) bool {
+	applied, err := s.shared.Apply(ctx, slug)
+	switch {
+	case err != nil:
+		observability.IncCounterT(slug, CompteurPartageeErreurs)
+		slog.WarnContext(ctx, "scoring revision: rattrapage de la base partagée échoué, joueurs du titre retentés au prochain démarrage",
+			"step", string(StepShared), "err", err, "titleSlug", slug)
+		return false
+	case applied:
+		observability.IncCounterT(slug, CompteurPartageeAppliquee)
+		slog.InfoContext(ctx, "scoring revision: base partagée rattrapée après changement de révision",
+			"step", string(StepShared), "titleSlug", slug)
+	default:
+		observability.IncCounterT(slug, CompteurPartageeAJour)
+	}
+	return true
 }
 
 // appliquer applique les étapes d'un joueur et compte l'issue de CHACUNE : une étape réussie compte

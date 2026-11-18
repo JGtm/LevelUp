@@ -68,16 +68,14 @@ const DerivationsRev = "derivations-2026-11-17"
 // SuffixeMarqueDerivations : le suffixe du fichier de marque, pose a la place de l'extension d'artefact (`.json.gz` comme
 // `.json` : le nom `{short8}.derived.json` ne depend pas de la forme de l'artefact).
 //
-// ELLE EST EXPORTEE PARCE QUE LA MARQUE PARTAGE LE DOSSIER DES ARTEFACTS, et que deux
-// consommateurs y balaient `*.json` (constat C6 de la revue A-R1) : le cron de purge
-// (`scheduler/replay_purge_cron.go`) et le bilan du backfill (`cmd/backfill_t0_film`). Sans un
-// predicat COMMUN, chacun aurait recopie le litteral — troisieme exemplaire, et la premiere
-// evolution du suffixe en aurait laisse un en arriere.
+// ELLE EST EXPORTEE PARCE QUE LA MARQUE PARTAGE LE DOSSIER DES ARTEFACTS, que le cron de purge
+// (`scheduler/replay_purge_cron.go`) balaie : le predicat vit a cote de la regle du nom, jamais
+// recopie chez le consommateur.
 const SuffixeMarqueDerivations = title.ReplayDerivationsMarkSuffix
 
 // EstMarqueDerivations dit si ce NOM DE FICHIER est une marque de derivation et non un artefact.
 //
-// Le nom, pas le chemin : les deux appelants balaient un `os.ReadDir` et n'ont que l'entree.
+// Le nom, pas le chemin : l'appelant balaie un `os.ReadDir` et n'a que l'entree.
 func EstMarqueDerivations(name string) bool {
 	return strings.HasSuffix(name, SuffixeMarqueDerivations)
 }

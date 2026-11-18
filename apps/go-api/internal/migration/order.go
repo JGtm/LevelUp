@@ -255,6 +255,8 @@ var canonicalOrder = []string{
 	// reconstruction de la table ci-dessus. Cf. steps_shared_registry_integrity_columns.go.
 	"shared_registry_participants_bit_v1",       // shared — title-owned Halo Infinite
 	"shared_registry_drop_integrity_columns_v1", // shared
+	// steps_shared_registry_kickoff_source.go trie juste après steps_shared_registry_integrity_columns.go.
+	"shared_registry_real_start_source_v1", // shared (source du coup d'envoi à côté de sa valeur, ADR 0049)
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
 	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global

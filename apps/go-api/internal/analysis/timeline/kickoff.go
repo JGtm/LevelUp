@@ -1,0 +1,123 @@
+package timeline
+
+import (
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+// KickoffRev est la révision de la résolution du coup d'envoi et du temps de jeu qui en
+// découle (ordre des sources, estimation et ses seuils, formule du temps de jeu). Une base
+// partagée range la dernière révision dont le rattrapage complet a réussi ; une valeur
+// différente relance ce rattrapage au démarrage (ADR 0049). Le garde-rail
+// TestKickoffParametersMatchRevision échoue quand un seuil change sans que la révision change ;
+// un changement de logique sans changement de nombre se signale en changeant cette valeur.
+const KickoffRev = "kickoff-2026-11-18"
+
+// KickoffSource dit d'où vient le coup d'envoi rangé d'un match. Valeurs rangées dans
+// `match_registry.real_start_source` : `film`, `api`, ou vide (coup d'envoi inconnu).
+type KickoffSource string
+
+const (
+	// KickoffSourceFilm : le coup d'envoi publié par le document de rejeu du match.
+	KickoffSourceFilm KickoffSource = "film"
+	// KickoffSourceAPI : l'estimation par les arrivées des joueurs présents au début.
+	KickoffSourceAPI KickoffSource = "api"
+	// KickoffSourceUnknown : ni rejeu ni estimation acceptée.
+	KickoffSourceUnknown KickoffSource = ""
+)
+
+// Kickoff est le coup d'envoi résolu d'un match.
+type Kickoff struct {
+	// Source : la source retenue ; inconnue = aucune valeur.
+	Source KickoffSource
+	// OffsetMs : le coup d'envoi en millisecondes depuis le début canonique du match. Sans sens
+	// quand Source est inconnue.
+	OffsetMs int64
+	// Estimate : l'issue de l'estimation quand elle a été jouée (diagnostic journalisé et compté,
+	// jamais rangé) ; vide quand le rejeu a décidé.
+	Estimate T0Quality
+}
+
+// Known dit si le match a un coup d'envoi.
+func (k Kickoff) Known() bool { return k.Source != KickoffSourceUnknown }
+
+// RealStart rend l'instant du coup d'envoi en UTC (début canonique + décalage), nil quand il
+// est inconnu.
+func (k Kickoff) RealStart(startUTC time.Time) *time.Time {
+	if !k.Known() {
+		return nil
+	}
+	t := startUTC.UTC().Add(time.Duration(k.OffsetMs) * time.Millisecond)
+	return &t
+}
+
+// KickoffInput porte ce que la résolution lit pour un match.
+type KickoffInput struct {
+	// StartUTC : début canonique du match (`start_time_utc`, sinon `start_time` lu en UTC).
+	StartUTC time.Time
+	// FilmT0Ms : le coup d'envoi tel que le document de rejeu du match le publie (`t0FilmMs`),
+	// en ms depuis le début canonique. Nil : pas de rejeu, ou rejeu sans coup d'envoi.
+	FilmT0Ms *int64
+	// Participations : les arrivées des joueurs, lues seulement quand le rejeu ne décide pas.
+	Participations []ParticipationT0Input
+}
+
+// ResolveKickoff est le SEUL point où se décide le coup d'envoi d'un match, dans l'ordre fixe
+// des sources : le rejeu, sinon l'estimation par les arrivées (UN appel de ComputeT0, refusée
+// quand elle est négative ou au-delà de son seuil), sinon inconnu. Le rejeu est pris tel que le
+// document le publie : aucun détecteur n'est rejoué ici.
+func ResolveKickoff(in KickoffInput) Kickoff {
+	if in.FilmT0Ms != nil {
+		return Kickoff{Source: KickoffSourceFilm, OffsetMs: *in.FilmT0Ms}
+	}
+	t0, q := ComputeT0(in.Participations, in.StartUTC)
+	if !q.Computed() {
+		return Kickoff{Source: KickoffSourceUnknown, Estimate: q}
+	}
+	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q}
+}
+
+// GameplayTimeline rend la chronologie de jeu d'un match : début canonique, durée du match et
+// coup d'envoi. Coup d'envoi inconnu : la chronologie part du début du match et la durée de jeu
+// vaut la durée du match ; cette règle est écrite ici et nulle part ailleurs à l'écriture.
+// ok=false quand la durée est absente ou nulle : le match n'a pas de fenêtre de jeu.
+func GameplayTimeline(startUTC time.Time, durationSeconds *int, k Kickoff) (domain.MatchTimeline, bool) {
+	if durationSeconds == nil || *durationSeconds <= 0 {
+		return domain.MatchTimeline{}, false
+	}
+	var t0 int64
+	if k.Known() {
+		t0 = k.OffsetMs
+	}
+	return domain.NewMatchTimelineAt(startUTC, int64(*durationSeconds)*1000, t0), true
+}
+
+// PlayedSeconds rend le temps de jeu à ranger pour un joueur sur la chronologie du match, par la
+// formule ComputeTimePlayedFor (troncature à la seconde comprise). ok=false quand la valeur rangée
+// reste : présence inconnue (aucune heure d'arrivée), match sans fenêtre de jeu, ou joueur parti
+// avant le coup d'envoi (fenêtre vide) — la valeur rangée est alors celle de l'API, écrite une fois.
+func PlayedSeconds(in TimePlayedInput, tl domain.MatchTimeline, hasWindow bool) (int, bool) {
+	if !hasWindow {
+		return 0, false
+	}
+	secs, q := ComputeTimePlayedFor(in, tl)
+	if q != TimePlayedOK {
+		return 0, false
+	}
+	return int(secs), true
+}
+
+// HumanXUID dit si un identifiant est celui d'un joueur (entier) : les bots portent un
+// identifiant non numérique (`bid(N.M)`) et n'entrent pas dans l'estimation.
+func HumanXUID(xuid string) bool {
+	if xuid == "" {
+		return false
+	}
+	for _, c := range xuid {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}

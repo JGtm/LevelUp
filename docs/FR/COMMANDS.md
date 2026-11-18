@@ -328,6 +328,24 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
 go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
 
+# 4 ter ter. COUP D'ENVOI DU MATCH (ADR 0049) : recalcule, pour chaque match de la base partagée, le
+#    coup d'envoi (`real_start_time`), sa source (`real_start_source` : `film` quand l'artefact de
+#    rejeu publie `t0FilmMs`, sinon `api`, l'estimation par les arrivées des joueurs présents au
+#    début, refusée si elle est négative ou au-delà de 120 s ; vide = inconnu) et le temps de jeu de
+#    chaque joueur (`match_participants.time_played_seconds`, même formule, calculée sur ce coup
+#    d'envoi ; un joueur dont l'arrivée est inconnue garde la valeur de l'API). C'est la MÊME fonction
+#    que le rattrapage du démarrage, qui passe quand la révision rangée dans le `sync_meta` de la base
+#    partagée (`kickoff_revision`) diffère de celle du binaire. AUCUN décodage : le coup d'envoi du
+#    rejeu se lit dans les artefacts rangés, tels quels. Lots de --lot matchs, un burst d'écriture
+#    court chacun ; un second passage n'écrit rien. --dry-run ouvre la base en LECTURE SEULE (aucune
+#    migration ; cohabite avec un serveur en marche) et imprime les écarts : matchs par source, matchs
+#    dont la valeur ou la source du coup d'envoi change, joueurs dont le temps de jeu change et
+#    répartition de l'écart. Sans --dry-run : SERVEUR ARRÊTÉ, migrations jouées, puis la révision est
+#    rangée après un passage complet sans échec. --db et --replays-dir visent une copie de la base et
+#    un autre dossier d'artefacts.
+go run ./cmd/levelup backfill-kickoff --dry-run [--db CHEMIN] [--replays-dir DOSSIER] [--title S]
+go run ./cmd/levelup backfill-kickoff [--lot N] [--db CHEMIN] [--replays-dir DOSSIER] [--title S]
+
 # 4 quater. Zones nommées (callouts) des cartes Forge jouées qui n'en ont pas -> le catalogue
 #    GÉNÉRÉ reference/generated/map_callouts.json (ignoré par git ; le map_callouts.json
 #    versionné n'est jamais écrit). La variante (.mvar) de chaque carte est lue au cache
@@ -1224,14 +1242,13 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
 
 ### Réparations de données (outils autonomes, serveur arrêté)
 
-Deux outils de réparation des données existantes, jamais lancés par le serveur. Chacun ouvre
-directement les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà
-des données justes pour les nouveaux matchs ; ces outils ne concernent que des lignes écrites avant.
+Un outil de réparation des données existantes, jamais lancé par le serveur. Il ouvre directement
+les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà des données
+justes pour les nouveaux matchs ; cet outil ne concerne que des lignes écrites avant.
 
 ```bash
 cd apps/go-api
 go run -tags cgo ./cmd/purge_corrupt_records [--data-root CHEMIN] [--apply]
-go run ./cmd/backfill_time_played --db CHEMIN [--commit]
 ```
 
 - `purge_corrupt_records` : retire les records personnels invraisemblables : valeurs hors des bornes
@@ -1247,21 +1264,8 @@ go run ./cmd/backfill_time_played --db CHEMIN [--commit]
   regroupées par (métrique, valeur). Il ouvre chaque base en lecture-écriture dans les deux modes :
   le serveur doit donc être arrêté même pour la simulation. Il ne fait aucune sauvegarde de
   lui-même.
-- `backfill_time_played` : recalcule `time_played_seconds` de `match_participants` à partir des
-  horodatages de participation (`first_joined_time`, `last_leave_time`), en gérant les joueurs partis
-  avant la fin et les arrivés en cours de match, dans la fenêtre de jeu du match (de
-  `real_start_time` au début plus la durée). `--db` est la base de matchs partagée
-  (`shared_matches_v2.duckdb`). **Simulation par défaut** (base ouverte en lecture seule) : il
-  imprime la répartition par qualité, l'écart entre la valeur recalculée et celle de l'API, et le
-  garde-fou des matchs complets (la médiane de `time_played` des joueurs présents du début à la fin
-  doit être proche de la durée de jeu, cible : plus de 95 % à 5 % près). `--commit` écrit, dans une
-  seule transaction, uniquement les lignes de qualité `ok` ; les lignes sans `first_joined_time`
-  gardent leur valeur de l'API. Serveur en marche, viser une copie de la base pour la simulation.
-  Réserve : les nouveaux matchs sont déjà corrects, la synchronisation calcule elle-même cette valeur
-  (`timeline.ComputeTimePlayedFor`, appelé depuis `internal/sync/transforms.go`) ; la commande ne sert
-  qu'aux anciens matchs. Elle dépend de l'heure d'arrivée du joueur (`first_joined_time`), dont le
-  fuseau horaire est une dette connue : lire un échantillon du rapport de simulation avant de
-  l'appliquer en masse.
+- Le temps de jeu des joueurs (`time_played_seconds`) se recalcule par `levelup backfill-kickoff`
+  (section plus haut), avec le coup d'envoi dont il dépend.
 
 ### Migration des chemins média (one-shot, binaire autonome)
 

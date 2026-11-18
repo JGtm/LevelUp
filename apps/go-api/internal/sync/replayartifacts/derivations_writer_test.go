@@ -5,7 +5,7 @@ package replayartifacts
 //
 // # Le defaut que ces tests ferment
 //
-// Chacune des quatre familles acquerait le writer POUR SON COMPTE — `reporterT0Film`,
+// Chacune des quatre familles acquerait le writer POUR SON COMPTE — le report du coup d'envoi,
 // `persisterResumesUsage`, `persisterStatsBombe`, `persisterPositions` — soit QUATRE
 // acquisitions successives, chacune bornee a `acquireWriterTimeout` (60 s cote wire). Sur le
 // chemin du depot d'ouvrier, ces quatre acquisitions vivent dans un HANDLER HTTP dont le
@@ -71,9 +71,11 @@ func TestDeriver_RienAEcrireNAcquiertAucunWriter(t *testing.T) {
 	chemin := artefactSansRienADeriver(t, dir, "writer2")
 	c := &compteurWriter{}
 
+	// Le segment de lecture est celui que la production câble toujours : le coup d'envoi y lit l'état
+	// rangé du match (inconnu, sans participant) et n'a rien à réécrire.
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: racineDepot(t), TitleSlug: "halo_5", Gamertag: "testeur",
-		AcquireWriter: c.acquerir,
+		WithRead: lectureRegistre(t, "writer2"), AcquireWriter: c.acquerir,
 	}, []ArtefactRange{{MatchID: "writer2", Path: chemin}})
 
 	if c.acquis != 0 {

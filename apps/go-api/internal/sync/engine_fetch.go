@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/kickoff"
 	"levelup/go-api/internal/sync/objective"
 
 	"golang.org/x/sync/errgroup"
@@ -107,9 +108,14 @@ func (e *SyncEngine) fetchMatchData(
 	}
 	fm.Registry = reg
 
+	// Le coup d'envoi se résout sur les participants extraits, même quand ils ne sont pas
+	// rangés : le registre le porte dans tous les cas.
+	participants := ExtractParticipants(matchJSON)
+	kickoff.Observe(ctx, e.titleSlug, matchID, kickoff.ApplyToRows(reg, participants))
+
 	// Extract optionnels.
 	if opts.WithParticipants {
-		fm.Participants = ExtractParticipants(matchJSON)
+		fm.Participants = participants
 
 		// Garantir gamertag sur la row du joueur synchronisé : l'API renvoie
 		// parfois Gamertag/PlayerName vide pour le joueur appelant.

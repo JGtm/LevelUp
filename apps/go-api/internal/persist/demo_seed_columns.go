@@ -28,7 +28,7 @@ var MatchRegistryColumns = []string{
 	"game_variant_id", "game_variant_name", "game_variant_version_id",
 	"mode_category", "is_ranked", "is_firefight", "season_id",
 	"duration_seconds", "playable_duration_seconds",
-	"real_start_time", "team_0_score", "team_1_score",
+	"real_start_time", "real_start_source", "team_0_score", "team_1_score",
 	"team_0_ps_score", "team_1_ps_score",
 	"team_0_rounds_won", "team_1_rounds_won", "rounds_total",
 	"match_intensity", "backfill_completed", "events_loaded",

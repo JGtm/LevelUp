@@ -31,6 +31,9 @@ var (
 		// Même empreinte : la logique change, pas un paramètre haché. En repli sur les autres familles,
 		// O_sout ne classe plus le débit de soutien par minute, seulement la part du soutien.
 		"perf-2026-11-15b": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
+		// Même empreinte : le temps de jeu que la note lit se calcule désormais sur le coup d'envoi du
+		// registre (ADR 0049) ; aucun paramètre haché ne change.
+		"perf-2026-11-18": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
@@ -38,6 +41,9 @@ var (
 		"lusr-2026-11-09": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
 		// Vie effective du TOML d'Infinite (229) : Conversion offensive et Résistance défensive du composite.
 		"lusr-2026-11-15": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
+		// Même empreinte : coup d'envoi et temps de jeu, que le poids d'un joueur lit, viennent de la
+		// résolution unique (ADR 0049) ; aucun paramètre haché ne change.
+		"lusr-2026-11-18": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
 	}
 )
 

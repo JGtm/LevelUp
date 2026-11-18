@@ -21,11 +21,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/kickoff"
 )
 
 // OpenSpartanImportService orchestrates one import from an OpenSpartan
@@ -225,6 +227,8 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	}
 	parts := toSyncParticipants(mm.Participants)
 	syncReg := toSyncRegistry(mm.Registry, len(parts) > 0)
+	// Coup d'envoi et temps de jeu : la même résolution que la synchronisation, avant l'insertion.
+	kickoff.Observe(ctx, ctxkeys.TitleSlug(ctx), pm.MatchID, kickoff.ApplyToRows(&syncReg, parts))
 	// is_ranked : la règle unique du sync (D-10, sync.AnySkillShowsRankedMatch) appliquée au
 	// RankRecap du payload skill. Posé AVANT l'insert registry — crucial pour que le recompute
 	// LUSR EXCLUE bien ces matchs (LUSR = non classé) et pour les filtres.

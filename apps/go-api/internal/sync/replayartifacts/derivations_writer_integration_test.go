@@ -54,14 +54,14 @@ func TestDeriver_UnSegmentAcquisEtRelacheUneFois(t *testing.T) {
 		`SELECT COUNT(*) FROM match_player_positions_latest WHERE match_id = ?`, matchID).Scan(&n); err != nil || n != 1 {
 		t.Errorf("positions : %d ligne(s) (err=%v), attendu 1", n, err)
 	}
-	var qualite string
+	var source string
 	if err := db.QueryRowContext(ctx,
-		`SELECT COALESCE(t0_quality, '') FROM match_registry WHERE match_id = ?`, matchID).Scan(&qualite); err != nil {
-		t.Fatalf("lecture du T0 : %v", err)
+		`SELECT COALESCE(real_start_source, '') FROM match_registry WHERE match_id = ?`, matchID).Scan(&source); err != nil {
+		t.Fatalf("lecture du coup d'envoi : %v", err)
 	}
-	if qualite != "film_movement" {
-		t.Errorf("t0_quality = %q, attendu film_movement — le report du coup d'envoi n'a pas "+
-			"ecrit dans le segment partage", qualite)
+	if source != "film" {
+		t.Errorf("real_start_source = %q, attendu film — le report du coup d'envoi n'a pas "+
+			"ecrit dans le segment partage", source)
 	}
 	// Et la passe est marquee : rien n'a echoue (constat C1).
 	if !replaybuild.DerivationsUpToDate(chemin) {

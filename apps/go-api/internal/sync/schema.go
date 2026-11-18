@@ -190,6 +190,9 @@ CREATE TABLE IF NOT EXISTS match_registry (
     duration_seconds          INTEGER,
     playable_duration_seconds INTEGER,
     real_start_time           TIMESTAMP,
+    -- Source du coup d'envoi (film, api, NULL = inconnu ; ADR 0049). Convergence des DB
+    -- existantes : step shared_registry_real_start_source_v1.
+    real_start_source         VARCHAR,
     -- INTEGER et pas SMALLINT : un score d'equipe depasse 32 767 (Bapteme du feu,
     -- mesure le 2026-09-16). Les bases anterieures sont converties par l'etape
     -- widen_match_registry_team_scores.

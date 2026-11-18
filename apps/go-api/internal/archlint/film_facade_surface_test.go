@@ -459,7 +459,11 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           `replay.Hit`, `replay.Damage`, `replay.ShotStat` et
 //	                                           `replay.HitCoverage`, les types des touches, des degats et du bilan de
 //	                                           tirs que le document servi projette (`service/replayview`). Aucun retrait.
-const plafondSurfaceReplay = 335 // 2026-11-16 — base c96242b8aa re-mesuree a 331 + 4 (Hit, Damage, ShotStat, HitCoverage) ; cf. l historique ci-dessus
+//	332  coup d envoi unique (2026-11-18)          base `c804e8fbbd` re-mesuree a 335. -3 :
+//	                                           le detecteur `DetectT0Film` et ses types `T0FilmTrack`, `T0FilmPoint`,
+//	                                           que seule la commande supprimee `cmd/backfill_t0_film` citait (le coup
+//	                                           d envoi se lit tel que le document le publie, ADR 0049). Aucun ajout.
+const plafondSurfaceReplay = 332 // 2026-11-18 — base c804e8fbbd re-mesuree a 335 - 3 (DetectT0Film, T0FilmTrack, T0FilmPoint) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

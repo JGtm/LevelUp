@@ -182,8 +182,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	// cmd : outils opérateur (D-2) — diag_*, backfills et reconstruction de la ligne lue
 	"cmd/backfill_all/main.go:loadMissingPSAMatches": {dispenseOperateur, "2026-10-15",
 		"backfill : sélectionne les matchs sans PSA, puis les réécrit (main.go:115-129)."},
-	"cmd/backfill_time_played/main.go:commitUpdates": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE time_played_seconds du match lu (main.go:197)."},
 	"cmd/diag_lusr_player/loaders.go:loadMatches": {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
 	"cmd/h5-roster-refetch/insert.go:insertParticipant": {dispenseOperateur, "2026-10-15",
 		"reconstruit les participants manquants du match lu (INSERT, insert.go:66) ; réécrit le match lui-même."},
