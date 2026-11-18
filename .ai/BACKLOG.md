@@ -2,6 +2,14 @@
 
 ---
 
+### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
+
+**Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [décodeur/rejeu] Libellés des médailles du rejeu : champ servi sans jumeau dans le document du décodeur
 
 **Relevé le 2026-11-18** (contrôle complet de la refonte de la page du rejeu). Le document de rejeu SERVI porte `medalLabels` (libellé par langue, description, image, rareté), posé à la requête ; le document STOCKÉ du décodeur n'a pas ce champ, alors que les libellés de véhicules y ont le leur, rempli de la même façon. Les deux garde-rails qui comparent les deux documents lisent donc une liste datée de champs « servis seuls » (`internal/testutil/replay_servis_seuls.go`). À une prochaine version du décodeur : y déclarer le champ, puis vider la liste. Aucun effet à l'écran.
