@@ -668,6 +668,13 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — Q.2-g DÉCIDÉ par le user (« ok ») : la ligne « Tirs à la tête » de la fiche lit le compteur daté du
+  tableau du jeu (valeur à l'instant = dernière valeur de la courbe cumulée), sans mention ni bulle ; ligne
+  absente quand le film ne donne pas le compteur pour le joueur ; l'ancienne estimation et sa note sont
+  supprimées. Ajouté à l'agent de Q.2 en cours, après ses huit corrections. La barre de lecture (M.2, M.3) est
+  rendue, relue et commitée (`2816593c6d` sur `bl1118/m`) : écart assumé avec le prototype, la barre fine
+  redevient pleine à la pause, au survol, au focus et après un geste ; forme fine obtenue par une réduction à
+  80 % (lisibilité des petits chiffres à juger par le user à l'écran).
 - 2026-11-18 — DÉCISION DU USER sur le prototype des quatre choix : « tout proposé sauf le 3. » Donc, à écrire en
   Q.2 : (i) lignes du fil du joueur suivi sur fond légèrement teinté (token, sans bordure à gauche), distinct de
   la ligne choisie ; (ii) au Cinéma, la barre de lecture SOUS le bloc arrondi du plan ; (iii) Suivre / Seul /

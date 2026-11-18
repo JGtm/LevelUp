@@ -356,6 +356,16 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       Sinon `[!]` avec ce qui a été écarté.
 - [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
+- [ ] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
+      certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
+      décodeur ne la lit pas ; l'icône du fil de LevelUp vient de la lecture du dégât fatal, partielle. Recherche
+      bornée (une session) dans le message d'élimination du film et dans l'enregistrement d'élimination des temps
+      forts : un bit ou un champ qui vaut vrai exactement quand l'élimination est à la tête. VÉRITÉ, sans API :
+      le compteur daté du tableau (`scoreTimeline.players[].stats.headshots`, 99,85 % d'accord avec l'API) : une
+      élimination est à la tête si le compteur du même joueur monte à la même image. Une marque candidate se juge
+      sur tout le corpus, élimination par élimination. Sortie : la lecture et un champ par élimination publié avec
+      sa couverture, ou `[!]` avec ce qui a été écarté. Jamais de dérivation du champ depuis le compteur : le
+      compteur vérifie, il ne publie pas.
 - **Gate H** : poids ajouté au document mesuré sur 20 films (cible : moins de 2 %) ; budget des fixtures
   relevé et daté ; équivalence en deux passes pour le canal de faits neuf.
 
@@ -397,6 +407,10 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — H.7 ajouté (marque de tir à la tête par élimination), accord du user (« ok »). Côté LevelUp, la
+  fiche du joueur lira dès maintenant le compteur daté du tableau (plan du backlog, Q.2-g). Page Notion demandée
+  par le user, créée en brouillon privé : « Compteurs lus dans le film : ce qu'on a et leur justesse »
+  (https://app.notion.com/p/41c7ae87e7a3813299caf95332f7bc32), chiffres repris de `avant.md` et du banc de C.
 - 2026-11-18 — GO D'AVANCE du user pour la régénération du parc (L.6), message du 2026-11-18 : « Pour les trucs
   plus tard je te donne mon go d'avance » (en réponse à la liste : régénération des rejeux avec la v1.5.0,
   rattrapage du coup d'envoi sur sa base, fusion dans `main`). La porte de L.6 est ouverte ; le pilote prévient
