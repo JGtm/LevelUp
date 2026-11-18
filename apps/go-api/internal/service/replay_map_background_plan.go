@@ -10,12 +10,7 @@ package service
 
 import (
 	"context"
-	"errors"
-	"log/slog"
-	"os"
 
-	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/port"
 )
 
@@ -41,16 +36,9 @@ func (s *replayService) MapBackgroundPlanImageForMap(ctx context.Context, mapID 
 // readPlanImage lit l'image plan d'une clé de fond. Le sidecar doit être lisible : une image sans
 // calage ne se superpose à rien.
 func (s *replayService) readPlanImage(ctx context.Context, key string) ([]byte, string, error) {
-	path := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, key)
-	full, err := mapfondsidecar.Load(path)
+	full, err := s.loadFullSidecar(ctx, key)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			slog.DebugContext(ctx, "rejeu 2D : pas de fond figé pour cette clé", "cle", key, "titleSlug", s.titleSlug)
-		} else {
-			slog.WarnContext(ctx, "rejeu 2D : fond de carte illisible, pas d'image plan",
-				"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
-		}
-		return nil, "", port.ErrMapBackgroundNotAvailable
+		return nil, "", err
 	}
 	if full.PlanImage == "" {
 		return nil, "", port.ErrMapBackgroundNotAvailable

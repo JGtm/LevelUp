@@ -118,3 +118,53 @@ func TestNomImagePlanEtCle(t *testing.T) {
 		}
 	}
 }
+
+// Les noms des deux fichiers du relief voyagent avec le sidecar : écrits, relus, conservés par une
+// réécriture (celle de `mapfond-webp -convertir`), lus par `lireExtensions`, et absents du fichier
+// quand la carte n'a pas de relief.
+func TestSidecar_ReliefAllerRetour(t *testing.T) {
+	chemin := filepath.Join(t.TempDir(), "x.json")
+	s := sidecarDeTest(&replaydoc.MapBackgroundPlan{Source: "t", Vertices: 4, Faces: 2, Edges: [][4]float64{{0, 0, 1, 0}}})
+	s.PlanImage = "x.plan.webp"
+	s.ReliefImage = "x.relief.webp"
+	s.ReliefData = "x.relief.json"
+	if err := Write(chemin, s); err != nil {
+		t.Fatal(err)
+	}
+	relu, err := Load(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relu.ReliefImage != "x.relief.webp" || relu.ReliefData != "x.relief.json" {
+		t.Errorf("relief perdu : %q, %q", relu.ReliefImage, relu.ReliefData)
+	}
+	if relu.PlanImage != "x.plan.webp" || relu.Plan == nil {
+		t.Errorf("l'ajout du relief a abîmé le plan : %q, %+v", relu.PlanImage, relu.Plan)
+	}
+	ext, err := lireExtensions(chemin)
+	if err != nil || ext.ReliefImage != "x.relief.webp" || ext.ReliefData != "x.relief.json" {
+		t.Errorf("lireExtensions = %+v, %v", ext, err)
+	}
+
+	relu.Image = "x.webp"
+	if err := Write(chemin, *relu); err != nil {
+		t.Fatal(err)
+	}
+	if apres, err := Load(chemin); err != nil || apres.ReliefImage != "x.relief.webp" || apres.ReliefData != "x.relief.json" {
+		t.Errorf("relief perdu à la réécriture : %+v, %v", apres, err)
+	}
+
+	if err := Write(chemin, sidecarDeTest(nil)); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(blob), "relief") {
+		t.Errorf("champ du relief écrit sans relief : %s", blob)
+	}
+	if ext, err := lireExtensions(chemin); err != nil || ext.ReliefImage != "" || ext.ReliefData != "" {
+		t.Errorf("lireExtensions sans relief = %+v, %v", ext, err)
+	}
+}

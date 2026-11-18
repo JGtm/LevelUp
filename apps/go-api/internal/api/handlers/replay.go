@@ -64,6 +64,7 @@ func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.Op("getMatchReplaySpawnForecast",
 			"Respawn forecast of each death in the 2D replay of a match", "match-view"))
 	r.Get("/matches/{match_id}/replay/background.png", h.handleGetBackgroundImage)
+	r.Get("/matches/{match_id}/replay/background.relief.json", h.handleGetBackgroundReliefData)
 }
 
 // replayInput : {player_slug} parent + {match_id}. match_id pris en STRING pour
@@ -213,7 +214,8 @@ func (h *ReplayHandler) handleGetSpawnForecast(ctx context.Context, in *replayIn
 	return &spawnForecastOutput{Body: forecast}, nil
 }
 
-// handleGetBackgroundImage sert l'image du fond de carte, ou son image plan avec `?variante=plan`.
+// handleGetBackgroundImage sert l'image du fond de carte, ou son image plan ou son relief avec
+// `?variante=plan` / `?variante=relief`.
 //
 // Route chi nue (cf. Mount) : la charge utile est binaire. Elle rend les mêmes 404 que le
 // calage, et pour les mêmes raisons — l'image et son calage vont toujours ensemble.
@@ -230,13 +232,14 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
 		return
 	}
-	plan, ok := varianteFond(ctx, w, r)
+	variante, ok := varianteFond(ctx, w, r)
 	if !ok {
 		return
 	}
-	blob, contentType, err := imageDeFond(plan,
+	blob, contentType, err := imageDeFond(variante,
 		func() ([]byte, string, error) { return svc.MapBackgroundImage(ctx, matchID) },
-		func() ([]byte, string, error) { return svc.MapBackgroundPlanImage(ctx, matchID) })
+		func() ([]byte, string, error) { return svc.MapBackgroundPlanImage(ctx, matchID) },
+		func() ([]byte, string, error) { return svc.MapBackgroundReliefImage(ctx, matchID) })
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			"aucun fond de carte pour ce match")
@@ -246,10 +249,38 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeErrorFrom(ctx, w, http.StatusInternalServerError, "replay_error", err)
 		return
 	}
-	// Donnée de RÉFÉRENCE versionnée : elle ne change qu'à une re-cuisson, jamais en
-	// cours de session. `private` parce que la route est derrière l'ownership joueur.
-	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Le format
-	// (PNG ou WebP) est une propriété de la donnée, pas de cette route (D4) : le nom de
-	// la route reste `background.png` quel que soit le Content-Type réellement servi.
-	servirBlobAvecETag(w, r, blob, contentType, "private, max-age=3600")
+	// Donnée de RÉFÉRENCE versionnée (cacheFondDeCarte). ETag fort + 304 centralisés
+	// (cache_http.go) : cf. plan étape 1, D7-D9. Le format (PNG ou WebP) est une propriété de
+	// la donnée, pas de cette route (D4) : le nom de la route reste `background.png` quel que
+	// soit le Content-Type réellement servi.
+	servirBlobAvecETag(w, r, blob, contentType, cacheFondDeCarte)
+}
+
+// handleGetBackgroundReliefData sert les données du relief du fond de carte (JSON de la cuisson,
+// tel quel) : le pendant de `background.png?variante=relief`, avec les mêmes 404 et le même cache.
+// Route chi nue, comme l'image : le service rend des octets déjà écrits.
+func (h *ReplayHandler) handleGetBackgroundReliefData(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "player_slug")
+	matchID := chi.URLParam(r, "match_id")
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
+		return
+	}
+	if matchID == "" {
+		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
+		return
+	}
+	blob, err := svc.MapBackgroundReliefData(ctx, matchID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			"aucun relief de fond de carte pour ce match")
+		return
+	}
+	if err != nil {
+		writeErrorFrom(ctx, w, http.StatusInternalServerError, "replay_error", err)
+		return
+	}
+	servirBlobAvecETag(w, r, blob, typeDonneesRelief, cacheFondDeCarte)
 }
