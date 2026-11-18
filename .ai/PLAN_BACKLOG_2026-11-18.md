@@ -348,13 +348,15 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste E — jetons des téléchargements de fond (Sonnet)
 
-- [ ] E.1 `haloTokensForDrain` prend son jeton à la source de lecture publique de la mise en commun
+- [x] E.1 (fait le 2026-11-18, `89f9764fd1` sur `bl1118/e` ; erreur typée `wire.ErrNoPublicReadToken` ; 9 comptes
+      consentants sur 9 au magasin du poste, et le bureau pose l'accord d'office : aucun poste ne perd ses
+      téléchargements ; relu sur pièces) `haloTokensForDrain` prend son jeton à la source de lecture publique de la mise en commun
       (`publicReadTokenSrc.ResolveAny`), jamais dans la liste des profils ; sans source ou sans compte
       consentant : erreur typée, journalisée, sans conseil de recapture. Les trois appelants (catalogue,
       expansion des playlists, mise en file des rejeux) suivent. Libellé de `registry_auth.go:289-291`
       reformulé (premier enrôlement, pas recapture). Tests : compte retenu jamais servi ; aucune source ;
       `registry_catalog_lectures_cgo_test.go` adapté.
-- [ ] E.2 Garde-rail : `RefreshHaloTokensViaStoreFirst` combiné à un parcours des profils est interdit dans
+- [x] E.2 (fait le 2026-11-18, même commit ; rouge prouvé sur l'ancien code) Garde-rail : `RefreshHaloTokensViaStoreFirst` combiné à un parcours des profils est interdit dans
       `internal/api/wire`, liste d'exemptions datée vide.
 - **Gate E** : gate commun Go ; `go test ./internal/api/wire/... ./internal/platform/auth/...` ;
   `go test -tags=integration -p 1 ./internal/sync/...`.
@@ -574,6 +576,10 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste E rendue, relue et commitée (`89f9764fd1`). Reste à passer par le pilote à
+  l'intégration : `go test -tags=integration -p 1 ./internal/sync/...` et la suite entière d'archlint (non
+  menée à terme par l'agent, machine chargée). Piste F lancée (`C:/t/bl18-f`). Découverte : sur une instance
+  sans aucun compte consentant, le refus est journalisé en avertissement à chaque mise en file d'un rejeu.
 - 2026-11-18 — T.0 clos ; modèle du coup d'envoi (T.1) validé par le user. T.2 à T.5 partent dès qu'un
   écrivain se libère ET que la piste G est intégrée (mêmes fichiers : `service/match_view_shared_build.go`,
   `domain/match_view.go`). Lien inscrit au plan du décodeur : sa piste A publie le coup d'envoi lu sur l'horloge.
