@@ -297,15 +297,29 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       concordent ; maximum vrai des sols du maillage, la fusion à 0,4 u revient à A.3.) `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
       sol sans matière prend la hauteur du maillage (D-6). Aucune constante magique : seuils nommés,
       documentés en unités du jeu.
-- [ ] A.2 Traits vectoriels (agent **Opus**) : ruptures, courbes de niveau sur pente, liseré de la zone gardée ;
+- [x] A.2 (fait le 2026-11-18, brique `c908067` : `(*Relief).CalculeTraits(ctx) (BilanTraits, error)` ; Recharge :
+      ruptures 1 181,8 u, 920 jonctions (conception 1 172 u, 919), 44 courbes, traits 44 Ko (12,3 Ko gzip), 0,18 s ;
+      Behemoth : 683 courbes, 75 Ko (24 Ko gzip), 0,2 à 1,7 s. Décision du pilote (ajustement mineur de rendu) :
+      aucune courbe à moins du rayon de lissage d'une rupture, 96,5 % des courbes de Recharge doublaient les murs.
+      Pas de hauteur par trait, conception §3.6.) Traits vectoriels (agent **Opus**) : ruptures, courbes de niveau sur pente, liseré de la zone gardée ;
       polylignes chaînées et simplifiées, chacune avec ses hauteurs basse et haute (la coupe par étage les
       filtre côté web).
-- [ ] A.3 Sols du maillage : faces gardées dans le repère du calage ; étages détectés (pics de l'histogramme
+- [x] A.3 (fait le 2026-11-18, brique `feat/relief-sols` `ef4ed91`, à fusionner avec A.2 :
+      `(*Relief).CalculeSols(ctx, m, garde) error` ; Recharge : étages 0 / 2,21 / 4,40 u, `floors` 27,5 Ko
+      (10,1 Ko gzip), 72 ms ; Streets 0,51 / 2,31 / 4,45 ; Behemoth 3,76 / 8,53. Écart accepté par le pilote : les
+      faces sont servies en triangles, pas en polygones (+22 % après gzip), les arêtes de contour, donc les murs de
+      la coupe, sont inchangées. L'écart minimal entre étages est 1,4 u, celui de la conception §4.1.) Sols du maillage : faces gardées dans le repère du calage ; étages détectés (pics de l'histogramme
       des hauteurs de sol, écart minimal tiré de 0.1).
-- [ ] A.4 Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
+- [x] A.4 (fait le 2026-11-18 : tests synthétiques et `gamefiles` de A.0 à A.3 réunis sur
+      `feat/maillage-module-partage` après fusion de `feat/relief-sols` (`45fb57b`, `72f475f`) ; `go test ./...`
+      et les tests `gamefiles` ciblés relancés par le pilote, verts ; README section « Relief » avec crédit ;
+      `ExampleCalculeRelief`. PR https://github.com/JGtm/halo-infinite-map-images/pull/6, CI verte, squash-fusionnée dans `main` de la brique en `9913d0b`.) Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
       `*_gamefiles_test.go` sous le tag `gamefiles` sur Recharge. README de la brique (section et crédit,
       D-9) et `example_test.go`.
-- [ ] A.5 PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
+- [ ] A.5 (amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
+      pseudo-version sur sa branche de travail, ce que l'ADR 0043 permet, et le TAG `v1.4.0` se pose après B.3,
+      une fois le relief vérifié sur les témoins dans LevelUp, pour ne pas publier une API à corriger aussitôt.)
+      PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
       (`gh release create v1.4.0 -R JGtm/halo-infinite-map-images --title v1.4.0 --generate-notes --verify-tag`).
       Dans LevelUp, `require` monté (`go get …@v1.4.0`, `make tidy`).
 - **Gate A :** tests de la brique verts (`go test ./...` du dépôt, et `-tags gamefiles` sur le poste du
