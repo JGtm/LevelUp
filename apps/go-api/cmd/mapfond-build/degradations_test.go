@@ -207,7 +207,7 @@ func TestEcritSidecar_DegradationSansCheminAbsolu(t *testing.T) {
 		`aucun maillage de navigation dans le module any`,
 	}}
 	cal := himap.CalageFond{MetresParPixel: 1, Largeur: 10, Hauteur: 10}
-	if err := e.ecritSidecar(context.Background(), cible{cle: "carte_test"}, b, cal, nil); err != nil {
+	if err := e.ecritSidecar(context.Background(), cible{cle: "carte_test"}, b, cal, annexesFond{}); err != nil {
 		t.Fatalf("ecritSidecar : %v", err)
 	}
 	brut, err := os.ReadFile(filepath.Join(dir, "carte_test.json"))
@@ -241,7 +241,7 @@ func TestEcritSidecar_RetireLesRacinesDeLOutil(t *testing.T) {
 		`copie /srv/Jean Dupont/levelup/data/b.module: refusee`,
 	}}
 	cal := himap.CalageFond{MetresParPixel: 1, Largeur: 10, Hauteur: 10}
-	if err := e.ecritSidecar(context.Background(), cible{cle: "carte_test"}, b, cal, nil); err != nil {
+	if err := e.ecritSidecar(context.Background(), cible{cle: "carte_test"}, b, cal, annexesFond{}); err != nil {
 		t.Fatalf("ecritSidecar : %v", err)
 	}
 	brut, err := os.ReadFile(filepath.Join(dir, "carte_test.json"))

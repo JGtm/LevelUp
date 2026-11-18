@@ -708,21 +708,24 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
 
 #### mapfond-build
 
-Trois gestes, et eux seuls (chaque option se rattache à l'un d'eux ; `go run ./cmd/mapfond-build -h` les liste
+Quatre gestes, et eux seuls (chaque option se rattache à l'un d'eux ; `go run ./cmd/mapfond-build -h` les liste
 rangées) :
 
 1. **Cuire des cartes** — l'image du fond et le sidecar de chaque carte retenue.
 2. **Refaire le plan sans recuire** (`--plan-seul`) — le plan des murs et l'image plan des sidecars déjà publiés.
-3. **Produire le tableau avant / après** (`--rapport-tsv`, avec `--avant-dir`) — une ligne TSV par carte traitée, à côté
-   d'une cuisson ou d'un plan seul.
+3. **Ajouter le relief sans recuire** (`--relief-seul`) — l'image et les données du relief des fonds déjà publiés, et
+   deux champs du sidecar. Exclut `--plan-seul`.
+4. **Produire le tableau avant / après** (`--rapport-tsv`, avec `--avant-dir`) — une ligne TSV par carte traitée, à côté
+   d'une cuisson, d'un plan seul ou d'un relief seul.
 
-Communes aux gestes 1 et 2 (sélection et sortie) : `--maps` (carte native : son dossier installé, par exemple
+Communes aux gestes 1 à 3 (sélection et sortie) : `--maps` (carte native : son dossier installé, par exemple
 `ridgeline` ; carte Forge : son `map_id` ; vide = toutes les cartes du catalogue installées localement), `--title slug`,
 `--out-dir DIR` (défaut `PathResolver.MapBackgroundDir`), `--natives=false`, `--forge=false`, `--avis FICHIER[,FICHIER...]`
 (l'avis du user, carte par carte, sur le croisement fond / maillage de navigation : le premier fichier donne la règle, les
 suivants `ignorer` / `reprendre`). Cuisson seulement : `--style` (défaut `jeu`), `--mpp` (mètres par pixel, défaut
 0,0920). Une combinaison qu'un geste ignorerait en silence est refusée avant toute lecture : `--style` ou `--mpp` avec
-`--plan-seul`, `--avant-dir` sans `--rapport-tsv`, `--natives=false --forge=false`.
+`--plan-seul` ou `--relief-seul`, `--plan-seul` avec `--relief-seul`, `--avant-dir` sans `--rapport-tsv`,
+`--natives=false --forge=false`.
 
 ##### 1. Cuire des cartes
 
@@ -736,10 +739,15 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --natives=false          # toutes les c
   convertit les images en WebP et réécrit chaque sidecar par `internal/mapfondsidecar`, qui conserve le `plan` (le
   `replay.MapBackground` du décodeur de film ne le connaît pas). 339 fichiers publiés aujourd'hui : 114 sidecars, 114 fonds
   et 111 images plan (ADR 0048).
+- Relief : une cuisson complète refait aussi le relief dans le même geste (voir le geste 3), pour qu'il ne survive jamais
+  à son fond ; si le relief ne peut pas être calculé, le sidecar est publié sans `reliefImage` ni `reliefData` et les
+  fichiers du relief périmé sont supprimés.
 - Maillage de navigation : une carte native est cuite avec le maillage de son module `any`
-  (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilatée de 0,5 m (`himap.MargeNavmesh`), est effacée, et le
+  (`himap.ChargeMaillageNatifGeometriePartagee` : le maillage du module lui-même d'abord et, pour une carte dont la
+  géométrie vit dans un module partagé comme le `moduleGeometrie` de Live Fire, le maillage de l'arène dans le module
+  `any/globals` homonyme) : la matière hors du maillage, dilatée de 0,5 m (`himap.MargeNavmesh`), est effacée, et le
   sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au millimètre) et son `planImage`. Une carte
-  sans maillage (Live Fire, le tutoriel de l'Académie, une carte Forge dont le `navmesh.blob` manque au dépôt) est cuite
+  sans maillage (le tutoriel de l'Académie, une carte Forge dont le `navmesh.blob` manque au dépôt) est cuite
   comme avant, porte une dégradation nommée dans `degradations` et n'a pas de `plan`. Leviers par carte de
   `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe` ; un champ que l'outil ne connaît pas est
   refusé) : `rogneAuNavmesh` (carte native : actif par défaut, `false` garde le maillage comme surface de référence sans
@@ -768,7 +776,29 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --forge=false     # toutes 
   obtient son plan.
 - Lancer `go run ./cmd/mapfond-webp -convertir` ensuite, comme après une cuisson.
 
-##### 3. Produire le tableau avant / après
+##### 3. Ajouter le relief sans recuire
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --out-dir /tmp/relief   # sidecars à compléter
+```
+
+- Pour chaque carte retenue dont le sidecar et le fond sont publiés dans `--out-dir` : la carte est cuite en mémoire
+  (mêmes leviers qu'une cuisson), le relief est projeté dans le calage du sidecar **publié** (une recuisson peut sortir
+  plus petite ou décalée : Recharge recuite fait 35 lignes de moins), et l'outil écrit `{cle}.relief.png` (hauteur du
+  dessus par pixel : `q = R + 256 G` par pas de 1/256 d'unité du jeu, drapeaux dans `B`, `A` vaut 0 ou 255),
+  `{cle}.relief.json` (calage, bornes de hauteur, étages, sols du maillage, traits vectoriels) et les champs `reliefImage`
+  et `reliefData` du sidecar, par `internal/mapfondsidecar` seul. L'image du fond, l'image plan, le plan des murs, le
+  calage et tous les autres champs du sidecar restent identiques à l'octet. Une carte sans sidecar ou sans fond est
+  laissée intacte et n'est pas cuite.
+- Une carte sans maillage reçoit un relief dégradé (`sans-maillage` dans les données). Une cuisson dont l'échelle diffère
+  de celle du cadre publié met cette carte en échec nommé (`echelle du fond publie differente de la cuisson, recuire le
+  fond`) et n'écrit rien.
+- Une ligne de journal par carte (`relief ecrit`) : octets écrits, part du relief tirée du maillage (`part_maillage`),
+  pixels du fond publié sans hauteur (`fond_sans_hauteur` sur `fond_matiere`), étages, dégradations, durée.
+- Lancer `go run ./cmd/mapfond-webp -convertir` ensuite : il convertit aussi `{cle}.relief.png`.
+
+##### 4. Produire le tableau avant / après
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres \
@@ -777,7 +807,22 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres
 
 - Écrit une ligne par carte traitée (action, mode et marge du rognage, composantes retenues, part de matière rognée,
   ancres au sol avant / après, arêtes du plan, cartes à revoir). `--avant-dir` porte les sidecars d'avant le lancement ;
-  sans lui, les colonnes « avant » restent vides. Vaut pour une cuisson comme pour `--plan-seul`.
+  sans lui, les colonnes « avant » restent vides. Vaut pour une cuisson, pour `--plan-seul` et pour `--relief-seul`.
+
+#### mapfond-webp
+
+```bash
+go run ./cmd/mapfond-webp -verifier [-echantillon N] [-dir DOSSIER] [-title slug]    # mesure, n'écrit rien
+go run ./cmd/mapfond-webp -convertir [-echantillon N] [-dir DOSSIER] [-title slug]   # écrit
+```
+
+- `-convertir` transforme chaque PNG du dossier des fonds en WebP sans perte (VP8L) et supprime le PNG : le fond
+  `{cle}.png`, l'image plan `{cle}.plan.png` et l'image du relief `{cle}.relief.png`. Chaque fichier est vérifié d'abord,
+  et refusé si l'aller-retour n'est pas identique au bit près ; l'image du relief, dont les pixels portent une hauteur
+  (`R`, `G`), des drapeaux (`B`) et une alpha de 0 ou 255, doit ressortir identique sur ses quatre canaux. Le sidecar
+  `{cle}.json` est réécrit par `internal/mapfondsidecar` avec le seul champ qui nomme l'image convertie (`image`,
+  `planImage` ou `reliefImage`).
+- À lancer après `mapfond-build` (cuisson, `--plan-seul` ou `--relief-seul`) sur le même `--out-dir`.
 
 #### mapobj-build
 

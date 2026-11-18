@@ -56,8 +56,8 @@ func convertitUnFond(ctx context.Context, f fondPNG) error {
 		return fmt.Errorf("ecriture %s: %w", cheminWebP, err)
 	}
 
-	cheminSidecar, estPlan := sidecarDuFond(f.chemin)
-	if err := metAJourSidecarImage(cheminSidecar, filepath.Base(cheminWebP), estPlan); err != nil {
+	cheminSidecar, champ := sidecarDuFond(f.chemin)
+	if err := metAJourSidecarImage(cheminSidecar, filepath.Base(cheminWebP), champ); err != nil {
 		return err
 	}
 
@@ -70,29 +70,49 @@ func convertitUnFond(ctx context.Context, f fondPNG) error {
 	return nil
 }
 
-// sidecarDuFond rend le sidecar d'une image de fond et dit si c'est son image plan : l'image plan
-// `<cle>.plan.png` partage le sidecar `<cle>.json` du fond et ne le met à jour que par son champ
-// `planImage`.
-func sidecarDuFond(chemin string) (sidecar string, estPlan bool) {
+// champImage nomme le champ du sidecar qui porte le nom d'une image du dossier des fonds.
+type champImage int
+
+const (
+	// champFond : `image`, l'image du fond `<cle>.png`.
+	champFond champImage = iota
+	// champPlan : `planImage`, l'image plan `<cle>.plan.png`.
+	champPlan
+	// champRelief : `reliefImage`, l'image du relief `<cle>.relief.png`. Elle doit se lire sans perte au
+	// bit près (hauteur sur R et G, drapeaux sur B, alpha 0 ou 255) : l'aller-retour exigé de toute
+	// image l'est ici sur les quatre canaux.
+	champRelief
+)
+
+// sidecarDuFond rend le sidecar d'une image du dossier des fonds et le champ qui la nomme : l'image
+// plan `<cle>.plan.png` et l'image du relief `<cle>.relief.png` partagent le sidecar `<cle>.json` du
+// fond et ne le mettent à jour que par leur champ (`planImage`, `reliefImage`).
+func sidecarDuFond(chemin string) (sidecar string, champ champImage) {
 	dir, nom := filepath.Dir(chemin), filepath.Base(chemin)
 	if cle, ok := mapfondsidecar.CleDeImagePlan(nom); ok {
-		return filepath.Join(dir, cle+".json"), true
+		return filepath.Join(dir, cle+".json"), champPlan
 	}
-	return strings.TrimSuffix(chemin, filepath.Ext(chemin)) + ".json", false
+	if cle, ok := mapfondsidecar.CleDeImageRelief(nom); ok {
+		return filepath.Join(dir, cle+".json"), champRelief
+	}
+	return strings.TrimSuffix(chemin, filepath.Ext(chemin)) + ".json", champFond
 }
 
-// metAJourSidecarImage relit le sidecar, remplace son champ `image` (ou `planImage` pour l'image
-// plan) par nomImage (D3 : le format servi par l'image est une propriete de la donnee, pas du
+// metAJourSidecarImage relit le sidecar, remplace le champ `champ` (`image`, `planImage` ou
+// `reliefImage`) par nomImage (D3 : le format servi par l'image est une propriete de la donnee, pas du
 // code) et le reecrit avec le meme style d'indentation que la cuisson (cmd/mapfond-build/cuisson.go),
-// plan des murs compris (le decodeur de film ne le connait pas : `internal/mapfondsidecar`).
-func metAJourSidecarImage(chemin, nomImage string, estPlan bool) error {
+// plan des murs et relief compris (le decodeur de film ne les connait pas : `internal/mapfondsidecar`).
+func metAJourSidecarImage(chemin, nomImage string, champ champImage) error {
 	meta, err := mapfondsidecar.Load(chemin)
 	if err != nil {
 		return fmt.Errorf("lecture sidecar %s: %w", chemin, err)
 	}
-	if estPlan {
+	switch champ {
+	case champPlan:
 		meta.PlanImage = nomImage
-	} else {
+	case champRelief:
+		meta.ReliefImage = nomImage
+	default:
 		meta.Image = nomImage
 	}
 	if err := mapfondsidecar.Write(chemin, *meta); err != nil {

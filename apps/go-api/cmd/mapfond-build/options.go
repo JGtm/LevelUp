@@ -1,14 +1,15 @@
 package main
 
-// options.go — LA LIGNE DE COMMANDE : trois gestes, les options de chacun, et le SEUL endroit qui
+// options.go — LA LIGNE DE COMMANDE : quatre gestes, les options de chacun, et le SEUL endroit qui
 // valide leurs combinaisons.
 //
-// Les trois gestes de l'outil. Une option se rattache à l'un d'eux, sinon elle n'existe pas
+// Les quatre gestes de l'outil. Une option se rattache à l'un d'eux, sinon elle n'existe pas
 // (`TestChaqueOptionSeRattacheAUnGeste`) :
 //
 //	cuire des cartes                  --maps --title --out-dir --natives --forge --style --mpp --avis
 //	refaire le plan sans recuire      --plan-seul, avec --maps --title --out-dir --natives --forge --avis
-//	produire le tableau avant / après --rapport-tsv [--avant-dir], avec une cuisson ou un plan seul
+//	ajouter le relief sans recuire    --relief-seul, avec --maps --title --out-dir --natives --forge --avis
+//	produire le tableau avant / après --rapport-tsv [--avant-dir], avec une cuisson, un plan seul ou un relief seul
 
 import (
 	"errors"
@@ -22,7 +23,7 @@ import (
 	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
-// geste groupe les options d'un des trois gestes.
+// geste groupe les options d'un des quatre gestes.
 type geste struct {
 	titre   string
 	options []string
@@ -34,7 +35,9 @@ var gestes = []geste{
 		[]string{"maps", "title", "out-dir", "natives", "forge", "style", "mpp", "avis"}},
 	{"Refaire le plan des murs et l'image plan sans recuire (s'ajoute à la sélection de la cuisson)",
 		[]string{"plan-seul"}},
-	{"Produire le tableau avant / après (s'ajoute à une cuisson ou à un plan seul)",
+	{"Ajouter le relief aux fonds publiés sans les recuire (s'ajoute à la sélection de la cuisson ; exclut -plan-seul)",
+		[]string{"relief-seul"}},
+	{"Produire le tableau avant / après (s'ajoute à une cuisson, à un plan seul ou à un relief seul)",
 		[]string{"rapport-tsv", "avant-dir"}},
 }
 
@@ -52,8 +55,8 @@ type options struct {
 	// Cuisson seulement.
 	style string
 	mpp   float64
-	// Plan seul.
-	planSeul bool
+	// Plan seul et relief seul : deux gestes qui ne recuisent pas le fond, et qui s'excluent.
+	planSeul, reliefSeul bool
 	// Tableau avant / après.
 	rapports rapportsDemandes
 	// poses : les options écrites sur la ligne de commande, pour refuser celles qu'un geste ignore.
@@ -74,6 +77,8 @@ func declareOptions(fs *flag.FlagSet, o *options) {
 	fs.StringVar(&o.avis, "avis", "", "fichier(s) d'avis du user, separes par des virgules : le premier donne la regle "+
 		"(forme du rognage au maillage par carte), les suivants ignorer / reprendre ; vide = comportement d'avant")
 	fs.BoolVar(&o.planSeul, "plan-seul", false, "refait le plan des murs et l'image plan des sidecars publies, depuis leur maillage de navigation, sans recuire")
+	fs.BoolVar(&o.reliefSeul, "relief-seul", false, "ajoute le relief (image, donnees, deux champs du sidecar) aux fonds publies : la carte est cuite en memoire, "+
+		"le relief se projette dans le calage du sidecar publie, l'image du fond, le plan et le calage ne bougent pas")
 	fs.StringVar(&o.rapports.tsv, "rapport-tsv", "", "ecrit le rapport en TSV a ce chemin, une ligne par carte traitee")
 	fs.StringVar(&o.rapports.avantDir, "avant-dir", "", "dossier des sidecars d'avant (colonne « ancres avant » du rapport TSV) ; exige -rapport-tsv")
 }
@@ -115,7 +120,10 @@ func (o options) valide() error {
 	if !himap.StyleFondValide(himap.StyleFond(o.style)) {
 		return fmt.Errorf("habillage inconnu %q (connus : %s)", o.style, stylesConnus())
 	}
-	if o.planSeul {
+	if o.planSeul && o.reliefSeul {
+		return errors.New("-plan-seul et -relief-seul s'excluent : un geste à la fois")
+	}
+	if geste := o.gesteSeul(); geste != "" {
 		var ignorees []string
 		for _, nom := range []string{"style", "mpp"} {
 			if o.poses[nom] {
@@ -123,7 +131,7 @@ func (o options) valide() error {
 			}
 		}
 		if len(ignorees) > 0 {
-			return fmt.Errorf("%s ne s'applique qu'à la cuisson, pas à -plan-seul", strings.Join(ignorees, " ni "))
+			return fmt.Errorf("%s ne s'applique qu'à la cuisson, pas à %s", strings.Join(ignorees, " ni "), geste)
 		}
 	}
 	if !o.natives && !o.forge {
@@ -133,4 +141,15 @@ func (o options) valide() error {
 		return errors.New("-avant-dir exige -rapport-tsv")
 	}
 	return nil
+}
+
+// gesteSeul nomme le geste qui ne recuit pas le fond (`-plan-seul`, `-relief-seul`), vide pour la cuisson.
+func (o options) gesteSeul() string {
+	switch {
+	case o.planSeul:
+		return "-plan-seul"
+	case o.reliefSeul:
+		return "-relief-seul"
+	}
+	return ""
 }

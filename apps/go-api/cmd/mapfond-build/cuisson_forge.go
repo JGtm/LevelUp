@@ -34,25 +34,39 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 	return out
 }
 
-// cuitUneForge cuit une carte Forge : sa variante, son maillage (surface de reference et plan
-// des murs), puis le rendu.
+// cuitUneForge cuit une carte Forge et la publie.
 func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge) bilanAsset {
+	cc, err := e.renduForge(ctx, carte)
+	if err != nil {
+		noms := cc.c.noms
+		if len(noms) == 0 {
+			noms = []string{carte.Nom}
+		}
+		return bilanAsset{Cle: carte.MapID, Noms: noms, Err: err}
+	}
+	return e.publie(ctx, cc.c, cc.rendu, cc.bilan)
+}
+
+// renduForge cuit une carte Forge en mémoire : sa variante, son maillage (surface de référence et
+// plan des murs), puis le rendu. Sur une erreur de cuisson, la cible reste rendue (ses noms servent au
+// bilan). Les échecs sont journalisés ici.
+func (e *environnement) renduForge(ctx context.Context, carte himap.CarteForge) (carteCuite, error) {
 	c, objets, err := e.cibleForge(carte)
 	if err != nil {
 		slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
-		return bilanAsset{Cle: carte.MapID, Noms: []string{carte.Nom}, Err: err}
+		return carteCuite{}, err
 	}
 	navRef, tout, degradation := e.maillageForge(ctx, carte)
 	c.maillage, c.sourcePlan = tout, sourcePlanForge
 	rendu, bilan, err := himap.CuitCarteForge(ctx, e.optionsForge(carte, c, objets, navRef))
 	if err != nil {
 		slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
-		return bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err}
+		return carteCuite{c: c}, err
 	}
 	if degradation != "" {
 		bilan.Degradations = append(bilan.Degradations, degradation)
 	}
-	return e.publie(ctx, c, rendu, bilan)
+	return carteCuite{c: c, rendu: rendu, bilan: bilan}, nil
 }
 
 // maillageForge charge le maillage de navigation d'une carte Forge qui en a un dans le dépôt et

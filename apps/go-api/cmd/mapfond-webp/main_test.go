@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"image"
@@ -15,6 +16,7 @@ import (
 	"levelup/go-api/internal/mapfondsidecar"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"golang.org/x/image/webp"
 )
 
 // construitImageSynthetique batit une image NRGBA 64x64 qui couvre les quatre profils de pixel
@@ -253,5 +255,151 @@ func TestConvertitUnFond_ImagePlanMetAJourPlanImage(t *testing.T) {
 	}
 	if relu.PlanImage != "carte.plan.webp" || relu.Image != "carte.webp" || relu.Plan == nil {
 		t.Errorf("sidecar = image %q, planImage %q, plan %v", relu.Image, relu.PlanImage, relu.Plan)
+	}
+}
+
+// construitImageRelief batit une image au format du relief : alpha 0 (hauteur inconnue, R, G, B nuls)
+// ou 255 ; sur les pixels connus, R et G portent les deux octets de la hauteur, B les deux drapeaux.
+// Les valeurs couvrent tout l'intervalle des octets, y compris 0 et 255 : c'est l'octet qui change qu'un
+// encodeur qui toucherait aux couleurs sous une alpha pleine ferait voir.
+func construitImageRelief() *image.NRGBA {
+	const largeur, hauteur = 150, 90
+	img := image.NewNRGBA(image.Rect(0, 0, largeur, hauteur))
+	graine := uint32(12345)
+	suivant := func() uint32 {
+		graine = graine*1664525 + 1013904223
+		return graine >> 8
+	}
+	for y := 0; y < hauteur; y++ {
+		for x := 0; x < largeur; x++ {
+			if (x/10+y/10)%3 == 0 { // hauteur inconnue
+				continue
+			}
+			q := suivant() & 0xFFFF
+			if x == 0 {
+				q = 0xFFFF
+			}
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(q & 0xFF), G: uint8(q >> 8), B: uint8(suivant() & 3), A: 255})
+		}
+	}
+	return img
+}
+
+// strictementIdentique dit si `lu` rend exactement, pixel par pixel et canal par canal, les valeurs
+// non prémultipliées de `attendu` : c'est ce que relit le navigateur du relief.
+func strictementIdentique(attendu *image.NRGBA, lu image.Image) bool {
+	if lu.Bounds() != attendu.Bounds() {
+		return false
+	}
+	b := attendu.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if color.NRGBAModel.Convert(lu.At(x, y)) != attendu.NRGBAAt(x, y) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// L'image du relief ressort du WebP identique au bit près sur ses quatre canaux, alpha 0 et 255
+// comprises, que la comparaison soit celle de l'outil (prémultipliée) ou stricte (non prémultipliée).
+func TestAllerRetourWebP_ImageRelief_IdentiqueSurLesQuatreCanaux(t *testing.T) {
+	img := construitImageRelief()
+	r, encode, err := allerRetourWebP(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Identique {
+		t.Fatal("l'aller-retour de l'outil n'est pas identique")
+	}
+	lu, err := webp.Decode(bytes.NewReader(encode))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strictementIdentique(img, lu) {
+		t.Error("le WebP ne rend pas les valeurs non prémultipliées du relief")
+	}
+}
+
+// Le mode -convertir prend `<cle>.relief.png` : le WebP du relief est écrit, le champ `reliefImage` du
+// sidecar du fond prend son nom, l'image du fond, l'image plan et le plan ne bougent pas, le PNG est
+// supprimé.
+func TestConvertitUnFond_ImageReliefMetAJourReliefImage(t *testing.T) {
+	dir := t.TempDir()
+	cheminRelief := filepath.Join(dir, "carte.relief.png")
+	img := construitImageRelief()
+	f, err := os.Create(cheminRelief)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, img); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cheminJSON := filepath.Join(dir, "carte.json")
+	avant := mapfondsidecar.MapBackground{
+		MapBackground: replay.MapBackground{
+			SchemaVersion: replay.MapBackgroundSchemaVersion, Module: "carte", Image: "carte.webp",
+			Source: "test", GeneratedAt: time.Now().UTC(), Style: "test",
+		},
+		PlanImage:   "carte.plan.webp",
+		Plan:        &replaydoc.MapBackgroundPlan{Source: "t", Vertices: 4, Faces: 1, Edges: [][4]float64{{0, 0, 1, 0}}},
+		ReliefImage: "carte.relief.png",
+		ReliefData:  "carte.relief.json",
+	}
+	if err := mapfondsidecar.Write(cheminJSON, avant); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(cheminRelief)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := convertitUnFond(context.Background(), fondPNG{chemin: cheminRelief, octets: info.Size()}); err != nil {
+		t.Fatalf("convertitUnFond: %v", err)
+	}
+	if _, err := os.Stat(cheminRelief); !os.IsNotExist(err) {
+		t.Fatalf("le PNG du relief aurait du etre supprime (err=%v)", err)
+	}
+	fw, err := os.Open(filepath.Join(dir, "carte.relief.webp"))
+	if err != nil {
+		t.Fatalf("le webp du relief n'a pas ete ecrit: %v", err)
+	}
+	defer fw.Close()
+	lu, err := webp.Decode(fw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strictementIdentique(img, lu) {
+		t.Error("le WebP ecrit ne rend pas le relief au bit pres")
+	}
+	relu, err := mapfondsidecar.Load(cheminJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relu.ReliefImage != "carte.relief.webp" || relu.ReliefData != "carte.relief.json" ||
+		relu.Image != "carte.webp" || relu.PlanImage != "carte.plan.webp" || relu.Plan == nil {
+		t.Errorf("sidecar = image %q, planImage %q, reliefImage %q, reliefData %q, plan %v",
+			relu.Image, relu.PlanImage, relu.ReliefImage, relu.ReliefData, relu.Plan)
+	}
+}
+
+// Le sidecar d'une image se déduit de son nom : le fond et son sidecar, l'image plan et celle du relief
+// avec le sidecar du fond, chacune par son champ.
+func TestSidecarDuFond_ChoisitLeChampParLeNom(t *testing.T) {
+	cas := []struct {
+		fichier string
+		champ   champImage
+	}{
+		{"carte.png", champFond}, {"carte.plan.png", champPlan}, {"carte.relief.png", champRelief},
+	}
+	for _, c := range cas {
+		sidecar, champ := sidecarDuFond(filepath.Join("dossier", c.fichier))
+		if sidecar != filepath.Join("dossier", "carte.json") || champ != c.champ {
+			t.Errorf("%s : sidecar %q, champ %d ; attendu dossier/carte.json, champ %d", c.fichier, sidecar, champ, c.champ)
+		}
 	}
 }

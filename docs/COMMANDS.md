@@ -683,22 +683,25 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
 
 #### mapfond-build
 
-Three gestures, and only these (every option belongs to one of them; `go run ./cmd/mapfond-build -h`
+Four gestures, and only these (every option belongs to one of them; `go run ./cmd/mapfond-build -h`
 lists them grouped):
 
 1. **Cook maps** — the background image and the sidecar of each selected map.
 2. **Redo the plan without recooking** (`--plan-seul`) — the wall plan and the plan image of sidecars already
    published.
-3. **Produce the before / after table** (`--rapport-tsv`, with `--avant-dir`) — one TSV line per map processed, next to
-   a cooking or a plan-only run.
+3. **Add the relief without recooking** (`--relief-seul`) — the relief image and data of backgrounds already
+   published, and two sidecar fields. Excludes `--plan-seul`.
+4. **Produce the before / after table** (`--rapport-tsv`, with `--avant-dir`) — one TSV line per map processed, next to
+   a cooking, a plan-only run or a relief-only run.
 
-Common to gestures 1 and 2 (selection and output): `--maps` (native map: its installed folder, e.g. `ridgeline`;
+Common to gestures 1 to 3 (selection and output): `--maps` (native map: its installed folder, e.g. `ridgeline`;
 Forge map: its `map_id`; empty = every catalogue map installed locally), `--title slug`, `--out-dir DIR` (default
 `PathResolver.MapBackgroundDir`), `--natives=false`, `--forge=false`, `--avis FILE[,FILE...]` (the user's verdict, map
 by map, on the background / navigation-mesh crossing: the first file gives the rule, the next ones `ignorer` /
 `reprendre`). Cooking only: `--style` (default `jeu`), `--mpp` (metres per pixel, default 0.0920). A combination that a
-gesture would silently ignore is refused before anything is read: `--style` or `--mpp` with `--plan-seul`,
-`--avant-dir` without `--rapport-tsv`, `--natives=false --forge=false`.
+gesture would silently ignore is refused before anything is read: `--style` or `--mpp` with `--plan-seul` or
+`--relief-seul`, `--plan-seul` with `--relief-seul`, `--avant-dir` without `--rapport-tsv`,
+`--natives=false --forge=false`.
 
 ##### 1. Cook maps
 
@@ -712,9 +715,14 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --natives=false          # every Forge 
   converts the images to WebP and rewrites each sidecar through `internal/mapfondsidecar`, which keeps the `plan` (the
   film decoder's `replay.MapBackground` does not know it). 339 published files today: 114 sidecars, 114 backgrounds and
   111 plan images (ADR 0048).
-- Navigation mesh: a native map is cooked with the mesh of its `any` module (`himap.ChargeMaillageNatif`): the matter
+- Relief: a complete cooking also redoes the relief in the same gesture (see gesture 3), so that it never outlives its
+  background; if the relief cannot be computed, the sidecar is published without `reliefImage` and `reliefData` and the
+  stale relief files are removed.
+- Navigation mesh: a native map is cooked with the mesh of its `any` module (`himap.ChargeMaillageNatifGeometriePartagee`,
+  which reads the module's own mesh first and, for a map whose geometry lives in a shared module such as Live Fire's
+  `moduleGeometrie`, the mesh of the arena in the homonymous `any/globals` module): the matter
   outside the mesh, dilated by 0.5 m (`himap.MargeNavmesh`), is erased, and the sidecar publishes a `plan` (the boundary
-  edges of the mesh, in world metres, to the millimetre) and its `planImage`. A map without a mesh (Live Fire, the
+  edges of the mesh, in world metres, to the millimetre) and its `planImage`. A map without a mesh (the
   Academy tutorial, a Forge map whose `navmesh.blob` is absent from the repository) is cooked as before, carries a named
   degradation in `degradations` and no `plan`. Per-map levers in `map_fond_reglages.json` (each entry carries its
   `raison` and `gateLe`; a field the tool does not know is refused): `rogneAuNavmesh` (native map: on by default,
@@ -743,7 +751,29 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --forge=false     # every n
   variant is not at hand gets its plan.
 - Run `go run ./cmd/mapfond-webp -convertir` afterwards, as after a cooking.
 
-##### 3. Produce the before / after table
+##### 3. Add the relief without recooking
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --out-dir /tmp/relief   # sidecars to complete
+```
+
+- For each selected map whose sidecar and background are published in `--out-dir`: the map is cooked in memory (same
+  levers as a cooking), the relief is projected into the calibration of the **published** sidecar (a recooking can come
+  out smaller or shifted: Recharge recooks 35 rows shorter), and the tool writes `{key}.relief.png` (height of the top
+  per pixel: `q = R + 256 G` in steps of 1/256 game unit, flags in `B`, `A` is 0 or 255), `{key}.relief.json`
+  (calibration, height range, floors, mesh floors, vector lines) and the sidecar fields `reliefImage` and `reliefData`,
+  through `internal/mapfondsidecar` only. The background image, the plan image, the wall plan, the calibration and every
+  other sidecar field stay identical to the byte. A map without a sidecar or background is left untouched and is not
+  cooked.
+- A map without a mesh gets a degraded relief (`sans-maillage` in the data). A cooking whose scale differs from the
+  published frame's fails that map by name (`echelle du fond publie differente de la cuisson, recuire le fond`) and
+  writes nothing.
+- One journal line per map (`relief ecrit`): bytes written, share of the relief taken from the mesh (`part_maillage`),
+  background pixels without a height (`fond_sans_hauteur` over `fond_matiere`), storeys, degradations, duration.
+- Run `go run ./cmd/mapfond-webp -convertir` afterwards: it converts `{key}.relief.png` too.
+
+##### 4. Produce the before / after table
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres \
@@ -752,7 +782,22 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres
 
 - Writes one line per map processed (action, rounding mode and margin, retained components, share of matter clipped,
   anchors on the ground before / after, edges of the plan, maps to review). `--avant-dir` holds the sidecars from before
-  the run; without it the "before" columns stay empty. Works with a cooking and with `--plan-seul`.
+  the run; without it the "before" columns stay empty. Works with a cooking, with `--plan-seul` and with `--relief-seul`.
+
+#### mapfond-webp
+
+```bash
+go run ./cmd/mapfond-webp -verifier [-echantillon N] [-dir DIR] [-title slug]    # measures, writes nothing
+go run ./cmd/mapfond-webp -convertir [-echantillon N] [-dir DIR] [-title slug]   # writes
+```
+
+- `-convertir` turns every PNG of the backgrounds folder into lossless WebP (VP8L) and removes the PNG: the
+  background `{key}.png`, the plan image `{key}.plan.png` and the relief image `{key}.relief.png`. Each file is
+  checked first, and refused if the round trip is not identical to the bit; the relief image, whose pixels carry a height
+  (`R`, `G`), flags (`B`) and an alpha of 0 or 255, must come back identical on its four channels. The sidecar
+  `{key}.json` is rewritten through `internal/mapfondsidecar` with the field that names the converted image (`image`,
+  `planImage` or `reliefImage`) and nothing else.
+- Run it after `mapfond-build` (cooking, `--plan-seul` or `--relief-seul`) on the same `--out-dir`.
 
 #### mapobj-build
 
