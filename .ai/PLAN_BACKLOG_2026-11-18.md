@@ -566,6 +566,19 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — GO du user. Plans commités sur `release/v8.3.0` (`1a7329e625`). 0.1 fait : branche
+  `chore/830-backlog-1118` et worktrees `C:/t/bl1118` (intégration, étape 0), `C:/t/bl18-c` (piste C),
+  `C:/t/bl18-k` (K.2), tous depuis `1a7329e625`, sans jonction.
+  Amendement du pilote, écrit avant tout lancement : les pistes qui ne lisent aucune mesure de l'étape 0
+  (C, E, G, K.2) démarrent EN PARALLÈLE de l'étape 0, parce que les témoins « avant » se prennent sur le
+  commit de base dans un autre dossier et que le plan du fond Relief attend C.4 et K.2 ; AUCUNE piste n'est
+  intégrée avant la Gate 0. L'item 0.4 (références rouvertes) est exécuté par chaque agent de piste en tête
+  de son travail, écarts rapportés avant tout code. Le suivi (cases, journal) s'écrit dans le dossier
+  principal sur `release/v8.3.0`, commits de documentation seuls.
+  Lancés (5 agents Sonnet) : étape 0 (0.2 et 0.3, mesures) ; piste C ; K.2 ; audit du coup d'envoi (T.0) avec
+  l'export de vérité de l'API sur une copie de la base (`C:/t/verite/`, partagé avec le plan du décodeur) ;
+  et, pour le plan du décodeur, sa marche à blanc. Deux agents d'écriture seulement (C et K.2) : la session
+  du fond Relief en tient deux.
 - 2026-11-18 — plan écrit ; trois instructions en lecture seule et une mesure sur le parc ; aucun code.
 - 2026-11-18 — réponses du user : D-2, D-3, D-4, D-5, D-7 retenues ; silhouette de l'arme écartée pour le
   ramassage, planche de quatre tracés publiée (D-1 rouverte) ; correction de périmètre : les neuf entrées
