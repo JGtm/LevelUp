@@ -422,7 +422,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
       `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
       les quatre visions, par palette et par thème.
-- [ ] D.6 Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
+- [x] D.6 (fait le 2026-11-18, `a3de73967e`, intégré à `feat/fonds-relief` : interrupteur sous le curseur, coupe sur l'étage du sol porteur à chaque image, délai de 300 ms en temps du rejeu (même comportement à toute vitesse, rien ne bouge en pause), mort et saut de lecture gérés, choix manuel qui coupe le suivi, aucun joueur masqué ; 3 020 tests ciblés relancés par le pilote. Limites notées : à l'export vidéo la coupe peut avoir une image de retard ; un rejeu ancien sans hauteur garde l'étage bas.) Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
 - [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
       `marker-outline-band`, `marker-outline-rim` dans les 4 palettes ; rampe UNIQUE `lib/accessibility/reliefRamp.ts`
