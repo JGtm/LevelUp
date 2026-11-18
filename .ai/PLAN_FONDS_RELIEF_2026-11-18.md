@@ -170,6 +170,11 @@ Règles (mémoire `feedback_workflows_et_sous_agents_opus`) :
 | P7 Clôture | R.1 revue finale | **Fable** | Gates A à E | une seule ronde |
 | P7 | R.2 corrections retenues | Sonnet ; Opus si l'écart est un algorithme | R.1 | |
 
+**Amendement du 2026-11-18 (pilote, après la décision du user de doubler la borne P-1 à 8 écrivains) :** le
+format étant figé par la Gate 0, C.1 à C.3, D.2 et D.5 ne dépendent plus du code de la brique et partent dès
+maintenant ; D.5 et D.7 sont confiés au même agent (le garde-rail de D.7 étend le fichier créé par D.5, un seul
+écrivain). B.1, D.3, D.4 et D.6 gardent leurs dépendances.
+
 Vagues : dès le go, 0.1, 0.2, 0.4, A.0 et D.1 ; après Gate 0, A.1 puis A.2 et A.3 en parallèle, D.5 ; après
 Gate A, B.1 et C.1 ; après Gate C, D.2 à D.4 puis D.6 ; après Gate D et l'accord du user, E.1 ; à la fin, R.1
 et R.2.
@@ -285,7 +290,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       du module partagé porte les frontières de plusieurs arènes : l'item mesure lesquelles s'appliquent à Live
       Fire. Il ne les branche que si elles bornent l'arène retenue sans rien retirer du praticable du maillage ;
       sinon la dégradation reste, réécrite avec la mesure. Tests, dont un `gamefiles` sur Live Fire.
-- [ ] A.1 `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
+- [x] A.1 (fait le 2026-11-18, brique `8780d01` : `CalculeRelief(ctx, r, m, garde, cal) (*Relief, error)`,
+      `(*Relief).MesureFondPublie`, `ErrEchelleDifferente`, types `DonneesRelief` au schéma de conception §1.2 ;
+      Recharge : 1605 x 1771 au calage publié, part tirée du maillage 13,6 %, calcul sous la seconde ; gates
+      relancés par le pilote. Écarts justifiés : miettes de zone éteintes en A.1 pour que l'image et le liseré
+      concordent ; maximum vrai des sols du maillage, la fusion à 0,4 u revient à A.3.) `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
       sol sans matière prend la hauteur du maillage (D-6). Aucune constante magique : seuils nommés,
       documentés en unités du jeu.
 - [ ] A.2 Traits vectoriels (agent **Opus**) : ruptures, courbes de niveau sur pente, liseré de la zone gardée ;
