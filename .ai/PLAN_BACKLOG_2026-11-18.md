@@ -296,13 +296,13 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste B — rejeu : états de la page (Sonnet)
 
-- [ ] B.1 Selon D-2 : dans `MR/model/playerPanelLogic.ts`, « Seul » éteint le suivi d'un autre joueur et
+- [x] B.1 (fait le 2026-11-18, `0aa6debb61` sur `bl1118/b` ; trois tests existants qui attendaient « Seul » gardé en suivant un autre joueur passent sur « Masquer ») Selon D-2 : dans `MR/model/playerPanelLogic.ts`, « Seul » éteint le suivi d'un autre joueur et
       `followPlayer` sur un autre joueur lève « Seul ». Quatre tests (les deux sens, le même joueur, fiche
       fermée).
-- [ ] B.2 `useReplayViewpoint(scopeKey, scoreboard)` : état rangé avec sa portée et remis à zéro au rendu
+- [x] B.2 (fait le 2026-11-18, même commit ; la portée passée est `playerSlug/matchId`, la clé du cadre valant `null` pendant le chargement) `useReplayViewpoint(scopeKey, scoreboard)` : état rangé avec sa portée et remis à zéro au rendu
       (patron de `usePlayerPanel.ts:63-71`), clé du cadre (`ReplayPage.tsx:179`). Test : nouvelle portée et
       même joueur présent, point de vue par défaut.
-- [ ] B.3 `useReplayFullscreen.ts` : la sortie d'un Plein cadre né du geste passe par `release` quel que soit
+- [x] B.3 (fait le 2026-11-18, même commit ; quatre des tests neufs échouent sur l'ancien code ; un test existant affirmait le défaut et a été retourné) `useReplayFullscreen.ts` : la sortie d'un Plein cadre né du geste passe par `release` quel que soit
       le chemin (touche F, icône « Standard », « Quitter ») ; un plein écran refusé ou absent remet
       l'intention à faux. Tests : les deux scénarios de la section 1.
 - **Gate B** : gate commun web sur `MR/`.
@@ -576,6 +576,10 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-18 — piste B rendue, relue, commitée (`0aa6debb61`) ; elle sera cueillie sur l'intégration à la fin des
+  vérifications lourdes du pilote, qui tournent dans ce dossier (on ne modifie pas un arbre pendant son gate).
+  La place d'écriture libérée va à la session du fond Relief, comme convenu (deux places).
 
 - 2026-11-18 — piste G rendue, relue, commitée (`919774dc49`), cueillie sur l'intégration, où la branche de
   version a été ramenée (documents seuls). Écart au plan relevé : le paquet des contrats est `./contracttest/...`,
