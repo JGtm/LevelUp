@@ -668,6 +668,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — DÉCISION DU USER sur le prototype des quatre choix : « tout proposé sauf le 3. » Donc, à écrire en
+  Q.2 : (i) lignes du fil du joueur suivi sur fond légèrement teinté (token, sans bordure à gauche), distinct de
+  la ligne choisie ; (ii) au Cinéma, la barre de lecture SOUS le bloc arrondi du plan ; (iii) Suivre / Seul /
+  Masquer en un segment de trois colonnes égales, l'actif plein. Le volume (3) reste comme aujourd'hui : curseur
+  toujours visible. LISTE FERMÉE DE Q.2, dans l'ordre d'écriture, un seul écrivain, après M.2 et M.3 : Q.2-a
+  boutons carrés de la barre d'une ligne ; Q.2-b capture et export sans cartouche ; Q.2-c fenêtre de fiche à
+  8 px sous le haut du plan ; Q.2-e bloc arrondi unique du Standard ; Q.2-h marge du Plein cadre à 16 px ;
+  Q.2-i fond teinté du joueur suivi ; Q.2-j barre du Cinéma sous le bloc ; Q.2-k segment de la fiche. Q.2-g
+  (tirs à la tête) attend la réponse du user sur la lecture du compteur du jeu. Q.2-d et Q.2-f : écartés.
 - 2026-11-18 — prototype des quatre choix publié, lu en entier par le pilote avant publication :
   https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
   Quatre bascules « Aujourd'hui / Proposé » : fond teinté des lignes du joueur suivi, barre du Cinéma sous le
