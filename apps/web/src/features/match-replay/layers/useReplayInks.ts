@@ -27,6 +27,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { readInk } from './canvasInk'
 import { useExportActive } from '../export/exportLayoutStore'
 import { readFxInk, type FxInk } from './fxInk'
+import type { MarkerOutlineInk } from './markerOutline'
 import type { RiftInk } from './placementRift'
 import type { ShroudInk } from './placementShroud'
 import type { PadFamily } from '../model/weaponPadFamilies'
@@ -79,6 +80,15 @@ const GRENADE_TOKEN: SemanticToken = 'info'
  * carte qui porte deux anneaux.
  */
 const SELF_TOKEN: SemanticToken = 'success'
+
+/**
+ * LE CERNE DES PIONS : deux tokens, une bande sombre contre le noyau
+ * et un filet clair au bord, identiques dans toutes les palettes et dans les deux thèmes. Ce sont
+ * des tokens (et non des encres de mise en page lues par `readInk`) parce que le garde-fou
+ * `mapReliefTokens.test.ts` les mesure contre les fonds de carte et sous les quatre visions.
+ */
+const MARKER_OUTLINE_BAND_TOKEN: SemanticToken = 'marker-outline-band'
+const MARKER_OUTLINE_RIM_TOKEN: SemanticToken = 'marker-outline-rim'
 
 /**
  * LE MUR DE PROTECTION (W1/R2-5, verdict du 2026-08-18 : « je préférerais un orange doré »).
@@ -188,6 +198,8 @@ export interface ReplayInks {
   scrim: string
   /** Le texte posé sur ce voile : jeton `on-scrim`, identique dans les deux thèmes. */
   onScrim: string
+  /** Le cerne deux tons des pions : bande sombre et filet clair (cf. MARKER_OUTLINE_BAND_TOKEN). */
+  markerOutline: MarkerOutlineInk
   /** Double contour et halo du joueur de la page (cf. SELF_TOKEN). */
   self: string
   /** Le plan des murs du fond : l'encre de mise en page la plus contrastée du thème (`--foreground`). */
@@ -251,6 +263,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       labelStroke: readInk('--replay-label-stroke'),
       scrim: readInk('--scrim'),
       onScrim: readInk('--on-scrim'),
+      markerOutline: { band: resolveToken(MARKER_OUTLINE_BAND_TOKEN), rim: resolveToken(MARKER_OUTLINE_RIM_TOKEN) },
       self: resolveToken(SELF_TOKEN),
       wallPlan: readInk('--foreground'),
       wall: resolveToken(WALL_TOKEN),

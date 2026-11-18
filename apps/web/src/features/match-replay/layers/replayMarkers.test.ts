@@ -55,7 +55,7 @@ function singlePointTrack(
 function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
   return {
     colorOfSlot: () => "rgb(1 2 3)",
-    ink: "rgb(9 9 9)",
+    outline: { band: "rgb(9 9 9)", rim: "rgb(250 250 250)" },
     // Frame LOIN du départ de la vie : l'anneau d'apparition ne doit pas s'ajouter aux
     // comptages d'arcs (il vit 0,8 s après le spawn).
     frame: 50,
@@ -259,21 +259,29 @@ describe("élévation de visée (schéma 13)", () => {
   });
 });
 
+/**
+ * Les arcs d'un pion au sol : le cerne en pose TROIS (le filet est un anneau, donc deux cercles
+ * remplis en pair-impair ; la bande en est un), le noyau un.
+ */
+const ARCS_DU_PION = 4;
+
 describe("formes d identité (D5)", () => {
   const markOf = (kind: PlayerMarkKind | undefined) => () => kind;
 
   it("un marqueur ordinaire n est fait que d arcs", () => {
     const ops = trace({ markOfSlot: markOf(undefined) });
     expect(count(ops, "lineTo")).toBe(0);
-    // Liseré + noyau : deux disques, aucun anneau d'étage (le joueur est au sol) et PLUS DE
+    // Cerne (filet, bande) + noyau, aucun anneau d'étage (le joueur est au sol) et PLUS DE
     // HALO — la lueur diffuse a été supprimée par la planche du 2026-08-16.
-    expect(count(ops, "arc")).toBe(2);
+    expect(count(ops, "arc")).toBe(ARCS_DU_PION);
   });
 
-  it("un AMI est un losange : quatre segments par chemin, liseré et noyau", () => {
+  it("un AMI est un losange : quatre segments par chemin, cerne et noyau", () => {
     const ops = trace({ markOfSlot: markOf("friend") });
-    expect(count(ops, "lineTo")).toBe(8);
-    expect(count(ops, "closePath")).toBe(2);
+    // Trois losanges de cerne (3 segments chacun après le moveTo, le chemin se ferme par closePath)
+    // et le noyau (4 segments : il revient à son point de départ).
+    expect(count(ops, "lineTo")).toBe(13);
+    expect(count(ops, "closePath")).toBe(4);
     // Aucun disque ne subsiste : le halo qui en dessinait un a disparu avec la planche.
     expect(count(ops, "arc")).toBe(0);
   });
@@ -397,14 +405,14 @@ describe("style de la planche (§1bis)", () => {
   it("ne pose AUCUN anneau sur un terrain plat (aligné sur les objectifs, 2026-09-18)", () => {
     // Bornes Z égales (artefact sans Z, ou plateau sans relief) : `floorOf` seul rendrait
     // l'étage 1 à tout le monde. Le pion porte un z, mais rien n'est plus haut que rien :
-    // liseré + noyau, et pas un arc de plus.
+    // cerne + noyau, et pas un arc de plus.
     const ops = trace(
       { z: { min: 0, max: 0 } },
       singlePointTrack(512, {
         points: [{ t: 50, x: 5, y: 5, z: 7, h: 90 }],
       }),
     );
-    expect(count(ops, "arc")).toBe(2);
+    expect(count(ops, "arc")).toBe(ARCS_DU_PION);
   });
 });
 

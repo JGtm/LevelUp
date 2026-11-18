@@ -199,7 +199,7 @@ function trackPainters(
   const { shownAtSlot, shown: focusShown, openPlayer } = s.focus
   const { vehicles, killFocus } = s.layers
   const { floorEdge, shot: shotColor, wall: wallInk, rift: riftInk, shroud: shroudInk } = s.ink
-  const { self: selfInk, labelStroke } = s.ink
+  const { self: selfInk, labelStroke, markerOutline } = s.ink
   const { aim: showAim, trail: showTrail } = s.show
   return {
     // La fenêtre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
@@ -219,7 +219,7 @@ function trackPainters(
     trajectoires: (_c, fr, k) => {
       drawTracksLayer(ctx, doc.tracks, view, {
         colorOfSlot,
-        ink: floorEdge,
+        outline: markerOutline,
         frame: fr,
         timing,
         z: zRange,

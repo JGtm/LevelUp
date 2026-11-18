@@ -274,7 +274,7 @@ export function ReplayCanvas({
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, markerOutline, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
     zone: zoneInk, wallPlan: wallPlanInk, onScrim,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
@@ -478,7 +478,7 @@ export function ReplayCanvas({
       },
       ink: {
         geometry: geometryColor, grenade: grenadeColor, shot: shotColor, fx: fxInk, floorEdge: floorStyle.edge,
-        wall: wallInk, rift: riftInk, shroud: shroudInk, self: selfInk, labelStroke,
+        wall: wallInk, rift: riftInk, shroud: shroudInk, self: selfInk, labelStroke, markerOutline,
       },
       identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
       focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer },
@@ -501,7 +501,7 @@ export function ReplayCanvas({
       cookedRef, wallPlanRef, zonesRef, heatRef, objectivesRef,
       timing, eventHoldFrames, shotHoldFrames,
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
-      geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke,
+      geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke, markerOutline,
       colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
       campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer,
       shotFx, fireMarks, killFx, objectivePulses, zones,

@@ -35,7 +35,7 @@ function vie(over: Partial<ReplayTrackReady> = {}): ReplayTrackReady {
 
 function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
   return {
-    colorOfSlot: () => 'rgb(1 2 3)', ink: 'rgb(9 9 9)', frame: 50,
+    colorOfSlot: () => 'rgb(1 2 3)', outline: { band: 'rgb(9 9 9)', rim: 'rgb(250 250 250)' }, frame: 50,
     timing: { trail: 30, aimHold: 60, death: 20, spawn: 5 }, z: { min: 0, max: 10 }, k: 1,
     showAim: true, markOfSlot: () => undefined, nameOfSlot: () => 'Bot', showTrail: true,
     selfInk: 'rgb(4 4 4)', deathInk: 'rgb(5 5 5)', labelStroke: 'rgb(8 12 18)',

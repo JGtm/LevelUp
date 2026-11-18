@@ -1,4 +1,4 @@
-{"variant":"base","instant":"milieu","frame":7552,"opCount":9189}
+{"variant":"base","instant":"milieu","frame":7552,"opCount":9253}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,720]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":8665,"sha":"f02a3bec2d803907fc22b66aa87314631d03adb177ce03a828027505953efe3c"}},1.0658141036401503e-14,1.0658141036401503e-14,960,720]}
@@ -2461,9 +2461,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[532.5117859073707,196.8138403315913]}
+{"op":"arc","args":[527.4117859073707,196.8138403315913,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[531.5617859073707,196.8138403315913]}
+{"op":"arc","args":[527.4117859073707,196.8138403315913,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[531.8117859073707,196.8138403315913]}
 {"op":"arc","args":[527.4117859073707,196.8138403315913,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2479,9 +2487,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Jf01",527.4117859073707,203.7138403315913]}
+{"op":"strokeText","args":["Jf01",527.4117859073707,204.4138403315913]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Jf01",527.4117859073707,203.7138403315913]}
+{"op":"fillText","args":["Jf01",527.4117859073707,204.4138403315913]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08478260869565217]}
@@ -3071,9 +3079,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[512.4087042710398,694.4256622814921]}
+{"op":"arc","args":[507.30870427103986,694.4256622814921,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[511.45870427103984,694.4256622814921]}
+{"op":"arc","args":[507.30870427103986,694.4256622814921,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[511.70870427103984,694.4256622814921]}
 {"op":"arc","args":[507.30870427103986,694.4256622814921,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3089,9 +3105,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000007",507.30870427103986,701.3256622814921]}
+{"op":"strokeText","args":["Joueur000007",507.30870427103986,702.0256622814921]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000007",507.30870427103986,701.3256622814921]}
+{"op":"fillText","args":["Joueur000007",507.30870427103986,702.0256622814921]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08264423076923078]}
@@ -4146,9 +4162,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[467.84283654712567,278.31609298972785]}
+{"op":"arc","args":[462.74283654712565,278.31609298972785,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[466.8928365471256,278.31609298972785]}
+{"op":"arc","args":[462.74283654712565,278.31609298972785,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[467.1428365471256,278.31609298972785]}
 {"op":"arc","args":[462.74283654712565,278.31609298972785,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -4164,9 +4188,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joue ur00118",462.74283654712565,285.2160929897278]}
+{"op":"strokeText","args":["Joue ur00118",462.74283654712565,285.9160929897279]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joue ur00118",462.74283654712565,285.2160929897278]}
+{"op":"fillText","args":["Joue ur00118",462.74283654712565,285.9160929897279]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -5241,9 +5265,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[576.8354478284376,433.57001261488557]}
+{"op":"arc","args":[571.7354478284376,433.57001261488557,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[575.8854478284376,433.57001261488557]}
+{"op":"arc","args":[571.7354478284376,433.57001261488557,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[576.1354478284376,433.57001261488557]}
 {"op":"arc","args":[571.7354478284376,433.57001261488557,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -5259,9 +5291,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["J00 0086",571.7354478284376,440.47001261488555]}
+{"op":"strokeText","args":["J00 0086",571.7354478284376,441.1700126148856]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["J00 0086",571.7354478284376,440.47001261488555]}
+{"op":"fillText","args":["J00 0086",571.7354478284376,441.1700126148856]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -6336,18 +6368,26 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"createRadialGradient","args":[481.39268336637235,274.6830059470175,0,481.39268336637235,274.6830059470175,10.600000000000001]}
+{"op":"createRadialGradient","args":[481.39268336637235,274.6830059470175,0,481.39268336637235,274.6830059470175,11.3]}
 {"op":"addColorStop","args":[0,"#7dcbc2"]}
 {"op":"addColorStop","args":[1,"transparent"]}
 {"op":"set globalAlpha","args":[0.22]}
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[481.39268336637235,274.6830059470175,10.600000000000001,0,6.283185307179586]}
+{"op":"arc","args":[481.39268336637235,274.6830059470175,11.3,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[486.4926833663724,274.6830059470175]}
+{"op":"arc","args":[481.39268336637235,274.6830059470175,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[485.54268336637233,274.6830059470175]}
+{"op":"arc","args":[481.39268336637235,274.6830059470175,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[485.79268336637233,274.6830059470175]}
 {"op":"arc","args":[481.39268336637235,274.6830059470175,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -6360,12 +6400,12 @@
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineWidth","args":[1.5]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[481.39268336637235,274.6830059470175,6,0,6.283185307179586]}
+{"op":"arc","args":[481.39268336637235,274.6830059470175,6.699999999999999,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[0.75]}
 {"op":"set lineWidth","args":[0.75]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[481.39268336637235,274.6830059470175,8.4,0,6.283185307179586]}
+{"op":"arc","args":[481.39268336637235,274.6830059470175,9.1,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set font","args":["600 8.5px ui-sans-serif, system-ui, sans-serif"]}
@@ -6375,9 +6415,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000204",481.39268336637235,287.7830059470175]}
+{"op":"strokeText","args":["Joueur000000204",481.39268336637235,288.4830059470175]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000000204",481.39268336637235,287.7830059470175]}
+{"op":"fillText","args":["Joueur000000204",481.39268336637235,288.4830059470175]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -7452,9 +7492,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[575.8666246170482,482.37448188862857]}
+{"op":"arc","args":[570.7666246170481,482.37448188862857,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[574.9166246170481,482.37448188862857]}
+{"op":"arc","args":[570.7666246170481,482.37448188862857,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[575.1666246170481,482.37448188862857]}
 {"op":"arc","args":[570.7666246170481,482.37448188862857,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -7470,9 +7518,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur00 000006",570.7666246170481,489.27448188862854]}
+{"op":"strokeText","args":["Joueur00 000006",570.7666246170481,489.9744818886286]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur00 000006",570.7666246170481,489.27448188862854]}
+{"op":"fillText","args":["Joueur00 000006",570.7666246170481,489.9744818886286]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08429687500000001]}
@@ -8127,9 +8175,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[563.2719228689855,282.79690034240406]}
+{"op":"arc","args":[558.1719228689855,282.79690034240406,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[562.3219228689854,282.79690034240406]}
+{"op":"arc","args":[558.1719228689855,282.79690034240406,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[562.5719228689854,282.79690034240406]}
 {"op":"arc","args":[558.1719228689855,282.79690034240406,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -8145,9 +8201,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000203",558.1719228689855,289.69690034240404]}
+{"op":"strokeText","args":["Joueur000203",558.1719228689855,290.3969003424041]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000203",558.1719228689855,289.69690034240404]}
+{"op":"fillText","args":["Joueur000203",558.1719228689855,290.3969003424041]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08333333333333333]}
@@ -8987,9 +9043,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[489.7624617048117,593.1836366912958]}
+{"op":"arc","args":[484.6624617048117,593.1836366912958,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[488.81246170481165,593.1836366912958]}
+{"op":"arc","args":[484.6624617048117,593.1836366912958,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[489.06246170481165,593.1836366912958]}
 {"op":"arc","args":[484.6624617048117,593.1836366912958,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -9005,9 +9069,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000094",484.6624617048117,600.0836366912957]}
+{"op":"strokeText","args":["Joueur000000094",484.6624617048117,600.7836366912958]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000000094",484.6624617048117,600.0836366912957]}
+{"op":"fillText","args":["Joueur000000094",484.6624617048117,600.7836366912958]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineCap","args":["round"]}
 {"op":"set strokeStyle","args":["#7604ad"]}

@@ -27,14 +27,22 @@
  * demande de l'utilisateur (« supprimer le bâton qui sort de ces points ») : le cône dégradé
  * dit déjà la direction du regard.
  *
- * Aucun littéral de couleur : les teintes d'équipe arrivent résolues depuis les tokens, les
- * encres de lisibilité depuis le thème (cf. canvasInk.ts).
+ * Aucun littéral de couleur : les teintes d'équipe et les deux encres du cerne (bande sombre,
+ * filet clair : `markerOutline.ts`) arrivent résolues depuis les tokens.
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { drawAimCone } from './replayAimCone'
-import { CORE_RADIUS, OUTLINE_PAD } from '@/lib/replay/screenSizes'
-import { drawFloorRings, floorInRange, FLOOR_RING_WIDTH, floorRingRadius } from './floorRings'
+import { drawFloorRings, floorInRange } from './floorRings'
+import {
+  drawMarkerOutline,
+  firstFloorRingRadius,
+  markerCorePx,
+  markerOuterEdge,
+  type MarkerOutlineInk,
+} from './markerOutline'
 import { drawNameLabel } from './replayLabels'
+import { drawSpawnRing, drawTrail } from './markerTrail'
+import { drawSelfHalo, drawSelfRings, selfRingsEdge } from './selfMarkerRings'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 import {
@@ -43,7 +51,6 @@ import {
   isAliveAt,
   positionAt,
   trackWindow,
-  trailAt,
   type XY,
 } from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo, turnsOfView } from '../model/replayView'
@@ -71,51 +78,18 @@ export interface MarkerTiming {
 // --- Constantes de rendu (pixels d'ÉCRAN, sauf mention) ------------------------------------
 
 /**
- * LA TRAÎNÉE S'ÉCLAIRCIT VERS LE PASSÉ. Un seul trait à opacité constante disait « le joueur
- * est passé par là » sans dire DANS QUEL SENS ; l'alpha qui monte vers la tête donne la
- * direction du mouvement sans ajouter la moindre flèche. La polyligne se dessine donc segment
- * par segment, chacun avec son opacité.
- */
-const TRAIL_WIDTH = 1.6
-const TRAIL_ALPHA_TAIL = 0.08
-const TRAIL_ALPHA_HEAD = 0.63
-
-/**
  * LES TAILLES ET LE STYLE DU MARQUEUR SUIVENT LA PLANCHE VALIDÉE LE 2026-08-16 (item A1),
  * dont les valeurs sont transcrites au §1bis du plan d'habillage — verdict utilisateur :
  * « Parfait. Je veux exactement ce style pour les points, la croix de mort et la traînée. »
  * Ce que la planche change par rapport au POC : le point rétrécit (4,6 -> 3,4), le halo diffus
  * DISPARAÎT, et l'étage cesse d'être une couleur de trace pour devenir un anneau fin à l'encre
- * du thème.
+ * du thème. Le contour du noyau, lui, a changé depuis : c'est le cerne deux tons de
+ * `markerOutline.ts` (bande sombre bordée d'un filet clair), qui remplace le liseré d'une seule
+ * encre de la planche.
  */
-const CORE_PER_FLOOR = 0.7
-// Les anneaux d'étage (un par étage au-dessus du sol, premier rayon FIXE et détaché du point)
-// vivent dans `floorRings.ts` depuis le 2026-09-18 : les objectifs du mode parlent le même
-// langage, et une seule boucle les trace.
-const OUTLINE_ALPHA = 0.62
-/**
- * LE JOUEUR DE LA PAGE (forme 'ring') — DOUBLE CONTOUR ET HALO depuis le 2026-08-18.
- *
- * CE QUE LE RETOUR DEMANDE : « avoir l'icône du joueur actif qui se démarque de tous les
- * autres aussi (j'aurais bien aimé du vert mais pour l'accessibilité je sais pas si ça peut
- * le faire) ». La réponse tient en une règle : LA COULEUR NE PORTE JAMAIS SEULE. Le marqueur
- * du joueur de la page était déjà cerclé d'UN anneau ; il en porte DEUX, plus un halo diffus,
- * et c'est cette FORME qui le distingue — un lecteur qui ne voit pas la teinte voit toujours
- * le seul point de la carte à deux anneaux. La couleur (`selfInk`, token `success`) vient EN
- * PLUS, sur le contour et le halo ; le NOYAU garde la couleur d'ÉQUIPE, qui dit le camp.
- *
- * LE HALO EST DE RETOUR ICI, ET SEULEMENT ICI. Il avait été supprimé de TOUS les marqueurs le
- * 16/08 (« la lueur diffuse doublait l'emprise et empâtait la carte ») — sur un seul point de
- * la carte, il ne l'empâte pas, il le désigne.
- */
-const SELF_RING_WIDTH = 1.5
-const SELF_RING_GAP = 1.6
-/** Écart entre les deux anneaux d'identité, en pixels d'écran. */
-const SELF_RING_GAP_2 = 2.4
-/** Le halo : un disque diffus posé sous le marqueur, au rayon du second anneau. */
-const SELF_HALO_PAD = 2.2
-const SELF_HALO_ALPHA = 0.22
-
+// Les anneaux d'étage (un par étage au-dessus du sol, premier rayon détaché du cerne du pion,
+// cf. `firstFloorRingRadius`) vivent dans `floorRings.ts` depuis le 2026-09-18 : les objectifs du
+// mode parlent le même langage, et une seule boucle les trace.
 /**
  * CROIX DE MORT — demi-taille FIXE qui s'estompe (elle ne grandit plus, cf. §1bis).
  *
@@ -136,10 +110,6 @@ const DEATH_ALPHA = 0.9
  * « il est là ». Ni cône de visée (la visée n'est pas répliquée non plus) ni anneaux d'étage.
  */
 const GAP_ALPHA = 0.35
-const SPAWN_RADIUS = 2
-const SPAWN_GROWTH = 12
-const SPAWN_WIDTH = 1.2
-const SPAWN_ALPHA = 0.8
 /**
  * Style du calque : ce qu'une VIE emprunte à son PROPRIÉTAIRE, plus les encres du thème.
  *
@@ -155,8 +125,8 @@ const SPAWN_ALPHA = 0.8
 export interface MarkerStyle {
   /** Couleur d'équipe du propriétaire du slot à l'image. `null` = ne rien dessiner. */
   colorOfSlot: (slot: number, frame: number) => string | null
-  /** Encre qui contraste avec la page dans les deux thèmes : liseré, anneau du joueur. */
-  ink: string
+  /** Les deux encres du cerne du pion : bande sombre et filet clair (jetons `marker-outline-*`). */
+  outline: MarkerOutlineInk
   frame: number
   timing: MarkerTiming
   z: { min: number; max: number }
@@ -399,88 +369,24 @@ function drawLivingTrack(
  * markerEdge : distance du centre au bord EXTERNE de tout ce que le marqueur dessine, en
  * pixels d'écran — c'est SOUS ce bord que le nom se pose (replayLabels.ts).
  *
- * Le bord n'est pas toujours celui du liseré : au-dessus du sol, l'anneau d'étage est posé à
- * un rayon FIXE (6,5) qui dépasse le disque, et le joueur de la page porte en plus son anneau
- * d'identité. Prendre le maximum des trois est la seule façon d'être sûr que l'étiquette ne
- * chevauche aucun trait.
+ * Le bord n'est pas toujours celui du cerne : au-dessus du sol, les anneaux d'étage le dépassent,
+ * et le joueur de la page porte en plus son anneau d'identité, au-delà d'eux. Prendre le maximum des
+ * deux est la seule façon d'être sûr que l'étiquette ne chevauche aucun trait.
  */
 function markerEdge(fl: number, k: number, shape: MarkerShape): number {
-  const outline = CORE_RADIUS + CORE_PER_FLOOR * fl + OUTLINE_PAD
-  const ring = fl > 0 ? floorRingRadius(fl) + FLOOR_RING_WIDTH / 2 : 0
-  const self = shape === 'ring' ? selfRingRadius2(fl) + SELF_HALO_PAD : 0
-  return Math.max(outline, ring, self) * k
-}
-
-/** selfRingRadius : rayon du PREMIER anneau d'identité du joueur de la page (forme 'ring'). */
-function selfRingRadius(fl: number): number {
-  return CORE_RADIUS + CORE_PER_FLOOR * fl + OUTLINE_PAD + SELF_RING_GAP
-}
-
-/** selfRingRadius2 : rayon du SECOND anneau — c'est lui qui fait le « double contour ». */
-function selfRingRadius2(fl: number): number {
-  return selfRingRadius(fl) + SELF_RING_GAP_2
+  const self = shape === 'ring' ? selfRingsEdge(fl) : 0
+  return Math.max(markerOuterEdge(fl), self) * k
 }
 
 /**
- * drawTrail : la polyligne des 7 s écoulées, dessinée SEGMENT PAR SEGMENT.
- *
- * Un seul `stroke` à opacité constante coûterait moins cher, mais il ne dirait pas le SENS du
- * déplacement. L'opacité monte linéairement de la queue (0,08 — presque effacé) vers la tête
- * (0,63) : la trace la plus visible est toujours celle de l'instant.
- */
-function drawTrail(
-  ctx: CanvasRenderingContext2D,
-  track: ReplayTrackReady,
-  view: CanvasView,
-  style: MarkerStyle,
-  color: string,
-): void {
-  const trail = trailAt(track.points, style.frame, style.timing.trail)
-  if (trail.length < 2) return
-  const segments = trail.length - 1
-  const span = TRAIL_ALPHA_HEAD - TRAIL_ALPHA_TAIL
-  ctx.strokeStyle = color
-  ctx.lineWidth = TRAIL_WIDTH * style.k
-  let from = project(trail[0], view)
-  for (let i = 1; i < trail.length; i++) {
-    const to = project(trail[i], view)
-    ctx.globalAlpha = TRAIL_ALPHA_TAIL + (span * i) / segments
-    ctx.beginPath()
-    ctx.moveTo(from.x, from.y)
-    ctx.lineTo(to.x, to.y)
-    ctx.stroke()
-    from = to
-  }
-  ctx.globalAlpha = 1
-}
-
-/** drawSpawnRing : l'anneau qui s'ouvre au premier instant de la vie. */
-function drawSpawnRing(
-  ctx: CanvasRenderingContext2D,
-  track: ReplayTrackReady,
-  c: XY,
-  style: MarkerStyle,
-  color: string,
-): void {
-  const age = style.frame - trackWindow(track).start
-  if (age < 0 || age > style.timing.spawn) return
-  const f = 1 - age / style.timing.spawn
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, (SPAWN_RADIUS + SPAWN_GROWTH * (1 - f)) * style.k, 0, Math.PI * 2)
-  ctx.strokeStyle = color
-  ctx.globalAlpha = SPAWN_ALPHA * f
-  ctx.lineWidth = SPAWN_WIDTH * style.k
-  ctx.stroke()
-  ctx.globalAlpha = 1
-}
-
-/**
- * drawMarker dessine le joueur : anneaux d'étage, liseré, noyau — et sa FORME dit son identité
+ * drawMarker dessine le joueur : anneaux d'étage, cerne, noyau — et sa FORME dit son identité
  * (disque, losange pour un ami, disque cerclé pour le joueur de la page).
  *
  * IL N'Y A PLUS DE HALO (planche du 2026-08-16) : la lueur diffuse sous chaque point doublait
- * l'emprise du marqueur et empâtait la carte dès qu'un nom s'écrivait dessous. Le liseré
- * sombre suffit à détacher un point coloré d'un fond qui va du blanc au noir.
+ * l'emprise du marqueur et empâtait la carte dès qu'un nom s'écrivait dessous. Le CERNE (une bande
+ * sombre contre le noyau, bordée d'un filet clair, `markerOutline.ts`) suffit à détacher un point
+ * coloré d'un fond qui va du blanc au noir : le noyau garde la couleur d'équipe, c'est le cerne
+ * qui porte le contraste.
  *
  * L'ÉTAGE SE LIT PAR DES ANNEAUX CONCENTRIQUES, jamais par un décalage du marqueur : en vue de
  * dessus, déplacer un point vers le haut de l'écran voudrait dire « plus au nord » et
@@ -506,17 +412,14 @@ function drawMarker(
   /** Fraction d'opacité du pion : 1, ou `GAP_ALPHA` pendant une lacune de réplication. */
   alpha = 1,
 ): void {
-  const core = (CORE_RADIUS + CORE_PER_FLOOR * fl) * style.k
+  const core = markerCorePx(fl) * style.k
 
   // LE HALO EN PREMIER, sous tout le reste : c'est une lueur, pas un trait.
   if (shape === 'ring') drawSelfHalo(ctx, c, style, fl, alpha)
 
-  if (alpha === 1) drawFloorRings(ctx, c, fl, color, { k: style.k })
+  if (alpha === 1) drawFloorRings(ctx, c, fl, color, { k: style.k, first: firstFloorRingRadius(fl) })
 
-  ctx.globalAlpha = OUTLINE_ALPHA * alpha
-  ctx.fillStyle = style.ink
-  corePath(ctx, c, core + OUTLINE_PAD * style.k, shape)
-  ctx.fill()
+  drawMarkerOutline(ctx, (r) => shapeSubPath(ctx, c, r, shape), fl, style.k, style.outline, alpha)
 
   ctx.globalAlpha = alpha
   ctx.fillStyle = color
@@ -527,55 +430,7 @@ function drawMarker(
   if (shape === 'ring') drawSelfRings(ctx, c, style, fl, alpha)
 }
 
-/**
- * drawSelfRings — LES DEUX ANNEAUX du joueur de la page, à `selfInk`.
- *
- * DEUX, PAS UN : c'est le double contour qui porte l'identité quand la couleur ne peut pas
- * (cf. la note de SELF_RING_WIDTH). Le second est plus fin et plus pâle — l'œil lit « un
- * anneau souligné », pas « deux cercles ».
- */
-function drawSelfRings(
-  ctx: CanvasRenderingContext2D,
-  c: XY,
-  style: MarkerStyle,
-  fl: number,
-  alpha: number,
-): void {
-  ctx.strokeStyle = style.selfInk
-  ctx.globalAlpha = alpha
-  ctx.lineWidth = SELF_RING_WIDTH * style.k
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, selfRingRadius(fl) * style.k, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 0.75 * alpha
-  ctx.lineWidth = (SELF_RING_WIDTH / 2) * style.k
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, selfRingRadius2(fl) * style.k, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 1
-}
-
-/** drawSelfHalo — la lueur diffuse sous le marqueur du joueur de la page (dégradé radial). */
-function drawSelfHalo(
-  ctx: CanvasRenderingContext2D,
-  c: XY,
-  style: MarkerStyle,
-  fl: number,
-  alpha: number,
-): void {
-  const r = (selfRingRadius2(fl) + SELF_HALO_PAD) * style.k
-  const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r)
-  gradient.addColorStop(0, style.selfInk)
-  gradient.addColorStop(1, 'transparent')
-  ctx.globalAlpha = SELF_HALO_ALPHA * alpha
-  ctx.fillStyle = gradient
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.globalAlpha = 1
-}
-
-/** corePath trace le noyau (ou son liseré) : cercle, ou losange de même rayon circonscrit. */
+/** corePath trace le noyau : cercle, ou losange de même rayon circonscrit. */
 function corePath(ctx: CanvasRenderingContext2D, c: XY, r: number, shape: MarkerShape): void {
   ctx.beginPath()
   if (shape !== 'diamond') {
@@ -587,6 +442,24 @@ function corePath(ctx: CanvasRenderingContext2D, c: XY, r: number, shape: Marker
   ctx.lineTo(c.x, c.y + r)
   ctx.lineTo(c.x - r, c.y)
   ctx.lineTo(c.x, c.y - r)
+  ctx.closePath()
+}
+
+/**
+ * shapeSubPath AJOUTE au chemin courant la forme du noyau au rayon `r` (sans `beginPath`) : le cerne
+ * en pose deux dans un même chemin, rempli en pair-impair. Le disque s'ouvre par un `moveTo` pour que
+ * deux sous-chemins ne se relient pas par un trait.
+ */
+function shapeSubPath(ctx: CanvasRenderingContext2D, c: XY, r: number, shape: MarkerShape): void {
+  if (shape !== 'diamond') {
+    ctx.moveTo(c.x + r, c.y)
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+    return
+  }
+  ctx.moveTo(c.x, c.y - r)
+  ctx.lineTo(c.x + r, c.y)
+  ctx.lineTo(c.x, c.y + r)
+  ctx.lineTo(c.x - r, c.y)
   ctx.closePath()
 }
 
