@@ -272,7 +272,7 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 
 ### [décodeur/objectifs] Ordre de rotation des collines du Roi de la colline
 
-Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. LevelUp n'a pas cet ordre. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. **Reformulée le 2026-11-17.** Constat sur pièces : la suite des collines actives se lit déjà dans le document ; elle diverge entre matchs d'une même carte ; aucun écran ne la lit. Sort : reformulée. **Condition de reprise :** un écran qui la lise ; à défaut, prochain chantier du décodeur. **Effort : S à M.**
+Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. Instruit le 2026-11-18 : la suite des collines JOUÉES est déjà dans le document de rejeu (`zoneStates[].spans`), cohérente sur 48 films ; elle diverge entre matchs d'une même carte, parce que l'ordre de la carte est une donnée de la variante de mode, pas du film. Aucun travail du décodeur. Ce qui reste est une demande d'affichage : montrer dans le rejeu la suite des collines jouées (et la prochaine quand elle est connue). **Effort : S.**
 
 ---
 
@@ -426,7 +426,7 @@ explicite d'inventer le schéma par analogie.
 
 ### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -438,7 +438,7 @@ Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). 
 
 ### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
 
-Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.**
+Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
