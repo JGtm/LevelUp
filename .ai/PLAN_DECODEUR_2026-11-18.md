@@ -188,13 +188,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Étape 0 — témoins, vérités, instruments (pilote ; un agent Sonnet)
 
-- [ ] 0.1 Clone neuf de `DEC` à la tête de `main` ; vérifier que `main` = v1.4.1 ; branche `feat/v1.5.0` ;
+- [x] 0.1 (fait le 2026-11-18 : `C:/t/dec/main`, tête `037ec4d` = v1.4.1, branche locale `feat/v1.5.0` ; `C:/t/dec-lu`) Clone neuf de `DEC` à la tête de `main` ; vérifier que `main` = v1.4.1 ; branche `feat/v1.5.0` ;
       espace de travail `GOWORK` ; worktree LevelUp `C:/t/dec-lu` depuis `release/v8.3.0`, sans jonction.
-- [ ] 0.2 Marche de publication rejouée à blanc sur le clone SANS aucun changement : chaque commande de
+- [x] 0.2 (fait le 2026-11-18, sans jonction : gestes 3 à 10 rejoués ; équivalence 20 identiques sur 20 en 5 min 43 ; tests du clone avec les données de l'hôte : 33 paquets verts en 284 s ; gate du corpus : 19 témoins, ni gain ni perte, mais il juge la version PUBLIÉE, voir le journal ; annexe corrigée geste par geste) Marche de publication rejouée à blanc sur le clone SANS aucun changement : chaque commande de
       l'annexe tourne et rend son résultat attendu (tests avec les données de l'hôte, une passe
       d'équivalence à 20 identiques, gate du corpus sans gain ni perte). Tout écart avec l'annexe y est
       corrigé. C'est le témoin « avant » de tout le plan.
-- [ ] 0.3 Vérité de l'API, export unique en lecture sur une copie de la base partagée, dans un dossier hors
+- [x] 0.3 (fait le 2026-11-18 : `C:/t/verite/`, hors dépôt) Vérité de l'API, export unique en lecture sur une copie de la base partagée, dans un dossier hors
       dépôt nommé au journal : par match et par joueur, éliminations, morts, assistances, tirs à la tête,
       corps à corps, grenades, armes lourdes, score personnel, tirs, touches, dégâts, temps de jeu, temps
       comme porteur du drapeau. Aucun identifiant de joueur n'entre au dépôt du décodeur.
@@ -203,8 +203,8 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       nommé par build ; somme des points contre score personnel ; temps de porteur ; durée de présence contre
       temps de jeu des partants ; coup d'envoi (horloge, mouvement) contre le premier événement daté du
       match, sur les 22 rejeux en désaccord et sur 50 autres.
-- [ ] 0.5 Chaque référence `fichier:ligne` de la section 1 rouverte sur la tête du clone ; écarts au journal.
-- [ ] 0.6 Instruments : le harnais de mesure sur un lot de films (20 films de l'équivalence et les témoins de
+- [x] 0.5 (fait le 2026-11-18 : quatorze références rouvertes sur la tête du clone, aucune ne diverge) Chaque référence `fichier:ligne` de la section 1 rouverte sur la tête du clone ; écarts au journal.
+- [x] 0.6 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/instruments.md`, commandes vérifiées sur un film ; aucun harnais de lot n'existe : il se monte à partir de `replay-parc-vies --garder-documents`, `replay-verite` et `replay-diff`, premier item de la première piste qui change une sortie) Instruments : le harnais de mesure sur un lot de films (20 films de l'équivalence et les témoins de
       chaque piste) qui sort, pour une branche donnée, les compteurs des pistes ; il réemploie
       `cmd/replay-verite`, `cmd/replay-diff` et les outils de `DEC/research/` avant d'écrire quoi que ce soit.
 - **Gate 0** : 0.2 à 20 identiques ; `avant.md` complet ; la question des 22 coups d'envoi est tranchée par
@@ -377,6 +377,21 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — marche à blanc rendue. Trois faits qui changent la conduite du plan :
+  (1) LE GATE DU CORPUS NE JUGE PAS LE CLONE : il compile contre le décodeur que `go.mod` exige. Pour juger
+  `feat/v1.5.0`, la branche de la montée désignera une pseudo-version du décodeur (permise sur une branche de
+  travail, ADR 0043), jamais un `replace` commité ; L.2 se lit ainsi. Il faut aussi `GOWORK=off` pour que le
+  registre des replis d'avant soit lu.
+  (2) LES TESTS DU CLONE SE LANCENT AVEC `GOWORK=off` : le fichier d'espace de travail engendré écrit le chemin
+  du clone avec des barres obliques, et `go test` d'un sous-paquet du clone échoue alors (« module not one of
+  the workspace modules »).
+  (3) SANS JONCTION, l'équivalence lit ses 20 films dans une copie sous `C:/t/dec-lu/data/cache` (676 Mo, ignorée
+  de git) et le gate dans un parc de travail sous `C:/t/dec/sorties/parc` ; le dossier principal n'est jamais
+  la racine d'une commande qui écrit (verrou de décodage, cache du gate).
+  Aussi : un sixième golden de formes (`types/`) manquait à l'annexe ; le verrou des fixtures de contrat est
+  `REPLAY_CONTRACT_UPDATE` ; huit décisions du 2026-11-16 de `config/replay_corpus.toml` sont devenues sans
+  effet (avertissements du gate), à retirer en L.2. 0.4 (mesures « avant » contre l'export) lancé.
+
 - 2026-11-18 — 0.3 fait (export de vérité sous `C:/t/verite/` : `participants.tsv` 29 107 lignes,
   `registre.tsv` 2 045, `evenements_mode.tsv` 58 ; hors dépôt, copie de la base, original jamais ouvert). La
   question des 22 coups d'envoi (Gate 0) est TRANCHÉE par l'audit du plan du backlog : l'horloge a raison. Dans
@@ -397,6 +412,12 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   consigne de lecture seule ; aucun fichier modifié.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (0.2) — `scripts/briques-workspace.sh` écrit le chemin du clone avec des barres obliques : sous
+  Windows, `go test` d'un sous-paquet du clone échoue avec le `GOWORK` engendré. À porter au backlog (petit
+  correctif d'outillage).
+- 2026-11-18 (0.2) — `replay-equiv -deux-passes` signale sur v1.4.1 « 1 écart à classer : kill », déjà présent
+  avant tout changement.
 
 - 2026-11-18 — les 5 rejeux sans build n'ont aucun compteur nommé lisible (non instruit).
 - 2026-11-18 — sur le film `390b1de5`, l'équipe du porteur est inconnue pour 25 portages sur 25 (carte à
