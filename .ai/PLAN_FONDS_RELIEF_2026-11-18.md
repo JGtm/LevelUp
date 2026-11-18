@@ -446,7 +446,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 - [ ] E.1 Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
       fois, puis `mapfond-webp -convertir`. Poids ajouté mesuré et reporté (base : 45 Mo aujourd'hui). Chaque
       carte non traitée est nommée avec sa raison.
-- [ ] E.2 ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
+- [~] E.2 (écrit le 2026-11-18, `d610136f8d` sur `feat/fonds-relief` : ADR 0049, amendement de 0048, CLAUDE.md, guide des fondations EN et FR ; notes de version et crédit prêts dans `annexes_fonds_relief/lignes_de_version.md`, posés à l'intégration ; « Current state » à reprendre après E.1) ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
       sol tiré du maillage, cartes sans maillage, crédit. Elle amende 0048 (D-3 : troisième fond ; D-8 : deux
       champs neufs du sidecar). Mise à jour de la liste des ADR dans `CLAUDE.md`, d'une ligne dans la note de
       version et dans le journal des modifications.

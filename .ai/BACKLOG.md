@@ -477,13 +477,31 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ### [fonds de carte/plan] Plan par mode : découper le plan d'une carte selon le mode joué
 
-**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.**
+**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
 
 ---
 
 ### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
 
 **Relevé le 2026-11-18** (conception du fond Relief, `.ai/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
+
+---
+
+### [fonds de carte/Forge] Deux des quatre types de himap.TypesVolumesDeMort ne sont pas des volumes de mort
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). « Light probe marker » (type d'objet 29) et « Nav Cutter » (type 28) sont comptés comme volumes de mort par la brique `halo-infinite-map-images` (`himap.TypesVolumesDeMort`, `BoiteDesVolumesDeMort`). Effet possible sur le cadrage des fonds Forge publiés, à mesurer. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [fonds de carte/Forge] L'échelle des primitives Forge n'est pas lue
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). Le vecteur d'échelle des objets (`#8/#23` de la variante) n'est pas lu par `mapvar`. 94,7 % des 404 578 primitives du parc ne sont pas à l'échelle 1, alors que `InstanceForge` les pose à l'échelle 1. Effet sur les fonds Forge publiés à mesurer avant tout correctif. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [outillage] Les 20 variantes natives du dépôt hors ligne sont des fichiers vides
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). `.ai/re_dump/mapvar/` porte 20 variantes de cartes natives à 0 octet. À rapatrier (`mapnav-fetch -fichier map.mvar -nom-cuisson`) si un lot les lit. **Reprise :** à instruire et décider par le user.
 
 ---
 
