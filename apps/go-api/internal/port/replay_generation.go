@@ -6,6 +6,7 @@ package port
 
 import (
 	"context"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -41,6 +42,8 @@ type ReplayMatchProbeResult struct {
 	FilmAbsent bool
 	// ArtifactPresent : le rejeu est rangé.
 	ArtifactPresent bool
+	// EndedAt : l'heure de fin du match (UTC) ; zéro si le registre ne la porte pas.
+	EndedAt time.Time
 	// FilmArchived : le film complet est dans l'archive locale (la génération n'a besoin d'aucun jeton).
 	FilmArchived bool
 }
@@ -50,5 +53,6 @@ type ReplayMatchProbe interface {
 	ProbeReplayMatch(ctx context.Context, titleSlug, matchID string) (ReplayMatchProbeResult, error)
 }
 
-// ReplayTokenPresence : le joueur a-t-il un jeton de rafraîchissement au magasin ? Lecture seule, aucun échange.
+// ReplayTokenPresence : le joueur a-t-il un jeton de rafraîchissement utilisable au magasin (présent, sans
+// reconnexion requise) ? Lecture seule, aucun échange.
 type ReplayTokenPresence func(xuid string) bool

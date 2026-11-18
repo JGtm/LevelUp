@@ -226,6 +226,15 @@ describe("buildSquadPerMinuteOption : dégâts sur l'axe de droite", () => {
     expect(f1Right.label.formatter({ value: null, dataIndex: 3 })).toBe('')
   })
 
+  it('un joueur sans frags, morts ni assistances connus laisse un trou sur ces catégories, pas un zéro', () => {
+    const sansComptes: SquadPerMinuteEntry = { player: 'F1', match_count: 0 }
+    const opt = buildSquadPerMinuteOption(makeSeries([entry('Me', 1.2, 0.7, 0.3), sansComptes]), OPTS)
+    const [me, f1] = opt.series as unknown as BarSeries[]
+    expect(me.data.map((d) => d?.value ?? null)).toEqual([1.2, -0.7, 0.3])
+    expect(f1.name).toBe('F1')
+    expect(f1.data.map((d) => d?.value ?? null)).toEqual([null, null, null])
+  })
+
   it('décimales : entier pour les dégâts, deux pour les comptes (étiquette et axe)', () => {
     const opt = buildSquadPerMinuteOption(makeSeries([damageEntry('Me', 312.6, 240.4)]), OPTS)
     const [left, right] = opt.series as unknown as BarSeries[]

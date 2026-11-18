@@ -68,6 +68,15 @@ describe('useDismissable', () => {
     expect(onClose).toHaveBeenCalledWith('escape')
   })
 
+  it('avec « escape: false », Échap ne ferme pas et reste à la couche du dessous ; le clic dehors ferme', () => {
+    const onClose = vi.fn()
+    render(<Sonde onClose={onClose} options={{ escape: false }} />)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.mouseDown(screen.getByTestId('dehors'))
+    expect(onClose).toHaveBeenCalledExactlyOnceWith('outside')
+  })
+
   it('couche fermée : ni Échap ni clic dehors ne sont écoutés', () => {
     const onClose = vi.fn()
     render(<Sonde open={false} onClose={onClose} />)

@@ -13,6 +13,7 @@ import {
 import { stripBotSuffix } from '@/lib/players/displayName'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { departuresOf, hasLeftAt } from './departureLogic'
 import { activeEquipmentAt } from './equipmentFx'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { equippedWeapons, type EquippedReading } from './equippedLogic'
@@ -125,7 +126,7 @@ export function playerCardReadings({
   // publie aucun (0/32 en phase 0). La fiche retombe alors sur les totaux de la BASE, qui
   // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
   const live = playerCountersAt(scoreTimeline, player.xuid, frame)
-  const state = playerStateAt(player, frame, presence)
+  const state = playerStateAt(player, frame, presence, hasLeftAt(departuresOf(doc), player.xuid, frame))
   const name = cardName(player, t)
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
@@ -139,7 +140,8 @@ export function playerCardReadings({
   // Les DEUX éclats d'événement : le coup fatal et la réapparition. Ils durent le temps de
   // leur animation ; le délai NÉGATIF la fait reprendre à son avancement réel, donc elle
   // reste juste après un saut dans le temps de lecture (cf. globals.css).
-  const deathAge = state.sinceDeath
+  // Un joueur PARTI n'est pas mort : aucun éclat de mort ne se joue sur sa fiche.
+  const deathAge = state.departed ? -1 : state.sinceDeath
   const lifeAge = state.alive && state.life && trackWindow(state.life).start > 0
     ? frame - trackWindow(state.life).start
     : -1

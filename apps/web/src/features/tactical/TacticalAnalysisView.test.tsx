@@ -15,7 +15,7 @@
  * PAS DE TEST CANVAS (jsdom n'implémente pas le contexte 2D) : le calque garde son
  * `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 import type { UseQueryResult } from '@tanstack/react-query'
 
@@ -129,7 +129,14 @@ function renderVue(
 
 const cadre = () => screen.getByTestId('tactical-plan-frame')
 
+// Ces tests posent des tailles d'élément factices (`clientWidth` de TOUS les éléments) : l'Auto du rejeu jugerait la zone
+// du plan sur ces cotes. Le choix retenu pour la carte (droite) prime et garde la géométrie que les clics supposent.
+beforeEach(() => {
+  window.localStorage.setItem('replay-orientation.streets', '0')
+})
+
 afterEach(() => {
+  window.localStorage.removeItem('replay-orientation.streets')
   vi.clearAllMocks()
   // Une valeur de retour posée par un test ne doit pas passer au suivant.
   useTacticalCellule.mockReset()

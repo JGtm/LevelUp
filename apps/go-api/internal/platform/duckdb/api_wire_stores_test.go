@@ -11,6 +11,7 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
+	"time"
 
 	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/i18n"
@@ -191,5 +192,31 @@ func TestSignalUnreadableRow_CompteParTitre(t *testing.T) {
 	signalUnreadableRow(context.Background(), "halo_5", "test", errors.New("ligne illisible"))
 	if d := observability.LoadCounterT("halo_5", compteur) - avant; d != 1 {
 		t.Fatalf("compteur +%d, want +1", d)
+	}
+}
+
+// EndedAt lit l'heure de fin du registre en UTC ; une ligne sans heure de fin ou absente rend zéro, sans erreur.
+func TestReplayRegistryRepo_EndedAt(t *testing.T) {
+	pr := titlepkg.NewPathResolver(t.TempDir())
+	slug := titlepkg.DefaultSlug
+	migratedFile(t, pr.SharedDBPath(slug), migration.TargetShared,
+		`INSERT INTO match_registry (match_id, end_time_utc) VALUES
+			('11111111-0000-4000-8000-000000000000', TIMESTAMPTZ '2026-11-18 11:58:30+00'),
+			('22222222-0000-4000-8000-000000000000', NULL)`)
+	h, err := TitleBases{Paths: pr, Log: slog.Default()}.Open(context.Background(), slug)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer h.Close()
+	repo := NewReplayRegistryRepo(h.Shared, nil)
+	ctx := context.Background()
+	got, err := repo.EndedAt(ctx, "11111111-0000-4000-8000-000000000000")
+	if want := time.Date(2026, 11, 18, 11, 58, 30, 0, time.UTC); err != nil || !got.Equal(want) || got.Location() != time.UTC {
+		t.Fatalf("heure de fin = %v (%v), attendu %v UTC", got, err, want)
+	}
+	for _, id := range []string{"22222222-0000-4000-8000-000000000000", "absent"} {
+		if got, err := repo.EndedAt(ctx, id); err != nil || !got.IsZero() {
+			t.Fatalf("%s : %v, %v, attendu zéro sans erreur", id, got, err)
+		}
 	}
 }

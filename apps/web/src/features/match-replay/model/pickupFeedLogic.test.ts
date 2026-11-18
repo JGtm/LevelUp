@@ -39,7 +39,7 @@ describe('pickupFeedEntries', () => {
     expect(out.map((e) => e.replayMs)).toEqual([10_000, 20_000])
     expect(out.map((e) => e.event)).toEqual([
       { family: 'pickups', xuid: 'x1', name: 'arme 0x0000AAAA', nature: 'classic' },
-      { family: 'pickups', xuid: 'x2', name: 'Surbouclier', nature: 'powerup' },
+      { family: 'pickups', xuid: 'x2', name: 'Surbouclier', nature: 'powerupGameChanger' },
     ])
   })
 
@@ -64,7 +64,7 @@ describe('pickupFeedEntries', () => {
     expect(pickupFeedEntries(doc, nameOf).map((e) => (e.event as { nature: string }).nature)).toEqual([
       'power',
       'classic',
-      'powerup',
+      'powerupGameChanger',
     ])
   })
 

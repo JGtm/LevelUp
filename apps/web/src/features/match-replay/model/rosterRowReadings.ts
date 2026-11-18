@@ -27,14 +27,16 @@ import type { PlayerState } from '../../../lib/replay/rosterLogic'
  * respawnText — CE QUE LA LIGNE D'UN JOUEUR MORT ÉCRIT À LA PLACE DES JAUGES : « Réapparition dans
  * 5,8 s », le retour étant l'image de départ de la vie suivante du même joueur (lu, jamais déduit
  * d'une constante). Sans vie suivante le joueur ne revient plus dans le film : la ligne dit
- * « Hors film », « ne revient plus » — jamais un délai deviné.
+ * « Hors film », « ne revient plus » — jamais un délai deviné. Un joueur PARTI (`PlayerState.departed`) n'est
+ * pas mort : la ligne dit qu'il a quitté la partie, sans compte à rebours.
  */
 export function respawnText(
-  state: Pick<PlayerState, 'respawnFrame'>,
+  state: Pick<PlayerState, 'respawnFrame' | 'departed'>,
   doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>,
   frame: number,
-  t: Pick<ReplayText, 'respawnIn' | 'goneLabel' | 'goneValue'>,
+  t: Pick<ReplayText, 'respawnIn' | 'goneLabel' | 'goneValue' | 'presenceLeft'>,
 ): string {
+  if (state.departed) return t.presenceLeft
   if (state.respawnFrame < 0) return `${t.goneLabel} · ${t.goneValue}`
   return `${t.respawnIn} ${formatSeconds(frameToMs(state.respawnFrame - frame, doc))}`
 }
@@ -42,14 +44,16 @@ export function respawnText(
 /**
  * respawnShort — la forme ABRÉGÉE du compte à rebours, pour la fiche compacte : « Réapp. 4.2 s ». Même
  * lecture que `respawnText` (le retour est l'image de départ de la vie suivante) ; le texte long
- * reste celui de l'infobulle. Sans vie suivante, le mot court existant « Hors film », jamais un délai deviné.
+ * reste celui de l'infobulle. Sans vie suivante, le mot court existant « Hors film », jamais un délai deviné ;
+ * un joueur parti dit qu'il a quitté la partie.
  */
 export function respawnShort(
-  state: Pick<PlayerState, 'respawnFrame'>,
+  state: Pick<PlayerState, 'respawnFrame' | 'departed'>,
   doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>,
   frame: number,
-  t: Pick<ReplayText, 'goneLabel'> & { roster: Pick<ReplayText['roster'], 'respawnShort'> },
+  t: Pick<ReplayText, 'goneLabel' | 'presenceLeft'> & { roster: Pick<ReplayText['roster'], 'respawnShort'> },
 ): string {
+  if (state.departed) return t.presenceLeft
   if (state.respawnFrame < 0) return t.goneLabel
   return `${t.roster.respawnShort} ${formatSeconds(frameToMs(state.respawnFrame - frame, doc))}`
 }

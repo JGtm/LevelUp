@@ -64,6 +64,7 @@ func TestClassifyDemand(t *testing.T) {
 		{"film disparu", fmt.Errorf("x: %w", domain.ErrReplayFilmGone), domain.ReplayGenPhaseDownloading, domain.ReplayGenerationFilmUnavailable, "", false},
 		{"sans jeton", fmt.Errorf("x: %w", domain.ErrReplayNoToken), domain.ReplayGenPhaseDownloading, domain.ReplayGenerationFailed, domain.ReplayGenReasonTokenUnavailable, true},
 		{"film non fini", finalise.ErrFilmNonFinalise, domain.ReplayGenPhaseDownloading, domain.ReplayGenerationFailed, domain.ReplayGenReasonFilmNotReady, true},
+		{"film pas encore prêt", fmt.Errorf("x: %w", domain.ErrReplayFilmNotReady), domain.ReplayGenPhaseDownloading, domain.ReplayGenerationFailed, domain.ReplayGenReasonFilmNotReady, true},
 		{"carte hors catalogue", replaybuild.ErrMapNotInCatalog, domain.ReplayGenPhaseBuilding, domain.ReplayGenerationFailed, domain.ReplayGenReasonMapNotInCatalog, false},
 		{"clé de film inconnue", replaybuild.ErrUnknownFilmKey, domain.ReplayGenPhaseBuilding, domain.ReplayGenerationFailed, domain.ReplayGenReasonUnknownFilmKey, false},
 		{"mode non géré", replaybuild.ErrModeNonGere, domain.ReplayGenPhaseBuilding, domain.ReplayGenerationNotSupported, domain.ReplayGenReasonModeUnmanaged, false},
@@ -142,8 +143,8 @@ func TestDemand_IssuesBornees(t *testing.T) {
 	}
 }
 
-// Le film n'est libéré qu'après une reconstruction réussie.
-func TestDemand_FilmLibereApresSuccesSeulement(t *testing.T) {
+// Un échec réessayable garde le film (le nouvel essai le reprend sans le retélécharger).
+func TestDemand_FilmGardeApresUnEchecReessayable(t *testing.T) {
 	f := newDemandFixture(t, 0)
 	f.deps.Rebuild = func(context.Context, string, string) error { return errors.New("enfant") }
 	f.rebind(t)
@@ -154,6 +155,56 @@ func TestDemand_FilmLibereApresSuccesSeulement(t *testing.T) {
 		t.Fatalf("attendu build_failed : %+v", st)
 	}
 	if f.releaseN.Load() != 0 {
-		t.Fatal("aucun film ne doit être libéré après un échec")
+		t.Fatal("aucun film ne doit être libéré après un échec réessayable")
+	}
+}
+
+// Un échec définitif de la construction (carte hors catalogue, film illisible, mode non géré) libère le film : un
+// nouvel essai ne changerait rien.
+func TestDemand_FilmLibereApresUnEchecDefinitif(t *testing.T) {
+	for _, tc := range []struct {
+		nom   string
+		err   error
+		state string
+	}{
+		{"carte hors catalogue", replaybuild.ErrMapNotInCatalog, domain.ReplayGenerationFailed},
+		{"clé de film inconnue", fmt.Errorf("lecture: %w", replaybuild.ErrUnknownFilmKey), domain.ReplayGenerationFailed},
+		{"mode non géré", replaybuild.ErrModeNonGere, domain.ReplayGenerationNotSupported},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			f := newDemandFixture(t, 0)
+			f.deps.Rebuild = func(context.Context, string, string) error { return tc.err }
+			f.rebind(t)
+			if _, _, err := f.svc.Enqueue(demandFor(1)); err != nil {
+				t.Fatal(err)
+			}
+			if st := f.waitFailed(t, 1); st.State != tc.state || st.Retryable {
+				t.Fatalf("attendu un échec définitif %s : %+v", tc.state, st)
+			}
+			if f.releaseN.Load() != 1 {
+				t.Fatalf("ReleaseFilm = %d, attendu 1 après un échec définitif", f.releaseN.Load())
+			}
+		})
+	}
+}
+
+// Un arrêt du serveur pendant la construction garde le film : la demande recommence à l'ouverture suivante.
+func TestDemand_FilmGardeApresUnArret(t *testing.T) {
+	f := newDemandFixture(t, 0)
+	started := make(chan struct{}, 1)
+	f.deps.Rebuild = func(ctx context.Context, _, _ string) error {
+		started <- struct{}{}
+		<-ctx.Done()
+		return fmt.Errorf("%w: %w", replaybuild.ErrMapNotInCatalog, ctx.Err())
+	}
+	f.rebind(t)
+	if _, _, err := f.svc.Enqueue(demandFor(1)); err != nil {
+		t.Fatal(err)
+	}
+	<-started
+	f.cancel()
+	f.wg.Wait()
+	if f.releaseN.Load() != 0 {
+		t.Fatal("un arrêt ne doit libérer aucun film")
 	}
 }

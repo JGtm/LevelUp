@@ -5,7 +5,7 @@
  * la carte n'en a pas ou que le rejeu l'a éteint.
  */
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import { DEFAULT_MAP_BACKGROUND_VARIANT } from '@/lib/replay/mapBackgroundVariant'
@@ -154,5 +154,89 @@ describe('MatchPositionsHeatmap — orientation et plan des murs du rejeu', () =
     rendre()
     expect(screen.queryByRole('switch')).toBeNull()
     expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+})
+
+describe('MatchPositionsHeatmap — l’Auto du rejeu, sur la zone du bloc', () => {
+  // Un fond de 10 x 20 m : une carte haute, que l'Auto tourne dans une zone large et laisse droite dans une zone haute.
+  const CAL_HAUTE = { metersPerPixel: 1, originX: 0, originY: 20, widthPx: 10, heightPx: 20, convention: 'test' }
+  /** La largeur utile de la zone du bloc que le test pose ; les observateurs de taille posés par le bloc. */
+  let largeurZone = 0
+  const observateurs: (() => void)[] = []
+
+  class ObservateurDeTaille {
+    private readonly rappel: () => void
+    constructor(rappel: () => void) {
+      this.rappel = rappel
+    }
+    observe() {
+      observateurs.push(this.rappel)
+    }
+    disconnect() {
+      const i = observateurs.indexOf(this.rappel)
+      if (i >= 0) observateurs.splice(i, 1)
+    }
+  }
+
+  function redimensionnerLaZone(largeur: number) {
+    largeurZone = largeur
+    act(() => {
+      for (const rappel of [...observateurs]) rappel()
+    })
+  }
+
+  beforeEach(() => {
+    largeurZone = 1000
+    observateurs.length = 0
+    vi.stubGlobal('ResizeObserver', ObservateurDeTaille)
+    vi.spyOn(HTMLDivElement.prototype, 'clientWidth', 'get').mockImplementation(() => largeurZone)
+    background.mockReturnValue({ data: { calibration: CAL_HAUTE } })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const rapport = () => screen.getByTestId('match-positions-frame').style.aspectRatio
+
+  it('zone large, aucun choix retenu : la carte haute est tournée (cadre au rapport tourné, quarts de tour au tracé)', () => {
+    rendre()
+    expect(dernierTrace().peinture?.turns).toBe(1)
+    expect(rapport()).toBe('20 / 10')
+  })
+
+  it('zone haute (étroite), aucun choix retenu : la même carte reste droite', () => {
+    largeurZone = 300
+    rendre()
+    expect(dernierTrace().peinture?.turns).toBe(0)
+    expect(rapport()).toBe('10 / 20')
+  })
+
+  it('zone large puis zone haute : la carte tourne, puis revient droite', () => {
+    rendre()
+    expect(dernierTrace().peinture?.turns).toBe(1)
+    redimensionnerLaZone(300)
+    expect(dernierTrace().peinture?.turns).toBe(0)
+    expect(rapport()).toBe('10 / 20')
+    redimensionnerLaZone(1000)
+    expect(dernierTrace().peinture?.turns).toBe(1)
+  })
+
+  it('une carte allongée reste droite dans la zone large : l’Auto ne tourne que ce qui gagne', () => {
+    background.mockReturnValue({ data: { calibration: CAL } })
+    rendre()
+    expect(dernierTrace().peinture?.turns).toBe(0)
+    expect(rapport()).toBe('20 / 10')
+  })
+
+  it('un choix retenu pour la carte prime sur l’Auto : 0 garde la carte haute droite en zone large, 2 est appliqué en zone haute', () => {
+    window.localStorage.setItem('replay-orientation.map-streets', '0')
+    const a = rendre()
+    expect(dernierTrace().peinture?.turns).toBe(0)
+    a.unmount()
+    window.localStorage.setItem('replay-orientation.map-streets', '2')
+    largeurZone = 300
+    rendre()
+    expect(dernierTrace().peinture?.turns).toBe(2)
   })
 })

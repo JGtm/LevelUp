@@ -18,8 +18,9 @@
  * comme le bouton favori voisin. Le point pulse seulement hors `prefers-reduced-motion`
  * (`motion-safe:`).
  */
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
@@ -53,30 +54,24 @@ export function AnalysisPendingBadge({ locale, inProgress, parts }: { locale: Lo
     setPos({ top, left })
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const close = () => {
-      setOpen(false)
-      setPos(null)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('scroll', close, true)
-    window.addEventListener('resize', close)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('scroll', close, true)
-      window.removeEventListener('resize', close)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
   const show = () => setOpen(true)
-  const hide = () => {
+  const hide = useCallback(() => {
     setOpen(false)
     setPos(null)
-  }
+  }, [])
+
+  // Échap : par le mécanisme commun, sans clic dehors (l'infobulle se ferme à la sortie et au flou).
+  useDismissable(open, hide, { outside: null })
+
+  useEffect(() => {
+    if (!open) return
+    window.addEventListener('scroll', hide, true)
+    window.addEventListener('resize', hide)
+    return () => {
+      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('resize', hide)
+    }
+  }, [open, hide])
 
   return (
     <span className="absolute top-2 right-2 z-10" data-testid="match-card-analysis-pending-badge">

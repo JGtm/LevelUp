@@ -391,20 +391,11 @@ type MatchHighlightEvent struct {
 	VictimGamertag *string `json:"victim_gamertag,omitempty"`
 	VictimTeamID   *int    `json:"victim_team_id,omitempty"`
 
-	// L'IDENTITÉ DE LA MÉDAILLE — events `medal` uniquement.
-	//
-	// MedalName est le nom ANGLAIS lu dans le film (highlight_events.raw_json,
-	// champ medal_name) : c'est la quantité MESURÉE, elle ne dépend d'aucune table.
-	// MedalNameID / MedalLabel / MedalDescription en sont la résolution locale-aware
-	// via medal_definitions (metadata.duckdb), MedalImageURL le visuel du référentiel
-	// (TitleAssetURLAdapter.MedalImageURL). Résolution absente → seuls MedalName
-	// voyage et le front l'écrit en toutes lettres — jamais le visuel d'une autre
-	// médaille.
-	MedalName        string `json:"medal_name,omitempty"`
-	MedalNameID      *int64 `json:"medal_name_id,omitempty"`
-	MedalLabel       string `json:"medal_label,omitempty"`
-	MedalDescription string `json:"medal_description,omitempty"`
-	MedalImageURL    string `json:"medal_image_url,omitempty"`
+	// MedalName : le nom ANGLAIS de la médaille, lu dans le film (highlight_events.raw_json,
+	// champ medal_name) — events `medal` uniquement. C'est la quantité MESURÉE, elle ne
+	// dépend d'aucune table ; libellé, description et visuel se résolvent contre le
+	// référentiel, hors de cet event.
+	MedalName string `json:"medal_name,omitempty"`
 }
 
 // États de la lecture d'assistance d'un kill (MatchHighlightEvent.AssistState). L'état

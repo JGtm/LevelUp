@@ -45,7 +45,7 @@ describe('generationView', () => {
   })
 
   it('failed : réessayer seulement si le serveur le dit, quelle que soit la raison', () => {
-    const retryable: ReplayGenerationReason[] = ['film_not_ready', 'fetch_failed', 'token_unavailable', 'build_failed']
+    const retryable: ReplayGenerationReason[] = ['fetch_failed', 'build_failed']
     for (const reason of retryable) {
       expect(generationView(st('failed', { reason, retryable: true }))).toEqual({
         action: 'retry',
@@ -62,6 +62,22 @@ describe('generationView', () => {
       })
     }
     expect(generationView(st('failed')).action).toBeNull()
+  })
+
+  it('failed pour un jeton indisponible : une phrase, jamais de bouton « Réessayer », même réessayable côté serveur', () => {
+    expect(generationView(st('failed', { reason: 'token_unavailable', retryable: true }))).toEqual({
+      action: null,
+      pending: null,
+      messageKey: 'tokenUnavailable',
+    })
+  })
+
+  it('failed pour un film pas encore prêt : une phrase dédiée, « Réessayer » reste offert', () => {
+    expect(generationView(st('failed', { reason: 'film_not_ready', retryable: true }))).toEqual({
+      action: 'retry',
+      pending: null,
+      messageKey: 'filmNotReady',
+    })
   })
 
   it('film_unavailable : une phrase, aucun bouton', () => {

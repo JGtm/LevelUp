@@ -69,26 +69,6 @@ func TestAssetURLAdapter_MapImageURL(t *testing.T) {
 	}
 }
 
-func TestAssetURLAdapter_MedalImageURL(t *testing.T) {
-	t.Parallel()
-	a := NewAssetURLAdapter()
-	cases := []struct {
-		name    string
-		medalID uint64
-		want    string
-	}{
-		{"numeric", 12345, "/static/medals/halo_infinite/12345.png"},
-		{"zero", 0, "/static/medals/halo_infinite/0.png"},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := a.MedalImageURL(c.medalID); got != c.want {
-				t.Errorf("MedalImageURL(%d) = %q, want %q", c.medalID, got, c.want)
-			}
-		})
-	}
-}
-
 func TestAssetURLAdapter_CSRRankImageURL(t *testing.T) {
 	t.Parallel()
 	a := NewAssetURLAdapter()

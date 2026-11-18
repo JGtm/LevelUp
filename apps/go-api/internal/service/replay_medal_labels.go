@@ -9,9 +9,9 @@ package service
 // et qui peut s'améliorer : même règle que les familles de châssis (cf. replay_vehicle_labels.go),
 // donc une résolution à la requête, jamais figée dans un artefact déjà cuit.
 //
-// LES MÊMES LECTURES QUE LES AUTRES PAGES. Le pont nom anglais -> identité est celui qui nomme les
-// médailles du fil de la page du match ([port.MedalNameLookup]) ; libellé, description et rareté sont
-// ceux de [port.MedalDefinitionsRepository] ; l'image est celle des tuiles de match
+// LES MÊMES LECTURES QUE LES AUTRES PAGES. Le pont nom anglais -> identité est
+// [port.MedalNameLookup] ; libellé, description et rareté sont ceux de
+// [port.MedalDefinitionsRepository] ; l'image est celle des tuiles de match
 // (`static.MedalImage` : PNG, ou découpe de feuille de sprites quand le titre en sert).
 //
 // UNE TABLE PAR LANGUE, PAS UNE LANGUE PAR REQUÊTE : le document est gros et mis en cache côté client,
@@ -143,11 +143,15 @@ func (s *replayService) medalRowsByLocale(ctx context.Context, ids []int64) map[
 }
 
 // medalLabelOf compose l'entrée d'UNE médaille : ses textes par langue, sa rareté, et son visuel.
+//
+// La rareté n'a qu'une valeur : elle se lit dans la première langue de [i18n.Locales] qui nomme la
+// médaille et la porte (la langue par défaut d'abord), jamais dans l'ordre, non fixé, d'un parcours de
+// table : deux requêtes sur la même base rendent la même rareté.
 func (s *replayService) medalLabelOf(id int64, rows map[i18n.Locale]map[int64]port.MedalDefinitionRow) replaydoc.MedalLabel {
 	lbl := replaydoc.MedalLabel{Text: i18n.Text{}}
 	desc := i18n.Text{}
-	for l, byID := range rows {
-		row, ok := byID[id]
+	for _, l := range i18n.Locales() {
+		row, ok := rows[l][id]
 		if !ok {
 			continue
 		}

@@ -60,7 +60,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchObjectiveEvents: () => queryKeys.matchObjectiveEvents(P, T, 'm'),
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
-  matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm'),
+  matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm', 'fr'),
   playerSyncStatus: () => queryKeys.playerSyncStatus(P, T),
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),

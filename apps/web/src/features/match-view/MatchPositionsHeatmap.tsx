@@ -55,6 +55,7 @@ import { heatRamp } from '@/lib/replay/heatPaint'
 import { orientBounds, pivotOf } from '@/lib/replay/orientation'
 import { visibleBounds } from '@/lib/replay/replayLogic'
 import { normalizeWallPlan } from '@/lib/replay/wallPlan'
+import { useContentWidth } from '@/lib/replay/useContentWidth'
 import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import { isWallPlanDrawn, resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
@@ -64,26 +65,8 @@ import { hasPositions } from './blockPredicates'
 
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
 import { peindreLesPositions } from './_positionsPaint'
+import { boiteDeLOccupation, dimensionsDuCadre, PLAN_MAX_HEIGHT_REM, PLAN_MAX_WIDTH_PCT } from './_positionsZone'
 import { useMatchView } from './queries'
-
-/**
- * PLAFOND DE HAUTEUR DU PLAN (2026-09-19, lot 2 du plan d'ajustements pré-v7.5). Le cadre
- * prenait toute la largeur de la carte : sur un plan carré, cela donnait un pavé aussi haut
- * que large, qui poussait le reste de l'onglet hors de l'écran. La hauteur est désormais bornée
- * DEUX FOIS — par un plafond absolu et par 60 % de la place disponible — et c'est la LARGEUR
- * qui se réduit pour la tenir, jamais le rapport du monde (un plan étiré désalignerait le
- * calque de chaleur de son fond).
- */
-const PLAN_MAX_HEIGHT_REM = 21.6
-
-/**
- * PART DE LA LARGEUR DISPONIBLE que le plan peut prendre. Les deux plafonds ont été
- * AGRANDIS DE 20 % le 2026-09-21 (lot D du plan d'ajustements supplémentaires pré-v7.5,
- * « agrandir un peu l'occupation du terrain ») : 18 rem -> 21,6 rem et 60 % -> 72 %. Le
- * rapport entre les deux est inchangé, donc la forme du cadre l'est aussi — seul son
- * gabarit grandit.
- */
-const PLAN_MAX_WIDTH_PCT = 72
 
 type TeamFilter = 'all' | 0 | 1
 
@@ -129,16 +112,21 @@ export function MatchPositionsHeatmap({
 
   const all = useMemo(() => positions ?? [], [positions])
   const { data: background } = useReplayMapBackground(playerSlug, matchId)
+  const frame = useMemo(() => (background ? mapFrame(background.calibration) : null), [background])
   // L'ORIENTATION, LE PLAN DES MURS ET LE STYLE DU FOND SONT CEUX DU REJEU 2D (mêmes préférences, lues
   // seulement, aucun réglage propre à ce bloc) : une carte tournée au rejeu l'est ici, et le fond plan
-  // (même calage, mêmes dimensions que le rendu) se pose au même endroit. La scène du zoom est celle
-  // de la carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
-  const { turns, showWallPlan, backgroundStyle } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id)
+  // (même calage, mêmes dimensions que le rendu) se pose au même endroit. SANS CHOIX RETENU (Auto), la règle du
+  // rejeu s'applique à la zone de CE bloc (`zoneRef` : sa largeur utile ; `boiteDeLOccupation`). La scène du zoom
+  // est celle de la carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
+  const { width: largeurUtile, ref: zoneRef } = useContentWidth()
+  const { turns, showWallPlan, backgroundStyle } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id, {
+    carte: dimensionsDuCadre(frame),
+    boite: boiteDeLOccupation(largeurUtile),
+  })
   const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
   // Les murs se décident sur la variante RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
   const { image, variante } = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0, demandee)
 
-  const frame = useMemo(() => (background ? mapFrame(background.calibration) : null), [background])
   const teamSplit = useMemo(() => hasTeamSplit(all), [all])
   const filtered = useMemo(
     () => (teamFilter === 'all' ? all : all.filter((p) => p.team === teamFilter)),
@@ -273,7 +261,7 @@ export function MatchPositionsHeatmap({
         ),
       })}
     >
-      <div className="p-3">
+      <div ref={zoneRef} className="p-3">
         {/* Le cadre prend le RAPPORT DU MONDE (bornes du fond), jamais un 16:9 : le calque et
             l'image se désaligneraient sur l'axe rogné (même règle que `TacticalPlanCard`). */}
         <div

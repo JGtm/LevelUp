@@ -19,15 +19,19 @@ function grenade(rank: number, count: number, stowed = false): NowGrenade {
 
 describe('respawnText', () => {
   it('écrit le retour lu : la vie suivante part 40 images plus tard, à 100 ms l’image', () => {
-    expect(respawnText({ respawnFrame: 180 }, DOC, 140, T)).toBe(`${T.respawnIn} 4.0 s`)
+    expect(respawnText({ respawnFrame: 180, departed: false }, DOC, 140, T)).toBe(`${T.respawnIn} 4.0 s`)
   })
 
   it('sans vie suivante : « Hors film · ne revient plus », jamais un délai deviné', () => {
-    expect(respawnText({ respawnFrame: -1 }, DOC, 140, T)).toBe(`${T.goneLabel} · ${T.goneValue}`)
+    expect(respawnText({ respawnFrame: -1, departed: false }, DOC, 140, T)).toBe(`${T.goneLabel} · ${T.goneValue}`)
   })
 
   it('un retour déjà passé ne rend jamais un délai négatif', () => {
-    expect(respawnText({ respawnFrame: 100 }, DOC, 140, T)).toBe(`${T.respawnIn} 0.0 s`)
+    expect(respawnText({ respawnFrame: 100, departed: false }, DOC, 140, T)).toBe(`${T.respawnIn} 0.0 s`)
+  })
+
+  it('un joueur parti : « a quitté la partie », ni compte à rebours ni « Hors film »', () => {
+    expect(respawnText({ respawnFrame: -1, departed: true }, DOC, 140, T)).toBe(T.presenceLeft)
   })
 })
 
@@ -76,10 +80,14 @@ describe('seatWaitingReading', () => {
 
 describe('respawnShort', () => {
   it('la forme abrégée dit le même retour que le texte long', () => {
-    expect(respawnShort({ respawnFrame: 180 }, DOC, 140, T)).toBe(`${T.roster.respawnShort} 4.0 s`)
+    expect(respawnShort({ respawnFrame: 180, departed: false }, DOC, 140, T)).toBe(`${T.roster.respawnShort} 4.0 s`)
   })
 
   it('sans vie suivante : le mot court « Hors film », jamais un délai', () => {
-    expect(respawnShort({ respawnFrame: -1 }, DOC, 140, T)).toBe(T.goneLabel)
+    expect(respawnShort({ respawnFrame: -1, departed: false }, DOC, 140, T)).toBe(T.goneLabel)
+  })
+
+  it('un joueur parti : « a quitté la partie »', () => {
+    expect(respawnShort({ respawnFrame: -1, departed: true }, DOC, 140, T)).toBe(T.presenceLeft)
   })
 })

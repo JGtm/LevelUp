@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -14,13 +15,7 @@ export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useDismissable(open, () => setOpen(false), { ref })
 
   const wrapperClass = [
     'flex items-stretch rounded-md overflow-hidden text-sm font-medium transition-colors',

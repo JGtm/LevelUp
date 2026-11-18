@@ -66,7 +66,7 @@ func (r *ServiceRegistry) enqueueReplayBuild(ctx context.Context, titleSlug, mat
 		return domain.BuildQueueJob{}, false, err
 	}
 
-	chunks, err := r.resolveFilmChunkURLs(ctx, titleSlug, fullID)
+	chunks, err := r.resolveFilmChunkURLs(ctx, fullID)
 	if err != nil {
 		return domain.BuildQueueJob{}, false, err
 	}
@@ -153,10 +153,10 @@ type filmChunkResolver interface {
 // ses morceaux. C'est LE geste qui exige les tokens — et le seul. Le seam
 // r.replayFilmResolver (nil en production) court-circuite la construction du client
 // pour que les tests exercent la frontière sans réseau.
-func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, titleSlug, matchID string) ([]domain.BuildQueueChunk, error) {
+func (r *ServiceRegistry) resolveFilmChunkURLs(ctx context.Context, matchID string) ([]domain.BuildQueueChunk, error) {
 	resolver := r.replayFilmResolver
 	if resolver == nil {
-		tokens, err := r.haloTokensForDrain(ctx, titleSlug)
+		tokens, err := r.haloTokensForDrain(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("résolution du manifeste de film: %w", err)
 		}

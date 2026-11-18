@@ -189,9 +189,12 @@ export function hasUnderLayer(fx: CardFx): boolean {
 /**
  * cardChrome — le fond et la bordure de la TUILE selon l'état vital (cf. TILE_* / DEAD_*).
  * Rendu par la fiche sur son conteneur (`borderColor` + `background`), pas par la couche
- * d'effets : le chrome est un état PERMANENT de la tuile, il ne s'empile ni ne s'anime.
+ * d'effets : le chrome est un état PERMANENT de la tuile, il ne s'empile ni ne s'anime. Un joueur PARTI
+ * (`PlayerState.departed`) n'est pas mort : sa tuile prend l'habit d'une place sans joueur, pas la teinte
+ * de la mort.
  */
-export function cardChrome(alive: boolean): CSSProperties {
+export function cardChrome(alive: boolean, departed = false): CSSProperties {
+  if (departed) return { ...SEAT_WAITING_CHROME }
   if (alive) {
     return {
       borderColor: 'var(--border)',

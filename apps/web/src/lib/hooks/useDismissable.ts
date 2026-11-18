@@ -11,6 +11,11 @@ export interface DismissableOptions<T extends HTMLElement> {
    * au geste, pas au relâché) ; `null` : aucun clic dehors, seul Échap ferme.
    */
   outside?: 'mousedown' | 'pointerdown' | null
+  /**
+   * `false` : la couche ne prend pas Échap (sa place dans la pile est laissée aux autres) ; seul le clic
+   * dehors ferme. Pour une couche dont Échap est lu par un champ de saisie qu'elle contient.
+   */
+  escape?: boolean
   /** Un second élément dont le clic ne ferme pas la couche (son déclencheur). */
   ignore?: RefObject<HTMLElement | null>
   /**
@@ -87,13 +92,14 @@ export function useDismissable<T extends HTMLElement = HTMLDivElement>(
   const ownRef = useRef<T>(null)
   const ref = options.ref ?? ownRef
   const outsideEvent = options.outside === undefined ? 'mousedown' : options.outside
+  const takesEscape = options.escape !== false
   const latest = useRef({ onClose, options })
   useEffect(() => {
     latest.current = { onClose, options }
   })
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !takesEscape) return
     return registerEscapeLayer({
       ref,
       current: () => ({
@@ -101,7 +107,7 @@ export function useDismissable<T extends HTMLElement = HTMLDivElement>(
         innerLayerSelector: latest.current.options.innerLayerSelector,
       }),
     })
-  }, [open, ref])
+  }, [open, ref, takesEscape])
 
   useEffect(() => {
     if (!open || !outsideEvent) return

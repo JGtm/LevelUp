@@ -299,7 +299,7 @@ export function ReplayCanvas({
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
   const { mapImage, turns, autoTurned, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, turns: orientation.retained, width, freeHeight, onManualMove: onFollowStop,
+    doc, background, turns: orientation.retained, scopeKey: matchId, width, freeHeight, onManualMove: onFollowStop,
   })
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')

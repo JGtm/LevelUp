@@ -44,7 +44,7 @@ func (r *ServiceRegistry) openPlaylistChildStore(ctx context.Context, titleSlug 
 // openPlaylistConfigFetcher prend les jetons Halo du catalogue et construit le client qui lit la configuration
 // d'une playlist.
 func (r *ServiceRegistry) openPlaylistConfigFetcher(ctx context.Context, titleSlug string) (port.PlaylistConfigFetcher, error) {
-	tokens, err := jetonsCatalogue(r, ctx, titleSlug)
+	tokens, err := jetonsCatalogue(r, ctx)
 	if err != nil {
 		return nil, err
 	}

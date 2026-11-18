@@ -61,18 +61,19 @@ func knownPerMinute[T any](items []T, get func(T) *int, secs func(T) int) (float
 }
 
 // matchRate rend la cadence arrondie d'un compte sur les matchs où il est connu et qui ont une durée,
-// 0 sans match retenu.
-func matchRate(matches []paceMatch, get func(paceMatch) *int) float64 {
-	v, ok := knownPerMinute(matches, get, func(m paceMatch) int { return m.secs })
-	if !ok {
-		return 0
-	}
-	return round2(v)
+// nil sans match retenu : « inconnu », jamais zéro.
+func matchRate(matches []paceMatch, get func(paceMatch) *int) *float64 {
+	return roundedRate(matches, get, func(m paceMatch) int { return m.secs })
 }
 
 // damageRate rend la cadence arrondie d'un dégât sur les matchs où il est connu, nil sans match retenu.
 func damageRate(damage []paceDamage, get func(paceDamage) *int) *float64 {
-	v, ok := knownPerMinute(damage, get, func(d paceDamage) int { return d.secs })
+	return roundedRate(damage, get, func(d paceDamage) int { return d.secs })
+}
+
+// roundedRate arrondit [knownPerMinute] ; nil quand aucun élément n'est retenu.
+func roundedRate[T any](items []T, get func(T) *int, secs func(T) int) *float64 {
+	v, ok := knownPerMinute(items, get, secs)
 	if !ok {
 		return nil
 	}
@@ -80,10 +81,10 @@ func damageRate(damage []paceDamage, get func(paceDamage) *int) *float64 {
 	return &r
 }
 
-// perMinuteHasSignal : au moins une cadence non nulle (sinon le graphe n'a rien à dire).
+// perMinuteHasSignal : au moins une cadence connue (sinon le graphe n'a rien à dire).
 func perMinuteHasSignal(entries []domain.SquadPerMinuteEntry) bool {
 	for _, e := range entries {
-		if e.KillsPerMinute > 0 || e.DeathsPerMinute > 0 || e.AssistsPerMinute > 0 ||
+		if e.KillsPerMinute != nil || e.DeathsPerMinute != nil || e.AssistsPerMinute != nil ||
 			e.DamageDealtPerMinute != nil || e.DamageTakenPerMinute != nil {
 			return true
 		}
@@ -161,6 +162,7 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	for _, gt := range selectedGamertags {
 		rows, ok := s.loadPaceRows(ctx, gt)
 		if !ok {
+			// Lignes illisibles : toutes les cadences restent inconnues (nil), jamais zéro.
 			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
 			continue
 		}

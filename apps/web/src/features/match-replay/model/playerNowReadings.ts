@@ -23,6 +23,7 @@ import { catalogText } from '../i18n/catalogLabel'
 import type { ReplayLocale } from '../i18n/i18n'
 import { abilityChargesAt, type AbilityChargeDisplay } from './abilityChargeLogic'
 import { carriedUsesAt } from './carriedUsesLogic'
+import { departuresOf, hasLeftAt } from './departureLogic'
 import { equippedWeapons } from './equippedLogic'
 import { ammoOfRecord } from './handCellHint'
 import {
@@ -187,7 +188,7 @@ export function nowAbility(
 }
 
 export function playerNowReadings({ player, doc, frame, presence, locale }: PlayerNowInput): PlayerNowReadings {
-  const state = playerStateAt(player, frame, presence)
+  const state = playerStateAt(player, frame, presence, hasLeftAt(departuresOf(doc), player.xuid, frame))
   const base = {
     state,
     eliminated: !state.alive && state.sinceDeath >= 0,

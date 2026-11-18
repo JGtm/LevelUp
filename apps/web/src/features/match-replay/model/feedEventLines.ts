@@ -56,6 +56,14 @@ export interface HillEventLine {
 export type ObjectiveStateLine = RoundEndEventLine | SkullEventLine | HillEventLine
 
 /**
+ * La nature de ce qui est pris, pour le pictogramme de la ligne : celle des socles de la carte
+ * (`PadFamily`, qui ne change pas) et un quatrième cas propre au fil, l'ÉQUIPEMENT QUI CHANGE LA PARTIE
+ * (surbouclier, camouflage : les équipements nommés par `POWER_PAD_KEYS`). Un équipement hors de cette liste
+ * reste un équipement ordinaire.
+ */
+export type PickupNature = PadFamily | 'powerupGameChanger'
+
+/**
  * Une prise d'arme ou de bonus sur un socle, ou (`ground`) une arme ramassée au sol : le NOM est
  * résolu par l'appelant.
  */
@@ -64,10 +72,10 @@ export interface PickupEventLine {
   xuid: string
   name: string
   /**
-   * La nature de ce qui est pris, celle qui teinte les socles de la carte (`padFamilyOf`) : arme de
-   * râtelier, arme spéciale ou équipement. Elle choisit le pictogramme de la ligne.
+   * La nature de ce qui est pris : arme de râtelier, arme spéciale, équipement, ou équipement qui change la
+   * partie. Elle choisit le pictogramme de la ligne.
    */
-  nature: PadFamily
+  nature: PickupNature
   /** Vrai pour une arme ramassée au sol ; absent pour une prise sur socle. */
   ground?: true
 }

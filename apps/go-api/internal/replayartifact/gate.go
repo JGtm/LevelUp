@@ -49,6 +49,12 @@ import (
 // disque en échec). Compteur de la porte (expvar).
 const CounterUnreadable = "replay_artifact_unreadable_total"
 
+// CounterTacticalUnreadable : fichiers tactiques (sous-dossier [title.SousDossierRasters] du dossier des
+// artefacts) présents dont les octets ne se décodent pas. Distinct de [CounterUnreadable] : un fichier tactique
+// se régénère depuis l'artefact, qui reste lisible ; ne pas le compter avec les rejeux illisibles garde ce
+// dernier compteur juste.
+const CounterTacticalUnreadable = "replay_tactical_unreadable_total"
+
 // gzipLevel : le niveau de compression de l'écriture. gzip de la bibliothèque standard, sans dépendance.
 const gzipLevel = 6
 
@@ -116,13 +122,26 @@ func ReadBytes(path string) ([]byte, error) {
 	return c.JSON, err
 }
 
+// reportUnreadable journalise et compte un fichier présent mais illisible : un fichier du sous-dossier des
+// fichiers tactiques sur son compteur et son message, tout autre sur ceux des artefacts. L'absence n'est ni
+// journalisée ni comptée.
 func reportUnreadable(path string, err error) error {
 	if errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+	if isTacticalFile(path) {
+		observability.IncCounter(CounterTacticalUnreadable)
+		slog.ErrorContext(context.Background(), "replayartifact: fichier tactique illisible", "path", path, "err", err)
+		return fmt.Errorf("fichier tactique %s : %w", path, err)
+	}
 	observability.IncCounter(CounterUnreadable)
 	slog.ErrorContext(context.Background(), "replayartifact: artefact illisible", "path", path, "err", err)
 	return fmt.Errorf("artefact %s : %w", path, err)
+}
+
+// isTacticalFile dit si `path` est un fichier du sous-dossier des fichiers tactiques ([title.SousDossierRasters]).
+func isTacticalFile(path string) bool {
+	return filepath.Base(filepath.Dir(path)) == title.SousDossierRasters
 }
 
 // decode rend le JSON d'octets stockés. Un fichier vide, ou sans l'en-tête gzip, est une erreur : ce n'est pas

@@ -40,6 +40,8 @@ export function ViewDropdown({
       <button
         ref={triggerRef}
         type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className={`rounded border px-2 py-1 text-xs bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
           isActive ? 'border-primary text-primary' : 'border-input text-muted-foreground hover:border-foreground'

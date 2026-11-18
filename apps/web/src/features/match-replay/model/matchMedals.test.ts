@@ -70,7 +70,7 @@ describe('le fil du rejeu lit les médailles du document', () => {
     header: { t0_ms: 0, playable_duration_seconds: 200, start_time: '2026-09-01T12:00:00Z' },
     scoreboard: [{ xuid: 'a', gamertag: 'Aa', team_side: 't0', is_me: true }],
     highlight_events: [
-      { event_type: 'medal', actor_xuid: 'a', event_time_ms: 40_000, medal_name: 'Ancienne Source', medal_label: 'X' },
+      { event_type: 'medal', actor_xuid: 'a', event_time_ms: 40_000, medal_name: 'Ancienne Source' },
     ],
   } as unknown as ReplayMatchContext
 

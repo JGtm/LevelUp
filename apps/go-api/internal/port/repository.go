@@ -239,8 +239,8 @@ type MatchViewRepository interface {
 	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
 
 	// LookupMedalMetaByName résout l'identité de médailles (medal_name_id, label,
-	// description locale-aware) depuis leur nom ANGLAIS — le pont entre les events
-	// `medal` du feed et medal_definitions. Best-effort : map vide si le référentiel
+	// description locale-aware) depuis leur nom ANGLAIS — le pont entre le nom que le
+	// film inscrit et medal_definitions. Best-effort : map vide si le référentiel
 	// est indisponible, jamais une erreur bloquante.
 	LookupMedalMetaByName(ctx context.Context, namesEN []string) (map[string]domain.MedalNameMeta, error)
 

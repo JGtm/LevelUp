@@ -10,12 +10,14 @@
  *    (`document.documentElement`), jamais la grille — le tiroir de réglages est rendu par portail
  *    dans `document.body`, hors de la grille, et un plein écran sur la grille le laisserait derrière.
  *    Il s'ajoute à n'importe quel cadre. API absente (navigateur, cadre sans permission) ou demande
- *    refusée : aucun natif, et le cadre reste ce qu'il est.
+ *    refusée : aucun natif, le cadre reste ce qu'il est, et le natif n'est plus voulu : le geste suivant
+ *    le redemande.
  *
  * DEPUIS LE STANDARD, le geste du système entre d'abord en Plein cadre : le natif seul sur la page
  * à largeur bornée n'a aucun sens. Ce Plein cadre-là appartient au geste : il se referme avec lui
- * (second geste, ou natif qui tombe). Un Plein cadre ouvert autrement (F) ne se referme jamais avec
- * le natif ; et le geste du système depuis le Cinéma ou le Plein cadre n'en change pas.
+ * (second geste, ou natif qui tombe), et le natif part avec lui par quelque chemin que le Plein cadre
+ * se referme (F, icône du Standard, Échap, « Quitter »). Un Plein cadre ouvert autrement (F) ne se
+ * referme jamais avec le natif ; et le geste du système depuis le Cinéma ou le Plein cadre n'en change pas.
  *
  * # COMMENT ON EN SORT
  *
@@ -91,12 +93,19 @@ function leaveNative(): void {
   })
 }
 
-/** Demande le plein écran natif de la page ; sans API, aucun natif et le cadre reste ce qu'il est. */
-function requestNative(): void {
+/**
+ * Demande le plein écran natif de la page ; sans API, aucun natif et le cadre reste ce qu'il est.
+ * `onUnavailable` est appelé quand le natif ne sera pas atteint : API absente (aussitôt) ou demande refusée.
+ */
+function requestNative(onUnavailable: () => void): void {
   const root = document.documentElement
-  if (!document.fullscreenEnabled || typeof root.requestFullscreen !== 'function') return
+  if (!document.fullscreenEnabled || typeof root.requestFullscreen !== 'function') {
+    onUnavailable()
+    return
+  }
   root.requestFullscreen().catch((err: unknown) => {
     console.warn('[replay-fullscreen] plein écran natif refusé', err)
+    onUnavailable()
   })
 }
 
@@ -133,7 +142,10 @@ export function useReplayFullscreen(control: ReplayFrameControl): ReplayFullscre
       ownsFrameRef.current = peek().frame === 'plein-cadre'
     }
     wantedRef.current = true
-    requestNative()
+    // Un natif refusé ou absent n'est plus voulu : sans cela le geste suivant « quitterait » un natif jamais atteint.
+    requestNative(() => {
+      if (!reachedRef.current) wantedRef.current = false
+    })
   }, [disabled, release, peek, toggleFullFrame])
 
   useEffect(() => {
@@ -152,10 +164,14 @@ export function useReplayFullscreen(control: ReplayFrameControl): ReplayFullscre
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [release])
 
-  // UN PLEIN CADRE REFERMÉ AILLEURS (F, Échap, « Quitter ») N'EST PLUS CELUI DU GESTE.
+  // UN PLEIN CADRE DU GESTE REFERMÉ AILLEURS (F, icône du Standard, « Quitter ») REND LE NATIF : il n'est plus celui
+  // du geste, et le natif qui l'accompagnait n'a plus de raison d'être. `release` n'appelle pas `exit` : le cadre
+  // est déjà refermé.
   useEffect(() => {
-    if (frame !== 'plein-cadre') ownsFrameRef.current = false
-  }, [frame])
+    if (frame === 'plein-cadre' || !ownsFrameRef.current) return
+    ownsFrameRef.current = false
+    release()
+  }, [frame, release])
 
   useEffect(() => {
     if (frame !== 'plein-cadre') return

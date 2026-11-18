@@ -3,10 +3,13 @@
  *
  * Une fin de vie qu'aucun frag ne revendique est soit une mort (chute, suicide, source de dégât sans
  * pictogramme), soit une fin de manche : le jeu supprime alors le corps encore commandé et replace les
- * joueurs, sans mort. Le film sait les distinguer, le client ne le déduit pas d'une fenêtre de temps :
+ * joueurs, sans mort, soit le départ d'un joueur : son corps est supprimé de même et sa présence au
+ * tableau se ferme (`model/departureLogic`). Le film sait distinguer la mort des deux autres, le client
+ * ne le déduit pas d'une fenêtre de temps :
  *
  *  - S1, le LÂCHER DE COMMANDE : le joueur lâche la commande de son corps (`endReason === 'released'`,
- *    instant `releaseFrame`). Un corps supprimé encore commandé (`'deleted'`) est une fin de manche.
+ *    instant `releaseFrame`). Un corps supprimé encore commandé (`'deleted'`) n'est pas une mort : fin
+ *    de manche ou départ, selon que le joueur a une vie ensuite ou que sa présence se ferme.
  *  - S2, le COMPTE À REBOURS : le compte à rebours de réapparition du joueur (`respawnCountdowns[]`)
  *    commence à la fin de la vie. Une fin de manche replace les joueurs sans compte à rebours.
  *

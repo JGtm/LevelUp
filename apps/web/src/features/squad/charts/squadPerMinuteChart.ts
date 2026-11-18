@@ -23,7 +23,8 @@
  *     sélectionné, elle ne dit pas quelle barre est à qui — c'est le rôle de la légende.
  *   - Label sur barre = valeur ABSOLUE (frags positifs, morts négatifs vers le bas
  *     mais lus en valeur positive).
- *   - Un joueur sans valeur pour une catégorie (dégâts inconnus) laisse un trou : jamais un zéro.
+ *   - Un joueur sans valeur pour une catégorie (frags, morts, assistances ou dégâts inconnus : le
+ *     serveur omet le champ) laisse un trou : jamais un zéro.
  */
 import type { ChartOption } from '@/components/charts/chartOption'
 import {

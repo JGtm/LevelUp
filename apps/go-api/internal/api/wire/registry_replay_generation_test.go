@@ -89,14 +89,15 @@ func (s fakeAuthStoreWire) Load(xuid string) (*auth.UserTokens, error) {
 func (fakeAuthStoreWire) UpdateOAuthRefreshToken(string, string) error { return nil }
 func (fakeAuthStoreWire) ClearReauthRequired(string) error             { return nil }
 
-// La présence d'un jeton est une lecture du magasin pour CE xuid : refresh token non vide, rien d'autre.
+// La présence d'un jeton est une lecture du magasin pour CE xuid : refresh token non vide et sans reconnexion requise.
 func TestReplayTokenPresence(t *testing.T) {
 	r := &ServiceRegistry{authStore: fakeAuthStoreWire{users: map[string]*auth.UserTokens{
 		"avec":  {OAuthRefreshToken: "rt"},
 		"vide":  {OAuthRefreshToken: "  "},
+		"mort":  {OAuthRefreshToken: "rt-revoque", ReauthRequired: true},
 		"autre": {OAuthRefreshToken: "rt-autre"},
 	}}}
-	for xuid, want := range map[string]bool{"avec": true, "vide": false, "absent": false, "": false} {
+	for xuid, want := range map[string]bool{"avec": true, "vide": false, "mort": false, "absent": false, "": false} {
 		if got := r.replayTokenPresence(xuid); got != want {
 			t.Errorf("replayTokenPresence(%q) = %v, attendu %v", xuid, got, want)
 		}
@@ -106,5 +107,25 @@ func TestReplayTokenPresence(t *testing.T) {
 	}
 	if (&ServiceRegistry{authStore: fakeAuthStoreWire{err: errors.New("illisible")}}).replayTokenPresence("avec") {
 		t.Error("un magasin illisible se lit « pas de jeton »")
+	}
+}
+
+// La revalidation d'une demande résout le profil de la demande (son slug, jamais un autre) et rend l'erreur de
+// résolution enveloppée : la file clôt alors la demande en échec réessayable.
+func TestReplayGeneration_RevalidationResoutLeProfilDeLaDemande(t *testing.T) {
+	boom := errors.New("profil retiré")
+	var resolved []string
+	r := &ServiceRegistry{resolve: func(_ context.Context, slug string) (*duckdb.PlayerDB, error) {
+		resolved = append(resolved, slug)
+		return nil, boom
+	}}
+	_, err := r.revalidateReplayDemand(context.Background(), domain.ReplayGenerationDemand{
+		TitleSlug: "halo_infinite", MatchID: "0a0a0a0a-1-2-3-4", PlayerSlug: "UnPseudo", XUID: "x",
+	})
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v, attendu l'erreur de résolution", err)
+	}
+	if len(resolved) != 1 || resolved[0] != "UnPseudo" {
+		t.Fatalf("slug résolu = %v, attendu celui de la demande", resolved)
 	}
 }

@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { REPLAY_TEXT } from './i18n/i18n'
 import { COTES_FENETRE_FICHE } from './model/cotesFenetreFiche'
-import { largeurRequiseRangee } from './model/rowLayout'
+import { largeurRequiseRangee, MARGE_BASCULE_PX } from './model/rowLayout'
 import { goToFrame, mountReplayPage, stubReplayPage, unstubReplayPage } from './test/replayPageHarness'
 import { scoreboardRow } from './test/scoreboardRow'
 import { testReplayDoc } from './test/testDoc'
@@ -271,7 +271,7 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
     await mount(L4)
     goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
-    largeurCorps = L4 - 1
+    largeurCorps = L4 - MARGE_BASCULE_PX - 1
     act(() => {
       for (const { cible, rappel } of [...observateurs]) if (cible.hasAttribute('data-replay-body')) rappel()
     })

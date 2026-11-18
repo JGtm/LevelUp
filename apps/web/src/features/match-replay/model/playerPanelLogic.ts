@@ -9,14 +9,16 @@
  *
  * TROIS ACTIONS. Suivre cadre la carte sur le joueur à chaque image, Seul n'affiche que lui,
  * Masquer le retire. Exclusions : Seul coupe Masquer ; Suivre coupe Masquer ; Masquer coupe
- * Seul ET Suivre de ce même joueur.
+ * Seul ET Suivre de ce même joueur ; Seul coupe le Suivre d'un AUTRE joueur (la carte ne se cadre
+ * pas sur un joueur qu'elle ne dessine pas) ; suivre un AUTRE joueur que celui de la fiche coupe
+ * Seul.
  *
  * SEUL ET MASQUER tiennent à la fiche : ils ne valent que pour son joueur, ne se basculent que
  * fiche ouverte, et ouvrir une autre fiche comme refermer la fiche les remet à zéro — un joueur
  * masqué ne reste jamais masqué sans qu'on puisse le voir. SUIVRE est la caméra, un état à part
  * (`followXuid` : qui, ou personne) : il ne dépend pas de la fiche, que l'on ferme ou change sans
  * l'éteindre, et `follow` l'accepte fiche fermée. Il s'éteint par le geste manuel de cadrage
- * (`stopFollow`), par un nouveau choix, ou par Masquer sur le joueur suivi. Les fiches, elles, ne
+ * (`stopFollow`), par un nouveau choix, par Masquer sur le joueur suivi, ou par Seul sur un autre joueur. Les fiches, elles, ne
  * sont jamais filtrées : un joueur présent reste dans la colonne.
  *
  * LE JOUEUR SUIVI (`trackedPlayerOf`) n'est pas dans cet état : c'est le joueur REGARDÉ par la page,
@@ -85,14 +87,26 @@ export function reducePlayerPanel(state: PlayerPanelState, event: PlayerPanelEve
   }
 }
 
-/** Suivre un joueur (ou personne) ; suivre le joueur masqué lève son masquage. */
+/**
+ * Suivre un joueur (ou personne) ; suivre le joueur masqué lève son masquage, et suivre un autre joueur
+ * que celui de la fiche lève Seul (la carte ne dessinerait que le joueur de la fiche, hors du cadre).
+ */
 function followPlayer(state: PlayerPanelState, xuid: string | null): PlayerPanelState {
   if (state.followXuid === xuid) return state
   const unhide = xuid !== null && state.hide && state.xuid === xuid
-  return { ...state, followXuid: xuid, hide: unhide ? false : state.hide }
+  const unsolo = xuid !== null && state.solo && state.xuid !== xuid
+  return {
+    ...state,
+    followXuid: xuid,
+    hide: unhide ? false : state.hide,
+    solo: unsolo ? false : state.solo,
+  }
 }
 
-/** Bascule une action de la fiche ouverte en appliquant les exclusions (Seul coupe Masquer, Suivre coupe Masquer, Masquer coupe Seul et Suivre). */
+/**
+ * Bascule une action de la fiche ouverte en appliquant les exclusions (Seul coupe Masquer et le Suivre
+ * d'un autre joueur, Suivre coupe Masquer, Masquer coupe Seul et le Suivre du joueur masqué).
+ */
 function toggleAction(state: PlayerPanelState, action: PlayerPanelAction): PlayerPanelState {
   if (action === 'follow') return followPlayer(state, state.followXuid === state.xuid ? null : state.xuid)
   if (state[action]) return { ...state, [action]: false }
@@ -100,7 +114,9 @@ function toggleAction(state: PlayerPanelState, action: PlayerPanelAction): Playe
     const stillFollowed = state.followXuid === state.xuid ? null : state.followXuid
     return { ...state, hide: true, solo: false, followXuid: stillFollowed }
   }
-  return { ...state, solo: true, hide: false }
+  // Seul garde le suivi du joueur de la fiche, et éteint celui d'un autre.
+  const stillFollowed = state.followXuid === state.xuid ? state.followXuid : null
+  return { ...state, solo: true, hide: false, followXuid: stillFollowed }
 }
 
 /** Le joueur dont le panneau est ouvert, avec ses actions : ce que la page donne au canvas. */

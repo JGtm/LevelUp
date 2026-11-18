@@ -37,7 +37,8 @@
  * victime garantit qu'une mort déjà servie par une ligne de kill n'est JAMAIS doublée.
  * La ligne dit seulement qu'une vie s'est fermée ; que ce soit une MORT, le film le prouve
  * (`ReplayDeath.proven`, cf. `model/lifeEndProof`) : une fin de manche supprime le corps sans
- * mort et la ligne neutre n'en est pas une.
+ * mort et la ligne neutre n'en est pas une. Le DÉPART d'un joueur (`model/departureLogic`) n'en
+ * fait aucune : son corps supprimé n'est pas une fin de vie à dire.
  *
  * CE QUE LE CLIENT NE PEUT PAS DÉDUIRE DE CES MORTS, c'est DE QUOI le joueur est mort :
  * cela se lit dans le film, hors ligne. Le document le publie (`doc.neutralDeaths`, schéma
@@ -55,10 +56,14 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import type { MedalEvent } from './medalEvent'
+import { departuresOf, documentHorizonFrame, SURVIVOR_GRACE_MS } from './departureLogic'
 import { countdownStartsByXuid, lifeEndProof } from './lifeEndProof'
 import { replayClock, type ReplayClock } from './replayClock'
 import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+
+export type { MedalEvent, MedalSpriteCut } from './medalEvent'
 
 /**
  * Tolérance de rattachement d'une médaille au kill du même acteur, en ms. Mesuré sur
@@ -80,20 +85,6 @@ export interface ReplayKill extends Omit<KillEvent, 'ally'> {
   replayMs: number
   /** Les médailles décrochées par le tueur sur ce kill (±500 ms), dans l'ordre du fil. */
   medals: MedalEvent[]
-}
-
-/** Une médaille du fil, lue dans le document de rejeu (cf. `matchMedals`). */
-export interface MedalEvent {
-  /** Instant sur l'horloge gameplay (`medals[].ms` du document). */
-  tMs: number
-  xuid: string
-  gamertag: string
-  /** Nom ANGLAIS mesuré (film). Toujours présent — c'est la clé du référentiel. */
-  name: string
-  /** Libellé dans la langue de la page. Vide = non résolu : le nom brut s'affiche en toutes lettres. */
-  label: string
-  description: string
-  imageUrl: string
 }
 
 /**
@@ -165,13 +156,6 @@ export const KILL_MATCH_TOL_MS = 2_000
  */
 export const NEUTRAL_DEATH_VETO_MS = 4_000
 
-/**
- * Marge sous l'horizon de l'artefact au-delà de laquelle une fin de vie est une VRAIE
- * mort et non un survivant de fin de partie (mesure 000d5950 : les 3 vies des survivants
- * se ferment dans les 3 dernières secondes du document).
- */
-export const SURVIVOR_GRACE_MS = 3_000
-
 /** Une mort SANS ligne de kill (suicide, chute, sortie), lue dans les pistes du film. */
 export interface ReplayDeath {
   /** Instant de la fin de vie sur l'horloge du rejeu — le même que le flash de fiche. */
@@ -218,6 +202,8 @@ interface LifeEnd {
   closed: boolean
   /** Le film prouve que cette fin de vie est une mort (`lifeEndProof` non nul). */
   proven: boolean
+  /** Dernière vie d'un joueur parti (`model/departureLogic`) : une fin de vie qui n'est pas une mort, jamais « close ». */
+  departure: boolean
   used: boolean
 }
 
@@ -364,24 +350,26 @@ export function attachDeathKinds(
 /**
  * lifeEndsOf relit les fins de vie des pistes et dit lesquelles sont CLOSES avant
  * l'horizon du document (une vie qui se ferme dans les dernières secondes est un survivant
- * de fin de partie, pas une mort) et lesquelles le film PROUVE comme des morts (`lifeEndProof`).
- * Partagé par les deux recalages : la définition d'une
+ * de fin de partie, pas une mort), lesquelles le film PROUVE comme des morts (`lifeEndProof`) et
+ * lesquelles sont le DÉPART d'un joueur (`model/departureLogic` : jamais closes, donc jamais une
+ * ligne de mort). Partagé par les deux recalages : la définition d'une
  * fin de vie ne doit pas dépendre du chemin qui la lit.
  */
 function lifeEndsOf(doc: ReplayDocumentReady): LifeEnd[] {
   const ends: LifeEnd[] = []
   const { starts } = countdownStartsByXuid(doc)
-  let maxEndFrame = 0
+  const departures = departuresOf(doc)
   for (const tr of doc.tracks) {
     if (!tr.xuid || tr.points.length === 0) continue
-    const endFrame = trackWindow(tr).end
-    if (endFrame > maxEndFrame) maxEndFrame = endFrame
     const proven = lifeEndProof(tr, doc, starts) !== null
-    ends.push({ xuid: tr.xuid, endMs: frameToMs(endFrame, doc), closed: false, proven, used: false })
+    const left = departures.get(tr.xuid)
+    const departure = left?.deletedBody === true && left.life === tr
+    const endMs = frameToMs(trackWindow(tr).end, doc)
+    ends.push({ xuid: tr.xuid, endMs, closed: false, proven, departure, used: false })
   }
-  const horizonFrame = (doc.frameCount ?? 0) > 1 ? (doc.frameCount ?? 0) - 1 : maxEndFrame
-  const graceMs = frameToMs(Math.max(0, horizonFrame - msToFrames(SURVIVOR_GRACE_MS, doc)), doc)
-  for (const e of ends) e.closed = e.endMs < graceMs
+  const graceFrame = Math.max(0, documentHorizonFrame(doc) - msToFrames(SURVIVOR_GRACE_MS, doc))
+  const graceMs = frameToMs(graceFrame, doc)
+  for (const e of ends) e.closed = e.endMs < graceMs && !e.departure
   return ends
 }
 

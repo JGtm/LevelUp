@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -113,5 +114,86 @@ func TestDemand_DemandeAvantLaRepriseNEcrasePasLeFichier(t *testing.T) {
 		if _, ok := f.status(n); !ok {
 			t.Errorf("la demande %d doit être en file", n)
 		}
+	}
+}
+
+// une demande reprise après un redémarrage est revalidée avant tout téléchargement : un match qui n'est plus générable
+// clôt la demande avec l'état de la sonde, sans film téléchargé ni rejeu construit.
+func TestDemand_RepriseRevalideAvantLeTelechargement(t *testing.T) {
+	cases := []struct {
+		name   string
+		status domain.ReplayGenerationStatus
+	}{
+		{"mode devenu non géré", domain.ReplayGenerationStatus{State: domain.ReplayGenerationNotSupported, Reason: domain.ReplayGenReasonModeUnmanaged}},
+		{"jeton retiré", domain.ReplayGenerationStatus{State: domain.ReplayGenerationNotSupported, Reason: domain.ReplayGenReasonNoToken}},
+		{"film déclaré absent", domain.ReplayGenerationStatus{State: domain.ReplayGenerationFilmUnavailable}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDemandFixture(t, 0)
+			f.cancel()
+			f.wg.Wait()
+			var probed atomic.Int32
+			f.deps.Revalidate = func(context.Context, domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, error) {
+				probed.Add(1)
+				return tc.status, nil
+			}
+			f.store.demands = []domain.ReplayGenerationDemand{demandFor(1)}
+			f.rebind(t)
+			f.svc.ResumeDemands()
+			st := f.waitFailed(t, 1)
+			if st.State != tc.status.State || st.Reason != tc.status.Reason {
+				t.Fatalf("issue = %+v, attendu %+v", st, tc.status)
+			}
+			if f.fetchN.Load() != 0 || len(f.orderSnapshot()) != 0 || probed.Load() != 1 {
+				t.Fatalf("rien ne doit être téléchargé ni construit : fetch=%d builds=%v probes=%d",
+					f.fetchN.Load(), f.orderSnapshot(), probed.Load())
+			}
+			waitFor(t, "magasin vidé", func() bool { return len(f.store.snapshot()) == 0 })
+		})
+	}
+}
+
+// une demande toujours générable est servie après sa revalidation, qui reçoit la demande reprise telle quelle.
+func TestDemand_RepriseGenerableEstServie(t *testing.T) {
+	f := newDemandFixture(t, 0)
+	f.cancel()
+	f.wg.Wait()
+	var got atomic.Value
+	f.deps.Revalidate = func(_ context.Context, d domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, error) {
+		got.Store(d)
+		return domain.ReplayGenerationStatus{State: domain.ReplayGenerationGeneratable}, nil
+	}
+	f.store.demands = []domain.ReplayGenerationDemand{demandFor(1)}
+	f.rebind(t)
+	f.svc.ResumeDemands()
+	f.waitSettled(t, 1)
+	if f.fetchN.Load() != 1 || len(f.orderSnapshot()) != 1 {
+		t.Fatalf("la demande générable doit être servie : fetch=%d builds=%v", f.fetchN.Load(), f.orderSnapshot())
+	}
+	if d, _ := got.Load().(domain.ReplayGenerationDemand); d.PlayerSlug != "joueur" || d.MatchID != demandFor(1).MatchID {
+		t.Fatalf("la revalidation doit recevoir la demande : %+v", d)
+	}
+}
+
+// une sonde en échec clôt la demande en échec réessayable (journalisé), sans rien télécharger.
+func TestDemand_RevalidationEnEchecClotEnEchecReessayable(t *testing.T) {
+	f := newDemandFixture(t, 0)
+	logs := captureLogs(t)
+	f.cancel()
+	f.wg.Wait()
+	f.deps.Revalidate = func(context.Context, domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, error) {
+		return domain.ReplayGenerationStatus{}, errors.New("base occupée")
+	}
+	f.rebind(t)
+	if _, _, err := f.svc.Enqueue(demandFor(1)); err != nil {
+		t.Fatal(err)
+	}
+	st := f.waitFailed(t, 1)
+	if st.State != domain.ReplayGenerationFailed || st.Reason != domain.ReplayGenReasonFetchFailed || !st.Retryable {
+		t.Fatalf("issue = %+v", st)
+	}
+	if f.fetchN.Load() != 0 || !strings.Contains(logs.String(), "level=ERROR") || !strings.Contains(logs.String(), "base occupée") {
+		t.Fatalf("aucun téléchargement et une erreur journalisée attendus : fetch=%d logs=%s", f.fetchN.Load(), logs.String())
 	}
 }

@@ -1,0 +1,56 @@
+// @vitest-environment node
+// JETABLE (étape 0.2) : compte du garde-rail des couches (features/dismissableLayers.guard.test.ts).
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import ts from 'typescript'
+import { it } from 'vitest'
+import { lineOf, scanSources, visitAll, type ScannedSource } from '@/lib/archScan.testutil'
+
+const GESTES = new Set(['pointerdown', 'mousedown'])
+const CMP = new Set<ts.SyntaxKind>([
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+])
+const lit = (n: ts.Node, v: string) => ts.isStringLiteralLike(n) && n.text === v
+
+function patterns(s: ScannedSource): number[] {
+  const lines: number[] = []
+  visitAll(s, (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'addEventListener' &&
+      node.arguments[0] !== undefined &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      GESTES.has(node.arguments[0].text)
+    )
+      lines.push(lineOf(s, node))
+    if (ts.isBinaryExpression(node) && CMP.has(node.operatorToken.kind) && (lit(node.left, 'Escape') || lit(node.right, 'Escape')))
+      lines.push(lineOf(s, node))
+  })
+  return lines
+}
+
+it('compte', () => {
+  const guardText = fs.readFileSync(path.join(process.cwd(), 'src/features/dismissableLayers.guard.test.ts'), 'utf8')
+  const exemptions = [...guardText.matchAll(/^ {2}'(features\/[^']+)':/gm)].map((m) => m[1])
+  const tsx = scanSources({ under: 'features', tsxOnly: true })
+  const rejeu = tsx.filter((s) => s.rel.startsWith('features/match-replay/'))
+  const hors = tsx.filter((s) => !s.rel.startsWith('features/match-replay/'))
+  const avecMotifHors = hors.filter((s) => patterns(s).length > 0).map((s) => s.rel)
+  const avecMotifRejeu = rejeu.filter((s) => patterns(s).length > 0).map((s) => s.rel)
+  const out = {
+    tsxBalayes: tsx.length,
+    dansRejeu: rejeu.length,
+    horsRejeu: hors.length,
+    fichiersAvecMotifRejeu: avecMotifRejeu,
+    fichiersAvecMotifHorsRejeu: avecMotifHors,
+    exemptions,
+    exemptionsSansObjet: exemptions.filter((e) => !avecMotifHors.includes(e)),
+    motifsHorsRejeuNonExemptes: avecMotifHors.filter((f) => !exemptions.includes(f)),
+  }
+  fs.writeFileSync(path.join(os.tmpdir(), 'bl1118_couches.json'), JSON.stringify(out, null, 1))
+})

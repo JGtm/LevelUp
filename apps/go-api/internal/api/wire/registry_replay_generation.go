@@ -10,7 +10,10 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
@@ -39,8 +42,22 @@ func (r *ServiceRegistry) replayGenerationFor(pdb *duckdb.PlayerDB, slug string,
 		service.ReplayGenerationPlayer{Slug: slug, XUID: pdb.XUID, Gamertag: pdb.Gamertag})
 }
 
-// replayTokenPresence dit si le joueur a un jeton de rafraîchissement au magasin : une lecture du fichier du joueur,
-// aucun échange réseau. Une erreur de lecture se journalise et se lit « pas de jeton ».
+// revalidateReplayDemand rend l'état que la page servirait aujourd'hui pour le match d'une demande en file, d'après le
+// joueur qui l'a posée : les mêmes contrôles que la demande initiale (registre, mode, bit « film absent », jeton), sans
+// l'état connu de la file. La file s'en sert avant de télécharger (replayregen.Deps.Revalidate).
+func (r *ServiceRegistry) revalidateReplayDemand(ctx context.Context, d domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, error) {
+	pdb, err := r.resolve(ctxkeys.WithTitleSlug(ctx, d.TitleSlug), d.PlayerSlug)
+	if err != nil {
+		return domain.ReplayGenerationStatus{}, fmt.Errorf("profil de la demande: %w", err)
+	}
+	svc := r.replayGenerationFor(pdb, d.PlayerSlug, nil, &replayMatchProbe{reg: r, pdb: pdb})
+	return svc.GenerationStatus(ctx, d.TitleSlug, d.MatchID)
+}
+
+// replayTokenPresence dit si le joueur a un jeton de rafraîchissement UTILISABLE au magasin : présent et non marqué
+// « reconnexion requise » (un jeton que l'éditeur a révoqué ferait échouer le téléchargement ; le joueur doit d'abord
+// se reconnecter). Une lecture du fichier du joueur, aucun échange réseau. Une erreur de lecture se journalise et se
+// lit « pas de jeton ».
 func (r *ServiceRegistry) replayTokenPresence(xuid string) bool {
 	if r.authStore == nil || xuid == "" {
 		return false
@@ -52,7 +69,7 @@ func (r *ServiceRegistry) replayTokenPresence(xuid string) bool {
 		}
 		return false
 	}
-	return user != nil && strings.TrimSpace(user.OAuthRefreshToken) != ""
+	return user != nil && !user.ReauthRequired && strings.TrimSpace(user.OAuthRefreshToken) != ""
 }
 
 // replayMatchProbe lit ce que la base et le disque disent d'un match pour la génération.
@@ -61,16 +78,16 @@ type replayMatchProbe struct {
 	pdb *duckdb.PlayerDB
 }
 
-// ProbeReplayMatch : le registre (identité complète, mode géré), le bit « film absent », le rejeu rangé et le film
+// ProbeReplayMatch : le registre (identité complète, mode géré, heure de fin), le bit « film absent », le rejeu rangé et le film
 // archivé. Un match absent du registre ou dont le préfixe est ambigu rend Known=false.
 func (p *replayMatchProbe) ProbeReplayMatch(ctx context.Context, titleSlug, matchID string) (port.ReplayMatchProbeResult, error) {
-	hit, err := p.registryMatch(ctx, titleSlug, matchID)
+	hit, endedAt, err := p.registryMatch(ctx, titleSlug, matchID)
 	if err != nil || hit == nil {
 		return port.ReplayMatchProbeResult{}, err
 	}
 	paths := p.reg.cfg.PathResolver()
 	res := port.ReplayMatchProbeResult{
-		FullID: hit.ID, Known: true, UnmanagedMode: hit.UnmanagedMode,
+		FullID: hit.ID, Known: true, UnmanagedMode: hit.UnmanagedMode, EndedAt: endedAt,
 		ArtifactPresent: replayartifact.Exists(paths.ReplayArtifactPath(titleSlug, hit.ID)),
 	}
 	probes, err := duckdb.NewAnalysisProbeRepo(p.pdb).LoadAnalysisProbes(ctx, []string{hit.ID})
@@ -87,25 +104,31 @@ func (p *replayMatchProbe) ProbeReplayMatch(ctx context.Context, titleSlug, matc
 	return res, nil
 }
 
-// registryMatch lit le match au registre de la base partagée du titre ; nil quand il est inconnu ou ambigu. La
-// lecture est rendue avant les autres (une lecture partagée à la fois).
-func (p *replayMatchProbe) registryMatch(ctx context.Context, titleSlug, matchID string) (*port.ReplayRegistryMatch, error) {
+// registryMatch lit le match au registre de la base partagée du titre, avec son heure de fin (zéro quand le registre ne
+// la porte pas) ; nil quand il est inconnu ou ambigu. La lecture est rendue avant les autres (une lecture partagée à la
+// fois).
+func (p *replayMatchProbe) registryMatch(ctx context.Context, titleSlug, matchID string) (*port.ReplayRegistryMatch, time.Time, error) {
 	shared, release, err := p.reg.titleBases().ReadShared(ctx, titleSlug)
 	if err != nil {
-		return nil, fmt.Errorf("registre des matchs: %w", err)
+		return nil, time.Time{}, fmt.Errorf("registre des matchs: %w", err)
 	}
 	defer release()
-	hits, err := duckdb.NewReplayRegistryRepo(shared, nil).MatchesByIDOrPrefix(ctx, strings.TrimSpace(matchID))
+	repo := duckdb.NewReplayRegistryRepo(shared, nil)
+	hits, err := repo.MatchesByIDOrPrefix(ctx, strings.TrimSpace(matchID))
 	if err != nil {
-		return nil, fmt.Errorf("registre des matchs: %w", err)
+		return nil, time.Time{}, fmt.Errorf("registre des matchs: %w", err)
 	}
 	switch {
 	case len(hits) == 0:
-		return nil, nil
+		return nil, time.Time{}, nil
 	case len(hits) > 1:
 		slog.WarnContext(ctx, "replay_generation: préfixe de match ambigu, match lu inconnu",
 			"titleSlug", titleSlug, "match_id", matchID, "matches", len(hits))
-		return nil, nil
+		return nil, time.Time{}, nil
 	}
-	return &hits[0], nil
+	endedAt, err := repo.EndedAt(ctx, hits[0].ID)
+	if err != nil {
+		return nil, time.Time{}, fmt.Errorf("registre des matchs: %w", err)
+	}
+	return &hits[0], endedAt, nil
 }

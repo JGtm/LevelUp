@@ -106,8 +106,8 @@ func highlightEventList(events []domain.EventRaw) []domain.MatchHighlightEvent {
 			ActorXUID:     e.XUID,
 			ActorGamertag: e.Gamertag,
 		}
-		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
-		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
+		// Le nom brut de la médaille voyage avec l'event ; son libellé et son visuel se
+		// résolvent contre le référentiel, hors de l'event.
 		if e.MedalName != nil {
 			ev.MedalName = *e.MedalName
 		}

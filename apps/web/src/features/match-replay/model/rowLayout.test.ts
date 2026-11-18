@@ -6,12 +6,15 @@ import { describe, expect, it } from 'vitest'
 
 import {
   colonnesGrandeEquipe,
+  dispositionAvecMemoire,
   dispositionEquipes,
   emplacementScoreDe,
   grandeEquipe,
   largeurRequiseRangee,
   largeurRequiseRangeeGrandeEquipe,
+  MARGE_BASCULE_PX,
   planFeedPosed,
+  type DispositionEquipes,
   rowFits,
   rowFitsGrandeEquipe,
 } from './rowLayout'
@@ -229,5 +232,88 @@ describe('planFeedPosed', () => {
       expect(planFeedPosed(frame, 'rangee-grande-equipe')).toBe(true)
       expect(planFeedPosed(frame, 'colonne')).toBe(false)
     }
+  })
+})
+
+describe('dispositionAvecMemoire : la marge de bascule', () => {
+  const entree = (largeurCorps: number, placesParCamp: readonly number[] = [4, 4]) => ({ camps: DEUX_CAMPS, placesParCamp, largeurCorps })
+
+  it('la marge est de 24 px', () => {
+    expect(MARGE_BASCULE_PX).toBe(24)
+  })
+
+  it('sans précédente, ou après la colonne : le choix sans mémoire, on entre dans la rangée à la largeur demandée', () => {
+    for (const precedente of [null, 'colonne'] as const) {
+      expect(dispositionAvecMemoire(entree(1285), precedente), String(precedente)).toBe('colonne')
+      expect(dispositionAvecMemoire(entree(1286), precedente), String(precedente)).toBe('rangee')
+    }
+  })
+
+  it('après la rangée : on y reste jusqu’à la largeur demandée moins 24 px (1262 px), on en sort un pixel plus bas', () => {
+    expect(dispositionAvecMemoire(entree(1286), 'rangee')).toBe('rangee')
+    expect(dispositionAvecMemoire(entree(1285), 'rangee')).toBe('rangee')
+    expect(dispositionAvecMemoire(entree(1262), 'rangee')).toBe('rangee')
+    expect(dispositionAvecMemoire(entree(1261), 'rangee')).toBe('colonne')
+  })
+
+  it('la rangée de Grande équipe a la même marge (1350 px demandés : on y reste jusqu’à 1326 px)', () => {
+    expect(dispositionAvecMemoire(entree(1326, [12, 12]), 'rangee-grande-equipe')).toBe('rangee-grande-equipe')
+    expect(dispositionAvecMemoire(entree(1325, [12, 12]), 'rangee-grande-equipe')).toBe('colonne')
+    expect(dispositionAvecMemoire(entree(1349, [12, 12]), 'colonne')).toBe('colonne')
+  })
+
+  it('une largeur pas mesurée (0) est toujours la colonne, rangée précédente ou non', () => {
+    expect(dispositionAvecMemoire(entree(0), 'rangee')).toBe('colonne')
+  })
+
+  it('la rangée précédente ne se prolonge pas à un match d’une autre forme (la marge ne sert pas de passe-droit)', () => {
+    // Précédente ordinaire, match devenu Grande équipe : la marge n'ouvre pas la rangée de Grande équipe.
+    expect(dispositionAvecMemoire(entree(1340, [12, 12]), 'rangee')).toBe('colonne')
+    // Précédente Grande équipe, match devenu ordinaire (4 contre 4, 1270 px, sous la demande de 1286 px).
+    expect(dispositionAvecMemoire(entree(1270), 'rangee-grande-equipe')).toBe('colonne')
+  })
+
+  it('séquence 1290, 1275, 1290 (4 contre 4) : la rangée ne clignote pas', () => {
+    let d: DispositionEquipes | null = null
+    const suite: DispositionEquipes[] = []
+    for (const largeur of [1290, 1275, 1290]) {
+      d = dispositionAvecMemoire(entree(largeur), d)
+      suite.push(d)
+    }
+    expect(suite).toEqual(['rangee', 'rangee', 'rangee'])
+  })
+
+  it('séquence 1280, 1290, 1275, 1260, 1275, 1286 : on entre à 1290, on sort sous 1262, on ne ré-entre qu’à 1286', () => {
+    let d: DispositionEquipes | null = null
+    const suite: DispositionEquipes[] = []
+    for (const largeur of [1280, 1290, 1275, 1260, 1275, 1286]) {
+      d = dispositionAvecMemoire(entree(largeur), d)
+      suite.push(d)
+    }
+    expect(suite).toEqual(['colonne', 'rangee', 'rangee', 'colonne', 'colonne', 'rangee'])
+  })
+})
+
+describe('emplacementScoreDe : la marge de bascule', () => {
+  const REQUIS = LARGEUR_REQUISE_ENTETE_SCORE_PX
+
+  it('sans précédent, ou depuis la toile ou la rangée : le seuil nu (on monte dans l’en-tête à 820 px)', () => {
+    for (const precedent of [null, 'scene', 'rangee'] as const) {
+      expect(emplacementScoreDe('cinema', 'colonne', REQUIS - 1, precedent), String(precedent)).toBe('scene')
+      expect(emplacementScoreDe('cinema', 'colonne', REQUIS, precedent), String(precedent)).toBe('entete')
+    }
+  })
+
+  it('depuis l’en-tête : on y reste jusqu’à 820 moins 24 px (796 px), la toile un pixel plus bas', () => {
+    for (const frame of ['standard', 'cinema', 'plein-cadre'] as const) {
+      expect(emplacementScoreDe(frame, 'colonne', REQUIS - 1, 'entete'), frame).toBe('entete')
+      expect(emplacementScoreDe(frame, 'colonne', REQUIS - 24, 'entete'), frame).toBe('entete')
+      expect(emplacementScoreDe(frame, 'colonne', REQUIS - 25, 'entete'), frame).toBe('scene')
+    }
+  })
+
+  it('une largeur pas mesurée reste dans l’en-tête, et la rangée posée garde la main sur la marge', () => {
+    expect(emplacementScoreDe('cinema', 'colonne', 0, 'scene')).toBe('entete')
+    expect(emplacementScoreDe('cinema', 'rangee', 100, 'entete')).toBe('rangee')
   })
 })

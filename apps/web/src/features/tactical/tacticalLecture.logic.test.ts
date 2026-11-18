@@ -3,7 +3,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { aspectDuPlan, etatLecture, questionServie } from './tacticalLecture.logic'
+import type { BornesMonde } from '@/lib/api/types'
+
+import { aspectDuPlan, dimensionsDuPlan, etatLecture, questionServie } from './tacticalLecture.logic'
 import { PLAN_ASPECT_DEFAUT } from './tacticalView.logic'
 
 const BASE = { aDesDonnees: true, enEchec: false, surPlaceholder: false, perimetreEnRelecture: false }
@@ -56,5 +58,26 @@ describe('aspectDuPlan', () => {
   it('ni repère ni calage exploitable : le rapport par défaut', () => {
     expect(aspectDuPlan(null, null)).toBe(PLAN_ASPECT_DEFAUT)
     expect(aspectDuPlan({ ...FOND, heightM: 0 }, null)).toBe(PLAN_ASPECT_DEFAUT)
+  })
+})
+
+describe('dimensionsDuPlan', () => {
+  const FOND = { originX: -50, originY: 40, widthM: 100, heightM: 50 }
+  const BORNES: BornesMonde = { min_x: -10, max_x: 20, min_y: 0, max_y: 60, valide: true }
+
+  it('le calage du fond quand il est connu, posé droit', () => {
+    expect(dimensionsDuPlan(FOND, BORNES)).toEqual({ largeur: 100, hauteur: 50 })
+    expect(dimensionsDuPlan(FOND, undefined)).toEqual({ largeur: 100, hauteur: 50 })
+  })
+
+  it('sans fond, la boîte englobante des cellules', () => {
+    expect(dimensionsDuPlan(null, BORNES)).toEqual({ largeur: 30, hauteur: 60 })
+    expect(dimensionsDuPlan({ ...FOND, heightM: 0 }, BORNES)).toEqual({ largeur: 30, hauteur: 60 })
+  })
+
+  it('ni fond ni bornes exploitables : null (le plan reste droit)', () => {
+    expect(dimensionsDuPlan(null, undefined)).toBeNull()
+    expect(dimensionsDuPlan(null, { ...BORNES, valide: false })).toBeNull()
+    expect(dimensionsDuPlan(null, { ...BORNES, max_x: BORNES.min_x })).toBeNull()
   })
 })

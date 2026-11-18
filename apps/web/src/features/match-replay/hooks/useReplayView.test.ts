@@ -290,6 +290,35 @@ describe('useReplayView — l’orientation Auto', () => {
     }
   })
 
+  it('une fenêtre redimensionnée PENDANT un export ne retourne pas le plan : l’Auto est gelée jusqu’à la fin de l’export', () => {
+    const { result, rerender } = renderHook(
+      ({ width }: { width: number }) => useReplayView({ doc: HAUTE, turns: null, width, freeHeight: 600 }),
+      { initialProps: { width: 1200 } },
+    )
+    expect(result.current.turns).toBe(1)
+    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
+    rerender({ width: 100 })
+    expect(result.current.turns).toBe(1)
+    expect(result.current.autoTurned).toBe(true)
+    act(() => requestExportLayout(null))
+    expect(result.current.turns).toBe(0)
+  })
+
+  it('l’état de l’Auto est rangé avec le match : un autre match ne reprend pas le plan tourné du précédent', () => {
+    // Une carte à +30 % de gain : tournée ; la boîte se resserre à +23 % (entre les deux seuils).
+    const PORTRAIT = testReplayDoc({ frameIntervalMs: 50, frameCount: 10, bounds: { minX: 0, minY: 0, maxX: 100, maxY: 120 } })
+    const { result, rerender } = renderHook(
+      ({ scopeKey, width }: { scopeKey: string; width: number }) =>
+        useReplayView({ doc: PORTRAIT, scopeKey, turns: null, width, freeHeight: 100 }),
+      { initialProps: { scopeKey: 'm1', width: 114 } },
+    )
+    expect(result.current.turns).toBe(1)
+    rerender({ scopeKey: 'm1', width: 111 })
+    expect(result.current.turns).toBe(1)
+    rerender({ scopeKey: 'm2', width: 111 })
+    expect(result.current.turns).toBe(0)
+  })
+
   it('rien n’est retenu ni remonté : ni préférence écrite, ni geste manuel signalé, et le zoom revient à la carte entière', () => {
     const onManualMove = vi.fn()
     const { result, rerender } = renderHook(

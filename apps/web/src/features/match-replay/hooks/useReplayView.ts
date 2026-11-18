@@ -87,6 +87,11 @@ export interface ReplayMapBackgroundLayer {
 
 export interface ReplayViewOptions {
   doc: ReplayDocumentReady
+  /**
+   * LA PORTÉE de ce que le cadrage retient d'une mesure à l'autre (l'état de l'Auto : le plan est-il déjà tourné ?) :
+   * le match affiché. Un autre match repart de zéro ; absente = une portée unique.
+   */
+  scopeKey?: string
   /** Fond de carte figé, tel que la page l'a chargé. Absent = la carte n'en a pas. */
   background?: ReplayMapBackgroundLayer | null
   /**
@@ -155,6 +160,7 @@ export interface ReplayView {
 
 export function useReplayView({
   doc,
+  scopeKey = '',
   background,
   turns: choice = 0,
   width,
@@ -176,7 +182,7 @@ export function useReplayView({
   const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
   // L'ORIENTATION EFFECTIVE se décide ICI, sur les bornes du monde et la boîte que l'écran offre (jamais sur
   // la mise en page d'un export : le plan ne se retourne pas pendant qu'on l'enregistre).
-  const { turns, autoTurned } = useResolvedTurns(choice, bounds, width, freeHeight)
+  const { turns, autoTurned } = useResolvedTurns(scopeKey, choice, bounds, width, freeHeight)
   // LA SCÈNE TOURNÉE : c'est elle, et non la scène du monde, que la hauteur utile, le cadre et le
   // zoom prennent pour référence — une carte tournée d'un quart de tour échange sa largeur et sa
   // hauteur. Les positions du film, elles, ne sont tournées qu'à la projection (`orient`).
