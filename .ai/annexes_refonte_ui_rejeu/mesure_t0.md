@@ -276,3 +276,76 @@ Lecture : une seule exception (1 document 1.13 sans medaille) ; 62 537 medailles
 - La part des frags qui recoivent une classe d'arme, par match avec rejeu (T.2b : `weapon_class` sur les evenements de frag) : elle exige la base partagee et le pont arme-par-frag, que ce script n'ouvre pas (base tenue en ecriture par un autre processus). La reserve du plan (un tiers des frags avec source au 2026-08-11) reste donc ouverte.
 - La fixation de T.1 « fin de match = tableau de score » sur un match reel : il faut la feuille (frags, morts, assistances) de la base pour la comparer a la derniere valeur de `scoreTimeline.players`.
 - Pour la mesure 1 : le score personnel « de l'API » du garde de T.3 vient de la vue de match ; ici il est remplace par la derniere valeur de `scoreTimeline.players[].score.total` du document (score affiche, `coverage.score.oracle` = displayed dans l'echantillon vu).
+
+
+## Mesures en base (2026-11-18) — compteurs du rejeu contre le tableau de score
+
+Methode. Un export unique de `match_participants` (29 107 lignes, 2 045 matchs, outil en lecture seule, base non verrouillee) vers `C:/t/t0-mesures/participants.tsv` ; puis un script Node (`base_vs_calque.js`), un document a la fois, sans base. Jointure : `matchId` complet du document = `match_id` ; joueur humain du roster (`roster[].xuid`, 16 chiffres nus, identique a `scoreTimeline.players[].xuid`, `scoreActions[].xuid` et a `match_participants.xuid`) ; bot = `roster[].bot` joint par `roster[].bid` (`bid(N.0)`), hors mesure. Valeurs lues comme la fiche : derniere valeur de `kills`, `deaths`, `assists` `.total` (serie vide = 0) ; somme de `scoreActions[].points` par destinataire, documents au verdict `coverage.scoreActions.complete` ; la fiche exige aussi `filmClockTrusted` (vrai dans les 944 documents complets). Les colonnes `score` et `personal_score` sont identiques sur les 28 954 lignes qui les portent : une seule comparaison les couvre. Rang = position dans `roster` du document. Journaux et scripts : `C:/t/t0-mesures/` (`base_vs_calque.js`, `pass_b.js`, `.json`, `.log`).
+
+Taux de jointure : 14 303 humains du roster sur 14 346 (99,7 %) ont leur ligne en base, 99,4 a 100 % selon le build. Les 5 documents sans build (sans roster) ne peuvent pas etre joints : 133 lignes humaines de la base y correspondent.
+
+### Frags, morts, assistances : derniere valeur du calque contre la base
+
+Denominateur : humains joints dont le document porte une serie. Frags, morts et assistances sont aussi egaux tous les trois pour 14 015 joueurs sur 14 033 (99,87 %).
+
+| Build | Docs | Humains du roster | Joints | Joints avec serie | Frags egaux | Morts egales | Assistances egales | Matchs compares | Matchs tous egaux |
+|---|---|---|---|---|---|---|---|---|---|
+| (inconnu) | 5 | 0 | 0 | 0 | n/a | n/a | n/a | 0 | n/a |
+| HI_1_4_1 | 1 | 28 | 27 | 0 | n/a | n/a | n/a | 0 | n/a |
+| HI_1_8_0 | 13 | 240 | 240 | 227 | 227 (100 %) | 227 (100 %) | 227 (100 %) | 13 | 13 (100 %) |
+| HI_1_9_0 | 3 | 85 | 84 | 67 | 67 (100 %) | 67 (100 %) | 67 (100 %) | 3 | 3 (100 %) |
+| HI_1_10_0 | 31 | 783 | 778 | 759 | 759 (100 %) | 759 (100 %) | 759 (100 %) | 31 | 31 (100 %) |
+| HI_1_11_0 | 57 | 1514 | 1507 | 1472 | 1472 (100 %) | 1472 (100 %) | 1472 (100 %) | 57 | 57 (100 %) |
+| HI_1_12_0 | 145 | 1447 | 1439 | 1420 | 1420 (100 %) | 1420 (100 %) | 1420 (100 %) | 145 | 145 (100 %) |
+| HI_1_13_0 | 1200 | 10249 | 10228 | 10088 | 10082 (99,94 %) | 10078 (99,90 %) | 10078 (99,90 %) | 1199 | 1189 (99,17 %) |
+| TOTAL | 1455 | 14346 | 14303 | 14033 | 14027 (99,96 %) | 14023 (99,93 %) | 14023 (99,93 %) | 1448 | 1438 (99,31 %) |
+
+Tous les ecarts sont en 1.13 (26 ecarts sur 10 matchs : 6 frags, 10 morts, 10 assistances). Distribution de la difference (document moins base), les trois compteurs : -1 : 10 ; +1 : 3 ; de 2 a 3 en valeur absolue : 8 (+4, -4) ; de 4 a 10 : 5 (+4, -1) ; au-dela de 10 : 0. Huit des dix matchs n'ont qu'un joueur en ecart (en un a trois compteurs), un en a deux (`eba1e63f`) ; un match (`44e14331`) a ses 8 joueurs en ecart (12 ecarts, tous avec le document inferieur a la base, la plupart d'une unite), cause non etablie. Les 10 plus gros ecarts (match, rang, compteur, document -> base) :
+
+| Match | Rang | Compteur | Document | Base | Ecart |
+|---|---|---|---|---|---|
+| d8cd155a | 3 | assistances | 9 | 1 | +8 |
+| eba1e63f | 1 | assistances | 14 | 8 | +6 |
+| 28109472 | 1 | morts | 11 | 6 | +5 |
+| 400bb628 | 3 | morts | 16 | 12 | +4 |
+| 78315425 | 1 | assistances | 0 | 4 | -4 |
+| 040c5e7e | 6 | assistances | 6 | 3 | +3 |
+| 28109472 | 1 | frags | 6 | 3 | +3 |
+| 44e14331 | 5 | frags | 13 | 16 | -3 |
+| e884797a | 5 | assistances | 4 | 1 | +3 |
+| 400bb628 | 3 | assistances | 8 | 6 | +2 |
+
+Humains joints sans serie dans le document : 270 (le calque n'a pas d'entree pour eux ; la fiche n'en tire pas de compteur). Pour 238 d'entre eux la base dit 0/0/0 (140 en 1.13, 19 en 1.12, 35 en 1.11, 19 en 1.10, 8 en 1.8.0, 17 en 1.9.0) : lire « sans serie » comme zero serait juste. Les 32 autres : 27 dans le seul document 1.4.1, qui n'a pas de calque du tout, et 5 en 1.8.0 avec une base non nulle.
+
+### Score personnel : somme des points par action contre la base
+
+Denominateur : humains joints des documents au verdict complet. La somme suit `personal_score` ET `score` a l'identique (colonnes egales).
+
+| Build | Docs complets | Joueurs compares | Somme = base | Somme > base | Somme < base | Docs tous egaux |
+|---|---|---|---|---|---|---|
+| HI_1_11_0 | 12 | 326 | 226 (69,3 %) | 74 | 26 | 0/12 |
+| HI_1_12_0 | 97 | 877 | 868 (99,0 %) | 0 | 9 | 96/97 (99,0 %) |
+| HI_1_13_0 | 835 | 6991 | 6971 (99,7 %) | 0 | 20 | 832/835 (99,6 %) |
+| TOTAL | 944 | 8194 | 8065 (98,4 %) | 74 | 55 | 928/944 (98,3 %) |
+
+Les autres builds n'ont aucun document complet. En 1.12 et 1.13 reunies : 7 839 joueurs sur 7 868 (99,6 %). Les 29 ecarts de ces deux builds sont tous « somme inferieure » (actions manquantes) et tiennent dans 4 matchs : 1.13 `c75f33b8` (6 joueurs, ecart moyen -285), `df8fcbef` (7, -305), `9f57c612` (7, -171) ; 1.12 `35b75a31` (9, -189). Plus gros ecart : -720 (match `c75f33b8`, rang 5). En 1.11 (Grande bataille, voir M1b) l'ecart est dans les deux sens et touche 31 % des joueurs. Part de TOUS les joueurs joints qui verraient leur score avec le garde « verdict complet ET somme = base » : 8 065 sur 14 303 (56,4 %) ; 6 971 sur 10 228 (68,2 %) en 1.13, le reste etant des documents au verdict incomplet.
+
+### Non joints
+
+| Cote | Nombre | Ce que c'est |
+|---|---|---|
+| Humains du document absents de la base | 43 (41 matchs) | Entrees de roster sans aucune presence (`presence` vide), sans serie de score, sans tir : des places du film jamais occupees. Aucune ne porte de donnee. 21 en 1.13, 8 en 1.12, 7 en 1.11, 5 en 1.10, 1 en 1.9.0, 1 en 1.4.1 |
+| Lignes humaines de la base sans joueur du document | 133 | Toutes dans les 5 documents sans build ni roster (impossibles a joindre) ; 0 ligne humaine orpheline dans les 1 450 autres documents |
+| Serie de score hors roster | 1 | Dans un des 5 documents sans roster |
+| Bots du document sans ligne en base | 126 sur 1 124 (998 joints) | Bots (`bot: true`) dont le `bid` n'est pas dans `match_participants` ; aucune serie de score |
+| Lignes bot de la base sans bot du document | 55 sur 1 053 | Bots absents du roster du film (cause non verifiee) |
+
+Conclusion. Les compteurs : le calque egale la base a la derniere image pour 99,96 % des frags, 99,93 % des morts et 99,93 % des assistances (99,87 % des joueurs sur les trois), 100 % avant 1.13 ; 10 matchs sur 1 448 (0,7 %) ont au moins un ecart, tous en 1.13, la plupart d'un joueur et d'une a trois unites, deux de plus de 5. Le score : sur les documents au verdict complet, la somme egale la base pour 98,4 % des joueurs (99,6 % en 1.12 et 1.13), mais 0 document 1.11 n'est juste en entier : le garde « somme = base » est necessaire et suffit a ecarter les 129 joueurs en ecart ; seuls 56,4 % des joueurs joints ont un verdict complet. Les builds les plus faibles : 1.13 pour les compteurs (seul build avec ecarts, 99,90 % en morts et assistances) et 1.11 pour le score (69,3 %, 12 documents).
+
+## Mesures en base (2026-11-18) — source de dégât des morts et coup d'envoi
+
+Lues par le pilote après les dérivés du parc, base partagée ouverte en lecture seule, serveur arrêté.
+
+**Source de dégât des morts** (vue `match_kill_events_latest`) : 146 445 morts dans 1 462 matchs ; 97,7 % publiables ; 95,8 % avec une source de dégât connue et non contredite. Par match : médiane 98,7 %, premier décile 95,8 % ; 1 434 matchs à 90 % ou plus, 28 à 0 %. La classe d'arme d'un frag se déduit de cette source : le tableau « Éliminations par arme » de la fiche est donc rempli sur presque tout le parc. La mesure du 2026-08-11 (un tiers des frags avec une source) datait d'avant la régénération.
+
+**Coup d'envoi lu dans le film** (`match_registry.t0_quality`, matchs avec rejeu) : 186 matchs sur 1 455 en `film_movement` (13 %), 1 266 en `ok` (estimation de l'API), 2 vides, 1 négatif. Inchangé par la régénération : le report du film vers le registre pour le parc déjà sur disque est la commande `cmd/backfill_t0_film`, qui n'a pas été lancée. Sa simulation (lecture seule) : 1 432 réparations, 8 refus (`burstTooSmall`), 15 inchangés ; coup d'envoi du film entre 15,2 s et 213,2 s, médiane 34,1 s ; plusieurs matchs portent aujourd'hui un coup d'envoi à 0 ou 1 ms. L'écriture attend l'accord du user.
