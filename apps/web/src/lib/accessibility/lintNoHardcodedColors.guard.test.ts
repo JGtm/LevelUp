@@ -7,9 +7,12 @@
  *   - `ring-offset`, `outline`, `decoration`, `accent` et `caret` échappaient au balayage ;
  *   - un `color-allow` excusait TOUTE couleur de sa ligne, pas seulement celle qu'il justifiait.
  */
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error — script Node hors du programme tsc d'apps/web (frontière ESM/TS).
-import { allowedKinds, scanLine } from '../../../../../tools/lint-no-hardcoded-colors.lib.mjs'
+import { ALLOWED_FILES, allowedKinds, scanLine } from '../../../../../tools/lint-no-hardcoded-colors.lib.mjs'
 
 interface Violation {
   kind: string
@@ -149,5 +152,22 @@ describe('lint des couleurs : marqueur inerte (plafond 0)', () => {
     const palette = 'apps/web/src/lib/accessibility/palettes/default.ts'
     expect(scan('// color-allow: raison', palette)).toEqual([])
     expect(scan('// color-allow: raison', 'apps/web/src/features/x/Carte.test.tsx')).toEqual([])
+  })
+})
+
+describe('lint des couleurs : liste des fichiers autorisés', () => {
+  // La comparaison se fait par sous-chaîne : une entrée qui ne désigne plus rien exempterait sans bruit un
+  // fichier recréé à ce chemin. Les suffixes (`.test.ts`, `.spec.ts`) ne sont pas
+  // des chemins ; les racines sont `apps/web/src` et `apps/web` (pour `e2e/`).
+  const ici = dirname(fileURLToPath(import.meta.url))
+  const racines = [resolve(ici, '../..'), resolve(ici, '../../..')]
+  const chemins = (ALLOWED_FILES as string[]).filter((entree) => !entree.startsWith('.'))
+
+  it.each(chemins)('l’entrée %s désigne un fichier ou un dossier qui existe', (entree) => {
+    expect(racines.some((racine) => existsSync(resolve(racine, entree)))).toBe(true)
+  })
+
+  it('la liste contient des chemins à vérifier', () => {
+    expect(chemins.length).toBeGreaterThan(0)
   })
 })
