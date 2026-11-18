@@ -24,7 +24,8 @@
 //
 // Tout fichier TEXTE sous `data/titles/*/reference/` (hors `generated/`, non versionné) ne
 // contient aucune forme de chemin absolu de poste : lettre de lecteur (`D:\`, `C:/`), chemin
-// MSYS (`/c/Users/`), foyer POSIX (`/home/`, `/Users/`). L'allowlist est DATÉE et nommée, et
+// MSYS (`/c/Users/`), foyer POSIX (`/home/`, `/Users/`), partage réseau (`\\hote\partage\`),
+// racines Unix (`/opt/`, `/mnt/`, `/tmp/`, `/var/`, `/Volumes/`). L'allowlist est DATÉE et nommée, et
 // `TestAllowlistDesCheminsAbsolusNEstPasPerimee` la fait rougir dès qu'une de ses entrées n'a
 // plus d'objet — catalogue disparu, ou redevenu propre.
 package archlint
@@ -50,6 +51,11 @@ var cheminsAbsolusDePoste = []*regexp.Regexp{
 	regexp.MustCompile(`/home/`),
 	regexp.MustCompile(`/Users/`),
 	regexp.MustCompile(`\\{1,2}Users\\{1,2}`), // dossier utilisateur Windows, brut ou échappé dans un JSON
+	// Partage réseau `\\hote\partage\`, brut ou échappé dans un JSON : deux à quatre barres inverses
+	// au début, hors d'un mot (« a\\b\\c » est un chemin relatif échappé).
+	regexp.MustCompile(`(^|[^\\\w])\\{2,4}[^\\/\s"]+\\{1,2}[^\\/\s"]+\\{1,2}`),
+	// Racines Unix hors dossier personnel, au début d'un mot de chemin : « any/var/ » n'en est pas une.
+	regexp.MustCompile(`(^|[^\w/.-])/(?:opt|mnt|tmp|var|Volumes)/`),
 }
 
 // extensionsTexteCatalogue : les catalogues qui se lisent comme du texte. Les `.webp` et autres
@@ -194,6 +200,45 @@ func TestAllowlistDesCheminsAbsolusNEstPasPerimee(t *testing.T) {
 		}
 	}
 	t.Logf("%d entrée(s) tolérée(s) vérifiée(s)", len(entrees))
+}
+
+// TestFormesDeCheminAbsoluReconnues fige ce que les motifs voient et ne voient pas : chaque forme
+// de chemin de poste citée est reconnue, brute ou échappée dans un JSON ; un chemin relatif, une
+// adresse web et un mot qui contient « var » ou « tmp » restent libres.
+func TestFormesDeCheminAbsoluReconnues(t *testing.T) {
+	vus := []string{
+		`lu dans D:\Jeux\Halo\deploy`,
+		`lu dans C:/Jeux/Halo`,
+		`"source": "C:\\Jeux\\Halo Infinite\\x.module"`,
+		`lu dans \\hote\partage\Halo\x.module`,
+		`"source": "\\\\hote\\partage\\Halo\\x.module"`,
+		`/opt/halo/deploy`,
+		`lu dans /opt/halo/deploy`,
+		`"/mnt/d/Jeux/Halo"`,
+		`(/tmp/work/x.module)`,
+		`lu dans /var/lib/halo`,
+		`lu dans /Volumes/Jeux/Halo`,
+		`/Users/Jean Dupont/Halo`,
+		`C:\Users\Jean D.\Halo`,
+	}
+	for _, s := range vus {
+		if premierCheminAbsolu([]byte(s)) == nil {
+			t.Errorf("chemin de poste non reconnu : %q", s)
+		}
+	}
+	libres := []string{
+		`any/levels/multi/globals`,
+		`https://example.org/var/lib/x`,
+		`module any/var/tmp/opt introuvable`,
+		`un chemin relatif a\\b\\c\\d echappe`,
+		`partie \\ seule`,
+		`ratio 1/opt/ ou x/mnt/y`,
+	}
+	for _, s := range libres {
+		if m := premierCheminAbsolu([]byte(s)); m != nil {
+			t.Errorf("faux positif sur %q : %q", s, m)
+		}
+	}
 }
 
 // premierCheminAbsolu rend la première forme de chemin absolu de poste trouvée dans le contenu,
