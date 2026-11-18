@@ -4,7 +4,7 @@
  */
 
 /** La découpe d'une feuille de sprites : où lire la médaille, et sa taille native, en pixels de la feuille. */
-export interface MedalSprite {
+export interface MedalSpriteCut {
   sheet: string
   left: number
   top: number
@@ -28,5 +28,5 @@ export interface MedalEvent {
    * La découpe d'une feuille de sprites (titre à planches d'images), que le document sert quand la médaille
    * n'a pas d'image propre ; `null` ou absente sinon. Elle se dessine par `MedalIcon`, comme sur la fiche.
    */
-  sprite?: MedalSprite | null
+  sprite?: MedalSpriteCut | null
 }

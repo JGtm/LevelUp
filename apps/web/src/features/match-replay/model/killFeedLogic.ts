@@ -63,7 +63,7 @@ import { replayClock, type ReplayClock } from './replayClock'
 import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
-export type { MedalEvent, MedalSprite } from './medalEvent'
+export type { MedalEvent, MedalSpriteCut } from './medalEvent'
 
 /**
  * Tolérance de rattachement d'une médaille au kill du même acteur, en ms. Mesuré sur
