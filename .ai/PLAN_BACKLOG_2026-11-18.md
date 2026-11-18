@@ -668,6 +668,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — prototype des quatre choix publié, lu en entier par le pilote avant publication :
+  https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
+  Quatre bascules « Aujourd'hui / Proposé » : fond teinté des lignes du joueur suivi, barre du Cinéma sous le
+  bloc, volume en icône seule, segment Suivre / Seul / Masquer. Jamais ouvert dans un navigateur par l'agent :
+  le rendu est à juger par le user. Limite dite au user : au choix de la barre, le gain de hauteur du plan est
+  faible dans le prototype.
 - 2026-11-18 — DÉCISIONS DU USER sur les écarts de maquette (Q.2), message du 2026-11-18 : « pour les corrections,
   ok avec tes recos sauf pour 6, j'en veux pas du tout, 7 on a bien un (i) pour expliquer que c'est estimé ? Pour
   12 et 14 j'en sais rien je vois pas de quoi ça a l'air. Pour le 17 je vois pas non plus [...]. Pour les trucs
