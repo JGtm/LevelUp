@@ -198,7 +198,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       dépôt nommé au journal : par match et par joueur, éliminations, morts, assistances, tirs à la tête,
       corps à corps, grenades, armes lourdes, score personnel, tirs, touches, dégâts, temps de jeu, temps
       comme porteur du drapeau. Aucun identifiant de joueur n'entre au dépôt du décodeur.
-- [ ] 0.4 Mesures AVANT, par piste, sur le parc, dans `.ai/annexes_decodeur_1118/avant.md` : celles de la
+- [x] 0.4 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/avant.md`, jointure à l'API pour 99,7 % des joueurs ; le point des 22 coups d'envoi a été tranché par l'audit du plan du backlog, pas rejoué ici) Mesures AVANT, par piste, sur le parc, dans `.ai/annexes_decodeur_1118/avant.md` : celles de la
       section 1 rejouées par les scripts gardés, plus, contre l'export 0.3 : taux d'accord de chaque compteur
       nommé par build ; somme des points contre score personnel ; temps de porteur ; durée de présence contre
       temps de jeu des partants ; coup d'envoi (horloge, mouvement) contre le premier événement daté du
@@ -376,6 +376,17 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 : marche à blanc à 20 identiques ; `avant.md` complet ; coup d'envoi
+  tranché). Valeurs de départ à retenir : accord exact des points publiés avec le score de l'API 98,42 % sur
+  les rejeux « complets » (69,33 % au build 1.11) ; compteurs nommés 99,63 à 99,97 % d'accord, défaut concentré
+  (27 couples, 23 séries, 19 joueurs à 16 grenades que l'API ne dit jamais) ; tirs, touches, dégâts à 10 % de
+  l'API pour 59,7, 58,4 et 64,8 % de TOUS les joueurs (Needler : 19,3 et 40,1 %) ; portage du drapeau à 2 s de
+  l'API pour 91,7 % des joueurs à 8 ou moins et 85,5 % au-delà ; pour un partant, la présence publiée est plus
+  proche du temps de jeu de l'API que la fin du dernier corps dans 91,8 % des cas. Correction de la section 1 :
+  accroupissements et glissades SONT publiés, mais dans 7 rejeux seulement (1 129 et 1 039). Les pistes
+  attendent des places d'écriture : le plan du backlog passe d'abord, et la session du fond Relief a les deux
+  prochaines places.
 
 - 2026-11-18 — marche à blanc rendue. Trois faits qui changent la conduite du plan :
   (1) LE GATE DU CORPUS NE JUGE PAS LE CLONE : il compile contre le décodeur que `go.mod` exige. Pour juger
