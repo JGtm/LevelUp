@@ -18,7 +18,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
-
+import { zonesInCut } from '@/lib/replay/reliefViewLogic'
 
 import type { TacticalText } from './i18n'
 import { cadrageDuFond, MARGE_LEGENDE, type EtatDuPlan } from './plan.logic'
@@ -33,7 +33,7 @@ import {
   type LectureReapparitions,
   type ZoneProposee,
 } from './reapparitions.logic'
-import { TacticalPiluleFond } from './TacticalPiluleFond'
+import { TacticalPilulesFond } from './TacticalPilulesFond'
 import { PuceDEcart } from './TacticalReapparitionsPuce'
 import { TacticalReapparitionsZones } from './TacticalReapparitionsZones'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
@@ -42,6 +42,7 @@ import { aspectDuPlan, dimensionsDuPlan, ESTOMPE } from './tacticalLecture.logic
 import { repereDuPlan } from './tacticalView.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useOrientationDuPlan } from './useOrientationDuPlan'
+import { useTacticalRelief } from './useTacticalRelief'
 
 export interface TacticalReapparitionsPlanProps {
   t: TacticalText
@@ -94,6 +95,9 @@ export function TacticalReapparitionsPlan({
   const { scene, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const cadrage = cadrageDuFond(scene, fenetre, turns)
   const cadre = useMemo(() => cadreDeLaCouche(cadreFond, lue?.bornes), [cadreFond, lue?.bornes])
+  // LE RELIEF ET LA COUPE PAR ÉTAGE : le fond les suit, et les zones nommées (teinte et étiquettes) portent une hauteur.
+  const relief = useTacticalRelief(playerSlug, mapId, turns)
+  const zonesCoupees = useMemo(() => zonesInCut(zones, relief.floor.cut), [zones, relief.floor.cut])
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const surLePlan = !!(repere && cadre && zones.length > 0 && etat !== 'echec')
   const info = modele
@@ -110,7 +114,7 @@ export function TacticalReapparitionsPlan({
             <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
               {pilule}
               <PiluleZoneTenue t={t} zones={zonesProposees} choisie={choisie} onChoisir={onChoisir} />
-              <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
+              <TacticalPilulesFond locale={locale} relief={relief} />
               {modele && (
                 <span className="whitespace-nowrap text-[11.5px] font-normal text-muted-foreground">
                   {t.reappMeta(modele.reference.matchs, modele.reference.reapparitions)}
@@ -130,11 +134,12 @@ export function TacticalReapparitionsPlan({
             hauteurMax={hauteurMax}
             cadreRef={cadreRef}
             cadrage={cadrage}
+            surface={relief.surface}
           >
             {surLePlan && repere && cadre && (
               <>
                 <TacticalReapparitionsZones
-                  zones={zones}
+                  zones={zonesCoupees}
                   lecture={modele}
                   cadre={cadre}
                   cadrage={cadrage}
@@ -144,7 +149,7 @@ export function TacticalReapparitionsPlan({
                   onChoisir={(volume) => onChoisir(volume === choisie ? null : volume)}
                   estompe={estompe}
                 />
-                <EtiquettesDeZones t={t} locale={locale} zones={zones} modele={modele} repere={repere} estompe={estompe} />
+                <EtiquettesDeZones t={t} locale={locale} zones={zonesCoupees} modele={modele} repere={repere} estompe={estompe} />
               </>
             )}
             <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>

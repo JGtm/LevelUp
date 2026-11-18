@@ -17,6 +17,7 @@ import type { ReplayBounds } from '@/lib/api/types'
 import { flouDeLaChaleur, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
 import type { TacticalGrid } from '@/lib/replay/heatPaint'
 import { normalizeTurns, orientBoundsAbout, rotateCanvasAbout, type QuarterTurns } from '@/lib/replay/orientation'
+import { drawReliefLinesLayer, type ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
 import type { XY } from '@/lib/replay/replayLogic'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { strokeWallPlan } from '@/lib/replay/wallPlanPaint'
@@ -45,6 +46,8 @@ export interface PeintureDesPositions {
   pivot: XY
   /** Le plan des murs, ou `null` (carte sans plan, interrupteur éteint). */
   plan: WallPlanReady | null
+  /** Les traits du relief (filtrés par la coupe), tracés sur le fond avant le plan des murs ; `null`/absent = éteints. */
+  reliefLines?: ReliefLinesInput | null
   /** L'encre du plan des murs, déjà résolue. */
   ink: string
 }
@@ -84,8 +87,10 @@ export function peindreLesPositions(
     w0,
     h0,
   )
-  // LE PLAN DES MURS, entre le fond et la chaleur : un trait de dessin sur la carte, sous la mesure.
-  strokeWallPlan(ctx, p.plan, (q) => ({ x: (q.x - bounds.minX) * k, y: (bounds.maxY - q.y) * k }), p.ink)
+  // LES TRAITS DU RELIEF puis LE PLAN DES MURS, entre le fond et la chaleur : des traits de dessin sur la carte, sous la mesure.
+  const project = (q: XY) => ({ x: (q.x - bounds.minX) * k, y: (bounds.maxY - q.y) * k })
+  if (p.reliefLines) drawReliefLinesLayer(ctx, p.reliefLines, project)
+  strokeWallPlan(ctx, p.plan, project, p.ink)
   if (lissee) {
     peindreLaChaleurLissee(
       ctx,

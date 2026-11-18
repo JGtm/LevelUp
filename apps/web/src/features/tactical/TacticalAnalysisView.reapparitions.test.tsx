@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import type { ReplayCalloutZone, TacticalRaster, TacticalReapparitionsAdverses } from '@/lib/api/types'
+import { RELIEF_VIEW_TEXT } from '@/components/map-relief/text'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -380,10 +381,10 @@ describe('la pilule « Fond »', () => {
     window.localStorage.clear()
     await ouvrirLaLecture()
     const pilule = await screen.findByTestId('tactical-plan-fond-pilule')
-    expect(within(pilule).getByRole('button', { name: t.backgroundPlan })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(within(pilule).getByRole('button', { name: t.backgroundRender }))
+    expect(within(pilule).getByRole('button', { name: RELIEF_VIEW_TEXT.fr.plan })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(within(pilule).getByRole('button', { name: RELIEF_VIEW_TEXT.fr.render }))
     expect(window.localStorage.getItem('replay-background-style')).toBe('rendu')
-    expect(within(pilule).getByRole('button', { name: t.backgroundRender })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(pilule).getByRole('button', { name: RELIEF_VIEW_TEXT.fr.render })).toHaveAttribute('aria-pressed', 'true')
     // Le fond affiché est le rendu, les zones restent rognées à l'image plan.
     await waitFor(() =>
       expect(getBlob.mock.calls.map((c) => c[0] as string)).toContain('/players/JGtm/tactical/streets/background.png'),

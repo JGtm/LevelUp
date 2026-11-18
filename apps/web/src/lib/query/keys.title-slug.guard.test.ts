@@ -89,6 +89,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
   tacticalMapBackground: () => queryKeys.tacticalMapBackground(T, 'map-1'),
   tacticalMapBackgroundFrame: () => queryKeys.tacticalMapBackgroundFrame(T, 'map-1'),
+  tacticalMapReliefData: () => queryKeys.tacticalMapReliefData(T, 'map-1'),
+  tacticalMapReliefImage: () => queryKeys.tacticalMapReliefImage(T, 'map-1'),
+  tacticalMapBackgroundElement: () => queryKeys.tacticalMapBackgroundElement(T, 'map-1'),
   // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
   // même raison que `tacticalMaps`.
   tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h', 'fr'),

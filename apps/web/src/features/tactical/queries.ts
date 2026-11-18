@@ -265,7 +265,7 @@ function useTacticalMapBackgroundSidecar(playerSlug: string, mapId: string): Rep
   return useTacticalMapBackgroundSidecarQuery(playerSlug, mapId).data
 }
 
-function useTacticalMapBackgroundSidecarQuery(playerSlug: string, mapId: string) {
+export function useTacticalMapBackgroundSidecarQuery(playerSlug: string, mapId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.tacticalMapBackgroundFrame(titleSlug, mapId),
