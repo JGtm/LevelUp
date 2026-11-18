@@ -75,8 +75,8 @@ describe('reducePlayerPanel — Suivre, la caméra, indépendante de la fiche', 
   })
 
   it('suivre un joueur dont la fiche n’est pas ouverte ne touche pas à la fiche ouverte', () => {
-    const s = reducePlayerPanel({ ...OPEN_A, solo: true }, { type: 'follow', xuid: 'B' })
-    expect(s).toEqual({ open: true, xuid: 'A', followXuid: 'B', solo: true, hide: false })
+    const s = reducePlayerPanel({ ...OPEN_A, hide: true }, { type: 'follow', xuid: 'B' })
+    expect(s).toEqual({ open: true, xuid: 'A', followXuid: 'B', solo: false, hide: true })
   })
 
   it('ouvrir une fiche sur le joueur suivi, puis une autre, laisse la caméra sur lui', () => {
@@ -151,6 +151,38 @@ describe('reducePlayerPanel — les exclusions de D-7', () => {
   it('rebasculer une action allumée l’éteint, sans toucher aux autres', () => {
     const s = reducePlayerPanel({ ...OPEN_A, solo: true, followXuid: 'A' }, { type: 'toggle', action: 'solo' })
     expect(s).toMatchObject({ solo: false, followXuid: 'A' })
+  })
+
+  it('Seul sur un joueur éteint le suivi d’un AUTRE joueur', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, followXuid: 'B' }, { type: 'toggle', action: 'solo' })
+    expect(s).toEqual({ open: true, xuid: 'A', followXuid: null, solo: true, hide: false })
+  })
+
+  it('Seul sur le joueur déjà suivi garde le suivi', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, followXuid: 'A' }, { type: 'toggle', action: 'solo' })
+    expect(s).toEqual({ open: true, xuid: 'A', followXuid: 'A', solo: true, hide: false })
+  })
+
+  it('Seul sans suivi ne crée pas de suivi', () => {
+    const s = reducePlayerPanel(OPEN_A, { type: 'toggle', action: 'solo' })
+    expect(s).toMatchObject({ solo: true, followXuid: null })
+  })
+
+  it('suivre un AUTRE joueur que celui de la fiche lève Seul', () => {
+    const s = reducePlayerPanel({ ...OPEN_A, solo: true, followXuid: 'A' }, { type: 'follow', xuid: 'B' })
+    expect(s).toEqual({ open: true, xuid: 'A', followXuid: 'B', solo: false, hide: false })
+  })
+
+  it('suivre le joueur de la fiche, ou arrêter de suivre, garde Seul', () => {
+    const solo: PlayerPanelState = { ...OPEN_A, solo: true }
+    expect(reducePlayerPanel(solo, { type: 'follow', xuid: 'A' })).toMatchObject({ followXuid: 'A', solo: true })
+    expect(reducePlayerPanel({ ...solo, followXuid: 'A' }, { type: 'follow', xuid: null }))
+      .toMatchObject({ followXuid: null, solo: true })
+  })
+
+  it('fiche fermée : suivre un joueur ne change que la caméra (Seul est déjà retombé)', () => {
+    const closed = reducePlayerPanel({ ...OPEN_A, solo: true }, { type: 'close' })
+    expect(reducePlayerPanel(closed, { type: 'follow', xuid: 'B' })).toEqual({ ...NO_PLAYER_PANEL, followXuid: 'B' })
   })
 
   it('Seul et Masquer sans panneau ouvert sont sans effet', () => {

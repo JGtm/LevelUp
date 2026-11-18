@@ -142,7 +142,7 @@ export function ReplayPage() {
   const friendGamertags = useFriendGamertags(playerSlug)
   // PAR LES YEUX DE QUI : un seul foyer, ici ; sa valeur descend en paramètre à tout ce qui en dépend.
   // Le défaut est le joueur de la page, à CHAQUE montage (rien n'est persisté).
-  const viewpoint = useReplayViewpoint(replayContext?.scoreboard)
+  const viewpoint = useReplayViewpoint(`${playerSlug}/${matchId}`, replayContext?.scoreboard)
   // Objet mémoïsé : `useReplayModel` mémoïse sur son identité ; un littéral neuf à chaque rendu (150 ms en
   // lecture) reconstruirait tout le modèle à chaque tick.
   const modelSettings = useMemo(() => ({ friendGamertags, locale }), [friendGamertags, locale])

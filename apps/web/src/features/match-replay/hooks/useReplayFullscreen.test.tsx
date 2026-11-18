@@ -5,10 +5,12 @@
  * `requestFullscreen` pose l'élément puis émet `fullscreenchange`, `exitFullscreen` le retire puis
  * émet de même. Ce que ces cas protègent :
  *  - le natif est demandé sur la PAGE entière, seul, et s'ajoute à n'importe quel cadre ;
- *  - depuis le Standard, il entre d'abord en Plein cadre, qui se referme avec lui ; un Plein cadre
- *    ouvert autrement (F) ne se referme jamais avec le natif ;
+ *  - depuis le Standard, il entre d'abord en Plein cadre, qui se referme avec lui, et le natif part avec
+ *    ce Plein cadre quel que soit le chemin de sortie (touche F, icône « Standard », « Quitter », Échap) ;
+ *    un Plein cadre ouvert autrement (F) ne se referme jamais avec le natif ;
  *  - `fullscreenchange` est la vérité du natif : sa chute (Échap du navigateur) est suivie ;
- *  - un refus ou une API absente ne laissent que le cadre ;
+ *  - un refus ou une API absente ne laissent que le cadre, et le natif n'est plus voulu : le geste
+ *    suivant le redemande ;
  *  - un export en cours fige le geste ;
  *  - en Plein cadre, Échap ferme d'abord la couche la plus intérieure, le cadre ensuite — même
  *    quand la couche s'est abonnée au clavier AVANT le hook et se retire du DOM aussitôt.
@@ -18,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { requestExportLayout } from '../export/exportLayoutStore'
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
+import { leaveFullFrame, selectFrame } from '../ui/frames/selectFrame'
 import { ReplaySpeedMenu } from '../ui/ReplaySpeedMenu'
 import { useReplayFrame } from './useReplayFrame'
 import { REPLAY_ESCAPE_LAYER_ATTR, useReplayFullscreen } from './useReplayFullscreen'
@@ -175,12 +178,54 @@ describe('useReplayFullscreen — le natif seul', () => {
     expect(result.current.frame.frame).toBe('plein-cadre')
   })
 
-  it('F depuis le Plein cadre + natif : le cadre se referme, le natif reste', async () => {
+  it('TOUCHE F depuis le Plein cadre du geste : le cadre se referme ET le natif est rendu', async () => {
     installFullscreenApi(acceptingRequest())
     const { result } = renderHook(useBanc)
     act(() => result.current.fullscreen.toggle())
     await settle()
+    expect(fullscreenElement).toBe(document.documentElement)
     act(() => result.current.frame.toggleFullFrame())
+    await settle()
+    expect(result.current.frame.frame).toBe('standard')
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+    expect(fullscreenElement).toBeNull()
+  })
+
+  it('ICÔNE « STANDARD » depuis le Plein cadre du geste : le cadre se referme ET le natif est rendu', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => selectFrame(result.current.frame, 'standard'))
+    await settle()
+    expect(result.current.frame.frame).toBe('standard')
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+    expect(fullscreenElement).toBeNull()
+  })
+
+  it('« QUITTER » depuis le Plein cadre du geste : le natif est rendu une seule fois', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => leaveFullFrame(result.current.frame, result.current.fullscreen))
+    await settle()
+    expect(result.current.frame.frame).toBe('standard')
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+    expect(fullscreenElement).toBeNull()
+  })
+
+  it('TOUCHE F depuis un Plein cadre ouvert par F, natif ajouté : le natif reste (le cadre n’est pas celui du geste)', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleFullFrame())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => result.current.frame.toggleFullFrame())
+    await settle()
     expect(result.current.frame.frame).toBe('standard')
     expect(result.current.fullscreen.active).toBe(true)
     expect(document.exitFullscreen).not.toHaveBeenCalled()
@@ -282,6 +327,35 @@ describe('useReplayFullscreen — refus et API absente', () => {
     expect(warn).toHaveBeenCalledTimes(1)
     act(() => result.current.fullscreen.toggle())
     expect(result.current.frame.frame).toBe('standard')
+  })
+
+  it('REFUS, puis « Quitter », puis nouveau geste : le natif est redemandé', async () => {
+    const request = vi.fn(() => Promise.reject(new Error('refus')))
+    installFullscreenApi(request)
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(result.current.frame.frame).toBe('plein-cadre')
+    expect(request).toHaveBeenCalledTimes(1)
+    act(() => result.current.frame.toggleFullFrame())
+    expect(result.current.frame.frame).toBe('standard')
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(result.current.frame.frame).toBe('plein-cadre')
+  })
+
+  it('REFUS depuis le Cinéma : le geste suivant redemande le natif au lieu de « quitter » un natif jamais atteint', async () => {
+    const request = vi.fn(() => Promise.reject(new Error('refus')))
+    installFullscreenApi(request)
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleCinema())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(result.current.frame.frame).toBe('cinema')
   })
 
   it('API ABSENTE OU INTERDITE : aucune demande, le geste ouvre et ferme le Plein cadre seul', () => {

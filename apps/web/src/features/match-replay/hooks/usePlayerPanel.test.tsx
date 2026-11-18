@@ -128,16 +128,36 @@ describe('usePlayerPanel', () => {
     expect(result.current.camera.player).toBeNull()
   })
 
-  it('la caméra : le menu suit un joueur par le geste de la fiche (onFollow), « Aucun » l’éteint, Seul et Masquer ne bougent pas', () => {
+  it('la caméra : le menu suit un joueur par le geste de la fiche (onFollow), « Aucun » l’éteint, Masquer ne bouge pas', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('hide'))
+    act(() => result.current.camera.onFollow('B'))
+    expect(result.current.camera.player).toBe(B)
+    expect(result.current.focus).toMatchObject({ player: A, follow: false, solo: false, hide: true })
+    act(() => result.current.camera.onFollow(null))
+    expect(result.current.camera.player).toBeNull()
+    expect(result.current.focus).toMatchObject({ hide: true })
+  })
+
+  it('Seul et la caméra : suivre un AUTRE joueur lève Seul, suivre celui de la fiche le garde', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onCard('A'))
     act(() => result.current.onToggle('solo'))
+    act(() => result.current.camera.onFollow('A'))
+    expect(result.current.focus).toMatchObject({ follow: true, solo: true })
     act(() => result.current.camera.onFollow('B'))
     expect(result.current.camera.player).toBe(B)
-    expect(result.current.focus).toMatchObject({ player: A, follow: false, solo: true, hide: false })
-    act(() => result.current.camera.onFollow(null))
+    expect(result.current.focus).toMatchObject({ player: A, follow: false, solo: false })
+  })
+
+  it('Seul sur la fiche éteint la caméra posée sur un autre joueur', () => {
+    const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
+    act(() => result.current.onFollow('B'))
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('solo'))
     expect(result.current.camera.player).toBeNull()
-    expect(result.current.focus).toMatchObject({ solo: true })
+    expect(result.current.focus).toMatchObject({ player: A, solo: true })
   })
 
   it('suivre depuis le menu le joueur masqué de la fiche lève son masquage (règle du modèle)', () => {
@@ -153,7 +173,7 @@ describe('usePlayerPanel', () => {
     act(() => result.current.onFollow('B'))
     const camera = result.current.camera
     act(() => result.current.onCard('A'))
-    act(() => result.current.onToggle('solo'))
+    act(() => result.current.onToggle('hide'))
     expect(result.current.camera).toBe(camera)
   })
 
