@@ -1,8 +1,8 @@
 /**
- * lib/replay/relief — LA BIBLIOTHEQUE DU FOND « RELIEF » (plan 2026-11-18, lot D, item D.2).
+ * lib/replay/relief — LA BIBLIOTHEQUE DU FOND « RELIEF ».
  *
- * Fonctions pures et un worker, sans branchement à l'interface (D.3 et D.4 les branchent). Le
- * contrat de format et les seuils sont ceux de `.ai/annexes_fonds_relief/conception.md`.
+ * Fonctions pures et un worker, sans branchement à l'interface. Le
+ * contrat de format et les seuils sont ceux de la brique `himap` (`DonneesRelief`, `CalculeRelief`).
  *
  * Parcours d'une carte :
  *   1. `parseReliefData(json)` et `readReliefImage(blob, calibration, height)` -> `ReliefData`, `ReliefHeights` ;

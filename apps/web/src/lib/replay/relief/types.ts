@@ -1,7 +1,7 @@
 /**
- * relief/types — LES TYPES DE LA BIBLIOTHEQUE DU RELIEF (fond « Relief », plan 2026-11-18, lot D).
+ * relief/types — LES TYPES DE LA BIBLIOTHEQUE DU RELIEF (fond « Relief »).
  *
- * Deux fichiers par carte alimentent la bibliothèque (`.ai/annexes_fonds_relief/conception.md` §1) :
+ * Deux fichiers par carte alimentent la bibliothèque (format de la brique `himap`, `DonneesRelief`) :
  *   - `<clé>.relief.webp` : une image dont chaque pixel porte une hauteur et deux drapeaux, décodée
  *     en `ReliefHeights` (`decodeImage.ts`) ;
  *   - `<clé>.relief.json` : le calage, les étages, les sols du maillage et les traits, décodé en
