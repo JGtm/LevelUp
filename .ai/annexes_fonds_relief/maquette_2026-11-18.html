@@ -1,0 +1,759 @@
+<title>Fonds de carte comparés</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Mise en page : bandeau, quatre onglets de carte, deux vues synchronisées côte à côte (empilées sur téléphone), réglages sous la vue de droite. */
+:root {
+  color-scheme: dark;
+  --ink: #e6ebf2;
+  --ink-soft: #9aa7b8;
+  --ink-faint: #66758a;
+  --ground: #0c121a;
+  --panel: #131b26;
+  --line: #233041;
+  --stage-a: #15181d;
+  --stage-b: #0a1520;
+  --accent: #5fb0ff;
+  --accent-ink: #06121f;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-text: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", Consolas, ui-monospace, monospace;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ground); color: var(--ink); font-family: var(--font-text); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 20px;
+  display: flex; flex-direction: column; gap: 12px; min-height: 100%; box-sizing: border-box;
+}
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 24px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+.sub { margin: 4px 0 0; color: var(--ink-soft); max-width: 70ch; line-height: 1.45; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab {
+  font: inherit; color: var(--ink-soft); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; text-align: left; display: grid; gap: 1px;
+}
+.tab b { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: 14px; }
+.tab span { font-size: 11.5px; }
+.tab[aria-selected="true"] { border-color: var(--accent); background: #16273a; }
+.tab:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { color: var(--ink-soft); line-height: 1.5; max-width: 110ch; margin: 0; }
+.note strong { color: var(--ink); font-weight: 600; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+@media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+.pane { margin: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.pane-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; display: flex; align-items: baseline; gap: 8px; }
+.pane-title small { font-family: var(--font-text); font-weight: 400; font-size: 12px; color: var(--ink-faint); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12.5px; color: var(--ink-soft); background: transparent; border: 0; padding: 5px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.stage { position: relative; flex: 1; min-height: 420px; touch-action: none; cursor: grab; }
+.stage.dragging { cursor: grabbing; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+@media (max-width: 900px) { .stage { min-height: 0; height: 78vw; max-height: 560px; } }
+.busy { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-soft); font-size: 13px; background: rgba(10, 21, 32, 0.6); pointer-events: none; }
+.readout { position: absolute; left: 10px; bottom: 8px; font-family: var(--font-data); font-size: 11.5px; color: var(--ink-soft); pointer-events: none; text-shadow: 0 1px 2px #000; }
+.zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button { width: 30px; height: 30px; font: 600 15px var(--font-text); color: var(--ink); background: rgba(19, 27, 38, 0.92); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: center; }
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); }
+.chip { font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ink-soft); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); background: #16273a; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); }
+.slider { display: flex; align-items: center; gap: 8px; }
+.slider input { width: 150px; accent-color: var(--accent); }
+.slider output { font-family: var(--font-data); font-size: 12px; color: var(--ink); min-width: 6ch; }
+.toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+.toggle input { accent-color: var(--accent); }
+footer { color: var(--ink-faint); font-size: 12px; line-height: 1.5; max-width: 120ch; }
+footer a { color: var(--ink-soft); }
+[hidden] { display: none !important; }
+.globalbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <div>
+    <h1>Fonds de carte : l'actuel face aux principes de Cartographer</h1>
+    <p class="sub">Les deux vues bougent ensemble : glisser pour déplacer, molette ou pincement pour zoomer. Le zoom montre ce qui sépare une image figée d'un relief teinté avec des traits vectoriels.</p>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Carte"></nav>
+</header>
+<p class="note" id="note"></p>
+<div class="globalbar">
+  <div class="group"><span class="label">Vision simulée</span>
+    <div class="seg" id="vision" role="group" aria-label="Vision simulée">
+      <button type="button" data-cvd="" aria-pressed="true">Normale</button>
+      <button type="button" data-cvd="protanopie" aria-pressed="false">Protanopie</button>
+      <button type="button" data-cvd="deuteranopie" aria-pressed="false">Deutéranopie</button>
+      <button type="button" data-cvd="tritanopie" aria-pressed="false">Tritanopie</button>
+    </div>
+  </div>
+  <label class="toggle"><input type="checkbox" id="t-markers" checked> marqueurs d'équipe d'essai (bleu et rouge des jetons d'équipe de l'app)</label>
+</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="protanopie" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.152286 1.052583 -0.204868 0 0  0.114503 0.786281 0.099216 0 0  -0.003882 -0.048116 1.051998 0 0  0 0 0 1 0"/></filter>
+  <filter id="deuteranopie" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.01182 0.04294 0.968881 0 0  0 0 0 1 0"/></filter>
+  <filter id="tritanopie" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1.255528 -0.076749 -0.178779 0 0  -0.078411 0.930809 0.147602 0 0  0.004733 0.691367 0.3039 0 0  0 0 0 1 0"/></filter>
+</defs></svg>
+<div class="compare">
+  <figure class="pane">
+    <div class="pane-head">
+      <div class="pane-title">Actuel <small>fond publié aujourd'hui</small></div>
+      <div class="seg" id="segA" role="group" aria-label="Fond actuel">
+        <button type="button" id="a-plan" aria-pressed="true">Plan</button>
+        <button type="button" id="a-rendu" aria-pressed="false">Rendu + murs</button>
+      </div>
+    </div>
+    <div class="stage" id="stageA"><canvas id="cA"></canvas><div class="zoom"><button type="button" data-zoom="1.5" aria-label="Zoomer">+</button><button type="button" data-zoom="0.667" aria-label="Dézoomer">−</button><button type="button" data-zoom="fit" aria-label="Recadrer">⤢</button></div></div>
+  </figure>
+  <figure class="pane">
+    <div class="pane-head">
+      <div class="pane-title">Principes Cartographer <small>relief teinté, traits vectoriels, coupe par étage</small></div>
+    </div>
+    <div class="stage" id="stageB"><canvas id="cB"></canvas><div class="busy" id="busy">Calcul du relief…</div><div class="readout" id="readout"></div><div class="zoom"><button type="button" data-zoom="1.5" aria-label="Zoomer">+</button><button type="button" data-zoom="0.667" aria-label="Dézoomer">−</button><button type="button" data-zoom="fit" aria-label="Recadrer">⤢</button></div></div>
+    <div class="controls">
+      <div class="group" id="levels"><span class="label">Étage</span></div>
+      <div class="group slider"><span class="label">Hauteur</span><input type="range" id="height" min="0" max="10" step="0.25" value="0" aria-label="Hauteur de la coupe"><output id="heightOut">tout</output></div>
+      <div class="group" id="colors"><span class="label">Sol</span></div>
+      <div class="group">
+        <label class="toggle"><input type="checkbox" id="t-contours" checked> courbes</label>
+        <label class="toggle"><input type="checkbox" id="t-edges" checked> ruptures</label>
+        <label class="toggle"><input type="checkbox" id="t-outline" checked> liseré</label>
+      </div>
+    </div>
+  </figure>
+</div>
+<footer>
+  À gauche, les images publiées aujourd'hui (plan à hauteurs, ou rendu « encre » avec le plan des murs par-dessus). À droite, les mêmes données de cuisson (hauteurs du fond et maillage de navigation) dessinées selon les principes du moteur de Den : relief en gris teinté d'une seule couleur, courbes de niveau sur les pentes, ruptures de hauteur et liseré blanc en traits vectoriels, découpe à la zone jouable, coupe par étage. Maquette : seuils réglés à l'œil, rien n'est branché dans LevelUp. Principes repris d'<a href="https://github.com/OpenSpartan/cartographer" target="_blank" rel="noopener">OpenSpartan Cartographer</a> et de <a href="https://github.com/OpenSpartan/films-ui" target="_blank" rel="noopener">films-ui</a> (Den, licence MIT).
+</footer>
+
+<script>
+'use strict';
+const MAPS = [
+  { key: 'sgh_blueprint', name: 'Recharge', tag: 'Intérieur sous plafond',
+    note: '<strong>Recharge</strong> : carte fermée, à plusieurs niveaux reliés par des rampes. À regarder : la coupe par étage (les niveaux détectés sous « Étage ») et les murs qui restent nets au zoom.' },
+  { key: 'sgh_streets', name: 'Streets', tag: 'Rues et bâtiments à étages',
+    note: '<strong>Streets</strong> : rues au sol et bâtiments dont les étages se superposent. À regarder : les intérieurs qui réapparaissent sous les toits quand on coupe au niveau de la rue.' },
+  { key: 'va_behemoth', name: 'Behemoth', tag: 'Extérieur en pente',
+    note: '<strong>Behemoth</strong> : grand terrain naturel, collines et grotte. À regarder : les courbes de niveau, qui disent où le terrain monte. Un tiers du sol n\'a pas de géométrie dans les fichiers lus (terrain comblé à plat dans le fond publié) : son relief vient ici du maillage de navigation.' },
+  { key: '1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48', name: 'Lattice', tag: 'Carte Forge (Ranked)',
+    note: '<strong>Lattice – Ranked</strong> : carte Forge faite de blocs, plates-formes à hauteurs franches. À regarder : les ruptures de hauteur tracées en vecteur et la lecture des plates-formes à la coupe.' },
+];
+// Couleurs de sol (préréglages de Cartographer, floorcolor.js).
+const FLOORS = [
+  ['Bleu', '#2f7fc1'], ['Ardoise', '#5a6f8c'], ['Sarcelle', '#1f8a8c'], ['Vert', '#3f8c4f'],
+  ['Sable', '#a58a5c'], ['Violet', '#7559b5'], ['Graphite', '#6b7078'],
+];
+// Seuils, en mètres (maquette).
+const STEP = 0.35;         // écart entre voisins au-delà duquel une rupture est tracée
+const CONTOUR = 0.5;       // équidistance des courbes de niveau
+const SLOPE_MIN = 0.08;    // pente minimale pour tracer une courbe (8 %)
+const MARGIN = 0.5;        // marge autour du maillage, comme le rognage actuel
+const CLOSE = 0.5;         // fermeture des passages plus étroits que deux fois ceci
+const BAND = 0.7, FADE = 0.25, BELOW = 0.28, ABOVE = 0.1, NEAR = 0.25, ROOF = 1.0;
+const LAYERS = 4;
+
+const $ = id => document.getElementById(id);
+const state = { markers: true, map: null, modeA: 'plan', floor: FLOORS[0][1], slice: null, show: { contours: true, edges: true, outline: true }, view: null };
+const cache = new Map();
+
+// ── Chargement ─────────────────────────────────────────────────────────
+function loadImage(src) {
+  return new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; });
+}
+async function loadHeights(src) {
+  const blob = await (await fetch(src)).blob();
+  let bmp;
+  try { bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }); }
+  catch { bmp = await loadImage(URL.createObjectURL(blob)); }
+  const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height).data;
+}
+async function loadMap(m) {
+  if (cache.has(m.key)) return cache.get(m.key);
+  const base = 'cartes/' + m.key;
+  const [d, plan, rendu, px] = await Promise.all([
+    fetch(base + '.json').then(r => r.json()), loadImage(base + '.plan.webp'), loadImage(base + '.rendu.webp'), loadHeights(base + '.height.png'),
+  ]);
+  const map = { m, d, plan, rendu, px };
+  await new Promise(r => setTimeout(r, 30));
+  prepare(map);
+  cache.set(m.key, map);
+  return map;
+}
+
+// ── Grilles ────────────────────────────────────────────────────────────
+// 1 là où l'un des (2r+1)² voisins vaut 1 (sommes glissantes, lignes puis colonnes).
+function spread(m, w, h, r) {
+  if (r <= 0) return m.slice();
+  const rows = new Uint8Array(w * h);
+  for (let j = 0; j < h; j++) {
+    const row = j * w; let c = 0;
+    for (let i = -r; i < w; i++) {
+      const a = i + r, d = i - r - 1;
+      if (a < w && m[row + a]) c++;
+      if (d >= 0 && m[row + d]) c--;
+      if (i >= 0) rows[row + i] = c > 0 ? 1 : 0;
+    }
+  }
+  const out = new Uint8Array(w * h), cnt = new Int32Array(w);
+  for (let j = -r; j < h; j++) {
+    const a = j + r, d = j - r - 1;
+    if (a < h) for (let i = 0, p = a * w; i < w; i++, p++) cnt[i] += rows[p];
+    if (d >= 0) for (let i = 0, p = d * w; i < w; i++, p++) cnt[i] -= rows[p];
+    if (j >= 0) for (let i = 0, p = j * w; i < w; i++, p++) out[p] = cnt[i] > 0 ? 1 : 0;
+  }
+  return out;
+}
+function erode(m, w, h, r) {
+  const inv = new Uint8Array(w * h);
+  for (let p = 0; p < inv.length; p++) inv[p] = m[p] ? 0 : 1;
+  const s = spread(inv, w, h, r);
+  for (let p = 0; p < s.length; p++) s[p] = s[p] ? 0 : 1;
+  return s;
+}
+// Moyenne sur un carré (2r+1)², sur les seuls pixels valides.
+function smooth(v, ok, w, h, r) {
+  const sum = new Float32Array(w * h), cnt = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) {
+    const row = j * w; let s = 0, c = 0;
+    for (let i = -r; i < w; i++) {
+      const a = i + r, d = i - r - 1;
+      if (a < w && ok[row + a]) { s += v[row + a]; c++; }
+      if (d >= 0 && ok[row + d]) { s -= v[row + d]; c--; }
+      if (i >= 0) { sum[row + i] = s; cnt[row + i] = c; }
+    }
+  }
+  const out = new Float32Array(w * h);
+  for (let i = 0; i < w; i++) {
+    let s = 0, c = 0;
+    for (let j = -r; j < h; j++) {
+      const a = j + r, d = j - r - 1;
+      if (a < h) { s += sum[a * w + i]; c += cnt[a * w + i]; }
+      if (d >= 0) { s -= sum[d * w + i]; c -= cnt[d * w + i]; }
+      if (j >= 0) out[j * w + i] = c > 0 ? s / c : v[j * w + i];
+    }
+  }
+  return out;
+}
+
+// ── Préparation d'une carte ────────────────────────────────────────────
+function prepare(map) {
+  const { d, px } = map;
+  const { w, h, x0, y1, mpp, z0, step } = d.den;
+  const n = w * h;
+  const H = new Float32Array(n), ok = new Uint8Array(n);
+  for (let p = 0, q = 0; p < n; p++, q += 4) {
+    if (px[q + 3] > 127) { ok[p] = 1; H[p] = z0 + (px[q] * 256 + px[q + 1]) * step; } else H[p] = NaN;
+  }
+  let Hs;
+
+  // Sols du maillage de navigation, empilés par pixel.
+  const L = new Float32Array(n * LAYERS).fill(NaN), Lc = new Uint8Array(n);
+  const put = (p, z) => {
+    const b = p * LAYERS;
+    for (let k = 0; k < Lc[p]; k++) if (Math.abs(L[b + k] - z) < 0.4) return;
+    if (Lc[p] < LAYERS) L[b + Lc[p]++] = z;
+  };
+  const tri = (ax, ay, az, bx, by, bz, cx, cy, cz) => {
+    const i0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))), i1 = Math.min(w - 1, Math.ceil(Math.max(ax, bx, cx)));
+    const j0 = Math.max(0, Math.floor(Math.min(ay, by, cy))), j1 = Math.min(h - 1, Math.ceil(Math.max(ay, by, cy)));
+    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (Math.abs(den) < 1e-9) return;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const l1 = ((by - cy) * (i - cx) + (cx - bx) * (j - cy)) / den;
+      const l2 = ((cy - ay) * (i - cx) + (ax - cx) * (j - cy)) / den;
+      const l3 = 1 - l1 - l2;
+      if (l1 < -1e-4 || l2 < -1e-4 || l3 < -1e-4) continue;
+      put(j * w + i, l1 * az + l2 * bz + l3 * cz);
+    }
+  };
+  const U = x => (x - x0) / mpp - 0.5, V = y => (y1 - y) / mpp - 0.5;
+  const zs = [];
+  const edgeCount = new Map();
+  for (const f of d.faces || []) {
+    const k = f.length / 3;
+    for (let t = 1; t + 1 < k; t++) tri(U(f[0]), V(f[1]), f[2], U(f[3 * t]), V(f[3 * t + 1]), f[3 * t + 2], U(f[3 * t + 3]), V(f[3 * t + 4]), f[3 * t + 5]);
+    for (let a = 0; a < k; a++) {
+      const b = (a + 1) % k;
+      const ka = `${f[3 * a]},${f[3 * a + 1]},${f[3 * a + 2]}`, kb = `${f[3 * b]},${f[3 * b + 1]},${f[3 * b + 2]}`;
+      const key = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+      const e = edgeCount.get(key);
+      if (e) e.n++; else edgeCount.set(key, { n: 1, s: [U(f[3 * a]), V(f[3 * a + 1]), U(f[3 * b]), V(f[3 * b + 1]), (f[3 * a + 2] + f[3 * b + 2]) / 2] });
+    }
+  }
+  // Murs du maillage (arêtes portées par une seule face), avec leur hauteur.
+  const walls = [];
+  for (const e of edgeCount.values()) if (e.n === 1) walls.push(e.s);
+  map.walls = walls;
+  for (let p = 0; p < n; p++) for (let k = 0; k < Lc[p]; k++) zs.push(L[p * LAYERS + k]);
+  // La géométrie manque sous une partie du sol (terrain naturel, comblé à plat dans le fond publié) :
+  // le relief y vient du maillage, le sol le plus haut là où il s'en empile.
+  const fromMesh = new Uint8Array(n);
+  for (let p = 0; p < n; p++) {
+    if (ok[p] || !Lc[p]) continue;
+    let top = -Infinity;
+    for (let k = 0; k < Lc[p]; k++) top = Math.max(top, L[p * LAYERS + k]);
+    H[p] = top; ok[p] = 1; fromMesh[p] = 1;
+  }
+  Hs = smooth(H, ok, w, h, 2);
+
+  // Zone gardée : le maillage élargi de la marge, passages étroits fermés, creux enclos comblés.
+  const walk = new Uint8Array(n);
+  for (let p = 0; p < n; p++) walk[p] = Lc[p] > 0 ? 1 : 0;
+  const hasMesh = zs.length > 0;
+  let clip;
+  if (hasMesh) {
+    const m1 = spread(walk, w, h, Math.max(1, Math.round(MARGIN / mpp)));
+    const c = Math.max(1, Math.round(CLOSE / mpp));
+    const m2 = erode(spread(m1, w, h, c), w, h, c);
+    // Dehors : ce que le bord de la grille atteint sans traverser la zone.
+    const outside = new Uint8Array(n), queue = new Int32Array(n); let tail = 0;
+    const visit = p => { if (!m2[p] && !outside[p]) { outside[p] = 1; queue[tail++] = p; } };
+    for (let i = 0; i < w; i++) { visit(i); visit((h - 1) * w + i); }
+    for (let j = 0; j < h; j++) { visit(j * w); visit(j * w + w - 1); }
+    for (let head = 0; head < tail; head++) {
+      const p = queue[head], i = p % w;
+      if (i > 0) visit(p - 1); if (i < w - 1) visit(p + 1); if (p >= w) visit(p - w); if (p < n - w) visit(p + w);
+    }
+    clip = new Uint8Array(n);
+    for (let p = 0; p < n; p++) clip[p] = m2[p] || !outside[p] ? 1 : 0;
+  } else clip = new Uint8Array(n).fill(1);
+  const F = new Uint8Array(n);
+  for (let p = 0; p < n; p++) F[p] = ok[p] && clip[p] ? 1 : 0;
+
+  // Relief en gris : plus clair plus haut, ombrage venu du nord-ouest.
+  const { p02, p98 } = d.den;
+  const span = Math.max(1, p98 - p02);
+  const G = new Float32Array(n);
+  const Lx = -1, Ly = -1, Lz = 1.4, Ln = Math.hypot(Lx, Ly, Lz), flat = Lz / Ln;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const p = j * w + i;
+    if (!ok[p]) continue;
+    const t = Math.min(1, Math.max(0, (H[p] - p02) / span));
+    const xl = i > 0 && ok[p - 1] ? Hs[p - 1] : Hs[p], xr = i < w - 1 && ok[p + 1] ? Hs[p + 1] : Hs[p];
+    const yu = j > 0 && ok[p - w] ? Hs[p - w] : Hs[p], yd = j < h - 1 && ok[p + w] ? Hs[p + w] : Hs[p];
+    const gx = (xr - xl) / (2 * mpp), gy = (yd - yu) / (2 * mpp);
+    const nn = Math.hypot(gx, gy, 1);
+    const lam = Math.max(0, (-gx * Lx - gy * Ly + Lz) / (nn * Ln));
+    const shade = Math.min(1.3, Math.max(0.35, lam / flat));
+    G[p] = Math.min(1, (0.36 + 0.64 * t) * (0.62 + 0.38 * shade));
+  }
+
+  // Traits : ruptures (sur les hauteurs brutes) et courbes de niveau (sur les hauteurs lissées).
+  const edges = [], contours = [];
+  const seg = (out, i, j, a, b, c, dd, t, lo, hi) => {
+    const idx = (a > t ? 8 : 0) | (b > t ? 4 : 0) | (c > t ? 2 : 0) | (dd > t ? 1 : 0);
+    const pairs = CASES[idx];
+    for (let s = 0; s < pairs.length; s += 2) {
+      const P = edgePoint(pairs[s], i, j, a, b, c, dd, t), Q = edgePoint(pairs[s + 1], i, j, a, b, c, dd, t);
+      out.push(P[0], P[1], Q[0], Q[1], lo, hi);
+    }
+  };
+  for (let j = 0; j < h - 1; j++) for (let i = 0; i < w - 1; i++) {
+    const p = j * w + i;
+    if (!ok[p] || !ok[p + 1] || !ok[p + w] || !ok[p + w + 1]) continue;
+    if (!(F[p] || F[p + 1] || F[p + w] || F[p + w + 1])) continue;
+    let a = H[p], b = H[p + 1], c = H[p + w + 1], dd = H[p + w];
+    let lo = Math.min(a, b, c, dd), hi = Math.max(a, b, c, dd);
+    if (hi - lo > STEP) {
+      let t = Math.round((lo + hi) / 2 * 4) / 4;
+      if (t <= lo || t >= hi) t = (lo + hi) / 2;
+      seg(edges, i, j, a, b, c, dd, t, lo, hi);
+      continue;
+    }
+    a = Hs[p]; b = Hs[p + 1]; c = Hs[p + w + 1]; dd = Hs[p + w];
+    lo = Math.min(a, b, c, dd); hi = Math.max(a, b, c, dd);
+    const slope = Math.hypot((b - a + c - dd) / 2, (dd - a + c - b) / 2) / mpp;
+    if (slope < SLOPE_MIN) continue;
+    for (let k = Math.ceil(lo / CONTOUR); k * CONTOUR < hi; k++) seg(contours, i, j, a, b, c, dd, k * CONTOUR, lo, hi);
+  }
+  // Liseré : le bord de la zone gardée.
+  const outline = [];
+  const f = (i, j) => (i < 0 || j < 0 || i >= w || j >= h) ? 0 : F[j * w + i];
+  for (let j = -1; j < h; j++) for (let i = -1; i < w; i++) {
+    const a = f(i, j), b = f(i + 1, j), c = f(i + 1, j + 1), dd = f(i, j + 1);
+    if (a === b && b === c && c === dd) continue;
+    seg(outline, i, j, a, b, c, dd, 0.5, 0, 0);
+  }
+
+  // Étages : pics de l'histogramme des hauteurs de sol du maillage.
+  zs.sort((x, y) => x - y);
+  const zmin = zs.length ? zs[Math.floor(zs.length * 0.01)] : p02, zmax = zs.length ? zs[Math.floor(zs.length * 0.99)] : p98;
+  const bins = new Float32Array(Math.max(1, Math.ceil((zmax - zmin) / 0.25) + 1));
+  for (const z of zs) { const b = Math.round((z - zmin) / 0.25); if (b >= 0 && b < bins.length) bins[b]++; }
+  const sm = bins.map((_, b) => (bins[b - 1] || 0) * 0.5 + bins[b] + (bins[b + 1] || 0) * 0.5);
+  const peaks = [];
+  for (let b = 0; b < sm.length; b++) if (sm[b] >= (sm[b - 1] || 0) && sm[b] > (sm[b + 1] || 0) && sm[b] > zs.length * 0.03) peaks.push({ z: zmin + b * 0.25, v: sm[b] });
+  peaks.sort((x, y) => y.v - x.v);
+  const levels = [];
+  for (const pk of peaks) if (levels.every(l => Math.abs(l - pk.z) > 1.2) && levels.length < 5) levels.push(pk.z);
+  levels.sort((x, y) => x - y);
+
+  Object.assign(map, { w, h, x0, y1, mpp, H, ok, fromMesh, L, Lc, F, G, hasMesh, levels, zmin, zmax,
+    base: levels.length ? levels[0] : zmin,
+    lines: { edges: new Float32Array(edges), contours: new Float32Array(contours), outline: new Float32Array(outline) },
+    slices: [] });
+}
+
+// Marche des carrés : coins a (haut gauche), b (haut droite), c (bas droite), d (bas gauche) ;
+// bords 0 haut, 1 droite, 2 bas, 3 gauche.
+const CASES = [[], [3, 2], [2, 1], [3, 1], [0, 1], [0, 1, 3, 2], [0, 2], [0, 3], [0, 3], [0, 2], [0, 3, 2, 1], [0, 1], [3, 1], [2, 1], [3, 2], []];
+function edgePoint(e, i, j, a, b, c, d, t) {
+  const r = (u, v) => (u === v ? 0.5 : (t - u) / (v - u));
+  if (e === 0) return [i + r(a, b), j];
+  if (e === 1) return [i + 1, j + r(b, c)];
+  if (e === 2) return [i + r(d, c), j + 1];
+  return [i, j + r(a, d)];
+}
+
+// ── Coupe par étage ────────────────────────────────────────────────────
+function sliceOf(map, z) {
+  const key = z === null ? 'all' : z.toFixed(2);
+  let s = map.slices.find(x => x.key === key);
+  if (s) return s;
+  const { w, h, H, F, G, L, Lc, mpp } = map;
+  const n = w * h;
+  const grey = new Float32Array(n), alpha = new Float32Array(n), keep = new Uint8Array(n);
+  if (z === null) {
+    for (let p = 0; p < n; p++) if (F[p]) { grey[p] = G[p]; alpha[p] = 1; keep[p] = 1; }
+  } else {
+    const lo = z - BAND, hi = z + BAND;
+    const weight = v => Math.max(0, v < lo ? 1 - (lo - v) / FADE : v > hi ? 1 - (v - hi) / FADE : 1);
+    const best = new Float32Array(n).fill(NaN), floorIn = new Uint8Array(n);
+    for (let p = 0; p < n; p++) {
+      let bz = NaN, bw = 0;
+      for (let k = 0; k < Lc[p]; k++) { const v = L[p * LAYERS + k], wv = weight(v); if (wv > bw) { bw = wv; bz = v; } }
+      best[p] = bz; floorIn[p] = bw > 0.5 ? 1 : 0;
+    }
+    const near = spread(floorIn, w, h, Math.max(1, Math.round(NEAR / mpp)));
+    const span = Math.max(1, map.d.den.p98 - map.d.den.p02);
+    for (let p = 0; p < n; p++) {
+      if (!F[p]) continue;
+      const top = H[p], fz = best[p];
+      let walkTop = false;
+      for (let k = 0; k < Lc[p]; k++) if (Math.abs(L[p * LAYERS + k] - top) < 0.3) walkTop = true;
+      let inside, g = G[p];
+      if (!Number.isNaN(fz) && top > fz + ROOF) {
+        // Un toit au-dessus d'un sol de la coupe : on montre le sol, à plat, dans la teinte de sa hauteur.
+        inside = weight(fz);
+        const fg = 0.36 + 0.64 * Math.min(1, Math.max(0, (fz - map.d.den.p02) / span));
+        g = g + (fg - g) * inside;
+      } else {
+        inside = walkTop || !near[p] || top < z ? weight(top) : 1;
+        if (inside > 0.5) keep[p] = 1;
+      }
+      grey[p] = g;
+      alpha[p] = inside + (1 - inside) * (top > z ? ABOVE : BELOW);
+    }
+  }
+  s = { key, z, grey, alpha, keep, tinted: null, paths: null };
+  map.slices.unshift(s);
+  if (map.slices.length > 4) map.slices.length = 4;
+  return s;
+}
+
+// ── Couleurs (terrainStyle de films-ui) ────────────────────────────────
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+function styleOf(base) {
+  const B = hex(base), K = [0, 0, 0], W = [255, 255, 255];
+  return { low: mix(K, B, 0.3), mid: mix(K, B, 0.78), high: mix(B, W, 0.3), edge: css(mix(B, W, 0.65)), contour: css(mix(B, W, 0.45)), outline: '#ffffff', wall: css(mix(B, W, 0.8)) };
+}
+function tint(map, s, style) {
+  const key = style.low + '|' + style.mid + '|' + style.high;
+  if (s.tinted && s.tinted.key === key) return s.tinted.canvas;
+  const { w, h } = map;
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let g = 0; g < 256; g++) {
+    const f = g / 255, a = f < 0.5 ? style.low : style.mid, b = f < 0.5 ? style.mid : style.high, k = f < 0.5 ? f * 2 : f * 2 - 1;
+    for (let i = 0; i < 3; i++) lut[g * 3 + i] = a[i] + (b[i] - a[i]) * k;
+  }
+  const canvas = s.tinted?.canvas || document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const c = canvas.getContext('2d');
+  const img = c.createImageData(w, h), px = img.data;
+  for (let p = 0, q = 0; p < w * h; p++, q += 4) {
+    const al = s.alpha[p];
+    if (al <= 0) continue;
+    const g = Math.round(Math.min(1, Math.max(0, s.grey[p])) * 255) * 3;
+    px[q] = lut[g]; px[q + 1] = lut[g + 1]; px[q + 2] = lut[g + 2]; px[q + 3] = Math.round(255 * al);
+  }
+  c.putImageData(img, 0, 0);
+  s.tinted = { key, canvas };
+  return canvas;
+}
+function pathsOf(map, s) {
+  if (s.paths) return s.paths;
+  const inKeep = (x, y) => {
+    const i = Math.round(x), j = Math.round(y);
+    return i >= 0 && j >= 0 && i < map.w && j < map.h && s.keep[j * map.w + i] === 1;
+  };
+  const build = (arr, sides) => {
+    const path = new Path2D();
+    for (let k = 0; k < arr.length; k += 6) {
+      const ax = arr[k], ay = arr[k + 1], bx = arr[k + 2], by = arr[k + 3];
+      if (s.z !== null) {
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        let kept = inKeep(mx, my);
+        if (!kept && sides) {
+          const len = Math.hypot(bx - ax, by - ay) || 1, nx = -(by - ay) / len * 1.5, ny = (bx - ax) / len * 1.5;
+          kept = inKeep(mx + nx, my + ny) || inKeep(mx - nx, my - ny);
+        }
+        if (!kept) continue;
+      }
+      path.moveTo(ax, ay); path.lineTo(bx, by);
+    }
+    return path;
+  };
+  const walls = new Path2D();
+  if (s.z !== null) for (const [ax, ay, bx, by, z] of map.walls) {
+    if (z < s.z - BAND || z > s.z + BAND) continue;
+    walls.moveTo(ax, ay); walls.lineTo(bx, by);
+  }
+  const outline = new Path2D();
+  const o = map.lines.outline;
+  for (let k = 0; k < o.length; k += 6) { outline.moveTo(o[k], o[k + 1]); outline.lineTo(o[k + 2], o[k + 3]); }
+  s.paths = { edges: build(map.lines.edges, true), contours: build(map.lines.contours, false), walls, outline };
+  return s.paths;
+}
+
+// ── Vue partagée ───────────────────────────────────────────────────────
+const cA = $('cA'), cB = $('cB');
+function sizeCanvas(c) {
+  const r = c.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
+  const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  return { W, H, dpr };
+}
+function fit() {
+  const map = state.map; if (!map) return;
+  const r = cB.getBoundingClientRect();
+  const ww = map.w * map.mpp, hh = map.h * map.mpp;
+  const s = Math.min(r.width / ww, r.height / hh) * 0.94;
+  state.view = { cx: map.x0 + ww / 2, cy: map.y1 - hh / 2, s };
+}
+// Transforme pixel de grille -> écran pour une grille calée (x0, y1, mpp).
+function gridTransform(g, view, W, H, dpr, x0, y1, mpp) {
+  const k = view.s * mpp * dpr;
+  g.setTransform(k, 0, 0, k, W / 2 + (x0 + 0.5 * mpp - view.cx) * view.s * dpr, H / 2 + (view.cy - y1 + 0.5 * mpp) * view.s * dpr);
+  return k;
+}
+function drawA() {
+  const { W, H, dpr } = sizeCanvas(cA);
+  const g = cA.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-a');
+  g.fillRect(0, 0, W, H);
+  const map = state.map, view = state.view; if (!map || !view) return;
+  const cal = map.d.current;
+  const img = state.modeA === 'plan' ? map.plan : map.rendu;
+  gridTransform(g, view, W, H, dpr, cal.originX, cal.originY, cal.metersPerPixel);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(img, -0.5, -0.5, cal.widthPx, cal.heightPx);
+  if (state.modeA === 'rendu' && map.d.walls) {
+    const s = view.s * dpr;
+    g.setTransform(s, 0, 0, -s, W / 2 - view.cx * s, H / 2 + view.cy * s);
+    g.globalAlpha = 0.6; g.strokeStyle = '#e8edf3'; g.lineWidth = dpr / s;
+    g.beginPath();
+    for (const [x1, y1, x2, y2] of map.d.walls) { g.moveTo(x1, y1); g.lineTo(x2, y2); }
+    g.stroke(); g.globalAlpha = 1;
+  }
+}
+function drawB() {
+  const { W, H, dpr } = sizeCanvas(cB);
+  const g = cB.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--stage-b');
+  g.fillRect(0, 0, W, H);
+  // Trame de points du fond de scène.
+  g.fillStyle = 'rgba(120,160,200,0.10)';
+  const stepPx = 22 * dpr;
+  for (let y = stepPx / 2; y < H; y += stepPx) for (let x = stepPx / 2; x < W; x += stepPx) g.fillRect(x, y, dpr, dpr);
+  const map = state.map, view = state.view; if (!map || !view) return;
+  const s = sliceOf(map, state.slice);
+  const style = styleOf(state.floor);
+  const k = gridTransform(g, view, W, H, dpr, map.x0, map.y1, map.mpp);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(tint(map, s, style), -0.5, -0.5, map.w, map.h);
+  const P = pathsOf(map, s);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  if (state.show.contours) { g.globalAlpha = 0.35; g.strokeStyle = style.contour; g.lineWidth = 0.75 * dpr / k; g.stroke(P.contours); }
+  if (state.slice !== null) { g.globalAlpha = 0.85; g.strokeStyle = style.wall; g.lineWidth = 1.1 * dpr / k; g.stroke(P.walls); }
+  if (state.show.edges) { g.globalAlpha = 0.7; g.strokeStyle = style.edge; g.lineWidth = 1 * dpr / k; g.stroke(P.edges); }
+  if (state.show.outline) { g.globalAlpha = 1; g.strokeStyle = style.outline; g.lineWidth = 1.6 * dpr / k; g.stroke(P.outline); }
+  g.globalAlpha = 1;
+}
+// Marqueurs d'essai : deux bleus, deux rouges, en croix autour du centre de la carte.
+const MARKERS = [[-0.18, 0.12, '#3B82F6'], [0.2, -0.08, '#3B82F6'], [-0.1, -0.22, '#EF4444'], [0.14, 0.24, '#EF4444']];
+function drawMarkers(canvas) {
+  const map = state.map, view = state.view;
+  if (!state.markers || !map || !view) return;
+  const g = canvas.getContext('2d');
+  const dpr = canvas.width / Math.max(1, canvas.getBoundingClientRect().width);
+  const ww = map.w * map.mpp, hh = map.h * map.mpp, cx = map.x0 + ww / 2, cy = map.y1 - hh / 2;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  for (const [fx, fy, color] of MARKERS) {
+    const x = canvas.width / 2 + (cx + fx * ww - view.cx) * view.s * dpr;
+    const y = canvas.height / 2 - (cy + fy * hh - view.cy) * view.s * dpr;
+    g.beginPath(); g.arc(x, y, 7 * dpr, 0, Math.PI * 2);
+    g.fillStyle = color; g.fill();
+  }
+}
+let raf = 0;
+function draw() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawA(); drawB(); drawMarkers(cA); drawMarkers(cB); }); }
+
+// Glisser, molette, pincement : sur l'une ou l'autre vue.
+function bindStage(stage, canvas) {
+  const pts = new Map();
+  let last = null;
+  const worldAt = (cx, cy) => {
+    const r = canvas.getBoundingClientRect(), v = state.view;
+    return [v.cx + (cx - r.left - r.width / 2) / v.s, v.cy - (cy - r.top - r.height / 2) / v.s];
+  };
+  const zoomAt = (cx, cy, f) => {
+    const v = state.view; if (!v) return;
+    const [wx, wy] = worldAt(cx, cy);
+    v.s = Math.min(400, Math.max(0.5, v.s * f));
+    const r = canvas.getBoundingClientRect();
+    v.cx = wx - (cx - r.left - r.width / 2) / v.s;
+    v.cy = wy + (cy - r.top - r.height / 2) / v.s;
+    draw();
+  };
+  stage.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); stage.classList.add('dragging');
+  });
+  stage.addEventListener('pointermove', e => {
+    if (canvas === cB) readout(e);
+    if (!pts.has(e.pointerId) || !state.view) return;
+    const prev = pts.get(e.pointerId);
+    if (pts.size === 1) {
+      state.view.cx -= (e.clientX - prev[0]) / state.view.s;
+      state.view.cy += (e.clientY - prev[1]) / state.view.s;
+      pts.set(e.pointerId, [e.clientX, e.clientY]); draw();
+    } else if (pts.size === 2) {
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      const [a, b] = [...pts.values()];
+      const dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (last) zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, dist / last);
+      last = dist;
+    }
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) last = null; if (!pts.size) stage.classList.remove('dragging'); };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.querySelectorAll('[data-zoom]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.zoom === 'fit') { fit(); draw(); return; }
+    const r = canvas.getBoundingClientRect();
+    zoomAt(r.left + r.width / 2, r.top + r.height / 2, Number(b.dataset.zoom));
+  }));
+  return worldAt;
+}
+const worldAtB = bindStage($('stageB'), cB);
+bindStage($('stageA'), cA);
+const fmtM = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1).replace('.', ',') + ' m';
+function readout(e) {
+  const map = state.map; if (!map || !state.view) return;
+  const [x, y] = worldAtB(e.clientX, e.clientY);
+  const i = Math.round((x - map.x0) / map.mpp - 0.5), j = Math.round((map.y1 - y) / map.mpp - 0.5);
+  const out = $('readout');
+  if (i < 0 || j < 0 || i >= map.w || j >= map.h || !map.F[j * map.w + i]) { out.textContent = ''; return; }
+  const p = j * map.w + i;
+  const floors = [];
+  for (let k = 0; k < map.Lc[p]; k++) floors.push(map.L[p * LAYERS + k]);
+  floors.sort((a, b) => a - b);
+  out.textContent = `dessus ${fmtM(map.H[p] - map.base)}` + (floors.length ? ` · sol${floors.length > 1 ? 's' : ''} ${floors.map(z => fmtM(z - map.base)).join(', ')}` : '');
+}
+
+// ── Réglages ───────────────────────────────────────────────────────────
+function setSlice(z) {
+  state.slice = z;
+  const map = state.map;
+  $('heightOut').textContent = z === null ? 'tout' : fmtM(z - map.base);
+  if (z !== null) $('height').value = String(z - map.base);
+  document.querySelectorAll('#levels .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.z === (z === null ? 'all' : z.toFixed(2)))));
+  draw();
+}
+function buildLevels(map) {
+  const box = $('levels');
+  box.querySelectorAll('.chip').forEach(b => b.remove());
+  const add = (label, z) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.z = z === null ? 'all' : z.toFixed(2);
+    b.addEventListener('click', () => setSlice(z));
+    box.appendChild(b);
+  };
+  add('Tout', null);
+  map.levels.forEach(z => add(fmtM(z - map.base), z));
+  const slider = $('height');
+  slider.min = String(Math.floor((map.zmin - map.base) * 4) / 4);
+  slider.max = String(Math.ceil((map.zmax - map.base) * 4) / 4);
+  slider.value = '0';
+}
+$('height').addEventListener('input', e => setSlice(state.map.base + Number(e.target.value)));
+FLOORS.forEach(([name, color], idx) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'swatch'; b.style.background = color; b.title = name; b.setAttribute('aria-label', 'Sol ' + name);
+  b.setAttribute('aria-pressed', String(idx === 0));
+  b.addEventListener('click', () => {
+    state.floor = color;
+    document.querySelectorAll('#colors .swatch').forEach(s => s.setAttribute('aria-pressed', String(s === b)));
+    draw();
+  });
+  $('colors').appendChild(b);
+});
+$('t-markers').addEventListener('change', e => { state.markers = e.target.checked; draw(); });
+document.querySelectorAll('#vision button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#vision button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  for (const c of [cA, cB]) c.style.filter = b.dataset.cvd ? `url(#${b.dataset.cvd})` : '';
+}));
+for (const k of ['contours', 'edges', 'outline']) $('t-' + k).addEventListener('change', e => { state.show[k] = e.target.checked; draw(); });
+for (const [id, mode] of [['a-plan', 'plan'], ['a-rendu', 'rendu']]) $(id).addEventListener('click', () => {
+  state.modeA = mode;
+  $('a-plan').setAttribute('aria-pressed', String(mode === 'plan'));
+  $('a-rendu').setAttribute('aria-pressed', String(mode === 'rendu'));
+  draw();
+});
+
+let token = 0;
+async function selectMap(m) {
+  const mine = ++token;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.key === m.key)));
+  $('note').innerHTML = m.note;
+  $('busy').hidden = false;
+  try {
+    const map = await loadMap(m);
+    if (mine !== token) return;
+    state.map = map; state.slice = null;
+    buildLevels(map); fit(); setSlice(null);
+    try { localStorage.setItem('fonds-compares-carte', m.key); } catch {}
+  } catch (err) {
+    $('busy').textContent = 'Chargement impossible : ' + err.message;
+    return;
+  }
+  $('busy').hidden = true;
+}
+MAPS.forEach(m => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab'); b.dataset.key = m.key;
+  b.innerHTML = `<b>${m.name}</b><span>${m.tag}</span>`;
+  b.addEventListener('click', () => selectMap(m));
+  $('tabs').appendChild(b);
+});
+new ResizeObserver(() => draw()).observe($('stageB'));
+new ResizeObserver(() => draw()).observe($('stageA'));
+let first = MAPS[0];
+try { first = MAPS.find(m => m.key === localStorage.getItem('fonds-compares-carte')) || first; } catch {}
+selectMap(first);
+</script>
