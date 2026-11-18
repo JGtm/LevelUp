@@ -278,15 +278,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste C — compteurs nommés du tableau (Sonnet ; Opus pour C.3)
 
-- [ ] C.1 Le banc compare enfin les compteurs nommés à l'API (`cmd/replay-verite`, oracle déjà chargé) : le
+- [x] C.1 (fait le 2026-11-18 : mode `-compteurs` de `cmd/replay-verite`, commit de `C:/t/dec-lu` ; la ligne « avant » sur les 1 455 rejeux retrouve les valeurs de départ à tous les chiffres) Le banc compare enfin les compteurs nommés à l'API (`cmd/replay-verite`, oracle déjà chargé) : le
       taux d'erreur par compteur et par build devient une mesure du gate, AVANT toute correction.
-- [ ] C.2 Garde, appliquée AVANT la sélection de la suite : un compteur d'éliminations nommé ne dépasse pas
+- [x] C.2 (fait le 2026-11-18, commit `d0911fb` du clone ; borne = éliminations publiées du même joueur dans la manche ; émission écartée en entier, comptée dans `coverage.score.statsGuarded` ; contrôle sur le parc sans décodage : la garde écartera 50 couples, les 27 et les 23 connus, dont AUCUN n'égale l'API ; aucun joueur n'a un compteur positif sans éliminations lues) Garde, appliquée AVANT la sélection de la suite : un compteur d'éliminations nommé ne dépasse pas
       les éliminations du joueur dans la manche ; `maxSpree` reçoit sa borne. Une valeur écartée est comptée
       et publiée en couverture, jamais remise à zéro en silence. Mesure attendue : les 27 couples violés et
       les 23 séries aberrantes disparaissent ; le taux d'accord avec l'API ne baisse pour aucun compteur.
 - [ ] C.3 Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
       émission perd. Sortie : cause prouvée dans la lecture du tableau et correction écrite ici, ou `[!]`.
-- [ ] C.4 Mesure APRÈS par C.1.
+- [x] C.4 (fait le 2026-11-18 sur 70 films, 922 joueurs : couples violés 27 → 0, séries aberrantes 23 → 0, joueurs à 16 grenades 19 → 4 ; gagnés : série +23, grenades +22, corps à corps +10, tête +3 ; perdus : 0 ; aucun build ne baisse ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS par C.1.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
@@ -397,6 +397,11 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste C : C.1, C.2 et C.4 rendus, relus, commités (`d0911fb` dans le clone, banc dans
+  `C:/t/dec-lu`). Fait rougir, à refiger à l'intégration : la révision de la couche objectives, son empreinte
+  au golden des révisions, le golden de forme (champ `statsGuarded`) ; aucun golden d'assemblage, aucune
+  fixture de contrat. Reste C.3 (recherche Opus) : 4 joueurs à 16 grenades dont la valeur tient dans leurs
+  éliminations (`6347cbf9`, `d6a9a42e`, `d8cd155a`, `f795dbb3`).
 - 2026-11-18 — piste I close (I.1, I.2), aucun code. Découverte pour LevelUp : 2 330 temps forts « mode » de
   la base n'ont pas de code ; sur les 33 matchs qui ont les deux, ce sont des DOUBLONS des événements de code
   10 (1 284 sur 1 284, même joueur, même instant) ; 43 matchs de juin à septembre 2026 n'ont que ceux-là.
