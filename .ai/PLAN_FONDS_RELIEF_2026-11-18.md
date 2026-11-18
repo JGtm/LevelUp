@@ -338,11 +338,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       une option de plus à `mapnav-fetch`, testée. Une carte absente de l'inventaire versionné ou dont la
       version a changé depuis la publication de son fond est nommée dans l'inventaire (le relief se projette
       dans le calage publié, D-5 : un écart de version se voit au contrôle de B.3 et E.1).
-- [ ] B.1 `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
+- [x] B.1 (fait le 2026-11-18, `fb291efdc1`, intégré à `feat/fonds-relief` : geste `--relief-seul`, relief refait par la cuisson complète, données en `.relief.json.gz` ; archlint entier vert sur la brique publiée, deux fichiers de la brique inscrits, datés) `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
       validations ; lecture du calage publié ; écriture du relief et des champs `reliefImage` et `reliefData`
       du sidecar par `internal/mapfondsidecar` seul. Les autres champs restent identiques à l'octet
       près (test). Journal `slog` par carte : poids écrit, part du sol tirée du maillage, dégradations.
-- [ ] B.2 `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
+- [x] B.2 (fait le 2026-11-18, même commit : conversion au bit près, vérifiée sur 5 cartes) `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
       règle existante).
 - [x] B.3 (fait le 2026-11-18 par le pilote sur la branche d'intégration `feat/fonds-relief`, `83139343b6` :
       Recharge, Streets, Behemoth, Lattice en `--relief-seul` puis `mapfond-webp -convertir` ; diff limité à 8
@@ -350,7 +350,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       fond publié sans hauteur 11,9 / 8,7 / 4,7 / 1,4 %, chiffres de la conception. Le dépôt hors ligne `.ai/re_dump`
       est COPIÉ (jamais en jonction) dans le worktree pour les cartes Forge.) Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
       `map_backgrounds/` ; diff : seuls les fichiers du relief et deux champs par sidecar changent.
-- [ ] B.4 Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
+- [x] B.4 (fait le 2026-11-18, `9fb38a20fb` : maillage trouvé, plan des murs et relief publiés, rognage au maillage, cadre 1192 x 1024 ; rendu VALIDÉ à l écran par le user, « Parfait Live Fire !!! » ; test des fonds sans plan ramené aux deux Thunderhead ; réglages réécrits) Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
       relief. Les leviers de `map_fond_reglages.json` sont relus (la `boiteUtile` peut céder la place au
       rognage par le maillage) ; la dégradation « aucun maillage » disparaît du sidecar. Le user valide le fond à
       l'écran (le sidecar note « LE RENDU N A TOUJOURS PAS ETE GATE »).
