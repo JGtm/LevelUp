@@ -365,23 +365,23 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste F — rejeu à la demande et régénération du bureau (Sonnet)
 
-- [ ] F.1 Garde des jetons en liste blanche : dans `registry_replay_generation*.go`, seul
+- [x] F.1 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Garde des jetons en liste blanche : dans `registry_replay_generation*.go`, seul
       `tokencache.ResolveFreshPlayerTokens` est admis.
-- [ ] F.2 Demande reprise après redémarrage : revalidée par la sonde du match avant tout téléchargement
+- [x] F.2 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Demande reprise après redémarrage : revalidée par la sonde du match avant tout téléchargement
       (`replayregen/demand_run.go`).
-- [ ] F.3 Nouvel essai après échec : les contrôles d'état passent d'abord
+- [x] F.3 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Nouvel essai après échec : les contrôles d'état passent d'abord
       (`service/replay_generation_service.go:117-119`).
-- [ ] F.4 Film retiré du disque après un échec de génération non réessayable quand l'archive est désactivée.
-- [ ] F.5 Capacité de génération : bureau, ou développement non exposé (`config/deployment.go`) ; test dans
+- [x] F.4 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Film retiré du disque après un échec de génération non réessayable quand l'archive est désactivée.
+- [x] F.5 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Capacité de génération : bureau, ou développement non exposé (`config/deployment.go`) ; test dans
       `deployment_test.go`.
-- [ ] F.6 Bouton : pas proposé quand le jeton du joueur demande une reconnexion ; « Réessayer » retiré pour
+- [x] F.6 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Bouton : pas proposé quand le jeton du joueur demande une reconnexion ; « Réessayer » retiré pour
       un jeton indisponible (web, `replayGeneration/logic.ts`).
-- [ ] F.7 Jeton refusé pendant la résolution du film : un nouvel essai avec un jeton frais
+- [x] F.7 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Jeton refusé pendant la résolution du film : un nouvel essai avec un jeton frais
       (`tokencache.RetryWithFreshTokens`).
-- [ ] F.8 Selon D-5 : la file de régénération reprojette, sans film, le fichier tactique périmé d'un rejeu
+- [x] F.8 (fait le 2026-11-18, même commit ; le test de péremption lisait et décodait chaque fichier : 27 s pour 1 455 fichiers à chaud, 85 s à froid ; il lit maintenant le seul en-tête : 0,25 s, mesuré sur les fichiers réels du poste) Selon D-5 : la file de régénération reprojette, sans film, le fichier tactique périmé d'un rejeu
       dont le film a expiré (`replayregen/scan.go`, `ProjeterRasterTactique`). Tests : film absent et fichier
       au format précédent, fichier refait ; film absent et fichier à jour, rien.
-- [ ] F.9 Clic juste après la fin d'un match. D'abord l'inventaire, écrit au journal, de ce que la réponse du
+- [x] F.9 (fait le 2026-11-18, même commit ; inventaire : aucun signal ne distingue un film pas encore publié d'un film absent pour un manifeste introuvable ou vide, seul « sans morceau de temps forts » le fait et il est déjà réessayable ; fenêtre de 5 minutes posée ; phrase dédiée « film pas encore disponible » dans les deux langues) Clic juste après la fin d'un match. D'abord l'inventaire, écrit au journal, de ce que la réponse du
       service des films distingue déjà : film introuvable, manifeste sans morceaux, manifeste sans morceau de
       temps forts (`finalise.ErrFilmNonFinalise`, déjà réessayable). Si un de ces signaux reconnaît à lui seul
       un film pas encore publié, il suffit et aucune fenêtre n'est ajoutée. À défaut : la sonde du match porte
@@ -578,6 +578,14 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste F rendue après quatre compléments du pilote (échec de jeton mémorisé périmé quand le jeton
+  revient ; phrase du film pas encore prêt ; balise du champ `stale` ; coût du décompte borné), relue, commitée
+  (`7ae8245722`). À faire par le pilote à l'intégration : régénérer le contrat de l'API (la balise de `stale` a
+  changé). `TestCompactPassesNuit` avait dépassé son délai sous charge : rejoué seul, il passe en 19 s. Le user a
+  doublé la borne commune (8 agents d'écriture, dit à la session du fond Relief et inscrit au plan maître) :
+  cette session en tient 3 au plus pour l'instant. Pistes D et K lancées (`C:/t/bl18-d`, au-dessus de A et B ;
+  `C:/t/bl18-k2`). Écart au tableau des modèles : K.1, K.3, K.4 (prévus Haiku) faits par l'agent Sonnet de K.5.
+
 - 2026-11-18 — piste A rendue après trois compléments du pilote (durée de « a quitté la partie », taille de
   `killFeedLogic.ts` ramenée de 591 à 567 lignes, test de la marge), relue, commitée (`d99966fcaa`). Sur le vrai
   rejeu du match signalé par le user : fiche d'ELOsk11 « mort » à l'image 9700, « a quitté la partie » aux
@@ -648,6 +656,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (F) — après un échec de jeton, la page redevient « générable » dès que le jeton est présent, même
+  s'il ne se rafraîchit pas : un second clic échouera de même. Sans gravité ; noté.
+- 2026-11-18 (F) — les lecteurs du fichier tactique ont quitté `sync/replayartifacts` pour `replayartifact`
+  (un garde-rail interdit tout décodage JSON dans le premier) ; à recouper avec la piste T, qui écrit dans
+  `sync/replayartifacts`.
 
 - 2026-11-18 (F.9) — la synchronisation pose le verdict « film absent » sans fenêtre après la fin du match. MESURÉ
   sur la copie de la base : défaut ÉCARTÉ. 0 match sur 251 vus moins de 5 minutes après leur fin porte le
