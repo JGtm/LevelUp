@@ -38,6 +38,8 @@
     "eau : aucun volume d'eau dans le sddt de va_behemoth-rtx-new.module"
   ],
   "planImage": "va_behemoth.plan.webp",
+  "reliefImage": "va_behemoth.relief.webp",
+  "reliefData": "va_behemoth.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 6028,
