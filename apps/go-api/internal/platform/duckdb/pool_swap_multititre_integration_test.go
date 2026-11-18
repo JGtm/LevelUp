@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
@@ -100,9 +101,11 @@ func TestPool_EcritureDUnTitreNeBloquePasUnAutre_integration(t *testing.T) {
 	t.Cleanup(func() { _ = provB.Close() })
 
 	// Joueur du second titre dans le pool, en mode B-swap sur le provider de SON titre.
+	playerB := filepath.Join(dirB, "player.duckdb")
+	duckdb.MigratedFileCopy(t, migration.TargetPlayer, playerB)
 	if _, err := duckdb.GetOrOpen(ctx, duckdb.PlayerPoolConfig{
 		Gamertag: "joueur-b", XUID: "2", TitleSlug: "halo_5",
-		PlayerDBPath: filepath.Join(dirB, "player.duckdb"),
+		PlayerDBPath: playerB,
 		SharedDBPath: sharedB, MetaDBPath: metaB, SharedReader: provB,
 	}); err != nil {
 		t.Fatalf("GetOrOpen joueur B: %v", err)

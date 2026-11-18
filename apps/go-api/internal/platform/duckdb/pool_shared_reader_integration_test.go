@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
@@ -46,8 +47,8 @@ func setupPoolFixtures(t *testing.T) (sharedPath, metaPath, playerPath string) {
 	}
 	_ = mb.Close()
 
-	// Player : créé à la volée par openPlayerDB (ensurePlayerDBMigrations
-	// gère l'open initial).
+	// Player : copie du gabarit migré, que openPlayerDB rouvre sans rien migrer.
+	duckdb.MigratedFileCopy(t, migration.TargetPlayer, playerPath)
 	return sharedPath, metaPath, playerPath
 }
 
