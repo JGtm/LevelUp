@@ -668,6 +668,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — barre de lecture : le user CONFIRME dans cette session (« je t'ai déjà validé C+B non ? ») le
+  choix reçu par relais : B (deux lignes quand la place manque) et C (barre fine et translucide en
+  surimpression au Plein cadre). Portes de M.2 et M.3 ouvertes ; agent Sonnet lancé dans `C:/t/bl18-d` (branche
+  `bl1118/m`, partie de l'intégration), avec la consigne de placer ses ajouts de préférence et de textes hors
+  des lignes que `feat/fonds-relief` modifie, pour une fusion sans conflit. Piste T : ronde de corrections
+  commitée (`28137cda38`), T.3 (lecteurs) lancé avec témoins avant et après. CI de la seconde livraison verte.
 - 2026-11-18 — SECONDE LIVRAISON fusionnée et poussée dans `release/v8.3.0` (`709786d758` : pistes D, K, S).
   Gate lourd sur l'intégration : typage, lint, suite complète du site (14 406 tests), imports entre features,
   `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (229 paquets, code 0), contrat de l'API à jour.
