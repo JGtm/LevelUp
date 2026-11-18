@@ -29,11 +29,11 @@ func (s *Service) countUnderGate(ctx context.Context) (int, error) {
 	if !s.waitHeavy(ctx) {
 		return 0, ctx.Err()
 	}
-	cands, err := s.scan(ctx)
+	films, rasters, err := s.scan(ctx)
 	if err != nil {
 		return 0, err
 	}
-	return len(cands), nil
+	return len(films) + len(rasters), nil
 }
 
 // publishCountLocked publie un décompte, sauf s'il est plus ancien que le dernier publié.
@@ -65,22 +65,26 @@ func (s *Service) waitHeavy(ctx context.Context) bool {
 	}
 }
 
-// scan liste les rejeux régénérables de tous les titres, le plus récent d'abord.
-func (s *Service) scan(ctx context.Context) ([]Candidate, error) {
+// scan liste les rejeux à remettre à jour de tous les titres, le plus récent d'abord : les rejeux en retard dont le
+// film est à l'archive (films), puis ceux dont le film a expiré et dont le fichier tactique est à refaire (rasters).
+func (s *Service) scan(ctx context.Context) (films, rasters []Candidate, err error) {
 	s.mu.Lock()
 	d := s.deps
 	s.mu.Unlock()
-	var all []Candidate
 	for _, slug := range d.Titles() {
-		skip := s.skipFor(ctx, d, slug)
-		c, err := scanTitle(ctx, d.Paths.ReplayArtifactsDir(slug), slug, d.FilmPresent, skip)
-		if err != nil {
-			return nil, err
+		tests := scanTests{filmPresent: d.FilmPresent, blocked: s.skipFor(ctx, d, slug)}
+		if d.RasterStale != nil && d.RebuildRaster != nil {
+			tests.rasterStale = func(slug, matchID string) bool { return d.RasterStale(ctx, slug, matchID) }
 		}
-		all = append(all, c...)
+		f, r, err := scanTitle(ctx, d.Paths.ReplayArtifactsDir(slug), slug, tests)
+		if err != nil {
+			return nil, nil, err
+		}
+		films, rasters = append(films, f...), append(rasters, r...)
 	}
-	sortRecentFirst(all)
-	return all, nil
+	sortRecentFirst(films)
+	sortRecentFirst(rasters)
+	return films, rasters, nil
 }
 
 // skipFor rend le test « ce match n'est pas à régénérer » d'un titre : refusé dans ce processus (isBlocked) ou refusé par

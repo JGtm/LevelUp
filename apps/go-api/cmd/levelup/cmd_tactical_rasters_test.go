@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -131,7 +132,7 @@ func TestTacticalRasters_SidecarPerime(t *testing.T) {
 		t.Fatalf("passe = %+v, attendu 1 ecrit (le sidecar etait projete du schema 20)", b)
 	}
 	// Et il porte desormais des joueurs, ce que le sidecar perime n'avait pas.
-	s, ok := lireSidecarRaster(context.Background(), cible)
+	s, ok := replayartifact.LireSidecarRasterCourant(context.Background(), cible)
 	if !ok || len(s.Joueurs) != 2 || s.ArtifactSchemaVersion != 39 {
 		t.Fatalf("sidecar refait = %+v (ok=%v)", s, ok)
 	}
@@ -289,7 +290,7 @@ func TestTacticalRasters_UnitesPerimees(t *testing.T) {
 				t.Fatalf("passe = %+v, attendu 1 ecrit : le sidecar est au bon schema mais a "+
 					"une autre unite, et c'est justement ce que le service demande de refaire", b)
 			}
-			relu, ok := lireSidecarRaster(context.Background(),
+			relu, ok := replayartifact.LireSidecarRasterCourant(context.Background(),
 				titlePkg.NewPathResolver(root).TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa"))
 			if !ok {
 				t.Fatal("le sidecar reecrit n'est toujours pas courant")
@@ -315,7 +316,7 @@ func TestTacticalRasters_SidecarCorrompu(t *testing.T) {
 	if b.ecrits != 1 || b.echecs != 0 {
 		t.Fatalf("passe = %+v, attendu 1 ecrit et 0 echec", b)
 	}
-	if _, ok := lireSidecarRaster(context.Background(), cible); !ok {
+	if _, ok := replayartifact.LireSidecarRasterCourant(context.Background(), cible); !ok {
 		t.Fatal("le sidecar corrompu n'a pas ete remplace par un fichier valide")
 	}
 }
@@ -354,7 +355,7 @@ func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
 	if err := poserCompresse(cible, []byte(v2), 0o644); err != nil {
 		t.Fatalf("ecrire sidecar v2: %v", err)
 	}
-	if _, ok := lireSidecarRaster(context.Background(), cible); ok {
+	if _, ok := replayartifact.LireSidecarRasterCourant(context.Background(), cible); ok {
 		t.Fatal("un sidecar v2 a ete lu comme courant : le parc ne serait jamais reecrit")
 	}
 	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
@@ -362,7 +363,7 @@ func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
 	if b.ecrits != 1 || b.sautes != 0 {
 		t.Fatalf("passe = %+v, attendu 1 ecrit", b)
 	}
-	relu, ok := lireSidecarRaster(context.Background(), cible)
+	relu, ok := replayartifact.LireSidecarRasterCourant(context.Background(), cible)
 	if !ok || relu.SchemaVersion != domain.TacticalRasterSchemaVersion {
 		t.Fatalf("sidecar reecrit = %+v (ok=%v), attendu le schema courant %d",
 			relu, ok, domain.TacticalRasterSchemaVersion)
@@ -398,7 +399,7 @@ func TestTacticalRasters_LePasEstUneMarqueDeFraicheur(t *testing.T) {
 	if b := projeterCorpusRasters(ctx, cfg, trOptions(false), []string{"aaaaaaaa"}); b.ecrits != 1 || b.sautes != 0 {
 		t.Fatalf("artefact à un autre pas = %+v, attendu 1 écrit (le sidecar était à 100 ms)", b)
 	}
-	if s, ok := lireSidecarRaster(ctx, pr.TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa")); !ok || s.FrameIntervalMs != 33 {
+	if s, ok := replayartifact.LireSidecarRasterCourant(ctx, pr.TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa")); !ok || s.FrameIntervalMs != 33 {
 		t.Fatalf("sidecar refait = %+v (ok=%v), attendu à 33 ms", s, ok)
 	}
 }
@@ -447,7 +448,7 @@ func TestTacticalRasters_FichierAncienJamaisLu(t *testing.T) {
 	if b.ecrits != 1 || b.sautes != 0 {
 		t.Fatalf("passe = %+v, attendu 1 ecrit", b)
 	}
-	if _, ok := lireSidecarRaster(context.Background(), cible); !ok {
+	if _, ok := replayartifact.LireSidecarRasterCourant(context.Background(), cible); !ok {
 		t.Error("le fichier courant n'a pas ete ecrit")
 	}
 	if _, err := os.Stat(ancien); !os.IsNotExist(err) {

@@ -7,6 +7,7 @@ package replayregen
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
@@ -88,12 +89,16 @@ func (s *Service) setDemandPhase(e *demandEntry, phase string) {
 	s.mu.Unlock()
 }
 
-// processDemand traite UNE demande : un rejeu déjà à jour sort en `ready` sans rien lancer ; sinon le film se
-// télécharge (phase `downloading`), puis le rejeu se reconstruit (phase `building`) après un nouveau tour de porte.
+// processDemand traite UNE demande : un rejeu déjà à jour sort en `ready` sans rien lancer ; une demande que le
+// match ne permet plus de servir est close avec sa raison, avant tout téléchargement ; sinon le film se télécharge
+// (phase `downloading`), puis le rejeu se reconstruit (phase `building`) après un nouveau tour de porte.
 func (s *Service) processDemand(ctx context.Context, e *demandEntry) {
 	d := e.d
 	if replaybuild.ArtifactUpToDate(s.deps.Paths.ReplayArtifactPath(d.TitleSlug, d.MatchID)) {
 		s.settleDemand(ctx, e, nil, "")
+		return
+	}
+	if !s.revalidateDemand(ctx, e) {
 		return
 	}
 	phase := domain.ReplayGenPhaseDownloading
@@ -109,19 +114,53 @@ func (s *Service) processDemand(ctx context.Context, e *demandEntry) {
 	s.settleDemand(ctx, e, err, phase)
 }
 
-// buildDemand reconstruit le rejeu d'une demande dont le film est à l'archive, puis retire le film si
-// l'archive est désactivée ([Deps.ReleaseFilm]), après un succès seulement.
+// revalidateDemand relit l'état du match de la demande ([Deps.Revalidate]) : une demande reprise après un arrêt, ou
+// restée longtemps en file, peut ne plus être générable (match sorti du registre, mode non géré, film déclaré absent,
+// jeton retiré). Vrai : la demande se sert. Faux : la demande est close (état de la sonde, ou échec réessayable si la
+// sonde elle-même échoue) ou interrompue par l'arrêt, et rien n'a été téléchargé.
+func (s *Service) revalidateDemand(ctx context.Context, e *demandEntry) bool {
+	if s.deps.Revalidate == nil {
+		return true
+	}
+	d := e.d
+	st, err := s.deps.Revalidate(ctx, d)
+	if err != nil {
+		slog.ErrorContext(ctx, "replay_generation: état du match illisible, demande non servie",
+			"titleSlug", d.TitleSlug, "match_id", d.MatchID, "player", d.PlayerSlug, "err", err)
+		s.settleDemand(ctx, e, fmt.Errorf("état du match: %w", err), domain.ReplayGenPhaseDownloading)
+		return false
+	}
+	if st.State == domain.ReplayGenerationGeneratable {
+		return true
+	}
+	slog.InfoContext(ctx, "replay_generation: demande close, le match n'est plus générable",
+		"titleSlug", d.TitleSlug, "match_id", d.MatchID, "player", d.PlayerSlug, "state", st.State, "reason", st.Reason)
+	s.finishDemand(ctx, e, st, nil)
+	return false
+}
+
+// buildDemand reconstruit le rejeu d'une demande dont le film est à l'archive, puis retire le film si l'archive est
+// désactivée ([Deps.ReleaseFilm]) : après un succès, et après un échec définitif (carte hors catalogue, film
+// illisible, mode non géré : un nouvel essai ne changerait rien). Un échec réessayable ou un arrêt garde le film.
 func (s *Service) buildDemand(ctx context.Context, d domain.ReplayGenerationDemand) error {
 	if !s.waitTurn(ctx) {
 		return ctx.Err()
 	}
-	if err := s.rebuildWithRetry(ctx, Candidate{TitleSlug: d.TitleSlug, MatchID: d.MatchID}); err != nil {
+	err := s.rebuildWithRetry(ctx, Candidate{TitleSlug: d.TitleSlug, MatchID: d.MatchID})
+	if err != nil && (ctx.Err() != nil || retryableDemand(err, domain.ReplayGenPhaseBuilding)) {
 		return err
 	}
 	if s.deps.ReleaseFilm != nil {
 		s.deps.ReleaseFilm(ctx, d.TitleSlug, d.MatchID)
 	}
-	return nil
+	return err
+}
+
+// retryableDemand dit si un nouvel essai de la demande peut aboutir : l'état servi pour cette erreur est un échec
+// réessayable.
+func retryableDemand(err error, failedIn string) bool {
+	st := classifyDemand(err, failedIn)
+	return st.State == domain.ReplayGenerationFailed && st.Retryable
 }
 
 // settleDemand clôt une demande : sortie de la file (fichier réécrit), issue gardée, compteur et journal. Un arrêt du
@@ -136,7 +175,12 @@ func (s *Service) settleDemand(ctx context.Context, e *demandEntry, err error, f
 			"titleSlug", d.TitleSlug, "match_id", d.MatchID, "player", d.PlayerSlug)
 		return
 	}
-	st := classifyDemand(err, failedIn)
+	s.finishDemand(ctx, e, classifyDemand(err, failedIn), err)
+}
+
+// finishDemand clôt une demande sur l'état st : sortie de la file (fichier réécrit), issue gardée, compteur et journal.
+func (s *Service) finishDemand(ctx context.Context, e *demandEntry, st domain.ReplayGenerationStatus, err error) {
+	d := e.d
 	s.mu.Lock()
 	s.removeDemandLocked(ctx, e)
 	if st.State != domain.ReplayGenerationReady {
@@ -177,7 +221,7 @@ func classifyDemand(err error, failedIn string) domain.ReplayGenerationStatus {
 		return domain.ReplayGenerationStatus{State: domain.ReplayGenerationFilmUnavailable}
 	case errors.Is(err, domain.ErrReplayNoToken):
 		return failed(domain.ReplayGenReasonTokenUnavailable, true)
-	case errors.Is(err, finalise.ErrFilmNonFinalise):
+	case errors.Is(err, finalise.ErrFilmNonFinalise), errors.Is(err, domain.ErrReplayFilmNotReady):
 		return failed(domain.ReplayGenReasonFilmNotReady, true)
 	case errors.Is(err, replaybuild.ErrMapNotInCatalog):
 		return failed(domain.ReplayGenReasonMapNotInCatalog, false)

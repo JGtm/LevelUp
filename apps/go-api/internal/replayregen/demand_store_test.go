@@ -77,3 +77,20 @@ func TestResumeDemands_FichierIllisibleSurFichier(t *testing.T) {
 		t.Fatal("la file doit être vide")
 	}
 }
+
+// L'heure de fin du match voyage avec la demande persistée (elle sert encore après un redémarrage) ; absente, elle
+// n'écrit rien et se relit zéro.
+func TestFileDemandStore_HeureDeFinDuMatch(t *testing.T) {
+	st := NewFileDemandStore(filepath.Join(t.TempDir(), "q.json"))
+	ctx := context.Background()
+	fin := time.Date(2026, 11, 18, 11, 58, 0, 0, time.UTC)
+	avec, sans := demandFor(1), demandFor(2)
+	avec.MatchEndedAt = fin
+	if err := st.SaveDemands(ctx, []domain.ReplayGenerationDemand{avec, sans}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.LoadDemands(ctx)
+	if err != nil || len(got) != 2 || !got[0].MatchEndedAt.Equal(fin) || !got[1].MatchEndedAt.IsZero() {
+		t.Fatalf("aller-retour : %+v %v", got, err)
+	}
+}

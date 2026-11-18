@@ -42,12 +42,25 @@ type Deps struct {
 	SyncRunning func() bool
 	// FetchFilm télécharge et archive le film du match d'une demande explicite (jeton du joueur de la demande), ou
 	// constate qu'il est déjà à l'archive. Il rend domain.ErrReplayFilmGone quand le film n'existe plus,
-	// domain.ErrReplayNoToken sans jeton utilisable, finalise.ErrFilmNonFinalise quand le film n'est pas fini.
+	// domain.ErrReplayNoToken sans jeton utilisable, finalise.ErrFilmNonFinalise quand le film n'est pas fini et
+	// domain.ErrReplayFilmNotReady quand le film est introuvable mais le match vient de finir (échecs réessayables).
 	// nil : le film est supposé déjà à l'archive (la reconstruction échoue sinon).
 	FetchFilm func(ctx context.Context, d domain.ReplayGenerationDemand) error
-	// ReleaseFilm retire le film d'un match dont le rejeu vient d'être rangé quand l'archive des films est désactivée.
-	// nil = le film reste.
+	// Revalidate relit l'état du match d'une demande juste avant son téléchargement et rend l'état que la page
+	// servirait pour ce match (domain.ReplayGenerationGeneratable : la demande se sert ; tout autre état la clôt avec
+	// lui, sans rien télécharger). Une erreur clôt la demande en échec réessayable. nil = la demande est servie
+	// telle quelle.
+	Revalidate func(ctx context.Context, d domain.ReplayGenerationDemand) (domain.ReplayGenerationStatus, error)
+	// ReleaseFilm retire le film d'un match dont la construction vient de se clore (rejeu rangé, ou échec définitif)
+	// quand l'archive des films est désactivée. Un échec réessayable ou un arrêt garde le film. nil = le film reste.
 	ReleaseFilm func(ctx context.Context, titleSlug, matchID string)
+	// RasterStale dit si le fichier tactique d'un rejeu rangé est absent ou d'un autre format. Il ne se consulte que
+	// pour un rejeu dont le film n'est plus à l'archive (celui dont le film est là se refait en entier). nil = aucun
+	// fichier tactique à refaire sans film.
+	RasterStale func(ctx context.Context, titleSlug, matchID string) bool
+	// RebuildRaster refait le fichier tactique d'un match depuis son rejeu rangé : aucun film lu, rien de décodé, le
+	// rejeu lui-même n'est pas touché. nil = aucun fichier tactique à refaire sans film.
+	RebuildRaster func(ctx context.Context, titleSlug, matchID string) error
 	// Demands persiste les demandes explicites en vol (reprise à l'ouverture). nil = rien n'est persisté.
 	Demands DemandStore
 	// MaxDemands : plafond de demandes explicites en vol ; zéro = [DefaultMaxDemands].

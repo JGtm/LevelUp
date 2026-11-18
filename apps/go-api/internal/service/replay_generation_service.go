@@ -46,8 +46,10 @@ func NewReplayGenerationService(caps games.CapabilityMap, queue port.ReplayGener
 // GenerationStatus rend l'état du match, sans rien lancer.
 //
 // Ordre d'évaluation : capacité du titre (sinon games.ErrCapabilityNotSupported) ; demande en file ou en cours ;
-// rejeu rangé (`ready`) ; issue gardée par la file (échec, film indisponible, non pris en charge) ; match inconnu ;
-// mode non géré ; bit « film absent » ; film non archivé sans jeton ; sinon `generatable`.
+// rejeu rangé (`ready`) ; match inconnu ; mode non géré ; bit « film absent » ; film non archivé sans jeton ; et
+// seulement si rien de cela ne s'oppose (`generatable`), l'issue gardée par la file pour ce match (échec du dernier
+// essai) : un nouvel essai ne passe jamais devant un contrôle d'état. Un échec dont la cause est le jeton est périmé
+// dès que la sonde ne voit plus cette cause : le match redevient `generatable`.
 func (s *ReplayGenerationService) GenerationStatus(ctx context.Context, titleSlug, matchID string) (domain.ReplayGenerationStatus, error) {
 	st, _, err := s.evaluate(ctx, titleSlug, matchID)
 	return st, err
@@ -79,7 +81,7 @@ func (s *ReplayGenerationService) RequestGeneration(ctx context.Context, titleSl
 	}
 	queued, created, err := s.queue.Enqueue(domain.ReplayGenerationDemand{
 		TitleSlug: titleSlug, MatchID: fullID, PlayerSlug: s.player.Slug, XUID: s.player.XUID,
-		Gamertag: s.player.Gamertag, RequestedAt: time.Now().UTC(),
+		Gamertag: s.player.Gamertag, RequestedAt: time.Now().UTC(), MatchEndedAt: probe.EndedAt,
 	})
 	if err != nil {
 		level := slog.LevelError
@@ -114,10 +116,18 @@ func (s *ReplayGenerationService) evaluate(ctx context.Context, titleSlug, match
 	if probe.ArtifactPresent {
 		return domain.ReplayGenerationStatus{State: domain.ReplayGenerationReady}, probe, nil
 	}
-	if haveKnown {
+	st := s.statusFromProbe(probe)
+	if haveKnown && st.State == domain.ReplayGenerationGeneratable && !tokenFailureSuperseded(known) {
 		return known, probe, nil
 	}
-	return s.statusFromProbe(probe), probe, nil
+	return st, probe, nil
+}
+
+// tokenFailureSuperseded dit si l'issue gardée par la file est un échec dont la cause est le jeton du joueur : quand la
+// sonde dit « générable », elle ne voit plus cette cause (jeton présent, sans reconnexion requise), l'échec est périmé et
+// le match redevient générable. Tant que la sonde voit encore la cause, son état (`no_token`) prime déjà.
+func tokenFailureSuperseded(known domain.ReplayGenerationStatus) bool {
+	return known.State == domain.ReplayGenerationFailed && known.Reason == domain.ReplayGenReasonTokenUnavailable
 }
 
 // queueStatus : ce que la file sait du match ; la file absente ne sait rien.

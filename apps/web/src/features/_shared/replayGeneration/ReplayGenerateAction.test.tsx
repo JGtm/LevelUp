@@ -140,6 +140,7 @@ describe('ReplayGenerateAction — variante panel', () => {
     ['match inconnu', { state: 'not_supported', reason: 'match_unknown' }, FR.messages.matchUnknown],
     ['aucun compte relié', { state: 'not_supported', reason: 'no_token' }, FR.messages.noToken],
     ['échec définitif', { state: 'failed', reason: 'map_not_in_catalog', retryable: false }, FR.messages.failedFinal],
+    ['jeton indisponible, même réessayable côté serveur', { state: 'failed', reason: 'token_unavailable', retryable: true }, FR.messages.tokenUnavailable],
   ] as const)('%s : la phrase, ni bouton ni lien', async (_nom, state, text) => {
     serveur({ ...state })
     panel()
@@ -148,6 +149,14 @@ describe('ReplayGenerateAction — variante panel', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByTestId('analysis-pending-slot')).not.toBeInTheDocument()
+  })
+
+  it('film pas encore prêt : la phrase dédiée et « Réessayer »', async () => {
+    const calls = serveur({ state: 'failed', reason: 'film_not_ready', retryable: true })
+    panel()
+    expect(await screen.findByText(FR.messages.filmNotReady)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: FR.retry }))
+    await waitFor(() => expect(calls.post).toBe(1))
   })
 
   it('échec réessayable : la phrase et « Réessayer »', async () => {

@@ -240,16 +240,19 @@ func (s *Service) persistPendingLocked(ctx context.Context, on bool) {
 // run : la file. Prépare la liste, traite un film à la fois.
 func (s *Service) run(ctx context.Context) {
 	defer s.wg.Done()
-	cands, err := s.scan(ctx)
+	films, rasters, err := s.scan(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "replay_regen: liste des rejeux impossible, file arrêtée", "err", err)
 		s.finish(ctx, ctx.Err() != nil)
 		return
 	}
+	// Les fichiers tactiques à refaire sans film passent d'abord : un rejeu reprojeté, sans décodage, coûte une lecture
+	// du rejeu rangé et l'écriture d'un petit fichier.
+	cands := append(append([]Candidate{}, rasters...), films...)
 	s.mu.Lock()
 	s.total = len(cands)
 	s.mu.Unlock()
-	slog.InfoContext(ctx, "replay_regen: file démarrée", "total", len(cands))
+	slog.InfoContext(ctx, "replay_regen: file démarrée", "total", len(cands), "films", len(films), "rasters", len(rasters))
 	for _, c := range cands {
 		// Les demandes explicites passent avant le film suivant du lot.
 		if !s.serveDemands(ctx) || !s.runCandidate(ctx, c) {
@@ -260,15 +263,19 @@ func (s *Service) run(ctx context.Context) {
 	s.finish(ctx, false)
 }
 
-// runCandidate traite UN film du lot sous le jeton « un film à la fois » : attend son tour, puis le régénère. Faux :
-// ctx annulé.
+// runCandidate traite UN rejeu du lot sous le jeton « un film à la fois » : attend son tour, puis le régénère (ou, sans
+// film, refait son fichier tactique). Faux : ctx annulé.
 func (s *Service) runCandidate(ctx context.Context, c Candidate) bool {
 	s.slot.Lock()
 	defer s.slot.Unlock()
 	if !s.waitTurn(ctx) {
 		return false
 	}
-	s.process(ctx, c)
+	if c.rasterOnly {
+		s.processRaster(ctx, c)
+	} else {
+		s.process(ctx, c)
+	}
 	return ctx.Err() == nil
 }
 

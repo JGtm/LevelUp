@@ -2,8 +2,9 @@
  * Logique pure de la génération à la demande d'un rejeu : ce que l'écran offre (action, attente, phrase) pour un
  * état servi par le serveur, et quand relire cet état. Aucun accès réseau ni React.
  *
- * Règle : une action n'existe que si elle est possible. Générer (`generatable`), réessayer (`failed` réessayable)
- * et ouvrir (`ready`) sont les trois seules ; tous les autres états n'offrent aucun bouton.
+ * Règle : une action n'existe que si elle est possible. Générer (`generatable`), réessayer (`failed` réessayable
+ * pour une autre raison qu'un jeton indisponible : un nouvel essai échouerait de la même façon tant que le compte
+ * n'est pas reconnecté) et ouvrir (`ready`) sont les trois seules ; tous les autres états n'offrent aucun bouton.
  */
 import type { ReplayGenerationStatus } from './queries'
 
@@ -22,6 +23,8 @@ export type ReplayGenerationMessageKey =
   | 'building'
   | 'failed'
   | 'failedFinal'
+  | 'tokenUnavailable'
+  | 'filmNotReady'
   | 'filmUnavailable'
   | 'modeUnmanaged'
   | 'matchUnknown'
@@ -71,6 +74,10 @@ export function generationView(status: ReplayGenerationStatus | undefined): Repl
       return { action: null, pending: phase, messageKey: phase }
     }
     case 'failed':
+      if (status.reason === 'token_unavailable') return { ...NO_VIEW, messageKey: 'tokenUnavailable' }
+      if (status.reason === 'film_not_ready') {
+        return { action: status.retryable ? 'retry' : null, pending: null, messageKey: 'filmNotReady' }
+      }
       return status.retryable
         ? { action: 'retry', pending: null, messageKey: 'failed' }
         : { action: null, pending: null, messageKey: 'failedFinal' }

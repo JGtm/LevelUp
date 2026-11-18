@@ -66,7 +66,7 @@ func TestScan_FilmAbsentNeLitAucunArtefact(t *testing.T) {
 		writeArtifact(t, f.paths, fmt.Sprintf("%08x", 0x900+i), false) // film absent de f.films
 	}
 	avant := observability.LoadCounter(replaybuild.CompteurOctetsLusEntetes)
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil || len(cands) != 0 {
 		t.Fatalf("candidats = %v, %v", cands, err)
 	}
@@ -108,7 +108,7 @@ func TestScan_DeuxMilleArtefacts_OctetsLus(t *testing.T) {
 	octets := func() int64 { return observability.LoadCounter(replaybuild.CompteurOctetsLusEntetes) }
 
 	avant := octets()
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil || len(cands) != n {
 		t.Fatalf("premier décompte : %d candidats, %v", len(cands), err)
 	}
@@ -117,7 +117,7 @@ func TestScan_DeuxMilleArtefacts_OctetsLus(t *testing.T) {
 	}
 
 	avant = octets()
-	cands, err = f.svc.scan(context.Background())
+	cands, _, err = f.svc.scan(context.Background())
 	if err != nil || len(cands) != n {
 		t.Fatalf("second décompte : %d candidats, %v", len(cands), err)
 	}
@@ -341,7 +341,7 @@ func TestScan_ArtefactProduitParUneVersionPlusRecente(t *testing.T) {
 	writeStaleSameSchema(t, f, "aa000002", "8.0.9") // plus ancien
 	writeStaleSameSchema(t, f, "aa000003", "")      // inconnu : admissible
 	writeStaleSameSchema(t, f, "aa000004", "8.1.0") // même version
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
