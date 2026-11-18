@@ -212,20 +212,31 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste J — ménage et contrôles (Sonnet ; Haiku)
 
-- [ ] J.1 `replay/document.go` : extraction pour redescendre sous 460 lignes, sans changement de sortie
+- [x] J.1 `replay/document.go` : extraction pour redescendre sous 460 lignes, sans changement de sortie
       (préalable à tout champ racine neuf). Témoin : golden de forme inchangé.
-- [ ] J.2 `medalLabels` : champ et trois types déclarés, jumeaux de ceux de LevelUp ; calque « à la
+- [x] J.2 `medalLabels` : champ et trois types déclarés, jumeaux de ceux de LevelUp ; calque « à la
       requête » ; golden de forme refigé ; aucune sortie cuite ne change.
-- [ ] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
+- [x] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
       marquées dépréciées ; décompte de `FORMAT.md` corrigé. Aucun changement de sortie.
 - [ ] J.4 `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
       nom inscrit aux étapes observées ; les 20 références refigées dans le clone, 20 identiques ensuite.
-- [ ] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
+- [x] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
       jour pour ce que cette piste touche.
-- [ ] J.6 Contrôles : trajet de Warthog du film `4f77afc1` et pièces montées à plus de 15 m, rejoués par le
+- [x] J.6 Contrôles : trajet de Warthog du film `4f77afc1` et pièces montées à plus de 15 m, rejoués par le
       harnais sur la tête du clone ; si rien ne se reproduit, entrées closes au backlog avec la mesure ; si
       un défaut se reproduit, item écrit ici avant tout code. Ordre des collines : entrée du backlog
       reformulée en demande d'affichage (aucun travail du décodeur).
+- [ ] J.7 (né de J.6) Occupant d'un trajet de véhicule. Sur `4f77afc1`, un trajet de Warthog porte un humain
+      alors que la vie qui le porte est celle d'un bot sans nom, et que cet humain n'est présent que plus tard :
+      1 trajet sur 252 dans ce film, les 323 pistes nommées étant justes. Le nom du trajet vient de la table
+      place vers joueur à l'instant (`replay/vehicle_rides_film.go`, et deux sites jumeaux), pas de la vie qui
+      porte le trajet. Cause établie d'abord, fréquence comptée sur les 1 455 rejeux du poste, puis règle
+      générale : un trajet porte l'identité de la vie qui le porte. Sortie changée : `vehicleRides[].xuid`.
+- [ ] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
+      reproduit plus (19 pièces, 0 écart), mais le compteur `coverage.vehicles.turretCarrierBirthMismatch`
+      vaut 22 sur le parc, sur 4 films (`56ebfc53` 8, `af43b0c8` 8, `a26dbcdb` 4, `cf5d83d5` 2), contre 44
+      montées relevées le 2026-11-16. Cause établie sur ces 4 films, puis règle générale ou, si la lecture ne
+      désigne pas le porteur, arrêt et retour au pilote.
 - **Gate J** : `go test ./...` du clone avec les données de l'hôte ; passe d'équivalence, écarts = l'étape
   neuve de J.4 seulement.
 
@@ -377,6 +388,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste J rendue, relue sur pièces, commitée dans le clone (`a2d5dbb`, branche `piste/j`, non
+  poussée). `document.go` à 456 lignes ; `medalLabels` déclaré, seule l'empreinte de la forme stockée bouge,
+  schéma inchangé ; registre à 127 replis, les deux constantes gardées et marquées obsolètes dans
+  `decfilm/replis_obsoletes.go` ; gate complet du clone vert (33 paquets), révisions et périmètres sans
+  régénération. Contrôles de J.6 : les deux défauts existent encore, items J.7 et J.8 écrits avant tout code ;
+  les deux entrées du backlog restent ouvertes et renvoient à ces items. Découverte : le commentaire de
+  `StanceCoverage.Absent` parle de trois composants là où quatre sont lus (corrigé avec J.7).
 - 2026-11-18 — pistes J (J.1, J.2, J.3, J.5, contrôles de J.6) et A lancées, un agent Sonnet chacune, dans
   deux dossiers de travail du clone (`C:/t/dec-j` branche `piste/j`, `C:/t/dec-a` branche `piste/a`, tous deux
   partis de `feat/v1.5.0`). Aucun agent ne monte le schéma, ne régénère un golden hors de sa porte, ne commite
