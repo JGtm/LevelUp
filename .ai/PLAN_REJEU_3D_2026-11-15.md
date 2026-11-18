@@ -490,7 +490,7 @@ Toute lecture du jeu vit dans la brique 3D (D-12), qui s'appuie sur `halo-infini
 
 - [ ] D.1 Variante de la mini-carte choisie en C.0, recopiée ici avec la date du choix. Rien en D
       avant ce choix.
-- [ ] D.2 Extraction du moteur 2D : `buildScene` et `draw` sortent de `ReplayCanvas.tsx` vers
+- [x] D.2 (fait le 2026-11-17 : commit `4f6f249458`, `layers/replayRenderer.ts`, fusionné dans `release/v8.3.0` ; case cochée le 2026-11-18, oubliée à la fusion) Extraction du moteur 2D : `buildScene` et `draw` sortent de `ReplayCanvas.tsx` vers
       `layers/replayRenderer.ts`, sans changement de rendu. (amendé le 2026-11-17 : un agent n'ouvre pas de
       navigateur) Témoin avant / après : suites d'appels de dessin enregistrées par le contexte enregistreur
       existant (`features/match-replay/test/recordingContext`), 3 documents de test à 3 instants, capturées
