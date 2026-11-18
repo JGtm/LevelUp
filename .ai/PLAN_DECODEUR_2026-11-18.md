@@ -433,6 +433,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — C.5 RÉORIENTÉ sur une lecture du code de Den (libfilmshell, MIT, copie locale, `src/variant_stats.rs`),
+  faite par le pilote à la question du user (« même le décodeur de Den ne les lit pas ? ») : son décodeur lit dans
+  le morceau 0 du film, dans les données de la variante de jeu, la DÉFINITION de chaque emplacement du tableau
+  (`EngineStatDefinition` : nom en clair, type calculé ou non, agrégation des manches, affichage, précision) et
+  les colonnes du tableau ; son code cite « AccuracyPercentage » et parle de 56 emplacements. Le film nommerait
+  donc lui-même ses emplacements, variante par variante. L'agent de C.5 vérifie d'abord cela sur nos films
+  (correspondance avec nos « composant + côté », contrôle sur les emplacements déjà nommés, puis contre l'API) ;
+  le balayage à l'aveugle ne reste que pour ce que les définitions ne nommeraient pas. Non encore vérifié sur un
+  film par nous. Crédit à Den pour cette lecture ; son code reste un témoin, il n'est pas recopié.
 - 2026-11-18 — C.5 ajouté et lancé en mesure seule (emplacements sans nom du tableau contre les colonnes de
   l'API), accord du user.
 - 2026-11-18 — C.3 rendu (Opus), relu, commité (`f426cf4` sur `piste/c`). Fait rougir en plus : la révision de
