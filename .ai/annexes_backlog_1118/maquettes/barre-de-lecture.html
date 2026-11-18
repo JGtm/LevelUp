@@ -13,452 +13,592 @@
 }
 *{box-sizing:border-box}
 html{background:var(--bg)}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.55;
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
-  padding-top:24px;padding-bottom:56px;overflow-x:hidden}
-.page{max-width:1040px;margin:0 auto}
-h1{font-size:30px;line-height:1.2;margin:0 0 6px;font-weight:700;letter-spacing:-.01em}
-h2{font-size:22px;line-height:1.3;margin:56px 0 10px;font-weight:700;padding-top:22px;border-top:1px solid var(--line-strong)}
-h3{font-size:17px;margin:34px 0 4px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-p{margin:8px 0;color:var(--text-soft);max-width:78ch}
-.sur-titre{margin:0;color:var(--text-dim);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-.note{color:var(--text-dim);font-size:13.5px}
-.demandes{margin:18px 0 0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:q}
-.demandes li{counter-increment:q;display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-raised);color:var(--text)}
-.demandes li::before{content:counter(q);flex:none;width:24px;height:24px;border-radius:50%;background:var(--follow);color:var(--bg);display:grid;place-items:center;font-weight:700;font-size:13px;margin-top:1px}
-.pastille{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--text);color:var(--bg);font-weight:700;font-size:14px}
-.pastille.neutre{background:var(--line-faint);color:var(--text)}
-.cle{display:inline-block;font-weight:700;font-size:15px;padding:2px 10px;border-radius:999px;border:1px solid var(--line-faint);white-space:nowrap}
-.cle.ok{color:var(--ok);border-color:color-mix(in srgb, var(--ok) 45%, transparent)}
-.cle.ko{color:var(--warn);border-color:color-mix(in srgb, var(--warn) 55%, transparent)}
-.legende{display:flex;flex-wrap:wrap;gap:8px 22px;margin:12px 0 4px;font-size:13.5px;color:var(--text-mute)}
-.legende span{display:inline-flex;align-items:center;gap:8px}
-.legende i{display:inline-block;width:26px;height:14px;border-radius:3px}
-.legende .l-place{border:2px dotted var(--follow)}
-.legende .l-frise{border:2px solid var(--warn);background:color-mix(in srgb, var(--warn) 18%, transparent)}
-.legende .l-zone{border-top:2px dashed var(--follow);height:2px;border-radius:0}
+  padding-top:24px;padding-bottom:48px;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+button:disabled{cursor:default}
+:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+.page{max-width:1240px;margin:0 auto}
+h1{font-size:28px;line-height:1.2;margin:0 0 4px;font-weight:700}
+.accroche{margin:0 0 18px;color:var(--text-mute)}
 
+/* Réglages : gros boutons à bascule, jamais de liste déroulante */
+.reglages{display:grid;gap:14px}
+.gl{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.boutons,.largeur{display:flex;flex-wrap:wrap;gap:8px}
+.largeur{align-items:center;gap:10px 12px}
+.reglages button,.case{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line-faint);background:var(--bg-btn);font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.reglages button[aria-pressed="true"]{background:var(--follow);color:var(--bg);border-color:var(--follow)}
+.lettre{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--line-rail);color:var(--text);font-size:12px}
+[aria-pressed="true"] .lettre{background:var(--bg);color:var(--follow)}
+.largeur input[type=range]{flex:1 1 220px;min-width:160px;height:40px;accent-color:var(--follow);margin:0}
+.largeur output{min-width:72px;font-weight:700;font-variant-numeric:tabular-nums}
+.case{cursor:pointer}
+.case input{width:20px;height:20px;margin:0;accent-color:var(--follow)}
 
-figure{margin:0}
-.vue-fig,.etat{margin:14px 0 0}
-.vue{overflow-x:auto;border-radius:10px;padding-bottom:2px}
-figcaption{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-top:8px;font-size:14px;color:var(--text-soft)}
-figcaption .lg{font-weight:600;color:var(--text)}
-figcaption .det{flex:1 1 100%;color:var(--text-mute);font-size:13.5px;max-width:92ch}
-figcaption .nom{font-weight:600;font-size:16px}
-figcaption .cout{flex:1 1 100%;color:var(--text-soft);font-size:14px}
-.cout-bloc{margin:14px 0 0;padding:10px 14px;border-left:0;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-raised);color:var(--text);max-width:none}
-.cout-bloc b{color:var(--warn);font-weight:600}
-
-
-:root{--k1:.6;--k2:.68}
-.echelle{width:calc(var(--w) * var(--k) * 1px);height:calc(var(--h) * var(--k) * 1px);position:relative;flex:none}
-.echelle.k1{--k:var(--k1)}
-.echelle.k2{--k:var(--k2)}
-.echelle > *{transform:scale(var(--k));transform-origin:0 0;position:absolute;left:0;top:0}
-@media (max-width:1070px){:root{--k2:.62}}
-@media (max-width:1000px){:root{--k1:.5}}
-@media (max-width:960px){:root{--k2:.56}}
-@media (max-width:860px){:root{--k1:.42;--k2:.5}}
-@media (max-width:760px){:root{--k2:.44}}
-@media (max-width:700px){:root{--k1:.34}}
-@media (max-width:680px){:root{--k2:.38}}
-@media (max-width:600px){:root{--k2:.32}}
-@media (max-width:580px){:root{--k1:.28}}
-@media (max-width:520px){:root{--k2:.27}}
-@media (max-width:480px){:root{--k1:.24}}
-@media (max-width:430px){:root{--k1:.22;--k2:.24}}
-
-
-.regle{display:flex;height:22px;align-items:stretch;font-size:11px;color:var(--text-dim)}
-.regle .seg{flex:0 0 calc(var(--s) * var(--k) * 1px);min-width:0;border-left:1px solid var(--line-faint);display:flex;align-items:center;overflow:hidden;white-space:nowrap;padding-left:3px}
-.regle .seg:last-child{border-right:1px solid var(--line-faint)}
-.regle .seg b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
-.regle .seg.plan b{color:var(--follow)}
-
-
-.fen{background:var(--bg);outline:1px solid var(--line-strong);outline-offset:-1px;border-radius:8px;overflow:hidden;color:var(--text);font-family:var(--font);font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
-.fen *{box-sizing:border-box}
-.fen-tete{height:34px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
-.fen-corps{padding:8px 24px 0;display:grid;grid-template-columns:minmax(0,1fr) 480px;gap:12px}
-.carte{border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);overflow:hidden;min-width:0;display:flex;flex-direction:column}
-.plan{position:relative;flex:none;overflow:hidden}
-.plan .mapsvg{position:absolute;left:50%;top:6px;height:calc(100% + 140px);width:auto;aspect-ratio:100/109;transform:translateX(-50%)}
-.etq-plan{position:absolute;right:8px;top:6px;font-size:11px;color:var(--text-faint)}
-.colonne{border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);padding:10px 12px;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+/* Le lecteur est dessiné à sa largeur réelle, puis réduit par une échelle pour tenir dans la page */
+.scene{margin-top:20px}
+.echelle{position:relative;overflow:hidden}
+.fen{position:absolute;left:0;top:0;width:calc(var(--w) * 1px);height:900px;transform-origin:0 0;display:flex;flex-direction:column;
+  background:var(--bg);outline:1px solid var(--line-strong);outline-offset:-1px;border-radius:8px;overflow:hidden;
+  font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
+.fen-tete{flex:none;height:52px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
+.fiches{flex:none;height:58px;display:flex;gap:10px;padding:8px 24px 0}
+.fiche{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--bg-tile);display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 12px}
+.corps{flex:1;min-height:0;padding:8px 24px 12px;display:grid;grid-template-columns:minmax(0,1fr) 480px;grid-template-rows:minmax(0,1fr);gap:12px}
+.fen.sans-col .corps{grid-template-columns:minmax(0,1fr)}
+.fen.sans-col .colonne{display:none}
+.carte{position:relative;min-height:0;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);overflow:hidden;display:flex;flex-direction:column}
+.plan{position:relative;flex:1 1 0;min-height:0;overflow:hidden;background:var(--map-sol)}
+.mapsvg{position:absolute;left:0;top:0;width:100%;height:100%;transform:scale(var(--z,1));transition:transform .25s ease}
+.m-sol{fill:var(--map-sol)}
+.m-zone{fill:var(--map-zone)}
+.m-mur{fill:none;stroke:var(--map-mur);stroke-width:.9;stroke-linejoin:round}
+.pion{stroke:var(--bg);stroke-width:.6}
+.pion.a{fill:var(--ally)}
+.pion.b{fill:var(--enemy)}
+.flash{position:absolute;inset:0;background:var(--text);opacity:0;pointer-events:none;transition:opacity .35s ease}
+.flash.on{opacity:.35;transition:none}
+.colonne{border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);padding:10px 12px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .sk-row{display:flex;align-items:center;gap:8px;height:16px}
-.sk-gap{height:6px}
+.sk-gap{height:8px}
 .sk-bar{display:inline-block;height:6px;border-radius:3px;background:var(--line-rail)}
 .sk-bar.s{background:var(--line-strong)}
 .sk-dot{display:inline-block;width:8px;height:8px;border-radius:2px}
-.sk-dot.a{background:var(--ally)}.sk-dot.b{background:var(--enemy)}
+.sk-dot.a{background:var(--ally)}
+.sk-dot.b{background:var(--enemy)}
 
+/* Fil des éliminations : bas gauche du plan, remonte au-dessus de la barre dépliée */
+.fil{position:absolute;left:10px;bottom:var(--fil-bas,10px);display:flex;flex-direction:column;gap:4px;transition:bottom .25s ease;pointer-events:none;z-index:2}
+.li{align-self:flex-start;display:flex;gap:6px;align-items:center;padding:3px 9px;border-radius:6px;background:color-mix(in srgb, var(--bg) 72%, transparent);font-size:12.5px}
+.li.neuf{animation:entre .25s ease-out}
+@keyframes entre{from{transform:translateY(8px);opacity:0}}
+.kp.a{color:var(--ally)}
+.kp.b{color:var(--enemy)}
+.li .fl{color:var(--text-dim)}
 
-.b{display:flex;align-items:center;column-gap:6px;padding:0 12px;height:56px;background:color-mix(in srgb, var(--bg) 40%, transparent);--ic:16px;position:relative;white-space:nowrap}
+/* La barre : une ligne de 56 px. Fixe sous le plan, ou posée sur le bas du plan (« sur ») */
+.b{position:relative;flex:none;display:flex;align-items:center;column-gap:6px;padding:0 12px;height:56px;--ic:16px;white-space:nowrap;
+  background:color-mix(in srgb, var(--bg) 40%, transparent);transition:transform .25s ease, visibility 0s}
 .b > *{flex:none}
+.b.sur{position:absolute;left:0;right:0;bottom:0;z-index:5;background:color-mix(in srgb, var(--bg) 72%, transparent)}
+.b.replie{transform:translateY(100%);visibility:hidden;pointer-events:none;transition:transform .25s ease, visibility 0s .25s}
+.b.fine{height:32px;padding:0 8px;column-gap:4px;--ic:13px;background:color-mix(in srgb, var(--bg) 45%, transparent);backdrop-filter:blur(6px)}
+.b.deux{height:auto;flex-wrap:wrap;align-content:flex-start;row-gap:0;padding-top:0;padding-bottom:0}
+.b.deux > *:not(.fr-slot){margin:1px 0}
+.b.deux .fr-slot{flex:0 0 100%;order:-1;height:38px;align-items:center;min-width:0}
 .b > .fr-slot{flex:1 1 0;min-width:0;display:flex}
-.b svg,.b2 svg{width:var(--ic);height:var(--ic);display:block}
+.b.mn .fr-slot{min-width:260px}
+.b svg{width:var(--ic);height:var(--ic);display:block}
+.ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;color:var(--text-soft)}
-.rb.bd{border:1px solid var(--line-strong)}
-.rb.gh{color:var(--text-mute)}
-.rb.tx{font-size:15px;font-weight:500;line-height:1}
-.rb.bd.tx,.rb.s{font-size:10.5px;font-weight:500}
-.rb.cam{width:34px;height:34px}
-.rb.snd1{width:34px;height:34px}
+.rb.bd{border:1px solid var(--line-strong);font-size:10.5px;font-weight:500}
+.rb.gh,.rb.tx{color:var(--text-mute)}
+.rb.tx{font-size:15px;line-height:1}
+.rb.cam,.rb.snd1,.plusw .rb{width:34px;height:34px}
+.rb:disabled{opacity:.35}
 .snd{display:inline-flex;align-items:center;gap:8px}
-.vol{display:inline-block;width:58px;height:4px;border-radius:2px;background:var(--line-rail);position:relative}
-.vol i{position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--text-dim);border-radius:2px}
-.sep{display:inline-block;width:1px;height:20px;margin:0 4px;background:var(--line-strong)}
+.vol{display:inline-block;width:58px;height:12px;border-radius:2px;position:relative;cursor:pointer}
+.vol::before{content:"";position:absolute;left:0;right:0;top:4px;height:4px;border-radius:2px;background:var(--line-rail)}
+.vol i{position:absolute;left:0;top:4px;height:4px;width:calc(var(--v, .6) * 100%);background:var(--text-dim);border-radius:2px}
+.sep{width:9px;height:20px;position:relative}
+.sep::before{content:"";position:absolute;left:4px;top:0;bottom:0;width:1px;background:var(--line-strong)}
 .play{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--play-bg);color:var(--play-fg)}
 .play svg{width:17px;height:17px}
-.clk{min-width:84px;margin:0 4px;text-align:center;font-size:12.5px;color:var(--text-mute)}
+.clk{width:92px;text-align:center;font-size:12.5px;color:var(--text-mute)}
 .clk b{color:var(--text);font-weight:600}
 .ap{display:inline-flex;align-items:center;height:30px;padding:0 8px;border-radius:999px;color:var(--text-dim)}
+.ap.on{color:var(--text)}
 .ap .auto{width:26px;height:15px}
 .auto-f{fill:none;stroke:currentColor;stroke-width:1.5}
 .auto-c{fill:currentColor}
-.spd{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;width:56px;border:1px solid var(--line-strong);border-radius:999px;font-size:12.5px;font-weight:500;color:var(--text)}
-.spd .chev{width:10px;height:10px}
-.rot{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;font-size:12.5px;color:var(--follow);border:1px solid color-mix(in srgb, var(--follow) 50%, transparent)}
-.rot svg{width:14px;height:14px}
+.spd{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;width:58px;border:1px solid var(--line-strong);border-radius:999px;font-size:12.5px;font-weight:500}
+.spd svg{width:10px;height:10px}
 .zm{display:inline-flex;gap:6px}
-.cap{display:inline-flex;align-items:center;gap:6px;padding:4px;border:1px solid var(--line-strong);border-radius:999px;background:color-mix(in srgb, var(--line) 60%, transparent)}
+.cap{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:88px;padding:4px;border:1px solid var(--line-strong);border-radius:999px;background:color-mix(in srgb, var(--line) 60%, transparent)}
 .cb{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 10px;border-radius:999px;background:var(--line-rail);color:var(--text)}
 .cb.pri{background:var(--text);color:var(--bg)}
 .cb svg{width:15px;height:15px}
-.frm{display:inline-flex;align-items:center;gap:2px;margin-left:6px}
+.frm{display:inline-flex;align-items:center;justify-content:space-between;width:147px}
 .fb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;color:var(--text-dim)}
 .fb.on{background:var(--line-rail);color:var(--text)}
 .fb svg{width:15px;height:15px}
 .fsep{width:1px;height:16px;margin:0 4px;background:var(--line-strong)}
 .fpl{fill:currentColor;stroke:none;opacity:.35}
-.plus{color:var(--text)}
+.plusw{display:none;position:relative}
+.p1 .plusw{display:inline-flex}
+.p1 [data-g="a"],.p1 .vol,.p2 [data-g="c"]{display:none}
+.menu{position:absolute;right:0;bottom:calc(100% + 8px);min-width:230px;padding:8px;border-radius:10px;background:var(--bg-tile);
+  border:1px solid var(--line-faint);box-shadow:0 8px 24px var(--shadow);display:grid;gap:6px;z-index:9;white-space:normal}
+.menu[hidden]{display:none}
+.mrow{display:flex;gap:6px}
+.mi{flex:1;min-height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg-btn);font-size:13px;text-align:left;color:var(--text)}
+.mi:disabled{opacity:.35}
+.mi.on{background:var(--line-rail)}
 
+/* Variante C : commandes plus petites sur 32 px */
+.fine .rb{width:24px;height:24px}
+.fine .rb.cam,.fine .rb.snd1,.fine .plusw .rb{width:26px;height:26px}
+.fine .play{width:28px;height:28px}
+.fine .play svg{width:13px;height:13px}
+.fine .clk{width:76px;font-size:11.5px}
+.fine .snd{gap:6px}
+.fine .vol{width:40px}
+.fine .ap{height:24px;padding:0 6px}
+.fine .spd{height:24px;width:46px;font-size:11.5px}
+.fine .cap{width:auto;padding:2px}
+.fine .cb{height:20px;padding:0 7px}
+.fine .frm{width:auto;gap:2px}
+.fine .fb{width:24px;height:24px}
+.fine .sep{height:14px;width:7px}
+.fine .sep::before{left:3px}
 
-.fr{position:relative;flex:1;min-width:120px;margin:0 10px;height:var(--fh,30px);display:block;--tkh:8px;--rt:13px;--rh:4px;--dt:23px;--dh:3px;--ks:12px;--kt:9px}
-.fr.min240{min-width:240px}
+/* La frise : repères d'éliminations, rail, bande de dominance, curseur */
+.fr{position:relative;display:block;flex:1 1 auto;min-width:120px;margin:0 10px;height:var(--fh,30px);cursor:pointer;touch-action:none;
+  --tkh:8px;--rt:13px;--rh:4px;--dt:23px;--dh:3px;--ks:12px;--kt:9px}
+.b.mn .fr{min-width:240px}
 .fr .tk{position:absolute;left:0;right:0;top:0;height:var(--tkh);display:block}
 .fr .tk i{position:absolute;top:0;width:2px;height:var(--tkh);margin-left:-1px;border-radius:1px}
-.ta{background:var(--ally)}.tb{background:var(--enemy)}
+.ta{background:var(--ally)}
+.tb{background:var(--enemy)}
 .fr .rl{position:absolute;left:0;right:0;top:var(--rt);height:var(--rh);border-radius:2px;background:var(--line-rail);display:block}
-.fr .rl i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--rail-fill)}
+.fr .rl i{position:absolute;left:0;top:0;bottom:0;width:calc(var(--p, 0) * 1%);border-radius:2px;background:var(--rail-fill)}
 .fr .dm{position:absolute;left:0;right:0;top:var(--dt);height:var(--dh);display:flex;border-radius:2px;overflow:hidden}
 .fr .dm i{display:block;height:100%}
-.da{background:var(--ally)}.db{background:var(--enemy)}.dn{background:var(--neutral)}
-.fr .kn{position:absolute;top:var(--kt);width:var(--ks);height:var(--ks);left:calc(49.7% - (var(--ks) / 2));border-radius:50%;background:var(--knob);box-shadow:0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent)}
-.fr.mince{--fh:10px;--tkh:4px;--rt:4px;--rh:3px;--dt:8px;--dh:2px;--ks:8px;--kt:1px;margin:0}
+.da{background:var(--ally)}
+.db{background:var(--enemy)}
+.dn{background:var(--neutral)}
+.fr .kn{position:absolute;top:var(--kt);width:var(--ks);height:var(--ks);left:calc(var(--p, 0) * 1% - var(--ks) / 2);border-radius:50%;
+  background:var(--knob);box-shadow:0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent)}
+.fine .fr{--fh:24px;--tkh:6px;--rt:8px;--rh:3px;--dt:14px;--dh:2px;--ks:10px;--kt:4.5px}
+.filet{position:absolute;left:0;right:0;bottom:0;height:10px;z-index:4;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.filet.vu{opacity:1;pointer-events:auto}
+.fr.mince{--fh:10px;--tkh:4px;--rt:4px;--rh:3px;--dt:8px;--dh:2px;--ks:8px;--kt:1px;margin:0;min-width:0}
 .fr.mince .kn{box-shadow:0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent)}
-.hl-place{outline:2px dotted var(--follow);outline-offset:0}
-.hl-frise{outline:2px solid var(--warn);background:color-mix(in srgb, var(--warn) 16%, transparent);z-index:3}
 
+/* Les deux chiffres et la phrase de coût */
+.chiffres{display:flex;flex-wrap:wrap;gap:6px 44px;margin:20px 0 6px}
+.chiffre{margin:0;color:var(--text-mute);font-size:16px}
+.chiffre b{display:inline-block;margin-left:6px;color:var(--text);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.cout{margin:6px 0 0;max-width:80ch;color:var(--text-soft);font-size:17px}
 
-.b2{padding:0 12px;background:color-mix(in srgb, var(--bg) 40%, transparent);--ic:16px;white-space:nowrap}
-.b2 .l1{height:38px;display:flex;align-items:center}
-.b2 .l1 .fr-slot{flex:1;display:flex}
-.b2 .l2{display:flex;flex-wrap:wrap;align-items:center;column-gap:6px}
-.b2 .l2 > *{flex:none;margin-top:4px;margin-bottom:4px}
-
-
-.b.trans{background:color-mix(in srgb, var(--bg) 70%, transparent);backdrop-filter:blur(6px);border-top:1px solid color-mix(in srgb, var(--text) 8%, transparent)}
-.b.c32{height:32px;padding:0 10px;column-gap:4px;--ic:13px}
-.c32 .rb{width:24px;height:24px}
-.c32 .rb.cam,.c32 .rb.snd1{width:26px;height:26px}
-.c32 .rb.tx{font-size:13px}.c32 .rb.s{font-size:9.5px}
-.c32 .play{width:26px;height:26px}.c32 .play svg{width:13px;height:13px}
-.c32 .vol{width:44px}
-.c32 .clk{min-width:72px;font-size:11.5px;margin:0 2px}
-.c32 .ap{height:24px;padding:0 5px}.c32 .ap .auto{width:22px;height:13px}
-.c32 .spd{height:24px;width:46px;font-size:11.5px}
-.c32 .cap{padding:2px;gap:4px}.c32 .cb{height:20px;padding:0 7px}.c32 .cb svg{width:12px;height:12px}
-.c32 .fb{width:24px;height:24px}.c32 .fb svg{width:12px;height:12px}
-.c32 .sep{height:14px;margin:0 2px}
-.c32 .fr{--fh:22px;--tkh:5px;--rt:8px;--rh:3px;--dt:14px;--dh:2px;--ks:10px;--kt:6px;margin:0 8px}
-.c32 .zm{gap:4px}
-.ligne{position:relative;isolation:isolate;padding:0 16px;height:10px;display:flex;align-items:flex-end}
-.ligne::before{content:"";position:absolute;left:0;right:0;bottom:0;height:44px;background:linear-gradient(to top, color-mix(in srgb, var(--bg) 60%, transparent), transparent);z-index:-1;pointer-events:none}
-.ligne .fr{flex:1}
-
-
-.fen2{background:var(--bg);outline:1px solid var(--line-strong);outline-offset:-1px;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;color:var(--text);font-family:var(--font);font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
-.fen2 *{box-sizing:border-box}
-.p2-tete{flex:none;height:52px;display:flex;align-items:center;gap:12px;padding:0 16px}
-.quit{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg-btn);color:var(--text-soft);font-size:13px}
-.quit svg{width:15px;height:15px}
-.kbd{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:4px;border:1px solid var(--line-faint);font-size:10.5px;color:var(--text-soft)}
-.crumb{display:flex;flex-direction:column;gap:5px}
-.seg3{margin-left:auto;display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:var(--bg-btn);border:1px solid var(--line-strong)}
-.seg3 i{font-style:normal;height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:7px;color:var(--text-dim);font-size:12.5px}
-.seg3 i.on{background:var(--line-rail);color:var(--text)}
-.p2-corps{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 16px 6px}
-.band{flex:none;height:58px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 270px repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
-.tile{min-width:0;padding:7px 9px;border-radius:8px;background:var(--bg-tile);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between}
-.tile.follow{border-color:color-mix(in srgb, var(--follow) 60%, transparent)}
-.tile .r1,.tile .r2{display:flex;align-items:center;gap:6px}
-.dot{display:inline-block;width:8px;height:8px;border-radius:2px}
-.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
-.vit{flex:1;height:3px;border-radius:2px;background:color-mix(in srgb, var(--text) 12%, transparent);position:relative;overflow:hidden}
-.vit b{position:absolute;left:0;top:0;bottom:0;background:var(--follow)}
-.score{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 4px}
-.sb{display:flex;align-items:center;gap:8px}
-.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:color-mix(in srgb, var(--text) 10%, transparent);overflow:hidden;display:block}
-.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
-.sbar i{position:absolute;top:0;bottom:0}
-.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
-.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700}
-.sbar.l b{right:0}.sbar.r b{left:0}
-.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
-.score small{text-align:center;font-size:11px;color:var(--text-faint)}
-.vp{position:relative;flex:1;min-height:0;border-radius:12px;background:var(--bg-raised);border:1px solid var(--line);overflow:hidden}
-.vp .mapbox{position:absolute;top:12px;bottom:12px;left:50%;transform:translateX(-50%);aspect-ratio:1526 / 1666}
-.vp .mapbox .mapsvg{position:absolute;inset:0;width:100%;height:100%}
-.m-sol{fill:var(--map-sol)}.m-zone{fill:var(--map-zone)}
-.m-mur{fill:none;stroke:var(--map-mur);stroke-width:.9;vector-effect:non-scaling-stroke}
-.vp .mapbox .m-mur{stroke-width:2}
-.plan .m-mur{stroke-width:1.5}
-.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
-.pin i{display:block;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
-.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
-.pin.f i{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--follow)}
-.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:color-mix(in srgb, var(--bg) 82%, transparent)}
-.ofeed{position:absolute;left:16px;width:350px;display:flex;flex-direction:column;z-index:2}
-.fl{display:grid;grid-template-columns:30px 86px 20px 86px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap;text-shadow:0 0 2px var(--shadow),0 0 6px var(--shadow)}
-.fl > span{overflow:hidden;text-overflow:ellipsis}
-.fl svg{width:20px;height:9px;color:var(--text-dim);filter:drop-shadow(0 0 2px var(--shadow))}
-.fl .ft{color:var(--text-faint);font-size:11.5px}.fl .fz{color:var(--text-dim);font-size:11.5px}
-.fl.o1{opacity:.85}.fl.o2{opacity:.7}
-.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
-.sur{position:absolute;left:0;right:0;bottom:0;z-index:5}
-.zone-survol{position:absolute;left:0;right:0;bottom:0;height:72px;border-top:2px dashed var(--follow);z-index:4;pointer-events:none}
-.etq{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:20px;font-weight:500;color:var(--follow);padding:2px 12px;border-radius:6px;background:color-mix(in srgb, var(--bg) 75%, transparent)}
-.badge-pause{position:absolute;right:16px;top:12px;z-index:5;font-size:16px;font-weight:600;padding:3px 14px;border-radius:999px;background:color-mix(in srgb, var(--bg) 78%, transparent);border:1px solid var(--line-faint);color:var(--text)}
-.souris{position:absolute;left:52%;bottom:20px;width:34px;height:34px;z-index:6}
-.souris-p{fill:var(--text);stroke:var(--bg);stroke-width:1.4;stroke-linejoin:round}
-.p2-corps > .b{flex:none}
-
-
-.etats{display:grid;gap:30px;margin-top:6px}
-.etat{display:block}
-.etat figcaption{margin-top:10px}
-
-
-.tabs{overflow-x:auto;margin:10px 0 0}
-.tab{border-collapse:collapse;font-size:14px;min-width:560px;width:100%}
-.tab th,.tab td{padding:7px 12px;border-bottom:1px solid var(--line-strong);text-align:left;white-space:nowrap}
-.tab thead th{color:var(--text-dim);font-weight:500;font-size:13px}
-.tab tbody th{font-weight:600}
-.tab td{font-variant-numeric:tabular-nums;color:var(--text-soft)}
-h4{margin:24px 0 2px;font-size:15px;color:var(--text-soft);font-weight:600}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
 </style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></symbol>
+<symbol id="i-son" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
+<symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-rst" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
+<symbol id="i-cap" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-exp" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-c1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/></symbol>
+<symbol id="i-c2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2.5"/></symbol>
+<symbol id="i-c3" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></symbol>
+<symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+</defs></svg>
+
 <main class="page">
-<header>
-<p class="sur-titre">Planche de maquettes</p>
 <h1>Barre de lecture du rejeu</h1>
-<p>Deux questions sur la barre de lecture du Cin&eacute;ma et du Plein cadre&nbsp;: la place qui manque en fen&ecirc;tre &eacute;troite, et la pose de la barre sur le plan. Les dessins reprennent les proportions, les couleurs et les composants des maquettes valid&eacute;es de la page du rejeu, avec les cotes r&eacute;elles de la barre.</p>
-<ol class="demandes">
-<li>Choisir une variante de repli pour la barre d'une ligne quand la place manque&nbsp;: A (menu &laquo;&nbsp;plus&nbsp;&raquo;) ou B (barre sur deux lignes).</li>
-<li>Dire si la barre de lecture se pose sur le plan au Plein cadre&nbsp;: oui ou non.</li>
-<li>Si oui, choisir D (ligne de progression repli&eacute;e, d&eacute;pli&eacute;e au survol, &agrave; toute touche et en pause) ou C (barre basse et translucide, toujours visible).</li>
-</ol>
-</header>
+<p class="accroche">Essayer chaque réglage, puis dire lequel garder.</p>
 
-<h2>Partie 1. Fen&ecirc;tre &eacute;troite&nbsp;: la barre d'une ligne</h2>
-<p>Au Cin&eacute;ma et au Plein cadre, quand les fiches sont en colonne, la colonne lat&eacute;rale prend 480&nbsp;px de large. La barre ne dispose alors que de la largeur de fen&ecirc;tre moins 542&nbsp;px au Cin&eacute;ma, moins 518&nbsp;px au Plein cadre. Les commandes fixes de la barre totalisent 894&nbsp;px, et 1&#160;012&nbsp;px avec le bouton &laquo;&nbsp;Plan tourn&eacute;&nbsp;&raquo;. La frise garde au moins 120&nbsp;px de large&nbsp;: quand la place manque, la frise d&eacute;borde sur les commandes situ&eacute;es &agrave; droite.</p>
-<p class="note">Chiffres relev&eacute;s par le calcul sur les cotes de la barre, non mesur&eacute;s &agrave; l'&eacute;cran. Les fiches sont en colonne pour un match &agrave; plus de 4 joueurs par camp sous 1&nbsp;576&nbsp;px de fen&ecirc;tre, et pour 4 contre 4 sous 1&nbsp;334&nbsp;px. Au-dessus de 1&nbsp;279&nbsp;px, la colonne est &agrave; c&ocirc;t&eacute; du plan&nbsp;; &agrave; 1&nbsp;279&nbsp;px et en dessous, la colonne passe sous le plan et la barre retrouve toute la largeur. Les dessins montrent le Cin&eacute;ma, fen&ecirc;tre enti&egrave;re, sans barre de l'application&nbsp;; au Plein cadre, la barre gagne 24&nbsp;px.</p>
-<div class="legende" aria-label="L&eacute;gende des dessins"><span><i class="l-place"></i>Place laiss&eacute;e &agrave; la frise</span><span><i class="l-frise"></i>Frise tra&ccedil;&eacute;e au-del&agrave; de la place laiss&eacute;e</span></div>
+<section class="reglages" aria-label="Réglages" id="reglages">
+  <div role="group" aria-labelledby="g-barre"><span class="gl" id="g-barre">Barre au Plein cadre</span><div class="boutons" id="r-barre"></div></div>
+  <div role="group" aria-labelledby="g-place"><span class="gl" id="g-place">Quand la place manque</span><div class="boutons" id="r-place"></div></div>
+  <div role="group" aria-labelledby="g-larg"><span class="gl" id="g-larg">Largeur de la fenêtre</span>
+    <div class="largeur">
+      <input type="range" id="largeur" min="1100" max="1700" step="10" value="1440" aria-label="Largeur de la fenêtre en pixels">
+      <output id="l-val" for="largeur">1 440 px</output>
+      <span class="boutons" id="r-W"></span>
+      <label class="case"><input type="checkbox" id="col" checked>Fiches en colonne</label>
+    </div>
+  </div>
+</section>
 
-<h3><span class="pastille neutre">&mdash;</span>&Eacute;tat actuel&nbsp;: la frise &eacute;cras&eacute;e</h3>
-<p class="cout-bloc"><b>D&eacute;faut&nbsp;:</b> la frise recouvre les commandes de vitesse et de zoom, et &agrave; 1&nbsp;280&nbsp;px les ic&ocirc;nes de cadre sortent de la barre.</p>
-<figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:740"><b>plan : barre de 738&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1280;--h:180"><div class="fen" style="width:1280px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b "><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot hl-place"><span class="fr hl-frise"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;280&nbsp;px</span><span class="cle ko">Frise&nbsp;: 0&nbsp;px de place</span><span class="det">Barre&nbsp;: 738&nbsp;px. Commandes fixes&nbsp;: 894&nbsp;px. Place laiss&eacute;e &agrave; la frise&nbsp;: 0&nbsp;px (d&eacute;ficit de 156&nbsp;px). Frise trac&eacute;e&nbsp;: 120&nbsp;px (minimum), qui recouvre 130&nbsp;px de commandes &agrave; droite. Environ 144&nbsp;px de commandes d&eacute;passent le bord droit et sont coup&eacute;s (ic&ocirc;nes de cadre, plein &eacute;cran).</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:900"><b>plan : barre de 898&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1440;--h:180"><div class="fen" style="width:1440px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b "><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot hl-place"><span class="fr hl-frise"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;440&nbsp;px</span><span class="cle ko">Frise&nbsp;: 4&nbsp;px de place</span><span class="det">Barre&nbsp;: 898&nbsp;px. Commandes fixes&nbsp;: 894&nbsp;px. Place laiss&eacute;e &agrave; la frise&nbsp;: 4&nbsp;px. Frise trac&eacute;e&nbsp;: 120&nbsp;px (minimum), qui recouvre 126&nbsp;px de commandes &agrave; droite.</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:996"><b>plan : barre de 994&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1536;--h:180"><div class="fen" style="width:1536px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b "><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot hl-place"><span class="fr hl-frise"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;536&nbsp;px</span><span class="cle ko">Frise&nbsp;: 100&nbsp;px de place</span><span class="det">Barre&nbsp;: 994&nbsp;px. Commandes fixes&nbsp;: 894&nbsp;px. Place laiss&eacute;e &agrave; la frise&nbsp;: 100&nbsp;px. Frise trac&eacute;e&nbsp;: 120&nbsp;px (minimum), qui recouvre 30&nbsp;px de commandes &agrave; droite.</span></figcaption></figure>
-
-<h3><span class="pastille">A</span>Menu &laquo;&nbsp;plus&nbsp;&raquo;</h3>
-<p>Sous un seuil de largeur, les groupes secondaires quittent la barre pour un menu &laquo;&nbsp;plus&nbsp;&raquo;, et la frise garde au moins 240&nbsp;px. Palier 1&nbsp;: lecture automatique, vitesse, zoom, capture et volume. Palier 2 (barre sous 835&nbsp;px)&nbsp;: les ic&ocirc;nes de cadre et de plein &eacute;cran aussi. Hauteur de la barre inchang&eacute;e&nbsp;: 56&nbsp;px. Avec &laquo;&nbsp;Plan tourn&eacute;&nbsp;&raquo;, le bouton se r&eacute;duit &agrave; l'ic&ocirc;ne seule (30&nbsp;px, 36&nbsp;px avec l'&eacute;cart).</p>
-<p class="cout-bloc"><b>Co&ucirc;t&nbsp;:</b> lecture automatique, vitesse, zoom, capture et volume demandent un clic de plus, et sous 835&nbsp;px de barre les ic&ocirc;nes de cadre aussi.</p>
-<figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:740"><b>plan : barre de 738&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1280;--h:180"><div class="fen" style="width:1280px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="fr-slot "><span class="fr min240"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="rb bd plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;280&nbsp;px</span><span class="cle ok">Frise&nbsp;: 315&nbsp;px</span><span class="det">Barre&nbsp;: 738&nbsp;px, hauteur 56&nbsp;px. Palier 2&nbsp;: en plus, les ic&ocirc;nes de cadre et de plein &eacute;cran rang&eacute;es dans le menu &laquo;&nbsp;plus&nbsp;&raquo;. Seuils (largeur de la barre)&nbsp;: palier 1 sous 1&#160;154&nbsp;px, palier 2 sous 835&nbsp;px.</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:900"><b>plan : barre de 898&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1440;--h:180"><div class="fen" style="width:1440px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="fr-slot "><span class="fr min240"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="rb bd plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></span><span class="sep"></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;440&nbsp;px</span><span class="cle ok">Frise&nbsp;: 303&nbsp;px</span><span class="det">Barre&nbsp;: 898&nbsp;px, hauteur 56&nbsp;px. Palier 1&nbsp;: lecture automatique, vitesse, zoom, capture et volume rang&eacute;s dans le menu &laquo;&nbsp;plus&nbsp;&raquo;. Seuils (largeur de la barre)&nbsp;: palier 1 sous 1&#160;154&nbsp;px, palier 2 sous 835&nbsp;px.</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:996"><b>plan : barre de 994&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1536;--h:180"><div class="fen" style="width:1536px;height:180px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="fr-slot "><span class="fr min240"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="rb bd plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></span><span class="sep"></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;536&nbsp;px</span><span class="cle ok">Frise&nbsp;: 399&nbsp;px</span><span class="det">Barre&nbsp;: 994&nbsp;px, hauteur 56&nbsp;px. Palier 1&nbsp;: lecture automatique, vitesse, zoom, capture et volume rang&eacute;s dans le menu &laquo;&nbsp;plus&nbsp;&raquo;. Seuils (largeur de la barre)&nbsp;: palier 1 sous 1&#160;154&nbsp;px, palier 2 sous 835&nbsp;px.</span></figcaption></figure>
-
-<h3><span class="pastille">B</span>Deux lignes</h3>
-<p>Sous le m&ecirc;me seuil, la frise occupe seule la premi&egrave;re ligne, sur toute la largeur de la barre&nbsp;; les commandes tiennent sur la seconde. Aucune commande n'est d&eacute;plac&eacute;e dans un menu.</p>
-<p class="cout-bloc"><b>Co&ucirc;t&nbsp;:</b> la barre passe de 56&nbsp;px &agrave; 84&nbsp;px de haut, soit 28&nbsp;px de moins pour le plan, et &agrave; 124&nbsp;px (68&nbsp;px de moins) quand la seconde ligne ne tient pas, comme &agrave; 1&nbsp;280&nbsp;px.</p>
-<figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:740"><b>plan : barre de 738&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1280;--h:248"><div class="fen" style="width:1280px;height:248px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b2"><div class="l1"><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span></div><div class="l2"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;280&nbsp;px</span><span class="cle ok">Frise&nbsp;: 694&nbsp;px</span><span class="det">Barre&nbsp;: 738&nbsp;px, hauteur 124&nbsp;px (3&nbsp;lignes). Seconde ligne&nbsp;: 888&nbsp;px de commandes pour 738&nbsp;px&nbsp;: les derni&egrave;res passent sur une troisi&egrave;me ligne.</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:900"><b>plan : barre de 898&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1440;--h:208"><div class="fen" style="width:1440px;height:208px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b2"><div class="l1"><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span></div><div class="l2"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;440&nbsp;px</span><span class="cle ok">Frise&nbsp;: 854&nbsp;px</span><span class="det">Barre&nbsp;: 898&nbsp;px, hauteur 84&nbsp;px (2&nbsp;lignes). Seconde ligne&nbsp;: 888&nbsp;px de commandes&nbsp;: la seconde ligne tient.</span></figcaption></figure><figure class="vue-fig"><div class="vue"><div class="regle" style="--k:var(--k1)"><span class="seg" style="--s:24"></span><span class="seg plan" style="--s:996"><b>plan : barre de 994&nbsp;px</b></span><span class="seg" style="--s:12"></span><span class="seg col" style="--s:480"><b>colonne : 480&nbsp;px</b></span><span class="seg" style="--s:24"></span></div><div class="echelle k1" style="--w:1536;--h:208"><div class="fen" style="width:1536px;height:208px">
-    <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
-    <div class="fen-corps"><section class="carte"><div class="plan" style="height:70px"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><span class="etq-plan">plan</span></div><div class="b2"><div class="l1"><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span></div><div class="l2"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div></section><aside class="colonne"><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:58px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:67px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot a"></i><i class="sk-bar" style="width:85px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:64px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:77px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:90px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-row"><i class="sk-dot b"></i><i class="sk-bar" style="width:73px"></i><i class="sk-bar s" style="width:30px"></i></div><div class="sk-gap"></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div><div class="sk-row"><i class="sk-bar s" style="width:26px"></i><i class="sk-bar" style="width:70px"></i><i class="sk-bar s" style="width:18px"></i><i class="sk-bar" style="width:70px"></i></div></aside></div></div></div></div><figcaption><span class="lg">Fen&ecirc;tre de 1&#160;536&nbsp;px</span><span class="cle ok">Frise&nbsp;: 950&nbsp;px</span><span class="det">Barre&nbsp;: 994&nbsp;px, hauteur 84&nbsp;px (2&nbsp;lignes). Seconde ligne&nbsp;: 888&nbsp;px de commandes&nbsp;: la seconde ligne tient.</span></figcaption></figure>
-
-<h4>Chiffres de la partie 1</h4>
-<div class="tabs"><table class="tab"><thead><tr><th scope="col">Fen&ecirc;tre (Cin&eacute;ma)</th><th scope="col">Barre</th><th scope="col">Actuel&nbsp;: place &agrave; la frise</th><th scope="col">A&nbsp;: frise</th><th scope="col">B&nbsp;: frise</th><th scope="col">B&nbsp;: hauteur</th></tr></thead><tbody><tr><th scope="row">1&#160;280&nbsp;px</th><td>738&nbsp;px</td><td>0&nbsp;px (trac&eacute;e 120&nbsp;px)</td><td>315&nbsp;px</td><td>694&nbsp;px</td><td>124&nbsp;px</td></tr><tr><th scope="row">1&#160;440&nbsp;px</th><td>898&nbsp;px</td><td>4&nbsp;px (trac&eacute;e 120&nbsp;px)</td><td>303&nbsp;px</td><td>854&nbsp;px</td><td>84&nbsp;px</td></tr><tr><th scope="row">1&#160;536&nbsp;px</th><td>994&nbsp;px</td><td>100&nbsp;px (trac&eacute;e 120&nbsp;px)</td><td>399&nbsp;px</td><td>950&nbsp;px</td><td>84&nbsp;px</td></tr></tbody></table></div>
-<div class="tabs"><table class="tab"><thead><tr><th scope="col">Fen&ecirc;tre (Plein cadre)</th><th scope="col">Barre</th><th scope="col">Actuel&nbsp;: place &agrave; la frise</th></tr></thead><tbody><tr><th scope="row">1&#160;280&nbsp;px</th><td>762&nbsp;px</td><td>0&nbsp;px</td></tr><tr><th scope="row">1&#160;440&nbsp;px</th><td>922&nbsp;px</td><td>28&nbsp;px</td></tr><tr><th scope="row">1&#160;536&nbsp;px</th><td>1&#160;018&nbsp;px</td><td>124&nbsp;px</td></tr></tbody></table></div>
-<p class="note">Au Plein cadre, la place laiss&eacute;e &agrave; la frise gagne 24&nbsp;px, et les variantes A et B ajoutent 24&nbsp;px de frise.</p>
-
-
-<h2>Partie 2. Surimpression au Plein cadre</h2>
-<p>Plein cadre &agrave; 1&nbsp;440 &times; 900&nbsp;px (cotes de la maquette valid&eacute;e), rang&eacute;e de fiches pos&eacute;e, fil des &eacute;liminations sur le plan. La barre fixe d'aujourd'hui laisse 720&nbsp;px de haut au plan. En surimpression, la barre ne prend plus de place dans la colonne de la page&nbsp;: le plan reprend la hauteur de la fen&ecirc;tre moins l'en-t&ecirc;te, la rang&eacute;e et les marges, soit 776&nbsp;px. Le Cin&eacute;ma et le Standard gardent la barre fixe. La barre en surimpression garde la largeur du plan&nbsp;: les replis de la partie 1 s'appliquent aussi &agrave; la barre en surimpression.</p>
-<div class="legende"><span><i class="l-zone"></i>Zone de survol qui d&eacute;plie la barre</span></div>
-
-<div class="etats">
-<figure class="etat"><div class="vue"><div class="echelle k2" style="--w:1440;--h:900"><div class="fen2" style="width:1440px;height:900px">
-    <div class="p2-tete"><span class="quit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Quitter<span class="kbd">&Eacute;chap</span></span><span class="crumb"><i class="sk-bar s" style="width:180px"></i><i class="sk-bar" style="width:210px"></i></span><span class="seg3"><i>Standard</i><i>Cin&eacute;ma</i><i class="on">Plein cadre</i></span></div>
-    <div class="p2-corps"><div class="band"><div class="tile follow"><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="score"><div class="sb"><span class="sbar l"><i style="width:46%"></i><b>23</b></span><span class="sclk">3:51</span><span class="sbar r"><i style="width:30%"></i><b>15</b></span></div><small>Premier &agrave; 50 &eacute;liminations</small></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div></div>
-      <div class="vp"><div class="mapbox"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><div class="pin a f" style="left:41%;top:22%"><i></i><span>Joueur 1</span></div><div class="pin a " style="left:49%;top:52%"><i></i><span>Joueur 2</span></div><div class="pin a " style="left:30%;top:37%"><i></i><span>Joueur 3</span></div><div class="pin a " style="left:39%;top:44%"><i></i><span>Joueur 4</span></div><div class="pin b " style="left:40%;top:80%"><i></i><span>Joueur 5</span></div><div class="pin b " style="left:74%;top:53%"><i></i><span>Joueur 6</span></div><div class="pin b " style="left:18%;top:49%"><i></i><span>Joueur 7</span></div></div>
-        <div class="ofeed" style="bottom:12px"><div class="fl o2"><span class="ft">3:22</span><span class="kb">Joueur 6</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 2</span><span class="fz">Atrium</span></div><div class="fl o1"><span class="ft">3:34</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 7</span><span class="fz">Couloir ouest</span></div><div class="fl "><span class="ft">3:37</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 6</span><span class="fz">Atrium</span></div><div class="fl "><span class="ft">3:42</span><span class="kb">Joueur 5</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 1</span><span class="fz">Passerelle nord</span></div><div class="fl "><span class="ft">3:49</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 5</span><span class="fz">Cour sud</span></div></div>
-        
-        
-        
-        
+<div class="scene" id="scene"><div class="echelle" id="echelle">
+<div class="fen" id="fen" style="--w:1440">
+  <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
+  <div class="fiches" id="fiches"></div>
+  <div class="corps">
+    <section class="carte" id="carte">
+      <div class="plan" id="plan">
+        <svg class="mapsvg" id="mapsvg" viewBox="0 0 100 109" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <rect x="0" y="0" width="100" height="109" class="m-sol"/>
+          <rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
+          <rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
+          <path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
+          <g id="pions"></g>
+        </svg>
+        <div class="flash" id="flash"></div>
+        <div class="fil" id="fil" aria-label="Éliminations" role="log"></div>
       </div>
-      <div class="b "><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div>
-    </div></div></div></div><figcaption><span class="nom">R&eacute;f&eacute;rence&nbsp;: barre fixe d'aujourd'hui</span><span class="cle ok">Plan&nbsp;: 720&nbsp;px</span><span class="det">Barre de 56&nbsp;px sous le plan, dans la colonne de la page. Aucune partie du plan n'est recouverte.</span></figcaption></figure>
-
-<div>
-<h3><span class="pastille">D</span>Ligne de progression repli&eacute;e</h3>
-<p>Pendant la lecture, la barre se replie en une ligne de 10&nbsp;px au bas du plan&nbsp;: rep&egrave;res d'&eacute;liminations, rail, bande de dominance. La barre se d&eacute;plie au survol du bas du plan, &agrave; toute touche et en pause&nbsp;; le fil des &eacute;liminations remonte de 56&nbsp;px quand la barre est d&eacute;pli&eacute;e.</p>
-<p class="cout-bloc"><b>Co&ucirc;t&nbsp;:</b> la ligne repli&eacute;e ne porte aucune commande, et la barre d&eacute;pli&eacute;e recouvre 56&nbsp;px du bas de la carte et fait remonter le fil.</p>
+      <div class="filet" id="filet"><span class="fr mince" data-fr></span></div>
+      <div class="b" id="barre">
+        <button type="button" class="rb cam" data-act="camera" aria-label="Caméra"><svg class="ic"><use href="#i-cam"/></svg></button>
+        <span class="snd"><button type="button" class="rb snd1" data-act="son" aria-label="Son"><svg class="ic"><use id="u-son" href="#i-son"/></svg></button><span class="vol" id="vol" aria-label="Volume"><i></i></span></span>
+        <span class="sep"></span>
+        <button type="button" class="play" data-act="lecture" aria-label="Lecture ou pause"><svg class="ic"><use id="u-play" href="#i-pause"/></svg></button>
+        <button type="button" class="rb gh" data-act="debut" aria-label="Recommencer"><svg class="ic"><use href="#i-rst"/></svg></button>
+        <button type="button" class="rb bd" data-act="moins" aria-label="Reculer de 10 secondes">&minus;10</button>
+        <button type="button" class="rb bd" data-act="plus10" aria-label="Avancer de 10 secondes">+10</button>
+        <span class="clk" id="horloge"></span>
+        <button type="button" class="ap on" id="auto-b" data-g="a" data-act="auto" aria-label="Lecture automatique">
+          <svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle id="auto-c" cx="19" cy="8" r="5" class="auto-c"/></svg></button>
+        <span class="fr-slot" id="slot"><span class="fr" data-fr id="frise" role="slider" tabindex="0" aria-label="Position de lecture"></span></span>
+        <span class="plusw"><button type="button" class="rb" id="plus-b" data-act="plus" aria-label="Plus de commandes" aria-expanded="false"><svg class="ic"><use href="#i-plus"/></svg></button><div class="menu" id="menu" hidden></div></span>
+        <button type="button" class="spd" data-g="a" data-act="vitesse" aria-label="Vitesse"><span id="vit">1&times;</span><svg class="ic"><use href="#i-chev"/></svg></button>
+        <span class="sep" data-g="c"></span>
+        <span class="zm" data-g="a"><button type="button" class="rb gh tx" id="zm-" data-act="zoom-" aria-label="Zoom arrière">&minus;</button><button type="button" class="rb gh tx" id="zm+" data-act="zoom+" aria-label="Zoom avant">+</button></span>
+        <span class="sep" data-g="a"></span>
+        <span class="cap" data-g="a"><button type="button" class="cb" data-act="capture" aria-label="Capture"><svg class="ic"><use href="#i-cap"/></svg></button><button type="button" class="cb pri" data-act="export" aria-label="Exporter"><svg class="ic"><use href="#i-exp"/></svg></button></span>
+        <span class="frm" data-g="c">
+          <button type="button" class="fb" data-act="cadre1" aria-label="Standard" title="Standard"><svg class="ic"><use href="#i-c1"/></svg></button>
+          <button type="button" class="fb on" data-act="cadre2" aria-label="Cinéma" title="Cinéma"><svg class="ic"><use href="#i-c2"/></svg></button>
+          <button type="button" class="fb" data-act="cadre3" aria-label="Plein cadre" title="Plein cadre"><svg class="ic"><use href="#i-c3"/></svg></button>
+          <span class="fsep"></span>
+          <button type="button" class="fb" data-act="plein" aria-label="Plein écran"><svg class="ic"><use href="#i-full"/></svg></button>
+        </span>
+      </div>
+    </section>
+    <aside class="colonne" id="colonne"></aside>
+  </div>
 </div>
-<figure class="etat"><div class="vue"><div class="echelle k2" style="--w:1440;--h:900"><div class="fen2" style="width:1440px;height:900px">
-    <div class="p2-tete"><span class="quit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Quitter<span class="kbd">&Eacute;chap</span></span><span class="crumb"><i class="sk-bar s" style="width:180px"></i><i class="sk-bar" style="width:210px"></i></span><span class="seg3"><i>Standard</i><i>Cin&eacute;ma</i><i class="on">Plein cadre</i></span></div>
-    <div class="p2-corps"><div class="band"><div class="tile follow"><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="score"><div class="sb"><span class="sbar l"><i style="width:46%"></i><b>23</b></span><span class="sclk">3:51</span><span class="sbar r"><i style="width:30%"></i><b>15</b></span></div><small>Premier &agrave; 50 &eacute;liminations</small></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div></div>
-      <div class="vp"><div class="mapbox"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><div class="pin a f" style="left:41%;top:22%"><i></i><span>Joueur 1</span></div><div class="pin a " style="left:49%;top:52%"><i></i><span>Joueur 2</span></div><div class="pin a " style="left:30%;top:37%"><i></i><span>Joueur 3</span></div><div class="pin a " style="left:39%;top:44%"><i></i><span>Joueur 4</span></div><div class="pin b " style="left:40%;top:80%"><i></i><span>Joueur 5</span></div><div class="pin b " style="left:74%;top:53%"><i></i><span>Joueur 6</span></div><div class="pin b " style="left:18%;top:49%"><i></i><span>Joueur 7</span></div></div>
-        <div class="ofeed" style="bottom:12px"><div class="fl o2"><span class="ft">3:22</span><span class="kb">Joueur 6</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 2</span><span class="fz">Atrium</span></div><div class="fl o1"><span class="ft">3:34</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 7</span><span class="fz">Couloir ouest</span></div><div class="fl "><span class="ft">3:37</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 6</span><span class="fz">Atrium</span></div><div class="fl "><span class="ft">3:42</span><span class="kb">Joueur 5</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 1</span><span class="fz">Passerelle nord</span></div><div class="fl "><span class="ft">3:49</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 5</span><span class="fz">Cour sud</span></div></div>
-        <div class="zone-survol"><span class="etq">survol&nbsp;: bas du plan, 72&nbsp;px</span></div>
-        
-        <div class="sur"><div class="ligne"><span class="fr mince"><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></div></div>
-        
-      </div>
-      
-    </div></div></div></div><figcaption><span class="pastille">D</span><span class="nom">D1. Lecture, barre repli&eacute;e</span><span class="cle ok">Plan&nbsp;: 776&nbsp;px</span><span class="det">Ligne de progression de 10&nbsp;px au bas du plan, recouvrant 10&nbsp;px de plan (766&nbsp;px libres). Le fil des &eacute;liminations reste en place. Gain&nbsp;: 56&nbsp;px de hauteur pour le plan.</span></figcaption></figure>
-<figure class="etat"><div class="vue"><div class="echelle k2" style="--w:1440;--h:900"><div class="fen2" style="width:1440px;height:900px">
-    <div class="p2-tete"><span class="quit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Quitter<span class="kbd">&Eacute;chap</span></span><span class="crumb"><i class="sk-bar s" style="width:180px"></i><i class="sk-bar" style="width:210px"></i></span><span class="seg3"><i>Standard</i><i>Cin&eacute;ma</i><i class="on">Plein cadre</i></span></div>
-    <div class="p2-corps"><div class="band"><div class="tile follow"><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="score"><div class="sb"><span class="sbar l"><i style="width:46%"></i><b>23</b></span><span class="sclk">3:51</span><span class="sbar r"><i style="width:30%"></i><b>15</b></span></div><small>Premier &agrave; 50 &eacute;liminations</small></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div></div>
-      <div class="vp"><div class="mapbox"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><div class="pin a f" style="left:41%;top:22%"><i></i><span>Joueur 1</span></div><div class="pin a " style="left:49%;top:52%"><i></i><span>Joueur 2</span></div><div class="pin a " style="left:30%;top:37%"><i></i><span>Joueur 3</span></div><div class="pin a " style="left:39%;top:44%"><i></i><span>Joueur 4</span></div><div class="pin b " style="left:40%;top:80%"><i></i><span>Joueur 5</span></div><div class="pin b " style="left:74%;top:53%"><i></i><span>Joueur 6</span></div><div class="pin b " style="left:18%;top:49%"><i></i><span>Joueur 7</span></div></div>
-        <div class="ofeed" style="bottom:68px"><div class="fl o2"><span class="ft">3:22</span><span class="kb">Joueur 6</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 2</span><span class="fz">Atrium</span></div><div class="fl o1"><span class="ft">3:34</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 7</span><span class="fz">Couloir ouest</span></div><div class="fl "><span class="ft">3:37</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 6</span><span class="fz">Atrium</span></div><div class="fl "><span class="ft">3:42</span><span class="kb">Joueur 5</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 1</span><span class="fz">Passerelle nord</span></div><div class="fl "><span class="ft">3:49</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 5</span><span class="fz">Cour sud</span></div></div>
-        
-        
-        <div class="sur"><div class="b trans"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div>
-        <svg viewBox="0 0 24 24" aria-hidden="true" class="souris"><path d="M5 3l14 8-6 1.8L10 19z" class="souris-p"/></svg>
-      </div>
-      
-    </div></div></div></div><figcaption><span class="pastille">D</span><span class="nom">D2. Survol du bas, barre d&eacute;pli&eacute;e</span><span class="cle ok">Plan&nbsp;: 776&nbsp;px</span><span class="det">Barre compl&egrave;te de 56&nbsp;px pos&eacute;e sur le bas du plan, fond translucide, recouvrant 56&nbsp;px de plan (720&nbsp;px libres, comme avec la barre fixe). Le fil des &eacute;liminations remonte de 56&nbsp;px.</span></figcaption></figure>
-<figure class="etat"><div class="vue"><div class="echelle k2" style="--w:1440;--h:900"><div class="fen2" style="width:1440px;height:900px">
-    <div class="p2-tete"><span class="quit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Quitter<span class="kbd">&Eacute;chap</span></span><span class="crumb"><i class="sk-bar s" style="width:180px"></i><i class="sk-bar" style="width:210px"></i></span><span class="seg3"><i>Standard</i><i>Cin&eacute;ma</i><i class="on">Plein cadre</i></span></div>
-    <div class="p2-corps"><div class="band"><div class="tile follow"><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="score"><div class="sb"><span class="sbar l"><i style="width:46%"></i><b>23</b></span><span class="sclk">3:51</span><span class="sbar r"><i style="width:30%"></i><b>15</b></span></div><small>Premier &agrave; 50 &eacute;liminations</small></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div></div>
-      <div class="vp"><div class="mapbox"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><div class="pin a f" style="left:41%;top:22%"><i></i><span>Joueur 1</span></div><div class="pin a " style="left:49%;top:52%"><i></i><span>Joueur 2</span></div><div class="pin a " style="left:30%;top:37%"><i></i><span>Joueur 3</span></div><div class="pin a " style="left:39%;top:44%"><i></i><span>Joueur 4</span></div><div class="pin b " style="left:40%;top:80%"><i></i><span>Joueur 5</span></div><div class="pin b " style="left:74%;top:53%"><i></i><span>Joueur 6</span></div><div class="pin b " style="left:18%;top:49%"><i></i><span>Joueur 7</span></div></div>
-        <div class="ofeed" style="bottom:68px"><div class="fl o2"><span class="ft">3:22</span><span class="kb">Joueur 6</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 2</span><span class="fz">Atrium</span></div><div class="fl o1"><span class="ft">3:34</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 7</span><span class="fz">Couloir ouest</span></div><div class="fl "><span class="ft">3:37</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 6</span><span class="fz">Atrium</span></div><div class="fl "><span class="ft">3:42</span><span class="kb">Joueur 5</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 1</span><span class="fz">Passerelle nord</span></div><div class="fl "><span class="ft">3:49</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 5</span><span class="fz">Cour sud</span></div></div>
-        
-        <span class="badge-pause">Pause</span>
-        <div class="sur"><div class="b trans"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div>
-        
-      </div>
-      
-    </div></div></div></div><figcaption><span class="pastille">D</span><span class="nom">D3. Pause, barre d&eacute;pli&eacute;e</span><span class="cle ok">Plan&nbsp;: 776&nbsp;px</span><span class="det">M&ecirc;me barre et m&ecirc;mes cotes que D2, bouton Lecture &agrave; la place du bouton Pause. Toute touche (espace, fl&egrave;ches) donne le m&ecirc;me &eacute;tat qu'au survol.</span></figcaption></figure>
+</div></div>
 
-<div>
-<h3><span class="pastille">C</span>Barre translucide et basse, sans disparition</h3>
-<p>La barre reste toujours visible, sur une seule ligne de 32&nbsp;px au lieu de 56, avec un fond translucide pos&eacute; sur le bas du plan. Aucun &eacute;tat ne change selon la souris ou le clavier&nbsp;; le fil des &eacute;liminations remonte de 32&nbsp;px, en permanence.</p>
-<p class="cout-bloc"><b>Co&ucirc;t&nbsp;:</b> les commandes se resserrent (boutons de 24&nbsp;px au lieu de 30, frise de 22&nbsp;px au lieu de 30) et 32&nbsp;px du bas de la carte restent recouverts en permanence.</p>
+<div class="chiffres" aria-live="polite">
+  <p class="chiffre">Hauteur libre du plan :<b id="n-haut"></b></p>
+  <p class="chiffre">Largeur de la frise :<b id="n-frise"></b></p>
 </div>
-<figure class="etat"><div class="vue"><div class="echelle k2" style="--w:1440;--h:900"><div class="fen2" style="width:1440px;height:900px">
-    <div class="p2-tete"><span class="quit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>Quitter<span class="kbd">&Eacute;chap</span></span><span class="crumb"><i class="sk-bar s" style="width:180px"></i><i class="sk-bar" style="width:210px"></i></span><span class="seg3"><i>Standard</i><i>Cin&eacute;ma</i><i class="on">Plein cadre</i></span></div>
-    <div class="p2-corps"><div class="band"><div class="tile follow"><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot a"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="score"><div class="sb"><span class="sbar l"><i style="width:46%"></i><b>23</b></span><span class="sclk">3:51</span><span class="sbar r"><i style="width:30%"></i><b>15</b></span></div><small>Premier &agrave; 50 &eacute;liminations</small></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:52px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:100%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:60px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:88%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:68px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:76%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div><div class="tile "><div class="r1"><i class="dot b"></i><i class="sk-bar" style="width:76px"></i><i class="sk-bar s" style="width:34px;margin-left:auto"></i></div><div class="r2"><i class="vit"><b style="width:64%"></b></i><i class="sk-bar s" style="width:22px"></i></div></div></div>
-      <div class="vp"><div class="mapbox"><svg viewBox="0 0 100 109" preserveAspectRatio="none" aria-hidden="true" class="mapsvg">
-<rect x="0" y="0" width="100" height="109" rx="2" class="m-sol"/>
-<rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
-<rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
-<path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
-</svg><div class="pin a f" style="left:41%;top:22%"><i></i><span>Joueur 1</span></div><div class="pin a " style="left:49%;top:52%"><i></i><span>Joueur 2</span></div><div class="pin a " style="left:30%;top:37%"><i></i><span>Joueur 3</span></div><div class="pin a " style="left:39%;top:44%"><i></i><span>Joueur 4</span></div><div class="pin b " style="left:40%;top:80%"><i></i><span>Joueur 5</span></div><div class="pin b " style="left:74%;top:53%"><i></i><span>Joueur 6</span></div><div class="pin b " style="left:18%;top:49%"><i></i><span>Joueur 7</span></div></div>
-        <div class="ofeed" style="bottom:44px"><div class="fl o2"><span class="ft">3:22</span><span class="kb">Joueur 6</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 2</span><span class="fz">Atrium</span></div><div class="fl o1"><span class="ft">3:34</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 7</span><span class="fz">Couloir ouest</span></div><div class="fl "><span class="ft">3:37</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 6</span><span class="fz">Atrium</span></div><div class="fl "><span class="ft">3:42</span><span class="kb">Joueur 5</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="ka">Joueur 1</span><span class="fz">Passerelle nord</span></div><div class="fl "><span class="ft">3:49</span><span class="ka">Joueur 2</span><svg viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"/></svg><span class="kb">Joueur 5</span><span class="fz">Cour sud</span></div></div>
-        
-        
-        <div class="sur"><div class="b c32 trans"><span class="rb cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></svg></span><span class="snd"><span class="rb snd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg></span><span class="vol"><i></i></span></span><span class="sep"></span><span class="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></svg></span><span class="rb gh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span><span class="rb bd tx s">&minus;10</span><span class="rb bd tx s">+10</span><span class="clk"><b>3:51</b> / 7:45</span><span class="ap"><svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle cx="19" cy="8" r="5" class="auto-c"/></svg></span><span class="fr-slot "><span class="fr "><span class="tk"><i class="ta" style="left:3.87%"></i><i class="tb" style="left:6.24%"></i><i class="ta" style="left:9.46%"></i><i class="ta" style="left:11.18%"></i><i class="tb" style="left:15.05%"></i><i class="ta" style="left:17.85%"></i><i class="ta" style="left:20.86%"></i><i class="tb" style="left:23.66%"></i><i class="ta" style="left:26.02%"></i><i class="ta" style="left:29.03%"></i><i class="tb" style="left:32.26%"></i><i class="ta" style="left:34.84%"></i><i class="ta" style="left:36.34%"></i><i class="ta" style="left:38.92%"></i><i class="tb" style="left:39.14%"></i><i class="ta" style="left:41.51%"></i><i class="tb" style="left:43.44%"></i><i class="ta" style="left:46.02%"></i><i class="ta" style="left:46.67%"></i><i class="tb" style="left:47.74%"></i><i class="ta" style="left:49.25%"></i><i class="ta" style="left:53.12%"></i><i class="tb" style="left:55.05%"></i><i class="ta" style="left:57.63%"></i><i class="ta" style="left:60.43%"></i><i class="tb" style="left:64.52%"></i><i class="ta" style="left:67.10%"></i><i class="ta" style="left:71.61%"></i><i class="tb" style="left:75.48%"></i><i class="ta" style="left:78.71%"></i><i class="ta" style="left:82.58%"></i><i class="tb" style="left:86.24%"></i><i class="ta" style="left:90.32%"></i><i class="ta" style="left:93.98%"></i><i class="tb" style="left:97.85%"></i></span><span class="rl"><i style="width:49.7%"></i></span><span class="dm"><i class="db" style="width:3%"></i><i class="dn" style="width:1%"></i><i class="db" style="width:16%"></i><i class="dn" style="width:6%"></i><i class="da" style="width:74%"></i></span><span class="kn"></span></span></span><span class="spd">1&times;<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="chev"><path d="M6 9l6 6 6-6"/></svg></span><span class="sep"></span><span class="zm"><span class="rb gh tx">&minus;</span><span class="rb gh tx">+</span></span><span class="sep"></span><span class="cap"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="cb pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg></span></span><span class="frm"><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="3" y="3" width="18" height="18" rx="2.5"/></svg></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="6" width="20" height="12" rx="2.5"/></svg></span><span class="fb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></svg></span><span class="fsep"></span><span class="fb "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span></span></div></div>
-        
-      </div>
-      
-    </div></div></div></div><figcaption><span class="pastille">C</span><span class="nom">C. Barre de 32&nbsp;px, toujours visible</span><span class="cle ok">Plan&nbsp;: 776&nbsp;px</span><span class="det">Barre de 32&nbsp;px sur le bas du plan, recouvrant 32&nbsp;px de plan (744&nbsp;px libres). Gain&nbsp;: 56&nbsp;px de hauteur pour le plan, dont 32 repris par la barre.</span></figcaption></figure>
-</div>
-
-<h4>Chiffres de la partie 2</h4>
-<div class="tabs"><table class="tab"><thead><tr><th scope="col">&Eacute;tat</th><th scope="col">Hauteur du plan</th><th scope="col">Recouvert par la barre</th><th scope="col">Libre</th></tr></thead><tbody>
-<tr><th scope="row">Actuel, barre fixe</th><td>720&nbsp;px</td><td>0&nbsp;px</td><td>720&nbsp;px</td></tr>
-<tr><th scope="row">D, lecture</th><td>776&nbsp;px</td><td>10&nbsp;px</td><td>766&nbsp;px</td></tr>
-<tr><th scope="row">D, survol du bas</th><td>776&nbsp;px</td><td>56&nbsp;px</td><td>720&nbsp;px</td></tr>
-<tr><th scope="row">D, pause</th><td>776&nbsp;px</td><td>56&nbsp;px</td><td>720&nbsp;px</td></tr>
-<tr><th scope="row">C, barre translucide</th><td>776&nbsp;px</td><td>32&nbsp;px</td><td>744&nbsp;px</td></tr></tbody></table></div>
-
+<p class="cout" id="cout"></p>
 </main>
+
+<script>
+// Prototype : un faux lecteur de rejeu piloté par les réglages du haut. Aucune donnée réelle.
+const DUREE = 465            // durée du match en secondes (7:45)
+const HAUT = 900             // hauteur de la fenêtre de référence, en px
+const ZONE = 72              // zone de survol du bas du plan, en px
+const DELAI = 1500           // attente avant repli de la barre, en ms
+const FENETRE = 30           // un frag reste dans le fil pendant 30 s de lecture
+const VITESSES = [0.5, 1, 2, 4]
+const ZOOMS = [1, 1.25, 1.5, 2]
+const $ = (id) => document.getElementById(id)
+const fmt = (n) => Math.round(n).toLocaleString('fr-FR')
+const hms = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0')
+
+// État unique : réglages du haut et état de lecture.
+const E = { barre: 'replie', place: 'menu', W: 1440, col: true, t: 231, iv: 1, lecture: true, auto: true,
+  muet: false, vol: 0.6, zoom: 0, cadre: 2, menu: false, pal: 0, replie: null, sale: true }
+
+const fen = $('fen'), carte = $('carte'), plan = $('plan'), barre = $('barre'), slot = $('slot')
+const fil = $('fil'), menu = $('menu'), scene = $('scene'), echelleEl = $('echelle')
+let dernier = performance.now()   // dernier instant de survol du bas du plan ou de touche
+let dansZone = false              // le pointeur est dans la zone du bas du plan
+
+// Générateur pseudo-aléatoire à graine : le même match à chaque chargement.
+let graine = 7
+const alea = () => (graine = (graine * 16807) % 2147483647) / 2147483647
+
+// Éliminations : 40 événements répartis sur la durée, deux camps de quatre joueurs inventés.
+const evt = Array.from({ length: 40 }, (_, i) => {
+  const camp = alea() < 0.6 ? 0 : 1
+  return { id: i, camp, t: (i + 0.5 + (alea() - 0.5) * 0.6) * DUREE / 40,
+    tueur: camp * 4 + 1 + Math.floor(alea() * 4), victime: (1 - camp) * 4 + 1 + Math.floor(alea() * 4) }
+})
+const DOMINANCE = [['db', 3], ['dn', 1], ['db', 16], ['dn', 6], ['da', 74]]
+
+// ---------- Construction des éléments répétés ----------
+const REGLAGES = [
+  { cle: 'barre', opts: [['fixe', 'Fixe (aujourd’hui)', ''], ['replie', 'Se replie', 'D'], ['fine', 'Fine et translucide', 'C']] },
+  { cle: 'place', opts: [['aujourdhui', 'Aujourd’hui', ''], ['menu', 'Menu plus', 'A'], ['deux', 'Deux lignes', 'B']] },
+  { cle: 'W', opts: [[1280, '1 280'], [1440, '1 440'], [1536, '1 536']] },
+]
+for (const r of REGLAGES) {
+  $('r-' + r.cle).innerHTML = r.opts.map(([v, txt, l]) =>
+    `<button type="button" data-cle="${r.cle}" data-val="${v}">${l ? `<span class="lettre">${l}</span>` : ''}${txt}</button>`).join('')
+}
+
+function construireFrise(fr) {
+  const reperes = evt.map((v) => `<i class="${v.camp ? 'tb' : 'ta'}" style="left:${(v.t / DUREE * 100).toFixed(2)}%"></i>`).join('')
+  const dom = DOMINANCE.map(([c, l]) => `<i class="${c}" style="width:${l}%"></i>`).join('')
+  fr.innerHTML = `<span class="tk">${reperes}</span><span class="rl"><i></i></span><span class="dm">${dom}</span><span class="kn"></span>`
+}
+document.querySelectorAll('[data-fr]').forEach(construireFrise)
+
+const pions = Array.from({ length: 8 }, (_, i) => {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+  el.setAttribute('r', 2.4)
+  el.setAttribute('class', 'pion ' + (i < 4 ? 'a' : 'b'))
+  $('pions').appendChild(el)
+  return { el, ax: 14 + alea() * 26, ay: 16 + alea() * 26, w: 0.18 + alea() * 0.22, v: 0.15 + alea() * 0.2, p: alea() * 6.3, q: alea() * 6.3 }
+})
+
+$('fiches').innerHTML = Array.from({ length: 6 }, (_, i) =>
+  `<div class="fiche"><i class="sk-bar" style="width:${50 + i * 8}px"></i><i class="sk-bar s" style="width:${90 - i * 6}px"></i></div>`).join('')
+const ligneCol = (c, l) => `<div class="sk-row">${c ? `<i class="sk-dot ${c}"></i>` : ''}<i class="sk-bar" style="width:${l}px"></i><i class="sk-bar s" style="width:30px"></i></div>`
+$('colonne').innerHTML = [58, 67, 76, 85].map((l) => ligneCol('a', l)).join('') + '<div class="sk-gap"></div>' +
+  [64, 77, 90, 73].map((l) => ligneCol('b', l)).join('') + '<div class="sk-gap"></div>' + [70, 70, 70].map((l) => ligneCol('', l)).join('')
+
+// ---------- Lecture : dessin d'une image ----------
+let dernierTexte = ''
+function dessiner() {
+  fen.style.setProperty('--p', (E.t / DUREE * 100).toFixed(3))
+  const txt = `<b>${hms(E.t)}</b> / ${hms(DUREE)}`
+  if (txt !== dernierTexte) { $('horloge').innerHTML = txt; dernierTexte = txt }
+  for (const q of pions) {
+    const x = 50 + q.ax * Math.sin(q.w * E.t + q.p), y = 54 + q.ay * Math.cos(q.v * E.t + q.q)
+    q.el.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`)
+  }
+  dessinerFil()
+}
+
+// Le fil montre les frags des 30 dernières secondes de lecture, quatre lignes au plus.
+const lignes = new Map()
+function ligne(v, anime) {
+  const el = document.createElement('div')
+  el.className = 'li' + (anime ? ' neuf' : '')
+  const k = v.camp ? 'b' : 'a', c = v.camp ? 'a' : 'b'
+  el.innerHTML = `<span class="kp ${k}">Joueur ${v.tueur}</span><span class="fl">›</span><span class="kp ${c}">Joueur ${v.victime}</span>`
+  return el
+}
+function dessinerFil() {
+  const vus = evt.filter((v) => v.t <= E.t && E.t - v.t < FENETRE).slice(-4)
+  for (const [id, el] of lignes) if (!vus.some((v) => v.id === id)) { el.remove(); lignes.delete(id) }
+  const dernierId = Math.max(-1, ...lignes.keys())
+  const neufs = vus.filter((v) => !lignes.has(v.id))
+  const refaire = neufs.some((v) => v.id < dernierId)   // retour en arrière : on reconstruit sans animation
+  if (refaire) { fil.textContent = ''; lignes.clear() }
+  for (const v of refaire ? vus : neufs) { const el = ligne(v, !refaire); lignes.set(v.id, el); fil.appendChild(el) }
+  for (const v of vus) lignes.get(v.id).style.opacity = (1 - 0.6 * (E.t - v.t) / FENETRE).toFixed(2)
+}
+
+// ---------- Échelle : le lecteur est dessiné à sa largeur réelle puis réduit ----------
+function echelle() {
+  const k = Math.min(1, scene.clientWidth / E.W)
+  fen.style.transform = `scale(${k})`
+  echelleEl.style.width = E.W * k + 'px'
+  echelleEl.style.height = HAUT * k + 'px'
+}
+
+// ---------- Mise en page de la barre ----------
+// Largeur des commandes visibles hors frise, écarts et marges latérales compris.
+function fixe() {
+  const cs = getComputedStyle(barre)
+  const v = [...barre.children].filter((e) => e !== slot && e.offsetWidth > 0)
+  return v.reduce((s, e) => s + e.offsetWidth, 0) + (parseFloat(cs.columnGap) || 0) * v.length + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+}
+// Variante A : premier palier sous (fixe complet + 260), second sous (fixe du premier palier + 260) ; 260 = frise 240 + marges 20.
+function palier() {
+  barre.classList.remove('p1', 'p2')
+  if (E.place !== 'menu') return 0
+  const largeur = carte.clientWidth
+  const f0 = fixe()
+  barre.classList.add('p1')
+  const f1 = fixe()
+  barre.classList.remove('p1')
+  const n = largeur < f1 + 260 ? 2 : largeur < f0 + 260 ? 1 : 0
+  if (n >= 1) barre.classList.add('p1')
+  if (n >= 2) barre.classList.add('p2')
+  return n
+}
+function basFil() {
+  const h = E.barre === 'fixe' ? 0 : E.barre === 'replie' && E.replie ? 10 : barre.offsetHeight
+  plan.style.setProperty('--fil-bas', h + 10 + 'px')
+}
+
+function appliquer() {
+  document.querySelectorAll('[data-cle]').forEach((b) => b.setAttribute('aria-pressed', String(String(E[b.dataset.cle]) === b.dataset.val)))
+  $('largeur').value = E.W
+  $('l-val').textContent = fmt(E.W) + ' px'
+  $('col').checked = E.col
+  fen.style.setProperty('--w', E.W)
+  fen.classList.toggle('sans-col', !E.col)
+  barre.classList.toggle('sur', E.barre !== 'fixe')
+  barre.classList.toggle('fine', E.barre === 'fine')
+  barre.classList.toggle('deux', E.place === 'deux')
+  barre.classList.toggle('mn', E.place === 'menu')
+  E.menu = false
+  echelle()
+  E.pal = palier()
+  dernier = performance.now()
+  majRepli(dernier)
+  basFil()
+  majEtats()
+  chiffres()
+}
+
+// Les deux chiffres, mesurés sur le lecteur réel, et la phrase de coût de la combinaison choisie.
+function chiffres() {
+  const h = barre.offsetHeight, fw = $('frise').offsetWidth
+  $('n-haut').textContent = fmt(plan.offsetHeight) + ' px'
+  $('n-frise').textContent = fmt(fw) + ' px'
+  const fb = { fixe: `la barre prend ${h} px sous le plan`,
+    replie: `la barre recouvre ${h} px du bas du plan quand elle est dépliée`,
+    fine: `la barre fine recouvre ${h} px du bas du plan en permanence` }[E.barre]
+  const d = Math.max(0, barre.scrollWidth - barre.clientWidth)
+  let fp
+  if (E.place === 'deux') {
+    const rangs = new Set([...barre.children].filter((e) => e.offsetWidth > 0).map((e) => Math.round(e.offsetTop + e.offsetHeight / 2)))
+    fp = `la frise passe seule sur la première ligne et la barre compte ${rangs.size} lignes`
+  } else if (E.place === 'menu') {
+    fp = ['toutes les commandes restent visibles',
+      'lecture automatique, vitesse, zoom, capture et volume demandent un clic de plus',
+      'lecture automatique, vitesse, zoom, capture, volume et icônes de cadre demandent un clic de plus'][E.pal]
+  } else {
+    const rec = Math.max(0, 10 + fw - slot.offsetWidth)
+    fp = rec > 0 ? `la frise de ${fw} px recouvre ${rec} px de commandes à droite` : 'les commandes tiennent sur la barre'
+  }
+  if (d > 2 && E.place !== 'deux') fp += ` et ${fmt(d)} px de commandes dépassent du bord droit`
+  const phrase = fb + ' ; ' + fp + '.'
+  $('cout').textContent = phrase[0].toUpperCase() + phrase.slice(1)
+}
+
+// ---------- Repli de la barre (variante D) ----------
+// Replie après DELAI sans survol du bas du plan ni touche, seulement en lecture ; dépliée en pause ou menu ouvert.
+function majRepli(now) {
+  let rep = false
+  if (E.barre === 'replie') {
+    if (dansZone || E.menu) dernier = now
+    rep = E.lecture && now - dernier >= DELAI
+  }
+  if (rep !== E.replie) {
+    E.replie = rep
+    barre.classList.toggle('replie', rep)
+    $('filet').classList.toggle('vu', rep)
+    basFil()
+  }
+}
+function enZone(e) {
+  const r = carte.getBoundingClientRect()
+  return (r.bottom - e.clientY) * carte.offsetHeight / r.height <= Math.max(ZONE, barre.offsetHeight)
+}
+carte.addEventListener('pointermove', (e) => { dansZone = enZone(e) })
+carte.addEventListener('pointerleave', () => { dansZone = false })
+// Sur un écran tactile, un appui sur le bas du plan déplie la barre pendant DELAI.
+carte.addEventListener('pointerdown', (e) => { dansZone = enZone(e); if (dansZone) dernier = performance.now() })
+
+// ---------- Actions de la barre et du menu « plus » ----------
+function saut(d) { E.t = Math.min(DUREE, Math.max(0, E.t + d)) }
+function flash() {
+  const f = $('flash')
+  f.classList.add('on')
+  requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')))
+}
+function agir(a) {
+  if (a === 'lecture') E.lecture = !E.lecture
+  else if (a === 'debut') E.t = 0
+  else if (a === 'moins') saut(-10)
+  else if (a === 'plus10') saut(10)
+  else if (a === 'auto') E.auto = !E.auto
+  else if (a === 'vitesse') E.iv = (E.iv + 1) % VITESSES.length
+  else if (a === 'zoom-') E.zoom = Math.max(0, E.zoom - 1)
+  else if (a === 'zoom+') E.zoom = Math.min(ZOOMS.length - 1, E.zoom + 1)
+  else if (a === 'capture' || a === 'export') flash()
+  else if (a === 'son') E.muet = !E.muet
+  else if (a === 'plus') E.menu = !E.menu
+  else if (a.startsWith('cadre')) E.cadre = Number(a.slice(5))
+  majEtats()
+}
+// Met à jour les commandes qui montrent un état (icône lecture, vitesse, zoom, son, cadre, menu).
+function majEtats() {
+  $('u-play').setAttribute('href', E.lecture ? '#i-pause' : '#i-play')
+  $('u-son').setAttribute('href', E.muet ? '#i-mute' : '#i-son')
+  $('auto-c').setAttribute('cx', E.auto ? 19 : 9)
+  $('auto-b').classList.toggle('on', E.auto)
+  $('vit').textContent = String(VITESSES[E.iv]).replace('.', ',') + '×'
+  $('vol').style.setProperty('--v', E.muet ? 0 : E.vol)
+  $('zm-').disabled = E.zoom === 0
+  $('zm+').disabled = E.zoom === ZOOMS.length - 1
+  $('mapsvg').style.setProperty('--z', ZOOMS[E.zoom])
+  document.querySelectorAll('.fb[data-act^="cadre"]').forEach((b) => b.classList.toggle('on', Number(b.dataset.act.slice(5)) === E.cadre))
+  menu.hidden = !E.menu
+  $('plus-b').setAttribute('aria-expanded', String(E.menu))
+  if (E.menu) peindreMenu()
+  E.sale = true
+}
+// Le menu « plus » : ce qui a quitté la barre au palier courant.
+function peindreMenu() {
+  const b = (a, txt, on, off) => `<button type="button" class="mi${on ? ' on' : ''}" data-act="${a}"${off ? ' disabled' : ''}>${txt}</button>`
+  const rangs = [
+    [b('auto', 'Lecture automatique : ' + (E.auto ? 'oui' : 'non'), E.auto)],
+    [b('vitesse', 'Vitesse : ' + String(VITESSES[E.iv]).replace('.', ',') + '×')],
+    [b('zoom-', 'Zoom −', false, E.zoom === 0), b('zoom+', 'Zoom +', false, E.zoom === ZOOMS.length - 1)],
+    [b('capture', 'Capture'), b('export', 'Export')],
+    [b('son', 'Volume : ' + (E.muet ? 'coupé' : 'activé'), !E.muet)],
+  ]
+  const CADRES = ['Standard', 'Cinéma', 'Plein cadre']
+  if (E.pal >= 2) rangs.push([1, 2, 3].map((n) => b('cadre' + n, CADRES[n - 1], E.cadre === n)))
+  menu.innerHTML = rangs.map((r) => `<div class="mrow">${r.join('')}</div>`).join('')
+}
+
+// ---------- Événements ----------
+$('reglages').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-cle]')
+  if (!b) return
+  E[b.dataset.cle] = isNaN(b.dataset.val) ? b.dataset.val : Number(b.dataset.val)
+  appliquer()
+})
+$('largeur').addEventListener('input', (e) => { E.W = Number(e.target.value); appliquer() })
+$('col').addEventListener('change', (e) => { E.col = e.target.checked; appliquer() })
+
+// Un seul gestionnaire de clic : commandes du lecteur, fermeture du menu, retrait du focus après un clic souris.
+document.addEventListener('click', (e) => {
+  const dedans = e.target.closest('.plusw')
+  const cmd = e.target.closest('[data-act]')
+  const bouton = e.target.closest('button')
+  if (E.menu && !dedans) E.menu = false
+  if (cmd && fen.contains(cmd)) agir(cmd.dataset.act)
+  else majEtats()
+  if (bouton && e.detail > 0) bouton.blur()   // Espace doit alors mettre en pause, pas réactiver le bouton
+})
+$('vol').addEventListener('click', (e) => {
+  const r = $('vol').getBoundingClientRect()
+  E.vol = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+  E.muet = false
+  majEtats()
+})
+
+// Frise : un clic ou un glisser déplace le curseur.
+function chercher(e, fr) {
+  const r = fr.getBoundingClientRect()
+  E.t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * DUREE
+  E.sale = true
+}
+document.querySelectorAll('[data-fr]').forEach((fr) => {
+  fr.addEventListener('pointerdown', (e) => { fr.setPointerCapture(e.pointerId); dernier = performance.now(); chercher(e, fr) })
+  fr.addEventListener('pointermove', (e) => { if (fr.hasPointerCapture(e.pointerId)) chercher(e, fr) })
+})
+
+document.addEventListener('keydown', (e) => {
+  dernier = performance.now()   // toute touche déplie la barre repliée
+  if (e.target.closest('input')) return
+  if (e.key === 'Escape' && E.menu) { E.menu = false; majEtats() }
+  else if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); agir('lecture') }
+  else if (e.key === 'ArrowLeft') { saut(-10); E.sale = true }
+  else if (e.key === 'ArrowRight') { saut(10); E.sale = true }
+})
+window.addEventListener('resize', () => { echelle() })
+
+// ---------- Boucle d'animation ----------
+let prec = performance.now()
+function boucle(ts) {
+  const dt = Math.min(0.1, (ts - prec) / 1000)
+  prec = ts
+  if (E.lecture) {
+    E.t += dt * VITESSES[E.iv]
+    if (E.t >= DUREE) E.t %= DUREE   // la frise boucle à la fin
+  }
+  if (E.lecture || E.sale) { dessiner(); E.sale = false }
+  majRepli(ts)
+  requestAnimationFrame(boucle)
+}
+appliquer()
+dessiner()
+requestAnimationFrame(boucle)
+</script>
