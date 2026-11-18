@@ -309,16 +309,16 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste C — rejeu : cadres et orientation (Sonnet)
 
-- [ ] C.1 Marge de 24 px entre « la rangée tient » et « elle ne tient plus » : fonction pure dans
+- [x] C.1 (fait le 2026-11-18, `c5acd8f47e` sur `bl1118/c` ; quatre tests de page existants adaptés à la marge) Marge de 24 px entre « la rangée tient » et « elle ne tient plus » : fonction pure dans
       `MR/model/rowLayout.ts`, mémoire de la disposition précédente dans `useCardRowLayout.ts` ; même marge
       pour l'emplacement du score. Tests aux bornes, et séquence 1290, 1275, 1290.
-- [ ] C.2 `useResolvedTurns` : l'état « tourné avant » est rangé avec sa portée (un match) ; il est gelé tant
+- [x] C.2 (fait le 2026-11-18, même commit ; la règle Auto n'a plus qu'un appelant, `lib/replay/useAutoTurned.ts`, gardé sur tout le site ; second match du test à 23 % de gain et non 22, entre les deux seuils comme voulu) `useResolvedTurns` : l'état « tourné avant » est rangé avec sa portée (un match) ; il est gelé tant
       qu'un export est en cours. Tests : gain de 30 % puis nouveau match à 22 % (attendu : droit) ; largeur
       changée pendant un export (attendu : inchangé).
-- [ ] C.3 Horloge de la barre en pause : test d'abord (pause, bascule Standard vers Cinéma à taille de toile
+- [x] C.3 (fait le 2026-11-18, même commit : le test passe, `useReplayClock` inchangé, test gardé ; l'horloge reste écrite parce que la toile est redessinée à chaque rendu, voir Découvertes) Horloge de la barre en pause : test d'abord (pause, bascule Standard vers Cinéma à taille de toile
       égale, le texte de l'horloge est présent) ; s'il échoue, `useReplayClock` réécrit le dernier texte quand
       l'élément change ; s'il passe, l'item est clos sur ce test, gardé.
-- [ ] C.4 Selon D-3 : la Tactique (`TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`) et « Occupation
+- [x] C.4 (fait le 2026-11-18, même commit ; `TacticalAnalysisView.test.tsx` pose l'orientation retenue de sa carte parce qu'il force la largeur de tous les éléments) Selon D-3 : la Tactique (`TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`) et « Occupation
       du terrain » (`MatchPositionsHeatmap.tsx`) résolvent l'Auto sur leur propre zone par la règle du rejeu
       (`autoTurns`) ; « Occupation du terrain » mesure sa zone ; un choix retenu pour la carte prime
       toujours ; `useMapViewPreferences.ts` et son commentaire sont mis d'accord. Tests par vue : carte en
@@ -577,6 +577,11 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste C rendue, relue sur pièces (garde-rail de l'orientation réécrit sans être affaibli : plus aucun
+  appel à la règle Auto dans la page du rejeu), commitée (`c5acd8f47e`) et cueillie sur l'intégration
+  (`6253b1d5cb`). Un test de garde (`match-view/xuidMeta.guard.test.ts`) a dépassé son délai sous charge et passe
+  seul : à revoir dans la suite complète du pilote. Piste B lancée (`C:/t/bl18-b`).
+
 - 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 passée : annexes `temoins_avant.md` et `mesures.md` sur la branche
   d'intégration ; (a) confirmée, 0 sur 875 ; seuils statués : D.5 et D.6 non exécutés, D.7 exécuté). Pistes K.2,
   E et H cueillies sur `chore/830-backlog-1118` (`910fb2e805`, `3fded4ffb9`, `405ca31220`). Piste A lancée
@@ -622,6 +627,13 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (C.3) — la scène de la page du rejeu est reconstruite et la toile redessinée à chaque rendu : les
+  hooks de calques rendent des objets non mémoïsés. C'est ce qui garde l'horloge écrite après une bascule de
+  cadre en pause, par effet de bord, et c'est un coût de rendu probable. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (C.4) — quatre mesures de largeur coexistent (`useBodyWidth`, l'effet de taille de « Occupation du
+  terrain », `useReplayViewport`, `useContentWidth`) : la règle des trois copies appellerait à les réunir. À
+  porter au backlog à la clôture (R.1).
 
 - 2026-11-18 (0.3) — 128 corps supprimés sans mort appartiennent à un joueur qui a une vie ensuite (ni fin de
   manche, ni départ, ni bot) : ils donnent aujourd'hui une ligne « mort » non prouvée dans le fil. Cause non
