@@ -226,7 +226,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       harnais sur la tête du clone ; si rien ne se reproduit, entrées closes au backlog avec la mesure ; si
       un défaut se reproduit, item écrit ici avant tout code. Ordre des collines : entrée du backlog
       reformulée en demande d'affichage (aucun travail du décodeur).
-- [ ] J.7 (né de J.6) Occupant d'un trajet de véhicule. Sur `4f77afc1`, un trajet de Warthog porte un humain
+- [x] J.7 (fait le 2026-11-18, commit `2b7d7f7` du clone ; cause : un occupant qui monte ne réplique plus, aucune vie ne couvre l'instant et le nom retombait sur le premier occupant nommé du siège ; règle : le trajet porte le joueur du CORPS que les enregistrements de création placent sur le siège ; parc : 4 écarts sur 12 015 trajets, 2 films, `4f77afc1` et `3abf0258` ; mesure après sur `4f77afc1` : 1 trajet perd son nom, 251 inchangés, le repli du premier occupant passe de 283 à 192 ; `3abf0258` à contrôler à l'intégration) (né de J.6) Occupant d'un trajet de véhicule. Sur `4f77afc1`, un trajet de Warthog porte un humain
       alors que la vie qui le porte est celle d'un bot sans nom, et que cet humain n'est présent que plus tard :
       1 trajet sur 252 dans ce film, les 323 pistes nommées étant justes. Le nom du trajet vient de la table
       place vers joueur à l'instant (`replay/vehicle_rides_film.go`, et deux sites jumeaux), pas de la vie qui
@@ -237,6 +237,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       vaut 22 sur le parc, sur 4 films (`56ebfc53` 8, `af43b0c8` 8, `a26dbcdb` 4, `cf5d83d5` 2), contre 44
       montées relevées le 2026-11-16. Cause établie sur ces 4 films, puis règle générale ou, si la lecture ne
       désigne pas le porteur, arrêt et retour au pilote.
+      Instruit le 2026-11-18, AUCUN code : dans les 22 cas le voisin refusé EST le bon porteur (même point,
+      même image, bonne famille) ; il est refusé par le témoin de naissance à 100 ms (écarts mesurés : 105 à
+      225 ms, pièces créées 2 paquets après leur châssis). Effet : la pièce n'a pas de porteur, elle n'est pas
+      dessinée et ses 27 trajets d'artilleur ne sont pas reportés. Le composant qui dit le parent des pièces
+      (`i40`) n'est jamais écrit pour elles ; leur création annonce un autre composant (`i10`, état du parent),
+      que rien ne lit à la création. Décision du pilote : UNE tentative bornée de lecture de `i10` à la
+      création (Sonnet, après la vague 1) ; si son handle désigne le châssis sur les 4 films et sur le corpus,
+      le porteur devient une lecture et le témoin à 100 ms disparaît ; sinon `[!]`, entrée du backlog mise à
+      jour avec ce constat. Aucun élargissement du seuil, aucune règle par voisinage de paquets.
 - **Gate J** : `go test ./...` du clone avec les données de l'hôte ; passe d'équivalence, écarts = l'étape
   neuve de J.4 seulement.
 
@@ -388,6 +397,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — J.7 rendu, relu, commité (`2b7d7f7`). Il fait rougir 4 fixtures de contrat et 4 goldens
+  d'assemblage (`a521164d`, `11de8353`, `111fa685`, `e5adf7b2`) sur le seul compteur du repli du premier
+  occupant du siège, en baisse (82→68, 87→75, 89→84, 125→112) : à refiger à l'intégration, attribué à J.7.
+  J.8 instruit sans code (voir l'item). Piste A rendue une première fois : règle codée, 34 films mesurés
+  (médiane −0,37 s ; 8 refusés datés ; 6 films à +16,8 s) ; deux compléments demandés avant commit
+  (précision quand le film commence horloge en marche ; lectures d'horloge ajoutées aux entrées figées des
+  goldens). Vague 1 : pistes C (C.1, C.2) et I lancées.
 - 2026-11-18 — piste J rendue, relue sur pièces, commitée dans le clone (`a2d5dbb`, branche `piste/j`, non
   poussée). `document.go` à 456 lignes ; `medalLabels` déclaré, seule l'empreinte de la forme stockée bouge,
   schéma inchangé ; registre à 127 replis, les deux constantes gardées et marquées obsolètes dans
