@@ -4,6 +4,10 @@ import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_LIVES } from './lives.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
+import { EN_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
+import { EN_FRAMES } from './frames.i18n'
+import { EN_ROSTER } from './roster.i18n'
+import { EN_PLAYER_INSTANT } from './playerInstant.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -79,6 +83,9 @@ export const EN_TEXT = {
   killFeedUnknownWeapon: 'Unidentified weapon',
   killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
   playerPanel: EN_PLAYER_PANEL,
+  frames: EN_FRAMES,
+  roster: EN_ROSTER,
+  playerInstant: EN_PLAYER_INSTANT,
   lives: EN_LIVES,
   respawnForecast: EN_RESPAWN_FORECAST,
   feedLines: EN_FEED_LINES,
@@ -87,9 +94,8 @@ export const EN_TEXT = {
   killFeedAssistHint:
     'Assist read from the film, with its damage share. Shares are not capped at 100%.',
   killFeedKillerShare: (pct) => `killer ${pct}%`,
-  killFeedKillerZone: (zone) => `Killer's zone: ${zone}`,
+  killFeedVictimZone: (zone) => `Victim's location: ${zone}`,
   killFeedAssistMark: 'Assist',
-  killFeedAssistShare: (pct) => `${pct}%`,
   killFeedDeathLabel: 'died',
   killFeedDeathHint:
     'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
@@ -374,7 +380,6 @@ export const EN_TEXT = {
   loadoutAge: 'Weapons read',
   loadoutBirth: 'Spawn loadout',
   loadoutAhead: 'Weapons from the first keyframe of this life, read in',
-  weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
   weaponStowedFmt: (name) => `Stowed weapon: ${name}`,
   playerScoreLiveFmt: (score) => `Personal score at the moment being played: ${score}`,
   ammoHintFmt: (ammo) =>
@@ -424,30 +429,8 @@ export const EN_TEXT = {
     zone: 'Just captured a stronghold',
     bomb: 'Carrying the bomb — or just detonated it',
   },
-  equipmentUsage: {
-    title: 'Equipment usage',
-    viewByPlayer: 'Equipment use, by player',
-    infoByPlayer:
-      'Objects taken by each player of the match, one stack per outcome: used (activated for a power-up, placed for the drop wall, charge spent for the rest), kept without use, dropped on death; the grappleshot counts its pulls. Each column has its own scale.',
-    legendUsed: 'Used',
-    legendKept: 'Kept without use',
-    legendDropped: 'Dropped',
-    legendGrapple: 'Grapple pulls',
-    gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
-    groupGrapple: 'Grappleshot',
-    outcomeUsedFmt: (count) => `Used: ${count}`,
-    outcomeKeptFmt: (count) => `Kept without use: ${count}`,
-    outcomeDroppedFmt: (count) => `Dropped: ${count}`,
-    outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
-    killBadgeFmt: {
-      camo: (kills) => `${kills} kills under camo`,
-      overshield: (kills) => `${kills} kills under overshield`,
-    },
-    killBadgeHint:
-      "The best episode of the match for this family. Same reserve as active states: the episode's source is not told apart (picked up or triggered), its bounds are at broadcast precision, and camo alone stays under the measurement threshold in broad reading.",
-  },
+  equipmentUsage: EN_EQUIPMENT_USAGE,
   ammoFullLabel: 'Ammo full',
-  gaugeLabel: 'charge left',
   exportVideo: 'Export video',
   exportHint:
     'The export recomputes the film as fast as the machine allows: the file does not cost you a match length.',
@@ -475,8 +458,6 @@ export const EN_TEXT = {
   exportTrackSfx: 'Sound effects',
   exportTrackVoice: 'Voice',
   exportTrackMusic: 'Music',
-  ammoDrawnHint:
-    'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
   drawnUnknown: 'drawn ?',
   inventoryDeadLabel: 'Dead',
   inventoryDeadHint:

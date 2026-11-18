@@ -85,7 +85,7 @@ export function makeBackground(over: Partial<ReplayBackgroundControls> = {}): Re
 }
 
 export function makeOrientation(over: Partial<ReplayOrientationControls> = {}): ReplayOrientationControls {
-  return { available: true, turns: 0, onSelect: vi.fn(), ...over }
+  return { available: true, retained: 0, onSelect: vi.fn(), ...over }
 }
 
 export function makeFlagCarries(over: Partial<ReplayFlagControls> = {}): ReplayFlagControls {
@@ -168,6 +168,7 @@ export function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]>
       background={makeBackground()}
       lives={makeLives()}
       orientation={makeOrientation()}
+      planFeed={{ available: false, show: true, onToggle: vi.fn() }}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}

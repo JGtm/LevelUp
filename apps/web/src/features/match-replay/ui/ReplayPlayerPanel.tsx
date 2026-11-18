@@ -1,85 +1,69 @@
 /**
- * ReplayPlayerPanel — LE PANNEAU DE JOUEUR : ce qu'un clic sur une fiche ouvre, à la PLACE du fil
- * des événements (la carte n'est jamais couverte). « Retour au fil » le referme.
+ * ReplayPlayerPanel — LA FICHE DU JOUEUR DANS LA COLONNE DU STANDARD : ce qu'un clic sur une ligne de la colonne
+ * ouvre, à la PLACE de toute la colonne (équipes et fil). « Équipes » la referme. Au Cinéma et au Plein cadre, la
+ * fiche est une fenêtre (`ReplayPlayerPopover`).
  *
- * DE HAUT EN BAS :
- *  - la TÊTE : le nom à l'encre de son camp (l'allégeance du film), les compteurs frags / morts /
- *    assistances AU FORMAT DE LA FICHE (`ReplayCountersBadge`, ceux de l'instant — datés par
- *    l'horloge du match —, ou les totaux de la feuille quand le film ne publie pas ce joueur), et
- *    « Retour au fil » ;
- *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — boutons à bascule (`aria-pressed`) ;
- *    leurs exclusions et leur remise à zéro sont dans `playerPanelLogic` ;
- *  - les LISTES : précision, dégâts, détail du score, objectif, armes. Ce sont des TOTAUX DE FIN DE
- *    MATCH lus sur la feuille, et chaque titre dit « sur le match » : le film ne publie pas la
- *    précision en cours de partie. Un joueur sans ligne de feuille n'a pas de listes : un bloc
- *    pointillé le dit, plutôt que des zéros.
+ * Le panneau est le CONTENEUR : la section qui remplit la colonne, son nom accessible, l'en-tête (retour « Équipes »
+ * à gauche, capsule « Échap » à droite), le sélecteur de joueurs, le pied « Éliminations » et la sortie (Échap,
+ * retour, « Fil complet »). Tout le contenu — tête, trois actions, bloc « À l'instant », listes de totaux de fin
+ * de match — est `ReplayPlayerPanelBody`, que la fenêtre monte à l'identique.
  *
- * LE PANNEAU NE DÉTRUIT PAS LE FIL : la page garde le fil monté sous lui (masqué), si bien que le
+ * LE PANNEAU NE DÉTRUIT NI LES ÉQUIPES NI LE FIL : la page les garde montés sous lui (masqués), si bien que le
  * filtre et le défilement sont retrouvés au retour. Il garde son joueur quand le temps avance.
- * Ses boutons suivent la règle des boutons du rejeu : la souris ne prend pas le focus, Espace reste
- * « Lecture » (`PRESS_GUARDS`).
  *
  * ÉCHAP LE FERME, AVANT LE MODE PLEIN ÉCRAN : le panneau est une couche (`data-replay-escape-layer`,
- * cf. `useReplayFullscreen`), et rend le focus à la fiche du joueur, qu'il quitte par Échap ou par
- * « Retour au fil ». Une couche plus intérieure ouverte (menu de vitesse, de filtre, panneau de la
- * vue) se ferme d'abord : Échap ne ferme qu'une couche à la fois.
+ * cf. `useReplayFullscreen`), et rend le focus à la fiche du joueur, qu'il quitte par Échap ou par « Équipes ». Une
+ * couche plus intérieure ouverte (menu de vitesse, de filtre, panneau de la vue) se ferme d'abord : Échap ne ferme
+ * qu'une couche à la fois.
+ *
+ * UNE SEULE ZONE DÉFILE : l'en-tête, le sélecteur et le corps défilent ENSEMBLE, et le pied reste fixé en bas, hors de
+ * cette zone. Retour, Échap et « Fil complet » sortent par le même chemin et rendent la colonne, équipes et fil.
  *
  * Aucun littéral de couleur : l'encre du camp et les neutres sont des jetons sémantiques.
  */
-import { useCallback, useMemo, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode, type RefObject } from 'react'
 
-import { Button } from '@/components/ui/button'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
-import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { useDismissable } from '@/lib/hooks/useDismissable'
-import { formatClock } from '@/lib/replay/replayLogic'
-import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
-import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
-import { playerCountersAt, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import { REPLAY_ESCAPE_LAYER_ATTR } from '../hooks/useReplayFullscreen'
-import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { GABARIT_NORMAL } from '../model/cardGabarit'
-import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
+import { REPLAY_TEXT } from '../i18n/i18n'
+import { COTES_COLONNE_STANDARD } from '../model/cotesStandard'
+import { COTES_FICHE_STANDARD } from '../model/cotesFicheStandard'
 import { cardName } from '../model/playerCardReadings'
-import { playerPanelSheet, type PlayerPanelAction } from '../model/playerPanelLogic'
-import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
-import { ReplayCountersBadge } from './ReplayCountersBadge'
-import { PanelSectionList } from './ReplayPlayerPanelList'
+import { ReplayPlayerPanelBody, type ReplayPlayerPanelBodyProps } from './ReplayPlayerPanelBody'
 import { PRESS_GUARDS } from './replayPressGuards'
 
-/** L'ordre des trois actions : celui de la maquette. */
-const ACTIONS: readonly PlayerPanelAction[] = ['follow', 'solo', 'hide']
+/** Ce que la fiche de la colonne ajoute au corps commun : le sélecteur et le pied. */
+export interface ReplayPlayerPanelColumn {
+  /** Le sélecteur de joueurs, sous l'en-tête : il défile avec le corps. */
+  picker: ReactNode
+  /** Le pied fixé en bas, hors de la zone qui défile ; il reçoit la sortie du panneau (la même que « Équipes »). */
+  footer: (close: () => void) => ReactNode
+}
 
-export interface ReplayPlayerPanelProps {
-  player: ReplayPlayer
-  /** Les trois actions et leur état : l'état est tenu par la page (`reducePlayerPanel`). */
-  actions: Record<PlayerPanelAction, boolean>
-  onToggle: (action: PlayerPanelAction) => void
+export interface ReplayPlayerPanelProps extends Omit<ReplayPlayerPanelBodyProps, 'headEnd' | 'scroll'> {
   onClose: () => void
-  doc: ReplayDocumentReady
-  /** L'image publiée (les compteurs de la tête sont ceux de cet instant). */
-  frame: number
-  /** L'instant courant sur l'axe BRUT du film, et la fenêtre qui le recale pour l'affichage. */
-  nowMs: number
-  playWindow: ReplayWindowBounds | null
-  allegiance: FilmAllegiance
-  locale: ReplayLocale
+  /** Le sélecteur et le pied de la fiche, qui remplit toute la colonne du Standard. */
+  column: ReplayPlayerPanelColumn
 }
 
 /** La fiche du joueur dont le panneau est ouvert : la tuile-bouton choisie (`aria-pressed`). */
 const OPEN_CARD_SELECTOR = '[data-replay-player-card][aria-pressed="true"]'
 
 /**
- * usePanelClose — LA SORTIE DU PANNEAU : « Retour au fil » et Échap ferment par le même chemin, qui
+ * usePanelClose — LA SORTIE DU PANNEAU : « Équipes » et Échap ferment par le même chemin, qui
  * rend le focus à la fiche (sans quoi il tomberait sur la page avec le panneau retiré). Échap ne
  * ferme que si aucune AUTRE couche d'Échap n'est ouverte : elle se ferme la première, par son
  * propre écouteur.
  */
 function usePanelClose(rootRef: RefObject<HTMLElement | null>, onClose: () => void): () => void {
+  // Dans la colonne du Standard, la fiche recouvre les équipes (masquées) : un élément masqué ne prend pas le
+  // focus, la fiche est donc rendue une seconde fois quand le panneau est retiré et les équipes redevenues visibles.
+  const returnTo = useRef<HTMLElement | null>(null)
+  useEffect(() => () => returnTo.current?.focus({ preventScroll: true }), [])
   const close = useCallback(() => {
     const card = document.querySelector<HTMLElement>(OPEN_CARD_SELECTOR)
+    returnTo.current = card
     onClose()
     card?.focus({ preventScroll: true })
   }, [onClose])
@@ -91,72 +75,77 @@ function usePanelClose(rootRef: RefObject<HTMLElement | null>, onClose: () => vo
   return close
 }
 
-export function ReplayPlayerPanel({
-  player, actions, onToggle, onClose, doc, frame, nowMs, playWindow, allegiance, locale,
-}: ReplayPlayerPanelProps) {
+/** Le retour « Équipes » (chevron à gauche) et la capsule « Échap » à droite, tête de la zone qui défile. */
+function ColumnHead({ close, locale }: { close: () => void; locale: ReplayPlayerPanelProps['locale'] }) {
   const t = REPLAY_TEXT[locale]
+  const R = COTES_FICHE_STANDARD.retour
+  const K = COTES_FICHE_STANDARD.capsule
+  return (
+    <div className="flex items-center" style={{ gap: R.ecartPx }}>
+      <button
+        type="button"
+        className="inline-flex items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        style={{
+          height: R.hauteurPx,
+          gap: R.ecartPx,
+          paddingLeft: R.margeGauchePx,
+          paddingRight: R.margeDroitePx,
+          fontSize: R.taillePx,
+        }}
+        {...PRESS_GUARDS}
+        onClick={close}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+          style={{ width: R.chevronPx, height: R.chevronPx }}
+        >
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        {t.playerPanel.backToTeams}
+      </button>
+      <kbd
+        className="ml-auto inline-grid place-items-center rounded border border-border font-sans text-muted-foreground"
+        style={{ minWidth: K.largeurMinPx, height: K.hauteurPx, paddingInline: K.margeIntPx, fontSize: K.taillePx }}
+      >
+        {t.frames.escapeKey}
+      </kbd>
+    </div>
+  )
+}
+
+export function ReplayPlayerPanel({ onClose, column, ...body }: ReplayPlayerPanelProps) {
+  const t = REPLAY_TEXT[body.locale]
   const rootRef = useRef<HTMLElement>(null)
   const close = usePanelClose(rootRef, onClose)
-  const text = t.playerPanel
-  const name = cardName(player, t)
-  const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
-  const live = playerCountersAt(scoreTimeline, player.xuid, frame)
-  const sheet = useMemo(() => playerPanelSheet(player.board), [player.board])
-  const ally = allegiance.ofXuid(player.xuid)
-  const accent = ally === null ? null : teamTokenCssVar(ally)
-  const caption = live ? text.atFmt(formatClock(displayClockMs(nowMs, playWindow))) : text.totals
-
   return (
     <section
       ref={rootRef}
       // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
       data-replay-escape-layer=""
-      aria-label={text.labelFmt(name)}
-      className="flex h-full min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-border bg-card p-2"
+      data-replay-fiche-column=""
+      aria-label={t.playerPanel.labelFmt(cardName(body.player, t))}
+      className="flex h-full min-h-0 flex-col"
+      style={{
+        padding: `${COTES_COLONNE_STANDARD.margeVerticalePx}px ${COTES_COLONNE_STANDARD.margeLateralePx}px`,
+        gap: COTES_COLONNE_STANDARD.ecartBlocsPx,
+      }}
     >
-      <div className="flex items-center gap-2">
-        <div
-          className={`${HUD_BAND_CLASS} flex min-w-0 flex-1 items-center gap-2 text-foreground`}
-          style={hudBandStyle(accent)}
-        >
-          <span className="min-w-0 truncate" title={name}>
-            {name}
-          </span>
-          <ReplayCountersBadge board={player.board} live={live} locale={locale} gabarit={GABARIT_NORMAL} />
-          <span className="shrink-0 font-sans text-[10.5px] font-normal normal-case tracking-normal text-muted-foreground">
-            {caption}
-          </span>
-        </div>
-        <Button type="button" variant="outline" size="sm" className="shrink-0" {...PRESS_GUARDS} onClick={close}>
-          {text.back}
-        </Button>
+      {/* UNE SEULE ZONE QUI DÉFILE : retour, sélecteur, tête, actions et sections ; le pied n'y est pas. */}
+      <div
+        data-replay-fiche-scroll=""
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        style={{ gap: COTES_FICHE_STANDARD.ecartBlocsPx, paddingRight: COTES_FICHE_STANDARD.margeBarrePx }}
+      >
+        <ColumnHead close={close} locale={body.locale} />
+        {column.picker}
+        <ReplayPlayerPanelBody {...body} scroll="outer" />
       </div>
-      <div className="flex gap-1" role="group" aria-label={name}>
-        {ACTIONS.map((action) => (
-          <Button
-            key={action}
-            type="button"
-            size="sm"
-            variant={actions[action] ? 'default' : 'outline'}
-            className="flex-1"
-            aria-pressed={actions[action]}
-            title={text.actionHint[action]}
-            {...PRESS_GUARDS}
-            onClick={() => onToggle(action)}
-          >
-            {text.action[action]}
-          </Button>
-        ))}
-      </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-        {/* SANS LIGNE DE FEUILLE, OU AVEC UNE FEUILLE ENTIÈREMENT NON LUE : le bloc pointillé, jamais
-            une liste de zéros. */}
-        {sheet.sections.length > 0 ? (
-          sheet.sections.map((s) => <PanelSectionList key={s.id} section={s} text={text} locale={locale} />)
-        ) : (
-          <EmptyStateNotice size="compact" title={text.noSheet} description={text.noSheetHint} />
-        )}
-      </div>
+      {column.footer(close)}
     </section>
   )
 }

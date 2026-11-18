@@ -25,7 +25,7 @@
  * moindre camp dans le calque (artefact antérieur au schéma 12, mode sans compteur, horloge
  * non recalée), deux barres à zéro se liraient comme une mesure alors que personne n'a
  * compté. Le bandeau est alors absent — même doctrine qu'en tête de colonne
- * (`ReplayTeamHeader`).
+ * (`ReplayRosterColumn` : le titre d'un camp n'écrit aucun score).
  *
  * UNE SÉRIE SANS CAMP LE TAIT AUSSI (retours du rejeu 2026-09-23, lot L1.2). Quand le film n'a
  * pas su dire quel camp porte une série (`coverage.score.teamIdentity = "unresolved"`), aucun

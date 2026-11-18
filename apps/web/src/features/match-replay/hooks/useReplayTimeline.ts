@@ -42,6 +42,7 @@ import {
   type TrackKill,
   type TrackMedal,
 } from '../model/replayTimelineTracksLogic'
+import { buildFragMarks, type FragMark } from '../model/fragMarks'
 import { presenceShades, teammatesAbsence } from '../model/presenceTrackLogic'
 import { buildViewpointOptions, type ViewpointOptionLabels } from '../model/viewpointOptions'
 import { campLabel } from '../../../lib/replay/replayCamps'
@@ -91,8 +92,10 @@ export interface ReplayTimelineOptions {
   media?: readonly ReplayMediaItem[]
   /** Bascule du son, pour le raccourci « M ». */
   toggleSound: () => void
-  /** Bascule du mode plein écran, pour le raccourci « F » (cf. useReplayFullscreen). */
-  toggleFullscreen: () => void
+  /** Bascule du Plein cadre, pour le raccourci « F » (cf. useReplayFrame). */
+  toggleFullFrame: () => void
+  /** Bascule du Cinéma, pour le raccourci « T » (cf. useReplayFrame). */
+  toggleCinema: () => void
   /** Largeur de dessin : 0 = pas de rejeu à l'écran, le clavier n'écoute rien. */
   renderWidth: number
   /** Le cadrage, relaye tel quel aux raccourcis clavier (cf. useReplayShortcuts). */
@@ -128,10 +131,18 @@ export interface ReplayPlaybackForTimeline {
  * (`useReplayClock`), pas à ce hook : elle traverse la barre de lecture et se greffe au dernier
  * moment. L'exclure ici est ce qui empêche ce hook de prétendre la fournir.
  */
-export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
+export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'> & {
+  /**
+   * LES REPÈRES D'ÉLIMINATIONS DE LA FRISE COMPACTE : les frags de TOUS les joueurs, au camp du
+   * tueur (cf. `buildFragMarks`). Ils sortent du même parcours du fil que les pistes et que la
+   * dominance ; la frise à pistes ne les lit pas. Absent = aucun repère (une frise montée à la
+   * main, sans fil).
+   */
+  fragMarks?: readonly FragMark[]
+}
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
-  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, toggleFullscreen, renderWidth, locale, zoom } = o
+  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, toggleFullFrame, toggleCinema, renderWidth, locale, zoom } = o
   const { media: mediaItems = EMPTY_MEDIA, viewpoint, allegiance, players, onSelectViewpoint, scoreTimelineKind } = o
   const t = REPLAY_TEXT[locale]
   const { frameIntervalMs, frameCount } = doc
@@ -203,6 +214,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => buildFragDominance(reduit.frags, frameIntervalMs ?? 0, scale),
     [reduit, frameIntervalMs, scale],
   )
+  const fragMarks = useMemo(
+    () => buildFragMarks(reduit.frags, frameIntervalMs ?? 0, scale),
+    [reduit, frameIntervalMs, scale],
+  )
   const score = useMemo(
     () => buildScoreTrack(doc, scale, scoreTimelineKind),
     [doc, scale, scoreTimelineKind],
@@ -221,7 +236,8 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     stepFrames: playback.stepFrames,
     restart: playback.restart,
     toggleSound,
-    toggleFullscreen,
+    toggleFullFrame,
+    toggleCinema,
     skipSeconds: SKIP_SECONDS,
     enabled: renderWidth > 0,
     zoom,
@@ -242,6 +258,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     viewpointGroups,
     onSelectViewpoint,
     dominance,
+    fragMarks,
     score,
     allyOf: lead.allyOf,
     labelOf: lead.labelOf,

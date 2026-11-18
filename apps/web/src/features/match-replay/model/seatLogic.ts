@@ -298,6 +298,16 @@ export function groupSeatsByTeam(seats: readonly ReplaySeat[]): ReplaySeatGroup[
   ).map(({ team, side, members }) => ({ team, side, seats: members }))
 }
 
+/** Les lignes de feuille de TOUS les occupants d'un camp, sur tout le match : ce qui le nomme (`campLabel`). */
+export function sheetRowsOfGroup(group: ReplaySeatGroup) {
+  return group.seats.flatMap((s) => s.occupants.map((o) => o.player.board))
+}
+
+/** Le nombre de places de chaque camp du film, dans l'ordre des camps : ce que la règle de la rangée lit. */
+export function placesParCamp(players: readonly ReplayPlayer[], doc: ReplayDocumentReady): number[] {
+  return groupSeatsByTeam(buildSeats(players, doc)).map((g) => g.seats.length)
+}
+
 /**
  * SeatedIndex — QUI OCCUPE UNE FICHE À UNE IMAGE, pour tout ce qui dessine un joueur sur la carte.
  *

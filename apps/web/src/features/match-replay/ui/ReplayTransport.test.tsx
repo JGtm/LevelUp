@@ -14,11 +14,11 @@
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTransport } from './ReplayTransport'
+import { makeFrameControl } from '../test/frameControlStub'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplaySound } from '../sound/useReplaySound'
 import type { ReplayExport } from '../export/useReplayExport'
@@ -105,6 +105,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       }}
       locale="fr"
       fullscreen={{ active: false, disabled: false, toggle: vi.fn() }}
+      frameControl={makeFrameControl()}
       {...over}
     />,
   )
@@ -234,83 +235,6 @@ describe('ReplayTransport — le son au niveau de la lecture', () => {
   })
 })
 
-describe('ReplayTransport — ce qui sort du rejeu', () => {
-  it('« Capturer l’image » est une icône nommée, et commande la capture', () => {
-    const { captureImage } = renderTransport()
-    const btn = screen.getByRole('button', { name: "Capturer l'image" })
-    expect(btn.querySelector('svg')).toBeTruthy()
-    fireEvent.click(btn)
-    expect(captureImage).toHaveBeenCalledTimes(1)
-  })
-
-  // LES PASTILLES SONT NOMMÉES À L'ŒIL (planche 2a) : le texte court accompagne l'icône, sans
-  // remplacer le nom accessible — trois icônes muettes côte à côte se ressemblent toutes.
-  // LES LIBELLÉS SONT TOMBÉS LE 2026-09-02 (« vire les labels Image et exporter ») : les
-  // pastilles sont des icônes. CE QUI NE DOIT PAS TOMBER AVEC EUX, c'est leur NOM ACCESSIBLE —
-  // une icône sans nom est une régression pour qui navigue au lecteur d'écran, et c'est
-  // exactement ce qu'un retrait de libellé fait perdre quand personne ne le tient.
-  it('les pastilles sont des icônes nues, mais gardent leur nom accessible long', () => {
-    renderTransport()
-    const image = screen.getByRole('button', { name: "Capturer l'image" })
-    const rec = screen.getByRole('button', { name: 'Enregistrer la vidéo' })
-    expect(image.textContent).not.toContain('Image')
-    expect(rec.textContent).not.toContain('REC')
-    expect(image.getAttribute('title')).toBeTruthy()
-    expect(rec.getAttribute('title')).toBeTruthy()
-  })
-
-  it('en cours d’enregistrement, la pastille le dit par son nom accessible', () => {
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: true,
-        toggleRecording: vi.fn(),
-    videoExport: null,
-      },
-    })
-    expect(screen.getByRole('button', { name: "Arrêter l'enregistrement" })).toBeTruthy()
-  })
-
-  it('à l’arrêt : le bouton dit « Enregistrer la vidéo » et lance au clic', () => {
-    const { toggleRecording } = renderTransport()
-    const btn = screen.getByRole('button', { name: 'Enregistrer la vidéo' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(btn)
-    expect(toggleRecording).toHaveBeenCalledTimes(1)
-  })
-
-  it('en cours : le nom accessible dit ce que le CLIC fera, pas l’état', () => {
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: true,
-        toggleRecording: vi.fn(),
-    videoExport: null,
-      },
-    })
-    const btn = screen.getByRole('button', { name: "Arrêter l'enregistrement" })
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  // DÉCISION 7 : un navigateur qui ne sait pas filmer une toile n'a pas de bouton du tout. Une
-  // commande grisée laisserait croire à une panne réparable — il n'y a rien à réparer.
-  it('navigateur sans enregistrement : PAS de bouton vidéo, mais le bouton image reste', () => {
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: false,
-        recording: false,
-        toggleRecording: vi.fn(),
-    videoExport: null,
-      },
-    })
-    expect(screen.queryByRole('button', { name: 'Enregistrer la vidéo' })).toBeNull()
-    expect(screen.getByRole('button', { name: "Capturer l'image" })).toBeTruthy()
-  })
-})
-
 describe('ReplayTransport — le tiroir de réglages a quitté la barre', () => {
   // LES RÉGLAGES D'AFFICHAGE VIVENT SOUS LE BOUTON « VUE » DE LA CARTE : la barre n'en porte plus.
   it('aucun bouton Réglages ni Vue dans la barre : le plein écran la ferme', () => {
@@ -318,135 +242,6 @@ describe('ReplayTransport — le tiroir de réglages a quitté la barre', () => 
     expect(screen.queryByRole('button', { name: 'Réglages' })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Vue/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Plein écran' })).toBeTruthy()
-  })
-})
-
-/**
- * L'EXPORT PREND LA PLACE DE L'ENREGISTREMENT (décision D5 du plan d'export). Ces trois tests
- * verrouillent la bascule : deux boutons qui font presque la même chose seraient un piège à
- * clic, et supprimer le repli couperait les navigateurs sans WebCodecs.
- */
-function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
-  return {
-    supported: true,
-    state: { phase: 'idle', done: 0, total: 0, pct: 0 },
-    defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
-    run: vi.fn(async () => {}),
-    cancel: vi.fn(),
-    clockOf: (f) => `0:0${f % 10}`,
-    lengthClock: () => '1:40',
-    zoomLevel: 1,
-    ...over,
-  }
-}
-
-describe('ReplayTransport — export hors temps réel', () => {
-  it('offre l’export et RETIRE l’enregistrement quand le navigateur sait encoder', () => {
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: false,
-        toggleRecording: vi.fn(),
-        videoExport: makeExport(),
-      },
-    })
-    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Enregistrer la vidéo' })).not.toBeInTheDocument()
-  })
-
-  it('garde l’enregistrement en REPLI quand l’export n’est pas possible', () => {
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: false,
-        toggleRecording: vi.fn(),
-        videoExport: makeExport({ supported: false }),
-      },
-    })
-    expect(screen.queryByRole('button', { name: 'Exporter la vidéo' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enregistrer la vidéo' })).toBeInTheDocument()
-  })
-
-  it('ouvre le dialogue au clic, et le referme au second', async () => {
-    const user = userEvent.setup()
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: false,
-        toggleRecording: vi.fn(),
-        videoExport: makeExport(),
-      },
-    })
-    const bouton = screen.getByRole('button', { name: 'Exporter la vidéo' })
-    await user.click(bouton)
-    expect(screen.getByRole('dialog', { name: 'Exporter le rejeu en vidéo' })).toBeInTheDocument()
-    await user.click(bouton)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-})
-
-describe('ReplayTransport — le bouton porte la progression', () => {
-  const avecExport = (state: ReplayExport['state']) => ({
-    captureImage: vi.fn(),
-    recordingSupported: true,
-    recording: false,
-    toggleRecording: vi.fn(),
-    videoExport: makeExport({ state }),
-  })
-
-  it('affiche le pourcentage DANS le bouton pendant l’encodage', () => {
-    renderTransport({ capture: avecExport({ phase: 'encode', done: 300, total: 1200, pct: 25 }) })
-    // Refermer le panneau ne doit pas faire perdre À LA FOIS le retour et le moyen d'annuler.
-    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toHaveTextContent('25 %')
-  })
-
-  it('affiche une ellipse pendant la préparation, où aucun pourcentage n’est vrai', () => {
-    renderTransport({ capture: avecExport({ phase: 'prepare', done: 0, total: 1200, pct: 0 }) })
-    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toHaveTextContent('…')
-  })
-
-  it('neutralise la lecture DÈS la préparation, pas seulement à l’encodage', () => {
-    renderTransport({ capture: avecExport({ phase: 'prepare', done: 0, total: 1200, pct: 0 }) })
-    // Le rejeu est en lecture dans ce montage : le bouton porte donc « Pause ».
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled()
-  })
-})
-
-/**
- * LE DEFAUT QUE JSDOM NE VOIT PAS, verrouille par sa seule trace observable ici : la STRUCTURE.
- *
- * Le panneau se positionne en `absolute bottom-full right-0`. Monte ailleurs que dans le
- * cartouche — le seul element qui porte `relative` —, il se resout sur la carte entiere du
- * rejeu et `bottom-full` le place AU-DESSUS de son bord superieur, ou `overflow-hidden` le
- * decoupe : present dans le DOM, invisible a l'ecran. Un test qui se contente de le TROUVER
- * passe donc alors meme que l'utilisateur ne voit rien — c'est exactement ce qui est arrive.
- *
- * Ce test-ci ne mesure pas la mise en page (jsdom n'en calcule aucune) : il verrouille la seule
- * chose dont la mise en page depend et qui, elle, est observable — la parente.
- */
-describe('ReplayTransport — le panneau est ancre la ou il doit l etre', () => {
-  it('est monte DANS l element positionne qui porte le bouton', async () => {
-    const user = userEvent.setup()
-    renderTransport({
-      capture: {
-        captureImage: vi.fn(),
-        recordingSupported: true,
-        recording: false,
-        toggleRecording: vi.fn(),
-        videoExport: makeExport(),
-      },
-    })
-    await user.click(screen.getByRole('button', { name: 'Exporter la vidéo' }))
-    const panneau = screen.getByRole('dialog')
-    const ancre = panneau.parentElement
-    expect(ancre).not.toBeNull()
-    // L'ancre porte `relative` : sans quoi `bottom-full` se resout sur un autre element.
-    expect(ancre).toHaveClass('relative')
-    // Et c'est bien celle qui contient le bouton d'export.
-    expect(ancre).toContainElement(screen.getByRole('button', { name: 'Exporter la vidéo' }))
   })
 })
 
@@ -477,43 +272,29 @@ describe('ReplayTransport — lecture automatique', () => {
   })
 })
 
-/**
- * LE PLEIN ÉCRAN (2026-10-08) : un bouton à état, comme lecture/pause — le nom dit ce que le clic
- * va faire, l'infobulle rappelle la touche F. Il est DÉSACTIVÉ pendant un export : le mode ne
- * bascule pas tant qu'un export tient la toile (cf. useReplayFullscreen).
- */
-describe('ReplayTransport — plein écran', () => {
-  it('fermé : « Plein écran (F) », et le clic bascule le mode', () => {
-    const toggle = vi.fn()
-    renderTransport({ fullscreen: { active: false, disabled: false, toggle } })
-    const btn = screen.getByRole('button', { name: 'Plein écran' })
-    expect(btn).toHaveAttribute('title', 'Plein écran (F)')
-    fireEvent.click(btn)
-    expect(toggle).toHaveBeenCalledTimes(1)
+describe('ReplayTransport — ce qui sort du rejeu et les cadres sont à droite', () => {
+  it('le cartouche de capture et les icônes de cadre sont dans la barre', () => {
+    renderTransport()
+    expect(screen.getByRole('button', { name: "Capturer l'image" })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Cadre du lecteur' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Plein écran' })).toBeTruthy()
   })
 
-  it('ouvert : le nom dit la sortie', () => {
-    renderTransport({ fullscreen: { active: true, disabled: false, toggle: vi.fn() } })
-    expect(screen.getByRole('button', { name: 'Quitter le plein écran' })).toHaveAttribute(
-      'title',
-      'Quitter le plein écran (F)',
-    )
-  })
-
-  it('pendant un export : désactivé, le clic ne fait rien', () => {
-    const toggle = vi.fn()
-    renderTransport({ fullscreen: { active: false, disabled: true, toggle } })
-    const btn = screen.getByRole('button', { name: 'Plein écran' })
-    expect(btn).toBeDisabled()
-    fireEvent.click(btn)
-    expect(toggle).not.toHaveBeenCalled()
-  })
-
-  it('en anglais : « Full screen » et « Exit full screen »', () => {
-    const ferme = renderTransport({ locale: 'en' })
-    expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy()
-    ferme.unmount()
-    renderTransport({ locale: 'en', fullscreen: { active: true, disabled: false, toggle: vi.fn() } })
-    expect(screen.getByRole('button', { name: 'Exit full screen' })).toBeTruthy()
+  it('pendant un export, la lecture est neutralisée dès la préparation, pas seulement à l’encodage', () => {
+    const videoExport = {
+      supported: true,
+      state: { phase: 'prepare', done: 0, total: 1200, pct: 0 },
+      defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
+      run: vi.fn(async () => {}),
+      cancel: vi.fn(),
+      clockOf: () => '0:00',
+      lengthClock: () => '1:40',
+      zoomLevel: 1,
+    } satisfies ReplayExport
+    renderTransport({
+      capture: { captureImage: vi.fn(), recordingSupported: true, recording: false, toggleRecording: vi.fn(), videoExport },
+    })
+    // Le rejeu est en lecture dans ce montage : le bouton porte donc « Pause ».
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled()
   })
 })

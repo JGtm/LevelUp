@@ -2,10 +2,7 @@
  * scoreboardRow.ts — UNE ligne de scoreboard minimale pour les tests du rejeu.
  *
  * Seuls le camp et l'identité comptent pour les fiches ; tout le reste est à null ou à une
- * valeur neutre. Née le 2026-09-06 (lot fiches compactes) quand la fixation DOM 4v4 et la
- * mesure de perf en réclamaient chacune une : `ReplayTeams.test.tsx` garde sa copie `sbRow`
- * (règle « ≤ 2 copies », CLAUDE.md n° 6 — ce test-là ne se retouche pas, cf. I3 du plan), ce
- * helper est la seconde et dernière.
+ * valeur neutre.
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
 

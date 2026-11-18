@@ -67,7 +67,7 @@ const SHROUD_BOLT_KEYS: readonly (readonly [number, number])[] = [
 
 /**
  * Décalage de chaque éclair dans le cycle, en secondes — partagé avec la fiche
- * (`ReplayPlayerCard.SHROUD_BOLTS`), pour que les éclairs de la carte et ceux de la fiche
+ * (`ReplayCardFx.SHROUD_BOLTS`), pour que les éclairs de la carte et ceux de la fiche
  * s'allument au même instant.
  */
 export const SHROUD_BOLT_OFFSETS_S = [0, 1.3, 2.05] as const

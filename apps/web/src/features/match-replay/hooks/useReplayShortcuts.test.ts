@@ -22,7 +22,8 @@ function mount(over: Partial<ReplayShortcutHandlers> = {}) {
     stepFrames: vi.fn(),
     restart: vi.fn(),
     toggleSound: vi.fn(),
-    toggleFullscreen: vi.fn(),
+    toggleFullFrame: vi.fn(),
+    toggleCinema: vi.fn(),
     skipSeconds: 10,
     enabled: true,
     ...over,
@@ -80,11 +81,20 @@ describe('useReplayShortcuts — les commandes', () => {
     expect(h.restart).toHaveBeenCalledTimes(2)
   })
 
-  it('F ouvre ou ferme le plein écran — majuscule comprise, défaut du navigateur retenu', () => {
+  it('F bascule le Plein cadre — majuscule comprise, défaut du navigateur retenu', () => {
     const h = mount()
     expect(press('f').defaultPrevented).toBe(true)
     press('F')
-    expect(h.toggleFullscreen).toHaveBeenCalledTimes(2)
+    expect(h.toggleFullFrame).toHaveBeenCalledTimes(2)
+    expect(h.toggleCinema).not.toHaveBeenCalled()
+  })
+
+  it('T bascule le Cinéma — majuscule comprise, défaut du navigateur retenu', () => {
+    const h = mount()
+    expect(press('t').defaultPrevented).toBe(true)
+    press('T')
+    expect(h.toggleCinema).toHaveBeenCalledTimes(2)
+    expect(h.toggleFullFrame).not.toHaveBeenCalled()
   })
 
   it('une touche non traitée ne fait rien, et laisse le navigateur tranquille', () => {
@@ -125,19 +135,24 @@ describe('useReplayShortcuts — ce qu’il refuse de capter', () => {
     expect(h.restart).not.toHaveBeenCalled()
   })
 
-  it('Ctrl+F et Cmd+F cherchent dans la page — ils n’ouvrent pas le plein écran', () => {
+  it('Ctrl+F et Cmd+F cherchent dans la page, Ctrl+T et Cmd+T ouvrent un onglet — aucun ne change le cadre', () => {
     const h = mount()
     press('f', { ctrlKey: true })
     press('f', { metaKey: true })
-    expect(h.toggleFullscreen).not.toHaveBeenCalled()
+    press('t', { ctrlKey: true })
+    press('t', { metaKey: true })
+    expect(h.toggleFullFrame).not.toHaveBeenCalled()
+    expect(h.toggleCinema).not.toHaveBeenCalled()
   })
 
-  it('F depuis un champ de saisie écrit un f', () => {
+  it('F et T depuis un champ de saisie écrivent la lettre', () => {
     const h = mount()
     const input = document.createElement('input')
     document.body.appendChild(input)
     press('f', { target: input })
-    expect(h.toggleFullscreen).not.toHaveBeenCalled()
+    press('t', { target: input })
+    expect(h.toggleFullFrame).not.toHaveBeenCalled()
+    expect(h.toggleCinema).not.toHaveBeenCalled()
   })
 
   it('un raccourci avec Alt n’est pas capté non plus', () => {

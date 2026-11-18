@@ -24,9 +24,13 @@ import type { ReplayDocument } from '@/lib/api/types'
 import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { renderWithProviders } from '../../../test/render-utils'
-import { buildPlayers } from '../../../lib/replay/rosterLogic'
+import { isAliveAt } from '../../../lib/replay/replayLogic'
+import { buildPlayers, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { COTES_PION_CERCLE } from '../model/cotesFenetreFiche'
 import { createPlaybackStore } from '../model/playbackStore'
+import type { PlayerFocus } from '../model/playerPanelLogic'
+import { makeFrameControl } from '../test/frameControlStub'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { recordingContext, type CanvasOp } from '../test/recordingContext'
 import { testReplayDoc } from '../test/testDoc'
@@ -145,12 +149,14 @@ function lastFrameOps(ops: CanvasOp[]): CanvasOp[] {
   return []
 }
 
-function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
+/** `focus` : la fiche ouverte (le joueur est cherché dans le même roster que celui de la toile) ; absent = aucune. */
+function render(doc: ReplayDocumentReady, frame: number, focus?: (players: ReplayPlayer[]) => PlayerFocus | null): CanvasOp[] {
   const canvases = installRecorders()
   const players = buildPlayers(doc, [])
   const viewpoint = players.find((p) => p.team !== undefined && p.team >= 0 && !p.xuid.startsWith('bot:'))?.xuid ?? null
   const allegiance = buildFilmAllegiance(players, viewpoint)
   const fullscreen = { active: false, disabled: false, toggle: () => {} }
+  const frameControl = makeFrameControl()
   const view = renderWithProviders(
     <ReplayCanvas
       doc={doc}
@@ -160,8 +166,11 @@ function render(doc: ReplayDocumentReady, frame: number): CanvasOp[] {
       openAtFrame={frame}
       allegiance={allegiance}
       players={players}
+      playerFocus={focus ? focus(players) : null}
       viewpoint={viewpoint}
       fullscreen={fullscreen}
+      frameControl={frameControl}
+      transport={() => null}
       marks={viewpoint ? new Map([[viewpoint, 'me' as const]]) : undefined}
     />,
   )
@@ -278,4 +287,72 @@ describe('temoin du moteur de la toile 2D', () => {
       })
     })
   }
+})
+
+/** La couleur que `stubTokenColors` donne à une variable CSS : l'empreinte de son nom. */
+function inkOf(name: string): string {
+  return `#${createHash('sha256').update(name).digest().subarray(0, 3).toString('hex')}`
+}
+
+const FICHE_OUVERTE = { follow: false, solo: false, hide: false }
+
+describe('temoin du moteur de la toile 2D : fiche ouverte (le pion cerclé)', () => {
+  let doc: ReplayDocumentReady
+  let frame: number
+  let sans: CanvasOp[]
+  beforeAll(() => {
+    doc = documentOf('base')
+    frame = frameOf(doc, 'milieu')
+  })
+  beforeEach(() => {
+    sans = render(doc, frame)
+  })
+
+  const vivant = (p: ReplayPlayer) => p.lives.some((l) => isAliveAt(l, frame))
+  const ouverte = (choix: (players: ReplayPlayer[]) => ReplayPlayer | undefined, over: Partial<typeof FICHE_OUVERTE> = {}) =>
+    (players: ReplayPlayer[]): PlayerFocus | null => {
+      const player = choix(players)
+      if (!player) throw new Error('temoin : aucun joueur ne convient a ce cas')
+      return { player, ...FICHE_OUVERTE, ...over }
+    }
+
+  it('joueur vivant : un anneau clair cerné d’un liseré à l’encre du fond, centré sur son pion, et rien d’autre ne change', () => {
+    const avec = render(doc, frame, ouverte((ps) => ps.find(vivant)))
+    expect(avec.length - sans.length).toBe(11)
+    const debut = avec.findIndex((o, i) => JSON.stringify(o) !== JSON.stringify(sans[i]))
+    const bloc = avec.slice(debut, debut + 11)
+    expect([...avec.slice(0, debut), ...avec.slice(debut + 11)]).toEqual(sans)
+    const arcs = bloc.filter((o) => o.op === 'arc')
+    expect(arcs).toHaveLength(2)
+    expect(arcs[0].args).toEqual(arcs[1].args)
+    expect(arcs[0].args[2]).toBeGreaterThan(0)
+    const encres = bloc.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+    expect(encres).toEqual([inkOf('--background'), inkOf('--foreground')])
+    const [lisere, anneau] = bloc.filter((o) => o.op === 'set lineWidth').map((o) => o.args[0] as number)
+    expect(lisere).toBeGreaterThan(anneau)
+    expect(lisere / anneau).toBeCloseTo((COTES_PION_CERCLE.anneauPx + 2 * COTES_PION_CERCLE.lisereExtraPx) / COTES_PION_CERCLE.anneauPx)
+  })
+
+  it('joueur mort à l’image lue : aucun anneau', () => {
+    // Une image où un joueur du roster n'a aucune vie qui la couvre : on la cherche, on ne la suppose pas.
+    const players = buildPlayers(doc, [])
+    let mort = -1
+    for (let f = 0; f < doc.frameCount && mort < 0; f += 25) {
+      if (players.some((p) => !p.lives.some((l) => isAliveAt(l, f)))) mort = f
+    }
+    expect(mort, 'temoin : aucune image ne laisse un joueur sans vie').toBeGreaterThanOrEqual(0)
+    const sansFiche = render(doc, mort)
+    const avec = render(doc, mort, ouverte((ps) => ps.find((p) => !p.lives.some((l) => isAliveAt(l, mort)))))
+    expect(avec).toEqual(sansFiche)
+  })
+
+  it('fiche fermée : le dessin est celui d’avant', () => {
+    expect(render(doc, frame, () => null)).toEqual(sans)
+  })
+
+  it('joueur masqué : pas d’anneau sans pion', () => {
+    const avec = render(doc, frame, ouverte((ps) => ps.find(vivant), { hide: true }))
+    const lignes = (ops: CanvasOp[]) => ops.filter((o) => o.op === 'set strokeStyle' && o.args[0] === inkOf('--foreground')).length
+    expect(lignes(avec)).toBeLessThanOrEqual(lignes(sans))
+  })
 })

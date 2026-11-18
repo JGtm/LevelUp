@@ -31,8 +31,7 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import type { PlaybackStore } from '../model/playbackStore'
-import { ReplayTransport } from './ReplayTransport'
-import { ReplayZoomControl } from './ReplayZoomControl'
+import { useReplayTransportCommands, type ReplayCommandsRender } from './replayTransportCommands'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { normalizeMapObjectives } from '../layers/objectivesLayer'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
@@ -85,10 +84,12 @@ import { useReplayTiming } from '../hooks/useReplayTiming'
 import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
+import type { ReplayFrameControl } from '../hooks/useReplayFrame'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useReplayPlayerFocus } from '../hooks/useReplayPlayerFocus'
+import { NO_CAMERA_FOLLOW, type CameraFollow } from '../model/cameraMenu'
 import type { PlayerFocus } from '../model/playerPanelLogic'
 
 interface ReplayCanvasProps {
@@ -171,10 +172,12 @@ interface ReplayCanvasProps {
    */
   viewpoint: string | null
   /**
-   * LE MODE PLEIN ÉCRAN, tenu par la page (il change le cadre de SA grille) : le canvas n'en
-   * relaie que la commande, au bouton de la barre de lecture et à la touche F.
+   * LE PLEIN ÉCRAN DU SYSTÈME, tenu par la page : le canvas n'en relaie que la commande, au bouton
+   * de la barre de lecture.
    */
   fullscreen: ReplayFullscreen
+  /** Le cadre et ses gestes : la toile câble les touches T (Cinéma) et F (Plein cadre) et remet le tout à sa barre. */
+  frameControl: ReplayFrameControl
   /**
    * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
    * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
@@ -204,25 +207,28 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
-  /**
-   * LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : le joueur dont le panneau est
-   * ouvert et ses actions, tenus par la page. Suivre cadre la carte sur lui, Seul et Masquer filtrent
-   * ce que la carte dessine de lui (cf. `useReplayPlayerFocus`). `null`/absent = rien n'est changé.
-   * Le point de vue (`viewpoint`) n'en dépend pas.
-   */
+  /** LA FICHE OUVERTE : son joueur et ses actions Seul et Masquer, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absent = rien n'est filtré. */
   playerFocus?: PlayerFocus | null
+  /** LA CAMÉRA : le joueur que la carte suit, fiche ouverte ou non, et le geste « Suivre » du menu de la barre ; absent = personne. */
+  cameraFollow?: CameraFollow
   /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
   onFollowStop?: () => void
   /** Le match affiché : il désigne la probabilité de réapparition à charger. Absents = pas de calque. */
   playerSlug?: string
   matchId?: string
+  /** LA BARRE DE LECTURE, fournie par le cadre : rendue sous le bloc, dans la colonne que mesure `useReplayViewport`. */
+  transport: ReplayCommandsRender
+  /** CE QUI SE POSE DANS LE BLOC, après la légende (commande de zoom, fil, commutateur de vue) ; absent = rien. */
+  blockOverlays?: ReplayCommandsRender
+  /** Le cadre peut poser le fil des éliminations dans `blockOverlays` : l'option de la vue existe, et la légende de la chaleur passe en haut du bloc tant qu'il est montré. */
+  planFeed?: boolean
 }
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
-  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
-  playerSlug, matchId,
+  allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
+  playerSlug, matchId, transport, blockOverlays, planFeed = false,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -249,7 +255,8 @@ export function ReplayCanvas({
   // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le panneau de la vue en consomme la quasi-totalité ;
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayViewMenu).
   const settings = useReplaySettings()
-  // L'ORIENTATION DE LA CARTE, retenue par carte : le cadrage la prend, le panneau de la vue la commande.
+  const planFeedShown = planFeed && settings.showPlanFeed
+  // LE CHOIX D'ORIENTATION, retenu par carte (null = Auto) : le cadrage le résout, le panneau de la vue le commande.
   const orientation = useReplayOrientation(mapId)
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
@@ -291,13 +298,13 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
+  const { mapImage, turns, autoTurned, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
+    doc, background, turns: orientation.retained, width, freeHeight, onManualMove: onFollowStop,
   })
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -360,7 +367,7 @@ export function ReplayCanvas({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
-    follow: playerFocus?.follow ?? false,
+    follow: cameraFollow.player !== null,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale, plan: planDuFond },
     heat: { grid: heat.grid, ramp: heat.ramp },
     // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
@@ -474,7 +481,7 @@ export function ReplayCanvas({
         wall: wallInk, rift: riftInk, shroud: shroudInk, self: selfInk, labelStroke,
       },
       identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
-      focus: { shownAtSlot, shownProjectile, shown: focusShown },
+      focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer },
       fx: { shotFx, fireMarks, killFx, objectivePulses },
       zones,
       placements: {
@@ -496,7 +503,7 @@ export function ReplayCanvas({
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
       geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke,
       colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
-      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,
+      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer,
       shotFx, fireMarks, killFx, objectivePulses, zones,
       placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
       weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
@@ -538,7 +545,8 @@ export function ReplayCanvas({
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, scoreTimelineKind, marks: marks ?? NO_MARKS, renderWidth, locale,
-    lead: teamCascades, playback, toggleSound: sound.toggle, toggleFullscreen: fullscreen.toggle, zoom,
+    lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
+    toggleFullFrame: frameControl.toggleFullFrame, toggleCinema: frameControl.toggleCinema,
     // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
     // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —
     // c'est elle qui dit qui est coéquipier du joueur regardé.
@@ -547,7 +555,7 @@ export function ReplayCanvas({
   // LE BOUTON « VUE » ET SON PANNEAU, groupés de même (useReplayViewMenu) : les disponibilités
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
-    settings, orientation, sound, locale,
+    settings, orientation, sound, locale, planFeedAvailable: planFeed,
     // LE FOND : la commande n'est proposée que si le fond a une image plan ; posé, il retire le calque des murs.
     planBackground: { available: !!mapImage?.planAvailable, shown: mapImage?.variante === 'plan' },
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
@@ -562,6 +570,11 @@ export function ReplayCanvas({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
     audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
     redraw, playWindow, scoreboard, allegiance, outcome, viewpoint, locale, zoomLevel: zoom.level,
+  })
+
+  const commands = useReplayTransportCommands({
+    playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
+    planFeedShown, autoTurned, orientation,
   })
 
   return (
@@ -612,27 +625,14 @@ export function ReplayCanvas({
                   sous lui, et laisse libre le coin BAS-GAUCHE de la légende de la chaleur. */}
               <ReplayViewMenu {...viewMenu} />
             </div>
-            {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (2026-09-02, retour utilisateur :
-                « il faut le mettre sur le côté gauche du bloc avec un léger padding »). Elle
-                vivait DANS le conteneur `mx-auto` de la toile — qui est CENTRÉ et souvent plus
-                étroit que la colonne : sur une carte allongée dans un écran large, la légende
-                flottait donc au milieu du cadre, à gauche de la carte mais loin du bord.
-                Remontée d'un cran, elle se cale sur le bord gauche du bloc, où on la cherche. */}
-            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
-            <ReplayZoomControl zoom={zoom} locale={locale} />
+            {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (le conteneur `mx-auto` est centré, souvent plus étroit que
+                la colonne) : en bas à gauche, ou en haut quand ce coin porte le fil des éliminations. */}
+            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} corner={planFeedShown ? 'haut' : 'bas'} />}
+            {blockOverlays?.(commands)}
           </div>
-          {/* LA BARRE DE LECTURE, SORTIE DU `p-3` LE 2026-09-02 : dedans, 12 px de carte
-              l'encadraient de trois côtés ; ici elle va bord à bord. Elle reste DANS
-              `containerRef` — c'est ce qui permet à `useReplayViewport` de déduire le chrome
-              par soustraction, donc de rendre au terrain ce que la barre économise. */}
-          <ReplayTransport
-            playing={playback.playing} onTogglePlay={playback.togglePlay}
-            onRestart={playback.restart} onSeekBy={playback.seekBy}
-            clockRef={clockRef} timeline={timeline}
-            autoPlay={settings.autoPlay} onToggleAutoPlay={settings.toggleAutoPlay}
-            speed={multiplier} onSetSpeed={settings.setSpeed}
-            sound={sound} capture={capture} locale={locale} fullscreen={fullscreen}
-          />
+          {/* LA BARRE DE LECTURE va bord à bord, hors du `p-3`, mais DANS `containerRef` : `useReplayViewport`
+              déduit le chrome par soustraction, donc rend au terrain ce que la barre économise. */}
+          {transport(commands)}
         </div>
       </div>
     </div>

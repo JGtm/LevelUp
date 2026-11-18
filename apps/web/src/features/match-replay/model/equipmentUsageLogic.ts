@@ -55,6 +55,9 @@
  * Tout est PUR : aucun React, aucun canvas, aucune couleur, AUCUNE LANGUE — ce fichier compte,
  * il ne nomme rien. La mise en colonnes et les libellés vivent dans `equipmentUsageColumns.ts`
  * (extrait le 2026-08-25, seuil de taille), le rendu dans `MatchEquipmentUsageSection.tsx`.
+ * La lecture DATÉE des épisodes, des poses déployées et des objets lâchés vit dans `equipmentGestures.ts`,
+ * celle des prises et des consommations dans `equipmentKeptLogic.ts` : la lecture à l'instant
+ * (`playerEquipmentStats.ts`) lit les mêmes fonctions, ce module n'en garde que la somme sur le match.
  * La TROISIÈME ISSUE (« gardé sans l'utiliser ») et la reconnaissance rang -> famille de
  * `equipmentChanges` vivent dans `equipmentKeptLogic.ts` (extrait le 2026-09-09, même
  * raison : seuil de taille — scission obligatoire n°2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md).
@@ -62,20 +65,24 @@
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
-import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
+import {
+  applyEquipmentGesture,
+  bump,
+  EPISODE_FAMILIES,
+  gestureOwner,
+  readEquipmentGestures,
+  type EquipmentEpisodeFamily,
+} from './equipmentGestures'
 import { deriveKeptFromTaken, familyHasAnyTrace, KEPT_FAMILIES } from './equipmentKeptLogic'
-import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
-import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
+import { PLACEMENT_RENDER } from '../layers/equipmentPlacementsLayer'
+import { PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
 import { spawnedObjectDeployments } from './spawnedObjects'
 import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { frameToMs } from '../../../lib/replay/replayLogic'
 import { buildPlayers, buildSlotOwnership, groupByTeam, playerName, rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import { padEquipmentFamilyOf, type PadEquipmentFamilyKey } from './weaponPadFamilies'
 
-/** Les deux familles dont l'ÉTAT ACTIF est mesuré (identifiants stables du document). */
-export const EPISODE_FAMILIES = [EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD] as const
-export type EquipmentEpisodeFamily = (typeof EPISODE_FAMILIES)[number]
+export { EPISODE_FAMILIES, type EquipmentEpisodeFamily }
 
 /**
  * Un état actif cumulé : combien d'épisodes, combien de temps en tout, et combien de frags
@@ -189,25 +196,19 @@ export interface EquipmentUsage {
   hasData: boolean
 }
 
+/**
+ * equipmentRowPlayers — les joueurs qui ont une ligne : ceux que le film a vus vivre ET rangés dans un
+ * camp. La table des compteurs du total et celle de la lecture à l'instant se bornent aux mêmes, sinon
+ * un geste attribué à une entrée sans piste — ou dont le film tait l'équipe — serait compté sur une
+ * ligne qui n'existe pas.
+ */
+export function equipmentRowPlayers(players: readonly ReplayPlayer[]): ReplayPlayer[] {
+  return players.filter((p) => p.lives.length > 0 && p.team !== undefined)
+}
+
 /** Un compteur vide. Chaque appel rend un NOUVEL objet : les tables ne se partagent pas. */
-function emptyTally(): EquipmentUsageTally {
+export function emptyTally(): EquipmentUsageTally {
   return { grapplePulls: 0, episodes: {}, deployed: {}, dropped: {}, spent: {}, grenades: {}, kept: {} }
-}
-
-/** Incrémente une case de table, en la créant au besoin. */
-function bump<K extends string | number>(table: Record<K, number>, key: K, by = 1): void {
-  table[key] = (table[key] ?? 0) + by
-}
-
-/** Ajoute un épisode (un de plus, sa durée, ses frags) à une table par famille. */
-function addEpisode(
-  table: Record<string, EquipmentUsageEpisode>,
-  fam: string,
-  ms: number,
-  kills: number,
-): void {
-  const cur = table[fam] ?? { count: 0, ms: 0, kills: 0 }
-  table[fam] = { count: cur.count + 1, ms: cur.ms + Math.max(0, ms), kills: cur.kills + kills }
 }
 
 /** Verse `src` dans `dst` — le total d'une équipe est la somme de ses lignes, rien de plus. */
@@ -234,25 +235,6 @@ export function tallyIsEmpty(t: EquipmentUsageTally): boolean {
 }
 
 /**
- * LES FAMILLES DONT UN DÉPLOIEMENT EST UN GESTE, et pourquoi la liste n'est pas « toutes ».
- *
- * `PLACEMENT_RENDER` porte déjà la décision, mesurée et écrite : une famille à `null` y est une
- * famille CONNUE qu'on ne dessine pas parce que ce n'est pas un objet posé sur le terrain — les
- * quatre grenades (leurs poses `deployed` sont des LANCERS, déjà comptés par `grenades[]`, les
- * compter deux fois ferait deux colonnes d'un même geste) et les trois capacités `grapple`,
- * `thruster`, `repulsor` (l'appareil lui-même, pas un objet ; le grappin a sa colonne de
- * TRACTIONS ; le répulseur n'a aucun canal d'activation mesuré ; le propulseur en a un depuis
- * le 2026-09-03, schéma 38, mais son geste dure une demi-seconde et se lit sur la CARTE — le
- * dash du pion —, pas dans un compte de tableau : décision utilisateur du même jour).
- *
- * Réutiliser cette table plutôt qu'en écrire une deuxième est la règle des ≤ 2 copies : le jour
- * où une famille change de statut, elle change ici aussi, sans qu'on y pense.
- */
-function isDeployableFamily(family: string): boolean {
-  return PLACEMENT_RENDER[family] != null
-}
-
-/**
  * buildEquipmentUsage — l'agrégation complète, en une passe par calque.
  *
  * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les camps restent ceux
@@ -265,9 +247,7 @@ export function buildEquipmentUsage(
   // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ET RANGÉS DANS UN CAMP ont une ligne (cf.
   // `teamsOf`) : la table des compteurs se borne aux mêmes, sinon un geste attribué à une entrée
   // sans piste — ou dont le film tait l'équipe — serait compté sur une ligne qui n'existe pas.
-  const players = buildPlayers(doc, scoreboard ?? []).filter(
-    (p) => p.lives.length > 0 && p.team !== undefined,
-  )
+  const players = equipmentRowPlayers(buildPlayers(doc, scoreboard ?? []))
   // PROPRIÉTAIRE À L'IMAGE, PAS UN AGRÉGAT MATCH : un slot de bipède est réattribué entre
   // réapparitions ET entre manches (cf. `buildSlotOwnership`, rosterLogic.ts) ; un agrégat
   // « dernier gagnant » créditait au DERNIER occupant du slot les gestes de tous les
@@ -307,19 +287,10 @@ export function buildEquipmentUsage(
 
   for (const line of doc.grappleLines) tallyOfSlotAt(line.slot, line.t0).grapplePulls += 1
 
-  for (const e of doc.equipmentEpisodes) {
-    // Une famille hors des deux mesurées n'a ni libellé ni sens établi : elle n'entre pas.
-    if (!(EPISODE_FAMILIES as readonly string[]).includes(e.fam)) continue
-    addEpisode(tallyOfSlotAt(e.slot, e.t0).episodes, e.fam, frameToMs(e.t1 - e.t0, doc), e.k ?? 0)
-  }
-
-  for (const p of doc.equipmentPlacements) {
-    // `owner` -1 = aucun bipède contemporain à moins de 3 m : la pose est réelle, son auteur
-    // ne l'est pas. Elle rejoint les gestes sans propriétaire plutôt qu'une ligne au hasard.
-    const t = p.owner >= 0 ? tallyOfSlotAt(p.owner, p.t0) : unattributed
-    if (placementIsDeployedObject(p) && isDeployableFamily(p.family)) bump(t.deployed, p.family)
-    else if (placementIsDroppedPower(p)) bump(t.dropped, p.family)
-  }
+  // LES ÉPISODES, LES POSES ET LES LÂCHERS passent par la lecture que partage la lecture à
+  // l'instant (`equipmentGestures.ts`). Un geste sans poseur mesuré rejoint les gestes sans
+  // propriétaire plutôt qu'une ligne au hasard.
+  for (const g of readEquipmentGestures(doc)) applyEquipmentGesture(tallyOf(gestureOwner(ownership, g)), g)
 
   // UN OBJET ENGENDRÉ (capteur, traqueur, écran, champ) EST UN DÉPLOIEMENT de sa famille, situé ou
   // non : le geste a eu lieu même quand son lieu n'a pas été lu (`spawnedObjects.ts`). Il se date à
@@ -381,6 +352,16 @@ function teamsOf(
 }
 
 /**
+ * equipmentFamilyOrder — L'ORDRE ÉCRIT des familles du bilan « servi ou gâché » : `PLACEMENT_RENDER`
+ * d'abord (même ordre que `deployed`), les deux power-ups ensuite, restreint au périmètre du bilan
+ * (`KEPT_FAMILIES` : ni le grappin, ni le propulseur, ni le répulseur, ni les grenades). C'est l'ordre
+ * des colonnes de la grille ; toute lecture qui range ces familles s'y tient.
+ */
+export function equipmentFamilyOrder(): string[] {
+  return [...Object.keys(PLACEMENT_RENDER), ...EPISODE_FAMILIES].filter((f) => KEPT_FAMILIES.includes(f))
+}
+
+/**
  * columnsOf retient les colonnes qu'au moins un joueur justifie, dans un ordre ÉCRIT.
  *
  * L'ordre vient des tables de référence (`PLACEMENT_RENDER`, `PLACEMENT_DROPPED_FAMILIES`) et
@@ -410,13 +391,12 @@ function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   // de suivre `usageUsedOf` au lot 5.7 — un capteur pris puis CONSOMMÉ, ni posé ni lâché,
   // n'ouvrait donc plus aucune colonne et `equipmentUsageColumns.ts` supprimait le groupe entier.
   const equipmentUsed = KEPT_FAMILIES.filter((f) => rows.some((r) => familyHasAnyTrace(r, f)))
-  const equipmentOrder = [...Object.keys(PLACEMENT_RENDER), ...EPISODE_FAMILIES]
   return {
     grapple: rows.some((r) => r.grapplePulls > 0),
     episodes: EPISODE_FAMILIES.filter((f) => rows.some((r) => (r.episodes[f]?.count ?? 0) > 0)),
     deployed: Object.keys(PLACEMENT_RENDER).filter((f) => deployedUsed.has(f)),
     dropped: PLACEMENT_DROPPED_FAMILIES.filter((f) => droppedUsed.has(f)),
-    equipment: equipmentOrder.filter((f) => equipmentUsed.includes(f)),
+    equipment: equipmentFamilyOrder().filter((f) => equipmentUsed.includes(f)),
   }
 }
 

@@ -333,9 +333,9 @@ describe('ReplayKillFeed — les médailles du fil', () => {
 /**
  * PLUS DE LISERÉ DE LIGNE (demande utilisateur du 2026-08-25, la même que pour la fiche morte).
  * Les TROIS formes de ligne le portaient — kill, mort neutre, médaille seule — et les trois
- * sont vérifiées ici, sur des rendus qui les produisent réellement. Le fond BLEUTÉ des morts
- * assistées, lui, RESTE : c'est une information mesurée (un assistant nommé), pas un ornement —
- * il a son propre verrou dans le bloc de l'assistance ci-dessous.
+ * sont vérifiées ici, sur des rendus qui les produisent réellement. Le fond bleuté des morts
+ * assistées est parti avec le format d'une ligne : l'assistance est dans l'infobulle (bloc de
+ * l'assistance ci-dessous).
  */
 describe('ReplayKillFeed — aucune ligne ne porte de liseré gauche', () => {
   const bordsDe = (container: HTMLElement) =>
@@ -373,7 +373,7 @@ describe('ReplayKillFeed — aucune ligne ne porte de liseré gauche', () => {
 })
 
 describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondus', () => {
-  it('assistant NOMMÉ : le nom et SA part seule — la part du tueur est sortie (2026-08-24)', () => {
+  it('assistant NOMMÉ : rien dans la rangée, tout dans l’infobulle (nom et SA part seule)', () => {
     const { container } = renderFeed(
       [
         kill({
@@ -387,25 +387,16 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
       ],
       20_000,
     )
-    expect(screen.getByText('Aidant77')).toBeTruthy()
-    // La part de l'assistant s'écrit « 37 % » (option 2a du handoff 2026-08-27 — le tiret
-    // de la planche du 16/08 est parti), et la ligne n'écrit PLUS « assisté par » : une
-    // MARQUE le dit, en pictogramme.
-    expect(screen.getByText('37 %')).toBeTruthy()
-    // LA MARQUE EST LA VIGNETTE DU JEU (killfeed-62), pas le glyphe SVG du lot R1 : un
-    // masque teint, comme l'icône d'arme du fil — même technique, même composant.
-    const mark = screen.getByRole('img', { name: 'Assistance' })
-    expect(mark).toHaveStyle({
-      maskImage: 'url(/static/weapons-assets/halo_infinite/jeu/killfeed-62.png)',
-    })
-    // L'infobulle vit sur le conteneur (WeaponIcon lui-même n'en porte pas) : le survol
-    // continue de dire « Assistance », inchangé depuis le glyphe SVG qu'elle remplace.
-    expect(mark.closest('[title="Assistance"]')).toBeTruthy()
-    expect(container.textContent).not.toMatch(/assist[ée]/i)
-    // La part du TUEUR ne s'écrit plus sur une rangée assistée : celle de l'assistant
-    // suffit (demande utilisateur du 2026-08-24).
-    expect(screen.queryByText(/tueur 63 %/)).toBeNull()
-    expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
+    // L'assistance n'a plus de colonne : ni le nom, ni la part, ni la marque ne sont dans la rangée.
+    expect(screen.queryByText('Aidant77')).toBeNull()
+    expect(screen.queryByText('37 %')).toBeNull()
+    expect(screen.queryByRole('img', { name: 'Assistance' })).toBeNull()
+    // Elle se lit au survol : l'assistant et sa part de dégâts (la part du tueur n'y figure pas, 2026-08-24).
+    const titre = container.querySelector('li')?.getAttribute('title') ?? ''
+    expect(titre).toContain('Assistance : Aidant77 (37 %)')
+    expect(titre).not.toMatch(/tueur 63/)
+    // Pas de teinte de fond : une ligne n'a ni fond ni bordure.
+    expect(container.querySelector('li')?.getAttribute('style') ?? '').not.toContain('color-mix')
   })
 
   it('« aucun » : rien d’affiché — l’information vit en infobulle, distincte d’« inconnu »', () => {
@@ -529,18 +520,6 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
     expect(container.querySelectorAll('li svg')).toHaveLength(0)
   })
 
-  it('marque aussi l’ASSISTANT à l’encre success, toujours sans glyphe', () => {
-    // L'événement du film ne porte pas le xuid de l'assistant : la marque passe par le
-    // scoreboard, seule table qui joint gamertag et xuid. Sans cela, il serait le seul nom
-    // du fil sans encre marquée.
-    const { container } = renderMarked(
-      [kill({ tMs: 1_000, xuid: 'me', assistState: 'named', assistGamertag: 'Cobra01' })],
-      new Map([['foe', 'friend']]),
-    )
-    const assistant = screen.getByText('Cobra01') as HTMLElement
-    expect(assistant.style.color).toBe('var(--ac-success)')
-    expect(container.querySelectorAll('li svg')).toHaveLength(0)
-  })
 })
 
 describe('ReplayKillFeed — hauteur de colonne (mise en page du 2026-08-16)', () => {
@@ -590,9 +569,10 @@ describe('ReplayKillFeed — le fil DÉFILE (régression C1, 2026-08-18)', () =>
     for (const row of rows) {
       // Sans `shrink-0`, les 40 rangées se partagent la hauteur et se rognent elles-mêmes.
       expect(row.className, 'une rangée du fil doit refuser de se tasser').toContain('shrink-0')
-      // Et la règle « une ligne » de V5 ne bouge pas.
-      expect(row.className).toContain('flex-nowrap')
+      // Et la règle « une ligne » ne bouge pas : une grille qui ne passe jamais à la ligne.
+      expect(row.className).toContain('whitespace-nowrap')
       expect(row.className).toContain('overflow-hidden')
+      expect(row.className).toContain('h-[28px]')
     }
   })
 })
@@ -602,7 +582,7 @@ describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
   const rowClass = (container: HTMLElement) =>
     container.querySelector('li')?.getAttribute('class') ?? ''
 
-  it('une élimination décorée ET assistée tient dans UNE rangée, sans retour ni empilement', () => {
+  it('une élimination décorée ET assistée tient dans UNE rangée de 28 px, sans retour ni empilement', () => {
     const { container } = renderFeed(
       [
         kill({
@@ -621,18 +601,17 @@ describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
       [medal({ tMs: 1_000, name: 'Perfect', label: 'Perfection', imageUrl: '/m.png' })],
     )
     // La rangée : en ligne, sans repli, et ce qui déborde est rogné — jamais renvoyé dessous.
-    expect(rowClass(container)).toContain('flex-nowrap')
+    expect(rowClass(container)).toContain('whitespace-nowrap')
     expect(rowClass(container)).toContain('overflow-hidden')
     expect(rowClass(container)).not.toContain('flex-col')
     // Plus AUCUN bloc empilé : ni la rangée des médailles, ni celle de l'assistance.
     expect(container.querySelector('li .pl-7')).toBeNull()
     expect(container.querySelector('li div')).toBeNull()
     expect(container.querySelectorAll('li')).toHaveLength(1)
-    // Et tout y est encore : le tueur, la victime, la médaille, l'assistant et sa part.
+    // Et tout y est encore : le tueur, la victime et la médaille dans la rangée, l'assistant et sa part au survol.
     expect(screen.getByText('Cible')).toBeTruthy()
-    expect(screen.getByText('Aidant77')).toBeTruthy()
-    expect(screen.getByText('37 %')).toBeTruthy()
     expect(screen.getByAltText('Perfection')).toBeTruthy()
+    expect(container.querySelector('li')?.getAttribute('title')).toContain('Aidant77')
   })
 
   it('la ligne de MORT NEUTRE suit la même règle', () => {

@@ -392,3 +392,28 @@ func TestDecorateKillFeed_PoseHeadshotIndependammentDeLIcone(t *testing.T) {
 		t.Errorf("kill (A,3000) sans source appariée : headshot = %v, attendu nil (non mesurable)", events[2].Headshot)
 	}
 }
+
+// TestDecorateKillFeed_PoseLaClasseDuFrag : la classe de l'icône de la source voyage avec la clé d'arme sur
+// l'event de frag — arme classée, mêlée sans arme classée par le titre, source sans classe, source sans
+// appariement (rien).
+func TestDecorateKillFeed_PoseLaClasseDuFrag(t *testing.T) {
+	events := feedFixture()
+	sources := []domain.KillSourceRaw{
+		{XUID: "A", TimeMS: 1000, SourceTag: 0x11},
+		{XUID: "B", TimeMS: 2000, SourceTag: 0x22},
+		{XUID: "A", TimeMS: 3000, SourceTag: 0x33},
+	}
+	adapter := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
+		0x11: {WeaponKey: "hinf_energy_sword", WeaponClass: domain.FragClassHeavy, ImageURL: "/a.png"},
+		0x22: {WeaponClass: domain.FragClassMelee, ImageURL: "/b.png"},
+		0x33: {ImageURL: "/c.png"},
+	}}
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), assetURL: adapter,
+	})
+	for i, want := range []string{domain.FragClassHeavy, domain.FragClassMelee, "", ""} {
+		if events[i].WeaponClass != want {
+			t.Errorf("event %d : classe %q, attendu %q", i, events[i].WeaponClass, want)
+		}
+	}
+}

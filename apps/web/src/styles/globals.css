@@ -513,19 +513,12 @@
   from { background-color: color-mix(in srgb, var(--ac-success) 52%, transparent); }
   to   { background-color: transparent; }
 }
-/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx, 46 px par
-   défaut : la distance entre les DEUX cellules d'arme de la fiche normale) : c'est la seule
-   distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
-   indiscernable d'un changement d'arme. Sur la tuile compacte (une seule cellule, plan fiches
-   compactes 2026-09-06, I6), la vignette ENTRANTE pose elle-même --replay-dx à la largeur de
-   sa cellule (48 px, `ReplayWeaponsRow`) et elle seule s'anime (replay-wswap-l) : l'échange
-   reste visible, il ne croise plus rien. */
+/* La permutation translate la vignette ENTRANTE de la largeur de sa cellule (--replay-dx, posé par
+   la vignette : 48 px sur la tuile, `ReplayWeaponsRow` ; la largeur de la colonne sur la ligne) et
+   elle seule s'anime (replay-wswap-l). Sans mouvement, un échange est indiscernable d'un
+   changement d'arme. */
 @keyframes replay-wswap-left {
   from { transform: translateX(var(--replay-dx, 46px)); opacity: 0.25; }
-  to   { transform: none; opacity: 1; }
-}
-@keyframes replay-wswap-right {
-  from { transform: translateX(calc(-1 * var(--replay-dx, 46px))); opacity: 0.25; }
   to   { transform: none; opacity: 1; }
 }
 /* Le POP du badge de lancer (le `.gic` du POC) : une apparition, pas un mouvement — le
@@ -540,7 +533,6 @@
    RESPAWN_FLASH_S dans playerCardFx.ts, qui en dérive le délai négatif de reprise. */
 .replay-flash-respawn { animation: replay-respawn-flash 1.2s ease-out 1; }
 .replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
-.replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 .replay-gpop { animation: replay-gpop 0.18s ease-out 1; }
 
 /* Le FOURREAU de TRANSLOCATION : rien que la BORDURE, avec une lumière qui la parcourt
@@ -634,7 +626,7 @@
 /* Les ÉCLAIRS de l'écran occultant (option 2a du handoff 2026-08-27) : trois décharges
    traversent la fiche de haut en bas et SCINTILLENT — un double battement bref dans un
    cycle de 2,6 s, décalé par éclair (délais négatifs posés par la fiche, calés sur
-   l'horloge de la POSE de l'écran : ReplayTeams.ZoneFxOverlay). La forme est un polygone
+   l'horloge de la POSE de l'écran : ReplayCardFx.ZoneFxOverlay). La forme est un polygone
    d'éclair découpé au clip-path ; l'encre va d'`info` au bleu profond de l'échelle de
    fréquence (`heatmap-freq-low`) — l'électricité bleue de l'objet du jeu, en tokens.
    Sous mouvement réduit ils restent éteints (opacité 0 de base) : le nuage, le voile et
@@ -654,13 +646,6 @@
   animation: replay-zone-bolt 2.6s linear infinite;
 }
 
-/* La ligne du fil des éliminations (option 2a) : un filet séparateur ENTRE `background`
-   et `border` — assez présent pour structurer la liste, jamais autant qu'une bordure de
-   carte. Classe et non style inline : la couleur composée vit à UN endroit. */
-.replay-feed-row {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, var(--background));
-}
-
 @media (prefers-reduced-motion: reduce) {
   .replay-flash-death,
   .replay-flash-respawn,
@@ -669,7 +654,6 @@
   .replay-zone-cross,
   .replay-zone-bolt,
   .replay-wswap-l,
-  .replay-wswap-r,
   .replay-gpop { animation: none; }
 }
 

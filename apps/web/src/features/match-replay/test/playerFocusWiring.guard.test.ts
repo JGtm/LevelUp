@@ -40,8 +40,19 @@ function appelDe(source: string, nom: string): string {
 describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque élément propre au joueur', () => {
   it('le panneau de joueur est branché, et la main reprend le cadrage', () => {
     const src = canvas()
-    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })')
+    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })')
     expect(src).toContain('onManualMove: onFollowStop')
+  })
+
+  // LA CAMÉRA NE DÉPEND PAS DE LA FICHE : la toile suit `cameraFollow.player`, que la page remplit depuis
+  // `followXuid` (fiche ouverte ou fermée), jamais depuis `playerFocus` (la fiche ouverte). Lire le drapeau
+  // `follow` du focus pour décider du suivi ferait de nouveau taire la caméra quand la fiche est fermée.
+  it('la caméra suit le joueur de `cameraFollow`, pas le drapeau de la fiche, et la page la remplit', () => {
+    const src = canvas()
+    expect(src).not.toMatch(/playerFocus\??\.follow/)
+    expect(src).toContain('cameraFollow.player')
+    expect(lire(fichierNomme('ReplayStage.tsx'))).toContain('cameraFollow={view.playerPanel.camera}')
+    expect(lire(fichierNomme('usePlayerPanel.ts'))).toContain('followedPlayerOf(state, players)')
   })
 
   it.each([
@@ -85,18 +96,28 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
   })
 
   it('Suivre gèle la cuisson des calques statiques comme le glisser (pas de recuisson par image)', () => {
-    expect(canvas()).toMatch(/useReplayStaticLayers\(\{[^]*?frozen: drag\.dragging,\s*follow: playerFocus\?\.follow \?\? false,/)
+    expect(canvas()).toMatch(/useReplayStaticLayers\(\{[^]*?frozen: drag\.dragging,\s*follow: cameraFollow\.player !== null,/)
   })
 
   it('la scène se relie quand le prédicat change (dépendance de la scène)', () => {
     expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,/)
+  })
+
+  // LE PION CERCLÉ de la fiche ouverte : le canvas donne le repère au moteur, la scène se relie quand il change, et
+  // le moteur le peint avec les pions (même peintre, par-dessus eux).
+  it('le pion cerclé de la fiche ouverte est donné à la scène et peint avec les pions', () => {
+    const src = canvas()
+    expect(src).toMatch(/focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer }/)
+    expect(src).toMatch(/shownProjectile, focusShown, openPlayer,/)
+    expect(src).toContain('if (openPlayer) drawOpenPlayerRing(ctx, openPlayer, view, fr, k)')
+    expect(lire(fichierNomme('useReplayPlayerFocus.ts'))).toContain('useReplayOpenPlayer(doc, focus)')
   })
 })
 
 describe('garde-rail : les actions du panneau ne touchent pas au point de vue (4.6)', () => {
   const FICHIERS = [
     'playerPanelLogic.ts', 'followLogic.ts', 'usePlayerPanel.ts', 'useReplayPlayerFocus.ts',
-    'useReplayFollow.ts', 'ReplayPlayerPanel.tsx', 'ReplayPlayerPanelList.tsx', 'ReplayFeedOrPanel.tsx',
+    'useReplayFollow.ts', 'ReplayPlayerPanel.tsx', 'ReplayPlayerPanelBody.tsx', 'ReplayFeedOrPanel.tsx',
   ]
 
   it.each(FICHIERS)('%s ne lit ni n’écrit le point de vue', (nom) => {

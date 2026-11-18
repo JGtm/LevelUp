@@ -49,6 +49,11 @@ interface AppShellState {
   authState: 'missing' | 'partial' | 'ready'
   setupState: 'no_halo_link' | 'halo_linked_no_profile' | 'profile_ready_no_sync' | 'ready'
   isBootstrapped: boolean
+  /**
+   * La page courante demande toute la largeur de la fenêtre : la coquille ne borne alors pas son contenu à
+   * `app-shell-width`. Posé et retiré par la page (`useFullWidthPage`), jamais par la route.
+   */
+  fullWidthPage: boolean
 
   /** Identité Halo liée à cette session (gamertag + xuid). Null si auth pas encore faite. */
   linkedHaloIdentity: HaloIdentitySummary | null
@@ -87,6 +92,7 @@ interface AppShellState {
   setHintsVisible: (visible: boolean) => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
+  setFullWidthPage: (fullWidth: boolean) => void
   setOauthRefusal: (code: string | null) => void
   /** Reflète une décision de mise en commun enregistrée côté serveur. */
   setPoolSharing: (state: BootstrapResponse['pool_sharing']) => void
@@ -123,6 +129,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   authState: 'missing',
   setupState: 'no_halo_link',
   isBootstrapped: false,
+  fullWidthPage: false,
   linkedHaloIdentity: null,
   activeSyncJobId: null,
   registrationMode: 'invite',
@@ -197,6 +204,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
+  setFullWidthPage: (fullWidth) => set({ fullWidthPage: fullWidth }),
   setOauthRefusal: (code) => set({ oauthRefusal: code }),
   setPoolSharing: (state) => set({ poolSharing: state }),
 }))

@@ -1,5 +1,5 @@
 /**
- * Tests — ReplayKillFeed, la ZONE DU TUEUR (gouttière après l'horloge des lignes de frag).
+ * Tests — ReplayKillFeed, la ZONE DE LA VICTIME (gouttière après l'horloge des lignes de frag).
  *
  * CE QU'ILS PROTÈGENT : la zone s'écrit dans la langue de la page, tronquée, avec son nom complet
  * en infobulle ; la gouttière n'existe que sur les lignes de FRAG et que si la carte a des zones ;
@@ -13,7 +13,7 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { useKillerZones } from '../hooks/useKillerZones'
+import { useFeedZones } from '../hooks/useFeedZones'
 import { buildFeedEntries, type MedalEvent } from '../model/killFeedLogic'
 import { testReplayDoc } from '../test/testDoc'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
@@ -44,9 +44,9 @@ const ALLEGEANCE = filmAllegianceOf(
 function kill(over: Partial<KillEvent>): KillEvent {
   return {
     tMs: 1_000,
-    xuid: 'me',
-    ally: true,
-    teamID: 0,
+    xuid: 'foe',
+    ally: false,
+    teamID: 1,
     weaponKey: '',
     weaponLabel: '',
     weaponImageUrl: '',
@@ -56,8 +56,8 @@ function kill(over: Partial<KillEvent>): KillEvent {
     assistTeamID: null,
     killerDamagePct: null,
     assistDamagePct: null,
-    victimXuid: '',
-    victimGamertag: '',
+    victimXuid: 'me',
+    victimGamertag: 'JGtm',
     ...over,
   }
 }
@@ -91,13 +91,13 @@ function renderFeed(locale: 'fr' | 'en', zoneOf?: (key: string) => string) {
   )
 }
 
-const gutters = (container: HTMLElement) => container.querySelectorAll('span.w-\\[5\\.5rem\\]')
+const gutters = (container: HTMLElement) => container.querySelectorAll('[data-feed-col="lieu"]')
 
-describe('ReplayKillFeed — zone du tueur', () => {
+describe('ReplayKillFeed — zone de la victime', () => {
   it('fr : le nom de la zone s’écrit après l’horloge, son nom complet en infobulle', () => {
     const { container } = renderFeed('fr', (key) => (key === KILL_KEY ? 'Fer à cheval' : ''))
     const zone = screen.getByText('Fer à cheval')
-    expect(zone.getAttribute('title')).toBe('Zone du tueur : Fer à cheval')
+    expect(zone.getAttribute('title')).toBe('Lieu de la victime : Fer à cheval')
     expect(zone.className).toContain('truncate')
     expect(zone.className).toContain('text-muted-foreground')
     const row = zone.closest('li') as HTMLElement
@@ -107,7 +107,7 @@ describe('ReplayKillFeed — zone du tueur', () => {
 
   it('en : même gouttière, libellé de l’infobulle dans la langue de la page', () => {
     renderFeed('en', (key) => (key === KILL_KEY ? 'Horseshoe' : ''))
-    expect(screen.getByText('Horseshoe').getAttribute('title')).toBe("Killer's zone: Horseshoe")
+    expect(screen.getByText('Horseshoe').getAttribute('title')).toBe("Victim's location: Horseshoe")
   })
 
   it('zone INCONNUE : la gouttière reste, vide — aucun texte, aucune infobulle', () => {
@@ -130,7 +130,7 @@ describe('ReplayKillFeed — zone du tueur', () => {
   })
 })
 
-describe('useKillerZones', () => {
+describe('useFeedZones', () => {
   const doc = testReplayDoc({
     tracks: [
       { slot: 1, team: 0, xuid: 'me', points: [{ t: 0, x: 5, y: 5, z: 1 }, { t: 100, x: 5, y: 5, z: 1 }], startFrame: 0, endFrame: 100 },
@@ -144,35 +144,35 @@ describe('useKillerZones', () => {
   ])
 
   it('carte sans zone : undefined (pas de gouttière)', () => {
-    const { result } = renderHook(() => useKillerZones(ENTRIES, doc, [], 'fr'))
+    const { result } = renderHook(() => useFeedZones(ENTRIES, doc, [], 'fr'))
     expect(result.current).toBeUndefined()
   })
 
-  it('nomme la zone du tueur dans la langue de la page, vide pour une ligne sans zone', () => {
-    const fr = renderHook(() => useKillerZones(ENTRIES, doc, zones, 'fr'))
+  it('nomme la zone de la victime dans la langue de la page, vide pour une ligne sans zone', () => {
+    const fr = renderHook(() => useFeedZones(ENTRIES, doc, zones, 'fr'))
     expect(fr.result.current?.(KILL_KEY)).toBe('Fer à cheval')
     expect(fr.result.current?.('inconnue')).toBe('')
-    const en = renderHook(() => useKillerZones(ENTRIES, doc, zones, 'en'))
+    const en = renderHook(() => useFeedZones(ENTRIES, doc, zones, 'en'))
     expect(en.result.current?.(KILL_KEY)).toBe('Horseshoe')
   })
 
-  it('un tueur BOT a sa zone quand la feuille le relie à sa piste, pas sans elle', () => {
+  it('une victime BOT a sa zone quand la feuille le relie à sa piste, pas sans elle', () => {
     const botDoc = testReplayDoc({
       tracks: [
         { slot: 4, team: 1, bot: 'Spark [bot]', points: [{ t: 0, x: 5, y: 5, z: 1 }, { t: 100, x: 5, y: 5, z: 1 }], startFrame: 0, endFrame: 100 },
       ] as never,
     })
-    const botEntries = buildFeedEntries([kill({ tMs: 1_000, xuid: 'bid(1.0)' })], [], 0, null)
+    const botEntries = buildFeedEntries([kill({ tMs: 1_000, victimXuid: 'bid(1.0)' })], [], 0, null)
     const key = botEntries[0].key
     const row = { xuid: 'bid(1.0)', gamertag: 'Spark', is_bot: true } as unknown as MatchScoreboardRow
-    const avec = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr', buildPlayers(botDoc, [row])))
+    const avec = renderHook(() => useFeedZones(botEntries, botDoc, zones, 'fr', buildPlayers(botDoc, [row])))
     expect(avec.result.current?.(key)).toBe('Fer à cheval')
-    const sans = renderHook(() => useKillerZones(botEntries, botDoc, zones, 'fr'))
+    const sans = renderHook(() => useFeedZones(botEntries, botDoc, zones, 'fr'))
     expect(sans.result.current?.(key)).toBe('')
   })
 
   it('document absent : gouttière vide, jamais une erreur', () => {
-    const { result } = renderHook(() => useKillerZones(ENTRIES, undefined, zones, 'fr'))
+    const { result } = renderHook(() => useFeedZones(ENTRIES, undefined, zones, 'fr'))
     expect(result.current?.(KILL_KEY)).toBe('')
   })
 })

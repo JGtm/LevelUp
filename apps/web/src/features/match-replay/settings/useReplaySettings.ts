@@ -12,7 +12,7 @@
 import { useCallback, useState } from 'react'
 
 import type { HeatmapMode, HeatmapSpan } from '../../../lib/replay/heatPaint'
-import { persistPreference, readStoredChoice, readStoredNumber } from './replayPreferences'
+import { persistPreference, PLAN_FEED_DEFAULT, PLAN_FEED_KEY, readStoredChoice, readStoredNumber } from './replayPreferences'
 import { usePersistedFlag } from './usePersistedFlag'
 import { useReplayLivesFlags, type ReplayLivesFlags } from './useReplayLivesFlags'
 import { useReplayTerrainFlags, type ReplayTerrainFlags } from './useReplayTerrainFlags'
@@ -159,6 +159,9 @@ export interface ReplaySettings extends ReplayTerrainFlags, ReplayLivesFlags {
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
+  /** Le fil des éliminations posé sur le plan (Cinéma, Plein cadre, rangée posée). AFFICHÉ par défaut (cf. PLAN_FEED_KEY). */
+  showPlanFeed: boolean
+  togglePlanFeed: () => void
   /**
    * LA LECTURE DÉMARRE-T-ELLE SEULE à l'ouverture du rejeu ? ÉTEINTE par défaut (cf.
    * AUTOPLAY_DEFAULT). Ce n'est PAS une commande de transport : basculer ce réglage ne met
@@ -180,6 +183,7 @@ export function useReplaySettings(): ReplaySettings {
   const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
+  const [showPlanFeed, togglePlanFeed] = usePersistedFlag(PLAN_FEED_KEY, PLAN_FEED_DEFAULT)
   const terrain = useReplayTerrainFlags()
   // L'état des treize calques d'avant le lot : il décide si le préréglage retenu prolonge ses défauts aux vies.
   const lives = useReplayLivesFlags({
@@ -244,6 +248,8 @@ export function useReplaySettings(): ReplaySettings {
     ...lives,
     markerColors,
     setMarkerColors,
+    showPlanFeed,
+    togglePlanFeed,
     autoPlay,
     toggleAutoPlay,
     speed,

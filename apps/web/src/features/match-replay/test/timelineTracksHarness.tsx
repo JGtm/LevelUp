@@ -53,16 +53,16 @@ export const GROUPES = [
     key: 'camp:0',
     label: 'Cobalt',
     options: [
-      { value: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
-      { value: 'bot-base', label: 'Cortana', disabled: false, title: 'Cortana' },
+      { value: 'me-1', rosterKey: 'me-1', label: 'JGtm', disabled: false, title: 'JGtm' },
+      { value: 'bot-base', rosterKey: 'bot:Cortana', label: 'Cortana', disabled: false, title: 'Cortana' },
     ],
   },
   {
     key: 'camp:1',
     label: 'Ambre',
     options: [
-      { value: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' },
-      { value: 'bot:Fantome', label: 'Fantome', disabled: true, title: 'Aucune donnée de match pour ce joueur' },
+      { value: 'foe-1', rosterKey: 'foe-1', label: 'Rival', disabled: false, title: 'Rival' },
+      { value: 'bot:Fantome', rosterKey: 'bot:Fantome', label: 'Fantome', disabled: true, title: 'Aucune donnée de match pour ce joueur' },
     ],
   },
 ]

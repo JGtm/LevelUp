@@ -35,7 +35,7 @@
  * réfléchie de `ReplayDocument` (`replay/document_shape_test.go`), qui refuse un changement de
  * forme sans montée de `SchemaVersion`.
  *
- * Les TABLES de libellés (`weaponLabels`, `abilityLabels`, `vehicleLabels`, `killEffects`) ne
+ * Les TABLES de libellés (`weaponLabels`, `abilityLabels`, `vehicleLabels`, `medalLabels`, `killEffects`) ne
  * sont pas strictes non plus, et ne peuvent pas l'être : leurs clés SONT la donnée (un
  * identifiant d'arme par entrée). Seule la nature de leur valeur y est tenue.
  *
@@ -143,6 +143,7 @@ export const replayDocumentSchema = z.strictObject({
   mapObjectives: bloc<NonNullable<ReplayDocument['mapObjectives']>>(),
   mapWeaponPads: bloc<NonNullable<ReplayDocument['mapWeaponPads']>>(),
   matchId: z.string(),
+  medalLabels: table<Valeur<'medalLabels'>>(),
   medals: calque<Elem<'medals'>>(),
   neutralDeaths: calque<Elem<'neutralDeaths'>>(),
   objectiveObjects: calque<Elem<'objectiveObjects'>>(),

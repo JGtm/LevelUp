@@ -37,6 +37,7 @@ import { HeatmapSection, type ReplayHeatmapControls } from '../ui/ReplayHeatmapS
 import { LayersSection } from './ReplaySettingsLayers'
 import { OrientationSection, type ReplayOrientationControls } from './ReplayOrientationSection'
 import { LivesSection, type ReplayLivesControls } from './ReplayLivesSection'
+import { PlanFeedSection, type ReplayPlanFeedControls } from './ReplayPlanFeedSection'
 import { ViewPresetsSection } from './ReplayViewPresets'
 import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
@@ -54,6 +55,7 @@ const PANEL_WIDTH = 416
 /** Réexportés : les sections ont déménagé, la surface d'appel du panneau n'a pas bougé. */
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
+export type { ReplayPlanFeedControls } from './ReplayPlanFeedSection'
 export type { ReplayLivesControls, ReplayLivesLayerControls, ReplayRespawnForecastControls } from './ReplayLivesSection'
 export type {
   ReplayBackgroundControls,
@@ -124,6 +126,8 @@ interface ReplayViewPanelProps {
   background: ReplayBackgroundControls
   /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
   orientation: ReplayOrientationControls
+  /** Le FIL DES ÉLIMINATIONS posé sur le plan : n'existe que là où le cadre peut le poser. */
+  planFeed: ReplayPlanFeedControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -303,6 +307,7 @@ export function ReplayViewPanel({
   background,
   lives,
   orientation,
+  planFeed,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -369,6 +374,7 @@ export function ReplayViewPanel({
       />
       <LivesSection locale={locale} lives={lives} />
       <OrientationSection locale={locale} orientation={orientation} />
+      <PlanFeedSection locale={locale} planFeed={planFeed} />
       <EffectsSection
         locale={locale}
         showShotFx={showShotFx}

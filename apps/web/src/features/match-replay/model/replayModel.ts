@@ -35,16 +35,17 @@
 import { collectKillEvents, type KillEvent } from '@/features/match-view/_momentum'
 import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 import {
   buildFeedEntries,
-  collectMedalEvents,
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
 import { buildFilmAllegiance, NO_ALLEGIANCE, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
+import { readMatchMedals } from './matchMedals'
 import { buildReplayMedia } from './replayMediaLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayMatchContext } from '../../../lib/replay/replayMatchContext'
@@ -61,6 +62,8 @@ import { replayClock, type ReplayClock } from './replayClock'
  */
 export interface ReplayModelSettings {
   friendGamertags?: readonly string[] | null
+  /** Langue des libellés de médaille lus dans le document ; la langue par défaut quand elle manque. */
+  locale?: Locale
 }
 
 /** La page de rejeu, jointe. Tous les champs sont dérivés — rien n'est mutable ici. */
@@ -91,9 +94,8 @@ export interface ReplayModel {
   marks: ReadonlyMap<string, PlayerMarkKind>
   /**
    * Le roster du film joint au scoreboard. Consommé ici par les lignes d'entrée/sortie ;
-   * `ReplayTeams` en rebâtit encore un pour son propre usage — même fonction pure, mêmes
-   * entrées, donc même résultat (mesuré, V-WEB-1 constat 2) : sa migration suit le lot des
-   * canoniques.
+   * la colonne et la rangée des équipes le reçoivent tout fait (`ReplayRosterColumn`,
+   * `ReplayTeamsRow`) : la jointure se construit une fois par page.
    */
   players: ReplayPlayer[]
   /** L'horloge de la page, ou `null` : un seul verdict pour toutes les surfaces (P0-5). */
@@ -164,7 +166,8 @@ export function buildReplayModel(
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM : le rejeu ne porte pas les kills ; la vue
   // match, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône).
   const kills: KillEvent[] = collectKillEvents(context?.highlight_events, identity)
-  const medals: MedalEvent[] = collectMedalEvents(context?.highlight_events)
+  // LES MÉDAILLES VIENNENT DU DOCUMENT, pas de la base : une seule lecture (`readMatchMedals`), sans repli.
+  const medals: MedalEvent[] = readMatchMedals(doc, settings?.locale)
 
   return {
     scoreboard,

@@ -1,21 +1,20 @@
 /**
  * playerCardFx.ts — TOUS LES EFFETS VISUELS D'UNE FICHE JOUEUR, composés en un seul endroit.
  *
- * EXTRAIT DE `ReplayTeams.tsx` LE 2026-08-27, quand les effets de ZONE (champ de réparation,
- * écran occultant, capteur adverse) et l'éclat de TRANSLOCATION ont rejoint les quatre
- * existants (mort, deux éclats d'événement, verre du camouflage, encadré du surbouclier) :
- * la composition dépassait le gabarit d'une fonction de composant. Ici elle est PURE — des
- * chaînes CSS et des noms de classe, pas de React — donc testée directement
- * (playerCardFx.test.ts), et la fiche ne garde que le rendu.
+ * Les effets sont ceux de la MORT, des deux éclats d'événement, du verre du camouflage, de
+ * l'encadré du surbouclier, des ZONES (champ de réparation, écran occultant, capteur adverse) et
+ * de l'éclat de TRANSLOCATION : leur composition dépasserait le gabarit d'une fonction de
+ * composant. Ici elle est PURE — des chaînes CSS et des noms de classe, pas de React — donc
+ * testée directement (playerCardFx.test.ts), et la fiche ne garde que le rendu.
  *
  * LES EFFETS VIVENT SUR UNE COUCHE SOUS LE CONTENU, POSÉE SUR LA BORDURE DE LA TUILE
  * (option 2a du handoff 2026-08-27) : depuis que chaque fiche est une tuile autonome
  * (bordure, coins arrondis), la couche absolue est `inset-0` AU RAYON DE LA TUILE
- * (`rounded-lg` en normal, `rounded-md` en compact — `ReplayPlayerCard.TILE_LAYOUT.layerRadius`,
- * 2026-09-07) — cadres et voiles épousent la tuile au lieu de dessiner un second anneau en retrait.
+ * (`rounded-md` — `ReplayPlayerCard.LAYER_RADIUS`) — cadres et voiles épousent la tuile au lieu de
+ * dessiner un second anneau en retrait.
  * C'est elle qui reçoit `underStyle` et la classe d'éclat ; l'INCRUSTATION au-dessus
  * (nuage et éclairs de l'écran, croix du champ, anneau du capteur, fourreau de
- * translocation) vit dans ReplayTeams.ZoneFxOverlay, à la même géométrie.
+ * translocation) vit dans ReplayCardFx.ZoneFxOverlay, à la même géométrie.
  *
  * LA GRAMMAIRE DES EFFETS, telle qu'elle s'est fixée lot après lot :
  *  - un ÉTAT continu se porte par le FOND (mort, verre, voile sombre) ou par un CADRE
@@ -123,7 +122,7 @@ const OVERSHIELD_GLOW_PCT = 60
  * avec des mini croix de pharmacie qui flottent sur la fiche ») : même grammaire de CADRE que
  * le surbouclier — un état protecteur s'encadre — au token `success`, celui de la jauge de
  * SANTÉ (cf. VitalityBar) : l'objet soigne, la couleur dit la même chose des deux côtés de la
- * fiche. Les croix, elles, vivent dans l'incrustation de zone (ReplayTeams.ZoneFxOverlay).
+ * fiche. Les croix, elles, vivent dans l'incrustation de zone (ReplayCardFx.ZoneFxOverlay).
  */
 const REPAIR_FRAME_PX = 2
 const REPAIR_GLOW_PCT = 45
@@ -131,7 +130,7 @@ const REPAIR_GLOW_PCT = 45
 /**
  * L'ÉCRAN OCCULTANT sur la fiche (demande du 2026-08-27, itérée deux fois le même jour) :
  * un NUAGE NOIR passe AU-DESSUS du contenu, légèrement — c'est l'incrustation qui le porte
- * (ReplayTeams.ZoneFxOverlay, classe `replay-zone-cloud` ; les rayures du premier essai se
+ * (ReplayCardFx.ZoneFxOverlay, classe `replay-zone-cloud` ; les rayures du premier essai se
  * confondaient avec les reflets du verre) — et la couche d'effets ne garde que le versant
  * discret : un voile sombre LÉGER (le nuage et lui s'additionnent), un flou plus doux que
  * celui du verre (l'écran cache, il ne dépolit pas), et le contour sombre. Les deux effets

@@ -8,12 +8,14 @@
  * Le calcul, lui, est éprouvé chez `scoreBannerLogic.test.ts` ; ici on éprouve le rendu.
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 
 import { buildFilmAllegiance, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
+import { COTES_RANGEE } from '../model/cardGabarit'
+import { COTES_BANDEAU_SCORE } from '../model/cotesBandeauScore'
 import { ReplayScoreBanner } from './ReplayScoreBanner'
 
 /** Une série d'équipe à manche unique. */
@@ -59,6 +61,7 @@ function renderBanner(over: Partial<Parameters<typeof ReplayScoreBanner>[0]> = {
       nowMs={65_000}
       playWindow={null}
       locale="fr"
+      placement="scene"
       {...over}
     />,
   )
@@ -197,7 +200,9 @@ describe('ReplayScoreBanner — la manche', () => {
   it('« Manche X » est en gras, à l’encre du thème, en 11 px — un repère, pas une légende', () => {
     renderBanner({ doc: docOf(ODDBALL), frame: 150 })
     const manche = screen.getByText('Manche 2')
-    expect(manche).toHaveClass('font-bold', 'text-foreground', 'text-[11px]')
+    expect(manche).toHaveClass('font-bold', 'text-foreground')
+    // La taille est une cote de l'emplacement (11 px sur la toile), plus une classe.
+    expect(manche.style.fontSize).toBe(`${COTES_BANDEAU_SCORE.scene.manchePx}px`)
     expect(manche).not.toHaveClass('text-muted-foreground')
   })
 
@@ -312,5 +317,36 @@ describe('ReplayScoreBanner — les deux langues', () => {
     })
     expect(screen.getByText('Round 2')).toBeInTheDocument()
     expect(screen.getByTitle('Round 2 of 2')).toBeInTheDocument()
+  })
+})
+
+describe('ReplayScoreBanner — les cotes viennent de l’emplacement', () => {
+  const pistes = (c: HTMLElement) => Array.from(c.querySelectorAll<HTMLElement>('[role="progressbar"]'))
+
+  it.each(['scene', 'entete', 'rangee'] as const)('%s : barres, nombres et largeur de la table des cotes', (placement) => {
+    const cotes = COTES_BANDEAU_SCORE[placement]
+    const { container } = renderBanner({ placement })
+    const racine = container.querySelector<HTMLElement>('[data-replay-score-banner]')
+    expect(racine).toHaveAttribute('data-replay-score-banner', placement)
+    expect(racine?.style.width ?? '').toBe(cotes.largeurPx === null ? '' : `${cotes.largeurPx}px`)
+    expect(racine?.style.marginBottom).toBe(`${cotes.margeBassePx}px`)
+    for (const piste of pistes(container)) expect(piste.style.height).toBe(`${cotes.barreHauteurPx}px`)
+  })
+
+  it('la lecture ne dépend pas de l’emplacement : mêmes nombres, mêmes remplissages', () => {
+    const lire = (placement: 'scene' | 'entete' | 'rangee') =>
+      pistes(renderBanner({ placement }).container).map((p) => [p.getAttribute('aria-valuetext'), p.getAttribute('aria-valuenow')])
+    const scene = lire('scene')
+    cleanup()
+    expect(lire('entete')).toEqual(scene)
+    cleanup()
+    expect(lire('rangee')).toEqual(scene)
+  })
+
+  it('en tête et en rangée, le bandeau est plus bas que sur la toile ; la rangée reprend la cellule de score de K', () => {
+    expect(COTES_BANDEAU_SCORE.entete.largeurPx).toBe(440)
+    expect(COTES_BANDEAU_SCORE.rangee.largeurPx).toBe(COTES_RANGEE.scoreCellW)
+    expect(COTES_BANDEAU_SCORE.scene.largeurPx).toBeNull()
+    expect(COTES_BANDEAU_SCORE.entete.barreHauteurPx).toBeLessThan(COTES_BANDEAU_SCORE.scene.barreHauteurPx)
   })
 })

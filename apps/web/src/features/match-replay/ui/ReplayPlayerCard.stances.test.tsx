@@ -14,7 +14,7 @@ import { render } from '@testing-library/react'
 
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
+import { ReplayRowFromBoard } from '../test/replayRowFromBoard'
 import { testReplayDoc } from '../test/testDoc'
 
 /** Les libellés qu'affichait la fiche avant le retrait, FR puis EN. */
@@ -27,8 +27,14 @@ const GENRES = ['crouch', 'slide', 'clamber', 'jumpDerived', 'sprint'] as const
 
 function documentAvecEtats() {
   return testReplayDoc({
-    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 }],
-    tracks: [{ slot: 512, team: -1, xuid: 'A', startFrame: 0, endFrame: 100, points: [{ t: 0, x: 0, y: 0 }] }],
+    roster: [
+      { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
+      { xuid: 'B', filmIndex: 1, name: 'Bravo', team: 1 },
+    ],
+    tracks: [
+      { slot: 512, team: -1, xuid: 'A', startFrame: 0, endFrame: 100, points: [{ t: 0, x: 0, y: 0 }] },
+      { slot: 513, team: -1, xuid: 'B', startFrame: 0, endFrame: 100, points: [{ t: 0, x: 1, y: 1 }] },
+    ],
     stances: GENRES.map((kind) => ({ kind, slot: 512, t0: 0, t1: 100 })),
   })
 }
@@ -39,7 +45,7 @@ describe('ReplayPlayerCard — aucun état de mouvement (décision du 2026-09-23
       const doc = documentAvecEtats()
       // Le document porte bien les cinq genres : c'est la fiche qui se tait, pas la donnée.
       expect(doc.stances).toHaveLength(GENRES.length)
-      const { container } = render(<ReplayTeamsFromBoard allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale={locale} />)
+      const { container } = render(<ReplayRowFromBoard allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale={locale} />)
       const texte = container.textContent ?? ''
       // La fiche est bien rendue (le nom est là) : l'absence ne vient pas d'une fiche vide.
       expect(texte).toContain('Alpha')

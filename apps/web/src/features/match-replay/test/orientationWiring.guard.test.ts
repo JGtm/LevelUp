@@ -5,24 +5,40 @@
  *
  * POURQUOI UN TEST DE TEXTE (même raison que `playerFocusWiring.guard`) : le canvas n'a pas de test
  * de rendu. Retirer l'une de ces liaisons laisserait tous les tests de calque verts :
- *  - sans `turns` au cadrage, la carte ne tourne plus, alors que la commande répond ;
- *  - sans `turns` à Suivre, la carte reste entière après une rotation jusqu'au prochain déplacement ;
+ *  - sans le choix retenu au cadrage, la carte ne tourne plus, alors que la commande répond ;
+ *  - sans l'orientation EFFECTIVE (celle que `useReplayView` résout, Auto comprise) à Suivre, la carte reste
+ *    entière après une rotation jusqu'au prochain déplacement ;
+ *  - UN SEUL POINT DE RÉSOLUTION : la règle Auto n'est appliquée que par `useResolvedTurns` (appelé par
+ *    `useReplayView`), et le canvas ne lit le choix retenu qu'une fois, pour le lui donner ;
  *  - un plan cuit quand son interrupteur est éteint recuit un calque invisible à chaque zoom.
  */
 import { describe, expect, it } from 'vitest'
 
-import { fichierNomme, lire } from './featureFiles'
+import { fichierNomme, lire, nomDe, sourcesDeLaFeature } from './featureFiles'
 
 const canvas = () => lire(fichierNomme('ReplayCanvas.tsx'))
 
 describe('garde-rail : orientation et plan des murs câblés dans le canvas', () => {
-  it('le cadrage prend l’orientation retenue pour la carte', () => {
-    expect(canvas()).toContain('turns: orientation.turns')
-    expect(canvas()).toMatch(/useReplayView\(\{[^}]*turns: orientation\.turns/)
+  it('le cadrage prend le choix retenu pour la carte (null = Auto)', () => {
+    expect(canvas()).toContain('turns: orientation.retained')
+    expect(canvas()).toMatch(/useReplayView\(\{[^}]*turns: orientation\.retained/)
   })
 
-  it('Suivre recadre au changement d’orientation', () => {
-    expect(canvas()).toMatch(/useReplayPlayerFocus\(\{[^}]*turns: orientation\.turns/)
+  it('Suivre recadre au changement d’orientation, sur l’orientation EFFECTIVE du cadrage', () => {
+    expect(canvas()).toMatch(/const \{[^}]*\bturns\b[^}]*\} = useReplayView\(/)
+    expect(canvas()).toMatch(/useReplayPlayerFocus\(\{[^}]*\bturns \}\)/)
+  })
+
+  it('le canvas ne lit le choix retenu qu’une fois, et le cadrage rend l’orientation effective', () => {
+    expect(canvas().match(/orientation\.retained/g)).toHaveLength(1)
+    expect(lire(fichierNomme('useReplayView.ts'))).toMatch(/useResolvedTurns\(choice, bounds, width, freeHeight\)/)
+  })
+
+  it('la règle Auto ne s’applique qu’à un endroit de la feature', () => {
+    const appelants = sourcesDeLaFeature()
+      .filter((f) => /\bautoTurns\(/.test(lire(f)))
+      .map(nomDe)
+    expect(appelants).toEqual(['useResolvedTurns.ts'])
   })
 
   it('le panneau de la vue reçoit l’orientation', () => {

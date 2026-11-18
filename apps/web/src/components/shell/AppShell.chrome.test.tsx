@@ -131,3 +131,46 @@ describe('AppShell — chrome selon la capacité', () => {
     expect(screen.queryByTestId('sidebar-nav')).not.toBeInTheDocument()
   })
 })
+
+describe('AppShell — pleine largeur d’une page', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ capabilities: null, fullWidthPage: false })
+    })
+  })
+
+  const plafond = (container: HTMLElement) => container.querySelector('.app-shell-width')
+
+  it.each([false, true])('par défaut (bureau : %s) : le contenu est dans la boîte plafonnée', (desktop) => {
+    setCapabilities(desktop)
+    const { container } = renderWithProviders(<AppShell />)
+    expect(plafond(container)).not.toBeNull()
+    expect(plafond(container)).toContainElement(screen.getByTestId('outlet'))
+  })
+
+  it.each([false, true])('drapeau posé (bureau : %s) : le contenu sort du plafond, sans remonter la page', (desktop) => {
+    setCapabilities(desktop)
+    renderWithProviders(<AppShell />)
+    const page = screen.getByTestId('outlet')
+    act(() => {
+      useAppShellStore.setState({ fullWidthPage: true })
+    })
+    expect(screen.getByTestId('outlet')).toBe(page)
+    expect(page.closest('.app-shell-width')).toBeNull()
+    act(() => {
+      useAppShellStore.setState({ fullWidthPage: false })
+    })
+    expect(screen.getByTestId('outlet')).toBe(page)
+    expect(page.closest('.app-shell-width')).not.toBeNull()
+  })
+
+  it('drapeau posé : le pied de page du site garde sa boîte plafonnée', () => {
+    setCapabilities(false)
+    renderWithProviders(<AppShell />)
+    act(() => {
+      useAppShellStore.setState({ fullWidthPage: true })
+    })
+    expect(screen.getByTestId('app-footer').closest('.app-shell-width')).not.toBeNull()
+    expect(screen.getByTestId('outlet').closest('.app-shell-width')).toBeNull()
+  })
+})

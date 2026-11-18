@@ -8,7 +8,9 @@
 //
 //  1. tout champ exporte du document STOCKE a une decision (servi, ou inscrit dans la liste
 //     datee `champsNonServis` avec sa justification) ;
-//  2. tout champ du document SERVI a une source dans le document stocke ;
+//  2. tout champ du document SERVI a une source dans le document stocke, hors la liste datee des
+//     champs servis seuls (`testutil.ReplayChampsServisSeuls`, partagee avec le garde des formes
+//     jumelles de `filmcorpus`) ;
 //  3. la projection COPIE effectivement — un document stocke rempli de valeurs distinctes
 //     se serialise a l'octet pres comme sa projection, une fois retires les champs de la
 //     liste. Un champ oublie dans un `to*` est attrape ici, pas en production.
@@ -33,6 +35,7 @@ import (
 	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/replaytext"
 	"levelup/go-api/internal/service/replayview"
+	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -61,6 +64,11 @@ var champsNonServis = map[string]string{}
 // ne DESCEND PAS dedans : les types atteignables par lui seul ne sont pas servis non plus,
 // et ce n'est pas un oubli.
 var typesNonServis = map[string]string{}
+
+// CHAMPS ET TYPES SERVIS SEULS. Les champs du document SERVI qui n'ont volontairement aucune source dans le
+// document stocke (calques resolus a la requete) vivent dans `testutil.ReplayChampsServisSeuls` et
+// `testutil.ReplayTypesServisSeuls`, la liste datee UNIQUE que lit aussi le garde des formes jumelles
+// (`filmcorpus`). Le parcours visite les types servis seuls sans leur chercher de source stockee.
 
 // racines : les trois corps de route derives du monde `games/halo_infinite/film/replay`.
 var racines = []struct {
@@ -131,7 +139,12 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 // TestChaqueChampServiAUneSource : le contrat ne promet rien que la cuisson n'ecrive.
 func TestChaqueChampServiAUneSource(t *testing.T) {
 	stockes := indexerTypes(racinesStockees()...)
+	vusTypes, vusChamps := map[string]bool{}, map[string]bool{}
 	parcourir([]reflect.Type{racines[0].servi, racines[1].servi, racines[2].servi}, nil, func(ts reflect.Type) {
+		vusTypes[ts.Name()] = true
+		if _, seul := testutil.ReplayTypesServisSeuls[ts.Name()]; seul {
+			return
+		}
 		source, ok := stockes[ts.Name()]
 		if !ok {
 			t.Errorf("type servi %q : AUCUNE source stockee — le contrat promet une forme que "+
@@ -139,12 +152,19 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 			return
 		}
 		for _, f := range champsSerialises(ts) {
+			vusChamps[ts.Name()+"."+f.Name] = true
+			if _, seul := testutil.ReplayChampsServisSeuls[ts.Name()+"."+f.Name]; seul {
+				continue
+			}
 			if _, ok := source.FieldByName(f.Name); !ok {
 				t.Errorf("%s.%s est decrit par le contrat et n'a AUCUNE source dans l'artefact — "+
 					"une promesse morte que le client lira comme optionnelle", ts.Name(), f.Name)
 			}
 		}
 	})
+	for _, pb := range testutil.ReplayServisSeulsIncoherents(vusChamps, vusTypes) {
+		t.Error(pb)
+	}
 }
 
 // TestProjectionCopieChaqueChamp : la projection est exhaustive, sur les TROIS classes de

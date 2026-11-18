@@ -195,3 +195,49 @@ function cellAfterTurns(col: number, row: number, nx: number, ny: number, turns:
       return [col, row]
   }
 }
+
+/**
+ * Le gain de surface à partir duquel un plan droit se tourne (au moins +25 %).
+ */
+export const SEUIL_TOURNER_AUTO = 0.25
+
+/**
+ * Le gain sous lequel un plan déjà tourné revient droit (+20 %). Entre les deux seuils, le
+ * plan garde sa position : c'est l'hystérésis qui évite le va-et-vient au redimensionnement.
+ */
+export const SEUIL_REVENIR_AUTO = 0.2
+
+/** Une taille en pixels : largeur et hauteur. */
+export interface Dimensions {
+  largeur: number
+  hauteur: number
+}
+
+/** Une taille exploitable : les deux côtés finis et strictement positifs. */
+function tailleValide(d: Dimensions): boolean {
+  return Number.isFinite(d.largeur) && Number.isFinite(d.hauteur) && d.largeur > 0 && d.hauteur > 0
+}
+
+/**
+ * surfaceAjustee rend la surface qu'occupe un plan une fois mis à l'échelle pour tenir ENTIÈREMENT
+ * dans la boîte, en gardant ses proportions : l'échelle est le plus petit des deux rapports.
+ */
+function surfaceAjustee(carte: Dimensions, boite: Dimensions): number {
+  const echelle = Math.min(boite.largeur / carte.largeur, boite.hauteur / carte.hauteur)
+  return carte.largeur * carte.hauteur * echelle * echelle
+}
+
+/**
+ * autoTurns rend le nombre de quarts de tour (0 ou 1) de la règle Auto. Il compare la
+ * surface du plan posé droit à celle du plan posé tourné d'un quart de tour, chacun ajusté à la
+ * boîte. Droit, il tourne quand le gain atteint `SEUIL_TOURNER_AUTO` ; tourné, il ne revient droit
+ * que sous `SEUIL_REVENIR_AUTO`. Une carte ou une boîte de taille nulle rend 0.
+ */
+export function autoTurns(carte: Dimensions, boite: Dimensions, dejaTourne: boolean): QuarterTurns {
+  if (!tailleValide(carte) || !tailleValide(boite)) return 0
+  const droit = surfaceAjustee(carte, boite)
+  const tourne = surfaceAjustee({ largeur: carte.hauteur, hauteur: carte.largeur }, boite)
+  const gain = tourne / droit - 1
+  if (dejaTourne) return gain < SEUIL_REVENIR_AUTO ? 0 : 1
+  return gain >= SEUIL_TOURNER_AUTO ? 1 : 0
+}

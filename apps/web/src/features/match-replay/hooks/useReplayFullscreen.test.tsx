@@ -1,14 +1,17 @@
 /**
- * Tests — useReplayFullscreen (le mode plein écran du rejeu).
+ * Tests — useReplayFullscreen (le plein écran du système, et la sortie du Plein cadre par Échap).
  *
  * jsdom n'implémente pas l'API Fullscreen : elle est SIMULÉE ici au plus près du navigateur —
  * `requestFullscreen` pose l'élément puis émet `fullscreenchange`, `exitFullscreen` le retire puis
  * émet de même. Ce que ces cas protègent :
- *  - le natif est demandé sur la PAGE entière, et sa chute (Échap du navigateur) ferme le mode ;
- *  - un refus ou une API absente laissent la superposition seule — c'est déjà le mode ;
- *  - un export en cours fige le mode ;
- *  - en superposition seule, Échap ferme d'abord la couche la plus intérieure, le mode ensuite —
- *    même quand la couche s'est abonnée au clavier AVANT le mode et se retire du DOM aussitôt.
+ *  - le natif est demandé sur la PAGE entière, seul, et s'ajoute à n'importe quel cadre ;
+ *  - depuis le Standard, il entre d'abord en Plein cadre, qui se referme avec lui ; un Plein cadre
+ *    ouvert autrement (F) ne se referme jamais avec le natif ;
+ *  - `fullscreenchange` est la vérité du natif : sa chute (Échap du navigateur) est suivie ;
+ *  - un refus ou une API absente ne laissent que le cadre ;
+ *  - un export en cours fige le geste ;
+ *  - en Plein cadre, Échap ferme d'abord la couche la plus intérieure, le cadre ensuite — même
+ *    quand la couche s'est abonnée au clavier AVANT le hook et se retire du DOM aussitôt.
  */
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -16,11 +19,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { requestExportLayout } from '../export/exportLayoutStore'
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
 import { ReplaySpeedMenu } from '../ui/ReplaySpeedMenu'
-import {
-  REPLAY_ESCAPE_LAYER_ATTR,
-  useReplayFullscreen,
-  type ReplayFullscreen,
-} from './useReplayFullscreen'
+import { useReplayFrame } from './useReplayFrame'
+import { REPLAY_ESCAPE_LAYER_ATTR, useReplayFullscreen } from './useReplayFullscreen'
 
 /** L'élément en plein écran natif, tel que le navigateur simulé le tient. */
 let fullscreenElement: Element | null = null
@@ -77,6 +77,13 @@ async function settle(): Promise<void> {
   })
 }
 
+/** Le cadre et le plein écran du système, câblés comme la page les câble. */
+function useBanc() {
+  const frame = useReplayFrame('match-test')
+  const fullscreen = useReplayFullscreen(frame)
+  return { frame, fullscreen }
+}
+
 let warn: ReturnType<typeof vi.spyOn>
 
 beforeEach(() => {
@@ -94,56 +101,142 @@ afterEach(() => {
   Reflect.deleteProperty(document.documentElement, 'requestFullscreen')
 })
 
-describe('useReplayFullscreen — plein écran natif', () => {
-  it('ENTRÉE : ouvre le mode et demande le plein écran de TOUTE la page', async () => {
+describe('useReplayFullscreen — le natif seul', () => {
+  it('ENTRÉE DEPUIS LE STANDARD : entre en Plein cadre et demande le plein écran de TOUTE la page', async () => {
     const request = acceptingRequest()
     installFullscreenApi(request)
-    const { result } = renderHook(() => useReplayFullscreen())
-    expect(result.current.active).toBe(false)
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    expect(result.current.fullscreen.active).toBe(false)
+    act(() => result.current.fullscreen.toggle())
     await settle()
-    expect(result.current.active).toBe(true)
+    expect(result.current.frame.frame).toBe('plein-cadre')
+    expect(result.current.fullscreen.active).toBe(true)
     expect(request).toHaveBeenCalledTimes(1)
     expect(request.mock.contexts[0]).toBe(document.documentElement)
   })
 
-  it('SORTIE AU BOUTON : ferme le mode et rend le plein écran natif', async () => {
+  it('ENTRÉE DEPUIS LE CINÉMA : le natif s’ajoute, le cadre ne change pas', async () => {
+    const request = acceptingRequest()
+    installFullscreenApi(request)
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleCinema())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(result.current.frame.frame).toBe('cinema')
+    expect(result.current.fullscreen.active).toBe(true)
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('ENTRÉE DEPUIS LE PLEIN CADRE : le natif s’ajoute, le cadre ne change pas', async () => {
     installFullscreenApi(acceptingRequest())
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleFullFrame())
+    act(() => result.current.fullscreen.toggle())
     await settle()
-    act(() => result.current.toggle())
+    expect(result.current.frame.frame).toBe('plein-cadre')
+    expect(result.current.fullscreen.active).toBe(true)
+  })
+
+  it('SORTIE AU BOUTON, ouverte depuis le Standard : rend le natif ET referme le Plein cadre', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
     await settle()
-    expect(result.current.active).toBe(false)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('standard')
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
     expect(fullscreenElement).toBeNull()
   })
 
-  it('ÉCHAP DU NAVIGATEUR : la chute du natif (`fullscreenchange`) ferme le mode', async () => {
+  it('SORTIE AU BOUTON, ouverte depuis le Cinéma : rend le natif, le cadre reste', async () => {
     installFullscreenApi(acceptingRequest())
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleCinema())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('cinema')
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('SORTIE AU BOUTON, Plein cadre ouvert par F : le natif part, le Plein cadre reste', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleFullFrame())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('plein-cadre')
+  })
+
+  it('F depuis le Plein cadre + natif : le cadre se referme, le natif reste', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    act(() => result.current.frame.toggleFullFrame())
+    expect(result.current.frame.frame).toBe('standard')
+    expect(result.current.fullscreen.active).toBe(true)
+    expect(document.exitFullscreen).not.toHaveBeenCalled()
+  })
+})
+
+describe('useReplayFullscreen — `fullscreenchange` reste la vérité du natif', () => {
+  it('ÉCHAP DU NAVIGATEUR, natif ouvert depuis le Standard : la chute referme aussi le Plein cadre', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
     await settle()
     browserLeavesFullscreen()
-    expect(result.current.active).toBe(false)
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('standard')
     // Le navigateur est déjà sorti : rien à lui rendre.
     expect(document.exitFullscreen).not.toHaveBeenCalled()
   })
 
-  it('un `fullscreenchange` étranger (une vidéo en plein écran) ne touche pas au mode', async () => {
+  it('ÉCHAP DU NAVIGATEUR, natif ajouté au Cinéma : la chute est suivie, le cadre reste', async () => {
     installFullscreenApi(acceptingRequest())
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleCinema())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    browserLeavesFullscreen()
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('cinema')
+  })
+
+  it('ÉCHAP DU NAVIGATEUR, natif ajouté au Plein cadre de F : la chute est suivie, le Plein cadre reste', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleFullFrame())
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    browserLeavesFullscreen()
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(result.current.frame.frame).toBe('plein-cadre')
+  })
+
+  it('un `fullscreenchange` étranger (une vidéo en plein écran) ne touche à rien', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
     await settle()
     const video = document.createElement('video')
     act(() => {
       fullscreenElement = video
       emitChange()
     })
-    expect(result.current.active).toBe(true)
+    expect(result.current.fullscreen.active).toBe(true)
+    expect(result.current.frame.frame).toBe('plein-cadre')
   })
 
-  it('F DEUX FOIS AVANT LA TRANSITION : la demande arrivée après la sortie est défaite', async () => {
+  it('GESTE DEUX FOIS AVANT LA TRANSITION : la demande arrivée après la sortie est défaite', async () => {
     let grant: () => void = () => {}
     const request = vi.fn(
       () =>
@@ -156,21 +249,21 @@ describe('useReplayFullscreen — plein écran natif', () => {
         }),
     )
     installFullscreenApi(request)
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
-    act(() => result.current.toggle())
-    expect(result.current.active).toBe(false)
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('standard')
     await act(async () => grant())
     await settle()
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
     expect(fullscreenElement).toBeNull()
-    expect(result.current.active).toBe(false)
+    expect(result.current.fullscreen.active).toBe(false)
   })
 
   it('QUITTER LA PAGE rend le plein écran natif', async () => {
     installFullscreenApi(acceptingRequest())
-    const { result, unmount } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result, unmount } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
     await settle()
     unmount()
     await settle()
@@ -178,69 +271,72 @@ describe('useReplayFullscreen — plein écran natif', () => {
   })
 })
 
-describe('useReplayFullscreen — le repli en superposition seule', () => {
-  it('DEMANDE REFUSÉE : le mode reste ouvert en superposition, et le refus est journalisé', async () => {
+describe('useReplayFullscreen — refus et API absente', () => {
+  it('DEMANDE REFUSÉE : le Plein cadre du geste reste, et le refus est journalisé', async () => {
     installFullscreenApi(vi.fn(() => Promise.reject(new Error('refus'))))
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
     await settle()
-    expect(result.current.active).toBe(true)
+    expect(result.current.frame.frame).toBe('plein-cadre')
+    expect(result.current.fullscreen.active).toBe(false)
     expect(warn).toHaveBeenCalledTimes(1)
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('standard')
   })
 
-  it('API ABSENTE OU INTERDITE : aucune demande, la superposition seule fait le mode', () => {
+  it('API ABSENTE OU INTERDITE : aucune demande, le geste ouvre et ferme le Plein cadre seul', () => {
     const request = acceptingRequest()
     installFullscreenApi(request, false)
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
-    expect(result.current.active).toBe(true)
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('plein-cadre')
     expect(request).not.toHaveBeenCalled()
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('standard')
   })
 
-  it('Échap ferme le mode, et le bouton aussi', () => {
+  it('API ABSENTE depuis le Cinéma : le geste ne change rien, et le suivant non plus', () => {
     installFullscreenApi(acceptingRequest(), false)
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleCinema())
+    act(() => result.current.fullscreen.toggle())
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('cinema')
+  })
+})
+
+describe('useReplayFullscreen — Échap en Plein cadre', () => {
+  it('Échap rend le cadre d’où l’on vient, et Échap hors Plein cadre ne fait rien', () => {
+    installFullscreenApi(acceptingRequest(), false)
+    const { result } = renderHook(useBanc)
     pressEscape()
-    expect(result.current.active).toBe(false)
-    act(() => result.current.toggle())
-    act(() => result.current.toggle())
-    expect(result.current.active).toBe(false)
+    expect(result.current.frame.frame).toBe('standard')
+    act(() => result.current.frame.toggleFullFrame())
+    pressEscape()
+    expect(result.current.frame.frame).toBe('standard')
+    act(() => result.current.frame.toggleCinema())
+    pressEscape()
+    expect(result.current.frame.frame).toBe('cinema')
+    act(() => result.current.frame.toggleFullFrame())
+    pressEscape()
+    expect(result.current.frame.frame).toBe('cinema')
   })
 
-  it('le basculement est annoncé comme un redimensionnement (hauteur du terrain, tiroir)', () => {
+  it('Plein cadre ouvert par le geste du système : Échap rend aussi le natif', async () => {
+    installFullscreenApi(acceptingRequest())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.fullscreen.toggle())
+    await settle()
+    pressEscape()
+    await settle()
+    expect(result.current.frame.frame).toBe('standard')
+    expect(result.current.fullscreen.active).toBe(false)
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('une couche ouverte AVANT le hook, qui se retire aussitôt : seule elle se ferme', () => {
     installFullscreenApi(acceptingRequest(), false)
-    const resize = vi.fn()
-    window.addEventListener('resize', resize)
-    const { result } = renderHook(() => useReplayFullscreen())
-    expect(resize).not.toHaveBeenCalled()
-    act(() => result.current.toggle())
-    expect(resize).toHaveBeenCalledTimes(1)
-    act(() => result.current.toggle())
-    expect(resize).toHaveBeenCalledTimes(2)
-    window.removeEventListener('resize', resize)
-  })
-})
-
-describe('useReplayFullscreen — pendant un export vidéo', () => {
-  it('le mode est désactivé : ni ouverture, ni fermeture au bouton ou à F', () => {
-    const request = acceptingRequest()
-    installFullscreenApi(request)
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
-    expect(result.current.disabled).toBe(true)
-    act(() => result.current.toggle())
-    expect(result.current.active).toBe(false)
-    expect(request).not.toHaveBeenCalled()
-    act(() => requestExportLayout(null))
-    expect(result.current.disabled).toBe(false)
-  })
-})
-
-describe('useReplayFullscreen — Échap ferme la couche la plus intérieure d’abord', () => {
-  it('une couche ouverte AVANT le mode, qui se retire aussitôt : seule elle se ferme', () => {
-    installFullscreenApi(acceptingRequest(), false)
-    // LE PIRE ORDRE : la couche s'abonne au clavier AVANT le mode, et se retire du DOM pendant
+    // LE PIRE ORDRE : la couche s'abonne au clavier AVANT le hook, et se retire du DOM pendant
     // la frappe même (comme React vidant sa mise à jour entre deux écouteurs).
     const couche = document.createElement('div')
     couche.setAttribute(REPLAY_ESCAPE_LAYER_ATTR, '')
@@ -249,35 +345,51 @@ describe('useReplayFullscreen — Échap ferme la couche la plus intérieure d�
       if (e.key === 'Escape') couche.remove()
     }
     window.addEventListener('keydown', fermerLaCouche)
-    const { result } = renderHook(() => useReplayFullscreen())
-    act(() => result.current.toggle())
+    const { result } = renderHook(useBanc)
+    act(() => result.current.frame.toggleFullFrame())
 
     pressEscape()
     expect(couche.isConnected).toBe(false)
-    expect(result.current.active).toBe(true)
+    expect(result.current.frame.frame).toBe('plein-cadre')
 
     pressEscape()
-    expect(result.current.active).toBe(false)
+    expect(result.current.frame.frame).toBe('standard')
     window.removeEventListener('keydown', fermerLaCouche)
   })
 
-  it('avec le vrai menu de vitesse : Échap le referme, puis ferme le mode', () => {
+  it('avec le vrai menu de vitesse : Échap le referme, puis rend le cadre', () => {
     installFullscreenApi(acceptingRequest(), false)
-    const mode: { current: ReplayFullscreen | null } = { current: null }
-    function Banc() {
-      mode.current = useReplayFullscreen()
-      return <ReplaySpeedMenu speed={1} onSetSpeed={() => {}} locale="fr" />
-    }
-    render(<Banc />)
-    act(() => mode.current?.toggle())
+    const { result } = renderHook(useBanc)
+    render(<ReplaySpeedMenu speed={1} onSetSpeed={() => {}} locale="fr" />)
+    act(() => result.current.frame.toggleFullFrame())
     fireEvent.click(screen.getByRole('button', { name: 'Vitesse' }))
     expect(screen.getByRole('group', { name: 'Vitesse' })).toHaveAttribute(REPLAY_ESCAPE_LAYER_ATTR)
 
     pressEscape()
     expect(screen.queryByRole('group', { name: 'Vitesse' })).toBeNull()
-    expect(mode.current?.active).toBe(true)
+    expect(result.current.frame.frame).toBe('plein-cadre')
 
     pressEscape()
-    expect(mode.current?.active).toBe(false)
+    expect(result.current.frame.frame).toBe('standard')
+  })
+})
+
+describe('useReplayFullscreen — pendant un export vidéo', () => {
+  it('le geste du système est désactivé, depuis chaque cadre : ni cadre ni natif ne bougent', () => {
+    const request = acceptingRequest()
+    installFullscreenApi(request)
+    const { result } = renderHook(useBanc)
+    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
+    expect(result.current.fullscreen.disabled).toBe(true)
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('standard')
+    expect(request).not.toHaveBeenCalled()
+    act(() => requestExportLayout(null))
+    expect(result.current.fullscreen.disabled).toBe(false)
+    act(() => result.current.frame.toggleCinema())
+    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
+    act(() => result.current.fullscreen.toggle())
+    expect(result.current.frame.frame).toBe('cinema')
+    expect(request).not.toHaveBeenCalled()
   })
 })

@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rejeu — Grande équipe, fiches compactes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0b0b}
+a{color:#d4d4d4}a:hover{color:#fafafa}
+.board *{box-sizing:border-box}
+.board{width:2928px;background:#0b0b0b;color:#fafafa;font-family:Roboto,system-ui,sans-serif;font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
+.panels{display:flex;column-gap:48px;align-items:flex-start}
+.pan{width:1440px;display:flex;flex-direction:column}
+.lab{display:flex;flex-direction:column;gap:2px;height:44px;padding:0 4px}
+.lab b{font-size:14px;font-weight:600}
+.lab small{font-size:12px;color:#9a9a9a}
+.app{--ally:#4ade80;--enemy:#f87171;--follow:#60a5fa;--shield:#60a5fa;--health:#d4d4d4;width:1440px;height:900px;background:#0b0b0b;display:flex;flex-direction:column;overflow:hidden}
+.top{height:48px;flex:none;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid #1f1f1f;background:#0f0f0f}
+.logo{font-weight:700;font-size:15px}
+.nav{display:flex;gap:20px;color:#8f8f8f}
+.nav .on{color:#fafafa}
+.avatar{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#2a2a2a}
+.head{flex:none;display:flex;align-items:center;gap:12px;height:52px;padding:0 24px}
+.head .r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.back{flex:none;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;border:1px solid #262626;background:#141414;color:#d4d4d4}
+.crumb{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb small{color:#8f8f8f;font-size:12px;white-space:nowrap}
+.crumb b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:9px;background:#141414;border:1px solid #262626}
+.seg button{all:unset;height:28px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:7px;color:#9a9a9a;font-size:12.5px;cursor:pointer}
+.seg button.on{background:#2a2a2a;color:#fafafa}
+.seg button.off{color:#5c5c5c}
+.btn{all:unset;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid #262626;background:#141414;color:#e5e5e5;font-size:13px;cursor:pointer;white-space:nowrap}
+.ibtn{all:unset;min-width:30px;height:30px;padding:0 4px;display:inline-grid;place-items:center;border-radius:8px;color:#d4d4d4;font-size:12.5px;font-weight:500;cursor:pointer}
+.dot{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.dot.a{background:var(--ally)}.dot.b{background:var(--enemy)}
+
+/* score : forme de K et de A */
+.sb{display:flex;align-items:center;gap:8px}
+.sbar{position:relative;flex:1;height:24px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.sbar.l{border-left:3px solid var(--ally)}.sbar.r{border-right:3px solid var(--enemy)}
+.sbar i{position:absolute;top:0;bottom:0}
+.sbar.l i{right:0;background:var(--ally)}.sbar.r i{left:0;background:var(--enemy)}
+.sbar b{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sbar.l b{right:0}.sbar.r b{left:0}
+.sclk{min-width:44px;text-align:center;font-size:13px;font-weight:700}
+.score{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 4px}
+.score small{text-align:center;font-size:11px;color:#7d7d7d}
+
+/* fiche compacte */
+.ft{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;height:34px;padding:0 6px;border:1px solid #1f1f1f;border-radius:6px;background:#121212;cursor:pointer}
+.ft:hover{background:#171717}
+.ft.follow{border-color:rgba(96,165,250,.6)}
+.ft .l1{display:flex;align-items:center;gap:4px;min-width:0}
+.ft .l1::before,.ft.line::before{content:"";flex:none;width:6px;height:6px;border-radius:2px;background:var(--ally)}
+.ft.b .l1::before,.ft.b.line::before{background:var(--enemy)}
+.ft b{display:block;flex:1 1 auto;min-width:0;font-size:11.5px;font-weight:500;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ft.follow b{font-weight:700}
+.ft b.bot{color:#bdbdbd}
+.ft .l2{display:flex;align-items:center;gap:5px;min-height:7px}
+.ft .jg{flex:1;min-width:0}
+.jg{display:flex;flex-direction:column;gap:1px}
+.bar{display:block;height:3px;border-radius:2px;background:rgba(255,255,255,.12);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.bar.s i{background:var(--shield)}.bar.h i{background:var(--health)}
+.flag{flex:none;display:inline-flex;color:#fafafa}
+.cap{flex:none;display:inline-grid;place-items:center;height:13px;padding:0 4px;border-radius:3px;border:1px solid #3a3a3a;font-size:9.5px;font-weight:400;color:#a3a3a3;line-height:1}
+.resp{font-size:11px;line-height:13px;color:var(--enemy);white-space:nowrap}
+.ft.dead b{opacity:.4}
+.ft.line{flex-direction:row;align-items:center;justify-content:flex-start;gap:6px;height:24px}
+.ft.line b{flex:1 1 auto}
+.ft.line .jg{flex:none;width:44px}
+
+/* panneau 1 : Cinema (K) */
+.band{flex:none;height:74px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr)) 270px repeat(6,minmax(0,1fr));column-gap:6px;margin-bottom:8px}
+.slot{display:flex;flex-direction:column;gap:6px;min-width:0}
+.vp{position:relative;border-radius:12px;background:#0f0f0f;border:1px solid #1f1f1f;overflow:hidden}
+.stage{position:absolute;inset:0}
+.mapbox{position:absolute;top:12px;bottom:12px;left:50%;transform:translateX(-50%);aspect-ratio:1526 / 1666}
+.mapbox img{position:absolute;inset:0;width:100%;height:100%;opacity:.92}
+.pin{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.pin i{display:block;width:10px;height:10px;border-radius:50%;border:2px solid #0b0b0b}
+.pin.a i{background:var(--ally)}.pin.b i{background:var(--enemy)}
+.pin.f i{width:12px;height:12px;box-shadow:0 0 0 3px #0b0b0b,0 0 0 5px var(--follow)}
+.pin span{position:absolute;top:15px;white-space:nowrap;font-size:11px;font-weight:500;padding:1px 5px;border-radius:4px;background:rgba(8,12,18,.82)}
+.hint{position:absolute;right:16px;top:12px;font-size:11px;color:#6f6f6f}
+.ofeed{position:absolute;left:16px;bottom:12px;width:350px;display:flex;flex-direction:column;z-index:2}
+.ofeed .fr{text-shadow:0 0 2px #000,0 0 6px #000,0 1px 2px #000}
+.ofeed svg{filter:drop-shadow(0 0 2px #000)}
+.fr{display:grid;grid-template-columns:30px 78px 88px 20px minmax(0,1fr);align-items:center;column-gap:6px;height:28px;font-size:12.5px;white-space:nowrap}
+.fr > span{overflow:hidden;text-overflow:ellipsis}
+.fr .t{color:#7d7d7d;font-size:11.5px}
+.fr svg{color:#9a9a9a}
+.fr .zn{color:#8a8a8a;font-size:11.5px}
+.fr.o1{opacity:.85}.fr.o2{opacity:.7}
+.ka{color:var(--ally);font-weight:500}.kb{color:var(--enemy);font-weight:500}
+.fr .me{font-weight:700}
+
+/* panneau 2 : Standard (A) */
+.page{width:1200px;margin:0 auto;display:flex;flex-direction:column}
+.head2{flex:none;height:64px;display:grid;grid-template-columns:minmax(0,1fr) 400px minmax(0,1fr);align-items:center;gap:16px}
+.head2 .l{display:flex;align-items:center;gap:12px;min-width:0}
+.head2 .r{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.vp2{height:600px;display:grid;grid-template-columns:minmax(0,1fr) 360px;border-radius:12px;background:#0f0f0f;border:1px solid #1f1f1f;overflow:hidden}
+.col{display:flex;flex-direction:column;gap:14px;padding:12px 14px;min-height:0;border-left:1px solid #1c1c1c}
+.stage2{position:relative;min-width:0}
+.sh{display:flex;align-items:center;gap:8px;height:20px;font-size:12px;font-weight:600;color:#c4c4c4}
+.sh .mut{margin-left:auto;font-weight:400;font-size:11px;color:#7d7d7d}
+.roster{display:flex;flex-direction:column}
+.pair + .pair{margin-top:3px}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:6px}
+.feed{display:flex;flex-direction:column;min-height:0;overflow:hidden;border-top:1px solid #1c1c1c;padding-top:12px}
+.feed .fr{grid-template-columns:30px 70px 70px 18px 70px minmax(0,1fr);column-gap:5px;font-size:12px}
+.fr .md{display:flex;align-items:center;gap:3px;overflow:visible}
+.fr .md i{display:block;width:13px;height:13px;border-radius:50%;background:#2f2f2f;border:1px solid #454545;flex:none}
+.fr .md small{font-size:10px;color:#9a9a9a}
+
+.tp{flex:none;height:56px;display:flex;align-items:center;gap:6px;padding:0 2px}
+.play{all:unset;width:36px;height:36px;border-radius:50%;background:#fafafa;color:#0b0b0b;display:grid;place-items:center;cursor:pointer;flex:none}
+.time{font-size:12.5px;color:#a3a3a3;margin:0 4px;white-space:nowrap}
+.time b{color:#fafafa;font-weight:600}
+.scrub{position:relative;height:30px;flex:1;margin:0 10px}
+.ticks{position:absolute;left:0;right:0;top:0;height:9px}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px}
+.ticks i.ta{background:var(--ally)}.ticks i.tb{background:var(--enemy)}
+.rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:#2a2a2a}
+.rail i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#e5e5e5}
+.dom{position:absolute;left:0;right:0;top:23px;height:3px;display:flex;border-radius:2px;overflow:hidden}
+.dom i{display:block;height:3px}
+.dom i.ta{background:var(--ally)}.dom i.tb{background:var(--enemy)}.dom i.tn{background:#3a3a3a}
+.knob{position:absolute;top:9px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.14)}
+.vsep{width:1px;height:20px;background:#262626;margin:0 4px}
+.tracks{margin-top:20px;display:flex;flex-direction:column;gap:4px;padding:8px 16px 12px;background:#121212;border:1px solid #1f1f1f;border-radius:12px}
+.trk{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;min-height:28px;font-size:12px;color:#a3a3a3}
+.scrub2{position:relative;height:30px}
+.lane{position:relative;min-height:14px}
+.lane i{position:absolute;top:2px;width:3px;height:10px;border-radius:1px}
+.lane i.ta{background:var(--ally)}.lane i.tb{background:var(--enemy)}
+.lane .now{position:absolute;top:-6px;bottom:-6px;width:1px;background:#e5e5e5;left:49.7%}
+
+/* marge : notes */
+.notes{height:336px;padding:24px 4px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-flow:column;grid-template-rows:repeat(3,auto);column-gap:48px;row-gap:14px;align-content:start}
+.nn{display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:6px}
+.nn .k{font-size:12px;font-weight:700;color:#fafafa}
+.nn p{margin:0;font-size:12px;line-height:1.45;color:#bdbdbd}
+.nn p b{color:#fafafa;font-weight:600}
+</style>
+</helmet>
+<div class="board">
+<div class="panels">
+
+<div class="pan">
+<div class="lab"><b>Panneau 1 — Cinéma, Grande équipe (structure de K)</b><small>Rangée de 6 emplacements de deux fiches par camp, score au centre, fil sur le plan</small></div>
+<div class="app">
+  <header class="top">
+    <span class="logo">LevelUp</span>
+    <nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav>
+    <span class="avatar"></span>
+  </header>
+
+  <div class="head">
+    <a class="back" href="#" aria-label="Retour"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+    <div class="crumb"><small>Vigie_Kestrel · Partie rapide · 10 nov. 2026, 21:40</small><b>Grande équipe : Capture de drapeau — Detachment</b></div>
+    <div class="r">
+      <div class="seg" aria-label="Cadre du lecteur"><button>Standard</button><button class="on">Cinéma</button><button>Plein cadre</button></div>
+      <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+      <button class="btn">Fiche</button>
+    </div>
+  </div>
+
+  <main style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 24px 8px">
+    <div class="band">
+        <div class="slot">
+          <div class="ft a follow"><span class="l1"><b class="">Vigie_Kestrel</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft a"><span class="l1"><b class="">Brindille44</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span><span class="flag" title="Porte le drapeau adverse"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft a"><span class="l1"><b class="">Quartz_Hibou</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft a"><span class="l1"><b class="">Mistral_Roux</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 46%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft a"><span class="l1"><b class="">Tamarin74</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 38%"></i></span></span></span></div>
+          <div class="ft a dead"><span class="l1"><b class="">Orage_Lent</b></span><span class="l2"><span class="resp" title="Réapparition dans 4,2 s">Réapp. 4,2 s</span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft a"><span class="l1"><b class="">Cumulus_Net</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft a"><span class="l1"><b class="">Pavane_B</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 80%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft a"><span class="l1"><b class="">Nacelle_Zed</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 22%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft a"><span class="l1"><b class="">Fenouil_9</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft a"><span class="l1"><b class="">Harpon_Vif</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 71%"></i></span></span></span></div>
+          <div class="ft a"><span class="l1"><b class="">Lichen_Bleu</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+      <div class="score" role="group" aria-label="Score">
+        <div class="sb">
+          <div class="sbar l"><i style="width: 67%"></i><b>2</b></div>
+          <div class="sclk">3:51</div>
+          <div class="sbar r"><i style="width: 33%"></i><b>1</b></div>
+        </div>
+        <small>Premier à 3 captures</small>
+      </div>
+        <div class="slot">
+          <div class="ft b"><span class="l1"><b class="">Rouille_Nord</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft b"><span class="l1"><b class="">Zephyr_Cuivre</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 60%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft b dead"><span class="l1"><b class="">Mortier_81</b></span><span class="l2"><span class="resp" title="Réapparition dans 8,9 s">Réapp. 8,9 s</span></span></div>
+          <div class="ft b"><span class="l1"><b class="">Chardon_Ocre</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft b"><span class="l1"><b class="bot">Sentinelle de garde Alpha</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span><span class="cap" title="Joueur contrôlé par l'ordinateur">bot</span></span></div>
+          <div class="ft b"><span class="l1"><b class="">Vexille_K</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 25%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft b"><span class="l1"><b class="">Pluvier_Sec</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft b"><span class="l1"><b class="">Gabarit_3</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 35%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft b"><span class="l1"><b class="">Ombrelle_Q</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft b"><span class="l1"><b class="">Tison_Rapide</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 90%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+        </div>
+        <div class="slot">
+          <div class="ft b"><span class="l1"><b class="">Cascade_Nue</b></span><span class="l2"><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></span></div>
+          <div class="ft b dead"><span class="l1"><b class="">Bruine_77</b></span><span class="l2"><span class="resp" title="Réapparition dans 1,6 s">Réapp. 1,6 s</span></span></div>
+        </div>
+    </div>
+
+    <div class="vp" style="flex: 1; min-height: 0">
+      <div class="stage">
+        <div class="mapbox">
+          <img src="/_blob/8d83755a7d648799773635fc993d5560" alt="Plan de Detachment vu du dessus">
+          <div class="pin a f" style="left: 18.0%; top: 83.7%"><i></i><span>Vigie_Kestrel</span></div>
+          <div class="pin a" style="left: 35.9%; top: 53.8%"><i></i></div>
+          <div class="pin a" style="left: 63.2%; top: 67.4%"><i></i></div>
+          <div class="pin a" style="left: 38.4%; top: 76.6%"><i></i></div>
+          <div class="pin a" style="left: 64.8%; top: 67.8%"><i></i></div>
+          <div class="pin a" style="left: 60.4%; top: 71.7%"><i></i></div>
+          <div class="pin a" style="left: 68.6%; top: 55.2%"><i></i></div>
+          <div class="pin a" style="left: 41.2%; top: 74.7%"><i></i></div>
+          <div class="pin a" style="left: 61.3%; top: 47.3%"><i></i></div>
+          <div class="pin a" style="left: 60.4%; top: 64.7%"><i></i></div>
+          <div class="pin a" style="left: 75.2%; top: 78.9%"><i></i></div>
+          <div class="pin b" style="left: 25.6%; top: 35.5%"><i></i></div>
+          <div class="pin b" style="left: 75.2%; top: 42.9%"><i></i></div>
+          <div class="pin b" style="left: 57.9%; top: 38.3%"><i></i></div>
+          <div class="pin b" style="left: 74.5%; top: 52.2%"><i></i></div>
+          <div class="pin b" style="left: 41.1%; top: 28.1%"><i></i></div>
+          <div class="pin b" style="left: 69.9%; top: 28.0%"><i></i></div>
+          <div class="pin b" style="left: 27.5%; top: 26.5%"><i></i></div>
+          <div class="pin b" style="left: 44.6%; top: 26.4%"><i></i></div>
+          <div class="pin b" style="left: 76.1%; top: 37.4%"><i></i></div>
+          <div class="pin b" style="left: 63.2%; top: 50.9%"><i></i></div>
+        </div>
+      </div>
+      <div class="ofeed" aria-label="Éliminations">
+          <div class="fr o2"><span class="t">3:30</span><span class="zn">Atrium</span><span class="ka">Mistral_Roux</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Bruine_77</span></div>
+          <div class="fr o1"><span class="t">3:36</span><span class="zn">Couloir ouest</span><span class="kb">Chardon_Ocre</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Orage_Lent</span></div>
+          <div class="fr"><span class="t">3:41</span><span class="zn">Cour sud</span><span class="ka">Quartz_Hibou</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Zephyr_Cuivre</span></div>
+          <div class="fr"><span class="t">3:45</span><span class="zn">Passerelle nord</span><span class="kb">Rouille_Nord</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Nacelle_Zed</span></div>
+          <div class="fr"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Vigie_Kestrel</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Gabarit_3</span></div>
+      </div>
+      <div class="hint">Clic sur une fiche : fiche détaillée en fenêtre (L)</div>
+    </div>
+
+    <div class="tp">
+      <button class="ibtn" aria-label="Caméra : suivre Vigie_Kestrel" title="Caméra : suivre Vigie_Kestrel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
+      <span class="vsep"></span>
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <div class="scrub">
+        <div class="ticks"><i class="ta" style="left: 3.87%"></i><i class="tb" style="left: 6.24%"></i><i class="ta" style="left: 9.46%"></i><i class="ta" style="left: 11.18%"></i><i class="tb" style="left: 15.05%"></i><i class="ta" style="left: 17.85%"></i><i class="ta" style="left: 20.86%"></i><i class="tb" style="left: 23.66%"></i><i class="ta" style="left: 26.02%"></i><i class="ta" style="left: 29.03%"></i><i class="tb" style="left: 32.26%"></i><i class="ta" style="left: 34.84%"></i><i class="ta" style="left: 36.34%"></i><i class="ta" style="left: 38.92%"></i><i class="tb" style="left: 39.14%"></i><i class="ta" style="left: 41.51%"></i><i class="tb" style="left: 43.44%"></i><i class="ta" style="left: 46.02%"></i><i class="ta" style="left: 46.67%"></i><i class="tb" style="left: 47.74%"></i><i class="ta" style="left: 49.25%"></i><i class="ta" style="left: 53.12%"></i><i class="tb" style="left: 55.05%"></i><i class="ta" style="left: 57.63%"></i><i class="ta" style="left: 60.43%"></i><i class="tb" style="left: 64.52%"></i><i class="ta" style="left: 67.10%"></i><i class="ta" style="left: 71.61%"></i><i class="tb" style="left: 75.48%"></i><i class="ta" style="left: 78.71%"></i><i class="ta" style="left: 82.58%"></i><i class="tb" style="left: 86.24%"></i><i class="ta" style="left: 90.32%"></i><i class="ta" style="left: 93.98%"></i><i class="tb" style="left: 97.85%"></i></div>
+        <div class="rail"><i style="width: 49.7%"></i></div>
+        <div class="dom"><i class="tb" style="width: 3%"></i><i class="tn" style="width: 1%"></i><i class="tb" style="width: 16%"></i><i class="tn" style="width: 6%"></i><i class="ta" style="width: 74%"></i></div>
+        <span class="knob" style="left: calc(49.7% - 6px)"></span>
+      </div>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Dézoomer">−</button><button class="ibtn" aria-label="Zoomer">+</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Capture"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+      <button class="ibtn" aria-label="Exporter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></button>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+      <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+    </div>
+  </main>
+</div>
+</div>
+
+<div class="pan">
+<div class="lab"><b>Panneau 2 — Standard, Grande équipe (structure de A et J)</b><small>Colonne de 360 px : 6 lignes de deux fiches par camp, puis le fil ; score dans l'en-tête, comme A</small></div>
+<div class="app">
+  <header class="top">
+    <span class="logo">LevelUp</span>
+    <nav class="nav"><span>Accueil</span><span class="on">Matchs</span><span>Sessions</span><span>Escouade</span><span>Tendances</span></nav>
+    <span class="avatar"></span>
+  </header>
+
+  <div class="page">
+    <div class="head2">
+      <div class="l">
+        <a class="back" href="#" aria-label="Retour"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+        <div class="crumb"><small>Vigie_Kestrel · Partie rapide · 10 nov. 2026, 21:40</small><b>Grande équipe : Capture de drapeau — Detachment</b></div>
+      </div>
+      <div class="sb" role="group" aria-label="Score">
+        <div class="sbar l"><i style="width: 67%"></i><b>2</b></div>
+        <div class="sclk">3:51</div>
+        <div class="sbar r"><i style="width: 33%"></i><b>1</b></div>
+      </div>
+      <div class="r">
+        <div class="seg" aria-label="Cadre du lecteur"><button class="on">Standard</button><button>Cinéma</button><button>Plein cadre</button></div>
+        <div class="seg" aria-label="Vue"><button class="on">2D</button><button class="off" title="Bientôt">3D</button></div>
+        <button class="btn">Fiche</button>
+      </div>
+    </div>
+
+    <div class="vp2">
+      <div class="stage2">
+        <div class="mapbox">
+          <img src="/_blob/8d83755a7d648799773635fc993d5560" alt="Plan de Detachment vu du dessus">
+          <div class="pin a f" style="left: 18.0%; top: 63.8%"><i></i><span>Vigie_Kestrel</span></div>
+          <div class="pin a" style="left: 37.3%; top: 46.9%"><i></i></div>
+          <div class="pin a" style="left: 71.3%; top: 62.2%"><i></i></div>
+          <div class="pin a" style="left: 50.1%; top: 64.6%"><i></i></div>
+          <div class="pin a" style="left: 47.3%; top: 56.8%"><i></i></div>
+          <div class="pin a" style="left: 31.5%; top: 75.0%"><i></i></div>
+          <div class="pin a" style="left: 26.7%; top: 61.0%"><i></i></div>
+          <div class="pin a" style="left: 54.5%; top: 79.7%"><i></i></div>
+          <div class="pin a" style="left: 41.7%; top: 48.6%"><i></i></div>
+          <div class="pin a" style="left: 31.5%; top: 75.9%"><i></i></div>
+          <div class="pin a" style="left: 54.7%; top: 68.3%"><i></i></div>
+          <div class="pin b" style="left: 47.7%; top: 23.9%"><i></i></div>
+          <div class="pin b" style="left: 37.1%; top: 47.4%"><i></i></div>
+          <div class="pin b" style="left: 18.7%; top: 22.1%"><i></i></div>
+          <div class="pin b" style="left: 53.7%; top: 44.0%"><i></i></div>
+          <div class="pin b" style="left: 18.8%; top: 30.1%"><i></i></div>
+          <div class="pin b" style="left: 73.0%; top: 35.9%"><i></i></div>
+          <div class="pin b" style="left: 24.0%; top: 39.6%"><i></i></div>
+          <div class="pin b" style="left: 77.5%; top: 27.5%"><i></i></div>
+          <div class="pin b" style="left: 73.9%; top: 14.8%"><i></i></div>
+          <div class="pin b" style="left: 62.5%; top: 47.9%"><i></i></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="roster">
+          <div class="sh"><span class="dot a"></span>Eagle</div>
+          <div class="pair">
+        <div class="ft a line follow"><b class="">Vigie_Kestrel</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft a line"><b class="">Brindille44</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span><span class="flag" title="Porte le drapeau adverse"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft a line"><b class="">Quartz_Hibou</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft a line"><b class="">Mistral_Roux</b><span class="jg"><span class="bar s"><i style="width: 46%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft a line"><b class="">Tamarin74</b><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 38%"></i></span></span></div>
+        <div class="ft a line dead"><b class="">Orage_Lent</b><span class="resp" title="Réapparition dans 4,2 s">Réapp. 4,2 s</span></div>
+          </div>
+          <div class="pair">
+        <div class="ft a line"><b class="">Cumulus_Net</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft a line"><b class="">Pavane_B</b><span class="jg"><span class="bar s"><i style="width: 80%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft a line"><b class="">Nacelle_Zed</b><span class="jg"><span class="bar s"><i style="width: 22%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft a line"><b class="">Fenouil_9</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft a line"><b class="">Harpon_Vif</b><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 71%"></i></span></span></div>
+        <div class="ft a line"><b class="">Lichen_Bleu</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+        </div>
+        <div class="roster">
+          <div class="sh"><span class="dot b"></span>Cobra</div>
+          <div class="pair">
+        <div class="ft b line"><b class="">Rouille_Nord</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft b line"><b class="">Zephyr_Cuivre</b><span class="jg"><span class="bar s"><i style="width: 60%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft b line dead"><b class="">Mortier_81</b><span class="resp" title="Réapparition dans 8,9 s">Réapp. 8,9 s</span></div>
+        <div class="ft b line"><b class="">Chardon_Ocre</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft b line"><b class="bot">Sentinelle de garde Alpha</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span><span class="cap" title="Joueur contrôlé par l'ordinateur">bot</span></div>
+        <div class="ft b line"><b class="">Vexille_K</b><span class="jg"><span class="bar s"><i style="width: 0%"></i></span><span class="bar h"><i style="width: 25%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft b line"><b class="">Pluvier_Sec</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft b line"><b class="">Gabarit_3</b><span class="jg"><span class="bar s"><i style="width: 35%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft b line"><b class="">Ombrelle_Q</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft b line"><b class="">Tison_Rapide</b><span class="jg"><span class="bar s"><i style="width: 90%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+          </div>
+          <div class="pair">
+        <div class="ft b line"><b class="">Cascade_Nue</b><span class="jg"><span class="bar s"><i style="width: 100%"></i></span><span class="bar h"><i style="width: 100%"></i></span></span></div>
+        <div class="ft b line dead"><b class="">Bruine_77</b><span class="resp" title="Réapparition dans 1,6 s">Réapp. 1,6 s</span></div>
+          </div>
+        </div>
+        <div class="feed" aria-label="Éliminations">
+          <div class="sh">Éliminations<span class="mut">29 · Fil complet</span></div>
+          <div class="fr wm"><span class="t">3:49</span><span class="zn">Îlot</span><span class="ka me">Vigie_Kestrel</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Gabarit_3</span><span class="md" title="Tir à la tête"><i title="Tir à la tête"></i></span></div>
+          <div class="fr wm"><span class="t">3:45</span><span class="zn">Passerelle nord</span><span class="kb">Rouille_Nord</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Nacelle_Zed</span><span class="md"></span></div>
+          <div class="fr wm"><span class="t">3:41</span><span class="zn">Cour sud</span><span class="ka">Quartz_Hibou</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Zephyr_Cuivre</span><span class="md" title="Doublé, Tireur d'élite"><i title="Doublé"></i><i title="Tireur d'élite"></i></span></div>
+          <div class="fr wm"><span class="t">3:36</span><span class="zn">Couloir ouest</span><span class="kb">Chardon_Ocre</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="ka">Orage_Lent</span><span class="md" title="Triplé, Vengeance, Grenadier"><i title="Triplé"></i><i title="Vengeance"></i><small>+1</small></span></div>
+          <div class="fr wm"><span class="t">3:30</span><span class="zn">Atrium</span><span class="ka">Mistral_Roux</span><svg width="18" height="9" viewBox="0 0 22 10" aria-hidden="true"><path d="M1 3h13l2-2h5v3h-3l-1 2h-5l-1 3h-3l1-3H1z" fill="currentColor"></path></svg><span class="kb">Bruine_77</span><span class="md"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tp">
+      <button class="ibtn" aria-label="Caméra : suivre Vigie_Kestrel" title="Caméra : suivre Vigie_Kestrel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l5-3v10l-5-3z"></path><rect x="2" y="6" width="13" height="12" rx="2"></rect></svg></button>
+      <button class="ibtn" aria-label="Son"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg></button>
+      <span class="vsep"></span>
+      <button class="play" aria-label="Lecture"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg></button>
+      <button class="ibtn" aria-label="Reculer de 10 secondes">−10</button>
+      <button class="ibtn" aria-label="Avancer de 10 secondes">+10</button>
+      <span class="time"><b>3:51</b> / 7:45</span>
+      <button class="ibtn" aria-label="Vitesse">1×</button>
+      <span style="flex: 1"></span>
+      <button class="ibtn" aria-label="Dézoomer">−</button><button class="ibtn" aria-label="Zoomer">+</button>
+      <span class="vsep"></span>
+      <button class="ibtn" aria-label="Capture"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+      <button class="ibtn" aria-label="Exporter"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg></button>
+      <button class="ibtn" aria-label="Plein écran du système"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+      <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Vue</button>
+    </div>
+
+    <div class="tracks">
+      <div class="trk"><span>Lecture</span><div class="scrub2"><div class="rail"><i style="width: 49.7%"></i></div><span class="knob" style="left: calc(49.7% - 6px)"></span></div></div>
+      <div class="trk"><span>Vigie_Kestrel</span><div class="lane"><i class="ta" style="left: 3.87%"></i><i class="ta" style="left: 23.66%"></i><i class="ta" style="left: 41.51%"></i><i class="ta" style="left: 53.12%"></i><i class="ta" style="left: 71.61%"></i><i class="ta" style="left: 86.24%"></i><span class="now"></span></div></div>
+      <div class="trk"><span>Coéquipiers</span><div class="lane"><i class="ta" style="left: 3.87%"></i><i class="ta" style="left: 9.46%"></i><i class="ta" style="left: 15.05%"></i><i class="ta" style="left: 20.86%"></i><i class="ta" style="left: 26.02%"></i><i class="ta" style="left: 32.26%"></i><i class="ta" style="left: 36.34%"></i><i class="ta" style="left: 39.14%"></i><i class="ta" style="left: 43.44%"></i><i class="ta" style="left: 46.67%"></i><i class="ta" style="left: 49.25%"></i><i class="ta" style="left: 55.05%"></i><i class="ta" style="left: 60.43%"></i><i class="ta" style="left: 67.10%"></i><i class="ta" style="left: 75.48%"></i><i class="ta" style="left: 82.58%"></i><i class="ta" style="left: 90.32%"></i><i class="ta" style="left: 97.85%"></i><span class="now"></span></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+
+<div class="notes">
+    <div class="nn"><span class="k">N-1</span><p><b>Fiche compacte.</b> Nom (points de suspension s'il est trop long), puis deux jauges : bouclier (bleu) au-dessus de la santé (gris), pastille de camp devant le nom, comme K (6 px ici). Fond, bordure et rayon de K, sans bordure de couleur. Les deux panneaux emploient la même fiche : sur deux lignes dans la rangée du Cinéma, sur une ligne dans la colonne du Standard.</p></div>
+    <div class="nn"><span class="k">N-2</span><p><b>Masqué.</b> Frags / Morts / Assistances (F / M / A), arme, grenades et équipement ne sont plus dans la fiche : ils restent dans la fiche du joueur, un clic plus loin (M).</p></div>
+    <div class="nn"><span class="k">N-3</span><p><b>Cotes du panneau 1 (Cinéma).</b> Corps de K : 1440 − 2 × 24 = 1392 px. Moins le bandeau de score (270 px, au centre, comme K) et 12 écarts de 6 px (72 px) : 1050 px pour 12 emplacements, soit <b>87,5 px par fiche</b> (K : 4 fiches par camp, 8 au total ; ici 6 emplacements par camp). Nom : 87,5 − 2 (bordures) − 12 (marges) − 10 (pastille et écart) = 63,5 px, environ 9 caractères avant les points de suspension. Hauteur d'une fiche : 34 px ; rangée : 2 × 34 + 6 = <b>74 px</b>, contre 58 px dans K : <b>+16 px</b>. Le plan perd 16 px de haut : zone de lecture de 670 px (K) à 654 px, soit −2,4 %.</p></div>
+    <div class="nn"><span class="k">N-4</span><p><b>Cotes du panneau 2 (Standard).</b> Colonne de A : 600 px de lecteur − 2 (bordure) − 24 (marges) = 574 px utiles. Contenu : 2 camps × (20 d'en-tête + 6 lignes de 24 + 5 écarts de 3 = 179) = 358, + 2 écarts de 14 entre blocs = 28, + fil (filet 1, marge 12, titre 20, 5 × 28 = 173) = <b>559 px</b>. Reste 15 px, sans défilement. Fiche : (332 − 6) / 2 = 163 px de large, 24 px de haut. Le score reste dans l'en-tête de la page, comme dans A.</p></div>
+    <div class="nn"><span class="k">N-5</span><p><b>États, dans les deux panneaux.</b> Plein : jauges pleines. Bouclier entamé : barre bleue raccourcie. Santé entamée sans bouclier : barre bleue vide, barre grise raccourcie. Éliminé : fiche à 40 % et « Réapp. 5,8 s » en rouge à la place des jauges (K écrit « Réapparition 5,8 s », trop long ici). Suivi : bordure bleue et nom en gras, comme K. Porteur : drapeau à droite des jauges (<b>proposé</b>, aucun tableau validé n'a de marque). Bot : pastille « bot » (<b>proposé</b>). Nom long : « Sentinelle de garde Alpha » est tronqué.</p></div>
+    <div class="nn"><span class="k">N-6</span><p><b>Clic.</b> Toute la fiche est cliquable : la fiche du joueur s'ouvre comme dans K, L et J (fenêtre sous la fiche en Cinéma et en Plein cadre, colonne remplacée par la fiche en Standard).</p></div>
+    <div class="nn"><span class="k">N-7</span><p><b>Fil de 5 lignes.</b> Ordre : instant, lieu (celui de la victime), tueur, arme, victime. Panneau 1 : posé sur le plan comme dans K (350 px, plus récente en bas, deux plus anciennes estompées, ligne nue). Panneau 2 : dans la colonne comme dans A (plus récente en tête, 28 px), avec les médailles en fin de ligne (deux pictogrammes au plus, puis « +N »).</p></div>
+    <div class="nn"><span class="k">N-8</span><p><b>Portée.</b> Ces deux formes ne valent que pour la Grande équipe (12 contre 12). Les autres effectifs gardent les fiches de K et les lignes de A, sans changement.</p></div>
+    <div class="nn"><span class="k">N-9</span><p><b>Ce qui ne tient pas.</b> Panneau 2 : la fiche sur deux lignes du panneau 1 (34 px) ne tient pas dans la colonne : 2 × (20 + 6 × 34 + 5 × 3) + 28 + 173 = 679 px pour 574 px utiles, 105 px de trop. D'où la fiche sur une ligne de 24 px. Panneau 1 : un nom de plus de 9 caractères environ est tronqué. Cadre de 900 px : dans le panneau 2, la page de A (1180 px) est coupée sous les pistes du match.</p></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2928,"height":1280}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

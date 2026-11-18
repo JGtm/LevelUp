@@ -85,3 +85,35 @@ func (v VehicleWeapon) MarshalJSON() ([]byte, error) {
 func (v *VehicleWeapon) UnmarshalJSON(b []byte) error {
 	return i18n.UnmarshalFlat(b, (*vehicleWeaponWire)(v))
 }
+
+type (
+	medalLabelWire       MedalLabel
+	medalDescriptionWire MedalDescription
+)
+
+// Une langue sans texte n'est pas émise : une médaille que le référentiel ne nomme pas dans une
+// langue laisse le lecteur replier sur la langue par défaut.
+var (
+	medalLabelFlat       = i18n.FlatLayout{After: i18n.FlatEnd, OmitEmpty: true}
+	medalDescriptionFlat = i18n.FlatLayout{OmitEmpty: true}
+)
+
+// MarshalJSON écrit les langues à plat (cf. l'en-tête du fichier).
+func (m MedalLabel) MarshalJSON() ([]byte, error) {
+	return i18n.MarshalFlat(medalLabelWire(m), medalLabelFlat)
+}
+
+// UnmarshalJSON lit les langues à plat.
+func (m *MedalLabel) UnmarshalJSON(b []byte) error {
+	return i18n.UnmarshalFlat(b, (*medalLabelWire)(m))
+}
+
+// MarshalJSON écrit les langues à plat (cf. l'en-tête du fichier).
+func (d MedalDescription) MarshalJSON() ([]byte, error) {
+	return i18n.MarshalFlat(medalDescriptionWire(d), medalDescriptionFlat)
+}
+
+// UnmarshalJSON lit les langues à plat.
+func (d *MedalDescription) UnmarshalJSON(b []byte) error {
+	return i18n.UnmarshalFlat(b, (*medalDescriptionWire)(d))
+}

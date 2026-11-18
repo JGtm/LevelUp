@@ -22,12 +22,18 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { HeatmapMode } from '../../../lib/replay/heatPaint'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
+/** Le coin gauche du bloc où la légende se pose : en bas (défaut), ou en haut quand le bas porte le fil des éliminations. */
+export type HeatmapLegendCorner = 'bas' | 'haut'
+
+const CORNER_CLASS: Record<HeatmapLegendCorner, string> = { bas: 'bottom-2', haut: 'top-2' }
+
 interface ReplayHeatmapLegendProps {
   locale: ReplayLocale
   mode: HeatmapMode
+  corner?: HeatmapLegendCorner
 }
 
-export function ReplayHeatmapLegend({ locale, mode }: ReplayHeatmapLegendProps) {
+export function ReplayHeatmapLegend({ locale, mode, corner = 'bas' }: ReplayHeatmapLegendProps) {
   const t = REPLAY_TEXT[locale]
   // Rampe d'INTENSITÉ (2026-08-18) : bleu -> rouge -> violet, le violet ne peignant que le
   // haut de l'échelle. La grandeur mesurée reste une intensité NEUTRE (du temps, un nombre de
@@ -37,7 +43,7 @@ export function ReplayHeatmapLegend({ locale, mode }: ReplayHeatmapLegendProps) 
   const arrets = heatmapRampTokens('intensity').map(tokenCssVar)
   return (
     <div
-      className="absolute bottom-2 left-3 rounded border border-border bg-card/85 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground"
+      className={`absolute ${CORNER_CLASS[corner]} left-3 rounded border border-border bg-card/85 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground`}
       title={t.heatLegendHint}
     >
       <div className="font-medium text-foreground">{t.heatmapMode[mode]}</div>

@@ -13,71 +13,25 @@
 import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { FeedLinesText } from './feedLines.i18n'
+import type { EquipmentUsageText } from './equipmentUsage.i18n'
+import type { FramesText } from './frames.i18n'
 import type { LivesText } from './lives.i18n'
+import type { PlayerInstantText } from './playerInstant.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { RespawnForecastText } from './respawnForecast.i18n'
+import type { RosterText } from './roster.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
  * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
  * fiches compactes) : un compte `mag / res` (arme à chargeur), une charge restante en pour-cent
  * (familles plasma / mêlée / énergie), ou « pleines » (emplacement jamais écrit — flux
- * différentiel, le plein est la valeur par défaut). Les mêmes trois natures que `AmmoCell`.
+ * différentiel, le plein est la valeur par défaut).
  */
 export type AmmoHint =
   | { kind: 'count'; mag: number; res?: number }
   | { kind: 'charge'; pct: number }
   | { kind: 'full' }
-
-/**
- * « Usage d'équipements, par joueur » (Vue match, onglet « Armes et terrain ») : la grille compte,
- * sur tout le match, ce que le rejeu ne montre qu'image par image.
- *
- * `infoByPlayer` dit ce que la grille compte ; le RÉPULSEUR n'a pas de colonne (une colonne vide
- * se lirait « zéro usage »), et aucun texte ne dit ce que la grille ne compte pas (aucun inconnu à
- * l'écran, garde `lib/i18n/noUnknownMentions.guard.test.ts`).
- *
- * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
- * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
- * divergerait au premier ajout du manifeste.
- */
-export interface EquipmentUsageText {
-  title: string
-  /** Titre de la carte : la grille des joueurs, une colonne par famille d'équipement. */
-  viewByPlayer: string
-  /** Aide du titre : ce que la grille compte et sur quel périmètre (une ou deux phrases). */
-  infoByPlayer: string
-  /** Légende : les trois issues d'une pile, puis les tractions de grappin. */
-  legendUsed: string
-  legendKept: string
-  legendDropped: string
-  legendGrapple: string
-  /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
-  gridTipFmt: (player: string, column: string, value: string) => string
-  /** En-tête de la colonne des tractions de grappin (la seule ACTIVATION de capacité attribuée). */
-  groupGrapple: string
-  /**
-   * LES TROIS ISSUES D'UNE PILE (P1), formatées pour l'infobulle d'UN segment — pas pour un
-   * en-tête de colonne (celui-ci reste `equipmentFamilyLabel`). Le total de la cellule
-   * s'écrit « N objets pris », JAMAIS « ramassés » (P12) : `outcomeTotalTakenFmt`.
-   */
-  outcomeUsedFmt: (count: number) => string
-  outcomeKeptFmt: (count: number) => string
-  outcomeDroppedFmt: (count: number) => string
-  outcomeTotalTakenFmt: (count: number) => string
-  /**
-   * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
-   * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
-   * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
-   * `match-view/i18n`) pour la même raison que le reste du vocabulaire d'équipement : les
-   * noms de famille appartiennent au dictionnaire du rejeu, `match-view` l'importe (même sens
-   * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
-   */
-  killBadgeFmt: Record<'camo' | 'overshield', (kills: number) => string>
-  /** Infobulle du badge : la réserve de l'état actif (source non distinguée, bornes
-   * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
-  killBadgeHint: string
-}
 
 export interface ReplayText {
   title: string
@@ -238,6 +192,12 @@ export interface ReplayText {
   killFeedFocusHint: string
   /** Le panneau de joueur (lot 4) : ses textes vivent dans `playerPanel.i18n.ts`. */
   playerPanel: PlayerPanelText
+  /** Les trois cadres du lecteur : `frames.i18n.ts`. */
+  frames: FramesText
+  /** Les joueurs dans la colonne et la rangée : `roster.i18n.ts`. */
+  roster: RosterText
+  /** La fiche du joueur à l'instant lu : `playerInstant.i18n.ts`. */
+  playerInstant: PlayerInstantText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
@@ -247,16 +207,14 @@ export interface ReplayText {
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
-  /** Infobulle de la zone nommée où se trouvait le tueur, à son instant : le nom complet. */
-  killFeedKillerZone: (zone: string) => string
+  /** Infobulle de la zone nommée où se trouvait la victime, à son instant : le nom complet. */
+  killFeedVictimZone: (zone: string) => string
   /**
    * L'ASSISTANCE EST UN PICTOGRAMME, PAS UN MOT (décision utilisateur du 16/08) : le fil
    * n'écrit plus « assisté par », il pose une marque puis le nom. Ce libellé est ce que la
    * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
    */
   killFeedAssistMark: string
-  /** Part de participation de l'assistant, telle que la ligne l'écrit : « 37 % ». */
-  killFeedAssistShare: (pct: number) => string
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
   killFeedDeathHint: string
@@ -346,7 +304,7 @@ export interface ReplayText {
   /** Dit pourquoi la vue est « Personnalisé » : un calque a été basculé à la main. */
   viewCustomNote: string
   /**
-   * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture, touche F) : un bouton à état, comme
+   * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture : le plein écran du système ; la touche F ouvre le Plein cadre) : un bouton à état, comme
    * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le
    * raccourci entre parenthèses, comme les autres commandes de la barre.
    */
@@ -903,7 +861,6 @@ export interface ReplayText {
    */
   loadoutBirth: string
   loadoutAhead: string
-  weaponSecondaryHint: string
   /**
    * LES REPORTS DE LA TUILE COMPACTE (plan fiches compactes 2026-09-06, I9) : ce qui quitte la
    * tuile passe en infobulle AVEC SA VALEUR. `weaponStowedFmt` nomme l'arme rangée (la seconde
@@ -957,7 +914,7 @@ export interface ReplayText {
   /**
    * État ACTIF d'un équipement, par FAMILLE mesurée (jamais un libellé libre) : le
    * camouflage rend la fiche vitreuse, le surbouclier l'encadre d'or (cahier des
-   * charges Notion 21.1, rendu par `ReplayTeams.tsx`). La clé est l'identifiant
+   * charges Notion 21.1, rendu par `ui/ReplayPlayerCard.tsx`). La clé est l'identifiant
    * stable publié par le document (`fam`) — une famille inconnue n'a pas de libellé et
    * ne reçoit aucun effet.
    */
@@ -996,7 +953,6 @@ export interface ReplayText {
   equipmentUsage: EquipmentUsageText
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
-  ammoDrawnHint: string
   drawnUnknown: string
   /**
    * Lecture d'inventaire VIDE (schéma 19, `inventory[].empty`). Le LIBELLÉ se lit à l'écran,
@@ -1019,7 +975,6 @@ export interface ReplayText {
   inventoryEmptyHint: string
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
-  gaugeLabel: string
   /**
    * L'EXPORT HORS TEMPS REEL — la commande, son dialogue, et ce qu'il annonce pendant qu'il
    * calcule.

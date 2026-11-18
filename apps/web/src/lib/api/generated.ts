@@ -9418,6 +9418,7 @@ export interface components {
             /** Format: int64 */
             victim_team_id?: number;
             victim_xuid?: string;
+            weapon_class?: string;
             weapon_image_tinted?: boolean;
             weapon_image_url?: string;
             weapon_key?: string;
@@ -10223,6 +10224,10 @@ export interface components {
             /** Format: int64 */
             unknownName: number;
         };
+        MedalDescription: {
+            en?: string;
+            fr?: string;
+        };
         MedalDigestEntry: {
             all_medals: components["schemas"]["MedalDigestItem"][] | null;
             /** Format: double */
@@ -10260,6 +10265,25 @@ export interface components {
             sprite_width?: number;
             /** Format: int64 */
             total_count: number;
+        };
+        MedalLabel: {
+            description?: components["schemas"]["MedalDescription"];
+            difficulty?: string;
+            en?: string;
+            fr?: string;
+            img?: string;
+            sprite?: components["schemas"]["MedalSprite"];
+        };
+        MedalSprite: {
+            /** Format: int64 */
+            height: number;
+            /** Format: int64 */
+            left: number;
+            sheet: string;
+            /** Format: int64 */
+            top: number;
+            /** Format: int64 */
+            width: number;
         };
         MedalSummaryItem: {
             category: string;
@@ -11855,6 +11879,9 @@ export interface components {
             mapObjectives?: components["schemas"]["MapObjectives"];
             mapWeaponPads?: components["schemas"]["MapWeaponPads"];
             matchId: string;
+            medalLabels?: {
+                [key: string]: components["schemas"]["MedalLabel"];
+            };
             medals?: components["schemas"]["Medal"][] | null;
             neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
             objectiveObjects?: components["schemas"]["ObjectiveObjectLife"][] | null;

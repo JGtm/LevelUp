@@ -2,11 +2,8 @@
  * ReplayVitality — CE QU'UNE FICHE DIT DE L'ÉTAT DU JOUEUR : ses deux jauges quand il vit, son
  * encadré « Éliminé » quand il est mort.
  *
- * EXTRAIT DE `ReplayTeams.tsx` LE 2026-08-18 (lot R3, item R3.7) : la fiche a gagné sa
- * variante COMPACTE, et le fichier franchissait le seuil de 500 lignes du dépôt. La découpe
- * tombe sur une frontière nette — ces deux composants sont les seuls à ne RIEN savoir de la
- * mise en page de la fiche : ils reçoivent une lecture, ils rendent une barre. Aucune règle
- * n'a changé au passage.
+ * Ces deux composants sont les seuls à ne RIEN savoir de la mise en page de la fiche : ils
+ * reçoivent une lecture, ils rendent une barre.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react'
 
@@ -127,7 +124,7 @@ interface EliminatedProps {
 
 /**
  * L'ENCADRÉ PAR HAUTEUR DE CORPS — une table fermée sur la cote structurelle du gabarit
- * (`cardGabarit.ts`). 35 : la ligne d'aujourd'hui, nœud pour nœud (fixation 4v4). 31 : la
+ * (`cardGabarit.ts`). 35 : la ligne unique du bloc « À l'instant » (`ReplayPlayerNow`). 31 : la
  * pile à deux lignes de la tuile compacte. Deux composants plutôt qu'un seul truffé de
  * conditions : le DOM du premier ne doit pas bouger d'un attribut.
  */

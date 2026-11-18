@@ -23,6 +23,7 @@ import { prepareStage } from './canvasStage'
 import { drawGeometryLayer, drawKillFxLayer, drawShotsLayer } from './replayDraw'
 import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
+import { drawOpenPlayerRing } from './openPlayerRing'
 import { drawZoneStates } from './zoneStatesLayer'
 import {
   bindPainters,
@@ -195,7 +196,7 @@ function trackPainters(
 ): Painters<'poses-equipement' | 'trajectoires' | 'failles'> {
   const { doc, view, locale, reducedMotion, zRange, timing, placements } = s
   const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot } = s.identity
-  const { shownAtSlot, shown: focusShown } = s.focus
+  const { shownAtSlot, shown: focusShown, openPlayer } = s.focus
   const { vehicles, killFocus } = s.layers
   const { floorEdge, shot: shotColor, wall: wallInk, rift: riftInk, shroud: shroudInk } = s.ink
   const { self: selfInk, labelStroke } = s.ink
@@ -215,7 +216,7 @@ function trackPainters(
         // FRONTIÈRE : objet lâché à la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
         { colorOfSlot: colorOfSlotOrLast, neutral: floorEdge, wall: wallInk, rift: riftInk, shroud: shroudInk },
       ),
-    trajectoires: (_c, fr, k) =>
+    trajectoires: (_c, fr, k) => {
       drawTracksLayer(ctx, doc.tracks, view, {
         colorOfSlot,
         ink: floorEdge,
@@ -234,7 +235,10 @@ function trackPainters(
         // BORNAGE HORS CADRE : la flèche porte le nom ET la distance ; le texte est résolu ICI
         // (langue de la toile), le calque ne connaît aucune locale.
         offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
-      }),
+      })
+      // LE PION CERCLÉ de la fiche ouverte, par-dessus les pions : l'anneau ne dit rien d'autre que « celui-ci ».
+      if (openPlayer) drawOpenPlayerRing(ctx, openPlayer, view, fr, k)
+    },
     // LES FAILLES, AU-DESSUS DES PISTES : la station et le passage du translocateur.
     failles: (_c, fr, k) =>
       drawRiftLayer(

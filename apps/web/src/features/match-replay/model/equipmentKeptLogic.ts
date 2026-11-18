@@ -8,8 +8,9 @@
  * pont slot -> joueur -> équipe mesure (le fichier voisin), de l'autre ce que la TROISIÈME ISSUE
  * ajoute par-dessus (E2, décision utilisateur 2026-09-09, amende P1).
  *
- * `kept` se DÉRIVE, il n'est JAMAIS lu d'un canal direct : `max(0, taken - utilisé - lâché)`
- * par famille de `KEPT_FAMILIES`, où `taken` vient de `equipmentChanges` (kind `taken`).
+ * `kept` se DÉRIVE, il n'est JAMAIS lu d'un canal direct : `keptOf(taken, utilisé, lâché)` =
+ * `max(0, taken - utilisé - lâché)` par famille de `KEPT_FAMILIES`, où `taken` vient de
+ * `equipmentChanges` (kind `taken`), lu par `readEquipmentChanges`.
  *
  * # LE CÔTÉ « UTILISÉ » A DEUX LECTURES (lot 5.7, aligné sur le Go `us6`)
  *
@@ -56,6 +57,7 @@
 import { REPLAY_NO_ABILITY_RANK } from '@/lib/api/types'
 
 import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
+import { bump } from './equipmentGestures'
 import { droppedFamilyOf, EPISODE_FAMILY_OF_POWERUP } from './gameChangers'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { EquipmentUsageTally } from './equipmentUsageLogic'
@@ -191,58 +193,102 @@ export function equipmentChangeFamilyOf(
 }
 
 /**
- * deriveKeptFromTaken — LA TROISIÈME ISSUE, en une passe sur `equipmentChanges` : collecte les
- * prises (`taken`) ET les consommations (`spent`) par famille CANONIQUE et par compteur (via
- * `tallyOfSlotAt`, le propriétaire de la VIE qui occupe le slot à l'instant du geste), pose
- * `spent` sur le tally (canal désormais EXPOSÉ, jumeau de `SpentByFamily` côté Go — la colonne
- * « utilisé » de la vue l'emploie aussi, via `usageUsedOf`), puis dérive
- * `tally.kept[famille] = max(0, taken - usageUsedOf(famille) - lâché)` une fois `episodes` /
- * `deployed` / `dropped` / `spent` déjà posés pour ce compteur (règle validée par E0.4, écart
- * médian 0,00 %).
- *
- * Rend le compte des objets PRIS dont le rang n'a AUCUNE famille dans CE film (réserve du MATCH,
- * `EquipmentUsage.unnamedTaken` — jamais un porteur mis en cause pour une non-mesure).
+ * Un changement d'équipement retenu par le bilan : une PRISE (`taken`) ou une CONSOMMATION
+ * (`spent`) de charge, avec sa famille canonique (vocabulaire `KEPT_FAMILIES`), le slot du porteur
+ * et l'image où le film l'écrit (`t`).
  */
-export function deriveKeptFromTaken(
+export interface DatedEquipmentChange {
+  kind: 'taken' | 'spent'
+  family: string
+  slot: number
+  t: number
+}
+
+/**
+ * readEquipmentChanges — LA SEULE LECTURE DATÉE de `equipmentChanges` : chaque prise et chaque
+ * consommation que le bilan retient, dans l'ordre du document, plus le compte des objets PRIS dont
+ * le rang n'a AUCUNE famille dans CE film (réserve du MATCH, `EquipmentUsage.unnamedTaken` — jamais
+ * un porteur mis en cause pour une non-mesure). Le total du match et la lecture à l'instant lisent
+ * ce même résultat.
+ *
+ * Une prise dont la table ou la famille manque (artefact ancien) rejoint la réserve — repli
+ * EXPLICITE, jamais une famille devinée par une racine de libellé. Une prise labellisée
+ * mais hors bilan (grappin, propulseur, répulseur) est une exclusion PRODUIT : elle se tait.
+ * Une consommation sur chaîne de compteur trouée (`gap`) n'est pas une identité fiable (même garde
+ * que le Go, `Gap > 0` — `SpentUnreliableFrom`) ; son rang est sur `from`, jamais sur `r` (vide sur
+ * un `spent`) ; celle du mur se lit sur SES poses, jamais ici (cf. `usageUsedOf`).
+ */
+export function readEquipmentChanges(
   doc: Pick<ReplayDocumentReady, 'equipmentChanges' | 'abilityLabels'>,
-  tallyOfSlotAt: (slot: number, t0: number) => EquipmentUsageTally,
-): number {
-  // LES PRISES, par compteur ET par famille CANONIQUE — un scratch LOCAL, jamais posé sur
-  // `EquipmentUsageTally` : ce n'est pas une grandeur affichée, seulement l'entrée du calcul
-  // de `kept` ci-dessous.
-  const takenByTally = new Map<EquipmentUsageTally, Record<string, number>>()
+): { changes: DatedEquipmentChange[]; unnamedTaken: number } {
+  const changes: DatedEquipmentChange[] = []
   let unnamedTaken = 0
   for (const c of doc.equipmentChanges) {
     if (c.kind === 'taken') {
       const { family, named } = equipmentChangeFamilyOf(doc.abilityLabels, c.r)
       if (!named) {
-        // La TABLE ou la FAMILLE manque (artefact ancien) : réserve « sans famille connue »
-        // (P13 amendée), au niveau du match — jamais un porteur mis en cause pour une
-        // non-mesure. Repli EXPLICITE (lot 5.7) : jamais deviné par une racine de libellé.
         if (c.r !== REPLAY_NO_ABILITY_RANK) unnamedTaken += 1
         continue
       }
-      // Labellisé mais hors bilan (grappin, propulseur, répulseur) : exclusion PRODUIT (P4),
-      // pas une famille inconnue — elle ne rejoint donc PAS la réserve ci-dessus.
       if (!family) continue
-      const t = tallyOfSlotAt(c.slot, c.t)
-      const rec = takenByTally.get(t) ?? {}
-      rec[family] = (rec[family] ?? 0) + 1
-      takenByTally.set(t, rec)
+      changes.push({ kind: 'taken', family, slot: c.slot, t: c.t })
       continue
     }
     if (c.kind === 'spent') {
-      // Chaîne de compteur trouée : `from` n'est alors pas une identité fiable (même garde que
-      // le Go, `Gap > 0` — `SpentUnreliableFrom`). `r` vaut `REPLAY_NO_ABILITY_RANK` sur un
-      // `spent` (l'emplacement est vide) : le rang consommé est sur `from`, jamais sur `r`.
       if (c.gap) continue
       const { family } = equipmentChangeFamilyOf(doc.abilityLabels, c.from)
-      // Famille manquante, hors bilan, OU famille à pièce engendrée (le mur reste lu sur SES
-      // poses, jamais sur `spent` — cf. `usageUsedOf`) : rien à ventiler ici.
       if (!family || isFamilyWithSpawnedPiece(family)) continue
-      const t = tallyOfSlotAt(c.slot, c.t)
-      t.spent[family] = (t.spent[family] ?? 0) + 1
+      changes.push({ kind: 'spent', family, slot: c.slot, t: c.t })
     }
+  }
+  return { changes, unnamedTaken }
+}
+
+/**
+ * applyEquipmentChange — verse un changement dans le compteur de son propriétaire : une
+ * consommation sur `tally.spent`, une prise sur `taken` (le scratch par famille de CE compteur,
+ * jamais posé sur `EquipmentUsageTally` : ce n'est pas une grandeur affichée, seulement l'entrée de
+ * `keptOf`).
+ */
+export function applyEquipmentChange(
+  tally: EquipmentUsageTally,
+  taken: Record<string, number>,
+  c: DatedEquipmentChange,
+): void {
+  bump(c.kind === 'spent' ? tally.spent : taken, c.family)
+}
+
+/**
+ * keptOf — LE GARDÉ d'une famille : `max(0, pris - utilisé - lâché)`. L'écart résiduel mesuré
+ * (2,45 % toutes familles, médiane 0,00 %) est absorbé par le clamp à zéro plutôt qu'affiché comme un
+ * gardé négatif. Seule écriture de cette règle : le total du match et la lecture à l'instant la lisent.
+ */
+export function keptOf(taken: number, used: number, dropped: number): number {
+  return Math.max(0, taken - used - dropped)
+}
+
+/**
+ * deriveKeptFromTaken — LA TROISIÈME ISSUE, en une passe sur `readEquipmentChanges` : verse les
+ * prises (`taken`) ET les consommations (`spent`) par famille CANONIQUE et par compteur (via
+ * `tallyOfSlotAt`, le propriétaire de la VIE qui occupe le slot à l'instant du geste), pose
+ * `spent` sur le tally (canal EXPOSÉ, jumeau de `SpentByFamily` côté Go — la colonne « utilisé »
+ * de la vue l'emploie aussi, via `usageUsedOf`), puis dérive
+ * `tally.kept[famille] = keptOf(pris, usageUsedOf(famille), lâché)` une fois `episodes` /
+ * `deployed` / `dropped` / `spent` déjà posés pour ce compteur.
+ *
+ * Rend le compte des objets PRIS dont le rang n'a AUCUNE famille dans CE film.
+ */
+export function deriveKeptFromTaken(
+  doc: Pick<ReplayDocumentReady, 'equipmentChanges' | 'abilityLabels'>,
+  tallyOfSlotAt: (slot: number, t0: number) => EquipmentUsageTally,
+): number {
+  const { changes, unnamedTaken } = readEquipmentChanges(doc)
+  const takenByTally = new Map<EquipmentUsageTally, Record<string, number>>()
+  for (const c of changes) {
+    const t = tallyOfSlotAt(c.slot, c.t)
+    const taken = takenByTally.get(t) ?? {}
+    applyEquipmentChange(t, taken, c)
+    takenByTally.set(t, taken)
   }
   // LE GARDÉ SE DÉRIVE APRÈS COUP, une fois `deployed`/`dropped`/`spent`/`episodes` posés pour
   // CE compteur : `taken` sans usage ni lâcher pour la même famille.
@@ -250,9 +296,7 @@ export function deriveKeptFromTaken(
     for (const family of KEPT_FAMILIES) {
       const takenN = taken[family] ?? 0
       if (takenN === 0) continue
-      const usedN = usageUsedOf(t, family)
-      const droppedN = t.dropped[droppedFamilyOf(family)] ?? 0
-      t.kept[family] = Math.max(0, takenN - usedN - droppedN)
+      t.kept[family] = keptOf(takenN, usageUsedOf(t, family), t.dropped[droppedFamilyOf(family)] ?? 0)
     }
   }
   return unnamedTaken

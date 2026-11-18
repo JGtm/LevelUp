@@ -124,7 +124,7 @@ describe('buildViewpointOptions — la valeur d’une option (le piège des bots
       LABELS,
     )
     expect(groups[0].options).toEqual([
-      { value: 'bid(3.0)', label: 'Cortana', disabled: false, title: 'Cortana' },
+      { value: 'bid(3.0)', rosterKey: 'bot:Cortana', label: 'Cortana', disabled: false, title: 'Cortana' },
     ])
   })
 
@@ -153,6 +153,25 @@ describe('buildViewpointOptions — la valeur d’une option (le piège des bots
   })
 })
 
+describe('buildViewpointOptions — la clé de roster, celle que la caméra « Suivre » attend', () => {
+  it('un bot joint garde sa clé de roster `bot:<nom>`, distincte de la valeur du point de vue (sa ligne de feuille)', () => {
+    const [option] = buildViewpointOptions(
+      [player({ xuid: 'bot:Cortana', bot: true, filmName: 'Cortana [bot]', board: board({ xuid: 'bid(3.0)', gamertag: 'Cortana' }) })],
+      LABELS,
+    )[0].options
+    expect(option.value).toBe('bid(3.0)')
+    expect(option.rosterKey).toBe('bot:Cortana')
+  })
+
+  it('un joueur ordinaire : la clé de roster est son xuid, comme la valeur', () => {
+    const [option] = buildViewpointOptions(
+      [player({ xuid: '2533274', board: board({ xuid: '2533274', gamertag: 'JGtm' }) })],
+      LABELS,
+    )[0].options
+    expect(option.rosterKey).toBe('2533274')
+  })
+})
+
 describe('buildViewpointOptions — l’option inerte (décision 7 bis)', () => {
   it('sans ligne de tableau de score : DÉSACTIVÉE, et l’infobulle dit pourquoi', () => {
     const groups = buildViewpointOptions(
@@ -161,6 +180,7 @@ describe('buildViewpointOptions — l’option inerte (décision 7 bis)', () => 
     )
     expect(groups[0].options[0]).toEqual({
       value: 'bot:Fantome',
+      rosterKey: 'bot:Fantome',
       label: 'Fantome',
       disabled: true,
       title: 'Aucune donnée de match pour ce joueur',
@@ -177,6 +197,7 @@ describe('buildViewpointOptions — l’option inerte (décision 7 bis)', () => 
     expect(groups.map((g) => g.label)).toEqual(['Équipe 0'])
     expect(groups[0].options[0]).toEqual({
       value: '9',
+      rosterKey: '9',
       label: 'Nomade',
       disabled: false,
       title: 'Nomade',

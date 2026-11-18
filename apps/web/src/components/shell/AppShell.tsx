@@ -98,6 +98,8 @@ function ShellOverlays({ compact }: { compact: boolean }) {
 
 /** Contenu principal scrollable — protégé contre les crashs de composants. */
 function ShellMain({ footer }: { footer: boolean }) {
+  // Une page qui demande toute la largeur (`useFullWidthPage`) sort du plafond ; le pied de page garde le sien.
+  const fullWidth = useAppShellStore((s) => s.fullWidthPage)
   return (
     <ErrorBoundary>
       <main className="flex-1 overflow-y-auto">
@@ -108,13 +110,17 @@ function ShellMain({ footer }: { footer: boolean }) {
             remontait alors en haut de l'écran, seul visible, puis se faisait
             repousser à l'arrivée des données — un saut de mise en page à chaque
             navigation. */}
-        <div className="app-shell-width mx-auto flex min-h-full w-full flex-col">
+        <div className={`${fullWidth ? '' : 'app-shell-width '}mx-auto flex min-h-full w-full flex-col`}>
           <div className="flex-1">
             <Outlet />
           </div>
           {/* Pied de page — dans le flux scrollable, jamais fixé : la hauteur
               verticale est comptée pour les tableaux denses. */}
-          {footer && <AppFooter />}
+          {footer && (
+            <div className="app-shell-width mx-auto w-full">
+              <AppFooter />
+            </div>
+          )}
         </div>
       </main>
     </ErrorBoundary>

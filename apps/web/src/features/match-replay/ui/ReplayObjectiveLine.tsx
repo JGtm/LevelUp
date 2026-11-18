@@ -1,7 +1,7 @@
 /**
  * ReplayObjectiveLine — LA LIGNE D'OBJECTIF DU FIL, en BANDEAU : un fond teinté à la couleur de
- * camp du joueur, un liseré à gauche, le nom en gras. Les objectifs sont les tournants du match :
- * l'œil les trouve sans lire (maquette « bandeaux »).
+ * camp du joueur, le nom en gras. Les objectifs sont les tournants du match : l'œil les trouve sans
+ * lire (maquette « bandeaux »). Sa hauteur est celle de toute ligne du fil, sans liseré.
  *
  * `ObjectiveBanner` est la COQUE commune à toutes les lignes d'objectif (action nommée, manche,
  * crâne, colline) ; `ReplayObjectiveLine` est la ligne d'une action nommée du joueur. Les autres
@@ -30,10 +30,6 @@ import { FeedClock } from './ReplayFeedClock'
 
 /** Part de la couleur de camp dans le fond du bandeau : assez pour teinter, jamais pour crier. */
 const BANNER_TINT_PCT = 15
-/** Épaisseur du liseré de camp, à gauche. */
-const BANNER_EDGE_PX = 3
-/** Marge haute et basse du bandeau : plus haut qu'une ligne ordinaire, il se repère. */
-const BANNER_PAD_PX = 9
 
 /**
  * ObjectiveBanner — la coque d'une ligne d'objectif : horloge, pictogramme à l'encre `color`, puis
@@ -59,9 +55,6 @@ export function ObjectiveBanner({
       data-feed-family="objectives"
       style={{
         background: `color-mix(in srgb, ${color} ${BANNER_TINT_PCT}%, transparent)`,
-        boxShadow: `inset ${BANNER_EDGE_PX}px 0 ${color}`,
-        paddingTop: BANNER_PAD_PX,
-        paddingBottom: BANNER_PAD_PX,
       }}
     >
       <FeedClock ms={replayMs} />

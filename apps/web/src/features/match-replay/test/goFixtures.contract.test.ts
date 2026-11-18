@@ -294,7 +294,7 @@ const PAS_DE_LA_PROPRIETE = 10
 /**
  * verifierLaRegleDesPlaces — LA PROPRIÉTÉ du lot M2.4 sur un document produit par Go (règle des
  * places de l'utilisateur, 2026-09-23), mesurée sur les TUILES QUE LA COLONNE REND (`seatTileAt`,
- * la fonction même de `ReplayTeams`) et contre des sources que la pose des places ne produit pas
+ * la fonction même de la colonne et de la rangée des équipes) et contre des sources que la pose des places ne produit pas
  * (revue M2-R3, 2026-09-24) :
  *
  *	la TAILLE D'ÉQUIPE déclarée ci-dessus : à chaque image, une colonne rend au plus autant de

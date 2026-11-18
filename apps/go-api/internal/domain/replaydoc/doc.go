@@ -19,10 +19,17 @@
 // ou explicitement non servi. Ajouter un calque a la cuisson ne touche donc plus le
 // contrat public tant que ce paquet n'a pas bouge.
 //
-// CE QUE LA SEPARATION NE CHANGE PAS (2026-09-05). La forme de fil est identique champ
-// pour champ a celle d'avant : memes noms de types (Huma en derive les noms de schemas
+// CE QUE LA SEPARATION NE CHANGE PAS (2026-09-05). La forme de fil est jumelle de celle du
+// document stocke, champ pour champ : memes noms de types (Huma en derive les noms de schemas
 // OpenAPI), memes tags JSON, memes `omitempty`. `api/openapi.yaml` et
 // `apps/web/src/lib/api/generated.ts` sont inchanges — c'est le gate du lot.
+//
+// LA SEULE EXCEPTION : les champs SERVIS SEULS, resolus a la requete depuis le referentiel du titre
+// et sans source dans le document stocke. Ils (et les types qu'eux seuls portent) sont inscrits, avec
+// leur date et leur motif, dans la liste unique `internal/testutil/replay_servis_seuls.go`, que lisent
+// les deux gardes de jumelage (`service/replayview/parity_test.go` et
+// `internal/filmcorpus/document_shape_jumeaux_test.go`). Un champ servi hors de cette liste est un
+// champ sans source : les deux gardes echouent.
 //
 // AUCUN IMPORT D'`internal/games/halo_infinite/film/replay` ICI, jamais : ce paquet est une feuille de
 // `domain/`, et c'est ce qui garantit que le contrat ne suive pas le format de stockage

@@ -188,6 +188,9 @@ var replaySchemas = []struct {
 	{"ShotStat", replaydoc.ShotStat{}},
 	{"HitCoverage", replaydoc.HitCoverage{}},
 	{"LifeEndCoverage", replaydoc.LifeEndCoverage{}},
+	// AJOUTE A LA RESOLUTION DES MEDAILLES A LA REQUETE (`MedalLabel` et `MedalDescription` portent un libelle par
+	// langue : leurs proprietes sont celles des langues, hors de ce tableau comme `Label` et `VehicleLabel`).
+	{"MedalSprite", replaydoc.MedalSprite{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
@@ -772,9 +775,13 @@ var replaySchemas = []struct {
 //	                      par joueur) : trois champs de tete, montee du decodeur de film. `coverage.hits`
 //	                      (HitCoverage) nait au meme commit SANS faire monter ce compte (type imbrique).
 //
+//	76 (2026-11-17) : `medalLabels` : le libelle par langue, la description, l image et la rarete de chaque
+//	                      medaille de `medals`, RESOLUS A LA REQUETE depuis le referentiel du titre (champ du
+//	                      document SERVI seul, sans montee de schema ni champ cote artefact).
+//
 // Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 75
+const wantReplayDocumentFields = 76
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

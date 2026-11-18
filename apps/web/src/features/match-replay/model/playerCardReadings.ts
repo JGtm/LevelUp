@@ -1,14 +1,9 @@
 /**
  * playerCardReadings.ts — TOUT CE QU'UNE FICHE LIT À UNE IMAGE, sans React.
  *
- * EXTRAIT DE `ReplayTeams.tsx` LE 2026-09-06 (plan fiches compactes, item 1.3) : ces lectures
- * vivaient dans le corps du composant `PlayerCard`, mêlées au rendu. Les sortir donne deux
- * choses : une tuile qui ne fait plus que rendre ce qu'on lui dit, et une mesure du MODÈLE
- * SEUL (`ui/ReplayTeams.perf.test.tsx`) qui ne passe pas par la réconciliation.
- *
- * AUCUNE RÈGLE N'A CHANGÉ AU PASSAGE — les commentaires qui suivent sont ceux de la fiche,
- * déplacés avec le code qu'ils expliquent. La règle n° 1 des fiches vaut ici : une valeur non
- * lue est une LACUNE (`null`), jamais un zéro.
+ * Ces lectures sont sorties du rendu : la tuile (`ui/ReplayPlayerCard.tsx`) ne fait que rendre ce
+ * qu'on lui dit, et le modèle se mesure seul, sans la réconciliation de React. La règle n° 1
+ * des fiches vaut ici : une valeur non lue est une LACUNE (`null`), jamais un zéro.
  */
 import {
   playerCountersAt,
@@ -16,6 +11,7 @@ import {
   type ReplayScoreTimelineReady,
 } from '@/lib/replay/scoreTimeline'
 import { stripBotSuffix } from '@/lib/players/displayName'
+import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { activeEquipmentAt } from './equipmentFx'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
@@ -85,6 +81,40 @@ export function cardName(player: ReplayPlayer, t: ReplayText): string {
   // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
   const rawName = playerName(player)
   return (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
+}
+
+/**
+ * countersShown — LES COMPTEURS QUE LE TRIPLET AFFICHE : ceux du film à l'instant lu quand ce joueur
+ * est publié, sinon les totaux de la base ; `null` sans l'un ni l'autre. Partagé entre le triplet de la fiche et
+ * celui de la ligne de la colonne, qui l'affiche sous une autre forme.
+ */
+export function countersShown(
+  live: PlayerCounters | null,
+  board: MatchScoreboardRow | undefined,
+): { kills?: number | null; deaths?: number | null; assists?: number | null } | null {
+  if (live) return live
+  if (!board) return null
+  return { kills: board.kills, deaths: board.deaths, assists: board.assists }
+}
+
+/** Ce que dit une place qui ne rend aucune fiche : le nom de l'occupant qui la tient (`null` = place libre), l'état écrit et son infobulle. */
+export interface SeatWaitingReading {
+  name: string | null
+  label: string
+  hint: string
+}
+
+/**
+ * seatWaitingReading — LA RÈGLE D'UNE PLACE EN ATTENTE, écrite une seule fois pour la tuile et pour
+ * la ligne : sans occupant (Q20), la place est LIBRE et ne montre aucun nom ; avec un occupant qui
+ * n'a pas encore de corps (Q21), il est nommé comme sur sa fiche (`cardName`) et « pas encore
+ * apparu ». Rien d'autre n'est dit : ni vitalité, ni armes, ni compteurs.
+ */
+export function seatWaitingReading(occupant: ReplayPlayer | null, t: ReplayText): SeatWaitingReading {
+  const name = occupant ? cardName(occupant, t) : null
+  return name === null
+    ? { name, label: t.seatVacant, hint: t.seatVacantHint }
+    : { name, label: t.seatNotSpawned, hint: t.seatNotSpawnedHint }
 }
 
 export function playerCardReadings({

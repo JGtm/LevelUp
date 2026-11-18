@@ -17,8 +17,7 @@
  *      des constantes migrées ;
  *   2. un littéral de densité (`'compacte'` / `'normale'`) — les composants reçoivent des
  *      nombres et des booléens, jamais un mot (la forme que `10fe3228a` a supprimée) ;
- *   3. un import depuis `../settings/` — la densité n'est pas un réglage (D1 : elle se lit sur
- *      la catégorie de mode, sans drapeau).
+ *   3. un import depuis `../settings/` — la densité n'est pas un réglage, sans drapeau.
  *
  * Et la contre-épreuve : le foyer canonique déclare bien les deux gabarits.
  */
@@ -29,12 +28,22 @@ import { cheminCourt, fichierNomme, lire, nomDe, sourcesDeLaFeature } from '../t
 /** Les composants de la fiche : tout ce qui rend une cote du gabarit. */
 const COMPOSANTS_DE_LA_FICHE = new Set([
   'ReplayPlayerCard.tsx',
+  'ReplayCardFx.tsx',
   'ReplayWeaponsRow.tsx',
   'ReplayInventoryRow.tsx',
   'ReplayCountersBadge.tsx',
   'ReplayAbilityCell.tsx',
   'ReplayVitality.tsx',
   'ReplayObjectiveMark.tsx',
+  // La ligne de la colonne des équipes (gabarit « ligne ») : ses cotes viennent de `GABARIT_LIGNE`.
+  'ReplayRosterRow.tsx',
+  'ReplayRosterCells.tsx',
+  'ReplayRosterColumn.tsx',
+  'ReplayRosterRowDetail.tsx',
+  // La fiche compacte de la Grande équipe : ses cotes viennent de `GABARIT_FICHE_COMPACTE`.
+  'ReplayCompactCard.tsx',
+  // La rangée des équipes du Cinéma et du Plein cadre : ses cotes viennent de `COTES_RANGEE` et `COTES_RANGEE_GRANDE_EQUIPE`.
+  'ReplayTeamsRow.tsx',
 ])
 
 const COTE_LOCALE = /\bconst \w+_(CELL_W|BOX_W|ICON_PX|PX) =/
@@ -52,7 +61,7 @@ function composants(): string[] {
 }
 
 describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', () => {
-  it('les sept composants de la fiche existent tous — sans quoi ce garde ne garderait rien', () => {
+  it('les quatorze composants de la fiche, de la ligne et de la rangée existent tous — sans quoi ce garde ne garderait rien', () => {
     expect(new Set(composants().map(nomDe))).toEqual(COMPOSANTS_DE_LA_FICHE)
   })
 
@@ -71,21 +80,20 @@ describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', 
     expect(fautifs).toEqual([])
   })
 
-  it('le mot de densité n’est admis, dans tout le rejeu, que dans model/cardDensity.ts', () => {
+  it('le mot de densité n’est admis nulle part dans le rejeu', () => {
     const fautifs = sourcesDeLaFeature()
-      .filter((f) => nomDe(f) !== 'cardDensity.ts')
       .filter((f) => LITTERAL_DE_DENSITE.test(lire(f)))
       .map(cheminCourt)
     expect(fautifs).toEqual([])
   })
 
-  it('et le foyer canonique déclare bien les deux gabarits', () => {
+  it('et le foyer canonique déclare bien les quatre gabarits et les cotes de la rangée', () => {
     const src = lire(fichierNomme('cardGabarit.ts'))
     expect(src).toMatch(/export const GABARIT_NORMAL: CardGabarit/)
     expect(src).toMatch(/export const GABARIT_COMPACT: CardGabarit/)
-    // Le choix entre les deux n'a qu'un foyer, et il ne lit que l'en-tête.
-    const densite = lire(fichierNomme('cardDensity.ts'))
-    expect(densite).toMatch(/export function cardDensity\(header: PresenceHeader \| null \| undefined\)/)
-    expect(densite).toContain("BTB: GABARIT_COMPACT")
+    expect(src).toMatch(/export const GABARIT_LIGNE: LigneGabarit/)
+    expect(src).toMatch(/export const GABARIT_FICHE_COMPACTE: FicheCompacteGabarit/)
+    expect(src).toMatch(/export const COTES_RANGEE = /)
+    expect(src).toMatch(/export const COTES_RANGEE_GRANDE_EQUIPE = /)
   })
 })

@@ -242,3 +242,68 @@ describe('useReplayView — l’orientation de la carte', () => {
     }
   })
 })
+
+describe('useReplayView — l’orientation Auto', () => {
+  // Une carte haute dans une boîte large : l'Auto la tourne ; la même carte dans une boîte étroite, non.
+  const HAUTE = testReplayDoc({ frameIntervalMs: 50, frameCount: 10, bounds: { minX: 0, minY: 0, maxX: 10, maxY: 40 } })
+  const CARREE = testReplayDoc({ frameIntervalMs: 50, frameCount: 10, bounds: { minX: 0, minY: 0, maxX: 20, maxY: 20 } })
+  const POINTS = [
+    { x: 0, y: 0 },
+    { x: 10, y: 40 },
+    { x: 3, y: 31 },
+  ]
+
+  afterEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('sans choix retenu (null), tourne une carte haute dans une boîte large et le dit', () => {
+    const { result } = renderHook(() => useReplayView({ doc: HAUTE, turns: null, width: 1200, freeHeight: 600 }))
+    expect(result.current.turns).toBe(1)
+    expect(result.current.autoTurned).toBe(true)
+    expect(result.current.canvasView.orient?.turns).toBe(1)
+  })
+
+  it('laisse droite une carte carrée', () => {
+    const { result } = renderHook(() => useReplayView({ doc: CARREE, turns: null, width: 1200, freeHeight: 600 }))
+    expect(result.current.turns).toBe(0)
+    expect(result.current.autoTurned).toBe(false)
+    expect(result.current.canvasView.orient).toBeUndefined()
+  })
+
+  it('un choix retenu est respecté et jamais écrasé : 0 garde la carte haute droite', () => {
+    const { result } = renderHook(() => useReplayView({ doc: HAUTE, turns: 0, width: 1200, freeHeight: 600 }))
+    expect(result.current.turns).toBe(0)
+    expect(result.current.autoTurned).toBe(false)
+    const deux = renderHook(() => useReplayView({ doc: HAUTE, turns: 2, width: 1200, freeHeight: 600 }))
+    expect(deux.result.current.turns).toBe(2)
+    expect(deux.result.current.autoTurned).toBe(false)
+  })
+
+  it('UN SEUL POINT DE RÉSOLUTION : le cadrage Auto projette comme le même quart de tour retenu', () => {
+    const auto = renderHook(() => useReplayView({ doc: HAUTE, turns: null, width: 1200, freeHeight: 600 })).result.current
+    const retenu = renderHook(() => useReplayView({ doc: HAUTE, turns: 1, width: 1200, freeHeight: 600 })).result.current
+    expect(auto.canvasView.orient).toEqual(retenu.canvasView.orient)
+    expect(auto.canvasView.bounds).toEqual(retenu.canvasView.bounds)
+    for (const p of POINTS) {
+      expect(projectTo(auto.canvasView, p)).toEqual(projectTo(retenu.canvasView, p))
+    }
+  })
+
+  it('rien n’est retenu ni remonté : ni préférence écrite, ni geste manuel signalé, et le zoom revient à la carte entière', () => {
+    const onManualMove = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ width }: { width: number }) => useReplayView({ doc: HAUTE, turns: null, width, freeHeight: 600, onManualMove }),
+      { initialProps: { width: 0 } },
+    )
+    expect(result.current.autoTurned).toBe(false)
+    act(() => result.current.zoom.zoomIn())
+    expect(result.current.zoom.level).toBeGreaterThan(1)
+    onManualMove.mockClear() // le geste du test est manuel ; ce qui compte est ce que l'Auto signale
+    rerender({ width: 1200 })
+    expect(result.current.autoTurned).toBe(true)
+    expect(result.current.zoom.level).toBe(1)
+    expect(onManualMove).not.toHaveBeenCalled()
+    expect(window.localStorage.length).toBe(0)
+  })
+})

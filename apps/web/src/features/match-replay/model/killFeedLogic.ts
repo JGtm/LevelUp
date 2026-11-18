@@ -54,7 +54,6 @@
  * Pas de React : logique pure, testée (killFeedLogic.test.ts).
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
-import type { MatchHighlightEvent } from '@/lib/api/types'
 
 import { countdownStartsByXuid, lifeEndProof } from './lifeEndProof'
 import { replayClock, type ReplayClock } from './replayClock'
@@ -83,43 +82,18 @@ export interface ReplayKill extends Omit<KillEvent, 'ally'> {
   medals: MedalEvent[]
 }
 
-/** Une médaille du fil, identité résolue côté backend. */
+/** Une médaille du fil, lue dans le document de rejeu (cf. `matchMedals`). */
 export interface MedalEvent {
-  /** Instant sur l'horloge gameplay (event_time_ms). */
+  /** Instant sur l'horloge gameplay (`medals[].ms` du document). */
   tMs: number
   xuid: string
   gamertag: string
   /** Nom ANGLAIS mesuré (film). Toujours présent — c'est la clé du référentiel. */
   name: string
-  /** Libellé locale-aware. Vide = non résolue : le nom brut s'affiche en toutes lettres. */
+  /** Libellé dans la langue de la page. Vide = non résolu : le nom brut s'affiche en toutes lettres. */
   label: string
   description: string
   imageUrl: string
-}
-
-/**
- * collectMedalEvents extrait les events `medal` exploitables : un acteur, un instant, un
- * nom. Un event medal sans nom (raw_json illisible côté backend) est écarté — il n'y a
- * rien à en montrer, pas même un texte.
- */
-export function collectMedalEvents(
-  events: MatchHighlightEvent[] | null | undefined,
-): MedalEvent[] {
-  const out: MedalEvent[] = []
-  for (const e of events ?? []) {
-    if ((e.event_type ?? '').toLowerCase() !== 'medal') continue
-    if (!e.actor_xuid || e.event_time_ms == null || !e.medal_name) continue
-    out.push({
-      tMs: e.event_time_ms,
-      xuid: e.actor_xuid,
-      gamertag: e.actor_gamertag ?? '',
-      name: e.medal_name,
-      label: e.medal_label ?? '',
-      description: e.medal_description ?? '',
-      imageUrl: e.medal_image_url ?? '',
-    })
-  }
-  return out
 }
 
 /**

@@ -52,6 +52,12 @@ type KillSourceIcon struct {
 	// WeaponKey : clé canonique du registre d'armes du titre. Vide quand l'objet n'y
 	// figure pas (variantes, objets hors registre) — l'icône reste valable.
 	WeaponKey string `json:"weapon_key,omitempty"`
+	// WeaponClass : classe de la Répartition des frags (shoulder, sidearm, heavy, melee, grenade...) de la
+	// source. Celle de l'arme au registre quand `WeaponKey` est posée ; pour une source sans clé, celle que le
+	// titre DÉCLARE pour elle (mêlée générique, grenade hors registre). Vide quand elle n'est pas établie.
+	// Hors fil de l'API d'assets (`json:"-"`) : seule la décoration du fil du match la lit
+	// (`MatchHighlightEvent.WeaponClass`).
+	WeaponClass string `json:"-"`
 	// Label : le nom PROPRE de la source (BR75, Needler). Pas un libellé traduit : il
 	// vient de la table de nommage du titre, seule à savoir ce que l'identifiant désigne.
 	// Vide si le titre nomme l'objet sans certitude — l'icône peut alors rester servie.

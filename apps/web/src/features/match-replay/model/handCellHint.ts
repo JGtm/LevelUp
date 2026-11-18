@@ -1,18 +1,15 @@
 /**
- * handCellHint.ts — L'INFOBULLE DE LA CELLULE D'ARME QUAND ELLE EST SEULE : ce que la fiche
- * normale montre dans sa cellule de MUNITIONS et dans ses MARQUES SOUPLES, dit ici en toutes
- * lettres, avec ses valeurs et ses âges.
+ * handCellHint.ts — L'INFOBULLE DE LA CELLULE D'ARME : les munitions de la main, les marques de
+ * la lecture d'inventaire et l'état vide, dits en toutes lettres, avec leurs valeurs et leurs âges.
  *
- * POURQUOI CE MODULE (plan fiches compactes 2026-09-06, étape 3, décision D5). Sur la tuile
- * compacte la rangée d'inventaire n'a plus de cellule de munitions (`showAmmo: false`) et
- * n'écrit plus aucune marque en texte (`showInventoryMarks: false`) : les munitions de la main,
- * « dégainée ? », et l'état vide (« Mort » / « Inventaire indisponible », avec ses DEUX âges)
- * passent dans l'infobulle de l'arme en main — la seule cellule qui reste pour les porter. Or
- * cette cellule vit dans `ReplayWeaponsRow`, qui ne lit pas l'inventaire : c'est la FICHE qui
- * compose le texte ici et le lui confie (`handHint`).
+ * POURQUOI CE MODULE. La rangée d'inventaire de la tuile n'a pas de cellule de munitions et
+ * n'écrit aucune marque en texte : les munitions de la main, « dégainée ? », et l'état vide
+ * (« Mort » / « Inventaire indisponible », avec ses DEUX âges) passent dans l'infobulle de l'arme
+ * en main — la seule cellule qui reste pour les porter. Or cette cellule vit dans
+ * `ReplayWeaponsRow`, qui ne lit pas l'inventaire : c'est la FICHE qui compose le texte ici et
+ * le lui confie (`handHint`) ; la colonne des équipes le réemploie.
  *
- * LES RÈGLES SONT CELLES DE `AmmoCell` ET DE `InventoryEmptyMark`, à l'identique et dans le
- * même ordre — ce module ne décide rien de nouveau, il DIT ce que la cellule montrait :
+ * LES RÈGLES, dans cet ordre :
  *   - arme À CHARGE en main (familles plasma / mêlée / énergie) : le pour-cent RESTANT, jamais
  *     le « 1/0 » parasite du film ; à chargeur : `mag / res` ; emplacement jamais écrit :
  *     « pleines » ;
@@ -32,8 +29,8 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
  * Les familles d'arme À CHARGE : pas de chargeur, une jauge (mesure 2026-08-24 : 46 cellules
- * « 1/0 » sur le témoin, toutes sur ces familles). Une seule définition, partagée par la
- * cellule de munitions (`ReplayInventoryRow`) et par cette infobulle.
+ * « 1/0 » sur le témoin, toutes sur ces familles). Une seule définition, partagée par les
+ * lectures de munitions (`ammoOfRecord`).
  */
 const CHARGE_FX = new Set(['plasma', 'melee', 'light'])
 
@@ -51,7 +48,7 @@ function chargeLeftPct(consumed: number): number {
 }
 
 /**
- * ammoOfHand — les munitions de l'arme EN MAIN, dans les mêmes branches que `AmmoCell` : null
+ * ammoOfHand — les munitions de l'arme EN MAIN : null
  * sans compteurs lus, ou quand le sélecteur désigne un emplacement hors de la rangée (D ≥ 2) ;
  * `unread` quand le sélecteur n'a pas été lu sur une lecture pleine.
  */
@@ -65,11 +62,24 @@ export function ammoOfHand(
   if (equipped.drawn === null) {
     // SAUF SUR UNE LECTURE VIDE : `equippedWeapons` y rend volontairement `drawnUnread`, et
     // l'état vide dit POURQUOI — écrire « dégainée ? » à côté poserait une lacune là où la
-    // cause est connue (même règle que la cellule).
+    // cause est connue.
     return !equipped.holstered && !read?.empty ? { kind: 'unread' } : null
   }
-  const a = ammo[equipped.drawn] ?? {}
-  if (isChargeWeapon(doc, equipped.weapons[0]?.id)) return { kind: 'charge', pct: chargeLeftPct(a.gauge ?? 0) }
+  return ammoOfRecord(doc, equipped.weapons[0]?.id, ammo[equipped.drawn] ?? {})
+}
+
+/**
+ * ammoOfRecord — les munitions d'UN emplacement de l'inventaire, dans les trois natures de la
+ * main : charge restante (arme à charge), compte `mag / res` (arme à chargeur), ou « pleines »
+ * (emplacement jamais écrit). `weaponId` est l'arme qui occupe l'emplacement : sa famille dit si
+ * c'est une charge. Une seule définition, pour la main et pour l'arme rangée.
+ */
+export function ammoOfRecord(
+  doc: ReplayDocumentReady,
+  weaponId: string | undefined,
+  a: { mag?: number; res?: number; gauge?: number },
+): AmmoHint {
+  if (isChargeWeapon(doc, weaponId)) return { kind: 'charge', pct: chargeLeftPct(a.gauge ?? 0) }
   if (a.mag !== undefined) return { kind: 'count', mag: a.mag, res: a.res }
   if (a.gauge !== undefined) return { kind: 'charge', pct: chargeLeftPct(a.gauge) }
   return { kind: 'full' }

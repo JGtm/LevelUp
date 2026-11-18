@@ -2,13 +2,14 @@
  * useReplayPlayerFocus — CE QUE LE PANNEAU DE JOUEUR FAIT À LA CARTE, câblé au canvas en un point
  * (lot 4 du plan « maquettes du rejeu »).
  *
- * Trois actions, deux effets. SEUL et MASQUER valent pour TOUS les calques : ce qui appartient à un joueur
+ * Trois actions, deux effets, et un repère : la fiche ouverte cerne son pion d'un anneau (`openPlayer`). SEUL et MASQUER valent pour TOUS les calques : ce qui appartient à un joueur
  * (pion, tirs, croix et effets de mort, poses, véhicules occupés, objets portés…) suit ; ce qui n'est à
  * personne reste. Le hook rend le prédicat `shownAtSlot` que le canvas passe aux calques de pions (pistes,
  * marques de tir, éclairs de bouche, sillage du propulseur, fins de vol de grenade), `shownProjectile` pour
  * les vols de projectile et `shown` (un prédicat par genre d'élément) pour le reste ; `undefined` quand rien
  * n'est filtré, pour que les calques gardent exactement leur dessin d'avant. SUIVRE cadre la carte sur le
- * joueur à chaque image (`useReplayFollow`).
+ * joueur à chaque image (`useReplayFollow`) : le joueur suivi est celui de la CAMÉRA (`followPlayer`), que
+ * la fiche soit ouverte ou fermée, indépendant du joueur de la fiche auquel Seul et Masquer s'appliquent.
  *
  * LE POINT DE VUE N'EST PAS TOUCHÉ (`useReplayViewpoint`) : ces actions ne décident ni de l'encre
  * de camp, ni du roster, ni de la frise — elles ne changent que ce que la carte dessine et où elle
@@ -20,14 +21,19 @@ import { buildFocusFilter, type FocusFilter } from '../model/focusFilter'
 import { shownSlotPredicate, type PlayerFocus } from '../model/playerPanelLogic'
 import { projectileOwners } from '../model/projectileOwners'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { OpenPlayerRing } from '../layers/openPlayerRing'
+import { useReplayOpenPlayer } from '../layers/useReplayOpenPlayer'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { QuarterTurns } from '@/lib/replay/orientation'
 import { useReplayFollow } from './useReplayFollow'
 import type { ReplayZoom } from './useReplayZoom'
 
 export interface ReplayPlayerFocusOptions {
   doc: ReplayDocumentReady
-  /** Le joueur du panneau ouvert et ses actions ; `null` = panneau fermé. */
+  /** Le joueur du panneau ouvert et ses actions (Seul, Masquer) ; `null` = panneau fermé. */
   focus: PlayerFocus | null
+  /** Le joueur que la caméra suit, fiche ouverte ou non ; `null` = la carte ne suit personne. */
+  followPlayer: ReplayPlayer | null
   /** La cellule de dessin du canvas (l'image montrée) : lue par Suivre, jamais écrite. */
   frameRef: { readonly current: number }
   zoom: ReplayZoom
@@ -50,11 +56,16 @@ export interface ReplayPlayerFocusLayers {
    * n'est filtré.
    */
   shown: FocusFilter | undefined
+  /**
+   * Le pion cerclé du joueur de la fiche ouverte : sa position à l'image et les encres de l'anneau. `undefined` =
+   * aucune fiche ouverte, ou joueur masqué.
+   */
+  openPlayer: OpenPlayerRing | undefined
 }
 
-export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
+export function useReplayPlayerFocus({ doc, focus, followPlayer, frameRef, zoom, turns }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
   const shownAtSlot = useMemo(() => shownSlotPredicate(focus) ?? undefined, [focus])
-  useReplayFollow({ doc, player: focus?.player ?? null, enabled: focus?.follow ?? false, frameRef, zoom, turns })
+  useReplayFollow({ doc, player: followPlayer, enabled: followPlayer !== null, frameRef, zoom, turns })
   const owners = useMemo(() => (shownAtSlot ? projectileOwners(doc) : []), [doc, shownAtSlot])
   const shownProjectile = useMemo(() => {
     if (!shownAtSlot) return undefined
@@ -64,5 +75,6 @@ export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: Repl
     }
   }, [shownAtSlot, owners])
   const shown = useMemo(() => buildFocusFilter(doc, focus) ?? undefined, [doc, focus])
-  return { shownAtSlot, shownProjectile, shown }
+  const openPlayer = useReplayOpenPlayer(doc, focus)
+  return { shownAtSlot, shownProjectile, shown, openPlayer }
 }

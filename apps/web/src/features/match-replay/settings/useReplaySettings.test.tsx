@@ -13,6 +13,7 @@ import {
   TIMELINE_EXPANDED_KEY,
   useReplaySettings,
 } from './useReplaySettings'
+import { PLAN_FEED_KEY } from './replayPreferences'
 import { usePersistedFlag } from './usePersistedFlag'
 
 describe('useReplaySettings — valeurs par défaut', () => {
@@ -305,5 +306,30 @@ describe('repli de la frise — la préférence survit à la page', () => {
     act(() => result.current[1]())
     expect(settings.result.current.showAim).toBe(true)
     expect(settings.result.current.showZones).toBe(true)
+  })
+})
+
+describe('useReplaySettings — fil des éliminations posé sur le plan', () => {
+  it('AFFICHÉ par défaut, sans rien avoir retenu', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showPlanFeed).toBe(true)
+    expect(window.localStorage.getItem(PLAN_FEED_KEY)).toBeNull()
+  })
+
+  it("la bascule persiste le choix sous sa clé, qui n'en touche aucune autre", () => {
+    const { result } = renderHook(() => useReplaySettings())
+    act(() => result.current.togglePlanFeed())
+    expect(result.current.showPlanFeed).toBe(false)
+    expect(window.localStorage.getItem(PLAN_FEED_KEY)).toBe('false')
+    expect(result.current.showKillFx).toBe(true)
+    expect(result.current.showAim).toBe(true)
+  })
+
+  it('éteint, il le reste après remontage', () => {
+    const first = renderHook(() => useReplaySettings())
+    act(() => first.result.current.togglePlanFeed())
+    first.unmount()
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showPlanFeed).toBe(false)
   })
 })

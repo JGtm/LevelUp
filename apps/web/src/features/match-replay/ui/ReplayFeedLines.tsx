@@ -3,20 +3,19 @@
  * tueur (`DeathLine`), médaille seule, entrée/sortie de partie, et les lignes d'événement
  * (objectif, prise d'arme ou de bonus, montée ou destruction de véhicule). `FeedLine` choisit la
  * forme d'une entrée ; le fil (`ReplayKillFeed`) ne fait plus que la liste, le menu et les états vides.
- *
- * EXTRAIT DE `ReplayKillFeed.tsx` (lot 1 du plan « maquettes du rejeu »), sans changement de
- * rendu : le fichier était au plafond de taille et le menu de filtre s'ajoute à côté. Le contrat
- * de chaque forme (une seule ligne, pictogrammes `shrink-0`, assistance nommée seulement, encre
- * de camp = allégeance du film) est écrit au-dessus de la forme.
+ * Le contrat de chaque forme (une seule ligne de 28 px, pictogrammes `shrink-0`, encre de camp =
+ * allégeance du film) est écrit au-dessus de la forme.
  */
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { FEED_ROW, FEED_ROW_BUTTON, FEED_ROW_ITEM } from '../model/feedRow'
+import { feedLineColumns } from '../model/cotesFeedLine'
+import { FEED_GRID_BUTTON, FEED_GRID_ROW, FEED_ROW, FEED_ROW_ITEM } from '../model/feedRow'
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
-import type { KillerZoneOf } from '../hooks/useKillerZones'
+import { killLineHint } from '../model/killLineHint'
+import type { FeedZoneOf } from '../hooks/useFeedZones'
 import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { MedalBadges } from './MedalBadges'
@@ -24,8 +23,9 @@ import { isObjectiveStateLine, type FeedEventLine } from '../model/feedEventLine
 import { ReplayEventLine } from './ReplayEventLine'
 import { ReplayObjectiveLine, type CaptureAssister } from './ReplayObjectiveLine'
 import { ReplayObjectiveStateLine } from './ReplayObjectiveStateLine'
-import { KillAssist, KillCarrierBadge, KillWeapon, KillZone, DOT_PX } from './ReplayKillLineParts'
+import { KillWeapon, KillZone, DOT_PX } from './ReplayKillLineParts'
 import { FeedClock } from './ReplayFeedClock'
+import { FeedMedals } from './ReplayFeedMedals'
 import { PRESS_GUARDS } from './replayPressGuards'
 import { FeedName } from './ReplayFeedName'
 import { ReplayPresenceLine } from './ReplayPresenceLine'
@@ -62,41 +62,51 @@ function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
   return kind === 'environment' || kind === 'suicide' ? t.killFeedDeathKind[kind] : ''
 }
 
+/**
+ * Le poids d'un nom : l'acteur d'une ligne est en `font-medium`, un nom qui est celui du joueur mis en avant
+ * (`strongXuids`, la fiche ouverte) est en gras, quel que soit son emplacement. `base` : le poids de l'emplacement.
+ */
+function nameWeight(xuid: string, strongXuids: ReadonlySet<string> | undefined, base?: string): string | undefined {
+  return strongXuids?.has(xuid) ? 'font-bold' : base
+}
+
 /** Ce que reçoit une ligne du fil : l'entrée, l'encre et les noms, et ce qui rend un frag cliquable. */
 interface FeedLineProps {
   entry: ReplayFeedEntry
   inkOf: InkOf
   xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
-  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
-  zoneOf?: KillerZoneOf
+  zoneOf?: FeedZoneOf
   /** Le nom et l'encre d'un camp du film : les lignes de manche et de colline écrivent des camps, pas des joueurs. */
   teams: ReplayTeamCascades
   /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
   focus?: FeedLineFocus
+  /**
+   * Les clés du joueur dont le nom s'écrit en gras là où il apparaît (acteur d'un frag, victime, mort, médaillé) : la
+   * fiche ouverte dans le pied de la colonne. Les lignes d'événement (objectif, prise, véhicule) ne le lisent pas.
+   */
+  strongXuids?: ReadonlySet<string>
 }
 
 /**
- * FeedLine — UNE ligne du fil, au format du POC : tueur, arme, victime, horodatage,
- * médailles puis assistance en dessous.
+ * FeedLine — UNE ligne du fil, de 28 px : l'élimination est une grille à colonnes fixes (instant, lieu,
+ * tueur, arme, victime, médailles), les autres formes une rangée qui s'ouvre sur la même gouttière
+ * d'instant.
  *
- * PLUS DE LISERÉ GAUCHE (demande utilisateur du 2026-08-25, la même que pour la fiche morte) :
- * les trois formes de ligne portaient un trait de 3 px à la couleur d'équipe de leur acteur.
- * Le camp est DÉJÀ dit par la couleur du nom du tueur et par celle de sa victime, sur la même
- * ligne — le liseré en était la troisième copie, et il empilait des barres colorées sur toute
- * la hauteur d'un fil qui défile.
+ * AUCUN LISERÉ DE CAMP : le camp est dit par la couleur du nom du tueur et par celle de sa victime,
+ * sur la même ligne. Une ligne n'a ni fond ni bordure.
  */
 export function FeedLine({
   entry,
   inkOf,
   xuidMeta,
   marks,
-  marksByGamertag,
   locale,
   zoneOf,
   teams,
   focus,
+  strongXuids,
 }: FeedLineProps) {
   if (entry.event) {
     return (
@@ -134,6 +144,7 @@ export function FeedLine({
         xuidMeta={xuidMeta}
         marks={marks}
         locale={locale}
+        strongXuids={strongXuids}
       />
     )
   }
@@ -146,7 +157,7 @@ export function FeedLine({
     return (
       <li className={FEED_ROW}>
         <FeedClock ms={entry.replayMs} />
-        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className="font-medium"
+        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className={nameWeight(m.xuid, strongXuids, 'font-medium')}
           name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
         <MedalBadges medals={[m]} />
       </li>
@@ -159,11 +170,11 @@ export function FeedLine({
       inkOf={inkOf}
       xuidMeta={xuidMeta}
       marks={marks}
-      marksByGamertag={marksByGamertag}
       locale={locale}
       zone={zoneOf?.(entry.key)}
       carrier={entry.flagCarrierKill === true}
       focus={focus}
+      strongXuids={strongXuids}
     />
   )
 }
@@ -190,6 +201,7 @@ function DeathLine({
   xuidMeta,
   marks,
   locale,
+  strongXuids,
 }: {
   death: ReplayDeath
   replayMs: number
@@ -197,6 +209,7 @@ function DeathLine({
   xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
+  strongXuids?: ReadonlySet<string>
 }) {
   const t = REPLAY_TEXT[locale]
   const color = inkOf(death.xuid)
@@ -232,7 +245,7 @@ function DeathLine({
           }}
         />
       )}
-      <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className="font-medium"
+      <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className={nameWeight(death.xuid, strongXuids, 'font-medium')}
         name={displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)} />
       <span className="shrink-0 text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
     </li>
@@ -246,74 +259,77 @@ interface KillLineProps {
   inkOf: InkOf
   xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
-  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
   zone?: string
-  /** Vrai quand la victime portait le drapeau : la ligne d'objectif s'est repliée en badge. */
+  /** Vrai quand la victime portait le drapeau : la ligne d'objectif s'est repliée en infobulle. */
   carrier?: boolean
   focus?: FeedLineFocus
+  strongXuids?: ReadonlySet<string>
+  /**
+   * La forme posée sur le plan : ligne NUE (sans médailles), en lecture seule, à l'opacité donnée. Les
+   * mêmes colonnes et les mêmes cellules que la ligne du fil ; `focus` et `carrier` n'y ont pas d'effet.
+   */
+  onPlan?: { opacity: number }
 }
 
 /**
- * KillLine — une mort : zone du tueur (si la carte en a), tueur (son encre), arme, victime (SON
- * encre), badge « porteur » (la victime portait le drapeau), médailles, assistance. `zone` : le nom
- * de la zone du tueur, vide quand elle n'est pas établie, `undefined` quand la carte n'a aucune
- * zone (pas de gouttière).
+ * KillLine — une mort, en grille à colonnes fixes : instant, lieu de la victime (si la carte en a),
+ * tueur (son encre), arme, victime (SON encre), médailles. `zone` : le nom de la zone de la victime,
+ * vide quand elle n'est pas établie, `undefined` quand la carte n'a aucune zone (la colonne du lieu
+ * disparaît, les autres gardent leur alignement). L'assistance et la victime porteuse du drapeau n'ont
+ * pas de colonne : elles sont dans l'infobulle de la ligne (`killLineHint`).
  *
- * AVEC `focus`, LA LIGNE EST UN BOUTON (plan « maquettes du rejeu », lot 2) : le clic pose la
- * lecture à l'instant du frag et met le tueur et la victime en valeur sur la carte. La ligne choisie
- * se lit par un fond de jeton (`bg-muted`) ET deux filets aux couleurs de camp du tueur (à gauche) et de la
- * victime (à droite) — la couleur ne porte jamais seule. La souris ne prend pas le focus
- * (`mousedown` annulé) : après un clic, Espace reste « Lecture » ; au clavier, Entrée et Espace
- * activent la ligne, et Espace ne remonte pas au raccourci global de lecture.
+ * AVEC `focus`, LA LIGNE EST UN BOUTON : le clic pose la lecture à l'instant du frag et met le tueur
+ * et la victime en valeur sur la carte. La ligne choisie se lit par un fond de jeton (`bg-muted`) et
+ * `aria-pressed` — la couleur ne porte jamais seule. La souris ne prend pas le focus (`mousedown`
+ * annulé) : après un clic, Espace reste « Lecture » ; au clavier, Entrée et Espace activent la ligne,
+ * et Espace ne remonte pas au raccourci global de lecture.
+ *
+ * AVEC `onPlan`, c'est la ligne du fil posé sur le plan (`ReplayFeedOverlay`) : nue, sans médailles ni
+ * infobulle, jamais cliquable, estompée à l'opacité donnée.
  */
-function KillLine({
+export function KillLine({
   kill: k,
   replayMs,
   inkOf,
   xuidMeta,
   marks,
-  marksByGamertag,
   locale,
   zone,
   carrier,
   focus,
+  strongXuids,
+  onPlan,
 }: KillLineProps) {
   const t = REPLAY_TEXT[locale]
-  const assisted = k.assistState === 'named'
   const killerColor = inkOf(k.xuid)
-  const lineHint =
-    k.assistState === 'none'
-      ? k.killerDamagePct != null
-        ? `${t.killFeedNoAssistHint} ${t.killFeedKillerShare(k.killerDamagePct)}.`
-        : t.killFeedNoAssistHint
-      : undefined
-  const assistTint = assisted ? `color-mix(in srgb, ${tokenCssVar('stat-assists')} 9%, transparent)` : undefined
+  const columns = { gridTemplateColumns: feedLineColumns(zone !== undefined) }
   const content = (
     <>
       <FeedClock ms={replayMs} />
       {zone !== undefined && <KillZone name={zone} locale={locale} />}
-      <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
+      <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className={nameWeight(k.xuid, strongXuids, 'font-medium')}
         name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
       <KillWeapon kill={k} color={killerColor} locale={locale} />
-      {k.victimGamertag && (
+      {k.victimGamertag ? (
         <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
-          color={inkOf(k.victimXuid)} />
+          color={inkOf(k.victimXuid)} className={nameWeight(k.victimXuid, strongXuids)} />
+      ) : (
+        <span aria-hidden />
       )}
-      {carrier && <KillCarrierBadge locale={locale} />}
-      {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné
-          ne se reconnaît plus, alors qu'un nom tronqué se lit encore. */}
-      {k.medals.length > 0 && (
-        <span className="flex shrink-0 items-center gap-1">
-          <MedalBadges medals={k.medals} />
-        </span>
-      )}
-      {assisted && <KillAssist kill={k} marksByGamertag={marksByGamertag} locale={locale} />}
+      {!onPlan && <FeedMedals medals={k.medals} locale={locale} />}
     </>
   )
+  if (onPlan) {
+    return (
+      <li className={FEED_GRID_ROW} style={{ ...columns, opacity: onPlan.opacity }}>
+        {content}
+      </li>
+    )
+  }
   if (!focus) {
     return (
-      <li className={FEED_ROW} style={{ background: assistTint }} title={lineHint}>
+      <li className={FEED_GRID_ROW} style={columns} title={killLineHint(k, carrier === true, t, false)}>
         {content}
       </li>
     )
@@ -322,18 +338,13 @@ function KillLine({
     <li
       className={focus.selected ? `${FEED_ROW_ITEM} bg-muted` : FEED_ROW_ITEM}
       data-selected={focus.selected ? 'true' : undefined}
-      style={{
-        background: focus.selected ? undefined : assistTint,
-        boxShadow: focus.selected
-          ? `inset 3px 0 ${killerColor}, inset -3px 0 ${inkOf(k.victimXuid)}`
-          : undefined,
-      }}
     >
       <button
         type="button"
-        className={FEED_ROW_BUTTON}
+        className={FEED_GRID_BUTTON}
+        style={columns}
         aria-pressed={focus.selected}
-        title={lineHint ? `${t.killFeedFocusHint} — ${lineHint}` : t.killFeedFocusHint}
+        title={killLineHint(k, carrier === true, t, true)}
         {...PRESS_GUARDS}
         onClick={focus.onSelect}
       >

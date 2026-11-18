@@ -49,21 +49,21 @@ describe('useReplayPlayerFocus', () => {
   it('panneau fermé, ou ni Seul ni Masquer : aucun prédicat', () => {
     const z = zoom()
     const frameRef = { current: 10 }
-    expect(renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: null, frameRef, zoom: z })).result.current.shownAtSlot).toBeUndefined()
+    expect(renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: null, frameRef, zoom: z })).result.current.shownAtSlot).toBeUndefined()
     const f = focus({ follow: true })
-    expect(renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: f, frameRef, zoom: z })).result.current.shownAtSlot).toBeUndefined()
+    expect(renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: f, frameRef, zoom: z })).result.current.shownAtSlot).toBeUndefined()
   })
 
   it('Masquer : le prédicat retire les vies du joueur', () => {
     const f = focus({ hide: true })
-    const { result } = renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
+    const { result } = renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
     expect(result.current.shownAtSlot?.(1, 10)).toBe(false)
     expect(result.current.shownAtSlot?.(2, 10)).toBe(true)
   })
 
   it('Seul : le prédicat n’affiche que les vies du joueur', () => {
     const f = focus({ solo: true })
-    const { result } = renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
+    const { result } = renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
     expect(result.current.shownAtSlot?.(1, 10)).toBe(true)
     expect(result.current.shownAtSlot?.(2, 10)).toBe(false)
   })
@@ -80,7 +80,7 @@ describe('useReplayPlayerFocus', () => {
       ],
     })
     const shown = (f: PlayerFocus | null) =>
-      renderHook(() => useReplayPlayerFocus({ doc: DOC_P, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
+      renderHook(() => useReplayPlayerFocus({ doc: DOC_P, followPlayer: null, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
         .result.current.shownProjectile
 
     it('rien n’est filtré sans Seul ni Masquer', () => {
@@ -103,23 +103,41 @@ describe('useReplayPlayerFocus', () => {
     })
   })
 
-  it('Suivre allumé : la carte se cadre sur le joueur ; éteint, elle ne bouge pas', () => {
+  it('la caméra suit le joueur suivi : la carte se cadre sur lui ; sans joueur suivi, elle ne bouge pas', () => {
     const on = zoom()
-    const f = focus({ follow: true })
-    renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: f, frameRef: { current: 20 }, zoom: on }))
+    renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: PLAYER, focus: null, frameRef: { current: 20 }, zoom: on }))
     expect(on.focusOn).toHaveBeenCalledWith({ x: 20, y: 10 }, 2)
 
     const off = zoom()
     const g = focus({ solo: true })
-    renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: g, frameRef: { current: 20 }, zoom: off }))
+    renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: g, frameRef: { current: 20 }, zoom: off }))
     expect(off.focusOn).not.toHaveBeenCalled()
+  })
+
+  it('la caméra suit FICHE FERMÉE, et la fiche d’un AUTRE joueur ne la déplace pas', () => {
+    const closed = zoom()
+    renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: PLAYER, focus: null, frameRef: { current: 20 }, zoom: closed }))
+    expect(closed.focusOn).toHaveBeenCalledTimes(1)
+
+    const other: ReplayPlayer = { xuid: 'B', lives: [] }
+    const open = zoom()
+    const g = focus({ player: other, solo: true })
+    renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: PLAYER, focus: g, frameRef: { current: 20 }, zoom: open }))
+    expect(open.focusOn).toHaveBeenCalledWith({ x: 20, y: 10 }, 2)
+  })
+
+  it('le drapeau « suivre » de la fiche ne commande plus la caméra : seul le joueur suivi le fait', () => {
+    const z = zoom()
+    const f = focus({ follow: true })
+    renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: f, frameRef: { current: 20 }, zoom: z }))
+    expect(z.focusOn).not.toHaveBeenCalled()
   })
 
   it('le prédicat garde son identité tant que le panneau ne change pas (aucun redessin inutile)', () => {
     const f = focus({ hide: true })
     const z = zoom()
     const frameRef = { current: 10 }
-    const { result, rerender } = renderHook(() => useReplayPlayerFocus({ doc: DOC, focus: f, frameRef, zoom: z }))
+    const { result, rerender } = renderHook(() => useReplayPlayerFocus({ doc: DOC, followPlayer: null, focus: f, frameRef, zoom: z }))
     const first = result.current.shownAtSlot
     rerender()
     expect(result.current.shownAtSlot).toBe(first)

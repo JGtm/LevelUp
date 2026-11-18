@@ -83,7 +83,7 @@ export function MatchEquipmentUsageSection({
   const teamLabel = useCallback((camp: ReplayCamp) => campLabel(camp, board, t), [board, t])
   // « Allié » = du camp du FILM du joueur de la page. Quand le film ne le situe pas (absent,
   // équipe tue), l'allégeance est INCONNUE (null) : encre neutre, jamais l'une des deux couleurs
-  // d'équipe (même règle que `ReplayTeamHeader`).
+  // d'équipe (même règle que `ReplayRosterColumn` : `campInk`).
   const teamAccent = useCallback((camp: ReplayCamp) => teamTokenCssVar(allegiance.ofTeam(camp.team)), [allegiance])
 
   const grid = useMemo(

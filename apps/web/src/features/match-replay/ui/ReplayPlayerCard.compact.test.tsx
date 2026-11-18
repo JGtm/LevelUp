@@ -1,14 +1,11 @@
 /**
- * ReplayPlayerCard.compact.test.tsx — LA TUILE COMPACTE d'une Grande équipe (gates 2 et 3 du
- * plan fiches compactes 2026-09-06) : un roster 12v12 et un 7v7 sous un en-tête
- * `mode_category: 'BTB'`, et la liste FERMÉE des `it` du plan — (a) à (k) pour le gate 2, puis
- * les reports en infobulle pour le gate 3.
+ * ReplayPlayerCard.compact.test.tsx — LA TUILE COMPACTE, celle de la rangée des équipes
+ * (`ReplayTeamsRow`, forme « fiches ») : un roster 12v12 et un 7v7, et la liste FERMÉE des `it` du
+ * plan fiches compactes — (a) à (l) pour la mise en page, puis les reports en infobulle.
  *
- * LE DOCUMENT EST RICHE À DESSEIN, comme la fixation 4v4 : chaque siège nommé porte UN cas du
- * gate (mort avec retour, mort hors film, écran occultant, champ de réparation, capacité hors
- * table, compteur manquant, porteur de drapeau, vie sans mesure, nom long), et les sièges de
- * remplissage sont vivants et équipés. Le 4v4, lui, est protégé ailleurs (`ReplayTeams.dom4v4`) :
- * ce fichier ne dit rien du gabarit normal, sauf que ses cotes n'apparaissent pas ici.
+ * LE DOCUMENT EST RICHE À DESSEIN : chaque siège nommé porte UN cas (mort avec retour, mort hors
+ * film, écran occultant, champ de réparation, capacité hors table, compteur manquant, porteur de
+ * drapeau, vie sans mesure, nom long), et les sièges de remplissage sont vivants et équipés.
  */
 import { describe, expect, it } from 'vitest'
 import { render, within } from '@testing-library/react'
@@ -16,7 +13,7 @@ import { render, within } from '@testing-library/react'
 import type { ReplayDocument, ReplayInventory } from '@/lib/api/types'
 import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
-import { ReplayTeamsFromBoard } from '../test/replayTeamsFromBoard'
+import { ReplayRowFromBoard } from '../test/replayRowFromBoard'
 import { fichierNomme, lire } from '../test/featureFiles'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
@@ -45,8 +42,6 @@ type Point = NonNullable<NonNullable<ReplayDocument['tracks']>[number]['points']
 function vie(slot: number, xuid: string, points: Point[], start = 0, end = 300) {
   return { slot, team: -1, xuid, startFrame: start, endFrame: end, points }
 }
-
-const EN_TETE_BTB = { start_time: '2026-07-24T20:00:00Z', mode_category: 'BTB' }
 
 /** Le loadout d'un siège de remplissage : Juliett tient une ÉPÉE (arme à charge), Quebec est lu À VENIR. */
 function loadoutDe(nom: string, slot: number) {
@@ -199,7 +194,7 @@ function tableauBTB(parCamp: 12 | 7) {
 function renderBTB(parCamp: 12 | 7, locale: 'fr' | 'en' = 'fr') {
   const doc = documentBTB(parCamp)
   const vue = render(
-    <ReplayTeamsFromBoard allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={tableauBTB(parCamp)} frame={FRAME} locale={locale} header={EN_TETE_BTB} />,
+    <ReplayRowFromBoard allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={tableauBTB(parCamp)} frame={FRAME} locale={locale} />,
   )
   return { vue, doc }
 }
@@ -214,7 +209,7 @@ function rangees(t: HTMLElement): HTMLElement[] {
   return [...t.children].filter((e) => !e.hasAttribute('aria-hidden')) as HTMLElement[]
 }
 
-describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', () => {
+describe('ReplayPlayerCard — la tuile compacte : mise en page', () => {
   it('(a) hauteur ET classes des rangées identiques vivant/mort — 24 tuiles 12v12, 14 tuiles 7v7', () => {
     const { vue } = renderBTB(12)
     // Un seul gabarit sur toute la colonne : 24 corps de 31, aucun corps de 35.
@@ -233,7 +228,6 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     vue.unmount()
     const sept = renderBTB(7).vue
     expect(sept.container.querySelectorAll('.h-\\[31px\\]')).toHaveLength(14)
-    expect(sept.container.innerHTML).toContain('auto-fill')
   })
 
   it('(b) le nom occupe seul la ligne 1, `title` = nom complet, et l’infobulle de la TUILE reste atteignable sur cette ligne (D6)', () => {
@@ -311,15 +305,24 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
   it('(g) aucune barre sans `sh`/`hp` dans le document ; 100 % sans mesure sur la vie ; jauges 4 / 2 px en `flex-1`', () => {
     // Un titre sans décodage film : le document ne porte ni bouclier ni santé — aucune jauge.
     const sansVitalite = testReplayDoc({
-      roster: [{ xuid: 'Alpha', filmIndex: 0, name: 'Alpha', team: 0 }],
-      tracks: [vie(512, 'Alpha', [{ t: 0, x: 0, y: 0 }])],
+      roster: [
+        { xuid: 'Alpha', filmIndex: 0, name: 'Alpha', team: 0 },
+        { xuid: 'Mike', filmIndex: 1, name: 'Mike', team: 1 },
+      ],
+      tracks: [vie(512, 'Alpha', [{ t: 0, x: 0, y: 0 }]), vie(513, 'Mike', [{ t: 0, x: 1, y: 1 }])],
     })
     const nue = render(
-      <ReplayTeamsFromBoard allegiance={NO_ALLEGIANCE} doc={sansVitalite} scoreboard={[scoreboardRow('Alpha', 'Alpha', 't0')]} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
+      <ReplayRowFromBoard
+        allegiance={NO_ALLEGIANCE}
+        doc={sansVitalite}
+        scoreboard={[scoreboardRow('Alpha', 'Alpha', 't0'), scoreboardRow('Mike', 'Mike', 't1')]}
+        frame={FRAME}
+        locale="fr"
+      />,
     )
     expect(nue.queryByLabelText('Bouclier')).toBeNull()
     expect(nue.queryByLabelText('Santé')).toBeNull()
-    expect(nue.container.querySelectorAll('.h-\\[31px\\]')).toHaveLength(1)
+    expect(nue.container.querySelectorAll('.h-\\[31px\\]')).toHaveLength(2)
     nue.unmount()
     // Le document porte la vitalité mais la vie de Kilo n'a aucune mesure : barres PLEINES.
     const { vue } = renderBTB(12)
@@ -356,7 +359,7 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     expect(vue.queryByRole('progressbar')).toBeNull()
   })
 
-  it('(i) DEUX éclairs et TROIS croix en compacte (les tests existants restent à 3 / 3 sur le gabarit normal)', () => {
+  it('(i) DEUX éclairs et TROIS croix en compacte', () => {
     const { vue } = renderBTB(12)
     const eclairs = [...tuile(vue, 'Charlie').querySelectorAll('.replay-zone-bolt')] as HTMLElement[]
     expect(eclairs).toHaveLength(2)
@@ -402,14 +405,17 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     expect(filigrane.className).toContain('overflow-hidden rounded-md')
     // Les deux couches que ce document ne pose pas (anneau du capteur, fourreau de
     // translocation) reçoivent le même rayon : au source, aucune classe de couche n'écrit plus
-    // `rounded-lg` en dur — seule la table `TILE_LAYOUT` le porte, pour le corps de 35.
+    // `rounded-lg` en dur — la tuile ne porte que la constante `LAYER_RADIUS`.
     const src = lire(fichierNomme('ReplayPlayerCard.tsx'))
-    expect(src).not.toMatch(/className="[^"]*rounded-lg/)
-    expect(src).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
-    expect(src).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
-    expect(src).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{L\.layerRadius\}/)
-    expect(src.match(/layerRadius: 'rounded-lg'/g)).toHaveLength(1)
-    expect(src.match(/layerRadius: 'rounded-md'/g)).toHaveLength(1)
+    expect(src).not.toMatch(/rounded-lg/)
+    // Les couches d'effets vivent dans `ReplayCardFx.tsx` et reçoivent le rayon de la fiche en prop.
+    const fx = lire(fichierNomme('ReplayCardFx.tsx'))
+    expect(fx).not.toMatch(/className="[^"]*rounded-lg/)
+    expect(fx).toMatch(/replay-zone-sensor absolute inset-0 \$\{radiusClass\}/)
+    expect(fx).toMatch(/replay-flash-translocation absolute inset-0 \$\{radiusClass\}/)
+    expect(fx).toMatch(/replay-card-fx pointer-events-none absolute inset-0 \$\{radiusClass\}/)
+    expect(src.match(/radiusClass=\{LAYER_RADIUS\}/g)).toHaveLength(2)
+    expect(src.match(/const LAYER_RADIUS = 'rounded-md'/g)).toHaveLength(1)
     expect(lire(fichierNomme('ReplayObjectiveMark.tsx'))).not.toMatch(/className="[^"]*rounded-lg/)
   })
 })
@@ -419,7 +425,7 @@ function rangeeArmes(t: HTMLElement): HTMLElement {
   return within(t).getByTitle(/Armes (lues il y a|de la première image-clé)|Weapons (read|from the first keyframe)/)
 }
 
-describe('ReplayPlayerCard — la tuile compacte : gate 3 (ce qui quitte la tuile est dans un `title`, avec sa valeur)', () => {
+describe('ReplayPlayerCard — la tuile compacte : reports (ce qui quitte la tuile est dans un `title`, avec sa valeur)', () => {
   it('une seule cellule d’arme, à 48 px ; l’arme rangée est NOMMÉE dans le `title` (weaponStowedFmt) ; loadout non lu → cellule vide + `title`', () => {
     const { vue } = renderBTB(12)
     const alpha = tuile(vue, 'Alpha')

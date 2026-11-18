@@ -47,6 +47,16 @@ export type FragClassKey = (typeof FRAG_CLASS_ORDER)[number]
 export const FRAG_CLASS_UNATTRIBUTED: FragClassKey = 'unattributed'
 
 /**
+ * La classe qui range un frag d'après la valeur servie (`MatchHighlightEvent.weapon_class`), ou `undefined`
+ * quand elle est absente, vide ou inconnue : jamais une classe devinée. Le résidu `unattributed` n'est pas une
+ * classe servie (il se calcule), il vaut « non classé ».
+ */
+export function fragClassOfServed(value: string | null | undefined): FragClassKey | undefined {
+  if (value == null || value === FRAG_CLASS_UNATTRIBUTED) return undefined
+  return (FRAG_CLASS_ORDER as readonly string[]).includes(value) ? (value as FragClassKey) : undefined
+}
+
+/**
  * Mapping classe → TOKEN de la famille DÉDIÉE `frag-*` (2026-08-29).
  *
  * HISTORIQUE : les classes empruntaient des tokens d'autres gammes (perf-tier,

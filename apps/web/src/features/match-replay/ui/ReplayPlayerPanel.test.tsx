@@ -1,23 +1,29 @@
 /**
- * Tests — le panneau de joueur (lot 4 du plan « maquettes du rejeu »).
+ * Tests — la fiche du joueur dans la colonne du Standard (conteneur `ReplayPlayerPanel`).
  *
  * Ce qu'ils protègent :
- *  1. LA TÊTE : le nom, les compteurs au format de la fiche, l'instant qui les date, « Retour au fil ».
- *  2. LES TROIS ACTIONS : des boutons à bascule (`aria-pressed`) dans l'ordre de la maquette, qui
- *     rappellent la page ; la souris ne leur prend pas le focus, Espace reste « Lecture ».
- *  3. LES LISTES SONT DES TOTAUX DE FIN DE MATCH, et le disent (« sur le match »), en FR comme en EN ;
- *     aucune précision « à l'instant ».
- *  4. RIEN D'INVENTÉ : une valeur non lue est un tiret, une feuille absente ou entièrement non lue un
- *     bloc pointillé — jamais un zéro. Un bot sans feuille est dans ce cas ; avec une feuille, il a ses listes.
+ *  1. L'EN-TÊTE : le retour « Équipes » (chevron) à gauche, la capsule « Échap » à droite ; le retour rend la
+ *     colonne, pas « Retour au fil ».
+ *  2. UNE SEULE ZONE QUI DÉFILE : retour, sélecteur, tête, actions et sections y sont ensemble ; le pied
+ *     « Éliminations » est fixé en bas, HORS de cette zone ; la partie basse du corps ne défile pas d'elle-même.
+ *  3. ÉCHAP est une couche (marqueur, une seule fermeture, une couche intérieure d'abord) et rend la colonne ; le
+ *     focus est rendu à la fiche de la colonne, y compris quand elle n'est de nouveau visible qu'au retrait du
+ *     panneau.
+ *  4. LE PIED REÇOIT LA SORTIE du panneau : « Fil complet » ferme comme « Équipes ».
+ *  5. LE CORPS COMMUN : les sections de la fiche enrichie y sont, dans l'ordre, dans la zone qui défile.
  */
-import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { useState } from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
-import { scoreboardRow } from '../test/scoreboardRow'
+import { COTES_FICHE_STANDARD } from '../model/cotesFicheStandard'
+import { COTES_COLONNE_STANDARD } from '../model/cotesStandard'
+import {
+  INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers,
+} from '../test/instantFixture'
 import { testReplayDoc } from '../test/testDoc'
 import { ReplayPlayerPanel, type ReplayPlayerPanelProps } from './ReplayPlayerPanel'
 
@@ -25,24 +31,13 @@ const DOC = testReplayDoc({
   frameIntervalMs: 100,
   roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 }],
 })
-const ALLEGIANCE = filmAllegianceOf(DOC, [], 'A')
+const PLAYER: ReplayPlayer = { xuid: 'A', filmName: 'Alpha', team: 0, lives: [] }
 
-function player(board?: MatchScoreboardRow, extra: Partial<ReplayPlayer> = {}): ReplayPlayer {
-  return { xuid: 'A', filmName: 'Alpha', team: 0, lives: [], board, ...extra }
-}
+afterEach(cleanup)
 
-const FULL = scoreboardRow('A', 'Alpha', 'a', {
-  kills: 7, deaths: 3, assists: 2, score: 1800,
-  accuracy: 42.5, shots_hit: 85, shots_fired: 200,
-  damage_dealt: 3457.2, damage_taken: 2100,
-  headshot_kills: 4, power_weapon_kills: 2, melee_kills: 1,
-  objective: { flag_captures: 2, flag_returns: 0 } as never,
-  weapon_kills: [{ weapon_id: 9, label: 'BR75', kills: 6 }, { weapon_id: 12, kills: 1 }],
-})
-
-function setup(over: Partial<ReplayPlayerPanelProps> = {}) {
-  const props: ReplayPlayerPanelProps = {
-    player: player(FULL),
+function props(over: Partial<ReplayPlayerPanelProps> = {}): ReplayPlayerPanelProps {
+  return {
+    player: PLAYER,
     actions: { follow: false, solo: false, hide: false },
     onToggle: vi.fn(),
     onClose: vi.fn(),
@@ -50,65 +45,126 @@ function setup(over: Partial<ReplayPlayerPanelProps> = {}) {
     frame: 10,
     nowMs: 65_000,
     playWindow: null,
-    allegiance: ALLEGIANCE,
+    allegiance: filmAllegianceOf(DOC, [], 'A'),
     locale: 'fr',
+    players: [PLAYER],
+    feed: [],
+    weaponIcons: new Map(),
+    column: {
+      picker: <div data-testid="selecteur">sélecteur</div>,
+      footer: (close) => (
+        <div data-testid="pied">
+          <button type="button" onClick={close}>
+            Fil complet
+          </button>
+        </div>
+      ),
+    },
     ...over,
   }
-  render(<ReplayPlayerPanel {...props} />)
-  return props
 }
 
-describe('ReplayPlayerPanel — la tête', () => {
-  it('nomme le joueur, montre ses compteurs au format de la fiche et ferme au clic', () => {
-    const props = setup()
-    expect(screen.getByRole('region', { name: 'Fiche de Alpha' })).toBeTruthy()
-    // Sans film publié pour ce joueur, la fiche retombe sur les totaux de la feuille : 7 / 3 / 2.
-    expect(screen.getByTitle(/Frags \/ morts \/ assistances du match/).textContent).toBe('7/3/2')
-    expect(screen.getByText('totaux du match')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Retour au fil' }))
-    expect(props.onClose).toHaveBeenCalledTimes(1)
+function setup(over: Partial<ReplayPlayerPanelProps> = {}) {
+  const p = props(over)
+  render(<ReplayPlayerPanel {...p} />)
+  return p
+}
+
+const zone = () => document.querySelector('[data-replay-fiche-scroll]') as HTMLElement
+const echap = () => fireEvent.keyDown(window, { key: 'Escape' })
+
+describe('fiche de la colonne — l’en-tête', () => {
+  it('le retour « Équipes » à gauche, la capsule « Échap » à droite ; il appelle la sortie', () => {
+    const p = setup()
+    const retour = screen.getByRole('button', { name: 'Équipes' })
+    const capsule = screen.getByText('Échap')
+    expect(capsule.tagName).toBe('KBD')
+    expect(capsule.className).toContain('ml-auto')
+    // Le retour précède la capsule dans l'en-tête.
+    expect(retour.compareDocumentPosition(capsule) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(retour.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(retour.style.height).toBe(`${COTES_FICHE_STANDARD.retour.hauteurPx}px`)
+    fireEvent.click(retour)
+    expect(p.onClose).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: 'Retour au fil' })).toBeNull()
   })
 
-  it('en anglais, « Back to the feed »', () => {
+  it('en anglais : « Teams » et « Esc »', () => {
     setup({ locale: 'en' })
-    expect(screen.getByRole('button', { name: 'Back to the feed' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Teams' })).toBeTruthy()
+    expect(screen.getByText('Esc')).toBeTruthy()
   })
 })
 
-describe('ReplayPlayerPanel — Échap', () => {
-  const echap = () => fireEvent.keyDown(window, { key: 'Escape' })
-
-  it('est une couche qu’Échap ferme avant le plein écran : elle porte le marqueur', () => {
+describe('fiche de la colonne — la zone qui défile et le pied fixé', () => {
+  it('retour, sélecteur, tête, actions et sections sont tous dans la même zone qui défile', () => {
     setup()
-    expect(screen.getByRole('region', { name: 'Fiche de Alpha' }).hasAttribute('data-replay-escape-layer')).toBe(true)
+    const z = zone()
+    expect(z.className).toContain('overflow-y-auto')
+    expect(within(z).getByRole('button', { name: 'Équipes' })).toBeTruthy()
+    expect(within(z).getByTestId('selecteur')).toBeTruthy()
+    expect(within(z).getByRole('group', { name: 'Alpha' })).toBeTruthy()
+    expect(within(z).getByText('Suivre')).toBeTruthy()
+    expect(within(z).getByRole('region', { name: "À l'instant" })).toBeTruthy()
   })
 
-  it('Échap ferme le panneau, une fois', () => {
-    const props = setup()
-    echap()
-    expect(props.onClose).toHaveBeenCalledTimes(1)
+  it('le pied est un frère de la zone, jamais un de ses enfants : il reste fixé en bas', () => {
+    setup()
+    const z = zone()
+    const pied = screen.getByTestId('pied')
+    expect(z.contains(pied)).toBe(false)
+    expect(pied.parentElement).toBe(z.parentElement)
+    // Le pied vient après la zone, et c'est la zone qui prend la place restante.
+    expect(z.compareDocumentPosition(pied) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(z.className).toContain('flex-1')
+    expect(z.className).toContain('min-h-0')
   })
 
-  it('une autre touche ne le ferme pas', () => {
-    const props = setup()
+  it('la partie basse du corps ne défile pas d’elle-même : le conteneur seul défile', () => {
+    setup()
+    const now = document.querySelector('[data-replay-player-now]') as HTMLElement
+    const basse = now.parentElement as HTMLElement
+    expect(basse.className).not.toContain('overflow-y-auto')
+    expect(basse.className).not.toContain('flex-1')
+    expect(zone().querySelectorAll('.overflow-y-auto')).toHaveLength(0)
+  })
+
+  it('la marge intérieure, l’écart et la marge de barre sont ceux des cotes', () => {
+    setup()
+    const section = screen.getByRole('region', { name: 'Fiche de Alpha' })
+    expect(section.style.padding).toBe(
+      `${COTES_COLONNE_STANDARD.margeVerticalePx}px ${COTES_COLONNE_STANDARD.margeLateralePx}px`,
+    )
+    expect(section.style.gap).toBe(`${COTES_COLONNE_STANDARD.ecartBlocsPx}px`)
+    expect(zone().style.gap).toBe(`${COTES_FICHE_STANDARD.ecartBlocsPx}px`)
+    expect(zone().style.paddingRight).toBe(`${COTES_FICHE_STANDARD.margeBarrePx}px`)
+  })
+
+  it('porte le nom accessible de la fiche et le marqueur de couche d’Échap', () => {
+    setup()
+    const section = screen.getByRole('region', { name: 'Fiche de Alpha' })
+    expect(section.hasAttribute('data-replay-escape-layer')).toBe(true)
+    expect(section.hasAttribute('data-replay-fiche-column')).toBe(true)
+  })
+})
+
+describe('fiche de la colonne — la sortie', () => {
+  it('Échap rend la colonne, une seule fois ; une autre touche non', () => {
+    const p = setup()
     fireEvent.keyDown(window, { key: 'Enter' })
-    expect(props.onClose).not.toHaveBeenCalled()
+    expect(p.onClose).not.toHaveBeenCalled()
+    echap()
+    expect(p.onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('une couche plus intérieure ouverte (menu, panneau de la vue) se ferme d’abord : le panneau reste', () => {
-    const props = setup()
-    const autre = document.createElement('div')
-    autre.setAttribute('data-replay-escape-layer', '')
-    document.body.appendChild(autre)
-    try {
-      echap()
-      expect(props.onClose).not.toHaveBeenCalled()
-    } finally {
-      autre.remove()
-    }
+  it('le panneau retiré, plus d’écouteur : Échap ne rappelle plus la page', () => {
+    const p = setup()
+    cleanup()
+    echap()
+    expect(p.onClose).not.toHaveBeenCalled()
   })
 
-  it('le focus est rendu à la fiche du joueur, à Échap comme à « Retour au fil »', () => {
+  it('le focus est rendu à la fiche du joueur à Échap comme à « Équipes »', () => {
     const fiche = document.createElement('div')
     fiche.setAttribute('role', 'button')
     fiche.setAttribute('aria-pressed', 'true')
@@ -119,141 +175,93 @@ describe('ReplayPlayerPanel — Échap', () => {
       setup()
       echap()
       expect(document.activeElement).toBe(fiche)
-      ;(fiche as HTMLElement).blur()
-      fireEvent.click(screen.getByRole('button', { name: 'Retour au fil' }))
+      fiche.blur()
+      fireEvent.click(screen.getByRole('button', { name: 'Équipes' }))
       expect(document.activeElement).toBe(fiche)
     } finally {
       fiche.remove()
     }
   })
 
-  it('le panneau retiré, plus d’écouteur : Échap ne rappelle plus la page', () => {
-    const props = setup()
-    cleanup()
-    echap()
-    expect(props.onClose).not.toHaveBeenCalled()
-  })
-})
-
-describe('ReplayPlayerPanel — les trois actions', () => {
-  it('Suivre, Seul, Masquer : des boutons à bascule, dans cet ordre', () => {
-    setup({ actions: { follow: true, solo: false, hide: false } })
-    const group = screen.getByRole('group', { name: 'Alpha' })
-    const buttons = within(group).getAllByRole('button')
-    expect(buttons.map((b) => b.textContent)).toEqual(['Suivre', 'Seul', 'Masquer'])
-    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
-  })
-
-  it('un clic rappelle la page avec l’action', () => {
-    const props = setup()
-    fireEvent.click(screen.getByRole('button', { name: 'Seul' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Masquer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre' }))
-    expect(props.onToggle).toHaveBeenNthCalledWith(1, 'solo')
-    expect(props.onToggle).toHaveBeenNthCalledWith(2, 'hide')
-    expect(props.onToggle).toHaveBeenNthCalledWith(3, 'follow')
-  })
-
-  it('l’infobulle de Suivre dit que la main l’arrête', () => {
-    setup()
-    expect(screen.getByRole('button', { name: 'Suivre' }).getAttribute('title')).toContain("l'arrête")
-  })
-
-  it('la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture', () => {
-    setup()
-    const bouton = screen.getByRole('button', { name: 'Seul' })
-    // `fireEvent` rend false quand l'événement a été annulé : le focus n'est pas pris.
-    expect(fireEvent.mouseDown(bouton)).toBe(false)
-    const global = vi.fn()
-    window.addEventListener('keydown', global)
-    fireEvent.keyDown(bouton, { key: ' ' })
-    window.removeEventListener('keydown', global)
-    expect(global).not.toHaveBeenCalled()
-  })
-})
-
-describe('ReplayPlayerPanel — les listes : des totaux de fin de match', () => {
-  it('chaque titre dit « sur le match », et aucune précision « à l’instant » n’existe', () => {
-    setup()
-    for (const titre of [
-      'Précision sur le match',
-      'Dégâts sur le match',
-      'Détail du score sur le match',
-      'Objectif sur le match',
-      'Éliminations par arme sur le match',
-    ]) {
-      expect(screen.getByRole('heading', { name: titre })).toBeTruthy()
+  it('une couche plus intérieure ouverte se ferme d’abord : la fiche reste', () => {
+    const p = setup()
+    const autre = document.createElement('div')
+    autre.setAttribute('data-replay-escape-layer', '')
+    document.body.appendChild(autre)
+    try {
+      echap()
+      expect(p.onClose).not.toHaveBeenCalled()
+    } finally {
+      autre.remove()
     }
-    expect(screen.queryByText(/à l.instant/i)).toBeNull()
   })
 
-  it('la précision : pourcentage, touches et tirs, lus sur la feuille', () => {
-    setup()
-    const liste = screen.getByRole('region', { name: 'Précision sur le match' })
-    const lignes = within(liste).getAllByRole('listitem').map((li) => li.textContent)
-    expect(lignes).toEqual(['Précision42,5 %', 'Touches85', 'Tirs200'])
+  it('« Fil complet », reçu du conteneur, ferme comme « Équipes »', () => {
+    const p = setup()
+    fireEvent.click(screen.getByRole('button', { name: 'Fil complet' }))
+    expect(p.onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('un zéro MESURÉ s’écrit 0 ; les dégâts sont arrondis', () => {
-    setup()
-    const objectif = screen.getByRole('region', { name: 'Objectif sur le match' })
-    expect(within(objectif).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'Captures de drapeau2',
-      'Retours de drapeau0',
-    ])
-    const degats = screen.getByRole('region', { name: 'Dégâts sur le match' })
-    expect(within(degats).getAllByRole('listitem')[0].textContent).toBe('Infligés3 457')
+  it('le focus revient à la fiche de la colonne, même quand elle ne redevient visible qu’au retrait du panneau', () => {
+    const fiche = document.createElement('div')
+    fiche.setAttribute('role', 'button')
+    fiche.setAttribute('aria-pressed', 'true')
+    fiche.setAttribute('data-replay-player-card', '')
+    fiche.tabIndex = 0
+    document.body.appendChild(fiche)
+    function Hote() {
+      const [ouvert, setOuvert] = useState(true)
+      return ouvert ? <ReplayPlayerPanel {...props({ onClose: () => setOuvert(false) })} /> : null
+    }
+    try {
+      render(<Hote />)
+      fireEvent.click(screen.getByRole('button', { name: 'Équipes' }))
+      expect(screen.queryByRole('region', { name: 'Fiche de Alpha' })).toBeNull()
+      expect(document.activeElement).toBe(fiche)
+    } finally {
+      fiche.remove()
+    }
   })
 
-  it('une valeur non lue est un tiret, pas un zéro', () => {
-    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { accuracy: 40, shots_hit: undefined, shots_fired: 100 })) })
-    const liste = screen.getByRole('region', { name: 'Précision sur le match' })
-    expect(within(liste).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'Précision40,0 %',
-      'Touches—',
-      'Tirs100',
-    ])
-  })
-
-  it('une arme sans nom écrit son numéro, jamais le nom d’une autre', () => {
-    setup()
-    const armes = screen.getByRole('region', { name: 'Éliminations par arme sur le match' })
-    expect(within(armes).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['BR75×6', 'Arme n° 12×1'])
-  })
-
-  it('en anglais, les titres le disent aussi (« over the match »)', () => {
-    setup({ locale: 'en' })
-    expect(screen.getByRole('heading', { name: 'Accuracy over the match' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Score breakdown over the match' })).toBeTruthy()
+  it('le focus rendu est repris au retrait : une fiche masquée au moment du clic le reçoit ensuite', () => {
+    const fiche = document.createElement('div')
+    fiche.setAttribute('role', 'button')
+    fiche.setAttribute('aria-pressed', 'true')
+    fiche.setAttribute('data-replay-player-card', '')
+    fiche.tabIndex = 0
+    document.body.appendChild(fiche)
+    const focus = vi.spyOn(fiche, 'focus')
+    function Hote() {
+      const [ouvert, setOuvert] = useState(true)
+      return ouvert ? <ReplayPlayerPanel {...props({ onClose: () => setOuvert(false) })} /> : null
+    }
+    try {
+      render(<Hote />)
+      fireEvent.click(screen.getByRole('button', { name: 'Équipes' }))
+      // Une fois au clic (fiche visible), une fois au retrait du panneau (fiche masquée jusque-là).
+      expect(focus).toHaveBeenCalledTimes(2)
+    } finally {
+      fiche.remove()
+    }
   })
 })
 
-describe('ReplayPlayerPanel — rien d’inventé', () => {
-  it('un joueur sans ligne de feuille : un bloc pointillé, aucune liste, aucun zéro', () => {
-    setup({ player: player(undefined) })
-    expect(screen.getByText('Pas de statistiques de match pour ce joueur')).toBeTruthy()
-    expect(screen.queryByRole('heading', { level: 4 })).toBeNull()
-    expect(screen.queryByText('0')).toBeNull()
-    // La tête, elle, reste : son nom et les actions sur la carte fonctionnent.
-    expect(screen.getByRole('button', { name: 'Suivre' })).toBeTruthy()
-  })
-
-  it('une feuille entièrement non lue : le même bloc, pas des listes de tirets', () => {
-    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { score: undefined })) })
-    expect(screen.getByText('Pas de statistiques de match pour ce joueur')).toBeTruthy()
-  })
-
-  it('un bot (sans xuid, clé de roster synthétique) avec une feuille a ses listes ; sans feuille, le bloc', () => {
-    const bot = player(scoreboardRow('bid(2.0)', 'Marc', 'b', { accuracy: 30, shots_hit: 3, shots_fired: 10 }), {
-      xuid: 'bot:Marc', bot: true, filmName: 'Marc',
+describe('fiche de la colonne — le corps commun, enrichi', () => {
+  it('toutes les sections de la fiche, de « À l’instant » à « Gestes », dans la zone qui défile ; le pied reste fixé', () => {
+    const doc = instantDoc()
+    const players = instantPlayers(doc)
+    setup({
+      doc, player: instantPlayer(players, 'A'), players, feed: instantFeed(), weaponIcons: INSTANT_ICONS,
+      frame: INSTANT_LAST_FRAME, nowMs: INSTANT_LAST_FRAME * 100, allegiance: filmAllegianceOf(doc, [], 'A'),
     })
-    setup({ player: bot })
-    expect(screen.getByRole('region', { name: 'Fiche de Marc' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Précision sur le match' })).toBeTruthy()
-  })
-
-  it('un bot sans ligne de feuille : le bloc pointillé', () => {
-    setup({ player: player(undefined, { xuid: 'bot:Marc', bot: true, filmName: 'Marc' }) })
-    expect(screen.getByText('Pas de statistiques de match pour ce joueur')).toBeTruthy()
+    const titres = [...zone().querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label'))
+    expect(titres).toEqual([
+      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
+      'Ramassages', 'Équipement', 'Médailles', 'Totaux du match', 'Gestes',
+    ])
+    expect(zone().contains(screen.getByTestId('pied'))).toBe(false)
+    // La colonne fait défiler toute la fiche : le corps ne porte aucun défilement propre, et son nom est à 17 px.
+    expect(zone().querySelectorAll('.overflow-y-auto')).toHaveLength(0)
+    expect(within(zone()).getByText('Alpha').style.fontSize).toBe('17px')
   })
 })
