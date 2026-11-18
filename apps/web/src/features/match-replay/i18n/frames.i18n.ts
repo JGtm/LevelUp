@@ -37,6 +37,9 @@ export interface FramesText {
   /** L'option du panneau Vue qui pose le fil des éliminations sur le plan, et sa phrase d'aide (infobulle). */
   planFeed: string
   planFeedHint: string
+  /** L'option du panneau Vue qui garde la barre de lecture fine et translucide au Plein cadre, et sa phrase d'aide (infobulle). */
+  thinBar: string
+  thinBarHint: string
 }
 
 /** La touche de chaque cadre qui en a une : celles que `useReplayShortcuts` câble sur T et F. */
@@ -67,6 +70,9 @@ export const FR_FRAMES = {
   dimensionGroup: 'Vue du rejeu',
   planFeed: 'Fil des éliminations',
   planFeedHint: 'Les cinq dernières éliminations, posées en bas à gauche du plan.',
+  thinBar: 'Barre de lecture fine',
+  thinBarHint:
+    'Au Plein cadre, la barre de lecture se pose sur le bas du plan, fine et translucide pendant la lecture. Elle redevient pleine à la pause, au survol, au clavier et juste après une touche. Éteint, elle reste pleine, sous le plan.',
 } satisfies FramesText
 
 export const EN_FRAMES = {
@@ -83,4 +89,7 @@ export const EN_FRAMES = {
   dimensionGroup: 'Replay view',
   planFeed: 'Elimination feed',
   planFeedHint: 'The last five eliminations, laid over the bottom left of the map.',
+  thinBar: 'Thin playback bar',
+  thinBarHint:
+    'In Full frame, the playback bar sits over the bottom of the map, thin and translucent while playing. It goes back to full size on pause, on hover, with the keyboard and right after a key press. Off, it stays full size, below the map.',
 } satisfies FramesText

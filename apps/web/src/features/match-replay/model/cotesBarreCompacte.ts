@@ -29,10 +29,18 @@ export interface CotesBarreCompacte {
   /** Le temps « instant / durée » : largeur minimale (la frise ne bouge pas quand un chiffre change) et marge. */
   tempsLargeurMinPx: number
   tempsMargePx: number
-  /** La frise : hauteur, marge de chaque côté, largeur minimale quand la barre est étroite. */
+  /** La frise : hauteur, marge de chaque côté, largeur minimale (sous elle, la barre passe sur deux lignes). */
   friseHauteurPx: number
   friseMargePx: number
   friseLargeurMinPx: number
+  /** Sur deux lignes : hauteur de la ligne de la frise, seule en haut, et marge verticale de chaque commande de la seconde ligne. */
+  deuxLignesFriseHauteurPx: number
+  deuxLignesCommandeMargeYPx: number
+  /** La forme fine (Plein cadre, en lecture) : hauteur de la barre, et échelle des commandes (la barre pleine, réduite). */
+  fineHauteurPx: number
+  fineEchelle: number
+  /** Combien de temps la barre garde sa forme pleine après le dernier geste (survol quitté, touche), en millisecondes. */
+  fineRetenuMs: number
   /** Les repères d'éliminations, au-dessus du rail : bande, largeur et hauteur d'un repère. */
   reperesBandePx: number
   repereLargeurPx: number
@@ -70,7 +78,12 @@ export const COTES_BARRE_COMPACTE: CotesBarreCompacte = Object.freeze({
   tempsMargePx: 4,
   friseHauteurPx: 30,
   friseMargePx: 10,
-  friseLargeurMinPx: 120,
+  friseLargeurMinPx: 240,
+  deuxLignesFriseHauteurPx: 38,
+  deuxLignesCommandeMargeYPx: 1,
+  fineHauteurPx: 32,
+  fineEchelle: 0.8,
+  fineRetenuMs: 1500,
   reperesBandePx: 9,
   repereLargeurPx: 2,
   repereHauteurPx: 8,

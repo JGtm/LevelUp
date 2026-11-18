@@ -11,8 +11,18 @@
  *  - capture et export (`ReplayCaptureButtons`), icônes de cadre et plein écran du système
  *    (`ReplayFrameButtons`).
  *
- * Un séparateur vertical sépare les groupes. La barre est PILOTÉE PAR L'OBJET DE COMMANDES de la toile et
- * par lui seul : aucun état de lecture ne vit ici, et les raccourcis clavier sont ceux de la toile.
+ * Un séparateur vertical sépare les groupes (`ReplayCompactBarControls`). La barre est PILOTÉE PAR L'OBJET DE
+ * COMMANDES de la toile et par lui seul : aucun état de lecture ne vit ici, et les raccourcis clavier sont ceux
+ * de la toile.
+ *
+ * SUR UNE OU DEUX LIGNES (`barLines`) : quand la frise n'aurait plus sa largeur minimale, elle passe seule sur la
+ * première ligne et les commandes sur la seconde. La barre mesure, la règle décide.
+ *
+ * FINE OU PLEINE (`barForm`) : au Plein cadre, avec la préférence « barre fine », la barre est posée sur le plan par
+ * la toile (`overlaysTransportBar`) et prend la forme FINE pendant la lecture : la barre pleine réduite à
+ * `fineEchelle`, plus basse, plus translucide, floutée derrière. Pause, survol, focus clavier ou geste récent la
+ * rendent pleine ; mouvement réduit demandé, le passage est instantané. Une commande qui a le focus n'est donc
+ * jamais dans la forme réduite. Hors surimpression, la barre garde sa forme pleine.
  *
  * L'EMPLACEMENT DE LA CAMÉRA : `camera` est un nœud que l'appelant fournit (le bouton « Caméra » et son
  * menu). Absent, rien n'est rendu — ni bouton inerte, ni espace — et le son occupe l'extrémité gauche. Présent,
@@ -23,22 +33,14 @@
  * d'export écrit l'image courante, et la lecture, les sauts et le glisser de la frise écrivent le MÊME ref.
  * Les icônes de cadre gardent la règle de `ReplayFrameButtons`.
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
-import { isCaptureBusy } from '../export/captureBusy'
-import { REPLAY_TEXT } from '../i18n/i18n'
-import { SKIP_SECONDS } from '../layers/replayCanvasConfig'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useTransportBarForm } from '../hooks/useTransportBarForm'
+import { useTransportBarLines } from '../hooks/useTransportBarLines'
 import { COTES_BARRE_COMPACTE as C } from '../model/cotesBarreCompacte'
-import { ReplaySoundControls } from '../sound/ReplaySoundControls'
-import { ReplayAutoPlayToggle } from './ReplayAutoPlayToggle'
-import { ReplayCaptureButtons } from './ReplayCaptureButtons'
-import { ReplayFrameButtons } from './ReplayFrameButtons'
-import { ReplayPlayButton } from './ReplayPlayButton'
-import { ReplayRotatedButton } from './ReplayRotatedButton'
-import { ReplayRoundButton } from './ReplayRoundButton'
-import { ReplaySpeedMenu } from './ReplaySpeedMenu'
-import { ReplayTimelineCompact } from './ReplayTimelineCompact'
-import { RestartIcon } from './ReplayTransportIcons'
+import { overlaysTransportBar, type BarForm, type BarLines } from '../model/transportBarLogic'
+import { ReplayCompactBarControls } from './ReplayCompactBarControls'
 import type { ReplayTransportCommands } from './replayTransportCommands'
 
 export interface ReplayTransportCompactProps extends ReplayTransportCommands {
@@ -46,77 +48,68 @@ export interface ReplayTransportCompactProps extends ReplayTransportCommands {
   camera?: ReactNode
 }
 
-/** Le séparateur vertical entre deux groupes de commandes. */
-function GroupSeparator() {
-  return (
-    <span
-      className="shrink-0 bg-border"
-      style={{ width: 1, height: C.separateurHauteurPx, margin: `0 ${C.separateurMargePx}px` }}
-      aria-hidden="true"
-    />
-  )
+/** Le fond de la barre : fixe, pleine en surimpression, ou fine et floutée. */
+function backgroundClass(overlay: boolean, form: BarForm): string {
+  if (!overlay) return 'bg-background/40'
+  return form === 'fine' ? 'bg-background/45 backdrop-blur-[6px]' : 'bg-background/70'
 }
 
-export function ReplayTransportCompact({
-  playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
-  speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl, zoom, autoRotation, camera,
-}: ReplayTransportCompactProps) {
-  const busy = isCaptureBusy(capture)
-  const t = REPLAY_TEXT[locale]
+/** La hauteur de la racine : celle de la barre pleine sur une ligne, celle de la forme fine, ou celle du contenu. */
+function barHeight(form: BarForm, lines: BarLines, rowHeight: number): number | undefined {
+  if (form === 'fine') {
+    if (lines === 1) return C.fineHauteurPx
+    return rowHeight > 0 ? Math.round(rowHeight * C.fineEchelle) : undefined
+  }
+  return lines === 1 ? C.barreHauteurPx : undefined
+}
+
+/** La hauteur de la rangée sur une ligne : toute la barre, ou — forme fine — de quoi remplir la hauteur fine une fois réduite. */
+function rowHeightOf(form: BarForm, lines: BarLines): number | string | undefined {
+  if (lines === 2) return undefined
+  return form === 'fine' ? C.fineHauteurPx / C.fineEchelle : '100%'
+}
+
+/** La rangée des commandes : la barre pleine, ou — forme fine — la même, plus large d'autant qu'elle est réduite. */
+function rowStyle(form: BarForm, lines: BarLines, animated: boolean): CSSProperties {
+  const fine = form === 'fine'
+  return {
+    columnGap: C.ecartPx,
+    padding: `0 ${C.margeXPx}px`,
+    height: rowHeightOf(form, lines),
+    width: fine ? `${100 / C.fineEchelle}%` : undefined,
+    transform: fine ? `scale(${C.fineEchelle})` : undefined,
+    transformOrigin: 'left top',
+    transition: animated ? 'transform 150ms ease' : undefined,
+    '--bc-marge-y': `${C.deuxLignesCommandeMargeYPx}px`,
+  } as CSSProperties
+}
+
+/** Une ligne : les commandes centrées. Deux : elles se rangent à la suite, la frise passe en tête (cf. `ReplayCompactBarControls`). */
+const ROW_CLASS: Record<BarLines, string> = {
+  1: 'flex items-center',
+  2: 'flex flex-wrap content-start [&>:not([data-replay-bar-timeline])]:[margin-block:var(--bc-marge-y)]',
+}
+
+export function ReplayTransportCompact(props: ReplayTransportCompactProps) {
+  const { camera, ...commands } = props
+  const { frameControl, thinBar, playing } = commands
+  const { form, handlers } = useTransportBarForm({ frame: frameControl.frame, thinPreferred: thinBar, playing })
+  const { outerRef, rowRef, lines, rowHeight } = useTransportBarLines()
+  const animated = !useReducedMotion()
+  const overlay = overlaysTransportBar(frameControl.frame, thinBar)
   return (
     <div
-      className="flex items-center bg-background/40"
-      style={{ height: C.barreHauteurPx, columnGap: C.ecartPx, padding: `0 ${C.margeXPx}px` }}
+      ref={outerRef}
+      className={`relative ${backgroundClass(overlay, form)}`}
+      style={{ height: barHeight(form, lines, rowHeight), transition: animated ? 'height 150ms ease' : undefined }}
       data-replay-transport="compact"
+      data-replay-bar-form={form}
+      data-replay-bar-lines={lines}
+      {...handlers}
     >
-      {camera}
-      <ReplaySoundControls sound={sound} locale={locale} />
-      <GroupSeparator />
-
-      <ReplayPlayButton
-        playing={playing}
-        onTogglePlay={onTogglePlay}
-        disabled={busy}
-        locale={locale}
-        sizeClass="shrink-0"
-        style={{ width: C.lecturePx, height: C.lecturePx }}
-      />
-      <ReplayRoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
-        <RestartIcon />
-      </ReplayRoundButton>
-      <ReplayRoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
-        <span className="text-[10.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
-      </ReplayRoundButton>
-      <ReplayRoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
-        <span className="text-[10.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
-      </ReplayRoundButton>
-      {/* L'instant et la durée, écrits par la boucle de dessin (textContent) : « 3:51 / 7:45 ». */}
-      <span
-        ref={clockRef}
-        className="whitespace-nowrap text-center text-[12.5px] tabular-nums text-muted-foreground"
-        style={{ minWidth: C.tempsLargeurMinPx, margin: `0 ${C.tempsMargePx}px` }}
-      />
-      <ReplayAutoPlayToggle autoPlay={autoPlay} onToggle={onToggleAutoPlay} locale={locale} />
-
-      {/* LA FRISE AUSSI est neutralisée : son curseur écrit `frameRef` (cf. la barre complète). */}
-      <div className={`flex min-w-0 flex-1 ${busy ? 'pointer-events-none opacity-40' : ''}`} aria-hidden={busy}>
-        <ReplayTimelineCompact timeline={timeline} />
+      <div ref={rowRef} className={ROW_CLASS[lines]} style={rowStyle(form, lines, animated)}>
+        <ReplayCompactBarControls {...commands} camera={camera} lines={lines} />
       </div>
-
-      <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
-      <GroupSeparator />
-      {autoRotation && <ReplayRotatedButton onKeepUpright={autoRotation.onKeepUpright} locale={locale} />}
-      <div role="group" aria-label={t.zoomGroup} className="flex shrink-0 items-center" style={{ columnGap: C.ecartPx }}>
-        <ReplayRoundButton onClick={zoom.zoomOut} label={t.zoomOut} ghost disabled={!zoom.canZoomOut}>
-          <span className="text-[15px] leading-none">−</span>
-        </ReplayRoundButton>
-        <ReplayRoundButton onClick={zoom.zoomIn} label={t.zoomIn} ghost disabled={!zoom.canZoomIn}>
-          <span className="text-[15px] leading-none">+</span>
-        </ReplayRoundButton>
-      </div>
-      <GroupSeparator />
-      <ReplayCaptureButtons capture={capture} locale={locale} />
-      <ReplayFrameButtons frameControl={frameControl} fullscreen={fullscreen} locale={locale} />
     </div>
   )
 }

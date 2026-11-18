@@ -32,6 +32,7 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import type { PlaybackStore } from '../model/playbackStore'
 import { useReplayTransportCommands, type ReplayCommandsRender } from './replayTransportCommands'
+import { overlaysTransportBar } from '../model/transportBarLogic'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { normalizeMapObjectives } from '../layers/objectivesLayer'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
@@ -563,6 +564,8 @@ export function ReplayCanvas({
       zoneCount: calloutZones.length, placements, weaponPads, groundWeapons, objectiveCount: mapObjectives.length, flags, vipCrown, skullCarrier,
       bombCarrier, vehicles, hasWallPlan: !!mapImage?.plan, lives: lives.available, respawnForecast,
     }),
+    // LA BARRE FINE : l'option du panneau n'existe qu'où la barre peut se poser sur le plan (Plein cadre).
+    thinBarAvailable: overlaysTransportBar(frameControl.frame, true),
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
@@ -574,8 +577,10 @@ export function ReplayCanvas({
 
   const commands = useReplayTransportCommands({
     playback, settings, clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow,
-    planFeedShown, autoTurned, orientation,
+    planFeedShown, autoTurned, orientation, thinBar: settings.thinBarAtFullFrame,
   })
+  // LA BARRE SUR LE PLAN (Plein cadre, préférence allumée) : posée en bas du bloc, elle ne compte plus dans le chrome que mesure le viewport.
+  const barOverlay = overlaysTransportBar(frameControl.frame, settings.thinBarAtFullFrame)
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : `overflow-hidden` retient les coins carrés de la carte dans
@@ -586,7 +591,7 @@ export function ReplayCanvas({
             toute la largeur du cadre, ouvert ou fermé — le panneau la recouvre au lieu de
             lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
             plus à l'ouverture. */}
-        <div ref={containerRef} className="min-w-0 flex-1">
+        <div ref={containerRef} className="relative min-w-0 flex-1">
           <div className="relative p-3 pb-0">
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
@@ -627,12 +632,13 @@ export function ReplayCanvas({
             </div>
             {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (le conteneur `mx-auto` est centré, souvent plus étroit que
                 la colonne) : en bas à gauche, ou en haut quand ce coin porte le fil des éliminations. */}
-            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} corner={planFeedShown ? 'haut' : 'bas'} />}
+            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} corner={planFeedShown || barOverlay ? 'haut' : 'bas'} />}
             {blockOverlays?.(commands)}
           </div>
           {/* LA BARRE DE LECTURE va bord à bord, hors du `p-3`, mais DANS `containerRef` : `useReplayViewport`
-              déduit le chrome par soustraction, donc rend au terrain ce que la barre économise. */}
-          {transport(commands)}
+              déduit le chrome par soustraction, donc rend au terrain ce que la barre économise. Posée sur le plan
+              (`barOverlay`), elle sort du flux : le terrain reprend toute sa hauteur. */}
+          <div className={barOverlay ? 'absolute inset-x-0 bottom-0 z-20' : undefined}>{transport(commands)}</div>
         </div>
       </div>
     </div>

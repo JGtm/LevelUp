@@ -51,9 +51,11 @@ interface Props {
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /** La zone de la victime de chaque frag ; absent = la carte n'a aucune zone, pas de colonne de lieu. */
   zoneOf?: FeedZoneOf
+  /** De combien le fil monte au-dessus du bas du bloc : la hauteur de la barre pleine quand elle est posée sur le plan. */
+  liftPx?: number
 }
 
-export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegiance, locale, marks = NO_MARKS, zoneOf }: Props) {
+export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegiance, locale, marks = NO_MARKS, zoneOf, liftPx = 0 }: Props) {
   const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
   const lignes = dernieresEliminations(entries, nowMs)
   if (lignes.length === 0) return null
@@ -65,7 +67,7 @@ export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegi
       className={`pointer-events-none absolute flex flex-col ${OMBRE_PORTEE}`}
       style={{
         left: COTES_FIL_PLAN.margeGauchePx,
-        bottom: COTES_FIL_PLAN.margeBasPx,
+        bottom: COTES_FIL_PLAN.margeBasPx + liftPx,
         width: COTES_FIL_PLAN.largeurPx,
         maxWidth: `calc(100% - ${2 * COTES_FIL_PLAN.margeGauchePx}px)`,
         zIndex: COTES_FIL_PLAN.couche,

@@ -166,7 +166,7 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
     expect(Object.keys(commands).sort()).toEqual(
       [
         'autoPlay', 'cameraFollow', 'capture', 'clockRef', 'frameControl', 'fullscreen', 'locale', 'onRestart', 'onSeekBy',
-        'onSetSpeed', 'onTogglePlay', 'onToggleAutoPlay', 'planFeedShown', 'playing', 'sound', 'speed', 'timeline', 'zoom', 'autoRotation',
+        'onSetSpeed', 'onTogglePlay', 'onToggleAutoPlay', 'planFeedShown', 'playing', 'sound', 'speed', 'timeline', 'zoom', 'autoRotation', 'thinBar',
       ].sort(),
     )
     expect(typeof commands.zoom.zoomIn).toBe('function')
@@ -174,6 +174,31 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
     expect(commands.cameraFollow.player).toBeNull()
     expect(commands.planFeedShown).toBe(false)
     expect(commands.autoRotation).toBeNull()
+  })
+})
+
+describe('ReplayCanvas : la barre se pose sur le plan au Plein cadre, préférence allumée', () => {
+  const dockOf = () => screen.getByTestId('minimal-bar').parentElement as HTMLElement
+
+  it('Plein cadre, préférence par défaut (allumée) : la barre est posée en bas du bloc, hors du flux', () => {
+    renderWithProviders(
+      <ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl('plein-cadre')} transport={minimalBar} />,
+    )
+    expect(dockOf().className).toContain('absolute')
+    expect(dockOf().className).toContain('bottom-0')
+  })
+
+  it('Plein cadre, préférence éteinte : la barre reste dans le flux, sous le plan', () => {
+    localStorage.setItem('replay-thin-bar-full-frame', 'false')
+    renderWithProviders(
+      <ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl('plein-cadre')} transport={minimalBar} />,
+    )
+    expect(dockOf().className).not.toContain('absolute')
+  })
+
+  it.each(['standard', 'cinema'] as const)('%s : la barre reste dans le flux, quelle que soit la préférence', (frame) => {
+    renderWithProviders(<ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl(frame)} transport={minimalBar} />)
+    expect(dockOf().className).not.toContain('absolute')
   })
 })
 

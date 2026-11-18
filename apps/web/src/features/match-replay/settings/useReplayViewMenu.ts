@@ -59,6 +59,8 @@ export interface ReplayViewMenuOptions {
   planBackground: { available: boolean; shown: boolean }
   /** Le cadre pose le fil des éliminations sur le plan : l'option « Fil des éliminations » n'est proposée qu'alors. */
   planFeedAvailable: boolean
+  /** Le cadre peut poser la barre de lecture sur le plan : l'option « Barre fine » n'est proposée qu'alors. */
+  thinBarAvailable?: boolean
   /** La lecture de la carte de chaleur RÉELLEMENT servie, et si les morts sont localisables. */
   heat: { mode: ReplayHeatmapMode; killsAvailable: boolean }
   locale: ReplayLocale
@@ -236,6 +238,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
     },
     orientation: { available: orientation.available, retained: orientation.retained, onSelect: orientation.setTurns },
     planFeed: { available: planFeedAvailable, show: s.showPlanFeed, onToggle: s.togglePlanFeed },
+    thinBar: { available: o.thinBarAvailable ?? false, show: s.thinBarAtFullFrame, onToggle: s.toggleThinBarAtFullFrame },
     heatmap: {
       show: s.showHeatmap,
       onToggle: s.toggleHeatmap,

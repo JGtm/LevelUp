@@ -13,7 +13,7 @@ import {
   TIMELINE_EXPANDED_KEY,
   useReplaySettings,
 } from './useReplaySettings'
-import { PLAN_FEED_KEY } from './replayPreferences'
+import { PLAN_FEED_KEY, THIN_BAR_KEY } from './replayPreferences'
 import { usePersistedFlag } from './usePersistedFlag'
 
 describe('useReplaySettings — valeurs par défaut', () => {
@@ -331,5 +331,29 @@ describe('useReplaySettings — fil des éliminations posé sur le plan', () => 
     first.unmount()
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showPlanFeed).toBe(false)
+  })
+})
+
+describe('useReplaySettings — barre de lecture fine au Plein cadre', () => {
+  it('ALLUMÉE par défaut, sans rien avoir retenu', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.thinBarAtFullFrame).toBe(true)
+    expect(window.localStorage.getItem(THIN_BAR_KEY)).toBeNull()
+  })
+
+  it("la bascule persiste le choix sous sa clé, qui n'en touche aucune autre", () => {
+    const { result } = renderHook(() => useReplaySettings())
+    act(() => result.current.toggleThinBarAtFullFrame())
+    expect(result.current.thinBarAtFullFrame).toBe(false)
+    expect(window.localStorage.getItem(THIN_BAR_KEY)).toBe('false')
+    expect(result.current.showPlanFeed).toBe(true)
+  })
+
+  it('éteinte, elle le reste après remontage', () => {
+    const first = renderHook(() => useReplaySettings())
+    act(() => first.result.current.toggleThinBarAtFullFrame())
+    first.unmount()
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.thinBarAtFullFrame).toBe(false)
   })
 })

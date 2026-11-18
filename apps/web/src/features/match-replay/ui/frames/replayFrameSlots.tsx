@@ -16,7 +16,9 @@
  * ne porte aucun état et n'appelle aucun hook ; le composant qu'elle rend (`ReplayFeedOverlay`) est le même à
  * chaque rendu, donc jamais remonté. La barre et la commande de zoom, elles, restent définies au niveau du module.
  */
+import { COTES_BARRE_COMPACTE as C } from '../../model/cotesBarreCompacte'
 import { usesCompactBar, type ReplayFrame } from '../../model/replayFrame'
+import { overlaysTransportBar } from '../../model/transportBarLogic'
 import { ReplayCameraMenu } from '../ReplayCameraMenu'
 import { ReplayFeedOverlay } from '../ReplayFeedOverlay'
 import { ReplayTransport } from '../ReplayTransport'
@@ -51,7 +53,7 @@ export function canvasSlotsOf(frame: ReplayFrame, planFeedView: ReplayFrameView 
   return {
     ...COMPACT_BAR_SLOTS,
     planFeed: true,
-    blockOverlays: ({ planFeedShown }) =>
+    blockOverlays: ({ planFeedShown, frameControl, thinBar }) =>
       planFeedShown && (
         <ReplayFeedOverlay
           entries={model.feed}
@@ -62,6 +64,7 @@ export function canvasSlotsOf(frame: ReplayFrame, planFeedView: ReplayFrameView 
           marks={model.marks}
           locale={locale}
           zoneOf={feedZoneOf}
+          liftPx={overlaysTransportBar(frameControl.frame, thinBar) ? C.barreHauteurPx : 0}
         />
       ),
   }
