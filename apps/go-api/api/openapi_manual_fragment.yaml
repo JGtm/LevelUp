@@ -2001,11 +2001,14 @@ paths:
           description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           schema:
             type: string
             enum:
               - plan
+              - relief
       summary: Sert l'image du fond de carte du rejeu 2D
       description: |
         Image vue du dessus de la carte du match (PNG), cuite hors ligne par
@@ -2014,11 +2017,11 @@ paths:
         superpose à rien.
       responses:
         '200':
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         '400':
           description: Valeur de `variante` inconnue
         '404':
-          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante`, aucun plan ni relief)
   # Même route, keyée par CARTE : la grille de l'onglet Tactique liste des cartes et n'a
   # aucun match sous la main. Même charge utile binaire, donc même traitement manuel.
   /players/{player_slug}/tactical/{map_id}/background.png:
@@ -2043,11 +2046,14 @@ paths:
           description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           schema:
             type: string
             enum:
               - plan
+              - relief
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
       description: |
         Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
@@ -2058,11 +2064,83 @@ paths:
         donnée de référence versionnée, pas une trajectoire décodée d'un film.
       responses:
         '200':
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         '400':
           description: Valeur de `variante` inconnue
         '404':
-          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante`, aucun plan ni relief)
+  # Données du relief du fond : le JSON de la cuisson, servi tel quel (bornes de hauteur, étages,
+  # traits). Route chi BRUTE comme l'image, dont elle est la sœur (`?variante=relief`). Le service
+  # ne la sert que si le calage recopié dans le fichier est celui du fond : un relief périmé répond
+  # comme un relief absent.
+  /players/{player_slug}/matches/{match_id}/replay/background.relief.json:
+    get:
+      tags:
+        - match-view
+      operationId: getMatchReplayBackgroundReliefData
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: match_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert les données du relief du fond de carte du rejeu 2D
+      description: |
+        Données du relief de la carte du match, cuites hors ligne par `cmd/mapfond-build` : bornes de
+        hauteur, étages détectés, traits. Rangées en JSON compressé sur disque, elles sont servies en
+        clair (la compression de transport est celle du serveur). Un fichier de version de schéma
+        inconnue ou au calage différent de celui du fond est tenu pour absent. Elles vont avec l'image du relief
+        (`background.png?variante=relief`), dans le même cadre et au même calage.
+      responses:
+        '200':
+          description: Données du relief (JSON), avec ETag
+          content:
+            application/json:
+              schema:
+                type: object
+        '304':
+          description: Données inchangées (`If-None-Match`)
+        '404':
+          description: Aucun fond de carte figé pour la carte de ce match, pas de relief, ou relief périmé
+  # Même route, keyée par CARTE (grille de l'onglet Tactique).
+  /players/{player_slug}/tactical/{map_id}/background.relief.json:
+    get:
+      tags:
+        - tactical
+      operationId: getTacticalMapBackgroundReliefData
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: map_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert les données du relief du fond d'une carte de l'onglet Tactique
+      description: |
+        Données du relief d'une carte (JSON servi en clair), résolues par la même cascade que le fond mais
+        adressées par `map_id`. Elles vont avec l'image du relief
+        (`background.png?variante=relief`). Comme le fond, cette route n'est PAS restreinte à la
+        boucle locale : c'est une donnée de référence versionnée.
+      responses:
+        '200':
+          description: Données du relief (JSON), avec ETag
+          content:
+            application/json:
+              schema:
+                type: object
+        '304':
+          description: Données inchangées (`If-None-Match`)
+        '404':
+          description: Aucun fond de carte figé pour cette carte, pas de relief, ou relief périmé
   /players/{player_slug}/pages/squad/v2:
     get:
       responses:

@@ -54,6 +54,11 @@ type MapBackground struct {
 	// que l'image du fond ; vide sans plan. `Write` l'écrit avant le plan, que le plan à une arête
 	// par ligne suit en fin d'objet.
 	PlanImage string `json:"planImage,omitempty"`
+	// ReliefImage et ReliefData : noms des fichiers du relief dans le dossier des fonds (image des
+	// hauteurs, mêmes dimensions et même calage que l'image du fond ; données : bornes, étages,
+	// traits) ; vides sans relief. Écrits avec `planImage`, avant le plan.
+	ReliefImage string `json:"reliefImage,omitempty"`
+	ReliefData  string `json:"reliefData,omitempty"`
 }
 
 // Load lit un sidecar complet. Les contrôles du calage (version de schéma) sont ceux de
@@ -67,16 +72,20 @@ func Load(chemin string) (*MapBackground, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &MapBackground{MapBackground: *bg, PlanImage: ext.PlanImage, Plan: ext.Plan}, nil
+	return &MapBackground{MapBackground: *bg, PlanImage: ext.PlanImage, Plan: ext.Plan,
+		ReliefImage: ext.ReliefImage, ReliefData: ext.ReliefData}, nil
 }
 
 // extensionsSidecar : ce que le sidecar porte en plus du calage du décodeur.
 type extensionsSidecar struct {
-	PlanImage string                       `json:"planImage"`
-	Plan      *replaydoc.MapBackgroundPlan `json:"plan"`
+	PlanImage   string                       `json:"planImage"`
+	Plan        *replaydoc.MapBackgroundPlan `json:"plan"`
+	ReliefImage string                       `json:"reliefImage"`
+	ReliefData  string                       `json:"reliefData"`
 }
 
-// lireExtensions ne lit que le plan et l'image plan d'un sidecar : vides quand il n'en porte pas.
+// lireExtensions ne lit que le plan, l'image plan et les noms des fichiers du relief d'un sidecar :
+// vides quand il n'en porte pas.
 func lireExtensions(chemin string) (extensionsSidecar, error) {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // asset versionné, chemin résolu par PathResolver
 	if err != nil {
