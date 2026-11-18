@@ -410,7 +410,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       table depuis le jeton, coupe par étage (sols empilés tirés des faces, dans un Web Worker), chemins des
       traits filtrés par la coupe, cache par carte. Logique pure testée (vitest) : décodage, coupe, filtre des
       traits, toit sur sol.
-- [ ] D.3 Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
+- [x] D.3 (fait le 2026-11-18, `758c8882c2`, intégré à `feat/fonds-relief` : variante relief et repli, traits retenus par fond, groupe Étage du panneau Vue en rangs, coupe sur les trois fonds sans masquer de joueur, bloc sans maillage, infobulles des anneaux et de la part du maillage ; rampe unique ; dessin du relief relevé dans lib/ ; 8 252 tests ciblés verts, témoins du rejeu inchangés. Choix acceptés par le pilote : la coupe n'est pas retenue d'une ouverture à l'autre ; les données du relief (50 à 126 Ko compressés) sont chargées à l'ouverture du rejeu pour afficher les étages, l'image seulement à la demande.) Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
       et `resolveBackgroundVariant` qui retombe sur le Plan sans relief), dessin dans `mapBackgroundDraw.ts`,
       couche des traits dans `useReplayStaticLayers.ts`, commande d'étage conforme à D.1, état sans maillage
       (D-7). La coupe passe aussi au Plan et au Rendu (D-2).
