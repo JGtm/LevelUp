@@ -392,15 +392,15 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste G — serveur : contrat et lectures (Sonnet ; Haiku pour G.3 et G.4)
 
-- [ ] G.1 Selon D-7 : inventaire fermé au journal (lecteurs de chaque champ de `MatchHighlightEvent` propre
+- [x] G.1 (fait le 2026-11-18, `919774dc49` sur `bl1118/g` ; inventaire : les trois champs et `medal_name_id` de l'événement sans aucun lecteur, retirés ; `MedalImageURL` retiré des trois adaptateurs ; `medal_name` de l'événement gardé, hors périmètre, voir Découvertes) Selon D-7 : inventaire fermé au journal (lecteurs de chaque champ de `MatchHighlightEvent` propre
       aux médailles), puis retrait des trois champs, de `match_view_killfeed_medals.go`, de son appel, de
       `MedalImageURL` des adaptateurs de titre s'il n'a plus d'appelant, des tests et fixtures qui les
       portent. `medal_name_id` de l'événement : retiré si l'inventaire ne lui trouve aucun lecteur, gardé et
       écrit au journal sinon.
-- [ ] G.2 Selon D-4 : les trois taux par minute de l'Escouade deviennent facultatifs ; « inconnu » quand
+- [x] G.2 (fait le 2026-11-18, même commit ; aucun chiffre des tests de caractérisation n'a changé ; une escouade aux comptes mesurés à zéro rend maintenant des taux à 0, connus) Selon D-4 : les trois taux par minute de l'Escouade deviennent facultatifs ; « inconnu » quand
       aucun match n'est retenu ; tests de caractérisation mis à jour ; type du graphe côté web.
-- [ ] G.3 `medalLabelOf` : parcours des langues dans l'ordre de `i18n.Locales()`. Test déterministe.
-- [ ] G.4 Compteur et message distincts pour un fichier tactique illisible (`replayartifact/gate.go`).
+- [x] G.3 (fait le 2026-11-18, même commit ; le test rougit sur l'ancien parcours) `medalLabelOf` : parcours des langues dans l'ordre de `i18n.Locales()`. Test déterministe.
+- [x] G.4 (fait le 2026-11-18, même commit) Compteur et message distincts pour un fichier tactique illisible (`replayartifact/gate.go`).
 - [~] G.5 Durée du découpage de la Dominance : couvert par la piste T (T.3), qui fait passer tous les
       lecteurs par une résolution unique au lieu d'ajouter une préférence de plus ici.
 - **Gate G** : gate commun Go sur `internal/service/...`, `internal/games/...`, `internal/replayartifact/...` ;
@@ -577,6 +577,14 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — piste G rendue, relue, commitée (`919774dc49`), cueillie sur l'intégration, où la branche de
+  version a été ramenée (documents seuls). Écart au plan relevé : le paquet des contrats est `./contracttest/...`,
+  pas `./internal/contracttest/...`. Piste T, côté écriture (T.2, T.4, T.5), lancée dans `C:/t/bl18-t`.
+  AMENDEMENT DE MODÈLE, motif écrit : cette moitié de la piste T part sur OPUS et non Sonnet. Motif : elle
+  écrit dans la base partagée des matchs (table critique, défaut ART), pose un rattrapage au démarrage et
+  monte les deux révisions de notation ; une erreur y coûte une base. Les lecteurs (T.3) resteront sur Sonnet,
+  après elle. Le tableau « aucun item ne demande Opus » est donc faux pour T.
+
 - 2026-11-18 — piste C rendue, relue sur pièces (garde-rail de l'orientation réécrit sans être affaibli : plus aucun
   appel à la règle Auto dans la page du rejeu), commitée (`c5acd8f47e`) et cueillie sur l'intégration
   (`6253b1d5cb`). Un test de garde (`match-view/xuidMeta.guard.test.ts`) a dépassé son délai sous charge et passe
@@ -627,6 +635,11 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (G.1) — `medal_name` des événements de médaille du contexte du match n'a plus aucun lecteur de
+  production, et le site ignore ces événements (il lit le document de rejeu). À porter au backlog à la clôture
+  (R.1) : retirer le champ, voire les événements de médaille du contexte. L'ADR 0011 cite encore
+  `MedalImageURL`.
 
 - 2026-11-18 (C.3) — la scène de la page du rejeu est reconstruite et la toile redessinée à chaque rendu : les
   hooks de calques rendent des objets non mémoïsés. C'est ce qui garde l'horloge écrite après une bascule de
