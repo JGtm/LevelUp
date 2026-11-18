@@ -1,8 +1,7 @@
 /**
- * replayPreferences.ts — LE SEUL ENDROIT qui touche localStorage pour les préférences du
- * rejeu. Patron NÉ dans useReplaySound (son : coupé/volume) : clé simple, lecture sous
- * try — navigation privée ou storage refusé dégradent en silence vers la valeur par
- * défaut, jamais une erreur affichée ni un plantage.
+ * replayPreferences.ts — LA PORTE des préférences du rejeu : leurs clés, leurs défauts et leurs lectures validées.
+ * Le patron de stockage (`lib/replay/preferenceStore` : clé simple, lecture sous try — navigation privée ou storage
+ * refusé dégradent en silence vers la valeur par défaut, jamais une erreur affichée ni un plantage) y est réexporté.
  *
  * CENTRALISÉ ICI (CLAUDE.md règle 6, « à la 3e copie, centraliser ») : le tiroir de
  * réglages (décision utilisateur du 16/08) ajoute au son persisté les calques, la vitesse
@@ -15,102 +14,18 @@ import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../mode
 import { DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeTurns, QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
 import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
+import {
+  persistPreference,
+  readStoredChoice,
+  readStoredFlag,
+  readStoredNumber,
+  removePreference,
+  subscribePreference,
+} from '@/lib/replay/preferenceStore'
 
-/** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
-export function readStoredFlag(key: string, fallback: boolean): boolean {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw === null ? fallback : raw === 'true'
-  } catch {
-    return fallback
-  }
-}
-
-/**
- * Lit un nombre persisté, accepté seulement si `isValid` le confirme (bornes ou
- * appartenance à un ensemble autorisé — ex. les multiplicateurs de vitesse) ; absent,
- * invalide ou storage indisponible -> `fallback`.
- */
-export function readStoredNumber(
-  key: string,
-  fallback: number,
-  isValid: (value: number) => boolean,
-): number {
-  try {
-    const raw = localStorage.getItem(key)
-    if (raw === null) return fallback
-    const value = Number(raw)
-    return Number.isFinite(value) && isValid(value) ? value : fallback
-  } catch {
-    return fallback
-  }
-}
-
-/**
- * Lit un CHOIX persisté parmi un ensemble fermé (ex. la lecture de la carte de chaleur :
- * présence ou éliminations) ; absent, hors liste ou storage indisponible -> `fallback`.
- *
- * MÊME EXIGENCE QUE `readStoredNumber` : une valeur écrite par une AUTRE version de l'app —
- * ou par n'importe qui, `localStorage` est ouvert — ne doit jamais entrer dans l'état. Ce
- * qui n'est pas dans la liste n'existe pas.
- */
-export function readStoredChoice<T extends string>(
-  key: string,
-  fallback: T,
-  allowed: readonly T[],
-): T {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw !== null && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-/**
- * LES ABONNÉS D'UNE CLÉ, et pourquoi ils sont apparus (2026-08-18, item R3.7).
- *
- * Jusqu'ici UN SEUL composant lisait chaque préférence : l'état React local du hook suffisait.
- * Les FICHES COMPACTES cassent cette hypothèse — la bascule vit dans le tiroir (sous le
- * canvas), les fiches vivent dans une AUTRE colonne de la page. Deux `useState` initialisés
- * du même `localStorage` ne se parlent pas : la bascule aurait bougé sans que les fiches
- * changent, jusqu'au prochain rechargement.
- *
- * L'ÉVÉNEMENT `storage` DU NAVIGATEUR NE RÉPOND PAS À CE BESOIN : il ne se déclenche QUE
- * pour les AUTRES onglets, jamais pour celui qui écrit. C'est le piège classique, et c'est
- * pour cela que ce registre existe plutôt qu'un abonnement à `window`.
- */
-const abonnes = new Map<string, Set<(value: string) => void>>()
-
-/** subscribePreference — écoute une clé ; rend la fonction qui se désabonne. */
-export function subscribePreference(key: string, fn: (value: string) => void): () => void {
-  const set = abonnes.get(key) ?? new Set()
-  abonnes.set(key, set)
-  set.add(fn)
-  return () => set.delete(fn)
-}
-
-/** Persiste une préférence (booléen ou nombre déjà tourné en chaîne, JSON pour une liste). */
-export function persistPreference(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value)
-  } catch {
-    /* stockage refusé (navigation privée) : la préférence ne survit pas, le réglage marche. */
-  }
-  // Les abonnés sont prévenus MÊME si le stockage a refusé : le réglage doit marcher dans
-  // la session, c'est sa survie au rechargement qui est perdue, pas son effet.
-  for (const fn of abonnes.get(key) ?? []) fn(value)
-}
-
-/** Efface une préférence ; les abonnés reçoivent la chaîne vide (aucune valeur retenue). */
-export function removePreference(key: string): void {
-  try {
-    localStorage.removeItem(key)
-  } catch {
-    /* stockage refusé : l'effacement vaut pour la session, comme l'écriture. */
-  }
-  for (const fn of abonnes.get(key) ?? []) fn('')
-}
+// Le patron de stockage (lecture sous try, abonnés par clé) vit dans `lib/replay/preferenceStore`, partagé avec les
+// autres vues 2D ; ce module reste l'unique porte des préférences du rejeu et le réexporte.
+export { persistPreference, readStoredChoice, readStoredFlag, readStoredNumber, removePreference, subscribePreference }
 
 /**
  * LE FORMAT DE L'EXPORT VIDÉO (plan « formats vidéo standard », décision D4, 2026-09-16) :
@@ -222,30 +137,6 @@ export function clearOrientation(mapId: string): void {
  * un relief lisible : sinon le plan, puis le rendu, sont servis.
  */
 export const BACKGROUND_STYLE_KEY = 'replay-background-style'
-
-/**
- * LES TRAITS DU RELIEF (ruptures de hauteur, courbes de niveau, liseré) : un OUI/NON retenu PAR FOND
- * (décision du 2026-11-18, maquette D.1 choix 4), sous `replay-relief-lines.<fond>`. Allumés d'office sur le
- * fond Relief, éteints sur le Plan et le Rendu : changer de fond relit SA valeur, et un geste manuel tient
- * pour ce fond jusqu'au prochain geste. Le stockage ne retient que ce que l'utilisateur a fait ; absent ou
- * refusé -> le défaut du fond.
- */
-export const RELIEF_LINES_KEY_PREFIX = 'replay-relief-lines.'
-
-/** La clé de stockage des traits du relief pour un fond. */
-export function reliefLinesKey(fond: MapBackgroundVariant): string {
-  return `${RELIEF_LINES_KEY_PREFIX}${fond}`
-}
-
-/** Le défaut des traits pour un fond : allumés sur le relief seulement. */
-export function reliefLinesDefault(fond: MapBackgroundVariant): boolean {
-  return fond === 'relief'
-}
-
-/** Les traits du relief retenus pour ce fond, ou son défaut. */
-export function readReliefLines(fond: MapBackgroundVariant): boolean {
-  return readStoredFlag(reliefLinesKey(fond), reliefLinesDefault(fond))
-}
 
 /** Le style de fond retenu, ou le plan (le défaut). */
 export function readBackgroundStyle(): MapBackgroundVariant {

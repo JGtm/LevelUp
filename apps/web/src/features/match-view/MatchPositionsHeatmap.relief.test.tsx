@@ -38,7 +38,11 @@ vi.mock('./_positionsPaint', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./_positionsPaint')>()),
   peindreLesPositions: vi.fn(),
 }))
-vi.mock('@/lib/replay/reliefQueries', () => ({ useReliefFiles: mocks.files }))
+// La source (`useMatchReliefSource`) reste la vraie ; seule la lecture des fichiers est remplacée.
+vi.mock('@/lib/replay/reliefQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/replay/reliefQueries')>()),
+  useReliefFiles: mocks.files,
+}))
 vi.mock('@/lib/replay/useReliefRender', () => ({ useReliefRender: mocks.render }))
 vi.mock('@/lib/replay/useReliefInks', () => ({ useReliefInks: () => ({ base: '#6b7078', outline: '#ffffff' }) }))
 vi.mock('@/lib/replay/relief/reliefBackground', () => ({

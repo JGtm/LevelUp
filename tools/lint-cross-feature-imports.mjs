@@ -169,12 +169,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   //    seconde clé de stockage pour la même préférence.
   'tactical=>match-replay/settings/useMapViewPreferences',
   'match-view=>match-replay/settings/useMapViewPreferences',
-  //  - LES TRAITS DU RELIEF (2026-11-18, fond Relief) : l'interrupteur est retenu PAR FOND sous une clé du rejeu
-  //    (`replay-relief-lines.<fond>`) que les trois vues 2D partagent : allumer les traits sur le relief au rejeu
-  //    les allume dans l'onglet Tactique et dans « Occupation du terrain ». La clé, son défaut par fond et
-  //    l'abonnement vivent dans les préférences du rejeu ; une copie serait une seconde clé pour le même réglage.
-  'tactical=>match-replay/settings/useReliefLines',
-  'match-view=>match-replay/settings/useReliefLines',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

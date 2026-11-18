@@ -9,6 +9,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { floorRanks } from '@/lib/replay/relief'
+
 import { floorChips, type FloorState } from '../hooks/reliefLogic'
 import type { ReplayLocale } from '../i18n/i18n'
 import { FloorGroup, type ReplayFloorControls } from './ReplayFloorControls'
@@ -21,7 +23,7 @@ function noFollow(): ReplayFloorControls['follow'] {
 function ready(levels: number[], over: Partial<ReplayFloorControls> = {}): ReplayFloorControls {
   const state: FloorState = {
     state: 'ready',
-    chips: floorChips(levels, { min: 0, max: 5 }),
+    chips: floorChips(floorRanks(levels), { min: 0, max: 5 }),
     min: levels[0],
     max: levels[levels.length - 1],
   }

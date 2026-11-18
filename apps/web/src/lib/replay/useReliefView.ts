@@ -1,12 +1,13 @@
 /**
- * useReliefView — LE FOND RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE d'une vue 2D sans panneau « Vue » (l'onglet
- * Tactique, « Occupation du terrain »), assemblés en un seul hook.
+ * useReliefView — LE FOND RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE des trois vues 2D (le rejeu, l'onglet Tactique,
+ * « Occupation du terrain »), assemblés en un seul hook.
  *
  * L'appelant lui prête ce que sa vue sait : où lire les deux fichiers du relief (`files`, `null` = la carte
  * n'en a pas), le fond de base déjà chargé (le plan ou le rendu), le fond VOULU et les traits retenus. Le hook
  * rend ce que la vue pose : l'image qui prend la place du fond de base (`surface`), les traits à tracer par-dessus
- * (`linesLayer`), la commande d'étage et les fonds à proposer. Il suit la chaîne du rejeu (`useReplayRelief`) :
- * fichiers -> calculateur (`useReliefRender`) -> images (`ReliefCanvases`).
+ * (`linesLayer`), la commande d'étage et les fonds à proposer. La chaîne : fichiers (`useReliefFiles`) -> calculateur
+ * (`useReliefRender`) -> images (`ReliefCanvases`). Ce qui n'est propre qu'à une vue reste dans sa feature : le suivi du
+ * joueur ouvert et les anneaux des pastilles au rejeu (`useReplayRelief`), les calques filtrés par la coupe ailleurs.
  *
  * LES TROIS FONDS : le Relief n'est posé que s'il est lisible. Sur une `ReliefError` (fichier absent, version
  * inconnue, image illisible, panne du calculateur), le repli est le PLAN, puis le rendu : la lecture le journalise
@@ -14,7 +15,7 @@
  *
  * LA COUPE vaut pour les trois fonds : sur le Relief par son opacité, sur le Plan et le Rendu par un masque
  * d'opacité du relief. Elle est un état de CETTE vue (jamais persistée : « Tout » à l'ouverture, et pour chaque
- * autre carte, cf. `useScopedCut`). Sans maillage, il n'y a pas de coupe.
+ * autre carte, cf. `useScopedCut` ; le rejeu y joint le suivi du joueur ouvert, `useReplayFloorChoice`). Sans maillage, il n'y a pas de coupe.
  *
  * L'IMAGE DES HAUTEURS, la plus lourde des deux fichiers, n'est demandée que lorsqu'une commande s'en sert
  * (fond Relief voulu, traits allumés, coupe choisie) ; les données se lisent dès que `files` est là.

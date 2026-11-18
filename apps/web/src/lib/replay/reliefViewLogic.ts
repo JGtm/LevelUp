@@ -1,11 +1,10 @@
 /**
- * reliefViewLogic — LES DÉCISIONS PURES du fond Relief et de la coupe par étage pour les vues 2D qui n'ont
- * pas de panneau « Vue » : l'onglet Tactique et « Occupation du terrain ».
+ * reliefViewLogic — LES DÉCISIONS PURES du fond Relief et de la coupe par étage des trois vues 2D : le rejeu,
+ * l'onglet Tactique et « Occupation du terrain ».
  *
- * Aucun React, aucun canvas : `useReliefView` les branche sur les requêtes et le calculateur. Le rejeu a ses
- * propres décisions (`features/match-replay/hooks/reliefLogic.ts`), qui y ajoutent le langage des anneaux des
- * marqueurs ; ces deux vues n'ont pas de marqueurs, leurs étages ne sont que des RANGS (« Bas », « Étage 1 »…,
- * D-14).
+ * Aucun React, aucun canvas : `useReliefView` les branche sur les requêtes et le calculateur. Les étages ne sont que des
+ * RANGS (« Bas », « Étage 1 »…, D-14) ; le rejeu y ajoute, dans sa feature, le langage des anneaux des marqueurs
+ * (`features/match-replay/hooks/reliefLogic.ts`).
  *
  * CE QUE LA COUPE FILTRE (conception §7, liste fermée) :
  *   - les zones nommées, par leur tranche de hauteur (`zonesInCut`) ;
@@ -63,8 +62,8 @@ export function isCutAtLevel(cut: number | null, z: number): boolean {
 }
 
 /** L'étage le plus proche de `cut`, pour nommer la valeur du curseur sans unité ; `null` sans étage. */
-export function nearestChip(chips: readonly FloorRank[], cut: number): FloorRank | null {
-  let best: FloorRank | null = null
+export function nearestChip<T extends FloorRank>(chips: readonly T[], cut: number): T | null {
+  let best: T | null = null
   for (const chip of chips) {
     if (best === null || Math.abs(chip.z - cut) < Math.abs(best.z - cut)) best = chip
   }

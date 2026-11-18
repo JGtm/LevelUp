@@ -1,48 +1,29 @@
 /**
- * Tests — reliefLogic : les décisions pures du fond Relief et de la coupe par étage.
+ * Tests — reliefLogic : ce que le rejeu ajoute à la logique commune du fond Relief.
  *
- * Ce qu'ils protègent : (1) l'ordre des fonds Plan, Rendu, Relief et l'absence de commande sans vrai
- * choix ; (2) les étages en RANGS, avec le nombre d'anneaux d'un pion à chaque étage ; (3) les trois états
- * de la commande d'étage (rien, carte sans maillage, étages) ; (4) la demande de rendu : teinte pour le Relief,
- * masques seuls pour le Plan et le Rendu ; (5) le fond posé : relief teinté, fond de base modulé, ou fond de base.
+ * Ce qu'ils protègent : (1) les étages en RANGS, avec le nombre d'anneaux d'un pion à chaque étage ; (2) l'état de la
+ * commande d'étage du rejeu = celui de la vue commune, ses pastilles portant les anneaux ; (3) le fond posé : relief
+ * teinté, fond de base modulé, ou fond de base. L'ordre des fonds, la demande de rendu et la pastille retenue sont
+ * ceux de `lib/replay/reliefViewLogic` (testés là).
  */
 import { describe, expect, it } from 'vitest'
 
+import { floorRanks } from '@/lib/replay/relief'
 import { fourBlocksScene, reliefData } from '@/lib/replay/relief/reliefScene.testutil'
+import { viewFloorState } from '@/lib/replay/reliefViewLogic'
+import type { ReliefSurface } from '@/lib/replay/useReliefView'
 
 import type { ReplayMapBackgroundLayer } from './useReplayView'
-import {
-  backgroundOptions,
-  composeReliefBackground,
-  floorChips,
-  floorStateOf,
-  isChipSelected,
-  reliefRequestOf,
-} from './reliefLogic'
-
-describe('backgroundOptions', () => {
-  it('propose Plan, Rendu, Relief dans cet ordre quand le fond a les trois', () => {
-    expect(backgroundOptions(true, true)).toEqual(['plan', 'rendu', 'relief'])
-  })
-
-  it('omet ce que le fond n’a pas', () => {
-    expect(backgroundOptions(true, false)).toEqual(['plan', 'rendu'])
-    expect(backgroundOptions(false, true)).toEqual(['rendu', 'relief'])
-  })
-
-  it('ne propose rien sans vrai choix : le rendu seul est servi sans commande', () => {
-    expect(backgroundOptions(false, false)).toEqual([])
-  })
-})
+import { composeReliefBackground, floorChips, floorStateWithRings } from './reliefLogic'
 
 describe('floorChips', () => {
   it('numérote les étages en rangs du plus bas au plus haut, sans unité', () => {
-    const chips = floorChips([4.4, 0, 2.2], { min: 0, max: 5 })
+    const chips = floorChips(floorRanks([4.4, 0, 2.2]), { min: 0, max: 5 })
     expect(chips.map((c) => [c.rank, c.z])).toEqual([[0, 0], [1, 2.2], [2, 4.4]])
   })
 
   it('dit combien d’anneaux porte un pion posé à la hauteur de chaque étage (langage d’étage des marqueurs)', () => {
-    const chips = floorChips([0, 2.2, 4.4], { min: 0, max: 5 })
+    const chips = floorChips(floorRanks([0, 2.2, 4.4]), { min: 0, max: 5 })
     const rings = chips.map((c) => c.rings)
     expect(rings[0]).toBe(0)
     expect(rings[1]).toBeGreaterThanOrEqual(1)
@@ -50,29 +31,29 @@ describe('floorChips', () => {
   })
 
   it('un terrain plat ne porte aucun anneau, à aucun étage', () => {
-    expect(floorChips([0, 2.2], { min: 1, max: 1 }).map((c) => c.rings)).toEqual([0, 0])
+    expect(floorChips(floorRanks([0, 2.2]), { min: 1, max: 1 }).map((c) => c.rings)).toEqual([0, 0])
   })
 })
 
-describe('floorStateOf', () => {
+describe('floorStateWithRings', () => {
   const RANGE = { min: 0, max: 5 }
 
   it('rien tant que les données ne sont pas lues (ou que le relief est inutilisable)', () => {
-    expect(floorStateOf(null, RANGE)).toEqual({ state: 'none' })
+    expect(floorStateWithRings(viewFloorState(null), RANGE)).toEqual({ state: 'none' })
   })
 
   it('carte sans maillage : l’état dit pourquoi, aucune commande d’étage', () => {
     const data = reliefData({ width: 4, height: 4, degradations: ['sans-maillage'] })
-    expect(floorStateOf(data, RANGE)).toEqual({ state: 'noMesh' })
+    expect(floorStateWithRings(viewFloorState(data), RANGE)).toEqual({ state: 'noMesh' })
   })
 
   it('carte sans étage détecté : même état que sans maillage', () => {
-    expect(floorStateOf(reliefData({ width: 4, height: 4, levels: [] }), RANGE)).toEqual({ state: 'noMesh' })
+    expect(floorStateWithRings(viewFloorState(reliefData({ width: 4, height: 4, levels: [] })), RANGE)).toEqual({ state: 'noMesh' })
   })
 
   it('carte avec étages : pastilles, bornes du curseur', () => {
     const { data } = fourBlocksScene()
-    const state = floorStateOf(data, RANGE)
+    const state = floorStateWithRings(viewFloorState(data), RANGE)
     expect(state.state).toBe('ready')
     if (state.state !== 'ready') return
     expect(state.chips.map((c) => c.rank)).toEqual([0, 1])
@@ -84,51 +65,8 @@ describe('floorStateOf', () => {
     const levels = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5]
     const rects = levels.map((z, i) => ({ i0: i % 4, j0: Math.floor(i / 4), i1: i % 4, j1: Math.floor(i / 4), z }))
     const data = reliefData({ width: 4, height: 4, levels, rects })
-    const state = floorStateOf(data, { min: 0, max: 12 })
+    const state = floorStateWithRings(viewFloorState(data), { min: 0, max: 12 })
     expect(state.state === 'ready' && state.chips.length).toBe(8)
-  })
-})
-
-describe('isChipSelected', () => {
-  const chip = { rank: 1, z: 2.2, rings: 1 }
-
-  it('seule la hauteur exacte de l’étage retient la pastille ; « Tout » n’en retient aucune', () => {
-    expect(isChipSelected(2.2, chip)).toBe(true)
-    expect(isChipSelected(null, chip)).toBe(false)
-  })
-
-  it('une hauteur libre du curseur ne retient aucune pastille', () => {
-    expect(isChipSelected(2.25, chip)).toBe(false)
-  })
-})
-
-describe('reliefRequestOf', () => {
-  it('aucune demande quand aucune commande ne se sert du relief', () => {
-    expect(reliefRequestOf({ needed: false, turns: 0, cut: null, tintBase: null, lines: false })).toBeNull()
-  })
-
-  it('le fond Relief demande l’image teintée (et l’orientation, qui règle la lumière), jamais les masques', () => {
-    expect(reliefRequestOf({ needed: true, turns: 2, cut: 2.2, tintBase: '#6b7078', lines: true })).toEqual({
-      turns: 2,
-      cut: 2.2,
-      base: '#6b7078',
-      lines: true,
-      masks: false,
-    })
-  })
-
-  it('un fond Plan ou Rendu avec coupe ne demande que les masques, sans teinte, et pas l’orientation', () => {
-    expect(reliefRequestOf({ needed: true, turns: 3, cut: 2.2, tintBase: null, lines: false })).toEqual({
-      turns: 0,
-      cut: 2.2,
-      base: null,
-      lines: false,
-      masks: true,
-    })
-  })
-
-  it('sans coupe, un fond Plan ou Rendu n’a pas de masque à demander', () => {
-    expect(reliefRequestOf({ needed: true, turns: 0, cut: null, tintBase: null, lines: true })?.masks).toBe(false)
   })
 })
 
@@ -142,32 +80,27 @@ describe('composeReliefBackground', () => {
     reliefAvailable: true,
     zonesClip: null,
   } as unknown as ReplayMapBackgroundLayer
-  const RELIEF = 'relief' as unknown as CanvasImageSource
-  const MASKED = 'masque' as unknown as CanvasImageSource
+  const SURFACE = { image: 'canvas-du-relief' as unknown as HTMLCanvasElement, frame: {} } as unknown as ReliefSurface
 
   it('pas de fond de base : pas de fond', () => {
-    expect(composeReliefBackground(null, 'relief', { relief: RELIEF, masked: null })).toBeNull()
+    expect(composeReliefBackground(null, SURFACE, true)).toBeNull()
   })
 
-  it('le relief choisi et rendu devient le fond, variante relief, au même calage', () => {
-    const out = composeReliefBackground(BASE, 'relief', { relief: RELIEF, masked: null })
-    expect(out).toMatchObject({ image: RELIEF, variante: 'relief', calibration: BASE.calibration })
+  it('le relief retenu et rendu devient le fond, variante relief, au même calage', () => {
+    const out = composeReliefBackground(BASE, SURFACE, true)
+    expect(out).toMatchObject({ image: SURFACE.image, variante: 'relief', calibration: BASE.calibration })
   })
 
-  it('le relief choisi mais pas encore rendu : le fond de base reste posé, sans saut', () => {
-    expect(composeReliefBackground(BASE, 'relief', { relief: null, masked: null })).toBe(BASE)
+  it('le relief retenu mais pas encore rendu : le fond de base reste posé, sans saut', () => {
+    expect(composeReliefBackground(BASE, null, false)).toBe(BASE)
   })
 
   it('un fond Plan ou Rendu modulé par la coupe garde sa variante, donc le sort du calque des murs', () => {
-    const out = composeReliefBackground(BASE, 'plan', { relief: null, masked: MASKED })
-    expect(out).toMatchObject({ image: MASKED, variante: 'plan' })
+    const out = composeReliefBackground(BASE, SURFACE, false)
+    expect(out).toMatchObject({ image: SURFACE.image, variante: 'plan' })
   })
 
-  it('sans coupe, le fond de base est rendu tel quel', () => {
-    expect(composeReliefBackground(BASE, 'rendu', { relief: null, masked: null })).toBe(BASE)
-  })
-
-  it('une image de relief obsolète ne se pose pas sur un fond Plan ou Rendu', () => {
-    expect(composeReliefBackground(BASE, 'plan', { relief: RELIEF, masked: null })).toBe(BASE)
+  it('sans coupe ni relief, le fond de base est rendu tel quel', () => {
+    expect(composeReliefBackground(BASE, null, false)).toBe(BASE)
   })
 })

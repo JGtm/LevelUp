@@ -21,7 +21,11 @@ import type { ReplayMapBackgroundLayer } from './useReplayView'
 import { useReplayRelief, type ReplayReliefOptions } from './useReplayRelief'
 
 const mocks = vi.hoisted(() => ({ files: vi.fn(), render: vi.fn() }))
-vi.mock('@/lib/replay/reliefQueries', () => ({ useReplayReliefFiles: mocks.files }))
+// Les fichiers sont remplacés par un double ; la source (`useMatchReliefSource`) reste la vraie : les tests lisent ce qu'elle donne.
+vi.mock('@/lib/replay/reliefQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/replay/reliefQueries')>()),
+  useReliefFiles: mocks.files,
+}))
 vi.mock('@/lib/replay/useReliefRender', () => ({ useReliefRender: mocks.render }))
 vi.mock('@/lib/replay/relief/reliefBackground', () => ({
   ReliefCanvases: class {

@@ -19,8 +19,10 @@
  * LA COUPE NE MASQUE AUCUN JOUEUR : le fond, ses traits et le relief suivent la coupe, les marqueurs restent
  * tous affichés.
  */
-import type { FloorChip, FloorState } from '../hooks/reliefLogic'
-import { isChipSelected } from '../hooks/reliefLogic'
+import type { FloorRank } from '@/lib/replay/relief'
+import { isCutAtLevel, nearestChip } from '@/lib/replay/reliefViewLogic'
+
+import type { FloorState } from '../hooks/reliefLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReliefText } from '../i18n/relief.i18n'
 import { InfoMark, SettingsToggle } from './ReplaySettingsToggle'
@@ -45,17 +47,8 @@ export type ReplayFloorControls = {
 const CHIP_CLASS =
   'h-[26px] shrink-0 rounded-full border border-border bg-transparent px-[11px] text-[11.5px] font-medium tabular-nums text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground'
 
-/** L'étage le plus proche de la coupe, pour nommer la valeur du curseur sans unité. */
-function nearestChip(chips: readonly FloorChip[], cut: number): FloorChip | null {
-  let best: FloorChip | null = null
-  for (const chip of chips) {
-    if (best === null || Math.abs(chip.z - cut) < Math.abs(best.z - cut)) best = chip
-  }
-  return best
-}
-
 /** La note sous l'interrupteur de suivi : l'explication du désactivé, ou le rang de l'étage suivi ; rien sinon. */
-function followNote(t: ReliefText, follow: ReplayFloorControls['follow'], named: FloorChip | null): string | null {
+function followNote(t: ReliefText, follow: ReplayFloorControls['follow'], named: FloorRank | null): string | null {
   if (!follow.available) return t.floorFollowNone
   return follow.on && named ? t.floorFollowOnFmt(t.floorRankFmt(named.rank)) : null
 }
@@ -100,7 +93,7 @@ export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: Rep
               key={chip.rank}
               type="button"
               className={CHIP_CLASS}
-              aria-pressed={isChipSelected(cut, chip)}
+              aria-pressed={isCutAtLevel(cut, chip.z)}
               title={t.floorChipHintFmt(label, chip.rings)}
               onClick={() => floor.onSelectRank(chip.z)}
             >

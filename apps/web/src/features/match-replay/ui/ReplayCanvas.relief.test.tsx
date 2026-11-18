@@ -32,7 +32,11 @@ import { canvasSlotsOf } from './frames/replayFrameSlots'
 import { ReplayCanvas } from './ReplayCanvas'
 
 const mocks = vi.hoisted(() => ({ files: vi.fn(), render: vi.fn() }))
-vi.mock('@/lib/replay/reliefQueries', () => ({ useReplayReliefFiles: mocks.files }))
+// Les fichiers sont remplacés par un double ; la source (`useMatchReliefSource`) reste la vraie : les tests lisent ce qu'elle donne.
+vi.mock('@/lib/replay/reliefQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/replay/reliefQueries')>()),
+  useReliefFiles: mocks.files,
+}))
 vi.mock('@/lib/replay/useReliefRender', () => ({ useReliefRender: mocks.render }))
 
 /** ImageData minimal : jsdom n'en fournit pas, et le relief teinté en construit un. */
@@ -108,7 +112,7 @@ function readyRender(): ReliefRender {
 }
 
 const lastRequest = () => mocks.render.mock.calls.at(-1)?.[2] ?? null
-const lastNeedImage = (): boolean => mocks.files.mock.calls.at(-1)?.[3]
+const lastNeedImage = (): boolean => mocks.files.mock.calls.at(-1)?.[1]
 
 function openPanel() {
   fireEvent.click(screen.getByRole('button', { name: /^Vue/ }))
@@ -144,14 +148,14 @@ afterEach(() => {
 describe('ReplayCanvas — le fond Plan par défaut', () => {
   it('ne lit que les données du relief : ni image des hauteurs, ni demande de rendu', () => {
     renderWithProviders(<ReplayCanvas {...props(smallDoc(), background())} />)
-    expect(mocks.files.mock.calls.at(-1)?.slice(0, 3)).toEqual(['jg', 'm1', true])
+    expect(mocks.files.mock.calls.at(-1)?.[0]).toMatchObject({ dataPath: expect.stringContaining('/players/jg/matches/m1/replay/') })
     expect(lastNeedImage()).toBe(false)
     expect(lastRequest()).toBeNull()
   })
 
   it('un fond sans relief ne demande rien du tout', () => {
     renderWithProviders(<ReplayCanvas {...props(smallDoc(), background({ reliefAvailable: false }))} />)
-    expect(mocks.files.mock.calls.at(-1)?.[2]).toBe(false)
+    expect(mocks.files.mock.calls.at(-1)?.[0]).toBeNull()
   })
 })
 

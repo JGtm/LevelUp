@@ -26,6 +26,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
+import { useReliefInks } from '@/lib/replay/useReliefInks'
 
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
@@ -276,8 +277,10 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, markerOutline, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk, wallPlan: wallPlanInk, relief: reliefInk, onScrim,
+    zone: zoneInk, wallPlan: wallPlanInk, onScrim,
   } = useReplayInks(paletteVersion)
+  // Les deux encres du fond Relief (teinte de base, liseré), les mêmes que celles de la Tactique et d'« Occupation du terrain ».
+  const reliefInk = useReliefInks()
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
   const distinctColors = useDistinctPlayerColors(markerColors === 'player' ? doc.roster.length : null, paletteVersion)

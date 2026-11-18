@@ -13,10 +13,11 @@
  * contrôle (`readReliefImage`) se font au moment du chargement dans le calculateur, parce que ses
  * tableaux sont CÉDÉS au worker et ne se partagent pas entre deux chargements.
  *
- * `useReliefFiles` est la lecture commune des vues 2D ; chacune fournit ses clés et ses adresses
- * (`useReplayReliefFiles` pour la page du rejeu).
+ * `useReliefFiles` est la lecture commune des vues 2D ; chacune fournit ses clés et ses adresses (`useMatchReliefSource`
+ * pour le fond d'un match : le rejeu et « Occupation du terrain »).
  */
 import { useQuery, type QueryKey } from '@tanstack/react-query'
+import { useMemo } from 'react'
 
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
@@ -76,25 +77,20 @@ export function useReliefFiles(source: ReliefFilesSource | null, needImage: bool
 }
 
 /**
- * useReplayReliefFiles : le relief du fond du match. `offered` est ce que le sidecar annonce
- * (`reliefData` et `reliefImage` présents) ; sans lui, aucune requête.
+ * useMatchReliefSource : où lire le relief du fond d'un MATCH (le rejeu, « Occupation du terrain » : un relief est propre
+ * à la carte du match, les clés sont celles du rejeu). `offered` est ce que le sidecar annonce (`reliefData` et
+ * `reliefImage` présents) ; sans lui, ou sans joueur ni match, `null` : aucune requête.
  */
-export function useReplayReliefFiles(
-  playerSlug: string,
-  matchId: string,
-  offered: boolean,
-  needImage: boolean,
-): ReliefFiles {
+export function useMatchReliefSource(playerSlug: string, matchId: string, offered: boolean): ReliefFilesSource | null {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const imageBase = `/players/${playerSlug}/matches/${matchId}/replay/background.png`
-  const source: ReliefFilesSource | null =
-    offered && !!playerSlug && !!matchId
-      ? {
-          dataKey: queryKeys.matchReplayReliefData(playerSlug, titleSlug, matchId),
-          dataPath: reliefDataPath(imageBase),
-          imageKey: queryKeys.matchReplayReliefImage(playerSlug, titleSlug, matchId),
-          imagePath: backgroundImagePath(imageBase, 'relief'),
-        }
-      : null
-  return useReliefFiles(source, needImage)
+  return useMemo(() => {
+    if (!offered || !playerSlug || !matchId) return null
+    const imageBase = `/players/${playerSlug}/matches/${matchId}/replay/background.png`
+    return {
+      dataKey: queryKeys.matchReplayReliefData(playerSlug, titleSlug, matchId),
+      dataPath: reliefDataPath(imageBase),
+      imageKey: queryKeys.matchReplayReliefImage(playerSlug, titleSlug, matchId),
+      imagePath: backgroundImagePath(imageBase, 'relief'),
+    }
+  }, [offered, playerSlug, matchId, titleSlug])
 }

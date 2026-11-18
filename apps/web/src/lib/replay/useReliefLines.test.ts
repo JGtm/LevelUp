@@ -8,10 +8,8 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
-
-import { readReliefLines, reliefLinesDefault, reliefLinesKey } from './replayPreferences'
-import { useReliefLines } from './useReliefLines'
+import type { MapBackgroundVariant } from './mapBackgroundVariant'
+import { readReliefLines, reliefLinesDefault, reliefLinesKey, useReliefLines } from './useReliefLines'
 
 beforeEach(() => {
   window.localStorage.clear()

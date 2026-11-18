@@ -145,7 +145,7 @@ export interface ReplayWallPlanControls {
 
 /**
  * Le STYLE DU FOND (réglage global, `replay-background-style`) : plan, rendu ou relief, dans cet ordre.
- * `options` est la liste des fonds que celui-ci offre (cf. `backgroundOptions`) : vide, la commande n'est
+ * `options` est la liste des fonds que celui-ci offre (cf. `viewBackgroundOptions`) : vide, la commande n'est
  * pas proposée (le rendu est servi). `value` est le fond RETENU après les replis (un relief illisible se
  * lit « Plan »). `meshPercent` : la part du relief tirée du maillage de navigation, pour l'infobulle du
  * fond Relief (D-16) ; `null` quand elle est inconnue.

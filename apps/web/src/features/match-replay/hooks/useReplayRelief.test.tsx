@@ -1,7 +1,7 @@
 /**
  * Tests — useReplayRelief : le fond Relief, ses traits et la coupe par étage assemblés.
  *
- * Les fichiers (`useReplayReliefFiles`) et le calculateur (`useReliefRender`) sont remplacés par des doubles :
+ * Les fichiers (`useReliefFiles`) et le calculateur (`useReliefRender`) sont remplacés par des doubles :
  * ce qui se teste ici est la DÉCISION — quel fond est posé et proposé, quand l'image des hauteurs est demandée,
  * ce qui se passe sur une `ReliefError`, comment la coupe et les traits se retiennent, et surtout que la coupe ne
  * touche à AUCUN joueur (le hook ne rend ni filtre ni masque de position).
@@ -23,7 +23,11 @@ const mocks = vi.hoisted(() => ({
   files: vi.fn(),
   render: vi.fn(),
 }))
-vi.mock('@/lib/replay/reliefQueries', () => ({ useReplayReliefFiles: mocks.files }))
+// Les fichiers sont remplacés par un double ; la source (`useMatchReliefSource`) reste la vraie : les tests lisent ce qu'elle donne.
+vi.mock('@/lib/replay/reliefQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/replay/reliefQueries')>()),
+  useReliefFiles: mocks.files,
+}))
 vi.mock('@/lib/replay/useReliefRender', () => ({ useReliefRender: mocks.render }))
 vi.mock('@/lib/replay/relief/reliefBackground', () => ({
   ReliefCanvases: class {
@@ -73,7 +77,7 @@ function rendered(over: Partial<ReliefRender> = {}): ReliefRender {
 /** La dernière demande de rendu que le hook a posée au calculateur. */
 const lastRequest = (): ReliefRenderRequest | null => mocks.render.mock.calls.at(-1)?.[2] ?? null
 /** Le dernier `needImage` demandé à la lecture des fichiers. */
-const lastNeedImage = (): boolean => mocks.files.mock.calls.at(-1)?.[3]
+const lastNeedImage = (): boolean => mocks.files.mock.calls.at(-1)?.[1]
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -112,7 +116,7 @@ describe('useReplayRelief — le fond posé et proposé', () => {
     const { result } = renderHook(() => useReplayRelief(options({ base: baseLayer({ reliefAvailable: false }), style: 'relief' })))
     expect(result.current.selected).toBe('plan')
     expect(result.current.options).toEqual(['plan', 'rendu'])
-    expect(mocks.files.mock.calls.at(-1)?.[2]).toBe(false)
+    expect(mocks.files.mock.calls.at(-1)?.[0]).toBeNull()
     expect(result.current.floor.state).toEqual({ state: 'none' })
     expect(result.current.lines.available).toBe(false)
   })
@@ -151,7 +155,7 @@ describe('useReplayRelief — une ReliefError replie sur le Plan', () => {
     const { result } = renderHook(() => useReplayRelief(options({ style: 'relief' })))
     expect(result.current.selected).toBe('plan')
     expect(result.current.options).toEqual(['plan', 'rendu'])
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[replay-relief]'))
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[relief-view]'))
   })
 
   it('un échec sans plan retombe sur le rendu', () => {

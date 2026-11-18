@@ -17,10 +17,10 @@
 import { useMemo } from 'react'
 
 import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
-import { useReliefLines } from '@/features/match-replay/settings/useReliefLines'
 import { resolveBackgroundVariant, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import type { QuarterTurns } from '@/lib/replay/orientation'
 import { useReliefInks } from '@/lib/replay/useReliefInks'
+import { useReliefLines } from '@/lib/replay/useReliefLines'
 import { useReliefView, type ReliefView } from '@/lib/replay/useReliefView'
 import { useScopedCut } from '@/lib/replay/useScopedCut'
 import { useAppShellStore } from '@/stores/appShellStore'

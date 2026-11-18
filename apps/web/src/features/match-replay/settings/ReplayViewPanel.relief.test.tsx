@@ -9,6 +9,8 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { floorRanks } from '@/lib/replay/relief'
+
 import { floorChips } from '../hooks/reliefLogic'
 import type { ReplayFloorControls } from './ReplayFloorControls'
 import { makeBackground, makeRelief, makeWallPlan, renderPanel } from './replayViewPanelFixtures'
@@ -17,7 +19,7 @@ const THREE = ['plan', 'rendu', 'relief'] as const
 
 function floorReady(over: Partial<ReplayFloorControls> = {}): ReplayFloorControls {
   return {
-    state: { state: 'ready', chips: floorChips([0, 2.2, 4.4], { min: 0, max: 5 }), min: 0, max: 4.4 },
+    state: { state: 'ready', chips: floorChips(floorRanks([0, 2.2, 4.4]), { min: 0, max: 5 }), min: 0, max: 4.4 },
     cut: null,
     onSelectAll: vi.fn(),
     onSelectRank: vi.fn(),

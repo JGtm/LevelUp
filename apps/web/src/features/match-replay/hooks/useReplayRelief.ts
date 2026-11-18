@@ -1,10 +1,14 @@
 /**
- * useReplayRelief — LE FOND RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE du rejeu, assemblés en un seul hook.
+ * useReplayRelief — LE FOND RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE du rejeu : la vue commune des trois vues 2D
+ * (`lib/replay/useReliefView`) plus ce qui n'appartient qu'au rejeu.
  *
  * Le canvas lui prête le fond de base (le rendu ou le plan, tel que la page l'a chargé), l'orientation
  * retenue et les encres ; il rend le fond à poser, les traits à cuire et les commandes du panneau « Vue ».
- * Il porte donc toute la chaîne : sidecar annonce un relief -> fichiers (`useReplayReliefFiles`) ->
- * calculateur (`useReliefRender`) -> images (`layers/reliefBackground`) -> fond composé (`reliefLogic`).
+ * La chaîne (fichiers du relief, calculateur, images, replis, traits, rangs d'étage) est celle de `useReliefView` ;
+ * ici restent :
+ *  - le suivi du joueur ouvert, qui partage l'état de la coupe avec les choix manuels (`useReplayFloorChoice`) ;
+ *  - les anneaux des pastilles d'étage, lien entre la commande et le langage d'étage des marqueurs (`reliefLogic`) ;
+ *  - la pose du fond sur le fond de base du canvas (`composeReliefBackground`).
  *
  * LES TROIS FONDS : Plan (défaut), Rendu, Relief (préférence globale `replay-background-style`). Le Relief
  * n'est posé que s'il est lisible : sans relief au sidecar, ou sur une `ReliefError` (version inconnue,
@@ -16,45 +20,24 @@
  * masque AUCUN joueur. Sans maillage de navigation, il n'y a pas de coupe : la commande dit pourquoi.
  *
  * « SUIVRE LE JOUEUR OUVERT » pose la coupe à la place de l'utilisateur (`useReplayReliefFollow`) : à chaque image
- * lue, l'étage de ses pieds. Il partage l'état de la coupe (`useReplayFloorChoice`), et un choix manuel le coupe.
+ * lue, l'étage de ses pieds. Un choix manuel (« Tout », pastille, curseur) le coupe.
  *
  * LES TRAITS DU RELIEF sont retenus PAR FOND (`useReliefLines`) : allumés d'office sur le Relief, éteints sur
  * le Plan et le Rendu. Leur calque est cuit hors écran avec les autres (`useReplayStaticLayers`).
- *
- * L'IMAGE DES HAUTEURS, la plus lourde des deux fichiers, n'est demandée que lorsqu'une commande s'en sert
- * (fond Relief, traits allumés, coupe choisie). Les données (étages, traits) sont lues dès que le sidecar annonce
- * le relief : elles décident de ce que le panneau propose.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
-import { resolveBackgroundVariant, reliefUsable, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { resolveBackgroundVariant, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import type { QuarterTurns } from '@/lib/replay/orientation'
-import { meshShareOf, quantizeCut, reliefRamp, rgbToCss, type ReliefData } from '@/lib/replay/relief'
-import { useReplayReliefFiles } from '@/lib/replay/reliefQueries'
-import { ReliefCanvases } from '@/lib/replay/relief/reliefBackground'
-import type { ReliefLinesInk, ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
-import { useReliefRender } from '@/lib/replay/useReliefRender'
+import type { ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
+import { useMatchReliefSource } from '@/lib/replay/reliefQueries'
+import { useReliefLines } from '@/lib/replay/useReliefLines'
+import { useReliefView, type ReliefViewInks } from '@/lib/replay/useReliefView'
 
-import { useReliefLines } from '../settings/useReliefLines'
-import {
-  backgroundOptions,
-  composeReliefBackground,
-  floorStateOf,
-  reliefRequestOf,
-  type FloorState,
-  type ReliefImages,
-} from './reliefLogic'
+import { composeReliefBackground, floorStateWithRings, type FloorState } from './reliefLogic'
 import { useReplayFloorChoice } from './useReplayFloorChoice'
 import { useReplayReliefFollow, type ReliefFollowInput } from './useReplayReliefFollow'
 import type { ReplayMapBackgroundLayer } from './useReplayView'
-
-/** Les encres du relief, résolues par jeton par l'appelant. */
-export interface ReliefInks {
-  /** `map-relief-base` : la teinte de base de la rampe. */
-  base: string
-  /** Le filet clair du cerne des pions (`marker-outline-rim`) : le liseré de la zone jouable. */
-  outline: string
-}
 
 export interface ReplayReliefOptions {
   /** Le fond de base du canvas (le rendu ou le plan, ou `null` : pas de fond). */
@@ -70,7 +53,7 @@ export interface ReplayReliefOptions {
   turns: QuarterTurns
   /** L'amplitude verticale du document : elle dit combien d'anneaux porte un pion à chaque étage. */
   zRange: { min: number; max: number }
-  ink: ReliefInks
+  ink: ReliefViewInks
   /** Ce que « Suivre le joueur ouvert » lit : le document, le joueur de la fiche ouverte, la cellule de dessin. */
   follow: ReliefFollowInput
 }
@@ -110,21 +93,6 @@ export interface ReplayRelief {
   followStep: (frame: number) => void
 }
 
-const NO_IMAGES: ReliefImages = { relief: null, masked: null }
-const NO_FLOOR: FloorState = { state: 'none' }
-
-/** Les encres des traits, tirées de la base de teinte ; `null` quand la base n'est pas une couleur lisible. */
-function linesInkOf(ink: ReliefInks): ReliefLinesInk | null {
-  const ramp = reliefRamp(ink.base)
-  if (!ramp) return null
-  return { edge: rgbToCss(ramp.edge), contour: rgbToCss(ramp.contour), wall: rgbToCss(ramp.wall), outline: ink.outline }
-}
-
-/** La part du relief tirée du maillage, en pourcentage entier, ou `null` quand le fichier ne la porte pas. */
-function meshPercentOf(data: ReliefData | null): number | null {
-  return data ? (meshShareOf(data)?.percent ?? null) : null
-}
-
 export function useReplayRelief(o: ReplayReliefOptions): ReplayRelief {
   const { base, playerSlug = '', matchId = '', scopeKey, style, turns, zRange, ink, follow } = o
   const planAvailable = !!base?.planAvailable
@@ -133,70 +101,38 @@ export function useReplayRelief(o: ReplayReliefOptions): ReplayRelief {
   const wanted = resolveBackgroundVariant(style, planAvailable, { available: offered, failed: false })
   const [linesOn, toggleLines] = useReliefLines(wanted)
   const choice = useReplayFloorChoice(scopeKey, follow.player !== null)
-  const cut = choice.cut
-  const needImage = offered && (wanted === 'relief' || linesOn || cut !== null)
-  const files = useReplayReliefFiles(playerSlug, matchId, offered, needImage)
-  const request = useMemo(
-    () => reliefRequestOf({ needed: needImage, turns, cut, tintBase: wanted === 'relief' ? ink.base : null, lines: linesOn }),
-    [needImage, turns, cut, wanted, ink.base, linesOn],
-  )
-  const render = useReliefRender(files.data, files.blob, request)
+  const files = useMatchReliefSource(playerSlug, matchId, offered)
+  const view = useReliefView({
+    files,
+    cut: choice.cut,
+    onCut: choice.choose,
+    style,
+    wanted,
+    planAvailable,
+    linesOn,
+    turns,
+    ink,
+    baseImage: base?.image ?? null,
+    baseIsPlan: base?.variante === 'plan',
+  })
 
-  // LE REPLI : une lecture qui échoue (fichier absent, version inconnue, image illisible, calculateur en panne)
-  // rend le plan. L'erreur des FICHIERS se journalise ici, celle du calculateur par `useReliefRender`.
-  const failed = files.error !== null || render.status === 'failed'
-  useEffect(() => {
-    if (files.error !== null) console.warn(`[replay-relief] lecture des fichiers du relief impossible, repli sur le plan : ${String(files.error)}`)
-  }, [files.error])
-  const usable = reliefUsable({ available: offered, failed })
-  const selected = resolveBackgroundVariant(style, planAvailable, { available: offered, failed })
-  const options = backgroundOptions(planAvailable, usable)
-
-  const [canvases] = useState(() => new ReliefCanvases())
-  const frame = render.frame
-  const baseImage = base?.image ?? null
-  const baseIsPlan = base?.variante === 'plan'
-  const images = useMemo<ReliefImages>(() => {
-    if (!frame || !usable || !baseImage) return NO_IMAGES
-    if (selected === 'relief') return { relief: canvases.reliefImage(frame), masked: null }
-    return { relief: null, masked: cut === null ? null : canvases.maskedImage(frame, baseImage, baseIsPlan) }
-  }, [frame, usable, selected, cut, baseImage, baseIsPlan, canvases])
-  const background = useMemo(() => composeReliefBackground(base, selected, images), [base, selected, images])
-
-  const data = usable ? files.data : null
-  const linesInk = useMemo(() => linesInkOf(ink), [ink])
-  const linesLayer = useMemo<ReliefLinesInput | null>(() => {
-    if (!linesOn || !data || !frame?.lines || !linesInk) return null
-    return {
-      calibration: data.calibration,
-      steps: frame.lines.steps,
-      contours: frame.lines.contours,
-      walls: frame.lines.walls,
-      outline: data.lines.outline,
-      ink: linesInk,
-    }
-  }, [linesOn, data, frame, linesInk])
-
-  const state = useMemo(() => (data ? floorStateOf(data, zRange) : NO_FLOOR), [data, zRange])
+  const background = useMemo(() => composeReliefBackground(base, view.surface, view.reliefShown), [base, view.surface, view.reliefShown])
+  const viewState = view.floor.state
+  const state = useMemo(() => floorStateWithRings(viewState, zRange), [viewState, zRange])
   // Le suivi ne tourne que sur une carte avec des étages ; sa coupe passe par le même état que les choix manuels.
-  const followOn = choice.follow && state.state === 'ready'
-  const followStep = useReplayReliefFollow({ ...follow, on: followOn, data, onCut: choice.followTo })
-  const { choose, setFollow } = choice
-  const selectAll = useCallback(() => choose(null), [choose])
-  const selectRank = useCallback((z: number) => choose(z), [choose])
-  const setHeight = useCallback((z: number) => choose(quantizeCut(z)), [choose])
+  const followOn = choice.follow && viewState.state === 'ready'
+  const followStep = useReplayReliefFollow({ ...follow, on: followOn, data: view.data, onCut: choice.followTo })
+  const { setFollow } = choice
   const onToggle = useCallback(() => setFollow(!followOn), [setFollow, followOn])
+  const { cut, selectAll, selectRank, setHeight } = view.floor
   return {
     background,
-    selected,
-    options,
-    meshPercent: meshPercentOf(data),
-    lines: { available: data !== null, show: linesOn, onToggle: toggleLines },
-    floor: {
-      state, cut: state.state === 'ready' ? cut : null, selectAll, selectRank, setHeight,
-      follow: { available: follow.player !== null, on: followOn, onToggle },
-    },
-    linesLayer,
+    selected: view.selected,
+    options: view.options,
+    meshPercent: view.meshPercent,
+    lines: { available: view.linesAvailable, show: linesOn, onToggle: toggleLines },
+    floor: { state, cut, selectAll, selectRank, setHeight, follow: { available: follow.player !== null, on: followOn, onToggle } },
+    linesLayer: view.linesLayer,
     followStep,
   }
 }
