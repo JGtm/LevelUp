@@ -397,6 +397,14 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — GO D'AVANCE du user pour la régénération du parc (L.6), message du 2026-11-18 : « Pour les trucs
+  plus tard je te donne mon go d'avance » (en réponse à la liste : régénération des rejeux avec la v1.5.0,
+  rattrapage du coup d'envoi sur sa base, fusion dans `main`). La porte de L.6 est ouverte ; le pilote prévient
+  avant de lancer (serveur arrêté, environ 2 h 30, mémoire libre vérifiée, pas pendant que le user joue).
+  Règle apprise à l'intégration de A : le golden de forme refuse d'être régénéré deux fois sous le même numéro
+  de schéma ; tant que le schéma n'est pas PUBLIÉ, on restaure le golden de la version publiée
+  (`git show 037ec4d:replay/testdata/document_shape.golden`) puis on passe la porte une fois (à reporter dans
+  la marche de publication).
 - 2026-11-18 — INTÉGRATION DE J dans `feat/v1.5.0` (`4e33bd9`) : schéma 126, chronique, golden de forme, 8 goldens
   d'assemblage, 8 fixtures de contrat (dans `C:/t/dec-lu/apps/web`, non commitées : elles seront refigées par
   A et C), 20 références d'équivalence. Écarts attribués : `schemaVersion`, l'étiquette `publication-126`, et

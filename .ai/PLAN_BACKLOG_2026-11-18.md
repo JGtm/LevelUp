@@ -668,6 +668,24 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — DÉCISIONS DU USER sur les écarts de maquette (Q.2), message du 2026-11-18 : « pour les corrections,
+  ok avec tes recos sauf pour 6, j'en veux pas du tout, 7 on a bien un (i) pour expliquer que c'est estimé ? Pour
+  12 et 14 j'en sais rien je vois pas de quoi ça a l'air. Pour le 17 je vois pas non plus [...]. Pour les trucs
+  plus tard je te donne mon go d'avance ». Lecture du pilote, redite au user : RETENUS : boutons carrés de la
+  barre d'une ligne (Q.2-a), capture et export sans cartouche (Q.2-b), fenêtre de fiche à 8 px sous le haut du
+  plan (Q.2-c), bloc arrondi unique du Standard (Q.2-e), marge du Plein cadre à 16 px (Q.2-h). ÉCARTÉS : le
+  défilement de toute la fenêtre de fiche (Q.2-d : l'actuel reste), le gain en pour-cent dans l'infobulle de
+  « Plan tourné » (Q.2-f : refusé, la maquette n'est pas suivie). EN QUESTION : tirs à la tête (Q.2-g) : il n'y
+  a aucune bulle d'information aujourd'hui ; proposition du pilote à valider : lire le compteur du jeu lui-même
+  (`scoreTimeline.players[].stats`, série dans le temps, accord de 99,85 % avec l'API) au lieu des éliminations
+  dont le coup fatal est mesuré, ce qui retire l'estimation. SUR PROTOTYPE (le user ne peut pas juger sans
+  rendu) : fond teinté des lignes du joueur suivi, barre du Cinéma sous le bloc, volume en icône seule, segment
+  Suivre / Seul / Masquer : prototype interactif commandé (`C:/t/maquettes/rejeu-quatre-choix.html`). Sans
+  changement : pictogrammes des cadres, bouton caméra relevé pendant un suivi, cinq écarts de forme des bases
+  joueur (nommés au test), colonnes mortes du registre (backlog). Q.2 s'écrit après M.2 et M.3 (mêmes fichiers,
+  un seul écrivain). GO D'AVANCE du user pour « les trucs plus tard » : le rattrapage du poste (T.6) et la
+  régénération du parc du plan du décodeur ; le pilote prévient quand même avant de lancer (serveur arrêté,
+  2 h 30, mémoire) ; la fusion dans `main` reste annoncée avant, et la version attend la 3D et les temps forts.
 - 2026-11-18 — barre de lecture : le user CONFIRME dans cette session (« je t'ai déjà validé C+B non ? ») le
   choix reçu par relais : B (deux lignes quand la place manque) et C (barre fine et translucide en
   surimpression au Plein cadre). Portes de M.2 et M.3 ouvertes ; agent Sonnet lancé dans `C:/t/bl18-d` (branche
