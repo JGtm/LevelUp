@@ -51,6 +51,7 @@ describe('la carte de chaleur suit l’orientation', () => {
         zones: { zones: [], bigColors: [], fineInk: 'i', locale: 'fr' } as never,
         heat: { grid: GRID, ramp: ['#000000', '#ffffff'] },
         wallPlan: { plan: null, ink: 'w' },
+        reliefLines: null,
         objectives: { elements: [], colorOfTeam: () => 'c', neutralOutline: 'o', z: { min: 0, max: 1 } },
       }),
     )

@@ -92,16 +92,15 @@ export function markerOuterEdge(fl: number): number {
  * `addPath(r)` AJOUTE au chemin courant le sous-chemin de la forme au rayon `r` (pixels de canevas),
  * sans `beginPath` : le filet est un anneau tracé en remplissage pair-impair, donc jamais empilé sur
  * la bande — une opacité de pion inférieure à 1 (lacune de réplication) ne le fait pas se mélanger
- * à elle. `alpha` est l'opacité du pion et `k` la densité du canevas.
+ * à elle. `style` porte la densité du canevas (`k`), les encres du cerne (`ink`) et l'opacité du pion (`alpha`).
  */
 export function drawMarkerOutline(
   ctx: CanvasRenderingContext2D,
   addPath: (radius: number) => void,
   fl: number,
-  k: number,
-  ink: MarkerOutlineInk,
-  alpha: number,
+  style: { k: number; ink: MarkerOutlineInk; alpha: number },
 ): void {
+  const { k, ink, alpha } = style
   const core = markerCorePx(fl)
   ctx.globalAlpha = alpha
   ctx.fillStyle = ink.rim

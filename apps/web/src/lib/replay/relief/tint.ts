@@ -4,6 +4,8 @@
  * Principe `terrainStyle` de Den (conception, annexe teinte) : depuis la base `B`,
  * `bas = mélange(noir, B, 0,3)`, `milieu = mélange(noir, B, 0,78)`, `haut = mélange(B, blanc, 0,3)` ;
  * le gris 0 prend `bas`, 0,5 prend `milieu`, 1 prend `haut`, avec une interpolation linéaire en sRGB.
+ * LES TROIS CRANS NE SE CALCULENT PAS ICI : la rampe est UNIQUE (`lib/accessibility/reliefRamp`), celle
+ * que mesure le garde-fou de contraste ; ce module la lit et n'en tient aucune copie.
  *
  * La couleur de base est un PARAMETRE : le jeton `map-relief-base` (item D.5) la fournit, ce module
  * n'en connaît aucune. Il accepte une chaîne hexadécimale `#rgb` / `#rrggbb` (ce que rend
@@ -11,6 +13,8 @@
  *
  * Les encres des traits (arête, courbe, mur) se tirent de la même base : mélange vers le blanc.
  */
+import { reliefRampStops } from '@/lib/accessibility/reliefRamp'
+
 import { FLAG_ON_MAP } from './constants'
 
 /** Une couleur sRGB, trois entiers 0..255. */
@@ -32,11 +36,7 @@ export interface ReliefRamp {
   wall: Rgb
 }
 
-/** Parts de base de chaque cran de la rampe. */
-const LOW_SHARE = 0.3
-const MID_SHARE = 0.78
-const HIGH_LIGHTEN = 0.3
-/** Mélanges vers le blanc des encres de traits. */
+/** Mélanges vers le blanc des encres de traits (les trois crans de la rampe viennent de `reliefRamp.ts`). */
 const EDGE_LIGHTEN = 0.65
 const CONTOUR_LIGHTEN = 0.45
 const WALL_LIGHTEN = 0.8
@@ -62,9 +62,9 @@ export function toRgb(base: ReliefBaseColor): Rgb | null {
   return isRgb(base) ? base : null
 }
 
-/** Mélange de la base vers le noir : `share` de la base, le reste de noir. */
-function towardBlack(c: Rgb, share: number): Rgb {
-  return [Math.round(c[0] * share), Math.round(c[1] * share), Math.round(c[2] * share)]
+/** La couleur `#rrggbb` d'un triplet, pour interroger la rampe unique. */
+function toHex(c: Rgb): string {
+  return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('')
 }
 
 /** Mélange de la base vers le blanc : `amount` de blanc. */
@@ -73,14 +73,20 @@ function towardWhite(c: Rgb, amount: number): Rgb {
   return [lift(c[0]), lift(c[1]), lift(c[2])]
 }
 
+/** Un cran de la rampe unique, toujours un `#rrggbb` valide. */
+function parseStop(hex: string): Rgb {
+  return parseHexColor(hex) as Rgb
+}
+
 /** reliefRamp tire la rampe et les encres de traits d'une base. Une base illisible rend `null`. */
 export function reliefRamp(base: ReliefBaseColor): ReliefRamp | null {
   const c = toRgb(base)
   if (!c) return null
+  const stops = reliefRampStops(toHex(c))
   return {
-    low: towardBlack(c, LOW_SHARE),
-    mid: towardBlack(c, MID_SHARE),
-    high: towardWhite(c, HIGH_LIGHTEN),
+    low: parseStop(stops.low),
+    mid: parseStop(stops.mid),
+    high: parseStop(stops.high),
     edge: towardWhite(c, EDGE_LIGHTEN),
     contour: towardWhite(c, CONTOUR_LIGHTEN),
     wall: towardWhite(c, WALL_LIGHTEN),

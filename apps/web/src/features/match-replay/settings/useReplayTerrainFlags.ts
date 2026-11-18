@@ -206,9 +206,10 @@ export interface ReplayTerrainFlags {
   showWallPlan: boolean
   toggleWallPlan: () => void
   /**
-   * Le STYLE DU FOND : `rendu` (défaut) ou `plan` (vue plan à hauteurs). Global, partagé avec la
-   * Tactique et « Occupation du terrain » (cf. `useMapViewPreferences`). Sans image plan sur le
-   * fond retenu, le rendu est servi quoi qu'il en soit.
+   * Le STYLE DU FOND VOULU : `plan` (défaut, vue plan à hauteurs), `rendu` ou `relief` (hauteurs teintées).
+   * Global, partagé avec la Tactique et « Occupation du terrain » (cf. `useMapViewPreferences`). C'est un
+   * VOULOIR : sans image plan sur le fond retenu, ou sans relief lisible, le plan puis le rendu sont servis
+   * (`resolveBackgroundVariant`) ; le fond RETENU après ces replis est celui de `useReplayRelief`.
    */
   backgroundStyle: MapBackgroundVariant
   setBackgroundStyle: (style: MapBackgroundVariant) => void

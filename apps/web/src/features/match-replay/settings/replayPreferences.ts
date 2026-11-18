@@ -214,13 +214,38 @@ export function clearOrientation(mapId: string): void {
   removePreference(orientationKey(mapId))
 }
 /**
- * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `rendu` (défaut) ou `plan` (la vue
- * plan à hauteurs), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,
+ * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `plan` (défaut, la vue plan à hauteurs),
+ * `rendu` ou `relief` (le terrain teinté par hauteur), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,
  * Tactique, « Occupation du terrain »). Retenu dans CE navigateur, jamais côté serveur. La lecture est
- * VALIDÉE contre les deux valeurs : absente, inconnue ou écrite par une autre version -> `plan` (le défaut).
- * Le choix `plan` ne s'applique qu'à un fond qui porte une image plan : sinon le rendu est servi.
+ * VALIDÉE contre les trois valeurs : absente, inconnue ou écrite par une autre version -> `plan` (le défaut).
+ * Le choix `plan` ne s'applique qu'à un fond qui porte une image plan, le choix `relief` qu'à un fond qui porte
+ * un relief lisible : sinon le plan, puis le rendu, sont servis.
  */
 export const BACKGROUND_STYLE_KEY = 'replay-background-style'
+
+/**
+ * LES TRAITS DU RELIEF (ruptures de hauteur, courbes de niveau, liseré) : un OUI/NON retenu PAR FOND
+ * (décision du 2026-11-18, maquette D.1 choix 4), sous `replay-relief-lines.<fond>`. Allumés d'office sur le
+ * fond Relief, éteints sur le Plan et le Rendu : changer de fond relit SA valeur, et un geste manuel tient
+ * pour ce fond jusqu'au prochain geste. Le stockage ne retient que ce que l'utilisateur a fait ; absent ou
+ * refusé -> le défaut du fond.
+ */
+export const RELIEF_LINES_KEY_PREFIX = 'replay-relief-lines.'
+
+/** La clé de stockage des traits du relief pour un fond. */
+export function reliefLinesKey(fond: MapBackgroundVariant): string {
+  return `${RELIEF_LINES_KEY_PREFIX}${fond}`
+}
+
+/** Le défaut des traits pour un fond : allumés sur le relief seulement. */
+export function reliefLinesDefault(fond: MapBackgroundVariant): boolean {
+  return fond === 'relief'
+}
+
+/** Les traits du relief retenus pour ce fond, ou son défaut. */
+export function readReliefLines(fond: MapBackgroundVariant): boolean {
+  return readStoredFlag(reliefLinesKey(fond), reliefLinesDefault(fond))
+}
 
 /** Le style de fond retenu, ou le plan (le défaut). */
 export function readBackgroundStyle(): MapBackgroundVariant {

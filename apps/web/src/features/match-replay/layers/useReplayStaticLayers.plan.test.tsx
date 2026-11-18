@@ -59,6 +59,7 @@ function cuire(plan: typeof PLAN | null | undefined) {
       zones: { zones: ZONE, bigColors: ['c'], fineInk: 'i', locale: 'fr', ...(plan === undefined ? {} : { plan }) },
       heat: { grid: null, ramp: [] },
       wallPlan: { plan: null, ink: 'w' },
+      reliefLines: null,
       objectives: { elements: [], colorOfTeam: () => 'c', neutralOutline: 'o', z: { min: 0, max: 1 } },
     }),
   )

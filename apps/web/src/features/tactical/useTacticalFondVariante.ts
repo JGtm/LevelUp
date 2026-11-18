@@ -10,14 +10,14 @@
  * plan (sinon le rendu serait téléchargé pour rien).
  */
 import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
-import { resolveBackgroundVariant, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { resolveBackgroundVariant, type MapBackgroundImageVariant } from '@/lib/replay/mapBackgroundVariant'
 
 import { useTacticalMapBackgroundImage, useTacticalMapPlanImage } from './queries'
 
 export function useTacticalFondVariante(
   playerSlug: string,
   mapId: string,
-): { url: string | null; variante: MapBackgroundVariant } {
+): { url: string | null; variante: MapBackgroundImageVariant } {
   const { backgroundStyle } = useMapViewPreferences(mapId)
   const { planImage, pending } = useTacticalMapPlanImage(playerSlug, mapId)
   const demandee = resolveBackgroundVariant(backgroundStyle, planImage)

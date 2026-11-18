@@ -321,6 +321,8 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   matchReplay: "artefact de rejeu (toutes les langues y figurent, la page choisit)",
   matchReplayBackground: "fond de carte du rejeu (métadonnées d'image)",
   matchReplayBackgroundImage: 'image du fond de carte',
+  matchReplayReliefData: 'données du relief du fond : aucun libellé',
+  matchReplayReliefImage: 'image des hauteurs du relief : aucun libellé',
   matchReplayCallouts: 'zones nommées : toutes les langues dans la réponse',
   matchNeighbors: 'identifiants des matchs voisins',
   engagementProfile: "coefficients d'engagement (nombres)",

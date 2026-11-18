@@ -19,6 +19,7 @@ import type { ReactNode } from 'react'
 
 import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 
+import { FloorGroup, type ReplayFloorControls } from './ReplayFloorControls'
 import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -143,13 +144,26 @@ export interface ReplayWallPlanControls {
 }
 
 /**
- * Le STYLE DU FOND (réglage global, `replay-background-style`) : rendu ou plan. `available` = le
- * fond retenu porte une image plan ; sans elle la commande n'est pas proposée (le rendu est servi).
+ * Le STYLE DU FOND (réglage global, `replay-background-style`) : plan, rendu ou relief, dans cet ordre.
+ * `options` est la liste des fonds que celui-ci offre (cf. `backgroundOptions`) : vide, la commande n'est
+ * pas proposée (le rendu est servi). `value` est le fond RETENU après les replis (un relief illisible se
+ * lit « Plan »). `meshPercent` : la part du relief tirée du maillage de navigation, pour l'infobulle du
+ * fond Relief (D-16) ; `null` quand elle est inconnue.
  */
 export interface ReplayBackgroundControls {
-  available: boolean
+  options: readonly MapBackgroundVariant[]
   value: MapBackgroundVariant
   onSelect: (style: MapBackgroundVariant) => void
+  meshPercent: number | null
+}
+
+/**
+ * Le RELIEF du fond : l'interrupteur « Traits du relief » (retenu par fond ; `available` = le relief est
+ * lu) et la commande d'étage (coupe du terrain par hauteur, `ReplayFloorControls`).
+ */
+export interface ReplayReliefControls {
+  lines: { available: boolean; show: boolean; onToggle: () => void }
+  floor: ReplayFloorControls
 }
 
 /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
@@ -179,14 +193,26 @@ export interface LayersSectionProps {
   vehicles: ReplayVehicleControls
   wallPlan: ReplayWallPlanControls
   background: ReplayBackgroundControls
+  relief: ReplayReliefControls
+}
+
+/** Les options du segmenté « Fond » : leur libellé et leur infobulle, dans la langue de la page. */
+function backgroundChoices(t: (typeof REPLAY_TEXT)[ReplayLocale], meshPercent: number | null) {
+  const reliefHint = `${t.relief.backgroundHint}${meshPercent === null ? '' : ` ${t.relief.backgroundMeshFmt(meshPercent)}`}`
+  return {
+    plan: { label: t.layerBackgroundPlan, hint: t.layerBackgroundPlanHint },
+    rendu: { label: t.layerBackgroundRender, hint: t.layerBackgroundRenderHint },
+    relief: { label: t.relief.background, hint: reliefHint },
+  } satisfies Record<MapBackgroundVariant, { label: string; hint: string }>
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, modeObjectives,
-  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles, wallPlan, background,
+  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles, wallPlan, background, relief,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
+  const choices = backgroundChoices(t, background.meshPercent)
   return (
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.layers}</h3>
@@ -209,7 +235,7 @@ export function LayersSection({
       {/* LE TERRAIN : des lieux et des objets, pas des gens. Les EMPLACEMENTS D'ARME sont une
           récurrence spatiale mesurée ; les ARMES AU SOL sont des objets qui gisent là où ils
           sont tombés — on peut vouloir les socles sans le fouillis, et l'inverse. */}
-      {(zonesAvailable || wallPlan.available || background.available || weaponPads.available || groundWeapons.available || vehicles.available) && (
+      {(zonesAvailable || wallPlan.available || background.options.length > 0 || relief.lines.available || relief.floor.state.state !== 'none' || weaponPads.available || groundWeapons.available || vehicles.available) && (
         <LayerGroup title={t.layerGroupTerrain}>
           {zonesAvailable && (
             <SettingsToggle
@@ -219,20 +245,27 @@ export function LayersSection({
               hint={t.layerZonesHint}
             />
           )}
-          {/* LE FOND : rendu ou plan. Même calage, mêmes dimensions : changer d'image ne déplace rien. */}
-          {background.available && (
+          {/* LE FOND : plan, rendu ou relief (cet ordre, décision du 2026-11-18). Même calage, mêmes
+              dimensions : changer de fond ne déplace rien. Le segmenté ne se montre que s'il y a un choix. */}
+          {background.options.length > 0 && (
             <SettingsSegments
               label={t.layerBackground}
               value={background.value}
               onSelect={background.onSelect}
-              options={[
-                { value: 'rendu', label: t.layerBackgroundRender, hint: t.layerBackgroundRenderHint },
-                { value: 'plan', label: t.layerBackgroundPlan, hint: t.layerBackgroundPlanHint },
-              ]}
+              options={background.options.map((value) => ({ value, ...choices[value] }))}
+            />
+          )}
+          {/* LES TRAITS DU RELIEF, retenus PAR FOND : allumés d'office sur le Relief, éteints sur les deux autres. */}
+          {relief.lines.available && (
+            <SettingsToggle
+              label={t.relief.lines}
+              pressed={relief.lines.show}
+              onToggle={relief.lines.onToggle}
+              hint={t.relief.linesHint}
             />
           )}
           {/* EN MODE PLAN les murs sont déjà dans l'image : l'interrupteur reste visible mais désactivé,
-              éteint, avec la raison en infobulle. */}
+              éteint, avec la raison en infobulle. Sur le RELIEF il reste disponible, indépendant des traits. */}
           {wallPlan.available && (
             <SettingsToggle
               label={t.layerWallPlan}
@@ -242,6 +275,8 @@ export function LayersSection({
               disabled={wallPlan.inPlan}
             />
           )}
+          {/* LA COUPE PAR ÉTAGE, sur toute la largeur du groupe : pastilles, curseur, ou l'explication d'une carte sans maillage. */}
+          <FloorGroup locale={locale} floor={relief.floor} />
           {weaponPads.available && (
             <SettingsToggle
               label={t.layerWeaponPads}

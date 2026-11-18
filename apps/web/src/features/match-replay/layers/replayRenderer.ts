@@ -135,6 +135,7 @@ function sceneMatter(s: ReplaySceneInputs, bgRect: MapRect): ReplayScene['has'] 
     background: !!s.background && !!bgRect,
     floor: !!doc.geometry?.length,
     wallPlan: !!cooked.wallPlan.current,
+    reliefLines: !!cooked.reliefLines.current,
     heat: !!cooked.heat.current,
     zoneNames: !!cooked.zones.current,
     objectivesCooked: !!cooked.objectives.current,
@@ -158,10 +159,10 @@ function terrainPainters(
   bgRect: MapRect,
   lo: ReturnType<typeof layerOffset>,
 ): Painters<
-  'fond-carte' | 'sol-forge' | 'plan-murs' | 'chaleur' | 'zones-nommees' | 'objectifs-cuits' | 'projectiles'
+  'fond-carte' | 'sol-forge' | 'traits-relief' | 'plan-murs' | 'chaleur' | 'zones-nommees' | 'objectifs-cuits' | 'projectiles'
 > {
   const { doc, view, zRange, cooked } = s
-  const { wallPlan: wallPlanRef, heat: heatRef, zones: zonesRef, objectives: objectivesRef } = cooked
+  const { wallPlan: wallPlanRef, reliefLines: reliefLinesRef, heat: heatRef, zones: zonesRef, objectives: objectivesRef } = cooked
   const { shownProjectile } = s.focus
   const { geometry: geometryColor, grenade: grenadeColor } = s.ink
   // Un calque CUIT se repose tel quel, décalé de `lo` : sa géométrie ne bouge pas.
@@ -175,6 +176,7 @@ function terrainPainters(
     'fond-carte': () => drawMapBackground(ctx, s.background, bgRect, view),
     'sol-forge': () =>
       drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
+    'traits-relief': cuit(reliefLinesRef.current),
     'plan-murs': cuit(wallPlanRef.current),
     chaleur: cuit(heatRef.current),
     'zones-nommees': cuit(zonesRef.current),

@@ -81,6 +81,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import { paintReplayFrame, type ReplaySceneInputs } from '../layers/replayRenderer'
 import { useReplayTiming } from '../hooks/useReplayTiming'
+import { useReplayRelief } from '../hooks/useReplayRelief'
 import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
@@ -261,7 +262,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, showWallPlan, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, showWallPlan, backgroundStyle, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -275,7 +276,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, markerOutline, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk, wallPlan: wallPlanInk, onScrim,
+    zone: zoneInk, wallPlan: wallPlanInk, relief: reliefInk, onScrim,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
@@ -298,9 +299,15 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, turns, autoTurned, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
+  const { mapImage: baseImage, turns, autoTurned, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
     doc, background, turns: orientation.retained, scopeKey: matchId, width, freeHeight, onManualMove: onFollowStop,
   })
+  // LE FOND RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE : le fond de base (rendu ou plan) devient le relief teinté,
+  // ou reste posé, modulé par la coupe. Ni les bornes ni l'orientation n'en dépendent ; la coupe ne masque aucun joueur.
+  const relief = useReplayRelief({
+    base: baseImage, playerSlug, matchId, scopeKey: mapId ?? matchId ?? '', style: backgroundStyle, turns, zRange, ink: reliefInk,
+  })
+  const mapImage = relief.background
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
@@ -363,7 +370,7 @@ export function ReplayCanvas({
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
-  const { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
+  const { wallPlanRef, reliefLinesRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
@@ -372,6 +379,7 @@ export function ReplayCanvas({
     heat: { grid: heat.grid, ramp: heat.ramp },
     // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
     wallPlan: { plan: wallPlanOn ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },
+    reliefLines: relief.linesLayer,
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
@@ -468,7 +476,7 @@ export function ReplayCanvas({
       size: { width: renderWidth, height: viewH },
       zRange,
       background: mapImage,
-      cooked: { origin: cookedRef, wallPlan: wallPlanRef, zones: zonesRef, heat: heatRef, objectives: objectivesRef },
+      cooked: { origin: cookedRef, wallPlan: wallPlanRef, reliefLines: reliefLinesRef, zones: zonesRef, heat: heatRef, objectives: objectivesRef },
       timing,
       eventHoldFrames,
       shotHoldFrames,
@@ -498,7 +506,7 @@ export function ReplayCanvas({
     [
       doc, locale, reducedMotion, canvasView, renderWidth, viewH, zRange, mapImage,
       // Refs STABLES : la règle de dépendances ne le sait pas d'un hook maison.
-      cookedRef, wallPlanRef, zonesRef, heatRef, objectivesRef,
+      cookedRef, wallPlanRef, reliefLinesRef, zonesRef, heatRef, objectivesRef,
       timing, eventHoldFrames, shotHoldFrames,
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
       geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke, markerOutline,
@@ -556,8 +564,8 @@ export function ReplayCanvas({
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
     settings, orientation, sound, locale, planFeedAvailable: planFeed,
-    // LE FOND : la commande n'est proposée que si le fond a une image plan ; posé, il retire le calque des murs.
-    planBackground: { available: !!mapImage?.planAvailable, shown: mapImage?.variante === 'plan' },
+    // LE FOND ET SON RELIEF : les fonds proposés, les traits, la commande d'étage ; le plan posé retire le calque des murs.
+    relief, drawn: mapImage?.variante ?? 'rendu',
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: filmLayerAvailability({
       zoneCount: calloutZones.length, placements, weaponPads, groundWeapons, objectiveCount: mapObjectives.length, flags, vipCrown, skullCarrier,

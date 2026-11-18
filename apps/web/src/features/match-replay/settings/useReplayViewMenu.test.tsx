@@ -7,11 +7,15 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
+import type { ReplayRelief } from '../hooks/useReplayRelief'
 import { VIEW_PRESET_KEY } from './replayPreferences'
 import { useReplaySettings } from './useReplaySettings'
 import { useReplayViewMenu } from './useReplayViewMenu'
 import type { FilmLayerAvailability } from './viewPresetLogic'
 import type { ReplaySound } from '../sound/useReplaySound'
+import { makeReplayRelief } from '../test/reliefFixtures'
 
 const FULL_FILM: FilmLayerAvailability = {
   zones: true,
@@ -49,12 +53,12 @@ const SLAYER_FILM: FilmLayerAvailability = {
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
 const HEAT = { mode: 'presence' as const, killsAvailable: true }
 const ORIENTATION = { retained: 0 as const, setTurns: () => {}, available: true }
-const NO_PLAN_BACKGROUND = { available: false, shown: false }
+const NO_RELIEF = makeReplayRelief()
 
-function mount(available: FilmLayerAvailability, planBackground = NO_PLAN_BACKGROUND) {
+function mount(available: FilmLayerAvailability, relief: ReplayRelief = NO_RELIEF, drawn: MapBackgroundVariant = 'rendu') {
   return renderHook(() => {
     const settings = useReplaySettings()
-    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', planBackground, planFeedAvailable: false })
+    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', relief, drawn, planFeedAvailable: false })
     return { settings, menu }
   })
 }
@@ -177,27 +181,29 @@ describe('useReplayViewMenu', () => {
     expect(result.current.menu.active).toBe('complet')
   })
 
-  it('le fond : la commande suit la présence d une image plan, et son choix est retenu', () => {
+  it('le fond : les options et la valeur viennent du relief rendu, le choix est retenu', () => {
     const sans = mount(FULL_FILM)
-    expect(sans.result.current.menu.panel.background.available).toBe(false)
-    window.localStorage.setItem('replay-background-style', 'rendu')
-    const { result } = mount(FULL_FILM, { available: true, shown: false })
-    expect(result.current.menu.panel.background).toMatchObject({ available: true, value: 'rendu' })
+    expect(sans.result.current.menu.panel.background.options).toEqual([])
+    const relief = makeReplayRelief({ options: ['plan', 'rendu', 'relief'], selected: 'relief', meshPercent: 46 })
+    const { result } = mount(FULL_FILM, relief)
+    expect(result.current.menu.panel.background).toMatchObject({ options: ['plan', 'rendu', 'relief'], value: 'relief', meshPercent: 46 })
     act(() => result.current.menu.panel.background.onSelect('plan'))
-    expect(result.current.menu.panel.background.value).toBe('plan')
     expect(window.localStorage.getItem('replay-background-style')).toBe('plan')
   })
 
-  it('plan demandé mais repli sur le rendu (image plan en échec) : le fond posé est le rendu, l’interrupteur des murs reste actif', () => {
-    window.localStorage.setItem('replay-background-style', 'plan')
-    const { result } = mount(FULL_FILM, { available: true, shown: false })
-    expect(result.current.menu.panel.background.value).toBe('plan')
-    expect(result.current.menu.panel.wallPlan.inPlan).toBe(false)
+  it('le relief du fond est transporté tel quel : traits et commande d’étage', () => {
+    const relief = makeReplayRelief({
+      lines: { available: true, show: true, onToggle: () => {} },
+      floor: { state: { state: 'noMesh' }, cut: null, selectAll: () => {}, selectRank: () => {}, setHeight: () => {} },
+    })
+    const { result } = mount(FULL_FILM, relief)
+    expect(result.current.menu.panel.relief.lines).toMatchObject({ available: true, show: true })
+    expect(result.current.menu.panel.relief.floor.state).toEqual({ state: 'noMesh' })
   })
 
   it('le plan des murs est désactivé quand le fond posé est le plan, et seulement alors', () => {
-    expect(mount(FULL_FILM, { available: true, shown: false }).result.current.menu.panel.wallPlan.inPlan).toBe(false)
-    expect(mount(FULL_FILM, { available: true, shown: true }).result.current.menu.panel.wallPlan.inPlan).toBe(true)
+    expect(mount(FULL_FILM, NO_RELIEF, 'rendu').result.current.menu.panel.wallPlan.inPlan).toBe(false)
+    expect(mount(FULL_FILM, NO_RELIEF, 'plan').result.current.menu.panel.wallPlan.inPlan).toBe(true)
   })
 
   it('UN PRÉRÉGLAGE CHOISI AVANT LES CALQUES DES VIES RESTE RECONNU : Combat et Déplacements ne passent pas en Personnalisé', () => {

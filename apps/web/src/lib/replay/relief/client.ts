@@ -16,7 +16,7 @@
  */
 import { ReliefEngine, type ReliefFrame, type ReliefInfo, type ReliefLoadInput, type ReliefRenderRequest } from './engine'
 import { ReliefError } from './errors'
-import { isReadyMessage, type ReliefRequest, type ReliefResponse, type ReliefWorkerMessage } from './protocol'
+import { isReadyMessage, type ReliefRequest, type ReliefReply, type ReliefWorkerMessage } from './protocol'
 import { handleReliefRequest } from './workerHandler'
 
 /** Où tourne le calcul. */
@@ -46,7 +46,7 @@ const DEFAULT_START_TIMEOUT_MS = 5000
 /** Un moyen d'exécuter les demandes : le worker ou le moteur sur place. */
 interface Transport {
   mode: ReliefMode
-  call(build: (id: number) => ReliefRequest, transfer: ArrayBuffer[]): Promise<ReliefResponse>
+  call(build: (id: number) => ReliefRequest, transfer: ArrayBuffer[]): Promise<ReliefReply>
   close(): void
 }
 
@@ -61,7 +61,7 @@ class InlineTransport implements Transport {
   private engine = new ReliefEngine()
   private nextId = 1
 
-  call(build: (id: number) => ReliefRequest): Promise<ReliefResponse> {
+  call(build: (id: number) => ReliefRequest): Promise<ReliefReply> {
     return Promise.resolve().then(() => handleReliefRequest(this.engine, build(this.nextId++)).response)
   }
 
@@ -71,7 +71,7 @@ class InlineTransport implements Transport {
 }
 
 interface Waiter {
-  resolve: (r: ReliefResponse) => void
+  resolve: (r: ReliefReply) => void
   reject: (e: Error) => void
 }
 
@@ -128,7 +128,7 @@ class WorkerTransport implements Transport {
     this.worker.terminate()
   }
 
-  call(build: (id: number) => ReliefRequest, transfer: ArrayBuffer[]): Promise<ReliefResponse> {
+  call(build: (id: number) => ReliefRequest, transfer: ArrayBuffer[]): Promise<ReliefReply> {
     if (this.dead) return Promise.reject(this.dead)
     const id = this.nextId++
     return new Promise((resolve, reject) => {
@@ -168,7 +168,7 @@ interface QueuedRender {
   reject: (err: Error) => void
 }
 
-function toError(response: ReliefResponse): Error {
+function toError(response: ReliefReply): Error {
   if (response.ok) return new ReliefError('worker-failed', 'réponse inattendue')
   return new ReliefError(response.error.code, response.error.message)
 }
