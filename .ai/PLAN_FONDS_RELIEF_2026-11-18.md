@@ -508,3 +508,9 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
   au plan maître (N22 à N26). Maquette du 2026-11-18 versionnée pour les agents :
   `.ai/annexes_fonds_relief/maquette_2026-11-18.html` (code de la page seul ; les données des cartes restent hors
   dépôt). Vague 1 lancée : 0.1, 0.2, 0.4, A.0, D.1.
+- 2026-11-18 — décision technique du pilote (constat du lot C) : l'index des fonds du décodeur
+  (`replay.MapBackgroundIndexFor`, décodeur v1.4.1) et `images_publiees_test.go` lisent tout `*.json` du dossier
+  des fonds comme un sidecar ; un `<clé>.relief.json` y enregistrerait une clé fantôme. Le fichier de données
+  du relief devient `<clé>.relief.json.gz` (JSON compressé gzip sur disque, ce qui allège aussi D-13) ; le
+  service le décompresse, contrôle `schemaVersion` et le calage, et sert le JSON en clair. Remplace le nom
+  `<clé>.relief.json` de la conception §1 et des items B.1, C.1 à C.3.
