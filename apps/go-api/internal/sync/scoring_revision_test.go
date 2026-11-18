@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/analysis/skill_v2/ep"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/sync/skill"
@@ -31,9 +32,9 @@ var (
 		// Même empreinte : la logique change, pas un paramètre haché. En repli sur les autres familles,
 		// O_sout ne classe plus le débit de soutien par minute, seulement la part du soutien.
 		"perf-2026-11-15b": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
-		// Même empreinte : le temps de jeu que la note lit se calcule désormais sur le coup d'envoi du
-		// registre (ADR 0049) ; aucun paramètre haché ne change.
-		"perf-2026-11-18": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
+		// Le temps de jeu que la note lit se calcule sur le coup d'envoi du registre (ADR 0050) ; l'empreinte
+		// hache désormais timeline.KickoffRev, qui lie les deux révisions.
+		"perf-2026-11-18": "2c6301e1c657bc65dea1f009d674e6a478e0d3f4289874428dc1f2ad6402be98",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
@@ -41,9 +42,9 @@ var (
 		"lusr-2026-11-09": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
 		// Vie effective du TOML d'Infinite (229) : Conversion offensive et Résistance défensive du composite.
 		"lusr-2026-11-15": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
-		// Même empreinte : coup d'envoi et temps de jeu, que le poids d'un joueur lit, viennent de la
-		// résolution unique (ADR 0049) ; aucun paramètre haché ne change.
-		"lusr-2026-11-18": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
+		// Coup d'envoi et temps de jeu, que le poids d'un joueur lit, viennent de la résolution unique
+		// (ADR 0050) ; l'empreinte hache désormais timeline.KickoffRev, qui lie les deux révisions.
+		"lusr-2026-11-18": "31e129714c2ee40a72f92fdad2218ebac7788f0c07f38099cf708752c120427e",
 	}
 )
 
@@ -53,6 +54,10 @@ type fingerprintBuilder struct{ lines []string }
 
 func (b *fingerprintBuilder) float(key string, v float64) {
 	b.lines = append(b.lines, key+"="+strconv.FormatFloat(v, 'g', -1, 64))
+}
+
+func (b *fingerprintBuilder) text(key, v string) {
+	b.lines = append(b.lines, key+"="+v)
 }
 
 func (b *fingerprintBuilder) integer(key string, v int) {
@@ -108,6 +113,9 @@ func performanceParameters(hp float64) (digest, body string) {
 	b.float("objectiveblend.SupportSlope", blend.SupportSlope)
 	b.integer("objectiveblend.MinFamilyMatches", blend.MinFamilyMatches)
 	b.float("narrative.ObjectiveSupportFragWeight", narrative.ObjectiveSupportFragWeight)
+	// Le temps de jeu que la note lit vient de la résolution du coup d'envoi (ADR 0050) : changer sa
+	// révision change cette empreinte, donc impose de monter PerformanceScoreRev.
+	b.text("timeline.KickoffRev", timeline.KickoffRev)
 	b.weights("RelativeWeights", skill.RelativeWeights)
 	for _, chain := range knownPerformanceChains() {
 		b.weights("WeightsForChain."+chain, skill.WeightsForChain(chain))
@@ -128,6 +136,8 @@ func knownPerformanceChains() []string {
 func lusrParameters(hp float64) (digest, body string) {
 	var b fingerprintBuilder
 	addSkillConfigParameters(&b)
+	// Le LUSR lit le coup d'envoi et le temps de jeu de la résolution unique (ADR 0050).
+	b.text("timeline.KickoffRev", timeline.KickoffRev)
 	b.float("skill.QuitSecondaryFactor", skill.QuitSecondaryFactor)
 	b.float("games.DefaultEffectiveHpToKill", hp) // clé historique des empreintes ; valeur = TOML du titre
 	addSkillV2Parameters(&b)

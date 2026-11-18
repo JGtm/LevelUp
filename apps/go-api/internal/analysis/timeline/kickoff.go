@@ -9,9 +9,11 @@ import (
 // KickoffRev est la révision de la résolution du coup d'envoi et du temps de jeu qui en
 // découle (ordre des sources, estimation et ses seuils, formule du temps de jeu). Une base
 // partagée range la dernière révision dont le rattrapage complet a réussi ; une valeur
-// différente relance ce rattrapage au démarrage (ADR 0049). Le garde-rail
+// différente relance ce rattrapage au démarrage (ADR 0050). Le garde-rail
 // TestKickoffParametersMatchRevision échoue quand un seuil change sans que la révision change ;
-// un changement de logique sans changement de nombre se signale en changeant cette valeur.
+// un changement de logique sans changement de nombre se signale en changeant cette valeur. Les notes
+// lisent ce que cette résolution écrit : l'empreinte des révisions de notation hache KickoffRev
+// (TestScoringParametersMatchRevision, paquet sync), donc la changer impose de les monter aussi.
 const KickoffRev = "kickoff-2026-11-18"
 
 // KickoffSource dit d'où vient le coup d'envoi rangé d'un match. Valeurs rangées dans
@@ -37,6 +39,9 @@ type Kickoff struct {
 	// Estimate : l'issue de l'estimation quand elle a été jouée (diagnostic journalisé et compté,
 	// jamais rangé) ; vide quand le rejeu a décidé.
 	Estimate T0Quality
+	// FilmOutOfBounds : le rejeu publiait un coup d'envoi hors de la fenêtre du match (négatif, ou
+	// au-delà de sa durée) ; il a été refusé comme un rejeu qui n'en publie pas.
+	FilmOutOfBounds bool
 }
 
 // Known dit si le match a un coup d'envoi.
@@ -59,6 +64,9 @@ type KickoffInput struct {
 	// FilmT0Ms : le coup d'envoi tel que le document de rejeu du match le publie (`t0FilmMs`),
 	// en ms depuis le début canonique. Nil : pas de rejeu, ou rejeu sans coup d'envoi.
 	FilmT0Ms *int64
+	// DurationSeconds : la durée du match ; nil ou nulle = inconnue (seule la borne zéro du coup
+	// d'envoi du rejeu s'applique alors).
+	DurationSeconds *int
 	// Participations : les arrivées des joueurs, lues seulement quand le rejeu ne décide pas.
 	Participations []ParticipationT0Input
 }
@@ -66,16 +74,31 @@ type KickoffInput struct {
 // ResolveKickoff est le SEUL point où se décide le coup d'envoi d'un match, dans l'ordre fixe
 // des sources : le rejeu, sinon l'estimation par les arrivées (UN appel de ComputeT0, refusée
 // quand elle est négative ou au-delà de son seuil), sinon inconnu. Le rejeu est pris tel que le
-// document le publie : aucun détecteur n'est rejoué ici.
+// document le publie : aucun détecteur n'est rejoué ici ; seule sa plausibilité se vérifie, par la
+// fenêtre du match elle-même (ni négatif, ni au-delà de la durée), et un coup d'envoi hors de
+// cette fenêtre compte comme un rejeu qui n'en publie pas.
 func ResolveKickoff(in KickoffInput) Kickoff {
+	outOfBounds := false
 	if in.FilmT0Ms != nil {
-		return Kickoff{Source: KickoffSourceFilm, OffsetMs: *in.FilmT0Ms}
+		if filmWithinMatch(*in.FilmT0Ms, in.DurationSeconds) {
+			return Kickoff{Source: KickoffSourceFilm, OffsetMs: *in.FilmT0Ms}
+		}
+		outOfBounds = true
 	}
 	t0, q := ComputeT0(in.Participations, in.StartUTC)
 	if !q.Computed() {
-		return Kickoff{Source: KickoffSourceUnknown, Estimate: q}
+		return Kickoff{Source: KickoffSourceUnknown, Estimate: q, FilmOutOfBounds: outOfBounds}
 	}
-	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q}
+	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q, FilmOutOfBounds: outOfBounds}
+}
+
+// filmWithinMatch dit si un coup d'envoi du rejeu tombe dans la fenêtre du match : [0, durée], ou
+// [0, ∞[ quand la durée est inconnue.
+func filmWithinMatch(t0Ms int64, durationSeconds *int) bool {
+	if t0Ms < 0 {
+		return false
+	}
+	return durationSeconds == nil || *durationSeconds <= 0 || t0Ms <= int64(*durationSeconds)*1000
 }
 
 // GameplayTimeline rend la chronologie de jeu d'un match : début canonique, durée du match et
@@ -96,7 +119,8 @@ func GameplayTimeline(startUTC time.Time, durationSeconds *int, k Kickoff) (doma
 // PlayedSeconds rend le temps de jeu à ranger pour un joueur sur la chronologie du match, par la
 // formule ComputeTimePlayedFor (troncature à la seconde comprise). ok=false quand la valeur rangée
 // reste : présence inconnue (aucune heure d'arrivée), match sans fenêtre de jeu, ou joueur parti
-// avant le coup d'envoi (fenêtre vide) — la valeur rangée est alors celle de l'API, écrite une fois.
+// avant le coup d'envoi (fenêtre vide) — la dernière valeur rangée est alors conservée telle quelle
+// (celle de l'API pour une présence inconnue, qui n'a jamais été recalculée).
 func PlayedSeconds(in TimePlayedInput, tl domain.MatchTimeline, hasWindow bool) (int, bool) {
 	if !hasWindow {
 		return 0, false

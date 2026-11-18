@@ -1,6 +1,6 @@
 // Package wire — registry_kickoff_revision.go : l'étape de démarrage de la base PARTAGÉE d'un titre,
 // le rattrapage du coup d'envoi et du temps de jeu quand la révision rangée dans son `sync_meta` diffère
-// de `timeline.KickoffRev` (ADR 0049). Lectures par le provider B-swap du titre, écritures en bursts
+// de `timeline.KickoffRev` (ADR 0050). Lectures par le provider B-swap du titre, écritures en bursts
 // courts du writer partagé ; le service scoringrevision la joue avant les notes.
 package wire
 
@@ -51,5 +51,8 @@ func (s kickoffRevisionStep) Apply(ctx context.Context, titleSlug string) (bool,
 		Write: syncpkg.NewSharedWriterAcquirer(provider, path, "kickoff_revision", acquireWriterTimeout),
 	}
 	applied, _, err := kickoff.ApplyRevision(ctx, acc, opts)
+	if errors.Is(err, kickoff.ErrPartial) {
+		return applied, fmt.Errorf("%w: %w", port.ErrSharedRevisionPartial, err)
+	}
 	return applied, err
 }

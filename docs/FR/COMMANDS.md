@@ -328,7 +328,7 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
 go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
 
-# 4 ter ter. COUP D'ENVOI DU MATCH (ADR 0049) : recalcule, pour chaque match de la base partagée, le
+# 4 ter ter. COUP D'ENVOI DU MATCH (ADR 0050) : recalcule, pour chaque match de la base partagée, le
 #    coup d'envoi (`real_start_time`), sa source (`real_start_source` : `film` quand l'artefact de
 #    rejeu publie `t0FilmMs`, sinon `api`, l'estimation par les arrivées des joueurs présents au
 #    début, refusée si elle est négative ou au-delà de 120 s ; vide = inconnu) et le temps de jeu de

@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -168,5 +169,92 @@ func TestApplyRevision_EchecNeRangeRien(t *testing.T) {
 	var n int
 	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM sync_meta WHERE key = ?`, SyncMetaKey).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("revision rangee malgre l'echec (%d, err %v)", n, err)
+	}
+}
+
+// semerFilmRange : le match `film` porte déjà le coup d'envoi du rejeu (26,304 s, source film) et les
+// temps de jeu calculés dessus.
+func semerFilmRange(t *testing.T, db *sql.DB, start time.Time) {
+	t.Helper()
+	exec(t, db, `UPDATE match_registry SET real_start_time = ?, real_start_source = 'film' WHERE match_id = 'film'`,
+		start.Add(26304*time.Millisecond))
+	exec(t, db, `UPDATE match_participants SET time_played_seconds = 573 WHERE match_id = 'film'`)
+}
+
+func optionsVers(dir string) Options {
+	return Options{TitleSlug: "halo_infinite", LotSize: 2,
+		ArtifactPath: func(id string) string { return filepath.Join(dir, id+".json.gz") }}
+}
+
+// Rangé `film`, rejeu ABSENT (purgé) : rien n'est écrit pour ce match, et ce n'est pas un échec.
+func TestBackfill_RangeFilmRejeuAbsent_RienNEstEcrit(t *testing.T) {
+	db := baseMigree(t)
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	semer(t, db, start)
+	semerFilmRange(t, db, start)
+	writes := 0
+	rep, err := Backfill(context.Background(), acces(db, &writes), optionsVers(t.TempDir()))
+	if err != nil || rep.KeptFilm != 1 {
+		t.Fatalf("err=%v garde=%d, attendu aucun echec et le film garde", err, rep.KeptFilm)
+	}
+	if rst, src, tp := etat(t, db, "film"); src != "film" || !rst.Time.UTC().Equal(start.Add(26304*time.Millisecond)) || tp != 573 {
+		t.Fatalf("film = (%v, %q, %d), attendu inchange", rst, src, tp)
+	}
+}
+
+// Rangé `film`, rejeu ILLISIBLE : rien n'est écrit, et la révision n'est pas rangée (on réessaiera).
+func TestApplyRevision_RangeFilmRejeuIllisible_RienNiRevision(t *testing.T) {
+	db := baseMigree(t)
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	semer(t, db, start)
+	semerFilmRange(t, db, start)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "film.json.gz"), []byte("pas du gzip"), 0o600); err != nil {
+		t.Fatalf("artefact: %v", err)
+	}
+	writes := 0
+	applied, rep, err := ApplyRevision(context.Background(), acces(db, &writes), optionsVers(dir))
+	if applied || !errors.Is(err, ErrPartial) || rep.UnreadableArtifacts != 1 || rep.FailedExample != "film" {
+		t.Fatalf("applied=%v err=%v bilan=%+v, attendu un echec partiel nommant le match", applied, err, rep)
+	}
+	if rst, src, tp := etat(t, db, "film"); src != "film" || !rst.Time.UTC().Equal(start.Add(26304*time.Millisecond)) || tp != 573 {
+		t.Fatalf("film = (%v, %q, %d), attendu inchange", rst, src, tp)
+	}
+	var n int
+	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM sync_meta WHERE key = ?`, SyncMetaKey).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("revision rangee malgre l'echec (%d, err %v)", n, err)
+	}
+}
+
+// Rejeu PRÉSENT qui ne publie pas de coup d'envoi : le match passe à l'estimation, même rangé `film`.
+func TestBackfill_RejeuSansCoupDEnvoi_PassageALEstimation(t *testing.T) {
+	db := baseMigree(t)
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	semer(t, db, start)
+	semerFilmRange(t, db, start)
+	dir := t.TempDir()
+	if _, _, err := replayartifact.Write(context.Background(), filepath.Join(dir, "film.json.gz"), []byte(`{"schemaVersion":125}`)); err != nil {
+		t.Fatalf("artefact: %v", err)
+	}
+	writes := 0
+	if _, err := Backfill(context.Background(), acces(db, &writes), optionsVers(dir)); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if rst, src, _ := etat(t, db, "film"); src != "api" || !rst.Time.UTC().Equal(start.Add(20*time.Second)) {
+		t.Fatalf("film = (%v, %q), attendu l'estimation", rst, src)
+	}
+}
+
+// Un match disparu du registre entre la liste et son lot n'est pas un échec.
+func TestRunLot_MatchDisparuNestPasUnEchec(t *testing.T) {
+	db := baseMigree(t)
+	semer(t, db, time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC))
+	writes := 0
+	rep := newReport()
+	if err := runLot(context.Background(), acces(db, &writes), optionsVers(t.TempDir()), []string{"api", "disparu"}, &rep); err != nil {
+		t.Fatalf("runLot: %v", err)
+	}
+	if rep.Failures != 0 || rep.Missing != 1 {
+		t.Fatalf("echecs=%d absents=%d, attendu 0 et 1", rep.Failures, rep.Missing)
 	}
 }

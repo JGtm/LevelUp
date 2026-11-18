@@ -124,8 +124,9 @@ func TestCoupDEnvoi_RejeuSansCoupDEnvoiPrendLEstimation(t *testing.T) {
 	}
 }
 
-// Le report corrige, il ne crée jamais : un match absent du registre échoue seul, n'est pas marqué,
-// et aucun writer n'est pris pour lui.
+// Le report corrige, il ne crée jamais : un rejeu dont le match n'est pas au registre n'est pas un
+// échec (la dérivation se marque, les familles append-only ne se rejouent pas à chaque cycle), et aucun
+// writer n'est pris pour lui.
 func TestCoupDEnvoi_MatchAbsentDuRegistre(t *testing.T) {
 	db := baseRegistre(t)
 	acquis := 0
@@ -133,8 +134,8 @@ func TestCoupDEnvoi_MatchAbsentDuRegistre(t *testing.T) {
 	b := &bilanDerivations{}
 	t0 := int64(26_304)
 	ecrireCoupsDEnvoi(context.Background(), d, b, preparerCoupsDEnvoi(context.Background(), d, b, []artefactLu{lu("inconnu", &t0)}))
-	if !b.aEchoue("inconnu") || acquis != 0 {
-		t.Fatalf("echec=%v writer=%d ; attendu un echec du match et aucun writer", b.aEchoue("inconnu"), acquis)
+	if b.aEchoue("inconnu") || acquis != 0 {
+		t.Fatalf("echec=%v writer=%d ; attendu aucun echec et aucun writer", b.aEchoue("inconnu"), acquis)
 	}
 	var n int
 	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM match_registry`).Scan(&n); err != nil || n != 0 {

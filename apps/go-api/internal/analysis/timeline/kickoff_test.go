@@ -13,7 +13,7 @@ import (
 // Empreintes des paramètres de la résolution du coup d'envoi, par révision. Une révision ne change
 // jamais d'empreinte : changer un seuil impose de changer KickoffRev ET d'ajouter ici une entrée.
 var kickoffParametersByRevision = map[string]string{
-	"kickoff-2026-11-18": "abbad1adba17e696334b26472b55b1ff85832bf80099c08943433ea605728294",
+	"kickoff-2026-11-18": "3d7470f4241fdd55c2322cb83027cd84f9688308b2bf4743dbdef30101246313",
 }
 
 // kickoffParameters hache les nombres et l'ordre des sources que la résolution applique.
@@ -22,6 +22,7 @@ func kickoffParameters() (string, string) {
 		"t0SpreadThresholdMs=" + strconv.FormatInt(t0SpreadThresholdMs, 10),
 		"t0MaxPlausibleMs=" + strconv.FormatInt(t0MaxPlausibleMs, 10),
 		"ordre=" + string(KickoffSourceFilm) + ">" + string(KickoffSourceAPI) + ">inconnue",
+		"rejeuDansLaFenetre=[0,duree]",
 		"tempsDeJeu=" + string(TimePlayedOK),
 	}
 	sort.Strings(lines)
@@ -147,5 +148,34 @@ func TestHumanXUID(t *testing.T) {
 		if HumanXUID(xuid) != attendu {
 			t.Errorf("HumanXUID(%q) != %v", xuid, attendu)
 		}
+	}
+}
+
+// Un coup d'envoi du rejeu hors de la fenêtre du match (négatif, au-delà de la durée) est refusé
+// comme un rejeu qui n'en publie pas : l'estimation décide, et le refus est dit.
+func TestResolveKickoff_RejeuHorsDeLaFenetre(t *testing.T) {
+	start := atMs(1_000_000)
+	arrivees := []ParticipationT0Input{{FirstJoinedTime: atMs(1_020_000), PresentAtBeginning: true}}
+	d := 600
+	cas := []struct {
+		nom    string
+		t0     int64
+		duree  *int
+		source KickoffSource
+		refuse bool
+	}{
+		{"negatif", -1, &d, KickoffSourceAPI, true},
+		{"au-dela de la duree", 600_001, &d, KickoffSourceAPI, true},
+		{"a la duree pile", 600_000, &d, KickoffSourceFilm, false},
+		{"duree inconnue : seule la borne zero", 5_000_000, nil, KickoffSourceFilm, false},
+		{"duree inconnue et negatif", -5, nil, KickoffSourceAPI, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			k := ResolveKickoff(KickoffInput{StartUTC: start, FilmT0Ms: i64(c.t0), DurationSeconds: c.duree, Participations: arrivees})
+			if k.Source != c.source || k.FilmOutOfBounds != c.refuse {
+				t.Fatalf("source=%q horsBornes=%v, attendu %q/%v", k.Source, k.FilmOutOfBounds, c.source, c.refuse)
+			}
+		})
 	}
 }

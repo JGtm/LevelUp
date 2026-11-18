@@ -508,7 +508,7 @@ git commit -m "refactor(phase2): ..."
   unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
   nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
   `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet) ·
-  `0049` **coup d'envoi du match : une résolution, une écriture** (`timeline.ResolveKickoff` seul point de décision,
+  `0050` **coup d'envoi du match : une résolution, une écriture** (`timeline.ResolveKickoff` seul point de décision,
   ordre fixe `film` (coup d'envoi publié par le rejeu, tel quel) > `api` (estimation par les arrivées, un appel) > inconnu ;
   source rangée dans `match_registry.real_start_source` ; temps de jeu recalculé sur ce coup d'envoi ; hors des insertions
   de la synchronisation, seul `persist.KickoffPersister` écrit coup d'envoi, source et temps de jeu (garde-rail

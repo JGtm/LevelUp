@@ -1,7 +1,7 @@
 package main
 
 // cmd_backfill_kickoff.go — sous-commande `levelup backfill-kickoff` : le rattrapage du coup
-// d'envoi, de sa source et du temps de jeu de tous les matchs d'une base partagée (ADR 0049).
+// d'envoi, de sa source et du temps de jeu de tous les matchs d'une base partagée (ADR 0050).
 //
 // C'EST LA MÊME FONCTION QUE LE DÉMARRAGE DU SERVEUR (`kickoff.Backfill`) : la commande sert à
 // simuler avant une mise à jour, ou à rattraper une base serveur arrêté. Elle ne décode aucun film :
@@ -149,8 +149,17 @@ func syntheseCoupDEnvoi(r kickoff.Report, o kickoffOptions, duree time.Duration)
 	s += fmt.Sprintf("temps de jeu : %d joueur(s) changent, sur %d match(s) (%d sans valeur avant)\n",
 		r.PlayersChanged, r.MatchesWithPlayerChanges, r.PlayersFromNothing)
 	s += "  ecart nouveau - ancien (s) : " + distribution(kickoff.Summarize(r.PlayerGapsSeconds, 2), "2 s") + "\n"
-	s += fmt.Sprintf("ecrits : %d match(s)   echecs : %d   duree : %s\n", r.Written, r.Failures, duree)
+	s += fmt.Sprintf("film garde (rejeu absent ou illisible) : %d   rejeu hors de la fenetre du match : %d   "+
+		"absents du registre : %d\n", r.KeptFilm, r.FilmOutOfBounds, r.Missing)
+	s += fmt.Sprintf("ecrits : %d match(s)   echecs : %d%s   duree : %s\n", r.Written, r.Failures, exempleDEchec(r), duree)
 	return s
+}
+
+func exempleDEchec(r kickoff.Report) string {
+	if r.FailedExample == "" {
+		return ""
+	}
+	return " (par exemple " + r.FailedExample + ")"
 }
 
 func distribution(d kickoff.Distribution, tol string) string {

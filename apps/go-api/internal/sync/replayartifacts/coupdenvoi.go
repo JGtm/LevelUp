@@ -1,6 +1,6 @@
 package replayartifacts
 
-// coupdenvoi.go — LA PUBLICATION D'UN REJEU RÉÉCRIT LE COUP D'ENVOI DE SON MATCH (ADR 0049).
+// coupdenvoi.go — LA PUBLICATION D'UN REJEU RÉÉCRIT LE COUP D'ENVOI DE SON MATCH (ADR 0050).
 //
 // Le document rangé publie `t0FilmMs`, le coup d'envoi du match en ms depuis son début canonique.
 // Chaque artefact qui passe par [Deriver] — cuisson locale, dépôt d'un ouvrier, file de
@@ -26,8 +26,8 @@ import (
 
 // Compteurs de la famille (ADR 0009), par titre. CompteurCoupDEnvoiEcrits : matchs réécrits ;
 // CompteurCoupDEnvoiAJour : matchs qui portaient déjà ce que la résolution décide ;
-// CompteurCoupDEnvoiEchecs : état illisible, match absent du registre, writer indisponible ou
-// écriture refusée — un défaut, jamais un état normal.
+// CompteurCoupDEnvoiEchecs : état illisible, writer indisponible ou écriture refusée — un défaut,
+// jamais un état normal (un match absent du registre n'en est pas un : kickoff.CompteurAbsentsDuRegistre).
 const (
 	CompteurCoupDEnvoiEcrits = "postsync_replay_coup_d_envoi_ecrits_total"
 	CompteurCoupDEnvoiAJour  = "postsync_replay_coup_d_envoi_a_jour_total"
@@ -44,19 +44,19 @@ type coupsDEnvoi struct {
 	// surWriter : aucun segment de lecture n'est câblé sur ce chemin ; l'état des matchs de films se
 	// lit alors sur le segment d'écriture de la passe, au moment d'écrire.
 	surWriter bool
-	films     map[string]*int64
+	films     map[string]kickoff.Film
 }
 
 // preparerCoupsDEnvoi lit l'état rangé des matchs du lot par le segment de lecture et résout leur
 // coup d'envoi. Une lecture impossible fait échouer le lot (aucune marque : le rattrapage des
-// dérivés le rejouera) ; un match absent du registre échoue seul.
+// dérivés le rejouera) ; un match absent du registre est signalé, sans échec.
 func preparerCoupsDEnvoi(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) coupsDEnvoi {
 	if len(lus) == 0 {
 		return coupsDEnvoi{}
 	}
-	films := make(map[string]*int64, len(lus))
+	films := make(map[string]kickoff.Film, len(lus))
 	for _, a := range lus {
-		films[a.matchID] = a.doc.T0FilmMs
+		films[a.matchID] = kickoff.FilmPublished(a.doc.T0FilmMs)
 	}
 	if d.WithRead == nil {
 		slog.WarnContext(ctx, "post-sync: coup d'envoi — aucun segment de lecture cable : l'etat des matchs se lira "+
@@ -79,18 +79,19 @@ func preparerCoupsDEnvoi(ctx context.Context, d Deps, b *bilanDerivations, lus [
 		b.echecLot(lus)
 		return coupsDEnvoi{}
 	}
-	echecAbsents(ctx, d, b, missing)
+	signalerAbsents(ctx, d, missing)
 	return coupsDEnvoi{plans: plans}
 }
 
-// echecAbsents inscrit en échec les matchs absents du registre : le report corrige, il ne crée jamais.
-func echecAbsents(ctx context.Context, d Deps, b *bilanDerivations, missing []string) {
+// signalerAbsents journalise et compte les rejeux dont le match n'est pas au registre. Ce n'est pas
+// un échec : le report corrige, il ne crée jamais, et rien ne changera au passage suivant ; la
+// dérivation se marque comme jouée, sans quoi les familles append-only se rejoueraient à chaque cycle.
+func signalerAbsents(ctx context.Context, d Deps, missing []string) {
 	for _, id := range missing {
-		slog.ErrorContext(ctx, "post-sync: coup d'envoi — match absent du registre : NON reporte, NON marque",
+		slog.WarnContext(ctx, "post-sync: coup d'envoi — match absent du registre : rien a reporter",
 			"titleSlug", d.TitleSlug, "match_id", id)
-		observability.AddIntT(d.TitleSlug, CompteurCoupDEnvoiEchecs, 1)
-		b.echec(id)
 	}
+	observability.AddIntT(d.TitleSlug, kickoff.CompteurAbsentsDuRegistre, int64(len(missing)))
 }
 
 // ecrireCoupsDEnvoi écrit les plans qui changent quelque chose, dans le segment d'écriture de la
@@ -127,7 +128,7 @@ func ecrireCoupsDEnvoi(ctx context.Context, d Deps, b *bilanDerivations, c coups
 			}
 			return
 		}
-		echecAbsents(ctx, d, b, missing)
+		signalerAbsents(ctx, d, missing)
 	}
 	persisterCoupsDEnvoi(ctx, d, b, db, plans)
 }

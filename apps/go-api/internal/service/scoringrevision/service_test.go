@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // faux : les profils et les deux étapes du rejeu, sans base. Par défaut chaque étape rend « à jour » ; les
@@ -332,5 +334,21 @@ func TestRun_BasePartageeAvantLesJoueurs(t *testing.T) {
 	}
 	if observability.LoadCounterT("sr-a", CompteurPartageeErreurs) != avant+1 {
 		t.Fatal("l'echec du rattrapage de la base partagee n'est pas compte")
+	}
+}
+
+// Un rattrapage PARTIEL (des matchs en échec) laisse jouer les notes du titre ; il est compté à part.
+func TestRun_RattrapagePartielNotesJouees(t *testing.T) {
+	f := &faux{
+		joueurs:      map[string][]domain.PlayerSummary{"sr-p": {joueur("x1")}},
+		partageeErrs: map[string]error{"sr-p": fmt.Errorf("%w: 1 match en echec", port.ErrSharedRevisionPartial)},
+	}
+	avant := observability.LoadCounterT("sr-p", CompteurPartageePartielle)
+	nouveau(f, "sr-p").Run(context.Background())
+	if strings.Join(f.appels, ",") != "sr-p/x1" {
+		t.Fatalf("notes rejouees : %v, attendu sr-p/x1 malgre le rattrapage partiel", f.appels)
+	}
+	if observability.LoadCounterT("sr-p", CompteurPartageePartielle) != avant+1 {
+		t.Fatal("le rattrapage partiel n'est pas compte")
 	}
 }

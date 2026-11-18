@@ -1,4 +1,4 @@
-# ADR 0049 — Match kickoff: one source order, one write, one catch-up
+# ADR 0050 — Match kickoff: one source order, one write, one catch-up
 
 Status: accepted (2026-11-18), write side implemented on the same date; the readers move in a later step of the same
 work.
@@ -21,15 +21,29 @@ computed once, at sync, on the estimate, and never again when the replay brought
   is the only function that decides a kickoff: `film` (the `t0FilmMs` the replay document publishes, taken as given,
   no detector replayed), else `api` (the existing estimate from the arrivals of the players present at the start, one
   call to `ComputeT0`, refused when negative or above its 120 s threshold; its thresholds stay private to it), else
-  unknown. Halo 5 has neither a replay nor arrivals: its kickoff is unknown, with no title branch.
+  unknown. Halo 5 has neither a replay nor arrivals: its kickoff is unknown, with no title branch. The replay value is
+  checked against the match window itself (no invented threshold): a value below zero, or beyond the match duration
+  when it is known, is refused like a replay that publishes none, logged and counted (`kickoff_film_hors_bornes_total`).
+- **D-1b — What the replay says, in three states** (`sync/kickoff.Film`). PRESENT and publishing a kickoff: source
+  `film`, the document's value. PRESENT and publishing none (or an out-of-window one): the film says there is none, the
+  next source decides. ABSENT (never generated, purged by retention) or UNREADABLE (locked, being replaced, damaged):
+  nothing new is known; a match whose stored source is `film` keeps its kickoff, source and time played untouched,
+  any other match resolves normally. An UNREADABLE replay on a match stored `film` or unknown also counts as a failed
+  match for the revision (not stored, retried); an ABSENT one does not. During a catch-up the stored state is read under
+  the writer of the batch, so a publication that wrote `film` between the file read and the burst is seen and kept.
 - **D-2 — The source is stored next to the value.** New column `match_registry.real_start_source` (`film`, `api`, NULL =
-  unknown), added by migration `shared_registry_real_start_source_v1` (column added, table not rebuilt). The estimate
-  outcome (single arrival, spread arrivals, rejection) is a log line and a counter (`kickoff_source_*_total`,
-  `kickoff_estimation_*_total`), never stored.
+  unknown), added by migration `shared_registry_real_start_source_v1` (column added, table not rebuilt). The column is
+  born right: the same step sets `film` on the rows already reported from a replay (`t0_quality = 'film_movement'`), one
+  parameterised `UPDATE` per match, so that the first catch-up keeps them when their replay is gone; it then recreates
+  `v_match_full`, whose `SELECT mr.*` is frozen at creation. The estimate outcome (single arrival, spread arrivals,
+  rejection) is a log line and a counter (`kickoff_source_*_total`, `kickoff_estimation_*_total`), never stored. These
+  counters are WRITE flows: they move on a sync insertion or a plan the persister wrote, never on a dry run nor on a
+  catch-up that finds the database already right.
 - **D-3 — The time played follows the stored kickoff.** `sync/kickoff.Resolve` resolves the kickoff, then computes each
   player's time played with the unchanged formula (`timeline.ComputeTimePlayedFor`, truncation included) on that
   kickoff (`timeline.GameplayTimeline`: unknown kickoff = the window starts at the match start). A player whose arrival
-  is unknown, or whose window is empty, keeps the stored value, which is the API value written once.
+  is unknown, or whose window is empty, keeps its last stored value (for an unknown arrival, the API value, never
+  recomputed).
 - **D-4 — One write.** Outside the sync insertions, only `persist.KickoffPersister` writes the kickoff, its source and
   the time played: one match per transaction, one `UPDATE … WHERE match_id = ?` for the registry and one per changed
   player, under the shared writer the caller holds, and only for values that differ from the database (a second pass
@@ -45,11 +59,17 @@ computed once, at sync, on the estimate, and never again when the replay brought
   running again. At startup, `kickoff.ApplyRevision` runs it when the value stored under `kickoff_revision` in the
   shared `sync_meta` differs from `timeline.KickoffRev`, and stores the new value only after a complete pass without
   failure. It runs inside the startup scoring task (`service/scoringrevision`), before the player notes, for each
-  title that task walks (titles with the LUSR capability); a title whose catch-up fails does not replay its players at that startup, so no note is stored on a stale
-  time played. The command `levelup backfill-kickoff` runs the same function, with a `--dry-run` that lists the gaps
-  without writing.
-- **D-6 — The notes replay once.** `PerformanceScoreRev` and `LUSRRev` move to `2026-11-18` with unchanged fingerprints
-  (logic change only): on the first startup, the kickoff catch-up runs, then every player's notes are replayed once.
+  title that task walks (titles with the LUSR capability). A PARTIAL catch-up (some matches failed,
+  `port.ErrSharedRevisionPartial`) leaves the revision unstored, logs an error with the count and one example match,
+  counts it (`scoring_revision_base_partagee_partielle_total`), and the player notes still run: one failed match does not
+  hold a whole title. Only a catch-up that could not run (database or writer unavailable, a batch that could not be read)
+  holds the player notes of that title for that startup. A replay whose match is not in the registry, or a match that
+  vanished between the list and its batch, is not a failure (logged, counted, the derivation is marked). The command
+  `levelup backfill-kickoff` runs the same function, with a `--dry-run` that lists the gaps without writing.
+- **D-6 — The notes replay once, and the revisions are bound.** `PerformanceScoreRev` and `LUSRRev` move to
+  `2026-11-18`: on the first startup, the kickoff catch-up runs, then every player's notes are replayed once. Both
+  scoring fingerprints hash `timeline.KickoffRev` (`TestScoringParametersMatchRevision`): changing the kickoff revision
+  without moving the two scoring revisions fails.
 
 ## Guard rails
 
@@ -57,8 +77,8 @@ computed once, at sync, on the estimate, and never again when the replay brought
   outside `internal/persist/kickoff_persister.go`; no insertion of these columns outside the sync insertion
   (`persist/shared_persister.go`) and a dated exemption list (demo corpus, Halo 5 roster rebuild); the names
   `t0_quality` and `film_match_start_ms` appear nowhere outside the migrations.
-- `timeline.TestKickoffParametersMatchRevision`: the estimate thresholds and the source order are fingerprinted per
-  `KickoffRev`; changing one without a new revision fails.
+- `timeline.TestKickoffParametersMatchRevision`: the estimate thresholds, the source order and the replay window rule
+  are fingerprinted per `KickoffRev`; changing one without a new revision fails.
 - Unchanged and still green: `archlint/no_raw_real_start_offset_test.go`, the anti-ART guards of
   `internal/sync/no_art_patterns_test.go`, `TestScoringParametersMatchRevision`, the dated `OpenReadWrite` allowlist (the
   three removed commands leave it, the new command enters it).
@@ -74,5 +94,7 @@ computed once, at sync, on the estimate, and never again when the replay brought
   twenty: their per-minute rates stay slightly low. No typical value is invented.
 - The time played keeps its truncation to the second, and a player whose presence is known but whose window is empty
   keeps the stored value: both are the formula of the sync, unchanged.
+- A replay publication that changes a time played by a few seconds after the notes were computed does not replay the
+  notes: they catch up at the next scoring revision or the next recomputation of that player.
 - A WAL batch written by an older binary and replayed after the upgrade inserts a kickoff without its source; the next
   revision change or `levelup backfill-kickoff` fills it.

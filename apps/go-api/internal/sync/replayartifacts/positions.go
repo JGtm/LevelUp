@@ -173,8 +173,7 @@ func positionsDeLaTrajectoire(t *replay.Track, cadenceMS int) []persist.PlayerPo
 
 // appliquerEquipes pose l'EQUIPE de chaque position, lue en base par le xuid de son porteur.
 //
-// LA LECTURE SE FAIT SUR LE HANDLE WRITER, DANS LE MEME SEGMENT COURT — meme regle et meme
-// raison que le report du coup d'envoi (t0film.go) : le segment de LECTURE est deja relache
+// LA LECTURE SE FAIT SUR LE HANDLE WRITER, DANS LE MEME SEGMENT COURT : le segment de LECTURE est deja relache
 // quand les derivations tournent, et `SharedAccess.Write` refuserait un burst avec un Read en
 // vol. Un `port.ReplayFactsRepo`, pas une requete de plus : c'est deja LE lecteur de « ce que
 // la base sait du match » pour le rejeu, camps compris.

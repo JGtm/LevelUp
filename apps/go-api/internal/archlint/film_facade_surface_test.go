@@ -462,7 +462,7 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	332  coup d envoi unique (2026-11-18)          base `c804e8fbbd` re-mesuree a 335. -3 :
 //	                                           le detecteur `DetectT0Film` et ses types `T0FilmTrack`, `T0FilmPoint`,
 //	                                           que seule la commande supprimee `cmd/backfill_t0_film` citait (le coup
-//	                                           d envoi se lit tel que le document le publie, ADR 0049). Aucun ajout.
+//	                                           d envoi se lit tel que le document le publie, ADR 0050). Aucun ajout.
 const plafondSurfaceReplay = 332 // 2026-11-18 — base c804e8fbbd re-mesuree a 335 - 3 (DetectT0Film, T0FilmTrack, T0FilmPoint) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.

@@ -1,5 +1,5 @@
 // Package kickoff résout, range et rattrape le coup d'envoi des matchs d'une base partagée et le
-// temps de jeu de leurs joueurs (ADR 0049).
+// temps de jeu de leurs joueurs (ADR 0050).
 //
 // # UNE RÉSOLUTION
 //
@@ -8,6 +8,14 @@
 // chaque joueur par `timeline.PlayedSeconds` sur CE coup d'envoi. Les trois écrivains l'appellent
 // : la synchronisation (lignes en mémoire avant leur insertion, [ApplyToRows]), la
 // publication d'un rejeu (`replayartifacts.Deriver`) et le rattrapage ([Backfill]).
+//
+// # CE QUE LE REJEU DIT, EN TROIS ÉTATS ([Film])
+//
+// Un rejeu PRÉSENT qui publie un coup d'envoi donne la source `film` ; un rejeu PRÉSENT qui n'en
+// publie pas dit qu'il n'y en a pas : la source suivante décide. Un rejeu ABSENT (jamais généré,
+// purgé par la rétention) ou ILLISIBLE ne dit rien de neuf : un match dont le coup d'envoi rangé est
+// de source `film` le garde tel quel (coup d'envoi, source et temps de jeu), les autres se résolvent
+// normalement.
 //
 // # UNE ÉCRITURE
 //
@@ -47,6 +55,29 @@ type Match struct {
 	Participants []Participant
 }
 
+// FilmState dit ce que la lecture du rejeu d'un match a donné.
+type FilmState int
+
+const (
+	// FilmAbsent : aucun rejeu rangé (jamais généré, purgé, ou titre sans rejeu).
+	FilmAbsent FilmState = iota
+	// FilmUnreadable : un rejeu est rangé mais ne se lit pas (fichier verrouillé, remplacé, abîmé).
+	FilmUnreadable
+	// FilmRead : le rejeu est lu ; son coup d'envoi publié peut manquer.
+	FilmRead
+)
+
+// Film est ce que le rejeu d'un match dit de son coup d'envoi.
+type Film struct {
+	State FilmState
+	// T0Ms : le coup d'envoi publié par le document (`t0FilmMs`), en ms depuis le début canonique ;
+	// nil quand le document n'en publie pas. Sans sens hors de FilmRead.
+	T0Ms *int64
+}
+
+// FilmPublished : un rejeu lu qui publie (ou non, t0Ms nil) un coup d'envoi.
+func FilmPublished(t0Ms *int64) Film { return Film{State: FilmRead, T0Ms: t0Ms} }
+
 // TimePlayedChange est un temps de jeu qui change.
 type TimePlayedChange struct {
 	XUID string
@@ -66,6 +97,9 @@ type Plan struct {
 	BeforeSource timeline.KickoffSource
 	// TimePlayed : les joueurs dont le temps de jeu change.
 	TimePlayed []TimePlayedChange
+	// FilmKept : le coup d'envoi rangé, de source `film`, est conservé parce que le rejeu n'a rien
+	// dit de neuf (absent ou illisible) ; le plan ne change rien.
+	FilmKept bool
 }
 
 // ValueChanged dit si l'instant du coup d'envoi change (inconnu compris).
@@ -80,11 +114,18 @@ func (p Plan) KickoffChanged() bool { return p.ValueChanged() || p.SourceChanged
 // Unchanged dit si le match porte déjà tout ce que la résolution décide.
 func (p Plan) Unchanged() bool { return !p.KickoffChanged() && len(p.TimePlayed) == 0 }
 
-// Resolve décide ce que le match doit porter. filmT0Ms est le coup d'envoi tel que le document de
-// rejeu du match le publie (nil : pas de rejeu, ou rejeu sans coup d'envoi). Fonction pure.
-func Resolve(m Match, filmT0Ms *int64) Plan {
+// Resolve décide ce que le match doit porter, d'après ce que son rejeu dit (f). Fonction pure.
+func Resolve(m Match, f Film) Plan {
+	if f.State != FilmRead && m.Source == timeline.KickoffSourceFilm {
+		return keptFilm(m)
+	}
+	var filmT0 *int64
+	if f.State == FilmRead {
+		filmT0 = f.T0Ms
+	}
 	k := timeline.ResolveKickoff(timeline.KickoffInput{
-		StartUTC: m.StartUTC, FilmT0Ms: filmT0Ms, Participations: estimateInputs(m.Participants),
+		StartUTC: m.StartUTC, FilmT0Ms: filmT0, DurationSeconds: m.DurationSeconds,
+		Participations: estimateInputs(m.Participants),
 	})
 	p := Plan{
 		MatchID: m.MatchID, Kickoff: k, RealStart: k.RealStart(m.StartUTC),
@@ -93,7 +134,7 @@ func Resolve(m Match, filmT0Ms *int64) Plan {
 	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, m.DurationSeconds, k)
 	for _, part := range m.Participants {
 		if part.FirstJoined == nil {
-			continue // présence inconnue : la valeur rangée (celle de l'API) reste
+			continue // présence inconnue : la valeur rangée reste
 		}
 		secs, ok := timeline.PlayedSeconds(timeline.TimePlayedInput{
 			FirstJoinedTime: part.FirstJoined.UTC(), LastLeaveTime: part.LastLeave,
@@ -104,6 +145,18 @@ func Resolve(m Match, filmT0Ms *int64) Plan {
 		p.TimePlayed = append(p.TimePlayed, TimePlayedChange{XUID: part.XUID, Before: part.TimePlayed, After: secs})
 	}
 	return p
+}
+
+// keptFilm : le plan d'un match dont le coup d'envoi rangé, de source `film`, reste tel quel.
+func keptFilm(m Match) Plan {
+	k := timeline.Kickoff{Source: timeline.KickoffSourceFilm}
+	if m.RealStart != nil {
+		k.OffsetMs = m.RealStart.Sub(m.StartUTC).Milliseconds()
+	}
+	return Plan{
+		MatchID: m.MatchID, Kickoff: k, RealStart: m.RealStart,
+		Before: m.RealStart, BeforeSource: m.Source, FilmKept: true,
+	}
 }
 
 // Write rend l'écriture du persisteur pour ce plan (vide quand rien ne change).

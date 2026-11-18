@@ -1,5 +1,5 @@
 // Package archlint — kickoff_write_guard_test.go : le coup d'envoi d'un match et le temps de jeu de
-// ses joueurs n'ont QU'UN écrivain (ADR 0049).
+// ses joueurs n'ont QU'UN écrivain (ADR 0050).
 //
 // RÈGLES, sur les fichiers Go de production sous internal/ et cmd/ (tests et dossiers de migration
 // exclus, commentaires retirés) :
@@ -104,7 +104,7 @@ func TestKickoffWritesOnlyThroughThePersister(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		sort.Strings(violations)
-		t.Errorf("écritures du coup d'envoi (ADR 0049) :\n  %s", strings.Join(violations, "\n  "))
+		t.Errorf("écritures du coup d'envoi (ADR 0050) :\n  %s", strings.Join(violations, "\n  "))
 	}
 }
 

@@ -1,5 +1,5 @@
 // Package persist — kickoff_persister.go : LE persisteur du coup d'envoi d'un match et du temps
-// de jeu de ses joueurs (ADR 0049).
+// de jeu de ses joueurs (ADR 0050).
 //
 // # CE QU'IL ÉCRIT
 //

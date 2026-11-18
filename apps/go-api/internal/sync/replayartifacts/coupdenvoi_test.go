@@ -103,3 +103,14 @@ func TestCoupDEnvoi_SansWriterLeMatchEchoue(t *testing.T) {
 func lu0(matchID string) artefactLu {
 	return artefactLu{matchID: matchID, doc: &replay.ReplayDocument{MatchID: matchID}}
 }
+
+// TestDeriverSansArtefactLisibleNeFaitRien : le point d'entrée unique ne panique pas et
+// n'écrit rien quand aucun artefact du lot n'est lisible — la garde qui protège les deux
+// rangeurs (cuisson locale et dépôt d'ouvrier) d'un fichier disparu entre le rangement et la
+// dérivation.
+func TestDeriverSansArtefactLisibleNeFaitRien(t *testing.T) {
+	Deriver(context.Background(), DerivationsDeps{Gamertag: "t", TitleSlug: "halo_infinite"},
+		[]ArtefactRange{{MatchID: "m1", Path: filepath.Join(t.TempDir(), "absent.json")}})
+	// Aucune assertion possible au-delà de l'absence de panique et d'écriture : sans writer
+	// câblé ET sans document lisible, la fonction sort avant toute projection.
+}

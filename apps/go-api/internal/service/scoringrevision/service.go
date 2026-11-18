@@ -4,9 +4,10 @@
 // (campaign.ObjectiveAxisRev) ; le port décide de ce que fait un passage par joueur.
 //
 // AVANT les joueurs, la base PARTAGÉE de chaque titre rattrape coup d'envoi et temps de jeu quand sa
-// révision diffère (timeline.KickoffRev, ADR 0049) : les notes lisent ce que ce rattrapage écrit. Un titre
-// dont le rattrapage échoue ne rejoue pas ses joueurs à ce démarrage (leur révision reste, le démarrage
-// suivant reprend les deux), pour qu'aucune note ne se range sur des temps de jeu périmés.
+// révision diffère (timeline.KickoffRev, ADR 0050) : les notes lisent ce que ce rattrapage écrit. Un
+// rattrapage PARTIEL (des matchs en échec, port.ErrSharedRevisionPartial) laisse jouer les joueurs ; un
+// rattrapage qui n'a pas pu tourner (base ou writer indisponibles, lot illisible) retient les joueurs du
+// titre à ce démarrage (leur révision reste, le démarrage suivant reprend les deux).
 //
 // Une mise à jour qui change une formule n'a besoin d'aucun outil manuel : le premier démarrage
 // qui suit recalcule l'historique de chaque joueur, une fois. Une étape qui échoue garde son
@@ -20,6 +21,7 @@ package scoringrevision
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -38,6 +40,7 @@ const (
 	CompteurPartageeAppliquee = "scoring_revision_base_partagee_appliquee_total"
 	CompteurPartageeAJour     = "scoring_revision_base_partagee_a_jour_total"
 	CompteurPartageeErreurs   = "scoring_revision_base_partagee_erreurs_total"
+	CompteurPartageePartielle = "scoring_revision_base_partagee_partielle_total"
 )
 
 // Step nomme une étape du passage par joueur ; chaque étape a sa propre révision rangée dans `sync_meta`,
@@ -135,6 +138,11 @@ func (s *Service) Run(ctx context.Context) {
 func (s *Service) rattraperBasePartagee(ctx context.Context, slug string) bool {
 	applied, err := s.shared.Apply(ctx, slug)
 	switch {
+	case errors.Is(err, port.ErrSharedRevisionPartial):
+		observability.IncCounterT(slug, CompteurPartageePartielle)
+		slog.ErrorContext(ctx, "scoring revision: shared catch-up partial, revision not stored, player notes still run",
+			"step", string(StepShared), "err", err, "titleSlug", slug)
+		return true
 	case err != nil:
 		observability.IncCounterT(slug, CompteurPartageeErreurs)
 		slog.WarnContext(ctx, "scoring revision: rattrapage de la base partagée échoué, joueurs du titre retentés au prochain démarrage",

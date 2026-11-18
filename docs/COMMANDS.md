@@ -316,7 +316,7 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
 go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
 
-# 4 ter ter. MATCH KICKOFF (ADR 0049): recomputes, for every match of the shared database, the
+# 4 ter ter. MATCH KICKOFF (ADR 0050): recomputes, for every match of the shared database, the
 #    kickoff (`real_start_time`), its source (`real_start_source`: `film` when the replay artifact
 #    publishes `t0FilmMs`, otherwise `api`, the estimate from the arrivals of the players present at
 #    the start, refused when negative or beyond 120 s; empty = unknown) and the time played of every

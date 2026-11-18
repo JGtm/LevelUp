@@ -32,7 +32,7 @@ func ApplyToRows(reg *domain.MatchRegistryRow, parts []domain.MatchParticipantRo
 			TimePlayed:         p.TimePlayedSeconds,
 		})
 	}
-	plan := Resolve(m, nil)
+	plan := Resolve(m, Film{State: FilmAbsent})
 	reg.RealStartTime = plan.RealStart
 	reg.RealStartSource = string(plan.Kickoff.Source)
 	changed := make(map[string]int, len(plan.TimePlayed))

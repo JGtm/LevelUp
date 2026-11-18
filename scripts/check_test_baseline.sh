@@ -36,6 +36,17 @@
 # `backfill-world-player-stats`, `backfill_bp_items` (28), sondeur Steam de `presence` (4),
 # `openspartan.IsOpenSpartanDB` (2), `domain/chart` (2), `games.ProvidesNativeKDA` (1), `logging.InstallCLI` (1).
 #
+# RETRAIT DU 2026-11-18 (coup d'envoi du match, ADR 0050) : 38 paires (Package, Test), 134 lignes JSONL, quittent la
+# baseline avec le code qu'elles couvraient. `internal/analysis` (30) : le fichier `spawn_detection.go`, sans appelant
+# hors tests (EstimateFilmMatchStartMS, ScanFirstMovements, FindPeakActivityWindow, PickSpawnReferences et leurs aides),
+# supprimé avec `spawn_detection_test.go`, `spawn_detection_bits_test.go` et `coverage_boost_test.go`. `internal/sync`
+# (2) : TestComputeMatchT0 et TestComputeMatchT0_NoParticipation, l'estimation calculée sur le payload, remplacée par la
+# résolution unique sur les lignes (`sync/kickoff`). `internal/sync/replayartifacts` (6) : TestEcrireUnT0Film_* (3),
+# TestReporterT0Film_* (3), le report du coup d'envoi par `t0film.go`, remplacé par `coupdenvoi.go`. Les commandes
+# supprimées `cmd/backfill_t0`, `cmd/backfill_t0_film` et `cmd/backfill_time_played` n'avaient aucune paire. Aucune
+# paire réinscrite : TestDeriverSansArtefactLisibleNeFaitRien garde son paquet et son nom. Vérifié par différence des
+# paires de la baseline contre `go test -tags=integration -list '.*'` des 18 paquets touchés (0 paire manquante après).
+#
 # RELOCALISATION DU 2026-11-14 (plan architecture, étapes 4.2, 5.7 et 5.8 réinscrites) : 49 paires (Package, Test), 282
 # lignes JSONL, réinscrites sous leur nouveau paquet ; les retraits des trois étapes les avaient sorties de la baseline
 # alors qu'elles tournent toujours, sous le même nom. 4.2 : 13 paires de `internal/api/handlers` vers `internal/service`

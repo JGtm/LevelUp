@@ -20,7 +20,7 @@ package replayartifacts
 //
 // # POURQUOI ELLE N'EST PAS DANS artifacts.go
 //
-// Même découpage par responsabilité que le reste du paquet (usage.go, bombstats.go, t0film.go
+// Même découpage par responsabilité que le reste du paquet (usage.go, bombstats.go, coupdenvoi.go
 // portent chacun leur gate et leur projection) : `artifacts.go` décide QUOI faire, ce
 // fichier-ci dit SI le titre a le droit d'en faire quoi que ce soit.
 

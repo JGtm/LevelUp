@@ -72,7 +72,7 @@ func Backfill(ctx context.Context, acc Access, o Options) (Report, error) {
 		}
 	}
 	if rep.Failures > 0 {
-		return rep, fmt.Errorf("%w : %d match(s) en échec", ErrPartial, rep.Failures)
+		return rep, fmt.Errorf("%w : %d match(s) en échec, par exemple %s", ErrPartial, rep.Failures, rep.FailedExample)
 	}
 	return rep, nil
 }
@@ -88,7 +88,9 @@ func listMatches(ctx context.Context, acc Access) ([]string, error) {
 }
 
 // runLot traite un lot : les rejeux se lisent AVANT tout segment (lecture de fichiers), puis un seul
-// segment — lecture en simulation, writer sinon — lit l'état, résout et écrit.
+// segment — lecture en simulation, writer sinon — lit l'état, résout et écrit. L'état rangé se lit
+// SOUS ce segment : une publication qui a écrit `film` entre la lecture des fichiers et le burst est
+// vue, et un rejeu lu absent ne la défait pas (cf. [Resolve]).
 func runLot(ctx context.Context, acc Access, o Options, ids []string, rep *Report) error {
 	films := readFilms(ctx, o, ids, rep)
 	open := acc.Write
@@ -104,41 +106,56 @@ func runLot(ctx context.Context, acc Access, o Options, ids []string, rep *Repor
 	if err != nil {
 		return err
 	}
-	rep.Failures += len(missing)
+	// Un match disparu du registre entre la liste et le lot n'a rien à rattraper : ce n'est pas un échec.
+	rep.Missing += len(missing)
+	observability.AddIntT(o.TitleSlug, CompteurAbsentsDuRegistre, int64(len(missing)))
 	for _, p := range plans {
 		rep.add(p)
+		if unreadableBlocks(films[p.MatchID], p.BeforeSource) {
+			rep.fail(p.MatchID)
+		}
 	}
 	if o.DryRun {
 		return nil
 	}
 	written, failed := Persist(ctx, db, o.TitleSlug, plans)
 	rep.Written += written
-	rep.Failures += len(failed)
+	for _, id := range failed {
+		rep.fail(id)
+	}
 	return nil
 }
 
-// readFilms lit le coup d'envoi publié par le rejeu de chaque match du lot. Un rejeu illisible est
-// journalisé, compté, et traité comme absent : le match prend la source suivante.
-func readFilms(ctx context.Context, o Options, ids []string, rep *Report) map[string]*int64 {
-	films := make(map[string]*int64, len(ids))
+// unreadableBlocks : un rejeu présent mais illisible, pour un match dont le coup d'envoi rangé est de
+// source `film` ou inconnu, laisse un doute que seule une relecture lève : le match compte en échec
+// et la révision n'est pas rangée. Un rejeu absent, lui, ne retient rien.
+func unreadableBlocks(f Film, stored timeline.KickoffSource) bool {
+	return f.State == FilmUnreadable &&
+		(stored == timeline.KickoffSourceFilm || stored == timeline.KickoffSourceUnknown)
+}
+
+// readFilms lit ce que le rejeu de chaque match du lot dit de son coup d'envoi (cf. [Film]). Un rejeu
+// illisible est journalisé et compté.
+func readFilms(ctx context.Context, o Options, ids []string, rep *Report) map[string]Film {
+	films := make(map[string]Film, len(ids))
 	for _, id := range ids {
-		films[id] = nil
+		films[id] = Film{State: FilmAbsent}
 		if o.ArtifactPath == nil {
 			continue
 		}
 		path := o.ArtifactPath(id)
 		ms, found, err := replaybuild.ArtifactKickoff(path)
-		if err != nil {
-			slog.WarnContext(ctx, "coup d'envoi : rejeu illisible, traité comme absent",
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "coup d'envoi : rejeu illisible, rien de neuf n'en est tiré",
 				"titleSlug", o.TitleSlug, "match_id", id, "path", path, "err", err)
 			observability.IncCounterT(o.TitleSlug, CompteurArtefactsIllisibles)
 			rep.UnreadableArtifacts++
-			continue
-		}
-		if found {
+			films[id] = Film{State: FilmUnreadable}
+		case found:
 			rep.Artifacts++
+			films[id] = FilmPublished(ms)
 		}
-		films[id] = ms
 	}
 	return films
 }

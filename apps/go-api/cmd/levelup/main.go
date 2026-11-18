@@ -39,7 +39,7 @@
 //   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
 //   - cmd_backfill_registry_names.go - backfill-registry-names (convergence des noms du registre)
 //   - cmd_backfill_is_ranked.go - backfill-is-ranked (is_ranked du registre depuis le CSR)
-//   - cmd_backfill_kickoff.go - backfill-kickoff (coup d envoi, source et temps de jeu, ADR 0049)
+//   - cmd_backfill_kickoff.go - backfill-kickoff (coup d envoi, source et temps de jeu, ADR 0050)
 //   - cmd_identity.go - identity list / identity purge (annuaire des identites, ADR 0035)
 package main
 
@@ -292,7 +292,7 @@ Commandes:
                   base en LECTURE SEULE (rien d ecrit, aucune migration). Apres une recuisson, --force (--dry-run, --force, --match, --limit,
                   serveur arrete)
   backfill-kickoff  Recalcule le COUP D ENVOI de chaque match (source : rejeu, sinon estimation par les arrivees, sinon
-                  inconnue), sa source et le temps de jeu des joueurs, puis range la revision (ADR 0049) : la meme fonction
+                  inconnue), sa source et le temps de jeu des joueurs, puis range la revision (ADR 0050) : la meme fonction
                   que le rattrapage du demarrage. AUCUN decodage : le coup d envoi du rejeu est lu dans les artefacts ranges.
                   --dry-run liste les ecarts sans rien ecrire (base en lecture seule, aucune migration) (--dry-run, --db,
                   --replays-dir, --lot, --title, serveur arrete pour l application)

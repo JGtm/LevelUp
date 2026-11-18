@@ -30,9 +30,25 @@ type Report struct {
 	PlayersChanged           int
 	PlayersFromNothing       int
 	PlayerGapsSeconds        []int64
-	// Written : matchs écrits ; Failures : matchs en échec (absents du registre ou écriture refusée).
-	Written  int
-	Failures int
+	// KeptFilm : matchs de source `film` gardés tels quels, leur rejeu absent ou illisible.
+	// FilmOutOfBounds : rejeux dont le coup d'envoi publié tombait hors de la fenêtre du match.
+	KeptFilm        int
+	FilmOutOfBounds int
+	// Missing : matchs disparus du registre entre la liste et leur lot (rien à rattraper).
+	Missing int
+	// Written : matchs écrits ; Failures : matchs en échec (écriture refusée, ou rejeu illisible
+	// sur un coup d'envoi rangé `film` ou inconnu) ; FailedExample : le premier d'entre eux.
+	Written       int
+	Failures      int
+	FailedExample string
+}
+
+// fail inscrit un match en échec.
+func (r *Report) fail(matchID string) {
+	if r.Failures == 0 {
+		r.FailedExample = matchID
+	}
+	r.Failures++
 }
 
 func newReport() Report {
@@ -43,6 +59,12 @@ func newReport() Report {
 func (r *Report) add(p Plan) {
 	r.Matches++
 	r.BySource[p.Kickoff.Source]++
+	if p.FilmKept {
+		r.KeptFilm++
+	}
+	if p.Kickoff.FilmOutOfBounds {
+		r.FilmOutOfBounds++
+	}
 	if p.Kickoff.Estimate != "" {
 		r.Estimates[p.Kickoff.Estimate]++
 	}

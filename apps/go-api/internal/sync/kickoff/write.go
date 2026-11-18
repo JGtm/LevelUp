@@ -14,18 +14,26 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// Compteurs expvar (ADR 0009), par titre.
+// Compteurs expvar (ADR 0009), par titre. Ce sont des compteurs de FLUX D'ÉCRITURE : ils ne
+// bougent que pour une résolution écrite (insertion de la synchronisation, ou plan qui change
+// quelque chose et que le persisteur a écrit) ; une simulation, ou un rattrapage qui retrouve ce que
+// la base porte déjà, ne les touche pas.
 const (
-	// prefixeSource + source + "_total" : coups d'envoi résolus, par source retenue.
+	// prefixeSource + source + "_total" : coups d'envoi écrits, par source retenue.
 	prefixeSource = "kickoff_source_"
-	// prefixeEstimation + issue + "_total" : issues de l'estimation, quand elle a été jouée.
+	// prefixeEstimation + issue + "_total" : issues de l'estimation des coups d'envoi écrits.
 	prefixeEstimation = "kickoff_estimation_"
+	// CompteurRejeuHorsBornes : coups d'envoi écrits dont le rejeu publiait une valeur hors de la
+	// fenêtre du match (refusée, source suivante).
+	CompteurRejeuHorsBornes = "kickoff_film_hors_bornes_total"
 	// CompteurEcrits : matchs dont le coup d'envoi ou un temps de jeu a été réécrit.
 	CompteurEcrits = "kickoff_matchs_ecrits_total"
 	// CompteurEchecs : matchs dont l'écriture a échoué (retentés au passage suivant).
 	CompteurEchecs = "kickoff_matchs_echecs_total"
-	// CompteurArtefactsIllisibles : rejeux présents mais illisibles, traités comme absents.
+	// CompteurArtefactsIllisibles : rejeux présents mais illisibles (rien de neuf n'en est tiré).
 	CompteurArtefactsIllisibles = "kickoff_artefacts_illisibles_total"
+	// CompteurAbsentsDuRegistre : rejeux ou matchs du lot sans ligne au registre (rien n'est créé).
+	CompteurAbsentsDuRegistre = "kickoff_absents_du_registre_total"
 )
 
 // sourceLabel nomme une source dans un compteur (la source inconnue est vide).
@@ -36,21 +44,39 @@ func sourceLabel(s timeline.KickoffSource) string {
 	return string(s)
 }
 
-// Observe journalise et compte la résolution du coup d'envoi d'un match : la source retenue et,
-// quand l'estimation a été jouée, son issue (une seule arrivée, arrivées dispersées, rejet).
+// Observe journalise et compte un coup d'envoi ÉCRIT : la source retenue, l'issue de l'estimation
+// quand elle a été jouée (une seule arrivée, arrivées dispersées, rejet) et le refus d'un coup
+// d'envoi du rejeu hors de la fenêtre du match.
 func Observe(ctx context.Context, titleSlug, matchID string, k timeline.Kickoff) {
+	countWritten(titleSlug, k)
+	logResolution(ctx, titleSlug, matchID, k)
+}
+
+// countWritten compte un coup d'envoi écrit (cf. les compteurs ci-dessus).
+func countWritten(titleSlug string, k timeline.Kickoff) {
 	observability.IncCounterT(titleSlug, prefixeSource+sourceLabel(k.Source)+"_total")
 	if k.Estimate != "" {
 		observability.IncCounterT(titleSlug, prefixeEstimation+string(k.Estimate)+"_total")
+	}
+	if k.FilmOutOfBounds {
+		observability.IncCounterT(titleSlug, CompteurRejeuHorsBornes)
+	}
+}
+
+// logResolution journalise une résolution, écrite ou non ; un coup d'envoi du rejeu hors de la
+// fenêtre du match se dit en avertissement.
+func logResolution(ctx context.Context, titleSlug, matchID string, k timeline.Kickoff) {
+	if k.FilmOutOfBounds {
+		slog.WarnContext(ctx, "coup d'envoi : le rejeu publie une valeur hors de la fenêtre du match, refusée",
+			"titleSlug", titleSlug, "match_id", matchID, "source_retenue", sourceLabel(k.Source))
 	}
 	slog.DebugContext(ctx, "coup d'envoi résolu", "titleSlug", titleSlug, "match_id", matchID,
 		"source", sourceLabel(k.Source), "estimation", string(k.Estimate), "decalage_ms", k.OffsetMs)
 }
 
 // Prepare lit l'état rangé des matchs de films et résout leur coup d'envoi. films associe à chaque
-// match le coup d'envoi publié par son rejeu (nil : aucun). Un match absent du registre est rendu
-// dans missing, sans plan.
-func Prepare(ctx context.Context, db *sql.DB, titleSlug string, films map[string]*int64) (plans []Plan, missing []string, err error) {
+// match ce que son rejeu dit. Un match absent du registre est rendu dans missing, sans plan.
+func Prepare(ctx context.Context, db *sql.DB, titleSlug string, films map[string]Film) (plans []Plan, missing []string, err error) {
 	ids := make([]string, 0, len(films))
 	for id := range films {
 		ids = append(ids, id)
@@ -60,7 +86,7 @@ func Prepare(ctx context.Context, db *sql.DB, titleSlug string, films map[string
 }
 
 // prepareIDs résout les matchs ids, dans cet ordre.
-func prepareIDs(ctx context.Context, q queryer, titleSlug string, ids []string, films map[string]*int64) ([]Plan, []string, error) {
+func prepareIDs(ctx context.Context, q queryer, titleSlug string, ids []string, films map[string]Film) ([]Plan, []string, error) {
 	state, err := loadMatches(ctx, q, ids)
 	if err != nil {
 		return nil, nil, err
@@ -74,7 +100,7 @@ func prepareIDs(ctx context.Context, q queryer, titleSlug string, ids []string, 
 			continue
 		}
 		p := Resolve(*m, films[id])
-		Observe(ctx, titleSlug, id, p.Kickoff)
+		logResolution(ctx, titleSlug, id, p.Kickoff)
 		plans = append(plans, p)
 	}
 	return plans, missing, nil
@@ -95,6 +121,7 @@ func Persist(ctx context.Context, db *sql.DB, titleSlug string, plans []Plan) (w
 			failed = append(failed, plan.MatchID)
 			continue
 		}
+		countWritten(titleSlug, plan.Kickoff)
 		written++
 	}
 	observability.AddIntT(titleSlug, CompteurEcrits, int64(written))
