@@ -524,3 +524,21 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
   du relief devient `<clé>.relief.json.gz` (JSON compressé gzip sur disque, ce qui allège aussi D-13) ; le
   service le décompresse, contrôle `schemaVersion` et le calage, et sert le JSON en clair. Remplace le nom
   `<clé>.relief.json` de la conception §1 et des items B.1, C.1 à C.3.
+- 2026-11-18 (soir) — ÉTAT DES LIEUX POUR LA REPRISE DU DIMANCHE 2026-11-22 (quota du user presque épuisé).
+  - Branche d'intégration `feat/fonds-relief` (worktree `C:/t/relief-int`, NON poussée) : lots A (brique v1.4.0
+    taguée et publiée), B, C, D.2 à D.8, R.2 côté Go, données de 4 témoins + Live Fire (validée à l'écran),
+    ADR 0049. Dernier commit `6ac444f1c6`. Gate web complet passé sur `588834ca87` (3 garde-rails lents verts seuls).
+  - NON COMMITÉ : (1) la cuisson du parc E.1 lancée à 18 h 50 dans `C:/t/relief-int` (journaux et rapports TSV
+    dans le scratchpad de la session, `e1_*.log` / `e1_*.tsv`) : à la reprise, `git -C C:/t/relief-int status`,
+    contrôler par `go test ./internal/mapfondsidecar/...` (garde-rail `TestChaqueReliefPublieEstServable`), relancer
+    `mapfond-build --relief-seul` sur les cartes manquantes (GOMEMLIMIT=1500MiB, une carte à la fois), puis
+    `mapfond-webp -convertir`, puis commiter les données ; (2) R.2 côté web dans `C:/t/relief-r2web` (branche
+    `feat/fonds-relief-r2web`) : corrections écrites (code mort, carte à maillage sans étage, réallocation du masque,
+    infobulle de la lumière, faux journal, zone tenue retirée par la coupe), agent ARRÊTÉ avant la fin de sa suite
+    vitest : relancer ses gates puis commiter et fusionner dans `feat/fonds-relief`.
+  - Reste ensuite : relancer le gate web complet sur l'intégration, reprendre « Current state » de l'ADR 0049 (après
+    E.1), poser les lignes de version (`annexes_fonds_relief/lignes_de_version.md`) et le crédit dans
+    `docs/ACKNOWLEDGMENTS.md`, `make gate-push` (prévenir l'autre session), contrôle à l'écran du user sur les témoins,
+    fusion dans `release/v8.3.0`, puis ménage des worktrees `C:/t/relief-*` (aucune jonction) et des branches.
+  - Brique : constat P2-7 pour une v1.4.1 (`himap/sddt_partage.go` publie des chiffres de Live Fire pour tout module
+    partagé). 8.3.1 : recherche du plan par mode faite (`annexes_plan_par_mode/recherche.md`), plan à écrire.

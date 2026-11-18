@@ -121962,3 +121962,9 @@ Chaque signal n'entre au modèle que s'il améliore le résultat sur une vérit�
 **Décision technique principale :** format et seuils de `conception.md` retenus ; « dessus » relevé au sol praticable du maillage quand il est plus haut (D-12) ; étages en rangs sans unité, une unité du jeu valant environ 3 m (D-14) ; lumière depuis le haut à gauche de l'écran (D-15) ; poids accepté (D-13). Aucune teinte seule ne garde les marqueurs lisibles sous les quatre visions : cerne deux tons des marqueurs sur les trois fonds (D-3 bis), teinte Graphite par défaut, Violet pour Okabe-Ito et Tol Bright, Vert pour Cividis (D-3 ter).
 **Résultats observés :** contour actuel des marqueurs sous 3:1 dans les 1 280 combinaisons mesurées ; cerne deux tons au moins 4,4:1 contre tous les paliers des 7 teintes sous les quatre visions. Coupe de la maquette fausse sur jusqu'à 57 % d'un étage sans D-12, juste avec.
 **Conclusion / prochaine étape :** A.1 (relief et drapeaux dans la brique) puis A.2 (traits, Opus) et A.3 (sols et étages) ; D.7 en parallèle dès qu'une place d'écrivain se libère.
+
+## [2026-11-18] Fond Relief : passation pour la reprise du dimanche 2026-11-22
+**Statut :** En cours (arrêt pour quota du user).
+**Décision technique principale :** tout le code du plan est sur `feat/fonds-relief` (non poussée) ; brique `halo-infinite-map-images` v1.4.0 taguée ; Live Fire validée à l'écran ; revue finale faite (0 P0, 3 P1 corrigés côté Go, corrections web écrites non commitées).
+**Résultats observés :** gate web complet vert ; archlint vert ; cuisson du parc E.1 relancée sous plafond mémoire après deux arrêts (jeu du user, puis éditions de liens Go en parallèle).
+**Conclusion / prochaine étape :** état des lieux détaillé au journal du plan (section 12, entrée du 2026-11-18 soir) : finir R.2 web, contrôler et commiter E.1, gate-push, contrôle à l'écran, fusion dans `release/v8.3.0`.
