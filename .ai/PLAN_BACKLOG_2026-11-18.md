@@ -640,6 +640,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Découvertes (consignées, non traitées)
 
+- 2026-11-18 (F.9) — la synchronisation pose le verdict « film absent » sans fenêtre après la fin du match. MESURÉ
+  sur la copie de la base : défaut ÉCARTÉ. 0 match sur 251 vus moins de 5 minutes après leur fin porte le
+  verdict ; 2 sur 503 parmi ceux vus plus tard dans les 180 jours ; 614 sur 699 au-delà (films expirés). Aucune
+  fenêtre n'est ajoutée à la synchronisation. Un match (`58e6f72a`, décembre 2023) porte le verdict alors que
+  ses 33 morceaux de film sont à l'archive : à porter au backlog à la clôture (R.1).
+
 - 2026-11-18 (G.1) — `medal_name` des événements de médaille du contexte du match n'a plus aucun lecteur de
   production, et le site ignore ces événements (il lit le document de rejeu). À porter au backlog à la clôture
   (R.1) : retirer le champ, voire les événements de médaille du contexte. L'ADR 0011 cite encore
