@@ -264,7 +264,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste A — rejeu : départs, ramassages, médailles du fil (Sonnet)
 
-- [ ] A.1 Un départ n'est pas une mort. Règle, dans un module pur neuf `MR/model/departureLogic.ts` : une fin
+- [x] A.1 (fait le 2026-11-18, `d99966fcaa` sur `bl1118/a` ; 884 départs reconnus sur le parc avec la marge de fin de 3 s du fil, soit les 875 mesurés à 10 s et 9 présences fermées entre 3 et 10 s avant la fin ; « a quitté la partie » dure jusqu'à la fin du document et vaut aussi pour un joueur mort puis parti, à partir de la fermeture de sa présence : complément demandé par le pilote ; la tuile d'un parti prend l'allure d'une place vide, choix de présentation à faire valider à l'écran) Un départ n'est pas une mort. Règle, dans un module pur neuf `MR/model/departureLogic.ts` : une fin
       de vie est un DÉPART quand (1) c'est la dernière vie du joueur dans le document, (2) son `endReason`
       vaut `deleted`, (3) aucun compte à rebours de réapparition du joueur ne commence dans la tolérance de
       `lifeEndProof`, (4) la présence du joueur au tableau (`roster[].presence`) se ferme avant la fin du
@@ -277,7 +277,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       une fin de manche) sont mis d'accord avec la règle. Tests : document du match `38900a5e` aminci en
       fixture ; un partant mort avant de partir (ligne « mort » gardée) ; une fin de manche (inchangée) ; un
       document sans présence.
-- [ ] A.2 Pictogramme d'une ligne de ramassage, selon D-1, quatre tracés redessinés proprement sur la grille
+- [x] A.2 (fait le 2026-11-18, même commit ; étoile à 1,9 unité de grille du tracé principal, vérifiée par un test) Pictogramme d'une ligne de ramassage, selon D-1, quatre tracés redessinés proprement sur la grille
       de 24 dans `MR/model/feedGlyphs.ts` : `pickup` = flèche qui monte du sol ; `pickupPower` = la même et
       l'étoile ; `pickupEquipment` = caisse (le bouclier est retiré) ; un tracé neuf, caisse et étoile, pour
       un équipement qui change la partie. La nature d'une prise du fil gagne ce quatrième cas : un équipement
@@ -285,14 +285,15 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       surbouclier, camouflage) ; `PadFamily`, qui teinte les socles de la carte, ne change pas. L'entrée
       « Armes et bonus » du menu de filtre prend la flèche. Aucune silhouette d'arme. Tests : les quatre cas
       rendent quatre tracés ; un équipement hors catalogue reste « caisse ».
-- [ ] A.3 Médailles du fil depuis une planche d'images : `MedalEvent` porte la découpe servie par le document
+- [x] A.3 (fait le 2026-11-18, même commit ; une médaille à image seule garde exactement son rendu) Médailles du fil depuis une planche d'images : `MedalEvent` porte la découpe servie par le document
       (`matchMedals.ts:40`) ; `ReplayFeedMedals.tsx` et `MedalBadges.tsx` dessinent par
       `components/ui/MedalIcon.tsx`, comme la fiche. Test : une médaille à découpe rend son image dans les deux
       composants ; une médaille à image seule est inchangée.
 - **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour ELOsk11, fiche
   « a quitté la partie » aux images 9786 et 9900 ; mesure (a) rejouée avec la règle codée : 875 départs
   reconnus, 511 fins de vie gardées (503 morts et 8 dernières vies sans raison publiée ; chiffre corrigé le
-  2026-11-18 sur la mesure 0.3).
+  2026-11-18 sur la mesure 0.3). Amendé le 2026-11-18 au retour de la piste : 884 départs avec la marge de 3 s du fil
+  (875 + 9), acceptés par le pilote ; la suite complète du web est passée par le pilote à l'intégration.
 
 ## Piste B — rejeu : états de la page (Sonnet)
 
@@ -576,6 +577,14 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-18 — piste A rendue après trois compléments du pilote (durée de « a quitté la partie », taille de
+  `killFeedLogic.ts` ramenée de 591 à 567 lignes, test de la marge), relue, commitée (`d99966fcaa`). Sur le vrai
+  rejeu du match signalé par le user : fiche d'ELOsk11 « mort » à l'image 9700, « a quitté la partie » aux
+  images 9786, 9900, 9940 et à la dernière ; plus de ligne « mort » à 5:00. Sa place d'écriture va à la session
+  du fond Relief (deux écrivains chacun). Vérifications lourdes du pilote sur l'intégration (K.2, E, H, C, G) :
+  types, lint, compilation et `vet` verts ; suite complète du web 14 315 réussis, 2 échecs sans défaut de code
+  (plafond des fonctions longues à abaisser de 247 à 245 ; un garde-rail hors délai sous charge, à rejouer seul).
 
 - 2026-11-18 — piste B rendue, relue, commitée (`0aa6debb61`) ; elle sera cueillie sur l'intégration à la fin des
   vérifications lourdes du pilote, qui tournent dans ce dossier (on ne modifie pas un arbre pendant son gate).
