@@ -23,8 +23,9 @@
  * étiquette de zone, bandeau d'état, état vide, colonne « Zone sélectionnée » — et, dans la colonne
  * « Cartes jouées », la liste. Une seule classe (`ESTOMPE`), un seul helper (`classeRelecture`).
  */
+import type { BornesMonde } from '@/lib/api/types'
 import type { MapFrame } from '@/lib/replay/heatPaint'
-import type { QuarterTurns } from '@/lib/replay/orientation'
+import type { Dimensions, QuarterTurns } from '@/lib/replay/orientation'
 
 import {
   PLAN_ASPECT_DEFAUT,
@@ -97,4 +98,18 @@ export function aspectDuPlan(fond: MapFrame | null, repere: RepereTactique | nul
     return turns % 2 === 1 ? fond.heightM / fond.widthM : fond.widthM / fond.heightM
   }
   return PLAN_ASPECT_DEFAUT
+}
+
+/**
+ * dimensionsDuPlan — la carte posée DROITE, en unités monde : ce que la règle Auto de l'orientation compare à
+ * la zone du plan. C'est la même carte que celle du repère (`repereDuPlan`) : le calage du fond quand il est
+ * connu, sinon la boîte englobante des cellules (`bornes`, quand elle est valide). `null` si aucune des deux
+ * n'est exploitable : le plan reste droit.
+ */
+export function dimensionsDuPlan(fond: MapFrame | null, bornes: BornesMonde | undefined): Dimensions | null {
+  if (fond && fond.widthM > 0 && fond.heightM > 0) return { largeur: fond.widthM, hauteur: fond.heightM }
+  if (!bornes || !bornes.valide) return null
+  const largeur = bornes.max_x - bornes.min_x
+  const hauteur = bornes.max_y - bornes.min_y
+  return largeur > 0 && hauteur > 0 ? { largeur, hauteur } : null
 }

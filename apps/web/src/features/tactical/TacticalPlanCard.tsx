@@ -58,9 +58,8 @@ import {
   type BornesDeLegende,
   type EtatDuPlan,
 } from './plan.logic'
-import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
 import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundPlan } from './queries'
-import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
+import { aspectDuPlan, dimensionsDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
@@ -81,7 +80,7 @@ import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import type { EtatDeLaSequence } from './sequenceCause.logic'
 import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
-import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { useOrientationDuPlan } from './useOrientationDuPlan'
 import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
 import { ETIQUETTE, PILULE } from './pilules'
@@ -178,13 +177,21 @@ export function TacticalPlanCard({
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
+  const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
+  const carteRef = useRef<HTMLDivElement>(null)
+  const cadreRef = useRef<HTMLDivElement>(null)
   // L'ORIENTATION ET LE PLAN DES MURS SONT CEUX DU REJEU 2D (mêmes préférences, lues seulement) : une carte
-  // tournée dans le rejeu l'est ici, et son plan des murs s'y allume et s'éteint avec lui.
-  const { turns, showWallPlan } = useMapViewPreferences(mapId)
+  // tournée dans le rejeu l'est ici, et son plan des murs s'y allume et s'éteint avec lui. Sans choix retenu
+  // (Auto), la règle du rejeu s'applique à la zone de CE plan (`useOrientationDuPlan`).
+  const { turns, showWallPlan, hauteurMax, zoneRef } = useOrientationDuPlan(
+    mapId,
+    dimensionsDuPlan(cadreFond, lue?.bornes),
+    carteRef,
+    cadreRef,
+  )
   const planDesMurs = useTacticalMapBackgroundPlan(playerSlug, mapId)
   // En mode plan, les murs sont déjà dans l'image du fond : le calque des murs se retire.
   const { variante } = useTacticalFondVariante(playerSlug, mapId)
-  const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
   const repere = useMemo(
     () => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null),
     [cadreFond, lue, turns],
@@ -193,9 +200,6 @@ export function TacticalPlanCard({
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
   const zonesPeintes = reglages.zonesVisibles ? zones : AUCUNE_ZONE
-  const carteRef = useRef<HTMLDivElement>(null)
-  const cadreRef = useRef<HTMLDivElement>(null)
-  const hauteurMax = useHauteurDuPlan(carteRef, cadreRef)
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
@@ -240,7 +244,7 @@ export function TacticalPlanCard({
             ))}
           </div>
         )}
-        <div className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
+        <div ref={zoneRef} className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
           <TacticalPlanFond
             playerSlug={playerSlug}
             mapId={mapId}

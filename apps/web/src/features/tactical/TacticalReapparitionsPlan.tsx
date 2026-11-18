@@ -19,7 +19,6 @@ import type { TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
-import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
 
 import type { TacticalText } from './i18n'
 import { cadrageDuFond, MARGE_LEGENDE, type EtatDuPlan } from './plan.logic'
@@ -39,10 +38,10 @@ import { PuceDEcart } from './TacticalReapparitionsPuce'
 import { TacticalReapparitionsZones } from './TacticalReapparitionsZones'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { TacticalPlanFond } from './TacticalPlanFond'
-import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
+import { aspectDuPlan, dimensionsDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { repereDuPlan } from './tacticalView.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
-import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { useOrientationDuPlan } from './useOrientationDuPlan'
 
 export interface TacticalReapparitionsPlanProps {
   t: TacticalText
@@ -85,16 +84,16 @@ export function TacticalReapparitionsPlan({
   plan,
 }: TacticalReapparitionsPlanProps) {
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
-  const { turns } = useMapViewPreferences(mapId)
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
+  const carteRef = useRef<HTMLDivElement>(null)
+  const cadreRef = useRef<HTMLDivElement>(null)
+  // L'orientation est celle du rejeu 2D ; sans choix retenu (Auto), la règle du rejeu s'applique à la zone de ce plan.
+  const { turns, hauteurMax, zoneRef } = useOrientationDuPlan(mapId, dimensionsDuPlan(cadreFond, lue?.bornes), carteRef, cadreRef)
   const repere = useMemo(() => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null), [cadreFond, lue, turns])
   // La scène et la fenêtre du plan (1x : la carte entière) : le MÊME cadrage que la carte de placement.
   const { scene, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const cadrage = cadrageDuFond(scene, fenetre, turns)
   const cadre = useMemo(() => cadreDeLaCouche(cadreFond, lue?.bornes), [cadreFond, lue?.bornes])
-  const carteRef = useRef<HTMLDivElement>(null)
-  const cadreRef = useRef<HTMLDivElement>(null)
-  const hauteurMax = useHauteurDuPlan(carteRef, cadreRef)
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const surLePlan = !!(repere && cadre && zones.length > 0 && etat !== 'echec')
   const info = modele
@@ -123,7 +122,7 @@ export function TacticalReapparitionsPlan({
         })}
         footer={modele && <LegendeDuPlan t={t} locale={locale} modele={modele} />}
       >
-        <div className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
+        <div ref={zoneRef} className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
           <TacticalPlanFond
             playerSlug={playerSlug}
             mapId={mapId}

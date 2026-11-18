@@ -102,6 +102,14 @@ export function colonnesGrandeEquipe(placesParCamp: readonly number[]): number {
   return Math.max(1, Math.ceil(plusGrand / COTES_RANGEE_GRANDE_EQUIPE.fichesParEmplacement))
 }
 
+/**
+ * La marge, en px, entre les deux sens d'une bascule de mise en page : on ENTRE dans une disposition à la
+ * largeur qu'elle demande, on n'en SORT que sous cette largeur moins la marge. Sans elle, une largeur qui
+ * oscille d'un pixel autour du seuil (l'apparition de la barre de défilement vaut 15 à 17 px) fait clignoter
+ * la mise en page à chaque mesure.
+ */
+export const MARGE_BASCULE_PX = 24
+
 /** Comment les équipes se rangent : la rangée ordinaire, la rangée de Grande équipe, ou la colonne. */
 export type DispositionEquipes = 'rangee' | 'rangee-grande-equipe' | 'colonne'
 
@@ -117,19 +125,39 @@ export function dispositionEquipes(entree: RowFitInput): DispositionEquipes {
 }
 
 /**
+ * dispositionAvecMemoire est `dispositionEquipes` avec la disposition PRÉCÉDENTE en mémoire : une rangée posée
+ * (ordinaire ou de Grande équipe) reste posée tant que le corps ne descend pas sous la largeur qu'elle demande
+ * moins `MARGE_BASCULE_PX` ; on n'y entre qu'à la largeur demandée. Pure : à entrée égale et même précédente,
+ * même réponse. Sans précédente (`null`), après une colonne, ou si le match a changé de forme (la rangée
+ * précédente n'est plus celle que la marge retiendrait), c'est le choix sans mémoire.
+ */
+export function dispositionAvecMemoire(entree: RowFitInput, precedente: DispositionEquipes | null): DispositionEquipes {
+  const sansMemoire = dispositionEquipes(entree)
+  if (precedente === null || precedente === 'colonne' || entree.largeurCorps <= 0) return sansMemoire
+  const avecMarge = dispositionEquipes({ ...entree, largeurCorps: entree.largeurCorps + MARGE_BASCULE_PX })
+  return avecMarge === precedente ? precedente : sansMemoire
+}
+
+/**
  * emplacementScoreDe dit où le bandeau de score est posé, UNE SEULE RÈGLE DE LARGEUR POUR LES TROIS CADRES. Au
  * Cinéma et au Plein cadre, il est au centre de la rangée quand elle est posée. Sinon (équipes dans la colonne,
  * et toujours au Standard) il est dans l'EN-TÊTE (cellule de 440 px), sauf si le corps est trop étroit pour la
  * loger (`LARGEUR_REQUISE_ENTETE_SCORE_PX`) : il coiffe alors la toile. Une largeur nulle est une largeur pas
  * encore mesurée : l'en-tête est présumé assez large.
+ *
+ * `precedent` est l'emplacement d'avant (`null` = aucun) : un score déjà dans l'en-tête n'en sort que sous
+ * `LARGEUR_REQUISE_ENTETE_SCORE_PX` moins `MARGE_BASCULE_PX` ; un score sur la toile n'y remonte qu'à la
+ * largeur demandée. Sans précédent, ou depuis la rangée, la règle est celle du seuil nu.
  */
 export function emplacementScoreDe(
   frame: ReplayFrame,
   disposition: DispositionEquipes,
   largeurCorps: number,
+  precedent: EmplacementScore | null = null,
 ): EmplacementScore {
   if (canPlaceCardRow(frame) && disposition !== 'colonne') return 'rangee'
-  return largeurCorps > 0 && largeurCorps < LARGEUR_REQUISE_ENTETE_SCORE_PX ? 'scene' : 'entete'
+  const seuil = precedent === 'entete' ? LARGEUR_REQUISE_ENTETE_SCORE_PX - MARGE_BASCULE_PX : LARGEUR_REQUISE_ENTETE_SCORE_PX
+  return largeurCorps > 0 && largeurCorps < seuil ? 'scene' : 'entete'
 }
 
 /**
