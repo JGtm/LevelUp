@@ -446,7 +446,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste M — barre de lecture : écran étroit et surimpression (Sonnet)
 
-- [ ] M.1 Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
+- [x] M.1 (fait le 2026-11-18 : https://claude.ai/artifact/Q2duSkmGtSf4QLWASqZY83, source gardée sous `.ai/annexes_backlog_1118/maquettes/` ; cotes vérifiées sur le code : commandes fixes 894 px, 1 012 avec « Plan tourné » ; la frise ne tombe pas à 14 px, elle garde 120 px et RECOUVRE les commandes de droite ; le pire cas est 1 280 px, où la colonne est encore à côté du plan ; variantes : A menu « plus » à deux paliers, B deux lignes, D ligne de progression repliée, C barre de 32 px translucide ; rendu non vu dans un navigateur) Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
       de fenêtre (1 280, 1 440, 1 536 px) : (a) la barre d'une ligne quand la place manque, deux variantes de
       repli (groupes zoom, capture et vitesse rangés dans un menu ; ou barre sur deux lignes) ; (b) la barre en
       surimpression au Plein cadre, selon la proposition notée au backlog (fine ligne de progression au bas du
@@ -577,6 +577,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-18 — M.1 rendu, lu par le pilote (feuille de style, balises et attributs énumérés, texte entier) et
+  publié ; choix du user attendu (porte de M.2 et M.3). Seconde passe de vérifications : suite complète du web
+  14 379 réussis, 9 échecs : 1 vrai (type `MedalSprite` du fil homonyme d'un schéma du contrat, renommé en
+  `MedalSpriteCut`, `c24b59aa99`) et 8 dépassements de délai de garde-rails qui parcourent les fichiers, sous
+  charge, à rejouer seuls.
 
 - 2026-11-18 — piste K rendue (K.1, K.3, K.4, K.5), relue, commitée (`c79566f3e8` sur `bl1118/k2`) : toute la piste
   K est faite. Q.1 rendu : liste fermée des écarts de maquette soumise au user avec trois questions (icônes de
