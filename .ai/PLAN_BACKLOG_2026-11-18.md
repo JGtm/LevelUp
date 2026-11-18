@@ -668,6 +668,14 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — SECONDE LIVRAISON fusionnée et poussée dans `release/v8.3.0` (`709786d758` : pistes D, K, S).
+  Gate lourd sur l'intégration : typage, lint, suite complète du site (14 406 tests), imports entre features,
+  `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (229 paquets, code 0), contrat de l'API à jour.
+  La CI de la première livraison avait ROUGI (job de la baseline de tests) : 4 tests supprimés avec leur code
+  par la piste G restaient dans la baseline ; retirés dans cette livraison (`4b76bacbc2`). Le gate local ne
+  joue pas ce contrôle : la piste T, qui supprime des tests, doit retirer ses paires (consigne envoyée).
+  Relecture adverse de la piste T rendue : 1 bloquant, 5 à corriger, ronde de corrections en cours ; l'ADR
+  du coup d'envoi devient 0050 (0049 pris par le plan du fond Relief).
 - 2026-11-18 — barre de lecture (M.2, M.3) : la session du fond Relief RELAIE une phrase du user reçue chez
   elle, « pour la maquette du lecteur en superposition je valide l'option C+B » (C : barre fine et translucide en
   surimpression au Plein cadre ; B : deux lignes quand la place manque). Relais, pas un message du user dans
