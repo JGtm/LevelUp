@@ -328,14 +328,14 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste D — fiche du joueur (Sonnet ; Haiku pour D.1 et D.3)
 
-- [ ] D.1 `playerInstantStats.ts` : les débuts de vie ne retiennent que les vies dont la fin dépasse le début
+- [x] D.1 (fait le 2026-11-18, `14e69f8124` sur `bl1118/d` ; le test est rouge sans le filtre) `playerInstantStats.ts` : les débuts de vie ne retiennent que les vies dont la fin dépasse le début
       du match, comme `closedLives`. Test : vies [10, 40] et [41, 200], début à 50, image 100, 0 réapparition.
-- [ ] D.2 « Tirs et dégâts » : une ligne par nom d'arme affiché, familles de même nom additionnées
+- [x] D.2 (fait le 2026-11-18, même commit) « Tirs et dégâts » : une ligne par nom d'arme affiché, familles de même nom additionnées
       (`playerInstantView.ts`) ; la clé de liste est celle de la première famille du groupe
       (`FicheTirs.tsx:35`). Test : deux familles au même nom, une ligne, sommes justes.
-- [ ] D.3 Nom de grenade de repli : `grenadeRank` au contrat des textes, en français et en anglais ;
+- [x] D.3 (fait le 2026-11-18, même commit ; `fr.ts` 475 lignes, `en.ts` 470) Nom de grenade de repli : `grenadeRank` au contrat des textes, en français et en anglais ;
       `grenadesCarriedFrom` reçoit le texte ; les deux appelants suivent. Test en anglais.
-- [ ] D.4 `GABARIT_NORMAL` retiré : une cote nommée pour le corps du bloc « À l'instant » ; `CardGabarit` ne
+- [x] D.4 (fait le 2026-11-18, même commit ; le garde-rail garde ses trois interdits et gagne un cliquet contre le retour de `GABARIT_NORMAL` ; le texte `playerScoreLive`, sans lecteur, est retiré) `GABARIT_NORMAL` retiré : une cote nommée pour le corps du bloc « À l'instant » ; `CardGabarit` ne
       garde que la tuile compacte ; branches mortes de `ReplayCountersBadge.tsx` et leurs tests retirés ;
       `cardGabarit.guard.test.ts` suit.
 - [!] D.5 (non exécuté : condition non remplie, mesure 0.3 c = 0 lâcher sur 28 540 ; l'écart minimal entre la fin d'une vie et la reprise de sa place est de 101 images) (si 0.3 c > 0) Lâcher daté à fin de vie + 2 : une résolution « la vie qui s'est terminée à l'image
@@ -343,7 +343,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       Témoin : nombre de lâchers attribués sur les huit documents réels, avant et après (338 sur 338 avant).
 - [!] D.6 (non exécuté : condition non remplie, mesure 0.3 d = 2,2 à 4,3 ms en médiane, 13,4 ms au pire) (si 0.3 d > 50 ms) Séries de la fiche gardées par document et par liste de joueurs, hors de
       l'instance du composant (`playerInstantSources.ts`). Test : deux lectures, même objet.
-- [ ] D.7 (si 0.3 b > 0) Un seul score à l'instant : l'infobulle de la tuile (`ReplayCountersBadge.tsx:146`)
+- [x] D.7 (fait le 2026-11-18, même commit : `model/playerInstantScore.ts`, même fonction pour la tuile et la fiche, garde-rail `scoreSingleSource.guard.test.ts` ; l'infobulle n'écrit un score que pour un joueur publié par le calque de compteurs, choix de l'agent gardé par le pilote : sans calque la tuile montre des totaux de fin de match) (si 0.3 b > 0) Un seul score à l'instant : l'infobulle de la tuile (`ReplayCountersBadge.tsx:146`)
       lit la valeur gardée de la fiche ; quand la garde refuse, elle ne montre pas de score. Si 0.3 b = 0 :
       item clos sur la mesure, l'égalité des deux sources devient un test.
 - **Gate D** : gate commun web sur `MR/` ; `fr.ts` et `en.ts` sous 500 lignes.
@@ -577,6 +577,10 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-18 — piste D rendue, relue, commitée (`14e69f8124`, au-dessus de A et B). Pistes S (`C:/t/bl18-s`) et
+  Q.1 (lecture seule) lancées. Seconde passe des vérifications lourdes en cours sur l'intégration (K.2, E, H, C,
+  G, B, A, F ; plafond des fonctions longues à 245).
 
 - 2026-11-18 — piste F rendue après quatre compléments du pilote (échec de jeton mémorisé périmé quand le jeton
   revient ; phrase du film pas encore prêt ; balise du champ `stale` ; coût du décompte borné), relue, commitée
