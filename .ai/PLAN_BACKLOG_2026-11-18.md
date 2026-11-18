@@ -240,14 +240,14 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Étape 0 — témoins, mesures et vérification sur pièces
 
-- [ ] 0.1 Branche `chore/830-backlog-1118` créée depuis la tête de `origin/release/v8.3.0` du jour du go ;
+- [x] 0.1 (fait le 2026-11-18, depuis `1a7329e625`) Branche `chore/830-backlog-1118` créée depuis la tête de `origin/release/v8.3.0` du jour du go ;
       worktrees des pistes de la vague 1.
-- [ ] 0.2 Témoins AVANT, dans `.ai/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
+- [x] 0.2 (fait le 2026-11-18 : rejeu 390 fichiers de test, 5 517 réussis ; composants 1 208 ; Escouade 999 ; 12 tests Go par minute ; témoin du match pris SANS les frags de l'API, dit en tête de l'annexe) Témoins AVANT, dans `.ai/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
       de `apps/web/src/components/` et de `apps/web/src/features/squad/` ; sorties des tests par minute de
       l'Escouade (`per_minute_caracterisation_test.go`, `per_minute_temoins_test.go`) ; compte du garde-rail
       des couches ; pour le match `38900a5e`, les lignes du fil entre 4:30 et 5:30 et l'état de la fiche
       d'ELOsk11 aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
-- [ ] 0.3 Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
+- [x] 0.3 (fait le 2026-11-18 : (a) 0 compte à rebours sur 875 ; (b) 6 539 joueurs sur 12 126 en écart sur au moins une image, 166 au total final différent ; (c) 0 lâcher repris à + 1 ou + 2 sur 28 540 ; (d) 2,2 à 4,3 ms) Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
       `.ai/annexes_backlog_1118/mesures.md` :
       (a) départs : faite le 2026-11-18 (`mesure_departs.md`) ; à compléter par la répartition de l'écart
       entre la fin de la dernière vie et la fermeture de la présence, et par le compte des corps supprimés
@@ -257,7 +257,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       (c) lâchers d'équipement datés à fin de vie + 2 dont la place est reprise à + 1 ou + 2 ;
       (d) durée de `readInstantDocSeries` sur trois rejeux réels (4 contre 4, Grande bataille, match long).
       Seuils : D.5 s'exécute si (c) > 0 ; D.6 s'exécute si (d) dépasse 50 ms sur un des trois.
-- [ ] 0.4 Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au
+- [x] 0.4 (exécuté par chaque agent de piste en tête de son travail, écarts rapportés au pilote : amendement du journal) Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au
       journal avant tout code.
 - **Gate 0** : les deux annexes existent ; (a) confirme qu'aucun corps supprimé en dernière vie de partant
   n'a de compte à rebours ; seuils de D.5 et D.6 statués au journal.
@@ -290,8 +290,9 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       `components/ui/MedalIcon.tsx`, comme la fiche. Test : une médaille à découpe rend son image dans les deux
       composants ; une médaille à image seule est inchangée.
 - **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour ELOsk11, fiche
-  « a quitté la partie » aux images 9786 et 9900 ; le pilote rejoue la mesure (a) avec la règle codée : 875
-  départs reconnus, 503 morts gardées.
+  « a quitté la partie » aux images 9786 et 9900 ; mesure (a) rejouée avec la règle codée : 875 départs
+  reconnus, 511 fins de vie gardées (503 morts et 8 dernières vies sans raison publiée ; chiffre corrigé le
+  2026-11-18 sur la mesure 0.3).
 
 ## Piste B — rejeu : états de la page (Sonnet)
 
@@ -336,10 +337,10 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 - [ ] D.4 `GABARIT_NORMAL` retiré : une cote nommée pour le corps du bloc « À l'instant » ; `CardGabarit` ne
       garde que la tuile compacte ; branches mortes de `ReplayCountersBadge.tsx` et leurs tests retirés ;
       `cardGabarit.guard.test.ts` suit.
-- [ ] D.5 (si 0.3 c > 0) Lâcher daté à fin de vie + 2 : une résolution « la vie qui s'est terminée à l'image
+- [!] D.5 (non exécuté : condition non remplie, mesure 0.3 c = 0 lâcher sur 28 540 ; l'écart minimal entre la fin d'une vie et la reprise de sa place est de 101 images) (si 0.3 c > 0) Lâcher daté à fin de vie + 2 : une résolution « la vie qui s'est terminée à l'image
       t − 2 ou t − 1 » prime sur l'occupant courant pour un lâcher (`rosterLogic.ts`, `equipmentGestures.ts`).
       Témoin : nombre de lâchers attribués sur les huit documents réels, avant et après (338 sur 338 avant).
-- [ ] D.6 (si 0.3 d > 50 ms) Séries de la fiche gardées par document et par liste de joueurs, hors de
+- [!] D.6 (non exécuté : condition non remplie, mesure 0.3 d = 2,2 à 4,3 ms en médiane, 13,4 ms au pire) (si 0.3 d > 50 ms) Séries de la fiche gardées par document et par liste de joueurs, hors de
       l'instance du composant (`playerInstantSources.ts`). Test : deux lectures, même objet.
 - [ ] D.7 (si 0.3 b > 0) Un seul score à l'instant : l'infobulle de la tuile (`ReplayCountersBadge.tsx:146`)
       lit la valeur gardée de la fiche ; quand la garde refuse, elle ne montre pas de score. Si 0.3 b = 0 :
@@ -407,19 +408,19 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste H — couches, accessibilité, clé de requête (Sonnet ; Haiku pour H.4)
 
-- [ ] H.1 Garde-rail des couches élargi à `components/`, `lib/` et aux fichiers `.ts` de `features/` ; il
+- [x] H.1 (fait le 2026-11-18, `ff610e89e8` sur `bl1118/h` ; sept exemptions datées, dont `GamertagCombobox.tsx` et `useAudioUnlock.ts` ajoutées sur pièces ; `sidebarCollapse.ts` et `assetPanel.ts` n'en ont pas besoin : ni Échap ni nom non littéral) Garde-rail des couches élargi à `components/`, `lib/` et aux fichiers `.ts` de `features/` ; il
       reconnaît un nom d'événement non littéral et `case 'Escape'` ; exemptions datées pour
       `titleTooltip.controller.ts`, `tooltipPosition.ts`, `sidebarCollapse.ts`, `useDismissable.ts`,
       `useReplayFullscreen.ts`, `assetPanel.ts`.
-- [ ] H.2 Les 13 composants migrent vers `useDismissable` : `analysis-pending-badge`, `alert-dialog`,
+- [x] H.2 (fait le 2026-11-18, même commit ; option `escape` ajoutée au mécanisme pour un clic dehors seul ; tests existants verts sans retouche) Les 13 composants migrent vers `useDismissable` : `analysis-pending-badge`, `alert-dialog`,
       `GamertagCombobox` (clic dehors seul), `info-tooltip`, `SessionMultiSelect`, `AboutDialog` (son piège
       de tabulation reste), `HelpSplitButton`, `NavL1` (deux sites), `MultiSelectFilter`,
       `NavL1MobileActions`, `NavL1MobileMenu`, `PlayerSwitcher`, `RailPopover`. Changements voulus, écrits aux
       notes de version : Échap ferme aussi les cinq qui ne l'écoutaient pas ; des couches empilées se ferment
       une par une. Les tests existants de ces composants restent verts sans retouche de leurs assertions.
-- [ ] H.3 `MediaPickerDialog` écoute Échap par le mécanisme commun ; `ExperienceDropdown` et `ViewDropdown`
+- [x] H.3 (fait le 2026-11-18, même commit) `MediaPickerDialog` écoute Échap par le mécanisme commun ; `ExperienceDropdown` et `ViewDropdown`
       annoncent leur état ouvert. Tests calqués sur `CoverFlowModal.dismiss.test.tsx`.
-- [ ] H.4 `queryKeys.matchReplayContext` porte la langue ; `useMatchReplayContext` la lit ;
+- [x] H.4 (fait le 2026-11-18, même commit) `queryKeys.matchReplayContext` porte la langue ; `useMatchReplayContext` la lit ;
       `keys.locale.test.ts` range la clé parmi les localisées.
 - **Gate H** : gate commun web sur `components/`, `features/_shared/`, `features/media/`, `lib/query/`,
   `lib/replay/`.
@@ -576,6 +577,12 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 passée : annexes `temoins_avant.md` et `mesures.md` sur la branche
+  d'intégration ; (a) confirmée, 0 sur 875 ; seuils statués : D.5 et D.6 non exécutés, D.7 exécuté). Pistes K.2,
+  E et H cueillies sur `chore/830-backlog-1118` (`910fb2e805`, `3fded4ffb9`, `405ca31220`). Piste A lancée
+  (`C:/t/bl18-a`). Restent au pilote pour ces pistes : suite complète du web, archlint entier et tests
+  d'intégration de la synchronisation, à passer quand la marche à blanc du décodeur aura rendu la machine.
+
 - 2026-11-18 — piste E rendue, relue et commitée (`89f9764fd1`). Reste à passer par le pilote à
   l'intégration : `go test -tags=integration -p 1 ./internal/sync/...` et la suite entière d'archlint (non
   menée à terme par l'agent, machine chargée). Piste F lancée (`C:/t/bl18-f`). Découverte : sur une instance
@@ -615,6 +622,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (0.3) — 128 corps supprimés sans mort appartiennent à un joueur qui a une vie ensuite (ni fin de
+  manche, ni départ, ni bot) : ils donnent aujourd'hui une ligne « mort » non prouvée dans le fil. Cause non
+  instruite (retour d'un joueur parti, réapparition forcée ?). À porter au backlog à la clôture (R.1).
+- 2026-11-18 (0.3) — score à l'instant : dans 3 845 cas l'écart entre l'infobulle et la fiche n'est qu'un
+  décalage d'une image ; 781 joueurs ont un écart de plus d'une seconde, en général de 100 points (même
+  famille que la réponse de 100 points hors arbre du plan du décodeur, piste B).
+- 2026-11-18 (H) — le lint du web sort 4 avertissements dans trois fichiers non touchés
+  (`tooltip-panel.tsx`, `useGamertagSuggestions.ts`, `MediaAudioConfigButton.tsx`).
 
 - 2026-11-18 (T.0) — hors du système du coup d'envoi, validé comme tel par le user : ce que font les notes
   quand le temps de jeu d'un joueur manque (600 s supposées pour la note de performance, poids et ordre des
