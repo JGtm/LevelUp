@@ -100,11 +100,30 @@ Chaque décision porte la proposition du pilote. Le go du user les confirme tout
   comment il fait »). Den découpe le plan selon le mode joué (volumes mortels, points d'apparition de la
   variante). Hors de ce plan ; ligne au `.ai/BACKLOG.md`.
 
+## 1 bis A. Décisions du Gate 0 (user, 2026-11-18 : « ok avec toutes tes recos, on est alignés »)
+
+- **D-3 bis — cerne deux tons des marqueurs, sur les trois fonds.** Le contour des marqueurs devient une bande
+  sombre bordée d'un filet clair (principe « contraste élevé » de Cartographer) : contraste ≥ 4,4:1 contre
+  tous les paliers des 7 teintes candidates sous les quatre visions (mesure du pilote, 0.3), quand le contour
+  actuel n'atteint 3:1 dans aucune des 1 280 combinaisons. Il change l'aspect validé des marqueurs de la refonte
+  du rejeu, avec l'accord du user. Item D.7.
+- **D-3 ter — teinte par palette** : Graphite `#6b7078` (défaut), Violet `#7559b5` (Okabe-Ito, Tol Bright),
+  Vert `#3f8c4f` (Cividis). Une seule valeur pour les deux thèmes.
+- **D-12 — le « dessus »** (conception §4.2, définition b) : quand le sol le plus haut du maillage dépasse le
+  dessus du rendu de plus de 0,3 u, il devient le dessus et le pixel porte le drapeau « sol tiré du maillage ».
+- **D-13 — poids** : environ +40 à 55 Mo dans le dossier des fonds, acceptés sans levier d'allègement.
+- **D-14 — libellé des étages sans unité** : rangs « Bas », « Étage 1 », « Étage 2 »… (une unité du jeu vaut
+  environ 3 m). Remplace les « +2,0 m » de la maquette D.1 ; l'infobulle devient « Étage 1 : 1 anneau ».
+- **D-15 — lumière** : toujours depuis le haut à gauche de l'écran, carte tournée ou non.
+- **D-16 — lecteur du drapeau D-6** : l'infobulle du fond Relief dit la part tirée du maillage (« relief tiré du
+  maillage de navigation sur 46 % de la carte »).
+- Format, drapeaux, seuils, projection et règle du suivi : ceux de `conception.md`, qui fait foi pour les lots A à D.
+
 ## 1 ter. Coordination avec les autres plans de la 8.3.0 (inscrite au plan maître)
 
 | Nœud du plan maître | Fichiers ou ressource | Règle |
 |---|---|---|
-| N22 | `settings/useMapViewPreferences.ts`, `features/tactical/TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`, `match-view/MatchPositionsHeatmap.tsx` | Plan du backlog du 18/11, item C.4 (orientation Auto hors du rejeu) d'abord ; D.4 de ce plan repart de son état fusionné |
+| N22 | `settings/useMapViewPreferences.ts`, `features/tactical/TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`, `match-view/MatchPositionsHeatmap.tsx` | Plan du backlog du 18/11, item C.4 (orientation Auto hors du rejeu) d'abord ; D.4 de ce plan repart de son état fusionné. C.4 fait le 2026-11-18 (`c5acd8f47e`, fusion en attente) : `useMapViewPreferences(mapId, zone?)`, règle Auto dans `lib/replay/useAutoTurned.ts` seul, neufs `lib/replay/useContentWidth.ts`, `features/tactical/useOrientationDuPlan.ts`, `features/match-view/_positionsZone.ts` |
 | N23 | `cmd/mapfond-build/` | Plan du backlog, item K.2 (rempart des chemins du poste, `degradations.go`) d'abord ; B.1 de ce plan ensuite |
 | N24 | Dépôt `halo-infinite-map-images` | `main` porte un commit du plan 3D (A.1, recherche de l'installation) après `v1.3.1`, sans tag. Le tag `v1.4.0` de ce plan le publie ; le pilote le dit au journal du plan 3D |
 | N25 | `ReplayViewMenu.tsx`, `replayPreferences.ts`, `i18n/fr.ts` et `en.ts` du rejeu | Un écrivain à la fois (N5, N18) : D.3 et D.6 de ce plan passent après les items du backlog du 18/11 qui les touchent, et avant les items web de la 3D |
@@ -144,6 +163,7 @@ Règles (mémoire `feedback_workflows_et_sous_agents_opus`) :
 | P5 | D.3 rejeu | Sonnet | D.1 validé, D.2, Gate C | |
 | P5 | D.4 Tactique et Occupation | Sonnet | D.3 | |
 | P5 | D.6 suivi de l'étage du joueur ouvert | Sonnet | D.3 | |
+| P5 | D.7 cerne deux tons des marqueurs | Sonnet | Gate 0 | ajouté au Gate 0 (D-3 bis) ; indépendant du relief, part dès qu'une place d'écrivain se libère |
 | P5 | D.5 jetons et garde-rail des couleurs | Sonnet | Gate 0 | puis Gate D |
 | P6 Parc | E.1 cuisson des 114 cartes | pilote | Gate D, **accord du user** | une carte à la fois |
 | P6 | E.2 ADR 0049, docs, note de version | Sonnet | Gate B | |
@@ -190,7 +210,15 @@ et R.2.
 
 ## 3. Lot 0 — conception et mesures
 
-- [ ] 0.1 Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/annexes_fonds_relief/conception.md`,
+- [x] 0.1 (fait le 2026-11-18 : `conception.md`, 773 lignes. Format : image `q = R + 256 G` au pas de 1/256 u,
+      B = deux drapeaux (sur la carte, sol tiré du maillage), A = 0 ou 255 ; JSON avec sols en sommets indexés et
+      traits delta-encodés, 50 à 126 Ko après gzip. Seuils de la maquette confirmés, écart entre étages 1,4 u.
+      Écarts au plan relevés : pas de hauteurs par trait (la coupe filtre par son masque) ; la coupe de la maquette
+      perd jusqu'à 57 % d'un étage là où le dessus du rendu est plus bas qu'un sol praticable ; les unités valent
+      environ 3 m, pas 1 m ; le dossier des fonds doublerait (+40 à 55 Mo) ; 1,4 à 11,9 % des pixels du fond
+      publié n'ont pas de hauteur à la recuisson, cause à établir en B.1. Seuls les deux calques des zones nommées
+      de la Tactique portent une hauteur. Suivi : sol porteur, seuil 0,5 u, délai 300 ms. Cinq questions au user,
+      section 9 du document.) Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/annexes_fonds_relief/conception.md`,
       qui fixe :
       - le format des fichiers par carte. Proposition à éprouver : `<clé>.relief.webp` (R, G = hauteur du
         dessus sur 16 bits, B = drapeaux, A = 0 ou 255 seulement, parce qu'une alpha intermédiaire se
@@ -212,7 +240,13 @@ et R.2.
       manque à `.ai/re_dump/mapvar/` ; d'où l'item B.0.) Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
       fichiers Forge présents, maillage présent. Rendu : `.ai/annexes_fonds_relief/inventaire.md`. Une carte non
       cuisable est nommée, avec la raison.
-- [ ] 0.3 Mesure de la teinte (D-3) : candidates (les 7 préréglages de Den et le gris du thème) contre les
+- [x] 0.3 (fait le 2026-11-18 : `teinte.md`, page publiée https://claude.ai/artifact/JuyH5hNB9kQfu1D9yFCzak. AUCUNE
+      teinte ne tient le seuil de D-3 partout (0 sur 64 combinaisons) : le contour actuel des marqueurs
+      (`--muted-foreground` à 62 %) n'atteint jamais 3:1, et le sol parcourt 28 ΔE de clarté. Teintes les moins
+      mauvaises : Graphite (défaut), Violet (Okabe-Ito, Tol Bright), Vert (Cividis). Mesure complémentaire du
+      pilote : un CERNE DEUX TONS (bande `#080c12` et filet blanc, principe « contraste élevé » de Cartographer)
+      donne au moins 4,4:1 contre tous les paliers de toutes les teintes sous les quatre visions. Décision au
+      user : section 1, D-3 bis.) Mesure de la teinte (D-3) : candidates (les 7 préréglages de Den et le gris du thème) contre les
       encres réelles des marqueurs et des objectifs, sous les quatre visions et dans les deux thèmes, avec
       `colorDistance.ts`. Table en annexe ; page de choix publiée (artefact `verifs`) avec les 4 témoins.
 - [x] 0.4 (fait le 2026-11-18 : aucun maillage publié par l'auteur pour l'une ni l'autre. `mapnav-fetch` sort
@@ -222,8 +256,8 @@ et R.2.
       nommée.) Thunderhead et Thunderhead Heavies (`28a3ac28-…`, `37bc3df6-…`) : `mapnav-fetch` pour leur
       `navmesh.blob` ; s'il existe, la cuisson normale les recuit (fond, plan) avant E.1 ; s'il n'existe pas chez
       l'auteur, le constat (réponse du service, date) est écrit dans l'inventaire et D-7 s'applique.
-- **Gate 0 :** annexes écrites ; format, seuils et teinte validés par le user ; constat de 0.4 écrit. Aucun code
-  de relief dans la brique avant (A.0 n'en dépend pas).
+- **Gate 0 : PASSÉE le 2026-11-18** (décisions en section 1 bis A). Annexes écrites ; format, seuils et teinte
+  validés par le user ; constat de 0.4 écrit. Aucun code de relief dans la brique avant (A.0 n'en dépend pas).
 
 ## 4. Lot A — brique `halo-infinite-map-images` v1.4.0
 
@@ -347,6 +381,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 - [ ] D.4 Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
       positions filtrées par étage sur `MatchPositionDTO.z`. Tactique : calques filtrés selon la liste de 0.1,
       mention dans la légende des autres.
+- [ ] D.7 Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
+      les marqueurs d'objectif qui partagent ce langage (`floorRings.ts`, `objectivesLayer.ts` : relire), sur
+      les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
+      `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
+      les quatre visions, par palette et par thème.
 - [ ] D.6 Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
 - [ ] D.5 Jetons `map-relief-*` dans chaque palette (`semantic-tokens.ts`, `palettes/`), valeurs de 0.3. Garde-rail
