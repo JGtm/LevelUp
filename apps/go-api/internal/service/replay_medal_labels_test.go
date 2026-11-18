@@ -205,3 +205,41 @@ func TestMedalLabels_LangueEnPanneAbsenteDeLaTable(t *testing.T) {
 		t.Errorf("la langue manquante n'est pas journalisée : %q", logs.String())
 	}
 }
+
+// TestMedalLabels_RareteLueDansLOrdreDesLangues : deux langues aux raretés différentes, la rareté servie
+// est celle de la première langue de i18n.Locales() qui en porte une, quel que soit l'ordre d'un parcours
+// de table (passes répétées : un parcours de map non ordonné ne passerait pas).
+func TestMedalLabels_RareteLueDansLOrdreDesLangues(t *testing.T) {
+	langues := i18n.Locales()
+	if len(langues) < 2 {
+		t.Skip("une seule langue configurée : aucun ordre à départager")
+	}
+	svc := &replayService{titleSlug: title.DefaultSlug}
+	ligne := func(difficulte string) map[int64]port.MedalDefinitionRow {
+		return map[int64]port.MedalDefinitionRow{101: {MedalID: 101, Label: "x", Difficulty: difficulte}}
+	}
+
+	rows := map[i18n.Locale]map[int64]port.MedalDefinitionRow{}
+	for i, l := range langues {
+		rows[l] = ligne("Rarete" + string(l) + strings.Repeat("!", i))
+	}
+	want := "Rarete" + string(langues[0])
+	repli := map[i18n.Locale]map[int64]port.MedalDefinitionRow{}
+	for i, l := range langues {
+		if i == 0 {
+			repli[l] = ligne("") // la première langue ne porte pas de rareté : la suivante qui en porte gagne
+			continue
+		}
+		repli[l] = ligne("Rarete" + string(l) + strings.Repeat("!", i))
+	}
+	wantRepli := "Rarete" + string(langues[1]) + "!"
+
+	for pass := 0; pass < 200; pass++ {
+		if got := svc.medalLabelOf(101, rows).Difficulty; got != want {
+			t.Fatalf("passe %d : rareté %q, attendu %q (première langue)", pass, got, want)
+		}
+		if got := svc.medalLabelOf(101, repli).Difficulty; got != wantRepli {
+			t.Fatalf("passe %d : rareté %q, attendu %q (première langue qui en porte une)", pass, got, wantRepli)
+		}
+	}
+}

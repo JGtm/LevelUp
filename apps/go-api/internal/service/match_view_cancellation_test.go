@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/port"
 )
 
@@ -163,16 +162,15 @@ func TestComputeExpectedAssists_CoefPopulationnelEnEchec_EstJournalise(t *testin
 	})
 }
 
-// E5.5 : l'échec de lecture des métadonnées et de résolution des médailles du feed, sur une
-// requête abandonnée, n'est jamais un ERROR ; sur une requête vivante, il l'est.
-func TestMatchView_MetadonneesEtMedaillesDuFeed_NiveauSelonLaRequete(t *testing.T) {
+// E5.5 : l'échec de lecture des métadonnées, sur une requête abandonnée, n'est jamais un ERROR ;
+// sur une requête vivante, il l'est.
+func TestMatchView_Metadonnees_NiveauSelonLaRequete(t *testing.T) {
 	annule := fmt.Errorf("lecture: %w", context.Canceled)
 	panne := errors.New("database is locked")
 	vivante := context.Background()
 	abandonnee, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	medailles := []domain.MatchHighlightEvent{{EventType: highlightevent.EventTypeMedal, MedalName: "Killing Spree"}}
 	for _, c := range []struct {
 		nom       string
 		ctx       context.Context
@@ -188,14 +186,6 @@ func TestMatchView_MetadonneesEtMedaillesDuFeed_NiveauSelonLaRequete(t *testing.
 			if _, err := NewMatchViewService(repo, "xuid1").GetMatchView(c.ctx, "m1"); err == nil {
 				t.Fatal("l'échec de lecture des métadonnées doit remonter")
 			}
-			if got := strings.Contains(logs.String(), "level=ERROR"); got != c.wantError {
-				t.Errorf("ERROR journalisé = %v, want %v : %s", got, c.wantError, logs.String())
-			}
-		})
-		t.Run("médailles du feed : "+c.nom, func(t *testing.T) {
-			logs := logsNiveau(t)
-			repo := &mockMatchViewRepo{errs: map[string]error{"LookupMedalMetaByName": c.err}}
-			decorateMedalEvents(c.ctx, medailles, repo, nil)
 			if got := strings.Contains(logs.String(), "level=ERROR"); got != c.wantError {
 				t.Errorf("ERROR journalisé = %v, want %v : %s", got, c.wantError, logs.String())
 			}

@@ -151,9 +151,9 @@ func TestPerMinuteEntry_RoundingAndMatchCount(t *testing.T) {
 	// On vérifie ici uniquement la propriété domain.
 	e := domain.SquadPerMinuteEntry{
 		Player:           "Me",
-		KillsPerMinute:   1.5,
-		DeathsPerMinute:  0.7,
-		AssistsPerMinute: 0.3,
+		KillsPerMinute:   ptrF(1.5),
+		DeathsPerMinute:  ptrF(0.7),
+		AssistsPerMinute: ptrF(0.3),
 		MatchCount:       8,
 	}
 	if e.Player != "Me" || e.MatchCount != 8 {
@@ -211,19 +211,20 @@ func TestBuildSquadPerMinuteStats_DistinctValuesPerTeammate(t *testing.T) {
 	// 600s = 10 minutes : kpm = kills / 10.
 	wantKPM := map[string]float64{"main": 1.0, "friend1": 0.4, "friend2": 0.1}
 	for gt, want := range wantKPM {
-		if got := byPlayer[gt].KillsPerMinute; got != want {
+		if got := cadence(t, gt+" frags", byPlayer[gt].KillsPerMinute); got != want {
 			t.Errorf("%s: KillsPerMinute want %.2f, got %.2f", gt, want, got)
 		}
 	}
 	// Bug cadenassé : les 3 valeurs doivent être distinctes (sinon : rows teammate
 	// = rows main → mêmes barres pour tout le squad).
-	if main.KillsPerMinute == f1.KillsPerMinute || main.KillsPerMinute == f2.KillsPerMinute {
-		t.Errorf("teammates ont la même kpm que le main (%.2f) → bug bound-to-main",
-			main.KillsPerMinute)
+	mk, k1, k2 := cadence(t, "main frags", main.KillsPerMinute), cadence(t, "friend1 frags", f1.KillsPerMinute),
+		cadence(t, "friend2 frags", f2.KillsPerMinute)
+	if mk == k1 || mk == k2 {
+		t.Errorf("teammates ont la même kpm que le main (%.2f) → bug bound-to-main", mk)
 	}
-	if f1.AssistsPerMinute == f2.AssistsPerMinute {
-		t.Errorf("friend1 et friend2 ont la même apm (%.2f) → bug bound-to-main",
-			f1.AssistsPerMinute)
+	a1, a2 := cadence(t, "friend1 assistances", f1.AssistsPerMinute), cadence(t, "friend2 assistances", f2.AssistsPerMinute)
+	if a1 == a2 {
+		t.Errorf("friend1 et friend2 ont la même apm (%.2f) → bug bound-to-main", a1)
 	}
 }
 
@@ -247,8 +248,9 @@ func TestBuildSquadPerMinuteStats_NoSquadLoader_TeammatesEmpty(t *testing.T) {
 		t.Fatalf("want 2 entries (main + friend1 placeholder), got %d", len(got))
 	}
 	for _, e := range got {
-		if e.Player == "friend1" && (e.KillsPerMinute != 0 || e.MatchCount != 0) {
-			t.Errorf("friend1 sans squadLoader : entry doit être vide, got %+v", e)
+		if e.Player == "friend1" && (e.KillsPerMinute != nil || e.DeathsPerMinute != nil || e.AssistsPerMinute != nil ||
+			e.DamageDealtPerMinute != nil || e.DamageTakenPerMinute != nil || e.MatchCount != 0) {
+			t.Errorf("friend1 sans squadLoader : toutes les cadences doivent être inconnues (nil), got %+v", e)
 		}
 	}
 }

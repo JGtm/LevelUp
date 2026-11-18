@@ -63,9 +63,6 @@ func replayFixture() *countingMatchViewRepo {
 			},
 			killSources: []domain.KillSourceRaw{{XUID: me, TimeMS: 20_000, SourceTag: 0x11, Headshot: true}},
 			killAssists: []domain.KillAssistRaw{{XUID: me, TimeMS: 20_000, AssistXUID: str(friend), AssistGamertag: str("Ami")}},
-			medalMetasByName: map[string]domain.MedalNameMeta{
-				"Double Kill": {MedalNameID: 7, Label: "Double frag", Description: "Deux frags rapprochés"},
-			},
 		},
 		media: []domain.MediaAssocRaw{{FileID: "f1", FileName: "clip.mp4", FilePath: "captures/clip.mp4", Kind: "video",
 			ThumbnailPath: str("captures/clip.webp"), CaptureStartTime: str("2026-10-01T20:02:00Z"), OwnerSlug: "ami"}},
@@ -83,7 +80,7 @@ func replayFixture() *countingMatchViewRepo {
 // du titre, rejeu, analyse en cours, taxonomie des modes, favoris.
 func replayFixtureService(repo *countingMatchViewRepo) (*MatchViewService, *replayCounters) {
 	c := &replayCounters{}
-	assets := &stubAssetURL{medalImg: "/static/medal.png", killIcons: map[uint32]canonical.KillSourceIcon{
+	assets := &stubAssetURL{killIcons: map[uint32]canonical.KillSourceIcon{
 		0x11: {WeaponKey: "hinf_br75", Label: "BR75", ImageURL: "/static/killfeed-11.png", Tinted: true},
 	}}
 	// Analyse en cours sur la seule arme du kill : le rejeu, lui, est là — à condition que
@@ -208,7 +205,7 @@ func assertHeaderExercised(t *testing.T, h domain.MatchViewHeader) {
 }
 
 // assertFeedExercised : le fil porte les décorations attendues (arme, assistant, équipe du
-// tueur, médaille résolue) et le recalage T0, sans event de countdown.
+// tueur, médaille nommée) et le recalage T0, sans event de countdown.
 func assertFeedExercised(t *testing.T, events []domain.MatchHighlightEvent, killsFromKV bool) {
 	t.Helper()
 	var withWeapon, withAssist, withMedal, shifted, kills, withTeam bool
@@ -218,7 +215,7 @@ func assertFeedExercised(t *testing.T, events []domain.MatchHighlightEvent, kill
 		}
 		withWeapon = withWeapon || e.WeaponKey == "hinf_br75"
 		withAssist = withAssist || e.AssistGamertag == "Ami"
-		withMedal = withMedal || e.MedalLabel == "Double frag"
+		withMedal = withMedal || (e.EventType == highlightevent.EventTypeMedal && e.MedalName == "Double Kill")
 		shifted = shifted || (e.EventTimeMS != nil && *e.EventTimeMS == 5_000 && e.VictimXUID != nil)
 		kills = kills || e.EventType == highlightevent.EventTypeKill
 		withTeam = withTeam || (e.EventType == highlightevent.EventTypeKill && e.ActorTeamID != nil)

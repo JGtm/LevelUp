@@ -189,9 +189,7 @@ func buildScoreboardObjective(o domain.ObjectiveRaw) *domain.MatchScoreboardObje
 
 // indexBulkMedalsByXUID indexe les médailles bulk par XUID pour O(1) lookup.
 // Icône title-aware via static.MedalImage (comme convertMedals du résumé) : PNG pour
-// Halo Infinite, sprite (feuille + offset) pour Halo 5. L'ancien chemin
-// assetURL.MedalImageURL renvoyait "" pour H5 (pas de PNG par-médaille) → médailles
-// vides dans le drawer scoreboard (GH-5a). titleSlug tiré de l'adapter.
+// Halo Infinite, sprite (feuille + offset) pour Halo 5. titleSlug tiré de l'adapter.
 func indexBulkMedalsByXUID(
 	bulkMedals []domain.BulkMedalRaw,
 	assetURL games.TitleAssetURLAdapter,

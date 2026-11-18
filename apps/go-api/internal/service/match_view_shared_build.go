@@ -99,8 +99,8 @@ func (s *MatchViewService) isMatchFavorite(ctx context.Context, matchID string) 
 }
 
 // decorateHighlightEvents pose sur les events du fil (EN PLACE) l'arme, l'assistant, la
-// victime et l'équipe du tueur, puis l'identité des médailles. Ce sont des décorations, pas
-// des entrées d'un calcul : elles se posent après l'assemblage des events.
+// victime et l'équipe du tueur. Ce sont des décorations, pas des entrées d'un calcul : elles se
+// posent après l'assemblage des events.
 func (s *MatchViewService) decorateHighlightEvents(ctx context.Context, events []domain.MatchHighlightEvent, d matchViewData) {
 	decorateKillFeed(ctx, events, killFeedInputs{
 		sources:    d.killSources,
@@ -109,5 +109,4 @@ func (s *MatchViewService) decorateHighlightEvents(ctx context.Context, events [
 		scoreboard: d.scoreboard,
 		assetURL:   s.assetURL,
 	})
-	decorateMedalEvents(ctx, events, s.repo, s.assetURL)
 }

@@ -453,9 +453,6 @@ type TitleAssetURLAdapter interface {
 	// Retourne "" si mapName est vide, est un UUID ou n'est pas reconnu.
 	MapImageURL(mapName string) string
 
-	// MedalImageURL retourne l'URL de l'icône d'une médaille à partir de son ID numérique.
-	MedalImageURL(medalID uint64) string
-
 	// CSRRankImageURL retourne l'URL du badge d'un rang CSR (tier + sub-tier).
 	// Cas spécial : pour Onyx, utiliser CSRRankImageURLOnyx (pas de sub-tier).
 	CSRRankImageURL(tier string, subTier int) string

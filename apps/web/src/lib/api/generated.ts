@@ -9408,12 +9408,7 @@ export interface components {
             headshot?: boolean;
             /** Format: int64 */
             killer_damage_pct?: number;
-            medal_description?: string;
-            medal_image_url?: string;
-            medal_label?: string;
             medal_name?: string;
-            /** Format: int64 */
-            medal_name_id?: number;
             victim_gamertag?: string;
             /** Format: int64 */
             victim_team_id?: number;
@@ -13495,15 +13490,15 @@ export interface components {
         };
         SquadPerMinuteEntry: {
             /** Format: double */
-            assists_per_minute: number;
+            assists_per_minute?: number;
             /** Format: double */
             damage_dealt_per_minute?: number;
             /** Format: double */
             damage_taken_per_minute?: number;
             /** Format: double */
-            deaths_per_minute: number;
+            deaths_per_minute?: number;
             /** Format: double */
-            kills_per_minute: number;
+            kills_per_minute?: number;
             /** Format: int64 */
             match_count: number;
             player: string;

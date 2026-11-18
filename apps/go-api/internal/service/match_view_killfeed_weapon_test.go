@@ -303,48 +303,6 @@ func TestDecorateKillFeed_VictimeTroisEtats(t *testing.T) {
 	}
 }
 
-// TestDecorateMedalEvents_ResolutionEtRepli : la médaille résolue porte id, label,
-// description et visuel ; la médaille inconnue du référentiel garde son SEUL nom brut
-// (le front l'écrit en toutes lettres) ; un kill n'est jamais touché.
-func TestDecorateMedalEvents_ResolutionEtRepli(t *testing.T) {
-	events := []domain.MatchHighlightEvent{
-		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A"),
-			MedalName: "Odin's Raven"},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("B"),
-			MedalName: "Inconnue Totale"},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("B")},
-	}
-	repo := &mockMatchViewRepo{medalMetasByName: map[string]domain.MedalNameMeta{
-		"Odin's Raven": {MedalNameID: 1512363953, Label: "Corbeau d'Odin", Description: "Desc"},
-	}}
-	adapter := &stubAssetURL{medalImg: "/static/medals/1512363953.png"}
-
-	decorateMedalEvents(context.Background(), events, repo, adapter)
-
-	res := events[1]
-	if res.MedalNameID == nil || *res.MedalNameID != 1512363953 ||
-		res.MedalLabel != "Corbeau d'Odin" || res.MedalDescription != "Desc" {
-		t.Errorf("médaille résolue : %+v", res)
-	}
-	if res.MedalImageURL == "" {
-		t.Errorf("médaille résolue sans visuel (adapter présent)")
-	}
-	if inc := events[2]; inc.MedalNameID != nil || inc.MedalLabel != "" || inc.MedalImageURL != "" {
-		t.Errorf("médaille inconnue : décorée (%+v) alors que le référentiel ne la connaît pas", inc)
-	}
-	if anon := events[3]; anon.MedalNameID != nil || anon.MedalLabel != "" {
-		t.Errorf("médaille sans nom brut : décorée (%+v)", anon)
-	}
-	if k := events[0]; k.MedalLabel != "" || k.MedalImageURL != "" {
-		t.Errorf("un kill porte une identité de médaille (%+v)", k)
-	}
-
-	// Dégradations : repo nil, tranche vide — pas de panique.
-	decorateMedalEvents(context.Background(), events, nil, nil)
-	decorateMedalEvents(context.Background(), nil, repo, nil)
-}
-
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events
 // dont 3 kills et 1 médaille compte 3, jamais 4 — sinon le taux publié serait faux.
 // Le headshot compte PLUS LARGE que l'icône (G.1) : events[1] a un headshot connu (faux)

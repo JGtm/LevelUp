@@ -9,8 +9,10 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -248,5 +250,71 @@ func TestLecture_RefuseUnGzipTronque(t *testing.T) {
 		if observability.LoadCounter(CounterUnreadable) <= avant {
 			t.Errorf("coupé à %d octets : non compté", n)
 		}
+	}
+}
+
+// capturerLogs redirige slog vers un tampon le temps du test.
+func capturerLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// TestFichierTactiqueIllisible_CompteurEtMessageDistincts : un fichier du sous-dossier des fichiers tactiques
+// qui ne se décode pas est compté sur son compteur et journalisé sous son message ; le compteur des rejeux
+// illisibles ne bouge pas. Un artefact corrompu du dossier parent reste compté sur le compteur des artefacts
+// et ne touche pas celui des fichiers tactiques.
+func TestFichierTactiqueIllisible_CompteurEtMessageDistincts(t *testing.T) {
+	dir := t.TempDir()
+	rasters := filepath.Join(dir, title.SousDossierRasters)
+	if err := os.MkdirAll(rasters, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tactique := title.TacticalRasterFileIn(dir, courtTest)
+	tronque := gzipTest(t, docTest)
+	ecrireTest(t, tactique, tronque[:len(tronque)/2])
+
+	logs := capturerLogs(t)
+	artefactsAvant := observability.LoadCounter(CounterUnreadable)
+	tactiqueAvant := observability.LoadCounter(CounterTacticalUnreadable)
+
+	if _, err := ReadBytes(tactique); err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("un fichier tactique tronqué doit donner une erreur, pas l'absence : %v", err)
+	}
+	if got := observability.LoadCounter(CounterTacticalUnreadable) - tactiqueAvant; got != 1 {
+		t.Errorf("compteur des fichiers tactiques : +%d, attendu +1", got)
+	}
+	if observability.LoadCounter(CounterUnreadable) != artefactsAvant {
+		t.Error("un fichier tactique illisible est compté comme un rejeu illisible")
+	}
+	if !strings.Contains(logs.String(), "fichier tactique illisible") || strings.Contains(logs.String(), "artefact illisible") {
+		t.Errorf("message attendu « fichier tactique illisible », journal : %q", logs.String())
+	}
+
+	// L'absence d'un fichier tactique reste nominale : ni compteur ni journal.
+	logs.Reset()
+	if _, err := ReadBytes(title.TacticalRasterFileIn(dir, "ffffffff")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("fichier tactique absent : %v", err)
+	}
+	if observability.LoadCounter(CounterTacticalUnreadable)-tactiqueAvant != 1 || logs.Len() != 0 {
+		t.Errorf("l'absence d'un fichier tactique ne se compte ni ne se journalise : journal %q", logs.String())
+	}
+
+	// Un artefact du dossier parent : les compteurs se répartissent à l'inverse.
+	ecrireTest(t, cheminCanonique(dir), tronque[:len(tronque)/2])
+	if _, err := ReadBytes(cheminCanonique(dir)); err == nil {
+		t.Fatal("un artefact tronqué doit donner une erreur")
+	}
+	if got := observability.LoadCounter(CounterUnreadable) - artefactsAvant; got != 1 {
+		t.Errorf("compteur des artefacts : +%d, attendu +1", got)
+	}
+	if observability.LoadCounter(CounterTacticalUnreadable)-tactiqueAvant != 1 {
+		t.Error("un artefact illisible est compté comme un fichier tactique illisible")
+	}
+	if !strings.Contains(logs.String(), "artefact illisible") {
+		t.Errorf("message attendu « artefact illisible », journal : %q", logs.String())
 	}
 }
