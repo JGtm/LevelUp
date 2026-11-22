@@ -13,15 +13,24 @@ import { fillTemplate } from '@/lib/i18n/template'
 import type { HistoryPass, HistorySyncStatus, TitleHistoryStatus } from './syncNowQueries'
 import type { SyncNowText } from './syncNowText'
 
-/** Relecture de l'état du cycle, en ms : toutes les 3 s tant qu'un cycle tourne, jamais au repos. */
+/** Relecture de l'état du cycle, en ms : toutes les 3 s tant qu'un cycle tourne. */
 export const SYNC_CYCLE_POLL_MS = 3_000
+
+/**
+ * Relecture de l'état du cycle au repos, en ms : sans elle, un cycle automatique (ou lancé depuis un autre
+ * onglet) passerait inaperçu et le bouton resterait actif jusqu'au refus. TanStack Query suspend la relecture
+ * tant que l'onglet est caché (`refetchIntervalInBackground` à faux, sa valeur par défaut) : une lecture légère
+ * toutes les 30 s, onglet visible seulement.
+ */
+export const SYNC_CYCLE_IDLE_POLL_MS = 30_000
 
 /** Relecture de l'état de l'historique, en ms : toutes les 5 s pendant un cycle, toutes les 30 s pendant un rattrapage. */
 export const HISTORY_POLL_RUNNING_MS = 5_000
 export const HISTORY_POLL_CATCHING_UP_MS = 30_000
 
-export function syncCycleRefetchMs(state: { running: boolean } | undefined): number | false {
-  return state?.running ? SYNC_CYCLE_POLL_MS : false
+/** Cadence de relecture de l'état du cycle : rapide pendant un cycle, lente au repos (onglet visible seulement). */
+export function syncCycleRefetchMs(state: { running: boolean } | undefined): number {
+  return state?.running ? SYNC_CYCLE_POLL_MS : SYNC_CYCLE_IDLE_POLL_MS
 }
 
 /**
@@ -37,9 +46,18 @@ export function historyRefetchMs(status: HistorySyncStatus | undefined, cycleRun
 /**
  * Libellé de l'état d'un titre. L'historique n'est dit complet que si aucun film n'attend son analyse : sinon
  * l'écran reprend l'indication des tuiles de match (« Analyse en cours » pendant un cycle, « Analyse en
- * attente » sinon), le même texte dans la même langue. Les autres états gardent le libellé du serveur.
+ * attente » sinon), le même texte dans la même langue. Un rattrapage que la synchronisation automatique
+ * désactivée laisse à l'arrêt se dit « en pause » (le bouton « Synchroniser maintenant » reste utilisable ; un
+ * cycle en cours reprend le libellé du serveur). Les autres états gardent le libellé du serveur.
  */
-export function historyStateLabel(title: TitleHistoryStatus, locale: Locale, cycleRunning: boolean): string {
+export function historyStateLabel(
+  t: SyncNowText,
+  title: TitleHistoryStatus,
+  locale: Locale,
+  cycleRunning: boolean,
+  autoSyncEnabled: boolean,
+): string {
+  if (title.state === 'catching_up' && !autoSyncEnabled && !cycleRunning) return t.catchUpPaused
   if (title.state === 'complete' && title.films_pending) {
     return formatMessage(commonManifest, analysisPendingLabelKey('badge', cycleRunning), locale)
   }

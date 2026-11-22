@@ -53,6 +53,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/sync/filmfetch"
 )
 
@@ -308,6 +309,7 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	defer liberer()
 	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
+	filmbacklog.AjouterEcrits(d.TitleSlug, sum.Written)
 	// CE QUI RESTE APRES LA PASSE : le hors-travail, plus ce que la passe n a pas atteint (budget de
 	// temps, arret) — la jauge de retard decrit l etat de la base une fois la passe finie, pas celui
 	// d avant.

@@ -11,6 +11,7 @@ import { testCapabilities } from '@/test/capabilities'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SyncNowCard } from './SyncNowCard'
+import { SYNC_CYCLE_IDLE_POLL_MS } from './syncNowLogic'
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() } }))
 
@@ -68,6 +69,23 @@ describe('SyncNowCard', () => {
     expect(bouton).toBeDisabled()
     fireEvent.click(bouton)
     expect(launches).toBe(0)
+  })
+
+  it('au repos, un cycle automatique est repéré par la relecture légère, sans clic', async () => {
+    let running = false
+    server.use(http.get(`${API}/sync/cycle`, () => HttpResponse.json({ running })))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderWithProviders(<SyncNowCard />)
+      expect(await screen.findByRole('button', { name: 'Synchroniser maintenant' })).toBeEnabled()
+      running = true
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SYNC_CYCLE_IDLE_POLL_MS + 1_000)
+      })
+      expect(await screen.findByRole('button', { name: 'Synchronisation en cours…' })).toBeDisabled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('un cycle déjà en cours côté serveur (409) se dit par le texte de l’interface, pas celui du serveur', async () => {
@@ -157,7 +175,7 @@ describe('SyncNowCard — état de l’historique', () => {
     })
     renderWithProviders(<SyncNowCard />)
     expect(await screen.findByTestId('history-state')).toHaveTextContent('Complet')
-    expect(screen.getByTestId('history-last-pass')).toHaveTextContent('Aucune passe depuis le démarrage')
+    expect(screen.getByTestId('history-last-pass')).toHaveTextContent('Aucune passe enregistrée')
     expect(screen.getByTestId('history-next-pass')).toHaveTextContent('Pas encore planifiée')
     await new Promise((r) => setTimeout(r, 150))
     expect(historyReads).toBe(1)
@@ -209,6 +227,15 @@ describe('SyncNowCard — état de l’historique', () => {
     serveurHistorique({ auto_sync_enabled: false, titles: [TITRE_RATTRAPAGE] })
     renderWithProviders(<SyncNowCard />)
     expect(await screen.findByTestId('history-next-pass')).toHaveTextContent('Synchronisation automatique désactivée')
+  })
+
+  it('synchronisation automatique désactivée : le rattrapage se dit en pause, et le bouton reste utilisable', async () => {
+    serveurHistorique({ auto_sync_enabled: false, titles: [TITRE_RATTRAPAGE] })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByTestId('history-state')).toHaveTextContent(
+      'Rattrapage en pause : synchronisation automatique désactivée',
+    )
+    expect(screen.getByRole('button', { name: 'Synchroniser maintenant' })).toBeEnabled()
   })
 
   it('en anglais, les rangées et les dates suivent la langue de l’interface', async () => {

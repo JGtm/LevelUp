@@ -37,7 +37,8 @@ import (
 // et cadre avec le besoin « notif de sync depuis le VPS » (sync de fond).
 //
 // N'émet RIEN si aucun nouveau match ce cycle (anti-bruit : pas de « déjà à jour »
-// répété à chaque tick).
+// répété à chaque tick), ni pour un cycle qui n'a fait que rattraper l'historique : les matchs rangés par
+// le rattrapage ne sont pas « nouveaux » (newMatchesOf).
 func (s *AutoSyncScheduler) notifyDiscordSyncCycle(ctx context.Context, trigger string, cycleStart time.Time, res *RunOnceResult) {
 	if trigger != adminstate.TriggerCron {
 		return // seul le cycle périodique notifie (pas les runs manuels/diag)
@@ -67,8 +68,14 @@ func (s *AutoSyncScheduler) collectCycleNewMatchPlayers(cycleStart time.Time, re
 	return mergeCycleNewMatchPlayers(cycleStart, res.newMatchPlayers, s.Snapshot().Players)
 }
 
+// newMatchesOf rend le nombre de NOUVEAUX matchs d'une passe : les matchs insérés, moins ceux que le
+// rattrapage de l'historique a rangés. La notification de fin de cycle n'annonce que ceux-là : une passe de
+// rattrapage d'un historique de milliers de matchs ne doit pas annoncer « N nouveaux matchs » à chaque
+// cycle. Un rattrapage plus grand que le total inséré (compte incohérent) vaut zéro, jamais un nombre négatif.
+func newMatchesOf(inserted, catchUp int) int { return max(0, inserted-catchUp) }
+
 // mergeCycleNewMatchPlayers fusionne, en UNE ligne par gamertag, les joueurs ayant
-// inséré >= 1 nouveau match ce cycle depuis les deux chemins du cycle :
+// inséré >= 1 NOUVEAU match (hors rattrapage de l'historique) ce cycle depuis les deux chemins du cycle :
 //   - engine : joueurs moteur (titres non live-only) du pipeline V2, comptés dans
 //     CycleResult.PerPlayer (non enregistrés dans playerOutcomes) ;
 //   - snapshot : joueurs live-only (Halo 5) + filet de boot, passés par
@@ -109,10 +116,11 @@ func mergeCycleNewMatchPlayers(cycleStart time.Time, engine []notify.PlayerSyncR
 		add(p)
 	}
 	for _, d := range snapshot {
-		if d.Outcome != "ok" || d.MatchesInserted <= 0 || d.AttemptedAt.Before(cycleStart) {
+		n := newMatchesOf(d.MatchesInserted, d.CatchUpInserted)
+		if d.Outcome != "ok" || n <= 0 || d.AttemptedAt.Before(cycleStart) {
 			continue
 		}
-		add(notify.PlayerSyncResult{Gamertag: d.Gamertag, MatchesSynced: d.MatchesInserted})
+		add(notify.PlayerSyncResult{Gamertag: d.Gamertag, MatchesSynced: n})
 	}
 	return out
 }

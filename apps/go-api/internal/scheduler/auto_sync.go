@@ -22,13 +22,11 @@ package scheduler
 
 import (
 	"context"
-	"log/slog"
 	gosync "sync"
 	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
@@ -40,8 +38,6 @@ import (
 	"levelup/go-api/internal/sync/replayartifacts"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
-
-const defaultIntervalHours = 6
 
 // PlayerActivityChecker est satisfait par watcher.StateProvider.
 // Défini ici pour éviter une dépendance circulaire scheduler→watcher.
@@ -71,83 +67,6 @@ type DeltaRunnerFactory func(ctx context.Context, gamertag, xuid string) DeltaRu
 // temps du RunDelta). En prod : s.acquireLiveTitleRunner. Tests : injecter pour
 // mocker sans pool ni réseau (parité avec RunnerFactory pour le path engine).
 type liveTitleRunnerResolver func(ctx context.Context, slug, gamertag, xuid string) (runner DeltaRunner, runCtx context.Context, release func(), err error)
-
-// RunOnceResult agrège les compteurs d'un cycle de sync.
-type RunOnceResult struct {
-	Total    int           `json:"total"`   // joueurs dans db_profiles
-	Synced   int           `json:"synced"`  // sync delta réussie
-	Skipped  int           `json:"skipped"` // joueur absent du pool, watcher actif, etc.
-	Failed   int           `json:"failed"`  // erreur pendant RunDelta
-	Duration time.Duration `json:"duration_ns"`
-
-	// newMatchPlayers agrège les joueurs MOTEUR (Infinite/V2) ayant inséré >= 1
-	// nouveau match ce cycle — source de la notification Discord de fin de cycle
-	// (toggle discord_notify_sync). Non exporté : jamais sérialisé dans le snapshot
-	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
-	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
-	newMatchPlayers []notify.PlayerSyncResult
-	// debt : ce que le cycle laisse à rattraper (historique incomplet, arriéré de films), pour la cadence de
-	// Run ; busy : le cycle n'a pas tourné, un autre tournait déjà.
-	debt cycleDebt
-	busy bool
-}
-
-// PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
-// un joueur, pour exposition via l'endpoint admin /api/v1/_diag/auto-sync/snapshot.
-type PlayerOutcomeDetail struct {
-	Gamertag        string    `json:"gamertag"`
-	XUID            string    `json:"xuid"`
-	Outcome         string    `json:"outcome"` // "ok", "skipped", "failed"
-	Reason          string    `json:"reason"`  // texte libre expliquant le résultat
-	AttemptedAt     time.Time `json:"attempted_at"`
-	DurationMs      int64     `json:"duration_ms"`
-	MatchesInserted int       `json:"matches_inserted,omitempty"`
-	MatchesSkipped  int       `json:"matches_skipped,omitempty"`
-	MedalsInserted  int       `json:"medals_inserted,omitempty"`
-	SyncStatus      string    `json:"sync_status,omitempty"`
-	ErrorCount      int       `json:"error_count,omitempty"`
-	FirstError      string    `json:"first_error,omitempty"`
-	// ConsecutiveZeroInserts compte les cycles successifs où la sync delta a
-	// réussi sans insérer aucun match. Reset à 0 dès qu'un cycle insère ≥1
-	// match. Non incrémenté sur outcome=skipped/failed (préserve la valeur
-	// précédente). Ajouté suite à l'incident 2026-05-20 : 14 jours de sync à
-	// inserted=0 sans alerte, cf. fix endpoint /matches xuid(NNN).
-	ConsecutiveZeroInserts int `json:"consecutive_zero_inserts,omitempty"`
-	// PostSync : compteurs du pipeline post-sync du dernier RunDelta réussi
-	// (dashboard monitoring admin). Limite assumée : seuls les syncs passés
-	// par syncPlayer (scheduler + cycle forcé) sont capturés — les paths
-	// watcher et HTTP /sync/all ne remontent pas ici (couverts par sync.log).
-	PostSync *domain.PostSyncResult `json:"post_sync,omitempty"`
-	// PostSyncHistoryMs : durées post-sync (ms) des derniers cycles de CE joueur
-	// (ancien → récent), pour la sparkline de tendance. Rempli par Snapshot
-	// depuis le ring postSyncHistory.
-	PostSyncHistoryMs []int64 `json:"post_sync_history_ms,omitempty"`
-}
-
-// ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler
-// émet un slog.WarnContext "zero-insert prolongé" pour un joueur. 6 cycles à
-// 15min = 1h30 de sync delta sans aucun nouveau match — pour un joueur actif
-// c'est suspect (API stale, gamertag changé, format URL incorrect, etc.).
-// Pour un joueur inactif c'est normal et restera juste informatif.
-const ConsecutiveZeroInsertWarnThreshold = 6
-
-// SchedulerSnapshot est exposé par l'endpoint admin pour diagnostic.
-type SchedulerSnapshot struct {
-	LastCycleAt     time.Time             `json:"last_cycle_at"`
-	LastCycleResult *RunOnceResult        `json:"last_cycle_result,omitempty"`
-	IntervalMinutes int                   `json:"interval_minutes"`
-	PoolSize        int                   `json:"pool_size"`
-	Players         []PlayerOutcomeDetail `json:"players"`
-	// Gate : état du gate de déduplication cross-source (claims en vol + âge +
-	// compteurs). Vide si watcher désactivé (NopSyncGate).
-	Gate sync.GateSnapshotData `json:"gate"`
-	// SinceBoot : true si LastCycleAt reflète un cycle EFFECTIF depuis ce boot ;
-	// false si le snapshot est purement RÉHYDRATÉ du disque (dernier cycle d'un
-	// boot précédent, cf. C1). Combiné à LastCycleAt (zéro = aucune donnée
-	// connue), il permet au front de distinguer « aucun cycle depuis le boot mais
-	// snapshot connu (daté) » de « aucune donnée » et « cycle en direct ».
-	SinceBoot bool `json:"since_boot"`
-}
 
 // AutoSyncScheduler orchestre la sync delta périodique de tous les joueurs.
 //
@@ -338,31 +257,6 @@ func (s *AutoSyncScheduler) WithPrestigeHook(hook func(ctx context.Context, play
 	return s
 }
 
-// WithCycleOrchestrator branche le pipeline V2 (ADR 0027), unique moteur de sync
-// des joueurs moteur depuis la suppression du pipeline V1 (lot D1c). Câbler un
-// orchestrator non-nil active V2 ; nil → filet structurel syncPlayer de boot.
-//
-// Doit être appelé depuis cmd/server/main.go au boot, avant Run.
-func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *AutoSyncScheduler {
-	s.cycleOrchestrator = o
-	return s
-}
-
-// shouldUseV2 retourne true si le pipeline V2 (ADR 0027) doit être tenté pour le
-// prochain cycle. V2 est désormais le pipeline PAR DÉFAUT : il isole la fenêtre
-// d'écriture (Discovery/Fetch en RO, Persist writer court) et supprime la
-// contention qui gelait les lectures user-facing pendant un sync V1 (le writer RW
-// shared était tenu pendant tout le fetch réseau).
-//
-// shouldUseV2 indique si le pipeline V2 (orchestrator) pilote le cycle. Depuis la
-// suppression du pipeline V1 (lot D1c, ADR 0027), V2 est l'unique moteur : la seule
-// condition est que l'orchestrator soit câblé (main.go, parity-complete). Le flag
-// LEVELUP_SYNC_PIPELINE (échappatoire de rollback vers V1) et le fallback automatique
-// ont été supprimés — un orchestrator non câblé bascule sur le filet syncPlayer de boot.
-func (s *AutoSyncScheduler) shouldUseV2() bool {
-	return s.cycleOrchestrator != nil
-}
-
 // Snapshot retourne un cliché thread-safe du dernier cycle de sync, incluant
 // le détail par joueur (raison du skip/failure, compteurs, erreurs).
 // Utilisé par /api/v1/_diag/auto-sync/snapshot.
@@ -444,90 +338,4 @@ func (s *AutoSyncScheduler) poolSizeSafe() int {
 		return s.pool.Size()
 	}
 	return 0
-}
-
-// CurrentInterval retourne l'intervalle courant depuis les settings.
-// Utilise _minutes en priorité si > 0, sinon fallback sur _hours.
-// Retourne defaultIntervalHours en cas d'erreur de lecture.
-func (s *AutoSyncScheduler) CurrentInterval() time.Duration {
-	cfg, err := s.settings.Load()
-	if err != nil {
-		return intervalFromHours(0)
-	}
-	return resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours)
-}
-
-// resolveInterval retourne la durée à utiliser. minutes > 0 prime sur hours.
-func resolveInterval(minutes, hours int) time.Duration {
-	if minutes > 0 {
-		return time.Duration(minutes) * time.Minute
-	}
-	return intervalFromHours(hours)
-}
-
-// intervalFromHours convertit un nombre d'heures en Duration.
-// Retourne defaultIntervalHours si h <= 0.
-func intervalFromHours(h int) time.Duration {
-	if h <= 0 {
-		return defaultIntervalHours * time.Hour
-	}
-	return time.Duration(h) * time.Hour
-}
-
-// runOnceV2 exécute un cycle complet via le pipeline V2 (ADR 0027).
-// Convertit []PlayerSummary → []syncv2.PlayerProfile, appelle l'orchestrator,
-// mappe le CycleResult → RunOnceResult.
-//
-// Retourne (nil, syncv2.ErrNotImplemented) si l'orchestrator est encore le
-// stub D0 — le caller doit alors fallback vers V1.
-func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.PlayerSummary) (*RunOnceResult, error) {
-	profiles := make([]syncv2.PlayerProfile, 0, len(players))
-	for _, p := range players {
-		profiles = append(profiles, syncv2.PlayerProfile{
-			Gamertag:   p.Gamertag,
-			XUID:       p.XUID,
-			PlayerSlug: p.PlayerSlug,
-			TitleSlug:  resolveTitleSlug(p), // MT-11 / PMT-3 : porte le titre au pipeline V2
-		})
-	}
-
-	start := time.Now()
-	cycleRes, err := s.cycleOrchestrator.Run(ctx, profiles)
-	if err != nil {
-		return nil, err
-	}
-	s.recordV2Passes(players, cycleRes.PerPlayer)
-
-	res := &RunOnceResult{
-		Total:    len(players),
-		Duration: time.Since(start),
-		debt:     cycleDebt{history: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer)},
-	}
-	for _, outcome := range cycleRes.PerPlayer {
-		switch outcome.Status {
-		case "ok", "partial":
-			res.Synced++
-		case "failed":
-			res.Failed++
-		default:
-			res.Skipped++
-		}
-		// Collecter les joueurs moteur ayant reçu de nouveaux matchs pour la
-		// notification Discord de fin de cycle (le pipeline V2 n'enregistre pas
-		// dans playerOutcomes — seul syncPlayer le fait pour les joueurs live/filet).
-		if outcome.MatchesInserted > 0 {
-			res.newMatchPlayers = append(res.newMatchPlayers, notify.PlayerSyncResult{
-				Gamertag:      outcome.Gamertag,
-				MatchesSynced: outcome.MatchesInserted,
-			})
-		}
-	}
-	slog.InfoContext(ctx, "auto_sync: cycle V2 terminé",
-		"total", res.Total,
-		"synced", res.Synced,
-		"failed", res.Failed,
-		"unique_matches", cycleRes.UniqueMatches,
-		"duration", res.Duration.Round(time.Millisecond),
-	)
-	return res, nil
 }
