@@ -210,22 +210,22 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [x] C.1 (fait, `486616aa52` : barre d'élimination centrée à 6 px, de mort à 18 px, losanges suivis, badge collé en haut ; trois fixtures de la barre de lecture mises à jour ; témoins : seuls `frise.html` et `frise-piste-point-de-vue.html` changent, contrôlé par le pilote ; 117 tests ciblés verts) `ui/ReplayMarkTrack.tsx` : sur la rangée du point de vue (`tall`), éliminations dans la moitié haute, morts
       dans la moitié basse ; badges de médaille recalés sur leur marque ; rangée des coéquipiers inchangée (DU-4).
       Géométrie horizontale intouchée (`timelineGeometry.guard.test.ts` vert).
-- [ ] C.2 Bande des titres (D-13) au-dessus de la rangée du point de vue, dans un composant extrait (`ui/ReplayTimelineTracks.tsx` fait 513 lignes : il ne grandit pas) : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
+- [x] C.2 (fait, `106da40b83` : `ui/ReplayAntagonistBand.tsx`, icône partagée `ui/AntagonistIcon.tsx` ; bande toujours présente (14 px, pas de décalage au changement de joueur) ; frise à pistes = barre complète du Standard seulement, la barre d'une ligne du Cinéma n'en a pas ; `ReplayTimelineTracks.tsx` reste à 513) Bande des titres (D-13) au-dessus de la rangée du point de vue, dans un composant extrait (`ui/ReplayTimelineTracks.tsx` fait 513 lignes : il ne grandit pas) : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
       « titre. phrase », clic = curseur à l'instant. Les autres pistes restent `pointer-events-none`.
-- [ ] C.3 Textes D-1 en français et en anglais (D-14), dans un dictionnaire typé `Record<Locale, …>` de
+- [x] C.3 (fait, `6875f5e254` : `i18n/antagonists.i18n.ts`) Textes D-1 en français et en anglais (D-14), dans un dictionnaire typé `Record<Locale, …>` de
       `features/match-replay/i18n/`.
-- [ ] C.4 Tests : marques hautes et basses ; une icône par prise, aucune pour une égalité ; infobulle et nom
+- [x] C.4 (fait, `a866fc65d3` : vus en échec puis verts ; témoins de frise identiques, la bande arrivant par le cadre ; contrôle du pilote : 86 tests ciblés verts) Tests : marques hautes et basses ; une icône par prise, aucune pour une égalité ; infobulle et nom
       accessible ; clic qui déplace le curseur ; témoin 0.4 de la frise comparé (seul le placement vertical change).
 - **Gate C** : gates communs sur `src/features/match-replay/ui` et `model`.
 
 ## Piste D — fiche (Sonnet)
 
-- [ ] D.1 `ui/fiche/FicheAntagonistes.tsx` : section « Antagonistes » du joueur de la fiche à l'instant (D-2), icônes
+- [x] D.1 (fait, `3740794b86`) `ui/fiche/FicheAntagonistes.tsx` : section « Antagonistes » du joueur de la fiche à l'instant (D-2), icônes
       à infobulle (même mécanisme que la frise), noms à la couleur de leur camp, état vide pointillé.
-- [ ] D.2 Branchement dans `ui/ReplayPlayerPanelBody.tsx`, après l'identité, avant « Depuis le début du match »
+- [x] D.2 (fait, `37e7b56f1f` : après « À l'instant », avant « Depuis le début du match » ; cinq fixations régénérées, seule la section ajoutée) Branchement dans `ui/ReplayPlayerPanelBody.tsx`, après l'identité, avant « Depuis le début du match »
       (fait APRÈS E.4, sur sa base).
-- [ ] D.3 Textes D-2 en français et en anglais.
-- [ ] D.4 Tests : titres, égalité, état vide, joueur sans adversaire, changement d'instant.
+- [x] D.3 (fait, `dd39bd4b65` ; anglais « eliminated 1 time » au singulier, à juger à l'écran) Textes D-2 en français et en anglais.
+- [x] D.4 (fait, `e0de067bb2` : 17 tests) Tests : titres, égalité, état vide, joueur sans adversaire, changement d'instant.
 - **Gate D** : gates communs sur `src/features/match-replay/ui/fiche`.
 
 ## Piste E — tuiles et ensemble des masqués (Sonnet)
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — pistes C et D closes et fusionnées (agent : 6 279 tests du dossier et de l'i18n verts). B : écart à D-12 renvoyé (pulsation sur l'axe du rejeu au lieu du temps réel), correction en cours.
 - 2026-11-22 — piste F close (F.3 comprise), fusionnée.
 - 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B (`ant/b`) ; C.2 à C.4 puis D.1 à D.4 par le même agent sur `ant/c` (un seul composant d'icône `ui/AntagonistIcon.tsx` pour la frise et la fiche, sans course entre deux branches).
 - 2026-11-22 — F.1 et F.2 closes et fusionnées ; F.3 ajoutée (champ servi sans lecteur).
