@@ -282,5 +282,27 @@ func applyMatchUsageLevelUp(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "match_usage_films", "levelup_rev", "VARCHAR"); err != nil {
 		return err
 	}
+	return ApplyMatchUsageLatestViews(db)
+}
+
+// EnsureMatchUsageSummary pose le schéma COMPLET du résumé d'usage (tables, colonnes ajoutées par
+// les migrations suivantes, vues `_latest`) : les quatre steps `shared_match_usage_*` dans leur
+// ordre. Idempotent. Exportée pour les bases que la migration ne construit pas (fixtures des
+// lectures de snapshot).
+func EnsureMatchUsageSummary(db *sql.DB) error {
+	for _, step := range []func(*sql.DB) error{
+		applyMatchUsageSummary, applyMatchUsageOutcomes, applyMatchUsageShieldless, applyMatchUsageLevelUp,
+	} {
+		if err := step(db); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ApplyMatchUsageLatestViews (re)crée les deux vues `_latest` du résumé d'usage sur des tables
+// déjà là (films_latest avant players_latest : la seconde se définit sur la première). Appelée par
+// la dernière migration du résumé et par la reconstruction du schéma partagé d'un snapshot.
+func ApplyMatchUsageLatestViews(db *sql.DB) error {
 	return execScript(db, ddlMatchUsageFilmsLatest+ddlMatchUsagePlayersLatest)
 }
