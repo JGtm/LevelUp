@@ -20,6 +20,13 @@ const (
 	persistDrainMax      = 20 * time.Minute
 )
 
+// persistDrainStall : délai sans aucun lot acquitté au bout duquel l'attente de la file rend la main
+// (DrainTimeoutError, Stalled), même avant le délai total. Contrat : un lot se persiste en environ une
+// seconde ; soixante secondes sans acquittement disent un worker bloqué (base qu'il ne peut ouvrir,
+// lot en échec laissé à la reprise périodique du journal), que le délai total ferait attendre jusqu'à
+// quatorze minutes pour une passe de rattrapage.
+const persistDrainStall = 60 * time.Second
+
 // persistDrainTimeout rend le délai d'attente de la file pour `submitted` matchs soumis.
 func persistDrainTimeout(submitted int) time.Duration {
 	return scaledDrainTimeout(persistDrainBase, persistDrainPerMatch, persistDrainMax, submitted)
@@ -34,8 +41,11 @@ func scaledDrainTimeout(base, perMatch, ceiling time.Duration, submitted int) ti
 // durables (journal d'écriture) et la file finit seule en arrière-plan, mais le cycle ne sait pas
 // lesquels sont déjà rangés. Le cycle le relit (ensemble connu) au lieu de tout abandonner.
 type DrainTimeoutError struct {
-	// Waited est le délai accordé à la file.
+	// Waited est le délai accordé à la file ; quand Stalled, le temps réellement attendu.
 	Waited time.Duration
+	// Stalled : l'attente a rendu la main parce qu'aucun lot n'a été acquitté pendant
+	// persistDrainStall (worker bloqué), avant l'expiration du délai total.
+	Stalled bool
 	// Submitted : les matchs effectivement soumis à la file (ni refusés au parsage, ni sans
 	// récupérateur connu), dans un ordre quelconque.
 	Submitted []string
@@ -44,6 +54,10 @@ type DrainTimeoutError struct {
 }
 
 func (e *DrainTimeoutError) Error() string {
+	if e.Stalled {
+		return fmt.Sprintf("PersistCycle: drain sans progrès, rendu après %s (submitted=%d parse_errors=%d): %v",
+			e.Waited, len(e.Submitted), e.ParseErrors, context.DeadlineExceeded)
+	}
 	return fmt.Sprintf("PersistCycle: drain expiré après %s (submitted=%d parse_errors=%d): %v",
 		e.Waited, len(e.Submitted), e.ParseErrors, context.DeadlineExceeded)
 }

@@ -34,7 +34,8 @@ page.
   `main` est fusionnée dans `release/v8.3.0` (geste du pilote, sur accord).
 - **D-2** Une seule règle, une seule source : un paquet `internal/sync/historystate` porte la clé
   `history_complete_at` (nom inchangé : les joueurs déjà marqués par V1 restent marqués), sa lecture
-  (`Complete(ctx, db) bool`, lecture en échec = complet, journalisé, comme aujourd'hui), son écriture
+  (`Complete(ctx, db) (bool, error)` depuis D-25 : une lecture en échec rend l'erreur, jamais « complet » ;
+  l'appelant fait un delta ordinaire, n'écrit rien de l'état, garde le joueur en attente et journalise), son écriture
   (`MarkComplete`), le budget par passe et la borne de sûreté. V2 et Halo 5 l'appellent (V1 seulement pour la borne de profondeur du RunFull : D-18) ; plus
   aucune copie de la clé ni de la logique ailleurs (garde-rail grep, D-9).
 - **D-3** Budget par passe de rattrapage : 200 matchs inconnus, `domain.DefaultSyncOptions().MaxMatches`
@@ -170,6 +171,27 @@ page.
   haut à chaque passe (862 appels de liste pour 1 000 matchs par pas de 25). La première synchronisation
   (aucun match connu) garde son résultat : le delta récupère jusqu'à `MaxMatches` (200 ou
   `initial_max_matches`), comme le full. L'aide n'est pas concernée.
+- **D-25** (pilote, 22/11, après 5t.8) Un cycle lancé juste après un redémarrage avec un journal d'écriture en attente
+  n'est plus bloqué, et une lecture en échec de l'état de l'historique n'est plus « complet ».
+  - [x] D-25.1 Cause racine : la découverte (`cmd/server/sync_v2_wiring.go`, `playerDBOpenerRO`) lisait la base joueur par
+    `OpenReadForQuery`, qui, sans handle en cache, l'ouvre en lecture seule (clé `ro:`, `access_mode=read_only`) ; le worker
+    de la file l'ouvre par `OpenReadWrite` (clé `rw:`, DSN nu) : refus « different configuration », hors de la liste
+    transitoire du worker, lot laissé au journal jusqu'à la reprise périodique. Dans l'autre sens, un handle RW emprunté
+    SANS référence se fermait sous la lecture quand le worker rendait le sien (« sql: database is closed »). Correction à la
+    source : `duckdb.OpenPlayerReadForQuery` (`platform/duckdb/player_read_open.go`) prend une référence sur le handle en
+    cache (RW, sinon RO) et, faute de handle, ouvre dans la configuration de l'écrivain ; branché sur la découverte et sur
+    `historyrepo` (ordonnanceur et écran, qui lisent pendant que la file écrit). Bases partagées exclues (`IsPlayerDBPath`) :
+    leur bascule B-swap doit pouvoir fermer le handle RW. Le worker garde sa liste transitoire inchangée.
+  - [x] D-25.2 Attente sans progrès : `BatchQueue.DrainWhileProgressing` (`persist/queue_drain_stall.go`, compteur
+    d'acquittements de la file) rend `ErrDrainStalled` quand aucun lot n'est acquitté pendant `persistDrainStall` (60 s,
+    `v2/persist_drain.go`) ; le cycle rend `DrainTimeoutError{Stalled: true}` (journalisé), traité comme D-19.2.
+  - [x] D-25.3 `historystate.Complete(ctx, db) (bool, error)` (`ErrNoPlayerDB` sur base absente) ; V2 : état `Unreadable`
+    (delta, aucune écriture de l'état, `HistoryPending` vrai) ; Halo 5 : `playerHistory.Complete` remonte l'erreur (RunDelta :
+    delta en attente) ; `historyrepo` rend l'erreur (écran : « inconnu ») ; ordonnanceur : joueur compté en rattrapage.
+  - [x] D-25.4 `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage` dé-sauté et complété (journal vide, aucun
+    doublon, fin rangée) : cycle après redémarrage 14 min 28 s -> 37 à 44 s (test entier 160 à 168 s), zéro « different
+    configuration », zéro « database is closed ». Tests : attente sans progrès (persist, v2), `Complete` sur erreur
+    (historystate, V2 cycle et chargeur, Halo 5, historyrepo, ordonnanceur), partage du handle (platform/duckdb).
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - Réservé à l'utilisateur : squash dans `main`, tag `v8.2.2`, publication de la release et de la mise à
   jour de l'application, réponse publique sur #213 (texte validé par lui le 22/11).
@@ -436,7 +458,7 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
   introuvables des 25 premières entrées sont recomptés et redemandés à chaque cycle (21 constatés, trois pages lues, après un
   rattrapage de 1 000 matchs dont 30 introuvables).
   Présent depuis D6.1, donc dans la 8.2.1 ; non corrigé ici (hors périmètre, règle 7).
-- [!] 5t.8 DÉFAUT constaté (test gardé sauté, `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage`) : après un
+- [x] 5t.8 (corrigé par D-25, test dé-sauté) DÉFAUT constaté (`TestDifficile_Interruption_CycleApresRedemarrageSansBlocage`) : après un
   redémarrage avec un journal d'écriture en attente (coupure brutale en plein rattrapage), un cycle lancé aussitôt (a) reste
   bloqué 14 minutes 20 (le rejeu du journal échoue sur « same database file with a different configuration » parce que la
   découverte du cycle tient la base joueur en lecture ; erreur hors de la liste des erreurs transitoires du worker ; le
@@ -593,6 +615,8 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - Étape 5ter : DÉFAUT `populateOutcome` (`sync/v2/cycle.go`) compte inséré tout inconnu listé, récupéré ou non (match en 404 ou en 500 durable compris) : `MatchesInserted` et la notification « nouveaux matchs » sont faux ; un match introuvable en tête de liste est de plus redemandé à chaque cycle, sans fin (une demande par cycle). Test gardé sauté : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`.
 - Étape 5ter : un cycle annulé en pleine récupération ne s'arrête pas avant la persistance : la phase de récupération rend les matchs déjà récupérés (les autres sont des erreurs de récupération), la persistance les soumet à la file puis le vidage échoue sur le contexte annulé ; les matchs soumis finissent en arrière-plan ou au journal d'écriture. Sans conséquence sur la convergence (marque-page non avancé, connus sautés), mais le travail soumis après l'annulation est inutile.
 - Étape 5ter : la séquence d'arrêt vide la file de persistance dans une phase bornée à 5 s (`phaseBatchDrainCap`) ; une passe de rattrapage laisse jusqu'à 200 journaux d'écriture (environ 0,2 s par match sur ce banc, 1,1 s mesuré en production) : l'arrêt n'est alors pas « propre » et les bases se ferment sous le worker, le reste est rejoué au démarrage suivant (testé : aucun doublon, aucune perte). Comportement voulu du journal d'écriture, noté pour mémoire.
-- Étape 5ter : lire l'état d'une base joueur (`OpenReadForQuery`) pendant qu'un worker de persistance l'écrit peut rendre `sql: database is closed` (poignée en cache fermée par le worker) ; `historystate.Complete` rend alors « complet ». Observé seulement par les lectures du test (après un arrêt, pendant le rejeu du journal), jamais dans le cycle ; non investigué.
+- Étape 5ter : lire l'état d'une base joueur (`OpenReadForQuery`) pendant qu'un worker de persistance l'écrit peut rendre `sql: database is closed` (poignée en cache fermée par le worker) ; `historystate.Complete` rend alors « complet ». Réglé par D-25 (découverte, `historyrepo` et lectures du banc par `OpenPlayerReadForQuery` ; `Complete` rend l'erreur).
+- D-25 (gate) : `go test ./internal/archlint/` échoue sur la branche intégrée hors de ce lot : `TestRepoRootNEstPlusLuHorsConfigEtResolveur` compte 1 lecteur de RepoRoot dans `internal/sync/replayartifacts/artifacts.go` pour 2 à l'allowlist (fichier non touché ici, dernier commit 822-14) ; l'allowlist est à abaisser par la piste qui l'a migré. Gardes DuckDB, ouverture RW et clé d'historique vertes.
+- D-25 : deux autres lecteurs d'une base joueur passent encore par `OpenReadForQuery` dans le serveur (instantané de fin de cycle `sync/snapshot/snapshot_cutter.go`, `sync/match_recomputer.go`) : sans handle en cache, ils ouvrent en lecture seule et peuvent faire refuser le worker (« different configuration ») le temps de leur lecture. Hors périmètre, noté.
 - D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
 - D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.

@@ -59,6 +59,10 @@ type HistoryState struct {
 	// Failures : les matchs que le rattrapage n'a pas réussi à ranger, avec leur nombre de passes en
 	// échec (du plus ancien au plus récent). N'a de sens que si Incomplete.
 	Failures []historystate.Failure
+	// Unreadable : l'état n'a pas pu être lu (historystate.Complete en échec). Incomplete reste faux :
+	// delta ordinaire, rien n'est rangé ; le joueur reste en attente (HistoryPending) pour que la
+	// cadence courte réessaie.
+	Unreadable bool
 }
 
 // abandoned rend l'ensemble des matchs que le rattrapage ne retente plus (échec à
@@ -104,6 +108,8 @@ type PlayerHistory struct {
 	Proposed   *historystate.Cursor
 	// Failures : les échecs de rattrapage connus au début du cycle (voir HistoryState.Failures).
 	Failures []historystate.Failure
+	// Unreadable : état de l'historique illisible au début du cycle (voir HistoryState.Unreadable).
+	Unreadable bool
 }
 
 // historyTracker suit, pendant un cycle, les joueurs dont l'historique reste incomplet : valeur
@@ -120,7 +126,7 @@ type historyTracker struct {
 func newHistoryTracker(disc DiscoveryResult) *historyTracker {
 	t := &historyTracker{pending: make(map[string]bool, len(disc.History))}
 	for slug, h := range disc.History {
-		t.pending[slug] = h.Incomplete
+		t.pending[slug] = h.Incomplete || h.Unreadable
 	}
 	return t
 }

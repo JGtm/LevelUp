@@ -1,3 +1,10 @@
+## [2026-11-22] Hotfix 8.2.2 : cycle après redémarrage débloqué, état de l'historique illisible jamais « complet » (D-25) — Complété (branche `fix/822-p`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : cause racine, deux configurations d'ouverture de la même base joueur dans le même processus : la découverte du cycle la lisait par `OpenReadForQuery` (lecture seule quand rien n'est en cache) pendant que le worker de la file rejouait son journal par `OpenReadWrite` (refus « different configuration », lot laissé au journal jusqu'à la reprise périodique), et un handle RW emprunté sans référence se fermait sous la lecture (« database is closed »). Correction à la source : `duckdb.OpenPlayerReadForQuery` prend une référence sur le handle en cache et, faute de handle, ouvre dans la configuration de l'écrivain ; branché sur la découverte et sur `historyrepo`. Aucune écriture par le lecteur, aucun second processus, bail inchangé chez l'écrivain ; bases partagées exclues (bascule B-swap). En plus : l'attente de la file rend la main après 60 s sans acquittement (`DrainWhileProgressing`, `DrainTimeoutError{Stalled}`) ; `historystate.Complete` rend `(bool, error)` et ses quatre appelants traitent l'erreur en « inconnu, en attente, rien rangé ».
+- **Résultats observés** : cycle lancé juste après un redémarrage avec 140 journaux en attente : 14 min 28 s avant, 37 à 44 s après ; zéro « different configuration », zéro « database is closed » ; journal vide, aucun doublon, fin rangée.
+- **Suite** : intégration dans la release par le pilote ; deux autres lecteurs de base joueur par `OpenReadForQuery` notés en Découvertes du plan.
+
 ## [2026-11-22] Films : bornes d'avant sur le site hébergé, comportement D-17/D-20 sur le bureau seulement (D-22) — Complété (branche `fix/822-m`)
 
 - **Statut** : Complété, non poussé.

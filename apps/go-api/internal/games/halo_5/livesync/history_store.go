@@ -39,8 +39,8 @@ func newPlayerHistory(playerDBPath, gamertag string) playerHistory {
 	return playerHistory{playerDBPath: playerDBPath, gamertag: gamertag}
 }
 
-// read ouvre la base joueur le temps de fn. Les lectures de historystate journalisent leurs échecs ;
-// seule l'ouverture remonte en erreur.
+// read ouvre la base joueur le temps de fn. Seule l'ouverture remonte en erreur ici ; une lecture de
+// historystate qui rend une erreur la remonte par fn (Complete) ou la journalise elle-même.
 func (h playerHistory) read(fn func(db *sql.DB)) error {
 	db, err := syncpkg.OpenPlayerDB(h.playerDBPath)
 	if err != nil {
@@ -74,10 +74,18 @@ func (h playerHistory) write(ctx context.Context, what string, fn func(db *sql.D
 	return fn(db.SQLDb())
 }
 
+// Complete rend l'erreur d'ouverture de la base joueur ou de lecture de la clé : jamais « complet »
+// sur une lecture en échec (historystate.Complete) ; RunDelta fait alors un delta en attente.
 func (h playerHistory) Complete(ctx context.Context) (bool, error) {
-	complete := true
-	err := h.read(func(db *sql.DB) { complete = historystate.Complete(ctx, db) })
-	return complete, err
+	var complete bool
+	var readErr error
+	if err := h.read(func(db *sql.DB) { complete, readErr = historystate.Complete(ctx, db) }); err != nil {
+		return false, err
+	}
+	if readErr != nil {
+		return false, fmt.Errorf("h5 history: %w", readErr)
+	}
+	return complete, nil
 }
 
 func (h playerHistory) MarkComplete(ctx context.Context) bool {

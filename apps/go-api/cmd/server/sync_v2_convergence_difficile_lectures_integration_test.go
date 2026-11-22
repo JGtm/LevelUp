@@ -169,12 +169,15 @@ func (b *difficileBoot) participantsOf() map[string]map[string]bool {
 func (b *difficileBoot) historyState(j difficileJoueur) (complete bool, cursor *historystate.Cursor) {
 	t := b.env.t
 	t.Helper()
-	db, release, err := duckdbpkg.OpenReadForQuery(b.env.playerPath(j))
+	db, release, err := duckdbpkg.OpenPlayerReadForQuery(b.env.playerPath(j))
 	if err != nil {
 		t.Fatalf("lecture base joueur %s: %v", j.gamertag, err)
 	}
 	defer release()
-	complete = historystate.Complete(b.ctx, db)
+	complete, err = historystate.Complete(b.ctx, db)
+	if err != nil {
+		t.Fatalf("état de l'historique %s: %v", j.gamertag, err)
+	}
 	if cur, ok := historystate.LoadCursor(b.ctx, db); ok {
 		cursor = &cur
 	}

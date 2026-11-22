@@ -68,6 +68,9 @@ type BatchQueue struct {
 	// fast le Drain au lieu d'attendre le timeout 60s sur un worker casse.
 	consecutiveFailures atomic.Int32
 
+	// acks : lots acquittés depuis la création de la file (progrès vu par DrainWhileProgressing).
+	acks atomic.Uint64
+
 	// inFlight : batch_ids actuellement présents dans le channel ou en cours
 	// de persist par le worker. Permet à RecoverPending d'être appelé
 	// PÉRIODIQUEMENT en runtime (pas seulement au boot) sans re-pousser un
@@ -232,6 +235,7 @@ func (q *BatchQueue) ACK(batchID string) error {
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("persist: ACK remove %s: %w", batchID, err)
 	}
+	q.acks.Add(1)
 	return nil
 }
 
@@ -374,34 +378,7 @@ var ErrDrainCircuitBreaker = errors.New("persist: drain aborted — worker error
 // charge CPU (ReadDir n'est pas gratuit). Pour un cycle typique 10-100
 // matchs, le drain prend < 1s en nominal.
 func (q *BatchQueue) Drain(ctx context.Context) error {
-	const pollInterval = 50 * time.Millisecond
-	ticker := time.NewTicker(pollInterval)
-	defer ticker.Stop()
-
-	for {
-		n, err := q.PendingCount()
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			return nil
-		}
-		// Phase 6 circuit-breaker : si le worker a accumule trop d'echecs
-		// consecutifs ET il reste du pending, c'est qu'il est casse — fail
-		// fast au lieu d'attendre le timeout 60s.
-		if q.consecutiveFailures.Load() >= int32(circuitBreakerThreshold) {
-			return fmt.Errorf("%w (failures=%d, pending=%d)",
-				ErrDrainCircuitBreaker,
-				q.consecutiveFailures.Load(),
-				n)
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			// retry
-		}
-	}
+	return q.drainLoop(ctx, 0)
 }
 
 // Close termine la queue : Submit ultérieurs retourneront ErrQueueClosed.

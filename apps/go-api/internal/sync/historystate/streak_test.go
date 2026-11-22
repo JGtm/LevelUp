@@ -32,7 +32,7 @@ func TestStreak_AllerRetourEtAutreSujet(t *testing.T) {
 	if historystate.StreakKey != "history_failure_streak" {
 		t.Errorf("StreakKey = %q : le nom de la clé est un contrat de données", historystate.StreakKey)
 	}
-	if historystate.Complete(ctx, db) {
+	if mustComplete(t, ctx, db) {
 		t.Error("ranger un compte d'échecs ne doit pas marquer l'historique complet")
 	}
 }
