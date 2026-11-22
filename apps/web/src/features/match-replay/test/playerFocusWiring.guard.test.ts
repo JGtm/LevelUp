@@ -37,10 +37,10 @@ function appelDe(source: string, nom: string): string {
   throw new Error(`appel non fermé : ${nom}`)
 }
 
-describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque élément propre au joueur', () => {
+describe('garde-rail : le canvas donne le prédicat des joueurs masqués à chaque élément propre au joueur', () => {
   it('le panneau de joueur est branché, et la main reprend le cadrage', () => {
     const src = canvas()
-    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })')
+    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, hidden: hiddenPlayers, followPlayer: cameraFollow.player, frameRef, zoom, turns })')
     expect(src).toContain('onManualMove: onFollowStop')
   })
 
@@ -53,6 +53,15 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     expect(src).toContain('cameraFollow.player')
     expect(lire(fichierNomme('ReplayStage.tsx'))).toContain('cameraFollow={view.playerPanel.camera}')
     expect(lire(fichierNomme('usePlayerPanel.ts'))).toContain('followedPlayerOf(state, players)')
+  })
+
+  // LES JOUEURS MASQUÉS NE DÉPENDENT PAS DE LA FICHE : la toile les reçoit de la page (`hiddenPlayers`), jamais de
+  // `playerFocus` (la fiche ouverte, qui ne sert qu'à l'anneau du pion et à « Suivre le joueur ouvert » du relief).
+  it('les joueurs masqués viennent de la page, pas de la fiche ouverte', () => {
+    expect(lire(fichierNomme('ReplayStage.tsx'))).toContain('hiddenPlayers={view.playerPanel.hiddenPlayers}')
+    expect(lire(fichierNomme('usePlayerPanel.ts'))).toContain('hiddenPlayersOf(state.hidden, players)')
+    expect(lire(fichierNomme('useReplayPlayerFocus.ts'))).toContain('shownSlotPredicate(hidden)')
+    expect(lire(fichierNomme('useReplayPlayerFocus.ts'))).toContain('buildFocusFilter(doc, hidden)')
   })
 
   it.each([

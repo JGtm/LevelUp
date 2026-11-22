@@ -318,14 +318,14 @@ describe('ReplayCanvas : la caméra suit le joueur de `cameraFollow`, fiche ouve
     const autre = players.find((p) => p !== suivi) ?? suivi
     const last = mount(doc, {
       cameraFollow: { player: suivi, onFollow: vi.fn() },
-      playerFocus: { player: autre, follow: false, solo: true, hide: false },
+      playerFocus: { player: autre, solo: true, hidden: false },
     })
     expect(last().zoom.level).toBeGreaterThanOrEqual(FOLLOW_MIN_LEVEL)
   })
 
-  it('le drapeau « suivre » d’une fiche ouverte ne cadre rien sans joueur suivi côté caméra', () => {
+  it('une fiche ouverte ne cadre rien sans joueur suivi côté caméra', () => {
     const doc = smallDoc()
-    const last = mount(doc, { playerFocus: { player: followable(doc), follow: true, solo: false, hide: false } })
+    const last = mount(doc, { playerFocus: { player: followable(doc), solo: false, hidden: false } })
     expect(last().zoom.level).toBe(1)
   })
 

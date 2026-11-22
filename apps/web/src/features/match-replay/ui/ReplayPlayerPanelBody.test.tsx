@@ -13,12 +13,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
+import type { Antagonists, AntagonistsAt } from '@/lib/antagonists/antagonists'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import {
   INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers, instantSheet,
 } from '../test/instantFixture'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPanelBody, type ReplayPlayerPanelBodyProps } from './ReplayPlayerPanelBody'
 
 const DOC = instantDoc()
@@ -28,6 +30,7 @@ const ALLEGIANCE = filmAllegianceOf(DOC, [], 'A')
 /** Les sections de la fiche, dans l'ordre où elles sont écrites. */
 const SECTIONS_COMPLETES = [
   "À l'instant",
+  'Antagonistes',
   'Depuis le début du match',
   'Éliminations par arme',
   'Tirs et dégâts',
@@ -43,8 +46,8 @@ function bodyProps(over: Partial<ReplayPlayerPanelBodyProps> = {}, sheet = insta
   const players = instantPlayers(DOC, sheet)
   return {
     player: instantPlayer(players, 'A'),
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     doc: DOC,
     frame: INSTANT_LAST_FRAME,
     nowMs: INSTANT_LAST_FRAME * 100,
@@ -54,6 +57,7 @@ function bodyProps(over: Partial<ReplayPlayerPanelBodyProps> = {}, sheet = insta
     players,
     feed: FEED,
     weaponIcons: INSTANT_ICONS,
+    antagonists: createReplayAntagonists([], []),
     ...over,
   }
 }
@@ -117,28 +121,26 @@ describe('ReplayPlayerPanelBody — l’identité', () => {
   })
 })
 
-describe('ReplayPlayerPanelBody — les trois actions', () => {
-  it('Suivre, Seul, Masquer : des boutons à bascule, dans cet ordre', () => {
-    setup({ actions: { follow: true, solo: false, hide: false } })
+describe('ReplayPlayerPanelBody — l’action Seul', () => {
+  it('« Seul » est la seule action de la fiche : un bouton à bascule, ni Suivre ni Masquer', () => {
+    setup({ solo: true })
     const group = screen.getByRole('group', { name: 'Alpha' })
     const buttons = within(group).getAllByRole('button')
-    expect(buttons.map((b) => b.textContent)).toEqual(['Suivre', 'Seul', 'Masquer'])
-    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Seul · tout réafficher'])
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true'])
+    expect(screen.queryByRole('button', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Masquer' })).toBeNull()
   })
 
-  it('un clic rappelle la page avec l’action', () => {
+  it('un clic rappelle la page', () => {
     const { props } = setup()
     fireEvent.click(screen.getByRole('button', { name: 'Seul' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Masquer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre' }))
-    expect(props.onToggle).toHaveBeenNthCalledWith(1, 'solo')
-    expect(props.onToggle).toHaveBeenNthCalledWith(2, 'hide')
-    expect(props.onToggle).toHaveBeenNthCalledWith(3, 'follow')
+    expect(props.onSolo).toHaveBeenCalledTimes(1)
   })
 
-  it('l’infobulle de Suivre dit que la main l’arrête', () => {
+  it('l’infobulle de Seul dit que l’œil d’une tuile réaffiche un joueur', () => {
     setup()
-    expect(screen.getByRole('button', { name: 'Suivre' }).getAttribute('title')).toContain("l'arrête")
+    expect(screen.getByRole('button', { name: 'Seul' }).getAttribute('title')).toContain('L\'œil d\'une tuile en réaffiche un.')
   })
 
   it('la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture', () => {
@@ -200,7 +202,7 @@ describe('ReplayPlayerPanelBody — un joueur dont tout est lu, à la fin du mat
   it('en anglais, les titres et les libellés suivent', () => {
     const { container } = setup({ locale: 'en' })
     expect(sections(container)).toEqual([
-      'Right now', 'Since the start of the match', 'Kills by weapon', 'Shots and damage', 'Grenades thrown',
+      'Right now', 'Antagonists', 'Since the start of the match', 'Kills by weapon', 'Shots and damage', 'Grenades thrown',
       'Pickups', 'Equipment', 'Medals', 'Match totals', 'Moves',
     ])
   })
@@ -228,7 +230,7 @@ describe('ReplayPlayerPanelBody — la fiche suit l’image lue', () => {
   it('au début du match : des zéros mesurés dans les tableaux, presque aucune autre section', () => {
     const { container } = setup({ frame: 0, nowMs: 0 })
     expect(sections(container)).toEqual([
-      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Totaux du match',
+      "À l'instant", 'Antagonistes', 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Totaux du match',
     ])
     const kills = screen.getByRole('table', { name: 'Éliminations par arme' })
     expect(within(kills).getAllByRole('row')[1].textContent).toContain('0')
@@ -255,7 +257,7 @@ describe('ReplayPlayerPanelBody — rien d’inventé', () => {
     const { container } = setup({ player, players }, sheet)
     expect(sections(container)).not.toContain('Totaux du match')
     expect(screen.queryByText(/Pas de statistiques/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Suivre' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Seul' })).toBeTruthy()
     expect(screen.getByRole('region', { name: "À l'instant" })).toBeTruthy()
     const depuis = screen.getByRole('region', { name: 'Depuis le début du match' })
     expect(within(depuis).queryByText('Score')).toBeNull()
@@ -282,10 +284,33 @@ describe('ReplayPlayerPanelBody — rien d’inventé', () => {
     expect(sections(container)).toContain('Éliminations par arme')
   })
 
-  it('un document sans aucune donnée (fil vide, pas de tirs) : l’identité, les actions et le bloc seuls', () => {
+  it('un document sans aucune donnée (fil vide, pas de tirs) : l’identité, les actions, le bloc et les antagonistes (état vide)', () => {
     const doc = instantDoc({ scoreTimeline: undefined, shotStats: [], stances: [], pickups: [], grenades: [], equipmentChanges: [] })
     const { player, players } = joueur('A', [])
     const { container } = setup({ doc, player, players, feed: [], frame: 0, nowMs: 0 }, [])
-    expect(sections(container)).toEqual(["À l'instant", 'Depuis le début du match'])
+    expect(sections(container)).toEqual(["À l'instant", 'Antagonistes', 'Depuis le début du match'])
+  })
+})
+
+describe('ReplayPlayerPanelBody — la section « Antagonistes »', () => {
+  it('se pose après « À l’instant » et avant « Depuis le début du match »', () => {
+    const { container } = setup()
+    const titres = sections(container)
+    expect(titres.indexOf('Antagonistes')).toBe(titres.indexOf("À l'instant") + 1)
+    expect(titres.indexOf('Antagonistes')).toBe(titres.indexOf('Depuis le début du match') - 1)
+  })
+
+  it('lit l’index du joueur de la fiche à l’instant lu', () => {
+    const at = vi.fn<(t: number) => AntagonistsAt>(() => ({ nemesis: { holder: 'E', count: 2, tiedWith: [] }, victim: null }))
+    const forSubject = vi.fn<(key: string | null) => Antagonists>(() => ({ changes: [], at }))
+    setup({ nowMs: 4_200, antagonists: { forSubject, forViewpoint: () => ({ changes: [], at }) } })
+    expect(forSubject).toHaveBeenCalledWith('A')
+    expect(at).toHaveBeenCalledWith(4_200)
+    expect(screen.getByRole('region', { name: 'Antagonistes' }).textContent).toContain('Echo, 2 éliminations')
+  })
+
+  it('sans adversaire à l’instant, la section existe et le dit', () => {
+    setup()
+    expect(screen.getByRole('region', { name: 'Antagonistes' }).textContent).toContain('Aucun antagoniste à cet instant.')
   })
 })

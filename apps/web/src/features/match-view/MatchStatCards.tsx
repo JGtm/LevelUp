@@ -3,14 +3,13 @@
  *
  * C3 : StatExpectedCard     — réel vs attendu (K/D/A)
  * C4 : MatchRankBadge       — delta rang CSR/LUSR après match
- * C5 : KdIndicatorCard      — K/D vs nemesis principal
  * C6 : MatchVsStatCard      — extrait dans MatchVsStatCard.tsx (règle 500 lignes)
  * C7 : MatchSummaryCardsSection — grille 4 cartes onglet Résumé
  *
- * NATIVE_COMPONENTS items C3, C4, C5, C7 (C6 : voir MatchVsStatCard.tsx).
+ * NATIVE_COMPONENTS items C3, C4, C7 (C6 : voir MatchVsStatCard.tsx).
  */
-import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
-import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
+import type { MatchViewRank, MatchExpectedStats, MatchSummaryKpis } from '@/lib/api/types'
+import { skillDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatRankDelta, formatDurationMShort } from '@/lib/formatters'
 import { localizeTierLabel } from '@/lib/skillTiers'
@@ -178,40 +177,6 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
           🤖 bot
         </span>
       )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// C5 — KdIndicatorCard (K/D vs nemesis)
-// ---------------------------------------------------------------------------
-
-interface KdIndicatorCardProps {
-  nemesis: MatchNemesisRow | null
-}
-
-export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
-  if (!nemesis) return null
-
-  const kd = nemesis.killed_me > 0 ? nemesis.i_killed / nemesis.killed_me : nemesis.i_killed
-
-  return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-        {t('match_view.cards.kd_vs_nemesis')}
-      </p>
-      <div className="flex items-baseline gap-2">
-        <span
-          className="text-2xl font-bold"
-          style={{ color: tokenCssVar(kdScale(kd)) }}
-        >{kd.toFixed(2)}</span>
-        <span className="text-sm text-muted-foreground">{formatMessage(matchViewManifest, 'match_view.cards.nemesis_versus', locale, { name: nemesis.gamertag })}</span>
-      </div>
-      <p className="text-xs text-muted-foreground mt-0.5">
-        {formatMessage(matchViewManifest, 'match_view.cards.nemesis_counts', locale, { killed: nemesis.i_killed, died: nemesis.killed_me })}
-      </p>
     </div>
   )
 }

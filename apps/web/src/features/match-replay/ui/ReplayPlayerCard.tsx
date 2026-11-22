@@ -27,6 +27,10 @@
  * classe pour classe. Seul l'HABIT change (le chrome tireté des tuiles d'attente,
  * `SEAT_WAITING_CHROME`) : une tuile d'attente ne décale rien.
  *
+ * LES DEUX ACTIONS (`ReplayTileActionButtons`) : quand la page les donne (`actions`), la tuile porte Suivre et
+ * l'œil en haut à droite — au survol ou au focus de la tuile (elle porte `group`), toujours visibles actifs. La tuile
+ * d'un joueur MASQUÉ écrit « masqué » à côté de son nom, pâli.
+ *
  * TROIS RÈGLES QUI NE SE NÉGOCIENT PAS ICI :
  *   1. Une valeur non lue s'affiche comme une lacune, jamais comme un zéro ni une moyenne.
  *   2. Une lecture ancienne PÂLIT et dit son âge — l'inventaire ne se lit qu'aux images-clés,
@@ -38,6 +42,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 
 import { CardUnderLayers, ZoneFxOverlay } from './ReplayCardFx'
+import { ReplayTileActionButtons } from './ReplayTileActionButtons'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
@@ -49,6 +54,7 @@ import { handCellHint } from '../model/handCellHint'
 import { cardChrome, SEAT_WAITING_CHROME } from '../model/playerCardFx'
 import { playerCardReadings, seatWaitingReading, type CardFxScene } from '../model/playerCardReadings'
 import { playerScoreAt, type InstantScoreSeries } from '../model/playerInstantScore'
+import type { TileActions } from '../model/playerTileActions'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { PlayerState, ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
@@ -73,6 +79,10 @@ const ROW = 'mt-[3px] flex h-[16px] flex-nowrap items-center gap-x-[5px] overflo
  * quoi une couche `inset-0` à 8 px déborderait les coins d'une tuile à 6.
  */
 const LAYER_RADIUS = 'rounded-md'
+/** La place des deux actions : en haut à droite, à la hauteur de la ligne du nom. */
+const ACTIONS_PLACE = 'absolute right-1 top-[6px] z-[1] flex gap-0.5'
+/** La mention « masqué » : à côté du nom, sans majuscules ni espacement de lettres. */
+const HIDDEN_MENTION = 'ml-1 shrink-0 text-3xs font-normal normal-case tracking-normal text-muted-foreground'
 /** La taille du nom, en classe : le littéral en clair, jamais interpolé. */
 const NAME_CLASS: Record<typeof G['namePx'], string> = { 11.5: 'text-[11.5px]' }
 
@@ -100,6 +110,8 @@ interface TileFrameProps {
   over?: ReactNode
   /** Rend la tuile cliquable (panneau de joueur). Absent = boîte inerte. */
   press?: TilePress
+  /** Vrai = la tuile porte des boutons d'action : elle devient le groupe qui commande leur apparition. */
+  group?: boolean
 }
 
 /**
@@ -107,8 +119,8 @@ interface TileFrameProps {
  * fixe. Les trois sortes de tuile y passent ; aucune ne réécrit une cote (garde-rail
  * `cardGabarit.guard.test.ts`, test DOM `ReplayTeamsRow.places.test.tsx`).
  */
-function TileFrame({ chrome, title, under, nameLine, body, over, press }: TileFrameProps) {
-  const className = press ? `${TILE} ${PRESS_CLASS}` : TILE
+function TileFrame({ chrome, title, under, nameLine, body, over, press, group = false }: TileFrameProps) {
+  const className = [TILE, press ? PRESS_CLASS : '', group ? 'group' : ''].filter(Boolean).join(' ')
   return (
     <div className={className} style={press?.selected ? selectedChrome(chrome) : chrome} title={title} {...(press ? pressProps(press) : {})}>
       {under}
@@ -140,6 +152,8 @@ interface ReplayPlayerCardProps {
   panel?: { selected: boolean; onSelect: () => void }
   /** Vrai = le joueur suivi (le joueur regardé par la page) : la bordure prend la couleur de suivi. */
   tracked?: boolean
+  /** Suivre et l'œil de CE joueur : absent = la tuile n'a pas ces boutons. */
+  actions?: TileActions
 }
 
 /** L'habit d'une fiche vivante, morte ou partie ; le joueur suivi y prend la bordure à la couleur de suivi. */
@@ -150,7 +164,7 @@ function chromeOf(state: Pick<PlayerState, 'alive' | 'departed'>, tracked: boole
 
 export function ReplayPlayerCard({
   player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, scores, fxScene, panel,
-  tracked = false,
+  tracked = false, actions,
 }: ReplayPlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   const { live, state, name, equipped, filmIndex, zones, objective, fx } = playerCardReadings({
@@ -174,11 +188,15 @@ export function ReplayPlayerCard({
       chrome={chromeOf(state, tracked)}
       title={fx.title}
       press={panel ? { label: t.playerPanel.cardOpenFmt(name), selected: panel.selected, onActivate: panel.onSelect } : undefined}
+      group={actions !== undefined}
       under={<CardUnderLayers fx={fx} objective={objective} radiusClass={LAYER_RADIUS} watermarkPx={G.watermarkPx} />}
       nameLine={
-        <span className={nameClass(!state.alive)} title={name}>
-          {name}
-        </span>
+        <>
+          <span className={nameClass(!state.alive || actions?.hidden === true)} title={name}>
+            {name}
+          </span>
+          {actions?.hidden && <span className={HIDDEN_MENTION}>{t.playerPanel.tile.hiddenMention}</span>}
+        </>
       }
       body={
         <CardBody
@@ -194,12 +212,15 @@ export function ReplayPlayerCard({
         />
       }
       over={
-        <ZoneFxOverlay
-          zones={zones}
-          translocationDelay={fx.translocationDelay}
-          boltCount={G.boltCount}
-          radiusClass={LAYER_RADIUS}
-        />
+        <>
+          <ZoneFxOverlay
+            zones={zones}
+            translocationDelay={fx.translocationDelay}
+            boltCount={G.boltCount}
+            radiusClass={LAYER_RADIUS}
+          />
+          {actions && <ReplayTileActionButtons name={name} actions={actions} locale={locale} className={ACTIONS_PLACE} />}
+        </>
       }
     />
   )

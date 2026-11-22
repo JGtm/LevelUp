@@ -2,6 +2,38 @@
 
 ---
 
+### [page du match] Cartes Némésis : compte possiblement inférieur de 1 quand le fil ne nomme pas la victime
+
+**Relevé le 2026-11-22** (revue du plan des antagonistes). Les cartes de la page du match comptent les éliminations du fil qui portent une victime (`apps/web/src/features/match-view/MatchNemesisCards.logic.ts:40`). Le serveur ne nomme pas la victime quand un même tueur a deux victimes à la même milliseconde (`apps/go-api/internal/service/match_view_killfeed_weapon.go:108-111` et `:172`) et retire du fil une élimination antérieure au coup d'envoi (`match_view_builders_combat.go:105`). Mesuré sur la base du poste : Halo 5, 4 éliminations dans 2 matchs ; Halo Infinite, 4 éliminations dans 1 match. Le rejeu a la même limite (même fil). À faire : nommer la victime ambiguë par le film ou par les paires, ou garder ces éliminations dans le fil.
+
+**Effort : moyen. Priorité : basse.**
+
+---
+
+### [données] Éliminations en double dans `highlight_events`
+
+**Relevé le 2026-11-22** (étape 0 du plan des antagonistes). Sur la base du poste, 172 matchs sur 1 462 portent chaque élimination deux fois dans `highlight_events` (30 372 lignes sur 161 147, surtout avril et mai 2026) ; le fil du rejeu de ces matchs les affiche en double. Les antagonistes les écartent, pas le fil. Prod non regardée. À faire : trouver l'écrivain qui double, dédoublonner la table, vérifier la prod.
+
+**Effort : moyen. Priorité : moyenne (le fil affiche des lignes en double).**
+
+---
+
+### [décodeur/rejeu] Éliminations dont un bot est l'auteur absentes du fil
+
+**Relevé le 2026-11-22** (étape 0 du plan des antagonistes). Le fil du rejeu ne contient aucune élimination dont un bot est l'auteur (49 manquantes sur l'échantillon) ; un bot victime n'a pas de xuid. Décision du user du 2026-11-22 : les bots sont exclus des antagonistes partout tant que ces éliminations ne sont pas lues. Le film nomme pourtant ses éliminations (`scoreActions`, `killPersonalScore`). Condition de reprise : le décodeur publie ces éliminations ; alors rouvrir la place des bots dans les antagonistes.
+
+**Effort : moyen. Priorité : basse.**
+
+---
+
+### [contrat] `combat_tab.nemesis_duels` servi vide et sans lecteur
+
+**Relevé le 2026-11-22** (revue du plan des antagonistes). `combat_tab.nemesis_duels` est toujours servi vide (`apps/go-api/internal/service/match_view_builders_combat.go:92`) et aucun composant ne le lit (CLAUDE.md règle 18) ; son retrait emporterait `MatchNemesisRow` du contrat. Le golden `tests/fixtures/golden_values/match_view_slayer.json` garde aussi un bloc `team_tab.nemesis` que le code ne produit plus.
+
+**Effort : faible. Priorité : basse.**
+
+---
+
 ### [code mort] Fonctions d'analyse sans appelant de production
 
 **Relevé le 2026-11-22** (recherche par nom, hors `_test.go`, à confirmer avant suppression) : `analysis/spawn_detection.go` (4 exports), `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`), `ComputeModeCategoryAverages` (`analysis/match_history_avg.go:50`), et la méthode `TitleDataAdapter.LoadMatchSummaries` (3 implémentations, aucun service appelant). CLAUDE.md règle 7 : supprimer avec leurs tests, ou retrouver le lecteur.

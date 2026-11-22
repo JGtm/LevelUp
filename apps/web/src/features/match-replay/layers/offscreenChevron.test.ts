@@ -107,3 +107,43 @@ describe('drawOffscreenLabel — le texte, à l’encre du thème passée par l�
     expect(ops.some((o) => o.op === 'fillText')).toBe(true)
   })
 })
+
+describe('drawOffscreenLabel — les icônes de titre devant le texte', () => {
+  const CHAR = 6
+  const icone = { image: { tag: 'icone' } as unknown as CanvasImageSource, wPx: 16, hPx: 16 }
+  const titre = { icon: icone, innerWPx: 12, count: 3, alpha: 1, scale: 1 }
+  const at = { x: 50, y: 50 }
+
+  it('pose l’icône, puis le compte, puis le texte, centrés sur l’ancre intérieure', () => {
+    const { ops, ctx } = recordingContext({ charWidth: CHAR })
+    drawOffscreenLabel(ctx, at, 0, 'Joueur · 42 m', { k: 1, labelStroke: 'encre-sombre', titles: [titre] }, 'encre-equipe')
+    const ordre = ops
+      .filter((o) => o.op === 'drawImage' || o.op === 'fillText')
+      .map((o) => (o.op === 'drawImage' ? 'icone' : o.args[0]))
+    expect(ordre).toEqual(['icone', '3', 'Joueur · 42 m'])
+    const anchor = offscreenLabelAnchor(at, 0, 1)
+    const [, ix, iy] = ops.find((o) => o.op === 'drawImage')!.args as number[]
+    const texte = ops.find((o) => o.op === 'fillText' && o.args[0] === 'Joueur · 42 m')!
+    const gauche = ix + 2
+    const droite = (texte.args[1] as number) + 'Joueur · 42 m'.length * CHAR
+    expect((gauche + droite) / 2).toBeCloseTo(anchor.x, 6)
+    // Sur la ligne de l'ancre : l'icône est centrée verticalement sur elle.
+    expect(iy + 8).toBeCloseTo(anchor.y, 6)
+    expect(texte.args[2]).toBe(anchor.y)
+  })
+
+  it('contourne le compte et le texte à l’encre du thème', () => {
+    const { ops, ctx } = recordingContext({ charWidth: CHAR })
+    drawOffscreenLabel(ctx, at, 0, 'X', { k: 1, labelStroke: 'encre-sombre', titles: [titre] }, 'encre-equipe')
+    expect(ops.filter((o) => o.op === 'strokeText').map((o) => o.args[0])).toEqual(['3', 'X'])
+  })
+
+  it('sans titre, rien ne change : texte centré, aucune mesure, aucune image', () => {
+    const { ops, ctx } = recordingContext({ charWidth: CHAR })
+    drawOffscreenLabel(ctx, at, 0, 'X', { k: 1, labelStroke: 'encre-sombre', titles: [] }, 'encre-equipe')
+    const ref = recordingContext({ charWidth: CHAR })
+    drawOffscreenLabel(ref.ctx, at, 0, 'X', { k: 1, labelStroke: 'encre-sombre' }, 'encre-equipe')
+    expect(ops).toEqual(ref.ops)
+    expect(ops.some((o) => o.op === 'drawImage' || o.op === 'measureText')).toBe(false)
+  })
+})

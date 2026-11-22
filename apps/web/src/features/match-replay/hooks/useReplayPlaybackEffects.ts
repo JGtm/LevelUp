@@ -59,6 +59,8 @@ interface PlaybackLoopInput {
   draw: () => void
   soundTick: (ms: number) => void
   onEnded: () => void
+  /** Annonce l'intervalle d'images que ce pas vient de parcourir (cf. `ReplayPlaybackOptions.onAdvance`). */
+  onAdvance?: (from: number, to: number) => void
 }
 
 /**
@@ -69,7 +71,7 @@ interface PlaybackLoopInput {
  * lecteur à l'arrêt structurel, pas conditionnel.
  */
 export function usePlaybackLoop(i: PlaybackLoopInput): void {
-  const { playing, setPlaying, doc, baseFps, speed, renderWidth, endFrame, frameRef, writeCursor, draw, soundTick, onEnded } = i
+  const { playing, setPlaying, doc, baseFps, speed, renderWidth, endFrame, frameRef, writeCursor, draw, soundTick, onEnded, onAdvance } = i
   useEffect(() => {
     if (!playing || renderWidth === 0) return
     const fps = baseFps * speed
@@ -89,6 +91,7 @@ export function usePlaybackLoop(i: PlaybackLoopInput): void {
       frameRef.current = next
       writeCursor(next)
       soundTick(frameToMs(next, doc))
+      onAdvance?.(from, next)
       draw()
       if (ended) {
         // FRANCHIR LA BORNE, PAS Y ÊTRE. `from < endFrame` est ce qui distingue une ARRIVÉE
@@ -105,7 +108,7 @@ export function usePlaybackLoop(i: PlaybackLoopInput): void {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [playing, setPlaying, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef, writeCursor])
+  }, [playing, setPlaying, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, onAdvance, endFrame, frameRef, writeCursor])
 }
 
 /**

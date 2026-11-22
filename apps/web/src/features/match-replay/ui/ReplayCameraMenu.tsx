@@ -128,7 +128,7 @@ function CameraPanel({ id, groups, viewpoint, followedKey, locale, onFollow, onV
       className="absolute left-0 z-20 flex overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-xl"
       style={{ bottom: `calc(100% + ${C.panneauEcartPx}px)`, columnGap: C.listeEcartPx, maxHeight: C.panneauHauteurMaxPx }}
     >
-      <List heading={t.playerPanel.action.follow}>
+      <List heading={t.playerPanel.tile.follow}>
         <Entry label={t.roster.cameraNone} selected={followedKey === null} onChoose={() => onFollow(null)} />
         {groups.map((group) => (
           <div key={group.key}>

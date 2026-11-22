@@ -282,8 +282,8 @@ export interface PlacementScene {
   /**
    * SEUL ET MASQUER (panneau de joueur) : une pose est à son poseur ; une marque de révélation est au poseur ET
    * au joueur révélé. Un capteur dont la pose est retirée ne se dessine pas mais reste candidat à la révélation :
-   * seule sa marque est jugée, sur ses deux parties (Seul la garde si le joueur est le poseur ou le révélé,
-   * Masquer la retire dans l'un ou l'autre cas), avant le choix de la marque la plus fraîche par vie révélée.
+   * seule sa marque est jugée, sur ses deux parties (elle se dessine dès que le poseur ou le révélé est affiché),
+   * avant le choix de la marque la plus fraîche par vie révélée.
    * Absent = tout se dessine.
    */
   shown?: Pick<FocusFilter, 'placement' | 'reveal'>

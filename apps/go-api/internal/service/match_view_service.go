@@ -12,7 +12,7 @@
 //   - match_view_builders_header.go  : buildMatchHeader + buildScoreLabelFromMeta + buildRankBlock.
 //   - match_view_builders_summary.go : buildSummaryTabFull + computeExpectedAssists + buildExpectedStats + convertMedals + buildCitationsTab + toIntPtr.
 //   - match_view_builders_combat.go  : buildCombatTabFull + buildKillerVictimPairs + buildTugEvents + buildImpactInput + buildKDEvents.
-//   - match_view_builders_team.go    : buildTeamTabFull + convertEncounters + convertRelationBadges + buildMediaTab + buildNemesisMap.
+//   - match_view_builders_team.go    : buildTeamTabFull + convertEncounters + convertRelationBadges + buildMediaTab.
 //   - match_view_converters.go       : convertTugBinsToDomain + convertImpactBadgesToDomain + convertKDPointsToDomain + computeScoreboardRowCombatYield + indexBulk{Medals,Weapons}ByXUID.
 package service
 
@@ -514,14 +514,6 @@ func formatDateLong(t time.Time, locale string) string {
 func sortInts(s []int) {
 	for i := 1; i < len(s); i++ {
 		for j := i; j > 0 && s[j] < s[j-1]; j-- {
-			s[j], s[j-1] = s[j-1], s[j]
-		}
-	}
-}
-
-func sortNemesisByKilledMe(s []domain.MatchNemesisRow) {
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j].KilledMe > s[j-1].KilledMe; j-- {
 			s[j], s[j-1] = s[j-1], s[j]
 		}
 	}

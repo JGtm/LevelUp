@@ -52,6 +52,7 @@ function cinemaColumn(view: ReplayFrameView, withTeams: boolean, popover: ReactN
             tracked={playerPanel.tracked}
             onCard={playerPanel.onCard}
             selectedXuid={playerPanel.focus?.player.xuid ?? null}
+            tileActions={playerPanel.tileActions}
           />
         </div>
       )}
@@ -92,8 +93,8 @@ function playerPopover(view: ReplayFrameView, disposition: CardRowLayout['dispos
     <ReplayPlayerPopover
       key={`${focus.player.xuid}:${disposition}`}
       player={focus.player}
-      actions={focus}
-      onToggle={playerPanel.onToggle}
+      solo={focus.solo}
+      onSolo={() => playerPanel.onSolo(focus.player.xuid)}
       onClose={playerPanel.onClose}
       doc={doc}
       frame={playFrame}
@@ -104,6 +105,7 @@ function playerPopover(view: ReplayFrameView, disposition: CardRowLayout['dispos
       players={model.players}
       feed={model.feed}
       weaponIcons={view.weaponIcons}
+      antagonists={view.antagonists}
     />
   )
 }
@@ -121,6 +123,7 @@ function teamsRow(view: ReplayFrameView, grandeEquipe: boolean) {
       tracked={playerPanel.tracked}
       onCard={playerPanel.onCard}
       selectedXuid={playerPanel.focus?.player.xuid ?? null}
+      tileActions={playerPanel.tileActions}
       grandeEquipe={grandeEquipe}
       score={
         <ReplayScoreBanner

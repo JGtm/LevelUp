@@ -102,7 +102,10 @@ export function ReplayMarkTrack({
           key={`${m.key}-medal`}
           // `pointer-events` N'EST PAS RÉGLÉ ICI (cf. l'en-tête) : le défaut `auto` laisse
           // l'image du badge recevoir le survol qui déclenche son infobulle native.
-          className="absolute top-1 flex -translate-x-1/2 items-center gap-0.5"
+          // LE BADGE SUIT SA MARQUE D'ÉLIMINATION VERS LE HAUT : collé au bord haut de la
+          // rangée, il enveloppe la bande haute où elle se pose ; une médaille d'objectif, sans
+          // marque, garde sa place centrée.
+          className={`absolute ${m.kind === 'kill' ? 'top-0' : 'top-1'} flex -translate-x-1/2 items-center gap-0.5`}
           style={{ left: trackLeft(m.ratio) }}
         >
           <MedalBadges medals={m.medals} />
@@ -117,10 +120,14 @@ export function ReplayMarkTrack({
  * médaille ne passe plus par cette fonction (cf. le filtre `kind !== 'medal'` du composant) : son
  * seul dessin est désormais le badge, jamais un contour posé ici.
  *
- * TOUTES LES VARIANTES PARTAGENT LEUR CENTRE VERTICAL. Sur la piste du joueur regardé, y = 12 px
- * sur vingt-quatre (`top-2` + 8 px de haut pour la barre, `top-[9px]` + 6 pour le losange) ; sur
- * celle des coéquipiers, y = 7 px sur quatorze (`top-1` + 6, `top-[4px]` + 6). Sans cette égalité,
- * une marque amie flotterait un pixel plus haut que ses voisines et la piste se lirait comme deux
+ * TOUTES LES VARIANTES D'UNE MÊME BANDE PARTAGENT LEUR CENTRE VERTICAL. Sur la piste du joueur
+ * regardé (vingt-quatre pixels, deux moitiés de douze), UNE ÉLIMINATION SE POSE DANS LA MOITIÉ
+ * HAUTE (centre y = 6 px : `top-0.5` + 8 px de haut pour la barre, `top-[3px]` + 6 pour le
+ * losange) ET UNE MORT DANS LA MOITIÉ BASSE (centre y = 18 px : `top-[14px]` + 8, `top-[15px]` + 6)
+ * — la position dit le sens, sans l'aide de
+ * la couleur. Sur celle des coéquipiers, qui n'a pas deux moitiés lisibles, tout reste sur
+ * y = 7 px sur quatorze (`top-1` + 6, `top-[4px]` + 6). Sans l'égalité de centre au sein d'une bande,
+ * une marque amie flotterait un pixel plus haut que ses voisines et la bande se lirait comme deux
  * lignes. Le losange est plus court que la barre parce qu'il occupe sa DIAGONALE une fois tourné
  * (6 px de côté ≈ 8,5 px en travers) : à taille égale il dépasserait.
  *
@@ -134,14 +141,16 @@ export function ReplayMarkTrack({
  * discrète que celle du joueur regardé, qu'on y soit ami ou non.
  */
 function markShape(mark: TrackMark, tall: boolean): string {
-  if (mark.friend) {
-    return tall
-      ? 'top-[9px] h-1.5 w-1.5 rotate-45 rounded-[2px]'
-      : 'top-[4px] h-1.5 w-1.5 rotate-45 rounded-[2px] opacity-65'
+  if (!tall) {
+    return mark.friend
+      ? 'top-[4px] h-1.5 w-1.5 rotate-45 rounded-[2px] opacity-65'
+      : 'top-1 h-1.5 w-[2px] rounded-[2px] opacity-65'
   }
-  return tall
-    ? 'top-2 h-2 w-[3px] rounded-[2px]'
-    : 'top-1 h-1.5 w-[2px] rounded-[2px] opacity-65'
+  const killing = mark.kind === 'kill'
+  if (mark.friend) {
+    return `${killing ? 'top-[3px]' : 'top-[15px]'} h-1.5 w-1.5 rotate-45 rounded-[2px]`
+  }
+  return `${killing ? 'top-0.5' : 'top-[14px]'} h-2 w-[3px] rounded-[2px]`
 }
 
 /** L'ENCRE D'UNE MARQUE : les deux encres du rejeu, pour un kill et pour une mort. */

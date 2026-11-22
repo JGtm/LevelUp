@@ -73,63 +73,6 @@ func TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne(t *testing.T) {
 	}
 }
 
-// ---------- buildNemesisMap ----------
-
-func TestBuildNemesisMap_Basic(t *testing.T) {
-	kvPairs := []domain.KVPairRaw{
-		{KillerXUID: "enemy1", KillerGT: "Enemy1", VictimXUID: "me", VictimGT: "Me", KillCount: 3},
-		{KillerXUID: "me", KillerGT: "Me", VictimXUID: "enemy1", VictimGT: "Enemy1", KillCount: 2},
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "enemy1", Gamertag: "Enemy1GT"},
-	}
-	result := buildNemesisMap(kvPairs, "me", scoreboard)
-	entry, ok := result["enemy1"]
-	if !ok {
-		t.Fatal("expected enemy1 entry")
-	}
-	if entry.KilledMe != 3 {
-		t.Errorf("expected KilledMe=3, got %d", entry.KilledMe)
-	}
-	if entry.IKilled != 2 {
-		t.Errorf("expected IKilled=2, got %d", entry.IKilled)
-	}
-}
-
-func TestBuildNemesisMap_Empty(t *testing.T) {
-	result := buildNemesisMap(nil, "me", nil)
-	if len(result) != 0 {
-		t.Errorf("expected empty, got %d", len(result))
-	}
-}
-
-// Un xuid vide = BOT (NULL de la canonique). Les bots n'entrent jamais dans les duels
-// (décision user 2026-09-02) — sans la garde, tous les bots fusionnent sous la clé "".
-func TestBuildNemesisMap_BotsExclus(t *testing.T) {
-	kvPairs := []domain.KVPairRaw{
-		{KillerXUID: "", KillerGT: "343 Oscar [bot]", VictimXUID: "me", VictimGT: "Me", KillCount: 4},
-		{KillerXUID: "me", KillerGT: "Me", VictimXUID: "", VictimGT: "343 Guilty [bot]", KillCount: 5},
-		{KillerXUID: "enemy1", KillerGT: "Enemy1", VictimXUID: "me", VictimGT: "Me", KillCount: 1},
-	}
-	result := buildNemesisMap(kvPairs, "me", nil)
-	if _, ok := result[""]; ok {
-		t.Fatal("les lignes de bot ne doivent créer aucune entrée sous la clé vide")
-	}
-	if len(result) != 1 || result["enemy1"] == nil || result["enemy1"].KilledMe != 1 {
-		t.Errorf("seul enemy1 attendu, obtenu %+v", result)
-	}
-}
-
-func TestBuildNemesisMap_FallbackGT(t *testing.T) {
-	kvPairs := []domain.KVPairRaw{
-		{KillerXUID: "e1", KillerGT: "FallbackGT", VictimXUID: "me", KillCount: 1},
-	}
-	result := buildNemesisMap(kvPairs, "me", nil) // no scoreboard
-	if result["e1"].Gamertag != "FallbackGT" {
-		t.Errorf("expected FallbackGT, got %s", result["e1"].Gamertag)
-	}
-}
-
 // ---------- outcomeColor ----------
 
 func TestOutcomeColor_Known(t *testing.T) {
@@ -163,20 +106,6 @@ func TestPerfColor_Mid(t *testing.T) {
 func TestPerfColor_Low(t *testing.T) {
 	if got := perfColor(20); got != "#ef4444" {
 		t.Errorf("got %s", got)
-	}
-}
-
-// ---------- sortNemesisByKilledMe ----------
-
-func TestSortNemesisByKilledMe(t *testing.T) {
-	s := []domain.MatchNemesisRow{
-		{Gamertag: "A", KilledMe: 1},
-		{Gamertag: "B", KilledMe: 5},
-		{Gamertag: "C", KilledMe: 3},
-	}
-	sortNemesisByKilledMe(s)
-	if s[0].Gamertag != "B" || s[1].Gamertag != "C" || s[2].Gamertag != "A" {
-		t.Errorf("wrong order: %v", s)
 	}
 }
 

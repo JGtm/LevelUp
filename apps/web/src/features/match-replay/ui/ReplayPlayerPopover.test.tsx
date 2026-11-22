@@ -15,6 +15,7 @@ import { COTES_FENETRE_FICHE } from '../model/cotesFenetreFiche'
 import {
   INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers,
 } from '../test/instantFixture'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPopover, type ReplayPlayerPopoverProps } from './ReplayPlayerPopover'
 
 afterEach(cleanup)
@@ -24,8 +25,8 @@ function props(over: Partial<ReplayPlayerPopoverProps> = {}): ReplayPlayerPopove
   const players = instantPlayers(doc)
   return {
     player: instantPlayer(players, 'A'),
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     onClose: vi.fn(),
     doc,
     frame: INSTANT_LAST_FRAME,
@@ -36,6 +37,7 @@ function props(over: Partial<ReplayPlayerPopoverProps> = {}): ReplayPlayerPopove
     players,
     feed: instantFeed(),
     weaponIcons: INSTANT_ICONS,
+    antagonists: createReplayAntagonists([], []),
     ...over,
   }
 }
@@ -50,7 +52,7 @@ describe('fiche en fenêtre — le corps commun', () => {
       // La fenêtre est elle-même une section : son nom accessible est celui de la fiche.
       .filter((t) => t !== 'Fiche de Alpha')
     expect(titres).toEqual([
-      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
+      "À l'instant", 'Antagonistes', 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
       'Ramassages', 'Équipement', 'Médailles', 'Totaux du match', 'Gestes',
     ])
   })

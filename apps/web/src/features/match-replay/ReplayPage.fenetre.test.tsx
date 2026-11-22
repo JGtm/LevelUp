@@ -128,9 +128,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
     expect(f.parentElement).toBe(document.body)
     expect(f).toHaveAttribute('data-replay-escape-layer')
     expect(f.style.width).toBe(`${COTES_FENETRE_FICHE.largeurPx}px`)
-    for (const action of ['follow', 'solo', 'hide'] as const) {
-      expect(within(f).getByRole('button', { name: PP.action[action] })).toHaveAttribute('aria-pressed', 'false')
-    }
+    expect(within(f).getByRole('button', { name: PP.solo.label })).toHaveAttribute('aria-pressed', 'false')
     expect(within(f).getByText(T.frames.escapeKey)).toBeInTheDocument()
     expect(within(f).getByRole('button', { name: PP.close })).toBeInTheDocument()
     expect(carte('Joueur5')).toHaveAttribute('aria-pressed', 'true')
@@ -199,19 +197,33 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
     expect(fenetre('Joueur5')).not.toBeNull()
   })
 
-  it('Suivre, Seul et Masquer agissent depuis la fenêtre, avec leurs exclusions', async () => {
+  it('Seul agit depuis la fenêtre, et l’œil d’une tuile le défait', async () => {
     await mount(L4)
     goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
-    const bouton = (action: 'follow' | 'solo' | 'hide') => within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: PP.action[action] })
-    fireEvent.click(bouton('follow'))
-    expect(bouton('follow')).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(bouton('solo'))
-    expect(bouton('solo')).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(bouton('hide'))
-    expect(bouton('hide')).toHaveAttribute('aria-pressed', 'true')
-    expect(bouton('solo')).toHaveAttribute('aria-pressed', 'false')
-    expect(bouton('follow')).toHaveAttribute('aria-pressed', 'false')
+    const seul = () => within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: /^Solo$|^Seul/ })
+    expect(seul()).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(seul())
+    expect(seul()).toHaveAttribute('aria-pressed', 'true')
+    expect(seul()).toHaveTextContent(PP.solo.labelActive)
+    // L'œil d'une tuile d'un autre joueur le réaffiche : la fiche n'est plus « seule ».
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur2') }))
+    expect(seul()).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('l’œil d’une tuile masque un joueur, « Tout afficher » les réaffiche tous, et rien de cela ne ferme la fiche', async () => {
+    await mount(L4)
+    goToFrame('cinema')
+    fireEvent.click(carte('Joueur5'))
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur2') }))
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur3') }))
+    expect(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur2') })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur3') })).toHaveAttribute('aria-pressed', 'true')
+    expect(fenetre('Joueur5')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.showAll }))
+    expect(screen.queryByRole('button', { name: PP.tile.showAll })).toBeNull()
+    expect(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur2') })).toHaveAttribute('aria-pressed', 'false')
+    expect(fenetre('Joueur5')).not.toBeNull()
   })
 
   it('la fiche ouverte de la rangée prend le fond clair et la bordure claire (jetons)', async () => {

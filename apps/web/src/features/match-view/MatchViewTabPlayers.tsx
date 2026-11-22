@@ -12,7 +12,6 @@ import type {
   MatchEncounterRow,
   MatchHighlightEvent,
   MatchKillerVictimPair,
-  MatchNemesisRow,
   MatchRosterRow,
   MatchScoreboardRow,
   MatchViewHeader,
@@ -33,7 +32,6 @@ interface Props {
   rank: MatchViewRank
   scoreboard: MatchScoreboardRow[]
   roster: MatchRosterRow[]
-  nemesis: MatchNemesisRow[]
   killerVictim: MatchKillerVictimPair[]
   /** Bloc « assistances » — absent quand le match n'a aucune ligne de film. */
   assistPairs: MatchAssistPairs | undefined
@@ -51,7 +49,6 @@ export function MatchViewTabPlayers({
   rank,
   scoreboard,
   roster,
-  nemesis,
   killerVictim,
   assistPairs,
   highlightEvents,
@@ -69,7 +66,7 @@ export function MatchViewTabPlayers({
         {/* Némésis + Souffre-douleur pleine largeur, puis Antagonistes | Assistances */}
         <div className="flex flex-col gap-4">
           <MatchNemesisCards
-            nemesis={nemesis}
+            events={highlightEvents}
             scoreboard={scoreboard}
             meXUID={meXUID}
             t={t}

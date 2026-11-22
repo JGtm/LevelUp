@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import type { Antagonists } from '@/lib/antagonists/antagonists'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
@@ -52,6 +53,7 @@ import { useReplayFlagCarries } from '../layers/useReplayFlagCarries'
 import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
+import { useReplayAntagonistMarks } from '../layers/useReplayAntagonistMarks'
 import { useReplayLives } from '../layers/useReplayLives'
 import { useReplayRespawnForecast } from '../layers/useReplayRespawnForecast'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
@@ -94,7 +96,7 @@ import { useReplayDrag } from '../hooks/useReplayDrag'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useReplayPlayerFocus } from '../hooks/useReplayPlayerFocus'
 import { NO_CAMERA_FOLLOW, type CameraFollow } from '../model/cameraMenu'
-import type { PlayerFocus } from '../model/playerPanelLogic'
+import type { HiddenPlayers, PlayerFocus } from '../model/playerPanelLogic'
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -211,8 +213,11 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
-  /** LA FICHE OUVERTE : son joueur et ses actions Seul et Masquer, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absent = rien n'est filtré. */
+  /** LES ANTAGONISTES DU POINT DE VUE (`ReplayAntagonists.forViewpoint`) : icône et compte devant le nom de la némésis et du souffre-douleur ; absent = aucun titre. */
+  antagonists?: Antagonists
+  /** LA FICHE OUVERTE (anneau du pion, « Suivre le joueur ouvert » du relief) et LES JOUEURS MASQUÉS, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absents = rien n'est filtré. */
   playerFocus?: PlayerFocus | null
+  hiddenPlayers?: HiddenPlayers | null
   /** LA CAMÉRA : le joueur que la carte suit, fiche ouverte ou non, et le geste « Suivre » du menu de la barre ; absent = personne. */
   cameraFollow?: CameraFollow
   /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
@@ -231,8 +236,8 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
-  playerSlug, matchId, transport, blockOverlays, planFeed = false,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, hiddenPlayers = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
+  playerSlug, matchId, transport, blockOverlays, planFeed = false, antagonists,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -287,7 +292,7 @@ export function ReplayCanvas({
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
   const distinctColors = useDistinctPlayerColors(markerColors === 'player' ? doc.roster.length : null, paletteVersion)
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, ownerKeyOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
     players,
     allegiance,
@@ -317,8 +322,7 @@ export function ReplayCanvas({
   const followStep = relief.followStep // le pas de « Suivre le joueur ouvert » : appelé par `draw`, à chaque image lue
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
-  // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, hidden: hiddenPlayers, followPlayer: cameraFollow.player, frameRef, zoom, turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -373,6 +377,8 @@ export function ReplayCanvas({
     doc, view: canvasView, store: playbackStore, scrimInk: scrim, labelInk: labelStroke,
     seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, shownAtSlot, redraw,
   })
+  // LES TITRES D'ANTAGONISTE du point de vue, devant le nom des deux joueurs qui les tiennent (cf. le hook).
+  const antagonistMarks = useReplayAntagonistMarks({ doc, antagonists, ownerKeyOfSlot, reducedMotion, redraw })
   const planDuFond = mapImage?.zonesClip ?? null // image plan (null sans vue plan) : rogne zones nommées et probabilité, quel que soit le fond
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
@@ -422,7 +428,7 @@ export function ReplayCanvas({
     colorOfXuid, nameOfSlot, nameOfXuid,
     offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
-    neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef, shown: focusShown,
+    neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef, shown: focusShown, antagonists: antagonistMarks,
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES TRACES DES VIES (apparitions, morts, tueurs) : marques bâties une fois, filtre qui / quand des réglages.
   const lives = useReplayLives({
@@ -497,6 +503,7 @@ export function ReplayCanvas({
       },
       identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
       focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer },
+      antagonists: antagonistMarks,
       fx: { shotFx, fireMarks, killFx, objectivePulses },
       zones,
       placements: {
@@ -518,7 +525,7 @@ export function ReplayCanvas({
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
       geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke, markerOutline,
       colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
-      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer,
+      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer, antagonistMarks,
       shotFx, fireMarks, killFx, objectivePulses, zones,
       placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
       weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,
@@ -556,6 +563,7 @@ export function ReplayCanvas({
     onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
     // LE CANAL DE SAUT DE LA PAGE et l'effacement de la mise en valeur à tout geste manuel (cf. le hook).
     onSeekRequest: playbackStore.onSeekRequest, onUserMove: playbackStore.clearFocus,
+    onAdvance: antagonistMarks?.advance, // les pas de lecture lancent la pulsation d'un changement de titre
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.

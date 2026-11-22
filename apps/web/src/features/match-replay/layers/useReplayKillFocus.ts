@@ -53,7 +53,7 @@ export interface KillFocusOptions {
   colorOfXuid: KillFocusResolvers['colorOf']
   nameOfXuid: KillFocusResolvers['nameOf']
   reducedMotion: boolean
-  /** Seul et Masquer (`useReplayPlayerFocus`) : un acteur non affiché n'est pas mis en valeur. */
+  /** Les joueurs masqués (`useReplayPlayerFocus`) : un acteur non affiché n'est pas mis en valeur. */
   shownAtSlot?: KillFocusResolvers['shownAtSlot']
   /** Repeindre la scène (hors boucle de lecture) : le canvas la fournit. */
   redraw: () => void

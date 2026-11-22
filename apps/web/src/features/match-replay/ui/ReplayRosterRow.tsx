@@ -20,6 +20,10 @@
  * même hauteur : l'habit tireté, le nom estompé, l'état écrit à la place des barres
  * (`seatWaitingReading`, la règle de la tuile d'attente).
  *
+ * LES DEUX ACTIONS (`ReplayTileActionButtons`) : quand la page les donne (`actions`), la ligne porte Suivre et
+ * l'œil à droite de la cellule du nom — au survol ou au focus de la ligne (elle porte `group`), toujours visibles
+ * actifs. La ligne d'un joueur MASQUÉ écrit « masqué » à côté de son nom, pâli.
+ *
  * UN CLIC REND LA PAGE (`onCard`) : la ligne est un bouton, au même contrat que la fiche
  * (`data-replay-player-card`, gardes d'appui `PRESS_GUARDS`).
  */
@@ -29,12 +33,14 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-to
 
 import { CardUnderLayers, ZoneFxOverlay } from './ReplayCardFx'
 import { EquipmentCell, GrenadeCell, WeaponCell } from './ReplayRosterCells'
+import { ReplayTileActionButtons } from './ReplayTileActionButtons'
 import { ReplayRosterRowDetail } from './ReplayRosterRowDetail'
 import { VitalityBar } from './ReplayVitality'
 import { PRESS_CLASS, pressProps, selectedChrome } from './replayCardPress'
 import type { CardScene } from '../hooks/useCardScene'
 import { GABARIT_LIGNE as G } from '../model/cardGabarit'
 import { SEAT_WAITING_CHROME } from '../model/playerCardFx'
+import type { TileActions } from '../model/playerTileActions'
 import { countersShown, playerCardReadings, seatWaitingReading, type PlayerCardReadings } from '../model/playerCardReadings'
 import { respawnText, rowInventory } from '../model/rosterRowReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -65,6 +71,8 @@ export interface ReplayRosterRowProps {
   selected?: boolean
   /** Un clic sur la ligne, avec la clé de roster du joueur. Absent = ligne inerte. */
   onCard?: (xuid: string) => void
+  /** Suivre et l'œil de CE joueur : absent = la ligne n'a pas ces boutons. */
+  actions?: TileActions
 }
 
 /** Ce que la ligne écrit pour un joueur mort : le compte à rebours, à la couleur d'alerte. */
@@ -92,20 +100,25 @@ function Gauges({ read, scene, t }: { read: PlayerCardReadings; scene: CardScene
   )
 }
 
-/** Le nom, la mention « suivi » du joueur regardé, puis les barres ou le compte à rebours. */
-function NameCell({ read, tracked, scene, doc, frame, t }: {
+/** La place des deux actions : à droite de la cellule du nom, à la hauteur de sa première ligne. */
+const ACTIONS_PLACE = 'absolute right-0 top-0 z-[1] flex gap-0.5'
+
+/** Le nom, la mention « suivi » du joueur regardé, puis les barres ou le compte à rebours ; les deux actions de la ligne. */
+function NameCell({ read, tracked, scene, doc, frame, locale, actions }: {
   read: PlayerCardReadings
   tracked: boolean
   scene: CardScene
   doc: ReplayDocumentReady
   frame: number
-  t: ReplayText
+  locale: ReplayLocale
+  actions?: TileActions
 }) {
   const { state, name } = read
+  const t = REPLAY_TEXT[locale]
   return (
-    <div className="flex min-w-0 flex-col" style={{ gap: G.nameGapPx }}>
+    <div className="relative flex min-w-0 flex-col" style={{ gap: G.nameGapPx }}>
       <b
-        className={`truncate text-foreground ${tracked ? 'font-bold' : 'font-medium'}`}
+        className={`truncate ${actions?.hidden ? 'text-muted-foreground' : 'text-foreground'} ${tracked ? 'font-bold' : 'font-medium'}`}
         style={{ fontSize: G.namePx, lineHeight: 1.35, opacity: state.alive ? 1 : G.deadOpacity }}
         title={name}
       >
@@ -115,7 +128,13 @@ function NameCell({ read, tracked, scene, doc, frame, t }: {
             {t.roster.followed}
           </em>
         )}
+        {actions?.hidden && (
+          <em className="ml-1.5 font-normal not-italic text-muted-foreground" style={{ fontSize: G.mentionPx }}>
+            {t.playerPanel.tile.hiddenMention}
+          </em>
+        )}
       </b>
+      {actions && <ReplayTileActionButtons name={name} actions={actions} locale={locale} className={ACTIONS_PLACE} />}
       {state.alive ? (
         <Gauges read={read} scene={scene} t={t} />
       ) : (
@@ -185,7 +204,7 @@ function InventoryCells({ read, doc, frame, locale, scene }: {
 /**
  * ReplayRosterRow — la ligne d'un joueur PRÉSENT, et son dépli quand c'est le joueur suivi.
  */
-export function ReplayRosterRow({ player, doc, frame, locale, scene, tracked, selected = false, onCard }: ReplayRosterRowProps) {
+export function ReplayRosterRow({ player, doc, frame, locale, scene, tracked, selected = false, onCard, actions }: ReplayRosterRowProps) {
   const t = REPLAY_TEXT[locale]
   const read = playerCardReadings({
     player, doc, frame, presence: scene.presence, flashFrames: scene.flashFrames,
@@ -195,7 +214,7 @@ export function ReplayRosterRow({ player, doc, frame, locale, scene, tracked, se
   const press = onCard
     ? { label: t.playerPanel.cardOpenFmt(read.name), selected, onActivate: () => onCard(player.xuid) }
     : undefined
-  const className = `${ROW_BASE} ${G.layerRadius}${press ? ` ${PRESS_CLASS}` : ''}`
+  const className = `${ROW_BASE} ${G.layerRadius}${press ? ` ${PRESS_CLASS}` : ''}${actions ? ' group' : ''}`
   const style: CSSProperties = press && selected ? { height: G.rowPx, ...selectedChrome() } : { height: G.rowPx }
   return (
     <>
@@ -205,7 +224,7 @@ export function ReplayRosterRow({ player, doc, frame, locale, scene, tracked, se
           className="relative grid h-full items-center"
           style={{ gridTemplateColumns: ROW_COLUMNS, columnGap: G.colGapPx }}
         >
-          <NameCell read={read} tracked={tracked} scene={scene} doc={doc} frame={frame} t={t} />
+          <NameCell read={read} tracked={tracked} scene={scene} doc={doc} frame={frame} locale={locale} actions={actions} />
           <InventoryCells read={read} doc={doc} frame={frame} locale={locale} scene={scene} />
           <KdaCell player={player} read={read} locale={locale} />
         </div>
