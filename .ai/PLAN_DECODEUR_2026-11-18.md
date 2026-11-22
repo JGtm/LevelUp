@@ -416,9 +416,9 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 - [x] L.1 (fait le 2026-11-22, quatre intégrations, tête `990cdf7`) Intégration des pistes dans `feat/v1.5.0`, une à une (règle R-4) ; schéma 126, chronique,
       révisions de couche, goldens, fixtures de contrat (annexe, gestes 3 à 7).
-- [ ] L.2 Équivalence finale refigée, 20 identiques ; gate du corpus ; registre des replis ; documentation
+- [x] L.2 (fait le 2026-11-22 : équivalence 20 identiques et deux passes identiques sur `e703301` ; gate du corpus code 0, 19 témoins ok, après correction d'un défaut de comptage et inscription au manifeste de 20 écarts acceptés par le user le 2026-11-22 et d'une conséquence inscrite par le pilote ; registre des replis à 127 entrées, égal à `FORMAT.md`) Équivalence finale refigée, 20 identiques ; gate du corpus ; registre des replis ; documentation
       du format (gestes 8 à 11).
-- [ ] L.3 PR du décodeur, CI verte, tag v1.5.0, release GitHub dont le corps est le registre des changements
+- [x] L.3 (fait le 2026-11-22 : PR n° 33, CI verte sur Linux et Windows, squash `dc967c2`, tag `v1.5.0` posé sur ce commit, release GitHub publiée avec les changements de sortie) PR du décodeur, CI verte, tag v1.5.0, release GitHub dont le corps est le registre des changements
       de sortie (geste 12).
 - [ ] L.4 Montée dans LevelUp sur une branche `chore/830-decodeur-v150` : `require`, miroirs Go et web,
       contrat de l'API, fixtures, lecteurs alignés (coup d'envoi, usage, « En passant »), retrait de
@@ -436,11 +436,20 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 - [x] R.1 (2026-11-22, diff du décodeur relu par Fable avant le tag : aucun P0, trois P1, quatre P2, trois P3 ; le diff de la montée reste à relire) Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
-- [ ] R.2 P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
+- [x] R.2 (2026-11-22 : aucun P0 ; P1 du décodeur corrigés, `fb90397` et `f72779d` ; P1 de la montée corrigés, `407109bec1` ; P2 au backlog sauf ceux corrigés en passant ; un P2 du décodeur reclassé bloquant par le gate du corpus et corrigé, `e703301`) P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
 - [ ] R.3 Tous les items statués ; recherches closes ou `[!]` avec leurs pièces ; backlog mis à jour entrée
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-22 — DÉCODEUR v1.5.0 PUBLIÉ. Accord du user sur les écarts du gate (« Oui je suis d'accord avec toi ») : 20
+  décisions inscrites à `config/replay_corpus.toml`, limitées aux témoins touchés ; une 21e, la courbe d'équipe d'un seul
+  point à zéro sur un témoin, inscrite par le pilote comme conséquence et signalée au user. Gate du corpus : code 0, 19
+  témoins ok (quatrième passage). PR n° 33 fusionnée en squash (`dc967c2`, arbre identique à `e703301`), tag `v1.5.0`,
+  release GitHub. LevelUp exige `v1.5.0` (`1d8f237b6a`, branche `chore/830-decodeur-v150`). Lancés : filet de poussée,
+  suite web complète et suite Go d'intégration ; notes de version (Sonnet). Section « Chantier précision » créée au
+  backlog à la demande du user. Restent : L.5 (gates, CI, notes), L.6 (régénération du parc, à annoncer au user, AVANT
+  le premier démarrage de la version), L.7 (mesures après, vérifications à l'écran), R.3 (clôture, worktrees).
 
 - 2026-11-22 — GATE DU CORPUS ROUGE sur la tête `f72779d` (17 témoins en perte, 2 FAUX), tag suspendu. Les 2 FAUX : le
   compte des émissions jetées gonflait hors Drapeau (0 → 1 838 sur un film de crâne), constat de la relecture que le pilote

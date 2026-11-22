@@ -1,3 +1,10 @@
+## [2026-11-22] Décodeur v1.5.0 publié (schéma 126) : gate du corpus vert, tag et release — Complété
+
+- **Décision** : le gate du corpus a été tenu pour bloquant ; son seul vrai défaut (un compteur de lectures écartées gonflé hors Drapeau, qu'une relecture avait classé mineur) a été corrigé avant toute acceptation ; les écarts voulus ont été inscrits au manifeste un par un, limités aux témoins touchés, sur accord daté du user.
+- **Résultats** : suite complète verte, équivalence 20 identiques en double passe, gate du corpus 19 témoins sur 19, CI verte sur Linux et Windows ; aucun symbole public retiré par rapport à la v1.4.1 ; LevelUp exige le tag.
+- **Leçon** : un constat de relecture qui touche un compteur publié n'est pas mineur quand le gate juge tout repli parti de zéro ; une écriture de journal par script se vérifie par relecture du fichier (une mise à jour du plan avait échoué en silence).
+- **Suite** : gates complets et CI de LevelUp, régénération du parc avant le premier démarrage de la version, mesures après, clôture.
+
 ## [2026-11-22] Nettoyage du disque : un dépôt ou un worktree git n'est plus jamais supprimé — Complété
 
 - **Décision** : la garde vit dans l'unique point de suppression d'un arbre du script ; la seule présence d'un `.git` (dossier ou fichier, jusqu'à trois niveaux) suffit, sans appel à git ; un dossier illisible compte comme protégé.
