@@ -4,7 +4,10 @@ Statut : **rédigé le 2026-11-18 à la demande du user (« Je suis ok avec ça,
 consigne du user (2026-11-18) : « évitons les reports à plus tard, le but c'est de livrer une expérience
 complète ». GO DONNÉ le 2026-11-18 (« tu as mon go et je suis ok avec tes recos, par contre la version visée
 c'est la 8.3.0 ») : D-1 à D-10 retenues telles que recommandées, D-8 changée (8.3.0), D-11 changée (plan par mode
-en 8.3.1). Plan inscrit au plan maître de la 8.3.0 (nœuds N22 à N26).**
+en 8.3.1). Plan inscrit au plan maître de la 8.3.0 (nœuds N22 à N26).
+CLOS le 2026-11-22 : fusionné dans `release/v8.3.0` (`be0182b976`) avant le contrôle à l'écran, à la demande du
+user (« option 1 », puis « je ferais les contrôles plus tard, finissons ce chantier d'abord ») ; ce contrôle
+(Gate D) est inscrit à l'artefact des vérifications et reste dû avant `main`.**
 Contrat d'exécution : skill `plan-execution` (ordre strict dans chaque piste, un item clos et vérifié avant
 le suivant, aucune case vide à la clôture, zéro fix hors périmètre, découvertes en section 9). Grille relue :
 skill `plan-review` (section 11).
@@ -369,10 +372,10 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       avec garde-rail ; `openapi.yaml` régénéré par `openapi-gen`, `generated.ts` à régénérer par le pilote à
       l'intégration ; archlint entier vert, tests ciblés relancés par le pilote.) Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
       sans relief), et `mapfondsidecar` les lit et les écrit. Règle 18 : chaque champ a son lecteur, le web au lot D.
-- [ ] C.2 Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
+- [~] C.2 (couvert par C.1 à C.3, ci-dessus, `f41fe1586c`) Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
       sur le modèle de `replay_map_background_plan.go` : même résolution de clé, mêmes gardes sur le nom de
       fichier, `port.ErrMapBackgroundNotAvailable` sans relief. Interfaces dans `port/`.
-- [ ] C.3 Handlers sans logique : `?variante=relief` sur les deux routes d'image (le refus de variante
+- [~] C.3 (couvert par C.1 à C.3, ci-dessus, `f41fe1586c`) Handlers sans logique : `?variante=relief` sur les deux routes d'image (le refus de variante
       inconnue reste), et une route sœur pour les données (`…/background.relief.json` sur les deux préfixes), avec
       le même cache HTTP que l'image plan. `openapi.yaml` mis à jour ; `generated.ts` régénéré par le pilote.
 - Pas de nouvelle capacité : l'absence de relief se traite comme l'absence d'image plan (404), comme le veut l'ADR 0048.
@@ -422,7 +425,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
       `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
       les quatre visions, par palette et par thème.
-- [ ] D.8 (ajouté le 2026-11-18 par le pilote, relevé de D.4) Une seule logique du relief pour les trois vues : `useReplayRelief` délègue à `lib/replay/useReliefView` ; `useReliefLines`, `useScopedCut`, `linesInkOf` et la logique des pastilles vivent une fois dans `lib/` ; les deux exceptions datées de `tools/lint-cross-feature-imports.mjs` (tactical et match-view vers `useReliefLines`) sont retirées ; commentaire périmé de `useMapViewPreferences.ts` corrigé. Témoins du rejeu inchangés.
+- [x] D.8 (fait le 2026-11-18, `588834ca87` : `lib/replay/useReliefView` porte la logique des trois vues, exceptions de la frontière des features retirées, témoins du rejeu inchangés ; gate web complet passé sur ce commit) (ajouté le 2026-11-18 par le pilote, relevé de D.4) Une seule logique du relief pour les trois vues : `useReplayRelief` délègue à `lib/replay/useReliefView` ; `useReliefLines`, `useScopedCut`, `linesInkOf` et la logique des pastilles vivent une fois dans `lib/` ; les deux exceptions datées de `tools/lint-cross-feature-imports.mjs` (tactical et match-view vers `useReliefLines`) sont retirées ; commentaire périmé de `useMapViewPreferences.ts` corrigé. Témoins du rejeu inchangés.
 - [x] D.6 (fait le 2026-11-18, `a3de73967e`, intégré à `feat/fonds-relief` : interrupteur sous le curseur, coupe sur l'étage du sol porteur à chaque image, délai de 300 ms en temps du rejeu (même comportement à toute vitesse, rien ne bouge en pause), mort et saut de lecture gérés, choix manuel qui coupe le suivi, aucun joueur masqué ; 3 020 tests ciblés relancés par le pilote. Limites notées : à l'export vidéo la coupe peut avoir une image de retard ; un rejeu ancien sans hauteur garde l'étage bas.) Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
 - [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
@@ -444,10 +447,10 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 8. Lot E — parc, documentation
 
-- [ ] E.1 Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
+- [x] E.1 (fait le 2026-11-22 sur l'accord du user du 2026-11-18, `10207042f4` puis `f11bbd7120` : 114 cartes sur 114 ont un relief, dont les deux Thunderhead sans maillage, en dégradation nommée ; poids ajouté 51,1 Mo ; garde-rail `TestChaqueReliefPublieEstServable` vert. Thunderhead : 13 % de son fond publié sans hauteur, inscrit au registre des reports) Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
       fois, puis `mapfond-webp -convertir`. Poids ajouté mesuré et reporté (base : 45 Mo aujourd'hui). Chaque
       carte non traitée est nommée avec sa raison.
-- [~] E.2 (écrit le 2026-11-18, `d610136f8d` sur `feat/fonds-relief` : ADR 0049, amendement de 0048, CLAUDE.md, guide des fondations EN et FR ; notes de version et crédit prêts dans `annexes_fonds_relief/lignes_de_version.md`, posés à l'intégration ; « Current state » à reprendre après E.1) ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
+- [x] E.2 (fait : `d610136f8d` le 2026-11-18, ADR 0049, amendement de 0048, CLAUDE.md, guide des fondations EN et FR ; `73e648836e` le 2026-11-22, « Current state » de l'ADR 0049 après E.1, notes de version et journal des modifications EN et FR, crédit à Den dans `docs/ACKNOWLEDGMENTS` EN et FR) ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
       sol tiré du maillage, cartes sans maillage, crédit. Elle amende 0048 (D-3 : troisième fond ; D-8 : deux
       champs neufs du sidecar). Mise à jour de la liste des ADR dans `CLAUDE.md`, d'une ligne dans la note de
       version et dans le journal des modifications.
@@ -456,10 +459,10 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 8 bis. Clôture
 
-- [ ] R.1 Revue finale adverse (agent **Fable**, skill `adversarial-review`) du diff complet de la branche et de
+- [x] R.1 (faite le 2026-11-18, `2bf5003c97` : `annexes_fonds_relief/revue_finale.md`, 0 P0, 3 P1, 9 P2) Revue finale adverse (agent **Fable**, skill `adversarial-review`) du diff complet de la branche et de
       celui de la brique. Une seule ronde.
-- [ ] R.2 Corrections retenues (P0 et P1). Les P2 vont au backlog.
-- [ ] R.3 `make gate-push` vert, avec `LEVELUP_REPO_ROOT` sur le dépôt principal ; CI de la branche lue
+- [x] R.2 (fait : `6ac444f1c6` côté serveur et cuisson, P1-1, P1-2, P2-1, P2-3 ; `13c26d9324` côté site, P1-3, P2-2, P2-4, P2-5, P2-8, P2-9. P2-6 : branche du défilement gardée et documentée dans le code, en attente d'un plafond d'étages plus haut dans la brique, décision du pilote. P2-7 : sans effet visible tant qu'une seule carte a sa géométrie dans le module partagé ; inscrit au registre des reports avec sa condition de reprise) Corrections retenues (P0 et P1). Les P2 vont au backlog.
+- [x] R.3 (fait : `make gate-push` vert sur `fe0381c128` le 2026-11-22 ; CI de `release/v8.3.0` verte sur `0cebc91fef`, après la montée de `url` en 2.5.9 dans la coquille Rust, avis RUSTSEC-2026-0592 publié le jour même ; thought_log et registre des reports alimentés ; branches d'agents et worktrees supprimés le 2026-11-22) `make gate-push` vert, avec `LEVELUP_REPO_ROOT` sur le dépôt principal ; CI de la branche lue
       (`gh run list --branch feat/fonds-relief`) après chaque poussée ; entrée au `.ai/thought_log.md` ;
       `.ai/REGISTRE_REPORTS.md` alimenté. Branches d'agents supprimées dès leur intégration.
 
@@ -553,3 +556,12 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
   de version et crédit (`annexes_fonds_relief/lignes_de_version.md`), fusion dans `release/v8.3.0`, ménage des
   worktrees et branches d'agents. Thunderhead : 13 % de son fond publié sans hauteur (fond publié plus large que la
   recuisson) ; une recuisson complète de la carte le réglerait, non faite (elle change le fond publié).
+- 2026-11-22 — CLÔTURE. Fusion de `feat/fonds-relief` dans `release/v8.3.0` (`be0182b976`), à la demande du user,
+  avant son contrôle à l'écran (« option 1 »). Gates locaux verts après la fusion de la release : tsc, lint,
+  frontières, couleurs, build et vet Go, archlint, tests service, API et cuisson, vitest complet (15 227 tests). La CI
+  de la release était rouge sur un seul job sans lien avec le relief (audit des dépendances Rust de la coquille, avis
+  RUSTSEC-2026-0592 sur `url` 2.5.8, publié le jour même) ; corrigé par `0cebc91fef` (`url` 2.5.9), à la demande de
+  la session paire ; CI verte. Les trois contrôles à l'écran du Gate D (fond et traits, coupe par étage et suivi,
+  cerne des pions) sont inscrits à l'artefact des vérifications ; le user les fera plus tard (« finissons ce chantier
+  d'abord »). Leurs corrections partiront de `release/v8.3.0`. Branches `feat/fonds-relief*` (12) et worktrees
+  `LevelUp-wt-relief-*` supprimés, sans jonction. Hors de ce plan : plan par mode (8.3.1).
