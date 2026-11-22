@@ -1,7 +1,6 @@
 # PLAN — Antagonistes à l'instant, frise éliminations / morts, actions sur les tuiles du rejeu (2026-11-22)
 
-Statut : **écrit le 2026-11-22 à la demande du user (« variante A, fais le plan » ; livraison en 8.3.0). DU-1 à DU-4
-confirmées par le user le 2026-11-22 (« ok pour les 4 »). En cours : étape 0 (go du user le 2026-11-22, « tu peux pas commencer maintenant ? »).**
+Statut : **code livré dans `release/v8.3.0` le 2026-11-22 (accord du user : « oui fusionne et envoie »), CI verte. Reste R.2 : la validation à l'écran du user, due avant `main` ; le plan reste à la racine de `.ai/` jusqu'à elle.**
 
 Maquette de référence (validée par le user le 2026-11-22, variante A) : https://claude.ai/artifact/D24BJbsd99q5Lb8nBdYCmw.
 En cas d'écart entre ce plan et la maquette, ce plan fait foi ; un écart non écrit ici est un défaut.
@@ -272,10 +271,10 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 - [x] R.1 (ronde faite le 2026-11-22, deux relecteurs Fable sans contexte, lentilles « données et contrat » et « interface » : 0 P0 ; 6 constats recevables, 31 conditions vérifiées qui tiennent. Classés à corriger par le pilote (effet visible) : R1-a pulsation en pause qui saute le tracé de repos ; R1-b « Tout afficher » qui fait glisser les lignes de la colonne ; R1-c antagoniste embarqué sans icône ; R1-d clic sur la bande qui vise l'image d'avant l'élimination. Au backlog : R1-e page du match, deux cas rares où le fil ne nomme pas la victime (même tueur, deux victimes, même milliseconde ; élimination avant le coup d'envoi), compte possiblement inférieur de 1. Jeté : R1-f ancien rejeu sans origine avec doublon. R1-a à R1-d corrigées : `7cb989e724`, `7135b43fbd`, `a0bf62ea96` (canevas), `d8c3bd50dd` (colonne), `8ee7daaedd` (bande) ; R1-e au backlog avec les découvertes) Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
       Fable) ; P0 et P1 corrigés, P2 au backlog.
-- [ ] R.2 Validation à l'écran du user (I.5) ; corrections de la liste qu'il ferme.
-- [ ] R.3 Fusion dans `release/v8.3.0` (accord du user), poussée, CI lue (`gh run list --branch release/v8.3.0
+- [!] R.2 (en attente du user : cinq lignes `ant-*` passées à « à faire » dans l'artefact des vérifications le 2026-11-22, plus la lecture des deux captures retranscodées ; due avant la fusion de la 8.3.0 vers `main`) Validation à l'écran du user (I.5) ; corrections de la liste qu'il ferme.
+- [x] R.3 (fait le 2026-11-22 : release locale réconciliée avec `origin` (`30d28dc978`), chantier fusionné (`6ee323a8bc`), poussée, CI `45047585041` verte en 16 min ; sept worktrees retirés un par un après contrôle des jonctions (archive des films : 1 600 manifestes avant et après), branches supprimées, `disk-hygiene -Lot ant -Apply` : 2,81 Go libérés) Fusion dans `release/v8.3.0` (accord du user), poussée, CI lue (`gh run list --branch release/v8.3.0
       --workflow CI --limit 1`) ; sous-branches et worktrees supprimés ; `scripts/disk-hygiene.ps1 -Lot ant -Apply`.
-- [ ] R.4 Entrée `.ai/thought_log.md` ; ligne du plan maître mise à jour ; tous les items statués ; plan archivé.
+- [~] R.4 (journal et ligne du plan maître à jour le 2026-11-22 ; archivage après R.2) Entrée `.ai/thought_log.md` ; ligne du plan maître mise à jour ; tous les items statués ; plan archivé.
 
 ## Reprise de session
 
@@ -286,6 +285,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — R.3 close : fusion dans `release/v8.3.0`, CI verte. Reste R.2 (validation à l'écran du user).
 - 2026-11-22 — `origin/release/v8.3.0` (26 commits : médailles et bouclier, décodeur, synchronisation) fusionnée dans la branche (`ff5dd02121`) ; conflits : backlog et plan maître (union), cinq fixations de la fiche (régénérées, écart limité à la section Antagonistes et au retrait de Suivre et Masquer). Gates rejoués : go build, openapi-gen -check, go test service, api, contracttest, golden, types générés inchangés, typecheck, lint web, vitest complet 15 624 verts.
 - 2026-11-22 — I.2, I.3, I.5 et R.1 closes. Backlog : quatre entrées (R1-e, doublons de `highlight_events`, éliminations des bots absentes du fil, `nemesis_duels` sans lecteur). Reste : R.2 (validation à l'écran) et R.3 (fusion dans la release, accord du user), R.4.
 - 2026-11-22 — revue R.1 rendue ; R1-a à R1-d renvoyées aux agents B, E et C ; `make gate-push` en cours sur `e06f458032`.
