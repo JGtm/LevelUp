@@ -45,6 +45,12 @@
 
 ---
 
+### [outillage] disk-hygiene supprime les worktrees enregistrés sous C:/t et les clones git à commits non poussés
+
+**Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).
+
+---
+
 ### [rejeu/cadres] Rangée de fiches et colonne qui oscillent au seuil de largeur
 
 **Relevé le 2026-11-18** (relecture finale de la refonte de la page du rejeu, constat P2-1, `C:/t/ui-revue-scratch/revue_finale.md`). Aucune marge entre « la rangée tient » et « elle ne tient plus ». Quand la rangée fait apparaître la barre de défilement, le corps rétrécit, la rangée se replie, la barre disparaît, la rangée revient. Cas relevé : 4 contre 4 au Cinéma ou au Plein cadre, corps entre 1286 et 1302 px environ, plan à son plancher de 360 px. Bande étroite, non reproduit à l'écran. Piste : une marge d'une vingtaine de pixels entre les deux sens, dans `useCardRowLayout`. **Effort : à estimer. Priorité basse.**
