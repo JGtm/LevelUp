@@ -206,11 +206,12 @@ describe('la pulsation démarre quand la lecture franchit un changement de titre
     expect(titlesOfSlot(2, 2510)).toEqual([])
   })
 
-  it('note l’instant de la dernière lecture, pour que la boucle de repeinte ne double pas le tracé de la lecture', () => {
-    const { titlesOfSlot, lastReadAt, wall } = lecteur()
-    wall.now = 42
-    titlesOfSlot(2, 1500)
-    expect(lastReadAt()).toBe(42)
+  it('lit aussi par la clé du film, sans passer par un slot (occupant d’un véhicule)', () => {
+    const { titlesOfKey, advance } = lecteur()
+    expect(titlesOfKey('e1', 1500)).toEqual([{ role: 'nemesis', count: 1 }])
+    expect(titlesOfKey('e2', 1500)).toEqual([])
+    advance(990, 1010)
+    expect(titlesOfKey('e1', 1010)[0].motion).toEqual({ kind: 'gain', progress: 0 })
   })
 })
 

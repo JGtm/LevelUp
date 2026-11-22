@@ -36,7 +36,8 @@ function marques(titles: readonly SlotTitle[] | ((slot: number, frame: number) =
   const icons = createTitleIcons()
   icons.setSource('nemesis', { naturalWidth: 714, naturalHeight: 670 } as unknown as HTMLImageElement)
   icons.setSource('victim', { naturalWidth: 1099, naturalHeight: 1369 } as unknown as HTMLImageElement)
-  return { titlesOfSlot: typeof titles === 'function' ? titles : () => titles, icons }
+  const titlesOfSlot = typeof titles === 'function' ? titles : () => titles
+  return { titlesOfSlot, titlesOfKey: () => [], icons }
 }
 
 function style(over: Partial<MarkerStyle> = {}): MarkerStyle {

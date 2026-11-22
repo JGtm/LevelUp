@@ -64,12 +64,12 @@ export type SlotTitlesOf = (slot: number, frame: number) => readonly SlotTitle[]
 export interface SlotTitlesReader {
   /** Les titres que porte un slot à une image, la pulsation en cours à l'horloge murale comprise. */
   titlesOfSlot: SlotTitlesOf
+  /** Les mêmes, pour un joueur désigné par sa clé du film (l'occupant d'un véhicule, qui n'a plus de pion). */
+  titlesOfKey: (key: string, frame: number) => readonly SlotTitle[]
   /** Un pas de lecture a parcouru les images `de` à `vers` : un changement de titre franchi en avançant lance sa pulsation. */
   advance: (from: number, to: number) => void
   /** Une pulsation est en cours à l'horloge murale. */
   pulsing: () => boolean
-  /** L'instant mural de la dernière lecture de titres, c'est-à-dire du dernier tracé : `-Infinity` avant la première. */
-  lastReadAt: () => number
 }
 
 /** Une pulsation en cours pour un rôle : le tenant qu'elle désigne, celui qui s'efface, et son départ mural. */
@@ -112,7 +112,6 @@ export function createSlotTitles(input: SlotTitlesInput): SlotTitlesReader {
   }
   const pulses: Record<AntagonistRole, Pulse | null> = { nemesis: null, victim: null }
   let cached: { frame: number; at: AntagonistsAt } | null = null
-  let readAt = Number.NEGATIVE_INFINITY
 
   const reading = (frame: number): AntagonistsAt => {
     if (!cached || cached.frame !== frame) cached = { frame, at: antagonists.at(msOfFrame(frame)) }
@@ -137,17 +136,15 @@ export function createSlotTitles(input: SlotTitlesInput): SlotTitlesReader {
 
   const progressOf = (pulse: Pulse, at: number): number => (at - pulse.startedAt) / holdMs
 
-  const titlesOfSlot: SlotTitlesOf = (slot, frame) => {
-    readAt = now()
-    const key = ownerKeyOfSlot(slot, frame)
-    if (key === null) return NONE
+  const titlesOfKey = (key: string, frame: number): readonly SlotTitle[] => {
     const at = reading(frame)
+    const wallNow = now()
     const out: SlotTitle[] = []
     for (const role of ROLES) {
       const holding = at[role]
       const pulse = pulses[role]
       // Une pulsation ne vaut que pour l'instant où le titre est bien à son nouveau tenant.
-      const progress = pulse && holding?.holder === pulse.holder ? progressOf(pulse, readAt) : 1
+      const progress = pulse && holding?.holder === pulse.holder ? progressOf(pulse, wallNow) : 1
       const moving = pulse !== null && progress < 1
       if (holding?.holder === key) {
         const title: SlotTitle = { role, count: holding.count }
@@ -160,6 +157,11 @@ export function createSlotTitles(input: SlotTitlesInput): SlotTitlesReader {
     return out.length > 0 ? out : NONE
   }
 
+  const titlesOfSlot: SlotTitlesOf = (slot, frame) => {
+    const key = ownerKeyOfSlot(slot, frame)
+    return key === null ? NONE : titlesOfKey(key, frame)
+  }
+
   const pulsing = (): boolean => {
     const at = now()
     return ROLES.some((role) => {
@@ -168,5 +170,5 @@ export function createSlotTitles(input: SlotTitlesInput): SlotTitlesReader {
     })
   }
 
-  return { titlesOfSlot, advance, pulsing, lastReadAt: () => readAt }
+  return { titlesOfSlot, titlesOfKey, advance, pulsing }
 }
