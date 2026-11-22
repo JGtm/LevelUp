@@ -2,7 +2,8 @@
  * TanStack Query — « Synchroniser maintenant » : POST /sync/now lance le cycle, GET /sync/cycle dit
  * s'il tourne ; GET /players/{slug}/sync/history donne l'état de l'historique du joueur par titre suivi.
  *
- * L'état du cycle se relit toutes les 3 s tant qu'il tourne, jamais au repos. L'état de l'historique se
+ * L'état du cycle se relit toutes les 3 s tant qu'il tourne et toutes les 30 s au repos (onglet visible
+ * seulement : un cycle automatique ne passe pas inaperçu). L'état de l'historique se
  * relit toutes les 5 s pendant un cycle, toutes les 30 s pendant un rattrapage, jamais au repos, et une
  * fois à la fin de chaque cycle. La clé de l'historique porte la langue : le serveur résout les libellés.
  */

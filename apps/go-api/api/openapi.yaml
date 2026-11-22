@@ -32587,7 +32587,7 @@ components:
           type: boolean
         last_pass:
           $ref: '#/components/schemas/HistoryPass'
-          description: Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur.
+          description: Dernière passe de synchronisation connue du joueur sur ce titre, conservée d'un redémarrage du serveur à l'autre ; absente si aucune n'est enregistrée.
         match_count:
           description: Matchs du joueur enregistrés dans la base partagée du titre.
           format: int64

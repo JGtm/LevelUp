@@ -42,6 +42,8 @@ export interface SyncNowText {
   nextPassRunning: string
   nextPassManualOnly: string
   nextPassUnknown: string
+  /** État d'un rattrapage d'historique que la synchronisation automatique désactivée laisse à l'arrêt. */
+  catchUpPaused: string
 }
 
 const FR: SyncNowText = {
@@ -68,11 +70,12 @@ const FR: SyncNowText = {
   noMatches: 'Aucun match',
   lastPassValue: '{status}, le {date}',
   lastPassAdded: 'Matchs ajoutés : {count}',
-  lastPassNone: 'Aucune passe depuis le démarrage',
+  lastPassNone: 'Aucune passe enregistrée',
   nextPassAt: 'Vers {date}',
   nextPassRunning: 'Synchronisation en cours',
   nextPassManualOnly: 'Synchronisation automatique désactivée',
   nextPassUnknown: 'Pas encore planifiée',
+  catchUpPaused: 'Rattrapage en pause : synchronisation automatique désactivée',
 }
 
 const EN: SyncNowText = {
@@ -99,11 +102,12 @@ const EN: SyncNowText = {
   noMatches: 'No match',
   lastPassValue: '{status}, on {date}',
   lastPassAdded: 'Matches added: {count}',
-  lastPassNone: 'No pass since startup',
+  lastPassNone: 'No pass recorded',
   nextPassAt: 'Around {date}',
   nextPassRunning: 'Sync in progress',
   nextPassManualOnly: 'Automatic sync is turned off',
   nextPassUnknown: 'Not scheduled yet',
+  catchUpPaused: 'Catch-up paused: automatic sync is off',
 }
 
 const TEXT: Record<Locale, SyncNowText> = { fr: FR, en: EN }

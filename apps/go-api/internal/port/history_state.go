@@ -18,6 +18,26 @@ type HistoryCompletionReader interface {
 	HistoryComplete(ctx context.Context, titleSlug, gamertag string) (bool, error)
 }
 
+// HistoryMarker est la position de l'historique d'un joueur : la fin vue ou non, et le marque-page du
+// rattrapage. Deux lectures égales disent que le rattrapage n'a pas avancé entre elles ; le marque-page
+// d'un joueur dont l'historique est complet est vide.
+type HistoryMarker struct {
+	// Complete : la fin de l'historique a été vue (clé de fin rangée).
+	Complete bool
+	// Offset et LastMatchID : le marque-page du rattrapage (entrées de la liste de l'API déjà traitées et
+	// dernier match traité) ; zéro et vide quand il n'y en a pas.
+	Offset      int
+	LastMatchID string
+}
+
+// HistoryMarkerReader lit, sans écrire, la position de l'historique d'un joueur dans sa base joueur. Une base
+// absente rend la position vide (aucune passe n'a encore parcouru l'historique) ; une lecture en échec rend
+// l'erreur et l'appelant la journalise. L'ordonnanceur compare deux positions autour d'un cycle pour dire si le
+// rattrapage a avancé.
+type HistoryMarkerReader interface {
+	ReadHistoryMarker(ctx context.Context, titleSlug, gamertag string) (HistoryMarker, error)
+}
+
 // HistoryProgress est ce qu'une lecture de l'état de l'historique d'un joueur rend : ce que la base
 // partagée du titre a rangé de ses matchs, et si la fin de l'historique a été vue.
 type HistoryProgress struct {
@@ -50,8 +70,8 @@ const (
 	SyncPassSkipped SyncPassStatus = "skipped"
 )
 
-// SyncPass est la dernière passe d'un joueur sur un titre, telle que l'ordonnanceur l'a vue depuis son
-// démarrage.
+// SyncPass est la dernière passe d'un joueur sur un titre, telle que l'ordonnanceur la connaît :
+// vue depuis son démarrage, ou relue du disque (instantané du dernier cycle).
 type SyncPass struct {
 	At              time.Time
 	MatchesInserted int
@@ -64,7 +84,7 @@ type SyncActivity interface {
 	AutoSyncEnabled() bool
 	// NextCycleAt rend l'instant du prochain cycle périodique ; zéro tant que la boucle n'a pas démarré.
 	NextCycleAt() time.Time
-	// LastPass rend la dernière passe du joueur sur le titre depuis le démarrage ; faux si aucune.
+	// LastPass rend la dernière passe connue du joueur sur le titre (conservée d'un redémarrage à l'autre) ; faux si aucune.
 	LastPass(titleSlug, gamertag string) (SyncPass, bool)
 	// FilmsPending dit si le titre a un arriéré de films (source des frags, artefacts de rejeu) que les
 	// étapes film du post-sync n'ont pas fini de traiter.

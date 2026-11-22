@@ -3,7 +3,7 @@
 // du titre a rangé de ses matchs.
 //
 // Sous-paquet de platform/duckdb : il compose sync/historystate, que platform/duckdb n'importe pas
-// lui-même. Il implémente port.HistoryCompletionReader et port.HistoryProgressReader.
+// lui-même. Il implémente port.HistoryCompletionReader, port.HistoryProgressReader et port.HistoryMarkerReader.
 package historyrepo
 
 import (
@@ -37,6 +37,7 @@ type Repo struct {
 var (
 	_ port.HistoryCompletionReader = (*Repo)(nil)
 	_ port.HistoryProgressReader   = (*Repo)(nil)
+	_ port.HistoryMarkerReader     = (*Repo)(nil)
 )
 
 // New construit le lecteur ; playerDBPath est requis. Sans sharedReader (nil), ReadHistoryProgress ne
@@ -52,23 +53,35 @@ func New(playerDBPath PlayerDBPathFunc, sharedReader SharedReaderFunc) *Repo {
 // rend faux : aucune passe n'a encore parcouru l'historique de ce joueur. Une lecture de la clé en
 // échec rend l'erreur (état inconnu, jamais « complet »).
 func (r *Repo) HistoryComplete(ctx context.Context, titleSlug, gamertag string) (bool, error) {
+	m, err := r.ReadHistoryMarker(ctx, titleSlug, gamertag)
+	return m.Complete, err
+}
+
+// ReadHistoryMarker lit la position de l'historique du joueur dans sa base, sur le même handle partagé que
+// HistoryComplete (même contrat de base absente et de lecture en échec) : la clé de fin et le marque-page du
+// rattrapage (historystate.LoadCursor). Le marque-page se lit sur la même ouverture, sans second accès.
+func (r *Repo) ReadHistoryMarker(ctx context.Context, titleSlug, gamertag string) (port.HistoryMarker, error) {
 	path := r.playerDBPath(titleSlug, gamertag)
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
+			return port.HistoryMarker{}, nil
 		}
-		return false, fmt.Errorf("historyrepo: base joueur %s/%s: %w", titleSlug, gamertag, err)
+		return port.HistoryMarker{}, fmt.Errorf("historyrepo: base joueur %s/%s: %w", titleSlug, gamertag, err)
 	}
 	db, release, err := duckdb.OpenPlayerReadForQuery(path)
 	if err != nil {
-		return false, fmt.Errorf("historyrepo: ouverture de la base joueur %s/%s: %w", titleSlug, gamertag, err)
+		return port.HistoryMarker{}, fmt.Errorf("historyrepo: ouverture de la base joueur %s/%s: %w", titleSlug, gamertag, err)
 	}
 	defer release()
 	complete, err := historystate.Complete(ctx, db)
 	if err != nil {
-		return false, fmt.Errorf("historyrepo: état de l'historique %s/%s: %w", titleSlug, gamertag, err)
+		return port.HistoryMarker{}, fmt.Errorf("historyrepo: état de l'historique %s/%s: %w", titleSlug, gamertag, err)
 	}
-	return complete, nil
+	m := port.HistoryMarker{Complete: complete}
+	if c, ok := historystate.LoadCursor(ctx, db); ok {
+		m.Offset, m.LastMatchID = c.Offset, c.LastMatchID
+	}
+	return m, nil
 }
 
 // ReadHistoryProgress rend la clé de fin d'historique du joueur (HistoryComplete) et ce que la base

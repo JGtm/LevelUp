@@ -11,6 +11,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/historystate"
 )
 
@@ -237,5 +238,62 @@ func TestHistoryComplete_AvecMarquePage(t *testing.T) {
 	_ = db.Close()
 	if got, err := r.ReadHistoryProgress(ctx, "halo_infinite", "JGtm", ""); err != nil || !got.Complete {
 		t.Errorf("clé de fin rangée : (%+v, %v), attendu complet", got, err)
+	}
+}
+
+// La position lue dit la fin vue et le marque-page : c'est la comparaison de deux positions qui apprend à
+// l'ordonnanceur que le rattrapage a avancé. Base absente : position vide, sans erreur.
+func TestReadHistoryMarker(t *testing.T) {
+	ctx := context.Background()
+	absente := New(func(string, string) string { return filepath.Join(t.TempDir(), "absente.duckdb") }, nil)
+	if m, err := absente.ReadHistoryMarker(ctx, "halo_infinite", "JGtm"); err != nil || m != (port.HistoryMarker{}) {
+		t.Fatalf("base absente : (%+v, %v), attendu une position vide", m, err)
+	}
+
+	path := filepath.Join(t.TempDir(), "stats.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at TIMESTAMP)`); err != nil {
+		t.Fatalf("create sync_meta: %v", err)
+	}
+	if !historystate.SaveCursor(ctx, db, historystate.Cursor{Offset: 400, LastMatchID: "match-400", HeadID: "tete"}) {
+		t.Fatal("le marque-page n'a pas été rangé")
+	}
+	_ = db.Close()
+	r := New(func(string, string) string { return path }, nil)
+
+	want := port.HistoryMarker{Offset: 400, LastMatchID: "match-400"}
+	if m, err := r.ReadHistoryMarker(ctx, "halo_infinite", "JGtm"); err != nil || m != want {
+		t.Fatalf("marque-page rangé : (%+v, %v), attendu %+v (l'ancre de tête n'en fait pas partie)", m, err, want)
+	}
+
+	db, err = sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if !historystate.SaveCursor(ctx, db, historystate.Cursor{Offset: 600, LastMatchID: "match-600"}) {
+		t.Fatal("le marque-page suivant n'a pas été rangé")
+	}
+	_ = db.Close()
+	next, err := r.ReadHistoryMarker(ctx, "halo_infinite", "JGtm")
+	if err != nil || next == want || next.Offset != 600 {
+		t.Fatalf("marque-page avancé : (%+v, %v), attendu une position différente de %+v", next, err, want)
+	}
+
+	db, err = sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if !historystate.MarkComplete(ctx, db, "JGtm") || !historystate.ClearCursor(ctx, db) {
+		t.Fatal("la fin d'historique n'a pas été rangée")
+	}
+	_ = db.Close()
+	if m, err := r.ReadHistoryMarker(ctx, "halo_infinite", "JGtm"); err != nil || m != (port.HistoryMarker{Complete: true}) {
+		t.Errorf("fin rangée : (%+v, %v), attendu complet sans marque-page", m, err)
 	}
 }

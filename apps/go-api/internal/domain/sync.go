@@ -104,6 +104,11 @@ type SyncResult struct {
 	// résultat. Le moteur V1 ne le remplit jamais (delta pur). Lu par l'ordonnanceur pour replanifier
 	// un cycle court ; absent des réponses d'API.
 	HistoryPending bool `json:"-"`
+	// CatchUpInserted : parmi MatchesInserted, les matchs que le rattrapage de l'historique a rangés (au-delà
+	// du delta du dessus). Les autres sont les nouveaux matchs, arrivés par le delta. Zéro tant que le runner
+	// ne le remplit pas : tous les matchs insérés comptent alors comme nouveaux. Lu par l'ordonnanceur pour la
+	// notification de fin de cycle, qui n'annonce que les nouveaux matchs ; absent des réponses d'API.
+	CatchUpInserted int `json:"-"`
 }
 
 // Status retourne "success", "partial_success" ou "failure".
