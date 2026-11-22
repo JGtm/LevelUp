@@ -66,6 +66,18 @@
 # (les cartes de la page du match le calculent depuis le fil). Aucune paire réinscrite. Vérifié par le bilan d'absence du
 # gate : ces 4 paires étaient les seules absentes du run courant.
 #
+# RETRAIT DU 2026-11-23 (montée du décodeur v1.5.0) : 4 paires (Package, Test), 4 lignes JSONL, quittent la baseline
+# avec le code qu'elles couvraient. `internal/sync/killcollector` (3 paires, 3 lignes dans `tests_pre_migration.jsonl`) :
+# TestPorteDePrecisionSansFixture, TestPrecisionNonConfigureeNeCassePas et TestPrecisionSurFilmReel, l'ancien calcul de
+# précision par film retiré de LevelUp faute de lecteur (fichiers `hits.go`, `weapon_accuracy_film.go` et
+# `weapon_hit_distance_persister.go` supprimés). Brique du décodeur de film, paquet
+# `github.com/JGtm/halo-infinite-film-decoder/replay` (1 paire, 1 ligne dans `tests_halo-infinite-film-decoder.jsonl`) :
+# TestT0FilmTracksOfConserveIdentiteEtPoints, parce que le décodeur v1.5.0 lit le coup d'envoi à l'horloge du jeu : le
+# détecteur par premier mouvement et ses pistes ne sont plus la source, le test a disparu avec le code. Aucune paire
+# réinscrite. Vérifié par recherche des quatre noms dans le code (aucune occurrence dans `apps/go-api` ni dans le
+# décodeur au tag v1.5.0) et par le nombre de lignes retirées. Compte PARTIEL d'absences volontaires -> remède prescrit
+# ici même.
+#
 # RELOCALISATION DU 2026-11-14 (plan architecture, étapes 4.2, 5.7 et 5.8 réinscrites) : 49 paires (Package, Test), 282
 # lignes JSONL, réinscrites sous leur nouveau paquet ; les retraits des trois étapes les avaient sorties de la baseline
 # alors qu'elles tournent toujours, sous le même nom. 4.2 : 13 paires de `internal/api/handlers` vers `internal/service`

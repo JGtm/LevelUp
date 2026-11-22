@@ -817,7 +817,6 @@
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestDetectT0FilmFenetreGlissanteOublieLesPasAnciens","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestDetectT0FilmRefuseSansIntervalleDeFrame","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestT0FilmBurstCompteLesJoueursPasLesVies","Elapsed":0}
-{"Time":"2026-09-05T23:46:38.767059+02:00","Action":"pass","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestT0FilmTracksOfConserveIdentiteEtPoints","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"skip","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestTotalControlDesignateurParManche","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"skip","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestTotalControlInstantCardinal","Elapsed":0}
 {"Time":"2026-09-05T23:46:38.767059+02:00","Action":"skip","Package":"github.com/JGtm/halo-infinite-film-decoder/replay","Test":"TestTotalControlLargeursMPP","Elapsed":0}

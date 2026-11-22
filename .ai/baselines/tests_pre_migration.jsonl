@@ -56312,9 +56312,6 @@
 {"Time":"2026-09-05T23:47:53.9767923+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestCreditCouvreUnMatchSansFilm","Elapsed":0.99}
 {"Time":"2026-09-05T23:47:53.9767923+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestFilmReadPathsEgalesAuDecodeur","Elapsed":0}
 {"Time":"2026-09-05T23:47:53.9851801+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestFilmReadPathsCouvrentToutesLesVoiesDuDecodeur","Elapsed":0.01}
-{"Time":"2026-09-05T23:47:55.9508072+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestPorteDePrecisionSansFixture","Elapsed":1.97}
-{"Time":"2026-09-05T23:47:56.9231298+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestPrecisionNonConfigureeNeCassePas","Elapsed":0.97}
-{"Time":"2026-09-05T23:47:56.9231298+02:00","Action":"skip","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestPrecisionSurFilmReel","Elapsed":0}
 {"Time":"2026-09-05T23:47:56.9231298+02:00","Action":"skip","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestKillSourcePositionsFilmReelEtRelitParLaVue","Elapsed":0}
 {"Time":"2026-09-05T23:47:56.9231298+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestFilmOf_ChargeLesChunksALeurIndex","Elapsed":0}
 {"Time":"2026-09-05T23:47:56.923656+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/killcollector","Test":"TestFilmOf_ZlibRoundTrip","Elapsed":0}
