@@ -297,6 +297,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
       en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
       sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
+- [ ] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
+      décodeur ne nomme pas encore (verdict de C.5) : Drapeau (`FlagReturnersKilled`, `KillsAsFlagReturner`), Bases et
+      Contrôle total (`StrongholdOffensiveKills`, `StrongholdDefensiveKills`, `StrongholdScoringTicks`), VIP (six
+      compteurs), Extraction (cinq, seulement si le nom est PROUVÉ par les définitions du film ou par l'API). Nommés
+      par mode dans la table existante, publiés comme les compteurs d'objectif voisins, avec le contrôle sur moitiés
+      de films disjointes. Les emplacements traînants ou jamais écrits ne sont PAS publiés.
+- [ ] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
+      grammaire, publication par manche, et total d'un match à manches = manches figées plus manche vivante de la
+      dernière. Mesure attendue sur les films à manches : aucun accord avec l'API ne baisse, les totaux montent.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
@@ -433,6 +442,12 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — GO DU USER (« go pour les deux maintenant, mets des agents dessus et essaye de régler leurs effort de
+  manière appropriée ») : (1) marque de tir à la tête et de frag parfait par élimination (H.7, publication par le
+  décodeur depuis l'appariement mesuré, puis icônes du fil côté LevelUp à la montée) ; (2) compteurs de mode et
+  valeurs figées par manche (C.6, C.7). Trois agents lancés, un dossier de travail chacun sous `Scripts/` :
+  `dec-v150-h7` (Sonnet, effort élevé), `dec-v150-modes` (Sonnet, effort moyen), `dec-v150-figees` (Opus, effort
+  élevé : lecture neuve dans la grammaire).
 - 2026-11-22 — C.5, VERDICT rendu (`annexes_decodeur_1118/emplacements_tableau_verdict.md`, 58 films, chaîne étalonnée
   à 100 % sur tirs à la tête et grenades). Trois régimes : VIVANT (réécrit à chaque événement, 99 % et plus
   d'accord avec l'API : éliminations, morts, assistances, score, tête, mêlée, grenade, arme lourde, série,
