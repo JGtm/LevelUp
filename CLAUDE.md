@@ -51,15 +51,18 @@ trimestrielle** : quand un trimestre est clos, déplacer ses entrées vers
 `.ai/archive/thought_log_<AAAA>-Q<N>.md` — le journal actif ne garde que le
 trimestre courant + le précédent.
 
-**Skills agent** (`.claude/skills/*/SKILL.md`) — invoquer le skill AVANT d'agir dans son domaine :
+**Skills agent** — invoquer le skill AVANT d'agir dans son domaine. Les cinq skills de méthode
+sont généraux et vivent au niveau utilisateur (`~/.claude/skills/`, communs à tous les projets) ;
+leur complément LevelUp vit ici (`.claude/skills/levelup-*`) et se lit avec eux. Les autres skills
+sont propres à LevelUp (`.claude/skills/*/SKILL.md`).
 
-| Skill | Quand |
-|---|---|
-| `plan-execution` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
-| `plan-review` | Avant de finaliser un plan d'implémentation |
-| `adversarial-review` | Faire relire un diff par un contexte frais avant merge (lots à risque : persist/sync, auth, algo) |
-| `adversarial-audit` | Auditer du code existant hors diff (périmètre × axe, registre daté, ne corrige pas) |
-| `delivery-checklist` | Avant tout commit / PR / « c'est livré » |
+| Skill | Complément LevelUp | Quand |
+|---|---|---|
+| `plan-execution` | `levelup-plan` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
+| `plan-review` | `levelup-plan` | Avant de finaliser un plan d'implémentation |
+| `adversarial-review` | `levelup-revue` | Faire relire un diff par un contexte frais avant merge (en fin de jalon ; par lot si persist/sync, auth, algo) |
+| `adversarial-audit` | `levelup-revue` | Auditer du code existant hors diff (périmètre × axe, registre daté, ne corrige pas) |
+| `delivery-checklist` | `levelup-livraison` | Avant tout commit / PR / « c'est livré » |
 | `arch-rules` | Code Go (couches, ports, multi-titre, logging) |
 | `canonical-types` | Types inter-titres (`internal/games/canonical/`) |
 | `db-schema` | Requêtes / schéma DuckDB |

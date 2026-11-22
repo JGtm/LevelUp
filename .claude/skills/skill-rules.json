@@ -140,7 +140,7 @@
         },
         "adversarial-review": {
             "priority": "critical",
-            "description": "Revue adversariale d'un diff avant merge — contexte frais, contrat, constats reproductibles, bornes de boucle",
+            "description": "Revue adversariale d'un diff avant merge — contexte frais, contrat, constats reproductibles, bornes de boucle (+ complément levelup-revue)",
             "promptTriggers": {
                 "keywords": [
                     "adversarial",
@@ -176,7 +176,7 @@
         },
         "adversarial-audit": {
             "priority": "critical",
-            "description": "Audit adversarial du code existant — perimetre x axe, fan-out aveugle, verification adverse, registre date",
+            "description": "Audit adversarial du code existant — perimetre x axe, fan-out aveugle, verification adverse, registre date (+ complément levelup-revue)",
             "promptTriggers": {
                 "keywords": [
                     "adversarial-audit",
@@ -213,7 +213,7 @@
         },
         "plan-review": {
             "priority": "critical",
-            "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison",
+            "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison (+ complément levelup-plan)",
             "promptTriggers": {
                 "keywords": [
                     "plan",
@@ -245,7 +245,7 @@
         },
         "delivery-checklist": {
             "priority": "critical",
-            "description": "Go/no-go avant livraison — tests, logging, multi-titres, thought_log",
+            "description": "Go/no-go avant livraison — tests, logging, multi-titres, thought_log (+ complément levelup-livraison)",
             "promptTriggers": {
                 "keywords": [
                     "livrer",
