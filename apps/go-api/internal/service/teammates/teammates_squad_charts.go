@@ -4,8 +4,8 @@
 //
 //   - teammates_squad_charts_sessions_maps.go         : buildSquadSessionTimeline (.04) +
 //     buildSquadMapHeatmap (.03)
-//   - teammates_squad_impact.go                       : buildSquadImpact (matrice .07 +
-//     points d'impact par soiree)
+//   - teammates_squad_impact.go                       : buildSquadImpact (tableau d'impact
+//     par session)
 //   - teammates_squad_charts_impact_events.go         : buildSquadFirstBlood + helpers
 //   - teammates_squad_charts_weapons_perf.go          : buildSquadWeaponKills +
 //     buildSquadPerformanceSeries

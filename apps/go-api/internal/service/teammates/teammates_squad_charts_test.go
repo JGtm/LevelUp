@@ -3,6 +3,7 @@ package teammates
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -743,16 +744,16 @@ func TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain(t *testing.T) {
 	}
 }
 
-// TestBuildSquadImpactMatrix_TeamWideAllyDropped : le scoreboard impact est
+// TestBuildSquadImpactSessions_TeamWideAllyDropped : le tableau d'impact est
 // calculé en team-wide alliée (parité Python compute_single_match_impact).
 // Si un badge (ex. top_killer) tombe sur un allié NON-squad, il ne doit PAS
-// apparaître dans le scoreboard ni se reporter sur un squad member.
+// apparaître dans le tableau ni se reporter sur un squad member.
 //
 // Setup : main + A (squad). NS = allié non-squad. NS a 12 kills (top killer
 // global de l'équipe alliée), main a 5, A a 4. Le badge top_killer va donc à
 // NS et doit être droppé. silent_hero (max_assists+min_deaths) tombe sur A
 // (max_assists=8, min_deaths=0) → doit apparaître dans le scoreboard.
-func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
+func TestBuildSquadImpactSessions_TeamWideAllyDropped(t *testing.T) {
 	mainXUID := "x_main"
 	matchID := "m_session_1"
 	startTime := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
@@ -775,52 +776,37 @@ func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeWin},
 	}
-	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: allSquadRows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
-	if matrix == nil {
-		t.Fatal("matrix should be non-nil")
+	sessions := impactDe(svc, allSquadRows, repo.allyRows)
+	if sessions == nil {
+		t.Fatal("le tableau devrait être non nul")
 	}
 
 	// top_killer va sur NS (non-squad) → ne doit apparaître nulle part.
-	for _, c := range matrix.Cells {
-		for _, k := range c.BadgeKeys {
-			if k == "top_killer" {
-				t.Errorf("top_killer ne doit pas apparaître (tombe sur NS, allié non-squad) — trouvé sur %s", c.Player)
-			}
+	for _, p := range sessions.Sessions[0].Players {
+		if slices.Contains(rolesDe(p), "top_killer") {
+			t.Errorf("top_killer ne doit pas apparaître (tombe sur NS, allié non-squad) — trouvé sur %s", p.Player)
 		}
 	}
-	// Aucun joueur ne doit avoir un compte top_killer non nul dans la summary.
-	for _, p := range matrix.Players {
-		for _, b := range p.Counts {
-			if b.BadgeKey == "top_killer" && b.Count != 0 {
-				t.Errorf("player %s : top_killer count=%d, want 0 (badge tombé sur non-squad)", p.Player, b.Count)
-			}
+	// Aucun joueur ne doit avoir un compte top_killer non nul dans les totaux.
+	for _, tot := range sessions.Totals {
+		if n := compteDuRole(tot.Counts, "top_killer"); n != 0 {
+			t.Errorf("player %s : top_killer count=%d, want 0 (badge tombé sur non-squad)", tot.Player, n)
 		}
 	}
 
 	// silent_hero doit aller à A (max assists=8, min deaths=0 sur l'équipe alliée).
-	foundSilentOnA := false
-	for _, c := range matrix.Cells {
-		if c.Player != "A" {
-			continue
-		}
-		for _, k := range c.BadgeKeys {
-			if k == "silent_hero" {
-				foundSilentOnA = true
-			}
-		}
-	}
-	if !foundSilentOnA {
+	if !slices.Contains(rolesDe(joueurDe(sessions.Sessions[0], "A")), "silent_hero") {
 		t.Error("silent_hero attendu sur A (max assists + min deaths parmi alliés)")
 	}
 }
 
-// TestBuildSquadImpactMatrix_TeamWideAllySwapsBadge : si un allié non-squad
+// TestBuildSquadImpactSessions_TeamWideNoFallback : si un allié non-squad
 // est plus extrême que le squad member, c'est lui qui reçoit le badge en
 // team-wide → le squad member NE DOIT PAS recevoir le badge "à défaut".
 //
 // Setup défaite : main perd, A (squad) a 5 deaths, NS (non-squad) a 9 deaths.
 // false_brother en team-wide va sur NS, donc A ne le reçoit pas.
-func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
+func TestBuildSquadImpactSessions_TeamWideNoFallback(t *testing.T) {
 	mainXUID := "x_main"
 	matchID := "m_session_2"
 	startTime := time.Date(2026, 4, 6, 19, 0, 0, 0, time.UTC)
@@ -840,21 +826,18 @@ func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeLoss},
 	}
-	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: allSquadRows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
+	sessions := impactDe(svc, allSquadRows, repo.allyRows)
 
 	// false_brother doit aller à NS (max deaths=9, min assists=0). Donc :
 	// - A ne doit PAS recevoir false_brother malgré ses 5 deaths (squad-only,
 	//   il l'aurait reçu en logique squad-only buggée).
-	// - matrix peut être nil si AUCUN badge ne tombe sur un squad member.
-	if matrix == nil {
-		// OK : aucun badge alloué à un squad member, matrice vide donc nil.
+	// - le tableau peut être nul si AUCUN rôle ne tombe sur un squad member.
+	if sessions == nil {
 		return
 	}
-	for _, c := range matrix.Cells {
-		for _, k := range c.BadgeKeys {
-			if k == "false_brother" {
-				t.Errorf("false_brother ne doit pas apparaître (tombe sur NS en team-wide) — trouvé sur %s", c.Player)
-			}
+	for _, p := range sessions.Sessions[0].Players {
+		if slices.Contains(rolesDe(p), "false_brother") {
+			t.Errorf("false_brother ne doit pas apparaître (tombe sur NS en team-wide) — trouvé sur %s", p.Player)
 		}
 	}
 }
@@ -1318,10 +1301,10 @@ func TestCollectSharedMatchIDsForDigest_DedupedInput(t *testing.T) {
 	}
 }
 
-// TestBuildSquadImpactMatrix_ThiefBadge : le badge « Voleur » arrive dans la matrice
+// TestBuildSquadImpactSessions_ThiefBadge : le badge « Voleur » arrive dans le tableau
 // depuis le journal des morts (tueur ET assistant membres de l'escouade), compte dans
-// les agrégats et pèse sur le score.
-func TestBuildSquadImpactMatrix_ThiefBadge(t *testing.T) {
+// les totaux et pèse sur les points.
+func TestBuildSquadImpactSessions_ThiefBadge(t *testing.T) {
 	mainXUID := "x_main"
 	matchID := "m_thief"
 	pct := 4
@@ -1336,29 +1319,17 @@ func TestBuildSquadImpactMatrix_ThiefBadge(t *testing.T) {
 	}
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "main"}
 	rows := []domain.SquadMatchRow{{MatchID: matchID, StartTime: time.Now(), Outcome: domain.OutcomeWin}}
-	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: rows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
-	if matrix == nil {
-		t.Fatal("matrix should be non-nil")
+	sessions := impactDe(svc, rows, repo.allyRows)
+	if sessions == nil {
+		t.Fatal("le tableau devrait être non nul")
 	}
-	found := false
-	for _, c := range matrix.Cells {
-		for _, k := range c.BadgeKeys {
-			if k == "thief" {
-				if c.Player != "A" {
-					t.Errorf("thief attendu sur A, trouvé sur %s", c.Player)
-				}
-				found = true
-			}
+	for _, p := range sessions.Sessions[0].Players {
+		if got := slices.Contains(rolesDe(p), "thief"); got != (p.Player == "A") {
+			t.Errorf("thief sur %s = %v, attendu sur A seul", p.Player, got)
 		}
 	}
-	if !found {
-		t.Fatal("badge thief absent de la matrice")
-	}
-	for _, p := range matrix.Players {
-		for _, b := range p.Counts {
-			if b.BadgeKey == "thief" && p.Player == "A" && b.Count != 1 {
-				t.Errorf("A : thief count=%d, want 1", b.Count)
-			}
-		}
+	a := sessions.Totals[1]
+	if a.Player != "A" || compteDuRole(a.Counts, "thief") != 1 || a.Points != -1 {
+		t.Errorf("total de A %+v : attendu 1 thief, -1 point", a)
 	}
 }

@@ -77,7 +77,7 @@ type SquadRepository interface {
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
 	// team-wide). Pour chaque match dans matchIDs, retourne les rows
 	// match_participants où team_id = team_id du mainXUID dans ce match (le main
-	// inclus). Permet à buildSquadImpactMatrix de calculer les badges sur
+	// inclus). Permet à buildSquadImpact de calculer les badges sur
 	// l'équipe alliée complète au lieu du squad sélectionné uniquement.
 	LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error)
 

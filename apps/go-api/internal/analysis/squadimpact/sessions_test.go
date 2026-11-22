@@ -161,8 +161,8 @@ func TestBuildSessions_EgalitesEtPlusDeOnzeSessions(t *testing.T) {
 	// Un match de D01 (hors des onze) porte aussi un rôle : il ne doit pas entrer dans les totaux.
 	roles["D01-0"] = []Attribution{{Player: "Main", Role: RoleFirstBlood}}
 	got := BuildSessions(SessionsInput{Evenings: evenings, Players: []string{"Main", "A"}, Roles: roles})
-	if got == nil || len(got.Sessions) != domain.SquadImpactHistoryMaxEvenings {
-		t.Fatalf("%v sessions, attendu %d", got, domain.SquadImpactHistoryMaxEvenings)
+	if got == nil || len(got.Sessions) != domain.SquadImpactSessionsMax {
+		t.Fatalf("%v sessions, attendu %d", got, domain.SquadImpactSessionsMax)
 	}
 	if got.Sessions[0].SessionLabel != "D14" || got.Sessions[10].SessionLabel != "D04" {
 		t.Errorf("de %s à %s, attendu de D14 à D04", got.Sessions[0].SessionLabel, got.Sessions[10].SessionLabel)

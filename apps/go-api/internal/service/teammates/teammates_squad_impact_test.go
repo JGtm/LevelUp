@@ -1,8 +1,7 @@
 package teammates
 
-// teammates_squad_impact_test.go — la matrice d'impact et les points d'impact par soirée
-// (teammates_squad_impact.go) : mêmes rôles, même barème, une lecture des événements et du
-// journal des morts pour les deux.
+// teammates_squad_impact_test.go — le tableau d'impact par session (teammates_squad_impact.go) :
+// une lecture des événements et du journal des morts pour toutes les sessions.
 
 import (
 	"context"
@@ -19,9 +18,9 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
-// soireesFixture — deux soirées de la composition {Main, Ally} : S1 (3 matchs, la veille) puis
+// soireesFixture — deux sessions de la composition {Main, Ally} : S1 (3 matchs, la veille) puis
 // S2 (3 matchs). Chaque match porte des frags et des morts horodatés, l'équipe alliée complète
-// (un allié hors escouade compris) et un vol au premier match de chaque soirée.
+// (un allié hors escouade compris) et un vol au premier match de chaque session.
 func soireesFixture() (*mockSquadRepo, []domain.SquadMatchRow) {
 	t0 := time.Date(2026, 9, 1, 19, 0, 0, 0, time.UTC)
 	repo := &mockSquadRepo{topRows: []domain.TopTeammateRow{{XUID: "x_ally", Gamertag: "Ally", GamesTogether: 6}}}
@@ -76,71 +75,48 @@ func lignesDeSession(rows []domain.SquadMatchRow, label string) []domain.SquadMa
 	return out
 }
 
-// TestBuildSquadImpact_PariteMatriceHistorique : sur une même soirée, le net de chaque joueur
-// dans les points par soirée égale son score dans la matrice calculée sur les matchs de cette
-// soirée, et ses comptes de rôles sont les mêmes. Vérifié pour la soirée affichée ET pour une
-// soirée précédente (lue depuis l'historique de la composition).
-func TestBuildSquadImpact_PariteMatriceHistorique(t *testing.T) {
-	repo, all := soireesFixture()
+// dedieSessions : une lecture dédiée du tableau sur les seules lignes données (sans la mémoire de la
+// page ni les autres sessions de la composition).
+func dedieSessions(t *testing.T, repo *mockSquadRepo, rows []domain.SquadMatchRow) *domain.SquadImpactSessions {
+	t.Helper()
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "Main"}
-	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
-	s2 := lignesDeSession(all, "S2")
-	in := impactEscouade{
-		rows: s2, timeline: all, evenings: soireesDImpact(s2, all, true),
-		mainXUID: "x_main", selected: []string{"Ally"}, teammates: tm, allies: repo.allyRows,
-	}
-	_, history := svc.buildSquadImpact(context.Background(), in)
-	if history == nil || len(history.Evenings) != 2 {
-		t.Fatalf("deux soirées attendues (S1 précédente, S2 affichée), obtenu %+v", history)
-	}
-	for i, label := range []string{"S1", "S2"} {
-		ev := history.Evenings[i]
-		if ev.SessionLabel != label || ev.Matches != 3 || ev.Wins != 2 {
-			t.Fatalf("soirée %d = %s (%d matchs, %d victoires), attendu %s, 3 matchs, 2 victoires",
-				i, ev.SessionLabel, ev.Matches, ev.Wins, label)
-		}
-		matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{
-			rows: lignesDeSession(all, label), mainXUID: "x_main", selected: []string{"Ally"},
-			teammates: tm, allies: repo.allyRows,
-		})
-		if matrix == nil {
-			t.Fatalf("%s : matrice nulle", label)
-		}
-		comparerSoireeEtMatrice(t, label, ev, matrix)
-	}
+	return svc.buildSquadImpact(context.Background(), impactEscouade{
+		rows: rows, timeline: rows, evenings: soireesDImpact(rows, rows, true),
+		mainXUID: "x_main", selected: []string{"Ally"},
+		teammates: []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}, allies: repo.allyRows,
+	})
 }
 
-// comparerSoireeEtMatrice : net = score, comptes de rôles identiques, joueur par joueur.
-func comparerSoireeEtMatrice(t *testing.T, label string, ev domain.SquadImpactEvening, m *domain.SquadImpactMatrix) {
-	t.Helper()
-	parJoueur := map[string]domain.SquadImpactPlayerSummary{}
-	for _, p := range m.Players {
-		parJoueur[p.Player] = p
+// rolesDe rend les rôles d'un joueur sur tous les matchs d'une session, à plat, dans l'ordre des
+// matchs.
+func rolesDe(p domain.SquadImpactSessionsPlayer) []string {
+	var out []string
+	for _, m := range p.PerMatch {
+		out = append(out, m.Roles...)
 	}
-	vol := false
-	for _, p := range ev.Players {
-		ligne, ok := parJoueur[p.Player]
-		if !ok {
-			t.Fatalf("%s : %s absent de la matrice", label, p.Player)
-		}
-		if ligne.Score != p.Points {
-			t.Errorf("%s / %s : net %v, score de la matrice %v", label, p.Player, p.Points, ligne.Score)
-		}
-		comptes := map[string]int{}
-		for _, r := range p.Roles {
-			comptes[r.Role] = r.Count
-			vol = vol || r.Role == "thief"
-		}
-		for _, c := range ligne.Counts {
-			if comptes[c.BadgeKey] != c.Count {
-				t.Errorf("%s / %s / %s : %d dans la soirée, %d dans la matrice",
-					label, p.Player, c.BadgeKey, comptes[c.BadgeKey], c.Count)
-			}
+	return out
+}
+
+// joueurDe rend l'entrée d'un joueur d'une session, ou le zéro si elle n'y figure pas.
+func joueurDe(s domain.SquadImpactSessionsSession, joueur string) domain.SquadImpactSessionsPlayer {
+	for _, p := range s.Players {
+		if p.Player == joueur {
+			return p
 		}
 	}
-	if !vol {
-		t.Errorf("%s : le Voleur du premier match manque à la soirée", label)
+	return domain.SquadImpactSessionsPlayer{}
+}
+
+// etiquetees rend les lignes avec un libellé de session (celui donné quand elles n'en ont pas) : une
+// ligne sans libellé ne forme aucune ligne du tableau.
+func etiquetees(rows []domain.SquadMatchRow, label string) []domain.SquadMatchRow {
+	out := slices.Clone(rows)
+	for i := range out {
+		if out[i].SessionLabel == nil {
+			out[i].SessionLabel = strPtr(label)
+		}
 	}
+	return out
 }
 
 // impactKillLogCompte compte, en plus des lectures Q32, les lectures du journal des morts.
@@ -158,10 +134,10 @@ func (c *impactKillLogCompte) LoadSquadKillLog(ctx context.Context, ids, xuids [
 	return c.countingSquadRepo.LoadSquadKillLog(ctx, ids, xuids)
 }
 
-// TestGetPage_PointsParSoiree_UneLectureDesEvenementsEtDuJournal : la page affichée sur S2 publie
-// S1 et S2 ; les événements (Q32) et le journal des morts sont lus UNE fois chacun, sur les six
-// matchs ; la matrice reste sur les trois matchs de S2 et les autres blocs reçoivent leur part.
-func TestGetPage_PointsParSoiree_UneLectureDesEvenementsEtDuJournal(t *testing.T) {
+// TestGetPage_ImpactParSession_UneLectureDesEvenementsEtDuJournal : la page affichée sur S2 publie
+// S2 puis S1 ; les événements (Q32) et le journal des morts sont lus UNE fois chacun, sur les six
+// matchs ; les autres blocs reçoivent leur part.
+func TestGetPage_ImpactParSession_UneLectureDesEvenementsEtDuJournal(t *testing.T) {
 	mock, _ := soireesFixture()
 	repo := &impactKillLogCompte{countingSquadRepo: &countingSquadRepo{mockSquadRepo: mock}}
 	var mainRows, allyRows []canonical.PlayerMatchRow
@@ -178,19 +154,16 @@ func TestGetPage_PointsParSoiree_UneLectureDesEvenementsEtDuJournal(t *testing.T
 	if err != nil {
 		t.Fatalf("GetPage : %v", err)
 	}
-	h := resp.SquadImpactHistory
-	if h == nil || len(h.Evenings) != 2 || h.Evenings[0].SessionLabel != "S1" || h.Evenings[1].SessionLabel != "S2" {
-		t.Fatalf("points par soirée : attendu S1 puis S2, obtenu %+v", h)
+	h := resp.SquadImpactSessions
+	if h == nil || len(h.Sessions) != 2 || h.Sessions[0].SessionLabel != "S2" || h.Sessions[1].SessionLabel != "S1" {
+		t.Fatalf("impact par session : attendu S2 puis S1, obtenu %+v", h)
 	}
 	if fmt.Sprint(h.Players) != "[Main Ally]" {
 		t.Errorf("joueurs %v, attendu [Main Ally] (principal puis sélection)", h.Players)
 	}
-	if resp.ImpactMatrix == nil || len(resp.ImpactMatrix.Matches) != 3 {
-		t.Fatalf("matrice : attendu les 3 matchs de S2, obtenu %+v", resp.ImpactMatrix)
-	}
-	for _, m := range resp.ImpactMatrix.Matches {
-		if m.MatchID[:2] != "S2" {
-			t.Errorf("match %s de la matrice hors de la soirée affichée", m.MatchID)
+	for _, s := range h.Sessions {
+		if len(s.Matches) != 3 || !strings.HasPrefix(s.Matches[0].MatchID, s.SessionLabel) {
+			t.Errorf("session %s : matchs %+v, attendu ses trois matchs", s.SessionLabel, s.Matches)
 		}
 	}
 	if repo.impactCalls != 1 || len(repo.impactMatchs[0]) != 6 {
@@ -235,7 +208,7 @@ func TestImpactsDe_PartDUneLectureLarge(t *testing.T) {
 	}
 }
 
-// fixtureS2SansFragNatif — la composition des soirées S1 / S2, mais les matchs de S2 n'ont dans
+// fixtureS2SansFragNatif — la composition des sessions S1 / S2, mais les matchs de S2 n'ont dans
 // highlight_events que des médailles : leurs frags et morts sont ceux que le dépôt reconstitue
 // (impactSynth). S1 garde ses frags natifs.
 func fixtureS2SansFragNatif() *mockSquadRepo {
@@ -257,12 +230,11 @@ func fixtureS2SansFragNatif() *mockSquadRepo {
 	return repo
 }
 
-// TestGetPage_PointsParSoiree_FragsReconstituesParGroupe : la population affichée (S2) n'a aucun
-// frag natif, la soirée précédente (S1) en a. Lue avec S1 en une seule lecture, la population
-// reçoit quand même ses frags reconstitués : sa matrice est celle d'une lecture dédiée (Premier
-// sang, Finisseur… présents), le premier frag est servi, et le net de S1 égale sa matrice
-// dédiée.
-func TestGetPage_PointsParSoiree_FragsReconstituesParGroupe(t *testing.T) {
+// TestGetPage_ImpactParSession_FragsReconstituesParGroupe : la population affichée (S2) n'a aucun
+// frag natif, la session précédente (S1) en a. Lue avec S1 en une seule lecture, la population
+// reçoit quand même ses frags reconstitués : sa session est celle d'une lecture dédiée (Premier
+// sang, Finisseur… présents), le premier frag est servi, et S1 égale sa lecture dédiée.
+func TestGetPage_ImpactParSession_FragsReconstituesParGroupe(t *testing.T) {
 	mock := fixtureS2SansFragNatif()
 	repo := &countingSquadRepo{mockSquadRepo: mock}
 	var mainRows, allyRows []canonical.PlayerMatchRow
@@ -284,72 +256,61 @@ func TestGetPage_PointsParSoiree_FragsReconstituesParGroupe(t *testing.T) {
 	}
 
 	// Lectures dédiées, sans la mémoire de la page : la population seule, S1 seule.
-	dedie := &TeammatesService{repo: mock, titleSlug: "halo_infinite", gamertag: "Main"}
-	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
-	matrice := func(label string) *domain.SquadImpactMatrix {
-		m, _ := dedie.buildSquadImpact(context.Background(), impactEscouade{
-			rows: lignesDeSession(mock.squadRows, label), mainXUID: "x_main", selected: []string{"Ally"},
-			teammates: tm, allies: mock.allyRows,
-		})
-		if m == nil {
-			t.Fatalf("%s : matrice dédiée nulle", label)
-		}
-		return m
+	s2 := dedieSessions(t, mock, lignesDeSession(mock.squadRows, "S2"))
+	s1 := dedieSessions(t, mock, lignesDeSession(mock.squadRows, "S1"))
+	if s2 == nil || s1 == nil || len(s2.Sessions) != 1 || len(s1.Sessions) != 1 {
+		t.Fatalf("lectures dédiées nulles : S2 %+v, S1 %+v", s2, s1)
 	}
-	s2 := matrice("S2")
-	premierSang := false
-	for _, c := range s2.Cells {
-		premierSang = premierSang || slices.Contains(c.BadgeKeys, "first_blood")
-	}
-	if !premierSang {
+	if !slices.Contains(rolesDe(joueurDe(s2.Sessions[0], "Main")), "first_blood") {
 		t.Fatal("la lecture dédiée de S2 doit porter Premier sang (frags reconstitués)")
 	}
-	if !reflect.DeepEqual(resp.ImpactMatrix, s2) {
-		t.Errorf("matrice de la page ≠ matrice d'une lecture dédiée de la population :\n page   %+v\n dédiée %+v", resp.ImpactMatrix, s2)
+	h := resp.SquadImpactSessions
+	if h == nil || len(h.Sessions) != 2 {
+		t.Fatalf("impact par session : attendu S2 puis S1, obtenu %+v", h)
+	}
+	if !reflect.DeepEqual(h.Sessions[0], s2.Sessions[0]) {
+		t.Errorf("S2 de la page ≠ S2 d'une lecture dédiée :\n page   %+v\n dédiée %+v", h.Sessions[0], s2.Sessions[0])
+	}
+	if !reflect.DeepEqual(h.Sessions[1], s1.Sessions[0]) {
+		t.Errorf("S1 de la page ≠ S1 d'une lecture dédiée :\n page   %+v\n dédiée %+v", h.Sessions[1], s1.Sessions[0])
 	}
 	if len(resp.FirstBlood) == 0 {
 		t.Error("premier frag / première mort : la population doit recevoir ses frags reconstitués")
 	}
-	h := resp.SquadImpactHistory
-	if h == nil || len(h.Evenings) != 2 {
-		t.Fatalf("points par soirée : attendu S1 puis S2, obtenu %+v", h)
-	}
-	comparerSoireeEtMatrice(t, "S1", h.Evenings[0], matrice("S1"))
-	comparerSoireeEtMatrice(t, "S2", h.Evenings[1], s2)
 }
 
-// TestBuildSquadImpact_HistoriqueAbsentJournalise : une escouade sélectionnée dont aucun rôle ne
-// tombe (ni événement ni équipe alliée) rend un historique nul ET le journalise avec sa raison ;
-// sans soirée, la raison est « no_evening ».
-func TestBuildSquadImpact_HistoriqueAbsentJournalise(t *testing.T) {
+// TestBuildSquadImpact_SessionsAbsentesJournalise : une escouade sélectionnée dont aucun rôle ne
+// tombe (ni événement ni équipe alliée) rend un bloc nul ET le journalise avec sa raison ; sans
+// session, la raison est « no_session ».
+func TestBuildSquadImpact_SessionsAbsentesJournalise(t *testing.T) {
 	repo, all := soireesFixture()
 	repo.impactRows, repo.allyRows = nil, nil
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "Main"}
 	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
 	cas := []struct {
 		nom, raison string
-		sansSoiree  bool
+		sansSession bool
 	}{
 		{"aucun rôle attribué", "no_role_attributed", false},
-		{"aucune soirée", "no_evening", true},
+		{"aucune session", "no_session", true},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			evenings := soireesDImpact(all, all, true)
-			if c.sansSoiree {
+			if c.sansSession {
 				evenings = nil
 			}
-			var history *domain.SquadImpactHistory
+			var sessions *domain.SquadImpactSessions
 			logs := withCapturedLogs(t, func() {
-				_, history = svc.buildSquadImpact(context.Background(), impactEscouade{
+				sessions = svc.buildSquadImpact(context.Background(), impactEscouade{
 					rows: all, timeline: all, evenings: evenings,
 					mainXUID: "x_main", selected: []string{"Ally"}, teammates: tm,
 				})
 			})
-			if history != nil {
-				t.Fatalf("historique nul attendu, obtenu %+v", history)
+			if sessions != nil {
+				t.Fatalf("bloc nul attendu, obtenu %+v", sessions)
 			}
-			if !strings.Contains(logs, "teammates_squad_impact_history_absent") || !strings.Contains(logs, `"reason":"`+c.raison+`"`) {
+			if !strings.Contains(logs, "teammates_squad_impact_sessions_absent") || !strings.Contains(logs, `"reason":"`+c.raison+`"`) {
 				t.Errorf("journal attendu avec la raison %q, obtenu :\n%s", c.raison, logs)
 			}
 		})

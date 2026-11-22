@@ -10,6 +10,10 @@ package domain
 // côté Go, l'écran ne recalcule aucun point. Un tableau ou une liste vide se sert `[]`, jamais
 // `null`.
 
+// SquadImpactSessionsMax — le nombre de sessions publiées : la session affichée et les dix
+// sessions précédentes de la composition.
+const SquadImpactSessionsMax = 11
+
 // SquadImpactSessions — le bloc publié.
 type SquadImpactSessions struct {
 	// Players : les joueurs de l'escouade dans l'ordre de la page (joueur principal, puis les
@@ -26,8 +30,8 @@ type SquadImpactSessions struct {
 	// rôle, comptes nuls compris.
 	RoleOrder []string `json:"role_order"`
 	// Sessions : les sessions, de la plus récente à la plus ancienne (au plus
-	// SquadImpactHistoryMaxEvenings : la population affichée, puis les sessions antérieures de
-	// la composition).
+	// SquadImpactSessionsMax : la population affichée, puis les sessions antérieures de la
+	// composition).
 	Sessions []SquadImpactSessionsSession `json:"sessions"`
 	// Totals : une entrée par joueur de Players, dans le même ordre, sommée sur les seules
 	// Sessions publiées.

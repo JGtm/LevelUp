@@ -1,17 +1,19 @@
 package teammates
 
-// teammates_squad_impact_temoin_test.go — TÉMOIN D'ÉQUIVALENCE du tableau d'impact par session
-// avec l'ancienne matrice d'impact et l'ancien historique par soirée, écrit AVANT leur suppression
-// : mêmes fixtures, mêmes rôles, mêmes comptes et mêmes points.
+// teammates_squad_impact_temoin_test.go — TÉMOIN du tableau d'impact par session : les valeurs
+// ci-dessous sont celles que l'ancien historique par soirée et l'ancienne matrice d'impact
+// rendaient sur ces fixtures, quand le nouveau calcul leur était confronté avant leur suppression
+// (comptes par rôle et points par session et par joueur ; totaux = matrice restreinte aux matchs
+// à libellé de session). Elles se lisent maintenant en valeurs figées.
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis/squadimpact"
 	"levelup/go-api/internal/domain"
 )
 
@@ -50,119 +52,85 @@ func comptesParRole(counts []domain.SquadImpactSessionsRoleCount) map[string]int
 	return out
 }
 
-// TestImpactSessions_TemoinAncienHistoriqueEtAncienneMatrice : sur les deux sessions S1 (précédente)
-// et S2 (affichée) de la fixture, plus un match de la population sans libellé de session,
-//   - par session et par joueur, les comptes par rôle et les points du nouveau bloc égalent ceux de
-//     l'ancien historique, et ses victoires comptent celles de l'ancien historique ;
-//   - les totaux égalent l'ancienne matrice restreinte aux matchs porteurs d'un libellé ;
-//   - l'ancienne matrice sur TOUTE la population en diffère (le match sans libellé sort du tableau).
-func TestImpactSessions_TemoinAncienHistoriqueEtAncienneMatrice(t *testing.T) {
+// témoinParSession : les valeurs de l'ancien historique, identiques sur S1 et S2 (fixture
+// symétrique), par joueur.
+var temoinParSession = map[string]struct {
+	points float64
+	counts map[string]int
+}{
+	"Main": {9.5, map[string]int{"clutch_finisher": 2, "first_blood": 3, "top_killer": 3, "last_casualty": 1, "kamikaze": 3}},
+	"Ally": {-4, map[string]int{"thief": 1, "first_group_death": 3, "last_group_kill": 3}},
+}
+
+// témoinTotaux : les valeurs de l'ancienne matrice restreinte aux matchs à libellé de session
+// (S1 + S2), par joueur.
+var temoinTotaux = map[string]struct {
+	points float64
+	counts map[string]int
+}{
+	"Main": {19, map[string]int{"clutch_finisher": 4, "first_blood": 6, "top_killer": 6, "last_casualty": 2, "kamikaze": 6}},
+	"Ally": {-8, map[string]int{"thief": 2, "first_group_death": 6, "last_group_kill": 6}},
+}
+
+// TestImpactSessions_TemoinValeursFigees : sur les sessions S1 (précédente) et S2 (affichée) de la
+// fixture, plus un match de la population sans libellé de session (qui valait +4,5 à Main et -1 à
+// Ally dans l'ancienne matrice sur toute la population : 23,5 et -9),
+//   - par session et par joueur, comptes par rôle, points, matchs joués, début et issues égalent
+//     l'ancien historique ;
+//   - les totaux égalent l'ancienne matrice restreinte aux matchs à libellé : le match sans
+//     libellé n'entre pas dans le tableau.
+func TestImpactSessions_TemoinValeursFigees(t *testing.T) {
 	repo, all := soireesFixture()
 	sansSession := ajouterMatchSansSession(repo)
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "Main"}
 	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
 	population := append(lignesDeSession(all, "S2"), sansSession)
 	timeline := append(slices.Clone(all), sansSession)
-	in := impactEscouade{
+	sessions := svc.buildSquadImpact(context.Background(), impactEscouade{
 		rows: population, timeline: timeline, evenings: soireesDImpact(population, timeline, true),
 		mainXUID: "x_main", selected: []string{"Ally"}, teammates: tm, allies: repo.allyRows,
+	})
+	if sessions == nil || len(sessions.Sessions) != 2 {
+		t.Fatalf("deux sessions attendues, obtenu %+v", sessions)
 	}
-	squad := resolveSquadScope(in.rows, svc.gamertag, in.mainXUID, in.teammates).gtByXUID
-	roles := svc.rolesDesMatchs(context.Background(), in, groupesDImpact(in.rows, in.evenings), squad)
-	players := joueursDeLEscouade(svc.gamertag, in.selected)
-
-	history := squadimpact.BuildHistory(squadimpact.HistoryInput{Evenings: in.evenings, Players: players, Roles: roles})
-	sessions := sessionsDImpact(in, players, squad, roles)
-	if history == nil || sessions == nil || len(history.Evenings) != 2 || len(sessions.Sessions) != 2 {
-		t.Fatalf("deux sessions attendues : historique %+v, bloc %+v", history, sessions)
-	}
-
-	// Par session (le bloc : la plus récente d'abord ; l'historique : la plus ancienne d'abord).
-	for i, s := range sessions.Sessions {
-		ev := history.Evenings[len(history.Evenings)-1-i]
+	for i, label := range []string{"S2", "S1"} {
+		s := sessions.Sessions[i]
 		victoires := 0
 		for _, m := range s.Matches {
 			if m.Outcome == domain.OutcomeWin {
 				victoires++
 			}
 		}
-		if s.SessionLabel != ev.SessionLabel || s.StartTime != ev.StartTime || len(s.Matches) != ev.Matches || victoires != ev.Wins {
-			t.Fatalf("session %d : bloc %s %s %d matchs %d victoires, historique %s %s %d matchs %d victoires",
-				i, s.SessionLabel, s.StartTime, len(s.Matches), victoires, ev.SessionLabel, ev.StartTime, ev.Matches, ev.Wins)
+		wantStart := map[string]string{"S1": "2026-09-01T19:00:00Z", "S2": "2026-09-02T19:00:00Z"}[label]
+		if s.SessionLabel != label || s.StartTime != wantStart || len(s.Matches) != 3 || victoires != 2 {
+			t.Fatalf("session %d : %s %s, %d matchs, %d victoires ; attendu %s %s, 3 matchs, 2 victoires",
+				i, s.SessionLabel, s.StartTime, len(s.Matches), victoires, label, wantStart)
 		}
-		for j, p := range s.Players {
-			old := ev.Players[j]
-			attendu := map[string]int{}
-			for _, r := range old.Roles {
-				attendu[r.Role] = r.Count
-			}
-			if p.Player != old.Player || p.Points != old.Points || !equalCounts(comptesParRole(p.Counts), attendu) {
-				t.Errorf("%s / %s : bloc %v pour %v points, historique %v pour %v points",
-					s.SessionLabel, p.Player, comptesParRole(p.Counts), p.Points, attendu, old.Points)
+		for _, p := range s.Players {
+			want := temoinParSession[p.Player]
+			if p.Points != want.points || !maps.Equal(comptesParRole(p.Counts), want.counts) || p.MatchesPlayed != 3 {
+				t.Errorf("%s / %s : %v points, %v, %d matchs joués ; attendu %v points, %v, 3 matchs joués",
+					label, p.Player, p.Points, comptesParRole(p.Counts), p.MatchesPlayed, want.points, want.counts)
 			}
 		}
 	}
-
-	// Totaux = ancienne matrice restreinte aux matchs porteurs d'un libellé (les lignes de `all`).
-	restreinte := assemblerMatrice(all, players, roles)
-	complete := assemblerMatrice(append(slices.Clone(all), sansSession), players, roles)
-	if restreinte == nil || complete == nil {
-		t.Fatalf("matrices nulles : restreinte %v, complète %v", restreinte, complete)
-	}
-	score := func(m *domain.SquadImpactMatrix) map[string]domain.SquadImpactPlayerSummary {
-		out := map[string]domain.SquadImpactPlayerSummary{}
-		for _, p := range m.Players {
-			out[p.Player] = p
-		}
-		return out
-	}
-	rest, comp := score(restreinte), score(complete)
-	differe := false
 	for _, tot := range sessions.Totals {
-		old := rest[tot.Player]
-		attendu := map[string]int{}
-		for _, c := range old.Counts {
-			if c.Count != 0 {
-				attendu[c.BadgeKey] = c.Count
-			}
+		want := temoinTotaux[tot.Player]
+		if tot.Points != want.points || !maps.Equal(comptesParRole(tot.Counts), want.counts) || tot.MatchesPlayed != 6 {
+			t.Errorf("total de %s : %v points, %v, %d matchs joués ; attendu %v points, %v, 6 matchs joués",
+				tot.Player, tot.Points, comptesParRole(tot.Counts), tot.MatchesPlayed, want.points, want.counts)
 		}
-		if tot.Points != old.Score || !equalCounts(comptesParRole(tot.Counts), attendu) {
-			t.Errorf("total de %s : bloc %v pour %v points, matrice restreinte %v pour %v points",
-				tot.Player, comptesParRole(tot.Counts), tot.Points, attendu, old.Score)
-		}
-		differe = differe || comp[tot.Player].Score != old.Score
-	}
-	if !differe {
-		t.Error("la matrice sur toute la population doit différer des totaux : le match sans libellé porte des rôles")
 	}
 
-	// Le témoin ne compare pas du vide : des rôles et des matchs joués existent bien.
-	if len(comptesParRole(sessions.Totals[0].Counts)) == 0 || sessions.Totals[0].MatchesPlayed != 6 ||
-		len(comptesParRole(sessions.Totals[1].Counts)) == 0 || sessions.Totals[1].MatchesPlayed != 6 {
-		t.Errorf("totaux vides ou matchs joués ≠ 6 : %+v", sessions.Totals)
-	}
-
-	// D-9 : le match sans libellé est compté et journalisé une fois.
+	// Le match sans libellé est compté et journalisé une fois.
 	if n := matchsSansSession(population); n != 1 {
 		t.Errorf("matchs sans libellé : %d, attendu 1", n)
 	}
 	logs := withCapturedLogs(t, func() { journaliserMatchsSansSession(context.Background(), population) })
 	if strings.Count(logs, "teammates_squad_impact_sessions_unlabelled_matches") != 1 || !strings.Contains(logs, `"matches":1`) {
-		t.Errorf("une ligne de journal attendue avec 1 match, obtenu :\n%s", logs)
+		t.Errorf("une ligne de journal attendue avec 1 match, obtenu : %s", logs)
 	}
 	if logs := withCapturedLogs(t, func() { journaliserMatchsSansSession(context.Background(), all) }); logs != "" {
-		t.Errorf("aucun match sans libellé : aucun journal attendu, obtenu :\n%s", logs)
+		t.Errorf("aucun match sans libellé : aucun journal attendu, obtenu : %s", logs)
 	}
-}
-
-func equalCounts(a, b map[string]int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, v := range a {
-		if b[k] != v {
-			return false
-		}
-	}
-	return true
 }

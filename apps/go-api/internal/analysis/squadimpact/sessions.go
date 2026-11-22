@@ -37,7 +37,7 @@ func BuildSessions(in SessionsInput) *domain.SquadImpactSessions {
 	}
 	out := &domain.SquadImpactSessions{
 		Players:   slices.Clone(in.Players),
-		Scale:     sessionsScale(),
+		Scale:     scale(),
 		RoleOrder: RoleOrder(),
 		Sessions:  make([]domain.SquadImpactSessionsSession, 0, len(in.Evenings)),
 	}
@@ -161,8 +161,8 @@ func nonNilPerMatch(l []domain.SquadImpactSessionsPerMatch) []domain.SquadImpact
 	return l
 }
 
-// sessionsScale rend le barème publié, dans l'ordre d'empilement.
-func sessionsScale() []domain.SquadImpactSessionsRoleWeight {
+// scale rend le barème publié, dans l'ordre d'empilement.
+func scale() []domain.SquadImpactSessionsRoleWeight {
 	out := make([]domain.SquadImpactSessionsRoleWeight, 0, len(stackOrder))
 	for _, role := range stackOrder {
 		out = append(out, domain.SquadImpactSessionsRoleWeight{Role: role, Points: weights[role]})
