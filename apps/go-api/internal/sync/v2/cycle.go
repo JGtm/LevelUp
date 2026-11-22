@@ -266,14 +266,16 @@ func (o *CycleOrchestratorImpl) Run(
 	}
 
 	// Mettre à jour PerPlayer avec les compteurs Phase 1-5.
+	stored := o.proveStored(ctx, players, disc, fetched)
 	for _, p := range players {
-		o.populateOutcome(res.PerPlayer, p, proof.queued, disc, dedup)
+		o.populateOutcome(res.PerPlayer, p, disc, dedup, outcomeProof{fetched: fetched, queued: proof.queued, stored: stored})
 	}
 	noteQueued(res.PerPlayer, players, disc, proof.queued)
 
-	// Persistance réussie : fin d'historique ou marque-page des joueurs au rattrapage.
+	// Persistance réussie : fin d'historique, marque-page des joueurs au rattrapage, matchs à ne plus
+	// demander de tous.
 	hist.queued = proof.queued
-	o.settleHistory(ctx, hist, players, disc, fetched)
+	o.settleHistory(ctx, hist, players, settleCycle{disc: disc, fetched: fetched, stored: stored})
 
 	// ─── Phase 6 — Post-sync ────────────────────────────────────────────
 	// Calcule insertedByPlayer depuis fetched + dedup pour cibler les heals
@@ -405,41 +407,6 @@ func (o *CycleOrchestratorImpl) markFailed(
 		out.FirstError = fmt.Sprintf("%s: %v", phase, err)
 	}
 	per[slug] = out
-}
-
-// populateOutcome remplit les compteurs Phase 1-5 d'un joueur, sans
-// écraser un status "failed" déjà positionné par markFailed. queued : les matchs soumis dont le
-// rangement n'est pas encore prouvé (attente de la file expirée), non comptés insérés.
-func (o *CycleOrchestratorImpl) populateOutcome(
-	per map[string]PlayerOutcome,
-	p PlayerProfile,
-	queued map[string]bool,
-	disc DiscoveryResult,
-	dedup DedupResult,
-) {
-	out := per[p.PlayerSlug]
-	out.Gamertag = p.Gamertag
-	out.XUID = p.XUID
-	if out.Status == "" {
-		out.Status = "ok"
-	}
-	out.MatchesUnknown = len(disc.PerPlayer[p.PlayerSlug])
-	// Compter les matchs assignés à ce joueur comme canonical fetcher,
-	// pondéré : son MatchesInserted = matchs où ses participants
-	// existent (proxy correct pour V2 où on persist en batch).
-	for _, mID := range disc.PerPlayer[p.PlayerSlug] {
-		if queued[mID] {
-			continue // pas encore rangé : compté quand la file l'aura fini
-		}
-		participants := dedup.ParticipantsByMatch[mID]
-		for _, s := range participants {
-			if s == p.PlayerSlug {
-				out.MatchesInserted++
-				break
-			}
-		}
-	}
-	per[p.PlayerSlug] = out
 }
 
 // mergePostSyncOutcome ajoute les warnings + propage l'erreur post-sync

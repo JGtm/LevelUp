@@ -1,3 +1,10 @@
+## [2026-11-22] Hotfix 8.2.2 : les matchs introuvables et abandonnés ne sont plus demandés ni comptés insérés (D-24) — Complété (branche `fix/822-o`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : un ensemble persistant par joueur des matchs à ne plus demander (404/410 et abandons de D-16), clé `sync_meta` `history_skip_set` du paquet `historystate` (JSON borné à 2 000 entrées, jamais effacé par la fin d'historique). Neutre pour le delta et la découverte (comme les Warzone de Halo 5), jamais redemandé. Le compte « inséré » d'un cycle se lit sur la relecture de l'ensemble connu. Halo 5 : aucun match individuel n'y est introuvable (la liste porte les statistiques), rien à ajouter.
+- **Résultats observés** : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere` dé-sauté et vert ; 1 000 matchs dont 30 introuvables, après la fin : une page et zéro demande par cycle (introuvables dispersés), trois pages et zéro demande (30 en tête). Cas difficile des 20 introuvables parmi les 40 plus récents : 3 pages et 21 demandes -> 2 pages et 0 demande. Un match abandonné n'est plus redemandé après la fin.
+- **Suite** : le moteur V1 (suivi en direct) ne lit pas l'ensemble ; l'ouverture lecture seule de l'ensemble sera repliée dans `LoadKnown` quand la piste qui modifie `known_loader.go` sera intégrée.
+
 ## [2026-11-22] Films : bornes d'avant sur le site hébergé, comportement D-17/D-20 sur le bureau seulement (D-22) — Complété (branche `fix/822-m`)
 
 - **Statut** : Complété, non poussé.

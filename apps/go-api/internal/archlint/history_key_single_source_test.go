@@ -3,7 +3,7 @@
 //
 // Les clés `sync_meta` qui disent « la fin de l'historique a été vue » (`history_complete_at`) et
 // « le rattrapage en est là » (`history_catchup_cursor`, le marque-page), « ce point a échoué N
-// passes de suite » (`history_failure_streak`), leur lecture, leur
+// passes de suite » (`history_failure_streak`), « ce match n'est plus demandé » (`history_skip_set`), leur lecture, leur
 // écriture, le budget par passe et la borne de profondeur vivent dans
 // `internal/sync/historystate`. Le cycle V2 et le runner Halo 5 l'appellent (le moteur V1 non : delta pur). Une
 // seconde copie d'un littéral est une seconde règle libre de diverger : un chemin qui range la fin
@@ -25,7 +25,7 @@ import (
 const historyStatePackage = "internal/sync/historystate/"
 
 // historyKeyLiterals : les clés de `sync_meta` du rattrapage de l'historique (fin vue, marque-page).
-var historyKeyLiterals = []string{"history_complete_at", "history_catchup_cursor", "history_failure_streak"}
+var historyKeyLiterals = []string{"history_complete_at", "history_catchup_cursor", "history_failure_streak", "history_skip_set"}
 
 // historyKeyViolations rend « fichier:ligne » de chaque littéral chaîne contenant l'une des clés,
 // hors du paquet historystate.
@@ -84,14 +84,16 @@ func TestHistoryKeyLiteralOnlyInHistorystate_AutoPreuve(t *testing.T) {
 		"var k = \"history_complete_at\"\n"+
 		"var q = `SELECT 1 FROM sync_meta WHERE key = 'history_complete_at'`\n"+
 		"var c = \"history_catchup_cursor\"\n"+
-		"var s = \"history_failure_streak\"\n")
-	if got := historyKeyViolations([]goSource{dehors}); len(got) != 4 {
-		t.Errorf("violations = %v, attendu 4 (la chaîne, le SQL, le marque-page et le compte d'échecs, pas le commentaire)", got)
+		"var s = \"history_failure_streak\"\n"+
+		"var k2 = \"history_skip_set\"\n")
+	if got := historyKeyViolations([]goSource{dehors}); len(got) != 5 {
+		t.Errorf("violations = %v, attendu 5 (la chaîne, le SQL, le marque-page, le compte d'échecs et l'ensemble des matchs à ne plus demander, pas le commentaire)", got)
 	}
 	dedans := parseGoSnippet(t, historyStatePackage+"x.go", "package historystate\n"+
 		"const Key = \"history_complete_at\"\n"+
 		"const CursorKey = \"history_catchup_cursor\"\n"+
-		"const StreakKey = \"history_failure_streak\"\n")
+		"const StreakKey = \"history_failure_streak\"\n"+
+		"const SkipSetKey = \"history_skip_set\"\n")
 	if got := historyKeyViolations([]goSource{dedans}); len(got) != 0 {
 		t.Errorf("le paquet historystate ne doit pas être signalé : %v", got)
 	}

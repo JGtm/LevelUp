@@ -12,7 +12,10 @@
 //     échec : il ne compte aucune passe, et retient la fin et le marque-page jusqu'à la passe suivante ;
 //   - la fin d'historique se range quand la fin est vue et qu'il ne reste aucun échec non abandonné ;
 //   - sinon le marque-page avance (position proposée par la découverte) quand il ne reste aucun échec
-//     non abandonné, et la liste des échecs est rangée si elle a changé.
+//     non abandonné, et la liste des échecs est rangée si elle a changé ;
+//   - les matchs introuvables et les matchs abandonnés entrent dans l'ensemble des matchs à ne plus
+//     demander (history_skip.go), rangé AVANT la fin d'historique : la fin efface la liste des échecs,
+//     pas cet ensemble.
 package v2
 
 import (
@@ -22,7 +25,6 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
-	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/historystate"
 )
 
@@ -36,6 +38,7 @@ type settleInput struct {
 	listed    []string
 	fetchErrs map[string]error
 	queued    map[string]bool
+	stored    playerStored // rangement prouvé par la relecture de l'ensemble connu (cycle_stored.go)
 }
 
 // withoutQueued rend les matchs listés qui ne sont pas dans la file d'écriture, et le nombre de ceux
@@ -64,7 +67,7 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 	in settleInput,
 ) bool {
 	listed, queued := in.withoutQueued()
-	unresolved, ok := o.unresolvedListed(ctx, p, listed, in.fetchErrs)
+	unresolved, ok := unresolvedListed(ctx, p, listed, in)
 	if !ok {
 		return false
 	}
@@ -73,24 +76,22 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 	complete := canAdvance && ph.EndSeen
 	saveCursor := !complete && canAdvance && ph.Proposed != nil
 	saveFailures := !complete && !slices.Equal(failures, ph.Failures)
-	if !complete && !saveCursor && !saveFailures {
+	skips := freshSkips(ph.Skip, notFoundListed(listed, in.fetchErrs), abandonedIDs(failures))
+	if !complete && !saveCursor && !saveFailures && len(skips) == 0 {
 		return false
 	}
-	if o.historyWriter == nil {
-		slog.WarnContext(ctx, "sync.v2: rattrapage d'historique sans écrivain câblé — rien n'est rangé",
-			"event", "sync.v2.history.no_writer", "player", p.PlayerSlug)
+	wctx, db, done, ok := o.openHistoryDB(ctx, p)
+	if !ok {
 		return false
 	}
-	wctx, cancel := context.WithTimeout(ctx, historyWriteWait)
-	defer cancel()
-	db, release, err := o.historyWriter(wctx, p.Gamertag)
-	if err != nil {
-		slog.WarnContext(ctx, "sync.v2: base joueur indisponible en écriture — état de l'historique non rangé",
-			"event", "sync.v2.history.write_unavailable", "player", p.PlayerSlug, "err", err)
-		return false
-	}
-	defer release()
+	defer done()
 
+	// Les matchs à ne plus demander d'abord : la fin d'historique efface la liste des échecs (dont les
+	// abandonnés), l'ensemble rangé à part les garde. Rangement en échec : la fin n'est pas rangée, les
+	// abandonnés restent dans la liste des échecs et la passe suivante recommence.
+	if len(skips) > 0 && !addSkips(wctx, db, p, skips) && complete {
+		return false
+	}
 	title := ctxkeys.TitleSlug(ctx)
 	if complete {
 		slog.InfoContext(ctx, "sync.v2: fin de l'historique vue — rangement",
@@ -115,25 +116,17 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 
 // unresolvedListed rend l'ensemble des matchs listés pour le joueur qui ne sont NI introuvables côté
 // API (404/410, comptés et journalisés : ils ne comptent jamais comme échec) NI présents dans
-// l'ensemble connu RELU après la persistance (preuve que le match est bien rangé : une erreur de
-// lecture du match, de décodage ou de file d'écriture ne passe pas pour un succès). ok=false : ensemble
-// connu illisible, rien ne peut être conclu et l'état n'est pas touché.
-func (o *CycleOrchestratorImpl) unresolvedListed(
-	ctx context.Context,
-	p PlayerProfile,
-	listed []string,
-	fetchErrs map[string]error,
-) (unresolved map[string]bool, ok bool) {
+// l'ensemble connu RELU après la persistance (in.stored, cycle_stored.go : preuve que le match est
+// bien rangé ; une erreur de lecture du match, de décodage ou de file d'écriture ne passe pas pour un
+// succès). ok=false : ensemble connu illisible, rien ne peut être conclu et l'état n'est pas touché.
+func unresolvedListed(ctx context.Context, p PlayerProfile, listed []string, in settleInput) (unresolved map[string]bool, ok bool) {
 	toCheck := make([]string, 0, len(listed))
-	notFound := 0
 	for _, id := range listed {
-		if err, failed := fetchErrs[id]; failed && syncpkg.IsNotFound(err) {
-			notFound++
-			continue
+		if !isNotFoundFetch(in.fetchErrs, id) {
+			toCheck = append(toCheck, id)
 		}
-		toCheck = append(toCheck, id)
 	}
-	if notFound > 0 {
+	if notFound := len(listed) - len(toCheck); notFound > 0 {
 		observability.AddIntT(ctxkeys.TitleSlug(ctx), counterHistoryNotFound, int64(notFound))
 		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — matchs introuvables côté API (404/410), non bloquants",
 			"event", "sync.v2.history.not_found", "player", p.PlayerSlug, "not_found", notFound)
@@ -142,14 +135,11 @@ func (o *CycleOrchestratorImpl) unresolvedListed(
 	if len(toCheck) == 0 {
 		return unresolved, true
 	}
-	state, err := o.loader.LoadKnown(ctx, p)
-	if err != nil {
-		slog.WarnContext(ctx, "sync.v2: rattrapage d'historique — ensemble connu illisible après la persistance, rien n'est rangé",
-			"event", "sync.v2.history.reload_failed", "player", p.PlayerSlug, "err", err)
-		return nil, false
+	if !in.stored.read {
+		return nil, false // relecture en échec : journalisée par proveStored
 	}
 	for _, id := range toCheck {
-		if !state.Known[id] {
+		if !in.stored.known[id] {
 			unresolved[id] = true
 		}
 	}

@@ -294,15 +294,22 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 	sort.Strings(repetes)
 	t.Logf("introuvables demandés plus d'une fois pendant le rattrapage : %d sur 30 %v", len(repetes), repetes)
 
-	// Après la fin (D-23) : un introuvable qui reste dans les premières entrées empêche d'atteindre 25 connus
-	// d'affilée : le delta lit plus d'une page et redemande chaque introuvable à chaque cycle, jusqu'à ce que 25
-	// matchs plus récents les éloignent (ici 20 introuvables dans les 40 plus récents : trois pages, 21 demandes).
+	// Après la fin (D-23, D-24) : les introuvables des premières entrées sont à ne plus demander, donc neutres pour
+	// le delta (ni comptés dans les 25 connus d'affilée, ni remise à zéro) : ici 20 introuvables dans les 40 plus
+	// récents, 45 entrées pour atteindre 25 connus, soit deux pages, sans aucune demande de stats ni match annoncé inséré.
 	b.waitCadence(time.Duration(e.intervalH) * time.Hour)
 	for i := 1; i <= 2; i++ {
 		c := b.cycle()
-		t.Logf("après la fin, cycle %d : lectures %v, %d demandes de stats, issue %+v", i, c.reads[difficileA.xuid], c.statsTotal(), c.player(difficileA))
-		if reads := c.reads[difficileA.xuid]; len(reads) < 1 || len(reads) > 3 {
-			t.Errorf("après la fin, cycle %d : %d pages lues %v, attendu de une à trois (jamais un rebalayage)", i, len(reads), reads)
+		out := c.player(difficileA)
+		t.Logf("après la fin, cycle %d : lectures %v, %d demandes de stats, issue %+v", i, c.reads[difficileA.xuid], c.statsTotal(), out)
+		if n := c.statsTotal(); n != 0 {
+			t.Errorf("après la fin, cycle %d : %d demandes de stats, attendu aucune (les introuvables ne sont plus demandés)", i, n)
+		}
+		if out.MatchesInserted != 0 {
+			t.Errorf("après la fin, cycle %d : %d matchs annoncés insérés, attendu 0", i, out.MatchesInserted)
+		}
+		if reads := c.reads[difficileA.xuid]; len(reads) != 2 {
+			t.Errorf("après la fin, cycle %d : %d pages lues %v, attendu deux (jamais un rebalayage)", i, len(reads), reads)
 		}
 	}
 }
