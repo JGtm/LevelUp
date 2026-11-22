@@ -228,6 +228,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 		// ── Tables player
 		// engagement_score_brut ajouté en migration (steps_engagement.go) pour
@@ -677,6 +678,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 	}
 	for _, q := range ddl {

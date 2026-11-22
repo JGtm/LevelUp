@@ -16,6 +16,10 @@ import (
 // l'application installée (le bundle NSIS le dépose là). LEVELUP_WEB_DIST l'emporte quand il est posé.
 const DesktopWebDistDirName = "web"
 
+// EnvShellExe : la variable de contrat par laquelle la coquille de bureau donne son propre chemin absolu au
+// serveur qu'elle lance (ADR 0045 D-1). Lue ici seulement ([DesktopConfig.ShellExe]).
+const EnvShellExe = "LEVELUP_SHELL_EXE"
+
 // DesktopConfig est embarquée dans AppConfig : ses champs s'y lisent directement.
 type DesktopConfig struct {
 	// DesktopSecret : secret partagé avec le processus qui lance le serveur. Lit
@@ -23,6 +27,10 @@ type DesktopConfig struct {
 	// alors pas montée (un serveur hébergé n'a pas cette route). Jamais journalisé ni exposé
 	// (ni /bootstrap, ni les journaux de configuration).
 	DesktopSecret string
+	// ShellExe : le chemin absolu de la coquille qui a lancé le serveur. Lit LEVELUP_SHELL_EXE. VIDE quand le
+	// serveur n'a pas été lancé par la coquille (développement, hébergé) : la tâche planifiée de rafraîchissement,
+	// qui lance la coquille, n'est alors pas posée.
+	ShellExe string
 	// ShutdownRequester demande l'arrêt propre du serveur (reason : cause, journalisée).
 	// Posé par main (bootServer.requestShutdown) après la construction de la config, comme
 	// TitleReadyNotifier, avant celle du routeur ; nil en CLI/tests, où la route d'arrêt
@@ -44,6 +52,7 @@ type DesktopConfig struct {
 func withDesktopConfig(cfg *AppConfig) *AppConfig {
 	cfg.DesktopSecret = strings.TrimSpace(getEnvOrDefault("LEVELUP_DESKTOP_SECRET", ""))
 	cfg.UpdatePublicKey = strings.TrimSpace(getEnvOrDefault("LEVELUP_UPDATE_PUBKEY", ""))
+	cfg.ShellExe = strings.TrimSpace(getEnvOrDefault(EnvShellExe, ""))
 	return cfg
 }
 

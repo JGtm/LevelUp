@@ -160,7 +160,7 @@ const Q14MatchMedals = `
 SELECT
     me.medal_name_id,
     me.count
-FROM medals_earned me
+FROM v_medals_earned me
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 

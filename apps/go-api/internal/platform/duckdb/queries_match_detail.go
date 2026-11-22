@@ -224,7 +224,7 @@ SELECT
     xuid,
     medal_name_id,
     SUM(count) AS count
-FROM medals_earned
+FROM v_medals_earned
 WHERE match_id = ?
 GROUP BY xuid, medal_name_id
 ORDER BY xuid, count DESC`

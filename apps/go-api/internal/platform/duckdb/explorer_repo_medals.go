@@ -31,7 +31,7 @@ func (r *ExplorerRepo) GetTopMedalsForMatches(
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	q := fmt.Sprintf(`
 		SELECT medal_name_id, COALESCE(SUM(count), 0) AS total
-		FROM medals_earned
+		FROM v_medals_earned
 		WHERE xuid = ? AND match_id IN (%s)
 		GROUP BY medal_name_id
 		ORDER BY total DESC, medal_name_id ASC

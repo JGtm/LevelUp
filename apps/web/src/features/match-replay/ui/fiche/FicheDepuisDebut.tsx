@@ -1,7 +1,8 @@
 /**
  * FicheDepuisDebut — « DEPUIS LE DÉBUT DU MATCH » : ce que le joueur a fait jusqu'à l'instant lu, une ligne par
  * valeur. FDA (la valeur du jeu, jamais un quotient), séries, tirs à la tête, éliminations parfaites,
- * réapparitions, vie en cours et moyenne des vies, boucliers perdus, score et place dans le lobby.
+ * réapparitions, vie en cours et moyenne des vies, boucliers brisés, recharges complètes et leur différentiel
+ * (chacun suivi de son total du match), score et place dans le lobby.
  *
  * Une valeur que la lecture ne donne pas n'a pas de ligne : ni tiret ni texte de remplacement. Le rendu ne lit rien.
  */
@@ -10,7 +11,7 @@ import type { ReactNode } from 'react'
 import { formatKDA } from '@/lib/formatters/number'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../../i18n/i18n'
-import { formatCount, formatDuration } from '../../model/ficheFormat'
+import { formatCount, formatDifferential, formatDuration } from '../../model/ficheFormat'
 import type { SinceView } from '../../model/playerInstantView'
 import { FicheRow, FicheRows, FicheSection, Note } from './ficheParts'
 
@@ -22,6 +23,13 @@ function when<T>(value: T | null, write: (v: T) => ReactNode): ReactNode | null 
 export function FicheDepuisDebut({ since, locale }: { since: SinceView; locale: ReplayLocale }) {
   const t = REPLAY_TEXT[locale].playerInstant
   const count = (n: number) => formatCount(n, locale)
+  /** La valeur à l'instant, suivie du total du match en texte discret (comme la place suit le score). */
+  const withMatchTotal = (atInstant: string, atMatch: string) => (
+    <>
+      {atInstant}
+      <Note>{t.matchTotalFmt(atMatch)}</Note>
+    </>
+  )
   const rows: [string, ReactNode | null][] = [
     [t.fda, when(since.fda, (v) => formatKDA(v, locale))],
     [t.currentStreak, when(since.currentStreak, count)],
@@ -31,7 +39,14 @@ export function FicheDepuisDebut({ since, locale }: { since: SinceView; locale: 
     [t.respawns, when(since.respawns, count)],
     [t.currentLife, when(since.currentLifeMs, formatDuration)],
     [t.averageLife, when(since.averageLifeMs, formatDuration)],
-    [t.shieldsLost, when(since.shieldsLost, count)],
+    [t.shieldsBroken, when(since.shield, (s) => withMatchTotal(count(s.breaks), count(s.matchBreaks)))],
+    [t.shieldRecharges, when(since.shield, (s) => withMatchTotal(count(s.recharges), count(s.matchRecharges)))],
+    [
+      t.shieldDifferential,
+      when(since.shield, (s) =>
+        withMatchTotal(formatDifferential(s.differential), formatDifferential(s.matchDifferential)),
+      ),
+    ],
     [
       t.score,
       when(since.score, (v) => (

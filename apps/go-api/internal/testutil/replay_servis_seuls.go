@@ -29,6 +29,8 @@ import (
 var ReplayChampsServisSeuls = map[string]string{
 	"ReplayDocument.MedalLabels": "2026-11-17 : libelle, description, image et rarete de chaque medaille de `medals`, " +
 		"poses a la requete par service/replay_medal_labels.go depuis le referentiel du titre.",
+	"ReplayDocument.ShieldCycles": "2026-11-22 : instants des bris et des recharges de bouclier de chaque joueur mesure, calcules a la requete " +
+		"par service/replay_shield_cycles.go depuis les pistes du document stocke avec analysis/shieldcycle (une seule definition).",
 }
 
 // ReplayTypesServisSeuls : les TYPES du document servi qui n'existent que pour un champ de
@@ -38,6 +40,7 @@ var ReplayTypesServisSeuls = map[string]string{
 	"MedalLabel":       "2026-11-17 : valeur de `ReplayDocument.MedalLabels`.",
 	"MedalDescription": "2026-11-17 : description d'un `MedalLabel`.",
 	"MedalSprite":      "2026-11-17 : decoupe de feuille de sprites d'un `MedalLabel`.",
+	"ShieldCycle":      "2026-11-22 : valeur de `ReplayDocument.ShieldCycles`.",
 }
 
 // motifDate : un motif commence par la date de la decision.

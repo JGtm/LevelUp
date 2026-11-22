@@ -16,11 +16,12 @@ package main
 // RESUME). Lecture UN ARTEFACT A LA FOIS, jamais de map globale vivante (lecon du chantier
 // backfill-replay, qui a sature la machine le 2026-08-20).
 //
-// # ELLE EST REPRENABLE, ET LA CLE EST (summary_rev, artifact_schema)
+// # ELLE EST REPRENABLE, ET LA CLE EST (summary_rev, levelup_rev, artifact_schema)
 //
 // Un match dont la passe COURANTE (vue `match_usage_films_latest`, ADR 0026) porte la
-// revision de projection courante (`replay.UsageSummaryRev`) ET le schema de l artefact
-// sur disque est saute. Interrompre puis relancer reprend donc ou elle en etait ; un
+// revision de projection courante (`replay.UsageSummaryRev`), la revision du calcul de LevelUp
+// (`replayartifacts.UsageLevelUpRev` : bris et recharges de bouclier, vengeances) ET le schema de
+// l artefact sur disque est saute. Interrompre puis relancer reprend donc ou elle en etait ; un
 // artefact RE-CUIT a un schema plus recent est re-resume tout seul. `--force` re-resume
 // tout — c est ce qu il faut le jour ou une regle de projection change sans changer la
 // revision (ne devrait jamais arriver : changer une regle DOIT incrementer UsageSummaryRev).
@@ -71,15 +72,19 @@ type usageSummaryOptions struct {
 	force     bool
 	dryRun    bool
 	match     string
-	// fragsDe : le fil des morts d'un match, pour les frags sans bouclier (meme lecture que le fil
-	// de l'eau, `replayartifacts.LireFragsDuFilDesMorts`). Nil = non mesures.
-	fragsDe func(ctx context.Context, matchID string) replay.ShieldlessKillsInput
+	// entreesDe : le fil des morts et les equipes d'un match, pour les frags sans bouclier et les
+	// vengeances (memes lectures que le fil de l'eau, `replayartifacts.LireFragsDuFilDesMorts` et
+	// `LireEquipesDesMatchs`). Nil = non mesures.
+	entreesDe func(ctx context.Context, matchID string) replayartifacts.EntreesMesuresUsage
 }
 
 // passeCouranteUsage : ce que la vue `_latest` dit d un match deja resume.
 type passeCouranteUsage struct {
 	rev    string
 	schema int
+	// levelUpRev : la revision du calcul de LevelUp (bouclier, vengeances) de la passe ; vide = NULL
+	// (passe ecrite avant ce calcul).
+	levelUpRev string
 	// frameIntervalMs : le pas de l'artefact tel que le résumé l'a lu (`frame_interval_ms` de la ligne film).
 	frameIntervalMs int
 }
@@ -150,7 +155,7 @@ func runBackfillUsageSummary(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	o.fragsDe = fragsDuFilDesMorts(db)
+	o.entreesDe = entreesDuResume(db)
 	dejaResumes := map[string]passeCouranteUsage{}
 	if !o.force {
 		if dejaResumes, err = passesCourantesUsage(ctx, db); err != nil {
@@ -225,7 +230,8 @@ func candidatsUsage(ctx context.Context, db *sql.DB, o usageSummaryOptions) ([]s
 // ancienne, deja supplantee, ne doit pas faire sauter un match).
 func passesCourantesUsage(ctx context.Context, db *sql.DB) (map[string]passeCouranteUsage, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT DISTINCT match_id, summary_rev, artifact_schema, frame_interval_ms FROM match_usage_films_latest`)
+		`SELECT DISTINCT match_id, summary_rev, COALESCE(levelup_rev, ''), artifact_schema, frame_interval_ms
+		 FROM match_usage_films_latest`)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja resumes: %w", err)
 	}
@@ -234,7 +240,7 @@ func passesCourantesUsage(ctx context.Context, db *sql.DB) (map[string]passeCour
 	for rows.Next() {
 		var id string
 		var p passeCouranteUsage
-		if err := rows.Scan(&id, &p.rev, &p.schema, &p.frameIntervalMs); err != nil {
+		if err := rows.Scan(&id, &p.rev, &p.levelUpRev, &p.schema, &p.frameIntervalMs); err != nil {
 			return nil, fmt.Errorf("matchs deja resumes (scan): %w", err)
 		}
 		out[id] = p
@@ -275,27 +281,28 @@ func resumerCorpus(
 		// LES REPLIS DE LA PROJECTION, PAR MATCH PUIS CUMULES. La ligne par match n est ecrite
 		// que s il s est declenche quelque chose : c est ce qui permet de RETROUVER l artefact,
 		// et un corpus entierement lu n en produit aucune. Le cumul, lui, se dit toujours.
-		if r := s.Match.Fallbacks; len(r) > 0 {
+		sum := &s.summary
+		if r := sum.Match.Fallbacks; len(r) > 0 {
 			b.replisConcerne++
 			b.replis.Cumuler(r)
 			slog.InfoContext(ctx, "backfill usage : replis declenches par la projection",
 				"match_id", id, "replis", decfilm.Texte(r))
 		}
-		b.totalNommees += s.Match.PadNamed
-		b.totalAnonymes += s.Match.PadUnnamed
-		b.couverture.UnnamedRankTaken += s.Match.EquipmentChanges.UnnamedRankTaken
-		b.couverture.UnattributedSlot += s.Match.EquipmentChanges.UnattributedSlot
-		b.couverture.SpentUnreliableFrom += s.Match.EquipmentChanges.SpentUnreliableFrom
-		for fam, n := range s.Match.PowerupPadPickups {
+		b.totalNommees += sum.Match.PadNamed
+		b.totalAnonymes += sum.Match.PadUnnamed
+		b.couverture.UnnamedRankTaken += sum.Match.EquipmentChanges.UnnamedRankTaken
+		b.couverture.UnattributedSlot += sum.Match.EquipmentChanges.UnattributedSlot
+		b.couverture.SpentUnreliableFrom += sum.Match.EquipmentChanges.SpentUnreliableFrom
+		for fam, n := range sum.Match.PowerupPadPickups {
 			b.totalPowerups[fam] += n
 		}
 		if o.dryRun {
 			fmt.Printf("  %-40s nommees=%3d anonymes=%3d joueurs=%2d powerups=%s\n",
-				id, s.Match.PadNamed, s.Match.PadUnnamed, len(s.Players),
-				usagePowerupsTexte(s.Match.PowerupPadPickups))
+				id, sum.Match.PadNamed, sum.Match.PadUnnamed, len(sum.Players),
+				usagePowerupsTexte(sum.Match.PowerupPadPickups))
 			continue
 		}
-		if err := p.PersistPass(ctx, id, s); err != nil {
+		if err := p.PersistPass(ctx, id, &s.summary, s.levelUp); err != nil {
 			// Jamais avale : l echec d UN match n arrete pas la passe, mais il se voit.
 			fmt.Printf("  ECHEC %s : %v\n", id, err)
 			b.echecs++
@@ -325,7 +332,7 @@ const (
 func projeterUnArtefact(
 	ctx context.Context, path, matchID string, o usageSummaryOptions,
 	dejaResumes map[string]passeCouranteUsage,
-) (*replay.UsageSummary, etatUsageMatch) {
+) (*projectionUsage, etatUsageMatch) {
 	doc, err := replayartifacts.LireArtefactRange(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, usageSansArtefact
@@ -354,16 +361,26 @@ func projeterUnArtefact(
 	// un schema plus recent que la passe courante doit etre re-resume.
 	if !o.force {
 		if rec, ok := dejaResumes[matchID]; ok &&
-			rec.rev == replay.UsageSummaryRev && rec.schema == doc.SchemaVersion &&
+			rec.rev == replay.UsageSummaryRev && rec.levelUpRev == replayartifacts.UsageLevelUpRev &&
+			rec.schema == doc.SchemaVersion &&
 			replaybuild.SameCadence(rec.frameIntervalMs, doc.FrameIntervalMS) {
 			return nil, usageDejaAJour
 		}
 	}
 	s := replay.BuildUsageSummary(doc)
-	if o.fragsDe != nil {
-		replay.AttachShieldlessKills(&s, doc, o.fragsDe(ctx, matchID))
+	var in replayartifacts.EntreesMesuresUsage
+	if o.entreesDe != nil {
+		in = o.entreesDe(ctx, matchID)
 	}
-	return &s, usageAProjeter
+	replay.AttachShieldlessKills(&s, doc, in.Frags)
+	return &projectionUsage{summary: s, levelUp: replayartifacts.AttacherMesuresLevelUp(&s, doc, in)}, usageAProjeter
+}
+
+// projectionUsage : ce que la passe ecrit pour UN match, le resume du decodeur et les mesures de
+// LevelUp, calcules comme le fil de l'eau (`replayartifacts.AttacherMesuresLevelUp`).
+type projectionUsage struct {
+	summary replay.UsageSummary
+	levelUp persist.UsageLevelUp
 }
 
 // usagePowerupsTexte : la ventilation des bonus, cles triees — une sortie de passe doit
@@ -384,16 +401,23 @@ func usagePowerupsTexte(m map[string]int) string {
 	return "{" + strings.Join(parts, " ") + "}"
 }
 
-// fragsDuFilDesMorts lit le fil des morts d'un match sur la base partagee ouverte par la passe.
-// Une lecture en echec laisse les frags non mesures (colonne NULL) et se dit.
-func fragsDuFilDesMorts(db *sql.DB) func(ctx context.Context, matchID string) replay.ShieldlessKillsInput {
-	return func(ctx context.Context, matchID string) replay.ShieldlessKillsInput {
+// entreesDuResume lit le fil des morts et les equipes d'un match sur la base partagee ouverte par la
+// passe. Une lecture en echec laisse les frags sans bouclier et les vengeances non mesures (colonnes
+// NULL) et se dit.
+func entreesDuResume(db *sql.DB) func(ctx context.Context, matchID string) replayartifacts.EntreesMesuresUsage {
+	return func(ctx context.Context, matchID string) replayartifacts.EntreesMesuresUsage {
 		frags, err := replayartifacts.LireFragsDuFilDesMorts(ctx, db, []string{matchID})
 		if err != nil {
-			slog.ErrorContext(ctx, "backfill usage : fil des morts illisible, frags sans bouclier non mesures",
+			slog.ErrorContext(ctx, "backfill usage : fil des morts illisible, frags sans bouclier et vengeances non mesures",
 				"match_id", matchID, "err", err)
-			return replay.ShieldlessKillsInput{}
+			return replayartifacts.EntreesMesuresUsage{}
 		}
-		return frags[matchID]
+		equipes, err := replayartifacts.LireEquipesDesMatchs(ctx, db, []string{matchID})
+		if err != nil {
+			slog.ErrorContext(ctx, "backfill usage : equipes illisibles, vengeances non mesurees",
+				"match_id", matchID, "err", err)
+			return replayartifacts.EntreesMesuresUsage{Frags: frags[matchID]}
+		}
+		return replayartifacts.EntreesMesuresUsage{Frags: frags[matchID], Equipes: equipes[matchID]}
 	}
 }

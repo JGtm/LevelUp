@@ -103,7 +103,7 @@ export function ReplayPlayerPanelBody({
   const ages = useReadingAges(doc)
   const clock = formatClock(displayClockMs(nowMs, playWindow))
   const view = usePlayerInstant(
-    { doc, player, players, feed, presence: ages.presence, matchStartFrame: playWindow?.startFrame ?? null, weaponIcons, locale },
+    { doc, player, players, feed, matchStartFrame: playWindow?.startFrame ?? null, weaponIcons, locale },
     frame,
   )
   const camp = useMemo(() => playerCampLabel(player, players, t), [player, players, t])

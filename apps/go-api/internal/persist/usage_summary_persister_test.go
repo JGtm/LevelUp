@@ -78,7 +78,7 @@ func TestUsageSummaryPersistPass_EcritEtRelitParLesVues(t *testing.T) {
 	db := openUsageSummaryTestDB(t)
 	ctx := context.Background()
 
-	if err := NewUsageSummaryPersister(db).PersistPass(ctx, "m1", resumeUsageDeTest()); err != nil {
+	if err := NewUsageSummaryPersister(db).PersistPass(ctx, "m1", resumeUsageDeTest(), UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass: %v", err)
 	}
 
@@ -145,13 +145,13 @@ func TestUsageSummaryPersistPass_LaSecondePasseRemplaceEntierement(t *testing.T)
 	ctx := context.Background()
 	p := NewUsageSummaryPersister(db)
 
-	if err := p.PersistPass(ctx, "m2", resumeUsageDeTest()); err != nil {
+	if err := p.PersistPass(ctx, "m2", resumeUsageDeTest(), UsageLevelUp{}); err != nil {
 		t.Fatalf("passe A: %v", err)
 	}
 	passeB := resumeUsageDeTest()
 	passeB.Players = passeB.Players[:1] // le joueur 222 n est plus produit
 	passeB.Players[0].PadPickups = 9
-	if err := p.PersistPass(ctx, "m2", passeB); err != nil {
+	if err := p.PersistPass(ctx, "m2", passeB, UsageLevelUp{}); err != nil {
 		t.Fatalf("passe B: %v", err)
 	}
 
@@ -195,7 +195,7 @@ func TestUsageSummaryPersistPass_SansLigneJoueur(t *testing.T) {
 	s := &replay.UsageSummary{Match: replay.UsageMatchSummary{
 		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: 100, FrameCount: 500,
 	}}
-	if err := NewUsageSummaryPersister(db).PersistPass(context.Background(), "m3", s); err != nil {
+	if err := NewUsageSummaryPersister(db).PersistPass(context.Background(), "m3", s, UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass: %v", err)
 	}
 	var films, joueurs int
@@ -221,13 +221,13 @@ func TestUsageSummaryPersistPass_PasseVideDeJoueursSupplante(t *testing.T) {
 	ctx := context.Background()
 	p := NewUsageSummaryPersister(db)
 
-	if err := p.PersistPass(ctx, "m5", resumeUsageDeTest()); err != nil {
+	if err := p.PersistPass(ctx, "m5", resumeUsageDeTest(), UsageLevelUp{}); err != nil {
 		t.Fatalf("passe A: %v", err)
 	}
 	passeB := resumeUsageDeTest()
 	passeB.Players = nil // re-projection legale qui n attribue plus rien a personne
 	passeB.Match.PadNamed = 0
-	if err := p.PersistPass(ctx, "m5", passeB); err != nil {
+	if err := p.PersistPass(ctx, "m5", passeB, UsageLevelUp{}); err != nil {
 		t.Fatalf("passe B: %v", err)
 	}
 
@@ -265,20 +265,20 @@ func TestUsageSummaryPersistPass_Refus(t *testing.T) {
 	ctx := context.Background()
 	p := NewUsageSummaryPersister(db)
 
-	if err := p.PersistPass(ctx, "", resumeUsageDeTest()); err == nil {
+	if err := p.PersistPass(ctx, "", resumeUsageDeTest(), UsageLevelUp{}); err == nil {
 		t.Error("matchID vide : attendu un refus")
 	}
-	if err := p.PersistPass(ctx, "m4", nil); err == nil {
+	if err := p.PersistPass(ctx, "m4", nil, UsageLevelUp{}); err == nil {
 		t.Error("resume nil : attendu un refus")
 	}
 	sansXUID := resumeUsageDeTest()
 	sansXUID.Players[0].XUID = ""
-	if err := p.PersistPass(ctx, "m4", sansXUID); err == nil {
+	if err := p.PersistPass(ctx, "m4", sansXUID, UsageLevelUp{}); err == nil {
 		t.Error("xuid vide : attendu un refus")
 	}
 	double := resumeUsageDeTest()
 	double.Players[1].XUID = "111"
-	if err := p.PersistPass(ctx, "m4", double); err == nil {
+	if err := p.PersistPass(ctx, "m4", double, UsageLevelUp{}); err == nil {
 		t.Error("xuid double : attendu un refus")
 	}
 	var n int
@@ -302,7 +302,7 @@ func TestUsageSummaryPersistPass_Refus(t *testing.T) {
 func TestUsageSummaryPersistPass_LesQuatreVentilationsDIssue(t *testing.T) {
 	db := openUsageSummaryTestDB(t)
 	if err := NewUsageSummaryPersister(db).PersistPass(
-		context.Background(), "m4", resumeUsageDeTest()); err != nil {
+		context.Background(), "m4", resumeUsageDeTest(), UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass: %v", err)
 	}
 	var taken, spent, kept, dropped string
@@ -326,5 +326,63 @@ func TestUsageSummaryPersistPass_LesQuatreVentilationsDIssue(t *testing.T) {
 	}
 	if taken222 != "{}" {
 		t.Errorf("taken_json(222) = %q, attendu {}", taken222)
+	}
+}
+
+func entier(n int) *int { return &n }
+
+// TestUsageSummaryPersistPass_MesuresDeLevelUp — les trois mesures et la révision du calcul se
+// rangent avec la passe et se relisent par les vues `_latest` ; un joueur sans mesure et une passe
+// sans mesures lisent NULL, jamais zéro ; la passe suivante supplante entièrement la précédente.
+func TestUsageSummaryPersistPass_MesuresDeLevelUp(t *testing.T) {
+	db := openUsageSummaryTestDB(t)
+	ctx := context.Background()
+	p := NewUsageSummaryPersister(db)
+
+	lu := UsageLevelUp{Rev: "lu-test", Players: map[string]UsageLevelUpPlayer{
+		"111": {ShieldBreaks: entier(9), ShieldRecharges: entier(0), RevengeKills: entier(2)},
+		"222": {RevengeKills: entier(0)}, // bouclier non mesuré, vengeances mesurées à zéro
+	}}
+	if err := p.PersistPass(ctx, "m6", resumeUsageDeTest(), lu); err != nil {
+		t.Fatalf("passe A: %v", err)
+	}
+	lire := func(match, xuid string) (b, r, v sql.NullInt64) {
+		t.Helper()
+		if err := db.QueryRow(`SELECT shield_breaks, shield_recharges, revenge_kills
+			FROM match_usage_players_latest WHERE match_id = ? AND xuid = ?`, match, xuid).Scan(&b, &r, &v); err != nil {
+			t.Fatalf("lecture %s/%s: %v", match, xuid, err)
+		}
+		return b, r, v
+	}
+	b, r, v := lire("m6", "111")
+	if !b.Valid || b.Int64 != 9 || !r.Valid || r.Int64 != 0 || !v.Valid || v.Int64 != 2 {
+		t.Errorf("111 = %+v %+v %+v, attendu 9 / 0 / 2 (le zero mesure reste un zero)", b, r, v)
+	}
+	b, r, v = lire("m6", "222")
+	if b.Valid || r.Valid || !v.Valid || v.Int64 != 0 {
+		t.Errorf("222 = %+v %+v %+v, attendu NULL / NULL / 0", b, r, v)
+	}
+	var rev sql.NullString
+	if err := db.QueryRow(`SELECT levelup_rev FROM match_usage_films_latest WHERE match_id = 'm6'`).Scan(&rev); err != nil {
+		t.Fatalf("levelup_rev: %v", err)
+	}
+	if !rev.Valid || rev.String != "lu-test" {
+		t.Errorf("levelup_rev = %+v, attendu lu-test", rev)
+	}
+
+	// Passe B sans mesures : la valeur zéro range une révision NULL et des colonnes NULL, et
+	// supplante la passe A (la vue ne mélange jamais deux passes).
+	if err := p.PersistPass(ctx, "m6", resumeUsageDeTest(), UsageLevelUp{}); err != nil {
+		t.Fatalf("passe B: %v", err)
+	}
+	b, r, v = lire("m6", "111")
+	if b.Valid || r.Valid || v.Valid {
+		t.Errorf("passe B sans mesures : 111 = %+v %+v %+v, attendu NULL partout", b, r, v)
+	}
+	if err := db.QueryRow(`SELECT levelup_rev FROM match_usage_films_latest WHERE match_id = 'm6'`).Scan(&rev); err != nil {
+		t.Fatalf("levelup_rev B: %v", err)
+	}
+	if rev.Valid {
+		t.Errorf("levelup_rev de la passe B = %+v, attendu NULL", rev)
 	}
 }

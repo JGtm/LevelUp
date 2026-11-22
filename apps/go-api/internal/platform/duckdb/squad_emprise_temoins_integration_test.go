@@ -150,7 +150,7 @@ func ecrireSoiree(t *testing.T, db *ddb.DB, soiree []matchTemoin) {
 			Match:   replay.UsageMatchSummary{DurationMS: 600_000, PowerupPadPickups: m.socles},
 			Players: m.bonus,
 		}
-		if err := usage.PersistPass(ctx, m.id, resume); err != nil {
+		if err := usage.PersistPass(ctx, m.id, resume, persist.UsageLevelUp{}); err != nil {
 			t.Fatalf("résumé d'usage %s: %v", m.id, err)
 		}
 		batch := persist.PadTiersBatch{MatchID: m.id, PadsTotal: 14, PadsConfirmed: 14}

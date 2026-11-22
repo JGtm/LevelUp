@@ -9,7 +9,6 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { vitalityPresence } from '@/lib/replay/rosterLogic'
 
 import {
   INSTANT_ICONS, instantDoc, instantFeed, instantPlayer, instantPlayers,
@@ -29,11 +28,10 @@ vi.mock('../model/playerInstantSources', async (importOriginal) => {
 const DOC = instantDoc()
 const PLAYERS = instantPlayers(DOC)
 const FEED = instantFeed()
-const PRESENCE = vitalityPresence(DOC)
 
 function input(over: Partial<PlayerInstantInput> = {}): PlayerInstantInput {
   return {
-    doc: DOC, player: instantPlayer(PLAYERS, 'A'), players: PLAYERS, feed: FEED, presence: PRESENCE,
+    doc: DOC, player: instantPlayer(PLAYERS, 'A'), players: PLAYERS, feed: FEED,
     matchStartFrame: null, weaponIcons: INSTANT_ICONS, locale: 'fr', ...over,
   }
 }

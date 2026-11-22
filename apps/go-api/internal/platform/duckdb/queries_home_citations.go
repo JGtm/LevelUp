@@ -146,7 +146,7 @@ SELECT
     me.match_id,
     me.medal_name_id,
     COALESCE(me.count, 1) AS count
-FROM medals_earned me
+FROM v_medals_earned me
 WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`

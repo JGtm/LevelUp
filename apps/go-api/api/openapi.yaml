@@ -24448,6 +24448,9 @@ components:
           description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
           format: int64
           type: integer
+        history_complete:
+          description: Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé.
+          type: boolean
         job:
           $ref: '#/components/schemas/AsyncJobStatus'
           description: Job de sync actif du joueur, sinon le plus récent encore conservé.
@@ -24460,6 +24463,7 @@ components:
         - player_slug
         - syncing
         - cooldown_retry_after_s
+        - history_complete
       type: object
     PlayerTokenHealth:
       additionalProperties: false
@@ -25866,6 +25870,10 @@ components:
             - "null"
         scoreTimeline:
           $ref: '#/components/schemas/ScoreTimeline'
+        shieldCycles:
+          additionalProperties:
+            $ref: '#/components/schemas/ShieldCycle'
+          type: object
         shotStats:
           items:
             $ref: '#/components/schemas/ShotStat'
@@ -27947,6 +27955,27 @@ components:
         - instance_locked
         - replay_sound_variation_percent
         - replay_sound_distance_percent
+      type: object
+    ShieldCycle:
+      additionalProperties: false
+      properties:
+        breaks:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        recharges:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+      required:
+        - breaks
+        - recharges
       type: object
     Shot:
       additionalProperties: false

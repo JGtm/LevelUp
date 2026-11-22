@@ -95,6 +95,7 @@ type CaptureOptions struct {
 	Source      string                          // libellé source du batch ("" -> "h5_capture")
 	Classifier  classification.RankedClassifier // verdicts ranked/PvE depuis le HopperId (peut être nil)
 	StopOnKnown bool                            // delta-stop au 1er match connu (sync live) ; false = skip-known SANS stop (backfill profond)
+	CatchUp     bool                            // rattrapage de l'historique : CollectRecentMatches saute les connus et continue à paginer (pas d'arrêt au premier connu) ; MaxMatches borne les matchs NOUVEAUX
 }
 
 // CaptureStats résume une passe de collecte (alimente le domain.SyncResult downstream + logs).
@@ -108,6 +109,7 @@ type CaptureStats struct {
 	ExcludedCampaign int  // matchs Campaign écartés à la collecte (cf. isExcludedH5GameMode)
 	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
 	RosterDropped    int  // player-rows droppées (gamertag non résolu en xuid) — perte de roster TRACÉE (fix #10)
+	HistoryExhausted bool // fin de l'historique vue : page vide, ou page incomplète parcourue jusqu'au bout ; jamais vrai après un arrêt (connu en delta, plafond, pagination non avançante, erreur)
 }
 
 // GameMode Halo 5 (cf. mapping_carnage.h5GameModeSegment + sonde) :
@@ -141,7 +143,10 @@ func isExcludedH5GameMode(gameMode int) bool {
 //     reste dans le gamertag pour le kill-feed). nil -> tout "".
 //   - isKnown     : matchID -> déjà persisté (delta-stop au 1er connu). nil -> tout nouveau.
 //
-// Délta-stop : on s'arrête au 1er match déjà connu (miroir du known-set Infinite).
+// Delta-stop : on s'arrête au 1er match déjà connu (miroir du known-set Infinite). Avec
+// opts.CatchUp, les connus sont sautés et la pagination continue jusqu'à la fin de
+// l'historique ou jusqu'à opts.MaxMatches matchs NOUVEAUX ; stats.HistoryExhausted dit
+// si la fin a été vue.
 // Idempotence garantie en aval par match_registry (un re-collect d'un match déjà
 // persisté est no-opé par SharedPersister).
 func CollectRecentMatches(
@@ -160,8 +165,8 @@ func CollectRecentMatches(
 	if maxMatches <= 0 {
 		maxMatches = h5CaptureDefaultMaxMatches
 	}
-	// Sync live = delta-stop au 1er connu (préserve le comportement historique).
-	opts.StopOnKnown = true
+	// Sync live = delta-stop au 1er connu, sauf en rattrapage (CatchUp : skip-known sans stop).
+	opts.StopOnKnown = !opts.CatchUp
 	resolveXUID = resolveXUIDOrEmpty(resolveXUID)
 	isKnown = isKnownOrFalse(isKnown)
 
@@ -243,6 +248,7 @@ func capturePage(
 	}
 	summaries := mapMatchSummaries(resp, viewer.Gamertag, opts.Classifier)
 	if len(summaries) == 0 {
+		stats.HistoryExhausted = true
 		return nil, false, nil // fin de l'historique
 	}
 	for i := range summaries {
@@ -279,6 +285,7 @@ func capturePage(
 		}
 	}
 	if len(summaries) < pageSize {
+		stats.HistoryExhausted = true
 		return batches, false, nil // dernière page (page incomplète)
 	}
 	return batches, true, nil // page pleine -> il reste probablement des pages

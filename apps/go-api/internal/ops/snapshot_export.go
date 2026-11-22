@@ -45,9 +45,15 @@ var sharedSnapshotTables = []string{
 // les résumés par match du journal voyagent avec lui ; leurs vues `_latest` sont posées à la
 // lecture par migration.EnsureMatchKillEvents. Les snapshots coupés avant sont refusés
 // (ErrSnapshotIncomplete → lecture live) jusqu'au prochain cut.
+// match_usage_players / match_usage_films ajoutées le 2026-11-22 : la vue `v_medals_earned` (médailles
+// Vengeur et Cible difficile dérivées du film, lues par la vue du match) se définit sur leurs vues
+// `_latest`, posées à la lecture par migration.ApplyMatchUsageLatestViews. Sans elles, toute lecture
+// de médailles servie du snapshot échouait en Catalog Error. Les snapshots coupés avant sont refusés
+// (ErrSnapshotIncomplete → lecture live) jusqu'au prochain cut.
 var sharedSnapshotMatchKeyedRaw = []string{
 	"match_csrs", "match_objective_stats", "match_kill_events",
 	tableMatchKillHeads, tableMatchKillPairs, tableMatchAssistPairs,
+	tableMatchUsagePlayers, tableMatchUsageFilms,
 }
 
 // sharedSnapshotTitleOwnedRaw : tables shared append-only exportées RAW que le schéma d'un
@@ -221,3 +227,9 @@ func exportSharedFacts(ctx context.Context, opener SharedReadOpener, versionDir 
 	}
 	return parts, nil
 }
+
+// Les deux tables du résumé d'usage d'un match (migration shared_match_usage_summary_v1).
+const (
+	tableMatchUsagePlayers = "match_usage_players"
+	tableMatchUsageFilms   = "match_usage_films"
+)

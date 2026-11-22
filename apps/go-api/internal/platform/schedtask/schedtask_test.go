@@ -57,7 +57,7 @@ func (f *fakeRunner) commands() []string {
 var testRoot = filepath.Join(os.TempDir(), "Test User")
 
 var testSpec = Spec{
-	ExePath:       filepath.Join(testRoot, "Programs", "LevelUp", "levelup-server.exe"),
+	ShellExe:      filepath.Join(testRoot, "Programs", "LevelUp", "LevelUp.exe"),
 	DataRoot:      filepath.Join(testRoot, "AppData", "Local", "LevelUp"),
 	ResourcesRoot: filepath.Join(testRoot, "Programs", "LevelUp"),
 	LogsRoot:      filepath.Join(testRoot, "AppData", "Local", "LevelUp", "logs"),
@@ -171,14 +171,16 @@ func TestEnsure_ArgumentsExactsEtDefinitionDeLaTache(t *testing.T) {
 		task.Settings.Limit != "PT15M" || task.Settings.Hidden != "true" {
 		t.Errorf("réglages = %+v", task.Settings)
 	}
-	if task.Exec.Command != "cmd.exe" || task.Exec.Workdir != testSpec.ResourcesRoot {
-		t.Errorf("action = %+v", task.Exec)
+	if task.Exec.Command != testSpec.ShellExe || task.Exec.Workdir != filepath.Dir(testSpec.ShellExe) {
+		t.Errorf("action = %+v, attendu la coquille %q lancée dans son dossier", task.Exec, testSpec.ShellExe)
 	}
-	wantArgs := `/d /s /c "set "LEVELUP_DATA_DIR=` + testSpec.DataRoot + `" && set "LEVELUP_RESOURCES_DIR=` +
-		testSpec.ResourcesRoot + `" && set "LEVELUP_LOGS_DIR=` + testSpec.LogsRoot + `" && "` + testSpec.ExePath +
-		`" -mode refresh-only"`
+	wantArgs := `--refresh-only --data-dir "` + testSpec.DataRoot + `" --resources-dir "` + testSpec.ResourcesRoot +
+		`" --logs-dir "` + testSpec.LogsRoot + `"`
 	if task.Exec.Arguments != wantArgs {
 		t.Errorf("arguments de l'action =\n%s\nattendu\n%s", task.Exec.Arguments, wantArgs)
+	}
+	if strings.Contains(strings.ToLower(doc), "cmd.exe") {
+		t.Error("l'action ne passe plus par cmd.exe : Windows y ouvrirait une console visible")
 	}
 	if strings.Contains(doc, "HighestAvailable") {
 		t.Error("la tâche ne demande jamais l'élévation")
@@ -253,16 +255,13 @@ func TestEnsure_CheminsRefusesAvantToutAppel(t *testing.T) {
 		mutate  func(*Spec)
 		absolus bool // les quatre chemins restent absolus : seul le caractère réservé peut refuser
 	}{
-		"exécutable vide":          {func(s *Spec) { s.ExePath = "" }, false},
 		"racine relative":          {func(s *Spec) { s.DataRoot = `donnees` }, false},
+		"coquille relative":        {func(s *Spec) { s.ShellExe = `LevelUp.exe` }, false},
 		"guillemet":                {func(s *Spec) { s.LogsRoot = avec(`"`) }, true},
-		"pourcentage":              {func(s *Spec) { s.DataRoot = filepath.Join(testRoot, `%TEMP%`) }, true},
-		"esperluette":              {func(s *Spec) { s.ResourcesRoot = avec(`&`) }, true},
-		"point d'exclamation":      {func(s *Spec) { s.ExePath = filepath.Join(avec(`!`), "levelup-server.exe") }, true},
+		"guillemet de la coquille": {func(s *Spec) { s.ShellExe = filepath.Join(avec(`"`), "LevelUp.exe") }, true},
 		"retour à la ligne":        {func(s *Spec) { s.LogsRoot = avec("\n") }, true},
-		"redirection":              {func(s *Spec) { s.DataRoot = avec(`>`) }, true},
-		"accent circonflexe":       {func(s *Spec) { s.DataRoot = avec(`^`) }, true},
-		"barre verticale":          {func(s *Spec) { s.DataRoot = avec(`|`) }, true},
+		"retour chariot":           {func(s *Spec) { s.DataRoot = avec("\r") }, true},
+		"barre oblique finale":     {func(s *Spec) { s.DataRoot = testRoot + `\` }, true},
 		"racine des ressources":    {func(s *Spec) { s.ResourcesRoot = "" }, false},
 		"racine des journaux vide": {func(s *Spec) { s.LogsRoot = "  " }, false},
 	}
@@ -271,7 +270,7 @@ func TestEnsure_CheminsRefusesAvantToutAppel(t *testing.T) {
 			spec := testSpec
 			c.mutate(&spec)
 			if c.absolus {
-				for _, p := range []string{spec.ExePath, spec.DataRoot, spec.ResourcesRoot, spec.LogsRoot} {
+				for _, p := range []string{spec.ShellExe, spec.DataRoot, spec.ResourcesRoot, spec.LogsRoot} {
 					if !filepath.IsAbs(p) {
 						t.Fatalf("précondition : %q doit être absolu sur cet OS", p)
 					}
@@ -286,6 +285,50 @@ func TestEnsure_CheminsRefusesAvantToutAppel(t *testing.T) {
 				t.Fatalf("aucun appel de schtasks avec un chemin refusé : %v", r.commands())
 			}
 		})
+	}
+}
+
+// Les caractères que seul cmd.exe interprétait (% & ^ ! < > |) sont permis : la ligne de commande n'est plus lue
+// par cmd.exe, et le chemin y arrive tel quel, échappé en XML.
+func TestEnsure_CaracteresDeCmdPermis(t *testing.T) {
+	for _, c := range []string{"%", "&", "^", "!", "<", ">", "|"} {
+		spec := testSpec
+		spec.DataRoot = filepath.Join(testRoot, "a"+c+"b")
+		spec.ShellExe = filepath.Join(testRoot, "x"+c+"y", "LevelUp.exe")
+		r := &fakeRunner{}
+		m := &Manager{Runner: r, Spec: spec, Now: fixedNow, TempDir: os.TempDir()}
+		if err := m.Ensure(context.Background()); err != nil {
+			t.Fatalf("%q : Ensure = %v, attendu accepté", c, err)
+		}
+		if len(r.calls) != 1 {
+			t.Fatalf("%q : %d appels, attendu 1", c, len(r.calls))
+		}
+		var task struct {
+			Command   string `xml:"Actions>Exec>Command"`
+			Arguments string `xml:"Actions>Exec>Arguments"`
+		}
+		doc := strings.Replace(decodeUTF16(t, r.calls[0].xmlBody), `encoding="UTF-16"`, `encoding="UTF-8"`, 1)
+		if err := xml.Unmarshal([]byte(doc), &task); err != nil {
+			t.Fatalf("%q : XML invalide : %v", c, err)
+		}
+		if task.Command != spec.ShellExe || !strings.Contains(task.Arguments, `--data-dir "`+spec.DataRoot+`"`) {
+			t.Errorf("%q : action = %+v, le chemin doit arriver intact", c, task)
+		}
+	}
+}
+
+// Sans coquille connue (serveur desktop lancé sans elle), rien n'est posé : ErrShellUnknown, et aucun appel de
+// schtasks.
+func TestEnsure_CoquilleInconnueNAppellePasSchtasks(t *testing.T) {
+	spec := testSpec
+	spec.ShellExe = ""
+	r := &fakeRunner{}
+	m := &Manager{Runner: r, Spec: spec, Now: fixedNow}
+	if err := m.Ensure(context.Background()); !errors.Is(err, ErrShellUnknown) || errors.Is(err, ErrUnsupportedPath) {
+		t.Fatalf("erreur = %v, attendu ErrShellUnknown seul", err)
+	}
+	if len(r.calls) != 0 {
+		t.Fatalf("aucun appel de schtasks sans coquille : %v", r.commands())
 	}
 }
 
@@ -392,10 +435,10 @@ func (x *xmlRunner) Run(ctx context.Context, args ...string) ([]byte, error) {
 func TestRemoveIfTargets(t *testing.T) {
 	installDir := filepath.Join(testRoot, "Programs", "LevelUp")
 	autre := testSpec
-	autre.ExePath = filepath.Join(testRoot, "dev", "LevelUp", "levelup-server.exe")
-	// La même sortie, telle que la rend une page de code : sans BOM, guillemets en entités XML.
-	ansi := []byte(`<Task><Actions><Exec><Arguments>/d /s /c &quot;set &quot;LEVELUP_DATA_DIR=` + testSpec.DataRoot +
-		`&quot; &amp;&amp; &quot;` + testSpec.ExePath + `&quot; -mode refresh-only&quot;</Arguments></Exec></Actions></Task>`)
+	autre.ShellExe = filepath.Join(testRoot, "dev", "LevelUp", "LevelUp.exe")
+	// La même sortie, telle que la rend une page de code : sans BOM, guillemets des arguments en entités XML.
+	ansi := []byte(`<Task><Actions><Exec><Command>` + testSpec.ShellExe + `</Command><Arguments>--refresh-only --data-dir ` +
+		`&quot;` + testSpec.DataRoot + `&quot;</Arguments></Exec></Actions></Task>`)
 
 	cases := []struct {
 		name    string

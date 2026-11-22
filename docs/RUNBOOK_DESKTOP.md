@@ -59,7 +59,7 @@ Everything below is in the "Application" tab of the settings, absent on the site
   Windows task manager (Startup apps), LevelUp respects it and does not turn it back on (the journal says `left_disabled`).
 - **Keep the sign-in alive while the application is closed** (off). Creates the per-user scheduled task `LevelUp\Refresh-<8 hex>` (the suffix is a fingerprint of the data folder, so a test or a second
   installation on other folders never touches yours; every 6 hours,
-  no administrator rights, hidden) that runs `levelup-server.exe -mode refresh-only` to rotate the Microsoft tokens; with the application
+  no administrator rights, hidden) that runs `LevelUp.exe --refresh-only` (the shell, no console window; it starts the server in `-mode refresh-only` hidden and exits with its code) to rotate the Microsoft tokens; with the application
   open it exits at once (the instance lock). The tab shows whether the task is present, absent or in error. To inspect it by hand:
   `schtasks /Query /FO LIST | findstr /i "LevelUp\Refresh"` to read its exact name, then `schtasks /Query /TN "<name>" /V /FO LIST`; to remove it
   without LevelUp: `schtasks /Delete /TN "<name>" /F`. At each start with the setting on, the task is rewritten (a reinstall in another

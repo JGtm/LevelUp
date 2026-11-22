@@ -483,7 +483,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// l'historique n'a pas été vue une fois (clé sync_meta), tout delta passe en mode
 	// full : les matchs connus sont sautés, les inconnus plus anciens sont rattrapés,
 	// le plafond MaxMatches borne chaque passe.
-	if isDelta && !historyComplete(ctx, playerDB) {
+	if isDelta && !HistoryComplete(ctx, playerDB) {
 		isDelta = false
 		mode = "full"
 		slog.InfoContext(ctx, "sync: historique incomplet — rattrapage en mode full",
@@ -666,7 +666,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// Fin de l'historique vue en mode full, sans page perdue ni file incomplète : la clé
 	// est rangée et les passes suivantes redeviennent des deltas.
 	if !isDelta && result.HistoryExhausted && len(result.Errors) == 0 && drainErr == nil {
-		markHistoryComplete(ctx, playerDB, e.gamertag)
+		MarkHistoryComplete(ctx, playerDB, e.gamertag)
 	}
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────

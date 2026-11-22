@@ -378,6 +378,7 @@ fn un_serveur_absent_est_une_erreur_de_lancement() {
     let roots = fresh_roots("absent");
     let spec = SidecarSpec {
         exe: roots.resources.join("absent.exe"),
+        shell_exe: roots.resources.join("LevelUp.exe"),
         roots: roots.clone(),
         secret: Secret::generate().unwrap(),
         extra_env: Vec::new(),
