@@ -89,8 +89,10 @@ func initScheduler(st *bootState) {
 		WithFriendStore(friendStore).
 		WithHistoryReader(historyReader).
 		// L'arriéré de films publié par les étapes film du post-sync tient la cadence de rattrapage et
-		// l'écran d'état de l'historique : sans lui, l'historique se dirait complet avec des films en retard.
-		WithFilmBacklogReader(filmbacklog.Reader{})
+		// l'écran d'état de l'historique sous la capacité FilmCatchUp : sans lui, l'historique se dirait
+		// complet avec des films en retard. Sans la capacité (serveur hébergé), aucun lecteur : la cadence ne suit
+		// que l'historique.
+		WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp))
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 	// Les cycles demandés à la main (« Synchroniser maintenant ») suivent le cycle de vie du serveur :
 	// annulés avec schedulerCtx, attendus par l'arrêt avant la fermeture des bases.

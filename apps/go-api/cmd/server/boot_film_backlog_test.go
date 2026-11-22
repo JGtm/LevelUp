@@ -15,7 +15,7 @@ func TestBootWiresFilmBacklogReaderOnScheduler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lecture %s: %v", src, err)
 	}
-	if !strings.Contains(string(b), "WithFilmBacklogReader(filmbacklog.Reader{})") {
+	if !strings.Contains(string(b), "WithFilmBacklogReader(filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp))") {
 		t.Error("l'ordonnanceur n'a plus de lecteur de l'arriéré de films : la cadence de 10 minutes ne tiendrait " +
 			"plus pendant l'arriéré, et l'historique s'afficherait complet avec des films en retard")
 	}

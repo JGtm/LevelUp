@@ -1,3 +1,10 @@
+## [2026-11-22] Films : bornes d'avant sur le site hébergé, comportement D-17/D-20 sur le bureau seulement (D-22) — Complété (branche `fix/822-m`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : nouvelle capacité `FilmCatchUp` du profil de déploiement (vraie en desktop, fausse en hosted, dev et demo). Sous la capacité : le temps borne les passes de films (garde-fou 200), le retard se lit sur 2000 matchs, la cadence de 10 minutes et l'état « Analyse en cours » suivent l'arriéré de films. Sans elle : 8 films de frags et 5 rejeux par cycle, retard lu sur 64 matchs, aucun lecteur d'arriéré (cadence et écran ne suivent que l'historique). Le hook des rejeux (`replayartifacts.NewHook`) lit la capacité et la porte à la source des frags par `SyncEngine.WithReplayArtifacts` ; le démarrage branche le lecteur d'arriéré par `filmbacklog.ReaderFor`.
+- **Résultats observés** : tests par profil (bornes 8/5/64 en hosted et dev, 200/200/2000 en desktop ; cadence : intervalle réglé en hosted avec un arriéré non vide, 10 minutes en desktop) ; intégration killcollector et replayartifacts verts, bornes hébergées exercées sur une base réelle. `postsync.go` (506 lignes depuis 4g) repassé sous 500 par l'extraction de `postsync_bornes.go`.
+- **Suite** : mesure du coût réel des 2000 lectures sur le bureau (étape 5bis) ; contrôle en prod hébergée à la publication.
+
 ## [2026-11-22] 8.2.2 : délai de la file de persistance et ancre du marque-page (V2) — Complété (branche `fix/822-i`)
 
 - **Décision** : le cycle V2 attend la file de persistance 60 s + 4 s par match (plafond 20 min) au lieu de 60 s fixes ; si l'attente expire, il relit l'ensemble connu et continue avec les matchs prouvés rangés, sans compter d'échec pour ceux encore en file. Le marque-page retient la tête de liste (`HeadID`) : la reprise est à marque-page + position de l'ancienne tête, contrôlée par l'identifiant rangé.
