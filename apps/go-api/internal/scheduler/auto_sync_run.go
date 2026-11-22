@@ -1,13 +1,14 @@
-// Package scheduler — auto_sync_run.go : boucle de run périodique + cycle de sync
-// par joueur (Run / RunOnce / RunOnceTrigger / syncPlayersConcurrent / syncPlayer /
-// checkSyncPreconditions + le type syncOutcome). Extrait de auto_sync.go (K2c,
-// 2026-07-06) pour ramener ce dernier sous 500 L. Déplacement pur, même package.
+// Package scheduler — auto_sync_run.go : le cycle de sync (RunOnce / RunOnceTrigger /
+// syncPlayersConcurrent / syncPlayer / checkSyncPreconditions + le type syncOutcome). La boucle
+// périodique vit dans auto_sync_loop.go. Extrait de auto_sync.go (K2c, 2026-07-06).
 package scheduler
 
 import (
 	"context"
 	"log/slog"
 	"os"
+	"sort"
+	gosync "sync"
 	"sync/atomic"
 	"time"
 
@@ -18,79 +19,6 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/observability/logging"
 )
-
-// Run démarre la boucle périodique. Doit être lancé dans une goroutine.
-// Se termine proprement à l'annulation de ctx.
-func (s *AutoSyncScheduler) Run(ctx context.Context) {
-	interval := s.CurrentInterval()
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	slog.InfoContext(ctx, "auto_sync: scheduler démarré",
-		"interval", interval,
-		"interval_hours", int(interval.Hours()),
-		"pool_size", s.poolSizeSafe(),
-	)
-
-	for {
-		select {
-		case <-ticker.C:
-			interval = s.runTick(ctx, interval, ticker, "")
-		case reason := <-s.catchUpCh:
-			// Rattrapage demandé (RequestCatchUp) : le même tick, exécuté dans CETTE boucle, donc
-			// jamais en même temps qu'un tick périodique.
-			interval = s.runTick(ctx, interval, ticker, reason)
-		case <-ctx.Done():
-			slog.InfoContext(ctx, "auto_sync: arrêt du scheduler (contexte annulé)")
-			return
-		}
-	}
-}
-
-// runTick exécute un tick : relit les settings (activation, intervalle), lance un cycle et journalise
-// son issue. catchUpReason non vide : le tick est un rattrapage demandé hors horloge, non le tick
-// périodique. Rend l'intervalle en vigueur (le ticker est recalé s'il a changé).
-func (s *AutoSyncScheduler) runTick(ctx context.Context, interval time.Duration, ticker *time.Ticker, catchUpReason string) time.Duration {
-	// Sprint B1 commit 17 : event_id sur chaque tick pour tracer le
-	// cycle scheduler complet à travers les modules (scheduler →
-	// auth → sync → provider → pool → handlers post-sync).
-	tickCtx, tickID := logging.WithEvent(ctx, "scheduler.tick")
-	cfg, err := s.settings.Load()
-	if err != nil {
-		slog.WarnContext(tickCtx, "auto_sync: lecture settings échouée — tick ignoré", "err", err)
-		return interval
-	}
-	if !cfg.SpnkrAutoSyncEnabled {
-		slog.DebugContext(tickCtx, "auto_sync: désactivé dans les settings, tick ignoré")
-		return interval
-	}
-	if newInterval := resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours); newInterval != interval {
-		slog.InfoContext(tickCtx, "auto_sync: intervalle mis à jour", "old", interval, "new", newInterval)
-		interval = newInterval
-		ticker.Reset(interval)
-	}
-	slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID, "rattrapage", catchUpReason)
-	res := s.RunOnceTrigger(tickCtx, "tick")
-	slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
-		"total", res.Total,
-		"synced", res.Synced,
-		"skipped", res.Skipped,
-		"failed", res.Failed,
-		"duration", res.Duration.Round(time.Millisecond),
-	)
-	if res.Failed > 0 {
-		slog.WarnContext(tickCtx, "auto_sync: des joueurs ont échoué — consulter le snapshot diag",
-			"failed_count", res.Failed,
-		)
-	}
-	if res.Total > 0 && res.Skipped == res.Total {
-		slog.WarnContext(tickCtx, "auto_sync: aucun joueur synchronisé — vérifier le pool",
-			"pool_size", s.poolSizeSafe(),
-			"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
-		)
-	}
-	return interval
-}
 
 // RunOnce exécute un cycle de sync pour tous les joueurs configurés.
 // Peut être appelé manuellement (debug, endpoint admin) sans attendre un tick.
@@ -152,9 +80,11 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 		if v2Err != nil {
 			slog.ErrorContext(ctx, "auto_sync: cycle V2 en échec (pas de fallback V1 — re-tenté au prochain cycle)",
 				"err", v2Err)
-			v2Res = &RunOnceResult{} // runOnceV2 renvoie nil sur erreur globale
+			// runOnceV2 renvoie nil sur erreur globale : aucun joueur n'a pu dire où en est son historique.
+			v2Res = &RunOnceResult{historyPending: s.pendingHistoryOf(ctx, orchPlayers)}
 		}
-		liveSynced, liveSkipped, liveFailed := s.syncPlayersConcurrent(ctx, livePlayers)
+		liveSynced, liveSkipped, liveFailed, livePending := s.syncPlayersConcurrent(ctx, livePlayers)
+		v2Res.historyPending = append(v2Res.historyPending, livePending...)
 		v2Res.Synced += liveSynced
 		v2Res.Skipped += liveSkipped
 		v2Res.Failed += liveFailed
@@ -173,7 +103,7 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 	// mais une sécurité de démarrage — en prod l'orchestrator est toujours câblé.
 	slog.WarnContext(ctx, "auto_sync: orchestrator V2 non câblé — sync directe via syncPlayer (filet de boot)",
 		"player_count", res.Total)
-	res.Synced, res.Skipped, res.Failed = s.syncPlayersConcurrent(ctx, players)
+	res.Synced, res.Skipped, res.Failed, res.historyPending = s.syncPlayersConcurrent(ctx, players)
 
 	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
 	// customRefresher.RefreshAll(ctx) supprimé. La customisation est désormais
@@ -197,21 +127,23 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 // jour s.playerOutcomes via recordOutcome (protégé par s.snapshotMu) ; les writes
 // shared sont sérialisés par dblease + singleflight ; les compteurs locaux sont
 // protégés par atomic.Int32.
-func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players []domain.PlayerSummary) (synced, skipped, failed int) {
+func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players []domain.PlayerSummary) (synced, skipped, failed int, pending []string) {
 	if len(players) == 0 {
-		return 0, 0, 0
+		return 0, 0, 0, nil
 	}
 	parallelism := s.poolSizeSafe()
 	if parallelism < 1 {
 		parallelism = 1
 	}
 	var syncedN, skippedN, failedN atomic.Int32
+	var pendingMu gosync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(parallelism)
 	for _, p := range players {
 		p := p
 		eg.Go(func() error {
-			switch s.syncPlayer(egCtx, p) {
+			out, hist := s.syncPlayerWithHistory(egCtx, p)
+			switch out {
 			case outcomeOK:
 				syncedN.Add(1)
 			case outcomeSkipped:
@@ -219,11 +151,17 @@ func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players [
 			case outcomeFailed:
 				failedN.Add(1)
 			}
+			if hist {
+				pendingMu.Lock()
+				pending = append(pending, p.Gamertag)
+				pendingMu.Unlock()
+			}
 			return nil
 		})
 	}
 	_ = eg.Wait()
-	return int(syncedN.Load()), int(skippedN.Load()), int(failedN.Load())
+	sort.Strings(pending)
+	return int(syncedN.Load()), int(skippedN.Load()), int(failedN.Load()), pending
 }
 
 // syncOutcome encode le résultat d'une tentative de sync par joueur.
@@ -235,7 +173,14 @@ const (
 	outcomeFailed                     // erreur bloquante pendant RunDelta
 )
 
-// syncPlayer lance une sync delta pour un joueur via le pool de tokens.
+// syncPlayer lance une sync delta pour un joueur et rend son issue (voir syncPlayerWithHistory).
+func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
+	outcome, _ := s.syncPlayerWithHistory(ctx, p)
+	return outcome
+}
+
+// syncPlayerWithHistory lance une sync delta pour un joueur via le pool de tokens et rend, avec
+// son issue, si l'historique du joueur reste incomplet après la passe (cadence de rattrapage).
 //
 // Conditions de skip silencieux (outcome=skipped) :
 //   - pool nil (aucun credential découvert au boot)
@@ -250,7 +195,7 @@ const (
 // dupliquer le state PlayerOutcomeDetail dans les sous-fonctions.
 //
 //nolint:funlen // Orchestrateur sync-per-player : guards (cooldown, watcher, DB
-func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
+func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.PlayerSummary) (outcome syncOutcome, pending bool) {
 	// Sprint B1 commit 17 : event_id par joueur (sous-événement du tick).
 	// Permet de filtrer logs/*.log pour reconstituer le timeline d'un user
 	// donné indépendamment des autres en cours de sync.
@@ -269,7 +214,6 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		AttemptedAt:            startedAt,
 		ConsecutiveZeroInserts: prevZeroInserts, // défaut : préserver (cas skipped/failed)
 	}
-	var outcome syncOutcome
 	defer func() {
 		switch outcome {
 		case outcomeOK:
@@ -282,11 +226,18 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		detail.DurationMs = time.Since(startedAt).Milliseconds()
 		s.recordOutcome(detail)
 	}()
+	// Une passe en échec n'a pas pu dire où en est l'historique : sans fin rangée, le cycle suivant
+	// doit venir vite (cadence de rattrapage).
+	defer func() {
+		if outcome == outcomeFailed {
+			pending = s.historyIncomplete(ctx, p)
+		}
+	}()
 
 	if skipReason, ok := s.checkSyncPreconditions(ctx, p); !ok {
 		detail.Reason = skipReason
 		outcome = outcomeSkipped
-		return outcome
+		return outcome, pending
 	}
 
 	// Gate cross-source : céder si un sync du même joueur est déjà en vol (watcher
@@ -302,7 +253,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 				"gamertag", p.Gamertag)
 			detail.Reason = "différé: sync en cours via autre source (watcher/HTTP)"
 			outcome = outcomeSkipped
-			return outcome
+			return outcome, pending
 		}
 		defer release()
 	}
@@ -329,7 +280,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 			detail.Reason = "runner live indisponible: " + lerr.Error()
 			detail.FirstError = lerr.Error()
 			outcome = outcomeFailed
-			return outcome
+			return outcome, pending
 		}
 		defer release()
 		runner, ctx = r, runCtx
@@ -344,7 +295,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 				"gamertag", p.Gamertag)
 			detail.Reason = "RunnerFactory a retourné nil (pool absent ?)"
 			outcome = outcomeFailed
-			return outcome
+			return outcome, pending
 		}
 	}
 
@@ -355,9 +306,10 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		detail.Reason = "RunDelta échoué: " + err.Error()
 		detail.FirstError = err.Error()
 		outcome = outcomeFailed
-		return outcome
+		return outcome, pending
 	}
 
+	pending = syncResult.HistoryPending
 	detail.MatchesInserted = syncResult.MatchesInserted
 	detail.MatchesSkipped = syncResult.MatchesSkipped
 	detail.MedalsInserted = syncResult.MedalsInserted
@@ -420,7 +372,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	s.runEventsConvergencePass(ctx, p.Gamertag, p.XUID)
 
 	outcome = outcomeOK
-	return outcome
+	return outcome, pending
 }
 
 // checkSyncPreconditions vérifie les préconditions de sync (pool initialisé, watcher

@@ -154,10 +154,19 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 4 — piste C : cadence de l'ordonnanceur
 
-- [ ] 4.1 `catchUpCycleInterval` = 10 min ; après chaque cycle (V2 et filet `syncPlayer`), le ticker
-  est recalé sur 10 min si un joueur a `HistoryPending`, sinon sur l'intervalle réglé (D-7).
-- [ ] 4.2 Ligne de journal par cycle ; auto-sync désactivée = aucun cycle, comme aujourd'hui.
-- [ ] 4.3 Tests avec horloge ou ticker injecté : bascule 6 h -> 10 min -> 6 h.
+- [x] 4.1 `catchUpCycleInterval` = 10 min ; après chaque cycle (V2 et filet `syncPlayer`), le ticker
+  est recalé sur 10 min si un joueur a `HistoryPending`, sinon sur l'intervalle réglé (D-7). Fait
+  (`scheduler/auto_sync_loop.go`). Un joueur dont la passe a échoué avant de savoir (issue `failed`,
+  absente de l'issue du cycle, erreur globale du cycle, `syncPlayer` en échec) est lu par le port
+  `port.HistoryCompletionReader` (`platform/duckdb/historyrepo`, `OpenReadForQuery`, sans écriture) :
+  sans clé de fin il compte comme en rattrapage. Décision : si l'intervalle réglé est plus court que
+  10 min, il garde la main (le rattrapage ne ralentit jamais). Le compte à rebours part de la fin du
+  cycle (le ticker est recalé après chaque cycle). `NextCycleAt()` exposé (sert à 4ter).
+- [x] 4.2 Ligne de journal par cycle (`auto_sync: cycle suivant planifié` : joueurs en rattrapage,
+  intervalle choisi) ; auto-sync désactivée = aucun cycle, comme aujourd'hui.
+- [x] 4.3 Tests avec horloge et ticker injectés (`scheduler/auto_sync_cadence_test.go`) : bascule
+  6 h -> 10 min -> 6 h, joueur Halo 5, issue en échec et erreur de cycle selon la clé de fin,
+  désactivé, intervalle court, intervalle réglé qui change, `Run` avec ticker injecté.
 - Gate : `go test ./internal/scheduler/...`.
 
 ### Étape 4bis — bouton « Synchroniser maintenant » (Réglages › Données)

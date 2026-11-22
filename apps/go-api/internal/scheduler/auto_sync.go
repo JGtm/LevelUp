@@ -86,6 +86,11 @@ type RunOnceResult struct {
 	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
 	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
 	newMatchPlayers []notify.PlayerSyncResult
+
+	// historyPending liste les gamertags des joueurs dont l'historique reste incomplet à la fin du
+	// cycle : la boucle de Run en tire la cadence du cycle suivant (catchUpCycleInterval). Non
+	// exporté : l'état de l'historique d'un joueur se lit par le port de l'état de l'historique.
+	historyPending []string
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -252,6 +257,17 @@ type AutoSyncScheduler struct {
 	// catchUpCh porte les demandes de rattrapage (RequestCatchUp) jusqu'à la boucle de Run.
 	catchUpCh chan string
 
+	// historyReader dit si l'historique d'un joueur est complet quand sa passe a échoué avant de
+	// pouvoir le dire (WithHistoryReader). Nil : un joueur en échec ne compte pas comme en rattrapage.
+	historyReader port.HistoryCompletionReader
+
+	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
+	newTicker func(time.Duration) cycleTicker
+	now       func() time.Time
+	// nextCycleAt : instant (horloge murale) du prochain cycle périodique, mis à jour par la boucle de
+	// Run ; zéro tant que la boucle n'a pas démarré. Protégé par snapshotMu.
+	nextCycleAt time.Time
+
 	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
 	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
 	// placement « worker » dégrade en « aucune construction ».
@@ -338,6 +354,13 @@ func (s *AutoSyncScheduler) WithPrestigeHook(hook func(ctx context.Context, play
 // Doit être appelé depuis cmd/server/main.go au boot, avant Run.
 func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *AutoSyncScheduler {
 	s.cycleOrchestrator = o
+	return s
+}
+
+// WithHistoryReader branche la lecture de l'état de l'historique (clé de fin d'historique de la base
+// joueur) dont l'ordonnanceur se sert pour un joueur dont la passe a échoué avant de pouvoir le dire.
+func (s *AutoSyncScheduler) WithHistoryReader(r port.HistoryCompletionReader) *AutoSyncScheduler {
+	s.historyReader = r
 	return s
 }
 
@@ -491,8 +514,9 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 	}
 
 	res := &RunOnceResult{
-		Total:    len(players),
-		Duration: time.Since(start),
+		Total:          len(players),
+		Duration:       time.Since(start),
+		historyPending: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer),
 	}
 	for _, outcome := range cycleRes.PerPlayer {
 		switch outcome.Status {

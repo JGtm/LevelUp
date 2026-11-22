@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/auth/tokencache"
+	"levelup/go-api/internal/platform/duckdb/historyrepo"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/watcher"
 )
@@ -78,8 +79,14 @@ func initAccountsPool(st *bootState) {
 func initScheduler(st *bootState) {
 	ctx, cfg, settingsStore, tokenProvider, autoSyncPool, friendStore := st.ctx, st.cfg, st.settingsStore, st.tokenProvider, st.autoSyncPool, st.friendStore
 
+	// L'état de l'historique se lit sur la base joueur (clé de fin d'historique) : l'ordonnanceur s'en
+	// sert pour un joueur dont la passe a échoué avant de pouvoir dire où il en est.
+	historyReader := historyrepo.New(func(titleSlug, gamertag string) string {
+		return config.PlayerDBPath(cfg, titleSlug, gamertag)
+	})
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
-		WithFriendStore(friendStore)
+		WithFriendStore(friendStore).
+		WithHistoryReader(historyReader)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
