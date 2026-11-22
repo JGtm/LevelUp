@@ -394,6 +394,29 @@ describe('buildFeedEntries — avec document : pistes, morts neutres, une seule 
     const seule = entries.find((e) => e.medal)
     expect(seule?.replayMs).toBe(11_500)
   })
+
+  it('pose les marques VRAIES du tableau des scores sur le frag recalé, et rien sur les autres', () => {
+    const doc = testReplayDoc({
+      ...docSpec(),
+      eliminations: [
+        { t: 20, xuid: 'k1', victim: 'V', headshot: true },
+        { t: 80, xuid: 'k2', victim: 'V', headshot: false },
+      ],
+      coverage: { eliminations: { eliminations: 2 } },
+    } as never)
+    const entries = buildFeedEntries(kills, [], 0, doc)
+    const frags = entries.filter((e) => e.kill)
+    expect(frags[0].kill?.fragMarks).toEqual({ headshot: true })
+    expect(frags[1].kill?.fragMarks).toBeUndefined()
+  })
+
+  it('sans couverture des éliminations, aucun frag n’est marqué', () => {
+    const doc = testReplayDoc({
+      ...docSpec(),
+      eliminations: [{ t: 20, xuid: 'k1', victim: 'V', headshot: true }],
+    } as never)
+    expect(buildFeedEntries(kills, [], 0, doc).every((e) => e.kill?.fragMarks === undefined)).toBe(true)
+  })
 })
 
 describe('feedAt — le fil est PERMANENT', () => {

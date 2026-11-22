@@ -40,7 +40,6 @@ func (l v0Lecteur) Get(context.Context) (*sql.DB, func(), error) { return l.db, 
 // (`capabilities.toml` : film.kill_source, film.weapon_shots, film.kill_positions), le cache
 // disque comme source de films, le roster par defaut (jointure par match) sur la copie, la
 // capture de positions par `CaptureDepuisCatalogue` et le resolveur de carte de production.
-// `ConfigureFilmAccuracy` n'est PAS appele : aucun appelant de production ne l'appelle.
 func v0Collecteur(t *testing.T, e v0Env, lecture, ecriture *sql.DB) *KillSourceCollector {
 	t.Helper()
 	repoRoot, err := testutil.RepoRoot()

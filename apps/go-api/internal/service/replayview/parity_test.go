@@ -7,7 +7,7 @@
 // la contrainte de compilation par une contrainte ECRITE :
 //
 //  1. tout champ exporte du document STOCKE a une decision (servi, ou inscrit dans la liste
-//     datee `champsNonServis` avec sa justification) ;
+//     datee `testutil.ReplayChampsNonServis` avec sa justification) ;
 //  2. tout champ du document SERVI a une source dans le document stocke, hors la liste datee des
 //     champs servis seuls (`testutil.ReplayChampsServisSeuls`, partagee avec le garde des formes
 //     jumelles de `filmcorpus`) ;
@@ -40,31 +40,6 @@ import (
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// champsNonServis liste les champs du document STOCKE que l'API ne publie pas, par
-// `Type.Champ`, avec la DATE de la decision et son motif. La liste est vide au 2026-09-05 :
-// la separation du lot B laisse la forme de fil strictement inchangee. Toute entree future
-// se justifie ici, pas dans un commit qui retire silencieusement un champ du corps.
-var champsNonServis = map[string]string{}
-
-// typesNonServis liste les TYPES du document stocke que l'API ne publie pas du tout, par nom
-// de type, avec la DATE de la decision et son motif. Vide au 2026-09-06.
-//
-// POURQUOI UNE SECONDE LISTE, et pourquoi `champsNonServis` ne suffit pas. La revue
-// adversariale du 2026-09-05 a montre que l'echappatoire ne couvrait PAS le cas majoritaire :
-// un calque ajoute a la cuisson arrive presque toujours avec son propre type
-// (`Translocation`, `AbilityImpulse`, `AbilityCharge`, `BombEvent`, `BombPlayerStats` sont
-// tous nes ainsi). Ecrire `champsNonServis["ReplayDocument.Medals"]` ne suffisait pas : le
-// controle « jumeau servi » se fait AU NIVEAU DU TYPE, en amont, et echouait toujours sur
-// `MedalEvent`. Il n'existait donc aucune facon d'ajouter un type stocke sans le servir — ce
-// qui contredisait frontalement la promesse du lot (« ajouter un calque a la cuisson ne
-// touche plus le contrat public ») et ne laissait au mainteneur que deux mauvais choix :
-// miroiter dans `replaydoc` un type que le contrat ne veut pas, ou affaiblir le garde-rail.
-//
-// Un type inscrit ici est VISITE (pour que la decision soit lue et datee) mais le parcours
-// ne DESCEND PAS dedans : les types atteignables par lui seul ne sont pas servis non plus,
-// et ce n'est pas un oubli.
-var typesNonServis = map[string]string{}
-
 // CHAMPS ET TYPES SERVIS SEULS. Les champs du document SERVI qui n'ont volontairement aucune source dans le
 // document stocke (calques resolus a la requete) vivent dans `testutil.ReplayChampsServisSeuls` et
 // `testutil.ReplayTypesServisSeuls`, la liste datee UNIQUE que lit aussi le garde des formes jumelles
@@ -86,9 +61,9 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 	servis := indexerTypes(racines[0].servi, racines[1].servi, racines[2].servi)
 	vus := map[string]bool{}
 	typesVus := map[string]bool{}
-	parcourir(racinesStockees(), typesNonServis, func(ts reflect.Type) {
+	parcourir(racinesStockees(), testutil.ReplayTypesNonServis, func(ts reflect.Type) {
 		typesVus[ts.Name()] = true
-		if motif, exclu := typesNonServis[ts.Name()]; exclu {
+		if motif, exclu := testutil.ReplayTypesNonServis[ts.Name()]; exclu {
 			if strings.TrimSpace(motif) == "" {
 				t.Errorf("le type %q est inscrit non servi SANS justification datee", ts.Name())
 			}
@@ -98,13 +73,13 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 		if !ok {
 			t.Errorf("type stocke %q : AUCUN jumeau servi — un calque entier sortirait du "+
 				"contrat sans qu'aucun test ne le dise. Si c'est voulu, l'ecrire dans "+
-				"typesNonServis avec sa date et son motif", ts.Name())
+				"testutil.ReplayTypesNonServis avec sa date et son motif", ts.Name())
 			return
 		}
 		for _, f := range champsSerialises(ts) {
 			cle := ts.Name() + "." + f.Name
 			vus[cle] = true
-			if motif, exclu := champsNonServis[cle]; exclu {
+			if motif, exclu := testutil.ReplayChampsNonServis[cle]; exclu {
 				if strings.TrimSpace(motif) == "" {
 					t.Errorf("%s est inscrit non servi SANS justification datee", cle)
 				}
@@ -113,7 +88,7 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 			g, ok := jumeau.FieldByName(f.Name)
 			if !ok {
 				t.Errorf("%s est publie par l'artefact et ABSENT du document servi, sans entree "+
-					"dans champsNonServis — soit le contrat le porte, soit la decision s'ecrit", cle)
+					"dans testutil.ReplayChampsNonServis — soit le contrat le porte, soit la decision s'ecrit", cle)
 				continue
 			}
 			if a, b := f.Tag.Get("json"), g.Tag.Get("json"); a != b {
@@ -122,15 +97,15 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 			}
 		}
 	})
-	for cle := range champsNonServis {
+	for cle := range testutil.ReplayChampsNonServis {
 		if !vus[cle] {
-			t.Errorf("champsNonServis cite %q, que le document stocke ne publie plus — une "+
+			t.Errorf("testutil.ReplayChampsNonServis cite %q, que le document stocke ne publie plus — une "+
 				"exception qui survit a son champ finit par en couvrir un autre", cle)
 		}
 	}
-	for nom := range typesNonServis {
+	for nom := range testutil.ReplayTypesNonServis {
 		if !typesVus[nom] {
-			t.Errorf("typesNonServis cite %q, que le document stocke ne porte plus — meme "+
+			t.Errorf("testutil.ReplayTypesNonServis cite %q, que le document stocke ne porte plus — meme "+
 				"raison : une exemption qui survit a son type finit par en couvrir un autre", nom)
 		}
 	}
@@ -371,7 +346,7 @@ func arbre(t *testing.T, v any) any {
 	return out
 }
 
-// elaguer retire de l arbre JSON du document STOCKE les champs que champsNonServis exclut,
+// elaguer retire de l arbre JSON du document STOCKE les champs que testutil.ReplayChampsNonServis exclut,
 // en se guidant sur le type Go (l'arbre JSON seul ne porte pas les noms de types).
 func elaguer(node any, t reflect.Type) any {
 	for t.Kind() == reflect.Pointer {
@@ -388,7 +363,7 @@ func elaguer(node any, t reflect.Type) any {
 			if nom == "" {
 				continue
 			}
-			if _, exclu := champsNonServis[t.Name()+"."+f.Name]; exclu {
+			if _, exclu := testutil.ReplayChampsNonServis[t.Name()+"."+f.Name]; exclu {
 				delete(obj, nom)
 				continue
 			}

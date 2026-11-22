@@ -58,7 +58,7 @@ var ErrSansNomDeCarte = errors.New("killcollector: aucun nom de carte pour ce ma
 // dont les deux causes mènent au même compteur et au même abandon.
 //
 // LE COLLECTEUR DOIT AVOIR REÇU `WithPositionCapture` : `mapNames` et `mapBounds` sont vérifiés
-// par les appelants (positions et touches), chacun avec son propre compteur de câblage.
+// par l'appelant (la passe des positions), avec son propre compteur de câblage.
 func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID string) (decfilm.MapQuantEntry, error) {
 	noms, err := c.nomsDeCarteDuMatch(ctx, matchID)
 	if err != nil {

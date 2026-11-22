@@ -55,6 +55,8 @@
  */
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import { attachEliminationMarks, type FragMarks } from './eliminationMarks'
+import type { ObjectiveFeedStat } from './objectiveFeedLogic'
 import { countdownStartsByXuid, lifeEndProof } from './lifeEndProof'
 import { replayClock, type ReplayClock } from './replayClock'
 import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
@@ -80,6 +82,12 @@ export interface ReplayKill extends Omit<KillEvent, 'ally'> {
   replayMs: number
   /** Les médailles décrochées par le tueur sur ce kill (±500 ms), dans l'ordre du fil. */
   medals: MedalEvent[]
+  /**
+   * Les marques VRAIES de l'élimination du tableau des scores que cette ligne désigne (tir à la tête, frag parfait),
+   * posées par `attachEliminationMarks` depuis le document. Absent = aucune marque vraie : la ligne n'a pas d'icône,
+   * qu'elle soit fausse ou inconnue.
+   */
+  fragMarks?: FragMarks
 }
 
 /** Une médaille du fil, lue dans le document de rejeu (cf. `matchMedals`). */
@@ -128,6 +136,12 @@ export interface ReplayFeedEntry {
    * ne le pose jamais, et `model.feed` n'en porte aucun.
    */
   flagCarrierKill?: true
+  /**
+   * Posé par `withEventLines` sur la copie d'une ligne de FRAG : les éliminations liées à l'objectif que le film date
+   * sur ce frag (`OBJECTIVE_KILL_STATS`, hors « porteur éliminé » qui a son drapeau), repliées en infobulle de la
+   * ligne. Ce fichier ne le pose jamais, et `model.feed` n'en porte aucun.
+   */
+  objectiveKills?: readonly ObjectiveFeedStat[]
 }
 
 /**
@@ -511,6 +525,7 @@ export function buildFeedEntries(
     if (best && bestDt <= MEDAL_ATTACH_MS) best.medals.push(m)
     else alone.push(m)
   }
+  attachEliminationMarks(rk, doc)
   const entries: ReplayFeedEntry[] = rk.map((k, i) => ({
     key: `k-${k.xuid}-${k.replayMs}-${i}`,
     replayMs: k.replayMs,

@@ -278,11 +278,6 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// jamais « en attente » aux morts suivantes.
 	c.collectPositions(ctx, matchID, film, res, ids, fusionne)
 
-	// LE NUMERATEUR DE PRECISION PAR ARME (weapon_accuracy + distance), Infinite depuis le film.
-	// Best-effort au meme titre que les tirs : son echec ou son absence (film non sur disque,
-	// capability absente) ne remet pas en cause les morts. Meme raison de sante que collectShots.
-	c.collectHits(ctx, matchID, chunks, ids)
-
 	return OutcomeWritten, publiees, nil
 }
 

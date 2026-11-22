@@ -20,8 +20,8 @@ package killcollector
 // Ce serait la forme canonique, et elle a ete ecartee sur piece. Le contrat d ecriture du
 // collecteur est un LEASE : `acquireShared` rend `(db, release, err)` et l appelant ecrit ENTRE
 // les deux, dans son propre code (`write`, `writeShots`, `writePositions`, `writeOpenings`,
-// `writeIsolationFacts`, `writeHits`, `marquerFilm` — sept sites). Les transformer en messages
-// exigerait de decouper `collect`, `collectPositions` et `collectHits` en « phase qui calcule »
+// `writeIsolationFacts`, `marquerFilm` — six sites). Les transformer en messages
+// exigerait de decouper `collect` et `collectPositions` en « phase qui calcule »
 // et « phase qui ecrit », c est-a-dire de reecrire ce que la passe FAIT — exactement ce que le
 // perimetre de ce lot interdit. Le jeton donne le MEME invariant (un seul goroutine a la fois)
 // sans toucher une ligne de ce qui est ecrit.
@@ -29,7 +29,7 @@ package killcollector
 // # AUCUNE IMBRICATION, ET C EST VERIFIE
 //
 // Le jeton n est PAS reentrant : un goroutine qui le prendrait deux fois s attendrait lui-meme.
-// Les sept sites d ecriture prennent des leases COURTS et DISJOINTS (aucun n en contient un
+// Les six sites d ecriture prennent des leases COURTS et DISJOINTS (aucun n en contient un
 // autre — verifie sur pieces le 2026-09-22), et les deux lectures gardees (`IdentitiesForMatch`,
 // `MapKeysForMatch`) sont appelees hors lease. Pour qu une imbrication future ne se presente pas
 // comme un programme qui ne finit jamais, l attente est BORNEE : au-dela de

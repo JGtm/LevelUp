@@ -5,12 +5,32 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func toMedal(v replay.Medal) replaydoc.Medal {
 	return replaydoc.Medal{T: v.T, MS: v.MS, XUID: v.XUID, ID: v.ID, Name: v.Name}
+}
+
+// toMedalLabel recopie un libelle de medaille. Le calque est resolu a la requete (`service/replay_medal_labels.go`)
+// et l'artefact ne l'ecrit jamais : la projection d'un artefact rend donc une table absente.
+func toMedalLabel(v replay.MedalLabel) replaydoc.MedalLabel {
+	out := replaydoc.MedalLabel{
+		Text:       replaytext.TexteDepuisFilm(v.Text),
+		Img:        v.Img,
+		Difficulty: v.Difficulty,
+	}
+	if v.Description != nil {
+		out.Description = &replaydoc.MedalDescription{Text: replaytext.TexteDepuisFilm(v.Description.Text)}
+	}
+	if v.Sprite != nil {
+		out.Sprite = &replaydoc.MedalSprite{
+			Sheet: v.Sprite.Sheet, Left: v.Sprite.Left, Top: v.Sprite.Top, Width: v.Sprite.Width, Height: v.Sprite.Height,
+		}
+	}
+	return out
 }
 
 func toMedalCoverage(v replay.MedalCoverage) replaydoc.MedalCoverage {
@@ -33,6 +53,9 @@ func toScoreActionCoverage(v replay.ScoreActionCoverage) replaydoc.ScoreActionCo
 		Complete:           v.Complete,
 		Group:              v.Group,
 		GroupMissing:       v.GroupMissing,
+		ScoreboardCompared: v.ScoreboardCompared,
+		ScoreboardMissing:  v.ScoreboardMissing,
+		ScoreboardBehind:   v.ScoreboardBehind,
 		Frames:             v.Frames,
 		ClosedFrames:       v.ClosedFrames,
 		StoppedFrames:      v.StoppedFrames,
@@ -44,6 +67,7 @@ func toScoreActionCoverage(v replay.ScoreActionCoverage) replaydoc.ScoreActionCo
 		NamedWithoutPoints: v.NamedWithoutPoints,
 		OutsideTree:        v.OutsideTree,
 		UnconfirmedRank:    v.UnconfirmedRank,
+		TreeShift:          v.TreeShift,
 		Scored:             v.Scored,
 		Published:          v.Published,
 		NoRecipient:        v.NoRecipient,

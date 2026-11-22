@@ -99,7 +99,7 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      L'ENTREE A ETE RETIREE AU LOT 1.9.4 (2026-09-15), ET LE RATCHET EST LA.
 //	                      `DetectFilmMapEntry` resolvait l'IDENTITE d'une carte par la SIGNATURE
 //	                      de ses largeurs d'axe (`DetectI0Layout` depuis un repertoire), alors que
-//	                      son unique appelant — `sync/killcollector/hits.go` — tenait deja le nom
+//	                      son unique appelant — la passe des touches du collecteur, retiree depuis — tenait deja le nom
 //	                      de carte du match. Mesure du lot : 68 des 79 cartes du catalogue
 //	                      partagent leur signature avec une autre (une classe en compte 59), et
 //	                      sur 17 films la signature rend 2 accords, 13 ambiguites et 2 DESACCORDS

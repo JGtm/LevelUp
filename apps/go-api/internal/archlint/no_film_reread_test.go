@@ -298,23 +298,9 @@ var paquetsDeProduction = []string{
 
 // appelsDEnveloppeAutorises : L'ALLOWLIST FERMEE de la regle 3. Clef : `paquet/fichier.go ->
 // enveloppe`. Elle est verifiee DANS LES DEUX SENS — un site en trop echoue, une entree MORTE
-// aussi : une allowlist qui garde des entrees mortes ne mesure plus ce que le depot fait.
-//
-//	internal/sync/killcollector/hits.go
-//	          ARRIVE PAR L'AMONT (merge de `feat/v75` du 2026-09-03). Le numerateur de precision
-//	          par arme est DIR-BASE PAR CONCEPTION — son en-tete l'ecrit : il se greffe sur le
-//	          film DEJA sur disque (`ConfigureFilmAccuracy(dir, ...)`, cache local), la ou la
-//	          cuisson recoit des chunks en memoire. La passe est DESACTIVEE en production
-//	          (Infinite ne declare pas `match.weapon.accuracy` depuis la remise du 2026-09-01, et
-//	          `ConfigureFilmAccuracy` n'a aucun appelant hors tests) : aucune cuisson ne paie ces
-//	          relectures aujourd'hui. Lui donner la forme film exige de creer les formes
-//	          `Scan*(film)` de trois balayages neufs de l'amont — hors perimetre d'une
-//	          reconciliation de branche. RETRAIT CIBLE : le lot qui rallume la precision par arme,
-//	          ou celui qui migre `hits.go`. Consigne au registre des reports. L entree
-//	          `ReadFilmChunk` est retiree le 2026-09-27 (J10.2) : `hits.go` ne lit plus chunk_00.
-var appelsDEnveloppeAutorises = map[string]string{
-	"internal/sync/killcollector/hits.go -> CountFilmChunks": "amont 2026-09-03, passe desactivee",
-}
+// aussi : une allowlist qui garde des entrees mortes ne mesure plus ce que le depot fait. Vide :
+// aucune production n'appelle plus d'enveloppe.
+var appelsDEnveloppeAutorises = map[string]string{}
 
 // TestProductionNAppellePasLesEnveloppes — REGLE 3.
 //

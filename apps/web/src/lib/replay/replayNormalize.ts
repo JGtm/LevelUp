@@ -238,6 +238,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     hits: raw.hits ?? [],
     damage: raw.damage ?? [],
     shotStats: raw.shotStats ?? [],
+    // Les rechargements (schéma 126) et les éliminations avec leurs marques de tir à la tête et de frag parfait :
+    // des tableaux plats ; absents = rien de posé sur ce film, `coverage.reloads` et `coverage.eliminations` disent si
+    // le calque a été lu.
+    reloads: raw.reloads ?? [],
+    eliminations: raw.eliminations ?? [],
     roundClock: raw.roundClock ?? [],
     respawnCountdowns: raw.respawnCountdowns ?? [],
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;

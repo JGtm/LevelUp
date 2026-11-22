@@ -60,6 +60,8 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Fallbacks:         toFallbackHits(v.Fallbacks),
 		Decoder:           ptrOf(v.Decoder, toDecoderCoverage),
 		DeathsPaths:       ptrOf(v.DeathsPaths, toDeathsPathsCoverage),
+		Reloads:           ptrOf(v.Reloads, toReloadCoverage),
+		Eliminations:      ptrOf(v.Eliminations, toEliminationCoverage),
 	}
 }
 
@@ -323,6 +325,7 @@ func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 		RefusedNewFalseReads:  v.RefusedNewFalseReads,
 		RefusedNewLostCreates: v.RefusedNewLostCreates,
 		RefusedNewUndecided:   v.RefusedNewUndecided,
+		Control:               ptrOf(v.Control, toStanceControlCoverage),
 		MapWidths:             v.MapWidths,
 	}
 	if len(v.ByKind) > 0 {

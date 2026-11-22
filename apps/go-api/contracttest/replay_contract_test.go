@@ -178,6 +178,11 @@ var replaySchemas = []struct {
 	{"MedalCoverage", replaydoc.MedalCoverage{}},
 	{"ScoreAction", replaydoc.ScoreAction{}},
 	{"ScoreActionCoverage", replaydoc.ScoreActionCoverage{}},
+	{"Reload", replaydoc.Reload{}},
+	{"ReloadCoverage", replaydoc.ReloadCoverage{}},
+	{"Elimination", replaydoc.Elimination{}},
+	{"EliminationCoverage", replaydoc.EliminationCoverage{}},
+	{"StanceControlCoverage", replaydoc.StanceControlCoverage{}},
 	{"ClockSample", replaydoc.ClockSample{}},
 	{"RespawnCountdown", replaydoc.RespawnCountdown{}},
 	{"MatchRules", replaydoc.MatchRules{}},
@@ -779,9 +784,17 @@ var replaySchemas = []struct {
 //	                      medaille de `medals`, RESOLUS A LA REQUETE depuis le referentiel du titre (champ du
 //	                      document SERVI seul, sans montee de schema ni champ cote artefact).
 //
+//	78 (2026-11-22) : `reloads` (les rechargements d arme, un par trame et par joueur) et `eliminations` (une
+//	                      ligne par elimination, avec la marque de tir a la tete et de frag parfait lue sur les
+//	                      compteurs du jeu) : deux champs de tete, montee du decodeur de film (schema 126).
+//	                      `coverage.{reloads,eliminations}`, `coverage.stances.control` (le genre `moveCommand` de
+//	                      `stances[]`) et quatre compteurs de `coverage.scoreActions` naissent au meme commit SANS
+//	                      faire monter ce compte (types imbriques). `medalLabels`, resolu a la requete jusque-la
+//	                      servi seul, devient un champ jumeau : le decodeur le declare.
+//
 // Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 76
+const wantReplayDocumentFields = 78
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

@@ -17,6 +17,9 @@ export interface FeedLinesText {
   /** Les médailles d'une ligne au-delà des deux pictogrammes : « +N », puis ce que l'infobulle liste. */
   medalsMore: (n: number) => string
   medalsMoreHint: (names: string) => string
+  /** Les pictogrammes d'une ligne d'élimination : tir à la tête, frag parfait (infobulle et nom accessible). */
+  headshotMark: string
+  perfectMark: string
   /** Infobulle d'une capture qui porte des assistances : `names` sont les joueurs crédités. */
   captureAssistedBy: (names: string) => string
   /** La fin d'une manche : `n` est son rang d'affichage, à partir de 1. */
@@ -33,6 +36,8 @@ export const FR_FEED_LINES = {
   assistedBy: (name, sharePct) => `Assistance : ${name}${sharePct == null ? '' : ` (${sharePct} %)`}`,
   medalsMore: (n) => `+${n}`,
   medalsMoreHint: (names) => `Autres médailles : ${names}`,
+  headshotMark: 'Tir à la tête',
+  perfectMark: 'Frag parfait',
   captureAssistedBy: (names) => `Assistances : ${names}`,
   roundEnd: (n) => `Fin de la manche ${n}`,
   skullTaken: 'a pris le crâne',
@@ -45,6 +50,8 @@ export const EN_FEED_LINES = {
   assistedBy: (name, sharePct) => `Assist: ${name}${sharePct == null ? '' : ` (${sharePct}%)`}`,
   medalsMore: (n) => `+${n}`,
   medalsMoreHint: (names) => `More medals: ${names}`,
+  headshotMark: 'Headshot',
+  perfectMark: 'Perfect kill',
   captureAssistedBy: (names) => `Assists: ${names}`,
   roundEnd: (n) => `Round ${n} over`,
   skullTaken: 'picked up the skull',
