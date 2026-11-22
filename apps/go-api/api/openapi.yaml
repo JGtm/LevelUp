@@ -21420,6 +21420,9 @@ components:
           $ref: '#/components/schemas/MatchViewDominanceBadge'
         dominance_flag:
           type: boolean
+        gameplay_duration_seconds:
+          format: int64
+          type: integer
         had_bot_teammate:
           type: boolean
         is_excluded:
@@ -21471,9 +21474,6 @@ components:
           type: string
         performance_display:
           type: string
-        playable_duration_seconds:
-          format: int64
-          type: integer
         playlist_label:
           type: string
         replay_available:

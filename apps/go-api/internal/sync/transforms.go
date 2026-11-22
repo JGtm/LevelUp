@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/modelabel"
-	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
 
@@ -104,7 +103,6 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 
 	// Durées
 	row.DurationSeconds = parsePTDuration(asString(matchInfo["Duration"]))
-	row.PlayableDurationSeconds = parsePTDuration(asString(matchInfo["PlayableDuration"]))
 
 	// end_time
 	if et, err2 := parseISO(asString(matchInfo["EndTime"])); err2 == nil {
@@ -114,16 +112,9 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		row.EndTime = &t
 	}
 
-	// real_start_time = début réel du gameplay = start_time + T0 (countdown
-	// pré-match), calculé depuis les first_joined_time des joueurs présents au
-	// début (analysis/timeline.ComputeT0). Remplace l'ancien calcul via
-	// playable_duration (non fiable Ranked Arena où playable==duration → T0=0
-	// à tort). T0 non exploitable → RealStartTime nil (fallback runtime T0=0).
-	// ART-safe : valeur injectée dans le row AVANT persistence, pas d'UPDATE.
-	if t0ms, q := computeMatchT0(matchJSON, startTime); q.Computed() {
-		rst := startTime.Add(time.Duration(t0ms) * time.Millisecond)
-		row.RealStartTime = &rst
-	}
+	// Le coup d'envoi (real_start_time, real_start_source) ne se décide PAS ici : il se résout
+	// sur les lignes de participants extraites, par kickoff.ApplyToRows (sync/kickoff/rows.go),
+	// avant l'insertion.
 
 	// Team scores (depuis Teams[].Stats.CoreStats.Score)
 	t0, t1 := ExtractTeamScoresByID(matchJSON)
@@ -144,80 +135,6 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row.Team1PSScore = ps1
 
 	return row, nil
-}
-
-// computeMatchT0 calcule le T0 (countdown pré-match, ms) d'un match depuis les
-// first_joined_time des joueurs présents au début, via timeline.ComputeT0.
-// Réutilise l'extraction xuid/participation du même JSON que ExtractParticipants.
-func computeMatchT0(matchJSON map[string]any, startUTC time.Time) (int64, timeline.T0Quality) {
-	players, _ := matchJSON["Players"].([]any)
-	inputs := make([]timeline.ParticipationT0Input, 0, len(players))
-	for _, p := range players {
-		player, ok := p.(map[string]any)
-		if !ok {
-			continue
-		}
-		pinfo, ok := player["ParticipationInfo"].(map[string]any)
-		if !ok {
-			continue
-		}
-		fjt, err := parseISO(asString(pinfo["FirstJoinedTime"]))
-		if err != nil {
-			continue
-		}
-		present := false
-		if b := jsonBoolPtr(pinfo, "PresentAtBeginning"); b != nil {
-			present = *b
-		}
-		xuid := extractXUID(asString(player[jsonKeyPlayerID]))
-		inputs = append(inputs, timeline.ParticipationT0Input{
-			FirstJoinedTime:    fjt,
-			PresentAtBeginning: present,
-			IsBot:              !isNumericXUID(xuid),
-		})
-	}
-	return timeline.ComputeT0(inputs, startUTC)
-}
-
-// computeMatchWindow résout l'horloge de gameplay d'un match depuis son JSON
-// sous forme de domain.MatchTimeline (source unique du vrai début/fin/durée :
-// GameplayStartUTC / GameplayEndUTC / GameplayDurationSeconds).
-//
-// Sert au recompute time_played_seconds par joueur (cf. ComputeTimePlayedFor).
-// ok=false si StartTime/Duration manquants → l'appelant conserve la valeur API.
-func computeMatchWindow(matchJSON map[string]any) (domain.MatchTimeline, bool) {
-	matchInfo, isMap := matchJSON["MatchInfo"].(map[string]any)
-	if !isMap {
-		return domain.MatchTimeline{}, false
-	}
-	startTime, err := parseISO(asString(matchInfo["StartTime"]))
-	if err != nil {
-		return domain.MatchTimeline{}, false
-	}
-	dur := parsePTDuration(asString(matchInfo["Duration"]))
-	if dur == nil || *dur <= 0 {
-		return domain.MatchTimeline{}, false
-	}
-	startUTC := startTime.UTC()
-	var t0ms int64
-	if v, q := computeMatchT0(matchJSON, startUTC); q.Computed() {
-		t0ms = v
-	}
-	return domain.NewMatchTimelineAt(startUTC, int64(*dur)*1000, t0ms), true
-}
-
-// isNumericXUID retourne true si l'xuid est un identifiant joueur numérique
-// (bots Halo : xuid non-numérique ou vide).
-func isNumericXUID(xuid string) bool {
-	if xuid == "" {
-		return false
-	}
-	for _, c := range xuid {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 // extractTeamPSScores somme PersonalScore (CoreStats) par team_id sur tous
@@ -266,8 +183,9 @@ func extractTeamPSScores(matchJSON map[string]any) (*int, *int) {
 // ExtractParticipants
 // ──────────────────────────────────────────────────────────────────────────────
 
-// ExtractParticipants extrait tous les participants d'un match.
-// Portage de extract_participants() (Python transformers/_match.py).
+// ExtractParticipants extrait tous les participants d'un match, temps de jeu de l'API compris.
+// Portage de extract_participants() (Python transformers/_match.py). Le temps de jeu sur le coup
+// d'envoi du match se pose ensuite par kickoff.ApplyToRows (sync/kickoff/rows.go).
 func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 	matchID, _ := matchJSON["MatchId"].(string)
 	if matchID == "" {
@@ -277,10 +195,6 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 	players, _ := matchJSON["Players"].([]any)
 	var rows []ParticipantRow //nolint:prealloc
 	seen := map[string]bool{}
-
-	// Horloge de gameplay (countdown retranché) pour recomputer time_played par
-	// joueur. winOK=false (StartTime/Duration manquants) → on garde la valeur API.
-	matchTL, winOK := computeMatchWindow(matchJSON)
 
 	for _, p := range players {
 		player, ok := p.(map[string]any)
@@ -375,20 +289,6 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			}
 			if ts, err := parseISO(asString(pinfo["LastLeaveTime"])); err == nil {
 				row.LastLeaveTime = &ts
-			}
-		}
-
-		// Recompute time_played_seconds = temps de jeu réel (countdown retranché,
-		// quitters/latecomers gérés). L'API TimePlayed inclut le countdown et
-		// surévalue les latecomers (cf. Phase 4). Override seulement si la fenêtre
-		// est connue et le calcul exploitable (qualité ok) ; sinon valeur API.
-		if winOK && row.FirstJoinedTime != nil {
-			if secs, q := timeline.ComputeTimePlayedFor(
-				timeline.TimePlayedInput{FirstJoinedTime: row.FirstJoinedTime.UTC(), LastLeaveTime: row.LastLeaveTime},
-				matchTL,
-			); q == timeline.TimePlayedOK {
-				v := int(secs)
-				row.TimePlayedSeconds = &v
 			}
 		}
 

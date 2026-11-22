@@ -72,6 +72,22 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 	})
 }
 
+// RunReplayBuildAction est l'action admin « construire le rejeu » : la construction de RunReplayBuild,
+// puis les dérivations de l'artefact rangé par le point d'entrée du dépôt d'un ouvrier (coup d'envoi du
+// match compris, ADR 0050) — la même suite que la file de régénération (regenerateReplay).
+func (r *ServiceRegistry) RunReplayBuildAction(ctx context.Context, titleSlug, matchID string) (map[string]any, error) {
+	res, err := r.RunReplayBuild(ctx, titleSlug, matchID)
+	if err != nil {
+		return nil, err
+	}
+	path, _ := res["path"].(string)
+	fullID, _ := res["match_id"].(string)
+	if path != "" && fullID != "" {
+		r.deriverArtefactRange(ctx, titleSlug, fullID, path)
+	}
+	return res, nil
+}
+
 // construireRejeuAdmin construit et range l'artefact d'UN match pour l'action admin, par le
 // chemin de l'etape 1.58 : `build` (en production l'enfant borne) rend les octets, et
 // `StoreArtifact` les range ici. Le decodage ne se fait JAMAIS dans ce processus.

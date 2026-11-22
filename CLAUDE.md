@@ -507,7 +507,14 @@ git commit -m "refactor(phase2): ..."
   du sidecar, dessiné par-dessus le fond « Rendu » ; orientation par quarts de tour horaires dans la projection
   unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
   nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
-  `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet).
+  `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet) ·
+  `0050` **coup d'envoi du match : une résolution, une écriture** (`timeline.ResolveKickoff` seul point de décision,
+  ordre fixe `film` (coup d'envoi publié par le rejeu, tel quel) > `api` (estimation par les arrivées, un appel) > inconnu ;
+  source rangée dans `match_registry.real_start_source` ; temps de jeu recalculé sur ce coup d'envoi ; hors des insertions
+  de la synchronisation, seul `persist.KickoffPersister` écrit coup d'envoi, source et temps de jeu (garde-rail
+  `archlint/kickoff_write_guard_test.go`) ; rattrapage unique `sync/kickoff.Backfill`, au démarrage quand la révision
+  `kickoff_revision` du `sync_meta` partagé diffère de `timeline.KickoffRev` (avant le rejeu des notes) ou par
+  `levelup backfill-kickoff [--dry-run]` ; `t0_quality` et `film_match_start_ms` sans écrivain ni lecteur, restées en base).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

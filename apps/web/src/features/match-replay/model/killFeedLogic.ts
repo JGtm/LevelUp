@@ -58,6 +58,8 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 
 import type { MedalEvent } from './medalEvent'
 import { departuresOf, documentHorizonFrame, SURVIVOR_GRACE_MS } from './departureLogic'
+import { matchKickoffMs } from '@/lib/replay/matchClock'
+
 import { countdownStartsByXuid, lifeEndProof } from './lifeEndProof'
 import { replayClock, type ReplayClock } from './replayClock'
 import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
@@ -130,14 +132,10 @@ export interface ReplayFeedEntry {
  * non plus côté events, et ne rien ajouter est exactement juste.
  */
 export function toReplayKills(kills: KillEvent[], t0Ms: number): ReplayKill[] {
-  const offset = replayOffset(t0Ms)
+  const offset = matchKickoffMs(t0Ms)
   return kills
     .map((k) => ({ ...k, replayMs: k.tMs + offset, medals: [] as MedalEvent[] }))
     .sort((a, b) => a.replayMs - b.replayMs)
-}
-
-function replayOffset(t0Ms: number): number {
-  return Number.isFinite(t0Ms) && t0Ms > 0 ? t0Ms : 0
 }
 
 /**
@@ -256,7 +254,7 @@ export function alignFeedByOrigin(
   doc: ReplayDocumentReady,
   clock: ReplayClock,
 ): AlignedFeed {
-  const offset = replayOffset(t0Ms)
+  const offset = matchKickoffMs(t0Ms)
   const aligned: ReplayKill[] = kills
     .map((k) => ({
       ...k,
@@ -394,7 +392,7 @@ export function alignFeedToTracks(
   t0Ms: number,
   doc: ReplayDocumentReady,
 ): AlignedFeed {
-  const offset = replayOffset(t0Ms)
+  const offset = matchKickoffMs(t0Ms)
   const ends = lifeEndsOf(doc)
 
   // PASSE 1 — la mesure : fins de vie et kills d'une même victime, triés, appariés par
@@ -483,7 +481,7 @@ export function buildFeedEntries(
       ? alignFeed(kills, t0Ms, doc)
       : { kills: toReplayKills(kills, t0Ms), deaths: [], offsetMs: null }
   const rk = alignedFeed.kills
-  const offset = replayOffset(t0Ms)
+  const offset = matchKickoffMs(t0Ms)
   const alone: MedalEvent[] = []
   for (const m of medals) {
     let best: ReplayKill | null = null

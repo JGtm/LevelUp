@@ -322,18 +322,6 @@ func findMatchesInSharedAll(
 	// exécuteur (étape 1.55) n'existe plus. Cf. l'en-tête du bloc « Weapon kills »
 	// de scope.go.
 
-	// Playable duration
-	if scope.PlayableDuration {
-		if scope.ForcePlayableDuration {
-			conditions = append(conditions, "1=1")
-		} else {
-			conditions = append(conditions,
-				"mp.match_id NOT IN ("+
-					"  SELECT match_id FROM match_registry WHERE playable_duration_seconds IS NOT NULL"+
-					")")
-		}
-	}
-
 	if len(conditions) == 0 {
 		return nil, nil
 	}

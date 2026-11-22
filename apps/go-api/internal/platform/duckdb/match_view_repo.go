@@ -172,31 +172,10 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		row.GameVariantAssetID != nil && strings.TrimSpace(*row.GameVariantAssetID) != "" {
 		row.ModeNames = r.assetNames(ctx, assetTypeGameVariant, *row.GameVariantAssetID)
 	}
-	// Durée de jeu observée (socle du flag « Prolongation »). Lecture SÉPARÉE de
-	// Q13 et best-effort : elle dépend de colonnes de participation qui peuvent
-	// manquer sur une DB non migrée — hors de question de faire tomber la Match
-	// View entière pour un badge (leçon G1).
-	r.attachElapsedSeconds(ctx, &row)
 	return &row, nil
 }
 
-// attachElapsedSeconds renseigne row.ElapsedSeconds (durée de jeu observée) via
-// l'estimateur partagé. Best-effort : sur échec, le champ reste nil et le service
-// n'expose simplement pas de flag « Prolongation ».
-func (r *MatchViewRepo) attachElapsedSeconds(ctx context.Context, row *domain.MatchMetaRaw) {
-	sharedDB, release, err := r.sharedRead().Get(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "match_view: durée de jeu observée indisponible (shared reader)",
-			"match_id", row.MatchID, "err", err)
-		return
-	}
-	defer release()
-	if secs, ok := LoadElapsedSecondsForMatch(ctx, sharedDB, row.MatchID); ok {
-		row.ElapsedSeconds = &secs
-	}
-}
-
-// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 22 colonnes brutes.
+// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 21 colonnes brutes.
 // Isolé pour permettre le fallback snapshot→live de GetMatchMeta (on ré-exécute la
 // même query sur le live quand le snapshot immuable ne contient pas le match). Renvoie
 // l'erreur de Scan telle quelle (sql.ErrNoRows non enveloppé) pour que l'appelant
@@ -221,7 +200,6 @@ func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, 
 		&row.PlaylistName,
 		&row.IsFirefight,
 		&row.IsRanked,
-		&row.PlayableDurationSeconds,
 		&row.MapAssetID,
 		&row.GameVariantName,
 		&row.PlaylistAssetID,

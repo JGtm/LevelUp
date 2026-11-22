@@ -235,14 +235,14 @@ func TestPorteCapabiliteNiveaux_EstCABLEE(t *testing.T) {
 	}
 	txt := string(der)
 	iPrep := strings.Index(txt, "niveaux := preparerNiveauxDArmes(ctx, d, b, lus)")
-	iT0 := strings.Index(txt, "reporterT0Film(ctx, d, b, rapportsT0(lus))")
+	iT0 := strings.Index(txt, "ecrireCoupsDEnvoi(ctx, d, b, coupsDEnvoi)")
 	if iPrep < 0 || !strings.Contains(txt, "ecrireNiveauxDArmes(ctx, d, b, niveaux)") {
 		t.Error("les niveaux d'armes ne sont plus prepares puis ecrits par Deriver : la grandeur ne " +
 			"serait JAMAIS produite au fil de l'eau, et rien d'autre ne rougirait")
 	}
 	if iT0 < 0 || (iPrep >= 0 && iPrep > iT0) {
 		t.Error("la preparation des niveaux d'armes (lecture des identites) doit preceder la " +
-			"premiere famille qui ecrit (reporterT0Film) : le segment d'ecriture memoise est tenu " +
+			"premiere famille qui ecrit (ecrireCoupsDEnvoi) : le segment d'ecriture memoise est tenu " +
 			"jusqu'a la fin de la passe (lot L4.1)")
 	}
 }

@@ -13,10 +13,9 @@ import (
 
 func baseMatchInfo() openspartan.MatchInfo {
 	return openspartan.MatchInfo{
-		StartTime:        time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC),
-		EndTime:          time.Date(2026, 4, 1, 12, 12, 0, 0, time.UTC),
-		Duration:         "PT12M",
-		PlayableDuration: "PT12M",
+		StartTime: time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC),
+		EndTime:   time.Date(2026, 4, 1, 12, 12, 0, 0, time.UTC),
+		Duration:  "PT12M",
 	}
 }
 

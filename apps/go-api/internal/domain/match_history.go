@@ -49,12 +49,11 @@ type MatchHistoryRawRow struct {
 	AverageLifeSeconds *float64
 	TimePlayedSeconds  *int
 	DurationSeconds    *int // r.duration_seconds (v_match_full) — nil si absent ; socle « Durée totale » (DEC-DURATION)
-	// ElapsedSeconds : durée de JEU observée du match (médiane du temps joué des
-	// participants présents du début à la fin ; repli MAX). DISTINCTE de
-	// DurationSeconds (durée de session, countdown/écrans inclus). Chargée par un
-	// merge best-effort (cf. duckdb/elapsed_seconds.go) ; nil = non estimable →
-	// aucun flag « Prolongation ».
-	ElapsedSeconds   *int
+	// GameplaySeconds : durée de JEU du match (durée du registre moins le coup d'envoi,
+	// sqlfrag.SQLGameplayDurationMs). DISTINCTE de DurationSeconds (durée de session,
+	// countdown/écrans inclus). Chargée par un merge best-effort (cf. duckdb/gameplay_seconds.go) ;
+	// nil = non exploitable → aucun flag « Prolongation ».
+	GameplaySeconds  *int
 	IsExcluded       bool
 	PerformanceScore *float64
 	SkillTier        string  // nom canonique anglais du palier ("Diamond"), clé de filtre ; le libellé d'une langue se déduit du code

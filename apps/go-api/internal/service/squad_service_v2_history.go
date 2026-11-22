@@ -13,6 +13,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/i18n"
@@ -91,9 +92,8 @@ func BuildHistoryTable(
 				if d := m.Summary.DurationSeconds; d != nil {
 					dCopy := *d
 					row.DurationSeconds = &dCopy
-				}
-				if gp := m.Summary.GameplayDurationSeconds(); gp != nil {
-					row.GameplayDurationSeconds = gp
+					gp := int(timeline.ForMatch(time.Time{}, int64(*d)*1000, m.Summary.T0Ms).GameplayDurationSeconds())
+					row.GameplayDurationSeconds = &gp
 				}
 				if m.Summary.Map != nil {
 					row.MapLabel = m.Summary.Map.Text().Pick(loc)

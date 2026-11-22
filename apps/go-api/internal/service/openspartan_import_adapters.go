@@ -23,7 +23,6 @@ import (
 // and a missing bit makes the admin backfill re-select the match on every run.
 func toSyncRegistry(m mapper.MatchRegistryRow, hasParticipants bool) sync.MatchRegistryRow {
 	durSec := m.DurationSeconds
-	playableSec := m.PlayableDurationSeconds
 
 	var team0, team1 *int
 	if m.Team0Score != nil {
@@ -51,34 +50,33 @@ func toSyncRegistry(m mapper.MatchRegistryRow, hasParticipants bool) sync.MatchR
 	}
 
 	return sync.MatchRegistryRow{
-		MatchID:                 m.MatchID,
-		StartTime:               m.StartTime,
-		EndTime:                 m.EndTime,
-		PlaylistID:              m.PlaylistID,
-		PlaylistName:            m.PlaylistName,
-		PlaylistVersionID:       m.PlaylistVersionID,
-		MapID:                   m.MapID,
-		MapName:                 m.MapName,
-		MapVersionID:            m.MapVersionID,
-		PairID:                  m.PairID,
-		PairName:                m.PairName,
-		PairVersionID:           m.PairVersionID,
-		GameVariantID:           m.GameVariantID,
-		GameVariantName:         m.GameVariantName,
-		GameVariantVersionID:    m.GameVariantVersionID,
-		ModeCategory:            modeCategory,
-		IsRanked:                m.IsRanked,
-		IsFirefight:             m.IsFirefight,
-		DurationSeconds:         &durSec,
-		PlayableDurationSeconds: &playableSec,
-		RealStartTime:           m.RealStartTime,
-		Team0Score:              team0,
-		Team1Score:              team1,
-		Team0PSScore:            m.Team0PsScore,
-		Team1PSScore:            m.Team1PsScore,
-		FirstSyncBy:             m.FirstSyncBy,
-		SeasonID:                m.SeasonID, // Phase 9.5 — propage le SeasonID OpenSpartan vers le sync writer
-		BackfillCompleted:       &completed,
+		MatchID:              m.MatchID,
+		StartTime:            m.StartTime,
+		EndTime:              m.EndTime,
+		PlaylistID:           m.PlaylistID,
+		PlaylistName:         m.PlaylistName,
+		PlaylistVersionID:    m.PlaylistVersionID,
+		MapID:                m.MapID,
+		MapName:              m.MapName,
+		MapVersionID:         m.MapVersionID,
+		PairID:               m.PairID,
+		PairName:             m.PairName,
+		PairVersionID:        m.PairVersionID,
+		GameVariantID:        m.GameVariantID,
+		GameVariantName:      m.GameVariantName,
+		GameVariantVersionID: m.GameVariantVersionID,
+		ModeCategory:         modeCategory,
+		IsRanked:             m.IsRanked,
+		IsFirefight:          m.IsFirefight,
+		DurationSeconds:      &durSec,
+		RealStartTime:        m.RealStartTime,
+		Team0Score:           team0,
+		Team1Score:           team1,
+		Team0PSScore:         m.Team0PsScore,
+		Team1PSScore:         m.Team1PsScore,
+		FirstSyncBy:          m.FirstSyncBy,
+		SeasonID:             m.SeasonID, // Phase 9.5 — propage le SeasonID OpenSpartan vers le sync writer
+		BackfillCompleted:    &completed,
 	}
 }
 

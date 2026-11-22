@@ -316,6 +316,23 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
 go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
 
+# 4 ter ter. MATCH KICKOFF (ADR 0050): recomputes, for every match of the shared database, the
+#    kickoff (`real_start_time`), its source (`real_start_source`: `film` when the replay artifact
+#    publishes `t0FilmMs`, otherwise `api`, the estimate from the arrivals of the players present at
+#    the start, refused when negative or beyond 120 s; empty = unknown) and the time played of every
+#    player (`match_participants.time_played_seconds`, same formula, computed on that kickoff; a
+#    player whose arrival is unknown keeps the API value). It is the SAME function as the startup
+#    catch-up, which runs when the revision stored in the shared `sync_meta` (`kickoff_revision`)
+#    differs from the binary's. NO decoding: the replay kickoff is read from the stored artifacts as
+#    they are. Batches of --lot matches, one short writer burst each; a second run writes nothing.
+#    --dry-run opens the database READ-ONLY (no migration; coexists with a running server) and prints
+#    the gaps: matches per source, matches whose kickoff value or source changes, players whose time
+#    played changes and the distribution of the gap. Without --dry-run: SERVER STOPPED, migrations
+#    played, then the revision is stored after a complete run without failure. --db and
+#    --replays-dir point at a copy of the database and another artifact folder.
+go run ./cmd/levelup backfill-kickoff --dry-run [--db PATH] [--replays-dir DIR] [--title S]
+go run ./cmd/levelup backfill-kickoff [--lot N] [--db PATH] [--replays-dir DIR] [--title S]
+
 # 4 quater. Named zones (callouts) of the Forge maps played that have none -> the GENERATED
 #    catalogue reference/generated/map_callouts.json (git-ignored; the committed
 #    map_callouts.json is never written). Each map's variant (.mvar) is read from the cache
@@ -1173,14 +1190,13 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db PATH] [--reset] [Gamertag ...]
 
 ### Data repairs (standalone tools, server stopped)
 
-Two repair tools for existing data, never run by the server. Each opens the databases it writes
+One repair tool for existing data, never run by the server. It opens the databases it writes
 directly, so the **server must be stopped**. The sync already produces correct data for new matches;
-these tools only concern rows written before.
+this tool only concerns rows written before.
 
 ```bash
 cd apps/go-api
 go run -tags cgo ./cmd/purge_corrupt_records [--data-root PATH] [--apply]
-go run ./cmd/backfill_time_played --db PATH [--commit]
 ```
 
 - `purge_corrupt_records`: removes implausible personal-best records: values outside the plausibility
@@ -1194,19 +1210,8 @@ go run ./cmd/backfill_time_played --db PATH [--commit]
   recreated. **Dry run by default**: without `--apply` it only prints, per table, the rows to remove
   grouped by (metric, value). It opens each database read-write in both modes, so the server must be
   stopped even for the dry run. It takes no backup of its own.
-- `backfill_time_played`: recomputes `time_played_seconds` of `match_participants` from the
-  participation timestamps (`first_joined_time`, `last_leave_time`), handling players who left early
-  and latecomers, inside the gameplay window of the match (`real_start_time` to start + duration).
-  `--db` is the shared match database (`shared_matches_v2.duckdb`). **Dry run by default** (database
-  opened read-only): it prints the quality distribution, the gap between the recomputed value and the
-  API value, and the full-match guard-rail (median `time_played` of players present from start to end
-  must be close to the gameplay duration, target above 95 % within 5 %). `--commit` writes, in one
-  transaction, only the rows of quality `ok`; rows without `first_joined_time` keep their API value.
-  With the server running, point the dry run at a copy of the database.
-  Caveat: new matches are already correct, the sync computes this value itself
-  (`timeline.ComputeTimePlayedFor`, called from `internal/sync/transforms.go`); the command only
-  serves older matches. It depends on the player's arrival time (`first_joined_time`), whose time
-  zone is a known debt: read a sample of the dry-run report before applying it in bulk.
+- The time played of the players (`time_played_seconds`) is recomputed by `levelup backfill-kickoff`
+  (section above), together with the kickoff it depends on.
 
 ### Media paths migration (one-shot, standalone binary)
 

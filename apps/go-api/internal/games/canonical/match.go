@@ -61,12 +61,10 @@ type MatchSummary struct {
 	// liste / hero card (ADR 0011, P4.1). Nil si non chargé / non team-based.
 	Teams []TeamSnapshot
 
-	// T0Ms est l'offset en millisecondes du countdown pré-match (Match Timeline
-	// T0, Phase 3) : durée entre le start_time officiel du match et le début
-	// réel du gameplay. Dérivé en SQL de
-	// `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time_utc)`.
-	// Nil si real_start_time absent (T0 non calculable) → les builders timeline
-	// retombent sur T0=0 (chronologie brute, comportement pré-Phase 3).
+	// T0Ms est le coup d'envoi du match en millisecondes depuis son début canonique
+	// (le countdown pré-match), lu par sqlfrag.SQLT0Ms ; nil = coup d'envoi inconnu
+	// (Halo 5, estimation refusée). Aucun lecteur ne le remplace par zéro de son
+	// côté : la durée de jeu et la chronologie passent par timeline.ForMatch.
 	// Champ additif (politique d'évolution canonical, cf. ADR 0005).
 	T0Ms *int64
 
@@ -74,25 +72,6 @@ type MatchSummary struct {
 	// MATCH, pas d'un camp — c'est pourquoi elle vit ici et non dans TeamSnapshot. Nil =
 	// inconnu → l'affichage garde les points. Champ additif (ADR 0005).
 	RoundsTotal *int
-}
-
-// GameplayDurationSeconds retourne la VRAIE durée de gameplay (countdown
-// pré-match retranché) : DurationSeconds − T0Ms/1000, bornée à ≥ 0. Source
-// unique pour l'affichage "durée du match" homogène (vs durée brute du film).
-// Retourne nil si DurationSeconds est nil. Si T0Ms est nil (countdown inconnu),
-// retombe sur la durée brute.
-func (m MatchSummary) GameplayDurationSeconds() *int {
-	if m.DurationSeconds == nil {
-		return nil
-	}
-	gp := *m.DurationSeconds
-	if m.T0Ms != nil {
-		gp -= int(*m.T0Ms / 1000)
-	}
-	if gp < 0 {
-		gp = 0
-	}
-	return &gp
 }
 
 // CommendationDefinition — référentiel natif (nom + icône CDN + catégorie) d'une

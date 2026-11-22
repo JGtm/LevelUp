@@ -36,7 +36,7 @@ La quasi-totalité des algos du produit existe déjà quelque part.
 | `weapon_correlation.go` | Corrélations entre armes |
 | `weapon_data.go` | Données statiques armes |
 
-> Ce pipeline (+ `highlight_event_parser.go`, `spawn_detection.go`, `kill_attribution.go`)
+> Ce pipeline (+ `highlight_event_parser.go`, `kill_attribution.go`)
 > est title-specific et destiné à migrer vers `internal/games/halo_infinite/film/`
 > (plan audits 2026-07, item F12). Vérifier son emplacement actuel avant de le référencer.
 
@@ -48,7 +48,6 @@ La quasi-totalité des algos du produit existe déjà quelque part.
 | `kd_timeline.go` | Timeline K/D dans le match |
 | `tug_of_war.go` | Momentum match (tug-of-war) |
 | `comeback.go` | Détection des comebacks |
-| `spawn_detection.go` | Détection des respawns |
 
 ### Médailles et citations
 | Fichier | Exports clés |

@@ -3,7 +3,7 @@
  *
  * LES QUATRE TÉMOINS SONT DES MESURES, pas des exemples inventés : `originMs`, `frameCount`
  * et l'intervalle viennent des artefacts servis sous `data/cache/replays/halo_infinite/`, et
- * `t0_ms` / `playable_duration_seconds` de l'en-tête de leur Match View (relevé du
+ * `t0_ms` / `gameplay_duration_seconds` de l'en-tête de leur Match View (relevé du
  * 2026-08-26). Ils couvrent les quatre situations que la formule doit tenir : le cas nominal,
  * le film qui commence APRÈS le coup d'envoi, le match sans T0, et le match terminé au temps.
  *
@@ -16,13 +16,13 @@ import { testReplayDoc } from '../test/testDoc'
 import { displayClockMs, replayWindow, type ReplayWindowHeader } from './replayWindow'
 
 /** Un document au pas de 100 ms — la cadence de tous les artefacts servis aujourd'hui. */
-function doc(over: { originMs?: number; frameCount: number; t0FilmMs?: number }) {
+function doc(over: { originMs?: number; frameCount: number }) {
   return testReplayDoc({ frameIntervalMs: 100, ...over })
 }
 
 /** L'en-tête réduit à ce que la fenêtre lui demande. */
-function header(t0Ms: number | undefined, playableSeconds: number | undefined): ReplayWindowHeader {
-  return { t0_ms: t0Ms, playable_duration_seconds: playableSeconds }
+function header(t0Ms: number | undefined, gameplaySeconds: number | undefined): ReplayWindowHeader {
+  return { t0_ms: t0Ms, gameplay_duration_seconds: gameplaySeconds }
 }
 
 describe('replayWindow — les quatre témoins mesurés', () => {
@@ -70,7 +70,7 @@ describe('replayWindow — sans donnée, pas de cadrage (D-A3)', () => {
     expect(replayWindow(doc({ frameCount: 4_985 }), header(18_465, 478))).toBeNull()
   })
 
-  it('en-tête sans durée jouable : null', () => {
+  it('en-tête sans durée de jeu : null', () => {
     expect(replayWindow(doc({ originMs: 3_604, frameCount: 4_985 }), header(18_465, undefined))).toBeNull()
   })
 
@@ -80,7 +80,7 @@ describe('replayWindow — sans donnée, pas de cadrage (D-A3)', () => {
   })
 
   it('bornes incohérentes (fin avant début) : null plutôt qu’une fenêtre d’une image', () => {
-    // Durée jouable de 2 s alors que le film commence 60 s après le coup d'envoi.
+    // Durée de jeu de 2 s alors que le film commence 60 s après le coup d'envoi.
     expect(replayWindow(doc({ originMs: 60_000, frameCount: 900 }), header(0, 2))).toBeNull()
   })
 
@@ -96,48 +96,33 @@ describe('replayWindow — sans donnée, pas de cadrage (D-A3)', () => {
 })
 
 /**
- * LE T0 MESURÉ DANS LE FILM PASSE DEVANT CELUI DE L'API (D5 du plan T0-film, 2026-09-02).
- *
- * CE QUE CES CAS PROTÈGENT, et c'est exactement le défaut que le lot corrige : `header.t0_ms`
- * est ESTIMÉ des `first_joined_time`, dégénéré (~0 ms) sur 10 à 15 % des matchs du corpus. Un
- * rejeu ainsi cadré démarre sur le countdown d'avant-match, joueurs figés. Le film, lui, DATE
- * le premier mouvement. La substitution ne se voit à l'exécution qu'à quelques images près —
- * seules des bornes chiffrées disent laquelle des deux sources a servi.
- *
- * LA BORNE DE FIN NE SUIT PAS, et c'est la moitié la moins intuitive de la décision : elle
- * s'appuie sur la compensation `playable_duration_seconds = duration − t0_ms/1000`, faite par
- * le serveur AVEC le t0 de l'API. Le cas « dégénéré » ci-dessous le tient au chiffre près.
+ * UN SEUL COUP D'ENVOI : CELUI DU MATCH (ADR 0050). `header.t0_ms` est résolu par le serveur —
+ * le départ de l'horloge du film pour un match qui a un rejeu, l'estimation de l'API sinon — et
+ * la fenêtre n'en lit pas d'autre : ni celui du document, ni un repli sur « l'autre ». Ces cas
+ * tiennent au chiffre près qu'il décide du début ET de la fin.
  */
-describe('replayWindow — le T0 du film prime sur celui de l’API (D5)', () => {
-  it('le champ présent décide du début, l’en-tête ne décide plus que de la fin', () => {
-    // T0 API dégénéré (0 ms) alors que le coup d'envoi réel tombe à 22 700 ms : sans le film,
-    // le rejeu démarrerait 227 images trop tôt, en plein countdown.
-    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000, t0FilmMs: 22_700 }), header(0, 200))
+describe('replayWindow — le coup d’envoi du match décide des deux bornes', () => {
+  it('un coup d’envoi tardif (22 700 ms) décale le début et la fin ensemble', () => {
+    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000 }), header(22_700, 200))
     expect(w?.startMs).toBe(22_700)
     expect(w?.startFrame).toBe(227)
     expect(w?.leadInFrame).toBe(217)
-    // LA FIN RESTE CELLE DE L'API : 0 + 200 000 − 0. La déplacer de 22,7 s amputerait le match.
-    expect(w?.endMs).toBe(200_000)
-    expect(w?.endFrame).toBe(2_000)
+    // La fin est le coup d'envoi plus la durée de jeu : 22 700 + 200 000.
+    expect(w?.endMs).toBe(222_700)
+    expect(w?.endFrame).toBe(2_227)
   })
 
-  it('le champ absent : l’en-tête reprend le début, exactement comme avant ce lot', () => {
-    const w = replayWindow(doc({ originMs: 3_604, frameCount: 4_985 }), header(18_465, 478))
-    expect(w?.startMs).toBe(14_861)
-    expect(w?.startFrame).toBe(149)
-  })
-
-  it('les DEUX absents : le début vaut zéro, sans jamais inventer un coup d’envoi', () => {
+  it('un coup d’envoi inconnu : le début vaut zéro, sans jamais en inventer un', () => {
     const w = replayWindow(doc({ originMs: 6_890, frameCount: 2_342 }), header(undefined, 235))
     expect(w?.startMs).toBe(0)
     expect(w?.startFrame).toBe(0)
     expect(w?.leadInFrame).toBe(0)
   })
 
-  it('un T0 film ANTÉRIEUR à celui de l’API est retenu quand même — c’est lui la mesure', () => {
-    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000, t0FilmMs: 12_000 }), header(30_000, 200))
-    expect(w?.startMs).toBe(12_000)
-    expect(w?.startFrame).toBe(120)
+  it('le document ne porte plus de coup d’envoi propre à la fenêtre : celui du document est ignoré', () => {
+    const avec = { ...doc({ originMs: 0, frameCount: 3_000 }), t0FilmMs: 12_000 }
+    const sans = doc({ originMs: 0, frameCount: 3_000 })
+    expect(replayWindow(avec, header(30_000, 200))).toEqual(replayWindow(sans, header(30_000, 200)))
   })
 })
 
@@ -149,12 +134,12 @@ describe('replayWindow — le T0 du film prime sur celui de l’API (D5)', () =>
 describe('replayWindow — le préambule d’une seconde (D3)', () => {
   it('vaut le coup d’envoi moins une seconde, converti à la cadence du document', () => {
     // 100 ms par image : une seconde = 10 images.
-    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000, t0FilmMs: 22_700 }), header(0, 200))
+    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000 }), header(22_700, 200))
     expect((w?.startFrame ?? 0) - (w?.leadInFrame ?? 0)).toBe(10)
   })
 
   it('se CLAMPE à l’image zéro quand le coup d’envoi tombe avant la première seconde de film', () => {
-    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000, t0FilmMs: 400 }), header(0, 200))
+    const w = replayWindow(doc({ originMs: 0, frameCount: 3_000 }), header(400, 200))
     expect(w?.startFrame).toBe(4)
     expect(w?.leadInFrame).toBe(0)
   })
