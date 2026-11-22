@@ -36,16 +36,12 @@ type StanceCoverage struct {
 	MapWidths [3]uint                `json:"mapWidths,omitempty"`
 }
 
-// StanceControlCoverage dit ce que la lecture des commandes de déplacement tenues a rendu et ce que la publication
-// en a fait : `holds` = `published` + `noTrack` + `noPlayer`. Une commande publiée donne un intervalle par vie et par
-// passage lu ; `intervals` les compte.
+// StanceControlCoverage dit ce que la publication des commandes de déplacement tenues a écarté : `noTrack` et
+// `noPlayer` (commandes sans vie ou sans joueur) et `withHole` (commandes dont la lecture a un trou) rendent le temps
+// de déplacement d'un joueur approximatif. Les autres compteurs du décodeur n'ont aucun lecteur ici
+// (`testutil.ReplayChampsNonServis`).
 type StanceControlCoverage struct {
-	Holds      int `json:"holds"`
-	WithHole   int `json:"withHole"`
-	InnerHoles int `json:"innerHoles"`
-	Entries    int `json:"entries"`
-	Published  int `json:"published"`
-	Intervals  int `json:"intervals"`
-	NoTrack    int `json:"noTrack"`
-	NoPlayer   int `json:"noPlayer"`
+	WithHole int `json:"withHole"`
+	NoTrack  int `json:"noTrack"`
+	NoPlayer int `json:"noPlayer"`
 }

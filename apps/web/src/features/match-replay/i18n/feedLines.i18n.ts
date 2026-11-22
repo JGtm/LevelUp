@@ -12,6 +12,11 @@
 export interface FeedLinesText {
   /** Infobulle d'une ligne de frag dont la victime portait le drapeau. */
   carrierBadgeHint: string
+  /**
+   * Infobulle d'une ligne de frag qui porte des éliminations liées à l'objectif : UNE phrase dont le sujet est le
+   * tueur, `actions` étant ses verbes tels que les lignes d'objectif les écrivent (`feedObjectiveAction`).
+   */
+  objectiveKillsHint: (actions: readonly string[]) => string
   /** Infobulle d'une ligne de frag assistée : l'assistant nommé et sa part de dégâts, quand elle est connue. */
   assistedBy: (name: string, sharePct: number | null) => string
   /** Les médailles d'une ligne au-delà des deux pictogrammes : « +N », puis ce que l'infobulle liste. */
@@ -31,8 +36,14 @@ export interface FeedLinesText {
   hillTaken: string
 }
 
+/** Joint des morceaux en une énumération : « a, b et c ». */
+function listWith(items: readonly string[], and: string): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`
+}
+
 export const FR_FEED_LINES = {
   carrierBadgeHint: 'La victime portait le drapeau',
+  objectiveKillsHint: (actions) => `Le tueur ${listWith(actions, 'et')}`,
   assistedBy: (name, sharePct) => `Assistance : ${name}${sharePct == null ? '' : ` (${sharePct} %)`}`,
   medalsMore: (n) => `+${n}`,
   medalsMoreHint: (names) => `Autres médailles : ${names}`,
@@ -47,6 +58,7 @@ export const FR_FEED_LINES = {
 
 export const EN_FEED_LINES = {
   carrierBadgeHint: 'The victim was carrying the flag',
+  objectiveKillsHint: (actions) => `The killer ${listWith(actions, 'and')}`,
   assistedBy: (name, sharePct) => `Assist: ${name}${sharePct == null ? '' : ` (${sharePct}%)`}`,
   medalsMore: (n) => `+${n}`,
   medalsMoreHint: (names) => `More medals: ${names}`,

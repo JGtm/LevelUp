@@ -66,8 +66,8 @@ func applyMatchWeaponHitDistance(db *sql.DB) error {
 	return execScript(db, ddlMatchWeaponHitDistanceLatest)
 }
 
-// ddlMatchWeaponHitDistance : la table + son unique index. UN SEUL INDEX, meme argument que
-// match_weapon_shots : DuckDB est colonnaire, le seul acces ponctuel reel est « les touches de
+// ddlMatchWeaponHitDistance : la table (sans ecrivain, cf. « ETAT » en tete de fichier) + son unique
+// index. UN SEUL INDEX, meme argument que match_weapon_shots : DuckDB est colonnaire, le seul acces ponctuel reel est « les touches de
 // CE match » ; chaque index en plus coute a l INSERT et elargit la surface ART.
 const ddlMatchWeaponHitDistance = `
 	CREATE SEQUENCE IF NOT EXISTS match_weapon_hit_distance_id_seq START 1;

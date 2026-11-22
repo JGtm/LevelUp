@@ -3,7 +3,8 @@
  *
  * Ce qu'ils protègent : seules les marques VRAIES se posent (un faux ou un inconnu n'écrit rien) ; la jointure prend
  * le même tueur, la victime quand les deux la connaissent, la plus proche dans la fenêtre ; une élimination ne sert
- * qu'une ligne ; une ligne ambiguë ne prend rien ; sans couverture des éliminations, rien n'est posé.
+ * qu'une ligne ; les lignes d'un même tueur s'apparient dans l'ordre du temps, et un groupe de nombres différents que
+ * la victime ne tranche pas ne prend rien ; sans couverture des éliminations, rien n'est posé.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -75,11 +76,26 @@ describe('attachEliminationMarks — la jointure', () => {
     expect(hors[0].fragMarks).toBeUndefined()
   })
 
-  it('une élimination ne sert qu’une ligne : la plus proche la prend', () => {
+  it('une élimination ne sert qu’une ligne : celle dont la victime concorde, quand elle tranche', () => {
+    const kills = [kill('a', 'v1', 1200), kill('a', 'v2', 1000)]
+    attachEliminationMarks(kills, doc([{ t: 10, xuid: 'a', victim: 'v2', headshot: true }]))
+    expect(kills[0].fragMarks).toBeUndefined()
+    expect(kills[1].fragMarks).toEqual({ headshot: true })
+  })
+
+  it('deux lignes pour une élimination et aucune victime pour trancher : aucune marque', () => {
     const kills = [kill('a', '', 1200), kill('a', '', 1000)]
     attachEliminationMarks(kills, doc([{ t: 10, xuid: 'a', headshot: true }]))
     expect(kills[0].fragMarks).toBeUndefined()
-    expect(kills[1].fragMarks).toEqual({ headshot: true })
+    expect(kills[1].fragMarks).toBeUndefined()
+  })
+
+  it('même tueur, deux frags à 200 ms, fil et tableau décalés de 150 ms : chaque ligne prend sa marque, sans croisement', () => {
+    // Lignes à 1000 et 1200 ms ; tableau à 850 et 1050 ms : par la distance, la 2e ligne (50 ms) volerait la 1re élimination.
+    const kills = [kill('a', '', 1000), kill('a', '', 1200)]
+    attachEliminationMarks(kills, doc([{ t: 8.5, xuid: 'a', headshot: true }, { t: 10.5, xuid: 'a', perfect: true }]))
+    expect(kills[0].fragMarks).toEqual({ headshot: true })
+    expect(kills[1].fragMarks).toEqual({ perfect: true })
   })
 
   it('une ligne à deux candidats à égale distance ne prend rien', () => {

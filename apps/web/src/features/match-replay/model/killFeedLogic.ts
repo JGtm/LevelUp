@@ -57,6 +57,7 @@
 import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { attachEliminationMarks, type FragMarks } from './eliminationMarks'
+import { attachMedals } from './feedMedals'
 import type { MedalEvent } from './medalEvent'
 import type { ObjectiveFeedStat } from './objectiveFeedLogic'
 import { departuresOf, documentHorizonFrame, SURVIVOR_GRACE_MS } from './departureLogic'
@@ -68,13 +69,6 @@ import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLo
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 export type { MedalEvent, MedalSpriteCut } from './medalEvent'
-
-/**
- * Tolérance de rattachement d'une médaille au kill du même acteur, en ms. Mesuré sur
- * 000d5950 : 42/44 à ≤ 500 ms, et AUCUNE de plus ne se rattache avant 5 000 ms — le seuil
- * est dans un plateau, pas sur une pente.
- */
-export const MEDAL_ATTACH_MS = 500
 
 /**
  * Un kill placé sur l'axe de temps du rejeu.
@@ -479,7 +473,7 @@ export function alignFeedToTracks(
  * buildFeedEntries assemble le fil : kills recalés par `alignFeed` quand le document est
  * fourni (origine publiée, appariement en repli), morts neutres en
  * lignes propres, médailles rattachées au kill du même acteur le plus proche
- * (±MEDAL_ATTACH_MS, sur l'horloge gameplay commune aux deux sources), médailles
+ * (±`MEDAL_ATTACH_MS` de `feedMedals`, sur l'horloge gameplay commune aux deux sources), médailles
  * orphelines en lignes seules. Trié chronologiquement.
  *
  * Sans document (tests, appels historiques) : recalage brut `+t0Ms`, aucune mort neutre.
@@ -496,21 +490,7 @@ export function buildFeedEntries(
       : { kills: toReplayKills(kills, t0Ms), deaths: [], offsetMs: null }
   const rk = alignedFeed.kills
   const offset = matchKickoffMs(t0Ms)
-  const alone: MedalEvent[] = []
-  for (const m of medals) {
-    let best: ReplayKill | null = null
-    let bestDt = MEDAL_ATTACH_MS + 1
-    for (const k of rk) {
-      if (k.xuid !== m.xuid) continue
-      const dt = Math.abs(k.tMs - m.tMs)
-      if (dt < bestDt) {
-        best = k
-        bestDt = dt
-      }
-    }
-    if (best && bestDt <= MEDAL_ATTACH_MS) best.medals.push(m)
-    else alone.push(m)
-  }
+  const alone = attachMedals(rk, medals)
   attachEliminationMarks(rk, doc)
   const entries: ReplayFeedEntry[] = rk.map((k, i) => ({
     key: `k-${k.xuid}-${k.replayMs}-${i}`,

@@ -121,11 +121,8 @@ describe('playerInstantEstimates — score : les trois gardes', () => {
     }
   })
 
-  it('un tableau du film au-dessus des points publiés rend le verdict faux : ni score ni rang, et aucun texte à la place', () => {
-    const coverage = {
-      originResolved: true,
-      scoreActions: { complete: false, scoreboardCompared: 4, scoreboardMissing: 2, scoreboardBehind: 0, treeShift: 0 },
-    } as never
+  it('un verdict faux du décodeur (le tableau du film montre des points que le calque ne publie pas) : ni score ni rang, et aucun texte à la place', () => {
+    const coverage = { originResolved: true, scoreActions: { complete: false } } as never
     const { at } = lobby(docWith({ coverage }))
     for (const who of [A, B, C, BOT]) {
       const e = at(who, 100)

@@ -70,6 +70,10 @@ computed once, at sync, on the estimate, and never again when the replay brought
   `2026-11-18`: on the first startup, the kickoff catch-up runs, then every player's notes are replayed once. Both
   scoring fingerprints hash `timeline.KickoffRev` (`TestScoringParametersMatchRevision`): changing the kickoff revision
   without moving the two scoring revisions fails.
+  Amendment (2026-11-22): the kickoff the replay publishes is read on the game clock (film decoder v1.5.0), so the
+  stored value of a replayed match changes. `KickoffRev` moves to `kickoff-2026-11-22`, `PerformanceScoreRev` to
+  `perf-2026-11-22` and `LUSRRev` to `lusr-2026-11-22` (same two-fingerprint rule, no parameter of their own changes):
+  the first startup runs the kickoff catch-up, then replays every player's notes once.
 
 - **D-7 — One reading, for every reader.** `timeline.ForMatch` (`internal/analysis/timeline/build.go`) is the only rule
   that reads a stored kickoff: a known kickoff = the chronology starts from it; an unknown one (`nil`: Halo 5, a refused

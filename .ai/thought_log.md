@@ -1,3 +1,10 @@
+## [2026-11-22] Montée du décodeur v1.5.0 dans LevelUp : fusion de la branche de version et corrections de relecture — En cours
+
+- **Décision** : la branche de montée fusionne la branche de version avant ses corrections ; les compteurs de couverture que rien ne lit sortent des miroirs servis ; le coup d'envoi changeant de source, sa révision et les deux révisions de notation montent ensemble (ADR 0050 D-6), la révision des dérivations aussi.
+- **Résultats** : rechargements attribués par la présence quand une place change de joueur ; mention « estimation » dès qu'une part n'est pas publiée ; marques tête et parfait appariées dans l'ordre du temps ; garde-rails et tests ciblés verts (Go et web).
+- **À savoir** : au premier démarrage, rattrapage du coup d'envoi puis recalcul des notes de tous les joueurs ; le rattrapage lit les rejeux rangés, donc le parc se régénère AVANT le premier démarrage de la version.
+- **Suite** : gate du corpus du décodeur (rouge, en instruction), tag, gates complets, régénération.
+
 ## [2026-11-22] Nettoyage du disque : un dépôt ou un worktree git n'est plus jamais supprimé — Complété
 
 - **Décision** : la garde vit dans l'unique point de suppression d'un arbre du script ; la seule présence d'un `.git` (dossier ou fichier, jusqu'à trois niveaux) suffit, sans appel à git ; un dossier illisible compte comme protégé.

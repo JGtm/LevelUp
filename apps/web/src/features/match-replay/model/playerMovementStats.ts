@@ -12,7 +12,9 @@
  *  - `moveCommand` est LU dans la vue de contrôle du film : la commande de déplacement tenue (le joueur pousse le
  *    stick), bornée à chaque vie du joueur. Ce n'est pas un mouvement du corps : un joueur qui pousse contre un mur
  *    tient la commande. Il n'est établi que si `coverage.stances.control` existe (la vue de contrôle a été lue) ;
- *    le temps cumulé s'écrit « temps en déplacement » et jamais « distance ».
+ *    le temps cumulé s'écrit « temps en déplacement » et jamais « distance ». La couverture de la vue de contrôle dit
+ *    ce que la publication a écarté (`noTrack`, `noPlayer` : commandes sans vie ni joueur ; `withHole` : commandes
+ *    dont la lecture a un trou) : si l'une de ces parts n'est pas nulle, le temps est une estimation (`moveEstimated`).
  *  - `jumpDerived` est DÉRIVÉ de l'intégrale de la vitesse verticale et reconnu à sa hauteur : le document ne
  *    publie AUCUN compte de sauts lu, seulement ces intervalles dérivés. Tout compte de sauts est donc une
  *    estimation (`jumpsEstimated`) : l'écran doit le dire. Les intervalles dérivés se comptent un par un.
@@ -68,6 +70,11 @@ export interface PlayerMovementStats {
    * pas été lue sur ce document (`coverage.stances.control` absente) ou le joueur n'a aucune vie.
    */
   moveMs: number | null
+  /**
+   * Vrai quand `moveMs` est un nombre mais que la couverture de la vue de contrôle dit qu'une part des commandes n'a
+   * pas été publiée (`noTrack`, `noPlayer` ou `withHole` non nuls) : le temps se lit « estimation ». Faux sinon.
+   */
+  moveEstimated: boolean
 }
 
 /** Un intervalle de sprint fusionné, daté à son début (`t`), avec les images de sprint des intervalles qui le précèdent. */
@@ -94,6 +101,8 @@ export interface PlayerMovementSeries {
   readonly jumps: readonly Jump[] | null
   /** Intervalles de commande de déplacement du joueur, fusionnés et triés. */
   readonly move: readonly SprintRun[] | null
+  /** La couverture dit qu'une part des commandes de déplacement n'a pas été publiée (cf. `PlayerMovementStats.moveEstimated`). */
+  readonly moveEstimated: boolean
 }
 
 /** Les séries de tous les joueurs, sous leur clé de roster et sous le xuid de leur ligne de feuille. */
@@ -103,13 +112,19 @@ export type MovementSeriesIndex = ReadonlyMap<string, PlayerMovementSeries>
 export type MovementSeriesSource = Pick<ReplayDocumentReady, 'stances' | 'coverage' | 'frameIntervalMs'>
 
 /** Aucune des deux grandeurs n'est établie : la réponse d'un joueur sans série, partagée (elle est immuable). */
-const NOT_ESTABLISHED: PlayerMovementStats = { sprintMs: null, jumps: null, jumpsEstimated: false, moveMs: null }
+const NOT_ESTABLISHED: PlayerMovementStats = { sprintMs: null, jumps: null, jumpsEstimated: false, moveMs: null, moveEstimated: false }
 
 /** Ce que la couverture des états de mouvement établit pour tout le document. */
 function establishedOf(doc: MovementSeriesSource): { sprint: boolean; jumps: boolean; move: boolean } {
   const cov = doc.coverage?.stances
   const sprint = cov?.scanned === true && cov.absent !== true
   return { sprint, jumps: sprint && (cov?.jumpEpisodes ?? 0) > 0, move: cov?.scanned === true && cov.control != null }
+}
+
+/** La couverture de la vue de contrôle dit-elle qu'une part des commandes n'a pas été publiée ? */
+function controlIncomplete(doc: MovementSeriesSource): boolean {
+  const control = doc.coverage?.stances?.control
+  return control != null && (control.noTrack > 0 || control.noPlayer > 0 || control.withHole > 0)
 }
 
 /** Fusionne les intervalles tenus d'un joueur (déjà triés par début) et cumule les images qui précèdent chacun. */
@@ -160,10 +175,12 @@ export function readMovementSeries(doc: MovementSeriesSource, players: readonly 
   const jumps = established.jumps ? intervalsByOwner(doc, STANCE_KIND_JUMP_DERIVED, ownerAt) : null
   const moves = established.move ? intervalsByOwner(doc, STANCE_KIND_MOVE_COMMAND, ownerAt) : null
   const index = new Map<string, PlayerMovementSeries>()
+  const moveEstimated = controlIncomplete(doc)
   for (const player of players) {
     if (player.lives.length === 0) continue
     const series: PlayerMovementSeries = {
       doc,
+      moveEstimated,
       sprint: sprints ? sprintRuns(sprints.get(player.xuid) ?? []) : null,
       jumps: jumps ? (jumps.get(player.xuid) ?? []).map((j) => ({ t: j.t0 })) : null,
       move: moves ? sprintRuns(moves.get(player.xuid) ?? []) : null,
@@ -206,5 +223,6 @@ export function playerMovementStatsAt(series: PlayerMovementSeries | null, frame
     jumps,
     jumpsEstimated: jumps !== null,
     moveMs: series.move ? frameToMs(sprintFramesAt(series.move, frame), series.doc) : null,
+    moveEstimated: series.move !== null && series.moveEstimated,
   }
 }

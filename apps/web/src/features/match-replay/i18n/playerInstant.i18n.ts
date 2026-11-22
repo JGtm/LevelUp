@@ -34,7 +34,9 @@ export interface PlayerInstantText {
   moveTotal: string
   jumps: string
   reloads: string
-  /** Infobulle des rechargements quand le film perd des messages sur certaines trames : le compte est un minimum. */
+  /** Infobulle du temps de déplacement quand le film n'a pas publié toutes les commandes : le temps est une estimation. */
+  moveHint: string
+  /** Infobulle des rechargements quand le film perd des messages ou des rechargements sans joueur : le compte est un minimum. */
   reloadsHint: string
   matchTotals: string
   /** Les deux états d'une arme dans le bloc « À l'instant » : dégainée, et rangée. */
@@ -110,6 +112,7 @@ export const FR_PLAYER_INSTANT = {
   moveTotal: 'Déplacement, temps cumulé',
   jumps: 'Sauts',
   reloads: 'Rechargements',
+  moveHint: "Le film ne montre pas toutes les commandes de déplacement : ce temps est une estimation",
   reloadsHint: 'Le film ne montre pas tous les rechargements : ce compte est un minimum',
   matchTotals: 'Totaux du match',
   weaponInHand: 'en main',
@@ -161,6 +164,7 @@ export const EN_PLAYER_INSTANT = {
   moveTotal: 'Movement, total time',
   jumps: 'Jumps',
   reloads: 'Reloads',
+  moveHint: 'The film does not show every movement command: this time is an estimate',
   reloadsHint: 'The film does not show every reload: this count is a minimum',
   matchTotals: 'Match totals',
   weaponInHand: 'in hand',

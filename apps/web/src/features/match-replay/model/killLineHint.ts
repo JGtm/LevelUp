@@ -1,7 +1,7 @@
 /**
  * killLineHint — L'INFOBULLE D'UNE LIGNE D'ÉLIMINATION : ce que la ligne ne montre pas faute de place.
  * L'assistance nommée (avec sa part de dégâts), la victime porteuse du drapeau et les éliminations liées
- * à l'objectif (`objectiveKills`) n'ont pas de colonne : elles se lisent ici, au survol. Une mort sans assistant dit pourquoi (distincte d'« inconnu », qui ne
+ * à l'objectif (`objectiveKills`) n'ont pas de colonne : elles se lisent ici, au survol, en une phrase dont le sujet est le tueur. Une mort sans assistant dit pourquoi (distincte d'« inconnu », qui ne
  * dit rien). `focusable` ajoute en tête l'invite du clic. Rend `undefined` quand il n'y a rien à dire.
  */
 import { displayPlayerName } from '@/lib/players/displayName'
@@ -34,6 +34,8 @@ export function killLineHint(
     )
   }
   if (carrier) parts.push(t.feedLines.carrierBadgeHint)
-  for (const stat of objectiveKills) parts.push(t.feedObjectiveAction[stat])
+  if (objectiveKills.length > 0) {
+    parts.push(t.feedLines.objectiveKillsHint(objectiveKills.map((stat) => t.feedObjectiveAction[stat])))
+  }
   return parts.length > 0 ? parts.join(SEP) : undefined
 }

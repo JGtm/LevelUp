@@ -14,19 +14,14 @@ type ScoreAction struct {
 }
 
 // ScoreActionCoverage dit ce que le calque a lu, publie et ecarte. `complete` est le verdict : la
-// somme des points d'un joueur ne vaut son score personnel que s'il est vrai. Il est faux, entre autres, quand le
-// tableau des scores du film montre des points que le calque ne publie pas (`scoreboardMissing` > 0).
-//
-// `scoreboardCompared` : joueurs comparés au tableau du film ; `scoreboardMissing` : ceux dont le dernier score du
-// tableau dépasse la somme de leurs points publiés ; `scoreboardBehind` : ceux dont il est en dessous ;
-// `treeShift` : messages dont le rang a été traduit par un décalage d'arbre que le build du film déclare.
+// somme des points d'un joueur ne vaut son score personnel que s'il est vrai : le décodeur le rend faux, entre autres,
+// quand le tableau des scores du film montre des points que le calque ne publie pas. Les compteurs de cette
+// comparaison (joueurs comparés, en dessous, au-dessus du tableau, décalage d'arbre) n'ont aucun lecteur ici : le
+// verdict suffit (`testutil.ReplayChampsNonServis`).
 type ScoreActionCoverage struct {
 	Complete           bool   `json:"complete"`
 	Group              string `json:"group,omitempty"`
 	GroupMissing       bool   `json:"groupMissing"`
-	ScoreboardCompared int    `json:"scoreboardCompared"`
-	ScoreboardMissing  int    `json:"scoreboardMissing"`
-	ScoreboardBehind   int    `json:"scoreboardBehind"`
 	Frames             int    `json:"frames"`
 	ClosedFrames       int    `json:"closedFrames"`
 	StoppedFrames      int    `json:"stoppedFrames"`
@@ -38,7 +33,6 @@ type ScoreActionCoverage struct {
 	NamedWithoutPoints int    `json:"namedWithoutPoints"`
 	OutsideTree        int    `json:"outsideTree"`
 	UnconfirmedRank    int    `json:"unconfirmedRank"`
-	TreeShift          int    `json:"treeShift"`
 	Scored             int    `json:"scored"`
 	Published          int    `json:"published"`
 	NoRecipient        int    `json:"noRecipient"`

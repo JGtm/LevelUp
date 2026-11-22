@@ -18,16 +18,26 @@ describe('killLineHint — éliminations liées à l’objectif', () => {
 
   it('dit chaque élimination dans la langue de la page', () => {
     expect(killLineHint(kill, false, REPLAY_TEXT.fr, false, ['zone_offensive_kills', 'vip_kills'])).toBe(
-      'a éliminé un défenseur de base — a éliminé le VIP adverse',
+      'Le tueur a éliminé un défenseur de base et a éliminé le VIP adverse',
     )
     expect(killLineHint(kill, false, REPLAY_TEXT.en, false, ['flag_kills_as_carrier'])).toBe(
-      'got a kill while carrying the flag',
+      'The killer got a kill while carrying the flag',
+    )
+  })
+
+  it('lit trois éliminations en une seule phrase, dans les deux langues', () => {
+    const stats = ['zone_offensive_kills', 'vip_kills', 'flag_carriers_killed'] as const
+    expect(killLineHint(kill, false, REPLAY_TEXT.fr, false, stats)).toBe(
+      'Le tueur a éliminé un défenseur de base, a éliminé le VIP adverse et a éliminé un porteur de drapeau',
+    )
+    expect(killLineHint(kill, false, REPLAY_TEXT.en, false, stats)).toBe(
+      'The killer killed a stronghold defender, killed the enemy VIP and killed a flag carrier',
     )
   })
 
   it('suit le badge du porteur éliminé', () => {
     expect(killLineHint(kill, true, REPLAY_TEXT.fr, false, ['flag_returners_killed'])).toBe(
-      'La victime portait le drapeau — a éliminé un joueur qui rendait le drapeau',
+      'La victime portait le drapeau — Le tueur a éliminé un joueur qui rendait le drapeau',
     )
   })
 })

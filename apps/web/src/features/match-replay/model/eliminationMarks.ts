@@ -8,10 +8,16 @@
  * inconnu ne se lit jamais comme un faux, et `perfect` ne vaut jamais faux.
  *
  * LA JOINTURE. Le fil des éliminations vient de la base (événements du match), pas du film : chaque ligne du fil est
- * rapprochée de l'élimination du MÊME tueur, à la victime près quand les deux la connaissent, et à l'instant près
- * (`ELIMINATION_JOIN_MS`, la fenêtre des médailles). Les paires se prennent de la plus proche à la plus lointaine ; une
- * élimination ne sert qu'une ligne, et une ligne qui a deux candidats à égale distance ne prend aucune marque : on ne
- * marque pas au hasard. Une ligne sans élimination correspondante n'a pas de marque.
+ * rapprochée d'une élimination du MÊME tueur, compatible quand la victime n'est pas contredite (connue des deux côtés
+ * et différente) et que l'écart de temps tient dans `ELIMINATION_JOIN_MS` (la fenêtre des médailles). Les lignes et les
+ * éliminations d'un même tueur que cette compatibilité relie forment un groupe en concurrence, résolu seul :
+ *  - autant de lignes que d'éliminations : elles s'apparient DANS L'ORDRE DU TEMPS (la k-ième ligne prend la k-ième
+ *    élimination), pas de la plus proche à la plus lointaine : un décalage constant entre les deux horloges croiserait
+ *    sinon deux frags rapprochés ;
+ *  - un nombre différent, ou un appariement dans l'ordre que la victime contredit : seule la victime tranche, quand
+ *    elle est connue des deux côtés et qu'une ligne et une élimination sont les seules du groupe à la porter ;
+ *  - sinon le groupe ne prend AUCUNE marque : on ne marque pas au hasard.
+ * Une ligne sans élimination correspondante n'a pas de marque.
  *
  * CE QU'ON AFFICHE. Seules les marques VRAIES s'affichent : un faux ou un inconnu n'a pas d'icône, et aucun texte ne
  * dit « non mesuré ». Sans `coverage.eliminations` (film ancien, pas de tableau des scores), aucune ligne n'est marquée.
@@ -44,10 +50,76 @@ export interface MarkableKill {
 /** Ce que la jointure lit du document. */
 export type EliminationMarksSource = Pick<ReplayDocumentReady, 'eliminations' | 'coverage' | 'frameIntervalMs'>
 
-interface Candidate {
-  kill: MarkableKill
-  row: number
-  distanceMs: number
+/** Une élimination du tableau, placée sur l'axe du rejeu. */
+interface ScoreboardRow {
+  ms: number
+  victim?: string
+  headshot?: boolean
+  perfect?: boolean
+}
+
+/** Une ligne du fil et une élimination du tableau sont compatibles : victime non contredite, instant dans la fenêtre. */
+function compatible(kill: MarkableKill, row: ScoreboardRow): boolean {
+  if (row.victim && kill.victimXuid && row.victim !== kill.victimXuid) return false
+  return Math.abs(row.ms - kill.replayMs) <= ELIMINATION_JOIN_MS
+}
+
+/** Un groupe en concurrence : des lignes et des éliminations du même tueur reliées par la compatibilité. */
+interface CompetingGroup {
+  kills: MarkableKill[]
+  rows: ScoreboardRow[]
+}
+
+/** Range les lignes et les éliminations d'UN tueur en groupes (composantes connexes de la compatibilité). */
+function groupsOf(kills: readonly MarkableKill[], rows: readonly ScoreboardRow[]): CompetingGroup[] {
+  const seenRows = new Set<ScoreboardRow>()
+  const seenKills = new Set<MarkableKill>()
+  const groups: CompetingGroup[] = []
+  for (const start of kills) {
+    if (seenKills.has(start)) continue
+    const group: CompetingGroup = { kills: [], rows: [] }
+    const queue: MarkableKill[] = [start]
+    seenKills.add(start)
+    for (let kill = queue.pop(); kill !== undefined; kill = queue.pop()) {
+      group.kills.push(kill)
+      for (const row of rows) {
+        if (seenRows.has(row) || !compatible(kill, row)) continue
+        seenRows.add(row)
+        group.rows.push(row)
+        for (const other of kills) {
+          if (seenKills.has(other) || !compatible(other, row)) continue
+          seenKills.add(other)
+          queue.push(other)
+        }
+      }
+    }
+    groups.push(group)
+  }
+  return groups
+}
+
+/** Les paires qu'un groupe permet de poser : dans l'ordre du temps, à défaut par la victime, sinon aucune. */
+function pairsOf(group: CompetingGroup): [MarkableKill, ScoreboardRow][] {
+  const kills = [...group.kills].sort((a, b) => a.replayMs - b.replayMs)
+  const rows = [...group.rows].sort((a, b) => a.ms - b.ms)
+  if (kills.length === rows.length) {
+    const ordered = kills.map((k, i): [MarkableKill, ScoreboardRow] => [k, rows[i]])
+    if (ordered.every(([k, r]) => compatible(k, r))) return ordered
+  }
+  const byVictim: [MarkableKill, ScoreboardRow][] = []
+  for (const kill of kills) {
+    if (!kill.victimXuid || kills.filter((k) => k.victimXuid === kill.victimXuid).length !== 1) continue
+    const named = rows.filter((r) => r.victim === kill.victimXuid)
+    if (named.length === 1 && compatible(kill, named[0])) byVictim.push([kill, named[0]])
+  }
+  return byVictim
+}
+
+/** Range des éléments sous une clé, en gardant l'ordre d'arrivée. */
+function pushUnder<T>(map: Map<string, T[]>, key: string, value: T): void {
+  const list = map.get(key)
+  if (list) list.push(value)
+  else map.set(key, [value])
 }
 
 /**
@@ -56,43 +128,20 @@ interface Candidate {
  */
 export function attachEliminationMarks(kills: readonly MarkableKill[], doc: EliminationMarksSource | null | undefined): void {
   if (!doc || doc.coverage?.eliminations === undefined || doc.eliminations.length === 0) return
-  const rows = doc.eliminations.map((e) => ({ ...e, ms: frameToMs(e.t, doc) }))
-  const byKiller = new Map<string, number[]>()
-  rows.forEach((r, i) => {
-    const list = byKiller.get(r.xuid)
-    if (list) list.push(i)
-    else byKiller.set(r.xuid, [i])
-  })
-
-  const candidates: Candidate[] = []
-  for (const kill of kills) {
-    for (const i of byKiller.get(kill.xuid) ?? []) {
-      const row = rows[i]
-      if (row.victim && kill.victimXuid && row.victim !== kill.victimXuid) continue
-      const distanceMs = Math.abs(row.ms - kill.replayMs)
-      if (distanceMs <= ELIMINATION_JOIN_MS) candidates.push({ kill, row: i, distanceMs })
+  const rowsByKiller = new Map<string, ScoreboardRow[]>()
+  for (const e of doc.eliminations) {
+    pushUnder(rowsByKiller, e.xuid, { ms: frameToMs(e.t, doc), victim: e.victim, headshot: e.headshot, perfect: e.perfect })
+  }
+  const killsByKiller = new Map<string, MarkableKill[]>()
+  for (const kill of kills) pushUnder(killsByKiller, kill.xuid, kill)
+  for (const [xuid, own] of killsByKiller) {
+    for (const group of groupsOf(own, rowsByKiller.get(xuid) ?? [])) {
+      for (const [kill, row] of pairsOf(group)) {
+        const marks: FragMarks = {}
+        if (row.headshot === true) marks.headshot = true
+        if (row.perfect === true) marks.perfect = true
+        if (marks.headshot || marks.perfect) kill.fragMarks = marks
+      }
     }
-  }
-  candidates.sort((a, b) => a.distanceMs - b.distanceMs)
-
-  // Une ligne dont les deux meilleurs candidats sont à égale distance est ambiguë : elle ne prend rien.
-  const ambiguous = new Set<MarkableKill>()
-  const best = new Map<MarkableKill, number[]>()
-  for (const c of candidates) {
-    const seen = best.get(c.kill)
-    if (!seen) best.set(c.kill, [c.distanceMs])
-    else if (seen.length === 1) seen.push(c.distanceMs)
-  }
-  for (const [kill, [first, second]] of best) if (second !== undefined && first === second) ambiguous.add(kill)
-  const claimedRows = new Set<number>()
-  const matched = new Set<MarkableKill>()
-  for (const c of candidates) {
-    if (ambiguous.has(c.kill) || matched.has(c.kill) || claimedRows.has(c.row)) continue
-    matched.add(c.kill)
-    claimedRows.add(c.row)
-    const marks: FragMarks = {}
-    if (rows[c.row].headshot === true) marks.headshot = true
-    if (rows[c.row].perfect === true) marks.perfect = true
-    if (marks.headshot || marks.perfect) c.kill.fragMarks = marks
   }
 }

@@ -55,6 +55,14 @@ describe('playerInstantScore — la tuile et la fiche lisent la même valeur', (
     }
   })
 
+  it('un verdict faux du décodeur : la cause est « score incomplet », pour la tuile comme pour la fiche', () => {
+    const base = instantDoc()
+    const doc = instantDoc({ coverage: { ...base.coverage, scoreActions: { complete: false } } as never })
+    const players = instantPlayers(doc, instantSheet())
+    const series = readInstantScoreSeries(doc, players)
+    for (const p of players) expect(series.get(p.xuid)).toEqual({ ticks: null, absence: 'score-incomplet' })
+  })
+
   it('le calque de score du film ne décide pas : décalé d’une image, il n’est pas lu', () => {
     const base = instantDoc()
     const calque = {

@@ -182,17 +182,6 @@ type T0FilmCoverage struct {
 	MarginMs int64  `json:"marginMs"`
 }
 
-// PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
-type PadDatingStats struct {
-	Occupations        int `json:"occupations"`
-	Dated              int `json:"dated"`
-	Named              int `json:"named"`
-	Ambiguous          int `json:"ambiguous"`
-	Uncovered          int `json:"uncovered"`
-	PowerupOccupations int `json:"powerupOccupations"`
-	FirstOfCycle       int `json:"firstOfCycle"`
-}
-
 // InventoryCoverage est la couverture du calque INVENTAIRE (munitions, grenades, capacité,
 // emplacement dégainé) : combien de lectures le décodeur a produites, combien ont été
 // écartées parce qu'antérieures à l'origine du rejeu, et combien ont été retirées faute de

@@ -186,3 +186,14 @@ type VehicleDestructionCoverage struct {
 	KilledNoIdentity  int `json:"killedNoIdentity"`
 	KilledCleanup     int `json:"killedCleanup"`
 }
+
+// PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
+type PadDatingStats struct {
+	Occupations        int `json:"occupations"`
+	Dated              int `json:"dated"`
+	Named              int `json:"named"`
+	Ambiguous          int `json:"ambiguous"`
+	Uncovered          int `json:"uncovered"`
+	PowerupOccupations int `json:"powerupOccupations"`
+	FirstOfCycle       int `json:"firstOfCycle"`
+}

@@ -14,21 +14,7 @@ type Elimination struct {
 	Perfect  *bool  `json:"perfect,omitempty"`
 }
 
-// EliminationCoverage dit ce que le calque des éliminations a posé et ce qu'il n'a pas su marquer. Invariants :
-// `eliminations` = `headYes` + `headNo` + `headUnknown` = `perfectYes` + `perfectUnknown` ; `headUnknown` =
-// `headNoCounter` + `headAmbiguous` + `headGuarded`.
-type EliminationCoverage struct {
-	Eliminations     int `json:"eliminations"`
-	WithVictim       int `json:"withVictim"`
-	HeadYes          int `json:"headYes"`
-	HeadNo           int `json:"headNo"`
-	HeadUnknown      int `json:"headUnknown"`
-	HeadNoCounter    int `json:"headNoCounter"`
-	HeadAmbiguous    int `json:"headAmbiguous"`
-	HeadGuarded      int `json:"headGuarded"`
-	HeadOrphanRises  int `json:"headOrphanRises"`
-	PerfectYes       int `json:"perfectYes"`
-	PerfectUnknown   int `json:"perfectUnknown"`
-	PerfectAmbiguous int `json:"perfectAmbiguous"`
-	PerfectOrphans   int `json:"perfectOrphans"`
-}
+// EliminationCoverage est la couverture du calque des éliminations : sa PRÉSENCE dit que le tableau des scores du film
+// a été lu, et c'est la seule chose qu'un lecteur en tient (sans elle, aucune ligne du fil n'est marquée). Les compteurs
+// du décodeur n'ont aucun lecteur ici (`testutil.ReplayChampsNonServis`) : le type n'en publie aucun.
+type EliminationCoverage struct{}

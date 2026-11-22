@@ -145,8 +145,8 @@ var appendOnlyStateTables = []string{
 	//   - match_weapon_hit_distance : créée append-only
 	//     (migration/steps_shared_weapon_hit_distance.go) — id PK seq + decode_pass +
 	//     decoder_rev + written_at + vue _latest qui retient LA DERNIÈRE PASSE PAR MATCH
-	//     (l'unité de production est le film entier). Écrivain unique INSERT pur :
-	//     persist/weapon_hit_distance_persister.go.
+	//     (l'unité de production est le film entier). Elle n'a plus d'écrivain : l'entrée
+	//     reste pour qu'un écrivain futur soit tenu à l'INSERT pur dès son premier statement.
 	// Aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE sur l'une ou l'autre aujourd'hui :
 	// l'enrôlement ne crée aucune entrée d'allowlist.
 	"kill_positions",

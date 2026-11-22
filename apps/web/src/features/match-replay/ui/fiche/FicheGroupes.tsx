@@ -52,7 +52,14 @@ export function FicheGestes({ gestures, clock, locale }: { gestures: GesturesVie
     >
       <FicheRows>
         {gestures.sprintMs !== null && <FicheRow label={t.sprintTotal}>{formatDuration(gestures.sprintMs)}</FicheRow>}
-        {gestures.moveMs !== null && <FicheRow label={t.moveTotal}>{formatDuration(gestures.moveMs)}</FicheRow>}
+        {gestures.moveMs !== null && (
+          <FicheRow
+            label={t.moveTotal}
+            aside={gestures.moveEstimated ? <EstimateCapsule text={t.estimate} hint={t.moveHint} /> : undefined}
+          >
+            {formatDuration(gestures.moveMs)}
+          </FicheRow>
+        )}
         {gestures.jumps !== null && (
           <FicheRow label={t.jumps} aside={<EstimateCapsule text={t.estimate} hint={t.estimateHint} />}>
             {formatCount(gestures.jumps, locale)}

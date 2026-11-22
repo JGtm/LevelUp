@@ -66,6 +66,41 @@ var ReplayChampsNonServis = map[string]string{
 		"aucun lecteur, une piece sans porteur n'a simplement pas de porteur a l'ecran.",
 }
 
+// Les compteurs de couverture que la montee du decodeur v1.5.0 ajoute et que rien ne lit : la fiche du joueur ne lit
+// que ce qui rend une valeur approximative (`reloads.stoppedFrames` et `withoutPlayer`, `stances.control.noTrack`,
+// `noPlayer` et `withHole`) et la presence de `coverage.eliminations`. Le reste reste au decodeur, qui est public.
+const (
+	motifScoreboardNonLu = "2026-11-22 (decodeur v1.5.0) : compteur de la comparaison du score personnel au tableau du film ; " +
+		"aucun lecteur, le verdict `complete` suffit et les lecteurs de la fiche s'y tiennent."
+	motifRechargementsNonLu = "2026-11-22 (decodeur v1.5.0) : compteur de la lecture des rechargements ; aucun lecteur, la " +
+		"fiche ne lit que les trames arretees et les rechargements sans joueur pour dire que le compte est un minimum."
+	motifEliminationsNonLu = "2026-11-22 (decodeur v1.5.0) : compteur de la couverture des eliminations ; aucun lecteur, " +
+		"seule la presence de la couverture compte et les marques se lisent sur `eliminations[]`."
+	motifCommandeNonLu = "2026-11-22 (decodeur v1.5.0) : compteur de la lecture des commandes de deplacement ; aucun " +
+		"lecteur, la fiche ne lit que les commandes sans vie, sans joueur ou a trou pour dire que le temps est une estimation."
+)
+
+func init() {
+	for _, cle := range []string{
+		"ScoreActionCoverage.ScoreboardCompared", "ScoreActionCoverage.ScoreboardMissing",
+		"ScoreActionCoverage.ScoreboardBehind", "ScoreActionCoverage.TreeShift",
+	} {
+		ReplayChampsNonServis[cle] = motifScoreboardNonLu
+	}
+	for _, champ := range []string{"Frames", "ClosedFrames", "Read", "Copies", "BeforeOrigin", "AfterEnd", "Published"} {
+		ReplayChampsNonServis["ReloadCoverage."+champ] = motifRechargementsNonLu
+	}
+	for _, champ := range []string{
+		"Eliminations", "WithVictim", "HeadYes", "HeadNo", "HeadUnknown", "HeadNoCounter", "HeadAmbiguous",
+		"HeadGuarded", "HeadOrphanRises", "PerfectYes", "PerfectUnknown", "PerfectAmbiguous", "PerfectOrphans",
+	} {
+		ReplayChampsNonServis["EliminationCoverage."+champ] = motifEliminationsNonLu
+	}
+	for _, champ := range []string{"Holds", "InnerHoles", "Entries", "Published", "Intervals"} {
+		ReplayChampsNonServis["StanceControlCoverage."+champ] = motifCommandeNonLu
+	}
+}
+
 // ReplayTypesNonServis liste les TYPES du document stocke que l'API ne publie pas du tout, par nom
 // de type, avec la DATE de la decision et son motif.
 //

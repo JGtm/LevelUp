@@ -2,9 +2,14 @@
  * playerReloadStats.ts — LES RECHARGEMENTS D'UN JOUEUR DU DÉBUT DU MATCH JUSQU'À L'IMAGE LUE, sans React.
  *
  * DEUX TEMPS, comme `playerMovementStats`. `readReloadSeries` lit une fois par document les rechargements
- * (`doc.reloads`), les attribue au joueur dont l'entrée de roster porte l'index que le message écrit (`place` =
- * `roster[].filmIndex`, `rosterEntryKey`) et range, par joueur, une série triée ; `playerReloadsAt` répond pour une
- * image par dichotomie, sans rien relire.
+ * (`doc.reloads`), les attribue au joueur que l'index du message (`place` = `roster[].filmIndex`) désigne à l'instant
+ * du rechargement et range, par joueur, une série triée ; `playerReloadsAt` répond pour une image par dichotomie, sans
+ * rien relire.
+ *
+ * QUI EST CE JOUEUR. Un index désigne UN joueur quand une seule identité du roster le porte (`rosterEntryKey`). Quand
+ * plusieurs identités le portent (un joueur parti puis son remplaçant, des bots qui partagent un index), l'index ne
+ * suffit pas : le rechargement revient à l'identité dont la PRÉSENCE publiée couvre son image (`presence`, bornes
+ * `from` à `toMax`), à elle seule. Zéro ou plusieurs identités présentes : il ne revient à personne, jamais à tous.
  *
  * CE QUE LE DOCUMENT PUBLIE. Un rechargement est un fait daté `{t, place}` : ni l'arme, ni la fin du rechargement.
  * Un client compte des rechargements par joueur, rien de plus.
@@ -15,7 +20,8 @@
  * couverture. Quand la grandeur est établie, « aucun rechargement pour ce joueur » est un zéro MESURÉ.
  *
  * UN COMPTE PEUT ÊTRE UN PLANCHER : une trame dont la liste d'événements s'arrête sur un message non lu perd les
- * messages qui la suivent (`coverage.reloads.stoppedFrames`). `minimum` le dit pour tout le document ; l'écran doit
+ * messages qui la suivent (`coverage.reloads.stoppedFrames`), et un rechargement que le film n'a pu rattacher à aucun
+ * joueur n'est pas publié (`coverage.reloads.withoutPlayer`). `minimum` le dit pour tout le document ; l'écran doit
  * l'écrire.
  *
  * Module pur : ni DOM, ni texte d'interface, ni couleur.
@@ -29,7 +35,7 @@ import { identityKeys } from './playerInstantStats'
 export interface PlayerReloads {
   /** Rechargements jusqu'à l'image, comprise. `0` = « aucun » mesuré. `null` = le document ne permet pas de l'établir. */
   count: number | null
-  /** Vrai quand `count` est un plancher : au moins une trame du film s'arrête sur un message non lu. */
+  /** Vrai quand `count` est un plancher : une trame du film s'arrête sur un message non lu, ou un rechargement n'a pas de joueur. */
   minimum: boolean
 }
 
@@ -48,33 +54,58 @@ export type ReloadSeriesSource = Pick<ReplayDocumentReady, 'reloads' | 'roster' 
 /** Rien n'est établi : la réponse d'un joueur sans série, partagée (elle est immuable). */
 const NOT_ESTABLISHED: PlayerReloads = { count: null, minimum: false }
 
+/** Une identité du roster qui porte un index, avec ses présences. */
+type RosterEntry = ReloadSeriesSource['roster'][number]
+
+/** La présence publiée d'une entrée couvre-t-elle l'image ? La borne haute est `toMax`, à défaut `to`. */
+function presentAt(entry: RosterEntry, frame: number): boolean {
+  return entry.presence.some((p) => frame >= p.from && frame <= (p.toMax ?? p.to))
+}
+
+/**
+ * ownerKeyOf rend la clé de roster du joueur qui a rechargé : celle de l'unique identité de l'index, ou à défaut de
+ * l'unique identité présente à l'image. `null` : aucune, ou plusieurs.
+ */
+function ownerKeyOf(candidates: readonly RosterEntry[] | undefined, frame: number): string | null {
+  if (candidates === undefined) return null
+  const keys = new Set<string>()
+  for (const entry of candidates) {
+    const key = rosterEntryKey(entry)
+    if (key) keys.add(key)
+  }
+  if (keys.size === 1) return [...keys][0]
+  const present = new Set<string>()
+  for (const entry of candidates) {
+    const key = rosterEntryKey(entry)
+    if (key && presentAt(entry, frame)) present.add(key)
+  }
+  return present.size === 1 ? [...present][0] : null
+}
+
 /**
  * readReloadSeries lit, une fois par document, les rechargements de chaque joueur du roster. `players` est le roster du
- * film (`buildPlayers`). Un rechargement dont l'index ne désigne aucune entrée du roster ne revient à personne.
+ * film (`buildPlayers`). Un rechargement dont l'index ne désigne aucune entrée du roster, ou que la présence ne permet
+ * pas d'attribuer à un seul joueur, ne revient à personne.
  */
 export function readReloadSeries(doc: ReloadSeriesSource, players: readonly ReplayPlayer[]): ReloadSeriesIndex {
   const coverage = doc.coverage?.reloads
   const index = new Map<string, PlayerReloadSeries>()
-  const minimum = coverage !== undefined && coverage.stoppedFrames > 0
-  const byPlace = new Map<number, number[]>()
+  const minimum = coverage !== undefined && (coverage.stoppedFrames > 0 || coverage.withoutPlayer > 0)
+  const byOwner = new Map<string, number[]>()
   if (coverage !== undefined) {
+    const entriesByPlace = new Map<number, RosterEntry[]>()
+    for (const entry of doc.roster) entriesByPlace.set(entry.filmIndex, [...(entriesByPlace.get(entry.filmIndex) ?? []), entry])
     for (const r of doc.reloads) {
-      const list = byPlace.get(r.place)
+      const key = ownerKeyOf(entriesByPlace.get(r.place), r.t)
+      if (key === null) continue
+      const list = byOwner.get(key)
       if (list) list.push(r.t)
-      else byPlace.set(r.place, [r.t])
+      else byOwner.set(key, [r.t])
     }
   }
   for (const player of players) {
     if (player.lives.length === 0) continue
-    let times: { t: number }[] | null = null
-    if (coverage !== undefined) {
-      const own: number[] = []
-      for (const entry of doc.roster) {
-        if (rosterEntryKey(entry) === player.xuid) own.push(...(byPlace.get(entry.filmIndex) ?? []))
-      }
-      own.sort((a, b) => a - b)
-      times = own.map((t) => ({ t }))
-    }
+    const times = coverage === undefined ? null : (byOwner.get(player.xuid) ?? []).sort((a, b) => a - b).map((t) => ({ t }))
     const series: PlayerReloadSeries = { times, minimum }
     for (const key of identityKeys(player)) index.set(key, series)
   }

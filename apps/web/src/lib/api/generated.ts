@@ -6932,34 +6932,7 @@ export interface components {
             victim?: string;
             xuid: string;
         };
-        EliminationCoverage: {
-            /** Format: int64 */
-            eliminations: number;
-            /** Format: int64 */
-            headAmbiguous: number;
-            /** Format: int64 */
-            headGuarded: number;
-            /** Format: int64 */
-            headNo: number;
-            /** Format: int64 */
-            headNoCounter: number;
-            /** Format: int64 */
-            headOrphanRises: number;
-            /** Format: int64 */
-            headUnknown: number;
-            /** Format: int64 */
-            headYes: number;
-            /** Format: int64 */
-            perfectAmbiguous: number;
-            /** Format: int64 */
-            perfectOrphans: number;
-            /** Format: int64 */
-            perfectUnknown: number;
-            /** Format: int64 */
-            perfectYes: number;
-            /** Format: int64 */
-            withVictim: number;
-        };
+        EliminationCoverage: Record<string, never>;
         EmpriseEquipment: {
             families: components["schemas"]["EmpriseEquipmentFamily"][] | null;
             /** Format: int64 */
@@ -11918,20 +11891,6 @@ export interface components {
         };
         ReloadCoverage: {
             /** Format: int64 */
-            afterEnd: number;
-            /** Format: int64 */
-            beforeOrigin: number;
-            /** Format: int64 */
-            closedFrames: number;
-            /** Format: int64 */
-            copies: number;
-            /** Format: int64 */
-            frames: number;
-            /** Format: int64 */
-            published: number;
-            /** Format: int64 */
-            read: number;
-            /** Format: int64 */
             stoppedFrames: number;
             /** Format: int64 */
             withoutPlayer: number;
@@ -12205,17 +12164,9 @@ export interface components {
             /** Format: int64 */
             scoreMessages: number;
             /** Format: int64 */
-            scoreboardBehind: number;
-            /** Format: int64 */
-            scoreboardCompared: number;
-            /** Format: int64 */
-            scoreboardMissing: number;
-            /** Format: int64 */
             scored: number;
             /** Format: int64 */
             stoppedFrames: number;
-            /** Format: int64 */
-            treeShift: number;
             /** Format: int64 */
             unconfirmedRank: number;
             /** Format: int64 */
@@ -13818,19 +13769,9 @@ export interface components {
         };
         StanceControlCoverage: {
             /** Format: int64 */
-            entries: number;
-            /** Format: int64 */
-            holds: number;
-            /** Format: int64 */
-            innerHoles: number;
-            /** Format: int64 */
-            intervals: number;
-            /** Format: int64 */
             noPlayer: number;
             /** Format: int64 */
             noTrack: number;
-            /** Format: int64 */
-            published: number;
             /** Format: int64 */
             withHole: number;
         };

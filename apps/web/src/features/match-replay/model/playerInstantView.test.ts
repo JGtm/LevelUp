@@ -123,7 +123,7 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
   })
 
   it('gestes : temps de sprint cumulé et sauts ; sans couverture, ni déplacement ni rechargements', () => {
-    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: null, jumps: 3, reloads: null, reloadsMinimum: false })
+    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: null, moveEstimated: false, jumps: 3, reloads: null, reloadsMinimum: false })
   })
 
   it('un document qui ne déclare pas le calque des médailles : ni éliminations parfaites ni médaille, jamais un zéro', () => {
@@ -149,7 +149,7 @@ describe('playerInstantView — la fiche suit l’image lue', () => {
     expect(v.kills?.classes.map((c) => [c.classKey, c.atInstant])).toEqual([['shoulder', 2], ['grenade', 0], ['heavy', 1]])
     expect(v.grenadesThrown).toEqual([{ name: 'Fragmentation', count: 2 }, { name: 'Plasma', count: 1 }])
     expect(v.pickups).toEqual({ weapons: 2, grenades: 1 })
-    expect(v.gestures).toEqual({ sprintMs: 2000, moveMs: null, jumps: 2, reloads: null, reloadsMinimum: false })
+    expect(v.gestures).toEqual({ sprintMs: 2000, moveMs: null, moveEstimated: false, jumps: 2, reloads: null, reloadsMinimum: false })
   })
 
   it('les valeurs ne reculent jamais d’une image à l’autre', () => {
@@ -312,7 +312,7 @@ describe('playerInstantView — rechargements et temps en commande de déplaceme
 
   it('Alpha : les rechargements et le temps tenu, cumulés à la fin du match', () => {
     const v = lecteur('A', { doc: lu })(FIN)
-    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: 3000, jumps: 3, reloads: 3, reloadsMinimum: false })
+    expect(v.gestures).toEqual({ sprintMs: 4000, moveMs: 3000, moveEstimated: false, jumps: 3, reloads: 3, reloadsMinimum: false })
   })
 
   it('suivent l’image lue, sans reculer', () => {

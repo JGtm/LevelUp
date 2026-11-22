@@ -13981,60 +13981,6 @@ components:
       type: object
     EliminationCoverage:
       additionalProperties: false
-      properties:
-        eliminations:
-          format: int64
-          type: integer
-        headAmbiguous:
-          format: int64
-          type: integer
-        headGuarded:
-          format: int64
-          type: integer
-        headNo:
-          format: int64
-          type: integer
-        headNoCounter:
-          format: int64
-          type: integer
-        headOrphanRises:
-          format: int64
-          type: integer
-        headUnknown:
-          format: int64
-          type: integer
-        headYes:
-          format: int64
-          type: integer
-        perfectAmbiguous:
-          format: int64
-          type: integer
-        perfectOrphans:
-          format: int64
-          type: integer
-        perfectUnknown:
-          format: int64
-          type: integer
-        perfectYes:
-          format: int64
-          type: integer
-        withVictim:
-          format: int64
-          type: integer
-      required:
-        - eliminations
-        - withVictim
-        - headYes
-        - headNo
-        - headUnknown
-        - headNoCounter
-        - headAmbiguous
-        - headGuarded
-        - headOrphanRises
-        - perfectYes
-        - perfectUnknown
-        - perfectAmbiguous
-        - perfectOrphans
       type: object
     EmpriseEquipment:
       additionalProperties: false
@@ -25688,27 +25634,6 @@ components:
     ReloadCoverage:
       additionalProperties: false
       properties:
-        afterEnd:
-          format: int64
-          type: integer
-        beforeOrigin:
-          format: int64
-          type: integer
-        closedFrames:
-          format: int64
-          type: integer
-        copies:
-          format: int64
-          type: integer
-        frames:
-          format: int64
-          type: integer
-        published:
-          format: int64
-          type: integer
-        read:
-          format: int64
-          type: integer
         stoppedFrames:
           format: int64
           type: integer
@@ -25716,15 +25641,8 @@ components:
           format: int64
           type: integer
       required:
-        - frames
-        - closedFrames
         - stoppedFrames
-        - read
-        - copies
         - withoutPlayer
-        - beforeOrigin
-        - afterEnd
-        - published
       type: object
     ReplayBuildEnqueueResponse:
       additionalProperties: false
@@ -26474,22 +26392,10 @@ components:
         scoreMessages:
           format: int64
           type: integer
-        scoreboardBehind:
-          format: int64
-          type: integer
-        scoreboardCompared:
-          format: int64
-          type: integer
-        scoreboardMissing:
-          format: int64
-          type: integer
         scored:
           format: int64
           type: integer
         stoppedFrames:
-          format: int64
-          type: integer
-        treeShift:
           format: int64
           type: integer
         unconfirmedRank:
@@ -26503,9 +26409,6 @@ components:
       required:
         - complete
         - groupMissing
-        - scoreboardCompared
-        - scoreboardMissing
-        - scoreboardBehind
         - frames
         - closedFrames
         - stoppedFrames
@@ -26517,7 +26420,6 @@ components:
         - namedWithoutPoints
         - outsideTree
         - unconfirmedRank
-        - treeShift
         - scored
         - published
         - noRecipient
@@ -30574,37 +30476,17 @@ components:
     StanceControlCoverage:
       additionalProperties: false
       properties:
-        entries:
-          format: int64
-          type: integer
-        holds:
-          format: int64
-          type: integer
-        innerHoles:
-          format: int64
-          type: integer
-        intervals:
-          format: int64
-          type: integer
         noPlayer:
           format: int64
           type: integer
         noTrack:
           format: int64
           type: integer
-        published:
-          format: int64
-          type: integer
         withHole:
           format: int64
           type: integer
       required:
-        - holds
         - withHole
-        - innerHoles
-        - entries
-        - published
-        - intervals
         - noTrack
         - noPlayer
       type: object

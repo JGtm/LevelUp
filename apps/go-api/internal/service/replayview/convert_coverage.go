@@ -254,18 +254,6 @@ func toT0FilmCoverage(v replay.T0FilmCoverage) replaydoc.T0FilmCoverage {
 	}
 }
 
-func toPadDatingStats(v replay.PadDatingStats) replaydoc.PadDatingStats {
-	return replaydoc.PadDatingStats{
-		Occupations:        v.Occupations,
-		Dated:              v.Dated,
-		Named:              v.Named,
-		Ambiguous:          v.Ambiguous,
-		Uncovered:          v.Uncovered,
-		PowerupOccupations: v.PowerupOccupations,
-		FirstOfCycle:       v.FirstOfCycle,
-	}
-}
-
 func toInventoryCoverage(v replay.InventoryCoverage) replaydoc.InventoryCoverage {
 	return replaydoc.InventoryCoverage{
 		Decoded:             v.Decoded,

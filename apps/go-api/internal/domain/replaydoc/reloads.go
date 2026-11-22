@@ -11,17 +11,11 @@ type Reload struct {
 	Place int `json:"place"`
 }
 
-// ReloadCoverage dit ce que le calque des rechargements a lu et ce qu'il a écarté : `read` = `copies` +
-// `withoutPlayer` + `beforeOrigin` + `afterEnd` + `published`. Une trame dont la liste d'événements s'arrête sur
-// un message non lu perd ceux qui la suivent (`stoppedFrames`) : le compte est alors un plancher.
+// ReloadCoverage dit ce que le calque des rechargements a écarté. Une trame dont la liste d'événements s'arrête sur
+// un message non lu perd ceux qui la suivent (`stoppedFrames`) et un rechargement sans joueur n'est pas publié
+// (`withoutPlayer`) : dans les deux cas le compte d'un joueur est un plancher. Les autres compteurs du décodeur n'ont
+// aucun lecteur ici (`testutil.ReplayChampsNonServis`).
 type ReloadCoverage struct {
-	Frames        int `json:"frames"`
-	ClosedFrames  int `json:"closedFrames"`
 	StoppedFrames int `json:"stoppedFrames"`
-	Read          int `json:"read"`
-	Copies        int `json:"copies"`
 	WithoutPlayer int `json:"withoutPlayer"`
-	BeforeOrigin  int `json:"beforeOrigin"`
-	AfterEnd      int `json:"afterEnd"`
-	Published     int `json:"published"`
 }

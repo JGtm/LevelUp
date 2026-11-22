@@ -148,3 +148,72 @@ describe('playerReloadStats — un bot', () => {
     expect(playerReloadsAt(reloadSeriesOf(index, humain), 100).count).toBe(1)
   })
 })
+
+describe('playerReloadStats — un index porté par plusieurs identités', () => {
+  const presence = (from: number, to: number) => ({ from, to })
+
+  it('deux joueurs successifs sur un index : chacun a ses rechargements, aucun ne reçoit la somme', () => {
+    const doc = docWith({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0, presence: [presence(0, 49)] },
+        { filmIndex: 0, xuid: 'c1', name: 'Charlie', team: 0, presence: [presence(50, 200)] },
+      ],
+      tracks: [vie(1, 'a1'), vie(1, 'c1')],
+      reloads: [reload(10, 0), reload(20, 0), reload(60, 0)],
+    })
+    const players = buildPlayers(doc, [scoreboardRow('a1', 'Alpha', 't0'), scoreboardRow('c1', 'Charlie', 't0')])
+    const index = readReloadSeries(doc, players)
+    const at = (xuid: string) => playerReloadsAt(reloadSeriesOf(index, players.find((p) => p.xuid === xuid) as ReplayPlayer), 200)
+    expect(at('a1').count).toBe(2)
+    expect(at('c1').count).toBe(1)
+  })
+
+  it('un rechargement hors de toute présence ne revient à personne', () => {
+    const doc = docWith({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0, presence: [presence(0, 40)] },
+        { filmIndex: 0, xuid: 'c1', name: 'Charlie', team: 0, presence: [presence(50, 200)] },
+      ],
+      tracks: [vie(1, 'a1'), vie(1, 'c1')],
+      reloads: [reload(45, 0)],
+    })
+    const players = buildPlayers(doc, [scoreboardRow('a1', 'Alpha', 't0'), scoreboardRow('c1', 'Charlie', 't0')])
+    const index = readReloadSeries(doc, players)
+    for (const p of players) expect(playerReloadsAt(reloadSeriesOf(index, p), 200).count).toBe(0)
+  })
+
+  it('quatre bots sur un index, présences confondues : aucun ne reçoit de rechargement', () => {
+    const noms = ['Ann', 'Bob', 'Cid', 'Dan']
+    const doc = docWith({
+      roster: noms.map((name) => ({ filmIndex: 5, xuid: '', name, team: 1, bot: true, presence: [presence(0, 200)] })),
+      tracks: noms.map((name, i) => ({ ...vie(10 + i, ''), bot: name })),
+      reloads: [reload(10, 5), reload(20, 5)],
+    })
+    const players = buildPlayers(doc, [])
+    const index = readReloadSeries(doc, players)
+    expect(players).toHaveLength(4)
+    for (const p of players) expect(playerReloadsAt(reloadSeriesOf(index, p), 200).count).toBe(0)
+  })
+
+  it('une même identité inscrite deux fois sur l’index garde ses rechargements', () => {
+    const doc = docWith({
+      roster: [
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+        { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
+      ],
+      tracks: [vie(1, 'a1')],
+      reloads: [reload(10, 0)],
+    })
+    const players = buildPlayers(doc, [scoreboardRow('a1', 'Alpha', 't0')])
+    const index = readReloadSeries(doc, players)
+    expect(playerReloadsAt(reloadSeriesOf(index, players[0]), 200).count).toBe(1)
+  })
+})
+
+describe('playerReloadStats — la couverture dit qu’une part manque', () => {
+  it('des rechargements sans joueur écartés : le compte est un minimum', () => {
+    const coverage = { reloads: { ...READ.reloads, withoutPlayer: 2 } }
+    const l = lecteur(docWith({ coverage, reloads: [reload(10, 0)] }))
+    expect(l('a1', 100)).toEqual({ count: 1, minimum: true })
+  })
+})

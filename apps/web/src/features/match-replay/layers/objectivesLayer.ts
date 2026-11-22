@@ -22,15 +22,11 @@
  * donc pas supprimée, seule la FAMILLE drapeau sort.
  *
  * ET SEULES LES ACTIONS SUR L'OBJECTIF EN FONT UN. `doc.objectives` n'est pas une liste d'objectifs :
- * il porte TOUT ce que le statborg sait nommer, `kills` et `assists` compris — l'ancre d'identité du
- * balayage et son contrôle croisé (`objectiveevents/named.go`) — et les éliminations liées à
- * l'objectif (éliminer un défenseur de base, le VIP adverse, un porteur de drapeau). Sur `8bc6074f`
- * le tri par famille seule ne retirait que les 15 648 frags des 160 actions d'objectif réelles ; il
- * laissait passer une élimination de zone, qui aurait ouvert un anneau de capture. Le tri est une
- * LISTE BLANCHE d'actions (`OBJECTIVE_PULSE_STATS` : captures, sécurisations, prises, retours, vols,
- * détonations) : une action nouvelle du décodeur n'ouvre pas d'anneau tant qu'elle n'y est pas nommée.
- * La famille (`model/objectiveFamilies.ts`) ne sert plus qu'à retirer le drapeau quand ses portages
- * existent.
+ * il porte TOUT ce que le statborg sait nommer, `kills` et `assists` compris, et les éliminations liées
+ * à l'objectif (défenseur de base, VIP adverse, porteur de drapeau). Un tri par famille laissait passer
+ * une élimination de zone, qui aurait ouvert un anneau de capture : le tri est une LISTE BLANCHE d'actions
+ * (`OBJECTIVE_PULSE_STATS`), une action nouvelle du décodeur n'ouvre pas d'anneau tant qu'elle n'y est pas
+ * nommée. La famille (`model/objectiveFamilies.ts`) ne sert plus qu'à retirer le drapeau quand ses portages existent.
  *
  * CE QUE LE SERVEUR A DÉJÀ DÉCIDÉ, et que ce calque ne rejoue pas : quels rôles servir
  * (table du titre jointe au pair_name), quelles équipes afficher (les modes à possession

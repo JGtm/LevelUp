@@ -107,12 +107,14 @@ export interface PickupsView {
 
 /**
  * La section des gestes : une valeur par ligne, `null` = pas de ligne (zéro, ou grandeur que le document ne permet pas
- * d'établir). `reloadsMinimum` : le compte de rechargements est un plancher (le film perd des messages sur certaines
- * trames), l'écran le dit.
+ * d'établir). `moveEstimated` : la couverture dit qu'une part des commandes de déplacement n'a pas été publiée, le temps
+ * est une estimation. `reloadsMinimum` : le compte de rechargements est un plancher (le film perd des messages sur
+ * certaines trames, ou des rechargements sans joueur), l'écran le dit.
  */
 export interface GesturesView {
   sprintMs: number | null
   moveMs: number | null
+  moveEstimated: boolean
   jumps: number | null
   reloads: number | null
   reloadsMinimum: boolean
@@ -270,6 +272,13 @@ export function playerInstantViewAt(s: PlayerInstantSources, frame: number): Pla
     gestures:
       sprintMs === null && moveMs === null && jumps === null && reloads === null
         ? null
-        : { sprintMs, moveMs, jumps, reloads, reloadsMinimum: reloads !== null && reloaded.minimum },
+        : {
+            sprintMs,
+            moveMs,
+            moveEstimated: moveMs !== null && movement.moveEstimated,
+            jumps,
+            reloads,
+            reloadsMinimum: reloads !== null && reloaded.minimum,
+          },
   }
 }
