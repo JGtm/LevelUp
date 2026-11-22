@@ -37,6 +37,10 @@ type PlayerOutcome struct {
 	Status          string // "ok" | "partial" | "failed"
 	FirstError      string // vide si OK
 	Warnings        []string
+	// HistoryPending : la passe a laissé l'historique de ce joueur incomplet (la fin n'a pas été
+	// rangée pendant le cycle) : le cycle suivant doit rattraper. Faux quand l'historique était
+	// déjà complet au début du cycle.
+	HistoryPending bool
 }
 
 // PhaseNames sert de clés stables pour PhaseDurations et le logging.

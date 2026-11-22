@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/historyretry"
+	"levelup/go-api/internal/sync/historystate"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/knownset"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -41,11 +42,6 @@ import (
 const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
-	// maxHistoryMatchesPerPass borne la profondeur d'un parcours de l'historique (mode full) :
-	// au-delà, la passe s'arrête avec un avertissement, sans ranger la fin d'historique. Très
-	// au-dessus du plus grand historique connu (7 000 matchs), le plus profond parcours réel
-	// reste donc complet.
-	maxHistoryMatchesPerPass = 50_000
 
 	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
 	// étapes film du post-sync (events / weapon kills).
@@ -246,9 +242,9 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		// Borne de sûreté du parcours en mode full : un historique entièrement connu se
 		// parcourt jusqu'à la page vide ; une API qui ne la rendrait jamais ne doit pas
 		// tenir la passe indéfiniment.
-		if start >= maxHistoryMatchesPerPass {
+		if start >= historystate.MaxDepth {
 			slog.WarnContext(ctx, "sync: parcours de l'historique arrêté à la borne de sûreté",
-				"gamertag", e.gamertag, "start", start, "max", maxHistoryMatchesPerPass)
+				"gamertag", e.gamertag, "start", start, "max", historystate.MaxDepth)
 			result.AddWarning(fmt.Sprintf("historique parcouru jusqu'à start=%d sans page vide", start))
 			break
 		}
@@ -483,7 +479,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// l'historique n'a pas été vue une fois (clé sync_meta), tout delta passe en mode
 	// full : les matchs connus sont sautés, les inconnus plus anciens sont rattrapés,
 	// le plafond MaxMatches borne chaque passe.
-	if isDelta && !historyComplete(ctx, playerDB) {
+	historyIncomplete := !historystate.Complete(ctx, playerDB)
+	if isDelta && historyIncomplete {
 		isDelta = false
 		mode = "full"
 		slog.InfoContext(ctx, "sync: historique incomplet — rattrapage en mode full",
@@ -664,10 +661,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 	// Fin de l'historique vue en mode full, sans page perdue ni file incomplète : la clé
-	// est rangée et les passes suivantes redeviennent des deltas.
+	// est rangée et les passes suivantes redeviennent des deltas. Le bail d'écriture du joueur est
+	// tenu ici : writerPlayer sur le chemin direct, celui repris après le drain en mode file.
+	historyMarked := false
 	if !isDelta && result.HistoryExhausted && len(result.Errors) == 0 && drainErr == nil {
-		markHistoryComplete(ctx, playerDB, e.gamertag)
+		historyMarked = historystate.MarkComplete(ctx, playerDB, e.gamertag)
 	}
+	result.HistoryPending = historyIncomplete && !historyMarked
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
 	// postShared est posé par le post-drain (bursts avec provider, pinned sans).

@@ -45,6 +45,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/sync/skill"
+	"levelup/go-api/internal/sync/syncmeta"
 )
 
 // MatchRecomputer recalcule performance_score + LUSR pour un joueur après une
@@ -275,7 +276,7 @@ func (r *MatchRecomputer) storeScoringRevision(ctx context.Context, rev string) 
 		return fmt.Errorf("MatchRecomputer.ApplyScoringRevision OpenPlayerDB: %w", err)
 	}
 	defer handle.Close()
-	if err := SetSyncMeta(ctx, handle.SQLDb(), skill.SyncMetaScoringRevision, rev); err != nil {
+	if err := syncmeta.Set(ctx, handle.SQLDb(), skill.SyncMetaScoringRevision, rev); err != nil {
 		return fmt.Errorf("MatchRecomputer.ApplyScoringRevision: %w", err)
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	intsync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/syncmeta"
 	"levelup/go-api/internal/sync/testutil"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -41,7 +42,7 @@ func TestUpsertXUIDAlias(t *testing.T) {
 func TestSetSyncMeta(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
 
-	if err := intsync.SetSyncMeta(t.Context(), db, "last_sync", "2025-01-01T00:00:00Z"); err != nil {
+	if err := syncmeta.Set(t.Context(), db, "last_sync", "2025-01-01T00:00:00Z"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,7 +53,7 @@ func TestSetSyncMeta(t *testing.T) {
 	}
 
 	// Upsert
-	_ = intsync.SetSyncMeta(t.Context(), db, "last_sync", "2025-06-01T00:00:00Z")
+	_ = syncmeta.Set(t.Context(), db, "last_sync", "2025-06-01T00:00:00Z")
 	_ = db.QueryRow("SELECT value FROM sync_meta WHERE key = 'last_sync'").Scan(&val)
 	if val != "2025-06-01T00:00:00Z" {
 		t.Errorf("expected 2025-06-01T00:00:00Z after upsert, got %s", val)
