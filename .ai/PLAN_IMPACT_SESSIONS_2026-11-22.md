@@ -79,24 +79,24 @@ couverte par la cartographie du 2026-11-22 (agent d'exploration, rapport recopi�
 
 ### Lot W — tableau web (Sonnet) — lourd — après G.1
 
-- [ ] Logique pure (`impactSessions.logic.ts`) : lignes, net par match, état ouvert initial (D-6),
+- [x] Logique pure (`impactSessions.logic.ts`) : lignes, net par match, état ouvert initial (D-6),
   surlignage (extrait des helpers de `SquadImpactScoreboard` vers un module partagé de la feature).
-- [ ] Composant `SquadImpactSessionsTable` (TanStack Table, patron des lignes dépliables de
+- [x] Composant `SquadImpactSessionsTable` (TanStack Table, patron des lignes dépliables de
   `MatchScoreboard`), barre composite V/D (exporter un `WinLossSplitBar` depuis
   `features/_shared/EncounterSplitBars.tsx`), textes fr/en, infobulle de titre.
-- [ ] Montage dans `SquadContributionsPage` à la place des deux blocs ; transmission de la session
+- [x] Montage dans `SquadContributionsPage` à la place des deux blocs ; transmission de la session
   sélectionnée selon `filterBarBoundary.guard.test.ts`.
-- [ ] Suppression de `SquadImpactScoreboard*`, `impact/*` (historique), fixtures, textes devenus morts ;
+- [x] Suppression de `SquadImpactScoreboard*`, `impact/*` (historique), fixtures, textes devenus morts ;
   D-10 ; cliquets (`functionSize`, contrat) abaissés ou mis à jour avec justification.
 - Gate : `npx vitest run src/features/squad src/lib src/components --maxWorkers=2`, `npm run typecheck`
   (après purge de `node_modules/.tmp`), `npm run lint`, `node tools/lint-cross-feature-imports.mjs`.
 
 ### Clôture — pilote
 
-- [ ] Z.1 `npx vitest run` complet, `go test -tags=integration -p 1 ./...`, `make gate-push` (avec
+- [x] Z.1 `npx vitest run` complet, `go test -tags=integration -p 1 ./...`, `make gate-push` (avec
   `LEVELUP_REPO_ROOT` et `LEVELUP_IDENTITES_ORIGINALES` du dépôt principal).
-- [ ] Z.2 Revue adversariale (Fable, une ronde), P0/P1 corrigés, P2 au backlog.
-- [ ] Z.3 Lignes de vérification dans l'artefact `verifs` ; `thought_log` ; fusion dans `release/v8.3.0` ;
+- [x] Z.2 Revue adversariale (Fable, une ronde), P0/P1 corrigés, P2 au backlog.
+- [x] Z.3 Lignes de vérification dans l'artefact `verifs` ; `thought_log` ; fusion dans `release/v8.3.0` ;
   CI lue.
 
 ## Découvertes
@@ -147,3 +147,5 @@ Lire ce fichier puis `git log --oneline -10` dans le worktree.
   `impactHistory.fixtures.ts`), cas de `SquadContributionsPage.test.tsx:103-106`, `:161-187`,
   `features/timeseries/usages/textesSansPersonne.test.ts:36`, `:124` (lit `IMPACT_HISTORY_TEXT.*.empty`),
   `eveningDate` partagé (`objectif/objectif.logic.ts:463`, garder).
+- 2026-11-22 : lot W fusionné (worktree `LevelUp-wt-impact-sessions-w`) : tableau `features/squad/impact-sessions/`, `WinLossSplitBar`, anciens blocs et jetons `impact-gain/loss` supprimés (avec `paletteForTheme`). Écart validé par la maquette (D-4 précisé) : à égalité, plusieurs couronnes ou bananes ; aucune marque si tous les scores sont égaux.
+- 2026-11-22 : clôture. Z.1 : suite web complète verte hors le cliquet `functionSize` abaissé pendant la suite par la correction P1-2 (relancé vert) ; typecheck vert ; intégration Go `-p 1` de G.2 sur service, platform/duckdb et api verte (la passe `./...` complète, sans objet pour ce diff qui ne touche ni persist ni sync ni migration, a été arrêtée) ; `make gate-push` vert. Z.2 : revue Fable, aucun P0, deux P1 corrigés (porte de capacité `match.events.timeline`, sous-composant `ImpactSessionRow`), P2 au backlog. Z.3 : ligne `is-tableau-sessions` dans l'artefact des vérifications, journal, fusion dans `release/v8.3.0`.

@@ -1,3 +1,11 @@
+## [2026-11-22] Escouade : « Impact des coéquipiers » par session remplace la matrice et le graphe par soirée — Complété (fusion dans release/v8.3.0 ; reste la vérification à l'écran du user)
+
+**Décision technique principale** : payload neuf `squad_impact_sessions` (`squadimpact.BuildSessions`, mêmes rôles `rolesDesMatchs` et même barème), qui remplace `impact_matrix` et `squad_impact_history` (types, constructeurs, composants supprimés) ; tableau web à lignes de session dépliables sur la matrice de la session, ligne « Toutes les sessions », session sélectionnée teintée et ouverte (maquette validée par le user) ; jetons `impact-gain/loss` et `paletteForTheme` supprimés faute de lecteur ; porte de capacité `match.events.timeline` conservée.
+
+**Résultats observés** : témoin de parité (comptes et points identiques à l'ancien historique, totaux à l'ancienne matrice restreinte aux matchs à libellé de session) ; gates verts ; revue adversariale sans P0, deux P1 corrigés, trois P2 au backlog.
+
+**Conclusion / prochaine étape** : vérification à l'écran (artefact `verifs`, ligne « is-tableau-sessions »). Plan : `.ai/PLAN_IMPACT_SESSIONS_2026-11-22.md`.
+
 ## [2026-11-22] Impact des coéquipiers par session : lot G.1, contrat du tableau — Complété (branche feat/impact-sessions, non poussée)
 **Statut :** Complété pour G.1 ; G.2 (calcul et suppression des anciens champs) et W (tableau web) restent. Plan : `.ai/PLAN_IMPACT_SESSIONS_2026-11-22.md`.
 **Décision technique principale :** payload neuf `squad_impact_sessions` sur la réponse de `/pages/teammates` (types `SquadImpactSessions*` dans `internal/domain/squad_impact_sessions.go`), à côté des anciens champs encore servis. Le barème (`scale`) est servi : le web en tire le sens d'un rôle (points négatifs : plus grand compte = pire) pour le surlignage, au lieu de garder une seconde table de rôles négatifs.
