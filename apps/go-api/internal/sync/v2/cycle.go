@@ -56,6 +56,9 @@ type CycleOrchestratorImpl struct {
 	// invoqué explicitement après RunPostSync, hors fenêtre RW (write-lease relâché en
 	// fin de Phase 6), par PlayerSlug (= user_id des défis). nil = no-op.
 	prestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// historyWriter (câblé par WithHistoryWriter) ouvre la base joueur en écriture sous le bail du
+	// joueur pour ranger la fin d'historique et le marque-page après la persistance (history.go).
+	historyWriter PlayerDBOpener
 }
 
 // WithSnapshotProducer câble le producteur de snapshot (Phase 6bis), optionnel et
@@ -172,6 +175,11 @@ func (o *CycleOrchestratorImpl) Run(
 		"errors", len(disc.Errors),
 	)
 
+	// HistoryPending : suivi de l'historique incomplet, recopié sur PerPlayer à CHAQUE sortie du
+	// cycle (les sorties anticipées comprises) ; settleHistory le fait baisser après la persistance.
+	hist := newHistoryTracker(disc)
+	defer hist.apply(res.PerPlayer)
+
 	// Capturer les erreurs Discovery dans PerPlayer.
 	for slug, errVal := range disc.Errors {
 		o.markFailed(res.PerPlayer, slug, playerBySlug, "discovery", errVal)
@@ -255,6 +263,9 @@ func (o *CycleOrchestratorImpl) Run(
 	for _, p := range players {
 		o.populateOutcome(res.PerPlayer, p, playerBySlug, disc, dedup)
 	}
+
+	// Persistance réussie : fin d'historique ou marque-page des joueurs au rattrapage.
+	o.settleHistory(ctx, hist, players, disc, fetched)
 
 	// ─── Phase 6 — Post-sync ────────────────────────────────────────────
 	// Calcule insertedByPlayer depuis fetched + dedup pour cibler les heals

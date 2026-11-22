@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/sync/historystate"
 	"levelup/go-api/internal/sync/knownset"
 )
 
@@ -41,17 +42,19 @@ func NewKnownLoader(playerDBOpener PlayerDBOpener, borrowShared SharedDBAcquirer
 }
 
 // LoadKnown retourne l'ensemble des matchs connus du joueur et ses orphelins à récupérer par
-// match_id (règle knownset). Erreur si la base joueur ne s'ouvre pas, ou si la base partagée ne
+// match_id (règle knownset), avec l'état de son historique et son marque-page (historystate, lus sur
+// la base joueur déjà ouverte : une lecture en échec vaut « historique complet », journalisée par
+// historystate). Erreur si la base joueur ne s'ouvre pas, ou si la base partagée ne
 // peut pas être empruntée ou lue (knownset.ErrSharedUnreadable) : le cycle s'arrête alors avant
 // toute récupération (cf. CycleOrchestratorImpl.Run).
 //
 // Une LECTURE en échec sur la base partagée (emprunt abouti) est refaite UNE fois sur un nouvel
 // emprunt : la connexion de l'écrivain servie pendant une écriture (cf. SharedBorrower) se ferme à sa
 // libération, éventuellement sous la lecture ; le second emprunt sert la connexion rouverte.
-func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
+func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (KnownState, error) {
 	playerDB, release, err := l.openPlayerDB(ctx, p.Gamertag)
 	if err != nil {
-		return knownset.Set{}, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
+		return KnownState{}, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
 	}
 	defer release()
 
@@ -62,9 +65,19 @@ func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownse
 		set, _, err = l.loadOnce(ctx, playerDB, p)
 	}
 	if err != nil {
-		return knownset.Set{}, fmt.Errorf("known set %s: %w", p.Gamertag, err)
+		return KnownState{}, fmt.Errorf("known set %s: %w", p.Gamertag, err)
 	}
-	return set, nil
+	return KnownState{Set: set, History: readHistoryState(ctx, playerDB)}, nil
+}
+
+// readHistoryState lit l'état de l'historique du joueur sur sa base ouverte : complet (delta
+// ordinaire) ou incomplet, avec le marque-page du rattrapage s'il y en a un.
+func readHistoryState(ctx context.Context, playerDB *sql.DB) HistoryState {
+	if historystate.Complete(ctx, playerDB) {
+		return HistoryState{}
+	}
+	cu := historystate.LoadCatchUp(ctx, playerDB)
+	return HistoryState{Incomplete: true, Cursor: cu.Cursor, Failures: cu.Failures}
 }
 
 // loadOnce emprunte la base partagée, lit l'ensemble connu (knownset.Load) et rend l'emprunt.

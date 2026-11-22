@@ -2,6 +2,8 @@ package historystate_test
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/sync/historystate"
@@ -167,5 +169,117 @@ func TestMarkComplete_EffaceLeMarquePage(t *testing.T) {
 	}
 	if !historystate.Complete(ctx, db) {
 		t.Error("après MarkComplete : historique complet")
+	}
+}
+
+// Les échecs de rattrapage se rangent à côté du marque-page : l'un ne fait jamais perdre l'autre.
+func TestSaveFailures_ConserveLeMarquePage_Et_Reciproquement(t *testing.T) {
+	db := openMemDB(t, true)
+	ctx := context.Background()
+	fails := []historystate.Failure{{MatchID: "a", Attempts: 1}, {MatchID: "b", Attempts: 2}}
+
+	if !historystate.SaveFailures(ctx, db, fails) {
+		t.Fatal("SaveFailures doit rendre vrai")
+	}
+	if _, ok := historystate.LoadCursor(ctx, db); ok {
+		t.Error("des échecs seuls ne font pas un marque-page")
+	}
+	if got := historystate.LoadCatchUp(ctx, db); got.Cursor != nil || len(got.Failures) != 2 || got.Failures[1] != fails[1] {
+		t.Fatalf("LoadCatchUp = %+v, want deux échecs sans marque-page", got)
+	}
+
+	cur := historystate.Cursor{Offset: 200, LastMatchID: "m-200"}
+	if !historystate.SaveCursor(ctx, db, cur) {
+		t.Fatal("SaveCursor")
+	}
+	got := historystate.LoadCatchUp(ctx, db)
+	if got.Cursor == nil || *got.Cursor != cur || len(got.Failures) != 2 {
+		t.Fatalf("après SaveCursor : %+v, want marque-page et les deux échecs conservés", got)
+	}
+
+	if !historystate.SaveFailures(ctx, db, []historystate.Failure{{MatchID: "b", Attempts: 3}}) {
+		t.Fatal("SaveFailures (mise à jour)")
+	}
+	got = historystate.LoadCatchUp(ctx, db)
+	if got.Cursor == nil || *got.Cursor != cur || len(got.Failures) != 1 || got.Failures[0].Attempts != 3 {
+		t.Fatalf("après mise à jour des échecs : %+v", got)
+	}
+
+	// Liste vide : les échecs s'effacent, le marque-page reste.
+	historystate.SaveFailures(ctx, db, nil)
+	got = historystate.LoadCatchUp(ctx, db)
+	if got.Cursor == nil || len(got.Failures) != 0 {
+		t.Fatalf("après liste vide : %+v, want le marque-page seul", got)
+	}
+}
+
+// Sans marque-page ni échec rangés, une liste vide ne laisse qu'une valeur vide.
+func TestSaveFailures_ListeVideSansMarquePage_ValeurVide(t *testing.T) {
+	db := openMemDB(t, true)
+	ctx := context.Background()
+	historystate.SaveFailures(ctx, db, []historystate.Failure{{MatchID: "a", Attempts: 1}})
+	historystate.SaveFailures(ctx, db, nil)
+	if v, ok, err := syncmeta.Get(ctx, db, historystate.CursorKey); err != nil || !ok || v != "" {
+		t.Errorf("valeur = (%q, %v, %v), want une valeur vide", v, ok, err)
+	}
+	if got := historystate.LoadCatchUp(ctx, db); got.Cursor != nil || len(got.Failures) != 0 {
+		t.Errorf("LoadCatchUp = %+v, want vide", got)
+	}
+}
+
+// Borne : au plus MaxFailures entrées, les plus anciennes sortent.
+func TestSaveFailures_BorneLesPlusAnciennesSortent(t *testing.T) {
+	db := openMemDB(t, true)
+	ctx := context.Background()
+	n := historystate.MaxFailures + 25
+	in := make([]historystate.Failure, n)
+	for i := range in {
+		in[i] = historystate.Failure{MatchID: fmt.Sprintf("m%03d", i), Attempts: 1}
+	}
+	if !historystate.SaveFailures(ctx, db, in) {
+		t.Fatal("SaveFailures")
+	}
+	got := historystate.LoadCatchUp(ctx, db).Failures
+	if len(got) != historystate.MaxFailures {
+		t.Fatalf("%d échecs rangés, want %d", len(got), historystate.MaxFailures)
+	}
+	if got[0] != in[25] || got[len(got)-1] != in[n-1] {
+		t.Errorf("entrées gardées : %v ... %v, want les %d plus récentes (de %v à %v)", got[0], got[len(got)-1], historystate.MaxFailures, in[25], in[n-1])
+	}
+}
+
+// Une entrée d'échec sans identifiant ou sans tentative est écartée à la lecture et à l'écriture.
+func TestFailures_EntreesInvalidesEcartees(t *testing.T) {
+	db := openMemDB(t, true)
+	ctx := context.Background()
+	if err := syncmeta.Set(ctx, db, historystate.CursorKey,
+		`{"failed":[{"id":"","attempts":2},{"id":"a","attempts":0},{"id":"b","attempts":2}]}`); err != nil {
+		t.Fatal(err)
+	}
+	got := historystate.LoadCatchUp(ctx, db).Failures
+	if len(got) != 1 || got[0].MatchID != "b" {
+		t.Errorf("Failures = %v, want seulement b", got)
+	}
+	historystate.SaveFailures(ctx, db, []historystate.Failure{{MatchID: "", Attempts: 1}, {MatchID: "c", Attempts: 0}, {MatchID: "d", Attempts: 1}})
+	got = historystate.LoadCatchUp(ctx, db).Failures
+	if len(got) != 1 || got[0].MatchID != "d" {
+		t.Errorf("après écriture : %v, want seulement d", got)
+	}
+}
+
+// ClearCursor et MarkComplete effacent aussi les échecs.
+func TestClearCursor_EtMarkComplete_EffacentLesEchecs(t *testing.T) {
+	ctx := context.Background()
+	for name, clear := range map[string]func(db *sql.DB){
+		"ClearCursor":  func(db *sql.DB) { historystate.ClearCursor(ctx, db) },
+		"MarkComplete": func(db *sql.DB) { historystate.MarkComplete(ctx, db, "alice") },
+	} {
+		db := openMemDB(t, true)
+		historystate.SaveCursor(ctx, db, historystate.Cursor{Offset: 5, LastMatchID: "m"})
+		historystate.SaveFailures(ctx, db, []historystate.Failure{{MatchID: "a", Attempts: 2}})
+		clear(db)
+		if got := historystate.LoadCatchUp(ctx, db); got.Cursor != nil || len(got.Failures) != 0 {
+			t.Errorf("%s : état restant %+v, want vide", name, got)
+		}
 	}
 }

@@ -91,6 +91,16 @@ page.
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
   matchs ajoutés, erreur éventuelle), prochaine passe. Texte seul, pas de graphique. Mise à jour
   automatique tant qu'un rattrapage tourne. Lecture seule côté serveur.
+- **D-16** (pilote, 22/11) Un match qui échoue toujours ne garde pas le joueur en rattrapage à vie. Le marque-page
+  (`history_catchup_cursor`) porte aussi la liste ordonnée des matchs en échec de rattrapage avec leur nombre de
+  passes (`failed: [{id, attempts}]`, du plus ancien au plus récent, au plus 200 entrées, les plus anciennes sortent ;
+  une liste ordonnée plutôt qu'un objet, pour savoir qui est le plus ancien). Un match en échec à `maxCatchUpAttempts`
+  (3) passes est abandonné : il n'est plus retenté par le rattrapage, ne compte plus dans le budget, ne retient ni la
+  fin ni le marque-page ; journalisé (`slog.Warn`, identifiant et dernière erreur) et compté
+  (`sync_v2_history_abandoned_total`) au moment de l'abandon, dans la passe du dernier échec. La fin se range quand la
+  fin est vue et que les seuls inconnus restants sont abandonnés ; le journal de fin dit combien. Un 404/410 reste
+  « introuvable » : jamais compté comme échec. Un match abandonné qui sort de la liste (borne de 200) redevient un inconnu
+  ordinaire.
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - Réservé à l'utilisateur : squash dans `main`, tag `v8.2.2`, publication de la release et de la mise à
   jour de l'application, réponse publique sur #213 (texte validé par lui le 22/11).
@@ -136,13 +146,16 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 2 — piste A : découverte V2 (Halo Infinite)
 
-- [ ] 2.0 Marque-page (D-13) ajouté à `historystate` (lecture, écriture, effacement), tests.
-- [ ] 2.1 `KnownLoader` rend aussi l'état de l'historique du joueur (lu dans la base joueur déjà ouverte).
-- [ ] 2.2 `ListUnknownMatches` : deux modes (D-4), rend un indicateur « fin vue ».
-- [ ] 2.3 `cycle.go` : après une persistance réussie, range la fin pour chaque joueur qui remplit D-5 ;
-  remplit `HistoryPending` ; distingue les introuvables (404/410) des autres erreurs de récupération.
-- [ ] 2.4 Câblage `cmd/server/sync_v2_wiring.go` : l'écriture passe par le bail joueur existant.
-- [ ] 2.5 Tests : découverte (incomplet : saute les connus, budget, fin vue, page partielle, borne de
+- [x] 2.0 Marque-page (D-13) ajouté à `historystate` (`LoadCursor`, `SaveCursor`, `ClearCursor`, type `Cursor`, clé `history_catchup_cursor`), tests. Commit `beb37a3eb8` (fix/822-a), à fusionner tôt : la piste Halo 5 en dépend.
+- [x] 2.1 `KnownLoader.LoadKnown` rend `KnownState` (ensemble connu + `HistoryState{Incomplete, Cursor}`, lus sur la base joueur déjà ouverte).
+- [x] 2.2 `ListUnknownMatches` : deux modes (D-4, D-13), rend `Listing{Unknown, EndSeen, Proposed}` (`v2/fetchers_history.go`).
+- [x] 2.3 `cycle.go` + `v2/history.go` : après une persistance réussie, range la fin ou le marque-page pour chaque
+  joueur qui remplit D-5 ; remplit `HistoryPending` (sorties anticipées comprises) ; introuvables reconnus par
+  `sync.IsNotFound` (verdict typé de la brique halo-api, 404/410) ; « persisté » prouvé par relecture de l'ensemble connu.
+- [x] 2.4 Câblage `cmd/server/sync_v2_wiring.go` : `WithHistoryWriter(playerDBOpenerRW)`, l'ouverture sous bail joueur du post-sync
+  (`postSyncPlayerOpener`) ; ratchet `sync_v2_wiring_history_test.go`.
+- [x] 2.6 D-16 : échecs de rattrapage comptés dans le marque-page, abandon à 3 passes (`v2/history_settle.go`, `historystate.LoadCatchUp` / `SaveFailures`), tests (abandon à la 3e passe puis fin rangée, échec puis succès, borne de 200, 404 jamais un échec).
+- [x] 2.5 Tests : découverte (incomplet : saute les connus, budget, fin vue, page partielle, borne de
   sûreté ; complet : inchangé) ; cycle (fin rangée seulement sous D-5 : cas erreur de découverte, erreur
   de récupération, introuvable, persistance en échec).
 - Gate : `go test ./internal/sync/v2/... ./cmd/server/...` puis
@@ -256,3 +269,20 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   peut pas ranger la fin (base `nil`) : `HistoryPending` reste vrai, la passe suivante rattrape.
 - Étape 1 : une passe V1 qui sort en erreur avant la fin (chargement des connus, bail) rend
   `HistoryPending` faux (valeur par défaut) ; l'ordonnanceur (étape 4) lit aussi l'erreur du cycle.
+- Étape 2 : `GetMatchStats` signale un 404/410 par un verdict TYPÉ (`infinite.IsNotFound`, `errors.Is(err, ErrFilmGone)`
+  sur `*HTTPError`) ; ajouté `haloadapter.IsNotFound` et son ré-export `sync.IsNotFound` (même motif qu'`IsAuthError`).
+  Les erreurs de récupération de V2 conservent la chaîne `%w`, donc le verdict traverse `RunFetchShared`.
+- Étape 2 : le risque d'un match qui échoue toujours (parse, persistance, 500 permanent) est traité par D-16 :
+  abandon à la 3e passe en échec, fin rangée ensuite. Les échecs se comptent par passe où le match était listé ;
+  un orphelin de l'ensemble connu abandonné reste redemandé par la rotation des orphelins (`Set.Recover`) sans
+  jamais bloquer.
+- Étape 2 : l'entrée « introuvable » du dessus de liste (404 jamais persisté) est recomptée comme nouveau match à chaque
+  passe ; elle décale la reprise du marque-page de ce nombre ; au-delà d'une page (25) la page de recouvrement ne
+  contient plus le dernier match rangé et la lecture repart du début (journalisé, compté).
+- Étape 2 : la page de recouvrement est lue deux fois (vérification puis lecture ordinaire) : un appel d'API de plus par
+  passe, laissé tel quel.
+- Étape 2 : joueur dont `LoadKnown` échoue (état de l'historique inconnu) : `HistoryPending` reste faux ; l'ordonnanceur
+  (étape 4) lit l'erreur du cycle. Sorties anticipées du cycle : seules les issues par joueur déjà créées portent
+  `HistoryPending`.
+- Étape 2 : `ClearCursor` range une valeur vide (aucun DELETE sur `sync_meta`, règle anti-ART) ; le type s'appelle
+  `Cursor` et la lecture `LoadCursor` (un type et une fonction ne peuvent pas porter le même nom dans un paquet).

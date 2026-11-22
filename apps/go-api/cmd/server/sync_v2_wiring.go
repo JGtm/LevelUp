@@ -181,6 +181,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		postSyncRunner,
 		syncv2.CycleConfig{},
 	).WithSnapshotProducer(snapshotCutter).
+		WithHistoryWriter(playerDBOpenerRW).
 		WithPrestigeHook(deps.PrestigeHook)
 }
 
