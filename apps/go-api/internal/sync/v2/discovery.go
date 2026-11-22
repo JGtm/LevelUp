@@ -39,6 +39,15 @@ type KnownLoader interface {
 	LoadKnown(ctx context.Context, p PlayerProfile) (KnownState, error)
 }
 
+// SkipSetLoader est la capacité facultative d'un KnownLoader de lire, par joueur, l'ensemble des matchs
+// que la découverte ne demande plus (historystate.LoadSkipSet : introuvables 404/410 et abandonnés).
+// RunDiscovery la consulte après LoadKnown et pose le résultat dans KnownState.History.Skip ; un
+// KnownLoader qui ne l'implémente pas (un faux de test) peut renseigner Skip lui-même. L'implémentation
+// de production est known_loader_skip.go.
+type SkipSetLoader interface {
+	LoadSkipSet(ctx context.Context, p PlayerProfile) map[string]bool
+}
+
 // MatchListProvider retourne la liste des match_ids retournés par l'API
 // pour un joueur : en mode delta (historique complet), pagination en ordre
 // reverse-chronologique jusqu'à domain.DeltaKnownRun matchs présents dans known d'affilée ; tous les
@@ -105,20 +114,25 @@ func RunDiscovery(
 				mu.Unlock()
 				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
 			}
+			if sl, ok := loader.(SkipSetLoader); ok {
+				state.History.Skip = sl.LoadSkipSet(egCtx, p)
+			}
 			listing, err := provider.ListUnknownMatches(egCtx, p, state.Known, state.History)
 			if err != nil {
 				mu.Lock()
 				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
-				res.History[p.PlayerSlug] = PlayerHistory{Incomplete: state.History.Incomplete, Failures: state.History.Failures}
+				res.History[p.PlayerSlug] = PlayerHistory{
+					Incomplete: state.History.Incomplete, Failures: state.History.Failures, Skip: state.History.Skip,
+				}
 				mu.Unlock()
 				return nil //nolint:nilerr // idem
 			}
-			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover)
+			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover, state.History.skipped())
 			mu.Lock()
 			res.PerPlayer[p.PlayerSlug] = unknown
 			res.History[p.PlayerSlug] = PlayerHistory{
 				Incomplete: state.History.Incomplete, EndSeen: listing.EndSeen, Proposed: listing.Proposed,
-				Failures: state.History.Failures,
+				Failures: state.History.Failures, Skip: state.History.Skip,
 			}
 			mu.Unlock()
 			return nil
@@ -133,9 +147,10 @@ func RunDiscovery(
 }
 
 // appendOrphans ajoute à la liste d'un joueur les orphelins à récupérer par match_id
-// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover).
+// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover). Un
+// orphelin que la découverte ne demande plus (skip : introuvable, abandonné) n'est pas ajouté.
 // Aucun orphelin → la liste est rendue telle quelle.
-func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string) []string {
+func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string, skip map[string]bool) []string {
 	if len(orphans) == 0 {
 		return unknown
 	}
@@ -143,15 +158,19 @@ func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []stri
 	for _, id := range unknown {
 		listed[id] = true
 	}
-	added := 0
+	added, skipped := 0, 0
 	for _, id := range orphans {
-		if !listed[id] {
+		switch {
+		case listed[id]:
+		case skip[id]:
+			skipped++
+		default:
 			unknown = append(unknown, id)
 			added++
 		}
 	}
 	slog.InfoContext(ctx, "sync.v2: orphelins ajoutés à la récupération par match_id",
 		"event", "sync.v2.discovery.orphans", "player", p.PlayerSlug,
-		"requested", len(orphans), "already_listed", len(orphans)-added, "added", added)
+		"requested", len(orphans), "already_listed", len(orphans)-added-skipped, "skipped", skipped, "added", added)
 	return unknown
 }

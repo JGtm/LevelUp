@@ -142,6 +142,29 @@ page.
     (V2, Halo 5, V1) ; V2 convergence `[8 9 10 9 10 2]` (48) inchangée, delta d'un match neuf après la fin 1 -> 2 pages ; Halo 5 convergence `[8 10 10 10 10 3]` (51)
     -> `[8 11 10 11 10 3]` (53) ; Halo 5 40 Warzone en tête `[10 11 10 10 10]` (51) -> `[10 12 12 12 12]` (58, les Warzone
     n'arrêtent ni ne remettent à zéro : 40 + 25 entrées = 3 pages au lieu de 2).
+- **D-24** (pilote, 22/11) Les matchs introuvables et abandonnés ne sont plus demandés, ni comptés insérés. Un
+  ensemble persistant par joueur des matchs à ne plus demander : introuvables (404/410) et abandonnés (D-16), rangé dans
+  `sync_meta` sous la clé `history_skip_set` (paquet `historystate`, `skipset.go`) : JSON `{"skipped":[{"id","why"}],
+  "saved_at"}`, `why` = `not_found` | `abandoned`, borné à 2 000 entrées (les plus anciennes sortent), valeur vide jamais
+  de DELETE. Neutre pour le delta et la découverte (ne compte pas dans la suite de 25 connus et ne la remet pas à zéro,
+  comme les Warzone de Halo 5), plus demandé, jamais compté inséré. `MarkComplete` ne l'efface pas. Le compte « inséré »
+  d'un cycle = matchs PROUVÉS rangés (relecture de l'ensemble connu, mécanisme de D-5/D-19). Écritures sous le bail
+  d'écriture déjà utilisé par V2 (`WithHistoryWriter`). Halo 5 : aucun match individuel n'y est introuvable (la liste
+  porte les statistiques du match, un carnage ou une timeline en 404 donne un match collecté sans roster, jamais un
+  match perdu) ; ses entrées écartées (Warzone, campagne) sont déjà neutres (D-23) et ses pages abandonnées relèvent de
+  `historystate.Streak` (rattrapage seulement) : rien à ajouter.
+  - [x] D-24.1 API `historystate` (`skipset.go` : `SkipSetKey`, `MaxSkipSet` 2000, `LoadSkipSet`, `AddSkips`) et garde-rail
+    archlint des clés étendu (`history_key_single_source_test.go`) ; tests (aller-retour, doublons, borne, `MarkComplete`
+    n'efface pas, valeur illisible, lecture en échec).
+  - [x] D-24.2 Découverte V2 : `HistoryState.Skip`, lu par la capacité facultative `SkipSetLoader` (`known_loader_skip.go`,
+    consultée par `RunDiscovery`) ; neutralité dans `listDelta`, `scanNew`, `scanFrom`, `scanTop` et `appendOrphans`.
+  - [x] D-24.3 Cycle V2 : rangement après la persistance (`history_skip.go`, joueur complet comme en rattrapage, sous
+    `WithHistoryWriter`, AVANT la fin d'historique : écriture en échec = fin non rangée) ; compte « inséré » sur preuve
+    (`cycle_stored.go`, une relecture par joueur partagée avec le règlement du rattrapage).
+  - [x] D-24.4 Tests : `cycle_history_skip_test.go` (1 000 matchs dont 30 introuvables : 970 annoncés, après la fin une
+    page et zéro demande ; 30 en tête : trois pages, zéro demande ; delta pur ; abandonné non redemandé après la fin ;
+    non rangé non compté) ; `cmd/server` : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere` dé-sauté, comptes d'appels
+    adaptés (voir 5t.7).
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
@@ -156,7 +179,8 @@ page.
   (`sync_v2_history_abandoned_total`) au moment de l'abandon, dans la passe du dernier échec. La fin se range quand la
   fin est vue et que les seuls inconnus restants sont abandonnés ; le journal de fin dit combien. Un 404/410 reste
   « introuvable » : jamais compté comme échec. Un match abandonné qui sort de la liste (borne de 200) redevient un inconnu
-  ordinaire.
+  ordinaire (précisé par D-24 : l'abandon est aussi rangé dans l'ensemble des matchs à ne plus demander, qu'il ne quitte
+  qu'à la borne de 2 000).
 - **D-18** (pilote, 22/11) UN SEUL moteur fait le rattrapage de l'historique : le cycle de l'ordonnanceur
   (pipeline V2 pour Halo Infinite, runner Halo 5). Le moteur V1 (`internal/sync/engine.go`), utilisé par
   le suivi en direct (`MaxMatches` 25), la synchronisation manuelle d'un joueur, la synchronisation initiale
@@ -429,13 +453,15 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
 - [x] 5t.5 Deux joueurs dans le même cycle, l'un complet, l'autre en rattrapage (`TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage`).
 - [x] 5t.6 Matchs neufs du dessus mêlés à 30 introuvables : rien de perdu, reprise exacte, zéro repli
   (`TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte`).
-- [!] 5t.7 DÉFAUT constaté (test gardé sauté, `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`) :
+- [x] 5t.7 DÉFAUT corrigé par D-24 (test dé-sauté, `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`, vert) ; constat d'origine :
   `populateOutcome` (`internal/sync/v2/cycle.go`) compte comme `MatchesInserted` tout match inconnu listé pour le joueur,
   qu'il ait été récupéré et rangé ou non. Un match introuvable (404) en haut de liste est donc compté inséré à CHAQUE
   cycle, pour toujours (et redemandé à chaque cycle) ; la notification de fin de cycle l'annonce comme nouveau match. Depuis D-23, les
   introuvables des 25 premières entrées sont recomptés et redemandés à chaque cycle (21 constatés, trois pages lues, après un
   rattrapage de 1 000 matchs dont 30 introuvables).
-  Présent depuis D6.1, donc dans la 8.2.1 ; non corrigé ici (hors périmètre, règle 7).
+  Présent depuis D6.1, donc dans la 8.2.1. Corrigé (D-24) : le compte « inséré » se lit sur la relecture de l'ensemble connu ;
+  les introuvables et les abandonnés entrent dans l'ensemble des matchs à ne plus demander, neutres pour le delta : après la fin du
+  rattrapage, 20 introuvables dans les 40 plus récentes entrées = 2 pages et 0 demande de stats par cycle (avant : 3 pages, 21 demandes).
 - [!] 5t.8 DÉFAUT constaté (test gardé sauté, `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage`) : après un
   redémarrage avec un journal d'écriture en attente (coupure brutale en plein rattrapage), un cycle lancé aussitôt (a) reste
   bloqué 14 minutes 20 (le rejeu du journal échoue sur « same database file with a different configuration » parce que la
@@ -590,9 +616,11 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - Étape 4ter : `fix/822-e` n'a pas les étapes 2 et 3 : `PlayerOutcome.HistoryPending` n'est pas encore
   rempli par le pipeline V2 ni par le runner Halo 5 ; la cadence de rattrapage ne s'active, tant que ce
   n'est pas intégré, que par un joueur en échec (clé de fin absente) ou par le moteur V1 (filet de boot).
-- Étape 5ter : DÉFAUT `populateOutcome` (`sync/v2/cycle.go`) compte inséré tout inconnu listé, récupéré ou non (match en 404 ou en 500 durable compris) : `MatchesInserted` et la notification « nouveaux matchs » sont faux ; un match introuvable en tête de liste est de plus redemandé à chaque cycle, sans fin (une demande par cycle). Test gardé sauté : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`.
+- Étape 5ter (corrigé par D-24) : DÉFAUT `populateOutcome` (`sync/v2/cycle.go`) compte inséré tout inconnu listé, récupéré ou non (match en 404 ou en 500 durable compris) : `MatchesInserted` et la notification « nouveaux matchs » sont faux ; un match introuvable en tête de liste est de plus redemandé à chaque cycle, sans fin (une demande par cycle). Test gardé sauté : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`.
 - Étape 5ter : un cycle annulé en pleine récupération ne s'arrête pas avant la persistance : la phase de récupération rend les matchs déjà récupérés (les autres sont des erreurs de récupération), la persistance les soumet à la file puis le vidage échoue sur le contexte annulé ; les matchs soumis finissent en arrière-plan ou au journal d'écriture. Sans conséquence sur la convergence (marque-page non avancé, connus sautés), mais le travail soumis après l'annulation est inutile.
 - Étape 5ter : la séquence d'arrêt vide la file de persistance dans une phase bornée à 5 s (`phaseBatchDrainCap`) ; une passe de rattrapage laisse jusqu'à 200 journaux d'écriture (environ 0,2 s par match sur ce banc, 1,1 s mesuré en production) : l'arrêt n'est alors pas « propre » et les bases se ferment sous le worker, le reste est rejoué au démarrage suivant (testé : aucun doublon, aucune perte). Comportement voulu du journal d'écriture, noté pour mémoire.
 - Étape 5ter : lire l'état d'une base joueur (`OpenReadForQuery`) pendant qu'un worker de persistance l'écrit peut rendre `sql: database is closed` (poignée en cache fermée par le worker) ; `historystate.Complete` rend alors « complet ». Observé seulement par les lectures du test (après un arrêt, pendant le rejeu du journal), jamais dans le cycle ; non investigué.
 - D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
 - D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.
+- D-24 : le moteur V1 (suivi en direct, synchronisation manuelle d'un joueur) ne lit ni n'écrit l'ensemble des matchs à ne plus demander : un match introuvable en haut de liste y est redemandé à chaque tick tant qu'il reste dans les premières entrées (une demande par tick). Hors périmètre (V1 est un delta pur, D-18), noté.
+- D-24 : l'ensemble est lu par une seconde ouverture lecture seule de la base joueur par cycle et par joueur (`known_loader_skip.go`, capacité facultative `SkipSetLoader`) parce que `known_loader.go` était pris par une autre piste ; à replier dans `LoadKnown` (lecture sur la poignée déjà ouverte) quand cette piste sera intégrée.

@@ -18,8 +18,9 @@
 //     `cursor.Offset + N - pageSize`, soit la page de recouvrement qui doit contenir
 //     `cursor.LastMatchID` ; sinon reprise depuis le début, comptée de même.
 //
-// Un match abandonné (HistoryState.Failures, maxCatchUpAttempts) est sauté comme un connu, sans
-// compter comme nouveau ni dans le budget. Ensuite la lecture saute les connus, garde les inconnus dans l'ordre de l'API jusqu'au budget
+// Un match que la découverte ne demande plus (HistoryState.Skip : introuvable 404/410 ; abandonné par
+// maxCatchUpAttempts, HistoryState.Failures) est neutre : sauté, sans compter comme nouveau, ni dans
+// le budget, ni dans la suite de connus d'affilée. Ensuite la lecture saute les connus, garde les inconnus dans l'ordre de l'API jusqu'au budget
 // (`historystate.PassBudget()`, N compris), et s'arrête sur une page vide ou partielle (fin vue),
 // sur le budget, ou sur `historystate.MaxDepth` (avertissement).
 package v2
@@ -42,7 +43,7 @@ type catchUpScan struct {
 	histArg  string
 	gamertag string
 	known    map[string]bool
-	skip     map[string]bool // matchs abandonnés par le rattrapage : ni retentés, ni comptés, ni « connus »
+	skip     map[string]bool // matchs que la découverte ne demande plus (introuvables, abandonnés) : ni retentés, ni comptés, ni « connus »
 	budget   int
 
 	unknown []string
@@ -79,7 +80,7 @@ func (p *matchListProviderV2) listCatchUp(
 	gamertag := prof.Gamertag
 	sc := &catchUpScan{
 		p: p, client: client, histArg: fmt.Sprintf("xuid(%s)", prof.XUID), gamertag: gamertag, known: known,
-		skip: hist.abandoned(), budget: historystate.PassBudget(), seen: map[string]bool{},
+		skip: hist.skipped(), budget: historystate.PassBudget(), seen: map[string]bool{},
 		lastReadPos: -1, lastUnknownPos: -1,
 	}
 	at := resumeAt{}
@@ -114,8 +115,8 @@ func (p *matchListProviderV2) listCatchUp(
 
 // scanNew est l'étape (a) : du début de la liste jusqu'à domain.DeltaKnownRun matchs connus d'affilée
 // (règle D-23 : un connu rangé par un coéquipier ne cache pas les inconnus plus bas). Les inconnus
-// rencontrés comptent dans le budget. Les abandonnés ne sont ni connus ni inconnus : ils ne
-// comptent pas dans la suite de connus.
+// rencontrés comptent dans le budget. Les matchs à ne plus demander (introuvables, abandonnés) ne sont ni
+// connus ni inconnus : ils ne comptent pas dans la suite de connus.
 func (sc *catchUpScan) scanNew(ctx context.Context) error {
 	run := 0
 	for pos := 0; ; pos += sc.p.pageSize {
@@ -141,7 +142,7 @@ func (sc *catchUpScan) scanNew(ctx context.Context) error {
 				continue
 			}
 			if sc.skip[e.MatchID] {
-				continue // abandonné : déjà derrière le marque-page, pas un nouveau match
+				continue // à ne plus demander : pas un nouveau match
 			}
 			sc.topSpan = pos + i + 1
 			run = 0
