@@ -19,7 +19,7 @@
  *
  * LES ACTIONS DES LIGNES (D-6) ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque ligne de joueur présent.
  * « Tout afficher » (D-7) est le premier bloc de la colonne, visible seulement quand au moins un joueur est masqué.
- * Les fiches compactes de la Grande équipe n'ont pas ces boutons : elles s'ouvrent, et « Tout afficher » reste là.
+ * Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
  *
  * LE JOUEUR SUIVI ARRIVE PAR PROP (`tracked`, `playerPanel.tracked`) : la colonne ne le recalcule pas.
  * Les âges de lecture et la scène des effets sont construits une fois pour toute la colonne
@@ -140,7 +140,7 @@ function seatsOf(group: ReplaySeatGroup, ctx: SeatCtx) {
       onCard,
     }
     return compact
-      ? <ReplayCompactCard key={seat.key} {...shared} form="line" ally={ally} />
+      ? <ReplayCompactCard key={seat.key} {...shared} form="line" ally={ally} actions={tileActionsFor(tileActions, player.xuid)} />
       : <ReplayRosterRow key={seat.key} {...shared} actions={tileActionsFor(tileActions, player.xuid)} />
   })
 }

@@ -25,7 +25,7 @@
  *
  * LES ACTIONS DES FICHES (D-6) ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque fiche ordinaire. « Tout
  * afficher » (D-7) est posé en haut de la cellule centrale, au-dessus du score, visible seulement quand au moins un
- * joueur est masqué. Les fiches compactes de la Grande équipe n'ont pas ces boutons : elles s'ouvrent.
+ * joueur est masqué. Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
  */
 import { Fragment, useMemo, type ReactNode } from 'react'
 
@@ -111,6 +111,7 @@ function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNo
         tracked={isTracked}
         selected={selected}
         onCard={onCard}
+        actions={tileActionsFor(tileActions, player.xuid)}
       />
     )
   }
