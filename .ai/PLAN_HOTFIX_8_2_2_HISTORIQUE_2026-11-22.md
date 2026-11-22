@@ -432,13 +432,15 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
 - [!] 5t.7 DÉFAUT constaté (test gardé sauté, `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`) :
   `populateOutcome` (`internal/sync/v2/cycle.go`) compte comme `MatchesInserted` tout match inconnu listé pour le joueur,
   qu'il ait été récupéré et rangé ou non. Un match introuvable (404) en haut de liste est donc compté inséré à CHAQUE
-  cycle, pour toujours (et redemandé à chaque cycle) ; la notification de fin de cycle l'annonce comme nouveau match.
+  cycle, pour toujours (et redemandé à chaque cycle) ; la notification de fin de cycle l'annonce comme nouveau match. Depuis D-23, les
+  introuvables des 25 premières entrées sont recomptés et redemandés à chaque cycle (21 constatés, trois pages lues, après un
+  rattrapage de 1 000 matchs dont 30 introuvables).
   Présent depuis D6.1, donc dans la 8.2.1 ; non corrigé ici (hors périmètre, règle 7).
 - [!] 5t.8 DÉFAUT constaté (test gardé sauté, `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage`) : après un
   redémarrage avec un journal d'écriture en attente (coupure brutale en plein rattrapage), un cycle lancé aussitôt (a) reste
   bloqué 14 minutes 20 (le rejeu du journal échoue sur « same database file with a different configuration » parce que la
   découverte du cycle tient la base joueur en lecture ; erreur hors de la liste des erreurs transitoires du worker ; le
-  vidage du cycle attend le journal entier : 60 s + 4 s par match soumis) ; (b) après la reprise périodique du journal, le
+  vidage du cycle attend le journal entier : 60 s + 4 s par match soumis) ; (b) (constaté une fois sur deux exécutions) après la reprise périodique du journal, le
   cycle suivant a lu l'état de l'historique sur une poignée fermée (« sql: database is closed »), `historystate.Complete` l'a
   traduit en « complet » : 0 match inconnu listé, `HistoryPending` faux, cadence de 10 minutes perdue. Les deux sont le
   rejeu du journal contre la découverte, dans le même processus. Non corrigé ici (hors périmètre).

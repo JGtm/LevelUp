@@ -16,7 +16,7 @@ import (
 func TestDifficile_MatchIntrouvable_NEstPasCompteInsere(t *testing.T) {
 	t.Skip("défaut: populateOutcome (internal/sync/v2/cycle.go) compte comme MatchesInserted tout match inconnu listé pour le joueur, " +
 		"sans regarder s il a été récupéré et rangé : un match introuvable (404) en haut de liste est compté inséré à chaque cycle, pour toujours " +
-		"(le cycle l annonce comme nouveau match à la notification de fin de cycle). Présent depuis D6.1, donc dans la 8.2.1.")
+		"(le cycle l annonce comme nouveau match à la notification de fin de cycle). Présent depuis D6.1, donc dans la 8.2.1 ; depuis D-23 les introuvables des 25 premières entrées sont recomptés à chaque cycle (21 constatés après une fin de rattrapage).")
 	monde := newDifficileMonde()
 	fa := monde.ajouter(difficileA, 0, 30)
 	gone := fa.idAt(0)
@@ -54,7 +54,7 @@ func TestDifficile_MatchIntrouvable_NEstPasCompteInsere(t *testing.T) {
 //     la base joueur en lecture), erreur que le worker ne reprend pas (hors de sa liste d'erreurs transitoires, alors
 //     que le message dit « réessayer ») ; le journal reste jusqu'à la reprise périodique (10 minutes) et le vidage du
 //     cycle attend le journal ENTIER (soixante secondes plus quatre par match soumis : 14 minutes 20 pour 200 matchs) ;
-//   - aucun cycle ne décide « historique complet » sur une lecture en échec. Constaté : après la reprise périodique
+//   - aucun cycle ne décide « historique complet » sur une lecture en échec. Constaté une fois sur deux exécutions : après la reprise périodique
 //     du journal, la lecture de l'état de la découverte rend « sql: database is closed » (poignée empruntée au cache,
 //     fermée par le worker qui rejoue), `historystate.Complete` rend alors « complet » : le cycle ne parcourt rien
 //     (0 match inconnu), `HistoryPending` est faux, la cadence repasse à l'intervalle réglé alors que la fin n'est

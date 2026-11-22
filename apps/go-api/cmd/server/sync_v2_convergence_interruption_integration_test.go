@@ -48,8 +48,9 @@ func TestDifficile_Interruption_ArretPendantRecuperation(t *testing.T) {
 	if !c2.ran || c2.err == nil {
 		t.Fatalf("cycle 2 : attendu une erreur de cycle (contexte annulé), obtenu ran=%v err=%v", c2.ran, c2.err)
 	}
-	if c2.statsTotal() != 100 {
-		t.Errorf("cycle 2 : %d demandes de stats servies, attendu 100 (les suivantes échouent, contexte annulé)", c2.statsTotal())
+	// Huit récupérations en parallèle : celles déjà parties à l'annulation (au plus 7 de plus) sont servies.
+	if c2.statsTotal() < 100 || c2.statsTotal() > 107 {
+		t.Errorf("cycle 2 : %d demandes de stats servies, attendu de 100 à 107 (les suivantes échouent, contexte annulé)", c2.statsTotal())
 	}
 	t.Logf("cycle 2 interrompu : %d demandes de stats servies, erreur %q", c2.statsTotal(), c2.err)
 
@@ -67,8 +68,8 @@ func TestDifficile_Interruption_ArretPendantRecuperation(t *testing.T) {
 		t.Fatalf("au redémarrage : marque-page %v, attendu %+v (le cycle annulé n'a rien avancé)", cur2, *cur1)
 	}
 	avant := b2.assertNoDuplicate("au redémarrage")
-	if avant.registryDistinct < 200 || avant.registryDistinct > 300 {
-		t.Errorf("au redémarrage : %d matchs rangés, attendu entre 200 (cycle 1) et 300 (cycle 1 + les 100 soumis)", avant.registryDistinct)
+	if avant.registryDistinct < 200 || avant.registryDistinct > 200+c2.statsTotal() {
+		t.Errorf("au redémarrage : %d matchs rangés, attendu entre 200 (cycle 1) et %d (cycle 1 + les matchs soumis)", avant.registryDistinct, 200+c2.statsTotal())
 	}
 	reprise := b2.jusquAuBout("reprise après arrêt en récupération", difficileA)
 	b2.assertConverged("reprise après arrêt en récupération", map[difficileJoueur]*fakeHalo{difficileA: fa}, nil)
