@@ -24,11 +24,35 @@ interface BandRoleText {
   overtakeFmt: (viewpoint: string, count: number, previous: string, previousCount: number) => string
 }
 
+/** Un titre dans la fiche : son libellé, sa définition (infobulle de l'icône) et son compte. */
+interface FicheRoleText {
+  label: string
+  /** La définition du titre, N étant le joueur de la fiche ; elle dit aussi ce qui arrive à égalité. */
+  hintFmt: (subject: string) => string
+  /** Le compte du tenant : « k éliminations » (némésis), « éliminé k fois » (souffre-douleur). */
+  countFmt: (count: number) => string
+}
+
 export interface AntagonistsText {
   /** La bande des titres de la frise : une infobulle par prise de titre. */
   band: {
     nemesis: BandRoleText
     victim: BandRoleText
+  }
+  /** La section « Antagonistes » de la fiche d'un joueur (D-2). */
+  fiche: {
+    title: string
+    nemesis: FicheRoleText
+    victim: FicheRoleText
+    /** Ce qui sépare le nom du tenant, son compte et la mention d'égalité (« X, k éliminations, à égalité avec Y »). */
+    partSeparator: string
+    /** « à égalité avec » : suivi des noms des autres adversaires au même compte. */
+    tiedWith: string
+    /** La liste de noms : « Y, Z et W » — le séparateur courant, puis le dernier. */
+    listSeparator: string
+    listLast: string
+    /** L'état vide, dans un cadre pointillé. */
+    empty: string
   }
 }
 
@@ -47,6 +71,26 @@ const FR_ANTAGONISTS = {
         `Éliminé ${count} fois par ${viewpoint}, passe devant ${previous} (${previousCount}).`,
     },
   },
+  fiche: {
+    title: 'Antagonistes',
+    nemesis: {
+      label: 'Némésis',
+      hintFmt: (subject) =>
+        `L'adversaire qui a éliminé ${subject} le plus de fois jusqu'à cet instant. En cas d'égalité, le titre reste à celui qui l'avait.`,
+      countFmt: (count) => (count === 1 ? '1 élimination' : `${count} éliminations`),
+    },
+    victim: {
+      label: 'Souffre-douleur',
+      hintFmt: (subject) =>
+        `L'adversaire que ${subject} a éliminé le plus de fois jusqu'à cet instant. En cas d'égalité, le titre reste à celui qui l'avait.`,
+      countFmt: (count) => `éliminé ${count} fois`,
+    },
+    partSeparator: ', ',
+    tiedWith: 'à égalité avec',
+    listSeparator: ', ',
+    listLast: ' et ',
+    empty: 'Aucun antagoniste à cet instant.',
+  },
 } satisfies AntagonistsText
 
 const EN_ANTAGONISTS = {
@@ -63,6 +107,26 @@ const EN_ANTAGONISTS = {
       overtakeFmt: (viewpoint, count, previous, previousCount) =>
         `Eliminated ${count} times by ${viewpoint}, moves ahead of ${previous} (${previousCount}).`,
     },
+  },
+  fiche: {
+    title: 'Antagonists',
+    nemesis: {
+      label: 'Nemesis',
+      hintFmt: (subject) =>
+        `The opponent who has eliminated ${subject} the most times so far. If there is a tie, the title stays with whoever held it.`,
+      countFmt: (count) => (count === 1 ? '1 elimination' : `${count} eliminations`),
+    },
+    victim: {
+      label: 'Bully target',
+      hintFmt: (subject) =>
+        `The opponent ${subject} has eliminated the most times so far. If there is a tie, the title stays with whoever held it.`,
+      countFmt: (count) => (count === 1 ? 'eliminated 1 time' : `eliminated ${count} times`),
+    },
+    partSeparator: ', ',
+    tiedWith: 'tied with',
+    listSeparator: ', ',
+    listLast: ' and ',
+    empty: 'No antagonist at this moment.',
   },
 } satisfies AntagonistsText
 
