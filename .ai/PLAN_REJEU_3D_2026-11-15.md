@@ -24,6 +24,63 @@ Faits mis à jour le 2026-11-17 : `release/v8.3.0` porte le décodeur v1.4.1 et 
 `ui/ReplayCanvas.tsx` fait 810 lignes ; l'item 0.1 est `[~]` (le pilote de la 8.3.0 est la session du plan
 maître).
 
+**Amendé le 2026-11-22** après lecture du dépôt du contributeur, `llampwall/installation-08` (AGPL-3.0, public
+depuis le 2026-11-13), et échange avec le user. Ce bloc prime sur les sections qu'il contredit. Elles seront
+réécrites quand le contributeur aura répondu sur le découpage (D-15) ; d'ici là, rien de ce plan ne s'exécute.
+
+- **D-14 — pour tout ce qui est 3D, la version du contributeur fait foi.** User, 2026-11-22 : « sur tout ce qui
+  est 3D, c'est sa version qui fait foi […] sa scene 3D est la bonne et je la veux comme lui le rend ».
+  LevelUp ne réécrit ni ne réinterprète sa scène. Les items C.2, C.4 et C.7 (logique de scène, caméras,
+  contours) ne s'écrivent plus ici : ils deviennent du branchement. La version de `three` est celle de son
+  paquet (C.1 à revoir).
+- **D-15 — sa scène arrive comme une dépendance publiée, pas comme une copie.** Recommandation retenue par le
+  user le 2026-11-22 (« ok avec tes deeux recos »), SOUS RÉSERVE de l'accord du contributeur (« faut voir s'il
+  sera partant pour ce découpage »). Amende D-12 : ni cinquième brique chez JGtm, ni lecteur réécrit dans
+  LevelUp.
+  - Un paquet web : la scène 3D telle qu'il la rend. Il reçoit de la page hôte le document de rejeu,
+    l'horloge, le joueur suivi, Seul / Masquer, la langue et les couleurs. Il expose son rendu image par image.
+  - Un module Go : ses constructeurs de cartes, d'armes, d'armures, de bras et de peintures, aujourd'hui sous
+    `internal/` de son dépôt, donc non importables. Le serveur de LevelUp les appelle avec ses dossiers et ses
+    règles de cache (D-11 inchangée).
+  - Récupération de ses évolutions : il pose un tag ; un robot de dépendances ouvre la PR de montée sur la
+    branche de release ; CI verte, fusion, version mineure de LevelUp.
+  - Repli s'il refuse le découpage : import mécanique de ses dossiers à chaque tag, sans les modifier, derrière
+    une couche d'adaptation de LevelUp. À retrancher avec le user avant tout code.
+- **D-16 — frontière entre sa scène et la page.** Retenu par le user le 2026-11-22 (même message). La vue 3D et
+  son HUD en vue subjective sont les siens. La barre de lecture, le fil et les fiches restent ceux de la page
+  de LevelUp. Amende D-10 : plus de variante de HUD à dessiner, reste son emplacement dans les cadres.
+- **D-17 — l'export vidéo et la capture d'écran de LevelUp prennent la vue 3D.** User, 2026-11-22 : « l'export
+  video ou capture d'écran comme il existe en 2D, doit être rendu compatible ». Retire l'export de la 3D du
+  « hors périmètre » de la section 0. Exige de son paquet le rendu image par image (D-15).
+- **D-18 — le décodeur d'abord, en v1.6.0.** Retenu par le user le 2026-11-22 (même message). La v1.5.0 sort
+  comme son plan le prévoit, sans ajout. Les canaux que sa copie du décodeur porte et que la nôtre n'a pas
+  (pistes à pleine cadence, direction des tirs par la visée, arme en main, causes des morts, munitions,
+  gestes, postures, hauteur et pleine cadence des projectiles) remontent ensuite, rebasés sur la v1.5.0.
+  - Collision constatée : la v1.5.0 fait passer le schéma du document de 125 à 126 ; sa copie emploie déjà 126
+    et 127 pour la hauteur et la pleine cadence des projectiles. Les numéros sont à réattribuer au rebase.
+  - **La 3D reste dans la 8.3.0.** User, 2026-11-22 : « non la 3D en 8.3.0 ». La 8.3.0 attend donc la v1.6.0
+    du décodeur. Deux montées du décodeur tombent dans la même version de LevelUp (v1.5.0, puis v1.6.0) : la
+    régénération du parc se lance une seule fois, à la publication (règle 19). Le go donné d'avance pour une
+    régénération à la v1.5.0 (plan du décodeur) est à revoir par le user avec la session du décodeur.
+  - Les copies modifiées de la brique des cartes et du lecteur de fichiers remontent elles aussi. Un module Go
+    publié ne transmet pas ses directives `replace` à qui en dépend : tant que ses constructeurs s'appuient
+    sur des copies locales, LevelUp ne peut pas les importer.
+- **Constats sur pièces du 2026-11-22.**
+  - L'item 0.2 n'attend plus le source : le dépôt est public.
+  - Son application web est une copie de `features/match-replay` de LevelUp (142 chemins communs sur 464)
+    augmentée de 211 fichiers de scène 3D. Son serveur Go a sa propre authentification, son propre
+    téléchargement des films et son propre dossier de données.
+  - Il embarque des copies modifiées de trois briques : décodeur v1.3.6 porté (schéma 127), cartes v1.0.1,
+    lecteur de fichiers v1.0.1. LevelUp exige v1.4.1, v1.4.0 et v1.2.0.
+  - Item 0.7 : les deux demandes sont faites. Contours en couleur d'équipe, visibles à travers les murs
+    (`scene3d/outline3d.ts`). Mini-carte de coin dans la vue 3D, orientation verrouillable, un clic ouvre la
+    vue 2D (`scene3d/topDownMinimap3d.ts`). Selon D-14, sa mini-carte remplace celle du lot D ; reste à voir
+    si elle peut afficher la vue Plan de LevelUp (D-7).
+  - Aucune interface de pilotage par un hôte n'existe : routes de données, origine locale seule, routeur par
+    fragment d'URL.
+- **Attendu.** Du contributeur : son accord sur D-15 et sur la remontée de ses changements dans les trois
+  briques. La note destinée à ses agents est `annexes_rejeu_3d/brief_contributeur_integration_2026-11-22.md`.
+
 Constats relus sur pièces le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le binaire
 `infinite-theater-3d-0.1.0-test.8` du contributeur llampwall (lu, non lancé). L'exécutant les RE-VÉRIFIE
 sur la tête de `release/v8.3.0` avant de coder (base déplacée le 2026-11-15, voir D-2).
