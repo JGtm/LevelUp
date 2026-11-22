@@ -1,11 +1,16 @@
 # PLAN — Décodeur de film v1.6.0 : vitesse, backlog, canaux du lecteur 3D (2026-11-23)
 
+**État : décisions tranchées et GO de l'utilisateur donnés le 2026-11-23 ; le coût de chaque vague est
+annoncé à son lancement.** (User, 2026-11-23 : « Tu as mon feu vert d'emblée. C'est bien de découper les
+morceaux en plus petit, ça permet de paralléliser et d'utiliser des modèles et des efforts moins coûteux en
+général. »)
+
 Statut : **écrit le 2026-11-23 ; relu le même jour contre la grille `plan-review` par un second agent
 (« à reprendre sur quelques points avant le go ») ; corrections B1 à B4 et I1 à I13 appliquées le 2026-11-23.
 Commandé par le user le 2026-11-22 (« La v1.5.0 est publiée. Le user te confie la v1.6.0 du décodeur. Avant
-tout code, écris un plan propre et fais-le relire contre la grille plan-review »). DD-2 TRANCHÉE par le user
-le 2026-11-23. DD-1, DD-4, DD-5, DD-6, DD-7 et DD-8 À TRANCHER par le user. AUCUN GO D'EXÉCUTION. Le pilote
-versionne ce fichier sur la branche de version avant le go.**
+tout code, écris un plan propre et fais-le relire contre la grille plan-review »). Décisions DD-1 à DD-8
+TOUTES TRANCHÉES par le user le 2026-11-23 (section 2). Le contributeur reporte lui-même ses ajouts ; tout
+se fait dans la v1.6.0, sans échéance. GO D'EXÉCUTION donné le 2026-11-23.**
 Contrat d'exécution : skill `plan-execution`, complément `levelup-plan`. Statuts : `[x]` fait, `[~]` couvert
 ailleurs (référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture.
 Plans liés : `.ai/PLAN_DECODEUR_2026-11-18.md` (v1.5.0, dont ce plan reprend la forme et les règles),
@@ -22,9 +27,10 @@ Abréviations : `DEC` = dépôt `JGtm/halo-infinite-film-decoder` (PUBLIC), lu p
 
 Objectif : publier UNE version v1.6.0 du décodeur qui (1) se mesure en vitesse par une commande et un relevé
 rangé avec la version, (2) lit plus vite par les méthodes reprises du parseur voisin sans changer un octet
-du rejeu, (3) traite chaque entrée du backlog qui concerne le décodeur, (4) reçoit les canaux du lecteur 3D
-dès que le contributeur a donné son accord ; puis UNE montée dans LevelUp et UNE régénération du parc, avant
-le premier démarrage de LevelUp 8.3.0.
+du rejeu, (3) traite chaque entrée du backlog qui concerne le décodeur, (4) accueille les canaux du lecteur
+3D, que le contributeur reporte lui-même sur la v1.5.0 ; puis UNE montée dans LevelUp et UNE régénération du
+parc, avant le premier démarrage de LevelUp 8.3.0. Aucune échéance : la version attend le contributeur, et
+rien n'est renvoyé à une version suivante par manque de temps.
 
 Critère de succès :
 - un relevé de vitesse v1.5.0 et un relevé v1.6.0 existent, produits par la même commande sur le même jeu de
@@ -44,14 +50,14 @@ Critère de succès :
 | A | Grande bataille et Assaut : le détail daté des points n'est plus dit « complet » à tort ; le recul d'une pénalité apparaît sur la courbe |
 | B | Drapeau : moins d'états « au socle » faux ; porteurs au-delà de 8 joueurs si la condition est tenue |
 | C | Fiche du joueur : accroupissements, glissades et sauts au bouton si la lecture est prouvée |
-| D | Les répliques des Spartans existent dans le rejeu (qui parle, quand, quelle réplique), selon DD-4 |
+| D | Les répliques des Spartans existent dans le rejeu (qui parle, quand, quelle réplique) ; une maquette des trois idées d'affichage |
 | E | Éliminations dont un bot est l'auteur ; temps et série en tant que VIP ; nom des options de variante |
 | F | Rien (contrôles, ménage) |
-| P | Rien dans la 2D ; le lecteur 3D reçoit ses canaux (pleine cadence, visée, arme en main, munitions, gestes, hauteur des projectiles) |
-| M | Rien dans LevelUp tant que le plan 3D ne les consomme pas |
+| P | Rien dans la 2D ; le lecteur 3D reçoit ses canaux (pleine cadence, visée, arme en main, munitions, gestes, hauteur des projectiles), écrits par le contributeur, vérifiés et intégrés par nous |
 
 Version : v1.6.0 (ajouts seulement : version mineure). Schéma du document : 126 vers 127, UNE montée pour
-toutes les pistes qui changent la sortie (A à F, P). Les pistes V ne touchent pas au schéma.
+tout ce qui change la sortie, nos pistes A à F et les canaux du contributeur. Les pistes V ne touchent pas
+au schéma.
 
 Hors périmètre : tout ce qui touche à la justesse des tirs, des touches et de la précision par arme (DD-2,
 tranchée par le user le 2026-11-23) ; la question de licence posée par le parseur voisin (backlog,
@@ -125,18 +131,26 @@ Le décodeur DÉPEND des deux autres briques : `go.mod` exige `halo-infinite-fil
 `halo-infinite-map-images v1.0.1` ; son code de production importe `files-reader/mapvar` (paquet `replay`),
 ses tests importent `map-images/himap`. Un canal du contributeur qui s'appuie sur un ajout de `mapvar` (les
 axes d'un socle, par exemple) exige donc d'abord un tag du lecteur de fichiers, puis une montée du `require`
-du décodeur. L'ordre des tags se lit dans l'inventaire (P.0, M.0).
+du décodeur. L'ordre des tags se lit dans l'inventaire (P.1).
 
-Recouvrements déjà visibles avec la v1.5.0, à trancher canal par canal (item P.0) : `reloads[]` contre ses
+Recouvrements déjà visibles avec la v1.5.0, à lui signaler canal par canal (items P.1, P.2) : `reloads[]` contre ses
 gestes ; `moveCommand` contre son manche ; `coverage.seats.tirsParPlace` contre son tireur par place ;
 `damage[]` contre ses dégâts par place ; `shots_visee.go` existe des deux côtés. Deux de ses apports
 heurtent les règles du dépôt : le saut « tiré de la vitesse verticale » est une dérivation, pas une lecture
 (règle R-2) ; la table des scores cibles par variante est une table par variante (R-2). Ses traductions de
 messages ne remontent pas (la note du 2026-11-22 le dit déjà).
 
-Ce qu'on attend de lui, précisément (transmis le 2026-11-22, sans réponse connue à ce jour) : (a) son accord
-sur le découpage D-15 (paquet web, module Go des constructeurs) ; (b) son accord pour que ses changements
-des trois briques remontent ; (c) qui ouvre les PR : lui, ou nous avec sa relecture.
+État au 2026-11-23 (user : « Oui Jordan s'en occupe seul ») : le contributeur reporte LUI-MÊME ses ajouts
+sur la v1.5.0, pour le décodeur et pour ses copies de la brique des cartes et du lecteur de fichiers. Son
+retour est attendu « dans tous les cas » (user, même message) ; son accord sur le découpage D-15 (paquet
+web, module Go des constructeurs) relève du plan du rejeu 3D. Fichiers que sa copie du décodeur touche,
+d'après son inventaire de rebase (`third_party/REBASE-v1.3.6.md`, lu le 2026-11-23) et que nos pistes
+touchent aussi : `replay/options.go`, `observe.go`, `film_scan_mouvement.go`, `film_scan_pont.go`,
+`layers.go`, `coverage.go`, `document.go`, `document_schema.go`, `document_chronicle.go`,
+`document_stances.go`, `shots.go`, `shots_visee.go`, `build.go`, `build_calques.go`, `filmfacts*.go` ;
+`internal/grammar/vue_a_lecture.go`, `distribuer_tetes.go`, `movement_states.go`,
+`keyframe_etat_complet_bipede.go`, les fichiers de révision ; `filmcache/filmcache.go` ; `decfilm/` ; tous
+les goldens. C'est la liste des collisions de la piste P.
 
 ### 1.4 Entrées du backlog qui concernent le décodeur, et leur sort
 
@@ -158,7 +172,7 @@ des trois briques remontent ; (c) qui ouvre les PR : lui, ou nous avec sa relect
 | Ordre de rotation des collines | demande d'affichage, aucun travail du décodeur | Écarté : pas le décodeur |
 | Nommer les états des marqueurs | la lettre se lit (G.1 de la v1.5.0) ; reste la lettre comme contrôle et le composant qui arrête la lecture aux images-clés | B.6 |
 | Commandes et gestes du joueur | rechargements et commande publiés en v1.5.0 ; bouton de saut à 63 % d'accord ; accroupi et glissade jamais annoncés sur les versions récentes | Piste C |
-| Répliques des Spartans | texte retrouvé dans le jeu le 2026-11-22 (191 sons sur 201) ; cadrage du user du même jour | Piste D, selon DD-4 |
+| Répliques des Spartans | texte retrouvé dans le jeu le 2026-11-22 (191 sons sur 201) ; cadrage du user du même jour | Piste D (DD-4 : dans la v1.6.0) |
 | Temps forts de type « mode » | rien à publier de plus ; 3 410 événements en Drapeau, 691 en Total Control, 303 en Extraction sans action de score | F.4 |
 | Temps forts « mode » en double en base | base de LevelUp | Écarté : pas le décodeur |
 | Touches et précision par l'ancien appariement | retrait fait à la montée v1.5.0 | `[~]` pour le retrait ; table écartée : hors périmètre (DD-2) |
@@ -182,71 +196,65 @@ des trois briques remontent ; (c) qui ouvre les PR : lui, ou nous avec sa relect
 | Idem : « 1 écart à classer : kill » en double passe | bruit de base à lever AVANT la phase vitesse | 0.4 |
 | Idem : 5 rejeux sans build sans compteur nommé | non instruit | F.7 |
 | Idem : équipe du porteur inconnue sur une carte à 6 socles | 25 portages sur 25 d'un film | B.3 |
-| Idem : huit décisions devenues sans effet du manifeste du gate | avertissements du gate depuis le 2026-11-18 | F.2, selon DD-8 |
+| Idem : huit décisions devenues sans effet du manifeste du gate | avertissements du gate depuis le 2026-11-18 | F.2 (DD-8 : retirées) |
 | Registre des reports : images-clés, trois lecteurs ; sonde de calibration | mesurés le 2026-11-13 | V3.2, V3.3 |
 | Registre des reports : une seule marche pour la source de dégât et la cuisson | déjà en production (section 1.1) | `[~]`, registre à mettre à jour à la clôture |
 
 ## 2. Décisions
 
+Toutes tranchées. Message du user du 2026-11-23, cité tel quel : « Oui Jordan s'en occupe seul. Je suis ok
+avec tes recommandations pour tout sauf sur le fait d'attendre une 1.7.0 pour certains trucs. On doit
+attendre le retour de Jordan dans tous les cas donc on peut faire le tout patiemment et à notre rythme. Et
+tout faire pour la 1.6 je veux dire. » (Jordan = le contributeur du lecteur 3D.)
+
 ### Tranché par le user
 
-- **DD-2 — chantier « précision » : HORS PÉRIMÈTRE de la v1.6.0.** User, 2026-11-23 : « En effet les items
-  qui touchent à la précision sont hors périmètre ». Rien de la section « Chantier précision » du backlog
-  n'entre ici, ni aucune autre entrée qui touche à la justesse des tirs, des touches ou de la précision par
-  arme : lecture suffisante des tirs, tirs sans visée, projectiles au tir ambigu, tirs sans place, tirs
-  embarqués sans trajet, copies des messages de tir, créateur des projectiles, BR75, table
-  `match_weapon_hit_distance`. Garde mécanique pour la piste P : règle R-14.
+- **DD-1 — le point 1 : on attend le contributeur, une seule version, une seule régénération.** Tranchée le
+  2026-11-23 (« On doit attendre le retour de Jordan dans tous les cas […] tout faire pour la 1.6 »). Aucune
+  v1.7.0 : la v1.6.0 n'est pas taguée sans ses canaux. Le contributeur reporte lui-même ses ajouts sur la
+  v1.5.0, pour les trois briques (« Oui Jordan s'en occupe seul ») : nos agents n'écrivent pas ce code.
+  Notre part est la piste P : préparer, remettre, synchroniser, vérifier, intégrer.
+- **DD-2 — chantier « précision » : HORS PÉRIMÈTRE de la v1.6.0.** Tranchée le 2026-11-23 (« En effet les
+  items qui touchent à la précision sont hors périmètre »). Rien de la section « Chantier précision » du
+  backlog n'entre ici, ni aucune autre entrée qui touche à la justesse des tirs, des touches ou de la
+  précision par arme : lecture suffisante des tirs, tirs sans visée, projectiles au tir ambigu, tirs sans
+  place, tirs embarqués sans trajet, copies des messages de tir, créateur des projectiles, BR75, table
+  `match_weapon_hit_distance`. Garde mécanique sur le travail du contributeur : règle R-14.
+- **DD-3 — parallélisme par défaut : un fil.** Tranchée le 2026-11-23 (« ok avec tes recommandations pour
+  tout »). La bibliothèque reste à UN fil par défaut. LevelUp règle le niveau de fils par installation : un
+  fil sur le serveur tant qu'une mesure sur le serveur ne dit pas mieux ; sur le bureau et en développement,
+  la valeur que le relevé et le pic de mémoire mesuré permettent, et un fil faute de mesure. Le plafond de
+  mémoire par film ne bouge pas.
+- **DD-4 — répliques des Spartans : DANS la v1.6.0.** Tranchée le 2026-11-23 (même phrase, et « tout faire
+  pour la 1.6 »). Le décodeur publie l'événement et le nom court. Côté LevelUp : la table des textes et UNE
+  maquette interactive des trois idées d'affichage. L'affichage réel se fait dans un plan à part, après le
+  choix du user sur la maquette.
+- **DD-5 — enchaînement avec la montée v1.5.0.** Tranchée le 2026-11-23 (même phrase). La montée v1.5.0 n'est
+  PAS fusionnée dans `release/v8.3.0` maintenant. La montée v1.6.0 part de sa tête (aujourd'hui `93a4744e7b`
+  sur `chore/830-decodeur-v150-miroirs`, que le pilote avancera sur `chore/830-decodeur-v150`), reçoit
+  `release/v8.3.0` par fusion régulière, et tout entre dans la release en une fois, autour de la
+  régénération unique.
+- **DD-6 — copies des briques des cartes et du lecteur de fichiers.** Tranchée le 2026-11-23 (« Oui Jordan
+  s'en occupe seul », et même phrase). Le contributeur les reporte lui-même, dans leurs dépôts ; elles sont
+  reçues par la piste P. Le décodeur dépend de ces deux briques : ce qu'un de ses canaux exige du lecteur de
+  fichiers ou de la brique des cartes est tagué AVANT ce canal.
+- **DD-7 — l'axe « état du monde à la demande ».** Tranchée le 2026-11-23 (même phrase). Chez nous le monde
+  sert à lire les trames : il ne peut pas attendre. L'axe est réduit à ce qui peut réellement attendre ou ne
+  pas être refait (piste V3) ; la forme littérale du parseur voisin est abandonnée, motif écrit ; un
+  candidat que la mesure ne montre pas en gain est abandonné par écrit.
+- **DD-8 — huit décisions devenues sans effet dans le manifeste du gate du corpus.** Tranchée le 2026-11-23
+  (même phrase) : retirées (F.2) ; leur liste est montrée dans le rapport d'exécution.
+- **Nom des options de variante.** Tranchée le 2026-11-23 (même phrase) : les noms viennent du jeu ; crédit
+  à nuzzles pour la méthode seulement.
 - **Régénération du parc.** Go donné d'avance par le user le 2026-11-18 (« Pour les trucs plus tard je te
   donne mon go d'avance »), rappelé le 2026-11-22 : une seule fois, après la v1.6.0, avant le premier
   démarrage de LevelUp 8.3.0. Le user est prévenu AU LANCEMENT (serveur arrêté, environ 2 h 30, pas pendant
-  qu'il joue). Ce n'est pas une décision à reposer.
-
-### À trancher par le user AVANT l'exécution (recommandation en tête)
-
-- **DD-1 — le point 1 (canaux du contributeur) si son accord tarde. À trancher MAINTENANT, pas au tag.**
-  Recommandé : (a) les pistes V et A à F ne l'attendent pas ; quand elles sont intégrées et relues sans que
-  l'accord soit arrivé, la v1.6.0 est taguée SANS le point 1, qui part en v1.7.0 ; la 3D restant dans la
-  8.3.0 (ta décision du 2026-11-22), la régénération unique et la sortie de la 8.3.0 attendent alors la
-  v1.7.0. D'ici l'accord, UN seul geste sur le point 1 : l'inventaire en lecture seule de ses copies (P.0,
-  M.0), sans code ni PR. Autres voies : (b) même tag, mais la 8.3.0 sort sans la 3D et le parc se régénère
-  après la v1.6.0 ; (c) attendre l'accord pour taguer la v1.6.0 ; (d) ne rien lire de ses copies avant
-  l'accord.
-- **DD-4 — répliques des Spartans : dans la v1.6.0 ou en v1.7.0.** Recommandé : dans la v1.6.0 pour
-  l'événement (qui parle, quand, identifiant du son, genre : items D.1, D.3, D.4), le nom court seulement
-  s'il est prouvé à la fin de la première vague de recherche, sinon il part en v1.7.0. Coût : environ un
-  jour et demi de sessions, une ligne de plus au schéma 127, et côté LevelUp la table des textes et UNE
-  maquette interactive des trois idées d'affichage (items D.5 et D.6, hors décodeur, faits seulement si tu
-  retiens cette voie). Aucun code d'affichage dans ce plan. Autre voie : toute la piste D en v1.7.0, la
-  v1.6.0 gagne ce jour et demi.
-- **DD-5 — enchaînement avec la montée v1.5.0.** Recommandé : la montée v1.5.0 ne fusionne PAS dans
-  `release/v8.3.0` avant la régénération : un parc resté au schéma 125 y rendrait les rejeux « à
-  régénérer » et gênerait tes contrôles à l'écran des autres plans. La montée v1.6.0 part de la tête de la
-  montée v1.5.0 (aujourd'hui `93a4744e7b` sur `chore/830-decodeur-v150-miroirs`, que le pilote avancera sur
-  `chore/830-decodeur-v150`), reçoit `release/v8.3.0` par fusion régulière, et entre dans la release en une
-  fois, juste avant la régénération. Autre voie : fusionner la v1.5.0 maintenant et régénérer deux fois
-  (contraire à ta consigne du 2026-11-22).
-- **DD-6 — copies des briques des cartes et du lecteur de fichiers.** Recommandé : elles remontent dans ce
-  plan (piste M), dans leurs dépôts, avec leurs numéros. Le décodeur dépend de ces deux briques : la part
-  qu'un canal du contributeur exige (ajouts de `mapvar`, d'après l'inventaire) passe AVANT ce canal et
-  bloque le tag du décodeur si le canal est retenu ; le reste (export du monde pour la 3D) ne bloque que le
-  plan 3D. Autre voie : un plan frère pour le reste.
-- **DD-7 — l'axe « état du monde à la demande ».** Chez nous le monde sert à lire les trames : il ne peut pas
-  attendre. Recommandé : l'axe livre ce qui peut réellement attendre ou ne pas être refait : une seule
-  recherche pour les trois lecteurs d'images-clés (30 % du décodage seul, mesuré), la sonde de calibration
-  si le profil la montre, et les états que V3.1 trouvera construits d'office pour des lecteurs qui ne les
-  demandent pas ; la méthode littérale du parseur voisin (un état du monde à un instant, servi à la demande)
-  est abandonnée avec ce motif écrit. Autres voies : abandonner l'axe entier ; ou ouvrir en v1.7.0 une
-  entrée publique « état à l'instant » bâtie depuis les faits (une fonction neuve, pas un gain de vitesse).
-- **DD-8 — huit décisions devenues sans effet dans le manifeste du gate du corpus** (datées du 2026-11-16,
-  signalées par le gate depuis le 2026-11-18). Recommandé : les retirer (F.2) ; la liste t'est montrée avant.
-  Autre voie : les garder.
+  qu'il joue).
+- **Rythme.** 2026-11-23 : « on peut faire le tout patiemment et à notre rythme ». Aucune échéance ; des
+  vagues petites et sûres ; aucun item renvoyé à une autre version par manque de temps.
 
 ### Tranché par le pilote (conventions, modifiables par le user)
 
-- **DD-3 — parallélisme et mémoire.** La bibliothèque reste à UN fil par défaut. Le plafond de mémoire par
-  film ne bouge pas (3 Gio en production). LevelUp garde un fil partout à la montée ; toute hausse du niveau
-  de fils sur un profil (bureau, développement, serveur) attend une mesure du pic sur ce profil et se décide
-  à part.
 - Tags et fusions des dépôts de briques : par le pilote (délégation des 2026-11-11 et 2026-11-13) ; `main`
   de LevelUp reste un geste du user.
 - Une piste de vitesse qui n'apporte aucun gain mesuré au-delà du bruit du relevé n'est pas fusionnée : son
@@ -256,12 +264,11 @@ des trois briques remontent ; (c) qui ouvre les PR : lui, ou nous avec sa relect
 - La commande du relevé vit dans `DEC/cmd/film-bench`, sans étiquette `research`.
 - Les films du relevé portent dans le dépôt public un nom neutre (`f01` à `f13`) ; la correspondance avec
   les matchs vit dans `.ai/annexes_decodeur_v160/films_du_releve.tsv`.
-- Méthodes du parseur voisin : reprises, jamais son code ni ses tables. Le nom des options de variante vient
-  du jeu ou du film, jamais de sa table (licence en question).
-- Ne remontent pas du contributeur : ses traductions de messages ; la table des scores cibles par variante
-  (LevelUp l'injecte déjà) ; le saut tiré de la vitesse verticale tant qu'une lecture du film ne le remplace
-  pas. Le codec `REPLAYINPUTS30` est statué à l'inventaire (P.0) : repris seulement si un canal retenu
-  l'exige.
+- Méthodes du parseur voisin : reprises, jamais son code ni ses tables.
+- Ce qui est demandé au contributeur de ne pas remonter : ses traductions de messages ; la table des scores
+  cibles par variante (LevelUp l'injecte déjà) ; le saut tiré de la vitesse verticale tant qu'une lecture du
+  film ne le remplace pas. Le codec `REPLAYINPUTS30` ne remonte que si un de ses canaux l'exige. Un
+  désaccord de sa part sur l'un de ces points revient au user.
 
 ## 3. Règles d'exécution
 
@@ -273,11 +280,14 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
   parti de zéro), aucune table par film ou par carte, aucune liste de composants écrite à la main : une
   règle se lit dans ce que le film déclare (leçon de la v1.5.0 : la règle du drapeau écrite sur une liste de
   composants dégradait les zones ; lue dans la table des noms du mode, elle était juste).
-- **R-3 — une recherche est bornée, et la version a une taille.** Une session d'agent ; sortie : cause
-  prouvée et item de correction écrit ICI, daté, avant son code ; ou `[!]` avec ce qui a été écarté.
-  Critère de taille : à la fin de la première vague de recherche (vague 1), tout item de recherche qui n'a
-  pas À LA FOIS sa cause prouvée et son item de correction écrit passe `[!]`, avec report en v1.7.0 inscrit
-  au registre des reports. Aucune seconde session.
+- **R-3 — une recherche est bornée par session, pas par la version.** Une session d'agent rend : une cause
+  prouvée et un item de correction écrit ICI, daté, avant son code ; ou un abandon ÉCRIT et motivé (`[!]`),
+  avec ce qui a été écarté. Une recherche abandonnée peut reprendre dans une session suivante tant qu'une
+  piste NOUVELLE existe, écrite au journal avant la reprise ; sans piste nouvelle, le `[!]` reste. Aucun
+  item n'est renvoyé à une autre version par manque de temps (user, 2026-11-23) ; jamais de correction
+  « plausible ». Une recherche se découpe : d'abord un item de MESURE sans code de production, peu coûteux ;
+  puis, seulement si la cause est prouvée, un item de CORRECTION (suffixe « c ») écrit dans sa piste avant
+  son code, confié à un autre agent.
 - **R-4 — une piste, une branche, des écarts attribués.** Clone neuf `C:/Users/Guillaume/Downloads/Scripts/dec-v160`
   (tête de `main` = `v1.5.0`), un worktree par agent qui écrit (`.../Scripts/dec-v160-<piste>`), branche
   d'intégration `feat/v1.6.0`. Une piste n'entre qu'après une passe d'équivalence dont CHAQUE écart est
@@ -300,7 +310,8 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
 - **R-9 — lecture seule des données.** Rien n'est écrit dans `HOTE` ; les films se lisent en place ou par
   copie (jamais par jonction) ; la vérité de l'API et les faits des matchs viennent d'une COPIE de la base.
 - **R-10 — lecteurs d'autres plans.** Aucune piste ne change le sens, l'unité ni l'emplacement d'un champ
-  existant du document. La session du rejeu 3D est prévenue avant le tag de tout champ que la piste P ajoute.
+  existant du document. La session du rejeu 3D est prévenue avant le tag de tout champ que le contributeur ajoute
+  (P.8).
 - **R-11 — dossiers, caches, poussée.** Aucun dossier de travail sous `C:\t` (vidé après 72 h) : clones,
   worktrees et sorties sous `C:/Users/Guillaume/Downloads/Scripts/`. Une branche de travail est poussée dès
   son premier commit relu. À la CRÉATION du worktree de LevelUp : `npm ci` dans `apps/web` (le crochet de
@@ -317,7 +328,8 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
     rougit quand même (il hache les jetons de la couche) : l'agent rend la liste des tests de révision
     rouges ; le pilote refige l'empreinte par la porte nommée de la couche (marche de publication, geste 3),
     à l'intégration, après la preuve d'identité, valeur inchangée.
-  - Chaque intégration d'une piste qui change la grammaire ou les objectifs (A à F, P) pose un RANG de
+  - Chaque intégration d'une piste qui change la grammaire ou les objectifs (A à F, et chaque PR du
+    contributeur) pose un RANG de
     révision neuf pour la couche touchée. À défaut, le cache de faits (`<racine>/data/cache/film_facts/`)
     est purgé avant toute passe.
   - Le gate de toute piste inclut les tests de révision (commande G-rev, plus bas).
@@ -329,7 +341,8 @@ Les règles R-1 à R-10 du plan v1.5.0 s'appliquent, avec ces précisions.
 - **R-14 — garde mécanique de la précision (piste P).** Pour tout canal du contributeur qui touche les tirs,
   les touches ou les dégâts, les empreintes des étapes de tirs, de touches, de dégâts et de statistiques de
   tir de `replay-equiv -out-dir` sont IDENTIQUES avant et après sur les 20 films (les noms exacts de ces
-  étapes sont relevés en 0.6). Une empreinte qui bouge : le canal sort de la version.
+  étapes sont relevés en 0.6). Une empreinte qui bouge : la PR revient au contributeur avec la pièce ; le
+  canal n'entre que sous une forme qui laisse ces empreintes intactes.
 - **R-15 — fichiers communs.** `FORMAT.md`, `GLOSSARY.md`, `NOTICE.md`, `README.md` et le schéma du
   document ne sont écrits par aucun agent. Chaque piste rend un fragment dans un fichier neuf
   (`.ai/annexes_decodeur_v160/fragments/<piste>_<fichier>.md`) ; le pilote assemble à l'intégration.
@@ -408,51 +421,167 @@ Référence de V2, qui s'intègre après les pistes du backlog : le MÊME commit
 | A score et tableau | 6 | Sonnet ; Opus pour A.3 (grammaire d'anciens builds) | moyen | moyen |
 | B drapeau et zones | 7 | Sonnet ; Opus pour B.1 (trois causes dans la grammaire) | lourd | élevé |
 | C gestes | 4 | Sonnet | moyen | moyen |
-| D répliques (DD-4) | 6 | Sonnet | lourd | moyen |
+| D répliques | 6 | Sonnet | lourd | moyen |
 | E canaux neufs du backlog | 6 | Sonnet ; Haiku pour E.5 | moyen | moyen |
 | F contrôles et petites entrées | 7 | Haiku (F.1, F.3, F.7) ; Sonnet | rapide | faible |
-| P canaux du contributeur | 9 | Sonnet | lourd | élevé |
-| M briques des cartes et des fichiers | 4 | Sonnet | lourd | moyen |
+| P accueil du travail du contributeur | 8 | pilote ; Sonnet pour l'inventaire et la relecture de chaque PR | lourd | élevé |
 | R relecture | 2 | Fable ; une ronde de corrections Sonnet | moyen | aucun |
 | L publication, montée, régénération | 9 | pilote ; Sonnet pour les miroirs | lourd | élevé |
 
-Estimation : environ 20 agents Sonnet, 3 à 4 Opus, 4 Haiku, 1 Fable. Passes du pilote, recomptées :
-- preuve d'identité d'une piste V : 9 passes d'équivalence (6 de référence, 1 double, 3 répétées moins celle
-  déjà comptée) soit environ 1 h, plus deux relevés A d'environ 25 minutes : 1 h 50 par piste, 7 h 20 pour
-  quatre ;
+La table ci-dessus résume les pistes ; le modèle et l'effort de CHAQUE item sont dans la « Table
+d'exécution », qui prime. Estimation, comptée sur cette table, items conditionnels compris : environ
+20 sessions Haiku (effort bas), 14 Sonnet à effort bas, 30 Sonnet à effort moyen (dont une relecture par PR
+du contributeur, une dizaine), 6 Sonnet à effort élevé, 2 Opus (conception et code de V2), 2 Fable
+(relecture finale, diff de la montée). Une reprise de recherche (R-3) ajoute une session, Opus seulement
+sur motif écrit. Passes du pilote, recomptées :
+- preuve d'identité d'une piste V : 9 passes d'équivalence, environ 1 h, plus deux relevés A d'environ
+  25 minutes : 1 h 50 par piste, 7 h 20 pour quatre ;
 - étape 0 : marche à blanc (35 minutes dont le gate), trois doubles passes (40 minutes), relevés de
   référence (1 h) : 2 h 15 ;
 - intégration « vitesse » : preuve complète et gate du corpus, 2 h 15 ;
 - pistes A à F : une passe et deux reprises d'attribution par piste, 20 minutes chacune, 2 h ; suite
   complète du clone à chaque intégration (5 minutes, une douzaine de fois), 1 h ;
-- piste P : huit intégrations à 25 minutes, 3 h 20 ;
+- accueil du contributeur : une vérification à l'arrivée par PR (équivalence attribuée, double passe, garde
+  de la précision, suite du clone), 30 minutes, pour une dizaine de PR sur les trois briques ; un test du
+  jeu installé pour les deux autres briques ; un gate du corpus de plus après son intégration : 6 h ;
 - fin : équivalence refigée et double passe (30 minutes), gate du corpus compté TROIS fois (la v1.5.0 en a
   demandé quatre), 1 h 15, relevés finals (1 h), gates de LevelUp et filet de poussée (1 h 30) : 4 h 15 ;
 - régénération : 2 h 30, dérivés 25 minutes.
-Total : environ 22 heures de machine hors régénération sans la piste P, dont 8 heures de relevés en fenêtre
-de mesure, pendant lesquelles aucun agent ne tourne. Durée : 7 à 9 jours de sessions sans le point 1 ;
-3 à 4 jours de plus pour P et M ; un jour et demi de moins si la piste D part en v1.7.0 (DD-4). Le coût est
-annoncé au user avant chaque vague.
+Total : environ 28 heures de machine hors régénération, dont 8 heures de relevés en fenêtre de mesure,
+pendant lesquelles aucun agent ne tourne. Aucune échéance : la fin de la version dépend du retour du
+contributeur. Notre part tient en 9 à 11 jours de sessions, étalés à volonté. Le coût est annoncé au user
+avant chaque vague.
 
 ### Vagues et parallélisme
 
-Chemin critique : 0, V0 (Gate V0), V1 et V4, intégration « vitesse », première intégration au schéma 127.
-Borne : 4 agents d'écriture à la fois, toutes sessions confondues ; les recherches en lecture seule s'y
-ajoutent, un film décodé à la fois ; tout s'arrête pendant une fenêtre de mesure.
+User, 2026-11-23 : « C'est bien de découper les morceaux en plus petit, ça permet de paralléliser et
+d'utiliser des modèles et des efforts moins coûteux en général. » Chaque item de la table d'exécution est
+petit et autonome : UN agent, une session courte, le modèle et l'effort les moins coûteux qui suffisent.
 
-- **Étape 0**, puis **V0**. Les pistes de vitesse démarrent après le Gate 0 ET le Gate V0.
-- **Vague 1.** V1 et V4 ensemble (fichiers disjoints, à confirmer en 0.6 ; sinon l'une après l'autre) ; V3
-  après V4 (toutes deux touchent le balayage du film dans `replay/film_scan*.go`). En même temps, sans code
-  de production : les recherches A.1, A.3, A.4, B.1, C.1, C.2, D.2, E.4, F.5, F.6, la conception V2.1, et
-  la piste F. Fin de vague : critère de taille de R-3.
-- **Intégration « vitesse »** (pilote) : V1, V4, V3 ; preuve d'identité contre la v1.5.0.
-- **Vague 2.** A, B, C, D (selon DD-4), E ensemble, sous réserve de la table ci-dessous ; intégrées une à
-  une, schéma 127. V2 se code pendant cette vague dans son worktree et ne retarde aucune de ces pistes.
-- **Intégration de V2**, APRÈS les pistes du backlog : rebasée sur la tête, prouvée par « niveau 1 = niveau
-  N au même commit ». Si V2.1 conclut à l'arrêt ou si sa preuve échoue, la version part sans elle.
-- **Vague 3 (après l'accord du contributeur).** P.0 et M.0 peuvent précéder (DD-1) ; P après C, D, E et V2 ;
-  M selon l'inventaire.
-- **R** (relecture, corrections), puis **L** (équivalence et gate finals, tag, montée, régénération).
+Quatre classes de charge règlent ce qui tourne en même temps :
+
+| Classe | Ce que fait l'item | Combien à la fois |
+|---|---|---|
+| S | Sans film : lecture de code ou de pièces, conception, rédaction, inventaire | autant que la borne d'agents |
+| B | Code et tests ciblés sur les mini-bobines du dépôt | jusqu'à 4, sans fichier commun |
+| L | Décode un lot de films de l'hôte (mesure sur le parc, équivalence, suite complète, gate) | UN seul, file tenue par le pilote |
+| M | Fenêtre de mesure de vitesse (relevés A et B, profil) | seul sur la machine : rien d'autre ne tourne |
+
+Borne : 4 agents d'écriture à la fois, toutes sessions confondues ; les items S en lecture seule s'y
+ajoutent. Deux items qui touchent un même fichier passent l'un après l'autre. Une intégration à la fois,
+par le pilote.
+
+Chemin critique : 0, V0, la phase vitesse, le schéma 127, le gel de la base, l'accueil du contributeur.
+Les pistes du backlog ne touchent aucun fichier des pistes de vitesse (table des fichiers) : leur code
+s'écrit EN MÊME TEMPS, dans leurs worktrees ; seule leur intégration attend la phase vitesse.
+
+| Vague | Items en parallèle (classe) | File L et fenêtres M, au pilote | Coût relatif |
+|---|---|---|---|
+| 0 Préparation | 0.3, 0.5, 0.6, 0.7, P.1a, P.1b (S, Haiku) ; 0.8 (Sonnet bas) ; P.2 après P.1 (S) | 0.1, 0.2, 0.4 (L) | faible |
+| 1 Socle | V0.1, V4.5 (S, Haiku) ; V0.2-3 et V0.6 (B, deux agents) ; V0.7 après V0.6 (B) ; mesures A.1, B.1, C.1 (L, une à la fois) | V0.4, V0.5 (M) ; Gate V0 | moyen |
+| 2 Vitesse 1 | V1.1 puis V1.2-3 (B) ; conceptions V4.1, V3.1, V2.1 (S) ; corrections A.2, A.5, A.6 (B, un agent, à la suite) ; mesures A.3, A.4, C.2, C.3 (L) | V1.4 (M) ; preuve de V1 (L) | moyen |
+| 3 Vitesse 2 | V4.2-3 (B) ; C.1c et C.2c si prouvées (B) ; D.1 (B) ; F.1, F.3, F.4, F.7 (Haiku) ; mesures B.3, B.7, D.2, E.1 (L) | V4.4 (M) ; preuve de V4 (L) | moyen |
+| 4 Vitesse 3 | V3.2, puis V3.3, V3.4 (B) ; B.2, B.4, B.6 (B, un agent, à la suite) ; D.3, D.4 (B, S) ; E.3, E.6 (B) ; mesures E.4, F.5, F.6 (L) | V3.5 (M) ; preuve de V3 (L) | moyen |
+| 5 Intégration « vitesse » | V2.2 (S) ; E.2 après A (B) ; E.5, C.4 (S, Haiku) ; F.2 (Haiku) | I.1 à I.3 : preuve complète (L), gate du corpus, relevés (M) | élevé (machine) |
+| 6 Intégrations du backlog | V2.3-4 (B, Opus) ; B.5 si sa condition est tenue (B) ; D.5, D.6 côté LevelUp (B, S) | A, C, B, D, E, F intégrées une à une (L), schéma 127 à la première | élevé |
+| 7 V2 | — | V2.5 (M), preuve de V2 (L), intégration | moyen |
+| 8 Gel et accueil | relectures P.5 par PR (S, Sonnet), une par PR | P.4 gel ; vérifications P.5 (L) ; P.6 ; P.7 ; P.8 | élevé, étalé sur le retour du contributeur |
+| 9 Fin | R.1 (Fable), R.2 (Sonnet) ; miroirs L.4 (B) ; notes de version (Haiku) | L.1 à L.9 | élevé |
+
+Une recherche qui n'a pas abouti suit R-3 : elle reprend si une piste nouvelle existe, sans retarder les
+vagues ; son item de correction s'intègre avant le gel. Si le contributeur est prêt avant la vague 8, ses
+PR sont relues dès leur arrivée (P.5) et attendent le gel pour entrer. S'il tarde, les vagues 0 à 7 se
+terminent et la version attend, branche gelée. Le coût de chaque vague est annoncé à son lancement.
+
+### Table d'exécution : un item, un agent
+
+Elle prime sur les mentions de modèle des titres de piste. « Effort » : bas, moyen, élevé. Une recherche
+est découpée : un item de MESURE sans code (suffixe absent ou « m »), puis, seulement si la cause est
+prouvée, un item de CORRECTION (suffixe « c ») écrit dans sa piste avant son code. Les items « c » ci-dessous
+sont conditionnels. Opus n'apparaît qu'avec son motif.
+
+| Item | Modèle, effort | Classe | Fichiers ou rendu | Dépend de |
+|---|---|---|---|---|
+| 0.1, 0.2 | pilote | L | clone, worktree, marche à blanc | — |
+| 0.3 | Haiku, bas ; le pic par le pilote | S, L | `films_du_releve.tsv` | 0.1 |
+| 0.4 | Sonnet, moyen (instruction de l'écart « kill ») ; passes au pilote | S, L | constat au journal | 0.2 |
+| 0.5, 0.6, 0.7 | Haiku, bas (trois agents) | S | constats au plan ; liste des appelants | 0.1 |
+| 0.8 | Sonnet, bas | L | export hors dépôt, `avant.md` | 0.1 |
+| V0.1 | Haiku, bas | S | `bench/films.tsv`, `bench/README.md` | 0.3 |
+| V0.2, V0.3 | Sonnet, moyen | B | `cmd/film-bench/`, `bench/` | Gate 0 |
+| V0.4 | Haiku, bas (script) ; mesure au pilote | S, M | `releve_bout_en_bout.md` | V0.7, 0.8 |
+| V0.5 | pilote (mesure) ; Haiku, bas (mise en forme du profil) | M, S | `bench/releves/v1.5.0.tsv`, `profil.md` | V0.2 |
+| V0.6 | Sonnet, bas | B | `replay/options.go`, `decfilm/` | Gate 0 |
+| V0.7 | Sonnet, moyen | B | `LU cmd/replay-equiv`, `replay-build`, `replay-corpus-gate` | V0.6 intégrée |
+| V1.1 | Sonnet, bas | S | conception au plan | V0.5 |
+| V1.2, V1.3 | Sonnet, moyen | B | `internal/source/`, `filmcache/`, `decfilm/` | V1.1, Gate V0 |
+| V1.4 | pilote | M | relevés | V1.3 |
+| V4.1 | Sonnet, moyen | S | conception au plan | V0.5, 0.7 |
+| V4.2, V4.3 | Sonnet, élevé (plusieurs fichiers) | B | `replay/film_scan*.go`, `build_from_film.go`, `movement_states.go` | V4.1, V1 intégrable |
+| V4.4 | pilote | M | relevés | V4.3 |
+| V4.5 | Haiku, bas | S | fragments de crédit | — |
+| V3.1 | Sonnet, moyen | S | candidats au plan | V0.5 |
+| V3.2 | Sonnet, élevé (trois lecteurs, une recherche) | B | `marche_images_cles*.go`, `keyframe_etat_complet_*.go`, `keyframe_loadout.go` | V3.1, V4 |
+| V3.3 | Sonnet, bas | B | sonde de calibration | V3.2 |
+| V3.4 | Sonnet, moyen, un agent par candidat | B | selon V3.1 | V3.2 |
+| V3.5 | pilote | M | relevés | V3.4 |
+| V2.1 | Sonnet, élevé (instruction, sans code) | S | `v2_conception.md` | V0.5 |
+| V2.2 | Opus, moyen (motif : conception d'une lecture concurrente sur un état partagé) | S | conception au plan | V2.1 |
+| V2.3, V2.4 | Opus, élevé (même motif : l'erreur est silencieuse) | B | `marche_trames*.go`, `distribuer*.go`, `world.go`, `keyframe_liaison.go` | V2.2, V4, V3 |
+| V2.5 | pilote | M | relevés | V2.4 |
+| I.1 à I.3 | pilote ; Haiku, bas pour refiger les empreintes sous sa conduite | L, M | intégration | Gates V1, V4, V3 |
+| A.1 | Sonnet, bas | L | mesure, cause par film | 0.8 |
+| A.2 | Sonnet, moyen | B | `document_score_actions*.go` | A.1 |
+| A.3 | Sonnet, moyen ; reprise Opus seulement si la mesure désigne une lecture de grammaire non décodée (motif au journal) | L | mesure | 0.8 |
+| A.3c | Sonnet, moyen | B | `reponsesdejeu/` | A.3 prouvée |
+| A.4 | Sonnet, moyen | L | mesure | 0.8 |
+| A.4c | Sonnet, moyen | B | `reponsesdejeu/`, `document_score_actions*.go` | A.4 prouvée, A.2 |
+| A.5 | Sonnet, moyen | B | `score_timeline*.go` | A.2 |
+| A.6 | Sonnet, bas | B | `reponsesdejeu/`, révision | A.5 |
+| B.1 | Sonnet, élevé ; reprise Opus sur la même condition que A.3 | L | mesure, trois familles | 0.8 |
+| B.2 | Sonnet, moyen, un item par cause prouvée | B | `flag_*.go`, `porteurs_*.go` | B.1 |
+| B.3, B.7 | Sonnet, bas (deux mesures) | L | mesures | 0.8 |
+| B.3c, B.7c | Sonnet, moyen | B | `flag_assign.go` ; `zone_states_owner*.go` | mesure prouvée, B.2 |
+| B.4 | Sonnet, moyen | B | `internal/facts/objectives/named*.go` | B.2 |
+| B.5 | Sonnet, moyen ; la mesure de sa condition au pilote | L, B | `porteurs_entrees.go` | B.2, B.4 |
+| B.6 | Sonnet, moyen | B | `components_navpoint*.go`, `zone_states_lettres.go` | B.2 |
+| C.1, C.2, C.3 | Sonnet, bas (trois mesures) | L | mesures d'accord | Gate 0 |
+| C.1c, C.2c, C.3c | Sonnet, moyen | B | `frame_vue_controle.go`, `document_stances*.go` | mesure à 90 % |
+| C.4 | Haiku, bas | S | table des recouvrements | P.1a |
+| D.1 | Sonnet, moyen | B | `vue_a_genres.go`, `vue_a_lecture.go` | Gate 0 |
+| D.2 | Sonnet, moyen (mesure sur les tables du jeu installé) | L | correspondance indice vers nom | D.1 |
+| D.3 | Sonnet, moyen | B | `replay/document_repliques*.go` (neufs) | D.1 |
+| D.4 | Haiku, bas | S | fragments | D.3 |
+| D.5 | Sonnet, moyen | B | `LU cmd/` (table des répliques) | D.3 |
+| D.6 | Sonnet, moyen | S | maquette interactive | D.5 |
+| E.1 | Sonnet, bas (mesure) | L | compte des éliminations d'auteur bot | 0.8 |
+| E.1c | Sonnet, moyen | B | `document_eliminations.go`, `eliminations.go` | E.1 |
+| E.2 | Sonnet, moyen | B | `internal/facts/objectives/named*.go`, `score_timeline*.go` | A intégrée |
+| E.3 | Sonnet, moyen | B | `film_variante_de_partie.go` | Gate 0 |
+| E.4 | Sonnet, moyen (mesure) | L | lecture de l'apparence sur 3 films | 0.8 |
+| E.4c | Sonnet, moyen | B | fichiers neufs | E.4 prouvée |
+| E.5 | Haiku, bas | S | sort écrit | P.1a |
+| E.6 | Sonnet, bas | B | `eliminations.go` | E.1c |
+| F.1 | Haiku, bas | B | `LU scripts/briques-workspace.sh` | — |
+| F.2 | Haiku, bas | S | `LU config/replay_corpus.toml` | — |
+| F.3 | Haiku, bas ; le compte sur films au pilote | L, B | registre des replis | Gate 0 |
+| F.4 | Haiku, bas | S | verdict écrit (base copiée, sans décodage) | 0.8 |
+| F.5, F.6 | Sonnet, bas (deux mesures) | L | cause ou `[!]` | 0.8 |
+| F.7 | Haiku, bas | L | verdict écrit | Gate 0 |
+| P.1a, P.1b | Haiku, bas (décodeur ; deux autres briques) | S | `inventaire_contributeur.md` | — |
+| P.2 | Sonnet, moyen | S | `accueil_contributeur.md` (anglais) | P.1 |
+| P.3, P.4 | pilote | S, L | annonces, gel | vagues 1 à 7 |
+| P.5 | Sonnet, moyen (relecture d'une PR) ; contrôles au pilote | S, L | une relecture par PR | P.4, PR reçue |
+| P.6, P.7, P.8 | pilote ; Haiku, bas pour les refigeages guidés | L | intégration, tags | P.5 |
+| R.1 | Fable | S | relecture finale | P.8 |
+| R.2 | Sonnet, moyen | B | corrections P0, P1 | R.1 |
+| L.1 à L.3, L.6 à L.9 | pilote ; Haiku, bas pour l'assemblage des fragments et les notes | L, M | publication | R.2 |
+| L.4 | Sonnet, élevé (miroirs, plusieurs fichiers) ; Fable pour relire le diff de la montée | B | `LU` | L.3 |
+| L.5 | pilote ; Haiku, bas pour les notes de version | L | gates de LevelUp | L.4 |
+
+Ce qui ne tourne JAMAIS ensemble : deux items L ; un item M et quoi que ce soit ; deux items d'une même
+piste de code (mêmes fichiers) ; une intégration et une autre. Ce qui tourne ensemble sans réserve : les
+items S ; un item B de chaque piste parmi V, A, B, C, D, E, F, dans la limite de 4.
 
 Fichiers attendus par piste (à confirmer en 0.6 ; deux pistes sur un même fichier = l'une après l'autre,
 écrit au journal) :
@@ -469,11 +598,13 @@ Fichiers attendus par piste (à confirmer en 0.6 ; deux pistes sur un même fich
 | C | `internal/grammar/frame_vue_controle.go`, `replay/document_stances*.go` | vue A |
 | D | `internal/grammar/vue_a_genres.go`, `vue_a_lecture.go`, fichiers neufs `replay/document_repliques*.go` | vue de contrôle |
 | E | `replay/document_eliminations.go`, `eliminations.go`, `internal/grammar/film_variante_de_partie.go`, `internal/facts/objectives/named*.go` (E.2, après A) | drapeau |
-| P | à écrire en P.0 ; touche `vue_a_lecture.go`, `distribuer_tetes.go`, `movement_states.go`, `replay/shots*.go`, `projectiles.go`, `filmcache/` | — |
+| Contributeur | liste de la section 1.3 : `replay/options.go`, `film_scan_*.go`, `document_stances.go`, `shots*.go`, `projectiles.go`, `vue_a_lecture.go`, `distribuer_tetes.go`, `movement_states.go`, `keyframe_etat_complet_bipede.go`, `filmcache/`, `decfilm/`, schéma, chronique, faits, goldens | — |
 
 Dépendances entre pistes de vitesse, dites : V1, V2 et V4 lisent toutes la structure d'options de V0.6 et
 aucune ne l'écrit ; V2 et V4 touchent toutes deux la distribution aux canaux (V4 les inscriptions, V2 le
-distributeur) : V2 passe après V4 ; V3 passe après V4. Seules V1 et V4 tournent ensemble.
+distributeur) : V2 passe après V4 ; V3 passe après V4. Les pistes de vitesse passent donc une à une.
+Le travail du contributeur croise V0.6, V1, V3, V4, C, D et tous les fichiers à écrivain unique : c'est
+pourquoi il entre APRÈS le gel, sur une base qui ne bouge plus (piste P).
 
 Fichiers à écrivain unique, le pilote, à l'intégration seulement : `replay/document_schema.go`,
 `document_chronicle.go`, `layers.go`, `coverage.go`, `filmfacts*.go`, tous les goldens, les fichiers de
@@ -497,7 +628,7 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       L'écart « à classer : kill » est instruit jusqu'à sa cause ; `joinSegments` et tout parcours de `map`
       qui ordonne une sortie sont relevés, fichier et ligne. Sortie : zéro écart à classer en double passe
       sur la v1.5.0, ou un item de correction écrit ici (il changerait la sortie : il rejoint alors la
-      vague 2, et la phase vitesse se prouve avec ce bruit nommé et borné à son étape).
+      vague 6, celle des intégrations du backlog, et la phase vitesse se prouve avec ce bruit nommé et borné à son étape).
 - [ ] 0.5 Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
       (`e703301`) ; chaque référence `fichier:ligne` de la section 1.1 rouverte sur la tête du clone.
 - [ ] 0.6 Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
@@ -611,7 +742,7 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
   document complet sur les 20 films ; G-clone sur `./replay/ -run 'Canaux|Calques'` (au moins 3 tests
   `PASS`, dont le garde-rail V4.3) ; G-rev ; G-compat.
 
-## Piste V3 — lectures refaites et état à la demande, selon DD-7 (Sonnet)
+## Piste V3 — lectures refaites et état à la demande, réduit par DD-7 (Sonnet)
 
 - [ ] V3.1 Instruction sans code : liste fermée des états construits d'office pour des lecteurs qui ne les
       demandent pas, et des lectures refaites, avec leur coût dans le profil V0.5 et leurs lecteurs ;
@@ -642,14 +773,14 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
 
 ## Piste V2 — lecture de plusieurs chunks à la fois (Opus ; s'intègre APRÈS les pistes A à F)
 
-- [ ] V2.1 Instruction sans code, dans `.ai/annexes_decodeur_v160/v2_conception.md` (vague 1) : ce qu'un
+- [ ] V2.1 Instruction sans code, dans `.ai/annexes_decodeur_v160/v2_conception.md` (vague 2) : ce qu'un
       chunk hérite du précédent dans notre marche (table d'entités du monde, liaisons des images-clés, table
       anticipée, neufs suspendus, profil de balayage, compteurs de replis, crochets des canaux, marche
       commune de la source de dégât) ; à quelle condition un chunk peut partir d'une copie de l'état ;
       comment on RECONNAÎT qu'il dépendait du précédent ; méthode du parseur voisin relue
       (`parser/v41/chunks.rs`) ; part de la marche des trames dans le profil V0.5. Si cette part est sous
       20 % du total, ou si la dépendance ne se reconnaît pas par un fait écrit, la piste s'arrête : `[!]`
-      avec la mesure, report en v1.7.0 (R-3).
+      avec la mesure (abandon écrit et motivé, R-3).
 - [ ] V2.2 Conception relue par le pilote puis écrite ICI, datée, avant le code : forme de la copie d'état,
       règle de relecture en séquence, ordre de remise aux canaux (les crochets publient pendant la marche :
       leur ordre d'appel reste celui d'un fil), borne de mémoire (copies d'état en vol au plus égales au
@@ -717,33 +848,34 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
 - [ ] C.3 Sens des quatre booléens d'un rechargement : mesure contre les munitions lues ; nommés s'ils sont
       prouvés, sinon laissés tels quels.
 - [ ] C.4 Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
-      table « son champ, notre champ, lequel reste », remise à P.0.
+      table « son champ, notre champ, lequel reste », versée à l'inventaire P.1 et au dossier P.2.
 - **Gate C** : équivalence attribuée ; poids ajouté au document sous 1 % sur 20 films ; G-clone sur
   `./replay/ ./internal/grammar/` ; G-rev ; G-compat.
 
-## Piste D — répliques des Spartans (Sonnet ; selon DD-4)
+## Piste D — répliques des Spartans (Sonnet ; dans la v1.6.0, DD-4)
 
 - [ ] D.1 Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
 - [ ] D.2 Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
       correspondance entre l'indice du film et l'entrée des tables de vocalisation (5 noms résolus à ce
-      jour). Publié quand il est prouvé à la fin de la vague 1 ; sinon `[!]`, report en v1.7.0 (R-3).
-      Aucun nom inventé.
+      jour). Un nom est publié quand il est prouvé ; une réplique dont le nom n'est pas prouvé est publiée
+      sans nom, et comptée. La recherche suit R-3. Aucun nom inventé.
 - [ ] D.3 Publication : calque `chatter[]` (image, joueur, son, genre, nom court s'il existe) et sa
       couverture (lus, publiés, sans joueur, hors du match) ; les annonces de l'annonceur dans un calque à
       part si D.1 les lit. Le film ne dit pas quelle variante audio a joué : le document ne le dit pas non
       plus.
 - [ ] D.4 Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
       textes, libfilmshell, MIT) pour `NOTICE.md`.
-- [ ] D.5 HORS DÉCODEUR, seulement si DD-4 retient la v1.6.0 : côté LevelUp, à la montée, commande qui bâtit
+- [ ] D.5 HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
       la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et
       fichiers de voix), faite comme celle des sons d'armes (`cmd/weapon-sounds`), derrière le tag
       `gamefiles` ; aucun fichier du jeu au dépôt.
-- [ ] D.6 HORS DÉCODEUR, même condition : UNE maquette interactive des trois idées du user (icône de son et
+- [ ] D.6 HORS DÉCODEUR (DD-4) : UNE maquette interactive des trois idées du user (icône de son et
       texte sur le joueur ; icône et son joué ; une variante au hasard dans le fil avec un filtre
       « Répliques »), sur un rejeu réel, inscrite à l'artefact des vérifications. Les zones de lieu de
-      LevelUp servent telles quelles. Aucun code d'affichage dans ce plan.
+      LevelUp servent telles quelles. L'affichage réel se fait dans un plan à part, après le choix du user
+      sur la maquette : aucun code d'affichage ici.
 - **Gate D** : équivalence attribuée, plus G-equiv-2p (canal de faits neuf) ; poids ajouté sous 1 % ;
   budget des fixtures de contrat relevé et daté ; G-clone sur `./replay/ ./internal/grammar/` ; G-rev ;
   G-compat.
@@ -763,7 +895,7 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
       films ; publication si la lecture est prouvée contre la personnalisation publique de l'API ; sinon
       `[!]`. À remettre à la session du rejeu 3D dans les deux cas.
 - [ ] E.5 Zoom et coup de mêlée sans mort : contrôle sur pièces de ce qui est déjà publié (visée) et de ce
-      que les gestes du contributeur couvrent (coup) ; sort écrit, remis à P.0.
+      que les gestes du contributeur couvrent (coup) ; sort écrit, versé à l'inventaire P.1.
 - [ ] E.6 Victime d'une élimination appariée au plus proche : victime absente et compteur d'ambiguïté quand
       une action a plusieurs candidats.
 - **Gate E** : équivalence attribuée ; éliminations et statistiques VIP contre l'API sans baisse ; G-clone
@@ -773,8 +905,8 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
 
 - [ ] F.1 `scripts/briques-workspace.sh` (LevelUp) : sous Windows, l'entrée `use` du clone s'écrit avec des
       barres inverses ; témoin : `go test` d'un sous-paquet du clone passe avec le `GOWORK` engendré.
-- [ ] F.2 Selon DD-8 : les huit décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16)
-      retirées, liste montrée au user avant.
+- [ ] F.2 Les huit décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16) retirées
+      (DD-8) ; leur liste est écrite au journal et montrée dans le rapport d'exécution.
 - [ ] F.3 Repli du voisinage des pièces montées : compté sur les films à véhicules par le harnais ; à zéro
       partout, l'entrée du registre est retirée et sa constante gardée, marquée dépréciée.
 - [ ] F.4 Temps forts « mode » sans action de score (3 410 en Drapeau, 691 en Total Control, 303 en
@@ -788,51 +920,94 @@ Deux relevés, parce que la génération d'un rejeu dépend de la base de LevelU
 - **Gate F** : G-clone sur `./internal/facts/fallback/ ./decfilm/` ; équivalence attribuée pour F.3 ;
   G-compat (la constante de F.3 est toujours là).
 
-## Piste P — canaux du contributeur (Sonnet ; ATTEND L'ACCORD, sauf P.0)
+## Piste P — accueil du travail du contributeur (pilote ; Sonnet pour l'inventaire et les relectures)
 
-- [ ] P.0 Inventaire en lecture seule (DD-1), sur la tête de son dépôt au jour de l'item : diff de
-      `third_party/film-decoder` contre v1.3.6, puis contre v1.5.0 ; pour chaque canal : fichiers, schéma
-      qu'il prend chez lui, recouvrement avec la v1.5.0 (tables de C.4 et E.5), règle du dépôt en jeu, ajout
-      du lecteur de fichiers ou de la brique des cartes dont il dépend (ordre des tags, DD-6), sort du codec
-      `REPLAYINPUTS30`. Rendu : `.ai/annexes_decodeur_v160/inventaire_contributeur.md`. Les items P.1 à P.8
-      sont réécrits ici, datés, d'après cet inventaire, AVANT tout code. Les numéros de schéma sont
-      réattribués : un seul 127 pour toute la version.
-- [ ] P.1 Pistes à pleine cadence et visées seules.
-- [ ] P.2 Tirs : direction par la visée, décalage dans l'image, tireur par place de contrôle : champs
-      ajoutés seulement, sous la garde R-14.
-- [ ] P.3 Arme en main par place ; munitions portées.
-- [ ] P.4 Dégâts par place et causes des morts, confrontés à `damage[]` et à la source de dégât, sous la
-      garde R-14.
-- [ ] P.5 Gestes (lancer, coup ; le rechargement existe) ; manche et postures de contrôle selon C.4.
-- [ ] P.6 Projectiles : hauteur, pleine cadence, projectiles collés, détonation d'un lancer sans vol publié.
-- [ ] P.7 Socles : socles d'équipement, candidats de socle, axes d'un socle (après le tag du lecteur de
-      fichiers, M.1) ; seconde famille du Stalker Rifle.
-- [ ] P.8 Façades : `filmcache.ParseManifest`, `filmcache.NewSource`, `decfilm.LoadMapQuantCatalogBytes`.
-- Règles de la piste : une PR par canal ou petit groupe, chacune avec sa ligne au registre des changements de
-  sortie ; son crédit rendu en fragment pour `NOTICE.md` et les notes de version ; un champ que LevelUp ne
-  lit pas est légitime ; ses fixtures passent le contrôle des identifiants ; aucun repli sans nom ni
-  compteur.
-- **Gate P** (par canal) : équivalence attribuée, plus G-equiv-2p ; R-14 pour P.2 et P.4 ; si V2 est
-  intégrée, empreintes du niveau `N` égales à celles du niveau 1 ; relevé A à un fil : total dans les 10 %
-  du relevé « vitesse », sinon retour au pilote ; poids du document mesuré et présenté ; G-clone, G-rev,
-  G-compat, G-façade ; son application compile contre la branche (contrôle fait par lui ou avec lui).
+Le contributeur écrit lui-même le report de ses ajouts sur la v1.5.0, dans les trois briques (DD-1, DD-6).
+Aucun agent de ce plan n'écrit ce code. Notre part : préparer, remettre, synchroniser, vérifier, intégrer.
 
-## Piste M — briques des cartes et du lecteur de fichiers (Sonnet ; ATTEND L'ACCORD, sauf M.0)
+**Risques de collision, dits.** Son travail et nos pistes touchent les mêmes fichiers (liste de la section
+1.3) : les options (`replay/options.go` : V0.6, V4), le balayage du film (`film_scan_*.go` : V4, V3), la vue
+A (`vue_a_lecture.go` : D), les postures (`document_stances.go`, vue de contrôle : C), le chargement
+(`filmcache/` : V1), la façade `decfilm`, et tout ce qui n'a qu'un écrivain : schéma, chronique, faits,
+goldens, révisions, références. Trois recouvrements de FOND s'y ajoutent : ses gestes contre nos
+`reloads[]`, son manche contre notre `moveCommand`, ses postures de contrôle contre la piste C. Un rebase
+fait pendant que nos pistes bougent serait à refaire à chaque intégration, et deux écritures du schéma se
+marcheraient dessus.
 
-- [ ] M.0 Inventaire en lecture seule : diff à trois voies de ses copies (parties de v1.0.1) contre nos
-      v1.4.0 et v1.2.0 ; ce qui est déjà chez nous ; ce qui est neuf ; ce que les canaux de P exigent (à
-      taguer AVANT eux) et ce que seul le plan 3D attend ; fichiers du jeu omis ; dépendance neuve
-      (`woozymasta/bcn`, licence à relire). Rendu : `inventaire_briques.md`. Items M.1 à M.3 réécrits
-      d'après lui, avec l'ordre des tags.
-- [ ] M.1 Lecteur de fichiers : d'abord ce que P exige (ajouts de `mapvar`), PR, CI, tag mineur, puis montée
-      du `require` du décodeur ; ensuite compagnons `.module_hd1` et lecteurs du maillage.
-- [ ] M.2 Cartes : `bitmapdecode`, export du monde et bibliothèques, par PR de taille relisible ; tests du
-      jeu derrière `gamefiles` ; PR, CI, tag mineur.
-- [ ] M.3 Montée des deux `require` dans LevelUp, sur la branche du plan 3D (pas sur celle de ce plan).
-- **Gate M** : `go test -count=1 -v ./...` de chaque brique, zéro `SKIP` inattendu ; G-compat de chaque
-  brique contre son dernier tag ; `make go-api-test-gamefiles` une fois, par le pilote, seul sur la machine ;
-  aucun fichier extrait du jeu au dépôt ; après une montée du `require` du décodeur : G-clone sur `./...` et
-  G-equiv-ref sans écart.
+**Règle de gel.** Nos pistes s'intègrent d'abord (vagues 1 à 9). Le pilote pose alors un commit de GEL sur
+`feat/v1.6.0`, annoncé au contributeur : c'est SA base. À partir du gel, plus aucune piste de ce plan
+n'écrit sur la branche ; seules y entrent ses PR, une à une, puis les corrections de la relecture. Un
+correctif de notre côté après le gel lui est annoncé avant d'être poussé. Avant le gel, il peut travailler
+sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
+
+- [ ] P.1 Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
+      décodeur, P.1b les deux autres briques), pour PRÉPARER l'accueil (aucun code, aucune PR), sur la
+      tête de son dépôt au jour de l'item : pour le décodeur, diff de `third_party/film-decoder` contre
+      v1.3.6 puis contre v1.5.0 ; pour les deux autres briques, diff à trois voies contre nos v1.4.0 et
+      v1.2.0. Par canal : fichiers, schéma qu'il prend chez lui, recouvrement avec la v1.5.0 et avec nos
+      pistes (tables de C.4 et E.5), règle du dépôt en jeu, ajout d'une autre brique dont il dépend, sort du
+      codec `REPLAYINPUTS30`, dépendance neuve (`woozymasta/bcn`, licence à relire), fichiers du jeu omis.
+      Rendu : `.ai/annexes_decodeur_v160/inventaire_contributeur.md`, avec l'ORDRE DES TAGS des trois
+      briques.
+- [ ] P.2 Dossier remis au contributeur, en anglais, `.ai/annexes_decodeur_v160/accueil_contributeur.md`,
+      envoyé par le user. Contenu fermé :
+      (a) l'état de départ : tag `v1.5.0` du décodeur (`dc967c2`, document au schéma 126, faits au schéma
+      30), brique des cartes v1.4.0, lecteur de fichiers v1.2.0 ; ce que la v1.5.0 a ajouté et qui recouvre
+      ses canaux (`reloads[]`, `moveCommand`, `tirsParPlace`, `damage[]`, `eliminations[]`, coup d'envoi par
+      l'horloge), d'après P.1 ;
+      (b) les règles du dépôt public : aucun identifiant de joueur réel, aucun fichier extrait du jeu, test
+      du jeu installé nommé `*_gamefiles_test.go` et étiqueté `gamefiles`, 500 lignes par fichier, aucun
+      repli sans nom ni compteur, la grammaire prime sur toute dérivation, passage par la façade `decfilm`,
+      ajouts seulement (aucun symbole public retiré, aucune signature changée), langue et nommage de chaque
+      dépôt gardés, pas de traduction des fichiers existants ;
+      (c) les numéros de schéma : UN seul passage pour toute la version, document 127 et faits 31 ; sur sa
+      branche il prend ces deux numéros pour l'ensemble de ses canaux, en une entrée de chronique ; le
+      pilote fond son entrée avec la nôtre à l'intégration et refige lui-même goldens, révisions, références
+      et fixtures : il n'a pas à les tenir verts contre notre branche ;
+      (d) la marche de publication (`marche_de_publication.md`, gestes 1 à 12), les commandes de gate de ce
+      plan qu'il peut jouer chez lui (G-clone, G-rev, G-compat), et le fait que les tags sont posés par le
+      pilote ;
+      (e) ce que nos pistes changent pendant qu'il travaille : la table des fichiers par piste et la liste
+      des collisions ;
+      (f) la synchronisation : base `v1.5.0` d'ici le gel ; un seul rebase, sur le commit de gel de
+      `feat/v1.6.0`, que nous lui annonçons ; une PR par canal ou petit groupe, chacune disant ce qui change
+      dans la sortie ; PR des deux autres briques d'abord quand un canal en dépend ;
+      (g) ce que nous lui demandons de ne pas remonter (section 2), et la garde de la précision (R-14) :
+      un canal qui touche tirs, touches ou dégâts ajoute des champs sans changer un compte existant ;
+      (h) ce qui est vérifié à l'arrivée (P.5), pour qu'il le sache d'avance.
+- [ ] P.3 Points de synchronisation, annoncés au contributeur par le user ou par une issue du dépôt : fin de
+      la phase vitesse (les options et le balayage du film ont leur forme finale) ; première intégration au
+      schéma 127 ; gel. À chacun : le commit, la liste des fichiers de la liste des collisions qui ont bougé.
+- [ ] P.4 Gel : toutes nos pistes intégrées ou statuées, `feat/v1.6.0` verte (G-clone sur `./...`, G-rev,
+      G-compat, G-equiv-ref à 20 identiques sur références refigées) ; commit de gel annoncé ; plus aucune
+      écriture de notre côté hors R-17.
+- [ ] P.5 Vérification à l'arrivée, PAR PR du décodeur, dans cet ordre, sur une branche de contrôle (jamais
+      sur `feat/v1.6.0`) : contrôle des identifiants et des fichiers du jeu (R-5) ; relecture par un agent
+      Sonnet qui n'a pas écrit le code, axes : heuristique ou dérivation à la place d'une lecture, repli
+      sans nom, sortie changée non déclarée, recouvrement avec un champ existant ; G-clone sur `./...` ;
+      G-rev ; G-compat ; équivalence ATTRIBUÉE (chaque écart rattaché à ce que la PR déclare) ; G-equiv-2p ;
+      garde de la précision R-14 pour tout canal qui touche tirs, touches ou dégâts ; poids ajouté au
+      document mesuré ; relevé A à un fil (total dans les 10 % du relevé d'avant la PR, sinon retour au
+      contributeur avec la mesure) ; si V2 est intégrée, empreintes du niveau `N` égales à celles du
+      niveau 1. Un contrôle rouge : la PR lui revient avec la pièce ; nous ne corrigeons pas son code à sa
+      place sans son accord.
+- [ ] P.6 Réception des deux autres briques, dans l'ordre de P.1 : `go test -count=1 -v ./...` de la brique,
+      zéro `SKIP` inattendu ; G-compat contre son dernier tag ; aucun fichier extrait du jeu ; licence de
+      toute dépendance neuve relue ; `make go-api-test-gamefiles` une fois, par le pilote, seul sur la
+      machine. Tags mineurs posés par le pilote. Ordre : lecteur de fichiers, puis brique des cartes (elle
+      en dépend), puis montée des `require` du décodeur si un canal l'exige (suivie de G-clone sur `./...`
+      et de G-equiv-ref sans écart), puis seulement le tag du décodeur. La montée de ces deux `require` dans
+      LevelUp se fait sur la branche du plan 3D, pas sur celle de ce plan.
+- [ ] P.7 Intégration de ses PR du décodeur dans `feat/v1.6.0`, une à une, sous le SEUL schéma 127 : le
+      pilote fond les entrées de chronique, refige goldens, révisions (rang neuf, R-13), fixtures de contrat
+      et références, tient le registre des changements de sortie (une ligne par canal, avec son crédit), et
+      assemble ses fragments de documentation (R-15). G-façade après chaque intégration.
+- [ ] P.8 Après la dernière intégration : G-corpus au niveau `N` ; son application compile et joue un match
+      contre `feat/v1.6.0` (contrôle fait par lui) ; la session du rejeu 3D est prévenue des champs ajoutés
+      (R-10) ; crédit du contributeur dans `NOTICE.md` et les notes de version.
+- **Gate P** : chaque PR a passé P.5 ; les trois briques sont taguées dans l'ordre de P.1, sauf le décodeur
+  (tag en L.3) ; aucun compte de tirs, de touches ni de dégâts n'a bougé ; le document n'a qu'UNE entrée de
+  chronique 127 ; G-corpus sans perte non décidée par le user.
 
 ## Étape R — relecture, AVANT les gates finals
 
@@ -858,7 +1033,9 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
       des changements de sortie, tableau de vitesse, crédits (nuzzles, Den, le contributeur).
 - [ ] L.4 Montée dans LevelUp sur `chore/830-decodeur-v160` : `require` sur le tag ; miroirs Go et web
       SEULEMENT pour ce que LevelUp lit ; contrat de l'API, fixtures ; plafonds de la façade ; niveau de
-      fils laissé à 1 partout (DD-3) ; appelants de 0.7 branchés sur le choix des canaux, CHACUN avec ses
+      fils réglé par installation dans `internal/config` (DD-3) : 1 sur le serveur, et sur le bureau et en
+      développement la valeur que le relevé B et le pic mesuré permettent sous le plafond inchangé, 1 faute
+      de mesure ; appelants de 0.7 branchés sur le choix des canaux, CHACUN avec ses
       témoins avant et après (sortie de la source de dégât, coup d'envoi du film, rasters tactiques :
       capturée sur 5 films avant le branchement, identique après) ; liste des champs « servis seuls » vidée
       si elle ne l'est pas ; relecture adversariale du diff de la montée (Fable), P0 et P1 corrigés.
@@ -872,14 +1049,15 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
       premier démarrage de LevelUp 8.3.0. Puis les dérivés (`backfill-usage-summary`,
       `backfill-pad-tiers --force`, `backfill-killsource --workers 1`, `backfill-vehicle-takes --force`,
       `backfill-flag-grabs-net --force`, `tactical-rasters --backfill`) et le rattrapage du coup d'envoi
-      (`levelup backfill-kickoff`). Selon DD-1, cette étape attend la v1.7.0 si le point 1 y est parti.
+      (`levelup backfill-kickoff`). La v1.6.0 porte les canaux du contributeur (DD-1) : il n'y a qu'une
+      régénération.
 - [ ] L.7 Mesures APRÈS sur le parc régénéré, comparées à `avant.md` de ce plan ET aux mesures reportées du
       plan v1.5.0 (A.3, C.4, E.4, L.7) ; durée de la régénération comparée au précédent (1 455 films en
       2 h 26) ; vérifications à l'écran inscrites à l'artefact des vérifications.
 - [ ] L.8 Gestes de production inscrits à la liste de la release : dossier d'attente, bascule ; niveau de
       fils du serveur à 1.
-- [ ] L.9 Clôture : tous les items statués ; recherches closes ou `[!]` avec leurs pièces et leur report en
-      v1.7.0 ; backlog mis à jour entrée par entrée (section 1.4) ; registre des reports (dont le report de
+- [ ] L.9 Clôture : tous les items statués ; recherches closes ou `[!]` avec leurs pièces et leur motif ;
+      backlog mis à jour entrée par entrée (section 1.4) ; registre des reports (dont le report de
       la marche commune, déjà fait) ; items L.6, L.7 et R.3 du plan v1.5.0 statués `[~]` vers ce plan ;
       entrée de `.ai/thought_log.md` ; worktrees retirés un à un après recherche de jonction, dans un tour à
       part ; racines de données et caches dédiés supprimés.
@@ -893,6 +1071,16 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   outils de LevelUp ; règle des révisions de couche et des caches par piste ; deux relevés de vitesse ;
   relecture avant les gates finals ; V2 après les pistes du backlog ; DD-2 tranchée par le user ; DD-3
   tranchée par le pilote ; DD-7 et DD-8 ajoutées. Aucun code, aucun commit.
+
+- 2026-11-23 — DÉCISIONS DU USER, plan mis à jour sur place, aucun code : le contributeur reporte lui-même
+  ses ajouts sur la v1.5.0 dans les trois briques (« Oui Jordan s'en occupe seul ») ; tout se fait dans la
+  v1.6.0, sans échéance, aucune v1.7.0 ; DD-1 à DD-8 tranchées (section 2). Les pistes P et M deviennent la
+  piste P « accueil du travail du contributeur », avec une règle de gel ; R-3 ne renvoie plus rien à une
+  autre version ; vagues réduites à une intégration à la fois.
+- 2026-11-23 — GO DU USER (« Tu as mon feu vert d'emblée »), avec la consigne de découper en morceaux plus
+  petits : table d'exécution ajoutée (un item, un agent, le modèle et l'effort les moins coûteux qui
+  suffisent, fichiers, dépendances, classe de charge) ; recherches découpées en mesure puis correction ;
+  table des vagues réécrite avec ce qui tourne en même temps. Aucun item n'est lancé par cette mise à jour.
 
 ## Découvertes (consignées, non traitées)
 
