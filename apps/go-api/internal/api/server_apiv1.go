@@ -473,12 +473,18 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		poolSharingHandler.Mount(r, apiOpt)
 	})
 
+	// Lecteur de l'état de l'historique (statut de sync) : il mémorise ses lectures par player DB, donc
+	// la suppression des données d'un joueur doit le lui faire oublier (même chemin que l'éviction).
+	syncHistory := wire.NewSyncHistoryReader(cfg)
 	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
 	// porte un verrou process par-instance → toutes les écritures (onboarding
 	// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
 	// deux read-modify-write concurrents pourraient s'écraser (lost update).
 	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
-		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
+		WithDBEvictor(func(playerDBPath string) {
+			platform_duckdb.EvictAndCloseCached(playerDBPath)
+			syncHistory.Forget(playerDBPath)
+		})
 	// Annuaire des joueurs (ADR 0035) : UNE instance pour la lecture admin
 	// (GET /admin/identities) ET l'écriture (POST /setup/players → Onboard,
 	// D4). Construite ici parce que les deux points de montage en dépendent et
@@ -605,7 +611,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// et réglages.
 	syncJobs := service.NewSyncJobService(cfg, settingsStore, jobStore, tokenProvider).
 		WithFriendStore(friendStore).
-		WithLiveRunnerBuilder(wire.NewLiveRunnerBuilder(cfg))
+		WithLiveRunnerBuilder(wire.NewLiveRunnerBuilder(cfg)).
+		WithSyncHistoryReader(syncHistory)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {
 		syncJobs = syncJobs.WithPrestigeHook(prestigeBundle.RunPostSync)

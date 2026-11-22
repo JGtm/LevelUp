@@ -24455,6 +24455,9 @@ components:
           description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
           format: int64
           type: integer
+        history_complete:
+          description: Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé.
+          type: boolean
         job:
           $ref: '#/components/schemas/AsyncJobStatus'
           description: Job de sync actif du joueur, sinon le plus récent encore conservé.
@@ -24467,6 +24470,7 @@ components:
         - player_slug
         - syncing
         - cooldown_retry_after_s
+        - history_complete
       type: object
     PlayerTokenHealth:
       additionalProperties: false

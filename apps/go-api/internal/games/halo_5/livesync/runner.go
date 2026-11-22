@@ -88,6 +88,15 @@ type Deps struct {
 	// par l'impl (watermark sync_meta), PAS par ce hook. nil → runner unit-testable
 	// sans notifications (no-op).
 	NotifyFirstSync func(ctx context.Context, inserted int)
+	// HistoryComplete : sonde OPTIONNELLE « la fin de l'historique du joueur a-t-elle déjà été vue ? »
+	// (clé sync_meta history_complete_at, la même qu'Infinite). Faux → RunDelta passe en rattrapage
+	// (connus sautés, pagination poursuivie, MaxMatches borne les matchs nouveaux). nil → delta
+	// ordinaire (runner unit-testable sans player DB).
+	HistoryComplete func(ctx context.Context) bool
+	// MarkHistoryComplete : range la clé history_complete_at ; appelé par RunDelta seulement quand une
+	// passe de rattrapage a vu la fin de l'historique sans erreur. Best-effort : un échec est
+	// journalisé par l'impl, la passe suivante reparcourt l'historique. nil → rien n'est rangé.
+	MarkHistoryComplete func(ctx context.Context)
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -141,8 +150,9 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	}
 	resolveXUID := ResolveXUIDClosure(ctx, resolver, r.logger)
 
+	catchUp := r.startCatchUp(ctx, len(known), opts.MaxMatches)
 	batches, stats, err := r.deps.Capture(ctx, src, r.deps.Viewer, resolveXUID,
-		mapContains(known), halo5.CaptureOptions{MaxMatches: opts.MaxMatches})
+		mapContains(known), halo5.CaptureOptions{MaxMatches: opts.MaxMatches, CatchUp: catchUp})
 	if err != nil {
 		res.AddError("h5 collect: " + err.Error())
 	}
@@ -150,6 +160,8 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	done, errs := r.deps.PersistAll(ctx, batches)
 	res.Errors = append(res.Errors, errs...)
 	tallyResult(&res, done, stats)
+
+	r.markHistoryIfComplete(ctx, catchUp && stats.HistoryExhausted, len(res.Errors))
 
 	// Hook CSR post-sync (G4 Phase 1) : persiste le CSR arena par playlist dans la
 	// player DB h5. RÉUTILISE la source live déjà construite (zéro 2e auth).
@@ -248,4 +260,24 @@ func shouldRunPostScore(ctx context.Context, inserted int, hasBacklog func(conte
 		return true
 	}
 	return hasBacklog != nil && hasBacklog(ctx)
+}
+
+// startCatchUp dit si la passe est un rattrapage de l'historique (fin jamais vue, sonde
+// HistoryComplete fausse) et le journalise. Sans sonde : delta ordinaire.
+func (r *Runner) startCatchUp(ctx context.Context, knownCount, maxMatches int) bool {
+	if r.deps.HistoryComplete == nil || r.deps.HistoryComplete(ctx) {
+		return false
+	}
+	r.logger.InfoContext(ctx, "h5 sync: historique incomplet — rattrapage en mode full",
+		"gamertag", r.deps.Viewer.Gamertag, "known_count", knownCount, "max_matches", maxMatches)
+	return true
+}
+
+// markHistoryIfComplete range la clé de fin d'historique quand une passe de rattrapage (endSeen) a vu
+// la fin sans aucune erreur (capture, known-set ou persistance) ; sinon la clé reste absente
+// et la passe suivante rattrape encore.
+func (r *Runner) markHistoryIfComplete(ctx context.Context, endSeen bool, errCount int) {
+	if endSeen && errCount == 0 && r.deps.MarkHistoryComplete != nil {
+		r.deps.MarkHistoryComplete(ctx)
+	}
 }

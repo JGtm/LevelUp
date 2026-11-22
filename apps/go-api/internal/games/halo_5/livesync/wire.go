@@ -140,6 +140,10 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		// title-aware SyncEngineForTitle.RunAchievementsOnly (lease player DB + gate
 		// capability interne + provider MSAL). Best-effort côté runner.
 		RunAchievements: buildAchievementsHook(cfg, gamertag, xuid),
+		// Rattrapage de l'historique : tant que history_complete_at est absente de la player DB, le
+		// delta saute les connus et continue à paginer (parité Infinite).
+		HistoryComplete:     historyCompleteProbe(playerPath, gamertag),
+		MarkHistoryComplete: historyCompleteMarker(playerPath, gamertag),
 	}, logger)
 }
 

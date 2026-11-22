@@ -11419,6 +11419,8 @@ export interface components {
              * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
              */
             cooldown_retry_after_s: number;
+            /** @description Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé. */
+            history_complete: boolean;
             /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
             job?: components["schemas"]["AsyncJobStatus"];
             player_slug: string;
