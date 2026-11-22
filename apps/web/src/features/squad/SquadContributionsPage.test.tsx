@@ -17,6 +17,10 @@ import { SquadContributionsPage } from './SquadContributionsPage'
 import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
 import { impactSessionsFixture } from './impact-sessions/impactSessions.fixtures'
 
+// Porte data-level de la section d'impact : posée par chaque test (le titre déclare, ou non, la timeline).
+const capability = vi.hoisted(() => ({ timeline: true }))
+vi.mock('@/lib/capabilities/dataCapabilities', () => ({ useDataCapability: () => capability.timeline }))
+
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
   SquadPerMinuteChart: ({ title }: { title?: React.ReactNode }) => <div data-testid="per-minute-chart">{title}</div>,
@@ -37,6 +41,7 @@ function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModul
 }
 
 beforeEach(() => {
+  capability.timeline = true
   useSquadFilterStore.getState().setSessions({ picked_sessions: [], gap_minutes: 30 })
   useAppShellStore.setState({ locale: 'fr' })
 })
@@ -184,6 +189,20 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByText('Impact des coéquipiers')).toBeInTheDocument()
     expect(screen.getByTestId('squad-impact-sessions')).toBeInTheDocument()
     expect(screen.queryByTestId('squad-impact-row')).toBeNull()
+  })
+
+  // Fonction non déclarée par le titre (match.events.timeline absente) : la section entière, titre compris,
+  // est absente ; les autres sections de la page restent.
+  it('sans la capacité match.events.timeline, la section « Impact des coéquipiers » est absente', () => {
+    capability.timeline = false
+    mockSquadContext({
+      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByText('Impact des coéquipiers')).toBeNull()
+    expect(screen.queryByTestId('squad-impact-sessions')).toBeNull()
+    expect(screen.getByText(/^Médailles/)).toBeInTheDocument()
   })
 
   // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions

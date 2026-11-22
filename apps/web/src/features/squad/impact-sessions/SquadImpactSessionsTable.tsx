@@ -13,7 +13,7 @@
  * dépliables : `match-view/MatchScoreboard.tsx` (TanStack Table, `getRowId`, état `expanded`). Le clic
  * sur la ligne et le bouton de sa première cellule (Entrée, Espace) la déplient.
  */
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   type ColumnDef,
   type ExpandedState,
@@ -29,9 +29,9 @@ import type { SquadImpactSessions } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { SquadText } from '../i18n'
-import { PlayerName, SessionMatrix } from './SessionMatrix'
+import { ImpactSessionRow } from './ImpactSessionRow'
+import { PlayerName } from './SessionMatrix'
 import {
-  ALL_SESSIONS_KEY,
   buildImpactSessionsView,
   formatSignedNet,
   initialOpenState,
@@ -164,12 +164,6 @@ function buildColumns(
 const HEAD_CELL =
   'truncate border-b border-border px-3.5 pb-2 pt-3 text-left text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground'
 
-/** Le fond d'une ligne : teinte de la session sélectionnée, ou survol ; un peu plus soutenu quand elle est ouverte. */
-function rowTone(selected: boolean, open: boolean): string {
-  if (selected) return open ? 'bg-info/15' : 'bg-info/10'
-  return open ? 'bg-muted/60' : 'hover:bg-muted/60'
-}
-
 /**
  * L'état ouvert des lignes : il repart de la sélection quand elle (ou les sessions affichées) change ;
  * entre-temps, les clics de l'utilisateur s'y ajoutent. Ajustement d'état pendant le rendu, sans effet.
@@ -241,34 +235,18 @@ export function SquadImpactSessionsTable({ data, pickedSessionLabels, inkOf, loc
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row, index) => (
-              <Fragment key={row.id}>
-                <tr
-                  className={`cursor-pointer ${rowTone(selected.has(row.id), row.getIsExpanded())} ${index > 0 ? 'border-t border-border/60' : ''}`}
-                  data-testid={row.original.kind === 'all' ? 'squad-impact-row-all' : 'squad-impact-row'}
-                  onClick={() => row.toggleExpanded()}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="whitespace-nowrap px-3.5 py-2.5">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-                {row.getIsExpanded() && (
-                  <tr>
-                    <td colSpan={columns.length} className="bg-muted/40 p-0">
-                      <SessionMatrix
-                        row={row.original}
-                        view={view}
-                        impact={impact}
-                        text={text}
-                        locale={locale}
-                        inkOf={inkOf}
-                        ariaLabel={row.id === ALL_SESSIONS_KEY ? text.totalsLabel : text.matrixLabel(row.original.label)}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
+              <ImpactSessionRow
+                key={row.id}
+                row={row}
+                index={index}
+                selected={selected.has(row.id)}
+                columnCount={columns.length}
+                view={view}
+                impact={impact}
+                text={text}
+                locale={locale}
+                inkOf={inkOf}
+              />
             ))}
           </tbody>
         </table>

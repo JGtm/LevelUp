@@ -95,9 +95,9 @@ func groupesDImpact(rows []domain.SquadMatchRow, evenings []squadimpact.Evening)
 // buildSquadImpact rend le tableau d'impact par session. Nil sans coéquipier sélectionné, quand la
 // population est vide, ou quand aucun rôle ne tombe sur l'escouade (titre sans événements ni équipe
 // alliée, ou lecture des événements en échec, journalisée par loadImpactEventsByMatch). Le nil
-// d'une escouade pourtant sélectionnée se journalise avec sa raison (raisonSessionsAbsentes) : le
-// front distingue le titre sans la fonction (capability match.events.timeline) du titre qui l'a et
-// n'a rien à montrer. Les matchs de la population sans libellé de session n'ont pas de ligne ; leur
+// d'une escouade pourtant sélectionnée se journalise avec sa raison (raisonSessionsAbsentes). Le serveur
+// ne tranche pas la présence de la section : c'est le front, par la capability match.events.timeline
+// du titre (déclarée : section avec son état vide ; non déclarée : section absente). Les matchs de la population sans libellé de session n'ont pas de ligne ; leur
 // nombre se journalise une fois par requête.
 func (s *TeammatesService) buildSquadImpact(ctx context.Context, in impactEscouade) *domain.SquadImpactSessions {
 	defer timing.FromContext(ctx).Section("squad_impact")()

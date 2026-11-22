@@ -518,8 +518,9 @@ type TeammatesPageResponse struct {
 	// un tableau d'une ligne par session, avec la matrice de rôles de chaque session et le décompte
 	// de toutes les sessions affichées (squad_impact_sessions.go). Nil sans coéquipier
 	// sélectionné, sans session ou quand aucun rôle ne tombe sur l'escouade (cause journalisée côté
-	// service) : le front garde alors la carte avec un constat pour un titre qui déclare la
-	// capability match.events.timeline, et la retire sinon.
+	// service). Le front lit la capability match.events.timeline pour décider de la section : un titre
+	// qui la déclare garde la section (titre et cadre vide quand le champ est absent) ; un titre qui ne
+	// la déclare pas n'a pas la section, titre compris.
 	SquadImpactSessions *SquadImpactSessions `json:"squad_impact_sessions,omitempty"`
 	// PerMinuteStats alimente teammates.14 (bars groupées K/D/A par minute par joueur).
 	PerMinuteStats []SquadPerMinuteEntry `json:"per_minute_stats,omitempty"`

@@ -34,6 +34,7 @@ import { MedalDigest } from './MedalDigest'
 import { IMPACT_SESSIONS_TEXT } from './impact-sessions/impactSessionsText'
 import { SquadImpactSessionsTable } from './impact-sessions/SquadImpactSessionsTable'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
 /** Référence STABLE : un `?? []` neuf à chaque rendu casserait les mémos du tableau d'impact. */
@@ -215,28 +216,34 @@ function ImpactMedalsMechanics({
   // Les sessions sélectionnées dans le filtre de la page s'ouvrent d'office dans le tableau d'impact : la source
   // est le store escouade (source unique des sessions pickées), lu ici par sélecteur et non par le layout.
   const pickedSessions = useSquadFilterStore((s) => s.filterContext.sessions?.picked_sessions) ?? NO_SESSIONS
+  // Les rôles d'impact se lisent de la timeline horodatée : un titre qui la déclare garde la section (titre +
+  // cadre vide quand la réponse n'a rien à montrer) ; un titre qui ne la déclare pas n'a pas la fonction, la
+  // section entière est absente.
+  const impactSupported = useDataCapability('match.events.timeline')
   return (
     <>
       {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
           c'est une contribution par joueur, pas une production de la composition.
-          Section non-graphe toujours montée : titre + état vide géré par le tableau
-          (cadre bordé), au lieu de disparaître. */}
-      <section className="space-y-3">
-        <SectionTitle>
-          <span className="flex items-center gap-1.5">
-            {t.impact.title}
-            <InfoTooltip content={IMPACT_SESSIONS_TEXT[locale].info} />
-          </span>
-        </SectionTitle>
-        <SquadImpactSessionsTable
-          data={pageData?.squad_impact_sessions}
-          pickedSessionLabels={pickedSessions}
-          inkOf={inkOf}
-          locale={locale}
-          impact={t.impact}
-          emptyMessage={t.empty.noBlockData}
-        />
-      </section>
+          Titre déclaré par le titre de jeu (match.events.timeline) : section montée avec son état vide géré
+          par le tableau (cadre bordé) ; non déclaré : section entière absente. */}
+      {impactSupported && (
+        <section className="space-y-3">
+          <SectionTitle>
+            <span className="flex items-center gap-1.5">
+              {t.impact.title}
+              <InfoTooltip content={IMPACT_SESSIONS_TEXT[locale].info} />
+            </span>
+          </SectionTitle>
+          <SquadImpactSessionsTable
+            data={pageData?.squad_impact_sessions}
+            pickedSessionLabels={pickedSessions}
+            inkOf={inkOf}
+            locale={locale}
+            impact={t.impact}
+            emptyMessage={t.empty.noBlockData}
+          />
+        </section>
+      )}
 
       {/* MÉDAILLES — arrivées de Synergies avec l'impact. Elles restent EN DERNIER de
           leur groupe (décision utilisateur, 2026-09-13) : c'est un palmarès, pas une
