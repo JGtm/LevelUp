@@ -718,8 +718,6 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 ## 2026-11-22 — Découvertes du décodeur v1.5.0, vague 2 (notées, non traitées)
 
-- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
-- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
 - **Décalage par match entre le film et le temps de jeu de l'API** : 35 s en médiane, commun aux partants d'un même match, sans lien avec le coup d'envoi ; inexpliqué.
 - **Lâchers 2 à 4 images après une mort** (4 cas du parc) : crédités au repreneur de la place ; une tolérance de temps serait une règle neuve.
 - **Accroupissement et glissade** : jamais annoncés par le film sur les versions récentes ; piste : le bit de valeur 1 de l'entrée de contrôle, à recouper avec la vitesse.
@@ -741,9 +739,22 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 - **Victime d'une élimination appariée au plus proche** (relecture du décodeur v1.5.0) : deux éliminations du même joueur à une image d'écart peuvent échanger leurs victimes, sans compte d'ambiguïté. Correction proposée : victime absente et compteur quand une action a plusieurs candidats.
 - **Compteur des émissions jetées gonflé hors Drapeau** : la passe du verdict de mode lit la table du Drapeau sur tout film et verse ses rejets au compteur du document (0 → 1 952 sur un film d'un autre mode), sans effet sur les compteurs publiés. Correction proposée : un enregistreur à part pour cette passe.
 - **Table des réponses de jeu sans révision de couche** : une ligne ajoutée aux décalages de l'arbre ne rend aucun rejeu « à redécoder » sans montée du schéma.
-- **Copies des messages de tir de rang 1 et plus** : non mesurées (les rechargements de la même vue sont écrits deux fois dans 26 à 32 % des cas).
 - **Répliques des Spartans : texte RETROUVÉ dans le jeu (2026-11-22, après la capture du « chatter » de Den fournie par le user)** : l'identifiant de son du film désigne un tag de son dont le corps porte, par variante, une clé de chaîne ; le texte est dans la RESSOURCE de la table de chaînes de la voix (18 langues, français et anglais présents), pas dans son corps. Sur 201 sons : 191 avec texte, 10 sans paroles ; le nombre de textes égale le nombre de variantes audio. Le film ne dit pas quelle variante a joué. Reste à établir : lecture structurée du tag de son (trouvé par balayage), noms des répliques (5 résolus sur les tables de vocalisation), lien position vers nom de lieu de la carte (volumes nommés de la variante de carte, non testé). Faisable pour une version suivante : événement publié par le décodeur, table des répliques côté LevelUp faite comme celle des sons d'armes. Crédit : méthode et table de textes de Den, OpenSpartan `libfilmshell` (MIT). Pièces : `dec-v150-recup/h5/chatter/`. Remplace l'entrée « son seul » plus haut.
   - **Cadrage du user (2026-11-22)** : version suivante du décodeur (« on va y retoucher justement bientôt »). Les zones de lieu existent déjà dans LevelUp : rien à refaire pour le lieu. Nom court de la réplique : à traiter dans le décodeur, PAS repris dans LevelUp. Idées d'affichage à maquetter, non tranchées : (a) rejeu 2D, icône de son avec le texte écrit sur le joueur qui parle ; (b) rejeu 2D, icône de son et lecture du son sur ce joueur ; (c) comme Den, une des variantes au hasard dans le fil des éliminations, avec un filtre « Répliques ».
 - **Compteurs de zones sur d'anciens builds** (gate du corpus, 2026-11-22) : sur deux films de Total Control d'anciens builds, le composant nommé `zone_offensive_kills` est un octet signé qui avance de 32, pas un compteur ; les candidats restants (83 et 76) paraissent en partie faux. Sans effet à l'écran aujourd'hui : la garde d'effectif refuse tout, `objectives[]` est vide. À borner par build avant d'ouvrir la lecture au-delà de 8 joueurs.
-- **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
 - **Coup d'envoi sur trois anciens builds** : environ 0,9 s plus tôt qu'avant, sous la tolérance d'une seconde, non vérifiable à l'API.
+
+## Chantier « précision » (tirs, touches, précision par arme) — section dédiée
+
+Ouverte le 2026-11-22 à la demande du user (« mets ça dans une section dédiée pour pas qu'on confonde avec les autres
+travaux de type décodeur »). Le user a annoncé ce chantier le même jour, avec ses propres idées, à recueillir avant
+d'ouvrir un plan. Tout ce qui touche à la justesse des tirs, des touches et de la précision par arme se note ICI, pas
+dans les découvertes du décodeur. Les écarts que le gate du corpus accepte pour la v1.5.0 du décodeur renvoient à cette
+section : à la reprise, relire les décisions datées du 2026-11-22 de `config/replay_corpus.toml`.
+
+- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
+- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
+- **Copies des messages de tir de rang 1 et plus** : non mesurées (les rechargements de la même vue sont écrits deux fois dans 26 à 32 % des cas).
+- **Parts d'échec en hausse avec les tirs lus à tout rang** : visée absente (0,12 % → 0,23 % des tirs rattachés, un témoin en porte l'essentiel), projectile au tir ambigu (5,1 % → 6,0 %), tirs sans place sur 6 témoins, tirs embarqués sans trajet sur 2 témoins. À instruire avec le chantier « précision ».
+- **Baisse acceptée du BR75** (user, 2026-11-22 : « Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision ») : deux joueurs de moins à 10 % de l'API après la règle du numéro de tir en retard.
+- **Ancienne précision par film retirée de LevelUp** avec la montée du décodeur v1.5.0 : la table `match_weapon_hit_distance` reste au schéma sans écrivain ni lecteur ; la supprimer ou la réemployer se décide avec ce chantier.
