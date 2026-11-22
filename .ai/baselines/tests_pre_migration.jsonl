@@ -42462,18 +42462,6 @@
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne","Output":"=== RUN   TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne","Output":"--- PASS: TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne (0.00s)\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildKillerVictimPairs_KillCountZeroDefaultsToOne","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Basic"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Basic","Output":"=== RUN   TestBuildNemesisMap_Basic\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Basic","Output":"--- PASS: TestBuildNemesisMap_Basic (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Basic","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Empty"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Empty","Output":"=== RUN   TestBuildNemesisMap_Empty\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Empty","Output":"--- PASS: TestBuildNemesisMap_Empty (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_Empty","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_FallbackGT"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_FallbackGT","Output":"=== RUN   TestBuildNemesisMap_FallbackGT\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_FallbackGT","Output":"--- PASS: TestBuildNemesisMap_FallbackGT (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildNemesisMap_FallbackGT","Elapsed":0}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestOutcomeColor_Known"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestOutcomeColor_Known","Output":"=== RUN   TestOutcomeColor_Known\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestOutcomeColor_Known","Output":"--- PASS: TestOutcomeColor_Known (0.00s)\n"}
@@ -42494,10 +42482,6 @@
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPerfColor_Low","Output":"=== RUN   TestPerfColor_Low\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestPerfColor_Low","Output":"--- PASS: TestPerfColor_Low (0.00s)\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestPerfColor_Low","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestSortNemesisByKilledMe"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestSortNemesisByKilledMe","Output":"=== RUN   TestSortNemesisByKilledMe\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestSortNemesisByKilledMe","Output":"--- PASS: TestSortNemesisByKilledMe (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.879957+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestSortNemesisByKilledMe","Elapsed":0}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestSortInts_Descending"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestSortInts_Descending","Output":"=== RUN   TestSortInts_Descending\n"}
 {"Time":"2026-06-26T23:51:31.879957+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestSortInts_Descending","Output":"--- PASS: TestSortInts_Descending (0.00s)\n"}

@@ -261,16 +261,16 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 - [x] I.1 (fait au fil des pistes, sans conflit : 0, A, C.1, E, F, A.4-A.5, C-D, B, I.6) Fusion des sous-branches dans `feat/830-antagonistes-tuiles` dans l'ordre A, C, E, D, B, F ; conflits
       résolus selon ce plan.
-- [ ] I.2 `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
-- [ ] I.3 Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
+- [x] I.2 (fait sur `bc61d97642`, release du jour fusionnée : vitest complet 15 588 verts, typecheck, lint web 0 erreur, golangci 0 issue (délai porté à 20 min, machine partagée), replay-equiv 20/20 identiques (`LEVELUP_REPO_ROOT` vers le dépôt principal, la copie de travail n'a pas l'archive des films), baseline : 4 tests retirés avec `buildNemesisMap` sortis de la baseline et documentés dans `scripts/check_test_baseline.sh`, 0 absent après) `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
+- [x] I.3 (fait, `apres-final` contre `avant` : identiques les toiles sans antagoniste, sous Seul, la rangée des coéquipiers, le filtre Seul et la scène ; changés comme prévu la frise (haut / bas), les toiles avec antagonistes et sous Masquer (icônes), le filtre Masquer (élément partagé affiché), la liste des tests) Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
 - [x] I.6 (fait, `a6963dbb20` : 42 fichiers, commentaires et titres de tests ; contrôle du pilote : grep vide) (né du contrôle du pilote, règle 17) Commentaires et titres de tests du diff : remplacer les renvois aux identifiants de ce plan (D-10, D-15, DU-3…) par la règle elle-même ; contrôle : `git diff --name-only release/v8.3.0 -- apps | xargs grep -nE "DU-[0-9]|D-1[0-9]|.ai/"` vide.
 - [x] I.4 (fait : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md`, section 8.3.0 : deux ajouts, deux changements, un retrait) `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
-- [ ] I.5 Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
+- [x] I.5 (fait : six lignes `ant-*` dans l'artefact des vérifications, mises à jour au fil des pistes) Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
       nommé par le user, avec les textes anglais de D-14.
 
 ## Étape R — revue et clôture
 
-- [~] R.1 (ronde faite le 2026-11-22, deux relecteurs Fable sans contexte, lentilles « données et contrat » et « interface » : 0 P0 ; 6 constats recevables, 31 conditions vérifiées qui tiennent. Classés à corriger par le pilote (effet visible) : R1-a pulsation en pause qui saute le tracé de repos ; R1-b « Tout afficher » qui fait glisser les lignes de la colonne ; R1-c antagoniste embarqué sans icône ; R1-d clic sur la bande qui vise l'image d'avant l'élimination. Au backlog : R1-e page du match, deux cas rares où le fil ne nomme pas la victime (même tueur, deux victimes, même milliseconde ; élimination avant le coup d'envoi), compte possiblement inférieur de 1. Jeté : R1-f ancien rejeu sans origine avec doublon. Corrections en cours) Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
+- [x] R.1 (ronde faite le 2026-11-22, deux relecteurs Fable sans contexte, lentilles « données et contrat » et « interface » : 0 P0 ; 6 constats recevables, 31 conditions vérifiées qui tiennent. Classés à corriger par le pilote (effet visible) : R1-a pulsation en pause qui saute le tracé de repos ; R1-b « Tout afficher » qui fait glisser les lignes de la colonne ; R1-c antagoniste embarqué sans icône ; R1-d clic sur la bande qui vise l'image d'avant l'élimination. Au backlog : R1-e page du match, deux cas rares où le fil ne nomme pas la victime (même tueur, deux victimes, même milliseconde ; élimination avant le coup d'envoi), compte possiblement inférieur de 1. Jeté : R1-f ancien rejeu sans origine avec doublon. R1-a à R1-d corrigées : `7cb989e724`, `7135b43fbd`, `a0bf62ea96` (canevas), `d8c3bd50dd` (colonne), `8ee7daaedd` (bande) ; R1-e au backlog avec les découvertes) Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
       Fable) ; P0 et P1 corrigés, P2 au backlog.
 - [ ] R.2 Validation à l'écran du user (I.5) ; corrections de la liste qu'il ferme.
 - [ ] R.3 Fusion dans `release/v8.3.0` (accord du user), poussée, CI lue (`gh run list --branch release/v8.3.0
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — I.2, I.3, I.5 et R.1 closes. Backlog : quatre entrées (R1-e, doublons de `highlight_events`, éliminations des bots absentes du fil, `nemesis_duels` sans lecteur). Reste : R.2 (validation à l'écran) et R.3 (fusion dans la release, accord du user), R.4.
 - 2026-11-22 — revue R.1 rendue ; R1-a à R1-d renvoyées aux agents B, E et C ; `make gate-push` en cours sur `e06f458032`.
 - 2026-11-22 — I.2, premier passage : typecheck vert ; suite web complète 15 568 tests verts, 2 gardes de `src/lib` en échec nées de B (plafond des fonctions à plus de 5 paramètres : 47 pour 46 ; chemin d'icône écrit à la main hors `themedIcon`), renvoyées à l'agent de B. I.4 faite.
 - 2026-11-22 — I.1 et I.6 closes ; I.2 lancée (suite web complète).

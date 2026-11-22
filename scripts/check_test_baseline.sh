@@ -60,6 +60,12 @@
 # Aucune paire réinscrite. Vérifié par différence des paires (Package, Test) de la baseline contre les événements d'un
 # `go test -tags=integration -json` des 47 paquets touchés ou voisins (12 manquantes, toutes ci-dessus).
 #
+# RETRAIT DU 2026-11-22 (plan des antagonistes, F.3) : 4 paires (Package, Test), 16 lignes JSONL, `internal/service` :
+# TestBuildNemesisMap_Basic, TestBuildNemesisMap_Empty, TestBuildNemesisMap_FallbackGT et TestSortNemesisByKilledMe,
+# supprimés avec `buildNemesisMap` et `sortNemesisByKilledMe` quand le champ `team_tab.nemesis` a perdu son dernier lecteur
+# (les cartes de la page du match le calculent depuis le fil). Aucune paire réinscrite. Vérifié par le bilan d'absence du
+# gate : ces 4 paires étaient les seules absentes du run courant.
+#
 # RELOCALISATION DU 2026-11-14 (plan architecture, étapes 4.2, 5.7 et 5.8 réinscrites) : 49 paires (Package, Test), 282
 # lignes JSONL, réinscrites sous leur nouveau paquet ; les retraits des trois étapes les avaient sorties de la baseline
 # alors qu'elles tournent toujours, sous le même nom. 4.2 : 13 paires de `internal/api/handlers` vers `internal/service`
