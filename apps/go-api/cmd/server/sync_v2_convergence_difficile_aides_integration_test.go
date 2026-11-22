@@ -110,6 +110,9 @@ func (b *difficileBoot) jusquAuBout(label string, js ...difficileJoueur) []diffi
 // assertConverged : à la fin, tout est rangé, rien en double, rien en trop, fin rangée sans marque-page.
 func (b *difficileBoot) assertConverged(label string, listes map[difficileJoueur]*fakeHalo, absent map[string]bool) {
 	b.env.t.Helper()
+	if u := b.env.monde.unexpectedRequests(); len(u) > 0 {
+		b.env.t.Logf("%s : requêtes hors du faux Halo (réponse 404, sans conséquence sur le contrat) : %d, par exemple %q", label, len(u), u[0])
+	}
 	fs := make([]*fakeHalo, 0, len(listes))
 	for _, f := range listes {
 		fs = append(fs, f)

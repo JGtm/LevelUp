@@ -105,22 +105,18 @@ func TestDifficile_Interruption_ArretPendantRecuperation(t *testing.T) {
 //   - coupure_brutale : la mort du processus ; le journal reste sur disque, dont un match déjà écrit mais non
 //     acquitté.
 //
-// Dans les trois cas le démarrage suivant rejoue le journal (RecoverPending), les cycles reprennent sans
-// attendre la fin de la reprise : 1 000 matchs, aucun doublon, aucun trou, journal vide à la fin.
+// Dans les trois cas le démarrage suivant rejoue le journal (RecoverPending) et le test attend la fin du
+// rejeu avant le premier cycle (un cycle lancé pendant le rejeu : défaut gardé à part) : 1 000 matchs, aucun
+// doublon, aucun trou, journal vide à la fin.
 func TestDifficile_Interruption_ArretPendantPersistance(t *testing.T) {
 	cas := []struct {
 		nom     string
 		laisses int // matchs de la passe écrits avant que la porte retienne le suivant
 		brutal  bool
-		// attendre : la rejouée du journal finit avant le premier cycle (la lecture de l'état en cours de
-		// rejeu marche sur la fermeture d'une poignée par le worker : lecture du test, pas de la production).
-		// Sans attendre : le cycle suivant démarre pendant la reprise du journal, sans lecture avant la fin.
-		attendre bool
 	}{
-		{"arret_ordonne_petit_reste", 190, false, true},
-		{"arret_ordonne_gros_reste", 60, false, true},
-		{"coupure_brutale", 60, true, true},
-		{"coupure_brutale_cycle_pendant_la_reprise", 60, true, false},
+		{"arret_ordonne_petit_reste", 190, false},
+		{"arret_ordonne_gros_reste", 60, false},
+		{"coupure_brutale", 60, true},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
@@ -169,13 +165,12 @@ func TestDifficile_Interruption_ArretPendantPersistance(t *testing.T) {
 			restants, _ := e.walState()
 
 			b2 := e.start(difficileTous, false)
-			ecrits := -1
-			if c.attendre {
-				e.assertWALVide(c.nom + " : rejeu au démarrage")
-				ecrits = len(b2.registryIDs())
-				b2.assertNoDuplicate(c.nom + " : après le rejeu")
-				b2.assertCursor(c.nom+" : après le rejeu", difficileA, fa, 0, nil)
-			}
+			// Le journal rejoué finit AVANT le premier cycle : lire l'état d'une base pendant qu'un worker
+			// l'écrit est le défaut gardé dans sync_v2_convergence_difficile_defaut_integration_test.go.
+			e.assertWALVide(c.nom + " : rejeu au démarrage")
+			ecrits := len(b2.registryIDs())
+			b2.assertNoDuplicate(c.nom + " : après le rejeu")
+			b2.assertCursor(c.nom+" : après le rejeu", difficileA, fa, 0, nil)
 			reprise := b2.jusquAuBout(c.nom, difficileA)
 			e.assertWALVide(c.nom)
 			b2.assertConverged(c.nom, map[difficileJoueur]*fakeHalo{difficileA: fa}, nil)
