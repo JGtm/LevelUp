@@ -18,6 +18,8 @@ type EveningMatch struct {
 	StartTime    time.Time
 	// Won : le joueur principal a gagné le match.
 	Won bool
+	// Outcome : l'issue du match pour le joueur principal (codes d'issue de la page).
+	Outcome int
 }
 
 // Evening — une soirée : un libellé de session, ses matchs (un par identifiant), son premier

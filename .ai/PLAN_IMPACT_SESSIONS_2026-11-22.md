@@ -66,7 +66,7 @@ couverte par la cartographie du 2026-11-22 (agent d'exploration, rapport recopi�
 
 ### Lot G.2 — calcul (Sonnet) — moyen — après G.1, en parallèle de W
 
-- [ ] Fonction pure `squadimpact.BuildSessions` (à partir des rôles par match, des sessions de
+- [x] Fonction pure `squadimpact.BuildSessions` (à partir des rôles par match, des sessions de
   `SelectEvenings`, de l'équipe alliée) ; tests purs.
 - [ ] Service : remplissage du payload, suppression de `assemblerMatrice`, `BuildHistory` et des deux
   anciens champs (types, schémas, tests) ; journal D-9.
@@ -109,6 +109,7 @@ Lire ce fichier puis `git log --oneline -10` dans le worktree.
 
 - 2026-11-22 : plan ouvert ; décisions D-1 à D-10 tirées de la maquette validée par l'utilisateur.
 - 2026-11-22 : G.1 close. Go (`internal/domain/squad_impact_sessions.go`) : `SquadImpactSessions` {`players`, `scale`, `role_order`, `sessions`, `totals`} ; `SquadImpactSessionsRoleWeight` {`role`, `points`} ; `SquadImpactSessionsSession` {`session_label`, `start_time`, `matches`, `players`} ; `SquadImpactSessionsMatch` {`match_id`, `outcome`} ; `SquadImpactSessionsPlayer` {`player`, `matches_played`, `points`, `counts`, `per_match`} ; `SquadImpactSessionsRoleCount` {`role`, `count`} ; `SquadImpactSessionsPerMatch` {`match_id`, `roles`} ; `SquadImpactSessionsTotal` {`player`, `matches_played`, `points`, `counts`}. Champ `squad_impact_sessions` (omitempty, pointeur) sur `TeammatesPageResponse`, nil jusqu'à G.2. Barème servi : lecteur = sens du rôle (points < 0) pour le surlignage, qui remplace la table `BADGE_INVERTED` du web (une seule définition, D-8) ; le nom et la description des infobulles restent ceux du texte web. `counts` porte une entrée par rôle de `role_order` (0 compris), pour les sessions comme pour `totals` ; `per_match` ne porte que les matchs où le joueur a un rôle. Contrat régénéré (`openapi.yaml`, `generated.ts`, ré-exports `types.ts`, `contract-surface.snapshot.json`).
+- 2026-11-22 : G.2, fonction pure close. `squadimpact.BuildSessions` (`analysis/squadimpact/sessions.go`, tests `sessions_test.go`) : entrées `SessionsInput` {sessions de `SelectEvenings`, joueurs, rôles par match, joueurs présents dans l'équipe alliée par match} ; `EveningMatch` gagne `Outcome` (issue du joueur principal). `matches_played` = matchs où le joueur est dans l'équipe alliée OU y a un rôle (un rôle vaut présence : garde l'invariant « 0 match joué => 0 point »). Matchs de chaque session triés chronologiquement par la fonction (l'ordre d'entrée de `SelectEvenings` ne l'est pas). Nil comme `BuildHistory` (aucune session, aucun joueur, aucun rôle). Ordre d'exécution : le témoin d'équivalence exige le nouveau payload, il est donc écrit après la fonction et le câblage du service, avant toute suppression.
 
 ## Annexe A — cartographie (2026-11-22, chemins relatifs à la racine du dépôt)
 
