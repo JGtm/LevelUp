@@ -49,8 +49,7 @@ type sectionsEscouade struct {
 	matchHistory        []domain.SquadMatchHistoryRow
 	sessionTimeline     []domain.SquadSessionPoint
 	mapHeatmap          *domain.SquadMapHeatmap
-	impactMatrix        *domain.SquadImpactMatrix
-	impactHistory       *domain.SquadImpactHistory
+	impactSessions      *domain.SquadImpactSessions
 	perMinuteStats      []domain.SquadPerMinuteEntry
 	synergyRadar        []domain.SquadSynergyRadarSeries
 	intensityProfile    *domain.SquadIntensityProfile
@@ -141,7 +140,7 @@ func (s *TeammatesService) graphesDeLaPopulation(
 	gt, px, sel, tm := s.gamertag, p.playerXUID, p.req.SelectedGamertags, p.teammates
 	siVivante(ctx, func() { out.mapHeatmap = s.buildSquadMapHeatmap(ctx, p.rows, sel, p.issues, p.groups) })
 	siVivante(ctx, func() {
-		out.impactMatrix, out.impactHistory = s.buildSquadImpact(ctx, impactEscouade{
+		out.impactSessions = s.buildSquadImpact(ctx, impactEscouade{
 			rows: p.rows, timeline: p.rowsTimeline, evenings: p.soireesImpact,
 			mainXUID: px, selected: sel, teammates: tm, allies: p.allies,
 		})

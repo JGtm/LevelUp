@@ -4,7 +4,7 @@
 // # LE DÉFAUT SUPPRIMÉ
 //
 // Chaque bloc de la page Escouade lisait lui-même ce dont il avait besoin : les événements
-// d'impact (Q32) étaient lus QUATRE fois sur les mêmes matchs — matrice d'impact, profil
+// d'impact (Q32) étaient lus QUATRE fois sur les mêmes matchs — tableau d'impact par session, profil
 // d'intensité, séries de performance, premier frag —, à 1,7-2,4 s la lecture sur la copie de
 // production tant qu'elle joignait v_gamertag_lookup (C1/C4 de l'état des lieux).
 //

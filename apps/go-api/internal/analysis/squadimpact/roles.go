@@ -1,9 +1,8 @@
 // Package squadimpact — LES RÔLES D'IMPACT DE L'ESCOUADE : ceux qu'un match attribue aux membres
-// de l'escouade, leur barème, et leur cumul par soirée.
+// de l'escouade, leur barème, et leur cumul par session.
 //
-// Deux surfaces de la page Escouade les lisent : la matrice d'impact (un match par colonne) et
-// les points d'impact par soirée. Les deux passent par RolesOfMatch et par le même barème
-// (Weight) : un match ne peut pas donner un rôle à l'une et pas à l'autre.
+// Le tableau d'impact par session de la page Escouade (BuildSessions) lit les rôles par
+// RolesOfMatch et les points par le barème (Weight) : une seule définition de chacun.
 //
 // Pur : aucune ouverture de base, aucune horloge, aucune chaîne de langue.
 package squadimpact
@@ -29,7 +28,7 @@ const (
 	RoleGlassJaw        = "glass_jaw"
 )
 
-// roleOrder — l'ordre canonique des colonnes agrégées de la matrice d'impact : les rôles de la
+// roleOrder — l'ordre canonique des colonnes de rôles du tableau d'impact : les rôles de la
 // maquette validée, puis « Os de verre » à la suite du « Voleur » (les pertes tirées d'une mesure
 // autre que le fil des événements), « Bourreau » en dernier.
 var roleOrder = []string{
@@ -63,7 +62,7 @@ var weights = map[string]float64{
 	RoleTopKiller:       1.0,
 }
 
-// RoleOrder rend l'ordre canonique des colonnes de la matrice (une copie).
+// RoleOrder rend l'ordre canonique des colonnes de rôles (une copie).
 func RoleOrder() []string { return append([]string(nil), roleOrder...) }
 
 // Weight rend les points d'une occurrence du rôle ; faux si le rôle n'est pas compté.

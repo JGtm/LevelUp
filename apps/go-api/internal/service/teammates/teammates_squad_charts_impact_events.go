@@ -1,5 +1,5 @@
 // Package service - teammates_squad_charts_impact_events.go : builders du premier frag /
-// premiere mort et des kills par arme (la matrice d'impact vit dans teammates_squad_impact.go).
+// premiere mort et des kills par arme (le tableau d'impact par session vit dans teammates_squad_impact.go).
 package teammates
 
 import (

@@ -54,7 +54,7 @@ type porteeUsage struct {
 }
 
 // membresChoisis — les coéquipiers sélectionnés que la page a résolus (teammates[].XUID), sous le
-// nom choisi : l'escouade des blocs d'usage et de l'Emprise. Comme la matrice d'impact
+// nom choisi : l'escouade des blocs d'usage et de l'Emprise. Comme le tableau d'impact par session
 // (resolveSquadScope), l'appartenance se décide par xuid et le nom est celui de la ligne choisie,
 // jamais une égalité avec le gamertag des participants (ADR 0035), qui peut être vide.
 func membresChoisis(teammates []domain.TeammateRow) []domain.SessionUsageSquadPlayer {

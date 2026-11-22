@@ -288,7 +288,7 @@ ORDER BY p.assist_count DESC, p.assist_xuid, p.feed_killer_xuid`
 
 // Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne
 // tous les participants de la même team_id que le joueur principal (le main
-// inclus). Utilisé par buildSquadImpactMatrix pour calculer les badges
+// inclus). Utilisé par buildSquadImpact pour calculer les badges
 // d'impact en périmètre team-wide alliée (parité Python team_xuids), au lieu
 // de se limiter au squad sélectionné.
 //

@@ -194,22 +194,6 @@ export type SemanticToken =
   | 'range-role-mid'
   | 'range-role-far'
 
-  // ── Rôles d'impact (7) — « Points d'impact par soirée et par rôle » (Escouade) ──
-  // Deux RAMPES ORDINALES : `impact-gain-1..4` pour les rôles qui ajoutent des points (1 = le
-  // plus fort barème, posé contre l'axe zéro, le plus contrasté sur la carte), `impact-loss-1..3`
-  // pour ceux qui en retirent (2 = Faux-frère et Voleur, 3 = les quatre rôles à −0,5, qui partagent une
-  // nuance : six nuances ne tiennent pas l'écart minimal entre voisins). Le rôle se lit à la clarté et au côté de
-  // l'axe ; chaque palette prend les rampes dans ses teintes positif / négatif
-  // (`_impactRoleColors.ts`). Ce sont les seuls jetons qui changent avec le THÈME (`paletteForTheme`) — en sombre, la clarté s'inverse
-  // pour que le pas le plus fort reste le plus contrasté. Garde-fou : impactRoleTokens.test.ts.
-  | 'impact-gain-1'
-  | 'impact-gain-2'
-  | 'impact-gain-3'
-  | 'impact-gain-4'
-  | 'impact-loss-1'
-  | 'impact-loss-2'
-  | 'impact-loss-3'
-
   // ── Heatmaps (6) ──────────────────────────────────────────────────────────
   // cold/hot + divergent : rampes À CONNOTATION (win-rate, K/D → bien/mal).
   // freq-low/high : rampe NEUTRE mono-teinte pour les heatmaps de FRÉQUENCE
@@ -281,8 +265,6 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'resource-powerup', 'resource-power-weapon', 'resource-vehicle', 'resource-rack',
   'objective-role-take', 'objective-role-defend', 'objective-role-hold',
   'range-role-front', 'range-role-mid', 'range-role-far',
-  'impact-gain-1', 'impact-gain-2', 'impact-gain-3', 'impact-gain-4',
-  'impact-loss-1', 'impact-loss-2', 'impact-loss-3',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'heatmap-freq-low', 'heatmap-freq-high',
   'map-relief-base', 'marker-outline-band', 'marker-outline-rim',

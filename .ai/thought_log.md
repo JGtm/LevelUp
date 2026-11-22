@@ -30,6 +30,19 @@
 - **Relecture** : signature publique gardée sur la brique (fonction neuve pour le build) ; identifiants de joueur préexistants de deux tests à remplacer à la quatrième intégration.
 - **Suite** : quatrième intégration (rouge hérité de la règle des places, révision des objectifs, attribution des deux corrections) et miroirs de LevelUp en parallèle ; puis PR, tag, montée, régénération du parc annoncée au user.
 
+## [2026-11-22] Escouade : « Impact des coéquipiers » par session remplace la matrice et le graphe par soirée — Complété (fusion dans release/v8.3.0 ; reste la vérification à l'écran du user)
+
+**Décision technique principale** : payload neuf `squad_impact_sessions` (`squadimpact.BuildSessions`, mêmes rôles `rolesDesMatchs` et même barème), qui remplace `impact_matrix` et `squad_impact_history` (types, constructeurs, composants supprimés) ; tableau web à lignes de session dépliables sur la matrice de la session, ligne « Toutes les sessions », session sélectionnée teintée et ouverte (maquette validée par le user) ; jetons `impact-gain/loss` et `paletteForTheme` supprimés faute de lecteur ; porte de capacité `match.events.timeline` conservée.
+
+**Résultats observés** : témoin de parité (comptes et points identiques à l'ancien historique, totaux à l'ancienne matrice restreinte aux matchs à libellé de session) ; gates verts ; revue adversariale sans P0, deux P1 corrigés, trois P2 au backlog.
+
+**Conclusion / prochaine étape** : vérification à l'écran (artefact `verifs`, ligne « is-tableau-sessions »). Plan : `.ai/PLAN_IMPACT_SESSIONS_2026-11-22.md`.
+
+## [2026-11-22] Impact des coéquipiers par session : lot G.1, contrat du tableau — Complété (branche feat/impact-sessions, non poussée)
+**Statut :** Complété pour G.1 ; G.2 (calcul et suppression des anciens champs) et W (tableau web) restent. Plan : `.ai/PLAN_IMPACT_SESSIONS_2026-11-22.md`.
+**Décision technique principale :** payload neuf `squad_impact_sessions` sur la réponse de `/pages/teammates` (types `SquadImpactSessions*` dans `internal/domain/squad_impact_sessions.go`), à côté des anciens champs encore servis. Le barème (`scale`) est servi : le web en tire le sens d'un rôle (points négatifs : plus grand compte = pire) pour le surlignage, au lieu de garder une seconde table de rôles négatifs.
+**Résultats observés :** `make openapi-gen` et `make generate-types` régénérés, ré-exports dans `lib/api/types.ts`, instantané de surface de contrat mis à jour (ajouts seulement ; il portait aussi du retard sur des routes d'autres branches). Champ à nil tant que G.2 ne le remplit pas.
+**Conclusion / prochaine étape :** G.2 remplit le payload (`squadimpact.BuildSessions`) ; W construit le tableau.
 ## [2026-11-22] Décodeur v1.5.0 : compteurs de mode, calque des éliminations et valeurs figées intégrés au schéma 126 — En cours
 
 - Décision : trois pistes menées en parallèle, fusionnées puis intégrées en une fois sous le même schéma 126 et les mêmes révisions de couche ; chaque écart de l'équivalence attribué par bissection.

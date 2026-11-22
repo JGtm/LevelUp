@@ -26,7 +26,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { deltaE, simulateCvd, type CvdKind } from './colorDistance'
-import { paletteForTheme, type PaletteTheme } from './paletteForTheme'
 import { MAP_MARKER_OUTLINE } from './palettes/_mapMarkerOutline'
 import { cividisPalette } from './palettes/cividis'
 import { defaultPalette } from './palettes/default'
@@ -44,7 +43,7 @@ const CASES: Record<string, { palette: Palette; base: string }> = {
   'tol-bright': { palette: tolBrightPalette, base: '#7559B5' },
 }
 
-const THEMES: PaletteTheme[] = ['light', 'dark']
+const THEMES: ('light' | 'dark')[] = ['light', 'dark']
 /** Normale plus les trois daltonismes simulés. */
 const VISIONS: (CvdKind | 'normale')[] = ['normale', 'protanopie', 'deuteranopie', 'tritanopie']
 
@@ -115,14 +114,9 @@ describe.each(Object.entries(CASES))('palette « %s »', (_name, { palette: base
   })
 
   describe.each(THEMES)('thème %s', (theme) => {
-    const palette = paletteForTheme(base, theme)
+    // Les jetons ne dépendent que de la palette : les deux thèmes partagent la teinte et le cerne.
+    const palette = base
     const ramp = RELIEF_STEPS.map((g) => reliefRampHex(palette['map-relief-base'], g))
-
-    it('la teinte et le cerne sont les mêmes dans les deux thèmes', () => {
-      for (const t of ['map-relief-base', 'marker-outline-band', 'marker-outline-rim'] as const) {
-        expect(palette[t], t).toBe(base[t])
-      }
-    })
 
     it.each(VISIONS)('rampe : paliers voisins à ΔE ≥ 6 (%s)', (vision) => {
       for (let i = 1; i < ramp.length; i++) {

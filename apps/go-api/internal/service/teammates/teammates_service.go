@@ -330,7 +330,7 @@ func (s *TeammatesService) GetPage(
 
 	// Équipe alliée du main par match (Q32b) : chargée UNE fois sur l'union des
 	// matchs et partagée par ses trois consommateurs (filtre composition exacte,
-	// matrice d'impact, courbe « équipe » du profil d'intensité) — cf. loadMainTeamAllies.
+	// tableau d'impact par session, courbe « équipe » du profil d'intensité) — cf. loadMainTeamAllies.
 	selectedXUIDs := collectSelectedXUIDs(teammates)
 	// Coéquipiers connus (amis déclarés et profils suivis, coequipiers_connus.go) : le pool de
 	// l'option, lu sous l'option seulement — hors option aucun match n'est écarté.
@@ -454,8 +454,7 @@ func (s *TeammatesService) GetPage(
 		MatchHistory:        sec.matchHistory,
 		SessionTimeline:     sec.sessionTimeline,
 		MapHeatmap:          sec.mapHeatmap,
-		ImpactMatrix:        sec.impactMatrix,
-		SquadImpactHistory:  sec.impactHistory,
+		SquadImpactSessions: sec.impactSessions,
 		PerMinuteStats:      sec.perMinuteStats,
 		SynergyRadar:        sec.synergyRadar,
 		IntensityProfile:    sec.intensityProfile,
