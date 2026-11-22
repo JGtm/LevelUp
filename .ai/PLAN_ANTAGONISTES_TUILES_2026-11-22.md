@@ -270,7 +270,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Étape R — revue et clôture
 
-- [ ] R.1 Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
+- [~] R.1 (ronde faite le 2026-11-22, deux relecteurs Fable sans contexte, lentilles « données et contrat » et « interface » : 0 P0 ; 6 constats recevables, 31 conditions vérifiées qui tiennent. Classés à corriger par le pilote (effet visible) : R1-a pulsation en pause qui saute le tracé de repos ; R1-b « Tout afficher » qui fait glisser les lignes de la colonne ; R1-c antagoniste embarqué sans icône ; R1-d clic sur la bande qui vise l'image d'avant l'élimination. Au backlog : R1-e page du match, deux cas rares où le fil ne nomme pas la victime (même tueur, deux victimes, même milliseconde ; élimination avant le coup d'envoi), compte possiblement inférieur de 1. Jeté : R1-f ancien rejeu sans origine avec doublon. Corrections en cours) Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
       Fable) ; P0 et P1 corrigés, P2 au backlog.
 - [ ] R.2 Validation à l'écran du user (I.5) ; corrections de la liste qu'il ferme.
 - [ ] R.3 Fusion dans `release/v8.3.0` (accord du user), poussée, CI lue (`gh run list --branch release/v8.3.0
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — revue R.1 rendue ; R1-a à R1-d renvoyées aux agents B, E et C ; `make gate-push` en cours sur `e06f458032`.
 - 2026-11-22 — I.2, premier passage : typecheck vert ; suite web complète 15 568 tests verts, 2 gardes de `src/lib` en échec nées de B (plafond des fonctions à plus de 5 paramètres : 47 pour 46 ; chemin d'icône écrit à la main hors `themedIcon`), renvoyées à l'agent de B. I.4 faite.
 - 2026-11-22 — I.1 et I.6 closes ; I.2 lancée (suite web complète).
 - 2026-11-22 — piste B close et fusionnée (agent : 6 196 tests verts). Toutes les pistes de code sont closes ; I.6 en cours.
