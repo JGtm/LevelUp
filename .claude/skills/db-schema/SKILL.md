@@ -1,3 +1,8 @@
+---
+name: db-schema
+description: Schéma DuckDB de LevelUp (bases par titre, tables et colonnes, tables append-only et vues `_latest`, règles de connexion mono-process). À invoquer avant d'écrire ou de modifier une requête, une migration ou un persister DuckDB, ou de lire une table d'une base partagée, joueur ou metadata.
+---
+
 # Skill : db-schema — Schéma DuckDB LevelUp
 
 ## Structure des chemins — multi-titres
@@ -20,17 +25,47 @@ filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
 
 | DB | Chemin résolu | Contenu |
 |---|---|---|
-| `shared_matches_v2.duckdb` | `data/titles/{slug}/warehouse/` | Stats matchs de TOUS les joueurs |
+| `shared_matches_v2.duckdb` | `data/titles/{slug}/warehouse/` | Stats matchs de TOUS les joueurs, journal des morts, tables dérivées du film |
 | `metadata.duckdb` | `data/titles/{slug}/warehouse/` | Référentiels (modes, armes, rangs, médailles) et tous les noms par langue |
-| `shared_pve.duckdb` | `data/titles/{slug}/warehouse/` | Stats Firefight |
-| `shared_social.duckdb` | `data/titles/{slug}/warehouse/` | Données sociales (followers, activité) |
+| `shared_pve.duckdb` | `data/titles/{slug}/warehouse/` | Stats Firefight (Halo Infinite seul) |
+| `shared_social.duckdb` | `data/titles/{slug}/warehouse/` | Médias, likes, favoris, notifications, records, escouades, prestige |
 | `stats.duckdb` | `data/titles/{slug}/players/{gamertag}/` | Enrichissements individuels uniquement |
 | `xbox_aliases.duckdb` | `data/global/` | **Global** — mapping xuid→gamertag Xbox Services (P5, ADR 0008) |
 
 ## shared_matches_v2.duckdb
 
-### match_registry — 1 ligne par match unique
-Colonnes clés : `match_id`, `start_time`, `end_time`, `map_id`, `pair_name`, `playlist_id`, `team_game`
+Une ligne par table. Les colonnes listées sont les colonnes clés, pas le DDL complet
+(le DDL fait foi : `internal/games/halo_infinite/migrations/steps_shared_*.go` et
+`internal/migration/steps_shared_*.go`).
+
+| Table | Colonnes clés | Lecture |
+|---|---|---|
+| `match_registry` | `match_id`, `start_time`, `end_time`, `start_time_utc`, `map_id`, `pair_name`, `playlist_id`, `mode_category`, `is_ranked`, `team_0_score`, `team_1_score`, `team_0_rounds_won`, `team_1_rounds_won`, `rounds_total` | 1 ligne par match unique ; voir les deux sections ci-dessous |
+| `match_participants` | `match_id`, `xuid`, `gamertag`, `outcome` (1=Tie, 2=Win, 3=Loss, 4=DNF), `kills`, `deaths`, `assists`, `shots_fired`, `shots_hit`, `damage_dealt`, `damage_taken`, `team_mmr`, `enemy_mmr`, `team_id`, `rank` | PK `(match_id, xuid)` ; ne pas citer de nombre de colonnes (il bouge) |
+| `medals_earned` | `match_id`, `xuid`, `medal_name_id`, `count`, `created_at` | |
+| `highlight_events` | `id`, `match_id`, `event_type`, `time_ms`, `xuid`, `type_hint`, `raw_json` | |
+| `killer_victim_pairs` | `match_id`, `killer_xuid`, `killer_gamertag`, `victim_xuid`, `victim_gamertag`, `kill_count`, `time_ms`, `is_validated`, `created_at` | pas d'arme ici : elle est dans `weapon_kills` |
+| `xuid_aliases` | `xuid`, `gamertag`, `last_seen`, `source`, `updated_at` | |
+| `weapon_kills` | un frag par ligne, `weapon_id` (UBIGINT) | append-only ; lecture par la vue `v_weapon_kills` (exception : pas de suffixe `_latest`) |
+| `match_kill_events` | `match_id`, `decode_pass`, `decoder_rev`, `written_at`, `publishable`, `time_ms`, `victim_xuid`/`victim_gamertag`, `feed_killer_xuid`/`feed_killer_gamertag`, `assist_xuid`/`assist_gamertag`, `assist_known`, `source_tag`, `source_category` | append-only ; `match_kill_events_latest` |
+| `kill_positions` | `match_id`, `decode_pass`, `killer_xuid`, `time_ms`, `killer_x/y/z`, `victim_x/y/z` | append-only ; `kill_positions_latest` |
+| `kill_openings` | `match_id`, `decode_pass`, `killer_xuid`, `time_ms`, `killer_x`, `victim_x`, `written_at` | append-only ; `kill_openings_latest` |
+| `match_lives` | `match_id`, `decode_pass`, `decoder_rev`, `written_at`, `xuid`, `start_ms`, `end_ms`, `end_cause`, `named_by` | une ligne par vie nommée ; `match_lives_latest` |
+| `match_death_context` | `match_id`, `decode_pass`, `victim_xuid`, `time_ms`, `nearest_teammate_m`, `teammates_visible`, `teammates_waiting`, `teammates_out_of_sight`, `teammates_left`, `teammates_total` | une ligne par mort ; `match_death_context_latest` |
+| `match_life_placement`, `match_death_mates`, `match_vehicle_takes`, `match_lead_share` | voir les sections dédiées plus bas | `<table>_latest` |
+| `match_kill_heads`, `match_kill_pairs`, `match_assist_pairs` | voir la section ADR 0039 plus bas | `<table>_latest` |
+| `match_objective_stats`, `match_usage_films`, `match_usage_players`, `match_weapon_shots`, `match_weapon_hit_distance`, `match_player_positions`, `match_bomb_stats`, `match_flag_grabs_net`, `match_pad_pickups_by_tier` | tables dérivées (objectifs, usages, tirs, positions) | `<table>_latest` |
+
+Vues : `v_match_full` (`SELECT mr.*`, voir le piège ci-dessous), `mv_player_matches` (registre x
+participants), `v_gamertag_lookup` (ne jamais l'employer dans une lecture de page, ADR 0036 ;
+fragment de définition dans `platform/duckdb/sqlfrag/identity.go`).
+
+**Lectures de page (ADR 0036)** : ni `v_gamertag_lookup` ni fenêtre `_latest` non bornée dans une
+lecture de page. Tout filtre ou tri temporel passe par le fragment partagé de
+`platform/duckdb/sqlfrag` (`COALESCE(x.start_time_utc, x.start_time AT TIME ZONE 'UTC')`), jamais
+par `start_time` brut.
+
+### match_registry — score et manches, catégorie de mode, piège des vues
 
 **Score et manches** : `team_0_score` / `team_1_score` = score du mode AFFICHÉ par le jeu
 (`CoreStats.Score`). `team_0_rounds_won` / `team_1_rounds_won` / `rounds_total` = les MANCHES
@@ -51,21 +86,6 @@ filtrent sur `pair_name` (préfixes), pas sur la colonne.
 **Piège des vues** : `v_match_full` est un `SELECT mr.*` — DuckDB FIGE l'étoile à la création.
 Toute colonne ajoutée à `match_registry` ET lue par cette vue exige un second step de migration
 qui recrée la vue (modèle : `refresh_views_after_team_rounds`).
-
-### match_participants — stats de tous les joueurs (31 colonnes)
-Colonnes clés : `match_id`, `xuid`, `gamertag`, `outcome` (1=Tie,2=Win,3=Loss,4=DNF), `kills`, `deaths`, `assists`, `shots_fired`, `shots_hit`, `damage_dealt`, `damage_taken`, `mmr`, `team_id`, `rank`
-
-### medals_earned
-Colonnes : `match_id`, `xuid`, `medal_id`, `count`, `total_personal_score`
-
-### highlight_events
-Colonnes : `match_id`, `xuid`, `event_type`, `timestamp`, `details_json`
-
-### killer_victim_pairs
-Colonnes : `match_id`, `killer_xuid`, `victim_xuid`, `count`, `weapon_id`
-
-### xuid_aliases
-Colonnes : `xuid`, `gamertag`, `last_seen`
 
 ### match_life_placement — placement et rendement de chaque vie (append-only, 2026-09-29)
 Écrite AU SYNC par le collecteur de kills (`sync/killcollector/placement_des_vies.go`, persister
@@ -96,7 +116,7 @@ passe entière (`match_lives` et `match_death_context` compris) : choix assumé.
 **Lecture : vue `match_death_mates_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match). Les
 bots n'y figurent pas (équipes indexées par xuid). Le nom vient de `match_participants`, sinon de
 `xuid_aliases` (92 % des participants n'ont pas de gamertag). Plan :
-`.ai/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`.
+`.ai/archive/V7.5/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`.
 
 ### match_vehicle_takes — ressource véhicules de l'Emprise (append-only, 2026-09-30)
 Écrite par la dérivation post-rangement `sync/replayartifacts/vehicletakes.go` (famille de
@@ -105,20 +125,20 @@ véhicules de l'artefact (`vehicles[].rides[]`, schéma >= 67, projection pure
 `replay.ProjectVehicleTakes`). Persister `persist/vehicle_takes_persister.go` (INSERT-only, une
 transaction par passe). Plan : `.ai/archive/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`.
 Deux natures de ligne (`row_kind`) dans UNE passe (`decode_pass`) :
-- `take` : une ligne par `(camp, xuid, family)` — `takes` (D2), `aboard_ms` (D4), `episodes`, dont
+- `take` : une ligne par `(camp, xuid, family)` — `takes`, `aboard_ms`, `episodes`, dont
   `proximity_episodes`, `frags` = frags de classe engin (véhicule/tourelle) tombés PENDANT un
-  épisode de ce joueur sur cette famille (D9, numérateur du rendement). `family` = clé de châssis
+  épisode de ce joueur sur cette famille (numérateur du rendement). `family` = clé de châssis
   ou `unknown`.
 - `match` : UNE ligne par passe (`camp` -1, `xuid` et `family` vides), écrite MÊME sans prise : elle
   fait retenir la passe entière par la vue et sépare « zéro mesuré » de « non mesuré ».
 Colonnes de COUVERTURE, recopiées sur chaque ligne de la passe : `measured` / `unmeasured_reason` /
-`doc_schema` (D8 : artefact sans occupation lue, raisons `schema_before_67`,
-`vehicles_not_scanned`, `frame_interval_missing`), `episodes_read` / `episodes_unnamed` (D10 :
-épisodes sans xuid) / `episodes_no_camp`, `frags_read` / `frags_reason` (`no_kill_source`,
-`no_classifier`, `origin_missing`, `takes_not_measured`), `frags_total` / `frags_unmatched` (D9).
+`doc_schema` (artefact sans occupation lue, raisons `schema_before_67`,
+`vehicles_not_scanned`, `frame_interval_missing`), `episodes_read` / `episodes_unnamed` (épisodes
+sans xuid) / `episodes_no_camp`, `frags_read` / `frags_reason` (`no_kill_source`,
+`no_classifier`, `origin_missing`, `takes_not_measured`), `frags_total` / `frags_unmatched`.
 Les frags viennent de `match_kill_events_latest` (source mesurée, tueur du kill-feed), classés par
 `KillSourceClassifier` + `weapons.ClassesByKey` + `domain.IsEngineFragClass` (une seule définition),
-joints aux épisodes par `frameOfFilmMS`/`frameInWindow` (les mêmes que les épisodes d'équipement).
+puis joints aux épisodes par `replay.PairVehicleFrags` (brique décodeur).
 **Lecture : vue `match_vehicle_takes_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match).
 
 ### match_lead_share — Mainmise : temps en tête du score (append-only, 2026-11-11)
@@ -154,8 +174,8 @@ numérateur ni au dénominateur d'une moyenne. **Lecture : vue `match_lead_share
   `feed_killer_xuid`, `feed_killer_gamertag`, `victim_xuid` seulement si assistant et tueur sans
   xuid) : `n`, `n_stolen`, `sum_assist_pct`, `n_assist_pct`, `n_low`, `n_mid`, `n_high`.
 **Lecture : vues `_latest` UNIQUEMENT.** La tête décide la génération ; S1/S2 s'y joignent et
-exposent son `publishable`. Aucun lecteur de page ne les lit encore (bascule : étape 9 du plan
-perf pages v8.0.1).
+exposent son `publishable`. Lecteurs de production : `platform/duckdb/home_repo_assisted_frags.go`
+(frags assistés), `coordination_repo.go`, `killsource_*_repo.go`.
 
 ## metadata.duckdb
 
@@ -174,8 +194,6 @@ langues (`LoadAssetNames` / `LoadAssetTexts`, `assetNameTexts`) puis choisir par
 | `challenge_template`, `preset_arc` (+ `preset_arc_step`) | `id` | Modèles de défi et arcs préréglés, sans colonne de texte |
 | `medal_definitions`, `milestone_catalog`, `xbox_achievement_definitions` (Halo 5 : `commendation_definitions`, `team_colors`) | id | Définitions sans colonne de texte (les noms sont dans `medal_translations` / `asset_translations`) |
 | `mode_name_tr` | `(mode_en, lang, name)` | Traductions des noms de modes (`mode_en` = nom anglais du mode, la clé) |
-| `mode_pair_overrides` | `(pattern, lang, name)` | Surcharges manuelles de paires map/mode |
-| `mode_prefix_names` | `(prefix_en, lang, name)` | Préfixes canoniques de modes |
 | `weapon_name_labels` | `(title_slug, weapon_key, lang, name)` | Noms d'armes curés (`config/titles/{slug}/mappings/weapon_names.toml`) ; `lang` = code de langue de `config/locales.toml` |
 | `weapon_label_names` | `(weapon_id, lang, name)` | Noms par weapon_id filmshell (ids sans `weapon_key`) ; le nom `en` pilote l'URL d'image |
 | `weapon_labels` | `weapon_id` (UBIGINT) | Colonnes non textuelles seulement |
@@ -188,28 +206,25 @@ comprise.
 
 ## shared_pve.duckdb
 
-### pve_match_stats
-Stats par joueur par match Firefight : `match_id`, `xuid`, `waves`, `boss_kills`,
-`grunt_kills`, `elite_kills`, `jackal_kills`, `brute_kills`, `hunter_kills`,
-`skimmer_kills`, `crawler_kills`, `soldier_kills`, `knight_kills`, `warden_kills`
+| Table | Colonnes clés | Lecture |
+|---|---|---|
+| `pve_match_stats` | `match_id`, `xuid`, `waves_completed`, `boss_kills`, `grunt_kills`, `elite_kills`, `jackal_kills`, `brute_kills`, `hunter_kills`, `skimmer_kills`, `crawler_kills`, `soldier_kills`, `knight_kills`, `warden_kills`, `total_kills`, `deaths` | append-only ; vue `pve_match_stats_latest` |
 
-## stats.duckdb (par joueur — data/titles/{slug}/players/{gamertag}/)
+## shared_social.duckdb
 
-**Enrichissements uniquement** — les stats de matchs sont dans shared.
+Écritures via `SharedSocialPersister` + `CHECKPOINT` (ADR 0022 : sans CHECKPOINT le WAL peut être
+perdu). Une ligne par table :
 
-| Table | Description |
-|---|---|
-| `player_match_enrichment` | `performance_score`, `session_id`, `is_with_friends` |
-| `personal_score_awards` | Awards objectifs (PersonalScores API) |
-| `match_citations` | Citations calculées par match |
-| `match_skill_rank` | Rating LUSR ou CSR par match — **append-only : lire via `match_skill_rank_latest`** (une ligne par match, priorité CSR > LUSR, `start_time` avant `written_at`) ou `match_skill_rank_latest_by_type` (une par match ET type, `written_at` : graphe d'évolution). Le LUSR n'est écrit que par la v2 (ADR 0024) : lignes `LUSR` + `LUSR_V2` (audit) dans la même transaction. `tier_fr` est inerte : ni lue ni écrite (le libellé de rang se dérive du code de rang et du TOML), la table n'est pas reconstruite pour une colonne inutilisée (ADR 0026, ADR 0040 D-5) |
-| `lusr_component_history` | 8 composantes de performance par match (Prestige, profil, escouade) — écrites par le LUSR v2 seul ; **append-only : lire via `lusr_component_history_latest`** |
-| `career_progression` | Historique rangs |
-| `sessions` | Sessions groupées |
-| `media_files` | Fichiers médias indexés |
-| `media_match_associations` | Associations médias↔matchs |
-| `mv_player_matches` | Vue matérialisée matchs joueur |
-| `mv_map_stats` | Vue matérialisée stats par map |
+| Table | Rôle | Lecture |
+|---|---|---|
+| `media_files` | Fichiers médias indexés (voir la section ADR 0046 ci-dessous) | table (identité = `file_hash`) |
+| `media_likes_history` | Likes par viewer, un événement par ligne (INSERT seul) | `media_likes_latest` |
+| `media_match_associations` | Associations médias↔matchs (`media_file_id`, `match_id`, `delta_seconds`) | `media_match_associations_latest` |
+| `match_favorites` | Matchs favoris | `match_favorites_latest` |
+| `player_notifications`, `notification_preferences` | Notifications et préférences | `player_notifications_latest`, `notification_preferences_latest` |
+| `player_records` | Records personnels | `player_records_latest` |
+| `squad`, `squad_member`, `squad_challenge`, `squad_challenge_participant` | Escouades et défis d'escouade | `squad_member_latest`, `squad_challenge_participant_latest` |
+| `user_prestige`, `prestige_events` | Prestige des comptes | `user_prestige_latest` |
 
 ### media_files — identité et état (ADR 0046)
 
@@ -217,6 +232,22 @@ Stats par joueur par match Firefight : `match_id`, `xuid`, `waves`, `boss_kills`
 - `source_path VARCHAR`, `source_size BIGINT`, `source_mtime_ns BIGINT` : chemin stocké de l'original, taille et date de modification au dernier relevé. `source_path` NULL = aucun original attendu. Colonnes non indexées.
 - `status` : NULL = présent ; `'missing'` = fichier absent du disque à la dernière passe (réversible, retour du fichier = NULL) ; `'deleted'` = masqué par l'app (retiré de la galerie). Lire uniquement via `MediaVisiblePredicate` ou `MediaNotDeletedPredicate`.
 - `file_stem` est figé à l'insertion : jamais d'`UPDATE`, ni sur `file_stem`, `player_slug`, `created_at`. Aucune suppression physique de ligne ; `media_likes_history` en INSERT seul.
+
+## stats.duckdb (par joueur — data/titles/{slug}/players/{gamertag}/)
+
+**Enrichissements uniquement** — les stats de matchs sont dans shared. Les médias n'y sont plus :
+ils vivent dans `shared_social`.
+
+| Table | Description | Lecture |
+|---|---|---|
+| `player_match_enrichment` | `performance_score`, `session_id`, `is_with_friends` | append-only ; `player_match_enrichment_latest` |
+| `personal_score_awards` | Awards objectifs (PersonalScores API) | append-only ; `personal_score_awards_latest` |
+| `match_citations` | Citations calculées par match | append-only ; `match_citations_latest` |
+| `match_skill_rank` | Rating LUSR ou CSR par match | append-only : `match_skill_rank_latest` (une ligne par match, priorité CSR > LUSR, `start_time` avant `written_at`) ou `match_skill_rank_latest_by_type` (une par match ET type, `written_at` : graphe d'évolution). Le LUSR n'est écrit que par la v2 (ADR 0024) : lignes `LUSR` + `LUSR_V2` (audit) dans la même transaction. `tier_fr` est inerte : ni lue ni écrite (le libellé de rang se dérive du code de rang et du TOML), la table n'est pas reconstruite pour une colonne inutilisée (ADR 0026, ADR 0040 D-5) |
+| `lusr_component_history` | 8 composantes de performance par match (Prestige, profil, escouade), écrites par le LUSR v2 seul | append-only ; `lusr_component_history_latest` |
+| `career_progression` | Historique rangs | table |
+| `sessions` | Sessions groupées | table |
+| `mv_player_matches` | Table recréée à chaque sync (`match_id`, `performance_score`, `session_id`, `session_label`, `is_with_friends`) ; `sync/aggregates.go`. `mv_map_stats` a été retirée le 2026-07-03 | table |
 
 ## Requête type — stats coéquipier
 
@@ -232,17 +263,28 @@ WHERE mp.xuid = '{coequipier_xuid}'
 
 ## Tables append-only + vues `_latest` (ADR 0026 — règle critique)
 
-`match_skill_rank`, `lusr_component_history`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont
-append-only (PK technique `id` + `written_at`). Les tables produites par une passe de décodage
-de film (`match_kill_events`, `kill_positions`, `match_lives`, `match_death_context`,
-`match_life_placement`, `match_death_mates`, …) le sont aussi, arbitrées par `decode_pass` : leur vue `_latest`
-retient la dernière passe ENTIÈRE par match. **Toute lecture applicative passe par la
-vue `<table>_latest`** — une lecture de la table brute peut servir plusieurs versions
-d'une même ligne (rating non déterministe). Écriture = INSERT pur via la couche
-`internal/persist/` (jamais d'UPSERT).
+Ces tables sont append-only (PK technique `id` + `written_at`). Leur lecture passe par la vue
+`<table>_latest` :
+
+- Joueur : `match_skill_rank`, `lusr_component_history`, `player_match_enrichment`,
+  `personal_score_awards`, `match_citations`, `player_csr_snapshots`.
+- Partagée : `match_csrs`, `match_objective_stats`, `match_usage_films`, `match_usage_players`,
+  `match_weapon_shots`, `match_weapon_hit_distance`, `match_player_positions`.
+- PvE : `pve_match_stats`.
+- Social : `media_likes`, `media_match_associations`, `match_favorites`, `player_records`,
+  `player_notifications`.
+- Tables produites par une passe de décodage de film (`match_kill_events`, `kill_positions`,
+  `kill_openings`, `match_lives`, `match_death_context`, `match_life_placement`,
+  `match_death_mates`, …) : arbitrées par `decode_pass` ; leur vue `_latest` retient la dernière
+  passe ENTIÈRE par match.
+
+**Toute lecture applicative passe par la vue `<table>_latest`** (exception : `weapon_kills` se lit
+par `v_weapon_kills`) — une lecture de la table brute peut servir plusieurs versions d'une même
+ligne (rating non déterministe). Écriture = INSERT pur via la couche `internal/persist/` (jamais
+d'UPSERT).
 
 Piège associé : `start_time` NULL dans `_latest` — joindre `match_registry` avec le
-COALESCE timezone canonique si un tri temporel est nécessaire.
+COALESCE timezone canonique (fragment `platform/duckdb/sqlfrag`) si un tri temporel est nécessaire.
 
 ## Règle connexions (Go — modèle mono-process, ADR 0013/0016)
 

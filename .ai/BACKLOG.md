@@ -2,6 +2,38 @@
 
 ---
 
+### [web/modes] Libellé de mode : le web et le Go ne donnent pas le même résultat sur les identités de playlist
+
+**Relevé le 2026-11-22** (contrôle de fraîcheur des skills). `apps/web/src/lib/halo/modeLabel.ts:36-43` (`normalizeModeLabel`, lu par `match-card.tsx` et `features/match-view/format.ts`) garde ce qui suit le dernier `:`. Le Go (`analysis.NormalizeModeLabel`) fait passer l'identité de playlist avant le conteneur. Résultat pour `Super Fiesta:Slayer` : « Slayer » sur une carte de match, « Super Fiesta » dans les écrans servis par le Go. À faire : servir le libellé résolu par l'API, ou aligner le miroir web, avec un test sur les formes inversées.
+
+**Effort : faible. Priorité moyenne (écart visible).**
+
+---
+
+### [doctrine] Seuil de complexité : CLAUDE.md dit 12, `.golangci.yml` applique 15
+
+**Relevé le 2026-11-22.** `CLAUDE.md` règle 5 fixe la complexité à 12 au plus ; `.golangci.yml:56` porte `min-complexity: 15` (commentaire « relaxé de 12 à 15 »). Décision du user : remettre 12 dans le lint (avec baseline), ou écrire 15 dans `CLAUDE.md`.
+
+**Effort : faible. Décision du user.**
+
+---
+
+### [code mort] Fonctions d'analyse sans appelant de production
+
+**Relevé le 2026-11-22** (recherche par nom, hors `_test.go`, à confirmer avant suppression) : `analysis/spawn_detection.go` (4 exports), `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`), `ComputeModeCategoryAverages` (`analysis/match_history_avg.go:50`), et la méthode `TitleDataAdapter.LoadMatchSummaries` (3 implémentations, aucun service appelant). CLAUDE.md règle 7 : supprimer avec leurs tests, ou retrouver le lecteur.
+
+**Effort : faible à moyen. Priorité basse.**
+
+---
+
+### [commentaires] Commentaires du code périmés (regroupés)
+
+**Relevé le 2026-11-22.** 33 marqueurs `color-allow` citent « CLAUDE.md §20 » (la section n'existe plus : règles 1 à 19) ; `lib/accessibility/semantic-tokens.ts` décrit encore les tons de la famille stats de combat en opacités ; `games/canonical/fields.go:5-10` dit « ne dépend de rien hors stdlib » alors que le paquet importe `internal/i18n` ; `analysis/modelabel/category.go:36` renvoie à une référence git `v7/cockpit` qui n'existe plus. Une passe unique, sans effet à l'écran.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
 
 **Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.

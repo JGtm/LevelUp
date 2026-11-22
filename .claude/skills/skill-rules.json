@@ -10,10 +10,8 @@
                     "mode_label",
                     "mode_category",
                     "mode_name_tr",
-                    "normalisa",
-                    "normaliz",
-                    "catégorie",
-                    "categorie",
+                    "normalisa*",
+                    "normaliz*",
                     "sous-mode",
                     "Arena:",
                     "BTB:",
@@ -28,10 +26,10 @@
                     "translate_pair"
                 ],
                 "intentPatterns": [
-                    "(normaliser|normaliser|normalize).*?mode",
-                    "mode.*?(catégorie|categorie|filtre|filter|label|affich)",
-                    "(comment|quelle).*?(catégorie|categorie).*?mode",
-                    "mode.*?(pair_name|prefix|sous)"
+                    "(normaliser|normaliser|normalize).{0,40}mode",
+                    "mode.{0,40}(catégorie|categorie|filtre|filter|label|affich)",
+                    "(comment|quelle).{0,40}(catégorie|categorie).{0,40}mode",
+                    "mode.{0,40}(pair_name|prefix|sous)"
                 ]
             }
         },
@@ -44,10 +42,8 @@
                     "resolveToken",
                     "getSeriesColors",
                     "couleur",
-                    "color",
                     "palette",
                     "hex",
-                    "#",
                     "tailwind",
                     "bg-",
                     "text-red",
@@ -61,10 +57,10 @@
                     "rarity"
                 ],
                 "intentPatterns": [
-                    "(ajouter|changer|modifier|choisir).*?couleur",
-                    "couleur.*?(chart|graphe|composant|badge|tag|icon)",
-                    "(quelle|comment).*?couleur",
-                    "color.*?(token|theme|palette|scale)"
+                    "(ajouter|changer|modifier|choisir).{0,40}couleur",
+                    "couleur.{0,40}(chart|graphe|composant|badge|tag|icon)",
+                    "(quelle|comment).{0,40}couleur",
+                    "color.{0,40}(token|theme|palette|scale)"
                 ]
             }
         },
@@ -95,10 +91,10 @@
                     "quelle base"
                 ],
                 "intentPatterns": [
-                    "(quelle|où|dans quelle).*?(table|colonne|base|db|duckdb)",
-                    "(chercher|trouver|récupérer).*?(médaille|medal|kill|weapon|arme|rank|rang)",
-                    "schéma.*?(base|table|db)",
-                    "(table|colonne).*?(existe|contient|stocke)"
+                    "(quelle|où|dans quelle).{0,40}(table|colonne|base|db|duckdb)",
+                    "(chercher|trouver|récupérer).{0,40}(médaille|medal|kill|weapon|arme|rank|rang)",
+                    "schéma.{0,40}(base|table|db)",
+                    "(table|colonne).{0,40}(existe|contient|stocke)"
                 ]
             }
         },
@@ -112,7 +108,6 @@
                     "reimplémenter",
                     "reimpleménter",
                     "porter en go",
-                    "port go",
                     "existe déjà",
                     "existe en go",
                     "squad_score",
@@ -131,10 +126,10 @@
                     "weapon_parser"
                 ],
                 "intentPatterns": [
-                    "(implémenter|ajouter|créer|écrire).*?go.*(calcul|algo|analyse|score|stat)",
-                    "(calcul|algo|score|stat).*?(go|backend|api)",
-                    "(déjà|existe).*(go|backend|analysis)",
-                    "porter.*?(python|algo|calcul).*?go"
+                    "(implémenter|ajouter|créer|écrire).{0,40}go.{0,40}(calcul|algo|analyse|score|stat)",
+                    "(calcul|algo|score|stat).{0,40}(go|backend|api)",
+                    "(déjà|existe).{0,40}(go|backend|analysis)",
+                    "porter.{0,40}(python|algo|calcul).{0,40}go"
                 ]
             }
         },
@@ -146,11 +141,6 @@
                     "adversarial",
                     "adversariale",
                     "adversarial-review",
-                    "relis",
-                    "relire",
-                    "relecture",
-                    "critique",
-                    "sceptique",
                     "red team",
                     "second avis",
                     "seconde paire d'yeux",
@@ -165,12 +155,12 @@
                     "faux positif"
                 ],
                 "intentPatterns": [
-                    "(revue|review|relecture|relire|critique).*(diff|branche|lot|commit|changement|code)",
-                    "(fais|lance|passe).*(revue|review).*(adversari|critique|sceptique)",
-                    "(trouve|cherche).*(defaut|défaut|probleme|problème|bug|faille).*(diff|code|branche)",
-                    "(est-ce que|est ce que).*(diff|code|lot).*(correct|bon|casse|risque)",
-                    "(sous.?agent|agent frais|contexte frais).*(relire|revue|review)",
-                    "avant.*(merge|merger|PR).*(relire|revue|review|verifier|vérifier)"
+                    "(revue|review|relecture|relire|critique).{0,40}(diff|branche|lot|commit|changement|code)",
+                    "(fais|lance|passe).{0,40}(revue|review).{0,40}(adversari|critique|sceptique)",
+                    "(trouve|cherche).{0,40}(defaut|défaut|probleme|problème|bug|faille).{0,40}(diff|code|branche)",
+                    "(est-ce que|est ce que).{0,40}(diff|code|lot).{0,40}(correct|bon|casse|risque)",
+                    "(sous.?agent|agent frais|contexte frais).{0,40}(relire|revue|review)",
+                    "avant.{0,40}(merge|merger|PR).{0,40}(relire|revue|review|verifier|vérifier)"
                 ]
             }
         },
@@ -185,29 +175,23 @@
                     "audit de l'app",
                     "audit technique",
                     "dette technique",
-                    "dette",
                     "code mort",
                     "dead code",
                     "anti-pattern",
                     "antipattern",
-                    "duplication",
                     "erreur avalee",
                     "erreur avalée",
-                    "garde-rail",
-                    "kill-switch",
                     "flag legacy",
-                    "etat de l'art",
-                    "état de l'art",
                     "revoir l'app",
                     "revue de l'app",
                     "passer en revue"
                 ],
                 "intentPatterns": [
-                    "(audit|auditer|revoir|passer en revue|inspecter).*(app|application|code|sous.?systeme|sous.?système|package|module|feature)",
-                    "(chercher|trouver|lister).*(dette|code mort|duplication|anti.?pattern|violation)",
-                    "(ou|où|quoi|quels).*(probleme|problème|defaut|défaut|violation).*(app|codebase|projet)",
-                    "(qualite|qualité|sante|santé|etat|état).*(code|codebase|projet|app)",
-                    "(registre|rapport).*(audit|constat)"
+                    "(audit|auditer|revoir|passer en revue|inspecter).{0,40}(app|application|code|sous.?systeme|sous.?système|package|module|feature)",
+                    "(chercher|trouver|lister).{0,40}(dette|code mort|duplication|anti.?pattern|violation)",
+                    "(ou|où|quoi|quels).{0,40}(probleme|problème|defaut|défaut|violation).{0,40}(app|codebase|projet)",
+                    "(qualite|qualité|sante|santé|etat|état).{0,40}(code|codebase|projet|app)",
+                    "(registre|rapport).{0,40}(audit|constat)"
                 ]
             }
         },
@@ -216,30 +200,16 @@
             "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison (+ complément levelup-plan)",
             "promptTriggers": {
                 "keywords": [
-                    "plan",
-                    "PLAN_",
-                    "respecte",
-                    "conforme",
-                    "cohérent",
-                    "revue",
-                    "review",
-                    "audit",
-                    "valide",
-                    "valider",
-                    "vérifie",
-                    "vérifier",
-                    "bon plan",
-                    "ce plan",
-                    "portage",
-                    "phase",
-                    "phases"
+                    "PLAN_*",
+                    "plan-review",
+                    "plan d'implémentation",
+                    "plan d'implementation"
                 ],
                 "intentPatterns": [
-                    "(ce plan|le plan|mon plan).*(bon|correct|complet|respecte|cohérent|ok|valide)",
-                    "(valider|vérifier|auditer|reviewer|revoir).*(plan|architecture|implémentation)",
-                    "(est-ce que|est ce que).*(plan|implémentation).*(correct|bon|respecte|conforme)",
-                    "(quoi|qu'est-ce qui).*(manque|oublié|manquant).*(plan|implémentation)",
-                    "plan.*(archi|architecture|multi.titre|adapter|canonical)"
+                    "(relis|relire|revoir|reviewer|valider|vérifier|verifier|critiquer|challenger).{0,25}\\b(ce|le|mon|du|un) plan\\b(?! de la carte| des murs)",
+                    "\\b(ce|mon) plan\\b.{0,40}(bon|correct|complet|cohérent|coherent|respecte|conforme|valide|tient)",
+                    "(écri[rs]|ecri[rs]|rédige|redige|prépare|prepare|fais|faire).{0,15}\\bun plan\\b",
+                    "(quoi|qu'est-ce qui).{0,20}(manque|oublié|manquant).{0,25}\\bplan\\b"
                 ]
             }
         },
@@ -250,25 +220,21 @@
                 "keywords": [
                     "livrer",
                     "livraison",
-                    "terminer",
-                    "terminé",
-                    "c'est bon",
-                    "c'est fini",
-                    "prêt",
-                    "PR",
+                    "livré",
                     "pull request",
-                    "merge",
-                    "ship",
+                    "PR",
+                    "merger",
+                    "squash",
+                    "go/no-go",
+                    "delivery-checklist",
                     "déployer",
-                    "checklist",
-                    "vérification",
-                    "valider"
+                    "deployer"
                 ],
                 "intentPatterns": [
-                    "(c'est|je suis|on est|tout est).*(bon|fini|terminé|prêt|done)",
-                    "(créer|ouvrir|faire).*(PR|pull request|merge)",
-                    "(vérifier|checker|valider).*(tout|feature|impl|code)",
-                    "on peut.*(livrer|merger|shipper|deployer)"
+                    "(c'est|tout est|on est) (livré|fini|terminé|prêt à livrer)",
+                    "(créer|ouvrir|ouvre|faire|fais).{0,20}\\b(pr|pull request)\\b",
+                    "(on peut|peut-on|est-ce qu'on peut).{0,20}(livrer|merger|fusionner|pousser)",
+                    "(avant de|prêt à|pret a) (livrer|fusionner|merger|pousser)"
                 ]
             }
         },
@@ -297,11 +263,11 @@
                     "locale"
                 ],
                 "intentPatterns": [
-                    "(créer|ajouter|modifier).*?(page|composant|feature|hook)",
-                    "(appeler|appel|fetch|requête).*?(api|backend|endpoint)",
-                    "(traduction|i18n|label|libellé).*?(feature|composant|page)",
-                    "(route|routage|navigation|lien).*?(joueur|player|page)",
-                    "(comment|où|structure).*?(feature|composant|hook).*?(web|react|frontend)"
+                    "(créer|ajouter|modifier).{0,40}(page|composant|feature|hook)",
+                    "(appeler|appel|fetch|requête).{0,40}(api|backend|endpoint)",
+                    "(traduction|i18n|label|libellé).{0,40}(feature|composant|page)",
+                    "(route|routage|navigation|lien).{0,40}(joueur|player|page)",
+                    "(comment|où|structure).{0,40}(feature|composant|hook).{0,40}(web|react|frontend)"
                 ]
             }
         },
@@ -332,9 +298,9 @@
                     "LoadCareerSnapshot"
                 ],
                 "intentPatterns": [
-                    "(quel|comment|quel type).*(retourne|retourner|renvoie).*(adapter|service)",
-                    "(type|struct).*(match|joueur|player|career|canonical)",
-                    "(implémenter|porter|écrire).*(adapter|TitleDataAdapter)"
+                    "(quel|comment|quel type).{0,40}(retourne|retourner|renvoie).{0,40}(adapter|service)",
+                    "(type|struct).{0,40}(match|joueur|player|career|canonical)",
+                    "(implémenter|porter|écrire).{0,40}(adapter|TitleDataAdapter)"
                 ]
             }
         },
@@ -370,7 +336,6 @@
                     "TitleDataAdapter",
                     "TitleSemanticAdapter",
                     "Resolver",
-                    "adapter",
                     "ErrCapabilityNotSupported",
                     "CapabilityMap",
                     "CapabilityKey",
@@ -382,13 +347,13 @@
                     "OutcomeMappingSet"
                 ],
                 "intentPatterns": [
-                    "(où|dans quel).*(package|fichier|couche|dossier).*(mettre|placer|écrire|ajouter)",
-                    "(refactor|découper|diviser|trop long).*(fichier|fonction|service|handler)",
-                    "(comment|faut-il|doit-on).*(tester|mocker|logger)",
-                    "(handler|service|analysis|domain|platform).*(différence|rôle|responsabilité)",
-                    "port.*(interface|pattern|découplage)",
-                    "(ajouter|supporter|gérer|nouveau).*(titre|jeu|game)",
-                    "multi.*(titre|jeu|game)"
+                    "(où|dans quel).{0,40}(package|fichier|couche|dossier).{0,40}(mettre|placer|écrire|ajouter)",
+                    "(refactor|découper|diviser|trop long).{0,40}(fichier|fonction|service|handler)",
+                    "(comment|faut-il|doit-on).{0,40}(tester|mocker|logger)",
+                    "(handler|service|analysis|domain|platform).{0,40}(différence|rôle|responsabilité)",
+                    "port.{0,40}(interface|pattern|découplage)",
+                    "(ajouter|supporter|gérer|nouveau).{0,40}(titre|jeu|game)",
+                    "multi.{0,40}(titre|jeu|game)"
                 ]
             }
         }

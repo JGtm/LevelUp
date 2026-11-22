@@ -99,7 +99,7 @@ Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`
 | Matchs partagés (tous joueurs) | `data/titles/{slug}/warehouse/shared_matches_v2.duckdb` |
 | Référentiels (modes, armes, rangs) | `data/titles/{slug}/warehouse/metadata.duckdb` |
 | Stats PvE Firefight | `data/titles/halo_infinite/warehouse/shared_pve.duckdb` |
-| Social (followers, activité) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
+| Social (médias, likes, favoris, notifications, records, escouades, prestige) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
 | Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
 | Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
 | Archive des films (chunks zstd-3/brut/zlib + manifestes) | `PathResolver.FilmArchiveDir()` : `film_chunks/{short8}/` et `film_manifests/` (réglage `film_archive_dir`, défaut `data/cache`) ; recompression et déplacement = commandes de l'utilisateur (`levelup film recompress`, `film archive-move`), jamais automatiques |

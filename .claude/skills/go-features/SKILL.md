@@ -1,80 +1,159 @@
-# Skill : go-features — Features Go existantes (internal/analysis)
+---
+name: go-features
+description: Catalogue des algorithmes Go existants (internal/analysis et sous-paquets, domain/title). À invoquer AVANT d'implémenter un calcul, un indicateur, un agrégat ou un helper de libellé, pour vérifier qu'il n'existe pas déjà.
+---
+
+# Skill : go-features — Où chercher avant d'écrire
 
 ## Règle fondamentale
 
-**Toujours vérifier `apps/go-api/internal/analysis/` (et ses sous-packages `temporal/`,
-`breakdown/`, `narrative/`, `timeline/` — READMEs catalogues) avant de réimplémenter.**
-La quasi-totalité des algos du produit existe déjà quelque part.
+Avant de réimplémenter quoi que ce soit, chercher dans `apps/go-api/internal/analysis/` et ses sous-paquets. La quasi-totalité des algorithmes du produit existe déjà.
 
-## Inventaire des fichiers
+Trois sous-paquets ont un README catalogue : `temporal/`, `breakdown/`, `narrative/`. Les lire en premier quand la famille correspond.
 
-### Modes
-| Fichier | Exports clés |
+Ce catalogue donne un chemin et quelques fonctions clés par ligne. Le code fait foi : ouvrir le fichier avant de s'y fier. Les chemins sont relatifs à `internal/analysis/` sauf mention contraire.
+
+## Indicateurs et KPI (règle KDA, ADR 0006)
+
+| Chemin | Fonctions clés |
 |---|---|
-| `mode_label.go` | `NormalizeModeLabel(raw, mapLabels...)` |
-| `mode_category.go` | `InferModeCategoryFromPairName(pairName)`, `PairNamePrefixesForCategory()`, `AllKnownPairNamePrefixes()` |
+| `indicators.go` | `AggregateKDA`, `KDR`, `WinRate`, `Accuracy`, `CombatEfficiency` |
+| `kpi_stats.go` | `ComputeKPIStats`, `ComputeTeamAvgKPIs` |
+| `stats_canonical.go` | agrégats de stats à partir de `canonical.PlayerMatchRow` |
+| `expected_fda.go`, `expected_assists.go` | `ExpectedFDA`, `FDADiff` (écart au FDA attendu) |
+| `pooled_per_minute.go` | `PooledPerMinute[T]` (taux par minute sur plusieurs matchs) |
+| `combat_yield.go` | `ComputeCombatYield`, `FragEquivalents`, `ClassifyCombatProfile` |
+| `math_safe.go` | `IsBadFloat`, `SanitizeFloat`, `SafeRatio` (jamais de `+Inf` ni de `NaN` en sortie) |
 
-### Scores et performances
-| Fichier | Exports clés |
+Réutiliser ces KPI plutôt que de recalculer : KDA n'est jamais un quotient.
+
+## Score d'équipe, manches, prolongation (ADR 0032)
+
+| Chemin | Fonctions clés |
 |---|---|
-| `performance_score.go` | Calcul du performance_score par match |
-| `skill_rating.go` | LUSR / CSR rating par match |
-| `combat_yield.go` | Rendement combat (kills/damage ratio) |
-| `match_impact.go` | Impact individuel sur l'issue du match |
-| `squad_score.go` | Score agrégé de squad |
-| `squad_profiles.go` | Profils de jeu des membres du squad |
-| `squad_breakdown.go` | Décomposition des contributions squad |
-| `squad_impact.go` | Impact du squad |
-| `squad_timeseries.go` | Évolution temporelle du squad |
+| `team_score_display.go` | `ReadTeamScore`, `TeamScoreLabel`, `FormatTeamScoreLabel` |
+| `camps_canonical.go` | `CampsDuMatch`, `EntreeDeScoreCanonique` |
+| `overtime.go` | `ComputeOvertime`, `ResolveOvertime` |
 
-### Armes (pipeline film — 100% Halo Infinite)
-| Fichier | Exports clés |
+## Séries temporelles et tendances
+
+| Chemin | Fonctions clés |
 |---|---|
-| `weapon_parser.go` | Parsing des weapon_id / weapon data |
-| `weapon_scanner.go` | Scan et détection des armes |
-| `weapon_reconciliation.go` | Réconciliation weapon_id↔labels |
-| `weapon_correlation.go` | Corrélations entre armes |
-| `weapon_data.go` | Données statiques armes |
+| `temporal/` (README) | `BucketByGranularity`, `FilterByPeriod`, `RollingMean`, `LowessSmooth`, score d'engagement |
+| `trends/` | indicateurs de tendance, matrice, séries de victoires et défaites, vue escouade |
+| `sessions.go` | `ComputeSessions`, `BuildSessionGroups`, `IsSessionPotentiallyActive` |
+| `match_history_avg.go` | `ComputeModeCategory` (moyennes glissantes de l'historique) |
+| `rank_progression.go` | `ComputeRankProgressionByChain` |
+| `retention.go` | `BorneRetention`, `BorneRetentionDepuis` |
 
-> Ce pipeline (+ `highlight_event_parser.go`, `spawn_detection.go`, `kill_attribution.go`)
-> est title-specific et destiné à migrer vers `internal/games/halo_infinite/film/`
-> (plan audits 2026-07, item F12). Vérifier son emplacement actuel avant de le référencer.
+## Ventilations et narration d'un match
 
-### Évènements et timeline
-| Fichier | Exports clés |
+| Chemin | Fonctions clés |
 |---|---|
-| `highlight_event_parser.go` | Parsing des highlight_events JSON |
-| `killer_victim.go` | Paires killer→victim, chaînes de kills |
-| `kd_timeline.go` | Timeline K/D dans le match |
-| `tug_of_war.go` | Momentum match (tug-of-war) |
-| `comeback.go` | Détection des comebacks |
-| `spawn_detection.go` | Détection des respawns |
+| `breakdown/` (README) | ventilations par carte, mode, playlist ; comparaisons |
+| `narrative/` (README) | `IdentifyImpactRoles`, badge de dominance, cadence, profil d'intensité, premiers événements |
+| `match_impact.go`, `match_impact_thief.go` | `ComputeMatchImpactFull` (badges d'impact) |
+| `comeback.go`, `comeback_frag_contrast.go` | `ComputeDominanceFlag`, `ComputeScoreMarginDominance` |
+| `tug_of_war.go`, `kd_timeline.go` | `ComputeTugOfWar`, `ComputeKDTimeline` |
+| `killer_victim.go` | `ComputeKillerVictimPairs` (appariement tueur et victime) |
+| `scoreboard_extremes.go` | `ComputeMVPLVP` |
 
-### Médailles et citations
-| Fichier | Exports clés |
-|---|---|
-| `medals_earned` | (via DB, pas d'algo dédié) |
-| `medal_exploit.go` | Exploitation des médailles pour insights |
-| `citations.go` | Calcul des citations par match |
-| `citation_snippets.go` | Snippets textuels de citations |
+## Primitives d'événements et de séries
 
-### Historique et sessions
-| Fichier | Exports clés |
+| Chemin | Fonctions clés |
 |---|---|
-| `sessions.go` | Groupement en sessions de jeu |
-| `match_history_avg.go` | Moyennes glissantes historique |
-| `home.go` | Agrégats page d'accueil |
+| `longest_run.go` | `LongestRun[T]` (plus longue série vérifiant un prédicat) |
+| `max_killing_spree.go` | `ComputeMaxKillingSpree` |
+| `first_blood.go` | `FirstBlood`, `FirstDeath`, `CountFirstKillsAndDeaths` |
+| `kv_synthetic_events.go` | `SynthesizeKillEventsFromKVPairs`, `MergeAndSortCanonicalEvents` |
+| `perfect_kills.go` | décompte des kills parfaits |
 
-### Médias
-| Fichier | Exports clés |
-|---|---|
-| `media.go` | Gestion des fichiers médias |
+## Escouade
 
-### Multi-titres (`internal/domain/title/`)
-| Fichier | Exports clés |
+| Chemin | Fonctions clés |
 |---|---|
-| `registry.go` | `TitleRegistry`, `TitleDescriptor`, `PathResolver`, `NewRegistry()`, `NewPathResolver()` |
-| `matcher.go` | Matching de présence Xbox/Steam → titre |
+| `squad_score.go` | `ComputeSquadPerformanceScore` |
+| `squad_profiles.go` | `ComputeParticipationProfile`, `ComputeSquadRecords` |
+| `squad_breakdown.go` | `ComputeSquadBreakdown`, `ComputeTopWeeks` |
+| `squad_impact.go`, `squad_timeseries.go` | `ComputeImpactSummary`, `ComputeSquadTimeseries` |
+| `squadimpact/`, `squadformes/`, `squademprise/` | rôles et historique d'impact, formes, emprise de l'escouade |
+
+## Citations et médailles
+
+| Chemin | Fonctions clés |
+|---|---|
+| `citations_engine.go` | `ComputeFullMatchCitations`, `ComputeMatchCitations`, `ParseTierMax`, `RegisterCustomDispatcher` |
+| `citations_composite.go`, `citation_cumul.go` | citations composites et cumul |
+| `citations.go` | `MergeCitationTotals`, `BuildCitationsByCategory` |
+| `citation_snippets.go` | `ParseTierTargets`, `ComputeTierProgression`, `BuildCitationSnippets` |
+| `medals.go`, `medal_exploit.go` | médailles ; `ComputeMedalExploitScore` |
+
+## Notation et rang
+
+| Chemin | Fonctions clés |
+|---|---|
+| `skill_v2/` et `internal/sync/skill/` | LUSR v2 (seule version vivante), lissage d'affichage |
+| `skill_rating.go` | `ComputeSkillRatingsBatch` (batch hérité, utilisé par `service/stats_service.go`) |
+| `home_canonical_skill.go` | `BuildSkillTierLabel`, `SkillBadgeURL`, `CSRTierOrdinal` |
+| `internal/sync/performance.go` | score de performance relatif (`analysis/performance_score.go` ne porte plus que des constantes) |
+
+Le CSR est une valeur de l'API : il n'est pas calculé ici.
+
+## Libellés, filtres et modes
+
+| Chemin | Fonctions clés |
+|---|---|
+| `mode_label.go` | `NormalizeModeLabel`, `ResolveModeUI`, `ExtractKnownMode` |
+| `modelabel/` | catégorie de mode, extraction et nettoyage de libellés |
+| `internal/games/halo_infinite/mode_category.go` | `InferModeCategoryFromPairName` (propre à Halo Infinite) |
+| `playlist_label.go` | `NormalizePlaylistLabel`, `DisplayPlaylistLabel` |
+| `match_filter.go` | `OutcomeCodeForLabel`, `IsValidOutcomeLabel` |
+| `map_groups.go`, `map_variant.go` | `GroupMapsByBase`, `BaseMapName` (regroupement des variantes d'une carte) |
+
+## Armes
+
+| Chemin | Fonctions clés |
+|---|---|
+| `weapon_range.go`, `weapon_distance_records.go`, `weapon_opening_delta.go` | portée, records de distance, écart d'ouverture |
+| `weapontier/` | paliers d'armes et recoupements |
+| `internal/games/weapons/` | registre des armes du titre, libellés |
+| `internal/games/halo_infinite/killsource_*.go` | source de dégâts d'une mort et son icône |
+
+## Analyses issues du film et du rejeu
+
+| Chemin | Contenu |
+|---|---|
+| `tactical/` | placement, géométrie, réapparitions |
+| `coordination/` | blocs, isolation, appui |
+| `leadshare/` | part de menée |
+| `sessionusage/` | usage d'équipement par session |
+| `killsummary/` | résumés par match du journal des morts (ADR 0039) |
+| `digest/`, `prestigetuning/`, `patterns/`, `relations/` | synthèses, réglage Prestige, schémas de jeu, relations entre joueurs |
+
+Le décodage du film est dans la brique `halo-infinite-film-decoder` (façade `decfilm`, ADR 0034), pas dans `analysis/`. Les temps forts issus du film : `internal/games/halo_infinite/film_highlight_events.go`.
+
+## Accueil, monde, carrière
+
+| Chemin | Contenu |
+|---|---|
+| `home_*.go`, `home_canonical_*.go` | agrégats de la page d'accueil (`home.go` : helpers transverses) |
+| `world_stats.go` | `NormalizeSeasonID`, `AccumulateWorldStats` |
+| `xp_estimate.go` | `EstimateCareerXP` |
+
+## Multi-titres (`internal/domain/title/`)
+
+| Chemin | Fonctions clés |
+|---|---|
+| `registry.go` | `Registry` (`NewRegistry`), `TitleDescriptor`, `PathResolver` (`NewPathResolver`, `NewPathResolverRoots`) |
+| `matcher.go` | `MatchByXboxTitleID`, `MatchBySteamAppID`, `MatchPresence` |
+
+## Code sans appelant de production
+
+Ces fonctions existent mais aucun code de production ne les appelle : ne pas les présenter comme réutilisables, et se demander s'il faut les supprimer avant de bâtir dessus.
+
+- `spawn_detection.go` (estimation du début de match dans un film).
+- `ComputeAntagonistCounts` (`killer_victim.go`).
+- `ComputeModeCategoryAverages` (`match_history_avg.go`).
 
 ## Pattern de vérification
 
@@ -82,16 +161,17 @@ La quasi-totalité des algos du produit existe déjà quelque part.
 # Chercher si une fonction existe déjà
 grep -r "func.*Score\|func.*Rating\|func.*Normalize" apps/go-api/internal/analysis/
 
-# Lister tous les exports d'un fichier
+# Lister les exports d'un fichier
 grep "^func [A-Z]" apps/go-api/internal/analysis/squad_score.go
+
+# Vérifier qu'une fonction a un appelant de production
+grep -rn "NomDeLaFonction" apps/go-api --include=*.go | grep -v _test.go
 ```
 
-## Règle avant toute implémentation
+## Avant toute implémentation
 
-Si une fonctionnalité ne semble pas exister dans `analysis/` :
-1. Vérifier les autres sous-packages de `apps/go-api/internal/` (service/, progression/,
-   games/, platform/duckdb/ — la logique peut vivre côté repo)
-2. Vérifier le thought_log et les plans `.ai/V7/` (elle peut être en cours ou décidée)
-3. Seulement alors implémenter — dans `internal/analysis/` pour les algos purs
-   title-agnostic, `internal/games/{slug}/` pour le title-specific, `service/` pour
-   l'orchestration
+Si la fonctionnalité semble absente de `analysis/` :
+
+1. Chercher dans les autres paquets de `apps/go-api/internal/` : `service/`, `progression/`, `games/`, `platform/duckdb/`, `sync/`. La logique peut vivre côté lecture ou côté synchronisation.
+2. Lire le journal des décisions et les plans actifs (`.ai/PLAN_*.md`, les plans clos sont sous `.ai/archive/`) : le sujet peut être en cours ou déjà tranché.
+3. Seulement alors implémenter : dans `internal/analysis/` pour un algorithme pur et commun à tous les titres, dans `internal/games/{slug}/` pour ce qui dépend d'un titre, dans `service/` pour l'orchestration.

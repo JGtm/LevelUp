@@ -1,3 +1,8 @@
+---
+name: arch-rules
+description: Architecture Go de LevelUp : couches internes (handlers, port, service, analysis, platform/duckdb, persist), gardes-rails archlint, erreurs HTTP, i18n N langues, règles multi-titre (PathResolver, capabilities, adapters) et kill-switches. À invoquer avant d'écrire ou de déplacer du code Go, d'ajouter un titre, un message ou un libellé serveur.
+---
+
 # Skill : arch-rules — Architecture Go, séparation des responsabilités, testabilité
 
 ## Couches internes (internal/)
@@ -6,11 +11,11 @@
 api/handlers/    — HTTP : décode requête, appelle service via port interface, encode réponse
 api/middleware/  — Cross-cutting : auth, CSRF, rate-limit, slog HTTP, title, ownership
 api/wire/        — DI : assemble dépôts, services et fournisseurs ; 0 SQL, 0 logique métier
-port/            — Interfaces : StatsService, Repository… (découplage handlers↔services) ; aucun type `sql.`
+port/            — Interfaces : `StatsService`, `*Repository` par domaine… (découplage handlers↔services) ; aucun type `sql.`
 service/         — Orchestration : combine repo + analysis, implémente port.*Service ; 0 SQL, 0 paquet de titre
 domain/          — Types métier purs : structs, enums — 0 DB, 0 HTTP
 analysis/        — Algos purs : fonctions stateless — 0 DB, 0 HTTP, 0 side-effect, 0 paquet de titre
-platform/duckdb/ — Infrastructure : implémente port.Repository, accès DuckDB ; sous-paquets `profilerepo`
+platform/duckdb/ — Infrastructure : implémente les `port.*Repository`, accès DuckDB ; sous-paquets `profilerepo`
                    (profil de progression), `worldrepo` (classement mondial), `sqlfrag` (fragments SQL
                    partagés, dont le fuseau canonique) ; `platform/dbfault` classe les pannes de lecture
 platform/dblease/— Baux d'écriture ; porte `DBExecutor` et `DBWriter` (types SQL hors de `port/`)
@@ -18,10 +23,13 @@ importstore/     — Stockage des services d'import (OpenSpartan, import depuis 
 cronstore/       — Lectures des tâches de fond du scheduler (sondes de santé, purge des rejeux)
 playerresolve/   — Câblage : ouvre le PlayerDB d'un joueur et résout le lecteur partagé d'un titre
 replaytext/      — Conversion des libellés du rejeu entre `i18n.Text` et le décodeur
-platform/auth/   — Tokens (MultiUserTokenStore, ADR 0023), échanges Halo
+platform/auth/   — Tokens (MultiUserTokenStore, ADR 0023), pool (ADR 0038), politique de rafraîchissement ;
+                   la chaîne d'échange vit dans `xblauth` (brique `halo-api`, ADR 0042)
 persist/         — Écritures per-match : BatchBuilder + Persisters INSERT-only (ADR 0019)
 sync/ + sync/v2/ — Moteur de synchronisation (V2 = cycle orchestrator, ADR 0027)
-games/           — Par titre : adapters + client + livesync (halo_infinite/, halo_5/) + canonical/
+games/           — Par titre : adapters, conversions (`haloadapter`), ingest, migrations (`halo_infinite/`, `halo_5/` ;
+                   `livesync/` et `client.go` côté `halo_5/` seulement) ; inter-titres : `canonical/`, `mappings/`,
+                   `classification/`, `weapons/`, `titleseams/`
 migration/       — DDL + migrations de schéma (dont append-only rebuild, ADR 0026)
 config/          — Configuration + feature flags
 ops/             — Backup, restore, seed demo — ATTENTION : certains chemins tournent in-process
@@ -31,6 +39,12 @@ ops/             — Backup, restore, seed demo — ATTENTION : certains chemins
 (registry/wire). Ne JAMAIS y ajouter de SQL, de logique métier ou de runner — c'est la
 dérive n°1 identifiée par l'audit archi 2026-07 ; elle est tenue par `TestApiSansSQL`
 (`archlint/frontieres_sql_test.go`, plafond 0).
+
+**Briques Go (ADR 0041, 0042, 0043)** : `libs/` n'existe plus. Les lecteurs de fichiers du jeu, les images de carte,
+le décodeur de film et l'API Halo (protocole : `xblauth`, `infinite`, `halo5`, `xboxlive`) vivent dans des dépôts
+dédiés, importés comme dépendances de `apps/go-api/go.mod`. Le code d'une brique se modifie dans son dépôt, jamais
+ici. Les gardes sont `archlint/briques_imports_test.go` et `briques_chemin_unique_test.go`. L'exploitation (politique,
+état, câblage) reste dans LevelUp.
 
 ## Règle : où va ce code ?
 
@@ -94,7 +108,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 | Couche | Stratégie |
 |---|---|
 | `analysis/` | Tests unitaires purs, 0 dépendance externe |
-| `service/` | Mock `port.Repository` via interface |
+| `service/` | Mock du `port.*Repository` consommé, via interface |
 | `api/handlers/` | `httptest.NewRecorder` + faux `port.*Service` |
 | `platform/duckdb/` (et sous-paquets) | DuckDB `:memory:` |
 
@@ -110,9 +124,18 @@ justifiait (une entrée sans violation fait rougir le test). Imports lus dans l'
 | `TestHandlersSansTypeConcretDeService` | `api/handlers` sans `service` |
 | `TestServiceImporteAucunPaquetDeTitre`, `TestAnalysisImporteAucunPaquetDeTitre` | `service/` et `analysis/` sans paquet de titre |
 | `TestSchedulerSansStockageDuckDB`, `TestAnalysisSansStockage`, `TestWorldenrichSansService` | `scheduler/`, `analysis/`, `worldenrich` |
-| `TestApiSansSQL`, `TestMetierSansSQL`, `TestPortSansTypeSQL` | ni SQL ni `database/sql` dans `api/`, `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/` |
+| `TestApiSansSQL`, `TestMetierSansSQL`, `TestPortSansTypeSQL` | ni SQL ni `database/sql` dans `api/` (racine) et `api/wire/` (`handlers/` : `TestHandlersSansStockageDuckDB`), `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/` |
 | `TestAucuneLectureEnvHorsConfig` | `os.Getenv` seulement dans `internal/config`, `cmd/`, allowlist datée |
 | `TestOpenReadWriteHorsDuPointUniqueSurAllowlist`, `TestOpenReadWriteAllowlistDatee` | `duckdb.OpenReadWrite` sur l'allowlist datée de l'ADR 0030 D-3 |
+| `no_slug_comparison_test.go` | aucune comparaison de slug de titre (`slug == ...`) : brancher sur une capability |
+| `deployment_single_resolver_test.go` | le profil de déploiement (ADR 0044) se résout une seule fois, dans `internal/config` |
+| `no_direct_profile_create_test.go` | `Onboard` est le seul appelant de `ProfileService.CreatePlayer` (ADR 0035) |
+| `no_bare_instance_lock_read_test.go` | le verrou d'instance se lit seulement par `authz.InstanceLocked` |
+| `gamefiles_tag_test.go` | un test qui ouvre l'installation du jeu se nomme `*_gamefiles_test.go` et porte le tag `gamefiles` |
+| `briques_imports_test.go`, `briques_chemin_unique_test.go` | imports et chemin unique des briques (ADR 0041) |
+
+Écritures DuckDB (anti-ART : INSERT-only, lecture par vues `_latest`, writer unique) : voir CLAUDE.md
+« Règles critiques — écritures DuckDB » et le skill `db-schema`.
 
 Front (`apps/web`) : `node tools/lint-cross-feature-imports.mjs` ; gardes `*.guard.test.ts` :
 `components/charts/chartsImportBoundary` (`echarts` seulement sous `components/charts/`),
@@ -134,7 +157,7 @@ fmt.Println("debug:", x)  // non structuré
 log.Printf("...")          // ancien package log
 ```
 
-Clés standard du projet : `"err"`, `"match_id"`, `"player"`, `"titleSlug"`, `"duration"`.
+Clés usuelles : `"err"`, `"match_id"`, `"xuid"`, `"gamertag"`, `"title_slug"` (aucun garde-rail ne fige ces noms).
 
 ## Erreurs HTTP — le texte d'une erreur ne part pas au client
 
@@ -195,6 +218,12 @@ curées `required` sont refusés tant qu'ils sont incomplets).
 | Fichier `.go` | 500 lignes | Extraire `*_helpers.go`, `*_types.go`, ou sous-package |
 | Fonction | 80 lignes | Extraire sous-fonctions nommées |
 | Paramètres | 5 | Regrouper en struct |
+| Complexité | ≤ 12 (CLAUDE.md) | Extraire sous-fonctions |
+
+Trois autres règles de CLAUDE.md (règles 3, 6 et 7) :
+- Un même motif copié 3 fois se centralise dans un helper, avec un garde-rail qui interdit l'ancien littéral.
+- Pas de code mort : ce qu'on débranche se supprime avec ses tests.
+- Jamais d'erreur avalée en silence : on journalise avant toute dégradation.
 
 Nommage : `1 verbe + 1 complément`. `computeKD` + `renderKD`, jamais `computeAndRenderKD`.
 
@@ -207,7 +236,7 @@ Décision DU-5 b du plan `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-0
   vrai tant que le code ne change pas.
 - **L'histoire va dans l'ADR, la chronique ou le journal** : mesures datées, numéros de lot,
   « avant, ce code faisait X », comptes du jour. Décision → ADR ; montée de révision ou de
-  schéma → chronique (`rev_chronique*.go`, chronique du document) ; déroulé → plan et
+  schéma → chronique (`rev_chronique*.go` du dépôt du décodeur de film, chronique du document) ; déroulé → plan et
   `.ai/thought_log.md`. Un compte qui bouge se lit dans le ratchet qui le tient : citer le
   ratchet, pas le nombre.
 - **Affirmation d'état** (« seul », « aucun », « jamais », « toujours ») : seulement si un
@@ -258,7 +287,7 @@ if desc.HasCapability(title.CapRanked) { ... }
 if slug == "halo_infinite" { ... }  // couplage fort, non extensible
 ```
 
-Capabilities disponibles : `CapMatchmaking`, `CapFirefight`, `CapForge`, `CapMedia`, `CapRanked`, `CapCareer`.
+Capabilities du registre : voir les constantes `Cap*` de `domain/title/registry.go` (ne pas en recopier la liste ici).
 
 ### Prestige / arcs / progression — per-titre STRICT (décision produit 2026-07-18)
 
@@ -289,12 +318,14 @@ Le titre courant peut être passé par `X-LevelUp-Title` (clients API directs). 
 
 ### Adapters — pattern Phase B
 
-Deux interfaces séparées (SRP) dans `internal/games/adapter.go` :
+Quatre interfaces séparées (SRP) dans `internal/games/adapter.go`, servies par le `Resolver` :
 
 | Interface | Rôle | Source |
 |---|---|---|
 | `TitleDataAdapter` | Charge les données du titre → format canonique | DuckDB title-specific |
 | `TitleSemanticAdapter` | Expose les libellés, assets, outcomes | TOML versionnés Git |
+| `TitleAssetURLAdapter` | Compose les URLs d'assets propres au titre | Fichiers du titre |
+| `TitleCatalogAdapter` | Expose le catalogue du titre | Catalogue du titre |
 
 ```go
 // Un service ne dépend que de ce dont il a besoin
@@ -314,26 +345,36 @@ if errors.Is(err, games.ErrCapabilityNotSupported) {
 }
 ```
 
-**CapabilityKey produit** (plus fins que les `Capability` du TitleRegistry) :
-`"match.history"`, `"match.detail.core"`, `"match.skill.snapshot"`, `"career.progression"`, `"pve.firefight_stats"`, `"analytics.timeseries"`.
+**CapabilityKey produit** (plus fins que les `Capability` du TitleRegistry) : la liste est
+`games.AllCapabilityKeys()` (`games/capabilities.go`), les constantes sont dans `games/adapter.go`. Le statut de
+chaque clé par titre (`supported`, `degraded`, `not_exposed`) se déclare dans
+`config/titles/{slug}/mappings/capabilities.toml`, source de vérité. Une clé fine gouverne une seule surface : ne
+pas l'élargir.
 
 ### TOML mappings — `config/titles/{slug}/mappings/`
 
 | Fichier | Contenu |
 |---|---|
-| `fields.toml` | Libellés par langue (`{ fr = ..., en = ... }`, `i18n.Text`), unit, format, display_order par FieldKey canonique |
+| `fields.toml` | Par FieldKey canonique : libellés par langue (`labels = { en = ..., fr = ... }`, `i18n.Text`), `storage_unit`, `display_unit`, `format`, `display_order`, `group` |
 | `assets.toml` | Assets par mode (icônes), tiers médailles, statuts challenges |
 | `outcomes.toml` | Labels + color tokens par résultat (win/loss/tie/dnf) |
+| `capabilities.toml` | Statut par CapabilityKey (`supported`, `degraded`, `not_exposed`) ; source de vérité, 0 hardcode Go |
 
 **Règle** : un champ absent du TOML = le titre ne supporte pas cette surface produit. Le service doit dégrader, jamais paniquer.
+Côté HTTP, `MapCapabilityError` (`api/handlers/capability_error.go`) traduit `ErrCapabilityNotSupported` en
+réponse partielle ou en 503 propre.
 
 ### Ajouter un nouveau titre
 
-1. `internal/games/{new_title}/adapter_data.go` + `adapter_semantic.go` — implémenter les 2 interfaces
-2. `config/titles/{new_title}/mappings/fields.toml` + `assets.toml` + `outcomes.toml`
-3. Enregistrer dans `TitleRegistry` + `Resolver` au boot (`api/server.go`)
-4. Brancher sur `HasCapability()` côté domain, jamais sur le slug
-5. Aucun import du nouveau paquet depuis `service/`, `analysis/` ni `api/handlers` : il arrive par un
+1. `config/titles/{new_title}/title.toml` : le manifeste remplit le `TitleRegistry` au boot
+   (`LoadTitlesIntoRegistry`), sans recompiler
+2. `config/titles/{new_title}/mappings/` : `fields.toml`, `assets.toml`, `outcomes.toml`, `capabilities.toml`
+3. `internal/games/{new_title}/adapter_data.go` ; ajouter `adapter_semantic.go` seulement si le sémantique
+   générique sur les TOML ne suffit pas (Halo 5 n'en a pas)
+4. Ajouter une entrée dans `additionalTitleRegistrars` (`api/wire/server_titles_additional.go`) ; seul le titre par
+   défaut est câblé directement dans `api/server.go`
+5. Brancher sur `HasCapability()` côté domain, jamais sur le slug
+6. Aucun import du nouveau paquet depuis `service/`, `analysis/` ni `api/handlers` : il arrive par un
    port injecté au câblage (`api/wire`, `cmd/`) ; les gardes le refusent sans qu'on les édite
 
 ## Feature flags & kill-switches
