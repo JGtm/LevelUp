@@ -52,7 +52,7 @@ describe('buildImpactHistoryOption', () => {
   it('une donnée par barre, étendue de l’axe = gains et pertes', () => {
     const bars = option().series[1]
     expect(bars.data).toHaveLength(9)
-    expect(bars.data[0]).toEqual([0, 0, 3, -12, -9])
+    expect(bars.data[0]).toEqual([0, 0, 3, -10, -7])
   })
 
   it('barre : cible de survol, segments aux couleurs des rôles, pastille du joueur', () => {
@@ -78,7 +78,7 @@ describe('buildImpactHistoryOption', () => {
     const losanges = jgtm.filter((c) => c.type === 'polygon')
     expect(losanges).toHaveLength(3)
     for (const l of losanges) expect(l.style).toEqual({ fill: 'c-p1' })
-    expect(jgtm.filter((c) => c.type === 'text').map((c) => (c.style as { text: string }).text)).toEqual(['−9'])
+    expect(jgtm.filter((c) => c.type === 'text').map((c) => (c.style as { text: string }).text)).toEqual(['−7'])
     const madina = nets.renderItem({ coordSys: { x: 0 } }, api(nets.data[2]))?.children ?? []
     expect(madina.filter((c) => c.type === 'text')).toHaveLength(0)
   })
@@ -88,7 +88,7 @@ describe('buildImpactHistoryOption', () => {
     expect(html).toContain('Joueur90001')
     expect(html).toContain('1 match, aucune victoire')
     expect(html).toContain('Boulet ×1')
-    expect(html).toMatch(new RegExp('Net</span><span[^>]*>−4</span>'))
+    expect(html).toMatch(new RegExp('Net</span><span[^>]*>−3,5</span>'))
     expect(html).not.toContain('Soirée')
     expect(option().tooltip.formatter({ seriesIndex: 2, dataIndex: 0 })).toBe('')
   })

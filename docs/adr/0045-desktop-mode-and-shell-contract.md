@@ -34,8 +34,10 @@ database held by a killed process stays locked for a few seconds, so a relaunch 
 ### The contract (plan section 6)
 
 **D-1 — Launch.** The shell starts the sidecar with the working directory set to the resources root, the environment
-`LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR` and `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
-never logged), and the arguments `-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
+`LEVELUP_DATA_DIR`, `LEVELUP_RESOURCES_DIR`, `LEVELUP_LOGS_DIR`, `LEVELUP_DESKTOP_SECRET=<random>` (never an argument,
+never logged) and, since 2026-11-22, `LEVELUP_SHELL_EXE=<absolute path of the shell itself>` (`std::env::current_exe`; read once in
+`internal/config` as `DesktopConfig.ShellExe`, empty when the server was not started by the shell), and the arguments
+`-mode desktop -arret-sur-stdin`. The port is read from `<DataRoot>/desktop/port` (D-9).
 State: the single flag parser `cmd/server/flags.go` exists and recognises `-health-check`, `-arret-sur-stdin` and `-mode`;
 `-mode desktop` is accepted since L12 and `-mode refresh-only` since L15 (both reach `config.LoadServer(launchMode)`; the two
 resolve the `desktop` profile).
@@ -425,20 +427,34 @@ an off setting deletes the entry whatever its approval state. A guard (`tests/te
 
 **Scheduled task (L21.e).** `internal/platform/schedtask`: when `scheduled_refresh` turns on, the server creates the per-user task
 `LevelUp\Refresh-<8 hex>` (the suffix is a fingerprint of the data root: a server started on other roots, a test or a development run, never queries,
-overwrites or deletes the user's task; every 6 hours, `LeastPrivilege`, hidden, `StartWhenAvailable`, no battery condition, 15 minutes at most) running
-`cmd.exe /d /s /c "set LEVELUP_DATA_DIR=... && set LEVELUP_RESOURCES_DIR=... && set LEVELUP_LOGS_DIR=... && levelup-server.exe -mode refresh-only"`,
-and deletes it when it turns off. Deviation from the plan text (`schtasks /Create /SC ... /TR ...`): the definition goes through an XML
+overwrites or deletes the user's task; every 6 hours, `LeastPrivilege`, hidden, `StartWhenAvailable`, no battery condition, 15 minutes at most) and deletes it
+when it turns off. Deviation from the plan text (`schtasks /Create /SC ... /TR ...`): the definition goes through an XML
 file (`/XML`, UTF-16 LE), because `/TR` is limited to 261 characters, which three root paths exceed, and because only the XML carries the
 resume-after-sleep and battery settings. `schtasks.exe` (System32 path, never the PATH) is launched by `childproc.Command` behind the
-`Runner` interface; a path with `"`, `%`, `&`, `^`, `!`, `<`, `>`, `|` or a line break is refused (`unsupported_path`) rather than badly
-quoted. The existence test lists the tasks (`/Query /FO CSV /NH`) instead of `/Query /TN`, whose exit code does not tell "absent" from a refusal and
+`Runner` interface. The existence test lists the tasks (`/Query /FO CSV /NH`) instead of `/Query /TN`, whose exit code does not tell "absent" from a refusal and
 whose message is localized. At start-up the loop **reconciles** (setting on: the task is always rewritten with `/F`, one call, so a reinstall in
 another folder or a changed root never leaves a stale task shown as "present"; setting off and a task left over: delete it; otherwise nothing); afterwards each **change** creates or deletes. A failure is logged, exposed as a fixed code (`schtasks_failed`,
-`unsupported_path`) by `GET /settings/desktop` (`scheduled_refresh.state` = `present|absent|error|unknown`) and not retried at every tick.
+`unsupported_path`, `shell_unknown`) by `GET /settings/desktop` (`scheduled_refresh.state` = `present|absent|error|unknown`) and not retried at every tick.
 `-mode refresh-only` takes the instance lock before anything and exits 0 without an exchange when the application runs (D-10, tests
-`refresh_only_test.go` and `e2e_refresh_only_test.go`). Limits: the task runs a console program, so Windows may flash a console window for
-a moment (to be seen at gate 21.y); the uninstaller does not remove the task nor the startup entry (a NSIS hook could not be tested here:
-turn the settings off before uninstalling, or delete them by hand).
+`refresh_only_test.go` and `e2e_refresh_only_test.go`). The uninstaller does not remove the task nor the startup entry from the Tauri template (see the
+uninstall-cleanup notes below, which do).
+
+*Amended 2026-11-22: the task runs the shell, not the server.* The first action was `cmd.exe /d /s /c "set ... && levelup-server.exe -mode refresh-only"`. A console
+program started by the task scheduler in the user's session gets a visible console (Windows Terminal on Windows 11) that takes the foreground, pausing a film
+or a game each time the task fires, every 6 hours and at each wake-up; the earlier note "Windows may flash a console window" understated it, and the
+reconciliation never cured it. The action is now `<shell>\LevelUp.exe --refresh-only --data-dir "<d>" --resources-dir "<r>" --logs-dir "<l>"`, working directory the
+shell's folder. The shell is a graphical-subsystem executable (`windows_subsystem = "windows"` in release): it creates no console. Before the Tauri builder
+(so no single-instance plugin, no window, no plugin) `apps/desktop/src-tauri/src/refresh_only.rs` parses those arguments (absolute paths required), starts the neighbouring
+`levelup-server.exe -mode refresh-only` with `CREATE_NO_WINDOW`, null standard streams, the shell's environment stripped of `LEVELUP_*` and `SPNKR_*`
+(the same rule as the normal sidecar, one shared function) and the three roots set, waits, and exits with the server's code; a server that cannot be started
+gives a non-zero code. The shell has no console in release, so once the roots are read the relay writes its start, any launch failure and the exit code to the shell journal (`desktop.log`); only unreadable arguments, which carry no log folder, go to standard error. The server learns the shell's path from `LEVELUP_SHELL_EXE` (D-1). The "may flash a console window" limit therefore no longer applies: no
+program of the task is a console program, and the only process the shell starts is the server, hidden like at a normal start. Path checks follow: the shell path
+and the three roots are refused (`unsupported_path`) when empty, relative, containing `"`, a carriage return or a line feed, or ending with a backslash (the
+shell splits the line by the `CommandLineToArgvW` rule, where a final backslash before the closing quote would escape it); `%`, `&`, `^`, `!`, `<`, `>`
+and `|` were forbidden only because `cmd.exe` read the line and are accepted now (XML-escaped in the definition). A server started without the shell
+(`LEVELUP_SHELL_EXE` empty: development, `go run`) cannot name a program for the task: nothing is created, `schedtask.ErrShellUnknown` is exposed as the code
+`shell_unknown` (and no `schtasks` call is made), and the setting turning off still deletes a task. The web card shows a sentence per code, in each
+language. An old task still running `cmd.exe` is rewritten at the next start with the setting on, and deleted at the next start with it off.
 
 ### Data and diagnostics (L22)
 
@@ -625,7 +641,8 @@ behind its `Runner`), not the shell's.
   task to another's uninstall. No root known (the mode run by hand without the variable) skips the task and says so.
 - **...and only if its action runs the server of this folder (review V4).** Two installations of the same user (a release and a copy elsewhere) share the default root,
   so the task name. `schedtask.Manager.RemoveIfTargets` reads the definition (`schtasks /Query /TN <name> /XML`, UTF-16 or code page, XML entities decoded), extracts the
-  command after the three `set` (`"<server>" -mode refresh-only`) and applies `startupentry.CommandTargets` to it; another folder gives `tache=foreign` and the task stays.
+  program of the action (the `Command` element: the shell, which lives in the install folder next to the server; amended 2026-11-22, it was the server read after the three
+  `set` of a `cmd.exe` line) and applies `startupentry.CommandTargets` to it; another folder gives `tache=foreign` and the task stays.
   A definition without that command is an error (exit 1), never a blind delete.
 - **Not in the updater's flow.** The updater replays the previous version's uninstaller with `/UPDATE` in the Tauri template: the hook is guarded by `$UpdateMode <> 1`, so a
   user who updates keeps the entry and the task. That guard only covers the updater's flow, which in practice never calls the old uninstaller. A MANUAL update (the

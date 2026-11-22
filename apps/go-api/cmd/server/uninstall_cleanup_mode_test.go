@@ -44,10 +44,10 @@ type cleanupRunner struct {
 	failOn  string
 }
 
-// taskDefinition : la définition XML d'une tâche de rafraîchissement dont l'action lance le serveur exe.
-func taskDefinition(exe string) string {
-	return `<Task><Actions><Exec><Command>cmd.exe</Command><Arguments>/d /s /c &quot;set &quot;LEVELUP_DATA_DIR=C:\d&quot; ` +
-		`&amp;&amp; &quot;` + exe + `&quot; -mode refresh-only&quot;</Arguments></Exec></Actions></Task>`
+// taskDefinition : la définition XML d'une tâche de rafraîchissement dont l'action lance la coquille shell.
+func taskDefinition(shell string) string {
+	return `<Task><Actions><Exec><Command>` + shell + `</Command><Arguments>--refresh-only --data-dir ` +
+		`&#34;C:\d&#34;</Arguments></Exec></Actions></Task>`
 }
 
 func (r *cleanupRunner) Run(_ context.Context, args ...string) ([]byte, error) {
@@ -82,7 +82,7 @@ func TestUninstallCleanup_RemovesStartupEntryAndTaskOfThisRoot(t *testing.T) {
 	run := &cleanupRunner{}
 	deps, out := newCleanup(t, reg, run)
 	run.listing = `"\` + deps.Tasks.TaskName() + `","N/A","Prêt"` + "\n"
-	run.xml = taskDefinition(deps.InstallDir + `\levelup-server.exe`)
+	run.xml = taskDefinition(deps.InstallDir + `\LevelUp.exe`)
 	witness := filepath.Join(t.TempDir(), "temoin.txt")
 	deps.Witness = witness
 
@@ -115,7 +115,7 @@ func TestUninstallCleanup_TaskOfAnotherInstallationIsKept(t *testing.T) {
 	run := &cleanupRunner{}
 	deps, out := newCleanup(t, reg, run)
 	run.listing = `"\` + deps.Tasks.TaskName() + `","N/A","Prêt"` + "\n"
-	run.xml = taskDefinition(`D:\autre\LevelUp\levelup-server.exe`)
+	run.xml = taskDefinition(`D:\autre\LevelUp\LevelUp.exe`)
 	if code := uninstallCleanup(context.Background(), deps); code != 0 {
 		t.Fatalf("code = %d, sortie : %s", code, out)
 	}

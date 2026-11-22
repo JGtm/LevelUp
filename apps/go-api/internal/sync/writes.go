@@ -99,10 +99,10 @@ func GetSyncMeta(ctx context.Context, db *sql.DB, key string) (value string, ok 
 	return "", false, fmt.Errorf("GetSyncMeta(%s): %w", key, err)
 }
 
-// historyComplete : vrai quand la fin de l'historique a déjà été vue pour ce joueur. Une
+// HistoryComplete : vrai quand la fin de l'historique a déjà été vue pour ce joueur. Une
 // lecture en échec compte comme « complet » (journalisée) : mieux vaut un delta ordinaire
 // qu'un parcours intégral à chaque passe sur une base qui ne répond pas.
-func historyComplete(ctx context.Context, db *sql.DB) bool {
+func HistoryComplete(ctx context.Context, db *sql.DB) bool {
 	if db == nil {
 		return true
 	}
@@ -114,9 +114,9 @@ func historyComplete(ctx context.Context, db *sql.DB) bool {
 	return ok
 }
 
-// markHistoryComplete range l'instant de fin d'historique ; un échec est journalisé, la
+// MarkHistoryComplete range l'instant de fin d'historique ; un échec est journalisé, la
 // passe suivante reparcourra l'historique (coût borné : les matchs connus sont sautés).
-func markHistoryComplete(ctx context.Context, db *sql.DB, gamertag string) {
+func MarkHistoryComplete(ctx context.Context, db *sql.DB, gamertag string) {
 	if db == nil {
 		slog.WarnContext(ctx, "sync: fin d'historique vue mais base joueur indisponible — non rangée", "gamertag", gamertag)
 		return

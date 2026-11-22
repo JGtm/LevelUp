@@ -22,7 +22,8 @@ describe('SquadImpactHistoryCard', () => {
       'Finisseur +2', 'Premier sang +2', 'Héros silencieux +1,5', 'Bourreau +1',
     ])
     expect(within(rows[2]).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'Boulet −2', 'Faux-frère −1,5', 'Autres rôles à −1 (Première victime, Touriste, Kamikaze, Voleur)',
+      'Boulet −2', 'Faux-frère −1,5', 'Voleur −1',
+      'Autres rôles à −0,5 (Première victime, Touriste, Kamikaze, Os de verre)',
     ])
   })
 
@@ -31,7 +32,7 @@ describe('SquadImpactHistoryCard', () => {
       <SquadImpactHistoryCard history={impactHistory3} colorByPlayer={{}} inkOf={inkOf} locale="en" />,
     )
     expect(screen.getByText('Impact points per evening and role')).toBeInTheDocument()
-    expect(screen.getByText('Other −1 roles (First down, Late starter, Kamikaze, Thief)')).toBeInTheDocument()
+    expect(screen.getByText('Other −0.5 roles (First down, Late starter, Kamikaze, Glass Jaw)')).toBeInTheDocument()
   })
 
   it('historique absent : la carte reste, titre gardé, avec le constat (FR et EN)', () => {

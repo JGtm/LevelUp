@@ -366,3 +366,106 @@ func TestCollectRecentMatches_CarnageFailureStillCollects(t *testing.T) {
 		t.Errorf("carnage KO → 0 participants, got %d", len(batches[0].Shared.Participants))
 	}
 }
+
+// TestCollectRecentMatches_CatchUpSkipsKnownAndGoesDeeper : en rattrapage (CatchUp) les
+// matchs connus sont sautés SANS arrêter la pagination, et la fin de l'historique vue
+// sans interruption est signalée.
+func TestCollectRecentMatches_CatchUpSkipsKnownAndGoesDeeper(t *testing.T) {
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
+		0: mustMatches(t, "m1", "m2"), // m1 connu, m2 nouveau
+		2: mustMatches(t, "m3", "m4"), // m3 connu, m4 nouveau
+		4: mustMatches(t, "m5"),       // page incomplète : fin
+	}}
+	isKnown := func(id string) bool { return id == "m1" || id == "m3" }
+	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 2, CatchUp: true})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if len(batches) != 3 || stats.MatchesCollected != 3 || stats.MatchesSkipped != 2 {
+		t.Errorf("len=%d collected=%d skipped=%d, want 3/3/2", len(batches), stats.MatchesCollected, stats.MatchesSkipped)
+	}
+	if stats.StoppedOnKnown {
+		t.Error("le rattrapage ne s'arrête pas au premier match connu")
+	}
+	if !stats.HistoryExhausted {
+		t.Error("fin de l'historique atteinte sans erreur : HistoryExhausted attendu")
+	}
+}
+
+// TestCollectRecentMatches_CatchUpEmptyPageEndsHistory : une page vide après une page
+// pleine est la fin de l'historique.
+func TestCollectRecentMatches_CatchUpEmptyPageEndsHistory(t *testing.T) {
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2")}}
+	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{PageSize: 2, CatchUp: true})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if !stats.HistoryExhausted {
+		t.Error("page vide : HistoryExhausted attendu")
+	}
+}
+
+// TestCollectRecentMatches_CatchUpMaxMatchesCountsNewOnly : le plafond porte sur les
+// matchs NOUVEAUX ; atteint, la fin de l'historique n'est pas déclarée.
+func TestCollectRecentMatches_CatchUpMaxMatchesCountsNewOnly(t *testing.T) {
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
+		0: mustMatches(t, "m1", "m2", "m3", "m4", "m5"),
+	}}
+	isKnown := func(id string) bool { return id == "m1" || id == "m2" }
+	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 25, CatchUp: true, MaxMatches: 2})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if len(batches) != 2 || stats.MatchesSkipped != 2 {
+		t.Errorf("len=%d skipped=%d, want 2 nouveaux (m3, m4) après 2 connus sautés", len(batches), stats.MatchesSkipped)
+	}
+	if stats.HistoryExhausted {
+		t.Error("plafond atteint : l'historique n'est pas déclaré complet")
+	}
+}
+
+// TestCollectRecentMatches_DeltaNeverDeclaresHistoryEnd : l'arrêt au premier connu ne dit
+// rien de la fin de l'historique.
+func TestCollectRecentMatches_DeltaNeverDeclaresHistoryEnd(t *testing.T) {
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2")}}
+	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver,
+		func(id string) bool { return id == "m2" }, CaptureOptions{PageSize: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if stats.HistoryExhausted {
+		t.Error("delta-stop : HistoryExhausted doit rester faux")
+	}
+}
+
+// TestCollectRecentMatches_CatchUpErrorMidWay : une page en erreur interrompt la passe
+// sans déclarer la fin de l'historique.
+func TestCollectRecentMatches_CatchUpErrorMidWay(t *testing.T) {
+	src := &errAfterPageSource{fakeH5Source: fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
+		0: mustMatches(t, "m1", "m2"),
+	}}, failFrom: 2}
+	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{PageSize: 2, CatchUp: true})
+	if err == nil {
+		t.Fatal("erreur de pagination attendue")
+	}
+	if stats.HistoryExhausted {
+		t.Error("erreur en cours : HistoryExhausted doit rester faux")
+	}
+}
+
+// errAfterPageSource échoue sur toute page dont l'offset est >= failFrom.
+type errAfterPageSource struct {
+	fakeH5Source
+	failFrom int
+}
+
+func (e *errAfterPageSource) GetPlayerMatches(ctx context.Context, gt string, start, size int) (*halo5.H5MatchesResponse, error) {
+	if start >= e.failFrom {
+		return nil, errors.New("503")
+	}
+	return e.fakeH5Source.GetPlayerMatches(ctx, gt, start, size)
+}

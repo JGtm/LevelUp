@@ -49,7 +49,7 @@ func seedFidelitySharedAvecColonnes(t *testing.T, colonnes string) *sql.DB {
 		max_killing_spree INTEGER, grenade_kills INTEGER, melee_kills INTEGER,
 		power_weapon_kills INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
 		kills_expected DOUBLE, deaths_expected DOUBLE, backfill_bits BIGINT)`)
-	snapExecT(t, db, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_id BIGINT)`)
+	snapExecT(t, db, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count SMALLINT)`)
 	snapExecT(t, db, `CREATE TABLE highlight_events (match_id VARCHAR, xuid VARCHAR, event_type VARCHAR)`)
 	snapExecT(t, db, `CREATE TABLE killer_victim_pairs (
 		match_id VARCHAR, killer_xuid VARCHAR, killer_gamertag VARCHAR,
@@ -66,6 +66,10 @@ func seedFidelitySharedAvecColonnes(t *testing.T, colonnes string) *sql.DB {
 	// table est exportée RAW depuis le 2026-08-12 (Q21b/Q21c la lisent au kill feed).
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		t.Fatalf("EnsureMatchKillEvents (fixture): %v", err)
+	}
+	// Résumé d'usage au schéma livré : la vue v_medals_earned du snapshot se définit dessus.
+	if err := migration.EnsureMatchUsageSummary(db); err != nil {
+		t.Fatalf("EnsureMatchUsageSummary (fixture): %v", err)
 	}
 
 	// Données. m1 = ready ; m2 = not-ready. Gamertag participants/kv ≠ alias → exerce
@@ -324,6 +328,10 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		// Vues des résumés (têtes S0, paires S1, appuis S2) posées par EnsureMatchKillEvents.
 		tableMatchKillHeads + "_latest", tableMatchKillPairs + "_latest", tableMatchAssistPairs + "_latest",
 		"mv_player_matches",
+		// Médailles fusionnées avec celles dérivées du film (Vengeur, Cible difficile) : la vue
+		// du match (Q14, Q27) lit v_medals_earned, qui se définit sur les vues du résumé d'usage.
+		tableMatchUsagePlayers, tableMatchUsageFilms,
+		tableMatchUsagePlayers + "_latest", tableMatchUsageFilms + "_latest", "v_medals_earned",
 	}
 	for _, rel := range expected {
 		var n int

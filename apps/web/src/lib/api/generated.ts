@@ -11419,6 +11419,8 @@ export interface components {
              * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
              */
             cooldown_retry_after_s: number;
+            /** @description Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé. */
+            history_complete: boolean;
             /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
             job?: components["schemas"]["AsyncJobStatus"];
             player_slug: string;
@@ -11944,6 +11946,9 @@ export interface components {
             schemaVersion: number;
             scoreActions?: components["schemas"]["ScoreAction"][] | null;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
+            shieldCycles?: {
+                [key: string]: components["schemas"]["ShieldCycle"];
+            };
             shotStats?: components["schemas"]["ShotStat"][] | null;
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
@@ -12795,6 +12800,10 @@ export interface components {
             user_timezone: string;
             watcher_presence_enabled: boolean;
             watcher_subscribed_players: string[];
+        };
+        ShieldCycle: {
+            breaks: number[] | null;
+            recharges: number[] | null;
         };
         Shot: {
             /** Format: float */

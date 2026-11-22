@@ -60,7 +60,7 @@ const FR: ImpactHistoryText = {
     'Chaque segment vaut le nombre de fois où le rôle revient au joueur dans la soirée, multiplié par le barème du ' +
     'rôle : au-dessus de zéro les rôles qui ajoutent des points, en dessous ceux qui en retirent. La courbe d’un ' +
     'joueur relie le net de chaque soirée, chaque losange posé sur la barre du joueur. ' +
-    `Barème : ${scale}. Première victime, Touriste, Kamikaze et Voleur partagent une couleur. ` +
+    `Barème : ${scale}. Première victime, Touriste, Kamikaze et Os de verre partagent une couleur, Faux-frère et Voleur une autre. ` +
     'Soirées où les joueurs de l’escouade sont tous dans la même équipe : celles de la période affichée, ' +
     'précédées des soirées antérieures de la composition, onze au plus.',
   roles: {
@@ -74,6 +74,7 @@ const FR: ImpactHistoryText = {
     last_group_kill: 'Touriste',
     kamikaze: 'Kamikaze',
     thief: 'Voleur',
+    glass_jaw: 'Os de verre',
   },
   scaleJoin: frJoin,
   signed: signedWith(','),
@@ -100,7 +101,7 @@ const EN: ImpactHistoryText = {
     'Each segment is the number of times the role went to the player that evening, multiplied by the role ' +
     'points: above zero the roles that add points, below zero the roles that remove points. The line of a player ' +
     'joins the net of each evening, each diamond set on the bar of the player. ' +
-    `Points: ${scale}. First down, Late starter, Kamikaze and Thief share a colour. ` +
+    `Points: ${scale}. First down, Late starter, Kamikaze and Glass Jaw share a colour, False brother and Thief another. ` +
     'Evenings where the squad players are all on the same team: those of the displayed period, preceded by ' +
     'earlier evenings of the line-up, eleven at most.',
   roles: {
@@ -114,6 +115,7 @@ const EN: ImpactHistoryText = {
     last_group_kill: 'Late starter',
     kamikaze: 'Kamikaze',
     thief: 'Thief',
+    glass_jaw: 'Glass Jaw',
   },
   scaleJoin: enJoin,
   signed: signedWith('.'),

@@ -29,7 +29,7 @@ const (
 // supprimé à l'aveugle.
 var ErrActionUnreadable = errors.New("schedtask: action de la tâche illisible")
 
-// RemoveIfTargets supprime la tâche seulement si son action lance le serveur situé sous installDir : même règle que
+// RemoveIfTargets supprime la tâche seulement si son action lance la coquille située sous installDir : même règle que
 // l'entrée de démarrage (startupentry.CommandTargets). Désinstaller l'installation A ne retire pas la tâche que
 // l'installation B a posée sur la même racine de données. Tâche absente = [RemoveAbsent] sans autre appel que la liste.
 func (m *Manager) RemoveIfTargets(ctx context.Context, installDir string) (RemoveOutcome, error) {
@@ -44,7 +44,7 @@ func (m *Manager) RemoveIfTargets(ctx context.Context, installDir string) (Remov
 	if err != nil {
 		return "", fmt.Errorf("schtasks /Query /XML : %w", err)
 	}
-	command, err := serverCommand(out)
+	command, err := actionCommand(out)
 	if err != nil {
 		return "", err
 	}
@@ -57,28 +57,19 @@ func (m *Manager) RemoveIfTargets(ctx context.Context, installDir string) (Remov
 	return RemoveRemoved, nil
 }
 
-// refreshMode : la fin de la commande que la tâche lance (commandArguments).
-const refreshMode = "-mode refresh-only"
-
-// serverCommand rend `"<serveur>" -mode refresh-only`, la commande que la définition XML de la tâche (sortie de
-// `schtasks /Query /XML`) lance après les trois `set`. La sortie est en UTF-16 avec BOM ou en page de code, et les
-// guillemets des arguments sont des entités XML.
-func serverCommand(raw []byte) (string, error) {
-	text := html.UnescapeString(decodeSchtasksOutput(raw))
-	_, rest, ok := strings.Cut(text, "<Arguments>")
+// actionCommand rend le programme que la définition XML de la tâche (sortie de `schtasks /Query /XML`) lance : le
+// contenu de l'élément Command. La sortie est en UTF-16 avec BOM ou en page de code ; le chemin est échappé en XML.
+func actionCommand(raw []byte) (string, error) {
+	text := decodeSchtasksOutput(raw)
+	_, rest, ok := strings.Cut(text, "<Command>")
 	if !ok {
-		return "", fmt.Errorf("%w : pas d'élément Arguments", ErrActionUnreadable)
+		return "", fmt.Errorf("%w : pas d'élément Command", ErrActionUnreadable)
 	}
-	args, _, _ := strings.Cut(rest, "</Arguments>")
-	end := strings.LastIndex(args, refreshMode)
-	if end < 0 {
-		return "", fmt.Errorf("%w : pas de %q", ErrActionUnreadable, refreshMode)
+	command, _, ok := strings.Cut(rest, "</Command>")
+	if !ok || strings.TrimSpace(command) == "" {
+		return "", fmt.Errorf("%w : élément Command vide ou non fermé", ErrActionUnreadable)
 	}
-	start := strings.LastIndex(args[:end], `&& "`)
-	if start < 0 {
-		return "", fmt.Errorf("%w : serveur introuvable avant %q", ErrActionUnreadable, refreshMode)
-	}
-	return args[start+len("&& ") : end+len(refreshMode)], nil
+	return html.UnescapeString(strings.TrimSpace(command)), nil
 }
 
 // decodeSchtasksOutput rend le texte de la sortie : UTF-16 petit-boutiste (BOM, ou octets nuls) décodé, sinon tel quel.

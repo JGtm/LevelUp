@@ -25,7 +25,8 @@ const ROLE_TOKEN: Readonly<Record<string, SemanticToken>> = {
   first_group_death: 'impact-loss-3',
   last_group_kill: 'impact-loss-3',
   kamikaze: 'impact-loss-3',
-  thief: 'impact-loss-3',
+  glass_jaw: 'impact-loss-3',
+  thief: 'impact-loss-2',
 }
 
 /**
@@ -130,7 +131,7 @@ export function scaleSentence(scale: { role: string; points: number }[], t: Impa
     .join(' ; ')
 }
 
-/** La légende des rôles : une entrée par rôle, sauf les pertes qui partagent une nuance. */
+/** La légende des rôles : une entrée par rôle, sauf les pertes qui partagent une nuance ET un barème. */
 function legendOf(scale: { role: string; points: number }[], t: ImpactHistoryText) {
   const entry = (s: { role: string; points: number }) => ({
     token: impactRoleToken(s.role, s.points),
@@ -138,12 +139,15 @@ function legendOf(scale: { role: string; points: number }[], t: ImpactHistoryTex
   })
   const gains = scale.filter((s) => s.points > 0).map(entry)
   const lossScale = scale.filter((s) => s.points < 0)
-  const byToken = new Map<SemanticToken, { role: string; points: number }[]>()
+  // Deux rôles de même nuance et de barèmes différents (Faux-frère −1,5, Voleur −1) restent deux entrées :
+  // l'entrée réunie annonce UN barème.
+  const byShade = new Map<string, { token: SemanticToken; group: { role: string; points: number }[] }>()
   for (const s of lossScale) {
     const token = impactRoleToken(s.role, s.points)
-    byToken.set(token, [...(byToken.get(token) ?? []), s])
+    const key = `${token}|${s.points}`
+    byShade.set(key, { token, group: [...(byShade.get(key)?.group ?? []), s] })
   }
-  const losses = [...byToken.entries()].map(([token, group]) =>
+  const losses = [...byShade.values()].map(({ token, group }) =>
     group.length === 1
       ? entry(group[0])
       : { token, label: t.legendGrouped(t.signed(group[0].points), group.map((g) => t.roles[g.role] ?? g.role)) },

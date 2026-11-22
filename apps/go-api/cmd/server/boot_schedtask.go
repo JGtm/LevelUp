@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"os"
 	"time"
 
 	"levelup/go-api/internal/platform/schedtask"
@@ -30,17 +29,11 @@ func launchScheduledRefresh(st *bootState) {
 	}
 	ctx := st.schedulerCtx
 	obs := schedtask.DefaultObserved()
-	exe, err := os.Executable()
-	if err != nil {
-		slog.ErrorContext(ctx, "schedtask: exécutable du serveur introuvable, tâche planifiée indisponible", "err", err)
-		obs.Set(schedtask.StateError, schedtask.ErrorCodeSchtasks)
-		return
-	}
 	roots := st.cfg.Roots()
 	mgr := &schedtask.Manager{
 		Runner: schedtask.ExecRunner{},
 		Spec: schedtask.Spec{
-			ExePath: exe, DataRoot: roots.Data, ResourcesRoot: roots.Resources, LogsRoot: roots.Logs,
+			ShellExe: st.cfg.ShellExe, DataRoot: roots.Data, ResourcesRoot: roots.Resources, LogsRoot: roots.Logs,
 		},
 	}
 	st.schedulerWG.Add(1)
@@ -88,12 +81,8 @@ func (r *refreshReconciler) reconcile(ctx context.Context, want bool) {
 		return
 	}
 	if err := r.apply(ctx, want); err != nil {
-		code := schedtask.ErrorCodeSchtasks
-		if errors.Is(err, schedtask.ErrUnsupportedPath) {
-			code = schedtask.ErrorCodePath
-		}
 		slog.WarnContext(ctx, "schedtask: tâche planifiée non mise à jour", "voulue", want, "err", err)
-		r.obs.Set(schedtask.StateError, code)
+		r.obs.Set(schedtask.StateError, applyErrorCode(err))
 		return
 	}
 	final, err := r.mgr.Query(ctx)
@@ -104,6 +93,18 @@ func (r *refreshReconciler) reconcile(ctx context.Context, want bool) {
 	}
 	slog.InfoContext(ctx, "schedtask: tâche planifiée mise à jour", "voulue", want, "etat", string(final))
 	r.obs.Set(final, "")
+}
+
+// applyErrorCode rend le code fixe exposé pour l'échec de la pose ou du retrait de la tâche.
+func applyErrorCode(err error) string {
+	switch {
+	case errors.Is(err, schedtask.ErrUnsupportedPath):
+		return schedtask.ErrorCodePath
+	case errors.Is(err, schedtask.ErrShellUnknown):
+		return schedtask.ErrorCodeShell
+	default:
+		return schedtask.ErrorCodeSchtasks
+	}
 }
 
 // apply pose ou retire la tâche.

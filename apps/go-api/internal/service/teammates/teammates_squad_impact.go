@@ -4,8 +4,8 @@
 // d'impact par soirée (la soirée affichée et les soirées précédentes de la composition).
 //
 // Une lecture des événements d'impact (Q32, partagée par la mémoire de la requête,
-// teammates_service_loads.go) et une lecture du journal des morts (badge « Voleur ») couvrent
-// les matchs des deux surfaces ; chaque match passe UNE fois par squadimpact.RolesOfMatch. Q32
+// teammates_service_loads.go), une lecture du journal des morts (badge « Voleur ») et une lecture
+// des bris de bouclier du film (rôle « Os de verre ») couvrent les matchs des deux surfaces ; chaque match passe UNE fois par squadimpact.RolesOfMatch. Q32
 // est lu par GROUPES (groupesDImpact) : chaque groupe reçoit ce que sa lecture dédiée lui
 // aurait rendu, repli des frags reconstitués compris.
 package teammates
@@ -143,7 +143,8 @@ func raisonHistoriqueAbsent(evenings []squadimpact.Evening) string {
 // rolesDesMatchs calcule, par match des groupes, les rôles tombés sur l'escouade. Les
 // événements sont ramenés au référentiel gameplay (T0 retranché) ; l'équipe alliée complète du
 // joueur principal sert au calcul team-wide (sans xuid du principal, aucune équipe n'est
-// attribuable) ; le « Voleur » vient du journal des morts, lu sur l'escouade seule.
+// attribuable) ; le « Voleur » vient du journal des morts, lu sur l'escouade seule ; « Os de
+// verre » vient des bris de bouclier du film.
 func (s *TeammatesService) rolesDesMatchs(
 	ctx context.Context, in impactEscouade, groupes [][]string, squad map[string]string,
 ) map[string][]squadimpact.Attribution {
@@ -154,6 +155,7 @@ func (s *TeammatesService) rolesDesMatchs(
 	t0Rows := append(append([]domain.SquadMatchRow(nil), in.timeline...), in.rows...)
 	eventsByMatch := s.loadImpactEventsByMatch(ctx, groupes, timeline.BuildTimelinesFromSquadRows(t0Rows))
 	thiefByMatch := s.loadThiefBadgesByMatch(ctx, matchIDs, squad)
+	shieldsByMatch := s.loadShieldsByMatch(ctx, matchIDs)
 	allyByMatch := map[string][]analysis.ParticipantSnap{}
 	if in.mainXUID != "" {
 		for _, a := range in.allies {
@@ -166,6 +168,7 @@ func (s *TeammatesService) rolesDesMatchs(
 	for _, mid := range matchIDs {
 		r := squadimpact.RolesOfMatch(squadimpact.MatchInput{
 			Events: eventsByMatch[mid], Allies: allyByMatch[mid], Thief: thiefByMatch[mid],
+			Shields: shieldsByMatch[mid],
 		}, squad)
 		if len(r) > 0 {
 			out[mid] = r

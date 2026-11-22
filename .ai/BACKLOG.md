@@ -18,6 +18,14 @@
 
 ---
 
+### [médailles du bouclier] Trois défauts P2 de la revue adversariale, non corrigés (consigne de release : P0 et P1 seulement)
+
+**Relevé le 2026-11-22** (revue de `feat/medailles-bouclier`) : (a) `apps/go-api/internal/sync/replayartifacts/usage_frags.go:38` trie les frags par `match_id, time_ms` sans départage, et `revenge.Count` dépend de l'ordre à temps égal (ajouter `, id`) ; (b) `apps/go-api/internal/sync/replayartifacts/usage_levelup.go:61` pose la révision `lu1` même quand le fil des morts ou les équipes n'ont pas été lus, donc le rattrapage (`apps/go-api/cmd/levelup/cmd_backfill_usage_summary.go:364`) saute ensuite la passe : un match récent peut ne jamais recevoir de Vengeur sans `--force` ; (c) `apps/go-api/internal/migration/steps_shared_usage_summary_medals_view.go:65-77` décide « dérivé » sur la présence d'une ligne de joueur (`revenge_kills` non NULL), donc une passe sans ligne de joueur laisse revenir les Vengeur hérités gonflés.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
 
 **Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
@@ -75,6 +83,24 @@
 **Décision du user le 2026-11-22 :** ses idées sont retenues comme direction pour accélérer notre décodeur : décompression sur plusieurs fils, lecture de plusieurs chunks à la fois, état du monde construit à la demande, et lecture au choix (un appelant ne paie que les canaux qu'il demande). Pas d'objectif chiffré à ce stade. La vitesse se mesure au fil de l'eau, comme il le fait : un jeu de films fixe, une commande, un relevé par version du décodeur (décompression, lecture, interprétation, total, pic de mémoire), rangé avec la version. À inscrire au chantier du décodeur après la v1.5.0 ; la sortie doit rester identique à l'octet, prouvée par les témoins habituels, donc sans régénération du parc. Crédit à nuzzles pour les méthodes reprises.
 
 **Effort : M à L. Priorité : v1.6.0 du décodeur, confiée par le user le 2026-11-22 à la session qui pilote la v1.5.0, une fois celle-ci publiée ; plan propre à écrire d'abord.**
+
+---
+
+### [sync/journal] Alerte « zero-insert prolongé » qui sonne à chaque cycle en prod
+
+**Relevé le 2026-11-22** (plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
+
+---
+
+### [sync/h5] Match Halo 5 rangé sans participants ni chronologie, jamais repris
+
+**Relevé le 2026-11-22** (revue de `fix/sync-historique-complet`). Un échec carnage ou events (5xx passager) range le match en registre seul ; `EventsFailed` / `CarnageFailed` ne comptent pas comme erreurs du cycle (`games/halo_5/capture.go`, `livesync/runner.go`), et ni le delta ni le rattrapage ne reprennent un match connu. Préexistant.
+
+---
+
+### [archlint] Garde « tout enfant naît par childproc » sans objet sur les briques
+
+**Relevé le 2026-11-22**. `archlint/childproc_single_spawn_test.go` balaie encore `libs/...`, absent depuis la bascule des briques : leur code n'est plus gardé (balayage du 2026-11-22 : aucune ne lance de processus). `pkg/duckdbbackup` lance restic par `exec` nu, hors garde (`pkg/` exclu ; jamais lancé sur le bureau).
 
 ---
 
@@ -657,3 +683,14 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 | 2026-07-17 | **[chantier Relations UX] Plan 2026-07 CLOS** — lots A (tri colonnes), B (duels cliquables → match view via `matchIndexAtX`), C (toggle « jamais affrontés », défaut masqué, migrate store v2), F (CoreCards supprimées + lien Escouade), D (volet « Quoi de neuf » : `is_revived` SQL+DTO+strip front), E (notification `rival_encounter` post-sync par watermark, garde-fous 3/sync et 7 j), H régularisé `[~]`, G `[!]` (0 % couverture CSR rivaux). Plan archivé : `.ai/archive/V7/PLAN_RELATIONS_UX_2026-07.md`. Commits `91649c01d`→`e38592ca9`. |
 | 2026-07-17 | **[sécurité] BOLA acteur prestige clos** — 14 routes non-squad réconcilient l'acteur body/query avec la session (`authorizeActor`, 403 `player_forbidden`), garde-rail AST structurel anti-régression, tests 403+verts par endpoint. Commit `b8e97cb43`. Résiduel objet-level → item backlog. |
 | 2026-07-17 | **[coach/prestige] V2.1 + V3 livrés** — colonne `source` (challenge + prestige_telemetry, migration `prestige_add_source_columns_v1`), source renseignée aux 4 origines (coach/user/pilot_mode/preset), endpoint diag `GET /_diag/prestige/telemetry/{slug}` ; analyseur `cmd/prestige-tuning-analyze` (recommandations grammaire, seuils 30 %/50, validation manuelle) ; canal Discord webhook pour notifications coach (opt-in `discord_notify_coach`, OFF par défaut, best-effort). Commits `709bac9ad`, `7fa643699`, `02797d4cb`, `2f30e180d`. |
+
+## 2026-11-22 — Découvertes du décodeur v1.5.0, vague 2 (notées, non traitées)
+
+- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
+- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
+- **Décalage par match entre le film et le temps de jeu de l'API** : 35 s en médiane, commun aux partants d'un même match, sans lien avec le coup d'envoi ; inexpliqué.
+- **Lâchers 2 à 4 images après une mort** (4 cas du parc) : crédités au repreneur de la place ; une tolérance de temps serait une règle neuve.
+- **Accroupissement et glissade** : jamais annoncés par le film sur les versions récentes ; piste : le bit de valeur 1 de l'entrée de contrôle, à recouper avec la vitesse.
+- **Bouton de saut** : accord de 50 à 61 % sur les builds 1.9 à 1.11, 87 à 97 % ailleurs ; non publié. Sens des quatre booléens d'un rechargement inconnu.
+- **Score** : une Grande bataille où les points publiés dépassent le tableau reste « complète » à tort ; un film où le tableau cesse de monter dans les dernières secondes.
+- **Voisinage des pièces montées** : plus utilisé par aucune pièce des films mesurés ; à retirer si le parc régénéré le confirme.

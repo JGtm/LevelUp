@@ -68,7 +68,7 @@ describe('FicheIdentite', () => {
 
 const SINCE: SinceView = {
   fda: 3.67, currentStreak: 2, bestStreak: 4, headshots: 3, perfects: 1, respawns: 5,
-  currentLifeMs: 27_000, averageLifeMs: 41_000, shieldsLost: 11, score: 800, rank: { place: 2, of: 8 },
+  currentLifeMs: 27_000, averageLifeMs: 41_000, shield: { breaks: 11, recharges: 4, differential: -7, matchBreaks: 20, matchRecharges: 9, matchDifferential: -11 }, score: 800, rank: { place: 2, of: 8 },
 }
 
 const lignes = (el: HTMLElement) =>
@@ -87,7 +87,9 @@ describe('FicheDepuisDebut', () => {
       ['Réapparitions', '5'],
       ['Vie en cours', '0:27'],
       ["Durée moyenne d'une vie", '0:41'],
-      ['Boucliers perdus', '11'],
+      ['Boucliers brisés', '11 · 20 sur le match'],
+      ['Recharges complètes', '4 · 9 sur le match'],
+      ['Différentiel', '−7 · −11 sur le match'],
       ['Score', '800 · 2e sur 8'],
     ])
   })
@@ -97,25 +99,36 @@ describe('FicheDepuisDebut', () => {
     const l = lignes(container)
     expect(l[0]).toEqual(['KDA', '3.67'])
     expect(l.at(-1)).toEqual(['Score', '800 · 2nd of 8'])
+    expect(l.slice(-4, -1)).toEqual([
+      ['Shields broken', '11 · 20 in the match'],
+      ['Full recharges', '4 · 9 in the match'],
+      ['Differential', '−7 · −11 in the match'],
+    ])
+  })
+
+  it('le différentiel porte son signe : plus, moins, ou ±0 quand recharges et bris s’égalent', () => {
+    const egal = { breaks: 3, recharges: 3, differential: 0, matchBreaks: 5, matchRecharges: 6, matchDifferential: 1 }
+    const { container } = render(<FicheDepuisDebut since={{ ...SINCE, shield: egal }} locale="fr" />)
+    expect(lignes(container).find(([l]) => l === 'Différentiel')).toEqual(['Différentiel', '±0 · +1 sur le match'])
   })
 
   it('une valeur absente n’a pas de ligne : ni tiret ni texte de remplacement', () => {
-    const since: SinceView = { ...SINCE, fda: null, currentLifeMs: null, averageLifeMs: null, headshots: null, score: null, rank: null }
+    const since: SinceView = { ...SINCE, fda: null, currentLifeMs: null, averageLifeMs: null, headshots: null, score: null, rank: null, shield: null }
     const { container } = render(<FicheDepuisDebut since={since} locale="fr" />)
     const labels = lignes(container).map(([l]) => l)
-    expect(labels).toEqual(['Série en cours', 'Meilleure série', 'Éliminations parfaites', 'Réapparitions', 'Boucliers perdus'])
+    expect(labels).toEqual(['Série en cours', 'Meilleure série', 'Éliminations parfaites', 'Réapparitions'])
     expect(container.textContent).not.toMatch(/—/)
   })
 
-  it('le zéro mesuré d’un compteur s’écrit ; le score sans rang n’écrit pas de rang', () => {
+  it('le zéro mesuré d’un compteur s’écrit, un bouclier non mesuré n’écrit rien ; le score sans rang n’écrit pas de rang', () => {
     const since: SinceView = {
       fda: 0, currentStreak: 0, bestStreak: 0, headshots: null, perfects: 0, respawns: 0,
-      currentLifeMs: null, averageLifeMs: null, shieldsLost: 0, score: 0, rank: null,
+      currentLifeMs: null, averageLifeMs: null, shield: null, score: 0, rank: null,
     }
     const { container } = render(<FicheDepuisDebut since={since} locale="fr" />)
     expect(lignes(container)).toEqual([
       ['FDA', '0,00'], ['Série en cours', '0'], ['Meilleure série', '0'], ['Éliminations parfaites', '0'],
-      ['Réapparitions', '0'], ['Boucliers perdus', '0'], ['Score', '0'],
+      ['Réapparitions', '0'], ['Score', '0'],
     ])
   })
 

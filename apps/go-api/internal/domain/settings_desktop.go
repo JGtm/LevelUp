@@ -50,6 +50,6 @@ type ScheduledRefreshStatus struct {
 	// State : present (la tâche existe), absent, error (le planificateur n'a pas répondu ou a refusé), unknown
 	// (rien n'a encore été vérifié).
 	State string `json:"state" enum:"present,absent,error,unknown" doc:"Tâche présente, absente, en erreur, ou pas encore vérifiée."`
-	// ErrorCode : le code fixe de l'erreur (schtasks_failed, unsupported_path), jamais le texte du système.
+	// ErrorCode : le code fixe de l'erreur (schtasks_failed, unsupported_path, shell_unknown), jamais le texte du système.
 	ErrorCode string `json:"error_code,omitempty" doc:"Code de l'erreur quand l'état est error."`
 }

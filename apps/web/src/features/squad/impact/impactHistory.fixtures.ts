@@ -11,10 +11,11 @@ const SCALE = [
   { role: 'top_killer', points: 1 },
   { role: 'last_casualty', points: -2 },
   { role: 'false_brother', points: -1.5 },
-  { role: 'first_group_death', points: -1 },
-  { role: 'last_group_kill', points: -1 },
-  { role: 'kamikaze', points: -1 },
   { role: 'thief', points: -1 },
+  { role: 'first_group_death', points: -0.5 },
+  { role: 'last_group_kill', points: -0.5 },
+  { role: 'kamikaze', points: -0.5 },
+  { role: 'glass_jaw', points: -0.5 },
 ]
 
 const role = (r: string, count: number) => {
@@ -39,11 +40,11 @@ export const impactHistory3: SquadImpactHistory = {
       wins: 5,
       players: [
         player('JGtm', [role('clutch_finisher', 1), role('top_killer', 1), role('last_casualty', 2), role('false_brother', 2),
-          role('first_group_death', 1), role('last_group_kill', 2), role('kamikaze', 1), role('thief', 1)]),
+          role('thief', 1), role('first_group_death', 1), role('last_group_kill', 2), role('kamikaze', 1)]),
         player('Joueur90001', [role('clutch_finisher', 3), role('first_blood', 1), role('silent_hero', 3),
-          role('first_group_death', 1), role('last_group_kill', 3), role('kamikaze', 4), role('thief', 1)]),
+          role('thief', 1), role('first_group_death', 1), role('last_group_kill', 3), role('kamikaze', 4)]),
         player('Joueur90002', [role('clutch_finisher', 1), role('first_blood', 1), role('silent_hero', 1), role('top_killer', 8),
-          role('first_group_death', 3), role('last_group_kill', 3), role('kamikaze', 4), role('thief', 2)]),
+          role('thief', 2), role('first_group_death', 3), role('last_group_kill', 3), role('kamikaze', 4), role('glass_jaw', 2)]),
       ],
     },
     {
@@ -52,9 +53,9 @@ export const impactHistory3: SquadImpactHistory = {
       matches: 7,
       wins: 1,
       players: [
-        player('JGtm', [role('first_blood', 1), role('top_killer', 1), role('last_casualty', 1), role('last_group_kill', 1), role('kamikaze', 2)]),
-        player('Joueur90001', [role('first_blood', 3), role('false_brother', 2), role('first_group_death', 4),
-          role('last_group_kill', 2), role('kamikaze', 1), role('thief', 1)]),
+        player('JGtm', [role('first_blood', 1), role('top_killer', 1), role('last_casualty', 1), role('last_group_kill', 1), role('kamikaze', 2), role('glass_jaw', 1)]),
+        player('Joueur90001', [role('first_blood', 3), role('false_brother', 2), role('thief', 1),
+          role('first_group_death', 4), role('last_group_kill', 2), role('kamikaze', 1)]),
         player('Joueur90002', [role('top_killer', 6), role('last_casualty', 3), role('first_group_death', 2), role('kamikaze', 2)]),
       ],
     },
@@ -65,7 +66,7 @@ export const impactHistory3: SquadImpactHistory = {
       wins: 0,
       players: [
         player('JGtm', []),
-        player('Joueur90001', [role('last_casualty', 1), role('first_group_death', 1), role('thief', 1)]),
+        player('Joueur90001', [role('last_casualty', 1), role('thief', 1), role('first_group_death', 1)]),
         player('Joueur90002', [role('first_blood', 1), role('top_killer', 1)]),
       ],
     },

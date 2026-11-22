@@ -36,6 +36,7 @@ func newHistAvgBulkTestPDB(t *testing.T) *PlayerDB {
 			headshot_kills INTEGER, max_killing_spree INTEGER)`,
 		`CREATE TABLE medals_earned (
 			medal_id UBIGINT, medal_name_id UBIGINT, xuid VARCHAR, match_id VARCHAR, count INTEGER)`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM medals_earned`,
 	} {
 		if _, err := player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed schema: %v\nSQL: %s", err, q)

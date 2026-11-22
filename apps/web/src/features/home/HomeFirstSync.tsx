@@ -23,7 +23,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useStartDeltaSync } from '@/features/setup/queries'
 import { syncJobErrorKey } from '@/features/setup/syncJobError'
 import { resolveFirstSyncState } from './firstSyncState'
-import { usePlayerSyncStatus } from './syncStatusQueries'
+import { usePlayerSyncStatus } from '@/lib/players/playerSyncStatus'
 
 interface HomeFirstSyncProps {
   playerSlug: string

@@ -65,6 +65,8 @@ import (
 type resumeUsagePret struct {
 	matchID string
 	summary replay.UsageSummary
+	// levelUp : les mesures de LevelUp (bouclier, vengeances) rangees a cote du resume.
+	levelUp persist.UsageLevelUp
 }
 
 // capabilityUsageArmee dit si le titre déclare `film.usage_summary`, et DIT POURQUOI
@@ -123,7 +125,7 @@ func persisterResumesUsage(ctx context.Context, d Deps, b *bilanDerivations, lus
 	p := persist.NewUsageSummaryPersister(db)
 	ecrits := 0
 	for i := range prets {
-		if err := p.PersistPass(ctx, prets[i].matchID, &prets[i].summary); err != nil {
+		if err := p.PersistPass(ctx, prets[i].matchID, &prets[i].summary, prets[i].levelUp); err != nil {
 			slog.WarnContext(ctx, "post-sync: écriture du résumé d'usage échouée",
 				"match_id", prets[i].matchID, "err", err)
 			echecs++
@@ -231,7 +233,8 @@ func projeterResumesUsage(lus []artefactLu) []resumeUsagePret {
 	for _, a := range lus {
 		s := replay.BuildUsageSummary(a.doc)
 		replay.AttachShieldlessKills(&s, a.doc, a.frags)
-		prets = append(prets, resumeUsagePret{matchID: a.matchID, summary: s})
+		lu := AttacherMesuresLevelUp(&s, a.doc, EntreesMesuresUsage{Frags: a.frags, Equipes: a.equipes})
+		prets = append(prets, resumeUsagePret{matchID: a.matchID, summary: s, levelUp: lu})
 	}
 	return prets
 }

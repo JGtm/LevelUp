@@ -34,6 +34,8 @@ type mockSquadRepo struct {
 	assistMeasured int
 	assistErr      error
 	killLog        []domain.SquadKillLogRow
+	shields        []domain.MatchShieldRow
+	shieldsErr     error
 	kvErr          error
 	synthRows      []legacymatch.SynthesisMatchRow
 	synthErr       error
@@ -144,6 +146,9 @@ func (m *mockSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) (
 }
 func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
 	return m.killLog, nil
+}
+func (m *mockSquadRepo) LoadMatchShields(_ context.Context, _ []string) ([]domain.MatchShieldRow, error) {
+	return m.shields, m.shieldsErr
 }
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr
