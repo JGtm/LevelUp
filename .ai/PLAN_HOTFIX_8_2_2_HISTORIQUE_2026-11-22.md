@@ -263,12 +263,9 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 5 — convergence de bout en bout (le test qui manquait)
 
-- [ ] 5.1 Test qui construit l'orchestrateur V2 par la même fabrique que la production (ou le plus près
-  possible, écart justifié par écrit) avec un faux client Halo de 1 000 matchs et une vraie DuckDB
-  temporaire : cycles successifs, assertion à chaque cycle (200 de plus, nouveaux matchs du dessus
-  pris en premier, fin rangée au 5e ou 6e cycle, cycle suivant = une page et zéro rattrapage).
-- [ ] 5.2 Même scénario pour Halo 5 par `Runner.RunDelta`.
-- [ ] 5.3 Même scénario par le moteur V1 (watcher) : le contrat est le même pour les trois chemins.
+- [x] 5.1 Fait. `cmd/server/sync_v2_convergence_env_integration_test.go` (banc) et `sync_v2_convergence_integration_test.go` (scénarios) : l orchestrateur est construit par `buildSyncV2Orchestrator` ; la file de persistance et son worker par `openPersistQueue` ; les bases par les migrations du démarrage (`runMigrations`, `RunPlayerMigrations`) ; les cycles sont joués PAR L ordonnanceur (`RunOnceTrigger`, boucle `Run` vivante, cadence lue sur `NextCycleAt`). Le faux client Halo est un faux `http.DefaultTransport` (le client de production `PooledHaloClient` -> brique `halo-api` fait ses vraies requêtes HTTP, qui répondent en mémoire : aucune connexion). 1 000 matchs, pages de 25, 2 arrivées de matchs neufs en haut : +200 par cycle, fin rangée au 6e cycle, appels `GetMatchHistory` par cycle [8 11 11 11 11 4], cycle suivant = 1 page, cadence 10 min puis 6 h. Variantes : match en 500 durable (demandé aux cycles 2 à 4, abandonné à la 3e passe, fin rangée au cycle 4), match 404 (ne coûte aucune passe). Écarts à la fabrique : `Settings`, `Friends`, `PostSyncRunner`, `PrestigeHook`, `ReplayEnqueue` nuls (médias, rejeux, notifications, défis ; hors du contrat de découverte, de persistance et de fin).
+- [x] 5.2 Fait. `internal/games/halo_5/livesync/catchup_convergence_integration_test.go` : `Runner.RunDelta` avec capture de pages simulée (`historyWorld` du paquet) et vraie base joueur DuckDB temporaire pour l état (clé de fin, marque-page, compte d échecs) ; 1 000 matchs, matchs neufs en haut, fin rangée au cycle 6, pages lues par cycle [8 10 10 10 10 3], delta d une page ensuite ; variante page en échec durable abandonnée à la 3e passe. La persistance des matchs est simulée (écart assumé : la base partagée Halo 5 n a pas de rôle dans le contrat de fin).
+- [x] 5.3 Fait. `internal/sync/engine_convergence_integration_test.go` : `SyncEngine.RunDelta` avec le `MaxMatches` de 25 du suivi en direct, vraies bases sous le fournisseur B-swap ; 1 000 matchs, 3 arrivées en haut, fin rangée puis delta d une page. Défaut trouvé et gardé sauté (`engine_convergence_defaut_integration_test.go`) : voir Découvertes.
 - Gate : `go test -tags=integration -run Convergence ./internal/...`.
 
 ### Étape 6 — aide, version, notes (Haiku)
@@ -366,6 +363,8 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   donc lui aussi, avec son `MaxMatches` serré comme budget.
 - Étape 3 : une passe au budget atteint pile sur une page pleine ne voit la fin qu'à la passe suivante
   (une page vide, zéro match inséré) : comportement voulu, testé.
+- Étape 5 : le moteur V1 (suivi en direct) verse l échec de récupération d un match dans les avertissements, pas dans les erreurs : la fin d historique se range avec un match perdu pour toujours (contraire à D-5), alors que D-8 le disait conforme. Test gardé sauté : `TestConvergence_V1_SuiviEnDirect_MatchEnEchecNeDoitPasRangerLaFin`. La correction demande l abandon (D-16) côté V1.
+- Étape 5 : le moteur V1 reparcourt la liste depuis le haut à chaque passe de rattrapage (pas de marque-page, D-13 ne le couvre pas) : avec 25 matchs par passe, 1 000 matchs coûtent 41 passes et jusqu à 40 pages lues par passe. Hors périmètre.
 - Étape 4 : `POST /admin/actions/auto-sync/run` (et la commande `sync` du menu de la zone de notification)
   appellent `RunOnceTrigger` ; depuis le garde « jamais deux cycles à la fois », un appel pendant un cycle
   rend un résultat vide (`busy`) que le job admin rapporte comme réussi avec zéro joueur : un 409 serait
