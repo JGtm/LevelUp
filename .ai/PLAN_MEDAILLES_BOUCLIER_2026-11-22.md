@@ -54,6 +54,29 @@ bougent avec la tête de lecture.
   le web compte ceux <= tête de lecture (instant) et la totalité (match). Emplacement dans la fiche :
   celui que l'étape 0 désigne, dans la grammaire existante de la fiche.
 
+Décisions prises par le pilote après l'étape 0 (2026-11-22) :
+
+- **D-12 Révision propre à LevelUp** (amende D-9) : la révision du décodeur (`replay.UsageSummaryRev`)
+  n'est pas touchée. Une constante de révision LevelUp, déclarée à côté de la dérivation, est persistée
+  avec la ligne de résumé (colonne neuve nullable, ou suffixe de `summary_rev` si l'étape A.2 montre
+  qu'aucun lecteur ne compare `summary_rev` à l'égalité stricte ; le choix et sa raison vont au
+  journal). Le rattrapage (`cmd_backfill_usage_summary.go:357`) re-dérive un match quand l'une OU
+  l'autre révision diffère. Les trois valeurs passent au persister à côté de
+  `replay.UsagePlayerSummary`, sans type du décodeur modifié.
+- **D-13 Une seule définition des bris côté fiche** (amende D-11) : la ligne « Boucliers perdus »
+  (`model/playerInstantStats.ts`, `shieldDrops`) est remplacée par les instants servis ; le calcul web
+  est supprimé avec ses tests. Emplacement : section « Depuis le début du match », trois lignes, valeur
+  à l'instant puis total du match en `Note` (proposition 0.5).
+- **D-14 Vengeur hérité** (précise D-10) : les 894 matchs porteurs de lignes héritées ont tous un fil
+  des morts ; la règle D-1 les remplace partout. La vue de fusion ignore donc les lignes héritées
+  `9000000001` dès qu'une valeur dérivée existe pour le match (en pratique : toutes après Z.3). Effet
+  visible annoncé à l'utilisateur : les comptes anciens baissent (l'ancien calcul comptait une mort
+  plusieurs fois).
+- **D-15 `medal_exploit_loader`** : brut (valeur persistée au sync, hors affichage de médailles).
+- **D-16 Citations après dérivation** : le recalcul des citations d'un match après la dérivation de son
+  film existe (entrée du journal du 2026-10-16, « E4 ») ; A.3 vérifie qu'il couvre la citation
+  « Vengeur » lue par la vue, et le prouve par un test.
+
 Reviennent à l'utilisateur : la validation à l'écran, toute opération en prod, la fusion vers `main`.
 
 ## Étapes
