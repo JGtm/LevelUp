@@ -94,12 +94,10 @@ func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof Playe
 		return Listing{}, fmt.Errorf("HaloClient nil pour %s", prof.Gamertag)
 	}
 
-	// V1 anti-régression : xuid(NNN) requis, pas le gamertag brut.
-	histArg := fmt.Sprintf("xuid(%s)", prof.XUID)
 	if hist.Incomplete {
 		return p.listCatchUp(ctx, client, prof, known, hist)
 	}
-	unknown, err := p.listDelta(ctx, client, prof.Gamertag, histArg, known)
+	unknown, err := p.listDelta(ctx, client, prof, known, hist.skipped())
 	if err != nil {
 		return Listing{}, err
 	}
@@ -109,7 +107,11 @@ func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof Playe
 // listDelta pagine /matches et s'arrête après domain.DeltaKnownRun matchs connus d'affilée (les
 // inconnus rencontrés avant, y compris entre deux connus, sont pris : un match rangé par un
 // coéquipier ne cache pas les inconnus qui le suivent), à la fin de la liste ou après maxPages pages.
-func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, gamertag, histArg string, known map[string]bool) ([]string, error) {
+// Un match de `skip` (introuvable, abandonné : historystate.SkipSetKey) est neutre, comme une entrée
+// écartée de Halo 5 : il n'est pas demandé, n'allonge pas la suite de connus et ne la remet pas à zéro.
+// Format `xuid(NNN)` requis (anti-régression incident mai 2026 : gamertag brut, réponse périmée).
+func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, prof PlayerProfile, known, skip map[string]bool) ([]string, error) {
+	gamertag, histArg := prof.Gamertag, fmt.Sprintf("xuid(%s)", prof.XUID)
 	unknown := make([]string, 0, p.pageSize)
 	run := 0 // matchs connus d'affilée, jusqu'à l'entrée courante
 	for page := 0; page < p.maxPages; page++ {
@@ -126,6 +128,9 @@ func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, 
 				if run++; run >= domain.DeltaKnownRun {
 					break
 				}
+				continue
+			}
+			if skip[e.MatchID] {
 				continue
 			}
 			run = 0

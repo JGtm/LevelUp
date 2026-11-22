@@ -12,6 +12,7 @@ package v2
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"levelup/go-api/internal/sync/historystate"
@@ -59,23 +60,33 @@ type HistoryState struct {
 	// Failures : les matchs que le rattrapage n'a pas réussi à ranger, avec leur nombre de passes en
 	// échec (du plus ancien au plus récent). N'a de sens que si Incomplete.
 	Failures []historystate.Failure
+	// Skip : les matchs que la découverte ne demande plus (introuvables 404/410, abandonnés), lus de
+	// `historystate.LoadSkipSet`, y compris pour un joueur dont l'historique est complet. Neutres pour la
+	// découverte : ni connus, ni inconnus (voir skipset.go de historystate). Lu par KnownLoader.LoadKnown,
+	// sur la même ouverture que l'ensemble connu.
+	Skip map[string]bool
 	// Unreadable : l'état n'a pas pu être lu (historystate.Complete en échec). Incomplete reste faux :
 	// delta ordinaire, rien n'est rangé ; le joueur reste en attente (HistoryPending) pour que la
 	// cadence courte réessaie.
 	Unreadable bool
 }
 
-// abandoned rend l'ensemble des matchs que le rattrapage ne retente plus (échec à
-// maxCatchUpAttempts passes ou plus).
-func (h HistoryState) abandoned() map[string]bool {
-	var out map[string]bool
+// skipped rend l'ensemble des matchs que la découverte ne demande plus : ceux de l'ensemble rangé
+// (Skip) et les matchs abandonnés du rattrapage en cours (échec à maxCatchUpAttempts passes ou plus,
+// pas encore rangés dans l'ensemble).
+func (h HistoryState) skipped() map[string]bool {
+	out, copied := h.Skip, false
 	for _, f := range h.Failures {
-		if isAbandoned(f.Attempts) {
+		if !isAbandoned(f.Attempts) || out[f.MatchID] {
+			continue
+		}
+		if !copied { // l'ensemble lu ne se modifie pas
+			out, copied = maps.Clone(h.Skip), true
 			if out == nil {
 				out = map[string]bool{}
 			}
-			out[f.MatchID] = true
 		}
+		out[f.MatchID] = true
 	}
 	return out
 }
@@ -108,6 +119,9 @@ type PlayerHistory struct {
 	Proposed   *historystate.Cursor
 	// Failures : les échecs de rattrapage connus au début du cycle (voir HistoryState.Failures).
 	Failures []historystate.Failure
+	// Skip : l'ensemble rangé des matchs à ne plus demander au début du cycle (voir HistoryState.Skip) ;
+	// le cycle n'écrit que ce qui s'y ajoute.
+	Skip map[string]bool
 	// Unreadable : état de l'historique illisible au début du cycle (voir HistoryState.Unreadable).
 	Unreadable bool
 }
@@ -151,24 +165,42 @@ func (o *CycleOrchestratorImpl) WithHistoryWriter(open PlayerDBOpener) *CycleOrc
 	return o
 }
 
-// settleHistory range, pour chaque joueur au rattrapage dont la découverte a abouti, la fin
-// d'historique ou le marque-page. À appeler APRÈS une persistance du cycle réussie.
+// settleCycle est ce que le cycle sait de ses joueurs après la persistance : ce qui a été listé, ce
+// qui a été récupéré et la preuve de rangement par joueur.
+type settleCycle struct {
+	disc    DiscoveryResult
+	fetched FetchSharedResult
+	stored  storedProof
+}
+
+// settleHistory range, pour chaque joueur dont la découverte a abouti, ce que la passe a établi : au
+// rattrapage, la fin d'historique, le marque-page, les échecs et les matchs à ne plus demander ; à
+// l'historique complet, les matchs à ne plus demander. À appeler APRÈS une persistance du cycle réussie.
 func (o *CycleOrchestratorImpl) settleHistory(
 	ctx context.Context,
 	tr *historyTracker,
 	players []PlayerProfile,
-	disc DiscoveryResult,
-	fetched FetchSharedResult,
+	sc settleCycle,
 ) {
 	for _, p := range players {
-		ph, ok := disc.History[p.PlayerSlug]
-		if !ok || !ph.Incomplete {
+		ph, ok := sc.disc.History[p.PlayerSlug]
+		if !ok {
 			continue
 		}
-		if disc.Errors[p.PlayerSlug] != nil {
+		if sc.disc.Errors[p.PlayerSlug] != nil {
 			continue // découverte en échec : rien n'a été listé, la passe suivante reprend
 		}
-		in := settleInput{listed: disc.PerPlayer[p.PlayerSlug], fetchErrs: fetched.Errors, queued: tr.queued}
+		if ph.Unreadable {
+			continue // état illisible (D-25) : rien ne se range à cette passe, le joueur reste en attente
+		}
+		in := settleInput{
+			listed: sc.disc.PerPlayer[p.PlayerSlug], fetchErrs: sc.fetched.Errors,
+			queued: tr.queued, stored: sc.stored[p.PlayerSlug],
+		}
+		if !ph.Incomplete {
+			o.settleSkips(ctx, p, ph, in)
+			continue
+		}
 		if o.settlePlayerHistory(ctx, p, ph, in) {
 			tr.pending[p.PlayerSlug] = false
 		}

@@ -109,16 +109,19 @@ func RunDiscovery(
 			if err != nil {
 				mu.Lock()
 				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
-				res.History[p.PlayerSlug] = PlayerHistory{Incomplete: state.History.Incomplete, Failures: state.History.Failures, Unreadable: state.History.Unreadable}
+				res.History[p.PlayerSlug] = PlayerHistory{
+					Incomplete: state.History.Incomplete, Failures: state.History.Failures, Skip: state.History.Skip,
+					Unreadable: state.History.Unreadable,
+				}
 				mu.Unlock()
 				return nil //nolint:nilerr // idem
 			}
-			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover)
+			unknown := appendOrphans(egCtx, p, listing.Unknown, state.Recover, state.History.skipped())
 			mu.Lock()
 			res.PerPlayer[p.PlayerSlug] = unknown
 			res.History[p.PlayerSlug] = PlayerHistory{
 				Incomplete: state.History.Incomplete, EndSeen: listing.EndSeen, Proposed: listing.Proposed,
-				Failures: state.History.Failures, Unreadable: state.History.Unreadable,
+				Failures: state.History.Failures, Skip: state.History.Skip, Unreadable: state.History.Unreadable,
 			}
 			mu.Unlock()
 			return nil
@@ -133,9 +136,10 @@ func RunDiscovery(
 }
 
 // appendOrphans ajoute à la liste d'un joueur les orphelins à récupérer par match_id
-// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover).
+// (knownset.Set.Recover) que la pagination n'a pas déjà listés, à la suite (ordre de Recover). Un
+// orphelin que la découverte ne demande plus (skip : introuvable, abandonné) n'est pas ajouté.
 // Aucun orphelin → la liste est rendue telle quelle.
-func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string) []string {
+func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []string, skip map[string]bool) []string {
 	if len(orphans) == 0 {
 		return unknown
 	}
@@ -143,15 +147,19 @@ func appendOrphans(ctx context.Context, p PlayerProfile, unknown, orphans []stri
 	for _, id := range unknown {
 		listed[id] = true
 	}
-	added := 0
+	added, skipped := 0, 0
 	for _, id := range orphans {
-		if !listed[id] {
+		switch {
+		case listed[id]:
+		case skip[id]:
+			skipped++
+		default:
 			unknown = append(unknown, id)
 			added++
 		}
 	}
 	slog.InfoContext(ctx, "sync.v2: orphelins ajoutés à la récupération par match_id",
 		"event", "sync.v2.discovery.orphans", "player", p.PlayerSlug,
-		"requested", len(orphans), "already_listed", len(orphans)-added, "added", added)
+		"requested", len(orphans), "already_listed", len(orphans)-added-skipped, "skipped", skipped, "added", added)
 	return unknown
 }
