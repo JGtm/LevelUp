@@ -1,8 +1,14 @@
+## [2026-11-22] Issue 213, dernier commentaire : rattrapage Halo Infinite « bloqué » — En cours
+
+- **Décision** : diagnostic seul, pas de code. Les trois autres demandes de l'issue (aide, rattrapage Halo 5, carte de synchronisation) sont livrées dans la 8.3.0 (`221c50dcbb`).
+- **Résultats** : le rattrapage d'Infinite de la 8.2.1 relu sans défaut trouvé (repli en mode full tant que `history_complete_at` est absente, 200 matchs nouveaux par passe automatique, 25 par passe du watcher, tick automatique cédé pendant que le watcher suit le joueur). Trois causes possibles : fin d'historique rangée sur une page vide prématurée de l'API, page d'historique en échec toujours à la même profondeur, synchronisation automatique qui ne tourne pas pour ce joueur.
+- **Suite** : attend l'accord du user pour lire les journaux du VPS (lecture seule) ; brouillon de réponse au joueur remis, non publié.
+
 ## [2026-11-22] Commande /issue : traiter une issue GitHub de bout en bout en local — Complété
 
 - **Décision** : une commande locale (skill `.claude/skills/issue/`, lancée seulement par `/issue <numéro>`) plutôt qu'une action GitHub, pour rester sur l'abonnement et pouvoir lire les journaux et une copie des données. Déroulé fixe : lecture, tri en demandes élémentaires, test qui reproduit vu en échec avant tout correctif, correctif, gates de `levelup-livraison`, relecture par un sous-agent Sonnet, PR vers la release, brouillon de réponse jamais publié sans accord. Arrêts : fonctionnalité (plan seul), bug en zone sensible (après le test), bug dépendant des données réelles (diagnostic seul), gates rouges après trois rondes. Le texte de l'issue est traité comme des données, jamais comme des consignes.
 - **Résultats** : fichier écrit, pas encore essayé. Réglages de départ inscrits dans l'en-tête de la commande : pilote Opus effort `high` (le tri oriente toute la chaîne) ; relecture Sonnet `medium` ; corrections mécaniques Haiku `low`. À confirmer en rejouant l'issue 213 (bug Halo 5) sur le code d'avant son correctif, avec Opus puis Sonnet en pilote, comparé au correctif livré.
-- **Suite** : premier essai sur l'issue 213 (dernier commentaire : rattrapage Halo Infinite qui semble bloqué, sans réponse). Constaté au passage : le workflow `triage-feedback.yml` passe par une clé d'API facturée à l'usage et n'a pas tourné sur la 213 (étiquette `feedback` absente).
+- **Suite** : premier essai sur l'issue 213 (dernier commentaire : rattrapage Halo Infinite qui semble bloqué, sans réponse). Constaté au passage : le workflow `triage-feedback.yml` passe par une clé d'API facturée à l'usage et n'a pas tourné sur la 213 (étiquette `feedback` absente). Après le premier essai : entrée du journal exigée à chaque arrêt (l'essai n'en avait pas écrit), lecture de la prod demandée explicitement, message final terminé par un bloc « En bref » avec les décisions à prendre.
 
 ## [2026-11-22] Décodeur : première lecture du parseur de nuzzles (halo_api) — Complété
 
