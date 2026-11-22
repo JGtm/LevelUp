@@ -433,6 +433,22 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — REPRISE APRÈS INCIDENT. Le clone `C:/t/dec/main` et ses sept commits jamais poussés ont été supprimés
+  le 22/11 par la tâche de ménage du disque (`C:/t` vidé après 72 h). Les cinq commits de code ont été RECONSTRUITS
+  depuis les transcripts des agents dans un clone neuf, `C:/Users/Guillaume/Downloads/Scripts/dec-v150`, branche
+  `feat/v1.5.0` POUSSÉE sur GitHub : `e3e3141` (J), `0dc2f54` (J.7), `cde2917` (A), `7ecc4da` (C.2), `586afe4` (C.3) ;
+  mêmes fichiers et mêmes volumes que les originaux, fichiers d'horloge régénérés à l'octet. INTÉGRATION AU SCHÉMA
+  126 refaite en une fois (`e8d6856`, poussée) : chronique 126 à cinq apports, révisions `grammar-2026-11-22` et
+  `objectives-2026-11-22` (les goldens de révisions de killsource et des types suivent la valeur de la grammaire),
+  golden de forme, 8 goldens d'assemblage, 8 fixtures de contrat (4 992 442 octets, plafond relevé à 5 111 808),
+  20 références d'équivalence ; chaque écart attribué à un commit par bissection (étape `artifact` : J, J.7, A ;
+  `flag` et `skull` : C.2 puis C.3 ; `score` : C.3) ; 20 identiques après refige ; suite du clone verte (33
+  paquets) ; `3abf0258` : 3 trajets sur 191 perdent leur nom, 188 inchangés. Verdict du parc : un artefact 125 est
+  à REDÉCODER (révision de grammaire). Fixtures 126 commitées sur `chore/830-decodeur-v150` (`d702615047`,
+  worktree `Scripts/LevelUp-wt-declu`), NON poussées : le crochet de poussée (contrôle knip) échoue dans ce dossier
+  sans `node_modules` ; à pousser à la montée (L.4), sans contourner le crochet. Emplacements : plus rien sous
+  `C:/t` ; vérité de l'API et sorties de mesure à refaire au besoin sous `Scripts/dec-v150-recup/`. À relancer :
+  H.7 (appariement), C.5 (quels emplacements nommés émettent des valeurs), puis D, B, E, F, G, H, J.4, J.8, L, R.
 - 2026-11-18 — C.5 RÉORIENTÉ sur une lecture du code de Den (libfilmshell, MIT, copie locale, `src/variant_stats.rs`),
   faite par le pilote à la question du user (« même le décodeur de Den ne les lit pas ? ») : son décodeur lit dans
   le morceau 0 du film, dans les données de la variante de jeu, la DÉFINITION de chaque emplacement du tableau
