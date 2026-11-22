@@ -29,6 +29,7 @@ import { buildFilmAllegiance, type FilmAllegiance } from '@/lib/replay/filmAlleg
 import { isAliveAt } from '@/lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import { buildPlayers, type ReplayPlayer } from '@/lib/replay/rosterLogic'
+import { themedIconSrc } from '@/lib/themedIcon'
 
 import { renderWithProviders } from '../../../../test/render-utils'
 import { buildFeedEntries, type ReplayFeedEntry } from '../../model/killFeedLogic'
@@ -271,8 +272,8 @@ function installerEnregistreurs(): Enregistrements {
 
 /** Les deux PNG des titres d'antagoniste et leurs dimensions : seuls fichiers dont le double d'image annonce le chargement. */
 const ICONES_DE_TITRE = new Map([
-  ['/icons/nemesis-black.png', { w: 714, h: 670 }],
-  ['/icons/victim-black.png', { w: 1099, h: 1369 }],
+  [themedIconSrc('nemesis', 'light'), { w: 714, h: 670 }],
+  [themedIconSrc('victim', 'light'), { w: 1099, h: 1369 }],
 ])
 
 /**

@@ -7,6 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { themedIconSrc } from '@/lib/themedIcon'
+
 import { count, recordingContext, type CanvasOp } from '../test/recordingContext'
 import {
   createTitleIcons,
@@ -41,7 +43,7 @@ const opsDe = (toile: unknown): CanvasOp[] => toiles.get(toile as HTMLCanvasElem
 
 describe('les images des titres', () => {
   it('sont les PNG noirs du dépôt, un par rôle', () => {
-    expect(TITLE_ICON_URL).toEqual({ nemesis: '/icons/nemesis-black.png', victim: '/icons/victim-black.png' })
+    expect(TITLE_ICON_URL).toEqual({ nemesis: themedIconSrc('nemesis', 'light'), victim: themedIconSrc('victim', 'light') })
   })
 })
 
