@@ -1,3 +1,9 @@
+## [2026-11-22] 8.2.2 : délai de la file de persistance et ancre du marque-page (V2) — Complété (branche `fix/822-i`)
+
+- **Décision** : le cycle V2 attend la file de persistance 60 s + 4 s par match (plafond 20 min) au lieu de 60 s fixes ; si l'attente expire, il relit l'ensemble connu et continue avec les matchs prouvés rangés, sans compter d'échec pour ceux encore en file. Le marque-page retient la tête de liste (`HeadID`) : la reprise est à marque-page + position de l'ancienne tête, contrôlée par l'identifiant rangé.
+- **Résultats observés** : une passe de 200 matchs ne fait plus échouer le cycle ; appels `GetMatchHistory` par cycle de la convergence 1 000 matchs [8 11 11 11 11 4] -> [8 9 10 9 10 2]. 30 matchs introuvables en haut de liste : reprise exacte, aucune reprise depuis 0.
+- **Suite** : la piste Halo 5 branche l'ancre sur l'API `historystate` (D-21.4).
+
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 
 - **Décision** : version 8.2.1 posée (coquille Windows, notes FR/EN, changelogs datés du 2026-11-16) ; ajout du fond plan transparent (brique map-images v1.3.1, 111 images refaites) et des défis de l'axe Objectif aux notes ; ligne de backlog des défis close.

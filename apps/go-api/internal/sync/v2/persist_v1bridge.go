@@ -12,6 +12,7 @@ package v2
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -30,9 +31,11 @@ import (
 // d'être instancié une seule fois au boot pendant que la liste de joueurs
 // est dynamique cycle-par-cycle.
 type cycleBatchPersisterV1Bridge struct {
-	titleSlug       string
-	queue           *persist.BatchQueue
-	drainCtxTimeout time.Duration // typique 60s, configurable pour tests
+	titleSlug string
+	queue     *persist.BatchQueue
+	// drainFor rend le délai d'attente de la file pour un nombre de matchs soumis : proportionnel au
+	// lot en production (persistDrainTimeout), fixe ou réduit dans les tests.
+	drainFor func(submitted int) time.Duration
 
 	// metaDB : handle metadata RW PARTAGÉ (celui de main.go via OpenReadWriteShared).
 	// Sert à la résolution autonome des noms d'assets (peuplement asset_translations)
@@ -58,7 +61,8 @@ type cycleBatchPersisterV1Bridge struct {
 //   - titleSlug : slug du titre (halo_infinite par défaut). Passé à BuildBatchFromRawForV2.
 //   - queue : BatchQueue partagée (process-wide). Si nil, le persister
 //     échoue avec une erreur explicite (impossible de persister sans queue).
-//   - drainTimeout : timeout du drain à la fin du cycle. 0 → 60s default.
+//   - drainTimeout : délai FIXE d'attente de la file à la fin du cycle (tests). 0 → délai
+//     proportionnel au nombre de matchs soumis (persistDrainTimeout), le cas de production.
 //
 // playerBySlug est passé via CycleBatch.PlayerBySlug à chaque PersistCycle
 // (cf. RunPersist → orchestrator cycle.go).
@@ -73,16 +77,17 @@ func NewCycleBatchPersister(
 	assetPool pool.Pool,
 	sharedDB func() *sql.DB,
 ) CycleBatchPersister {
-	if drainTimeout <= 0 {
-		drainTimeout = 60 * time.Second
+	drainFor := persistDrainTimeout
+	if drainTimeout > 0 {
+		drainFor = func(int) time.Duration { return drainTimeout }
 	}
 	return &cycleBatchPersisterV1Bridge{
-		titleSlug:       titleSlug,
-		queue:           queue,
-		drainCtxTimeout: drainTimeout,
-		metaDB:          metaDB,
-		assetPool:       assetPool,
-		sharedDB:        sharedDB,
+		titleSlug: titleSlug,
+		queue:     queue,
+		drainFor:  drainFor,
+		metaDB:    metaDB,
+		assetPool: assetPool,
+		sharedDB:  sharedDB,
 	}
 }
 
@@ -165,7 +170,7 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 	}
 
 	friendsByXUID := p.resolveCycleFriends(ctx, batch)
-	submitted := 0
+	submittedIDs := make([]string, 0, len(batch.Matches))
 	parseErrors := 0
 	for mID, sd := range batch.Matches {
 		// Lookup direct via batch.PlayerBySlug (renseigné par l'orchestrator
@@ -218,13 +223,18 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 				"match_id", mID, "err", submitErr)
 			continue
 		}
-		submitted++
+		submittedIDs = append(submittedIDs, mID)
 	}
+	submitted := len(submittedIDs)
 
 	// Drain : attendre que tous les batches soient ACKés (WAL vide).
-	drainCtx, cancel := context.WithTimeout(ctx, p.drainCtxTimeout)
+	wait := p.drainFor(submitted)
+	drainCtx, cancel := context.WithTimeout(ctx, wait)
 	defer cancel()
 	if drainErr := p.queue.Drain(drainCtx); drainErr != nil {
+		if errors.Is(drainErr, context.DeadlineExceeded) && ctx.Err() == nil {
+			return &DrainTimeoutError{Waited: wait, Submitted: submittedIDs, ParseErrors: parseErrors}
+		}
 		return fmt.Errorf("PersistCycle: drain (submitted=%d parse_errors=%d): %w",
 			submitted, parseErrors, drainErr)
 	}

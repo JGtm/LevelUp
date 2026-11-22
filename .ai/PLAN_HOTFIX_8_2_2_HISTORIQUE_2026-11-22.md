@@ -92,6 +92,12 @@ page.
   (60 s fixes, `persist_v1bridge.go`) devient proportionnel au lot ; mesuré : ~1 s par match, 200
   matchs ≈ 3,7 min, d'où l'échec des passes. Le nombre de matchs persistés rapporté est juste même en
   cas d'échec (relecture). Budget de 200 par passe conservé.
+  - [x] D-19.1 Délai = 60 s + 4 s par match soumis, plafond 20 min (`v2/persist_drain.go`, 200 matchs = 14 min ;
+    mesure 1,1 s par match). File lente > ancien délai : cycle réussi (`TestPersistCycle_FileLente_DelaiProportionnelAuLot`).
+  - [x] D-19.2 Expiration malgré tout : erreur typée `DrainTimeoutError`, le cycle relit l'ensemble connu
+    (`v2/persist_pending.go`), compte et post-sync sur les matchs prouvés rangés, matchs en file ni échecs D-16 ni
+    avancée du marque-page (`history_settle.go`), compteur `sync_v2_persist_drain_timeout_total`
+    (`cycle_history_drain_test.go` : post-sync des rangés, aucun faux échec sur 5 passes, vrai 500 compté, tout rangé = réglage normal).
 - **D-20** (utilisateur, 22/11) La cadence de 10 min tient tant que l'historique OU l'arriéré de films
   (source des frags, artefacts de rejeu) n'est pas vide ; l'état de l'historique réutilise l'indication
   existante des films en cours de traitement.
@@ -99,6 +105,14 @@ page.
   passe précédente ; le décalage des nouveaux matchs = position de cette ancienne tête dans la liste
   (exact, quels que soient les introuvables, Warzone ou Campagne). Reprise depuis 0 seulement si
   l'ancienne tête n'est pas retrouvée dans les premières pages. Infinite et Halo 5.
+  - [x] D-21.1 API `historystate` (commit 0e04891af9) : `Cursor.HeadID` (JSON `head_match_id`, facultatif),
+    `Cursor.HasAnchor`, `Cursor.ArrivedSince(top)`, `Cursor.ResumeOffset(arrived)`, `AnchorMaxPages` (8), `AnchorScanLimit(pageSize)`.
+  - [x] D-21.2 Découverte V2 (`v2/fetchers_history_anchor.go`) : N = position de l'ancienne tête, reprise à marque-page + N contrôlée par
+    l'identifiant rangé en première entrée de la page lue (plus de page de recouvrement) ; ancre perdue ou contrôle raté = reprise depuis 0,
+    journalisée et comptée (`sync_v2_history_cursor_fallback_total`) ; marque-page sans ancre = comportement précédent.
+    Tests : 30 introuvables en haut sur 3 passes (exact, zéro reprise depuis 0), N neufs, ancre perdue, contrôle raté, budget avant l'ancre, sans ancre.
+  - [x] D-21.3 Test de convergence `cmd/server` mis à jour : appels `GetMatchHistory` par cycle [8 11 11 11 11 4] (56) -> [8 9 10 9 10 2] (48).
+  - [ ] D-21.4 Halo 5 : à brancher par la piste Halo 5 sur l'API D-21.1 (`catchup.go` range `Cursor{Offset, LastMatchID}` sans `HeadID`).
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
@@ -367,6 +381,9 @@ clôture. Une étape est close quand son gate passe et que son commit est sur sa
 fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 
 ## Découvertes
+- D-19 : un match qui échoue au parsage dans `PersistCycle` n'est jamais soumis ; après une attente expirée il n'est pas distingué des matchs en file que par la liste `DrainTimeoutError.Submitted` (traité : seuls les soumis sont « en file »). Un match rangé en arrière-plan après l'expiration n'a pas les soins ciblés du post-sync de ce cycle (hors périmètre).
+- D-21 : un marque-page sans ancre (rangé avant ce correctif) retombe sur la règle précédente une passe, puis reçoit son ancre.
+- Test `TestSoak_V2_CycleStability` : un échec isolé lancé en parallèle d'un autre paquet, vert seul (3/3) et au rejeu complet (2/2) ; non relié.
 
 (Les correctifs hors périmètre sont interdits : les noter ici.)
 
