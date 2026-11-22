@@ -726,3 +726,14 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 - **Bouton de saut** : accord de 50 à 61 % sur les builds 1.9 à 1.11, 87 à 97 % ailleurs ; non publié. Sens des quatre booléens d'un rechargement inconnu.
 - **Score** : une Grande bataille où les points publiés dépassent le tableau reste « complète » à tort ; un film où le tableau cesse de monter dans les dernières secondes.
 - **Voisinage des pièces montées** : plus utilisé par aucune pièce des films mesurés ; à retirer si le parc régénéré le confirme.
+
+## 2026-11-22 — Découvertes du décodeur v1.5.0, recherches (notées, non traitées)
+
+- **Répliques des Spartans, son seul** : l'identifiant de son du film mène à un fichier de voix français du jeu installé (201 sur 201) ; aucun texte dans le jeu ; voix anglaise non installée ; aucun convertisseur du format audio sur la machine. À décider par le user : publier le son avec une étiquette de genre écrite à la main. Piste non explorée : deux fichiers compressés du jeu.
+- **Lettre des zones comme contrôle** : la lettre lue du marqueur égale le rang publié sur 231 zones sur 231 ; deux compteurs de couverture (lettres lues, lettres en accord) la garderaient comme contrôle. Lire le composant du marqueur qui arrête la lecture aux images-clés rendrait la lettre lisible partout.
+- **Zone au propriétaire de nom inconnu** (un film sur Recharge) : le rejeu retombe sur le vote.
+- **Arbre des actions décalé sur la version du jeu précédant `HI_1_11_0`** : 31 lectures concordantes, aucune contraire, égalité non testable (films à trames arrêtées) ; autres modes des anciennes versions probablement touchés, non mesurés.
+- **Grande bataille à drapeau des anciennes versions** : 34 films dont le groupe de scripts est absent de la table des réponses ; aucune action de score publiée.
+- **5 films de Grande bataille restés « incomplets »** après la correction du décalage, sans rang non confirmé ni manque : cause non cherchée. Un joueur reçoit un message d'élimination de trop sur un film.
+- **Drapeau, état « au socle » faux avant un portage juste** (16 portages) : porteur précédent hors des 8 premières places ou sur une place sans humain nommé (7) ; variante à un seul drapeau publiée avec deux drapeaux d'équipe (4) ; résidu (5). L'ouverture de la lecture au-delà de 8 joueurs en dépend.
+- **Courbe de score qui ne recule pas** : le jeu retire la pénalité de suicide ou de trahison ; la courbe publiée garde la plus longue suite non décroissante et perd ce recul quand la pénalité est le dernier mouvement du joueur.
