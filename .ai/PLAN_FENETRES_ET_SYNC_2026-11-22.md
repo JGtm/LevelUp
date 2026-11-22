@@ -51,7 +51,7 @@ relaie au serveur, lancé caché comme au démarrage normal, puis sort avec son 
 - [x] A3 ADR 0045 (L21.e et contrat D-1) amendés ; « may flash » retiré.
 - [x] A4 Gate : `go test ./internal/platform/schedtask/... ./internal/config/... ./cmd/server/...
   ./internal/archlint/...`, `make desktop-test` (cargo test, clippy, fmt), golangci-lint du diff.
-- [ ] A5 Vérification à l'écran du user (installeur de la release) : `schtasks /Run` sur la tâche, aucune
+- [!] A5 Vérification à l'écran du user (installeur de la release) : `schtasks /Run` sur la tâche, aucune
   fenêtre. Report admis (seul le user a la machine installée).
 
 ## Piste B : tout l'historique se synchronise
@@ -71,7 +71,7 @@ des Paramètres qui n'existe plus.
   joueur affiché (droit d'écriture, délai restant dit), état de l'historique (complet, ou rattrapage en
   cours) ; textes fr et en.
 - [x] B4 Aide fr et en corrigée (bouton, rattrapage automatique, les deux titres).
-- [ ] B5 Gate : tests ciblés Go (`games/halo_5/...`, `sync/...`, handlers), `-tags=integration` sur les
+- [x] B5 Gate : tests ciblés Go (`games/halo_5/...`, `sync/...`, handlers), `-tags=integration` sur les
   paquets sync touchés, typecheck, vitest ciblé puis complet une fois par le pilote, lint cross-feature.
 - [x] B6 Réponse sur l'issue #213 : texte validé par le user le 2026-11-22, posté (commentaire
   7077190663). Le joueur n'existe pas sur l'instance en ligne : le rapport vient de l'application de bureau
@@ -80,7 +80,7 @@ des Paramètres qui n'existe plus.
 ## Clôture
 
 - [x] C1 Revue adverse du diff des deux pistes (Sonnet, une ronde par lentille : A, B Go, B web ; journal).
-- [ ] C2 `delivery-checklist` + `levelup-livraison` ; thought_log ; fusion des deux branches dans
+- [x] C2 `delivery-checklist` + `levelup-livraison` ; thought_log ; fusion des deux branches dans
   `release/v8.3.0` (squash), CI lue après poussée.
 
 ## Journal
@@ -127,3 +127,17 @@ des Paramètres qui n'existe plus.
   pas comme erreurs du cycle (`games/halo_5/capture.go`, `livesync/runner.go`). Préexistant.
 - La tâche `LevelUp-disk-hygiene` du poste de développement lance PowerShell chaque nuit (fenêtre possible
   sur le poste du user seulement, hors application).
+
+## Clôture (2026-11-22)
+
+- A5 `[!]` : vérification à l'écran réservée au user (installeur de la release : `schtasks /Run` sur la
+  tâche `LevelUp\Refresh-*`, aucune fenêtre), et de même la carte Synchronisation à l'écran.
+- Branche intégrée `integ/fenetres-sync` (un commit par piste + correctif du cliquet de taille des fonctions
+  web : `SyncCard` passait à 87 lignes, extrait en `SyncLaunchControls` et `useSyncCardLaunch`).
+- Gates sur la branche intégrée : golangci-lint 0 issue ; `check_test_baseline.sh` (LevelUp, décodeur, API
+  Halo) sans échec ni test perdu ; typecheck, eslint, lint des frontières, vitest complet ; `make
+  desktop-test`. `replay-equiv` `[!]` : non jouable dans un worktree sans archive des films (« aucun chunk
+  de données »), diff sans rejeu ni décodeur ; ne pas monter de jonction vers `data/` (incidents du 16/09 et
+  du 13/11).
+- Découvertes portées au backlog (zero-insert, matchs Halo 5 dégradés, garde childproc) ; `AddFriendFlow`
+  et la tâche disk-hygiene restent ici, non vérifiés ou hors application.
