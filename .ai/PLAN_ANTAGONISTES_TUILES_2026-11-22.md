@@ -285,7 +285,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
-- 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B, C.2 (avec C.3, C.4), D.
+- 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B (`ant/b`) ; C.2 à C.4 puis D.1 à D.4 par le même agent sur `ant/c` (un seul composant d'icône `ui/AntagonistIcon.tsx` pour la frise et la fiche, sans course entre deux branches).
 - 2026-11-22 — F.1 et F.2 closes et fusionnées ; F.3 ajoutée (champ servi sans lecteur).
 - 2026-11-22 — DU-5 tranchée par le user (bots exclus). A.4 ajoutée (entrées communes du rejeu). Lancées : A.4, F.
 - 2026-11-22 — piste E close (E.8 comprise), fusionnée.
