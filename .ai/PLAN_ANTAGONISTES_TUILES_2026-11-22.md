@@ -92,16 +92,31 @@ Critère de succès, vérifiable à l'écran par le user sur un match réel :
   entre X et un joueur affiché. Le décor sans joueur reste affiché (règle du 2026-11-15 inchangée).
 - **DU-4** Frise, rangée des coéquipiers : telle quelle (14 px, deux demi-rangées de 7 px ne se liraient pas).
 
+### À trancher par le user (né de l'étape 0)
+
+- **DU-5** Place des bots. Le fil ne contient aucune élimination dont un bot est l'AUTEUR (49 manquantes sur
+  l'échantillon) : un bot ne peut pas être némésis. Les cartes de la page du match excluent les bots des duels
+  (`service/match_view_builders_team.go:333`, décision du 2026-09-02) ; la règle du 2026-10-09 dit que les bots
+  comptent partout. Recommandation du pilote : bots exclus des antagonistes partout (rejeu et page du match), tant que
+  le décodeur ne lit pas leurs éliminations. Bloque B, D, F (le prédicat d'adversaire des appelants), pas A.
+
 ### Tranché par le pilote (conventions du dépôt, modifiable par le user)
 
-- **D-10** Adversaire = joueur d'un autre camp selon le film ; en mêlée générale, tout autre joueur. Les trahisons et
-  les morts sans tueur ne comptent pas. Un bot compte comme un joueur (clé de fil = xuid de sa ligne de feuille).
+- **D-10** (corrigée par l'étape 0) Adversaire = `allegiance.ofXuid(clé) === false` (`lib/replay/filmAllegiance.ts:127`) :
+  autre camp selon le film, tout autre joueur en mêlée générale ; `null` = pas compté. Trahisons et morts sans tueur
+  ignorées. Clé d'un joueur = sa clé du film (`ReplayPlayer.xuid`, `bot:<nom>` pour un bot) : tueur = `kill.xuid` ;
+  victime = `kill.victimXuid` s'il est non vide, sinon `botKey(kill.victimGamertag)` (`lib/replay/rosterLogic.ts:62`),
+  sinon l'élimination est ignorée. Le point de vue (xuid de feuille) se ramène à la clé du film par
+  `trackedPlayerOf(viewpoint, players)?.xuid` (`model/playerPanelLogic.ts:165`). Jamais de comparaison à `bid(N.0)`.
+  Place des bots : DU-5.
 - **D-11** Une seule fonction pure, sous `apps/web/src/lib/antagonists/`, lue par le rejeu ET par la page du match
   (`MatchNemesisCards`, calculée sur `highlight_events` au dernier instant) : la dernière image du rejeu et les cartes
-  ne peuvent pas diverger. `team_tab.nemesis` reste servi pour ses autres lecteurs ; s'il n'en a plus, il est
-  consigné en Découverte (règle 18), pas retiré dans ce plan.
+  ne peuvent pas diverger. `team_tab.nemesis` reste servi : `KdIndicatorCard` (`MatchStatCards.tsx`) le lit aussi.
+- **D-16** (né de 0.3) La fonction écarte les doublons d'élimination (même tueur, même victime, même instant) avant
+  de compter : 172 matchs sur 1 462 de la base du poste portent chaque élimination deux fois dans `highlight_events`.
+  Gate F : décompte dédoublonné égal à `team_tab.nemesis` sur les 1 225 matchs de 0.3.
 - **D-12** Pulsation au changement de titre : deux anneaux à la couleur du camp et l'icône qui grossit puis revient,
-  1,4 s de temps réel (comme la mise en valeur d'une élimination, `model/killFocusMotion.ts`) ; l'icône de l'ancien
+  1,4 s de temps réel (la durée de `EVENT_HOLD_MS`, `hooks/useReplayTiming.ts:30`) ; l'icône de l'ancien
   tenant s'efface dans le même temps. Rien de cela en mouvement réduit (`prefers-reduced-motion`).
 - **D-13** Frise : les icônes de titre se posent dans une bande de 14 px au-dessus de la rangée du point de vue ; ce
   sont des boutons (infobulle au survol et au focus, clic = curseur à l'instant du changement).
@@ -117,7 +132,7 @@ backlog des 17 et 18 novembre (son R.4) : ce plan touche les tuiles et la fiche 
 par agent qui écrit, en frère du dépôt (`../LevelUp-wt-ant-<piste>`), jamais sous `C:/t`. Sous-branches
 `ant/<piste>`, fusionnées par le pilote dans la branche d'intégration, supprimées à l'intégration.
 
-Chemin critique : 0 → A → (B, C.2, D, F). C.1 et E ne dépendent pas de A et partent avec lui.
+Chemin critique : 0 → A → (B, C.2, D, F). C.1 et E ne dépendent pas de A et partent avec lui. B, D et F attendent aussi DU-5.
 
 | Piste | Contenu | Modèle | Dépend de | Effort |
 |---|---|---|---|---|
@@ -142,14 +157,14 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Étape 0 — vérification sur pièces et témoins (Fable)
 
-- [ ] 0.1 Relire chaque fichier cité en section 1 sur `release/v8.3.0` à jour (après la fusion du backlog
+- [x] 0.1 (fait le 2026-11-22 ; section 1 exacte sauf : rejeu lu par `/replay/context`, `model/replayModel.ts:169`, même décoration serveur que `combat_tab` ; `ui/ReplayTimelineTracks.tsx` 513 lignes ; `PRESS_GUARDS` dans `ui/replayPressGuards.ts:16` ; durée de 1,4 s = `EVENT_HOLD_MS` ; icônes à alpha 1 bit, némésis 714×670, souffre-douleur 1099×1369) Relire chaque fichier cité en section 1 sur `release/v8.3.0` à jour (après la fusion du backlog
       1118) ; corriger les lignes de ce plan qui ont bougé, dans ce plan, avant tout code.
-- [ ] 0.2 Clé de joueur dans les éliminations : sur 3 rejeux du parc (un 4 contre 4, une mêlée générale, un match avec
+- [x] 0.2 (fait : 152 rejeux, 13 781 éliminations ; règle écrite en D-10 ; aucune élimination dont un bot est l'auteur dans le fil, d'où DU-5) Clé de joueur dans les éliminations : sur 3 rejeux du parc (un 4 contre 4, une mêlée générale, un match avec
       bots), vérifier que `xuid` et `victimXuid` d'un `ReplayKill` se rapprochent de `ofXuid` et des clés de roster
       (bots compris) ; écrire la règle de rapprochement dans ce plan.
-- [ ] 0.3 Comptes de la page du match : sur 20 matchs locaux, comparer `team_tab.nemesis` (killed_me, i_killed) au
+- [x] 0.3 (fait sur une copie des bases, API du serveur de la branche : 20 matchs récents, 78 paires, 0 écart ; 1 225 matchs, 154 en écart, toutes leurs paires exactement au double, cause : éliminations en double dans `highlight_events` de 172 matchs ; d'où D-16) Comptes de la page du match : sur 20 matchs locaux, comparer `team_tab.nemesis` (killed_me, i_killed) au
       décompte de `highlight_events` par paire. Écart nul attendu ; tout écart est écrit ici et arrête F.
-- [ ] 0.4 Témoins AVANT, capturés dans le dossier `../LevelUp-temoins-ant/avant/` (frère du dépôt, hors git, gardé jusqu'à I.3) : enregistrement des appels de dessin
+- [x] 0.4 (fait : 15 témoins et `empreintes.txt`, `sha256sum -c` 15 OK au contrôle du pilote ; harnais `features/match-replay/test/temoinsAntagonistes/`, 18 tests verts ; commande dans son README ; pour E, seule `focusDe` de `temoinsKit.tsx` s'adapte au nouveau type) Témoins AVANT, capturés dans le dossier `../LevelUp-temoins-ant/avant/` (frère du dépôt, hors git, gardé jusqu'à I.3) : enregistrement des appels de dessin
       (`test/recordingContext`) de 3 images sans antagoniste et 3 images avec ; rendu de la frise (`ReplayMarkTrack`)
       sur le harnais `test/timelineTracksHarness.tsx` ; sorties de `ownershipShown` et `focusFilter` sur Seul et
       Masquer d'un joueur (tests existants listés par nom).
@@ -161,11 +176,11 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] A.1 `lib/antagonists/antagonists.ts` : à partir d'une liste d'éliminations triées (tueur, victime, instant), d'un
       joueur et d'un prédicat « adversaire », rend pour un instant donné les deux titres (tenant, compte, joueurs à
       égalité) et la liste des changements de titre (instant, rôle, nouveau tenant, ancien tenant et son compte,
-      genre `prise` ou `égalité`). Règles D-3 et D-10.
+      genre `prise` ou `égalité`). Règles D-3, D-10 et D-16 (doublons écartés).
 - [ ] A.2 Lecture à l'instant en temps borné : index des changements construit une fois par (document, joueur),
       lecture par recherche dichotomique ; pas de parcours de toutes les éliminations à chaque image.
 - [ ] A.3 Tests : premier tenant ; dépassement strict ; égalité qui garde le tenant ; un joueur qui tient les deux
-      titres ; trahison et mort sans tueur ignorées ; mêlée générale ; bot ; instant avant toute élimination ;
+      titres ; trahison et mort sans tueur ignorées ; mêlée générale ; victime bot par son nom ; doublons ; instant avant toute élimination ;
       dernier instant égal au calcul sur toute la liste.
 - **Gate A** : gates communs sur `src/lib/antagonists`.
 
@@ -189,8 +204,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] C.1 `ui/ReplayMarkTrack.tsx` : sur la rangée du point de vue (`tall`), éliminations dans la moitié haute, morts
       dans la moitié basse ; badges de médaille recalés sur leur marque ; rangée des coéquipiers inchangée (DU-4).
       Géométrie horizontale intouchée (`timelineGeometry.guard.test.ts` vert).
-- [ ] C.2 Bande des titres (D-13) au-dessus de la rangée du point de vue, dans `ui/ReplayTimelineTracks.tsx` ou un
-      composant extrait : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
+- [ ] C.2 Bande des titres (D-13) au-dessus de la rangée du point de vue, dans un composant extrait (`ui/ReplayTimelineTracks.tsx` fait 513 lignes : il ne grandit pas) : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
       « titre. phrase », clic = curseur à l'instant. Les autres pistes restent `pointer-events-none`.
 - [ ] C.3 Textes D-1 en français et en anglais (D-14), dans un dictionnaire typé `Record<Locale, …>` de
       `features/match-replay/i18n/`.
@@ -217,7 +231,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] E.3 Tuile (`ui/ReplayPlayerCard.tsx`) et ligne (`ui/ReplayRosterRow.tsx`) : boutons Suivre et œil (D-6), à
       encres de jetons, `aria-pressed`, noms accessibles « Suivre X » / « Ne plus suivre X » / « Masquer X » /
       « Afficher X », infobulles ; le clic sur un bouton n'ouvre pas la fiche ; Espace et Entrée gardés comme
-      aujourd'hui (`PRESS_GUARDS`). Nom pâle et mention « masqué » sur la tuile d'un joueur masqué.
+      aujourd'hui (`PRESS_GUARDS`, `ui/replayPressGuards.ts`). Nom pâle et mention « masqué » sur la tuile d'un joueur masqué.
 - [ ] E.4 Fiche : `ui/fiche/FicheActions.tsx` ne garde que « Seul » (D-8) ; `ui/ReplayPlayerPanelBody.tsx` adapté.
 - [ ] E.5 « Tout afficher » en tête de la colonne des équipes (`ui/ReplayRosterColumn.tsx`, `ui/ReplayTeamsRow.tsx`
       selon le cadre), visible dès qu'un joueur est masqué.
@@ -233,7 +247,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] F.1 `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
       d'adversaire ; les cartes gardent leur dessin et leurs textes.
 - [ ] F.2 Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
-- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 sans écart (sinon F arrêtée, écrit ici).
+- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 rejoué sur les 20 matchs récents et 5 matchs doublés : décompte dédoublonné égal à `team_tab.nemesis` (sinon F arrêtée, écrit ici). Un serveur lancé sur une copie n'a AUCUN chemin réel dans ses réglages (médias, captures, archive des films : dossiers vides du scratchpad).
 
 ## Étape I — intégration (pilote)
 
@@ -263,9 +277,14 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — étape 0 close (gate : 4 sorties écrites, section 1 corrigée, témoins contrôlés par le pilote). DU-5 posée au user. A, C.1 et E lancées.
 - 2026-11-22 — dépendance levée, vérifiée : `chore/830-backlog-1118`, `bl1118/m` et `bl1118/t` ont 0 commit hors de `release/v8.3.0` ; `feat/medailles-bouclier` ne touche aucun fichier de `features/match-replay`, `features/match-view` ni `lib` en commit. Go du user. Branche `feat/830-antagonistes-tuiles` (worktree du pilote `../LevelUp-wt-ant`), étape 0 dans `../LevelUp-wt-ant-0` (`ant/0`).
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-22 (0.3) — 172 matchs sur 1 462 de la base du poste portent chaque élimination deux fois dans `highlight_events` (30 372 lignes sur 161 147, avril et mai 2026 surtout) ; le fil du rejeu de ces matchs les sert en double. Prod non regardée.
+- 2026-11-22 (0.2) — le fil ne contient aucune élimination dont un bot est l'auteur ; le film nomme pourtant ses éliminations (`scoreActions`, `killPersonalScore`, 99 sur 99 sur un 4 contre 4), cible vide pour une victime bot.
+- 2026-11-22 (0.3) — incident : le serveur lancé par l'agent de l'étape 0 sur une copie des bases a retranscodé deux captures vidéo du user (dossiers `hls` du 2026-07-19 14-51-15 et du 2026-07-29 21-21-11 réécrits, sources `.mkv` intactes). Règle ajoutée au gate F.
 
 - 2026-11-22 — `.ai/BACKLOG.md` liste `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`) sans appelant de
   production ; ce plan ne le réutilise pas (calcul web à l'instant). Son sort reste à l'entrée du backlog.
