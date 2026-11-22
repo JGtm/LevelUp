@@ -37,6 +37,8 @@
     "cellsAssumedFloor": 71261
   },
   "planImage": "ctf_forbidden.plan.webp",
+  "reliefImage": "ctf_forbidden.relief.webp",
+  "reliefData": "ctf_forbidden.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 3744,

@@ -29,11 +29,11 @@ func TestChaqueOptionSeRattacheAUnGeste(t *testing.T) {
 	}
 	fs.VisitAll(func(f *flag.Flag) {
 		if _, ok := rangees[f.Name]; !ok {
-			t.Errorf("-%s n'est rattachée à aucun des trois gestes", f.Name)
+			t.Errorf("-%s n'est rattachée à aucun des quatre gestes", f.Name)
 		}
 	})
-	if len(gestes) != 3 {
-		t.Errorf("%d gestes, attendu trois : cuire, refaire le plan sans recuire, tableau avant / après", len(gestes))
+	if len(gestes) != 4 {
+		t.Errorf("%d gestes, attendu quatre : cuire, refaire le plan sans recuire, ajouter le relief sans recuire, tableau avant / après", len(gestes))
 	}
 }
 
@@ -45,7 +45,7 @@ func TestOptionsParDefautCuisentToutesLesCartes(t *testing.T) {
 	if err := o.valide(); err != nil {
 		t.Fatalf("la ligne de commande vide est refusée : %v", err)
 	}
-	if !o.natives || !o.forge || o.planSeul || o.maps != "" || o.rapports.tsv != "" {
+	if !o.natives || !o.forge || o.planSeul || o.reliefSeul || o.maps != "" || o.rapports.tsv != "" {
 		t.Errorf("défauts inattendus : %+v", o)
 	}
 }
@@ -60,6 +60,10 @@ func TestOptionsValideRefuseLesCombinaisonsSansSens(t *testing.T) {
 		{"plan seul avec sélection et avis", []string{"--plan-seul", "--maps", "ridgeline", "--forge=false", "--avis", "a.json"}, ""},
 		{"rapport avec avant", []string{"--rapport-tsv", "r.tsv", "--avant-dir", "d"}, ""},
 		{"plan seul et rapport", []string{"--plan-seul", "--rapport-tsv", "r.tsv", "--avant-dir", "d"}, ""},
+		{"relief seul avec sélection, avis et rapport", []string{"--relief-seul", "--maps", "sgh_blueprint", "--forge=false", "--avis", "a.json", "--rapport-tsv", "r.tsv"}, ""},
+		{"plan seul et relief seul", []string{"--plan-seul", "--relief-seul"}, "s'excluent"},
+		{"relief seul et style", []string{"--relief-seul", "--style", "encre"}, "pas à -relief-seul"},
+		{"relief seul et mpp", []string{"--relief-seul", "--mpp", "0.1"}, "-mpp"},
 		{"plan seul et style", []string{"--plan-seul", "--style", "encre"}, "-style"},
 		{"plan seul et mpp", []string{"--plan-seul", "--mpp", "0.1"}, "-mpp"},
 		{"avant sans rapport", []string{"--avant-dir", "d"}, "-avant-dir exige -rapport-tsv"},
@@ -96,7 +100,7 @@ func TestExecuteRefuseAvantDePreparer(t *testing.T) {
 	}
 }
 
-func TestAideListeLesTroisGestes(t *testing.T) {
+func TestAideListeLesQuatreGestes(t *testing.T) {
 	var sortie bytes.Buffer
 	if _, err := litOptions([]string{"-h"}, &sortie); err == nil {
 		t.Fatal("-h doit rendre flag.ErrHelp")
@@ -106,7 +110,7 @@ func TestAideListeLesTroisGestes(t *testing.T) {
 			t.Errorf("l'aide ne montre pas le geste %q", g.titre)
 		}
 	}
-	for _, nom := range []string{"-plan-seul", "-rapport-tsv", "-avant-dir", "-avis"} {
+	for _, nom := range []string{"-plan-seul", "-relief-seul", "-rapport-tsv", "-avant-dir", "-avis"} {
 		if !strings.Contains(sortie.String(), nom) {
 			t.Errorf("l'aide ne montre pas %s", nom)
 		}

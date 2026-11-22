@@ -32,7 +32,7 @@ func TestRealSchtasks_PoseInterrogueSupprime(t *testing.T) {
 		Runner: ExecRunner{},
 		Name:   name,
 		Spec: Spec{
-			ExePath:       filepath.Join(os.Getenv("SystemRoot"), "System32", "whoami.exe"),
+			ShellExe:      filepath.Join(os.Getenv("SystemRoot"), "System32", "whoami.exe"),
 			DataRoot:      root,
 			ResourcesRoot: root,
 			LogsRoot:      root,

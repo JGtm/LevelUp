@@ -25,6 +25,9 @@
  */
 import { useCallback, useRef, useState, type ComponentProps, type RefObject } from 'react'
 
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
+import type { ReplayRelief } from '../hooks/useReplayRelief'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayViewPanel } from './ReplayViewPanel'
 import { effectiveLivesWho } from '../model/livesMarks'
@@ -53,10 +56,12 @@ export interface ReplayViewMenuOptions {
   /** Ce que le film porte réellement, calque par calque (cf. l'en-tête). */
   available: FilmLayerAvailability
   /**
-   * Le fond de carte : porte-t-il une image plan (la commande « Fond » n'est proposée qu'alors), et
-   * l'image posée est-elle le plan (qui porte déjà les murs : leur calque se désactive) ?
+   * Le fond de carte et son relief (`useReplayRelief`) : les fonds que la commande « Fond » propose, celui qui
+   * est retenu, les traits du relief et la commande d'étage.
    */
-  planBackground: { available: boolean; shown: boolean }
+  relief: ReplayRelief
+  /** Le fond RÉELLEMENT posé : le plan porte déjà les murs, leur calque se désactive alors. */
+  drawn: MapBackgroundVariant
   /** Le cadre pose le fil des éliminations sur le plan : l'option « Fil des éliminations » n'est proposée qu'alors. */
   planFeedAvailable: boolean
   /** Le cadre peut poser la barre de lecture sur le plan : l'option « Barre fine » n'est proposée qu'alors. */
@@ -142,7 +147,7 @@ interface PanelInput extends ReplayViewMenuOptions {
  * elles TRANSPORTENT les états et les bascules de `useReplaySettings` vers les commandes.
  */
 function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
-  const { settings: s, orientation, sound, available, heat, locale, onClose, view, planBackground, planFeedAvailable } = o
+  const { settings: s, orientation, sound, available, heat, locale, onClose, view, relief, drawn, planFeedAvailable } = o
   return {
     locale,
     onClose,
@@ -213,7 +218,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       available: available.wallPlan,
       show: s.showWallPlan,
       onToggle: s.toggleWallPlan,
-      inPlan: planBackground.shown,
+      inPlan: drawn === 'plan',
     },
     lives: {
       spawns: { available: available.lives.spawns, show: s.showSpawns, onToggle: s.toggleSpawns },
@@ -232,9 +237,21 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       onSelectWhen: s.setLivesWhen,
     },
     background: {
-      available: planBackground.available,
-      value: s.backgroundStyle,
+      options: relief.options,
+      value: relief.selected,
       onSelect: s.setBackgroundStyle,
+      meshPercent: relief.meshPercent,
+    },
+    relief: {
+      lines: relief.lines,
+      floor: {
+        state: relief.floor.state,
+        cut: relief.floor.cut,
+        onSelectAll: relief.floor.selectAll,
+        onSelectRank: relief.floor.selectRank,
+        onHeight: relief.floor.setHeight,
+        follow: relief.floor.follow,
+      },
     },
     orientation: { available: orientation.available, retained: orientation.retained, onSelect: orientation.setTurns },
     planFeed: { available: planFeedAvailable, show: s.showPlanFeed, onToggle: s.togglePlanFeed },

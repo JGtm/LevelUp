@@ -40,6 +40,8 @@
     "cellsAssumedFloor": 88663
   },
   "planImage": "sgh_blueprint.plan.webp",
+  "reliefImage": "sgh_blueprint.relief.webp",
+  "reliefData": "sgh_blueprint.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 2052,

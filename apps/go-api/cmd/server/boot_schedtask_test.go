@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -189,6 +190,18 @@ func TestRefreshReconciler_CheminRefuseEtPlanificateurIllisible(t *testing.T) {
 	}
 	if len(g.writes()) != 0 {
 		t.Fatalf("illisible : rien n'est écrit à l'aveugle (%v)", g.writes())
+	}
+}
+
+// Une coquille inconnue (serveur lancé sans elle) s'expose par son code fixe, distinct de celui du planificateur
+// et de celui d'un chemin refusé ; le réglage coupé ne touche à rien.
+func TestRefreshReconciler_CoquilleInconnueExposeSonCode(t *testing.T) {
+	f := &fakeTasks{ensureErr: fmt.Errorf("pose : %w", schedtask.ErrShellUnknown)}
+	r, obs := newReconciler(f)
+	r.reconcile(context.Background(), false)
+	r.reconcile(context.Background(), true)
+	if s, code := obs.Get(); s != schedtask.StateError || code != "shell_unknown" {
+		t.Fatalf("coquille inconnue : %q %q, attendu error shell_unknown", s, code)
 	}
 }
 

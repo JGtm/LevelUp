@@ -297,6 +297,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
       en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
       sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
+- [ ] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
+      décodeur ne nomme pas encore (verdict de C.5) : Drapeau (`FlagReturnersKilled`, `KillsAsFlagReturner`), Bases et
+      Contrôle total (`StrongholdOffensiveKills`, `StrongholdDefensiveKills`, `StrongholdScoringTicks`), VIP (six
+      compteurs), Extraction (cinq, seulement si le nom est PROUVÉ par les définitions du film ou par l'API). Nommés
+      par mode dans la table existante, publiés comme les compteurs d'objectif voisins, avec le contrôle sur moitiés
+      de films disjointes. Les emplacements traînants ou jamais écrits ne sont PAS publiés.
+- [ ] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
+      grammaire, publication par manche, et total d'un match à manches = manches figées plus manche vivante de la
+      dernière. Mesure attendue sur les films à manches : aucun accord avec l'API ne baisse, les totaux montent.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
@@ -433,6 +442,53 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — C.6 fait pour huit compteurs (`072c16a`, `3f247e9` sur `piste/modes`, poussée) : Drapeau
+  (`flag_returners_killed`, `flag_kills_as_returner`, `flag_kills_as_carrier` sur la seule définition du film, accord
+  du user), zones (`zone_offensive_kills`, `zone_defensive_kills`), VIP (`vip_kills`, `vip_assists`,
+  `vip_kills_as_vip`). Écartés : durées et maximums du VIP (backlog, accord du user), Extraction (noms non prouvés),
+  tics de score des Bases (nuls). Ligne à ajouter à la table figée de LevelUp :
+  `Scripts/dec-v150-recup/modes/lignes_table_statborg.tsv`. AUDIT DES LECTEURS DE LEVELUP, demandé par le user
+  (`annexes_decodeur_1118/audit_objectifs_levelup.md`) : à faire à la MONTÉE (L.4), avant toute régénération :
+  (1) les anneaux d'objectif du rejeu se dessinent pour tout nom à préfixe `flag_`, `zone_`, `vip_` : passer à une
+  liste blanche des actions sur l'objectif, sinon chaque élimination de zone dessine un anneau de capture ; (2) la
+  liste du fil d'actions, ses libellés fr et en et le test de parité avec le décodeur reçoivent les huit noms
+  (repliés en badge sur l'élimination du même joueur, sans ligne en double ni son) ; (3) la famille VIP n'est pas
+  passée au décodeur par LevelUp : la passer par une constante exportée de la façade, PAS en changeant ce que rend
+  la famille d'une variante (le badge de retournement s'appliquerait aux matchs VIP) ; (4) l'acceptation de l'écart
+  de couverture des objectifs s'écrit dans la configuration du gate du corpus. Ne bougent pas : Escouade, Emprise,
+  Tactique, citations, participation, base, contrat de l'API (elles lisent les colonnes de l'API, qui portent
+  déjà ces huit statistiques).
+- 2026-11-22 — GO DU USER (« go pour les deux maintenant, mets des agents dessus et essaye de régler leurs effort de
+  manière appropriée ») : (1) marque de tir à la tête et de frag parfait par élimination (H.7, publication par le
+  décodeur depuis l'appariement mesuré, puis icônes du fil côté LevelUp à la montée) ; (2) compteurs de mode et
+  valeurs figées par manche (C.6, C.7). Trois agents lancés, un dossier de travail chacun sous `Scripts/` :
+  `dec-v150-h7` (Sonnet, effort élevé), `dec-v150-modes` (Sonnet, effort moyen), `dec-v150-figees` (Opus, effort
+  élevé : lecture neuve dans la grammaire).
+- 2026-11-22 — C.5, VERDICT rendu (`annexes_decodeur_1118/emplacements_tableau_verdict.md`, 58 films, chaîne étalonnée
+  à 100 % sur tirs à la tête et grenades). Trois régimes : VIVANT (réécrit à chaque événement, 99 % et plus
+  d'accord avec l'API : éliminations, morts, assistances, score, tête, mêlée, grenade, arme lourde, série,
+  compteurs d'objectif d'événement) ; TRAÎNANT (écrit seulement quand son jumeau de la paire est réécrit : juste à
+  l'instant de l'émission, périmé à la fin : `ShotsFired`, `DamageDone`, `DamageTaken`, `KDA`,
+  `AverageLifeDuration`, `FlagCarryTime`) ; JAMAIS ÉCRIT en direct (`ShotsHit`, `AccuracyPercentage`, `RoundsWon`,
+  `RoundsTied` : Den avait raison). Le film écrit aussi, à chaque manche TERMINÉE, les valeurs figées de la manche
+  (composants 28 à 55), tirs au but et précision compris ; la dernière manche n'est jamais figée, donc un match
+  à une manche n'en a aucune. Hypothèse du user sur les tirs : ni tirs tirés ni tirs au but ne sont comptés en
+  direct par le tableau ; l'estimation reste la seule voie (piste D). CANDIDATS À PUBLIER, écrits et justes :
+  compteurs de mode non nommés (Drapeau : éliminations de ceux qui ramènent, Bases : éliminations offensives et
+  défensives et tics de score, VIP : six compteurs, Extraction : cinq, noms supposés) ; valeurs figées par manche
+  terminée (qui améliorent aussi les totaux des matchs à manches : éliminations 29 sur 39 contre 21). Non établi :
+  Balle (aucun film à une manche), versions 1.11 et moins (définitions illisibles). Crédit à Den. À écrire au plan
+  avant tout code : item de publication des compteurs de mode et des valeurs figées.
+- 2026-11-22 — H.7, MESURE D'APPARIEMENT rendue (`annexes_decodeur_1118/appariement_tete_parfait.md`, 1 455 rejeux,
+  sans décodage). Tirs à la tête : la montée du compteur et celle des éliminations sont écrites par le même
+  enregistrement du tableau : 36 839 montées sur 36 847 (99,98 %) ont exactement une élimination du même joueur
+  dans la même image ; contre les actions de score d'élimination (qui donnent la victime), 99,94 % à une image
+  près, mais elles n'existent que pour 86 % des éliminations (absentes ou partielles sur les versions 1.8 à
+  1.10). Frags parfaits : 1 897 médailles sur 1 897 se rattachent à une seule élimination à deux images près.
+  Indécidable par le document : 3 cas de deux éliminations dans la même image avec une seule montée ; 9 pas de
+  +2 inexpliqués et 5 faux points. VERDICT : l'appariement est sûr ; reste à écrire au plan la publication du
+  champ par élimination par le décodeur (là où il a tueur, victime et instant), puis les icônes du fil côté
+  LevelUp. Le document ne porte aujourd'hui aucune marque par élimination.
 - 2026-11-22 — REPRISE APRÈS INCIDENT. Le clone `C:/t/dec/main` et ses sept commits jamais poussés ont été supprimés
   le 22/11 par la tâche de ménage du disque (`C:/t` vidé après 72 h). Les cinq commits de code ont été RECONSTRUITS
   depuis les transcripts des agents dans un clone neuf, `C:/Users/Guillaume/Downloads/Scripts/dec-v150`, branche

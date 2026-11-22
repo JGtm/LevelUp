@@ -112,6 +112,7 @@ describe('DesktopIntegrationCard', () => {
     ['unknown', undefined, 'Tâche planifiée : pas encore vérifiée.'],
     ['error', 'schtasks_failed', /Le planificateur de Windows n'a pas répondu/],
     ['error', 'unsupported_path', /ne sait pas protéger/],
+    ['error', 'shell_unknown', /pas été lancée par l'application de bureau/],
   ])("l'état %s de la tâche planifiée (%s) est dit en français", async (state, code, text) => {
     server.use(
       http.get(`${API}/settings/desktop`, () =>

@@ -3869,22 +3869,59 @@ paths:
         - description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           in: query
           name: variante
           required: false
           schema:
             enum:
               - plan
+              - relief
             type: string
       responses:
         "200":
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         "400":
           description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante`, aucun plan ni relief)
       summary: Sert l'image du fond de carte du rejeu 2D
+      tags:
+        - match-view
+  /players/{player_slug}/matches/{match_id}/replay/background.relief.json:
+    get:
+      description: |
+        Données du relief de la carte du match, cuites hors ligne par `cmd/mapfond-build` : bornes de
+        hauteur, étages détectés, traits. Rangées en JSON compressé sur disque, elles sont servies en
+        clair (la compression de transport est celle du serveur). Un fichier de version de schéma
+        inconnue ou au calage différent de celui du fond est tenu pour absent. Elles vont avec l'image du relief
+        (`background.png?variante=relief`), dans le même cadre et au même calage.
+      operationId: getMatchReplayBackgroundReliefData
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Données du relief (JSON), avec ETag
+        "304":
+          description: Données inchangées (`If-None-Match`)
+        "404":
+          description: Aucun fond de carte figé pour la carte de ce match, pas de relief, ou relief périmé
+      summary: Sert les données du relief du fond de carte du rejeu 2D
       tags:
         - match-view
   /players/{player_slug}/matches/{match_id}/replay/callouts:
@@ -6876,22 +6913,58 @@ paths:
         - description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           in: query
           name: variante
           required: false
           schema:
             enum:
               - plan
+              - relief
             type: string
       responses:
         "200":
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         "400":
           description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante`, aucun plan ni relief)
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/{map_id}/background.relief.json:
+    get:
+      description: |
+        Données du relief d'une carte (JSON servi en clair), résolues par la même cascade que le fond mais
+        adressées par `map_id`. Elles vont avec l'image du relief
+        (`background.png?variante=relief`). Comme le fond, cette route n'est PAS restreinte à la
+        boucle locale : c'est une donnée de référence versionnée.
+      operationId: getTacticalMapBackgroundReliefData
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Données du relief (JSON), avec ETag
+        "304":
+          description: Données inchangées (`If-None-Match`)
+        "404":
+          description: Aucun fond de carte figé pour cette carte, pas de relief, ou relief périmé
+      summary: Sert les données du relief du fond d'une carte de l'onglet Tactique
       tags:
         - tactical
   /players/{player_slug}/tactical/{map_id}/cellule:
@@ -18857,6 +18930,10 @@ components:
           $ref: '#/components/schemas/MapBackgroundPlan'
         planImage:
           type: string
+        reliefData:
+          type: string
+        reliefImage:
+          type: string
         schemaVersion:
           format: int64
           type: integer
@@ -24378,6 +24455,9 @@ components:
           description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
           format: int64
           type: integer
+        history_complete:
+          description: Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé.
+          type: boolean
         job:
           $ref: '#/components/schemas/AsyncJobStatus'
           description: Job de sync actif du joueur, sinon le plus récent encore conservé.
@@ -24390,6 +24470,7 @@ components:
         - player_slug
         - syncing
         - cooldown_retry_after_s
+        - history_complete
       type: object
     PlayerTokenHealth:
       additionalProperties: false

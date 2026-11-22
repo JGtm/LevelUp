@@ -26,6 +26,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
+import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 import { IMPACT_TOL_BLUE_RED } from './_impactRoleColors'
 
 // Tol Bright — catégorielles
@@ -214,6 +215,10 @@ export const tolBrightPalette: Palette = {
   'heatmap-divergent-high': TOL_BLUE,
   'heatmap-freq-low':       '#1A3550', // fréquence faible — bleu sombre (neutre, mono-teinte)
   'heatmap-freq-high':      TOL_CYAN, // fréquence forte  — cyan Tol Bright (neutre)
+
+  // ── Fond Relief et cerne des pions ──────────────────────────────────
+  'map-relief-base': '#7559B5', // Violet
+  ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — axe Blue/Red Tol Bright ─────────────────────────────────────
   'team-ally':  TOL_BLUE, // overridable via settings accessibilité

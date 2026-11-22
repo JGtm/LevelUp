@@ -111,9 +111,6 @@ export function getTacticalText(locale: Locale) {
     livesStart: m('tactical.plan.lives_start'),
     livesAll: m('tactical.plan.lives_all'),
     livesHint: m('tactical.plan.lives_hint'),
-    pillBackground: m('tactical.plan.pill_background'),
-    backgroundPlan: m('tactical.plan.background_plan'),
-    backgroundRender: m('tactical.plan.background_render'),
     pillZones: m('tactical.plan.pill_zones'),
 
     // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────
@@ -128,6 +125,12 @@ export function getTacticalText(locale: Locale) {
     // Relecture : l'ancien calque reste affiché, estompé, sous cette mention (Q26).
     analysisUpdating: m('tactical.analysis.updating'),
     planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
+    // Coupe par étage : la mention d'un calque entier (`legendNoHeight`) et le nom de chacun de ces calques.
+    legendNoHeight: (layer: string) => m('tactical.plan.legend_no_height', { layer }),
+    noHeightHeat: m('tactical.plan.no_height_heat'),
+    noHeightWalls: m('tactical.plan.no_height_walls'),
+    noHeightKillers: m('tactical.plan.no_height_killers'),
+    noHeightMates: m('tactical.plan.no_height_mates'),
     statusPending: (n: number) => m('tactical.status.pending', { n }),
 
     // ── Zone sélectionnée ───────────────────────────────────────────────────

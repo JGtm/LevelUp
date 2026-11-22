@@ -71,16 +71,20 @@ export const CANVAS_PAD = 24
  */
 export interface ReplayMapBackgroundLayer {
   calibration: ReplayMapBackgroundCalibration
-  image: HTMLImageElement
+  /** L'image posée : celle du rendu ou du plan, ou le canvas du relief teinté / d'un fond que la coupe par étage module. */
+  image: CanvasImageSource
   /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `lib/replay/wallPlan`). */
   plan: WallPlanReady | null
   /**
    * L'image posée : `plan` (vue plan à hauteurs, qui porte déjà les murs : le calque des murs se
-   * retire) ou `rendu`. Même calage, mêmes dimensions : rien d'autre ne dépend de cette valeur.
+   * retire), `rendu` ou `relief` (le terrain teinté, qui ne porte pas les murs). Même calage, mêmes
+   * dimensions : rien d'autre ne dépend de cette valeur.
    */
   variante: MapBackgroundVariant
-  /** Le fond porte-t-il une image plan ? La commande « Fond » n'est proposée que s'il en a une. */
+  /** Le fond porte-t-il une image plan ? Elle fait partie des choix de la commande « Fond ». */
   planAvailable: boolean
+  /** Le fond porte-t-il un relief (image des hauteurs et données) ? Le fond « Relief », ses traits et la coupe par étage n'existent que s'il en a un. */
+  reliefAvailable: boolean
   /** L'image plan décodée et le calage qui la pose : le masque des zones nommées (`lib/replay/planMask`) ; `null` = zones entières. */
   zonesClip: { calibration: ReplayMapBackgroundCalibration; image: CanvasImageSource } | null
 }

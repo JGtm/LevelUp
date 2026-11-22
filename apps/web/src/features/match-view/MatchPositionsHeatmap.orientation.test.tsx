@@ -5,11 +5,12 @@
  * la carte n'en a pas ou que le rejeu l'a éteint.
  */
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import { DEFAULT_MAP_BACKGROUND_VARIANT } from '@/lib/replay/mapBackgroundVariant'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { renderWithProviders } from '@/test/render-utils'
 
 import { peindreLesPositions } from './_positionsPaint'
 import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
@@ -42,7 +43,7 @@ const SAMPLE: MatchPlayerPosition[] = [
 ]
 
 function rendre() {
-  return render(<MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={SAMPLE} locale="fr" />)
+  return renderWithProviders(<MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={SAMPLE} locale="fr" />)
 }
 
 /** Le dernier appel du tracé : la toile et ce que le composant lui donne. */

@@ -29,6 +29,9 @@
 //	                       `resources` `downloading` (avancement croissant) a chaque seconde duree (defaut 100 ms) :
 //	                       le telechargement du paquet de ressources, plus long que le delai de demarrage de la coquille
 //	FAKE_STOP_CLEAN        true (defaut) | false : `clean` du `stopped` final (false : pas de marqueur d'arret)
+//
+// `-mode refresh-only` (lance par le relais `--refresh-only` de la coquille) : sort avec le code ecrit dans
+// <racine de donnees>/fake-refresh-exit.txt (defaut 0) et ecrit ce qu'il a recu dans fake-refresh-ran.txt.
 package main
 
 import (

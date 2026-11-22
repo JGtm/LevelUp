@@ -12,21 +12,26 @@ import { useAppShellStore } from '@/stores/appShellStore'
 const POLL_RUNNING_MS = 3_000
 const POLL_COOLDOWN_MS = 15_000
 
-export function usePlayerSyncStatus(playerSlug: string) {
+/**
+ * Délai avant la prochaine lecture de l'état : 3 s tant qu'une synchronisation tourne (fin de job), 15 s
+ * tant qu'un délai court (le bouton revient à son terme) ; au repos, rien, sauf `pollIdle` (15 s : l'écran
+ * qui propose un bouton voit une synchronisation lancée ailleurs, par l'automatique ou depuis l'accueil).
+ */
+export function syncStatusPollInterval(status: PlayerSyncStatus | undefined, pollIdle: boolean): number | false {
+  if (!status) return false
+  if (status.syncing) return POLL_RUNNING_MS
+  if (status.cooldown_retry_after_s > 0 || pollIdle) return POLL_COOLDOWN_MS
+  return false
+}
+
+export function usePlayerSyncStatus(playerSlug: string, options: { pollIdle?: boolean } = {}) {
+  const pollIdle = options.pollIdle === true
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.playerSyncStatus(playerSlug, titleSlug),
     queryFn: () => api.get<PlayerSyncStatus>(`/players/${playerSlug}/sync/status`),
     enabled: !!playerSlug,
     staleTime: 0,
-    // Interroge tant qu'une synchronisation tourne (fin de job), puis tant qu'un délai court (le bouton
-    // revient à son terme) ; au repos, une seule lecture.
-    refetchInterval: (query) => {
-      const status = query.state.data
-      if (!status) return false
-      if (status.syncing) return POLL_RUNNING_MS
-      if (status.cooldown_retry_after_s > 0) return POLL_COOLDOWN_MS
-      return false
-    },
+    refetchInterval: (query) => syncStatusPollInterval(query.state.data, pollIdle),
   })
 }

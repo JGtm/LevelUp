@@ -6,11 +6,12 @@
  * position, pas de fond de carte, ou rien qui tombe sur le plan -> la carte ne s'affiche pas.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { MatchPlayerPosition } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { renderWithProviders } from '@/test/render-utils'
 
 import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 
@@ -76,7 +77,7 @@ beforeEach(() => {
 
 describe('MatchPositionsHeatmap', () => {
   it('ouvre la carte du match dans l’onglet Tactique : route, joueur, carte', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     const lien = screen.getByRole('link', { name: 'Ouvrir cette carte dans l’onglet Tactique' })
@@ -88,14 +89,14 @@ describe('MatchPositionsHeatmap', () => {
 
   it('aucun lien vers l’onglet Tactique sans carte connue du match', () => {
     vue.mockReturnValue({ data: { header: {} } })
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.queryByRole('link', { name: /onglet Tactique/ })).toBeNull()
   })
 
   it('rend la carte quand le match a un fond et des positions', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.getByText('Occupation du terrain')).toBeTruthy()
@@ -106,7 +107,7 @@ describe('MatchPositionsHeatmap', () => {
   // Elle n'est donc plus dans le document au repos — elle s'ouvre au survol.
   it('dit comment lire le plan dans l’infobulle du titre, et non en pied de carte', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.queryByText(/teinte est chaude/)).toBeNull()
@@ -116,14 +117,14 @@ describe('MatchPositionsHeatmap', () => {
 
   // 2026-09-21 (lot D) : le plan se zoome et se déplace, avec la commande du rejeu 2D.
   it('pose la commande de cadrage du rejeu sur le plan', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.getByRole('group', { name: /zoom|cadrage/i })).toBeTruthy()
   })
 
   it('ne publie AUCUNE note de méthode en pied (retrait du 2026-09-19)', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     // Le pas de grille, la part des positions dans le cadre et le mode d'attribution des
@@ -132,7 +133,7 @@ describe('MatchPositionsHeatmap', () => {
   })
 
   it('borne la HAUTEUR du plan : la largeur du cadre ne dépasse jamais 72 % de la carte', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     // Le cadre gardait le rapport du monde sur TOUTE la largeur de la carte : un plan carré
@@ -143,7 +144,7 @@ describe('MatchPositionsHeatmap', () => {
   })
 
   it('propose le filtre par équipe quand au moins une position porte une équipe', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.getByText('Tous')).toBeTruthy()
@@ -153,7 +154,7 @@ describe('MatchPositionsHeatmap', () => {
 
   it('masque le filtre quand aucune position ne porte d’équipe', () => {
     const unknown: MatchPlayerPosition[] = [{ timeMs: 0, x: 1, y: 2, z: 0, team: -1 }]
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={unknown} locale="fr" />,
     )
     expect(screen.queryByText('Équipe A')).toBeNull()
@@ -162,7 +163,7 @@ describe('MatchPositionsHeatmap', () => {
   // PORTE 1 — aucune position décodée.
   it('se masque (null) sans position', () => {
     for (const positions of [[] as MatchPlayerPosition[], undefined]) {
-      const { container } = render(
+      const { container } = renderWithProviders(
         <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={positions} locale="fr" />,
       )
       expect(container.firstChild).toBeNull()
@@ -172,7 +173,7 @@ describe('MatchPositionsHeatmap', () => {
   // PORTE 2 — la carte du match n'a pas d'image figée : « Occupation du terrain » est un plan.
   it('se masque (null) quand la carte du match n’a pas de fond', () => {
     background.mockReturnValue({ data: undefined })
-    const { container } = render(
+    const { container } = renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(container.firstChild).toBeNull()
@@ -181,14 +182,14 @@ describe('MatchPositionsHeatmap', () => {
   // PORTE 3 — rien ne tombe sur le plan.
   it('se masque (null) quand toutes les positions sont hors du cadre du fond', () => {
     const dehors: MatchPlayerPosition[] = [{ timeMs: 0, x: 900, y: 900, z: 0, team: 0 }]
-    const { container } = render(
+    const { container } = renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={dehors} locale="fr" />,
     )
     expect(container.firstChild).toBeNull()
   })
 
   it('rend le titre EN', () => {
-    render(
+    renderWithProviders(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="en" />,
     )
     expect(screen.getByText('Ground occupancy')).toBeTruthy()

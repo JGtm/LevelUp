@@ -37,5 +37,7 @@
     "forgeObjectsDrawn": 4807,
     "forgeObjectsWithoutModel": 123,
     "forgeDeathVolumes": 74
-  }
+  },
+  "reliefImage": "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23.relief.webp",
+  "reliefData": "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23.relief.json.gz"
 }

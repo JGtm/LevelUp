@@ -31,6 +31,11 @@ var motifsCheminDuJeu = []string{"SteamLibrary", "XboxGames", "steamapps"}
 var sourcesCheminDuJeuAutorisees = map[string]bool{
 	"libs/himap/himap/deploy_root.go":                                true,
 	"apps/go-api/internal/archlint/deploy_root_copie_unique_test.go": true,
+	// 2026-11-18 : énumération des installations par boutique (Steam, Xbox), seconde source canonique
+	// des chemins du jeu de la brique, à côté de deploy_root.go.
+	"libs/himap/himap/candidats_installation.go":      true,
+	"libs/himap/himap/candidats_vdf.go":               true,
+	"libs/himap/himap/candidats_installation_test.go": true,
 }
 
 // copiesDuCheminDuJeu rend, pour un fichier, les motifs d'un chemin d'installation qu'il porte

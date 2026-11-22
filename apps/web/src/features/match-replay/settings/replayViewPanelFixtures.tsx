@@ -15,6 +15,7 @@ import {
   type ReplayPlacementControls,
   type ReplayFlagControls,
   type ReplayBackgroundControls,
+  type ReplayReliefControls,
   type ReplayLivesControls,
   type ReplayRespawnForecastControls,
   type ReplayWallPlanControls,
@@ -81,7 +82,16 @@ export function makeLives(over: Partial<ReplayLivesControls> = {}): ReplayLivesC
 }
 
 export function makeBackground(over: Partial<ReplayBackgroundControls> = {}): ReplayBackgroundControls {
-  return { available: true, value: 'rendu', onSelect: vi.fn(), ...over }
+  return { options: ['plan', 'rendu'], value: 'rendu', onSelect: vi.fn(), meshPercent: null, ...over }
+}
+
+/** Le relief du fond : rien à proposer (ni traits ni étage) ; `over` y pose ce qu'un cas veut. */
+export function makeRelief(over: Partial<ReplayReliefControls> = {}): ReplayReliefControls {
+  return {
+    lines: { available: false, show: false, onToggle: vi.fn() },
+    floor: { state: { state: 'none' }, cut: null, onSelectAll: vi.fn(), onSelectRank: vi.fn(), onHeight: vi.fn(), follow: { available: false, on: false, onToggle: vi.fn() } },
+    ...over,
+  }
 }
 
 export function makeOrientation(over: Partial<ReplayOrientationControls> = {}): ReplayOrientationControls {
@@ -166,6 +176,7 @@ export function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]>
       vehicles={makeWeaponPads()}
       wallPlan={makeWallPlan()}
       background={makeBackground()}
+      relief={makeRelief()}
       lives={makeLives()}
       orientation={makeOrientation()}
       planFeed={{ available: false, show: true, onToggle: vi.fn() }}

@@ -112,6 +112,15 @@ type MapBackground struct {
 	// l'image du fond), servie par la route de l'image du fond avec `?variante=plan`. Vide quand
 	// la carte n'a pas de plan : la route répond alors comme pour un fond absent.
 	PlanImage string `json:"planImage,omitempty"`
+	// ReliefImage : nom du fichier de l'image du relief de la carte (hauteurs et drapeaux, dans le
+	// cadre et au calage de l'image du fond), servie par la route de l'image du fond avec
+	// `?variante=relief`. Vide quand la carte n'a pas de relief : la route répond alors comme pour
+	// un fond absent.
+	ReliefImage string `json:"reliefImage,omitempty"`
+	// ReliefData : nom du fichier des données du relief (bornes de hauteur, étages, traits ; JSON
+	// compressé en gzip sur disque), servi décompressé par la route sœur
+	// `.../background.relief.json`. Va avec ReliefImage ; vide quand la carte n'a pas de relief.
+	ReliefData string `json:"reliefData,omitempty"`
 }
 
 // MapBackgroundPlan est le plan d'une carte tiré de son maillage de navigation : les arêtes de

@@ -112,7 +112,7 @@ func TestRefaitLePlanGardeLeFondEtPoseLImagePlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := &environnement{sortieDir: dir}
-	var b bilanPlanSeul
+	var b bilanSeul
 	err = e.refaitLePlan(context.Background(),
 		carteDuPlan{cle: "carte", noms: []string{"Carte"}, source: "t", ancres: [][3]float64{{0.5, 0.5, 0}}, maillage: deuxCarres()}, &b)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestRefaitLePlanRefuseUnFondDeAutreTaille(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := &environnement{sortieDir: dir}
-	var b bilanPlanSeul
+	var b bilanSeul
 	if err := e.refaitLePlan(context.Background(), carteDuPlan{cle: "carte", source: "t", maillage: deuxCarres()}, &b); err == nil {
 		t.Fatal("un fond de 10x10 pour un calage de 300x300 a ete accepte")
 	}

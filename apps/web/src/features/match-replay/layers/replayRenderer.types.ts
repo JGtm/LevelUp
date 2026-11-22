@@ -50,6 +50,7 @@ type Placements = ReturnType<typeof useReplayPlacements>
 export interface CookedLayers {
   origin: RefObject<CanvasView | null>
   wallPlan: RefObject<HTMLCanvasElement | null>
+  reliefLines: RefObject<HTMLCanvasElement | null>
   zones: RefObject<HTMLCanvasElement | null>
   heat: RefObject<HTMLCanvasElement | null>
   objectives: RefObject<HTMLCanvasElement | null>
@@ -80,6 +81,7 @@ export interface SceneInks {
   shroud: Inks['shroud']
   self: Inks['self']
   labelStroke: Inks['labelStroke']
+  markerOutline: Inks['markerOutline']
 }
 
 /** Les poses d'équipement et les failles, tels que `useReplayPlacements` les sert. */

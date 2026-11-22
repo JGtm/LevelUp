@@ -16,6 +16,9 @@ use crate::secret::Secret;
 
 /// Variable qui porte le secret d'entree.
 pub const ENV_DESKTOP_SECRET: &str = "LEVELUP_DESKTOP_SECRET";
+/// Variable qui porte le chemin absolu de la coquille : le serveur le donne a la tache planifiee, qui relance
+/// la coquille (sans console) et non le serveur (ADR 0045, L21.e).
+pub const ENV_SHELL_EXE: &str = "LEVELUP_SHELL_EXE";
 /// La commande qui demande un cycle de synchronisation immediat (stdin du serveur, D-4).
 pub const COMMAND_SYNC: &str = "sync";
 /// Les arguments du serveur : le mode, et l'arret a la fermeture de stdin. Jamais le secret.
@@ -31,6 +34,8 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// Ce qu'il faut pour lancer le serveur.
 pub struct SidecarSpec {
     pub exe: PathBuf,
+    /// Le chemin de la coquille elle-meme (`current_exe`), pose au serveur dans `LEVELUP_SHELL_EXE`.
+    pub shell_exe: PathBuf,
     pub roots: Roots,
     pub secret: Secret,
     /// Variables supplementaires posees telles quelles apres celles du contrat. La coquille livree
@@ -40,20 +45,14 @@ pub struct SidecarSpec {
 }
 
 /// Construit la commande. `inherited` est l'environnement de la coquille (injecte pour les tests) :
-/// les variables `LEVELUP_*` et `SPNKR_*` qu'il porte sont retirees, puis les quatre variables du
+/// les variables `LEVELUP_*` et `SPNKR_*` qu'il porte sont retirees, puis les cinq variables du
 /// contrat sont posees.
 pub fn build_command(spec: &SidecarSpec, inherited: impl IntoIterator<Item = (OsString, OsString)>) -> Command {
     let mut cmd = Command::new(&spec.exe);
     cmd.args(SERVER_ARGS).current_dir(&spec.roots.resources);
-    for (name, _) in inherited {
-        if is_stripped(&name) {
-            cmd.env_remove(&name);
-        }
-    }
-    cmd.env(ENV_RESOURCES_DIR, &spec.roots.resources)
-        .env(ENV_DATA_DIR, &spec.roots.data)
-        .env(ENV_LOGS_DIR, &spec.roots.logs)
-        .env(ENV_DESKTOP_SECRET, spec.secret.expose());
+    apply_roots_env(&mut cmd, inherited, &spec.roots);
+    cmd.env(ENV_DESKTOP_SECRET, spec.secret.expose())
+        .env(ENV_SHELL_EXE, &spec.shell_exe);
     if let Some(web_dist) = &spec.roots.web_dist {
         cmd.env(ENV_WEB_DIST, web_dist);
     }
@@ -61,12 +60,32 @@ pub fn build_command(spec: &SidecarSpec, inherited: impl IntoIterator<Item = (Os
         cmd.env(name, value);
     }
     cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    hide_window(&mut cmd);
+    cmd
+}
+
+/// Retire de `cmd` les variables `LEVELUP_*` et `SPNKR_*` que `inherited` (l'environnement de la coquille)
+/// porte, puis pose les trois racines du contrat. Commun au serveur normal et au relais `--refresh-only`.
+pub fn apply_roots_env(cmd: &mut Command, inherited: impl IntoIterator<Item = (OsString, OsString)>, roots: &Roots) {
+    for (name, _) in inherited {
+        if is_stripped(&name) {
+            cmd.env_remove(&name);
+        }
+    }
+    cmd.env(ENV_RESOURCES_DIR, &roots.resources)
+        .env(ENV_DATA_DIR, &roots.data)
+        .env(ENV_LOGS_DIR, &roots.logs);
+}
+
+/// Le processus lance n'ouvre aucune fenetre de console (`CREATE_NO_WINDOW`) ; sans effet hors Windows.
+pub fn hide_window(cmd: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd
+    #[cfg(not(windows))]
+    let _ = cmd;
 }
 
 /// Vrai pour une variable d'environnement a ne pas transmettre (insensible a la casse : les noms
@@ -161,6 +180,7 @@ mod tests {
         let base = std::env::temp_dir();
         SidecarSpec {
             exe: base.join("levelup-server.exe"),
+            shell_exe: base.join("LevelUp.exe"),
             roots: Roots {
                 resources: base.join("res"),
                 data: base.join("data"),
@@ -218,6 +238,18 @@ mod tests {
         assert_eq!(envs[&os(ENV_DATA_DIR)], Some(spec.roots.data.clone().into_os_string()));
         assert_eq!(envs[&os(ENV_LOGS_DIR)], Some(spec.roots.logs.clone().into_os_string()));
         assert_eq!(envs[&os(ENV_DESKTOP_SECRET)], Some(os(spec.secret.expose())));
+    }
+
+    #[test]
+    fn la_coquille_donne_son_propre_chemin_au_serveur_et_une_valeur_heritee_est_ecrasee() {
+        let spec = spec();
+        let inherited = vec![(os(ENV_SHELL_EXE), os("ailleurs"))];
+        let cmd = build_command(&spec, inherited);
+        let envs: HashMap<OsString, Option<OsString>> = cmd
+            .get_envs()
+            .map(|(k, v)| (k.to_os_string(), v.map(OsStr::to_os_string)))
+            .collect();
+        assert_eq!(envs[&os(ENV_SHELL_EXE)], Some(spec.shell_exe.clone().into_os_string()));
     }
 
     #[test]

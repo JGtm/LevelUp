@@ -2234,6 +2234,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/background.relief.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert les données du relief du fond de carte du rejeu 2D
+         * @description Données du relief de la carte du match, cuites hors ligne par `cmd/mapfond-build` : bornes de
+         *     hauteur, étages détectés, traits. Rangées en JSON compressé sur disque, elles sont servies en
+         *     clair (la compression de transport est celle du serveur). Un fichier de version de schéma
+         *     inconnue ou au calage différent de celui du fond est tenu pour absent. Elles vont avec l'image du relief
+         *     (`background.png?variante=relief`), dans le même cadre et au même calage.
+         */
+        get: operations["getMatchReplayBackgroundReliefData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}/replay/callouts": {
         parameters: {
             query?: never;
@@ -3803,6 +3827,29 @@ export interface paths {
          *     donnée de référence versionnée, pas une trajectoire décodée d'un film.
          */
         get: operations["getTacticalMapBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/background.relief.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert les données du relief du fond d'une carte de l'onglet Tactique
+         * @description Données du relief d'une carte (JSON servi en clair), résolues par la même cascade que le fond mais
+         *     adressées par `map_id`. Elles vont avec l'image du relief
+         *     (`background.png?variante=relief`). Comme le fond, cette route n'est PAS restreinte à la
+         *     boucle locale : c'est une donnée de référence versionnée.
+         */
+        get: operations["getTacticalMapBackgroundReliefData"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9037,6 +9084,8 @@ export interface components {
             module: string;
             plan?: components["schemas"]["MapBackgroundPlan"];
             planImage?: string;
+            reliefData?: string;
+            reliefImage?: string;
             /** Format: int64 */
             schemaVersion: number;
             source: string;
@@ -11370,6 +11419,8 @@ export interface components {
              * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
              */
             cooldown_retry_after_s: number;
+            /** @description Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé. */
+            history_complete: boolean;
             /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
             job?: components["schemas"]["AsyncJobStatus"];
             player_slug: string;
@@ -20389,9 +20440,11 @@ export interface operations {
                 /**
                  * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
                  *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
-                 *     fond, à superposer). Toute autre valeur est refusée.
+                 *     fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+                 *     dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+                 *     autre valeur est refusée.
                  */
-                variante?: "plan";
+                variante?: "plan" | "relief";
             };
             header?: never;
             path: {
@@ -20402,7 +20455,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -20416,7 +20469,44 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan) */
+            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante`, aucun plan ni relief) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchReplayBackgroundReliefData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données du relief (JSON), avec ETag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Données inchangées (`If-None-Match`) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match, pas de relief, ou relief périmé */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -23555,9 +23645,11 @@ export interface operations {
                 /**
                  * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
                  *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
-                 *     fond, à superposer). Toute autre valeur est refusée.
+                 *     fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+                 *     dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+                 *     autre valeur est refusée.
                  */
-                variante?: "plan";
+                variante?: "plan" | "relief";
             };
             header?: never;
             path: {
@@ -23568,7 +23660,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -23582,7 +23674,44 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan) */
+            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante`, aucun plan ni relief) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTacticalMapBackgroundReliefData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données du relief (JSON), avec ETag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Données inchangées (`If-None-Match`) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte, pas de relief, ou relief périmé */
             404: {
                 headers: {
                     [name: string]: unknown;

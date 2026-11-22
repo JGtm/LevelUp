@@ -99,6 +99,17 @@ func (e *environnement) echelleDe(cle string) float64 {
 	return e.echelle
 }
 
+// echelleImposeeOuDe rend `imposee` si elle est positive, sinon l'échelle de la carte (`echelleDe`) :
+// `-relief-seul` impose celle du fond publié, que ni le défaut, ni un levier, ni `-mpp` ne doivent
+// déplacer. Une échelle explicite l'emporte aussi sur la cible de cadre automatique de la brique
+// (`EchellePourCadre`).
+func (e *environnement) echelleImposeeOuDe(cle string, imposee float64) float64 {
+	if imposee > 0 {
+		return imposee
+	}
+	return e.echelleDe(cle)
+}
+
 // zonesNommeesDe rend les polygones des callouts d'une carte : le contour principal de chaque
 // zone, plus ses PARTIES (provenance « decoupe »).
 //

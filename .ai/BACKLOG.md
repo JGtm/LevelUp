@@ -69,6 +69,36 @@
 
 ---
 
+### [sync/journal] Alerte « zero-insert prolongé » qui sonne à chaque cycle en prod
+
+**Relevé le 2026-11-22** (plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
+
+---
+
+### [sync/h5] Match Halo 5 rangé sans participants ni chronologie, jamais repris
+
+**Relevé le 2026-11-22** (revue de `fix/sync-historique-complet`). Un échec carnage ou events (5xx passager) range le match en registre seul ; `EventsFailed` / `CarnageFailed` ne comptent pas comme erreurs du cycle (`games/halo_5/capture.go`, `livesync/runner.go`), et ni le delta ni le rattrapage ne reprennent un match connu. Préexistant.
+
+---
+
+### [archlint] Garde « tout enfant naît par childproc » sans objet sur les briques
+
+**Relevé le 2026-11-22**. `archlint/childproc_single_spawn_test.go` balaie encore `libs/...`, absent depuis la bascule des briques : leur code n'est plus gardé (balayage du 2026-11-22 : aucune ne lance de processus). `pkg/duckdbbackup` lance restic par `exec` nu, hors garde (`pkg/` exclu ; jamais lancé sur le bureau).
+
+---
+
+### [match/objectifs] Éliminations liées à l'objectif sur la fiche de match
+
+**Relevé le 2026-11-22** (audit : `.ai/annexes_decodeur_1118/audit_objectifs_levelup.md`). La base porte déjà, par joueur et par match, les statistiques de l'API : porteurs éliminés, éliminations de ceux qui ramènent le drapeau, éliminations en attaque et en défense d'une zone, aides à l'élimination du VIP. La section Objectifs de la fiche de match n'en affiche qu'une (éliminations du VIP) ; l'onglet Objectif de l'Escouade les exploite déjà (familles prendre et défendre). Demande : les afficher aussi sur la fiche de match, par mode, et dans les séries temporelles si elles y ont un sens. Ne dépend pas du décodeur. **Effort : S à M.**
+
+---
+
+### [décodeur/VIP] Durées et meilleure série en tant que VIP
+
+**Relevé le 2026-11-22** (plan `.ai/PLAN_DECODEUR_2026-11-18.md`, item C.6). Le film écrit, en VIP, le temps passé en VIP, le plus long temps en VIP (dixièmes de seconde, réécrits toutes les 100 ms) et la meilleure série en VIP. Ce sont des durées et un maximum, pas des événements : ils ne se publient pas comme des actions. Les publier demande une courbe par joueur comme les autres compteurs du tableau, et que l'hôte indique au décodeur que le match est un VIP. Écarté de la v1.5.0 avec l'accord du user. **Effort : M.**
+
+---
+
 ### [outillage] disk-hygiene supprime les worktrees enregistrés sous C:/t et les clones git à commits non poussés
 
 **Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).

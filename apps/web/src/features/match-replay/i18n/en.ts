@@ -2,6 +2,7 @@
 import type { ReplayText } from './i18nContract'
 import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_LIVES } from './lives.i18n'
+import { EN_RELIEF } from './relief.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 import { EN_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
@@ -87,6 +88,7 @@ export const EN_TEXT = {
   roster: EN_ROSTER,
   playerInstant: EN_PLAYER_INSTANT,
   lives: EN_LIVES,
+  relief: EN_RELIEF,
   respawnForecast: EN_RESPAWN_FORECAST,
   feedLines: EN_FEED_LINES,
   killFeedNoAssistHint:

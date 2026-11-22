@@ -1,4 +1,4 @@
-{"variant":"vehicules","instant":"debut","frame":1235,"opCount":3794}
+{"variant":"vehicules","instant":"debut","frame":1235,"opCount":3922}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,720]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":29279,"sha":"807bafcddbe52687d70e12d22cf51158ed1e1986dc4dcaf84e26f634d32f517e"}},3.552713678800501e-15,-1.7763568394002505e-14,960,720]}
@@ -2287,9 +2287,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[607.3775001921748,664.3861941732647]}
+{"op":"arc","args":[602.2775001921748,664.3861941732647,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[606.4275001921748,664.3861941732647]}
+{"op":"arc","args":[602.2775001921748,664.3861941732647,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[606.6775001921748,664.3861941732647]}
 {"op":"arc","args":[602.2775001921748,664.3861941732647,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2305,12 +2313,20 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueu r0087",602.2775001921748,671.2861941732647]}
+{"op":"strokeText","args":["Joueu r0087",602.2775001921748,671.9861941732647]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueu r0087",602.2775001921748,671.2861941732647]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"fillText","args":["Joueu r0087",602.2775001921748,671.9861941732647]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[276.0976170343609,110.2147743869629]}
+{"op":"arc","args":[270.99761703436087,110.2147743869629,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[275.14761703436085,110.2147743869629]}
+{"op":"arc","args":[270.99761703436087,110.2147743869629,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[275.39761703436085,110.2147743869629]}
 {"op":"arc","args":[270.99761703436087,110.2147743869629,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2326,9 +2342,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000199",270.99761703436087,117.1147743869629]}
+{"op":"strokeText","args":["Joueur000000199",270.99761703436087,117.8147743869629]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000000199",270.99761703436087,117.1147743869629]}
+{"op":"fillText","args":["Joueur000000199",270.99761703436087,117.8147743869629]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.12230769230769231]}
@@ -2412,12 +2428,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[541.5837180594431,538.5781969948407,6.5,0,6.283185307179586]}
+{"op":"arc","args":[541.5837180594431,538.5781969948407,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[547.383718059443,538.5781969948407]}
+{"op":"arc","args":[541.5837180594431,538.5781969948407,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[546.4337180594431,538.5781969948407]}
+{"op":"arc","args":[541.5837180594431,538.5781969948407,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[546.6837180594431,538.5781969948407]}
 {"op":"arc","args":[541.5837180594431,538.5781969948407,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2433,9 +2457,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur0044",541.5837180594431,548.0781969948407]}
+{"op":"strokeText","args":["Joueur0044",541.5837180594431,548.5781969948407]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur0044",541.5837180594431,548.0781969948407]}
+{"op":"fillText","args":["Joueur0044",541.5837180594431,548.5781969948407]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.12230769230769231]}
@@ -2519,12 +2543,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[447.4983472980245,417.49050657237296,6.5,0,6.283185307179586]}
+{"op":"arc","args":[447.4983472980245,417.49050657237296,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[453.2983472980245,417.49050657237296]}
+{"op":"arc","args":[447.4983472980245,417.49050657237296,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[452.3483472980245,417.49050657237296]}
+{"op":"arc","args":[447.4983472980245,417.49050657237296,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[452.5983472980245,417.49050657237296]}
 {"op":"arc","args":[447.4983472980245,417.49050657237296,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2540,9 +2572,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur0097",447.4983472980245,426.99050657237296]}
+{"op":"strokeText","args":["Joueur0097",447.4983472980245,427.49050657237296]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur0097",447.4983472980245,426.99050657237296]}
+{"op":"fillText","args":["Joueur0097",447.4983472980245,427.49050657237296]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.12230769230769231]}
@@ -2626,12 +2658,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[365.8815751990704,372.72422259702563,6.5,0,6.283185307179586]}
+{"op":"arc","args":[365.8815751990704,372.72422259702563,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[371.68157519907044,372.72422259702563]}
+{"op":"arc","args":[365.8815751990704,372.72422259702563,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[370.73157519907045,372.72422259702563]}
+{"op":"arc","args":[365.8815751990704,372.72422259702563,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[370.98157519907045,372.72422259702563]}
 {"op":"arc","args":[365.8815751990704,372.72422259702563,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2647,9 +2687,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000 0034",365.8815751990704,382.22422259702563]}
+{"op":"strokeText","args":["Joueur000 0034",365.8815751990704,382.72422259702563]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000 0034",365.8815751990704,382.22422259702563]}
+{"op":"fillText","args":["Joueur000 0034",365.8815751990704,382.72422259702563]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -2738,12 +2778,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[445.45791375201793,497.55815204858175,6.5,0,6.283185307179586]}
+{"op":"arc","args":[445.45791375201793,497.55815204858175,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[451.25791375201794,497.55815204858175]}
+{"op":"arc","args":[445.45791375201793,497.55815204858175,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[450.30791375201795,497.55815204858175]}
+{"op":"arc","args":[445.45791375201793,497.55815204858175,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[450.55791375201795,497.55815204858175]}
 {"op":"arc","args":[445.45791375201793,497.55815204858175,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2759,9 +2807,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000176",445.45791375201793,507.05815204858175]}
+{"op":"strokeText","args":["Joueur000000176",445.45791375201793,507.55815204858175]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000000176",445.45791375201793,507.05815204858175]}
+{"op":"fillText","args":["Joueur000000176",445.45791375201793,507.55815204858175]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.21750000000000003]}
@@ -2800,12 +2848,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[361.84856637712363,196.37789222845726,6.5,0,6.283185307179586]}
+{"op":"arc","args":[361.84856637712363,196.37789222845726,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[367.64856637712364,196.37789222845726]}
+{"op":"arc","args":[361.84856637712363,196.37789222845726,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[366.69856637712365,196.37789222845726]}
+{"op":"arc","args":[361.84856637712363,196.37789222845726,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[366.94856637712365,196.37789222845726]}
 {"op":"arc","args":[361.84856637712363,196.37789222845726,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2821,9 +2877,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur00010",361.84856637712363,205.87789222845726]}
+{"op":"strokeText","args":["Joueur00010",361.84856637712363,206.37789222845726]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur00010",361.84856637712363,205.87789222845726]}
+{"op":"fillText","args":["Joueur00010",361.84856637712363,206.37789222845726]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -2912,12 +2968,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[407.0867860711815,140.7244215543086,6.5,0,6.283185307179586]}
+{"op":"arc","args":[407.0867860711815,140.7244215543086,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[412.8867860711815,140.7244215543086]}
+{"op":"arc","args":[407.0867860711815,140.7244215543086,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[411.93678607118153,140.7244215543086]}
+{"op":"arc","args":[407.0867860711815,140.7244215543086,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[412.18678607118153,140.7244215543086]}
 {"op":"arc","args":[407.0867860711815,140.7244215543086,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2933,9 +2997,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Jo ue ur136",407.0867860711815,150.2244215543086]}
+{"op":"strokeText","args":["Jo ue ur136",407.0867860711815,150.7244215543086]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Jo ue ur136",407.0867860711815,150.2244215543086]}
+{"op":"fillText","args":["Jo ue ur136",407.0867860711815,150.7244215543086]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -3020,25 +3084,33 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"createRadialGradient","args":[576.4944269351988,363.4078126907616,0,576.4944269351988,363.4078126907616,11.3]}
+{"op":"createRadialGradient","args":[576.4944269351988,363.4078126907616,0,576.4944269351988,363.4078126907616,13.7]}
 {"op":"addColorStop","args":[0,"#7dcbc2"]}
 {"op":"addColorStop","args":[1,"transparent"]}
 {"op":"set globalAlpha","args":[0.22]}
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[576.4944269351988,363.4078126907616,11.3,0,6.283185307179586]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,13.7,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[576.4944269351988,363.4078126907616,6.5,0,6.283185307179586]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[582.2944269351988,363.4078126907616]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[581.3444269351988,363.4078126907616]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[581.5944269351988,363.4078126907616]}
 {"op":"arc","args":[576.4944269351988,363.4078126907616,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3051,12 +3123,12 @@
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineWidth","args":[1.5]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[576.4944269351988,363.4078126907616,6.699999999999999,0,6.283185307179586]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,9.1,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[0.75]}
 {"op":"set lineWidth","args":[0.75]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[576.4944269351988,363.4078126907616,9.1,0,6.283185307179586]}
+{"op":"arc","args":[576.4944269351988,363.4078126907616,11.5,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set font","args":["600 8.5px ui-sans-serif, system-ui, sans-serif"]}
@@ -3066,9 +3138,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000040",576.4944269351988,377.2078126907616]}
+{"op":"strokeText","args":["Joueur000000040",576.4944269351988,379.6078126907616]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000000040",576.4944269351988,377.2078126907616]}
+{"op":"fillText","args":["Joueur000000040",576.4944269351988,379.6078126907616]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -3157,12 +3229,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[443.6725343992621,423.847490199093,6.5,0,6.283185307179586]}
+{"op":"arc","args":[443.6725343992621,423.847490199093,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[449.4725343992621,423.847490199093]}
+{"op":"arc","args":[443.6725343992621,423.847490199093,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[448.5225343992621,423.847490199093]}
+{"op":"arc","args":[443.6725343992621,423.847490199093,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[448.7725343992621,423.847490199093]}
 {"op":"arc","args":[443.6725343992621,423.847490199093,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3178,9 +3258,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Jou eur0 073",443.6725343992621,433.347490199093]}
+{"op":"strokeText","args":["Jou eur0 073",443.6725343992621,433.847490199093]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Jou eur0 073",443.6725343992621,433.347490199093]}
+{"op":"fillText","args":["Jou eur0 073",443.6725343992621,433.847490199093]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -3269,12 +3349,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[402.21435838537127,510.1063245807202,6.5,0,6.283185307179586]}
+{"op":"arc","args":[402.21435838537127,510.1063245807202,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[408.0143583853713,510.1063245807202]}
+{"op":"arc","args":[402.21435838537127,510.1063245807202,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[407.0643583853713,510.1063245807202]}
+{"op":"arc","args":[402.21435838537127,510.1063245807202,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[407.3143583853713,510.1063245807202]}
 {"op":"arc","args":[402.21435838537127,510.1063245807202,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3290,9 +3378,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur00148",402.21435838537127,519.6063245807202]}
+{"op":"strokeText","args":["Joueur00148",402.21435838537127,520.1063245807202]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur00148",402.21435838537127,519.6063245807202]}
+{"op":"fillText","args":["Joueur00148",402.21435838537127,520.1063245807202]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.12230769230769231]}
@@ -3372,9 +3460,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[473.1886083390233,396.05171080654577]}
+{"op":"arc","args":[468.08860833902327,396.05171080654577,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[472.23860833902324,396.05171080654577]}
+{"op":"arc","args":[468.08860833902327,396.05171080654577,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[472.48860833902324,396.05171080654577]}
 {"op":"arc","args":[468.08860833902327,396.05171080654577,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3390,12 +3486,20 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur00081",468.08860833902327,402.95171080654575]}
+{"op":"strokeText","args":["Joueur00081",468.08860833902327,403.6517108065458]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur00081",468.08860833902327,402.95171080654575]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"fillText","args":["Joueur00081",468.08860833902327,403.6517108065458]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[325.73955722961034,111.1445922053963]}
+{"op":"arc","args":[320.6395572296103,111.1445922053963,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[324.7895572296103,111.1445922053963]}
+{"op":"arc","args":[320.6395572296103,111.1445922053963,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[325.0395572296103,111.1445922053963]}
 {"op":"arc","args":[320.6395572296103,111.1445922053963,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3411,9 +3515,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur0000202",320.6395572296103,118.0445922053963]}
+{"op":"strokeText","args":["Joueur0000202",320.6395572296103,118.74459220539629]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur0000202",320.6395572296103,118.0445922053963]}
+{"op":"fillText","args":["Joueur0000202",320.6395572296103,118.74459220539629]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.12583333333333335]}
@@ -3488,9 +3592,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[427.5941104122486,326.5128847449503]}
+{"op":"arc","args":[422.4941104122486,326.5128847449503,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[426.64411041224855,326.5128847449503]}
+{"op":"arc","args":[422.4941104122486,326.5128847449503,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[426.89411041224855,326.5128847449503]}
 {"op":"arc","args":[422.4941104122486,326.5128847449503,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3506,9 +3618,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur0000042",422.4941104122486,333.4128847449503]}
+{"op":"strokeText","args":["Joueur0000042",422.4941104122486,334.11288474495035]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur0000042",422.4941104122486,333.4128847449503]}
+{"op":"fillText","args":["Joueur0000042",422.4941104122486,334.11288474495035]}
 {"op":"set strokeStyle","args":["#72ab77"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.13]}
@@ -3571,12 +3683,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[563.0941113166,543.7165039587978,6.5,0,6.283185307179586]}
+{"op":"arc","args":[563.0941113166,543.7165039587978,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[568.8941113166,543.7165039587978]}
+{"op":"arc","args":[563.0941113166,543.7165039587978,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[567.9441113166,543.7165039587978]}
+{"op":"arc","args":[563.0941113166,543.7165039587978,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[568.1941113166,543.7165039587978]}
 {"op":"arc","args":[563.0941113166,543.7165039587978,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3592,9 +3712,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000000095",563.0941113166,553.2165039587978]}
+{"op":"strokeText","args":["Joueur000000095",563.0941113166,553.7165039587978]}
 {"op":"set fillStyle","args":["#72ab77"]}
-{"op":"fillText","args":["Joueur000000095",563.0941113166,553.2165039587978]}
+{"op":"fillText","args":["Joueur000000095",563.0941113166,553.7165039587978]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.1192857142857143]}
@@ -3683,12 +3803,20 @@
 {"op":"set lineWidth","args":[1]}
 {"op":"set globalAlpha","args":[0.9]}
 {"op":"beginPath","args":[]}
-{"op":"arc","args":[342.14691186644546,204.18106921452573,6.5,0,6.283185307179586]}
+{"op":"arc","args":[342.14691186644546,204.18106921452573,7,0,6.283185307179586]}
 {"op":"stroke","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[347.9469118664455,204.18106921452573]}
+{"op":"arc","args":[342.14691186644546,204.18106921452573,5.8,0,6.283185307179586]}
+{"op":"moveTo","args":[346.9969118664455,204.18106921452573]}
+{"op":"arc","args":[342.14691186644546,204.18106921452573,4.85,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[347.2469118664455,204.18106921452573]}
 {"op":"arc","args":[342.14691186644546,204.18106921452573,5.1,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3704,9 +3832,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur90002",342.14691186644546,213.68106921452573]}
+{"op":"strokeText","args":["Joueur90002",342.14691186644546,214.18106921452573]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur90002",342.14691186644546,213.68106921452573]}
+{"op":"fillText","args":["Joueur90002",342.14691186644546,214.18106921452573]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineCap","args":["round"]}
 {"op":"set strokeStyle","args":["#7604ad"]}

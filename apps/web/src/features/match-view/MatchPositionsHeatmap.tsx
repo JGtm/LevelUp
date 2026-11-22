@@ -39,6 +39,7 @@ import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { Button } from '@/components/ui/button'
+import { RELIEF_VIEW_TEXT } from '@/components/map-relief/text'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchPlayerPosition } from '@/lib/api/types'
@@ -58,15 +59,18 @@ import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 import { useContentWidth } from '@/lib/replay/useContentWidth'
 import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import { isWallPlanDrawn, resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { splitPositionsByCut } from '@/lib/replay/reliefViewLogic'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import { hasPositions } from './blockPredicates'
 
-import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
+import { buildPositionsGrid, hasTeamSplit, mapFrame, positionsCellSize } from './_positionsHeat'
 import { peindreLesPositions } from './_positionsPaint'
 import { boiteDeLOccupation, dimensionsDuCadre, PLAN_MAX_HEIGHT_REM, PLAN_MAX_WIDTH_PCT } from './_positionsZone'
+import { OccupationReliefControls } from './OccupationReliefControls'
 import { useMatchView } from './queries'
+import { useOccupationRelief } from './useOccupationRelief'
 
 type TeamFilter = 'all' | 0 | 1
 
@@ -85,6 +89,7 @@ const TEXT = {
     team1: 'Équipe B',
     tactics: 'Tactique',
     tacticsLabel: 'Ouvrir cette carte dans l’onglet Tactique',
+    hiddenPositions: (n: number, total: number) => `Positions hors de l’étage choisi : masquées (${n} sur ${total}).`,
     narrative:
       'Les endroits de la carte les plus occupés pendant ce match, toutes équipes confondues ou par équipe ; plus la teinte est chaude, plus le temps passé est long.',
   },
@@ -95,6 +100,7 @@ const TEXT = {
     team1: 'Team B',
     tactics: 'Tactics',
     tacticsLabel: 'Open this map in the Tactics tab',
+    hiddenPositions: (n: number, total: number) => `Positions outside the chosen floor: hidden (${n} of ${total}).`,
     narrative:
       'The busiest spots of the map during this match, all teams together or by team; the hotter the shade, the longer the time spent.',
   },
@@ -119,23 +125,32 @@ export function MatchPositionsHeatmap({
   // rejeu s'applique à la zone de CE bloc (`zoneRef` : sa largeur utile ; `boiteDeLOccupation`). La scène du zoom
   // est celle de la carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
   const { width: largeurUtile, ref: zoneRef } = useContentWidth()
-  const { turns, showWallPlan, backgroundStyle } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id, {
+  const mapId = useMatchView(playerSlug, matchId).data?.header.map_id
+  const { turns, showWallPlan, backgroundStyle, setBackgroundStyle } = useMapViewPreferences(mapId, {
     carte: dimensionsDuCadre(frame),
     boite: boiteDeLOccupation(largeurUtile),
   })
   const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
   // Les murs se décident sur la variante RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
   const { image, variante } = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0, demandee)
+  // LE RELIEF ET LA COUPE PAR ÉTAGE : le fond de base (plan ou rendu) devient le relief, ou reste posé modulé par la coupe ;
+  // les positions hors de l'étage choisi sont masquées, et le bloc dit combien.
+  const relief = useOccupationRelief({
+    playerSlug, matchId, mapId: mapId ?? '', background, style: backgroundStyle, turns, base: { image, variante },
+  })
 
   const teamSplit = useMemo(() => hasTeamSplit(all), [all])
-  const filtered = useMemo(
+  const parEquipe = useMemo(
     () => (teamFilter === 'all' ? all : all.filter((p) => p.team === teamFilter)),
     [all, teamFilter],
   )
-  const grid = useMemo(
-    () => (frame ? buildPositionsGrid(filtered, frame) : null),
-    [filtered, frame],
+  const { kept: filtered, hidden } = useMemo(
+    () => splitPositionsByCut(parEquipe, relief.mesh, relief.floor.cut),
+    [parEquipe, relief.mesh, relief.floor.cut],
   )
+  // La porte 3 se juge AVANT la coupe : un étage sans position ne retire pas le bloc (et ses commandes) de l'écran.
+  const gridDuCadre = useMemo(() => (frame ? buildPositionsGrid(parEquipe, frame) : null), [parEquipe, frame])
+  const grid = useMemo(() => (frame ? buildPositionsGrid(filtered, frame) : null), [filtered, frame])
   // La MÊME chaleur lisse que la Tactique (`lib/replay/chaleurLissee.ts`) : des zones, pas des carrés.
   const lissee = useMemo(() => (grid ? lisserLaGrille(grid) : null), [grid])
 
@@ -164,10 +179,11 @@ export function MatchPositionsHeatmap({
         : { minX: 0, maxX: 1, minY: 0, maxY: 1, minZ: 0, maxZ: 0 },
     [frame],
   )
-  // Les murs sont déjà dans l'image plan : le calque des murs ne se trace que sur le rendu.
+  // Les murs sont déjà dans l'image plan : le calque des murs ne se trace que sur le rendu et sur le relief.
+  const surface = relief.surface
   const plan = useMemo(
-    () => (isWallPlanDrawn(showWallPlan, variante) ? normalizeWallPlan(background?.plan) : null),
-    [showWallPlan, variante, background],
+    () => (isWallPlanDrawn(showWallPlan, relief.drawn) ? normalizeWallPlan(background?.plan) : null),
+    [showWallPlan, relief.drawn, background],
   )
   const scene: ReplayBounds = useMemo(() => orientBounds(monde, turns), [monde, turns])
   const pivot = useMemo(() => pivotOf(monde), [monde])
@@ -210,7 +226,7 @@ export function MatchPositionsHeatmap({
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !grid || !frame || !image) return
+    if (!canvas || !gridDuCadre || !frame || !image) return
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     if (width <= 0 || height <= 0) return
@@ -220,13 +236,13 @@ export function MatchPositionsHeatmap({
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
     peindreLesPositions(ctx, width, height, {
-      frame, image, lissee, cell: grid.cell, ramp, bounds, turns, pivot, plan, ink: getComputedStyle(canvas).color,
+      frame, image: surface?.image ?? image, lissee, cell: positionsCellSize(frame), ramp, bounds, turns, pivot, plan, reliefLines: relief.linesLayer, ink: getComputedStyle(canvas).color,
     })
-  }, [grid, lissee, frame, image, ramp, bounds, turns, pivot, plan])
+  }, [gridDuCadre, lissee, frame, image, surface, relief.linesLayer, ramp, bounds, turns, pivot, plan])
 
   // Portes 1 à 3 : rien à montrer, et rien à promettre. La première est le prédicat que le
   // parent lit aussi pour poser (ou non) son titre de section.
-  if (!hasPositions(all) || !frame || !grid) return null
+  if (!hasPositions(all) || !frame || !gridDuCadre) return null
 
   return (
     <SectionCard
@@ -262,6 +278,7 @@ export function MatchPositionsHeatmap({
       })}
     >
       <div ref={zoneRef} className="p-3">
+        <OccupationReliefControls text={RELIEF_VIEW_TEXT[locale]} relief={relief} onSelectBackground={setBackgroundStyle} />
         {/* Le cadre prend le RAPPORT DU MONDE (bornes du fond), jamais un 16:9 : le calque et
             l'image se désaligneraient sur l'axe rogné (même règle que `TacticalPlanCard`). */}
         <div
@@ -287,6 +304,11 @@ export function MatchPositionsHeatmap({
               surimpression dans l'angle bas-droit : aucune place prise dans la mise en page. */}
           <ReplayZoomControl zoom={zoom} locale={locale} />
         </div>
+        {relief.floor.cut !== null && (
+          <p role="status" aria-live="polite" className="mt-2 text-center text-xs text-muted-foreground" data-testid="match-positions-hidden">
+            {t.hiddenPositions(hidden, parEquipe.length)}
+          </p>
+        )}
       </div>
     </SectionCard>
   )

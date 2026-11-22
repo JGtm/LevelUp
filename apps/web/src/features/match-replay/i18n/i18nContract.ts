@@ -16,6 +16,7 @@ import type { FeedLinesText } from './feedLines.i18n'
 import type { EquipmentUsageText } from './equipmentUsage.i18n'
 import type { FramesText } from './frames.i18n'
 import type { LivesText } from './lives.i18n'
+import type { ReliefText } from './relief.i18n'
 import type { PlayerInstantText } from './playerInstant.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { RespawnForecastText } from './respawnForecast.i18n'
@@ -200,6 +201,8 @@ export interface ReplayText {
   playerInstant: PlayerInstantText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
+  /** Le fond « Relief », ses traits et la commande d'étage du panneau de la vue : `relief.i18n.ts`. */
+  relief: ReliefText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
   respawnForecast: RespawnForecastText
   /** Les lignes d'objectif du fil hors action nommée (badge, assistances, manche, crâne, colline) : `feedLines.i18n.ts`. */

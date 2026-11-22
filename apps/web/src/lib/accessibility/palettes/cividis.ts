@@ -20,6 +20,7 @@
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
 import { IMPACT_BLUE_VERMILLION } from './_impactRoleColors'
+import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 // Échantillons Cividis aux positions t = 0.00, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 1.00
 // Source : nuñez/cividis lookup table (PLOS ONE 2018, supplément S1)
@@ -224,6 +225,10 @@ export const cividisPalette: Palette = {
   'heatmap-divergent-high': SAFE_BLUE,
   'heatmap-freq-low':       '#00204D', // fréquence faible — navy cividis (séquentiel CVD-safe)
   'heatmap-freq-high':      '#FFEA46', // fréquence forte  — jaune cividis (séquentiel CVD-safe)
+
+  // ── Fond Relief et cerne des pions ──────────────────────────────────
+  'map-relief-base': '#3F8C4F', // Vert
+  ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — axe blue/vermillion CVD-safe ─────────────────────────────────
   'team-ally':  SAFE_BLUE,       // overridable via settings accessibilité

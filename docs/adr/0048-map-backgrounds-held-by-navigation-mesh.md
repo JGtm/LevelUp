@@ -6,6 +6,8 @@ backgrounds recooked and reviewed).
 Relates to: ADR 0043 (the bricks are published; the mesh decoder and the cooking options live in them), ADR 0041
 (brick boundaries), ADR 0034 (the film decoder owns `replay.MapBackground`), ADR 0011 (adapters), ADR 0044 (the web
 client reads capabilities, not profiles).
+Amended by: ADR 0049 (2026-11-18): a third background (Relief), the "Terrain occupation" background control, Live Fire
+with a mesh, two sidecar fields (D-3, D-4, D-5, D-8).
 
 ## Vocabulary
 

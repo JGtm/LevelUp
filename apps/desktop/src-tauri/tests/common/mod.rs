@@ -220,6 +220,7 @@ pub fn launch_with_host(
     let log = Arc::new(LogSink::open(roots::desktop_log_path(roots), MAX_LOG_BYTES).expect("journal"));
     let spec = SidecarSpec {
         exe: fake_sidecar().to_path_buf(),
+        shell_exe: std::env::current_exe().expect("chemin du test"),
         roots: roots.clone(),
         secret,
         extra_env: fake_env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),

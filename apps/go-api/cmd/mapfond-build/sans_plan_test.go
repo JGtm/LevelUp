@@ -59,17 +59,15 @@ func TestMaillageForgeBlobIllisibleNeDitPasSansMaillage(t *testing.T) {
 	}
 }
 
-// fondsSansPlanAttendus : l'ensemble EXACT des fonds publiés sans plan des murs. Live Fire n'a pas de
-// maillage dans son module ; les deux variantes de Thunderhead ne publient aucun maillage (verifie le
-// 2026-11-17 par mapnav-fetch -dry-run). Une carte qui entre ou sort de cette liste est un changement
-// qui se décide, pas qui arrive.
+// fondsSansPlanAttendus : l'ensemble EXACT des fonds publiés sans plan des murs. Les deux variantes de
+// Thunderhead ne publient aucun maillage de navigation. Une carte qui entre ou sort de cette liste est
+// un changement qui se décide, pas qui arrive.
 var fondsSansPlanAttendus = []string{
 	"28a3ac28-f69d-4fa9-9ebf-a0449c89c8da", // Thunderhead
 	"37bc3df6-93e8-4d74-b16e-5ceaa30ebc23", // Thunderhead Heavies
-	"sgh_interlock",                        // Live Fire
 }
 
-func TestFondsPublieSansPlanSontTroisEtNommes(t *testing.T) {
+func TestFondsPublieSansPlanSontDeuxEtNommes(t *testing.T) {
 	racine, err := testutil.RepoRoot()
 	if err != nil {
 		t.Fatalf("racine du depot introuvable : %v", err)

@@ -3,8 +3,8 @@
 /**
  * Garde-rail (CLAUDE.md n°6, « à la 3e copie, centraliser » + garde-rail) : la lecture et
  * l'écriture localStorage des préférences du rejeu (son, calques, vitesse, catégories —
- * tiroir de réglages, décision du 16/08) passent par replayPreferences.ts, patron unique
- * try/catch né dans useReplaySound. Un accès direct ailleurs recopierait ce patron une
+ * tiroir de réglages, décision du 16/08) passent par replayPreferences.ts, qui réexporte le patron unique
+ * try/catch né dans useReplaySound et tenu par `lib/replay/preferenceStore.ts` (partagé avec les autres vues 2D). Un accès direct ailleurs recopierait ce patron une
  * fois de plus — le jour où la copie oublie le try, la préférence plante au lieu de
  * dégrader en silence (navigation privée notamment).
  *
@@ -18,9 +18,9 @@ import { cheminCourt, lire, nomDe, sourcesDeLaFeature } from '../test/featureFil
 
 const DIRECT_ACCESS = /\blocalStorage\.(getItem|setItem|removeItem)\(/
 
-// replayPreferences.ts EST le patron (légitime) ; useReplaySound.ts porte l'exception JSON
-// documentée ci-dessus.
-const ALLOWED = new Set(['replayPreferences.ts', 'useReplaySound.ts'])
+// useReplaySound.ts porte l'exception JSON documentée ci-dessus ; le patron lui-même (`lib/replay/preferenceStore.ts`)
+// est hors de la feature.
+const ALLOWED = new Set(['useReplaySound.ts'])
 
 describe('garde-rail : localStorage des préférences du rejeu passe par replayPreferences.ts', () => {
   it('aucun accès direct ailleurs dans la feature (hors tests, hors patron, hors exception nommée)', () => {

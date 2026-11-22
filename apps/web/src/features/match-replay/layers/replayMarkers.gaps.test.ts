@@ -7,14 +7,14 @@
  * de traînée ne relie les deux côtés de la lacune, et aucun cône de visée ne s'y dessine (la
  * visée non plus n'est pas répliquée).
  *
- * REVUE ADVERSE DU LOT (RR-L1-02, 2026-09-23) : « max(alpha) < 1 » ne prouvait ni le liseré ni le
+ * REVUE ADVERSE DU LOT (RR-L1-02, 2026-09-23) : « max(alpha) < 1 » ne prouvait ni le cerne ni le
  * retrait des anneaux d'étage — trois mutations du rendu passaient. Les cas ci-dessous comparent
- * chaque tracé du pion à son homologue HORS lacune : le liseré pâlit du même facteur que le noyau,
+ * chaque tracé du pion à son homologue HORS lacune : le cerne pâlit du même facteur que le noyau,
  * les anneaux d'étage disparaissent, et tout le pion du joueur de la page (halo, anneaux) pâlit.
  */
 import { describe, expect, it } from 'vitest'
 
-import { floorRingRadius } from './floorRings'
+import { firstFloorRingRadius } from './markerOutline'
 import { drawTracksLayer, type MarkerStyle } from './replayMarkers'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -46,7 +46,7 @@ interface StyleOpts {
 function style(frame: number, o: StyleOpts = {}): MarkerStyle {
   return {
     colorOfSlot: () => 'rgb(1 2 3)',
-    ink: 'rgb(9 9 9)',
+    outline: { band: 'rgb(9 9 9)', rim: 'rgb(250 250 250)' },
     frame,
     timing: { trail: 200, aimHold: 600, death: 20, spawn: 5 },
     z: { min: 0, max: 10 },
@@ -85,11 +85,14 @@ function alphasAtPaint(ops: CanvasOp[]): number[] {
 /** La même vie, au plus haut de la plage d'altitude : son pion porte des anneaux d'étage. */
 const TRACK_HAUT: ReplayTrackReady = { ...TRACK, points: TRACK.points.map((p) => ({ ...p, z: 10 })) }
 
+/** L'étage de `TRACK_HAUT` : le plus haut des trois (z au maximum de la plage `{ min: 0, max: 10 }`). */
+const ETAGE_HAUT = 2
+
 /** Combien d'anneaux d'étage (arcs au rayon du PREMIER anneau, k = 1) le tracé porte. */
 const floorRingArcs = (ops: CanvasOp[]) =>
-  ops.filter((o) => o.op === 'arc' && o.args[2] === floorRingRadius(1)).length
+  ops.filter((o) => o.op === 'arc' && o.args[2] === firstFloorRingRadius(ETAGE_HAUT)).length
 
-/** L'opacité en vigueur à chaque `fill` (le noyau et son liseré). */
+/** L'opacité en vigueur à chaque `fill` : le filet, la bande du cerne, puis le noyau. */
 function alphasAtFill(ops: CanvasOp[]): number[] {
   let alpha = 1
   const out: number[] = []
@@ -110,16 +113,17 @@ describe('drawTracksLayer — le pion pendant une lacune (Q14 : tenu, pâli)', (
     expect(Math.max(...alphasAtFill(paint(20)))).toBe(1)
   })
 
-  it('pendant la lacune, le noyau ET son liseré sont pâlis du même facteur', () => {
-    // Hors lacune : [liseré, noyau] = [a, 1]. Dans la lacune : [a × g, g], g < 1 — le liseré
-    // garde sa proportion au noyau (OUTLINE_ALPHA × GAP_ALPHA), il ne reste pas à pleine opacité.
-    const [lisereHors, noyauHors] = alphasAtFill(paint(20, PION_SEUL))
+  it('pendant la lacune, le noyau ET son cerne sont pâlis du même facteur', () => {
+    // Hors lacune : [filet, bande, noyau] = [1, 1, 1]. Dans la lacune : [g, g, g], g < 1 — le cerne
+    // pâlit comme le noyau, il ne reste pas à pleine opacité.
+    const hors = alphasAtFill(paint(20, PION_SEUL))
     const dansLacune = alphasAtFill(paint(60, PION_SEUL))
-    expect(dansLacune).toHaveLength(2)
-    const [lisere, noyau] = dansLacune
-    expect(noyauHors).toBe(1)
+    expect(hors).toEqual([1, 1, 1])
+    expect(dansLacune).toHaveLength(3)
+    const [filet, bande, noyau] = dansLacune
     expect(noyau).toBeLessThan(1)
-    expect(lisere).toBeCloseTo(lisereHors * noyau, 10)
+    expect(filet).toBeCloseTo(noyau, 10)
+    expect(bande).toBeCloseTo(noyau, 10)
   })
 
   it('pendant la lacune, le pion n’a plus d’anneaux d’étage', () => {
@@ -127,7 +131,7 @@ describe('drawTracksLayer — le pion pendant une lacune (Q14 : tenu, pâli)', (
     expect(floorRingArcs(paint(60, PION_SEUL, TRACK_HAUT))).toBe(0)
   })
 
-  it('pendant la lacune, TOUT le pion du joueur de la page est pâli (halo, liseré, noyau, anneaux)', () => {
+  it('pendant la lacune, TOUT le pion du joueur de la page est pâli (halo, cerne, noyau, anneaux)', () => {
     const hors = alphasAtPaint(paint(20, { ...PION_SEUL, mark: 'me' }))
     const dans = alphasAtPaint(paint(60, { ...PION_SEUL, mark: 'me' }))
     expect(Math.max(...hors), 'témoin : hors lacune, anneaux à pleine opacité').toBe(1)

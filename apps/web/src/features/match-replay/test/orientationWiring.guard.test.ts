@@ -56,7 +56,10 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
     expect(page).toMatch(/const \{ image: mapImage, variante \} = useReplayMapImage\(/)
     expect(page).toMatch(/buildMapBackgroundLayer\(\{[^}]*\bimage: mapImage, variante,/)
     expect(lire(fichierNomme('mapBackgroundLayerLogic.ts'))).toMatch(/plan: normalizeWallPlan\(background\.plan\),\s*variante,/)
-    expect(canvas()).toContain("shown: mapImage?.variante === 'plan'")
+    // Le menu reçoit le fond RÉELLEMENT posé (relief compris, ou son repli) : le plan porte déjà les murs.
+    expect(canvas()).toContain("drawn: mapImage?.variante ?? 'rendu'")
+    // Le fond posé est celui que le relief compose à partir du fond de base chargé par la page.
+    expect(canvas()).toMatch(/const mapImage = relief\.background/)
   })
 
   it('le plan des murs n’est cuit que quand son interrupteur est allumé et que le fond n’est pas déjà le plan', () => {

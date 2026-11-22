@@ -36,6 +36,8 @@
     "covered": false
   },
   "planImage": "forest.plan.webp",
+  "reliefImage": "forest.relief.webp",
+  "reliefData": "forest.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 4236,

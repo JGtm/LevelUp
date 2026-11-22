@@ -22,6 +22,8 @@ export function getReapparitionsText(m: Formateur) {
     reappQuestion: m('tactical.reapp.question') as string,
     reappPillHeld: m('tactical.reapp.pill_held'),
     reappHeldNone: m('tactical.reapp.held_none'),
+    reappHeldOffFloor: (zone: string) => m('tactical.reapp.held_off_floor', { zone }),
+    reappHeldOffFloorHint: m('tactical.reapp.held_off_floor_hint'),
     reappPlanLabel: (map: string) => m('tactical.reapp.plan_label', { map }),
     reappPlanInfo: (joueurs: number, matchs: number, reapparitions: number) =>
       m('tactical.reapp.plan_info', { rule: regle(joueurs), matchs, reapparitions }),
