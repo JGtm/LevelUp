@@ -18,6 +18,14 @@
 
 ---
 
+### [médailles du bouclier] Trois défauts P2 de la revue adversariale, non corrigés (consigne de release : P0 et P1 seulement)
+
+**Relevé le 2026-11-22** (revue de `feat/medailles-bouclier`) : (a) `apps/go-api/internal/sync/replayartifacts/usage_frags.go:38` trie les frags par `match_id, time_ms` sans départage, et `revenge.Count` dépend de l'ordre à temps égal (ajouter `, id`) ; (b) `apps/go-api/internal/sync/replayartifacts/usage_levelup.go:61` pose la révision `lu1` même quand le fil des morts ou les équipes n'ont pas été lus, donc le rattrapage (`apps/go-api/cmd/levelup/cmd_backfill_usage_summary.go:364`) saute ensuite la passe : un match récent peut ne jamais recevoir de Vengeur sans `--force` ; (c) `apps/go-api/internal/migration/steps_shared_usage_summary_medals_view.go:65-77` décide « dérivé » sur la présence d'une ligne de joueur (`revenge_kills` non NULL), donc une passe sans ligne de joueur laisse revenir les Vengeur hérités gonflés.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
 
 **Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
