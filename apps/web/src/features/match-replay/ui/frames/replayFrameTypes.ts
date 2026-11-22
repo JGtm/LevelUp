@@ -25,6 +25,7 @@ import type { ReplayLocale } from '../../i18n/i18n'
 import type { WeaponIconsByKey } from '../../model/killSourceIcons'
 import type { PlaybackStore } from '../../model/playbackStore'
 import type { ReplayModel } from '../../model/replayModel'
+import type { ReplayAntagonists } from '../../model/replayAntagonists'
 import type { EndMatchSoundSpec } from '../../sound/endMatchSound'
 
 /** Les paramètres de la route du rejeu, tels que la cible « fiche du match » les attend. */
@@ -57,6 +58,8 @@ export interface ReplayFrameView {
   playerSlug: string
   matchId: string
   model: ReplayModel
+  /** La fabrique des antagonistes du match (`useReplayAntagonists`) : chaque surface y lit l'index de son sujet. */
+  antagonists: ReplayAntagonists
   header: MatchViewHeader | undefined
   viewpoint: ReplayViewpoint
   playerPanel: PlayerPanel
