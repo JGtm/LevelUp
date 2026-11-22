@@ -1,0 +1,271 @@
+# PLAN — Antagonistes à l'instant, frise éliminations / morts, actions sur les tuiles du rejeu (2026-11-22)
+
+Statut : **écrit le 2026-11-22 à la demande du user (« variante A, fais le plan » ; livraison en 8.3.0). DU-1 à DU-4
+confirmées par le user le 2026-11-22 (« ok pour les 4 »). Aucune ligne de code écrite ; démarre après la fusion du
+backlog des 17 et 18 novembre.**
+
+Maquette de référence (validée par le user le 2026-11-22, variante A) : https://claude.ai/artifact/D24BJbsd99q5Lb8nBdYCmw.
+En cas d'écart entre ce plan et la maquette, ce plan fait foi ; un écart non écrit ici est un défaut.
+
+Contrat d'exécution : skill `plan-execution` (complément `levelup-plan`). Statuts : `[x]` fait, `[~]` couvert ailleurs
+(référence), `[!]` non traité (motif écrit). Aucune case vide à la clôture. Ordre : une étape n'est close que gate
+passé, plan mis à jour et commit fait. Zéro correctif hors périmètre : toute découverte va dans « Découvertes ».
+
+Piloté par le plan maître de la 8.3.0 (`.ai/PLAN_MAITRE_8_3_0_2026-11-17.md`), qui fixe l'ordre entre plans.
+
+## 0. Objectif et critère de succès
+
+Objectif : sur la page du rejeu, montrer les antagonistes (némésis, souffre-douleur) calculés à l'instant, poser les
+éliminations en haut et les morts en bas de la frise, et donner aux tuiles des joueurs deux actions directes, Suivre
+et Afficher / Masquer.
+
+Critère de succès, vérifiable à l'écran par le user sur un match réel :
+1. Le canevas montre l'icône némésis et l'icône souffre-douleur devant le nom des deux antagonistes du point de vue ;
+   elles changent de joueur au moment de l'élimination qui fait passer le titre, avec une pulsation.
+2. À la dernière image, les deux titres du rejeu sont ceux des cartes de la page du match.
+3. La frise porte une icône par changement de titre, avec l'infobulle validée ; les éliminations du point de vue
+   sont en haut de sa rangée, ses morts en bas.
+4. La fiche de n'importe quel joueur nomme ses antagonistes à l'instant.
+5. Chaque tuile (et chaque ligne de la colonne) porte Suivre et l'œil, au survol ; actifs, ils restent visibles.
+   Masquer plusieurs joueurs fonctionne ; « Tout afficher » les réaffiche ; « Seul » dans la fiche masque les autres.
+
+## 1. État vérifié sur pièces (2026-11-22)
+
+- Branche courante du dépôt : `release/v8.3.0`, arbre propre.
+- Les éliminations du rejeu portent tueur, victime et instant : `ReplayKill` (`features/match-replay/model/killFeedLogic.ts:85`,
+  hérite de `KillEvent`, `features/match-view/_momentum.ts:50`, champs `xuid`, `victimXuid`). Même source que la page
+  du match : `combat_tab.highlight_events` (`features/match-view/MatchViewPage.tsx:168`).
+- Camp d'un joueur sur le rejeu : le film seul (`lib/replay/filmAllegiance.ts:73`, `ofXuid`).
+- Point de vue : `hooks/useReplayViewpoint.ts` ; marque `me` du canevas : `lib/replay/playerMarks.ts`.
+- Cartes de la page du match : `features/match-view/MatchNemesisCards.tsx`, source `team_tab.nemesis`, départage par
+  le premier de la liste (`pickMax`, ligne 121) : pas le même départage que la règle du tenant.
+- Icônes : `apps/web/public/icons/nemesis-{black,white}.png`, `victim-{black,white}.png` (noir sur transparent),
+  chemin par `lib/themedIcon.ts`.
+- Canevas : `layers/replayMarkers.ts` **478 lignes** (seuil 500 : aucun ajout dans ce fichier), `layers/replayLabels.ts`
+  72, `layers/offscreenChevron.ts` 124.
+- Frise : `ui/ReplayTimelineTracks.tsx`, `ui/ReplayMarkTrack.tsx` (163 ; éliminations et morts sur la même ligne,
+  distinguées par l'encre), `model/replayTimelineTracksLogic.ts` (583, au-dessus du seuil : dette gelée, ne pas
+  l'accroître), garde-rail de géométrie `ui/timelineGeometry.guard.test.ts`.
+- Actions du joueur : `model/playerPanelLogic.ts` (289) ; Seul et Masquer portent sur UN joueur, celui de la fiche, et
+  se remettent à zéro à sa fermeture ; règle des calques `ownershipShown` (ligne 238) et `model/focusFilter.ts`.
+  Boutons : `ui/fiche/FicheActions.tsx` (Suivre, Seul, Masquer). Tuile et ligne : `ui/ReplayPlayerCard.tsx` (321),
+  `ui/ReplayRosterRow.tsx` (259), contrat commun `ui/replayCardPress.ts`.
+- Fiche : sections sous `ui/fiche/`, composées par `ui/ReplayPlayerPanelBody.tsx`.
+- Autres chantiers sur ces fichiers : le plan du backlog des 17 et 18 novembre (`chore/830-backlog-1118`, phase
+  d'intégration) a modifié tuiles, fiche et barre ; la branche `feat/medailles-bouclier` modifie
+  `ui/fiche/FicheDepuisDebut.tsx` et `model/playerInstantStats.ts` (session levelup-60, confirmé le 2026-11-22) ; le
+  plan du décodeur (H.6, H.7) touchera le fil et la fiche à sa montée.
+
+## 2. Décisions
+
+### Validées par le user le 2026-11-22 (maquette et messages du jour)
+
+- **D-1** Textes de la frise : titre « Némésis : X » ou « Souffre-douleur : X » ; phrase « Premier adversaire à
+  éliminer N. », « A éliminé N k fois et passe devant Y (j). », « Premier adversaire éliminé par N. »,
+  « Éliminé k fois par N, passe devant Y (j). » (N = point de vue). Pas de marque pour une égalité.
+- **D-2** Fiche : section des antagonistes DU JOUEUR DE LA FICHE, quel qu'il soit : « Némésis » → « X, k éliminations
+  [, à égalité avec Y] » ; « Souffre-douleur » → « X, éliminé k fois [, à égalité avec Y] ». Définition en infobulle
+  de l'icône : « L'adversaire qui a éliminé N le plus de fois jusqu'à cet instant. » / « L'adversaire que N a
+  éliminé le plus de fois jusqu'à cet instant. », suivie de « En cas d'égalité, le titre reste à celui qui l'avait. »
+  État vide : cadre pointillé « Aucun antagoniste à cet instant. »
+- **D-3** Égalité : le titre reste à celui qui le tient ; il ne change de main que sur un dépassement strict.
+- **D-4** Canevas : icônes devant le nom, pour les deux antagonistes du POINT DE VUE seulement ; teinte du camp du
+  joueur marqué, contour sombre des noms (`--replay-label-stroke`) ; la flèche hors cadre porte l'icône.
+- **D-5** Frise : éliminations du point de vue en haut de sa rangée, morts en bas.
+- **D-6** Tuiles, variante A : cible (Suivre) et œil (Afficher / Masquer) apparaissent au survol de la tuile ou à son
+  focus ; une action active reste visible ; sur écran sans survol (`hover: none`), visibles à 60 %. Le clic ailleurs
+  sur la tuile ouvre la fiche. Même chose sur la ligne de la colonne (`ReplayRosterRow`).
+- **D-7** Masquer devient un ENSEMBLE de joueurs masqués, indépendant de la fiche, qui dure jusqu'à « Tout afficher »
+  ou au changement de match. « Tout afficher » apparaît en tête de la colonne des équipes dès qu'un joueur est masqué.
+- **D-8** Suivre et Masquer quittent la fiche. « Seul » y reste et masque tous les autres joueurs ; actif, il se lit
+  « Seul · tout réafficher » et réaffiche tout. Après Seul, l'œil d'une tuile réaffiche un joueur.
+- **D-9** Livraison dans la 8.3.0.
+
+### Confirmées par le user le 2026-11-22 (« ok pour les 4 »)
+
+- **DU-1** Moment du calcul : à l'instant, sans réglage. La
+  maquette garde « Fin de match » pour comparer ; il n'est pas livré.
+- **DU-2** Icône sur le canevas : 12 px, compte affiché à droite de l'icône.
+- **DU-3** Calques qui ne sont pas des pions (effets de mort, armes au sol, poses d'équipement) avec plusieurs
+  joueurs masqués. Aujourd'hui « Seul » montre un élément dont un joueur est le sien, « Masquer » cache un effet de
+  mort dès que le masqué y figure. Avec un ensemble, une seule règle est possible : **un élément se dessine dès qu'un
+  de ses joueurs est affiché**. Conséquence : masquer X laisse visible l'effet d'une élimination
+  entre X et un joueur affiché. Le décor sans joueur reste affiché (règle du 2026-11-15 inchangée).
+- **DU-4** Frise, rangée des coéquipiers : telle quelle (14 px, deux demi-rangées de 7 px ne se liraient pas).
+
+### Tranché par le pilote (conventions du dépôt, modifiable par le user)
+
+- **D-10** Adversaire = joueur d'un autre camp selon le film ; en mêlée générale, tout autre joueur. Les trahisons et
+  les morts sans tueur ne comptent pas. Un bot compte comme un joueur (clé de fil = xuid de sa ligne de feuille).
+- **D-11** Une seule fonction pure, sous `apps/web/src/lib/antagonists/`, lue par le rejeu ET par la page du match
+  (`MatchNemesisCards`, calculée sur `highlight_events` au dernier instant) : la dernière image du rejeu et les cartes
+  ne peuvent pas diverger. `team_tab.nemesis` reste servi pour ses autres lecteurs ; s'il n'en a plus, il est
+  consigné en Découverte (règle 18), pas retiré dans ce plan.
+- **D-12** Pulsation au changement de titre : deux anneaux à la couleur du camp et l'icône qui grossit puis revient,
+  1,4 s de temps réel (comme la mise en valeur d'une élimination, `model/killFocusMotion.ts`) ; l'icône de l'ancien
+  tenant s'efface dans le même temps. Rien de cela en mouvement réduit (`prefers-reduced-motion`).
+- **D-13** Frise : les icônes de titre se posent dans une bande de 14 px au-dessus de la rangée du point de vue ; ce
+  sont des boutons (infobulle au survol et au focus, clic = curseur à l'instant du changement).
+- **D-14** Textes anglais : libellés existants de la page du match (`Nemesis`, `Bully target`) ; phrases rédigées
+  par l'agent de B et D, relues par le pilote, montrées au user avec la validation à l'écran.
+- **D-15** Suivre un joueur masqué le réaffiche ; masquer le joueur suivi arrête le suivi ; Seul sur un joueur arrête
+  le suivi d'un joueur que Seul masque.
+
+## 3. Organisation
+
+Branche d'intégration : `feat/830-antagonistes-tuiles`, créée depuis `release/v8.3.0` **après** la fusion du plan du
+backlog des 17 et 18 novembre (son R.4) : ce plan touche les tuiles et la fiche qu'il vient de modifier. Un worktree
+par agent qui écrit, en frère du dépôt (`../LevelUp-wt-ant-<piste>`), jamais sous `C:/t`. Sous-branches
+`ant/<piste>`, fusionnées par le pilote dans la branche d'intégration, supprimées à l'intégration.
+
+Chemin critique : 0 → A → (B, C.2, D, F). C.1 et E ne dépendent pas de A et partent avec lui.
+
+| Piste | Contenu | Modèle | Dépend de | Effort |
+|---|---|---|---|---|
+| 0 | vérification sur pièces, témoins avant | Fable | go du user | rapide |
+| A | fonction pure des antagonistes | Sonnet | 0 | rapide |
+| B | canevas : icônes, pulsation, flèche | Sonnet | A | moyen |
+| C | frise : C.1 haut/bas, C.2 icônes de titre | Sonnet | C.1 : 0 ; C.2 : A et C.1 | moyen |
+| D | fiche : section des antagonistes | Sonnet | A ; E.4 pour `ReplayPlayerPanelBody.tsx` | rapide |
+| E | tuiles, ensemble des masqués, Seul | Sonnet | 0 | moyen à lourd |
+| F | page du match sur la même fonction | Sonnet | A | rapide |
+| I | intégration | pilote | toutes | moyen |
+| R | revue et clôture | Fable (revue) | I | moyen |
+
+Fichiers disputés : `ui/ReplayPlayerPanelBody.tsx` (D et E) : E.4 d'abord, D.2 ensuite sur la base de E.
+`ui/ReplayTimelineTracks.tsx` (C.1 et C.2) : même agent, à la suite.
+
+Gates communs des agents (web, depuis `apps/web`) : `npx tsc -b --noEmit` (ou `make check-types` depuis la racine),
+`npx vitest run <dossiers de la piste> --maxWorkers=2`, `node tools/lint-cross-feature-imports.mjs`,
+`npx vitest run src/lib/i18n --maxWorkers=2` (parité des langues), `wc -l` de chaque fichier touché (≤ 500, ou pas
+plus long qu'avant pour un fichier déjà au-dessus). Aucun processus vitest vivant à la fin. Aucune couleur hors
+jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
+
+## Étape 0 — vérification sur pièces et témoins (Fable)
+
+- [ ] 0.1 Relire chaque fichier cité en section 1 sur `release/v8.3.0` à jour (après la fusion du backlog
+      1118) ; corriger les lignes de ce plan qui ont bougé, dans ce plan, avant tout code.
+- [ ] 0.2 Clé de joueur dans les éliminations : sur 3 rejeux du parc (un 4 contre 4, une mêlée générale, un match avec
+      bots), vérifier que `xuid` et `victimXuid` d'un `ReplayKill` se rapprochent de `ofXuid` et des clés de roster
+      (bots compris) ; écrire la règle de rapprochement dans ce plan.
+- [ ] 0.3 Comptes de la page du match : sur 20 matchs locaux, comparer `team_tab.nemesis` (killed_me, i_killed) au
+      décompte de `highlight_events` par paire. Écart nul attendu ; tout écart est écrit ici et arrête F.
+- [ ] 0.4 Témoins AVANT, capturés dans le scratchpad (`temoins_ant_avant/`) : enregistrement des appels de dessin
+      (`test/recordingContext`) de 3 images sans antagoniste et 3 images avec ; rendu de la frise (`ReplayMarkTrack`)
+      sur le harnais `test/timelineTracksHarness.tsx` ; sorties de `ownershipShown` et `focusFilter` sur Seul et
+      Masquer d'un joueur (tests existants listés par nom).
+- **Gate 0** : les quatre sorties écrites dans ce plan (règle de clé, écarts 0.3, chemin des témoins) ; aucune ligne
+  de section 1 fausse.
+
+## Piste A — fonction pure des antagonistes (Sonnet)
+
+- [ ] A.1 `lib/antagonists/antagonists.ts` : à partir d'une liste d'éliminations triées (tueur, victime, instant), d'un
+      joueur et d'un prédicat « adversaire », rend pour un instant donné les deux titres (tenant, compte, joueurs à
+      égalité) et la liste des changements de titre (instant, rôle, nouveau tenant, ancien tenant et son compte,
+      genre `prise` ou `égalité`). Règles D-3 et D-10.
+- [ ] A.2 Lecture à l'instant en temps borné : index des changements construit une fois par (document, joueur),
+      lecture par recherche dichotomique ; pas de parcours de toutes les éliminations à chaque image.
+- [ ] A.3 Tests : premier tenant ; dépassement strict ; égalité qui garde le tenant ; un joueur qui tient les deux
+      titres ; trahison et mort sans tueur ignorées ; mêlée générale ; bot ; instant avant toute élimination ;
+      dernier instant égal au calcul sur toute la liste.
+- **Gate A** : gates communs sur `src/lib/antagonists`.
+
+## Piste B — canevas (Sonnet)
+
+- [ ] B.1 `layers/antagonistMarks.ts` : icônes teintées (masque alpha tiré du PNG noir, teinte passée par l'appelant,
+      cache par couleur, taille et densité), dessin de l'icône avec contour, pulsation (D-12). Aucun ajout dans
+      `replayMarkers.ts` au-delà du branchement (≤ 500 lignes tenues).
+- [ ] B.2 `layers/replayLabels.ts` : l'étiquette accepte des icônes de titre et leur compte devant le nom (DU-2),
+      centrées sous le pion, lisibles sur les deux thèmes ; même chose pour l'étiquette de la flèche hors cadre
+      (`offscreenChevron.ts`).
+- [ ] B.3 Branchement : hook de calque (patron `useReplay*`) qui lit la fonction de A pour le point de vue et fournit
+      au calque des pions « titres de ce slot à cette image ». Un joueur masqué ne porte rien.
+- [ ] B.4 Textes : nom accessible du canevas inchangé ; aucune chaîne en dur (i18n de la piste D partagé si besoin).
+- [ ] B.5 Tests : enregistrement des appels de dessin (icône devant le nom, absente sans titre, pulsation puis repos,
+      rien en mouvement réduit, flèche hors cadre avec icône) ; témoins 0.4 « sans antagoniste » identiques.
+- **Gate B** : gates communs sur `src/features/match-replay/layers` et `src/lib/antagonists` ; témoins comparés.
+
+## Piste C — frise (Sonnet)
+
+- [ ] C.1 `ui/ReplayMarkTrack.tsx` : sur la rangée du point de vue (`tall`), éliminations dans la moitié haute, morts
+      dans la moitié basse ; badges de médaille recalés sur leur marque ; rangée des coéquipiers inchangée (DU-4).
+      Géométrie horizontale intouchée (`timelineGeometry.guard.test.ts` vert).
+- [ ] C.2 Bande des titres (D-13) au-dessus de la rangée du point de vue, dans `ui/ReplayTimelineTracks.tsx` ou un
+      composant extrait : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
+      « titre. phrase », clic = curseur à l'instant. Les autres pistes restent `pointer-events-none`.
+- [ ] C.3 Textes D-1 en français et en anglais (D-14), dans un dictionnaire typé `Record<Locale, …>` de
+      `features/match-replay/i18n/`.
+- [ ] C.4 Tests : marques hautes et basses ; une icône par prise, aucune pour une égalité ; infobulle et nom
+      accessible ; clic qui déplace le curseur ; témoin 0.4 de la frise comparé (seul le placement vertical change).
+- **Gate C** : gates communs sur `src/features/match-replay/ui` et `model`.
+
+## Piste D — fiche (Sonnet)
+
+- [ ] D.1 `ui/fiche/FicheAntagonistes.tsx` : section « Antagonistes » du joueur de la fiche à l'instant (D-2), icônes
+      à infobulle (même mécanisme que la frise), noms à la couleur de leur camp, état vide pointillé.
+- [ ] D.2 Branchement dans `ui/ReplayPlayerPanelBody.tsx`, après l'identité, avant « Depuis le début du match »
+      (fait APRÈS E.4, sur sa base).
+- [ ] D.3 Textes D-2 en français et en anglais.
+- [ ] D.4 Tests : titres, égalité, état vide, joueur sans adversaire, changement d'instant.
+- **Gate D** : gates communs sur `src/features/match-replay/ui/fiche`.
+
+## Piste E — tuiles et ensemble des masqués (Sonnet)
+
+- [ ] E.1 `model/playerPanelLogic.ts` : l'état porte un ensemble de joueurs masqués (D-7) au lieu de `solo` / `hide` ;
+      événements `toggleHidden`, `solo`, `showAll` ; règles D-8 et D-15 ; l'ensemble se vide au changement de match.
+- [ ] E.2 `ownershipShown` et `model/focusFilter.ts` sur l'ensemble, règle DU-3 ; `shownAtSlot` des pions sur
+      l'ensemble. Le décor sans joueur reste affiché.
+- [ ] E.3 Tuile (`ui/ReplayPlayerCard.tsx`) et ligne (`ui/ReplayRosterRow.tsx`) : boutons Suivre et œil (D-6), à
+      encres de jetons, `aria-pressed`, noms accessibles « Suivre X » / « Ne plus suivre X » / « Masquer X » /
+      « Afficher X », infobulles ; le clic sur un bouton n'ouvre pas la fiche ; Espace et Entrée gardés comme
+      aujourd'hui (`PRESS_GUARDS`). Nom pâle et mention « masqué » sur la tuile d'un joueur masqué.
+- [ ] E.4 Fiche : `ui/fiche/FicheActions.tsx` ne garde que « Seul » (D-8) ; `ui/ReplayPlayerPanelBody.tsx` adapté.
+- [ ] E.5 « Tout afficher » en tête de la colonne des équipes (`ui/ReplayRosterColumn.tsx`, `ui/ReplayTeamsRow.tsx`
+      selon le cadre), visible dès qu'un joueur est masqué.
+- [ ] E.6 Textes en français et en anglais (Suivre, Ne plus suivre, Masquer, Afficher, Tout afficher, Seul, Seul ·
+      tout réafficher, infobulles de la maquette).
+- [ ] E.7 Tests : réducteur (masquer deux joueurs, Seul puis réafficher un joueur, suivre un masqué, masquer le suivi,
+      changement de match) ; filtre des calques sur DU-3 ; tuile et ligne (boutons, clic qui n'ouvre pas la fiche,
+      états actifs) ; témoins 0.4 de Seul et Masquer d'un joueur : identiques, sauf l'écart que DU-3 annonce, listé.
+- **Gate E** : gates communs sur `src/features/match-replay` (dossier entier : la règle des calques traverse tout).
+
+## Piste F — page du match (Sonnet)
+
+- [ ] F.1 `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
+      d'adversaire ; les cartes gardent leur dessin et leurs textes.
+- [ ] F.2 Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
+- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 sans écart (sinon F arrêtée, écrit ici).
+
+## Étape I — intégration (pilote)
+
+- [ ] I.1 Fusion des sous-branches dans `feat/830-antagonistes-tuiles` dans l'ordre A, C, E, D, B, F ; conflits
+      résolus selon ce plan.
+- [ ] I.2 `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
+- [ ] I.3 Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
+- [ ] I.4 `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
+- [ ] I.5 Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
+      nommé par le user, avec les textes anglais de D-14.
+
+## Étape R — revue et clôture
+
+- [ ] R.1 Une ronde de revue adversariale du diff complet (skill `adversarial-review`, complément `levelup-revue`,
+      Fable) ; P0 et P1 corrigés, P2 au backlog.
+- [ ] R.2 Validation à l'écran du user (I.5) ; corrections de la liste qu'il ferme.
+- [ ] R.3 Fusion dans `release/v8.3.0` (accord du user), poussée, CI lue (`gh run list --branch release/v8.3.0
+      --workflow CI --limit 1`) ; sous-branches et worktrees supprimés ; `scripts/disk-hygiene.ps1 -Lot ant -Apply`.
+- [ ] R.4 Entrée `.ai/thought_log.md` ; ligne du plan maître mise à jour ; tous les items statués ; plan archivé.
+
+## Reprise de session
+
+Lire la section « Journal d'exécution » ci-dessous, puis `git log --oneline -10` sur `feat/830-antagonistes-tuiles`
+et `ListAgents` (un worktree peut être repris par une autre session). Reprendre au premier item non statué de la
+piste la plus en amont.
+
+## Journal d'exécution
+
+- 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user ; démarre après la fusion du backlog 1118.
+
+## Découvertes (consignées, non traitées)
+
+- 2026-11-22 — `.ai/BACKLOG.md` liste `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`) sans appelant de
+  production ; ce plan ne le réutilise pas (calcul web à l'instant). Son sort reste à l'entrée du backlog.
