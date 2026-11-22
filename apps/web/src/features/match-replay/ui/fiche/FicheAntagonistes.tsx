@@ -1,11 +1,11 @@
 /**
- * FicheAntagonistes — « ANTAGONISTES » : les deux titres du JOUEUR DE LA FICHE à l'instant lu (D-2 du plan des
- * antagonistes). La fiche est celle de n'importe quel joueur, pas seulement du point de vue de la page : le sujet
- * est `player`, désigné par sa clé du film.
+ * FicheAntagonistes — « ANTAGONISTES » : les deux titres du JOUEUR DE LA FICHE à l'instant lu. La fiche est
+ * celle de n'importe quel joueur, pas seulement du point de vue de la page : le sujet est `player`, désigné
+ * par sa clé du film.
  *
  *  - « Némésis » : l'adversaire qui a éliminé ce joueur le plus de fois jusqu'à cet instant — « X, k éliminations » ;
  *  - « Souffre-douleur » : l'adversaire que ce joueur a éliminé le plus de fois — « X, éliminé k fois » ;
- *  - à égalité de compte le titre reste à celui qui l'avait (D-3) ; les autres adversaires au même compte s'écrivent
+ *  - à égalité de compte le titre reste à celui qui l'avait ; les autres adversaires au même compte s'écrivent
  *    après le tenant, « , à égalité avec Y » ;
  *  - l'icône de chaque titre en donne la définition en infobulle (`title`, comme sur la frise) ;
  *  - un titre sans tenant n'est pas écrit ; sans aucun titre, un cadre pointillé le dit.

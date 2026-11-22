@@ -2,7 +2,7 @@
  * focusFilter.test.ts — ce que les joueurs masqués font à chaque genre d'élément qui n'est pas un pion.
  *
  * Le joueur A tient le slot 1 (images 0-50) puis le slot 3 (60-100) ; B tient le slot 2 (0-100) ; C tient le slot 4.
- * La règle est celle de `ownershipShown` (DU-3 : un élément se dessine dès qu'un de ses joueurs est affiché ; testée
+ * La règle est celle de `ownershipShown` (un élément se dessine dès qu'un de ses joueurs est affiché ; testée
  * à part) : ici, on prouve QUELLES parties chaque élément déclare. Avec A et B seuls au roster, « Seul A » est
  * « B masqué » et « Masquer A » est « A masqué » ; la dernière suite ajoute C pour les éléments à plusieurs joueurs.
  */
@@ -230,7 +230,7 @@ describe('poussée du répulseur — la personne poussée ET son auteur', () => 
   })
 })
 
-describe('DU-3 — un élément se dessine dès qu’un de ses joueurs est affiché (A, B et C au roster)', () => {
+describe('un élément se dessine dès qu’un de ses joueurs est affiché (A, B et C au roster)', () => {
   const poussee = (slot: number, by: number | null) => ({ slot, by, frame: 30 })
   const rides = (...slots: number[]) => slots.map((slot, i) => ({ t0: 0, t1: 100, slot, seat: i, src: 'event', aim: [] }))
   const vehicule = (...slots: number[]) => ({ slot: 700, rides: rides(...slots) }) as never

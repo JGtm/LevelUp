@@ -1,5 +1,5 @@
 /**
- * Tests — la bande des titres dans l'hôte de la frise (C.2 du plan des antagonistes).
+ * Tests — la bande des titres dans l'hôte de la frise.
  *
  * L'hôte ne connaît pas les antagonistes : il reçoit une bande toute faite (`antagonistBand`) et la
  * pose AU-DESSUS de la rangée du joueur regardé, dans la grille des pistes. Ce que ces tests

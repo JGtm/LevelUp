@@ -1,11 +1,11 @@
 /**
  * antagonistBandLogic — LA BANDE DES TITRES DE LA FRISE : les changements de titre du joueur regardé,
- * mis en marques posées sur l'axe, avec leur texte (D-1, D-13). Pur : ni React ni DOM.
+ * mis en marques posées sur l'axe, avec leur texte. Pur : ni React ni DOM.
  *
  * Il ne compte rien et ne rapproche aucune clé : la lecture vient de `lib/antagonists` par la
  * fabrique du rejeu (`replayAntagonists`), qui rend les changements aux clés du FILM. Ce fichier ne
  * fait que trois choses :
- *  - ne garder que les PRISES de titre : une égalité ne change pas de main (D-3), la frise ne la dit pas ;
+ *  - ne garder que les PRISES de titre : une égalité ne change pas de main, la frise ne la dit pas ;
  *  - poser chaque prise sur l'axe, avec la géométrie des marques (`ratioOfMs`) et l'image que visent
  *    les portes de présence (`Math.round(t / frameIntervalMs)`) ; une prise hors de la fenêtre de jeu
  *    n'a pas de place et n'est pas posée, comme un frag hors fenêtre ;
@@ -31,7 +31,7 @@ export interface AntagonistBandItem {
   holder: string
   /** « Némésis : X » ou « Souffre-douleur : X ». */
   title: string
-  /** La phrase sous le titre (D-1). */
+  /** La phrase sous le titre. */
   phrase: string
 }
 

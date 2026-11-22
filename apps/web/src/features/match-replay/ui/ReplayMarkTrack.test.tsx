@@ -122,7 +122,7 @@ describe('ReplayMarkTrack — le badge de médaille (décision D7, 2026-09-09)',
 })
 
 /**
- * C.1 DU PLAN DES ANTAGONISTES (2026-11-22, D-5 et DU-4) — LE SENS SE LIT À LA POSITION.
+ * SUR LA RANGÉE DU JOUEUR REGARDÉ, LE SENS SE LIT À LA POSITION.
  *
  * Sur la rangée du joueur regardé (`tall`, vingt-quatre pixels), une élimination se pose dans la
  * moitié HAUTE et une mort dans la moitié BASSE : la position dit le sens sans l'aide de la
@@ -156,7 +156,7 @@ function enBas([a, b]: readonly [number, number]): boolean {
   return a >= TALL_PX / 2 && b <= TALL_PX
 }
 
-describe('ReplayMarkTrack — élimination en haut, mort en bas (C.1, D-5)', () => {
+describe('ReplayMarkTrack — élimination en haut, mort en bas', () => {
   it('sur la rangée regardée, une élimination se pose dans la moitié haute', () => {
     const { container } = render(
       <ReplayMarkTrack marks={[mark({ key: 'k', kind: 'kill', clock: '1:00' })]} height="h-[24px]" tall />,
@@ -220,7 +220,7 @@ describe('ReplayMarkTrack — élimination en haut, mort en bas (C.1, D-5)', () 
     expect(container.querySelector<HTMLElement>('[title="4:10"]')?.style.background).toContain('--ac-team-enemy')
   })
 
-  it('la rangée des COÉQUIPIERS ne change pas (DU-4) : mêmes bandes pour une élimination et une mort', () => {
+  it('la rangée des COÉQUIPIERS ne change pas : mêmes bandes pour une élimination et une mort', () => {
     const { container } = render(
       <ReplayMarkTrack
         marks={[

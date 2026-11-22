@@ -1,6 +1,5 @@
 /**
- * Tests — FicheAntagonistes : la section « Antagonistes » de la fiche d'un joueur (D.1, D.3, D.4 du plan des
- * antagonistes, D-2).
+ * Tests — FicheAntagonistes : la section « Antagonistes » de la fiche d'un joueur.
  *
  * Elle écrit, À L'INSTANT LU et POUR LE JOUEUR DE LA FICHE (quel qu'il soit, pas le point de vue de la page) :
  *  - « Némésis » : l'adversaire qui l'a le plus éliminé, « X, k éliminations » (« 1 élimination ») ;

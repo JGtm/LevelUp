@@ -163,7 +163,7 @@ interface ReplayTimelineTracksProps {
   /** Frise dépliée (les pistes) ou repliée (la seule barre de lecture). Préférence persistée. */
   tracksExpanded: boolean
   onToggleTracks: () => void
-  /** La bande des titres (D-13), posée en tête de la grille ; absente = rien (cf. `ReplayAntagonistBand`). */
+  /** La bande des titres, posée en tête de la grille ; absente = rien (cf. `ReplayAntagonistBand`). */
   antagonistBand?: ReactNode
   /** Ouvrir un média met le rejeu EN PAUSE : la lightbox le dit, l'appelant l'applique. */
   playing: boolean

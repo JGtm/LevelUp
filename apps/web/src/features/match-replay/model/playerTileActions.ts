@@ -1,6 +1,6 @@
 /**
  * playerTileActions — CE QUE LA PAGE DONNE AUX TUILES ET AUX LIGNES pour agir sur UN joueur : Suivre (la caméra) et
- * l'œil (Masquer / Afficher), plus « Tout afficher » en tête de la colonne des équipes (D-6, D-7).
+ * l'œil (Masquer / Afficher), plus « Tout afficher » en tête de la colonne des équipes.
  *
  * `PlayerTileActions` est ce que la page tient (`usePlayerPanel`) et passe à la rangée et à la colonne ; chaque
  * tuile, chaque ligne n'en reçoit que la part de son joueur (`TileActions`, par `tileActionsFor`). Sans

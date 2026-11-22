@@ -1,5 +1,5 @@
 /**
- * Tests — ReplayAntagonistBand : la bande des titres au-dessus de la rangée du joueur regardé (C.2, D-13).
+ * Tests — ReplayAntagonistBand : la bande des titres au-dessus de la rangée du joueur regardé.
  *
  * Ils protègent :
  *  1. UNE ICÔNE-BOUTON PAR PRISE DE TITRE, AUCUNE POUR UNE ÉGALITÉ ;

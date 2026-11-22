@@ -4,7 +4,7 @@
  *
  * LE GESTE. Un clic sur une fiche de la colonne des équipes ouvre la fiche du joueur (une fenêtre au Cinéma et au
  * Plein cadre, la colonne entière au Standard) ; fermer la fiche la referme. Le panneau garde son joueur quand le
- * temps avance et change de contenu quand on clique une autre fiche. Rien de cela n'est mémorisé (D-4) : l'état
+ * temps avance et change de contenu quand on clique une autre fiche. Rien de cela n'est mémorisé : l'état
  * naît avec la page, il est tenu par elle, et repart de zéro avec le match.
  *
  * TROIS ÉTATS INDÉPENDANTS.
@@ -12,14 +12,14 @@
  *  - SUIVRE (`followXuid`) : la caméra cadre la carte sur ce joueur à chaque image — qui, ou personne. Il
  *    s'éteint par le geste manuel de cadrage (`stopFollow`), par un nouveau choix, ou quand le joueur suivi est
  *    masqué ;
- *  - L'ENSEMBLE DES JOUEURS MASQUÉS (`hidden`, D-7) : les clés de roster des joueurs retirés de la carte (pion,
+ *  - L'ENSEMBLE DES JOUEURS MASQUÉS (`hidden`) : les clés de roster des joueurs retirés de la carte (pion,
  *    traînée, nom, et tout ce qui leur appartient). Il ne dépend PAS de la fiche : ouvrir, changer ou fermer la
  *    fiche ne le touche pas. Il dure jusqu'à « Tout afficher » ou jusqu'au changement de match. Un joueur se
  *    masque ou se réaffiche par son œil (`toggleHidden`) ; « Seul » (`solo`) masque tous les autres joueurs du
- *    roster, et refait sur un état déjà « seul » il réaffiche tout (D-8). Les fiches et les lignes, elles, ne sont
+ *    roster, et refait sur un état déjà « seul » il réaffiche tout. Les fiches et les lignes, elles, ne sont
  *    jamais filtrées : un joueur masqué reste dans la colonne (son œil le réaffiche).
  *
- * LES RÈGLES ENTRE SUIVRE ET MASQUER (D-15). Suivre un joueur masqué le réaffiche ; masquer le joueur suivi arrête
+ * LES RÈGLES ENTRE SUIVRE ET MASQUER. Suivre un joueur masqué le réaffiche ; masquer le joueur suivi arrête
  * le suivi ; « Seul » arrête le suivi d'un joueur qu'il masque (la carte ne se cadre pas sur un joueur qu'elle ne
  * dessine pas).
  *
@@ -104,14 +104,14 @@ export function reducePlayerPanel(state: PlayerPanelState, event: PlayerPanelEve
   }
 }
 
-/** Suivre un joueur (ou personne) ; suivre un joueur masqué le réaffiche (D-15). */
+/** Suivre un joueur (ou personne) ; suivre un joueur masqué le réaffiche. */
 function followPlayer(state: PlayerPanelState, xuid: string | null): PlayerPanelState {
   if (state.followXuid === xuid) return state
   if (xuid === null || !state.hidden.has(xuid)) return { ...state, followXuid: xuid }
   return { ...state, followXuid: xuid, hidden: without(state.hidden, xuid) }
 }
 
-/** L'œil d'un joueur ; masquer le joueur suivi arrête le suivi (D-15). */
+/** L'œil d'un joueur ; masquer le joueur suivi arrête le suivi. */
 function toggleHidden(state: PlayerPanelState, xuid: string): PlayerPanelState {
   if (state.hidden.has(xuid)) return { ...state, hidden: without(state.hidden, xuid) }
   return {
@@ -123,7 +123,7 @@ function toggleHidden(state: PlayerPanelState, xuid: string): PlayerPanelState {
 
 /**
  * « Seul » : tous les autres joueurs du roster sont masqués et le joueur choisi est affiché ; refait sur un joueur
- * déjà « seul », il réaffiche tout. Le suivi d'un joueur que « Seul » masque s'arrête (D-15).
+ * déjà « seul », il réaffiche tout. Le suivi d'un joueur que « Seul » masque s'arrête.
  */
 function soloPlayer(state: PlayerPanelState, xuid: string, roster: readonly string[]): PlayerPanelState {
   if (isSolo(state.hidden, xuid, roster)) return { ...state, hidden: NO_HIDDEN }
@@ -271,7 +271,7 @@ export type OwnershipShown = (parties: readonly ElementParty[]) => boolean
  * ownershipShown est LE prédicat des joueurs masqués pour tout élément qui appartient à un ou plusieurs joueurs,
  * sur tous les calques. `null` quand personne n'est masqué.
  *
- * LA RÈGLE (DU-3). Un élément appartient à CHAQUE joueur qui y figure, et il se dessine DÈS QU'UN de ses joueurs
+ * LA RÈGLE. Un élément appartient à CHAQUE joueur qui y figure, et il se dessine DÈS QU'UN de ses joueurs
  * est affiché. Un frag (effet de mort, mort comptée par la chaleur des éliminations), une poussée, une révélation
  * de capteur et une destruction de véhicule appartiennent à leur auteur ET à leur victime : masquer l'un des deux
  * laisse l'effet visible tant que l'autre est affiché, et ne le retire que lorsque TOUS ses joueurs sont masqués
@@ -325,7 +325,7 @@ export function partyOf(life: ElementParty['life'], xuid: string | undefined): E
 
 /**
  * killFxShown rend, pour le calque des morts, le prédicat qui dit si un effet se dessine : `null` sans joueur
- * masqué. L'effet appartient au tueur et à la victime : il se dessine dès que l'un des deux est affiché (DU-3).
+ * masqué. L'effet appartient au tueur et à la victime : il se dessine dès que l'un des deux est affiché.
  */
 export function killFxShown(
   hidden: HiddenPlayers | null,

@@ -102,7 +102,7 @@ export function ReplayMarkTrack({
           key={`${m.key}-medal`}
           // `pointer-events` N'EST PAS RÉGLÉ ICI (cf. l'en-tête) : le défaut `auto` laisse
           // l'image du badge recevoir le survol qui déclenche son infobulle native.
-          // LE BADGE SUIT SA MARQUE D'ÉLIMINATION VERS LE HAUT (D-5) : collé au bord haut de la
+          // LE BADGE SUIT SA MARQUE D'ÉLIMINATION VERS LE HAUT : collé au bord haut de la
           // rangée, il enveloppe la bande haute où elle se pose ; une médaille d'objectif, sans
           // marque, garde sa place centrée.
           className={`absolute ${m.kind === 'kill' ? 'top-0' : 'top-1'} flex -translate-x-1/2 items-center gap-0.5`}
@@ -124,8 +124,8 @@ export function ReplayMarkTrack({
  * regardé (vingt-quatre pixels, deux moitiés de douze), UNE ÉLIMINATION SE POSE DANS LA MOITIÉ
  * HAUTE (centre y = 6 px : `top-0.5` + 8 px de haut pour la barre, `top-[3px]` + 6 pour le
  * losange) ET UNE MORT DANS LA MOITIÉ BASSE (centre y = 18 px : `top-[14px]` + 8, `top-[15px]` + 6)
- * — décision D-5 du plan des antagonistes (2026-11-22) : la position dit le sens, sans l'aide de
- * la couleur. Sur celle des coéquipiers, qui n'a pas deux moitiés lisibles (DU-4), tout reste sur
+ * — la position dit le sens, sans l'aide de
+ * la couleur. Sur celle des coéquipiers, qui n'a pas deux moitiés lisibles, tout reste sur
  * y = 7 px sur quatorze (`top-1` + 6, `top-[4px]` + 6). Sans l'égalité de centre au sein d'une bande,
  * une marque amie flotterait un pixel plus haut que ses voisines et la bande se lirait comme deux
  * lignes. Le losange est plus court que la barre parce qu'il occupe sa DIAGONALE une fois tourné

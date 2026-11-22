@@ -203,7 +203,7 @@ export interface FiltreTemoin {
 
 /**
  * Seul ou Masquer d'UN joueur, avec sa fiche ouverte, dans le type que la toile et le filtre des calques reçoivent :
- * Masquer X = l'ensemble {X} ; Seul X = l'ensemble de tous les autres joueurs du film (D-8).
+ * Masquer X = l'ensemble {X} ; Seul X = l'ensemble de tous les autres joueurs du film.
  */
 export function focusDe(scene: Scene, player: ReplayPlayer, mode: 'seul' | 'masquer'): FiltreTemoin {
   const hidden = mode === 'masquer' ? [player] : scene.players.filter((p) => p !== player)

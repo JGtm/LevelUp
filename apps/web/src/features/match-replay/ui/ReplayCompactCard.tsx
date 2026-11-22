@@ -23,7 +23,7 @@
  * boîte (`seatWaitingReading`). Un clic rend la page (`onCard`), au contrat des lignes
  * (`data-replay-player-card`, gardes d'appui).
  *
- * LES DEUX ACTIONS (D-6, E.8) : quand la page les donne (`actions`), la fiche porte Suivre et l'œil, ceux des
+ * LES DEUX ACTIONS : quand la page les donne (`actions`), la fiche porte Suivre et l'œil, ceux des
  * tuiles (`ReplayTileActionButtons`, 16 px), posés à droite du NOM, au-dessus de lui : au survol ou au focus de la
  * fiche (elle porte `group`), toujours visibles actifs. Ils ne prennent aucune place et ne couvrent pas les jauges.
  * La fiche d'un joueur MASQUÉ pâlit son nom ; faute de place elle n'écrit pas « masqué » : l'œil barré, visible,
@@ -71,7 +71,7 @@ export interface ReplayCompactCardProps {
   selected?: boolean
   /** Un clic sur la fiche, avec la clé de roster du joueur. Absent = fiche inerte. */
   onCard?: (xuid: string) => void
-  /** Suivre et l'œil de CE joueur (D-6) : absent = la fiche n'a pas ces boutons. */
+  /** Suivre et l'œil de CE joueur : absent = la fiche n'a pas ces boutons. */
   actions?: TileActions
 }
 

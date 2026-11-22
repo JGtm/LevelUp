@@ -1,7 +1,7 @@
 /**
  * Tests — « Tout afficher », en tête de la colonne des équipes (cadre Standard, colonne du Cinéma) et de la
  * rangée des équipes (Cinéma, Plein cadre) : visible seulement quand au moins un joueur est masqué, il rappelle
- * la page une fois et ne touche à rien d'autre (D-7).
+ * la page une fois et ne touche à rien d'autre.
  */
 import { useMemo } from 'react'
 import type { ComponentProps } from 'react'

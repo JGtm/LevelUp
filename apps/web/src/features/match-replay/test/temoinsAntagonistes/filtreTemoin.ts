@@ -69,7 +69,7 @@ export function sortiesDuFiltre(scene: Scene, cible: ReplayPlayer, mode: 'seul' 
       }),
     ),
     // La règle des parties, sur ses cas : personne, la cible, un autre, les deux, puis les mêmes une seconde fois (le
-    // second jeu était la règle des éléments PARTAGÉS, devenue la règle unique : DU-3).
+    // second jeu était la règle des éléments PARTAGÉS, devenue la règle unique).
     parties: reponses([
       partie([]),
       partie([moi]),

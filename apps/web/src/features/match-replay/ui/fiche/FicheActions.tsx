@@ -1,5 +1,5 @@
 /**
- * FicheActions — L'ACTION « SEUL » de la fiche d'un joueur (D-8) : un bouton à bascule (`aria-pressed`) pleine
+ * FicheActions — L'ACTION « SEUL » de la fiche d'un joueur : un bouton à bascule (`aria-pressed`) pleine
  * largeur, qui masque tous les autres joueurs ; actif, il se lit « Seul · tout réafficher » et réaffiche tout. Suivre
  * et Masquer ne sont plus dans la fiche : ils sont sur les tuiles et les lignes (`ReplayTileActionButtons`).
  * « Actif » se lit sur l'ensemble des joueurs masqués (`isSolo`) : réafficher un joueur à la main sort de « Seul ».

@@ -197,7 +197,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
     expect(fenetre('Joueur5')).not.toBeNull()
   })
 
-  it('Seul agit depuis la fenêtre, et l’œil d’une tuile le défait (D-8)', async () => {
+  it('Seul agit depuis la fenêtre, et l’œil d’une tuile le défait', async () => {
     await mount(L4)
     goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))

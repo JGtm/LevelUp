@@ -1,5 +1,5 @@
 /**
- * ReplayShowAllButton — « Tout afficher », en tête de la colonne des équipes et de la rangée des équipes (D-7) :
+ * ReplayShowAllButton — « Tout afficher », en tête de la colonne des équipes et de la rangée des équipes :
  * il réaffiche d'un geste tous les joueurs masqués. Les deux lieux ne le montrent que si au moins un joueur est
  * masqué (`showAllVisible`). Même contrat que les boutons du rejeu : la souris ne prend pas le focus, Espace reste
  * « Lecture » (`PRESS_GUARDS`).

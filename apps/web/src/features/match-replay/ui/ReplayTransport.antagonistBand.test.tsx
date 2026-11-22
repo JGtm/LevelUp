@@ -1,5 +1,5 @@
 /**
- * Tests — la barre de lecture relaie la bande des titres à la frise (C.2 du plan des antagonistes).
+ * Tests — la barre de lecture relaie la bande des titres à la frise.
  *
  * La bande n'est pas une commande de la toile : c'est le cadre qui la fournit (`canvasSlotsOf`), avec ce
  * que seule la page connaît (fabrique des antagonistes, roster, allégeance). La barre la remet telle

@@ -289,7 +289,7 @@ describe('ReplayPlayerPanelBody — rien d’inventé', () => {
   })
 })
 
-describe('ReplayPlayerPanelBody — la section « Antagonistes » (D.2)', () => {
+describe('ReplayPlayerPanelBody — la section « Antagonistes »', () => {
   it('se pose après « À l’instant » et avant « Depuis le début du match »', () => {
     const { container } = setup()
     const titres = sections(container)
