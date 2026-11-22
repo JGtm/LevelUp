@@ -433,6 +433,16 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — H.7, MESURE D'APPARIEMENT rendue (`annexes_decodeur_1118/appariement_tete_parfait.md`, 1 455 rejeux,
+  sans décodage). Tirs à la tête : la montée du compteur et celle des éliminations sont écrites par le même
+  enregistrement du tableau : 36 839 montées sur 36 847 (99,98 %) ont exactement une élimination du même joueur
+  dans la même image ; contre les actions de score d'élimination (qui donnent la victime), 99,94 % à une image
+  près, mais elles n'existent que pour 86 % des éliminations (absentes ou partielles sur les versions 1.8 à
+  1.10). Frags parfaits : 1 897 médailles sur 1 897 se rattachent à une seule élimination à deux images près.
+  Indécidable par le document : 3 cas de deux éliminations dans la même image avec une seule montée ; 9 pas de
+  +2 inexpliqués et 5 faux points. VERDICT : l'appariement est sûr ; reste à écrire au plan la publication du
+  champ par élimination par le décodeur (là où il a tueur, victime et instant), puis les icônes du fil côté
+  LevelUp. Le document ne porte aujourd'hui aucune marque par élimination.
 - 2026-11-22 — REPRISE APRÈS INCIDENT. Le clone `C:/t/dec/main` et ses sept commits jamais poussés ont été supprimés
   le 22/11 par la tâche de ménage du disque (`C:/t` vidé après 72 h). Les cinq commits de code ont été RECONSTRUITS
   depuis les transcripts des agents dans un clone neuf, `C:/Users/Guillaume/Downloads/Scripts/dec-v150`, branche
