@@ -62,8 +62,13 @@ type HistoryState struct {
 	Failures []historystate.Failure
 	// Skip : les matchs que la découverte ne demande plus (introuvables 404/410, abandonnés), lus de
 	// `historystate.LoadSkipSet`, y compris pour un joueur dont l'historique est complet. Neutres pour la
-	// découverte : ni connus, ni inconnus (voir skipset.go de historystate). Renseigné par RunDiscovery.
+	// découverte : ni connus, ni inconnus (voir skipset.go de historystate). Lu par KnownLoader.LoadKnown,
+	// sur la même ouverture que l'ensemble connu.
 	Skip map[string]bool
+	// Unreadable : l'état n'a pas pu être lu (historystate.Complete en échec). Incomplete reste faux :
+	// delta ordinaire, rien n'est rangé ; le joueur reste en attente (HistoryPending) pour que la
+	// cadence courte réessaie.
+	Unreadable bool
 }
 
 // skipped rend l'ensemble des matchs que la découverte ne demande plus : ceux de l'ensemble rangé
@@ -117,6 +122,8 @@ type PlayerHistory struct {
 	// Skip : l'ensemble rangé des matchs à ne plus demander au début du cycle (voir HistoryState.Skip) ;
 	// le cycle n'écrit que ce qui s'y ajoute.
 	Skip map[string]bool
+	// Unreadable : état de l'historique illisible au début du cycle (voir HistoryState.Unreadable).
+	Unreadable bool
 }
 
 // historyTracker suit, pendant un cycle, les joueurs dont l'historique reste incomplet : valeur
@@ -133,7 +140,7 @@ type historyTracker struct {
 func newHistoryTracker(disc DiscoveryResult) *historyTracker {
 	t := &historyTracker{pending: make(map[string]bool, len(disc.History))}
 	for slug, h := range disc.History {
-		t.pending[slug] = h.Incomplete
+		t.pending[slug] = h.Incomplete || h.Unreadable
 	}
 	return t
 }
@@ -182,6 +189,9 @@ func (o *CycleOrchestratorImpl) settleHistory(
 		}
 		if sc.disc.Errors[p.PlayerSlug] != nil {
 			continue // découverte en échec : rien n'a été listé, la passe suivante reprend
+		}
+		if ph.Unreadable {
+			continue // état illisible (D-25) : rien ne se range à cette passe, le joueur reste en attente
 		}
 		in := settleInput{
 			listed: sc.disc.PerPlayer[p.PlayerSlug], fetchErrs: sc.fetched.Errors,

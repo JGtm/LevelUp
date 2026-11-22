@@ -51,7 +51,7 @@ type fakeHistoryReader struct {
 
 func (f *fakeHistoryReader) HistoryComplete(_ context.Context, _, gamertag string) (bool, error) {
 	if f.err != nil {
-		return true, f.err
+		return false, f.err
 	}
 	return !f.incomplete[gamertag], nil
 }
@@ -172,7 +172,8 @@ func TestCadence_IntervalleRegleCourtGardeLaMain(t *testing.T) {
 }
 
 // Un joueur dont la passe a échoué avant de pouvoir le dire compte comme en rattrapage s'il n'a pas
-// la clé de fin ; avec la clé, ou sans lecteur câblé, il n'y compte pas.
+// la clé de fin, ou si la clé est illisible (état inconnu : la cadence courte réessaie) ; avec la clé,
+// ou sans lecteur câblé, il n'y compte pas.
 func TestCadence_JoueurEnEchecSelonLaCleDeFin(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -181,7 +182,7 @@ func TestCadence_JoueurEnEchecSelonLaCleDeFin(t *testing.T) {
 	}{
 		{"sans la clé de fin", &fakeHistoryReader{incomplete: map[string]bool{"JGtm": true}}, catchUpCycleInterval},
 		{"avec la clé de fin", &fakeHistoryReader{}, 6 * time.Hour},
-		{"lecture en échec", &fakeHistoryReader{incomplete: map[string]bool{"JGtm": true}, err: errors.New("base verrouillée")}, 6 * time.Hour},
+		{"lecture en échec", &fakeHistoryReader{err: errors.New("base verrouillée")}, catchUpCycleInterval},
 		{"sans lecteur", nil, 6 * time.Hour},
 	}
 	for _, c := range cases {

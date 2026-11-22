@@ -510,12 +510,15 @@ func (e *convergenceEnv) registryIDs() map[string]bool {
 // historyState lit la clé de fin et le marque-page dans la base joueur réelle.
 func (e *convergenceEnv) historyState() (complete bool, cursor *historystate.Cursor) {
 	e.t.Helper()
-	db, release, err := duckdbpkg.OpenReadForQuery(e.playerDB)
+	db, release, err := duckdbpkg.OpenPlayerReadForQuery(e.playerDB)
 	if err != nil {
 		e.t.Fatalf("lecture base joueur: %v", err)
 	}
 	defer release()
-	complete = historystate.Complete(e.ctx, db)
+	complete, err = historystate.Complete(e.ctx, db)
+	if err != nil {
+		e.t.Fatalf("état de l'historique: %v", err)
+	}
 	if cur, ok := historystate.LoadCursor(e.ctx, db); ok {
 		cursor = &cur
 	}

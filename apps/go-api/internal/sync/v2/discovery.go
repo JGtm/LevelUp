@@ -39,15 +39,6 @@ type KnownLoader interface {
 	LoadKnown(ctx context.Context, p PlayerProfile) (KnownState, error)
 }
 
-// SkipSetLoader est la capacité facultative d'un KnownLoader de lire, par joueur, l'ensemble des matchs
-// que la découverte ne demande plus (historystate.LoadSkipSet : introuvables 404/410 et abandonnés).
-// RunDiscovery la consulte après LoadKnown et pose le résultat dans KnownState.History.Skip ; un
-// KnownLoader qui ne l'implémente pas (un faux de test) peut renseigner Skip lui-même. L'implémentation
-// de production est known_loader_skip.go.
-type SkipSetLoader interface {
-	LoadSkipSet(ctx context.Context, p PlayerProfile) map[string]bool
-}
-
 // MatchListProvider retourne la liste des match_ids retournés par l'API
 // pour un joueur : en mode delta (historique complet), pagination en ordre
 // reverse-chronologique jusqu'à domain.DeltaKnownRun matchs présents dans known d'affilée ; tous les
@@ -114,15 +105,13 @@ func RunDiscovery(
 				mu.Unlock()
 				return nil //nolint:nilerr // best-effort par joueur, on n'annule pas le groupe
 			}
-			if sl, ok := loader.(SkipSetLoader); ok {
-				state.History.Skip = sl.LoadSkipSet(egCtx, p)
-			}
 			listing, err := provider.ListUnknownMatches(egCtx, p, state.Known, state.History)
 			if err != nil {
 				mu.Lock()
 				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
 				res.History[p.PlayerSlug] = PlayerHistory{
 					Incomplete: state.History.Incomplete, Failures: state.History.Failures, Skip: state.History.Skip,
+					Unreadable: state.History.Unreadable,
 				}
 				mu.Unlock()
 				return nil //nolint:nilerr // idem
@@ -132,7 +121,7 @@ func RunDiscovery(
 			res.PerPlayer[p.PlayerSlug] = unknown
 			res.History[p.PlayerSlug] = PlayerHistory{
 				Incomplete: state.History.Incomplete, EndSeen: listing.EndSeen, Proposed: listing.Proposed,
-				Failures: state.History.Failures, Skip: state.History.Skip,
+				Failures: state.History.Failures, Skip: state.History.Skip, Unreadable: state.History.Unreadable,
 			}
 			mu.Unlock()
 			return nil

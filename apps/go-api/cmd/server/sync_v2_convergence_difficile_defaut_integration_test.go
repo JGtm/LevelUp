@@ -1,8 +1,8 @@
 //go:build integration
 
-// sync_v2_convergence_difficile_defaut_integration_test.go : défauts constatés par les cas difficiles. Le
-// match introuvable est corrigé ; le cycle lancé après un redémarrage avec journal d écriture en attente
-// reste sauté tant que son défaut n est pas corrigé.
+// sync_v2_convergence_difficile_defaut_integration_test.go : défauts constatés par les cas difficiles, tous
+// deux corrigés : le match introuvable compté inséré (D-24) et le cycle bloqué après un redémarrage avec
+// journal d'écriture en attente (D-25).
 package main
 
 import (
@@ -48,25 +48,18 @@ func TestDifficile_MatchIntrouvable_NEstPasCompteInsere(t *testing.T) {
 }
 
 // Coupure brutale en plein vidage de la file (140 journaux d'écriture restent), redémarrage, cycle lancé
-// aussitôt. Deux contrats, deux constats (mêmes causes : le rejeu du journal par le worker et la découverte du
-// cycle se disputent la base joueur dans le même processus) :
-//   - le cycle rend la main en moins de trois minutes. Constaté : les journaux rejoués au démarrage échouent sur
-//     « Can't open a connection to same database file with a different configuration » (la découverte du cycle tient
-//     la base joueur en lecture), erreur que le worker ne reprend pas (hors de sa liste d'erreurs transitoires, alors
-//     que le message dit « réessayer ») ; le journal reste jusqu'à la reprise périodique (10 minutes) et le vidage du
-//     cycle attend le journal ENTIER (soixante secondes plus quatre par match soumis : 14 minutes 20 pour 200 matchs) ;
-//   - aucun cycle ne décide « historique complet » sur une lecture en échec. Constaté une fois sur deux exécutions : après la reprise périodique
-//     du journal, la lecture de l'état de la découverte rend « sql: database is closed » (poignée empruntée au cache,
-//     fermée par le worker qui rejoue), `historystate.Complete` rend alors « complet » : le cycle ne parcourt rien
-//     (0 match inconnu), `HistoryPending` est faux, la cadence repasse à l'intervalle réglé alors que la fin n'est
-//     pas vue.
+// aussitôt. Deux contrats (D-25 ; avant le correctif : 14 minutes 28 de blocage, puis, une fois sur deux, un
+// état « complet » lu sur une poignée fermée) :
+//   - le cycle rend la main en moins de trois minutes : la découverte lit la base joueur par le handle que
+//     partage le worker qui rejoue le journal (même clé de cache, même configuration), le rejeu ne bute plus
+//     sur « different configuration », et une attente sans acquittement rendrait la main après 60 s ;
+//   - aucun cycle ne décide « historique complet » sur une lecture en échec : après la reprise périodique du
+//     journal, le cycle suivant fait une passe de rattrapage tant que la fin n'est pas rangée.
+//
+// À la fin : le journal est vide, aucun match n'est en double ni perdu, et la fin finit rangée.
 func TestDifficile_Interruption_CycleApresRedemarrageSansBlocage(t *testing.T) {
-	t.Skip("défaut: après un redémarrage avec journal d'écriture en attente, un cycle lancé aussitôt (1) reste bloqué jusqu'à 14 minutes " +
-		"(rejeu du journal en échec « same database file with a different configuration », non repris par le worker, vidage du cycle qui " +
-		"attend tout le journal) et (2) peut lire l'état de l'historique sur une poignée fermée (« sql: database is closed »), que " +
-		"historystate.Complete traduit en « complet » : passe de rattrapage sautée, cadence de 10 minutes perdue.")
 	monde := newDifficileMonde()
-	monde.ajouter(difficileA, 0, 1000)
+	fa := monde.ajouter(difficileA, 0, 1000)
 	e := newDifficileEnv(t, monde, difficileTous, difficileTous)
 	b := e.start(difficileTous, true)
 	b.cycle()
@@ -85,8 +78,10 @@ func TestDifficile_Interruption_CycleApresRedemarrageSansBlocage(t *testing.T) {
 
 	b2 := e.start(difficileTous, false)
 	debut := time.Now()
-	c1 := b2.cycle() // rend la main après le délai du vidage : on attend la fin pour juger la suite
-	if d := time.Since(debut); d > 3*time.Minute {
+	c1 := b2.cycle()
+	d := time.Since(debut)
+	t.Logf("cycle lancé juste après le redémarrage : rendu après %v", d.Round(time.Millisecond))
+	if d > 3*time.Minute {
 		t.Errorf("le cycle lancé juste après le redémarrage a rendu la main après %v, attendu moins de 3 minutes", d.Round(time.Second))
 	}
 	if !c1.ran || c1.err != nil {
@@ -102,4 +97,13 @@ func TestDifficile_Interruption_CycleApresRedemarrageSansBlocage(t *testing.T) {
 		t.Errorf("cycle 2 : fin rangée=%v, HistoryPending=%v, %d matchs inconnus listés ; attendu une passe de rattrapage tant que la fin n'est pas rangée",
 			complete, out.HistoryPending, out.MatchesUnknown)
 	}
+
+	// Le journal est rejoué, rien n'est en double, et la fin finit rangée.
+	e.assertWALVide("après le redémarrage")
+	b2.assertNoDuplicate("après le redémarrage")
+	if !complete {
+		b2.jusquAuBout("reprise après le redémarrage", difficileA)
+	}
+	b2.assertConverged("reprise après le redémarrage", map[difficileJoueur]*fakeHalo{difficileA: fa}, nil)
+	e.assertWALVide("fin du rattrapage")
 }

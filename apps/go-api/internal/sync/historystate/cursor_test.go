@@ -45,7 +45,7 @@ func TestSaveCursor_AllerRetour(t *testing.T) {
 	if err := db.QueryRow(`SELECT count(*) FROM sync_meta WHERE key = ?`, historystate.CursorKey).Scan(&n); err != nil || n != 1 {
 		t.Errorf("lignes du marque-page = %d (err %v), attendu 1", n, err)
 	}
-	if historystate.Complete(ctx, db) {
+	if mustComplete(t, ctx, db) {
 		t.Error("ranger un marque-page ne doit pas marquer l'historique complet")
 	}
 	if historystate.CursorKey != "history_catchup_cursor" {
@@ -167,7 +167,7 @@ func TestMarkComplete_EffaceLeMarquePage(t *testing.T) {
 	if _, ok := historystate.LoadCursor(ctx, db); ok {
 		t.Error("après MarkComplete : le marque-page doit être effacé")
 	}
-	if !historystate.Complete(ctx, db) {
+	if !mustComplete(t, ctx, db) {
 		t.Error("après MarkComplete : historique complet")
 	}
 }

@@ -78,7 +78,7 @@ func (e *histEnv) LoadKnown(ctx context.Context, _ PlayerProfile) (KnownState, e
 	for id := range e.known {
 		k[id] = true
 	}
-	return KnownState{Set: knownset.Set{Known: k}, History: readHistoryState(ctx, e.db)}, nil
+	return KnownState{Set: knownset.Set{Known: k}, History: readHistoryState(ctx, e.db, "alice")}, nil
 }
 
 // cycle joue un cycle complet pour alice et rend son issue.

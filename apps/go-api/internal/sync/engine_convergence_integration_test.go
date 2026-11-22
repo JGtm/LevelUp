@@ -156,7 +156,11 @@ func historyStateKeys(t *testing.T, env *e2eTestEnv) (keys []string, complete bo
 	if err := rows.Err(); err != nil {
 		t.Fatalf("itération sync_meta: %v", err)
 	}
-	return keys, historystate.Complete(t.Context(), handle.SQLDb())
+	complete, err = historystate.Complete(t.Context(), handle.SQLDb())
+	if err != nil {
+		t.Fatalf("état de l'historique: %v", err)
+	}
+	return keys, complete
 }
 
 // requireHistoryUntouched échoue si le moteur a touché à l'état de l'historique du joueur.

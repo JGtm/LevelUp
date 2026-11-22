@@ -286,18 +286,19 @@ func (s *AutoSyncScheduler) FilmsPending(titleSlug string) bool {
 	return s.filmBacklog != nil && s.filmBacklog.FilmBacklog(titleSlug).Pending()
 }
 
-// historyIncomplete dit si l'historique du joueur est incomplet, lu sans écrire. Sans lecteur câblé, ou
-// lecture en échec (journalisée), le joueur ne compte pas comme en rattrapage : même défaut que
-// historystate.Complete, qui prend une lecture en échec pour « complet ».
+// historyIncomplete dit si l'historique du joueur est incomplet, lu sans écrire. Sans lecteur câblé, le
+// joueur ne compte pas comme en rattrapage. Une lecture en échec (journalisée) le compte EN rattrapage :
+// l'état est inconnu (historystate.Complete ne prend jamais une lecture en échec pour « complet ») et la
+// cadence courte réessaie.
 func (s *AutoSyncScheduler) historyIncomplete(ctx context.Context, p domain.PlayerSummary) bool {
 	if s.historyReader == nil {
 		return false
 	}
 	complete, err := s.historyReader.HistoryComplete(ctx, resolveTitleSlug(p), p.Gamertag)
 	if err != nil {
-		slog.WarnContext(ctx, "auto_sync: lecture de l'état de l'historique échouée — joueur non compté en rattrapage",
+		slog.WarnContext(ctx, "auto_sync: état de l'historique illisible — joueur compté en rattrapage (cadence courte)",
 			"gamertag", p.Gamertag, "title_slug", resolveTitleSlug(p), "err", err)
-		return false
+		return true
 	}
 	return !complete
 }

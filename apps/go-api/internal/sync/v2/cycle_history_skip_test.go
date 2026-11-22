@@ -12,11 +12,6 @@ import (
 	"levelup/go-api/internal/sync/historystate"
 )
 
-// LoadSkipSet (SkipSetLoader) : l'ensemble des matchs à ne plus demander, lu sur la base du joueur.
-func (e *histEnv) LoadSkipSet(ctx context.Context, _ PlayerProfile) map[string]bool {
-	return historystate.LoadSkipSet(ctx, e.db)
-}
-
 func (e *histEnv) skipSet() map[string]bool {
 	return historystate.LoadSkipSet(context.Background(), e.db)
 }

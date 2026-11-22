@@ -9,6 +9,9 @@
 // passe saute les matchs connus au lieu de s'arrêter dessus, et range les inconnus plus anciens
 // par tranches de [PassBudget] matchs. La clé se range seulement quand la fin a été vue sans perte.
 //
+// État illisible : une lecture de la clé en échec n'est jamais prise pour « complet » ([Complete]
+// rend l'erreur) : la passe fait un delta ordinaire, n'écrit rien de l'état et reste « en attente ».
+//
 // Marque-page : une passe de rattrapage qui s'arrête avant la fin range sa position ([SaveCursor],
 // clé [CursorKey], voir [Cursor]) pour que la suivante reprenne là au lieu de reparcourir la liste
 // depuis le début ; [MarkComplete] l'efface.
@@ -24,6 +27,8 @@ package historystate
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -49,19 +54,23 @@ func PassBudget() int {
 	return domain.DefaultSyncOptions().MaxMatches
 }
 
-// Complete dit si la fin de l'historique a déjà été vue pour ce joueur. Une base absente ou une
-// lecture en échec compte comme « complet » (journalisé) : mieux vaut un delta ordinaire qu'un
-// parcours intégral à chaque passe sur une base qui ne répond pas.
-func Complete(ctx context.Context, db *sql.DB) bool {
+// ErrNoPlayerDB : Complete a reçu une base joueur absente (handle nil).
+var ErrNoPlayerDB = errors.New("historystate: base joueur absente")
+
+// Complete dit si la fin de l'historique a déjà été vue pour ce joueur : (vrai, nil) clé rangée,
+// (faux, nil) clé absente. Une lecture en échec (ou une base absente, ErrNoPlayerDB) rend
+// (faux, erreur) : l'état est INCONNU, jamais « complet ». L'appelant ne rattrape pas et n'écrit
+// rien de l'état à cette passe (delta ordinaire), garde le joueur « en attente » pour que la
+// cadence courte réessaie, et journalise l'erreur.
+func Complete(ctx context.Context, db *sql.DB) (bool, error) {
 	if db == nil {
-		return true
+		return false, ErrNoPlayerDB
 	}
 	_, ok, err := syncmeta.Get(ctx, db, Key)
 	if err != nil {
-		slog.WarnContext(ctx, "sync: lecture de l'état de l'historique échouée — delta ordinaire", "err", err)
-		return true
+		return false, fmt.Errorf("historystate: lecture de %s: %w", Key, err)
 	}
-	return ok
+	return ok, nil
 }
 
 // MarkComplete range l'instant de fin d'historique dans la base joueur. L'appelant tient le bail

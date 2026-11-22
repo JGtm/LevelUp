@@ -45,10 +45,12 @@ func New(playerDBPath PlayerDBPathFunc, sharedReader SharedReaderFunc) *Repo {
 	return &Repo{playerDBPath: playerDBPath, sharedReader: sharedReader}
 }
 
-// HistoryComplete lit la clé de fin d'historique de la base joueur par duckdb.OpenReadForQuery : le
-// handle tenu par le process est réutilisé s'il existe (jamais d'ouverture lecture seule forcée sur
-// un fichier que le serveur tient en écriture). Une base absente rend faux : aucune passe n'a encore
-// parcouru l'historique de ce joueur.
+// HistoryComplete lit la clé de fin d'historique de la base joueur par duckdb.OpenPlayerReadForQuery :
+// le handle que partage l'écrivain du processus (référence prise ; sinon ouverture dans sa
+// configuration), pour que cette lecture, qui tourne pendant que la file de persistance écrit la même
+// base, ne fasse jamais échouer le worker ni ne lise sur un handle fermé sous elle. Une base absente
+// rend faux : aucune passe n'a encore parcouru l'historique de ce joueur. Une lecture de la clé en
+// échec rend l'erreur (état inconnu, jamais « complet »).
 func (r *Repo) HistoryComplete(ctx context.Context, titleSlug, gamertag string) (bool, error) {
 	path := r.playerDBPath(titleSlug, gamertag)
 	if _, err := os.Stat(path); err != nil {
@@ -57,12 +59,16 @@ func (r *Repo) HistoryComplete(ctx context.Context, titleSlug, gamertag string) 
 		}
 		return false, fmt.Errorf("historyrepo: base joueur %s/%s: %w", titleSlug, gamertag, err)
 	}
-	db, release, err := duckdb.OpenReadForQuery(path)
+	db, release, err := duckdb.OpenPlayerReadForQuery(path)
 	if err != nil {
 		return false, fmt.Errorf("historyrepo: ouverture de la base joueur %s/%s: %w", titleSlug, gamertag, err)
 	}
 	defer release()
-	return historystate.Complete(ctx, db), nil
+	complete, err := historystate.Complete(ctx, db)
+	if err != nil {
+		return false, fmt.Errorf("historyrepo: état de l'historique %s/%s: %w", titleSlug, gamertag, err)
+	}
+	return complete, nil
 }
 
 // ReadHistoryProgress rend la clé de fin d'historique du joueur (HistoryComplete) et ce que la base

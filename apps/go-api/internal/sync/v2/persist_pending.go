@@ -77,7 +77,7 @@ func (o *CycleOrchestratorImpl) proveAfterDrainTimeout(
 	}
 	observability.IncCounterT(ctxkeys.TitleSlug(ctx), counterPersistDrainTimeout)
 	slog.WarnContext(ctx, "sync.v2: attente de la file de persistance expirée — les matchs soumis finissent en arrière-plan, le cycle continue avec ceux déjà rangés",
-		"event", "sync.v2.persist.drain_timeout", "waited_s", int(dt.Waited.Seconds()), "submitted", len(dt.Submitted),
+		"event", "sync.v2.persist.drain_timeout", "waited_s", int(dt.Waited.Seconds()), "stalled", dt.Stalled, "submitted", len(dt.Submitted),
 		"persisted", len(proof.proven), "still_queued", len(proof.queued), "parse_errors", dt.ParseErrors)
 	return proof
 }

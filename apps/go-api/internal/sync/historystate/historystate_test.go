@@ -3,6 +3,7 @@ package historystate_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -34,7 +35,7 @@ func openMemDB(t *testing.T, withTable bool) *sql.DB {
 // Clé absente : l'historique n'a jamais été parcouru jusqu'au bout, la passe doit rattraper.
 func TestComplete_CleAbsente_Incomplet(t *testing.T) {
 	db := openMemDB(t, true)
-	if historystate.Complete(context.Background(), db) {
+	if mustComplete(t, context.Background(), db) {
 		t.Fatal("base neuve : l'historique ne doit pas être réputé complet")
 	}
 }
@@ -47,7 +48,7 @@ func TestMarkComplete_PuisComplete(t *testing.T) {
 	if !historystate.MarkComplete(ctx, db, "J900004") {
 		t.Fatal("MarkComplete doit rendre vrai quand la clé est rangée")
 	}
-	if !historystate.Complete(ctx, db) {
+	if !mustComplete(t, ctx, db) {
 		t.Fatal("après MarkComplete, l'historique doit être réputé complet")
 	}
 	if historystate.Key != "history_complete_at" {
@@ -66,15 +67,32 @@ func TestMarkComplete_PuisComplete(t *testing.T) {
 	}
 }
 
-// Lecture en échec (base sans table sync_meta, ou absente) : réputé complet, jamais un parcours
-// intégral aveugle à chaque passe.
-func TestComplete_LectureEnEchec_Complet(t *testing.T) {
-	ctx := context.Background()
-	if !historystate.Complete(ctx, openMemDB(t, false)) {
-		t.Error("lecture en échec : l'historique est réputé complet")
+// mustComplete lit l'état de l'historique et échoue sur une erreur de lecture.
+func mustComplete(t *testing.T, ctx context.Context, db *sql.DB) bool {
+	t.Helper()
+	complete, err := historystate.Complete(ctx, db)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
 	}
-	if !historystate.Complete(ctx, nil) {
-		t.Error("sans base : l'historique est réputé complet")
+	return complete
+}
+
+// Lecture en échec (base sans table sync_meta, ou absente) : l'erreur est rendue et l'état n'est
+// jamais « complet » (D-25 : l'appelant ne rattrape pas, n'écrit rien et garde le joueur en attente).
+func TestComplete_LectureEnEchec_ErreurJamaisComplet(t *testing.T) {
+	ctx := context.Background()
+	if complete, err := historystate.Complete(ctx, openMemDB(t, false)); err == nil || complete {
+		t.Errorf("lecture en échec : (%v, %v), attendu (faux, erreur)", complete, err)
+	}
+	complete, err := historystate.Complete(ctx, nil)
+	if !errors.Is(err, historystate.ErrNoPlayerDB) || complete {
+		t.Errorf("sans base : (%v, %v), attendu (faux, ErrNoPlayerDB)", complete, err)
+	}
+	// Poignée fermée (« sql: database is closed », constaté au rejeu du journal) : même règle.
+	closed := openMemDB(t, true)
+	_ = closed.Close()
+	if complete, err := historystate.Complete(ctx, closed); err == nil || complete {
+		t.Errorf("poignée fermée : (%v, %v), attendu (faux, erreur)", complete, err)
 	}
 }
 

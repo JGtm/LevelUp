@@ -18,15 +18,17 @@ func TestKnownLoaderV2_EtatDeLHistorique(t *testing.T) {
 		arrange    func(ctx context.Context, db *sql.DB)
 		wantIncomp bool
 		wantCursor *historystate.Cursor
+		wantUnread bool
 	}{
-		{"clé de fin absente : incomplet, sans marque-page", true, func(context.Context, *sql.DB) {}, true, nil},
-		{"incomplet avec marque-page", true, func(ctx context.Context, db *sql.DB) { historystate.SaveCursor(ctx, db, cursor) }, true, &cursor},
-		{"fin rangée : complet", true, func(ctx context.Context, db *sql.DB) { historystate.MarkComplete(ctx, db, "alice") }, false, nil},
+		{"clé de fin absente : incomplet, sans marque-page", true, func(context.Context, *sql.DB) {}, true, nil, false},
+		{"incomplet avec marque-page", true, func(ctx context.Context, db *sql.DB) { historystate.SaveCursor(ctx, db, cursor) }, true, &cursor, false},
+		{"fin rangée : complet", true, func(ctx context.Context, db *sql.DB) { historystate.MarkComplete(ctx, db, "alice") }, false, nil, false},
 		{"fin rangée et marque-page résiduel : complet", true, func(ctx context.Context, db *sql.DB) {
 			historystate.SaveCursor(ctx, db, cursor)
 			historystate.MarkComplete(ctx, db, "alice")
-		}, false, nil},
-		{"lecture impossible (sans sync_meta) : réputé complet", false, func(context.Context, *sql.DB) {}, false, nil},
+		}, false, nil, false},
+		// D-25 : une lecture en échec n'est plus « complet » : état illisible (delta, rien rangé, en attente).
+		{"lecture impossible (sans sync_meta) : illisible, jamais complet", false, func(context.Context, *sql.DB) {}, false, nil, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -46,8 +48,8 @@ func TestKnownLoaderV2_EtatDeLHistorique(t *testing.T) {
 			if err != nil {
 				t.Fatalf("LoadKnown: %v", err)
 			}
-			if st.History.Incomplete != tc.wantIncomp {
-				t.Errorf("Incomplete = %v, want %v", st.History.Incomplete, tc.wantIncomp)
+			if st.History.Incomplete != tc.wantIncomp || st.History.Unreadable != tc.wantUnread {
+				t.Errorf("Incomplete = %v, Unreadable = %v, want %v, %v", st.History.Incomplete, st.History.Unreadable, tc.wantIncomp, tc.wantUnread)
 			}
 			switch {
 			case tc.wantCursor == nil && st.History.Cursor != nil:
