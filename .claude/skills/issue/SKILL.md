@@ -3,6 +3,8 @@ name: issue
 description: Traite une issue GitHub de LevelUp de bout en bout (tri, test qui reproduit, correctif, gates, relecture, PR vers la release, brouillon de réponse). Se lance seulement à la demande, par /issue <numéro>.
 argument-hint: <numéro d'issue>
 disable-model-invocation: true
+model: opus
+effort: high
 ---
 
 # /issue : traiter une issue de bout en bout
@@ -73,6 +75,8 @@ joueur dans le brouillon de réponse.
 
 - Invoquer les skills du domaine avant d'écrire (`arch-rules`, `db-schema`, `frontend-patterns`, `color-tokens`,
   `go-features`, `canonical-types` selon la zone). Réutiliser l'existant, ne pas copier une règle déjà écrite.
+- Une correction purement mécanique (texte d'aide, libellé dans chaque langue) se délègue à un sous-agent
+  **Haiku**, effort `low`, avec la liste exacte des chaînes à changer.
 - Correctif minimal. Toute découverte hors périmètre se note dans `.ai/BACKLOG.md`, elle ne se corrige pas ici.
 - Le test de l'étape 3 passe, et il passe pour la bonne raison.
 
@@ -84,7 +88,7 @@ du gate en échec.
 
 ## 6. Relecture
 
-`adversarial-review` avec `levelup-revue`, par un sous-agent **Sonnet** qui n'a pas écrit le code : il reçoit le
+`adversarial-review` avec `levelup-revue`, par un sous-agent **Sonnet**, effort `medium`, qui n'a pas écrit le code : il reçoit le
 diff et l'issue, pas les conclusions. Une seule ronde. P0 et P1 se corrigent, P2 et P3 vont au backlog.
 
 ## 7. Livrer
