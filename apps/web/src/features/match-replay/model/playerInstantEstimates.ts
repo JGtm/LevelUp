@@ -10,12 +10,8 @@
  * à part (`absences`) sous forme d'un petit type fermé, sans texte d'interface : le rendu n'écrit rien à la place
  * d'une valeur absente.
  *
- * SCORE. Le score personnel à l'instant est la somme des points par action (`scoreActions`) jusqu'à l'image.
- * Il n'est établi que si TROIS gardes tiennent : le document déclare le score par action complet
- * (`coverage.scoreActions.complete`), l'horloge du film est recalée (`filmClockTrusted`, la garde du calque de
- * score) et, à la fin du match, la somme du joueur ÉGALE le score personnel de sa ligne de feuille de l'API
- * (`ReplayPlayer.board.score`). Le verdict du document seul ne suffit pas : il peut être vrai alors que la somme
- * s'écarte de la feuille. La garde vaut pour tout build et tout mode ; aucune liste n'en décide.
+ * SCORE. Le score personnel à l'instant et ses trois gardes vivent dans `playerInstantScore.ts` : la fiche et
+ * l'infobulle de la tuile en lisent la même valeur.
  *
  * RANG. Le rang n'existe que si le score est établi pour TOUS les joueurs du lobby (les joueurs donnés à la
  * lecture, bots compris) : un seul score non établi rend le rang absent pour tout le monde. Égalités : rang de
@@ -43,23 +39,14 @@
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { buildSlotOwnership, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { filmClockTrusted, scoreAtFrame } from '../../../lib/replay/scoreTimeline'
-import type { ReplayScoreTick } from '@/lib/api/types'
+import { scoreAtFrame } from '../../../lib/replay/scoreTimeline'
 
+import { scoreOfReading, scoreReaderOf, type ScoreAbsence, type ScoreReading } from './playerInstantScore'
 import { identityKeys } from './playerInstantStats'
 
 // ---------------------------------------------------------------------------------------
 // Ce que la lecture rend
 // ---------------------------------------------------------------------------------------
-
-/**
- * Pourquoi le score est absent :
- *  - `score-incomplet` : le document ne déclare pas le score par action complet ;
- *  - `horloge-non-recalee` : l'horloge du film n'est pas recalée, les points seraient datés à un écart inconnu ;
- *  - `feuille-absente` : le joueur n'a pas de score sur la feuille de l'API, rien ne permet de vérifier la somme ;
- *  - `somme-differente` : à la fin du match, la somme des points par action n'égale pas le score de la feuille.
- */
-export type ScoreAbsence = 'score-incomplet' | 'horloge-non-recalee' | 'feuille-absente' | 'somme-differente'
 
 /** Pourquoi le rang est absent : le score d'au moins un joueur du lobby n'est pas établi (le sien compris). */
 export type RankAbsence = 'lobby-incomplet'
@@ -169,7 +156,6 @@ interface ShotSeries {
   weapons: Map<string | null, WeaponSeries>
 }
 
-type ScoreReading = { ticks: ReplayScoreTick[]; absence: null } | { ticks: null; absence: ScoreAbsence }
 type ShotsReading = { series: ShotSeries; absence: null } | { series: null; absence: ShotsAbsence }
 
 interface PlayerEstimateSeries {
@@ -181,49 +167,6 @@ interface PlayerEstimateSeries {
 export interface InstantEstimatesSeries {
   readonly lobbySize: number
   readonly players: ReadonlyMap<string, PlayerEstimateSeries>
-}
-
-// ---------------------------------------------------------------------------------------
-// Score
-// ---------------------------------------------------------------------------------------
-
-/** La cause d'absence qui vaut pour tout le document, ou `null`. */
-function documentScoreAbsence(doc: InstantEstimatesInput['doc']): ScoreAbsence | null {
-  if (doc.coverage?.scoreActions?.complete !== true) return 'score-incomplet'
-  if (!filmClockTrusted(doc)) return 'horloge-non-recalee'
-  return null
-}
-
-/** Les points par action du document, rangés par destinataire (xuid décimal), dans l'ordre du temps. */
-function actionsByRecipient(doc: InstantEstimatesInput['doc']): Map<string, ReplayDocumentReady['scoreActions']> {
-  const out = new Map<string, ReplayDocumentReady['scoreActions']>()
-  for (const a of doc.scoreActions) {
-    const list = out.get(a.xuid)
-    if (list) list.push(a)
-    else out.set(a.xuid, [a])
-  }
-  return out
-}
-
-/** Le score d'un joueur : les paliers cumulés de ses points, si la somme finale égale sa feuille. */
-function readScore(
-  player: ReplayPlayer,
-  byRecipient: ReadonlyMap<string, ReplayDocumentReady['scoreActions']>,
-  docAbsence: ScoreAbsence | null,
-): ScoreReading {
-  if (docAbsence) return { ticks: null, absence: docAbsence }
-  const sheet = player.board?.score
-  if (sheet === undefined || sheet === null) return { ticks: null, absence: 'feuille-absente' }
-  const actions = identityKeys(player)
-    .flatMap((k) => byRecipient.get(k) ?? [])
-    .sort((a, b) => a.t - b.t)
-  const ticks: ReplayScoreTick[] = []
-  let total = 0
-  for (const a of actions) {
-    total += a.points
-    ticks.push({ t: a.t, v: total })
-  }
-  return total === sheet ? { ticks, absence: null } : { ticks: null, absence: 'somme-differente' }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -353,12 +296,11 @@ function readShots(
 /** readInstantEstimatesSeries lit, une fois par document, tout ce qui est daté pour chaque joueur du lobby. */
 export function readInstantEstimatesSeries(input: InstantEstimatesInput): InstantEstimatesSeries {
   const { doc, players } = input
-  const docAbsence = documentScoreAbsence(doc)
-  const byRecipient = docAbsence ? new Map<string, ReplayDocumentReady['scoreActions']>() : actionsByRecipient(doc)
+  const scoreOf = scoreReaderOf(doc)
   const shotSeries = readShotSeries(doc, players)
   const out = new Map<string, PlayerEstimateSeries>()
   for (const p of players) {
-    out.set(p.xuid, { score: readScore(p, byRecipient, docAbsence), shots: readShots(doc, p, shotSeries) })
+    out.set(p.xuid, { score: scoreOf(p), shots: readShots(doc, p, shotSeries) })
   }
   return { lobbySize: players.length, players: out }
 }
@@ -473,7 +415,7 @@ export function playerInstantEstimatesAt(
   if (!mine) return FOREIGN_PLAYER
   const rank = rankAt(series, mine.score, frame)
   return {
-    score: mine.score.ticks ? scoreAtFrame(mine.score.ticks, frame) : null,
+    score: scoreOfReading(mine.score, frame),
     rank,
     shots: mine.shots.series ? shotsAt(mine.shots.series, frame) : null,
     absences: {

@@ -513,15 +513,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       l'arrivée du film ; (5) une seule commande de rattrapage ; (6) la durée jouable de l'API n'a plus de
       lecteur. Le modèle dit aussi ce que devient chaque ligne de l'inventaire de T.0 (gardée, fusionnée,
       retirée), et s'écrit en ADR (anglais) avec ses garde-rails.
-- [ ] T.2 Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
+- [x] T.2 (fait le 2026-11-18, `87910a4602` puis `28137cda38` sur `bl1118/t` : `timeline.ResolveKickoff`, ordre fixe film, estimation, inconnu ; trois états du rejeu, un coup d'envoi du film ne redescend jamais faute de rejeu lisible ; valeur du rejeu hors de la fenêtre du match refusée et comptée ; ADR 0050) Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
       deviennent un diagnostic journalisé et compté, plus une valeur que les lecteurs interprètent.
 - [ ] T.3 Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
       l'item G.5 est couvert ici) ; garde-rail : aucune lecture de la durée jouable de l'API ni du coup
       d'envoi brut hors de la résolution.
-- [ ] T.4 Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
+- [x] T.4 (fait le 2026-11-18 : `persist.KickoffPersister`, une transaction par match ; la synchronisation pose les valeurs sur ses lignes avant l'INSERT ; colonne `real_start_source` amorcée par la migration ; garde-rail `archlint/kickoff_write_guard_test.go` ; relecture adverse faite, 1 bloquant et 5 constats corrigés) Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
       anti-corruption du dépôt, jamais d'écriture directe) ; le report du film et la synchronisation
       l'appellent tous deux.
-- [ ] T.5 Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
+- [x] T.5 (fait le 2026-11-18 : `levelup backfill-kickoff`, simulation comprise ; rattrapage au démarrage par révision `KickoffRev`, liée aux révisions des notes ; `cmd/backfill_t0`, `backfill_t0_film`, `backfill_time_played` et `analysis/spawn_detection.go` supprimés avec leurs tests et leurs 38 paires de la baseline ; mesure sur copie : 2 045 matchs, 1 447 film, 587 estimation, 11 inconnus, second passage sans écriture, 50 rejeux retirés : 50 coups d'envoi gardés) Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
       avec leurs tests (aucun code mort).
 - [ ] T.6 (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
       la note LUSR si T.0 l'a jugé nécessaire. La prod reçoit le même geste à la publication.
@@ -534,15 +534,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Piste S — schéma d'une base joueur et tests du paquet DuckDB (Sonnet)
 
-- [ ] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
+- [x] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
       seules ») sur types, défauts et `NOT NULL` ; écart listé dans `.ai/annexes_backlog_1118/schema_joueur.md` ;
       forme des bases existantes relevée sur une COPIE d'une base joueur du poste.
-- [ ] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
+- [x] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
       aucune migration d'une base existante ; si l'alignement demande de modifier une étape de migration déjà
       jouée en production, arrêt et retour au user.
-- [ ] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
+- [x] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
       inutile ; sinon elle garde sa date et son motif.
-- [ ] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
+- [x] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
       (`pool_attach_swap_integration_test.go:116`, `pool_shared_reader_integration_test.go:71`, `:125`, `:186`,
       `pool_swap_multititre_integration_test.go:103`) reçoivent la base migrée copiée avant `GetOrOpen` ;
       `pool_migration_test.go` (dont l'objet est la migration) passe sur la liste d'exemptions datée ; le
@@ -577,6 +577,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       CI lue après la poussée.
 
 ## Journal d'exécution
+
+- 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
+  écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
+  attendait C.4 et K.2, et met le code sous les yeux du user pour sa validation à l'écran. Vérifications du pilote
+  sur l'intégration, deux passes : types, lint, lints d'imports et de couleurs, contrat de l'API, compilation et
+  `vet` verts ; `go test ./...` 228 paquets verts (archlint avec un délai de 40 minutes) ; tests d'intégration en
+  `-p 1` verts (synchronisation, DuckDB, persist, replayregen, replayartifacts) ; suite complète du web : 14 379
+  réussis, un vrai rouge corrigé (type du fil homonyme d'un schéma du contrat), huit dépassements de délai sous
+  charge rejoués seuls et verts. M.1 refait en prototype interactif après le retour du user (« aucune animation
+  ni rien, je vois pas du tout ce qu'on vise »), même lien. Restent à cueillir sur l'intégration : D, K (K.1, K.3,
+  K.4, K.5) ; en cours : T (écriture), S.
 
 - 2026-11-18 — M.1 rendu, lu par le pilote (feuille de style, balises et attributs énumérés, texte entier) et
   publié ; choix du user attendu (porte de M.2 et M.3). Seconde passe de vérifications : suite complète du web
@@ -657,6 +668,76 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-18 — Q.2-g DÉCIDÉ par le user (« ok ») : la ligne « Tirs à la tête » de la fiche lit le compteur daté du
+  tableau du jeu (valeur à l'instant = dernière valeur de la courbe cumulée), sans mention ni bulle ; ligne
+  absente quand le film ne donne pas le compteur pour le joueur ; l'ancienne estimation et sa note sont
+  supprimées. Ajouté à l'agent de Q.2 en cours, après ses huit corrections. La barre de lecture (M.2, M.3) est
+  rendue, relue et commitée (`2816593c6d` sur `bl1118/m`) : écart assumé avec le prototype, la barre fine
+  redevient pleine à la pause, au survol, au focus et après un geste ; forme fine obtenue par une réduction à
+  80 % (lisibilité des petits chiffres à juger par le user à l'écran).
+- 2026-11-18 — DÉCISION DU USER sur le prototype des quatre choix : « tout proposé sauf le 3. » Donc, à écrire en
+  Q.2 : (i) lignes du fil du joueur suivi sur fond légèrement teinté (token, sans bordure à gauche), distinct de
+  la ligne choisie ; (ii) au Cinéma, la barre de lecture SOUS le bloc arrondi du plan ; (iii) Suivre / Seul /
+  Masquer en un segment de trois colonnes égales, l'actif plein. Le volume (3) reste comme aujourd'hui : curseur
+  toujours visible. LISTE FERMÉE DE Q.2, dans l'ordre d'écriture, un seul écrivain, après M.2 et M.3 : Q.2-a
+  boutons carrés de la barre d'une ligne ; Q.2-b capture et export sans cartouche ; Q.2-c fenêtre de fiche à
+  8 px sous le haut du plan ; Q.2-e bloc arrondi unique du Standard ; Q.2-h marge du Plein cadre à 16 px ;
+  Q.2-i fond teinté du joueur suivi ; Q.2-j barre du Cinéma sous le bloc ; Q.2-k segment de la fiche. Q.2-g
+  (tirs à la tête) attend la réponse du user sur la lecture du compteur du jeu. Q.2-d et Q.2-f : écartés.
+- 2026-11-18 — prototype des quatre choix publié, lu en entier par le pilote avant publication :
+  https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
+  Quatre bascules « Aujourd'hui / Proposé » : fond teinté des lignes du joueur suivi, barre du Cinéma sous le
+  bloc, volume en icône seule, segment Suivre / Seul / Masquer. Jamais ouvert dans un navigateur par l'agent :
+  le rendu est à juger par le user. Limite dite au user : au choix de la barre, le gain de hauteur du plan est
+  faible dans le prototype.
+- 2026-11-18 — DÉCISIONS DU USER sur les écarts de maquette (Q.2), message du 2026-11-18 : « pour les corrections,
+  ok avec tes recos sauf pour 6, j'en veux pas du tout, 7 on a bien un (i) pour expliquer que c'est estimé ? Pour
+  12 et 14 j'en sais rien je vois pas de quoi ça a l'air. Pour le 17 je vois pas non plus [...]. Pour les trucs
+  plus tard je te donne mon go d'avance ». Lecture du pilote, redite au user : RETENUS : boutons carrés de la
+  barre d'une ligne (Q.2-a), capture et export sans cartouche (Q.2-b), fenêtre de fiche à 8 px sous le haut du
+  plan (Q.2-c), bloc arrondi unique du Standard (Q.2-e), marge du Plein cadre à 16 px (Q.2-h). ÉCARTÉS : le
+  défilement de toute la fenêtre de fiche (Q.2-d : l'actuel reste), le gain en pour-cent dans l'infobulle de
+  « Plan tourné » (Q.2-f : refusé, la maquette n'est pas suivie). EN QUESTION : tirs à la tête (Q.2-g) : il n'y
+  a aucune bulle d'information aujourd'hui ; proposition du pilote à valider : lire le compteur du jeu lui-même
+  (`scoreTimeline.players[].stats`, série dans le temps, accord de 99,85 % avec l'API) au lieu des éliminations
+  dont le coup fatal est mesuré, ce qui retire l'estimation. SUR PROTOTYPE (le user ne peut pas juger sans
+  rendu) : fond teinté des lignes du joueur suivi, barre du Cinéma sous le bloc, volume en icône seule, segment
+  Suivre / Seul / Masquer : prototype interactif commandé (`C:/t/maquettes/rejeu-quatre-choix.html`). Sans
+  changement : pictogrammes des cadres, bouton caméra relevé pendant un suivi, cinq écarts de forme des bases
+  joueur (nommés au test), colonnes mortes du registre (backlog). Q.2 s'écrit après M.2 et M.3 (mêmes fichiers,
+  un seul écrivain). GO D'AVANCE du user pour « les trucs plus tard » : le rattrapage du poste (T.6) et la
+  régénération du parc du plan du décodeur ; le pilote prévient quand même avant de lancer (serveur arrêté,
+  2 h 30, mémoire) ; la fusion dans `main` reste annoncée avant, et la version attend la 3D et les temps forts.
+- 2026-11-18 — barre de lecture : le user CONFIRME dans cette session (« je t'ai déjà validé C+B non ? ») le
+  choix reçu par relais : B (deux lignes quand la place manque) et C (barre fine et translucide en
+  surimpression au Plein cadre). Portes de M.2 et M.3 ouvertes ; agent Sonnet lancé dans `C:/t/bl18-d` (branche
+  `bl1118/m`, partie de l'intégration), avec la consigne de placer ses ajouts de préférence et de textes hors
+  des lignes que `feat/fonds-relief` modifie, pour une fusion sans conflit. Piste T : ronde de corrections
+  commitée (`28137cda38`), T.3 (lecteurs) lancé avec témoins avant et après. CI de la seconde livraison verte.
+- 2026-11-18 — SECONDE LIVRAISON fusionnée et poussée dans `release/v8.3.0` (`709786d758` : pistes D, K, S).
+  Gate lourd sur l'intégration : typage, lint, suite complète du site (14 406 tests), imports entre features,
+  `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (229 paquets, code 0), contrat de l'API à jour.
+  La CI de la première livraison avait ROUGI (job de la baseline de tests) : 4 tests supprimés avec leur code
+  par la piste G restaient dans la baseline ; retirés dans cette livraison (`4b76bacbc2`). Le gate local ne
+  joue pas ce contrôle : la piste T, qui supprime des tests, doit retirer ses paires (consigne envoyée).
+  Relecture adverse de la piste T rendue : 1 bloquant, 5 à corriger, ronde de corrections en cours ; l'ADR
+  du coup d'envoi devient 0050 (0049 pris par le plan du fond Relief).
+- 2026-11-18 — barre de lecture (M.2, M.3) : la session du fond Relief RELAIE une phrase du user reçue chez
+  elle, « pour la maquette du lecteur en superposition je valide l'option C+B » (C : barre fine et translucide en
+  surimpression au Plein cadre ; B : deux lignes quand la place manque). Relais, pas un message du user dans
+  cette session : la porte de M.2 et M.3 ne s'ouvre qu'à sa confirmation ici. L'écriture attend de toute façon
+  l'intégration du D.3 de l'autre plan (`settings/replayPreferences.ts`, nœud N25).
+- 2026-11-18 — piste T, écriture (T.2, T.4, T.5) rendue et commitée sur sa branche (`87910a4602`) ; relecture
+  adverse des écritures lancée (agent neuf, lecture seule) AVANT la migration des lecteurs (T.3). Mesure sur la
+  copie : 2 045 matchs, sources film 1 447, estimation 587, inconnue 11 ; 13 coups d'envoi changent ; 9 873
+  temps de jeu changent (médiane −8 s) ; second passage : 0 écriture. Écarts au modèle : les trois colonnes
+  mortes restent en base (DuckDB refuse le retrait sans reconstruire la table) ; `playable_duration_seconds`
+  reste écrite tant que la Dominance la lit.
+- 2026-11-18 — pistes D, K (K.1, K.3 à K.5) et S rendues, relues sur pièces, commitées sur leurs branches et
+  cueillies sur l'intégration (`e7f8ff4ae4`, `bddd4751a6`, `b976137ffc`). S : 16 lignes d'écart de forme avant,
+  11 colonnes alignées pour les bases neuves, 5 écarts résiduels nommés (voir Découvertes), exemption de
+  `csr_pipeline_e2e` retirée, garde-rail des migrations neuves élargi. Piste T : écriture en cours (Opus).
+  Plan du décodeur : pistes J et A lancées dans deux dossiers de travail du clone.
 - 2026-11-18 — plan écrit ; trois instructions en lecture seule et une mesure sur le parc ; aucun code.
 - 2026-11-18 — réponses du user : D-2, D-3, D-4, D-5, D-7 retenues ; silhouette de l'arme écartée pour le
   ramassage, planche de quatre tracés publiée (D-1 rouverte) ; correction de périmètre : les neuf entrées
@@ -670,6 +751,30 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   lancées pour le plan du décodeur.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-18 (T) — les colonnes `t0_quality`, `film_match_start_ms` et, à terme, `playable_duration_seconds` du
+  registre n'ont plus d'écrivain ou n'en auront plus : DuckDB refuse `DROP COLUMN` sur une table à clé primaire
+  et index, le retrait demande de reconstruire la table. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (T) — deux rejeux (`ed3b6497`, `dd29957c`, matchs de 21 et 24 s) publient un coup d'envoi après la
+  fin du match : refusés par la résolution et comptés. À recouper avec le plan du décodeur (coup d'envoi par
+  l'horloge).
+- 2026-11-18 (T) — une publication de rejeu qui change un temps de jeu de quelques secondes ne rejoue pas les
+  notes (limite écrite dans l'ADR 0050).
+- 2026-11-18 (T) — les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/`
+  un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
+
+- 2026-11-18 (S) — cinq écarts de forme restent entre une base joueur née de la synchronisation et une base
+  née des migrations (`performance_score` FLOAT contre DOUBLE, table et vue ; défaut de `sync_meta.updated_at` ;
+  défaut FALSE de `is_with_friends` et `is_excluded`). Les fermer demande de modifier une étape de migration
+  déjà jouée en production, ce que S.2 interdit : ils sont nommés et datés dans le test de forme. Trois options
+  écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser », soumis au user.
+
+- 2026-11-18 (intégration) — `internal/mapcatalog`, `TestAddOverlayEntryConcurrentNePerdPasDEntree` : instable, 1
+  échec sur 10 passages sur le code d'AVANT le plan. Quand le verrou d'écriture ne se pose pas à temps, le code
+  force le passage et une écriture concurrente du catalogue est perdue : c'est un vrai défaut, pas seulement un
+  test fragile. À porter au backlog à la clôture (R.1), priorité moyenne.
+- 2026-11-18 (intégration) — sous charge, huit garde-rails du site qui parcourent tous les fichiers dépassent le
+  délai de 5 s d'un test dans une suite complète (ils passent seuls en moins de 30 s au total).
 
 - 2026-11-18 (Q.1) — une décision datée du user n'est pas réalisée dans le code : le fond teinté des lignes du
   joueur suivi dans le fil (décision D-5 de la refonte, 2026-11-15) ; seul le gras de la fiche ouverte existe.

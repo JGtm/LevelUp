@@ -666,12 +666,6 @@ export interface ReplayText {
    */
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
-  /**
-   * LE SCORE PERSONNEL À L'INSTANT LU (schéma 12) — celui du joueur sur sa fiche. Ce n'est
-   * PAS le score final : il tique avec la lecture. Le score d'ÉQUIPE, lui, ne vit plus
-   * qu'au bandeau (les chiffres en tête de colonne sont partis le 2026-08-24).
-   */
-  playerScoreLive: string
   /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
   countersLive: string
   countersMatch: string
@@ -895,6 +889,8 @@ export interface ReplayText {
    */
   grenadeAge: string
   grenadeAhead: string
+  /** Type de grenade sans nom au catalogue du document : le rang lu reste écrit, il est la seule chose de vraie. */
+  grenadeRank: (rank: number) => string
   /**
    * Capacité absente de la table du titre : la fiche pose un GLYPHE NEUTRE (pas un
    * caractère, décision utilisateur du 16/08) et dit en infobulle ce qu'on ne sait pas —

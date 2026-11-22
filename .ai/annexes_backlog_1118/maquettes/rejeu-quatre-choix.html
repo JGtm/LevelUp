@@ -1,0 +1,483 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Quatre choix du rejeu</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f5f5f4; --bg-raised:#ffffff; --bg-tile:#fafafa; --bg-btn:#ffffff;
+  --line:#e4e4e4; --line-strong:#d4d4d4; --line-rail:#d0d0d0; --line-faint:#bdbdbd;
+  --text:#171717; --text-soft:#303030; --text-mute:#525252; --text-dim:#666666;
+  --ally:#15803d; --enemy:#dc2626; --follow:#2563eb; --on-accent:#ffffff; --warn:#b45309;
+  --rail-fill:#262626; --knob:#171717; --play-bg:#171717; --play-fg:#fafafa; --neutral:#b5b5b5;
+  --map-sol:#dfe7ee; --map-zone:#cfdae5; --map-mur:#6b86a1; --shadow:#00000033;
+  --font: Roboto, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0b0b0b; --bg-raised:#0f0f0f; --bg-tile:#121212; --bg-btn:#141414;
+    --line:#1f1f1f; --line-strong:#262626; --line-rail:#2a2a2a; --line-faint:#3a3a3a;
+    --text:#fafafa; --text-soft:#d4d4d4; --text-mute:#a3a3a3; --text-dim:#8f8f8f;
+    --ally:#4ade80; --enemy:#f87171; --follow:#60a5fa; --on-accent:#0b0b0b; --warn:#fbbf24;
+    --rail-fill:#e5e5e5; --knob:#ffffff; --play-bg:#fafafa; --play-fg:#0b0b0b; --neutral:#3a3a3a;
+    --map-sol:#16222d; --map-zone:#1d2d3b; --map-mur:#46607a; --shadow:#000000a6;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0b0b0b; --bg-raised:#0f0f0f; --bg-tile:#121212; --bg-btn:#141414;
+  --line:#1f1f1f; --line-strong:#262626; --line-rail:#2a2a2a; --line-faint:#3a3a3a;
+  --text:#fafafa; --text-soft:#d4d4d4; --text-mute:#a3a3a3; --text-dim:#8f8f8f;
+  --ally:#4ade80; --enemy:#f87171; --follow:#60a5fa; --on-accent:#0b0b0b; --warn:#fbbf24;
+  --rail-fill:#e5e5e5; --knob:#ffffff; --play-bg:#fafafa; --play-fg:#0b0b0b; --neutral:#3a3a3a;
+  --map-sol:#16222d; --map-zone:#1d2d3b; --map-mur:#46607a; --shadow:#000000a6;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-top:24px;padding-bottom:48px;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+h1{font-size:28px;line-height:1.2;margin:0 0 4px;font-weight:700}
+.accroche{margin:0;color:var(--text-mute)}
+
+/* Mise en page : la scène à gauche, les réglages à droite sur grand écran ; tout empilé sur téléphone */
+.page{max-width:1240px;margin:0 auto;display:grid;gap:16px 24px;grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"tete" "glob" "scene" "choix"}
+.tete{grid-area:tete}
+.glob{grid-area:glob;display:flex;flex-wrap:wrap;gap:8px}
+.scene{grid-area:scene}
+.choix{grid-area:choix;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-content:start}
+@media (min-width:1000px){
+  .page{grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"tete tete" "scene glob" "scene choix";grid-template-rows:auto auto 1fr}
+  .scene{align-self:start;position:sticky;top:16px}
+}
+.gb{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line-faint);background:var(--bg-btn);font-weight:600}
+.gb:hover{background:var(--line)}
+
+/* Les quatre bascules : un gros bouton, deux positions */
+.gl{display:block;margin-bottom:6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.bascule{position:relative;isolation:isolate;display:grid;grid-template-columns:1fr 1fr;width:100%;min-height:52px;padding:4px;
+  border:1px solid var(--line-faint);border-radius:12px;background:var(--bg-btn);font-size:15px;font-weight:700}
+.bascule::before{content:"";position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:8px;
+  background:var(--line-rail);transition:transform .25s ease, background .25s ease}
+.bascule[aria-pressed="true"]::before{transform:translateX(100%);background:var(--follow)}
+.bascule span{display:grid;place-items:center;color:var(--text-mute);transition:color .25s ease}
+.bascule[aria-pressed="false"] span:first-child{color:var(--text)}
+.bascule[aria-pressed="true"] span:last-child{color:var(--on-accent)}
+.phrase{margin:6px 2px 0;color:var(--text-soft);font-size:14px;line-height:1.35}
+
+/* La scène : le cadre Cinéma. Le bloc arrondi et la barre sont deux objets qui se déplacent l'un par rapport à l'autre */
+.scene{container-type:inline-size;--H:470px}
+@media (max-width:600px){.scene{--H:440px}}
+.cadre{position:relative;height:var(--H);--bh:56px}
+.bloc{position:absolute;left:0;right:0;top:0;bottom:0;border:1px solid var(--line);border-radius:12px;background:var(--bg-raised);
+  overflow:hidden;transition:bottom .3s ease}
+.bloc::after{content:"";position:absolute;left:0;right:0;bottom:var(--bh);height:1px;background:var(--line);transition:opacity .3s ease}
+.v2 .bloc{bottom:calc(var(--bh) + 6px)}
+.v2 .bloc::after{opacity:0}
+.plan{position:absolute;left:0;right:0;top:0;bottom:var(--bh);background:var(--map-sol);overflow:hidden;transition:bottom .3s ease}
+.v2 .plan{bottom:0}
+.mapsvg{position:absolute;left:12px;top:8px;width:calc(100% - 24px);height:calc(100% - 16px)}
+.m-sol{fill:var(--map-sol)}
+.m-zone{fill:var(--map-zone)}
+.m-mur{fill:none;stroke:var(--map-mur);stroke-width:1.5px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+
+/* Joueurs sur le plan */
+.pin{position:absolute;left:-6px;top:-6px;width:12px;height:12px;will-change:transform;transition:opacity .25s ease}
+.pin i{display:block;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
+.pin.a i{background:var(--ally)}
+.pin.b i{background:var(--enemy)}
+.pin.f i{box-shadow:0 0 0 3px var(--map-sol),0 0 0 5px var(--follow)}
+.pin.s i{box-shadow:0 0 0 3px var(--map-sol),0 0 0 5px var(--text)}
+.pin span{display:none;position:absolute;left:20px;top:-3px;padding:1px 6px;border-radius:4px;white-space:nowrap;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);font-size:11px;font-weight:600}
+.pin.nom span{display:block}
+.pin.mas{opacity:0}
+.pin.att{opacity:.22}
+.chip{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;z-index:3;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);font-size:12px;font-weight:600}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--follow)}
+
+/* Fil des événements : bas gauche du plan, lignes à colonnes fixes */
+.fil{position:absolute;left:10px;bottom:10px;width:min(310px,calc(100% - 20px));display:flex;flex-direction:column;gap:2px;z-index:2}
+.fil.glisse{animation:glisse .3s ease-out}
+@keyframes glisse{from{transform:translateY(28px)}}
+.li{position:relative;isolation:isolate;display:flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;overflow:hidden;
+  background:color-mix(in srgb, var(--bg) 72%, transparent);font-size:12.5px;white-space:nowrap}
+.li:nth-last-child(6){opacity:.6}
+.li:nth-last-child(5){opacity:.82}
+.li::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--follow);opacity:0;transition:opacity .3s ease}
+.v1 .li.moi::before{opacity:.17}
+.li.choisi{background:color-mix(in srgb, var(--text) 20%, var(--bg));font-weight:700}
+.li.neuf{animation:entre .3s ease-out}
+@keyframes entre{from{opacity:0}}
+.li .t{width:30px;flex:none;color:var(--text-dim);font-size:11.5px;font-weight:400}
+.kp{font-weight:inherit}
+.kp.a{color:var(--ally)}
+.kp.b{color:var(--enemy)}
+.vb{color:var(--text-dim);font-weight:400}
+.arme{color:var(--text)}
+
+/* Fiche du joueur : fenêtre posée sur le plan */
+.fiche{position:absolute;top:10px;left:10px;z-index:3;width:min(262px,calc(100% - 20px));display:grid;gap:12px;padding:12px;
+  border-radius:12px;background:var(--bg-tile);border:1px solid var(--line-faint);box-shadow:0 12px 32px var(--shadow)}
+@container (max-width:520px){.fiche{top:46px}}
+.who{display:flex;align-items:center;gap:8px;min-width:0}
+.who .dot{width:10px;height:10px;border-radius:50%;background:var(--enemy);flex:none}
+.who b{font-size:16px}
+.who small{font-size:12px;color:var(--text-dim);white-space:nowrap}
+.kda{margin-left:auto;font-size:14px;font-weight:600;white-space:nowrap}
+.kda s{text-decoration:none;color:var(--text-dim);padding:0 2px}
+.acts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;border:1px solid transparent;border-radius:8px;overflow:hidden;
+  transition:gap .25s ease, border-color .25s ease}
+.acts button{height:32px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg-btn);color:var(--text-soft);
+  font-size:12.5px;outline-offset:-2px;transition:border-radius .25s ease, border-color .25s ease, background .15s ease, color .15s ease}
+.acts button[aria-pressed="true"]{background:var(--play-bg);color:var(--play-fg);border-color:var(--play-bg)}
+.v4 .acts{gap:0;border-color:var(--line-strong)}
+.v4 .acts button{border-radius:0;border-color:transparent;border-left-color:var(--line-strong)}
+.v4 .acts button:first-child{border-left-color:transparent}
+.v4 .acts button[aria-pressed="true"]{border-color:var(--play-bg)}
+
+/* La barre de lecture : une ligne de 56 px, dans le bloc (aujourd'hui) ou dessous (proposé) */
+.barre{position:absolute;left:13px;right:13px;bottom:1px;height:var(--bh);z-index:4;display:flex;align-items:center;gap:6px;white-space:nowrap;
+  transition:left .3s ease, right .3s ease, bottom .3s ease}
+.v2 .barre{left:2px;right:2px;bottom:0}
+.barre > *{flex:none}
+.barre svg{display:block;width:17px;height:17px}
+.ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 4px;border-radius:8px;color:var(--text-soft);font-size:12.5px;font-weight:500}
+.ib:hover{background:var(--line)}
+.play{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--play-bg);color:var(--play-fg)}
+.play svg{width:17px;height:17px}
+.clk{min-width:40px;margin:0 4px;text-align:center;font-size:12.5px;color:var(--text-mute);font-variant-numeric:tabular-nums}
+.clk b{color:var(--text);font-weight:600}
+@container (max-width:640px){.opt{display:none}}
+@container (max-width:460px){.tot{display:none}}
+
+/* Volume : curseur toujours là (aujourd'hui), ou icône seule qui ouvre un curseur vertical (proposé) */
+.snd{position:relative;display:inline-flex;align-items:center}
+.vol{position:relative;display:block;width:58px;height:14px;margin-left:8px;overflow:hidden;cursor:pointer;touch-action:none;outline-offset:-2px;
+  transition:width .3s ease, margin-left .3s ease, opacity .25s ease, visibility 0s}
+.vol::before{content:"";position:absolute;left:0;right:0;top:5px;height:4px;border-radius:2px;background:var(--line-rail)}
+.vol i{position:absolute;left:0;top:5px;height:4px;width:calc(var(--v,.6) * 100%);border-radius:2px;background:var(--text-dim)}
+.vol b{position:absolute;top:1px;left:calc(var(--v,.6) * (100% - 12px));width:12px;height:12px;border-radius:50%;background:var(--knob)}
+.v3 .vol{width:0;margin-left:0;opacity:0;visibility:hidden;transition:width .3s ease, margin-left .3s ease, opacity .2s ease, visibility 0s .3s}
+.vpop{display:none;position:absolute;left:-3px;bottom:calc(100% + 8px);width:36px;height:128px;z-index:10;place-items:center;border-radius:10px;
+  background:var(--bg-tile);border:1px solid var(--line-faint);box-shadow:0 8px 24px var(--shadow);
+  visibility:hidden;opacity:0;transition:opacity .15s ease, visibility 0s .15s}
+.v3 .vpop{display:grid}
+.vpop.ouvert{visibility:visible;opacity:1;transition:opacity .15s ease, visibility 0s}
+.vt{position:relative;width:28px;height:96px;cursor:pointer;touch-action:none;border-radius:6px}
+.vt::before{content:"";position:absolute;left:12px;top:0;bottom:0;width:4px;border-radius:2px;background:var(--line-rail)}
+.vt i{position:absolute;left:12px;bottom:0;width:4px;height:calc(var(--v,.6) * 100%);border-radius:2px;background:var(--text-dim)}
+.vt b{position:absolute;left:8px;bottom:calc(var(--v,.6) * (100% - 12px));width:12px;height:12px;border-radius:50%;background:var(--knob)}
+
+/* Frise de lecture : repères, rail, bande de dominance, curseur */
+.fr{position:relative;flex:1 1 0;min-width:40px;height:30px;margin:0 10px;cursor:pointer;touch-action:none;border-radius:6px}
+.fr.gain{animation:gain 1.1s ease-out}
+@keyframes gain{from{box-shadow:0 0 0 3px color-mix(in srgb, var(--follow) 75%, transparent)}to{box-shadow:0 0 0 3px transparent}}
+.tk{position:absolute;left:0;right:0;top:0;height:8px}
+.tk i{position:absolute;top:0;width:2px;height:8px;margin-left:-1px;border-radius:1px}
+.ta,.da{background:var(--ally)}
+.tb,.db{background:var(--enemy)}
+.dn{background:var(--neutral)}
+.rl{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:var(--line-rail)}
+.rl i{position:absolute;left:0;top:0;bottom:0;width:calc(var(--p,0) * 1%);border-radius:2px;background:var(--rail-fill)}
+.dm{position:absolute;left:0;right:0;top:23px;height:3px;display:flex;border-radius:2px;overflow:hidden}
+.dm i{display:block;height:100%}
+.kn{position:absolute;top:9px;left:calc(var(--p,0) * 1% - 6px);width:12px;height:12px;border-radius:50%;background:var(--knob);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent)}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-son" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
+<symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
+
+<main class="page" id="app">
+  <header class="tete">
+    <h1>Quatre choix du rejeu</h1>
+    <p class="accroche">Basculer chaque choix et regarder la scène.</p>
+  </header>
+
+  <div class="glob" role="group" aria-label="Commandes générales">
+    <button type="button" class="gb" id="tout-prop">Tout proposé</button>
+    <button type="button" class="gb" id="tout-auj">Tout comme aujourd’hui</button>
+    <button type="button" class="gb" id="lecture">Pause</button>
+  </div>
+
+  <section class="scene" aria-label="Rejeu factice, cadre Cinéma">
+    <div class="cadre" id="cadre">
+      <div class="bloc">
+        <div class="plan" id="plan">
+          <svg class="mapsvg" viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <rect x="0" y="0" width="200" height="100" class="m-sol"/>
+            <rect x="14" y="12" width="52" height="32" class="m-zone"/><rect x="118" y="10" width="60" height="36" class="m-zone"/>
+            <rect x="72" y="40" width="56" height="28" class="m-zone"/><rect x="16" y="58" width="56" height="30" class="m-zone"/>
+            <rect x="126" y="60" width="50" height="30" class="m-zone"/>
+            <path d="M4 4H196V96H4z M70 4V40 M120 10V46 M60 68V96 M140 46V62 M14 48H70 M130 52H190 M92 68H128" class="m-mur"/>
+          </svg>
+          <div id="pions"></div>
+          <div class="chip"><i></i><span id="chip-nom"></span></div>
+          <div class="fiche" aria-label="Fiche du joueur">
+            <div class="who"><span class="dot"></span><b>Brisk</b><small>Équipe rouge</small><span class="kda">7<s>/</s>4<s>/</s>3</span></div>
+            <div class="acts" id="acts" role="group" aria-label="Actions sur ce joueur">
+              <button type="button" data-a="suivre" aria-pressed="false">Suivre</button>
+              <button type="button" data-a="seul" aria-pressed="false">Seul</button>
+              <button type="button" data-a="masquer" aria-pressed="false">Masquer</button>
+            </div>
+          </div>
+          <div class="fil" id="fil" role="group" aria-label="Fil des événements"></div>
+        </div>
+      </div>
+      <div class="barre" id="barre">
+        <span class="snd" id="snd">
+          <button type="button" class="ib" id="b-son" aria-label="Volume" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use id="u-son" href="#i-son"/></svg></button>
+          <span class="vol" id="vol" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60"><i></i><b></b></span>
+          <span class="vpop" id="vpop"><span class="vt" id="vt" role="slider" tabindex="0" aria-label="Volume" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60"><i></i><b></b></span></span>
+        </span>
+        <button type="button" class="play" id="b-play" aria-label="Lecture ou pause"><svg class="ic"><use id="u-play" href="#i-pause"/></svg></button>
+        <button type="button" class="ib opt" id="b-moins" aria-label="Reculer de 10 secondes">&minus;10</button>
+        <button type="button" class="ib opt" id="b-plus" aria-label="Avancer de 10 secondes">+10</button>
+        <span class="clk" id="horloge"></span>
+        <span class="fr" id="frise" role="slider" tabindex="0" aria-label="Position de lecture"></span>
+        <button type="button" class="ib opt" id="b-vit" aria-label="Vitesse">1&times;</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="choix" id="choix" aria-label="Les quatre choix"></section>
+</main>
+
+<script>
+// Prototype : un faux rejeu qui tourne en boucle. Aucune donnée réelle, noms inventés.
+const $ = (id) => document.getElementById(id)
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x))
+const hms = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0')
+const DUREE = 465          // durée du match, en secondes
+const PAS = 2.4            // un événement toutes les 2,4 secondes de lecture
+const LIGNES = 6           // lignes visibles dans le fil
+const VIT = [1, 2, 4]
+const REDUIT = matchMedia('(prefers-reduced-motion: reduce)')
+const FICHE = 'Brisk'      // joueur dont la fiche est ouverte
+const E = { t: 192, lecture: !REDUIT.matches, iv: 0, vol: 0.6, avant: 0.6, ouvert: false, act: null, nFil: -1 }
+const P = [false, false, false, false]   // position des quatre bascules : false = aujourd'hui
+
+let graine = 11
+const alea = () => (graine = (graine * 16807) % 2147483647) / 2147483647
+
+const CHOIX = [
+  ['1 · Fil : lignes du joueur suivi', 'Gain : le joueur suivi se repère. Perte : un fond de plus.'],
+  ['2 · Cinéma : place de la barre de lecture', 'Gain : barre dégagée, frise plus longue. Perte : un peu de plan.'],
+  ['3 · Volume dans la barre', 'Gain : frise plus longue. Perte : un clic de plus pour le volume.'],
+  ['4 · Fiche du joueur : Suivre / Seul / Masquer', 'Gain : trois choix liés, lecture plus nette. Perte : l’air entre les boutons.'],
+]
+$('choix').innerHTML = CHOIX.map(([t, ph], i) =>
+  `<div><span class="gl">${t}</span><button type="button" class="bascule" data-i="${i}" aria-pressed="false" aria-label="${t}, version proposée"><span>Aujourd’hui</span><span>Proposé</span></button><p class="phrase">${ph}</p></div>`).join('')
+
+// ---------- Joueurs et événements ----------
+const J = [['Kestrel', 'a', 55, 48, 14, 22], ['Nadir', 'a'], ['Vesper', 'a'], ['Orion', 'a'],
+  ['Mantis', 'b'], ['Brisk', 'b', 68, 40, 10, 20], ['Quartz', 'b'], ['Tango', 'b']]
+const EQ = {}
+const pins = J.map(([nom, camp, cx, cy, ax, ay]) => {
+  EQ[nom] = camp
+  const el = document.createElement('div')
+  el.className = 'pin ' + camp
+  el.innerHTML = `<i></i><span>${nom}</span>`
+  $('pions').appendChild(el)
+  return { el, nom, cx: cx ?? 30 + alea() * 40, cy: cy ?? 35 + alea() * 30, ax: ax ?? 10 + alea() * 12, ay: ay ?? 12 + alea() * 12,
+    w: 0.14 + alea() * 0.16, v: 0.12 + alea() * 0.16, p: alea() * 6.3, q: alea() * 6.3 }
+})
+// Cycle de 18 événements : un sur trois concerne Kestrel (suivi au départ), un sur six est de Brisk.
+const EV = [['k', 'Kestrel', 'Mantis'], ['k', 'Brisk', 'Orion'], ['p', 'Nadir', 'Mutilateur'], ['k', 'Tango', 'Kestrel'],
+  ['k', 'Vesper', 'Quartz'], ['p', 'Quartz', 'Lance-roquettes'], ['p', 'Kestrel', 'Épée à énergie'], ['k', 'Brisk', 'Nadir'],
+  ['k', 'Orion', 'Tango'], ['k', 'Kestrel', 'Quartz'], ['p', 'Mantis', 'Marteau antigrav.'], ['k', 'Nadir', 'Mantis'],
+  ['k', 'Mantis', 'Kestrel'], ['p', 'Brisk', 'Fusil de combat'], ['k', 'Vesper', 'Tango'], ['p', 'Kestrel', 'Mutilateur'],
+  ['k', 'Quartz', 'Orion'], ['p', 'Orion', 'Lance-roquettes']].map(([t, a, b]) => ({ t, a, b }))
+const suivi = () => (E.act === 'suivre' ? FICHE : 'Kestrel')   // « Suivre » déplace la caméra sur le joueur de la fiche
+
+// ---------- Frise ----------
+const frise = $('frise')
+const reperes = Array.from({ length: 40 }, (_, i) => `<i class="${alea() < 0.6 ? 'ta' : 'tb'}" style="left:${((i + 0.5) / 40 * 100).toFixed(2)}%"></i>`).join('')
+const dom = [['db', 3], ['dn', 1], ['db', 16], ['dn', 6], ['da', 74]].map(([c, l]) => `<i class="${c}" style="width:${l}%"></i>`).join('')
+frise.innerHTML = `<span class="tk">${reperes}</span><span class="rl"><i></i></span><span class="dm">${dom}</span><span class="kn"></span>`
+function chercher(e) {
+  const r = frise.getBoundingClientRect()
+  E.t = clamp((e.clientX - r.left) / r.width, 0, 1) * DUREE
+  dessiner()
+}
+frise.addEventListener('pointerdown', (e) => { frise.setPointerCapture(e.pointerId); chercher(e) })
+frise.addEventListener('pointermove', (e) => { if (frise.hasPointerCapture(e.pointerId)) chercher(e) })
+frise.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') saut(-10)
+  else if (e.key === 'ArrowRight') saut(10)
+})
+function saut(d) { E.t = clamp(E.t + d, 0, DUREE - 0.01); dessiner() }
+
+// ---------- Fil des événements ----------
+const nomHtml = (n) => `<span class="kp ${EQ[n]}">${n}</span>`
+function ligne(k, s, choisi, neuf) {
+  const e = EV[k % EV.length]
+  const corps = e.t === 'k' ? `${nomHtml(e.a)}<span class="vb">a éliminé</span>${nomHtml(e.b)}`
+    : `${nomHtml(e.a)}<span class="vb">a pris :</span><span class="arme">${e.b}</span>`
+  const cls = 'li' + (e.a === s || e.b === s ? ' moi' : '') + (k === choisi ? ' choisi' : '') + (neuf ? ' neuf' : '')
+  return `<div class="${cls}"><span class="t">${hms(k * PAS % DUREE)}</span>${corps}</div>`
+}
+function rendreFil(anime) {
+  const n = Math.floor(E.t / PAS)
+  E.nFil = n
+  const ks = []
+  for (let k = n - LIGNES + 1; k <= n; k++) if (k >= 0) ks.push(k)
+  let choisi = -1
+  for (const k of ks) if (EV[k % EV.length].a === FICHE) choisi = k   // la dernière ligne du joueur de la fiche ouverte
+  const s = suivi()
+  const fil = $('fil')
+  fil.innerHTML = ks.map((k) => ligne(k, s, choisi, anime && k === n)).join('')
+  if (anime) { fil.classList.remove('glisse'); void fil.offsetWidth; fil.classList.add('glisse') }
+}
+
+// ---------- Dessin d'une image ----------
+let derniereHorloge = ''
+function dessiner() {
+  const plan = $('plan')
+  const W = plan.clientWidth, H = plan.clientHeight
+  const bw = Math.max(0, Math.min(W - 24, (H - 16) * 2)), bh = bw / 2   // la carte tient dans le plan, sans déformation
+  const ox = (W - bw) / 2, oy = (H - bh) / 2
+  for (const q of pins) {
+    const x = q.cx + q.ax * Math.sin(q.w * E.t + q.p), y = q.cy + q.ay * Math.cos(q.v * E.t + q.q)
+    q.el.style.transform = `translate(${(ox + bw * x / 100).toFixed(1)}px,${(oy + bh * y / 100).toFixed(1)}px)`
+  }
+  frise.style.setProperty('--p', (E.t / DUREE * 100).toFixed(2))
+  const h = `<b>${hms(E.t)}</b><span class="tot"> / ${hms(DUREE)}</span>`
+  if (h !== derniereHorloge) { $('horloge').innerHTML = h; derniereHorloge = h }
+  const n = Math.floor(E.t / PAS)
+  if (n !== E.nFil) rendreFil(n - E.nFil === 1)
+}
+function majPins() {
+  const s = suivi()
+  for (const q of pins) {
+    q.el.classList.toggle('f', q.nom === s)
+    q.el.classList.toggle('s', q.nom === FICHE && s !== FICHE)
+    q.el.classList.toggle('nom', q.nom === s || q.nom === FICHE)
+    q.el.classList.toggle('mas', E.act === 'masquer' && q.nom === FICHE)
+    q.el.classList.toggle('att', E.act === 'seul' && q.nom !== FICHE)
+  }
+  $('chip-nom').textContent = 'Caméra sur ' + s
+  document.querySelectorAll('#acts button').forEach((b) => b.setAttribute('aria-pressed', String(E.act === b.dataset.a)))
+}
+
+// ---------- Volume ----------
+function majVol() {
+  $('vol').style.setProperty('--v', E.vol)
+  $('vt').style.setProperty('--v', E.vol)
+  const pc = String(Math.round(E.vol * 100))
+  $('vol').setAttribute('aria-valuenow', pc)
+  $('vt').setAttribute('aria-valuenow', pc)
+  $('u-son').setAttribute('href', E.vol === 0 ? '#i-mute' : '#i-son')
+  $('vpop').classList.toggle('ouvert', E.ouvert)
+  $('b-son').setAttribute('aria-expanded', String(E.ouvert))
+}
+function curseur(el, vertical) {
+  const poser = (e) => {
+    const r = el.getBoundingClientRect()
+    E.vol = clamp(vertical ? (r.bottom - e.clientY) / r.height : (e.clientX - r.left) / r.width, 0, 1)
+    majVol()
+  }
+  el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); poser(e) })
+  el.addEventListener('pointermove', (e) => { if (el.hasPointerCapture(e.pointerId)) poser(e) })
+  el.addEventListener('keydown', (e) => {
+    const d = { ArrowUp: 0.05, ArrowRight: 0.05, ArrowDown: -0.05, ArrowLeft: -0.05 }[e.key]
+    if (d === undefined && e.key !== 'Home' && e.key !== 'End') return
+    e.preventDefault()
+    E.vol = e.key === 'Home' ? 0 : e.key === 'End' ? 1 : clamp(Math.round((E.vol + d) * 100) / 100, 0, 1)
+    majVol()
+  })
+}
+curseur($('vol'), false)
+curseur($('vt'), true)
+$('b-son').addEventListener('click', () => {
+  if (P[2]) {
+    E.ouvert = !E.ouvert
+    majVol()
+    if (E.ouvert) $('vt').focus({ preventScroll: true })
+  } else {
+    if (E.vol > 0) { E.avant = E.vol; E.vol = 0 } else E.vol = E.avant || 0.6
+    majVol()
+  }
+})
+document.addEventListener('click', (e) => {
+  if (E.ouvert && !e.target.closest('#snd')) { E.ouvert = false; majVol() }
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && E.ouvert) { E.ouvert = false; majVol(); $('b-son').focus() }
+})
+
+// ---------- Lecture ----------
+function majLecture() {
+  const r = REDUIT.matches
+  $('lecture').textContent = r ? 'Pas suivant' : E.lecture ? 'Pause' : 'Lecture'
+  $('u-play').setAttribute('href', r || !E.lecture ? '#i-play' : '#i-pause')
+}
+function basculerLecture() {
+  if (REDUIT.matches) saut(PAS)   // mouvement réduit : la scène avance d'un pas à chaque clic
+  else E.lecture = !E.lecture
+  majLecture()
+}
+$('lecture').addEventListener('click', basculerLecture)
+$('b-play').addEventListener('click', basculerLecture)
+$('b-moins').addEventListener('click', () => saut(-10))
+$('b-plus').addEventListener('click', () => saut(10))
+$('b-vit').addEventListener('click', () => { E.iv = (E.iv + 1) % VIT.length; $('b-vit').textContent = VIT[E.iv] + '×' })
+REDUIT.addEventListener('change', () => { E.lecture = !REDUIT.matches; majLecture() })
+
+// ---------- Les quatre bascules ----------
+let avant = ''
+function appliquer() {
+  const app = $('app')
+  P.forEach((v, i) => app.classList.toggle('v' + (i + 1), v))
+  document.querySelectorAll('.bascule').forEach((b) => b.setAttribute('aria-pressed', String(P[b.dataset.i])))
+  if (!P[2]) E.ouvert = false
+  majVol()
+  majPins()
+  rendreFil(false)
+  // La frise change de longueur avec les choix 2 et 3 : un halo bref le montre.
+  const gp = String([P[1], P[2]])
+  if (avant && gp !== avant) { frise.classList.remove('gain'); void frise.offsetWidth; frise.classList.add('gain') }
+  avant = gp
+}
+$('choix').addEventListener('click', (e) => {
+  const b = e.target.closest('.bascule')
+  if (!b) return
+  P[b.dataset.i] = !P[b.dataset.i]
+  appliquer()
+})
+$('tout-prop').addEventListener('click', () => { P.fill(true); appliquer() })
+$('tout-auj').addEventListener('click', () => { P.fill(false); appliquer() })
+$('acts').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  E.act = E.act === b.dataset.a ? null : b.dataset.a   // une seule action active à la fois, ou aucune
+  majPins()
+  rendreFil(false)
+})
+
+// ---------- Boucle ----------
+let prec = performance.now()
+function boucle(ts) {
+  const dt = Math.min(0.1, (ts - prec) / 1000)
+  prec = ts
+  if (E.lecture && !REDUIT.matches) E.t = (E.t + dt * VIT[E.iv]) % DUREE
+  dessiner()
+  requestAnimationFrame(boucle)
+}
+appliquer()
+majLecture()
+dessiner()
+requestAnimationFrame(boucle)
+</script>

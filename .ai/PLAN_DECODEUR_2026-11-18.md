@@ -212,20 +212,40 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste J — ménage et contrôles (Sonnet ; Haiku)
 
-- [ ] J.1 `replay/document.go` : extraction pour redescendre sous 460 lignes, sans changement de sortie
+- [x] J.1 `replay/document.go` : extraction pour redescendre sous 460 lignes, sans changement de sortie
       (préalable à tout champ racine neuf). Témoin : golden de forme inchangé.
-- [ ] J.2 `medalLabels` : champ et trois types déclarés, jumeaux de ceux de LevelUp ; calque « à la
+- [x] J.2 `medalLabels` : champ et trois types déclarés, jumeaux de ceux de LevelUp ; calque « à la
       requête » ; golden de forme refigé ; aucune sortie cuite ne change.
-- [ ] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
+- [x] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
       marquées dépréciées ; décompte de `FORMAT.md` corrigé. Aucun changement de sortie.
 - [ ] J.4 `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
       nom inscrit aux étapes observées ; les 20 références refigées dans le clone, 20 identiques ensuite.
-- [ ] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
+- [x] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
       jour pour ce que cette piste touche.
-- [ ] J.6 Contrôles : trajet de Warthog du film `4f77afc1` et pièces montées à plus de 15 m, rejoués par le
+- [x] J.6 Contrôles : trajet de Warthog du film `4f77afc1` et pièces montées à plus de 15 m, rejoués par le
       harnais sur la tête du clone ; si rien ne se reproduit, entrées closes au backlog avec la mesure ; si
       un défaut se reproduit, item écrit ici avant tout code. Ordre des collines : entrée du backlog
       reformulée en demande d'affichage (aucun travail du décodeur).
+- [x] J.7 (fait le 2026-11-18, commit `2b7d7f7` du clone ; cause : un occupant qui monte ne réplique plus, aucune vie ne couvre l'instant et le nom retombait sur le premier occupant nommé du siège ; règle : le trajet porte le joueur du CORPS que les enregistrements de création placent sur le siège ; parc : 4 écarts sur 12 015 trajets, 2 films, `4f77afc1` et `3abf0258` ; mesure après sur `4f77afc1` : 1 trajet perd son nom, 251 inchangés, le repli du premier occupant passe de 283 à 192 ; `3abf0258` à contrôler à l'intégration) (né de J.6) Occupant d'un trajet de véhicule. Sur `4f77afc1`, un trajet de Warthog porte un humain
+      alors que la vie qui le porte est celle d'un bot sans nom, et que cet humain n'est présent que plus tard :
+      1 trajet sur 252 dans ce film, les 323 pistes nommées étant justes. Le nom du trajet vient de la table
+      place vers joueur à l'instant (`replay/vehicle_rides_film.go`, et deux sites jumeaux), pas de la vie qui
+      porte le trajet. Cause établie d'abord, fréquence comptée sur les 1 455 rejeux du poste, puis règle
+      générale : un trajet porte l'identité de la vie qui le porte. Sortie changée : `vehicleRides[].xuid`.
+- [ ] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
+      reproduit plus (19 pièces, 0 écart), mais le compteur `coverage.vehicles.turretCarrierBirthMismatch`
+      vaut 22 sur le parc, sur 4 films (`56ebfc53` 8, `af43b0c8` 8, `a26dbcdb` 4, `cf5d83d5` 2), contre 44
+      montées relevées le 2026-11-16. Cause établie sur ces 4 films, puis règle générale ou, si la lecture ne
+      désigne pas le porteur, arrêt et retour au pilote.
+      Instruit le 2026-11-18, AUCUN code : dans les 22 cas le voisin refusé EST le bon porteur (même point,
+      même image, bonne famille) ; il est refusé par le témoin de naissance à 100 ms (écarts mesurés : 105 à
+      225 ms, pièces créées 2 paquets après leur châssis). Effet : la pièce n'a pas de porteur, elle n'est pas
+      dessinée et ses 27 trajets d'artilleur ne sont pas reportés. Le composant qui dit le parent des pièces
+      (`i40`) n'est jamais écrit pour elles ; leur création annonce un autre composant (`i10`, état du parent),
+      que rien ne lit à la création. Décision du pilote : UNE tentative bornée de lecture de `i10` à la
+      création (Sonnet, après la vague 1) ; si son handle désigne le châssis sur les 4 films et sur le corpus,
+      le porteur devient une lecture et le témoin à 100 ms disparaît ; sinon `[!]`, entrée du backlog mise à
+      jour avec ce constat. Aucun élargissement du seuil, aucune règle par voisinage de paquets.
 - **Gate J** : `go test ./...` du clone avec les données de l'hôte ; passe d'équivalence, écarts = l'étape
   neuve de J.4 seulement.
 
@@ -258,15 +278,25 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste C — compteurs nommés du tableau (Sonnet ; Opus pour C.3)
 
-- [ ] C.1 Le banc compare enfin les compteurs nommés à l'API (`cmd/replay-verite`, oracle déjà chargé) : le
+- [x] C.1 (fait le 2026-11-18 : mode `-compteurs` de `cmd/replay-verite`, commit de `C:/t/dec-lu` ; la ligne « avant » sur les 1 455 rejeux retrouve les valeurs de départ à tous les chiffres) Le banc compare enfin les compteurs nommés à l'API (`cmd/replay-verite`, oracle déjà chargé) : le
       taux d'erreur par compteur et par build devient une mesure du gate, AVANT toute correction.
-- [ ] C.2 Garde, appliquée AVANT la sélection de la suite : un compteur d'éliminations nommé ne dépasse pas
+- [x] C.2 (fait le 2026-11-18, commit `d0911fb` du clone ; borne = éliminations publiées du même joueur dans la manche ; émission écartée en entier, comptée dans `coverage.score.statsGuarded` ; contrôle sur le parc sans décodage : la garde écartera 50 couples, les 27 et les 23 connus, dont AUCUN n'égale l'API ; aucun joueur n'a un compteur positif sans éliminations lues) Garde, appliquée AVANT la sélection de la suite : un compteur d'éliminations nommé ne dépasse pas
       les éliminations du joueur dans la manche ; `maxSpree` reçoit sa borne. Une valeur écartée est comptée
       et publiée en couverture, jamais remise à zéro en silence. Mesure attendue : les 27 couples violés et
       les 23 séries aberrantes disparaissent ; le taux d'accord avec l'API ne baisse pour aucun compteur.
-- [ ] C.3 Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
+- [x] C.3 (fait le 2026-11-18, commit `f426cf4` du clone. CAUSE PROUVÉE, une seule pour les 19 joueurs : le balayage ancrait de FAUX enregistrements du tableau dans une liste répétitive d'une autre structure (motif de 73 bits, mêmes décalages dans les 21 émissions fautives de 18 films, 16 des 18 en Fiesta) ; leur premier composant lu vaut toujours (corps à corps 0, grenades 16) : le 16 est la partie constante de cette autre structure, pas une valeur du tableau. RÈGLE DE LECTURE : un enregistrement dont un composant 0 à 27, que toute émission du moteur relit en entier, ne se décode pas est abandonné en entier ; un arrêt sur un composant d'un autre lecteur garde ce qui précède. Banc sur 70 films : joueurs à 16 grenades 4 → 0 (19 → 0 avec la garde), aucun joueur perdu, grenades 550 sur 550. La garde de C.2 écarte encore 25 émissions d'une autre forme : elle reste) Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
       émission perd. Sortie : cause prouvée dans la lecture du tableau et correction écrite ici, ou `[!]`.
-- [ ] C.4 Mesure APRÈS par C.1.
+- [x] C.4 (fait le 2026-11-18 sur 70 films, 922 joueurs : couples violés 27 → 0, séries aberrantes 23 → 0, joueurs à 16 grenades 19 → 4 ; gagnés : série +23, grenades +22, corps à corps +10, tête +3 ; perdus : 0 ; aucun build ne baisse ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS par C.1.
+- [ ] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
+      SANS NOM. Le tableau a 28 emplacements par joueur, deux valeurs chacun ; le décodeur n'en nomme qu'environ
+      la moitié, par confrontation aux récompenses de score et aux statistiques d'objectif. Balayage des
+      emplacements sans nom contre TOUTES les colonnes par joueur de l'API disponibles dans la copie de la base
+      (tirs tirés, tirs au but, dégâts infligés et subis, et les autres), par mode, avec l'outil existant
+      (`cmd/statnames-sweep`) et la méthode établie : valeur finale par joueur après pont d'identité, candidats
+      croisés sur les films, et un nom n'est retenu que s'il tient sur deux moitiés de films disjointes. Mesure
+      d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
+      en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
+      sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
@@ -279,6 +309,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       de celle du témoin (sa sonde, bâtie hors dépôt) et de l'API (export 0.3) ; part des joueurs à 10 % près
       de l'API pour chacune des deux lectures ; ce que donne le compte « événements de tir et objets
       projectile ». Résultat dans `.ai/annexes_decodeur_1118/tirs.md` et présenté au user.
+      HYPOTHÈSE DU USER À TRANCHER PAR CETTE MESURE (2026-11-18 : « je me demande si le jeu n'enregistre pas que
+      les tirs qui ont atteint leur but, les valeurs sont un peu élevées si c'est ça mais ça ressemble pas mal à
+      la précision » ; déjà tentée par le passé) : par joueur et par arme, le nombre d'événements de tir du film
+      est comparé AUX DEUX valeurs de l'API, tirs tirés et tirs au but ; rendre, par arme, la part des joueurs
+      dont le compte du film est à 10 % des tirs tirés, la part à 10 % des tirs au but, et la distribution du
+      rapport film / tirs tirés et film / tirs au but. Si le film suit les tirs au but, le dire, avec ce que cela
+      change pour la précision (qui ne se calculerait alors plus par le film seul). Verdict écrit, quel qu'il soit.
 - [ ] D.3 Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
       projectile ajoutés aux événements de tir s'ils ne se recoupent pas (preuve par D.2) ; messages
       multiples d'une même touche reconnus par ce que le film écrit (même auteur, même victime, même image),
@@ -336,14 +373,33 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       Sinon `[!]` avec ce qui a été écarté.
 - [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
+- [ ] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
+      certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
+      décodeur ne la lit pas ; l'icône du fil de LevelUp vient de la lecture du dégât fatal, partielle. Recherche
+      bornée (une session) dans le message d'élimination du film et dans l'enregistrement d'élimination des temps
+      forts : un bit ou un champ qui vaut vrai exactement quand l'élimination est à la tête. VÉRITÉ, sans API :
+      le compteur daté du tableau (`scoreTimeline.players[].stats.headshots`, 99,85 % d'accord avec l'API) : une
+      élimination est à la tête si le compteur du même joueur monte à la même image. Une marque candidate se juge
+      sur tout le corpus, élimination par élimination. Sortie : la lecture et un champ par élimination publié avec
+      sa couverture, ou `[!]` avec ce qui a été écarté.
+      AMENDÉ LE 2026-11-18 PAR LE USER (« on attend d'être sûr pour les tirs à la tête et les frags parfaits, je
+      préfère lire ces infos depuis les compteurs. Comme ça l'expérience est complète et cohérente ») : la SOURCE
+      voulue de ce qui s'affiche est le compteur du jeu, pas une lecture partielle. La session mesure donc
+      D'ABORD l'appariement : pour chaque montée du compteur daté de tirs à la tête, y a-t-il exactement UNE
+      élimination du même joueur à la même image (part appariée sans ambiguïté, cas à deux éliminations dans
+      l'image, montées sans élimination, par version du jeu) ; de même pour chaque médaille « Parfait » et son
+      élimination. Si l'appariement est sûr sur le parc, le champ par élimination se publie depuis lui (complet,
+      cohérent avec les totaux de la fiche) ; la marque native du message d'élimination, si elle se trouve, sert
+      de contre-preuve. Les icônes du fil de LevelUp (tête, parfait) ne reviennent QU'APRÈS ce verdict : rien
+      n'est affiché d'ici là.
 - **Gate H** : poids ajouté au document mesuré sur 20 films (cible : moins de 2 %) ; budget des fixtures
   relevé et daté ; équivalence en deux passes pour le canal de faits neuf.
 
 ## Piste I — temps forts de type « mode » (Haiku ; Sonnet)
 
-- [ ] I.1 Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
+- [x] I.1 (fait le 2026-11-18 : `.ai/annexes_decodeur_1118/temps_forts_mode.md` ; 23 683 événements, 527 matchs, un seul code réel, 10) Décompte par mode et par code de l'événement, depuis la copie de la base de LevelUp ; croisé avec
       les destructions de véhicule et les actions de score du document.
-- [ ] I.2 Selon I.1 : ce que la moitié inexpliquée en Slayer recouvre, ou `[!]` avec le décompte ; l'entrée
+- [x] I.2 (fait le 2026-11-18, sans code : un temps fort « mode » est l'écho d'une ACTION DE SCORE propre au mode, du même joueur, dans la même image (plage de 0 à 40 ms) : 76 % des événements de code 10 appariés. Par mode : zone capturée ou sécurisée en Bases, contrôle de la colline, vol, prise, retour, capture du drapeau et élimination du porteur en Drapeau, contrôle de la balle ; en Slayer : destruction de véhicule (12 noms), aide par IEM, quelques éliminations. Sens inverse : 85 à 100 % des actions de score de ces noms ont leur temps fort. Non appariés : 3 410 en Drapeau, 691 en Total Control (aucune action de score publiée pour ce mode), 303 en Extraction, dont le sens reste inconnu. Le décodeur n'a rien à publier de plus : `scoreActions` nomme déjà l'événement. Entrée du backlog mise à jour : la lecture « zone capturée » de LevelUp est fausse hors Bases) Selon I.1 : ce que la moitié inexpliquée en Slayer recouvre, ou `[!]` avec le décompte ; l'entrée
       du backlog est mise à jour, avec le crédit à nuzzles et à Den si leur lecture est reprise.
 - **Gate I** : aucun code de production.
 
@@ -377,6 +433,85 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-18 — C.5 RÉORIENTÉ sur une lecture du code de Den (libfilmshell, MIT, copie locale, `src/variant_stats.rs`),
+  faite par le pilote à la question du user (« même le décodeur de Den ne les lit pas ? ») : son décodeur lit dans
+  le morceau 0 du film, dans les données de la variante de jeu, la DÉFINITION de chaque emplacement du tableau
+  (`EngineStatDefinition` : nom en clair, type calculé ou non, agrégation des manches, affichage, précision) et
+  les colonnes du tableau ; son code cite « AccuracyPercentage » et parle de 56 emplacements. Le film nommerait
+  donc lui-même ses emplacements, variante par variante. L'agent de C.5 vérifie d'abord cela sur nos films
+  (correspondance avec nos « composant + côté », contrôle sur les emplacements déjà nommés, puis contre l'API) ;
+  le balayage à l'aveugle ne reste que pour ce que les définitions ne nommeraient pas. Non encore vérifié sur un
+  film par nous. Crédit à Den pour cette lecture ; son code reste un témoin, il n'est pas recopié.
+- 2026-11-18 — C.5 ajouté et lancé en mesure seule (emplacements sans nom du tableau contre les colonnes de
+  l'API), accord du user.
+- 2026-11-18 — C.3 rendu (Opus), relu, commité (`f426cf4` sur `piste/c`). Fait rougir en plus : la révision de
+  la grammaire (à monter à l'intégration), les références d'équivalence de l'étape du tableau. À rejouer par le
+  banc sur le parc régénéré (L.7) : la règle n'est mesurée que sur 70 films. La structure qui porte le motif de
+  73 bits n'est pas identifiée (trames qui ne se ferment pas à la marche).
+- 2026-11-18 — icônes de tir à la tête et de frag parfait dans le fil du rejeu : présentes jusqu'à la 8.2.0,
+  perdues à la refonte de l'interface sans décision ni maquette. Le user ne veut PAS les remettre sur une
+  lecture partielle : elles attendent le verdict de H.7 (amendé : source = compteurs du jeu). Machine : la
+  mémoire est retombée à 0,3 Go libre (éditions de liens Go en parallèle entre sessions) ; agents Go bornés à
+  une ou deux tâches à la fois, mesure avant chaque suite large.
+- 2026-11-18 — hypothèse du user sur les tirs (le film n'écrirait que les tirs au but) inscrite à D.2 comme
+  question à trancher par la mesure à trois voix, plutôt qu'au backlog : la piste D est déjà au plan et D.2 ne
+  touche aucun code de production.
+- 2026-11-18 — H.7 ajouté (marque de tir à la tête par élimination), accord du user (« ok »). Côté LevelUp, la
+  fiche du joueur lira dès maintenant le compteur daté du tableau (plan du backlog, Q.2-g). Page Notion demandée
+  par le user, créée en brouillon privé : « Compteurs lus dans le film : ce qu'on a et leur justesse »
+  (https://app.notion.com/p/41c7ae87e7a3813299caf95332f7bc32), chiffres repris de `avant.md` et du banc de C.
+- 2026-11-18 — GO D'AVANCE du user pour la régénération du parc (L.6), message du 2026-11-18 : « Pour les trucs
+  plus tard je te donne mon go d'avance » (en réponse à la liste : régénération des rejeux avec la v1.5.0,
+  rattrapage du coup d'envoi sur sa base, fusion dans `main`). La porte de L.6 est ouverte ; le pilote prévient
+  avant de lancer (serveur arrêté, environ 2 h 30, mémoire libre vérifiée, pas pendant que le user joue).
+  Règle apprise à l'intégration de A : le golden de forme refuse d'être régénéré deux fois sous le même numéro
+  de schéma ; tant que le schéma n'est pas PUBLIÉ, on restaure le golden de la version publiée
+  (`git show 037ec4d:replay/testdata/document_shape.golden`) puis on passe la porte une fois (à reporter dans
+  la marche de publication).
+- 2026-11-18 — INTÉGRATION DE J dans `feat/v1.5.0` (`4e33bd9`) : schéma 126, chronique, golden de forme, 8 goldens
+  d'assemblage, 8 fixtures de contrat (dans `C:/t/dec-lu/apps/web`, non commitées : elles seront refigées par
+  A et C), 20 références d'équivalence. Écarts attribués : `schemaVersion`, l'étiquette `publication-126`, et
+  le compteur du repli du premier occupant du siège en baisse sur 8 films à véhicules ; aucun trajet ne change
+  sur le corpus ; aucune révision de couche ne bouge ; 20 identiques après refige ; suite du clone verte (33
+  paquets). Contrôle du second film touché, `3abf0258` : 3 trajets sur 191 perdent leur nom faux, 188
+  inchangés ; 2 changent aussi de borne de fin et 1 de visée, parce qu'un trajet est coupé à la vie suivante de
+  SON occupant (`vehicle_rides_next_life.go`) : sous le nom d'un autre joueur il était coupé par la vie de ce
+  joueur-là. Mécanisme vérifié sur pièces par le pilote et écrit dans la chronique. Piste A fusionnée
+  (`ea2a089`), son intégration est lancée ; plafond de poids des fixtures de contrat à relever à 5 111 808
+  octets (décision du pilote, datée : les entrées figées portent désormais les lectures d'horloge). C.3 lancé
+  (Opus, recherche bornée).
+- 2026-11-18 — piste C : C.1, C.2 et C.4 rendus, relus, commités (`d0911fb` dans le clone, banc dans
+  `C:/t/dec-lu`). Fait rougir, à refiger à l'intégration : la révision de la couche objectives, son empreinte
+  au golden des révisions, le golden de forme (champ `statsGuarded`) ; aucun golden d'assemblage, aucune
+  fixture de contrat. Reste C.3 (recherche Opus) : 4 joueurs à 16 grenades dont la valeur tient dans leurs
+  éliminations (`6347cbf9`, `d6a9a42e`, `d8cd155a`, `f795dbb3`).
+- 2026-11-18 — piste I close (I.1, I.2), aucun code. Découverte pour LevelUp : 2 330 temps forts « mode » de
+  la base n'ont pas de code ; sur les 33 matchs qui ont les deux, ce sont des DOUBLONS des événements de code
+  10 (1 284 sur 1 284, même joueur, même instant) ; 43 matchs de juin à septembre 2026 n'ont que ceux-là.
+  Piste A commitée dans le clone (`702bfe0`) : la piste de précision par « premier battement » est RÉFUTÉE
+  par la mesure (l'horloge se lit par pas d'environ 0,55 s, le coup d'envoi est connu à ce pas près), règle
+  inchangée ; lectures d'horloge ajoutées aux entrées figées des 8 goldens (69 Ko). À l'intégration de A, le
+  plafond des fixtures de contrat sera dépassé de 11 720 octets (elles gagnent `roundClock` et
+  `respawnCountdowns`) : relèvement daté à écrire. Intégration de la piste J lancée (schéma 126).
+- 2026-11-18 — J.7 rendu, relu, commité (`2b7d7f7`). Il fait rougir 4 fixtures de contrat et 4 goldens
+  d'assemblage (`a521164d`, `11de8353`, `111fa685`, `e5adf7b2`) sur le seul compteur du repli du premier
+  occupant du siège, en baisse (82→68, 87→75, 89→84, 125→112) : à refiger à l'intégration, attribué à J.7.
+  J.8 instruit sans code (voir l'item). Piste A rendue une première fois : règle codée, 34 films mesurés
+  (médiane −0,37 s ; 8 refusés datés ; 6 films à +16,8 s) ; deux compléments demandés avant commit
+  (précision quand le film commence horloge en marche ; lectures d'horloge ajoutées aux entrées figées des
+  goldens). Vague 1 : pistes C (C.1, C.2) et I lancées.
+- 2026-11-18 — piste J rendue, relue sur pièces, commitée dans le clone (`a2d5dbb`, branche `piste/j`, non
+  poussée). `document.go` à 456 lignes ; `medalLabels` déclaré, seule l'empreinte de la forme stockée bouge,
+  schéma inchangé ; registre à 127 replis, les deux constantes gardées et marquées obsolètes dans
+  `decfilm/replis_obsoletes.go` ; gate complet du clone vert (33 paquets), révisions et périmètres sans
+  régénération. Contrôles de J.6 : les deux défauts existent encore, items J.7 et J.8 écrits avant tout code ;
+  les deux entrées du backlog restent ouvertes et renvoient à ces items. Découverte : le commentaire de
+  `StanceCoverage.Absent` parle de trois composants là où quatre sont lus (corrigé avec J.7).
+- 2026-11-18 — pistes J (J.1, J.2, J.3, J.5, contrôles de J.6) et A lancées, un agent Sonnet chacune, dans
+  deux dossiers de travail du clone (`C:/t/dec-j` branche `piste/j`, `C:/t/dec-a` branche `piste/a`, tous deux
+  partis de `feat/v1.5.0`). Aucun agent ne monte le schéma, ne régénère un golden hors de sa porte, ne commite
+  ni ne pousse : la piste A rend la liste exacte de ce qu'elle fait rougir, le pilote l'attribue à
+  l'intégration. J.4 (étape `scoreTimeline` de l'équivalence, côté LevelUp) reste au pilote.
 - 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 : marche à blanc à 20 identiques ; `avant.md` complet ; coup d'envoi
   tranché). Valeurs de départ à retenir : accord exact des points publiés avec le score de l'API 98,42 % sur
   les rejeux « complets » (69,33 % au build 1.11) ; compteurs nommés 99,63 à 99,97 % d'accord, défaut concentré

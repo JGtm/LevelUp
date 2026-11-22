@@ -312,18 +312,19 @@ export function grenadeBoxHint(
  * est complet, et un zéro y signifie « ce type, aucune en réserve ». Montrer quatre types dont
  * trois à zéro noierait celui qui compte. Un tableau VIDE, lui, dit « compteurs NON LUS ».
  *
- * Sans table de noms, le RANG s'affiche tel quel : c'est ce que le document dit, et c'est vrai.
- * Inventer un nom serait pire (cf. catalogLabel.ts).
+ * Sans nom au catalogue, le RANG s'écrit tel quel, dans le texte de la langue (`rankLabel`) : c'est ce que le
+ * document dit, et c'est vrai. Inventer un nom serait pire (cf. catalogLabel.ts).
  */
 export function grenadesCarriedFrom(
   counts: readonly number[],
   labels: CatalogLabel[] | undefined,
   locale: ReplayLocale,
+  rankLabel: (rank: number) => string,
 ): { rank: number; name: string; count: number }[] {
   const out: { rank: number; name: string; count: number }[] = []
   counts.forEach((count, rank) => {
     if (count <= 0) return
-    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? `rang ${rank}`, count })
+    out.push({ rank, name: catalogText(labels?.[rank], locale) ?? rankLabel(rank), count })
   })
   return out
 }

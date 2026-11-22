@@ -1,57 +1,44 @@
 /**
- * cardGabarit.ts — LES COTES D'UNE FICHE JOUEUR, en un seul objet, et ses DEUX gabarits.
+ * cardGabarit.ts — LES COTES DES FICHES JOUEUR, en objets, par forme de fiche.
  *
- * POURQUOI UN OBJET (plan fiches compactes 2026-09-06, I1). Sept constantes de cotes vivaient
- * dans quatre fichiers (`WEAPON_CELL_W`, `AMMO_CELL_W`, `GRENADES_BOX_W`, `SCORE_CELL_W`,
- * `COUNT_CELL_W`, `GRENADE_ICON_PX`, `HUD_ICON_PX`, `WATERMARK_PX`…) et les hauteurs de
- * jauges étaient écrites dans la fiche. Le jour où une Grande équipe (12v12) demande une tuile
- * plus dense, chaque composant devrait apprendre un second jeu de valeurs — c'est exactement
- * la forme que le commit `10fe3228a` (2026-08-25) a supprimée : une prop `compact` drillée
- * avec sa branche `if (compact)` dans chaque rangée. Ici, les composants reçoivent DES NOMBRES
- * ET DES BOOLÉENS, jamais un mot de densité : ils rendent ce qu'on leur donne, et c'est
- * l'appelant qui choisit lequel des objets donner.
+ * POURQUOI DES OBJETS. Les cotes d'une fiche (`WEAPON_CELL_W`, `GRENADES_BOX_W`, `COUNT_CELL_W`,
+ * `GRENADE_ICON_PX`, `HUD_ICON_PX`, `WATERMARK_PX`...) vivaient dans quatre fichiers, et les hauteurs de
+ * jauges étaient écrites dans la fiche. Les composants reçoivent DES NOMBRES ET DES BOOLÉENS, jamais un mot de
+ * densité : ils rendent ce qu'on leur donne, et c'est l'appelant qui choisit lequel des objets donner (une
+ * prop `compact` drillée avec sa branche `if (compact)` dans chaque rangée est la forme que le commit
+ * `10fe3228a` a supprimée).
  *
- * `GABARIT_NORMAL` porte les cotes d'une fiche à corps de 35 : le triplet à score du panneau du
- * joueur (`ReplayPlayerPanelBody`) et l'encadré « Éliminé » du bloc « À l'instant »
- * (`ReplayPlayerNow`). `GABARIT_COMPACT` porte les cotes de la tuile de la rangée des équipes
- * (tuile 115 × 62, corps de 31).
+ * `GABARIT_COMPACT` porte les cotes de la tuile de la rangée des équipes (tuile 115 × 62, corps de 31), seule
+ * forme de `CardGabarit`. Le bloc « À l'instant » de la fiche du joueur a ses cotes propres
+ * (`COTES_BLOC_INSTANT`), dont la hauteur de l'encadré « Éliminé » sur une ligne.
  *
- * TROIS COTES RESTENT DES CLASSES, PAS DES NOMBRES APPLIQUÉS EN STYLE : la hauteur du corps
- * (`h-[31px]`), la taille du nom (`text-[11.5px]`) et la typographie du triplet
- * (corps, gap, marge du fond FDA) sont des valeurs arbitraires Tailwind, qui n'existent que si
- * le littéral est écrit en clair dans une classe — une interpolation ne produit AUCUNE règle,
- * en silence (`rosterHeight.guard.test.ts` documente le piège). `bodyPx`, `namePx` et
- * `countCellW` sont donc ici la VÉRITÉ que les composants traduisent en classe par une TABLE
- * FERMÉE (`Record<CardGabarit['bodyPx'], string>`…) : leurs types sont des UNIONS DE LITTÉRAUX,
- * pour que la table soit close à la compilation — une cote qui n'y figure pas ne compile pas,
- * elle ne rend pas une classe vide. Le garde-rail `ui/cardGabarit.guard.test.ts` interdit qu'une
- * cote revienne en constante dans un composant.
+ * TROIS COTES RESTENT DES CLASSES, PAS DES NOMBRES APPLIQUÉS EN STYLE : la hauteur du corps (`h-[31px]`), la
+ * taille du nom (`text-[11.5px]`) et la typographie du triplet (corps, gap, marge du fond FDA) sont des valeurs
+ * arbitraires Tailwind, qui n'existent que si le littéral est écrit en clair dans une classe — une interpolation
+ * ne produit AUCUNE règle, en silence (`rosterHeight.guard.test.ts` documente le piège). `bodyPx` et `namePx`
+ * sont donc ici la VÉRITÉ que les composants traduisent en classe par une TABLE FERMÉE
+ * (`Record<CardGabarit['bodyPx']...>`) : leurs types sont des LITTÉRAUX, pour que la table soit close à la
+ * compilation — une cote qui n'y figure pas ne compile pas, elle ne rend pas une classe vide. Le garde-rail
+ * `ui/cardGabarit.guard.test.ts` interdit qu'une cote revienne en constante dans un composant.
  */
 
 export interface CardGabarit {
   /** Largeur de la cellule d'arme (celle de la main), px. */
   weaponCellW: number
-  /** Cellule du score personnel rendue (toujours, même vide — c'est elle qui aligne). */
-  showScore: boolean
-  /** Largeur minimale de la cellule de score, px — sans effet quand `showScore` est faux. */
-  scoreCellW: number
   /**
-   * Largeur minimale d'UN compteur du triplet F/M/A, px — et l'ÉCHELLE du triplet : sa
-   * typographie (corps mono 10 px, gap 3, fond `px-1` pour 15 ; corps 9 px, gap 2, fond 3 px
-   * pour 10) suit par une table fermée dans `ReplayCountersBadge` (littéraux Tailwind).
+   * Largeur minimale d'UN compteur du triplet F/M/A, px — et l'ÉCHELLE du triplet : sa typographie (corps mono
+   * 9 px, gap 2, fond 3 px) est écrite en littéraux Tailwind dans `ReplayCountersBadge`.
    */
-  countCellW: 15 | 10
+  countCellW: 10
   /** Hauteur de la jauge de bouclier, px (au-dessus de la santé : l'ordre du jeu). */
   gaugeShieldPx: number
   /** Hauteur de la jauge de santé, px. */
   gaugeHealthPx: number
   /**
-   * Hauteur FIXE du corps de la fiche, px — la même vivant et mort (règle du 2026-08-24). C'est
-   * aussi la cote STRUCTURELLE de l'encadré « Éliminé » (une ligne sur un corps de 35, deux sur
-   * un corps de 31), lue dans une table fermée par cette valeur ; la tuile de `ReplayPlayerCard`
-   * est de corps 31.
+   * Hauteur FIXE du corps de la fiche, px — la même vivant et mort (règle du 2026-08-24). C'est aussi la cote
+   * STRUCTURELLE de l'encadré « Éliminé » sur deux lignes, lue dans une table fermée par cette valeur.
    */
-  bodyPx: 35 | 31
+  bodyPx: 31
   /** Côté de la vignette d'un type de grenade, px. */
   iconGrenadePx: number
   /** Côté de la vignette de capacité, px. */
@@ -64,22 +51,6 @@ export interface CardGabarit {
   namePx: 11.5
 }
 
-/** Les cotes d'une fiche à corps de 35 px : triplet avec cellule de score (15 / 30), jauges de 5 / 3 px. */
-export const GABARIT_NORMAL: CardGabarit = Object.freeze({
-  weaponCellW: 40,
-  showScore: true,
-  scoreCellW: 30,
-  countCellW: 15,
-  gaugeShieldPx: 5,
-  gaugeHealthPx: 3,
-  bodyPx: 35,
-  iconGrenadePx: 14,
-  iconAbilityPx: 16,
-  watermarkPx: 46,
-  boltCount: 3,
-  namePx: 11.5,
-} as const)
-
 /**
  * La tuile compacte de la maquette A2 (plan 2026-09-06, « Le gabarit tranché ») : 115 × 62,
  * trois lignes (nom 14 · jauges + triplet 12 · arme 48 + grenade 14 + capacité 16 sur 16),
@@ -88,8 +59,6 @@ export const GABARIT_NORMAL: CardGabarit = Object.freeze({
  */
 export const GABARIT_COMPACT: CardGabarit = Object.freeze({
   weaponCellW: 48,
-  showScore: false,
-  scoreCellW: 30,
   countCellW: 10,
   gaugeShieldPx: 4,
   gaugeHealthPx: 2,
@@ -156,7 +125,12 @@ export const COTES_BLOC_INSTANT = Object.freeze({
   /** Côté de la vignette d'une grenade et de celle de l'équipement. */
   grenadeIconePx: 13,
   equipementIconePx: 13,
+  /** Hauteur du corps de l'encadré « Éliminé » du bloc, sur une ligne. */
+  corpsEliminePx: 35,
 } as const)
+
+/** Les hauteurs de corps que l'encadré « Éliminé » sait remplir : celle de la tuile compacte et celle du bloc « À l'instant ». */
+export type CorpsEncadrePx = CardGabarit['bodyPx'] | (typeof COTES_BLOC_INSTANT)['corpsEliminePx']
 
 /**
  * LE GABARIT « LIGNE » : les cotes d'une ligne de joueur de la colonne des équipes (Standard, et

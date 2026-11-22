@@ -51,7 +51,7 @@ const playerCoreSchemaSQL = `
 CREATE SEQUENCE IF NOT EXISTS pme_seq START 1;
 CREATE TABLE IF NOT EXISTS player_match_enrichment (
     id                          BIGINT  DEFAULT nextval('pme_seq') PRIMARY KEY,
-    match_id                    VARCHAR NOT NULL,
+    match_id                    VARCHAR,
     performance_score           FLOAT,
     performance_chain           VARCHAR,
     dominance_flag              TINYINT,
@@ -74,9 +74,9 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     engagement_pace_lobby       DOUBLE,
     engagement_player_activity  INTEGER,
     stage                       VARCHAR   DEFAULT 'legacy',
-    written_at                  TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
+    written_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    created_at                  TIMESTAMP,
+    updated_at                  TIMESTAMP
 );
 -- AUCUN index secondaire (idx_pme_match_lookup retiré le 2026-10-09, #23645) : cf.
 -- migration.PlayerRetiredSecondaryIndexesDropSQL.
@@ -93,21 +93,22 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 CREATE SEQUENCE IF NOT EXISTS msr_seq START 1;
 CREATE TABLE IF NOT EXISTS match_skill_rank (
     id                BIGINT DEFAULT nextval('msr_seq') PRIMARY KEY,
-    match_id          VARCHAR NOT NULL,
-    rating_type       VARCHAR NOT NULL,
+    match_id          VARCHAR,
+    rating_type       VARCHAR,
     rating_value      FLOAT,
     rating_deviation  FLOAT,
     tier              VARCHAR,
     tier_fr           VARCHAR, -- INERTE (ADR 0040 D-5) : ni lue ni écrite, laissée en place (table append-only, ADR 0026)
-    sub_tier          SMALLINT DEFAULT 0,
+    sub_tier          SMALLINT,
     tier_label        VARCHAR,
     rating_delta      FLOAT,
     playlist_group    VARCHAR,
     expected_win_prob FLOAT,
     start_time        TIMESTAMP,
-    written_at        TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-    updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
+    measurement_matches_remaining INTEGER,
+    written_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
+    created_at        TIMESTAMP,
+    updated_at        TIMESTAMP
 );
 -- AUCUN index secondaire (retirés le 2026-09-27, #23645) : cf. migration.PlayerRetiredMSRIndexesDropSQL.
 CREATE OR REPLACE VIEW match_skill_rank_latest AS

@@ -316,7 +316,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       `ExampleCalculeRelief`. PR https://github.com/JGtm/halo-infinite-map-images/pull/6, CI verte, squash-fusionnée dans `main` de la brique en `9913d0b`.) Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
       `*_gamefiles_test.go` sous le tag `gamefiles` sur Recharge. README de la brique (section et crédit,
       D-9) et `example_test.go`.
-- [ ] A.5 (amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
+- [x] A.5 (fait le 2026-11-18 : tag `v1.4.0` sur `9913d0b`, release https://github.com/JGtm/halo-infinite-map-images/releases/tag/v1.4.0, LevelUp monté à `v1.4.0` sur `feat/fonds-relief` (`c0851b38e5`). Amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
       pseudo-version sur sa branche de travail, ce que l'ADR 0043 permet, et le TAG `v1.4.0` se pose après B.3,
       une fois le relief vérifié sur les témoins dans LevelUp, pour ne pas publier une API à corriger aussitôt.)
       PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
@@ -338,15 +338,19 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       une option de plus à `mapnav-fetch`, testée. Une carte absente de l'inventaire versionné ou dont la
       version a changé depuis la publication de son fond est nommée dans l'inventaire (le relief se projette
       dans le calage publié, D-5 : un écart de version se voit au contrôle de B.3 et E.1).
-- [ ] B.1 `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
+- [x] B.1 (fait le 2026-11-18, `fb291efdc1`, intégré à `feat/fonds-relief` : geste `--relief-seul`, relief refait par la cuisson complète, données en `.relief.json.gz` ; archlint entier vert sur la brique publiée, deux fichiers de la brique inscrits, datés) `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
       validations ; lecture du calage publié ; écriture du relief et des champs `reliefImage` et `reliefData`
       du sidecar par `internal/mapfondsidecar` seul. Les autres champs restent identiques à l'octet
       près (test). Journal `slog` par carte : poids écrit, part du sol tirée du maillage, dégradations.
-- [ ] B.2 `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
+- [x] B.2 (fait le 2026-11-18, même commit : conversion au bit près, vérifiée sur 5 cartes) `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
       règle existante).
-- [ ] B.3 Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
+- [x] B.3 (fait le 2026-11-18 par le pilote sur la branche d'intégration `feat/fonds-relief`, `83139343b6` :
+      Recharge, Streets, Behemoth, Lattice en `--relief-seul` puis `mapfond-webp -convertir` ; diff limité à 8
+      fichiers neufs et 2 lignes par sidecar, aucun WebP existant modifié ; données compressées 23, 44, 81 et 38 Ko ;
+      fond publié sans hauteur 11,9 / 8,7 / 4,7 / 1,4 %, chiffres de la conception. Le dépôt hors ligne `.ai/re_dump`
+      est COPIÉ (jamais en jonction) dans le worktree pour les cartes Forge.) Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
       `map_backgrounds/` ; diff : seuls les fichiers du relief et deux champs par sidecar changent.
-- [ ] B.4 Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
+- [x] B.4 (fait le 2026-11-18, `9fb38a20fb` : maillage trouvé, plan des murs et relief publiés, rognage au maillage, cadre 1192 x 1024 ; rendu VALIDÉ à l écran par le user, « Parfait Live Fire !!! » ; test des fonds sans plan ramené aux deux Thunderhead ; réglages réécrits) Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
       relief. Les leviers de `map_fond_reglages.json` sont relus (la `boiteUtile` peut céder la place au
       rognage par le maillage) ; la dégradation « aucun maillage » disparaît du sidecar. Le user valide le fond à
       l'écran (le sidecar note « LE RENDU N A TOUJOURS PAS ETE GATE »).
@@ -358,7 +362,12 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 6. Lot C — contrat et routes
 
-- [ ] C.1 Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
+- [x] C.1 à C.3 (faits le 2026-11-18, `f41fe1586c` sur `feat/fonds-relief-c` : champs `reliefImage` / `reliefData`,
+      convention de nommage dans `mapfondsidecar` (`<clé>.relief.png|webp`, `<clé>.relief.json.gz`), service et
+      routes `?variante=relief` et `background.relief.json` sur le rejeu et la Tactique, données décompressées
+      puis contrôlées (nom, `schemaVersion`, calage), relief périmé ou invalide = absent ; Cache-Control centralisé
+      avec garde-rail ; `openapi.yaml` régénéré par `openapi-gen`, `generated.ts` à régénérer par le pilote à
+      l'intégration ; archlint entier vert, tests ciblés relancés par le pilote.) Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
       sans relief), et `mapfondsidecar` les lit et les écrit. Règle 18 : chaque champ a son lecteur, le web au lot D.
 - [ ] C.2 Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
       sur le modèle de `replay_map_background_plan.go` : même résolution de clé, mêmes gardes sur le nom de
@@ -401,11 +410,11 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       table depuis le jeton, coupe par étage (sols empilés tirés des faces, dans un Web Worker), chemins des
       traits filtrés par la coupe, cache par carte. Logique pure testée (vitest) : décodage, coupe, filtre des
       traits, toit sur sol.
-- [ ] D.3 Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
+- [x] D.3 (fait le 2026-11-18, `758c8882c2`, intégré à `feat/fonds-relief` : variante relief et repli, traits retenus par fond, groupe Étage du panneau Vue en rangs, coupe sur les trois fonds sans masquer de joueur, bloc sans maillage, infobulles des anneaux et de la part du maillage ; rampe unique ; dessin du relief relevé dans lib/ ; 8 252 tests ciblés verts, témoins du rejeu inchangés. Choix acceptés par le pilote : la coupe n'est pas retenue d'une ouverture à l'autre ; les données du relief (50 à 126 Ko compressés) sont chargées à l'ouverture du rejeu pour afficher les étages, l'image seulement à la demande.) Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
       et `resolveBackgroundVariant` qui retombe sur le Plan sans relief), dessin dans `mapBackgroundDraw.ts`,
       couche des traits dans `useReplayStaticLayers.ts`, commande d'étage conforme à D.1, état sans maillage
       (D-7). La coupe passe aussi au Plan et au Rendu (D-2).
-- [ ] D.4 Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
+- [x] D.4 (fait le 2026-11-18, `5943d1d9d7`, intégré à `feat/fonds-relief` : pilules Fond, Traits et Étage dans la Tactique et l'Occupation, zones nommées filtrées par étage, mention de légende des autres calques, positions hors étage masquées avec leur compte, repli sur le Plan ; 5 131 tests ciblés relancés par le pilote. Écart accepté : l'Occupation a ses propres commandes mais partage la préférence de fond du rejeu et de la Tactique, comme la maquette. Doublons de logique avec le rejeu et deux exceptions datées de la frontière des features : item D.8.) Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
       positions filtrées par étage sur `MatchPositionDTO.z`. Tactique : calques filtrés selon la liste de 0.1,
       mention dans la légende des autres.
 - [~] D.7 (couvert par D.5 et D.7 réunis, ci-dessus, `d98ebe857f`) Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
@@ -413,7 +422,8 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
       les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
       `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
       les quatre visions, par palette et par thème.
-- [ ] D.6 Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
+- [ ] D.8 (ajouté le 2026-11-18 par le pilote, relevé de D.4) Une seule logique du relief pour les trois vues : `useReplayRelief` délègue à `lib/replay/useReliefView` ; `useReliefLines`, `useScopedCut`, `linesInkOf` et la logique des pastilles vivent une fois dans `lib/` ; les deux exceptions datées de `tools/lint-cross-feature-imports.mjs` (tactical et match-view vers `useReliefLines`) sont retirées ; commentaire périmé de `useMapViewPreferences.ts` corrigé. Témoins du rejeu inchangés.
+- [x] D.6 (fait le 2026-11-18, `a3de73967e`, intégré à `feat/fonds-relief` : interrupteur sous le curseur, coupe sur l'étage du sol porteur à chaque image, délai de 300 ms en temps du rejeu (même comportement à toute vitesse, rien ne bouge en pause), mort et saut de lecture gérés, choix manuel qui coupe le suivi, aucun joueur masqué ; 3 020 tests ciblés relancés par le pilote. Limites notées : à l'export vidéo la coupe peut avoir une image de retard ; un rejeu ancien sans hauteur garde l'étage bas.) Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
 - [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
       `marker-outline-band`, `marker-outline-rim` dans les 4 palettes ; rampe UNIQUE `lib/accessibility/reliefRamp.ts`
@@ -437,7 +447,7 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 - [ ] E.1 Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
       fois, puis `mapfond-webp -convertir`. Poids ajouté mesuré et reporté (base : 45 Mo aujourd'hui). Chaque
       carte non traitée est nommée avec sa raison.
-- [ ] E.2 ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
+- [~] E.2 (écrit le 2026-11-18, `d610136f8d` sur `feat/fonds-relief` : ADR 0049, amendement de 0048, CLAUDE.md, guide des fondations EN et FR ; notes de version et crédit prêts dans `annexes_fonds_relief/lignes_de_version.md`, posés à l'intégration ; « Current state » à reprendre après E.1) ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
       sol tiré du maillage, cartes sans maillage, crédit. Elle amende 0048 (D-3 : troisième fond ; D-8 : deux
       champs neufs du sidecar). Mise à jour de la liste des ADR dans `CLAUDE.md`, d'une ligne dans la note de
       version et dans le journal des modifications.
@@ -514,3 +524,21 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
   du relief devient `<clé>.relief.json.gz` (JSON compressé gzip sur disque, ce qui allège aussi D-13) ; le
   service le décompresse, contrôle `schemaVersion` et le calage, et sert le JSON en clair. Remplace le nom
   `<clé>.relief.json` de la conception §1 et des items B.1, C.1 à C.3.
+- 2026-11-18 (soir) — ÉTAT DES LIEUX POUR LA REPRISE DU DIMANCHE 2026-11-22 (quota du user presque épuisé).
+  - Branche d'intégration `feat/fonds-relief` (worktree `C:/t/relief-int`, NON poussée) : lots A (brique v1.4.0
+    taguée et publiée), B, C, D.2 à D.8, R.2 côté Go, données de 4 témoins + Live Fire (validée à l'écran),
+    ADR 0049. Dernier commit `6ac444f1c6`. Gate web complet passé sur `588834ca87` (3 garde-rails lents verts seuls).
+  - NON COMMITÉ : (1) la cuisson du parc E.1 lancée à 18 h 50 dans `C:/t/relief-int` (journaux et rapports TSV
+    dans le scratchpad de la session, `e1_*.log` / `e1_*.tsv`) : à la reprise, `git -C C:/t/relief-int status`,
+    contrôler par `go test ./internal/mapfondsidecar/...` (garde-rail `TestChaqueReliefPublieEstServable`), relancer
+    `mapfond-build --relief-seul` sur les cartes manquantes (GOMEMLIMIT=1500MiB, une carte à la fois), puis
+    `mapfond-webp -convertir`, puis commiter les données ; (2) R.2 côté web dans `C:/t/relief-r2web` (branche
+    `feat/fonds-relief-r2web`) : corrections écrites (code mort, carte à maillage sans étage, réallocation du masque,
+    infobulle de la lumière, faux journal, zone tenue retirée par la coupe), agent ARRÊTÉ avant la fin de sa suite
+    vitest : relancer ses gates puis commiter et fusionner dans `feat/fonds-relief`.
+  - Reste ensuite : relancer le gate web complet sur l'intégration, reprendre « Current state » de l'ADR 0049 (après
+    E.1), poser les lignes de version (`annexes_fonds_relief/lignes_de_version.md`) et le crédit dans
+    `docs/ACKNOWLEDGMENTS.md`, `make gate-push` (prévenir l'autre session), contrôle à l'écran du user sur les témoins,
+    fusion dans `release/v8.3.0`, puis ménage des worktrees `C:/t/relief-*` (aucune jonction) et des branches.
+  - Brique : constat P2-7 pour une v1.4.1 (`himap/sddt_partage.go` publie des chiffres de Live Fire pour tout module
+    partagé). 8.3.1 : recherche du plan par mode faite (`annexes_plan_par_mode/recherche.md`), plan à écrire.

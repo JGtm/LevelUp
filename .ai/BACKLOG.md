@@ -272,7 +272,7 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 
 ### [décodeur/objectifs] Ordre de rotation des collines du Roi de la colline
 
-Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. LevelUp n'a pas cet ordre. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. **Reformulée le 2026-11-17.** Constat sur pièces : la suite des collines actives se lit déjà dans le document ; elle diverge entre matchs d'une même carte ; aucun écran ne la lit. Sort : reformulée. **Condition de reprise :** un écran qui la lise ; à défaut, prochain chantier du décodeur. **Effort : S à M.**
+Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. Instruit le 2026-11-18 : la suite des collines JOUÉES est déjà dans le document de rejeu (`zoneStates[].spans`), cohérente sur 48 films ; elle diverge entre matchs d'une même carte, parce que l'ordre de la carte est une donnée de la variante de mode, pas du film. Aucun travail du décodeur. Ce qui reste est une demande d'affichage : montrer dans le rejeu la suite des collines jouées (et la prochaine quand elle est connue). **Effort : S.**
 
 ---
 
@@ -302,7 +302,13 @@ Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (
 
 ### [décodeur] Temps forts de type « mode » du film : ce qu'ils recouvrent, et qui a détruit quel véhicule
 
-Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. **Reformulée le 2026-11-17.** Constat sur pièces : 23 683 temps forts de ce type sur 527 matchs. Les destructions de véhicules sont déjà attribuées par une autre voie ; en Slayer, environ la moitié de ces temps forts reste inexpliquée. Sort : entrée mise à jour, priorité basse. Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. **Effort : faible pour le comptage ; à estimer pour la suite. Priorité basse.**
+Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. **Reformulée le 2026-11-17.** Constat sur pièces : 23 683 temps forts de ce type sur 527 matchs. Les destructions de véhicules sont déjà attribuées par une autre voie ; en Slayer, environ la moitié de ces temps forts reste inexpliquée. Sort : entrée mise à jour, priorité basse. Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. Instruit le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`, 23 683 événements sur 527 matchs) : un temps fort « mode » est l'écho d'une action de score propre au mode, du même joueur, dans la même image. En Bases : zone capturée ou sécurisée ; en Roi de la colline : contrôle de la colline ; en Drapeau : vol, prise, retour, capture, aide à la capture, élimination du porteur ; en Balle : contrôle et prise de la balle ; en Slayer : destruction de véhicule, aide par IEM, quelques éliminations. Le document de rejeu nomme déjà chacun de ces événements (`scoreActions`) : le décodeur n'a rien à publier de plus. Ce qui reste est côté LevelUp : la lecture de ces temps forts comme « zone capturée » est fausse hors du mode Bases ; les lire par le nom de l'action de score du rejeu, ou ne les afficher qu'en Bases. Restent sans explication : 3 410 événements en Drapeau, 691 en Total Control et 303 en Extraction, sans action de score au même instant. **Effort : S pour la lecture de LevelUp ; recherche pour le reste.**
+
+---
+
+### [base/temps forts] Temps forts « mode » en double, sans code, sur 76 matchs
+
+Relevé le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`, section 5). La table `highlight_events` porte 2 330 événements de type « mode » sans code (`type_hint` NULL, `raw_json` vide) sur 76 matchs. Sur les 33 matchs qui ont aussi des événements de code 10, les 1 284 événements sans code sont tous des doubles d'un événement de code 10 (même joueur, même instant) ; 43 matchs joués entre juin et septembre 2026 n'ont que la forme sans code. Deux écritures différentes du même fait ont donc existé. À faire : trouver l'écrivain de la forme sans code (probablement une ancienne passe), dire si les 43 matchs doivent être repassés, et retirer les doubles par la voie d'écriture prévue (jamais un UPDATE ou un DELETE à la main sur la base partagée). **Effort : S à M.**
 
 ---
 
@@ -426,7 +432,7 @@ explicite d'inventer le schéma par analogie.
 
 ### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -438,7 +444,7 @@ Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). 
 
 ### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
 
-Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.**
+Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -471,13 +477,31 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ### [fonds de carte/plan] Plan par mode : découper le plan d'une carte selon le mode joué
 
-**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.**
+**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
 
 ---
 
 ### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
 
 **Relevé le 2026-11-18** (conception du fond Relief, `.ai/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
+
+---
+
+### [fonds de carte/Forge] Deux des quatre types de himap.TypesVolumesDeMort ne sont pas des volumes de mort
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). « Light probe marker » (type d'objet 29) et « Nav Cutter » (type 28) sont comptés comme volumes de mort par la brique `halo-infinite-map-images` (`himap.TypesVolumesDeMort`, `BoiteDesVolumesDeMort`). Effet possible sur le cadrage des fonds Forge publiés, à mesurer. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [fonds de carte/Forge] L'échelle des primitives Forge n'est pas lue
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). Le vecteur d'échelle des objets (`#8/#23` de la variante) n'est pas lu par `mapvar`. 94,7 % des 404 578 primitives du parc ne sont pas à l'échelle 1, alors que `InstanceForge` les pose à l'échelle 1. Effet sur les fonds Forge publiés à mesurer avant tout correctif. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [outillage] Les 20 variantes natives du dépôt hors ligne sont des fichiers vides
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). `.ai/re_dump/mapvar/` porte 20 variantes de cartes natives à 0 octet. À rapatrier (`mapnav-fetch -fichier map.mvar -nom-cuisson`) si un lot les lit. **Reprise :** à instruire et décider par le user.
 
 ---
 

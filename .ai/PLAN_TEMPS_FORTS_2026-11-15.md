@@ -231,6 +231,15 @@ détection et clips » (EN seul) avec crédit à csstat pour la démarche, note 
 
 (à remplir pendant l'exécution ; rien n'y est traité dans ce plan)
 
+- 2026-11-18 — signal candidat pour le détecteur, à mesurer en 0.1 et 0.3 comme les autres (remarque du user,
+  pas une décision : « pas mal pour les highlights de s'appuyer sur le score ! Les petites actions ne vont pas
+  rapporter beaucoup mais les points notables si »). Le document de rejeu publie chaque action de score d'un
+  joueur avec son nom et ses points (`scoreActions[]` : capture et vol du drapeau, zone capturée, contrôle de
+  la colline, destruction de véhicule, aide par IEM, élimination du porteur...). Les temps forts « mode » du
+  film en sont l'écho (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`). Les points de l'action
+  donnent un poids lu dans le film, sans table à écrire : une action à gros points est notable, une petite
+  non. Limite connue : aucune action de score publiée en Total Control.
+
 ## 9. Reprise de session
 
 Section 1, puis la table de la section 1 bis : pour chaque piste, première case vide des sections 3 à 7 bis
