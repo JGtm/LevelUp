@@ -88,8 +88,8 @@ func publieUnFondEssai(t *testing.T, dir string) []byte {
 }
 
 // cuisEssai rend une `cuire` qui rend le rendu et le maillage donnés.
-func cuisEssai(r *himap.Rendu, m *hinavmesh.Maillage) func() (carteCuite, error) {
-	return func() (carteCuite, error) {
+func cuisEssai(r *himap.Rendu, m *hinavmesh.Maillage) func(float64) (carteCuite, error) {
+	return func(float64) (carteCuite, error) {
 		return carteCuite{c: cible{cle: "carte", ancres: [][3]float64{{0.5, 0.5, 1.5}}, maillage: m}, rendu: r}, nil
 	}
 }
@@ -345,7 +345,7 @@ func TestRefaitLeReliefSansSidecarLaisseLaCarteIntacte(t *testing.T) {
 	e := &environnement{sortieDir: t.TempDir()}
 	cuite := false
 	var b bilanSeul
-	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, func() (carteCuite, error) {
+	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, func(float64) (carteCuite, error) {
 		cuite = true
 		return carteCuite{}, nil
 	})
@@ -364,7 +364,7 @@ func TestRefaitLeReliefUneCuissonEnEchecNEstPasUneCarteIntacte(t *testing.T) {
 	publieUnFondEssai(t, dir)
 	e := &environnement{sortieDir: dir}
 	var b bilanSeul
-	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, func() (carteCuite, error) {
+	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, func(float64) (carteCuite, error) {
 		return carteCuite{}, os.ErrNotExist
 	})
 	if err == nil || errors.Is(err, os.ErrNotExist) {
@@ -428,6 +428,58 @@ func TestEcritSidecarSansReliefRetireLeReliefPerime(t *testing.T) {
 	for _, nom := range []string{"carte.relief.png", "carte.relief.webp", "carte.relief.json.gz"} {
 		if _, err := os.Stat(filepath.Join(dir, nom)); !os.IsNotExist(err) {
 			t.Errorf("%s périmé non retiré (%v)", nom, err)
+		}
+	}
+}
+
+// -relief-seul cuit la carte à l'échelle du fond PUBLIÉ, pas à celle que la cuisson choisit aujourd'hui
+// (défaut, levier de la carte ou -mpp) : la cellule du rendu doit égaler celle du fond publié, sans quoi
+// la brique refuse le relief (himap.ErrEchelleDifferente, Thunderhead).
+func TestRefaitLeReliefCuitALEchelleDuFondPublie(t *testing.T) {
+	dir := t.TempDir()
+	publieUnFondEssai(t, dir)
+	const echelleDuJour = 0.0634
+	e := &environnement{sortieDir: dir, echelle: echelleDuJour, reglages: &reglagesFond{Cartes: map[string]reglageCarte{"carte": {Echelle: 0.05}}}}
+	if echelleDuJour == pasEssai || e.echelleDe("carte") == pasEssai {
+		t.Fatal("essai sans objet : l'échelle de la cuisson égale celle du fond publié")
+	}
+	var recue float64
+	var b bilanSeul
+	err := e.refaitLeRelief(context.Background(), "carte", nil, &b, func(echelle float64) (carteCuite, error) {
+		recue = echelle
+		return cuisEssai(renduEssai(echelle), carresDeTest([][2]float64{{0, 0}}))(echelle)
+	})
+	if err != nil {
+		t.Fatalf("refaitLeRelief : %v", err)
+	}
+	if recue != pasEssai {
+		t.Errorf("échelle de cuisson = %g, attendu celle du fond publié %g", recue, pasEssai)
+	}
+}
+
+// Une échelle imposée l'emporte sur le défaut, sur -mpp et sur le levier de la carte, pour les deux
+// chaînes ; sans échelle imposée, la cuisson complète garde son choix (levier, puis défaut).
+func TestEchelleImposeeOuDe(t *testing.T) {
+	e := &environnement{echelle: 0.0634, reglages: &reglagesFond{Cartes: map[string]reglageCarte{"levier": {Echelle: 0.05}}}}
+	cas := []struct {
+		cle     string
+		imposee float64
+		attendu float64
+	}{
+		{"levier", 0.0659, 0.0659},
+		{"sans-levier", 0.0659, 0.0659},
+		{"levier", 0, 0.05},
+		{"sans-levier", 0, 0.0634},
+	}
+	for _, c := range cas {
+		if got := e.echelleImposeeOuDe(c.cle, c.imposee); got != c.attendu {
+			t.Errorf("echelleImposeeOuDe(%q, %g) = %g, attendu %g", c.cle, c.imposee, got, c.attendu)
+		}
+		if got := e.optionsNative(cible{cle: c.cle}, nil, c.imposee).Echelle; got != c.attendu {
+			t.Errorf("optionsNative(%q, %g).Echelle = %g, attendu %g", c.cle, c.imposee, got, c.attendu)
+		}
+		if got := e.optionsForge(himap.CarteForge{MapID: c.cle}, cible{cle: c.cle}, nil, nil, c.imposee).Echelle; got != c.attendu {
+			t.Errorf("optionsForge(%q, %g).Echelle = %g, attendu %g", c.cle, c.imposee, got, c.attendu)
 		}
 	}
 }

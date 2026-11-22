@@ -3,8 +3,8 @@ package main
 // Le mode -relief-seul : ajoute le relief aux fonds déjà publiés, sans toucher à leur image, à leur plan
 // ni à leur calage.
 //
-// La carte est cuite en mémoire (mêmes réglages que la cuisson complète), mais le relief se projette dans
-// le calage du fond PUBLIÉ, lu dans son sidecar : une recuisson peut sortir un cadre de taille ou de
+// La carte est cuite en mémoire (mêmes réglages que la cuisson complète, sauf l'échelle : celle du fond
+// publié), et le relief se projette dans le calage du fond PUBLIÉ, lu dans son sidecar : une recuisson peut sortir un cadre de taille ou de
 // position différentes (Recharge : 35 lignes de plus en haut du fond publié), et le relief doit se
 // superposer au fond que le site sert.
 
@@ -22,8 +22,7 @@ import (
 // dans le calage publié, écrit `<cle>.relief.png` et `<cle>.relief.json.gz` et pose `reliefImage` et
 // `reliefData` dans le sidecar. Les autres champs du sidecar, l'image du fond, l'image plan et le
 // plan des murs restent ceux de la cuisson qui les a produits. Une carte sans sidecar ou sans fond est
-// laissée intacte ; une carte sans maillage reçoit un relief dégradé (`sans-maillage`) ; une échelle
-// de cuisson différente de celle du fond publié, ou un maillage introuvable pour un fond dont le sidecar
+// laissée intacte ; une carte sans maillage reçoit un relief dégradé (`sans-maillage`) ; un maillage introuvable pour un fond dont le sidecar
 // publié porte un plan (plan_publie_sans_maillage.go), met la carte en échec et n'écrit rien.
 func (e *environnement) ajouteReliefs(ctx context.Context) bilanSeul {
 	return e.parcourtLesCartes(ctx, e.ajouteReliefForge, e.ajouteReliefNatif)
@@ -32,27 +31,32 @@ func (e *environnement) ajouteReliefs(ctx context.Context) bilanSeul {
 // ajouteReliefForge refait le relief d'une carte Forge.
 func (e *environnement) ajouteReliefForge(ctx context.Context, carte himap.CarteForge, b *bilanSeul) {
 	noms := []string{carte.Nom}
-	err := e.refaitLeRelief(ctx, carte.MapID, noms, b, func() (carteCuite, error) { return e.renduForge(ctx, carte) })
+	err := e.refaitLeRelief(ctx, carte.MapID, noms, b, func(echelle float64) (carteCuite, error) { return e.renduForge(ctx, carte, echelle) })
 	e.noteResultat(ctx, b, carte.MapID, noms, err)
 }
 
 // ajouteReliefNatif refait le relief d'une carte native.
 func (e *environnement) ajouteReliefNatif(ctx context.Context, c cible, b *bilanSeul) {
-	err := e.refaitLeRelief(ctx, c.cle, c.noms, b, func() (carteCuite, error) { return e.renduNatif(ctx, c) })
+	err := e.refaitLeRelief(ctx, c.cle, c.noms, b, func(echelle float64) (carteCuite, error) { return e.renduNatif(ctx, c, echelle) })
 	e.noteResultat(ctx, b, c.cle, c.noms, err)
 }
 
-// refaitLeRelief lit le sidecar et le fond publiés de la carte, la cuit en mémoire avec `cuire`, calcule
-// son relief dans le calage publié et réécrit le sidecar avec ses deux champs de plus. Rend une erreur
-// qui satisfait os.ErrNotExist quand le sidecar ou le fond publié n'existe pas ; la cuisson n'est alors
-// pas lancée.
+// refaitLeRelief lit le sidecar et le fond publiés de la carte, la cuit en mémoire avec `cuire` à
+// l'échelle du fond publié (`metersPerPixel` de son calage : la cellule du rendu doit l'égaler, quelle
+// que soit l'échelle que la cuisson complète choisirait aujourd'hui), calcule son relief dans le calage
+// publié et réécrit le sidecar avec ses deux champs de plus. Rend une erreur qui satisfait os.ErrNotExist
+// quand le sidecar ou le fond publié n'existe pas ; la cuisson n'est alors pas lancée.
+//
+// Le cadre de la grille recuite peut différer d'une fraction de pixel du cadre publié : la projection de
+// la brique lit le plus proche voisin au centre du pixel publié (erreur d'au plus un demi-pixel, lue au
+// bilan du relief `decalage_x` / `decalage_y`) et ne refuse que l'échelle.
 func (e *environnement) refaitLeRelief(ctx context.Context, cle string, noms []string, b *bilanSeul,
-	cuire func() (carteCuite, error)) error {
+	cuire func(echelle float64) (carteCuite, error)) error {
 	s, fond, cal, err := lisFondEtCalage(e.sortieDir, cle)
 	if err != nil {
 		return err
 	}
-	cc, err := cuire()
+	cc, err := cuire(cal.MetresParPixel)
 	if err != nil {
 		// Aplati : une variante ou un maillage absents de l'outillage ne sont pas un sidecar absent.
 		return fmt.Errorf("cuisson en memoire de %s : %s", cle, err)

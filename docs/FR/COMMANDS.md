@@ -784,14 +784,15 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --
 ```
 
 - Pour chaque carte retenue dont le sidecar et le fond sont publiés dans `--out-dir` : la carte est cuite en mémoire
-  (mêmes leviers qu'une cuisson), le relief est projeté dans le calage du sidecar **publié** (une recuisson peut sortir
+  (mêmes leviers qu'une cuisson, sauf l'échelle : celle du sidecar publié, quels que soient le défaut, un levier ou
+  `--mpp`), le relief est projeté dans le calage du sidecar **publié** (une recuisson peut sortir
   plus petite ou décalée : Recharge recuite fait 35 lignes de moins), et l'outil écrit `{cle}.relief.png` (hauteur du
   dessus par pixel : `q = R + 256 G` par pas de 1/256 d'unité du jeu, drapeaux dans `B`, `A` vaut 0 ou 255),
   `{cle}.relief.json.gz` (JSON compressé en gzip, car un `.json` serait lu comme un sidecar : calage, bornes de hauteur, étages, sols du maillage, traits vectoriels) et les champs `reliefImage`
   et `reliefData` du sidecar, par `internal/mapfondsidecar` seul. L'image du fond, l'image plan, le plan des murs, le
   calage et tous les autres champs du sidecar restent identiques à l'octet. Une carte sans sidecar ou sans fond est
   laissée intacte et n'est pas cuite.
-- Une carte sans maillage reçoit un relief dégradé (`sans-maillage` dans les données). Une cuisson dont l'échelle diffère
+- Une carte sans maillage reçoit un relief dégradé (`sans-maillage` dans les données). Le garde-fou demeure : une cuisson dont l'échelle diffère
   de celle du cadre publié met cette carte en échec nommé (`echelle du fond publie differente de la cuisson, recuire le
   fond`) et n'écrit rien.
 - Une ligne de journal par carte (`relief ecrit`) : octets écrits, part du relief tirée du maillage (`part_maillage`),

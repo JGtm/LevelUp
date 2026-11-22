@@ -36,7 +36,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 
 // cuitUneForge cuit une carte Forge et la publie.
 func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge) bilanAsset {
-	cc, err := e.renduForge(ctx, carte)
+	cc, err := e.renduForge(ctx, carte, 0)
 	if err != nil {
 		noms := cc.c.noms
 		if len(noms) == 0 {
@@ -48,9 +48,10 @@ func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge
 }
 
 // renduForge cuit une carte Forge en mémoire : sa variante, son maillage (surface de référence et
-// plan des murs), puis le rendu. Sur une erreur de cuisson, la cible reste rendue (ses noms servent au
-// bilan). Les échecs sont journalisés ici.
-func (e *environnement) renduForge(ctx context.Context, carte himap.CarteForge) (carteCuite, error) {
+// plan des murs), puis le rendu. `echelle` est le côté du pixel imposé en mètres (celui du fond publié,
+// pour `-relief-seul`) ; zéro laisse la cuisson la choisir (`echelleDe`). Sur une erreur de cuisson, la
+// cible reste rendue (ses noms servent au bilan). Les échecs sont journalisés ici.
+func (e *environnement) renduForge(ctx context.Context, carte himap.CarteForge, echelle float64) (carteCuite, error) {
 	c, objets, err := e.cibleForge(carte)
 	if err != nil {
 		slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
@@ -58,7 +59,7 @@ func (e *environnement) renduForge(ctx context.Context, carte himap.CarteForge) 
 	}
 	navRef, tout, degradation := e.maillageForge(ctx, carte)
 	c.maillage, c.sourcePlan = tout, sourcePlanForge
-	rendu, bilan, err := himap.CuitCarteForge(ctx, e.optionsForge(carte, c, objets, navRef))
+	rendu, bilan, err := himap.CuitCarteForge(ctx, e.optionsForge(carte, c, objets, navRef, echelle))
 	if err != nil {
 		slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
 		return carteCuite{c: c}, err
@@ -99,8 +100,9 @@ func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForg
 }
 
 // optionsForge assemble les options de cuisson d'une carte Forge. Ce sont les mêmes leviers que
-// ceux de la chaîne native : un réglage déclaré pour une carte Forge est lu ici comme là-bas.
-func (e *environnement) optionsForge(carte himap.CarteForge, c cible, objets []mapvar.Object, navRef *hinavmesh.Maillage) himap.OptionsCuissonForge {
+// ceux de la chaîne native : un réglage déclaré pour une carte Forge est lu ici comme là-bas. Une
+// `echelle` non nulle l'emporte sur l'échelle de la carte (voir renduForge).
+func (e *environnement) optionsForge(carte himap.CarteForge, c cible, objets []mapvar.Object, navRef *hinavmesh.Maillage, echelle float64) himap.OptionsCuissonForge {
 	cle := carte.MapID
 	rogneAlt, seuilAlt, margeAlt := e.rogneAuxAltitudesProchesDe(cle)
 	posJouees, rayonPos := e.positionsJoueesDe(cle)
@@ -111,7 +113,7 @@ func (e *environnement) optionsForge(carte himap.CarteForge, c cible, objets []m
 		Ancres:                     c.ancres,
 		CheminModuleCanevas:        himap.CheminCanevasForge(carte),
 		Cle:                        cle,
-		Echelle:                    e.echelleDe(cle),
+		Echelle:                    e.echelleImposeeOuDe(cle, echelle),
 		CibleCadrePx:               himap.CibleCadrePx,
 		EcreteToits:                valeurDe(e, cle, levierEcreteToits),
 		PlafondArene:               valeurDe(e, cle, levierPlafondArene),

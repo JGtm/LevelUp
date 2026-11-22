@@ -759,14 +759,15 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --
 ```
 
 - For each selected map whose sidecar and background are published in `--out-dir`: the map is cooked in memory (same
-  levers as a cooking), the relief is projected into the calibration of the **published** sidecar (a recooking can come
+  levers as a cooking, except the scale: the pixel size of the published sidecar, whatever the default, a lever or
+  `--mpp` would pick), the relief is projected into the calibration of the **published** sidecar (a recooking can come
   out smaller or shifted: Recharge recooks 35 rows shorter), and the tool writes `{key}.relief.png` (height of the top
   per pixel: `q = R + 256 G` in steps of 1/256 game unit, flags in `B`, `A` is 0 or 255), `{key}.relief.json.gz`
   (gzip-compressed JSON, because a `.json` would be read as a sidecar: calibration, height range, floors, mesh floors, vector lines) and the sidecar fields `reliefImage` and `reliefData`,
   through `internal/mapfondsidecar` only. The background image, the plan image, the wall plan, the calibration and every
   other sidecar field stay identical to the byte. A map without a sidecar or background is left untouched and is not
   cooked.
-- A map without a mesh gets a degraded relief (`sans-maillage` in the data). A cooking whose scale differs from the
+- A map without a mesh gets a degraded relief (`sans-maillage` in the data). The guard stays: a cooking whose scale differs from the
   published frame's fails that map by name (`echelle du fond publie differente de la cuisson, recuire le fond`) and
   writes nothing.
 - One journal line per map (`relief ecrit`): bytes written, share of the relief taken from the mesh (`part_maillage`),
