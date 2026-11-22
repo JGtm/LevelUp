@@ -1,14 +1,45 @@
 /**
- * playerPanel.i18n.ts — LES TEXTES DU PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») :
- * le contrat (`PlayerPanelText`) et ses deux langues. Un clic sur une fiche ouvre la fiche du joueur :
- * une fenêtre au Cinéma et au Plein cadre, la colonne entière au Standard.
+ * playerPanel.i18n.ts — LES TEXTES DU PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu »)
+ * et ceux des actions des tuiles : le contrat (`PlayerPanelText`) et ses deux langues. Un clic sur une fiche ouvre
+ * la fiche du joueur : une fenêtre au Cinéma et au Plein cadre, la colonne entière au Standard. Suivre et l'œil
+ * (Masquer / Afficher) sont sur les tuiles et les lignes ; « Seul » est dans la fiche.
  *
  * UN SOUS-DICTIONNAIRE À PART : `fr.ts` et `en.ts` sont au plafond de taille du dépôt, et ces textes
  * forment un tout (le panneau). Ils sont servis par `ReplayText.playerPanel`, donc par
  * `REPLAY_TEXT[locale].playerPanel` : la parité FR/EN reste tenue par le typage (`satisfies
  * PlayerPanelText` dans chaque langue, `satisfies ReplayText` au-dessus).
  */
-import type { PlayerPanelAction } from '../model/playerPanelLogic'
+
+/** Les actions d'une tuile ou d'une ligne (D-6) : Suivre, l'œil, et « Tout afficher » en tête de la colonne (D-7). */
+interface PlayerTileText {
+  /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Suivre » du menu de caméra. */
+  follow: string
+  unfollow: string
+  hide: string
+  show: string
+  /** Le nom accessible de chaque bouton, avec le nom du joueur. */
+  followLabelFmt: (name: string) => string
+  unfollowLabelFmt: (name: string) => string
+  hideLabelFmt: (name: string) => string
+  showLabelFmt: (name: string) => string
+  /** La phrase de l'infobulle, sous son titre. */
+  followHintFmt: (name: string) => string
+  unfollowHint: string
+  hideHintFmt: (name: string) => string
+  showHintFmt: (name: string) => string
+  /** La mention écrite sur la tuile ou la ligne d'un joueur masqué. */
+  hiddenMention: string
+  /** « Tout afficher », en tête de la colonne et de la rangée des équipes quand un joueur est masqué. */
+  showAll: string
+}
+
+/** « Seul » de la fiche (D-8) : son libellé et son infobulle, au repos et actif. */
+interface PlayerSoloText {
+  label: string
+  labelActive: string
+  hint: string
+  hintActive: string
+}
 
 export interface PlayerPanelText {
   /** La croix de la fiche en fenêtre (Cinéma, Plein cadre) : son nom accessible et son infobulle. */
@@ -17,9 +48,10 @@ export interface PlayerPanelText {
   labelFmt: (name: string) => string
   /** Le nom accessible d'une fiche devenue bouton : ce que le clic ouvre. */
   cardOpenFmt: (name: string) => string
-  /** Les trois actions sur la carte, et leur infobulle (Suivre dit que la main l'arrête). */
-  action: Record<PlayerPanelAction, string>
-  actionHint: Record<PlayerPanelAction, string>
+  /** Les actions des tuiles et des lignes. */
+  tile: PlayerTileText
+  /** « Seul », dans la fiche. */
+  solo: PlayerSoloText
   /** La fiche du cadre Standard : le retour à la colonne des équipes (et du fil), le titre de l'extrait du fil et son lien. */
   backToTeams: string
   extractTitle: string
@@ -30,11 +62,27 @@ export const FR_PLAYER_PANEL = {
   close: 'Fermer',
   labelFmt: (name) => `Fiche de ${name}`,
   cardOpenFmt: (name) => `Ouvrir la fiche de ${name}`,
-  action: { follow: 'Suivre', solo: 'Seul', hide: 'Masquer' },
-  actionHint: {
-    follow: "Cadre la carte sur ce joueur, image par image ; un zoom ou un déplacement à la main l'arrête",
-    solo: "N'affiche que ce joueur sur la carte",
-    hide: 'Retire ce joueur de la carte',
+  tile: {
+    follow: 'Suivre',
+    unfollow: 'Ne plus suivre',
+    hide: 'Masquer',
+    show: 'Afficher',
+    followLabelFmt: (name) => `Suivre ${name}`,
+    unfollowLabelFmt: (name) => `Ne plus suivre ${name}`,
+    hideLabelFmt: (name) => `Masquer ${name}`,
+    showLabelFmt: (name) => `Afficher ${name}`,
+    followHintFmt: (name) => `La caméra cadre la carte sur ${name}.`,
+    unfollowHint: 'La carte revient en vue entière.',
+    hideHintFmt: (name) => `Retire ${name} de la carte : pion, traînée, nom.`,
+    showHintFmt: (name) => `${name} réapparaît sur la carte.`,
+    hiddenMention: 'masqué',
+    showAll: 'Tout afficher',
+  },
+  solo: {
+    label: 'Seul',
+    labelActive: 'Seul · tout réafficher',
+    hint: "Masque tous les autres joueurs. L'œil d'une tuile en réaffiche un.",
+    hintActive: 'Réaffiche tous les joueurs.',
   },
   backToTeams: 'Équipes',
   extractTitle: 'Éliminations',
@@ -45,11 +93,27 @@ export const EN_PLAYER_PANEL = {
   close: 'Close',
   labelFmt: (name) => `${name}'s card`,
   cardOpenFmt: (name) => `Open ${name}'s card`,
-  action: { follow: 'Follow', solo: 'Solo', hide: 'Hide' },
-  actionHint: {
-    follow: 'Frames the map on this player, frame by frame; zooming or panning by hand stops it',
-    solo: 'Shows only this player on the map',
-    hide: 'Removes this player from the map',
+  tile: {
+    follow: 'Follow',
+    unfollow: 'Stop following',
+    hide: 'Hide',
+    show: 'Show',
+    followLabelFmt: (name) => `Follow ${name}`,
+    unfollowLabelFmt: (name) => `Stop following ${name}`,
+    hideLabelFmt: (name) => `Hide ${name}`,
+    showLabelFmt: (name) => `Show ${name}`,
+    followHintFmt: (name) => `The camera frames the map on ${name}.`,
+    unfollowHint: 'The map goes back to the full view.',
+    hideHintFmt: (name) => `Removes ${name} from the map: marker, trail, name.`,
+    showHintFmt: (name) => `${name} reappears on the map.`,
+    hiddenMention: 'hidden',
+    showAll: 'Show all',
+  },
+  solo: {
+    label: 'Solo',
+    labelActive: 'Solo · show all',
+    hint: "Hides every other player. A tile's eye shows one again.",
+    hintActive: 'Shows every player again.',
   },
   backToTeams: 'Teams',
   extractTitle: 'Kills',

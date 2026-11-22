@@ -43,7 +43,7 @@ export interface LivesOptions {
   identity: Pick<SlotIdentity, 'colorOfSlot' | 'colorOfXuid' | 'campOfSlot' | 'markOfSlot' | 'seatedOfXuid'>
   /** Encre du liseré sombre sous les traits de couleur. */
   ink: string
-  /** Seul et Masquer (`useReplayPlayerFocus`) : une trace se tait quand le pion de sa vie se tairait. */
+  /** Les joueurs masqués (`useReplayPlayerFocus`) : une trace se tait quand le pion de sa vie se tairait. */
   shownAtSlot?: (slot: number, frame: number) => boolean
 }
 

@@ -34,7 +34,7 @@ import { renderWithProviders } from '../../../../test/render-utils'
 import { buildFeedEntries, type ReplayFeedEntry } from '../../model/killFeedLogic'
 import { readMatchMedals } from '../../model/matchMedals'
 import { createPlaybackStore } from '../../model/playbackStore'
-import type { PlayerFocus } from '../../model/playerPanelLogic'
+import type { HiddenPlayers, PlayerFocus } from '../../model/playerPanelLogic'
 import { replayClock } from '../../model/replayClock'
 import { ReplayCanvas } from '../../ui/ReplayCanvas'
 import { makeFrameControl } from '../frameControlStub'
@@ -194,9 +194,19 @@ export function imagesTemoins(scene: Scene): ImagesTemoins {
   }
 }
 
-/** Seul ou Masquer d'UN joueur, dans le type que la toile et le filtre des calques reçoivent. */
-export function focusDe(player: ReplayPlayer, mode: 'seul' | 'masquer'): PlayerFocus {
-  return { player, follow: false, solo: mode === 'seul', hide: mode === 'masquer' }
+/** Ce que la page donne à la toile : la fiche ouverte (l'anneau du pion) et l'ensemble des joueurs masqués. */
+export interface FiltreTemoin {
+  focus: PlayerFocus
+  hidden: HiddenPlayers
+}
+
+/**
+ * Seul ou Masquer d'UN joueur, avec sa fiche ouverte, dans le type que la toile et le filtre des calques reçoivent :
+ * Masquer X = l'ensemble {X} ; Seul X = l'ensemble de tous les autres joueurs du film (D-8).
+ */
+export function focusDe(scene: Scene, player: ReplayPlayer, mode: 'seul' | 'masquer'): FiltreTemoin {
+  const hidden = mode === 'masquer' ? [player] : scene.players.filter((p) => p !== player)
+  return { focus: { player, solo: mode === 'seul', hidden: mode === 'masquer' }, hidden }
 }
 
 /** Les calques éteints par défaut, que le témoin allume avant de monter la toile. */
@@ -303,7 +313,7 @@ function derniereImage(ops: CanvasOp[]): CanvasOp[] {
  * la dernière image. La toile reçoit le fil, le point de vue et l'allégeance : tout ce dont un
  * calque a besoin pour connaître les éliminations à l'instant.
  */
-export function peindre(scene: Scene, frame: number, focus: PlayerFocus | null = null): CanvasOp[] {
+export function peindre(scene: Scene, frame: number, filtre: FiltreTemoin | null = null): CanvasOp[] {
   const canvases = installerEnregistreurs()
   const view = renderWithProviders(
     <ReplayCanvas
@@ -314,7 +324,8 @@ export function peindre(scene: Scene, frame: number, focus: PlayerFocus | null =
       openAtFrame={frame}
       allegiance={scene.allegiance}
       players={scene.players}
-      playerFocus={focus}
+      playerFocus={filtre?.focus ?? null}
+      hiddenPlayers={filtre?.hidden ?? null}
       viewpoint={scene.viewpoint}
       feedEntries={scene.feed}
       fullscreen={{ active: false, disabled: false, toggle: () => {} }}

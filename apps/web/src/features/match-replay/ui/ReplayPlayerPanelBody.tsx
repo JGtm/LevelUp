@@ -6,8 +6,8 @@
  *
  * DE HAUT EN BAS :
  *  - l'IDENTITÉ : pastille de camp, nom, camp, frags / morts / assistances, puis `headEnd` ;
- *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — en un segment de boutons à bascule (`FicheActions`) ;
- *    leurs exclusions et leur remise à zéro sont dans `playerPanelLogic` ;
+ *  - l'action « Seul » sur la carte (`FicheActions`), un bouton à bascule qui masque tous les autres joueurs ; Suivre
+ *    et Masquer sont sur les tuiles et les lignes ; la règle est dans `playerPanelLogic` ;
  *  - une région qui DÉFILE (par défaut : `scroll: 'internal'`) : « À l'instant » (`ReplayPlayerNow`), « Depuis le
  *    début du match », « Éliminations par arme », « Tirs et dégâts », « Grenades lancées », « Ramassages »,
  *    « Équipement », « Médailles », puis, séparés d'un filet, « Totaux du match » et « Gestes ».
@@ -42,7 +42,6 @@ import type { WeaponIconsByKey } from '../model/killSourceIcons'
 import { playerCampLabel } from '../model/playerCampLabel'
 import { cardName } from '../model/playerCardReadings'
 import { playerMatchTotals } from '../model/playerMatchTotals'
-import type { PlayerPanelAction } from '../model/playerPanelLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { FicheActions } from './fiche/FicheActions'
 import { FicheDepuisDebut } from './fiche/FicheDepuisDebut'
@@ -58,9 +57,10 @@ import { ReplayPlayerNow } from './ReplayPlayerNow'
 
 export interface ReplayPlayerPanelBodyProps {
   player: ReplayPlayer
-  /** Les trois actions et leur état : l'état est tenu par la page (`reducePlayerPanel`). */
-  actions: Record<PlayerPanelAction, boolean>
-  onToggle: (action: PlayerPanelAction) => void
+  /** Vrai quand ce joueur est « seul » (tous les autres joueurs sont masqués) : l'état est tenu par la page (`reducePlayerPanel`). */
+  solo: boolean
+  /** « Seul » sur ce joueur, ou tout réafficher s'il l'est déjà. */
+  onSolo: () => void
   doc: ReplayDocumentReady
   /** L'image publiée : tout ce que la fiche écrit est lu à cet instant. */
   frame: number
@@ -91,7 +91,7 @@ const LOWER_CLASS: Record<NonNullable<ReplayPlayerPanelBodyProps['scroll']>, str
 }
 
 export function ReplayPlayerPanelBody({
-  player, actions, onToggle, doc, frame, nowMs, playWindow, allegiance, locale,
+  player, solo, onSolo, doc, frame, nowMs, playWindow, allegiance, locale,
   players, feed, weaponIcons, headEnd, scroll = 'internal',
 }: ReplayPlayerPanelBodyProps) {
   const t = REPLAY_TEXT[locale]
@@ -116,7 +116,7 @@ export function ReplayPlayerPanelBody({
         locale={locale}
         headEnd={headEnd}
       />
-      <FicheActions name={name} actions={actions} onToggle={onToggle} locale={locale} />
+      <FicheActions name={name} solo={solo} onSolo={onSolo} locale={locale} />
       <div className={LOWER_CLASS[scroll]} style={{ gap: COTES_FICHE_INSTANT.ecartSectionsPx[scroll] }}>
         <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
         {view.since && <FicheDepuisDebut since={view.since} locale={locale} />}

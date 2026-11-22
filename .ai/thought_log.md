@@ -122008,3 +122008,12 @@ Chaque signal n'entre au modèle que s'il améliore le résultat sur une vérit�
 - Témoins avant : 15 fichiers et leurs empreintes dans `../LevelUp-temoins-ant/avant/`, deux captures de suite identiques.
 - Le premier lancement du serveur de copie a retranscodé deux captures vidéo dans le dossier des captures du user (dossiers HLS existants réécrits, sources conservées) ; le dossier a été neutralisé dans la copie avant le second lancement.
 **Conclusion / prochaine étape :** le pilote tranche D-10 (bots), le sort des éliminations en double avant la piste F, et corrige la référence de D-12 ; pistes A, C.1 et E ensuite.
+
+## [2026-11-22] Antagonistes du rejeu : piste E (Suivre et œil sur les tuiles, ensemble des joueurs masqués, Seul dans la fiche) — Complété sur `ant/e`
+**Statut :** Complété ; non fusionné, le pilote intègre (ordre A, C, E, D, B, F). Le plan n'est pas touché.
+**Décision technique principale :** « Masquer » devient un ensemble de joueurs (clés de roster) tenu par la page, indépendant de la fiche ; « Seul » n'est plus un état mais une lecture de cet ensemble (tous les autres masqués), ce qui rend l'œil d'une tuile cohérent après Seul. Une seule règle pour les calques (DU-3) : un élément se dessine dès qu'un de ses joueurs est affiché, le décor sans joueur reste ; la notion d'élément « partagé » disparaît, c'est la même règle pour les véhicules.
+**Résultats observés :**
+- Gates web : `tsc -b` propre, dossier `features/match-replay` 420 fichiers et 6 037 tests verts, `src/lib/i18n` 21 fichiers et 127 tests verts, eslint propre sur les 44 fichiers touchés, couleurs et imports entre features propres, knip sans remarque sur la feature.
+- Témoins après, comparés à ceux d'avant : treize témoins sur quinze identiques (toiles sans et avec antagoniste, Seul et Masquer, frise, scène, filtre de Seul). Écarts : `filtre-masquer.json` (76 éléments, tous retirés avant et affichés maintenant, aucun dans l'autre sens : effets de mort 60, armes au sol 12, poussée 1, règle des parties 3, tous des éléments à plusieurs joueurs dont un reste affiché, soit exactement DU-3) et `tests-existants.txt` (tests réécrits pour le nouveau modèle).
+- Les cinq fixations de la fiche changent du seul bloc des actions (un bouton « Seul » à la place de trois).
+**Conclusion / prochaine étape :** le pilote intègre ; à contrôler à l'écran : tuiles au survol, place de « Tout afficher » au-dessus du score de la rangée (posé sans mesure, hors serveur), absence des boutons sur les fiches compactes de la Grande équipe (hors plan, noté en découverte).

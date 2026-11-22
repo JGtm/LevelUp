@@ -50,5 +50,7 @@ sont celles que le film écrit lui-même (`scoreActions`, action `killPersonalSc
 
 ## Le seul point à suivre
 
-`focusDe` (dans `temoinsKit.tsx`) écrit Seul et Masquer d'un joueur dans le type `PlayerFocus`. Si
-ce type change, c'est la seule fonction du dossier à adapter ; les sorties gardent leurs noms.
+`focusDe` (dans `temoinsKit.tsx`) écrit Seul et Masquer d'un joueur dans ce que la page donne à la toile : la fiche ouverte
+(`PlayerFocus`) et l'ensemble des joueurs masqués (`HiddenPlayers`). Masquer X est l'ensemble {X} ; Seul X est l'ensemble de tous
+les autres joueurs du film (plan des antagonistes, piste E). Si ces types changent, c'est la seule fonction du dossier à
+adapter, avec l'appel à la toile de `peindre` ; les sorties gardent leurs noms.

@@ -159,7 +159,7 @@ describe('témoins des antagonistes : la toile', () => {
     const frame = images.avec[1]
     const sansFiltre = peindre(scene, frame)
     cleanup()
-    const ops = peindre(scene, frame, focusDe(premierTueurDuPointDeVue(scene), mode))
+    const ops = peindre(scene, frame, focusDe(scene, premierTueurDuPointDeVue(scene), mode))
     expect(ops.length).toBeGreaterThan(100)
     expect(ops).not.toEqual(sansFiltre)
     sorties.set(`toile-${mode}.json`, serialiserToile({ film: scene.film, genre: mode, image: frame }, ops))
@@ -227,11 +227,14 @@ describe('témoins des antagonistes : Seul et Masquer d’un joueur', () => {
     if (!passager || !pousse) throw new Error('témoins : les films de fixture n’ont plus de passager ou de joueur poussé')
 
     const base = sortiesDuFiltre(scene, premierTueurDuPointDeVue(scene), mode) as Record<string, { total: number; dessines: number }>
-    // Le filtre retire ou garde quelque chose, sans tout retirer ni tout garder.
+    // Le filtre retire ou garde quelque chose, sans tout retirer ni tout garder. Sous Masquer, un effet de mort a
+    // toujours un second joueur affiché (DU-3) : tous les effets du film se dessinent, aucun n'est retiré.
+    const retires = mode === 'seul' ? ['pions', 'effetsDeMort', 'poses'] : ['pions', 'poses']
     for (const genre of ['pions', 'effetsDeMort', 'poses'] as const) {
       expect(base[genre].total).toBeGreaterThan(0)
       expect(base[genre].dessines).toBeGreaterThan(0)
-      expect(base[genre].dessines).toBeLessThan(base[genre].total)
+      if (retires.includes(genre)) expect(base[genre].dessines).toBeLessThan(base[genre].total)
+      else expect(base[genre].dessines).toBeLessThanOrEqual(base[genre].total)
     }
     const sortie = [base, sortiesDuFiltre(vehicules, passager, mode), sortiesDuFiltre(poussees, pousse, mode)]
     sorties.set(`filtre-${mode}.json`, `${JSON.stringify(sortie, null, 1)}\n`)
@@ -239,7 +242,7 @@ describe('témoins des antagonistes : Seul et Masquer d’un joueur', () => {
 
   it('tests-existants.txt : la liste par nom des tests qui portent ces règles', () => {
     const liste = listeDesTests()
-    expect(liste).toContain('model/playerPanelLogic.test.ts')
+    expect(liste).toContain('model/playerPanelLogic.hidden.test.ts')
     expect(liste).toContain('model/focusFilter.test.ts')
     sorties.set('tests-existants.txt', liste)
   })

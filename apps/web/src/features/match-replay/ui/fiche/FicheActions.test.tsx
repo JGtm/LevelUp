@@ -1,108 +1,103 @@
 /**
- * Tests — LE SEGMENT « Suivre / Seul / Masquer » de la fiche (`FicheActions`) : un seul contour de trois colonnes
- * égales, collées ; l'action active est pleine ; mêmes libellés et mêmes bascules qu'avant (`aria-pressed`) ;
- * accessible au clavier ; la souris ne vole pas le focus.
+ * Tests — L'ACTION « SEUL » de la fiche (`FicheActions`) : un seul bouton à bascule (`aria-pressed`), libellé et
+ * infobulle de chaque état dans les deux langues, accessible au clavier, la souris ne vole pas le focus. Suivre et
+ * Masquer n'y sont plus (ils sont sur les tuiles et les lignes).
  */
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
-import type { PlayerPanelAction } from '../../model/playerPanelLogic'
 import { FicheActions } from './FicheActions'
 
-const AUCUNE: Record<PlayerPanelAction, boolean> = { follow: false, solo: false, hide: false }
-
-function monter(actions = AUCUNE, locale: 'fr' | 'en' = 'fr', onToggle = vi.fn()) {
-  const view = render(<FicheActions name="JGtm" actions={actions} onToggle={onToggle} locale={locale} />)
-  return { ...view, onToggle, groupe: screen.getByRole('group', { name: 'JGtm' }) }
+function monter(solo = false, locale: 'fr' | 'en' = 'fr', onSolo = vi.fn()) {
+  const view = render(<FicheActions name="JGtm" solo={solo} onSolo={onSolo} locale={locale} />)
+  return { ...view, onSolo, groupe: screen.getByRole('group', { name: 'JGtm' }) }
 }
 
-describe('la forme : un segment de trois colonnes égales, collées', () => {
-  it('un seul contour arrondi en grille de trois colonnes, sans écart entre elles', () => {
+describe('la forme : « Seul » est la seule action de la fiche', () => {
+  it('un seul bouton dans le groupe', () => {
     const { groupe } = monter()
-    expect(groupe.className).toContain('grid-cols-3')
-    expect(groupe.className).toContain('rounded-lg')
-    expect(groupe.className).toContain('border')
-    expect(groupe.className).toContain('overflow-hidden')
-    expect(groupe.className).not.toMatch(/\bgap-/)
-    expect(groupe.children).toHaveLength(3)
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(groupe.querySelectorAll('button')).toHaveLength(1)
   })
 
-  it('chaque colonne est un bouton de même hauteur ; un filet sépare les colonnes, jamais devant la première', () => {
-    const { groupe } = monter()
-    const colonnes = [...groupe.children] as HTMLElement[]
-    expect(new Set(colonnes.map((c) => c.className.match(/\bh-\d+\b/)?.[0])).size).toBe(1)
-    for (const colonne of colonnes) {
-      expect(colonne.tagName).toBe('BUTTON')
-      expect(colonne.className).toContain('[&:not(:first-child)]:border-l')
-      // Aucun contour propre : seul le segment est bordé (pas de rayon, pas de bordure sur la colonne elle-même).
-      expect(colonne.className).not.toMatch(/(^|\s)(rounded|border)(\s|$)/)
-    }
+  it('ni Suivre ni Masquer ne sont dans la fiche', () => {
+    monter()
+    expect(screen.queryByRole('button', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Masquer' })).toBeNull()
   })
 
-  it('l\'anneau du focus clavier est rentrant : le contour arrondi ne le rogne pas', () => {
-    const { groupe } = monter()
-    for (const colonne of [...groupe.children] as HTMLElement[]) {
-      expect(colonne.className).toContain('focus-visible:ring-inset')
-    }
+  it('l\'anneau du focus clavier est visible', () => {
+    monter()
+    expect(screen.getByRole('button').className).toContain('focus-visible:ring-2')
   })
 })
 
-describe('l\'action active est pleine', () => {
-  it.each(['follow', 'solo', 'hide'] as const)('%s active : sa colonne est pleine, les deux autres sont au repos', (active) => {
-    const { groupe } = monter({ ...AUCUNE, [active]: true })
-    const ordre: PlayerPanelAction[] = ['follow', 'solo', 'hide']
-    ordre.forEach((action, i) => {
-      const colonne = groupe.children[i] as HTMLElement
-      expect(colonne.getAttribute('aria-pressed')).toBe(String(action === active))
-      expect(colonne.className.includes('bg-primary')).toBe(action === active)
-      expect(colonne.className.includes('text-primary-foreground')).toBe(action === active)
-    })
+describe('l\'état actif', () => {
+  it('au repos : « Seul », non enfoncé, au repos (fond neutre)', () => {
+    monter(false)
+    const bouton = screen.getByRole('button', { name: 'Seul' })
+    expect(bouton.getAttribute('aria-pressed')).toBe('false')
+    expect(bouton.className).not.toContain('bg-primary')
   })
 
-  it('aucune action active : aucune colonne pleine', () => {
-    const { groupe } = monter()
-    for (const colonne of [...groupe.children] as HTMLElement[]) {
-      expect(colonne.getAttribute('aria-pressed')).toBe('false')
-      expect(colonne.className).not.toContain('bg-primary')
-    }
+  it('actif : « Seul · tout réafficher », enfoncé, plein', () => {
+    monter(true)
+    const bouton = screen.getByRole('button', { name: 'Seul · tout réafficher' })
+    expect(bouton.getAttribute('aria-pressed')).toBe('true')
+    expect(bouton.className).toContain('bg-primary')
+    expect(bouton.className).toContain('text-primary-foreground')
   })
 })
 
-describe('les comportements et les libellés ne changent pas', () => {
-  it.each(['fr', 'en'] as const)('%s : l\'ordre Suivre, Seul, Masquer, les libellés et les infobulles du dictionnaire', (locale) => {
-    const { groupe } = monter(AUCUNE, locale)
-    const t = REPLAY_TEXT[locale].playerPanel
-    const colonnes = [...groupe.children] as HTMLElement[]
-    expect(colonnes.map((c) => c.textContent)).toEqual([t.action.follow, t.action.solo, t.action.hide])
-    expect(colonnes.map((c) => c.getAttribute('title'))).toEqual([t.actionHint.follow, t.actionHint.solo, t.actionHint.hide])
+describe('les libellés et les infobulles', () => {
+  it.each([
+    ['fr', false, 'Seul', "Masque tous les autres joueurs. L'œil d'une tuile en réaffiche un."],
+    ['fr', true, 'Seul · tout réafficher', 'Réaffiche tous les joueurs.'],
+    ['en', false, 'Solo', "Hides every other player. A tile's eye shows one again."],
+    ['en', true, 'Solo · show all', 'Shows every player again.'],
+  ] as const)('%s, actif=%s : « %s » et son infobulle', (locale, solo, libelle, infobulle) => {
+    monter(solo, locale)
+    const bouton = screen.getByRole('button')
+    expect(bouton.textContent).toBe(libelle)
+    expect(bouton.getAttribute('title')).toBe(infobulle)
   })
 
-  it('un clic demande la bascule de CETTE action, une seule fois', () => {
-    const { onToggle } = monter()
-    fireEvent.click(screen.getByRole('button', { name: REPLAY_TEXT.fr.playerPanel.action.solo }))
-    expect(onToggle).toHaveBeenCalledTimes(1)
-    expect(onToggle).toHaveBeenCalledWith('solo')
+  it('les libellés viennent du dictionnaire du rejeu', () => {
+    monter(false, 'fr')
+    const t = REPLAY_TEXT.fr.playerPanel.solo
+    expect(screen.getByRole('button').textContent).toBe(t.label)
+  })
+})
+
+describe('les comportements', () => {
+  it('un clic demande Seul, une seule fois', () => {
+    const { onSolo } = monter()
+    fireEvent.click(screen.getByRole('button', { name: 'Seul' }))
+    expect(onSolo).toHaveBeenCalledTimes(1)
   })
 
-  it('au clavier : Tab atteint chaque colonne dans l\'ordre, Entrée et Espace activent', async () => {
+  it('un clic sur « Seul · tout réafficher » demande la même bascule (la logique décide)', () => {
+    const { onSolo } = monter(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Seul · tout réafficher' }))
+    expect(onSolo).toHaveBeenCalledTimes(1)
+  })
+
+  it('au clavier : Tab atteint le bouton, Entrée et Espace activent', async () => {
     const user = userEvent.setup()
-    const { onToggle } = monter()
+    const { onSolo } = monter()
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: REPLAY_TEXT.fr.playerPanel.action.follow }))
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: REPLAY_TEXT.fr.playerPanel.action.solo }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Seul' }))
     await user.keyboard('{Enter}')
     await user.keyboard(' ')
-    expect(onToggle.mock.calls).toEqual([['solo'], ['solo']])
+    expect(onSolo).toHaveBeenCalledTimes(2)
   })
 
   it('la souris ne prend pas le focus (Espace reste « Lecture »)', () => {
     monter()
-    const bouton = screen.getByRole('button', { name: REPLAY_TEXT.fr.playerPanel.action.hide })
     const evenement = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
-    bouton.dispatchEvent(evenement)
+    screen.getByRole('button', { name: 'Seul' }).dispatchEvent(evenement)
     expect(evenement.defaultPrevented).toBe(true)
   })
 })

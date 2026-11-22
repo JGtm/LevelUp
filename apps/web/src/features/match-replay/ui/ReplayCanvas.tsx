@@ -94,7 +94,7 @@ import { useReplayDrag } from '../hooks/useReplayDrag'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useReplayPlayerFocus } from '../hooks/useReplayPlayerFocus'
 import { NO_CAMERA_FOLLOW, type CameraFollow } from '../model/cameraMenu'
-import type { PlayerFocus } from '../model/playerPanelLogic'
+import type { HiddenPlayers, PlayerFocus } from '../model/playerPanelLogic'
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -211,8 +211,9 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
-  /** LA FICHE OUVERTE : son joueur et ses actions Seul et Masquer, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absent = rien n'est filtré. */
+  /** LA FICHE OUVERTE (anneau du pion, « Suivre le joueur ouvert » du relief) et LES JOUEURS MASQUÉS, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absents = rien n'est filtré. */
   playerFocus?: PlayerFocus | null
+  hiddenPlayers?: HiddenPlayers | null
   /** LA CAMÉRA : le joueur que la carte suit, fiche ouverte ou non, et le geste « Suivre » du menu de la barre ; absent = personne. */
   cameraFollow?: CameraFollow
   /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
@@ -231,7 +232,7 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, hiddenPlayers = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
   playerSlug, matchId, transport, blockOverlays, planFeed = false,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -317,8 +318,7 @@ export function ReplayCanvas({
   const followStep = relief.followStep // le pas de « Suivre le joueur ouvert » : appelé par `draw`, à chaque image lue
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
-  // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, followPlayer: cameraFollow.player, frameRef, zoom, turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown, openPlayer } = useReplayPlayerFocus({ doc, focus: playerFocus, hidden: hiddenPlayers, followPlayer: cameraFollow.player, frameRef, zoom, turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES

@@ -3,7 +3,7 @@
  * les deux encres de l'anneau (`openPlayerRing.ts`), résolues une fois par palette.
  *
  * `undefined` quand aucune fiche n'est ouverte, ou quand le joueur est MASQUÉ (son pion n'est pas à la
- * carte : un anneau sans pion le désignerait quand même). SEUL le laisse cerclé : il est le seul pion.
+ * carte : un anneau sans pion le désignerait quand même). « Seul » le laisse cerclé : il n'est jamais masqué.
  * L'anneau est clair (`--foreground`) et son liseré est à l'encre du fond (`--background`) : deux encres de
  * mise en page du thème, lues par `readInk`, jamais un littéral ; l'export les lit dans le thème sombre.
  */
@@ -20,7 +20,7 @@ import { openPlayerPosAt, type OpenPlayerRing } from './openPlayerRing'
 export function useReplayOpenPlayer(doc: ReplayDocumentReady, focus: PlayerFocus | null): OpenPlayerRing | undefined {
   const paletteVersion = useColorPaletteVersion()
   const exporting = useExportActive()
-  const player = focus && !focus.hide ? focus.player : null
+  const player = focus && !focus.hidden ? focus.player : null
   return useMemo(() => {
     void paletteVersion
     void exporting

@@ -1,9 +1,10 @@
 /**
- * focusFilter.ts — CE QUE « SEUL » ET « MASQUER » FONT À CHAQUE CALQUE QUI N'EST PAS UN PION.
+ * focusFilter.ts — CE QUE LES JOUEURS MASQUÉS FONT À CHAQUE CALQUE QUI N'EST PAS UN PION (« Seul » masque tous
+ * les autres joueurs : c'est le même ensemble).
  *
- * LA RÈGLE (utilisateur, 2026-11-15) : tout calque affiché suit Seul et Masquer pour ce qui appartient
- * à un joueur. Seul n'affiche que ce qui est à lui ; Masquer retire ce qui est à lui. Ce qui n'appartient
- * à personne (véhicule vide, drapeau à sa base, zone, socle d'arme) reste affiché : c'est le décor du
+ * LA RÈGLE (utilisateur, 2026-11-15 ; DU-3, 2026-11-22) : tout calque affiché suit l'ensemble des joueurs masqués
+ * pour ce qui appartient à un joueur. Un élément se dessine dès qu'un de ses joueurs est affiché. Ce qui
+ * n'appartient à personne (véhicule vide, drapeau à sa base, zone, socle d'arme) reste affiché : c'est le décor du
  * match. Un élément dont l'attribution ne se lit pas reste affiché lui aussi — rien n'est deviné.
  *
  * UNE SEULE RÈGLE, ÉCRITE UNE FOIS : `ownershipShown` (playerPanelLogic.ts). Ce module ne dit que QUELLES
@@ -25,7 +26,7 @@ import {
   ownershipShown,
   partyOf,
   type ElementParty,
-  type PlayerFocus,
+  type HiddenPlayers,
 } from './playerPanelLogic'
 import { vehicleActiveRides } from './vehiclesLayer'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
@@ -53,9 +54,8 @@ export interface FocusFilter {
    */
   reveal: (r: { owner: number; ownerFrame: number; slot: number }, frame: number) => boolean
   /**
-   * Un véhicule à une image : il est à ses OCCUPANTS, partagé entre eux. Seul le garde dès que le joueur y est
-   * monté ; Masquer ne le retire que si le joueur en est l'unique occupant (sinon il emporterait un co-occupant
-   * que l'utilisateur n'a pas masqué). Un véhicule vide n'est à personne : il reste.
+   * Un véhicule à une image : il est à ses OCCUPANTS, partagé entre eux. Il se dessine tant que l'un d'eux est
+   * affiché : masquer un occupant n'emporte pas un co-occupant affiché. Un véhicule vide n'est à personne : il reste.
    */
   vehicleAt: (track: ReplayVehicleTrackReady, frame: number) => boolean
   /** Un occupant à une image (son nom, son cône de visée) : à lui seul. */
@@ -97,15 +97,15 @@ function present(...parties: Array<ElementParty | null>): ElementParty[] {
 }
 
 /**
- * buildFocusFilter rend les prédicats du panneau de joueur, ou `null` quand rien n'est filtré (ni Seul
- * ni Masquer) : les calques gardent alors exactement leur dessin d'avant.
+ * buildFocusFilter rend les prédicats des joueurs masqués, ou `null` quand personne n'est masqué : les calques
+ * gardent alors exactement leur dessin d'avant.
  */
 export function buildFocusFilter(
   doc: ReplayDocumentReady,
-  focus: PlayerFocus | null,
+  hidden: HiddenPlayers | null,
 ): FocusFilter | null {
-  const killFx = killFxShown(focus)
-  const shown = ownershipShown(focus)
+  const killFx = killFxShown(hidden)
+  const shown = ownershipShown(hidden)
   if (!killFx || !shown) return null
   const bySlot = buildLivesBySlot(doc.tracks)
   return {
@@ -117,7 +117,7 @@ export function buildFocusFilter(
     knockback: (k) =>
       shown(present(slotParty(bySlot, k.slot, k.frame), k.by === null ? null : slotParty(bySlot, k.by, k.frame))),
     vehicleAt: (track, frame) =>
-      shown(present(...vehicleActiveRides(track, frame).map((r) => occupantParty(bySlot, r, frame))), true),
+      shown(present(...vehicleActiveRides(track, frame).map((r) => occupantParty(bySlot, r, frame)))),
     occupant: (ride, frame) => shown(present(occupantParty(bySlot, ride, frame))),
     vehicleDestruction: (track, frame) =>
       shown(

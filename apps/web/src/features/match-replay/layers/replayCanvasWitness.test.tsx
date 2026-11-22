@@ -294,7 +294,7 @@ function inkOf(name: string): string {
   return `#${createHash('sha256').update(name).digest().subarray(0, 3).toString('hex')}`
 }
 
-const FICHE_OUVERTE = { follow: false, solo: false, hide: false }
+const FICHE_OUVERTE = { solo: false, hidden: false }
 
 describe('temoin du moteur de la toile 2D : fiche ouverte (le pion cerclé)', () => {
   let doc: ReplayDocumentReady
@@ -351,7 +351,7 @@ describe('temoin du moteur de la toile 2D : fiche ouverte (le pion cerclé)', ()
   })
 
   it('joueur masqué : pas d’anneau sans pion', () => {
-    const avec = render(doc, frame, ouverte((ps) => ps.find(vivant), { hide: true }))
+    const avec = render(doc, frame, ouverte((ps) => ps.find(vivant), { hidden: true }))
     const lignes = (ops: CanvasOp[]) => ops.filter((o) => o.op === 'set strokeStyle' && o.args[0] === inkOf('--foreground')).length
     expect(lignes(avec)).toBeLessThanOrEqual(lignes(sans))
   })

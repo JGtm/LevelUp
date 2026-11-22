@@ -45,10 +45,10 @@ export function occupantDuSlot(scene: Scene, slot: number, frame: number): Repla
  */
 export function sortiesDuFiltre(scene: Scene, cible: ReplayPlayer, mode: 'seul' | 'masquer'): Record<string, unknown> {
   const { doc } = scene
-  const focus = focusDe(cible, mode)
-  const pion = shownSlotPredicate(focus)
-  const partie = ownershipShown(focus)
-  const filtre = buildFocusFilter(doc, focus)
+  const { hidden } = focusDe(scene, cible, mode)
+  const pion = shownSlotPredicate(hidden)
+  const partie = ownershipShown(hidden)
+  const filtre = buildFocusFilter(doc, hidden)
   if (!pion || !partie || !filtre) throw new Error(`témoins : ${mode} ne filtre rien sur le film ${scene.film}`)
 
   const autre = scene.players.find((p) => p.xuid !== cible.xuid && p.lives.length > 0)
@@ -68,16 +68,17 @@ export function sortiesDuFiltre(scene: Scene, cible: ReplayPlayer, mode: 'seul' 
         return [w.start, Math.floor((w.start + w.end) / 2), w.end].map((f) => pion(track.slot, f))
       }),
     ),
-    // La règle des parties, sur ses cas : personne, la cible, un autre, les deux, puis les mêmes en partage.
+    // La règle des parties, sur ses cas : personne, la cible, un autre, les deux, puis les mêmes une seconde fois (le
+    // second jeu était la règle des éléments PARTAGÉS, devenue la règle unique : DU-3).
     parties: reponses([
       partie([]),
       partie([moi]),
       partie([lui]),
       partie([moi, lui]),
-      partie([], true),
-      partie([moi], true),
-      partie([lui], true),
-      partie([moi, lui], true),
+      partie([]),
+      partie([moi]),
+      partie([lui]),
+      partie([moi, lui]),
     ]),
     effetsDeMort: reponses(buildKillFx(doc, killsOfFeed(scene.feed)).map((e) => filtre.killFx(e))),
     armesAuSol: reponses(doc.groundWeapons.map((w) => filtre.groundWeapon(w))),

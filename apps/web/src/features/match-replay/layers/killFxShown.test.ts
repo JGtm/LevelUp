@@ -1,5 +1,5 @@
 /**
- * Le calque des morts honore Seul et Masquer : un effet que le prédicat écarte ne se dessine pas, un
+ * Le calque des morts honore les joueurs masqués : un effet que le prédicat écarte ne se dessine pas, un
  * effet qu'il garde se dessine comme sans filtre.
  */
 import { describe, expect, it } from 'vitest'
@@ -21,21 +21,29 @@ function trace(style: Partial<KillFxStyle>, ...slots: number[]): CanvasOp[] {
 
 const stars = (ops: CanvasOp[]) => ops.filter((o) => o.op === 'closePath').length
 
-const A = { xuid: 'A', lives: [{ slot: 1, startFrame: 0, endFrame: 50, points: [] }] } as never
-const focus = (over: object) => ({ player: A, follow: false, solo: false, hide: false, ...over })
+const joueur = (xuid: string, slot: number) => ({ xuid, lives: [{ slot, startFrame: 0, endFrame: 50, points: [] }] }) as never
+// A tient le slot 1, B le slot 2, la victime V le slot 9 : chaque effet a un tueur et une victime lus dans leur vie.
+const A = joueur('A', 1)
+const B = joueur('B', 2)
+const V = joueur('V', 9)
 
-describe('drawKillFxLayer — Seul et Masquer', () => {
+describe('drawKillFxLayer — les joueurs masqués', () => {
   it('sans prédicat, tout se dessine', () => {
     expect(stars(trace({}, 1, 2))).toBe(2)
   })
 
-  it('Seul : seul l’effet du joueur se dessine', () => {
-    expect(stars(trace({ shown: killFxShown(focus({ solo: true }))! }, 1, 2))).toBe(1)
+  it('un joueur masqué : l’effet dont l’autre joueur est affiché se dessine encore (DU-3)', () => {
+    expect(stars(trace({ shown: killFxShown([A])! }, 1, 2))).toBe(2)
   })
 
-  it('Masquer : l’effet du joueur est retiré, l’autre se dessine', () => {
-    expect(stars(trace({ shown: killFxShown(focus({ hide: true }))! }, 1, 2))).toBe(1)
-    expect(stars(trace({ shown: killFxShown(focus({ hide: true }))! }, 1))).toBe(0)
+  it('tous les joueurs de l’effet masqués : il est retiré, l’autre se dessine', () => {
+    // A tue V ; B tue V. A et V masqués : le premier effet n'a plus de joueur affiché, le second a B.
+    expect(stars(trace({ shown: killFxShown([A, V])! }, 1, 2))).toBe(1)
+    expect(stars(trace({ shown: killFxShown([A, V])! }, 1))).toBe(0)
+  })
+
+  it('Seul A (B et V masqués) : seul l’effet de A se dessine', () => {
+    expect(stars(trace({ shown: killFxShown([B, V])! }, 1, 2))).toBe(1)
   })
 
   it('un effet filtré ne laisse aucune opération de dessin', () => {
