@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -20,12 +21,16 @@ import (
 
 // fakeSyncNow est un port.SyncNowService qui rend le refus configuré et compte les lancements.
 type fakeSyncNow struct {
-	err     error
-	calls   int
-	running bool
+	err         error
+	calls       int
+	running     bool
+	last        time.Time
+	availableAt time.Time
 }
 
 func (f *fakeSyncNow) CycleRunning() bool { return f.running }
+
+func (f *fakeSyncNow) ManualWindow() (time.Time, time.Time) { return f.last, f.availableAt }
 
 func (f *fakeSyncNow) StartSyncNow() error {
 	f.calls++
@@ -178,5 +183,63 @@ func TestSyncCycle_Etat(t *testing.T) {
 	}
 	if w := getSyncCycle(syncNowRouter(&fakeSyncNow{}, true, authz.AuthModeNone, nil, "")); w.Code != http.StatusForbidden {
 		t.Errorf("démo : statut = %d, attendu 403", w.Code)
+	}
+}
+
+// Un cycle demandé trop tôt : 429 au code stable, message du catalogue avec le délai en secondes dans la
+// langue de la requête et Retry-After (arrondis à la seconde supérieure).
+func TestSyncNow_DelaiMinimal_429(t *testing.T) {
+	cases := []struct {
+		locale  string
+		message string
+	}{
+		{"fr", "Une synchronisation vient de se terminer : réessayer dans 90 s."},
+		{"en", "A sync has just finished: try again in 90 s."},
+	}
+	for _, c := range cases {
+		t.Run(c.locale, func(t *testing.T) {
+			svc := &fakeSyncNow{err: &port.SyncCooldownError{RetryAfter: 89*time.Second + 200*time.Millisecond}}
+			w := postSyncNow(syncNowRouter(svc, false, authz.AuthModeNone, nil, c.locale))
+			if w.Code != http.StatusTooManyRequests {
+				t.Fatalf("statut = %d, attendu 429 (corps %s)", w.Code, w.Body.String())
+			}
+			if got := w.Header().Get("Retry-After"); got != "90" {
+				t.Errorf("Retry-After = %q, attendu 90", got)
+			}
+			var body struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("corps illisible %q : %v", w.Body.String(), err)
+			}
+			if body.Code != "sync_cycle_cooldown" || body.Message != c.message {
+				t.Errorf("corps = %+v, attendu code sync_cycle_cooldown, message %q", body, c.message)
+			}
+		})
+	}
+}
+
+// L'état du cycle porte la fin du dernier cycle et l'heure de disponibilité du lancement manuel, pour que
+// le bouton soit juste dès l'arrivée sur l'écran ; les deux sont absentes quand rien ne les justifie.
+func TestSyncCycle_PorteLaDisponibiliteDuLancement(t *testing.T) {
+	last := time.Date(2026, 11, 22, 14, 2, 0, 0, time.UTC)
+	avail := last.Add(2 * time.Minute)
+	w := getSyncCycle(syncNowRouter(&fakeSyncNow{last: last, availableAt: avail}, false, authz.AuthModeNone, nil, ""))
+	var body domain.SyncCycleState
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Running ||
+		body.LastCycleAt == nil || !body.LastCycleAt.Equal(last) ||
+		body.ManualAvailableAt == nil || !body.ManualAvailableAt.Equal(avail) {
+		t.Errorf("corps = %s (err %v), attendu last_cycle_at %v et manual_available_at %v", w.Body.String(), err, last, avail)
+	}
+
+	w = getSyncCycle(syncNowRouter(&fakeSyncNow{last: last}, false, authz.AuthModeNone, nil, ""))
+	var raw map[string]json.RawMessage
+	_ = json.Unmarshal(w.Body.Bytes(), &raw)
+	if _, ok := raw["manual_available_at"]; ok {
+		t.Errorf("corps = %s : manual_available_at doit être absent quand le lancement est permis", w.Body.String())
+	}
+	if _, ok := raw["last_cycle_at"]; !ok {
+		t.Errorf("corps = %s : last_cycle_at doit être servi", w.Body.String())
 	}
 }

@@ -261,6 +261,29 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
   en cours / désactivé / EN / vide / erreur / chargement).
 - Gate : celui de l'étape 4bis.
 
+### Étape 4f — suite de l'étape 4ter (décisions du pilote du 22/11)
+
+- [x] 4f.1 Délai minimal : « Synchroniser maintenant » refuse un cycle s'il s'en est terminé un (toute
+  origine) il y a moins de `manualCycleMinGap` (2 min, `scheduler/auto_sync_manual.go`) : 429
+  `sync_cycle_cooldown`, `Retry-After` en secondes, message du catalogue `sync.now.cooldown` (FR/EN). Le tick
+  et la commande du menu de la zone de notification ne sont pas concernés. `GET /sync/cycle` sert
+  `last_cycle_at` et `manual_available_at` (absente si permis tout de suite). Écran : bouton désactivé
+  « Disponible dans 1 min 40 » / « Available in 1 min 40 » avec compte à rebours, retour seul à l'action ;
+  ligne visible sous le bouton, sans couleur d'alerte ; « en cours » : « Synchronisation en cours… » /
+  « Sync in progress… » ; un 429 malgré tout = la même ligne, pas de toast.
+- [x] 4f.2 Dernière passe persistée : la table de `auto_sync_passes.go` est rangée dans l'instantané
+  post-sync (`persistence.go`, champ `last_passes`, version inchangée) et relue par `RehydrateFromDisk` ;
+  instantané ancien sans le champ = table vide ; une entrée plus récente déjà en mémoire est gardée.
+- [x] 4f.3 Vérifié sur la release intégrée : `PlayerOutcome.HistoryPending` est rempli par
+  `sync/v2/history.go` (`historyTracker.apply`, clé `PlayerSlug`, y compris sur les sorties anticipées) et
+  `SyncResult.HistoryPending` par `games/halo_5/livesync/runner.go` ; l'ordonnanceur les lit
+  (`pendingHistoryAfterV2`, `syncPlayerWithHistory`). Un test par chemin, par la boucle de `Run` avec ticker
+  injecté (`auto_sync_cadence_paths_test.go`) : en attente = 10 min, complet = intervalle réglé.
+- [x] 4f.4 État de l'historique : `state` = `catching_up` quand la clé de fin manque, marque-page présent
+  ou non (test `TestHistoryComplete_AvecMarquePage`) ; rien d'autre n'est servi, le marque-page non plus
+  (règle 18).
+- [x] 4f.5 `disk-hygiene.ps1 -Lot 822e -Apply` lancé (voir le rapport de l'étape).
+
 ### Étape 5bis — mesure d'une passe (D-14)
 
 - [ ] 5b.1 Sur une COPIE de la base locale (règle : neutraliser les chemins des réglages avant de lancer

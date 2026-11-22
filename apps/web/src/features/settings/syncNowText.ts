@@ -13,6 +13,12 @@ export interface SyncNowText {
   intro: string
   button: string
   buttonRunning: string
+  /** Gabarit : {remaining} (délai restant, « 1 min 40 » ou « 40 s »). */
+  buttonCooldown: string
+  /** Ligne sous le bouton pendant un cycle. */
+  statusRunning: string
+  /** Gabarit : {last} (heure de fin du dernier cycle), {next} (heure à partir de laquelle un lancement est permis). */
+  statusCooldown: string
   toastStarted: string
   toastBusy: string
   toastFailed: string
@@ -44,6 +50,9 @@ const FR: SyncNowText = {
     "Les nouveaux matchs sont récupérés automatiquement. Le bouton lance tout de suite la même synchronisation, rattrapage de l'historique compris.",
   button: 'Synchroniser maintenant',
   buttonRunning: 'Synchronisation en cours…',
+  buttonCooldown: 'Disponible dans {remaining}',
+  statusRunning: 'Synchronisation en cours.',
+  statusCooldown: 'Dernière synchronisation terminée à {last}. Prochain lancement possible à {next}.',
   toastStarted: 'Synchronisation lancée.',
   toastBusy: 'Une synchronisation est déjà en cours.',
   toastFailed: "La synchronisation n'a pas pu être lancée.",
@@ -71,7 +80,10 @@ const EN: SyncNowText = {
   intro:
     'New matches are fetched automatically. The button runs the same sync right away, history catch-up included.',
   button: 'Sync now',
-  buttonRunning: 'Syncing…',
+  buttonRunning: 'Sync in progress…',
+  buttonCooldown: 'Available in {remaining}',
+  statusRunning: 'Sync in progress.',
+  statusCooldown: 'Last sync finished at {last}. Next run available at {next}.',
   toastStarted: 'Sync started.',
   toastBusy: 'A sync is already running.',
   toastFailed: 'The sync could not be started.',

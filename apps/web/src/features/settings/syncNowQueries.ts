@@ -30,7 +30,10 @@ export function useSyncCycle(enabled: boolean) {
   })
 }
 
-/** Lance un cycle tout de suite ; l'état relu juste après dit qu'il tourne (ou qu'un autre tournait déjà). */
+/**
+ * Lance un cycle tout de suite ; l'état relu juste après dit qu'il tourne (ou qu'un autre tournait déjà,
+ * ou, après un refus trop tôt, à partir de quand un lancement est permis).
+ */
 export function useSyncNow() {
   const qc = useQueryClient()
   return useMutation({

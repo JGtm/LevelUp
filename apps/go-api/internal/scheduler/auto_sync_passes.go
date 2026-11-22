@@ -3,12 +3,15 @@
 // Le pipeline V2 ne range pas ses joueurs dans playerOutcomes (le diag et la notification Discord les
 // comptent par un autre chemin : y ajouter les joueurs V2 les compterait deux fois). La dernière passe
 // que l'écran « état de l'historique » affiche vit donc dans sa propre table, alimentée par les deux
-// chemins (issue du cycle V2, passe de syncPlayer). Mémoire seule : un redémarrage la vide, l'écran
-// dit alors qu'aucune passe n'a eu lieu depuis le démarrage.
+// chemins (issue du cycle V2, passe de syncPlayer). La table est rangée dans l'instantané
+// post-sync persisté en fin de cycle (persistence.go) et relue au démarrage : après un redémarrage, l'écran
+// montre la dernière passe connue.
 package scheduler
 
 import (
 	"log/slog"
+	"sort"
+	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
@@ -18,7 +21,10 @@ import (
 var _ port.SyncActivity = (*AutoSyncScheduler)(nil)
 
 // passKey identifie un couple (titre, joueur) : un même gamertag peut être suivi sur deux titres.
-func passKey(titleSlug, gamertag string) string { return titleSlug + "\x00" + gamertag }
+func passKey(titleSlug, gamertag string) string { return titleSlug + passKeySep + gamertag }
+
+// passKeySep sépare le titre et le joueur dans la clé de la table (aucun des deux n'en contient).
+const passKeySep = "\x00"
 
 // recordPass range la dernière passe d'un joueur sur un titre.
 func (s *AutoSyncScheduler) recordPass(titleSlug, gamertag string, pass port.SyncPass) {
@@ -52,12 +58,53 @@ func (s *AutoSyncScheduler) AutoSyncEnabled() bool {
 // statusFailed est le statut « échec » d'une passe : issue du pipeline V2 (syncv2.PlayerOutcome.Status) et PlayerOutcomeDetail.Outcome.
 const statusFailed = "failed"
 
+// statusPartial est le statut « partielle » d'une issue du pipeline V2 (syncv2.PlayerOutcome.Status).
+const statusPartial = "partial"
+
+// passesForPersistence copie la table des dernières passes vers sa forme sérialisée, triée pour un fichier
+// stable. L'appelant tient snapshotMu (lecture).
+func (s *AutoSyncScheduler) passesForPersistence() []persistedPass {
+	out := make([]persistedPass, 0, len(s.lastPasses))
+	for key, p := range s.lastPasses {
+		slug, gamertag, _ := strings.Cut(key, passKeySep)
+		out = append(out, persistedPass{TitleSlug: slug, Gamertag: gamertag, At: p.At, MatchesInserted: p.MatchesInserted, Status: string(p.Status)})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].TitleSlug != out[j].TitleSlug {
+			return out[i].TitleSlug < out[j].TitleSlug
+		}
+		return out[i].Gamertag < out[j].Gamertag
+	})
+	return out
+}
+
+// restorePasses recharge la table depuis l'instantané persisté ; une entrée plus récente déjà en mémoire
+// est gardée. Une entrée sans identité est ignorée. L'appelant tient snapshotMu (écriture).
+func (s *AutoSyncScheduler) restorePasses(passes []persistedPass) {
+	if len(passes) == 0 {
+		return
+	}
+	if s.lastPasses == nil {
+		s.lastPasses = make(map[string]port.SyncPass, len(passes))
+	}
+	for _, p := range passes {
+		if p.TitleSlug == "" || p.Gamertag == "" {
+			continue
+		}
+		key := passKey(p.TitleSlug, p.Gamertag)
+		if cur, ok := s.lastPasses[key]; ok && cur.At.After(p.At) {
+			continue
+		}
+		s.lastPasses[key] = port.SyncPass{At: p.At, MatchesInserted: p.MatchesInserted, Status: port.SyncPassStatus(p.Status)}
+	}
+}
+
 // passStatusOfV2 traduit le statut d'une issue du pipeline V2 ; tout statut inconnu vaut « différée ».
 func passStatusOfV2(status string) port.SyncPassStatus {
 	switch status {
 	case "ok":
 		return port.SyncPassOK
-	case "partial":
+	case statusPartial:
 		return port.SyncPassPartial
 	case statusFailed:
 		return port.SyncPassFailed
