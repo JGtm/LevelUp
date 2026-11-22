@@ -250,10 +250,11 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste F — page du match (Sonnet)
 
-- [ ] F.1 `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
+- [x] F.1 (fait, `b765434546` : `MatchNemesisCards.logic.ts`, `highlight_events` déjà chargé par la page, aucune requête neuve ; prop `nemesis` retirée de la page et de l'onglet) `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
       d'adversaire ; les cartes gardent leur dessin et leurs textes.
-- [ ] F.2 Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
-- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 rejoué SANS serveur, en DuckDB sur une COPIE de la base partagée : décompte dédoublonné de `highlight_events` (bots exclus) égal à `killer_victim_pairs` (source de `team_tab.nemesis`) sur les 20 matchs récents et 5 matchs doublés (sinon F arrêtée, écrit ici).
+- [x] F.2 (fait : 18 tests vus en échec puis verts ; contrôle du pilote : 23 tests ciblés verts) Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
+- [ ] F.3 (né de F.1, règle 18 : plus aucun composant monté ne lit `team_tab.nemesis` ; `KdIndicatorCard` (`MatchStatCards.tsx`) le prend en prop mais n'est monté nulle part) Retirer `team_tab.nemesis` de la réponse (builder Go, contrat, `openapi.yaml`, `generated.ts`) et `KdIndicatorCard` avec ses tests, si aucun autre lecteur n'existe côté serveur ou web ; sinon `[!]` avec le lecteur trouvé.
+- **Gate F** (passé pour F.1 et F.2 : 25 matchs, écart nul, sur une copie lue en lecture seule ; la source réelle de `team_tab.nemesis` est `match_kill_events_latest`, requête `Q20KVPairs`, comparée aussi, écart nul) : gates communs sur `src/features/match-view` ; 0.3 rejoué SANS serveur, en DuckDB sur une COPIE de la base partagée : décompte dédoublonné de `highlight_events` (bots exclus) égal à `killer_victim_pairs` (source de `team_tab.nemesis`) sur les 20 matchs récents et 5 matchs doublés (sinon F arrêtée, écrit ici).
 
 ## Étape I — intégration (pilote)
 
@@ -283,6 +284,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — F.1 et F.2 closes et fusionnées ; F.3 ajoutée (champ servi sans lecteur).
 - 2026-11-22 — DU-5 tranchée par le user (bots exclus). A.4 ajoutée (entrées communes du rejeu). Lancées : A.4, F.
 - 2026-11-22 — piste E close (E.8 comprise), fusionnée.
 - 2026-11-22 — E.1 à E.7 faites et fusionnées (agent : 6 037 tests du dossier verts) ; E.8 ajoutée (fiche compacte sans boutons).
