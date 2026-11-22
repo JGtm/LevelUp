@@ -91,6 +91,10 @@ type SyncResult struct {
 	// l'historique du joueur chez le titre. Faux quand la boucle s'est arrêtée avant
 	// (plafond, annulation, page perdue, match connu en delta).
 	HistoryExhausted bool
+	// HistoryPending : la passe a laissé l'historique du joueur incomplet (la fin n'a pas été rangée
+	// pendant la passe) : la passe suivante doit rattraper. Faux quand l'historique était déjà
+	// complet au début. Lu par l'ordonnanceur pour replanifier un cycle court ; absent des réponses d'API.
+	HistoryPending bool `json:"-"`
 }
 
 // Status retourne "success", "partial_success" ou "failure".

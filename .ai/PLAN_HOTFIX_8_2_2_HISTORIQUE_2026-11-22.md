@@ -115,14 +115,16 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 1 — paquet `internal/sync/historystate` (socle)
 
-- [ ] 1.1 Paquet `historystate` : clé, `Complete`, `MarkComplete` (sous bail joueur fourni par
-  l'appelant ou pris dedans, au choix documenté), `PassBudget()` (= D-3), `MaxDepth` (= D-3).
-- [ ] 1.2 V1 migré : `engine.go` et `writes.go` appellent `historystate` ; anciennes fonctions
+- [x] 1.1 Paquet `historystate` : clé, `Complete`, `MarkComplete` (sous bail joueur tenu par l'appelant,
+  documenté dans le paquet), `PassBudget()` (= D-3), `MaxDepth` (= D-3). `MarkComplete` rend un booléen
+  (clé rangée ou non). Lecture et écriture de `sync_meta` déplacées dans le paquet `internal/sync/syncmeta`
+  (évite le cycle `sync` -> `historystate` -> `sync` ; `sync.GetSyncMeta` / `SetSyncMeta` supprimées, appelants migrés).
+- [x] 1.2 V1 migré : `engine.go` et `writes.go` appellent `historystate` ; anciennes fonctions
   `historyComplete` / `markHistoryComplete` / `SyncMetaHistoryCompleteAt` supprimées avec leurs usages.
-- [ ] 1.3 Champ `HistoryPending bool` sur `domain.SyncResult` (V1 et H5) et sur l'issue par joueur du
+- [x] 1.3 Champ `HistoryPending bool` sur `domain.SyncResult` (V1 et H5) et sur l'issue par joueur du
   cycle V2 (`PlayerOutcome`), sans encore le remplir hors V1 ; V1 le remplit (incomplet en fin de passe).
-- [ ] 1.4 Garde-rail D-9 dans `internal/archlint/`.
-- [ ] 1.5 Tests unitaires `historystate` sur DuckDB `:memory:` ; tests V1 existants du rattrapage verts
+- [x] 1.4 Garde-rail D-9 dans `internal/archlint/` (`history_key_single_source_test.go`, littéraux lus dans l'AST).
+- [x] 1.5 Tests unitaires `historystate` sur DuckDB `:memory:` ; tests V1 existants du rattrapage verts
   sans modification de leur intention.
 - Gate : `cd apps/go-api && go build ./... && go vet ./internal/sync/... ./internal/archlint/... &&
   go test ./internal/sync/... ./internal/archlint/... ./internal/domain/...`.
@@ -237,3 +239,10 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 ## Découvertes
 
 (Les correctifs hors périmètre sont interdits : les noter ici.)
+
+- Étape 1 : `sync/match_recomputer.go` lit `sync_meta` par sa propre requête (clé `scoring_revision`),
+  copie de `syncmeta.Get` ; à aligner plus tard, hors périmètre.
+- Étape 1 : en mode file asynchrone, si la réouverture de la base joueur échoue après le drain, V1 ne
+  peut pas ranger la fin (base `nil`) : `HistoryPending` reste vrai, la passe suivante rattrape.
+- Étape 1 : une passe V1 qui sort en erreur avant la fin (chargement des connus, bail) rend
+  `HistoryPending` faux (valeur par défaut) ; l'ordonnanceur (étape 4) lit aussi l'erreur du cycle.

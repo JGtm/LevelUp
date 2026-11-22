@@ -10,7 +10,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
@@ -78,71 +77,6 @@ func UpsertPlayerEnrichment(ctx context.Context, db *sql.DB, matchID, teammatesS
 	)
 	if err != nil {
 		return fmt.Errorf("UpsertPlayerEnrichment(%s): %w", matchID, err)
-	}
-	return nil
-}
-
-// SyncMetaHistoryCompleteAt : clé de `sync_meta` qui porte, par joueur, l'instant où une
-// passe en mode full a vu la fin de l'historique du titre (page vide). Absente : l'historique
-// n'a jamais été parcouru jusqu'au bout et chaque delta se joue en full (rattrapage).
-const SyncMetaHistoryCompleteAt = "history_complete_at"
-
-// GetSyncMeta lit une clé de sync_meta ; ok=false quand la clé est absente.
-func GetSyncMeta(ctx context.Context, db *sql.DB, key string) (value string, ok bool, err error) {
-	err = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = ?`, key).Scan(&value)
-	switch {
-	case err == nil:
-		return value, true, nil
-	case errors.Is(err, sql.ErrNoRows):
-		return "", false, nil
-	}
-	return "", false, fmt.Errorf("GetSyncMeta(%s): %w", key, err)
-}
-
-// historyComplete : vrai quand la fin de l'historique a déjà été vue pour ce joueur. Une
-// lecture en échec compte comme « complet » (journalisée) : mieux vaut un delta ordinaire
-// qu'un parcours intégral à chaque passe sur une base qui ne répond pas.
-func historyComplete(ctx context.Context, db *sql.DB) bool {
-	if db == nil {
-		return true
-	}
-	_, ok, err := GetSyncMeta(ctx, db, SyncMetaHistoryCompleteAt)
-	if err != nil {
-		slog.WarnContext(ctx, "sync: lecture de l'état de l'historique échouée — delta ordinaire", "err", err)
-		return true
-	}
-	return ok
-}
-
-// markHistoryComplete range l'instant de fin d'historique ; un échec est journalisé, la
-// passe suivante reparcourra l'historique (coût borné : les matchs connus sont sautés).
-func markHistoryComplete(ctx context.Context, db *sql.DB, gamertag string) {
-	if db == nil {
-		slog.WarnContext(ctx, "sync: fin d'historique vue mais base joueur indisponible — non rangée", "gamertag", gamertag)
-		return
-	}
-	if err := SetSyncMeta(ctx, db, SyncMetaHistoryCompleteAt, time.Now().UTC().Format(time.RFC3339)); err != nil {
-		slog.WarnContext(ctx, "sync: écriture de la fin d'historique échouée", "gamertag", gamertag, "err", err)
-		return
-	}
-	slog.InfoContext(ctx, "sync: fin de l'historique atteinte — les passes suivantes seront des deltas", "gamertag", gamertag)
-}
-
-// SetSyncMeta met à jour une clé dans sync_meta.
-// Portage de _update_sync_meta() (Python engine.py).
-func SetSyncMeta(ctx context.Context, db *sql.DB, key, value string) error {
-	now := time.Now().UTC()
-	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT sur la PK key).
-	var dummy int
-	err := db.QueryRowContext(ctx, `SELECT 1 FROM sync_meta WHERE key = ?`, key).Scan(&dummy)
-	switch {
-	case err == nil:
-		_, err = db.ExecContext(ctx, `UPDATE sync_meta SET value = ?, updated_at = ? WHERE key = ?`, value, now, key)
-	case errors.Is(err, sql.ErrNoRows):
-		_, err = db.ExecContext(ctx, `INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, ?)`, key, value, now)
-	}
-	if err != nil {
-		return fmt.Errorf("SetSyncMeta(%s): %w", key, err)
 	}
 	return nil
 }
