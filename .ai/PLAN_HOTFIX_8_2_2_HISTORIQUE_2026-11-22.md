@@ -329,7 +329,10 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 ### Étape 7 — revue adversariale (Fable)
 
 - [ ] 7.1 Skills `adversarial-review` + `levelup-revue` sur `git diff origin/main...release/v8.2.2`,
-  une ronde ; P0/P1 corrigés, P2 au backlog.
+  une ronde ; P0/P1 corrigés, P2 au backlog. Agent Fable (demande de l'utilisateur, 22/11), sur
+  l'implémentation ET sur le concept : le rattrapage par cycle, le marque-page ancré, l'abandon,
+  la cadence liée à l'arriéré de films, les alternatives (carte des identifiants, autre découpage).
+  Il reçoit le code et les mesures, pas les conclusions du pilote.
 
 ### Étape 8 — gates complets, journal, PR
 
