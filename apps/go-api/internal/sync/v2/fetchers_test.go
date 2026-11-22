@@ -92,9 +92,9 @@ func listDeltaOf(p MatchListProvider, ctx context.Context, prof PlayerProfile, k
 	return l.Unknown, err
 }
 
-func TestMatchListProviderV2_StopsAtFirstKnown(t *testing.T) {
+func TestMatchListProviderV2_UnknownAfterKnownIsTaken(t *testing.T) {
 	// API returns [m1, m2, m3, m_known, m4]. Known = {m_known}.
-	// Expected unknown : [m1, m2, m3]. m4 jamais demandé.
+	// D-23 : un seul connu n'arrête plus le delta ; m4, inconnu juste en dessous, est pris.
 	client := &mockNarrowClient{
 		historyByArg: map[string][]syncpkg.MatchHistoryEntry{
 			"xuid(999)": {
@@ -113,8 +113,8 @@ func TestMatchListProviderV2_StopsAtFirstKnown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if !equalSlice(unknown, []string{"m1", "m2", "m3"}) {
-		t.Errorf("unknown = %v, want [m1 m2 m3]", unknown)
+	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4"}) {
+		t.Errorf("unknown = %v, want [m1 m2 m3 m4]", unknown)
 	}
 }
 
@@ -150,8 +150,8 @@ func TestMatchListProviderV2_XUIDFormat(t *testing.T) {
 	}
 }
 
-func TestMatchListProviderV2_PaginatesUntilKnown(t *testing.T) {
-	// pageSize=2, 4 pages dispo, known dans page 3.
+func TestMatchListProviderV2_PaginatesPastASingleKnown(t *testing.T) {
+	// pageSize=2, known dans la page 3 : m5, juste après lui, est pris (D-23).
 	page1 := []syncpkg.MatchHistoryEntry{{MatchID: "m1"}, {MatchID: "m2"}}
 	page2 := []syncpkg.MatchHistoryEntry{{MatchID: "m3"}, {MatchID: "m4"}}
 	page3 := []syncpkg.MatchHistoryEntry{{MatchID: "m_known"}, {MatchID: "m5"}}
@@ -170,8 +170,8 @@ func TestMatchListProviderV2_PaginatesUntilKnown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4"}) {
-		t.Errorf("unknown = %v, want [m1..m4]", unknown)
+	if !equalSlice(unknown, []string{"m1", "m2", "m3", "m4", "m5"}) {
+		t.Errorf("unknown = %v, want [m1..m5]", unknown)
 	}
 }
 

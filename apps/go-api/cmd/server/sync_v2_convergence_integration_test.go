@@ -5,7 +5,7 @@
 // des cycles successifs de l'ordonnanceur (RunOnceTrigger, orchestrateur construit par la fabrique de
 // production, vraies bases DuckDB temporaires, faux service Halo : voir le banc) rattrapent un historique
 // de 1 000 matchs, prennent les matchs neufs du dessus, rangent la fin, puis redeviennent des deltas
-// d'une page ; la cadence de l'ordonnanceur suit (10 minutes pendant le rattrapage, l'intervalle réglé
+// d'une page (deux avec un match neuf, D-23) ; la cadence de l'ordonnanceur suit (10 minutes pendant le rattrapage, l'intervalle réglé
 // ensuite).
 package main
 
@@ -141,10 +141,11 @@ func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
 	}
 	e.waitCadence(time.Duration(e.intervalH) * time.Hour)
 
-	// Un match neuf après la fin : pris par le delta, toujours une page.
+	// Un match neuf après la fin : pris par le delta, deux pages (la seconde complète la suite de 25 connus,
+	// D-23 ; avant : une).
 	fresh := e.fake.addOnTop(1)
 	out, reads = e.cycle()
-	if len(reads) != 1 || out.MatchesInserted != 1 || !e.registryIDs()[fresh[0]] || out.HistoryPending {
+	if len(reads) != 2 || reads[0] != 0 || reads[1] != convergencePageSize || out.MatchesInserted != 1 || !e.registryIDs()[fresh[0]] || out.HistoryPending {
 		t.Errorf("delta d'un match neuf : lectures %v, issue %+v", reads, out)
 	}
 	if complete, _ := e.historyState(); !complete {

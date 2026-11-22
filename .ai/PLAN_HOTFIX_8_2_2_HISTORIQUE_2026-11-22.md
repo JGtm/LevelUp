@@ -129,6 +129,19 @@ page.
 - **D-23** (utilisateur, 22/11) Le delta des nouveaux matchs ne s'arrête plus au premier match connu mais
   après une page entière (25) de matchs connus d'affilée : un match rangé d'abord par un coéquipier
   (connu par ses participants) ne cache plus les matchs inconnus juste en dessous. Infinite (V2) et Halo 5.
+  - [x] D-23.1 Constante unique `domain.DeltaKnownRun = 25` (commentaire de contrat : pourquoi une page de connus d'affilée),
+    lue par tous les delta : V2 historique complet (`v2/fetchers.go` `listDelta`), V2 rattrapage sans ancre (`scanNew`, N =
+    `topSpan` : toutes entrées jusqu'à la dernière inconnue, abandonnés exclus ; avec ancre `scanTop` ne s'arrête déjà pas
+    au premier connu, il lit jusqu'à l'ancre : rien à changer, test ajouté), Halo 5 delta et delta du dessus
+    (`halo_5/capture.go` `capturePage` : `CaptureStats.KnownRun` / `TopSpan`, entrées écartées neutres ; `catchup.go`
+    `topDelta` : N sans ancre = `TopSpan`), moteur V1 (`engine.go` `paginateAndPersistHistory`, même règle, `allKnown` retiré).
+    Bornes de pages inchangées (20 pages V2 en mode complet, `MaxDepth`).
+  - [x] D-23.2 Tests : scénario A/B (V2 complet, V2 rattrapage avec et sans ancre, Halo 5 capture et RunDelta avec/sans ancre
+    et complet, V1 intégration), 24 connus puis un inconnu, 25 connus d'affilée, entrée écartée neutre (Halo 5), appels d'API.
+    Appels de pages d'historique, avant -> après : historique complet sans nouveau match 1 -> 1 ; avec un nouveau match 1 -> 2
+    (V2, Halo 5, V1) ; V2 convergence `[8 9 10 9 10 2]` (48) inchangée, delta d'un match neuf après la fin 1 -> 2 pages ; Halo 5 convergence `[8 10 10 10 10 3]` (51)
+    -> `[8 11 10 11 10 3]` (53) ; Halo 5 40 Warzone en tête `[10 11 10 10 10]` (51) -> `[10 12 12 12 12]` (58, les Warzone
+    n'arrêtent ni ne remettent à zéro : 40 + 25 entrées = 3 pages au lieu de 2).
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
@@ -538,3 +551,5 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - Étape 4ter : `fix/822-e` n'a pas les étapes 2 et 3 : `PlayerOutcome.HistoryPending` n'est pas encore
   rempli par le pipeline V2 ni par le runner Halo 5 ; la cadence de rattrapage ne s'active, tant que ce
   n'est pas intégré, que par un joueur en échec (clé de fin absente) ou par le moteur V1 (filet de boot).
+- D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
+- D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.

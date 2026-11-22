@@ -166,23 +166,23 @@ func TestCollectRecentMatches_ExcludesCampaignAndWarzone(t *testing.T) {
 	}
 }
 
-func TestCollectRecentMatches_DeltaStopOnKnown(t *testing.T) {
+func TestCollectRecentMatches_UnConnuNArretePasLeDelta(t *testing.T) {
 	src := &fakeH5Source{
 		pages:  map[int]*halo5.H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
 		events: map[string]*halo5.H5MatchEventsResponse{"m1": killEvents()},
 	}
-	// m2 déjà connu -> on collecte m1 puis on s'arrête (delta).
+	// m2 déjà connu : un seul connu n'arrête plus le delta (D-23), m3 est collecté aussi ; la liste est finie.
 	isKnown := func(id string) bool { return id == "m2" }
 	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
 		CaptureOptions{PageSize: 25})
 	if err != nil {
 		t.Fatalf("CollectRecentMatches: %v", err)
 	}
-	if len(batches) != 1 || !stats.StoppedOnKnown {
-		t.Errorf("len=%d stoppedOnKnown=%v, want 1 + true", len(batches), stats.StoppedOnKnown)
+	if len(batches) != 2 || stats.StoppedOnKnown || !stats.HistoryEnd {
+		t.Errorf("len=%d stoppedOnKnown=%v historyEnd=%v, want 2, false, true", len(batches), stats.StoppedOnKnown, stats.HistoryEnd)
 	}
-	if stats.MatchesCollected != 1 {
-		t.Errorf("collected = %d, want 1 (m1 avant le connu m2)", stats.MatchesCollected)
+	if stats.MatchesCollected != 2 {
+		t.Errorf("collected = %d, want 2 (m1 et m3 de part et d'autre du connu m2)", stats.MatchesCollected)
 	}
 }
 
@@ -402,7 +402,7 @@ func TestCapturePageAt_HistoryEnd(t *testing.T) {
 }
 
 // TestCollectRecentMatches_TeteDeListe : HeadID est l'entrée en position 0 et TopIDs la suite contiguë
-// des entrées vues (écartées et connue comprises), bornée par TopLimit ; sans TopLimit, aucune liste.
+// des entrées vues (écartées et connues comprises), bornée par TopLimit ; sans TopLimit, aucune liste.
 func TestCollectRecentMatches_TeteDeListe(t *testing.T) {
 	raw := fmt.Sprintf(`{"Start":0,"Count":4,"ResultCount":4,"Results":[%s,%s,%s,%s]}`,
 		matchJSONMode("wz1", 4), matchJSONMode("camp1", 2), matchJSONMode("arena1", 1), matchJSONMode("arena2", 1))
@@ -421,8 +421,8 @@ func TestCollectRecentMatches_TeteDeListe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CollectRecentMatches: %v", err)
 	}
-	if want := []string{"wz1", "camp1", "arena1"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
-		t.Errorf("TopIDs = %v, want %v (jusqu'au connu, écartées comprises)", stats.TopIDs, want)
+	if want := []string{"wz1", "camp1", "arena1", "arena2"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
+		t.Errorf("TopIDs = %v, want %v (toute la page, écartées et connue comprises)", stats.TopIDs, want)
 	}
 	if stats.HeadID != "wz1" {
 		t.Errorf("HeadID = %q, want wz1", stats.HeadID)

@@ -11,9 +11,11 @@
 //     recouvrement. Ancienne tête introuvable dans les `historystate.AnchorMaxPages` premières
 //     pages, ou identifiant rangé qui n'est pas à sa place : reprise depuis le début, journalisée et
 //     comptée (`sync_v2_history_cursor_fallback_total`) ;
-//   - sans ancre (marque-page rangé avant l'ancre) : (a) delta du dessus, page 0 jusqu'au premier
-//     match connu, dont les N inconnus sont les matchs apparus depuis la dernière passe ; (b) reprise
-//     à `cursor.Offset + N - pageSize`, soit la page de recouvrement qui doit contenir
+//   - sans ancre (marque-page rangé avant l'ancre) : (a) delta du dessus, page 0 jusqu'à
+//     domain.DeltaKnownRun matchs connus d'affilée (D-23), qui prend les inconnus rencontrés ; N,
+//     l'estimation des entrées arrivées depuis la dernière passe, est le nombre d'entrées vues jusqu'à
+//     la dernière inconnue (toutes entrées comptées) ; (b) reprise à
+//     `cursor.Offset + N - pageSize`, soit la page de recouvrement qui doit contenir
 //     `cursor.LastMatchID` ; sinon reprise depuis le début, comptée de même.
 //
 // Un match abandonné (HistoryState.Failures, maxCatchUpAttempts) est sauté comme un connu, sans
@@ -28,6 +30,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/historystate"
 )
@@ -58,7 +61,11 @@ type catchUpScan struct {
 	endSeen      bool // fin de la liste vue (page vide ou partielle)
 	budgetHit    bool // budget atteint : la lecture s'est arrêtée avec des inconnus possibles derrière
 	depthHit     bool // borne de profondeur atteinte
-	reachedKnown bool // l'étape (a) a rencontré un match connu
+	reachedKnown bool // l'étape (a) a rejoint la zone connue : domain.DeltaKnownRun connus d'affilée
+	// topSpan : nombre d'entrées de tête vues par l'étape (a) jusqu'à la dernière inconnue, toutes entrées
+	// comptées (les abandonnés sont derrière le marque-page : exclus) : l'estimation, sans ancre, du
+	// nombre d'entrées arrivées depuis le marque-page.
+	topSpan int
 }
 
 // listCatchUp est la découverte d'un joueur à l'historique incomplet.
@@ -105,9 +112,12 @@ func (p *matchListProviderV2) listCatchUp(
 	return sc.listing(true), nil
 }
 
-// scanNew est l'étape (a) : du début de la liste jusqu'au premier match connu. Les inconnus
-// rencontrés comptent dans le budget.
+// scanNew est l'étape (a) : du début de la liste jusqu'à domain.DeltaKnownRun matchs connus d'affilée
+// (règle D-23 : un connu rangé par un coéquipier ne cache pas les inconnus plus bas). Les inconnus
+// rencontrés comptent dans le budget. Les abandonnés ne sont ni connus ni inconnus : ils ne
+// comptent pas dans la suite de connus.
 func (sc *catchUpScan) scanNew(ctx context.Context) error {
+	run := 0
 	for pos := 0; ; pos += sc.p.pageSize {
 		if pos >= historystate.MaxDepth {
 			sc.warnDepth(ctx)
@@ -124,12 +134,17 @@ func (sc *catchUpScan) scanNew(ctx context.Context) error {
 		for i, e := range entries {
 			sc.noteRead(pos+i, e.MatchID)
 			if sc.known[e.MatchID] {
-				sc.reachedKnown = true
-				return nil
+				if run++; run >= domain.DeltaKnownRun {
+					sc.reachedKnown = true
+					return nil
+				}
+				continue
 			}
 			if sc.skip[e.MatchID] {
 				continue // abandonné : déjà derrière le marque-page, pas un nouveau match
 			}
+			sc.topSpan = pos + i + 1
+			run = 0
 			if sc.addUnknown(pos+i, e.MatchID) {
 				return nil
 			}

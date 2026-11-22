@@ -59,6 +59,17 @@ func (o SyncOptions) Validate() error {
 	return nil
 }
 
+// DeltaKnownRun est le nombre de matchs connus d'affilée, dans la liste de l'API, après lequel un
+// delta des nouveaux matchs s'arrête (Halo Infinite V1 et V2, Halo 5). Un delta ne s'arrête plus au
+// premier match connu : un match rangé d'abord par la synchronisation d'un coéquipier est connu du
+// joueur (le joueur figure parmi ses participants) sans que les matchs que le joueur a joués seul
+// juste en dessous le soient ; s'arrêter dessus les cacherait pour toujours. Une page entière de
+// connus d'affilée prouve qu'on a rejoint la zone déjà synchronisée ; un inconnu rencontré avant est
+// pris et remet le compte à zéro. Vaut la taille de page de l'API (25) : en historique complet et
+// sans nouveau match, le delta lit la même première page qu'avant. La profondeur reste bornée par
+// la borne de pages de chaque moteur.
+const DeltaKnownRun = 25
+
 // DefaultSyncOptions retourne les options par défaut (portage de SyncOptions() Python).
 func DefaultSyncOptions() SyncOptions {
 	return SyncOptions{

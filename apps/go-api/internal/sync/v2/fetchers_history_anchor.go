@@ -100,9 +100,12 @@ func (sc *catchUpScan) noteCursorFallback(ctx context.Context, cursor historysta
 }
 
 // resumeStart est l'étape (b) sans ancre : décalage de la page de recouvrement, vérifié par lecture.
-// Rend 0 (reprise depuis le début) quand la page ne contient pas le dernier match du marque-page.
+// Le nombre d'entrées arrivées est estimé par `topSpan` : toutes les entrées de tête jusqu'à la dernière
+// inconnue. Un connu arrivé plus bas n'est pas compté ; la page de recouvrement n'a alors plus le
+// marque-page et la lecture repart du début, comptée. Rend 0 (reprise depuis le début) quand la page
+// ne contient pas le dernier match du marque-page.
 func (sc *catchUpScan) resumeStart(ctx context.Context, cursor historystate.Cursor) (int, error) {
-	start := cursor.Offset + len(sc.unknown) - sc.p.pageSize
+	start := cursor.Offset + sc.topSpan - sc.p.pageSize
 	if start <= 0 {
 		return 0, nil // la page de recouvrement couvre le début : la lecture ordinaire la verra
 	}

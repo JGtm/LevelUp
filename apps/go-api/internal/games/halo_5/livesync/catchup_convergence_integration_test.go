@@ -101,7 +101,7 @@ func (c *convergenceH5) pass(opts domain.SyncOptions) (res domain.SyncResult, pa
 // Un historique de 1 000 matchs, des matchs neufs qui arrivent en haut entre deux cycles : les cycles
 // successifs de RunDelta rattrapent 200 matchs au plus (page entière en plus), reprennent au
 // marque-page sans rebalayer, prennent les nouveaux du dessus, rangent la fin, puis redeviennent des
-// deltas d'une page.
+// deltas (une page sans match neuf, deux avec : D-23).
 func TestConvergence_Halo5_RunDelta_RattrapeParBudgetMarquePageFinPuisDelta(t *testing.T) {
 	c := newConvergenceH5(t, convergenceH5Total)
 	ctx := context.Background()
@@ -200,11 +200,12 @@ func TestConvergence_Halo5_RunDelta_RattrapeParBudgetMarquePageFinPuisDelta(t *t
 	if res.MatchesInserted != 0 || res.HistoryPending {
 		t.Errorf("après la fin : inséré=%d pending=%v, attendu 0 / faux", res.MatchesInserted, res.HistoryPending)
 	}
-	// Un match neuf après la fin : pris par le delta, une page.
+	// Un match neuf après la fin : pris par le delta, deux pages (la seconde complète la suite de 25 connus ;
+	// avant D-23 : une).
 	fresh := c.addOnTop(1)
 	res, pages, resumeStarts = c.pass(domain.SyncOptions{MaxMatches: 25})
-	if res.MatchesInserted != 1 || !c.w.stored[fresh[0]] || pages != 1 || len(resumeStarts) != 0 {
-		t.Errorf("delta d'un match neuf : %d insérés, pris=%v, %d pages, reprise %v ; attendu 1, vrai, 1, aucune",
+	if res.MatchesInserted != 1 || !c.w.stored[fresh[0]] || pages != 2 || len(resumeStarts) != 0 {
+		t.Errorf("delta d'un match neuf : %d insérés, pris=%v, %d pages, reprise %v ; attendu 1, vrai, 2, aucune",
 			res.MatchesInserted, c.w.stored[fresh[0]], pages, resumeStarts)
 	}
 	if complete, err := c.h.Complete(ctx); err != nil || !complete {

@@ -3,9 +3,9 @@
 // Le moteur V1 est un delta pur : il ne lit ni n'écrit cet état (il n'emprunte que [MaxDepth], pour le
 // parcours de RunFull).
 //
-// Règle : un delta s'arrête au premier match connu, donc une première synchronisation interrompue
-// (plafond, fermeture du poste, page perdue) laisserait un trou définitif derrière les matchs déjà
-// rangés. Tant que la fin de l'historique n'a pas été vue (clé [Key] absente de `sync_meta`), la
+// Règle : un delta s'arrête après domain.DeltaKnownRun matchs connus d'affilée, donc une première
+// synchronisation interrompue (plafond, fermeture du poste, page perdue) laisserait un trou définitif
+// derrière les matchs déjà rangés. Tant que la fin de l'historique n'a pas été vue (clé [Key] absente de `sync_meta`), la
 // passe saute les matchs connus au lieu de s'arrêter dessus, et range les inconnus plus anciens
 // par tranches de [PassBudget] matchs. La clé se range seulement quand la fin a été vue sans perte.
 //
