@@ -44,7 +44,10 @@ export type ViewFloorState =
   | { state: 'none' }
   /** Carte sans maillage de navigation : aucune commande d'étage (D-7). */
   | { state: 'noMesh' }
-  /** Des étages : les pastilles (par rang) et les bornes du curseur. */
+  /**
+   * Le maillage existe : les pastilles (par rang) et les bornes du curseur. Sans étage détecté (hauteurs étalées),
+   * `chips` est vide et la commande se réduit à « Tout » et au curseur, la bonne commande d'un terrain naturel (ADR 0049 D-13).
+   */
   | { state: 'ready'; chips: readonly FloorRank[]; min: number; max: number }
 
 /** viewFloorState : l'état de la commande d'étage pour les données lues (`null` = pas lues ou inutilisables). */
@@ -52,7 +55,7 @@ export function viewFloorState(data: ReliefData | null): ViewFloorState {
   if (!data) return { state: 'none' }
   if (hasNoMesh(data)) return { state: 'noMesh' }
   const { levels, min, max } = data.floors
-  if (levels.length === 0 || min === null || max === null) return { state: 'noMesh' }
+  if (min === null || max === null) return { state: 'noMesh' }
   return { state: 'ready', chips: floorRanks(levels), min, max }
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { STACK_LAYERS } from './constants'
-import { buildFloorStack, stackColumn as rawColumn, stackTop, type FloorStack } from './floorStack'
+import { buildFloorStack, stackHeight, stackTop, type FloorStack } from './floorStack'
 import { reliefData, type FloorRect } from './reliefScene.testutil'
 
 const W = 40
@@ -10,7 +10,11 @@ const build = (rects: FloorRect[], opts: { merge?: number } = {}) =>
   buildFloorStack(reliefData({ width: W, height: H, rects, ...opts }))
 const at = (i: number, j: number): number => j * W + i
 /** Les hauteurs d'un pixel, au centième : la pile les code au 1/256 d'unité. */
-const stackColumn = (stack: FloorStack, p: number): number[] => rawColumn(stack, p).map((z) => Math.round(z * 100) / 100)
+const stackColumn = (stack: FloorStack, p: number): number[] => {
+  const out: number[] = []
+  for (let k = 0; k < stack.count[p]; k++) out.push(Math.round(stackHeight(stack, p, k) * 100) / 100)
+  return out
+}
 
 describe('buildFloorStack', () => {
   it('un sol plat couvre exactement les pixels qu’il recouvre, à sa hauteur', () => {
@@ -59,12 +63,10 @@ describe('buildFloorStack', () => {
     expect(stackColumn(wide, at(2, 2))).toEqual([1])
   })
 
-  it('tronque au-delà de quatre sols et le dit', () => {
+  it('ne garde que quatre sols par pixel', () => {
     const four = build([0, 1, 2, 3].map((z) => ({ i0: 0, j0: 0, i1: 9, j1: 9, z })))
-    expect(four.truncated).toBe(false)
     expect(stackColumn(four, at(1, 1))).toEqual([0, 1, 2, 3])
     const five = build([0, 1, 2, 3, 4].map((z) => ({ i0: 0, j0: 0, i1: 9, j1: 9, z })))
-    expect(five.truncated).toBe(true)
     expect(five.count[at(1, 1)]).toBe(STACK_LAYERS)
     expect(stackColumn(five, at(1, 1))).toEqual([0, 1, 2, 3])
   })

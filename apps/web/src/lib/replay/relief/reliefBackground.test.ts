@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { recordingContext, type RecordedOp } from './canvasRecorder.testutil'
 import type { ReliefFrame } from './engine'
-import { paintMaskedImage, paintReliefImage, ReliefCanvases } from './reliefBackground'
+import { MaskStage, paintMaskedImage, paintReliefImage, ReliefCanvases } from './reliefBackground'
 
 /** ImageData minimal : jsdom n'en fournit pas, et seul le contenu transmis à putImageData compte ici. */
 class FakeImageData {
@@ -83,10 +83,16 @@ describe('paintReliefImage', () => {
   })
 })
 
+/** Pose `mask` dans un canvas de masque neuf, puis copie l'image modulée : le chemin de `ReliefCanvases`. */
+function paintMasked(mask: Uint8Array, width: number, height: number): HTMLCanvasElement | null {
+  const masker = new MaskStage().paint(mask, width, height)
+  return masker === null ? null : paintMaskedImage(null, IMAGE, masker, width, height)
+}
+
 describe('paintMaskedImage', () => {
   it('copie l’image puis compose le masque en destination-in : l’opacité est multipliée', () => {
     const mask = Uint8Array.of(0, 128, 255, 255, 64, 0)
-    const canvas = paintMaskedImage(null, IMAGE, mask, 3, 2)
+    const canvas = paintMasked(mask, 3, 2)
     expect(canvas).not.toBeNull()
     const target = journal.find((j) => j.canvas === canvas)
     const ops = target?.ops.map((o) => (o.op === 'set globalCompositeOperation' ? `${o.op}:${String(o.args[0])}` : o.op)) ?? []
@@ -100,7 +106,7 @@ describe('paintMaskedImage', () => {
 
   it('le canvas du masque porte le masque dans son alpha, un octet par pixel', () => {
     const mask = Uint8Array.of(0, 128, 255, 255, 64, 0)
-    paintMaskedImage(null, IMAGE, mask, 3, 2)
+    paintMasked(mask, 3, 2)
     const put = journal.flatMap((j) => j.ops).find((o) => o.op === 'putImageData')
     const rgba = (put?.args[0] as FakeImageData).data
     expect(rgba.length).toBe(3 * 2 * 4)
@@ -110,7 +116,40 @@ describe('paintMaskedImage', () => {
 
   it('rend null sans contexte 2D : l’appelant garde l’image d’origine', () => {
     refuse = true
-    expect(paintMaskedImage(null, IMAGE, Uint8Array.of(1), 1, 1)).toBeNull()
+    expect(paintMasked(Uint8Array.of(1), 1, 1)).toBeNull()
+  })
+})
+
+describe('MaskStage : le masque d’un curseur qui glisse ne réalloue rien', () => {
+  const putsOf = () => journal.flatMap((j) => j.ops).filter((o) => o.op === 'putImageData')
+
+  it('garde le même canvas, le même tampon et le même ImageData d’un pas à l’autre', () => {
+    const stage = new MaskStage()
+    const first = stage.paint(Uint8Array.of(0, 1, 2, 3, 4, 5), 3, 2)
+    const second = stage.paint(Uint8Array.of(9, 8, 7, 6, 5, 4), 3, 2)
+    expect(second).toBe(first)
+    const [a, b] = putsOf().map((o) => o.args[0] as FakeImageData)
+    expect(b).toBe(a)
+    expect(b.data).toBe(a.data)
+    expect(Array.from({ length: 6 }, (_, p) => b.data[p * 4 + 3])).toEqual([9, 8, 7, 6, 5, 4])
+  })
+
+  it('ne crée qu’un canvas et qu’un ImageData pour dix pas', () => {
+    const created = vi.spyOn(document, 'createElement')
+    const stage = new MaskStage()
+    for (let step = 0; step < 10; step++) stage.paint(Uint8Array.of(step, 0, 0, 0, 0, 0), 3, 2)
+    expect(created.mock.calls.filter(([tag]) => tag === 'canvas')).toHaveLength(1)
+    expect(new Set(putsOf().map((o) => o.args[0])).size).toBe(1)
+  })
+
+  it('un changement de taille réalloue le tampon, et le canvas prend la nouvelle taille', () => {
+    const stage = new MaskStage()
+    stage.paint(Uint8Array.of(1, 2, 3, 4, 5, 6), 3, 2)
+    const canvas = stage.paint(Uint8Array.of(1, 2, 3, 4), 2, 2)
+    expect(canvas?.width).toBe(2)
+    const [a, b] = putsOf().map((o) => o.args[0] as FakeImageData)
+    expect(b).not.toBe(a)
+    expect(b.data.length).toBe(2 * 2 * 4)
   })
 })
 
@@ -133,5 +172,12 @@ describe('ReliefCanvases', () => {
     expect(canvases.reliefImage(frame())).toBe(canvases.reliefImage(frame()))
     const f = frame({ alpha: Uint8Array.of(1, 1, 1, 1, 1, 1) })
     expect(canvases.maskedImage(f, IMAGE, false)).toBe(canvases.maskedImage(f, IMAGE, false))
+  })
+
+  it('le fond modulé et son masque ne coûtent que deux canvas pour tout un glissement du curseur', () => {
+    const created = vi.spyOn(document, 'createElement')
+    const canvases = new ReliefCanvases()
+    for (let step = 0; step < 8; step++) canvases.maskedImage(frame({ alpha: Uint8Array.of(step, 1, 1, 1, 1, 1) }), IMAGE, false)
+    expect(created.mock.calls.filter(([tag]) => tag === 'canvas')).toHaveLength(2)
   })
 })

@@ -12,7 +12,8 @@
  *                 place pendant qu'une nouvelle se calcule : un curseur qui glisse ne clignote pas) ;
  *   - `failed`  : une `ReliefError` (ou une panne du calculateur) a eu lieu ; `error` la porte. Elle est
  *                 JOURNALISÉE une fois, et l'appelant retombe sur le plan : l'état reste `failed` jusqu'à
- *                 ce que les fichiers changent.
+ *                 ce que les fichiers changent. Une erreur qui arrive après le démontage (ou le changement de
+ *                 carte) n'est ni journalisée ni retenue : le calculateur fermé rejette, aucun repli n'a lieu.
  *
  * L'IMAGE DES HAUTEURS EST DÉCODÉE À CHAQUE CHARGEMENT dans le calculateur (ses tableaux lui sont
  * CÉDÉS, `ReliefComputer.load`) : le cache de requêtes ne garde que le `Blob`.
@@ -76,8 +77,10 @@ export function useReliefRender(
         const info = await computer.load({ image, data })
         if (alive) setLoaded({ info, computer })
       } catch (err) {
+        // Une vue quittée ferme le calculateur : la lecture en cours rejette, ce n'est pas un repli.
+        if (!alive) return
         journal('chargement du relief impossible', err)
-        if (alive) setFailure({ error: err, source: data })
+        setFailure({ error: err, source: data })
       }
     })()
     return () => {
@@ -101,8 +104,9 @@ export function useReliefRender(
         if (alive && next) setFrame(next)
       })
       .catch((err: unknown) => {
+        if (!alive) return
         journal('rendu du relief impossible', err)
-        if (alive) setFailure({ error: err, source: data })
+        setFailure({ error: err, source: data })
       })
     return () => {
       alive = false

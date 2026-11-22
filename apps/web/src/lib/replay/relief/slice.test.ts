@@ -3,13 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { CUT_ALPHA_ABOVE, CUT_ALPHA_BELOW, FLAG_ON_MAP } from './constants'
 import { buildFloorStack } from './floorStack'
 import { reliefData, reliefImage, type FloorRect, type SceneCell } from './reliefScene.testutil'
-import { heightGreyByte } from './shading'
+import { heightGrey } from './shading'
 import { computeSlice, cutWeight, type SliceInput } from './slice'
 
 const ABOVE = Math.round(CUT_ALPHA_ABOVE * 255)
 const BELOW = Math.round(CUT_ALPHA_BELOW * 255)
 const RAMP = { low: 0, high: 4 }
 const BASE_GREY = 150
+/** Le gris (octet) d'un sol plat à la hauteur `z`. */
+const greyByte = (z: number): number => Math.round(heightGrey(z, RAMP) * 255)
 
 /** Une scène de quatre blocs de dix colonnes, une ligne de dix pixels de haut. */
 function build(rects: FloorRect[], top: (i: number, j: number) => SceneCell, width: number): SliceInput {
@@ -69,7 +71,7 @@ describe('computeSlice à la hauteur de rez-de-chaussée', () => {
 
   it('un sol de la coupe sous un toit est révélé à plat, dans la teinte de sa hauteur, sans traits', () => {
     expect(s.alpha[px(25)]).toBe(255)
-    expect(s.grey[px(25)]).toBe(heightGreyByte(0, RAMP))
+    expect(s.grey[px(25)]).toBe(greyByte(0))
     expect(s.keep[px(25)]).toBe(0)
   })
 
@@ -98,7 +100,7 @@ describe('computeSlice à la hauteur de l’étage haut', () => {
 
   it('un sol plus haut que le dessus est révélé : le fond l’avait rendu plus bas', () => {
     expect(s.alpha[px(35)]).toBe(255)
-    expect(s.grey[px(35)]).toBe(heightGreyByte(2.2, RAMP))
+    expect(s.grey[px(35)]).toBe(greyByte(2.2))
     expect(s.keep[px(35)]).toBe(0)
   })
 

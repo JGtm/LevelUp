@@ -50,7 +50,7 @@ export interface ReliefText {
 export const FR_RELIEF = {
   background: 'Relief',
   backgroundHint:
-    'Le terrain vu de dessus, en gris teinté : plus clair plus haut, ombré du nord-ouest, découpé à la zone jouable.',
+    'Le terrain vu de dessus, en gris teinté : plus clair plus haut, ombré depuis le haut à gauche de l’écran, découpé à la zone jouable.',
   backgroundMeshFmt: (percent) => `Relief tiré du maillage de navigation sur ${percent} % de la carte.`,
   lines: 'Traits du relief',
   linesHint:
@@ -75,7 +75,7 @@ export const FR_RELIEF = {
 export const EN_RELIEF = {
   background: 'Relief',
   backgroundHint:
-    'The terrain seen from above, in tinted grey: lighter where higher, shaded from the north-west, cut to the playable area.',
+    'The terrain seen from above, in tinted grey: lighter where higher, shaded from the upper left of the screen, cut to the playable area.',
   backgroundMeshFmt: (percent) => `Relief taken from the navigation mesh on ${percent}% of the map.`,
   lines: 'Relief lines',
   linesHint:

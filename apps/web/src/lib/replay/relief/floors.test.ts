@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { FLAG_KNOWN, FLAG_MESH_FLOOR, FLAG_ON_MAP } from './constants'
 import { floorRanks, meshShareOf, nearestRank, quantizeCut, rankHeight, snapCut } from './floors'
-import { reliefData, reliefImage } from './reliefScene.testutil'
+import { reliefData } from './reliefScene.testutil'
 
 const LEVELS = [0, 2.21, 4.4]
 
@@ -56,19 +55,11 @@ describe('part tirée du maillage (D-16)', () => {
     expect(meshShareOf(data)).toEqual({ share: 0.4649, percent: 46 })
   })
 
-  it('à défaut du JSON, la compte sur les drapeaux de l’image : sol du maillage sur pixels de la carte', () => {
-    const data = reliefData({ width: 10, height: 10, rects: [{ i0: 0, j0: 0, i1: 9, j1: 9, z: 1 }] })
-    const image = reliefImage(10, 10, (i) => (i < 8 ? { z: 1, mesh: i < 2 } : { z: 1, onMap: false, mesh: true }))
-    expect(meshShareOf(data, image)).toEqual({ share: 0.25, percent: 25 })
-    expect(FLAG_KNOWN | FLAG_ON_MAP | FLAG_MESH_FLOOR).toBe(7)
-  })
-
-  it('rend null sans maillage, ou quand rien ne dit la part', () => {
+  it('rend null sans maillage, ou quand le JSON ne dit pas la part', () => {
     const none = reliefData({ width: 10, height: 10, degradations: ['sans-maillage'], meshShare: 0.5 })
     expect(meshShareOf(none)).toBeNull()
     const data = reliefData({ width: 10, height: 10, rects: [{ i0: 0, j0: 0, i1: 9, j1: 9, z: 1 }] })
     expect(meshShareOf(data)).toBeNull()
-    expect(meshShareOf(data, reliefImage(10, 10, () => ({ z: 1, onMap: false })))).toBeNull()
   })
 
   it('une part de zéro est une part, pas une absence', () => {

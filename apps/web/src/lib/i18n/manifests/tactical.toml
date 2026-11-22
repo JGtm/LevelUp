@@ -740,6 +740,14 @@ en = "Held zone"
 fr = "Aucune"
 en = "None"
 
+[tactical.reapp.held_off_floor]
+fr = "{zone} (hors de l'étage affiché)"
+en = "{zone} (outside the shown floor)"
+
+[tactical.reapp.held_off_floor_hint]
+fr = "Cette zone n'est pas sur l'étage de la coupe : elle n'est pas dessinée sur le plan, la lecture reste celle de cette zone. Choisir « Tout » ou son étage la montre."
+en = "This zone is not on the floor of the cut: it is not drawn on the plan, and the reading stays that of this zone. Choosing “All” or its floor shows it."
+
 [tactical.reapp.plan_label]
 fr = "Plan de {map}, zones nommées"
 en = "Plan of {map}, named zones"

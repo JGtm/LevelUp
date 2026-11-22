@@ -40,7 +40,7 @@ export const RELIEF_VIEW_TEXT: Record<Locale, ReliefViewText> = {
     render: 'Rendu',
     relief: 'Relief',
     reliefHint:
-      'Le terrain vu de dessus, en gris teinté : plus clair plus haut, ombré du nord-ouest, découpé à la zone jouable.',
+      'Le terrain vu de dessus, en gris teinté : plus clair plus haut, ombré depuis le haut à gauche de l’écran, découpé à la zone jouable.',
     reliefMeshFmt: (percent) => `Relief tiré du maillage de navigation sur ${percent} % de la carte.`,
     lines: 'Traits du relief',
     linesHint:
@@ -59,7 +59,7 @@ export const RELIEF_VIEW_TEXT: Record<Locale, ReliefViewText> = {
     render: 'Render',
     relief: 'Relief',
     reliefHint:
-      'The terrain seen from above, in tinted grey: lighter where higher, shaded from the north-west, cut to the playable area.',
+      'The terrain seen from above, in tinted grey: lighter where higher, shaded from the upper left of the screen, cut to the playable area.',
     reliefMeshFmt: (percent) => `Relief taken from the navigation mesh on ${percent}% of the map.`,
     lines: 'Relief lines',
     linesHint:

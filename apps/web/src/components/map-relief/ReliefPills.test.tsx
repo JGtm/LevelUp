@@ -54,6 +54,13 @@ describe('ReliefBackgroundPill', () => {
     expect(screen.getByRole('button', { name: 'Relief' }).title).toContain('46 % de la carte')
   })
 
+  it('l’infobulle dit la lumière de l’ÉCRAN, jamais un point cardinal de la carte (D-15), dans les deux langues', () => {
+    for (const [locale, upperLeft] of [['fr', 'haut à gauche'], ['en', 'upper left']] as const) {
+      expect(RELIEF_VIEW_TEXT[locale].reliefHint).toContain(upperLeft)
+      expect(RELIEF_VIEW_TEXT[locale].reliefHint).not.toMatch(/nord|north/i)
+    }
+  })
+
   it('sans part connue, l’infobulle ne cite aucun pourcentage', () => {
     render(<ReliefBackgroundPill text={T} options={['rendu', 'relief']} selected="rendu" onSelect={vi.fn()} meshPercent={null} />)
     expect(screen.getByRole('button', { name: 'Relief' }).title).not.toContain('%')
@@ -132,6 +139,21 @@ describe('ReliefFloorPill', () => {
     const chips = Array.from({ length: FLOOR_CHIPS_SCROLL_MIN + 1 }, (_, rank) => ({ rank, z: rank * 2 }))
     render(<ReliefFloorPill text={T} floor={floor({ state: { state: 'ready', chips, min: 0, max: 14 } })} />)
     expect(screen.getByRole('button', { name: 'Tout' }).parentElement?.className).toContain('overflow-x-auto')
+  })
+
+  it('sans étage détecté : « Tout » et le curseur seuls, sans nom de rang pour une hauteur libre', () => {
+    render(<ReliefFloorPill text={T} floor={floor({ state: { state: 'ready', chips: [], min: 0, max: 6 }, cut: 2.5 })} />)
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('slider')).toBeInTheDocument()
+    expect(screen.getByRole('slider').closest('label')?.querySelector('output')).toBeEmptyDOMElement()
+  })
+
+  it('au maximum que la brique cuit (cinq étages), tout est posé et rien ne défile', () => {
+    const chips = Array.from({ length: 5 }, (_, rank) => ({ rank, z: rank * 2 }))
+    render(<ReliefFloorPill text={T} floor={floor({ state: { state: 'ready', chips, min: 0, max: 8 } })} />)
+    expect(screen.getByRole('button', { name: 'Tout' }).parentElement?.className).not.toContain('overflow-x-auto')
+    expect(screen.getByRole('button', { name: 'Étage 4' })).toBeInTheDocument()
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('jusqu’à six étages, aucun défilement', () => {

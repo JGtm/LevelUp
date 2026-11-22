@@ -9,8 +9,8 @@
  * sinon `v` arrondi au quart d'unité. La même fonction sert au choix manuel d'une pastille et au suivi
  * du joueur ouvert.
  */
-import { CUT_CACHE_STEP_U, FLAG_MESH_FLOOR, FLAG_ON_MAP, FOLLOW_SNAP_REACH_U } from './constants'
-import type { ReliefData, ReliefHeights } from './types'
+import { CUT_CACHE_STEP_U, FOLLOW_SNAP_REACH_U } from './constants'
+import type { ReliefData } from './types'
 
 /** Un étage détecté : son rang (0 = « Bas ») et sa hauteur de coupe. */
 export interface FloorRank {
@@ -59,23 +59,12 @@ export interface MeshShare {
 }
 
 /**
- * meshShareOf rend la part tirée du maillage : `floors.meshShare` du JSON quand il la porte, sinon la
- * part des pixels de la carte qui portent le drapeau « sol du maillage » (si l'image est fournie).
- * `null` quand aucune des deux sources n'existe, ou pour une carte sans maillage.
+ * meshShareOf rend la part tirée du maillage : `floors.meshShare` du JSON. `null` quand le JSON ne la
+ * porte pas, ou pour une carte sans maillage.
  */
-export function meshShareOf(data: ReliefData, image?: ReliefHeights): MeshShare | null {
+export function meshShareOf(data: ReliefData): MeshShare | null {
   if (data.degradations.includes('sans-maillage')) return null
   const fromJson = data.floors.meshShare
-  if (fromJson !== null) return { share: fromJson, percent: Math.round(fromJson * 100) }
-  if (!image) return null
-  let onMap = 0
-  let mesh = 0
-  for (let p = 0; p < image.flags.length; p++) {
-    if ((image.flags[p] & FLAG_ON_MAP) === 0) continue
-    onMap++
-    if ((image.flags[p] & FLAG_MESH_FLOOR) !== 0) mesh++
-  }
-  if (onMap === 0) return null
-  const share = mesh / onMap
-  return { share, percent: Math.round(share * 100) }
+  if (fromJson === null) return null
+  return { share: fromJson, percent: Math.round(fromJson * 100) }
 }

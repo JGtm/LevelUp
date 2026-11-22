@@ -71,6 +71,14 @@ describe('FloorGroup — les pastilles', () => {
     expect(screen.getByRole('button', { name: 'Bas' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('à cinq étages (le maximum que la brique cuit) la rangée passe à la ligne, sans défilement, toutes les pastilles posées', () => {
+    const cinq = mount(ready([0, 1.5, 3, 4.5, 6]))
+    expect(cinq.getByRole('group').className).toContain('flex-wrap')
+    expect(cinq.getByRole('group').className).not.toContain('overflow-x-auto')
+    expect(cinq.getAllByRole('button')).toHaveLength(6)
+    expect(cinq.getByRole('button', { name: 'Étage 4' })).toBeInTheDocument()
+  })
+
   it('jusqu’à six pastilles d’étage la rangée passe à la ligne, au-delà elle défile horizontalement', () => {
     const six = mount(ready([0, 1.5, 3, 4.5, 6, 7.5]))
     expect(six.getByRole('group').className).toContain('flex-wrap')

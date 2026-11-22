@@ -4,7 +4,7 @@
  * Les faces de `floors` sont rastérisées dans la grille du fond (centre du pixel = centre de la
  * cellule, hauteur interpolée sur la face) ; un pixel porte jusqu'à `STACK_LAYERS` sols, rangés du
  * plus bas au plus haut. Deux sols à moins de `merge` l'un de l'autre n'en font qu'un (le premier
- * rencontré) ; un cinquième sol est perdu et la pile est dite TRONQUEE.
+ * rencontré) ; un cinquième sol est perdu.
  *
  * POURQUOI UNE PILE (conception §2) : 8 à 12 % de la carte porte deux sols ou plus l'un sur l'autre ;
  * un bit « toit » par pixel ne dirait pas de quel sol il est le toit. La coupe compare donc le dessus
@@ -31,8 +31,6 @@ export interface FloorStack {
   /** `STACK_LAYERS` codes par pixel, du plus bas au plus haut ; seuls les `count[p]` premiers comptent. */
   codes: Uint16Array
   count: Uint8Array
-  /** Vrai si un pixel avait plus de `STACK_LAYERS` sols (dégradation `pile-tronquee`). */
-  truncated: boolean
 }
 
 /** stackHeight rend la hauteur du sol `k` (du bas) du pixel `p`, en unités. */
@@ -46,13 +44,6 @@ export function stackTop(stack: FloorStack, p: number): number | null {
   return c === 0 ? null : stackHeight(stack, p, c - 1)
 }
 
-/** Les hauteurs des sols du pixel `p`, du plus bas au plus haut (copie : pour les tests et les diagnostics). */
-export function stackColumn(stack: FloorStack, p: number): number[] {
-  const out: number[] = []
-  for (let k = 0; k < stack.count[p]; k++) out.push(stackHeight(stack, p, k))
-  return out
-}
-
 /** Ajoute le sol `z` au pixel `p` : fusionné s'il est à moins de `merge` d'un sol déjà posé. */
 function putFloor(stack: FloorStack, p: number, z: number, merge: number): void {
   const base = p * STACK_LAYERS
@@ -60,10 +51,7 @@ function putFloor(stack: FloorStack, p: number, z: number, merge: number): void 
   for (let k = 0; k < have; k++) {
     if (Math.abs(stack.ref + stack.codes[base + k] * stack.step - z) < merge) return
   }
-  if (have >= STACK_LAYERS) {
-    stack.truncated = true
-    return
-  }
+  if (have >= STACK_LAYERS) return
   const code = Math.round((z - stack.ref) / stack.step)
   stack.codes[base + have] = Math.min(65535, Math.max(0, code))
   stack.count[p] = have + 1
@@ -118,7 +106,6 @@ export function buildFloorStack(data: ReliefData): FloorStack {
     step: height.step,
     codes: new Uint16Array(n * STACK_LAYERS),
     count: new Uint8Array(n),
-    truncated: false,
   }
   const mesh = floors.mesh
   for (let f = 0; f < faceCount(mesh); f++) {

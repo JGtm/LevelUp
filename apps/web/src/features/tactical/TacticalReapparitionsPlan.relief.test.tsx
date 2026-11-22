@@ -81,7 +81,12 @@ function carte(relief: boolean) {
   mocks.files.mockReturnValue({ data: relief ? donneesDuRelief() : null, blob: relief ? new Blob() : null, loading: false, error: null })
 }
 
-function rendre() {
+const PROPOSEES = [
+  { volumeIndex: 1, nom: 'Base' },
+  { volumeIndex: 2, nom: 'Pont' },
+]
+
+function rendre(choisie: number | null = null) {
   return renderWithProviders(
     <TacticalReapparitionsPlan
       t={t}
@@ -95,8 +100,8 @@ function rendre() {
       modele={null}
       zones={ZONES}
       pilule={null}
-      zonesProposees={[]}
-      choisie={null}
+      zonesProposees={PROPOSEES}
+      choisie={choisie}
       onChoisir={() => {}}
       plan={{ href: null, decide: true }}
     />,
@@ -142,6 +147,44 @@ describe('TacticalReapparitionsPlan — le fond Relief et la coupe par étage', 
     rendre()
     fireEvent.click(within(screen.getByTestId('tactical-plan-etage')).getByRole('button', { name: 'Étage 1' }))
     expect(screen.getByTestId('tactical-plan-surface')).toBeInTheDocument()
+  })
+
+  describe('la zone tenue choisie que la coupe retire du plan', () => {
+    const select = () => screen.getByTestId('tactical-reapp-zone-select') as HTMLSelectElement
+    const optionsDuSelect = () => within(select()).getAllByRole('option').map((o) => o.textContent)
+
+    it('sans coupe, aucune zone n’est dite hors de l’étage', () => {
+      rendre(1)
+      expect(optionsDuSelect()).toEqual(['Aucune', 'Base', 'Pont'])
+      expect(select().value).toBe('1')
+      expect(select().closest('label')).not.toHaveAttribute('title')
+    })
+
+    it('la coupe retire la zone choisie : la pilule la dit hors de l’étage, grisée et expliquée, sans défaire le choix', () => {
+      rendre(1)
+      fireEvent.click(within(screen.getByTestId('tactical-plan-etage')).getByRole('button', { name: 'Étage 2' }))
+      expect(zonesRecues()).toBe('2')
+      expect(optionsDuSelect()).toEqual(['Aucune', t.reappHeldOffFloor('Base'), 'Pont'])
+      expect(select().value).toBe('1')
+      expect(select().className).toContain('text-muted-foreground')
+      expect(select().closest('label')).toHaveAttribute('title', t.reappHeldOffFloorHint)
+    })
+
+    it('une zone choisie qui reste sur l’étage n’est pas annoncée hors de l’étage', () => {
+      rendre(2)
+      fireEvent.click(within(screen.getByTestId('tactical-plan-etage')).getByRole('button', { name: 'Étage 2' }))
+      expect(select().className).not.toContain('text-muted-foreground')
+      expect(select().closest('label')).not.toHaveAttribute('title')
+    })
+
+    it('lever la coupe rend la zone : la mention disparaît', () => {
+      rendre(1)
+      const etage = within(screen.getByTestId('tactical-plan-etage'))
+      fireEvent.click(etage.getByRole('button', { name: 'Étage 2' }))
+      fireEvent.click(etage.getByRole('button', { name: 'Tout' }))
+      expect(optionsDuSelect()).toEqual(['Aucune', 'Base', 'Pont'])
+      expect(select().closest('label')).not.toHaveAttribute('title')
+    })
   })
 
   it('carte sans relief : ni traits ni étage, les zones restent entières', () => {
