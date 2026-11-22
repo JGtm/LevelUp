@@ -10,7 +10,8 @@
 //	    sinon la position n'est plus fiable et la lecture repart du début, ce que le journal et le
 //	    compteur `sync_v2_history_cursor_fallback_total` disent.
 //
-// Ensuite la lecture saute les connus, garde les inconnus dans l'ordre de l'API jusqu'au budget
+// Un match abandonné (HistoryState.Failures, maxCatchUpAttempts) est sauté comme un connu, sans
+// compter comme nouveau ni dans le budget. Ensuite la lecture saute les connus, garde les inconnus dans l'ordre de l'API jusqu'au budget
 // (`historystate.PassBudget()`, N compris), et s'arrête sur une page vide ou partielle (fin vue),
 // sur le budget, ou sur `historystate.MaxDepth` (avertissement).
 package v2
@@ -33,6 +34,7 @@ type catchUpScan struct {
 	histArg  string
 	gamertag string
 	known    map[string]bool
+	skip     map[string]bool // matchs abandonnés par le rattrapage : ni retentés, ni comptés, ni « connus »
 	budget   int
 
 	unknown []string
@@ -55,15 +57,17 @@ type catchUpScan struct {
 func (p *matchListProviderV2) listCatchUp(
 	ctx context.Context,
 	client HaloClient,
-	gamertag, histArg string,
+	prof PlayerProfile,
 	known map[string]bool,
-	cursor *historystate.Cursor,
+	hist HistoryState,
 ) (Listing, error) {
+	gamertag := prof.Gamertag
 	sc := &catchUpScan{
-		p: p, client: client, histArg: histArg, gamertag: gamertag, known: known,
-		budget: historystate.PassBudget(), seen: map[string]bool{},
+		p: p, client: client, histArg: fmt.Sprintf("xuid(%s)", prof.XUID), gamertag: gamertag, known: known,
+		skip: hist.abandoned(), budget: historystate.PassBudget(), seen: map[string]bool{},
 		lastReadPos: -1, lastUnknownPos: -1,
 	}
+	cursor := hist.Cursor
 	start := 0
 	if cursor != nil {
 		if err := sc.scanNew(ctx); err != nil {
@@ -110,6 +114,9 @@ func (sc *catchUpScan) scanNew(ctx context.Context) error {
 			if sc.known[e.MatchID] {
 				sc.reachedKnown = true
 				return nil
+			}
+			if sc.skip[e.MatchID] {
+				continue // abandonné : déjà derrière le marque-page, pas un nouveau match
 			}
 			if sc.addUnknown(pos+i, e.MatchID) {
 				return nil
@@ -166,7 +173,7 @@ func (sc *catchUpScan) scanFrom(ctx context.Context, start int) error {
 		}
 		for i, e := range entries {
 			sc.noteRead(pos+i, e.MatchID)
-			if sc.known[e.MatchID] || sc.seen[e.MatchID] {
+			if sc.known[e.MatchID] || sc.seen[e.MatchID] || sc.skip[e.MatchID] {
 				continue
 			}
 			if sc.addUnknown(pos+i, e.MatchID) {

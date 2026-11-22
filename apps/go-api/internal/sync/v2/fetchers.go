@@ -96,7 +96,7 @@ func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof Playe
 	// V1 anti-régression : xuid(NNN) requis, pas le gamertag brut.
 	histArg := fmt.Sprintf("xuid(%s)", prof.XUID)
 	if hist.Incomplete {
-		return p.listCatchUp(ctx, client, prof.Gamertag, histArg, known, hist.Cursor)
+		return p.listCatchUp(ctx, client, prof, known, hist)
 	}
 	unknown, err := p.listDelta(ctx, client, prof.Gamertag, histArg, known)
 	if err != nil {

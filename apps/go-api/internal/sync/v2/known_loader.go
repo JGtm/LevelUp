@@ -76,11 +76,8 @@ func readHistoryState(ctx context.Context, playerDB *sql.DB) HistoryState {
 	if historystate.Complete(ctx, playerDB) {
 		return HistoryState{}
 	}
-	st := HistoryState{Incomplete: true}
-	if c, ok := historystate.LoadCursor(ctx, playerDB); ok {
-		st.Cursor = &c
-	}
-	return st
+	cu := historystate.LoadCatchUp(ctx, playerDB)
+	return HistoryState{Incomplete: true, Cursor: cu.Cursor, Failures: cu.Failures}
 }
 
 // loadOnce emprunte la base partagée, lit l'ensemble connu (knownset.Load) et rend l'emprunt.

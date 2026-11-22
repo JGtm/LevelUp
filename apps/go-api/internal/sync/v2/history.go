@@ -12,12 +12,8 @@ package v2
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/observability"
-	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/historystate"
 	"levelup/go-api/internal/sync/knownset"
 )
@@ -38,7 +34,19 @@ const (
 	counterHistoryComplete = "sync_v2_history_complete_total"
 	// counterHistoryCursorSaved : marque-pages rangés par le cycle.
 	counterHistoryCursorSaved = "sync_v2_history_cursor_saved_total"
+	// counterHistoryAbandoned : matchs abandonnés par le rattrapage après maxCatchUpAttempts passes
+	// en échec, comptés au moment de l'abandon.
+	counterHistoryAbandoned = "sync_v2_history_abandoned_total"
 )
+
+// maxCatchUpAttempts est le nombre de passes de rattrapage en échec au bout duquel un match est
+// abandonné : il n'est plus retenté par le rattrapage, ne compte plus dans le budget et ne retient
+// plus la fin d'historique. Un échec compte une passe où le match était listé pour le joueur et n'a
+// été ni persisté ni rendu introuvable (404/410, qui ne comptent jamais comme échec).
+const maxCatchUpAttempts = 3
+
+// isAbandoned dit si un match en échec à `attempts` passes est abandonné.
+func isAbandoned(attempts int) bool { return attempts >= maxCatchUpAttempts }
 
 // HistoryState est l'état de l'historique d'un joueur au début du cycle, lu avec l'ensemble connu.
 // La valeur zéro dit « historique complet » : delta ordinaire.
@@ -48,6 +56,24 @@ type HistoryState struct {
 	// Cursor : marque-page du rattrapage en cours ; nil = aucun (premier passage, valeur illisible
 	// ou marque-page effacé). N'a de sens que si Incomplete.
 	Cursor *historystate.Cursor
+	// Failures : les matchs que le rattrapage n'a pas réussi à ranger, avec leur nombre de passes en
+	// échec (du plus ancien au plus récent). N'a de sens que si Incomplete.
+	Failures []historystate.Failure
+}
+
+// abandoned rend l'ensemble des matchs que le rattrapage ne retente plus (échec à
+// maxCatchUpAttempts passes ou plus).
+func (h HistoryState) abandoned() map[string]bool {
+	var out map[string]bool
+	for _, f := range h.Failures {
+		if isAbandoned(f.Attempts) {
+			if out == nil {
+				out = map[string]bool{}
+			}
+			out[f.MatchID] = true
+		}
+	}
+	return out
 }
 
 // KnownState est ce que rend KnownLoader : l'ensemble connu du joueur et l'état de son historique,
@@ -76,6 +102,8 @@ type PlayerHistory struct {
 	Incomplete bool
 	EndSeen    bool
 	Proposed   *historystate.Cursor
+	// Failures : les échecs de rattrapage connus au début du cycle (voir HistoryState.Failures).
+	Failures []historystate.Failure
 }
 
 // historyTracker suit, pendant un cycle, les joueurs dont l'historique reste incomplet : valeur
@@ -134,102 +162,4 @@ func (o *CycleOrchestratorImpl) settleHistory(
 			tr.pending[p.PlayerSlug] = false
 		}
 	}
-}
-
-// settlePlayerHistory applique la règle d'un joueur : la fin d'historique se range seulement si la
-// découverte l'a vue ET si chaque match listé est persisté ou introuvable ; sinon, si tous le sont
-// et qu'une position est proposée, le marque-page avance ; sinon l'ancien marque-page reste. Rend
-// vrai quand la fin d'historique est rangée.
-func (o *CycleOrchestratorImpl) settlePlayerHistory(
-	ctx context.Context,
-	p PlayerProfile,
-	ph PlayerHistory,
-	listed []string,
-	fetchErrs map[string]error,
-) bool {
-	if !ph.EndSeen && ph.Proposed == nil {
-		return false // rien à ranger : budget atteint avant tout premier connu, ou borne de profondeur sans position
-	}
-	if o.historyWriter == nil {
-		slog.WarnContext(ctx, "sync.v2: rattrapage d'historique sans écrivain câblé — rien n'est rangé",
-			"event", "sync.v2.history.no_writer", "player", p.PlayerSlug)
-		return false
-	}
-	if !o.listedResolved(ctx, p, listed, fetchErrs) {
-		return false
-	}
-
-	wctx, cancel := context.WithTimeout(ctx, historyWriteWait)
-	defer cancel()
-	db, release, err := o.historyWriter(wctx, p.Gamertag)
-	if err != nil {
-		slog.WarnContext(ctx, "sync.v2: base joueur indisponible en écriture — état de l'historique non rangé",
-			"event", "sync.v2.history.write_unavailable", "player", p.PlayerSlug, "err", err)
-		return false
-	}
-	defer release()
-
-	title := ctxkeys.TitleSlug(ctx)
-	if ph.EndSeen {
-		if !historystate.MarkComplete(wctx, db, p.Gamertag) {
-			return false
-		}
-		observability.IncCounterT(title, counterHistoryComplete)
-		return true
-	}
-	if historystate.SaveCursor(wctx, db, *ph.Proposed) {
-		observability.IncCounterT(title, counterHistoryCursorSaved)
-		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — marque-page rangé",
-			"event", "sync.v2.history.cursor_saved", "player", p.PlayerSlug,
-			"offset", ph.Proposed.Offset, "listed", len(listed))
-	}
-	return false
-}
-
-// listedResolved dit si chaque match listé pour le joueur est « résolu » : introuvable côté API
-// (404/410, compté et journalisé) ou présent dans l'ensemble connu RELU après la persistance (preuve
-// que le match est bien rangé : une erreur de lecture du match, de décodage ou de file d'écriture
-// ne passe pas pour un succès). Un ensemble connu illisible vaut « non résolu ».
-func (o *CycleOrchestratorImpl) listedResolved(
-	ctx context.Context,
-	p PlayerProfile,
-	listed []string,
-	fetchErrs map[string]error,
-) bool {
-	toCheck := make([]string, 0, len(listed))
-	notFound := 0
-	for _, id := range listed {
-		if err, failed := fetchErrs[id]; failed && syncpkg.IsNotFound(err) {
-			notFound++
-			continue
-		}
-		toCheck = append(toCheck, id)
-	}
-	if notFound > 0 {
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), counterHistoryNotFound, int64(notFound))
-		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — matchs introuvables côté API (404/410), non bloquants",
-			"event", "sync.v2.history.not_found", "player", p.PlayerSlug, "not_found", notFound)
-	}
-	if len(toCheck) == 0 {
-		return true
-	}
-	state, err := o.loader.LoadKnown(ctx, p)
-	if err != nil {
-		slog.WarnContext(ctx, "sync.v2: rattrapage d'historique — ensemble connu illisible après la persistance, rien n'est rangé",
-			"event", "sync.v2.history.reload_failed", "player", p.PlayerSlug, "err", err)
-		return false
-	}
-	unresolved := 0
-	for _, id := range toCheck {
-		if !state.Known[id] {
-			unresolved++
-		}
-	}
-	if unresolved > 0 {
-		slog.WarnContext(ctx, "sync.v2: rattrapage d'historique — matchs listés non persistés, l'état n'avance pas (la passe suivante reprend)",
-			"event", "sync.v2.history.unresolved", "player", p.PlayerSlug,
-			"listed", len(listed), "unresolved", unresolved, "not_found", notFound)
-		return false
-	}
-	return true
 }

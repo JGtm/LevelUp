@@ -338,3 +338,51 @@ func TestListUnknown_HistoriqueComplet_DeltaInchange(t *testing.T) {
 		t.Errorf("sans connu : %d inconnus en %d pages, want 500 en 20 pages (garde-rail maxPages)", len(l.Unknown), len(c.starts))
 	}
 }
+
+// Un match abandonné est sauté comme un connu, sans consommer le budget ; un match en échec pas
+// encore abandonné reste listé.
+func TestListCatchUp_MatchsAbandonnes(t *testing.T) {
+	budget := historystate.PassBudget()
+	ids := matchIDs("m", 1000)
+	hist := HistoryState{Incomplete: true, Failures: []historystate.Failure{
+		{MatchID: ids[0], Attempts: maxCatchUpAttempts},
+		{MatchID: ids[1], Attempts: maxCatchUpAttempts + 2},
+		{MatchID: ids[2], Attempts: maxCatchUpAttempts - 1}, // pas encore abandonné
+	}}
+	l, err := catchUpProvider(newPagedClient(ids)).ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}, map[string]bool{}, hist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !equalSlice(l.Unknown, ids[2:2+budget]) {
+		t.Errorf("Unknown = %d ids, want les %d ids à partir de la position 2 (abandonnés sautés, budget intact)", len(l.Unknown), budget)
+	}
+	want := historystate.Cursor{Offset: 2 + budget, LastMatchID: ids[2+budget-1]}
+	if l.Proposed == nil || *l.Proposed != want {
+		t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
+	}
+}
+
+// En haut de liste, un abandonné n'est pas un nouveau match : il ne décale pas la reprise du marque-page.
+func TestListCatchUp_AbandonneEnHautNeDecalePasLaReprise(t *testing.T) {
+	ids := matchIDs("m", 1000)
+	known := knownOfIDs(ids[2:600])
+	hist := HistoryState{
+		Incomplete: true,
+		Cursor:     &historystate.Cursor{Offset: 600, LastMatchID: ids[599]},
+		Failures: []historystate.Failure{
+			{MatchID: ids[0], Attempts: maxCatchUpAttempts},
+			{MatchID: ids[1], Attempts: maxCatchUpAttempts},
+		},
+	}
+	c := newPagedClient(ids)
+	l, err := catchUpProvider(c).ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}, known, hist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !equalSlice(l.Unknown, ids[600:600+historystate.PassBudget()]) {
+		t.Fatalf("Unknown = %d ids, want %d ids à partir de la position 600", len(l.Unknown), historystate.PassBudget())
+	}
+	if c.startsBetween(575, 576) == 0 {
+		t.Errorf("lectures %v : la reprise devait se faire à 600-25=575 (aucun nouveau match)", c.starts)
+	}
+}

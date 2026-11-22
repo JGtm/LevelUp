@@ -110,7 +110,7 @@ func RunDiscovery(
 			if err != nil {
 				mu.Lock()
 				res.Errors[p.PlayerSlug] = fmt.Errorf("list matches: %w", err)
-				res.History[p.PlayerSlug] = PlayerHistory{Incomplete: state.History.Incomplete}
+				res.History[p.PlayerSlug] = PlayerHistory{Incomplete: state.History.Incomplete, Failures: state.History.Failures}
 				mu.Unlock()
 				return nil //nolint:nilerr // idem
 			}
@@ -119,6 +119,7 @@ func RunDiscovery(
 			res.PerPlayer[p.PlayerSlug] = unknown
 			res.History[p.PlayerSlug] = PlayerHistory{
 				Incomplete: state.History.Incomplete, EndSeen: listing.EndSeen, Proposed: listing.Proposed,
+				Failures: state.History.Failures,
 			}
 			mu.Unlock()
 			return nil
