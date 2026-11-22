@@ -38,6 +38,8 @@
     "eau : aucun volume d'eau dans le sddt de ctf_bazaar-rtx-new.module"
   ],
   "planImage": "ctf_bazaar.plan.webp",
+  "reliefImage": "ctf_bazaar.relief.webp",
+  "reliefData": "ctf_bazaar.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 2312,

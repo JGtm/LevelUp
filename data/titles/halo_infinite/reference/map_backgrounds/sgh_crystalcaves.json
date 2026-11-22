@@ -37,6 +37,8 @@
     "cellsAssumedFloor": 226964
   },
   "planImage": "sgh_crystalcaves.plan.webp",
+  "reliefImage": "sgh_crystalcaves.relief.webp",
+  "reliefData": "sgh_crystalcaves.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 3453,

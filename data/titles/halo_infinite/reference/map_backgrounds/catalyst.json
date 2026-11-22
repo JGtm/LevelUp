@@ -41,6 +41,8 @@
     "eau : aucun volume d'eau dans le sddt de catalyst-rtx-new.module"
   ],
   "planImage": "catalyst.plan.webp",
+  "reliefImage": "catalyst.relief.webp",
+  "reliefData": "catalyst.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 1918,
