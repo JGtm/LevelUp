@@ -36,14 +36,11 @@
  * La seconde est l'inverse de la première ; les poser toutes deux ici est ce qui empêche
  * qu'une surface en applique une et sa voisine aucune.
  *
- * DEUX COUPS D'ENVOI COEXISTENT, ET CE MODULE ANCRE SUR CELUI DE L'API. `header.t0_ms` est
- * ESTIMÉ des `first_joined_time` ; `doc.t0FilmMs` est MESURÉ dans le film (premier mouvement
- * réel), et le rejeu 2D le préfère pour SON horloge affichée (`replayWindow.ts`, décision D5
- * du plan T0-film, 2026-09-02). L'axe du gameplay défini ici, lui, est ancré sur
- * `header.t0_ms` et ne peut pas l'être ailleurs : c'est l'ancre que le producteur a
- * retranchée pour fabriquer `event_time_ms`. Y substituer le T0 film déplacerait les frags
- * cumulés — la série qui est déjà juste. Les deux ancres sont donc portées côte à côte, et
- * `t0FilmMs` reste disponible pour qui affiche une horloge de LECTURE.
+ * UN SEUL COUP D'ENVOI : `header.t0_ms`. Le serveur le résout une fois par match (le film quand
+ * il existe, sinon l'estimation de l'API, sinon inconnu : ADR 0050) et le sert tel quel ; c'est
+ * l'ancre qu'il a retranchée pour fabriquer `event_time_ms`, et la seule que le client lit,
+ * pour l'axe du gameplay comme pour la fenêtre de lecture. Inconnu, il vaut 0 ici
+ * (`matchKickoffMs`) : la chronologie part du début du match, exactement comme côté serveur.
  *
  * SANS ORIGINE, PAS D'HORLOGE. `doc.originMs` absent (artefact antérieur au schéma 4, ou
  * origine que le producteur a REFUSÉ d'établir — chunk illisible, témoin contradictoire) :
@@ -70,8 +67,6 @@ import type { MatchViewHeader } from '@/lib/api/types'
 export interface MatchClockDocument {
   /** Instant de l'image zéro du film sur l'axe du MATCH. Absent = pas d'horloge. */
   originMs?: number
-  /** Coup d'envoi MESURÉ dans le film, sur l'axe du match. Absent avant le schéma 36. */
-  t0FilmMs?: number
   /** Durée réelle d'une image. Absente = pas d'échelle temporelle, pas d'horloge. */
   frameIntervalMs?: number
   frameCount: number
@@ -79,6 +74,16 @@ export interface MatchClockDocument {
 
 /** Ce que l'horloge lit de l'en-tête du match : l'ancre de `event_time_ms`. */
 export type MatchClockHeader = Pick<MatchViewHeader, 't0_ms'>
+
+/**
+ * matchKickoffMs — LE coup d'envoi du match lu de l'en-tête, en ms depuis son début. Absent,
+ * non fini ou négatif = inconnu = 0 : la chronologie part du début du match, la règle du serveur
+ * (`timeline.ForMatch`) écrite une fois ici. Aucune surface ne remplace l'absence par 0 de son côté
+ * (garde-rail `lib/replay/matchKickoff.guard.test.ts`).
+ */
+export function matchKickoffMs(t0Ms: number | null | undefined): number {
+  return typeof t0Ms === 'number' && Number.isFinite(t0Ms) && t0Ms > 0 ? t0Ms : 0
+}
 
 /** Une horloge ÉTABLIE : les quatre grandeurs, et les conversions qui en découlent. */
 export interface MatchClock {
@@ -90,12 +95,6 @@ export interface MatchClock {
    * eu lieu côté events non plus, et ne rien ajouter est exactement juste.
    */
   t0Ms: number
-  /**
-   * `doc.t0FilmMs` — le coup d'envoi MESURÉ dans le film, sur l'axe du match, ou `null`.
-   * L'axe du gameplay de ce module ne s'y ancre PAS (cf. l'en-tête) ; il est porté ici pour
-   * les horloges de LECTURE, qui le préfèrent à l'estimation de l'API.
-   */
-  t0FilmMs: number | null
   frameIntervalMs: number
   frameCount: number
   /**
@@ -139,8 +138,7 @@ export function matchClock(
   if (!frameIntervalMs || !Number.isFinite(frameIntervalMs)) return null
   if (!(doc.frameCount > 1)) return null
 
-  const t0Ms = Number.isFinite(header?.t0_ms) ? (header?.t0_ms as number) : 0
-  const t0FilmMs = Number.isFinite(doc.t0FilmMs) ? (doc.t0FilmMs as number) : null
+  const t0Ms = matchKickoffMs(header?.t0_ms)
   // L'ÉCART ENTRE LES DEUX AXES, calculé une fois : c'est lui, et lui seul, que les deux
   // conversions appliquent. Positif quand le film commence AVANT le coup d'envoi (le cas
   // ordinaire, 18 à 28 s de countdown), négatif sur un film qui démarre après (témoin
@@ -150,7 +148,6 @@ export function matchClock(
   return {
     originMs,
     t0Ms,
-    t0FilmMs,
     frameIntervalMs,
     frameCount: doc.frameCount,
     gameplayMsOfFilmMs,

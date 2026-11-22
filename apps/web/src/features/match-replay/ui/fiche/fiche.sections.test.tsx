@@ -67,7 +67,7 @@ describe('FicheIdentite', () => {
 })
 
 const SINCE: SinceView = {
-  fda: 3.67, currentStreak: 2, bestStreak: 4, headshots: { count: 3, measured: 5 }, perfects: 1, respawns: 5,
+  fda: 3.67, currentStreak: 2, bestStreak: 4, headshots: 3, perfects: 1, respawns: 5,
   currentLifeMs: 27_000, averageLifeMs: 41_000, shieldsLost: 11, score: 800, rank: { place: 2, of: 8 },
 }
 
@@ -82,7 +82,7 @@ describe('FicheDepuisDebut', () => {
       ['FDA', '3,67'],
       ['Série en cours', '2'],
       ['Meilleure série', '4'],
-      ['Tirs à la tête', '3 · sur 5 mesurées'],
+      ['Tirs à la tête', '3'],
       ['Éliminations parfaites', '1'],
       ['Réapparitions', '5'],
       ['Vie en cours', '0:27'],

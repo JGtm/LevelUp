@@ -56,12 +56,15 @@ func buildMatchHeader(
 
 	applyMatchHeaderMetaLabels(&h, meta, ctxkeys.Locale(ctx))
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
-	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
-	// L'offset de countdown voyage tel quel : les events de cette page sont recalés sur le
-	// gameplay, le film ne l'est pas. Cf. MatchViewHeader.T0Ms pour la mesure.
-	if meta.T0Ms != nil && *meta.T0Ms > 0 {
-		h.T0Ms = *meta.T0Ms
+	// Durée de jeu et coup d'envoi : la même chronologie que la Dominance et les événements
+	// (matchViewTimeline). Le coup d'envoi voyage tel quel : les events de cette page sont recalés
+	// sur le gameplay, le film ne l'est pas. Cf. MatchViewHeader.T0Ms pour la mesure.
+	tl, hasDuration := matchViewTimeline(meta)
+	if hasDuration {
+		gp := tl.GameplayDurationSeconds()
+		h.GameplayDurationSeconds = &gp
 	}
+	h.T0Ms = tl.T0Ms
 	h.IsRanked = meta.IsRanked
 	// Lien vers la page publique du match (Waypoint pour Infinite). Via l'adapter
 	// du titre (F3) : un titre sans page publique (H5) → "" → pas de lien mort.
@@ -73,23 +76,6 @@ func buildMatchHeader(
 	applyMatchHeaderEnrichment(&h, stats, enrich)
 
 	return h
-}
-
-// headerGameplayDurationSeconds retourne la VRAIE durée de gameplay du match
-// (countdown retranché) : duration_seconds − T0/1000 quand disponible, source la
-// plus fiable. Fallback sur playable_duration_seconds (API) si duration absente.
-func headerGameplayDurationSeconds(meta *domain.MatchMetaRaw) *int64 {
-	if meta.DurationSeconds == nil {
-		return meta.PlayableDurationSeconds
-	}
-	gp := int64(*meta.DurationSeconds)
-	if meta.T0Ms != nil {
-		gp -= *meta.T0Ms / 1000
-	}
-	if gp < 0 {
-		gp = 0
-	}
-	return &gp
 }
 
 // applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel,
@@ -256,8 +242,12 @@ func applyMatchHeaderOvertime(h *domain.MatchViewHeader, meta *domain.MatchMetaR
 	if h == nil || meta == nil {
 		return
 	}
-	isOvertime, seconds := analysis.ResolveOvertime(
-		strDeref(meta.GameVariantName), meta.ElapsedSeconds, regulation)
+	var gameplay *int
+	if tl, ok := matchViewTimeline(meta); ok && tl.GameplayDurationSeconds() > 0 {
+		secs := int(tl.GameplayDurationSeconds())
+		gameplay = &secs
+	}
+	isOvertime, seconds := analysis.ResolveOvertime(strDeref(meta.GameVariantName), gameplay, regulation)
 	h.IsOvertime = isOvertime
 	h.OvertimeSeconds = seconds
 }

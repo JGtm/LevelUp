@@ -77,27 +77,32 @@ func SQLStartTimeCanonical(alias string) string {
 	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
 }
 
-// SQLRealStartOffsetMs rend l'expression SQL de l'écart, en millisecondes, entre le coup d'envoi
-// du registre (`real_start_time`) et le début canonique du match. Elle suppose `real_start_time`
-// non NULL : l'appelant gère le cas NULL (`SQLT0Ms` rend NULL, un calcul de durée prend 0).
-// SOURCE UNIQUE : ratchet `archlint/no_raw_real_start_offset_test.go`.
-func SQLRealStartOffsetMs(alias string) string {
-	prefix := ""
-	if alias != "" {
-		prefix = alias + "."
-	}
-	return "epoch_ms(" + prefix + "real_start_time AT TIME ZONE 'UTC') - epoch_ms(" + SQLStartTimeCanonical(alias) + ")"
-}
-
-// SQLT0Ms rend le T0 d'un match en millisecondes (countdown d'avant-match) : l'écart entre le
-// coup d'envoi du registre et le début canonique, NULL quand `real_start_time` est absent (le
-// consommateur retombe alors sur T0 = 0 à l'exécution).
+// SQLT0Ms rend LE coup d'envoi d'un match en millisecondes depuis son début canonique (le
+// countdown d'avant-match) : l'écart entre `real_start_time` et le début canonique, NULL quand
+// le coup d'envoi est inconnu. Le consommateur ne remplace pas ce NULL de son côté : il passe
+// par `timeline.ForMatch` (Go) ou par [SQLGameplayDurationMs] (SQL), qui portent la règle
+// unique (inconnu = la chronologie part du début du match).
+// SOURCE UNIQUE de l'expression : garde-rails `archlint/no_raw_real_start_offset_test.go` et
+// `archlint/kickoff_read_guard_test.go`.
 func SQLT0Ms(alias string) string {
 	prefix := ""
 	if alias != "" {
 		prefix = alias + "."
 	}
-	return "CASE WHEN " + prefix + "real_start_time IS NOT NULL THEN " + SQLRealStartOffsetMs(alias) + " END"
+	return "CASE WHEN " + prefix + "real_start_time IS NOT NULL THEN " +
+		"epoch_ms(" + prefix + "real_start_time AT TIME ZONE 'UTC') - epoch_ms(" + SQLStartTimeCanonical(alias) + ") END"
+}
+
+// SQLGameplayDurationMs rend LA durée de jeu d'un match en millisecondes : la durée du match
+// (`duration_seconds`, countdown compris) moins le coup d'envoi ([SQLT0Ms]), bornée à 0. Coup
+// d'envoi inconnu : la durée de jeu vaut la durée du match ; durée absente : 0. Même calcul que
+// `timeline.ForMatch` / `domain.MatchTimeline.GameplayDurationMs`, écrit une fois côté SQL.
+func SQLGameplayDurationMs(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "GREATEST(0, COALESCE(" + prefix + "duration_seconds, 0) * 1000 - COALESCE(" + SQLT0Ms(alias) + ", 0))"
 }
 
 // SQLDansFenetreRetention rend le predicat « ce match est DANS la fenetre de retention des

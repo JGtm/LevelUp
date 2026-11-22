@@ -142,14 +142,11 @@ func TestExtractRegistry_Valid(t *testing.T) {
 	if row.DurationSeconds == nil || *row.DurationSeconds != 900 {
 		t.Errorf("DurationSeconds = %v", row.DurationSeconds)
 	}
-	if row.PlayableDurationSeconds == nil || *row.PlayableDurationSeconds != 870 {
-		t.Errorf("PlayableDurationSeconds = %v", row.PlayableDurationSeconds)
-	}
 	if row.EndTime == nil {
 		t.Error("EndTime should not be nil")
 	}
 	// real_start_time vient désormais de ComputeT0 (first_joined_time des joueurs
-	// présents au début), plus de playable_duration. Le fixture minimal n'a pas
+	// présents au début). Le fixture minimal n'a pas
 	// de ParticipationInfo → T0 no_data → RealStartTime nil. Le calcul T0 lui-même
 	// est couvert par compute_t0_test.go ; le wiring par TestComputeMatchT0.
 	if row.RealStartTime != nil {

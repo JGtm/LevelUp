@@ -239,26 +239,6 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	return d, nil
 }
 
-// tugDurationMS retourne la durée (ms) servant à binner la Dominance (tug-of-war).
-// playable_duration_seconds (API) est prioritaire — Infinite le fournit toujours,
-// donc son comportement est inchangé. Fallback title-agnostic quand il est NULL
-// (cas de 100 % des matchs Halo 5, dont l'adapter n'écrit jamais ce champ) : la
-// durée de gameplay dérivée (duration_seconds − T0 via headerGameplayDurationSeconds),
-// sinon 0. Sans ce fallback, ComputeTugOfWar retourne nil (durée ≤ 0) et la
-// Dominance est vide sur tout Halo 5 alors que les paires killer/victim existent.
-func tugDurationMS(meta *domain.MatchMetaRaw) int64 {
-	if meta == nil {
-		return 0
-	}
-	if meta.PlayableDurationSeconds != nil {
-		return *meta.PlayableDurationSeconds * 1000
-	}
-	if gp := headerGameplayDurationSeconds(meta); gp != nil {
-		return *gp * 1000
-	}
-	return 0
-}
-
 // buildMatchViewFromData assemble séquentiellement la MatchViewResponse depuis
 // la meta + les données chargées en parallèle. Aucun appel I/O bloquant ici à
 // l'exception du lookup IsMatchFavorite (PK indexée, cheap) et du loader
@@ -273,7 +253,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 ) domain.MatchViewResponse {
 	// Recalage T0 en un point unique (cadence/rôles, fil et badges d'impact sur la même
 	// horloge) ; durée pour les bins tug-of-war (Dominance).
-	durationMS := prepareMatchViewEvents(&d, matchID, meta)
+	tl := prepareMatchViewEvents(&d, matchID, meta)
 
 	// expected_assists — uniquement pour le joueur suivi (is_me), jamais pour
 	// les autres lignes du scoreboard.
@@ -320,7 +300,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	combat := buildCombatTabFull(combatTabScope{matchID: matchID, myXUID: s.xuid, durationMS: durationMS, locale: i18n.FromContext(ctx)},
+	combat := buildCombatTabFull(combatTabScope{matchID: matchID, myXUID: s.xuid, timeline: tl, locale: i18n.FromContext(ctx)},
 		d.events, d.canonicalEvents, d.kvPairs, d.scoreboard)
 	// L'arme du kill, l'équipe du tueur et l'identité des médailles se posent APRÈS
 	// l'assemblage : décorations du feed, pas des entrées du calcul de dominance.

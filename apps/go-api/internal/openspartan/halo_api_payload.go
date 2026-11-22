@@ -41,7 +41,6 @@ type MatchInfo struct {
 	PlaylistMapModePair *AssetRef `json:"PlaylistMapModePair,omitempty"`
 	ClearanceID         string    `json:"ClearanceId,omitempty"`
 	SeasonID            string    `json:"SeasonId,omitempty"`
-	PlayableDuration    string    `json:"PlayableDuration"`
 	TeamsEnabled        bool      `json:"TeamsEnabled"`
 	TeamScoringEnabled  bool      `json:"TeamScoringEnabled"`
 	GameplayInteraction int       `json:"GameplayInteraction,omitempty"`

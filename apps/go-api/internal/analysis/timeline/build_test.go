@@ -11,47 +11,6 @@ import (
 func ptrInt(v int) *int       { return &v }
 func ptrInt64(v int64) *int64 { return &v }
 
-func TestBuildFromRegistry_NilRealStartTimeYieldsT0Zero(t *testing.T) {
-	reg := domain.MatchRegistryRow{
-		MatchID:         "test-match",
-		DurationSeconds: ptrInt(447),
-	}
-	tl := BuildFromRegistry(reg)
-	if tl.T0Ms != 0 {
-		t.Errorf("nil RealStartTime: T0Ms must be 0, got %d", tl.T0Ms)
-	}
-	if tl.DurationMs != 447000 {
-		t.Errorf("DurationMs = %d, want 447000", tl.DurationMs)
-	}
-}
-
-func TestBuildFromRegistry_DerivesT0FromRealStartTime(t *testing.T) {
-	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	real := start.Add(28 * time.Second)
-	reg := domain.MatchRegistryRow{
-		MatchID:         "with-t0",
-		StartTime:       start,
-		RealStartTime:   &real,
-		DurationSeconds: ptrInt(600),
-	}
-	tl := BuildFromRegistry(reg)
-	if tl.T0Ms != 28000 {
-		t.Errorf("T0Ms want 28000 (28s countdown), got %d", tl.T0Ms)
-	}
-	// Gameplay = duration − T0.
-	if tl.GameplayDurationMs() != 600000-28000 {
-		t.Errorf("GameplayDurationMs = %d, want %d", tl.GameplayDurationMs(), 600000-28000)
-	}
-}
-
-func TestBuildFromRegistry_NilDurationDefaultsToZero(t *testing.T) {
-	reg := domain.MatchRegistryRow{MatchID: "no-dur"}
-	tl := BuildFromRegistry(reg)
-	if tl.DurationMs != 0 {
-		t.Errorf("nil DurationSeconds should yield DurationMs=0, got %d", tl.DurationMs)
-	}
-}
-
 func TestBuildTimelinesFromPlayerMatches_ReadsSummaryT0Ms(t *testing.T) {
 	rows := []canonical.PlayerMatchRow{
 		{Summary: canonical.MatchSummary{
@@ -89,16 +48,19 @@ func TestBuildTimelinesFromSquadRows_ReadsT0Ms(t *testing.T) {
 	}
 }
 
-func TestBuildForMatchMs_UsesT0Ms(t *testing.T) {
-	tl := BuildForMatchMs(600000, 28000)
-	if tl.T0Ms != 28000 {
-		t.Errorf("T0Ms want 28000, got %d", tl.T0Ms)
+// ForMatch est la règle unique de lecture : coup d'envoi connu = la chronologie en part ; inconnu
+// (nil) = elle part du début du match et la durée de jeu vaut la durée du match.
+func TestForMatch_CoupDEnvoiConnuOuInconnu(t *testing.T) {
+	t0 := int64(28000)
+	tl := ForMatch(time.Time{}, 600000, &t0)
+	if tl.T0Ms != 28000 || tl.GameplayDurationMs() != 572000 {
+		t.Errorf("connu : T0=%d durée de jeu=%d, attendu 28000 et 572000", tl.T0Ms, tl.GameplayDurationMs())
 	}
-	if tl.GameplayDurationMs() != 572000 {
-		t.Errorf("GameplayDurationMs want 572000, got %d", tl.GameplayDurationMs())
+	if un := ForMatch(time.Time{}, 600000, nil); un.T0Ms != 0 || un.GameplayDurationMs() != 600000 {
+		t.Errorf("inconnu : T0=%d durée de jeu=%d, attendu 0 et 600000", un.T0Ms, un.GameplayDurationMs())
 	}
-	// T0=0 → identité (chronologie brute).
-	if BuildForMatchMs(600000, 0).GameplayDurationMs() != 600000 {
-		t.Errorf("T0=0 should leave gameplay == duration")
+	zero := int64(0)
+	if z := ForMatch(time.Time{}, 600000, &zero); z.GameplayDurationMs() != 600000 {
+		t.Errorf("coup d'envoi à zéro : durée de jeu=%d, attendu 600000", z.GameplayDurationMs())
 	}
 }

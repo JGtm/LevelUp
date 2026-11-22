@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/kickoff"
 	"levelup/go-api/internal/sync/objective"
 )
 
@@ -100,6 +101,7 @@ func BuildBatchFromRawForV2WithMeta(
 	fm.Registry = reg
 
 	fm.Participants = ExtractParticipants(statsJSON)
+	kickoff.Observe(ctx, titleSlug, matchID, kickoff.ApplyToRows(fm.Registry, fm.Participants))
 	ensureGamertagForSelf(fm.Participants, xuid, gamertag)
 
 	if len(skillData) > 0 {

@@ -104,7 +104,7 @@ const TIMELINE = {
   holdTicks: [],
 } as unknown as ReplayScoreTimelineReady
 
-// Éliminations de A : à la tête, non, non mesurée ; puis 20 s : à la tête ; et une médaille parfaite rattachée.
+// Éliminations de A (leur coup fatal à la tête, ou non, n'entre pas dans la fiche : elle lit le compteur du jeu) et médailles.
 const PERFECT_ATTACHED = medalOf('A', PERFECT_MEDAL_NAME, 2_000)
 const FEED: ReplayFeedEntry[] = [
   killEntry(killOf(2_000, 'A', true, [PERFECT_ATTACHED])),
@@ -132,8 +132,7 @@ describe('playerInstantStats — début de match', () => {
     expect([s.currentStreak, s.bestStreak]).toEqual([0, 0])
   })
 
-  it('aucune élimination, médaille ni bouclier perdu ; vie en cours depuis la naissance ; aucune moyenne', () => {
-    expect(s.headshots).toEqual({ count: 0, measured: 0 })
+  it('aucune médaille ni bouclier perdu ; vie en cours depuis la naissance ; aucune moyenne', () => {
     expect([s.perfects, s.medals]).toEqual([0, []])
     expect([s.shieldsLost, s.respawns, s.currentLifeMs, s.averageLifeMs]).toEqual([0, 0, 0, null])
   })
@@ -226,22 +225,75 @@ describe('playerInstantStats — boucliers perdus', () => {
   })
 })
 
-describe('playerInstantStats — tirs à la tête', () => {
-  it('une élimination dont le coup fatal n’est pas mesuré ne compte ni oui ni non', () => {
-    // Trois éliminations à 8,5 s : tête, pas tête, non mesurée.
-    expect(lire(A, 85).headshots).toEqual({ count: 1, measured: 2 })
-    expect(lire(A, 85).counters?.kills).toBe(3)
-    expect(lire(A, 250).headshots).toEqual({ count: 2, measured: 3 })
+describe('playerInstantStats — tirs à la tête (le compteur du jeu)', () => {
+  /** Le compteur daté du jeu : 1 à la frame 85, 3 à la frame 250 ; l'élimination à la tête du fil n'y change rien. */
+  const withHeadshots = (stats: unknown, id = 'A') => ({
+    ...TIMELINE,
+    players: TIMELINE.players.map((p) => (p.xuid === id ? { ...p, stats } : p)),
+  }) as unknown as ReplayScoreTimelineReady
+  const COUNTER = { headshots: { rounds: [], total: ticks([85, 1], [250, 3]) } }
+
+  it('entre deux points : la dernière valeur dont l’instant est au plus l’instant lu (palier, jamais interpolé)', () => {
+    const timeline = withHeadshots(COUNTER)
+    expect(lire(A, 84, { scoreTimeline: timeline }).headshots).toBe(0)
+    expect(lire(A, 85, { scoreTimeline: timeline }).headshots).toBe(1)
+    expect(lire(A, 200, { scoreTimeline: timeline }).headshots).toBe(1)
+    expect(lire(A, 249, { scoreTimeline: timeline }).headshots).toBe(1)
   })
 
-  it('les éliminations d’un autre joueur ne comptent pas', () => {
-    expect(lire(B, 100).headshots).toEqual({ count: 1, measured: 1 })
+  it('avant le premier point : zéro, le joueur ayant la série', () => {
+    expect(lire(A, 0, { scoreTimeline: withHeadshots(COUNTER) }).headshots).toBe(0)
   })
 
-  it('un fil sans aucune élimination (contexte absent) n’affirme rien', () => {
-    expect(lire(A, 90, { feed: [] }).headshots).toBeNull()
-    expect(lire(A, 90, { feed: null }).headshots).toBeNull()
-    expect(lire(A, 90, { feed: [medalEntry(medalOf('A', 'x', 1))] }).headshots).toBeNull()
+  it('après le dernier point : la dernière valeur', () => {
+    expect(lire(A, 250, { scoreTimeline: withHeadshots(COUNTER) }).headshots).toBe(3)
+    expect(lire(A, 590, { scoreTimeline: withHeadshots(COUNTER) }).headshots).toBe(3)
+  })
+
+  it('le joueur sans `stats` n’a pas de valeur : aucun repli sur les éliminations du fil, qui portent des coups à la tête', () => {
+    expect(FEED.some((e) => e.kill?.headshot === true)).toBe(true)
+    expect(lire(A, 250).headshots).toBeNull()
+  })
+
+  it('le joueur absent du calque n’a pas de valeur', () => {
+    expect(lire({ ...A, xuid: 'Z', board: undefined }, 250, { scoreTimeline: withHeadshots(COUNTER) }).headshots).toBeNull()
+  })
+
+  it('le joueur avec `stats` mais sans `headshots` est à zéro : le jeu n’émet pas un compteur resté à zéro', () => {
+    const timeline = withHeadshots({ suicides: { rounds: [], total: ticks([40, 1]) } })
+    expect(lire(A, 0, { scoreTimeline: timeline }).headshots).toBe(0)
+    expect(lire(A, 590, { scoreTimeline: timeline }).headshots).toBe(0)
+    expect(lire(A, 590, { scoreTimeline: withHeadshots({}) }).headshots).toBe(0)
+  })
+
+  it('un compteur sans palier est à zéro, même si le contrat le porte à `null`', () => {
+    expect(lire(A, 590, { scoreTimeline: withHeadshots({ headshots: { rounds: null, total: null } }) }).headshots).toBe(0)
+  })
+
+  it('un film à plusieurs manches : le total cumule sur tout le match (les manches ne sont pas lues)', () => {
+    const rounds = [
+      { round: 1, points: ticks([50, 2]) },
+      { round: 2, points: ticks([300, 1]) },
+    ]
+    const timeline = withHeadshots({ headshots: { rounds, total: ticks([50, 2], [300, 3]) } })
+    expect(lire(A, 40, { scoreTimeline: timeline }).headshots).toBe(0)
+    expect(lire(A, 100, { scoreTimeline: timeline }).headshots).toBe(2)
+    expect(lire(A, 350, { scoreTimeline: timeline }).headshots).toBe(3)
+  })
+
+  it('un film à plusieurs manches dont le calque retient les compteurs (`stats` absent) : pas de valeur', () => {
+    expect(lire(A, 350).headshots).toBeNull()
+  })
+
+  it('le bot se lit sous le xuid de sa ligne de feuille, comme ses autres compteurs', () => {
+    const timeline = withHeadshots({ headshots: { rounds: [], total: ticks([10, 4]) } }, 'bid(7.0)')
+    expect(lire(BOT, 20, { scoreTimeline: timeline }).headshots).toBe(4)
+  })
+
+  it('le fil n’entre plus dans la valeur : absent ou sans éliminations, le compteur du jeu se lit pareil', () => {
+    const timeline = withHeadshots(COUNTER)
+    expect(lire(A, 250, { scoreTimeline: timeline, feed: null }).headshots).toBe(3)
+    expect(lire(A, 250, { scoreTimeline: timeline, feed: [] }).headshots).toBe(3)
   })
 })
 
@@ -284,10 +336,9 @@ describe('playerInstantStats — bot', () => {
     expect([s.currentStreak, s.bestStreak]).toEqual([0, 2])
   })
 
-  it('ses éliminations viennent du xuid de la feuille ; ses vies et son bouclier comptent comme ceux de tout joueur', () => {
+  it('ses vies et son bouclier comptent comme ceux de tout joueur', () => {
     const feed = [killEntry(killOf(3_500, 'bid(7.0)', true)), killEntry(killOf(3_600, 'A', true))]
     const s = lire(BOT, 60, { feed })
-    expect(s.headshots).toEqual({ count: 1, measured: 1 })
     expect(s.shieldsLost).toBe(1)
     expect(s.currentLifeMs).toBe(6_000)
   })

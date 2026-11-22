@@ -8,8 +8,8 @@ package replayartifacts
 // JSON -> projection -> persister INSERT-only -> vues `_latest` — traverse trois paquets et
 // deux serialisations. Un test a doubles laisserait un INSERT invalide, une colonne renommee
 // ou une vue cassee rendre le fil de l'eau muet (WARN best-effort a chaque cycle) sans que
-// rien ne rougisse : exactement le mode de panne silencieuse que t0film_integration_test.go
-// ferme deja pour le report du T0. Ici la passe tourne sur une base migree par les VRAIES
+// rien ne rougisse : exactement le mode de panne silencieuse que coupdenvoi_integration_test.go
+// ferme pour le report du coup d'envoi. Ici la passe tourne sur une base migree par les VRAIES
 // migrations (baseRegistre) et le test relit ce que les vues servent APRES.
 //
 // LE GATE PAR CAPABILITY EST TESTE SUR LES VRAIS TOML du depot (config/titles/) : halo_infinite

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // faux : les profils et les deux étapes du rejeu, sans base. Par défaut chaque étape rend « à jour » ; les
@@ -24,9 +26,19 @@ type faux struct {
 	kpiAppliquee, campagnesAppliquee map[string]bool  // par xuid
 	kpiErrs, campagnesErrs           map[string]error // par xuid
 
-	appels     []string // "titre/xuid", un par passage de l'étape des notes
-	journal    []string // "kpi" / "campagnes", dans l'ordre des appels
-	apresAppel func()
+	partageeErrs map[string]error // par titre : rattrapage de la base partagée en échec
+	partagees    []string         // titres dont la base partagée a été rattrapée, dans l'ordre
+	appels       []string         // "titre/xuid", un par passage de l'étape des notes
+	journal      []string         // "kpi" / "campagnes", dans l'ordre des appels
+	apresAppel   func()
+}
+
+// partagee : l'étape de la base partagée, dont l'issue vient de partageeErrs.
+type partagee struct{ f *faux }
+
+func (p partagee) Apply(_ context.Context, slug string) (bool, error) {
+	p.f.partagees = append(p.f.partagees, slug)
+	return false, p.f.partageeErrs[slug]
 }
 
 func (f *faux) FollowedPlayers(slug string) ([]domain.PlayerSummary, error) {
@@ -66,6 +78,7 @@ func joueur(xuid string) domain.PlayerSummary {
 func nouveau(f *faux, titres ...string) *Service {
 	return &Service{
 		players:   f,
+		shared:    partagee{f: f},
 		kpi:       etape{f: f, nom: "kpi", appliquee: f.kpiAppliquee, errs: f.kpiErrs},
 		campaigns: etape{f: f, nom: "campagnes", appliquee: f.campagnesAppliquee, errs: f.campagnesErrs},
 		titres:    func() []string { return titres },
@@ -171,7 +184,7 @@ func TestTitresLUSR_SauteUnTitreSansCapacite(t *testing.T) {
 
 // Le service du registre ne passe en revue que des titres qui portent la capacité LUSR.
 func TestNew_TitresDuRegistreOntLaCapaciteLUSR(t *testing.T) {
-	for _, slug := range New(&faux{}, nil, nil).titres() {
+	for _, slug := range New(&faux{}, nil, nil, nil).titres() {
 		d := title.DefaultRegistry().Get(slug)
 		if d == nil || !d.HasCapability(title.CapLUSR) {
 			t.Errorf("titre %q passé en revue sans capacité LUSR", slug)
@@ -299,5 +312,43 @@ func attendreIssues(t *testing.T, got []Outcome, want []Outcome) {
 		if got[i].Step != want[i].Step || got[i].Applied != want[i].Applied || !errors.Is(got[i].Err, want[i].Err) {
 			t.Fatalf("issue %d = %+v, attendu %+v", i, got[i], want[i])
 		}
+	}
+}
+
+// La base partagée d'un titre se rattrape AVANT ses joueurs ; un rattrapage en échec retient les joueurs
+// de ce titre (rien n'est noté sur des temps de jeu périmés) sans retenir les autres titres.
+func TestRun_BasePartageeAvantLesJoueurs(t *testing.T) {
+	f := &faux{
+		joueurs: map[string][]domain.PlayerSummary{
+			"sr-a": {joueur("x1")}, "sr-b": {joueur("x2")},
+		},
+		partageeErrs: map[string]error{"sr-a": errors.New("writer indisponible")},
+	}
+	avant := observability.LoadCounterT("sr-a", CompteurPartageeErreurs)
+	nouveau(f, "sr-a", "sr-b").Run(context.Background())
+	if strings.Join(f.partagees, ",") != "sr-a,sr-b" {
+		t.Fatalf("bases partagees rattrapees : %v, attendu sr-a puis sr-b", f.partagees)
+	}
+	if strings.Join(f.appels, ",") != "sr-b/x2" {
+		t.Fatalf("notes rejouees : %v, attendu sr-b/x2 seul (sr-a retenu par son echec)", f.appels)
+	}
+	if observability.LoadCounterT("sr-a", CompteurPartageeErreurs) != avant+1 {
+		t.Fatal("l'echec du rattrapage de la base partagee n'est pas compte")
+	}
+}
+
+// Un rattrapage PARTIEL (des matchs en échec) laisse jouer les notes du titre ; il est compté à part.
+func TestRun_RattrapagePartielNotesJouees(t *testing.T) {
+	f := &faux{
+		joueurs:      map[string][]domain.PlayerSummary{"sr-p": {joueur("x1")}},
+		partageeErrs: map[string]error{"sr-p": fmt.Errorf("%w: 1 match en echec", port.ErrSharedRevisionPartial)},
+	}
+	avant := observability.LoadCounterT("sr-p", CompteurPartageePartielle)
+	nouveau(f, "sr-p").Run(context.Background())
+	if strings.Join(f.appels, ",") != "sr-p/x1" {
+		t.Fatalf("notes rejouees : %v, attendu sr-p/x1 malgre le rattrapage partiel", f.appels)
+	}
+	if observability.LoadCounterT("sr-p", CompteurPartageePartielle) != avant+1 {
+		t.Fatal("le rattrapage partiel n'est pas compte")
 	}
 }

@@ -21,6 +21,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { REPLAY_TEXT } from '../../i18n/i18n'
 import { COTES_BANDEAU_SCORE } from '../../model/cotesBandeauScore'
+import { margeCorpsDe } from '../../model/cotesCorps'
 import { COTES_ENTETE_SCORE } from '../../model/cotesEnteteScore'
 import { COTES_PAGE_STANDARD } from '../../model/cotesStandard'
 import { showsAppNavigation, type ReplayFrame } from '../../model/replayFrame'
@@ -144,11 +145,12 @@ function StandardHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: R
  * La forme à trois cellules d'un en-tête qui porte le score (Cinéma, Plein cadre) : la cellule du centre a la
  * largeur du bandeau à l'emplacement `entete`, les deux autres se partagent le reste.
  */
-function ScoreHeader({ frame, left, score, right, padding }: { frame: ReplayFrame; left: ReactNode; score: ReactNode; right: ReactNode; padding: string }) {
+function ScoreHeader({ frame, left, score, right }: { frame: ReplayFrame; left: ReactNode; score: ReactNode; right: ReactNode }) {
   return (
     <div
-      className={`grid shrink-0 items-center ${padding}`}
+      className="grid shrink-0 items-center"
       style={{
+        paddingInline: margeCorpsDe(frame),
         height: COTES_ENTETE_SCORE.hauteurPx,
         columnGap: COTES_ENTETE_SCORE.ecartPx,
         gridTemplateColumns: `minmax(0,1fr) ${COTES_BANDEAU_SCORE.entete.largeurPx}px minmax(0,1fr)`,
@@ -183,9 +185,9 @@ function CinemaHeader({ chrome, score }: { chrome: ReplayFrameChrome; score: Rea
       <MatchTitle chrome={chrome} />
     </>
   )
-  if (score !== undefined) return <ScoreHeader frame="cinema" left={left} score={score} right={sheet} padding="px-6" />
+  if (score !== undefined) return <ScoreHeader frame="cinema" left={left} score={score} right={sheet} />
   return (
-    <div className="flex h-[52px] items-center gap-3 px-6">
+    <div className="flex h-[52px] items-center gap-3" style={{ paddingInline: margeCorpsDe('cinema') }}>
       {left}
       <div className="ml-auto flex shrink-0 items-center gap-2">{sheet}</div>
     </div>
@@ -213,8 +215,12 @@ function FullFrameBar({ chrome, score }: { chrome: ReplayFrameChrome; score: Rea
       <MatchTitle chrome={chrome} />
     </>
   )
-  if (score !== undefined) return <ScoreHeader frame="plein-cadre" left={left} score={score} right={null} padding="px-1" />
-  return <div className="flex h-[52px] shrink-0 items-center gap-3 px-1">{left}</div>
+  if (score !== undefined) return <ScoreHeader frame="plein-cadre" left={left} score={score} right={null} />
+  return (
+    <div className="flex h-[52px] shrink-0 items-center gap-3" style={{ paddingInline: margeCorpsDe('plein-cadre') }}>
+      {left}
+    </div>
+  )
 }
 
 interface ReplayFrameHeaderProps {

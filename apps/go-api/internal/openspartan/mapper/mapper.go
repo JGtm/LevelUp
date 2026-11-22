@@ -59,20 +59,15 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 	if err != nil {
 		return MatchRegistryRow{}, err
 	}
-	playableSec, err := DurationSeconds(ms.MatchInfo.PlayableDuration)
-	if err != nil {
-		return MatchRegistryRow{}, err
-	}
 
 	row := MatchRegistryRow{
-		MatchID:                 ms.MatchID,
-		StartTime:               ms.MatchInfo.StartTime,
-		StartTimeUTC:            ms.MatchInfo.StartTime.UTC(),
-		DurationSeconds:         durSec,
-		PlayableDurationSeconds: playableSec,
-		FirstSyncBy:             opts.source(),
-		FirstSyncAt:             now,
-		LastUpdatedAt:           now,
+		MatchID:         ms.MatchID,
+		StartTime:       ms.MatchInfo.StartTime,
+		StartTimeUTC:    ms.MatchInfo.StartTime.UTC(),
+		DurationSeconds: durSec,
+		FirstSyncBy:     opts.source(),
+		FirstSyncAt:     now,
+		LastUpdatedAt:   now,
 	}
 	assignRegistryEndTime(&row, ms.MatchInfo.EndTime)
 	assignRegistryAssetIDs(&row, ms)

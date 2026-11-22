@@ -18,7 +18,7 @@
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PickupEventLine, VehicleDestroyedEventLine, VehicleEventLine } from '../model/feedEventLines'
 import { FEED_FILTER_GLYPH, PICKUP_NATURE_GLYPH } from '../model/feedGlyphs'
-import { FEED_ROW } from '../model/feedRow'
+import { FEED_ROW, feedRowClass, followedAttr } from '../model/feedRow'
 import { vehicleKilledLabel } from '../model/vehicleKilledLabel'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { FeedName } from './ReplayFeedName'
@@ -37,6 +37,8 @@ interface Props {
   /** Les noms des joueurs tués avec le véhicule lors d'une destruction ; absent ou vide : aucun. */
   killedNames?: readonly string[]
   locale: ReplayLocale
+  /** La ligne concerne le joueur suivi par la caméra : fond léger (`FEED_FOLLOWED`). */
+  followed?: boolean
 }
 
 /** La phrase de la ligne, après le nom du joueur (ou seule, pour une destruction sans auteur). */
@@ -53,14 +55,19 @@ function actionOf(
   return killed ? `${sentence} ${killed}` : sentence
 }
 
-export function ReplayEventLine({ line, replayMs, color, mark, name, killedNames = [], locale }: Props) {
+export function ReplayEventLine({ line, replayMs, color, mark, name, killedNames = [], locale, followed }: Props) {
   const t = REPLAY_TEXT[locale]
   const action = actionOf(line, t, killedNames, locale)
   const hasActor = name !== ''
   const weapon = 'destroyed' in line ? line.weapon : undefined
   const glyph = line.family === 'pickups' ? PICKUP_NATURE_GLYPH[line.nature] : FEED_FILTER_GLYPH[line.family]
   return (
-    <li className={FEED_ROW} title={hasActor ? `${name} ${action}` : action} data-feed-family={line.family}>
+    <li
+      className={feedRowClass(FEED_ROW, followed)}
+      title={hasActor ? `${name} ${action}` : action}
+      data-feed-family={line.family}
+      data-followed={followedAttr(followed)}
+    >
       <FeedClock ms={replayMs} />
       <span className="shrink-0" style={{ color }}>
         <EventGlyph glyph={glyph} />

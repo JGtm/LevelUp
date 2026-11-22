@@ -129,7 +129,7 @@ const journalPerimetre = "%PERIMETRE_JOURNAL%"
 // campagne juste au-dessus).
 const colonneEligible = "%ELIGIBLE_CUISSON%"
 
-// colonneT0 : le jeton que `universSQL` remplace par le T0 du match en ms (`T0MsSQL`). Un jeton pour la même raison
+// colonneT0 : le jeton que `universSQL` remplace par le T0 du match en ms (`sqlfrag.SQLT0Ms`). Un jeton pour la même raison
 // que `colonneEligible` : `QTacticalUnivers` reste une constante entière.
 const colonneT0 = "%T0_MS%"
 
@@ -248,7 +248,7 @@ func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	sql := strings.Replace(QTacticalUnivers, colonneEligible, "("+predicat+") AS eligible_cuisson", 1)
 	sql = strings.Replace(sql, jetonCartes, cartes, 1)
 	sql = strings.Replace(sql, journalPerimetre, journal, 1)
-	sql = strings.Replace(sql, colonneT0, T0MsSQL("mr"), 1)
+	sql = strings.Replace(sql, colonneT0, sqlfrag.SQLT0Ms("mr"), 1)
 	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
 }
 

@@ -12,33 +12,32 @@ const BackfillBitMedals = 1
 // OpenSpartan payload alone — typically referential names that live in
 // metadata.duckdb and are filled in by the post-import recompute).
 type MatchRegistryRow struct {
-	MatchID                 string
-	StartTime               time.Time
-	EndTime                 *time.Time
-	StartTimeUTC            time.Time
-	EndTimeUTC              *time.Time
-	PlaylistID              *string
-	PlaylistName            *string // filled by post-import recompute
-	PlaylistVersionID       *string
-	MapID                   *string
-	MapName                 *string // filled by post-import recompute
-	MapVersionID            *string
-	PairID                  *string
-	PairName                *string // filled by post-import recompute
-	PairVersionID           *string
-	GameVariantID           *string
-	GameVariantName         *string // filled by post-import recompute
-	GameVariantVersionID    *string
-	ModeCategory            *string // filled by post-import recompute
-	IsRanked                bool    // false by default; derived during recompute
-	IsFirefight             bool    // false by default; derived during recompute
-	DurationSeconds         int
-	PlayableDurationSeconds int
-	RealStartTime           *time.Time // not present in Halo API payload
-	Team0Score              *int16
-	Team1Score              *int16
-	Team0PsScore            *int
-	Team1PsScore            *int
+	MatchID              string
+	StartTime            time.Time
+	EndTime              *time.Time
+	StartTimeUTC         time.Time
+	EndTimeUTC           *time.Time
+	PlaylistID           *string
+	PlaylistName         *string // filled by post-import recompute
+	PlaylistVersionID    *string
+	MapID                *string
+	MapName              *string // filled by post-import recompute
+	MapVersionID         *string
+	PairID               *string
+	PairName             *string // filled by post-import recompute
+	PairVersionID        *string
+	GameVariantID        *string
+	GameVariantName      *string // filled by post-import recompute
+	GameVariantVersionID *string
+	ModeCategory         *string // filled by post-import recompute
+	IsRanked             bool    // false by default; derived during recompute
+	IsFirefight          bool    // false by default; derived during recompute
+	DurationSeconds      int
+	RealStartTime        *time.Time // not present in Halo API payload
+	Team0Score           *int16
+	Team1Score           *int16
+	Team0PsScore         *int
+	Team1PsScore         *int
 	// BackfillCompleted : MapMatch sets BackfillBitMedals only, and only when the payload carries
 	// medals. It is NOT copied to the shared registry : service.toSyncRegistry computes
 	// backfill_completed from the batch (participants bit when the roster is written).

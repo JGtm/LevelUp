@@ -24,7 +24,7 @@ func TestApplyMatchHeaderOvertime_KnownVariant(t *testing.T) {
 	h := domain.MatchViewHeader{}
 	meta := &domain.MatchMetaRaw{
 		GameVariantName: strPtr("CTF:Arena"),
-		ElapsedSeconds:  intPtr(774),
+		DurationSeconds: f64Ptr(774),
 	}
 	applyMatchHeaderOvertime(&h, meta, haloInfiniteRegulation)
 	if !h.IsOvertime || h.OvertimeSeconds != 54 {
@@ -36,7 +36,7 @@ func TestApplyMatchHeaderOvertime_KnownVariantWithinRegulation(t *testing.T) {
 	h := domain.MatchViewHeader{}
 	meta := &domain.MatchMetaRaw{
 		GameVariantName: strPtr("CTF:Arena"),
-		ElapsedSeconds:  intPtr(728),
+		DurationSeconds: f64Ptr(728),
 	}
 	applyMatchHeaderOvertime(&h, meta, haloInfiniteRegulation)
 	if h.IsOvertime || h.OvertimeSeconds != 0 {
@@ -50,7 +50,7 @@ func TestApplyMatchHeaderOvertime_UnknownVariant(t *testing.T) {
 	h := domain.MatchViewHeader{}
 	meta := &domain.MatchMetaRaw{
 		GameVariantName: strPtr("BTB:Slayer"),
-		ElapsedSeconds:  intPtr(990),
+		DurationSeconds: f64Ptr(990),
 	}
 	applyMatchHeaderOvertime(&h, meta, haloInfiniteRegulation)
 	if h.IsOvertime || h.OvertimeSeconds != 0 {
@@ -64,7 +64,7 @@ func TestApplyMatchHeaderOvertime_TitleWithoutRegulation(t *testing.T) {
 		h := domain.MatchViewHeader{}
 		meta := &domain.MatchMetaRaw{
 			GameVariantName: strPtr("CTF:Arena"),
-			ElapsedSeconds:  intPtr(990),
+			DurationSeconds: f64Ptr(990),
 		}
 		applyMatchHeaderOvertime(&h, meta, table)
 		if h.IsOvertime || h.OvertimeSeconds != 0 {
@@ -94,15 +94,15 @@ func overtimeRows() []domain.MatchHistoryRawRow {
 	return []domain.MatchHistoryRawRow{
 		{ // prolongation sur variante connue
 			MatchID: "ot", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 2,
-			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), ElapsedSeconds: intPtr(763),
+			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), GameplaySeconds: intPtr(763),
 		},
 		{ // dans le temps
 			MatchID: "reg", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 3,
-			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), ElapsedSeconds: intPtr(721),
+			GameVariantName: i18n.FromColumns("Team Slayer:Arena", ""), GameplaySeconds: intPtr(721),
 		},
 		{ // variante inconnue, très longue → jamais flaguée
 			MatchID: "unknown", StartTime: &now, MapName: i18n.FromColumns(mapName, ""), PairName: i18n.FromColumns(pair, ""), Outcome: 2,
-			GameVariantName: i18n.FromColumns("BTB:Total Control", ""), ElapsedSeconds: intPtr(1200),
+			GameVariantName: i18n.FromColumns("BTB:Total Control", ""), GameplaySeconds: intPtr(1200),
 		},
 	}
 }

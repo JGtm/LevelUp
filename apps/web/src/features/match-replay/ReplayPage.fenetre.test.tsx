@@ -29,12 +29,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) =>
 
 const T = REPLAY_TEXT.fr
 const PP = T.playerPanel
-const L4 = largeurRequiseRangee(4)
+const L4 = largeurRequiseRangee(4, 'cinema')
 
 /** La largeur du corps du cadre, les rectangles de la fiche ouverte et de la toile que le test pose. */
 let largeurCorps = 0
 let rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
 let basDuPlan = 500
+let hautDuPlan = 30
 const observateurs: { cible: Element; rappel: () => void }[] = []
 
 class ObservateurDeTaille {
@@ -58,6 +59,7 @@ beforeEach(() => {
   largeurCorps = L4
   rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
   basDuPlan = 500
+  hautDuPlan = 30
   observateurs.length = 0
   stubReplayPage()
   vi.stubGlobal('ResizeObserver', ObservateurDeTaille)
@@ -65,6 +67,7 @@ beforeEach(() => {
     if (this.hasAttribute('data-replay-body')) return rect({ width: largeurCorps, right: largeurCorps })
     if (this.getAttribute('aria-pressed') === 'true' && this.hasAttribute('data-replay-player-card')) return rect(rectFiche)
     if (this.tagName === 'CANVAS') return rect({ bottom: basDuPlan })
+    if (this.hasAttribute('data-replay-plan-block')) return rect({ top: hautDuPlan })
     // Le reste du cadre a une taille : sans elle la toile n'aurait aucune largeur et le clavier du lecteur serait inerte.
     return rect({ width: 960, height: 540, right: 960, bottom: 540 })
   })
@@ -234,7 +237,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
 describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () => {
   it.each(['cinema', 'plein-cadre'] as const)('%s : un clic sur une ligne de la colonne ouvre la fenêtre ; la colonne garde équipes et fil', async (frame) => {
-    const { container } = await mount(L4 - 1)
+    const { container } = await mount(largeurRequiseRangee(4, frame) - 1)
     goToFrame(frame)
     const fil = screen.getByTestId('replay-feed-slot')
     const equipes = container.querySelector('[data-replay-roster-column]')
@@ -282,14 +285,16 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
 })
 
 describe('ReplayPage : où la fenêtre se pose', () => {
-  it('bord gauche aligné sur la fiche, 8 px dessous', async () => {
+  it('bord gauche aligné sur la fiche, haut à 8 px sous le haut du plan et non sous la fiche', async () => {
     await mount(L4)
     goToFrame('cinema')
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
     const f = fenetre('Joueur5') as HTMLElement
     expect(f.style.left).toBe('140px')
-    expect(f.style.top).toBe('78px')
+    expect(f.style.top).toBe(`${30 + COTES_FENETRE_FICHE.margeHautPlanPx}px`)
+    // Un autre plan, la même fiche : le haut suit le plan, pas la fiche.
+    expect(rectFiche.bottom + 8).not.toBe(30 + COTES_FENETRE_FICHE.margeHautPlanPx)
   })
 
   it('près du bord droit de la page, elle s’aligne par la droite de la fiche et ne sort pas', async () => {
@@ -310,7 +315,7 @@ describe('ReplayPage : où la fenêtre se pose', () => {
     basDuPlan = 400
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
-    expect((fenetre('Joueur5') as HTMLElement).style.maxHeight).toBe(`${400 - 70 - 8 - 8}px`)
+    expect((fenetre('Joueur5') as HTMLElement).style.maxHeight).toBe(`${400 - (30 + COTES_FENETRE_FICHE.margeHautPlanPx) - 8}px`)
   })
 })
 

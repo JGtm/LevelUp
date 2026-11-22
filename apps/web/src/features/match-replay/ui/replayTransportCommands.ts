@@ -62,6 +62,8 @@ export interface ReplayTransportCommands {
    * `null` quand le plan est droit ou que son orientation est un choix retenu. Seule la barre d'une ligne le lit.
    */
   autoRotation: { onKeepUpright: () => void } | null
+  /** La préférence « barre fine au Plein cadre » (cf. THIN_BAR_KEY) : seule la barre d'une ligne et la pose de la barre la lisent. */
+  thinBar: boolean
 }
 
 /** Ce que la toile remet aux fonctions de rendu de ses emplacements : les commandes de la barre, et la caméra. */
@@ -102,6 +104,7 @@ export interface ReplayTransportCommandSources {
   /** Vrai quand l'Auto a tourné le plan (`useReplayView`) ; `orientation` retient le retour au plan droit. */
   autoTurned: boolean
   orientation: Pick<ReplayOrientation, 'setTurns'>
+  thinBar: boolean
 }
 
 /**
@@ -111,17 +114,17 @@ export interface ReplayTransportCommandSources {
 export function useReplayTransportCommands(s: ReplayTransportCommandSources): ReplaySlotCommands {
   const { playing, togglePlay, restart, seekBy } = s.playback
   const { autoPlay, toggleAutoPlay, speed, setSpeed } = s.settings
-  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned } = s
+  const { clockRef, timeline, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned, thinBar } = s
   const { setTurns } = s.orientation
   return useMemo(
     () => ({
       playing, onTogglePlay: togglePlay, onRestart: restart, onSeekBy: seekBy, clockRef, timeline,
       autoPlay, onToggleAutoPlay: toggleAutoPlay, speed, onSetSpeed: setSpeed, sound, capture, locale, fullscreen, frameControl, zoom,
-      cameraFollow, planFeedShown, autoRotation: autoTurned ? { onKeepUpright: () => setTurns(0) } : null,
+      cameraFollow, planFeedShown, autoRotation: autoTurned ? { onKeepUpright: () => setTurns(0) } : null, thinBar,
     }),
     [
       playing, togglePlay, restart, seekBy, clockRef, timeline,
-      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned, setTurns,
+      autoPlay, toggleAutoPlay, speed, setSpeed, sound, capture, locale, fullscreen, frameControl, zoom, cameraFollow, planFeedShown, autoTurned, setTurns, thinBar,
     ],
   )
 }

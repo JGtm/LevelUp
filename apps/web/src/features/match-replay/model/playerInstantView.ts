@@ -41,8 +41,8 @@ export interface SinceView {
   fda: number | null
   currentStreak: number | null
   bestStreak: number | null
-  /** Les tirs à la tête sur les éliminations dont le coup fatal est lu ; `null` tant qu'aucune n'est lue. */
-  headshots: { count: number; measured: number } | null
+  /** Les tirs à la tête, le compteur du jeu à l'instant ; `null` quand le calque ne le donne pas pour ce joueur. */
+  headshots: number | null
   perfects: number | null
   respawns: number | null
   currentLifeMs: number | null
@@ -135,12 +135,11 @@ function sinceOf(
   score: number | null,
   rank: PlayerRank | null,
 ): SinceView | null {
-  const headshots = stats.headshots && stats.headshots.measured > 0 ? stats.headshots : null
   const since: SinceView = {
     fda: stats.fda,
     currentStreak: stats.currentStreak,
     bestStreak: stats.bestStreak,
-    headshots,
+    headshots: stats.headshots,
     perfects: stats.perfects,
     respawns: stats.respawns,
     currentLifeMs: stats.currentLifeMs,

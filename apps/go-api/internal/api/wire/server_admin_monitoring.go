@@ -88,7 +88,7 @@ func MountAdminMonitoringRoutes(
 
 	// Construction du rejeu 2D d'un match (job asynchrone — décodage hors ligne du film
 	// en cache dans un ENFANT borne, sous le verrou solo, cf. registry_replay_build.go).
-	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuild, jobStore, serverCtx).
+	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuildAction, jobStore, serverCtx).
 		WithEnqueuer(reg.EnqueueReplayBuild).
 		WithPlacement(reg.ReplayPlacement)
 	replayBuildH.Mount(r, apiOpt) // POST /actions/replay-build/{run,enqueue}

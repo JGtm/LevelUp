@@ -7,7 +7,7 @@
  * défilement qui apparaît ne fait pas clignoter la page).
  *
  * LA LARGEUR EST CELLE DU CORPS DU CADRE, bord à bord, marges latérales comprises : c'est la grandeur que
- * `largeurRequiseRangee` compare (elle compte ses deux marges). Le hook rend `bodyRef`, que le cadre pose sur
+ * `largeurRequiseRangee` compare (elle compte les deux marges du cadre, `cotesCorps.ts`). Le hook rend `bodyRef`, que le cadre pose sur
  * le corps (champ `bodyRef` de `ReplayFrameZoneContent`) ; la mesure est lue avant la première peinture, puis
  * suivie par un `ResizeObserver` (le redimensionnement de la fenêtre change la largeur du corps). Tant que le
  * corps n'est pas mesuré, ou hors du Cinéma et du Plein cadre (`canPlaceCardRow`), la disposition est la
@@ -69,7 +69,7 @@ export function useCardRowLayout(frame: ReplayFrame, view: ReplayFrameView | nul
   const [precedente, setPrecedente] = useState<DecisionPrecedente | null>(null)
   const disposition: DispositionEquipes = canPlaceCardRow(frame)
     ? dispositionAvecMemoire(
-        { camps: places.length, placesParCamp: places, largeurCorps: width },
+        { frame, camps: places.length, placesParCamp: places, largeurCorps: width },
         precedente?.disposition ?? null,
       )
     : 'colonne'

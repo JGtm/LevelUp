@@ -87,10 +87,6 @@ type SyncScope struct {
 	ComebackBadges      bool
 	ForceComebackBadges bool
 
-	// ── Playable duration — v6.3 ────────────────────────────────────────
-	PlayableDuration      bool
-	ForcePlayableDuration bool
-
 	// ── EngagementScore ─────────────────────────────────────────────────
 	// Calcule le score d'engagement
 	// pour chaque match du joueur. Necessite que les highlight_events soient
@@ -152,7 +148,6 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.CSR = true },
 	func(s *SyncScope) { s.SkillRank = true },
 	func(s *SyncScope) { s.ComebackBadges = true },
-	func(s *SyncScope) { s.PlayableDuration = true },
 	func(s *SyncScope) { s.EngagementScores = true },
 	func(s *SyncScope) { s.AssistsModel = true },
 }
@@ -218,7 +213,6 @@ func (s *SyncScope) applyForceImplications() {
 	imply(&s.ForceCSR, &s.CSR)
 	imply(&s.ForceSkillRank, &s.SkillRank)
 	imply(&s.ForceComebackBadges, &s.ComebackBadges)
-	imply(&s.ForcePlayableDuration, &s.PlayableDuration)
 	imply(&s.ForceEngagementScores, &s.EngagementScores)
 	imply(&s.ForceAssistsModel, &s.AssistsModel)
 }
@@ -239,7 +233,7 @@ func (s *SyncScope) HasAnyOption() bool {
 		s.ParticipantsDamage, s.ParticipantsAvgLife, s.KillerVictim,
 		s.EndTime, s.Sessions, s.Shots, s.Citations, s.ParticipantsEnrich,
 		s.TeammatesSig, s.PVEStats, s.LUSR, s.CSR, s.SkillRank,
-		s.ComebackBadges, s.PlayableDuration, s.EngagementScores, s.AssistsModel,
+		s.ComebackBadges, s.EngagementScores, s.AssistsModel,
 	}
 	for _, f := range flags {
 		if f {
@@ -256,7 +250,7 @@ func (s *SyncScope) NeedsAPI() bool {
 		s.Assets || s.Participants || s.Shots || s.ParticipantsScores ||
 		s.ParticipantsKDA || s.ParticipantsShots || s.ParticipantsDamage ||
 		s.ParticipantsAvgLife || s.ParticipantsEnrich ||
-		s.CSR || s.FetchCSR || s.SkillRank || s.PlayableDuration
+		s.CSR || s.FetchCSR || s.SkillRank
 }
 
 // NeedsLocalOnly retourne true si des traitements locaux (sans API) sont demandés.

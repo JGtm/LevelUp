@@ -112,6 +112,10 @@ func TestProjeterMainmise_Refus(t *testing.T) {
 		{"origine absente", func(d *replay.ReplayDocument, _ *IdentiteMainmise) { d.OriginMs = nil }, leadshare.ReasonClockOriginMissing},
 		{"pas de grille absent", func(d *replay.ReplayDocument, _ *IdentiteMainmise) { d.FrameIntervalMS = 0 }, leadshare.ReasonClockStepMissing},
 		{"coup d'envoi non mesuré", func(d *replay.ReplayDocument, _ *IdentiteMainmise) { d.T0FilmMs = nil }, leadshare.ReasonKickoffUnmeasured},
+		{"coup d'envoi négatif (refusé par la résolution)", func(d *replay.ReplayDocument, _ *IdentiteMainmise) { d.T0FilmMs = lsInt64(-1) }, leadshare.ReasonKickoffUnmeasured},
+		{"coup d'envoi au-delà de la durée du match (refusé par la résolution)", func(d *replay.ReplayDocument, i *IdentiteMainmise) {
+			d.T0FilmMs = lsInt64(*i.DurationSeconds*1000 + 1)
+		}, leadshare.ReasonKickoffUnmeasured},
 		{"durée inconnue", func(_ *replay.ReplayDocument, i *IdentiteMainmise) { i.DurationSeconds = nil }, leadshare.ReasonDurationUnknown},
 	}
 	for _, c := range cas {

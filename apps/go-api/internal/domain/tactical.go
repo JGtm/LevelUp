@@ -318,8 +318,8 @@ type TacticalMatch struct {
 	Outcome int
 
 	// T0Ms est le coup d'envoi du match sur l'axe du MATCH, en ms depuis son debut (countdown
-	// compris) : `real_start_time − start_time` du registre. Le registre y porte le coup d'envoi
-	// MESURE dans le film des qu'il a ete reporte, l'estimation de l'API sinon. nil = inconnu
+	// compris), lu par sqlfrag.SQLT0Ms. Le registre y porte le coup d'envoi du film quand le
+	// match a un rejeu, l'estimation de l'API sinon (ADR 0050). nil = inconnu
 	// (jamais 0 de repli : un match inconnu ne se date pas sur l'horloge affichee).
 	T0Ms *int64
 }

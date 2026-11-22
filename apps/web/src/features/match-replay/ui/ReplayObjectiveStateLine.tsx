@@ -34,6 +34,8 @@ interface Props {
   marks: ReadonlyMap<string, PlayerMarkKind>
   teams: ReplayTeamCascades
   locale: ReplayLocale
+  /** La ligne concerne le joueur suivi par la caméra (le crâne seulement : une manche ou une colline n'a pas de joueur). */
+  followed?: boolean
 }
 
 export function ReplayObjectiveStateLine({ line, ...rest }: Props) {
@@ -50,13 +52,14 @@ function SkullLine({
   xuidMeta,
   marks,
   locale,
+  followed,
 }: Props & { line: SkullEventLine }) {
   const t = REPLAY_TEXT[locale].feedLines
   const color = inkOf(line.xuid)
   const name = displayPlayerName(xuidMeta.get(line.xuid)?.gamertag, line.xuid)
   const action = line.change === 'taken' ? t.skullTaken : t.skullLost
   return (
-    <ObjectiveBanner glyph="skull" color={color} replayMs={replayMs} title={`${name} ${action}`}>
+    <ObjectiveBanner glyph="skull" color={color} replayMs={replayMs} title={`${name} ${action}`} followed={followed}>
       <FeedName kind={marks.get(line.xuid)} color={color} locale={locale} className="font-extrabold" name={name} />
       <span className="min-w-0 truncate text-foreground">{action}</span>
     </ObjectiveBanner>

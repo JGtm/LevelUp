@@ -149,7 +149,6 @@ func TestSyncScope_Resolve_ForceAllGranular(t *testing.T) {
 		{"ForceAssets→Assets", func(s *SyncScope) { s.ForceAssets = true }, func(s *SyncScope) bool { return s.Assets }},
 		{"ForceCitations→Citations", func(s *SyncScope) { s.ForceCitations = true }, func(s *SyncScope) bool { return s.Citations }},
 		{"ForceComebackBadges→ComebackBadges", func(s *SyncScope) { s.ForceComebackBadges = true }, func(s *SyncScope) bool { return s.ComebackBadges }},
-		{"ForcePlayableDuration→PlayableDuration", func(s *SyncScope) { s.ForcePlayableDuration = true }, func(s *SyncScope) bool { return s.PlayableDuration }},
 		{"ForceLUSR→LUSR", func(s *SyncScope) { s.ForceLUSR = true }, func(s *SyncScope) bool { return s.LUSR }},
 		{"ForceCSR→CSR", func(s *SyncScope) { s.ForceCSR = true }, func(s *SyncScope) bool { return s.CSR }},
 	}
@@ -180,7 +179,7 @@ func TestSyncScope_AllData_SetsEverything(t *testing.T) {
 	if !s.Medals || !s.Events || !s.PVEStats || !s.LUSR || !s.CSR {
 		t.Error("AllData should set all major flags")
 	}
-	if !s.ComebackBadges || !s.PlayableDuration {
-		t.Error("AllData should set ComebackBadges and PlayableDuration")
+	if !s.ComebackBadges {
+		t.Error("AllData should set ComebackBadges")
 	}
 }

@@ -26,15 +26,7 @@ export function FicheDepuisDebut({ since, locale }: { since: SinceView; locale: 
     [t.fda, when(since.fda, (v) => formatKDA(v, locale))],
     [t.currentStreak, when(since.currentStreak, count)],
     [t.bestStreak, when(since.bestStreak, count)],
-    [
-      t.headshots,
-      when(since.headshots, (h) => (
-        <>
-          {count(h.count)}
-          <Note>{t.headshotsOfFmt(h.measured)}</Note>
-        </>
-      )),
-    ],
+    [t.headshots, when(since.headshots, count)],
     [t.perfects, when(since.perfects, count)],
     [t.respawns, when(since.respawns, count)],
     [t.currentLife, when(since.currentLifeMs, formatDuration)],

@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/sync/kickoff"
 )
 
 // recentMatchesType : seuls les matchs matchmade alimentent les graphes profil de
@@ -111,7 +112,7 @@ func buildRecentMatchesFromStats(
 		if !ok {
 			continue
 		}
-		part := findParticipantByXUID(ExtractParticipants(raw), xuid)
+		part := findParticipantByXUID(participantsWithKickoff(raw), xuid)
 		if part == nil {
 			continue
 		}
@@ -194,4 +195,15 @@ func recentDerefFloat(p *float64) float64 {
 		return 0
 	}
 	return *p
+}
+
+// participantsWithKickoff rend les participants d'un payload de match avec le temps de jeu que la
+// synchronisation rangerait (sur le coup d'envoi résolu, kickoff.ApplyToRows). Un payload sans
+// registre lisible n'a pas de fenêtre de jeu : le temps de jeu de l'API reste.
+func participantsWithKickoff(matchJSON map[string]any) []ParticipantRow {
+	parts := ExtractParticipants(matchJSON)
+	if reg, err := ExtractRegistry(matchJSON, ""); err == nil {
+		kickoff.ApplyToRows(reg, parts)
+	}
+	return parts
 }
