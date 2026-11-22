@@ -121,7 +121,12 @@ func (f *filmDemandFetcher) fetch(ctx context.Context, d domain.ReplayGeneration
 	case !res.found || len(res.chunks) == 0:
 		return f.filmGone(ctx, d, nil)
 	}
-	chunks := res.chunks
+	return f.archive(ctx, d, short, res.chunks)
+}
+
+// archive écrit les morceaux du film à l'archive sous l'identifiant court du match. Un échec d'écriture se journalise
+// et remonte enveloppé « archivage du film ».
+func (f *filmDemandFetcher) archive(ctx context.Context, d domain.ReplayGenerationDemand, short string, chunks []filmfetch.FilmChunk) error {
 	wc := make([]filmarchive.WriteChunk, 0, len(chunks))
 	for _, c := range chunks {
 		wc = append(wc, filmarchive.WriteChunk{

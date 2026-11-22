@@ -21,6 +21,7 @@
 import type { ReactNode } from 'react'
 
 import type { CardRowLayout } from '../../hooks/useCardRowLayout'
+import { playerKeys } from '../../model/feedFollowed'
 import type { ReplayFrame } from '../../model/replayFrame'
 import { ReplayFeedOrPanel } from '../ReplayFeedOrPanel'
 import { ReplayKillFeed } from '../ReplayKillFeed'
@@ -69,6 +70,7 @@ function cinemaColumn(view: ReplayFrameView, withTeams: boolean, popover: ReactN
             doc={doc}
             playbackStore={view.playbackStore}
             weaponIcons={view.weaponIcons}
+            followedKeys={playerKeys(playerPanel.camera.player)}
           />
         }
       />

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
@@ -227,7 +228,7 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 		killAssists: []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, KillerDamagePct: ptrIk(100)}},
 		kvPairs:     []domain.KVPairRaw{{KillerXUID: "A", VictimXUID: "B", VictimGT: "Bob", TimeMS: 35306}},
 	}
-	correctMatchViewEventsT0(&d, "m1", timeline.BuildForMatchMs(600000, 18465))
+	correctMatchViewEventsT0(&d, "m1", timeline.ForMatch(time.Time{}, 600000, ptrI64k(18465)))
 
 	if d.events[0].TimeMS == nil || *d.events[0].TimeMS != 16841 {
 		t.Fatalf("event : TimeMS = %v, attendu 16841", d.events[0].TimeMS)

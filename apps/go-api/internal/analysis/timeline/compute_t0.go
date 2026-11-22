@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
-// T0Quality qualifie la fiabilité du T0 calculé pour un match. Stockée en DB
-// (colonne t0_quality) pour tracer les cas dégradés et permettre des audits.
+// T0Quality est l'issue de l'estimation du coup d'envoi par les arrivées des joueurs
+// (ComputeT0). C'est un DIAGNOSTIC : il se journalise et se compte, il ne se range pas en
+// base et aucun lecteur ne l'interprète (la base range la source du coup d'envoi, cf.
+// KickoffSource).
 type T0Quality string
 
 const (
@@ -16,40 +18,27 @@ const (
 	T0QualitySingleSource T0Quality = "single_source"
 	// T0QualitySpreadHigh : sources divergentes (spread > seuil), T0 = médiane.
 	T0QualitySpreadHigh T0Quality = "spread_high"
-	// T0QualityNoData : aucune source exploitable → T0 non calculable (NULL).
+	// T0QualityNoData : aucune source exploitable → aucune estimation.
 	T0QualityNoData T0Quality = "no_data"
 	// T0QualityNegative : T0 calculé < 0 (incohérence timezone/données) → rejet.
 	T0QualityNegative T0Quality = "negative"
 	// T0QualitySuspiciousHigh : T0 > seuil max plausible → rejet.
 	T0QualitySuspiciousHigh T0Quality = "suspicious_high"
-	// T0QualityFilmMovement : T0 MESURÉ dans le film au premier mouvement des joueurs
-	// (replay.DetectT0Film), et non estimé des `first_joined_time` de l'API.
-	//
-	// ComputeT0 NE LA REND JAMAIS, et ce n'est pas une omission : cette qualité ne se
-	// calcule pas depuis des participations, elle vient d'une autre source de vérité —
-	// l'artefact de rejeu. Elle vit ici parce que c'est l'énumération de la COLONNE
-	// `t0_quality`, pas celle des sorties de cette fonction ; l'écrire en littéral chez
-	// ses deux écrivains (cmd/backfill_t0_film et le fil de l'eau post-sync) en aurait
-	// fait une chaîne magique dupliquée.
-	//
-	// Elle PRIME sur les qualités estimées (décision D2 du plan T0-film du 2026-09-02) :
-	// dispersion 9 752 ms contre 12 764 ms sur les 49 matchs au T0-API sain, et aucune
-	// valeur invraisemblable côté film.
-	T0QualityFilmMovement T0Quality = "film_movement"
 )
 
-// Computed indique si la qualité correspond à un T0 exploitable (stockable) ou
-// à un rejet (T0 doit rester NULL, fallback T0=0 au runtime).
+// Computed dit si l'estimation est acceptée (un coup d'envoi de source `api`) ou refusée
+// (aucune valeur).
 func (q T0Quality) Computed() bool {
 	switch q {
-	case T0QualityOK, T0QualitySingleSource, T0QualitySpreadHigh, T0QualityFilmMovement:
+	case T0QualityOK, T0QualitySingleSource, T0QualitySpreadHigh:
 		return true
 	default:
 		return false
 	}
 }
 
-// Seuils du filet de sécurité multi-joueurs.
+// Seuils du filet de sécurité multi-joueurs, privés à l'estimation : aucun lecteur ne les
+// consulte, seule ComputeT0 les applique.
 const (
 	// t0SpreadThresholdMs : au-delà, les first_joined_time des joueurs présents
 	// au début divergent trop (latence réseau hétérogène, données douteuses) →
@@ -83,8 +72,8 @@ type ParticipationT0Input struct {
 //   - ≥2 sources, spread > 2s → SpreadHigh (T0 = médiane − start) ;
 //   - T0 < 0 → Negative (rejet) ; T0 > 120s → SuspiciousHigh (rejet).
 //
-// Retourne (t0Ms, quality). Si quality.Computed() est faux, t0Ms vaut 0 et ne
-// doit pas être stocké comme valeur valide (fallback runtime T0=0).
+// Retourne (t0Ms, quality). Si quality.Computed() est faux, t0Ms vaut 0 et n'est pas un
+// coup d'envoi. Seule ResolveKickoff appelle cette fonction en production.
 func ComputeT0(parts []ParticipationT0Input, startTimeUTC time.Time) (int64, T0Quality) {
 	joinMs := make([]int64, 0, len(parts))
 	startMs := startTimeUTC.UnixMilli()

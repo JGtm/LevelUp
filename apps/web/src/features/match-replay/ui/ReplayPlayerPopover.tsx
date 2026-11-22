@@ -1,12 +1,13 @@
 /**
  * ReplayPlayerPopover — LA FICHE DU JOUEUR EN FENÊTRE, au Cinéma et au Plein cadre : ce qu'un clic sur une fiche de la
- * rangée (ou sur une ligne de la colonne de repli) ouvre. Une fenêtre de 330 px ancrée SOUS la fiche cliquée, bord
- * gauche aligné sur le sien (par la droite si elle sortirait de la page), qui porte `ReplayPlayerPanelBody`.
+ * rangée (ou sur une ligne de la colonne de repli) ouvre. Une fenêtre de 330 px, bord gauche
+ * aligné sur celui de la fiche cliquée (par la droite si elle sortirait de la page) et haut à 8 px sous le HAUT DU PLAN
+ * (le bloc de la toile), qui porte `ReplayPlayerPanelBody`.
  *
  * NON BLOQUANTE. Aucun voile : la lecture continue, le plan reste zoomable et déplaçable, le fil et la barre de
  * lecture restent utilisables, et un clic ailleurs ne la ferme PAS — ce n'est pas un menu. Elle se ferme par sa
  * croix, par Échap, ou en recliquant la fiche du même joueur ; cliquer une AUTRE fiche change de joueur (la fenêtre,
- * remontée par la clé du cadre, se ré-ancre sous la nouvelle fiche).
+ * remontée par la clé du cadre, se ré-aligne sur la nouvelle fiche).
  *
  * ÉCHAP : la fenêtre est une couche (`data-replay-escape-layer`) fermée par `useDismissable` (`useWindowClose`,
  * Échap seul : `outside: null`). Une frappe ferme une couche : la fenêtre avant le Plein cadre, une couche plus
@@ -46,6 +47,16 @@ const OPEN_CARD_SELECTOR = '[data-replay-player-card][aria-pressed="true"]'
 const ANCRE_FICHE: RefObject<HTMLElement | null> = {
   get current() {
     return document.querySelector<HTMLElement>(OPEN_CARD_SELECTOR)
+  },
+}
+
+/** Le bloc du plan (cadre arrondi de la toile) : son haut ancre le haut de la fenêtre. */
+const PLAN_BLOCK_SELECTOR = '[data-replay-plan-block]'
+
+/** Le bloc du plan, relu à chaque placement. */
+const BLOC_PLAN: RefObject<HTMLElement | null> = {
+  get current() {
+    return document.querySelector<HTMLElement>(PLAN_BLOCK_SELECTOR)
   },
 }
 
@@ -115,7 +126,9 @@ export function ReplayPlayerPopover({ onClose, ...body }: ReplayPlayerPopoverPro
   const C = COTES_FENETRE_FICHE
   const rootRef = useRef<HTMLElement>(null)
   const close = useWindowClose(rootRef, onClose)
-  const pos = useAnchoredPanel(ANCRE_FICHE, C.largeurPx, { align: 'start', boundRef: BORNE_PLAN })
+  const pos = useAnchoredPanel(ANCRE_FICHE, C.largeurPx, {
+    align: 'start', boundRef: BORNE_PLAN, topRef: BLOC_PLAN, topGap: C.margeHautPlanPx,
+  })
   return createPortal(
     <section
       ref={rootRef}

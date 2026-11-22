@@ -24,7 +24,7 @@ package replayartifacts
 // rappeler `lireDocumentRange` pour son propre compte au lieu de reutiliser `a.doc` deja en
 // memoire — une double lecture/parse de chaque artefact par cycle (constat du registre
 // `DECOUVERTES_TACTIQUE`, fusion `origin/feat/v75` -> `feat/tactique`). Elle est alignee sur
-// t0film.go/usage.go/bombstats.go : ce sont desormais les QUATRE qui partagent le meme
+// coupdenvoi.go/usage.go/bombstats.go : ce sont desormais les QUATRE qui partagent le meme
 // document, jamais un de plus.
 
 import (

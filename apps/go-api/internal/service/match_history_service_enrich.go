@@ -118,7 +118,7 @@ func (f rowFormatters) skillRankImageURLFor(r domain.MatchHistoryRawRow) *string
 // overtimeFor résout le flag « Prolongation » d'une ligne brute via le
 // chokepoint unique analysis.ResolveOvertime (même résolution que la Match View).
 func (f rowFormatters) overtimeFor(r domain.MatchHistoryRawRow) (bool, int) {
-	return analysis.ResolveOvertime(r.GameVariantName[i18n.Fallback], r.ElapsedSeconds, f.regulation)
+	return analysis.ResolveOvertime(r.GameVariantName[i18n.Fallback], r.GameplaySeconds, f.regulation)
 }
 
 func (f rowFormatters) matchURLFor(matchID string) string {

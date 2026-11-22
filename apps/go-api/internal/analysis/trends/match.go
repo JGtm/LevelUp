@@ -81,7 +81,7 @@ type FromOptions struct {
 
 // FromCanonical aplatit les lignes canoniques en Match, triées par heure de
 // début croissante. Les matchs PvE sont écartés. Secondes jouées = temps joué du
-// joueur, à défaut la durée du match. Un instantané en phase de placement
+// joueur (absent : 0, le match n'entre dans aucun taux par minute). Un instantané en phase de placement
 // (matchs de mesure restants) ne porte pas de valeur de classement.
 func FromCanonical(rows []canonical.PlayerMatchRow, opts FromOptions) []Match {
 	loc := opts.Loc
@@ -149,13 +149,12 @@ func flatten(r *canonical.PlayerMatchRow, loc *time.Location, chainOf func(strin
 	return m
 }
 
-// secondsPlayed : temps joué du joueur, à défaut durée du match, sinon 0.
+// secondsPlayed : temps joué du joueur, celui que l'écriture unique du coup d'envoi range
+// (ADR 0050) ; 0 quand il est absent : le match n'entre alors dans aucun taux par minute
+// (PooledPerMinute ignore les durées nulles), il ne reçoit pas la durée du match à sa place.
 func secondsPlayed(r *canonical.PlayerMatchRow) float64 {
 	if r.Self.TimePlayed != nil {
 		return float64(*r.Self.TimePlayed)
-	}
-	if r.Summary.DurationSeconds != nil {
-		return float64(*r.Summary.DurationSeconds)
 	}
 	return 0
 }

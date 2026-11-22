@@ -17,8 +17,10 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -70,16 +72,20 @@ func (s *MatchEventsSource) GetMatchTimeline(
 	case err != nil:
 		return domain.MatchTimeline{}, fmt.Errorf("MatchEventsSource.GetMatchTimeline: %w", err)
 	}
-	return domain.NewMatchTimeline(durationSeconds.Int64*1000, t0Ms.Int64), nil
+	var t0 *int64
+	if t0Ms.Valid {
+		t0 = &t0Ms.Int64
+	}
+	return timeline.ForMatch(time.Time{}, durationSeconds.Int64*1000, t0), nil
 }
 
 // matchTimelineQuery lit durée (BIGINT castée, robuste si la colonne est DOUBLE)
-// + T0 (countdown) d'un match. T0 = écart ms entre real_start_time et
-// start_time_utc (identique à Q13MatchMeta) ; NULL → 0 (fallback runtime).
+// + coup d'envoi d'un match (sqlfrag.SQLT0Ms, identique à Q13MatchMeta) ; NULL = inconnu,
+// la règle de lecture est celle de timeline.ForMatch.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 var matchTimelineQuery = `
 SELECT
     CAST(r.duration_seconds AS BIGINT) AS duration_seconds,
-    ` + T0MsSQL("r") + ` AS t0_ms
+    ` + sqlfrag.SQLT0Ms("r") + ` AS t0_ms
 FROM match_registry r
 WHERE r.match_id = ?`

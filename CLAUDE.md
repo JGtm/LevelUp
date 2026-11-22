@@ -51,15 +51,19 @@ trimestrielle** : quand un trimestre est clos, déplacer ses entrées vers
 `.ai/archive/thought_log_<AAAA>-Q<N>.md` — le journal actif ne garde que le
 trimestre courant + le précédent.
 
-**Skills agent** (`.claude/skills/*/SKILL.md`) — invoquer le skill AVANT d'agir dans son domaine :
+**Skills agent** — invoquer le skill AVANT d'agir dans son domaine. Les cinq skills de méthode
+sont généraux et vivent sur le compte claude.ai de l'utilisateur, communs à tous les projets
+(synchronisés, invoqués sous le nom `anthropic-skills:<nom>`) ;
+leur complément LevelUp vit ici (`.claude/skills/levelup-*`) et se lit avec eux. Les autres skills
+sont propres à LevelUp (`.claude/skills/*/SKILL.md`).
 
-| Skill | Quand |
-|---|---|
-| `plan-execution` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
-| `plan-review` | Avant de finaliser un plan d'implémentation |
-| `adversarial-review` | Faire relire un diff par un contexte frais avant merge (lots à risque : persist/sync, auth, algo) |
-| `adversarial-audit` | Auditer du code existant hors diff (périmètre × axe, registre daté, ne corrige pas) |
-| `delivery-checklist` | Avant tout commit / PR / « c'est livré » |
+| Skill | Complément LevelUp | Quand |
+|---|---|---|
+| `plan-execution` | `levelup-plan` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
+| `plan-review` | `levelup-plan` | Avant de finaliser un plan d'implémentation |
+| `adversarial-review` | `levelup-revue` | Faire relire un diff par un contexte frais avant merge (en fin de jalon ; par lot si persist/sync, auth, algo) |
+| `adversarial-audit` | `levelup-revue` | Auditer du code existant hors diff (périmètre × axe, registre daté, ne corrige pas) |
+| `delivery-checklist` | `levelup-livraison` | Avant tout commit / PR / « c'est livré » |
 | `arch-rules` | Code Go (couches, ports, multi-titre, logging) |
 | `canonical-types` | Types inter-titres (`internal/games/canonical/`) |
 | `db-schema` | Requêtes / schéma DuckDB |
@@ -96,7 +100,7 @@ Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`
 | Matchs partagés (tous joueurs) | `data/titles/{slug}/warehouse/shared_matches_v2.duckdb` |
 | Référentiels (modes, armes, rangs) | `data/titles/{slug}/warehouse/metadata.duckdb` |
 | Stats PvE Firefight | `data/titles/halo_infinite/warehouse/shared_pve.duckdb` |
-| Social (followers, activité) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
+| Social (médias, likes, favoris, notifications, records, escouades, prestige) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
 | Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
 | Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
 | Archive des films (chunks zstd-3/brut/zlib + manifestes) | `PathResolver.FilmArchiveDir()` : `film_chunks/{short8}/` et `film_manifests/` (réglage `film_archive_dir`, défaut `data/cache`) ; recompression et déplacement = commandes de l'utilisateur (`levelup film recompress`, `film archive-move`), jamais automatiques |
@@ -518,7 +522,14 @@ git commit -m "refactor(phase2): ..."
   absent, repli sur le Plan ; une teinte par palette d'accessibilité ; cerne deux tons des marqueurs ; étages en rangs,
   unités du jeu d'environ 3 m ; lumière en haut à gauche de l'écran ; maillage de Live Fire lu dans le module partagé,
   frontière et eau partagées non appliquées ; crédit OpenSpartan Cartographer, Den, MIT ; amende 0048 D-3, D-4, D-5 et
-  D-8).
+  D-8) ·
+  `0050` **coup d'envoi du match : une résolution, une écriture** (`timeline.ResolveKickoff` seul point de décision,
+  ordre fixe `film` (coup d'envoi publié par le rejeu, tel quel) > `api` (estimation par les arrivées, un appel) > inconnu ;
+  source rangée dans `match_registry.real_start_source` ; temps de jeu recalculé sur ce coup d'envoi ; hors des insertions
+  de la synchronisation, seul `persist.KickoffPersister` écrit coup d'envoi, source et temps de jeu (garde-rail
+  `archlint/kickoff_write_guard_test.go`) ; rattrapage unique `sync/kickoff.Backfill`, au démarrage quand la révision
+  `kickoff_revision` du `sync_meta` partagé diffère de `timeline.KickoffRev` (avant le rejeu des notes) ou par
+  `levelup backfill-kickoff [--dry-run]` ; `t0_quality` et `film_match_start_ms` sans écrivain ni lecteur, restées en base).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

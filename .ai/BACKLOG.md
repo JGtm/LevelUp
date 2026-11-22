@@ -2,6 +2,22 @@
 
 ---
 
+### [code mort] Fonctions d'analyse sans appelant de production
+
+**Relevé le 2026-11-22** (recherche par nom, hors `_test.go`, à confirmer avant suppression) : `analysis/spawn_detection.go` (4 exports), `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`), `ComputeModeCategoryAverages` (`analysis/match_history_avg.go:50`), et la méthode `TitleDataAdapter.LoadMatchSummaries` (3 implémentations, aucun service appelant). CLAUDE.md règle 7 : supprimer avec leurs tests, ou retrouver le lecteur.
+
+**Effort : faible à moyen. Priorité basse.**
+
+---
+
+### [commentaires] Commentaires du code périmés (regroupés)
+
+**Relevé le 2026-11-22.** 33 marqueurs `color-allow` citent « CLAUDE.md §20 » (la section n'existe plus : règles 1 à 19) ; `lib/accessibility/semantic-tokens.ts` décrit encore les tons de la famille stats de combat en opacités ; `games/canonical/fields.go:5-10` dit « ne dépend de rien hors stdlib » alors que le paquet importe `internal/i18n` ; `analysis/modelabel/category.go:36` renvoie à une référence git `v7/cockpit` qui n'existe plus. Une passe unique, sans effet à l'écran.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
 
 **Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
@@ -42,6 +58,12 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [outillage] disk-hygiene supprime les worktrees enregistrés sous C:/t et les clones git à commits non poussés
+
+**Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).
 
 ---
 

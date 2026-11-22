@@ -12,8 +12,10 @@ import { displayPlayerName } from '@/lib/players/displayName'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { feedLineColumns } from '../model/cotesFeedLine'
-import { FEED_GRID_BUTTON, FEED_GRID_ROW, FEED_ROW, FEED_ROW_ITEM } from '../model/feedRow'
+import { concernsFollowed } from '../model/feedFollowed'
+import { FEED_GRID_BUTTON, FEED_GRID_ROW, FEED_ROW, FEED_ROW_ITEM, feedRowClass, followedAttr } from '../model/feedRow'
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
+import type { MedalEvent } from '../model/medalEvent'
 import { killLineHint } from '../model/killLineHint'
 import type { FeedZoneOf } from '../hooks/useFeedZones'
 import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
@@ -87,6 +89,11 @@ interface FeedLineProps {
    * fiche ouverte dans le pied de la colonne. Les lignes d'événement (objectif, prise, véhicule) ne le lisent pas.
    */
   strongXuids?: ReadonlySet<string>
+  /**
+   * Les clés du joueur que la caméra suit : une ligne qui le concerne (auteur ou cible, `concernsFollowed`) prend le fond
+   * léger de suivi, quelle que soit sa forme. Absent ou vide : aucune ligne marquée.
+   */
+  followedKeys?: ReadonlySet<string>
 }
 
 /**
@@ -107,7 +114,9 @@ export function FeedLine({
   teams,
   focus,
   strongXuids,
+  followedKeys,
 }: FeedLineProps) {
+  const followed = followedKeys ? concernsFollowed(entry, followedKeys) : false
   if (entry.event) {
     return (
       <EventFeedLine
@@ -118,6 +127,7 @@ export function FeedLine({
         marks={marks}
         teams={teams}
         locale={locale}
+        followed={followed}
       />
     )
   }
@@ -127,11 +137,8 @@ export function FeedLine({
     const p = entry.presence
     return (
       <ReplayPresenceLine
-        presence={p}
-        replayMs={entry.replayMs}
-        color={inkOf(p.xuid)}
-        mark={marks.get(p.xuid)}
-        locale={locale}
+        presence={p} replayMs={entry.replayMs} color={inkOf(p.xuid)} mark={marks.get(p.xuid)} locale={locale}
+        followed={followed}
       />
     )
   }
@@ -145,22 +152,20 @@ export function FeedLine({
         marks={marks}
         locale={locale}
         strongXuids={strongXuids}
+        followed={followed}
       />
     )
   }
   const k = entry.kill
   if (!k) {
-    // MÉDAILLE SEULE : le décoré et son badge — pas de croix, pas d'arme.
     const m = entry.medal
     if (!m) return null
-    const color = inkOf(m.xuid)
     return (
-      <li className={FEED_ROW}>
-        <FeedClock ms={entry.replayMs} />
-        <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className={nameWeight(m.xuid, strongXuids, 'font-medium')}
-          name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
-        <MedalBadges medals={[m]} />
-      </li>
+      <MedalLine
+        medal={m} replayMs={entry.replayMs} color={inkOf(m.xuid)} mark={marks.get(m.xuid)} locale={locale}
+        name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)}
+        strong={strongXuids?.has(m.xuid) === true} followed={followed}
+      />
     )
   }
   return (
@@ -175,7 +180,30 @@ export function FeedLine({
       carrier={entry.flagCarrierKill === true}
       focus={focus}
       strongXuids={strongXuids}
+      followed={followed}
     />
+  )
+}
+
+/** MÉDAILLE SEULE : le décoré et son badge — pas de croix, pas d'arme. */
+function MedalLine({
+  medal, replayMs, color, mark, locale, name, strong, followed,
+}: {
+  medal: MedalEvent
+  replayMs: number
+  color: string
+  mark: PlayerMarkKind | undefined
+  locale: ReplayLocale
+  name: string
+  strong: boolean
+  followed: boolean
+}) {
+  return (
+    <li className={feedRowClass(FEED_ROW, followed)} data-followed={followedAttr(followed)}>
+      <FeedClock ms={replayMs} />
+      <FeedName kind={mark} color={color} locale={locale} className={strong ? 'font-bold' : 'font-medium'} name={name} />
+      <MedalBadges medals={[medal]} />
+    </li>
   )
 }
 
@@ -202,6 +230,7 @@ function DeathLine({
   marks,
   locale,
   strongXuids,
+  followed,
 }: {
   death: ReplayDeath
   replayMs: number
@@ -210,13 +239,15 @@ function DeathLine({
   marks: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
   strongXuids?: ReadonlySet<string>
+  followed: boolean
 }) {
   const t = REPLAY_TEXT[locale]
   const color = inkOf(death.xuid)
   const kindLabel = deathKindLabel(death.kind, t)
   return (
     <li
-      className={FEED_ROW}
+      className={feedRowClass(FEED_ROW, followed)}
+      data-followed={followedAttr(followed)}
       title={kindLabel ? `${kindLabel} — ${t.killFeedDeathHint}` : t.killFeedDeathHint}
     >
       <FeedClock ms={replayMs} />
@@ -265,6 +296,8 @@ interface KillLineProps {
   carrier?: boolean
   focus?: FeedLineFocus
   strongXuids?: ReadonlySet<string>
+  /** La ligne concerne le joueur suivi par la caméra : fond léger de suivi, cumulable avec la ligne choisie. */
+  followed?: boolean
   /**
    * La forme posée sur le plan : ligne NUE (sans médailles), en lecture seule, à l'opacité donnée. Les
    * mêmes colonnes et les mêmes cellules que la ligne du fil ; `focus` et `carrier` n'y ont pas d'effet.
@@ -299,6 +332,7 @@ export function KillLine({
   carrier,
   focus,
   strongXuids,
+  followed,
   onPlan,
 }: KillLineProps) {
   const t = REPLAY_TEXT[locale]
@@ -322,22 +356,26 @@ export function KillLine({
   )
   if (onPlan) {
     return (
-      <li className={FEED_GRID_ROW} style={{ ...columns, opacity: onPlan.opacity }}>
+      <li className={feedRowClass(FEED_GRID_ROW, followed)} data-followed={followedAttr(followed)} style={{ ...columns, opacity: onPlan.opacity }}>
         {content}
       </li>
     )
   }
   if (!focus) {
     return (
-      <li className={FEED_GRID_ROW} style={columns} title={killLineHint(k, carrier === true, t, false)}>
+      <li
+        className={feedRowClass(FEED_GRID_ROW, followed)} data-followed={followedAttr(followed)} style={columns}
+        title={killLineHint(k, carrier === true, t, false)}
+      >
         {content}
       </li>
     )
   }
   return (
     <li
-      className={focus.selected ? `${FEED_ROW_ITEM} bg-muted` : FEED_ROW_ITEM}
+      className={feedRowClass(focus.selected ? `${FEED_ROW_ITEM} bg-muted` : FEED_ROW_ITEM, followed)}
       data-selected={focus.selected ? 'true' : undefined}
+      data-followed={followedAttr(followed)}
     >
       <button
         type="button"
@@ -367,6 +405,7 @@ function EventFeedLine({
   marks,
   teams,
   locale,
+  followed,
 }: {
   event: FeedEventLine
   replayMs: number
@@ -375,6 +414,7 @@ function EventFeedLine({
   marks: ReadonlyMap<string, PlayerMarkKind>
   teams: ReplayTeamCascades
   locale: ReplayLocale
+  followed: boolean
 }) {
   // MANCHE, CRÂNE, COLLINE : des lignes d'objectif sans acteur nommé par `xuid` (un camp, ou le porteur).
   if (isObjectiveStateLine(event)) {
@@ -387,6 +427,7 @@ function EventFeedLine({
         marks={marks}
         teams={teams}
         locale={locale}
+        followed={followed}
       />
     )
   }
@@ -400,6 +441,7 @@ function EventFeedLine({
     mark: actor ? marks.get(actor) : undefined,
     name: actor ? displayPlayerName(xuidMeta.get(actor)?.gamertag, actor) : botName ? displayPlayerName(botName) : '',
     locale,
+    followed,
   }
   if (event.family === 'objectives') {
     const assisters: CaptureAssister[] = (event.assistXuids ?? []).map((xuid) => ({

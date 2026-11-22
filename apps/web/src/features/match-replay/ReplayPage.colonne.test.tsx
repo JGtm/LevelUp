@@ -70,7 +70,23 @@ describe('ReplayPage : la colonne du Standard', () => {
     expect(colonne?.style.padding).toBe(`${COTES_COLONNE_STANDARD.margeVerticalePx}px ${COTES_COLONNE_STANDARD.margeLateralePx}px`)
     expect(colonne?.style.gap).toBe(`${COTES_COLONNE_STANDARD.ecartBlocsPx}px`)
     expect(colonne?.className).toContain('xl:border-l')
-    expect(colonne?.className).toContain('xl:border-border')
+    expect(colonne?.className).toContain('border-border')
+    // Sous `xl` la colonne passe sous la carte : son filet est alors à son haut.
+    expect(colonne?.className).toContain('border-t')
+    expect(colonne?.className).toContain('xl:border-t-0')
+  })
+
+  it('la carte et la colonne sont UN seul bloc arrondi de 12 px, bordé, sans écart ; la toile n’a pas de cadre propre', async () => {
+    const { container } = await mountReady()
+    const grid = container.querySelector<HTMLElement>('[data-replay-grid="standard"]')
+    for (const cls of ['rounded-xl', 'border', 'border-border', 'bg-card', 'overflow-hidden']) expect(grid?.classList.contains(cls)).toBe(true)
+    expect(grid?.classList.contains('gap-3')).toBe(false)
+    // Le bloc de la toile ne porte ni bordure, ni rayon, ni fond : il est dans le bloc commun.
+    const bloc = container.querySelector<HTMLElement>('[data-replay-plan-block]')
+    expect(grid?.contains(bloc)).toBe(true)
+    for (const cls of ['rounded-lg', 'border', 'bg-card', 'overflow-hidden']) expect(bloc?.classList.contains(cls)).toBe(false)
+    // Un seul bloc arrondi dans la grille : ni la carte ni la colonne n'en ont un second.
+    expect(grid?.querySelectorAll('.rounded-xl, .rounded-lg.border').length).toBe(1)
   })
 
   it('de haut en bas : les équipes, puis le fil', async () => {
@@ -167,6 +183,10 @@ describe('ReplayPage : Cinéma et Plein cadre gardent leur colonne', () => {
       goToFrame(frame)
       const grid = container.querySelector<HTMLElement>(`[data-replay-grid="${frame}"]`)
       expect(grid?.className).toContain('minmax(0,30rem)')
+      // Chaque plan garde son propre cadre et l'écart avec sa colonne.
+      expect(grid?.classList.contains('gap-3')).toBe(true)
+      expect(grid?.classList.contains('rounded-xl')).toBe(false)
+      expect(container.querySelector('[data-replay-plan-block]')?.classList.contains('rounded-lg')).toBe(true)
       expect(grid?.style.getPropertyValue('--replay-colonne-standard')).toBe('')
       expect(columnOf(container)).toBeNull()
       expect(container.querySelector('[data-replay-roster-column]')).not.toBeNull()

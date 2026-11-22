@@ -19,7 +19,7 @@ import type { ReactNode } from 'react'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { OBJECTIVE_FAMILY_GLYPH, type FeedGlyphKey } from '../model/feedGlyphs'
-import { FEED_ROW } from '../model/feedRow'
+import { FEED_ROW, feedRowClass, followedAttr } from '../model/feedRow'
 import { objectiveFamilyOfFeedStat } from '../model/objectiveFeedLogic'
 import type { ObjectiveEventLine } from '../model/feedEventLines'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -40,19 +40,23 @@ export function ObjectiveBanner({
   color,
   replayMs,
   title,
+  followed,
   children,
 }: {
   glyph: FeedGlyphKey
   color: string
   replayMs: number
   title: string
+  /** La ligne concerne le joueur suivi par la caméra : fond léger, par-dessus la teinte de camp. */
+  followed?: boolean
   children: ReactNode
 }) {
   return (
     <li
-      className={FEED_ROW}
+      className={feedRowClass(FEED_ROW, followed)}
       title={title}
       data-feed-family="objectives"
+      data-followed={followedAttr(followed)}
       style={{
         background: `color-mix(in srgb, ${color} ${BANNER_TINT_PCT}%, transparent)`,
       }}
@@ -83,9 +87,10 @@ interface Props {
   /** Les joueurs crédités d'une assistance sur cette capture ; absent ou vide : aucun. */
   assisters?: readonly CaptureAssister[]
   locale: ReplayLocale
+  followed?: boolean
 }
 
-export function ReplayObjectiveLine({ line, replayMs, color, mark, name, assisters = [], locale }: Props) {
+export function ReplayObjectiveLine({ line, replayMs, color, mark, name, assisters = [], locale, followed }: Props) {
   const t = REPLAY_TEXT[locale]
   const action = t.feedObjectiveAction[line.stat]
   const credited = assisters.map((a) => a.name).join(', ')
@@ -94,6 +99,7 @@ export function ReplayObjectiveLine({ line, replayMs, color, mark, name, assiste
       glyph={OBJECTIVE_FAMILY_GLYPH[objectiveFamilyOfFeedStat(line.stat)]}
       color={color}
       replayMs={replayMs}
+      followed={followed}
       title={credited ? `${name} ${action} — ${t.feedLines.captureAssistedBy(credited)}` : `${name} ${action}`}
     >
       <FeedName kind={mark} color={color} locale={locale} className="font-extrabold" name={name} />

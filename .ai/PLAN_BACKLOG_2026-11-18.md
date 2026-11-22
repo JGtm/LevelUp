@@ -452,10 +452,10 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       surimpression au Plein cadre, selon la proposition notée au backlog (fine ligne de progression au bas du
       plan pendant la lecture, dépliée au survol du bas, à toute touche et en pause ; fil des éliminations qui
       remonte quand elle est dépliée) et une variante. Aucun code de l'application.
-- [ ] M.2 (porte : variante de repli choisie par le user) Repli de la barre d'une ligne sous le seuil de
+- [x] M.2 (fait le 2026-11-18, `2816593c6d` : deux lignes quand la frise n'a plus sa largeur minimale, marge de bascule réemployée) (porte : variante de repli choisie par le user) Repli de la barre d'une ligne sous le seuil de
       largeur retenu sur la planche (`ReplayTransportCompact.tsx`, `cotesBarreCompacte.ts`) ; la frise ne
       descend jamais sous sa largeur minimale. Tests de logique pure sur le seuil.
-- [ ] M.3 (porte : surimpression validée par le user sur la planche) Barre en surimpression au Plein cadre,
+- [x] M.3 (fait le 2026-11-18, `2816593c6d` : barre fine et translucide posée sur le plan au Plein cadre, pleine à la pause, au survol, au focus et après un geste ; préférence « Barre de lecture fine ») (porte : surimpression validée par le user sur la planche) Barre en surimpression au Plein cadre,
       telle que validée ; Standard et Cinéma gardent leur barre fixe ; préférence lue une fois, textes dans les
       deux langues. Tests : pause, survol, touche, lecture.
 - **Gate M** : gate commun web sur `MR/` ; contrôle à l'écran du user inscrit à l'artefact des vérifications.
@@ -515,7 +515,7 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       retirée), et s'écrit en ADR (anglais) avec ses garde-rails.
 - [x] T.2 (fait le 2026-11-18, `87910a4602` puis `28137cda38` sur `bl1118/t` : `timeline.ResolveKickoff`, ordre fixe film, estimation, inconnu ; trois états du rejeu, un coup d'envoi du film ne redescend jamais faute de rejeu lisible ; valeur du rejeu hors de la fenêtre du match refusée et comptée ; ADR 0050) Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
       deviennent un diagnostic journalisé et compté, plus une valeur que les lecteurs interprètent.
-- [ ] T.3 Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
+- [x] T.3 (fait le 2026-11-22, `6b2bf79a85` : `timeline.ForMatch` seule règle de lecture, deux fragments SQL, garde-rail `archlint/kickoff_read_guard_test.go`, `playable_duration_seconds` ni lue ni écrite, en-tête servi en `gameplay_duration_seconds` ; témoins avant et après sur 33 matchs : durée de l'en-tête −1 s sur 22 matchs par troncature, Dominance, fiche, accueil et LUSR identiques, 17 prolongations avant et après) Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
       l'item G.5 est couvert ici) ; garde-rail : aucune lecture de la durée jouable de l'API ni du coup
       d'envoi brut hors de la résolution.
 - [x] T.4 (fait le 2026-11-18 : `persist.KickoffPersister`, une transaction par match ; la synchronisation pose les valeurs sur ses lignes avant l'INSERT ; colonne `real_start_source` amorcée par la migration ; garde-rail `archlint/kickoff_write_guard_test.go` ; relecture adverse faite, 1 bloquant et 5 constats corrigés) Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
@@ -668,6 +668,17 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
   par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
   le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
   l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-22 — REPRISE. `C:/t` vidé le 22/11 à 03:03 par la tâche de ménage du disque (72 h d'inactivité) : dossiers
+  de travail et travail non commité perdus, branches intactes. T.3 et Q.2 rejoués depuis les transcripts des agents
+  coupés puis terminés par deux agents neufs, dans `Scripts/LevelUp-wt-t` et `LevelUp-wt-m`. Q.2 fait (`9277c6fa73` :
+  items 0, a, b, c, e, h, i, j, k, g ; choix de l'agent : au Plein cadre, barre fine éteinte, la barre va sous le bloc
+  comme au Cinéma). T.3 fait (`6b2bf79a85`). TROISIÈME LIVRAISON fusionnée dans `release/v8.3.0` après gate lourd
+  vert sur l'intégration : typage, lint, vitest complet (14 568 tests), imports entre features, contrat de l'API,
+  `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (228 paquets, code 0). Découvertes : les sections
+  rencontres et némésis de l'onglet d'équipe diffèrent entre deux exécutions du même code (ordre non déterministe,
+  préexistant) ; `ReplayPage.row.test.tsx` à 508 lignes ; `cmd/investigate_matches` supprimé avec la colonne qu'il
+  lisait. Restent : vérifications à l'écran du user (barre de lecture et corrections du rejeu), T.6 après la
+  régénération du décodeur, étapes I et R.
 - 2026-11-18 — Q.2-g DÉCIDÉ par le user (« ok ») : la ligne « Tirs à la tête » de la fiche lit le compteur daté du
   tableau du jeu (valeur à l'instant = dernière valeur de la courbe cumulée), sans mention ni bulle ; ligne
   absente quand le film ne donne pas le compteur pour le joueur ; l'ancienne estimation et sa note sont

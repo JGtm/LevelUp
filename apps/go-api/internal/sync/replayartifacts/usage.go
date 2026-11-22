@@ -17,7 +17,7 @@ package replayartifacts
 // plus le disque : il reçoit le document déjà lu et désérialisé UNE fois pour toutes les
 // dérivations.
 //
-// # LA FORME, CALQUÉE SUR LE REPORT DU COUP D'ENVOI (t0film.go)
+// # LA FORME, CALQUÉE SUR LE REPORT DU COUP D'ENVOI (coupdenvoi.go)
 //
 //	SUR DISQUE, PAS LE BLOB   le document vient de l'artefact TEL QU'IL EST RANGÉ (lu par
 //	                          [Deriver]). `StoreArtifact` peut REFUSER les octets candidats

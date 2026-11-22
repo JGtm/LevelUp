@@ -38,6 +38,7 @@ import { LayersSection } from './ReplaySettingsLayers'
 import { OrientationSection, type ReplayOrientationControls } from './ReplayOrientationSection'
 import { LivesSection, type ReplayLivesControls } from './ReplayLivesSection'
 import { PlanFeedSection, type ReplayPlanFeedControls } from './ReplayPlanFeedSection'
+import { ThinBarSection, type ReplayThinBarControls } from './ReplayThinBarSection'
 import { ViewPresetsSection } from './ReplayViewPresets'
 import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
@@ -56,6 +57,7 @@ const PANEL_WIDTH = 416
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
 export type { ReplayPlanFeedControls } from './ReplayPlanFeedSection'
+export type { ReplayThinBarControls } from './ReplayThinBarSection'
 export type { ReplayLivesControls, ReplayLivesLayerControls, ReplayRespawnForecastControls } from './ReplayLivesSection'
 export type {
   ReplayBackgroundControls,
@@ -133,6 +135,8 @@ interface ReplayViewPanelProps {
   orientation: ReplayOrientationControls
   /** Le FIL DES ÉLIMINATIONS posé sur le plan : n'existe que là où le cadre peut le poser. */
   planFeed: ReplayPlanFeedControls
+  /** La BARRE DE LECTURE FINE au Plein cadre : n'existe qu'au Plein cadre ; absente = pas d'option. */
+  thinBar?: ReplayThinBarControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -314,6 +318,7 @@ export function ReplayViewPanel({
   lives,
   orientation,
   planFeed,
+  thinBar,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -382,6 +387,7 @@ export function ReplayViewPanel({
       <LivesSection locale={locale} lives={lives} />
       <OrientationSection locale={locale} orientation={orientation} />
       <PlanFeedSection locale={locale} planFeed={planFeed} />
+      {thinBar && <ThinBarSection locale={locale} thinBar={thinBar} />}
       <EffectsSection
         locale={locale}
         showShotFx={showShotFx}

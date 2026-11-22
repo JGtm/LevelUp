@@ -25,7 +25,7 @@ import (
 )
 
 // ReplayBuildRunner exécute la construction (bloquant — appelé dans la goroutine du
-// job). Implémenté par ServiceRegistry.RunReplayBuild.
+// job). Implémenté par ServiceRegistry.RunReplayBuildAction.
 type ReplayBuildRunner func(ctx context.Context, titleSlug, matchID string) (map[string]any, error)
 
 // ReplayBuildEnqueuer met la construction en FILE DURABLE au lieu de la faire

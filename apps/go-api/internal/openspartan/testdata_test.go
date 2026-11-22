@@ -122,7 +122,6 @@ func buildFixtureDB(t *testing.T, dir, filename, ownerXUID string) string {
 				LevelID:             "b963a5ed-a8d0-4475-a47e-67430c56b3bd",
 				MapVariant:          AssetRef{AssetKind: 2, AssetID: "map-id", VersionID: "map-v"},
 				UgcGameVariant:      AssetRef{AssetKind: 6, AssetID: "variant-id", VersionID: "variant-v"},
-				PlayableDuration:    "PT10M",
 				TeamsEnabled:        true,
 				TeamScoringEnabled:  true,
 			},

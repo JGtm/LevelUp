@@ -542,3 +542,14 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
     fusion dans `release/v8.3.0`, puis ménage des worktrees `C:/t/relief-*` (aucune jonction) et des branches.
   - Brique : constat P2-7 pour une v1.4.1 (`himap/sddt_partage.go` publie des chiffres de Live Fire pour tout module
     partagé). 8.3.1 : recherche du plan par mode faite (`annexes_plan_par_mode/recherche.md`), plan à écrire.
+- 2026-11-22 — reprise. Les worktrees sous `C:/t` avaient été effacés le 22/11 à 03:03 par la tâche planifiée
+  `disk-hygiene` (backlog) : branches intactes, travail non commité perdu (corrections web R.2, cuisson E.1). Worktrees
+  désormais hors de `C:/t` (`Scripts/LevelUp-wt-relief-*`), branche `feat/fonds-relief` poussée sur origin.
+  `release/v8.3.0` fusionnée dans `feat/fonds-relief` sans conflit. R.2 web refaite (`13c26d9324`). E.1 FAIT :
+  114 cartes sur 114 ont un relief (`10207042f4`, puis Thunderhead `f11bbd7120` après correction de `--relief-seul`,
+  qui cuit désormais à l'échelle du fond publié), 2 sans maillage (les deux Thunderhead), +50 Mo ; garde-rail des
+  reliefs publiés vert. R.3 : `make gate-push` VERT sur `fe0381c128` (baselines LevelUp, décodeur, API Halo ; site
+  sans erreur). Reste : contrôle à l'écran du user sur les témoins (Gate D), « Current state » de l'ADR 0049, lignes
+  de version et crédit (`annexes_fonds_relief/lignes_de_version.md`), fusion dans `release/v8.3.0`, ménage des
+  worktrees et branches d'agents. Thunderhead : 13 % de son fond publié sans hauteur (fond publié plus large que la
+  recuisson) ; une recuisson complète de la carte le réglerait, non faite (elle change le fond publié).

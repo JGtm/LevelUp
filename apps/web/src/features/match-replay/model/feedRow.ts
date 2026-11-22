@@ -38,3 +38,22 @@ export const FEED_GRID_ROW =
 export const FEED_ROW_ITEM = 'shrink-0'
 export const FEED_GRID_BUTTON =
   'grid h-[28px] w-full cursor-pointer items-center gap-x-[5px] overflow-hidden whitespace-nowrap text-left text-xs hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+
+/**
+ * LA LIGNE QUI CONCERNE LE JOUEUR SUIVI par la caméra (`feedFollowed.ts`) : un fond léger à la couleur de suivi
+ * (le jeton `ring`, celui de la bordure de la fiche suivie), posé par un calque sous le contenu. Un calque et non un
+ * fond de la ligne : il se cumule avec le fond de la ligne choisie (`bg-muted`) et avec la teinte de camp d'un
+ * bandeau d'objectif, qu'un second `background` effacerait. AUCUN liseré : le fond seul marque la ligne.
+ */
+export const FEED_FOLLOWED =
+  'relative isolate before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-ring/15'
+
+/** Les classes de la rangée `base`, marquée quand la ligne concerne le joueur suivi. */
+export function feedRowClass(base: string, followed: boolean | undefined): string {
+  return followed ? `${base} ${FEED_FOLLOWED}` : base
+}
+
+/** L'attribut qui dit le marquage (et que les tests lisent) : présent seulement sur une ligne marquée. */
+export function followedAttr(followed: boolean | undefined): 'true' | undefined {
+  return followed ? 'true' : undefined
+}

@@ -10161,6 +10161,8 @@ export interface components {
             analysis_state?: string;
             dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
+            /** Format: int64 */
+            gameplay_duration_seconds?: number;
             had_bot_teammate: boolean;
             is_excluded: boolean;
             is_favorite: boolean;
@@ -10187,8 +10189,6 @@ export interface components {
             performance_color?: string;
             performance_color_token?: string;
             performance_display: string;
-            /** Format: int64 */
-            playable_duration_seconds?: number;
             playlist_label: string;
             replay_available: boolean;
             score_kind?: string;

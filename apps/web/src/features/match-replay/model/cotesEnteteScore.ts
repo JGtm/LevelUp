@@ -3,10 +3,11 @@
  * et titre, bandeau de score, droite), comme celui du Standard, quand les équipes sont dans la colonne.
  *
  * La largeur de la cellule du score est celle du bandeau à l'emplacement `entete` (`cotesBandeauScore`,
- * source unique) ; la marge latérale du corps est celle de la rangée (`COTES_RANGEE.margeCorps`).
+ * source unique) ; la marge latérale du corps est celle de son cadre (`cotesCorps.ts`).
  */
-import { COTES_RANGEE } from './cardGabarit'
 import { LARGEUR_CELLULE_SCORE_ENTETE_PX } from './cotesBandeauScore'
+import { margeCorpsDe } from './cotesCorps'
+import type { ReplayFrame } from './replayFrame'
 
 export const COTES_ENTETE_SCORE = Object.freeze({
   /** Hauteur de l'en-tête, et écart entre ses trois cellules. */
@@ -18,11 +19,14 @@ export const COTES_ENTETE_SCORE = Object.freeze({
 
 /**
  * La largeur du corps du cadre, bord à bord, en dessous de laquelle l'en-tête n'a plus la place de la cellule du
- * score : les deux marges, les deux écarts, les deux cellules latérales minimales et la cellule du score. Le
- * score reste alors sur la toile.
+ * score : les deux marges du cadre, les deux écarts, les deux cellules latérales minimales et la cellule du score.
+ * Le score reste alors sur la toile.
  */
-export const LARGEUR_REQUISE_ENTETE_SCORE_PX =
-  2 * COTES_RANGEE.margeCorps +
-  2 * COTES_ENTETE_SCORE.ecartPx +
-  2 * COTES_ENTETE_SCORE.celluleLateraleMinPx +
-  LARGEUR_CELLULE_SCORE_ENTETE_PX
+export function largeurRequiseEnteteScore(frame: ReplayFrame): number {
+  return (
+    2 * margeCorpsDe(frame) +
+    2 * COTES_ENTETE_SCORE.ecartPx +
+    2 * COTES_ENTETE_SCORE.celluleLateraleMinPx +
+    LARGEUR_CELLULE_SCORE_ENTETE_PX
+  )
+}

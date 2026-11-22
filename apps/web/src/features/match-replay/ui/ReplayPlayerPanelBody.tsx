@@ -6,8 +6,8 @@
  *
  * DE HAUT EN BAS :
  *  - l'IDENTITÉ : pastille de camp, nom, camp, frags / morts / assistances, puis `headEnd` ;
- *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — boutons à bascule (`aria-pressed`) ; leurs exclusions
- *    et leur remise à zéro sont dans `playerPanelLogic` ;
+ *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — en un segment de boutons à bascule (`FicheActions`) ;
+ *    leurs exclusions et leur remise à zéro sont dans `playerPanelLogic` ;
  *  - une région qui DÉFILE (par défaut : `scroll: 'internal'`) : « À l'instant » (`ReplayPlayerNow`), « Depuis le
  *    début du match », « Éliminations par arme », « Tirs et dégâts », « Grenades lancées », « Ramassages »,
  *    « Équipement », « Médailles », puis, séparés d'un filet, « Totaux du match » et « Gestes ».
@@ -27,7 +27,6 @@
  */
 import { useMemo, type ReactNode } from 'react'
 
-import { Button } from '@/components/ui/button'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { formatClock } from '@/lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
@@ -45,6 +44,7 @@ import { cardName } from '../model/playerCardReadings'
 import { playerMatchTotals } from '../model/playerMatchTotals'
 import type { PlayerPanelAction } from '../model/playerPanelLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
+import { FicheActions } from './fiche/FicheActions'
 import { FicheDepuisDebut } from './fiche/FicheDepuisDebut'
 import { FicheEliminations } from './fiche/FicheEliminations'
 import { FicheEquipement } from './fiche/FicheEquipement'
@@ -54,10 +54,7 @@ import { FicheMedailles } from './fiche/FicheMedailles'
 import { FicheIdentite } from './fiche/FicheIdentite'
 import { FicheTirs } from './fiche/FicheTirs'
 import { ReplayPlayerNow } from './ReplayPlayerNow'
-import { PRESS_GUARDS } from './replayPressGuards'
 
-/** L'ordre des trois actions : celui de la maquette. */
-const ACTIONS: readonly PlayerPanelAction[] = ['follow', 'solo', 'hide']
 
 export interface ReplayPlayerPanelBodyProps {
   player: ReplayPlayer
@@ -98,7 +95,6 @@ export function ReplayPlayerPanelBody({
   players, feed, weaponIcons, headEnd, scroll = 'internal',
 }: ReplayPlayerPanelBodyProps) {
   const t = REPLAY_TEXT[locale]
-  const text = t.playerPanel
   const name = cardName(player, t)
   const ages = useReadingAges(doc)
   const clock = formatClock(displayClockMs(nowMs, playWindow))
@@ -120,23 +116,7 @@ export function ReplayPlayerPanelBody({
         locale={locale}
         headEnd={headEnd}
       />
-      <div className="flex gap-1" role="group" aria-label={name}>
-        {ACTIONS.map((action) => (
-          <Button
-            key={action}
-            type="button"
-            size="sm"
-            variant={actions[action] ? 'default' : 'outline'}
-            className="flex-1"
-            aria-pressed={actions[action]}
-            title={text.actionHint[action]}
-            {...PRESS_GUARDS}
-            onClick={() => onToggle(action)}
-          >
-            {text.action[action]}
-          </Button>
-        ))}
-      </div>
+      <FicheActions name={name} actions={actions} onToggle={onToggle} locale={locale} />
       <div className={LOWER_CLASS[scroll]} style={{ gap: COTES_FICHE_INSTANT.ecartSectionsPx[scroll] }}>
         <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
         {view.since && <FicheDepuisDebut since={view.since} locale={locale} />}

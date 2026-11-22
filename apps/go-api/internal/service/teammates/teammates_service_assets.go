@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/i18n"
@@ -353,7 +354,7 @@ func buildSquadMatchHistory(
 			ScoreKind:               scoreKind,
 			HasReplay:               replays.Has(m.MatchID),
 			DurationSeconds:         m.DurationSeconds,
-			GameplayDurationSeconds: m.GameplayDurationSeconds,
+			GameplayDurationSeconds: int(timeline.ForMatch(time.Time{}, int64(m.DurationSeconds)*1000, m.T0Ms).GameplayDurationSeconds()),
 			WinRateHist:             winRate,
 			WinRateHistTotal:        winRateTotal,
 			SessionLabel:            m.SessionLabel,

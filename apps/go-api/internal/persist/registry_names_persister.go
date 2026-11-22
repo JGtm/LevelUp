@@ -5,7 +5,7 @@
 //
 // `match_registry` est une table « match-of-record » : `internal/sync/shared_write_guard_test.go`
 // n'en autorise l'écriture que depuis ce package (ou une courte allowlist legacy). Même forme que
-// `t0_film_persister.go` et `killsource_sans_killfeed_persister.go`.
+// `kickoff_persister.go` et `killsource_sans_killfeed_persister.go`.
 //
 // # CE QUE LE PERSISTER GARANTIT
 //

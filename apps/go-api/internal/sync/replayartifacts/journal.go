@@ -88,14 +88,6 @@ const (
 	// rattrapait deja les zones (zones_rattrapage.go, passesDeZones). Etat normal d un cycle
 	// multi-joueur, jamais un echec.
 	CompteurZonesPasseDejaEnCours = "postsync_zones_passe_deja_en_cours_total"
-	// Report du coup d'envoi mesure dans le film vers `match_registry` (cf. t0film.go).
-	// CompteurT0FilmReportes : lignes de registre corrigees ; CompteurT0FilmDejaLa : matchs
-	// deja marques `film_movement` a la meme valeur (la garde a mordu) ; CompteurT0FilmEchecs :
-	// writer indisponible, absent du cablage, ou UPDATE refuse — un defaut, jamais un etat
-	// normal.
-	CompteurT0FilmReportes = "postsync_replay_t0_film_reportes_total"
-	CompteurT0FilmDejaLa   = "postsync_replay_t0_film_deja_a_jour_total"
-	CompteurT0FilmEchecs   = "postsync_replay_t0_film_echecs_total"
 	// Resume d'usage equipement/socles derive des artefacts cuits dans le cycle, ecrit dans
 	// `match_usage_films` + `match_usage_players` (cf. usage.go). CompteurUsageEcrits :
 	// passes persistees ; CompteurUsageEchecs : artefact illisible, writer indisponible,

@@ -256,21 +256,21 @@ function TitleAndActionsRow({
           {header.is_ranked && <RankedIcon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />}
           {matchTitle}
         </h1>
-        {(header.start_time_label || header.playlist_label || header.playable_duration_seconds) && (
+        {(header.start_time_label || header.playlist_label || header.gameplay_duration_seconds) && (
           <div className="mt-1 flex items-center gap-2">
             {header.start_time_label && (
               <p className="text-sm text-muted-foreground">
                 {header.start_time_label}
               </p>
             )}
-            {header.playable_duration_seconds != null && (
+            {header.gameplay_duration_seconds != null && (
               <>
                 <span className="text-muted-foreground/50 select-none" aria-hidden="true">·</span>
                 <span
                   className="text-sm tabular-nums text-muted-foreground"
-                  aria-label={`${t.duration} : ${formatDuration(header.playable_duration_seconds)}`}
+                  aria-label={`${t.duration} : ${formatDuration(header.gameplay_duration_seconds)}`}
                 >
-                  {formatDuration(header.playable_duration_seconds)}
+                  {formatDuration(header.gameplay_duration_seconds)}
                 </span>
               </>
             )}

@@ -30,7 +30,8 @@ import (
 // serveur lance son passage unique sur le contexte des tâches de fond (cmd/server). Le câblage injecte
 // les profils et les deux étapes ; l'ordre et l'indépendance des étapes sont décidés par le service.
 func (r *ServiceRegistry) NewScoringRevision() *scoringrevision.Service {
-	return scoringrevision.New(scoringRevisionPlayers{r: r}, kpiRevisionStep{r: r}, campaignRevisionStep{r: r})
+	return scoringrevision.New(scoringRevisionPlayers{r: r}, kickoffRevisionStep{r: r},
+		kpiRevisionStep{r: r}, campaignRevisionStep{r: r})
 }
 
 // scoringRevisionPlayers implémente port.ScoringRevisionPlayers sur le registre.

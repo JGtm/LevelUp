@@ -97,10 +97,15 @@ interface Props {
    * lignes s'affichent sans pictogramme.
    */
   weaponIcons?: WeaponIconsByKey
+  /**
+   * Les clés du joueur que la caméra suit (`playerKeys`) : les lignes qui le concernent portent un fond léger. Absent
+   * ou vide : aucune ligne marquée.
+   */
+  followedKeys?: ReadonlySet<string>
 }
 
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore, weaponIcons = NO_WEAPON_ICONS,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore, weaponIcons = NO_WEAPON_ICONS, followedKeys,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // UNE SEULE RÈGLE POUR TOUTES LES FORMES DE LIGNE : l'allégeance du film, `team-ally` /
@@ -152,6 +157,7 @@ export function ReplayKillFeed({
             locale={locale}
             zoneOf={zoneOf}
             teams={teams}
+            followedKeys={followedKeys}
             focus={select ? { selected: selectedKey === entry.key, onSelect: () => select(entry) } : undefined}
           />
         ))}

@@ -60,7 +60,7 @@ function context(over: Record<string, unknown> = {}): ReplayMatchContext {
   return {
     header: {
       t0_ms: T0_MS,
-      playable_duration_seconds: 200,
+      gameplay_duration_seconds: 200,
       start_time: MATCH_START,
       score_mine: 3,
       score_theirs: 1,
@@ -226,7 +226,7 @@ describe('buildReplayModel — les médias et le score', () => {
 
   it('rend un score NUL quand l’en-tête ne le publie pas', () => {
     const sansScore = context({
-      header: { t0_ms: T0_MS, playable_duration_seconds: 200, start_time: MATCH_START },
+      header: { t0_ms: T0_MS, gameplay_duration_seconds: 200, start_time: MATCH_START },
     })
     expect(buildReplayModel(doc(), sansScore).score).toBeNull()
   })

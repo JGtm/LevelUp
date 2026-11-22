@@ -40,7 +40,7 @@ const P = COTES_FICHE_STANDARD.pied
 
 export function ReplayFeedExtract({
   player, onFullFeed, entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc,
-  playbackStore, weaponIcons = NO_WEAPON_ICONS,
+  playbackStore, weaponIcons = NO_WEAPON_ICONS, followedKeys,
 }: ReplayFeedExtractProps) {
   const t = REPLAY_TEXT[locale]
   const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
@@ -88,6 +88,7 @@ export function ReplayFeedExtract({
             teams={teams}
             focus={select ? { selected: selectedKey === entry.key, onSelect: () => select(entry) } : undefined}
             strongXuids={strong}
+            followedKeys={followedKeys}
           />
         ))}
       </ul>

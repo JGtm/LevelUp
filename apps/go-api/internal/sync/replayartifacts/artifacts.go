@@ -13,7 +13,7 @@
 // (le hook, les dépendances, l'orchestration d'un cycle), backlog.go dit SUR QUOI (les insérés
 // puis le rattrapage), cuisson.go fait le travail (pont disque, construction, mise en file),
 // buildone.go délègue la construction hors du processus, mvar_rattrapage.go comble le catalogue
-// de cartes, t0film.go reporte au registre le coup d'envoi mesuré dans le film, et journal.go
+// de cartes, coupdenvoi.go reporte au registre le coup d'envoi publié par le rejeu, et journal.go
 // dit ce que le cycle a fait.
 //
 // CE QUE FAIT L'ÉTAPE. Après runKillSource, l'étape 1.57 (le film vient d'être exploité pour
@@ -215,12 +215,12 @@ type Deps struct {
 	// le lease et sa dégradation best-effort ; ici on ne fait que l'emprunter.
 	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
 	// AcquireWriter ouvre un segment d'ÉCRITURE shared COURT, acquis APRÈS la cuisson et
-	// relâché aussitôt (cf. t0film.go) — jamais pendant un décodage. Même patron que le
+	// relâché aussitôt (cf. coupdenvoi.go) — jamais pendant un décodage. Même patron que le
 	// burst du collecteur de kills (`killcollector.PostSyncDeps.AcquireWriter`).
 	//
-	// NIL = LE COUP D'ENVOI MESURÉ N'EST PAS REPORTÉ AU REGISTRE, et c'est journalisé : un
-	// chemin de sync sans writer câblé cuit ses artefacts mais laisse `real_start_time` sur
-	// le T0 estimé de l'API. Aucune autre partie de l'étape n'en dépend.
+	// NIL = LES DÉRIVATIONS NE PERSISTENT RIEN, et c'est journalisé : un chemin de sync sans
+	// writer câblé cuit ses artefacts mais laisse le coup d'envoi du registre et les tables
+	// dérivées tels quels ; un lot qui avait quelque chose à écrire n'est pas marqué.
 	AcquireWriter func(ctx context.Context) (*sql.DB, func(), error)
 	// MetaDB (optionnel) résout le nom EN de la carte. Nil = map_name brut seul.
 	MetaDB *sql.DB

@@ -1,46 +1,40 @@
-// Package timeline construit des domain.MatchTimeline depuis les rows DB.
+// Package timeline construit des domain.MatchTimeline depuis les rows DB et résout le coup
+// d'envoi d'un match (kickoff.go).
 //
-// Phase 3 du refactor T0 :
-// les builders lisent désormais le vrai T0 (countdown pré-match) propagé depuis
-// match_registry.real_start_time jusqu'au canonical (MatchSummary.T0Ms) et au
-// MatchView (MatchMetaRaw.T0Ms). Quand le T0 est indisponible (real_start_time
-// NULL → T0Ms nil), le fallback est T0=0 (chronologie brute identique au
-// comportement pré-Phase 3). NewMatchTimeline ramène tout T0 négatif à 0.
+// # UNE LECTURE DE LA CHRONOLOGIE DE JEU
 //
-// Pas de dépendance DB / HTTP — fonctions pures testables en isolation.
+// [ForMatch] est la SEULE règle qui lit le coup d'envoi rangé d'un match : coup d'envoi connu =
+// la chronologie de jeu part de lui ; coup d'envoi inconnu (nil : Halo 5, estimation refusée,
+// donnée absente) = elle part du début du match, et la durée de jeu vaut la durée du match. Les
+// constructeurs ci-dessous et l'écriture ([GameplayTimeline]) la délèguent ; aucun lecteur ne
+// remplace un coup d'envoi absent par zéro de son côté. Côté SQL, la même règle s'écrit une fois
+// dans `sqlfrag.SQLT0Ms` (le coup d'envoi) et `sqlfrag.SQLGameplayDurationMs` (la durée de jeu).
+//
+// Pas de dépendance DB / HTTP : fonctions pures testables en isolation.
 package timeline
 
 import (
+	"time"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
-// BuildFromRegistry construit une MatchTimeline depuis une row match_registry.
-//
-// T0Ms = real_start_time − start_time (countdown pré-match), 0 si real_start_time
-// absent. NewMatchTimeline borne les valeurs négatives à 0.
-//
-// Note : ce builder n'a pas de caller runtime (les services consomment des
-// PlayerMatchRow / MatchMetaRaw) ; conservé comme helper symétrique testable.
-func BuildFromRegistry(reg domain.MatchRegistryRow) domain.MatchTimeline {
-	var durMs int64
-	if reg.DurationSeconds != nil {
-		durMs = int64(*reg.DurationSeconds) * 1000
+// ForMatch rend la chronologie de jeu d'un match depuis sa durée (ms, countdown compris) et son
+// coup d'envoi rangé (t0Ms, ms depuis le début canonique ; nil = inconnu). startUTC peut être
+// la valeur zéro quand l'appelant n'a besoin que des durées et des recalages d'événements.
+// Les valeurs négatives sont ramenées à 0 (domain.NewMatchTimelineAt).
+func ForMatch(startUTC time.Time, durationMs int64, t0Ms *int64) domain.MatchTimeline {
+	var t0 int64
+	if t0Ms != nil {
+		t0 = *t0Ms
 	}
-	var t0Ms int64
-	if reg.RealStartTime != nil {
-		t0Ms = reg.RealStartTime.Sub(reg.StartTime).Milliseconds()
-	}
-	// Horloge absolue fournie (StartUTC) → vrai début/fin/durée accessibles via
-	// les méthodes GameplayStartUTC / GameplayEndUTC / GameplayDurationSeconds.
-	return domain.NewMatchTimelineAt(reg.StartTime, durMs, t0Ms)
+	return domain.NewMatchTimelineAt(startUTC, durationMs, t0)
 }
 
-// BuildTimelinesFromPlayerMatches indexe une MatchTimeline par match_id depuis
-// les rows canoniques chargées par un service (Timeseries, Squad, MatchView).
-//
-// Le T0 est lu depuis Summary.T0Ms (propagé par projectMatchSummary, Phase 3) ;
-// nil → T0=0 (fallback chronologie brute).
+// BuildTimelinesFromPlayerMatches indexe une MatchTimeline par match_id depuis les rows
+// canoniques chargées par un service (Timeseries, Squad, MatchView). Le coup d'envoi vient de
+// Summary.T0Ms (SQLT0Ms) ; nil = inconnu (voir [ForMatch]).
 func BuildTimelinesFromPlayerMatches(rows []canonical.PlayerMatchRow) map[string]domain.MatchTimeline {
 	out := make(map[string]domain.MatchTimeline, len(rows))
 	for _, r := range rows {
@@ -48,39 +42,21 @@ func BuildTimelinesFromPlayerMatches(rows []canonical.PlayerMatchRow) map[string
 		if r.Summary.DurationSeconds != nil {
 			durMs = int64(*r.Summary.DurationSeconds) * 1000
 		}
-		out[r.Summary.MatchID] = domain.NewMatchTimeline(durMs, derefInt64(r.Summary.T0Ms))
+		out[r.Summary.MatchID] = ForMatch(time.Time{}, durMs, r.Summary.T0Ms)
 	}
 	return out
 }
 
-// BuildTimelinesFromSquadRows indexe une MatchTimeline par match_id depuis les
-// SquadMatchRow (page Escouade / TeammatesService, Q30). Le T0 est lu depuis
-// SquadMatchRow.T0Ms (propagé par Q30, §4.A-bis) ; nil → T0=0 (fallback
-// chronologie brute). Plusieurs rows peuvent partager le même match_id (une par
-// coéquipier) : elles portent le même T0, la dernière écrasant les précédentes
-// sans effet observable.
+// BuildTimelinesFromSquadRows indexe une MatchTimeline par match_id depuis les SquadMatchRow
+// (page Escouade / TeammatesService, Q30). Le coup d'envoi vient de SquadMatchRow.T0Ms ;
+// nil = inconnu. Plusieurs rows peuvent partager le même match_id (une par coéquipier) : elles
+// portent le même coup d'envoi, la dernière écrasant les précédentes sans effet observable.
 func BuildTimelinesFromSquadRows(rows []domain.SquadMatchRow) map[string]domain.MatchTimeline {
 	out := make(map[string]domain.MatchTimeline, len(rows))
 	for _, r := range rows {
-		out[r.MatchID] = domain.NewMatchTimeline(int64(r.DurationSeconds)*1000, derefInt64(r.T0Ms))
+		out[r.MatchID] = ForMatch(time.Time{}, int64(r.DurationSeconds)*1000, r.T0Ms)
 	}
 	return out
-}
-
-// BuildForMatchMs construit la MatchTimeline d'un match unique depuis sa durée
-// et son offset T0 (countdown pré-match) en millisecondes. Utilisé par
-// MatchViewService qui charge un seul match (t0Ms vient de MatchMetaRaw.T0Ms,
-// 0 si indisponible).
-func BuildForMatchMs(durationMs, t0Ms int64) domain.MatchTimeline {
-	return domain.NewMatchTimeline(durationMs, t0Ms)
-}
-
-// derefInt64 déréférence un *int64 en retournant 0 si nil.
-func derefInt64(p *int64) int64 {
-	if p == nil {
-		return 0
-	}
-	return *p
 }
 
 // GameplayDurationsMS projette une map de MatchTimeline en map match_id → durée

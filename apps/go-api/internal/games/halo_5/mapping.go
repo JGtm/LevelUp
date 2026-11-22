@@ -117,7 +117,7 @@ func mapOneMatchSummary(r *halo5.H5MatchResult, gamertag string, classifier clas
 		IsPvE:           isPvE,
 		Outcome:         outcome,
 		Teams:           mapTeams(r.Teams),
-		T0Ms:            nil, // pas de countdown/real_start_time en h5
+		T0Ms:            nil, // Halo 5 : aucune heure d'arrivée, coup d'envoi inconnu (la chronologie part du début du match)
 	}
 }
 

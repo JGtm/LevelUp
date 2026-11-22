@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/kickoff"
 	"levelup/go-api/internal/sync/objective"
 
 	"golang.org/x/sync/errgroup"
@@ -77,6 +78,24 @@ type fetchedMatch struct {
 	FriendXUIDs []string
 }
 
+// extractRegistryAndKickoff extrait la ligne de registre et les participants d'un match, et pose le
+// coup d'envoi et les temps de jeu par la résolution unique (kickoff.ApplyToRows). Le coup d'envoi se
+// résout sur les participants même quand ils ne sont pas rangés : le registre le porte dans tous les cas.
+func (e *SyncEngine) extractRegistryAndKickoff(ctx context.Context, matchJSON map[string]any, matchID string) (
+	*MatchRegistryRow, []ParticipantRow, error,
+) {
+	reg, err := ExtractRegistry(matchJSON, e.gamertag)
+	if err != nil {
+		slog.WarnContext(ctx, "sync: ExtractRegistry échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
+		return nil, nil, fmt.Errorf("ExtractRegistry: %w", err)
+	}
+	participants := ExtractParticipants(matchJSON)
+	kickoff.Observe(ctx, e.titleSlug, matchID, kickoff.ApplyToRows(reg, participants))
+	return reg, participants, nil
+}
+
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
 // Retourne les données extraites prêtes pour insertion séquentielle.
 func (e *SyncEngine) fetchMatchData(
@@ -97,19 +116,16 @@ func (e *SyncEngine) fetchMatchData(
 		MatchID: matchID,
 	}
 
-	// Extract registry (obligatoire).
-	reg, err := ExtractRegistry(matchJSON, e.gamertag)
+	// Extract registry (obligatoire), coup d'envoi résolu sur les participants.
+	reg, participants, err := e.extractRegistryAndKickoff(ctx, matchJSON, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "sync: ExtractRegistry échoué",
-			"gamertag", e.gamertag, "match_id", matchID, "err", err,
-		)
-		return nil, fmt.Errorf("ExtractRegistry: %w", err)
+		return nil, err
 	}
 	fm.Registry = reg
 
 	// Extract optionnels.
 	if opts.WithParticipants {
-		fm.Participants = ExtractParticipants(matchJSON)
+		fm.Participants = participants
 
 		// Garantir gamertag sur la row du joueur synchronisé : l'API renvoie
 		// parfois Gamertag/PlayerName vide pour le joueur appelant.
