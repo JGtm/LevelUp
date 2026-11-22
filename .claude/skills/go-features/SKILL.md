@@ -151,7 +151,6 @@ Le décodage du film est dans la brique `halo-infinite-film-decoder` (façade `d
 
 Ces fonctions existent mais aucun code de production ne les appelle : ne pas les présenter comme réutilisables, et se demander s'il faut les supprimer avant de bâtir dessus.
 
-- `spawn_detection.go` (estimation du début de match dans un film).
 - `ComputeAntagonistCounts` (`killer_victim.go`).
 - `ComputeModeCategoryAverages` (`match_history_avg.go`).
 
