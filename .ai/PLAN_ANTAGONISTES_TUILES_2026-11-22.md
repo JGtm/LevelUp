@@ -263,6 +263,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
       résolus selon ce plan.
 - [ ] I.2 `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
 - [ ] I.3 Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
+- [ ] I.6 (né du contrôle du pilote, règle 17) Commentaires et titres de tests du diff : remplacer les renvois aux identifiants de ce plan (D-10, D-15, DU-3…) par la règle elle-même ; contrôle : `git diff --name-only release/v8.3.0 -- apps | xargs grep -nE "DU-[0-9]|D-1[0-9]|.ai/"` vide.
 - [ ] I.4 `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
 - [ ] I.5 Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
       nommé par le user, avec les textes anglais de D-14.
