@@ -112,6 +112,9 @@ type CaptureStats struct {
 	// l'historique est vue. Faux quand la capture s'arrête autrement (anti-boucle sur un match
 	// déjà vu, cap MaxMatches, delta-stop, erreur) : la pagination n'a alors rien prouvé.
 	HistoryEnd bool
+	// LastMatchID : identifiant du dernier résumé de la liste traité (connu, écarté ou collecté). Après
+	// une page pleine, c'est la dernière entrée de la page : la preuve de position du marque-page.
+	LastMatchID string
 }
 
 // GameMode Halo 5 (cf. mapping_carnage.h5GameModeSegment + sonde) :
@@ -256,6 +259,7 @@ func capturePage(
 			return batches, false, nil // pagination non avançante -> stop défensif
 		}
 		seen[s.MatchID] = struct{}{}
+		stats.LastMatchID = s.MatchID
 		stats.MatchesSeen++
 		if isKnown(s.MatchID) {
 			if opts.StopOnKnown {

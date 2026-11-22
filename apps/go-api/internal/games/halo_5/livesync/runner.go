@@ -88,15 +88,10 @@ type Deps struct {
 	// par l'impl (watermark sync_meta), PAS par ce hook. nil → runner unit-testable
 	// sans notifications (no-op).
 	NotifyFirstSync func(ctx context.Context, inserted int)
-	// HistoryComplete : sonde OPTIONNELLE de l'état de l'historique du joueur (base joueur h5,
-	// historystate.Complete). (false, nil) = fin jamais vue : le cycle fait une passe de rattrapage
-	// (catchup.go) au lieu du delta. (_, err) = base illisible : delta ordinaire, HistoryPending vrai.
-	// nil → historique complet (delta inchangé, runner testable sans base joueur).
-	HistoryComplete func(ctx context.Context) (bool, error)
-	// MarkHistoryComplete : range la fin d'historique (historystate.MarkComplete) sous le bail
-	// d'écriture de la base joueur ; rend vrai quand la clé est rangée. Appelé seulement quand la
-	// passe de rattrapage a vu la fin sans erreur. nil → fin jamais rangée.
-	MarkHistoryComplete func(ctx context.Context) bool
+	// History : état du rattrapage de l'historique du joueur (base joueur h5, historystate). Fin jamais
+	// vue : le cycle fait une passe de rattrapage (catchup.go) au lieu du delta. Base illisible : delta
+	// ordinaire, HistoryPending vrai. nil → historique complet (delta inchangé, runner testable sans base joueur).
+	History HistoryStore
 	// CapturePage : capture d'UNE page de la passe de rattrapage. nil → halo5.CapturePageAt sur la
 	// source du cycle (injectable en test, comme Capture).
 	CapturePage CapturePageFunc
