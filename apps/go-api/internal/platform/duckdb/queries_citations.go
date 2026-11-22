@@ -38,7 +38,7 @@ const Q36aMedalTotals = `
 SELECT
     medal_name_id,
     SUM(count) AS total_count
-FROM medals_earned
+FROM v_medals_earned
 WHERE xuid = ?` + campaignExclusionToken + `
 GROUP BY medal_name_id
 ORDER BY total_count DESC`

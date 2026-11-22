@@ -158,7 +158,7 @@ func TestLotB_MedaillesDeTousLesJoueurs_PanneEtLibellesDegrades(t *testing.T) {
 
 	t.Run("relation absente = panne", func(t *testing.T) {
 		pdb := newTestPlayerDB(t)
-		lotBExec(t, pdb.Player, `DROP VIEW medals_earned`)
+		lotBExec(t, pdb.Player, `DROP VIEW v_medals_earned`)
 		if _, err := NewMatchViewRepo(pdb, pTestXUID).GetMatchBulkMedals(ctx, "m1"); err == nil {
 			t.Fatal("une erreur est attendue")
 		}

@@ -23,6 +23,7 @@ func newE2PlayerDB(t *testing.T, titleSlug string) *PlayerDB {
 	ctx := context.Background()
 	stmts := []string{
 		`CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM medals_earned`,
 	}
 	for _, s := range stmts {
 		if _, err := pdb.Shared.Exec(ctx, s); err != nil {

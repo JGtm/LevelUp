@@ -213,7 +213,7 @@ func loadWeaponNames(ctx context.Context, db *sql.DB) (map[uint64]string, error)
 func loadMedalsForMatch(ctx context.Context, db *sql.DB, matchID, xuid string) (map[int64]int, error) {
 	const q = `
 SELECT medal_name_id, count
-FROM medals_earned
+FROM v_medals_earned
 WHERE match_id = ? AND xuid = ?`
 
 	rows, err := db.QueryContext(ctx, q, matchID, xuid)

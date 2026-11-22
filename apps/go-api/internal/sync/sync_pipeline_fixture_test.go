@@ -159,6 +159,9 @@ CREATE TABLE medals_earned (
     PRIMARY KEY (match_id, xuid, medal_name_id)
 );
 
+CREATE VIEW v_medals_earned AS
+SELECT match_id, xuid, medal_name_id, count FROM medals_earned;
+
 CREATE TABLE xuid_aliases (
     xuid        VARCHAR PRIMARY KEY,
     gamertag    VARCHAR,

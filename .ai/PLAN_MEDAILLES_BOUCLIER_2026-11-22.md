@@ -109,7 +109,7 @@ et que son commit est fait.
   du document) et Vengeur par joueur (entrée = frags). Tests unitaires purs, cas limites de D-1 à D-3.
 - [x] A.2 Migration des trois colonnes + vue `_latest` recréée ; dérivation qui les pose ; persister ;
   révision du résumé d'usage montée. Tests d'intégration du persister et de la migration.
-- [ ] A.3 Médaille `9000000002` : définition et traductions fr/en (forme actuelle des seeds, aucune
+- [x] A.3 Médaille `9000000002` : définition et traductions fr/en (forme actuelle des seeds, aucune
   colonne `_fr`/`_en` neuve), image, catégorie ; vue de fusion D-10 ; bascule des lecteurs « vue » ;
   garde-rail de lecture brute.
 - Gate : `go test ./...` et `go test -tags=integration ./internal/persist/... ./internal/migration/...
@@ -399,4 +399,28 @@ le worktree.
   (son bouclier n'a jamais bougé). Un joueur sans ligne de résumé reçoit une ligne neuve seulement s'il a
   une valeur non nulle (précédent `AttachShieldlessKills`) ; un joueur à zéro partout n'en reçoit pas, et
   le lecteur B lira « match mesuré » par les autres lignes. `canonicalOrderFloor` relevé à 241.
+- 2026-11-22 : A.3 close. Médaille `9000000002` : step `seed_custom_hard_target_medal` (metadata, titre Infinite
+  seul, `games/halo_infinite/migrations/steps_medal_hard_target.go`), placé APRÈS
+  `metadata_definition_texts_to_translations_v1` dans `canonicalOrder` : la forme du seed du Vengeur
+  (colonnes `name_fr`/`name_en` de `medal_definitions`, migrées ensuite) est impossible sur une base de prod,
+  dont ces colonnes ont été retirées. Définition sans colonne de texte (custom, difficulté Normal, catégorie
+  skill comme le Vengeur) ; textes fr « Cible difficile » / en « Hard Target » et descriptions dans
+  `medal_translations` par le helper neuf `migration.UpsertMedalTexts` (même forme que `UpsertAssetTexts`).
+  Image `static/medals/halo_infinite/9000000002.png` (256x256, comme `9000000001.png` ; le garde d'icônes
+  ne couvre que la taxonomie, la médaille custom est hors table). Vue de fusion `v_medals_earned`
+  (migration `shared_medals_earned_view_v1`, TargetShared, juste après `shared_match_usage_levelup_v1`) :
+  colonnes match_id, xuid, medal_name_id, count ; Vengeur dérivé remplace les lignes héritées dès qu'une
+  ligne du match porte `revenge_kills` non NULL (une valeur dérivée à zéro n'est pas une ligne) ; Cible
+  difficile = `shield_recharges` > 0 ; sans colonnes dérivées ou sans résumé d'usage (base partagée de
+  Halo 5 : elle reçoit les steps globaux de la cible shared) la vue rend `medals_earned` seul ; sans table
+  de médailles, rien n'est posé. Les 8 lecteurs « vue » de 0.4 lisent la vue (queries_match Q14,
+  queries_match_detail Q27, queries_home_citations Q26h, queries_citations Q36a, medals_by_xuid_repo,
+  explorer_repo, explorer_repo_medals, sync/citations) ; `medal_exploit_loader` reste brut (D-15).
+  Garde-rails : `archlint/medals_earned_lecture_brute_test.go` (liste fermée et datée des 19 lectures brutes
+  + exploit, compte exact par fichier, entrée périmée refusée) et regex du garde d'exclusion de campagne
+  élargie à `v_medals_earned` (le mot entier `medals_earned` ne la reconnaissait pas). D-16 : le recalcul des
+  citations après la dérivation (clé `match_usage_films_latest.written_at` plus récent que les citations)
+  couvrait déjà la citation lue par la vue ; test `citations_vengeur_vue_integration_test.go` (Vengeur hérité
+  7 avant film, 2 après, lu par la vue). `canonicalOrderFloor` relevé à 243. Corrigé au passage (A.1,
+  bloquait le lint) : De Morgan dans `revenge.vengeable`.
 
