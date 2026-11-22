@@ -186,7 +186,8 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste A bis — entrées du rejeu (Sonnet, avant B, C.2 et D)
 
-- [ ] A.4 `features/match-replay/model/replayAntagonists.ts` et un hook `hooks/useReplayAntagonists.ts` : depuis les éliminations du fil, l'allégeance du film et le roster, les clés rapprochées (D-10), le prédicat d'adversaire avec bots exclus (DU-5), et `buildAntagonists` gardé par (document, sujet) ; le sujet « point de vue » ramené à sa clé du film. Seule source des pistes B, C.2 et D (aucune ne refait le rapprochement). Tests : victime bot, tueur absent, point de vue bot, mêlée générale, trahison, doublons, un même index servi deux fois.
+- [x] A.4 (fait, `5d71b8296a` : `createReplayAntagonists(feed, players)`, `forSubject(clé du film)`, `forViewpoint(viewpoint)`, allégeance construite par sujet ; 23 tests, contrôlés par le pilote)
+- [x] A.5 (fait, `4ac00336a0` : `useReplayAntagonists` appelé une fois dans `ReplayPage.tsx`, champ `antagonists` de `ReplayFrameView`, reçu par les trois cadres et `ReplayStage` par `view` ; dossier du rejeu : 6 088 tests verts chez l'agent) Branchement de la fabrique jusqu'aux cadres, pour que B, C.2 et D partent de `view.antagonists`. `features/match-replay/model/replayAntagonists.ts` et un hook `hooks/useReplayAntagonists.ts` : depuis les éliminations du fil, l'allégeance du film et le roster, les clés rapprochées (D-10), le prédicat d'adversaire avec bots exclus (DU-5), et `buildAntagonists` gardé par (document, sujet) ; le sujet « point de vue » ramené à sa clé du film. Seule source des pistes B, C.2 et D (aucune ne refait le rapprochement). Tests : victime bot, tueur absent, point de vue bot, mêlée générale, trahison, doublons, un même index servi deux fois.
 - **Gate A bis** : gates communs sur `src/features/match-replay/model` et `hooks`.
 
 ## Piste B — canevas (Sonnet)
@@ -284,6 +285,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B, C.2 (avec C.3, C.4), D.
 - 2026-11-22 — F.1 et F.2 closes et fusionnées ; F.3 ajoutée (champ servi sans lecteur).
 - 2026-11-22 — DU-5 tranchée par le user (bots exclus). A.4 ajoutée (entrées communes du rejeu). Lancées : A.4, F.
 - 2026-11-22 — piste E close (E.8 comprise), fusionnée.
