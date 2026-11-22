@@ -240,8 +240,8 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [x] E.7 (fait : vus en échec puis verts ; contrôle du pilote : 295 tests ciblés verts ; témoins : seuls `filtre-masquer.json` (76 éléments mixtes passés de retirés à dessinés, écart de DU-3) et la liste des tests changent) Tests : réducteur (masquer deux joueurs, Seul puis réafficher un joueur, suivre un masqué, masquer le suivi,
       changement de match) ; filtre des calques sur DU-3 ; tuile et ligne (boutons, clic qui n'ouvre pas la fiche,
       états actifs) ; témoins 0.4 de Seul et Masquer d'un joueur : identiques, sauf l'écart que DU-3 annonce, listé.
-- [ ] E.8 (né du compte rendu de E : la fiche compacte `ui/ReplayCompactCard.tsx`, employée par la colonne et la rangée au-delà de 4 contre 4, n'a ni Suivre ni œil ; sans elle, le critère 5 de la section 0 n'est pas tenu) Mêmes boutons, mêmes règles que E.3 sur la fiche compacte, avec tests.
-- **Gate E** : gates communs sur `src/features/match-replay` (dossier entier : la règle des calques traverse tout).
+- [x] E.8 (fait, `c9297dc077` : mêmes composants ; boutons de 16 px comme sur la tuile, posés sur le nom ; pas de mention « masqué » faute de place, nom pâle et œil barré ; contrôle du pilote : tests de la fiche compacte verts ; taille à juger à l'écran) (né du compte rendu de E : la fiche compacte `ui/ReplayCompactCard.tsx`, employée par la colonne et la rangée au-delà de 4 contre 4, n'a ni Suivre ni œil ; sans elle, le critère 5 de la section 0 n'est pas tenu) Mêmes boutons, mêmes règles que E.3 sur la fiche compacte, avec tests.
+- **Gate E** (passé : 6 064 tests du dossier verts chez l'agent, typecheck, lints, tailles ; témoins conformes) : gates communs sur `src/features/match-replay` (dossier entier : la règle des calques traverse tout).
 
 ## Piste F — page du match (Sonnet)
 
@@ -278,6 +278,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — piste E close (E.8 comprise), fusionnée.
 - 2026-11-22 — E.1 à E.7 faites et fusionnées (agent : 6 037 tests du dossier verts) ; E.8 ajoutée (fiche compacte sans boutons).
 - 2026-11-22 — C.1 close et fusionnée ; C.2 attend DU-5 (le prédicat d'adversaire du point de vue).
 - 2026-11-22 — piste A close (gate : vitest 20/20, typecheck, lint des imports, eslint), fusionnée dans la branche d'intégration.
