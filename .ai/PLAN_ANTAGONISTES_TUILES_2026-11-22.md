@@ -201,7 +201,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste C — frise (Sonnet)
 
-- [ ] C.1 `ui/ReplayMarkTrack.tsx` : sur la rangée du point de vue (`tall`), éliminations dans la moitié haute, morts
+- [x] C.1 (fait, `486616aa52` : barre d'élimination centrée à 6 px, de mort à 18 px, losanges suivis, badge collé en haut ; trois fixtures de la barre de lecture mises à jour ; témoins : seuls `frise.html` et `frise-piste-point-de-vue.html` changent, contrôlé par le pilote ; 117 tests ciblés verts) `ui/ReplayMarkTrack.tsx` : sur la rangée du point de vue (`tall`), éliminations dans la moitié haute, morts
       dans la moitié basse ; badges de médaille recalés sur leur marque ; rangée des coéquipiers inchangée (DU-4).
       Géométrie horizontale intouchée (`timelineGeometry.guard.test.ts` vert).
 - [ ] C.2 Bande des titres (D-13) au-dessus de la rangée du point de vue, dans un composant extrait (`ui/ReplayTimelineTracks.tsx` fait 513 lignes : il ne grandit pas) : une icône par changement de titre (genre `prise` seulement), infobulle D-1, nom accessible
@@ -277,6 +277,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — C.1 close et fusionnée ; C.2 attend DU-5 (le prédicat d'adversaire du point de vue).
 - 2026-11-22 — piste A close (gate : vitest 20/20, typecheck, lint des imports, eslint), fusionnée dans la branche d'intégration.
 - 2026-11-22 — étape 0 close (gate : 4 sorties écrites, section 1 corrigée, témoins contrôlés par le pilote). DU-5 posée au user. A, C.1 et E lancées.
 - 2026-11-22 — dépendance levée, vérifiée : `chore/830-backlog-1118`, `bl1118/m` et `bl1118/t` ont 0 commit hors de `release/v8.3.0` ; `feat/medailles-bouclier` ne touche aucun fichier de `features/match-replay`, `features/match-view` ni `lib` en commit. Go du user. Branche `feat/830-antagonistes-tuiles` (worktree du pilote `../LevelUp-wt-ant`), étape 0 dans `../LevelUp-wt-ant-0` (`ant/0`).
