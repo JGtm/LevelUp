@@ -1,3 +1,9 @@
+## [2026-11-22] Médailles du bouclier : corrections P0 et P1 de la revue adversariale — Complété (sur `feat/medailles-bouclier`, non poussé)
+**Statut :** Complété. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (journal).
+**Décision technique principale :** le snapshot exporte `match_usage_players` et `match_usage_films` (tables requises) et pose `v_medals_earned` à la lecture par les fonctions canoniques de la migration ; la vue des médailles est réécrite pour qu'une lecture bornée à des matchs (égalité ou liste) lie ses matchs sous la fenêtre du résumé d'usage (ADR 0036 I2) : branches dérivées parties de `match_usage_films_latest`, règle du Vengeur par fenêtre `PARTITION BY match_id` au lieu d'un `NOT EXISTS`.
+**Résultats observés :** avant correction, la vue du match servie du snapshot échouait en Catalog Error ; les cinq lectures bornées testées voyaient une fenêtre de 20 lignes pour 2 matchs demandés (4 passes). Après : les deux tests verts, mêmes médailles servies que le live.
+**Conclusion / prochaine étape :** P2 de la revue au backlog (une entrée), non corrigés par consigne de release. `Q36aMedalTotals` rangé comme lecture de tout l'historique dans l'ADR.
+
 ## [2026-11-22] Médailles du bouclier et barème d'impact : étape 0 close (mesures et cartographie) — En cours
 **Statut :** En cours. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (étape 0 close, pistes A, B et C non lancées), branche `feat/medailles-bouclier`.
 **Décision technique principale :** les règles de bris, de recharge et de vengeance ont été mesurées sur le parc avant tout code, par deux instruments `research` en lecture seule (`sync/replayartifacts/medailles_bouclier_research_test.go`, `platform/duckdb/impact_bareme_research_test.go`), gardés comme témoins du barème.

@@ -20,18 +20,23 @@ import (
 
 const medailleVengeurTest = 9000000001
 
-// poserResumeAvecVengeur remplace les vues du résumé d'usage par une forme réduite portant les
-// colonnes dérivées (revenge_kills, shield_recharges), écrit la dérivation de fixM1 datée `derive`
-// et pose la vraie vue de fusion des médailles.
+// poserResumeAvecVengeur pose le résumé d'usage au schéma livré, écrit la dérivation de fixM1 datée
+// `derive` (une passe, `vengeances` vengeances, aucune recharge) et pose la vraie vue de fusion des
+// médailles.
 func poserResumeAvecVengeur(t *testing.T, f *pipelineFixture, derive time.Time, vengeances int) {
 	t.Helper()
-	mustExec(t, f.shared, `CREATE TABLE match_usage_films (match_id VARCHAR, written_at TIMESTAMP)`)
-	mustExec(t, f.shared, `CREATE TABLE match_usage_players (match_id VARCHAR, xuid VARCHAR,
-		revenge_kills INTEGER, shield_recharges INTEGER)`)
-	mustExec(t, f.shared, `CREATE VIEW match_usage_films_latest AS SELECT * FROM match_usage_films`)
-	mustExec(t, f.shared, `CREATE VIEW match_usage_players_latest AS SELECT * FROM match_usage_players`)
-	mustExec(t, f.shared, `INSERT INTO match_usage_films VALUES (?, ?)`, fixM1, derive)
-	mustExec(t, f.shared, `INSERT INTO match_usage_players VALUES (?, ?, ?, 0)`, fixM1, fixXUID, vengeances)
+	if err := migration.EnsureMatchUsageSummary(f.shared); err != nil {
+		t.Fatalf("EnsureMatchUsageSummary: %v", err)
+	}
+	mustExec(t, f.shared, `INSERT INTO match_usage_films
+		(match_id, summary_pass, summary_rev, artifact_schema, written_at, frame_interval_ms, frame_count, duration_ms,
+		 pad_occupancies, pad_named, pad_unnamed, weapon_pads_json, powerup_pickups_json)
+		VALUES (?, 'p1', 'us7', 70, ?, 100, 10, 1000, 0, 0, 0, '[]', '{}')`, fixM1, derive)
+	mustExec(t, f.shared, `INSERT INTO match_usage_players
+		(match_id, summary_pass, summary_rev, xuid, grapple_pulls, camo_episodes, camo_ms, camo_kills,
+		 overshield_episodes, overshield_ms, overshield_kills, deployed_json, dropped_objects, grenades_thrown,
+		 pad_pickups, pad_pickups_json, revenge_kills, shield_recharges)
+		VALUES (?, 'p1', 'us7', ?, 0, 0, 0, 0, 0, 0, 0, '{}', 0, 0, 0, '{}', ?, 0)`, fixM1, fixXUID, vengeances)
 	if err := migration.ApplyMedalsEarnedView(f.shared); err != nil {
 		t.Fatalf("ApplyMedalsEarnedView: %v", err)
 	}
