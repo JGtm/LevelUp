@@ -18,7 +18,7 @@ import (
 //
 // Valeur : un objet JSON
 //
-//		{"offset":N,"last_match_id":"...","saved_at":"RFC3339","failed":[{"id":"...","attempts":N}, ...]}
+//		{"offset":N,"last_match_id":"...","head_match_id":"...","saved_at":"RFC3339","failed":[{"id":"...","attempts":N}, ...]}
 //
 //	  - offset : nombre d'entrées de la liste de l'API (de la plus récente à la plus ancienne)
 //	    déjà traitées ; la prochaine entrée à traiter est à ce décalage. >= 1 quand il y a un marque-page ;
@@ -26,6 +26,10 @@ import (
 //	  - last_match_id : identifiant du dernier match traité, donc de l'entrée à `offset - 1`. Il sert
 //	    de preuve de position : la liste de l'API gagne des matchs par le haut, et le décalage rangé
 //	    ne vaut que si l'identifiant se retrouve dans la page relue.
+//	  - head_match_id : identifiant du match en tête de la liste (position 0) à la passe qui a rangé le
+//	    marque-page. Facultatif : un marque-page rangé sans lui reste valide. Il sert d'ancre : le
+//	    nombre d'entrées arrivées en tête depuis est sa position dans la liste relue ([Cursor.ArrivedSince]),
+//	    exact quelles que soient les entrées (connues, introuvables, écartées).
 //	  - saved_at : instant de l'écriture, pour le diagnostic seulement.
 //	  - failed : les matchs que le rattrapage n'a pas réussi à ranger, du plus ancien échec au plus
 //	    récent, avec le nombre de passes où ils ont échoué ; au plus [MaxFailures] entrées, les plus
@@ -49,6 +53,10 @@ type Cursor struct {
 	Offset int
 	// LastMatchID est l'identifiant du dernier match traité, à l'entrée Offset-1 (non vide).
 	LastMatchID string
+	// HeadID est l'identifiant du match en tête de la liste (position 0) lors de la passe qui range
+	// ce marque-page : l'ancre de [Cursor.ArrivedSince]. Facultatif (vide = pas d'ancre) ; une écriture
+	// qui le laisse vide efface l'ancre déjà rangée.
+	HeadID string
 }
 
 // Valid dit si le marque-page porte une position utilisable : un décalage >= 1 et un identifiant.
@@ -72,6 +80,7 @@ type CatchUp struct {
 type cursorWire struct {
 	Offset      int           `json:"offset,omitempty"`
 	LastMatchID string        `json:"last_match_id,omitempty"`
+	HeadID      string        `json:"head_match_id,omitempty"`
 	SavedAt     string        `json:"saved_at,omitempty"`
 	Failed      []failureWire `json:"failed,omitempty"`
 }
@@ -126,7 +135,7 @@ func cursorOf(ctx context.Context, w cursorWire) *Cursor {
 	if w.Offset == 0 && strings.TrimSpace(w.LastMatchID) == "" {
 		return nil
 	}
-	c := Cursor{Offset: w.Offset, LastMatchID: w.LastMatchID}
+	c := Cursor{Offset: w.Offset, LastMatchID: w.LastMatchID, HeadID: w.HeadID}
 	if !c.Valid() {
 		slog.WarnContext(ctx, "sync: marque-page d'historique incohérent — reprise depuis le début",
 			"offset", w.Offset, "has_match_id", strings.TrimSpace(w.LastMatchID) != "")
@@ -185,7 +194,7 @@ func SaveCursor(ctx context.Context, db *sql.DB, c Cursor) bool {
 	if !ok {
 		w = cursorWire{} // valeur illisible : remplacée, le rattrapage repart de zéro
 	}
-	w.Offset, w.LastMatchID = c.Offset, c.LastMatchID
+	w.Offset, w.LastMatchID, w.HeadID = c.Offset, c.LastMatchID, c.HeadID
 	if err := writeWire(ctx, db, w); err != nil {
 		slog.WarnContext(ctx, "sync: écriture du marque-page d'historique échouée", "err", err)
 		return false
