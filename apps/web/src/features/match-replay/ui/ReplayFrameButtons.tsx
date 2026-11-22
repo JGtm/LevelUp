@@ -20,6 +20,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayFrameControl } from '../hooks/useReplayFrame'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import type { ReplayFrame } from '../model/replayFrame'
+import { COMPACT_BUTTON_SQUARE, compactButtonCursor } from './compactButton'
 import { leaveFullFrame, selectFrame } from './frames/selectFrame'
 import { PRESS_GUARDS } from './replayPressGuards'
 import { CinemaFrameIcon, FullFrameIcon, FullscreenIcon, StandardFrameIcon } from './ReplayTransportIcons'
@@ -30,23 +31,28 @@ const FRAME_ICONS: readonly { frame: ReplayFrame; icon: ComponentType }[] = [
   { frame: 'plein-cadre', icon: FullFrameIcon },
 ]
 
-/** Une icône ronde de la rangée : l'état marqué prend le fond d'accent, l'inerte s'éteint. */
-function iconClass(pressed: boolean, disabled: boolean): string {
+/** Une icône de la rangée : l'état marqué prend le fond d'accent, l'inerte s'éteint ; ronde de 32 px, ou au format de la barre d'une ligne. */
+function iconClass(pressed: boolean, disabled: boolean, compact: boolean): string {
   const state = pressed
     ? 'bg-accent text-accent-foreground'
     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-  const cursor = disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
-  return `inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cursor} ${state}`
+  const cursor = compactButtonCursor(disabled)
+  const ring = 'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  if (compact) return `inline-flex shrink-0 items-center justify-center ${ring} ${cursor} ${state}`
+  return `inline-flex h-8 w-8 items-center justify-center rounded-full ${ring} ${cursor} ${state}`
 }
 
 interface ReplayFrameButtonsProps {
   frameControl: ReplayFrameControl
   fullscreen: ReplayFullscreen
   locale: ReplayLocale
+  /** Le format de la barre d'une ligne : carrés de 30 px au rayon de 8 px ; dessins et marquage du cadre courant inchangés. */
+  compact?: boolean
 }
 
-export function ReplayFrameButtons({ frameControl, fullscreen, locale }: ReplayFrameButtonsProps) {
+export function ReplayFrameButtons({ frameControl, fullscreen, locale, compact = false }: ReplayFrameButtonsProps) {
   const t = REPLAY_TEXT[locale]
+  const shape = compact ? COMPACT_BUTTON_SQUARE : undefined
   const fullscreenLabel = fullscreen.active ? t.fullscreenExit : t.fullscreenEnter
   return (
     <div className="ml-1.5 flex items-center gap-0.5" data-replay-frame-buttons="">
@@ -66,7 +72,8 @@ export function ReplayFrameButtons({ frameControl, fullscreen, locale }: ReplayF
               title={label}
               disabled={disabled}
               onClick={leavesFullFrame ? () => leaveFullFrame(frameControl, fullscreen) : () => selectFrame(frameControl, frame)}
-              className={iconClass(pressed, disabled)}
+              style={shape}
+              className={iconClass(pressed, disabled, compact)}
             >
               <Icon />
             </button>
@@ -80,7 +87,8 @@ export function ReplayFrameButtons({ frameControl, fullscreen, locale }: ReplayF
         disabled={fullscreen.disabled}
         aria-label={fullscreenLabel}
         title={fullscreenLabel}
-        className={iconClass(false, fullscreen.disabled)}
+        style={shape}
+        className={iconClass(false, fullscreen.disabled, compact)}
       >
         <FullscreenIcon exit={fullscreen.active} />
       </button>

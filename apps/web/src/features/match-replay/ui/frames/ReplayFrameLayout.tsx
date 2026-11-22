@@ -18,6 +18,8 @@
  *
  * # CE QUE CHAQUE CADRE CHANGE
  *
+ * Les marges du corps sont des cotes par cadre (`model/cotesCorps.ts`), que la règle de tenue de la rangée lit aussi.
+ *
  * Le Plein cadre est le cadre d'écran de `REPLAY_FULLSCREEN_FRAME` : il recouvre la fenêtre et défile
  * lui-même, `useReplayViewport` mesure la hauteur offerte au terrain par rapport à lui. Son corps se
  * centre dans la hauteur restante sous l'en-tête (marge automatique : elle se réduit à zéro quand le
@@ -28,6 +30,7 @@
 import type { CSSProperties, ReactNode, Ref } from 'react'
 
 import { REPLAY_FULLSCREEN_FRAME } from '../../hooks/useReplayFullscreen'
+import { COTES_CORPS_CADRE } from '../../model/cotesCorps'
 import { COTES_COLONNE_STANDARD } from '../../model/cotesStandard'
 import type { ReplayFrame } from '../../model/replayFrame'
 import { STANDARD_PAGE_CLASS, STANDARD_PAGE_STYLE } from './standardPage'
@@ -47,13 +50,21 @@ export interface ReplayFrameLayoutProps {
 }
 
 /** Les classes de chaque zone par cadre : la table est fermée, un cadre ajouté la complète à la compilation. */
-const FRAME_CLASSES: Record<ReplayFrame, { root: string; body: string; bodyStyle?: CSSProperties }> = {
+const FRAME_CLASSES: Record<ReplayFrame, { root: string; rootStyle?: CSSProperties; body: string; bodyStyle?: CSSProperties }> = {
   // Le Standard est une page bornée et centrée : la boîte de `standardPage` porte la largeur et les marges.
   standard: { root: 'flex flex-col', body: `space-y-4 pb-3 ${STANDARD_PAGE_CLASS}`, bodyStyle: STANDARD_PAGE_STYLE },
-  cinema: { root: 'flex flex-col', body: 'space-y-2 px-6 pb-2' },
+  cinema: {
+    root: 'flex flex-col',
+    body: 'space-y-2',
+    bodyStyle: { paddingInline: COTES_CORPS_CADRE.cinema.margeLateralePx, paddingBottom: COTES_CORPS_CADRE.cinema.margeBassePx },
+  },
+  // Le cadre d'écran pose déjà 12 px de chaque côté et en bas (`REPLAY_FULLSCREEN_FRAME`) : le corps y ajoute sa marge
+  // propre (16 px au bord de l'écran, comme l'en-tête) et le bas du cadre descend à sa cote.
   'plein-cadre': {
     root: `${REPLAY_FULLSCREEN_FRAME} flex flex-col`,
+    rootStyle: { paddingBottom: COTES_CORPS_CADRE['plein-cadre'].margeBassePx },
     body: 'my-auto shrink-0 space-y-2',
+    bodyStyle: { paddingInline: COTES_CORPS_CADRE['plein-cadre'].margeLateralePx },
   },
 }
 
@@ -66,17 +77,24 @@ const FRAME_CLASSES: Record<ReplayFrame, { root: string; body: string; bodyStyle
  * LA LARGEUR DE LA COLONNE SE DIT PAR CADRE. Le Standard a une colonne fixe (`COTES_COLONNE_STANDARD`),
  * passée par une variable CSS : une classe de Tailwind ne se compose pas depuis un nombre, et la variable
  * garde le nombre dans la cote. Le Cinéma et le Plein cadre gardent la colonne souple de 30 rem.
+ *
+ * LE STANDARD EST UN SEUL BLOC : la grille porte le cadre arrondi (12 px, bordure, fond de carte) qui contient la
+ * carte ET la colonne, collées, la colonne séparée de la carte par son filet ; la toile n'y a pas de cadre propre
+ * (`ReplayCanvasBlock`, barre dans le flux). Le Cinéma et le Plein cadre gardent l'écart entre le plan et sa colonne,
+ * chacun avec son cadre.
  */
-const GRID_CLASSES = 'grid gap-3 xl:items-stretch'
+const GRID_CLASSES = 'grid xl:items-stretch'
 const STANDARD_COLUMN_VAR = '--replay-colonne-standard'
 
-const GRID_BY_FRAME: Record<ReplayFrame, { className: string; style?: CSSProperties }> = {
+/** `block` : l'habillage de la grille, quelle que soit la colonne ; `className` : le gabarit de colonnes quand la colonne est affichée. */
+const GRID_BY_FRAME: Record<ReplayFrame, { block: string; className: string; style?: CSSProperties }> = {
   standard: {
+    block: 'overflow-hidden rounded-xl border border-border bg-card',
     className: 'xl:grid-cols-[minmax(0,1fr)_var(--replay-colonne-standard)]',
     style: { [STANDARD_COLUMN_VAR]: `${COTES_COLONNE_STANDARD.largeurPx}px` } as CSSProperties,
   },
-  cinema: { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
-  'plein-cadre': { className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
+  cinema: { block: 'gap-3', className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
+  'plein-cadre': { block: 'gap-3', className: 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]' },
 }
 
 /** Le gabarit à une seule colonne : le plan prend la largeur que la colonne cachée ne réclame plus. */
@@ -86,14 +104,14 @@ export function ReplayFrameLayout({ frame, tete, avis, rangee, scene, colonne, c
   const classes = FRAME_CLASSES[frame]
   const grid = GRID_BY_FRAME[frame]
   return (
-    <div className={classes.root} data-replay-frame={frame}>
+    <div className={classes.root} style={classes.rootStyle} data-replay-frame={frame}>
       {tete}
       <div ref={bodyRef} className={classes.body} style={classes.bodyStyle} data-replay-body={frame}>
         {avis}
         {rangee}
         {scene != null && (
           <div
-            className={`${GRID_CLASSES} ${colonneCachee ? GRID_SANS_COLONNE : grid.className}`}
+            className={`${GRID_CLASSES} ${grid.block} ${colonneCachee ? GRID_SANS_COLONNE : grid.className}`}
             style={colonneCachee ? undefined : grid.style}
             data-replay-grid={frame}
           >

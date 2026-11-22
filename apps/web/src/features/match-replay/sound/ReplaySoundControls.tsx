@@ -16,14 +16,17 @@
  * ne touche pas ; le zéro affiché est un affichage, jamais une écriture.
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
+import { COMPACT_BUTTON_CLASS, COMPACT_BUTTON_SQUARE } from '../ui/compactButton'
 import type { ReplaySound } from './useReplaySound'
 
 interface ReplaySoundControlsProps {
   sound: ReplaySound
   locale: ReplayLocale
+  /** Le format de la barre d'une ligne : bouton carré sans fond au repos ; le curseur de volume reste toujours visible. */
+  compact?: boolean
 }
 
-export function ReplaySoundControls({ sound, locale }: ReplaySoundControlsProps) {
+export function ReplaySoundControls({ sound, locale, compact = false }: ReplaySoundControlsProps) {
   const t = REPLAY_TEXT[locale]
   if (!sound.available) return null
   const level = sound.on ? Math.round(sound.volume * 100) : 0
@@ -35,9 +38,12 @@ export function ReplaySoundControls({ sound, locale }: ReplaySoundControlsProps)
         aria-label={t.sound}
         aria-pressed={sound.on}
         title={sound.mutedBySpeed ? t.soundFastHint : `${t.soundHint} (M)`}
-        className={`inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-accent ${
-          sound.mutedBySpeed ? 'opacity-60' : ''
-        } ${sound.on ? '' : 'text-muted-foreground'}`}
+        style={compact ? COMPACT_BUTTON_SQUARE : undefined}
+        className={`${
+          compact
+            ? `${COMPACT_BUTTON_CLASS} cursor-pointer`
+            : 'inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-accent'
+        } ${sound.mutedBySpeed ? 'opacity-60' : ''} ${sound.on ? '' : 'text-muted-foreground'}`}
       >
         <SpeakerIcon muted={!sound.on} />
       </button>

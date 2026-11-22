@@ -2,12 +2,12 @@
  * playerInstantStats.ts — CE QU'UN JOUEUR A FAIT DU DÉBUT DU MATCH JUSQU'À L'IMAGE LUE, sans React.
  *
  * DEUX TEMPS. `readPlayerInstantSeries` lit une fois par joueur et par document ce qui est daté (compteurs du
- * film, frags du fil, médailles, vies, bouclier) et le range en séries triées ; `playerInstantStatsAt` répond
+ * film, médailles du fil, vies, bouclier) et le range en séries triées ; `playerInstantStatsAt` répond
  * pour une image par dichotomie, sans rien relire du document. Le rendu appelle le premier dans un `useMemo`
  * et le second à chaque image.
  *
- * AUCUNE FORMULE N'EST RÉÉCRITE QUAND UNE FONCTION EXISTE : les compteurs viennent de `playerCountersAt`, le
- * FDA de `matchFda` (le net `(frags + assistances / 3 - morts)`, jamais le quotient frags / morts), les
+ * AUCUNE FORMULE N'EST RÉÉCRITE QUAND UNE FONCTION EXISTE : les compteurs viennent de `playerCountersAt`, les tirs
+ * à la tête du compteur du jeu (`stats.headshots` du calque, lu par `scoreAtFrame` comme eux), le FDA de `matchFda` (le net `(frags + assistances / 3 - morts)`, jamais le quotient frags / morts), les
  * médailles de `readMatchMedals` (via le fil qui les date), les vies de `trackWindow` / `isAliveAt`.
  *
  * LA RÈGLE DES FICHES VAUT ICI : une valeur que le document ne permet pas d'établir est ABSENTE (`null`),
@@ -28,6 +28,7 @@ import {
   playerScoreFor,
   scoreAtFrame,
   type ReplayPlayerScoreReady,
+  type ReplayScoreSeriesReady,
   type ReplayScoreTimelineReady,
 } from '../../../lib/replay/scoreTimeline'
 import type { MedalEvent, ReplayFeedEntry } from './killFeedLogic'
@@ -57,11 +58,12 @@ export interface PlayerInstantStats {
   /** Meilleure série du match jusqu'à l'image, la série en cours comprise. `null` quand `counters` l'est. */
   bestStreak: number | null
   /**
-   * Tirs à la tête : `count` éliminations dont le coup fatal est mesuré à la tête, sur `measured`
-   * éliminations dont le coup fatal est mesuré. Une élimination non mesurée n'entre dans aucun des deux
-   * nombres. `null` quand le fil ne porte aucune élimination (contexte du match absent).
+   * Tirs à la tête : le compteur du jeu (`stats.headshots` du calque de score) à l'image. `null` quand le calque
+   * ne donne pas ce compteur pour le joueur : joueur non publié, ou `stats` absent (film à plusieurs manches). Un
+   * joueur publié avec d'autres compteurs de `stats` mais sans celui-ci est à zéro : le jeu n'émet pas un compteur
+   * resté à zéro.
    */
-  headshots: { count: number; measured: number } | null
+  headshots: number | null
   /**
    * Éliminations parfaites : médailles `PERFECT_MEDAL_NAME` gagnées jusqu'à l'image. `null` quand les
    * médailles du joueur ne s'établissent pas (cf. `medals`) : un document qui ne déclare pas le calque des
@@ -107,7 +109,7 @@ export interface PlayerInstantInput {
   presence: VitalityPresence
   /** Calque de score du film, déjà passé par la garde d'horloge (`scoreTimelineOf`). */
   scoreTimeline?: ReplayScoreTimelineReady
-  /** Le fil du rejeu (`ReplayModel.feed`) : les frags du joueur et ses médailles datées. `null` = absent. */
+  /** Le fil du rejeu (`ReplayModel.feed`) : les médailles datées du joueur. `null` = absent. */
   feed: readonly ReplayFeedEntry[] | null
   /** Première image du match (`ReplayWindowBounds.startFrame`) ; absente, les vies se mesurent depuis leur piste. */
   matchStartFrame?: number | null
@@ -163,26 +165,17 @@ function streakSteps(score: ReplayPlayerScoreReady): StreakStep[] {
   return steps
 }
 
-interface HeadshotStep extends Dated {
-  /** Éliminations à la tête mesurées, cumulées. */
-  count: number
-  /** Éliminations dont le coup fatal est mesuré, cumulées. */
-  measured: number
-}
+/** Le nom du compteur des tirs à la tête dans `stats` du calque de score. */
+const HEADSHOTS_STAT = 'headshots'
 
-/** Les éliminations du joueur sur l'axe du fil (ms), avec leurs deux cumuls. */
-function headshotSteps(feed: readonly ReplayFeedEntry[], keys: readonly string[]): HeadshotStep[] {
-  const steps: HeadshotStep[] = []
-  let count = 0
-  let measured = 0
-  for (const e of feed) {
-    const k = e.kill
-    if (!k || !keys.includes(k.xuid)) continue
-    if (k.headshot !== undefined) measured++
-    if (k.headshot === true) count++
-    steps.push({ t: k.replayMs, count, measured })
-  }
-  return steps
+/**
+ * La série des tirs à la tête du joueur : les paliers cumulés de `stats.headshots`, vide quand le joueur a d'autres
+ * compteurs de `stats` sans celui-ci (le jeu n'émet pas un compteur resté à zéro : il vaut zéro). `null` quand
+ * `stats` est absent (joueur non publié, ou film à plusieurs manches) : la valeur ne s'établit pas.
+ */
+function headshotSeries(score: ReplayPlayerScoreReady | null): ReplayScoreSeriesReady['total'] | null {
+  if (!score?.stats) return null
+  return score.stats[HEADSHOTS_STAT]?.total ?? []
 }
 
 interface MedalStep extends Dated {
@@ -287,7 +280,8 @@ export interface PlayerInstantSeries {
   /** Clé sous laquelle le calque de score publie le joueur ; `null` = non publié. */
   readonly scoreKey: string | null
   readonly streaks: readonly StreakStep[] | null
-  readonly headshots: readonly HeadshotStep[] | null
+  /** Paliers du compteur de tirs à la tête ; `null` = le calque ne le donne pas pour ce joueur. */
+  readonly headshots: ReplayScoreSeriesReady['total'] | null
   readonly medals: readonly MedalStep[] | null
   readonly lifeStarts: readonly Dated[]
   readonly lives: readonly ReplayTrackReady[]
@@ -318,7 +312,6 @@ export function readPlayerInstantSeries(input: PlayerInstantInput): PlayerInstan
   const keys = identityKeys(player)
   const scoreKey = keys.find((k) => playerScoreFor(scoreTimeline, k) !== null) ?? null
   const score = scoreKey === null ? null : playerScoreFor(scoreTimeline, scoreKey)
-  const hasKills = feed !== null && feed.some((e) => e.kill)
   const medals = feed === null ? null : medalSteps(feed, keys)
   const lives = player.lives
   return {
@@ -326,7 +319,7 @@ export function readPlayerInstantSeries(input: PlayerInstantInput): PlayerInstan
     timeline: scoreTimeline,
     scoreKey,
     streaks: score ? streakSteps(score) : null,
-    headshots: feed !== null && hasKills ? headshotSteps(feed, keys) : null,
+    headshots: headshotSeries(score),
     medals: medals && medalsEstablished(doc, player, medals) ? medals : null,
     lifeStarts: lifeStartsOf(lives, matchStartFrame),
     lives,
@@ -364,11 +357,7 @@ function feedReadingsAt(
   frame: number,
 ): Pick<PlayerInstantStats, 'headshots' | 'perfects' | 'medals'> {
   const nowMs = frameToMs(frame, s.doc)
-  let headshots: PlayerInstantStats['headshots'] = null
-  if (s.headshots) {
-    const h = lastIndexAt(s.headshots, nowMs)
-    headshots = h >= 0 ? { count: s.headshots[h].count, measured: s.headshots[h].measured } : { count: 0, measured: 0 }
-  }
+  const headshots = s.headshots ? scoreAtFrame(s.headshots, frame) : null
   if (!s.medals) return { headshots, perfects: null, medals: null }
   const m = lastIndexAt(s.medals, nowMs)
   return {

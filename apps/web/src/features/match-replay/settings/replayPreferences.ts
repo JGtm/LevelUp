@@ -159,6 +159,16 @@ export const PLAN_FEED_KEY = 'replay-show-plan-feed'
 export const PLAN_FEED_DEFAULT = true
 
 /**
+ * LA BARRE DE LECTURE FINE AU PLEIN CADRE : un OUI/NON retenu dans CE navigateur, jamais côté serveur, lu et écrit
+ * comme les autres interrupteurs par `usePersistedFlag` (absent ou stockage refusé -> la valeur par défaut). ALLUMÉ par
+ * défaut : au Plein cadre la barre est posée sur le bas du plan, fine et translucide pendant la lecture, pleine
+ * quand on s'en sert. ÉTEINT, elle reste pleine, sous le plan, comme au Cinéma. La valeur n'a d'effet qu'au Plein
+ * cadre : le Standard et le Cinéma gardent leur barre fixe quelle qu'elle soit.
+ */
+export const THIN_BAR_KEY = 'replay-thin-bar-full-frame'
+export const THIN_BAR_DEFAULT = true
+
+/**
  * LE PRÉRÉGLAGE DE VUE CHOISI en dernier (plan « maquettes du rejeu », lot 3) : retenu dans CE
  * navigateur. La vue active se DÉDUIT de l'état des calques (`activeView`) ; cette valeur ne
  * sert qu'à départager deux préréglages égaux sur les calques d'un match. Les clés `replay-*`

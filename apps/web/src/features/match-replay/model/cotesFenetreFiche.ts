@@ -1,6 +1,6 @@
 /**
  * cotesFenetreFiche.ts — LES COTES DE LA FICHE DU JOUEUR EN FENÊTRE (Cinéma et Plein cadre) : la fenêtre
- * ancrée sous la fiche cliquée, son contenu, et le pion cerclé du joueur ouvert sur le plan.
+ * alignée sur la fiche cliquée et posée sous le haut du plan, son contenu, et le pion cerclé du joueur ouvert sur le plan.
  *
  * La capsule « Échap » est celle de la fiche du Standard (`COTES_FICHE_STANDARD.capsule`, source unique).
  * L'écart du panneau à son déclencheur et la hauteur minimale sont ceux de `settings/useAnchoredPanel`.
@@ -10,6 +10,8 @@ import { COTES_FICHE_STANDARD } from './cotesFicheStandard'
 export const COTES_FENETRE_FICHE = Object.freeze({
   /** Largeur de la fenêtre, px. */
   largeurPx: 330,
+  /** Écart entre le haut du bloc du plan et le haut de la fenêtre. */
+  margeHautPlanPx: 8,
   /** Rayon de la fenêtre. */
   rayonPx: 12,
   /** Marge intérieure verticale puis latérale, et écart entre les trois blocs de la fiche. */

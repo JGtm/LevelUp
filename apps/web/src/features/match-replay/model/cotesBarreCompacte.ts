@@ -3,7 +3,7 @@
  * et de sa frise (`ui/ReplayTimelineCompact.tsx`), en pixels. Les composants lisent ce tableau et
  * n'écrivent aucun nombre.
  *
- * Elles viennent de la maquette de la rangée (classes `.tp`, `.play`, `.time`, `.scrub`, `.ticks`,
+ * Elles viennent de la maquette de la rangée (classes `.tp`, `.play`, `.ibtn`, `.time`, `.scrub`, `.ticks`,
  * `.rail`, `.dom`, `.knob`, `.vsep`) : la frise compte 30 px de haut, et ses quatre couches
  * (repères, rail, bande de dominance, curseur) y ont chacune leur ligne — le centre du curseur
  * tombe sur celui du rail.
@@ -21,18 +21,32 @@ export interface CotesBarreCompacte {
   barreHauteurPx: number
   ecartPx: number
   margeXPx: number
+  /** Barre sous le bloc du plan, sur le fond de la page : sa marge latérale, et l'écart qui la sépare du bloc. */
+  margeXHorsBlocPx: number
+  blocBarreEcartPx: number
   /** Le bouton de lecture, rond et plein. */
   lecturePx: number
+  /** Une commande ordinaire : carré de `boutonPx`, rayon `boutonRayonPx`, sans bordure ni fond au repos (le fond ne vient qu'au survol). */
+  boutonPx: number
+  boutonRayonPx: number
   /** Le séparateur vertical entre deux groupes : hauteur et marge de chaque côté. */
   separateurHauteurPx: number
   separateurMargePx: number
   /** Le temps « instant / durée » : largeur minimale (la frise ne bouge pas quand un chiffre change) et marge. */
   tempsLargeurMinPx: number
   tempsMargePx: number
-  /** La frise : hauteur, marge de chaque côté, largeur minimale quand la barre est étroite. */
+  /** La frise : hauteur, marge de chaque côté, largeur minimale (sous elle, la barre passe sur deux lignes). */
   friseHauteurPx: number
   friseMargePx: number
   friseLargeurMinPx: number
+  /** Sur deux lignes : hauteur de la ligne de la frise, seule en haut, et marge verticale de chaque commande de la seconde ligne. */
+  deuxLignesFriseHauteurPx: number
+  deuxLignesCommandeMargeYPx: number
+  /** La forme fine (Plein cadre, en lecture) : hauteur de la barre, et échelle des commandes (la barre pleine, réduite). */
+  fineHauteurPx: number
+  fineEchelle: number
+  /** Combien de temps la barre garde sa forme pleine après le dernier geste (survol quitté, touche), en millisecondes. */
+  fineRetenuMs: number
   /** Les repères d'éliminations, au-dessus du rail : bande, largeur et hauteur d'un repère. */
   reperesBandePx: number
   repereLargeurPx: number
@@ -63,14 +77,23 @@ export const COTES_BARRE_COMPACTE: CotesBarreCompacte = Object.freeze({
   barreHauteurPx: 56,
   ecartPx: 6,
   margeXPx: 12,
+  margeXHorsBlocPx: 2,
+  blocBarreEcartPx: 6,
   lecturePx: 36,
+  boutonPx: 30,
+  boutonRayonPx: 8,
   separateurHauteurPx: 20,
   separateurMargePx: 4,
   tempsLargeurMinPx: 84,
   tempsMargePx: 4,
   friseHauteurPx: 30,
   friseMargePx: 10,
-  friseLargeurMinPx: 120,
+  friseLargeurMinPx: 240,
+  deuxLignesFriseHauteurPx: 38,
+  deuxLignesCommandeMargeYPx: 1,
+  fineHauteurPx: 32,
+  fineEchelle: 0.8,
+  fineRetenuMs: 1500,
   reperesBandePx: 9,
   repereLargeurPx: 2,
   repereHauteurPx: 8,

@@ -16,7 +16,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { REPLAY_TEXT } from './i18n/i18n'
-import { LARGEUR_REQUISE_ENTETE_SCORE_PX } from './model/cotesEnteteScore'
+import { largeurRequiseEnteteScore } from './model/cotesEnteteScore'
 import { largeurRequiseRangee, largeurRequiseRangeeGrandeEquipe, MARGE_BASCULE_PX } from './model/rowLayout'
 import { goToFrame, mountReplayPage, stubReplayPage, unstubReplayPage } from './test/replayPageHarness'
 import { scoreboardRow } from './test/scoreboardRow'
@@ -121,8 +121,10 @@ async function mount({ doc, context }: ReturnType<typeof match>, largeur: number
 const rangee = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-replay-teams-row]')
 const colonneDesEquipes = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-replay-roster-column]')
 const bandeaux = (c: HTMLElement) => [...c.querySelectorAll<HTMLElement>('[data-replay-score-banner]')]
-const L4 = largeurRequiseRangee(4)
-const LGE = largeurRequiseRangeeGrandeEquipe()
+/** Les largeurs demandées AU CINÉMA (marge de corps de 24 px) ; le Plein cadre (4 px) en demande 40 de moins. */
+const L4 = largeurRequiseRangee(4, 'cinema')
+const LGE = largeurRequiseRangeeGrandeEquipe('cinema')
+const LARGEUR_REQUISE_ENTETE_SCORE_PX = largeurRequiseEnteteScore('cinema')
 
 describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
   it.each(['cinema', 'plein-cadre'] as const)('%s : la rangée est posée, le score est à son centre et plus sur la toile', async (frame) => {
@@ -161,6 +163,23 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
     expect(fiches.getByRole('button', { name: 'Ouvrir la fiche de Joueur1' }).style.borderColor).toBe('var(--border)')
   })
 
+  it('Plein cadre : la marge de corps de 4 px fait tenir la rangée 40 px plus tôt qu’au Cinéma, au pixel près', async () => {
+    const demande = largeurRequiseRangee(4, 'plein-cadre')
+    expect(demande).toBe(L4 - 40)
+    const pose = await mount(match(4), demande)
+    goToFrame('plein-cadre')
+    expect(rangee(pose.container)).not.toBeNull()
+    pose.unmount()
+    const repli = await mount(match(4), demande - 1)
+    goToFrame('plein-cadre')
+    expect(rangee(repli.container)).toBeNull()
+    repli.unmount()
+    // La même largeur ne suffit pas au Cinéma.
+    const cinema = await mount(match(4), demande)
+    goToFrame('cinema')
+    expect(rangee(cinema.container)).toBeNull()
+  })
+
   it('trop étroit (un pixel de moins que la demande) : le repli, équipes en lignes dans la colonne, score dans l’en-tête', async () => {
     const { container } = await mount(match(4), L4 - 1)
     goToFrame('cinema')
@@ -174,12 +193,13 @@ describe('ReplayPage : la rangée des équipes, 4 contre 4', () => {
   })
 
   it.each(['cinema', 'plein-cadre'] as const)('%s, repli : le score est dans l’en-tête tant que le corps loge sa cellule de 440 px, sur la toile une fois la marge de bascule dépassée', async (frame) => {
-    const { container } = await mount(match(4), LARGEUR_REQUISE_ENTETE_SCORE_PX)
+    const requis = largeurRequiseEnteteScore(frame)
+    const { container } = await mount(match(4), requis)
     goToFrame(frame)
     expect(rangee(container)).toBeNull()
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['entete'])
     expect(container.querySelector(`[data-replay-header="${frame}"][data-replay-header-score]`)).not.toBeNull()
-    redimensionner(LARGEUR_REQUISE_ENTETE_SCORE_PX - MARGE_BASCULE_PX - 1)
+    redimensionner(requis - MARGE_BASCULE_PX - 1)
     expect(bandeaux(container).map((b) => b.getAttribute('data-replay-score-banner'))).toEqual(['scene'])
     expect(container.querySelector('section')?.contains(bandeaux(container)[0])).toBe(true)
     expect(container.querySelector('[data-replay-header-score]')).toBeNull()
@@ -242,7 +262,7 @@ describe('ReplayPage : la rangée des équipes en Grande équipe', () => {
   })
 
   it('trop étroit pour la Grande équipe : le repli, équipes en paires dans la colonne, score dans l’en-tête', async () => {
-    const { container } = await mount(match(12), LGE - 1)
+    const { container } = await mount(match(12), largeurRequiseRangeeGrandeEquipe('plein-cadre') - 1)
     goToFrame('plein-cadre')
     expect(rangee(container)).toBeNull()
     expect(colonneDesEquipes(container)).not.toBeNull()
