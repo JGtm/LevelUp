@@ -145,11 +145,21 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 3 — piste B : Halo 5
 
-- [ ] 3.1 `Runner.RunDelta` : historique incomplet = passe bornée par la mécanique de `backfill.go`
-  (option de budget ajoutée à `Backfill`, sans dupliquer la boucle).
-- [ ] 3.2 Fin rangée sous D-5 ; `HistoryPending` rempli.
-- [ ] 3.3 Tests : passe bornée, reprise sur trois passes jusqu'à la fin, erreur de page = pas de fin
-  rangée, historique complet = delta inchangé, `h5-backfill` inchangé.
+- [x] 3.1 `Runner.RunDelta` : historique incomplet = passe de rattrapage par `RunBackfill` (option
+  `BackfillDeps.Budget`, 0 = sans borne : `h5-backfill` inchangé ; boucle non dupliquée), budget =
+  `historystate.PassBudget()` ramené au `MaxMatches` de l'appelant s'il est plus serré. Nouveau fichier
+  `livesync/catchup.go`. Connus lus UNE fois par `loadKnownMatchIDs` (aucune nouvelle lecture du connu).
+  Base joueur h5 : `sync.OpenPlayerDB` (handle RW ref-compté, comme les autres hooks du runner).
+- [x] 3.2 Fin rangée sous D-5 par `historystate.MarkComplete`, sous le bail
+  `dblease.AcquireWriterCtx(KindPlayer)` (attente bornée à `PlayerLeaseTimeout`) ; `HistoryPending` et
+  `HistoryExhausted` remplis (pending vrai si l'état est illisible ou la source échoue avant).
+  `halo5.CaptureStats.HistoryEnd` ajouté : vrai seulement sur page vide ou incomplète, faux sur
+  l'anti-boucle (page qui reprend des matchs vus).
+- [x] 3.3 Tests : `catchup_test.go` (passe bornée, trois passes jusqu'à la fin, erreur de page, erreur
+  de persistance, timeline manquante = pas une erreur, anti-boucle, écriture de la fin échouée, complet =
+  delta, état illisible, source KO, known-set KO, sans hooks, budget optionnel de `RunBackfill`),
+  `capture_test.go` (`HistoryEnd`), `catchup_integration_test.go` (base joueur temporaire : hooks, bail
+  tenu, trois passes).
 - Gate : `go test ./internal/games/halo_5/...`.
 
 ### Étape 4 — piste C : cadence de l'ordonnanceur
@@ -251,3 +261,21 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   peut pas ranger la fin (base `nil`) : `HistoryPending` reste vrai, la passe suivante rattrape.
 - Étape 1 : une passe V1 qui sort en erreur avant la fin (chargement des connus, bail) rend
   `HistoryPending` faux (valeur par défaut) ; l'ordonnanceur (étape 4) lit aussi l'erreur du cycle.
+- Étape 3 : marque-page Halo 5 (D-13). La liste Halo 5 se pagine par décalage (`start` de
+  `GetPlayerMatches`, boucle `for page := 0; ... start := page * pageSize` de `RunBackfill`,
+  `livesync/backfill.go`). Branchement : initialiser `page` (ligne de la boucle) au décalage de reprise
+  (marque-page + N moins une page de recouvrement, divisé par la taille de page) après avoir vérifié que
+  la page de recouvrement contient l'identifiant rangé ; ranger le marque-page après `persistAndTrack` de
+  chaque page (et au `break` du budget) ; l'effacer avec `MarkComplete`. `runCatchUp` (`catchup.go`) porte
+  la lecture et l'écriture côté runner. Ce lot garde le rebalayage (connus sautés depuis le début).
+- Étape 3 : un match rangé sans timeline ou sans carnage (`EventsFailed`, `CarnageFailed`) est connu
+  ensuite : le rebalayage ne le retente jamais (le commentaire de `captureMatchTimeline` dit le contraire).
+  Hors périmètre.
+- Étape 3 : `backfillMaxPages` (2 000 pages) double la borne de sûreté `historystate.MaxDepth` (50 000
+  matchs) ; égales à 25 par page. À aligner plus tard.
+- Étape 3 : le `PostScore` du runner Halo 5 récupère un carnage par match inséré
+  (`PersistPerMatchRatings`) : une passe de rattrapage de 200 matchs coûte 200 appels de plus ; à mesurer à
+  l'étape 5bis. Le tick du suivi en direct (watcher) passe aussi par `RunDelta` pour Halo 5 : il rattrape
+  donc lui aussi, avec son `MaxMatches` serré comme budget.
+- Étape 3 : une passe au budget atteint pile sur une page pleine ne voit la fin qu'à la passe suivante
+  (une page vide, zéro match inséré) : comportement voulu, testé.

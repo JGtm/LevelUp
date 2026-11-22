@@ -30,6 +30,7 @@ func (f *fakeCapture) capture(_ context.Context, viewer canonical.PlayerIdentity
 	f.calls = append(f.calls, start)
 	ids, ok := f.pages[start]
 	if !ok || len(ids) == 0 {
+		stats.HistoryEnd = true
 		return nil, false, nil // page vide = fin d'historique
 	}
 	var batches []*persist.MatchBatch
@@ -47,6 +48,7 @@ func (f *fakeCapture) capture(_ context.Context, viewer canonical.PlayerIdentity
 		stats.MatchesCollected++
 	}
 	hasMore := len(ids) >= f.pageSize // page incomplète = dernière
+	stats.HistoryEnd = !hasMore
 	return batches, hasMore, nil
 }
 

@@ -82,6 +82,14 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		PersistCSR: func(ctx context.Context, src halo5.CaptureSource) (int, error) {
 			return persistArenaCSR(ctx, src, playerPath, gamertag)
 		},
+		// Rattrapage de l'historique : état et fin rangés dans la base joueur h5
+		// (historystate), la fin sous le bail d'écriture du joueur.
+		HistoryComplete: func(ctx context.Context) (bool, error) {
+			return playerHistoryComplete(ctx, playerPath)
+		},
+		MarkHistoryComplete: func(ctx context.Context) bool {
+			return markPlayerHistoryComplete(ctx, playerPath, gamertag)
+		},
 		// Hook post-score : enrichment PAR JOUEUR (+ LUSR) INCRÉMENTAL des nouveaux
 		// matchs, comme le post-sync Infinite. Rend le sync live h5 autonome (l'app
 		// enrichit seule, sans enrichissement manuel). Best-effort côté runner.

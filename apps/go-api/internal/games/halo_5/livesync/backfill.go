@@ -39,6 +39,15 @@ type BackfillStats struct {
 	Warzone       int // matchs Warzone écartés
 	Campaign      int // matchs Campagne écartés (non jouables côté app)
 	PersistErrors int // erreurs de persistance (page-level)
+
+	// HistoryEnd : la liste de l'API a rendu une page vide ou incomplète (fin d'historique vue,
+	// voir halo5.CaptureStats.HistoryEnd). Faux quand la passe s'arrête avant : budget atteint,
+	// erreur de page, anti-boucle, borne backfillMaxPages.
+	HistoryEnd bool
+	// BudgetReached : la passe s'est arrêtée parce que BackfillDeps.Budget matchs étaient insérés.
+	BudgetReached bool
+	// Capture : compteurs de capture cumulés sur toutes les pages (les champs ci-dessus en sont la projection).
+	Capture halo5.CaptureStats
 }
 
 // CapturePageFunc : signature de halo5.CapturePageAt (injectable → fake en test, la
@@ -68,12 +77,17 @@ type CapturePageFunc func(
 //     d'un match déjà inséré dans CE run est de toute façon no-opé par le persister).
 //   - PersistPage  : persiste les batches d'UNE page sous un lease RW court ; retourne
 //     les batches réellement écrits + les erreurs.
+//   - Budget       : nombre de matchs INSÉRÉS au-delà duquel la passe s'arrête (0 = sans borne,
+//     comportement de la commande h5-backfill). Contrôlé entre deux pages, après leur persistance :
+//     une page entière est toujours rangée, la passe insère donc au plus Budget + pageSize - 1
+//     matchs. La passe suivante reprend en sautant les matchs connus.
 type BackfillDeps struct {
 	CapturePage CapturePageFunc
 	Viewer      canonical.PlayerIdentity
 	ResolveXUID func(gamertag string) string
 	LoadKnown   func(ctx context.Context) (map[string]bool, error)
 	PersistPage func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
+	Budget      int
 }
 
 // backfillMaxPages : borne de sécurité anti-boucle-infinie (la condition d'arrêt
@@ -84,7 +98,8 @@ const backfillMaxPages = 2000
 // RunBackfill exécute le backfill historique complet d'un joueur Halo 5 : paginne
 // l'historique par offset croissant, capture+persiste CHAQUE page immédiatement,
 // saute les matchs connus et continue à paginer en profondeur, s'arrête à la page
-// vide (fin d'historique) ou à la borne de sécurité backfillMaxPages.
+// vide (fin d'historique), à la borne de sécurité backfillMaxPages ou, quand deps.Budget > 0,
+// dès que le budget de matchs insérés est atteint (la fin n'est alors pas vue : stats.HistoryEnd faux).
 //
 // pageSize <= 0 → défaut halo5 (25). logger nil → slog.Default().
 func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *slog.Logger) (BackfillStats, error) {
@@ -121,6 +136,7 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 		if err != nil {
 			logger.ErrorContext(ctx, "h5 backfill: capture page échouée (arrêt)",
 				"page", page, "start", start, "err", err)
+			finalizeStats(&stats, cum)
 			return stats, err
 		}
 		stats.Pages = page + 1
@@ -137,6 +153,10 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 		if !hasMore {
 			break // fin de l'historique (page vide ou incomplète)
 		}
+		if deps.Budget > 0 && stats.Inserted >= deps.Budget {
+			stats.BudgetReached = true
+			break // budget de la passe atteint : la suite au prochain passage
+		}
 	}
 
 	finalizeStats(&stats, cum)
@@ -144,7 +164,8 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 		"gamertag", deps.Viewer.Gamertag, "pages", stats.Pages,
 		"seen", stats.MatchesSeen, "inserted", stats.Inserted, "skipped", stats.Skipped,
 		"events_failed", stats.EventsFailed, "carnage_failed", stats.CarnageFailed,
-		"warzone", stats.Warzone, "campaign", stats.Campaign, "persist_errors", stats.PersistErrors)
+		"warzone", stats.Warzone, "campaign", stats.Campaign, "persist_errors", stats.PersistErrors,
+		"history_end", stats.HistoryEnd, "budget_reached", stats.BudgetReached)
 	return stats, nil
 }
 
@@ -178,6 +199,8 @@ func finalizeStats(stats *BackfillStats, cum halo5.CaptureStats) {
 	stats.CarnageFailed = cum.CarnageFailed
 	stats.Warzone = cum.ExcludedWarzone
 	stats.Campaign = cum.ExcludedCampaign
+	stats.HistoryEnd = cum.HistoryEnd
+	stats.Capture = cum
 }
 
 // oldestStart retourne la date de début du match le plus ancien de la page (le dernier
@@ -207,16 +230,7 @@ func BuildBackfillDeps(ctx context.Context, cfg *config.AppConfig, src halo5.Cap
 	}
 
 	return BackfillDeps{
-		// Capture page-par-page câblée sur la source live : la source est CAPTURÉE dans
-		// la closure (son type events est non exporté → pas dans Deps). Réutilise le
-		// cœur de capture partagé avec le sync live (halo5.CapturePageAt).
-		CapturePage: func(ctx context.Context, viewer canonical.PlayerIdentity,
-			resolveXUID func(string) string, isKnown func(string) bool,
-			start, pageSize int, seen map[string]struct{}, stats *halo5.CaptureStats,
-		) ([]*persist.MatchBatch, bool, error) {
-			return halo5.CapturePageAt(ctx, src, viewer, resolveXUID, isKnown,
-				halo5.CaptureOptions{}, start, pageSize, seen, stats)
-		},
+		CapturePage: capturePageFrom(src),
 		Viewer:      canonical.PlayerIdentity{Gamertag: gamertag, XUID: xuid},
 		ResolveXUID: resolveXUID,
 		LoadKnown: func(ctx context.Context) (map[string]bool, error) {
@@ -225,5 +239,18 @@ func BuildBackfillDeps(ctx context.Context, cfg *config.AppConfig, src halo5.Cap
 		PersistPage: func(ctx context.Context, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
 			return persistBatches(ctx, provider, sharedPath, batches)
 		},
+	}
+}
+
+// capturePageFrom câble la capture page-par-page sur la source live : la source est capturée
+// dans la closure (son type events est non exporté, donc absent des Deps). Réutilise le cœur de
+// capture partagé avec le sync live (halo5.CapturePageAt).
+func capturePageFrom(src halo5.CaptureSource) CapturePageFunc {
+	return func(ctx context.Context, viewer canonical.PlayerIdentity,
+		resolveXUID func(string) string, isKnown func(string) bool,
+		start, pageSize int, seen map[string]struct{}, stats *halo5.CaptureStats,
+	) ([]*persist.MatchBatch, bool, error) {
+		return halo5.CapturePageAt(ctx, src, viewer, resolveXUID, isKnown,
+			halo5.CaptureOptions{}, start, pageSize, seen, stats)
 	}
 }
