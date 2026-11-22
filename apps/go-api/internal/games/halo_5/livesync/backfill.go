@@ -121,9 +121,14 @@ type BackfillDeps struct {
 // elle. Quand la première page non abandonnée échoue pour la MaxAttempts-ième passe de suite (Attempts
 // échecs déjà comptés), elle est abandonnée : journalisée, comptée (h5_history_abandoned_pages_total),
 // sautée ; la passe continue. MaxAttempts 0 : jamais d'abandon.
+//
+// HeadID est l'identifiant de l'entrée en position 0 de la liste lue par cette passe (l'ancre des
+// marque-pages qu'elle range, historystate.Cursor.HeadID). Vide quand la passe n'a pas encore lu la
+// tête : les marque-pages prennent alors la tête vue par la capture de la première page.
 type BackfillResume struct {
 	Start       int
 	ExpectID    string
+	HeadID      string
 	Skip        int
 	Attempts    int
 	MaxAttempts int

@@ -1,3 +1,10 @@
+## [2026-11-22] Hotfix 8.2.2 : ancre du marque-page du rattrapage Halo 5 (D-21) — Complété (branche `fix/822-j`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : le marque-page range aussi la tête de liste lue à la passe (`HeadID`) ; le décalage des matchs arrivés se lit comme la position de cette tête dans la liste relue (au plus 200 entrées, toutes entrées comptées), au lieu du nombre d'entrées vues jusqu'au premier match connu. Ancre absente : règle d'avant ; ancre perdue : reprise depuis 0, journalisée et comptée.
+- **Résultats** : monde simulé de 1 000 matchs avec 40 parties Warzone en tête : pages lues par cycle `[10 22 10 10 9]` (une reprise depuis 0) avant, `[10 11 10 10 10]` après, aucune reprise depuis 0. Scénario tout Arena inchangé. Gate du paquet Halo 5 (build, vet, tests, tests integration, lint sur le diff) vert.
+- **Suite** : l'étape équivalente côté Halo Infinite (pipeline V2) est une autre piste.
+
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 
 - **Décision** : version 8.2.1 posée (coquille Windows, notes FR/EN, changelogs datés du 2026-11-16) ; ajout du fond plan transparent (brique map-images v1.3.1, 111 images refaites) et des défis de l'axe Objectif aux notes ; ligne de backlog des défis close.

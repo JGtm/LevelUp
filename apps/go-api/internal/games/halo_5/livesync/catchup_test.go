@@ -23,6 +23,7 @@ type historyWorld struct {
 	stored     map[string]bool
 	errAtStart map[int]error   // décalage d'une page de la reprise -> erreur de capture
 	persistErr map[string]bool // match_id -> la persistance échoue
+	excluded   map[string]bool // match_id écartés à la collecte (Warzone, campagne) : vus, jamais rangés ni connus
 
 	// état du joueur
 	complete  bool
@@ -37,10 +38,11 @@ type historyWorld struct {
 	deltaCalls int
 	deltaMax   int
 	pageStarts []int
+	listStarts []int // pages relues par la lecture légère de la liste (ancre)
 }
 
 func newHistoryWorld(n int) *historyWorld {
-	w := &historyWorld{stored: map[string]bool{}, errAtStart: map[int]error{}, persistErr: map[string]bool{}}
+	w := &historyWorld{stored: map[string]bool{}, errAtStart: map[int]error{}, persistErr: map[string]bool{}, excluded: map[string]bool{}}
 	for i := 0; i < n; i++ {
 		w.ids = append(w.ids, fmt.Sprintf("m%04d", i))
 	}
@@ -76,12 +78,17 @@ func (w *historyWorld) capturePage(_ context.Context, viewer canonical.PlayerIde
 		return nil, false, nil
 	}
 	var batches []*persist.MatchBatch
-	for _, id := range page {
+	for i, id := range page {
 		seen[id] = struct{}{}
 		stats.LastMatchID = id
 		stats.MatchesSeen++
+		noteEntry(stats, 0, start+i, id)
 		if isKnown(id) {
 			stats.MatchesSkipped++
+			continue
+		}
+		if w.excluded[id] {
+			stats.ExcludedWarzone++
 			continue
 		}
 		batches = append(batches, batchFor(id, viewer))
@@ -109,11 +116,16 @@ func (w *historyWorld) capture(_ context.Context, _ halo5.CaptureSource, viewer 
 			stats.HistoryEnd = true
 			return batches, stats, nil
 		}
-		for _, id := range page {
+		for i, id := range page {
 			stats.MatchesSeen++
+			noteEntry(&stats, opts.TopLimit, start+i, id)
 			if isKnown(id) {
 				stats.StoppedOnKnown = true
 				return batches, stats, nil
+			}
+			if w.excluded[id] {
+				stats.ExcludedWarzone++
+				continue
 			}
 			batches = append(batches, batchFor(id, viewer))
 			stats.MatchesCollected++
@@ -126,6 +138,22 @@ func (w *historyWorld) capture(_ context.Context, _ halo5.CaptureSource, viewer 
 			return batches, stats, nil
 		}
 	}
+}
+
+// noteEntry reproduit halo5.CaptureStats.HeadID / TopIDs de la capture réelle.
+func noteEntry(stats *halo5.CaptureStats, topLimit, position int, id string) {
+	if position == 0 {
+		stats.HeadID = id
+	}
+	if position == len(stats.TopIDs) && len(stats.TopIDs) < topLimit {
+		stats.TopIDs = append(stats.TopIDs, id)
+	}
+}
+
+// listIDs simule halo5.ListMatchIDs : une page d'identifiants de la liste, sans rien capturer.
+func (w *historyWorld) listIDs(_ context.Context, _ canonical.PlayerIdentity, start, pageSize int) ([]string, error) {
+	w.listStarts = append(w.listStarts, start)
+	return append([]string(nil), w.page(start, pageSize)...), nil
 }
 
 func (w *historyWorld) persistAll(_ context.Context, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
@@ -200,6 +228,7 @@ func (w *historyWorld) deps() Deps {
 		},
 		PersistAll:  w.persistAll,
 		CapturePage: w.capturePage,
+		ListIDs:     w.listIDs,
 		History:     w,
 	}
 }
