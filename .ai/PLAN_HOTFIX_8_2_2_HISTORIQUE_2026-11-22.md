@@ -215,7 +215,7 @@ page.
     (delta, aucune écriture de l'état, `HistoryPending` vrai) ; Halo 5 : `playerHistory.Complete` remonte l'erreur (RunDelta :
     delta en attente) ; `historyrepo` rend l'erreur (écran : « inconnu ») ; ordonnanceur : joueur compté en rattrapage.
   - [x] D-25.4 `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage` dé-sauté et complété (journal vide, aucun
-    doublon, fin rangée) : cycle après redémarrage 14 min 28 s -> 37 à 44 s (test entier 160 à 168 s), zéro « different
+    doublon, fin rangée) : cycle après redémarrage 14 min 28 s -> 35 à 44 s (test entier 151 à 168 s, trois passes dont une après la fusion de D-24), zéro « different
     configuration », zéro « database is closed ». Tests : attente sans progrès (persist, v2), `Complete` sur erreur
     (historystate, V2 cycle et chargeur, Halo 5, historyrepo, ordonnanceur), partage du handle (platform/duckdb).
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
