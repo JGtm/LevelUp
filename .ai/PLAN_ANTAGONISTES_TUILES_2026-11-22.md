@@ -1,8 +1,7 @@
 # PLAN — Antagonistes à l'instant, frise éliminations / morts, actions sur les tuiles du rejeu (2026-11-22)
 
 Statut : **écrit le 2026-11-22 à la demande du user (« variante A, fais le plan » ; livraison en 8.3.0). DU-1 à DU-4
-confirmées par le user le 2026-11-22 (« ok pour les 4 »). Aucune ligne de code écrite ; démarre après la fusion du
-backlog des 17 et 18 novembre.**
+confirmées par le user le 2026-11-22 (« ok pour les 4 »). En cours : étape 0 (go du user le 2026-11-22, « tu peux pas commencer maintenant ? »).**
 
 Maquette de référence (validée par le user le 2026-11-22, variante A) : https://claude.ai/artifact/D24BJbsd99q5Lb8nBdYCmw.
 En cas d'écart entre ce plan et la maquette, ce plan fait foi ; un écart non écrit ici est un défaut.
@@ -150,7 +149,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
       (bots compris) ; écrire la règle de rapprochement dans ce plan.
 - [ ] 0.3 Comptes de la page du match : sur 20 matchs locaux, comparer `team_tab.nemesis` (killed_me, i_killed) au
       décompte de `highlight_events` par paire. Écart nul attendu ; tout écart est écrit ici et arrête F.
-- [ ] 0.4 Témoins AVANT, capturés dans le scratchpad (`temoins_ant_avant/`) : enregistrement des appels de dessin
+- [ ] 0.4 Témoins AVANT, capturés dans le dossier `../LevelUp-temoins-ant/avant/` (frère du dépôt, hors git, gardé jusqu'à I.3) : enregistrement des appels de dessin
       (`test/recordingContext`) de 3 images sans antagoniste et 3 images avec ; rendu de la frise (`ReplayMarkTrack`)
       sur le harnais `test/timelineTracksHarness.tsx` ; sorties de `ownershipShown` et `focusFilter` sur Seul et
       Masquer d'un joueur (tests existants listés par nom).
@@ -263,7 +262,8 @@ piste la plus en amont.
 
 ## Journal d'exécution
 
-- 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user ; démarre après la fusion du backlog 1118.
+- 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — dépendance levée, vérifiée : `chore/830-backlog-1118`, `bl1118/m` et `bl1118/t` ont 0 commit hors de `release/v8.3.0` ; `feat/medailles-bouclier` ne touche aucun fichier de `features/match-replay`, `features/match-view` ni `lib` en commit. Go du user. Branche `feat/830-antagonistes-tuiles` (worktree du pilote `../LevelUp-wt-ant`), étape 0 dans `../LevelUp-wt-ant-0` (`ant/0`).
 
 ## Découvertes (consignées, non traitées)
 
