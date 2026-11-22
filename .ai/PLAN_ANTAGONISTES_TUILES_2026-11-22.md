@@ -92,13 +92,13 @@ Critère de succès, vérifiable à l'écran par le user sur un match réel :
   entre X et un joueur affiché. Le décor sans joueur reste affiché (règle du 2026-11-15 inchangée).
 - **DU-4** Frise, rangée des coéquipiers : telle quelle (14 px, deux demi-rangées de 7 px ne se liraient pas).
 
-### À trancher par le user (né de l'étape 0)
+### Tranché par le user le 2026-11-22 (né de l'étape 0 ; « ok exclus les bots, vas-y »)
 
 - **DU-5** Place des bots. Le fil ne contient aucune élimination dont un bot est l'AUTEUR (49 manquantes sur
   l'échantillon) : un bot ne peut pas être némésis. Les cartes de la page du match excluent les bots des duels
   (`service/match_view_builders_team.go:333`, décision du 2026-09-02) ; la règle du 2026-10-09 dit que les bots
   comptent partout. Recommandation du pilote : bots exclus des antagonistes partout (rejeu et page du match), tant que
-  le décodeur ne lit pas leurs éliminations. Bloque B, D, F (le prédicat d'adversaire des appelants), pas A.
+  le décodeur ne lit pas leurs éliminations. **Retenu** : un bot n'a pas d'antagoniste et n'en est jamais un (clé `bot:<nom>` ou victime sans xuid = pas un adversaire), sur le rejeu comme sur la page du match.
 
 ### Tranché par le pilote (conventions du dépôt, modifiable par le user)
 
@@ -132,7 +132,7 @@ backlog des 17 et 18 novembre (son R.4) : ce plan touche les tuiles et la fiche 
 par agent qui écrit, en frère du dépôt (`../LevelUp-wt-ant-<piste>`), jamais sous `C:/t`. Sous-branches
 `ant/<piste>`, fusionnées par le pilote dans la branche d'intégration, supprimées à l'intégration.
 
-Chemin critique : 0 → A → (B, C.2, D, F). C.1 et E ne dépendent pas de A et partent avec lui. B, D et F attendent aussi DU-5.
+Chemin critique : 0 → A → A.4 → (B, C.2, D) ; F après A. C.1 et E ne dépendent pas de A et partent avec lui. B, D et F attendent aussi DU-5.
 
 | Piste | Contenu | Modèle | Dépend de | Effort |
 |---|---|---|---|---|
@@ -183,6 +183,11 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
       titres ; trahison et mort sans tueur ignorées ; mêlée générale ; victime bot par son nom ; doublons ; instant avant toute élimination ;
       dernier instant égal au calcul sur toute la liste.
 - **Gate A** : gates communs sur `src/lib/antagonists`.
+
+## Piste A bis — entrées du rejeu (Sonnet, avant B, C.2 et D)
+
+- [ ] A.4 `features/match-replay/model/replayAntagonists.ts` et un hook `hooks/useReplayAntagonists.ts` : depuis les éliminations du fil, l'allégeance du film et le roster, les clés rapprochées (D-10), le prédicat d'adversaire avec bots exclus (DU-5), et `buildAntagonists` gardé par (document, sujet) ; le sujet « point de vue » ramené à sa clé du film. Seule source des pistes B, C.2 et D (aucune ne refait le rapprochement). Tests : victime bot, tueur absent, point de vue bot, mêlée générale, trahison, doublons, un même index servi deux fois.
+- **Gate A bis** : gates communs sur `src/features/match-replay/model` et `hooks`.
 
 ## Piste B — canevas (Sonnet)
 
@@ -248,7 +253,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] F.1 `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
       d'adversaire ; les cartes gardent leur dessin et leurs textes.
 - [ ] F.2 Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
-- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 rejoué sur les 20 matchs récents et 5 matchs doublés : décompte dédoublonné égal à `team_tab.nemesis` (sinon F arrêtée, écrit ici). Un serveur lancé sur une copie n'a AUCUN chemin réel dans ses réglages (médias, captures, archive des films : dossiers vides du scratchpad).
+- **Gate F** : gates communs sur `src/features/match-view` ; 0.3 rejoué SANS serveur, en DuckDB sur une COPIE de la base partagée : décompte dédoublonné de `highlight_events` (bots exclus) égal à `killer_victim_pairs` (source de `team_tab.nemesis`) sur les 20 matchs récents et 5 matchs doublés (sinon F arrêtée, écrit ici).
 
 ## Étape I — intégration (pilote)
 
@@ -278,6 +283,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — DU-5 tranchée par le user (bots exclus). A.4 ajoutée (entrées communes du rejeu). Lancées : A.4, F.
 - 2026-11-22 — piste E close (E.8 comprise), fusionnée.
 - 2026-11-22 — E.1 à E.7 faites et fusionnées (agent : 6 037 tests du dossier verts) ; E.8 ajoutée (fiche compacte sans boutons).
 - 2026-11-22 — C.1 close et fusionnée ; C.2 attend DU-5 (le prédicat d'adversaire du point de vue).
