@@ -442,6 +442,22 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — C.6 fait pour huit compteurs (`072c16a`, `3f247e9` sur `piste/modes`, poussée) : Drapeau
+  (`flag_returners_killed`, `flag_kills_as_returner`, `flag_kills_as_carrier` sur la seule définition du film, accord
+  du user), zones (`zone_offensive_kills`, `zone_defensive_kills`), VIP (`vip_kills`, `vip_assists`,
+  `vip_kills_as_vip`). Écartés : durées et maximums du VIP (backlog, accord du user), Extraction (noms non prouvés),
+  tics de score des Bases (nuls). Ligne à ajouter à la table figée de LevelUp :
+  `Scripts/dec-v150-recup/modes/lignes_table_statborg.tsv`. AUDIT DES LECTEURS DE LEVELUP, demandé par le user
+  (`annexes_decodeur_1118/audit_objectifs_levelup.md`) : à faire à la MONTÉE (L.4), avant toute régénération :
+  (1) les anneaux d'objectif du rejeu se dessinent pour tout nom à préfixe `flag_`, `zone_`, `vip_` : passer à une
+  liste blanche des actions sur l'objectif, sinon chaque élimination de zone dessine un anneau de capture ; (2) la
+  liste du fil d'actions, ses libellés fr et en et le test de parité avec le décodeur reçoivent les huit noms
+  (repliés en badge sur l'élimination du même joueur, sans ligne en double ni son) ; (3) la famille VIP n'est pas
+  passée au décodeur par LevelUp : la passer par une constante exportée de la façade, PAS en changeant ce que rend
+  la famille d'une variante (le badge de retournement s'appliquerait aux matchs VIP) ; (4) l'acceptation de l'écart
+  de couverture des objectifs s'écrit dans la configuration du gate du corpus. Ne bougent pas : Escouade, Emprise,
+  Tactique, citations, participation, base, contrat de l'API (elles lisent les colonnes de l'API, qui portent
+  déjà ces huit statistiques).
 - 2026-11-22 — GO DU USER (« go pour les deux maintenant, mets des agents dessus et essaye de régler leurs effort de
   manière appropriée ») : (1) marque de tir à la tête et de frag parfait par élimination (H.7, publication par le
   décodeur depuis l'appariement mesuré, puis icônes du fil côté LevelUp à la montée) ; (2) compteurs de mode et
