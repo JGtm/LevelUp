@@ -232,7 +232,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       place vers joueur à l'instant (`replay/vehicle_rides_film.go`, et deux sites jumeaux), pas de la vie qui
       porte le trajet. Cause établie d'abord, fréquence comptée sur les 1 455 rejeux du poste, puis règle
       générale : un trajet porte l'identité de la vie qui le porte. Sortie changée : `vehicleRides[].xuid`.
-- [ ] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
+- [x] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
       reproduit plus (19 pièces, 0 écart), mais le compteur `coverage.vehicles.turretCarrierBirthMismatch`
       vaut 22 sur le parc, sur 4 films (`56ebfc53` 8, `af43b0c8` 8, `a26dbcdb` 4, `cf5d83d5` 2), contre 44
       montées relevées le 2026-11-16. Cause établie sur ces 4 films, puis règle générale ou, si la lecture ne
@@ -265,15 +265,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste B — verdict du score (Sonnet ; Opus pour B.3)
 
-- [ ] B.1 Le verdict « lecture complète » devient faux quand, pour un joueur au moins, la somme des points
+- [x] B.1 Le verdict « lecture complète » devient faux quand, pour un joueur au moins, la somme des points
       publiés diffère du score du tableau du film ; la couverture publie le nombre de joueurs en écart. Mesure
       attendue : les 44 rejeux faux passent à « incomplet », aucun rejeu exact ne bascule.
-- [ ] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
+- [!] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
       (cas de l'Assaut).
 - [ ] B.3 Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
       écarts multiples de 25) et la réponse de 100 points hors arbre (24 rejeux). Sortie : une table par build
       PROUVÉE par le tableau, ou `[!]`. Jamais un barème ajusté par régression.
-- [ ] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
+- [x] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
 - **Gate B** : équivalence attribuée ; aucun rejeu exact avant ne devient inexact.
 
 ## Piste C — compteurs nommés du tableau (Sonnet ; Opus pour C.3)
@@ -310,10 +310,10 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste D — tirs et touches (Sonnet)
 
-- [ ] D.1 Arme d'une touche et d'un dégât : résolue par le joueur à l'instant, comme l'auteur ; par l'index
+- [x] D.1 Arme d'une touche et d'un dégât : résolue par le joueur à l'instant, comme l'auteur ; par l'index
       pour un bot (son identifiant est vide). Test : deux humains successifs sur un index. Sortie inchangée
       sur le parc, vérifiée.
-- [ ] D.2 Mesure à trois voix, sans code de production, sur les 20 films de l'équivalence et 20 films
+- [x] D.2 Mesure à trois voix, sans code de production, sur les 20 films de l'équivalence et 20 films
       choisis parmi les armes mal lues : par joueur et par arme, tirs, touches et dégâts de notre lecture,
       de celle du témoin (sa sonde, bâtie hors dépôt) et de l'API (export 0.3) ; part des joueurs à 10 % près
       de l'API pour chacune des deux lectures ; ce que donne le compte « événements de tir et objets
@@ -347,11 +347,11 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste F — départs et résumés d'usage (Sonnet)
 
-- [ ] F.1 Résumés d'usage : deux tests neufs (place reprise à l'image du lâcher ; mur déployé après la mort
+- [x] F.1 Résumés d'usage : deux tests neufs (place reprise à l'image du lâcher ; mur déployé après la mort
       du poseur) ; le crédit suit DD-3. Côté LevelUp, la lecture du site s'aligne à la montée (L.4).
-- [ ] F.2 Mesure : durée de présence et « fin du dernier corps moins arrivée » contre le temps de jeu de
+- [x] F.2 Mesure : durée de présence et « fin du dernier corps moins arrivée » contre le temps de jeu de
       l'API, sur les 1 383 partants. Elle dit lequel des deux instants est le départ réel.
-- [ ] F.3 Selon F.2 : si un fait du film date mieux le départ, item écrit ici avant tout code ; sinon `[!]`,
+- [!] F.3 Selon F.2 : si un fait du film date mieux le départ, item écrit ici avant tout code ; sinon `[!]`,
       et la règle d'affichage du plan du backlog (A.1) reste la réponse.
 - **Gate F** : équivalence attribuée ; `match_usage_players` : 7 poses changent au plus.
 
@@ -366,13 +366,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste H — canaux neufs (Sonnet)
 
-- [ ] H.1 Rechargements : événements `{place, image}` lus dans le genre 38, avec leur couverture (lus,
+- [x] H.1 Rechargements : événements `{place, image}` lus dans le genre 38, avec leur couverture (lus,
       publiés, sans joueur, hors du match, trames arrêtées) ; doublons mesurés avant d'être traités.
-- [ ] H.2 Validation du bouton de saut : sur 20 films, le front montant du bit contre les sauts déjà
+- [x] H.2 Validation du bouton de saut : sur 20 films, le front montant du bit contre les sauts déjà
       dérivés ; accord écrit au journal. Sous 90 %, H.3 ne publie pas le bouton.
-- [ ] H.3 Bouton de saut et commande de déplacement : deux genres de plus dans `stances[]` (bouton enfoncé ;
+- [x] H.3 Bouton de saut et commande de déplacement : deux genres de plus dans `stances[]` (bouton enfoncé ;
       commande non nulle), jamais la série brute des valeurs.
-- [ ] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
+- [!] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
       si la cause est une lecture, entrée au backlog sinon.
 - [ ] H.5 Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
       décodeur, du texte ET de l'audio d'une réplique à partir de l'identifiant de son et de l'indice que le
@@ -442,6 +442,34 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — VAGUE 2 RENDUE, cinq pistes fusionnées dans `feat/v1.5.0` (`e3f0401`, poussée ; portes de référence rouges
+  en attendant la troisième intégration, lancée).
+  B (`44981b8`) : la règle prévue (somme contre tableau) déclassait à tort 26 rejeux justes ; cause : le tableau ne recule
+  pas, la pénalité de suicide (−100) n'y entre pas. Règle retenue : `complete` faux quand le tableau dépasse la somme des
+  points POSITIFS publiés ; 62 films : 15 bascules, aucune sur un rejeu égal à l'API ; `e5adf7b2` reste complet à tort,
+  comme avant (matière de B.3). B.2 `[!]` : le compte des scripts sans groupe vaut 102 à 115 sur tous les films, il ne
+  sépare rien ; retiré.
+  D (`afe8ab6`, `b449ee5`) : D.1 sans changement de sortie (52 films). D.2 : `.ai/annexes_decodeur_1118/tirs.md` ;
+  hypothèse du user réfutée (0,96 événement par tir tiré au MA40, 2,24 par tir au but ; armes à énergie : événements plus
+  objets projectile = 0,97 à 1,02 fois les tirs tirés). D.4 (né de D.2) : deux causes prouvées, tirs lus au seul rang de
+  tête d'une trame (85 % → 100 % des événements du témoin) et auteur d'une touche par l'index seul (touches 94,6 % →
+  99,4 % du témoin) ; plus la règle du numéro de tir en retard qui remplit un trou déjà sauté. Parts à 10 % de l'API :
+  tirs 47,3 → 47,5 %, touches 30,2 → 34,2 %, dégâts 54,5 → 58,7 %, joueurs suffisants 26,2 → 35,1 %. BR75 : 22 → 20
+  joueurs sur 34 pour les tirs (un film de build ancien, cause non prouvée) : BAISSE ACCEPTÉE PAR LE USER le 2026-11-22
+  (« Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision »). D.3 : R2 refusée (maximum de
+  deux comptes), R4 sans objet ; R1 (créateur d'un objet projectile, lu dans l'état par défaut de l'archétype 41, 120 à
+  200 lignes) et R3 renvoyés au chantier de précision annoncé par le user.
+  F (`9958cca`) : objet lâché crédité à la vie qui s'achève ; 0 pose changée sur 1 455 rejeux. F.2 : la fin de présence
+  est le départ réel (à 2 s de l'API pour 84 % des partants une fois retiré un décalage par match de 35 s en médiane,
+  inexpliqué). F.3 `[!]` : aucun fait du film ne date mieux le départ.
+  H (`304cc59`) : `reloads[]` (9 026 sur 20 films, 4 films de builds anciens sans lecture), `moveCommand` (96,5 à 99,8 %
+  des instants en mouvement) ; poids +0,71 %. H.2 : accord du bouton de saut 63,4 %, sous 90 % : NON publié. H.4 `[!]` :
+  accroupissement et glissade jamais annoncés sur les versions 37 à 41 (0 sur 290 000 deltas) ; piste notée (bit de
+  valeur 1 de l'entrée de contrôle).
+  J.8 (`c1c1394`) : le parent d'une pièce montée se lit à sa création (`i10`) ; 22 pièces gagnent leur porteur sur les
+  4 films, 3 sur les 20, 26 trajets d'artilleur reportés, 0 porteur déjà posé changé ; l'ancienne règle ne sert plus à
+  aucune pièce des 7 films mesurés.
+  Restent : J.4 (dans la troisième intégration), B.3, E, G, H.5, H.6, L, R.
 - 2026-11-22 — SECONDE INTÉGRATION au schéma 126 faite et poussée (`ab68262` sur `feat/v1.5.0`) : compteurs de mode,
   calque des éliminations, valeurs figées. Chronique 126 à huit apports, aucune révision de couche neuve (mêmes valeurs,
   empreintes refigées), goldens de forme refigés, fixtures de contrat inchangées (4 992 442 octets), suite du clone à
