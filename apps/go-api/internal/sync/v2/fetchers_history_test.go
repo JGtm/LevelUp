@@ -152,7 +152,7 @@ func TestListCatchUp_Budget(t *testing.T) {
 	if l.EndSeen {
 		t.Error("EndSeen = true alors que le budget a coupé la lecture")
 	}
-	want := historystate.Cursor{Offset: budget, LastMatchID: ids[budget-1]}
+	want := historystate.Cursor{Offset: budget, LastMatchID: ids[budget-1], HeadID: ids[0]}
 	if l.Proposed == nil || *l.Proposed != want {
 		t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 	}
@@ -168,7 +168,7 @@ func TestListCatchUp_BudgetNeComptePasLesConnus(t *testing.T) {
 	if !equalSlice(l.Unknown, ids[600:600+budget]) {
 		t.Fatalf("Unknown = %d ids, want %d ids à partir de la position 600", len(l.Unknown), budget)
 	}
-	want := historystate.Cursor{Offset: 600 + budget, LastMatchID: ids[600+budget-1]}
+	want := historystate.Cursor{Offset: 600 + budget, LastMatchID: ids[600+budget-1], HeadID: ids[0]}
 	if l.Proposed == nil || *l.Proposed != want {
 		t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 	}
@@ -186,7 +186,7 @@ func TestListCatchUp_BorneDeProfondeur(t *testing.T) {
 	if l.EndSeen {
 		t.Error("EndSeen = true : la borne de profondeur n'est pas une fin d'historique")
 	}
-	want := historystate.Cursor{Offset: historystate.MaxDepth, LastMatchID: ids[historystate.MaxDepth-1]}
+	want := historystate.Cursor{Offset: historystate.MaxDepth, LastMatchID: ids[historystate.MaxDepth-1], HeadID: ids[0]}
 	if l.Proposed == nil || *l.Proposed != want {
 		t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 	}
@@ -209,7 +209,7 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 		if !equalSlice(l.Unknown, old[600:600+budget]) {
 			t.Fatalf("Unknown = %d ids, want %d ids à partir de la position 600", len(l.Unknown), budget)
 		}
-		want := historystate.Cursor{Offset: 600 + budget, LastMatchID: old[600+budget-1]}
+		want := historystate.Cursor{Offset: 600 + budget, LastMatchID: old[600+budget-1], HeadID: old[0]}
 		if l.Proposed == nil || *l.Proposed != want {
 			t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 		}
@@ -232,7 +232,7 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 			t.Fatalf("Unknown = %d ids, want %d (nouveaux d'abord, puis la suite du marque-page)", len(l.Unknown), len(want))
 		}
 		last := 600 + budget - n - 1
-		wantCur := historystate.Cursor{Offset: n + last + 1, LastMatchID: old[last]}
+		wantCur := historystate.Cursor{Offset: n + last + 1, LastMatchID: old[last], HeadID: fresh[0]}
 		if l.Proposed == nil || *l.Proposed != wantCur {
 			t.Errorf("Proposed = %+v, want %+v (position dans la liste d'aujourd'hui)", l.Proposed, wantCur)
 		}
@@ -356,7 +356,7 @@ func TestListCatchUp_MatchsAbandonnes(t *testing.T) {
 	if !equalSlice(l.Unknown, ids[2:2+budget]) {
 		t.Errorf("Unknown = %d ids, want les %d ids à partir de la position 2 (abandonnés sautés, budget intact)", len(l.Unknown), budget)
 	}
-	want := historystate.Cursor{Offset: 2 + budget, LastMatchID: ids[2+budget-1]}
+	want := historystate.Cursor{Offset: 2 + budget, LastMatchID: ids[2+budget-1], HeadID: ids[0]}
 	if l.Proposed == nil || *l.Proposed != want {
 		t.Errorf("Proposed = %+v, want %+v", l.Proposed, want)
 	}

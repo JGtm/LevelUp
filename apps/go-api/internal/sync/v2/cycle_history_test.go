@@ -218,7 +218,7 @@ func TestCycleHistory_FinRangeeSeulementSousD5(t *testing.T) {
 		},
 		{
 			name:        "erreur de découverte (liste d'API en échec)",
-			arrange:     func(e *histEnv) { e.client.failAt, e.client.failErr = 175, errors.New("api 500") },
+			arrange:     func(e *histEnv) { e.client.failAt, e.client.failErr = budget-1, errors.New("api 500") },
 			wantPending: true, wantStatus: "failed",
 		},
 		{
