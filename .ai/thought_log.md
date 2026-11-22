@@ -2,7 +2,7 @@
 
 - **Décision** : aucune modification de code ; le sujet entre au backlog, à instruire pendant le chantier du décodeur, sans toucher au plan de la v1.5.0.
 - **Résultats** : `halo_api` 0.6.1 lit un match classé en 0,17 à 0,35 s sur son banc (libfilmshell : 0,5 à 4,7 s) ; nous produisons un rejeu complet en 3,5 s de médiane, travail non comparable tel quel. Il décompresse et lit les chunks sur plusieurs fils et ne construit l'état du monde qu'à la demande ; notre décodeur ne lance aucun fil. Ses sources citent des fichiers de notre décodeur et la révision de LevelUp 8.0.7 comme référence, sous une licence plus permissive que la nôtre.
-- **Suite** : le user retient ses méthodes comme direction pour accélérer notre décodeur, après la v1.5.0, sans attendre de mesure (backlog et plan du décodeur mis à jour) ; question de licence expliquée au user, sans décision.
+- **Suite** : le user retient ses méthodes comme direction pour accélérer notre décodeur, après la v1.5.0, sans objectif chiffré, avec un relevé de vitesse par version ; la v1.6.0 est confiée à la session qui pilote la v1.5.0, une fois celle-ci publiée (backlog et plan du décodeur mis à jour) ; question de licence expliquée au user, sans décision.
 
 ## [2026-11-22] Rejeu 3D : la version du contributeur fait foi, intégration par dépendance publiée — En cours
 **Statut :** En cours (aucun code ; attente de la réponse du contributeur). Plan : `.ai/PLAN_REJEU_3D_2026-11-15.md`, bloc « Amendé le 2026-11-22 » (D-14 à D-18).

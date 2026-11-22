@@ -74,7 +74,7 @@
 
 **Décision du user le 2026-11-22 :** ses idées sont retenues comme direction pour accélérer notre décodeur : décompression sur plusieurs fils, lecture de plusieurs chunks à la fois, état du monde construit à la demande, et lecture au choix (un appelant ne paie que les canaux qu'il demande). Pas d'objectif chiffré à ce stade. La vitesse se mesure au fil de l'eau, comme il le fait : un jeu de films fixe, une commande, un relevé par version du décodeur (décompression, lecture, interprétation, total, pic de mémoire), rangé avec la version. À inscrire au chantier du décodeur après la v1.5.0 ; la sortie doit rester identique à l'octet, prouvée par les témoins habituels, donc sans régénération du parc. Crédit à nuzzles pour les méthodes reprises.
 
-**Effort : M à L. Priorité : chantier du décodeur, après la v1.5.0.**
+**Effort : M à L. Priorité : v1.6.0 du décodeur, confiée par le user le 2026-11-22 à la session qui pilote la v1.5.0, une fois celle-ci publiée ; plan propre à écrire d'abord.**
 
 ---
 
