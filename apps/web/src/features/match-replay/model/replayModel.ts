@@ -36,6 +36,7 @@ import { collectKillEvents, type KillEvent } from '@/features/match-view/_moment
 import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { matchKickoffMs } from '@/lib/replay/matchClock'
 
 import {
   buildFeedEntries,
@@ -155,7 +156,7 @@ export function buildReplayModel(
   const marks = buildPlayerMarks(scoreboard, settings?.friendGamertags ?? [], subject)
 
   // LES DEUX HORLOGES NE COÏNCIDENT PAS : cf. `killFeedLogic` et `header.t0_ms`.
-  const t0Ms = header?.t0_ms ?? 0
+  const t0Ms = matchKickoffMs(header?.t0_ms)
   const clock = replayClock(doc, header)
   // LE CADRAGE SUR LE MATCH RÉEL : le film déborde le match du countdown et d'une queue de
   // 5-6 s, et les deux bornes demandent l'artefact ET l'en-tête.

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, type FocusEvent, type Rea
 import { createPortal } from 'react-dom'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { isKeyboardFocus } from '@/lib/dom/focusVisible'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { TOOLTIP_OWNER_ATTRIBUTE } from './titleTooltip.logic'
@@ -54,7 +55,7 @@ interface PanelPos {
  * Le panneau est rendu dans `document.body` via `createPortal` + `position: fixed`
  * pour échapper aux parents `overflow:hidden` (ex. `KpiCard`, cellules de tableau) qui
  * clippaient l'ancien rendu inline. Position calculée depuis le rect du bouton : centré
- * au-dessus, repli en dessous s'il n'y a pas la place. Fermeture : clic extérieur, scroll,
+ * au-dessus, repli en dessous s'il n'y a pas la place. Fermeture : Échap, clic extérieur, scroll,
  * resize, blur/mouseleave. `role="tooltip"` + aria conservés. Ouverture au focus : clavier seulement.
  * Le conteneur porte `TOOLTIP_OWNER_ATTRIBUTE` : un `title` natif en dessous ne double pas l'infobulle.
  */
@@ -87,23 +88,17 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4', trigger, triggerFo
     setPos({ top, left, arrowLeft, below })
   }, [open, content])
 
-  // Fermeture : clic extérieur (bouton + panneau exclus), scroll (capture), resize.
+  // Fermeture : Échap et clic extérieur (bouton + panneau exclus) par le mécanisme commun ; scroll
+  // (capture) et resize ici.
+  useDismissable(open, () => setOpen(false), { ref: panelRef, ignore: buttonRef })
   useEffect(() => {
     if (!open) return
-    function handleClick(e: MouseEvent) {
-      const target = e.target as Node
-      if (buttonRef.current?.contains(target)) return
-      if (panelRef.current?.contains(target)) return
-      setOpen(false)
-    }
     function close() {
       setOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
     window.addEventListener('scroll', close, true)
     window.addEventListener('resize', close)
     return () => {
-      document.removeEventListener('mousedown', handleClick)
       window.removeEventListener('scroll', close, true)
       window.removeEventListener('resize', close)
     }

@@ -4,8 +4,8 @@
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
  * charts de contribution par joueur : K/D/A par minute, synergies radar, frags et armes
  * (Répartition des frags, Outils de destruction — arrivés d'Usages au lot L2 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), performance, impact des coéquipiers (matrice
- * puis points d'impact par soirée et par rôle), médailles,
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), performance, impact des coéquipiers (un tableau,
+ * une ligne par session, dépliable sur sa matrice), médailles,
  * mécaniques de frag. L'objectif est parti dans l'onglet Emprise (2026-10-07). Le
  * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
  * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
@@ -30,11 +30,15 @@ import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
 import { SquadFragSection } from './SquadFragSection'
-import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
-import { SquadImpactHistoryCard } from './impact/SquadImpactHistoryCard'
+import { IMPACT_SESSIONS_TEXT } from './impact-sessions/impactSessionsText'
+import { SquadImpactSessionsTable } from './impact-sessions/SquadImpactSessionsTable'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
+
+/** Référence STABLE : un `?? []` neuf à chaque rendu casserait les mémos du tableau d'impact. */
+const NO_SESSIONS: string[] = []
 
 export function SquadContributionsPage() {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -191,8 +195,8 @@ function SynergyRadarTitle({ t }: { t: SquadText }) {
 }
 
 /**
- * Impact des coéquipiers, médailles, puis mécaniques de frag (Halo 5). Sorti de la page à la
- * revue L6.1 (fonction ramenée sous sa taille d'avant le chantier) ; rendu inchangé.
+ * Impact des coéquipiers (un tableau par session), médailles, puis mécaniques de frag (Halo 5). Sorti de
+ * la page à la revue L6.1 (fonction ramenée sous sa taille d'avant le chantier).
  */
 function ImpactMedalsMechanics({
   pageData,
@@ -209,28 +213,37 @@ function ImpactMedalsMechanics({
   locale: Locale
   t: SquadText
 }) {
-  const impactHistory = pageData?.squad_impact_history
-  // Les rôles d'impact se lisent de la timeline horodatée : un titre qui la déclare garde la carte (constat sans
-  // historique) ; un titre qui ne la déclare pas n'a pas la fonction, la carte est absente.
+  // Les sessions sélectionnées dans le filtre de la page s'ouvrent d'office dans le tableau d'impact : la source
+  // est le store escouade (source unique des sessions pickées), lu ici par sélecteur et non par le layout.
+  const pickedSessions = useSquadFilterStore((s) => s.filterContext.sessions?.picked_sessions) ?? NO_SESSIONS
+  // Les rôles d'impact se lisent de la timeline horodatée : un titre qui la déclare garde la section (titre +
+  // cadre vide quand la réponse n'a rien à montrer) ; un titre qui ne la déclare pas n'a pas la fonction, la
+  // section entière est absente.
   const impactSupported = useDataCapability('match.events.timeline')
   return (
     <>
       {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
           c'est une contribution par joueur, pas une production de la composition.
-          Section non-graphe toujours montée : titre + état vide géré par le composant
-          (cadre bordé / carte), au lieu de disparaître. */}
-      <section className="space-y-3">
-        <SectionTitle>{t.impact.title}</SectionTitle>
-        <SquadImpactScoreboard
-          matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
-        />
-        {/* Points d'impact par soirée : mêmes rôles et même barème que la matrice, la soirée
-            affichée et les précédentes. Réponse sans historique : la carte reste avec son constat quand le
-            titre lit les événements horodatés (donnée absente) ; sinon elle est absente (fonction absente). */}
-        {(impactHistory || impactSupported) && (
-          <SquadImpactHistoryCard history={impactHistory} colorByPlayer={playerColors} inkOf={inkOf} locale={locale} />
-        )}
-      </section>
+          Titre déclaré par le titre de jeu (match.events.timeline) : section montée avec son état vide géré
+          par le tableau (cadre bordé) ; non déclaré : section entière absente. */}
+      {impactSupported && (
+        <section className="space-y-3">
+          <SectionTitle>
+            <span className="flex items-center gap-1.5">
+              {t.impact.title}
+              <InfoTooltip content={IMPACT_SESSIONS_TEXT[locale].info} />
+            </span>
+          </SectionTitle>
+          <SquadImpactSessionsTable
+            data={pageData?.squad_impact_sessions}
+            pickedSessionLabels={pickedSessions}
+            inkOf={inkOf}
+            locale={locale}
+            impact={t.impact}
+            emptyMessage={t.empty.noBlockData}
+          />
+        </section>
+      )}
 
       {/* MÉDAILLES — arrivées de Synergies avec l'impact. Elles restent EN DERNIER de
           leur groupe (décision utilisateur, 2026-09-13) : c'est un palmarès, pas une

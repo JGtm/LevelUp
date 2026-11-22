@@ -39,6 +39,8 @@
     "cellsAssumedFloor": 567959
   },
   "planImage": "btb_highpower.plan.webp",
+  "reliefImage": "btb_highpower.relief.webp",
+  "reliefData": "btb_highpower.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 10674,

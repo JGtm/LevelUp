@@ -15,6 +15,7 @@
  */
 import { Link } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { DiagnosticReportSection } from '@/components/shell/DiagnosticReportSection'
 import { MicrosoftNotice } from '@/components/shell/MicrosoftNotice'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
@@ -79,15 +80,13 @@ function AboutDialogBody({ onClose }: { onClose: () => void }) {
     return () => opener?.focus()
   }, [])
 
-  // Clavier posé sur la fenêtre du navigateur, pas sur le conteneur : quand le focus tombe sur
-  // `body` (clic sur du texte, bouton qui se désactive), Échap et Tab doivent encore être tenus.
+  // Échap par le mécanisme commun, sur la fenêtre du navigateur ; le clic sur le fond a son propre gestionnaire.
+  useDismissable(true, onClose, { outside: null })
+
+  // Tab posé sur la fenêtre du navigateur, pas sur le conteneur : quand le focus tombe sur
+  // `body` (clic sur du texte, bouton qui se désactive), Tab doit encore être tenu.
   useEffect(() => {
     function onKeyDown(e: globalThis.KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
-      }
       if (e.key !== 'Tab') return
       const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
       if (items.length === 0) return

@@ -70,8 +70,10 @@ var lecturesProfilAdmises = map[string]lectureProfil{
 	"internal/config/config.go":                     {authMode: 1, levelupEnv: 2},
 	"internal/config/config_auth.go":                {authMode: 1},
 	"internal/config/config_demo.go":                {demoMode: 1},
-	"internal/service/bootstrap_ownership.go":       {demoMode: 2, authMode: 2},
-	"internal/service/bootstrap_service.go":         {demoMode: 9, authMode: 3},
+	// 2026-11-18 : filterOwnedPlayers (une lecture de chaque) est passée de bootstrap_service.go à
+	// bootstrap_ownership.go ; somme inchangée (demoMode 11, authMode 5).
+	"internal/service/bootstrap_ownership.go": {demoMode: 3, authMode: 3},
+	"internal/service/bootstrap_service.go":   {demoMode: 8, authMode: 2},
 }
 
 var nomLevelupEnv = regexp.MustCompile(`\bLEVELUP_ENV\b`)

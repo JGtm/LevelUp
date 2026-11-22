@@ -1,0 +1,163 @@
+// Mesure 0.3 (a), lecture seule : departs en cours de match, ecart fin de derniere vie -> fermeture de la presence,
+// classement des corps supprimes (`deleted`) qui ne sont pas une derniere vie de partant.
+// Un fichier a la fois. Usage : node mesure_departs_0_3a.js <dossier des rejeux>
+const fs = require('fs'), zlib = require('zlib'), path = require('path')
+const dir = process.argv[2]
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json.gz'))
+
+const FIN_S = 10 // marge de fin de partie (s)
+const CLUSTER_FRAMES = 15 // suppression groupee : une autre piste `deleted` finit a +-15 images
+const NEAR_FRAMES = 10 // « dans les 10 images » de l'enonce a verifier
+
+const out = {
+  docs: 0, erreurs: 0, sansPresence: 0, docsAvecDepart: 0,
+  departs: 0, parRaison: {},
+  ecartsFrames: [], ecartsSec: [], ecartsDeletedSec: [], ecartsReleasedSec: [],
+  nonNumeriquesEcartes: 0,
+  deletedDeparts: 0, deletedDepartsCompte10: 0, deletedDepartsCompteTol: 0, deletedDepartsCompteFilmIndex10: 0,
+  releasedDepartsCompte10: 0, releasedDeparts: 0, sansRaisonDeparts: 0, sansRaisonCompte10: 0,
+  deletedDepartsFinGroupee: 0,
+  proxCompteDeleted: { le10: 0, de11a30: 0, de31a300: 0, auDela300: 0, aucun: 0 },
+  exemplesCompte10: [], gapsIsoles: [], exempleProche: null,
+  deletedTotal: 0, deletedNonDepart: 0, classes: {}, exemplesParClasse: {},
+}
+
+const sorted = (a) => a.slice().sort((x, y) => x - y)
+const quant = (arr, p) => arr[Math.floor((arr.length - 1) * p)]
+const stats = (a) => {
+  const s = sorted(a)
+  if (!s.length) return null
+  return { n: s.length, min: s[0], p5: quant(s, 0.05), p25: quant(s, 0.25), p50: quant(s, 0.5), p75: quant(s, 0.75), p95: quant(s, 0.95), max: s[s.length - 1] }
+}
+const isNum = (x) => typeof x === 'number' && Number.isFinite(x)
+const lifeEnd = (t) => (isNum(t.endFrame) ? t.endFrame : (t.points && t.points.length ? t.points[t.points.length - 1].t : null))
+const add = (cls, ex) => {
+  out.classes[cls] = (out.classes[cls] || 0) + 1
+  const l = (out.exemplesParClasse[cls] = out.exemplesParClasse[cls] || [])
+  if (l.length < 4) l.push(ex)
+}
+
+for (const f of files) {
+  let d
+  try { d = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f)))) } catch { out.erreurs++; continue }
+  out.docs++
+  const iv = d.frameIntervalMs
+  const last = (d.frameCount || 0) - 1
+  const sec = (fr) => (fr * iv) / 1000
+  const roster = d.roster || []
+  const match = f.slice(0, 8)
+  const tracks = d.tracks || []
+  const hasPresence = roster.some((r) => (r.presence || []).length)
+
+  // debuts de compte a rebours par xuid, comme `countdownStartsByXuid` (filmIndex porte par une seule entree)
+  const entriesByIndex = new Map()
+  for (const r of roster) { const l = entriesByIndex.get(r.filmIndex); if (l) l.push(r); else entriesByIndex.set(r.filmIndex, [r]) }
+  const startsByXuid = new Map()
+  for (const c of d.respawnCountdowns || []) {
+    const es = entriesByIndex.get(c.filmIndex)
+    const own = es && es.length === 1 ? es[0] : undefined
+    if (!own || own.bot || !own.xuid) continue
+    const l = startsByXuid.get(own.xuid); if (l) l.push(c.from); else startsByXuid.set(own.xuid, [c.from])
+  }
+  // pistes par xuid, derniere vie
+  const parXuid = new Map()
+  for (const t of tracks) { if (!t.xuid) continue; const l = parXuid.get(t.xuid); if (l) l.push(t); else parXuid.set(t.xuid, [t]) }
+  const derniere = new Map()
+  for (const [x, ts] of parXuid) {
+    let best = null
+    for (const t of ts) { const e = lifeEnd(t); if (e === null) continue; if (best === null || e > best.e) best = { t, e } }
+    if (best) derniere.set(x, best)
+  }
+  // suppressions groupees : fins `deleted` des pistes
+  const delEnds = tracks.filter((t) => t.endReason === 'deleted').map((t) => lifeEnd(t)).filter(isNum)
+  const groupee = (t) => {
+    const e = lifeEnd(t)
+    let n = 0
+    for (const x of delEnds) if (Math.abs(x - e) <= CLUSTER_FRAMES) n++
+    return n >= 2 // elle-meme + une autre
+  }
+
+  const departsSet = new Set() // piste (objet) = derniere vie d'un partant
+  if (hasPresence) {
+    for (const r of roster) {
+      if (r.bot || !r.xuid || !(r.presence || []).length) continue
+      const fin = Math.max(...r.presence.map((p) => p.to))
+      if (sec(last - fin) < FIN_S) continue
+      const dv = derniere.get(r.xuid)
+      if (!dv) continue
+      out.departs++
+      departsSet.add(dv.t)
+      const raison = dv.t.endReason || 'absente'
+      out.parRaison[raison] = (out.parRaison[raison] || 0) + 1
+      const ecartF = fin - dv.e
+      if (!isNum(ecartF)) { out.nonNumeriquesEcartes++; continue }
+      out.ecartsFrames.push(ecartF); out.ecartsSec.push(sec(ecartF))
+      const own = startsByXuid.get(r.xuid) || []
+      const dFrames = own.length ? Math.min(...own.map((s) => Math.abs(s - dv.e))) : null
+      const tolOk = own.some((s) => { const dm = (s - dv.e) * iv; return dm >= -66 && dm <= 200 })
+      const c10 = (d.respawnCountdowns || []).some((c) => c.filmIndex === r.filmIndex && Math.abs(c.from - dv.e) <= NEAR_FRAMES)
+      const c10x = dFrames !== null && dFrames <= NEAR_FRAMES
+      if (raison === 'deleted') {
+        out.deletedDeparts++; out.ecartsDeletedSec.push(sec(ecartF))
+        if (c10) out.deletedDepartsCompte10++
+        if (c10x) out.deletedDepartsCompteFilmIndex10++
+        if (tolOk) out.deletedDepartsCompteTol++
+        if (groupee(dv.t)) out.deletedDepartsFinGroupee++
+        const k = out.proxCompteDeleted
+        if (dFrames === null) k.aucun++
+        else if (dFrames <= 10) k.le10++
+        else if (dFrames <= 30) { k.de11a30++; out.exempleProche = { match, nom: r.name, finVie: dv.e, dFrames } }
+        else if (dFrames <= 300) k.de31a300++
+        else k.auDela300++
+        if ((c10 || c10x || tolOk) && out.exemplesCompte10.length < 8) out.exemplesCompte10.push({ match, nom: r.name, finVie: dv.e, dFrames })
+      } else if (raison === 'released') {
+        out.releasedDeparts++; out.ecartsReleasedSec.push(sec(ecartF))
+        if (c10) out.releasedDepartsCompte10++
+      } else { out.sansRaisonDeparts++; if (c10) out.sansRaisonCompte10++ }
+    }
+    if (departsSet.size) out.docsAvecDepart++
+  } else out.sansPresence++
+
+  // corps supprimes qui ne sont pas la derniere vie d'un partant
+  for (const t of tracks) {
+    if (t.endReason !== 'deleted') continue
+    out.deletedTotal++
+    if (departsSet.has(t)) continue
+    out.deletedNonDepart++
+    const e = lifeEnd(t)
+    const ex = { match, frame: e, finMatchS: Math.round((sec(last - e)) * 10) / 10, bot: !!t.bot }
+    const nom = (roster.find((r) => r.xuid && r.xuid === t.xuid) || {}).name
+    if (nom) ex.nom = nom
+    const dv = t.xuid ? derniere.get(t.xuid) : null
+    const estDerniere = !!(dv && dv.t === t)
+    ex.derniereVie = estDerniere
+    if (t.bot || !t.xuid) add('bot', ex)
+    else if (sec(last - e) < FIN_S) add('dernieres secondes du match', ex)
+    else if (groupee(t)) add(estDerniere ? 'fin de manche (suppression groupee), derniere vie du joueur' : 'fin de manche (suppression groupee), joueur revient', ex)
+    else if (estDerniere) {
+      const r = roster.find((q) => q.xuid === t.xuid)
+      const fin = r && (r.presence || []).length ? Math.max(...r.presence.map((p) => p.to)) : null
+      ex.presenceFinFrame = fin
+      add(!hasPresence ? 'autre : derniere vie, document sans presence' : 'autre : derniere vie d\'un joueur dont la presence dure jusqu\'a la fin', ex)
+    } else {
+      const suiv = (parXuid.get(t.xuid) || []).map((q) => q.startFrame ?? 0).filter((s) => s > e).sort((a, b) => a - b)[0]
+      ex.vieSuivanteDans = suiv === undefined ? null : suiv - e; if (suiv !== undefined) out.gapsIsoles.push(suiv - e)
+      add('autre : corps supprime isole, le joueur a une vie ensuite', ex)
+    }
+  }
+}
+
+const res = {
+  docs: out.docs, erreurs: out.erreurs, sansPresence: out.sansPresence, docsAvecDepart: out.docsAvecDepart,
+  departs: out.departs, parRaison: out.parRaison, nonNumeriquesEcartes: out.nonNumeriquesEcartes,
+  ecartSecondes: stats(out.ecartsSec), ecartImages: stats(out.ecartsFrames),
+  ecartDeletedSecondes: stats(out.ecartsDeletedSec), ecartReleasedSecondes: stats(out.ecartsReleasedSec),
+  negatifs: out.ecartsSec.filter((x) => x < 0).length, auDela30s: out.ecartsSec.filter((x) => x > 30).length,
+  deletedDeparts: out.deletedDeparts, deletedDepartsCompte10_filmIndex: out.deletedDepartsCompte10,
+  deletedDepartsCompte10_xuid: out.deletedDepartsCompteFilmIndex10, deletedDepartsCompteTolerance: out.deletedDepartsCompteTol,
+  deletedDepartsFinGroupee: out.deletedDepartsFinGroupee, proxCompteDeleted: out.proxCompteDeleted, exemplesCompte10: out.exemplesCompte10, exempleProche: out.exempleProche, gapVieSuivanteIsolesImages: stats(out.gapsIsoles),
+  releasedDeparts: out.releasedDeparts, releasedDepartsCompte10: out.releasedDepartsCompte10,
+  sansRaisonDeparts: out.sansRaisonDeparts, sansRaisonCompte10: out.sansRaisonCompte10,
+  deletedTotal: out.deletedTotal, deletedNonDepart: out.deletedNonDepart, classes: out.classes, exemplesParClasse: out.exemplesParClasse,
+}
+console.log(JSON.stringify(res, null, 1))

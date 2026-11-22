@@ -2,6 +2,62 @@
 
 ---
 
+### [page du match] Cartes Némésis : compte possiblement inférieur de 1 quand le fil ne nomme pas la victime
+
+**Relevé le 2026-11-22** (revue du plan des antagonistes). Les cartes de la page du match comptent les éliminations du fil qui portent une victime (`apps/web/src/features/match-view/MatchNemesisCards.logic.ts:40`). Le serveur ne nomme pas la victime quand un même tueur a deux victimes à la même milliseconde (`apps/go-api/internal/service/match_view_killfeed_weapon.go:108-111` et `:172`) et retire du fil une élimination antérieure au coup d'envoi (`match_view_builders_combat.go:105`). Mesuré sur la base du poste : Halo 5, 4 éliminations dans 2 matchs ; Halo Infinite, 4 éliminations dans 1 match. Le rejeu a la même limite (même fil). À faire : nommer la victime ambiguë par le film ou par les paires, ou garder ces éliminations dans le fil.
+
+**Effort : moyen. Priorité : basse.**
+
+---
+
+### [données] Éliminations en double dans `highlight_events`
+
+**Relevé le 2026-11-22** (étape 0 du plan des antagonistes). Sur la base du poste, 172 matchs sur 1 462 portent chaque élimination deux fois dans `highlight_events` (30 372 lignes sur 161 147, surtout avril et mai 2026) ; le fil du rejeu de ces matchs les affiche en double. Les antagonistes les écartent, pas le fil. Prod non regardée. À faire : trouver l'écrivain qui double, dédoublonner la table, vérifier la prod.
+
+**Effort : moyen. Priorité : moyenne (le fil affiche des lignes en double).**
+
+---
+
+### [décodeur/rejeu] Éliminations dont un bot est l'auteur absentes du fil
+
+**Relevé le 2026-11-22** (étape 0 du plan des antagonistes). Le fil du rejeu ne contient aucune élimination dont un bot est l'auteur (49 manquantes sur l'échantillon) ; un bot victime n'a pas de xuid. Décision du user du 2026-11-22 : les bots sont exclus des antagonistes partout tant que ces éliminations ne sont pas lues. Le film nomme pourtant ses éliminations (`scoreActions`, `killPersonalScore`). Condition de reprise : le décodeur publie ces éliminations ; alors rouvrir la place des bots dans les antagonistes.
+
+**Effort : moyen. Priorité : basse.**
+
+---
+
+### [contrat] `combat_tab.nemesis_duels` servi vide et sans lecteur
+
+**Relevé le 2026-11-22** (revue du plan des antagonistes). `combat_tab.nemesis_duels` est toujours servi vide (`apps/go-api/internal/service/match_view_builders_combat.go:92`) et aucun composant ne le lit (CLAUDE.md règle 18) ; son retrait emporterait `MatchNemesisRow` du contrat. Le golden `tests/fixtures/golden_values/match_view_slayer.json` garde aussi un bloc `team_tab.nemesis` que le code ne produit plus.
+
+**Effort : faible. Priorité : basse.**
+
+---
+
+### [code mort] Fonctions d'analyse sans appelant de production
+
+**Relevé le 2026-11-22** (recherche par nom, hors `_test.go`, à confirmer avant suppression) : `analysis/spawn_detection.go` (4 exports), `ComputeAntagonistCounts` (`analysis/killer_victim.go:178`), `ComputeModeCategoryAverages` (`analysis/match_history_avg.go:50`), et la méthode `TitleDataAdapter.LoadMatchSummaries` (3 implémentations, aucun service appelant). CLAUDE.md règle 7 : supprimer avec leurs tests, ou retrouver le lecteur.
+
+**Effort : faible à moyen. Priorité basse.**
+
+---
+
+### [commentaires] Commentaires du code périmés (regroupés)
+
+**Relevé le 2026-11-22.** 33 marqueurs `color-allow` citent « CLAUDE.md §20 » (la section n'existe plus : règles 1 à 19) ; `lib/accessibility/semantic-tokens.ts` décrit encore les tons de la famille stats de combat en opacités ; `games/canonical/fields.go:5-10` dit « ne dépend de rien hors stdlib » alors que le paquet importe `internal/i18n` ; `analysis/modelabel/category.go:36` renvoie à une référence git `v7/cockpit` qui n'existe plus. Une passe unique, sans effet à l'écran.
+
+**Effort : faible. Priorité basse.**
+
+---
+
+### [médailles du bouclier] Trois défauts P2 de la revue adversariale, non corrigés (consigne de release : P0 et P1 seulement)
+
+**Relevé le 2026-11-22** (revue de `feat/medailles-bouclier`) : (a) `apps/go-api/internal/sync/replayartifacts/usage_frags.go:38` trie les frags par `match_id, time_ms` sans départage, et `revenge.Count` dépend de l'ordre à temps égal (ajouter `, id`) ; (b) `apps/go-api/internal/sync/replayartifacts/usage_levelup.go:61` pose la révision `lu1` même quand le fil des morts ou les équipes n'ont pas été lus, donc le rattrapage (`apps/go-api/cmd/levelup/cmd_backfill_usage_summary.go:364`) saute ensuite la passe : un match récent peut ne jamais recevoir de Vengeur sans `--force` ; (c) `apps/go-api/internal/migration/steps_shared_usage_summary_medals_view.go:65-77` décide « dérivé » sur la présence d'une ligne de joueur (`revenge_kills` non NULL), donc une passe sans ligne de joueur laisse revenir les Vengeur hérités gonflés.
+
+**Effort : faible. Priorité basse.**
+
+---
+
 ### [outillage] `scripts/disk-hygiene.ps1` : le contrôle « fusionné » des dossiers de travail vise une branche disparue
 
 **Relevé le 2026-11-18** (ménage de clôture de la refonte de la page du rejeu). Le script teste chaque dossier de travail contre `origin/feat/v75` (lignes 280 et 288), branche qui n'existe plus : la simulation s'arrête en erreur sur ce contrôle. À faire : viser la branche de version courante (ou la branche par défaut), sans nom en dur. Le ménage du 2026-11-18 a été fait à la main.
@@ -42,6 +98,59 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [décodeur] Comparaison avec les parseurs voisins : vitesse, canaux manquants, licence
+
+**Relevé le 2026-11-22** (lecture des sources de `nuzzles/halo_api` à la révision `6e93b68`, version 0.6.1, et de son banc de mesure ; rien mesuré chez nous ce jour-là). Trois décodeurs lisent le même format : le nôtre (Go), libfilmshell de Den (Rust, MIT), `halo_api` de nuzzles (Rust, MIT ou Apache-2.0).
+
+- **Vitesse.** Son banc, sur Apple M1 Max, en plusieurs fils : un match classé se lit en 0,17 à 0,35 s chez lui, 0,5 à 4,7 s chez libfilmshell ; un film d'une heure en 3,0 s contre 7,6 s. Nous : 3,5 s en médiane et 10,1 s au pire pour un rejeu complet (dix témoins, 2026-11-13). Les trois chiffres ne mesurent pas le même travail : il rend des objets typés sans rien interpréter, nous rendons le document de rejeu fini.
+- **Ce qu'il fait et que nous ne faisons pas.** Décompression des chunks répartie sur plusieurs fils ; lecture de plusieurs chunks à la fois, chaque fil partant d'une copie de l'état, la lecture étant refaite dans l'ordre quand le chunk dépendait du précédent ; état du monde à un instant construit à la demande (`FilmRuntime`), jamais pendant la lecture. Notre décodeur ne lance aucun fil et décompresse avec la bibliothèque standard ; le parallélisme avait été écarté par l'audit de septembre, avant la lecture unique.
+- **Ce que nous avons déjà.** La séparation lecture / interprétation existe (une lecture unique distribuée à des canaux, puis les faits, puis le document). Ce qui manque est le choix : un appelant qui ne veut que les positions, ou que les tirs, paie aujourd'hui presque tout.
+- **Ce qu'il lit et que nous ne publions pas** (vérifié sur la v1.4.1 et sur la branche de la v1.5.0, le 2026-11-22). L'apparence enregistrée des Spartans (armure, revêtement) : absente chez nous. Le nom des options de variante : nous lisons les réglages et les options, mais une option n'a chez nous que son hachage, il en nomme 98. Les événements de zoom et de coup de mêlée sans mort : non publiés. Le reste de sa liste est déjà chez nous : réglages de la variante (il les a repris de notre lecture), grenades, détonations, impacts, ramassages ; les rechargements arrivent avec la v1.5.0. À recouper avec les canaux du lecteur 3D (plan du rejeu 3D, D-18).
+- **Autres constats.** Les médailles et temps forts se lisent déjà chez nous dans le seul dernier chunk, et les infos de match dans le seul premier : la lecture au choix manque pour le flux des trames, pas pour ces deux-là. Il ne lit que le format 41 et deux builds pour l'apparence ; nous lisons les builds anciens. Il refuse un film dès qu'un champ attendu manque, là où nous publions un repli nommé et compté : deux doctrines, la nôtre convient à la production. Son parseur est un troisième lecteur indépendant du format, utilisable comme témoin de plus pour recouper nos lectures, comme libfilmshell.
+- **Licence.** Ses sources citent comme « référence épinglée » des fichiers de notre décodeur (`build_profile.go`, `tlv_mode2.go`, `film_variante_de_partie.go`, le décodeur des sources de mort, sept autres) et la révision `413971b` de LevelUp (version 8.0.7), ainsi qu'installation-08 et libfilmshell. Notre décodeur est sous AGPL-3.0, son paquet sous MIT ou Apache-2.0. Le code n'a pas été comparé ligne à ligne : savoir s'il s'agit d'un portage ou d'une relecture du format reste à établir, et la suite est une décision du user.
+
+**Décision du user le 2026-11-22 :** ses idées sont retenues comme direction pour accélérer notre décodeur : décompression sur plusieurs fils, lecture de plusieurs chunks à la fois, état du monde construit à la demande, et lecture au choix (un appelant ne paie que les canaux qu'il demande). Pas d'objectif chiffré à ce stade. La vitesse se mesure au fil de l'eau, comme il le fait : un jeu de films fixe, une commande, un relevé par version du décodeur (décompression, lecture, interprétation, total, pic de mémoire), rangé avec la version. À inscrire au chantier du décodeur après la v1.5.0 ; la sortie doit rester identique à l'octet, prouvée par les témoins habituels, donc sans régénération du parc. Crédit à nuzzles pour les méthodes reprises.
+
+**Effort : M à L. Priorité : v1.6.0 du décodeur, confiée par le user le 2026-11-22 à la session qui pilote la v1.5.0, une fois celle-ci publiée ; plan propre à écrire d'abord.**
+
+---
+
+### [sync/journal] Alerte « zero-insert prolongé » qui sonne à chaque cycle en prod
+
+**Relevé le 2026-11-22** (plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md`). `auto_sync: zero-insert prolongé` (`internal/scheduler/auto_sync_run.go`) sonne à chaque cycle pour 4 joueurs de la prod (plus de 11 000 fois chacun depuis juin) alors que leurs matchs arrivent par le déclencheur de fin de partie : le compteur ne voit pas les matchs rangés par une autre voie. Bruit de journal qui masquerait une vraie panne.
+
+---
+
+### [sync/h5] Match Halo 5 rangé sans participants ni chronologie, jamais repris
+
+**Relevé le 2026-11-22** (revue de `fix/sync-historique-complet`). Un échec carnage ou events (5xx passager) range le match en registre seul ; `EventsFailed` / `CarnageFailed` ne comptent pas comme erreurs du cycle (`games/halo_5/capture.go`, `livesync/runner.go`), et ni le delta ni le rattrapage ne reprennent un match connu. Préexistant.
+
+---
+
+### [archlint] Garde « tout enfant naît par childproc » sans objet sur les briques
+
+**Relevé le 2026-11-22**. `archlint/childproc_single_spawn_test.go` balaie encore `libs/...`, absent depuis la bascule des briques : leur code n'est plus gardé (balayage du 2026-11-22 : aucune ne lance de processus). `pkg/duckdbbackup` lance restic par `exec` nu, hors garde (`pkg/` exclu ; jamais lancé sur le bureau).
+
+---
+
+### [match/objectifs] Éliminations liées à l'objectif sur la fiche de match
+
+**Relevé le 2026-11-22** (audit : `.ai/annexes_decodeur_1118/audit_objectifs_levelup.md`). La base porte déjà, par joueur et par match, les statistiques de l'API : porteurs éliminés, éliminations de ceux qui ramènent le drapeau, éliminations en attaque et en défense d'une zone, aides à l'élimination du VIP. La section Objectifs de la fiche de match n'en affiche qu'une (éliminations du VIP) ; l'onglet Objectif de l'Escouade les exploite déjà (familles prendre et défendre). Demande : les afficher aussi sur la fiche de match, par mode, et dans les séries temporelles si elles y ont un sens. Ne dépend pas du décodeur. **Effort : S à M.**
+
+---
+
+### [décodeur/VIP] Durées et meilleure série en tant que VIP
+
+**Relevé le 2026-11-22** (plan `.ai/PLAN_DECODEUR_2026-11-18.md`, item C.6). Le film écrit, en VIP, le temps passé en VIP, le plus long temps en VIP (dixièmes de seconde, réécrits toutes les 100 ms) et la meilleure série en VIP. Ce sont des durées et un maximum, pas des événements : ils ne se publient pas comme des actions. Les publier demande une courbe par joueur comme les autres compteurs du tableau, et que l'hôte indique au décodeur que le match est un VIP. Écarté de la v1.5.0 avec l'accord du user. **Effort : M.**
+
+---
+
+### [outillage] disk-hygiene supprime les worktrees enregistrés sous C:/t et les clones git à commits non poussés
+
+**Relevé le 2026-11-22** par les deux sessions pilotes (fond Relief et backlog/décodeur de la 8.3.0). La tâche planifiée `LevelUp-disk-hygiene` (`scripts/disk-hygiene.ps1 -Apply`, journal `%LOCALAPPDATA%/levelup-disk-hygiene/disk-hygiene.log`) a supprimé le 2026-11-22 à 03:03 tous les sous-dossiers de `C:/t` inactifs depuis 72 h, y compris des worktrees git enregistrés (les branches et commits sont restés, le travail non commité est perdu) et un clone ordinaire du décodeur qui portait sept commits jamais poussés. La règle de protection ne couvre pas les worktrees sous `C:/t`. À corriger : épargner tout dossier qui est un worktree enregistré (`git worktree list`) ou un dépôt git avec des commits non poussés ou un arbre sale, et journaliser ce qui est épargné. En attendant, les sessions posent leurs worktrees hors de `C:/t` (`C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-<nom>`). **Reprise :** décision du user (corriger tout de suite ou plus tard).
 
 ---
 
@@ -272,7 +381,7 @@ Ces points sont aussi dans l'artefact des vérifications du user. Aucun n'est un
 
 ### [décodeur/objectifs] Ordre de rotation des collines du Roi de la colline
 
-Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. LevelUp n'a pas cet ordre. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. **Reformulée le 2026-11-17.** Constat sur pièces : la suite des collines actives se lit déjà dans le document ; elle diverge entre matchs d'une même carte ; aucun écran ne la lit. Sort : reformulée. **Condition de reprise :** un écran qui la lise ; à défaut, prochain chantier du décodeur. **Effort : S à M.**
+Relevé le 2026-11-16 en lisant OpenSpartan/cartographer (MIT, équipe de Den) : ses données d'objectifs par variante de carte donnent l'ordre de passage de chaque colline (champ `order`), en plus des socles, plaques, zones (forme, rayon, orientation), socles de balle et sites de bombe. Leurs données viennent d'un dépôt privé (film-assets) : non réutilisables. Instruit le 2026-11-18 : la suite des collines JOUÉES est déjà dans le document de rejeu (`zoneStates[].spans`), cohérente sur 48 films ; elle diverge entre matchs d'une même carte, parce que l'ordre de la carte est une donnée de la variante de mode, pas du film. Aucun travail du décodeur. Ce qui reste est une demande d'affichage : montrer dans le rejeu la suite des collines jouées (et la prochaine quand elle est connue). **Effort : S.**
 
 ---
 
@@ -302,7 +411,13 @@ Relevé le 2026-11-16 : `src/host/src/observer.rs` de OpenSpartan/cartographer (
 
 ### [décodeur] Temps forts de type « mode » du film : ce qu'ils recouvrent, et qui a détruit quel véhicule
 
-Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. **Reformulée le 2026-11-17.** Constat sur pièces : 23 683 temps forts de ce type sur 527 matchs. Les destructions de véhicules sont déjà attribuées par une autre voie ; en Slayer, environ la moitié de ces temps forts reste inexpliquée. Sort : entrée mise à jour, priorité basse. Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. **Effort : faible pour le comptage ; à estimer pour la suite. Priorité basse.**
+Relevé le 2026-11-17 en lisant la PR 17 d'OpenSpartan/libfilmshell (ouverte le 2026-11-16 par nuzzles, correction de documentation, pas encore fusionnée ; libfilmshell est le décodeur de Den, MIT). Le temps fort de type « mode » du film n'est pas un « tic d'objectif » : sur les films de l'auteur il marque, en Slayer, une destruction de véhicule (Ghost détruit 4, Warthog détruit 3), en Bases une zone capturée (32) ou sécurisée (14), en Oddball le contrôle de la balle (61), la prise de la balle (39) et le porteur arrêté (6). Notre décodeur lit déjà ce type (`EventTypeMode`, paquet `highlightevent` du dépôt `JGtm/halo-infinite-film-decoder`) : rien à reprendre côté lecture. **Reformulée le 2026-11-17.** Constat sur pièces : 23 683 temps forts de ce type sur 527 matchs. Les destructions de véhicules sont déjà attribuées par une autre voie ; en Slayer, environ la moitié de ces temps forts reste inexpliquée. Sort : entrée mise à jour, priorité basse. Crédit à nuzzles et à Den si la lecture est reprise. **Condition de reprise :** décision du user, à l'occasion d'un chantier décodeur. Instruit le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`, 23 683 événements sur 527 matchs) : un temps fort « mode » est l'écho d'une action de score propre au mode, du même joueur, dans la même image. En Bases : zone capturée ou sécurisée ; en Roi de la colline : contrôle de la colline ; en Drapeau : vol, prise, retour, capture, aide à la capture, élimination du porteur ; en Balle : contrôle et prise de la balle ; en Slayer : destruction de véhicule, aide par IEM, quelques éliminations. Le document de rejeu nomme déjà chacun de ces événements (`scoreActions`) : le décodeur n'a rien à publier de plus. Ce qui reste est côté LevelUp : la lecture de ces temps forts comme « zone capturée » est fausse hors du mode Bases ; les lire par le nom de l'action de score du rejeu, ou ne les afficher qu'en Bases. Restent sans explication : 3 410 événements en Drapeau, 691 en Total Control et 303 en Extraction, sans action de score au même instant. **Effort : S pour la lecture de LevelUp ; recherche pour le reste.**
+
+---
+
+### [base/temps forts] Temps forts « mode » en double, sans code, sur 76 matchs
+
+Relevé le 2026-11-18 (mesure : `.ai/annexes_decodeur_1118/temps_forts_mode.md`, section 5). La table `highlight_events` porte 2 330 événements de type « mode » sans code (`type_hint` NULL, `raw_json` vide) sur 76 matchs. Sur les 33 matchs qui ont aussi des événements de code 10, les 1 284 événements sans code sont tous des doubles d'un événement de code 10 (même joueur, même instant) ; 43 matchs joués entre juin et septembre 2026 n'ont que la forme sans code. Deux écritures différentes du même fait ont donc existé. À faire : trouver l'écrivain de la forme sans code (probablement une ancienne passe), dire si les 43 matchs doivent être repassés, et retirer les doubles par la voie d'écriture prévue (jamais un UPDATE ou un DELETE à la main sur la base partagée). **Effort : S à M.**
 
 ---
 
@@ -426,7 +541,7 @@ explicite d'inventer le schéma par analogie.
 
 ### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
 
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.** Contrôlé le 2026-11-18 sur la tête du décodeur (v1.4.1) : le défaut existe encore sur `4f77afc1` (1 trajet sur 252, le nom vient de la table place vers joueur et non de la vie qui porte le trajet). Traité par l'item J.7 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -438,7 +553,7 @@ Relevé le 2026-11-10, mis à jour le 2026-11-16 (montée du décodeur v1.4.0). 
 
 ### [rejeu/ti=40] Pièces montées à plus de 15 m de leur porteur
 
-Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.**
+Relevé le 2026-11-10, mesuré le 2026-11-16 (phase C du décodeur). La bande `ti=40` n'a pas de défaut : les 249 parents d'occupation exclus sont des slots qui ont porté un autre archétype. La vraie anomalie est ailleurs : 44 montées sur 9 533 rattachent une pièce à un porteur à plus de 15 m, parce que le porteur est choisi par voisinage de slot (exemple : `58d09c44`). **Condition de reprise :** correction générale côté décodeur, chantier suivant la phase C. **Effort : M.** Contrôlé le 2026-11-18 : `58d09c44` ne se reproduit plus (19 pièces, 0 écart), mais le compteur du document en compte encore 22 sur le parc, sur 4 films (`56ebfc53`, `af43b0c8`, `a26dbcdb`, `cf5d83d5`). Traité par l'item J.8 de `.ai/PLAN_DECODEUR_2026-11-18.md`.
 
 ---
 
@@ -466,6 +581,44 @@ user. **Effort : S.**
 ### [rejeu/gate] `replay-equiv` ne compare ni les joueurs du tableau des scores ni leurs stats
 
 Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de `cmd/replay-equiv` ignore `scoreTimeline.players[]` et `players[].stats` ; un défaut d'association ou de manches ne se voit que dans l'empreinte opaque `artifact`. Ajouter leur empreinte (étape neuve ou `score` étendue). **Effort : S.**
+
+---
+
+### [fonds de carte/plan] Plan par mode : découper le plan d'une carte selon le mode joué
+
+**Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
+
+**À surveiller (relevé le 2026-11-22).** La demande n° 1 ouverte le 2026-11-17 sur `OpenSpartan/cartographer` (« Initial Minimap and App Startup Flow Improvements », encore ouverte) propose de retoucher à la main les minicartes des cartes les plus jouées en compétition (Aquarius : triangles à 19 m, zone basse inaccessible en bas au milieu). Certaines de ces zones ne sont fermées que dans certains modes : la recherche du 2026-11-18 le montre sur Aquarius (86 Player Blocker `infection_include`, 2 Projectile Blocker `infection_exclude`). Relire la demande et la réponse de Den avant de lancer le plan par mode. État au 2026-11-22 : aucun code ne découpe le plan selon le mode ; une carte affiche le même plan quel que soit le mode joué.
+
+---
+
+### [fonds de carte/Relief] Passages couverts : montrer le sol qui passe sous l'étage affiché
+
+**Relevé le 2026-11-22** (relecture des dépôts de Den depuis le 2026-11-18). `OpenSpartan/films-ui` (MIT), `src/floor.ts`, commits du 18 et du 19/11 (demande de fusion n° 8) : la vue de dessus trace les murs du sol praticable qui passe sous l'étage affiché (tunnel sous la carte, passage sous un pont ou sous l'étage d'un bâtiment). Trait en tirets de 2 px (6 pleins, 4 vides) dans la couleur des ruptures de hauteur, sur un liseré plein de 4 px d'une teinte sombre du sol bas, à 0,85 de leur force, pour rester lisible sur sol bas comme haut. La donnée (`under`) sort du générateur privé de Den (`film-assets`) : chez nous, à calculer depuis le maillage de navigation à la cuisson du fond Relief (brique `halo-infinite-map-images`). Le fond Relief et la coupe par étage de la 8.3.0 n'affichent pas ces passages. Créditer Den si le style est repris. **Reprise :** après la sortie de la 8.3.0, avec ou après le plan par mode. **Effort : moyen (brique et dessin web).**
+
+---
+
+### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
+
+**Relevé le 2026-11-18** (conception du fond Relief, `.ai/annexes_fonds_relief/conception.md` §9, mesure sur 1,55 million de points de rejeux : course à 2,2-2,4 unités par seconde, saut de 0,82 à 0,89 unité). Le code et les sidecars des fonds appellent « mètres » les unités du jeu (`metersPerPixel`, `anchorMedianGapM`, « m » des commentaires et des libellés). Toute distance affichée en mètres à partir de ces valeurs est à relire (rayons et distances de la Tactique, distances de tir, échelles). Le fond Relief affiche ses étages en rangs, sans unité (décision D-14 du plan `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). **Reprise :** à instruire et décider par le user ; vérifier la conversion admise (1 unité = 10 pieds dans les Halo précédents) avant tout changement d'affichage.
+
+---
+
+### [fonds de carte/Forge] Deux des quatre types de himap.TypesVolumesDeMort ne sont pas des volumes de mort
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). « Light probe marker » (type d'objet 29) et « Nav Cutter » (type 28) sont comptés comme volumes de mort par la brique `halo-infinite-map-images` (`himap.TypesVolumesDeMort`, `BoiteDesVolumesDeMort`). Effet possible sur le cadrage des fonds Forge publiés, à mesurer. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [fonds de carte/Forge] L'échelle des primitives Forge n'est pas lue
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). Le vecteur d'échelle des objets (`#8/#23` de la variante) n'est pas lu par `mapvar`. 94,7 % des 404 578 primitives du parc ne sont pas à l'échelle 1, alors que `InstanceForge` les pose à l'échelle 1. Effet sur les fonds Forge publiés à mesurer avant tout correctif. **Reprise :** à instruire et décider par le user.
+
+---
+
+### [outillage] Les 20 variantes natives du dépôt hors ligne sont des fichiers vides
+
+**Relevé le 2026-11-18** (recherche du plan par mode, `.ai/annexes_plan_par_mode/recherche.md`). `.ai/re_dump/mapvar/` porte 20 variantes de cartes natives à 0 octet. À rapatrier (`mapnav-fetch -fichier map.mvar -nom-cuisson`) si un lot les lit. **Reprise :** à instruire et décider par le user.
 
 ---
 
@@ -562,3 +715,32 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 | 2026-07-17 | **[chantier Relations UX] Plan 2026-07 CLOS** — lots A (tri colonnes), B (duels cliquables → match view via `matchIndexAtX`), C (toggle « jamais affrontés », défaut masqué, migrate store v2), F (CoreCards supprimées + lien Escouade), D (volet « Quoi de neuf » : `is_revived` SQL+DTO+strip front), E (notification `rival_encounter` post-sync par watermark, garde-fous 3/sync et 7 j), H régularisé `[~]`, G `[!]` (0 % couverture CSR rivaux). Plan archivé : `.ai/archive/V7/PLAN_RELATIONS_UX_2026-07.md`. Commits `91649c01d`→`e38592ca9`. |
 | 2026-07-17 | **[sécurité] BOLA acteur prestige clos** — 14 routes non-squad réconcilient l'acteur body/query avec la session (`authorizeActor`, 403 `player_forbidden`), garde-rail AST structurel anti-régression, tests 403+verts par endpoint. Commit `b8e97cb43`. Résiduel objet-level → item backlog. |
 | 2026-07-17 | **[coach/prestige] V2.1 + V3 livrés** — colonne `source` (challenge + prestige_telemetry, migration `prestige_add_source_columns_v1`), source renseignée aux 4 origines (coach/user/pilot_mode/preset), endpoint diag `GET /_diag/prestige/telemetry/{slug}` ; analyseur `cmd/prestige-tuning-analyze` (recommandations grammaire, seuils 30 %/50, validation manuelle) ; canal Discord webhook pour notifications coach (opt-in `discord_notify_coach`, OFF par défaut, best-effort). Commits `709bac9ad`, `7fa643699`, `02797d4cb`, `2f30e180d`. |
+
+## 2026-11-22 — Découvertes du décodeur v1.5.0, vague 2 (notées, non traitées)
+
+- **Tirs du BR75 sur un film de build ancien** : trois joueurs passent hors des 10 % de l'API après la lecture des tirs à tout rang ; des numéros de tir alternent entre deux unités en moins de 500 ms, cause non prouvée. Baisse acceptée par le user le 2026-11-22.
+- **Précision des armes à énergie** : le tireur d'un objet projectile est écrit dans l'état par défaut de sa création ; le garder permettrait d'ajouter les projectiles aux événements de tir. Matière du chantier de précision annoncé par le user.
+- **Décalage par match entre le film et le temps de jeu de l'API** : 35 s en médiane, commun aux partants d'un même match, sans lien avec le coup d'envoi ; inexpliqué.
+- **Lâchers 2 à 4 images après une mort** (4 cas du parc) : crédités au repreneur de la place ; une tolérance de temps serait une règle neuve.
+- **Accroupissement et glissade** : jamais annoncés par le film sur les versions récentes ; piste : le bit de valeur 1 de l'entrée de contrôle, à recouper avec la vitesse.
+- **Bouton de saut** : accord de 50 à 61 % sur les builds 1.9 à 1.11, 87 à 97 % ailleurs ; non publié. Sens des quatre booléens d'un rechargement inconnu.
+- **Score** : une Grande bataille où les points publiés dépassent le tableau reste « complète » à tort ; un film où le tableau cesse de monter dans les dernières secondes.
+- **Voisinage des pièces montées** : plus utilisé par aucune pièce des films mesurés ; à retirer si le parc régénéré le confirme.
+
+## 2026-11-22 — Découvertes du décodeur v1.5.0, recherches (notées, non traitées)
+
+- **Répliques des Spartans, son seul** : l'identifiant de son du film mène à un fichier de voix français du jeu installé (201 sur 201) ; aucun texte dans le jeu ; voix anglaise non installée ; aucun convertisseur du format audio sur la machine. À décider par le user : publier le son avec une étiquette de genre écrite à la main. Piste non explorée : deux fichiers compressés du jeu.
+- **Lettre des zones comme contrôle** : la lettre lue du marqueur égale le rang publié sur 231 zones sur 231 ; deux compteurs de couverture (lettres lues, lettres en accord) la garderaient comme contrôle. Lire le composant du marqueur qui arrête la lecture aux images-clés rendrait la lettre lisible partout.
+- **Zone au propriétaire de nom inconnu** (un film sur Recharge) : le rejeu retombe sur le vote.
+- **Arbre des actions décalé sur la version du jeu précédant `HI_1_11_0`** : 31 lectures concordantes, aucune contraire, égalité non testable (films à trames arrêtées) ; autres modes des anciennes versions probablement touchés, non mesurés.
+- **Grande bataille à drapeau des anciennes versions** : 34 films dont le groupe de scripts est absent de la table des réponses ; aucune action de score publiée.
+- **5 films de Grande bataille restés « incomplets »** après la correction du décalage, sans rang non confirmé ni manque : cause non cherchée. Un joueur reçoit un message d'élimination de trop sur un film.
+- **Drapeau, état « au socle » faux avant un portage juste** (16 portages) : porteur précédent hors des 8 premières places ou sur une place sans humain nommé (7) ; variante à un seul drapeau publiée avec deux drapeaux d'équipe (4) ; résidu (5). L'ouverture de la lecture au-delà de 8 joueurs en dépend.
+- **Courbe de score qui ne recule pas** : le jeu retire la pénalité de suicide ou de trahison ; la courbe publiée garde la plus longue suite non décroissante et perd ce recul quand la pénalité est le dernier mouvement du joueur.
+- **Tableau « Impact des coéquipiers » par session (revue du 2026-11-22, P2)** : (a) net par match faux sans signal si l'équipe alliée n'est pas lue (`teammates_squad_impact_sessions.go:30-45`, `squadimpact/sessions.go` `addMatch` : les matchs joués retombent sur les matchs avec rôle) — ne pas publier le bloc, raison journalisée ; (b) colonnes de match écrasées sur une longue session (`SessionMatrix.tsx:109-119`, largeur automatique) — largeur minimale par colonne de match, à juger à l'écran ; (c) sept ré-exports `SquadImpactSessions*` sans lecteur dans `lib/api/types.ts`, commentaire de `MatchesPlayed` incomplet.
+- **Victime d'une élimination appariée au plus proche** (relecture du décodeur v1.5.0) : deux éliminations du même joueur à une image d'écart peuvent échanger leurs victimes, sans compte d'ambiguïté. Correction proposée : victime absente et compteur quand une action a plusieurs candidats.
+- **Compteur des émissions jetées gonflé hors Drapeau** : la passe du verdict de mode lit la table du Drapeau sur tout film et verse ses rejets au compteur du document (0 → 1 952 sur un film d'un autre mode), sans effet sur les compteurs publiés. Correction proposée : un enregistreur à part pour cette passe.
+- **Table des réponses de jeu sans révision de couche** : une ligne ajoutée aux décalages de l'arbre ne rend aucun rejeu « à redécoder » sans montée du schéma.
+- **Copies des messages de tir de rang 1 et plus** : non mesurées (les rechargements de la même vue sont écrits deux fois dans 26 à 32 % des cas).
+- **Répliques des Spartans : texte RETROUVÉ dans le jeu (2026-11-22, après la capture du « chatter » de Den fournie par le user)** : l'identifiant de son du film désigne un tag de son dont le corps porte, par variante, une clé de chaîne ; le texte est dans la RESSOURCE de la table de chaînes de la voix (18 langues, français et anglais présents), pas dans son corps. Sur 201 sons : 191 avec texte, 10 sans paroles ; le nombre de textes égale le nombre de variantes audio. Le film ne dit pas quelle variante a joué. Reste à établir : lecture structurée du tag de son (trouvé par balayage), noms des répliques (5 résolus sur les tables de vocalisation), lien position vers nom de lieu de la carte (volumes nommés de la variante de carte, non testé). Faisable pour une version suivante : événement publié par le décodeur, table des répliques côté LevelUp faite comme celle des sons d'armes. Crédit : méthode et table de textes de Den, OpenSpartan `libfilmshell` (MIT). Pièces : `dec-v150-recup/h5/chatter/`. Remplace l'entrée « son seul » plus haut.
+  - **Cadrage du user (2026-11-22)** : version suivante du décodeur (« on va y retoucher justement bientôt »). Les zones de lieu existent déjà dans LevelUp : rien à refaire pour le lieu. Nom court de la réplique : à traiter dans le décodeur, PAS repris dans LevelUp. Idées d'affichage à maquetter, non tranchées : (a) rejeu 2D, icône de son avec le texte écrit sur le joueur qui parle ; (b) rejeu 2D, icône de son et lecture du son sur ce joueur ; (c) comme Den, une des variantes au hasard dans le fil des éliminations, avec un filtre « Répliques ».

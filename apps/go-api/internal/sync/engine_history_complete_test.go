@@ -38,18 +38,18 @@ func TestHistoryComplete_AbsentePuisRangee(t *testing.T) {
 	db := handle.SQLDb()
 	ctx := context.Background()
 
-	if historyComplete(ctx, db) {
+	if HistoryComplete(ctx, db) {
 		t.Fatal("base neuve : l'historique ne doit pas être réputé complet (un delta se joue en full)")
 	}
-	markHistoryComplete(ctx, db, "J900004")
-	if !historyComplete(ctx, db) {
-		t.Fatal("après markHistoryComplete, l'historique doit être réputé complet")
+	MarkHistoryComplete(ctx, db, "J900004")
+	if !HistoryComplete(ctx, db) {
+		t.Fatal("après MarkHistoryComplete, l'historique doit être réputé complet")
 	}
 	if v, ok, err := GetSyncMeta(ctx, db, SyncMetaHistoryCompleteAt); err != nil || !ok || v == "" {
 		t.Errorf("GetSyncMeta = (%q, %v, %v), attendu un horodatage", v, ok, err)
 	}
 	// Base indisponible : réputé complet (delta ordinaire), jamais un parcours intégral aveugle.
-	if !historyComplete(ctx, nil) {
+	if !HistoryComplete(ctx, nil) {
 		t.Error("sans base, l'historique est réputé complet")
 	}
 }

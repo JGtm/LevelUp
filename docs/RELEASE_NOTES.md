@@ -25,6 +25,10 @@
 - **A camera menu in the playback bar** — in Cinema and Full frame, the "Camera" menu follows a player (or "None") and picks the viewpoint. Follow no longer stops when you close the player's card
 - **The map turns by itself** — when no orientation is saved for a map, it turns a quarter turn on its own when that gives it more room on screen. "Auto" joins the "Orientation" choices in the "View" panel, and a "Rotated map" button in the playback bar puts the map back upright. A saved choice is kept
 - **Equipment dropped on death counted properly** — on the match page, the "Equipment use, by player" grid undercounted the equipment players dropped when they died: it is now credited to the player who died, so the "Dropped" parts of the grid grow and the "Kept without use" parts shrink accordingly
+- **A Relief background for the maps** — a third background, beside "Plan" and "Rendu", shows the terrain from above: lighter when higher, shaded, cut to the playable area, with optional relief lines (height breaks, contour lines). Inspired by OpenSpartan Cartographer, by Den (MIT licence).
+- **One floor at a time** — in the replay, Tactics and Terrain occupation, pick a floor (or "All", or a height) and the others fade; in the replay, "Follow the open player" moves the cut with them.
+- **Markers readable on every background** — each marker gets a dark band edged with a light rim, so it stands out on Plan, Rendu and Relief, in the four colour palettes.
+- **Live Fire, complete** — its background is redone from the game's navigation mesh: it gains its wall plan, its Relief and the walkable areas that were missing.
 
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 

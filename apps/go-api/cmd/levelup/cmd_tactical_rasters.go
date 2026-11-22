@@ -37,17 +37,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/replayartifact"
@@ -217,7 +213,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 // Tous les autres cas — sidecar absent, illisible, d'un autre format, ou projete d'un
 // artefact plus ancien — retombent sur la comparaison complete (dejaProjete).
 func sidecarAJour(ctx context.Context, path string) bool {
-	s, ok := lireSidecarRaster(ctx, path)
+	s, ok := replayartifact.LireSidecarRasterCourant(ctx, path)
 	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion && aLaCadenceCourante(s.FrameIntervalMs)
 }
 
@@ -225,42 +221,6 @@ func sidecarAJour(ctx context.Context, path string) bool {
 // le pas est une marque de fraicheur au meme titre que le schema (un artefact regenere a un autre pas
 // refait son sidecar, a schema egal).
 func dejaProjete(ctx context.Context, path string, schemaArtefact, pasArtefact int) bool {
-	s, ok := lireSidecarRaster(ctx, path)
+	s, ok := replayartifact.LireSidecarRasterCourant(ctx, path)
 	return ok && s.ArtifactSchemaVersion == schemaArtefact && memeCadence(s.FrameIntervalMs, pasArtefact)
-}
-
-// lireSidecarRaster lit le sidecar en place et dit s'il est exploitable EN L'ETAT.
-//
-// LE PREDICAT DE FRAICHEUR EST CELUI DU SERVICE (`domain.SidecarRasterCourant`) : format,
-// grille et unite de temps. Cette passe y AJOUTE la comparaison a l'artefact
-// (`artifact_schema_version`), qu'elle seule peut faire — elle a l'artefact en main. En
-// deux definitions, le remede que le service prescrit dans son WARN restait un no-op sur
-// un sidecar au bon schema mais a un autre pas (constat C3 de la revue).
-//
-// Absent : silence, c'est le cas NOMINAL d'un artefact jamais projete. Illisible ou d'un
-// autre format : (_, faux) ET une ligne de journal — un fichier corrompu n'est pas une
-// absence, et le taire ferait disparaitre un incident derriere une reecriture muette
-// (CLAUDE.md n 3, anti-patron n 10).
-func lireSidecarRaster(ctx context.Context, path string) (domain.TacticalRasterSidecar, bool) {
-	raw, err := replayartifact.ReadBytes(path)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			slog.WarnContext(ctx, "rasters tactiques : sidecar illisible, il sera reecrit",
-				"path", path, "raison", "lecture", "err", err)
-		}
-		return domain.TacticalRasterSidecar{}, false
-	}
-	var s domain.TacticalRasterSidecar
-	if err := json.Unmarshal(raw, &s); err != nil {
-		slog.WarnContext(ctx, "rasters tactiques : sidecar illisible, il sera reecrit",
-			"path", path, "raison", "parse", "err", err)
-		return domain.TacticalRasterSidecar{}, false
-	}
-	if !domain.SidecarRasterCourant(&s) {
-		slog.DebugContext(ctx, "rasters tactiques : sidecar d'un autre temps, il sera reecrit",
-			"path", path, "schema_version", s.SchemaVersion, "pas_m", s.PasM,
-			"pas_echantillon_ms", s.PasEchantillonMs)
-		return domain.TacticalRasterSidecar{}, false
-	}
-	return s, true
 }

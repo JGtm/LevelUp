@@ -220,6 +220,16 @@ type ReplayService interface {
 	// n'a pas de plan.
 	MapBackgroundPlanImage(ctx context.Context, matchID string) ([]byte, string, error)
 	MapBackgroundPlanImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
+	// MapBackgroundReliefImage et MapBackgroundReliefImageForMap servent l'IMAGE DU RELIEF du même
+	// fond (hauteurs et drapeaux, même cadre et même calage que l'image du fond), par match et par
+	// carte. MapBackgroundReliefData et MapBackgroundReliefDataForMap servent ses DONNÉES : les octets
+	// JSON de la cuisson (bornes de hauteur, étages, traits), sans type MIME, le format étant fixe.
+	// ErrMapBackgroundNotAvailable quand le fond n'existe pas, n'a pas de relief, ou que les données
+	// du relief ne sont plus au calage du fond (relief périmé : le web retombe sur le Plan).
+	MapBackgroundReliefImage(ctx context.Context, matchID string) ([]byte, string, error)
+	MapBackgroundReliefImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
+	MapBackgroundReliefData(ctx context.Context, matchID string) ([]byte, error)
+	MapBackgroundReliefDataForMap(ctx context.Context, mapID string) ([]byte, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné complété du
 	// catalogue généré au fil de l'eau). Retourne ErrMapCalloutsNotAvailable quand la

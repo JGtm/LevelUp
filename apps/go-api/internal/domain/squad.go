@@ -69,10 +69,8 @@ type SquadMatchRow struct {
 	Accuracy        *float64
 	TimePlayedSecs  int
 	DurationSeconds int
-	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché).
-	GameplayDurationSeconds int
-	// T0Ms : offset du countdown pré-match en ms (real_start_time − start_time_utc).
-	// nil si real_start_time absent → T0=0 (chronologie brute). Cf. Match Timeline T0.
+	// T0Ms : coup d'envoi du match en ms depuis son début canonique (sqlfrag.SQLT0Ms) ;
+	// nil = inconnu. La durée de jeu s'en déduit par timeline.ForMatch.
 	T0Ms             *int64
 	TeamMMR          float64
 	SessionID        *int
@@ -136,6 +134,16 @@ type SquadKillLogRow struct {
 	VictimXUID      string
 	AssistXUID      string
 	KillerDamagePct *int
+}
+
+// MatchShieldRow : les bris de bouclier et les recharges complètes d'un joueur sur un match, tirés
+// du film (match_usage_players_latest), lus pour le rôle d'impact « Os de verre ». Une ligne n'existe
+// que si le film a mesuré le bouclier du match : sans ligne, le match n'est pas mesuré.
+type MatchShieldRow struct {
+	MatchID   string
+	XUID      string
+	Breaks    int
+	Recharges int
 }
 
 // AllyParticipant est une ligne participant côté équipe alliée d'un match.

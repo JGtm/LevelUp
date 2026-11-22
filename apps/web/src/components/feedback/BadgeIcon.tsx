@@ -9,6 +9,9 @@
  *   tourist      → last_group_kill (snail)
  *   finisher     → clutch_finisher (bullseye)
  *   first_victim → first_group_death (headstone)
+ *
+ * glass_jaw (Os de verre) : « Bone » de la même collection, fichier
+ * `assets/Bone/Flat/bone_flat.svg` du dépôt (licence MIT de Microsoft, la même que les autres pictos).
  */
 import firstBlood from '@/assets/badges/fluent-flat/first_blood.svg'
 import clutchFinisher from '@/assets/badges/fluent-flat/clutch_finisher.svg'
@@ -21,6 +24,7 @@ import topKiller from '@/assets/badges/fluent-flat/top_killer.svg'
 import topGun from '@/assets/badges/fluent-flat/top_gun.svg'
 import kamikaze from '@/assets/badges/fluent-flat/kamikaze.svg'
 import thief from '@/assets/badges/fluent-flat/thief.svg'
+import glassJaw from '@/assets/badges/fluent-flat/glass_jaw.svg'
 import champion from '@/assets/badges/fluent-flat/champion.svg'
 import maillonFaible from '@/assets/badges/fluent-flat/maillon_faible.svg'
 import passagerClandestin from '@/assets/badges/fluent-flat/passager_clandestin.svg'
@@ -37,6 +41,7 @@ const BADGE_SVG: Record<string, string> = {
   top_gun: topGun,
   kamikaze,
   thief,
+  glass_jaw: glassJaw,
   champion,
   maillon_faible: maillonFaible,
   passager_clandestin: passagerClandestin,

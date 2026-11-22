@@ -2,6 +2,7 @@
 import type { ReplayText } from './i18nContract'
 import { EN_FEED_LINES } from './feedLines.i18n'
 import { EN_LIVES } from './lives.i18n'
+import { EN_RELIEF } from './relief.i18n'
 import { EN_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 import { EN_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
@@ -95,6 +96,7 @@ export const EN_TEXT = {
   roster: EN_ROSTER,
   playerInstant: EN_PLAYER_INSTANT,
   lives: EN_LIVES,
+  relief: EN_RELIEF,
   respawnForecast: EN_RESPAWN_FORECAST,
   feedLines: EN_FEED_LINES,
   killFeedNoAssistHint:
@@ -342,7 +344,6 @@ export const EN_TEXT = {
     `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
   teamLabelFmt: (name) => `Team ${name}`,
   teamNumberedFmt: (n) => `Team ${n}`,
-  playerScoreLive: 'Personal score at the moment being played',
   countersLive: 'Kills / deaths / assists at the moment being played',
   countersMatch: 'Kills / deaths / assists for the whole match',
   fdaTooltipFmt: (counters, fda) => `${counters} — KDA ${fda}`,
@@ -411,6 +412,7 @@ export const EN_TEXT = {
   grenadeSelUnknown: 'Grenade in hand: unknown',
   grenadeAge: 'Grenades read',
   grenadeAhead: 'Grenades read in',
+  grenadeRank: (rank) => `rank ${rank}`,
   abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
   abilityAge: 'Ability read',
   abilityAhead: 'Ability read in',

@@ -15,7 +15,10 @@
 //   - -convertir : ECRIT. Meme verification prealable, obligatoire, fichier par fichier ; si
 //     l'aller-retour n'est pas identique, l'outil REFUSE d'ecrire ce fichier (Etape 4 du plan).
 //     Sinon : `<cle>.webp` est ecrit, le sidecar `<cle>.json` voit son champ `image` mis a jour
-//     (D3 : le format est une propriete de la donnee), et `<cle>.png` est supprime.
+//     (D3 : le format est une propriete de la donnee), et `<cle>.png` est supprime. Meme chose pour
+//     l'image plan `<cle>.plan.png` (champ `planImage`) et l'image du relief `<cle>.relief.png`
+//     (champ `reliefImage`) : celle-ci porte une hauteur sur R et G, des drapeaux sur B et une alpha
+//     de 0 ou 255, et ne passe que si ses quatre canaux ressortent a l'identique.
 //
 // CE QUE CET OUTIL NE FAIT PAS A L'ETAPE 0 : le mode -convertir existe et est teste (voir
 // main_test.go, sur repertoire temporaire), mais n'est PAS execute sur `data/` a cette etape —

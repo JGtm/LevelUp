@@ -17,6 +17,10 @@
  * son espèce) est devenu le groupe des icônes de cadre (`[data-replay-frame-buttons]`), posé au même endroit.
  * La comparaison retire ce seul élément de chaque côté, puis exige le même HTML : tout le reste de la zone de
  * lecture est identique, octet pour octet. Les icônes de cadre ont leurs propres tests (ReplayFrameButtons.test.tsx).
+ *
+ * SEUL AUTRE ÉCART ASSUMÉ : sur la rangée du point de vue, une
+ * élimination se pose dans la moitié haute (`top-0.5`) et une mort dans la moitié basse (`top-[14px]`), au lieu de
+ * `top-2` pour les deux. Les trois fixtures portent ce seul changement de classe, rien d autre.
  */
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'

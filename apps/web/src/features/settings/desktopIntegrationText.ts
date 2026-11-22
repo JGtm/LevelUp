@@ -27,6 +27,7 @@ export interface DesktopIntegrationText {
   taskError: string
   taskUnknown: string
   taskErrorPath: string
+  taskErrorShell: string
   saveFailed: string
 }
 
@@ -56,7 +57,9 @@ const FR: DesktopIntegrationText = {
   taskError: "Tâche planifiée : erreur. Le planificateur de Windows n'a pas répondu ; le détail est dans les journaux.",
   taskUnknown: 'Tâche planifiée : pas encore vérifiée.',
   taskErrorPath:
-    "Tâche planifiée : erreur. Un dossier de LevelUp contient un caractère que la tâche ne sait pas protéger (guillemet, %, &, ^, !).",
+    "Tâche planifiée : erreur. Un dossier de LevelUp contient un caractère que la tâche ne sait pas protéger (guillemet, retour à la ligne) ou se termine par une barre oblique inverse.",
+  taskErrorShell:
+    "Tâche planifiée : erreur. Cette instance du serveur n'a pas été lancée par l'application de bureau : la tâche ne peut pas être créée.",
   saveFailed: "Le réglage n'a pas pu être enregistré.",
 }
 
@@ -86,7 +89,9 @@ const EN: DesktopIntegrationText = {
   taskError: 'Scheduled task: error. The Windows task scheduler did not answer; the details are in the logs.',
   taskUnknown: 'Scheduled task: not checked yet.',
   taskErrorPath:
-    'Scheduled task: error. A LevelUp folder contains a character the task cannot protect (quote, %, &, ^, !).',
+    'Scheduled task: error. A LevelUp folder contains a character the task cannot protect (quote, line break) or ends with a backslash.',
+  taskErrorShell:
+    'Scheduled task: error. This server instance was not started by the desktop application: the task cannot be created.',
   saveFailed: 'The setting could not be saved.',
 }
 

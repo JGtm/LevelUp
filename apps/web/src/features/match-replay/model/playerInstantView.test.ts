@@ -11,7 +11,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
-import { vitalityPresence } from '@/lib/replay/rosterLogic'
 
 import { INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers, instantSheet } from '../test/instantFixture'
 import { playerInstantViewAt, type PlayerInstantView } from './playerInstantView'
@@ -29,7 +28,6 @@ function lecteur(who: string, over: { doc?: Doc; sheet?: ReturnType<typeof insta
     players,
     feed: instantFeed(),
     scoreTimeline: scoreTimelineOf(doc),
-    presence: vitalityPresence(doc),
     matchStartFrame: null,
     weaponIcons: INSTANT_ICONS,
     locale: over.locale ?? 'fr',
@@ -47,17 +45,17 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
     expect(v.identity).toEqual({ kills: 4, deaths: 1, assists: 1, fromFilm: true })
   })
 
-  it('depuis le début du match : FDA du jeu, séries, tirs à la tête, parfaites, vies, boucliers, score et rang', () => {
+  it('depuis le début du match : FDA du jeu, séries, tirs à la tête, parfaites, vies, bouclier, score et rang', () => {
     expect(v.since?.fda).toBeCloseTo(4 + 1 / 3 - 1, 10)
     expect(v.since).toMatchObject({
       currentStreak: 1,
       bestStreak: 3,
-      headshots: { count: 1, measured: 2 },
+      headshots: 2,
       perfects: 1,
       respawns: 1,
       currentLifeMs: 22_900,
       averageLifeMs: 15_000,
-      shieldsLost: 3,
+      shield: { breaks: 3, recharges: 1, differential: -2, matchBreaks: 3, matchRecharges: 1, matchDifferential: -2 },
       score: 300,
       rank: { place: 2, of: 3 },
     })
@@ -86,10 +84,20 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
       damageDealt: 160,
       damageTaken: 25,
       weapons: [
-        { name: "Fusil d'assaut", fired: 30, damage: 60 },
-        { name: 'SPNKr', fired: 5, damage: 100 },
+        { key: '0xAAAA', name: "Fusil d'assaut", fired: 30, damage: 60 },
+        { key: '0xBBBB', name: 'SPNKr', fired: 5, damage: 100 },
       ],
     })
+  })
+
+  it('tirs et dégâts : les familles de même nom font UNE ligne, additionnée, sous la clé de la première ; les totaux restent', () => {
+    const base = instantDoc()
+    const doc = instantDoc({ weaponLabels: { ...base.weaponLabels, '0xBBBB': { fr: "Fusil d'assaut", en: 'Assault rifle' } } })
+    const s = lecteur('A', { doc })(FIN).shots
+    expect(s?.weapons).toEqual([{ key: '0xAAAA', name: "Fusil d'assaut", fired: 35, damage: 160 }])
+    expect(s?.weapons[0].fired).toBe(s?.accuracy?.fired)
+    expect(s?.weapons[0].damage).toBe(s?.damageDealt)
+    expect(s?.weapons.map((w) => w.key)).toHaveLength(new Set(s?.weapons.map((w) => w.key)).size)
   })
 
   it('grenades lancées par type, ramassages d’armes et de grenades', () => {
@@ -131,10 +139,13 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
 describe('playerInstantView — la fiche suit l’image lue', () => {
   const lire = lecteur('A')
 
-  it('à 10 s : trois éliminations, un bouclier perdu, un sprint terminé, pas encore de réapparition', () => {
+  it('à 10 s : trois éliminations, un bris de bouclier et une recharge, un sprint terminé, pas encore de réapparition', () => {
     const v = lire(100)
     expect(v.identity).toMatchObject({ kills: 3, deaths: 0, assists: 1 })
-    expect(v.since).toMatchObject({ respawns: 0, shieldsLost: 1, score: 300, currentLifeMs: 10_000, averageLifeMs: null })
+    expect(v.since).toMatchObject({
+      respawns: 0, score: 300, currentLifeMs: 10_000, averageLifeMs: null,
+      shield: { breaks: 1, recharges: 1, differential: 0, matchBreaks: 3, matchRecharges: 1, matchDifferential: -2 },
+    })
     expect(v.kills?.classes.map((c) => [c.classKey, c.atInstant])).toEqual([['shoulder', 2], ['grenade', 0], ['heavy', 1]])
     expect(v.grenadesThrown).toEqual([{ name: 'Fragmentation', count: 2 }, { name: 'Plasma', count: 1 }])
     expect(v.pickups).toEqual({ weapons: 2, grenades: 1 })
@@ -149,7 +160,7 @@ describe('playerInstantView — la fiche suit l’image lue', () => {
         kills: v.kills?.classes.reduce((n, c) => n + c.atInstant, 0) ?? 0,
         throws: v.grenadesThrown.reduce((n, g) => n + g.count, 0),
         medals: v.medals.reduce((n, m) => n + m.count, 0),
-        shields: v.since?.shieldsLost ?? 0,
+        shields: v.since?.shield?.breaks ?? 0,
       }
       for (const k of ['kills', 'throws', 'medals', 'shields'] as const) expect(cur[k]).toBeGreaterThanOrEqual(prev[k])
       prev = cur
@@ -169,15 +180,16 @@ describe('playerInstantView — le début du match : des zéros mesurés, pas de
 
   it('les compteurs et les tableaux écrivent leurs zéros', () => {
     expect(v.identity).toEqual({ kills: 0, deaths: 0, assists: 0, fromFilm: true })
-    expect(v.since).toMatchObject({ fda: 0, currentStreak: 0, bestStreak: 0, perfects: 0, respawns: 0, shieldsLost: 0, score: 0 })
+    expect(v.since).toMatchObject({ fda: 0, currentStreak: 0, bestStreak: 0, perfects: 0, respawns: 0, score: 0 })
+    expect(v.since?.shield).toMatchObject({ breaks: 0, recharges: 0, differential: 0, matchBreaks: 3 })
     expect(v.kills?.classes.every((c) => c.atInstant === 0 && c.share === null)).toBe(true)
     expect(v.kills?.bar).toEqual([])
     expect(v.equipment).toEqual([])
     expect(v.shots).toMatchObject({ accuracy: null, damageDealt: 0, damageTaken: 0, weapons: [] })
   })
 
-  it('les tirs à la tête, les listes de gestes et les médailles n’ont rien à écrire', () => {
-    expect(v.since?.headshots).toBeNull()
+  it('les listes de gestes et les médailles n’ont rien à écrire ; les tirs à la tête sont un zéro mesuré', () => {
+    expect(v.since?.headshots).toBe(0)
     expect(v.grenadesThrown).toEqual([])
     expect(v.pickups).toBeNull()
     expect(v.medals).toEqual([])
@@ -261,7 +273,7 @@ describe('playerInstantView — les armes sans nom', () => {
       playerInstantViewAt(
         readPlayerInstantSources({
           doc, player: instantPlayer(players, 'A'), players, feed: [...feed, ...extra],
-          scoreTimeline: scoreTimelineOf(doc), presence: vitalityPresence(doc), matchStartFrame: null,
+          scoreTimeline: scoreTimelineOf(doc), matchStartFrame: null,
           weaponIcons: INSTANT_ICONS, locale: 'fr', docSeries: readInstantDocSeries(doc, players),
         }),
         FIN,

@@ -215,6 +215,9 @@ func (e *emitter) chatter(n int) {
 
 // run est le serveur entier ; rend le code de sortie du processus.
 func run(args []string, getenv func(string) string, cwd string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if code, ok := refreshOnly(args, getenv, cwd, stderr); ok {
+		return code
+	}
 	opts, err := readOptions(getenv)
 	if err != nil {
 		fmt.Fprintf(stderr, "fake: %v\n", err)

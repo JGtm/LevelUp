@@ -36,6 +36,8 @@
     "cellsAssumedFloor": 257442
   },
   "planImage": "btb_engine.plan.webp",
+  "reliefImage": "btb_engine.relief.webp",
+  "reliefData": "btb_engine.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 15434,

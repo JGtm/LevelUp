@@ -2,47 +2,36 @@
  * MatchNemesisCards — match_view.12 (Némésis et Souffre-douleur).
  *
  * Deux cartes côte à côte sur fond bg-card (aligné sur les autres blocs) :
- *   - Némésis : adversaire qui m'a le plus tué (max killed_me).
- *   - Souffre-douleur : adversaire que j'ai le plus tué (max i_killed).
+ *   - Némésis : adversaire qui m'a le plus éliminé.
+ *   - Souffre-douleur : adversaire que j'ai le plus éliminé.
  *
- * Source : `team_tab.nemesis` filtré pour ne garder que les adversaires
- * (team_side différent du joueur principal). Le scoreboard est utilisé
- * pour résoudre les team_side et écarter les coéquipiers (qui ne devraient
- * pas apparaître dans cette section narrative).
+ * Source : les éliminations de `combat_tab.highlight_events` (déjà chargées par la page),
+ * lues au dernier instant par la fonction commune des antagonistes (`lib/antagonists`),
+ * la même que le rejeu : le tenant du titre garde la carte sur une égalité. Seuls les
+ * adversaires comptent (camp différent selon le tableau de score ; les bots sont exclus,
+ * cf. `MatchNemesisCards.logic.ts`).
  */
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import type { MatchNemesisRow, MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchHighlightEvent, MatchScoreboardRow } from '@/lib/api/types'
 import { themedIconSrc } from '@/lib/themedIcon'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { MatchViewText } from './i18n'
+import { readMatchAntagonists, type MatchAntagonist } from './MatchNemesisCards.logic'
 
 interface Props {
-  nemesis: MatchNemesisRow[] | null | undefined
+  events: readonly MatchHighlightEvent[]
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
   t: MatchViewText
 }
 
-export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
+export function MatchNemesisCards({ events, scoreboard, meXUID, t }: Props) {
   const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
-  const sb = scoreboard ?? []
-  const nem = nemesis ?? []
-  const sbMe = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
-  const allyTeam = sbMe?.team_side ?? null
-  const teamSideByXUID = new Map<string, string | null>()
-  for (const r of sb) teamSideByXUID.set(r.xuid, r.team_side ?? null)
-
-  const enemyDuels = nem.filter((n) => {
-    if (n.xuid === meXUID) return false
-    if (allyTeam == null) return true
-    return teamSideByXUID.get(n.xuid) !== allyTeam
-  })
 
   // Pas de `return null` quand il n'y a aucun duel : on garde les deux cartes
   // titrées (Némésis / Souffre-douleur) qui affichent leur état vide
   // (`combatNoNemesis`) au lieu de faire disparaître la section.
-  const nemesisRow = pickMax(enemyDuels, (n) => n.killed_me)
-  const bullyRow = pickMax(enemyDuels, (n) => n.i_killed)
+  const { nemesis: nemesisRow, bully: bullyRow } = readMatchAntagonists(events, scoreboard ?? [], meXUID)
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -50,7 +39,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         title={t.combatNemesisTitle}
         accentToken="outcome-loss"
         row={nemesisRow}
-        statLine={nemesisRow ? t.combatKilledMeFmt(nemesisRow.killed_me) : null}
+        statLine={nemesisRow ? t.combatKilledMeFmt(nemesisRow.count) : null}
         logoSrc={themedIconSrc('nemesis', theme)}
         t={t}
       />
@@ -58,7 +47,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         title={t.combatBullyTitle}
         accentToken="outcome-win"
         row={bullyRow}
-        statLine={bullyRow ? t.combatIKilledFmt(bullyRow.i_killed) : null}
+        statLine={bullyRow ? t.combatIKilledFmt(bullyRow.count) : null}
         logoSrc={themedIconSrc('victim', theme)}
         t={t}
       />
@@ -69,7 +58,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
 interface CardProps {
   title: string
   accentToken: SemanticToken
-  row: MatchNemesisRow | null
+  row: MatchAntagonist | null
   /** null = etat vide (aucun duel) : la ligne de stat est masquee plutot que d afficher un 0 absurde. */
   statLine: string | null
   logoSrc: string
@@ -116,18 +105,4 @@ function NemesisCard({ title, accentToken, row, statLine, logoSrc, t }: CardProp
       </div>
     </div>
   )
-}
-
-function pickMax<T>(rows: T[], score: (r: T) => number): T | null {
-  if (rows.length === 0) return null
-  let best = rows[0]
-  let bestScore = score(best)
-  for (let i = 1; i < rows.length; i++) {
-    const s = score(rows[i])
-    if (s > bestScore) {
-      best = rows[i]
-      bestScore = s
-    }
-  }
-  return bestScore > 0 ? best : null
 }

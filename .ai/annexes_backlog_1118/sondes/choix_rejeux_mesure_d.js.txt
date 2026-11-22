@@ -1,0 +1,14 @@
+const fs=require('fs'),z=require('zlib');
+const dir=process.argv[2];
+const out=[];
+for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json.gz'))){
+  const d=JSON.parse(z.gunzipSync(fs.readFileSync(dir+'/'+f)));
+  const R=d.roster||[]; const teams={}; for(const r of R) teams[r.team]=(teams[r.team]||0)+1;
+  out.push({m:f.slice(0,8),n:R.length,bots:R.filter(r=>r.bot).length,teams:Object.values(teams).sort().join('/'),frames:d.frameCount,dur:Math.round(d.durationMs/1000),tracks:(d.tracks||[]).length,sa:(d.scoreActions||[]).length,ep:(d.equipmentPlacements||[]).length,sh:(d.shots||[]).length});
+}
+fs.writeFileSync(process.argv[3],JSON.stringify(out));
+const by=(p)=>out.filter(p);
+console.log('4v4 stricts (8, teams 4/4):',by(o=>o.n===8&&o.teams==='4/4').length,'; btb>=24:',by(o=>o.n>=24).length);
+const l=out.slice().sort((a,b)=>b.frames-a.frames).slice(0,5);console.log('plus longs',JSON.stringify(l));
+const q=by(o=>o.n===8&&o.teams==='4/4').sort((a,b)=>a.frames-b.frames);console.log('4v4 median',JSON.stringify(q[Math.floor(q.length/2)]));
+const b=by(o=>o.n>=24).sort((a,b)=>a.frames-b.frames);console.log('btb median',JSON.stringify(b[Math.floor(b.length/2)]), 'btb max',JSON.stringify(b[b.length-1]));

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -264,5 +265,90 @@ func TestReplayGeneration_FilePleineEtPanneDeLecture(t *testing.T) {
 	}
 	if !strings.Contains(f2.logs.String(), "level=ERROR") {
 		t.Fatalf("la panne doit se journaliser en Error : %s", f2.logs.String())
+	}
+}
+
+// Un échec réessayable gardé par la file ne passe jamais devant les contrôles d'état : si le match est devenu
+// non générable depuis (jeton retiré, film déclaré absent, mode non géré, match sorti du registre), la lecture rend
+// l'état du contrôle, et la demande est refusée au lieu de repartir.
+func TestReplayGeneration_EchecReessayableNePassePasDevantUnControle(t *testing.T) {
+	retryable := domain.ReplayGenerationStatus{State: domain.ReplayGenerationFailed, Reason: domain.ReplayGenReasonFetchFailed, Retryable: true}
+	cases := []struct {
+		name   string
+		mutate func(f *genFixture)
+		state  string
+		reason string
+	}{
+		{"jeton retiré", func(f *genFixture) { f.token = false }, domain.ReplayGenerationNotSupported, domain.ReplayGenReasonNoToken},
+		{"film déclaré absent", func(f *genFixture) { f.probe.res.FilmAbsent = true }, domain.ReplayGenerationFilmUnavailable, ""},
+		{"mode non géré", func(f *genFixture) { f.probe.res.UnmanagedMode = true }, domain.ReplayGenerationNotSupported, domain.ReplayGenReasonModeUnmanaged},
+		{"match inconnu", func(f *genFixture) { f.probe.res.Known = false }, domain.ReplayGenerationNotSupported, domain.ReplayGenReasonMatchUnknown},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newGenFixture(t)
+			f.queue.known[genMatch] = retryable
+			tc.mutate(f)
+			if st := f.status(t); st.State != tc.state || st.Reason != tc.reason {
+				t.Fatalf("état = %+v, attendu %s/%s", st, tc.state, tc.reason)
+			}
+			if _, created, err := f.service().RequestGeneration(context.Background(), genTitre, genMatch); err == nil || created {
+				t.Fatalf("la demande doit être refusée : created=%v err=%v", created, err)
+			}
+			if len(f.queue.enqueued) != 0 {
+				t.Fatalf("rien ne doit entrer en file : %+v", f.queue.enqueued)
+			}
+		})
+	}
+	// Sans obstacle, l'état connu de la file reste servi.
+	f := newGenFixture(t)
+	f.queue.known[genMatch] = retryable
+	if st := f.status(t); st.State != domain.ReplayGenerationFailed || !st.Retryable {
+		t.Fatalf("état = %+v, attendu l'échec réessayable de la file", st)
+	}
+}
+
+// La demande porte l'heure de fin du match lue par la sonde : la génération s'en sert pour ne pas tenir pour expiré le
+// film d'un match qui vient de finir.
+func TestReplayGeneration_DemandePorteLHeureDeFinDuMatch(t *testing.T) {
+	f := newGenFixture(t)
+	fin := time.Date(2026, 11, 18, 11, 58, 0, 0, time.UTC)
+	f.probe.res.EndedAt = fin
+	if _, created, err := f.service().RequestGeneration(context.Background(), genTitre, genMatch); err != nil || !created {
+		t.Fatalf("created=%v err=%v", created, err)
+	}
+	if len(f.queue.enqueued) != 1 || !f.queue.enqueued[0].MatchEndedAt.Equal(fin) {
+		t.Fatalf("demande = %+v, attendu l'heure de fin %v", f.queue.enqueued, fin)
+	}
+}
+
+// Un échec dont la cause est le jeton, mémorisé par la file, est périmé quand la sonde ne voit plus cette cause : le
+// match redevient générable sans redémarrage. Tant que le jeton manque, l'état `no_token` prime ; un échec d'une autre
+// cause reste servi.
+func TestReplayGeneration_EchecDeJetonPerimeQuandLeJetonEstRetabli(t *testing.T) {
+	tokenFailure := domain.ReplayGenerationStatus{State: domain.ReplayGenerationFailed, Reason: domain.ReplayGenReasonTokenUnavailable, Retryable: true}
+
+	f := newGenFixture(t)
+	f.queue.known[genMatch] = tokenFailure
+	if st := f.status(t); st.State != domain.ReplayGenerationGeneratable {
+		t.Fatalf("jeton rétabli : état = %+v, attendu generatable", st)
+	}
+	if _, created, err := f.service().RequestGeneration(context.Background(), genTitre, genMatch); err != nil || !created {
+		t.Fatalf("la demande doit repartir : created=%v err=%v", created, err)
+	}
+
+	f2 := newGenFixture(t)
+	f2.queue.known[genMatch] = tokenFailure
+	f2.token = false
+	if st := f2.status(t); st.State != domain.ReplayGenerationNotSupported || st.Reason != domain.ReplayGenReasonNoToken {
+		t.Fatalf("jeton toujours absent : état = %+v, attendu not_supported/no_token", st)
+	}
+
+	for _, reason := range []string{domain.ReplayGenReasonFetchFailed, domain.ReplayGenReasonFilmNotReady, domain.ReplayGenReasonBuildFailed} {
+		f3 := newGenFixture(t)
+		f3.queue.known[genMatch] = domain.ReplayGenerationStatus{State: domain.ReplayGenerationFailed, Reason: reason, Retryable: true}
+		if st := f3.status(t); st.State != domain.ReplayGenerationFailed || st.Reason != reason {
+			t.Fatalf("échec %s : état = %+v, attendu l'échec de la file", reason, st)
+		}
 	}
 }

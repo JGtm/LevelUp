@@ -37,6 +37,8 @@
     "cellsAssumedFloor": 194230
   },
   "planImage": "va_launchsite.plan.webp",
+  "reliefImage": "va_launchsite.relief.webp",
+  "reliefData": "va_launchsite.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 4668,

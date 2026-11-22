@@ -6,10 +6,10 @@
  *
  * DE HAUT EN BAS :
  *  - l'IDENTITÉ : pastille de camp, nom, camp, frags / morts / assistances, puis `headEnd` ;
- *  - les TROIS ACTIONS sur la carte — Suivre, Seul, Masquer — boutons à bascule (`aria-pressed`) ; leurs exclusions
- *    et leur remise à zéro sont dans `playerPanelLogic` ;
- *  - une région qui DÉFILE (par défaut : `scroll: 'internal'`) : « À l'instant » (`ReplayPlayerNow`), « Depuis le
- *    début du match », « Éliminations par arme », « Tirs et dégâts », « Grenades lancées », « Ramassages »,
+ *  - l'action « Seul » sur la carte (`FicheActions`), un bouton à bascule qui masque tous les autres joueurs ; Suivre
+ *    et Masquer sont sur les tuiles et les lignes ; la règle est dans `playerPanelLogic` ;
+ *  - une région qui DÉFILE (par défaut : `scroll: 'internal'`) : « À l'instant » (`ReplayPlayerNow`), « Antagonistes »
+ *    (némésis et souffre-douleur du joueur à l'instant), « Depuis le début du match », « Éliminations par arme », « Tirs et dégâts », « Grenades lancées », « Ramassages »,
  *    « Équipement », « Médailles », puis, séparés d'un filet, « Totaux du match » et « Gestes ».
  *
  * UNE SECTION SANS VALEUR N'EXISTE PAS : ni titre, ni texte de remplacement. Un joueur sans ligne de feuille n'a pas de
@@ -27,7 +27,6 @@
  */
 import { useMemo, type ReactNode } from 'react'
 
-import { Button } from '@/components/ui/button'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { formatClock } from '@/lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
@@ -43,8 +42,10 @@ import type { WeaponIconsByKey } from '../model/killSourceIcons'
 import { playerCampLabel } from '../model/playerCampLabel'
 import { cardName } from '../model/playerCardReadings'
 import { playerMatchTotals } from '../model/playerMatchTotals'
-import type { PlayerPanelAction } from '../model/playerPanelLogic'
+import type { ReplayAntagonists } from '../model/replayAntagonists'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
+import { FicheActions } from './fiche/FicheActions'
+import { FicheAntagonistes } from './fiche/FicheAntagonistes'
 import { FicheDepuisDebut } from './fiche/FicheDepuisDebut'
 import { FicheEliminations } from './fiche/FicheEliminations'
 import { FicheEquipement } from './fiche/FicheEquipement'
@@ -54,16 +55,14 @@ import { FicheMedailles } from './fiche/FicheMedailles'
 import { FicheIdentite } from './fiche/FicheIdentite'
 import { FicheTirs } from './fiche/FicheTirs'
 import { ReplayPlayerNow } from './ReplayPlayerNow'
-import { PRESS_GUARDS } from './replayPressGuards'
 
-/** L'ordre des trois actions : celui de la maquette. */
-const ACTIONS: readonly PlayerPanelAction[] = ['follow', 'solo', 'hide']
 
 export interface ReplayPlayerPanelBodyProps {
   player: ReplayPlayer
-  /** Les trois actions et leur état : l'état est tenu par la page (`reducePlayerPanel`). */
-  actions: Record<PlayerPanelAction, boolean>
-  onToggle: (action: PlayerPanelAction) => void
+  /** Vrai quand ce joueur est « seul » (tous les autres joueurs sont masqués) : l'état est tenu par la page (`reducePlayerPanel`). */
+  solo: boolean
+  /** « Seul » sur ce joueur, ou tout réafficher s'il l'est déjà. */
+  onSolo: () => void
   doc: ReplayDocumentReady
   /** L'image publiée : tout ce que la fiche écrit est lu à cet instant. */
   frame: number
@@ -78,6 +77,8 @@ export interface ReplayPlayerPanelBodyProps {
   feed: readonly ReplayFeedEntry[]
   /** Les pictogrammes d'arme du titre, par clé : ils nomment les armes que le fil ne nomme pas. */
   weaponIcons: WeaponIconsByKey
+  /** La fabrique des antagonistes du match (`ReplayFrameView.antagonists`) : la fiche lit l'index de son joueur. */
+  antagonists: ReplayAntagonists
   /** Ce que le conteneur pose à droite de l'identité (retour, fermeture) ; rien par défaut. */
   headEnd?: ReactNode
   /**
@@ -94,16 +95,15 @@ const LOWER_CLASS: Record<NonNullable<ReplayPlayerPanelBodyProps['scroll']>, str
 }
 
 export function ReplayPlayerPanelBody({
-  player, actions, onToggle, doc, frame, nowMs, playWindow, allegiance, locale,
-  players, feed, weaponIcons, headEnd, scroll = 'internal',
+  player, solo, onSolo, doc, frame, nowMs, playWindow, allegiance, locale,
+  players, feed, weaponIcons, antagonists, headEnd, scroll = 'internal',
 }: ReplayPlayerPanelBodyProps) {
   const t = REPLAY_TEXT[locale]
-  const text = t.playerPanel
   const name = cardName(player, t)
   const ages = useReadingAges(doc)
   const clock = formatClock(displayClockMs(nowMs, playWindow))
   const view = usePlayerInstant(
-    { doc, player, players, feed, presence: ages.presence, matchStartFrame: playWindow?.startFrame ?? null, weaponIcons, locale },
+    { doc, player, players, feed, matchStartFrame: playWindow?.startFrame ?? null, weaponIcons, locale },
     frame,
   )
   const camp = useMemo(() => playerCampLabel(player, players, t), [player, players, t])
@@ -120,25 +120,10 @@ export function ReplayPlayerPanelBody({
         locale={locale}
         headEnd={headEnd}
       />
-      <div className="flex gap-1" role="group" aria-label={name}>
-        {ACTIONS.map((action) => (
-          <Button
-            key={action}
-            type="button"
-            size="sm"
-            variant={actions[action] ? 'default' : 'outline'}
-            className="flex-1"
-            aria-pressed={actions[action]}
-            title={text.actionHint[action]}
-            {...PRESS_GUARDS}
-            onClick={() => onToggle(action)}
-          >
-            {text.action[action]}
-          </Button>
-        ))}
-      </div>
+      <FicheActions name={name} solo={solo} onSolo={onSolo} locale={locale} />
       <div className={LOWER_CLASS[scroll]} style={{ gap: COTES_FICHE_INSTANT.ecartSectionsPx[scroll] }}>
         <ReplayPlayerNow player={player} doc={doc} frame={frame} clock={clock} ages={ages} locale={locale} />
+        <FicheAntagonistes player={player} antagonists={antagonists} players={players} allegiance={allegiance} nowMs={nowMs} locale={locale} />
         {view.since && <FicheDepuisDebut since={view.since} locale={locale} />}
         {view.kills && <FicheEliminations kills={view.kills} locale={locale} />}
         {view.shots && <FicheTirs shots={view.shots} locale={locale} />}

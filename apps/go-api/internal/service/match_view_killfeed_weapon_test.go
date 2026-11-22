@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
@@ -227,7 +228,7 @@ func TestCorrectMatchViewEventsT0_RecaleAussiLesTranchesDuKillFeed(t *testing.T)
 		killAssists: []domain.KillAssistRaw{{XUID: "A", TimeMS: 35306, KillerDamagePct: ptrIk(100)}},
 		kvPairs:     []domain.KVPairRaw{{KillerXUID: "A", VictimXUID: "B", VictimGT: "Bob", TimeMS: 35306}},
 	}
-	correctMatchViewEventsT0(&d, "m1", timeline.BuildForMatchMs(600000, 18465))
+	correctMatchViewEventsT0(&d, "m1", timeline.ForMatch(time.Time{}, 600000, ptrI64k(18465)))
 
 	if d.events[0].TimeMS == nil || *d.events[0].TimeMS != 16841 {
 		t.Fatalf("event : TimeMS = %v, attendu 16841", d.events[0].TimeMS)
@@ -301,48 +302,6 @@ func TestDecorateKillFeed_VictimeTroisEtats(t *testing.T) {
 	if medal := events[3]; medal.VictimXUID != nil {
 		t.Errorf("la médaille porte une victime (%v)", medal.VictimXUID)
 	}
-}
-
-// TestDecorateMedalEvents_ResolutionEtRepli : la médaille résolue porte id, label,
-// description et visuel ; la médaille inconnue du référentiel garde son SEUL nom brut
-// (le front l'écrit en toutes lettres) ; un kill n'est jamais touché.
-func TestDecorateMedalEvents_ResolutionEtRepli(t *testing.T) {
-	events := []domain.MatchHighlightEvent{
-		{EventType: highlightevent.EventTypeKill, EventTimeMS: ptrI64k(1000), ActorXUID: ptrS("A")},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(2000), ActorXUID: ptrS("A"),
-			MedalName: "Odin's Raven"},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(3000), ActorXUID: ptrS("B"),
-			MedalName: "Inconnue Totale"},
-		{EventType: highlightevent.EventTypeMedal, EventTimeMS: ptrI64k(4000), ActorXUID: ptrS("B")},
-	}
-	repo := &mockMatchViewRepo{medalMetasByName: map[string]domain.MedalNameMeta{
-		"Odin's Raven": {MedalNameID: 1512363953, Label: "Corbeau d'Odin", Description: "Desc"},
-	}}
-	adapter := &stubAssetURL{medalImg: "/static/medals/1512363953.png"}
-
-	decorateMedalEvents(context.Background(), events, repo, adapter)
-
-	res := events[1]
-	if res.MedalNameID == nil || *res.MedalNameID != 1512363953 ||
-		res.MedalLabel != "Corbeau d'Odin" || res.MedalDescription != "Desc" {
-		t.Errorf("médaille résolue : %+v", res)
-	}
-	if res.MedalImageURL == "" {
-		t.Errorf("médaille résolue sans visuel (adapter présent)")
-	}
-	if inc := events[2]; inc.MedalNameID != nil || inc.MedalLabel != "" || inc.MedalImageURL != "" {
-		t.Errorf("médaille inconnue : décorée (%+v) alors que le référentiel ne la connaît pas", inc)
-	}
-	if anon := events[3]; anon.MedalNameID != nil || anon.MedalLabel != "" {
-		t.Errorf("médaille sans nom brut : décorée (%+v)", anon)
-	}
-	if k := events[0]; k.MedalLabel != "" || k.MedalImageURL != "" {
-		t.Errorf("un kill porte une identité de médaille (%+v)", k)
-	}
-
-	// Dégradations : repo nil, tranche vide — pas de panique.
-	decorateMedalEvents(context.Background(), events, nil, nil)
-	decorateMedalEvents(context.Background(), nil, repo, nil)
 }
 
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events

@@ -71,10 +71,7 @@ const CSS_COLOR_FN_PATTERN = /\b(?:oklch|oklab|lch|rgba?|hsla?|hwb)\s*\(/g
 export const ALLOWED_FILES = [
   // Palettes brutes — c'est leur seule raison d'être.
   'lib/accessibility/palettes/',
-  'lib/accessibility/_palettes.ts',
-  // Rareté Halo (BattlePass) — couleurs de rareté hors charte sémantique.
-  'features/home/rarity.ts',
-  'features/battlepass/rarity.ts',
+  // Rareté Halo (palmarès) — couleurs de rareté hors charte sémantique.
   'features/palmares/rarity.ts',
   // Tests : on accepte les fixtures et snapshots.
   '.test.ts',

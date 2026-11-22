@@ -280,7 +280,7 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 // loadMainTeamAllies charge UNE fois l'équipe alliée du main par match (Q32b,
 // LoadMainTeamParticipants, par lireEquipeAlliee — le SEUL appel de Q32b du service)
 // et l'indexe (buildMainTeamXUIDSet) : ses trois consommateurs de la page (filtre
-// composition exacte, matrice d'impact, courbe « équipe » du profil d'intensité) lisent le
+// composition exacte, tableau d'impact par session, courbe « équipe » du profil d'intensité) lisent le
 // résultat (CLAUDE.md n°6). Sans xuid ni match : rien à charger. Best-effort :
 // en échec, warn + (nil, nil) — chaque consommateur dégrade seul ; l'issue
 // DataIssueMainTeamParticipants n'est posée que si l'option composition exacte

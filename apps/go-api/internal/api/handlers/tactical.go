@@ -5,7 +5,8 @@
 //	POST /players/{player_slug}/tactical/{map_id}/cellule         (corps : perimetre + lecture + cellule)
 //	POST /players/{player_slug}/tactical/{map_id}/reapparitions-adverses (tactical_reapparitions.go)
 //	GET  /players/{player_slug}/tactical/{map_id}/background      (calage du fond)
-//	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond)
+//	GET  /players/{player_slug}/tactical/{map_id}/background.png  (image du fond, ou plan / relief par ?variante=)
+//	GET  /players/{player_slug}/tactical/{map_id}/background.relief.json  (donnees du relief)
 //
 // Montes sur le sous-routeur /players/{player_slug} — ownership (ADR 0029) et
 // titre herites du groupe, comme /replay et /matches/{id}/events.
@@ -84,6 +85,7 @@ func (h *TacticalHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.Op("getTacticalMapBackground", "Calage du fond d'une carte de l'onglet Tactique", "tactical"))
 	// Route chi nue : la charge utile est binaire, comme le fond du rejeu par match.
 	r.Get("/tactical/{map_id}/background.png", h.handleGetMapBackgroundImage)
+	r.Get("/tactical/{map_id}/background.relief.json", h.handleGetMapBackgroundReliefData)
 }
 
 // LE PERIMETRE, et il est le meme pour les deux lectures.
@@ -284,10 +286,9 @@ func (h *TacticalHandler) handleGetMapBackground(
 	return &tacticalMapBackgroundOutput{Body: *bg}, nil
 }
 
-// handleGetMapBackgroundImage sert l'image du fond d'une carte (ou son image plan avec
-// `?variante=plan`), avec le meme cache que le
-// fond par match : donnee de REFERENCE versionnee, qui ne change qu'a une re-cuisson.
-// `private` parce que la route est derriere l'ownership joueur.
+// handleGetMapBackgroundImage sert l'image du fond d'une carte (ou son image plan ou son relief
+// avec `?variante=plan` / `?variante=relief`), avec le meme cache que le fond par match
+// (cacheFondDeCarte).
 func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slug := chi.URLParam(r, "player_slug")
@@ -304,13 +305,14 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
-	plan, ok := varianteFond(ctx, w, r)
+	variante, ok := varianteFond(ctx, w, r)
 	if !ok {
 		return
 	}
-	blob, contentType, err := imageDeFond(plan,
+	blob, contentType, err := imageDeFond(variante,
 		func() ([]byte, string, error) { return svc.MapBackgroundImageForMap(ctx, mapID) },
-		func() ([]byte, string, error) { return svc.MapBackgroundPlanImageForMap(ctx, mapID) })
+		func() ([]byte, string, error) { return svc.MapBackgroundPlanImageForMap(ctx, mapID) },
+		func() ([]byte, string, error) { return svc.MapBackgroundReliefImageForMap(ctx, mapID) })
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			messageSansFond)
@@ -323,7 +325,38 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 	}
 	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Format
 	// (PNG ou WebP) porté par la donnée, pas par cette route (D4).
-	servirBlobAvecETag(w, r, blob, contentType, "private, max-age=3600")
+	servirBlobAvecETag(w, r, blob, contentType, cacheFondDeCarte)
+}
+
+// handleGetMapBackgroundReliefData sert les donnees du relief du fond d'une carte (JSON de la
+// cuisson, tel quel) : le pendant de `background.png?variante=relief`, avec les memes 404 et le
+// meme cache (cacheFondDeCarte).
+func (h *TacticalHandler) handleGetMapBackgroundReliefData(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "player_slug")
+	mapID, ok := MapIDValide(chi.URLParam(r, "map_id"))
+	if !ok {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+		return
+	}
+	svc, err := h.newReplay(ctx, slug)
+	if err != nil {
+		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
+		return
+	}
+	blob, err := svc.MapBackgroundReliefDataForMap(ctx, mapID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			messageSansFond)
+		return
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "tactique: donnees du relief en echec", "err", err, "map_id", mapID)
+		writeErrorFrom(ctx, w, http.StatusInternalServerError, "tactical_error", err)
+		return
+	}
+	servirBlobAvecETag(w, r, blob, typeDonneesRelief, cacheFondDeCarte)
 }
 
 // replayPourCarte VALIDE le map_id puis resout le service de rejeu du joueur.

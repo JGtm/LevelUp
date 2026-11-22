@@ -10,7 +10,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_GREEN_RED } from './_impactRoleColors'
+import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 export const defaultPalette: Palette = {
   // ── Perf tiers (source : perf-color.ts) ────────────────────────────────────
@@ -119,8 +119,6 @@ export const defaultPalette: Palette = {
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — vert / rouge, rampe claire (cf. _impactRoleColors.ts) ──
-  ...IMPACT_GREEN_RED.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // Valeurs = EXACTEMENT celles que résolvaient les anciens tokens empruntés
@@ -170,6 +168,10 @@ export const defaultPalette: Palette = {
   'heatmap-divergent-high': '#00DC82', // K/D haut
   'heatmap-freq-low':       '#1E3A5F', // fréquence faible — bleu sombre (neutre)
   'heatmap-freq-high':      '#60A5FA', // fréquence forte  — bleu vif   (neutre)
+
+  // ── Fond Relief et cerne des pions ──────────────────────────────────
+  'map-relief-base': '#6B7078', // Graphite
+  ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — défauts "Red vs Blue" classique Halo ─────────────────────────
   'team-ally':  '#3B82F6', // bleu  — overridable via settings accessibilité

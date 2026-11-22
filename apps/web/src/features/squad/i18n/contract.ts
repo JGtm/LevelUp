@@ -160,7 +160,6 @@ export interface SquadText {
     replayHeader: string
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
-    /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
     /**
      * Aide de l'en-tete de la colonne Score : sur les modes qui se jouent en manches,
      * ce sont les MANCHES qui sont affichees, pas les points de l'API (ADR 0032).
@@ -206,18 +205,9 @@ export interface SquadText {
   }
   impact: {
     title: string
-    colPlayer: string
-    colScore: string
-    colBadge: string
-    /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
-    colScoreTooltip: string
-    colBadgeTooltip: string
     badgeChampion: string
-    badgeChampionShort: string
     badgeWeakLink: string
-    badgeWeakLinkShort: string
     badgeStowaway: string
-    badgeStowawayShort: string
     badgeNames: Record<string, string>
     badgeDescriptions: Record<string, string>
   }

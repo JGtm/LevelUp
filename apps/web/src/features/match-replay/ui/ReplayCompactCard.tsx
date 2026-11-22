@@ -22,6 +22,12 @@
  * bordure à la couleur de suivi et le nom en gras. UNE PLACE EN ATTENTE est une fiche tiretée de même
  * boîte (`seatWaitingReading`). Un clic rend la page (`onCard`), au contrat des lignes
  * (`data-replay-player-card`, gardes d'appui).
+ *
+ * LES DEUX ACTIONS : quand la page les donne (`actions`), la fiche porte Suivre et l'œil, ceux des
+ * tuiles (`ReplayTileActionButtons`, 16 px), posés à droite du NOM, au-dessus de lui : au survol ou au focus de la
+ * fiche (elle porte `group`), toujours visibles actifs. Ils ne prennent aucune place et ne couvrent pas les jauges.
+ * La fiche d'un joueur MASQUÉ pâlit son nom ; faute de place elle n'écrit pas « masqué » : l'œil barré, visible,
+ * le dit.
  */
 import type { CSSProperties, ReactNode } from 'react'
 
@@ -30,12 +36,14 @@ import type { Allegiance } from '@/lib/replay/filmAllegiance'
 
 import { CardUnderLayers, ZoneFxOverlay } from './ReplayCardFx'
 import { ReplayObjectiveGlyph } from './ReplayObjectiveMark'
+import { ReplayTileActionButtons } from './ReplayTileActionButtons'
 import { VitalityBar } from './ReplayVitality'
 import { PRESS_CLASS, pressProps, selectedChrome } from './replayCardPress'
 import type { CardScene } from '../hooks/useCardScene'
 import { campInk } from '../model/campInk'
 import { GABARIT_FICHE_COMPACTE as G } from '../model/cardGabarit'
 import { cardChrome, SEAT_WAITING_CHROME } from '../model/playerCardFx'
+import type { TileActions } from '../model/playerTileActions'
 import { playerCardReadings, seatWaitingReading, type PlayerCardReadings } from '../model/playerCardReadings'
 import { respawnShort, respawnText } from '../model/rosterRowReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -63,7 +71,12 @@ export interface ReplayCompactCardProps {
   selected?: boolean
   /** Un clic sur la fiche, avec la clé de roster du joueur. Absent = fiche inerte. */
   onCard?: (xuid: string) => void
+  /** Suivre et l'œil de CE joueur : absent = la fiche n'a pas ces boutons. */
+  actions?: TileActions
 }
+
+/** La place des deux actions : à droite de la cellule du nom, centrées sur sa hauteur. */
+const ACTIONS_PLACE = 'absolute right-0 top-1/2 z-[1] flex -translate-y-1/2 gap-0.5'
 
 /** La hauteur de la fiche selon sa forme. */
 function heightOf(form: CompactForm): number {
@@ -171,7 +184,7 @@ function Marks({ read, bot, t }: { read: PlayerCardReadings; bot: boolean; t: Re
  * ReplayCompactCard — la fiche compacte d'un joueur PRÉSENT.
  */
 export function ReplayCompactCard({
-  player, doc, frame, locale, form, scene, ally, tracked = false, selected = false, onCard,
+  player, doc, frame, locale, form, scene, ally, tracked = false, selected = false, onCard, actions,
 }: ReplayCompactCardProps) {
   const t = REPLAY_TEXT[locale]
   const read = playerCardReadings({
@@ -183,15 +196,16 @@ export function ReplayCompactCard({
   const press = onCard
     ? { label: t.playerPanel.cardOpenFmt(name), selected, onActivate: () => onCard(player.xuid) }
     : undefined
-  let chrome: CSSProperties = cardChrome(state.alive)
+  let chrome: CSSProperties = cardChrome(state.alive, state.departed)
   if (tracked) chrome.borderColor = 'var(--ring)'
   if (press && selected) chrome = selectedChrome(chrome)
   const marks = <Marks read={read} bot={bot} t={t} />
   const gauges = state.alive ? <Gauges read={read} scene={scene} t={t} form={form} /> : <Respawn read={read} doc={doc} frame={frame} t={t} />
-  const nameEl = <Name text={name} bold={tracked} dim={!state.alive} muted={bot} title={name} />
+  const nameEl = <Name text={name} bold={tracked} dim={!state.alive} muted={bot || actions?.hidden === true} title={name} />
+  const actionsEl = actions && <ReplayTileActionButtons name={name} actions={actions} locale={locale} className={ACTIONS_PLACE} />
   return (
     <div
-      className={`${BOX_CLASS}${press ? ` ${PRESS_CLASS}` : ''}`}
+      className={`${BOX_CLASS}${press ? ` ${PRESS_CLASS}` : ''}${actions ? ' group' : ''}`}
       style={boxStyle(form, chrome)}
       title={fx.title}
       {...(press ? pressProps(press) : {})}
@@ -202,6 +216,7 @@ export function ReplayCompactCard({
           <span className="relative flex min-w-0 items-center" style={{ gap: G.dotGapPx }}>
             <Dot ally={ally} />
             {nameEl}
+            {actionsEl}
           </span>
           <span className="relative flex min-w-0 items-center" style={{ gap: G.marksGapPx, minHeight: G.gaugeShieldPx + G.gaugeGapPx + G.gaugeHealthPx }}>
             {gauges}
@@ -211,7 +226,10 @@ export function ReplayCompactCard({
       ) : (
         <>
           <span className="relative inline-flex shrink-0"><Dot ally={ally} /></span>
-          <span className="relative flex min-w-0 flex-1 items-center">{nameEl}</span>
+          <span className="relative flex min-w-0 flex-1 items-center">
+            {nameEl}
+            {actionsEl}
+          </span>
           <span className="relative flex shrink-0 items-center" style={{ gap: G.marksGapPx }}>
             {gauges}
             {marks}

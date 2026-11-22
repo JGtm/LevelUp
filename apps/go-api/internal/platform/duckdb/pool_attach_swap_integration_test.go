@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
@@ -113,9 +114,11 @@ func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
 		t.Fatalf("sharedprovider.New: %v", err)
 	}
 	t.Cleanup(func() { _ = provider.Close() })
+	playerPath := filepath.Join(dir, "player.duckdb")
+	duckdb.MigratedFileCopy(t, migration.TargetPlayer, playerPath)
 	pdb, err := duckdb.GetOrOpen(ctx, duckdb.PlayerPoolConfig{
 		Gamertag: "swap-test", XUID: "999", TitleSlug: "halo_infinite",
-		PlayerDBPath: filepath.Join(dir, "player.duckdb"),
+		PlayerDBPath: playerPath,
 		SharedDBPath: sharedPath, MetaDBPath: metaPath, SharedReader: provider,
 	})
 	if err != nil {

@@ -29,7 +29,7 @@
  * et échoue sur une fabrique non classée ou dont le paramètre de langue ne correspond pas à son classement.
  */
 
-import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import type { MapBackgroundImageVariant } from '@/lib/replay/mapBackgroundVariant'
 
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
@@ -178,8 +178,9 @@ export const queryKeys = {
     ['match-replay-generation', playerSlug, titleSlug, matchId] as const,
   // Contexte de match de la page de rejeu (en-tête, tableau de score, fil, médias) : une forme
   // à lui, donc une clé à lui — jamais servie depuis le cache de la vue complète (`matchView`).
-  matchReplayContext: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['match-replay-context', playerSlug, titleSlug, matchId] as const,
+  // Carte, mode, playlist, rang et équipe y sont servis dans la langue de la requête : la langue scope la clé.
+  matchReplayContext: (playerSlug: string, titleSlug: string, matchId: string, locale: string) =>
+    ['match-replay-context', playerSlug, titleSlug, matchId, locale] as const,
   // Fond de carte du rejeu : clé DISTINCTE de l'artefact. Les deux ne s'invalident pas
   // ensemble — l'artefact est propre au match, le fond est propre à la carte et ne change
   // qu'à une re-cuisson.
@@ -192,8 +193,16 @@ export const queryKeys = {
     playerSlug: string,
     titleSlug: string,
     matchId: string,
-    variante: MapBackgroundVariant = 'rendu',
+    variante: MapBackgroundImageVariant = 'rendu',
   ) => ['match-replay-background-image', playerSlug, titleSlug, matchId, variante] as const,
+  // LE RELIEF du fond (deux fichiers, deux clés) : les données (JSON : étages, sols, traits, 50 à 126 Ko
+  // compressés) se chargent avec le calage, l'IMAGE des hauteurs seulement quand une commande s'en sert
+  // (fond Relief, traits, coupe). Propres à la carte et figés entre deux cuissons, comme le fond ;
+  // aucune langue dans la clé, rien n'y est localisé.
+  matchReplayReliefData: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-relief-data', playerSlug, titleSlug, matchId] as const,
+  matchReplayReliefImage: (playerSlug: string, titleSlug: string, matchId: string) =>
+    ['match-replay-relief-image', playerSlug, titleSlug, matchId] as const,
   // Zones nommées (callouts) : même logique que le fond — propres à la CARTE, servies par
   // match, figées entre deux régénérations du catalogue versionné.
   matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
@@ -314,8 +323,15 @@ export const queryKeys = {
   // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
   // fetch garde le joueur (la route est derrière l'ownership).
   // La VARIANTE (rendu ou plan) est le dernier segment, comme pour l'image du fond du rejeu.
-  tacticalMapBackground: (titleSlug: string, mapId: string, variante: MapBackgroundVariant = 'rendu') =>
+  tacticalMapBackground: (titleSlug: string, mapId: string, variante: MapBackgroundImageVariant = 'rendu') =>
     ['tactical-map-background', titleSlug, mapId, variante] as const,
+  // LE RELIEF du fond d'une carte (deux fichiers, deux clés, comme celui du fond d'un match) : propre à la CARTE,
+  // jamais au joueur ni à la langue (aucun libellé), figé entre deux cuissons. L'élément décodé du fond de base n'est
+  // demandé que lorsqu'une coupe doit le moduler.
+  tacticalMapReliefData: (titleSlug: string, mapId: string) => ['tactical-map-relief-data', titleSlug, mapId] as const,
+  tacticalMapReliefImage: (titleSlug: string, mapId: string) => ['tactical-map-relief-image', titleSlug, mapId] as const,
+  tacticalMapBackgroundElement: (titleSlug: string, mapId: string, variante: MapBackgroundImageVariant = 'rendu') =>
+    ['tactical-map-background-element', titleSlug, mapId, variante] as const,
   /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
    *  régime : versionnée par titre, jamais par joueur. */
   tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>

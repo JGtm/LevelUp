@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { REPLAY_TEXT } from './i18n/i18n'
 import { COTES_FENETRE_FICHE } from './model/cotesFenetreFiche'
-import { largeurRequiseRangee } from './model/rowLayout'
+import { largeurRequiseRangee, MARGE_BASCULE_PX } from './model/rowLayout'
 import { goToFrame, mountReplayPage, stubReplayPage, unstubReplayPage } from './test/replayPageHarness'
 import { scoreboardRow } from './test/scoreboardRow'
 import { testReplayDoc } from './test/testDoc'
@@ -29,12 +29,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) =>
 
 const T = REPLAY_TEXT.fr
 const PP = T.playerPanel
-const L4 = largeurRequiseRangee(4)
+const L4 = largeurRequiseRangee(4, 'cinema')
 
 /** La largeur du corps du cadre, les rectangles de la fiche ouverte et de la toile que le test pose. */
 let largeurCorps = 0
 let rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
 let basDuPlan = 500
+let hautDuPlan = 30
 const observateurs: { cible: Element; rappel: () => void }[] = []
 
 class ObservateurDeTaille {
@@ -58,6 +59,7 @@ beforeEach(() => {
   largeurCorps = L4
   rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
   basDuPlan = 500
+  hautDuPlan = 30
   observateurs.length = 0
   stubReplayPage()
   vi.stubGlobal('ResizeObserver', ObservateurDeTaille)
@@ -65,6 +67,7 @@ beforeEach(() => {
     if (this.hasAttribute('data-replay-body')) return rect({ width: largeurCorps, right: largeurCorps })
     if (this.getAttribute('aria-pressed') === 'true' && this.hasAttribute('data-replay-player-card')) return rect(rectFiche)
     if (this.tagName === 'CANVAS') return rect({ bottom: basDuPlan })
+    if (this.hasAttribute('data-replay-plan-block')) return rect({ top: hautDuPlan })
     // Le reste du cadre a une taille : sans elle la toile n'aurait aucune largeur et le clavier du lecteur serait inerte.
     return rect({ width: 960, height: 540, right: 960, bottom: 540 })
   })
@@ -125,9 +128,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
     expect(f.parentElement).toBe(document.body)
     expect(f).toHaveAttribute('data-replay-escape-layer')
     expect(f.style.width).toBe(`${COTES_FENETRE_FICHE.largeurPx}px`)
-    for (const action of ['follow', 'solo', 'hide'] as const) {
-      expect(within(f).getByRole('button', { name: PP.action[action] })).toHaveAttribute('aria-pressed', 'false')
-    }
+    expect(within(f).getByRole('button', { name: PP.solo.label })).toHaveAttribute('aria-pressed', 'false')
     expect(within(f).getByText(T.frames.escapeKey)).toBeInTheDocument()
     expect(within(f).getByRole('button', { name: PP.close })).toBeInTheDocument()
     expect(carte('Joueur5')).toHaveAttribute('aria-pressed', 'true')
@@ -196,19 +197,33 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
     expect(fenetre('Joueur5')).not.toBeNull()
   })
 
-  it('Suivre, Seul et Masquer agissent depuis la fenêtre, avec leurs exclusions', async () => {
+  it('Seul agit depuis la fenêtre, et l’œil d’une tuile le défait', async () => {
     await mount(L4)
     goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
-    const bouton = (action: 'follow' | 'solo' | 'hide') => within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: PP.action[action] })
-    fireEvent.click(bouton('follow'))
-    expect(bouton('follow')).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(bouton('solo'))
-    expect(bouton('solo')).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(bouton('hide'))
-    expect(bouton('hide')).toHaveAttribute('aria-pressed', 'true')
-    expect(bouton('solo')).toHaveAttribute('aria-pressed', 'false')
-    expect(bouton('follow')).toHaveAttribute('aria-pressed', 'false')
+    const seul = () => within(fenetre('Joueur5') as HTMLElement).getByRole('button', { name: /^Solo$|^Seul/ })
+    expect(seul()).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(seul())
+    expect(seul()).toHaveAttribute('aria-pressed', 'true')
+    expect(seul()).toHaveTextContent(PP.solo.labelActive)
+    // L'œil d'une tuile d'un autre joueur le réaffiche : la fiche n'est plus « seule ».
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur2') }))
+    expect(seul()).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('l’œil d’une tuile masque un joueur, « Tout afficher » les réaffiche tous, et rien de cela ne ferme la fiche', async () => {
+    await mount(L4)
+    goToFrame('cinema')
+    fireEvent.click(carte('Joueur5'))
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur2') }))
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur3') }))
+    expect(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur2') })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: PP.tile.showLabelFmt('Joueur3') })).toHaveAttribute('aria-pressed', 'true')
+    expect(fenetre('Joueur5')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: PP.tile.showAll }))
+    expect(screen.queryByRole('button', { name: PP.tile.showAll })).toBeNull()
+    expect(screen.getByRole('button', { name: PP.tile.hideLabelFmt('Joueur2') })).toHaveAttribute('aria-pressed', 'false')
+    expect(fenetre('Joueur5')).not.toBeNull()
   })
 
   it('la fiche ouverte de la rangée prend le fond clair et la bordure claire (jetons)', async () => {
@@ -234,7 +249,7 @@ describe('ReplayPage : la fiche en fenêtre, rangée posée', () => {
 
 describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () => {
   it.each(['cinema', 'plein-cadre'] as const)('%s : un clic sur une ligne de la colonne ouvre la fenêtre ; la colonne garde équipes et fil', async (frame) => {
-    const { container } = await mount(L4 - 1)
+    const { container } = await mount(largeurRequiseRangee(4, frame) - 1)
     goToFrame(frame)
     const fil = screen.getByTestId('replay-feed-slot')
     const equipes = container.querySelector('[data-replay-roster-column]')
@@ -271,7 +286,7 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
     await mount(L4)
     goToFrame('cinema')
     fireEvent.click(carte('Joueur5'))
-    largeurCorps = L4 - 1
+    largeurCorps = L4 - MARGE_BASCULE_PX - 1
     act(() => {
       for (const { cible, rappel } of [...observateurs]) if (cible.hasAttribute('data-replay-body')) rappel()
     })
@@ -282,14 +297,16 @@ describe('ReplayPage : la fiche en fenêtre, repli (équipes en colonne)', () =>
 })
 
 describe('ReplayPage : où la fenêtre se pose', () => {
-  it('bord gauche aligné sur la fiche, 8 px dessous', async () => {
+  it('bord gauche aligné sur la fiche, haut à 8 px sous le haut du plan et non sous la fiche', async () => {
     await mount(L4)
     goToFrame('cinema')
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
     const f = fenetre('Joueur5') as HTMLElement
     expect(f.style.left).toBe('140px')
-    expect(f.style.top).toBe('78px')
+    expect(f.style.top).toBe(`${30 + COTES_FENETRE_FICHE.margeHautPlanPx}px`)
+    // Un autre plan, la même fiche : le haut suit le plan, pas la fiche.
+    expect(rectFiche.bottom + 8).not.toBe(30 + COTES_FENETRE_FICHE.margeHautPlanPx)
   })
 
   it('près du bord droit de la page, elle s’aligne par la droite de la fiche et ne sort pas', async () => {
@@ -310,7 +327,7 @@ describe('ReplayPage : où la fenêtre se pose', () => {
     basDuPlan = 400
     rectFiche = { left: 140, right: 400, top: 10, bottom: 70 }
     fireEvent.click(carte('Joueur5'))
-    expect((fenetre('Joueur5') as HTMLElement).style.maxHeight).toBe(`${400 - 70 - 8 - 8}px`)
+    expect((fenetre('Joueur5') as HTMLElement).style.maxHeight).toBe(`${400 - (30 + COTES_FENETRE_FICHE.margeHautPlanPx) - 8}px`)
   })
 })
 

@@ -5,8 +5,9 @@
  * via onChange uniquement sur "Valider" (validation différée).
  * Le filtre de date interne filtre UNIQUEMENT la liste visible — pas les matchs analysés.
  */
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import type { SessionLabelEntry } from '@/lib/api/types'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
 
@@ -103,22 +104,7 @@ export function SessionMultiSelect({
 
   // Fermeture click-outside + Escape (alignement UX avec les autres pills
   // de la FilterOmnibar — Escape ferme le popover ouvert).
-  useEffect(() => {
-    function handleMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setIsOpen(false)
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
+  useDismissable(isOpen, () => setIsOpen(false), { ref: containerRef })
 
   // Sessions filtrées par recherche + plage de dates (filtre la liste uniquement).
   // Si getMatchCount est fourni, masquer les sessions retournant 0 matchs (sauf

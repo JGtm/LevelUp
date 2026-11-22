@@ -9,8 +9,9 @@
  * Le rendu des sections et de leurs onglets est `NavSectionList`, partagé avec la
  * barre latérale de l'application de bureau (SidebarNav).
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { log } from './_logger'
@@ -33,15 +34,8 @@ export function NavL1MobileMenu({ sections, pathname, titleSlug, playerSlug }: N
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  // Fermeture au clavier Escape + verrou du scroll body tant que le panneau est ouvert.
-  useEffect(() => {
-    if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open])
+  // Échap ferme le panneau ; le clic sur le voile a son propre gestionnaire.
+  useDismissable(open, () => setOpen(false), { outside: null })
 
   return (
     <div className="md:hidden">

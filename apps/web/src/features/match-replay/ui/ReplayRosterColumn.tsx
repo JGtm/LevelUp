@@ -17,6 +17,13 @@
  * équipes est alors une zone à défilement vertical dont les lignes gardent leur hauteur, et l'en-tête de
  * chaque camp reste collé en haut pendant que ses lignes passent.
  *
+ * LES ACTIONS DES LIGNES ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque ligne de joueur présent.
+ * « Tout afficher » (D-7), visible seulement quand au moins un joueur est masqué, est posé HORS DU FLUX, sur la droite de
+ * l'en-tête du premier camp (ou à gauche, sur la cellule vide de l'en-tête de colonnes, quand il n'y a pas d'en-tête de
+ * camp) : son apparition ou sa disparition ne déplace aucune ligne, le pointeur ne se retrouve jamais sur le bouton
+ * d'une autre ligne.
+ * Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
+ *
  * LE JOUEUR SUIVI ARRIVE PAR PROP (`tracked`, `playerPanel.tracked`) : la colonne ne le recalcule pas.
  * Les âges de lecture et la scène des effets sont construits une fois pour toute la colonne
  * (`useCardScene`).
@@ -27,9 +34,11 @@ import type { Allegiance, FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { ReplayCompactCard, ReplayCompactWaitingCard } from './ReplayCompactCard'
 import { ReplayRosterRow, ReplayRosterWaitingRow, ROW_COLUMNS } from './ReplayRosterRow'
+import { ReplayShowAllButton } from './ReplayShowAllButton'
 import { useCardScene, type CardScene } from '../hooks/useCardScene'
 import { campInk } from '../model/campInk'
 import { GABARIT_FICHE_COMPACTE as C, GABARIT_LIGNE as G } from '../model/cardGabarit'
+import { showAllVisible, tileActionsFor, type PlayerTileActions } from '../model/playerTileActions'
 import { grandeEquipe } from '../model/rowLayout'
 import { buildSeats, groupSeatsByTeam, seatTileAt, sheetRowsOfGroup, type ReplaySeatGroup } from '../model/seatLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -51,6 +60,8 @@ export interface ReplayRosterColumnProps {
   onCard?: (xuid: string) => void
   /** La clé de roster du joueur dont la fiche est ouverte (`aria-pressed`). */
   selectedXuid?: string | null
+  /** Suivre, l'œil et « Tout afficher » (`playerPanel.tileActions`). Absent = ni boutons de ligne ni « Tout afficher ». */
+  tileActions?: PlayerTileActions
 }
 
 /** L'en-tête d'un camp : sa pastille carrée et son nom ; collé en haut de la zone qui défile. */
@@ -67,6 +78,23 @@ function TeamHead({ label, ally }: { label: string; ally: Allegiance }) {
       />
       <span className="min-w-0 truncate">{label}</span>
     </h3>
+  )
+}
+
+/**
+ * La place de « Tout afficher » : un bloc collant de hauteur NULLE, posé avant l'en-tête du premier camp, dont le bouton
+ * est en position absolue — il ne prend aucune place dans le flux. À droite de l'en-tête de camp (20 px, bouton de 18) ;
+ * sans en-tête de camp, à gauche, sur la cellule vide de l'en-tête de colonnes.
+ */
+function ShowAllSlot({ locale, onShowAll, onHead }: { locale: ReplayLocale; onShowAll: () => void; onHead: boolean }) {
+  return (
+    <div data-replay-show-all-slot="" className="sticky top-0 z-20 h-0">
+      <ReplayShowAllButton
+        locale={locale}
+        onShowAll={onShowAll}
+        className={`absolute top-px ${onHead ? 'right-0' : 'left-0'}`}
+      />
+    </div>
   )
 }
 
@@ -101,7 +129,7 @@ function EmptyCompactCell() {
 }
 
 /** Ce que le rendu des places d'un camp partage : le document, l'image, la langue, la scène, le joueur suivi, le clic. */
-interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid'> {
+interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid' | 'tileActions'> {
   scene: CardScene
   /** Vrai = Grande équipe : une fiche compacte par place, au lieu d'une ligne. */
   compact: boolean
@@ -115,7 +143,7 @@ interface SeatCtx extends Pick<ReplayRosterColumnProps, 'doc' | 'frame' | 'local
  * alors gardée, vide (`EmptyCompactCell`), pour que la paire reste une paire.
  */
 function seatsOf(group: ReplaySeatGroup, ctx: SeatCtx) {
-  const { doc, frame, locale, scene, tracked, onCard, selectedXuid = null, compact, ally } = ctx
+  const { doc, frame, locale, scene, tracked, onCard, selectedXuid = null, tileActions, compact, ally } = ctx
   return group.seats.map((seat) => {
     const lu = seatTileAt(seat, frame)
     if (lu === null) return compact ? <EmptyCompactCell key={seat.key} /> : null
@@ -132,13 +160,13 @@ function seatsOf(group: ReplaySeatGroup, ctx: SeatCtx) {
       onCard,
     }
     return compact
-      ? <ReplayCompactCard key={seat.key} {...shared} form="line" ally={ally} />
-      : <ReplayRosterRow key={seat.key} {...shared} />
+      ? <ReplayCompactCard key={seat.key} {...shared} form="line" ally={ally} actions={tileActionsFor(tileActions, player.xuid)} />
+      : <ReplayRosterRow key={seat.key} {...shared} actions={tileActionsFor(tileActions, player.xuid)} />
   })
 }
 
 export function ReplayRosterColumn({
-  doc, players, frame, locale, allegiance, tracked, onCard, selectedXuid = null,
+  doc, players, frame, locale, allegiance, tracked, onCard, selectedXuid = null, tileActions,
 }: ReplayRosterColumnProps) {
   const t = REPLAY_TEXT[locale]
   // UNE LIGNE EST UNE PLACE, PAS UN JOUEUR : la place et la présence viennent du document.
@@ -174,9 +202,12 @@ export function ReplayRosterColumn({
     >
       {groups.map((group, gi) => {
         const ally = allegiance.ofTeam(group.team)
-        const places = seatsOf(group, { doc, frame, locale, scene, tracked, onCard, selectedXuid, compact, ally })
+        const places = seatsOf(group, { doc, frame, locale, scene, tracked, onCard, selectedXuid, tileActions, compact, ally })
         return (
           <section key={`camp:${group.team}`} aria-label={labels[gi]} className="flex shrink-0 flex-col">
+            {gi === 0 && showAllVisible(tileActions) && (
+              <ShowAllSlot locale={locale} onShowAll={tileActions.onShowAll} onHead={group.team >= 0} />
+            )}
             {group.team >= 0 && <TeamHead label={labels[gi]} ally={ally} />}
             {compact ? (
               <div

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
@@ -40,19 +41,31 @@ func (s *MatchViewService) loadMatchMeta(ctx context.Context, matchID string) (*
 	return nil, fmt.Errorf("match_view: métadonnées illisibles pour %s: %w", matchID, err)
 }
 
-// prepareMatchViewEvents recale les sources d'events au référentiel gameplay (T0 réel depuis
-// meta.T0Ms, 0 si indisponible) en un POINT UNIQUE, avant tout builder qui les lit, et rend
-// la durée (ms) qui sert au binning de la Dominance. Sans ce recalage, le fil (event_time_ms)
-// et les décorations appariées par clé exacte (arme, assistant, victime) seraient sur
-// l'horloge du film, countdown inclus.
-func prepareMatchViewEvents(d *matchViewData, matchID string, meta *domain.MatchMetaRaw) int64 {
-	durationMS := tugDurationMS(meta)
-	var t0Ms int64
-	if meta != nil && meta.T0Ms != nil {
-		t0Ms = *meta.T0Ms
+// matchViewTimeline rend la chronologie de jeu du match de la page : sa durée au registre et son
+// coup d'envoi (meta.T0Ms) lus par la règle unique timeline.ForMatch (coup d'envoi inconnu : la
+// chronologie part du début du match). hasDuration=false quand le registre ne porte aucune
+// durée : aucune durée de jeu n'est alors servie, jamais une valeur de remplacement.
+func matchViewTimeline(meta *domain.MatchMetaRaw) (tl domain.MatchTimeline, hasDuration bool) {
+	if meta == nil {
+		return domain.MatchTimeline{}, false
 	}
-	correctMatchViewEventsT0(d, matchID, timeline.BuildForMatchMs(durationMS, t0Ms))
-	return durationMS
+	var durationMs int64
+	if meta.DurationSeconds != nil {
+		durationMs = int64(*meta.DurationSeconds) * 1000
+	}
+	return timeline.ForMatch(time.Time{}, durationMs, meta.T0Ms), meta.DurationSeconds != nil
+}
+
+// prepareMatchViewEvents recale les sources d'events au référentiel gameplay (coup d'envoi de
+// matchViewTimeline) en un POINT UNIQUE, avant tout builder qui les lit, et rend cette
+// chronologie, dont les builders lisent la durée de jeu (cadence) et la durée du match
+// (Dominance, restée sur l'horloge brute). Sans ce recalage, le fil (event_time_ms) et les
+// décorations appariées par clé exacte (arme, assistant, victime) seraient sur l'horloge du
+// film, countdown inclus.
+func prepareMatchViewEvents(d *matchViewData, matchID string, meta *domain.MatchMetaRaw) domain.MatchTimeline {
+	tl, _ := matchViewTimeline(meta)
+	correctMatchViewEventsT0(d, matchID, tl)
+	return tl
 }
 
 // assembleMatchHeader construit l'en-tête du match et rend le jeu d'outcomes du titre, résolu
@@ -99,8 +112,8 @@ func (s *MatchViewService) isMatchFavorite(ctx context.Context, matchID string) 
 }
 
 // decorateHighlightEvents pose sur les events du fil (EN PLACE) l'arme, l'assistant, la
-// victime et l'équipe du tueur, puis l'identité des médailles. Ce sont des décorations, pas
-// des entrées d'un calcul : elles se posent après l'assemblage des events.
+// victime et l'équipe du tueur. Ce sont des décorations, pas des entrées d'un calcul : elles se
+// posent après l'assemblage des events.
 func (s *MatchViewService) decorateHighlightEvents(ctx context.Context, events []domain.MatchHighlightEvent, d matchViewData) {
 	decorateKillFeed(ctx, events, killFeedInputs{
 		sources:    d.killSources,
@@ -109,5 +122,4 @@ func (s *MatchViewService) decorateHighlightEvents(ctx context.Context, events [
 		scoreboard: d.scoreboard,
 		assetURL:   s.assetURL,
 	})
-	decorateMedalEvents(ctx, events, s.repo, s.assetURL)
 }

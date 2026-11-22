@@ -15,6 +15,7 @@ import { COTES_FENETRE_FICHE } from '../model/cotesFenetreFiche'
 import {
   INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers,
 } from '../test/instantFixture'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPopover, type ReplayPlayerPopoverProps } from './ReplayPlayerPopover'
 
 afterEach(cleanup)
@@ -24,8 +25,8 @@ function props(over: Partial<ReplayPlayerPopoverProps> = {}): ReplayPlayerPopove
   const players = instantPlayers(doc)
   return {
     player: instantPlayer(players, 'A'),
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     onClose: vi.fn(),
     doc,
     frame: INSTANT_LAST_FRAME,
@@ -36,6 +37,7 @@ function props(over: Partial<ReplayPlayerPopoverProps> = {}): ReplayPlayerPopove
     players,
     feed: instantFeed(),
     weaponIcons: INSTANT_ICONS,
+    antagonists: createReplayAntagonists([], []),
     ...over,
   }
 }
@@ -50,7 +52,7 @@ describe('fiche en fenêtre — le corps commun', () => {
       // La fenêtre est elle-même une section : son nom accessible est celui de la fiche.
       .filter((t) => t !== 'Fiche de Alpha')
     expect(titres).toEqual([
-      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
+      "À l'instant", 'Antagonistes', 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
       'Ramassages', 'Équipement', 'Médailles', 'Totaux du match', 'Gestes',
     ])
   })
@@ -75,6 +77,22 @@ describe('fiche en fenêtre — le corps commun', () => {
     expect(basse.contains(fenetre().querySelector('[data-fiche-identite]'))).toBe(false)
     expect(basse.contains(within(fenetre()).getByRole('group', { name: 'Alpha' }))).toBe(false)
     expect(fenetre().style.maxHeight).not.toBe('')
+  })
+
+  it('son haut est à 8 px sous le haut du bloc du plan, pas sous la fiche', () => {
+    const bloc = document.createElement('div')
+    bloc.setAttribute('data-replay-plan-block', '')
+    bloc.getBoundingClientRect = () => ({ top: 200, bottom: 700, left: 0, right: 900, width: 900, height: 500, x: 0, y: 200, toJSON: () => ({}) })
+    const fiche = document.createElement('button')
+    fiche.setAttribute('data-replay-player-card', '')
+    fiche.setAttribute('aria-pressed', 'true')
+    fiche.getBoundingClientRect = () => ({ top: 100, bottom: 170, left: 140, right: 260, width: 120, height: 70, x: 140, y: 100, toJSON: () => ({}) })
+    document.body.append(bloc, fiche)
+    render(<ReplayPlayerPopover {...props()} />)
+    expect(fenetre().style.top).toBe(`${200 + COTES_FENETRE_FICHE.margeHautPlanPx}px`)
+    expect(COTES_FENETRE_FICHE.margeHautPlanPx).toBe(8)
+    bloc.remove()
+    fiche.remove()
   })
 
   it('la croix et Échap ferment la fenêtre', () => {

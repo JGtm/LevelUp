@@ -8,8 +8,9 @@
  *  - sans le choix retenu au cadrage, la carte ne tourne plus, alors que la commande répond ;
  *  - sans l'orientation EFFECTIVE (celle que `useReplayView` résout, Auto comprise) à Suivre, la carte reste
  *    entière après une rotation jusqu'au prochain déplacement ;
- *  - UN SEUL POINT DE RÉSOLUTION : la règle Auto n'est appliquée que par `useResolvedTurns` (appelé par
- *    `useReplayView`), et le canvas ne lit le choix retenu qu'une fois, pour le lui donner ;
+ *  - UN SEUL POINT DE RÉSOLUTION : la règle Auto n'est appliquée que par `useAutoTurned` (`lib/replay`, gardé là-bas),
+ *    que le rejeu appelle par `useResolvedTurns` (appelé par `useReplayView`), et le canvas ne lit le choix retenu
+ *    qu'une fois, pour le lui donner ;
  *  - un plan cuit quand son interrupteur est éteint recuit un calque invisible à chaque zoom.
  */
 import { describe, expect, it } from 'vitest'
@@ -31,14 +32,19 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
 
   it('le canvas ne lit le choix retenu qu’une fois, et le cadrage rend l’orientation effective', () => {
     expect(canvas().match(/orientation\.retained/g)).toHaveLength(1)
-    expect(lire(fichierNomme('useReplayView.ts'))).toMatch(/useResolvedTurns\(choice, bounds, width, freeHeight\)/)
+    expect(lire(fichierNomme('useReplayView.ts'))).toMatch(/useResolvedTurns\(scopeKey, choice, bounds, width, freeHeight\)/)
   })
 
-  it('la règle Auto ne s’applique qu’à un endroit de la feature', () => {
+  it('l’état de l’Auto est rangé avec le match affiché : le canvas donne sa portée au cadrage', () => {
+    expect(canvas()).toMatch(/useReplayView\(\{[^}]*scopeKey: matchId/)
+  })
+
+  it('la règle Auto ne s’applique pas dans la feature : le cadrage passe par useResolvedTurns, qui passe par useAutoTurned', () => {
     const appelants = sourcesDeLaFeature()
       .filter((f) => /\bautoTurns\(/.test(lire(f)))
       .map(nomDe)
-    expect(appelants).toEqual(['useResolvedTurns.ts'])
+    expect(appelants).toEqual([])
+    expect(lire(fichierNomme('useResolvedTurns.ts'))).toContain('useAutoTurned(')
   })
 
   it('le panneau de la vue reçoit l’orientation', () => {
@@ -50,7 +56,10 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
     expect(page).toMatch(/const \{ image: mapImage, variante \} = useReplayMapImage\(/)
     expect(page).toMatch(/buildMapBackgroundLayer\(\{[^}]*\bimage: mapImage, variante,/)
     expect(lire(fichierNomme('mapBackgroundLayerLogic.ts'))).toMatch(/plan: normalizeWallPlan\(background\.plan\),\s*variante,/)
-    expect(canvas()).toContain("shown: mapImage?.variante === 'plan'")
+    // Le menu reçoit le fond RÉELLEMENT posé (relief compris, ou son repli) : le plan porte déjà les murs.
+    expect(canvas()).toContain("drawn: mapImage?.variante ?? 'rendu'")
+    // Le fond posé est celui que le relief compose à partir du fond de base chargé par la page.
+    expect(canvas()).toMatch(/const mapImage = relief\.background/)
   })
 
   it('le plan des murs n’est cuit que quand son interrupteur est allumé et que le fond n’est pas déjà le plan', () => {

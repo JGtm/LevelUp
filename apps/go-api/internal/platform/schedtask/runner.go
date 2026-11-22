@@ -64,8 +64,10 @@ type Observed struct {
 const (
 	// ErrorCodeSchtasks : un appel de schtasks a échoué (planificateur indisponible, accès refusé).
 	ErrorCodeSchtasks = "schtasks_failed"
-	// ErrorCodePath : un chemin de racine ne peut pas être posé dans la ligne de commande de la tâche.
+	// ErrorCodePath : un chemin ne peut pas être posé dans la ligne de commande de la tâche.
 	ErrorCodePath = "unsupported_path"
+	// ErrorCodeShell : la coquille qui a lancé le serveur est inconnue, la tâche n'est pas posée.
+	ErrorCodeShell = "shell_unknown"
 )
 
 // Set pose l'observation. Un état sans erreur efface le code.

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -331,11 +330,6 @@ func (a *AssetURLAdapter) PlayerMatchWebURL(gamertag, matchID string) string {
 		return ""
 	}
 	return waypointMatchBaseURL + "/players/" + gt + "/matches/" + matchID
-}
-
-// MedalImageURL retourne l'URL de l'icône d'une médaille à partir de son ID numérique.
-func (a *AssetURLAdapter) MedalImageURL(medalID uint64) string {
-	return static.URL(static.KindMedal, a.titleSlug, strconv.FormatUint(medalID, 10), ".png")
 }
 
 // CSRRankImageURL retourne l'URL du badge d'un rang CSR.

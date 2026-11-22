@@ -28,6 +28,7 @@ import { playerEquipmentStatsAt, type EquipmentFamilyStats } from './playerEquip
 import { playerMovementStatsAt } from './playerMovementStats'
 import { playerReloadsAt } from './playerReloadStats'
 import { playerThrowsPickupsAt } from './playerThrowsPickups'
+import type { ShieldReading } from './playerShield'
 
 /** Frags, morts, assistances de l'identité : ceux du film à l'instant, sinon les totaux de la feuille (`fromFilm` faux). */
 export interface IdentityCounters {
@@ -42,13 +43,14 @@ export interface SinceView {
   fda: number | null
   currentStreak: number | null
   bestStreak: number | null
-  /** Les tirs à la tête sur les éliminations dont le coup fatal est lu ; `null` tant qu'aucune n'est lue. */
-  headshots: { count: number; measured: number } | null
+  /** Les tirs à la tête, le compteur du jeu à l'instant ; `null` quand le calque ne le donne pas pour ce joueur. */
+  headshots: number | null
   perfects: number | null
   respawns: number | null
   currentLifeMs: number | null
   averageLifeMs: number | null
-  shieldsLost: number | null
+  /** Bris, recharges complètes et différentiel à l'instant, avec les totaux du match ; `null` = bouclier non mesuré. */
+  shield: ShieldReading | null
   score: number | null
   rank: PlayerRank | null
 }
@@ -80,13 +82,21 @@ export interface KillsView {
   bar: { classKey: FragClassKey; share: number }[]
 }
 
-/** Les tirs et les dégâts estimés : une ligne par arme dont le document donne le nom. */
+/** Une ligne d'arme des tirs : `key` est la clé de la première famille du groupe, stable et indépendante du libellé. */
+export interface ShotsWeaponView {
+  key: string
+  name: string
+  fired: number
+  damage: number
+}
+
+/** Les tirs et les dégâts estimés : une ligne par nom d'arme que le document donne. */
 export interface ShotsView {
   /** Précision (0 à 1), touches et tirs estimés ; `null` tant qu'aucun tir n'est estimé. */
   accuracy: { ratio: number; hit: number; fired: number } | null
   damageDealt: number
   damageTaken: number
-  weapons: { name: string; fired: number; damage: number }[]
+  weapons: ShotsWeaponView[]
 }
 
 /** Les lancers de grenade par type et les ramassages ; les zéros n'ont pas de ligne. */
@@ -136,17 +146,16 @@ function sinceOf(
   score: number | null,
   rank: PlayerRank | null,
 ): SinceView | null {
-  const headshots = stats.headshots && stats.headshots.measured > 0 ? stats.headshots : null
   const since: SinceView = {
     fda: stats.fda,
     currentStreak: stats.currentStreak,
     bestStreak: stats.bestStreak,
-    headshots,
+    headshots: stats.headshots,
     perfects: stats.perfects,
     respawns: stats.respawns,
     currentLifeMs: stats.currentLifeMs,
     averageLifeMs: stats.averageLifeMs,
-    shieldsLost: stats.shieldsLost,
+    shield: stats.shield,
     score,
     rank: score === null ? null : rank,
   }
@@ -177,12 +186,41 @@ function killsViewOf(b: KillBreakdown | null, nameOf: (weaponKey: string) => str
   return { classes, unclassified: u, bar }
 }
 
+/** Le tri des lignes d'arme : tirs décroissants, dégâts décroissants, puis clé de la première famille. */
+function shotsWeaponOrder(a: ShotsWeaponView, b: ShotsWeaponView): number {
+  if (a.fired !== b.fired) return b.fired - a.fired
+  if (a.damage !== b.damage) return b.damage - a.damage
+  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0
+}
+
+/**
+ * Une ligne par NOM d'arme affiché : les familles du film qui portent le même nom (deux familles de Bandit, d'épée
+ * à énergie...) s'additionnent, tirs et dégâts, et gardent la clé de la première. Les totaux de la section ne
+ * changent pas. Une famille sans nom n'a pas de ligne.
+ */
+function shotsWeaponsOf(
+  byWeapon: PlayerShotEstimates['byWeapon'],
+  doc: PlayerInstantSources['doc'],
+  locale: ReplayLocale,
+): ShotsWeaponView[] {
+  const byName = new Map<string, ShotsWeaponView>()
+  for (const w of byWeapon) {
+    const name = w.weapon === null ? undefined : catalogText(doc.weaponLabels?.[w.weapon], locale)
+    if (!name || w.weapon === null) continue
+    const row = byName.get(name)
+    if (row) {
+      row.fired += w.firedEstimated
+      row.damage = Math.round((row.damage + w.damage) * 10) / 10
+    } else {
+      byName.set(name, { key: w.weapon, name, fired: w.firedEstimated, damage: w.damage })
+    }
+  }
+  return [...byName.values()].sort(shotsWeaponOrder)
+}
+
 function shotsViewOf(shots: PlayerShotEstimates | null, doc: PlayerInstantSources['doc'], locale: ReplayLocale): ShotsView | null {
   if (shots === null) return null
-  const weapons = shots.byWeapon.flatMap((w) => {
-    const name = w.weapon === null ? undefined : catalogText(doc.weaponLabels?.[w.weapon], locale)
-    return name ? [{ name, fired: w.firedEstimated, damage: w.damage }] : []
-  })
+  const weapons = shotsWeaponsOf(shots.byWeapon, doc, locale)
   return {
     accuracy:
       shots.accuracy === null ? null : { ratio: shots.accuracy, hit: shots.hit, fired: shots.firedEstimated },

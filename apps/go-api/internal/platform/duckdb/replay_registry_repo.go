@@ -7,8 +7,10 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb/sqlfrag"
@@ -55,6 +57,20 @@ func (r *ReplayRegistryRepo) MatchesByIDOrPrefix(ctx context.Context, matchID st
 		return nil, err
 	}
 	return hits, nil
+}
+
+// EndedAt rend l'heure de fin (UTC, `end_time_utc`) du match d'identifiant COMPLET matchID ; zéro quand la ligne est
+// absente ou ne porte pas d'heure de fin.
+func (r *ReplayRegistryRepo) EndedAt(ctx context.Context, matchID string) (time.Time, error) {
+	var endedAt sql.NullTime
+	err := r.shared.QueryRowContext(ctx, `SELECT end_time_utc FROM match_registry WHERE match_id = ?`, matchID).Scan(&endedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("heure de fin du match: %w", err)
+	}
+	return endedAt.Time.UTC(), nil
 }
 
 // EnglishMapName rend le nom EN technique d'une carte (traduction d'asset dans la langue de repli des noms de

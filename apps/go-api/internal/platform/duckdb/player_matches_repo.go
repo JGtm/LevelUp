@@ -155,12 +155,6 @@ func StartTimeCanonicalSQL(alias string) string {
 	return sqlfrag.SQLStartTimeCanonical(alias)
 }
 
-// T0MsSQL : le T0 (countdown pré-match) en ms, NULL sans `real_start_time` — délégué de
-// sqlfrag.SQLT0Ms, seule définition de l'expression (ratchet archlint no_raw_real_start_offset).
-func T0MsSQL(alias string) string {
-	return sqlfrag.SQLT0Ms(alias)
-}
-
 // startTimeCanonicalSQL : expression canonique pour l'alias `r` (projection,
 // filtre Period, ORDER BY de player_matches_repo). Source unique via le helper.
 var startTimeCanonicalSQL = StartTimeCanonicalSQL("r")
@@ -344,7 +338,7 @@ SELECT
     ), 0)::INTEGER                                       AS perfect_kills,
     -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0.
-    ` + T0MsSQL("r") + `                                                  AS t0_ms
+    ` + sqlfrag.SQLT0Ms("r") + `                                                  AS t0_ms
 FROM match_participants p
 JOIN v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?`

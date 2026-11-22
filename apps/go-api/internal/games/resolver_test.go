@@ -69,7 +69,6 @@ type stubAssetURL struct{ slug string }
 
 func (s *stubAssetURL) TitleSlug() string                      { return s.slug }
 func (s *stubAssetURL) MapImageURL(_ string) string            { return "" }
-func (s *stubAssetURL) MedalImageURL(_ uint64) string          { return "" }
 func (s *stubAssetURL) CSRRankImageURL(_ string, _ int) string { return "" }
 func (s *stubAssetURL) CSRRankImageURLOnyx() string            { return "" }
 func (s *stubAssetURL) WeaponImageURL(_ int64) string          { return "" }

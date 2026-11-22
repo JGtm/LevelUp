@@ -1,4 +1,4 @@
-# Badges d'impact d'un match (analysis.ComputeMatchImpactFull, ComputeThiefBadge). Les noms anglais
+# Badges d'impact d'un match (analysis.ComputeMatchImpactFull, ComputeThiefBadge, squadimpact.GlassJaw). Les noms anglais
 # sont ceux de l'interface web (match-view et squad).
 
 [impact.badge.first_blood]
@@ -44,3 +44,7 @@ en = "Kamikaze"
 [impact.badge.thief]
 fr = "Voleur"
 en = "Thief"
+
+[impact.badge.glass_jaw]
+fr = "Os de verre"
+en = "Glass Jaw"

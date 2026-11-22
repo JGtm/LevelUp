@@ -68,16 +68,17 @@ var blocNextData = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)
 
 func main() {
 	var (
-		mapIDs  listeChaines
-		toutes  = flag.Bool("toutes", false, "toutes les cartes declarees dans himap.CartesForge")
-		depuis  = flag.String("depuis-fichier", "", "fichier texte : un map_id par ligne (# = commentaire)")
-		sortie  = flag.String("out-dir", "", "repertoire de sortie (defaut : "+himap.DepotNavmesh+")")
-		rateMS  = flag.Int("rate-ms", delaiParDefaut, "delai entre deux cartes, en millisecondes")
-		refaire = flag.Bool("refaire", false, "retelecharger meme si le blob est deja en depot")
-		dryRun  = flag.Bool("dry-run", false, "resoudre les assets sans rien ecrire")
-		fichier = flag.String("fichier", nomBlobNavmesh, "fichier publie a rapatrier (navmesh.blob, map.mvar, ...)")
-		suffixe = flag.String("suffixe", "", "extension du fichier ecrit (defaut : celle de -fichier)")
-		verbeux = flag.Bool("v", false, "journal de niveau debug")
+		mapIDs     listeChaines
+		toutes     = flag.Bool("toutes", false, "toutes les cartes declarees dans himap.CartesForge")
+		depuis     = flag.String("depuis-fichier", "", "fichier texte : un map_id par ligne (# = commentaire)")
+		sortie     = flag.String("out-dir", "", "repertoire de sortie (defaut : "+himap.DepotNavmesh+")")
+		rateMS     = flag.Int("rate-ms", delaiParDefaut, "delai entre deux cartes, en millisecondes")
+		refaire    = flag.Bool("refaire", false, "retelecharger meme si le blob est deja en depot")
+		dryRun     = flag.Bool("dry-run", false, "resoudre les assets sans rien ecrire")
+		fichier    = flag.String("fichier", nomBlobNavmesh, "fichier publie a rapatrier (navmesh.blob, map.mvar, ...)")
+		suffixe    = flag.String("suffixe", "", "extension du fichier ecrit (defaut : celle de -fichier)")
+		nomCuisson = flag.Bool("nom-cuisson", false, "ecrire sous le nom que lit la cuisson (himap.CartesForge, FichierMvar) au lieu de <map_id><suffixe>")
+		verbeux    = flag.Bool("v", false, "journal de niveau debug")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (repetable)")
 	flag.Parse()
@@ -92,15 +93,16 @@ func main() {
 	defer stop()
 
 	if err := executer(ctx, options{
-		mapIDs:  mapIDs,
-		toutes:  *toutes,
-		depuis:  *depuis,
-		sortie:  *sortie,
-		rateMS:  *rateMS,
-		refaire: *refaire,
-		dryRun:  *dryRun,
-		fichier: *fichier,
-		suffixe: *suffixe,
+		mapIDs:     mapIDs,
+		toutes:     *toutes,
+		depuis:     *depuis,
+		sortie:     *sortie,
+		rateMS:     *rateMS,
+		refaire:    *refaire,
+		dryRun:     *dryRun,
+		fichier:    *fichier,
+		suffixe:    *suffixe,
+		nomCuisson: *nomCuisson,
 	}); err != nil {
 		slog.ErrorContext(ctx, "mapnav-fetch", "err", err)
 		os.Exit(codeSortieEchec)
@@ -120,6 +122,10 @@ type options struct {
 	// de stockage, et une carte jamais jouee n a ni l un ni l autre en depot.
 	fichier string
 	suffixe string
+	// nomCuisson : le fichier ecrit porte le nom declare par himap.CartesForge pour la carte
+	// (la variante se lit sous un nom precis dans le depot), pas <map_id><suffixe>. Une carte
+	// absente de ce catalogue est comptee en echec, sans requete.
+	nomCuisson bool
 }
 
 type bilan struct {
@@ -161,7 +167,13 @@ func executer(ctx context.Context, o options) error {
 			slog.WarnContext(ctx, "interrompu", "traitees", i, "sur", len(liste))
 			break
 		}
-		chemin := filepath.Join(dest, id+ext)
+		nom, err := nomEcrit(id, ext, o.nomCuisson)
+		if err != nil {
+			b.echecs++
+			slog.ErrorContext(ctx, "nom de depot", "err", err, "map_id", id)
+			continue
+		}
+		chemin := filepath.Join(dest, nom)
 		if !o.refaire {
 			if st, err := os.Stat(chemin); err == nil && st.Size() > 0 {
 				b.deja++
@@ -173,13 +185,13 @@ func executer(ctx context.Context, o options) error {
 		switch {
 		case errors.Is(err, ErrPasDeNavmesh):
 			b.sansNavmesh++
-			slog.InfoContext(ctx, "pas de navmesh publie pour cet asset", "map_id", id)
+			slog.InfoContext(ctx, "fichier non publie pour cet asset", "map_id", id, "fichier", fichier)
 		case err != nil:
 			b.echecs++
 			slog.ErrorContext(ctx, "rapatriement", "err", err, "map_id", id)
 		default:
 			b.rapatries++
-			slog.InfoContext(ctx, "navmesh rapatrie", "map_id", id, "octets", n,
+			slog.InfoContext(ctx, "fichier rapatrie", "map_id", id, "fichier", fichier, "nom", nom, "octets", n,
 				"avancement", fmt.Sprintf("%d/%d", i+1, len(liste)))
 		}
 		if i+1 < len(liste) {
@@ -195,6 +207,22 @@ func executer(ctx context.Context, o options) error {
 		return fmt.Errorf("%d carte(s) en echec", b.echecs)
 	}
 	return nil
+}
+
+// nomEcrit rend le nom du fichier ecrit dans le depot : <map_id><ext> par defaut, ou, avec
+// nomCuisson, le nom exact que la cuisson lit pour cette carte (himap.CartesForge). Une carte que
+// ce catalogue ne declare pas n a pas de nom lisible : c est une erreur, pas un repli sur
+// <map_id><ext> qu aucun lecteur ne ramasserait.
+func nomEcrit(id, ext string, nomCuisson bool) (string, error) {
+	if !nomCuisson {
+		return id + ext, nil
+	}
+	for _, c := range himap.CartesForge {
+		if c.MapID == id {
+			return c.FichierMvar, nil
+		}
+	}
+	return "", fmt.Errorf("carte absente de himap.CartesForge : pas de nom de cuisson pour %s", id)
 }
 
 // cibles assemble la liste des map_id demandes, sans doublon et dans un ordre stable.
@@ -245,6 +273,7 @@ func (c *client) rapatrieDepuis(ctx context.Context, urlAsset, fichier, chemin s
 	if err != nil {
 		return 0, err
 	}
+	slog.DebugContext(ctx, "asset resolu", "asset", urlAsset, "prefixe", prefixe, "fichiers", fichiers)
 	if !contient(fichiers, fichier) {
 		return 0, ErrPasDeNavmesh
 	}

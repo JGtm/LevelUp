@@ -31,6 +31,7 @@ import {
 } from '../test/instantFixture'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPanelBody } from './ReplayPlayerPanelBody'
 
 /** Alpha vit sur [0, 100] ; Echo meurt à l'image 30 et ne revient qu'à 130 ; Marc est un bot vivant. */
@@ -95,15 +96,16 @@ function joueur(xuid: string, board?: MatchScoreboardRow): { player: ReplayPlaye
 }
 
 /** Le HTML du corps monté sur ce joueur, à l'image donnée (un dixième de seconde par image). */
-function htmlDuCorps(who: { player: ReplayPlayer; players: ReplayPlayer[] }, frame: number, over: { follow?: boolean } = {}): string {
+function htmlDuCorps(who: { player: ReplayPlayer; players: ReplayPlayer[] }, frame: number, over: { solo?: boolean } = {}): string {
   const vue = render(
     <ReplayPlayerPanelBody
       player={who.player}
       players={who.players}
       feed={[]}
       weaponIcons={new Map()}
-      actions={{ follow: over.follow ?? false, solo: false, hide: false }}
-      onToggle={vi.fn()}
+      antagonists={createReplayAntagonists([], [])}
+      solo={over.solo ?? false}
+      onSolo={vi.fn()}
       doc={DOC}
       frame={frame}
       nowMs={frame * 100}
@@ -126,8 +128,8 @@ const fixture = (nom: string) => `./__fixtures__/${nom}.html`
 const temoinDuBloc = (cas: string) => readFileSync(resolve(__dirname, '__fixtures__', `replayPlayerNow.${cas}.html`), 'utf8')
 
 describe('ReplayPlayerPanelBody — fixations du corps', () => {
-  it('un joueur complet : feuille lue, compteurs de l’instant, Suivre pressé', async () => {
-    const html = htmlDuCorps(joueur('A', FEUILLE), 50, { follow: true })
+  it('un joueur complet : feuille lue, compteurs de l’instant, Seul pressé', async () => {
+    const html = htmlDuCorps(joueur('A', FEUILLE), 50, { solo: true })
     expect(html).toContain('aria-label="Alpha"')
     expect(html).toContain('Totaux du match')
     expect(blocALInstant(html)).toBe(temoinDuBloc('complet'))
@@ -165,8 +167,9 @@ describe('ReplayPlayerPanelBody — fixations du corps', () => {
         players={players}
         feed={instantFeed()}
         weaponIcons={INSTANT_ICONS}
-        actions={{ follow: false, solo: false, hide: false }}
-        onToggle={vi.fn()}
+        antagonists={createReplayAntagonists([], [])}
+        solo={false}
+        onSolo={vi.fn()}
         doc={doc}
         frame={INSTANT_LAST_FRAME}
         nowMs={INSTANT_LAST_FRAME * 100}

@@ -8,8 +8,9 @@
  * split button : clic sur le label → landing, clic sur ▾ → dropdown des onglets.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { ThemeToggle } from './ThemeToggle'
 import { HomeLink } from './HomeLink'
 import { TitleSwitcher } from './TitleSwitcher'
@@ -43,15 +44,7 @@ function SplitButton({ section, isActive, titleSlug, playerSlug }: SplitButtonPr
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const sectionLabel = t(section.labelKey)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useDismissable(open, () => setOpen(false), { ref })
 
   const wrapperClass = [
     'flex items-stretch rounded-md overflow-hidden text-sm font-medium transition-colors',
@@ -132,13 +125,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useDismissable(open, () => setOpen(false), { ref })
 
   const wrapperClass = [
     'flex items-stretch rounded-md overflow-hidden text-sm font-medium transition-colors',

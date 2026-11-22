@@ -1,5 +1,7 @@
 /**
  * planPaint.ts — l'ORDRE des calques du plan de l'onglet Tactique, posés sur le fond de carte :
+ *  -1. les TRAITS DU RELIEF (ruptures de hauteur, courbes de niveau, liseré : `lib/replay/relief/reliefLinesLayer`), qui
+ *      font partie du fond, tout en dessous ;
  *   0. le PLAN DES MURS de la carte (`lib/replay/wallPlanPaint`, le même trait que le rejeu 2D), tout
  *      en dessous : un trait de dessin sur le fond, sous les zones, la chaleur et les couches de morts ;
  *   1. les CONTOURS des zones nommées (callouts du jeu), SOUS la chaleur ;
@@ -15,6 +17,7 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 import { drawCalloutsLabels, drawCalloutsShapes, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { drawReliefLinesLayer, type ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { strokeWallPlan } from '@/lib/replay/wallPlanPaint'
 import { flouDeLaChaleur, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
@@ -34,6 +37,8 @@ export interface PeintureDuPlan {
   encre: string
   /** Le plan des murs à tracer sous tout le reste ; `null`/absent = pas de plan, ou interrupteur éteint. */
   plan?: WallPlanReady | null
+  /** Les traits du relief (filtrés par la coupe) ; `null`/absent = pas de traits. */
+  reliefLines?: ReliefLinesInput | null
 }
 
 /**
@@ -50,7 +55,8 @@ export function peindreLePlan(
   const vue = vueDuPlan(repere, canvasWidth, fenetre)
   const projection = projectionDuPlan(repere, canvasWidth, fenetre)
   if (!vue || !projection) return
-  const { zones, locale, encre, plan } = peinture
+  const { zones, locale, encre, plan, reliefLines } = peinture
+  if (reliefLines) drawReliefLinesLayer(ctx, reliefLines, projection)
   strokeWallPlan(ctx, plan ?? null, projection, encre)
   drawCalloutsShapes(ctx, zones, projection, { bigColors: [encre], fineInk: encre, locale })
   peindreLaChaleurLissee(ctx, peinture.grid, vue, peinture.ramp, flouDeLaChaleur(repere.pasM, vue.scale))

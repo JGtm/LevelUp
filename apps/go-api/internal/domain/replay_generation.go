@@ -78,6 +78,10 @@ type ReplayGenerationDemand struct {
 	XUID        string    `json:"xuid"`
 	Gamertag    string    `json:"gamertag"`
 	RequestedAt time.Time `json:"requested_at"`
+	// MatchEndedAt : l'heure de fin du match d'après le registre, lue par la sonde au moment de la demande ; zéro =
+	// inconnue (demande d'avant ce champ, ou match sans heure de fin). Elle sert à ne pas tenir pour expiré le film
+	// d'un match qui vient de finir (voir ErrReplayFilmNotReady).
+	MatchEndedAt time.Time `json:"match_ended_at,omitzero"`
 }
 
 // Erreurs de la génération à la demande.
@@ -92,6 +96,9 @@ var (
 	ErrReplayGenerationUnbound = errors.New("replay generation: file non reliée")
 	// ErrReplayFilmGone : le téléchargement a constaté que le film n'existe plus (404, 410 ou manifeste vide).
 	ErrReplayFilmGone = errors.New("replay generation: film retiré chez l'éditeur")
+	// ErrReplayFilmNotReady : le film du match est introuvable chez l'éditeur, mais le match vient de finir : il n'est
+	// pas tenu pour expiré (aucun verdict « film absent »), un nouvel essai plus tard peut aboutir.
+	ErrReplayFilmNotReady = errors.New("replay generation: film pas encore prêt")
 	// ErrReplayNoToken : aucun jeton du joueur de la demande n'est utilisable.
 	ErrReplayNoToken = errors.New("replay generation: aucun jeton du joueur")
 )

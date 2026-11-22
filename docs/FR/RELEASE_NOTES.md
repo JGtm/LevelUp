@@ -25,6 +25,10 @@
 - **Un menu caméra dans la barre de lecture** — au Cinéma et au Plein cadre, le menu « Caméra » suit un joueur (ou « Aucun ») et choisit le point de vue. « Suivre » ne s'éteint plus quand on ferme la fiche du joueur
 - **La carte se tourne toute seule** — quand aucune orientation n'est retenue pour une carte, elle se tourne d'un quart de tour de son propre chef lorsque cela lui donne plus de place à l'écran. « Auto » rejoint les choix d'« Orientation » du panneau « Vue », et un bouton « Plan tourné » dans la barre de lecture remet la carte droite. Un choix déjà retenu est gardé
 - **Les équipements lâchés en mourant comptés correctement** — sur la page du match, la grille « Usage d'équipements, par joueur » sous-comptait les équipements que les joueurs lâchaient en mourant : ils sont désormais attribués au joueur qui vient de mourir, si bien que les parts « Lâché » de la grille montent et que les parts « Gardé sans servir » baissent d'autant
+- **Un fond Relief pour les cartes** — un troisième fond, à côté de « Plan » et de « Rendu », montre le terrain vu de dessus : plus clair quand il est plus haut, ombré, découpé à la zone jouable, avec des traits du relief en option (ruptures de hauteur, courbes de niveau). D'après OpenSpartan Cartographer, de Den (licence MIT).
+- **Un étage à la fois** — dans le rejeu, la Tactique et l'Occupation du terrain, on choisit un étage (ou « Tout », ou une hauteur) et les autres s'estompent ; dans le rejeu, « Suivre le joueur ouvert » déplace la coupe avec lui.
+- **Des marqueurs lisibles sur tous les fonds** — chaque marqueur reçoit une bande sombre bordée d'un filet clair, pour se détacher du Plan, du Rendu et du Relief, dans les quatre palettes de couleurs.
+- **Live Fire, complète** — son fond est refait d'après le maillage de navigation du jeu : elle gagne son plan des murs, son Relief et les zones praticables qui lui manquaient.
 
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 

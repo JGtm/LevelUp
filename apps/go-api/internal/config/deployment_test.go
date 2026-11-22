@@ -285,3 +285,44 @@ func TestDeployment_ValidateEnProductionInchange(t *testing.T) {
 		t.Errorf("la démo en production n'est jamais refusée : %v", err)
 	}
 }
+
+// TestDeployment_GenerationDesRejeuxSeulementEnLocal : la génération à la demande d'un rejeu est offerte au bureau et à
+// un développement dont l'écoute reste locale ; un développement joignable (hôte non bouclé), l'hébergé et la démo ne
+// l'ont pas.
+func TestDeployment_GenerationDesRejeuxSeulementEnLocal(t *testing.T) {
+	cas := []struct {
+		nom    string
+		launch string
+		env    string
+		demo   string
+		host   string
+		profil Deployment
+		want   bool
+	}{
+		{"développement, boucle locale par défaut", LaunchModeDefault, "", "", "", DeploymentDev, true},
+		{"développement, localhost", LaunchModeDefault, "", "", "localhost", DeploymentDev, true},
+		{"développement, IPv6 bouclé", LaunchModeDefault, "", "", "::1", DeploymentDev, true},
+		{"développement, toutes les interfaces", LaunchModeDefault, "", "", "0.0.0.0", DeploymentDev, false},
+		{"développement, adresse de réseau local", LaunchModeDefault, "", "", "192.168.1.20", DeploymentDev, false},
+		{"environnement development, boucle locale", LaunchModeDefault, "development", "", "127.0.0.1", DeploymentDev, true},
+		{"hébergé", LaunchModeDefault, "production", "", "", DeploymentHosted, false},
+		{"hébergé en boucle locale", LaunchModeDefault, "staging", "", "127.0.0.1", DeploymentHosted, false},
+		{"démo", LaunchModeDefault, "", "true", "", DeploymentDemo, false},
+		{"bureau", LaunchModeDesktop, "", "", "", DeploymentDesktop, true},
+		{"bureau, hôte d'environnement ignoré", LaunchModeDesktop, "", "", "0.0.0.0", DeploymentDesktop, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			cfg, err := chargerServeur(t, c.launch, c.env, c.demo, "", c.host)
+			if err != nil {
+				t.Fatalf("LoadServer : %v", err)
+			}
+			if cfg.Deployment != c.profil {
+				t.Fatalf("profil = %q, attendu %q", cfg.Deployment, c.profil)
+			}
+			if got := cfg.Capabilities.GenerateReplays; got != c.want {
+				t.Errorf("GenerateReplays = %v, attendu %v (hôte %q)", got, c.want, cfg.APIHost)
+			}
+		})
+	}
+}

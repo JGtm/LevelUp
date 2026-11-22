@@ -63,7 +63,8 @@ describe('ReplayTransportCompact — les commandes, dans l’ordre de la maquett
     const { container } = renderBar()
     const bar = container.querySelector('[data-replay-transport="compact"]') as HTMLElement
     expect(bar.style.height).toBe('56px')
-    expect(bar.querySelectorAll(':scope > span[aria-hidden="true"]').length).toBeGreaterThanOrEqual(3)
+    const row = bar.firstElementChild as HTMLElement
+    expect(row.querySelectorAll(':scope > span[aria-hidden="true"]').length).toBeGreaterThanOrEqual(3)
   })
 })
 

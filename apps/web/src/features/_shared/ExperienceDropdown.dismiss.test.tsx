@@ -37,6 +37,17 @@ describe('ExperienceDropdown — fermeture', () => {
     expect(document.activeElement).toBe(declencheur)
   })
 
+  it('le déclencheur annonce son état ouvert', () => {
+    rendu()
+    const declencheur = screen.getByRole('button', { name: /Expérience/ })
+    expect(declencheur).toHaveAttribute('aria-haspopup', 'listbox')
+    expect(declencheur).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(declencheur)
+    expect(declencheur).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(declencheur).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('un clic hors du menu le ferme', () => {
     rendu()
     ouvre()

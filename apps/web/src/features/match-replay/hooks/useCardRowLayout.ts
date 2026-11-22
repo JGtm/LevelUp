@@ -2,10 +2,12 @@
  * useCardRowLayout — COMMENT LES ÉQUIPES SE RANGENT, au Cinéma et au Plein cadre : en rangée au-dessus du
  * plan, ou dans la colonne ; et OÙ EST LE SCORE, aux trois cadres (le Standard mesure son corps pour cette seule
  * question). Il mesure le corps du cadre et applique la règle pure de `model/rowLayout.ts`
- * (`dispositionEquipes`) aux camps et aux places du film.
+ * (`dispositionAvecMemoire`) aux camps et aux places du film. Il se souvient de sa dernière décision : la rangée
+ * et l'emplacement du score ne basculent qu'au-delà de la marge `MARGE_BASCULE_PX` (la largeur d'une barre de
+ * défilement qui apparaît ne fait pas clignoter la page).
  *
  * LA LARGEUR EST CELLE DU CORPS DU CADRE, bord à bord, marges latérales comprises : c'est la grandeur que
- * `largeurRequiseRangee` compare (elle compte ses deux marges). Le hook rend `bodyRef`, que le cadre pose sur
+ * `largeurRequiseRangee` compare (elle compte les deux marges du cadre, `cotesCorps.ts`). Le hook rend `bodyRef`, que le cadre pose sur
  * le corps (champ `bodyRef` de `ReplayFrameZoneContent`) ; la mesure est lue avant la première peinture, puis
  * suivie par un `ResizeObserver` (le redimensionnement de la fenêtre change la largeur du corps). Tant que le
  * corps n'est pas mesuré, ou hors du Cinéma et du Plein cadre (`canPlaceCardRow`), la disposition est la
@@ -19,7 +21,7 @@ import { useLayoutEffect, useMemo, useState } from 'react'
 
 import type { ReplayFrameView } from '../ui/frames/replayFrameTypes'
 import { canPlaceCardRow, type ReplayFrame } from '../model/replayFrame'
-import { dispositionEquipes, emplacementScoreDe, planFeedPosed, type DispositionEquipes } from '../model/rowLayout'
+import { dispositionAvecMemoire, emplacementScoreDe, planFeedPosed, type DispositionEquipes } from '../model/rowLayout'
 import { placesParCamp } from '../model/seatLogic'
 import type { EmplacementScore } from '../model/cotesBandeauScore'
 
@@ -51,18 +53,36 @@ function useBodyWidth(): { width: number; ref: (el: HTMLElement | null) => void 
   return { width, ref: setBody }
 }
 
+/** Ce que la page a posé à la dernière décision : la règle s'en sert pour ne pas basculer sur un pixel. */
+interface DecisionPrecedente {
+  disposition: DispositionEquipes
+  scorePlacement: EmplacementScore
+}
+
 export function useCardRowLayout(frame: ReplayFrame, view: ReplayFrameView | null): CardRowLayout {
   const { width, ref } = useBodyWidth()
   const players = view?.model.players
   const doc = view?.doc
   const places = useMemo(() => (players && doc ? placesParCamp(players, doc) : []), [players, doc])
+  // LA MÉMOIRE DE LA DÉCISION est calculée au rendu (jamais depuis un effet, qui ferait peindre une image à la
+  // mauvaise disposition) : la règle a besoin de savoir où la page en était pour appliquer la marge de bascule.
+  const [precedente, setPrecedente] = useState<DecisionPrecedente | null>(null)
   const disposition: DispositionEquipes = canPlaceCardRow(frame)
-    ? dispositionEquipes({ camps: places.length, placesParCamp: places, largeurCorps: width })
+    ? dispositionAvecMemoire(
+        { frame, camps: places.length, placesParCamp: places, largeurCorps: width },
+        precedente?.disposition ?? null,
+      )
     : 'colonne'
+  const scorePlacement = emplacementScoreDe(frame, disposition, width, precedente?.scorePlacement ?? null)
+  // Une décision prise sans mesure (largeur nulle : l'en-tête est présumé assez large) n'est pas retenue : la
+  // première mesure décide au seuil nu, sans marge en faveur d'une présomption.
+  if (width > 0 && (precedente?.disposition !== disposition || precedente.scorePlacement !== scorePlacement)) {
+    setPrecedente({ disposition, scorePlacement })
+  }
   return {
     bodyRef: ref,
     disposition,
-    scorePlacement: emplacementScoreDe(frame, disposition, width),
+    scorePlacement,
     planFeedPosed: planFeedPosed(frame, disposition),
   }
 }

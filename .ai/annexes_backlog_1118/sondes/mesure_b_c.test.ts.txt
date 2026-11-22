@@ -1,0 +1,310 @@
+// @vitest-environment node
+// JETABLE (étape 0.3 b et c) : score du calque contre somme des points par action ; lâchers d'équipement datés à fin de vie + 2.
+// Un fichier à la fois, lecture seule, vraies fonctions du site. Résultat : JSON dans le dossier temporaire.
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import zlib from 'node:zlib'
+import { it } from 'vitest'
+
+import { trackWindow } from '../lib/replay/replayLogic'
+import { normalizeReplayDocument } from '../lib/replay/replayNormalize'
+import { buildPlayers, buildSlotOwnership, playerName, type ReplayPlayer } from '../lib/replay/rosterLogic'
+import { filmClockTrusted, playerCountersAt, scoreAtFrame, scoreTimelineOf } from '../lib/replay/scoreTimeline'
+import { gestureOwner, readEquipmentGestures } from '../features/match-replay/model/equipmentGestures'
+import { playerInstantEstimatesAt, readInstantEstimatesSeries } from '../features/match-replay/model/playerInstantEstimates'
+import { identityKeys } from '../features/match-replay/model/playerInstantStats'
+
+const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const OUT = path.join(os.tmpdir(), 'bl1118_mesure_b_c.json')
+
+const bucket = (a: number): string => (a < 10 ? '1-9' : a < 50 ? '10-49' : a < 100 ? '50-99' : '100+')
+
+it('mesure b et c', () => {
+  const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.json.gz')).sort()
+  const b = {
+    docs: 0, docsAvecCalqueScore: 0, docsCalqueSansActions: 0, docsActionsSansCalque: 0, docsGardeDocTenue: 0,
+    docsComparables: 0, docsComparablesAvecEcart: 0,
+    joueursComparables: 0, joueursAvecEcart: 0, joueursSansCalqueMaisActions: 0,
+    pointsDeChangementComparables: 0, pointsDeChangementEnEcart: 0,
+    imagesComparables: 0, imagesEnEcart: 0,
+    ecartAbs: { '1-9': 0, '10-49': 0, '50-99': 0, '100+': 0 } as Record<string, number>,
+    signe: { calquePlusHaut: 0, calquePlusBas: 0 },
+    finalDiffJoueurs: 0, finalDiffAbs: [] as number[],
+    reelVsMaCopie: { joueurs: 0, ticksDifferents: 0 },
+    calqueSansActionsJoueurs: 0, calqueSansActionsDocs: [] as string[],
+    exemples: [] as unknown[],
+    parDocEcart: [] as unknown[],
+  }
+  const mkPop = () => ({
+    docs: new Set<string>(), joueurs: 0, joueursAvecRunTransitoire: 0, joueursAvecRunPersistant: 0, docsAvecRunPersistant: new Set<string>(),
+    runsTransitoires: 0, runsPersistants: 0, imagesTransitoires: 0, imagesPersistantes: 0, imagesTotal: 0,
+    runTransLen: {} as Record<string, number>, runLenHist: { '1-2': 0, '3-10': 0, '11-30': 0, '31-300': 0, '301+': 0 } as Record<string, number>, joueursAvecRunDurable: 0, runsDurables: 0, imagesDurables: 0, durableMagnitude: { '1-9': 0, '10-49': 0, '50-99': 0, '100+': 0 } as Record<string, number>, exemplesDurables: [] as unknown[], persistantMagnitude: { '1-9': 0, '10-49': 0, '50-99': 0, '100+': 0 } as Record<string, number>,
+    persistantSigne: { calquePlusHaut: 0, calquePlusBas: 0 }, finalDiff: 0, joueursFinalDiffGarde: 0, exemplesPersistants: [] as unknown[],
+  })
+  const P = { gardeDoc: mkPop(), horsGardeDoc: mkPop() }
+  const c = {
+    docs: 0, docsAvecLacher: 0, lachers: 0, sansPoseur: 0, attribuesAujourdhui: 0, nonAttribues: 0,
+    delta: {} as Record<string, number>,
+    delta2: 0, delta2Repris: 0, delta2ReprisMalAttribue: 0, delta2ReprisAutreStart: { plus1: 0, plus2: 0 },
+    delta1Repris: 0,
+    reprisTousDelta: 0, reprisTousMalAttribues: 0,
+    docsConcernes: [] as string[], exemples: [] as unknown[],
+  }
+  const reaff = { changesDeProprietaire: 0, memeJoueur: 0, ecartFinDebut: {} as Record<string, number> }
+  let n = 0
+  for (const f of files) {
+    const match = f.slice(0, 8)
+    const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, f))).toString('utf8'))
+    const doc = normalizeReplayDocument(raw)
+    const players = buildPlayers(doc, [])
+    b.docs++
+    c.docs++
+    n++
+
+    // ---------------- (b) score ----------------
+    const calque = scoreTimelineOf(doc)
+    const calqueBrut = doc.scoreTimeline
+    const actions = doc.scoreActions ?? []
+    const byRecipient = new Map<string, typeof actions>()
+    for (const a of actions) {
+      const l = byRecipient.get(a.xuid)
+      if (l) l.push(a)
+      else byRecipient.set(a.xuid, [a])
+    }
+    const docGuard = doc.coverage?.scoreActions?.complete === true && filmClockTrusted(doc)
+    if (docGuard) b.docsGardeDocTenue++
+    const hasCalque = !!calque && (calque.players?.length ?? 0) > 0
+    if (hasCalque) b.docsAvecCalqueScore++
+    if (hasCalque && actions.length === 0) {
+      b.docsCalqueSansActions++
+      b.calqueSansActionsJoueurs += calque!.players.length
+      if (b.calqueSansActionsDocs.length < 5) b.calqueSansActionsDocs.push(match)
+    }
+    if (!hasCalque && actions.length > 0) b.docsActionsSansCalque++
+
+    if (hasCalque && actions.length > 0) {
+      b.docsComparables++
+      // la vraie lecture de la fiche, avec une feuille dont le score est la somme finale (la garde de feuille passe)
+      const withBoard: ReplayPlayer[] = players.map((p) => {
+        const total = identityKeys(p)
+          .flatMap((k) => byRecipient.get(k) ?? [])
+          .reduce((s, a) => s + a.points, 0)
+        return { ...p, board: { ...(p.board ?? {}), score: total } as never }
+      })
+      const series = readInstantEstimatesSeries({ doc, players: withBoard })
+      let docEcart = 0
+      const lastFrame = (doc.frameCount ?? 1) - 1
+      for (const p of players) {
+        const cnt = playerCountersAt(calque, p.xuid, 0)
+        if (!cnt) {
+          const has = identityKeys(p).some((k) => byRecipient.has(k))
+          if (has) b.joueursSansCalqueMaisActions++
+          continue
+        }
+        const pw = withBoard.find((q) => q.xuid === p.xuid)!
+        // ma copie : points cumulés triés par image
+        const acts = identityKeys(p)
+          .flatMap((k) => byRecipient.get(k) ?? [])
+          .sort((x, y) => x.t - y.t)
+        const sumTicks: { t: number; v: number }[] = []
+        let tot = 0
+        for (const a of acts) {
+          tot += a.points
+          sumTicks.push({ t: a.t, v: tot })
+        }
+        const lp = calque!.players.find((q) => q.xuid === p.xuid)!
+        const calTicks = lp.score.total
+        b.joueursComparables++
+        // confrontation à la fonction réelle (ticks identiques à ma copie ?)
+        b.reelVsMaCopie.joueurs++
+        {
+          const probe = new Set<number>([0, lastFrame, ...sumTicks.map((x) => x.t), ...sumTicks.map((x) => x.t - 1)])
+          for (const fr of probe) {
+            const real = docGuard ? playerInstantEstimatesAt(series, pw, fr).score : null
+            if (docGuard && real !== scoreAtFrame(sumTicks, fr)) {
+              b.reelVsMaCopie.ticksDifferents++
+              break
+            }
+          }
+        }
+        const changes = [...new Set<number>([...calTicks.map((x) => x.t), ...sumTicks.map((x) => x.t)])].sort((x, y) => x - y)
+        let diffPoints = 0
+        let diffImages = 0
+        const firstDiffs: unknown[] = []
+        const pop = docGuard ? P.gardeDoc : P.horsGardeDoc
+        pop.docs.add(match)
+        pop.joueurs++
+        pop.imagesTotal += lastFrame + 1
+        // runs : suites d'intervalles consécutifs où les deux valeurs diffèrent
+        let run: { start: number; len: number; a: number; s: number } | null = null
+        const runs: { start: number; len: number; a: number; s: number }[] = []
+        for (let i = 0; i < changes.length; i++) {
+          const t = changes[i]
+          const a = scoreAtFrame(calTicks, t)
+          const s2 = scoreAtFrame(sumTicks, t)
+          const diff = a !== s2
+          b.pointsDeChangementComparables++
+          const next = i + 1 < changes.length ? changes[i + 1] : lastFrame + 1
+          if (diff) {
+            diffPoints++
+            b.pointsDeChangementEnEcart++
+            b.ecartAbs[bucket(Math.abs(a - s2))]++
+            if (a > s2) b.signe.calquePlusHaut++
+            else b.signe.calquePlusBas++
+            if (firstDiffs.length < 1) firstDiffs.push({ match, joueur: playerName(p), image: t, calque: a, somme: s2 })
+            diffImages += Math.max(0, next - t)
+            if (run) run.len += Math.max(0, next - t)
+            else run = { start: t, len: Math.max(0, next - t), a, s: s2 }
+          } else if (run) {
+            runs.push(run)
+            run = null
+          }
+        }
+        if (run) runs.push(run)
+        let hasD = false
+        let hasT = false
+        let hasP = false
+        for (const r of runs) {
+          const lk = r.len <= 2 ? '1-2' : r.len <= 10 ? '3-10' : r.len <= 30 ? '11-30' : r.len <= 300 ? '31-300' : '301+'
+          pop.runLenHist[lk]++
+          if (r.len > 30) {
+            hasD = true
+            pop.runsDurables++
+            pop.imagesDurables += r.len
+            pop.durableMagnitude[bucket(Math.abs(r.a - r.s))]++
+            if (pop.exemplesDurables.length < 6) pop.exemplesDurables.push({ match, joueur: playerName(p), image: r.start, images: r.len, calque: r.a, somme: r.s })
+          }
+          if (r.len <= 2) {
+            hasT = true
+            pop.runsTransitoires++
+            pop.imagesTransitoires += r.len
+            pop.runTransLen[String(r.len)] = (pop.runTransLen[String(r.len)] ?? 0) + 1
+          } else {
+            hasP = true
+            pop.runsPersistants++
+            pop.imagesPersistantes += r.len
+            pop.persistantMagnitude[bucket(Math.abs(r.a - r.s))]++
+            if (r.a > r.s) pop.persistantSigne.calquePlusHaut++
+            else pop.persistantSigne.calquePlusBas++
+            if (pop.exemplesPersistants.length < 6) pop.exemplesPersistants.push({ match, joueur: playerName(p), image: r.start, images: r.len, calque: r.a, somme: r.s })
+          }
+        }
+        if (hasD) pop.joueursAvecRunDurable++
+        if (hasT) pop.joueursAvecRunTransitoire++
+        if (hasP) {
+          pop.joueursAvecRunPersistant++
+          pop.docsAvecRunPersistant.add(match)
+        }
+        // avant le premier changement : les deux valent 0
+        b.imagesComparables += lastFrame + 1
+        b.imagesEnEcart += diffImages
+        const finalCal = scoreAtFrame(calTicks, lastFrame)
+        const finalSum = scoreAtFrame(sumTicks, lastFrame)
+        if (finalCal !== finalSum) {
+          ;(docGuard ? P.gardeDoc : P.horsGardeDoc).finalDiff++
+          b.finalDiffJoueurs++
+          b.finalDiffAbs.push(Math.abs(finalCal - finalSum))
+        }
+        if (diffPoints > 0) {
+          b.joueursAvecEcart++
+          docEcart++
+          if (b.exemples.length < 8) b.exemples.push(firstDiffs[0])
+        }
+      }
+      if (docEcart > 0) {
+        b.docsComparablesAvecEcart++
+        if (b.parDocEcart.length < 6) b.parDocEcart.push({ match, joueursEnEcart: docEcart, gardeDoc: docGuard })
+      }
+    }
+    void calqueBrut
+
+    // ---------------- (c) lâchers ----------------
+    const gestures = readEquipmentGestures(doc).filter((g) => g.kind === 'dropped')
+    if (gestures.length > 0) c.docsAvecLacher++
+    const ownership = buildSlotOwnership(players)
+    // vies par place, avec leur propriétaire
+    const bySlot = new Map<number, { start: number; end: number; p: ReplayPlayer }[]>()
+    for (const p of players) {
+      for (const l of p.lives) {
+        const w = trackWindow(l)
+        const list = bySlot.get(l.slot)
+        const row = { start: w.start, end: w.end, p }
+        if (list) list.push(row)
+        else bySlot.set(l.slot, [row])
+      }
+    }
+    for (const list of bySlot.values()) list.sort((x, y) => x.start - y.start)
+    for (const list of bySlot.values()) {
+      for (let i = 1; i < list.length; i++) {
+        if (list[i].p !== list[i - 1].p) {
+          reaff.changesDeProprietaire++
+          const gap = list[i].start - list[i - 1].end
+          const k = gap <= 2 ? '1-2' : gap <= 10 ? '3-10' : gap <= 100 ? '11-100' : '101+'
+          reaff.ecartFinDebut[k] = (reaff.ecartFinDebut[k] ?? 0) + 1
+        } else reaff.memeJoueur++
+      }
+    }
+    for (const g of gestures) {
+      c.lachers++
+      if (!g.at) {
+        c.sansPoseur++
+        continue
+      }
+      const owner = gestureOwner(ownership, g)
+      if (owner) c.attribuesAujourdhui++
+      else c.nonAttribues++
+      const { slot, t } = g.at
+      const lives = bySlot.get(slot) ?? []
+      let prev: (typeof lives)[number] | null = null
+      for (const l of lives) if (l.end < t && (prev === null || l.end > prev.end)) prev = l
+      if (!prev) {
+        c.delta['aucune vie avant'] = (c.delta['aucune vie avant'] ?? 0) + 1
+        continue
+      }
+      const delta = t - prev.end
+      const key = delta <= 3 ? String(delta) : delta <= 10 ? '4-10' : '11+'
+      c.delta[key] = (c.delta[key] ?? 0) + 1
+      // une autre personne reprend la place à + 1 ou + 2 de la fin de la vie précédente
+      const taker = lives.find((l) => l.p !== prev!.p && l.start >= prev!.end + 1 && l.start <= prev!.end + 2 && l.start <= t)
+      const repris = !!taker
+      const mal = repris && owner !== prev.p
+      if (delta === 2) {
+        c.delta2++
+        if (repris) {
+          c.delta2Repris++
+          if (mal) c.delta2ReprisMalAttribue++
+          if (taker!.start === prev.end + 1) c.delta2ReprisAutreStart.plus1++
+          else c.delta2ReprisAutreStart.plus2++
+        }
+      }
+      if (delta === 1 && repris) c.delta1Repris++
+      if (repris) {
+        c.reprisTousDelta++
+        if (mal) c.reprisTousMalAttribues++
+        if (!c.docsConcernes.includes(match)) c.docsConcernes.push(match)
+        if (c.exemples.length < 8)
+          c.exemples.push({
+            match,
+            place: slot,
+            finVie: prev.end,
+            imageLacher: t,
+            delta,
+            poseur: playerName(prev.p),
+            reprendPar: playerName(taker!.p),
+            repriseImage: taker!.start,
+            attribueAujourdhui: owner ? playerName(owner) : null,
+          })
+      }
+    }
+    if (n % 200 === 0) fs.writeFileSync(OUT + '.partiel', JSON.stringify({ n, f }))
+  }
+  const q = (a: number[], p: number) => {
+    const s = a.slice().sort((x, y) => x - y)
+    return s.length ? s[Math.floor((s.length - 1) * p)] : null
+  }
+  const finalStats = { n: b.finalDiffAbs.length, min: q(b.finalDiffAbs, 0), p50: q(b.finalDiffAbs, 0.5), p95: q(b.finalDiffAbs, 0.95), max: q(b.finalDiffAbs, 1) }
+  const bOut = { ...b, finalDiffAbs: undefined, finalStats }
+  const popOut = (x: ReturnType<typeof mkPop>) => ({ ...x, docs: x.docs.size, docsAvecRunPersistant: x.docsAvecRunPersistant.size })
+  fs.writeFileSync(OUT, JSON.stringify({ b: bOut, pops: { gardeDoc: popOut(P.gardeDoc), horsGardeDoc: popOut(P.horsGardeDoc) }, c, reaff }, null, 1))
+}, 3_000_000)

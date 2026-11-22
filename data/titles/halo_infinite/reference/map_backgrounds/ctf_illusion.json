@@ -40,6 +40,8 @@
     "eau : aucun volume d'eau dans le sddt de ctf_illusion-rtx-new.module"
   ],
   "planImage": "ctf_illusion.plan.webp",
+  "reliefImage": "ctf_illusion.relief.webp",
+  "reliefData": "ctf_illusion.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 2701,

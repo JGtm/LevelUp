@@ -50,6 +50,7 @@ import (
 
 	"levelup/go-api/internal/analysis/leadshare"
 	"levelup/go-api/internal/analysis/modelabel"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -140,7 +141,7 @@ func ProjeterMainmise(
 		return refus(r)
 	}
 	window, reason := leadshare.PlayedWindow(leadshare.Clock{
-		OriginMS: doc.OriginMs, T0FilmMS: doc.T0FilmMs, DurationSeconds: ident.DurationSeconds,
+		OriginMS: doc.OriginMs, T0FilmMS: coupDEnvoiRetenu(doc.T0FilmMs, ident.DurationSeconds), DurationSeconds: ident.DurationSeconds,
 		FrameIntervalMS: doc.FrameIntervalMS, FrameCount: doc.FrameCount,
 	})
 	if reason != leadshare.ReasonNone {
@@ -168,6 +169,24 @@ func ProjeterMainmise(
 	}
 	sort.Slice(out.Rows, func(i, j int) bool { return out.Rows[i].Camp < out.Rows[j].Camp })
 	return out
+}
+
+// coupDEnvoiRetenu rend le coup d'envoi que le document publie quand la résolution du match le
+// retient aussi (dans la fenêtre du match, timeline.FilmWithinMatch), nil sinon : la fenêtre jouée
+// ne part jamais d'une valeur que le registre a refusée.
+func coupDEnvoiRetenu(t0Ms, durationSeconds *int64) *int64 {
+	if t0Ms == nil {
+		return nil
+	}
+	var duree *int
+	if durationSeconds != nil {
+		v := int(*durationSeconds)
+		duree = &v
+	}
+	if !timeline.FilmWithinMatch(*t0Ms, duree) {
+		return nil
+	}
+	return t0Ms
 }
 
 // refusDuCalqueDeScore dit pourquoi le calque de score ne se lit pas, ou ReasonNone.

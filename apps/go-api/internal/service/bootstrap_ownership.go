@@ -1,17 +1,18 @@
-// Package service — bootstrap_ownership.go : la propriété DIRECTE d'un profil.
+// Package service — bootstrap_ownership.go : la propriété des profils.
 //
-// Complément de filterOwnedPlayers (bootstrap_service.go), qui répond à « ce
-// profil m'est-il VISIBLE ? » (le mien, ceux de mes co-membres de groupe, tout
-// le parc pour un admin). Certaines surfaces ont besoin de la question voisine,
-// plus fine : « ce profil est-il LE MIEN ? » — c'est le cas du compteur
-// « amis en jeu », qui compte les joueurs de mon cercle SAUF les miens.
-//
-// Fichier séparé de bootstrap_service.go, déjà au-delà du seuil de 500 lignes
-// (dette gelée) : on ne l'agrandit pas.
+// Deux questions distinctes. « Ce profil m'est-il VISIBLE ? » (le mien, ceux de
+// mes co-membres de groupe, tout le parc pour un admin) : filterOwnedPlayers,
+// OwnedPlayers, BuildPlayersList. « Ce profil est-il LE MIEN ? », plus fine :
+// DirectOwnerFor — c'est le cas du compteur « amis en jeu », qui compte les
+// joueurs de mon cercle SAUF les miens.
 package service
 
 import (
+	"context"
+	"fmt"
+
 	"levelup/go-api/internal/authz"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -99,6 +100,95 @@ func (s *BootstrapService) writablePlayerSlugs(sess *domain.SessionData, players
 		if authz.CanWritePlayer(enforced, user, p.XUID) {
 			out = append(out, p.PlayerSlug)
 		}
+	}
+	return out
+}
+
+// filterOwnedPlayers restreint la liste aux profils accessibles par l'utilisateur
+// courant (ADR 0029). Retourne la liste intacte si l'enforcement est désactivé
+// (mode demo / auth non activée) ou si le user store n'est pas câblé. Un admin
+// voit tout ; un utilisateur standard voit son xuid + les profils de la famille
+// (familyXUIDs, #21 Phase A) pour que le sélecteur L1 liste bien la famille.
+func (s *BootstrapService) filterOwnedPlayers(sess *domain.SessionData, players []domain.PlayerSummary, familyXUIDs map[string]bool) []domain.PlayerSummary {
+	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
+		return players
+	}
+	user := authz.CurrentUser(sess, s.userLookup)
+	out := make([]domain.PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if authz.CanAccessPlayer(true, user, p.XUID, familyXUIDs) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// resolveCoMembers retourne l'ensemble des xuids accessibles par le user courant
+// via partage de groupe (co-membres). Nil si pas de résolveur câblé, pas d'user
+// lié, ou aucun groupe → CanAccessPlayer retombe sur propriétaire-only strict.
+func (s *BootstrapService) resolveCoMembers(sess *domain.SessionData) map[string]bool {
+	if s.coMembers == nil || s.userLookup == nil {
+		return nil
+	}
+	user := authz.CurrentUser(sess, s.userLookup)
+	if user == nil || user.XUID == "" {
+		return nil
+	}
+	return s.coMembers(user.XUID)
+}
+
+// BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.
+// S4 / audit M2 (lot S) : la liste est restreinte aux profils possédés par
+// l'utilisateur courant (les siens + ses co-membres de groupe), comme
+// available_players dans Build. En demo/single-user, filterOwnedPlayers no-ope
+// (liste complète) — l'invariant d'onboarding est préservé.
+func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error) {
+	players, err := s.OwnedPlayers(ctx, sess)
+	if err != nil {
+		return nil, fmt.Errorf("BuildPlayersList: %w", err)
+	}
+	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
+	var defaultSlug *string
+	if len(players) > 0 {
+		slug := players[s.defaultPlayerIndex(sess, players)].PlayerSlug
+		defaultSlug = &slug
+	}
+	return &domain.PlayersListResponse{
+		Items:             players,
+		DefaultPlayerSlug: defaultSlug,
+	}, nil
+}
+
+// OwnedPlayers retourne les joueurs du TITRE COURANT (ctx) visibles côté front
+// (profils auth-only exclus) ET accessibles par la session — les siens plus ses
+// co-membres de groupe (Couche A, ADR 0029). En démo / mono-utilisateur le
+// filtre no-ope et la liste complète est rendue.
+//
+// SOURCE UNIQUE de cette combinaison « joueurs du titre + visibles + possédés » :
+// consommée par GET /players (BuildPlayersList) et par la présence en jeu
+// (PresenceService). Toute nouvelle surface listant des joueurs passe par ici —
+// la ré-écrire ailleurs, c'est risquer d'oublier une des trois étapes.
+func (s *BootstrapService) OwnedPlayers(ctx context.Context, sess *domain.SessionData) ([]domain.PlayerSummary, error) {
+	players, err := s.cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("OwnedPlayers: %w", err)
+	}
+	players = excludeAuthOnly(players)
+	return s.filterOwnedPlayers(sess, players, s.resolveCoMembers(sess)), nil
+}
+
+// excludeAuthOnly retire les profils auth-only (existant uniquement pour la
+// gestion des tokens, sans suivi de stats) d'une liste destinée au front. Ces
+// profils ne doivent jamais apparaître dans le sélecteur L1 ni les favoris de
+// gamertag (Escouade/Explorer). La résolution token côté serveur continue de
+// les voir via cfg.LoadPlayers (non filtré).
+func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
+	out := make([]domain.PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if p.AuthOnly {
+			continue
+		}
+		out = append(out, p)
 	}
 	return out
 }

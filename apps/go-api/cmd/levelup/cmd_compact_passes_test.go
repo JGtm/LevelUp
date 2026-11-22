@@ -9,7 +9,7 @@ package main
 // qui continue).
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -231,32 +232,111 @@ func TestCompactPasses_RefusSiUnAutreProcessusTientLaBase(t *testing.T) {
 	}
 }
 
+// delaiProcessusAuxiliaire borne l'attente du « pret » du processus auxiliaire, puis celle de sa
+// sortie : une machine chargée ralentit le démarrage d'un binaire de test cgo, mais un fils qui ne
+// répond pas dans ce délai est tué et le test échoue en le disant, au lieu de rester bloqué.
+const delaiProcessusAuxiliaire = 60 * time.Second
+
+// sortieAuxiliaire recueille ce qu'écrit le processus auxiliaire sur un de ses flux et signale, par
+// `premiere`, que sa première ligne est complète.
+type sortieAuxiliaire struct {
+	mu         sync.Mutex
+	buf        bytes.Buffer
+	premiere   chan struct{}
+	signalee   bool
+	surveiller bool
+}
+
+func nouvelleSortieAuxiliaire(surveiller bool) *sortieAuxiliaire {
+	return &sortieAuxiliaire{premiere: make(chan struct{}), surveiller: surveiller}
+}
+
+func (s *sortieAuxiliaire) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.buf.Write(p)
+	if s.surveiller && !s.signalee && bytes.IndexByte(s.buf.Bytes(), '\n') >= 0 {
+		s.signalee = true
+		close(s.premiere)
+	}
+	return len(p), nil
+}
+
+func (s *sortieAuxiliaire) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.String()
+}
+
+func (s *sortieAuxiliaire) premiereLigne() string {
+	ligne, _, _ := strings.Cut(s.String(), "\n")
+	return strings.TrimSpace(ligne)
+}
+
 // tenirLaBase lance le processus auxiliaire (TestAideTenirLaBase) qui tient `path` ouverte en
-// écriture ; la fonction rendue le libère et attend sa sortie.
+// écriture ; la fonction rendue le libère et attend sa sortie. Les deux attentes (le « pret », puis
+// la sortie) sont bornées par delaiProcessusAuxiliaire ; tout échec joint au message les sorties
+// standard et d'erreur du fils et son code de sortie.
 func tenirLaBase(t *testing.T, path string) func() {
 	t.Helper()
 	aux := exec.Command(os.Args[0], "-test.run=^TestAideTenirLaBase$")
 	aux.Env = append(os.Environ(), envTenirLaBase+"="+path)
+	aux.WaitDelay = delaiProcessusAuxiliaire
+	sortie, erreur := nouvelleSortieAuxiliaire(true), nouvelleSortieAuxiliaire(false)
+	aux.Stdout, aux.Stderr = sortie, erreur
 	entree, err := aux.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sortie, err := aux.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := aux.Start(); err != nil {
 		t.Fatal(err)
 	}
-	if ligne, err := bufio.NewReader(sortie).ReadString('\n'); err != nil || strings.TrimSpace(ligne) != "pret" {
-		t.Fatalf("processus auxiliaire : %q, %v", ligne, err)
+	fini := make(chan struct{})
+	var erreurAttente error
+	go func() {
+		erreurAttente = aux.Wait()
+		close(fini)
+	}()
+	rapport := func() string {
+		code := "non terminé"
+		select {
+		case <-fini:
+			code = fmt.Sprintf("%d (%v)", aux.ProcessState.ExitCode(), erreurAttente)
+		default:
+		}
+		return fmt.Sprintf("sortie standard %q, sortie d'erreur %q, code de sortie %s",
+			sortie.String(), erreur.String(), code)
+	}
+	arreter := func() {
+		_ = aux.Process.Kill()
+		<-fini
+	}
+	select {
+	case <-sortie.premiere:
+		if ligne := sortie.premiereLigne(); ligne != "pret" {
+			arreter()
+			t.Fatalf("processus auxiliaire : première ligne %q au lieu de « pret » : %s", ligne, rapport())
+		}
+	case <-fini:
+		t.Fatalf("processus auxiliaire terminé avant d'avoir écrit « pret » : %s", rapport())
+	case <-time.After(delaiProcessusAuxiliaire):
+		arreter()
+		t.Fatalf("processus auxiliaire : pas de « pret » après %v, tué : %s", delaiProcessusAuxiliaire, rapport())
 	}
 	return func() {
 		if err := entree.Close(); err != nil {
 			t.Errorf("processus auxiliaire, stdin : %v", err)
 		}
-		if err := aux.Wait(); err != nil {
-			t.Errorf("processus auxiliaire : %v", err)
+		select {
+		case <-fini:
+		case <-time.After(delaiProcessusAuxiliaire):
+			arreter()
+			t.Errorf("processus auxiliaire : encore actif %v après la fermeture de stdin, tué : %s",
+				delaiProcessusAuxiliaire, rapport())
+			return
+		}
+		if erreurAttente != nil {
+			t.Errorf("processus auxiliaire : %v : %s", erreurAttente, rapport())
 		}
 	}
 }

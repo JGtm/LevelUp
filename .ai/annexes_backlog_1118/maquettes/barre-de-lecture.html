@@ -1,0 +1,604 @@
+<title>Barre de lecture du rejeu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0b0b0b; --bg-raised:#0f0f0f; --bg-tile:#121212; --bg-btn:#141414;
+  --line:#1f1f1f; --line-strong:#262626; --line-rail:#2a2a2a; --line-faint:#3a3a3a;
+  --text:#fafafa; --text-soft:#d4d4d4; --text-mute:#a3a3a3; --text-dim:#8f8f8f; --text-faint:#6f6f6f;
+  --ally:#4ade80; --enemy:#f87171; --follow:#60a5fa; --warn:#fbbf24; --ok:#4ade80;
+  --rail-fill:#e5e5e5; --knob:#ffffff; --play-bg:#fafafa; --play-fg:#0b0b0b; --neutral:#3a3a3a;
+  --map-sol:#16222d; --map-zone:#1d2d3b; --map-mur:#46607a; --shadow:#000000;
+  --font: Roboto, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-top:24px;padding-bottom:48px;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+button:disabled{cursor:default}
+:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+.page{max-width:1240px;margin:0 auto}
+h1{font-size:28px;line-height:1.2;margin:0 0 4px;font-weight:700}
+.accroche{margin:0 0 18px;color:var(--text-mute)}
+
+/* Réglages : gros boutons à bascule, jamais de liste déroulante */
+.reglages{display:grid;gap:14px}
+.gl{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.boutons,.largeur{display:flex;flex-wrap:wrap;gap:8px}
+.largeur{align-items:center;gap:10px 12px}
+.reglages button,.case{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line-faint);background:var(--bg-btn);font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.reglages button[aria-pressed="true"]{background:var(--follow);color:var(--bg);border-color:var(--follow)}
+.lettre{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--line-rail);color:var(--text);font-size:12px}
+[aria-pressed="true"] .lettre{background:var(--bg);color:var(--follow)}
+.largeur input[type=range]{flex:1 1 220px;min-width:160px;height:40px;accent-color:var(--follow);margin:0}
+.largeur output{min-width:72px;font-weight:700;font-variant-numeric:tabular-nums}
+.case{cursor:pointer}
+.case input{width:20px;height:20px;margin:0;accent-color:var(--follow)}
+
+/* Le lecteur est dessiné à sa largeur réelle, puis réduit par une échelle pour tenir dans la page */
+.scene{margin-top:20px}
+.echelle{position:relative;overflow:hidden}
+.fen{position:absolute;left:0;top:0;width:calc(var(--w) * 1px);height:900px;transform-origin:0 0;display:flex;flex-direction:column;
+  background:var(--bg);outline:1px solid var(--line-strong);outline-offset:-1px;border-radius:8px;overflow:hidden;
+  font-size:13px;line-height:1.35;font-variant-numeric:tabular-nums}
+.fen-tete{flex:none;height:52px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
+.fiches{flex:none;height:58px;display:flex;gap:10px;padding:8px 24px 0}
+.fiche{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--bg-tile);display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 12px}
+.corps{flex:1;min-height:0;padding:8px 24px 12px;display:grid;grid-template-columns:minmax(0,1fr) 480px;grid-template-rows:minmax(0,1fr);gap:12px}
+.fen.sans-col .corps{grid-template-columns:minmax(0,1fr)}
+.fen.sans-col .colonne{display:none}
+.carte{position:relative;min-height:0;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);overflow:hidden;display:flex;flex-direction:column}
+.plan{position:relative;flex:1 1 0;min-height:0;overflow:hidden;background:var(--map-sol)}
+.mapsvg{position:absolute;left:0;top:0;width:100%;height:100%;transform:scale(var(--z,1));transition:transform .25s ease}
+.m-sol{fill:var(--map-sol)}
+.m-zone{fill:var(--map-zone)}
+.m-mur{fill:none;stroke:var(--map-mur);stroke-width:.9;stroke-linejoin:round}
+.pion{stroke:var(--bg);stroke-width:.6}
+.pion.a{fill:var(--ally)}
+.pion.b{fill:var(--enemy)}
+.flash{position:absolute;inset:0;background:var(--text);opacity:0;pointer-events:none;transition:opacity .35s ease}
+.flash.on{opacity:.35;transition:none}
+.colonne{border:1px solid var(--line);border-radius:8px;background:var(--bg-raised);padding:10px 12px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.sk-row{display:flex;align-items:center;gap:8px;height:16px}
+.sk-gap{height:8px}
+.sk-bar{display:inline-block;height:6px;border-radius:3px;background:var(--line-rail)}
+.sk-bar.s{background:var(--line-strong)}
+.sk-dot{display:inline-block;width:8px;height:8px;border-radius:2px}
+.sk-dot.a{background:var(--ally)}
+.sk-dot.b{background:var(--enemy)}
+
+/* Fil des éliminations : bas gauche du plan, remonte au-dessus de la barre dépliée */
+.fil{position:absolute;left:10px;bottom:var(--fil-bas,10px);display:flex;flex-direction:column;gap:4px;transition:bottom .25s ease;pointer-events:none;z-index:2}
+.li{align-self:flex-start;display:flex;gap:6px;align-items:center;padding:3px 9px;border-radius:6px;background:color-mix(in srgb, var(--bg) 72%, transparent);font-size:12.5px}
+.li.neuf{animation:entre .25s ease-out}
+@keyframes entre{from{transform:translateY(8px);opacity:0}}
+.kp.a{color:var(--ally)}
+.kp.b{color:var(--enemy)}
+.li .fl{color:var(--text-dim)}
+
+/* La barre : une ligne de 56 px. Fixe sous le plan, ou posée sur le bas du plan (« sur ») */
+.b{position:relative;flex:none;display:flex;align-items:center;column-gap:6px;padding:0 12px;height:56px;--ic:16px;white-space:nowrap;
+  background:color-mix(in srgb, var(--bg) 40%, transparent);transition:transform .25s ease, visibility 0s}
+.b > *{flex:none}
+.b.sur{position:absolute;left:0;right:0;bottom:0;z-index:5;background:color-mix(in srgb, var(--bg) 72%, transparent)}
+.b.replie{transform:translateY(100%);visibility:hidden;pointer-events:none;transition:transform .25s ease, visibility 0s .25s}
+.b.fine{height:32px;padding:0 8px;column-gap:4px;--ic:13px;background:color-mix(in srgb, var(--bg) 45%, transparent);backdrop-filter:blur(6px)}
+.b.deux{height:auto;flex-wrap:wrap;align-content:flex-start;row-gap:0;padding-top:0;padding-bottom:0}
+.b.deux > *:not(.fr-slot){margin:1px 0}
+.b.deux .fr-slot{flex:0 0 100%;order:-1;height:38px;align-items:center;min-width:0}
+.b > .fr-slot{flex:1 1 0;min-width:0;display:flex}
+.b.mn .fr-slot{min-width:260px}
+.b svg{width:var(--ic);height:var(--ic);display:block}
+.ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;color:var(--text-soft)}
+.rb.bd{border:1px solid var(--line-strong);font-size:10.5px;font-weight:500}
+.rb.gh,.rb.tx{color:var(--text-mute)}
+.rb.tx{font-size:15px;line-height:1}
+.rb.cam,.rb.snd1,.plusw .rb{width:34px;height:34px}
+.rb:disabled{opacity:.35}
+.snd{display:inline-flex;align-items:center;gap:8px}
+.vol{display:inline-block;width:58px;height:12px;border-radius:2px;position:relative;cursor:pointer}
+.vol::before{content:"";position:absolute;left:0;right:0;top:4px;height:4px;border-radius:2px;background:var(--line-rail)}
+.vol i{position:absolute;left:0;top:4px;height:4px;width:calc(var(--v, .6) * 100%);background:var(--text-dim);border-radius:2px}
+.sep{width:9px;height:20px;position:relative}
+.sep::before{content:"";position:absolute;left:4px;top:0;bottom:0;width:1px;background:var(--line-strong)}
+.play{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--play-bg);color:var(--play-fg)}
+.play svg{width:17px;height:17px}
+.clk{width:92px;text-align:center;font-size:12.5px;color:var(--text-mute)}
+.clk b{color:var(--text);font-weight:600}
+.ap{display:inline-flex;align-items:center;height:30px;padding:0 8px;border-radius:999px;color:var(--text-dim)}
+.ap.on{color:var(--text)}
+.ap .auto{width:26px;height:15px}
+.auto-f{fill:none;stroke:currentColor;stroke-width:1.5}
+.auto-c{fill:currentColor}
+.spd{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;width:58px;border:1px solid var(--line-strong);border-radius:999px;font-size:12.5px;font-weight:500}
+.spd svg{width:10px;height:10px}
+.zm{display:inline-flex;gap:6px}
+.cap{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:88px;padding:4px;border:1px solid var(--line-strong);border-radius:999px;background:color-mix(in srgb, var(--line) 60%, transparent)}
+.cb{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 10px;border-radius:999px;background:var(--line-rail);color:var(--text)}
+.cb.pri{background:var(--text);color:var(--bg)}
+.cb svg{width:15px;height:15px}
+.frm{display:inline-flex;align-items:center;justify-content:space-between;width:147px}
+.fb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;color:var(--text-dim)}
+.fb.on{background:var(--line-rail);color:var(--text)}
+.fb svg{width:15px;height:15px}
+.fsep{width:1px;height:16px;margin:0 4px;background:var(--line-strong)}
+.fpl{fill:currentColor;stroke:none;opacity:.35}
+.plusw{display:none;position:relative}
+.p1 .plusw{display:inline-flex}
+.p1 [data-g="a"],.p1 .vol,.p2 [data-g="c"]{display:none}
+.menu{position:absolute;right:0;bottom:calc(100% + 8px);min-width:230px;padding:8px;border-radius:10px;background:var(--bg-tile);
+  border:1px solid var(--line-faint);box-shadow:0 8px 24px var(--shadow);display:grid;gap:6px;z-index:9;white-space:normal}
+.menu[hidden]{display:none}
+.mrow{display:flex;gap:6px}
+.mi{flex:1;min-height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg-btn);font-size:13px;text-align:left;color:var(--text)}
+.mi:disabled{opacity:.35}
+.mi.on{background:var(--line-rail)}
+
+/* Variante C : commandes plus petites sur 32 px */
+.fine .rb{width:24px;height:24px}
+.fine .rb.cam,.fine .rb.snd1,.fine .plusw .rb{width:26px;height:26px}
+.fine .play{width:28px;height:28px}
+.fine .play svg{width:13px;height:13px}
+.fine .clk{width:76px;font-size:11.5px}
+.fine .snd{gap:6px}
+.fine .vol{width:40px}
+.fine .ap{height:24px;padding:0 6px}
+.fine .spd{height:24px;width:46px;font-size:11.5px}
+.fine .cap{width:auto;padding:2px}
+.fine .cb{height:20px;padding:0 7px}
+.fine .frm{width:auto;gap:2px}
+.fine .fb{width:24px;height:24px}
+.fine .sep{height:14px;width:7px}
+.fine .sep::before{left:3px}
+
+/* La frise : repères d'éliminations, rail, bande de dominance, curseur */
+.fr{position:relative;display:block;flex:1 1 auto;min-width:120px;margin:0 10px;height:var(--fh,30px);cursor:pointer;touch-action:none;
+  --tkh:8px;--rt:13px;--rh:4px;--dt:23px;--dh:3px;--ks:12px;--kt:9px}
+.b.mn .fr{min-width:240px}
+.fr .tk{position:absolute;left:0;right:0;top:0;height:var(--tkh);display:block}
+.fr .tk i{position:absolute;top:0;width:2px;height:var(--tkh);margin-left:-1px;border-radius:1px}
+.ta{background:var(--ally)}
+.tb{background:var(--enemy)}
+.fr .rl{position:absolute;left:0;right:0;top:var(--rt);height:var(--rh);border-radius:2px;background:var(--line-rail);display:block}
+.fr .rl i{position:absolute;left:0;top:0;bottom:0;width:calc(var(--p, 0) * 1%);border-radius:2px;background:var(--rail-fill)}
+.fr .dm{position:absolute;left:0;right:0;top:var(--dt);height:var(--dh);display:flex;border-radius:2px;overflow:hidden}
+.fr .dm i{display:block;height:100%}
+.da{background:var(--ally)}
+.db{background:var(--enemy)}
+.dn{background:var(--neutral)}
+.fr .kn{position:absolute;top:var(--kt);width:var(--ks);height:var(--ks);left:calc(var(--p, 0) * 1% - var(--ks) / 2);border-radius:50%;
+  background:var(--knob);box-shadow:0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent)}
+.fine .fr{--fh:24px;--tkh:6px;--rt:8px;--rh:3px;--dt:14px;--dh:2px;--ks:10px;--kt:4.5px}
+.filet{position:absolute;left:0;right:0;bottom:0;height:10px;z-index:4;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.filet.vu{opacity:1;pointer-events:auto}
+.fr.mince{--fh:10px;--tkh:4px;--rt:4px;--rh:3px;--dt:8px;--dh:2px;--ks:8px;--kt:1px;margin:0;min-width:0}
+.fr.mince .kn{box-shadow:0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent)}
+
+/* Les deux chiffres et la phrase de coût */
+.chiffres{display:flex;flex-wrap:wrap;gap:6px 44px;margin:20px 0 6px}
+.chiffre{margin:0;color:var(--text-mute);font-size:16px}
+.chiffre b{display:inline-block;margin-left:6px;color:var(--text);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.cout{margin:6px 0 0;max-width:80ch;color:var(--text-soft);font-size:17px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/></symbol>
+<symbol id="i-son" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></symbol>
+<symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-rst" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></symbol>
+<symbol id="i-cap" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-exp" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-c1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/></symbol>
+<symbol id="i-c2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2.5"/></symbol>
+<symbol id="i-c3" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5"/><rect x="7" y="8" width="10" height="8" rx="1" class="fpl"/></symbol>
+<symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+</defs></svg>
+
+<main class="page">
+<h1>Barre de lecture du rejeu</h1>
+<p class="accroche">Essayer chaque réglage, puis dire lequel garder.</p>
+
+<section class="reglages" aria-label="Réglages" id="reglages">
+  <div role="group" aria-labelledby="g-barre"><span class="gl" id="g-barre">Barre au Plein cadre</span><div class="boutons" id="r-barre"></div></div>
+  <div role="group" aria-labelledby="g-place"><span class="gl" id="g-place">Quand la place manque</span><div class="boutons" id="r-place"></div></div>
+  <div role="group" aria-labelledby="g-larg"><span class="gl" id="g-larg">Largeur de la fenêtre</span>
+    <div class="largeur">
+      <input type="range" id="largeur" min="1100" max="1700" step="10" value="1440" aria-label="Largeur de la fenêtre en pixels">
+      <output id="l-val" for="largeur">1 440 px</output>
+      <span class="boutons" id="r-W"></span>
+      <label class="case"><input type="checkbox" id="col" checked>Fiches en colonne</label>
+    </div>
+  </div>
+</section>
+
+<div class="scene" id="scene"><div class="echelle" id="echelle">
+<div class="fen" id="fen" style="--w:1440">
+  <div class="fen-tete"><i class="sk-bar" style="width:34px"></i><i class="sk-bar" style="width:150px"></i><i class="sk-bar s" style="width:90px;margin-left:auto"></i></div>
+  <div class="fiches" id="fiches"></div>
+  <div class="corps">
+    <section class="carte" id="carte">
+      <div class="plan" id="plan">
+        <svg class="mapsvg" id="mapsvg" viewBox="0 0 100 109" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <rect x="0" y="0" width="100" height="109" class="m-sol"/>
+          <rect x="8" y="10" width="30" height="22" class="m-zone"/><rect x="58" y="14" width="30" height="26" class="m-zone"/>
+          <rect x="30" y="46" width="40" height="22" class="m-zone"/><rect x="10" y="74" width="34" height="24" class="m-zone"/><rect x="62" y="72" width="28" height="24" class="m-zone"/>
+          <path d="M4 6H96V103H4z M38 10V46 M58 14V40 M30 68V100 M70 46V72 M10 36H46 M54 40H90 M44 74H62" class="m-mur"/>
+          <g id="pions"></g>
+        </svg>
+        <div class="flash" id="flash"></div>
+        <div class="fil" id="fil" aria-label="Éliminations" role="log"></div>
+      </div>
+      <div class="filet" id="filet"><span class="fr mince" data-fr></span></div>
+      <div class="b" id="barre">
+        <button type="button" class="rb cam" data-act="camera" aria-label="Caméra"><svg class="ic"><use href="#i-cam"/></svg></button>
+        <span class="snd"><button type="button" class="rb snd1" data-act="son" aria-label="Son"><svg class="ic"><use id="u-son" href="#i-son"/></svg></button><span class="vol" id="vol" aria-label="Volume"><i></i></span></span>
+        <span class="sep"></span>
+        <button type="button" class="play" data-act="lecture" aria-label="Lecture ou pause"><svg class="ic"><use id="u-play" href="#i-pause"/></svg></button>
+        <button type="button" class="rb gh" data-act="debut" aria-label="Recommencer"><svg class="ic"><use href="#i-rst"/></svg></button>
+        <button type="button" class="rb bd" data-act="moins" aria-label="Reculer de 10 secondes">&minus;10</button>
+        <button type="button" class="rb bd" data-act="plus10" aria-label="Avancer de 10 secondes">+10</button>
+        <span class="clk" id="horloge"></span>
+        <button type="button" class="ap on" id="auto-b" data-g="a" data-act="auto" aria-label="Lecture automatique">
+          <svg viewBox="0 0 28 16" aria-hidden="true" class="auto"><rect x="1" y="1" width="26" height="14" rx="7" class="auto-f"/><circle id="auto-c" cx="19" cy="8" r="5" class="auto-c"/></svg></button>
+        <span class="fr-slot" id="slot"><span class="fr" data-fr id="frise" role="slider" tabindex="0" aria-label="Position de lecture"></span></span>
+        <span class="plusw"><button type="button" class="rb" id="plus-b" data-act="plus" aria-label="Plus de commandes" aria-expanded="false"><svg class="ic"><use href="#i-plus"/></svg></button><div class="menu" id="menu" hidden></div></span>
+        <button type="button" class="spd" data-g="a" data-act="vitesse" aria-label="Vitesse"><span id="vit">1&times;</span><svg class="ic"><use href="#i-chev"/></svg></button>
+        <span class="sep" data-g="c"></span>
+        <span class="zm" data-g="a"><button type="button" class="rb gh tx" id="zm-" data-act="zoom-" aria-label="Zoom arrière">&minus;</button><button type="button" class="rb gh tx" id="zm+" data-act="zoom+" aria-label="Zoom avant">+</button></span>
+        <span class="sep" data-g="a"></span>
+        <span class="cap" data-g="a"><button type="button" class="cb" data-act="capture" aria-label="Capture"><svg class="ic"><use href="#i-cap"/></svg></button><button type="button" class="cb pri" data-act="export" aria-label="Exporter"><svg class="ic"><use href="#i-exp"/></svg></button></span>
+        <span class="frm" data-g="c">
+          <button type="button" class="fb" data-act="cadre1" aria-label="Standard" title="Standard"><svg class="ic"><use href="#i-c1"/></svg></button>
+          <button type="button" class="fb on" data-act="cadre2" aria-label="Cinéma" title="Cinéma"><svg class="ic"><use href="#i-c2"/></svg></button>
+          <button type="button" class="fb" data-act="cadre3" aria-label="Plein cadre" title="Plein cadre"><svg class="ic"><use href="#i-c3"/></svg></button>
+          <span class="fsep"></span>
+          <button type="button" class="fb" data-act="plein" aria-label="Plein écran"><svg class="ic"><use href="#i-full"/></svg></button>
+        </span>
+      </div>
+    </section>
+    <aside class="colonne" id="colonne"></aside>
+  </div>
+</div>
+</div></div>
+
+<div class="chiffres" aria-live="polite">
+  <p class="chiffre">Hauteur libre du plan :<b id="n-haut"></b></p>
+  <p class="chiffre">Largeur de la frise :<b id="n-frise"></b></p>
+</div>
+<p class="cout" id="cout"></p>
+</main>
+
+<script>
+// Prototype : un faux lecteur de rejeu piloté par les réglages du haut. Aucune donnée réelle.
+const DUREE = 465            // durée du match en secondes (7:45)
+const HAUT = 900             // hauteur de la fenêtre de référence, en px
+const ZONE = 72              // zone de survol du bas du plan, en px
+const DELAI = 1500           // attente avant repli de la barre, en ms
+const FENETRE = 30           // un frag reste dans le fil pendant 30 s de lecture
+const VITESSES = [0.5, 1, 2, 4]
+const ZOOMS = [1, 1.25, 1.5, 2]
+const $ = (id) => document.getElementById(id)
+const fmt = (n) => Math.round(n).toLocaleString('fr-FR')
+const hms = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0')
+
+// État unique : réglages du haut et état de lecture.
+const E = { barre: 'replie', place: 'menu', W: 1440, col: true, t: 231, iv: 1, lecture: true, auto: true,
+  muet: false, vol: 0.6, zoom: 0, cadre: 2, menu: false, pal: 0, replie: null, sale: true }
+
+const fen = $('fen'), carte = $('carte'), plan = $('plan'), barre = $('barre'), slot = $('slot')
+const fil = $('fil'), menu = $('menu'), scene = $('scene'), echelleEl = $('echelle')
+let dernier = performance.now()   // dernier instant de survol du bas du plan ou de touche
+let dansZone = false              // le pointeur est dans la zone du bas du plan
+
+// Générateur pseudo-aléatoire à graine : le même match à chaque chargement.
+let graine = 7
+const alea = () => (graine = (graine * 16807) % 2147483647) / 2147483647
+
+// Éliminations : 40 événements répartis sur la durée, deux camps de quatre joueurs inventés.
+const evt = Array.from({ length: 40 }, (_, i) => {
+  const camp = alea() < 0.6 ? 0 : 1
+  return { id: i, camp, t: (i + 0.5 + (alea() - 0.5) * 0.6) * DUREE / 40,
+    tueur: camp * 4 + 1 + Math.floor(alea() * 4), victime: (1 - camp) * 4 + 1 + Math.floor(alea() * 4) }
+})
+const DOMINANCE = [['db', 3], ['dn', 1], ['db', 16], ['dn', 6], ['da', 74]]
+
+// ---------- Construction des éléments répétés ----------
+const REGLAGES = [
+  { cle: 'barre', opts: [['fixe', 'Fixe (aujourd’hui)', ''], ['replie', 'Se replie', 'D'], ['fine', 'Fine et translucide', 'C']] },
+  { cle: 'place', opts: [['aujourdhui', 'Aujourd’hui', ''], ['menu', 'Menu plus', 'A'], ['deux', 'Deux lignes', 'B']] },
+  { cle: 'W', opts: [[1280, '1 280'], [1440, '1 440'], [1536, '1 536']] },
+]
+for (const r of REGLAGES) {
+  $('r-' + r.cle).innerHTML = r.opts.map(([v, txt, l]) =>
+    `<button type="button" data-cle="${r.cle}" data-val="${v}">${l ? `<span class="lettre">${l}</span>` : ''}${txt}</button>`).join('')
+}
+
+function construireFrise(fr) {
+  const reperes = evt.map((v) => `<i class="${v.camp ? 'tb' : 'ta'}" style="left:${(v.t / DUREE * 100).toFixed(2)}%"></i>`).join('')
+  const dom = DOMINANCE.map(([c, l]) => `<i class="${c}" style="width:${l}%"></i>`).join('')
+  fr.innerHTML = `<span class="tk">${reperes}</span><span class="rl"><i></i></span><span class="dm">${dom}</span><span class="kn"></span>`
+}
+document.querySelectorAll('[data-fr]').forEach(construireFrise)
+
+const pions = Array.from({ length: 8 }, (_, i) => {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+  el.setAttribute('r', 2.4)
+  el.setAttribute('class', 'pion ' + (i < 4 ? 'a' : 'b'))
+  $('pions').appendChild(el)
+  return { el, ax: 14 + alea() * 26, ay: 16 + alea() * 26, w: 0.18 + alea() * 0.22, v: 0.15 + alea() * 0.2, p: alea() * 6.3, q: alea() * 6.3 }
+})
+
+$('fiches').innerHTML = Array.from({ length: 6 }, (_, i) =>
+  `<div class="fiche"><i class="sk-bar" style="width:${50 + i * 8}px"></i><i class="sk-bar s" style="width:${90 - i * 6}px"></i></div>`).join('')
+const ligneCol = (c, l) => `<div class="sk-row">${c ? `<i class="sk-dot ${c}"></i>` : ''}<i class="sk-bar" style="width:${l}px"></i><i class="sk-bar s" style="width:30px"></i></div>`
+$('colonne').innerHTML = [58, 67, 76, 85].map((l) => ligneCol('a', l)).join('') + '<div class="sk-gap"></div>' +
+  [64, 77, 90, 73].map((l) => ligneCol('b', l)).join('') + '<div class="sk-gap"></div>' + [70, 70, 70].map((l) => ligneCol('', l)).join('')
+
+// ---------- Lecture : dessin d'une image ----------
+let dernierTexte = ''
+function dessiner() {
+  fen.style.setProperty('--p', (E.t / DUREE * 100).toFixed(3))
+  const txt = `<b>${hms(E.t)}</b> / ${hms(DUREE)}`
+  if (txt !== dernierTexte) { $('horloge').innerHTML = txt; dernierTexte = txt }
+  for (const q of pions) {
+    const x = 50 + q.ax * Math.sin(q.w * E.t + q.p), y = 54 + q.ay * Math.cos(q.v * E.t + q.q)
+    q.el.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`)
+  }
+  dessinerFil()
+}
+
+// Le fil montre les frags des 30 dernières secondes de lecture, quatre lignes au plus.
+const lignes = new Map()
+function ligne(v, anime) {
+  const el = document.createElement('div')
+  el.className = 'li' + (anime ? ' neuf' : '')
+  const k = v.camp ? 'b' : 'a', c = v.camp ? 'a' : 'b'
+  el.innerHTML = `<span class="kp ${k}">Joueur ${v.tueur}</span><span class="fl">›</span><span class="kp ${c}">Joueur ${v.victime}</span>`
+  return el
+}
+function dessinerFil() {
+  const vus = evt.filter((v) => v.t <= E.t && E.t - v.t < FENETRE).slice(-4)
+  for (const [id, el] of lignes) if (!vus.some((v) => v.id === id)) { el.remove(); lignes.delete(id) }
+  const dernierId = Math.max(-1, ...lignes.keys())
+  const neufs = vus.filter((v) => !lignes.has(v.id))
+  const refaire = neufs.some((v) => v.id < dernierId)   // retour en arrière : on reconstruit sans animation
+  if (refaire) { fil.textContent = ''; lignes.clear() }
+  for (const v of refaire ? vus : neufs) { const el = ligne(v, !refaire); lignes.set(v.id, el); fil.appendChild(el) }
+  for (const v of vus) lignes.get(v.id).style.opacity = (1 - 0.6 * (E.t - v.t) / FENETRE).toFixed(2)
+}
+
+// ---------- Échelle : le lecteur est dessiné à sa largeur réelle puis réduit ----------
+function echelle() {
+  const k = Math.min(1, scene.clientWidth / E.W)
+  fen.style.transform = `scale(${k})`
+  echelleEl.style.width = E.W * k + 'px'
+  echelleEl.style.height = HAUT * k + 'px'
+}
+
+// ---------- Mise en page de la barre ----------
+// Largeur des commandes visibles hors frise, écarts et marges latérales compris.
+function fixe() {
+  const cs = getComputedStyle(barre)
+  const v = [...barre.children].filter((e) => e !== slot && e.offsetWidth > 0)
+  return v.reduce((s, e) => s + e.offsetWidth, 0) + (parseFloat(cs.columnGap) || 0) * v.length + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+}
+// Variante A : premier palier sous (fixe complet + 260), second sous (fixe du premier palier + 260) ; 260 = frise 240 + marges 20.
+function palier() {
+  barre.classList.remove('p1', 'p2')
+  if (E.place !== 'menu') return 0
+  const largeur = carte.clientWidth
+  const f0 = fixe()
+  barre.classList.add('p1')
+  const f1 = fixe()
+  barre.classList.remove('p1')
+  const n = largeur < f1 + 260 ? 2 : largeur < f0 + 260 ? 1 : 0
+  if (n >= 1) barre.classList.add('p1')
+  if (n >= 2) barre.classList.add('p2')
+  return n
+}
+function basFil() {
+  const h = E.barre === 'fixe' ? 0 : E.barre === 'replie' && E.replie ? 10 : barre.offsetHeight
+  plan.style.setProperty('--fil-bas', h + 10 + 'px')
+}
+
+function appliquer() {
+  document.querySelectorAll('[data-cle]').forEach((b) => b.setAttribute('aria-pressed', String(String(E[b.dataset.cle]) === b.dataset.val)))
+  $('largeur').value = E.W
+  $('l-val').textContent = fmt(E.W) + ' px'
+  $('col').checked = E.col
+  fen.style.setProperty('--w', E.W)
+  fen.classList.toggle('sans-col', !E.col)
+  barre.classList.toggle('sur', E.barre !== 'fixe')
+  barre.classList.toggle('fine', E.barre === 'fine')
+  barre.classList.toggle('deux', E.place === 'deux')
+  barre.classList.toggle('mn', E.place === 'menu')
+  E.menu = false
+  echelle()
+  E.pal = palier()
+  dernier = performance.now()
+  majRepli(dernier)
+  basFil()
+  majEtats()
+  chiffres()
+}
+
+// Les deux chiffres, mesurés sur le lecteur réel, et la phrase de coût de la combinaison choisie.
+function chiffres() {
+  const h = barre.offsetHeight, fw = $('frise').offsetWidth
+  $('n-haut').textContent = fmt(plan.offsetHeight) + ' px'
+  $('n-frise').textContent = fmt(fw) + ' px'
+  const fb = { fixe: `la barre prend ${h} px sous le plan`,
+    replie: `la barre recouvre ${h} px du bas du plan quand elle est dépliée`,
+    fine: `la barre fine recouvre ${h} px du bas du plan en permanence` }[E.barre]
+  const d = Math.max(0, barre.scrollWidth - barre.clientWidth)
+  let fp
+  if (E.place === 'deux') {
+    const rangs = new Set([...barre.children].filter((e) => e.offsetWidth > 0).map((e) => Math.round(e.offsetTop + e.offsetHeight / 2)))
+    fp = `la frise passe seule sur la première ligne et la barre compte ${rangs.size} lignes`
+  } else if (E.place === 'menu') {
+    fp = ['toutes les commandes restent visibles',
+      'lecture automatique, vitesse, zoom, capture et volume demandent un clic de plus',
+      'lecture automatique, vitesse, zoom, capture, volume et icônes de cadre demandent un clic de plus'][E.pal]
+  } else {
+    const rec = Math.max(0, 10 + fw - slot.offsetWidth)
+    fp = rec > 0 ? `la frise de ${fw} px recouvre ${rec} px de commandes à droite` : 'les commandes tiennent sur la barre'
+  }
+  if (d > 2 && E.place !== 'deux') fp += ` et ${fmt(d)} px de commandes dépassent du bord droit`
+  const phrase = fb + ' ; ' + fp + '.'
+  $('cout').textContent = phrase[0].toUpperCase() + phrase.slice(1)
+}
+
+// ---------- Repli de la barre (variante D) ----------
+// Replie après DELAI sans survol du bas du plan ni touche, seulement en lecture ; dépliée en pause ou menu ouvert.
+function majRepli(now) {
+  let rep = false
+  if (E.barre === 'replie') {
+    if (dansZone || E.menu) dernier = now
+    rep = E.lecture && now - dernier >= DELAI
+  }
+  if (rep !== E.replie) {
+    E.replie = rep
+    barre.classList.toggle('replie', rep)
+    $('filet').classList.toggle('vu', rep)
+    basFil()
+  }
+}
+function enZone(e) {
+  const r = carte.getBoundingClientRect()
+  return (r.bottom - e.clientY) * carte.offsetHeight / r.height <= Math.max(ZONE, barre.offsetHeight)
+}
+carte.addEventListener('pointermove', (e) => { dansZone = enZone(e) })
+carte.addEventListener('pointerleave', () => { dansZone = false })
+// Sur un écran tactile, un appui sur le bas du plan déplie la barre pendant DELAI.
+carte.addEventListener('pointerdown', (e) => { dansZone = enZone(e); if (dansZone) dernier = performance.now() })
+
+// ---------- Actions de la barre et du menu « plus » ----------
+function saut(d) { E.t = Math.min(DUREE, Math.max(0, E.t + d)) }
+function flash() {
+  const f = $('flash')
+  f.classList.add('on')
+  requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')))
+}
+function agir(a) {
+  if (a === 'lecture') E.lecture = !E.lecture
+  else if (a === 'debut') E.t = 0
+  else if (a === 'moins') saut(-10)
+  else if (a === 'plus10') saut(10)
+  else if (a === 'auto') E.auto = !E.auto
+  else if (a === 'vitesse') E.iv = (E.iv + 1) % VITESSES.length
+  else if (a === 'zoom-') E.zoom = Math.max(0, E.zoom - 1)
+  else if (a === 'zoom+') E.zoom = Math.min(ZOOMS.length - 1, E.zoom + 1)
+  else if (a === 'capture' || a === 'export') flash()
+  else if (a === 'son') E.muet = !E.muet
+  else if (a === 'plus') E.menu = !E.menu
+  else if (a.startsWith('cadre')) E.cadre = Number(a.slice(5))
+  majEtats()
+}
+// Met à jour les commandes qui montrent un état (icône lecture, vitesse, zoom, son, cadre, menu).
+function majEtats() {
+  $('u-play').setAttribute('href', E.lecture ? '#i-pause' : '#i-play')
+  $('u-son').setAttribute('href', E.muet ? '#i-mute' : '#i-son')
+  $('auto-c').setAttribute('cx', E.auto ? 19 : 9)
+  $('auto-b').classList.toggle('on', E.auto)
+  $('vit').textContent = String(VITESSES[E.iv]).replace('.', ',') + '×'
+  $('vol').style.setProperty('--v', E.muet ? 0 : E.vol)
+  $('zm-').disabled = E.zoom === 0
+  $('zm+').disabled = E.zoom === ZOOMS.length - 1
+  $('mapsvg').style.setProperty('--z', ZOOMS[E.zoom])
+  document.querySelectorAll('.fb[data-act^="cadre"]').forEach((b) => b.classList.toggle('on', Number(b.dataset.act.slice(5)) === E.cadre))
+  menu.hidden = !E.menu
+  $('plus-b').setAttribute('aria-expanded', String(E.menu))
+  if (E.menu) peindreMenu()
+  E.sale = true
+}
+// Le menu « plus » : ce qui a quitté la barre au palier courant.
+function peindreMenu() {
+  const b = (a, txt, on, off) => `<button type="button" class="mi${on ? ' on' : ''}" data-act="${a}"${off ? ' disabled' : ''}>${txt}</button>`
+  const rangs = [
+    [b('auto', 'Lecture automatique : ' + (E.auto ? 'oui' : 'non'), E.auto)],
+    [b('vitesse', 'Vitesse : ' + String(VITESSES[E.iv]).replace('.', ',') + '×')],
+    [b('zoom-', 'Zoom −', false, E.zoom === 0), b('zoom+', 'Zoom +', false, E.zoom === ZOOMS.length - 1)],
+    [b('capture', 'Capture'), b('export', 'Export')],
+    [b('son', 'Volume : ' + (E.muet ? 'coupé' : 'activé'), !E.muet)],
+  ]
+  const CADRES = ['Standard', 'Cinéma', 'Plein cadre']
+  if (E.pal >= 2) rangs.push([1, 2, 3].map((n) => b('cadre' + n, CADRES[n - 1], E.cadre === n)))
+  menu.innerHTML = rangs.map((r) => `<div class="mrow">${r.join('')}</div>`).join('')
+}
+
+// ---------- Événements ----------
+$('reglages').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-cle]')
+  if (!b) return
+  E[b.dataset.cle] = isNaN(b.dataset.val) ? b.dataset.val : Number(b.dataset.val)
+  appliquer()
+})
+$('largeur').addEventListener('input', (e) => { E.W = Number(e.target.value); appliquer() })
+$('col').addEventListener('change', (e) => { E.col = e.target.checked; appliquer() })
+
+// Un seul gestionnaire de clic : commandes du lecteur, fermeture du menu, retrait du focus après un clic souris.
+document.addEventListener('click', (e) => {
+  const dedans = e.target.closest('.plusw')
+  const cmd = e.target.closest('[data-act]')
+  const bouton = e.target.closest('button')
+  if (E.menu && !dedans) E.menu = false
+  if (cmd && fen.contains(cmd)) agir(cmd.dataset.act)
+  else majEtats()
+  if (bouton && e.detail > 0) bouton.blur()   // Espace doit alors mettre en pause, pas réactiver le bouton
+})
+$('vol').addEventListener('click', (e) => {
+  const r = $('vol').getBoundingClientRect()
+  E.vol = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+  E.muet = false
+  majEtats()
+})
+
+// Frise : un clic ou un glisser déplace le curseur.
+function chercher(e, fr) {
+  const r = fr.getBoundingClientRect()
+  E.t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * DUREE
+  E.sale = true
+}
+document.querySelectorAll('[data-fr]').forEach((fr) => {
+  fr.addEventListener('pointerdown', (e) => { fr.setPointerCapture(e.pointerId); dernier = performance.now(); chercher(e, fr) })
+  fr.addEventListener('pointermove', (e) => { if (fr.hasPointerCapture(e.pointerId)) chercher(e, fr) })
+})
+
+document.addEventListener('keydown', (e) => {
+  dernier = performance.now()   // toute touche déplie la barre repliée
+  if (e.target.closest('input')) return
+  if (e.key === 'Escape' && E.menu) { E.menu = false; majEtats() }
+  else if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); agir('lecture') }
+  else if (e.key === 'ArrowLeft') { saut(-10); E.sale = true }
+  else if (e.key === 'ArrowRight') { saut(10); E.sale = true }
+})
+window.addEventListener('resize', () => { echelle() })
+
+// ---------- Boucle d'animation ----------
+let prec = performance.now()
+function boucle(ts) {
+  const dt = Math.min(0.1, (ts - prec) / 1000)
+  prec = ts
+  if (E.lecture) {
+    E.t += dt * VITESSES[E.iv]
+    if (E.t >= DUREE) E.t %= DUREE   // la frise boucle à la fin
+  }
+  if (E.lecture || E.sale) { dessiner(); E.sale = false }
+  majRepli(ts)
+  requestAnimationFrame(boucle)
+}
+appliquer()
+dessiner()
+requestAnimationFrame(boucle)
+</script>

@@ -16,6 +16,7 @@ import type { FeedLinesText } from './feedLines.i18n'
 import type { EquipmentUsageText } from './equipmentUsage.i18n'
 import type { FramesText } from './frames.i18n'
 import type { LivesText } from './lives.i18n'
+import type { ReliefText } from './relief.i18n'
 import type { PlayerInstantText } from './playerInstant.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { RespawnForecastText } from './respawnForecast.i18n'
@@ -200,6 +201,8 @@ export interface ReplayText {
   playerInstant: PlayerInstantText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
+  /** Le fond « Relief », ses traits et la commande d'étage du panneau de la vue : `relief.i18n.ts`. */
+  relief: ReliefText
   /** La probabilité de réapparition (interrupteur du groupe « Vies » et textes du calque) : `respawnForecast.i18n.ts`. */
   respawnForecast: RespawnForecastText
   /** Les lignes d'objectif du fil hors action nommée (badge, assistances, manche, crâne, colline) : `feedLines.i18n.ts`. */
@@ -663,12 +666,6 @@ export interface ReplayText {
    */
   teamLabelFmt: (name: string) => string
   teamNumberedFmt: (n: number) => string
-  /**
-   * LE SCORE PERSONNEL À L'INSTANT LU (schéma 12) — celui du joueur sur sa fiche. Ce n'est
-   * PAS le score final : il tique avec la lecture. Le score d'ÉQUIPE, lui, ne vit plus
-   * qu'au bandeau (les chiffres en tête de colonne sont partis le 2026-08-24).
-   */
-  playerScoreLive: string
   /** Frags / morts / assistances : deux grandeurs qui ne se confondent pas. */
   countersLive: string
   countersMatch: string
@@ -892,6 +889,8 @@ export interface ReplayText {
    */
   grenadeAge: string
   grenadeAhead: string
+  /** Type de grenade sans nom au catalogue du document : le rang lu reste écrit, il est la seule chose de vraie. */
+  grenadeRank: (rank: number) => string
   /**
    * Capacité absente de la table du titre : la fiche pose un GLYPHE NEUTRE (pas un
    * caractère, décision utilisateur du 16/08) et dit en infobulle ce qu'on ne sait pas —

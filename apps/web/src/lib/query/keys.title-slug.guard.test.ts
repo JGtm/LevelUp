@@ -60,10 +60,12 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchObjectiveEvents: () => queryKeys.matchObjectiveEvents(P, T, 'm'),
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
-  matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm'),
+  matchReplayContext: () => queryKeys.matchReplayContext(P, T, 'm', 'fr'),
   playerSyncStatus: () => queryKeys.playerSyncStatus(P, T),
   matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
   matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
+  matchReplayReliefData: () => queryKeys.matchReplayReliefData(P, T, 'm'),
+  matchReplayReliefImage: () => queryKeys.matchReplayReliefImage(P, T, 'm'),
   matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
   matchReplaySpawnForecast: () => queryKeys.matchReplaySpawnForecast(P, T, 'm', 'fr'),
   // Engagement.
@@ -87,6 +89,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
   tacticalMapBackground: () => queryKeys.tacticalMapBackground(T, 'map-1'),
   tacticalMapBackgroundFrame: () => queryKeys.tacticalMapBackgroundFrame(T, 'map-1'),
+  tacticalMapReliefData: () => queryKeys.tacticalMapReliefData(T, 'map-1'),
+  tacticalMapReliefImage: () => queryKeys.tacticalMapReliefImage(T, 'map-1'),
+  tacticalMapBackgroundElement: () => queryKeys.tacticalMapBackgroundElement(T, 'map-1'),
   // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
   // même raison que `tacticalMaps`.
   tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h', 'fr'),

@@ -158,7 +158,7 @@ func TestBuildCombatTabFull_MedalsOnlyEvents_UsesKVPairsSynthetic(t *testing.T) 
 		{XUID: me, Kills: 2, Deaths: 1, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 1, Deaths: 2, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, durationMS: 60000, locale: i18n.Default}, events, nil, kvPairs, scoreboard)
+	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, timeline: domain.NewMatchTimeline(60000, 0), locale: i18n.Default}, events, nil, kvPairs, scoreboard)
 
 	// KD timeline du joueur : 2 kills + 1 death = 3 points.
 	if len(tab.KDTimeline) == 0 {
@@ -199,7 +199,7 @@ func TestBuildCombatTabFull_RealKillEvents_NoSynthetic(t *testing.T) {
 		{XUID: me, Kills: 1, Deaths: 0, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 0, Deaths: 1, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, durationMS: 60000, locale: i18n.Default}, events, nil, kvPairs, scoreboard)
+	tab := buildCombatTabFull(combatTabScope{matchID: "m1", myXUID: me, timeline: domain.NewMatchTimeline(60000, 0), locale: i18n.Default}, events, nil, kvPairs, scoreboard)
 	// Pas de synthèse : exactement les 2 events d'origine dans le kill-feed.
 	if len(tab.HighlightEvents) != 2 {
 		t.Errorf("HighlightEvents attendu 2 (events réels, pas de synthèse), obtenu %d", len(tab.HighlightEvents))

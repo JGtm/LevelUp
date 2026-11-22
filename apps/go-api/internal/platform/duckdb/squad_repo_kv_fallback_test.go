@@ -6,7 +6,7 @@
 //
 // Cause racine couverte : en Halo 5, highlight_events ne porte QUE des médailles
 // (les kills horodatés vivent dans killer_victim_pairs). Sans fallback, les
-// builders Escouade (first events, intensité, matrice d'impact) restent vides.
+// builders Escouade (first events, intensité, tableau d'impact par session) restent vides.
 package duckdb
 
 import (

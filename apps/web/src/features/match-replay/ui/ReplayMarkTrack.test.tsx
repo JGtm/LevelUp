@@ -120,3 +120,146 @@ describe('ReplayMarkTrack — le badge de médaille (décision D7, 2026-09-09)',
     expect(queryByRole('img')).toBeNull()
   })
 })
+
+/**
+ * SUR LA RANGÉE DU JOUEUR REGARDÉ, LE SENS SE LIT À LA POSITION.
+ *
+ * Sur la rangée du joueur regardé (`tall`, vingt-quatre pixels), une élimination se pose dans la
+ * moitié HAUTE et une mort dans la moitié BASSE : la position dit le sens sans l'aide de la
+ * couleur. La rangée des coéquipiers (quatorze pixels) ne change pas.
+ *
+ * Le test lit la bande verticale dans les classes de la marque (`top-*` et `h-*`, échelle Tailwind
+ * de quatre pixels par unité, ou valeur entre crochets) : jsdom ne calcule pas de feuille de style.
+ * La boîte lue est celle de la marque avant rotation ; le losange tourné occupe sa diagonale, qui
+ * tient aussi dans la moitié (6 px de côté, 8,5 px en travers, centré à 6 ou à 18).
+ */
+const TALL_PX = 24
+
+function px(className: string, prefix: 'top' | 'h'): number {
+  const nombre = String.raw`(\d+(?:\.\d+)?)`
+  const m = new RegExp(String.raw`(?:^|\s)${prefix}-(?:\[${nombre}px\]|${nombre})(?:\s|$)`).exec(className)
+  if (!m) throw new Error(`classe ${prefix}-* absente de « ${className} »`)
+  return m[1] !== undefined ? Number(m[1]) : Number(m[2]) * 4
+}
+
+/** La bande verticale [haut, bas] d'une marque, en pixels depuis le haut de la rangée. */
+function bande(el: Element | null): readonly [number, number] {
+  const cls = el?.getAttribute('class') ?? ''
+  const top = px(cls, 'top')
+  return [top, top + px(cls, 'h')]
+}
+
+function enHaut([a, b]: readonly [number, number]): boolean {
+  return a >= 0 && b <= TALL_PX / 2
+}
+function enBas([a, b]: readonly [number, number]): boolean {
+  return a >= TALL_PX / 2 && b <= TALL_PX
+}
+
+describe('ReplayMarkTrack — élimination en haut, mort en bas', () => {
+  it('sur la rangée regardée, une élimination se pose dans la moitié haute', () => {
+    const { container } = render(
+      <ReplayMarkTrack marks={[mark({ key: 'k', kind: 'kill', clock: '1:00' })]} height="h-[24px]" tall />,
+    )
+    expect(enHaut(bande(container.querySelector('[title="1:00"]')))).toBe(true)
+  })
+
+  it('sur la rangée regardée, une mort se pose dans la moitié basse', () => {
+    const { container } = render(
+      <ReplayMarkTrack marks={[mark({ key: 'd', kind: 'death', clock: '1:10' })]} height="h-[24px]" tall />,
+    )
+    expect(enBas(bande(container.querySelector('[title="1:10"]')))).toBe(true)
+  })
+
+  it('un losange ami suit la même règle : haut pour une élimination, bas pour une mort', () => {
+    const { container } = render(
+      <ReplayMarkTrack
+        marks={[
+          mark({ key: 'ka', kind: 'kill', clock: '2:00', friend: true }),
+          mark({ key: 'da', kind: 'death', clock: '2:10', friend: true }),
+        ]}
+        height="h-[24px]"
+        tall
+      />,
+    )
+    const haut = container.querySelector('[title="2:00"]')
+    const bas = container.querySelector('[title="2:10"]')
+    expect(haut?.className).toContain('rotate-45')
+    expect(enHaut(bande(haut))).toBe(true)
+    expect(enBas(bande(bas))).toBe(true)
+  })
+
+  it("l'élimination et la mort ne se recouvrent pas : deux bandes distinctes", () => {
+    const { container } = render(
+      <ReplayMarkTrack
+        marks={[
+          mark({ key: 'k', kind: 'kill', clock: '3:00' }),
+          mark({ key: 'd', kind: 'death', clock: '3:00 ' }),
+        ]}
+        height="h-[24px]"
+        tall
+      />,
+    )
+    const [, finHaut] = bande(container.querySelector('[title="3:00"]'))
+    const [debutBas] = bande(container.querySelector('[title="3:00 "]'))
+    expect(finHaut).toBeLessThan(debutBas)
+  })
+
+  it("l'encre reste celle d'aujourd'hui : alliée pour une élimination, adverse pour une mort", () => {
+    const { container } = render(
+      <ReplayMarkTrack
+        marks={[
+          mark({ key: 'k', kind: 'kill', clock: '4:00' }),
+          mark({ key: 'd', kind: 'death', clock: '4:10' }),
+        ]}
+        height="h-[24px]"
+        tall
+      />,
+    )
+    expect(container.querySelector<HTMLElement>('[title="4:00"]')?.style.background).toContain('--ac-team-ally')
+    expect(container.querySelector<HTMLElement>('[title="4:10"]')?.style.background).toContain('--ac-team-enemy')
+  })
+
+  it('la rangée des COÉQUIPIERS ne change pas : mêmes bandes pour une élimination et une mort', () => {
+    const { container } = render(
+      <ReplayMarkTrack
+        marks={[
+          mark({ key: 'k', kind: 'kill', clock: '5:00' }),
+          mark({ key: 'd', kind: 'death', clock: '5:10' }),
+          mark({ key: 'f', kind: 'kill', clock: '5:20', friend: true }),
+        ]}
+        height="h-3.5"
+        tall={false}
+      />,
+    )
+    expect(container.querySelector('[title="5:00"]')?.className).toBe(
+      'pointer-events-none absolute -translate-x-1/2 top-1 h-1.5 w-[2px] rounded-[2px] opacity-65',
+    )
+    expect(container.querySelector('[title="5:10"]')?.className).toBe(
+      'pointer-events-none absolute -translate-x-1/2 top-1 h-1.5 w-[2px] rounded-[2px] opacity-65',
+    )
+    expect(container.querySelector('[title="5:20"]')?.className).toBe(
+      'pointer-events-none absolute -translate-x-1/2 top-[4px] h-1.5 w-1.5 rotate-45 rounded-[2px] opacity-65',
+    )
+  })
+
+  it("le badge de médaille reste à côté de sa marque d'élimination : même abscisse, et la marque tient dans la hauteur du badge", () => {
+    const { container, getByRole } = render(
+      <ReplayMarkTrack
+        marks={[mark({ key: 'k', kind: 'kill', clock: '6:00', ratio: 0.4, medals: [medal({ label: 'Doublé' })] })]}
+        height="h-[24px]"
+        tall
+      />,
+    )
+    const marque = container.querySelector<HTMLElement>('[title="6:00 — Doublé"]')
+    const conteneur = getByRole('img', { name: 'Doublé' }).parentElement as HTMLElement
+    expect(conteneur.style.left).toBe(marque?.style.left)
+    // Badge de seize pixels, posé à `top-*` : il enveloppe la bande de la marque.
+    const topBadge = px(conteneur.className, 'top')
+    const [a, b] = bande(marque)
+    expect(topBadge).toBeLessThanOrEqual(a)
+    expect(topBadge + 16).toBeGreaterThanOrEqual(b)
+    // Et il suit la marque vers le haut : son centre est dans la moitié haute de la rangée.
+    expect(topBadge + 8).toBeLessThan(TALL_PX / 2)
+  })
+})

@@ -4,7 +4,10 @@ Statut : **rédigé le 2026-11-18 à la demande du user (« Je suis ok avec ça,
 consigne du user (2026-11-18) : « évitons les reports à plus tard, le but c'est de livrer une expérience
 complète ». GO DONNÉ le 2026-11-18 (« tu as mon go et je suis ok avec tes recos, par contre la version visée
 c'est la 8.3.0 ») : D-1 à D-10 retenues telles que recommandées, D-8 changée (8.3.0), D-11 changée (plan par mode
-en 8.3.1). Plan inscrit au plan maître de la 8.3.0 (nœuds N22 à N26).**
+en 8.3.1). Plan inscrit au plan maître de la 8.3.0 (nœuds N22 à N26).
+CLOS le 2026-11-22 : fusionné dans `release/v8.3.0` (`be0182b976`) avant le contrôle à l'écran, à la demande du
+user (« option 1 », puis « je ferais les contrôles plus tard, finissons ce chantier d'abord ») ; ce contrôle
+(Gate D) est inscrit à l'artefact des vérifications et reste dû avant `main`.**
 Contrat d'exécution : skill `plan-execution` (ordre strict dans chaque piste, un item clos et vérifié avant
 le suivant, aucune case vide à la clôture, zéro fix hors périmètre, découvertes en section 9). Grille relue :
 skill `plan-review` (section 11).
@@ -100,11 +103,30 @@ Chaque décision porte la proposition du pilote. Le go du user les confirme tout
   comment il fait »). Den découpe le plan selon le mode joué (volumes mortels, points d'apparition de la
   variante). Hors de ce plan ; ligne au `.ai/BACKLOG.md`.
 
+## 1 bis A. Décisions du Gate 0 (user, 2026-11-18 : « ok avec toutes tes recos, on est alignés »)
+
+- **D-3 bis — cerne deux tons des marqueurs, sur les trois fonds.** Le contour des marqueurs devient une bande
+  sombre bordée d'un filet clair (principe « contraste élevé » de Cartographer) : contraste ≥ 4,4:1 contre
+  tous les paliers des 7 teintes candidates sous les quatre visions (mesure du pilote, 0.3), quand le contour
+  actuel n'atteint 3:1 dans aucune des 1 280 combinaisons. Il change l'aspect validé des marqueurs de la refonte
+  du rejeu, avec l'accord du user. Item D.7.
+- **D-3 ter — teinte par palette** : Graphite `#6b7078` (défaut), Violet `#7559b5` (Okabe-Ito, Tol Bright),
+  Vert `#3f8c4f` (Cividis). Une seule valeur pour les deux thèmes.
+- **D-12 — le « dessus »** (conception §4.2, définition b) : quand le sol le plus haut du maillage dépasse le
+  dessus du rendu de plus de 0,3 u, il devient le dessus et le pixel porte le drapeau « sol tiré du maillage ».
+- **D-13 — poids** : environ +40 à 55 Mo dans le dossier des fonds, acceptés sans levier d'allègement.
+- **D-14 — libellé des étages sans unité** : rangs « Bas », « Étage 1 », « Étage 2 »… (une unité du jeu vaut
+  environ 3 m). Remplace les « +2,0 m » de la maquette D.1 ; l'infobulle devient « Étage 1 : 1 anneau ».
+- **D-15 — lumière** : toujours depuis le haut à gauche de l'écran, carte tournée ou non.
+- **D-16 — lecteur du drapeau D-6** : l'infobulle du fond Relief dit la part tirée du maillage (« relief tiré du
+  maillage de navigation sur 46 % de la carte »).
+- Format, drapeaux, seuils, projection et règle du suivi : ceux de `conception.md`, qui fait foi pour les lots A à D.
+
 ## 1 ter. Coordination avec les autres plans de la 8.3.0 (inscrite au plan maître)
 
 | Nœud du plan maître | Fichiers ou ressource | Règle |
 |---|---|---|
-| N22 | `settings/useMapViewPreferences.ts`, `features/tactical/TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`, `match-view/MatchPositionsHeatmap.tsx` | Plan du backlog du 18/11, item C.4 (orientation Auto hors du rejeu) d'abord ; D.4 de ce plan repart de son état fusionné |
+| N22 | `settings/useMapViewPreferences.ts`, `features/tactical/TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`, `match-view/MatchPositionsHeatmap.tsx` | Plan du backlog du 18/11, item C.4 (orientation Auto hors du rejeu) d'abord ; D.4 de ce plan repart de son état fusionné. C.4 fait le 2026-11-18 (`c5acd8f47e`, fusion en attente) : `useMapViewPreferences(mapId, zone?)`, règle Auto dans `lib/replay/useAutoTurned.ts` seul, neufs `lib/replay/useContentWidth.ts`, `features/tactical/useOrientationDuPlan.ts`, `features/match-view/_positionsZone.ts` |
 | N23 | `cmd/mapfond-build/` | Plan du backlog, item K.2 (rempart des chemins du poste, `degradations.go`) d'abord ; B.1 de ce plan ensuite |
 | N24 | Dépôt `halo-infinite-map-images` | `main` porte un commit du plan 3D (A.1, recherche de l'installation) après `v1.3.1`, sans tag. Le tag `v1.4.0` de ce plan le publie ; le pilote le dit au journal du plan 3D |
 | N25 | `ReplayViewMenu.tsx`, `replayPreferences.ts`, `i18n/fr.ts` et `en.ts` du rejeu | Un écrivain à la fois (N5, N18) : D.3 et D.6 de ce plan passent après les items du backlog du 18/11 qui les touchent, et avant les items web de la 3D |
@@ -134,7 +156,8 @@ Règles (mémoire `feedback_workflows_et_sous_agents_opus`) :
 | P2 | A.3 sols du maillage | Sonnet | A.1 | |
 | P2 | A.4 tests, README, exemple | Sonnet | A.2, A.3 | |
 | P2 | A.5 PR, tag v1.4.0, release | pilote | A.4 | puis Gate A |
-| P3 Cuisson | B.1 geste `--relief-seul` | Sonnet | Gate A | |
+| P3 Cuisson | B.0 variantes Forge manquantes | Sonnet | go | ajouté le 2026-11-18 après l'inventaire 0.2 ; réseau anonyme seulement |
+| P3 | B.1 geste `--relief-seul` | Sonnet | Gate A | |
 | P3 | B.2 WebP du relief | Haiku | B.1 | modèle existant (`mapfond-webp`) |
 | P3 | B.3 cuisson des 4 témoins | pilote | B.2 | dossier de sortie temporaire, copie par le pilote |
 | P3 | B.4 Live Fire recuite en entier | pilote | B.2, A.0 | validation à l'écran du user ; puis Gate B |
@@ -143,11 +166,17 @@ Règles (mémoire `feedback_workflows_et_sous_agents_opus`) :
 | P5 | D.3 rejeu | Sonnet | D.1 validé, D.2, Gate C | |
 | P5 | D.4 Tactique et Occupation | Sonnet | D.3 | |
 | P5 | D.6 suivi de l'étage du joueur ouvert | Sonnet | D.3 | |
+| P5 | D.7 cerne deux tons des marqueurs | Sonnet | Gate 0 | ajouté au Gate 0 (D-3 bis) ; indépendant du relief, part dès qu'une place d'écrivain se libère |
 | P5 | D.5 jetons et garde-rail des couleurs | Sonnet | Gate 0 | puis Gate D |
 | P6 Parc | E.1 cuisson des 114 cartes | pilote | Gate D, **accord du user** | une carte à la fois |
 | P6 | E.2 ADR 0049, docs, note de version | Sonnet | Gate B | |
 | P7 Clôture | R.1 revue finale | **Fable** | Gates A à E | une seule ronde |
 | P7 | R.2 corrections retenues | Sonnet ; Opus si l'écart est un algorithme | R.1 | |
+
+**Amendement du 2026-11-18 (pilote, après la décision du user de doubler la borne P-1 à 8 écrivains) :** le
+format étant figé par la Gate 0, C.1 à C.3, D.2 et D.5 ne dépendent plus du code de la brique et partent dès
+maintenant ; D.5 et D.7 sont confiés au même agent (le garde-rail de D.7 étend le fichier créé par D.5, un seul
+écrivain). B.1, D.3, D.4 et D.6 gardent leurs dépendances.
 
 Vagues : dès le go, 0.1, 0.2, 0.4, A.0 et D.1 ; après Gate 0, A.1 puis A.2 et A.3 en parallèle, D.5 ; après
 Gate A, B.1 et C.1 ; après Gate C, D.2 à D.4 puis D.6 ; après Gate D et l'accord du user, E.1 ; à la fin, R.1
@@ -189,7 +218,15 @@ et R.2.
 
 ## 3. Lot 0 — conception et mesures
 
-- [ ] 0.1 Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/annexes_fonds_relief/conception.md`,
+- [x] 0.1 (fait le 2026-11-18 : `conception.md`, 773 lignes. Format : image `q = R + 256 G` au pas de 1/256 u,
+      B = deux drapeaux (sur la carte, sol tiré du maillage), A = 0 ou 255 ; JSON avec sols en sommets indexés et
+      traits delta-encodés, 50 à 126 Ko après gzip. Seuils de la maquette confirmés, écart entre étages 1,4 u.
+      Écarts au plan relevés : pas de hauteurs par trait (la coupe filtre par son masque) ; la coupe de la maquette
+      perd jusqu'à 57 % d'un étage là où le dessus du rendu est plus bas qu'un sol praticable ; les unités valent
+      environ 3 m, pas 1 m ; le dossier des fonds doublerait (+40 à 55 Mo) ; 1,4 à 11,9 % des pixels du fond
+      publié n'ont pas de hauteur à la recuisson, cause à établir en B.1. Seuls les deux calques des zones nommées
+      de la Tactique portent une hauteur. Suivi : sol porteur, seuil 0,5 u, délai 300 ms. Cinq questions au user,
+      section 9 du document.) Conception par un agent **Fable**, en lecture seule. Rendu : `.ai/annexes_fonds_relief/conception.md`,
       qui fixe :
       - le format des fichiers par carte. Proposition à éprouver : `<clé>.relief.webp` (R, G = hauteur du
         dessus sur 16 bits, B = drapeaux, A = 0 ou 255 seulement, parce qu'une alpha intermédiaire se
@@ -206,42 +243,86 @@ et R.2.
         orientation par quarts de tour (ADR 0048 D-4) ;
       - la liste fermée des calques de la Tactique dont les données portent une hauteur (D-2) ;
       - le seuil du suivi d'étage du joueur ouvert (D-2), mesuré sur des pistes réelles des 4 témoins.
-- [ ] 0.2 Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
+- [x] 0.2 (fait le 2026-11-18, `inventaire.md` : 68 cartes cuisables sur 114. Non cuisables : Live Fire (traitée
+      par A.0 et B.4), Thunderhead et Heavies (aucun maillage, 0.4), et 43 cartes Forge dont la variante `.mvar`
+      manque à `.ai/re_dump/mapvar/` ; d'où l'item B.0.) Inventaire, par carte du catalogue, de ce que la cuisson locale peut produire : carte native installée,
       fichiers Forge présents, maillage présent. Rendu : `.ai/annexes_fonds_relief/inventaire.md`. Une carte non
       cuisable est nommée, avec la raison.
-- [ ] 0.3 Mesure de la teinte (D-3) : candidates (les 7 préréglages de Den et le gris du thème) contre les
+- [x] 0.3 (fait le 2026-11-18 : `teinte.md`, page publiée https://claude.ai/artifact/JuyH5hNB9kQfu1D9yFCzak. AUCUNE
+      teinte ne tient le seuil de D-3 partout (0 sur 64 combinaisons) : le contour actuel des marqueurs
+      (`--muted-foreground` à 62 %) n'atteint jamais 3:1, et le sol parcourt 28 ΔE de clarté. Teintes les moins
+      mauvaises : Graphite (défaut), Violet (Okabe-Ito, Tol Bright), Vert (Cividis). Mesure complémentaire du
+      pilote : un CERNE DEUX TONS (bande `#080c12` et filet blanc, principe « contraste élevé » de Cartographer)
+      donne au moins 4,4:1 contre tous les paliers de toutes les teintes sous les quatre visions. Décision au
+      user : section 1, D-3 bis.) Mesure de la teinte (D-3) : candidates (les 7 préréglages de Den et le gris du thème) contre les
       encres réelles des marqueurs et des objectifs, sous les quatre visions et dans les deux thèmes, avec
       `colorDistance.ts`. Table en annexe ; page de choix publiée (artefact `verifs`) avec les 4 témoins.
-- [ ] 0.4 Thunderhead et Thunderhead Heavies (`28a3ac28-…`, `37bc3df6-…`) : `mapnav-fetch` pour leur
+- [x] 0.4 (fait le 2026-11-18 : aucun maillage publié par l'auteur pour l'une ni l'autre. `mapnav-fetch` sort
+      « pas de navmesh publié » ; la page de chaque asset liste `map.mvar`, `lightprobes.blob`,
+      `audioocclusion.blob` et le canevas `fo08_wetland.mvar`, sans `navmesh.blob` ; GET direct en HTTP 404
+      `BlobNotFound` à 11:04:36 et 11:04:39 UTC. D-7 s'applique : relief sans découpe ni coupe, dégradation
+      nommée.) Thunderhead et Thunderhead Heavies (`28a3ac28-…`, `37bc3df6-…`) : `mapnav-fetch` pour leur
       `navmesh.blob` ; s'il existe, la cuisson normale les recuit (fond, plan) avant E.1 ; s'il n'existe pas chez
       l'auteur, le constat (réponse du service, date) est écrit dans l'inventaire et D-7 s'applique.
-- **Gate 0 :** annexes écrites ; format, seuils et teinte validés par le user ; constat de 0.4 écrit. Aucun code
-  de relief dans la brique avant (A.0 n'en dépend pas).
+- **Gate 0 : PASSÉE le 2026-11-18** (décisions en section 1 bis A). Annexes écrites ; format, seuils et teinte
+  validés par le user ; constat de 0.4 écrit. Aucun code de relief dans la brique avant (A.0 n'en dépend pas).
 
 ## 4. Lot A — brique `halo-infinite-map-images` v1.4.0
 
 Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `scripts/briques-workspace.sh` et
 `GOWORK` (CLAUDE.md, « Briques »). Ajout d'API seulement : version mineure, aucun changement cassant.
 
-- [ ] A.0 Maillage d'une carte native dont la géométrie vit dans le module partagé (Live Fire) :
+- [x] A.0 (fait le 2026-11-18, brique `feat/maillage-module-partage` `6a2bd82` : fonction sœur
+      `ChargeMaillageNatifGeometriePartagee(ctx, racine, module, moduleGeometrie, ancres)`, `ChargeMaillageNatif`
+      inchangée ; Live Fire rend la ressource 20390, 786 faces ; gates relancés par le pilote. Les 100 illisibles
+      sont toutes des entrées dont les octets ne sont pas dans le fichier (`DataOffset >= dataSize`, bit `0x02`
+      de `Flags`), pas un défaut de décompression : section 9.) Maillage d'une carte native dont la géométrie vit dans le module partagé (Live Fire) :
       `ChargeMaillageNatif` cherche aussi dans `any/globals/common-rtx-new.module`, et retient le maillage dont
       les sommets tombent dans l'arène choisie par `ChoisitBSP` (même règle que la géométrie). Un test
       `*_gamefiles_test.go` sur Live Fire : ressource 20390, 786 faces. Les 100 candidates illisibles du module
       partagé sont classées dans le compte rendu (arène, taille, erreur). Si l'une relève d'un défaut du lecteur
       de modules, la correction se fait dans `halo-infinite-files-reader` (tag mineur, release, posé avant
       celui des images de carte).
-- [ ] A.1 `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
+- [x] A.0b (fait le 2026-11-18, brique `af2b0cf` : `ModuleVariante` rend `any/globals/<nom>` pour un module
+      partagé ; mesure sur Live Fire : un seul sddt de 124 triangles, surface fermée autour de plusieurs arènes,
+      qui retirerait 0,39 m² de praticable au bord est ; 42 volumes d'eau sous le plancher, dont 84 % de ce qu'ils
+      peindraient tombe sur du praticable sans matière. Ni frontière ni eau appliquées pour un module partagé,
+      deux dégradations mesurées à la place ; test `gamefiles` qui l'épingle.) Zone jouable (sddt) et eau d'une carte dont la géométrie vit dans le module partagé : `ModuleVariante`
+      calcule `any/levels/multi/globals/…` pour un module `pc/globals/…`, chemin qui n'existe pas (dégradations
+      « module any/globals introuvable » du sidecar de Live Fire). Il rend désormais `any/globals/<nom>`. Le sddt
+      du module partagé porte les frontières de plusieurs arènes : l'item mesure lesquelles s'appliquent à Live
+      Fire. Il ne les branche que si elles bornent l'arène retenue sans rien retirer du praticable du maillage ;
+      sinon la dégradation reste, réécrite avec la mesure. Tests, dont un `gamefiles` sur Live Fire.
+- [x] A.1 (fait le 2026-11-18, brique `8780d01` : `CalculeRelief(ctx, r, m, garde, cal) (*Relief, error)`,
+      `(*Relief).MesureFondPublie`, `ErrEchelleDifferente`, types `DonneesRelief` au schéma de conception §1.2 ;
+      Recharge : 1605 x 1771 au calage publié, part tirée du maillage 13,6 %, calcul sous la seconde ; gates
+      relancés par le pilote. Écarts justifiés : miettes de zone éteintes en A.1 pour que l'image et le liseré
+      concordent ; maximum vrai des sols du maillage, la fusion à 0,4 u revient à A.3.) `himap` : relief d'un `Rendu` dans un `CalageFond` donné, avec la hauteur du dessus et les drapeaux. Le
       sol sans matière prend la hauteur du maillage (D-6). Aucune constante magique : seuils nommés,
       documentés en unités du jeu.
-- [ ] A.2 Traits vectoriels (agent **Opus**) : ruptures, courbes de niveau sur pente, liseré de la zone gardée ;
+- [x] A.2 (fait le 2026-11-18, brique `c908067` : `(*Relief).CalculeTraits(ctx) (BilanTraits, error)` ; Recharge :
+      ruptures 1 181,8 u, 920 jonctions (conception 1 172 u, 919), 44 courbes, traits 44 Ko (12,3 Ko gzip), 0,18 s ;
+      Behemoth : 683 courbes, 75 Ko (24 Ko gzip), 0,2 à 1,7 s. Décision du pilote (ajustement mineur de rendu) :
+      aucune courbe à moins du rayon de lissage d'une rupture, 96,5 % des courbes de Recharge doublaient les murs.
+      Pas de hauteur par trait, conception §3.6.) Traits vectoriels (agent **Opus**) : ruptures, courbes de niveau sur pente, liseré de la zone gardée ;
       polylignes chaînées et simplifiées, chacune avec ses hauteurs basse et haute (la coupe par étage les
       filtre côté web).
-- [ ] A.3 Sols du maillage : faces gardées dans le repère du calage ; étages détectés (pics de l'histogramme
+- [x] A.3 (fait le 2026-11-18, brique `feat/relief-sols` `ef4ed91`, à fusionner avec A.2 :
+      `(*Relief).CalculeSols(ctx, m, garde) error` ; Recharge : étages 0 / 2,21 / 4,40 u, `floors` 27,5 Ko
+      (10,1 Ko gzip), 72 ms ; Streets 0,51 / 2,31 / 4,45 ; Behemoth 3,76 / 8,53. Écart accepté par le pilote : les
+      faces sont servies en triangles, pas en polygones (+22 % après gzip), les arêtes de contour, donc les murs de
+      la coupe, sont inchangées. L'écart minimal entre étages est 1,4 u, celui de la conception §4.1.) Sols du maillage : faces gardées dans le repère du calage ; étages détectés (pics de l'histogramme
       des hauteurs de sol, écart minimal tiré de 0.1).
-- [ ] A.4 Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
+- [x] A.4 (fait le 2026-11-18 : tests synthétiques et `gamefiles` de A.0 à A.3 réunis sur
+      `feat/maillage-module-partage` après fusion de `feat/relief-sols` (`45fb57b`, `72f475f`) ; `go test ./...`
+      et les tests `gamefiles` ciblés relancés par le pilote, verts ; README section « Relief » avec crédit ;
+      `ExampleCalculeRelief`. PR https://github.com/JGtm/halo-infinite-map-images/pull/6, CI verte, squash-fusionnée dans `main` de la brique en `9913d0b`.) Tests sur grilles synthétiques : marche, rampe, toit sur un sol, trou enclos, sol sans matière. Un test
       `*_gamefiles_test.go` sous le tag `gamefiles` sur Recharge. README de la brique (section et crédit,
       D-9) et `example_test.go`.
-- [ ] A.5 PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
+- [x] A.5 (fait le 2026-11-18 : tag `v1.4.0` sur `9913d0b`, release https://github.com/JGtm/halo-infinite-map-images/releases/tag/v1.4.0, LevelUp monté à `v1.4.0` sur `feat/fonds-relief` (`c0851b38e5`). Amendé le 2026-11-18 par le pilote : la PR se fusionne dès sa CI verte ; LevelUp suit la brique par
+      pseudo-version sur sa branche de travail, ce que l'ADR 0043 permet, et le TAG `v1.4.0` se pose après B.3,
+      une fois le relief vérifié sur les témoins dans LevelUp, pour ne pas publier une API à corriger aussitôt.)
+      PR dans le dépôt de la brique, gates verts, squash, tag `v1.4.0`, release GitHub
       (`gh release create v1.4.0 -R JGtm/halo-infinite-map-images --title v1.4.0 --generate-notes --verify-tag`).
       Dans LevelUp, `require` monté (`go get …@v1.4.0`, `make tidy`).
 - **Gate A :** tests de la brique verts (`go test ./...` du dépôt, et `-tags gamefiles` sur le poste du
@@ -249,15 +330,30 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 5. Lot B — cuisson
 
-- [ ] B.1 `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
+- [x] B.0 (fait le 2026-11-18, `c9c7ec8355` sur `feat/fonds-relief-b0` : option `-nom-cuisson` de `mapnav-fetch`,
+      2 tests, docs EN et FR ; 43 variantes sur 43 rapatriées, 0 échec, `.ai/re_dump/mapvar/` passe de 71 à 114
+      fichiers. 29 à la version de l'inventaire versionné, 14 absentes de cet inventaire et servies à leur version
+      courante. Inventaire : 111 cartes cuisables sur 114 ; restent Live Fire (A.0b, B.4) et les deux Thunderhead
+      (D-7). Contrôle du nombre d'objets de la variante : à B.3 et E.1.) Les 43 variantes Forge manquantes (liste de `inventaire.md`) : téléchargement ANONYME par le chemin
+      existant (`cmd/mapcallouts-build/forge_fetch.go`, `mapcatalog.Client.FetchFileAt`, inventaire versionné
+      `donnees/inventaire_rotation_ugc_*.json`), déposées dans `.ai/re_dump/mapvar/` sous le nom que lit la
+      cuisson (`cartes_forge.go`). Aucune commande neuve si une option d'une commande existante suffit ; sinon,
+      une option de plus à `mapnav-fetch`, testée. Une carte absente de l'inventaire versionné ou dont la
+      version a changé depuis la publication de son fond est nommée dans l'inventaire (le relief se projette
+      dans le calage publié, D-5 : un écart de version se voit au contrôle de B.3 et E.1).
+- [x] B.1 (fait le 2026-11-18, `fb291efdc1`, intégré à `feat/fonds-relief` : geste `--relief-seul`, relief refait par la cuisson complète, données en `.relief.json.gz` ; archlint entier vert sur la brique publiée, deux fichiers de la brique inscrits, datés) `mapfond-build --relief-seul` (D-5) : une ligne dans la table des gestes de `options.go` et ses
       validations ; lecture du calage publié ; écriture du relief et des champs `reliefImage` et `reliefData`
       du sidecar par `internal/mapfondsidecar` seul. Les autres champs restent identiques à l'octet
       près (test). Journal `slog` par carte : poids écrit, part du sol tirée du maillage, dégradations.
-- [ ] B.2 `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
+- [x] B.2 (fait le 2026-11-18, même commit : conversion au bit près, vérifiée sur 5 cartes) `mapfond-webp -convertir` prend aussi l'image du relief (aller-retour identique au bit près,
       règle existante).
-- [ ] B.3 Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
+- [x] B.3 (fait le 2026-11-18 par le pilote sur la branche d'intégration `feat/fonds-relief`, `83139343b6` :
+      Recharge, Streets, Behemoth, Lattice en `--relief-seul` puis `mapfond-webp -convertir` ; diff limité à 8
+      fichiers neufs et 2 lignes par sidecar, aucun WebP existant modifié ; données compressées 23, 44, 81 et 38 Ko ;
+      fond publié sans hauteur 11,9 / 8,7 / 4,7 / 1,4 %, chiffres de la conception. Le dépôt hors ligne `.ai/re_dump`
+      est COPIÉ (jamais en jonction) dans le worktree pour les cartes Forge.) Cuisson des 4 témoins par le pilote dans un dossier temporaire, puis copie dans
       `map_backgrounds/` ; diff : seuls les fichiers du relief et deux champs par sidecar changent.
-- [ ] B.4 Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
+- [x] B.4 (fait le 2026-11-18, `9fb38a20fb` : maillage trouvé, plan des murs et relief publiés, rognage au maillage, cadre 1192 x 1024 ; rendu VALIDÉ à l écran par le user, « Parfait Live Fire !!! » ; test des fonds sans plan ramené aux deux Thunderhead ; réglages réécrits) Live Fire (`sgh_interlock`) recuite en entier avec son maillage : fond, image plan, plan des murs,
       relief. Les leviers de `map_fond_reglages.json` sont relus (la `boiteUtile` peut céder la place au
       rognage par le maillage) ; la dégradation « aucun maillage » disparaît du sidecar. Le user valide le fond à
       l'écran (le sidecar note « LE RENDU N A TOUJOURS PAS ETE GATE »).
@@ -269,12 +365,17 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 6. Lot C — contrat et routes
 
-- [ ] C.1 Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
+- [x] C.1 à C.3 (faits le 2026-11-18, `f41fe1586c` sur `feat/fonds-relief-c` : champs `reliefImage` / `reliefData`,
+      convention de nommage dans `mapfondsidecar` (`<clé>.relief.png|webp`, `<clé>.relief.json.gz`), service et
+      routes `?variante=relief` et `background.relief.json` sur le rejeu et la Tactique, données décompressées
+      puis contrôlées (nom, `schemaVersion`, calage), relief périmé ou invalide = absent ; Cache-Control centralisé
+      avec garde-rail ; `openapi.yaml` régénéré par `openapi-gen`, `generated.ts` à régénérer par le pilote à
+      l'intégration ; archlint entier vert, tests ciblés relancés par le pilote.) Contrat : `replaydoc.MapBackground` gagne `ReliefImage` et `ReliefData` (noms de fichiers, vides
       sans relief), et `mapfondsidecar` les lit et les écrit. Règle 18 : chaque champ a son lecteur, le web au lot D.
-- [ ] C.2 Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
+- [~] C.2 (couvert par C.1 à C.3, ci-dessus, `f41fe1586c`) Service : `MapBackgroundReliefImage`, `MapBackgroundReliefData` et leurs jumelles `…ForMap`,
       sur le modèle de `replay_map_background_plan.go` : même résolution de clé, mêmes gardes sur le nom de
       fichier, `port.ErrMapBackgroundNotAvailable` sans relief. Interfaces dans `port/`.
-- [ ] C.3 Handlers sans logique : `?variante=relief` sur les deux routes d'image (le refus de variante
+- [~] C.3 (couvert par C.1 à C.3, ci-dessus, `f41fe1586c`) Handlers sans logique : `?variante=relief` sur les deux routes d'image (le refus de variante
       inconnue reste), et une route sœur pour les données (`…/background.relief.json` sur les deux préfixes), avec
       le même cache HTTP que l'image plan. `openapi.yaml` mis à jour ; `generated.ts` régénéré par le pilote.
 - Pas de nouvelle capacité : l'absence de relief se traite comme l'absence d'image plan (404), comme le veut l'ADR 0048.
@@ -284,23 +385,57 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 7. Lot D — web
 
-- [ ] D.1 Maquette des commandes, sans code : trois fonds, interrupteur des traits, commande d'étage. Elle est
+- [x] D.1 (fait le 2026-11-18 : `.ai/annexes_fonds_relief/maquette_commandes.html`, publiée
+      https://claude.ai/artifact/BDcT8eLynSt2X74j5Yb9aF ; VALIDÉE par le user le 2026-11-18, « ok pour tes recos »,
+      avec ces choix qui font foi pour D.3, D.4 et D.6 :
+      (1) toutes les commandes dans le panneau « Vue » du rejeu, aucun raccourci sur la toile ;
+      (2) ordre des fonds partout : Plan, Rendu, Relief (le rejeu passe de « Rendu, Plan » à cet ordre) ;
+      (3) « Plan des murs » reste disponible sur le Relief, indépendant des traits ;
+      (4) « Traits du relief » retenu PAR FOND : allumé d'office sur le Relief, éteint sur Plan et Rendu ;
+      (5) suivi du joueur ouvert : un choix manuel d'étage coupe le suivi ; à la mort du joueur, l'étage reste
+          jusqu'à sa réapparition, puis suit sa nouvelle position ;
+      (6) l'Occupation du terrain reçoit son propre choix de fond (amende ADR 0048 D-4, porté par l'ADR 0049) ;
+      (7) calques de la Tactique filtrés selon la liste fermée de 0.1 ;
+      (8) infobulle des pastilles d'étage : lien avec les anneaux des marqueurs (« +2,0 m : 1 anneau ») ;
+      (9) la coupe ne masque aucun joueur dans le rejeu ; seule l'Occupation masque les positions hors étage ;
+      (10) carte sans maillage : bloc d'explication en pointillé (variante B) ;
+      (11) plus de six étages : pastilles en défilement horizontal ;
+      (12) curseur de hauteur gardé dans la Tactique et l'Occupation.
+      Libellés FR et EN : annexe 1 de la maquette. Teinte de la maquette provisoire, remplacée par 0.3.)
+      Maquette des commandes, sans code : trois fonds, interrupteur des traits, commande d'étage. Elle est
       dessinée DANS les cadres validés de la refonte du rejeu (Standard, Cinéma, Plein cadre), plus la pilule
       de fond de la Tactique. Le user la valide. Les fichiers de la maquette sont joints au brief de D.3 et D.4.
-- [ ] D.2 `lib/replay/relief/` : lecture de l'image (sans gestion des couleurs ni prémultiplication), teinte par
+- [x] D.2 (fait le 2026-11-18, `23ec703e5e` sur `feat/fonds-relief-d2` : 20 modules, 160 tests verts relancés par
+      le pilote, typecheck propre à cache purgé ; worker vérifié dans le build Vite et dans un vrai Chromium sur
+      Recharge et Behemoth (contrôle §6.1 passé, mode worker), rien à changer à la CSP de la coquille Tauri.
+      À contrôler au Gate D sur une machine au repos : ombrage et teinte 300 à 400 ms par rendu sous charge. API
+      et branchements attendus de D.3 : compte rendu de l'agent, repris au journal.) `lib/replay/relief/` : lecture de l'image (sans gestion des couleurs ni prémultiplication), teinte par
       table depuis le jeton, coupe par étage (sols empilés tirés des faces, dans un Web Worker), chemins des
       traits filtrés par la coupe, cache par carte. Logique pure testée (vitest) : décodage, coupe, filtre des
       traits, toit sur sol.
-- [ ] D.3 Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
+- [x] D.3 (fait le 2026-11-18, `758c8882c2`, intégré à `feat/fonds-relief` : variante relief et repli, traits retenus par fond, groupe Étage du panneau Vue en rangs, coupe sur les trois fonds sans masquer de joueur, bloc sans maillage, infobulles des anneaux et de la part du maillage ; rampe unique ; dessin du relief relevé dans lib/ ; 8 252 tests ciblés verts, témoins du rejeu inchangés. Choix acceptés par le pilote : la coupe n'est pas retenue d'une ouverture à l'autre ; les données du relief (50 à 126 Ko compressés) sont chargées à l'ouverture du rejeu pour afficher les étages, l'image seulement à la demande.) Rejeu : variante `relief` dans `mapBackgroundVariant.ts` (le type, la normalisation de la préférence
       et `resolveBackgroundVariant` qui retombe sur le Plan sans relief), dessin dans `mapBackgroundDraw.ts`,
       couche des traits dans `useReplayStaticLayers.ts`, commande d'étage conforme à D.1, état sans maillage
       (D-7). La coupe passe aussi au Plan et au Rendu (D-2).
-- [ ] D.4 Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
+- [x] D.4 (fait le 2026-11-18, `5943d1d9d7`, intégré à `feat/fonds-relief` : pilules Fond, Traits et Étage dans la Tactique et l'Occupation, zones nommées filtrées par étage, mention de légende des autres calques, positions hors étage masquées avec leur compte, repli sur le Plan ; 5 131 tests ciblés relancés par le pilote. Écart accepté : l'Occupation a ses propres commandes mais partage la préférence de fond du rejeu et de la Tactique, comme la maquette. Doublons de logique avec le rejeu et deux exceptions datées de la frontière des features : item D.8.) Tactique et Occupation : la variante Relief, l'interrupteur des traits et la coupe (D-2). Occupation :
       positions filtrées par étage sur `MatchPositionDTO.z`. Tactique : calques filtrés selon la liste de 0.1,
       mention dans la légende des autres.
-- [ ] D.6 Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
+- [~] D.7 (couvert par D.5 et D.7 réunis, ci-dessus, `d98ebe857f`) Cerne deux tons des marqueurs (D-3 bis) dans `layers/replayMarkers.ts` (contour sous le noyau) et
+      les marqueurs d'objectif qui partagent ce langage (`floorRings.ts`, `objectivesLayer.ts` : relire), sur
+      les trois fonds ; encres par jetons ; témoins d'appels de dessin avant et après ; garde-rail
+      `mapReliefTokens.test.ts` étendu : contraste du cerne ≥ 3:1 contre chaque palier de chaque teinte, sous
+      les quatre visions, par palette et par thème.
+- [x] D.8 (fait le 2026-11-18, `588834ca87` : `lib/replay/useReliefView` porte la logique des trois vues, exceptions de la frontière des features retirées, témoins du rejeu inchangés ; gate web complet passé sur ce commit) (ajouté le 2026-11-18 par le pilote, relevé de D.4) Une seule logique du relief pour les trois vues : `useReplayRelief` délègue à `lib/replay/useReliefView` ; `useReliefLines`, `useScopedCut`, `linesInkOf` et la logique des pastilles vivent une fois dans `lib/` ; les deux exceptions datées de `tools/lint-cross-feature-imports.mjs` (tactical et match-view vers `useReliefLines`) sont retirées ; commentaire périmé de `useMapViewPreferences.ts` corrigé. Témoins du rejeu inchangés.
+- [x] D.6 (fait le 2026-11-18, `a3de73967e`, intégré à `feat/fonds-relief` : interrupteur sous le curseur, coupe sur l'étage du sol porteur à chaque image, délai de 300 ms en temps du rejeu (même comportement à toute vitesse, rien ne bouge en pause), mort et saut de lecture gérés, choix manuel qui coupe le suivi, aucun joueur masqué ; 3 020 tests ciblés relancés par le pilote. Limites notées : à l'export vidéo la coupe peut avoir une image de retard ; un rejeu ancien sans hauteur garde l'étage bas.) Rejeu, « Suivre le joueur ouvert » : la coupe prend l'étage de sa piste à l'instant lu, avec le seuil
       de 0.1 ; logique pure testée (marche, saut, chute d'un étage, joueur mort puis réapparu).
-- [ ] D.5 Jetons `map-relief-*` dans chaque palette (`semantic-tokens.ts`, `palettes/`), valeurs de 0.3. Garde-rail
+- [x] D.5 et D.7 (faits le 2026-11-18, `d98ebe857f` sur `feat/fonds-relief-d7` : jetons `map-relief-base`,
+      `marker-outline-band`, `marker-outline-rim` dans les 4 palettes ; rampe UNIQUE `lib/accessibility/reliefRamp.ts`
+      (`reliefRampHex`, `reliefRampStops`), sur laquelle `lib/replay/relief/tint.ts` de D.2 pointera à
+      l'intégration ; cerne deux tons des pions sur les trois fonds, pire contraste 4,43:1 ; garde-rail
+      `mapReliefTokens.test.ts` (177 tests) ; témoins du rejeu réécrits, seul le contour change ; `replayMarkers.ts`
+      ramené de 605 à 478 lignes ; 1 373 tests ciblés relancés par le pilote, verts. À regarder à l'écran au
+      Gate D : anneau de la fiche ouverte contre les anneaux d'étage au 2e étage ; empilement des anneaux du
+      joueur de la page sur plusieurs étages.) Jetons `map-relief-*` dans chaque palette (`semantic-tokens.ts`, `palettes/`), valeurs de 0.3. Garde-rail
       `lib/accessibility/mapReliefTokens.test.ts` : seuil de D-3 contre les encres des marqueurs, par palette,
       sous les quatre visions, dans les deux thèmes.
 - i18n : chaque libellé neuf dans chaque langue de `config/locales.toml` (fr et en), dans les dictionnaires
@@ -312,10 +447,10 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 8. Lot E — parc, documentation
 
-- [ ] E.1 Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
+- [x] E.1 (fait le 2026-11-22 sur l'accord du user du 2026-11-18, `10207042f4` puis `f11bbd7120` : 114 cartes sur 114 ont un relief, dont les deux Thunderhead sans maillage, en dégradation nommée ; poids ajouté 51,1 Mo ; garde-rail `TestChaqueReliefPublieEstServable` vert. Thunderhead : 13 % de son fond publié sans hauteur, inscrit au registre des reports) Après l'accord du user : `--relief-seul` sur toutes les cartes de l'inventaire 0.2, une carte à la
       fois, puis `mapfond-webp -convertir`. Poids ajouté mesuré et reporté (base : 45 Mo aujourd'hui). Chaque
       carte non traitée est nommée avec sa raison.
-- [ ] E.2 ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
+- [x] E.2 (fait : `d610136f8d` le 2026-11-18, ADR 0049, amendement de 0048, CLAUDE.md, guide des fondations EN et FR ; `73e648836e` le 2026-11-22, « Current state » de l'ADR 0049 après E.1, notes de version et journal des modifications EN et FR, crédit à Den dans `docs/ACKNOWLEDGMENTS` EN et FR) ADR 0049 (en anglais) : fond Relief, format des fichiers, calcul à la cuisson, coupe par étage,
       sol tiré du maillage, cartes sans maillage, crédit. Elle amende 0048 (D-3 : troisième fond ; D-8 : deux
       champs neufs du sidecar). Mise à jour de la liste des ADR dans `CLAUDE.md`, d'une ligne dans la note de
       version et dans le journal des modifications.
@@ -324,10 +459,10 @@ Dépôt dédié `github.com/JGtm/halo-infinite-map-images`, développement par `
 
 ## 8 bis. Clôture
 
-- [ ] R.1 Revue finale adverse (agent **Fable**, skill `adversarial-review`) du diff complet de la branche et de
+- [x] R.1 (faite le 2026-11-18, `2bf5003c97` : `annexes_fonds_relief/revue_finale.md`, 0 P0, 3 P1, 9 P2) Revue finale adverse (agent **Fable**, skill `adversarial-review`) du diff complet de la branche et de
       celui de la brique. Une seule ronde.
-- [ ] R.2 Corrections retenues (P0 et P1). Les P2 vont au backlog.
-- [ ] R.3 `make gate-push` vert, avec `LEVELUP_REPO_ROOT` sur le dépôt principal ; CI de la branche lue
+- [x] R.2 (fait : `6ac444f1c6` côté serveur et cuisson, P1-1, P1-2, P2-1, P2-3 ; `13c26d9324` côté site, P1-3, P2-2, P2-4, P2-5, P2-8, P2-9. P2-6 : branche du défilement gardée et documentée dans le code, en attente d'un plafond d'étages plus haut dans la brique, décision du pilote. P2-7 : sans effet visible tant qu'une seule carte a sa géométrie dans le module partagé ; inscrit au registre des reports avec sa condition de reprise) Corrections retenues (P0 et P1). Les P2 vont au backlog.
+- [x] R.3 (fait : `make gate-push` vert sur `fe0381c128` le 2026-11-22 ; CI de `release/v8.3.0` verte sur `0cebc91fef`, après la montée de `url` en 2.5.9 dans la coquille Rust, avis RUSTSEC-2026-0592 publié le jour même ; thought_log et registre des reports alimentés ; branches d'agents et worktrees supprimés le 2026-11-22) `make gate-push` vert, avec `LEVELUP_REPO_ROOT` sur le dépôt principal ; CI de la branche lue
       (`gh run list --branch feat/fonds-relief`) après chaque poussée ; entrée au `.ai/thought_log.md` ;
       `.ai/REGISTRE_REPORTS.md` alimenté. Branches d'agents supprimées dès leur intégration.
 
@@ -344,6 +479,11 @@ Consignées ici, jamais traitées dans ce plan.
   sans décalage. La ressource 20391 (287 faces) est l'arène voisine ; 100 candidates du module ne s'extraient
   pas. `himap.ChargeMaillageNatif` ne cherche que dans `any/levels/multi/<module>/`. Le maillage déborde aussi
   du fond publié, en bas à gauche et en bas à droite : le fond de Live Fire manque des zones praticables.
+- 2026-11-18 (A.0) : dans `any/globals/common-rtx-new.module`, 151 entrées sans groupe pointent hors du fichier
+  (`DataOffset >= dataSize`, bit `0x02` de l'octet bas de `File.Flags`) ; aucun fichier compagnon trouvé.
+  `halo-infinite-files-reader` `himodule/module.go:352-353` (`Extract`) rend alors « bloc N hors borne » au lieu
+  d'une erreur typée qui dirait « octets hors du fichier ». Défaut de diagnostic seulement, sans effet sur Live
+  Fire. Non traité.
 - 2026-11-18 : Den coupe le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points
   d'apparition : `libfilmshell` `NavMesh::rings_within`). Nous avons un plan par carte.
 - 2026-11-18 : le fond publié comble à plat le sol sans géométrie (un tiers de Behemoth). Le relief le
@@ -381,3 +521,47 @@ qu'aucune session ne tient déjà un worktree `C:/t/relief-*`.
   au plan maître (N22 à N26). Maquette du 2026-11-18 versionnée pour les agents :
   `.ai/annexes_fonds_relief/maquette_2026-11-18.html` (code de la page seul ; les données des cartes restent hors
   dépôt). Vague 1 lancée : 0.1, 0.2, 0.4, A.0, D.1.
+- 2026-11-18 — décision technique du pilote (constat du lot C) : l'index des fonds du décodeur
+  (`replay.MapBackgroundIndexFor`, décodeur v1.4.1) et `images_publiees_test.go` lisent tout `*.json` du dossier
+  des fonds comme un sidecar ; un `<clé>.relief.json` y enregistrerait une clé fantôme. Le fichier de données
+  du relief devient `<clé>.relief.json.gz` (JSON compressé gzip sur disque, ce qui allège aussi D-13) ; le
+  service le décompresse, contrôle `schemaVersion` et le calage, et sert le JSON en clair. Remplace le nom
+  `<clé>.relief.json` de la conception §1 et des items B.1, C.1 à C.3.
+- 2026-11-18 (soir) — ÉTAT DES LIEUX POUR LA REPRISE DU DIMANCHE 2026-11-22 (quota du user presque épuisé).
+  - Branche d'intégration `feat/fonds-relief` (worktree `C:/t/relief-int`, NON poussée) : lots A (brique v1.4.0
+    taguée et publiée), B, C, D.2 à D.8, R.2 côté Go, données de 4 témoins + Live Fire (validée à l'écran),
+    ADR 0049. Dernier commit `6ac444f1c6`. Gate web complet passé sur `588834ca87` (3 garde-rails lents verts seuls).
+  - NON COMMITÉ : (1) la cuisson du parc E.1 lancée à 18 h 50 dans `C:/t/relief-int` (journaux et rapports TSV
+    dans le scratchpad de la session, `e1_*.log` / `e1_*.tsv`) : à la reprise, `git -C C:/t/relief-int status`,
+    contrôler par `go test ./internal/mapfondsidecar/...` (garde-rail `TestChaqueReliefPublieEstServable`), relancer
+    `mapfond-build --relief-seul` sur les cartes manquantes (GOMEMLIMIT=1500MiB, une carte à la fois), puis
+    `mapfond-webp -convertir`, puis commiter les données ; (2) R.2 côté web dans `C:/t/relief-r2web` (branche
+    `feat/fonds-relief-r2web`) : corrections écrites (code mort, carte à maillage sans étage, réallocation du masque,
+    infobulle de la lumière, faux journal, zone tenue retirée par la coupe), agent ARRÊTÉ avant la fin de sa suite
+    vitest : relancer ses gates puis commiter et fusionner dans `feat/fonds-relief`.
+  - Reste ensuite : relancer le gate web complet sur l'intégration, reprendre « Current state » de l'ADR 0049 (après
+    E.1), poser les lignes de version (`annexes_fonds_relief/lignes_de_version.md`) et le crédit dans
+    `docs/ACKNOWLEDGMENTS.md`, `make gate-push` (prévenir l'autre session), contrôle à l'écran du user sur les témoins,
+    fusion dans `release/v8.3.0`, puis ménage des worktrees `C:/t/relief-*` (aucune jonction) et des branches.
+  - Brique : constat P2-7 pour une v1.4.1 (`himap/sddt_partage.go` publie des chiffres de Live Fire pour tout module
+    partagé). 8.3.1 : recherche du plan par mode faite (`annexes_plan_par_mode/recherche.md`), plan à écrire.
+- 2026-11-22 — reprise. Les worktrees sous `C:/t` avaient été effacés le 22/11 à 03:03 par la tâche planifiée
+  `disk-hygiene` (backlog) : branches intactes, travail non commité perdu (corrections web R.2, cuisson E.1). Worktrees
+  désormais hors de `C:/t` (`Scripts/LevelUp-wt-relief-*`), branche `feat/fonds-relief` poussée sur origin.
+  `release/v8.3.0` fusionnée dans `feat/fonds-relief` sans conflit. R.2 web refaite (`13c26d9324`). E.1 FAIT :
+  114 cartes sur 114 ont un relief (`10207042f4`, puis Thunderhead `f11bbd7120` après correction de `--relief-seul`,
+  qui cuit désormais à l'échelle du fond publié), 2 sans maillage (les deux Thunderhead), +50 Mo ; garde-rail des
+  reliefs publiés vert. R.3 : `make gate-push` VERT sur `fe0381c128` (baselines LevelUp, décodeur, API Halo ; site
+  sans erreur). Reste : contrôle à l'écran du user sur les témoins (Gate D), « Current state » de l'ADR 0049, lignes
+  de version et crédit (`annexes_fonds_relief/lignes_de_version.md`), fusion dans `release/v8.3.0`, ménage des
+  worktrees et branches d'agents. Thunderhead : 13 % de son fond publié sans hauteur (fond publié plus large que la
+  recuisson) ; une recuisson complète de la carte le réglerait, non faite (elle change le fond publié).
+- 2026-11-22 — CLÔTURE. Fusion de `feat/fonds-relief` dans `release/v8.3.0` (`be0182b976`), à la demande du user,
+  avant son contrôle à l'écran (« option 1 »). Gates locaux verts après la fusion de la release : tsc, lint,
+  frontières, couleurs, build et vet Go, archlint, tests service, API et cuisson, vitest complet (15 227 tests). La CI
+  de la release était rouge sur un seul job sans lien avec le relief (audit des dépendances Rust de la coquille, avis
+  RUSTSEC-2026-0592 sur `url` 2.5.8, publié le jour même) ; corrigé par `0cebc91fef` (`url` 2.5.9), à la demande de
+  la session paire ; CI verte. Les trois contrôles à l'écran du Gate D (fond et traits, coupe par étage et suivi,
+  cerne des pions) sont inscrits à l'artefact des vérifications ; le user les fera plus tard (« finissons ce chantier
+  d'abord »). Leurs corrections partiront de `release/v8.3.0`. Branches `feat/fonds-relief*` (12) et worktrees
+  `LevelUp-wt-relief-*` supprimés, sans jonction. Hors de ce plan : plan par mode (8.3.1).

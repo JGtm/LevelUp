@@ -48,13 +48,16 @@ export interface PlayerInstantText {
   currentStreak: string
   bestStreak: string
   headshots: string
-  /** Ce qui suit le nombre de tirs à la tête : le nombre d'éliminations dont le coup fatal est lu. */
-  headshotsOfFmt: (measured: number) => string
   perfects: string
   respawns: string
   currentLife: string
   averageLife: string
-  shieldsLost: string
+  /** Les trois lignes du bouclier : bris, recharges complètes, et leur différentiel (recharges moins bris). */
+  shieldsBroken: string
+  shieldRecharges: string
+  shieldDifferential: string
+  /** Le total du match qui suit la valeur à l'instant (« 31 sur le match »). */
+  matchTotalFmt: (n: string) => string
   score: string
   /** La place dans le lobby (« 2e sur 8 »). */
   rankFmt: (place: number, of: number) => string
@@ -117,12 +120,14 @@ export const FR_PLAYER_INSTANT = {
   currentStreak: 'Série en cours',
   bestStreak: 'Meilleure série',
   headshots: 'Tirs à la tête',
-  headshotsOfFmt: (measured) => `sur ${measured} mesurées`,
   perfects: 'Éliminations parfaites',
   respawns: 'Réapparitions',
   currentLife: 'Vie en cours',
   averageLife: "Durée moyenne d'une vie",
-  shieldsLost: 'Boucliers perdus',
+  shieldsBroken: 'Boucliers brisés',
+  shieldRecharges: 'Recharges complètes',
+  shieldDifferential: 'Différentiel',
+  matchTotalFmt: (n) => `${n} sur le match`,
   score: 'Score',
   rankFmt: (place, of) => `${frOrdinal(place)} sur ${of}`,
   estimate: 'estimation',
@@ -166,12 +171,14 @@ export const EN_PLAYER_INSTANT = {
   currentStreak: 'Current streak',
   bestStreak: 'Best streak',
   headshots: 'Headshots',
-  headshotsOfFmt: (measured) => `of ${measured} measured`,
   perfects: 'Perfect kills',
   respawns: 'Respawns',
   currentLife: 'Current life',
   averageLife: 'Average life',
-  shieldsLost: 'Shields lost',
+  shieldsBroken: 'Shields broken',
+  shieldRecharges: 'Full recharges',
+  shieldDifferential: 'Differential',
+  matchTotalFmt: (n) => `${n} in the match`,
   score: 'Score',
   rankFmt: (place, of) => `${enOrdinal(place)} of ${of}`,
   estimate: 'estimate',

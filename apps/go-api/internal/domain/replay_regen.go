@@ -10,9 +10,10 @@ type ReplayRegenStatus struct {
 	// Checked : le décompte des rejeux en retard a été fait au moins une fois depuis le démarrage. Tant qu'il vaut
 	// faux, Stale ne dit rien (le décompte lit chaque rejeu rangé et se fait en arrière-plan).
 	Checked bool `json:"checked" doc:"Le décompte des rejeux en retard est fait. Faux : Stale n'est pas encore connu."`
-	// Stale : rejeux rangés plus anciens que la version de l'application et régénérables (film encore dans l'archive).
+	// Stale : rejeux rangés plus anciens que la version de l'application et régénérables (film encore dans l'archive),
+	// plus ceux dont le film a quitté l'archive et dont le fichier tactique est à refaire (reprojeté sans film).
 	// Pendant la file : ce qu'il en reste.
-	Stale int `json:"stale" doc:"Rejeux rangés en retard sur la version de l'application, dont le film est encore dans l'archive. Pendant la régénération : ce qu'il en reste."`
+	Stale int `json:"stale" doc:"Rejeux à remettre à jour : en retard sur la version de l'application (film à l'archive) ou au fichier tactique à refaire sans film. Pendant la régénération : ce qu'il en reste."`
 	// Running : la file de régénération est active (en pause comprise).
 	Running bool `json:"running" doc:"La file de régénération est active (mise en pause comprise)."`
 	// Done : rejeux traités par la file courante ou la dernière (régénérés, déjà à jour, écartés ou en échec).

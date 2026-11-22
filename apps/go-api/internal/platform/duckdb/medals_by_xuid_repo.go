@@ -70,7 +70,7 @@ func (r *MedalsByXUIDRepo) LoadMedalsForMatchesByXUID(
 	dbRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "MedalsByXUIDRepo: shared.medals_earned missing",
+			slog.DebugContext(ctx, "MedalsByXUIDRepo: shared.v_medals_earned missing",
 				"slug", slug,
 				"match_count", len(filters.MatchIDs),
 				"xuid_count", len(filters.XUIDs))
@@ -120,7 +120,7 @@ SELECT
     me.match_id,
     me.medal_name_id::BIGINT AS medal_id,
     me.count
-FROM medals_earned me
+FROM v_medals_earned me
 WHERE me.match_id IN (`)
 	sb.WriteString(matchPH)
 	sb.WriteString(`)

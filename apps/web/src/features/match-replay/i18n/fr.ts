@@ -2,6 +2,7 @@
 import type { ReplayText } from './i18nContract'
 import { FR_FEED_LINES } from './feedLines.i18n'
 import { FR_LIVES } from './lives.i18n'
+import { FR_RELIEF } from './relief.i18n'
 import { FR_RESPAWN_FORECAST } from './respawnForecast.i18n'
 import { FR_PLAYER_PANEL } from './playerPanel.i18n'
 import { FR_EQUIPMENT_USAGE } from './equipmentUsage.i18n'
@@ -95,6 +96,7 @@ export const FR_TEXT = {
   roster: FR_ROSTER,
   playerInstant: FR_PLAYER_INSTANT,
   lives: FR_LIVES,
+  relief: FR_RELIEF,
   respawnForecast: FR_RESPAWN_FORECAST,
   feedLines: FR_FEED_LINES,
   killFeedNoAssistHint:
@@ -346,7 +348,6 @@ export const FR_TEXT = {
     `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
   teamLabelFmt: (name) => `Équipe ${name}`,
   teamNumberedFmt: (n) => `Équipe ${n}`,
-  playerScoreLive: "Score personnel à l'instant lu",
   countersLive: "Frags / morts / assistances à l'instant lu",
   countersMatch: 'Frags / morts / assistances du match',
   fdaTooltipFmt: (counters, fda) => `${counters} — FDA ${fda}`,
@@ -416,6 +417,7 @@ export const FR_TEXT = {
   grenadeSelUnknown: 'Grenade en main : inconnue',
   grenadeAge: 'Grenades lues il y a',
   grenadeAhead: 'Grenades lues dans',
+  grenadeRank: (rank) => `rang ${rank}`,
   abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
   abilityAge: 'Capacité lue il y a',
   abilityAhead: 'Capacité lue dans',

@@ -4,7 +4,8 @@
  * Utilisé dans ExplorerPage pour tous les filtres multi-valeurs (exp type,
  * playlist, mode, carte, perf-tier, outcome, skill-tier).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -48,18 +49,11 @@ export function MultiSelectFilter({
   dense,
 }: Props) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const locale = useAppShellStore((s) => s.locale)
   const fmtCount = (n: number) =>
     formatMessage(explorerManifest, 'explorer.filters.selected_count', locale, { n })
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  const ref = useDismissable(open, () => setOpen(false))
 
   if (options.length === 0 && !alwaysShow) return null
 

@@ -175,7 +175,7 @@ func TestScan_NeCompteQueLesRejeuxEnRetardDontLeFilmExiste(t *testing.T) {
 	if err := os.WriteFile(f.paths.ReplayArtifactPath(testSlug, "00000100")+".derived.json", []byte(`{}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestScan_ArtefactPlusRecentQueLeBinaireNEstPasEnRetard(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.films["f00d0001"] = true
-	cands, _ := f.svc.scan(context.Background())
+	cands, _, _ := f.svc.scan(context.Background())
 	if len(cands) != 0 {
 		t.Fatalf("un artefact d'un schéma plus récent ne se régénère pas : %+v", cands)
 	}
@@ -474,7 +474,7 @@ func TestScan_LesRefusParRegleSontEcartesDEmblee(t *testing.T) {
 		return map[string]struct{}{ids[1]: {}}, nil
 	}
 	f.svc.Bind(context.Background(), &f.wg, f.deps)
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +500,7 @@ func TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement(t *testing.
 		return nil, errors.New("registre illisible")
 	}
 	f.svc.Bind(context.Background(), &f.wg, f.deps)
-	cands, err := f.svc.scan(context.Background())
+	cands, _, err := f.svc.scan(context.Background())
 	if err != nil || len(cands) != 2 {
 		t.Fatalf("candidats = %d, err = %v : le décompte doit tenir sans le registre", len(cands), err)
 	}
@@ -545,7 +545,7 @@ func TestScan_LePasEntreDansLeCritereDuDecompte(t *testing.T) {
 			}
 			_ = os.Remove(replaybuild.MetaPath(p)) // l'en-tête se reconstruit de l'artefact
 			f.films["5af11111"] = true
-			cands, err := f.svc.scan(context.Background())
+			cands, _, err := f.svc.scan(context.Background())
 			if err != nil {
 				t.Fatal(err)
 			}

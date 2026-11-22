@@ -17,7 +17,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
-import { eventFeedEntry } from '../model/feedEventLines'
+import { eventFeedEntry, type PickupNature } from '../model/feedEventLines'
 import { FEED_GLYPH_PATH, PICKUP_NATURE_GLYPH } from '../model/feedGlyphs'
 import { weaponIconsOf, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { buildFeedEntries, type ReplayFeedEntry } from '../model/killFeedLogic'
@@ -168,19 +168,31 @@ describe('armes ramassées au sol dans « Armes et bonus »', () => {
 })
 
 describe('le pictogramme d’une prise dit sa nature', () => {
-  const prise = (nature: 'classic' | 'power' | 'powerup', ms: number) =>
+  const prise = (nature: PickupNature, ms: number) =>
     eventFeedEntry(`p-${nature}`, ms, { family: 'pickups', xuid: 'me', name: nature, nature })
 
-  it('arme de râtelier, arme spéciale et équipement : trois tracés distincts, ceux de la table', () => {
-    renderFeed({ doc: PLAIN_DOC, entries: [prise('classic', 10_000), prise('power', 20_000), prise('powerup', 30_000)] })
+  it('arme de râtelier, arme spéciale, équipement et équipement qui change la partie : quatre tracés distincts, ceux de la table', () => {
+    renderFeed({
+      doc: PLAIN_DOC,
+      entries: [prise('classic', 10_000), prise('power', 20_000), prise('powerup', 30_000), prise('powerupGameChanger', 40_000)],
+    })
     choose(/Armes et bonus/)
     const tracePar = new Map(
-      screen.getAllByRole('listitem').map((r) => [r.textContent?.match(/classic|power(?:up)?/)?.[0], r.querySelector('path')?.getAttribute('d')]),
+      screen.getAllByRole('listitem').map((r) => [r.textContent?.match(/powerupGameChanger|classic|power(?:up)?/)?.[0], r.querySelector('path')?.getAttribute('d')]),
     )
     expect(tracePar.get('classic')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.classic])
     expect(tracePar.get('power')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.power])
     expect(tracePar.get('powerup')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.powerup])
-    expect(new Set(tracePar.values()).size).toBe(3)
+    expect(tracePar.get('powerupGameChanger')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.powerupGameChanger])
+    expect(new Set(tracePar.values()).size).toBe(4)
+  })
+
+  it('une arme ramassée au sol se dessine comme une prise sur socle de même nature', () => {
+    const sol = eventFeedEntry('g-power', 10_000, { family: 'pickups', xuid: 'me', name: 'sol', nature: 'power', ground: true })
+    renderFeed({ doc: PLAIN_DOC, entries: [sol, prise('power', 20_000)] })
+    choose(/Armes et bonus/)
+    const traces = screen.getAllByRole('listitem').map((r) => r.querySelector('path')?.getAttribute('d'))
+    expect(traces).toEqual([FEED_GLYPH_PATH.pickupPower, FEED_GLYPH_PATH.pickupPower])
   })
 })
 

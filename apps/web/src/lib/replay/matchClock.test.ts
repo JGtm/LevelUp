@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { matchClock, type MatchClockDocument } from './matchClock'
+import { matchClock, matchKickoffMs, type MatchClockDocument } from './matchClock'
 
 /**
  * LE DOCUMENT TÉMOIN. Un film de 4 985 images à 100 ms (498,4 s), dont l'image zéro tombe
@@ -17,7 +17,6 @@ import { matchClock, type MatchClockDocument } from './matchClock'
  */
 const DOC: MatchClockDocument = {
   originMs: 12_000,
-  t0FilmMs: 31_500,
   frameIntervalMs: 100,
   frameCount: 4985,
 }
@@ -52,9 +51,13 @@ describe('matchClock — quand l’horloge s’établit, et quand elle ne s’é
     expect(matchClock({ ...DOC, frameCount: 0 }, HEADER)).toBeNull()
   })
 
-  it('porte le T0 FILM à côté de celui de l’API, sans s’y ancrer', () => {
-    expect(matchClock(DOC, HEADER)?.t0FilmMs).toBe(31_500)
-    expect(matchClock({ ...DOC, t0FilmMs: undefined }, HEADER)?.t0FilmMs).toBeNull()
+  it('lit un coup d’envoi inconnu comme zéro, une seule fois', () => {
+    expect(matchClock(DOC, {})?.t0Ms).toBe(0)
+    expect(matchClock(DOC, { t0_ms: Number.NaN })?.t0Ms).toBe(0)
+    expect(matchKickoffMs(undefined)).toBe(0)
+    expect(matchKickoffMs(null)).toBe(0)
+    expect(matchKickoffMs(-5)).toBe(0)
+    expect(matchKickoffMs(26_304)).toBe(26_304)
   })
 })
 

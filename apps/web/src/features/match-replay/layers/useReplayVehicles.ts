@@ -111,6 +111,8 @@ export interface VehiclesInput {
    * pas celui qu'on isole). Le prédicat embarqué et les emplacements de naissance n'en dépendent pas.
    */
   shown?: VehicleStyle['shown']
+  /** Les titres d'antagoniste du point de vue, devant le nom d'un occupant (cf. `VehicleStyle.antagonists`). */
+  antagonists?: VehicleStyle['antagonists']
 }
 
 /**
@@ -187,6 +189,7 @@ export function useReplayVehicles({
   explosionInk,
   reducedMotion,
   shown,
+  antagonists,
   redraw,
 }: VehiclesInput): Vehicles {
   const titleSlug = useTitleSlug()
@@ -230,7 +233,7 @@ export function useReplayVehicles({
         {
           neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
           labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
-          explosionInk, reducedMotion, shown,
+          explosionInk, reducedMotion, shown, antagonists,
         },
       )
       // LES EMPLACEMENTS DE NAISSANCE APRÈS LES VÉHICULES, et dans le même geste : ils suivent la
@@ -254,7 +257,7 @@ export function useReplayVehicles({
     [
       enabled, tracks, view, neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
       labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
-      frameMs, explosionInk, reducedMotion, shown,
+      frameMs, explosionInk, reducedMotion, shown, antagonists,
       cycles, livesOf, markInk.fill, markInk.outline, t.padCountdownFmt,
     ],
   )

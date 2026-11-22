@@ -328,6 +328,24 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
 go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
 
+# 4 ter ter. COUP D'ENVOI DU MATCH (ADR 0050) : recalcule, pour chaque match de la base partagée, le
+#    coup d'envoi (`real_start_time`), sa source (`real_start_source` : `film` quand l'artefact de
+#    rejeu publie `t0FilmMs`, sinon `api`, l'estimation par les arrivées des joueurs présents au
+#    début, refusée si elle est négative ou au-delà de 120 s ; vide = inconnu) et le temps de jeu de
+#    chaque joueur (`match_participants.time_played_seconds`, même formule, calculée sur ce coup
+#    d'envoi ; un joueur dont l'arrivée est inconnue garde la valeur de l'API). C'est la MÊME fonction
+#    que le rattrapage du démarrage, qui passe quand la révision rangée dans le `sync_meta` de la base
+#    partagée (`kickoff_revision`) diffère de celle du binaire. AUCUN décodage : le coup d'envoi du
+#    rejeu se lit dans les artefacts rangés, tels quels. Lots de --lot matchs, un burst d'écriture
+#    court chacun ; un second passage n'écrit rien. --dry-run ouvre la base en LECTURE SEULE (aucune
+#    migration ; cohabite avec un serveur en marche) et imprime les écarts : matchs par source, matchs
+#    dont la valeur ou la source du coup d'envoi change, joueurs dont le temps de jeu change et
+#    répartition de l'écart. Sans --dry-run : SERVEUR ARRÊTÉ, migrations jouées, puis la révision est
+#    rangée après un passage complet sans échec. --db et --replays-dir visent une copie de la base et
+#    un autre dossier d'artefacts.
+go run ./cmd/levelup backfill-kickoff --dry-run [--db CHEMIN] [--replays-dir DOSSIER] [--title S]
+go run ./cmd/levelup backfill-kickoff [--lot N] [--db CHEMIN] [--replays-dir DOSSIER] [--title S]
+
 # 4 quater. Zones nommées (callouts) des cartes Forge jouées qui n'en ont pas -> le catalogue
 #    GÉNÉRÉ reference/generated/map_callouts.json (ignoré par git ; le map_callouts.json
 #    versionné n'est jamais écrit). La variante (.mvar) de chaque carte est lue au cache
@@ -708,21 +726,24 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
 
 #### mapfond-build
 
-Trois gestes, et eux seuls (chaque option se rattache à l'un d'eux ; `go run ./cmd/mapfond-build -h` les liste
+Quatre gestes, et eux seuls (chaque option se rattache à l'un d'eux ; `go run ./cmd/mapfond-build -h` les liste
 rangées) :
 
 1. **Cuire des cartes** — l'image du fond et le sidecar de chaque carte retenue.
 2. **Refaire le plan sans recuire** (`--plan-seul`) — le plan des murs et l'image plan des sidecars déjà publiés.
-3. **Produire le tableau avant / après** (`--rapport-tsv`, avec `--avant-dir`) — une ligne TSV par carte traitée, à côté
-   d'une cuisson ou d'un plan seul.
+3. **Ajouter le relief sans recuire** (`--relief-seul`) — l'image et les données du relief des fonds déjà publiés, et
+   deux champs du sidecar. Exclut `--plan-seul`.
+4. **Produire le tableau avant / après** (`--rapport-tsv`, avec `--avant-dir`) — une ligne TSV par carte traitée, à côté
+   d'une cuisson, d'un plan seul ou d'un relief seul.
 
-Communes aux gestes 1 et 2 (sélection et sortie) : `--maps` (carte native : son dossier installé, par exemple
+Communes aux gestes 1 à 3 (sélection et sortie) : `--maps` (carte native : son dossier installé, par exemple
 `ridgeline` ; carte Forge : son `map_id` ; vide = toutes les cartes du catalogue installées localement), `--title slug`,
 `--out-dir DIR` (défaut `PathResolver.MapBackgroundDir`), `--natives=false`, `--forge=false`, `--avis FICHIER[,FICHIER...]`
 (l'avis du user, carte par carte, sur le croisement fond / maillage de navigation : le premier fichier donne la règle, les
 suivants `ignorer` / `reprendre`). Cuisson seulement : `--style` (défaut `jeu`), `--mpp` (mètres par pixel, défaut
 0,0920). Une combinaison qu'un geste ignorerait en silence est refusée avant toute lecture : `--style` ou `--mpp` avec
-`--plan-seul`, `--avant-dir` sans `--rapport-tsv`, `--natives=false --forge=false`.
+`--plan-seul` ou `--relief-seul`, `--plan-seul` avec `--relief-seul`, `--avant-dir` sans `--rapport-tsv`,
+`--natives=false --forge=false`.
 
 ##### 1. Cuire des cartes
 
@@ -736,10 +757,15 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --natives=false          # toutes les c
   convertit les images en WebP et réécrit chaque sidecar par `internal/mapfondsidecar`, qui conserve le `plan` (le
   `replay.MapBackground` du décodeur de film ne le connaît pas). 339 fichiers publiés aujourd'hui : 114 sidecars, 114 fonds
   et 111 images plan (ADR 0048).
+- Relief : une cuisson complète refait aussi le relief dans le même geste (voir le geste 3), pour qu'il ne survive jamais
+  à son fond ; si le relief ne peut pas être calculé, le sidecar est publié sans `reliefImage` ni `reliefData` et les
+  fichiers du relief périmé sont supprimés.
 - Maillage de navigation : une carte native est cuite avec le maillage de son module `any`
-  (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilatée de 0,5 m (`himap.MargeNavmesh`), est effacée, et le
+  (`himap.ChargeMaillageNatifGeometriePartagee` : le maillage du module lui-même d'abord et, pour une carte dont la
+  géométrie vit dans un module partagé comme le `moduleGeometrie` de Live Fire, le maillage de l'arène dans le module
+  `any/globals` homonyme) : la matière hors du maillage, dilatée de 0,5 m (`himap.MargeNavmesh`), est effacée, et le
   sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au millimètre) et son `planImage`. Une carte
-  sans maillage (Live Fire, le tutoriel de l'Académie, une carte Forge dont le `navmesh.blob` manque au dépôt) est cuite
+  sans maillage (le tutoriel de l'Académie, une carte Forge dont le `navmesh.blob` manque au dépôt) est cuite
   comme avant, porte une dégradation nommée dans `degradations` et n'a pas de `plan`. Leviers par carte de
   `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe` ; un champ que l'outil ne connaît pas est
   refusé) : `rogneAuNavmesh` (carte native : actif par défaut, `false` garde le maillage comme surface de référence sans
@@ -768,7 +794,30 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --forge=false     # toutes 
   obtient son plan.
 - Lancer `go run ./cmd/mapfond-webp -convertir` ensuite, comme après une cuisson.
 
-##### 3. Produire le tableau avant / après
+##### 3. Ajouter le relief sans recuire
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint"
+CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint" --out-dir /tmp/relief   # sidecars à compléter
+```
+
+- Pour chaque carte retenue dont le sidecar et le fond sont publiés dans `--out-dir` : la carte est cuite en mémoire
+  (mêmes leviers qu'une cuisson, sauf l'échelle : celle du sidecar publié, quels que soient le défaut, un levier ou
+  `--mpp`), le relief est projeté dans le calage du sidecar **publié** (une recuisson peut sortir
+  plus petite ou décalée : Recharge recuite fait 35 lignes de moins), et l'outil écrit `{cle}.relief.png` (hauteur du
+  dessus par pixel : `q = R + 256 G` par pas de 1/256 d'unité du jeu, drapeaux dans `B`, `A` vaut 0 ou 255),
+  `{cle}.relief.json.gz` (JSON compressé en gzip, car un `.json` serait lu comme un sidecar : calage, bornes de hauteur, étages, sols du maillage, traits vectoriels) et les champs `reliefImage`
+  et `reliefData` du sidecar, par `internal/mapfondsidecar` seul. L'image du fond, l'image plan, le plan des murs, le
+  calage et tous les autres champs du sidecar restent identiques à l'octet. Une carte sans sidecar ou sans fond est
+  laissée intacte et n'est pas cuite.
+- Une carte sans maillage reçoit un relief dégradé (`sans-maillage` dans les données). Le garde-fou demeure : une cuisson dont l'échelle diffère
+  de celle du cadre publié met cette carte en échec nommé (`echelle du fond publie differente de la cuisson, recuire le
+  fond`) et n'écrit rien.
+- Une ligne de journal par carte (`relief ecrit`) : octets écrits, part du relief tirée du maillage (`part_maillage`),
+  pixels du fond publié sans hauteur (`fond_sans_hauteur` sur `fond_matiere`), étages, dégradations, durée.
+- Lancer `go run ./cmd/mapfond-webp -convertir` ensuite : il convertit aussi `{cle}.relief.png`.
+
+##### 4. Produire le tableau avant / après
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres \
@@ -777,7 +826,22 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --out-dir /tmp/apres
 
 - Écrit une ligne par carte traitée (action, mode et marge du rognage, composantes retenues, part de matière rognée,
   ancres au sol avant / après, arêtes du plan, cartes à revoir). `--avant-dir` porte les sidecars d'avant le lancement ;
-  sans lui, les colonnes « avant » restent vides. Vaut pour une cuisson comme pour `--plan-seul`.
+  sans lui, les colonnes « avant » restent vides. Vaut pour une cuisson, pour `--plan-seul` et pour `--relief-seul`.
+
+#### mapfond-webp
+
+```bash
+go run ./cmd/mapfond-webp -verifier [-echantillon N] [-dir DOSSIER] [-title slug]    # mesure, n'écrit rien
+go run ./cmd/mapfond-webp -convertir [-echantillon N] [-dir DOSSIER] [-title slug]   # écrit
+```
+
+- `-convertir` transforme chaque PNG du dossier des fonds en WebP sans perte (VP8L) et supprime le PNG : le fond
+  `{cle}.png`, l'image plan `{cle}.plan.png` et l'image du relief `{cle}.relief.png`. Chaque fichier est vérifié d'abord,
+  et refusé si l'aller-retour n'est pas identique au bit près ; l'image du relief, dont les pixels portent une hauteur
+  (`R`, `G`), des drapeaux (`B`) et une alpha de 0 ou 255, doit ressortir identique sur ses quatre canaux. Le sidecar
+  `{cle}.json` est réécrit par `internal/mapfondsidecar` avec le seul champ qui nomme l'image convertie (`image`,
+  `planImage` ou `reliefImage`).
+- À lancer après `mapfond-build` (cuisson, `--plan-seul` ou `--relief-seul`) sur le même `--out-dir`.
 
 #### mapobj-build
 
@@ -854,6 +918,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
 ```bash
 go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
 go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+go run ./cmd/mapnav-fetch -fichier map.mvar -nom-cuisson -out-dir .ai/re_dump/mapvar -map-id <uuid> [...]
 ```
 
 - Sortie : `<out-dir, defaut .ai/re_dump/navmesh>/<mapID>.blob` — **pas un asset versionné en
@@ -865,6 +930,12 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
   présents) et limité en débit.
 - À rejouer : une nouvelle carte Forge a besoin de son navmesh avant que `mapfond-build` ne
   puisse cuire son fond ; `-refaire` force un nouveau téléchargement.
+- Variante (`.mvar`) : `-fichier map.mvar` rapatrie la variante de carte par le même chemin anonyme ;
+  `-suffixe` fixe l'extension écrite ; `-nom-cuisson` l'écrit sous le nom exact que lit la cuisson
+  (`FichierMvar` de `himap.CartesForge`, ex. `absolution_map.mvar`) au lieu de `<mapID><ext>`, et
+  compte en échec, sans requête, une carte absente de ce catalogue. À employer avec
+  `-out-dir .ai/re_dump/mapvar` (`himap.DepotVariantesCarte`). `-v` journalise le préfixe de
+  stockage résolu (il porte l'identifiant de la version publiée).
 
 #### vehicle-sprite
 
@@ -1224,14 +1295,13 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
 
 ### Réparations de données (outils autonomes, serveur arrêté)
 
-Deux outils de réparation des données existantes, jamais lancés par le serveur. Chacun ouvre
-directement les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà
-des données justes pour les nouveaux matchs ; ces outils ne concernent que des lignes écrites avant.
+Un outil de réparation des données existantes, jamais lancé par le serveur. Il ouvre directement
+les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà des données
+justes pour les nouveaux matchs ; cet outil ne concerne que des lignes écrites avant.
 
 ```bash
 cd apps/go-api
 go run -tags cgo ./cmd/purge_corrupt_records [--data-root CHEMIN] [--apply]
-go run ./cmd/backfill_time_played --db CHEMIN [--commit]
 ```
 
 - `purge_corrupt_records` : retire les records personnels invraisemblables : valeurs hors des bornes
@@ -1247,21 +1317,8 @@ go run ./cmd/backfill_time_played --db CHEMIN [--commit]
   regroupées par (métrique, valeur). Il ouvre chaque base en lecture-écriture dans les deux modes :
   le serveur doit donc être arrêté même pour la simulation. Il ne fait aucune sauvegarde de
   lui-même.
-- `backfill_time_played` : recalcule `time_played_seconds` de `match_participants` à partir des
-  horodatages de participation (`first_joined_time`, `last_leave_time`), en gérant les joueurs partis
-  avant la fin et les arrivés en cours de match, dans la fenêtre de jeu du match (de
-  `real_start_time` au début plus la durée). `--db` est la base de matchs partagée
-  (`shared_matches_v2.duckdb`). **Simulation par défaut** (base ouverte en lecture seule) : il
-  imprime la répartition par qualité, l'écart entre la valeur recalculée et celle de l'API, et le
-  garde-fou des matchs complets (la médiane de `time_played` des joueurs présents du début à la fin
-  doit être proche de la durée de jeu, cible : plus de 95 % à 5 % près). `--commit` écrit, dans une
-  seule transaction, uniquement les lignes de qualité `ok` ; les lignes sans `first_joined_time`
-  gardent leur valeur de l'API. Serveur en marche, viser une copie de la base pour la simulation.
-  Réserve : les nouveaux matchs sont déjà corrects, la synchronisation calcule elle-même cette valeur
-  (`timeline.ComputeTimePlayedFor`, appelé depuis `internal/sync/transforms.go`) ; la commande ne sert
-  qu'aux anciens matchs. Elle dépend de l'heure d'arrivée du joueur (`first_joined_time`), dont le
-  fuseau horaire est une dette connue : lire un échantillon du rapport de simulation avant de
-  l'appliquer en masse.
+- Le temps de jeu des joueurs (`time_played_seconds`) se recalcule par `levelup backfill-kickoff`
+  (section plus haut), avec le coup d'envoi dont il dépend.
 
 ### Migration des chemins média (one-shot, binaire autonome)
 
@@ -1965,11 +2022,15 @@ d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG
 et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
 (`halo5Images.guard.test.ts`) échoue si un PNG revient.
 
-### Gate local avant merge (`gate-push`)
+### Gate local avant `main` (`gate-push`)
 
 ```bash
 make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
+
+Il se lance UNE fois, sur la branche de release, avant la fusion de la release dans `main`. Jamais avant la
+fusion d'une branche de travail dans `release/vX.Y.Z` : là, les paquets touchés, une suite `vitest` complète et la
+CI font le gate. Depuis un worktree, `replay-equiv` lit seul le parc de films et la liste des originaux du dépôt principal.
 
 `make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu) : les références de
 `replay/testdata/equivalence` du décodeur de film (lues à la version qu'exige `go.mod`) ont dérivé sans bruit de la
@@ -2040,7 +2101,12 @@ powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # clôture de lot :
 - Sécurité : aucune suppression tant qu'un processus `go`, `compile`, `link`, `*.test`,
   `golangci-lint`, `gate`, `replay-*` ou `levelup*` tourne (rapport seul). `-Lot` refuse un cache
   écrit dans les 10 dernières minutes. Un arbre qui contient une jonction ou un lien n'est jamais
-  supprimé, seulement signalé. Les worktrees sont signalés, jamais retirés.
+  supprimé, seulement signalé. Un dossier qui est, ou qui contient jusqu'à 3 niveaux plus bas, un
+  dépôt ou un worktree git (un `.git`, dossier ou fichier) n'est jamais supprimé, même sous `C:\t` :
+  il est listé « dépôt ou worktree git : conservé », en simulation comme avec `-Apply`. Les
+  worktrees enregistrés sont signalés, jamais retirés.
+- `-TmpRoot <dossier>` remplace `C:\t` comme racine balayée (défaut inchangé) ; sert aux essais sur
+  une arborescence jetable, avec `-Scope Tmp`.
 - Journal : `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (espace libre avant et après,
   chaque suppression et chaque refus ; `ALERTE` sous 60 Go libres).
 - Tâche planifiée `LevelUp-disk-hygiene` : chaque jour à 4 h, utilisateur courant, sans élévation,

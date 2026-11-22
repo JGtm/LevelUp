@@ -26,6 +26,7 @@ import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/ca
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
+import { drawReliefLinesLayer, type ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
 import { drawWallPlanLayer } from './wallPlanLayer'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
@@ -72,6 +73,11 @@ export interface StaticLayersInput {
   heat: { grid: HeatGrid | null; ramp: string[] }
   /** Le plan des murs du fond retenu (`null` = pas de plan) et son encre. */
   wallPlan: { plan: WallPlanReady | null; ink: string }
+  /**
+   * LES TRAITS DU RELIEF (ruptures, courbes, murs de la coupe, liseré) de la coupe courante, `null` =
+   * éteints. Ils se recuisent avec le cadrage ET quand la coupe ou les encres changent.
+   */
+  reliefLines: ReliefLinesInput | null
   objectives: {
     elements: readonly ObjectiveElementReady[]
     colorOfTeam: (team: number) => string
@@ -86,7 +92,7 @@ export interface StaticLayersInput {
   }
 }
 
-/** Les QUATRE canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03). */
+/** Les CINQ canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03 ; les traits du relief sont venus avec le fond Relief). */
 export interface StaticLayers {
   /**
    * LE CADRAGE AVEC LEQUEL LES CALQUES ONT ÉTÉ CUITS — `null` tant qu'aucune cuisson n'a eu
@@ -96,6 +102,7 @@ export interface StaticLayers {
    */
   cookedRef: RefObject<CanvasView | null>
   wallPlanRef: RefObject<HTMLCanvasElement | null>
+  reliefLinesRef: RefObject<HTMLCanvasElement | null>
   zonesRef: RefObject<HTMLCanvasElement | null>
   heatRef: RefObject<HTMLCanvasElement | null>
   objectivesRef: RefObject<HTMLCanvasElement | null>
@@ -121,12 +128,35 @@ function cookLayer(
   return off
 }
 
+/**
+ * useCookedReliefLines — LE CALQUE DES TRAITS DU RELIEF, cuit contre le cadrage de cuisson : sa référence et son
+ * effet. Sans traits (`null`, relief éteint ou illisible) le calque est vidé et la scène repeinte.
+ */
+function useCookedReliefLines(
+  reliefLines: ReliefLinesInput | null,
+  cookView: CanvasView,
+  redraw: () => void,
+): RefObject<HTMLCanvasElement | null> {
+  const ref = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    if (!reliefLines || cookView.width === 0) {
+      ref.current = null
+      redraw()
+      return
+    }
+    ref.current = cookLayer(cookView, (ctx) => drawReliefLinesLayer(ctx, reliefLines, (p) => projectTo(cookView, p)))
+    redraw()
+  }, [reliefLines, cookView, redraw])
+  return ref
+}
+
 export function useReplayStaticLayers({
   view,
   redraw,
   zones,
   heat,
   wallPlan,
+  reliefLines,
   objectives,
   frozen = false,
   follow = false,
@@ -145,6 +175,7 @@ export function useReplayStaticLayers({
     cookedRef.current = cookView
   }, [cookView])
   const wallPlanRef = useRef<HTMLCanvasElement | null>(null)
+  const reliefLinesRef = useCookedReliefLines(reliefLines, cookView, redraw)
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
   const heatRef = useRef<HTMLCanvasElement | null>(null)
   const objectivesRef = useRef<HTMLCanvasElement | null>(null)
@@ -213,5 +244,5 @@ export function useReplayStaticLayers({
     redraw()
   }, [elements, colorOfTeam, neutralOutline, z, cookView, redraw])
 
-  return { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef }
+  return { wallPlanRef, reliefLinesRef, zonesRef, heatRef, objectivesRef, cookedRef }
 }

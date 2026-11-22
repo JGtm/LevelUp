@@ -44,9 +44,6 @@ type mockMatchViewRepo struct {
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
 	notParticipant bool
 	participantErr error
-	// medalMetasByName : réponse de LookupMedalMetaByName (résolution des médailles
-	// du feed). Nil = référentiel indisponible → les events medal gardent le nom brut.
-	medalMetasByName map[string]domain.MedalNameMeta
 	// errs : échec d'une lecture par NOM de méthode (E4.8b : rang, CSR partagés, médias, stats
 	// attendues, médailles/armes de tous les joueurs, historique). Absent = la lecture réussit à vide.
 	errs map[string]error
@@ -77,7 +74,7 @@ func (m *mockMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domai
 	return m.events, m.eventsErr
 }
 func (m *mockMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string) (map[string]domain.MedalNameMeta, error) {
-	return m.medalMetasByName, m.errs["LookupMedalMetaByName"]
+	return nil, nil
 }
 func (m *mockMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
 	return m.killSources, m.killSrcErr

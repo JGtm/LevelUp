@@ -18,7 +18,9 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/gameproc"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replayregen"
+	"levelup/go-api/internal/sync/replayartifacts"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
@@ -38,11 +40,32 @@ func (r *ServiceRegistry) ReplayRegenDeps(pending replayregen.PendingStore) repl
 		RefusedByRule: r.unmanagedModeMatches,
 		Rebuild:       r.regenerateReplay,
 		FetchFilm:     r.fetchFilmForDemand,
+		Revalidate:    r.revalidateReplayDemand,
 		ReleaseFilm:   r.releaseFilmAfterBuild,
+		RasterStale: func(ctx context.Context, titleSlug, matchID string) bool {
+			return !replayartifact.SidecarRasterCourantRapide(ctx, paths.TacticalRasterPath(titleSlug, matchID))
+		},
+		RebuildRaster: r.rebuildTacticalRaster,
 		Demands:       replayregen.NewFileDemandStore(paths.ReplayGenerationQueuePath()),
 		Pending:       pending,
 		HeavyAllowed:  gameproc.Default().HeavyWorkAllowed,
 	}
+}
+
+// rebuildTacticalRaster refait le fichier tactique d'un match depuis son rejeu rangé, sans film (la file s'en sert pour
+// un rejeu dont le film a quitté l'archive). La matière de la prévision de réapparition suit la capacité du titre ; des
+// capacités illisibles refusent l'écriture : un fichier projeté sans cette matière porterait le format courant et ne
+// serait jamais refait.
+func (r *ServiceRegistry) rebuildTacticalRaster(ctx context.Context, titleSlug, matchID string) error {
+	caps, err := games.LoadCapabilityMap(r.cfg.Roots().Resources, titleSlug)
+	if err != nil {
+		slog.ErrorContext(ctx, "replay_regen: capacités du titre illisibles, fichier tactique non refait",
+			"titleSlug", titleSlug, "match_id", matchID, "err", err)
+		return fmt.Errorf("capacités du titre %s: %w", titleSlug, err)
+	}
+	paths := r.cfg.PathResolver()
+	return replayartifacts.RefaireRasterTactique(ctx, paths.ReplayArtifactPath(titleSlug, matchID),
+		paths.TacticalRasterPath(titleSlug, matchID), caps.Has(games.CapFilmSpawnForecast))
 }
 
 // unmanagedModeMatches rend les matchs (forme courte) dont le mode n'est pas géré par le rejeu : le MÊME prédicat que

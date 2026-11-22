@@ -187,13 +187,6 @@ func (a *AssetURLAdapter) SplatterIcon() (canonical.KillSourceIcon, bool) {
 func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }
 func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string { return "" }
 
-// MedalImageURL : Halo 5 expose ses icônes de médaille sous forme de SPRITE
-// (feuille + offset left/top/width/height), non exprimable en une URL PNG simple.
-// Le rendu sprite côté front est un chantier distinct (G2 / D.1) ; cet adapter
-// retourne donc "". Les champs sprite restent disponibles via AssetMeta dans la
-// couche asset metadata, pas ici.
-func (a *AssetURLAdapter) MedalImageURL(_ uint64) string { return "" }
-
 // CSRRankImageURL retourne l'URL du badge CSR pour (tier=designation, subTier=tier_id).
 // "" si aucun résolveur n'est injecté ou si la designation/tier est inconnue.
 func (a *AssetURLAdapter) CSRRankImageURL(tier string, subTier int) string {

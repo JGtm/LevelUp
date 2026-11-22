@@ -95,6 +95,8 @@ export function ReplayStage({
         endMatch={view.endMatchSound}
         viewpoint={view.viewpoint.xuid}
         playerFocus={view.playerPanel.focus}
+        antagonists={view.antagonists.forViewpoint(view.viewpoint.xuid)}
+        hiddenPlayers={view.playerPanel.hiddenPlayers}
         cameraFollow={view.playerPanel.camera}
         onFollowStop={view.playerPanel.onFollowStop}
         fullscreen={view.fullscreen}

@@ -7,10 +7,9 @@
  * POURQUOI. Sept constantes de cotes vivaient dans quatre fichiers de `ui/` (`WEAPON_CELL_W`,
  * `AMMO_CELL_W`, `GRENADES_BOX_W`, `SCORE_CELL_W`, `COUNT_CELL_W`, `GRENADE_ICON_PX`,
  * `HUD_ICON_PX`, `WATERMARK_PX`). Le 2026-09-06 (plan fiches compactes, I1) elles sont
- * devenues les champs d'un objet `CardGabarit`, avec DEUX valeurs chacune — et la seule façon
- * pour qu'un second gabarit reste un second gabarit, c'est qu'aucune cote ne REVIENNE en
- * constante locale dans un composant : le jour où elle revient, elle ne vaut plus que pour
- * l'un des deux.
+ * devenues les champs d'un objet `CardGabarit` — et la seule façon pour qu'un gabarit reste
+ * l'unique foyer de ses cotes, c'est qu'aucune cote ne REVIENNE en constante locale dans un
+ * composant : le jour où elle revient, elle ne vaut plus que pour ce composant.
  *
  * TROIS INTERDITS, sur les composants de la fiche :
  *   1. une déclaration `const X_CELL_W = …`, `X_BOX_W`, `X_ICON_PX`, `X_PX` — la forme exacte
@@ -19,7 +18,8 @@
  *      nombres et des booléens, jamais un mot (la forme que `10fe3228a` a supprimée) ;
  *   3. un import depuis `../settings/` — la densité n'est pas un réglage, sans drapeau.
  *
- * Et la contre-épreuve : le foyer canonique déclare bien les deux gabarits.
+ * Et la contre-épreuve : le foyer canonique déclare bien les gabarits qui existent, et aucun gabarit
+ * normal (sans lecteur) n'y revient.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -87,10 +87,11 @@ describe('garde-rail : les cotes de la fiche vivent dans model/cardGabarit.ts', 
     expect(fautifs).toEqual([])
   })
 
-  it('et le foyer canonique déclare bien les quatre gabarits et les cotes de la rangée', () => {
+  it('et le foyer canonique déclare bien les trois gabarits, les cotes du bloc « À l’instant » et celles de la rangée, sans gabarit normal', () => {
     const src = lire(fichierNomme('cardGabarit.ts'))
-    expect(src).toMatch(/export const GABARIT_NORMAL: CardGabarit/)
+    expect(src).not.toMatch(/GABARIT_NORMAL/)
     expect(src).toMatch(/export const GABARIT_COMPACT: CardGabarit/)
+    expect(src).toMatch(/export const COTES_BLOC_INSTANT = /)
     expect(src).toMatch(/export const GABARIT_LIGNE: LigneGabarit/)
     expect(src).toMatch(/export const GABARIT_FICHE_COMPACTE: FicheCompacteGabarit/)
     expect(src).toMatch(/export const COTES_RANGEE = /)

@@ -255,6 +255,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (port.Ser
 	// LE LIBELLÉ ET LE VISUEL DES MÉDAILLES, même règle et même raison : le référentiel du titre est lu à la
 	// requête, et le champ n'existe que dans le document SERVI (cf. replay_medal_labels.go).
 	s.resolveMedalLabels(ctx, &served)
+	// LES BRIS ET LES RECHARGES DE BOUCLIER, calculés sur le document STOCKÉ (les pistes) avec la définition
+	// unique de `analysis/shieldcycle`, servis par xuid (cf. replay_shield_cycles.go).
+	served.ShieldCycles = shieldCyclesOf(&doc)
 	// LA FRAÎCHEUR DE CADENCE se décide ici, sur le pas du document lu, et voyage avec lui : le masque de
 	// démo ne touche pas au pas.
 	stale := !replaybuild.CadenceUpToDate(served.FrameIntervalMS)

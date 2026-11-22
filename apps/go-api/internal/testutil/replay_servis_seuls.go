@@ -25,14 +25,19 @@ import (
 )
 
 // ReplayChampsServisSeuls : les champs du document SERVI sans source stockee, par `Type.Champ`, avec la
-// date de la decision et son motif. Vide depuis que le decodeur de film declare `medalLabels` (v1.5.0) : un
-// calque resolu a la requete et declare par le decodeur est un champ jumeau, plus un champ servi seul.
-var ReplayChampsServisSeuls = map[string]string{}
+// date de la decision et son motif. Un calque resolu a la requete et declare par le decodeur est un champ
+// jumeau (`medalLabels`, depuis la v1.5.0), plus un champ servi seul.
+var ReplayChampsServisSeuls = map[string]string{
+	"ReplayDocument.ShieldCycles": "2026-11-22 : instants des bris et des recharges de bouclier de chaque joueur mesure, calcules a la requete " +
+		"par service/replay_shield_cycles.go depuis les pistes du document stocke avec analysis/shieldcycle (une seule definition).",
+}
 
 // ReplayTypesServisSeuls : les TYPES du document servi qui n'existent que pour un champ de
 // `ReplayChampsServisSeuls`, par nom de type, avec la date de la decision. Les gardes les visitent sans leur
-// chercher de jumeau stocke. Vide, comme la liste des champs.
-var ReplayTypesServisSeuls = map[string]string{}
+// chercher de jumeau stocke.
+var ReplayTypesServisSeuls = map[string]string{
+	"ShieldCycle": "2026-11-22 : valeur de `ReplayDocument.ShieldCycles`.",
+}
 
 // LES DECISIONS DE NON-PUBLICATION. Le sens inverse : ce que le document STOCKE ecrit et que l'API ne publie pas.
 // Les memes trois gardes (`service/replayview/parity_test.go`, `columns_champs_test.go` et

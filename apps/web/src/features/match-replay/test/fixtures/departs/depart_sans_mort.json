@@ -1,0 +1,991 @@
+{
+ "schemaVersion": 125,
+ "matchId": "m",
+ "titleSlug": "halo_infinite",
+ "frameCount": 14944,
+ "frameIntervalMs": 33,
+ "bounds": {
+  "minX": -82.04,
+  "minY": -27.41,
+  "maxX": -31.92,
+  "maxY": 28.15,
+  "minZ": 64.45,
+  "maxZ": 104.37
+ },
+ "originMs": 10777,
+ "t0FilmMs": 33415,
+ "tracks": [
+  {
+   "slot": 514,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 0,
+     "x": -68.04,
+     "y": 27.11,
+     "z": 98.37
+    },
+    {
+     "t": 1232,
+     "x": -71.14,
+     "y": 3.15,
+     "z": 100.6
+    }
+   ],
+   "endFrame": 1232,
+   "endReason": "released",
+   "releaseFrame": 1233
+  },
+  {
+   "slot": 515,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 1,
+     "x": -67.49,
+     "y": -26.91,
+     "z": 98.37
+    },
+    {
+     "t": 1865,
+     "x": -68.17,
+     "y": -8.36,
+     "z": 97.68
+    }
+   ],
+   "startFrame": 1,
+   "endFrame": 1865,
+   "endReason": "released",
+   "releaseFrame": 1866
+  },
+  {
+   "slot": 518,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 2,
+     "x": -66.82,
+     "y": 27.01,
+     "z": 98.37
+    },
+    {
+     "t": 3681,
+     "x": -76.17,
+     "y": -0.66,
+     "z": 97.69
+    }
+   ],
+   "startFrame": 2,
+   "endFrame": 3681,
+   "endReason": "released",
+   "releaseFrame": 3681
+  },
+  {
+   "slot": 521,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 1477,
+     "x": -60.08,
+     "y": 27.54,
+     "z": 96.96
+    },
+    {
+     "t": 1984,
+     "x": -41.68,
+     "y": 1.96,
+     "z": 97.94
+    }
+   ],
+   "startFrame": 1477,
+   "endFrame": 1984,
+   "endReason": "released",
+   "releaseFrame": 1984
+  },
+  {
+   "slot": 525,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 2110,
+     "x": -59.79,
+     "y": -27.2,
+     "z": 97.1
+    },
+    {
+     "t": 2710,
+     "x": -70.65,
+     "y": -6.14,
+     "z": 101.25
+    }
+   ],
+   "startFrame": 2110,
+   "endFrame": 2710,
+   "endReason": "released",
+   "releaseFrame": 2711
+  },
+  {
+   "slot": 526,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 2228,
+     "x": -80.04,
+     "y": -7.46,
+     "z": 100.34
+    },
+    {
+     "t": 2742,
+     "x": -69.9,
+     "y": -2.49,
+     "z": 100.6
+    }
+   ],
+   "startFrame": 2228,
+   "endFrame": 2742,
+   "endReason": "released",
+   "releaseFrame": 2743
+  },
+  {
+   "slot": 531,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 2954,
+     "x": -64.59,
+     "y": -20.66,
+     "z": 97.24
+    },
+    {
+     "t": 3683,
+     "x": -76.41,
+     "y": -0.97,
+     "z": 98.12
+    }
+   ],
+   "startFrame": 2954,
+   "endFrame": 3683,
+   "endReason": "released",
+   "releaseFrame": 3683
+  },
+  {
+   "slot": 532,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 2986,
+     "x": -72.63,
+     "y": 12.61,
+     "z": 97.61
+    },
+    {
+     "t": 3274,
+     "x": -70.96,
+     "y": -6.39,
+     "z": 97.84
+    }
+   ],
+   "startFrame": 2986,
+   "endFrame": 3274,
+   "endReason": "released",
+   "releaseFrame": 3274
+  },
+  {
+   "slot": 534,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 3518,
+     "x": -70.45,
+     "y": 26.19,
+     "z": 98.33
+    },
+    {
+     "t": 4613,
+     "x": -63.79,
+     "y": 2.48,
+     "z": 99.9
+    }
+   ],
+   "startFrame": 3518,
+   "endFrame": 4613,
+   "endReason": "released",
+   "releaseFrame": 4614
+  },
+  {
+   "slot": 538,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 3925,
+     "x": -65.67,
+     "y": 16.51,
+     "z": 99.82
+    },
+    {
+     "t": 4693,
+     "x": -66.2,
+     "y": 6.37,
+     "z": 99.85
+    }
+   ],
+   "startFrame": 3925,
+   "endFrame": 4693,
+   "endReason": "released",
+   "releaseFrame": 4694
+  },
+  {
+   "slot": 539,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 3927,
+     "x": -64.61,
+     "y": -22.68,
+     "z": 98.33
+    },
+    {
+     "t": 4794,
+     "x": -69.58,
+     "y": 2.92,
+     "z": 101.49
+    }
+   ],
+   "startFrame": 3927,
+   "endFrame": 4794,
+   "endReason": "released",
+   "releaseFrame": 4794
+  },
+  {
+   "slot": 542,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 4857,
+     "x": -65.53,
+     "y": -16.55,
+     "z": 99.82
+    },
+    {
+     "t": 5822,
+     "x": -74.56,
+     "y": -3.63,
+     "z": 100.6
+    }
+   ],
+   "startFrame": 4857,
+   "endFrame": 5822,
+   "endReason": "released",
+   "releaseFrame": 5823
+  },
+  {
+   "slot": 543,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 4938,
+     "x": -70.45,
+     "y": -27.41,
+     "z": 98.33
+    },
+    {
+     "t": 5605,
+     "x": -74.55,
+     "y": -0.25,
+     "z": 100.45
+    }
+   ],
+   "startFrame": 4938,
+   "endFrame": 5605,
+   "endReason": "released",
+   "releaseFrame": 5606
+  },
+  {
+   "slot": 545,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 5038,
+     "x": -65.3,
+     "y": 27.61,
+     "z": 98.34
+    },
+    {
+     "t": 8359,
+     "x": -64.35,
+     "y": 2.09,
+     "z": 99.96
+    }
+   ],
+   "startFrame": 5038,
+   "endFrame": 8359,
+   "endReason": "released",
+   "releaseFrame": 8359
+  },
+  {
+   "slot": 547,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 5849,
+     "x": -36.2,
+     "y": 6.2,
+     "z": 99.48
+    },
+    {
+     "t": 6819,
+     "x": -65.74,
+     "y": 22.74,
+     "z": 98.31
+    }
+   ],
+   "startFrame": 5849,
+   "endFrame": 6819,
+   "endReason": "released",
+   "releaseFrame": 6820
+  },
+  {
+   "slot": 548,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 6067,
+     "x": -57.97,
+     "y": 20.66,
+     "z": 96.89
+    },
+    {
+     "t": 7939,
+     "x": -42.99,
+     "y": -2.05,
+     "z": 97.94
+    }
+   ],
+   "startFrame": 6067,
+   "endFrame": 7939,
+   "endReason": "released",
+   "releaseFrame": 7940
+  },
+  {
+   "slot": 552,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 7063,
+     "x": -80.12,
+     "y": -9.84,
+     "z": 100.34
+    },
+    {
+     "t": 8201,
+     "x": -59.44,
+     "y": 1.44,
+     "z": 100.39
+    }
+   ],
+   "startFrame": 7063,
+   "endFrame": 8201,
+   "endReason": "released",
+   "releaseFrame": 8202
+  },
+  {
+   "slot": 559,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 8183,
+     "x": -73.57,
+     "y": -17.82,
+     "z": 99.84
+    },
+    {
+     "t": 9539,
+     "x": -74.02,
+     "y": 0.11,
+     "z": 100.51
+    }
+   ],
+   "startFrame": 8183,
+   "endFrame": 9539,
+   "endReason": "released",
+   "releaseFrame": 9539
+  },
+  {
+   "slot": 560,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 8445,
+     "x": -72.8,
+     "y": -12.87,
+     "z": 97.57
+    },
+    {
+     "t": 9749,
+     "x": -63.22,
+     "y": -2.52,
+     "z": 98.26
+    }
+   ],
+   "startFrame": 8445,
+   "endFrame": 9749,
+   "endReason": "released",
+   "releaseFrame": 9749
+  },
+  {
+   "slot": 561,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 8603,
+     "x": -80.17,
+     "y": 20.34,
+     "z": 100.42
+    },
+    {
+     "t": 13460,
+     "x": -66.16,
+     "y": -22.08,
+     "z": 98.31
+    }
+   ],
+   "startFrame": 8603,
+   "endFrame": 13460,
+   "endReason": "released",
+   "releaseFrame": 13460
+  },
+  {
+   "slot": 564,
+   "team": 1,
+   "xuid": "fx-depart-1",
+   "points": [
+    {
+     "t": 9783,
+     "x": -64.58,
+     "y": 22.65,
+     "z": 98.33
+    },
+    {
+     "t": 9785,
+     "x": -64.58,
+     "y": 22.65,
+     "z": 98.31
+    }
+   ],
+   "startFrame": 9783,
+   "endFrame": 9785,
+   "endReason": "deleted"
+  },
+  {
+   "slot": 566,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 9993,
+     "x": -65.67,
+     "y": 16.51,
+     "z": 99.82
+    },
+    {
+     "t": 11707,
+     "x": -58.16,
+     "y": 7.13,
+     "z": 96.56
+    }
+   ],
+   "startFrame": 9993,
+   "endFrame": 11707,
+   "endReason": "released",
+   "releaseFrame": 11708
+  },
+  {
+   "slot": 569,
+   "team": 1,
+   "bot": "Robot Un [bot]",
+   "points": [
+    {
+     "t": 10188,
+     "x": -68.46,
+     "y": 17.57,
+     "z": 97.43
+    },
+    {
+     "t": 11348,
+     "x": -66.4,
+     "y": 28.15,
+     "z": 99.1
+    }
+   ],
+   "startFrame": 10188,
+   "endFrame": 11348,
+   "endReason": "released",
+   "releaseFrame": 11349
+  },
+  {
+   "slot": 575,
+   "team": 1,
+   "bot": "Robot Un [bot]",
+   "points": [
+    {
+     "t": 11592,
+     "x": -36.2,
+     "y": 6.2,
+     "z": 99.48
+    },
+    {
+     "t": 11879,
+     "x": -48.4,
+     "y": 8.43,
+     "z": 64.45
+    }
+   ],
+   "startFrame": 11592,
+   "endFrame": 11879,
+   "endReason": "released",
+   "releaseFrame": 11880
+  },
+  {
+   "slot": 577,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 11951,
+     "x": -58.01,
+     "y": -20.78,
+     "z": 96.89
+    },
+    {
+     "t": 12729,
+     "x": -77.86,
+     "y": -2.93,
+     "z": 97.34
+    }
+   ],
+   "startFrame": 11951,
+   "endFrame": 12729,
+   "endReason": "released",
+   "releaseFrame": 12729
+  },
+  {
+   "slot": 580,
+   "team": 1,
+   "bot": "Robot Un [bot]",
+   "points": [
+    {
+     "t": 12124,
+     "x": -72.8,
+     "y": -12.87,
+     "z": 97.57
+    },
+    {
+     "t": 12748,
+     "x": -61.05,
+     "y": -15.94,
+     "z": 99.8
+    }
+   ],
+   "startFrame": 12124,
+   "endFrame": 12748,
+   "endReason": "released",
+   "releaseFrame": 12749
+  },
+  {
+   "slot": 583,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 12973,
+     "x": -71.36,
+     "y": -25.77,
+     "z": 98.33
+    },
+    {
+     "t": 13145,
+     "x": -72.2,
+     "y": -16.62,
+     "z": 99.8
+    }
+   ],
+   "startFrame": 12973,
+   "endFrame": 13145,
+   "endReason": "released",
+   "releaseFrame": 13146
+  },
+  {
+   "slot": 584,
+   "team": 1,
+   "bot": "Robot Un [bot]",
+   "points": [
+    {
+     "t": 12992,
+     "x": -59.79,
+     "y": -27.2,
+     "z": 97.1
+    },
+    {
+     "t": 13908,
+     "x": -63.79,
+     "y": -13.12,
+     "z": 99.8
+    }
+   ],
+   "startFrame": 12992,
+   "endFrame": 13908,
+   "endReason": "released",
+   "releaseFrame": 13908
+  },
+  {
+   "slot": 585,
+   "team": 1,
+   "xuid": "fx-depart-3",
+   "points": [
+    {
+     "t": 13389,
+     "x": -80.08,
+     "y": 9.71,
+     "z": 100.34
+    },
+    {
+     "t": 14490,
+     "x": -75.41,
+     "y": 7.18,
+     "z": 101.04
+    }
+   ],
+   "startFrame": 13389,
+   "endFrame": 14490,
+   "endReason": "released",
+   "releaseFrame": 14491
+  },
+  {
+   "slot": 588,
+   "team": 0,
+   "xuid": "fx-depart-2",
+   "points": [
+    {
+     "t": 13704,
+     "x": -80.76,
+     "y": 1.3,
+     "z": 97.03
+    },
+    {
+     "t": 14745,
+     "x": -65.93,
+     "y": 22.72,
+     "z": 98.31
+    }
+   ],
+   "startFrame": 13704,
+   "endFrame": 14943,
+   "endReason": "released",
+   "releaseFrame": 14746
+  },
+  {
+   "slot": 591,
+   "team": 1,
+   "bot": "Robot Un [bot]",
+   "points": [
+    {
+     "t": 14152,
+     "x": -80.17,
+     "y": 20.34,
+     "z": 100.42
+    },
+    {
+     "t": 14714,
+     "x": -72.7,
+     "y": 19.68,
+     "z": 101.31
+    }
+   ],
+   "startFrame": 14152,
+   "endFrame": 14714,
+   "endReason": "released",
+   "releaseFrame": 14715
+  }
+ ],
+ "roster": [
+  {
+   "xuid": "fx-depart-1",
+   "filmIndex": 2,
+   "name": "Joueur 1",
+   "team": 1,
+   "seat": 2,
+   "seatSource": "lu",
+   "presence": [
+    {
+     "from": 0,
+     "to": 9937
+    }
+   ]
+  },
+  {
+   "xuid": "fx-depart-2",
+   "filmIndex": 3,
+   "name": "Joueur 2",
+   "team": 0,
+   "seat": 3,
+   "seatSource": "lu",
+   "presence": [
+    {
+     "from": 0,
+     "to": 14943
+    }
+   ]
+  },
+  {
+   "xuid": "fx-depart-3",
+   "filmIndex": 6,
+   "name": "Joueur 3",
+   "team": 1,
+   "seat": 6,
+   "seatSource": "lu",
+   "presence": [
+    {
+     "from": 0,
+     "to": 14943
+    }
+   ]
+  },
+  {
+   "xuid": "",
+   "filmIndex": 8,
+   "name": "Robot Un [bot]",
+   "team": 1,
+   "seat": 2,
+   "seatSource": "apparie",
+   "presence": [
+    {
+     "from": 9938,
+     "to": 14943
+    }
+   ],
+   "bot": true
+  }
+ ],
+ "respawnCountdowns": [
+  {
+   "filmIndex": 2,
+   "from": 1233,
+   "to": 1476,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 1866,
+   "to": 2109,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 1984,
+   "to": 2227,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 2711,
+   "to": 2953,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 2743,
+   "to": 2985,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 3274,
+   "to": 3517,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 3681,
+   "to": 3924,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 3683,
+   "to": 3926,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 4614,
+   "to": 4856,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 4694,
+   "to": 4937,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 4794,
+   "to": 5037,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 5606,
+   "to": 5848,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 5823,
+   "to": 6066,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 6820,
+   "to": 7062,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 7940,
+   "to": 8182,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 8202,
+   "to": 8444,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 8359,
+   "to": 8602,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 2,
+   "from": 9539,
+   "to": 9782,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 9749,
+   "to": 9992,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 11708,
+   "to": 11950,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 12729,
+   "to": 12972,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 13146,
+   "to": 13388,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 3,
+   "from": 13460,
+   "to": 13703,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": true
+  },
+  {
+   "filmIndex": 6,
+   "from": 14491,
+   "to": 14733,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": false
+  },
+  {
+   "filmIndex": 3,
+   "from": 14746,
+   "to": 14988,
+   "seconds": 8,
+   "startRead": true,
+   "endRead": false
+  }
+ ]
+}

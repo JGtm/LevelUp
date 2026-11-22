@@ -8,13 +8,16 @@
  * couronne, bombe) suivent le même trait. Aucune vignette d'atlas dont l'index bouge par saison :
  * un trait vectoriel ne dépend d'aucun asset.
  *
- * UNE PRISE SE DESSINE SELON LA NATURE DE CE QUI EST PRIS, la même que celle qui teinte les socles
- * de la carte (`PadFamily`) : arme de râtelier (l'arme seule), arme spéciale (l'arme et une étoile),
- * équipement (un bouclier). Le menu de filtre garde l'arme seule pour toute la famille.
+ * UNE PRISE SE DESSINE SELON LA NATURE DE CE QUI EST PRIS (`PickupNature`) : une flèche qui monte du sol
+ * pour une arme de râtelier, la même flèche et une étoile pour une arme spéciale, une caisse pour un
+ * équipement, la même caisse et une étoile pour un équipement qui change la partie. Aucune silhouette
+ * d'arme : la ligne dit le nom, le tracé dit la nature. Le menu de filtre prend la flèche pour toute la
+ * famille. L'étoile (un plus de cinq unités en haut à droite) laisse au moins une unité de grille libre
+ * entre son trait et celui de la flèche ou de la caisse, épaisseur du trait comprise.
  */
+import type { PickupNature } from './feedEventLines'
 import type { FeedFilterId } from './feedFilterLogic'
 import type { ObjectiveFamily } from './objectiveFamilies'
-import type { PadFamily } from './weaponPadFamilies'
 
 export type FeedGlyphKey =
   | 'all'
@@ -28,10 +31,18 @@ export type FeedGlyphKey =
   | 'pickup'
   | 'pickupPower'
   | 'pickupEquipment'
+  | 'pickupEquipmentPower'
   | 'vehicle'
   | 'medal'
   | 'assist'
   | 'round'
+
+/** La flèche qui monte du sol : la pointe en haut, la tige, le sol. */
+const PICKUP_ARROW = 'M12 16V4M7 9l5-5 5 5M4 20h16'
+/** La caisse en perspective : le contour à six sommets, puis les trois arêtes qui se rejoignent au centre. */
+const PICKUP_CRATE = 'M10.5 6l7 3.5v8l-7 3.5-7-3.5v-8ZM3.5 9.5l7 3.5 7-3.5M10.5 13v8'
+/** L'étoile de ce qui compte : un plus, en haut à droite. */
+const PICKUP_STAR = 'M20 1.5v5M17.5 4h5'
 
 /** Le tracé (attribut `d`) de chaque pictogramme. */
 export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
@@ -43,9 +54,10 @@ export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
   skull: 'M12 3a8 8 0 0 0-5 14v3h10v-3a8 8 0 0 0-5-14ZM9.5 12h.01M14.5 12h.01',
   vip: 'M3 18 5 7l4.5 5L12 5l2.5 7L19 7l2 11Z',
   bomb: 'M11 9a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM15 8l3-3M18 5l1-2',
-  pickup: 'M3 9h13l2 2h3v3h-9l-2 4H7l1-4H3Z',
-  pickupPower: 'M2 11h12l2 2h3v3h-8l-2 4H6l1-4H2ZM19 2v6M16 5h6',
-  pickupEquipment: 'M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6Z',
+  pickup: PICKUP_ARROW,
+  pickupPower: `${PICKUP_ARROW}${PICKUP_STAR}`,
+  pickupEquipment: PICKUP_CRATE,
+  pickupEquipmentPower: `${PICKUP_CRATE}${PICKUP_STAR}`,
   vehicle: 'M4 15l2-6h12l2 6v3H4ZM7 18v2M17 18v2',
   medal: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.5 14 7 21l5-3 5 3-1.5-7',
   assist: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21a7 7 0 0 1 14 0',
@@ -63,10 +75,11 @@ export const OBJECTIVE_FAMILY_GLYPH: Readonly<Record<ObjectiveFamily, FeedGlyphK
 }
 
 /** Le pictogramme d'une ligne de prise, selon la nature de ce qui est pris. */
-export const PICKUP_NATURE_GLYPH: Readonly<Record<PadFamily, FeedGlyphKey>> = {
+export const PICKUP_NATURE_GLYPH: Readonly<Record<PickupNature, FeedGlyphKey>> = {
   classic: 'pickup',
   power: 'pickupPower',
   powerup: 'pickupEquipment',
+  powerupGameChanger: 'pickupEquipmentPower',
 }
 
 /** Le pictogramme de chaque entrée du menu de filtre. */

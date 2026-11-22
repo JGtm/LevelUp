@@ -784,7 +784,11 @@ var replaySchemas = []struct {
 //	                      medaille de `medals`, RESOLUS A LA REQUETE depuis le referentiel du titre (champ du
 //	                      document SERVI seul, sans montee de schema ni champ cote artefact).
 //
-//	78 (2026-11-22) : `reloads` (les rechargements d arme, un par trame et par joueur) et `eliminations` (une
+//	77 (2026-11-22) : `shieldCycles` : les instants des bris et des recharges completes de bouclier de chaque
+//	                      joueur mesure (`ShieldCycle`), CALCULES A LA REQUETE depuis les pistes du document
+//	                      stocke par `analysis/shieldcycle` (champ du document SERVI seul, sans montee de schema).
+//
+//	78 et 79 (2026-11-22) : `reloads` (les rechargements d arme, un par trame et par joueur) et `eliminations` (une
 //	                      ligne par elimination, avec la marque de tir a la tete et de frag parfait lue sur les
 //	                      compteurs du jeu) : deux champs de tete, montee du decodeur de film (schema 126).
 //	                      `coverage.{reloads,eliminations}`, `coverage.stances.control` (le genre `moveCommand` de
@@ -794,7 +798,7 @@ var replaySchemas = []struct {
 //
 // Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 78
+const wantReplayDocumentFields = 79
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

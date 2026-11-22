@@ -464,14 +464,18 @@ const plafondSurfaceFacade = 181 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (de
 //	                                           `replay.Hit`, `replay.Damage`, `replay.ShotStat` et
 //	                                           `replay.HitCoverage`, les types des touches, des degats et du bilan de
 //	                                           tirs que le document servi projette (`service/replayview`). Aucun retrait.
-//	341  decodeur v1.5.0 (2026-11-22)               base 335 re-mesuree. +6 : `replay.Reload`,
+//	332  coup d envoi unique (2026-11-18)          base `c804e8fbbd` re-mesuree a 335. -3 :
+//	                                           le detecteur `DetectT0Film` et ses types `T0FilmTrack`, `T0FilmPoint`,
+//	                                           que seule la commande supprimee `cmd/backfill_t0_film` citait (le coup
+//	                                           d envoi se lit tel que le document le publie, ADR 0050). Aucun ajout.
+//	338  decodeur v1.5.0 (2026-11-22)               base 332 (apres la fusion de la version) re-mesuree. +6 : `replay.Reload`,
 //	                                           `replay.ReloadCoverage`, `replay.Elimination`,
 //	                                           `replay.EliminationCoverage`, `replay.StanceControlCoverage` et
 //	                                           `replay.MedalLabel`, les types que le document servi projette
 //	                                           (`service/replayview`) : rechargements, eliminations avec leurs marques,
 //	                                           commande de deplacement, et la table des medailles que le decodeur
 //	                                           declare desormais. Aucun retrait.
-const plafondSurfaceReplay = 341 // 2026-11-22 — decodeur v1.5.0 : 335 + 6 ; cf. l historique ci-dessus
+const plafondSurfaceReplay = 338 // 2026-11-22 — decodeur v1.5.0 : 332 + 6 ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

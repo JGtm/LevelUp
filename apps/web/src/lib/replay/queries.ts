@@ -14,7 +14,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts, ReplaySpaw
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from './mapBackgroundVariant'
+import { backgroundImagePath, loadedBackground, type MapBackgroundImageVariant } from './mapBackgroundVariant'
 import { validateReplayDocument } from './replayDocumentSchema'
 import {
   normalizeReplayMatchContext,
@@ -111,8 +111,10 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
  */
 export function useMatchReplayContext(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // La locale scope la clé : carte, mode, playlist, rang et équipe sont servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.matchReplayContext(playerSlug, titleSlug, matchId),
+    queryKey: queryKeys.matchReplayContext(playerSlug, titleSlug, matchId, locale),
     queryFn: async () =>
       normalizeReplayMatchContext(
         await api.get<ReplayMatchContextWire>(`/players/${playerSlug}/matches/${matchId}/replay/context`),
@@ -171,10 +173,10 @@ export function useReplayMapImage(
   playerSlug: string,
   matchId: string,
   enabled: boolean,
-  variante: MapBackgroundVariant = 'rendu',
-): { image: HTMLImageElement | null; variante: MapBackgroundVariant } {
+  variante: MapBackgroundImageVariant = 'rendu',
+): { image: HTMLImageElement | null; variante: MapBackgroundImageVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const load = (v: MapBackgroundVariant) => ({
+  const load = (v: MapBackgroundImageVariant) => ({
     queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId, v),
     queryFn: async () => {
       const blob = await api.getBlob(

@@ -52,6 +52,7 @@ const COMPOSANTS = [
   'ui/ReplayTimelineTracks.tsx',
   'ui/ReplayPlayhead.tsx',
   'ui/ReplayMarkTrack.tsx',
+  'ui/ReplayAntagonistBand.tsx',
   'ui/ReplayPresenceShade.tsx',
   'ui/ReplayTimelineCompact.tsx',
 ]

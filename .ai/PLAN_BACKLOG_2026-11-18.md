@@ -240,14 +240,14 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Étape 0 — témoins, mesures et vérification sur pièces
 
-- [ ] 0.1 Branche `chore/830-backlog-1118` créée depuis la tête de `origin/release/v8.3.0` du jour du go ;
+- [x] 0.1 (fait le 2026-11-18, depuis `1a7329e625`) Branche `chore/830-backlog-1118` créée depuis la tête de `origin/release/v8.3.0` du jour du go ;
       worktrees des pistes de la vague 1.
-- [ ] 0.2 Témoins AVANT, dans `.ai/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
+- [x] 0.2 (fait le 2026-11-18 : rejeu 390 fichiers de test, 5 517 réussis ; composants 1 208 ; Escouade 999 ; 12 tests Go par minute ; témoin du match pris SANS les frags de l'API, dit en tête de l'annexe) Témoins AVANT, dans `.ai/annexes_backlog_1118/temoins_avant.md` : nombre de tests vitest de `MR/`,
       de `apps/web/src/components/` et de `apps/web/src/features/squad/` ; sorties des tests par minute de
       l'Escouade (`per_minute_caracterisation_test.go`, `per_minute_temoins_test.go`) ; compte du garde-rail
       des couches ; pour le match `38900a5e`, les lignes du fil entre 4:30 et 5:30 et l'état de la fiche
       d'ELOsk11 aux images 9700, 9786, 9900 et 9940, tirés d'un test jetable hors dépôt.
-- [ ] 0.3 Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
+- [x] 0.3 (fait le 2026-11-18 : (a) 0 compte à rebours sur 875 ; (b) 6 539 joueurs sur 12 126 en écart sur au moins une image, 166 au total final différent ; (c) 0 lâcher repris à + 1 ou + 2 sur 28 540 ; (d) 2,2 à 4,3 ms) Mesures qui décident, sur les rejeux du poste, un fichier à la fois, lecture seule, résultats dans
       `.ai/annexes_backlog_1118/mesures.md` :
       (a) départs : faite le 2026-11-18 (`mesure_departs.md`) ; à compléter par la répartition de l'écart
       entre la fin de la dernière vie et la fermeture de la présence, et par le compte des corps supprimés
@@ -257,14 +257,14 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       (c) lâchers d'équipement datés à fin de vie + 2 dont la place est reprise à + 1 ou + 2 ;
       (d) durée de `readInstantDocSeries` sur trois rejeux réels (4 contre 4, Grande bataille, match long).
       Seuils : D.5 s'exécute si (c) > 0 ; D.6 s'exécute si (d) dépasse 50 ms sur un des trois.
-- [ ] 0.4 Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au
+- [x] 0.4 (exécuté par chaque agent de piste en tête de son travail, écarts rapportés au pilote : amendement du journal) Chaque référence `fichier:ligne` des pistes est rouverte ; un écart avec ce plan est écrit au
       journal avant tout code.
 - **Gate 0** : les deux annexes existent ; (a) confirme qu'aucun corps supprimé en dernière vie de partant
   n'a de compte à rebours ; seuils de D.5 et D.6 statués au journal.
 
 ## Piste A — rejeu : départs, ramassages, médailles du fil (Sonnet)
 
-- [ ] A.1 Un départ n'est pas une mort. Règle, dans un module pur neuf `MR/model/departureLogic.ts` : une fin
+- [x] A.1 (fait le 2026-11-18, `d99966fcaa` sur `bl1118/a` ; 884 départs reconnus sur le parc avec la marge de fin de 3 s du fil, soit les 875 mesurés à 10 s et 9 présences fermées entre 3 et 10 s avant la fin ; « a quitté la partie » dure jusqu'à la fin du document et vaut aussi pour un joueur mort puis parti, à partir de la fermeture de sa présence : complément demandé par le pilote ; la tuile d'un parti prend l'allure d'une place vide, choix de présentation à faire valider à l'écran) Un départ n'est pas une mort. Règle, dans un module pur neuf `MR/model/departureLogic.ts` : une fin
       de vie est un DÉPART quand (1) c'est la dernière vie du joueur dans le document, (2) son `endReason`
       vaut `deleted`, (3) aucun compte à rebours de réapparition du joueur ne commence dans la tolérance de
       `lifeEndProof`, (4) la présence du joueur au tableau (`roster[].presence`) se ferme avant la fin du
@@ -277,7 +277,7 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       une fin de manche) sont mis d'accord avec la règle. Tests : document du match `38900a5e` aminci en
       fixture ; un partant mort avant de partir (ligne « mort » gardée) ; une fin de manche (inchangée) ; un
       document sans présence.
-- [ ] A.2 Pictogramme d'une ligne de ramassage, selon D-1, quatre tracés redessinés proprement sur la grille
+- [x] A.2 (fait le 2026-11-18, même commit ; étoile à 1,9 unité de grille du tracé principal, vérifiée par un test) Pictogramme d'une ligne de ramassage, selon D-1, quatre tracés redessinés proprement sur la grille
       de 24 dans `MR/model/feedGlyphs.ts` : `pickup` = flèche qui monte du sol ; `pickupPower` = la même et
       l'étoile ; `pickupEquipment` = caisse (le bouclier est retiré) ; un tracé neuf, caisse et étoile, pour
       un équipement qui change la partie. La nature d'une prise du fil gagne ce quatrième cas : un équipement
@@ -285,39 +285,41 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
       surbouclier, camouflage) ; `PadFamily`, qui teinte les socles de la carte, ne change pas. L'entrée
       « Armes et bonus » du menu de filtre prend la flèche. Aucune silhouette d'arme. Tests : les quatre cas
       rendent quatre tracés ; un équipement hors catalogue reste « caisse ».
-- [ ] A.3 Médailles du fil depuis une planche d'images : `MedalEvent` porte la découpe servie par le document
+- [x] A.3 (fait le 2026-11-18, même commit ; une médaille à image seule garde exactement son rendu) Médailles du fil depuis une planche d'images : `MedalEvent` porte la découpe servie par le document
       (`matchMedals.ts:40`) ; `ReplayFeedMedals.tsx` et `MedalBadges.tsx` dessinent par
       `components/ui/MedalIcon.tsx`, comme la fiche. Test : une médaille à découpe rend son image dans les deux
       composants ; une médaille à image seule est inchangée.
 - **Gate A** : gate commun web sur `MR/` ; témoin 0.2 rejoué : plus de ligne « mort » pour ELOsk11, fiche
-  « a quitté la partie » aux images 9786 et 9900 ; le pilote rejoue la mesure (a) avec la règle codée : 875
-  départs reconnus, 503 morts gardées.
+  « a quitté la partie » aux images 9786 et 9900 ; mesure (a) rejouée avec la règle codée : 875 départs
+  reconnus, 511 fins de vie gardées (503 morts et 8 dernières vies sans raison publiée ; chiffre corrigé le
+  2026-11-18 sur la mesure 0.3). Amendé le 2026-11-18 au retour de la piste : 884 départs avec la marge de 3 s du fil
+  (875 + 9), acceptés par le pilote ; la suite complète du web est passée par le pilote à l'intégration.
 
 ## Piste B — rejeu : états de la page (Sonnet)
 
-- [ ] B.1 Selon D-2 : dans `MR/model/playerPanelLogic.ts`, « Seul » éteint le suivi d'un autre joueur et
+- [x] B.1 (fait le 2026-11-18, `0aa6debb61` sur `bl1118/b` ; trois tests existants qui attendaient « Seul » gardé en suivant un autre joueur passent sur « Masquer ») Selon D-2 : dans `MR/model/playerPanelLogic.ts`, « Seul » éteint le suivi d'un autre joueur et
       `followPlayer` sur un autre joueur lève « Seul ». Quatre tests (les deux sens, le même joueur, fiche
       fermée).
-- [ ] B.2 `useReplayViewpoint(scopeKey, scoreboard)` : état rangé avec sa portée et remis à zéro au rendu
+- [x] B.2 (fait le 2026-11-18, même commit ; la portée passée est `playerSlug/matchId`, la clé du cadre valant `null` pendant le chargement) `useReplayViewpoint(scopeKey, scoreboard)` : état rangé avec sa portée et remis à zéro au rendu
       (patron de `usePlayerPanel.ts:63-71`), clé du cadre (`ReplayPage.tsx:179`). Test : nouvelle portée et
       même joueur présent, point de vue par défaut.
-- [ ] B.3 `useReplayFullscreen.ts` : la sortie d'un Plein cadre né du geste passe par `release` quel que soit
+- [x] B.3 (fait le 2026-11-18, même commit ; quatre des tests neufs échouent sur l'ancien code ; un test existant affirmait le défaut et a été retourné) `useReplayFullscreen.ts` : la sortie d'un Plein cadre né du geste passe par `release` quel que soit
       le chemin (touche F, icône « Standard », « Quitter ») ; un plein écran refusé ou absent remet
       l'intention à faux. Tests : les deux scénarios de la section 1.
 - **Gate B** : gate commun web sur `MR/`.
 
 ## Piste C — rejeu : cadres et orientation (Sonnet)
 
-- [ ] C.1 Marge de 24 px entre « la rangée tient » et « elle ne tient plus » : fonction pure dans
+- [x] C.1 (fait le 2026-11-18, `c5acd8f47e` sur `bl1118/c` ; quatre tests de page existants adaptés à la marge) Marge de 24 px entre « la rangée tient » et « elle ne tient plus » : fonction pure dans
       `MR/model/rowLayout.ts`, mémoire de la disposition précédente dans `useCardRowLayout.ts` ; même marge
       pour l'emplacement du score. Tests aux bornes, et séquence 1290, 1275, 1290.
-- [ ] C.2 `useResolvedTurns` : l'état « tourné avant » est rangé avec sa portée (un match) ; il est gelé tant
+- [x] C.2 (fait le 2026-11-18, même commit ; la règle Auto n'a plus qu'un appelant, `lib/replay/useAutoTurned.ts`, gardé sur tout le site ; second match du test à 23 % de gain et non 22, entre les deux seuils comme voulu) `useResolvedTurns` : l'état « tourné avant » est rangé avec sa portée (un match) ; il est gelé tant
       qu'un export est en cours. Tests : gain de 30 % puis nouveau match à 22 % (attendu : droit) ; largeur
       changée pendant un export (attendu : inchangé).
-- [ ] C.3 Horloge de la barre en pause : test d'abord (pause, bascule Standard vers Cinéma à taille de toile
+- [x] C.3 (fait le 2026-11-18, même commit : le test passe, `useReplayClock` inchangé, test gardé ; l'horloge reste écrite parce que la toile est redessinée à chaque rendu, voir Découvertes) Horloge de la barre en pause : test d'abord (pause, bascule Standard vers Cinéma à taille de toile
       égale, le texte de l'horloge est présent) ; s'il échoue, `useReplayClock` réécrit le dernier texte quand
       l'élément change ; s'il passe, l'item est clos sur ce test, gardé.
-- [ ] C.4 Selon D-3 : la Tactique (`TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`) et « Occupation
+- [x] C.4 (fait le 2026-11-18, même commit ; `TacticalAnalysisView.test.tsx` pose l'orientation retenue de sa carte parce qu'il force la largeur de tous les éléments) Selon D-3 : la Tactique (`TacticalPlanCard.tsx`, `TacticalReapparitionsPlan.tsx`) et « Occupation
       du terrain » (`MatchPositionsHeatmap.tsx`) résolvent l'Auto sur leur propre zone par la règle du rejeu
       (`autoTurns`) ; « Occupation du terrain » mesure sa zone ; un choix retenu pour la carte prime
       toujours ; `useMapViewPreferences.ts` et son commentaire sont mis d'accord. Tests par vue : carte en
@@ -326,58 +328,60 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste D — fiche du joueur (Sonnet ; Haiku pour D.1 et D.3)
 
-- [ ] D.1 `playerInstantStats.ts` : les débuts de vie ne retiennent que les vies dont la fin dépasse le début
+- [x] D.1 (fait le 2026-11-18, `14e69f8124` sur `bl1118/d` ; le test est rouge sans le filtre) `playerInstantStats.ts` : les débuts de vie ne retiennent que les vies dont la fin dépasse le début
       du match, comme `closedLives`. Test : vies [10, 40] et [41, 200], début à 50, image 100, 0 réapparition.
-- [ ] D.2 « Tirs et dégâts » : une ligne par nom d'arme affiché, familles de même nom additionnées
+- [x] D.2 (fait le 2026-11-18, même commit) « Tirs et dégâts » : une ligne par nom d'arme affiché, familles de même nom additionnées
       (`playerInstantView.ts`) ; la clé de liste est celle de la première famille du groupe
       (`FicheTirs.tsx:35`). Test : deux familles au même nom, une ligne, sommes justes.
-- [ ] D.3 Nom de grenade de repli : `grenadeRank` au contrat des textes, en français et en anglais ;
+- [x] D.3 (fait le 2026-11-18, même commit ; `fr.ts` 475 lignes, `en.ts` 470) Nom de grenade de repli : `grenadeRank` au contrat des textes, en français et en anglais ;
       `grenadesCarriedFrom` reçoit le texte ; les deux appelants suivent. Test en anglais.
-- [ ] D.4 `GABARIT_NORMAL` retiré : une cote nommée pour le corps du bloc « À l'instant » ; `CardGabarit` ne
+- [x] D.4 (fait le 2026-11-18, même commit ; le garde-rail garde ses trois interdits et gagne un cliquet contre le retour de `GABARIT_NORMAL` ; le texte `playerScoreLive`, sans lecteur, est retiré) `GABARIT_NORMAL` retiré : une cote nommée pour le corps du bloc « À l'instant » ; `CardGabarit` ne
       garde que la tuile compacte ; branches mortes de `ReplayCountersBadge.tsx` et leurs tests retirés ;
       `cardGabarit.guard.test.ts` suit.
-- [ ] D.5 (si 0.3 c > 0) Lâcher daté à fin de vie + 2 : une résolution « la vie qui s'est terminée à l'image
+- [!] D.5 (non exécuté : condition non remplie, mesure 0.3 c = 0 lâcher sur 28 540 ; l'écart minimal entre la fin d'une vie et la reprise de sa place est de 101 images) (si 0.3 c > 0) Lâcher daté à fin de vie + 2 : une résolution « la vie qui s'est terminée à l'image
       t − 2 ou t − 1 » prime sur l'occupant courant pour un lâcher (`rosterLogic.ts`, `equipmentGestures.ts`).
       Témoin : nombre de lâchers attribués sur les huit documents réels, avant et après (338 sur 338 avant).
-- [ ] D.6 (si 0.3 d > 50 ms) Séries de la fiche gardées par document et par liste de joueurs, hors de
+- [!] D.6 (non exécuté : condition non remplie, mesure 0.3 d = 2,2 à 4,3 ms en médiane, 13,4 ms au pire) (si 0.3 d > 50 ms) Séries de la fiche gardées par document et par liste de joueurs, hors de
       l'instance du composant (`playerInstantSources.ts`). Test : deux lectures, même objet.
-- [ ] D.7 (si 0.3 b > 0) Un seul score à l'instant : l'infobulle de la tuile (`ReplayCountersBadge.tsx:146`)
+- [x] D.7 (fait le 2026-11-18, même commit : `model/playerInstantScore.ts`, même fonction pour la tuile et la fiche, garde-rail `scoreSingleSource.guard.test.ts` ; l'infobulle n'écrit un score que pour un joueur publié par le calque de compteurs, choix de l'agent gardé par le pilote : sans calque la tuile montre des totaux de fin de match) (si 0.3 b > 0) Un seul score à l'instant : l'infobulle de la tuile (`ReplayCountersBadge.tsx:146`)
       lit la valeur gardée de la fiche ; quand la garde refuse, elle ne montre pas de score. Si 0.3 b = 0 :
       item clos sur la mesure, l'égalité des deux sources devient un test.
 - **Gate D** : gate commun web sur `MR/` ; `fr.ts` et `en.ts` sous 500 lignes.
 
 ## Piste E — jetons des téléchargements de fond (Sonnet)
 
-- [ ] E.1 `haloTokensForDrain` prend son jeton à la source de lecture publique de la mise en commun
+- [x] E.1 (fait le 2026-11-18, `89f9764fd1` sur `bl1118/e` ; erreur typée `wire.ErrNoPublicReadToken` ; 9 comptes
+      consentants sur 9 au magasin du poste, et le bureau pose l'accord d'office : aucun poste ne perd ses
+      téléchargements ; relu sur pièces) `haloTokensForDrain` prend son jeton à la source de lecture publique de la mise en commun
       (`publicReadTokenSrc.ResolveAny`), jamais dans la liste des profils ; sans source ou sans compte
       consentant : erreur typée, journalisée, sans conseil de recapture. Les trois appelants (catalogue,
       expansion des playlists, mise en file des rejeux) suivent. Libellé de `registry_auth.go:289-291`
       reformulé (premier enrôlement, pas recapture). Tests : compte retenu jamais servi ; aucune source ;
       `registry_catalog_lectures_cgo_test.go` adapté.
-- [ ] E.2 Garde-rail : `RefreshHaloTokensViaStoreFirst` combiné à un parcours des profils est interdit dans
+- [x] E.2 (fait le 2026-11-18, même commit ; rouge prouvé sur l'ancien code) Garde-rail : `RefreshHaloTokensViaStoreFirst` combiné à un parcours des profils est interdit dans
       `internal/api/wire`, liste d'exemptions datée vide.
 - **Gate E** : gate commun Go ; `go test ./internal/api/wire/... ./internal/platform/auth/...` ;
   `go test -tags=integration -p 1 ./internal/sync/...`.
 
 ## Piste F — rejeu à la demande et régénération du bureau (Sonnet)
 
-- [ ] F.1 Garde des jetons en liste blanche : dans `registry_replay_generation*.go`, seul
+- [x] F.1 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Garde des jetons en liste blanche : dans `registry_replay_generation*.go`, seul
       `tokencache.ResolveFreshPlayerTokens` est admis.
-- [ ] F.2 Demande reprise après redémarrage : revalidée par la sonde du match avant tout téléchargement
+- [x] F.2 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Demande reprise après redémarrage : revalidée par la sonde du match avant tout téléchargement
       (`replayregen/demand_run.go`).
-- [ ] F.3 Nouvel essai après échec : les contrôles d'état passent d'abord
+- [x] F.3 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Nouvel essai après échec : les contrôles d'état passent d'abord
       (`service/replay_generation_service.go:117-119`).
-- [ ] F.4 Film retiré du disque après un échec de génération non réessayable quand l'archive est désactivée.
-- [ ] F.5 Capacité de génération : bureau, ou développement non exposé (`config/deployment.go`) ; test dans
+- [x] F.4 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Film retiré du disque après un échec de génération non réessayable quand l'archive est désactivée.
+- [x] F.5 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Capacité de génération : bureau, ou développement non exposé (`config/deployment.go`) ; test dans
       `deployment_test.go`.
-- [ ] F.6 Bouton : pas proposé quand le jeton du joueur demande une reconnexion ; « Réessayer » retiré pour
+- [x] F.6 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Bouton : pas proposé quand le jeton du joueur demande une reconnexion ; « Réessayer » retiré pour
       un jeton indisponible (web, `replayGeneration/logic.ts`).
-- [ ] F.7 Jeton refusé pendant la résolution du film : un nouvel essai avec un jeton frais
+- [x] F.7 (fait le 2026-11-18, `7ae8245722` sur `bl1118/f`) Jeton refusé pendant la résolution du film : un nouvel essai avec un jeton frais
       (`tokencache.RetryWithFreshTokens`).
-- [ ] F.8 Selon D-5 : la file de régénération reprojette, sans film, le fichier tactique périmé d'un rejeu
+- [x] F.8 (fait le 2026-11-18, même commit ; le test de péremption lisait et décodait chaque fichier : 27 s pour 1 455 fichiers à chaud, 85 s à froid ; il lit maintenant le seul en-tête : 0,25 s, mesuré sur les fichiers réels du poste) Selon D-5 : la file de régénération reprojette, sans film, le fichier tactique périmé d'un rejeu
       dont le film a expiré (`replayregen/scan.go`, `ProjeterRasterTactique`). Tests : film absent et fichier
       au format précédent, fichier refait ; film absent et fichier à jour, rien.
-- [ ] F.9 Clic juste après la fin d'un match. D'abord l'inventaire, écrit au journal, de ce que la réponse du
+- [x] F.9 (fait le 2026-11-18, même commit ; inventaire : aucun signal ne distingue un film pas encore publié d'un film absent pour un manifeste introuvable ou vide, seul « sans morceau de temps forts » le fait et il est déjà réessayable ; fenêtre de 5 minutes posée ; phrase dédiée « film pas encore disponible » dans les deux langues) Clic juste après la fin d'un match. D'abord l'inventaire, écrit au journal, de ce que la réponse du
       service des films distingue déjà : film introuvable, manifeste sans morceaux, manifeste sans morceau de
       temps forts (`finalise.ErrFilmNonFinalise`, déjà réessayable). Si un de ces signaux reconnaît à lui seul
       un film pas encore publié, il suffit et aucune fenêtre n'est ajoutée. À défaut : la sonde du match porte
@@ -389,15 +393,15 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste G — serveur : contrat et lectures (Sonnet ; Haiku pour G.3 et G.4)
 
-- [ ] G.1 Selon D-7 : inventaire fermé au journal (lecteurs de chaque champ de `MatchHighlightEvent` propre
+- [x] G.1 (fait le 2026-11-18, `919774dc49` sur `bl1118/g` ; inventaire : les trois champs et `medal_name_id` de l'événement sans aucun lecteur, retirés ; `MedalImageURL` retiré des trois adaptateurs ; `medal_name` de l'événement gardé, hors périmètre, voir Découvertes) Selon D-7 : inventaire fermé au journal (lecteurs de chaque champ de `MatchHighlightEvent` propre
       aux médailles), puis retrait des trois champs, de `match_view_killfeed_medals.go`, de son appel, de
       `MedalImageURL` des adaptateurs de titre s'il n'a plus d'appelant, des tests et fixtures qui les
       portent. `medal_name_id` de l'événement : retiré si l'inventaire ne lui trouve aucun lecteur, gardé et
       écrit au journal sinon.
-- [ ] G.2 Selon D-4 : les trois taux par minute de l'Escouade deviennent facultatifs ; « inconnu » quand
+- [x] G.2 (fait le 2026-11-18, même commit ; aucun chiffre des tests de caractérisation n'a changé ; une escouade aux comptes mesurés à zéro rend maintenant des taux à 0, connus) Selon D-4 : les trois taux par minute de l'Escouade deviennent facultatifs ; « inconnu » quand
       aucun match n'est retenu ; tests de caractérisation mis à jour ; type du graphe côté web.
-- [ ] G.3 `medalLabelOf` : parcours des langues dans l'ordre de `i18n.Locales()`. Test déterministe.
-- [ ] G.4 Compteur et message distincts pour un fichier tactique illisible (`replayartifact/gate.go`).
+- [x] G.3 (fait le 2026-11-18, même commit ; le test rougit sur l'ancien parcours) `medalLabelOf` : parcours des langues dans l'ordre de `i18n.Locales()`. Test déterministe.
+- [x] G.4 (fait le 2026-11-18, même commit) Compteur et message distincts pour un fichier tactique illisible (`replayartifact/gate.go`).
 - [~] G.5 Durée du découpage de la Dominance : couvert par la piste T (T.3), qui fait passer tous les
       lecteurs par une résolution unique au lieu d'ajouter une préférence de plus ici.
 - **Gate G** : gate commun Go sur `internal/service/...`, `internal/games/...`, `internal/replayartifact/...` ;
@@ -405,63 +409,65 @@ corrections (2 à 3 Sonnet). Le chantier décodeur (D-8) n'est pas compté.
 
 ## Piste H — couches, accessibilité, clé de requête (Sonnet ; Haiku pour H.4)
 
-- [ ] H.1 Garde-rail des couches élargi à `components/`, `lib/` et aux fichiers `.ts` de `features/` ; il
+- [x] H.1 (fait le 2026-11-18, `ff610e89e8` sur `bl1118/h` ; sept exemptions datées, dont `GamertagCombobox.tsx` et `useAudioUnlock.ts` ajoutées sur pièces ; `sidebarCollapse.ts` et `assetPanel.ts` n'en ont pas besoin : ni Échap ni nom non littéral) Garde-rail des couches élargi à `components/`, `lib/` et aux fichiers `.ts` de `features/` ; il
       reconnaît un nom d'événement non littéral et `case 'Escape'` ; exemptions datées pour
       `titleTooltip.controller.ts`, `tooltipPosition.ts`, `sidebarCollapse.ts`, `useDismissable.ts`,
       `useReplayFullscreen.ts`, `assetPanel.ts`.
-- [ ] H.2 Les 13 composants migrent vers `useDismissable` : `analysis-pending-badge`, `alert-dialog`,
+- [x] H.2 (fait le 2026-11-18, même commit ; option `escape` ajoutée au mécanisme pour un clic dehors seul ; tests existants verts sans retouche) Les 13 composants migrent vers `useDismissable` : `analysis-pending-badge`, `alert-dialog`,
       `GamertagCombobox` (clic dehors seul), `info-tooltip`, `SessionMultiSelect`, `AboutDialog` (son piège
       de tabulation reste), `HelpSplitButton`, `NavL1` (deux sites), `MultiSelectFilter`,
       `NavL1MobileActions`, `NavL1MobileMenu`, `PlayerSwitcher`, `RailPopover`. Changements voulus, écrits aux
       notes de version : Échap ferme aussi les cinq qui ne l'écoutaient pas ; des couches empilées se ferment
       une par une. Les tests existants de ces composants restent verts sans retouche de leurs assertions.
-- [ ] H.3 `MediaPickerDialog` écoute Échap par le mécanisme commun ; `ExperienceDropdown` et `ViewDropdown`
+- [x] H.3 (fait le 2026-11-18, même commit) `MediaPickerDialog` écoute Échap par le mécanisme commun ; `ExperienceDropdown` et `ViewDropdown`
       annoncent leur état ouvert. Tests calqués sur `CoverFlowModal.dismiss.test.tsx`.
-- [ ] H.4 `queryKeys.matchReplayContext` porte la langue ; `useMatchReplayContext` la lit ;
+- [x] H.4 (fait le 2026-11-18, même commit) `queryKeys.matchReplayContext` porte la langue ; `useMatchReplayContext` la lit ;
       `keys.locale.test.ts` range la clé parmi les localisées.
 - **Gate H** : gate commun web sur `components/`, `features/_shared/`, `features/media/`, `lib/query/`,
   `lib/replay/`.
 
 ## Piste K — garde-rails et outillage (Haiku ; Sonnet pour K.2 et K.5)
 
-- [ ] K.1 Trois entrées mortes retirées de `ALLOWED_FILES` ; test « chaque chemin de la liste existe ».
-- [ ] K.2 Rempart des fonds de carte : retrait de la racine d'installation connue en plus du motif ; dossiers
+- [x] K.1 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) Trois entrées mortes retirées de `ALLOWED_FILES` ; test « chaque chemin de la liste existe ».
+- [x] K.2 (fait le 2026-11-18, `8cb85efc25` sur `bl1118/k` ; gate : build, vet, `go test ./cmd/mapfond-build/...`
+      et `./internal/archlint/...` verts, 133 catalogues et 114 fonds publiés sans faux positif ; relu sur
+      pièces par le pilote) Rempart des fonds de carte : retrait de la racine d'installation connue en plus du motif ; dossiers
       à point et à espaces ; garde-rail étendu (partage réseau, `/opt/`, `/mnt/`, `/tmp/`, `/var/`,
       `/Volumes/`). Aucune recuisson.
-- [ ] K.3 `scripts/disk-hygiene.ps1` : base résolue (amont de la branche courante, sinon branche par défaut
+- [x] K.3 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) `scripts/disk-hygiene.ps1` : base résolue (amont de la branche courante, sinon branche par défaut
       du dépôt), paramètre `-BaseRef`, « base introuvable » journalisé sans arrêt. Contrôle : simulation sans
       erreur.
-- [ ] K.4 Test du processus qui tient la base : sortie d'erreur du fils branchée, lecture du « prêt » sous
+- [x] K.4 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) Test du processus qui tient la base : sortie d'erreur du fils branchée, lecture du « prêt » sous
       délai explicite, sortie du fils jointe à l'échec.
-- [ ] K.5 `bootstrap_service.go` : trois blocs déplacés sans renommage (`bootstrap_setup_state.go`,
+- [x] K.5 (fait le 2026-11-18, `c79566f3e8` sur `bl1118/k2`) `bootstrap_service.go` : trois blocs déplacés sans renommage (`bootstrap_setup_state.go`,
       `bootstrap_ownership.go`, `bootstrap_helpers.go`) ; `buildCapabilities` et `buildFeatureFlags` ne
       bougent pas ; compteurs des trois garde-rails indexés sur le chemin ajustés, somme inchangée.
 - **Gate K** : gate commun Go et web selon l'item ; `wc -l` de `bootstrap_service.go` sous 500.
 
 ## Piste M — barre de lecture : écran étroit et surimpression (Sonnet)
 
-- [ ] M.1 Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
+- [x] M.1 (fait le 2026-11-18 : https://claude.ai/artifact/Q2duSkmGtSf4QLWASqZY83, source gardée sous `.ai/annexes_backlog_1118/maquettes/` ; cotes vérifiées sur le code : commandes fixes 894 px, 1 012 avec « Plan tourné » ; la frise ne tombe pas à 14 px, elle garde 120 px et RECOUVRE les commandes de droite ; le pire cas est 1 280 px, où la colonne est encore à côté du plan ; variantes : A menu « plus » à deux paliers, B deux lignes, D ligne de progression repliée, C barre de 32 px translucide ; rendu non vu dans un navigateur) Planche publiée (page d'artefact, dessinée DANS les cadres validés de la refonte), à trois largeurs
       de fenêtre (1 280, 1 440, 1 536 px) : (a) la barre d'une ligne quand la place manque, deux variantes de
       repli (groupes zoom, capture et vitesse rangés dans un menu ; ou barre sur deux lignes) ; (b) la barre en
       surimpression au Plein cadre, selon la proposition notée au backlog (fine ligne de progression au bas du
       plan pendant la lecture, dépliée au survol du bas, à toute touche et en pause ; fil des éliminations qui
       remonte quand elle est dépliée) et une variante. Aucun code de l'application.
-- [ ] M.2 (porte : variante de repli choisie par le user) Repli de la barre d'une ligne sous le seuil de
+- [x] M.2 (fait le 2026-11-18, `2816593c6d` : deux lignes quand la frise n'a plus sa largeur minimale, marge de bascule réemployée) (porte : variante de repli choisie par le user) Repli de la barre d'une ligne sous le seuil de
       largeur retenu sur la planche (`ReplayTransportCompact.tsx`, `cotesBarreCompacte.ts`) ; la frise ne
       descend jamais sous sa largeur minimale. Tests de logique pure sur le seuil.
-- [ ] M.3 (porte : surimpression validée par le user sur la planche) Barre en surimpression au Plein cadre,
+- [x] M.3 (fait le 2026-11-18, `2816593c6d` : barre fine et translucide posée sur le plan au Plein cadre, pleine à la pause, au survol, au focus et après un geste ; préférence « Barre de lecture fine ») (porte : surimpression validée par le user sur la planche) Barre en surimpression au Plein cadre,
       telle que validée ; Standard et Cinéma gardent leur barre fixe ; préférence lue une fois, textes dans les
       deux langues. Tests : pause, survol, touche, lecture.
 - **Gate M** : gate commun web sur `MR/` ; contrôle à l'écran du user inscrit à l'artefact des vérifications.
 
 ## Piste Q — écarts avec les maquettes (Sonnet)
 
-- [ ] Q.1 Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
+- [x] Q.1 (fait le 2026-11-18 : `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; 8 écarts à corriger, 3 points conformes à une décision datée, 3 points sans dessin posés au user ; liste fermée ci-dessous, soumise au user le 2026-11-18) Instruction en lecture des onze points de l'entrée du backlog, contre les fichiers de maquette
       (`.ai/annexes_refonte_ui_rejeu/maquettes/`) et la grille (`conformite_maquettes.md`) : chaque point classé
       « conforme à une décision datée », « écart à corriger » (avec la cote ou le dessin attendu) ou « sans
       dessin, au user ». Résultat dans `.ai/annexes_backlog_1118/ecarts_maquettes.md` ; les écarts à corriger
       sont inscrits ici en liste fermée avant tout code, et montrés au user.
-- [ ] Q.2 (porte : liste lue par le user) Corrections de la liste fermée de Q.1 et des retours de la
+- [ ] Q.2 (porte : liste lue par le user ; LISTE FERMÉE du 2026-11-18, sous réserve de sa lecture : a) boutons de la barre d'une ligne en carrés de 30 px, lecture en rond plein de 36 px ; b) capture et export en boutons ordinaires, sans cartouche ; c) fenêtre de fiche à 8 px sous le haut du plan ; d) la fenêtre de fiche défile en entier ; e) un seul bloc arrondi pour la toile et la colonne du Standard ; f) infobulle de « Plan tourné » avec le gain en pour-cent ; g) « Tirs à la tête | 3 », sans « sur N mesurées » ; h) marges du Plein cadre à 16 px sur les côtés et 6 px en bas. Les points a et b, qui redessinent la barre d'une ligne, se décident avec la planche de la piste M. c et e touchent tous deux `ReplayCanvas.tsx` : l'un après l'autre) Corrections de la liste fermée de Q.1 et des retours de la
       validation à l'écran du user, un commit par point.
 - **Gate Q** : gate commun web sur `MR/` ; grille de conformité mise à jour ligne par ligne.
 
@@ -486,12 +492,18 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 - dans le rejeu : l'origine, le coup d'envoi « premier mouvement », et l'horloge de manche du jeu, lue chaque
   seconde, qui date elle aussi le coup d'envoi.
 
-- [ ] T.0 Audit (lecture seule ; base lue sur une COPIE), dans `.ai/annexes_backlog_1118/coup_d_envoi.md` :
+- [x] T.0 (fait le 2026-11-18 : inventaire fermé de 11 sources, 7 qualités, 22 replis, 4 durées ; verdict
+      sur les 22 rejeux : l'horloge a raison, prouvé par les positions des joueurs ; annexe sur la branche
+      d'intégration) Audit (lecture seule ; base lue sur une COPIE), dans `.ai/annexes_backlog_1118/coup_d_envoi.md` :
       inventaire FERMÉ de chaque source, seuil, qualité, repli, écrivain, lecteur (Go, SQL, web) et commande ;
       mesures sur le parc : écart entre l'horloge de manche du film, le premier mouvement et l'estimation de
       l'API ; matchs sans film, par source restante ; écart de temps de jeu par joueur ; dépendance de la note
       de performance et du LUSR (ADR 0047).
-- [ ] T.1 Modèle cible, écrit par le pilote et VALIDÉ PAR LE USER avant tout code. Principes proposés :
+- [x] T.1 (modèle écrit le 2026-11-18 : `.ai/annexes_backlog_1118/modele_coup_d_envoi.md` ; VALIDÉ par le
+      user le 2026-11-18, « Oui je valide », avec ses quatre points ; il fait foi sur T.2 à T.6 là où il les précise : rattrapage au démarrage
+      par révision ET par commande, montée des deux révisions de notation, rattrapage du poste UNE fois après
+      la régénération du plan du décodeur, colonnes retirées seulement si la recette de migration ne
+      reconstruit pas la table) Modèle cible, écrit par le pilote et VALIDÉ PAR LE USER avant tout code. Principes proposés :
       (1) une définition : le coup d'envoi est l'instant où l'horloge du jeu démarre ; (2) une source par
       match, dans un ordre fixe écrit une fois : le film quand il existe, l'estimation de l'API sinon,
       « inconnu » sinon, et la source est rangée avec la valeur ; (3) un seul point de résolution, qui rend la
@@ -501,15 +513,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
       l'arrivée du film ; (5) une seule commande de rattrapage ; (6) la durée jouable de l'API n'a plus de
       lecteur. Le modèle dit aussi ce que devient chaque ligne de l'inventaire de T.0 (gardée, fusionnée,
       retirée), et s'écrit en ADR (anglais) avec ses garde-rails.
-- [ ] T.2 Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
+- [x] T.2 (fait le 2026-11-18, `87910a4602` puis `28137cda38` sur `bl1118/t` : `timeline.ResolveKickoff`, ordre fixe film, estimation, inconnu ; trois états du rejeu, un coup d'envoi du film ne redescend jamais faute de rejeu lisible ; valeur du rejeu hors de la fenêtre du match refusée et comptée ; ADR 0050) Résolution unique : type et fonction de la chronologie du match ; les qualités de l'estimation
       deviennent un diagnostic journalisé et compté, plus une valeur que les lecteurs interprètent.
-- [ ] T.3 Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
+- [x] T.3 (fait le 2026-11-22, `6b2bf79a85` : `timeline.ForMatch` seule règle de lecture, deux fragments SQL, garde-rail `archlint/kickoff_read_guard_test.go`, `playable_duration_seconds` ni lue ni écrite, en-tête servi en `gameplay_duration_seconds` ; témoins avant et après sur 33 matchs : durée de l'en-tête −1 s sur 22 matchs par troncature, Dominance, fiche, accueil et LUSR identiques, 17 prolongations avant et après) Lecteurs : chacun de la liste fermée de T.0 passe par la résolution unique (Dominance comprise :
       l'item G.5 est couvert ici) ; garde-rail : aucune lecture de la durée jouable de l'API ni du coup
       d'envoi brut hors de la résolution.
-- [ ] T.4 Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
+- [x] T.4 (fait le 2026-11-18 : `persist.KickoffPersister`, une transaction par match ; la synchronisation pose les valeurs sur ses lignes avant l'INSERT ; colonne `real_start_source` amorcée par la migration ; garde-rail `archlint/kickoff_write_guard_test.go` ; relecture adverse faite, 1 bloquant et 5 constats corrigés) Écriture unique : le persisteur écrit coup d'envoi, source et temps de jeu ensemble (règles
       anti-corruption du dépôt, jamais d'écriture directe) ; le report du film et la synchronisation
       l'appellent tous deux.
-- [ ] T.5 Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
+- [x] T.5 (fait le 2026-11-18 : `levelup backfill-kickoff`, simulation comprise ; rattrapage au démarrage par révision `KickoffRev`, liée aux révisions des notes ; `cmd/backfill_t0`, `backfill_t0_film`, `backfill_time_played` et `analysis/spawn_detection.go` supprimés avec leurs tests et leurs 38 paires de la baseline ; mesure sur copie : 2 045 matchs, 1 447 film, 587 estimation, 11 inconnus, second passage sans écriture, 50 rejeux retirés : 50 coups d'envoi gardés) Une commande `levelup` de rattrapage avec simulation ; les trois `cmd/backfill_*` sont supprimés
       avec leurs tests (aucun code mort).
 - [ ] T.6 (porte : accord du user, serveur arrêté, copie de la base faite) Rattrapage du poste, puis rejeu de
       la note LUSR si T.0 l'a jugé nécessaire. La prod reçoit le même geste à la publication.
@@ -522,15 +534,15 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Piste S — schéma d'une base joueur et tests du paquet DuckDB (Sonnet)
 
-- [ ] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
+- [x] S.1 Test d'égalité dans les deux sens (« synchronisation puis migrations » contre « migrations
       seules ») sur types, défauts et `NOT NULL` ; écart listé dans `.ai/annexes_backlog_1118/schema_joueur.md` ;
       forme des bases existantes relevée sur une COPIE d'une base joueur du poste.
-- [ ] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
+- [x] S.2 La définition qui s'écarte de la forme de référence est alignée, pour les bases neuves seulement ;
       aucune migration d'une base existante ; si l'alignement demande de modifier une étape de migration déjà
       jouée en production, arrêt et retour au user.
-- [ ] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
+- [x] S.3 L'exemption de `csr_pipeline_e2e_integration_test.go` est retirée si le test d'égalité la rend
       inutile ; sinon elle garde sa date et son motif.
-- [ ] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
+- [x] S.4 Migrations neuves indirectes : les cinq sites qui partent d'un fichier joueur absent
       (`pool_attach_swap_integration_test.go:116`, `pool_shared_reader_integration_test.go:71`, `:125`, `:186`,
       `pool_swap_multititre_integration_test.go:103`) reçoivent la base migrée copiée avant `GetOrOpen` ;
       `pool_migration_test.go` (dont l'objet est la migration) passe sur la liste d'exemptions datée ; le
@@ -566,6 +578,177 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Journal d'exécution
 
+- 2026-11-18 — PREMIÈRE LIVRAISON dans `release/v8.3.0` (`f5c0b92cec`, poussée) : K.2, E, H, C, G, B, A, F. AMENDEMENT
+  écrit : le plan prévoyait une seule fusion à la fin ; cette livraison partielle sert le plan du fond Relief, qui
+  attendait C.4 et K.2, et met le code sous les yeux du user pour sa validation à l'écran. Vérifications du pilote
+  sur l'intégration, deux passes : types, lint, lints d'imports et de couleurs, contrat de l'API, compilation et
+  `vet` verts ; `go test ./...` 228 paquets verts (archlint avec un délai de 40 minutes) ; tests d'intégration en
+  `-p 1` verts (synchronisation, DuckDB, persist, replayregen, replayartifacts) ; suite complète du web : 14 379
+  réussis, un vrai rouge corrigé (type du fil homonyme d'un schéma du contrat), huit dépassements de délai sous
+  charge rejoués seuls et verts. M.1 refait en prototype interactif après le retour du user (« aucune animation
+  ni rien, je vois pas du tout ce qu'on vise »), même lien. Restent à cueillir sur l'intégration : D, K (K.1, K.3,
+  K.4, K.5) ; en cours : T (écriture), S.
+
+- 2026-11-18 — M.1 rendu, lu par le pilote (feuille de style, balises et attributs énumérés, texte entier) et
+  publié ; choix du user attendu (porte de M.2 et M.3). Seconde passe de vérifications : suite complète du web
+  14 379 réussis, 9 échecs : 1 vrai (type `MedalSprite` du fil homonyme d'un schéma du contrat, renommé en
+  `MedalSpriteCut`, `c24b59aa99`) et 8 dépassements de délai de garde-rails qui parcourent les fichiers, sous
+  charge, à rejouer seuls.
+
+- 2026-11-18 — piste K rendue (K.1, K.3, K.4, K.5), relue, commitée (`c79566f3e8` sur `bl1118/k2`) : toute la piste
+  K est faite. Q.1 rendu : liste fermée des écarts de maquette soumise au user avec trois questions (icônes de
+  cadre, curseur de volume, bouton caméra pendant un suivi). M.1 (planche de la barre de lecture) lancé.
+
+- 2026-11-18 — piste D rendue, relue, commitée (`14e69f8124`, au-dessus de A et B). Pistes S (`C:/t/bl18-s`) et
+  Q.1 (lecture seule) lancées. Seconde passe des vérifications lourdes en cours sur l'intégration (K.2, E, H, C,
+  G, B, A, F ; plafond des fonctions longues à 245).
+
+- 2026-11-18 — piste F rendue après quatre compléments du pilote (échec de jeton mémorisé périmé quand le jeton
+  revient ; phrase du film pas encore prêt ; balise du champ `stale` ; coût du décompte borné), relue, commitée
+  (`7ae8245722`). À faire par le pilote à l'intégration : régénérer le contrat de l'API (la balise de `stale` a
+  changé). `TestCompactPassesNuit` avait dépassé son délai sous charge : rejoué seul, il passe en 19 s. Le user a
+  doublé la borne commune (8 agents d'écriture, dit à la session du fond Relief et inscrit au plan maître) :
+  cette session en tient 3 au plus pour l'instant. Pistes D et K lancées (`C:/t/bl18-d`, au-dessus de A et B ;
+  `C:/t/bl18-k2`). Écart au tableau des modèles : K.1, K.3, K.4 (prévus Haiku) faits par l'agent Sonnet de K.5.
+
+- 2026-11-18 — piste A rendue après trois compléments du pilote (durée de « a quitté la partie », taille de
+  `killFeedLogic.ts` ramenée de 591 à 567 lignes, test de la marge), relue, commitée (`d99966fcaa`). Sur le vrai
+  rejeu du match signalé par le user : fiche d'ELOsk11 « mort » à l'image 9700, « a quitté la partie » aux
+  images 9786, 9900, 9940 et à la dernière ; plus de ligne « mort » à 5:00. Sa place d'écriture va à la session
+  du fond Relief (deux écrivains chacun). Vérifications lourdes du pilote sur l'intégration (K.2, E, H, C, G) :
+  types, lint, compilation et `vet` verts ; suite complète du web 14 315 réussis, 2 échecs sans défaut de code
+  (plafond des fonctions longues à abaisser de 247 à 245 ; un garde-rail hors délai sous charge, à rejouer seul).
+
+- 2026-11-18 — piste B rendue, relue, commitée (`0aa6debb61`) ; elle sera cueillie sur l'intégration à la fin des
+  vérifications lourdes du pilote, qui tournent dans ce dossier (on ne modifie pas un arbre pendant son gate).
+  La place d'écriture libérée va à la session du fond Relief, comme convenu (deux places).
+
+- 2026-11-18 — piste G rendue, relue, commitée (`919774dc49`), cueillie sur l'intégration, où la branche de
+  version a été ramenée (documents seuls). Écart au plan relevé : le paquet des contrats est `./contracttest/...`,
+  pas `./internal/contracttest/...`. Piste T, côté écriture (T.2, T.4, T.5), lancée dans `C:/t/bl18-t`.
+  AMENDEMENT DE MODÈLE, motif écrit : cette moitié de la piste T part sur OPUS et non Sonnet. Motif : elle
+  écrit dans la base partagée des matchs (table critique, défaut ART), pose un rattrapage au démarrage et
+  monte les deux révisions de notation ; une erreur y coûte une base. Les lecteurs (T.3) resteront sur Sonnet,
+  après elle. Le tableau « aucun item ne demande Opus » est donc faux pour T.
+
+- 2026-11-18 — piste C rendue, relue sur pièces (garde-rail de l'orientation réécrit sans être affaibli : plus aucun
+  appel à la règle Auto dans la page du rejeu), commitée (`c5acd8f47e`) et cueillie sur l'intégration
+  (`6253b1d5cb`). Un test de garde (`match-view/xuidMeta.guard.test.ts`) a dépassé son délai sous charge et passe
+  seul : à revoir dans la suite complète du pilote. Piste B lancée (`C:/t/bl18-b`).
+
+- 2026-11-18 — ÉTAPE 0 CLOSE (Gate 0 passée : annexes `temoins_avant.md` et `mesures.md` sur la branche
+  d'intégration ; (a) confirmée, 0 sur 875 ; seuils statués : D.5 et D.6 non exécutés, D.7 exécuté). Pistes K.2,
+  E et H cueillies sur `chore/830-backlog-1118` (`910fb2e805`, `3fded4ffb9`, `405ca31220`). Piste A lancée
+  (`C:/t/bl18-a`). Restent au pilote pour ces pistes : suite complète du web, archlint entier et tests
+  d'intégration de la synchronisation, à passer quand la marche à blanc du décodeur aura rendu la machine.
+
+- 2026-11-18 — piste E rendue, relue et commitée (`89f9764fd1`). Reste à passer par le pilote à
+  l'intégration : `go test -tags=integration -p 1 ./internal/sync/...` et la suite entière d'archlint (non
+  menée à terme par l'agent, machine chargée). Piste F lancée (`C:/t/bl18-f`). Découverte : sur une instance
+  sans aucun compte consentant, le refus est journalisé en avertissement à chaque mise en file d'un rejeu.
+- 2026-11-18 — T.0 clos ; modèle du coup d'envoi (T.1) validé par le user. T.2 à T.5 partent dès qu'un
+  écrivain se libère ET que la piste G est intégrée (mêmes fichiers : `service/match_view_shared_build.go`,
+  `domain/match_view.go`). Lien inscrit au plan du décodeur : sa piste A publie le coup d'envoi lu sur l'horloge.
+- 2026-11-18 — GO du user. Plans commités sur `release/v8.3.0` (`1a7329e625`). 0.1 fait : branche
+  `chore/830-backlog-1118` et worktrees `C:/t/bl1118` (intégration, étape 0), `C:/t/bl18-c` (piste C),
+  `C:/t/bl18-k` (K.2), tous depuis `1a7329e625`, sans jonction.
+  Amendement du pilote, écrit avant tout lancement : les pistes qui ne lisent aucune mesure de l'étape 0
+  (C, E, G, K.2) démarrent EN PARALLÈLE de l'étape 0, parce que les témoins « avant » se prennent sur le
+  commit de base dans un autre dossier et que le plan du fond Relief attend C.4 et K.2 ; AUCUNE piste n'est
+  intégrée avant la Gate 0. L'item 0.4 (références rouvertes) est exécuté par chaque agent de piste en tête
+  de son travail, écarts rapportés avant tout code. Le suivi (cases, journal) s'écrit dans le dossier
+  principal sur `release/v8.3.0`, commits de documentation seuls.
+  Lancés (5 agents Sonnet) : étape 0 (0.2 et 0.3, mesures) ; piste C ; K.2 ; audit du coup d'envoi (T.0) avec
+  l'export de vérité de l'API sur une copie de la base (`C:/t/verite/`, partagé avec le plan du décodeur) ;
+  et, pour le plan du décodeur, sa marche à blanc. Deux agents d'écriture seulement (C et K.2) : la session
+  du fond Relief en tient deux.
+- 2026-11-18 — K.2 rendu, relu sur pièces et commité (`8cb85efc25`, branche `bl1118/k`). La session du fond
+  Relief n'a plus d'écrivain : pistes E, G et H lancées (worktrees `C:/t/bl18-e`, `-g`, `-h`), soit 4
+  écrivains Sonnet avec C. Écart au tableau des modèles, voulu : G.3, G.4 et H.4 (prévus Haiku) sont faits
+  par l'agent Sonnet de leur piste, pour ne pas ouvrir un dossier de travail de plus. L'agent de G régénère
+  le contrat de l'API dans son dossier pour ses contrôles de types ; le pilote le régénère une seule fois à
+  l'intégration. Les gates d'intégration lourds (`-tags=integration`, suites complètes) restent au pilote.
+- 2026-11-22 — REPRISE. `C:/t` vidé le 22/11 à 03:03 par la tâche de ménage du disque (72 h d'inactivité) : dossiers
+  de travail et travail non commité perdus, branches intactes. T.3 et Q.2 rejoués depuis les transcripts des agents
+  coupés puis terminés par deux agents neufs, dans `Scripts/LevelUp-wt-t` et `LevelUp-wt-m`. Q.2 fait (`9277c6fa73` :
+  items 0, a, b, c, e, h, i, j, k, g ; choix de l'agent : au Plein cadre, barre fine éteinte, la barre va sous le bloc
+  comme au Cinéma). T.3 fait (`6b2bf79a85`). TROISIÈME LIVRAISON fusionnée dans `release/v8.3.0` après gate lourd
+  vert sur l'intégration : typage, lint, vitest complet (14 568 tests), imports entre features, contrat de l'API,
+  `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (228 paquets, code 0). Découvertes : les sections
+  rencontres et némésis de l'onglet d'équipe diffèrent entre deux exécutions du même code (ordre non déterministe,
+  préexistant) ; `ReplayPage.row.test.tsx` à 508 lignes ; `cmd/investigate_matches` supprimé avec la colonne qu'il
+  lisait. Restent : vérifications à l'écran du user (barre de lecture et corrections du rejeu), T.6 après la
+  régénération du décodeur, étapes I et R.
+- 2026-11-18 — Q.2-g DÉCIDÉ par le user (« ok ») : la ligne « Tirs à la tête » de la fiche lit le compteur daté du
+  tableau du jeu (valeur à l'instant = dernière valeur de la courbe cumulée), sans mention ni bulle ; ligne
+  absente quand le film ne donne pas le compteur pour le joueur ; l'ancienne estimation et sa note sont
+  supprimées. Ajouté à l'agent de Q.2 en cours, après ses huit corrections. La barre de lecture (M.2, M.3) est
+  rendue, relue et commitée (`2816593c6d` sur `bl1118/m`) : écart assumé avec le prototype, la barre fine
+  redevient pleine à la pause, au survol, au focus et après un geste ; forme fine obtenue par une réduction à
+  80 % (lisibilité des petits chiffres à juger par le user à l'écran).
+- 2026-11-18 — DÉCISION DU USER sur le prototype des quatre choix : « tout proposé sauf le 3. » Donc, à écrire en
+  Q.2 : (i) lignes du fil du joueur suivi sur fond légèrement teinté (token, sans bordure à gauche), distinct de
+  la ligne choisie ; (ii) au Cinéma, la barre de lecture SOUS le bloc arrondi du plan ; (iii) Suivre / Seul /
+  Masquer en un segment de trois colonnes égales, l'actif plein. Le volume (3) reste comme aujourd'hui : curseur
+  toujours visible. LISTE FERMÉE DE Q.2, dans l'ordre d'écriture, un seul écrivain, après M.2 et M.3 : Q.2-a
+  boutons carrés de la barre d'une ligne ; Q.2-b capture et export sans cartouche ; Q.2-c fenêtre de fiche à
+  8 px sous le haut du plan ; Q.2-e bloc arrondi unique du Standard ; Q.2-h marge du Plein cadre à 16 px ;
+  Q.2-i fond teinté du joueur suivi ; Q.2-j barre du Cinéma sous le bloc ; Q.2-k segment de la fiche. Q.2-g
+  (tirs à la tête) attend la réponse du user sur la lecture du compteur du jeu. Q.2-d et Q.2-f : écartés.
+- 2026-11-18 — prototype des quatre choix publié, lu en entier par le pilote avant publication :
+  https://claude.ai/artifact/PpcJfwonVvFY3WhNj93etb (source : `.ai/annexes_backlog_1118/maquettes/rejeu-quatre-choix.html`).
+  Quatre bascules « Aujourd'hui / Proposé » : fond teinté des lignes du joueur suivi, barre du Cinéma sous le
+  bloc, volume en icône seule, segment Suivre / Seul / Masquer. Jamais ouvert dans un navigateur par l'agent :
+  le rendu est à juger par le user. Limite dite au user : au choix de la barre, le gain de hauteur du plan est
+  faible dans le prototype.
+- 2026-11-18 — DÉCISIONS DU USER sur les écarts de maquette (Q.2), message du 2026-11-18 : « pour les corrections,
+  ok avec tes recos sauf pour 6, j'en veux pas du tout, 7 on a bien un (i) pour expliquer que c'est estimé ? Pour
+  12 et 14 j'en sais rien je vois pas de quoi ça a l'air. Pour le 17 je vois pas non plus [...]. Pour les trucs
+  plus tard je te donne mon go d'avance ». Lecture du pilote, redite au user : RETENUS : boutons carrés de la
+  barre d'une ligne (Q.2-a), capture et export sans cartouche (Q.2-b), fenêtre de fiche à 8 px sous le haut du
+  plan (Q.2-c), bloc arrondi unique du Standard (Q.2-e), marge du Plein cadre à 16 px (Q.2-h). ÉCARTÉS : le
+  défilement de toute la fenêtre de fiche (Q.2-d : l'actuel reste), le gain en pour-cent dans l'infobulle de
+  « Plan tourné » (Q.2-f : refusé, la maquette n'est pas suivie). EN QUESTION : tirs à la tête (Q.2-g) : il n'y
+  a aucune bulle d'information aujourd'hui ; proposition du pilote à valider : lire le compteur du jeu lui-même
+  (`scoreTimeline.players[].stats`, série dans le temps, accord de 99,85 % avec l'API) au lieu des éliminations
+  dont le coup fatal est mesuré, ce qui retire l'estimation. SUR PROTOTYPE (le user ne peut pas juger sans
+  rendu) : fond teinté des lignes du joueur suivi, barre du Cinéma sous le bloc, volume en icône seule, segment
+  Suivre / Seul / Masquer : prototype interactif commandé (`C:/t/maquettes/rejeu-quatre-choix.html`). Sans
+  changement : pictogrammes des cadres, bouton caméra relevé pendant un suivi, cinq écarts de forme des bases
+  joueur (nommés au test), colonnes mortes du registre (backlog). Q.2 s'écrit après M.2 et M.3 (mêmes fichiers,
+  un seul écrivain). GO D'AVANCE du user pour « les trucs plus tard » : le rattrapage du poste (T.6) et la
+  régénération du parc du plan du décodeur ; le pilote prévient quand même avant de lancer (serveur arrêté,
+  2 h 30, mémoire) ; la fusion dans `main` reste annoncée avant, et la version attend la 3D et les temps forts.
+- 2026-11-18 — barre de lecture : le user CONFIRME dans cette session (« je t'ai déjà validé C+B non ? ») le
+  choix reçu par relais : B (deux lignes quand la place manque) et C (barre fine et translucide en
+  surimpression au Plein cadre). Portes de M.2 et M.3 ouvertes ; agent Sonnet lancé dans `C:/t/bl18-d` (branche
+  `bl1118/m`, partie de l'intégration), avec la consigne de placer ses ajouts de préférence et de textes hors
+  des lignes que `feat/fonds-relief` modifie, pour une fusion sans conflit. Piste T : ronde de corrections
+  commitée (`28137cda38`), T.3 (lecteurs) lancé avec témoins avant et après. CI de la seconde livraison verte.
+- 2026-11-18 — SECONDE LIVRAISON fusionnée et poussée dans `release/v8.3.0` (`709786d758` : pistes D, K, S).
+  Gate lourd sur l'intégration : typage, lint, suite complète du site (14 406 tests), imports entre features,
+  `go build`, `go vet`, `go test -tags=integration -p 1 ./...` (229 paquets, code 0), contrat de l'API à jour.
+  La CI de la première livraison avait ROUGI (job de la baseline de tests) : 4 tests supprimés avec leur code
+  par la piste G restaient dans la baseline ; retirés dans cette livraison (`4b76bacbc2`). Le gate local ne
+  joue pas ce contrôle : la piste T, qui supprime des tests, doit retirer ses paires (consigne envoyée).
+  Relecture adverse de la piste T rendue : 1 bloquant, 5 à corriger, ronde de corrections en cours ; l'ADR
+  du coup d'envoi devient 0050 (0049 pris par le plan du fond Relief).
+- 2026-11-18 — barre de lecture (M.2, M.3) : la session du fond Relief RELAIE une phrase du user reçue chez
+  elle, « pour la maquette du lecteur en superposition je valide l'option C+B » (C : barre fine et translucide en
+  surimpression au Plein cadre ; B : deux lignes quand la place manque). Relais, pas un message du user dans
+  cette session : la porte de M.2 et M.3 ne s'ouvre qu'à sa confirmation ici. L'écriture attend de toute façon
+  l'intégration du D.3 de l'autre plan (`settings/replayPreferences.ts`, nœud N25).
+- 2026-11-18 — piste T, écriture (T.2, T.4, T.5) rendue et commitée sur sa branche (`87910a4602`) ; relecture
+  adverse des écritures lancée (agent neuf, lecture seule) AVANT la migration des lecteurs (T.3). Mesure sur la
+  copie : 2 045 matchs, sources film 1 447, estimation 587, inconnue 11 ; 13 coups d'envoi changent ; 9 873
+  temps de jeu changent (médiane −8 s) ; second passage : 0 écriture. Écarts au modèle : les trois colonnes
+  mortes restent en base (DuckDB refuse le retrait sans reconstruire la table) ; `playable_duration_seconds`
+  reste écrite tant que la Dominance la lit.
+- 2026-11-18 — pistes D, K (K.1, K.3 à K.5) et S rendues, relues sur pièces, commitées sur leurs branches et
+  cueillies sur l'intégration (`e7f8ff4ae4`, `bddd4751a6`, `b976137ffc`). S : 16 lignes d'écart de forme avant,
+  11 colonnes alignées pour les bases neuves, 5 écarts résiduels nommés (voir Découvertes), exemption de
+  `csr_pipeline_e2e` retirée, garde-rail des migrations neuves élargi. Piste T : écriture en cours (Opus).
+  Plan du décodeur : pistes J et A lancées dans deux dossiers de travail du clone.
 - 2026-11-18 — plan écrit ; trois instructions en lecture seule et une mesure sur le parc ; aucun code.
 - 2026-11-18 — réponses du user : D-2, D-3, D-4, D-5, D-7 retenues ; silhouette de l'arme écartée pour le
   ramassage, planche de quatre tracés publiée (D-1 rouverte) ; correction de périmètre : les neuf entrées
@@ -580,4 +763,80 @@ remplace l'empilement actuel par une seule définition, une seule résolution, u
 
 ## Découvertes (consignées, non traitées)
 
-(vide)
+- 2026-11-18 (T) — les colonnes `t0_quality`, `film_match_start_ms` et, à terme, `playable_duration_seconds` du
+  registre n'ont plus d'écrivain ou n'en auront plus : DuckDB refuse `DROP COLUMN` sur une table à clé primaire
+  et index, le retrait demande de reconstruire la table. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (T) — deux rejeux (`ed3b6497`, `dd29957c`, matchs de 21 et 24 s) publient un coup d'envoi après la
+  fin du match : refusés par la résolution et comptés. À recouper avec le plan du décodeur (coup d'envoi par
+  l'horloge).
+- 2026-11-18 (T) — une publication de rejeu qui change un temps de jeu de quelques secondes ne rejoue pas les
+  notes (limite écrite dans l'ADR 0050).
+- 2026-11-18 (T) — les tests unitaires de `sync/replayartifacts` écrivent sous `<racine>/data/cache/replays/halo_5/`
+  un fichier dont le nom porte un octet nul ; le renommage échoue sous Windows. Préexistant.
+
+- 2026-11-18 (S) — cinq écarts de forme restent entre une base joueur née de la synchronisation et une base
+  née des migrations (`performance_score` FLOAT contre DOUBLE, table et vue ; défaut de `sync_meta.updated_at` ;
+  défaut FALSE de `is_with_friends` et `is_excluded`). Les fermer demande de modifier une étape de migration
+  déjà jouée en production, ce que S.2 interdit : ils sont nommés et datés dans le test de forme. Trois options
+  écrites dans `.ai/annexes_backlog_1118/schema_joueur.md` ; le pilote retient « laisser », soumis au user.
+
+- 2026-11-18 (intégration) — `internal/mapcatalog`, `TestAddOverlayEntryConcurrentNePerdPasDEntree` : instable, 1
+  échec sur 10 passages sur le code d'AVANT le plan. Quand le verrou d'écriture ne se pose pas à temps, le code
+  force le passage et une écriture concurrente du catalogue est perdue : c'est un vrai défaut, pas seulement un
+  test fragile. À porter au backlog à la clôture (R.1), priorité moyenne.
+- 2026-11-18 (intégration) — sous charge, huit garde-rails du site qui parcourent tous les fichiers dépassent le
+  délai de 5 s d'un test dans une suite complète (ils passent seuls en moins de 30 s au total).
+
+- 2026-11-18 (Q.1) — une décision datée du user n'est pas réalisée dans le code : le fond teinté des lignes du
+  joueur suivi dans le fil (décision D-5 de la refonte, 2026-11-15) ; seul le gras de la fiche ouverte existe.
+  Soumis au user avec la liste de Q.2.
+- 2026-11-18 (Q.1) — hors des onze points : au Cinéma et au Plein cadre la barre de lecture est dans le bloc du
+  plan alors que les maquettes la dessinent dessous ; « Suivre / Seul / Masquer » sont trois boutons séparés
+  là où les maquettes dessinent un segment de trois colonnes. Soumis au user.
+- 2026-11-18 (K) — `docs/COMMANDS.md` (vers la ligne 1678) cite encore `origin/feat/v75` comme base par défaut
+  d'un outil de comparaison de rejeux. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (K) — sur ce poste, `go list` a échoué une fois avec « Ressources système insuffisantes » sur un
+  fichier lisible par ailleurs : état de Windows, pas du code.
+
+- 2026-11-18 (F) — après un échec de jeton, la page redevient « générable » dès que le jeton est présent, même
+  s'il ne se rafraîchit pas : un second clic échouera de même. Sans gravité ; noté.
+- 2026-11-18 (F) — les lecteurs du fichier tactique ont quitté `sync/replayartifacts` pour `replayartifact`
+  (un garde-rail interdit tout décodage JSON dans le premier) ; à recouper avec la piste T, qui écrit dans
+  `sync/replayartifacts`.
+
+- 2026-11-18 (F.9) — la synchronisation pose le verdict « film absent » sans fenêtre après la fin du match. MESURÉ
+  sur la copie de la base : défaut ÉCARTÉ. 0 match sur 251 vus moins de 5 minutes après leur fin porte le
+  verdict ; 2 sur 503 parmi ceux vus plus tard dans les 180 jours ; 614 sur 699 au-delà (films expirés). Aucune
+  fenêtre n'est ajoutée à la synchronisation. Un match (`58e6f72a`, décembre 2023) porte le verdict alors que
+  ses 33 morceaux de film sont à l'archive : à porter au backlog à la clôture (R.1).
+
+- 2026-11-18 (G.1) — `medal_name` des événements de médaille du contexte du match n'a plus aucun lecteur de
+  production, et le site ignore ces événements (il lit le document de rejeu). À porter au backlog à la clôture
+  (R.1) : retirer le champ, voire les événements de médaille du contexte. L'ADR 0011 cite encore
+  `MedalImageURL`.
+
+- 2026-11-18 (C.3) — la scène de la page du rejeu est reconstruite et la toile redessinée à chaque rendu : les
+  hooks de calques rendent des objets non mémoïsés. C'est ce qui garde l'horloge écrite après une bascule de
+  cadre en pause, par effet de bord, et c'est un coût de rendu probable. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (C.4) — quatre mesures de largeur coexistent (`useBodyWidth`, l'effet de taille de « Occupation du
+  terrain », `useReplayViewport`, `useContentWidth`) : la règle des trois copies appellerait à les réunir. À
+  porter au backlog à la clôture (R.1).
+
+- 2026-11-18 (0.3) — 128 corps supprimés sans mort appartiennent à un joueur qui a une vie ensuite (ni fin de
+  manche, ni départ, ni bot) : ils donnent aujourd'hui une ligne « mort » non prouvée dans le fil. Cause non
+  instruite (retour d'un joueur parti, réapparition forcée ?). À porter au backlog à la clôture (R.1).
+- 2026-11-18 (0.3) — score à l'instant : dans 3 845 cas l'écart entre l'infobulle et la fiche n'est qu'un
+  décalage d'une image ; 781 joueurs ont un écart de plus d'une seconde, en général de 100 points (même
+  famille que la réponse de 100 points hors arbre du plan du décodeur, piste B).
+- 2026-11-18 (H) — le lint du web sort 4 avertissements dans trois fichiers non touchés
+  (`tooltip-panel.tsx`, `useGamertagSuggestions.ts`, `MediaAudioConfigButton.tsx`).
+
+- 2026-11-18 (T.0) — hors du système du coup d'envoi, validé comme tel par le user : ce que font les notes
+  quand le temps de jeu d'un joueur manque (600 s supposées pour la note de performance, poids et ordre des
+  joueurs partis pour le LUSR ; replis R11 à R14 de l'audit). À porter au backlog à la clôture (R.1).
+- 2026-11-18 (T.0) — 437 matchs ont une durée de l'API qui diffère de « fin moins début » de plus d'une
+  seconde ; non instruit. À porter au backlog à la clôture (R.1).
+- 2026-11-18 (K.2) — le rempart des fonds de carte prend un nom de fichier suivi d'un texte et d'un chemin
+  relatif pour un dossier : « x.module vers any/globals » devient « globals », le nom du module est perdu.
+  Défaut d'avant côté Windows, étendu aux chemins Unix par l'assouplissement. Rien ne fuit ; le message perd
+  de l'information. Non porté au backlog (aucun fond publié concerné).

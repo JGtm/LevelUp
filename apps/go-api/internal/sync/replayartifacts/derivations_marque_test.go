@@ -141,8 +141,11 @@ func TestDeriver_RienAEcrire_MarqueQuandMeme(t *testing.T) {
 	chemin := artefactSansRienADeriver(t, t.TempDir(), "marqueB")
 	// halo_5 ne declare aucune clef `film.*` : les familles usage et Assaut se taisent
 	// proprement, et le document ne porte ni t0FilmMs ni trajectoire.
+	// Le segment de lecture est celui que la production câble toujours : le coup d'envoi y lit
+	// l'état rangé du match (inconnu, sans participant) et n'a rien à réécrire.
 	Deriver(context.Background(), DerivationsDeps{
 		RepoRoot: racineDepot(t), TitleSlug: "halo_5", Gamertag: "testeur",
+		WithRead: lectureRegistre(t, "marqueB"),
 	}, []ArtefactRange{{MatchID: "marqueB", Path: chemin}})
 
 	if !replaybuild.DerivationsUpToDate(chemin) {
@@ -152,7 +155,8 @@ func TestDeriver_RienAEcrire_MarqueQuandMeme(t *testing.T) {
 }
 
 // lectureRegistre : un segment de lecture sur un registre EN MÉMOIRE qui connaît ces matchs —
-// de quoi lire l'identité des niveaux d'armes sans base migrée.
+// de quoi lire l'identité des niveaux d'armes et l'état du coup d'envoi (inconnu, aucun
+// participant) sans base migrée.
 func lectureRegistre(t *testing.T, ids ...string) func(context.Context, string, func(*sql.DB)) {
 	t.Helper()
 	db, err := sql.Open("duckdb", "")
@@ -160,11 +164,16 @@ func lectureRegistre(t *testing.T, ids ...string) func(context.Context, string, 
 		t.Fatalf("duckdb en mémoire: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if _, err := db.Exec(`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, pair_name VARCHAR)`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE match_registry (match_id VARCHAR, map_id VARCHAR, pair_name VARCHAR,
+		start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, duration_seconds INTEGER,
+		real_start_time TIMESTAMP, real_start_source VARCHAR);
+		CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, first_joined_time TIMESTAMPTZ,
+		last_leave_time TIMESTAMPTZ, present_at_beginning BOOLEAN, time_played_seconds INTEGER)`); err != nil {
 		t.Fatalf("registre: %v", err)
 	}
 	for _, id := range ids {
-		if _, err := db.Exec(`INSERT INTO match_registry VALUES (?, '', 'Arena:Slayer')`, id); err != nil {
+		if _, err := db.Exec(`INSERT INTO match_registry (match_id, map_id, pair_name, start_time, duration_seconds)
+			VALUES (?, '', 'Arena:Slayer', TIMESTAMP '2026-11-18 12:00:00', 600)`, id); err != nil {
 			t.Fatalf("registre %s: %v", id, err)
 		}
 	}

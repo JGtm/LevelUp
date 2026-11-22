@@ -53,7 +53,7 @@ linters:
 
   settings:
     gocyclo:
-      min-complexity: 15  # Relaxe de 12 a 15 : fonctions de routing/sync naturellement complexes
+      min-complexity: 12  # Seuil projet (CLAUDE.md regle 5) ; dette existante gelee par le ratchet --new-from-merge-base
 
     funlen:
       lines: 80  # Standard projet (seuils Python) ; dette gelee via only-new-issues (L3, 2026-07-05)

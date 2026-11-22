@@ -9,7 +9,7 @@
  * rendu donnerait un masque faux. Sans image plan, sans calage ou en échec : zones entières.
  */
 import type { ReplayMapBackground } from '@/lib/api/types'
-import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import type { MapBackgroundImageVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 
 import type { ReplayMapBackgroundLayer } from './useReplayView'
@@ -19,17 +19,22 @@ export interface MapBackgroundInputs {
   background: ReplayMapBackground | undefined
   /** L'image posée (celle de la variante réellement chargée), et sa variante. */
   image: HTMLImageElement | null
-  variante: MapBackgroundVariant
+  variante: MapBackgroundImageVariant
   /** L'image plan demandée pour le masque, et la variante réellement chargée à sa place. */
   planImage: HTMLImageElement | null
-  planVariante: MapBackgroundVariant
+  planVariante: MapBackgroundImageVariant
+}
+
+/** Le sidecar annonce-t-il un relief ? Il faut les deux fichiers : l'image des hauteurs et ses données. */
+export function hasRelief(background: Pick<ReplayMapBackground, 'reliefImage' | 'reliefData'> | undefined): boolean {
+  return !!background?.reliefImage && !!background.reliefData
 }
 
 /** Le masque des zones nommées : l'image plan et son calage, `null` quand le plan n'est pas réellement chargé. */
 export function zonesClipOf(
   background: ReplayMapBackground,
   planImage: HTMLImageElement | null,
-  planVariante: MapBackgroundVariant,
+  planVariante: MapBackgroundImageVariant,
 ): ReplayMapBackgroundLayer['zonesClip'] {
   return planImage && planVariante === 'plan' ? { calibration: background.calibration, image: planImage } : null
 }
@@ -44,6 +49,7 @@ export function buildMapBackgroundLayer(inputs: MapBackgroundInputs): ReplayMapB
     plan: normalizeWallPlan(background.plan),
     variante,
     planAvailable: !!background.planImage,
+    reliefAvailable: hasRelief(background),
     zonesClip: zonesClipOf(background, planImage, planVariante),
   }
 }

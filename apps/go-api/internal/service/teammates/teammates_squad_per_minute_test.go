@@ -29,6 +29,8 @@ func withDamage(row canonical.PlayerMatchRow, dealt, taken *int) canonical.Playe
 
 func intp(v int) *int { return &v }
 
+func ptrF(v float64) *float64 { return &v }
+
 func perMinuteByPlayer(entries []domain.SquadPerMinuteEntry) map[string]domain.SquadPerMinuteEntry {
 	out := make(map[string]domain.SquadPerMinuteEntry, len(entries))
 	for _, e := range entries {
@@ -38,6 +40,15 @@ func perMinuteByPlayer(entries []domain.SquadPerMinuteEntry) map[string]domain.S
 }
 
 func approx(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
+
+// cadence lit une cadence facultative d'un test ; une cadence absente arrête le test.
+func cadence(t *testing.T, label string, p *float64) float64 {
+	t.Helper()
+	if p == nil {
+		t.Fatalf("%s : cadence absente (inconnue), une valeur est attendue", label)
+	}
+	return *p
+}
 
 // Les dégâts par minute sont la somme des dégâts rapportée à la somme des minutes (jamais la
 // moyenne des rapports) ; un match sans dégâts connus sort du numérateur ET du dénominateur ; un
@@ -77,8 +88,8 @@ func TestBuildSquadPerMinuteStats_DamageSumOverSumAndAbsent(t *testing.T) {
 		t.Errorf("subis/min : want %.2f got %.2f", want, *m.DamageTakenPerMinute)
 	}
 	// m3 compte pour les frags : 17 frags / 23 min.
-	if want := math.Round(17.0/23*100) / 100; !approx(m.KillsPerMinute, want) {
-		t.Errorf("frags/min : want %.2f got %.2f", want, m.KillsPerMinute)
+	if want := math.Round(17.0/23*100) / 100; !approx(cadence(t, "main frags", m.KillsPerMinute), want) {
+		t.Errorf("frags/min : want %.2f got %.2f", want, *m.KillsPerMinute)
 	}
 	f := got["friend1"]
 	if f.DamageDealtPerMinute != nil || f.DamageTakenPerMinute != nil {
@@ -114,7 +125,7 @@ func TestBuildSquadPerMinuteStats_NoLoaderMainWithoutDamage(t *testing.T) {
 		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5, Assists: 2, TimePlayedSecs: 600},
 	}
 	got := svc.buildSquadPerMinuteStats(context.Background(), allSquadRows, "main", nil, nil)
-	if len(got) != 1 || got[0].DamageDealtPerMinute != nil || got[0].KillsPerMinute != 1 {
+	if len(got) != 1 || got[0].DamageDealtPerMinute != nil || got[0].KillsPerMinute == nil || *got[0].KillsPerMinute != 1 {
 		t.Fatalf("main sans lecteur : frags seuls attendus, got %+v", got)
 	}
 }

@@ -23,7 +23,12 @@
 #      (jonction, lien) n'est PAS supprime : il est signale. `Remove-Item -Recurse` de Windows
 #      PowerShell 5.1 suit les jonctions ; un `git worktree remove` les a deja suivies et a vide
 #      le cache des films (incident du 2026-09-16).
-#   5. Les worktrees ne sont jamais supprimes : le script en fait seulement le rapport.
+#   5. Un dossier qui est, ou qui contient jusqu'a 3 niveaux plus bas, un depot ou un worktree git
+#      (presence d'un `.git`, dossier ou fichier, sans appel a git) n'est JAMAIS supprime, meme
+#      sous C:\t ou dans un dossier de session : il est liste avec son motif, en simulation comme
+#      avec -Apply. Le controle est dans Remove-Tree, unique point de suppression d'un arbre : les
+#      caches, les sessions, les dossiers de gate, C:\t et -Lot y passent tous. Le script ne
+#      supprime par ailleurs aucun worktree enregistre : il en fait seulement le rapport.
 #   6. Chaque passe journalise l'espace libre avant et apres, et ce qui a ete supprime, dans
 #      %LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log ; sous 60 Go libres, ALERTE.
 #
@@ -37,6 +42,13 @@
 #   powershell -File scripts/disk-hygiene.ps1 -Apply          # passe reelle (tache planifiee)
 #   powershell -File scripts/disk-hygiene.ps1 -Lot cg3-vuea -Apply
 #                      # cloture d'un lot : supprime go-build-cg3-vuea et golangci-cg3-vuea
+#   powershell -File scripts/disk-hygiene.ps1 -Scope Tmp -TmpRoot <dossier>
+#                      # balaie <dossier> a la place de C:\t (defaut) ; sert aux essais sur arborescence jetable
+#   powershell -File scripts/disk-hygiene.ps1 -BaseRef origin/release/v8.3.0
+#                      # force la base du controle "fusionne" du rapport des worktrees ; par defaut :
+#                      # amont de la branche courante du depot, sinon branche par defaut du depot
+#                      # distant (origin/HEAD), sinon origin/main ; base introuvable = "inconnu",
+#                      # le script continue.
 #
 # Encodage : ASCII (Windows PowerShell 5.1 lit un .ps1 sans BOM en ANSI).
 
@@ -45,8 +57,10 @@ param(
   [switch]$Apply,
   [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$Lot,
   [ValidateSet('All', 'Caches', 'Sessions', 'Tmp', 'Worktrees')][string]$Scope = 'All',
+  [string]$BaseRef,
   [string]$SessionRoot = (Join-Path $env:TEMP 'claude'),
   [string]$TranscriptRoot = (Join-Path $env:USERPROFILE '.claude\projects'),
+  [string]$TmpRoot = 'C:\t',
   [string]$LogPath = (Join-Path $env:LOCALAPPDATA 'levelup-disk-hygiene\disk-hygiene.log')
 )
 
@@ -59,7 +73,6 @@ $TmpIdleHours = 72
 $SharedCacheMaxGB = 25
 $AlertFreeGB = 60
 $LotBusyMinutes = 10
-$ShortTmpRoot = 'C:\t'
 $GatePattern = '^(gate_work|gocache|golangci|parc)'
 $BlockingPattern = '^(go|compile|link|golangci-lint|gate|asm|cgo)$|\.test$|^replay-|^levelup'
 $SessionPattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
@@ -78,6 +91,8 @@ $LocalAppData = Get-FullPath $env:LOCALAPPDATA
 $UserProfile = Get-FullPath $env:USERPROFILE
 $SessionRoot = Get-FullPath $SessionRoot
 $TranscriptRoot = Get-FullPath $TranscriptRoot
+$ShortTmpRoot = Get-FullPath $TmpRoot
+$GitMarkerMaxDepth = 3
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 function Write-Log([string]$msg) {
@@ -120,6 +135,31 @@ function Test-StrictChild([string]$path, [string]$root) {
   return $path.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
+# Regle 5 : rend le premier `.git` (dossier ou fichier : un worktree en a un fichier) trouve dans
+# $root ou jusqu'a $maxDepth niveaux dessous, sinon $null. Ne descend jamais dans un point de
+# reparation ni dans un `.git`. Un dossier illisible compte comme protege (rend son chemin) : dans le
+# doute on ne supprime pas.
+function Find-GitMarker([string]$root, [int]$maxDepth) {
+  $stack = New-Object System.Collections.Generic.Stack[object]
+  $stack.Push(@($root, 0))
+  while ($stack.Count -gt 0) {
+    $cur = $stack.Pop()
+    $dir = $cur[0]
+    try {
+      $marker = Join-Path $dir '.git'
+      if ([IO.Directory]::Exists($marker) -or [IO.File]::Exists($marker)) { return $marker }
+      if ($cur[1] -ge $maxDepth) { continue }
+      foreach ($c in (New-Object IO.DirectoryInfo($dir)).EnumerateDirectories()) {
+        if ($c.Attributes -band $ReparseFlag) { continue }
+        $stack.Push(@($c.FullName, ($cur[1] + 1)))
+      }
+    } catch {
+      return ('illisible : ' + $dir)
+    }
+  }
+  return $null
+}
+
 # Regle 1 : une suppression n'est permise que dans les racines autorisees.
 function Test-Deletable([string]$path) {
   $parent = Split-Path -Parent $path
@@ -154,6 +194,12 @@ function Remove-Tree([string]$path, [double]$minIdleHours, [string]$label) {
     return [int64]0
   }
   if ($idle -lt $minIdleHours) { return [int64]0 }
+  $git = Find-GitMarker $path $GitMarkerMaxDepth
+  if ($git) {
+    Write-Log ("CONSERVE {0} : depot ou worktree git : conserve ({1}) : {2}" -f $label, $git, $path)
+    $script:Refused++
+    return [int64]0
+  }
   $desc = '{0} {1} ({2}, inactif depuis {3:N0} h)' -f $label, $path, (Format-GB $info.Bytes), $idle
   if (-not $script:DoDelete) { Write-Log "SIMULATION supprimerait $desc"; return $info.Bytes }
   Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
@@ -269,23 +315,70 @@ function Invoke-TmpSweep {
   }
 }
 
+# Appelle git sans qu'un message sur stderr ne leve d'erreur : sous $ErrorActionPreference = 'Stop',
+# Windows PowerShell 5.1 transforme la moindre ecriture d'une commande native sur stderr (redirigee ou non)
+# en erreur terminante. Le code de sortie est range dans $script:GitExit ; la sortie standard est rendue
+# sous forme de tableau.
+function Invoke-Git([string[]]$GitArgs) {
+  $ErrorActionPreference = 'Continue'
+  $out = @(& git @GitArgs 2>$null)
+  $script:GitExit = $LASTEXITCODE
+  return $out
+}
+
+function Test-GitRef([string]$ref) {
+  if ([string]::IsNullOrWhiteSpace($ref)) { return $false }
+  Invoke-Git @('-C', $RepoRoot, 'rev-parse', '--verify', '--quiet', ($ref + '^{commit}')) | Out-Null
+  return ($script:GitExit -eq 0)
+}
+
+# Base du controle "fusionne", resolue une seule fois : -BaseRef, sinon l'amont de la branche courante
+# du depot, sinon la branche par defaut du depot distant, sinon origin/main. Rend $null si aucune base
+# n'existe (le controle rend alors "inconnu" sans arreter le script).
+function Resolve-BaseRef {
+  if ($BaseRef) {
+    if (Test-GitRef $BaseRef) { return $BaseRef }
+    return $null
+  }
+  $upstream = @(Invoke-Git @('-C', $RepoRoot, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'))
+  if ($script:GitExit -eq 0 -and $upstream.Count -gt 0 -and (Test-GitRef $upstream[0])) { return $upstream[0] }
+  $default = @(Invoke-Git @('-C', $RepoRoot, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD'))
+  if ($script:GitExit -eq 0 -and $default.Count -gt 0 -and (Test-GitRef $default[0])) { return $default[0] }
+  if (Test-GitRef 'origin/main') { return 'origin/main' }
+  return $null
+}
+
+# "True", "False" ou "inconnu" : le HEAD du worktree est-il un ancetre de la base ?
+function Get-MergedState([string]$worktree, [string]$base) {
+  if (-not $base) { return 'inconnu' }
+  $head = @(Invoke-Git @('-C', $worktree, 'rev-parse', 'HEAD'))
+  if ($script:GitExit -ne 0 -or $head.Count -eq 0) { return 'inconnu' }
+  Invoke-Git @('-C', $worktree, 'merge-base', '--is-ancestor', [string]$head[0], $base) | Out-Null
+  switch ($script:GitExit) {
+    0 { return 'True' }
+    1 { return 'False' }
+    default { return 'inconnu' }
+  }
+}
+
 # Regle 5 : rapport seul. Jonctions cherchees aux emplacements ou les sessions en posent.
 function Write-WorktreeReport {
-  $lines = & git -C $RepoRoot worktree list --porcelain 2>$null
-  if ($LASTEXITCODE -ne 0) { Write-Log "worktrees : git indisponible sous $RepoRoot"; return }
+  $lines = Invoke-Git @('-C', $RepoRoot, 'worktree', 'list', '--porcelain')
+  if ($script:GitExit -ne 0) { Write-Log "worktrees : git indisponible sous $RepoRoot"; return }
+  $base = Resolve-BaseRef
+  $baseLabel = if ($base) { $base } else { 'base introuvable' }
+  if (-not $base) { Write-Log "worktrees : base introuvable (ni -BaseRef, ni amont, ni origin/HEAD, ni origin/main) ; controle fusionne = inconnu" }
   $paths = @($lines | Where-Object { $_ -like 'worktree *' } | ForEach-Object { $_.Substring(9) }) | Select-Object -Skip 1
   $junctionSpots = @('apps\web\node_modules', 'data\cache\film_chunks', 'data\cache\film_manifests', 'node_modules')
   foreach ($wt in $paths) {
-    $head = & git -C $wt rev-parse HEAD 2>$null
-    & git -C $wt merge-base --is-ancestor $head origin/feat/v75 2>$null
-    $merged = ($LASTEXITCODE -eq 0)
-    $dirty = @(& git -C $wt status --short 2>$null).Count
-    $last = & git -C $wt log -1 --format=%ci 2>$null
+    $merged = Get-MergedState $wt $base
+    $dirty = @(Invoke-Git @('-C', $wt, 'status', '--short')).Count
+    $last = (@(Invoke-Git @('-C', $wt, 'log', '-1', '--format=%ci')) -join ' ')
     $junctions = @($junctionSpots | Where-Object {
         $p = Join-Path $wt $_
         (Test-Path -LiteralPath $p) -and ((Get-Item -LiteralPath $p -Force).Attributes -band $ReparseFlag)
       })
-    Write-Log ("worktree {0} : dernier commit {1}, fusionne dans origin/feat/v75 {2}, non commites {3}, jonctions [{4}]" -f $wt, $last, $merged, $dirty, ($junctions -join ', '))
+    Write-Log ("worktree {0} : dernier commit {1}, fusionne dans {2} : {3}, non commites {4}, jonctions [{5}]" -f $wt, $last, $baseLabel, $merged, $dirty, ($junctions -join ', '))
   }
 }
 

@@ -78,7 +78,7 @@ SELECT
          ELSE CAST(COALESCE(mp.kills, 0) AS DOUBLE) END     AS ratio,
     mp.accuracy,
     mp.avg_life_seconds,
-    NULLIF(COALESCE(NULLIF(mp.time_played_seconds, 0), r.playable_duration_seconds), 0) AS time_played_seconds,
+    NULLIF(mp.time_played_seconds, 0)                       AS time_played_seconds,
     mp.damage_dealt,
     mp.damage_taken,
     ` + analysis.SQLKnownMMR("mp.team_mmr") + ` AS team_mmr,
@@ -146,7 +146,7 @@ SELECT
     me.match_id,
     me.medal_name_id,
     COALESCE(me.count, 1) AS count
-FROM medals_earned me
+FROM v_medals_earned me
 WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`

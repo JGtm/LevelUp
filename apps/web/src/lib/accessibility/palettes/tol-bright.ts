@@ -26,7 +26,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_TOL_BLUE_RED } from './_impactRoleColors'
+import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 // Tol Bright — catégorielles
 const TOL_BLUE   = '#4477AA'
@@ -164,8 +164,6 @@ export const tolBrightPalette: Palette = {
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — bleu / rouge Tol, rampe claire (cf. _impactRoleColors.ts)
-  ...IMPACT_TOL_BLUE_RED.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // Même motif que sur les autres palettes : 11 classes > 7 teintes Bright, on
@@ -214,6 +212,10 @@ export const tolBrightPalette: Palette = {
   'heatmap-divergent-high': TOL_BLUE,
   'heatmap-freq-low':       '#1A3550', // fréquence faible — bleu sombre (neutre, mono-teinte)
   'heatmap-freq-high':      TOL_CYAN, // fréquence forte  — cyan Tol Bright (neutre)
+
+  // ── Fond Relief et cerne des pions ──────────────────────────────────
+  'map-relief-base': '#7559B5', // Violet
+  ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — axe Blue/Red Tol Bright ─────────────────────────────────────
   'team-ally':  TOL_BLUE, // overridable via settings accessibilité

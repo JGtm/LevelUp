@@ -28,6 +28,7 @@ import type { ReplayBounds } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import type { TacticalGrid } from '@/lib/replay/heatPaint'
+import type { ReliefLinesInput } from '@/lib/replay/relief/reliefLinesLayer'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 
 import { lisserLaGrille } from '@/lib/replay/chaleurLissee'
@@ -50,6 +51,8 @@ export interface CalqueDuPlanProps {
   zones: readonly CalloutZoneReady[]
   /** Le plan des murs à tracer sous les zones et la chaleur ; `null` = pas de plan ou interrupteur éteint. */
   plan?: WallPlanReady | null
+  /** Les traits du relief, sous le plan des murs ; `null` = éteints ou relief pas prêt. */
+  reliefLines?: ReliefLinesInput | null
   locale: Locale
   selected: { col: number; row: number } | null
   /** Le point MONDE sous un clic (pas un glisser) ; la vue décide de la cellule qu'il retient. */
@@ -66,6 +69,7 @@ export function CalqueDuPlan({
   ramp,
   zones,
   plan = null,
+  reliefLines = null,
   locale,
   selected,
   onPointSelect,
@@ -95,7 +99,7 @@ export function CalqueDuPlan({
     // L'ENCRE DU TEXTE (`text-foreground` lue par `getComputedStyle`) : contours des zones et repère
     // de la sélection ne disent aucune SIGNIFICATION qu'un jeton sémantique porterait — « ce lieu », « ici ».
     const encre = getComputedStyle(canvas).color
-    peindreLePlan(ctx, repere, width, { grid: lissee, ramp, zones, locale, encre, plan }, fenetre)
+    peindreLePlan(ctx, repere, width, { grid: lissee, ramp, zones, locale, encre, plan, reliefLines }, fenetre)
     // L'ANNEAU DE LA ZONE CHOISIE, par-dessus les calques : le retour immédiat au clic.
     const cadre = rectSelection(selected, repere, width, fenetre)
     if (!cadre) return
@@ -104,7 +108,7 @@ export function CalqueDuPlan({
     ctx.beginPath()
     ctx.arc(cadre.x + cadre.size / 2, cadre.y + cadre.size / 2, cadre.size * ANNEAU_RAYON_CELLULE, 0, 2 * Math.PI)
     ctx.stroke()
-  }, [lissee, ramp, repere, fenetre, selected, zones, plan, locale, taille])
+  }, [lissee, ramp, repere, fenetre, selected, zones, plan, reliefLines, locale, taille])
 
   function handlePointerDown(event: PointerEvent<HTMLCanvasElement>) {
     appui.current = { x: event.clientX, y: event.clientY }

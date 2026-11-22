@@ -26,9 +26,13 @@ func ligneDeCadence(id string, ts time.Time, kills, deaths, assists int, secs *i
 	return row
 }
 
-func temoinCadence(t *testing.T, label string, v float64, want string) {
+func temoinCadence(t *testing.T, label string, v *float64, want string) {
 	t.Helper()
-	if got := strconv.FormatFloat(v, 'g', -1, 64); got != want {
+	if v == nil {
+		t.Errorf("%s : cadence absente, attendu %s", label, want)
+		return
+	}
+	if got := strconv.FormatFloat(*v, 'g', -1, 64); got != want {
 		t.Errorf("%s = %s, attendu %s", label, got, want)
 	}
 }
@@ -76,10 +80,7 @@ func TestTemoinCadence_StatsParMinuteDeLEscouade(t *testing.T) {
 		temoinCadence(t, e.Player+" frags", e.KillsPerMinute, w.k)
 		temoinCadence(t, e.Player+" morts", e.DeathsPerMinute, w.d)
 		temoinCadence(t, e.Player+" assistances", e.AssistsPerMinute, w.a)
-		if e.DamageDealtPerMinute == nil || e.DamageTakenPerMinute == nil {
-			t.Fatalf("%s : dégâts absents (%v / %v)", e.Player, e.DamageDealtPerMinute, e.DamageTakenPerMinute)
-		}
-		temoinCadence(t, e.Player+" dégâts infligés", *e.DamageDealtPerMinute, w.dealt)
-		temoinCadence(t, e.Player+" dégâts subis", *e.DamageTakenPerMinute, w.taken)
+		temoinCadence(t, e.Player+" dégâts infligés", e.DamageDealtPerMinute, w.dealt)
+		temoinCadence(t, e.Player+" dégâts subis", e.DamageTakenPerMinute, w.taken)
 	}
 }

@@ -56,8 +56,11 @@ func NewUsageSummaryPersister(db txBeginner) *UsageSummaryPersister {
 // personne n a rien fait d attribuable (aucun grappin, aucun socle nomme) reste un match
 // MESURE, et son echelle de temps sert l agregat de session. Zero ligne joueur n est donc
 // pas une passe vide — mais elle se journalise, parce qu elle est rare et merite un oeil.
+//
+// `lu` porte les mesures de LevelUp (bris, recharges, vengeances) et leur révision, rangées à côté
+// du résumé du décodeur ; sa valeur zéro range une révision et des colonnes NULL.
 func (p *UsageSummaryPersister) PersistPass(
-	ctx context.Context, matchID string, s *replay.UsageSummary,
+	ctx context.Context, matchID string, s *replay.UsageSummary, lu UsageLevelUp,
 ) error {
 	if err := validateUsageSummary(matchID, s); err != nil {
 		return err
@@ -76,10 +79,10 @@ func (p *UsageSummaryPersister) PersistPass(
 	}
 	defer func() { _ = tx.Rollback() }() // no-op apres Commit
 
-	if err := insertUsageFilmRow(ctx, tx, matchID, pass, now, &s.Match); err != nil {
+	if err := insertUsageFilmRow(ctx, tx, matchID, pass, now, &s.Match, lu.revValue()); err != nil {
 		return err
 	}
-	if err := insertUsagePlayerRows(ctx, tx, matchID, pass, now, s.Players); err != nil {
+	if err := insertUsagePlayerRows(ctx, tx, matchID, pass, now, s.Players, lu.Players); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -92,7 +95,7 @@ func (p *UsageSummaryPersister) PersistPass(
 	slog.InfoContext(ctx, "persist: resume usage ecrit",
 		"match_id", matchID, "joueurs", len(s.Players),
 		"pad_named", s.Match.PadNamed, "pad_unnamed", s.Match.PadUnnamed,
-		"summary_rev", replay.UsageSummaryRev, "artifact_schema", s.Match.SchemaVersion)
+		"summary_rev", replay.UsageSummaryRev, "levelup_rev", lu.Rev, "artifact_schema", s.Match.SchemaVersion)
 	return nil
 }
 
@@ -124,6 +127,7 @@ func validateUsageSummary(matchID string, s *replay.UsageSummary) error {
 // insertUsageFilmRow ecrit la ligne de grain MATCH.
 func insertUsageFilmRow(
 	ctx context.Context, tx *sql.Tx, matchID, pass string, now time.Time, m *replay.UsageMatchSummary,
+	levelUpRev sql.NullString,
 ) error {
 	weaponPads, err := usageWeaponPadsJSON(m.WeaponPads)
 	if err != nil {
@@ -137,7 +141,7 @@ func insertUsageFilmRow(
 		matchID, pass, replay.UsageSummaryRev, m.SchemaVersion, now,
 		m.FrameIntervalMS, m.FrameCount, m.DurationMS,
 		m.PadOccupancies, m.PadNamed, m.PadUnnamed,
-		weaponPads, powerups); err != nil {
+		weaponPads, powerups, levelUpRev); err != nil {
 		return fmt.Errorf("persist: INSERT match_usage_films %s: %w", matchID, err)
 	}
 	return nil
@@ -146,6 +150,7 @@ func insertUsageFilmRow(
 // insertUsagePlayerRows ecrit les lignes de grain (match, joueur), toutes sous la meme passe.
 func insertUsagePlayerRows(
 	ctx context.Context, tx *sql.Tx, matchID, pass string, now time.Time, rows []replay.UsagePlayerSummary,
+	levelUp map[string]UsageLevelUpPlayer,
 ) error {
 	if len(rows) == 0 {
 		return nil
@@ -173,6 +178,7 @@ func insertUsagePlayerRows(
 		if err != nil {
 			return fmt.Errorf("persist: resume usage %s/%s: %w", matchID, r.XUID, err)
 		}
+		lu := levelUp[r.XUID]
 		if _, err := stmt.ExecContext(ctx,
 			matchID, pass, replay.UsageSummaryRev, now, r.XUID,
 			r.GrapplePulls,
@@ -180,7 +186,8 @@ func insertUsagePlayerRows(
 			r.OvershieldEpisodes, r.OvershieldMS, r.OvershieldKills,
 			deployed, r.DroppedObjects, r.GrenadesThrown,
 			r.PadPickups, padPickups,
-			issues.taken, issues.spent, issues.kept, issues.dropped, r.ShieldlessKills); err != nil {
+			issues.taken, issues.spent, issues.kept, issues.dropped, r.ShieldlessKills,
+			lu.ShieldBreaks, lu.ShieldRecharges, lu.RevengeKills); err != nil {
 			return fmt.Errorf("persist: INSERT match_usage_players %s/%s: %w", matchID, r.XUID, err)
 		}
 	}
@@ -245,8 +252,8 @@ const insertMatchUsageFilmSQL = `
 		(match_id, summary_pass, summary_rev, artifact_schema, written_at,
 		 frame_interval_ms, frame_count, duration_ms,
 		 pad_occupancies, pad_named, pad_unnamed,
-		 weapon_pads_json, powerup_pickups_json)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		 weapon_pads_json, powerup_pickups_json, levelup_rev)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 const insertMatchUsagePlayerSQL = `
 	INSERT INTO match_usage_players
@@ -256,5 +263,6 @@ const insertMatchUsagePlayerSQL = `
 		 overshield_episodes, overshield_ms, overshield_kills,
 		 deployed_json, dropped_objects, grenades_thrown,
 		 pad_pickups, pad_pickups_json,
-		 taken_json, spent_json, kept_json, dropped_json, shieldless_kills)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		 taken_json, spent_json, kept_json, dropped_json, shieldless_kills,
+		 shield_breaks, shield_recharges, revenge_kills)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

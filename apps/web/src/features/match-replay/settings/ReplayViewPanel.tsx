@@ -38,6 +38,7 @@ import { LayersSection } from './ReplaySettingsLayers'
 import { OrientationSection, type ReplayOrientationControls } from './ReplayOrientationSection'
 import { LivesSection, type ReplayLivesControls } from './ReplayLivesSection'
 import { PlanFeedSection, type ReplayPlanFeedControls } from './ReplayPlanFeedSection'
+import { ThinBarSection, type ReplayThinBarControls } from './ReplayThinBarSection'
 import { ViewPresetsSection } from './ReplayViewPresets'
 import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
@@ -56,6 +57,7 @@ const PANEL_WIDTH = 416
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
 export type { ReplayPlanFeedControls } from './ReplayPlanFeedSection'
+export type { ReplayThinBarControls } from './ReplayThinBarSection'
 export type { ReplayLivesControls, ReplayLivesLayerControls, ReplayRespawnForecastControls } from './ReplayLivesSection'
 export type {
   ReplayBackgroundControls,
@@ -64,12 +66,14 @@ export type {
   ReplayGroundWeaponControls,
   ReplayModeObjectivesControls,
   ReplayPlacementControls,
+  ReplayReliefControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
+export type { ReplayFloorControls } from './ReplayFloorControls'
 
 import type {
   ReplayBackgroundControls,
@@ -78,6 +82,7 @@ import type {
   ReplayGroundWeaponControls,
   ReplayModeObjectivesControls,
   ReplayPlacementControls,
+  ReplayReliefControls,
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
@@ -122,12 +127,16 @@ interface ReplayViewPanelProps {
   wallPlan: ReplayWallPlanControls
   /** Les TRACES DES VIES (apparitions, morts, tueurs) : un groupe qui se replie, et deux affinages communs. */
   lives: ReplayLivesControls
-  /** Le STYLE DU FOND (rendu ou plan) : n'existe qu'avec un fond qui porte une image plan. */
+  /** Le STYLE DU FOND (plan, rendu, relief) : n'existe que s'il y a un choix entre au moins deux fonds. */
   background: ReplayBackgroundControls
+  /** Le RELIEF : l'interrupteur « Traits du relief » et la commande d'étage ; n'existe qu'avec un fond qui porte un relief lisible. */
+  relief: ReplayReliefControls
   /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
   orientation: ReplayOrientationControls
   /** Le FIL DES ÉLIMINATIONS posé sur le plan : n'existe que là où le cadre peut le poser. */
   planFeed: ReplayPlanFeedControls
+  /** La BARRE DE LECTURE FINE au Plein cadre : n'existe qu'au Plein cadre ; absente = pas d'option. */
+  thinBar?: ReplayThinBarControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -305,9 +314,11 @@ export function ReplayViewPanel({
   vehicles,
   wallPlan,
   background,
+  relief,
   lives,
   orientation,
   planFeed,
+  thinBar,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -371,10 +382,12 @@ export function ReplayViewPanel({
         vehicles={vehicles}
         wallPlan={wallPlan}
         background={background}
+        relief={relief}
       />
       <LivesSection locale={locale} lives={lives} />
       <OrientationSection locale={locale} orientation={orientation} />
       <PlanFeedSection locale={locale} planFeed={planFeed} />
+      {thinBar && <ThinBarSection locale={locale} thinBar={thinBar} />}
       <EffectsSection
         locale={locale}
         showShotFx={showShotFx}

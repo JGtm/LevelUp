@@ -3,9 +3,10 @@
  *
  * Le nombre de quarts de tour vit sous `replay-orientation.<mapId>` (`replayPreferences.ts`) : une
  * carte tournée l'est à chaque ouverture, les autres ne bougent pas. Le choix a TROIS ÉTATS :
- * aucun choix retenu (`retained` vaut `null` : « Auto », la règle `autoTurns` que `useReplayView`
- * applique), ou 0, 1, 2 ou 3 quarts de tour. Ce hook ne dit que ce que l'utilisateur a retenu ; la
- * position EFFECTIVE de la carte, Auto comprise, se résout dans `useReplayView`.
+ * aucun choix retenu (`retained` vaut `null` : « Auto », la règle de `useAutoTurned`, appliquée par chaque
+ * vue à sa propre zone), ou 0, 1, 2 ou 3 quarts de tour. Ce hook ne dit que ce que l'utilisateur a retenu ; la
+ * position EFFECTIVE de la carte, Auto comprise, se résout dans `useReplayView` (rejeu) et `useMapViewPreferences`
+ * (Tactique, « Occupation du terrain »).
  *
  * Sans identifiant de carte (page en chargement, match sans carte connue) il n'y a rien sous quoi
  * retenir un choix, donc aucun retour possible d'un plan tourné par l'Auto : `retained` vaut 0 (la

@@ -2234,6 +2234,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/replay/background.relief.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert les données du relief du fond de carte du rejeu 2D
+         * @description Données du relief de la carte du match, cuites hors ligne par `cmd/mapfond-build` : bornes de
+         *     hauteur, étages détectés, traits. Rangées en JSON compressé sur disque, elles sont servies en
+         *     clair (la compression de transport est celle du serveur). Un fichier de version de schéma
+         *     inconnue ou au calage différent de celui du fond est tenu pour absent. Elles vont avec l'image du relief
+         *     (`background.png?variante=relief`), dans le même cadre et au même calage.
+         */
+        get: operations["getMatchReplayBackgroundReliefData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}/replay/callouts": {
         parameters: {
             query?: never;
@@ -3803,6 +3827,29 @@ export interface paths {
          *     donnée de référence versionnée, pas une trajectoire décodée d'un film.
          */
         get: operations["getTacticalMapBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/background.relief.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert les données du relief du fond d'une carte de l'onglet Tactique
+         * @description Données du relief d'une carte (JSON servi en clair), résolues par la même cascade que le fond mais
+         *     adressées par `map_id`. Elles vont avec l'image du relief
+         *     (`background.png?variante=relief`). Comme le fond, cette route n'est PAS restreinte à la
+         *     boucle locale : c'est une donnée de référence versionnée.
+         */
+        get: operations["getTacticalMapBackgroundReliefData"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9075,6 +9122,8 @@ export interface components {
             module: string;
             plan?: components["schemas"]["MapBackgroundPlan"];
             planImage?: string;
+            reliefData?: string;
+            reliefImage?: string;
             /** Format: int64 */
             schemaVersion: number;
             source: string;
@@ -9446,12 +9495,7 @@ export interface components {
             headshot?: boolean;
             /** Format: int64 */
             killer_damage_pct?: number;
-            medal_description?: string;
-            medal_image_url?: string;
-            medal_label?: string;
             medal_name?: string;
-            /** Format: int64 */
-            medal_name_id?: number;
             victim_gamertag?: string;
             /** Format: int64 */
             victim_team_id?: number;
@@ -10127,7 +10171,6 @@ export interface components {
         };
         MatchTeamTab: {
             encounters: components["schemas"]["MatchEncounterRow"][] | null;
-            nemesis: components["schemas"]["MatchNemesisRow"][] | null;
             roster: components["schemas"]["MatchRosterRow"][] | null;
             scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
         };
@@ -10155,6 +10198,8 @@ export interface components {
             analysis_state?: string;
             dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
+            /** Format: int64 */
+            gameplay_duration_seconds?: number;
             had_bot_teammate: boolean;
             is_excluded: boolean;
             is_favorite: boolean;
@@ -10181,8 +10226,6 @@ export interface components {
             performance_color?: string;
             performance_color_token?: string;
             performance_display: string;
-            /** Format: int64 */
-            playable_duration_seconds?: number;
             playlist_label: string;
             replay_available: boolean;
             score_kind?: string;
@@ -11413,6 +11456,8 @@ export interface components {
              * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
              */
             cooldown_retry_after_s: number;
+            /** @description Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé. */
+            history_complete: boolean;
             /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
             job?: components["schemas"]["AsyncJobStatus"];
             player_slug: string;
@@ -11966,6 +12011,9 @@ export interface components {
             schemaVersion: number;
             scoreActions?: components["schemas"]["ScoreAction"][] | null;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
+            shieldCycles?: {
+                [key: string]: components["schemas"]["ShieldCycle"];
+            };
             shotStats?: components["schemas"]["ShotStat"][] | null;
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
@@ -12826,6 +12874,10 @@ export interface components {
             watcher_presence_enabled: boolean;
             watcher_subscribed_players: string[];
         };
+        ShieldCycle: {
+            breaks: number[] | null;
+            recharges: number[] | null;
+        };
         Shot: {
             /** Format: float */
             h?: number;
@@ -13347,64 +13399,54 @@ export interface components {
             first_deaths: components["schemas"]["ImpactEventSummary"];
             last_kills: components["schemas"]["ImpactEventSummary"];
         };
-        SquadImpactBadgeCount: {
-            badge_key: string;
-            /** Format: int64 */
-            count: number;
-        };
-        SquadImpactCell: {
-            badge_keys: string[] | null;
-            match_id: string;
-            player: string;
-        };
-        SquadImpactEvening: {
-            /** Format: int64 */
-            matches: number;
-            players: components["schemas"]["SquadImpactEveningPlayer"][] | null;
-            session_label: string;
-            start_time: string;
-            /** Format: int64 */
-            wins: number;
-        };
-        SquadImpactEveningPlayer: {
-            player: string;
-            /** Format: double */
-            points: number;
-            roles: components["schemas"]["SquadImpactRoleCount"][] | null;
-        };
-        SquadImpactHistory: {
-            evenings: components["schemas"]["SquadImpactEvening"][] | null;
+        SquadImpactSessions: {
             players: string[] | null;
-            scale: components["schemas"]["SquadImpactRoleWeight"][] | null;
+            role_order: string[] | null;
+            scale: components["schemas"]["SquadImpactSessionsRoleWeight"][] | null;
+            sessions: components["schemas"]["SquadImpactSessionsSession"][] | null;
+            totals: components["schemas"]["SquadImpactSessionsTotal"][] | null;
         };
-        SquadImpactMatchHeader: {
+        SquadImpactSessionsMatch: {
             match_id: string;
             /** Format: int64 */
             outcome: number;
         };
-        SquadImpactMatrix: {
-            badge_ord: string[] | null;
-            cells: components["schemas"]["SquadImpactCell"][] | null;
-            matches: components["schemas"]["SquadImpactMatchHeader"][] | null;
-            players: components["schemas"]["SquadImpactPlayerSummary"][] | null;
+        SquadImpactSessionsPerMatch: {
+            match_id: string;
+            roles: string[] | null;
         };
-        SquadImpactPlayerSummary: {
-            counts: components["schemas"]["SquadImpactBadgeCount"][] | null;
+        SquadImpactSessionsPlayer: {
+            counts: components["schemas"]["SquadImpactSessionsRoleCount"][] | null;
+            /** Format: int64 */
+            matches_played: number;
+            per_match: components["schemas"]["SquadImpactSessionsPerMatch"][] | null;
             player: string;
             /** Format: double */
-            score: number;
+            points: number;
         };
-        SquadImpactRoleCount: {
+        SquadImpactSessionsRoleCount: {
             /** Format: int64 */
             count: number;
+            role: string;
+        };
+        SquadImpactSessionsRoleWeight: {
             /** Format: double */
             points: number;
             role: string;
         };
-        SquadImpactRoleWeight: {
+        SquadImpactSessionsSession: {
+            matches: components["schemas"]["SquadImpactSessionsMatch"][] | null;
+            players: components["schemas"]["SquadImpactSessionsPlayer"][] | null;
+            session_label: string;
+            start_time: string;
+        };
+        SquadImpactSessionsTotal: {
+            counts: components["schemas"]["SquadImpactSessionsRoleCount"][] | null;
+            /** Format: int64 */
+            matches_played: number;
+            player: string;
             /** Format: double */
             points: number;
-            role: string;
         };
         SquadIntensityMatchRow: {
             label: string;
@@ -13569,15 +13611,15 @@ export interface components {
         };
         SquadPerMinuteEntry: {
             /** Format: double */
-            assists_per_minute: number;
+            assists_per_minute?: number;
             /** Format: double */
             damage_dealt_per_minute?: number;
             /** Format: double */
             damage_taken_per_minute?: number;
             /** Format: double */
-            deaths_per_minute: number;
+            deaths_per_minute?: number;
             /** Format: double */
-            kills_per_minute: number;
+            kills_per_minute?: number;
             /** Format: int64 */
             match_count: number;
             player: string;
@@ -14591,7 +14633,6 @@ export interface components {
             /** Format: int64 */
             friends_count: number;
             header?: components["schemas"]["SquadHeader"];
-            impact_matrix?: components["schemas"]["SquadImpactMatrix"];
             intensity_profile?: components["schemas"]["SquadIntensityProfile"];
             latest_composition_session?: string;
             lead_share_series?: components["schemas"]["SquadLeadSharePoint"][] | null;
@@ -14613,7 +14654,7 @@ export interface components {
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
             squad_emprise?: components["schemas"]["SquadEmpriseBlock"];
-            squad_impact_history?: components["schemas"]["SquadImpactHistory"];
+            squad_impact_sessions?: components["schemas"]["SquadImpactSessions"];
             squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;
             teammates: components["schemas"]["TeammateRow"][] | null;
@@ -20480,9 +20521,11 @@ export interface operations {
                 /**
                  * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
                  *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
-                 *     fond, à superposer). Toute autre valeur est refusée.
+                 *     fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+                 *     dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+                 *     autre valeur est refusée.
                  */
-                variante?: "plan";
+                variante?: "plan" | "relief";
             };
             header?: never;
             path: {
@@ -20493,7 +20536,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -20507,7 +20550,44 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan) */
+            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante`, aucun plan ni relief) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchReplayBackgroundReliefData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données du relief (JSON), avec ETag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Données inchangées (`If-None-Match`) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match, pas de relief, ou relief périmé */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -23646,9 +23726,11 @@ export interface operations {
                 /**
                  * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
                  *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
-                 *     fond, à superposer). Toute autre valeur est refusée.
+                 *     fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+                 *     dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+                 *     autre valeur est refusée.
                  */
-                variante?: "plan";
+                variante?: "plan" | "relief";
             };
             header?: never;
             path: {
@@ -23659,7 +23741,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -23673,7 +23755,44 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan) */
+            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante`, aucun plan ni relief) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTacticalMapBackgroundReliefData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données du relief (JSON), avec ETag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Données inchangées (`If-None-Match`) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte, pas de relief, ou relief périmé */
             404: {
                 headers: {
                     [name: string]: unknown;

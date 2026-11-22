@@ -17,6 +17,7 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
+import { useDismissable } from '@/lib/hooks/useDismissable'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { PlayerSummary } from '@/lib/api/types'
@@ -87,13 +88,15 @@ export function PlayerSwitcher({
     return Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
   }
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  // Échap et clic dehors ; le focus revient au déclencheur sur Échap.
+  useDismissable(
+    open,
+    (reason) => {
+      setOpen(false)
+      if (reason === 'escape') triggerRef.current?.focus()
+    },
+    { ref },
+  )
 
   // À l'ouverture, le focus part sur le premier joueur : un menu ouvert au
   // clavier qui laisse le focus sur son déclencheur n'est pas navigable.
@@ -111,11 +114,6 @@ export function PlayerSwitcher({
   }
 
   function handleMenuKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape') {
-      setOpen(false)
-      triggerRef.current?.focus()
-      return
-    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       moveFocus(e.key === 'ArrowDown' ? 1 : -1)

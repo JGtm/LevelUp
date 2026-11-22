@@ -52,6 +52,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   background: true,
   floor: true,
   wallPlan: true,
+  reliefLines: true,
   heat: true,
   zoneNames: true,
   objectivesCooked: true,
@@ -101,6 +102,7 @@ function peints(s: ReplayScene, frame = 42, dpr = 2): string[] {
 const ORDRE_ATTENDU = [
   'fond-carte',
   'sol-forge',
+  'traits-relief',
   'plan-murs',
   'chaleur',
   'zones-nommees',
@@ -273,6 +275,7 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   /** Ce que chaque absence de matière doit retirer, exactement. */
   const SANS: Array<[keyof ReplayScene['has'], ReplayLayerId[]]> = [
     ['wallPlan', ['plan-murs']],
+    ['reliefLines', ['traits-relief']],
     ['heat', ['chaleur']],
     ['zoneNames', ['zones-nommees']],
     ['objectivesCooked', ['objectifs-cuits']],

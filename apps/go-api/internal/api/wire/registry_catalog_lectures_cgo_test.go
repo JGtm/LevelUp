@@ -47,7 +47,7 @@ func jetonsQuiEcrivent(t *testing.T, prov sharedprovider.Provider) *[]error {
 	t.Helper()
 	var issues []error
 	prev := jetonsCatalogue
-	jetonsCatalogue = func(_ *ServiceRegistry, ctx context.Context, _ string) (*domain.HaloTokens, error) {
+	jetonsCatalogue = func(_ *ServiceRegistry, ctx context.Context) (*domain.HaloTokens, error) {
 		wctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 		w, err := prov.AcquireWriter(wctx)

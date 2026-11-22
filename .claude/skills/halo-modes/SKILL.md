@@ -1,43 +1,79 @@
+---
+name: halo-modes
+description: Normalisation des libellés de mode Halo Infinite (grammaires de pair_name, sous-mode vs catégorie parente, paquet analysis/modelabel, taxonomie injectée). À invoquer avant de toucher à un libellé de mode, à un filtre de catégorie ou à mode_category, côté Go comme côté web.
+---
+
 # Skill : halo-modes — Normalisation des modes de jeu Halo Infinite
 
-> Spécifique à Halo Infinite (`title_slug = "halo_infinite"`).
-> D'autres titres futurs auront leur propre logique de normalisation — ne pas généraliser ces fonctions sans vérifier leur compatibilité multi-titres.
+> La grammaire des `pair_name` est celle de Halo Infinite. Mais `analysis.NormalizeModeLabel`
+> est partagé par tous les titres : Halo 5 passe par `ResolveModeUIWithVariant` (repli sur
+> `game_variant`). Seule la CATÉGORIE (table de préfixes) est propre à Halo Infinite.
+>
+> Elle n'arrive dans `analysis/`, `service/` et les handlers que par `analysis.ModeTaxonomy`,
+> injectée par `api/wire` (`haloInfiniteModeTaxonomy`, `api/wire/registry_media.go`). Ne jamais
+> importer `games/halo_infinite` depuis ces couches (CLAUDE.md, multi-titre). Une taxonomie
+> vide ne classe rien : c'est la dégradation prévue pour un titre sans catégories.
 
 ## 2 niveaux ORTHOGONAUX — ne pas confondre
 
-| Niveau | Fonction Go | Fonction Python (ref) | Exemple |
-|---|---|---|---|
-| **Sous-mode** (label affiché) | `NormalizeModeLabel()` | `resolve_display_mode()` | `"Arena:Slayer on Bazaar"` → `"Slayer"` |
-| **Catégorie parente** (filtre UI) | `InferModeCategoryFromPairName()` | `infer_custom_category_from_pair_name()` | `"Arena:Slayer on Bazaar"` → `"Assassin"` |
+| Niveau | Fonction Go | Exemple |
+|---|---|---|
+| **Sous-mode** (label affiché) | `analysis.NormalizeModeLabel()` | `"Arena:Slayer on Bazaar"` → `"Slayer"` |
+| **Catégorie parente** (filtre UI) | `modelabel.InferCategory()` (façade : `InferModeCategoryFromPairName()`) | `"Arena:Slayer on Bazaar"` → `"Assassin"` |
+
+Pour afficher un mode, appeler les résolveurs de `analysis/mode_label.go` plutôt que
+`NormalizeModeLabel` seul :
+
+- `ResolveModeUI` / `ResolveModeUIIn` : libellé du `pair_name`, dans la langue de la requête pour `…In`.
+- `ResolveModeUIWithVariant` / `…In` : pair d'abord, sinon `game_variant` (Halo 5). Source unique de cette convention.
+- `ExtractKnownMode` : retrouve un mode connu dans un libellé déjà normalisé (« Tactical Slayer » → « Slayer »).
 
 ## Catégories custom (constantes Go)
+
+Les constantes sont dans `analysis/modelabel` (`Category*`) ; `games/halo_infinite` les
+ré-exporte en alias (`ModeCategory*`).
 
 | Constante | Préfixes pair_name couverts |
 |---|---|
 | `ModeCategoryAssassin` | Arena, Tactical, Assault, Community |
 | `ModeCategoryFiesta` | Fiesta, Castle Wars |
-| `ModeCategorySuperFiesta` | Super Fiesta (**promu** vs Python v7) |
-| `ModeCategoryHuskyRaid` | Husky Raid, Super Husky Raid (**promu** vs Python v7) |
+| `ModeCategorySuperFiesta` | Super Fiesta |
+| `ModeCategoryHuskyRaid` | Husky Raid, Super Husky Raid |
 | `ModeCategoryBTB` | BTB, BTB Heavies |
 | `ModeCategoryRanked` | Ranked |
 | `ModeCategoryFirefight` | Firefight, Gruntpocalypse |
 | `ModeCategoryOther` | Event + tout préfixe inconnu |
 
-**Divergence Python v7/cockpit** : Super Fiesta et Husky Raid sont des catégories distinctes en Go (Python les regroupait sous "Fiesta"). Ne pas revenir en arrière.
+Ces constantes sont des CLÉS : valeurs stockées dans `match_registry.mode_category` et clés de
+filtre. Ne jamais les afficher telles quelles : le libellé affiché passe par le manifest web
+(`media.toolbar.mode_categories.*` dans `lib/i18n/manifests/media.toml`, une valeur par langue).
+
+**Super Fiesta et Husky Raid sont des catégories distinctes** (l'ancien cockpit les
+regroupait sous « Fiesta »). Ne pas revenir en arrière.
 
 ## Fichiers source
 
-- `apps/go-api/internal/analysis/mode_label.go` — `NormalizeModeLabel(raw, mapLabels...)`
-- `apps/go-api/internal/games/halo_infinite/mode_category.go` — `InferModeCategoryFromPairName(pairName)`
+- `apps/go-api/internal/analysis/mode_label.go` — `NormalizeModeLabel(raw, mapLabels...)`, résolveurs `ResolveModeUI*`, `ExtractKnownMode`
+- `apps/go-api/internal/analysis/modelabel/category.go` — LA règle de catégorie (`InferCategory`, `PrefixesForCategory`, `KnownPrefixes`, table des préfixes). Paquet feuille, importable par sync et migration.
 - `apps/go-api/internal/analysis/modelabel/container.go` — jetons de CONTENEUR de la grammaire (`SplitContainer`, `IsContainer`), liste UNIQUE
-- Python de référence : `git show v7/cockpit:src/analysis/mode_display.py` (_PREFIX_RULES)
+- `apps/go-api/internal/analysis/modelabel/strip.go` — `StripMapSuffix` (regex unique du retrait « on / sur carte ») ; `extract.go` — règle d'appariement de `ExtractKnownMode`
+- `apps/go-api/internal/games/halo_infinite/mode_category.go` — façade : mêmes fonctions sous les noms historiques du titre (`InferModeCategoryFromPairName`, `PairNamePrefixesForCategory`, `AllKnownPairNamePrefixes`)
+- `apps/go-api/internal/analysis/match_filter.go` — `ModeTaxonomy` (taxonomie injectée)
+- Garde : `apps/go-api/internal/sync/mode_category_single_rule_test.go` (une seule règle de catégorie dans le dépôt)
+
+## Miroir web
+
+Le serveur résout le libellé (`analysis.ResolveModeUI*`) avant de le servir dans `mode_ui` :
+le web reçoit « Super Fiesta », jamais le `pair_name` brut. `apps/web/src/lib/halo/modeLabel.ts`
+(`normalizeModeLabel`) ne fait qu'un nettoyage de surface (suffixe de carte, ` - Forge`). Il ne gère
+ni les identités de playlist ni la forme inversée : ne jamais lui passer un `pair_name` brut.
 
 ## Format pair_name — DEUX grammaires
 
 ```
 "Arena:Slayer on Bazaar"   → conteneur="Arena", sous-mode="Slayer"
 "BTB:CTF on Highpower"     → conteneur="BTB", sous-mode="CTF"
-"Assassin : Classé"        → format FR avec " : " espacé → catégorie avant le séparateur
+"Assassin : Classé"        → format FR avec " : " espacé → partie avant le séparateur
 "Husky Raid"               → sans ":" → tester le label complet comme préfixe
 ```
 
@@ -59,21 +95,27 @@ gauche ni en tête à droite → partie droite (`Infection:Alpha Zombies` → `A
 
 ## Règles de normalisation (NormalizeModeLabel)
 
-1. Strip " sur {map}" / " on {map}" (noms de map connus en priorité)
-2. Extraction depuis pair_name : format FR `" : "` → partie avant ; format `"Conteneur:Mode"` → partie après `:` (identité de playlist à gauche conservée) ; forme inversée `"Mode:Conteneur [qualificatif]"` → règle de recollage ci-dessus
+1. Strip " sur {map}" / " on {map}" (noms de map connus en priorité). La regex ne couvre que
+   `on` et `sur` (français et anglais) ; le comportement pour une autre langue n'est pas vérifié.
+2. Extraction depuis pair_name (découpe sur le DERNIER `:`) :
+   - format FR `" : "` → partie avant ;
+   - identité de playlist à gauche (Super Fiesta, Husky Raid, Super Husky Raid) → identité
+     canonique, testée AVANT la règle du conteneur (ces identités sont aussi des conteneurs) ;
+   - `"Conteneur:Mode"` → partie après `:` ;
+   - forme inversée `"Mode:Conteneur [qualificatif]"` → règle de recollage ci-dessus.
 3. Strip générique ` sur/on .+` résiduel
 4. Strip ` - Forge` et ` - Ranked`
 
 ## Traductions (metadata.duckdb)
 
-Les traductions EN→FR des sous-modes sont dans `metadata.duckdb → mode_name_tr`.
-Les surcharges de paires map/mode sont dans `metadata.duckdb → mode_pair_overrides`.
+Les traductions des noms de mode sont dans `metadata.duckdb → mode_name_tr (mode_en, lang, name)` :
+une ligne par langue de `config/locales.toml`, `mode_en` est le nom anglais, clé de jointure.
 
 ## Helpers inverses
 
 ```go
 // Obtenir les préfixes d'une catégorie (pour construire un WHERE)
-PairNamePrefixesForCategory("Fiesta") // → ["Fiesta", "Castle Wars"]
+PairNamePrefixesForCategory("Fiesta") // → {"Fiesta", "Castle Wars"} (ordre non garanti)
 
 // Tous les préfixes connus (pour filtre "Other" = NOT IN)
 AllKnownPairNamePrefixes()

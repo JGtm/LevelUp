@@ -18,11 +18,12 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
 import type { FocusFilter } from '../model/focusFilter'
 import type { FxInk } from './fxInk'
-import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
+import { drawOffscreenChevron } from './offscreenChevron'
+import { drawOccupantName, drawOccupantOffscreenLabel, namedOccupant, type OccupantLabel } from './occupantTitles'
 import { project, viewScale, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
-import { drawNameLabel, type LabelStyle } from './replayLabels'
+import { drawNameLabel } from './replayLabels'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
@@ -196,6 +197,7 @@ export interface VehicleStyle {
    * Un véhicule vide n'est à personne et se dessine toujours. Absent = tout se dessine.
    */
   shown?: Pick<FocusFilter, 'vehicleAt' | 'occupant' | 'vehicleDestruction'>
+  antagonists?: OccupantLabel['antagonists'] // titres d'antagoniste devant le nom d'un occupant (`occupantTitles.ts`) ; absent = aucun
 }
 
 /** Écart entre deux noms empilés, en pixels d'écran (police partagée avec `replayLabels.ts`). */
@@ -275,10 +277,9 @@ function drawVehicleOccupantNames(
   c: XY,
   baseEdgePx: number,
   style: Pick<VehicleStyle,
-    'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'colorOfXuid' | 'labelStroke' | 'neutralInk'>,
+    'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'colorOfXuid' | 'labelStroke' | 'neutralInk' | 'antagonists'>,
   k: number,
 ): void {
-  const label: LabelStyle = { k, labelStroke: style.labelStroke }
   let line = 0
   for (const ride of rides) {
     const name = occupantName(ride, frame, style)
@@ -288,7 +289,7 @@ function drawVehicleOccupantNames(
     // pâté illisible, c'est-à-dire un nom perdu. L'encre du « aucun camp connu » est faite pour
     // ça, et c'est déjà celle du véhicule sans occupant résolu.
     const color = vehicleRideColor(ride, frame, style) ?? style.neutralInk
-    drawNameLabel(ctx, c, name, label, color, baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k)
+    drawOccupantName(ctx, c, baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k, { ...ride, name }, { color, k, labelStroke: style.labelStroke, frame, antagonists: style.antagonists })
     line++
   }
 }
@@ -330,7 +331,7 @@ function drawVehicleOffscreenSignal(
   time: VehicleTime,
   style: Pick<
     VehicleStyle,
-    'nameOfSlot' | 'nameOfXuid' | 'labelStroke' | 'showNames' | 'offscreenLabelOf' | 'offscreenGroupLabelOf'
+    'nameOfSlot' | 'nameOfXuid' | 'labelStroke' | 'showNames' | 'offscreenLabelOf' | 'offscreenGroupLabelOf' | 'antagonists'
   >,
   mark: EdgeMark,
   color: string,
@@ -339,7 +340,8 @@ function drawVehicleOffscreenSignal(
   if (!style.showNames) return
   const text = vehicleOffscreenText(rides, time.frame, style, mark.distanceM)
   if (text) {
-    drawOffscreenLabel(ctx, mark.at, mark.angle, text, { k: time.k, labelStroke: style.labelStroke }, color)
+    const owner = namedOccupant(rides, (r) => occupantName(r, time.frame, style))
+    drawOccupantOffscreenLabel(ctx, mark, text, owner, { color, k: time.k, labelStroke: style.labelStroke, frame: time.frame, antagonists: style.antagonists })
   }
 }
 

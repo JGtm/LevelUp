@@ -16,7 +16,11 @@
  * ne porte aucun état et n'appelle aucun hook ; le composant qu'elle rend (`ReplayFeedOverlay`) est le même à
  * chaque rendu, donc jamais remonté. La barre et la commande de zoom, elles, restent définies au niveau du module.
  */
+import { COTES_BARRE_COMPACTE as C } from '../../model/cotesBarreCompacte'
+import { playerKeys } from '../../model/feedFollowed'
 import { usesCompactBar, type ReplayFrame } from '../../model/replayFrame'
+import { overlaysTransportBar } from '../../model/transportBarLogic'
+import { ReplayAntagonistBand } from '../ReplayAntagonistBand'
 import { ReplayCameraMenu } from '../ReplayCameraMenu'
 import { ReplayFeedOverlay } from '../ReplayFeedOverlay'
 import { ReplayTransport } from '../ReplayTransport'
@@ -40,18 +44,52 @@ const COMPACT_BAR_SLOTS: ReplayCanvasSlots = {
 }
 
 /**
+ * La barre complète avec la bande des titres de la frise : la bande lit la page (fabrique des antagonistes, roster,
+ * allégeance, fenêtre de jeu), que la toile ne porte pas ; elle pose le curseur par la commande de la frise.
+ */
+function fullBarSlotsWithBand(view: ReplayFrameView): ReplayCanvasSlots {
+  const { antagonists, model, doc, locale, viewpoint } = view
+  return {
+    ...FULL_BAR_SLOTS,
+    transport: (commands) => (
+      <ReplayTransport
+        {...commands}
+        antagonistBand={
+          <ReplayAntagonistBand
+            antagonists={antagonists}
+            viewpoint={viewpoint.xuid}
+            players={model.players}
+            allegiance={model.allegiance}
+            playWindow={model.window}
+            frameCount={doc.frameCount}
+            frameIntervalMs={doc.frameIntervalMs ?? 0}
+            locale={locale}
+            onSeekFrame={commands.timeline.onSeekFrame}
+          />
+        }
+      />
+    ),
+  }
+}
+
+/**
  * canvasSlotsOf rend les emplacements du cadre. `planFeedView` : la vue que le fil des éliminations du plan lit,
  * ou `null` quand il n'est pas posé (`planFeedPosed`) ; seule la barre d'une ligne le porte, la barre complète
- * du Standard garde sa colonne.
+ * du Standard garde sa colonne. `antagonistView` : la vue que la bande des titres de la frise lit ; seule la barre
+ * complète porte la frise à pistes, la barre d'une ligne n'a pas de bande. Absente, la frise est celle d'avant.
  */
-export function canvasSlotsOf(frame: ReplayFrame, planFeedView: ReplayFrameView | null = null): ReplayCanvasSlots {
-  if (!usesCompactBar(frame)) return FULL_BAR_SLOTS
+export function canvasSlotsOf(
+  frame: ReplayFrame,
+  planFeedView: ReplayFrameView | null = null,
+  antagonistView: ReplayFrameView | null = null,
+): ReplayCanvasSlots {
+  if (!usesCompactBar(frame)) return antagonistView ? fullBarSlotsWithBand(antagonistView) : FULL_BAR_SLOTS
   if (!planFeedView) return COMPACT_BAR_SLOTS
   const { model, nowMs, locale, feedZoneOf } = planFeedView
   return {
     ...COMPACT_BAR_SLOTS,
     planFeed: true,
-    blockOverlays: ({ planFeedShown }) =>
+    blockOverlays: ({ planFeedShown, frameControl, thinBar }) =>
       planFeedShown && (
         <ReplayFeedOverlay
           entries={model.feed}
@@ -62,6 +100,8 @@ export function canvasSlotsOf(frame: ReplayFrame, planFeedView: ReplayFrameView 
           marks={model.marks}
           locale={locale}
           zoneOf={feedZoneOf}
+          followedKeys={playerKeys(planFeedView.playerPanel.camera.player)}
+          liftPx={overlaysTransportBar(frameControl.frame, thinBar) ? C.barreHauteurPx : 0}
         />
       ),
   }

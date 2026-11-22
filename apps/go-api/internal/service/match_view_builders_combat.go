@@ -24,13 +24,13 @@ import (
 // Combat Tab
 // ---------------------------------------------------------------------------
 
-// combatTabScope regroupe ce qui identifie le match et la requête : le match, le joueur, la durée et
-// la langue des libellés servis (badges d'impact).
+// combatTabScope regroupe ce qui identifie le match et la requête : le match, le joueur, sa
+// chronologie (matchViewTimeline) et la langue des libellés servis (badges d'impact).
 type combatTabScope struct {
-	matchID    string
-	myXUID     string
-	durationMS int64
-	locale     i18n.Locale
+	matchID  string
+	myXUID   string
+	timeline domain.MatchTimeline
+	locale   i18n.Locale
 }
 
 func buildCombatTabFull(
@@ -40,14 +40,19 @@ func buildCombatTabFull(
 	kvPairs []domain.KVPairRaw,
 	scoreboard []domain.ScoreboardRaw,
 ) domain.MatchCombatTab {
-	matchID, myXUID, durationMS := scope.matchID, scope.myXUID, scope.durationMS
+	matchID, myXUID := scope.matchID, scope.myXUID
+	// Deux horloges, deux durées de la MÊME chronologie : les paires killer→victim du tug-of-war
+	// restent sur l'horloge BRUTE du film (countdown compris, cf. correctMatchViewEventsT0), donc
+	// leurs bins couvrent la durée du match ; la cadence lit des événements recalés sur le
+	// gameplay, donc elle couvre la durée de jeu.
+	gameplayMS := scope.timeline.GameplayDurationMs()
 	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
 	evtList := highlightEventList(events)
 
 	// Tug-of-war
 	tugEvents := buildTugEvents(kvPairs, myXUID)
-	tugBins := analysis.ComputeTugOfWar(tugEvents, durationMS, 0)
+	tugBins := analysis.ComputeTugOfWar(tugEvents, scope.timeline.DurationMs, 0)
 	tugDomain := convertTugBinsToDomain(tugBins)
 
 	// Impact badges : calculés en périmètre team-wide alliée (parité Python
@@ -71,9 +76,9 @@ func buildCombatTabFull(
 	// directement. Sinon fallback sur la conversion à la volée depuis EventRaw.
 	var cadence *domain.ChartSeries[domain.ChartPointStacked]
 	if len(canonicalEvents) > 0 {
-		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, durationMS)
+		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, gameplayMS)
 	} else {
-		cadence = BuildMatchCadenceChart(events, scoreboard, matchID, durationMS)
+		cadence = BuildMatchCadenceChart(events, scoreboard, matchID, gameplayMS)
 	}
 
 	// Killer-victim aggregation (chart match_view.18 — antagonistes).
@@ -106,8 +111,8 @@ func highlightEventList(events []domain.EventRaw) []domain.MatchHighlightEvent {
 			ActorXUID:     e.XUID,
 			ActorGamertag: e.Gamertag,
 		}
-		// Le nom brut de la médaille voyage avec l'event ; sa résolution (label,
-		// visuel) est une décoration posée après l'assemblage (decorateMedalEvents).
+		// Le nom brut de la médaille voyage avec l'event ; son libellé et son visuel se
+		// résolvent contre le référentiel, hors de l'event.
 		if e.MedalName != nil {
 			ev.MedalName = *e.MedalName
 		}

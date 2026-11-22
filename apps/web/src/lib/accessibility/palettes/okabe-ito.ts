@@ -22,7 +22,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_BLUE_VERMILLION } from './_impactRoleColors'
+import { MAP_MARKER_OUTLINE } from './_mapMarkerOutline'
 
 export const okabePalette: Palette = {
   // ── Perf tiers — ordinal 5 niveaux, ramp divergent bleu→jaune→vermillion ──
@@ -149,8 +149,6 @@ export const okabePalette: Palette = {
   //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — bleu / vermillon, rampe claire (cf. _impactRoleColors.ts)
-  ...IMPACT_BLUE_VERMILLION.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // AVANT cette famille, les tokens empruntés collapsaient : lourde ≡ grenade ≡
@@ -202,6 +200,10 @@ export const okabePalette: Palette = {
   'heatmap-divergent-high': '#0072B2', // K/D haut
   'heatmap-freq-low':       '#013A63', // fréquence faible — bleu sombre (neutre, mono-teinte)
   'heatmap-freq-high':      '#56B4E9', // fréquence forte  — Sky Blue    (neutre, mono-teinte)
+
+  // ── Fond Relief et cerne des pions ──────────────────────────────────
+  'map-relief-base': '#7559B5', // Violet
+  ...MAP_MARKER_OUTLINE,
 
   // ── Équipes — axe Blue/Vermillion daltonisme-safe ──────────────────────────
   'team-ally':  '#0072B2', // Blue       — overridable via settings accessibilité

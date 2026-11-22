@@ -5,9 +5,12 @@
  * qu'il remplace. L'icône du frag parfait s'efface quand la ligne porte la médaille « Parfait » : elle le dit déjà.
  *
  * Les médailles sont celles du document de rejeu (`readMatchMedals`) : libellé, description et image
- * viennent de sa table. Une médaille sans visuel garde son TEXTE, tronqué à la largeur d'une pastille :
+ * viennent de sa table. Une médaille sans image propre mais à découpe de planche (`sprite`) se dessine par
+ * `MedalIcon`, comme sur la fiche. Une médaille sans visuel garde son TEXTE, tronqué à la largeur d'une pastille :
  * jamais le pictogramme d'une autre. Les tailles sont `COTES_LIGNE_FIL.medailles`.
  */
+import { MedalIcon } from '@/components/ui/MedalIcon'
+
 import { COTES_LIGNE_FIL } from '../model/cotesFeedLine'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { FragMarks } from '../model/eliminationMarks'
@@ -48,6 +51,18 @@ export function FeedMedals({
             className="inline-block shrink-0 object-contain"
             loading="lazy"
           />
+        ) : m.sprite ? (
+          <span key={`${m.name}-${m.tMs}-${i}`} title={medalTooltip(m)} className="inline-flex shrink-0">
+            <MedalIcon
+              spriteSheet={m.sprite.sheet}
+              spriteLeft={m.sprite.left}
+              spriteTop={m.sprite.top}
+              spriteWidth={m.sprite.width}
+              spriteHeight={m.sprite.height}
+              label={medalLabel(m)}
+              size={COTES.pictoPx}
+            />
+          </span>
         ) : (
           <span
             key={`${m.name}-${m.tMs}-${i}`}

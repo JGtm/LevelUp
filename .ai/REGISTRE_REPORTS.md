@@ -408,3 +408,12 @@ Un seul item `[!]` (B.5, retrait des types du décodeur de `internal/port`, lign
 | **Validation à l'écran de la refonte, témoin par témoin** | Plan de la refonte, R.4 | Refonte fusionnée dans `release/v8.3.0` le 2026-11-18 à la demande du user, avant sa validation ; la validation reste due avant `main` | Le user valide à l'écran sur la branche de version |
 | **Rang absent pour tous dans un match avec des bots** | Plan de la refonte, T.3 | Le score d'un bot n'est pas établi (pas de ligne de feuille jointe) ; le rang exige tout le lobby | Décision du user : rang parmi les joueurs humains, ou rien |
 | **Capacité de la vue 3D** | Plan de la refonte, F.3 | L'emplacement 2D / 3D lit une capacité au nom supposé `can_view_replay_3d`, que le serveur ne sert pas | Plan de la 3D : nommer la capacité et la servir |
+
+## Reports du plan du fond Relief et de la coupe par étage (2026-11-22, `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`)
+
+| Item | Origine | Pourquoi reporté | Condition de reprise |
+|---|---|---|---|
+| **Contrôle à l'écran du fond Relief, de la coupe par étage et du cerne des pions** | Plan du relief, Gate D | Fusion dans `release/v8.3.0` le 2026-11-22 à la demande du user, avant son contrôle ; trois fiches dans l'artefact des vérifications | Le user fait les contrôles ; dû avant `main` |
+| **Thunderhead et Thunderhead Heavies : 13 % du fond publié sans hauteur dans le relief** | Plan du relief, E.1 | Le fond publié est plus large que ce que la recuisson voit ; une recuisson complète de la carte changerait le fond publié lui-même, à valider à l'écran. Carte sans maillage : ni coupe ni étages, relief seul | Le user juge le relief de Thunderhead insuffisant à l'écran, ou une recuisson complète de la carte pour une autre raison |
+| **La brique `halo-infinite-map-images` écrit des chiffres de Live Fire dans la dégradation de tout module partagé** (`himap/sddt_partage.go`), et la branche « module partagé » de `ModuleVariante` n'a plus d'appelant de production | Revue finale du relief, P2-7 | Sans effet visible : Live Fire est la seule carte dont la géométrie vit dans le module partagé | Une seconde carte à géométrie dans le module partagé, ou une version 1.4.1 de la brique pour une autre raison : énoncer la règle sans chiffre et retirer la branche sans appelant |
+

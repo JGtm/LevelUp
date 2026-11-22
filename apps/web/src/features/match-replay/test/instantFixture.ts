@@ -3,7 +3,7 @@
  * section existe, un joueur dont tout est lu (Alpha), un joueur dont les tirs ne sont pas lus (Echo) et un bot.
  *
  * Pas de 100 ms, 400 images. Alpha vit de 0 à 150, meurt, revient de 170 à 400 ; il fait quatre éliminations (à
- * 2, 6, 10 et 20 s), gagne trois médailles, perd son bouclier trois fois, lance trois grenades, ramasse trois armes
+ * 2, 6, 10 et 20 s), gagne trois médailles, brise son bouclier trois fois (et le recharge une fois), lance trois grenades, ramasse trois armes
  * et deux grenades, sprinte deux fois et saute trois fois. Son bilan de tirs dit 35 tirs du jeu pour 7 écrits par
  * le film : les tirs estimés sont cinq fois les tirs écrits. Les points par action de chaque joueur égalent le score
  * de sa feuille : Echo (400) devance Alpha (300) devant le bot (100).
@@ -46,6 +46,12 @@ export function instantDoc(over: Partial<Doc> = {}) {
   return testReplayDoc({
     frameIntervalMs: 100,
     frameCount: 400,
+    // Ce que le serveur date pour les pistes ci-dessous (bris aux images 40, 120 et 300, recharge à 60), en ms.
+    shieldCycles: {
+      A: { breaks: [4_000, 12_000, 30_000], recharges: [6_000] },
+      E: { breaks: [], recharges: [] },
+      'bot:Marc': { breaks: [], recharges: [] },
+    },
     roster: [
       { xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 },
       { xuid: 'E', filmIndex: 1, name: 'Echo', team: 1 },
@@ -69,6 +75,7 @@ export function instantDoc(over: Partial<Doc> = {}) {
           kills: { rounds: null, total: [{ t: 20, v: 1 }, { t: 60, v: 2 }, { t: 100, v: 3 }, { t: 200, v: 4 }] },
           deaths: { rounds: null, total: [{ t: 150, v: 1 }] },
           assists: { rounds: null, total: [{ t: 60, v: 1 }] },
+          stats: { headshots: { rounds: null, total: [{ t: 20, v: 1 }, { t: 100, v: 2 }] } },
         },
       ],
     } as never,

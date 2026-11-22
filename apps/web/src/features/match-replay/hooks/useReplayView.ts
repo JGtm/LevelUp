@@ -71,22 +71,31 @@ export const CANVAS_PAD = 24
  */
 export interface ReplayMapBackgroundLayer {
   calibration: ReplayMapBackgroundCalibration
-  image: HTMLImageElement
+  /** L'image posée : celle du rendu ou du plan, ou le canvas du relief teinté / d'un fond que la coupe par étage module. */
+  image: CanvasImageSource
   /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `lib/replay/wallPlan`). */
   plan: WallPlanReady | null
   /**
    * L'image posée : `plan` (vue plan à hauteurs, qui porte déjà les murs : le calque des murs se
-   * retire) ou `rendu`. Même calage, mêmes dimensions : rien d'autre ne dépend de cette valeur.
+   * retire), `rendu` ou `relief` (le terrain teinté, qui ne porte pas les murs). Même calage, mêmes
+   * dimensions : rien d'autre ne dépend de cette valeur.
    */
   variante: MapBackgroundVariant
-  /** Le fond porte-t-il une image plan ? La commande « Fond » n'est proposée que s'il en a une. */
+  /** Le fond porte-t-il une image plan ? Elle fait partie des choix de la commande « Fond ». */
   planAvailable: boolean
+  /** Le fond porte-t-il un relief (image des hauteurs et données) ? Le fond « Relief », ses traits et la coupe par étage n'existent que s'il en a un. */
+  reliefAvailable: boolean
   /** L'image plan décodée et le calage qui la pose : le masque des zones nommées (`lib/replay/planMask`) ; `null` = zones entières. */
   zonesClip: { calibration: ReplayMapBackgroundCalibration; image: CanvasImageSource } | null
 }
 
 export interface ReplayViewOptions {
   doc: ReplayDocumentReady
+  /**
+   * LA PORTÉE de ce que le cadrage retient d'une mesure à l'autre (l'état de l'Auto : le plan est-il déjà tourné ?) :
+   * le match affiché. Un autre match repart de zéro ; absente = une portée unique.
+   */
+  scopeKey?: string
   /** Fond de carte figé, tel que la page l'a chargé. Absent = la carte n'en a pas. */
   background?: ReplayMapBackgroundLayer | null
   /**
@@ -155,6 +164,7 @@ export interface ReplayView {
 
 export function useReplayView({
   doc,
+  scopeKey = '',
   background,
   turns: choice = 0,
   width,
@@ -176,7 +186,7 @@ export function useReplayView({
   const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
   // L'ORIENTATION EFFECTIVE se décide ICI, sur les bornes du monde et la boîte que l'écran offre (jamais sur
   // la mise en page d'un export : le plan ne se retourne pas pendant qu'on l'enregistre).
-  const { turns, autoTurned } = useResolvedTurns(choice, bounds, width, freeHeight)
+  const { turns, autoTurned } = useResolvedTurns(scopeKey, choice, bounds, width, freeHeight)
   // LA SCÈNE TOURNÉE : c'est elle, et non la scène du monde, que la hauteur utile, le cadre et le
   // zoom prennent pour référence — une carte tournée d'un quart de tour échange sa largeur et sa
   // hauteur. Les positions du film, elles, ne sont tournées qu'à la projection (`orient`).

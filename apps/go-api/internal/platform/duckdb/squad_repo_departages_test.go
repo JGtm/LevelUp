@@ -167,7 +167,7 @@ var alliesDepartagesQ32b = []allieQ32b{
 	{"mb1", "2533274879000001", 0, 2, 9, 3, 1},
 }
 
-// badgesParMatch rejoue la matrice d'impact (buildSquadImpactMatrix) sur les lignes de Q32b :
+// badgesParMatch rejoue le calcul des rôles d'impact (squadimpact.RolesOfMatch) sur les lignes de Q32b :
 // les allies d'un match, DANS L'ORDRE DES LIGNES, donnes a analysis.ComputeMatchImpactFull.
 // Rend, par match, le porteur de chaque badge.
 func badgesParMatch(lignes []domain.AllyParticipant) map[string]map[string]string {

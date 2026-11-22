@@ -30,10 +30,11 @@ const SB: ViewpointRow[] = [
  * doit vraiment monter le hook sans tableau — un défaut de paramètre le remplacerait par le
  * lobby et le cas « la vue match n'est pas encore là » ne serait jamais éprouvé.
  */
-function monter(scoreboard: readonly ViewpointRow[] | null | undefined) {
-  return renderHook(({ sb }: { sb: typeof scoreboard }) => useReplayViewpoint(sb), {
-    initialProps: { sb: scoreboard },
-  })
+function monter(scoreboard: readonly ViewpointRow[] | null | undefined, scopeKey = 'match-1') {
+  return renderHook(
+    ({ sb, scope }: { sb: typeof scoreboard; scope: string }) => useReplayViewpoint(scope, sb),
+    { initialProps: { sb: scoreboard, scope: scopeKey } },
+  )
 }
 
 describe('useReplayViewpoint — le défaut, la sélection, le retour', () => {
@@ -73,7 +74,7 @@ describe('useReplayViewpoint — le défaut, la sélection, le retour', () => {
     const view = monter(undefined)
     act(() => view.result.current.select('eux'))
     expect(view.result.current.xuid).toBeNull()
-    view.rerender({ sb: SB })
+    view.rerender({ sb: SB, scope: 'match-1' })
     expect(view.result.current.xuid).toBe('eux')
   })
 
@@ -88,7 +89,32 @@ describe('useReplayViewpoint — le défaut, la sélection, le retour', () => {
   it('`select` est stable d’un rendu à l’autre : le menu ne se re-rend pas pour rien', () => {
     const view = monter(SB)
     const avant = view.result.current.select
-    view.rerender({ sb: [...SB] })
+    view.rerender({ sb: [...SB], scope: 'match-1' })
     expect(view.result.current.select).toBe(avant)
+  })
+})
+
+describe('useReplayViewpoint — rien ne se retient d’un match à l’autre', () => {
+  it('une AUTRE portée avec le même joueur au tableau : le joueur de la page, pas le choix précédent', () => {
+    const view = monter(SB)
+    act(() => view.result.current.select('eux'))
+    expect(view.result.current.xuid).toBe('eux')
+    view.rerender({ sb: SB, scope: 'match-2' })
+    expect(view.result.current.xuid).toBe('moi')
+  })
+
+  it('revenir au premier match ne ressuscite pas le choix', () => {
+    const view = monter(SB)
+    act(() => view.result.current.select('eux'))
+    view.rerender({ sb: SB, scope: 'match-2' })
+    view.rerender({ sb: SB, scope: 'match-1' })
+    expect(view.result.current.xuid).toBe('moi')
+  })
+
+  it('un choix pris dans le nouveau match vaut dans ce match', () => {
+    const view = monter(SB)
+    view.rerender({ sb: SB, scope: 'match-2' })
+    act(() => view.result.current.select('pote'))
+    expect(view.result.current.xuid).toBe('pote')
   })
 })

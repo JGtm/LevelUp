@@ -63,6 +63,44 @@ func UpsertAssetTexts(ctx context.Context, ex duckdbkeys.Querier, assetType, ass
 	return nil
 }
 
+// UpsertMedalTexts écrit le nom et la description d'une médaille dans medal_translations, une ligne
+// par langue qui porte un texte non vide (étiquette Halo principale de la langue) : la forme de
+// UpsertAssetTexts pour la table des médailles, utilisée par les seeds de médailles custom qui
+// suivent metadata_definition_texts_to_translations_v1 (les colonnes `_fr` / `_en` de
+// medal_definitions n'existent plus). Une langue sans texte n'écrit rien et n'efface rien.
+// Idempotente. ex est une base ou une transaction.
+func UpsertMedalTexts(ctx context.Context, ex duckdbkeys.Querier, medalID int64, names, descriptions i18n.Text) error {
+	if medalID <= 0 {
+		return errors.New("medal texts: identifiant invalide")
+	}
+	for _, l := range i18n.Locales() {
+		name, desc := strings.TrimSpace(names[l]), strings.TrimSpace(descriptions[l])
+		if name == "" && desc == "" {
+			continue
+		}
+		tags := i18n.HaloTags(l)
+		if len(tags) == 0 {
+			return fmt.Errorf("medal texts %d: langue %s sans étiquette Halo", medalID, l)
+		}
+		var descArg any
+		if desc != "" {
+			descArg = desc
+		}
+		err := duckdbkeys.Upsert{
+			ExistsSQL:  `SELECT 1 FROM medal_translations WHERE medal_name_id = ? AND lang = ?`,
+			ExistsArgs: []any{medalID, tags[0]},
+			UpdateSQL:  `UPDATE medal_translations SET name = ?, description = ? WHERE medal_name_id = ? AND lang = ?`,
+			UpdateArgs: []any{name, descArg, medalID, tags[0]},
+			InsertSQL:  `INSERT INTO medal_translations (medal_name_id, lang, name, description) VALUES (?, ?, ?, ?)`,
+			InsertArgs: []any{medalID, tags[0], name, descArg},
+		}.Exec(ctx, ex)
+		if err != nil {
+			return fmt.Errorf("medal texts %d (%s): %w", medalID, l, err)
+		}
+	}
+	return nil
+}
+
 // UpsertMilestoneCatalogEntry écrit un jalon du catalogue : la ligne de milestone_catalog (champs
 // non localisés, dont la formule technique `condition`) puis son titre et sa condition lisible par
 // langue dans asset_translations. À appeler sur une base dont les colonnes appariées

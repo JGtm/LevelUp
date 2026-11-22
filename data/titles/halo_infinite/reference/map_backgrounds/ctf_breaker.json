@@ -41,6 +41,8 @@
     "eau : aucun volume d'eau dans le sddt de ctf_breaker-rtx-new.module"
   ],
   "planImage": "ctf_breaker.plan.webp",
+  "reliefImage": "ctf_breaker.relief.webp",
+  "reliefData": "ctf_breaker.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 7548,

@@ -18,7 +18,7 @@
 // jamais. `TestServeurNeLinkePasDeCodeGPL` (cmd/server/licence_gplv3_test.go) interdit à cmd/server d'en
 // dépendre.
 //
-// TROIS GESTES, et eux seuls (chaque option de la ligne de commande se rattache à l'un d'eux, voir
+// QUATRE GESTES, et eux seuls (chaque option de la ligne de commande se rattache à l'un d'eux, voir
 // options.go) :
 //
 //  1. CUIRE des cartes : l'image et le sidecar de chaque carte retenue.
@@ -26,8 +26,12 @@
 //  2. REFAIRE LE PLAN SANS RECUIRE : le plan des murs et l'image plan des sidecars déjà publiés,
 //     le fond, le calage, les statistiques et la date de génération restant ceux de la cuisson.
 //     CGO_ENABLED=1 go run ./cmd/mapfond-build --plan-seul --maps "ridgeline"
-//  3. PRODUIRE LE TABLEAU AVANT / APRÈS : une ligne TSV par carte traitée, à côté d'une cuisson ou
-//     d'un plan seul ; --avant-dir porte les sidecars d'avant, pour comparer les ancres au sol.
+//  3. AJOUTER LE RELIEF SANS RECUIRE : l'image et les données du relief, projetées dans le calage du
+//     sidecar publié (la carte est cuite en mémoire), et deux champs de plus au sidecar ; le fond, le
+//     plan et le calage ne bougent pas. Une cuisson complète refait aussi le relief.
+//     CGO_ENABLED=1 go run ./cmd/mapfond-build --relief-seul --maps "sgh_blueprint"
+//  4. PRODUIRE LE TABLEAU AVANT / APRÈS : une ligne TSV par carte traitée, à côté d'une cuisson, d'un
+//     plan seul ou d'un relief seul ; --avant-dir porte les sidecars d'avant, pour comparer les ancres au sol.
 //     CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "ridgeline" --rapport-tsv rapport.tsv --avant-dir DIR
 //
 // --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
@@ -86,6 +90,9 @@ func execute(ctx context.Context, args []string, sortie io.Writer) int {
 	}
 	if opts.planSeul {
 		return executePlanSeul(ctx, env, opts.rapports)
+	}
+	if opts.reliefSeul {
+		return executeReliefSeul(ctx, env, opts.rapports)
 	}
 	return cuit(ctx, env, opts)
 }

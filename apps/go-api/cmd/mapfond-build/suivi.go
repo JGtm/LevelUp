@@ -22,7 +22,9 @@ import (
 const (
 	actionRecuite  = "recuite"
 	actionPlanSeul = "plan seul"
-	actionSautee   = "sautee"
+	// actionReliefSeul : le relief ajouté au fond publié, sans recuire.
+	actionReliefSeul = "relief seul"
+	actionSautee     = "sautee"
 	// actionIgnoree : l'avis complémentaire demande de laisser la carte entièrement telle qu'elle est.
 	actionIgnoree = "ignoree (existant garde)"
 )

@@ -89,7 +89,7 @@
  * `replayTimelineGrid.ts` définit une fois pour les trois lecteurs, le trait compris : il a
  * besoin des mêmes nombres pour savoir où commence la colonne des pistes.
  */
-import { useState, type ChangeEvent, type RefObject } from 'react'
+import { useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
@@ -163,6 +163,8 @@ interface ReplayTimelineTracksProps {
   /** Frise dépliée (les pistes) ou repliée (la seule barre de lecture). Préférence persistée. */
   tracksExpanded: boolean
   onToggleTracks: () => void
+  /** La bande des titres, posée en tête de la grille ; absente = rien (cf. `ReplayAntagonistBand`). */
+  antagonistBand?: ReactNode
   /** Ouvrir un média met le rejeu EN PAUSE : la lightbox le dit, l'appelant l'applique. */
   playing: boolean
   onRequestPause: () => void
@@ -182,7 +184,7 @@ export function ReplayTimelineTracks({
   own, teammates, shades, absence, allegiance, onSeekFrame,
   viewpoint, viewpointGroups, onSelectViewpoint,
   dominance, score, allyOf, labelOf, media, showMediaTrack,
-  tracksExpanded, onToggleTracks,
+  tracksExpanded, onToggleTracks, antagonistBand,
   playing, onRequestPause, clockRef, locale,
 }: ReplayTimelineTracksProps) {
   const t = REPLAY_TEXT[locale]
@@ -204,6 +206,7 @@ export function ReplayTimelineTracks({
     <div className="relative" data-replay-cursor-host="">
       {tracksExpanded && (
         <div className="relative mb-[5px] grid items-center gap-y-[5px]" style={TIMELINE_GRID_COLUMNS}>
+          {antagonistBand}
           {/* LE LIBELLÉ DE LA PREMIÈRE RANGÉE EST LA COMMANDE (cf. l'en-tête) : c'est là qu'on
               lit de qui parle la piste, donc là qu'on change de joueur. */}
           <ReplayViewpointSelect
@@ -212,11 +215,8 @@ export function ReplayTimelineTracks({
             label={t.viewpointLabel}
             onSelect={onSelectViewpoint}
           />
-          {/* VINGT-QUATRE PIXELS ET NON QUATORZE, dix-huit depuis le 2026-09-09 (décision D7) :
-              c'est la seule rangée qui porte un badge de médaille EN IMAGE (16 px, cf.
-              `ReplayMarkTrack`) et une porte de présence, et les rogner les rendrait illisibles.
-              Celle des coéquipiers garde ses quatorze — l'écart de hauteur dit laquelle des deux
-              est le sujet. */}
+          {/* VINGT-QUATRE PIXELS : seule rangée à porter un badge de médaille (16 px), une porte de présence
+              et deux moitiés (éliminations, morts) ; celle des coéquipiers garde ses quatorze. */}
           <ReplayMarkTrack marks={own} height="h-[24px]" tall>
             <ReplayPresenceShade
               shades={shades}

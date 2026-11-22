@@ -40,6 +40,8 @@
     "eau : aucun volume d'eau dans le sddt de sgh_streets-rtx-new.module"
   ],
   "planImage": "sgh_streets.plan.webp",
+  "reliefImage": "sgh_streets.relief.webp",
+  "reliefData": "sgh_streets.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 1947,

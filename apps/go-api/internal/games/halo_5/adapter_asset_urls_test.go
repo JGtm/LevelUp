@@ -82,13 +82,6 @@ func TestAssetURLAdapter_WeaponImageURL(t *testing.T) {
 	}
 }
 
-func TestAssetURLAdapter_MedalImageURL_Empty(t *testing.T) {
-	// Halo 5 médailles = sprite, pas de PNG par-médaille → toujours "".
-	if got := newTestAdapter().MedalImageURL(123); got != "" {
-		t.Errorf("MedalImageURL = %q, want \"\" (sprite, chantier distinct)", got)
-	}
-}
-
 func TestAssetURLAdapter_CSRRankImageURL(t *testing.T) {
 	a := newTestAdapter()
 	if got := a.CSRRankImageURL("Diamond", 3); got != "https://cdn/csr/diamond-3.png" {

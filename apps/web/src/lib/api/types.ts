@@ -1066,20 +1066,15 @@ export type SquadMapHeatmapCell = components['schemas']['SquadMapHeatmapCell']
 
 export type SquadMapHeatmap = components['schemas']['SquadMapHeatmap']
 
-export type SquadImpactBadgeCount = components['schemas']['SquadImpactBadgeCount']
-
-export type SquadImpactPlayerSummary = components['schemas']['SquadImpactPlayerSummary']
-
-export type SquadImpactMatchHeader = components['schemas']['SquadImpactMatchHeader']
-
-export type SquadImpactCell = components['schemas']['SquadImpactCell']
-
-/** Données du scoreboard impact teammates.07. */
-export type SquadImpactMatrix = components['schemas']['SquadImpactMatrix']
-
-/** Points d'impact par soirée et par rôle (même barème que la matrice, calculé côté Go). */
-export type SquadImpactHistory = components['schemas']['SquadImpactHistory']
-export type SquadImpactEvening = components['schemas']['SquadImpactEvening']
+/** Impact des coéquipiers par session (une ligne par session, matrice dépliable, décompte de toutes les sessions). */
+export type SquadImpactSessions = components['schemas']['SquadImpactSessions']
+export type SquadImpactSessionsRoleWeight = components['schemas']['SquadImpactSessionsRoleWeight']
+export type SquadImpactSessionsSession = components['schemas']['SquadImpactSessionsSession']
+export type SquadImpactSessionsMatch = components['schemas']['SquadImpactSessionsMatch']
+export type SquadImpactSessionsPlayer = components['schemas']['SquadImpactSessionsPlayer']
+export type SquadImpactSessionsRoleCount = components['schemas']['SquadImpactSessionsRoleCount']
+export type SquadImpactSessionsPerMatch = components['schemas']['SquadImpactSessionsPerMatch']
+export type SquadImpactSessionsTotal = components['schemas']['SquadImpactSessionsTotal']
 
 /**
  * Ligne du tableau historique escouade (teammates.11). Une ligne par match
@@ -1515,8 +1510,6 @@ export type MatchScoreboardSkillRank = components['schemas']['MatchScoreboardSki
 export type MatchScoreboardObjective = components['schemas']['MatchScoreboardObjective']
 
 export type MatchRosterRow = components['schemas']['MatchRosterRow']
-
-export type MatchNemesisRow = components['schemas']['MatchNemesisRow']
 
 export type MatchEncounterRow = components['schemas']['MatchEncounterRow']
 

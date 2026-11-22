@@ -173,7 +173,6 @@ func NewAssetURLAdapter() *AssetURLAdapter { return &AssetURLAdapter{} }
 
 func (a *AssetURLAdapter) TitleSlug() string                      { return TitleSlug }
 func (a *AssetURLAdapter) MapImageURL(_ string) string            { return "" }
-func (a *AssetURLAdapter) MedalImageURL(_ uint64) string          { return "" }
 func (a *AssetURLAdapter) CSRRankImageURL(_ string, _ int) string { return "" }
 func (a *AssetURLAdapter) CSRRankImageURLOnyx() string            { return "" }
 func (a *AssetURLAdapter) WeaponImageURL(_ int64) string          { return "" }

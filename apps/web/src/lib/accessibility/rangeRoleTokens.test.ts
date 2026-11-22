@@ -24,7 +24,7 @@ import { contrastRatio } from './wcagContrast'
 
 const RAMP: readonly SemanticToken[] = ['range-role-front', 'range-role-mid', 'range-role-far']
 
-// Surfaces de la carte (`--card`) des thèmes clair et sombre, comme impactRoleTokens.test.ts.
+// Surfaces de la carte (`--card`) des thèmes clair et sombre.
 const SURFACES = { clair: '#FCFDFF', sombre: '#171717' } as const
 
 const MIN_CONTRAST = 3

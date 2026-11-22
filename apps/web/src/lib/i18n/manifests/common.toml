@@ -2919,3 +2919,11 @@ en = "{count} kills dealt"
 [common.encounter_split.deaths_suffered]
 fr = "{count} morts subies"
 en = "{count} deaths suffered"
+
+[common.encounter_split.wins]
+fr = "{count, plural, one {# victoire} other {# victoires}}"
+en = "{count, plural, one {# win} other {# wins}}"
+
+[common.encounter_split.losses]
+fr = "{count, plural, one {# défaite} other {# défaites}}"
+en = "{count, plural, one {# loss} other {# losses}}"

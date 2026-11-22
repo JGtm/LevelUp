@@ -156,6 +156,13 @@ describe('la forme posée sur le plan', () => {
     expect(style?.width).toBe('350px')
   })
 
+  it("posé au-dessus de la barre de lecture quand elle est sur le plan : il monte de la hauteur qu'on lui donne", () => {
+    const view = render(
+      <ReplayFeedOverlay entries={fil(3)} nowMs={FIN} playWindow={null} xuidMeta={META} allegiance={ALLEGIANCE} locale="fr" liftPx={56} />,
+    )
+    expect(view.container.querySelector('ul')?.style.bottom).toBe(`${COTES_FIL_PLAN.margeBasPx + 56}px`)
+  })
+
   it("l'ombre portée vient du jeton de voile, aucune couleur écrite en dur", () => {
     const classe = afficher(fil(3)).container.querySelector('ul')?.className ?? ''
     expect(classe).toContain('text-shadow')

@@ -1,0 +1,187 @@
+// JETABLE (étape 0.2) : témoin du fil et de la fiche d'ELOsk11 sur le match 38900a5e, avec les vraies fonctions du site.
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import zlib from 'node:zlib'
+import { describe, expect, it, vi } from 'vitest'
+import { render } from '@testing-library/react'
+
+import type { KillEvent } from '@/features/match-view/_momentum'
+import { buildFilmAllegiance } from '../lib/replay/filmAllegiance'
+import { normalizeReplayDocument } from '../lib/replay/replayNormalize'
+import { buildPlayers, playerName, playerStateAt, vitalityPresence } from '../lib/replay/rosterLogic'
+import { trackWindow } from '../lib/replay/replayLogic'
+import { playerCountersAt } from '../lib/replay/scoreTimeline'
+import { buildFeedEntries } from '../features/match-replay/model/killFeedLogic'
+import { mergeFeedWithPresence, presenceEntries } from '../features/match-replay/model/presenceFeed'
+import { replayWindow, displayClockMs } from '../features/match-replay/model/replayWindow'
+import { readMatchMedals } from '../features/match-replay/model/matchMedals'
+import { withEventLines } from '../features/match-replay/model/feedEventLines'
+import { ReplayKillFeed } from '../features/match-replay/ui/ReplayKillFeed'
+import { groundPickupFeedEntries } from '../features/match-replay/model/groundPickupFeedLogic'
+import { hillFeedEntries } from '../features/match-replay/model/hillFeedLogic'
+import { objectiveFeedEntries } from '../features/match-replay/model/objectiveFeedLogic'
+import { pickupFeedEntries } from '../features/match-replay/model/pickupFeedLogic'
+import { roundEndFeedEntries } from '../features/match-replay/model/roundEndFeedLogic'
+import { skullFeedEntries } from '../features/match-replay/model/skullFeedLogic'
+import { vehicleFeedEntries } from '../features/match-replay/model/vehicleFeedLogic'
+import { vehicleDestructionsOf } from '../features/match-replay/model/vehicleDestructionSource'
+import { padNameFor } from '../features/match-replay/layers/useReplayWeaponPads'
+import { REPLAY_TEXT } from '../features/match-replay/i18n/i18n'
+import { NO_WEAPON_ICONS } from '../features/match-replay/model/killSourceIcons'
+
+vi.mock('@/lib/accessibility', () => ({
+  resolveToken: (token: string) => `var(${token})`,
+  tokenCssVar: (token: string) => `var(--ac-${token})`,
+}))
+
+const DIR = 'c:/Users/Guillaume/Downloads/Scripts/LevelUp/data/cache/replays/halo_infinite'
+const OUT = path.join(os.tmpdir(), 'bl1118_temoin_38900a5e.json')
+
+function kill(over: Partial<KillEvent>): KillEvent {
+  return {
+    tMs: 0, xuid: '', ally: false, teamID: null, weaponKey: '', weaponLabel: '', weaponImageUrl: '', weaponTinted: false,
+    assistState: '', assistGamertag: '', assistTeamID: null, killerDamagePct: null, assistDamagePct: null,
+    victimXuid: '', victimGamertag: '', ...over,
+  }
+}
+
+describe('témoin 38900a5e', () => {
+  it('fil 4:30-5:30 et fiche ELOsk11', () => {
+    const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, '38900a5e.json.gz'))).toString('utf8'))
+    const doc = normalizeReplayDocument(raw)
+    const players = buildPlayers(doc, [])
+    const nameByXuid = new Map<string, { gamertag: string }>()
+    for (const p of players) nameByXuid.set(p.xuid, { gamertag: (playerName(p) ?? '?').replace(/ \[bot\]$/, '') })
+    const iv = doc.frameIntervalMs ?? 33
+    const header = { t0_ms: doc.t0FilmMs ?? 0, playable_duration_seconds: 600 }
+    const window = replayWindow(doc, header as never)
+    expect(window).not.toBeNull()
+    const jgtm = players.find((p) => /^jgtm$/i.test(playerName(p) ?? ''))
+    const allegiance = buildFilmAllegiance(players, jgtm?.xuid ?? null)
+    const medals = readMatchMedals(doc, 'fr')
+
+    // Frags reconstitués : lignes killPersonalScore du document (tueur, cible), datées à l'image du score.
+    const synth: KillEvent[] = (doc.scoreActions ?? [])
+      .filter((a) => a.name === 'killPersonalScore' && a.target)
+      .map((a) =>
+        kill({
+          tMs: a.t * iv + (doc.originMs ?? 0) - header.t0_ms,
+          xuid: a.xuid,
+          victimXuid: a.target as string,
+          victimGamertag: nameByXuid.get(a.target as string)?.gamertag ?? '',
+        }),
+      )
+
+    const t = REPLAY_TEXT.fr
+    const nameOf = (weapon: string) => padNameFor(weapon, doc.weaponLabels, t, 'fr')
+    const padPickups = pickupFeedEntries(doc, nameOf)
+    const campIds = allegiance.camps.map((c) => c.team)
+    const events = [
+      ...objectiveFeedEntries(doc).entries,
+      ...roundEndFeedEntries(doc, campIds),
+      ...skullFeedEntries(doc),
+      ...hillFeedEntries(doc),
+      ...padPickups,
+      ...groundPickupFeedEntries(doc, nameOf, padPickups),
+      ...vehicleFeedEntries(doc, 'fr', vehicleDestructionsOf(doc), NO_WEAPON_ICONS),
+    ]
+
+    type Entry = (typeof events)[number]
+    const familyOf = (e: Entry): string => {
+      if (e.event) {
+        const ev = e.event as unknown as { family: string; kind?: string; destroyed?: boolean }
+        return 'event:' + ev.family + (ev.kind ? '/' + ev.kind : '') + (ev.destroyed ? '/destroyed' : '')
+      }
+      if (e.presence) return 'presence:' + e.presence.kind + '(' + e.presence.source + ')'
+      if (e.death) return 'mort neutre' + (e.death.proven ? ' (prouvee)' : ' (non prouvee)')
+      if (e.kill) return 'frag'
+      if (e.medal) return 'medaille'
+      return '?'
+    }
+    const playerOf = (e: Entry): string => {
+      const n = (x: string | null | undefined) => (x ? (nameByXuid.get(x)?.gamertag ?? '?') : '')
+      if (e.event) {
+        const ev = e.event as unknown as { xuid?: string | null; botName?: string | null }
+        return n(ev.xuid) || (ev.botName ?? '')
+      }
+      if (e.presence) return e.presence.name
+      if (e.death) return n(e.death.xuid)
+      if (e.kill) return n(e.kill.xuid)
+      if (e.medal) return e.medal.gamertag || n(e.medal.xuid)
+      return ''
+    }
+
+    const variantes: Record<string, unknown> = {}
+    for (const [nom, kills] of [['sans_frags', [] as KillEvent[]], ['frags_reconstitues', synth]] as const) {
+      const feed = mergeFeedWithPresence(
+        buildFeedEntries(kills, medals, header.t0_ms, doc),
+        presenceEntries(players, window, doc, header as never),
+      )
+      const full = withEventLines(feed, events)
+      const winStartMs = window!.startMs
+      const lo = winStartMs + 270_000
+      const hi = winStartMs + 330_000
+      const nowMs = hi
+      const view = render(
+        <ReplayKillFeed
+          entries={feed}
+          nowMs={nowMs}
+          playWindow={window}
+          scoreboard={[]}
+          xuidMeta={nameByXuid}
+          allegiance={allegiance}
+          locale="fr"
+          doc={doc}
+        />,
+      )
+      const lis = Array.from(view.container.querySelectorAll('ul > li'))
+      // La liste attendue, dans l'ordre d'affichage : la plus récente d'abord, comme useFeedView avec le filtre Tout.
+      const expected = full.filter((e) => e.replayMs <= nowMs).reverse()
+      const rows = expected.map((e, i) => ({
+        frame: Math.round(e.replayMs / iv),
+        clock: displayClockMs(e.replayMs, window),
+        famille: familyOf(e),
+        joueur: playerOf(e),
+        texte: (lis[i]?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+        titre: lis[i]?.getAttribute('title') ?? '',
+        dansPlage: e.replayMs >= lo && e.replayMs <= hi,
+      }))
+      variantes[nom] = {
+        liCount: lis.length,
+        expectedCount: expected.length,
+        kills: kills.length,
+        rows: rows.filter((r) => r.dansPlage).reverse(),
+      }
+      view.unmount()
+    }
+
+    // Fiche d'ELOsk11
+    const elo = players.find((p) => /elosk11/i.test(playerName(p) ?? ''))
+    expect(elo).toBeDefined()
+    const presenceDoc = vitalityPresence(doc)
+    const rosterEntry = doc.roster.find((r) => /elosk11/i.test(r.name ?? ''))
+    const fiche = [9700, 9786, 9900, 9940].map((frame) => {
+      const s = playerStateAt(elo!, frame, presenceDoc)
+      const open = (rosterEntry?.presence ?? []).some((p) => frame >= p.from && frame <= p.to)
+      const c = playerCountersAt(doc.scoreTimeline, elo!.xuid, frame)
+      return {
+        frame,
+        etat: s.alive ? 'vivant' : 'mort',
+        sinceDeath: s.sinceDeath,
+        respawnFrame: s.respawnFrame,
+        presenceOuverte: open,
+        compteurs: c,
+      }
+    })
+    const vies = elo!.lives.map((l) => ({ ...trackWindow(l), endReason: l.endReason }))
+    const out = {
+      window: { startFrame: window!.startFrame, endFrame: window!.endFrame, startMs: window!.startMs },
+      header,
+      elo: { nom: playerName(elo!), vies: vies.slice(-4), presence: rosterEntry?.presence },
+      fiche,
+      variantes,
+    }
+    fs.writeFileSync(OUT, JSON.stringify(out, null, 1))
+  })
+})

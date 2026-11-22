@@ -12,7 +12,7 @@
  * (`weaponLabel`), à défaut celui du référentiel des pictogrammes d'arme. Une clé sans nom est `null`.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { ReplayPlayer, VitalityPresence } from '../../../lib/replay/rosterLogic'
+import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayScoreTimelineReady } from '../../../lib/replay/scoreTimeline'
 import type { ReplayLocale } from '../i18n/i18n'
 import { readKillBreakdownSeries, type KillBreakdownSeries } from './killBreakdown'
@@ -67,7 +67,6 @@ export interface PlayerInstantSourcesInput {
   /** Le fil du rejeu (`ReplayModel.feed`) : éliminations, tirs à la tête, médailles datées. */
   feed: readonly ReplayFeedEntry[]
   scoreTimeline: ReplayScoreTimelineReady | undefined
-  presence: VitalityPresence
   /** Première image du match (`ReplayWindowBounds.startFrame`), ou `null`. */
   matchStartFrame: number | null
   weaponIcons: WeaponIconsByKey
@@ -103,13 +102,13 @@ function weaponNamesOf(feed: readonly ReplayFeedEntry[]): Map<string, string> {
 
 /** readPlayerInstantSources lit, une fois, tout ce qui est daté pour ce joueur. */
 export function readPlayerInstantSources(input: PlayerInstantSourcesInput): PlayerInstantSources {
-  const { doc, player, players, feed, scoreTimeline, presence, matchStartFrame, weaponIcons, locale, docSeries } = input
+  const { doc, player, players, feed, scoreTimeline, matchStartFrame, weaponIcons, locale, docSeries } = input
   const fromFeed = weaponNamesOf(feed)
   return {
     doc,
     player,
     locale,
-    stats: readPlayerInstantSeries({ doc, player, presence, scoreTimeline, feed, matchStartFrame }),
+    stats: readPlayerInstantSeries({ doc, player, scoreTimeline, feed, matchStartFrame }),
     kills: readKillBreakdownSeries({ doc, player, feed }),
     throws: readPlayerThrowsPickupsSeries({ doc, players, player }),
     equipment: equipmentSeriesOf(docSeries.equipment, player),

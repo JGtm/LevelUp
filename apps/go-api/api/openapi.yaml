@@ -3869,22 +3869,59 @@ paths:
         - description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           in: query
           name: variante
           required: false
           schema:
             enum:
               - plan
+              - relief
             type: string
       responses:
         "200":
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         "400":
           description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante`, aucun plan ni relief)
       summary: Sert l'image du fond de carte du rejeu 2D
+      tags:
+        - match-view
+  /players/{player_slug}/matches/{match_id}/replay/background.relief.json:
+    get:
+      description: |
+        Données du relief de la carte du match, cuites hors ligne par `cmd/mapfond-build` : bornes de
+        hauteur, étages détectés, traits. Rangées en JSON compressé sur disque, elles sont servies en
+        clair (la compression de transport est celle du serveur). Un fichier de version de schéma
+        inconnue ou au calage différent de celui du fond est tenu pour absent. Elles vont avec l'image du relief
+        (`background.png?variante=relief`), dans le même cadre et au même calage.
+      operationId: getMatchReplayBackgroundReliefData
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: match_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Données du relief (JSON), avec ETag
+        "304":
+          description: Données inchangées (`If-None-Match`)
+        "404":
+          description: Aucun fond de carte figé pour la carte de ce match, pas de relief, ou relief périmé
+      summary: Sert les données du relief du fond de carte du rejeu 2D
       tags:
         - match-view
   /players/{player_slug}/matches/{match_id}/replay/callouts:
@@ -6876,22 +6913,58 @@ paths:
         - description: |
             Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
             des composantes du maillage de navigation, mêmes dimensions et même calage que le
-            fond, à superposer). Toute autre valeur est refusée.
+            fond, à superposer) ; `relief`, l'image du relief (hauteurs et drapeaux, mêmes
+            dimensions et même calage), qui va avec ses données `background.relief.json`. Toute
+            autre valeur est refusée.
           in: query
           name: variante
           required: false
           schema:
             enum:
               - plan
+              - relief
             type: string
       responses:
         "200":
-          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+          description: Image du fond de carte (PNG ou WebP), ou son image plan ou son relief avec `variante`
         "400":
           description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante`, aucun plan ni relief)
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      tags:
+        - tactical
+  /players/{player_slug}/tactical/{map_id}/background.relief.json:
+    get:
+      description: |
+        Données du relief d'une carte (JSON servi en clair), résolues par la même cascade que le fond mais
+        adressées par `map_id`. Elles vont avec l'image du relief
+        (`background.png?variante=relief`). Comme le fond, cette route n'est PAS restreinte à la
+        boucle locale : c'est une donnée de référence versionnée.
+      operationId: getTacticalMapBackgroundReliefData
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: map_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: Données du relief (JSON), avec ETag
+        "304":
+          description: Données inchangées (`If-None-Match`)
+        "404":
+          description: Aucun fond de carte figé pour cette carte, pas de relief, ou relief périmé
+      summary: Sert les données du relief du fond d'une carte de l'onglet Tactique
       tags:
         - tactical
   /players/{player_slug}/tactical/{map_id}/cellule:
@@ -18936,6 +19009,10 @@ components:
           $ref: '#/components/schemas/MapBackgroundPlan'
         planImage:
           type: string
+        reliefData:
+          type: string
+        reliefImage:
+          type: string
         schemaVersion:
           format: int64
           type: integer
@@ -19843,17 +19920,8 @@ components:
         killer_damage_pct:
           format: int64
           type: integer
-        medal_description:
-          type: string
-        medal_image_url:
-          type: string
-        medal_label:
-          type: string
         medal_name:
           type: string
-        medal_name_id:
-          format: int64
-          type: integer
         victim_gamertag:
           type: string
         victim_team_id:
@@ -21427,12 +21495,6 @@ components:
           type:
             - array
             - "null"
-        nemesis:
-          items:
-            $ref: '#/components/schemas/MatchNemesisRow'
-          type:
-            - array
-            - "null"
         roster:
           items:
             $ref: '#/components/schemas/MatchRosterRow'
@@ -21448,7 +21510,6 @@ components:
       required:
         - roster
         - scoreboard
-        - nemesis
         - encounters
       type: object
     MatchTugOfWarBin:
@@ -21508,6 +21569,9 @@ components:
           $ref: '#/components/schemas/MatchViewDominanceBadge'
         dominance_flag:
           type: boolean
+        gameplay_duration_seconds:
+          format: int64
+          type: integer
         had_bot_teammate:
           type: boolean
         is_excluded:
@@ -21559,9 +21623,6 @@ components:
           type: string
         performance_display:
           type: string
-        playable_duration_seconds:
-          format: int64
-          type: integer
         playlist_label:
           type: string
         replay_available:
@@ -24466,6 +24527,9 @@ components:
           description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
           format: int64
           type: integer
+        history_complete:
+          description: Vrai quand une synchronisation a atteint la fin de l'historique de ce joueur dans le titre courant ; faux tant que le rattrapage des matchs anciens n'est pas terminé.
+          type: boolean
         job:
           $ref: '#/components/schemas/AsyncJobStatus'
           description: Job de sync actif du joueur, sinon le plus récent encore conservé.
@@ -24478,6 +24542,7 @@ components:
         - player_slug
         - syncing
         - cooldown_retry_after_s
+        - history_complete
       type: object
     PlayerTokenHealth:
       additionalProperties: false
@@ -25950,6 +26015,10 @@ components:
             - "null"
         scoreTimeline:
           $ref: '#/components/schemas/ScoreTimeline'
+        shieldCycles:
+          additionalProperties:
+            $ref: '#/components/schemas/ShieldCycle'
+          type: object
         shotStats:
           items:
             $ref: '#/components/schemas/ShotStat'
@@ -28048,6 +28117,27 @@ components:
         - replay_sound_variation_percent
         - replay_sound_distance_percent
       type: object
+    ShieldCycle:
+      additionalProperties: false
+      properties:
+        breaks:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+        recharges:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+      required:
+        - breaks
+        - recharges
+      type: object
     Shot:
       additionalProperties: false
       properties:
@@ -29445,91 +29535,16 @@ components:
         - first_deaths
         - available
       type: object
-    SquadImpactBadgeCount:
+    SquadImpactSessions:
       additionalProperties: false
       properties:
-        badge_key:
-          type: string
-        count:
-          format: int64
-          type: integer
-      required:
-        - badge_key
-        - count
-      type: object
-    SquadImpactCell:
-      additionalProperties: false
-      properties:
-        badge_keys:
+        players:
           items:
             type: string
           type:
             - array
             - "null"
-        match_id:
-          type: string
-        player:
-          type: string
-      required:
-        - player
-        - match_id
-        - badge_keys
-      type: object
-    SquadImpactEvening:
-      additionalProperties: false
-      properties:
-        matches:
-          format: int64
-          type: integer
-        players:
-          items:
-            $ref: '#/components/schemas/SquadImpactEveningPlayer'
-          type:
-            - array
-            - "null"
-        session_label:
-          type: string
-        start_time:
-          type: string
-        wins:
-          format: int64
-          type: integer
-      required:
-        - session_label
-        - start_time
-        - matches
-        - wins
-        - players
-      type: object
-    SquadImpactEveningPlayer:
-      additionalProperties: false
-      properties:
-        player:
-          type: string
-        points:
-          format: double
-          type: number
-        roles:
-          items:
-            $ref: '#/components/schemas/SquadImpactRoleCount'
-          type:
-            - array
-            - "null"
-      required:
-        - player
-        - roles
-        - points
-      type: object
-    SquadImpactHistory:
-      additionalProperties: false
-      properties:
-        evenings:
-          items:
-            $ref: '#/components/schemas/SquadImpactEvening'
-          type:
-            - array
-            - "null"
-        players:
+        role_order:
           items:
             type: string
           type:
@@ -29537,16 +29552,30 @@ components:
             - "null"
         scale:
           items:
-            $ref: '#/components/schemas/SquadImpactRoleWeight'
+            $ref: '#/components/schemas/SquadImpactSessionsRoleWeight'
+          type:
+            - array
+            - "null"
+        sessions:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsSession'
+          type:
+            - array
+            - "null"
+        totals:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsTotal'
           type:
             - array
             - "null"
       required:
         - players
         - scale
-        - evenings
+        - role_order
+        - sessions
+        - totals
       type: object
-    SquadImpactMatchHeader:
+    SquadImpactSessionsMatch:
       additionalProperties: false
       properties:
         match_id:
@@ -29558,75 +29587,64 @@ components:
         - match_id
         - outcome
       type: object
-    SquadImpactMatrix:
+    SquadImpactSessionsPerMatch:
       additionalProperties: false
       properties:
-        badge_ord:
+        match_id:
+          type: string
+        roles:
           items:
             type: string
           type:
             - array
             - "null"
-        cells:
-          items:
-            $ref: '#/components/schemas/SquadImpactCell'
-          type:
-            - array
-            - "null"
-        matches:
-          items:
-            $ref: '#/components/schemas/SquadImpactMatchHeader'
-          type:
-            - array
-            - "null"
-        players:
-          items:
-            $ref: '#/components/schemas/SquadImpactPlayerSummary'
-          type:
-            - array
-            - "null"
       required:
-        - matches
-        - players
-        - cells
-        - badge_ord
+        - match_id
+        - roles
       type: object
-    SquadImpactPlayerSummary:
+    SquadImpactSessionsPlayer:
       additionalProperties: false
       properties:
         counts:
           items:
-            $ref: '#/components/schemas/SquadImpactBadgeCount'
+            $ref: '#/components/schemas/SquadImpactSessionsRoleCount'
+          type:
+            - array
+            - "null"
+        matches_played:
+          format: int64
+          type: integer
+        per_match:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsPerMatch'
           type:
             - array
             - "null"
         player:
           type: string
-        score:
+        points:
           format: double
           type: number
       required:
         - player
+        - matches_played
+        - points
         - counts
-        - score
+        - per_match
       type: object
-    SquadImpactRoleCount:
+    SquadImpactSessionsRoleCount:
       additionalProperties: false
       properties:
         count:
           format: int64
           type: integer
-        points:
-          format: double
-          type: number
         role:
           type: string
       required:
         - role
         - count
-        - points
       type: object
-    SquadImpactRoleWeight:
+    SquadImpactSessionsRoleWeight:
       additionalProperties: false
       properties:
         points:
@@ -29637,6 +29655,54 @@ components:
       required:
         - role
         - points
+      type: object
+    SquadImpactSessionsSession:
+      additionalProperties: false
+      properties:
+        matches:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsMatch'
+          type:
+            - array
+            - "null"
+        players:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsPlayer'
+          type:
+            - array
+            - "null"
+        session_label:
+          type: string
+        start_time:
+          type: string
+      required:
+        - session_label
+        - start_time
+        - matches
+        - players
+      type: object
+    SquadImpactSessionsTotal:
+      additionalProperties: false
+      properties:
+        counts:
+          items:
+            $ref: '#/components/schemas/SquadImpactSessionsRoleCount'
+          type:
+            - array
+            - "null"
+        matches_played:
+          format: int64
+          type: integer
+        player:
+          type: string
+        points:
+          format: double
+          type: number
+      required:
+        - player
+        - matches_played
+        - points
+        - counts
       type: object
     SquadIntensityMatchRow:
       additionalProperties: false
@@ -30069,9 +30135,6 @@ components:
           type: string
       required:
         - player
-        - kills_per_minute
-        - deaths_per_minute
-        - assists_per_minute
         - match_count
       type: object
     SquadPerformanceScore:
@@ -32443,8 +32506,6 @@ components:
           type: integer
         header:
           $ref: '#/components/schemas/SquadHeader'
-        impact_matrix:
-          $ref: '#/components/schemas/SquadImpactMatrix'
         intensity_profile:
           $ref: '#/components/schemas/SquadIntensityProfile'
         latest_composition_session:
@@ -32519,8 +32580,8 @@ components:
             - "null"
         squad_emprise:
           $ref: '#/components/schemas/SquadEmpriseBlock'
-        squad_impact_history:
-          $ref: '#/components/schemas/SquadImpactHistory'
+        squad_impact_sessions:
+          $ref: '#/components/schemas/SquadImpactSessions'
         squad_objective_history:
           $ref: '#/components/schemas/SquadObjectiveHistory'
         synergy_radar:

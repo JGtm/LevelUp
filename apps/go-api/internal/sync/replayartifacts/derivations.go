@@ -4,7 +4,7 @@ package replayartifacts
 //
 // # Le defaut que ce fichier ferme (constat A1 du registre v2)
 //
-// Les trois derivations d'un artefact — coup d'envoi mesure (t0film.go), resume d'usage
+// Les trois derivations d'un artefact — coup d'envoi (coupdenvoi.go), resume d'usage
 // (usage.go), statistiques d'Assaut (bombstats.go) — etaient cablees a la CUISSON LOCALE, et
 // a elle seule : `Run` faisait `if d.Placement == PlacementWorker { enqueueAll(...); return }`
 // AVANT de les appeler. Or le placement `worker` est le DEFAUT en production, et `local` y est
@@ -110,6 +110,9 @@ type artefactLu struct {
 	// frags : le fil des morts du match, lu AVANT tout segment d'ecriture (usage_frags.go) pour
 	// les frags sans bouclier du resume d'usage. Read faux = non lu.
 	frags replay.ShieldlessKillsInput
+	// equipes : l'equipe de chaque participant du match (`match_participants.team_id`), lue avec le
+	// fil des morts pour les vengeances du resume d'usage. Vide = non lue.
+	equipes map[string]int
 }
 
 // Deriver applique TOUTES les derivations post-rangement a un lot d'artefacts.
@@ -137,6 +140,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	mainmise := preparerMainmise(ctx, d, b, lus)
 	// LE FIL DES MORTS DU RESUME D USAGE (frags sans bouclier) : meme regle, meme place.
 	preparerFragsDuResume(ctx, d, lus)
+	// LE COUP D'ENVOI lit l'etat range des matchs (registre, participants) : meme regle, meme place.
+	coupsDEnvoi := preparerCoupsDEnvoi(ctx, d, b, lus)
 	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
 	// source d'acquisition est memoisee ici, et relachee ici. Le nil reste nil — un chemin sans
 	// writer cable doit continuer de degrader famille par famille, avec ses journaux.
@@ -145,11 +150,10 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 		defer w.fermer()
 		d.AcquireWriter = w.acquerir
 	}
-	// LE REPORT DU COUP D'ENVOI EN PREMIER, puis les deux projections. L'ordre est celui
-	// d'avant (artifacts.go) et il n'est pas indifferent : le T0 ecrit `match_registry`, une
-	// table match-of-record, et il vaut mieux qu'il passe avant les tables derivees si le
-	// writer devient indisponible en cours de route.
-	reporterT0Film(ctx, d, b, rapportsT0(lus))
+	// LE COUP D'ENVOI EN PREMIER, puis les projections : il ecrit `match_registry` et
+	// `match_participants`, des tables match-of-record, et il vaut mieux qu'il passe avant les
+	// tables derivees si le writer devient indisponible en cours de route.
+	ecrireCoupsDEnvoi(ctx, d, b, coupsDEnvoi)
 	persisterResumesUsage(ctx, d, b, lus)
 	persisterStatsBombe(ctx, d, b, lus)
 	// LES PRISES NETTES DE DRAPEAU, juste apres sa soeur d'Assaut : meme forme, meme segment
@@ -197,7 +201,7 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 // # PARESSEUX, ET C'EST LA PROPRIETE A NE PAS PERDRE
 //
 // La source n'est appelee qu'a la PREMIERE famille qui a quelque chose a ecrire. Une passe sans
-// rien a ecrire — titre sans capability film, document sans coup d'envoi ni trajectoire —
+// rien a ecrire — titre sans capability film, match dont le coup d'envoi est deja range, sans trajectoire —
 // n'ouvre donc aucun segment, exactement comme avant le regroupement.
 //
 // # L'ERREUR EST MEMOISEE ELLE AUSSI
@@ -256,14 +260,14 @@ func (w *writerUnique) fermer() {
 //	ECHEC D'UN MATCH     une famille a refuse ou rate CE match (capabilities illisibles, INSERT
 //	                     en erreur, etat du T0 illisible) : ce match seul n'est pas marque, et
 //	                     le rattrapage rejouera ses quatre familles au prochain cycle.
-//	RIEN A ECRIRE        un titre sans capability film, un document sans `t0FilmMs` ni
+//	RIEN A ECRIRE        un titre sans capability film, un match dont le coup d'envoi est deja range, sans
 //	                     trajectoire, un match hors Assaut : ce sont des derivations JOUEES.
 //	                     Elles se marquent — les rejouer a chaque cycle serait du travail
 //	                     pur perte.
 //
 // LE REJEU EST TOUJOURS SUR — les quatre familles se rejouent au complet pour un match non
 // marque : trois d'entre elles sont append-only (une passe neuve supersede), et le report du T0
-// porte sa propre garde « deja a la meme valeur ».
+// ne reecrit rien quand la base porte deja ce que la resolution decide.
 type bilanDerivations struct {
 	// sansWriter : le segment d'ecriture n'a pas pu etre ouvert. Etat GLOBAL a la passe.
 	sansWriter bool
@@ -347,21 +351,6 @@ func lireArtefacts(ctx context.Context, d Deps, ranges []ArtefactRange) []artefa
 			continue
 		}
 		out = append(out, artefactLu{matchID: r.MatchID, path: r.Path, doc: doc, octets: octets})
-	}
-	return out
-}
-
-// rapportsT0 extrait les coups d'envoi mesures des documents lus.
-//
-// Un document sans `t0FilmMs` — schema anterieur au champ, ou detecteur qui a REFUSE de dater
-// le coup d'envoi — ne donne rien : les deux cas veulent la meme chose, ne rien ecrire.
-func rapportsT0(lus []artefactLu) []rapportT0Film {
-	out := make([]rapportT0Film, 0, len(lus))
-	for _, a := range lus {
-		if a.doc.T0FilmMs == nil {
-			continue
-		}
-		out = append(out, rapportT0Film{matchID: a.matchID, t0FilmMs: *a.doc.T0FilmMs})
 	}
 	return out
 }

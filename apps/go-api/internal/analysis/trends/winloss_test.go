@@ -140,8 +140,8 @@ func TestFromCanonical(t *testing.T) {
 	if got[0].Start.Location() != loc {
 		t.Errorf("heure non convertie dans le fuseau")
 	}
-	if got[0].Seconds != 600 { // repli sur la durée du match
-		t.Errorf("secondes (repli) = %v", got[0].Seconds)
+	if got[0].Seconds != 0 { // temps joué absent : zéro, jamais la durée du match à sa place
+		t.Errorf("secondes (temps joué absent) = %v", got[0].Seconds)
 	}
 	if got[1].Seconds != 120 { // temps joué du joueur
 		t.Errorf("secondes = %v", got[1].Seconds)

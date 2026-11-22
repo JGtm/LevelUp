@@ -76,16 +76,20 @@ func (e *environnement) optionsNavmeshForge(cle string, m *hinavmesh.Maillage) h
 // il sert alors au seul plan des murs. Rend nil, sans erreur, quand la carte n'en a pas ; la
 // dégradation à publier est alors rendue à part. Une lecture qui échoue est une erreur : la carte
 // serait cuite sans un maillage qu'elle a.
-func (e *environnement) maillageNatif(ctx context.Context, cle string) (m *hinavmesh.Maillage, degradation string, err error) {
-	m, bilan, err := himap.ChargeMaillageNatif(ctx, e.racineJeu, cle)
+//
+// Une carte dont la géométrie vit dans un module partagé (levier `moduleGeometrie`, Live Fire) a son
+// maillage dans le module `any` homonyme de ce module partagé : la brique l'y cherche, avec les ancres
+// de la carte pour départager les arènes. Toute autre carte lit son module `any`, inchangé.
+func (e *environnement) maillageNatif(ctx context.Context, c cible) (m *hinavmesh.Maillage, degradation string, err error) {
+	m, bilan, err := himap.ChargeMaillageNatifGeometriePartagee(ctx, e.racineJeu, c.cle, e.moduleGeometrieDe(c.cle), c.ancres)
 	if errors.Is(err, himap.ErrSansMaillage) {
-		slog.InfoContext(ctx, "mapfond: carte sans maillage de navigation, cuite comme avant", "carte", cle)
+		slog.InfoContext(ctx, "mapfond: carte sans maillage de navigation, cuite comme avant", "carte", c.cle)
 		return nil, degradationSansMaillage, nil
 	}
 	if err != nil {
 		return nil, "", err
 	}
-	slog.InfoContext(ctx, "mapfond: maillage de navigation charge", "carte", cle,
+	slog.InfoContext(ctx, "mapfond: maillage de navigation charge", "carte", c.cle,
 		"ressource", bilan.Ressource, "octets", bilan.Octets,
 		"secondaires", bilan.Secondaires, "illisibles", bilan.Illisibles)
 	return m, "", nil

@@ -92,6 +92,26 @@ describe('anchoredPosition : élément borne', () => {
   })
 })
 
+describe('anchoredPosition : haut imposé', () => {
+  it('le haut est celui qui est demandé, quelle que soit la place du déclencheur', () => {
+    expect(anchoredPosition({ right: 1000, bottom: 100 }, VIEWPORT, 330, { top: 58 }).top).toBe(58)
+    expect(anchoredPosition({ right: 1000, bottom: 400 }, VIEWPORT, 330, { top: 58 }).top).toBe(58)
+  })
+
+  it('la hauteur se compte depuis ce haut, jusqu’à la borne moins la marge', () => {
+    const pos = anchoredPosition({ right: 1000, bottom: 100 }, VIEWPORT, 330, { top: 58, boundBottom: 600 })
+    expect(pos.maxHeight).toBe(600 - 58 - 8)
+  })
+
+  it('sans haut demandé, la fenêtre reste sous le déclencheur', () => {
+    expect(anchoredPosition({ right: 1000, bottom: 100 }, VIEWPORT, 330, {}).top).toBe(108)
+  })
+
+  it('un haut au-dessus de la marge de la fenêtre est ramené à la marge', () => {
+    expect(anchoredPosition({ right: 1000, bottom: 100 }, VIEWPORT, 330, { top: 2 }).top).toBe(8)
+  })
+})
+
 describe('useAnchoredPanel : les deux options, lues sur le DOM', () => {
   /** Les options sont lues par leurs valeurs, mais la référence de la borne doit rester la même d'un rendu à l'autre. */
   const SANS_BORNE = { current: null }
@@ -109,6 +129,23 @@ describe('useAnchoredPanel : les deux options, lues sur le DOM', () => {
     expect(result.current.left).toBe(140)
     expect(result.current.top).toBe(68)
     expect(result.current.maxHeight).toBe(500 - 60 - 8 - 8)
+  })
+
+  it('l’élément du haut pose le haut du panneau à l’écart demandé sous le sien, pas sous le déclencheur', () => {
+    const trigger = { current: boite({ left: 140, right: 400, bottom: 60 }) }
+    const bloc = { current: boite({ top: 30 }) }
+    const bound = { current: boite({ bottom: 500 }) }
+    const { result } = renderHook(() =>
+      useAnchoredPanel(trigger, 330, { align: 'start', boundRef: bound, topRef: bloc, topGap: 8 }),
+    )
+    expect(result.current.top).toBe(38)
+    expect(result.current.maxHeight).toBe(500 - 38 - 8)
+  })
+
+  it('un élément du haut absent retombe sous le déclencheur', () => {
+    const trigger = { current: boite({ left: 140, right: 400, bottom: 60 }) }
+    const { result } = renderHook(() => useAnchoredPanel(trigger, 330, { align: 'start', topRef: SANS_BORNE, topGap: 8 }))
+    expect(result.current.top).toBe(68)
   })
 
   it('sans options, le panneau garde le bord droit et la hauteur de la fenêtre', () => {

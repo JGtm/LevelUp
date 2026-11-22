@@ -42,6 +42,8 @@
     "eau : aucun volume d'eau dans le sddt de ctf_aquarius-rtx-new.module"
   ],
   "planImage": "ctf_aquarius.plan.webp",
+  "reliefImage": "ctf_aquarius.relief.webp",
+  "reliefData": "ctf_aquarius.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 2095,

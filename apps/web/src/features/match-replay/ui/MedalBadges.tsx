@@ -3,12 +3,15 @@
  * coup d'œil, le libellé et la description vivent dans l'infobulle où ils ne coûtent rien.
  * PAS d'inversion ni de teinte : une médaille est une pièce EN COULEUR.
  *
- * REPLI : une médaille sans visuel garde son TEXTE — jamais le badge d'une autre.
+ * Une médaille sans image propre mais à découpe de planche (`sprite`) se dessine par `MedalIcon`, comme sur la
+ * fiche. REPLI : une médaille sans visuel garde son TEXTE — jamais le badge d'une autre.
  *
  * Extrait de `ReplayKillFeed.tsx` le 2026-08-16, quand le fil a franchi le seuil de taille
  * du dépôt en recevant les marques d'identité : ce bloc n'a aucun lien avec la ligne qui le
  * porte (il ignore tueur, victime, couleurs d'équipe), c'est donc lui qui sort.
  */
+import { MedalIcon } from '@/components/ui/MedalIcon'
+
 import type { MedalEvent } from '../model/killFeedLogic'
 
 /** Côté d'un badge de médaille, en px (option 2a du handoff 2026-08-27 : 16 px). */
@@ -31,6 +34,18 @@ export function MedalBadges({ medals }: { medals: readonly MedalEvent[] }) {
             className="inline-block object-contain"
             loading="lazy"
           />
+        ) : m.sprite ? (
+          <span key={`${m.name}-${m.tMs}-${i}`} title={tooltip} className="inline-flex">
+            <MedalIcon
+              spriteSheet={m.sprite.sheet}
+              spriteLeft={m.sprite.left}
+              spriteTop={m.sprite.top}
+              spriteWidth={m.sprite.width}
+              spriteHeight={m.sprite.height}
+              label={label}
+              size={MEDAL_PX}
+            />
+          </span>
         ) : (
           <span
             key={`${m.name}-${m.tMs}-${i}`}

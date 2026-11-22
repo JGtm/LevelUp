@@ -35,6 +35,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { followedLabelOf, type CameraFollow } from '../model/cameraMenu'
 import { COTES_MENU_CAMERA as C } from '../model/cotesMenuCamera'
 import type { ViewpointOptionGroup } from '../model/viewpointOptions'
+import { COMPACT_BUTTON_CLASS, COMPACT_BUTTON_SQUARE } from './compactButton'
 import { VideoCameraIcon } from './ReplayTransportIcons'
 
 export interface ReplayCameraMenuProps {
@@ -127,7 +128,7 @@ function CameraPanel({ id, groups, viewpoint, followedKey, locale, onFollow, onV
       className="absolute left-0 z-20 flex overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-xl"
       style={{ bottom: `calc(100% + ${C.panneauEcartPx}px)`, columnGap: C.listeEcartPx, maxHeight: C.panneauHauteurMaxPx }}
     >
-      <List heading={t.playerPanel.action.follow}>
+      <List heading={t.playerPanel.tile.follow}>
         <Entry label={t.roster.cameraNone} selected={followedKey === null} onChoose={() => onFollow(null)} />
         {groups.map((group) => (
           <div key={group.key}>
@@ -194,10 +195,8 @@ export function ReplayCameraMenu({ timeline, cameraFollow, locale }: ReplayCamer
         aria-controls={open ? panelId : undefined}
         aria-label={label}
         title={label}
-        style={{ width: C.declencheurPx, height: C.declencheurPx }}
-        className={`inline-flex cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          followedName !== null ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-        }`}
+        style={COMPACT_BUTTON_SQUARE}
+        className={`${COMPACT_BUTTON_CLASS} cursor-pointer ${followedName !== null ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
       >
         <VideoCameraIcon />
       </button>

@@ -1,8 +1,9 @@
 // Package schedtask pose et retire la tâche planifiée Windows qui garde les jetons vivants quand l'application
 // de bureau est fermée (réglage `scheduled_refresh`, ADR 0045 D-10 et lot L21.e).
 //
-// La tâche, par utilisateur, sans élévation, lance `levelup-server.exe -mode refresh-only` toutes les 6 heures
-// avec les trois racines de données dans son environnement. Le mode refresh-only prend le verrou d'instance :
+// La tâche, par utilisateur, sans élévation, lance la coquille `LevelUp.exe --refresh-only` toutes les 6 heures,
+// avec les trois racines de données en arguments. La coquille (aucune console) relaie au serveur voisin lancé sans
+// fenêtre en `-mode refresh-only`, attend et sort avec son code. Le mode refresh-only prend le verrou d'instance :
 // application ouverte, il sort en 0 sans rien faire (un refresh token ne se présente qu'à un processus à la
 // fois, ADR 0023).
 //
@@ -55,9 +56,14 @@ const (
 	StateError State = "error"
 )
 
-// ErrUnsupportedPath : un chemin porte un caractère que la ligne de commande de la tâche ne sait pas
-// protéger (guillemet, %, &, ^, !, saut de ligne) ; la tâche n'est pas posée plutôt que mal quotée.
+// ErrUnsupportedPath : un chemin est vide, relatif, ou porte ce que la ligne de commande de la tâche ne sait pas
+// protéger (guillemet, retour à la ligne, barre oblique inverse finale) ; la tâche n'est pas posée plutôt que mal
+// quotée.
 var ErrUnsupportedPath = errors.New("schedtask: chemin non pris en charge par la ligne de commande de la tâche")
+
+// ErrShellUnknown : le chemin de la coquille est inconnu (serveur desktop lancé sans elle, en développement) ; la
+// tâche ne saurait rien lancer, elle n'est pas posée.
+var ErrShellUnknown = errors.New("schedtask: coquille inconnue, aucune tâche à poser")
 
 // Runner exécute schtasks avec args et rend sa sortie ; une sortie non nulle est une erreur.
 type Runner interface {
@@ -66,11 +72,12 @@ type Runner interface {
 
 // Spec : ce que la tâche lance.
 type Spec struct {
-	// ExePath : le serveur (levelup-server.exe), chemin absolu.
-	ExePath string
-	// DataRoot, ResourcesRoot, LogsRoot : les trois racines, posées dans l'environnement de la tâche
-	// (LEVELUP_DATA_DIR, LEVELUP_RESOURCES_DIR, LEVELUP_LOGS_DIR) : le serveur de la tâche lit les mêmes
-	// données que l'application.
+	// ShellExe : la coquille (LevelUp.exe) qui a lancé ce serveur, chemin absolu ; la tâche lance elle et non le
+	// serveur. Vide : [ErrShellUnknown].
+	ShellExe string
+	// DataRoot, ResourcesRoot, LogsRoot : les trois racines, passées en arguments à la coquille, qui les pose
+	// dans l'environnement du serveur (LEVELUP_DATA_DIR, LEVELUP_RESOURCES_DIR, LEVELUP_LOGS_DIR) : le serveur de la
+	// tâche lit les mêmes données que l'application.
 	DataRoot      string
 	ResourcesRoot string
 	LogsRoot      string

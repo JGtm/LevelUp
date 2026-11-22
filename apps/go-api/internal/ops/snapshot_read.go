@@ -79,7 +79,7 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // Les tables d'un titre seulement (sharedSnapshotTitleOwnedRaw) n'en font pas partie.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // match_csrs, match_objective_stats, match_kill_events + résumés S0-S2 (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // match_csrs, match_objective_stats, match_kill_events, résumés S0-S2, résumé d'usage (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }
@@ -103,7 +103,7 @@ var vuesDesTablesDuTitre = map[string]string{
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
 // (v_gamertag_lookup, v_match_full, match_kill_events_latest, match_csrs_latest,
-// match_objective_stats_latest, mv_player_matches, et les vues des tables de
+// match_objective_stats_latest, mv_player_matches, v_medals_earned avec les vues du résumé d'usage, et les vues des tables de
 // sharedSnapshotTitleOwnedRaw que le titre porte : v_weapon_kills, match_bomb_stats_latest) → un SharedReader peut servir TOUTES les lectures shared de l'app depuis
 // le snapshot, hors fenêtre RW. Retourne ErrNoSnapshot (aucune version) ou
 // ErrSnapshotIncomplete (table requise absente) → le caller dégrade vers live (jamais de
@@ -194,6 +194,20 @@ func reconstruireSchemaShared(ctx context.Context, db *sql.DB, sharedFile func(s
 	// ces lectures vides. La même fonction pose les vues des résumés par match (S0-S2, ADR 0039).
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		return fmt.Errorf("snapshot read shared: match_kill_events_latest: %w", err)
+	}
+	return poserVueDesMedailles(db)
+}
+
+// poserVueDesMedailles pose `v_medals_earned` aux noms live : les vues `_latest` du résumé d'usage
+// d'abord (la vue des médailles se définit dessus), puis la vue de fusion, par les fonctions
+// canoniques de la migration. Sans elle, la vue du match servie du snapshot échouerait en Catalog
+// Error, et avec une vue posée sans le résumé d'usage elle servirait les Vengeur hérités.
+func poserVueDesMedailles(db *sql.DB) error {
+	if err := migration.ApplyMatchUsageLatestViews(db); err != nil {
+		return fmt.Errorf("snapshot read shared: vues du résumé d'usage: %w", err)
+	}
+	if err := migration.ApplyMedalsEarnedView(db); err != nil {
+		return fmt.Errorf("snapshot read shared: v_medals_earned: %w", err)
 	}
 	return nil
 }

@@ -134,7 +134,6 @@ SELECT
         THEN TRUE
         ELSE FALSE
     END AS is_ranked,
-    r.playable_duration_seconds,
     r.map_id,
     r.game_variant_name,
     r.playlist_id,
@@ -146,9 +145,9 @@ SELECT
     COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
     r.game_variant_id,
-    -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
-    -- NULL si real_start_time absent → fallback runtime T0=0.
-    ` + T0MsSQL("r") + ` AS t0_ms,
+    -- Coup d'envoi du match (ms depuis son début canonique), NULL = inconnu : la lecture
+    -- passe par timeline.ForMatch, jamais par un remplacement local.
+    ` + sqlfrag.SQLT0Ms("r") + ` AS t0_ms,
     r.map_version_id
 FROM match_registry r
 WHERE r.match_id = ?`
@@ -161,7 +160,7 @@ const Q14MatchMedals = `
 SELECT
     me.medal_name_id,
     me.count
-FROM medals_earned me
+FROM v_medals_earned me
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 

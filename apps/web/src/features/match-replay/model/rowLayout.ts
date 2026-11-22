@@ -9,14 +9,16 @@
  *    de 7 à `PLACES_PAR_CAMP_MAX_GRANDE_EQUIPE` places par camp.
  * `dispositionEquipes` choisit entre les deux et la colonne ; sinon le cadre garde la colonne.
  *
- * Les cotes viennent toutes de `COTES_RANGEE` et `COTES_RANGEE_GRANDE_EQUIPE` (cardGabarit.ts) : aucun littéral
- * de largeur ici. `NB_CAMPS_RANGEE` compte aussi les côtés (une marge par côté, un camp par côté).
+ * Les cotes viennent toutes de `COTES_RANGEE` et `COTES_RANGEE_GRANDE_EQUIPE` (cardGabarit.ts) et de la marge de corps
+ * de chaque cadre (`cotesCorps.ts`) : aucun littéral de largeur ici. `NB_CAMPS_RANGEE` compte aussi les côtés (une marge
+ * par côté, un camp par côté).
  *
  * Pas de React, pas de DOM : géométrie pure, testée dans `rowLayout.test.ts`.
  */
 import type { EmplacementScore } from './cotesBandeauScore'
 import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE } from './cardGabarit'
-import { LARGEUR_REQUISE_ENTETE_SCORE_PX } from './cotesEnteteScore'
+import { margeCorpsDe } from './cotesCorps'
+import { largeurRequiseEnteteScore } from './cotesEnteteScore'
 import { canPlaceCardRow, type ReplayFrame } from './replayFrame'
 
 /** Le nombre de camps d'une rangée ; il compte aussi ses deux côtés (marges, camps). */
@@ -35,8 +37,9 @@ export function grandeEquipe(placesParCamp: readonly number[]): boolean {
   return placesParCamp.length === NB_CAMPS_RANGEE && Math.max(...placesParCamp) > PLACES_PAR_CAMP_MAX_RANGEE
 }
 
-/** Ce que la règle lit d'un match : ses camps, les places de chaque camp, la largeur du corps. */
+/** Ce que la règle lit d'un match : le cadre (sa marge de corps), ses camps, les places de chaque camp, la largeur du corps. */
 export interface RowFitInput {
+  frame: ReplayFrame
   camps: number
   placesParCamp: readonly number[]
   largeurCorps: number
@@ -44,12 +47,12 @@ export interface RowFitInput {
 
 /**
  * largeurRequiseRangee rend la largeur minimale du corps pour `places` fiches par camp : deux camps
- * de fiches, un écart par fiche, le score entre les deux, et une marge de chaque côté.
+ * de fiches, un écart par fiche, le score entre les deux, et la marge latérale du corps du cadre de chaque côté.
  */
-export function largeurRequiseRangee(places: number): number {
-  const { ficheMinW, ecartFiches, scoreCellW, margeCorps } = COTES_RANGEE
+export function largeurRequiseRangee(places: number, frame: ReplayFrame): number {
+  const { ficheMinW, ecartFiches, scoreCellW } = COTES_RANGEE
   const fiches = NB_CAMPS_RANGEE * places * (ficheMinW + ecartFiches)
-  return fiches + scoreCellW + NB_CAMPS_RANGEE * margeCorps
+  return fiches + scoreCellW + NB_CAMPS_RANGEE * margeCorpsDe(frame)
 }
 
 /**
@@ -57,12 +60,12 @@ export function largeurRequiseRangee(places: number): number {
  * entrées, chaque camp au plus `PLACES_PAR_CAMP_MAX_RANGEE` places (la rangée est symétrique : on
  * compte le plus grand), et une largeur de corps égale ou supérieure à `largeurRequiseRangee`.
  */
-export function rowFits({ camps, placesParCamp, largeurCorps }: RowFitInput): boolean {
+export function rowFits({ frame, camps, placesParCamp, largeurCorps }: RowFitInput): boolean {
   if (camps !== NB_CAMPS_RANGEE) return false
   if (placesParCamp.length !== NB_CAMPS_RANGEE) return false
   const plusGrand = Math.max(...placesParCamp)
   if (plusGrand > PLACES_PAR_CAMP_MAX_RANGEE) return false
-  return largeurCorps >= largeurRequiseRangee(plusGrand)
+  return largeurCorps >= largeurRequiseRangee(plusGrand, frame)
 }
 
 /** Le nombre de places par camp au-delà duquel la rangée de Grande équipe ne se rend pas : emplacements fois fiches. */
@@ -74,10 +77,10 @@ export const PLACES_PAR_CAMP_MAX_GRANDE_EQUIPE =
  * même assemblage que `largeurRequiseRangee` (un écart par colonne de fiches, le score entre les deux camps,
  * une marge de chaque côté), avec `emplacementsParCamp` colonnes de la largeur minimale d'une fiche compacte.
  */
-export function largeurRequiseRangeeGrandeEquipe(): number {
-  const { ecartFiches, scoreCellW, margeCorps } = COTES_RANGEE
+export function largeurRequiseRangeeGrandeEquipe(frame: ReplayFrame): number {
+  const { ecartFiches, scoreCellW } = COTES_RANGEE
   const { emplacementsParCamp, ficheMinW } = COTES_RANGEE_GRANDE_EQUIPE
-  return NB_CAMPS_RANGEE * emplacementsParCamp * (ficheMinW + ecartFiches) + scoreCellW + NB_CAMPS_RANGEE * margeCorps
+  return NB_CAMPS_RANGEE * emplacementsParCamp * (ficheMinW + ecartFiches) + scoreCellW + NB_CAMPS_RANGEE * margeCorpsDe(frame)
 }
 
 /**
@@ -86,11 +89,11 @@ export function largeurRequiseRangeeGrandeEquipe(): number {
  * de corps égale ou supérieure à `largeurRequiseRangeeGrandeEquipe`. La largeur demandée est celle du pire cas
  * (tous les emplacements d'un camp pleins), quel que soit l'effectif réel.
  */
-export function rowFitsGrandeEquipe({ camps, placesParCamp, largeurCorps }: RowFitInput): boolean {
+export function rowFitsGrandeEquipe({ frame, camps, placesParCamp, largeurCorps }: RowFitInput): boolean {
   if (camps !== NB_CAMPS_RANGEE) return false
   if (!grandeEquipe(placesParCamp)) return false
   if (Math.max(...placesParCamp) > PLACES_PAR_CAMP_MAX_GRANDE_EQUIPE) return false
-  return largeurCorps >= largeurRequiseRangeeGrandeEquipe()
+  return largeurCorps >= largeurRequiseRangeeGrandeEquipe(frame)
 }
 
 /**
@@ -101,6 +104,14 @@ export function colonnesGrandeEquipe(placesParCamp: readonly number[]): number {
   const plusGrand = placesParCamp.length === 0 ? 0 : Math.max(...placesParCamp)
   return Math.max(1, Math.ceil(plusGrand / COTES_RANGEE_GRANDE_EQUIPE.fichesParEmplacement))
 }
+
+/**
+ * La marge, en px, entre les deux sens d'une bascule de mise en page : on ENTRE dans une disposition à la
+ * largeur qu'elle demande, on n'en SORT que sous cette largeur moins la marge. Sans elle, une largeur qui
+ * oscille d'un pixel autour du seuil (l'apparition de la barre de défilement vaut 15 à 17 px) fait clignoter
+ * la mise en page à chaque mesure.
+ */
+export const MARGE_BASCULE_PX = 24
 
 /** Comment les équipes se rangent : la rangée ordinaire, la rangée de Grande équipe, ou la colonne. */
 export type DispositionEquipes = 'rangee' | 'rangee-grande-equipe' | 'colonne'
@@ -117,19 +128,40 @@ export function dispositionEquipes(entree: RowFitInput): DispositionEquipes {
 }
 
 /**
+ * dispositionAvecMemoire est `dispositionEquipes` avec la disposition PRÉCÉDENTE en mémoire : une rangée posée
+ * (ordinaire ou de Grande équipe) reste posée tant que le corps ne descend pas sous la largeur qu'elle demande
+ * moins `MARGE_BASCULE_PX` ; on n'y entre qu'à la largeur demandée. Pure : à entrée égale et même précédente,
+ * même réponse. Sans précédente (`null`), après une colonne, ou si le match a changé de forme (la rangée
+ * précédente n'est plus celle que la marge retiendrait), c'est le choix sans mémoire.
+ */
+export function dispositionAvecMemoire(entree: RowFitInput, precedente: DispositionEquipes | null): DispositionEquipes {
+  const sansMemoire = dispositionEquipes(entree)
+  if (precedente === null || precedente === 'colonne' || entree.largeurCorps <= 0) return sansMemoire
+  const avecMarge = dispositionEquipes({ ...entree, largeurCorps: entree.largeurCorps + MARGE_BASCULE_PX })
+  return avecMarge === precedente ? precedente : sansMemoire
+}
+
+/**
  * emplacementScoreDe dit où le bandeau de score est posé, UNE SEULE RÈGLE DE LARGEUR POUR LES TROIS CADRES. Au
  * Cinéma et au Plein cadre, il est au centre de la rangée quand elle est posée. Sinon (équipes dans la colonne,
  * et toujours au Standard) il est dans l'EN-TÊTE (cellule de 440 px), sauf si le corps est trop étroit pour la
- * loger (`LARGEUR_REQUISE_ENTETE_SCORE_PX`) : il coiffe alors la toile. Une largeur nulle est une largeur pas
+ * loger (`largeurRequiseEnteteScore`) : il coiffe alors la toile. Une largeur nulle est une largeur pas
  * encore mesurée : l'en-tête est présumé assez large.
+ *
+ * `precedent` est l'emplacement d'avant (`null` = aucun) : un score déjà dans l'en-tête n'en sort que sous
+ * `largeurRequiseEnteteScore` moins `MARGE_BASCULE_PX` ; un score sur la toile n'y remonte qu'à la
+ * largeur demandée. Sans précédent, ou depuis la rangée, la règle est celle du seuil nu.
  */
 export function emplacementScoreDe(
   frame: ReplayFrame,
   disposition: DispositionEquipes,
   largeurCorps: number,
+  precedent: EmplacementScore | null = null,
 ): EmplacementScore {
   if (canPlaceCardRow(frame) && disposition !== 'colonne') return 'rangee'
-  return largeurCorps > 0 && largeurCorps < LARGEUR_REQUISE_ENTETE_SCORE_PX ? 'scene' : 'entete'
+  const requise = largeurRequiseEnteteScore(frame)
+  const seuil = precedent === 'entete' ? requise - MARGE_BASCULE_PX : requise
+  return largeurCorps > 0 && largeurCorps < seuil ? 'scene' : 'entete'
 }
 
 /**

@@ -61,7 +61,7 @@ func TestMatchViewService_T0_EventsHonorRealMatchStart(t *testing.T) {
 		countdownMS = int64(10_000) // film → corrigé -20 000 (pré-T0, à exclure)
 	)
 	now := time.Now()
-	playable := int64(120) // 120 s → 5 buckets de 30 s (phase_00..phase_04)
+	dur := 150.0 // 150 s moins le coup d'envoi de 30 s : 120 s de jeu → 5 buckets de 30 s (phase_00..phase_04)
 	t0, kx := t0Ms, killerXUID
 	gp, cd := gameplayMS, countdownMS
 
@@ -69,12 +69,12 @@ func TestMatchViewService_T0_EventsHonorRealMatchStart(t *testing.T) {
 		mapN, pairN := aquariusMap, slayerMode
 		return &mockMatchViewRepo{
 			meta: &domain.MatchMetaRaw{
-				MatchID:                 matchID,
-				StartTime:               &now,
-				MapName:                 &mapN,
-				PairName:                &pairN,
-				PlayableDurationSeconds: &playable,
-				T0Ms:                    &t0,
+				MatchID:         matchID,
+				StartTime:       &now,
+				MapName:         &mapN,
+				PairName:        &pairN,
+				DurationSeconds: &dur,
+				T0Ms:            &t0,
 			},
 			board: []domain.ScoreboardRaw{
 				{XUID: killerXUID, Gamertag: "Killer", Kills: 2},

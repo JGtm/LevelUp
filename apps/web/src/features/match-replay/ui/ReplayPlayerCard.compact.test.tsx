@@ -157,12 +157,19 @@ function documentBTB(parCamp: 12 | 7) {
     ],
     // Le canal des charges a parlé pour Alpha (2 restantes à l'image 30) ; Delta n'a rien reçu.
     abilityCharges: [{ t: 30, slot: 512, family: 'grapple', charges: 2 }],
+    // Le score de l'infobulle est celui de la fiche : la somme des points par action, gardée par la feuille.
+    coverage: { scoreActions: { complete: true } } as never,
+    scoreActions: [
+      { t: 5, xuid: 'Alpha', name: 'killPersonalScore', points: 120 },
+      { t: 40, xuid: 'Alpha', name: 'killPersonalScore', points: 230 },
+    ],
     scoreTimeline: {
       teams: null,
       players: [
         {
           xuid: 'Alpha',
-          score: { rounds: null, total: [{ t: 5, v: 120 }, { t: 40, v: 350 }] },
+          // Le calque date le dernier point une image après l'action : l'infobulle ne le lit pas.
+          score: { rounds: null, total: [{ t: 5, v: 120 }, { t: 41, v: 350 }] },
           kills: { rounds: null, total: [{ t: 5, v: 1 }, { t: 40, v: 3 }] },
           deaths: { rounds: null, total: [{ t: 20, v: 2 }] },
           assists: { rounds: null, total: [{ t: 40, v: 4 }] },
@@ -181,7 +188,7 @@ function tableauBTB(parCamp: 12 | 7) {
   const lignes = [
     ...CAMP_A.slice(0, parCamp).map((nom) =>
       // Hotel : une assistance NON LUE dans la base — le triplet dit « ? ».
-      scoreboardRow(nom, nom, 't0', nom === 'Hotel' ? { assists: undefined } : {}),
+      scoreboardRow(nom, nom, 't0', nom === 'Hotel' ? { assists: undefined } : nom === 'Alpha' ? { score: 350 } : {}),
     ),
     ...CAMP_B.slice(0, parCamp).map((nom) =>
       // Mike : déficitaire (0 / 3 / 0) — le palier `destructive` du fond FDA.
@@ -497,6 +504,13 @@ describe('ReplayPlayerCard — la tuile compacte : reports (ce qui quitte la tui
     expect([...vue.container.querySelectorAll('[style*="min-width: 30px"]')]).toHaveLength(0)
     // Non publié : le triplet des totaux, sans score — la base ne le porte pas à cet endroit.
     expect(within(tuile(vue, 'Hotel')).getByTitle('Frags / morts / assistances du match').title).not.toContain('Score')
+  })
+
+  it('garde du score refusée (somme des points différente de la feuille) : aucune ligne de score dans l’infobulle, ni zéro ni tiret', () => {
+    const feuille = tableauBTB(12).map((r) => (r.xuid === 'Alpha' ? { ...r, score: 999 } : r))
+    const vue = render(<ReplayRowFromBoard allegiance={NO_ALLEGIANCE} doc={documentBTB(12)} scoreboard={feuille} frame={FRAME} locale="fr" />)
+    const alpha = within(tuile(vue, 'Alpha')).getByTitle(/FDA 2,33/)
+    expect(alpha.title).toBe("Frags / morts / assistances à l'instant lu — FDA 2,33")
   })
 
   it('marques de D5 dans les `title`, avec leurs âges : « Mort » (deux âges), « dégainée ? », charges « ×N » et « plein » — jamais en texte', () => {

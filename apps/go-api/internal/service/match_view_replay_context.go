@@ -145,7 +145,7 @@ func (s *MatchViewService) buildReplayContextFromData(
 
 	// Rencontres, némésis et extras des amis ne sont pas des entrées des LIGNES : seules
 	// celles-ci sont gardées de l'onglet.
-	team := buildTeamTabFull(d.scoreboard, nil, nil, nil, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, nil, d.sharedCSRs, s.assetURL, outcomes)
+	team := buildTeamTabFull(d.scoreboard, nil, nil, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, nil, d.sharedCSRs, s.assetURL, outcomes)
 	s.applyTeamNames(ctx, team.Scoreboard)
 
 	return domain.MatchReplayContext{
