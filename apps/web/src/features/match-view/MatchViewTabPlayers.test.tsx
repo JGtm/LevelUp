@@ -47,7 +47,6 @@ function afficher(assistPairs: MatchAssistPairs | undefined, locale: 'fr' | 'en'
       rank={{} as MatchViewRank}
       scoreboard={[]}
       roster={[]}
-      nemesis={[]}
       killerVictim={[]}
       assistPairs={assistPairs}
       highlightEvents={[]}

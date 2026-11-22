@@ -164,7 +164,6 @@ export function MatchViewPage() {
   // initialisés (`var x []T` non assigné → JSON null). On normalise une fois.
   const scoreboard = team_tab.scoreboard ?? []
   const roster = team_tab.roster ?? []
-  const nemesis = team_tab.nemesis ?? []
   const highlightEvents = combat_tab.highlight_events ?? []
   const killerVictim = combat_tab.killer_victim ?? []
   // assist_pairs n'est PAS normalisé en objet vide : son absence est un ÉTAT
@@ -342,7 +341,6 @@ export function MatchViewPage() {
             rank={rank}
             scoreboard={scoreboard}
             roster={roster}
-            nemesis={nemesis}
             killerVictim={killerVictim}
             assistPairs={assistPairs}
             highlightEvents={highlightEvents}
