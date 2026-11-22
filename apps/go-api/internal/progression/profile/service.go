@@ -123,12 +123,7 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 
 	// ── Section A2 : style + engagement (nécessite HasEnoughData)
 	if profile.HasEnoughData {
-		if err := s.computeStyleSignature(ctx, profile, userID, now.AddDate(0, 0, -lowessWindowDays), now); err != nil {
-			slog.WarnContext(ctx, "profile: style signature partial", "err", err)
-		}
-		if err := s.computeEngagement(ctx, profile, userID, now.AddDate(0, 0, -lowessWindowDays), now); err != nil {
-			slog.WarnContext(ctx, "profile: engagement partial", "err", err)
-		}
+		s.fillSectionA2(ctx, profile, userID, now.AddDate(0, 0, -lowessWindowDays), now)
 	}
 
 	// ── Section C : leviers + suggestions (nécessite Section B remplie)
@@ -143,6 +138,17 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 	}
 
 	return profile, nil
+}
+
+// fillSectionA2 calcule la signature de style puis l'engagement de la fenêtre. Best-effort : chaque échec se journalise
+// et laisse sa section à zéro sans empêcher l'autre.
+func (s *Service) fillSectionA2(ctx context.Context, profile *domain.PlayerProfile, userID string, since, until time.Time) {
+	if err := s.computeStyleSignature(ctx, profile, userID, since, until); err != nil {
+		slog.WarnContext(ctx, "profile: style signature partial", "err", err)
+	}
+	if err := s.computeEngagement(ctx, profile, userID, since, until); err != nil {
+		slog.WarnContext(ctx, "profile: engagement partial", "err", err)
+	}
 }
 
 // fillSectionB charge LUSR + tier + tendance + SkillRatingSnapshot.
@@ -204,6 +210,13 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *domain.Player
 		})
 	}
 
+	fillAxisInsights(profile)
+	return nil
+}
+
+// fillAxisInsights dérive de profile.RadarAxes les points forts, les axes à améliorer et les rôles dominant et
+// secondaire. Sans axe, Strengths est vide et les rôles restent inchangés.
+func fillAxisInsights(profile *domain.PlayerProfile) {
 	// Strengths : 3 axes avec Value le plus haut. ImprovementAreas : 3 plus bas.
 	sortedAxes := append([]domain.ParticipationAxisValue(nil), profile.RadarAxes...)
 	sort.SliceStable(sortedAxes, func(i, j int) bool { return sortedAxes[i].Value > sortedAxes[j].Value })
@@ -239,7 +252,6 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *domain.Player
 			profile.SecondaryRole = roleFromAxis(sortedAxes[1].Axis)
 		}
 	}
-	return nil
 }
 
 // computeStyleSignature calcule FK / FD (premiers frags et premières morts du match, cf. computeFKFD).
