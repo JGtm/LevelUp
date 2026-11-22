@@ -18,7 +18,10 @@
  * chaque camp reste collé en haut pendant que ses lignes passent.
  *
  * LES ACTIONS DES LIGNES ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque ligne de joueur présent.
- * « Tout afficher » est le premier bloc de la colonne, visible seulement quand au moins un joueur est masqué.
+ * « Tout afficher » (D-7), visible seulement quand au moins un joueur est masqué, est posé HORS DU FLUX, sur la droite de
+ * l'en-tête du premier camp (ou à gauche, sur la cellule vide de l'en-tête de colonnes, quand il n'y a pas d'en-tête de
+ * camp) : son apparition ou sa disparition ne déplace aucune ligne, le pointeur ne se retrouve jamais sur le bouton
+ * d'une autre ligne.
  * Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
  *
  * LE JOUEUR SUIVI ARRIVE PAR PROP (`tracked`, `playerPanel.tracked`) : la colonne ne le recalcule pas.
@@ -75,6 +78,23 @@ function TeamHead({ label, ally }: { label: string; ally: Allegiance }) {
       />
       <span className="min-w-0 truncate">{label}</span>
     </h3>
+  )
+}
+
+/**
+ * La place de « Tout afficher » : un bloc collant de hauteur NULLE, posé avant l'en-tête du premier camp, dont le bouton
+ * est en position absolue — il ne prend aucune place dans le flux. À droite de l'en-tête de camp (20 px, bouton de 18) ;
+ * sans en-tête de camp, à gauche, sur la cellule vide de l'en-tête de colonnes.
+ */
+function ShowAllSlot({ locale, onShowAll, onHead }: { locale: ReplayLocale; onShowAll: () => void; onHead: boolean }) {
+  return (
+    <div data-replay-show-all-slot="" className="sticky top-0 z-20 h-0">
+      <ReplayShowAllButton
+        locale={locale}
+        onShowAll={onShowAll}
+        className={`absolute top-px ${onHead ? 'right-0' : 'left-0'}`}
+      />
+    </div>
   )
 }
 
@@ -180,16 +200,14 @@ export function ReplayRosterColumn({
       className={`flex flex-col${compact ? ' shrink-0' : ' min-h-0 overflow-y-auto overflow-x-hidden'}`}
       style={{ gap: G.teamsGapPx }}
     >
-      {showAllVisible(tileActions) && (
-        <div className="flex shrink-0 justify-end">
-          <ReplayShowAllButton locale={locale} onShowAll={tileActions.onShowAll} />
-        </div>
-      )}
       {groups.map((group, gi) => {
         const ally = allegiance.ofTeam(group.team)
         const places = seatsOf(group, { doc, frame, locale, scene, tracked, onCard, selectedXuid, tileActions, compact, ally })
         return (
           <section key={`camp:${group.team}`} aria-label={labels[gi]} className="flex shrink-0 flex-col">
+            {gi === 0 && showAllVisible(tileActions) && (
+              <ShowAllSlot locale={locale} onShowAll={tileActions.onShowAll} onHead={group.team >= 0} />
+            )}
             {group.team >= 0 && <TeamHead label={labels[gi]} ally={ally} />}
             {compact ? (
               <div
