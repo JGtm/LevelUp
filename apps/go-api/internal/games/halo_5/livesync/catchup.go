@@ -65,15 +65,14 @@ func catchUpBudget(opts domain.SyncOptions) int {
 
 // catchUpPass porte l'état d'une passe de rattrapage.
 type catchUpPass struct {
-	r         *Runner
-	store     HistoryStore
-	src       halo5.CaptureSource
-	resolve   func(string) string
-	known     map[string]bool
-	res       *domain.SyncResult
-	stats     halo5.CaptureStats   // cumul du delta du dessus et de la reprise
-	saved     *historystate.Cursor // dernier marque-page rangé pendant la passe
-	exhausted bool                 // fin de la liste vue
+	r       *Runner
+	store   HistoryStore
+	src     halo5.CaptureSource
+	resolve func(string) string
+	known   map[string]bool
+	res     *domain.SyncResult
+	stats   halo5.CaptureStats   // cumul du delta du dessus et de la reprise
+	saved   *historystate.Cursor // dernier marque-page rangé pendant la passe
 }
 
 // runCatchUp exécute une passe de rattrapage et range ses compteurs dans res. known est l'ensemble
@@ -84,7 +83,6 @@ func (r *Runner) runCatchUp(ctx context.Context, src halo5.CaptureSource, resolv
 	p := &catchUpPass{r: r, store: r.deps.History, src: src, resolve: resolveXUID, known: known, res: res}
 	marked := p.run(ctx, budget)
 	tallySkipped(res, p.stats.MatchesSeen)
-	res.HistoryExhausted = p.exhausted
 	return p.stats, marked
 }
 
@@ -115,7 +113,6 @@ func (p *catchUpPass) run(ctx context.Context, budget int) bool {
 		Resume:      resume,
 	}, 0, p.r.logger)
 	addCapture(&p.stats, bs.Capture)
-	p.exhausted = p.exhausted || bs.HistoryEnd
 	return p.finish(ctx, subject, bs, err, topClean)
 }
 
@@ -214,7 +211,7 @@ func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, bud
 		top.stop = true // la liste est illisible : sans N, pas de reprise
 	case stats.HistoryEnd && !stats.StoppedOnKnown:
 		// Tout l'historique tenait dans le delta : la fin est vue.
-		p.exhausted, top.stop = true, true
+		top.stop = true
 		top.marked = top.clean && p.store.MarkComplete(ctx)
 	case !stats.StoppedOnKnown:
 		top.stop = true // budget atteint avant le premier match connu : la suite au prochain passage

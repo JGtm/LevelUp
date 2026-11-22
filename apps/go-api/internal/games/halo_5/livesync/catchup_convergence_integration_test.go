@@ -145,9 +145,6 @@ func TestConvergence_Halo5_RunDelta_RattrapeParBudgetMarquePageFinPuisDelta(t *t
 		}
 		if complete {
 			endCycle = cycle
-			if !res.HistoryExhausted {
-				t.Errorf("cycle %d : fin rangée sans fin vue", cycle)
-			}
 			if _, ok := c.h.LoadCursor(ctx); ok {
 				t.Errorf("cycle %d : le marque-page doit être effacé quand la fin est rangée", cycle)
 			}

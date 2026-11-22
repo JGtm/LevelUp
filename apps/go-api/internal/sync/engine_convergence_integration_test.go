@@ -1,13 +1,15 @@
 //go:build integration
 
-// Package sync — engine_convergence_integration_test.go : convergence de bout en bout du moteur V1
-// (chemin du suivi en direct : SyncEngine.RunDelta avec le MaxMatches serré du watcher) sur un
-// faux historique de 1 000 matchs et de vraies bases DuckDB temporaires (base partagée sous le
-// fournisseur B-swap, base joueur migrée).
+// Package sync — engine_convergence_integration_test.go : le moteur V1 (chemin du suivi en direct, de
+// la synchronisation manuelle et de la synchronisation initiale : SyncEngine.RunDelta) est un delta
+// pur sur un faux historique de 1 000 matchs et de vraies bases DuckDB temporaires (base partagée sous
+// le fournisseur B-swap, base joueur migrée).
 //
-// Contrat vérifié, le même que pour V2 et Halo 5 : un joueur dont l'historique n'est pas complet
-// rattrape par petits pas (jamais plus que le plafond par passe, nouveaux matchs du dessus pris),
-// finit par ranger la fin d'historique, puis redevient un delta (une page, aucun rattrapage).
+// Contrat vérifié (D-18 du plan 8.2.2) : le moteur V1 ne rattrape pas l'historique. Il ne lit ni
+// n'écrit les clés de l'état de l'historique (historystate), s'arrête au premier match connu, ne
+// remplit pas HistoryPending, et sans match connu (première synchronisation) récupère jusqu'au
+// plafond demandé. Le rattrapage est fait par le cycle de l'ordonnanceur : sa convergence est
+// testée côté V2 (cmd/server) et Halo 5 (livesync).
 package sync
 
 import (
@@ -16,6 +18,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/sync/historystate"
 )
 
 const (
@@ -128,115 +131,161 @@ func convergenceV1Opts() domain.SyncOptions {
 	}
 }
 
-// Un historique de 1 000 matchs, un plafond de 25 par passe (suivi en direct), des matchs neufs qui
-// arrivent en haut de la liste entre deux passes : le moteur V1 rattrape par petits pas, prend les
-// nouveaux du dessus, range la fin d'historique, puis redevient un delta d'une page.
-func TestConvergence_V1_SuiviEnDirect_RattrapeParPetitsPasRangeLaFinPuisDelta(t *testing.T) {
+// historyStateKeys rend les clés de l'état de l'historique rangées dans la base joueur du moteur
+// (clé de fin, marque-page, compte d'échecs : toute ligne `history%` de sync_meta) et dit si la fin
+// est vue selon historystate.Complete.
+func historyStateKeys(t *testing.T, env *e2eTestEnv) (keys []string, complete bool) {
+	t.Helper()
+	handle, err := OpenPlayerDB(env.playerPath)
+	if err != nil {
+		t.Fatalf("OpenPlayerDB: %v", err)
+	}
+	defer handle.Close()
+	rows, err := handle.SQLDb().QueryContext(t.Context(), `SELECT key FROM sync_meta WHERE key LIKE 'history%' ORDER BY key`)
+	if err != nil {
+		t.Fatalf("lecture sync_meta: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			t.Fatalf("scan sync_meta: %v", err)
+		}
+		keys = append(keys, k)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("itération sync_meta: %v", err)
+	}
+	return keys, historystate.Complete(t.Context(), handle.SQLDb())
+}
+
+// requireHistoryUntouched échoue si le moteur a touché à l'état de l'historique du joueur.
+func requireHistoryUntouched(t *testing.T, env *e2eTestEnv, when string) {
+	t.Helper()
+	keys, complete := historyStateKeys(t, env)
+	if len(keys) != 0 || complete {
+		t.Fatalf("%s : le moteur V1 ne doit jamais toucher à l'état de l'historique (clés=%v, fin vue=%v)", when, keys, complete)
+	}
+}
+
+// Un historique incomplet dont un match échoue de façon durable (statut 500 à chaque lecture) : le
+// moteur V1 reste un delta. Il s'arrête au premier match connu (une seule page lue par passe), ne
+// rattrape pas le match en échec ni rien derrière lui, ne remplit pas HistoryPending et ne touche
+// jamais aux clés de l'état de l'historique. C'est le cycle de l'ordonnanceur qui rattrape (et
+// abandonne un match durable, D-16).
+func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxClesEtSArreteAuPremierConnu(t *testing.T) {
 	env, client, w := newConvergenceV1(t)
 	ctx := t.Context()
+	failing := w.ids[10]
+	client.failStats[failing] = fmt.Errorf("GetMatchStats(%s): HTTP 500", failing)
 
-	// Passe n° -> nombre de matchs neufs qui apparaissent en haut AVANT cette passe.
-	arrivals := map[int]int{3: 2, 12: 3, 30: 1}
-	var (
-		endPass       int
-		totalCalls    int
-		callsPerPass  []int64
-		insertedTotal int
-	)
-	for pass := 1; pass <= 60 && endPass == 0; pass++ {
+	// Première passe : un historique vide côté joueur, le delta prend ce que le plafond permet.
+	res, err := env.engine.RunDelta(ctx, convergenceV1Opts())
+	if err != nil {
+		t.Fatalf("passe 1 : %v", err)
+	}
+	if res.MatchesInserted == 0 {
+		t.Fatalf("passe 1 : aucun match inséré, résultat %+v", res)
+	}
+	if registryHas(t, env, failing) {
+		t.Fatal("le match en échec ne peut pas être au registre : le scénario est faux")
+	}
+	requireHistoryUntouched(t, env, "après la passe 1")
+	known := registryCount(t, env)
+	if known >= convergenceV1Total {
+		t.Fatalf("le scénario suppose un historique resté incomplet, registre à %d", known)
+	}
+
+	// Passes suivantes, avec des matchs neufs en haut de la liste : une page lue, aucun rattrapage.
+	for pass := 2; pass <= 6; pass++ {
 		var fresh []string
-		if n := arrivals[pass]; n > 0 {
-			fresh = w.addOnTop(client, n)
+		if pass%2 == 0 {
+			fresh = w.addOnTop(client, 2)
 		}
-		before := registryCount(t, env)
-		missing := len(w.ids) - before
 		callsBefore := client.callsGetHistory.Load()
+		registryBefore := registryCount(t, env)
 
 		res, err := env.engine.RunDelta(ctx, convergenceV1Opts())
 		if err != nil {
-			t.Fatalf("passe %d : RunDelta: %v", pass, err)
+			t.Fatalf("passe %d : %v", pass, err)
 		}
-		calls := client.callsGetHistory.Load() - callsBefore
-		callsPerPass = append(callsPerPass, calls)
-		totalCalls += int(calls)
-		insertedTotal += res.MatchesInserted
-
-		// Plafond par passe respecté, et rien de moins que ce qui reste à prendre (petits pas pleins).
-		want := min(convergenceV1Budget, missing)
-		if res.MatchesInserted != want {
-			t.Fatalf("passe %d : %d matchs insérés, attendu %d (reste %d)", pass, res.MatchesInserted, want, missing)
+		if calls := client.callsGetHistory.Load() - callsBefore; calls != 1 {
+			t.Errorf("passe %d : %d lectures de pages d'historique, attendu 1 (arrêt au premier connu)", pass, calls)
 		}
-		if got := registryCount(t, env); got != before+want {
-			t.Fatalf("passe %d : registre à %d matchs, attendu %d", pass, got, before+want)
+		if res.MatchesInserted != len(fresh) {
+			t.Errorf("passe %d : %d matchs insérés, attendu %d (les matchs neufs du dessus, rien d'ancien)", pass, res.MatchesInserted, len(fresh))
 		}
-		// Les matchs neufs du dessus sont pris dès cette passe (ils précèdent les inconnus plus anciens).
+		if got := registryCount(t, env); got != registryBefore+len(fresh) {
+			t.Errorf("passe %d : registre à %d matchs, attendu %d", pass, got, registryBefore+len(fresh))
+		}
 		for _, id := range fresh {
 			if !registryHas(t, env, id) {
-				t.Fatalf("passe %d : le match neuf du dessus %s n'a pas été pris", pass, id)
+				t.Errorf("passe %d : le match neuf du dessus %s n'a pas été pris", pass, id)
 			}
 		}
-		// Bornes de lecture : le moteur V1 reparcourt la liste depuis le haut en sautant les connus
-		// (pas de marque-page) : au plus une page par 25 matchs connus, plus la page de travail et la page
-		// qui constate la fin.
-		if max := int64(before/convergenceV1Budget + 3); calls > max {
-			t.Fatalf("passe %d : %d lectures de pages d'historique, borne %d", pass, calls, max)
+		if registryHas(t, env, failing) {
+			t.Errorf("passe %d : le delta ne doit pas rattraper le match en échec, derrière un match connu", pass)
 		}
+		if res.HistoryPending {
+			t.Errorf("passe %d : le moteur V1 ne remplit pas HistoryPending", pass)
+		}
+		requireHistoryUntouched(t, env, fmt.Sprintf("après la passe %d", pass))
+	}
+}
 
-		ranged := historyKeyRanged(t, env)
-		if ranged == res.HistoryPending {
-			t.Fatalf("passe %d : clé de fin rangée=%v mais HistoryPending=%v (doivent être opposés)", pass, ranged, res.HistoryPending)
-		}
-		if ranged {
-			endPass = pass
-			if !res.HistoryExhausted {
-				t.Errorf("passe %d : la fin est rangée sans que la passe ait vu la page vide", pass)
+// Première synchronisation d'un joueur neuf (aucun match connu) : le delta récupère jusqu'au plafond
+// demandé, comme le faisait le mode full tant que rien n'est connu (synchronisation initiale :
+// plafond de 200 par défaut ou initial_max_matches du profil). Et l'état de l'historique reste intact.
+func TestConvergence_V1_PremiereSynchronisation_RecupereJusquAuPlafond(t *testing.T) {
+	for _, plafond := range []int{200, 50} {
+		t.Run(fmt.Sprintf("plafond_%d", plafond), func(t *testing.T) {
+			env, client, _ := newConvergenceV1(t)
+			opts := convergenceV1Opts()
+			opts.MaxMatches = plafond
+
+			res, err := env.engine.RunDelta(t.Context(), opts)
+			if err != nil {
+				t.Fatalf("RunDelta: %v", err)
 			}
-			continue
-		}
-		if !res.HistoryPending {
-			t.Fatalf("passe %d : fin non rangée mais la passe ne se déclare pas en attente", pass)
-		}
-		if got := registryCount(t, env); got >= len(w.ids) && pass > len(w.ids)/convergenceV1Budget+3 {
-			t.Fatalf("passe %d : tout est au registre mais la fin n'est toujours pas rangée", pass)
-		}
+			if res.MatchesInserted != plafond || len(res.Errors) != 0 {
+				t.Fatalf("%d matchs insérés (erreurs %v), attendu %d", res.MatchesInserted, res.Errors, plafond)
+			}
+			if got := registryCount(t, env); got != plafond {
+				t.Errorf("registre à %d matchs, attendu %d", got, plafond)
+			}
+			if calls, want := client.callsGetHistory.Load(), int64(plafond/convergenceV1Budget); calls != want {
+				t.Errorf("%d lectures de pages d'historique, attendu %d (une par page de 25)", calls, want)
+			}
+			if res.HistoryPending {
+				t.Error("le moteur V1 ne remplit pas HistoryPending")
+			}
+			requireHistoryUntouched(t, env, "après la première synchronisation")
+		})
 	}
-	if endPass == 0 {
-		t.Fatalf("la fin d'historique n'a pas été rangée en 60 passes (registre %d / %d)", registryCount(t, env), len(w.ids))
-	}
-	if got, want := registryCount(t, env), len(w.ids); got != want {
-		t.Fatalf("à la fin, registre à %d matchs, attendu %d", got, want)
-	}
-	t.Logf("V1 : %d passes jusqu'à la fin rangée, %d matchs insérés, %d lectures de pages au total ; par passe : %v",
-		endPass, insertedTotal, totalCalls, callsPerPass)
+}
 
-	// Cycle suivant : un delta, une seule page, aucun rattrapage, rien d'en attente.
-	callsBefore := client.callsGetHistory.Load()
-	res, err := env.engine.RunDelta(ctx, convergenceV1Opts())
-	if err != nil {
-		t.Fatalf("passe après la fin : %v", err)
+// Un historique que l'API épuise (page vide) : ni le delta ni RunFull ne rangent la fin d'historique,
+// seul le cycle de l'ordonnanceur le fait. Un RunFull garde son comportement de parcours complet.
+func TestConvergence_V1_FinDHistoriqueVue_NeRangeJamaisLaFin(t *testing.T) {
+	run := map[string]func(*SyncEngine, context.Context, domain.SyncOptions) (domain.SyncResult, error){
+		"RunDelta": (*SyncEngine).RunDelta,
+		"RunFull":  (*SyncEngine).RunFull,
 	}
-	if calls := client.callsGetHistory.Load() - callsBefore; calls != 1 {
-		t.Errorf("après la fin : %d lectures de pages, attendu 1 (delta)", calls)
-	}
-	if res.MatchesInserted != 0 || res.HistoryPending || res.HistoryExhausted {
-		t.Errorf("après la fin : inséré=%d pending=%v exhausted=%v, attendu 0 / faux / faux",
-			res.MatchesInserted, res.HistoryPending, res.HistoryExhausted)
-	}
+	for name, fn := range run {
+		t.Run(name, func(t *testing.T) {
+			env := newE2EEnv(t)
+			env.seedMockMatches("fin-vue-"+name, 3)
+			opts := convergenceV1Opts()
+			opts.MaxMatches = 50
 
-	// Un match neuf après la fin : pris par le delta, toujours une page.
-	fresh := w.addOnTop(client, 1)
-	callsBefore = client.callsGetHistory.Load()
-	res, err = env.engine.RunDelta(ctx, convergenceV1Opts())
-	if err != nil {
-		t.Fatalf("delta après la fin : %v", err)
-	}
-	if calls := client.callsGetHistory.Load() - callsBefore; calls != 1 {
-		t.Errorf("delta d'un match neuf : %d lectures de pages, attendu 1", calls)
-	}
-	if res.MatchesInserted != 1 || !registryHas(t, env, fresh[0]) {
-		t.Errorf("delta d'un match neuf : %d insérés, présent=%v", res.MatchesInserted, registryHas(t, env, fresh[0]))
-	}
-	if !historyKeyRanged(t, env) {
-		t.Error("la clé de fin d'historique ne doit pas disparaître après un delta")
+			res, err := fn(env.engine, t.Context(), opts)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if res.MatchesInserted != 3 || res.HistoryPending {
+				t.Fatalf("%s : inséré=%d pending=%v, attendu 3 / faux", name, res.MatchesInserted, res.HistoryPending)
+			}
+			requireHistoryUntouched(t, env, "après "+name)
+		})
 	}
 }
