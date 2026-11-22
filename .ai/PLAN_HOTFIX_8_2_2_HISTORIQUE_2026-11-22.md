@@ -148,14 +148,19 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 6 — aide, version, notes (Haiku)
 
-- [ ] 6.1 Aide FR/EN (`features/help/i18n/{fr,en}.ts`) : le texte qui annonce un bouton de
+- [x] 6.1 Aide FR/EN (`features/help/i18n/{fr,en}.ts`) : le texte qui annonce un bouton de
   synchronisation manuelle dans les réglages décrit le comportement réel (synchronisation automatique,
   historique rattrapé de 200 matchs par passe, toutes les 10 minutes tant qu'il n'est pas complet ;
   parties personnalisées non synchronisées). Toutes les langues de `config/locales.toml`.
-- [ ] 6.2 Version 8.2.2 : `apps/desktop/src-tauri/{Cargo.toml,Cargo.lock,tauri.conf.json}`,
-  `apps/web/package.json` et `package-lock.json` (mêmes fichiers que le commit de la 8.2.1).
-- [ ] 6.3 `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md`,
-  `docs/FR/RELEASE_NOTES.md` : section 8.2.2 (sans date : la date se pose au tag).
+  Constat : le bouton existe (`settings/SyncTab.tsx`, « Synchroniser tous les joueurs ») ; ce qui
+  était faux, c'était « une synchronisation complète peut être forcée depuis les Paramètres ». Réécrit
+  dans les deux langues (entrée « Sync » / « Synchronisation », puce manuelle en FR).
+- [x] 6.2 Version 8.2.2 : `apps/desktop/src-tauri/{Cargo.toml,Cargo.lock,tauri.conf.json}` (trois
+  lignes faites). `apps/web/package.json` et `package-lock.json` NON modifiés : leur version est
+  `0.0.0`, la 8.2.1 ne les a jamais touchés (`git show fee334a039` ne liste que les trois fichiers desktop).
+- [x] 6.3 `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md`,
+  `docs/FR/RELEASE_NOTES.md` : section 8.2.2 (sans date, « Unreleased » / « Non publié » comme
+  le fichier le fait ailleurs). Issue #213 citée dans les deux CHANGELOG (les sections précédentes en citent).
 - Gate : `cd apps/web && npx vitest run src/features/help --maxWorkers=2 && npx tsc --noEmit -p .`.
 
 ### Étape 7 — revue adversariale (Fable)

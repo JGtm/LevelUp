@@ -207,7 +207,7 @@ export const EN_TEXT = {
           {
             term: 'Sync',
             definition:
-              'Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. Delta mode (default) only fetches new matches not yet recorded. A full sync can be forced from Settings.',
+              'Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. Once a player\'s history is complete, only new matches are fetched. Until then, each automatic sync catches up to 200 older matches, one pass every 10 minutes, until the whole history is stored. Custom games are not synced.',
             example:
               'With 5 matches played since the last sync, delta sync fetches only those 5 matches, leaving the 500 already stored untouched.',
           },

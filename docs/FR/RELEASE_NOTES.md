@@ -1,5 +1,9 @@
 ## Dernières nouveautés
 
+**v8.2.2 — Les anciennes parties reviennent avec la synchronisation automatique**
+
+- **L'historique ancien est rattrapé** — la synchronisation automatique récupère aussi les parties plus anciennes, jusqu'à 200 par passe et une passe toutes les 10 minutes, jusqu'à ce que tout l'historique soit dans LevelUp. Ensuite, seules les nouvelles parties sont récupérées. Les parties personnalisées ne sont pas synchronisées.
+
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 
 - **Toutes les médailles nommées** — les 157 médailles du jeu sont lues dans le film avec leur vrai nom. Le rejeu ne les affiche pas encore
