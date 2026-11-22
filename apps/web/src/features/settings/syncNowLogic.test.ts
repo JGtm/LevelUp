@@ -1,5 +1,5 @@
 /**
- * Tests — logique pure de l'encadré « Synchronisation » : cadence de relecture (jamais au repos),
+ * Tests — logique pure de l'encadré « Synchronisation » : cadence de relecture (cycle : lente au repos ; historique : jamais au repos),
  * lignes « dernière passe » et « prochaine passe ».
  */
 import { describe, it, expect } from 'vitest'
@@ -10,6 +10,7 @@ import {
   manualStatusLine,
   remainingSeconds,
   HISTORY_POLL_RUNNING_MS,
+  SYNC_CYCLE_IDLE_POLL_MS,
   SYNC_CYCLE_POLL_MS,
   historyRefetchMs,
   historyStateLabel,
@@ -34,10 +35,11 @@ function status(over: Partial<HistorySyncStatus> = {}): HistorySyncStatus {
 }
 
 describe('cadence de relecture', () => {
-  it('l’état du cycle ne se relit que pendant un cycle', () => {
-    expect(syncCycleRefetchMs(undefined)).toBe(false)
-    expect(syncCycleRefetchMs({ running: false })).toBe(false)
+  it('l’état du cycle se relit vite pendant un cycle et, au repos, toutes les 30 s (onglet visible seulement)', () => {
     expect(syncCycleRefetchMs({ running: true })).toBe(SYNC_CYCLE_POLL_MS)
+    expect(syncCycleRefetchMs({ running: false })).toBe(SYNC_CYCLE_IDLE_POLL_MS)
+    expect(syncCycleRefetchMs(undefined)).toBe(SYNC_CYCLE_IDLE_POLL_MS)
+    expect(SYNC_CYCLE_IDLE_POLL_MS).toBe(30_000)
   })
 
   it('l’historique se relit vite pendant un cycle, lentement pendant un rattrapage, jamais au repos', () => {
@@ -62,13 +64,34 @@ describe('films à analyser', () => {
   it('« complet » seulement sans film en retard : sinon l’indication d’analyse des tuiles de match', () => {
     const complet = title('complete')
     const enRetard = { ...complet, films_pending: true }
-    expect(historyStateLabel(complet, 'fr', false)).toBe('complete')
-    expect(historyStateLabel(enRetard, 'fr', false)).toBe('Analyse en attente')
-    expect(historyStateLabel(enRetard, 'fr', true)).toBe('Analyse en cours')
-    expect(historyStateLabel(enRetard, 'en', false)).toBe('Analysis pending')
-    expect(historyStateLabel(enRetard, 'en', true)).toBe('Analysis in progress')
+    expect(historyStateLabel(T_FR, complet, 'fr', false, true)).toBe('complete')
+    expect(historyStateLabel(T_FR, enRetard, 'fr', false, true)).toBe('Analyse en attente')
+    expect(historyStateLabel(T_FR, enRetard, 'fr', true, true)).toBe('Analyse en cours')
+    expect(historyStateLabel(T_EN, enRetard, 'en', false, true)).toBe('Analysis pending')
+    expect(historyStateLabel(T_EN, enRetard, 'en', true, true)).toBe('Analysis in progress')
     // Le rattrapage de l’historique garde son libellé : il passe avant l’analyse des films.
-    expect(historyStateLabel({ ...title('catching_up'), films_pending: true }, 'fr', false)).toBe('catching_up')
+    expect(historyStateLabel(T_FR, { ...title('catching_up'), films_pending: true }, 'fr', false, true)).toBe('catching_up')
+  })
+})
+
+describe('rattrapage en pause', () => {
+  it('un rattrapage que la synchronisation automatique désactivée laisse à l’arrêt se dit en pause, dans chaque langue', () => {
+    expect(historyStateLabel(T_FR, title('catching_up'), 'fr', false, false)).toBe(
+      'Rattrapage en pause : synchronisation automatique désactivée',
+    )
+    expect(historyStateLabel(T_EN, title('catching_up'), 'en', false, false)).toBe('Catch-up paused: automatic sync is off')
+  })
+
+  it('pendant un cycle, avec la synchronisation automatique activée, ou pour un autre état : le libellé du serveur', () => {
+    expect(historyStateLabel(T_FR, title('catching_up'), 'fr', true, false)).toBe('catching_up')
+    expect(historyStateLabel(T_FR, title('catching_up'), 'fr', false, true)).toBe('catching_up')
+    expect(historyStateLabel(T_FR, title('complete'), 'fr', false, false)).toBe('complete')
+    expect(historyStateLabel(T_FR, title('paused'), 'fr', false, false)).toBe('paused')
+  })
+
+  it('l’absence de passe ne dit plus « depuis le démarrage » : la dernière passe survit au redémarrage', () => {
+    expect(T_FR.lastPassNone).toBe('Aucune passe enregistrée')
+    expect(T_EN.lastPassNone).toBe('No pass recorded')
   })
 })
 
