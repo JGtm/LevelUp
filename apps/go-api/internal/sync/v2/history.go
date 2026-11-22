@@ -129,6 +129,10 @@ type Listing struct {
 	// Proposed : marque-page à ranger si tous les inconnus listés sont résolus ; nil = pas de
 	// position fiable à proposer (mode delta, fin vue, ou arrêt avant la suite de matchs connus).
 	Proposed *historystate.Cursor
+	// Arrived : au rattrapage, les inconnus arrivés en tête de liste depuis la passe précédente (au-dessus de
+	// l'ancre du marque-page) : les nouveaux matchs, par opposition à ceux que le rattrapage ramène. Vide sans
+	// ancre retrouvée.
+	Arrived []string
 }
 
 // PlayerHistory est ce que la découverte retient de l'historique d'un joueur pour le cycle.
@@ -150,6 +154,25 @@ type PlayerHistory struct {
 	Deferred bool
 	// Budget : le budget de la passe de ce joueur (voir HistoryState.Budget).
 	Budget int
+	// Arrived : voir Listing.Arrived.
+	Arrived []string
+}
+
+// newMatches rend, parmi les matchs listés d'un joueur, ceux qui sont de NOUVEAUX matchs (arrivés depuis la
+// dernière passe), par opposition à ceux que le rattrapage ramène : au rattrapage, ceux arrivés au-dessus de
+// l'ancre du marque-page ; sinon (delta, rattrapage reporté) tous, sauf les abandons retentés.
+func (p PlayerHistory) newMatches(listed []string) []string {
+	if p.Incomplete {
+		return p.Arrived
+	}
+	retry := toSet(p.Retry)
+	out := make([]string, 0, len(listed))
+	for _, id := range listed {
+		if !retry[id] {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // catchUpBudget est le budget de la passe de ce joueur : celui que le cycle lui a réparti, sinon le budget

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
@@ -62,6 +63,7 @@ func (sc *catchUpScan) scanTop(ctx context.Context, cursor historystate.Cursor) 
 		for i, e := range entries {
 			sc.noteRead(pos+i, e.MatchID)
 			if e.MatchID == cursor.HeadID {
+				sc.arrived = slices.Clone(sc.unknown) // tout ce qui est listé jusqu'ici est au-dessus de l'ancre
 				return pos + i, true, nil
 			}
 			if sc.known[e.MatchID] || sc.skip[e.MatchID] {

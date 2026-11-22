@@ -128,6 +128,7 @@ func (p *catchUpPass) run(ctx context.Context, budget int) bool {
 		Resume:      resume,
 	}, 0, p.r.logger)
 	addCapture(&p.stats, bs.Capture)
+	p.res.CatchUpInserted += bs.Inserted // le delta du dessus (topDelta) n'y entre pas : ce sont les nouveaux matchs
 	return p.finish(ctx, subject, bs, err, topClean)
 }
 

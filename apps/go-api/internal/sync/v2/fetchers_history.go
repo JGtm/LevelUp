@@ -52,6 +52,9 @@ type catchUpScan struct {
 	// devient l'ancre du marque-page proposé.
 	headID string
 
+	// arrived : les inconnus listés au-dessus de l'ancre du marque-page (les nouveaux matchs), une fois l'ancre retrouvée.
+	arrived []string
+
 	endSeen   bool // fin de la liste vue (page vide)
 	budgetHit bool // budget atteint : la lecture s'est arrêtée avec des inconnus possibles derrière
 	depthHit  bool // borne de profondeur atteinte
@@ -184,7 +187,7 @@ func (sc *catchUpScan) warnDepth(ctx context.Context) {
 
 // listing assemble le résultat. withProposal=false : aucune position n'est proposée.
 func (sc *catchUpScan) listing(withProposal bool) Listing {
-	out := Listing{Unknown: sc.unknown, EndSeen: sc.endSeen && !sc.budgetHit && !sc.depthHit}
+	out := Listing{Unknown: sc.unknown, EndSeen: sc.endSeen && !sc.budgetHit && !sc.depthHit, Arrived: sc.arrived}
 	if !withProposal || out.EndSeen {
 		return out
 	}

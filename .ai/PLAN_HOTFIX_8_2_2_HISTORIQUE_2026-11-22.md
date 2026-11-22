@@ -256,6 +256,9 @@ page.
   - Gate D-26 : `go build ./...`, `go vet` (avec et sans `integration`), `go test` et `go test -tags=integration` sur `sync/v2`, `sync/historystate`,
     `sync/historyfail`, `games/halo_5/...`, `go test -tags=integration -run 'Convergence|Difficile' ./cmd/server/` (1 657 s), `go test ./internal/archlint/ -run HistoryKey`,
     golangci-lint `--new-from-merge-base=origin/main` sur ces paquets : verts.
+  - [x] D-26.6 (fusion de D-27) `CatchUpInserted` rempli : V2 (`populateOutcome`) = matchs rangés prouvés moins ceux arrivés au-dessus de l'ancre du marque-page
+    (`Listing.Arrived`, lus par `scanTop`) ; à l'historique complet ou rattrapage reporté, tous les rangés sont des nouveaux sauf les abandons retentés (comptés côté rattrapage) ;
+    sans ancre retrouvée, tout est du rattrapage. Halo 5 : `catchUpPass.run` ajoute `bs.Inserted` (le delta du dessus n'y entre pas). Le budget réparti ne change pas la règle.
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - **D-27** (pilote, validé par l'utilisateur, 22/11) Constats de la revue adversariale sur le rattrapage d'historique et
   corrections.

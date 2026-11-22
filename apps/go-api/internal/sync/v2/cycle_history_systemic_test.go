@@ -282,3 +282,55 @@ func TestCycleHistory_AbandonEchuAuRattrapage_TentativesRemisesAZero(t *testing.
 		t.Errorf("échecs %v, want [{%s 1}] : tentatives remises à zéro puis une passe comptée", got, bad)
 	}
 }
+
+// CatchUpInserted : parmi les matchs rangés d'un cycle, ceux que le rattrapage ramène, hors nouveaux matchs
+// arrivés au-dessus de l'ancre du marque-page (le delta du dessus) ; le budget réparti du joueur ne change pas la règle.
+func TestCycleHistory_CatchUpInserted_HorsDeltaDuDessus(t *testing.T) {
+	budget := historystate.PassBudget()
+	e := newHistEnv(t, 3*budget)
+
+	out, err := e.cycle() // première passe, sans marque-page : tout est du rattrapage
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.MatchesInserted != budget || out.CatchUpInserted != budget {
+		t.Fatalf("passe 1 : insérés %d, dont rattrapage %d, want %d et %d", out.MatchesInserted, out.CatchUpInserted, budget, budget)
+	}
+
+	const fresh = 7
+	e.client.ids = append(matchIDs("n", fresh), e.client.ids...)
+	out, err = e.cycle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.MatchesInserted != budget || out.CatchUpInserted != budget-fresh {
+		t.Errorf("passe 2 : insérés %d, dont rattrapage %d, want %d et %d (les %d neufs du dessus sont des nouveaux)",
+			out.MatchesInserted, out.CatchUpInserted, budget, budget-fresh, fresh)
+	}
+
+	// Historique complet : tout est nouveau, rien n'est du rattrapage.
+	e.markDeltaOnly()
+	e.client.ids = append(matchIDs("p", 3), e.client.ids...)
+	out, err = e.cycle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.MatchesInserted == 0 || out.CatchUpInserted != 0 {
+		t.Errorf("delta : insérés %d, dont rattrapage %d, want des matchs et 0", out.MatchesInserted, out.CatchUpInserted)
+	}
+}
+
+// Un abandon retenté puis rangé n'est pas un nouveau match : il compte du côté du rattrapage, même à l'historique complet.
+func TestCycleHistory_CatchUpInserted_AbandonRetenteNEstPasNouveau(t *testing.T) {
+	advance := setClock(t)
+	e, bad := abandonEnv(t)
+	advance(historystate.AbandonRetryAfter + time.Hour)
+	delete(e.fetcher.perMatchErr, bad)
+	out, err := e.cycle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !e.known[bad] || out.MatchesInserted != 1 || out.CatchUpInserted != 1 {
+		t.Errorf("rangé %v, insérés %d, dont rattrapage %d, want oui, 1 et 1", e.known[bad], out.MatchesInserted, out.CatchUpInserted)
+	}
+}

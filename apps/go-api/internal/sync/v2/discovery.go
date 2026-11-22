@@ -163,7 +163,7 @@ func loadAllKnown(ctx context.Context, players []PlayerProfile, loader KnownLoad
 func playerHistory(h HistoryState, l Listing) PlayerHistory {
 	return PlayerHistory{
 		Incomplete: h.Incomplete, EndSeen: l.EndSeen, Proposed: l.Proposed, Failures: h.Failures, Skip: h.Skip,
-		Retry: h.Retry, Unreadable: h.Unreadable, Deferred: h.Deferred, Budget: h.Budget,
+		Retry: h.Retry, Unreadable: h.Unreadable, Deferred: h.Deferred, Budget: h.Budget, Arrived: l.Arrived,
 	}
 }
 

@@ -662,3 +662,27 @@ func TestRunBackfill_BudgetEtFin(t *testing.T) {
 		t.Errorf("50 matchs, budget 50 : %+v, attendu budget atteint, fin pas encore vue", s)
 	}
 }
+
+// CatchUpInserted : les matchs rangés par le rattrapage, hors delta du dessus (les nouveaux matchs).
+func TestRunDelta_Rattrapage_CatchUpInsertedHorsDeltaDuDessus(t *testing.T) {
+	w := newHistoryWorld(450)
+	res := w.run(t, domain.SyncOptions{}) // première passe : tout est du rattrapage
+	if res.MatchesInserted != 200 || res.CatchUpInserted != 200 {
+		t.Fatalf("passe 1 : insérés %d, dont rattrapage %d, want 200 et 200", res.MatchesInserted, res.CatchUpInserted)
+	}
+	const fresh = 5
+	w.prepend(fresh)
+	res = w.run(t, domain.SyncOptions{})
+	if res.MatchesInserted-res.CatchUpInserted != fresh || res.CatchUpInserted < 195 {
+		t.Errorf("passe 2 : insérés %d, dont rattrapage %d, want %d nouveaux (les matchs du dessus) et le reste au rattrapage",
+			res.MatchesInserted, res.CatchUpInserted, fresh)
+	}
+	for w.marked == 0 {
+		w.run(t, domain.SyncOptions{})
+	}
+	w.ids = append([]string{"z0001", "z0000"}, w.ids...)
+	res = w.run(t, domain.SyncOptions{MaxMatches: 25})
+	if res.MatchesInserted != 2 || res.CatchUpInserted != 0 {
+		t.Errorf("delta : insérés %d, dont rattrapage %d, want 2 et 0", res.MatchesInserted, res.CatchUpInserted)
+	}
+}
