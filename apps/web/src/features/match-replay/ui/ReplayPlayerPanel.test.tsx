@@ -38,8 +38,8 @@ afterEach(cleanup)
 function props(over: Partial<ReplayPlayerPanelProps> = {}): ReplayPlayerPanelProps {
   return {
     player: PLAYER,
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     onClose: vi.fn(),
     doc: DOC,
     frame: 10,
@@ -104,7 +104,7 @@ describe('fiche de la colonne — la zone qui défile et le pied fixé', () => {
     expect(within(z).getByRole('button', { name: 'Équipes' })).toBeTruthy()
     expect(within(z).getByTestId('selecteur')).toBeTruthy()
     expect(within(z).getByRole('group', { name: 'Alpha' })).toBeTruthy()
-    expect(within(z).getByText('Suivre')).toBeTruthy()
+    expect(within(z).getByText('Seul')).toBeTruthy()
     expect(within(z).getByRole('region', { name: "À l'instant" })).toBeTruthy()
   })
 

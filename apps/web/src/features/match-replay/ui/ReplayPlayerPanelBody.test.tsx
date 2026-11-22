@@ -43,8 +43,8 @@ function bodyProps(over: Partial<ReplayPlayerPanelBodyProps> = {}, sheet = insta
   const players = instantPlayers(DOC, sheet)
   return {
     player: instantPlayer(players, 'A'),
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     doc: DOC,
     frame: INSTANT_LAST_FRAME,
     nowMs: INSTANT_LAST_FRAME * 100,
@@ -117,28 +117,26 @@ describe('ReplayPlayerPanelBody — l’identité', () => {
   })
 })
 
-describe('ReplayPlayerPanelBody — les trois actions', () => {
-  it('Suivre, Seul, Masquer : des boutons à bascule, dans cet ordre', () => {
-    setup({ actions: { follow: true, solo: false, hide: false } })
+describe('ReplayPlayerPanelBody — l’action Seul', () => {
+  it('« Seul » est la seule action de la fiche : un bouton à bascule, ni Suivre ni Masquer', () => {
+    setup({ solo: true })
     const group = screen.getByRole('group', { name: 'Alpha' })
     const buttons = within(group).getAllByRole('button')
-    expect(buttons.map((b) => b.textContent)).toEqual(['Suivre', 'Seul', 'Masquer'])
-    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Seul · tout réafficher'])
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true'])
+    expect(screen.queryByRole('button', { name: 'Suivre' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Masquer' })).toBeNull()
   })
 
-  it('un clic rappelle la page avec l’action', () => {
+  it('un clic rappelle la page', () => {
     const { props } = setup()
     fireEvent.click(screen.getByRole('button', { name: 'Seul' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Masquer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Suivre' }))
-    expect(props.onToggle).toHaveBeenNthCalledWith(1, 'solo')
-    expect(props.onToggle).toHaveBeenNthCalledWith(2, 'hide')
-    expect(props.onToggle).toHaveBeenNthCalledWith(3, 'follow')
+    expect(props.onSolo).toHaveBeenCalledTimes(1)
   })
 
-  it('l’infobulle de Suivre dit que la main l’arrête', () => {
+  it('l’infobulle de Seul dit que l’œil d’une tuile réaffiche un joueur', () => {
     setup()
-    expect(screen.getByRole('button', { name: 'Suivre' }).getAttribute('title')).toContain("l'arrête")
+    expect(screen.getByRole('button', { name: 'Seul' }).getAttribute('title')).toContain('L\'œil d\'une tuile en réaffiche un.')
   })
 
   it('la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture', () => {
@@ -252,7 +250,7 @@ describe('ReplayPlayerPanelBody — rien d’inventé', () => {
     const { container } = setup({ player, players }, sheet)
     expect(sections(container)).not.toContain('Totaux du match')
     expect(screen.queryByText(/Pas de statistiques/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Suivre' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Seul' })).toBeTruthy()
     expect(screen.getByRole('region', { name: "À l'instant" })).toBeTruthy()
     const depuis = screen.getByRole('region', { name: 'Depuis le début du match' })
     expect(within(depuis).queryByText('Score')).toBeNull()

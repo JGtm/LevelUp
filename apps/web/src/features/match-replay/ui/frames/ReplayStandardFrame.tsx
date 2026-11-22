@@ -79,6 +79,7 @@ function standardColumn(view: ReplayFrameView) {
             tracked={playerPanel.tracked}
             onCard={playerPanel.onCard}
             selectedXuid={focus?.player.xuid ?? null}
+            tileActions={playerPanel.tileActions}
           />
         }
         feed={<ReplayKillFeed {...feedSource} />}
@@ -86,8 +87,8 @@ function standardColumn(view: ReplayFrameView) {
           focus && (
             <ReplayPlayerPanel
               player={focus.player}
-              actions={focus}
-              onToggle={playerPanel.onToggle}
+              solo={focus.solo}
+              onSolo={() => playerPanel.onSolo(focus.player.xuid)}
               onClose={playerPanel.onClose}
               doc={doc}
               frame={playFrame}

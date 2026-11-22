@@ -24,8 +24,8 @@ function props(over: Partial<ReplayPlayerPopoverProps> = {}): ReplayPlayerPopove
   const players = instantPlayers(doc)
   return {
     player: instantPlayer(players, 'A'),
-    actions: { follow: false, solo: false, hide: false },
-    onToggle: vi.fn(),
+    solo: false,
+    onSolo: vi.fn(),
     onClose: vi.fn(),
     doc,
     frame: INSTANT_LAST_FRAME,

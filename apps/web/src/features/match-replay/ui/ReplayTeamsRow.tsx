@@ -22,6 +22,10 @@
  * une place est une fiche, jamais un joueur parti ; une place qui ne rend rien à cette image garde sa
  * colonne vide, sans quoi les suivantes glisseraient. Le joueur suivi arrive par prop (`tracked`), la rangée
  * ne le recalcule pas ; un clic rend la page (`onCard`) avec la clé de roster du joueur.
+ *
+ * LES ACTIONS DES FICHES (D-6) ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque fiche ordinaire. « Tout
+ * afficher » (D-7) est posé en haut de la cellule centrale, au-dessus du score, visible seulement quand au moins un
+ * joueur est masqué. Les fiches compactes de la Grande équipe n'ont pas ces boutons : elles s'ouvrent.
  */
 import { Fragment, useMemo, type ReactNode } from 'react'
 
@@ -29,9 +33,11 @@ import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { ReplayCompactCard, ReplayCompactWaitingCard } from './ReplayCompactCard'
 import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
+import { ReplayShowAllButton } from './ReplayShowAllButton'
 import { useCardScene, type CardScene } from '../hooks/useCardScene'
 import { COTES_RANGEE, COTES_RANGEE_GRANDE_EQUIPE } from '../model/cardGabarit'
 import { readInstantScoreSeries, type InstantScoreSeries } from '../model/playerInstantScore'
+import { showAllVisible, tileActionsFor, type PlayerTileActions } from '../model/playerTileActions'
 import { alliesAGauche, colonnesGrandeEquipe, NB_CAMPS_RANGEE } from '../model/rowLayout'
 import {
   buildSeats,
@@ -60,6 +66,8 @@ export interface ReplayTeamsRowProps {
   onCard?: (xuid: string) => void
   /** La clé de roster du joueur dont la fiche est ouverte (`aria-pressed`). */
   selectedXuid?: string | null
+  /** Suivre et l'œil de chaque fiche, et « Tout afficher » (`playerPanel.tileActions`). Absent = ni boutons de fiche ni « Tout afficher ». */
+  tileActions?: PlayerTileActions
   /** Le bandeau de score (emplacement `rangee`), posé dans la cellule centrale ; la rangée n'y lit rien. */
   score: ReactNode
   /** Vrai = Grande équipe : des emplacements de deux fiches compactes empilées au lieu d'une fiche par place. */
@@ -68,7 +76,7 @@ export interface ReplayTeamsRowProps {
 
 /** Ce que le rendu des places d'un camp partage. */
 interface CampCtx
-  extends Pick<ReplayTeamsRowProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid' | 'grandeEquipe'> {
+  extends Pick<ReplayTeamsRowProps, 'doc' | 'frame' | 'locale' | 'tracked' | 'onCard' | 'selectedXuid' | 'tileActions' | 'grandeEquipe'> {
   scene: CardScene
   /** Le score personnel de chaque joueur, rangé une fois par document et par liste de joueurs. */
   scores: InstantScoreSeries
@@ -76,7 +84,7 @@ interface CampCtx
 
 /** Une place : la fiche de son occupant, la boîte d'attente, ou rien (la colonne reste, vide). */
 function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNode {
-  const { doc, frame, locale, scene, scores, tracked, onCard, selectedXuid = null, grandeEquipe } = ctx
+  const { doc, frame, locale, scene, scores, tracked, onCard, selectedXuid = null, tileActions, grandeEquipe } = ctx
   const lu = seatTileAt(seat, frame)
   if (lu === null) return grandeEquipe ? null : <div key={seat.key} aria-hidden />
   if (lu.kind !== 'present' || lu.player === null) {
@@ -122,6 +130,7 @@ function seatCell(seat: ReplaySeat, ally: boolean | null, ctx: CampCtx): ReactNo
       fxScene={scene.fxScene}
       tracked={isTracked}
       panel={onCard ? { selected, onSelect: () => onCard(player.xuid) } : undefined}
+      actions={tileActionsFor(tileActions, player.xuid)}
     />
   )
 }
@@ -156,7 +165,7 @@ function Camp({ label, columns, children }: { label: string; columns: number; ch
 }
 
 export function ReplayTeamsRow({
-  doc, players, frame, locale, allegiance, tracked, onCard, selectedXuid = null, score, grandeEquipe,
+  doc, players, frame, locale, allegiance, tracked, onCard, selectedXuid = null, tileActions, score, grandeEquipe,
 }: ReplayTeamsRowProps) {
   const t = REPLAY_TEXT[locale]
   const groups = useMemo(
@@ -170,7 +179,7 @@ export function ReplayTeamsRow({
   if (groups.length !== NB_CAMPS_RANGEE) return null
   const places = groups.map((g) => g.seats.length)
   const columns = grandeEquipe ? colonnesGrandeEquipe(places) : Math.max(...places)
-  const ctx: CampCtx = { doc, frame, locale, tracked, onCard, selectedXuid, grandeEquipe, scene, scores }
+  const ctx: CampCtx = { doc, frame, locale, tracked, onCard, selectedXuid, tileActions, grandeEquipe, scene, scores }
   return (
     <div
       data-replay-teams-row={grandeEquipe ? 'grande-equipe' : 'fiches'}
@@ -183,8 +192,15 @@ export function ReplayTeamsRow({
       {groups.map((group, i) => (
         <Fragment key={`camp:${group.team}`}>
           {i === 1 && (
-            <div data-replay-teams-row-score="" className="flex min-w-0 items-center justify-center">
+            <div data-replay-teams-row-score="" className="relative flex min-w-0 items-center justify-center">
               {score}
+              {showAllVisible(tileActions) && (
+                <ReplayShowAllButton
+                  locale={locale}
+                  onShowAll={tileActions.onShowAll}
+                  className="absolute left-1/2 top-0 -translate-x-1/2"
+                />
+              )}
             </div>
           )}
           <Camp label={labels[i]} columns={columns}>
