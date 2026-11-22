@@ -60,3 +60,13 @@ describe('ReplayPage : les cadres reçoivent la fabrique des antagonistes', () =
     expect(pleinCadre).toBe(standard)
   })
 })
+
+describe('ReplayPage : la bande des titres de la frise (C.2)', () => {
+  it('la barre complète du Standard porte la bande, la barre d une ligne du Cinéma n en porte pas', async () => {
+    await mountReplayPage()
+    act(() => goToFrame('standard'))
+    expect(document.querySelector('[data-replay-antagonist-band]')).not.toBeNull()
+    act(() => goToFrame('cinema'))
+    expect(document.querySelector('[data-replay-antagonist-band]')).toBeNull()
+  })
+})

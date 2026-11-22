@@ -20,6 +20,8 @@
  * PENDANT UN EXPORT, LES COMMANDES DE LECTURE SONT NEUTRALISÉES : la boucle d'export écrit `frameRef`
  * image par image, et la boucle de lecture, les sauts et le glisser de la frise écrivent le MÊME ref.
  */
+import type { ReactNode } from 'react'
+
 import { isCaptureBusy } from '../export/captureBusy'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { SKIP_SECONDS } from '../layers/replayCanvasConfig'
@@ -35,11 +37,14 @@ import { RestartIcon } from './ReplayTransportIcons'
 import type { ReplayTransportCommands } from './replayTransportCommands'
 
 /** Les commandes de la toile, moins le zoom (la croix flottante le fait) et le plan tourné (le retour passe par la section Vue). */
-type ReplayTransportProps = Omit<ReplayTransportCommands, 'zoom' | 'autoRotation' | 'thinBar'>
+type ReplayTransportProps = Omit<ReplayTransportCommands, 'zoom' | 'autoRotation' | 'thinBar'> & {
+  /** La bande des titres de la frise, fournie par le cadre (`canvasSlotsOf`) : elle lit la page, pas la toile. */
+  antagonistBand?: ReactNode
+}
 
 export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
-  speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl,
+  speed, onSetSpeed, sound, capture, locale, fullscreen, frameControl, antagonistBand,
 }: ReplayTransportProps) {
   const busy = isCaptureBusy(capture)
   const t = REPLAY_TEXT[locale]
@@ -50,7 +55,7 @@ export function ReplayTransport({
       {/* LA FRISE AUSSI est neutralisée : son curseur écrit `frameRef`. `pointer-events-none` bloque le
           geste, `aria-hidden` la retire des technologies d'assistance le temps du calcul. */}
       <div className={busy ? 'pointer-events-none opacity-40' : undefined} aria-hidden={busy}>
-        <ReplayTimelineTracks {...timeline} clockRef={clockRef} />
+        <ReplayTimelineTracks {...timeline} clockRef={clockRef} antagonistBand={antagonistBand} />
       </div>
 
       <div className="mt-1.5 flex items-center gap-3.5">

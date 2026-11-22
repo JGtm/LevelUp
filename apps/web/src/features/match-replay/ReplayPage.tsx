@@ -249,7 +249,7 @@ export function ReplayPage() {
           <ReplayStage
             view={view}
             scorePlacement={rowLayout.scorePlacement === 'scene' ? 'scene' : null}
-            slots={canvasSlotsOf(frame, rowLayout.planFeedPosed ? view : null)}
+            slots={canvasSlotsOf(frame, rowLayout.planFeedPosed ? view : null, view)}
           />
         )
       }

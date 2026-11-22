@@ -99,6 +99,7 @@ function standardColumn(view: ReplayFrameView) {
               players={model.players}
               feed={model.feed}
               weaponIcons={view.weaponIcons}
+              antagonists={view.antagonists}
               column={{
                 picker: (
                   <ReplayPlayerPicker

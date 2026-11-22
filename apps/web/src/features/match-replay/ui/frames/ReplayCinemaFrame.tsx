@@ -105,6 +105,7 @@ function playerPopover(view: ReplayFrameView, disposition: CardRowLayout['dispos
       players={model.players}
       feed={model.feed}
       weaponIcons={view.weaponIcons}
+      antagonists={view.antagonists}
     />
   )
 }
