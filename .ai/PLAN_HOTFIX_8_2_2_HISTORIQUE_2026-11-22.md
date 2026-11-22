@@ -408,6 +408,45 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 - [x] 5.3 Fait, puis révisé par D-18 (22/11). Le test de convergence V1 en 41 passes et le test du défaut (gardé sauté) sont remplacés, dans `internal/sync/engine_convergence_integration_test.go`, par le contrat de delta pur : sur un historique incomplet avec un match en échec durable, V1 ne touche à aucune clé de `historystate` et s'arrête au premier connu (une page lue par passe, matchs neufs du dessus pris) ; la première synchronisation (aucun connu) récupère jusqu'au plafond (200, 50) ; ni `RunDelta` ni `RunFull` ne rangent la fin. Supprimés avec le comportement : `engine_history_complete_test.go`, `engine_history_pending_integration_test.go`, `engine_convergence_defaut_integration_test.go`.
 - Gate : `go test -tags=integration -run Convergence ./internal/...`.
 
+### Étape 5ter — cas difficiles (tests seuls, aucune modification du code de production)
+
+Banc étendu dans de nouveaux fichiers de `cmd/server` (`sync_v2_convergence_difficile_*_integration_test.go`,
+`sync_v2_convergence_interruption_integration_test.go`) : plusieurs joueurs et une liste par joueur, démarrages
+répétés sur les mêmes bases (orchestrateur, ordonnanceur, file de persistance et worker neufs), arrêt par la séquence
+de production (`runShutdown`) ou brutal (journal d'écriture laissé sur disque), porte du worker de persistance.
+Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `recordingOrchestrator`, `waitCadence`.
+
+- [x] 5t.1 Arrêt pendant la récupération (contexte annulé à la 100e demande de stats d'une passe, arrêt par `runShutdown`,
+  démarrage neuf) : 1 000 matchs, aucun doublon, aucun trou, fin rangée, marque-page effacé, journal vide
+  (`TestDifficile_Interruption_ArretPendantRecuperation`).
+- [x] 5t.2 Arrêt pendant la persistance, trois fins : arrêt ordonné avec peu de reste, arrêt ordonné avec beaucoup de
+  reste (le vidage de 5 s n'y suffit pas, le journal garde le reste), coupure brutale (dont un match écrit et non
+  acquitté) (`TestDifficile_Interruption_ArretPendantPersistance`).
+- [x] 5t.3 Arrêt entre deux passes : reprise au marque-page, page du haut puis lecture à la position rangée, aucun repli
+  « depuis 0 » (`TestDifficile_Interruption_ArretEntreDeuxPasses`).
+- [x] 5t.4 Historique complet : une page, ni marque-page ni clé de fin touchés, cadence = intervalle réglé
+  (`TestDifficile_HistoriqueDejaComplet_CasNormalInchange`).
+- [x] 5t.5 Deux joueurs dans le même cycle, l'un complet, l'autre en rattrapage (`TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage`).
+- [x] 5t.6 Matchs neufs du dessus mêlés à 30 introuvables : rien de perdu, reprise exacte, zéro repli
+  (`TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte`).
+- [!] 5t.7 DÉFAUT constaté (test gardé sauté, `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`) :
+  `populateOutcome` (`internal/sync/v2/cycle.go`) compte comme `MatchesInserted` tout match inconnu listé pour le joueur,
+  qu'il ait été récupéré et rangé ou non. Un match introuvable (404) en haut de liste est donc compté inséré à CHAQUE
+  cycle, pour toujours (et redemandé à chaque cycle) ; la notification de fin de cycle l'annonce comme nouveau match. Depuis D-23, les
+  introuvables des 25 premières entrées sont recomptés et redemandés à chaque cycle (21 constatés, trois pages lues, après un
+  rattrapage de 1 000 matchs dont 30 introuvables).
+  Présent depuis D6.1, donc dans la 8.2.1 ; non corrigé ici (hors périmètre, règle 7).
+- [!] 5t.8 DÉFAUT constaté (test gardé sauté, `TestDifficile_Interruption_CycleApresRedemarrageSansBlocage`) : après un
+  redémarrage avec un journal d'écriture en attente (coupure brutale en plein rattrapage), un cycle lancé aussitôt (a) reste
+  bloqué 14 minutes 20 (le rejeu du journal échoue sur « same database file with a different configuration » parce que la
+  découverte du cycle tient la base joueur en lecture ; erreur hors de la liste des erreurs transitoires du worker ; le
+  vidage du cycle attend le journal entier : 60 s + 4 s par match soumis) ; (b) (constaté une fois sur deux exécutions) après la reprise périodique du journal, le
+  cycle suivant a lu l'état de l'historique sur une poignée fermée (« sql: database is closed »), `historystate.Complete` l'a
+  traduit en « complet » : 0 match inconnu listé, `HistoryPending` faux, cadence de 10 minutes perdue. Les deux sont le
+  rejeu du journal contre la découverte, dans le même processus. Non corrigé ici (hors périmètre).
+- Gate : `go test -tags=integration -run 'Difficile|Interruption' -v -timeout 40m ./cmd/server/`, `go vet -tags=integration`,
+  golangci-lint `--new-from-merge-base=origin/main --build-tags=integration` sur `./cmd/server/...`.
+
 ### Étape 6 — aide, version, notes (Haiku)
 
 - [x] 6.1 Aide FR/EN (`features/help/i18n/{fr,en}.ts`) : le texte qui annonce un bouton de
@@ -551,5 +590,9 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - Étape 4ter : `fix/822-e` n'a pas les étapes 2 et 3 : `PlayerOutcome.HistoryPending` n'est pas encore
   rempli par le pipeline V2 ni par le runner Halo 5 ; la cadence de rattrapage ne s'active, tant que ce
   n'est pas intégré, que par un joueur en échec (clé de fin absente) ou par le moteur V1 (filet de boot).
+- Étape 5ter : DÉFAUT `populateOutcome` (`sync/v2/cycle.go`) compte inséré tout inconnu listé, récupéré ou non (match en 404 ou en 500 durable compris) : `MatchesInserted` et la notification « nouveaux matchs » sont faux ; un match introuvable en tête de liste est de plus redemandé à chaque cycle, sans fin (une demande par cycle). Test gardé sauté : `TestDifficile_MatchIntrouvable_NEstPasCompteInsere`.
+- Étape 5ter : un cycle annulé en pleine récupération ne s'arrête pas avant la persistance : la phase de récupération rend les matchs déjà récupérés (les autres sont des erreurs de récupération), la persistance les soumet à la file puis le vidage échoue sur le contexte annulé ; les matchs soumis finissent en arrière-plan ou au journal d'écriture. Sans conséquence sur la convergence (marque-page non avancé, connus sautés), mais le travail soumis après l'annulation est inutile.
+- Étape 5ter : la séquence d'arrêt vide la file de persistance dans une phase bornée à 5 s (`phaseBatchDrainCap`) ; une passe de rattrapage laisse jusqu'à 200 journaux d'écriture (environ 0,2 s par match sur ce banc, 1,1 s mesuré en production) : l'arrêt n'est alors pas « propre » et les bases se ferment sous le worker, le reste est rejoué au démarrage suivant (testé : aucun doublon, aucune perte). Comportement voulu du journal d'écriture, noté pour mémoire.
+- Étape 5ter : lire l'état d'une base joueur (`OpenReadForQuery`) pendant qu'un worker de persistance l'écrit peut rendre `sql: database is closed` (poignée en cache fermée par le worker) ; `historystate.Complete` rend alors « complet ». Observé seulement par les lectures du test (après un arrêt, pendant le rejeu du journal), jamais dans le cycle ; non investigué.
 - D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
 - D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.
