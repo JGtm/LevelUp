@@ -17,6 +17,7 @@
  * chaque rendu, donc jamais remonté. La barre et la commande de zoom, elles, restent définies au niveau du module.
  */
 import { COTES_BARRE_COMPACTE as C } from '../../model/cotesBarreCompacte'
+import { playerKeys } from '../../model/feedFollowed'
 import { usesCompactBar, type ReplayFrame } from '../../model/replayFrame'
 import { overlaysTransportBar } from '../../model/transportBarLogic'
 import { ReplayCameraMenu } from '../ReplayCameraMenu'
@@ -64,6 +65,7 @@ export function canvasSlotsOf(frame: ReplayFrame, planFeedView: ReplayFrameView 
           marks={model.marks}
           locale={locale}
           zoneOf={feedZoneOf}
+          followedKeys={playerKeys(planFeedView.playerPanel.camera.player)}
           liftPx={overlaysTransportBar(frameControl.frame, thinBar) ? C.barreHauteurPx : 0}
         />
       ),

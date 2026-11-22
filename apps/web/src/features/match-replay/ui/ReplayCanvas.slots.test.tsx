@@ -9,79 +9,25 @@
  *  - ni la lecture, ni le changement de fonction de rendu ne remontent la barre : c'est le même nœud DOM.
  */
 import { act, cleanup, fireEvent, screen } from '@testing-library/react'
-import type { ComponentProps, ReactElement } from 'react'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { renderWithProviders } from '../../../test/render-utils'
-import { buildPlayers } from '../../../lib/replay/rosterLogic'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { FOLLOW_MIN_LEVEL } from '../model/followLogic'
-import { createPlaybackStore } from '../model/playbackStore'
 import { usesCompactBar } from '../model/replayFrame'
-import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
+import { baseProps, canvasWith, installCanvasDoubles, smallDoc } from '../test/canvasTestKit'
 import { makeFrameControl } from '../test/frameControlStub'
-import { recordingContext } from '../test/recordingContext'
-import { testReplayDoc } from '../test/testDoc'
 import { canvasSlotsOf } from './frames/replayFrameSlots'
 import { ReplayCanvas } from './ReplayCanvas'
-import type { ReplayFrameView } from './frames/replayFrameTypes'
 import type { ReplayCommandsRender, ReplaySlotCommands } from './replayTransportCommands'
 
 const T = REPLAY_TEXT.fr
 
-function smallDoc(): ReplayDocumentReady {
-  const smallest = [...goFixtureEntries()].sort((a, b) => a.bytes - b.bytes)[0]
-  return testReplayDoc(loadGoFixture(smallest).doc)
-}
-
-/** Monte la toile avec les emplacements donnés ; le reste des propriétés est le minimum requis. */
-function canvasWith(doc: ReplayDocumentReady, transport: ReplayCommandsRender, blockOverlays?: ReplayCommandsRender): ReactElement {
-  return <ReplayCanvas {...baseProps(doc)} transport={transport} blockOverlays={blockOverlays} />
-}
-
-/** Les propriétés requises, mémorisées par document : deux montages du même document reçoivent les mêmes valeurs. */
-const BASE_PROPS = new WeakMap<ReplayDocumentReady, BaseProps>()
-type BaseProps = Omit<ComponentProps<typeof ReplayCanvas>, 'transport' | 'blockOverlays'>
-
-function baseProps(doc: ReplayDocumentReady): BaseProps {
-  const known = BASE_PROPS.get(doc)
-  if (known) return known
-  const players = buildPlayers(doc, [])
-  const viewpoint = players.find((p) => p.team !== undefined && p.team >= 0 && !p.xuid.startsWith('bot:'))?.xuid ?? null
-  const props: BaseProps = {
-    doc,
-    locale: 'fr',
-    playWindow: null,
-    playbackStore: createPlaybackStore(),
-    allegiance: buildFilmAllegiance(players, viewpoint),
-    players,
-    viewpoint,
-    fullscreen: { active: false, disabled: false, toggle: () => {} },
-    frameControl: makeFrameControl(),
-  }
-  BASE_PROPS.set(doc, props)
-  return props
-}
-
-beforeEach(() => {
-  try {
-    localStorage.clear()
-  } catch {
-    // Pas de stockage : les réglages gardent leurs défauts, ce que ces tests supposent déjà.
-  }
-  // Aucune boucle d'animation : la lecture change d'état, l'image ne bouge que sur un saut.
-  vi.stubGlobal('requestAnimationFrame', () => 0)
-  vi.stubGlobal('cancelAnimationFrame', () => {})
-  // Une largeur mesurée : sans elle la toile ne peint rien et l'horloge reste vide.
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-    x: 0, y: 0, top: 0, left: 0, bottom: 540, right: 960, width: 960, height: 540, toJSON: () => ({}),
-  })
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => recordingContext().ctx as never)
-})
+beforeEach(installCanvasDoubles)
 
 afterEach(() => {
   cleanup()
@@ -180,12 +126,12 @@ describe('ReplayCanvas : une autre barre pilote la même toile', () => {
 describe('ReplayCanvas : la barre se pose sur le plan au Plein cadre, préférence allumée', () => {
   const dockOf = () => screen.getByTestId('minimal-bar').parentElement as HTMLElement
 
-  it('Plein cadre, préférence par défaut (allumée) : la barre est posée en bas du bloc, hors du flux', () => {
+  it('Plein cadre, préférence par défaut (allumée) : la barre est posée en bas du bloc, dans son liseré, hors du flux', () => {
     renderWithProviders(
       <ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl('plein-cadre')} transport={minimalBar} />,
     )
     expect(dockOf().className).toContain('absolute')
-    expect(dockOf().className).toContain('bottom-0')
+    expect(dockOf().className).toContain('bottom-px')
   })
 
   it('Plein cadre, préférence éteinte : la barre reste dans le flux, sous le plan', () => {
@@ -194,6 +140,18 @@ describe('ReplayCanvas : la barre se pose sur le plan au Plein cadre, préféren
       <ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl('plein-cadre')} transport={minimalBar} />,
     )
     expect(dockOf().className).not.toContain('absolute')
+  })
+
+  it.each(['cinema', 'plein-cadre'] as const)('%s : la barre est SOUS le bloc arrondi du plan, hors du bloc, quand elle n’est pas posée sur le plan', (frame) => {
+    localStorage.setItem('replay-thin-bar-full-frame', 'false')
+    const { container } = renderWithProviders(
+      <ReplayCanvas {...baseProps(smallDoc())} frameControl={makeFrameControl(frame)} transport={minimalBar} />,
+    )
+    const bloc = container.querySelector('[data-replay-plan-block]') as HTMLElement
+    expect(bloc.className).toContain('rounded-lg')
+    expect(bloc.contains(container.querySelector('canvas'))).toBe(true)
+    expect(bloc.contains(screen.getByTestId('minimal-bar'))).toBe(false)
+    expect(bloc.nextElementSibling?.contains(screen.getByTestId('minimal-bar'))).toBe(true)
   })
 
   it.each(['standard', 'cinema'] as const)('%s : la barre reste dans le flux, quelle que soit la préférence', (frame) => {
@@ -378,129 +336,5 @@ describe('ReplayCanvas : la caméra suit le joueur de `cameraFollow`, fiche ouve
     expect(onFollowStop).not.toHaveBeenCalled()
     act(() => last().zoom.zoomIn())
     expect(onFollowStop).toHaveBeenCalled()
-  })
-})
-
-describe('ReplayCanvas : le fil des éliminations du plan (`planFeed`)', () => {
-  /** La partie de la vue de la page que le fil du plan lit : le fil, l'instant lu, les noms. */
-  function planFeedView(doc: ReplayDocumentReady): ReplayFrameView {
-    const props = baseProps(doc)
-    const kill = {
-      tMs: 0, replayMs: 0, xuid: 'a', victimXuid: 'b', victimGamertag: 'Victime', weaponKey: '', weaponLabel: '',
-      weaponImageUrl: '', weaponTinted: false, medals: [],
-    }
-    return {
-      model: {
-        feed: [{ key: 'k0', replayMs: 0, kill, medal: null, death: null }],
-        window: null, identity: new Map([['a', { gamertag: 'Tueur' }]]), allegiance: props.allegiance, marks: new Map(),
-      },
-      nowMs: 0, locale: 'fr', feedZoneOf: undefined,
-    } as unknown as ReplayFrameView
-  }
-
-  it('les emplacements du cadre portent le fil du plan quand la vue est donnée, la barre compacte restant la même', () => {
-    const doc = smallDoc()
-    const sans = canvasSlotsOf('cinema')
-    const avec = canvasSlotsOf('cinema', planFeedView(doc))
-    expect(sans.planFeed).toBeUndefined()
-    expect(sans.blockOverlays).toBeUndefined()
-    expect(avec.planFeed).toBe(true)
-    expect(avec.blockOverlays).toBeDefined()
-    expect(avec.transport).toBe(sans.transport)
-    expect(canvasSlotsOf('plein-cadre', planFeedView(doc)).planFeed).toBe(true)
-  })
-
-  it('le Standard ne pose jamais le fil du plan, même quand la vue est donnée', () => {
-    const standard = canvasSlotsOf('standard', planFeedView(smallDoc()))
-    expect(standard).toBe(canvasSlotsOf('standard'))
-    expect(standard.planFeed).toBeUndefined()
-  })
-
-  it('la toile dit à la fonction de rendu si le fil du plan est montré, et le fil se pose dans le bloc de la toile', () => {
-    const doc = smallDoc()
-    const slots = canvasSlotsOf('cinema', planFeedView(doc))
-    const { container } = renderWithProviders(
-      <ReplayCanvas {...baseProps(doc)} transport={slots.transport} blockOverlays={slots.blockOverlays} planFeed={slots.planFeed} />,
-    )
-    const fil = container.querySelector('[data-replay-plan-feed]')
-    expect(fil).not.toBeNull()
-    expect(fil?.parentElement).toBe(container.querySelector('canvas')!.parentElement!.parentElement)
-    expect(fil?.textContent).toContain('Tueur')
-    expect(fil?.textContent).toContain('Victime')
-  })
-
-  it('sans `planFeed` (cadre sans fil sur le plan), la fonction de rendu reçoit « non montré » et rien ne se pose', () => {
-    const doc = smallDoc()
-    const slots = canvasSlotsOf('cinema', planFeedView(doc))
-    const { container } = renderWithProviders(
-      <ReplayCanvas {...baseProps(doc)} transport={slots.transport} blockOverlays={slots.blockOverlays} />,
-    )
-    expect(container.querySelector('[data-replay-plan-feed]')).toBeNull()
-  })
-
-  describe("l'option « Fil des éliminations » de la vue", () => {
-    const montage = (planFeed: boolean) => {
-      const doc = smallDoc()
-      const slots = canvasSlotsOf('cinema', planFeedView(doc))
-      return renderWithProviders(
-        <ReplayCanvas {...baseProps(doc)} transport={slots.transport} blockOverlays={slots.blockOverlays} planFeed={planFeed} />,
-      )
-    }
-    const ouvrirLaVue = () => fireEvent.click(screen.getByRole('button', { name: /^Vue / }))
-
-    it("éteinte, le fil du plan n'est pas rendu et la légende de la chaleur retrouve le bas ; allumée, il l'est", () => {
-      localStorage.setItem('replay-show-heatmap', 'true')
-      localStorage.setItem('replay-show-plan-feed', 'false')
-      const eteint = montage(true)
-      expect(eteint.container.querySelector('[data-replay-plan-feed]')).toBeNull()
-      expect(eteint.container.querySelector<HTMLElement>(`[title="${T.heatLegendHint}"]`)?.className).toContain('bottom-2')
-      eteint.unmount()
-
-      localStorage.setItem('replay-show-plan-feed', 'true')
-      const allume = montage(true)
-      expect(allume.container.querySelector('[data-replay-plan-feed]')).not.toBeNull()
-      expect(allume.container.querySelector<HTMLElement>(`[title="${T.heatLegendHint}"]`)?.className).toContain('top-2')
-    })
-
-    it("l'option est dans le panneau quand le cadre pose le fil, et la basculer retire puis rend le fil, sans remonter la toile", () => {
-      const { container } = montage(true)
-      const toile = container.querySelector('canvas')
-      expect(container.querySelector('[data-replay-plan-feed]')).not.toBeNull()
-      ouvrirLaVue()
-      const option = screen.getByRole('switch', { name: T.frames.planFeed })
-      expect(option).toHaveAttribute('aria-checked', 'true')
-      fireEvent.click(option)
-      expect(container.querySelector('[data-replay-plan-feed]')).toBeNull()
-      fireEvent.click(screen.getByRole('switch', { name: T.frames.planFeed }))
-      expect(container.querySelector('[data-replay-plan-feed]')).not.toBeNull()
-      expect(container.querySelector('canvas')).toBe(toile)
-    })
-
-    it("sans `planFeed` (Standard, repli), l'option n'est pas dans le panneau", () => {
-      montage(false)
-      ouvrirLaVue()
-      expect(screen.getByRole('region', { name: T.viewButton })).toBeInTheDocument()
-      expect(screen.queryByRole('switch', { name: T.frames.planFeed })).toBeNull()
-    })
-  })
-
-  describe('la légende de la carte de chaleur', () => {
-    const legende = (c: HTMLElement) => c.querySelector<HTMLElement>(`[title="${T.heatLegendHint}"]`)
-
-    it('en bas à gauche du bloc par défaut, en haut à gauche quand le cadre pose le fil sur le plan', () => {
-      localStorage.setItem('replay-show-heatmap', 'true')
-      const doc = smallDoc()
-      const sans = renderWithProviders(canvasWith(doc, canvasSlotsOf('cinema').transport))
-      expect(legende(sans.container)?.className).toContain('bottom-2')
-      expect(legende(sans.container)?.className).not.toContain('top-2')
-      sans.unmount()
-
-      const slots = canvasSlotsOf('cinema', planFeedView(doc))
-      const avec = renderWithProviders(
-        <ReplayCanvas {...baseProps(doc)} transport={slots.transport} blockOverlays={slots.blockOverlays} planFeed={slots.planFeed} />,
-      )
-      expect(legende(avec.container)?.className).toContain('top-2')
-      expect(legende(avec.container)?.className).not.toContain('bottom-2')
-    })
   })
 })

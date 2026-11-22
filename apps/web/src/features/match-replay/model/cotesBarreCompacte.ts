@@ -3,7 +3,7 @@
  * et de sa frise (`ui/ReplayTimelineCompact.tsx`), en pixels. Les composants lisent ce tableau et
  * n'écrivent aucun nombre.
  *
- * Elles viennent de la maquette de la rangée (classes `.tp`, `.play`, `.time`, `.scrub`, `.ticks`,
+ * Elles viennent de la maquette de la rangée (classes `.tp`, `.play`, `.ibtn`, `.time`, `.scrub`, `.ticks`,
  * `.rail`, `.dom`, `.knob`, `.vsep`) : la frise compte 30 px de haut, et ses quatre couches
  * (repères, rail, bande de dominance, curseur) y ont chacune leur ligne — le centre du curseur
  * tombe sur celui du rail.
@@ -21,8 +21,14 @@ export interface CotesBarreCompacte {
   barreHauteurPx: number
   ecartPx: number
   margeXPx: number
+  /** Barre sous le bloc du plan, sur le fond de la page : sa marge latérale, et l'écart qui la sépare du bloc. */
+  margeXHorsBlocPx: number
+  blocBarreEcartPx: number
   /** Le bouton de lecture, rond et plein. */
   lecturePx: number
+  /** Une commande ordinaire : carré de `boutonPx`, rayon `boutonRayonPx`, sans bordure ni fond au repos (le fond ne vient qu'au survol). */
+  boutonPx: number
+  boutonRayonPx: number
   /** Le séparateur vertical entre deux groupes : hauteur et marge de chaque côté. */
   separateurHauteurPx: number
   separateurMargePx: number
@@ -71,7 +77,11 @@ export const COTES_BARRE_COMPACTE: CotesBarreCompacte = Object.freeze({
   barreHauteurPx: 56,
   ecartPx: 6,
   margeXPx: 12,
+  margeXHorsBlocPx: 2,
+  blocBarreEcartPx: 6,
   lecturePx: 36,
+  boutonPx: 30,
+  boutonRayonPx: 8,
   separateurHauteurPx: 20,
   separateurMargePx: 4,
   tempsLargeurMinPx: 84,

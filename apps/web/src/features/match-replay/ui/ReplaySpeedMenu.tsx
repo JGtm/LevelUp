@@ -19,14 +19,17 @@ import { useDismissable } from '@/lib/hooks/useDismissable'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { soundPlaysAtSpeed } from '../sound/replaySoundCursor'
 import { SPEED_MULTIPLIERS } from '../settings/useReplaySettings'
+import { COMPACT_BUTTON_CLASS, COMPACT_BUTTON_WIDENABLE } from './compactButton'
 
 interface ReplaySpeedMenuProps {
   speed: number
   onSetSpeed: (speed: number) => void
   locale: ReplayLocale
+  /** Le format de la barre d'une ligne : la valeur seule, dans un bouton sans bordure ni fond au repos (pas de chevron). */
+  compact?: boolean
 }
 
-export function ReplaySpeedMenu({ speed, onSetSpeed, locale }: ReplaySpeedMenuProps) {
+export function ReplaySpeedMenu({ speed, onSetSpeed, locale, compact = false }: ReplaySpeedMenuProps) {
   const t = REPLAY_TEXT[locale]
   const [open, setOpen] = useState(false)
 
@@ -42,10 +45,15 @@ export function ReplaySpeedMenu({ speed, onSetSpeed, locale }: ReplaySpeedMenuPr
         aria-expanded={open}
         aria-label={t.speed}
         title={t.speed}
-        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-input px-3 text-[12.5px] font-medium tabular-nums transition-colors hover:bg-accent"
+        style={compact ? COMPACT_BUTTON_WIDENABLE : undefined}
+        className={
+          compact
+            ? `${COMPACT_BUTTON_CLASS} cursor-pointer text-[12.5px] font-medium tabular-nums`
+            : 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-input px-3 text-[12.5px] font-medium tabular-nums transition-colors hover:bg-accent'
+        }
       >
         {fmt(speed)}
-        <ChevronGlyph />
+        {!compact && <ChevronGlyph />}
       </button>
       {open && (
         <div

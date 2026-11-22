@@ -69,6 +69,7 @@ export function instantDoc(over: Partial<Doc> = {}) {
           kills: { rounds: null, total: [{ t: 20, v: 1 }, { t: 60, v: 2 }, { t: 100, v: 3 }, { t: 200, v: 4 }] },
           deaths: { rounds: null, total: [{ t: 150, v: 1 }] },
           assists: { rounds: null, total: [{ t: 60, v: 1 }] },
+          stats: { headshots: { rounds: null, total: [{ t: 20, v: 1 }, { t: 100, v: 2 }] } },
         },
       ],
     } as never,

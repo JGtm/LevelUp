@@ -31,7 +31,8 @@ function groupWidthsOf(row: HTMLElement): number[] {
     .filter((w) => w > 0)
 }
 
-export function useTransportBarLines(): {
+/** `marginX` : la marge latérale de la barre (`barMarginX`), que la largeur requise compte. */
+export function useTransportBarLines(marginX?: number): {
   outerRef: React.RefObject<HTMLDivElement | null>
   rowRef: React.RefObject<HTMLDivElement | null>
   lines: BarLines
@@ -50,7 +51,7 @@ export function useTransportBarLines(): {
       const outer = outerRef.current
       const row = rowRef.current
       if (!outer || !row) return
-      const input = { availableWidth: outer.clientWidth, groupWidths: groupWidthsOf(row) }
+      const input = { availableWidth: outer.clientWidth, groupWidths: groupWidthsOf(row), marginX }
       setLines((previous) => barLines(input, previous))
       setRowHeight(row.offsetHeight)
     }

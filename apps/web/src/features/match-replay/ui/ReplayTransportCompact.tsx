@@ -18,6 +18,10 @@
  * SUR UNE OU DEUX LIGNES (`barLines`) : quand la frise n'aurait plus sa largeur minimale, elle passe seule sur la
  * première ligne et les commandes sur la seconde. La barre mesure, la règle décide.
  *
+ * SOUS LE BLOC OU SUR LUI (`barPlacement`) : au Cinéma, et au Plein cadre quand la barre fine est éteinte, la barre est
+ * SOUS le bloc arrondi du plan, sur le fond de la page : sans fond propre, à marge latérale étroite (`barMarginX`),
+ * que la règle des lignes compte. Dans le bloc ou posée sur le plan, elle garde sa marge de socle.
+ *
  * FINE OU PLEINE (`barForm`) : au Plein cadre, avec la préférence « barre fine », la barre est posée sur le plan par
  * la toile (`overlaysTransportBar`) et prend la forme FINE pendant la lecture : la barre pleine réduite à
  * `fineEchelle`, plus basse, plus translucide, floutée derrière. Pause, survol, focus clavier ou geste récent la
@@ -39,7 +43,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useTransportBarForm } from '../hooks/useTransportBarForm'
 import { useTransportBarLines } from '../hooks/useTransportBarLines'
 import { COTES_BARRE_COMPACTE as C } from '../model/cotesBarreCompacte'
-import { overlaysTransportBar, type BarForm, type BarLines } from '../model/transportBarLogic'
+import { barMarginX, barPlacement, type BarForm, type BarLines, type BarPlacement } from '../model/transportBarLogic'
 import { ReplayCompactBarControls } from './ReplayCompactBarControls'
 import type { ReplayTransportCommands } from './replayTransportCommands'
 
@@ -48,9 +52,10 @@ export interface ReplayTransportCompactProps extends ReplayTransportCommands {
   camera?: ReactNode
 }
 
-/** Le fond de la barre : fixe, pleine en surimpression, ou fine et floutée. */
-function backgroundClass(overlay: boolean, form: BarForm): string {
-  if (!overlay) return 'bg-background/40'
+/** Le fond de la barre : aucun sous le bloc (le fond de la page), léger dans le bloc, plein en surimpression, ou fin et flouté. */
+function backgroundClass(placement: BarPlacement, form: BarForm): string {
+  if (placement === 'below') return ''
+  if (placement === 'in-block') return 'bg-background/40'
   return form === 'fine' ? 'bg-background/45 backdrop-blur-[6px]' : 'bg-background/70'
 }
 
@@ -70,11 +75,11 @@ function rowHeightOf(form: BarForm, lines: BarLines): number | string | undefine
 }
 
 /** La rangée des commandes : la barre pleine, ou — forme fine — la même, plus large d'autant qu'elle est réduite. */
-function rowStyle(form: BarForm, lines: BarLines, animated: boolean): CSSProperties {
+function rowStyle(form: BarForm, lines: BarLines, animated: boolean, marginX: number): CSSProperties {
   const fine = form === 'fine'
   return {
     columnGap: C.ecartPx,
-    padding: `0 ${C.margeXPx}px`,
+    padding: `0 ${marginX}px`,
     height: rowHeightOf(form, lines),
     width: fine ? `${100 / C.fineEchelle}%` : undefined,
     transform: fine ? `scale(${C.fineEchelle})` : undefined,
@@ -94,20 +99,21 @@ export function ReplayTransportCompact(props: ReplayTransportCompactProps) {
   const { camera, ...commands } = props
   const { frameControl, thinBar, playing } = commands
   const { form, handlers } = useTransportBarForm({ frame: frameControl.frame, thinPreferred: thinBar, playing })
-  const { outerRef, rowRef, lines, rowHeight } = useTransportBarLines()
+  const placement = barPlacement(frameControl.frame, thinBar)
+  const marginX = barMarginX(placement)
+  const { outerRef, rowRef, lines, rowHeight } = useTransportBarLines(marginX)
   const animated = !useReducedMotion()
-  const overlay = overlaysTransportBar(frameControl.frame, thinBar)
   return (
     <div
       ref={outerRef}
-      className={`relative ${backgroundClass(overlay, form)}`}
+      className={`relative ${backgroundClass(placement, form)}`}
       style={{ height: barHeight(form, lines, rowHeight), transition: animated ? 'height 150ms ease' : undefined }}
       data-replay-transport="compact"
       data-replay-bar-form={form}
       data-replay-bar-lines={lines}
       {...handlers}
     >
-      <div ref={rowRef} className={ROW_CLASS[lines]} style={rowStyle(form, lines, animated)}>
+      <div ref={rowRef} className={ROW_CLASS[lines]} style={rowStyle(form, lines, animated, marginX)}>
         <ReplayCompactBarControls {...commands} camera={camera} lines={lines} />
       </div>
     </div>

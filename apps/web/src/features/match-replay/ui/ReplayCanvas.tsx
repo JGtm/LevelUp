@@ -32,10 +32,11 @@ import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import type { PlaybackStore } from '../model/playbackStore'
 import { useReplayTransportCommands, type ReplayCommandsRender } from './replayTransportCommands'
-import { overlaysTransportBar } from '../model/transportBarLogic'
+import { barPlacement } from '../model/transportBarLogic'
 import { useTeamCascades } from '../hooks/useTeamCascades'
 import { normalizeMapObjectives } from '../layers/objectivesLayer'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
+import { ReplayCanvasBlock } from './ReplayCanvasBlock'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
 import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT } from '../layers/replayCanvasConfig'
@@ -565,7 +566,7 @@ export function ReplayCanvas({
       bombCarrier, vehicles, hasWallPlan: !!mapImage?.plan, lives: lives.available, respawnForecast,
     }),
     // LA BARRE FINE : l'option du panneau n'existe qu'où la barre peut se poser sur le plan (Plein cadre).
-    thinBarAvailable: overlaysTransportBar(frameControl.frame, true),
+    thinBarAvailable: barPlacement(frameControl.frame, true) === 'overlay',
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
@@ -580,67 +581,48 @@ export function ReplayCanvas({
     planFeedShown, autoTurned, orientation, thinBar: settings.thinBarAtFullFrame,
   })
   // LA BARRE SUR LE PLAN (Plein cadre, préférence allumée) : posée en bas du bloc, elle ne compte plus dans le chrome que mesure le viewport.
-  const barOverlay = overlaysTransportBar(frameControl.frame, settings.thinBarAtFullFrame)
+  const placement = barPlacement(frameControl.frame, settings.thinBarAtFullFrame)
+  const barOverlay = placement === 'overlay'
 
   return (
-    // RELATIVE + OVERFLOW-HIDDEN : `overflow-hidden` retient les coins carrés de la carte dans
-    // son rayon arrondi ; le panneau de la vue en sort donc par un portail (useAnchoredPanel).
-    <div className="relative overflow-hidden rounded-lg border border-border bg-card">
-      <div className="flex">
-        {/* Colonne canvas : c'est ELLE que le ResizeObserver mesure. Elle occupe DÉSORMAIS
-            toute la largeur du cadre, ouvert ou fermé — le panneau la recouvre au lieu de
-            lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
-            plus à l'ouverture. */}
-        <div ref={containerRef} className="relative min-w-0 flex-1">
-          <div className="relative p-3 pb-0">
-            {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
-                de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
-                relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
-            {/* QUATRE CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme,
-                drapeaux, armes au sol depuis le lot 6.5 du 2026-09-10) : chacun rejoue le
-                survol sur SA donnée, le canvas passe le geste. */}
-            <div className="relative mx-auto" style={{ width: screen.width || '100%' }}>
-              <canvas
-                ref={canvasRef}
-                className="block"
-                // LA BOÎTE D'ÉCRAN, PAS LA TAILLE DE DESSIN : pendant un export la toile se dessine en
-                // 16:9 et `contain` l'y inscrit sans la déformer (cf. `ReplayView.screen`).
-                style={{ width: screen.width || '100%', height: screen.height, objectFit: 'contain' }}
-                {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons, vehicles], drag)}
-              />
-              {/* Les infobulles des CINQ calques survolables (cf. ReplayCanvasTips). */}
-              <ReplayCanvasTips
-                locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
-                placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
-                groundWeapon={groundWeapons.hover} vehicleCycle={vehicles.cycleHover}
-              />
-              {/* LES SURCOUCHES DE LA CARTE (2026-09-08) : écran de fin, message inter-manche,
-                  compte à rebours de la bombe. Elles arrivent de la page, mais elles se posent
-                  ICI — dans le conteneur de la TOILE, le seul dont les bornes sont celles du
-                  terrain.
+    <ReplayCanvasBlock containerRef={containerRef} placement={placement} transport={transport(commands)}>
+      {/* QUATRE CALQUES SURVOLABLES SUR UNE SEULE BALISE (poses, emplacements d'arme, drapeaux, armes au sol) :
+          chacun rejoue le survol sur SA donnée, le canvas passe le geste. */}
+      <div className="relative mx-auto" style={{ width: screen.width || '100%' }}>
+        <canvas
+          ref={canvasRef}
+          className="block"
+          // LA BOÎTE D'ÉCRAN, PAS LA TAILLE DE DESSIN : pendant un export la toile se dessine en
+          // 16:9 et `contain` l'y inscrit sans la déformer (cf. `ReplayView.screen`).
+          style={{ width: screen.width || '100%', height: screen.height, objectFit: 'contain' }}
+          {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons, vehicles], drag)}
+        />
+        {/* Les infobulles des CINQ calques survolables (cf. ReplayCanvasTips). */}
+        <ReplayCanvasTips
+          locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
+          placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
+          groundWeapon={groundWeapons.hover} vehicleCycle={vehicles.cycleHover}
+        />
+        {/* LES SURCOUCHES DE LA CARTE (2026-09-08) : écran de fin, message inter-manche,
+            compte à rebours de la bombe. Elles arrivent de la page, mais elles se posent
+            ICI — dans le conteneur de la TOILE, le seul dont les bornes sont celles du
+            terrain.
 
-                  ELLES ÉTAIENT SŒURS DE CE COMPOSANT dans la page, et leur `inset-0` couvrait
-                  donc la bannière de score, la carte ET la barre de lecture : mesuré à la fin
-                  d'un rejeu, le bloc « DÉFAITE » tombait 106 px sous le centre de la carte
-                  (retour utilisateur : « ça prend la hauteur du lecteur en compte, ce qui n'est
-                  pas correct »). Les remonter d'un cran dans la page ne suffisait pas — ce
-                  composant rend AUSSI la barre de lecture. Le seul ancrage juste est celui-ci. */}
-              {mapOverlays}
-              {/* LE BOUTON « VUE » : coin haut droit de la carte. Son panneau se rend en portail,
-                  sous lui, et laisse libre le coin BAS-GAUCHE de la légende de la chaleur. */}
-              <ReplayViewMenu {...viewMenu} />
-            </div>
-            {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (le conteneur `mx-auto` est centré, souvent plus étroit que
-                la colonne) : en bas à gauche, ou en haut quand ce coin porte le fil des éliminations. */}
-            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} corner={planFeedShown || barOverlay ? 'haut' : 'bas'} />}
-            {blockOverlays?.(commands)}
-          </div>
-          {/* LA BARRE DE LECTURE va bord à bord, hors du `p-3`, mais DANS `containerRef` : `useReplayViewport`
-              déduit le chrome par soustraction, donc rend au terrain ce que la barre économise. Posée sur le plan
-              (`barOverlay`), elle sort du flux : le terrain reprend toute sa hauteur. */}
-          <div className={barOverlay ? 'absolute inset-x-0 bottom-0 z-20' : undefined}>{transport(commands)}</div>
-        </div>
+            ELLES ÉTAIENT SŒURS DE CE COMPOSANT dans la page, et leur `inset-0` couvrait
+            donc la bannière de score, la carte ET la barre de lecture : mesuré à la fin
+            d'un rejeu, le bloc « DÉFAITE » tombait 106 px sous le centre de la carte
+            (retour utilisateur : « ça prend la hauteur du lecteur en compte, ce qui n'est
+            pas correct »). Les remonter d'un cran dans la page ne suffisait pas — ce
+            composant rend AUSSI la barre de lecture. Le seul ancrage juste est celui-ci. */}
+        {mapOverlays}
+        {/* LE BOUTON « VUE » : coin haut droit de la carte. Son panneau se rend en portail,
+            sous lui, et laisse libre le coin BAS-GAUCHE de la légende de la chaleur. */}
+        <ReplayViewMenu {...viewMenu} />
       </div>
-    </div>
+      {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (le conteneur `mx-auto` est centré, souvent plus étroit que
+          la colonne) : en bas à gauche, ou en haut quand ce coin porte le fil des éliminations. */}
+      {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} corner={planFeedShown || barOverlay ? 'haut' : 'bas'} />}
+      {blockOverlays?.(commands)}
+    </ReplayCanvasBlock>
   )
 }

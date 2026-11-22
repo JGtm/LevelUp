@@ -15,7 +15,7 @@
  * et pleine.
  */
 import { COTES_BARRE_COMPACTE as C } from './cotesBarreCompacte'
-import type { ReplayFrame } from './replayFrame'
+import { usesCompactBar, type ReplayFrame } from './replayFrame'
 import { MARGE_BASCULE_PX } from './rowLayout'
 
 /** Le nombre de lignes de la barre. */
@@ -23,6 +23,8 @@ export type BarLines = 1 | 2
 
 /** Ce que la règle des lignes lit : la largeur de la barre et celle de chaque groupe de commandes hors frise. */
 export interface BarLinesInput {
+  /** La marge latérale de la barre, de chaque côté (`barMarginX`) ; absente : celle d'une barre dans le bloc. */
+  marginX?: number
   /** La largeur utile de la barre, marges comprises ; 0 tant qu'elle n'est pas mesurée. */
   availableWidth: number
   /** La largeur de chaque groupe de commandes visible, hors frise, avec ses marges propres. */
@@ -34,9 +36,9 @@ export interface BarLinesInput {
  * éléments (la frise est un élément : autant d'écarts que de groupes), les deux marges de la barre, et la frise à sa
  * largeur minimale avec ses deux marges.
  */
-export function requiredWidthOneLine(groupWidths: readonly number[]): number {
+export function requiredWidthOneLine(groupWidths: readonly number[], marginX: number = C.margeXPx): number {
   const groups = groupWidths.reduce((sum, w) => sum + w, 0)
-  return groups + C.ecartPx * groupWidths.length + 2 * C.margeXPx + C.friseLargeurMinPx + 2 * C.friseMargePx
+  return groups + C.ecartPx * groupWidths.length + 2 * marginX + C.friseLargeurMinPx + 2 * C.friseMargePx
 }
 
 /**
@@ -47,7 +49,7 @@ export function requiredWidthOneLine(groupWidths: readonly number[]): number {
  */
 export function barLines(input: BarLinesInput, previous: BarLines | null): BarLines {
   if (input.availableWidth <= 0 || input.groupWidths.length === 0) return 1
-  const required = requiredWidthOneLine(input.groupWidths)
+  const required = requiredWidthOneLine(input.groupWidths, input.marginX)
   if (previous === 2) return input.availableWidth >= required + MARGE_BASCULE_PX ? 1 : 2
   return input.availableWidth >= required ? 1 : 2
 }
@@ -61,6 +63,22 @@ export type BarForm = 'fine' | 'pleine'
  */
 export function overlaysTransportBar(frame: ReplayFrame, thinPreferred: boolean): boolean {
   return frame === 'plein-cadre' && thinPreferred
+}
+
+/**
+ * LA PLACE DE LA BARRE par rapport au bloc du plan : `in-block` (Standard : la barre complète est dans le bloc,
+ * que le cadre pose autour de la carte et de sa colonne), `overlay` (posée sur le bas du plan) ou `below` (sous
+ * le bloc du plan, hors de lui, sur le fond de la page : Cinéma, et Plein cadre quand la barre fine est éteinte).
+ */
+export type BarPlacement = 'in-block' | 'overlay' | 'below'
+
+/**
+ * barPlacement décide de la place de la barre : la barre complète est toujours dans le bloc ; la barre d'une ligne
+ * est sur le plan quand `overlaysTransportBar`, sinon sous le bloc.
+ */
+export function barPlacement(frame: ReplayFrame, thinPreferred: boolean): BarPlacement {
+  if (!usesCompactBar(frame)) return 'in-block'
+  return overlaysTransportBar(frame, thinPreferred) ? 'overlay' : 'below'
 }
 
 /** Ce que la règle de forme lit : le cadre et la préférence, la lecture, et ce que l'utilisateur fait de la barre. */
@@ -87,4 +105,13 @@ export function barForm(input: BarFormInput): BarForm {
   if (!overlaysTransportBar(input.frame, input.thinPreferred)) return 'pleine'
   const inUse = !input.playing || input.hovered || input.focused || input.recentGesture
   return inUse ? 'pleine' : 'fine'
+}
+
+/**
+ * barMarginX rend la marge latérale de la barre d'une ligne, de chaque côté : celle du socle quand elle est dans le
+ * bloc du plan ou posée sur lui, la marge étroite quand elle est sous le bloc, sur le fond de la page (le bloc porte
+ * déjà la sienne). La règle des lignes la compte dans la largeur requise.
+ */
+export function barMarginX(placement: BarPlacement): number {
+  return placement === 'below' ? C.margeXHorsBlocPx : C.margeXPx
 }

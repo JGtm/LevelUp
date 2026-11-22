@@ -16,7 +16,7 @@ import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PresenceEvent } from '../model/presenceFeed'
 import { presenceWording } from '../model/presenceWording'
-import { FEED_ROW } from '../model/feedRow'
+import { FEED_ROW, feedRowClass, followedAttr } from '../model/feedRow'
 import { FeedClock } from './ReplayFeedClock'
 import { FeedName } from './ReplayFeedName'
 import { PresenceGlyph } from './PresenceGlyph'
@@ -27,12 +27,15 @@ export function ReplayPresenceLine({
   color,
   mark,
   locale,
+  followed,
 }: {
   presence: PresenceEvent
   replayMs: number
   color: string
   mark: PlayerMarkKind | undefined
   locale: ReplayLocale
+  /** La ligne concerne le joueur suivi par la caméra : fond léger (`FEED_FOLLOWED`). */
+  followed?: boolean
 }) {
   // Un libellé (« a rejoint / a quitté la partie »), deux infobulles : celle du repli film
   // porte la réserve — cf. presenceFeed.ts. La
@@ -41,7 +44,7 @@ export function ReplayPresenceLine({
   // met au conditionnel.
   const { label, hint } = presenceWording(presence, REPLAY_TEXT[locale])
   return (
-    <li className={FEED_ROW} title={hint}>
+    <li className={feedRowClass(FEED_ROW, followed)} title={hint} data-followed={followedAttr(followed)}>
       <FeedClock ms={replayMs} />
       <PresenceGlyph kind={presence.kind} color={color} />
       <FeedName kind={mark} color={color} locale={locale} className="font-medium" name={presence.name} />

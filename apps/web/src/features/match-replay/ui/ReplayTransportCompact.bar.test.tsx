@@ -4,7 +4,7 @@
  * (fine en lecture, pleine à la pause, au survol, au clavier et juste après une touche ; préférence éteinte et autres
  * cadres : toujours pleine ; mouvement réduit : sans transition).
  */
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { COTES_BARRE_COMPACTE as C } from '../model/cotesBarreCompacte'
@@ -108,11 +108,31 @@ describe('La forme de la barre au Plein cadre', () => {
     expect(root).toHaveAttribute('data-replay-bar-form', 'fine')
   })
 
-  it('préférence éteinte : toujours pleine, fond de la barre fixe', () => {
+  it('préférence éteinte : toujours pleine, sous le bloc du plan, sans fond propre et à marge étroite', () => {
     const { root } = renderBar({ thinBar: false })
     expect(root).toHaveAttribute('data-replay-bar-form', 'pleine')
-    expect(root.className).toContain('bg-background/40')
+    expect(root.className).not.toContain('bg-background')
     expect(root.className).not.toContain('backdrop-blur')
+    expect((root.firstElementChild as HTMLElement).style.padding).toBe(`0px ${C.margeXHorsBlocPx}px`)
+  })
+
+  it('sur le plan (préférence allumée) : la marge du socle ; dans le bloc : la marge du socle et le fond léger', () => {
+    const posee = renderBar({ playing: false })
+    expect((posee.root.firstElementChild as HTMLElement).style.padding).toBe(`0px ${C.margeXPx}px`)
+    expect(posee.root.className).toContain('bg-background/70')
+    cleanup()
+    const dansLeBloc = renderBar({ frame: 'standard' })
+    expect((dansLeBloc.root.firstElementChild as HTMLElement).style.padding).toBe(`0px ${C.margeXPx}px`)
+    expect(dansLeBloc.root.className).toContain('bg-background/40')
+  })
+
+  it('Cinéma : sous le bloc, sans fond et à marge étroite, quelle que soit la préférence', () => {
+    for (const thinBar of [true, false]) {
+      const { root } = renderBar({ frame: 'cinema', thinBar })
+      expect(root.className).not.toContain('bg-background')
+      expect((root.firstElementChild as HTMLElement).style.padding).toBe(`0px ${C.margeXHorsBlocPx}px`)
+      cleanup()
+    }
   })
 
   it.each(['standard', 'cinema'] as const)('%s : toujours pleine, préférence allumée ou non', (frame) => {
@@ -150,7 +170,8 @@ describe('Les lignes de la barre', () => {
         const style = getComputedStyle(el)
         return 40 + (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0)
       })
-    return requiredWidthOneLine(groups)
+    // La marge que la barre montre (sous le bloc, étroite) est celle que la règle compte.
+    return requiredWidthOneLine(groups, parseFloat(row.style.paddingLeft))
   }
 
   it('large : une ligne, la frise prend la place restante', () => {

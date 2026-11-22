@@ -19,14 +19,17 @@
  *    le panneau qui défile, pas la page. Sans cette borne, un panneau plus haut que la fenêtre
  *    sortirait par le bas, là où rien ne le rattrape.
  *
- * # DEUX OPTIONS, TOUTES DEUX FACULTATIVES (sans elles, rien ne change)
+ * # TROIS OPTIONS, TOUTES FACULTATIVES (sans elles, rien ne change)
  *
  *  - `align: 'start'` aligne le bord GAUCHE du panneau sur celui du déclencheur (une fenêtre sous une
  *    tuile de rangée) ; si le panneau débordait alors du bord droit de la page, il s'aligne par la DROITE
  *    (bord droit sur celui du déclencheur), puis le `clamp` le ramène. Défaut `'end'` : le bord droit ;
  *  - `boundRef` désigne l'élément dont le bord BAS borne la hauteur (le plan du rejeu) : le panneau ne
  *    descend pas sous lui, moins la marge, et défile en interne au-delà. Sans elle, la borne est le bas
- *    de la fenêtre. Un élément absent ou démonté retombe sur la fenêtre.
+ *    de la fenêtre. Un élément absent ou démonté retombe sur la fenêtre ;
+ *  - `topRef` et `topGap` posent le HAUT du panneau à `topGap` sous le haut de l'élément désigné (le bloc du plan),
+ *    au lieu de `GAP` sous le déclencheur : la fenêtre se tient alors au même endroit quelle que soit la fiche
+ *    cliquée. La hauteur maximale se compte depuis ce haut. Un élément absent retombe sur le déclencheur.
  *
  * # POURQUOI `scroll` EN CAPTURE
  *
@@ -60,12 +63,17 @@ export interface AnchorOptions {
   align?: AnchorAlign
   /** Le bas (coordonnée de la fenêtre) de l'élément qui borne la hauteur ; absent = le bas de la fenêtre. */
   boundBottom?: number
+  /** La coordonnée voulue du HAUT du panneau ; absente = `GAP` sous le déclencheur. */
+  top?: number
 }
 
 /** Les options du hook : les mêmes, mais l'élément borne se donne par sa référence. */
 export interface AnchoredPanelOptions {
   align?: AnchorAlign
   boundRef?: RefObject<HTMLElement | null>
+  /** L'élément dont le haut ancre le haut du panneau, et l'écart qui les sépare. */
+  topRef?: RefObject<HTMLElement | null>
+  topGap?: number
 }
 
 /**
@@ -99,10 +107,11 @@ export function anchoredPosition(
   const aligned =
     options.align === 'start' && r.left !== undefined && r.left <= maxLeft ? r.left : alignedEnd
   const limit = Math.min(viewport.height, options.boundBottom ?? viewport.height)
+  const top = options.top ?? r.bottom + GAP
   return {
     left: Math.min(Math.max(aligned, EDGE), maxLeft),
-    top: Math.max(r.bottom + GAP, EDGE),
-    maxHeight: Math.max(limit - r.bottom - GAP - EDGE, MIN_HEIGHT),
+    top: Math.max(top, EDGE),
+    maxHeight: Math.max(limit - top - EDGE, MIN_HEIGHT),
   }
 }
 
@@ -112,7 +121,7 @@ export function useAnchoredPanel(
   options: AnchoredPanelOptions = {},
 ): AnchoredPosition {
   // Les options se lisent par leurs valeurs : un objet neuf à chaque rendu ne doit pas rebrancher les écouteurs.
-  const { align, boundRef } = options
+  const { align, boundRef, topRef, topGap = 0 } = options
   // L'ÉTAT DÉMARRE CENTRÉ, JAMAIS NUL. Un premier rendu nul ferait naître le panneau APRÈS le
   // montage, et tout ce qui l'attend au montage — le focus qui doit y entrer, notamment —
   // s'exécuterait sur un panneau qui n'existe pas encore. Le `useLayoutEffect` ci-dessous
@@ -136,7 +145,11 @@ export function useAnchoredPanel(
         el.getBoundingClientRect(),
         { width: window.innerWidth, height: window.innerHeight },
         width,
-        { align, boundBottom: boundRef?.current?.getBoundingClientRect().bottom },
+        {
+          align,
+          boundBottom: boundRef?.current?.getBoundingClientRect().bottom,
+          top: topRef?.current ? topRef.current.getBoundingClientRect().top + topGap : undefined,
+        },
       )
       // Une position inchangée garde l'objet : un placement répété (défilement, redimensionnement) ne rend pas pour rien.
       setPos((prev) => (prev.left === next.left && prev.top === next.top && prev.maxHeight === next.maxHeight ? prev : next))
@@ -149,7 +162,7 @@ export function useAnchoredPanel(
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [triggerRef, width, align, boundRef])
+  }, [triggerRef, width, align, boundRef, topRef, topGap])
 
   return pos
 }

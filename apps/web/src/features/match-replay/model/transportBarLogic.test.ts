@@ -10,6 +10,8 @@ import { MARGE_BASCULE_PX } from './rowLayout'
 import {
   barForm,
   barLines,
+  barMarginX,
+  barPlacement,
   overlaysTransportBar,
   requiredWidthOneLine,
   type BarFormInput,
@@ -26,6 +28,10 @@ describe('requiredWidthOneLine — la frise garde sa largeur minimale', () => {
     )
   })
 
+  it('la marge latérale donnée remplace celle du socle : une barre sous le bloc demande 20 px de moins', () => {
+    expect(requiredWidthOneLine(GROUPS, C.margeXHorsBlocPx)).toBe(REQUIRED - 2 * (C.margeXPx - C.margeXHorsBlocPx))
+  })
+
   it('sans aucun groupe, il reste la frise et les marges de la barre', () => {
     expect(requiredWidthOneLine([])).toBe(2 * C.margeXPx + C.friseLargeurMinPx + 2 * C.friseMargePx)
   })
@@ -38,6 +44,14 @@ describe('barLines — une ligne tant que la frise tient, sinon deux', () => {
 
   it('un pixel sous la largeur requise : deux lignes', () => {
     expect(barLines({ availableWidth: REQUIRED - 1, groupWidths: GROUPS }, null)).toBe(2)
+  })
+
+  it('la marge de la barre entre dans le seuil : sous le bloc, une ligne tient plus étroit', () => {
+    const required = requiredWidthOneLine(GROUPS, C.margeXHorsBlocPx)
+    expect(barLines({ availableWidth: required, groupWidths: GROUPS, marginX: C.margeXHorsBlocPx }, null)).toBe(1)
+    expect(barLines({ availableWidth: required - 1, groupWidths: GROUPS, marginX: C.margeXHorsBlocPx }, null)).toBe(2)
+    // Sans la marge donnée, la même largeur est trop étroite : la marge du socle est comptée.
+    expect(barLines({ availableWidth: required, groupWidths: GROUPS }, null)).toBe(2)
   })
 
   it('une ligne mémorisée la quitte dès que la largeur requise manque : aucune marge de ce côté', () => {
@@ -118,5 +132,40 @@ describe('barForm — fine seulement en lecture, au repos, au Plein cadre', () =
 
   it.each(['standard', 'cinema'] as const)('%s : toujours pleine, la barre y est fixe', (frame) => {
     expect(barForm(input({ frame }))).toBe('pleine')
+  })
+})
+
+describe('barMarginX — la marge latérale de la barre selon sa place', () => {
+  it('sous le bloc : la marge étroite (2 px) ; dans le bloc ou sur le plan : la marge du socle (12 px)', () => {
+    expect(barMarginX('below')).toBe(C.margeXHorsBlocPx)
+    expect(barMarginX('below')).toBe(2)
+    expect(barMarginX('overlay')).toBe(C.margeXPx)
+    expect(barMarginX('in-block')).toBe(C.margeXPx)
+  })
+})
+
+describe('barPlacement — où la barre se pose par rapport au bloc du plan', () => {
+  it('la barre complète du Standard est dans le bloc, quelle que soit la préférence', () => {
+    expect(barPlacement('standard', true)).toBe('in-block')
+    expect(barPlacement('standard', false)).toBe('in-block')
+  })
+
+  it('le Cinéma pose sa barre sous le bloc, quelle que soit la préférence', () => {
+    expect(barPlacement('cinema', true)).toBe('below')
+    expect(barPlacement('cinema', false)).toBe('below')
+  })
+
+  it('le Plein cadre la pose sur le plan avec la barre fine, et sous le bloc sans elle : comme le Cinéma', () => {
+    expect(barPlacement('plein-cadre', true)).toBe('overlay')
+    expect(barPlacement('plein-cadre', false)).toBe('below')
+  })
+
+  it('la surimpression est exactement la place « overlay »', () => {
+    const frames: ReplayFrame[] = ['standard', 'cinema', 'plein-cadre']
+    for (const frame of frames) {
+      for (const thin of [true, false]) {
+        expect(overlaysTransportBar(frame, thin)).toBe(barPlacement(frame, thin) === 'overlay')
+      }
+    }
   })
 })

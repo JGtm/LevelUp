@@ -52,7 +52,7 @@ describe('playerInstantView — Alpha, tout est lu, à la fin du match', () => {
     expect(v.since).toMatchObject({
       currentStreak: 1,
       bestStreak: 3,
-      headshots: { count: 1, measured: 2 },
+      headshots: 2,
       perfects: 1,
       respawns: 1,
       currentLifeMs: 22_900,
@@ -186,8 +186,8 @@ describe('playerInstantView — le début du match : des zéros mesurés, pas de
     expect(v.shots).toMatchObject({ accuracy: null, damageDealt: 0, damageTaken: 0, weapons: [] })
   })
 
-  it('les tirs à la tête, les listes de gestes et les médailles n’ont rien à écrire', () => {
-    expect(v.since?.headshots).toBeNull()
+  it('les listes de gestes et les médailles n’ont rien à écrire ; les tirs à la tête sont un zéro mesuré', () => {
+    expect(v.since?.headshots).toBe(0)
     expect(v.grenadesThrown).toEqual([])
     expect(v.pickups).toBeNull()
     expect(v.medals).toEqual([])

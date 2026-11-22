@@ -43,8 +43,6 @@ export interface PlayerInstantText {
   currentStreak: string
   bestStreak: string
   headshots: string
-  /** Ce qui suit le nombre de tirs à la tête : le nombre d'éliminations dont le coup fatal est lu. */
-  headshotsOfFmt: (measured: number) => string
   perfects: string
   respawns: string
   currentLife: string
@@ -109,7 +107,6 @@ export const FR_PLAYER_INSTANT = {
   currentStreak: 'Série en cours',
   bestStreak: 'Meilleure série',
   headshots: 'Tirs à la tête',
-  headshotsOfFmt: (measured) => `sur ${measured} mesurées`,
   perfects: 'Éliminations parfaites',
   respawns: 'Réapparitions',
   currentLife: 'Vie en cours',
@@ -155,7 +152,6 @@ export const EN_PLAYER_INSTANT = {
   currentStreak: 'Current streak',
   bestStreak: 'Best streak',
   headshots: 'Headshots',
-  headshotsOfFmt: (measured) => `of ${measured} measured`,
   perfects: 'Perfect kills',
   respawns: 'Respawns',
   currentLife: 'Current life',

@@ -1,12 +1,11 @@
 /**
- * cotesMenuCamera.ts — LES COTES DU MENU DE LA CAMÉRA (`ui/ReplayCameraMenu.tsx`), en pixels : le bouton de
- * la barre compacte et son panneau à deux listes. Le composant lit ce tableau et n'écrit aucun nombre.
+ * cotesMenuCamera.ts — LES COTES DU MENU DE LA CAMÉRA (`ui/ReplayCameraMenu.tsx`), en pixels : son panneau à deux
+ * listes. Le composant lit ce tableau et n'écrit aucun nombre ; le bouton qui l'ouvre a le format des commandes de
+ * la barre (`ui/compactButton`).
  *
  * Elles s'appliquent en `style` : une classe Tailwind arbitraire ne naît que si elle est écrite en clair.
  */
 export interface CotesMenuCamera {
-  /** Le bouton icône de la barre : même diamètre que le bouton du son, auquel il est accolé. */
-  declencheurPx: number
   /** Écart entre le haut de la barre et le bas du panneau, qui s'ouvre vers le haut. */
   panneauEcartPx: number
   /** Largeur de chaque liste (« Suivre », « Point de vue »), et écart entre les deux. */
@@ -19,7 +18,6 @@ export interface CotesMenuCamera {
 }
 
 export const COTES_MENU_CAMERA: CotesMenuCamera = Object.freeze({
-  declencheurPx: 34,
   panneauEcartPx: 6,
   listeLargeurPx: 176,
   listeEcartPx: 8,

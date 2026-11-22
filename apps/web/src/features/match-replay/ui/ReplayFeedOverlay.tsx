@@ -25,6 +25,7 @@ import { COTES_FIL_PLAN } from '../model/cotesFilPlan'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { dernieresEliminations, opaciteLigneFilPlan } from '../model/planFeed'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
+import { concernsFollowed } from '../model/feedFollowed'
 import { KillLine, type GamertagIndex, type InkOf } from './ReplayFeedLines'
 
 /**
@@ -53,9 +54,11 @@ interface Props {
   zoneOf?: FeedZoneOf
   /** De combien le fil monte au-dessus du bas du bloc : la hauteur de la barre pleine quand elle est posée sur le plan. */
   liftPx?: number
+  /** Les clés du joueur que la caméra suit : les lignes qui le concernent portent un fond léger ; absent, aucune. */
+  followedKeys?: ReadonlySet<string>
 }
 
-export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegiance, locale, marks = NO_MARKS, zoneOf, liftPx = 0 }: Props) {
+export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegiance, locale, marks = NO_MARKS, zoneOf, liftPx = 0, followedKeys }: Props) {
   const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
   const lignes = dernieresEliminations(entries, nowMs)
   if (lignes.length === 0) return null
@@ -83,6 +86,7 @@ export function ReplayFeedOverlay({ entries, nowMs, playWindow, xuidMeta, allegi
           marks={marks}
           locale={locale}
           zone={zoneOf?.(entree.key)}
+          followed={followedKeys ? concernsFollowed(entree, followedKeys) : false}
           onPlan={{ opacity: opaciteLigneFilPlan(index, lignes.length) }}
         />
       ))}

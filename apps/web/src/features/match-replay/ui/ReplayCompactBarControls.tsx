@@ -54,7 +54,7 @@ export function ReplayCompactBarControls({
   return (
     <>
       {camera}
-      <ReplaySoundControls sound={sound} locale={locale} />
+      <ReplaySoundControls sound={sound} locale={locale} compact />
       <GroupSeparator />
 
       <ReplayPlayButton
@@ -65,14 +65,14 @@ export function ReplayCompactBarControls({
         sizeClass="shrink-0"
         style={{ width: C.lecturePx, height: C.lecturePx }}
       />
-      <ReplayRoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
+      <ReplayRoundButton onClick={onRestart} label={`${t.restart} (R)`} compact disabled={busy}>
         <RestartIcon />
       </ReplayRoundButton>
-      <ReplayRoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
-        <span className="text-[10.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
+      <ReplayRoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} compact disabled={busy}>
+        <span className="text-[12.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
       </ReplayRoundButton>
-      <ReplayRoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
-        <span className="text-[10.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
+      <ReplayRoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} compact disabled={busy}>
+        <span className="text-[12.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
       </ReplayRoundButton>
       {/* L'instant et la durée, écrits par la boucle de dessin (textContent) : « 3:51 / 7:45 ». */}
       <span
@@ -80,7 +80,7 @@ export function ReplayCompactBarControls({
         className="whitespace-nowrap text-center text-[12.5px] tabular-nums text-muted-foreground"
         style={{ minWidth: C.tempsLargeurMinPx, margin: `0 ${C.tempsMargePx}px` }}
       />
-      <ReplayAutoPlayToggle autoPlay={autoPlay} onToggle={onToggleAutoPlay} locale={locale} />
+      <ReplayAutoPlayToggle autoPlay={autoPlay} onToggle={onToggleAutoPlay} locale={locale} compact />
 
       {/* LA FRISE AUSSI est neutralisée : son curseur écrit `frameRef` (cf. la barre complète). */}
       <div
@@ -92,20 +92,20 @@ export function ReplayCompactBarControls({
         <ReplayTimelineCompact timeline={timeline} />
       </div>
 
-      <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
+      <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} compact />
       <GroupSeparator />
       {autoRotation && <ReplayRotatedButton onKeepUpright={autoRotation.onKeepUpright} locale={locale} />}
       <div role="group" aria-label={t.zoomGroup} className="flex shrink-0 items-center" style={{ columnGap: C.ecartPx }}>
-        <ReplayRoundButton onClick={zoom.zoomOut} label={t.zoomOut} ghost disabled={!zoom.canZoomOut}>
+        <ReplayRoundButton onClick={zoom.zoomOut} label={t.zoomOut} compact disabled={!zoom.canZoomOut}>
           <span className="text-[15px] leading-none">−</span>
         </ReplayRoundButton>
-        <ReplayRoundButton onClick={zoom.zoomIn} label={t.zoomIn} ghost disabled={!zoom.canZoomIn}>
+        <ReplayRoundButton onClick={zoom.zoomIn} label={t.zoomIn} compact disabled={!zoom.canZoomIn}>
           <span className="text-[15px] leading-none">+</span>
         </ReplayRoundButton>
       </div>
       <GroupSeparator />
-      <ReplayCaptureButtons capture={capture} locale={locale} />
-      <ReplayFrameButtons frameControl={frameControl} fullscreen={fullscreen} locale={locale} />
+      <ReplayCaptureButtons capture={capture} locale={locale} compact />
+      <ReplayFrameButtons frameControl={frameControl} fullscreen={fullscreen} locale={locale} compact />
     </>
   )
 }

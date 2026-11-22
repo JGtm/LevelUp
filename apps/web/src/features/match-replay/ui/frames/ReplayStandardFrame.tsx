@@ -7,7 +7,7 @@
  * # LA COLONNE : LES ÉQUIPES AU-DESSUS, LE FIL EN DESSOUS
  *
  * Un rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement. La colonne a la largeur
- * de `COTES_COLONNE_STANDARD` (grille de `ReplayFrameLayout`), un filet neutre à sa gauche, sa marge
+ * de `COTES_COLONNE_STANDARD` (grille de `ReplayFrameLayout`), un filet neutre à sa gauche (sous `xl`, où la colonne passe sous la carte : à son haut), sa marge
  * intérieure et l'écart entre ses deux blocs. Les équipes (`ReplayRosterColumn`) gardent leur hauteur
  * naturelle et c'est ELLES qui cèdent quand la place manque : leur part défile (une Grande équipe tient
  * sans défiler) ; le fil remplit tout le reste et ne descend jamais sous `FIL_STANDARD_HAUTEUR_MIN_PX`,
@@ -21,6 +21,7 @@
  * d'elle ni une formule CSS (`ui/rosterHeight.guard.test.ts`). Sous `xl` elle passe sous la carte, bornée à
  * 80 % de la hauteur d'écran. Elle est toujours positionnée (`relative` sous `xl`) : la fiche s'y place.
  */
+import { playerKeys } from '../../model/feedFollowed'
 import { COTES_COLONNE_STANDARD, FIL_STANDARD_HAUTEUR_MIN_PX } from '../../model/cotesStandard'
 import { ReplayFeedExtract } from '../ReplayFeedExtract'
 import { ReplayFeedOrPanel } from '../ReplayFeedOrPanel'
@@ -55,11 +56,12 @@ function standardColumn(view: ReplayFrameView) {
     doc,
     playbackStore: view.playbackStore,
     weaponIcons: view.weaponIcons,
+    followedKeys: playerKeys(playerPanel.camera.player),
   }
   const focus = playerPanel.focus
   return (
     <div
-      className="relative flex max-h-[80vh] flex-col xl:absolute xl:inset-0 xl:max-h-none xl:border-l xl:border-border"
+      className="relative flex max-h-[80vh] flex-col border-t border-border xl:absolute xl:inset-0 xl:max-h-none xl:border-t-0 xl:border-l"
       style={COLUMN_STYLE}
       data-replay-column="standard"
     >
