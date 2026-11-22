@@ -76,7 +76,7 @@ type highlightChunkResponse struct {
 
 // GetMatchHistory retourne la page demandée de la liste configurée (ou une erreur simulée),
 // comme l'API : au-delà de la liste, une page vide — c'est elle qui termine un parcours en
-// mode full (rattrapage de l'historique), sans quoi le moteur tournerait sur la même page.
+// RunFull, sans quoi le moteur tournerait sur la même page.
 func (m *mockHaloClient) GetMatchHistory(
 	_ context.Context,
 	player, _ string,

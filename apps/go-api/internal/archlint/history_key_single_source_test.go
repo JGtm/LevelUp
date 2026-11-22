@@ -5,7 +5,7 @@
 // « le rattrapage en est là » (`history_catchup_cursor`, le marque-page), « ce point a échoué N
 // passes de suite » (`history_failure_streak`), leur lecture, leur
 // écriture, le budget par passe et la borne de profondeur vivent dans
-// `internal/sync/historystate`. Le moteur V1, le cycle V2 et le runner Halo 5 l'appellent. Une
+// `internal/sync/historystate`. Le cycle V2 et le runner Halo 5 l'appellent (le moteur V1 non : delta pur). Une
 // seconde copie d'un littéral est une seconde règle libre de diverger : un chemin qui range la fin
 // que l'autre ne lit pas, ou un nom de clé changé d'un seul côté.
 //

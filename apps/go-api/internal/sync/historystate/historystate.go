@@ -1,6 +1,7 @@
 // Package historystate porte la règle du rattrapage de l'historique d'un joueur : une seule clé,
-// une seule lecture, une seule écriture, un seul budget, pour tous les chemins de synchronisation
-// (moteur V1, cycle V2, runner Halo 5).
+// une seule lecture, une seule écriture, un seul budget, pour les deux chemins qui rattrapent (cycle V2, runner Halo 5).
+// Le moteur V1 est un delta pur : il ne lit ni n'écrit cet état (il n'emprunte que [MaxDepth], pour le
+// parcours de RunFull).
 //
 // Règle : un delta s'arrête au premier match connu, donc une première synchronisation interrompue
 // (plafond, fermeture du poste, page perdue) laisserait un trou définitif derrière les matchs déjà
@@ -14,8 +15,7 @@
 //
 // Bail d'écriture : [MarkComplete], [SaveCursor] et [ClearCursor] écrivent dans la base joueur ; l'APPELANT tient le bail d'écriture
 // de ce joueur pendant l'appel (règle ART n°4, `dblease.AcquireWriterCtx` / `AcquirePlayerWriterTimeout`),
-// ce paquet n'en prend pas. Le moteur V1 appelle [MarkComplete] sous le bail joueur pris au début de
-// sa passe, ou, en mode file asynchrone, sous celui qu'il reprend après le drain.
+// ce paquet n'en prend pas. Le cycle V2 et le runner Halo 5 l'appellent sous le bail joueur de leur passe.
 //
 // Seul ce paquet nomme ses clés : le garde-rail `archlint.TestHistoryKeyLiteralOnlyInHistorystate`
 // refuse leurs littéraux ailleurs.

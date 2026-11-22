@@ -123,6 +123,10 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 	// pool/queue/metaDB). On sync directement via syncPlayer (qui route Infinite ET
 	// live-only). Ce n'est PAS l'ancien pipeline V1 flag-sélectionnable (supprimé),
 	// mais une sécurité de démarrage — en prod l'orchestrator est toujours câblé.
+	// Contrat (D-18, plan 8.2.2) : ce filet ne rattrape PAS l'historique de Halo Infinite. Le moteur V1
+	// de syncPlayer est un delta pur (aucune lecture ni écriture de l'état de l'historique, jamais
+	// d'historyPending) : le rattrapage appartient au cycle de l'orchestrator V2. Halo 5 rattrape
+	// toujours, dans son runner.
 	slog.WarnContext(ctx, "auto_sync: orchestrator V2 non câblé — sync directe via syncPlayer (filet de boot)",
 		"player_count", res.Total)
 	res.Synced, res.Skipped, res.Failed, res.debt.history = s.syncPlayersConcurrent(ctx, players)
@@ -217,6 +221,8 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 
 // syncPlayerWithHistory lance une sync delta pour un joueur via le pool de tokens et rend, avec
 // son issue, si l'historique du joueur reste incomplet après la passe (cadence de rattrapage).
+// Seul le runner Halo 5 le dit : le moteur V1 (Halo Infinite) est un delta pur et rend toujours faux
+// (D-18) ; le rattrapage de Halo Infinite est celui du pipeline V2, hors de ce filet.
 //
 // Conditions de skip silencieux (outcome=skipped) :
 //   - pool nil (aucun credential découvert au boot)
@@ -437,8 +443,8 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 	if livesync.HandlesTitle(slug) {
 		return "", true
 	}
-	// Une base joueur absente n'est plus un motif de saut : le moteur la crée et, sans fin
-	// d'historique rangée, joue la passe en mode full (première synchronisation). Un profil
+	// Une base joueur absente n'est plus un motif de saut : le moteur la crée et, sans match connu,
+	// son delta récupère jusqu'au plafond (première synchronisation). Un profil
 	// connecté après le démarrage se synchronise donc sans passer par l'assistant.
 	dbPath := s.cfg.PathResolver().PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
