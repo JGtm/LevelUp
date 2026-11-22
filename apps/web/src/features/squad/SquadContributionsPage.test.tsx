@@ -10,18 +10,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import * as squadContextModule from './SquadContext'
 import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
 import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
-import { impactHistory3 } from './impact/impactHistory.fixtures'
-
-// Capability de données du titre courant (match.events.timeline : porte des points d'impact par soirée).
-const capability = vi.hoisted(() => ({ timeline: true }))
-vi.mock('@/lib/capabilities/dataCapabilities', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/capabilities/dataCapabilities')>()),
-  useDataCapability: (key: string) => (key === 'match.events.timeline' ? capability.timeline : true),
-}))
+import { impactSessionsFixture } from './impact-sessions/impactSessions.fixtures'
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
@@ -43,7 +37,7 @@ function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModul
 }
 
 beforeEach(() => {
-  capability.timeline = true
+  useSquadFilterStore.getState().setSessions({ picked_sessions: [], gap_minutes: 30 })
   useAppShellStore.setState({ locale: 'fr' })
 })
 
@@ -156,35 +150,40 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
   })
 
-  // Points d'impact par soirée : sous la matrice d'impact. Réponse avec le bloc : la carte. Réponse sans
-  // le bloc : la carte reste avec son constat quand le titre lit les événements horodatés, sinon elle est absente.
-  it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
+  // « Impact des coéquipiers » : un seul tableau par session, sous son titre de section, avant les médailles.
+  it('monte le tableau d’impact par session sous son titre, avant les médailles', () => {
     mockSquadContext({
-      confirmedGamertags: ['Joueur90001', 'Joueur90002'],
-      pageData: { main_player: 'JGtm', squad_impact_history: impactHistory3 } as unknown as TeammatesPageResponse,
+      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
     })
     const { container } = renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByTestId('squad-impact-history')).toBeInTheDocument()
+    expect(screen.getByTestId('squad-impact-sessions')).toBeInTheDocument()
+    expect(screen.getAllByTestId('squad-impact-row')).toHaveLength(4)
     const text = container.textContent ?? ''
-    expect(text.indexOf('Impact des coéquipiers')).toBeLessThan(text.indexOf('Points d’impact par soirée et par rôle'))
-    expect(text.indexOf('Points d’impact par soirée et par rôle')).toBeLessThan(text.search(/Médailles/))
-  })
-
-  it('sans le bloc, le titre qui lit les événements horodatés garde la carte, titre et constat', () => {
-    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
-    renderWithProviders(<SquadContributionsPage />)
-    const card = screen.getByTestId('squad-impact-history')
-    expect(card).toHaveTextContent('Points d’impact par soirée et par rôle')
-    expect(card).toHaveTextContent('Aucun point d’impact sur ce périmètre')
-    expect(card.querySelector('.border-dashed')).not.toBeNull()
-  })
-
-  it('sans le bloc, le titre sans événements horodatés n’a pas la fonction : la carte est absente', () => {
-    capability.timeline = false
-    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
-    renderWithProviders(<SquadContributionsPage />)
+    expect(text.indexOf('Impact des coéquipiers')).toBeLessThan(text.indexOf('Toutes les sessions'))
+    expect(text.indexOf('Toutes les sessions')).toBeLessThan(text.search(/Médailles/))
+    // L'ancienne matrice et le graphe par soirée ont disparu.
+    expect(screen.queryByTestId('squad-impact-scoreboard')).toBeNull()
     expect(screen.queryByTestId('squad-impact-history')).toBeNull()
-    expect(screen.queryByText('Points d’impact par soirée et par rôle')).toBeNull()
+  })
+
+  it('ouvre d’office la session sélectionnée dans le filtre de la page', () => {
+    useSquadFilterStore.getState().setSessions({ picked_sessions: ['07/11/2026 18:30–19:40 (9)'], gap_minutes: 30 })
+    mockSquadContext({
+      confirmedGamertags: ['Madina97294', 'Chocoboflor'],
+      pageData: { main_player: 'JGtm', squad_impact_sessions: impactSessionsFixture } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByRole('table', { name: /Rôles d’impact de la session 07\/11/ })).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: /Rôles d’impact de la session 14\/11/ })).toBeNull()
+  })
+
+  it('sans le bloc, garde le titre et montre le cadre vide', () => {
+    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByText('Impact des coéquipiers')).toBeInTheDocument()
+    expect(screen.getByTestId('squad-impact-sessions')).toBeInTheDocument()
+    expect(screen.queryByTestId('squad-impact-row')).toBeNull()
   })
 
   // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions
