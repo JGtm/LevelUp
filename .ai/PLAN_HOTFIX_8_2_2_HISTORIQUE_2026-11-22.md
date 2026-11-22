@@ -117,6 +117,15 @@ page.
   cycle, cadence non liée à l'arriéré de films), pour ménager le serveur de prod (2 vCPU, 2 Go). Le
   comportement D-17/D-20 ne vaut que sur le bureau, décidé par une capacité du profil de déploiement
   (ADR 0044), jamais par le profil lui-même. Le rattrapage des matchs (200 par passe, 10 min) vaut partout.
+  - [x] D-22.1 Capacité `FilmCatchUp` de `config.DeploymentCapabilities` (vraie en desktop seulement ; fausse en hosted, dev et demo ;
+    `TestDeployment_CapacitesParProfil`). Sans elle : 8 films de frags (`killcollector.FragsParCycleHeberge`), 5 rejeux
+    (`replayartifacts.RejeuxParCycleHeberge`), retard lu sur 64 matchs (`BacklogHorizonHeberge`) ; avec elle : garde-fou 200, horizon 2000.
+    Branchement : `replayartifacts.NewHook` lit la capacité (`Hook.PerCycle`, `Hook.Horizon`, copiés dans `Deps`), `SyncEngine.WithReplayArtifacts`
+    la porte à la source des frags (`PostSyncHook.WithFilmCatchUp` ; un moteur non câblé part des bornes hébergées).
+  - [x] D-22.2 Cadence et état à l'écran : `filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp)` dans `cmd/server/boot_tasks.go` ; hors capacité, aucun
+    lecteur d'arriéré, donc la cadence ne suit que l'historique et l'écran n'affiche pas « Analyse en cours » pour des films (décision prise avec D-22).
+    Tests par profil : `TestEngine_BornesDesFilmsSuiventLeProfil` (hosted 8/5/64, dev idem, desktop 200/200/2000),
+    `TestCadence_ArriereDeFilmsSuitLaCapaciteDuProfil` (hosted et dev : intervalle réglé ; desktop : 10 min), tests d'intégration des bornes hébergées.
 - **D-23** (utilisateur, 22/11) Le delta des nouveaux matchs ne s'arrête plus au premier match connu mais
   après une page entière (25) de matchs connus d'affilée : un match rangé d'abord par un coéquipier
   (connu par ses participants) ne cache plus les matchs inconnus juste en dessous. Infinite (V2) et Halo 5.
@@ -443,6 +452,8 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   complet) ; à traiter si le filet doit un jour résorber les films.
 - Étape 4g : `BacklogHorizon` à 2000 fait lire jusqu'à 2000 identifiants et autant de `os.Stat` par cycle et par
   joueur pour le rattrapage des rejeux et des dérivés ; à mesurer sur la base réelle (étape 5bis).
+  Sur le site hébergé il est ramené à 64 par la capacité `FilmCatchUp` (D-22) : le coût de 2000 lectures par cycle et par joueur ne s'y applique pas.
+- D-22 : `killcollector/postsync.go` dépassait 500 lignes (506) depuis l'étape 4g et faisait échouer `TestTailleDesFichiersDuFilmNeCroitPas` (le gate de 4g ne lançait pas archlint) ; les bornes sont extraites dans `postsync_bornes.go` (474 lignes).
 
 - Étape 1 : `sync/match_recomputer.go` lit `sync_meta` par sa propre requête (clé `scoring_revision`),
   copie de `syncmeta.Get` ; à aligner plus tard, hors périmètre.

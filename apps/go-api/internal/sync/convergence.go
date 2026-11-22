@@ -671,6 +671,8 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		SansArchive:     !e.replayArtifacts.Archive(),
 		RetentionMonths: e.replayArtifacts.Months(),
 		Placement:       placement,
+		PerCycle:        e.replayArtifacts.PerCycle(),
+		Horizon:         e.replayArtifacts.Horizon(),
 		Enqueue:         e.replayArtifacts.Enqueue,
 	}, insertedIDs)
 }

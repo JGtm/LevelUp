@@ -56,38 +56,6 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 )
 
-// GardeFouFilmsParCycle : le nombre maximal de films qu'une passe de film du post-sync traite par
-// cycle. C'EST UN GARDE-FOU, PAS LA LIMITE : la limite d'une passe est son TEMPS ([PostSyncBudget],
-// `replayartifacts.BudgetParCycle`), parce qu'un match synchronise l'est en totalite, film traite
-// compris, et que le cout d'un film varie d'un facteur dix. La borne ne mord que si une passe
-// enchainait des centaines de films plus vite que le budget — elle empeche alors une liste de
-// travail sans fin, pas un debit.
-//
-// UNE SEULE VALEUR POUR LES DEUX ETAPES FILM (cette source des frags et les artefacts de rejeu,
-// `replayartifacts.maxPerCycle`) : deux copies auraient diverge. Elle borne aussi la LISTE de travail
-// lue, donc la lecture de `perCycle` cartes avant le premier telechargement : la relever n'est pas
-// gratuit, c'est une resolution de carte par match retenu.
-const GardeFouFilmsParCycle = 200
-
-// DefaultPostSyncPerCycle borne le nombre de films decodes par cycle : [GardeFouFilmsParCycle]. Le
-// solde eventuel est repris au cycle suivant (l'etape est idempotente, `decoder_rev` fait foi) ou par
-// `levelup backfill-killsource --online`.
-//
-// C EST UNE BORNE PAR CYCLE ET PAR TITRE, PAS PAR JOUEUR. Elle ne l est que parce qu une seule
-// passe tourne par (processus, titre) — cf. `postsync_exclusivite.go`. Avant cette exclusivite
-// (OPS-3), chaque joueur du cycle lancait sa propre passe sur le meme arriere, et la borne
-// valait N fois la borne pour N joueurs synchronises ensemble.
-const DefaultPostSyncPerCycle = GardeFouFilmsParCycle
-
-// PostSyncBudget : LA LIMITE DE DUREE DU CYCLE, et la seule qui borne vraiment la passe.
-//
-// Le cout d un film varie d un facteur dix : le nombre de films ne dit rien de la duree. Sans
-// budget, un lot de gros films rallongerait un cycle de sync de plusieurs dizaines de minutes, et
-// le reste du post-sync (PSA, agregats, medias) attendrait derriere. Le budget arrete la passe ENTRE
-// deux matchs : ce qui reste est repris au cycle suivant, l etape etant idempotente (`decoder_rev`
-// fait foi). La borne en nombre ([GardeFouFilmsParCycle]) n est qu un garde-fou derriere lui.
-const PostSyncBudget = 5 * time.Minute
-
 // PostSyncMatchTimeout : la limite PAR MATCH de cette etape.
 //
 // Le defaut du collecteur (45 min) est celui d une passe de backfill qu on laisse tourner la

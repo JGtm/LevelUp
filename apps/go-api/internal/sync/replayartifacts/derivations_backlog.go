@@ -148,7 +148,7 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 			fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)
 			continue
 		}
-		if len(work) < maxPerCycle {
+		if len(work) < perCycle(d) {
 			work = append(work, ArtefactRange{MatchID: id, Path: p})
 			continue
 		}
@@ -167,7 +167,7 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 // jauge de retard publiait « tout est derive » sur un cycle qui n'avait rien lu (constat N3).
 func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) ([]string, bool) {
 	sqlQueue, args := requeteQueueRecente(d.RetentionMonths)
-	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, BacklogHorizon)...)
+	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, horizonDuRetard(d))...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — horizon des derives illisible", "err", err)
 		return nil, false
