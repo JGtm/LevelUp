@@ -25,6 +25,7 @@ import { baseImageVariant, resolveBackgroundVariant } from '@/lib/replay/mapBack
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { buildMapBackgroundLayer, hasRelief } from '@/features/match-replay/hooks/mapBackgroundLayerLogic'
 import { useFeedZones } from '@/features/match-replay/hooks/useFeedZones'
+import { useReplayAntagonists } from '@/features/match-replay/hooks/useReplayAntagonists'
 import { useFullWidthPage } from '@/components/shell/useFullWidthPage'
 import { useCardRowLayout } from '@/features/match-replay/hooks/useCardRowLayout'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
@@ -150,6 +151,9 @@ export function ReplayPage() {
   // lecture) reconstruirait tout le modèle à chaque tick.
   const modelSettings = useMemo(() => ({ friendGamertags, locale }), [friendGamertags, locale])
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
+  // LES ANTAGONISTES (némésis, souffre-douleur) : la fabrique est construite ICI, une fois, sur le fil et le roster
+  // du modèle ; les cadres la reçoivent dans la vue (`antagonists`) et chaque surface lit son index depuis elle.
+  const antagonists = useReplayAntagonists(model.feed, model.players)
   // LE PANNEAU DE JOUEUR : son état naît avec la page et avec le match, jamais mémorisé, et NE TOUCHE PAS
   // au point de vue. Le joueur SUIVI est ce même joueur regardé (`viewpoint.xuid`).
   const playerPanel = usePlayerPanel(matchId, model.players, viewpoint.xuid)
@@ -201,6 +205,7 @@ export function ReplayPage() {
           playerSlug,
           matchId,
           model,
+          antagonists,
           header: replayContext?.header,
           viewpoint,
           playerPanel,
