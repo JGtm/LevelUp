@@ -475,4 +475,4 @@ mesure   = "score/equipe/1/manches"
 temoins  = ["a349fea8"]
 decodeur = "v1.5.0"
 date     = "2026-11-22"
-raison   = "Unique point de la courbe d equipe 1, a zero, porte par un faux enregistrement du tableau abandonne ; meme cause que coverage.score.points sur ce temoin. Inscrit par le pilote comme consequence de la decision acceptee le 2026-11-22, signale a l utilisateur."
+raison   = "Unique point de la courbe d equipe 1, a zero, porte par un faux enregistrement du tableau abandonne ; meme cause que coverage.score.points sur ce temoin. Inscrit par le pilote comme consequence de la decision acceptee le 2026-11-22, puis accepte par l utilisateur le meme jour (« J accepte l inscription pour la courbe d equipe »)."
