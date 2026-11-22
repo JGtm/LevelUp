@@ -11,7 +11,7 @@ require (
 	github.com/HugoSmits86/nativewebp v1.3.0
 	github.com/JGtm/halo-api v1.0.1
 	github.com/JGtm/halo-infinite-files-reader v1.2.0
-	github.com/JGtm/halo-infinite-film-decoder v1.4.2-0.20261122204145-f72779da8869
+	github.com/JGtm/halo-infinite-film-decoder v1.4.2-0.20261122220214-e703301c2976
 	github.com/JGtm/halo-infinite-map-images v1.4.0
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/duckdb/duckdb-go/v2 v2.10506.0

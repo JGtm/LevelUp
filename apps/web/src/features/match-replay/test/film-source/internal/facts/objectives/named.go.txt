@@ -277,13 +277,44 @@ func NamedEventsFrom(recs []types.StatRecord, objectiveType string, cons *Replis
 	if !ok {
 		return nil
 	}
+	return namedEventsOfTable(recs, objectiveType, table, table, cons)
+}
+
+// NamedEventsFromAutreFamille est [NamedEventsFrom] pour un film dont la famille n'est PAS celle de `objectiveType`, et
+// qui ne lit que les emplacements des statistiques `stats` : la lecture du verdict de mode, qui applique la table du
+// Drapeau a tout film pour y compter les captures, les vols et les prises. La table lue ne juge alors aucune
+// emission (seules les valeurs negatives sont jetees, comme une lecture hors de toute famille) et rien ne se verse au
+// compte des emissions jetees de `cons` : une emission saine d'un autre mode, que la table du Drapeau ne comprend pas,
+// n'est pas un repli du film. Les diagnostics de la lecture, eux, tombent dans `cons`.
+//
+// Les emplacements que le verdict ne compte pas ne se lisent pas : sur un film d'un autre mode ils portent des durees
+// et des compteurs sans rapport (`22 B` d'un film de zones), dont le deroulage n'a pas de sens et se journaliserait.
+func NamedEventsFromAutreFamille(recs []types.StatRecord, objectiveType string, stats []string,
+	cons *ReplisALaConsultation) []NamedEvent {
+	lue := map[statSlotKey]statSlot{}
+	for key, slot := range namedStatSlots[objectiveType] {
+		if slices.Contains(stats, slot.Stat) {
+			lue[key] = slot
+		}
+	}
+	essai := cons.Essai()
+	out := namedEventsOfTable(recs, objectiveType, lue, nil, essai)
+	cons.AdopterLesDiagnostics(essai)
+	return out
+}
+
+// namedEventsOfTable est le coeur de [NamedEventsFrom] et de [NamedEventsFromAutreFamille] : il lit les emplacements
+// de `table`, et `juge` est la table qui juge les emissions (celle de la famille du film, ou nil : voir
+// [rawSeriesJugees]).
+func namedEventsOfTable(recs []types.StatRecord, objectiveType string, table, juge map[statSlotKey]statSlot,
+	cons *ReplisALaConsultation) []NamedEvent {
 	// UN SEUL balayage de `recs` pour TOUS les emplacements, et UN SEUL calcul des manches
 	// reelles. La version d'avant appelait `seriesBySlot` par emplacement, donc
 	// `rawSeriesByRound` ET `RealRounds` une fois chacun par emplacement : sur la table CTF
 	// (huit emplacements non redondants) cela faisait seize marches completes de la liste
 	// d'enregistrements pour en tirer huit series.
 	real := RealRounds(recs)
-	byKey := rawSeriesByKey(recs, table, cons)
+	byKey := rawSeriesJugees(recs, table, juge, cons)
 	// LE BUDGET EST OUVERT ICI, ET LE PARCOURS EST TRIE POUR LUI. Le plafond total appartient
 	// a cette fonction (D13) ; le solde, lui, descend jusqu'a [incrementTimes] pour qu'aucun
 	// appel isole ne le depasse. Des qu'un budget peut s'epuiser, l'ORDRE de parcours devient
