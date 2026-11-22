@@ -1,12 +1,11 @@
 // Package service — builders pour l'onglet Team de la Match View.
 //
 // Extrait de match_view_service.go (audit #1 god files). Couvre :
-//   - buildTeamTabFull : scoreboard rows + nemesis + encounters.
+//   - buildTeamTabFull : scoreboard rows + encounters.
 //   - convertEncounters + relationStatsFromEncounter + encounterWinrate +
 //     convertRelationBadges : conversion encounters raw -> domain (badges via
 //     relations.ComputeBadges, parité avec le hub Relations).
 //   - buildMediaTab : onglet médias (proche par taille, garder ensemble).
-//   - buildNemesisMap : agrégation kvPairs -> nemesis par adversaire.
 package service
 
 import (
@@ -26,14 +25,13 @@ import (
 // Team Tab
 // ---------------------------------------------------------------------------
 
-// buildTeamTabFull assemble scoreboard + kvPairs + encounters + medals + weapons
+// buildTeamTabFull assemble scoreboard + encounters + medals + weapons
 // en sortie unique pour l'onglet Team. titleSlug maintenu pour future dispatch
 // multi-titres (canonical adapter resolution).
 //
 //nolint:funlen,unparam // Orchestrateur cohésif ; splitter perdrait la vue d'ensemble.
 func buildTeamTabFull(
 	scoreboard []domain.ScoreboardRaw,
-	kvPairs []domain.KVPairRaw,
 	encounters []domain.EncounterRaw,
 	encounterStats []domain.EncounterStatsRaw,
 	bulkMedals []domain.BulkMedalRaw,
@@ -184,23 +182,9 @@ func buildTeamTabFull(
 		rows = append(rows, row)
 	}
 
-	// Nemesis depuis KV pairs
-	nemesisByXUID := buildNemesisMap(kvPairs, myXUID, scoreboard)
-	nemesisList := make([]domain.MatchNemesisRow, 0, len(nemesisByXUID))
-	for xuid, n := range nemesisByXUID {
-		nemesisList = append(nemesisList, domain.MatchNemesisRow{
-			XUID:     xuid,
-			Gamertag: n.Gamertag,
-			KilledMe: n.KilledMe,
-			IKilled:  n.IKilled,
-		})
-	}
-	sortNemesisByKilledMe(nemesisList)
-
 	return domain.MatchTeamTab{
 		Roster:     []domain.MatchRosterRow{},
 		Scoreboard: rows,
-		Nemesis:    nemesisList,
 		Encounters: convertEncounters(encounters, encounterStats, time.Now()),
 	}
 }
@@ -310,52 +294,4 @@ func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
 		})
 	}
 	return domain.MatchMediaTab{MediaItems: items}
-}
-
-type nemesisEntry struct {
-	Gamertag string
-	KilledMe int
-	IKilled  int
-}
-
-func buildNemesisMap(
-	kvPairs []domain.KVPairRaw,
-	myXUID string,
-	scoreboard []domain.ScoreboardRaw,
-) map[string]*nemesisEntry {
-	gtMap := make(map[string]string, len(scoreboard))
-	for _, s := range scoreboard {
-		gtMap[s.XUID] = s.Gamertag
-	}
-
-	result := make(map[string]*nemesisEntry)
-	for _, kv := range kvPairs {
-		// Un xuid vide désigne un BOT (NULL de la canonique, cf. GetMatchKVPairs) : les bots
-		// n'entrent JAMAIS dans les duels (décision user 2026-09-02) — et les agréger sous la
-		// clé "" fusionnerait tous les bots en un némésis fantôme.
-		if kv.KillerXUID == "" || kv.VictimXUID == "" {
-			continue
-		}
-		if kv.VictimXUID == myXUID {
-			if _, ok := result[kv.KillerXUID]; !ok {
-				gt := gtMap[kv.KillerXUID]
-				if gt == "" {
-					gt = kv.KillerGT
-				}
-				result[kv.KillerXUID] = &nemesisEntry{Gamertag: gt}
-			}
-			result[kv.KillerXUID].KilledMe += kv.KillCount
-		}
-		if kv.KillerXUID == myXUID {
-			if _, ok := result[kv.VictimXUID]; !ok {
-				gt := gtMap[kv.VictimXUID]
-				if gt == "" {
-					gt = kv.VictimGT
-				}
-				result[kv.VictimXUID] = &nemesisEntry{Gamertag: gt}
-			}
-			result[kv.VictimXUID].IKilled += kv.KillCount
-		}
-	}
-	return result
 }

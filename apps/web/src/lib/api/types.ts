@@ -1516,8 +1516,6 @@ export type MatchScoreboardObjective = components['schemas']['MatchScoreboardObj
 
 export type MatchRosterRow = components['schemas']['MatchRosterRow']
 
-export type MatchNemesisRow = components['schemas']['MatchNemesisRow']
-
 export type MatchEncounterRow = components['schemas']['MatchEncounterRow']
 
 export type MatchTeamTab = components['schemas']['MatchTeamTab']

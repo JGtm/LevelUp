@@ -10133,7 +10133,6 @@ export interface components {
         };
         MatchTeamTab: {
             encounters: components["schemas"]["MatchEncounterRow"][] | null;
-            nemesis: components["schemas"]["MatchNemesisRow"][] | null;
             roster: components["schemas"]["MatchRosterRow"][] | null;
             scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
         };

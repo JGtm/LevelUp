@@ -314,7 +314,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// trackés : voir match_view_friends_extras.go. Une panne de lecture y est dite, pas tue.
 	friendsExtras := s.loadFriendsExtras(ctx, matchID, meta, d)
 	s.applyFriendsLocalExpected(ctx, matchID, meta, d, friendsExtras, curDurSec)
-	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
+	team := buildTeamTabFull(d.scoreboard, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL, outcomes)
 	attachEncounterAssists(team.Encounters, d.encounterAssists)
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
