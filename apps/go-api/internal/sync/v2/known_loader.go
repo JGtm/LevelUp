@@ -74,20 +74,21 @@ func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (KnownSt
 // ordinaire), incomplet avec le marque-page du rattrapage s'il y en a un, ou illisible (lecture en
 // échec, journalisée) : delta ordinaire, aucune écriture de l'état, joueur gardé en attente. L'ensemble
 // des matchs à ne plus demander (historystate.LoadSkipSet) se lit sur la même ouverture, quel que soit
-// l'état ; illisible, il est vide (journalisé par historystate).
+// l'état ; illisible, il est vide (journalisé par historystate). Ses abandons échus sont rendus à part
+// (HistoryState.Retry).
 func readHistoryState(ctx context.Context, playerDB *sql.DB, gamertag string) HistoryState {
-	skip := historystate.LoadSkipSet(ctx, playerDB)
+	skips := historystate.LoadSkipSet(ctx, playerDB)
 	complete, err := historystate.Complete(ctx, playerDB)
 	if err != nil {
 		slog.WarnContext(ctx, "sync.v2: état de l'historique illisible — delta ordinaire, rien n'est rangé, joueur gardé en attente",
 			"player", gamertag, "err", err)
-		return HistoryState{Unreadable: true, Skip: skip}
+		return HistoryState{Unreadable: true, Skip: skips.Active, Retry: skips.Due}
 	}
 	if complete {
-		return HistoryState{Skip: skip}
+		return HistoryState{Skip: skips.Active, Retry: skips.Due}
 	}
 	cu := historystate.LoadCatchUp(ctx, playerDB)
-	return HistoryState{Incomplete: true, Cursor: cu.Cursor, Failures: cu.Failures, Skip: skip}
+	return HistoryState{Incomplete: true, Cursor: cu.Cursor, Failures: cu.Failures, Skip: skips.Active, Retry: skips.Due}
 }
 
 // loadOnce emprunte la base partagée, lit l'ensemble connu (knownset.Load) et rend l'emprunt.

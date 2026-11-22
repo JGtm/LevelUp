@@ -1,6 +1,5 @@
 // Package v2 — fetchers_history_anchor.go : situer le marque-page d'un rattrapage dans la liste
-// d'aujourd'hui (règle : fetchers_history.go), par l'ancre `historystate.Cursor.HeadID` ou, pour un
-// marque-page rangé sans elle, par le delta du dessus et la page de recouvrement.
+// d'aujourd'hui (règle : fetchers_history.go), par l'ancre `historystate.Cursor.HeadID`.
 package v2
 
 import (
@@ -28,16 +27,6 @@ var errAnchorMismatch = errors.New("sync.v2: marque-page d'historique : identifi
 // resumePoint situe le marque-page dans la liste d'aujourd'hui. proceed=false : la lecture du haut
 // a épuisé le budget, ou vu la fin ou la borne de profondeur, avant d'avoir pu le situer.
 func (sc *catchUpScan) resumePoint(ctx context.Context, cursor historystate.Cursor) (r resumeAt, proceed bool, err error) {
-	if !cursor.HasAnchor() {
-		if err := sc.scanNew(ctx); err != nil {
-			return resumeAt{}, false, err
-		}
-		if !sc.reachedKnown {
-			return resumeAt{}, false, nil
-		}
-		start, err := sc.resumeStart(ctx, cursor)
-		return resumeAt{start: start}, err == nil, err
-	}
 	arrived, found, err := sc.scanTop(ctx, cursor)
 	if err != nil {
 		return resumeAt{}, false, err
@@ -58,8 +47,8 @@ func (sc *catchUpScan) resumePoint(ctx context.Context, cursor historystate.Curs
 // scanTop lit le haut de la liste jusqu'à l'ancre du marque-page, au plus
 // historystate.AnchorMaxPages pages : les entrées qui la précèdent sont les matchs arrivés depuis la
 // passe précédente, toutes entrées comptées. Les inconnus parmi elles sont listés (budget compris),
-// les connus et les abandonnés sautés. found=false : ancre absente des pages lues (liste finie ou
-// limite atteinte), ou lecture arrêtée sur le budget (sc.budgetHit).
+// les connus et les abandonnés sautés. found=false : ancre absente des pages lues (liste finie sur une
+// page vide, ou limite atteinte), ou lecture arrêtée sur le budget (sc.budgetHit).
 func (sc *catchUpScan) scanTop(ctx context.Context, cursor historystate.Cursor) (arrived int, found bool, err error) {
 	for pos := 0; pos < historystate.AnchorScanLimit(sc.p.pageSize); pos += sc.p.pageSize {
 		entries, err := sc.page(ctx, pos)
@@ -82,10 +71,6 @@ func (sc *catchUpScan) scanTop(ctx context.Context, cursor historystate.Cursor) 
 				return 0, false, nil
 			}
 		}
-		if len(entries) < sc.p.pageSize {
-			sc.endSeen = true
-			return 0, false, nil
-		}
 	}
 	return 0, false, nil
 }
@@ -97,27 +82,4 @@ func (sc *catchUpScan) noteCursorFallback(ctx context.Context, cursor historysta
 	slog.WarnContext(ctx, "sync.v2: marque-page d'historique non situé — reprise depuis le début de la liste",
 		"event", "sync.v2.history.cursor_fallback", "gamertag", sc.gamertag, "reason", reason,
 		"offset", cursor.Offset, "new_matches", len(sc.unknown))
-}
-
-// resumeStart est l'étape (b) sans ancre : décalage de la page de recouvrement, vérifié par lecture.
-// Le nombre d'entrées arrivées est estimé par `topSpan` : toutes les entrées de tête jusqu'à la dernière
-// inconnue. Un connu arrivé plus bas n'est pas compté ; la page de recouvrement n'a alors plus le
-// marque-page et la lecture repart du début, comptée. Rend 0 (reprise depuis le début) quand la page
-// ne contient pas le dernier match du marque-page.
-func (sc *catchUpScan) resumeStart(ctx context.Context, cursor historystate.Cursor) (int, error) {
-	start := cursor.Offset + sc.topSpan - sc.p.pageSize
-	if start <= 0 {
-		return 0, nil // la page de recouvrement couvre le début : la lecture ordinaire la verra
-	}
-	entries, err := sc.page(ctx, start)
-	if err != nil {
-		return 0, err
-	}
-	for _, e := range entries {
-		if e.MatchID == cursor.LastMatchID {
-			return start, nil
-		}
-	}
-	sc.noteCursorFallback(ctx, cursor, "marque-page introuvable dans la page de recouvrement")
-	return 0, nil
 }

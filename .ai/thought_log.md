@@ -1,3 +1,10 @@
+## [2026-11-22] Hotfix 8.2.2 : une panne de l'API n'abandonne plus de matchs sains, budget global du cycle, fin sur page vide (D-26) — Complété (branche `fix/822-q`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : (1) `sync/historyfail` : une erreur passagère (429, 408, délai, réseau, fin de flux, pool sans jeton, arrêt) ne compte jamais une tentative, ni aucun échec d'une passe de masse (plus de 10 % du budget de la passe, au moins 5) ; un 5xx isolé compte (sinon un match toujours refusé garderait le joueur au rattrapage à vie). Un abandon est daté (`at` dans `history_skip_set`) et retenté après 24 h par identifiant (V2, au plus 50 par cycle), tentatives remises à zéro ; Halo 5 note un trou (`history_hole_since`) et rouvre l'historique après 24 h. (2) Budget du cycle V2 = 200 réparti entre les joueurs au rattrapage (25 au moins chacun, 8 au plus, les autres en delta borné et en attente). (3) Infinite : marque-page sans ancre = pas de marque-page, branche supprimée. (4) Fin d'historique seulement sur page vide (Infinite et Halo 5). (5) Halo 5 : le résolveur d'identités patiente sur 429 (cadence sous 10 requêtes par 15 s, recul 3 à 15 s, 2 min cumulées par passe) ; un participant non résolu est sauté du match et jamais complété ensuite.
+- **Résultats observés** : voir D-26 du plan (comptes d'appels de la convergence, gate).
+- **Suite** : revue du pilote ; l'abandon exige moins de 20 matchs durablement refusés dans une passe de 200 (noté en Découvertes).
+
 ## [2026-11-22] Hotfix 8.2.2 : cycle après redémarrage débloqué, état de l'historique illisible jamais « complet » (D-25) — Complété (branche `fix/822-p`)
 
 - **Statut** : Complété, non poussé.

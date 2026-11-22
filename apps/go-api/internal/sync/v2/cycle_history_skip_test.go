@@ -13,7 +13,7 @@ import (
 )
 
 func (e *histEnv) skipSet() map[string]bool {
-	return historystate.LoadSkipSet(context.Background(), e.db)
+	return historystate.LoadSkipSet(context.Background(), e.db).Active
 }
 
 // markNotFound déclare ces matchs introuvables (404) côté API.

@@ -9,6 +9,7 @@ import (
 
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/historyfail"
 	"levelup/go-api/internal/sync/historystate"
 )
 
@@ -58,7 +59,7 @@ func (r *backfillRun) walk(ctx context.Context) error {
 	for ; start < historystate.MaxDepth; start += r.pageSize {
 		more, err := r.readPage(ctx, start)
 		if err != nil {
-			if r.failFrontier(ctx, start, err.Error(), 0) {
+			if r.failFrontier(ctx, start, err.Error(), 0, !historyfail.IsTransient(err)) {
 				continue // page abandonnée : la suivante
 			}
 			return err
@@ -130,7 +131,8 @@ func (r *backfillRun) readPage(ctx context.Context, start int) (bool, error) {
 		"inserted", inserted, "cumulated", r.stats.Inserted,
 		"skipped_cum", r.cum.MatchesSkipped, "oldest_match_date", oldestStart(batches))
 
-	clean := len(errs) == 0 || r.failFrontier(ctx, start, errs[0], len(errs))
+	wide := historyfail.Wide(len(errs), len(batches), r.pageSize)
+	clean := len(errs) == 0 || r.failFrontier(ctx, start, errs[0], len(errs), !wide)
 	if clean && hasMore {
 		r.advance(ctx, start, r.cum.MatchesSeen-before.MatchesSeen, inserted)
 	}
@@ -138,13 +140,15 @@ func (r *backfillRun) readPage(ctx context.Context, start int) (bool, error) {
 }
 
 // failFrontier note l'échec de la page à `start` (cause : le texte de l'erreur, nErrs : ses erreurs de
-// persistance). Rend vrai quand la page est abandonnée : elle était la première après le marque-page
-// et c'est son MaxAttempts-ième échec de suite ; elle ne bloque alors plus le marque-page ni la fin.
-// Sinon elle le bloque (les pages suivantes ne le font plus avancer).
-func (r *backfillRun) failFrontier(ctx context.Context, start int, cause string, nErrs int) bool {
+// persistance, counts : l'échec compte une tentative, voir historyfail). Rend vrai quand la page est
+// abandonnée : elle était la première après le marque-page et c'est son MaxAttempts-ième échec de suite ;
+// elle ne bloque alors plus le marque-page ni la fin, et le trou est noté (BackfillResume.OnAbandon). Sinon
+// elle le bloque (les pages suivantes ne le font plus avancer). Un échec qui ne compte pas (panne de l'API :
+// 429, réseau, délai, passe de masse) bloque sans compter : la passe suivante réessaie.
+func (r *backfillRun) failFrontier(ctx context.Context, start int, cause string, nErrs int, counts bool) bool {
 	r.stats.LastError = cause
 	res := r.deps.Resume
-	if r.blocked || r.verify || res == nil {
+	if r.blocked || r.verify || res == nil || !counts {
 		r.blocked = true
 		return false
 	}
@@ -157,6 +161,9 @@ func (r *backfillRun) failFrontier(ctx context.Context, start int, cause string,
 		r.stats.AbandonedErrors += nErrs
 		r.attempts = 0
 		r.skipped++
+		if res.OnAbandon != nil {
+			res.OnAbandon(ctx)
+		}
 		return true
 	}
 	r.blocked = true

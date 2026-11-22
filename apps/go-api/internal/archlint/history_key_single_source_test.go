@@ -3,7 +3,8 @@
 //
 // Les clés `sync_meta` qui disent « la fin de l'historique a été vue » (`history_complete_at`) et
 // « le rattrapage en est là » (`history_catchup_cursor`, le marque-page), « ce point a échoué N
-// passes de suite » (`history_failure_streak`), « ce match n'est plus demandé » (`history_skip_set`), leur lecture, leur
+// passes de suite » (`history_failure_streak`), « ce match n'est plus demandé » (`history_skip_set`), « une page est abandonnée depuis tel instant »
+// (`history_hole_since`), leur lecture, leur
 // écriture, le budget par passe et la borne de profondeur vivent dans
 // `internal/sync/historystate`. Le cycle V2 et le runner Halo 5 l'appellent (le moteur V1 non : delta pur). Une
 // seconde copie d'un littéral est une seconde règle libre de diverger : un chemin qui range la fin
@@ -25,7 +26,7 @@ import (
 const historyStatePackage = "internal/sync/historystate/"
 
 // historyKeyLiterals : les clés de `sync_meta` du rattrapage de l'historique (fin vue, marque-page).
-var historyKeyLiterals = []string{"history_complete_at", "history_catchup_cursor", "history_failure_streak", "history_skip_set"}
+var historyKeyLiterals = []string{"history_complete_at", "history_catchup_cursor", "history_failure_streak", "history_skip_set", "history_hole_since"}
 
 // historyKeyViolations rend « fichier:ligne » de chaque littéral chaîne contenant l'une des clés,
 // hors du paquet historystate.

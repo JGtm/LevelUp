@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -16,8 +17,7 @@ import (
 
 // historyWorld simule un historique Halo 5 (liste de match_ids, du plus récent au plus ancien), la
 // base partagée (matchs rangés) et l'état du rattrapage du joueur (HistoryStore). Ses captures
-// reproduisent le contrat de halo5 : la page connus sautés sans arrêt, HistoryEnd sur page vide ou
-// incomplète, LastMatchID ; le delta s'arrête après domain.DeltaKnownRun connus d'affilée (CollectRecentMatches).
+// reproduisent le contrat de halo5 : la page connus sautés sans arrêt, HistoryEnd sur page vide, LastMatchID ; le delta s'arrête après domain.DeltaKnownRun connus d'affilée (CollectRecentMatches).
 type historyWorld struct {
 	ids        []string
 	stored     map[string]bool
@@ -33,6 +33,8 @@ type historyWorld struct {
 	cursor    *historystate.Cursor
 	streak    historystate.Streak
 	saves     int
+	hole      *time.Time // instant du trou noté (page abandonnée)
+	reopened  int
 
 	// observations
 	deltaCalls int
@@ -94,11 +96,7 @@ func (w *historyWorld) capturePage(_ context.Context, viewer canonical.PlayerIde
 		batches = append(batches, batchFor(id, viewer))
 		stats.MatchesCollected++
 	}
-	if len(page) < pageSize {
-		stats.HistoryEnd = true
-		return batches, false, nil
-	}
-	return batches, true, nil
+	return batches, true, nil // une page partielle n'est pas la fin : seule la page vide la dit
 }
 
 // capture simule CollectRecentMatches : delta-stop après domain.DeltaKnownRun connus d'affilée (les entrées
@@ -139,10 +137,6 @@ func (w *historyWorld) capture(_ context.Context, _ halo5.CaptureSource, viewer 
 			if opts.MaxMatches > 0 && stats.MatchesCollected >= opts.MaxMatches {
 				return batches, stats, nil
 			}
-		}
-		if len(page) < backfillDefaultPageSize {
-			stats.HistoryEnd = true
-			return batches, stats, nil
 		}
 	}
 }
@@ -218,6 +212,24 @@ func (w *historyWorld) SaveStreak(_ context.Context, s historystate.Streak) bool
 
 func (w *historyWorld) ClearStreak(context.Context) bool {
 	w.streak = historystate.Streak{}
+	return true
+}
+
+func (w *historyWorld) NoteHole(context.Context) bool {
+	if w.hole == nil {
+		now := historystate.Now()
+		w.hole = &now
+	}
+	return true
+}
+
+func (w *historyWorld) HoleDue(context.Context) bool {
+	return w.hole != nil && !historystate.Now().Before(w.hole.Add(historystate.AbandonRetryAfter))
+}
+
+func (w *historyWorld) Reopen(context.Context) bool {
+	w.complete, w.cursor, w.streak, w.hole = false, nil, historystate.Streak{}, nil
+	w.reopened++
 	return true
 }
 
@@ -621,8 +633,9 @@ func TestRunBackfill_BudgetOptionnel(t *testing.T) {
 	}
 }
 
-// Fin de liste et budget sur la même page : la fin gagne (page incomplète). Budget atteint pile sur
-// une page pleine : la fin n'est pas encore vue, la passe suivante la verra sans rien insérer.
+// Fin de liste et budget sur la même page : le budget gagne, la fin n'est pas encore vue (une page
+// incomplète n'est pas la fin : seule la page vide la dit), la passe suivante la verra sans rien insérer.
+// Avec du budget de reste, la fin se voit sur la page vide, un appel de plus.
 func TestRunBackfill_BudgetEtFin(t *testing.T) {
 	run := func(n, budget int) BackfillStats {
 		w := newHistoryWorld(n)
@@ -639,8 +652,11 @@ func TestRunBackfill_BudgetEtFin(t *testing.T) {
 		}
 		return stats
 	}
-	if s := run(40, 40); s.Inserted != 40 || !s.HistoryEnd || s.BudgetReached {
-		t.Errorf("40 matchs, budget 40 : %+v, attendu fin vue (page incomplète) sans budget atteint", s)
+	if s := run(40, 40); s.Inserted != 40 || s.HistoryEnd || !s.BudgetReached {
+		t.Errorf("40 matchs, budget 40 : %+v, attendu budget atteint, fin pas encore vue (page incomplète)", s)
+	}
+	if s := run(40, 100); s.Inserted != 40 || !s.HistoryEnd || s.BudgetReached || s.Pages != 3 {
+		t.Errorf("40 matchs, budget 100 : %+v, attendu fin vue sur la page vide (3 pages : 25, 15, vide)", s)
 	}
 	if s := run(50, 50); s.Inserted != 50 || s.HistoryEnd || !s.BudgetReached {
 		t.Errorf("50 matchs, budget 50 : %+v, attendu budget atteint, fin pas encore vue", s)

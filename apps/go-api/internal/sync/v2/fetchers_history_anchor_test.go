@@ -186,14 +186,22 @@ func TestListCatchUp_Ancre_BudgetAtteintAvantLAncre(t *testing.T) {
 	}
 }
 
-// Un marque-page rangé avant l'ancre se lit encore : le comportement sans ancre (page de
-// recouvrement) est conservé, et la passe range l'ancre pour la suivante.
-func TestListCatchUp_SansAncre_ComportementActuelPuisAncreRangee(t *testing.T) {
+// Un marque-page sans ancre n'existe pas pour la découverte V2 (le cycle range toujours la tête avec lui) :
+// il vaut pas de marque-page. La lecture repart du début, la reprise est journalisée et comptée, et la
+// passe range une ancre pour la suivante.
+func TestListCatchUp_SansAncre_RepriseDepuisLeDebut(t *testing.T) {
 	old := matchIDs("m", 1000)
 	c := newPagedClient(old)
+	before := fallbackCount()
 	l := listCatchUpOf(t, c, knownOfIDs(old[:600]), &historystate.Cursor{Offset: 600, LastMatchID: old[599]})
-	if c.startsBetween(575, 576) == 0 {
-		t.Errorf("lectures %v : la page de recouvrement (575) devait être lue", c.starts)
+	if !equalSlice(l.Unknown, old[600:600+historystate.PassBudget()]) {
+		t.Errorf("Unknown = %d ids, want la suite des connus trouvée depuis le début", len(l.Unknown))
+	}
+	if c.startsBetween(25, 575) == 0 {
+		t.Errorf("lectures %v : la reprise depuis le début n'a pas eu lieu", c.starts)
+	}
+	if got := fallbackCount() - before; got != 1 {
+		t.Errorf("reprises depuis 0 comptées : %d, want 1", got)
 	}
 	if l.Proposed == nil || l.Proposed.HeadID != old[0] {
 		t.Errorf("Proposed = %+v, want une ancre %s pour la passe suivante", l.Proposed, old[0])

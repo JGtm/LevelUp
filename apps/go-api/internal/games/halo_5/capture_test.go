@@ -391,8 +391,8 @@ func TestCapturePageAt_HistoryEnd(t *testing.T) {
 	if run(t, src, 6, 2, nil).HistoryEnd != true {
 		t.Error("page vide : HistoryEnd doit être vrai")
 	}
-	if run(t, src, 4, 2, nil).HistoryEnd != true {
-		t.Error("page incomplète : HistoryEnd doit être vrai")
+	if run(t, src, 4, 2, nil).HistoryEnd {
+		t.Error("page incomplète : HistoryEnd doit rester faux (une page courte n'est pas la fin, seule la page vide la dit)")
 	}
 	seen := map[string]struct{}{}
 	run(t, src, 0, 2, seen)

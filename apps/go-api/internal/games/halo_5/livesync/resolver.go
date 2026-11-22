@@ -14,9 +14,10 @@ type XUIDResolver interface {
 }
 
 // ResolveXUIDClosure adapte un XUIDResolver en func(gamertag) string consommé par
-// la capture (ingest.CollectMatchBatch). Échec de résolution (gamertag inconnu,
-// 429, réseau) → "" loggé : l'identité reste portée par le GAMERTAG (display via
-// v_gamertag_lookup, kill-feed), on ne FABRIQUE jamais d'xuid. res nil → tout "".
+// la capture (ingest.CollectMatchBatch). Un 429 attend et réessaie, dans la limite d'une attente cumulée
+// par passe (resolver_retry.go). Échec de résolution (gamertag inconnu, 429 persistant, réseau) → ""
+// loggé : l'identité reste portée par le GAMERTAG (display via v_gamertag_lookup, kill-feed), on ne
+// FABRIQUE jamais d'xuid. res nil → tout "".
 //
 // ⚠ Le "" est toléré pour les lignes kill-feed/médailles (colonne gamertag présente)
 // mais PAS pour des lignes d'agrégat/participant en masse (collision de PK xuid="") :
@@ -28,6 +29,7 @@ func ResolveXUIDClosure(ctx context.Context, res XUIDResolver, logger *slog.Logg
 	if logger == nil {
 		logger = slog.Default()
 	}
+	res = newRetryingResolver(res) // patiente sous la limite de débit (resolver_retry.go)
 	return func(gt string) string {
 		xuid, err := res.ResolveXUID(ctx, gt)
 		if err != nil {

@@ -89,30 +89,6 @@ func TestListDelta_AppelsDAPI(t *testing.T) {
 	}
 }
 
-// Rattrapage, marque-page sans ancre : le delta du dessus prend l'inconnu A sous le connu B, et
-// l'estimation du nombre d'entrées arrivées (A et B) situe le marque-page sans reprise depuis 0.
-func TestListCatchUp_SansAncre_ConnuRangeParUnCoequipier(t *testing.T) {
-	old := matchIDs("m", 1000)
-	b, a := "b-coequipier", "a-seul"
-	known := knownOfIDs(old[:600])
-	known[b] = true
-	cursor := &historystate.Cursor{Offset: 600, LastMatchID: old[599]}
-	list := append([]string{b, a}, old...)
-
-	before := fallbackCount()
-	l := listCatchUpOf(t, newPagedClient(list), known, cursor)
-
-	if len(l.Unknown) == 0 || l.Unknown[0] != a {
-		t.Fatalf("Unknown = %v..., want %s en tête", l.Unknown[:min(3, len(l.Unknown))], a)
-	}
-	if !equalSlice(l.Unknown[1:], old[600:600+historystate.PassBudget()-1]) {
-		t.Errorf("la suite du marque-page n'est pas lue à la bonne position (%d inconnus)", len(l.Unknown))
-	}
-	if got := fallbackCount() - before; got != 0 {
-		t.Errorf("reprise depuis 0 comptée %d fois, want 0", got)
-	}
-}
-
 // Rattrapage, marque-page avec ancre : le haut de liste est lu jusqu'à l'ancre, A est pris.
 func TestListCatchUp_Ancre_ConnuRangeParUnCoequipier(t *testing.T) {
 	old := matchIDs("m", 1000)

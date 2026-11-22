@@ -26,6 +26,12 @@ type HistoryStore interface {
 	LoadStreak(ctx context.Context, subject string) historystate.Streak
 	SaveStreak(ctx context.Context, s historystate.Streak) bool
 	ClearStreak(ctx context.Context) bool
+	// NoteHole note qu'une page est abandonnée (le trou le plus ancien date l'échéance) ; HoleDue dit si ce trou
+	// date de plus de historystate.AbandonRetryAfter ; Reopen rouvre alors l'historique (la fin n'est plus vue,
+	// marque-page, compte d'échecs et trou effacés).
+	NoteHole(ctx context.Context) bool
+	HoleDue(ctx context.Context) bool
+	Reopen(ctx context.Context) bool
 }
 
 // playerHistory est le HistoryStore de production : la base joueur Halo 5 (handle RW ref-compté de
@@ -124,4 +130,21 @@ func (h playerHistory) SaveStreak(ctx context.Context, s historystate.Streak) bo
 
 func (h playerHistory) ClearStreak(ctx context.Context) bool {
 	return h.write(ctx, "streak", func(db *sql.DB) bool { return historystate.ClearStreak(ctx, db) })
+}
+
+func (h playerHistory) NoteHole(ctx context.Context) bool {
+	return h.write(ctx, "trou", func(db *sql.DB) bool { return historystate.NoteHole(ctx, db) })
+}
+
+// HoleDue rend faux sur une base illisible : rien ne se rouvre sans lecture sûre.
+func (h playerHistory) HoleDue(ctx context.Context) (due bool) {
+	if err := h.read(func(db *sql.DB) { due = historystate.HoleDue(ctx, db) }); err != nil {
+		slog.WarnContext(ctx, "h5 sync: trou d'historique illisible", "gamertag", h.gamertag, "err", err)
+		return false
+	}
+	return due
+}
+
+func (h playerHistory) Reopen(ctx context.Context) bool {
+	return h.write(ctx, "reouverture", func(db *sql.DB) bool { return historystate.Reopen(ctx, db, h.gamertag) })
 }
