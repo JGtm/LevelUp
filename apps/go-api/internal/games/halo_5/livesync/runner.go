@@ -88,6 +88,13 @@ type Deps struct {
 	// par l'impl (watermark sync_meta), PAS par ce hook. nil → runner unit-testable
 	// sans notifications (no-op).
 	NotifyFirstSync func(ctx context.Context, inserted int)
+	// History : état du rattrapage de l'historique du joueur (base joueur h5, historystate). Fin jamais
+	// vue : le cycle fait une passe de rattrapage (catchup.go) au lieu du delta. Base illisible : delta
+	// ordinaire, HistoryPending vrai. nil → historique complet (delta inchangé, runner testable sans base joueur).
+	History HistoryStore
+	// CapturePage : capture d'UNE page de la passe de rattrapage. nil → halo5.CapturePageAt sur la
+	// source du cycle (injectable en test, comme Capture).
+	CapturePage CapturePageFunc
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -110,8 +117,14 @@ func NewRunner(deps Deps, logger *slog.Logger) *Runner {
 // RunDelta exécute un cycle de sync delta Halo 5. Dégradation gracieuse : token
 // absent / known-set KO / erreur de fetch n'avortent pas le cycle (best-effort,
 // erreurs remontées dans le SyncResult). opts.MaxMatches borne la collecte.
+//
+// Historique complet : delta (arrêt au premier match connu). Historique incomplet (fin jamais vue,
+// historystate) : passe de rattrapage bornée (catchup.go), qui range la fin d'historique quand elle
+// l'a vue sans erreur ; res.HistoryPending dit si le cycle laisse l'historique incomplet.
 func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error) {
 	var res domain.SyncResult
+	hist := r.readHistoryState(ctx)
+	res.HistoryPending = hist.pending
 
 	src, err := r.deps.NewSource(ctx)
 	if err != nil {
@@ -124,6 +137,7 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	}
 
 	var known map[string]bool
+	knownOK := true
 	if r.deps.LoadKnown != nil {
 		if known, err = r.deps.LoadKnown(ctx); err != nil {
 			// Best-effort : sans known-set on collecte sans delta-stop (idempotence
@@ -131,6 +145,7 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 			r.logger.WarnContext(ctx, "h5 sync: known-set indisponible (collecte sans delta)", "err", err)
 			res.AddError("h5 known-set: " + err.Error())
 			known = nil
+			knownOK = false
 		}
 	}
 
@@ -141,15 +156,16 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	}
 	resolveXUID := ResolveXUIDClosure(ctx, resolver, r.logger)
 
-	batches, stats, err := r.deps.Capture(ctx, src, r.deps.Viewer, resolveXUID,
-		mapContains(known), halo5.CaptureOptions{MaxMatches: opts.MaxMatches})
-	if err != nil {
-		res.AddError("h5 collect: " + err.Error())
+	// Rattrapage seulement avec un known-set lu : sans lui, la passe compterait comme insérés des
+	// matchs déjà rangés et brûlerait son budget ; le delta sans known-set garde son comportement.
+	var stats halo5.CaptureStats
+	if hist.catchUp && knownOK {
+		bs, marked := r.runCatchUp(ctx, src, resolveXUID, known, catchUpBudget(opts), &res)
+		stats = bs
+		res.HistoryPending = !marked
+	} else {
+		stats = r.runDeltaPass(ctx, src, resolveXUID, known, opts, &res)
 	}
-
-	done, errs := r.deps.PersistAll(ctx, batches)
-	res.Errors = append(res.Errors, errs...)
-	tallyResult(&res, done, stats)
 
 	// Hook CSR post-sync (G4 Phase 1) : persiste le CSR arena par playlist dans la
 	// player DB h5. RÉUTILISE la source live déjà construite (zéro 2e auth).
@@ -215,20 +231,46 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	return res, nil
 }
 
+// runDeltaPass est le delta ordinaire : collecte jusqu'au premier match connu (borne opts.MaxMatches)
+// puis persiste en une fois. Range les compteurs dans res et rend ceux de la capture.
+func (r *Runner) runDeltaPass(ctx context.Context, src halo5.CaptureSource, resolveXUID func(string) string,
+	known map[string]bool, opts domain.SyncOptions, res *domain.SyncResult) halo5.CaptureStats {
+	batches, stats, err := r.deps.Capture(ctx, src, r.deps.Viewer, resolveXUID,
+		mapContains(known), halo5.CaptureOptions{MaxMatches: opts.MaxMatches})
+	if err != nil {
+		res.AddError("h5 collect: " + err.Error())
+	}
+
+	done, errs := r.deps.PersistAll(ctx, batches)
+	res.Errors = append(res.Errors, errs...)
+	tallyResult(res, done, stats)
+	return stats
+}
+
 // tallyResult agrège les compteurs du SyncResult depuis les batches RÉELLEMENT
 // persistés (done) + les stats de collecte.
 func tallyResult(res *domain.SyncResult, done []*persist.MatchBatch, stats halo5.CaptureStats) {
-	res.MatchesInserted = len(done)
 	for _, b := range done {
-		if b.Shared.Match != nil {
-			res.InsertedMatchIDs = append(res.InsertedMatchIDs, b.Shared.Match.MatchID)
-		}
-		res.ParticipantsDone += len(b.Shared.Participants)
-		res.MedalsInserted += len(b.Shared.Medals)
-		res.EventsInserted += len(b.Shared.HighlightEvents)
+		tallyBatch(res, b)
 	}
-	if s := stats.MatchesSeen - res.MatchesInserted; s > 0 {
-		res.MatchesSkipped = s // vus mais non insérés (delta connus + échecs persist)
+	tallySkipped(res, stats.MatchesSeen)
+}
+
+// tallyBatch ajoute un match RÉELLEMENT persisté aux compteurs du SyncResult.
+func tallyBatch(res *domain.SyncResult, b *persist.MatchBatch) {
+	res.MatchesInserted++
+	if b.Shared.Match != nil {
+		res.InsertedMatchIDs = append(res.InsertedMatchIDs, b.Shared.Match.MatchID)
+	}
+	res.ParticipantsDone += len(b.Shared.Participants)
+	res.MedalsInserted += len(b.Shared.Medals)
+	res.EventsInserted += len(b.Shared.HighlightEvents)
+}
+
+// tallySkipped compte les matchs vus mais non insérés (delta connus + échecs persist).
+func tallySkipped(res *domain.SyncResult, seen int) {
+	if s := seen - res.MatchesInserted; s > 0 {
+		res.MatchesSkipped = s
 	}
 }
 

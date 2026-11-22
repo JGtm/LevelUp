@@ -366,3 +366,37 @@ func TestCollectRecentMatches_CarnageFailureStillCollects(t *testing.T) {
 		t.Errorf("carnage KO → 0 participants, got %d", len(batches[0].Shared.Participants))
 	}
 }
+
+// TestCapturePageAt_HistoryEnd — la fin d'historique n'est vue que sur une page vide ou
+// incomplète : une page pleine, ou une page qui reprend un match déjà vu (API qui ignore `start`),
+// ne prouvent rien et laissent HistoryEnd faux.
+func TestCapturePageAt_HistoryEnd(t *testing.T) {
+	run := func(t *testing.T, src *fakeH5Source, start, pageSize int, seen map[string]struct{}) CaptureStats {
+		t.Helper()
+		var stats CaptureStats
+		if _, _, err := CapturePageAt(context.Background(), src, jgtmViewer(), idResolver, nil,
+			CaptureOptions{}, start, pageSize, seen, &stats); err != nil {
+			t.Fatalf("CapturePageAt: %v", err)
+		}
+		return stats
+	}
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{
+		0: mustMatches(t, "m1", "m2"),
+		2: mustMatches(t, "m1", "m2"), // l'API ignore `start` et rend la première page
+		4: mustMatches(t, "m5"),
+	}}
+	if run(t, src, 0, 2, nil).HistoryEnd {
+		t.Error("page pleine : HistoryEnd doit rester faux")
+	}
+	if run(t, src, 6, 2, nil).HistoryEnd != true {
+		t.Error("page vide : HistoryEnd doit être vrai")
+	}
+	if run(t, src, 4, 2, nil).HistoryEnd != true {
+		t.Error("page incomplète : HistoryEnd doit être vrai")
+	}
+	seen := map[string]struct{}{}
+	run(t, src, 0, 2, seen)
+	if run(t, src, 2, 2, seen).HistoryEnd {
+		t.Error("page qui reprend des matchs déjà vus : HistoryEnd doit rester faux (anti-boucle, pas une fin)")
+	}
+}
