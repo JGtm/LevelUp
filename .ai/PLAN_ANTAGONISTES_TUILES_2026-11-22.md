@@ -224,22 +224,23 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste E — tuiles et ensemble des masqués (Sonnet)
 
-- [ ] E.1 `model/playerPanelLogic.ts` : l'état porte un ensemble de joueurs masqués (D-7) au lieu de `solo` / `hide` ;
+- [x] E.1 (fait, `9a208f8df9`) `model/playerPanelLogic.ts` : l'état porte un ensemble de joueurs masqués (D-7) au lieu de `solo` / `hide` ;
       événements `toggleHidden`, `solo`, `showAll` ; règles D-8 et D-15 ; l'ensemble se vide au changement de match.
-- [ ] E.2 `ownershipShown` et `model/focusFilter.ts` sur l'ensemble, règle DU-3 ; `shownAtSlot` des pions sur
+- [x] E.2 (fait : la distinction « élément partagé » disparaît, une seule règle) `ownershipShown` et `model/focusFilter.ts` sur l'ensemble, règle DU-3 ; `shownAtSlot` des pions sur
       l'ensemble. Le décor sans joueur reste affiché.
-- [ ] E.3 Tuile (`ui/ReplayPlayerCard.tsx`) et ligne (`ui/ReplayRosterRow.tsx`) : boutons Suivre et œil (D-6), à
+- [x] E.3 (fait : `ui/ReplayTileActionButtons.tsx`, `model/playerTileActions.ts` ; infobulles par `title`) Tuile (`ui/ReplayPlayerCard.tsx`) et ligne (`ui/ReplayRosterRow.tsx`) : boutons Suivre et œil (D-6), à
       encres de jetons, `aria-pressed`, noms accessibles « Suivre X » / « Ne plus suivre X » / « Masquer X » /
       « Afficher X », infobulles ; le clic sur un bouton n'ouvre pas la fiche ; Espace et Entrée gardés comme
       aujourd'hui (`PRESS_GUARDS`, `ui/replayPressGuards.ts`). Nom pâle et mention « masqué » sur la tuile d'un joueur masqué.
-- [ ] E.4 Fiche : `ui/fiche/FicheActions.tsx` ne garde que « Seul » (D-8) ; `ui/ReplayPlayerPanelBody.tsx` adapté.
-- [ ] E.5 « Tout afficher » en tête de la colonne des équipes (`ui/ReplayRosterColumn.tsx`, `ui/ReplayTeamsRow.tsx`
+- [x] E.4 (fait ; `FicheDepuisDebut.tsx` non touché) Fiche : `ui/fiche/FicheActions.tsx` ne garde que « Seul » (D-8) ; `ui/ReplayPlayerPanelBody.tsx` adapté.
+- [x] E.5 (fait : `ui/ReplayShowAllButton.tsx` ; dans la rangée, en haut de la cellule du score : placement à contrôler à l'écran, I.5) « Tout afficher » en tête de la colonne des équipes (`ui/ReplayRosterColumn.tsx`, `ui/ReplayTeamsRow.tsx`
       selon le cadre), visible dès qu'un joueur est masqué.
-- [ ] E.6 Textes en français et en anglais (Suivre, Ne plus suivre, Masquer, Afficher, Tout afficher, Seul, Seul ·
+- [x] E.6 (fait : `i18n/playerPanel.i18n.ts`) Textes en français et en anglais (Suivre, Ne plus suivre, Masquer, Afficher, Tout afficher, Seul, Seul ·
       tout réafficher, infobulles de la maquette).
-- [ ] E.7 Tests : réducteur (masquer deux joueurs, Seul puis réafficher un joueur, suivre un masqué, masquer le suivi,
+- [x] E.7 (fait : vus en échec puis verts ; contrôle du pilote : 295 tests ciblés verts ; témoins : seuls `filtre-masquer.json` (76 éléments mixtes passés de retirés à dessinés, écart de DU-3) et la liste des tests changent) Tests : réducteur (masquer deux joueurs, Seul puis réafficher un joueur, suivre un masqué, masquer le suivi,
       changement de match) ; filtre des calques sur DU-3 ; tuile et ligne (boutons, clic qui n'ouvre pas la fiche,
       états actifs) ; témoins 0.4 de Seul et Masquer d'un joueur : identiques, sauf l'écart que DU-3 annonce, listé.
+- [ ] E.8 (né du compte rendu de E : la fiche compacte `ui/ReplayCompactCard.tsx`, employée par la colonne et la rangée au-delà de 4 contre 4, n'a ni Suivre ni œil ; sans elle, le critère 5 de la section 0 n'est pas tenu) Mêmes boutons, mêmes règles que E.3 sur la fiche compacte, avec tests.
 - **Gate E** : gates communs sur `src/features/match-replay` (dossier entier : la règle des calques traverse tout).
 
 ## Piste F — page du match (Sonnet)
@@ -277,6 +278,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — E.1 à E.7 faites et fusionnées (agent : 6 037 tests du dossier verts) ; E.8 ajoutée (fiche compacte sans boutons).
 - 2026-11-22 — C.1 close et fusionnée ; C.2 attend DU-5 (le prédicat d'adversaire du point de vue).
 - 2026-11-22 — piste A close (gate : vitest 20/20, typecheck, lint des imports, eslint), fusionnée dans la branche d'intégration.
 - 2026-11-22 — étape 0 close (gate : 4 sorties écrites, section 1 corrigée, témoins contrôlés par le pilote). DU-5 posée au user. A, C.1 et E lancées.
