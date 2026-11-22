@@ -8,13 +8,17 @@
 // passe saute les matchs connus au lieu de s'arrêter dessus, et range les inconnus plus anciens
 // par tranches de [PassBudget] matchs. La clé se range seulement quand la fin a été vue sans perte.
 //
-// Bail d'écriture : [MarkComplete] écrit dans la base joueur ; l'APPELANT tient le bail d'écriture
+// Marque-page : une passe de rattrapage qui s'arrête avant la fin range sa position ([SaveCursor],
+// clé [CursorKey], voir [Cursor]) pour que la suivante reprenne là au lieu de reparcourir la liste
+// depuis le début ; [MarkComplete] l'efface.
+//
+// Bail d'écriture : [MarkComplete], [SaveCursor] et [ClearCursor] écrivent dans la base joueur ; l'APPELANT tient le bail d'écriture
 // de ce joueur pendant l'appel (règle ART n°4, `dblease.AcquireWriterCtx` / `AcquirePlayerWriterTimeout`),
 // ce paquet n'en prend pas. Le moteur V1 appelle [MarkComplete] sous le bail joueur pris au début de
 // sa passe, ou, en mode file asynchrone, sous celui qu'il reprend après le drain.
 //
-// Seul ce paquet nomme la clé : le garde-rail `archlint.TestHistoryKeyLiteralOnlyInHistorystate`
-// refuse le littéral ailleurs.
+// Seul ce paquet nomme ses clés : le garde-rail `archlint.TestHistoryKeyLiteralOnlyInHistorystate`
+// refuse leurs littéraux ailleurs.
 package historystate
 
 import (
@@ -73,6 +77,9 @@ func MarkComplete(ctx context.Context, db *sql.DB, gamertag string) bool {
 		slog.WarnContext(ctx, "sync: écriture de la fin d'historique échouée", "gamertag", gamertag, "err", err)
 		return false
 	}
+	// La fin rangée prime sur le marque-page : un effacement en échec (journalisé par ClearCursor)
+	// laisse une valeur que plus aucune passe ne lit.
+	ClearCursor(ctx, db)
 	slog.InfoContext(ctx, "sync: fin de l'historique atteinte — les passes suivantes seront des deltas", "gamertag", gamertag)
 	return true
 }
