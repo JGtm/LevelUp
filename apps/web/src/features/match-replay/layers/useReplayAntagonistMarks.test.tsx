@@ -1,9 +1,13 @@
 /**
  * useReplayAntagonistMarks.test.tsx : le câblage des titres au canevas : les deux PNG chargés une
- * fois, un repeint à leur arrivée, aucun calque quand le point de vue n'a aucun titre à porter.
+ * fois, un repeint à leur arrivée, aucun calque quand le point de vue n'a aucun titre à porter, et la
+ * boucle de repeinte qui mène une pulsation à son terme quand la lecture est en pause.
+ *
+ * L'horloge murale et les images d'animation sont simulées : `wall` avance à la main, `etape` joue
+ * l'image d'animation suivante.
  */
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildAntagonists, type AntagonistKill } from '@/lib/antagonists/antagonists'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
@@ -22,50 +26,48 @@ const aucun = buildAntagonists([], 'S', () => false)
 
 const ownerKeyOfSlot = (slot: number): string | null => (slot === 2 ? 'e1' : null)
 
-function monte(over: Partial<Parameters<typeof useReplayAntagonistMarks>[0]> = {}) {
+const wall = { now: 0 }
+const horloge = () => wall.now
+let file: Array<() => void> = []
+/** Joue l'image d'animation suivante, à l'instant mural donné. */
+function etape(now: number) {
+  wall.now = now
+  const cb = file.shift()
+  cb?.()
+}
+
+type Props = Parameters<typeof useReplayAntagonistMarks>[0]
+
+function monte(over: Partial<Props> = {}) {
   const redraw = vi.fn()
-  const view = renderHook(
-    (props: Parameters<typeof useReplayAntagonistMarks>[0]) => useReplayAntagonistMarks(props),
-    { initialProps: { doc: DOC, antagonists, ownerKeyOfSlot, reducedMotion: false, redraw, ...over } },
-  )
+  const view = renderHook((props: Props) => useReplayAntagonistMarks(props), {
+    initialProps: { doc: DOC, antagonists, ownerKeyOfSlot, reducedMotion: false, redraw, now: horloge, ...over },
+  })
   return { ...view, redraw }
 }
 
-// Une image qui arrive tout de suite : la config de Vitest remet les doubles à zéro entre les tests.
 beforeEach(() => {
+  wall.now = 0
+  file = []
+  vi.stubGlobal('requestAnimationFrame', (cb: () => void) => file.push(cb))
+  vi.stubGlobal('cancelAnimationFrame', () => {
+    file = []
+  })
+  // Une image qui arrive tout de suite : la config de Vitest remet les doubles à zéro entre les tests.
   vi.mocked(withLoadedImage).mockReset()
   vi.mocked(withLoadedImage).mockImplementation((_url, ready) => {
     ready({ naturalWidth: 100, naturalHeight: 100 } as unknown as HTMLImageElement)
   })
 })
+afterEach(() => vi.unstubAllGlobals())
 
-describe('useReplayAntagonistMarks', () => {
+describe('useReplayAntagonistMarks : les images', () => {
   it('charge les deux PNG noirs et repeint à leur arrivée', () => {
     const { redraw } = monte()
     expect(vi.mocked(withLoadedImage).mock.calls.map((c) => c[0]).sort()).toEqual(
       [TITLE_ICON_URL.nemesis, TITLE_ICON_URL.victim].sort(),
     )
     expect(redraw).toHaveBeenCalled()
-  })
-
-  it('lit les titres à l’image, sur l’axe du rejeu (image fois pas, en millisecondes)', () => {
-    const { result } = monte({ reducedMotion: true })
-    expect(result.current?.titlesOfSlot(2, 9)).toEqual([])
-    expect(result.current?.titlesOfSlot(2, 10)).toEqual([{ role: 'nemesis', count: 1 }])
-    expect(result.current?.titlesOfSlot(1, 10)).toEqual([])
-  })
-
-  it('pulse pendant la durée de rémanence d’un événement, puis se repose', () => {
-    const { result } = monte()
-    const imageDeLaPrise = 10
-    const apres = imageDeLaPrise + REPLAY_TIMING_MS.event / DOC.frameIntervalMs!
-    expect(result.current?.titlesOfSlot(2, imageDeLaPrise + 1)[0].motion?.kind).toBe('gain')
-    expect(result.current?.titlesOfSlot(2, apres)[0].motion).toBeUndefined()
-  })
-
-  it('en mouvement réduit, aucun mouvement', () => {
-    const { result } = monte({ reducedMotion: true })
-    expect(result.current?.titlesOfSlot(2, 11)[0].motion).toBeUndefined()
   })
 
   it('sans titre à porter dans tout le match : aucun calque, aucune image chargée', () => {
@@ -81,9 +83,79 @@ describe('useReplayAntagonistMarks', () => {
   })
 
   it('reste le même objet tant que l’index et le document ne changent pas', () => {
-    const { result, rerender } = monte()
+    const { result, rerender, redraw } = monte()
     const first = result.current
-    rerender({ doc: DOC, antagonists, ownerKeyOfSlot, reducedMotion: false, redraw: vi.fn() })
+    // Le repeint de la page est stable (`useCallback`) : le même rendu rend le même calque.
+    rerender({ doc: DOC, antagonists, ownerKeyOfSlot, reducedMotion: false, redraw, now: horloge })
     expect(result.current).toBe(first)
+  })
+
+  it('lit les titres à l’image, sur l’axe du rejeu (image fois pas, en millisecondes)', () => {
+    const { result } = monte()
+    expect(result.current?.titlesOfSlot(2, 9)).toEqual([])
+    expect(result.current?.titlesOfSlot(2, 10)).toEqual([{ role: 'nemesis', count: 1 }])
+    expect(result.current?.titlesOfSlot(1, 10)).toEqual([])
+  })
+})
+
+describe('useReplayAntagonistMarks : la pulsation', () => {
+  it('démarre au franchissement par la lecture, d’une durée de rémanence d’événement', () => {
+    const { result } = monte()
+    // Image 9 -> 11 : l'instant 1000 ms (image 10) est franchi en avançant.
+    result.current?.advance(9, 11)
+    expect(result.current?.titlesOfSlot(2, 11)[0].motion?.kind).toBe('gain')
+    wall.now = REPLAY_TIMING_MS.event - 1
+    expect(result.current?.titlesOfSlot(2, 11)[0].motion).toBeDefined()
+    wall.now = REPLAY_TIMING_MS.event
+    expect(result.current?.titlesOfSlot(2, 11)[0].motion).toBeUndefined()
+  })
+
+  it('un saut ne déclenche rien : ni pulsation, ni boucle de repeinte', () => {
+    const { result } = monte()
+    expect(result.current?.titlesOfSlot(2, 11)[0].motion).toBeUndefined()
+    expect(file).toHaveLength(0)
+  })
+
+  it('en pause, la boucle repeint jusqu’au terme de la pulsation puis s’arrête sur le repos', () => {
+    const { result, redraw } = monte()
+    redraw.mockClear()
+    result.current?.advance(9, 11)
+    expect(file).toHaveLength(1)
+    etape(300)
+    etape(700)
+    etape(1399)
+    expect(redraw).toHaveBeenCalledTimes(3)
+    expect(file).toHaveLength(1)
+    etape(1400)
+    // Un dernier repeint pose l'état de repos, puis plus rien ne tourne.
+    expect(redraw).toHaveBeenCalledTimes(4)
+    expect(file).toHaveLength(0)
+  })
+
+  it('ne double pas le tracé de la lecture : pas de repeinte quand une image vient d’être peinte', () => {
+    const { result, redraw } = monte()
+    redraw.mockClear()
+    result.current?.advance(9, 11)
+    wall.now = 100
+    result.current?.titlesOfSlot(2, 11) // le tracé de la lecture lit les titres
+    etape(110)
+    expect(redraw).not.toHaveBeenCalled()
+    etape(300)
+    expect(redraw).toHaveBeenCalledTimes(1)
+  })
+
+  it('en mouvement réduit : aucune pulsation, aucune boucle', () => {
+    const { result } = monte({ reducedMotion: true })
+    result.current?.advance(9, 11)
+    expect(file).toHaveLength(0)
+    expect(result.current?.titlesOfSlot(2, 11)).toEqual([{ role: 'nemesis', count: 1 }])
+  })
+
+  it('la boucle s’arrête au démontage', () => {
+    const { result, unmount } = monte()
+    result.current?.advance(9, 11)
+    expect(file).toHaveLength(1)
+    unmount()
+    expect(file).toHaveLength(0)
   })
 })

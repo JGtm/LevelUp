@@ -215,6 +215,12 @@ export interface ReplayPlaybackOptions {
    * tactique, ni une demande de la page, ni la fin du film n'en font partie.
    */
   onUserMove?: () => void
+  /**
+   * LA LECTURE VIENT DE PARCOURIR LES IMAGES `from` À `to` : émis par chaque pas de la boucle d'animation, avant le
+   * tracé, et par elle seule. Un déplacement direct du curseur (glissé, saut, pas d'image, retour au début) n'en est
+   * pas un. Les pulsations d'écran s'y accrochent (`useReplayAntagonistMarks`).
+   */
+  onAdvance?: (from: number, to: number) => void
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -315,7 +321,7 @@ function placeCursor(el: HTMLInputElement | null, frame: number, startFrame: num
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
   const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange, onStarted } = o
-  const { onSeekRequest, onUserMove } = o
+  const { onSeekRequest, onUserMove, onAdvance } = o
   // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir `useOpenAtFrame`) : empêche le
   // cadrage au coup d'envoi (`useInitialCursor`) d'écraser un lien tactique déjà positionné si
   // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
@@ -334,7 +340,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     [startFrame, endFrame],
   )
   useInitialCursor({ appliedOpenAtFrameRef, leadInFrame, frameRef, draw, writeCursor })
-  usePlaybackLoop({ playing, setPlaying, doc, baseFps, speed, renderWidth, endFrame, frameRef, writeCursor, draw, soundTick, onEnded })
+  usePlaybackLoop({ playing, setPlaying, doc, baseFps, speed, renderWidth, endFrame, frameRef, writeCursor, draw, soundTick, onEnded, onAdvance })
 
   /**
    * onScrub — LE GLISSÉ DE LA FRISE, et depuis le lot 5.8.7 il PRÉVIENT LE SON.

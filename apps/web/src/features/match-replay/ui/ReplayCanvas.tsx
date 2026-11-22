@@ -563,6 +563,7 @@ export function ReplayCanvas({
     onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
     // LE CANAL DE SAUT DE LA PAGE et l'effacement de la mise en valeur à tout geste manuel (cf. le hook).
     onSeekRequest: playbackStore.onSeekRequest, onUserMove: playbackStore.clearFocus,
+    onAdvance: antagonistMarks?.advance, // les pas de lecture lancent la pulsation d'un changement de titre
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.

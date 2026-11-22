@@ -8,15 +8,22 @@
  * compte, et en train de bouger ou non ». La clé d'un joueur est sa clé du film : celle de
  * `holder`, celle de `SlotOwnership`.
  *
- * LA PULSATION EST UNE FONCTION DE L'AXE DU REJEU, pas d'une horloge : elle dure `holdMs` (la
- * rémanence des événements ponctuels, 1,4 s) à partir de l'instant de la prise, comme la croix de mort
- * ou le lancer d'une grenade. Rien à retenir d'une image à l'autre, rien qui dépende de la vitesse de
- * lecture ; un saut dans le rejeu tombe sur l'état juste, pulsation en cours comprise.
+ * LA PULSATION SUIT L'HORLOGE MURALE, pas l'axe du rejeu (1,4 s réelles, quelle que soit la vitesse de
+ * lecture, et jusqu'à son terme si la lecture se met en pause : le même parti que la mise en valeur d'une
+ * élimination). Elle ne démarre que sur un PAS DE LECTURE : `advance(de, vers)`, que la boucle de lecture
+ * appelle à chaque pas, annonce l'intervalle qu'elle vient de parcourir ; un changement de titre (genre
+ * `prise`) dont l'instant tombe dans cet intervalle, en avançant, lance la pulsation. Un saut du curseur
+ * (frise, glissé, touche, pas d'image) n'appelle pas `advance` : il montre l'état de repos de l'instant atteint,
+ * jamais une pulsation. Un retour en arrière non plus.
  *   - le nouveau tenant (`gain`) : le titre grossit puis revient, avec ses anneaux ;
  *   - l'ancien tenant (`loss`) : son titre, à son compte d'alors, s'efface pendant ce temps.
- * Seuls les changements de genre `prise` pulsent ; une égalité ne change pas de main.
+ * Plusieurs prises d'un même rôle franchies dans un seul pas ne font qu'une pulsation : le tenant final gagne, celui
+ * d'avant le pas s'efface, ceux qui n'ont tenu que dans le pas ne portent rien. Une nouvelle prise pendant une
+ * pulsation la relance. Une pulsation ne s'affiche que si le tenant de l'image lue est celui qu'elle désigne : après
+ * un saut vers un instant où le titre est ailleurs, c'est le repos.
+ * Une égalité ne change pas de main : elle ne pulse pas.
  *
- * `reducedMotion` : l'état final tout de suite, sans mouvement et sans titre qui s'efface.
+ * `reducedMotion` : aucune pulsation, l'état final tout de suite.
  *
  * L'index est lu UNE fois par image (`at`), quel que soit le nombre de slots dessinés.
  */
@@ -45,36 +52,44 @@ export interface SlotTitlesInput {
   ownerKeyOfSlot: (slot: number, frame: number) => string | null
   /** L'instant de l'axe du rejeu d'une image, en millisecondes (`frameToMs`). */
   msOfFrame: (frame: number) => number
-  /** Durée de la pulsation, en millisecondes du rejeu. */
+  /** Durée de la pulsation, en millisecondes d'HORLOGE MURALE. */
   holdMs: number
   reducedMotion: boolean
+  /** L'horloge murale, en millisecondes (`performance.now`). */
+  now: () => number
 }
 
 export type SlotTitlesOf = (slot: number, frame: number) => readonly SlotTitle[]
 
+export interface SlotTitlesReader {
+  /** Les titres que porte un slot à une image, la pulsation en cours à l'horloge murale comprise. */
+  titlesOfSlot: SlotTitlesOf
+  /** Un pas de lecture a parcouru les images `de` à `vers` : un changement de titre franchi en avançant lance sa pulsation. */
+  advance: (from: number, to: number) => void
+  /** Une pulsation est en cours à l'horloge murale. */
+  pulsing: () => boolean
+  /** L'instant mural de la dernière lecture de titres, c'est-à-dire du dernier tracé : `-Infinity` avant la première. */
+  lastReadAt: () => number
+}
+
+/** Une pulsation en cours pour un rôle : le tenant qu'elle désigne, celui qui s'efface, et son départ mural. */
+interface Pulse {
+  holder: string
+  previousHolder: string | null
+  previousCount: number
+  startedAt: number
+}
+
 /** Aucun titre : partagé, jamais modifié. */
 const NONE: readonly SlotTitle[] = []
-
-/** Une prise de titre encore en cours de pulsation à l'image lue. */
-interface Pulse {
-  change: AntagonistChange
-  progress: number
-}
-
-/** Ce qui est vrai de toute l'image : l'état des titres et les prises qui pulsent. */
-interface FrameState {
-  frame: number
-  at: AntagonistsAt
-  pulse: Record<AntagonistRole, Pulse | null>
-}
 
 /** Les prises d'un rôle, dans l'ordre du temps (l'index les rend ainsi). */
 function prisesDe(antagonists: Antagonists, role: AntagonistRole): readonly AntagonistChange[] {
   return antagonists.changes.filter((c) => c.role === role && c.kind === 'prise')
 }
 
-/** La dernière prise d'instant <= `ms`, par recherche dichotomique ; `null` avant la première. */
-function priseAvant(prises: readonly AntagonistChange[], ms: number): AntagonistChange | null {
+/** Le nombre de prises d'instant <= `ms`, par recherche dichotomique. */
+function prisesJusqua(prises: readonly AntagonistChange[], ms: number): number {
   let lo = 0
   let hi = prises.length
   while (lo < hi) {
@@ -82,51 +97,76 @@ function priseAvant(prises: readonly AntagonistChange[], ms: number): Antagonist
     if (prises[mid].t <= ms) lo = mid + 1
     else hi = mid
   }
-  return lo === 0 ? null : prises[lo - 1]
+  return lo
 }
 
 /**
- * createSlotTitles : la lecture des titres d'un slot à une image. La fonction rendue garde l'état de
- * la dernière image lue : appelée pour tous les slots d'une même image, elle ne lit l'index qu'une fois.
+ * createSlotTitles : la lecture des titres d'un slot à une image, et la tenue des pulsations. L'état des titres
+ * de la dernière image lue est gardé : appelée pour tous les slots d'une même image, la fonction ne lit l'index qu'une fois.
  */
-export function createSlotTitles(input: SlotTitlesInput): SlotTitlesOf {
-  const { antagonists, ownerKeyOfSlot, msOfFrame, holdMs, reducedMotion } = input
+export function createSlotTitles(input: SlotTitlesInput): SlotTitlesReader {
+  const { antagonists, ownerKeyOfSlot, msOfFrame, holdMs, reducedMotion, now } = input
   const prises: Record<AntagonistRole, readonly AntagonistChange[]> = {
     nemesis: prisesDe(antagonists, 'nemesis'),
     victim: prisesDe(antagonists, 'victim'),
   }
-  let state: FrameState | null = null
+  const pulses: Record<AntagonistRole, Pulse | null> = { nemesis: null, victim: null }
+  let cached: { frame: number; at: AntagonistsAt } | null = null
+  let readAt = Number.NEGATIVE_INFINITY
 
-  const read = (frame: number): FrameState => {
-    if (state && state.frame === frame) return state
-    const ms = msOfFrame(frame)
-    const pulseOf = (role: AntagonistRole): Pulse | null => {
-      if (reducedMotion) return null
-      const change = priseAvant(prises[role], ms)
-      if (!change) return null
-      const progress = (ms - change.t) / holdMs
-      return progress < 1 ? { change, progress } : null
-    }
-    state = { frame, at: antagonists.at(ms), pulse: { nemesis: pulseOf('nemesis'), victim: pulseOf('victim') } }
-    return state
+  const reading = (frame: number): AntagonistsAt => {
+    if (!cached || cached.frame !== frame) cached = { frame, at: antagonists.at(msOfFrame(frame)) }
+    return cached.at
   }
 
-  return (slot, frame) => {
+  const advance = (from: number, to: number): void => {
+    if (reducedMotion || to <= from) return
+    const fromMs = msOfFrame(from)
+    const toMs = msOfFrame(to)
+    for (const role of ROLES) {
+      const first = prisesJusqua(prises[role], fromMs)
+      const end = prisesJusqua(prises[role], toMs)
+      if (end <= first) continue
+      const opening = prises[role][first]
+      const holder = prises[role][end - 1].holder
+      // Le titre est revenu à celui qui le tenait avant le pas : rien n'a changé de main.
+      if (opening.previousHolder === holder) continue
+      pulses[role] = { holder, previousHolder: opening.previousHolder, previousCount: opening.previousCount, startedAt: now() }
+    }
+  }
+
+  const progressOf = (pulse: Pulse, at: number): number => (at - pulse.startedAt) / holdMs
+
+  const titlesOfSlot: SlotTitlesOf = (slot, frame) => {
+    readAt = now()
     const key = ownerKeyOfSlot(slot, frame)
     if (key === null) return NONE
-    const { at, pulse } = read(frame)
+    const at = reading(frame)
     const out: SlotTitle[] = []
     for (const role of ROLES) {
-      const reading = at[role]
-      const moving = pulse[role]
-      if (reading?.holder === key) {
-        const title: SlotTitle = { role, count: reading.count }
-        if (moving && moving.change.holder === key) title.motion = { kind: 'gain', progress: moving.progress }
+      const holding = at[role]
+      const pulse = pulses[role]
+      // Une pulsation ne vaut que pour l'instant où le titre est bien à son nouveau tenant.
+      const progress = pulse && holding?.holder === pulse.holder ? progressOf(pulse, readAt) : 1
+      const moving = pulse !== null && progress < 1
+      if (holding?.holder === key) {
+        const title: SlotTitle = { role, count: holding.count }
+        if (moving && pulse.holder === key) title.motion = { kind: 'gain', progress }
         out.push(title)
-      } else if (moving && moving.change.previousHolder === key) {
-        out.push({ role, count: moving.change.previousCount, motion: { kind: 'loss', progress: moving.progress } })
+      } else if (moving && pulse.previousHolder === key) {
+        out.push({ role, count: pulse.previousCount, motion: { kind: 'loss', progress } })
       }
     }
     return out.length > 0 ? out : NONE
   }
+
+  const pulsing = (): boolean => {
+    const at = now()
+    return ROLES.some((role) => {
+      const pulse = pulses[role]
+      return pulse !== null && progressOf(pulse, at) < 1
+    })
+  }
+
+  return { titlesOfSlot, advance, pulsing, lastReadAt: () => readAt }
 }
