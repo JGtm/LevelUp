@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/historystate"
 )
@@ -67,15 +68,34 @@ func (c *convergenceH5) addOnTop(n int) []string {
 	return fresh
 }
 
+// addMixedOnTop place en haut de la liste des entrées neuves, plus récentes que toutes les autres, dont
+// warzone parties Warzone (écartées : vues, jamais rangées) entremêlées à arena matchs Arena.
+func (c *convergenceH5) addMixedOnTop(arena, warzone int) []string {
+	total := arena + warzone
+	fresh := make([]string, 0, total)
+	for i := 0; i < total; i++ {
+		if warzone > 0 && (i%3 == 1 || arena == 0) {
+			warzone--
+			fresh = append(fresh, fmt.Sprintf("w9%03d", c.nextFresh))
+		} else {
+			arena--
+			fresh = append(fresh, fmt.Sprintf("t%04d", c.nextFresh))
+		}
+		c.nextFresh++
+	}
+	c.w.prependIDs(fresh...)
+	return fresh
+}
+
 // pass exécute une passe et rend son résultat, avec les pages lues (delta du dessus et reprise).
 func (c *convergenceH5) pass(opts domain.SyncOptions) (res domain.SyncResult, pages int, resumeStarts []int) {
 	c.t.Helper()
-	c.w.pageStarts, c.deltaPages = nil, 0
+	c.w.pageStarts, c.w.listStarts, c.deltaPages = nil, nil, 0
 	res, err := c.runner.RunDelta(context.Background(), opts)
 	if err != nil {
 		c.t.Fatalf("RunDelta: %v", err)
 	}
-	return res, c.deltaPages + len(c.w.pageStarts), append([]int(nil), c.w.pageStarts...)
+	return res, c.deltaPages + len(c.w.listStarts) + len(c.w.pageStarts), append([]int(nil), c.w.pageStarts...)
 }
 
 // Un historique de 1 000 matchs, des matchs neufs qui arrivent en haut entre deux cycles : les cycles
@@ -252,4 +272,64 @@ func TestConvergence_Halo5_RunDelta_PageEnEchecDurableAbandonneeLaFinSeRange(t *
 		t.Errorf("après la fin : delta=%d pages=%d reprise=%v pending=%v inséré=%d ; attendu un delta d'une page sans attente",
 			c.w.deltaCalls-deltaBefore, pages, resumeStarts, res.HistoryPending, res.MatchesInserted)
 	}
+}
+
+// Quarante parties Warzone restent en tête de liste pendant tout le rattrapage (écartées : jamais
+// rangées, jamais connues), et des entrées neuves, Arena et Warzone mêlées, arrivent entre deux cycles :
+// chaque cycle reprend exactement au marque-page (décalage + entrées arrivées - une page), aucun ne
+// repart de 0, la fin se range. Avant l'ancre, la règle « jusqu'au premier connu » recomptait les
+// quarante Warzone à chaque passe : au-delà d'une page, la reprise repartait de 0.
+func TestConvergence_Halo5_RunDelta_WarzoneEnTeteNeFaitJamaisRepartirDe0(t *testing.T) {
+	c := newConvergenceH5(t, convergenceH5Total)
+	ctx := context.Background()
+	c.w.prependIDs(idsOf("w", 40)...)
+	const pageSize = backfillDefaultPageSize
+	budget := historystate.PassBudget()
+	missedBefore := observability.LoadCounter(metricCursorMissed)
+
+	arrivals := map[int][2]int{2: {2, 1}, 4: {3, 2}} // cycle -> {Arena, Warzone} arrivés avant lui
+	var endCycle, totalReads int
+	var readsByCycle []int
+	for cycle := 1; cycle <= 12 && endCycle == 0; cycle++ {
+		arrived := 0
+		if a, ok := arrivals[cycle]; ok {
+			arrived = len(c.addMixedOnTop(a[0], a[1]))
+		}
+		cursorBefore, hadCursor := c.h.LoadCursor(ctx)
+
+		res, pages, resumeStarts := c.pass(domain.SyncOptions{})
+		totalReads += pages
+		readsByCycle = append(readsByCycle, pages)
+		if res.MatchesInserted > budget+pageSize-1 {
+			t.Errorf("cycle %d : %d insérés, au plus %d attendus", cycle, res.MatchesInserted, budget+pageSize-1)
+		}
+		if hadCursor {
+			want := max(0, cursorBefore.Offset+arrived-pageSize)
+			if len(resumeStarts) == 0 || resumeStarts[0] != want || want == 0 {
+				t.Errorf("cycle %d : la reprise commence à %v, attendu la page de recouvrement %d (marque-page %d + %d arrivées)",
+					cycle, resumeStarts, want, cursorBefore.Offset, arrived)
+			}
+		}
+		complete, err := c.h.Complete(ctx)
+		if err != nil {
+			t.Fatalf("cycle %d : lecture de la clé de fin : %v", cycle, err)
+		}
+		if complete {
+			endCycle = cycle
+		} else if cur, ok := c.h.LoadCursor(ctx); !ok || cur.LastMatchID != c.w.ids[cur.Offset-1] || cur.HeadID != c.w.ids[0] {
+			t.Fatalf("cycle %d : marque-page %+v (rangé=%v), attendu une position cohérente avec la liste et l'ancre %s", cycle, cur, ok, c.w.ids[0])
+		}
+	}
+	if endCycle == 0 {
+		t.Fatalf("fin non rangée en 12 cycles (rangés %d)", len(c.w.stored))
+	}
+	for _, id := range c.w.ids {
+		if c.w.stored[id] == c.w.excluded[id] {
+			t.Fatalf("match %s : rangé=%v, écarté=%v (un match écarté n'est jamais rangé, tout autre l'est)", id, c.w.stored[id], c.w.excluded[id])
+		}
+	}
+	if got := observability.LoadCounter(metricCursorMissed) - missedBefore; got != 0 {
+		t.Errorf("%d reprises depuis 0 (compteur h5_history_cursor_missed_total), attendu 0", got)
+	}
+	t.Logf("Halo 5 (40 Warzone en tête) : fin rangée au cycle %d, pages lues par cycle %v (total %d)", endCycle, readsByCycle, totalReads)
 }

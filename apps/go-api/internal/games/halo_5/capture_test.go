@@ -400,3 +400,65 @@ func TestCapturePageAt_HistoryEnd(t *testing.T) {
 		t.Error("page qui reprend des matchs déjà vus : HistoryEnd doit rester faux (anti-boucle, pas une fin)")
 	}
 }
+
+// TestCollectRecentMatches_TeteDeListe : HeadID est l'entrée en position 0 et TopIDs la suite contiguë
+// des entrées vues (écartées et connue comprises), bornée par TopLimit ; sans TopLimit, aucune liste.
+func TestCollectRecentMatches_TeteDeListe(t *testing.T) {
+	raw := fmt.Sprintf(`{"Start":0,"Count":4,"ResultCount":4,"Results":[%s,%s,%s,%s]}`,
+		matchJSONMode("wz1", 4), matchJSONMode("camp1", 2), matchJSONMode("arena1", 1), matchJSONMode("arena2", 1))
+	var page halo5.H5MatchesResponse
+	if err := json.Unmarshal([]byte(raw), &page); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	src := &fakeH5Source{
+		pages:  map[int]*halo5.H5MatchesResponse{0: &page},
+		events: map[string]*halo5.H5MatchEventsResponse{},
+	}
+	isKnown := func(id string) bool { return id == "arena1" }
+
+	_, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 25, TopLimit: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if want := []string{"wz1", "camp1", "arena1"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
+		t.Errorf("TopIDs = %v, want %v (jusqu'au connu, écartées comprises)", stats.TopIDs, want)
+	}
+	if stats.HeadID != "wz1" {
+		t.Errorf("HeadID = %q, want wz1", stats.HeadID)
+	}
+
+	_, stats, err = CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{PageSize: 25, TopLimit: 2})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if want := []string{"wz1", "camp1"}; fmt.Sprint(stats.TopIDs) != fmt.Sprint(want) {
+		t.Errorf("TopLimit 2 : TopIDs = %v, want %v", stats.TopIDs, want)
+	}
+
+	_, stats, _ = CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, isKnown, CaptureOptions{PageSize: 25})
+	if len(stats.TopIDs) != 0 || stats.HeadID != "wz1" {
+		t.Errorf("sans TopLimit : TopIDs = %v (attendu vide), HeadID = %q (attendu wz1)", stats.TopIDs, stats.HeadID)
+	}
+}
+
+// TestListMatchIDs : une page d'identifiants dans l'ordre de l'API, sans filtre ; l'erreur de la source remonte.
+func TestListMatchIDs(t *testing.T) {
+	raw := fmt.Sprintf(`{"Start":0,"Count":2,"ResultCount":2,"Results":[%s,%s]}`, matchJSONMode("wz1", 4), matchJSONMode("a1", 1))
+	var page halo5.H5MatchesResponse
+	if err := json.Unmarshal([]byte(raw), &page); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	src := &fakeH5Source{pages: map[int]*halo5.H5MatchesResponse{0: &page}}
+	ids, err := ListMatchIDs(context.Background(), src, "JGtm", 0, 25)
+	if err != nil || fmt.Sprint(ids) != "[wz1 a1]" {
+		t.Errorf("ListMatchIDs = %v, %v ; want [wz1 a1], nil", ids, err)
+	}
+	if ids, err := ListMatchIDs(context.Background(), src, "JGtm", 50, 25); err != nil || len(ids) != 0 {
+		t.Errorf("page vide : %v, %v ; want aucune entrée, nil", ids, err)
+	}
+	if _, err := ListMatchIDs(context.Background(), &errSource{}, "JGtm", 0, 25); err == nil {
+		t.Error("l'erreur de la source doit remonter")
+	}
+}

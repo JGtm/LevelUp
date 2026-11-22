@@ -95,6 +95,10 @@ type Deps struct {
 	// CapturePage : capture d'UNE page de la passe de rattrapage. nil → halo5.CapturePageAt sur la
 	// source du cycle (injectable en test, comme Capture).
 	CapturePage CapturePageFunc
+	// ListIDs : lecture légère d'UNE page de la liste de l'API (identifiants seulement), pour retrouver
+	// l'ancre du marque-page au-delà de ce que le delta a vu. nil → halo5.ListMatchIDs sur la source du
+	// cycle (injectable en test).
+	ListIDs ListIDsFunc
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.

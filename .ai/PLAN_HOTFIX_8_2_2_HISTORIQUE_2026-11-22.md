@@ -224,6 +224,18 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
   `historystate.MaxDepth`. Tests : reprise avec N neufs, recouvrement raté, page durable abandonnée à la 3e
   passe puis fin rangée, page en échec une fois puis réussie (compte remis à zéro), erreur de persistance
   durable abandonnée.
+- [x] 3.5 Ancre du marque-page Halo 5 (D-21) : `HeadID` rangé à chaque marque-page (tête de la liste lue à la
+  passe) ; N = `ArrivedSince` sur au plus `AnchorScanLimit(25)` = 200 entrées, toutes entrées comptées
+  (écartées comprises), reprise à `ResumeOffset(N)` moins une page, `LastMatchID` gardé comme garde-fou ;
+  marque-page sans ancre = règle « jusqu'au premier connu » ; ancre perdue = reprise depuis 0, journalisée et
+  comptée (`h5_history_cursor_missed_total`). Code : `livesync/catchup_anchor.go`, `catchup.go` (`topDelta`),
+  `backfill_walk.go` (`advance` range l'ancre), `halo_5/capture.go` (`CaptureStats.HeadID` / `TopIDs`,
+  `CaptureOptions.TopLimit`, `ListMatchIDs`). Tests : `catchup_anchor_test.go` (30 Warzone en tête à deux
+  passes, neufs mêlés Arena / Warzone, ancre perdue, connu au-dessus de l'ancre, lecture de liste en échec,
+  marque-page sans ancre), `capture_test.go`, convergence
+  `TestConvergence_Halo5_RunDelta_WarzoneEnTeteNeFaitJamaisRepartirDe0` : pages lues par cycle `[10 22 10 10 9]`
+  (total 61, une reprise depuis 0 au cycle 2) avant, `[10 11 10 10 10]` (total 51, aucune reprise depuis 0)
+  après ; le scénario tout Arena est inchangé (`[8 10 10 10 10 3]`).
 - Gate : `go test ./internal/games/halo_5/...`.
 
 ### Étape 4 — piste C : cadence de l'ordonnanceur
@@ -469,6 +481,14 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   tant que le rattrapage n'est pas fini.
 - Étape 3 (suite) : `backfillMaxPages` supprimé, la boucle s'arrête à `historystate.MaxDepth` (décalage) :
   une seule source pour la profondeur.
+- Étape 3 (D-21) : le delta s'arrête au premier match connu ; un match connu arrivé en tête depuis la passe
+  précédente (rangé par un coéquipier dans la base partagée) arrête le delta avant des matchs neufs inconnus
+  plus bas, qui ne sont alors jamais pris par le delta. Comportement d'avant l'ancre, non traité ici. L'ancre
+  compte exactement ces entrées dans N, et la tête de liste est relue (un appel par page, au plus 8) pour la
+  retrouver au-delà du match connu.
+- Étape 3 (D-21) : un marque-page rangé par une passe sans cursor dont la première page est abandonnée n'a pas
+  d'ancre (la tête n'a pas été lue) ; la passe suivante retombe sur la règle sans ancre, puis les marque-pages
+  suivants en portent une.
 - Étape 3 : un match rangé sans timeline ou sans carnage (`EventsFailed`, `CarnageFailed`) est connu
   ensuite : le rebalayage ne le retente jamais (le commentaire de `captureMatchTimeline` dit le contraire).
   Hors périmètre.

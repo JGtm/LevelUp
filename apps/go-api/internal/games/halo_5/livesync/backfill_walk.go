@@ -173,7 +173,7 @@ func (r *backfillRun) advance(ctx context.Context, start, entries, inserted int)
 	if !r.verify { // la page de recouvrement est derrière la frontière : elle ne remet pas les échecs à zéro
 		r.attempts, r.skipped = 0, 0
 	}
-	c := historystate.Cursor{Offset: start + entries, LastMatchID: r.cum.LastMatchID}
+	c := historystate.Cursor{Offset: start + entries, LastMatchID: r.cum.LastMatchID, HeadID: r.headID()}
 	if !c.Valid() {
 		return
 	}
@@ -181,6 +181,15 @@ func (r *backfillRun) advance(ctx context.Context, start, entries, inserted int)
 	if inserted > 0 {
 		r.flushCursor(ctx)
 	}
+}
+
+// headID rend l'ancre des marque-pages de la passe : la tête lue par le delta du dessus, sinon celle de la
+// page de tête de la reprise (vide quand elle n'a pas été lue : marque-page sans ancre).
+func (r *backfillRun) headID() string {
+	if r.deps.Resume.HeadID != "" {
+		return r.deps.Resume.HeadID
+	}
+	return r.cum.HeadID
 }
 
 // flushCursor range la dernière position propre qui ne l'est pas encore.
