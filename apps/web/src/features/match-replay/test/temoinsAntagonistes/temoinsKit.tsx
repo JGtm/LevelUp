@@ -35,6 +35,7 @@ import { buildFeedEntries, type ReplayFeedEntry } from '../../model/killFeedLogi
 import { readMatchMedals } from '../../model/matchMedals'
 import { createPlaybackStore } from '../../model/playbackStore'
 import type { HiddenPlayers, PlayerFocus } from '../../model/playerPanelLogic'
+import { createReplayAntagonists } from '../../model/replayAntagonists'
 import { replayClock } from '../../model/replayClock'
 import { ReplayCanvas } from '../../ui/ReplayCanvas'
 import { makeFrameControl } from '../frameControlStub'
@@ -268,6 +269,36 @@ function installerEnregistreurs(): Enregistrements {
   return canvases
 }
 
+/** Les deux PNG des titres d'antagoniste et leurs dimensions : seuls fichiers dont le double d'image annonce le chargement. */
+const ICONES_DE_TITRE = new Map([
+  ['/icons/nemesis-black.png', { w: 714, h: 670 }],
+  ['/icons/victim-black.png', { w: 1099, h: 1369 }],
+])
+
+/**
+ * L'image du navigateur, sauf pour les deux icônes de titre : jsdom ne charge aucune image, et sans elles le
+ * témoin ne montrerait jamais une icône. Ces deux-là se chargent à l'instant, avec leurs dimensions naturelles ;
+ * toute autre image se comporte comme avant (elle ne se charge pas).
+ */
+class ImageAvecIcones extends window.Image {
+  constructor() {
+    super()
+    const reelle = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')
+    Object.defineProperty(this, 'src', {
+      configurable: true,
+      get: () => reelle?.get?.call(this) as string,
+      set: (value: string) => {
+        reelle?.set?.call(this, value)
+        const taille = ICONES_DE_TITRE.get(value)
+        if (!taille) return
+        Object.defineProperty(this, 'naturalWidth', { value: taille.w })
+        Object.defineProperty(this, 'naturalHeight', { value: taille.h })
+        this.onload?.(new Event('load'))
+      },
+    })
+  }
+}
+
 /**
  * Les doubles du navigateur, à poser avant chaque montage : aucune boucle d'animation, aucun réseau
  * (la sortie ne dépend pas d'un serveur qui tournerait sur le poste), une taille mesurée et une
@@ -276,6 +307,7 @@ function installerEnregistreurs(): Enregistrements {
  * `vi.restoreAllMocks()` et `vi.unstubAllGlobals()` les défont.
  */
 export function installerDoubles(): void {
+  vi.stubGlobal('Image', ImageAvecIcones)
   vi.stubGlobal('requestAnimationFrame', () => 0)
   vi.stubGlobal('cancelAnimationFrame', () => {})
   vi.stubGlobal('fetch', () => Promise.reject(new TypeError('témoins : aucun réseau')))
@@ -311,9 +343,15 @@ function derniereImage(ops: CanvasOp[]): CanvasOp[] {
 /**
  * peindre monte la toile sur la scène, ouverte à `frame`, et rend la suite des appels de dessin de
  * la dernière image. La toile reçoit le fil, le point de vue et l'allégeance : tout ce dont un
- * calque a besoin pour connaître les éliminations à l'instant.
+ * calque a besoin pour connaître les éliminations à l'instant, et les antagonistes du point de vue que
+ * la page donne à la toile (`avecAntagonistes` faux : la toile sans eux, pour mesurer ce qu'ils ajoutent).
  */
-export function peindre(scene: Scene, frame: number, filtre: FiltreTemoin | null = null): CanvasOp[] {
+export function peindre(
+  scene: Scene,
+  frame: number,
+  filtre: FiltreTemoin | null = null,
+  avecAntagonistes = true,
+): CanvasOp[] {
   const canvases = installerEnregistreurs()
   const view = renderWithProviders(
     <ReplayCanvas
@@ -324,6 +362,7 @@ export function peindre(scene: Scene, frame: number, filtre: FiltreTemoin | null
       openAtFrame={frame}
       allegiance={scene.allegiance}
       players={scene.players}
+      antagonists={avecAntagonistes ? createReplayAntagonists(scene.feed, scene.players).forViewpoint(scene.viewpoint) : undefined}
       playerFocus={filtre?.focus ?? null}
       hiddenPlayers={filtre?.hidden ?? null}
       viewpoint={scene.viewpoint}
