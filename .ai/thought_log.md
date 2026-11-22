@@ -1,3 +1,11 @@
+## [2026-11-22] Médailles Vengeur et Cible difficile, Os de verre, bouclier dans la fiche du rejeu — Complété (fusion dans release/v8.3.0 ; reste la vérification à l'écran du user)
+
+**Décision technique principale** : bris, recharges de bouclier et vengeances calculés dans LevelUp (fonctions pures `analysis/shieldcycle`, `analysis/revenge`, adaptateur `replayshield`), sans montée du décodeur ; trois colonnes nullables sur `match_usage_players` avec une révision LevelUp propre (`levelup_rev`) ; vue `v_medals_earned` qui fusionne `medals_earned` et ces colonnes (Vengeur dérivé prioritaire sur les lignes héritées, médaille `9000000002` Cible difficile), lue par 8 lecteurs d'affichage, garde-rail des lectures brutes ; rôle Os de verre (−0,5) et barème allégé (Première victime, Touriste, Kamikaze à −0,5) ; champ `shieldCycles` servi par la vue du rejeu, trois lignes dans la fiche, calcul web `shieldDrops` supprimé.
+
+**Résultats observés** : témoin du barème identique à l'étape 0 ; recalcul local du parc 1455 matchs, 0 échec, chiffres égaux à la mesure ; gates : vitest complet, intégration Go `-p 1`, `gate-push` verts ; revue adversariale : P0 snapshot et P1 fenêtres corrigés, trois P2 au backlog.
+
+**Conclusion / prochaine étape** : vérifications à l'écran (artefact `verifs`, lignes « mb-* ») ; en prod, `backfill-usage-summary` après la recuisson de la version. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md`.
+
 ## [2026-11-22] Médailles du bouclier : corrections P0 et P1 de la revue adversariale — Complété (sur `feat/medailles-bouclier`, non poussé)
 **Statut :** Complété. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (journal).
 **Décision technique principale :** le snapshot exporte `match_usage_players` et `match_usage_films` (tables requises) et pose `v_medals_earned` à la lecture par les fonctions canoniques de la migration ; la vue des médailles est réécrite pour qu'une lecture bornée à des matchs (égalité ou liste) lie ses matchs sous la fenêtre du résumé d'usage (ADR 0036 I2) : branches dérivées parties de `match_usage_films_latest`, règle du Vengeur par fenêtre `PARTITION BY match_id` au lieu d'un `NOT EXISTS`.
