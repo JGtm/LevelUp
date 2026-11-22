@@ -167,6 +167,8 @@ export function createTitleIcons(): TitleIcons {
 /** Ce que le calque des pions reçoit : les titres par slot et par image, et les icônes pour les dessiner. */
 export interface AntagonistMarks {
   titlesOfSlot: SlotTitlesOf
+  /** Les titres d'un joueur désigné par sa clé du film : l'occupant d'un véhicule, qui n'a plus de pion. */
+  titlesOfKey: (key: string, frame: number) => readonly SlotTitle[]
   icons: TitleIcons
 }
 
@@ -214,7 +216,7 @@ export interface TitleStyleSource {
   antagonists?: AntagonistMarks
 }
 
-function labelTitleOf(title: SlotTitle, marks: AntagonistMarks, color: string, style: TitleStyleSource): LabelTitle {
+function labelTitleOf(title: SlotTitle, marks: AntagonistMarks, color: string, style: { k: number; labelStroke: string }): LabelTitle {
   const motion = title.motion
   return {
     icon: marks.icons.iconOf(title.role, color, style.labelStroke, style.k),
@@ -232,8 +234,31 @@ function labelTitleOf(title: SlotTitle, marks: AntagonistMarks, color: string, s
  */
 export function titleDrawOf(style: TitleStyleSource, slot: number, color: string): TitleDraw | undefined {
   const marks = style.antagonists
-  const titles = marks?.titlesOfSlot(slot, style.frame)
-  if (!marks || !titles || titles.length === 0) return undefined
+  return marks && titleDrawFrom(marks, marks.titlesOfSlot(slot, style.frame), style, color)
+}
+
+/**
+ * occupantTitleDraw : les mêmes titres pour l'occupant d'un véhicule. Son épisode le désigne par la clé du film
+ * (`ride.xuid`), que le pont slot -> joueur ne retrouve pas toujours pendant qu'il est à bord ; à défaut, son slot.
+ */
+export function occupantTitleDraw(
+  marks: AntagonistMarks | undefined,
+  ride: { slot: number; xuid?: string } | undefined,
+  at: { k: number; labelStroke: string; frame: number },
+  color: string,
+): TitleDraw | undefined {
+  if (!marks || !ride) return undefined
+  const titles = ride.xuid ? marks.titlesOfKey(ride.xuid, at.frame) : marks.titlesOfSlot(ride.slot, at.frame)
+  return titleDrawFrom(marks, titles, at, color)
+}
+
+function titleDrawFrom(
+  marks: AntagonistMarks,
+  titles: readonly SlotTitle[],
+  style: { k: number; labelStroke: string },
+  color: string,
+): TitleDraw | undefined {
+  if (titles.length === 0) return undefined
   let pulse: number | null = null
   for (const t of titles) if (t.motion?.kind === 'gain') pulse = t.motion.progress
   return { titles: titles.map((t) => labelTitleOf(t, marks, color, style)), pulse, color, k: style.k }

@@ -132,6 +132,28 @@ describe('useReplayAntagonistMarks : la pulsation', () => {
     expect(file).toHaveLength(0)
   })
 
+  it('un repeint qui lit les titres, comme le vrai : une image par tick, et un tracé de repos garanti à la fin', () => {
+    const { result, redraw } = monte()
+    const vus: Array<string | undefined> = []
+    redraw.mockImplementation(() => {
+      vus.push(result.current?.titlesOfSlot(2, 11)[0].motion?.kind)
+    })
+    redraw.mockClear()
+    result.current?.advance(9, 11)
+    // La lecture est en pause : seules les images d'animation (16 ms) font avancer la pulsation.
+    let ticks = 0
+    for (let t = 16; file.length > 0 && ticks < 200; t += 16) {
+      etape(t)
+      ticks++
+    }
+    expect(file).toHaveLength(0)
+    // Une image repeinte à chaque tick : le repeint de la boucle ne compte pas comme un tracé de la lecture.
+    expect(redraw).toHaveBeenCalledTimes(ticks)
+    // Le dernier tracé est celui du repos : la pulsation est finie quand il lit les titres.
+    expect(vus[vus.length - 1]).toBeUndefined()
+    expect(vus[vus.length - 2]).toBe('gain')
+  })
+
   it('ne double pas le tracé de la lecture : pas de repeinte quand une image vient d’être peinte', () => {
     const { result, redraw } = monte()
     redraw.mockClear()

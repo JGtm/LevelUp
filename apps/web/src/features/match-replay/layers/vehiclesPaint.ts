@@ -18,6 +18,7 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
 import type { FocusFilter } from '../model/focusFilter'
 import type { FxInk } from './fxInk'
+import { occupantTitleDraw, drawTitlePulse, labelStyleOf, type AntagonistMarks } from './antagonistMarks'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 import { project, viewScale, type PlacementView } from './placementShapes'
 import { aimLengthScale, drawAimSector } from './replayAimCone'
@@ -196,6 +197,8 @@ export interface VehicleStyle {
    * Un véhicule vide n'est à personne et se dessine toujours. Absent = tout se dessine.
    */
   shown?: Pick<FocusFilter, 'vehicleAt' | 'occupant' | 'vehicleDestruction'>
+  /** Les titres d'antagoniste du point de vue : le nom d'un occupant les porte comme celui d'un pion. Absent = aucun. */
+  antagonists?: AntagonistMarks
 }
 
 /** Écart entre deux noms empilés, en pixels d'écran (police partagée avec `replayLabels.ts`). */
@@ -275,7 +278,7 @@ function drawVehicleOccupantNames(
   c: XY,
   baseEdgePx: number,
   style: Pick<VehicleStyle,
-    'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'colorOfXuid' | 'labelStroke' | 'neutralInk'>,
+    'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'colorOfXuid' | 'labelStroke' | 'neutralInk' | 'antagonists'>,
   k: number,
 ): void {
   const label: LabelStyle = { k, labelStroke: style.labelStroke }
@@ -288,7 +291,10 @@ function drawVehicleOccupantNames(
     // pâté illisible, c'est-à-dire un nom perdu. L'encre du « aucun camp connu » est faite pour
     // ça, et c'est déjà celle du véhicule sans occupant résolu.
     const color = vehicleRideColor(ride, frame, style) ?? style.neutralInk
-    drawNameLabel(ctx, c, name, label, color, baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k)
+    const edge = baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k
+    const titles = occupantTitleDraw(style.antagonists, ride, { k, labelStroke: style.labelStroke, frame }, color)
+    drawTitlePulse(ctx, c, titles, edge)
+    drawNameLabel(ctx, c, name, labelStyleOf(label, titles), color, edge)
     line++
   }
 }
@@ -330,7 +336,7 @@ function drawVehicleOffscreenSignal(
   time: VehicleTime,
   style: Pick<
     VehicleStyle,
-    'nameOfSlot' | 'nameOfXuid' | 'labelStroke' | 'showNames' | 'offscreenLabelOf' | 'offscreenGroupLabelOf'
+    'nameOfSlot' | 'nameOfXuid' | 'labelStroke' | 'showNames' | 'offscreenLabelOf' | 'offscreenGroupLabelOf' | 'antagonists'
   >,
   mark: EdgeMark,
   color: string,
@@ -339,7 +345,11 @@ function drawVehicleOffscreenSignal(
   if (!style.showNames) return
   const text = vehicleOffscreenText(rides, time.frame, style, mark.distanceM)
   if (text) {
-    drawOffscreenLabel(ctx, mark.at, mark.angle, text, { k: time.k, labelStroke: style.labelStroke }, color)
+    // Les titres vont à l'occupant dont le NOM est écrit (le seul, ou le conducteur), jamais au repli « N joueurs ».
+    const named = rides.length === 1 ? rides[0] : rides.find((r) => r.seat === 0)
+    const owner = named && occupantName(named, time.frame, style) ? named : undefined
+    const titles = occupantTitleDraw(style.antagonists, owner, { k: time.k, labelStroke: style.labelStroke, frame: time.frame }, color)
+    drawOffscreenLabel(ctx, mark.at, mark.angle, text, labelStyleOf({ k: time.k, labelStroke: style.labelStroke }, titles), color)
   }
 }
 
