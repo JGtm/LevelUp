@@ -192,16 +192,16 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste B — canevas (Sonnet)
 
-- [ ] B.1 `layers/antagonistMarks.ts` : icônes teintées (masque alpha tiré du PNG noir, teinte passée par l'appelant,
+- [x] B.1 (fait, `ad80fb0e46` : `layers/antagonistMarks.ts`, icônes de 12 px de haut, contour en 12 silhouettes) `layers/antagonistMarks.ts` : icônes teintées (masque alpha tiré du PNG noir, teinte passée par l'appelant,
       cache par couleur, taille et densité), dessin de l'icône avec contour, pulsation (D-12). Aucun ajout dans
       `replayMarkers.ts` au-delà du branchement (≤ 500 lignes tenues).
-- [ ] B.2 `layers/replayLabels.ts` : l'étiquette accepte des icônes de titre et leur compte devant le nom (DU-2),
+- [x] B.2 (fait : étiquette « [icône] compte nom » centrée ; sans titre, appels de dessin identiques) `layers/replayLabels.ts` : l'étiquette accepte des icônes de titre et leur compte devant le nom (DU-2),
       centrées sous le pion, lisibles sur les deux thèmes ; même chose pour l'étiquette de la flèche hors cadre
       (`offscreenChevron.ts`).
-- [ ] B.3 Branchement : hook de calque (patron `useReplay*`) qui lit la fonction de A pour le point de vue et fournit
+- [x] B.3 (fait, `e47f11c13b` : `model/antagonistTitles.ts`, `layers/useReplayAntagonistMarks.ts` ; `.at(t)` lu une fois par image) Branchement : hook de calque (patron `useReplay*`) qui lit la fonction de A pour le point de vue et fournit
       au calque des pions « titres de ce slot à cette image ». Un joueur masqué ne porte rien.
-- [ ] B.4 Textes : nom accessible du canevas inchangé ; aucune chaîne en dur (i18n de la piste D partagé si besoin).
-- [ ] B.5 Tests : enregistrement des appels de dessin (icône devant le nom, absente sans titre, pulsation puis repos,
+- [x] B.4 (fait : aucune chaîne ajoutée) Textes : nom accessible du canevas inchangé ; aucune chaîne en dur (i18n de la piste D partagé si besoin).
+- [x] B.5 (fait ; pulsation corrigée en `23f4ef1022` : horloge murale, départ seulement sur un pas de lecture, une par rôle, menée à terme en pause, aucune sur un saut ou en mouvement réduit ; témoins : `toile-sans-*` identiques, `toile-avec-*` et `toile-masquer` changent par l'ajout des icônes ; contrôle du pilote : 63 tests ciblés verts) Tests : enregistrement des appels de dessin (icône devant le nom, absente sans titre, pulsation puis repos,
       rien en mouvement réduit, flèche hors cadre avec icône) ; témoins 0.4 « sans antagoniste » identiques.
 - **Gate B** : gates communs sur `src/features/match-replay/layers` et `src/lib/antagonists` ; témoins comparés.
 
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — piste B close et fusionnée (agent : 6 196 tests verts). Toutes les pistes de code sont closes ; I.6 en cours.
 - 2026-11-22 — pistes C et D closes et fusionnées (agent : 6 279 tests du dossier et de l'i18n verts). B : écart à D-12 renvoyé (pulsation sur l'axe du rejeu au lieu du temps réel), correction en cours.
 - 2026-11-22 — piste F close (F.3 comprise), fusionnée.
 - 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B (`ant/b`) ; C.2 à C.4 puis D.1 à D.4 par le même agent sur `ant/c` (un seul composant d'icône `ui/AntagonistIcon.tsx` pour la frise et la fiche, sans course entre deux branches).
