@@ -232,7 +232,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       place vers joueur à l'instant (`replay/vehicle_rides_film.go`, et deux sites jumeaux), pas de la vie qui
       porte le trajet. Cause établie d'abord, fréquence comptée sur les 1 455 rejeux du poste, puis règle
       générale : un trajet porte l'identité de la vie qui le porte. Sortie changée : `vehicleRides[].xuid`.
-- [ ] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
+- [x] J.8 (né de J.6) Pièce montée rattachée à un porteur qui n'est pas né avec elle. `58d09c44` ne se
       reproduit plus (19 pièces, 0 écart), mais le compteur `coverage.vehicles.turretCarrierBirthMismatch`
       vaut 22 sur le parc, sur 4 films (`56ebfc53` 8, `af43b0c8` 8, `a26dbcdb` 4, `cf5d83d5` 2), contre 44
       montées relevées le 2026-11-16. Cause établie sur ces 4 films, puis règle générale ou, si la lecture ne
@@ -251,12 +251,12 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste A — coup d'envoi par l'horloge du jeu (Sonnet)
 
-- [ ] A.1 Selon le verdict de 0.4 sur les 22 rejeux. Si l'horloge a raison : le coup d'envoi publié est
+- [x] A.1 Selon le verdict de 0.4 sur les 22 rejeux. Si l'horloge a raison : le coup d'envoi publié est
       l'instant où l'horloge de manche de la PREMIÈRE manche démarre (première lecture qui court, ramenée à
       la valeur de départ ; horloge qui monte comprise) ; le détecteur de premier mouvement et ses refus sont
       retirés ; la couverture dit la source. Si l'horloge a tort dans ces 22 cas : arrêt, retour au pilote,
       modèle revu avec le user avant tout code.
-- [ ] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
+- [x] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
       plusieurs manches ; film sans horloge (aucune date, compté).
 - [ ] A.3 Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
       changements de sortie.
@@ -265,15 +265,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste B — verdict du score (Sonnet ; Opus pour B.3)
 
-- [ ] B.1 Le verdict « lecture complète » devient faux quand, pour un joueur au moins, la somme des points
+- [x] B.1 Le verdict « lecture complète » devient faux quand, pour un joueur au moins, la somme des points
       publiés diffère du score du tableau du film ; la couverture publie le nombre de joueurs en écart. Mesure
       attendue : les 44 rejeux faux passent à « incomplet », aucun rejeu exact ne bascule.
-- [ ] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
+- [!] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
       (cas de l'Assaut).
 - [ ] B.3 Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
       écarts multiples de 25) et la réponse de 100 points hors arbre (24 rejeux). Sortie : une table par build
       PROUVÉE par le tableau, ou `[!]`. Jamais un barème ajusté par régression.
-- [ ] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
+- [x] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
 - **Gate B** : équivalence attribuée ; aucun rejeu exact avant ne devient inexact.
 
 ## Piste C — compteurs nommés du tableau (Sonnet ; Opus pour C.3)
@@ -287,7 +287,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 - [x] C.3 (fait le 2026-11-18, commit `f426cf4` du clone. CAUSE PROUVÉE, une seule pour les 19 joueurs : le balayage ancrait de FAUX enregistrements du tableau dans une liste répétitive d'une autre structure (motif de 73 bits, mêmes décalages dans les 21 émissions fautives de 18 films, 16 des 18 en Fiesta) ; leur premier composant lu vaut toujours (corps à corps 0, grenades 16) : le 16 est la partie constante de cette autre structure, pas une valeur du tableau. RÈGLE DE LECTURE : un enregistrement dont un composant 0 à 27, que toute émission du moteur relit en entier, ne se décode pas est abandonné en entier ; un arrêt sur un composant d'un autre lecteur garde ce qui précède. Banc sur 70 films : joueurs à 16 grenades 4 → 0 (19 → 0 avec la garde), aucun joueur perdu, grenades 550 sur 550. La garde de C.2 écarte encore 25 émissions d'une autre forme : elle reste) Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
       émission perd. Sortie : cause prouvée dans la lecture du tableau et correction écrite ici, ou `[!]`.
 - [x] C.4 (fait le 2026-11-18 sur 70 films, 922 joueurs : couples violés 27 → 0, séries aberrantes 23 → 0, joueurs à 16 grenades 19 → 4 ; gagnés : série +23, grenades +22, corps à corps +10, tête +3 ; perdus : 0 ; aucun build ne baisse ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS par C.1.
-- [ ] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
+- [x] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
       SANS NOM. Le tableau a 28 emplacements par joueur, deux valeurs chacun ; le décodeur n'en nomme qu'environ
       la moitié, par confrontation aux récompenses de score et aux statistiques d'objectif. Balayage des
       emplacements sans nom contre TOUTES les colonnes par joueur de l'API disponibles dans la copie de la base
@@ -297,23 +297,23 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
       en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
       sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
-- [ ] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
+- [x] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
       décodeur ne nomme pas encore (verdict de C.5) : Drapeau (`FlagReturnersKilled`, `KillsAsFlagReturner`), Bases et
       Contrôle total (`StrongholdOffensiveKills`, `StrongholdDefensiveKills`, `StrongholdScoringTicks`), VIP (six
       compteurs), Extraction (cinq, seulement si le nom est PROUVÉ par les définitions du film ou par l'API). Nommés
       par mode dans la table existante, publiés comme les compteurs d'objectif voisins, avec le contrôle sur moitiés
       de films disjointes. Les emplacements traînants ou jamais écrits ne sont PAS publiés.
-- [ ] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
+- [x] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
       grammaire, publication par manche, et total d'un match à manches = manches figées plus manche vivante de la
       dernière. Mesure attendue sur les films à manches : aucun accord avec l'API ne baisse, les totaux montent.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
 
 ## Piste D — tirs et touches (Sonnet)
 
-- [ ] D.1 Arme d'une touche et d'un dégât : résolue par le joueur à l'instant, comme l'auteur ; par l'index
+- [x] D.1 Arme d'une touche et d'un dégât : résolue par le joueur à l'instant, comme l'auteur ; par l'index
       pour un bot (son identifiant est vide). Test : deux humains successifs sur un index. Sortie inchangée
       sur le parc, vérifiée.
-- [ ] D.2 Mesure à trois voix, sans code de production, sur les 20 films de l'équivalence et 20 films
+- [x] D.2 Mesure à trois voix, sans code de production, sur les 20 films de l'équivalence et 20 films
       choisis parmi les armes mal lues : par joueur et par arme, tirs, touches et dégâts de notre lecture,
       de celle du témoin (sa sonde, bâtie hors dépôt) et de l'API (export 0.3) ; part des joueurs à 10 % près
       de l'API pour chacune des deux lectures ; ce que donne le compte « événements de tir et objets
@@ -347,11 +347,11 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste F — départs et résumés d'usage (Sonnet)
 
-- [ ] F.1 Résumés d'usage : deux tests neufs (place reprise à l'image du lâcher ; mur déployé après la mort
+- [x] F.1 Résumés d'usage : deux tests neufs (place reprise à l'image du lâcher ; mur déployé après la mort
       du poseur) ; le crédit suit DD-3. Côté LevelUp, la lecture du site s'aligne à la montée (L.4).
-- [ ] F.2 Mesure : durée de présence et « fin du dernier corps moins arrivée » contre le temps de jeu de
+- [x] F.2 Mesure : durée de présence et « fin du dernier corps moins arrivée » contre le temps de jeu de
       l'API, sur les 1 383 partants. Elle dit lequel des deux instants est le départ réel.
-- [ ] F.3 Selon F.2 : si un fait du film date mieux le départ, item écrit ici avant tout code ; sinon `[!]`,
+- [!] F.3 Selon F.2 : si un fait du film date mieux le départ, item écrit ici avant tout code ; sinon `[!]`,
       et la règle d'affichage du plan du backlog (A.1) reste la réponse.
 - **Gate F** : équivalence attribuée ; `match_usage_players` : 7 poses changent au plus.
 
@@ -366,13 +366,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste H — canaux neufs (Sonnet)
 
-- [ ] H.1 Rechargements : événements `{place, image}` lus dans le genre 38, avec leur couverture (lus,
+- [x] H.1 Rechargements : événements `{place, image}` lus dans le genre 38, avec leur couverture (lus,
       publiés, sans joueur, hors du match, trames arrêtées) ; doublons mesurés avant d'être traités.
-- [ ] H.2 Validation du bouton de saut : sur 20 films, le front montant du bit contre les sauts déjà
+- [x] H.2 Validation du bouton de saut : sur 20 films, le front montant du bit contre les sauts déjà
       dérivés ; accord écrit au journal. Sous 90 %, H.3 ne publie pas le bouton.
-- [ ] H.3 Bouton de saut et commande de déplacement : deux genres de plus dans `stances[]` (bouton enfoncé ;
+- [x] H.3 Bouton de saut et commande de déplacement : deux genres de plus dans `stances[]` (bouton enfoncé ;
       commande non nulle), jamais la série brute des valeurs.
-- [ ] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
+- [!] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
       si la cause est une lecture, entrée au backlog sinon.
 - [ ] H.5 Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
       décodeur, du texte ET de l'audio d'une réplique à partir de l'identifiant de son et de l'indice que le
@@ -382,7 +382,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       Sinon `[!]` avec ce qui a été écarté.
 - [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
-- [ ] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
+- [x] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
       certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
       décodeur ne la lit pas ; l'icône du fil de LevelUp vient de la lecture du dégât fatal, partielle. Recherche
       bornée (une session) dans le message d'élimination du film et dans l'enregistrement d'élimination des temps
@@ -442,6 +442,44 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — VAGUE 2 RENDUE, cinq pistes fusionnées dans `feat/v1.5.0` (`e3f0401`, poussée ; portes de référence rouges
+  en attendant la troisième intégration, lancée).
+  B (`44981b8`) : la règle prévue (somme contre tableau) déclassait à tort 26 rejeux justes ; cause : le tableau ne recule
+  pas, la pénalité de suicide (−100) n'y entre pas. Règle retenue : `complete` faux quand le tableau dépasse la somme des
+  points POSITIFS publiés ; 62 films : 15 bascules, aucune sur un rejeu égal à l'API ; `e5adf7b2` reste complet à tort,
+  comme avant (matière de B.3). B.2 `[!]` : le compte des scripts sans groupe vaut 102 à 115 sur tous les films, il ne
+  sépare rien ; retiré.
+  D (`afe8ab6`, `b449ee5`) : D.1 sans changement de sortie (52 films). D.2 : `.ai/annexes_decodeur_1118/tirs.md` ;
+  hypothèse du user réfutée (0,96 événement par tir tiré au MA40, 2,24 par tir au but ; armes à énergie : événements plus
+  objets projectile = 0,97 à 1,02 fois les tirs tirés). D.4 (né de D.2) : deux causes prouvées, tirs lus au seul rang de
+  tête d'une trame (85 % → 100 % des événements du témoin) et auteur d'une touche par l'index seul (touches 94,6 % →
+  99,4 % du témoin) ; plus la règle du numéro de tir en retard qui remplit un trou déjà sauté. Parts à 10 % de l'API :
+  tirs 47,3 → 47,5 %, touches 30,2 → 34,2 %, dégâts 54,5 → 58,7 %, joueurs suffisants 26,2 → 35,1 %. BR75 : 22 → 20
+  joueurs sur 34 pour les tirs (un film de build ancien, cause non prouvée) : BAISSE ACCEPTÉE PAR LE USER le 2026-11-22
+  (« Oui on accepte, j'ai un autre chantier à prévoir avec des idées pour la précision »). D.3 : R2 refusée (maximum de
+  deux comptes), R4 sans objet ; R1 (créateur d'un objet projectile, lu dans l'état par défaut de l'archétype 41, 120 à
+  200 lignes) et R3 renvoyés au chantier de précision annoncé par le user.
+  F (`9958cca`) : objet lâché crédité à la vie qui s'achève ; 0 pose changée sur 1 455 rejeux. F.2 : la fin de présence
+  est le départ réel (à 2 s de l'API pour 84 % des partants une fois retiré un décalage par match de 35 s en médiane,
+  inexpliqué). F.3 `[!]` : aucun fait du film ne date mieux le départ.
+  H (`304cc59`) : `reloads[]` (9 026 sur 20 films, 4 films de builds anciens sans lecture), `moveCommand` (96,5 à 99,8 %
+  des instants en mouvement) ; poids +0,71 %. H.2 : accord du bouton de saut 63,4 %, sous 90 % : NON publié. H.4 `[!]` :
+  accroupissement et glissade jamais annoncés sur les versions 37 à 41 (0 sur 290 000 deltas) ; piste notée (bit de
+  valeur 1 de l'entrée de contrôle).
+  J.8 (`c1c1394`) : le parent d'une pièce montée se lit à sa création (`i10`) ; 22 pièces gagnent leur porteur sur les
+  4 films, 3 sur les 20, 26 trajets d'artilleur reportés, 0 porteur déjà posé changé ; l'ancienne règle ne sert plus à
+  aucune pièce des 7 films mesurés.
+  Restent : J.4 (dans la troisième intégration), B.3, E, G, H.5, H.6, L, R.
+- 2026-11-22 — SECONDE INTÉGRATION au schéma 126 faite et poussée (`ab68262` sur `feat/v1.5.0`) : compteurs de mode,
+  calque des éliminations, valeurs figées. Chronique 126 à huit apports, aucune révision de couche neuve (mêmes valeurs,
+  empreintes refigées), goldens de forme refigés, fixtures de contrat inchangées (4 992 442 octets), suite du clone à
+  33 paquets verts, équivalence 20 identiques sur trois passes, chaque écart attribué par bissection aux trois fusions.
+  Non-déterminisme de `joinSegments` : non observé sur ces passes. Écart hors consigne, attribué aux valeurs figées et
+  accepté par le pilote : sur 2 films sans joueur au tableau, un faux enregistrement disparaît (`identity.statborgSlots`).
+  À SAVOIR : les révisions `grammar-2026-11-22` et `objectives-2026-11-22` sont celles de la première intégration ; un
+  cache de faits cuit à `e8d6856` serait accepté sans les valeurs figées. Seuls les dossiers de travail en ont eu un, vidé.
+  Table figée de LevelUp complétée (`1974d83cca` sur `chore/830-decodeur-v150`, poussée avec les fixtures 126). Registre
+  des changements de sortie créé : `.ai/annexes_decodeur_1118/changements_de_sortie.md`. Vague suivante lancée : D, B, H.
 - 2026-11-22 — C.6 fait pour huit compteurs (`072c16a`, `3f247e9` sur `piste/modes`, poussée) : Drapeau
   (`flag_returners_killed`, `flag_kills_as_returner`, `flag_kills_as_carrier` sur la seule définition du film, accord
   du user), zones (`zone_offensive_kills`, `zone_defensive_kills`), VIP (`vip_kills`, `vip_assists`,

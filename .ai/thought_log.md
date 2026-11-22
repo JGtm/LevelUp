@@ -3,6 +3,19 @@
 **Décision technique principale :** payload neuf `squad_impact_sessions` sur la réponse de `/pages/teammates` (types `SquadImpactSessions*` dans `internal/domain/squad_impact_sessions.go`), à côté des anciens champs encore servis. Le barème (`scale`) est servi : le web en tire le sens d'un rôle (points négatifs : plus grand compte = pire) pour le surlignage, au lieu de garder une seconde table de rôles négatifs.
 **Résultats observés :** `make openapi-gen` et `make generate-types` régénérés, ré-exports dans `lib/api/types.ts`, instantané de surface de contrat mis à jour (ajouts seulement ; il portait aussi du retard sur des routes d'autres branches). Champ à nil tant que G.2 ne le remplit pas.
 **Conclusion / prochaine étape :** G.2 remplit le payload (`squadimpact.BuildSessions`) ; W construit le tableau.
+## [2026-11-22] Décodeur v1.5.0 : compteurs de mode, calque des éliminations et valeurs figées intégrés au schéma 126 — En cours
+
+- Décision : trois pistes menées en parallèle, fusionnées puis intégrées en une fois sous le même schéma 126 et les mêmes révisions de couche ; chaque écart de l'équivalence attribué par bissection.
+- Résultats : suite du décodeur verte (33 paquets), 20 films identiques sur trois passes, registre des changements de sortie créé (`.ai/annexes_decodeur_1118/changements_de_sortie.md`). Les totaux déjà publiés des matchs à manches égalaient l'API ; les valeurs figées sont des données neuves, pas une correction.
+- Prochaine étape : pistes D (tirs), B (verdict du score), H (canaux neufs), puis publication et montée.
+
+## [2026-11-22] Médailles Vengeur et Cible difficile, Os de verre, bouclier dans la fiche du rejeu — Complété (fusion dans release/v8.3.0 ; reste la vérification à l'écran du user)
+
+**Décision technique principale** : bris, recharges de bouclier et vengeances calculés dans LevelUp (fonctions pures `analysis/shieldcycle`, `analysis/revenge`, adaptateur `replayshield`), sans montée du décodeur ; trois colonnes nullables sur `match_usage_players` avec une révision LevelUp propre (`levelup_rev`) ; vue `v_medals_earned` qui fusionne `medals_earned` et ces colonnes (Vengeur dérivé prioritaire sur les lignes héritées, médaille `9000000002` Cible difficile), lue par 8 lecteurs d'affichage, garde-rail des lectures brutes ; rôle Os de verre (−0,5) et barème allégé (Première victime, Touriste, Kamikaze à −0,5) ; champ `shieldCycles` servi par la vue du rejeu, trois lignes dans la fiche, calcul web `shieldDrops` supprimé.
+
+**Résultats observés** : témoin du barème identique à l'étape 0 ; recalcul local du parc 1455 matchs, 0 échec, chiffres égaux à la mesure ; gates : vitest complet, intégration Go `-p 1`, `gate-push` verts ; revue adversariale : P0 snapshot et P1 fenêtres corrigés, trois P2 au backlog.
+
+**Conclusion / prochaine étape** : vérifications à l'écran (artefact `verifs`, lignes « mb-* ») ; en prod, `backfill-usage-summary` après la recuisson de la version. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md`.
 
 ## [2026-11-22] Médailles du bouclier : corrections P0 et P1 de la revue adversariale — Complété (sur `feat/medailles-bouclier`, non poussé)
 **Statut :** Complété. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (journal).
@@ -122025,3 +122038,15 @@ Chaque signal n'entre au modèle que s'il améliore le résultat sur une vérit�
 **Décision technique principale :** décision du user : 12, comme `CLAUDE.md` règle 5. À 12, le ratchet `--new-from-merge-base=origin/main` signalait trois fonctions de la branche de version (`filmDemandFetcher.fetch` 14, `profile.Service.BuildProfile` 13, `aggregateNarrative` 13) : découpées par extraction (`archive`, `fillSectionA2`, `fillAxisInsights`), comportement inchangé. Les cinq skills de méthode arrivent de claude.ai sous `anthropic-skills:<nom>` : `skill-rules.json` et `CLAUDE.md` portent ces noms.
 **Résultats observés :** tests `./internal/api/wire/... ./internal/progression/...` : 535 réussis, 0 échec, avant comme après ; `go vet` propre ; lint ratchet complet : 0 issue, code de sortie 0. L'écart web/Go du libellé de mode, relevé par le contrôle des skills, est infirmé sur pièces : le serveur sert `mode_ui` déjà résolu.
 **Conclusion / prochaine étape :** rien.
+
+## [2026-11-22] Plan des antagonistes du rejeu, de la frise éliminations / morts et des actions sur les tuiles
+**Statut :** Complété (plan écrit ; exécution à venir).
+**Décision technique principale :** antagonistes (némésis, souffre-douleur) calculés à l'instant côté web, depuis les éliminations du rejeu ; le tenant garde le titre en cas d'égalité ; une seule fonction pure sous `lib/antagonists/`, lue aussi par les cartes de la page du match pour que la dernière image du rejeu et les cartes ne divergent pas. Tuiles, variante A : Suivre et œil au survol ; Masquer devient un ensemble de joueurs, « Seul » reste dans la fiche ; un effet se dessine dès qu'un de ses joueurs est affiché. Frise : éliminations en haut, morts en bas sur la rangée du point de vue.
+**Résultats observés :** maquette interactive validée par le user (https://claude.ai/artifact/D24BJbsd99q5Lb8nBdYCmw) ; textes des infobulles et de la fiche validés ; DU-1 à DU-4 confirmées. La session qui modifie la fiche (`feat/medailles-bouclier`) ne touche que « Depuis le début du match ».
+**Conclusion / prochaine étape :** `.ai/PLAN_ANTAGONISTES_TUILES_2026-11-22.md`, ligne ajoutée au plan maître ; démarrage après la fusion du backlog des 17 et 18 novembre, par l'étape 0 (Fable).
+
+## [2026-11-22] Fond Relief et coupe par étage : fusion dans la release et clôture du plan
+**Statut :** Complété (contrôle à l'écran du user à venir).
+**Décision technique principale :** `feat/fonds-relief` fusionnée dans `release/v8.3.0` (`be0182b976`) avant le contrôle à l'écran, choix du user ; les corrections qu'appellera ce contrôle partiront de la release. La CI rouge de la release venait d'un avis de sécurité publié le jour même sur `url` 2.5.8 (RUSTSEC-2026-0592, coquille Rust), sans lien avec le relief : `url` montée en 2.5.9 (`0cebc91fef`), à la demande de la session paire. Revue finale : P2-6 gardé (branche documentée), P2-7 et Thunderhead au registre des reports.
+**Résultats observés :** après la fusion de la release dans la branche : tsc, lint, frontières, couleurs, build et vet Go, archlint, tests service, API et cuisson, vitest complet (15 227 tests) verts ; `cargo audit` local sans vulnérabilité ; CI de la release verte. 114 reliefs servis. Le contrôle de code mort qui précède une poussée donne une fausse régression (299 exports) dans un worktree sans `node_modules` : pousser depuis un dossier qui a ses dépendances web.
+**Conclusion / prochaine étape :** trois contrôles à l'écran dans l'artefact des vérifications (fond et traits, coupe par étage et suivi, cerne des pions) ; puis le plan par mode en 8.3.1.
