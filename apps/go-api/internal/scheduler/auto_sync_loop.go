@@ -237,15 +237,15 @@ func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ti
 	if st.advanceStall(ctx, debt) && catchUpCycleInterval < next {
 		next = catchUpCycleInterval
 	}
-	attrs := []any{
+	attrs := append(s.filmBacklogAttrs(debt.films),
 		"joueurs_en_rattrapage", len(debt.history),
 		"gamertags", debt.history,
 		"progres", debt.progressed,
 		"cycles_sans_progres", st.stalled,
 		"intervalle", next,
 		"intervalle_regle", st.configured,
-	}
-	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié", append(attrs, s.filmBacklogAttrs(debt.films)...)...)
+	)
+	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié", attrs...)
 	ticker.Reset(next)
 	st.period = next
 	s.setNextCycleAt(s.clock().Add(next))

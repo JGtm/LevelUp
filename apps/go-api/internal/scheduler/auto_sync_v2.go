@@ -68,9 +68,9 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 	}
 	for _, outcome := range cycleRes.PerPlayer {
 		switch outcome.Status {
-		case "ok", "partial":
+		case "ok", statusPartial:
 			res.Synced++
-		case "failed":
+		case statusFailed:
 			res.Failed++
 		default:
 			res.Skipped++

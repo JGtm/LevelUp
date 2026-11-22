@@ -1,3 +1,10 @@
+## [2026-11-22] Hotfix 8.2.2 : garde de progrès de la cadence, budget Halo 5 par titre, notification sans rattrapage, démarrage avec dette (D-27) — Complété (branche `fix/822-r`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : la cadence de 10 min ne tient que si le cycle progresse (marque-page avancé, film écrit, match rangé par un joueur en rattrapage) ; 3 cycles sans progrès = retour à l'intervalle réglé. Budget de rattrapage Halo 5 réparti par cycle et par titre (200, 25 minimum, 8 joueurs). Notification de fin de cycle : nouveaux matchs seulement (`CatchUpInserted`). Premier cycle avancé au démarrage quand un historique est incomplet. Web : relecture de l'état du cycle au repos (30 s), état « rattrapage en pause », texte de la dernière passe. Trois fichiers repassent sous 500 lignes.
+- **Résultats observés** : tests du scheduler (-race), de `historyrepo`, de `filmbacklog` et du web verts ; échec permanent : 10, 10, 10 min puis intervalle réglé ; progrès retrouvé : 10 min.
+- **Suite** : la piste V2 et la piste Halo 5 remplissent `CatchUpInserted` (nouveaux = insérés moins rattrapés) ; sans cela la notification garde son comportement d'avant.
+
 ## [2026-11-22] Hotfix 8.2.2 : cycle après redémarrage débloqué, état de l'historique illisible jamais « complet » (D-25) — Complété (branche `fix/822-p`)
 
 - **Statut** : Complété, non poussé.

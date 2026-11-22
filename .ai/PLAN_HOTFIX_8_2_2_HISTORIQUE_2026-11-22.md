@@ -219,6 +219,37 @@ page.
     configuration », zéro « database is closed ». Tests : attente sans progrès (persist, v2), `Complete` sur erreur
     (historystate, V2 cycle et chargeur, Halo 5, historyrepo, ordonnanceur), partage du handle (platform/duckdb).
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
+- **D-27** (pilote, validé par l'utilisateur, 22/11) Constats de la revue adversariale sur le rattrapage d'historique et
+  corrections.
+  - [x] D-27.1 (P1-3) Garde de progrès de la cadence : la cadence de 10 min ne tient que si le cycle a progressé.
+    Signaux : marque-page d'un joueur avancé ou fin d'historique rangée (position lue avant et après le cycle par le
+    nouveau port `port.HistoryMarkerReader`, implémenté par `historyrepo`) ; au moins un film écrit (cumul
+    `port.FilmBacklog.Ecrits`, alimenté par `filmbacklog.AjouterEcrits` depuis les deux étapes film) ; un match rangé par un joueur
+    resté en rattrapage. Après `catchUpStallLimit` (3) cycles d'affilée sans progrès à la cadence courte, retour à l'intervalle
+    réglé (journal WARN une fois, `cycles_sans_progres` dans la ligne de cadence) ; progrès, dette soldée ou cycle manuel =
+    compteur à zéro (`scheduler/auto_sync_progress.go`). Échec permanent : 10, 10, 10 min puis intervalle réglé.
+  - [x] D-27.2 (P1-2, Halo 5) Budget de rattrapage par cycle ET par titre live-only : `historystate.PassBudget()` (200) réparti
+    entre les joueurs en rattrapage (lecture `HistoryCompletionReader`, erreur = rattrapage), 25 matchs au moins chacun, 8 joueurs
+    au plus ; les autres attendent le cycle suivant, les passes les moins récentes d'abord ; part transmise par `opts.MaxMatches`
+    (`catchUpBudget` du runner Halo 5 la respecte, vérifié en lecture) (`scheduler/auto_sync_catchup_budget.go`).
+  - [x] D-27.3 (P2-3) La notification de fin de cycle ne compte que les nouveaux matchs : champ `CatchUpInserted` (matchs rangés par
+    le rattrapage, parmi `MatchesInserted`) sur `syncv2.PlayerOutcome` et `domain.SyncResult` ; nouveaux = insérés moins rattrapés.
+    Zéro tant que la piste V2 et Halo 5 ne le remplissent pas : comportement d'avant.
+  - [x] D-27.4 (P2-4) Web : l'état du cycle se relit toutes les 30 s au repos, onglet visible seulement (TanStack Query suspend
+    la relecture d'un onglet caché).
+  - [x] D-27.5 (P2-5) Textes : état « Rattrapage en pause : synchronisation automatique désactivée » / « Catch-up paused: automatic
+    sync is off » (hors cycle en cours, bouton inchangé) ; « Aucune passe enregistrée » / « No pass recorded » ; docs de `HistoryPass`
+    et `LastPass` corrigées (openapi et types régénérés).
+  - [x] D-27.6 (P2-9) `scheduler/auto_sync.go` (533 -> 341), `replayartifacts/artifacts.go` (526 -> 466), `replayartifacts/cuisson.go`
+    (518 -> 374) découpés par responsabilité (`auto_sync_types.go`, `auto_sync_v2.go`, `auto_sync_interval.go`, `artifacts_travail.go`,
+    `cuisson_bilan.go`, `cuisson_deadline.go`), sans changement de comportement.
+  - [x] D-27.7 (démarrage) Au démarrage de la boucle (`Run`), si un joueur suivi a un historique incomplet (lecture en échec =
+    incomplet) ou un arriéré de films (lecteur branché), le premier cycle vient après `catchUpCycleInterval` au plus, ou après 5 s si
+    le dernier cycle connu (relu du disque) date de plus de 10 min ; journalisé (`scheduler/auto_sync_startup.go`). Auto-sync
+    désactivée : le ticker reprend l'intervalle réglé. Limite : l'arriéré de films est publié en mémoire par les passes film, donc
+    inconnu (zéro) au démarrage : seul l'historique avance le premier cycle tant qu'aucune passe film n'a tourné.
+  - [x] D-27.8 Le journal `auto_sync: cycle suivant planifié` n'écrit plus `films_en_retard=0` quand le lecteur d'arriéré n'est pas
+    branché : `films=non_suivi`.
 - Réservé à l'utilisateur : squash dans `main`, tag `v8.2.2`, publication de la release et de la mise à
   jour de l'application, réponse publique sur #213 (texte validé par lui le 22/11).
 
