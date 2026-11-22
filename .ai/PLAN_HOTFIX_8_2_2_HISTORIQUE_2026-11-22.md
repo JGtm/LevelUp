@@ -81,6 +81,13 @@ page.
   200 matchs sur une copie de base (durée, appels API, pic mémoire, disque des films), étape 5bis. Si
   la passe dépasse 5 minutes ou 1,5 Go de pic, le budget ou la cadence se règlent sur la mesure (le
   pilote propose, l'utilisateur tranche).
+- **D-17** (utilisateur, 22/11) Un match synchronisé l'est en totalité, film traité compris. Le budget
+  de temps de 5 minutes par cycle de chaque étape film (`killcollector.PostSyncBudget`,
+  `replayartifacts.BudgetParCycle`) devient la seule limite effective ; les plafonds en nombre
+  (`DefaultPostSyncPerCycle = 8`, `maxPerCycle = 5`) montent à une borne de sécurité large, pour que les
+  gains du décodeur passent sans retoucher le code. Parallélisme de décodage inchangé, jeton d'écriture
+  unique inchangé. L'état de l'historique réutilise l'indication existante des films en cours de
+  traitement. Valeurs fixées après la mesure 5bis (temps par film, pic mémoire).
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
@@ -295,8 +302,11 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 8 — gates complets, journal, PR
 
-- [ ] 8.1 `go test ./...`, `go test -tags=integration ./internal/sync/... ./internal/persist/...
-  ./internal/games/...`, `make go-api-lint`, web : `npx vitest run` complet une fois, `make check-types`.
+- [ ] 8.1 (révisé par l'utilisateur le 22/11 : contrôles sur le périmètre modifié seulement, la CI joue
+  la suite complète) Une seule passe locale sur la branche intégrée : `go build ./...` ; `go test` et
+  `go test -tags=integration` sur les seuls paquets touchés par `git diff --name-only origin/main...` ;
+  `./internal/archlint/...` (gardes globales, une fois) ; golangci-lint `--new-from-merge-base` ; web :
+  `npx vitest run` sur les dossiers touchés, `tsc`, eslint des fichiers touchés. Puis CI verte.
 - [ ] 8.2 ADR 0027 : amendement court (EN) « history catch-up applies to every sync path ».
 - [ ] 8.3 Entrée `.ai/thought_log.md`.
 - [ ] 8.4 Poussée de `release/v8.2.2`, CI verte (`gh run list --branch release/v8.2.2 --workflow CI
