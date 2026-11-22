@@ -55,7 +55,9 @@ func soireesDImpact(rows, timelineRows []domain.SquadMatchRow, selection bool) [
 func eveningMatches(rows []domain.SquadMatchRow) []squadimpact.EveningMatch {
 	out := make([]squadimpact.EveningMatch, 0, len(rows))
 	for _, r := range rows {
-		m := squadimpact.EveningMatch{MatchID: r.MatchID, StartTime: r.StartTime, Won: r.Outcome == domain.OutcomeWin}
+		m := squadimpact.EveningMatch{
+			MatchID: r.MatchID, StartTime: r.StartTime, Won: r.Outcome == domain.OutcomeWin, Outcome: r.Outcome,
+		}
 		if r.SessionLabel != nil {
 			m.SessionLabel = *r.SessionLabel
 		}
