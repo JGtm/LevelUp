@@ -120,7 +120,9 @@ et que son commit est fait.
 - [ ] B.1 Barème D-7 et rôle Os de verre D-6 (`squadimpact` : clé, poids, ordre des colonnes et
   d'empilement) ; lecture des bris par match derrière un port (`platform/duckdb`).
 - [ ] B.2 Libellés serveur (`internal/i18n/messages/impact.toml`), libellés web fr/en, icône Fluent
-  « os » sous `apps/web/src/assets/badges/fluent-flat/`, textes du barème.
+  « os » sous `apps/web/src/assets/badges/fluent-flat/` (validée par l'utilisateur), textes du barème ;
+  infobulle d'Os de verre au format des autres rôles (une phrase courte, poids compris), demande de
+  l'utilisateur du 2026-11-22.
 - [ ] B.3 Témoin : la mesure 0.3 rejouée sur le code livré donne les valeurs « après » de l'étape 0.
 - Gate : tests `squadimpact`, `teammates`, `analysis` ; `npx vitest run src/features/squad
   src/components/feedback --maxWorkers=2` ; `make check-types`.
