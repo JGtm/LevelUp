@@ -230,6 +230,6 @@ func TestKnownLoaderV2_ReleaseCalledEvenOnError(t *testing.T) {
 }
 
 // knownOf projette le résultat de LoadKnown sur l'ensemble connu (Known nil en erreur).
-func knownOf(set knownset.Set, err error) (map[string]bool, error) {
+func knownOf(set KnownState, err error) (map[string]bool, error) {
 	return set.Known, err
 }
