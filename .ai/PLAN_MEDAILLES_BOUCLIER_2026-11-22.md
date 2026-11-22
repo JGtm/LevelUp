@@ -129,8 +129,8 @@ et que son commit est fait.
 
 ### Piste C — fiche du rejeu (Sonnet) — après A.1 — moyen
 
-- [ ] C.1 La vue du rejeu sert par joueur les instants des bris et des recharges (A.1).
-- [ ] C.2 Fiche : trois valeurs à l'instant et au total (D-5, D-11), libellés fr/en, tokens de
+- [x] C.1 La vue du rejeu sert par joueur les instants des bris et des recharges (A.1).
+- [x] C.2 Fiche : trois valeurs à l'instant et au total (D-5, D-11), libellés fr/en, tokens de
   couleur, état vide quand le match n'a pas de mesure.
 - Gate : tests `replayview` ; `npx vitest run src/features/match-replay --maxWorkers=2` ;
   `make check-types` ; `make generate-types` sans diff résiduel.
@@ -424,3 +424,4 @@ le worktree.
   7 avant film, 2 après, lu par la vue). `canonicalOrderFloor` relevé à 243. Corrigé au passage (A.1,
   bloquait le lint) : De Morgan dans `revenge.vengeable`.
 
+- 2026-11-22 : piste C fusionnée (`da64d02f26` C.1, `e9b59a7b0d` C.2). Champ servi `shieldCycles` (xuid -> `{breaks, recharges}` en ms sur l'axe du document, origine non retranchée) ; bots servis sous la clé `bot:<nom>` du roster (règle « les bots comptent partout »). Gate de la piste : `go test` service/api/replayshield/archlint/contracttest verts, vitest `match-replay` 5802 verts, typecheck, lint, couleurs, imports croisés et knip verts ; test du service relancé par le pilote après gofmt : vert.
