@@ -23,7 +23,12 @@
 #      (jonction, lien) n'est PAS supprime : il est signale. `Remove-Item -Recurse` de Windows
 #      PowerShell 5.1 suit les jonctions ; un `git worktree remove` les a deja suivies et a vide
 #      le cache des films (incident du 2026-09-16).
-#   5. Les worktrees ne sont jamais supprimes : le script en fait seulement le rapport.
+#   5. Un dossier qui est, ou qui contient jusqu'a 3 niveaux plus bas, un depot ou un worktree git
+#      (presence d'un `.git`, dossier ou fichier, sans appel a git) n'est JAMAIS supprime, meme
+#      sous C:\t ou dans un dossier de session : il est liste avec son motif, en simulation comme
+#      avec -Apply. Le controle est dans Remove-Tree, unique point de suppression d'un arbre : les
+#      caches, les sessions, les dossiers de gate, C:\t et -Lot y passent tous. Le script ne
+#      supprime par ailleurs aucun worktree enregistre : il en fait seulement le rapport.
 #   6. Chaque passe journalise l'espace libre avant et apres, et ce qui a ete supprime, dans
 #      %LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log ; sous 60 Go libres, ALERTE.
 #
@@ -37,6 +42,8 @@
 #   powershell -File scripts/disk-hygiene.ps1 -Apply          # passe reelle (tache planifiee)
 #   powershell -File scripts/disk-hygiene.ps1 -Lot cg3-vuea -Apply
 #                      # cloture d'un lot : supprime go-build-cg3-vuea et golangci-cg3-vuea
+#   powershell -File scripts/disk-hygiene.ps1 -Scope Tmp -TmpRoot <dossier>
+#                      # balaie <dossier> a la place de C:\t (defaut) ; sert aux essais sur arborescence jetable
 #   powershell -File scripts/disk-hygiene.ps1 -BaseRef origin/release/v8.3.0
 #                      # force la base du controle "fusionne" du rapport des worktrees ; par defaut :
 #                      # amont de la branche courante du depot, sinon branche par defaut du depot
@@ -53,6 +60,7 @@ param(
   [string]$BaseRef,
   [string]$SessionRoot = (Join-Path $env:TEMP 'claude'),
   [string]$TranscriptRoot = (Join-Path $env:USERPROFILE '.claude\projects'),
+  [string]$TmpRoot = 'C:\t',
   [string]$LogPath = (Join-Path $env:LOCALAPPDATA 'levelup-disk-hygiene\disk-hygiene.log')
 )
 
@@ -65,7 +73,6 @@ $TmpIdleHours = 72
 $SharedCacheMaxGB = 25
 $AlertFreeGB = 60
 $LotBusyMinutes = 10
-$ShortTmpRoot = 'C:\t'
 $GatePattern = '^(gate_work|gocache|golangci|parc)'
 $BlockingPattern = '^(go|compile|link|golangci-lint|gate|asm|cgo)$|\.test$|^replay-|^levelup'
 $SessionPattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
@@ -84,6 +91,8 @@ $LocalAppData = Get-FullPath $env:LOCALAPPDATA
 $UserProfile = Get-FullPath $env:USERPROFILE
 $SessionRoot = Get-FullPath $SessionRoot
 $TranscriptRoot = Get-FullPath $TranscriptRoot
+$ShortTmpRoot = Get-FullPath $TmpRoot
+$GitMarkerMaxDepth = 3
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 function Write-Log([string]$msg) {
@@ -126,6 +135,31 @@ function Test-StrictChild([string]$path, [string]$root) {
   return $path.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
+# Regle 5 : rend le premier `.git` (dossier ou fichier : un worktree en a un fichier) trouve dans
+# $root ou jusqu'a $maxDepth niveaux dessous, sinon $null. Ne descend jamais dans un point de
+# reparation ni dans un `.git`. Un dossier illisible compte comme protege (rend son chemin) : dans le
+# doute on ne supprime pas.
+function Find-GitMarker([string]$root, [int]$maxDepth) {
+  $stack = New-Object System.Collections.Generic.Stack[object]
+  $stack.Push(@($root, 0))
+  while ($stack.Count -gt 0) {
+    $cur = $stack.Pop()
+    $dir = $cur[0]
+    try {
+      $marker = Join-Path $dir '.git'
+      if ([IO.Directory]::Exists($marker) -or [IO.File]::Exists($marker)) { return $marker }
+      if ($cur[1] -ge $maxDepth) { continue }
+      foreach ($c in (New-Object IO.DirectoryInfo($dir)).EnumerateDirectories()) {
+        if ($c.Attributes -band $ReparseFlag) { continue }
+        $stack.Push(@($c.FullName, ($cur[1] + 1)))
+      }
+    } catch {
+      return ('illisible : ' + $dir)
+    }
+  }
+  return $null
+}
+
 # Regle 1 : une suppression n'est permise que dans les racines autorisees.
 function Test-Deletable([string]$path) {
   $parent = Split-Path -Parent $path
@@ -160,6 +194,12 @@ function Remove-Tree([string]$path, [double]$minIdleHours, [string]$label) {
     return [int64]0
   }
   if ($idle -lt $minIdleHours) { return [int64]0 }
+  $git = Find-GitMarker $path $GitMarkerMaxDepth
+  if ($git) {
+    Write-Log ("CONSERVE {0} : depot ou worktree git : conserve ({1}) : {2}" -f $label, $git, $path)
+    $script:Refused++
+    return [int64]0
+  }
   $desc = '{0} {1} ({2}, inactif depuis {3:N0} h)' -f $label, $path, (Format-GB $info.Bytes), $idle
   if (-not $script:DoDelete) { Write-Log "SIMULATION supprimerait $desc"; return $info.Bytes }
   Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue

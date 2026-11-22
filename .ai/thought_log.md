@@ -1,3 +1,9 @@
+## [2026-11-22] Nettoyage du disque : un dépôt ou un worktree git n'est plus jamais supprimé — Complété
+
+- **Décision** : la garde vit dans l'unique point de suppression d'un arbre du script ; la seule présence d'un `.git` (dossier ou fichier, jusqu'à trois niveaux) suffit, sans appel à git ; un dossier illisible compte comme protégé.
+- **Résultats** : essai sur une arborescence jetable, en simulation et en suppression réelle : seul le dossier ordinaire part, les deux dossiers à `.git` restent. Demande du user du 2026-11-22, après la perte de worktrees et d'un clone non poussé sous `C:	`.
+- **Suite** : le travail se fait désormais en worktrees sous le dossier des scripts, plus sous `C:	`.
+
 ## [2026-11-22] Gates : quel contrôle à quel moment, gate-push avant main seulement — Complété
 
 **Décision technique principale** : `levelup-livraison` (nouvelle section 0), `CLAUDE.md` et `docs/COMMANDS.md` (EN et FR) disent maintenant les trois niveaux de contrôle : fin de lot = paquets touchés ; fusion dans la release = `go test ./...`, intégration `-p 1` sur les seuls paquets touchés de persist/sync/migration/platform/duckdb, `vitest` complet une fois, puis la CI ; `make gate-push` une seule fois, avant `main`. `Makefile` : délai du lint porté de 5 à 15 min (le cache vide d'un worktree le faisait dépasser juste après « 0 issues ») ; `replay-equiv` lit seul le parc et la liste des originaux du dépôt principal depuis un worktree (code 11 sur les 20 films sinon).

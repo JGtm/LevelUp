@@ -2101,7 +2101,12 @@ powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # clôture de lot :
 - Sécurité : aucune suppression tant qu'un processus `go`, `compile`, `link`, `*.test`,
   `golangci-lint`, `gate`, `replay-*` ou `levelup*` tourne (rapport seul). `-Lot` refuse un cache
   écrit dans les 10 dernières minutes. Un arbre qui contient une jonction ou un lien n'est jamais
-  supprimé, seulement signalé. Les worktrees sont signalés, jamais retirés.
+  supprimé, seulement signalé. Un dossier qui est, ou qui contient jusqu'à 3 niveaux plus bas, un
+  dépôt ou un worktree git (un `.git`, dossier ou fichier) n'est jamais supprimé, même sous `C:\t` :
+  il est listé « dépôt ou worktree git : conservé », en simulation comme avec `-Apply`. Les
+  worktrees enregistrés sont signalés, jamais retirés.
+- `-TmpRoot <dossier>` remplace `C:\t` comme racine balayée (défaut inchangé) ; sert aux essais sur
+  une arborescence jetable, avec `-Scope Tmp`.
 - Journal : `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (espace libre avant et après,
   chaque suppression et chaque refus ; `ALERTE` sous 60 Go libres).
 - Tâche planifiée `LevelUp-disk-hygiene` : chaque jour à 4 h, utilisateur courant, sans élévation,

@@ -2020,8 +2020,12 @@ powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # lot closure: dele
   most recent write anywhere in the tree.
 - Safety: no deletion while a `go`, `compile`, `link`, `*.test`, `golangci-lint`, `gate`,
   `replay-*` or `levelup*` process runs (report only). `-Lot` refuses a cache written in the last
-  10 minutes. A tree containing a junction or link is never deleted, only reported. Worktrees are
-  reported, never removed.
+  10 minutes. A tree containing a junction or link is never deleted, only reported. A folder that is,
+  or contains up to 3 levels down, a git repository or worktree (a `.git` folder or file) is never
+  deleted, even under `C:\t`: it is listed as "git repository or worktree: kept", in simulation and
+  with `-Apply`. Registered worktrees are reported, never removed.
+- `-TmpRoot <folder>` replaces `C:\t` as the swept root (default unchanged); meant for trials on a
+  throwaway tree, with `-Scope Tmp`.
 - Log: `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (free space before and after, every
   deletion and refusal; `ALERTE` below 60 GB free).
 - Scheduled task `LevelUp-disk-hygiene`: daily at 04:00, current user, not elevated, `-Apply`.

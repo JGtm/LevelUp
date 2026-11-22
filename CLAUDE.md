@@ -266,7 +266,7 @@ make go-api-test-gamefiles  # corpus cartes (paquet himap de la brique images de
 make go-api-lint            # golangci-lint
 make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
 make gate-push              # filet local avant merge vers main UNIQUEMENT, jamais avant une fusion dans la release (~40 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies briques et DuckDB en parallèle ; GOWORK=off) ; la CI reste le gate d'autorité
-powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
+powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t ; jamais un dossier qui contient un dépôt ou worktree git) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
 
 # Briques (dépôts dédiés ; détail : docs/COMMANDS.md § « Développer une brique »)
