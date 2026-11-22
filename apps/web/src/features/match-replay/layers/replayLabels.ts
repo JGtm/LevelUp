@@ -71,7 +71,7 @@ export function drawNameLabel(
   const y = c.y + markerEdge + LABEL_GAP_PX * k
   ctx.globalAlpha = 1
   if (!titles) {
-    strokeAndFill(ctx, name, c.x, y, style, color)
+    strokeAndFill(ctx, name, { x: c.x, y }, style, color)
     return
   }
   // LES TITRES D'ABORD, puis le nom, l'ensemble centré : la suite « icône, compte » se dessine depuis la
@@ -80,15 +80,14 @@ export function drawNameLabel(
   const x = drawTitleRun(ctx, titles, { x: left, y: y + LABEL_MID_RATIO * LABEL_FONT_PX * k }, style, color)
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  strokeAndFill(ctx, name, x, y, style, color)
+  strokeAndFill(ctx, name, { x, y }, style, color)
 }
 
 /** Le texte au double trait : le contour s'il y a une encre, puis le remplissage. */
 function strokeAndFill(
   ctx: CanvasRenderingContext2D,
   text: string,
-  x: number,
-  y: number,
+  at: XY,
   style: LabelStyle,
   color: string,
 ): void {
@@ -96,8 +95,8 @@ function strokeAndFill(
     ctx.lineJoin = 'round'
     ctx.lineWidth = LABEL_STROKE_PX * style.k
     ctx.strokeStyle = style.labelStroke
-    ctx.strokeText(text, x, y)
+    ctx.strokeText(text, at.x, at.y)
   }
   ctx.fillStyle = color
-  ctx.fillText(text, x, y)
+  ctx.fillText(text, at.x, at.y)
 }

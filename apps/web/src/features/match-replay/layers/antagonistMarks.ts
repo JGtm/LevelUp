@@ -9,7 +9,7 @@
  * texte (`drawTitleRun`, partagée par le nom sous le pion et l'étiquette de la flèche hors cadre) et
  * les deux anneaux autour du pion (`drawTitlePulse`).
  *
- * L'ICÔNE EST UN MASQUE. `nemesis-black.png` et `victim-black.png` sont du noir sur transparent
+ * L'ICÔNE EST UN MASQUE. Les deux PNG des titres, dans leur variante noire, sont du noir sur transparent
  * (alpha à 1 bit) : on ne garde que l'alpha, réduit à la taille d'écran par paliers (un PNG de 1369 px
  * ramené d'un coup à 12 px crénèle), puis teinté à la couleur du joueur (le camp, ou sa couleur
  * distincte) passée par l'appelant, et cerné de l'encre du contour des noms : même technique que les
@@ -20,14 +20,15 @@
  * Aucune couleur écrite ici.
  */
 import type { AntagonistRole } from '@/lib/antagonists/antagonists'
+import { themedIconSrc } from '@/lib/themedIcon'
 
 import type { SlotTitle, SlotTitlesOf } from '../model/antagonistTitles'
 import type { XY } from '../../../lib/replay/replayLogic'
 
 /** Les deux images, du noir sur transparent : le masque que l'on teint. */
 export const TITLE_ICON_URL: Readonly<Record<AntagonistRole, string>> = {
-  nemesis: '/icons/nemesis-black.png',
-  victim: '/icons/victim-black.png',
+  nemesis: themedIconSrc('nemesis', 'light'),
+  victim: themedIconSrc('victim', 'light'),
 }
 
 /** Hauteur de l'icône, en pixels d'écran. La largeur suit le rapport de l'image. */
