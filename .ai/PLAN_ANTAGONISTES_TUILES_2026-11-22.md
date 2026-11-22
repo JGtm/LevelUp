@@ -173,13 +173,13 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Piste A — fonction pure des antagonistes (Sonnet)
 
-- [ ] A.1 `lib/antagonists/antagonists.ts` : à partir d'une liste d'éliminations triées (tueur, victime, instant), d'un
+- [x] A.1 (fait, `5ec83bb082` : `buildAntagonists(kills, subject, isFoe)` ; dans un changement, `holder` = adversaire dont le compte bouge, `previousHolder` = tenant d'avant ; pour `egalite` le titre reste à `previousHolder` ; à instant égal, ordre des clés) `lib/antagonists/antagonists.ts` : à partir d'une liste d'éliminations triées (tueur, victime, instant), d'un
       joueur et d'un prédicat « adversaire », rend pour un instant donné les deux titres (tenant, compte, joueurs à
       égalité) et la liste des changements de titre (instant, rôle, nouveau tenant, ancien tenant et son compte,
       genre `prise` ou `égalité`). Règles D-3, D-10 et D-16 (doublons écartés).
-- [ ] A.2 Lecture à l'instant en temps borné : index des changements construit une fois par (document, joueur),
+- [x] A.2 (fait : un parcours, instantanés par élimination comptée, `at(t)` dichotomique ; test contre recalcul complet sur 400 éliminations) Lecture à l'instant en temps borné : index des changements construit une fois par (document, joueur),
       lecture par recherche dichotomique ; pas de parcours de toutes les éliminations à chaque image.
-- [ ] A.3 Tests : premier tenant ; dépassement strict ; égalité qui garde le tenant ; un joueur qui tient les deux
+- [x] A.3 (fait : 20 tests, vus en échec puis verts, mutation `>` en `>=` détectée ; contrôle du pilote : 20 verts. « Victime bot par son nom » et « mort sans tueur » relèvent du rapprochement des clés : [~] tests de B, D et F) Tests : premier tenant ; dépassement strict ; égalité qui garde le tenant ; un joueur qui tient les deux
       titres ; trahison et mort sans tueur ignorées ; mêlée générale ; victime bot par son nom ; doublons ; instant avant toute élimination ;
       dernier instant égal au calcul sur toute la liste.
 - **Gate A** : gates communs sur `src/lib/antagonists`.
@@ -277,6 +277,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — piste A close (gate : vitest 20/20, typecheck, lint des imports, eslint), fusionnée dans la branche d'intégration.
 - 2026-11-22 — étape 0 close (gate : 4 sorties écrites, section 1 corrigée, témoins contrôlés par le pilote). DU-5 posée au user. A, C.1 et E lancées.
 - 2026-11-22 — dépendance levée, vérifiée : `chore/830-backlog-1118`, `bl1118/m` et `bl1118/t` ont 0 commit hors de `release/v8.3.0` ; `feat/medailles-bouclier` ne touche aucun fichier de `features/match-replay`, `features/match-view` ni `lib` en commit. Go du user. Branche `feat/830-antagonistes-tuiles` (worktree du pilote `../LevelUp-wt-ant`), étape 0 dans `../LevelUp-wt-ant-0` (`ant/0`).
 
