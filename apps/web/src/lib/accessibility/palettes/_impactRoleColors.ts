@@ -46,8 +46,8 @@ export const IMPACT_GREEN_RED: ImpactRoleRamps = {
     'impact-gain-3': '#3C9253', // Héros silencieux +1,5
     'impact-gain-4': '#5DC677', // Bourreau +1
     'impact-loss-1': '#901E20', // Boulet −2
-    'impact-loss-2': '#C45852', // Faux-frère −1,5
-    'impact-loss-3': '#F98F86', // Première victime, Touriste, Kamikaze, Voleur −1
+    'impact-loss-2': '#C45852', // Faux-frère −1,5, Voleur −1
+    'impact-loss-3': '#F98F86', // Première victime, Touriste, Kamikaze, Os de verre −0,5
   },
   dark: {
     'impact-gain-1': '#9DF6AF',

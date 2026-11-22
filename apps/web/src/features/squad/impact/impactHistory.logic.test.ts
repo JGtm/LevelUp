@@ -23,13 +23,13 @@ describe('buildImpactHistoryView', () => {
 
   it('reprend les nets servis, sans recalcul', () => {
     expect(view().nets).toEqual([
-      [-9, -2, 0],
-      [3.5, -5, -4],
-      [1.5, -4, 3],
+      [-7, -1, 0],
+      [7.5, -1.5, -3.5],
+      [5.5, -2, 3],
     ])
   })
 
-  it('empile du plus fort barème contre l’axe vers le plus faible, les rôles à −1 en un bloc', () => {
+  it('empile du plus fort barème contre l’axe vers le plus faible, Faux-frère et Voleur en un bloc', () => {
     const jgtm = view().bars[0]
     expect(jgtm.gains).toEqual([
       { token: 'impact-gain-1', from: 0, to: 2 },
@@ -37,11 +37,11 @@ describe('buildImpactHistoryView', () => {
     ])
     expect(jgtm.losses).toEqual([
       { token: 'impact-loss-1', from: 0, to: -4 },
-      { token: 'impact-loss-2', from: -4, to: -7 },
-      { token: 'impact-loss-3', from: -7, to: -12 },
+      { token: 'impact-loss-2', from: -4, to: -8 },
+      { token: 'impact-loss-3', from: -8, to: -10 },
     ])
     expect(jgtm.gainTotal).toBe(3)
-    expect(jgtm.lossTotal).toBe(-12)
+    expect(jgtm.lossTotal).toBe(-10)
   })
 
   it('écrit seulement les deux nets extrêmes', () => {
@@ -66,10 +66,10 @@ describe('buildImpactHistoryView', () => {
     expect(choco.matches).toBe('1 match, aucune victoire')
     expect(choco.roles.map((r) => `${r.label} ×${r.count} · ${r.points}`)).toEqual([
       'Boulet ×1 · −2',
-      'Première victime ×1 · −1',
       'Voleur ×1 · −1',
+      'Première victime ×1 · −0,5',
     ])
-    expect(choco.net).toBe('−4')
+    expect(choco.net).toBe('−3,5')
     expect(v.bars[0].tip.matches).toBe('11 matchs, 5 victoires')
     expect(v.bars[6].tip.roles).toEqual([])
     // Du haut vers le bas du graphe : gains du plus faible barème au plus fort, puis pertes.
@@ -79,15 +79,17 @@ describe('buildImpactHistoryView', () => {
     expect(points.findIndex((p) => p < 0)).toBe(gains.length)
   })
 
-  it('légende : gains un par un, pertes à −1 réunies', () => {
+  it('légende : gains un par un, pertes de même nuance et de même barème (−0,5) réunies', () => {
     const { gains, losses } = view().legend
     expect(gains.map((g) => g.label)).toEqual(['Finisseur +2', 'Premier sang +2', 'Héros silencieux +1,5', 'Bourreau +1'])
     expect(losses.map((l) => l.label)).toEqual([
       'Boulet −2',
       'Faux-frère −1,5',
-      'Autres rôles à −1 (Première victime, Touriste, Kamikaze, Voleur)',
+      'Voleur −1',
+      'Autres rôles à −0,5 (Première victime, Touriste, Kamikaze, Os de verre)',
     ])
-    expect(losses[2].token).toBe('impact-loss-3')
+    expect(losses[2].token).toBe('impact-loss-2')
+    expect(losses[3].token).toBe('impact-loss-3')
   })
 
   it('aide et résumé accessible portent le barème et les nets', () => {
@@ -95,15 +97,15 @@ describe('buildImpactHistoryView', () => {
     expect(v.info).toContain('JGtm, Joueur90001 et Joueur90002')
     expect(v.info).toContain(
       'Barème : Finisseur et Premier sang +2, Héros silencieux +1,5, Bourreau +1 ; Boulet −2, Faux-frère −1,5, ' +
-        'Première victime, Touriste, Kamikaze et Voleur −1.',
+        'Voleur −1, Première victime, Touriste, Kamikaze et Os de verre −0,5.',
     )
-    expect(v.aria).toContain('JGtm : −9, −2, 0')
+    expect(v.aria).toContain('JGtm : −7, −1, 0')
   })
 
   it('anglais : barème à point décimal', () => {
     expect(scaleSentence(impactHistory3.scale ?? [], en)).toBe(
       'Finisher and First blood +2, Silent hero +1.5, Top killer +1 ; Last casualty −2, False brother −1.5, ' +
-        'First down, Late starter, Kamikaze and Thief −1',
+        'Thief −1, First down, Late starter, Kamikaze and Glass Jaw −0.5',
     )
   })
 

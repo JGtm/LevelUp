@@ -2,8 +2,8 @@
  * SquadImpactScoreboard — teammates.07 : tableau scoreboard "Impact des coéquipiers".
  *
  * Implémentation TanStack Table :
- *  - Colonnes dynamiques : Joueur (sticky) + 1 par match avec ≥1 badge + 8 colonnes
- *    agrégat (1 par badge_key) + Score + Badge ranking.
+ *  - Colonnes dynamiques : Joueur (sticky) + 1 par match avec ≥1 badge + 1 colonne
+ *    agrégat par rôle de badge_ord + Score + Badge ranking.
  *  - Cellule joueur×match : pictos Fluent Flat empilés 2/ligne (BadgeIcon).
  *  - Cellule agrégat : compte ou "—" si 0. Couleur best/worst selon extrêmes (best
  *    inversé pour les badges "négatifs" cf. impactInverted).
@@ -44,6 +44,7 @@ const BADGE_INVERTED: Record<string, true> = {
   false_brother: true,
   kamikaze: true,
   thief: true,
+  glass_jaw: true,
 }
 
 function outcomeBg(outcome: number): string {
