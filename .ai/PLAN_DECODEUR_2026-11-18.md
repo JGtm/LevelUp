@@ -338,7 +338,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 - [ ] E.1 Recherche (une session) sur `390b1de5` et les 19 portages qui commencent loin du drapeau : d'où
       vient l'événement d'ouverture ; ce que disent la seconde chaîne (marqueur de portage) et les messages
       de jeu du drapeau que le témoin lit. Sortie : cause prouvée, ou `[!]`.
-- [ ] E.2 Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
+- [ ] E.2 AMENDÉ LE 2026-11-22 AVANT SON CODE, après le gate d'attribution : la liste de composants dégradait `zone_defensive_kills` sur deux films à zones (le canal B du composant 22 y est une durée ; un joueur 9 → 2 pour 9 à l'API). Règle corrigée : le canal frère n'est jugé que si la table du mode le NOMME comme compteur ; plus aucune liste de composants. Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
       par distance n'est ajouté.
 - [ ] E.3 Ouverture de la bande au-delà de 8 joueurs, seulement si E.1 a rendu juste la bande livrée et si
       le temps de porteur s'accorde à l'API sur les 9 films de Grande bataille à drapeau (export 0.3).
@@ -441,6 +441,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-22 — quatrième intégration ARRÊTÉE à l'attribution, à juste titre : la règle de la piste e, écrite sur une liste de
+  composants, jetait 46 émissions sur 54 d'un compteur de zones sur un film et éloignait deux films de l'API. Décision du
+  pilote : la règle se lit dans la table des noms du mode (E.2 amendé) ; l'agent reprend avec ce correctif puis termine.
+  Rouge hérité de la règle des places : cause = feuille de match du corpus à identifiants fictifs face à un film réel,
+  un joueur sans mort n'était pas retrouvé ; corrigé dans l'outil de test, pas un défaut de production. Cinq garde-rails
+  de LevelUp rendus verts côté décodeur, `decfilm.ObjectiveTypeVip` exportée, deux constantes de repli sans usage
+  retirées. Miroirs de LevelUp rendus et poussés sur `chore/830-decodeur-v150-miroirs` (`4ff6f5d088`), à fusionner
+  dans la branche de montée après le tag ; plafonds de la façade à réajuster (181 déclarations, famille objectifs 40).
 
 - 2026-11-22 — VAGUE 2 RENDUE, cinq pistes fusionnées dans `feat/v1.5.0` (`e3f0401`, poussée ; portes de référence rouges
   en attendant la troisième intégration, lancée).
