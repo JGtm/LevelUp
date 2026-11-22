@@ -254,7 +254,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [x] F.1 (fait, `b765434546` : `MatchNemesisCards.logic.ts`, `highlight_events` déjà chargé par la page, aucune requête neuve ; prop `nemesis` retirée de la page et de l'onglet) `MatchNemesisCards` lit la fonction de A sur `highlight_events` au dernier instant (D-11), même filtre
       d'adversaire ; les cartes gardent leur dessin et leurs textes.
 - [x] F.2 (fait : 18 tests vus en échec puis verts ; contrôle du pilote : 23 tests ciblés verts) Tests : départage par le tenant ; comptes identiques à 0.3 sur un jeu de données de test.
-- [ ] F.3 (né de F.1, règle 18 : plus aucun composant monté ne lit `team_tab.nemesis` ; `KdIndicatorCard` (`MatchStatCards.tsx`) le prend en prop mais n'est monté nulle part) Retirer `team_tab.nemesis` de la réponse (builder Go, contrat, `openapi.yaml`, `generated.ts`) et `KdIndicatorCard` avec ses tests, si aucun autre lecteur n'existe côté serveur ou web ; sinon `[!]` avec le lecteur trouvé.
+- [x] F.3 (fait, `0370e17140` puis `bf67aec8f9` : champ, `buildNemesisMap`, `KdIndicatorCard` et leurs tests retirés, `openapi.yaml` et `generated.ts` régénérés ; Go build, vet, tests service, api, archlint, golden, contracttest verts chez l'agent ; commentaires sans mesure datée ni renvoi au plan) (né de F.1, règle 18 : plus aucun composant monté ne lit `team_tab.nemesis` ; `KdIndicatorCard` (`MatchStatCards.tsx`) le prend en prop mais n'est monté nulle part) Retirer `team_tab.nemesis` de la réponse (builder Go, contrat, `openapi.yaml`, `generated.ts`) et `KdIndicatorCard` avec ses tests, si aucun autre lecteur n'existe côté serveur ou web ; sinon `[!]` avec le lecteur trouvé.
 - **Gate F** (passé pour F.1 et F.2 : 25 matchs, écart nul, sur une copie lue en lecture seule ; la source réelle de `team_tab.nemesis` est `match_kill_events_latest`, requête `Q20KVPairs`, comparée aussi, écart nul) : gates communs sur `src/features/match-view` ; 0.3 rejoué SANS serveur, en DuckDB sur une COPIE de la base partagée : décompte dédoublonné de `highlight_events` (bots exclus) égal à `killer_victim_pairs` (source de `team_tab.nemesis`) sur les 20 matchs récents et 5 matchs doublés (sinon F arrêtée, écrit ici).
 
 ## Étape I — intégration (pilote)
@@ -285,6 +285,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — piste F close (F.3 comprise), fusionnée.
 - 2026-11-22 — A.4 et A.5 closes et fusionnées. Lancées : B (`ant/b`) ; C.2 à C.4 puis D.1 à D.4 par le même agent sur `ant/c` (un seul composant d'icône `ui/AntagonistIcon.tsx` pour la frise et la fiche, sans course entre deux branches).
 - 2026-11-22 — F.1 et F.2 closes et fusionnées ; F.3 ajoutée (champ servi sans lecteur).
 - 2026-11-22 — DU-5 tranchée par le user (bots exclus). A.4 ajoutée (entrées communes du rejeu). Lancées : A.4, F.
@@ -296,6 +297,9 @@ piste la plus en amont.
 - 2026-11-22 — dépendance levée, vérifiée : `chore/830-backlog-1118`, `bl1118/m` et `bl1118/t` ont 0 commit hors de `release/v8.3.0` ; `feat/medailles-bouclier` ne touche aucun fichier de `features/match-replay`, `features/match-view` ni `lib` en commit. Go du user. Branche `feat/830-antagonistes-tuiles` (worktree du pilote `../LevelUp-wt-ant`), étape 0 dans `../LevelUp-wt-ant-0` (`ant/0`).
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-22 (F.3) — `combat_tab.nemesis_duels` est servi toujours vide (`match_view_builders_combat.go:92`) et aucun composant ne le lit (règle 18) ; son retrait emporterait `MatchNemesisRow` du contrat.
+- 2026-11-22 (F.3) — `tests/fixtures/golden_values/match_view_slayer.json` garde un bloc `team_tab.nemesis` (capture du 2026-04-16) que le code ne produit plus.
 
 - 2026-11-22 (0.3) — 172 matchs sur 1 462 de la base du poste portent chaque élimination deux fois dans `highlight_events` (30 372 lignes sur 161 147, avril et mai 2026 surtout) ; le fil du rejeu de ces matchs les sert en double. Prod non regardée.
 - 2026-11-22 (0.2) — le fil ne contient aucune élimination dont un bot est l'auteur ; le film nomme pourtant ses éliminations (`scoreActions`, `killPersonalScore`, 99 sur 99 sur un 4 contre 4), cible vide pour une victime bot.
