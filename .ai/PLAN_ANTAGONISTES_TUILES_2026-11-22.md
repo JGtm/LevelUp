@@ -259,11 +259,11 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 
 ## Étape I — intégration (pilote)
 
-- [ ] I.1 Fusion des sous-branches dans `feat/830-antagonistes-tuiles` dans l'ordre A, C, E, D, B, F ; conflits
+- [x] I.1 (fait au fil des pistes, sans conflit : 0, A, C.1, E, F, A.4-A.5, C-D, B, I.6) Fusion des sous-branches dans `feat/830-antagonistes-tuiles` dans l'ordre A, C, E, D, B, F ; conflits
       résolus selon ce plan.
 - [ ] I.2 `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
 - [ ] I.3 Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
-- [ ] I.6 (né du contrôle du pilote, règle 17) Commentaires et titres de tests du diff : remplacer les renvois aux identifiants de ce plan (D-10, D-15, DU-3…) par la règle elle-même ; contrôle : `git diff --name-only release/v8.3.0 -- apps | xargs grep -nE "DU-[0-9]|D-1[0-9]|.ai/"` vide.
+- [x] I.6 (fait, `a6963dbb20` : 42 fichiers, commentaires et titres de tests ; contrôle du pilote : grep vide) (né du contrôle du pilote, règle 17) Commentaires et titres de tests du diff : remplacer les renvois aux identifiants de ce plan (D-10, D-15, DU-3…) par la règle elle-même ; contrôle : `git diff --name-only release/v8.3.0 -- apps | xargs grep -nE "DU-[0-9]|D-1[0-9]|.ai/"` vide.
 - [ ] I.4 `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
 - [ ] I.5 Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
       nommé par le user, avec les textes anglais de D-14.
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — I.1 et I.6 closes ; I.2 lancée (suite web complète).
 - 2026-11-22 — piste B close et fusionnée (agent : 6 196 tests verts). Toutes les pistes de code sont closes ; I.6 en cours.
 - 2026-11-22 — pistes C et D closes et fusionnées (agent : 6 279 tests du dossier et de l'i18n verts). B : écart à D-12 renvoyé (pulsation sur l'axe du rejeu au lieu du temps réel), correction en cours.
 - 2026-11-22 — piste F close (F.3 comprise), fusionnée.
