@@ -81,6 +81,11 @@ page.
   200 matchs sur une copie de base (durée, appels API, pic mémoire, disque des films), étape 5bis. Si
   la passe dépasse 5 minutes ou 1,5 Go de pic, le budget ou la cadence se règlent sur la mesure (le
   pilote propose, l'utilisateur tranche).
+- **D-16** (pilote, 22/11) Un match qui échoue à 3 passes de rattrapage (`maxCatchUpAttempts`) est
+  abandonné par le rattrapage : journalisé, compté (`sync_v2_history_abandoned_total`), il ne compte
+  plus dans le budget ni ne bloque la fin. Sans cela, un seul match cassé laisserait le joueur en
+  rattrapage pour toujours (cycles de 10 minutes à vie). Liste des échecs dans le marque-page, bornée
+  à 200 entrées.
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
