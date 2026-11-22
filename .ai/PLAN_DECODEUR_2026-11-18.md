@@ -251,12 +251,12 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste A — coup d'envoi par l'horloge du jeu (Sonnet)
 
-- [ ] A.1 Selon le verdict de 0.4 sur les 22 rejeux. Si l'horloge a raison : le coup d'envoi publié est
+- [x] A.1 Selon le verdict de 0.4 sur les 22 rejeux. Si l'horloge a raison : le coup d'envoi publié est
       l'instant où l'horloge de manche de la PREMIÈRE manche démarre (première lecture qui court, ramenée à
       la valeur de départ ; horloge qui monte comprise) ; le détecteur de premier mouvement et ses refus sont
       retirés ; la couverture dit la source. Si l'horloge a tort dans ces 22 cas : arrêt, retour au pilote,
       modèle revu avec le user avant tout code.
-- [ ] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
+- [x] A.2 Tests : horloge arrêtée puis qui descend ; déjà en marche à la première lecture ; qui monte ;
       plusieurs manches ; film sans horloge (aucune date, compté).
 - [ ] A.3 Mesure APRÈS : 1 455 rejeux datés ; écart au coup d'envoi d'avant, par rejeu, au registre des
       changements de sortie.
@@ -287,7 +287,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 - [x] C.3 (fait le 2026-11-18, commit `f426cf4` du clone. CAUSE PROUVÉE, une seule pour les 19 joueurs : le balayage ancrait de FAUX enregistrements du tableau dans une liste répétitive d'une autre structure (motif de 73 bits, mêmes décalages dans les 21 émissions fautives de 18 films, 16 des 18 en Fiesta) ; leur premier composant lu vaut toujours (corps à corps 0, grenades 16) : le 16 est la partie constante de cette autre structure, pas une valeur du tableau. RÈGLE DE LECTURE : un enregistrement dont un composant 0 à 27, que toute émission du moteur relit en entier, ne se décode pas est abandonné en entier ; un arrêt sur un composant d'un autre lecteur garde ce qui précède. Banc sur 70 films : joueurs à 16 grenades 4 → 0 (19 → 0 avec la garde), aucun joueur perdu, grenades 550 sur 550. La garde de C.2 écarte encore 25 émissions d'une autre forme : elle reste) Recherche (une session) : d'où vient la valeur 16 (19 joueurs, tous builds) et pourquoi la bonne
       émission perd. Sortie : cause prouvée dans la lecture du tableau et correction écrite ici, ou `[!]`.
 - [x] C.4 (fait le 2026-11-18 sur 70 films, 922 joueurs : couples violés 27 → 0, séries aberrantes 23 → 0, joueurs à 16 grenades 19 → 4 ; gagnés : série +23, grenades +22, corps à corps +10, tête +3 ; perdus : 0 ; aucun build ne baisse ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS par C.1.
-- [ ] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
+- [x] C.5 (ajouté le 2026-11-18, accord du user : « oui vas y je suis d'accord ») Emplacements du tableau LUS MAIS
       SANS NOM. Le tableau a 28 emplacements par joueur, deux valeurs chacun ; le décodeur n'en nomme qu'environ
       la moitié, par confrontation aux récompenses de score et aux statistiques d'objectif. Balayage des
       emplacements sans nom contre TOUTES les colonnes par joueur de l'API disponibles dans la copie de la base
@@ -297,13 +297,13 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       d'abord, SANS code de production : table des candidats (emplacement, côté, mode, colonne, films et joueurs
       en accord, désaccords). Un nom prouvé devient un item écrit ici avant son code. Lié à l'hypothèse du user
       sur les tirs (D.2) : si un emplacement porte les tirs ou les touches du jeu, il remplace l'estimation.
-- [ ] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
+- [x] C.6 (ajouté le 2026-11-22, go du user : « go pour les deux maintenant ») Compteurs de mode écrits et justes que le
       décodeur ne nomme pas encore (verdict de C.5) : Drapeau (`FlagReturnersKilled`, `KillsAsFlagReturner`), Bases et
       Contrôle total (`StrongholdOffensiveKills`, `StrongholdDefensiveKills`, `StrongholdScoringTicks`), VIP (six
       compteurs), Extraction (cinq, seulement si le nom est PROUVÉ par les définitions du film ou par l'API). Nommés
       par mode dans la table existante, publiés comme les compteurs d'objectif voisins, avec le contrôle sur moitiés
       de films disjointes. Les emplacements traînants ou jamais écrits ne sont PAS publiés.
-- [ ] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
+- [x] C.7 (ajouté le 2026-11-22, même go) Valeurs figées par manche terminée (composants 28 à 55) : lecture par la
       grammaire, publication par manche, et total d'un match à manches = manches figées plus manche vivante de la
       dernière. Mesure attendue sur les films à manches : aucun accord avec l'API ne baisse, les totaux montent.
 - **Gate C** : équivalence attribuée ; C.1 ne montre aucune baisse.
@@ -382,7 +382,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       Sinon `[!]` avec ce qui a été écarté.
 - [ ] H.6 Côté LevelUp, à la montée : rechargements, sauts et temps en commande dans la section « En
       passant » de la fiche du joueur, dans les deux langues ; rien n'est affiché sans couverture suffisante.
-- [ ] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
+- [x] H.7 (ajouté le 2026-11-18, demande du user : « chaque frag, imagé dans le killfeed, est taggé d'une
       certaine manière quand on frag au tir à la tête ») Marque de tir à la tête PAR ÉLIMINATION. Aujourd'hui le
       décodeur ne la lit pas ; l'icône du fil de LevelUp vient de la lecture du dégât fatal, partielle. Recherche
       bornée (une session) dans le message d'élimination du film et dans l'enregistrement d'élimination des temps
@@ -442,6 +442,16 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — SECONDE INTÉGRATION au schéma 126 faite et poussée (`ab68262` sur `feat/v1.5.0`) : compteurs de mode,
+  calque des éliminations, valeurs figées. Chronique 126 à huit apports, aucune révision de couche neuve (mêmes valeurs,
+  empreintes refigées), goldens de forme refigés, fixtures de contrat inchangées (4 992 442 octets), suite du clone à
+  33 paquets verts, équivalence 20 identiques sur trois passes, chaque écart attribué par bissection aux trois fusions.
+  Non-déterminisme de `joinSegments` : non observé sur ces passes. Écart hors consigne, attribué aux valeurs figées et
+  accepté par le pilote : sur 2 films sans joueur au tableau, un faux enregistrement disparaît (`identity.statborgSlots`).
+  À SAVOIR : les révisions `grammar-2026-11-22` et `objectives-2026-11-22` sont celles de la première intégration ; un
+  cache de faits cuit à `e8d6856` serait accepté sans les valeurs figées. Seuls les dossiers de travail en ont eu un, vidé.
+  Table figée de LevelUp complétée (`1974d83cca` sur `chore/830-decodeur-v150`, poussée avec les fixtures 126). Registre
+  des changements de sortie créé : `.ai/annexes_decodeur_1118/changements_de_sortie.md`. Vague suivante lancée : D, B, H.
 - 2026-11-22 — C.6 fait pour huit compteurs (`072c16a`, `3f247e9` sur `piste/modes`, poussée) : Drapeau
   (`flag_returners_killed`, `flag_kills_as_returner`, `flag_kills_as_carrier` sur la seule définition du film, accord
   du user), zones (`zone_offensive_kills`, `zone_defensive_kills`), VIP (`vip_kills`, `vip_assists`,

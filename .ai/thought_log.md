@@ -1,3 +1,9 @@
+## [2026-11-22] Décodeur v1.5.0 : compteurs de mode, calque des éliminations et valeurs figées intégrés au schéma 126 — En cours
+
+- Décision : trois pistes menées en parallèle, fusionnées puis intégrées en une fois sous le même schéma 126 et les mêmes révisions de couche ; chaque écart de l'équivalence attribué par bissection.
+- Résultats : suite du décodeur verte (33 paquets), 20 films identiques sur trois passes, registre des changements de sortie créé (`.ai/annexes_decodeur_1118/changements_de_sortie.md`). Les totaux déjà publiés des matchs à manches égalaient l'API ; les valeurs figées sont des données neuves, pas une correction.
+- Prochaine étape : pistes D (tirs), B (verdict du score), H (canaux neufs), puis publication et montée.
+
 ## [2026-11-22] Fenêtres de console du bureau et historique de synchronisation (issue #213) — Complété (reste la vérification à l'écran du user)
 **Statut :** Complété ; plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md` statué (A5 et la carte à l'écran restent au user).
 **Décision technique principale :** (A) la tâche planifiée refresh-only lance la coquille graphique et non `cmd.exe` : seul lancement de console du code livré, après balayage des dépendances Go du serveur (283 paquets), de la coquille et de ses 541 crates. (B) Halo 5 rattrape l'historique comme Infinite (clé `history_complete_at`), `history_complete` servi et mémorisé, carte Synchronisation dans Paramètres › Données & Médias, aide corrigée. Réponse postée sur l'issue #213 après validation du texte par le user.
