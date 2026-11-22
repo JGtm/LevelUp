@@ -46,7 +46,7 @@ const campagne: ReplayPlayer[] = [
   player(BOT_FOE, 1, { bot: true, board: { xuid: 'bid(3.0)' } as Board }),
 ]
 
-describe('antagonistKillsOf : clés du film (D-10)', () => {
+describe('antagonistKillsOf : clés du film', () => {
   it('prend le tueur dans kill.xuid et la victime dans kill.victimXuid', () => {
     expect(antagonistKillsOf([killEntry(FOE1, ME, 1000)], campagne)).toEqual([
       { killer: FOE1, victim: ME, t: 1000 },

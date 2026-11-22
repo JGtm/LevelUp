@@ -6,7 +6,7 @@
  *     retour au fil, geste manuel de cadrage.
  *  2. LE JOUEUR SE RETROUVE AU ROSTER : `focus` porte le joueur, son « Seul » et son masquage, `null` panneau
  *     fermé ; `hiddenPlayers` porte les joueurs masqués, indépendamment de la fiche.
- *  3. UN AUTRE MATCH REPART À ZÉRO : l'état — fiche, caméra, joueurs masqués — n'est jamais mémorisé (D-4), alors
+ *  3. UN AUTRE MATCH REPART À ZÉRO : l'état — fiche, caméra, joueurs masqués — n'est jamais mémorisé, alors
  *     que la route garde le même composant quand seul `$matchId` change.
  *  4. SUIVRE EST LA CAMÉRA, À PART DE LA FICHE ; LE JOUEUR SUIVI EST LE JOUEUR REGARDÉ, passé par la page.
  *  5. LES GESTES GARDENT LEUR IDENTITÉ : ils sont passés en props à tout le canvas.
@@ -205,7 +205,7 @@ describe('usePlayerPanel', () => {
     expect(result.current.focus).toMatchObject({ hidden: true })
   })
 
-  it('suivre un joueur masqué le réaffiche (D-15)', () => {
+  it('suivre un joueur masqué le réaffiche', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onToggleHidden('B'))
     act(() => result.current.camera.onFollow('B'))
@@ -213,7 +213,7 @@ describe('usePlayerPanel', () => {
     expect(result.current.camera.player).toBe(B)
   })
 
-  it('masquer le joueur suivi arrête le suivi (D-15)', () => {
+  it('masquer le joueur suivi arrête le suivi', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onFollow('B'))
     act(() => result.current.onToggleHidden('B'))
@@ -221,7 +221,7 @@ describe('usePlayerPanel', () => {
     expect(result.current.hiddenPlayers).toEqual([B])
   })
 
-  it('Seul sur un joueur éteint la caméra posée sur un autre joueur, et la garde sur lui-même (D-15)', () => {
+  it('Seul sur un joueur éteint la caméra posée sur un autre joueur, et la garde sur lui-même', () => {
     const { result } = renderHook(() => usePlayerPanel('m1', [A, B], null))
     act(() => result.current.onFollow('B'))
     act(() => result.current.onSolo('A'))

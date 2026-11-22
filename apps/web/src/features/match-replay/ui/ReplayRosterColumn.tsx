@@ -17,8 +17,8 @@
  * équipes est alors une zone à défilement vertical dont les lignes gardent leur hauteur, et l'en-tête de
  * chaque camp reste collé en haut pendant que ses lignes passent.
  *
- * LES ACTIONS DES LIGNES (D-6) ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque ligne de joueur présent.
- * « Tout afficher » (D-7) est le premier bloc de la colonne, visible seulement quand au moins un joueur est masqué.
+ * LES ACTIONS DES LIGNES ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque ligne de joueur présent.
+ * « Tout afficher » est le premier bloc de la colonne, visible seulement quand au moins un joueur est masqué.
  * Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
  *
  * LE JOUEUR SUIVI ARRIVE PAR PROP (`tracked`, `playerPanel.tracked`) : la colonne ne le recalcule pas.

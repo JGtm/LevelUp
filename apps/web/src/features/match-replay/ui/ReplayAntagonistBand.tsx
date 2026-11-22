@@ -1,7 +1,7 @@
 /**
  * ReplayAntagonistBand — LA BANDE DES TITRES de la frise : une rangée de quatorze pixels AU-DESSUS de
  * la rangée du joueur regardé, où chaque PRISE de titre (némésis, souffre-douleur) est une icône posée
- * à l'instant de l'élimination qui a fait passer le titre (D-13 du plan des antagonistes).
+ * à l'instant de l'élimination qui a fait passer le titre.
  *
  * EXTRAIT DE `ReplayTimelineTracks.tsx`, qui est au-delà du seuil de taille : l'hôte ne connaît que
  * l'emplacement (`antagonistBand`, un nœud posé en tête de sa grille) ; ce composant porte tout le reste.

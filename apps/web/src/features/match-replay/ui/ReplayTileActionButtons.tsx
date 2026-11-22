@@ -1,5 +1,5 @@
 /**
- * ReplayTileActionButtons — LES DEUX ACTIONS D'UNE TUILE OU D'UNE LIGNE (D-6) : la cible (Suivre / Ne plus suivre)
+ * ReplayTileActionButtons — LES DEUX ACTIONS D'UNE TUILE OU D'UNE LIGNE : la cible (Suivre / Ne plus suivre)
  * et l'œil (Masquer / Afficher), posés en haut à droite de la tuile ou de la ligne qui les porte.
  *
  * VISIBILITÉ. Au repos, un bouton est invisible ; il apparaît au survol de la tuile OU quand le focus est dedans

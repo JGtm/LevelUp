@@ -23,8 +23,8 @@
  * colonne vide, sans quoi les suivantes glisseraient. Le joueur suivi arrive par prop (`tracked`), la rangée
  * ne le recalcule pas ; un clic rend la page (`onCard`) avec la clé de roster du joueur.
  *
- * LES ACTIONS DES FICHES (D-6) ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque fiche ordinaire. « Tout
- * afficher » (D-7) est posé en haut de la cellule centrale, au-dessus du score, visible seulement quand au moins un
+ * LES ACTIONS DES FICHES ARRIVENT PAR PROP (`tileActions`) : Suivre et l'œil de chaque fiche ordinaire. « Tout
+ * afficher » est posé en haut de la cellule centrale, au-dessus du score, visible seulement quand au moins un
  * joueur est masqué. Les fiches compactes de la Grande équipe portent les mêmes boutons (`ReplayCompactCard`).
  */
 import { Fragment, useMemo, type ReactNode } from 'react'

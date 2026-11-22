@@ -2,7 +2,7 @@
  * focusFilter.ts — CE QUE LES JOUEURS MASQUÉS FONT À CHAQUE CALQUE QUI N'EST PAS UN PION (« Seul » masque tous
  * les autres joueurs : c'est le même ensemble).
  *
- * LA RÈGLE (utilisateur, 2026-11-15 ; DU-3, 2026-11-22) : tout calque affiché suit l'ensemble des joueurs masqués
+ * LA RÈGLE (utilisateur, 2026-11-15) : tout calque affiché suit l'ensemble des joueurs masqués
  * pour ce qui appartient à un joueur. Un élément se dessine dès qu'un de ses joueurs est affiché. Ce qui
  * n'appartient à personne (véhicule vide, drapeau à sa base, zone, socle d'arme) reste affiché : c'est le décor du
  * match. Un élément dont l'attribution ne se lit pas reste affiché lui aussi — rien n'est deviné.

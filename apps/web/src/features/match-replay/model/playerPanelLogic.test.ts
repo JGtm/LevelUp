@@ -6,9 +6,9 @@
  *     recliquer la fiche ouverte referme. Ouvrir, changer ou fermer la fiche ne touche NI aux joueurs
  *     masqués NI à la caméra.
  *  2. SUIVRE EST LA CAMÉRA, INDÉPENDANTE DE LA FICHE ; le joueur suivi est le joueur REGARDÉ.
- *  3. L'ENSEMBLE DES JOUEURS MASQUÉS (D-7) : masquer et afficher joueur par joueur, « Tout afficher »,
+ *  3. L'ENSEMBLE DES JOUEURS MASQUÉS : masquer et afficher joueur par joueur, « Tout afficher »,
  *     « Seul » (masque tous les autres ; refait, réaffiche tout) ; « Seul » se lit sur l'ensemble.
- *  4. LES RÈGLES DE LA CAMÉRA AVEC LE MASQUAGE (D-15) : suivre un masqué le réaffiche, masquer le suivi
+ *  4. LES RÈGLES DE LA CAMÉRA AVEC LE MASQUAGE : suivre un masqué le réaffiche, masquer le suivi
  *     arrête le suivi, Seul arrête le suivi d'un joueur qu'il masque.
  *  5. Ce que la carte montre des joueurs masqués (pions, effets de mort, éléments à parties) est dans
  *     `playerPanelLogic.hidden.test.ts`.
@@ -111,7 +111,7 @@ describe('reducePlayerPanel — Suivre, la caméra, indépendante de la fiche', 
   })
 })
 
-describe('reducePlayerPanel — l’ensemble des joueurs masqués (D-7)', () => {
+describe('reducePlayerPanel — l’ensemble des joueurs masqués', () => {
   it('masquer deux joueurs, l’un après l’autre : les deux sont masqués', () => {
     const s = toggleHidden(toggleHidden(NO_PLAYER_PANEL, 'B'), 'C')
     expect([...s.hidden].sort()).toEqual(['B', 'C'])
@@ -158,7 +158,7 @@ describe('reducePlayerPanel — l’ensemble des joueurs masqués (D-7)', () => 
   })
 })
 
-describe('reducePlayerPanel — Seul (D-8)', () => {
+describe('reducePlayerPanel — Seul', () => {
   it('Seul masque tous les autres joueurs et laisse le joueur affiché', () => {
     const s = solo(NO_PLAYER_PANEL, 'A')
     expect([...s.hidden].sort()).toEqual(['B', 'C'])
@@ -214,7 +214,7 @@ describe('isSolo — Seul se lit sur l’ensemble', () => {
   })
 })
 
-describe('reducePlayerPanel — Suivre et le masquage (D-15)', () => {
+describe('reducePlayerPanel — Suivre et le masquage', () => {
   it('suivre un joueur masqué le réaffiche ; les autres masqués le restent', () => {
     const s = reducePlayerPanel(withHidden(NO_PLAYER_PANEL, 'B', 'C'), { type: 'follow', xuid: 'B' })
     expect(s.followXuid).toBe('B')

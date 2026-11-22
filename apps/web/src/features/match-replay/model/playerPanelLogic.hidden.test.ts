@@ -1,7 +1,7 @@
 /**
  * Tests — ce que les joueurs masqués font à la carte (suite de `playerPanelLogic.test.ts`) : le prédicat des pions
  * (`shownSlotPredicate`), celui des effets de mort (`killFxShown`) et LA règle des éléments à parties
- * (`ownershipShown`, DU-3 : un élément se dessine dès qu'un de ses joueurs est affiché ; sans joueur, il reste).
+ * (`ownershipShown` : un élément se dessine dès qu'un de ses joueurs est affiché ; sans joueur, il reste).
  */
 import { describe, expect, it } from 'vitest'
 
@@ -64,7 +64,7 @@ describe('shownSlotPredicate — un pion se dessine si son joueur n’est pas ma
   })
 })
 
-describe('killFxShown — un effet de mort appartient au tueur ET à la victime (DU-3)', () => {
+describe('killFxShown — un effet de mort appartient au tueur ET à la victime', () => {
   // A (slot 1 puis 3), B au slot 2, le bot au slot 7 ; le tueur et la victime se lisent dans leur vie.
   const aTueB = killFxEntry({ slot: 1, slotFrame: 10, victimSlot: 2, victimFrame: 10 })
   const bTueA = killFxEntry({ slot: 2, slotFrame: 10, victimSlot: 1, victimFrame: 10 })
@@ -132,7 +132,7 @@ describe('killFxShown — un effet de mort appartient au tueur ET à la victime 
   })
 })
 
-describe('ownershipShown — la règle unique des éléments à parties (DU-3)', () => {
+describe('ownershipShown — la règle unique des éléments à parties', () => {
   it('aucun joueur masqué : aucun filtre', () => {
     expect(ownershipShown(null)).toBeNull()
   })

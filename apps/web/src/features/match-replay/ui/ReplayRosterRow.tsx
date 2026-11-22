@@ -20,7 +20,7 @@
  * même hauteur : l'habit tireté, le nom estompé, l'état écrit à la place des barres
  * (`seatWaitingReading`, la règle de la tuile d'attente).
  *
- * LES DEUX ACTIONS (D-6, `ReplayTileActionButtons`) : quand la page les donne (`actions`), la ligne porte Suivre et
+ * LES DEUX ACTIONS (`ReplayTileActionButtons`) : quand la page les donne (`actions`), la ligne porte Suivre et
  * l'œil à droite de la cellule du nom — au survol ou au focus de la ligne (elle porte `group`), toujours visibles
  * actifs. La ligne d'un joueur MASQUÉ écrit « masqué » à côté de son nom, pâli.
  *
@@ -71,7 +71,7 @@ export interface ReplayRosterRowProps {
   selected?: boolean
   /** Un clic sur la ligne, avec la clé de roster du joueur. Absent = ligne inerte. */
   onCard?: (xuid: string) => void
-  /** Suivre et l'œil de CE joueur (D-6) : absent = la ligne n'a pas ces boutons. */
+  /** Suivre et l'œil de CE joueur : absent = la ligne n'a pas ces boutons. */
   actions?: TileActions
 }
 

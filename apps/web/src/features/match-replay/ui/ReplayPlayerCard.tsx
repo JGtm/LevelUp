@@ -27,7 +27,7 @@
  * classe pour classe. Seul l'HABIT change (le chrome tireté des tuiles d'attente,
  * `SEAT_WAITING_CHROME`) : une tuile d'attente ne décale rien.
  *
- * LES DEUX ACTIONS (D-6, `ReplayTileActionButtons`) : quand la page les donne (`actions`), la tuile porte Suivre et
+ * LES DEUX ACTIONS (`ReplayTileActionButtons`) : quand la page les donne (`actions`), la tuile porte Suivre et
  * l'œil en haut à droite — au survol ou au focus de la tuile (elle porte `group`), toujours visibles actifs. La tuile
  * d'un joueur MASQUÉ écrit « masqué » à côté de son nom, pâli.
  *
@@ -152,7 +152,7 @@ interface ReplayPlayerCardProps {
   panel?: { selected: boolean; onSelect: () => void }
   /** Vrai = le joueur suivi (le joueur regardé par la page) : la bordure prend la couleur de suivi. */
   tracked?: boolean
-  /** Suivre et l'œil de CE joueur (D-6) : absent = la tuile n'a pas ces boutons. */
+  /** Suivre et l'œil de CE joueur : absent = la tuile n'a pas ces boutons. */
   actions?: TileActions
 }
 

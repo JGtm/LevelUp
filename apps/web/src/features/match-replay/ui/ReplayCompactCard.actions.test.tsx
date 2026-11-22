@@ -1,6 +1,6 @@
 /**
  * Tests — les deux actions de la fiche compacte d'une Grande équipe (rangée du Cinéma : forme « stacked » ;
- * colonne du Standard : forme « line »), les mêmes que celles de la tuile (D-6, E.8) : Suivre et l'œil,
+ * colonne du Standard : forme « line »), les mêmes que celles de la tuile : Suivre et l'œil,
  * `aria-pressed`, noms accessibles, infobulle (titre puis phrase), clic sans ouverture de fiche, visibles au survol
  * ou au focus de la fiche et toujours visibles actifs (60 % sans survol), nom pâle, œil barré quand le joueur est
  * masqué. Elles viennent de `ReplayTileActionButtons` : aucun second composant.

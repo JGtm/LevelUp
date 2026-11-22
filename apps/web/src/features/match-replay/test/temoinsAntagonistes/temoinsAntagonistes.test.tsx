@@ -228,7 +228,7 @@ describe('témoins des antagonistes : Seul et Masquer d’un joueur', () => {
 
     const base = sortiesDuFiltre(scene, premierTueurDuPointDeVue(scene), mode) as Record<string, { total: number; dessines: number }>
     // Le filtre retire ou garde quelque chose, sans tout retirer ni tout garder. Sous Masquer, un effet de mort a
-    // toujours un second joueur affiché (DU-3) : tous les effets du film se dessinent, aucun n'est retiré.
+    // toujours un second joueur affiché : tous les effets du film se dessinent, aucun n'est retiré.
     const retires = mode === 'seul' ? ['pions', 'effetsDeMort', 'poses'] : ['pions', 'poses']
     for (const genre of ['pions', 'effetsDeMort', 'poses'] as const) {
       expect(base[genre].total).toBeGreaterThan(0)

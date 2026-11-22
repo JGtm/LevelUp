@@ -10,7 +10,7 @@
  * PlayerPanelText` dans chaque langue, `satisfies ReplayText` au-dessus).
  */
 
-/** Les actions d'une tuile ou d'une ligne (D-6) : Suivre, l'œil, et « Tout afficher » en tête de la colonne (D-7). */
+/** Les actions d'une tuile ou d'une ligne : Suivre, l'œil, et « Tout afficher » en tête de la colonne. */
 interface PlayerTileText {
   /** Le titre de l'infobulle de chaque geste ; il sert aussi d'intitulé de la liste « Suivre » du menu de caméra. */
   follow: string
@@ -33,7 +33,7 @@ interface PlayerTileText {
   showAll: string
 }
 
-/** « Seul » de la fiche (D-8) : son libellé et son infobulle, au repos et actif. */
+/** « Seul » de la fiche : son libellé et son infobulle, au repos et actif. */
 interface PlayerSoloText {
   label: string
   labelActive: string

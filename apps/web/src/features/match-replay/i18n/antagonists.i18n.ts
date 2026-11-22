@@ -7,7 +7,7 @@
  * frise, puis la section de la fiche). La parité des langues est tenue par le typage : une langue
  * ajoutée à `config/locales.toml` sans son entrée ici ne compile pas.
  *
- * LE VOCABULAIRE (D-1) : N est le joueur regardé, X le tenant du titre, Y l'ancien tenant, k le
+ * LE VOCABULAIRE : N est le joueur regardé, X le tenant du titre, Y l'ancien tenant, k le
  * compte de X, j celui de Y. « Némésis » est l'adversaire qui a éliminé N le plus de fois,
  * « Souffre-douleur » celui que N a le plus éliminé ; en anglais « Nemesis » et « Bully target »,
  * comme les cartes de la page du match.
@@ -39,7 +39,7 @@ export interface AntagonistsText {
     nemesis: BandRoleText
     victim: BandRoleText
   }
-  /** La section « Antagonistes » de la fiche d'un joueur (D-2). */
+  /** La section « Antagonistes » de la fiche d'un joueur. */
   fiche: {
     title: string
     nemesis: FicheRoleText

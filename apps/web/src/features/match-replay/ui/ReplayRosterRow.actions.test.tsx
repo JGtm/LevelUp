@@ -1,6 +1,6 @@
 /**
  * Tests — les deux actions de la ligne d'un joueur dans la colonne des équipes : les mêmes que celles de la tuile
- * (Suivre, œil), au même contrat (D-6) — boutons nommés à `aria-pressed`, infobulle, clic qui n'ouvre pas la fiche,
+ * (Suivre, œil), au même contrat — boutons nommés à `aria-pressed`, infobulle, clic qui n'ouvre pas la fiche,
  * visibles au survol ou au focus de la ligne et toujours visibles actifs, nom pâle et mention « masqué ».
  */
 import { useMemo } from 'react'

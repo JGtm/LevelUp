@@ -32,7 +32,7 @@ describe('drawKillFxLayer — les joueurs masqués', () => {
     expect(stars(trace({}, 1, 2))).toBe(2)
   })
 
-  it('un joueur masqué : l’effet dont l’autre joueur est affiché se dessine encore (DU-3)', () => {
+  it('un joueur masqué : l’effet dont l’autre joueur est affiché se dessine encore', () => {
     expect(stars(trace({ shown: killFxShown([A])! }, 1, 2))).toBe(2)
   })
 

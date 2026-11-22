@@ -1,10 +1,10 @@
 /**
- * Tests — antagonistBandLogic : la bande des titres de la frise (C.2, C.3 du plan des antagonistes).
+ * Tests — antagonistBandLogic : la bande des titres de la frise.
  *
  * Ils protègent :
  *  1. UNE ICÔNE PAR PRISE DE TITRE, AUCUNE POUR UNE ÉGALITÉ : le titre ne change pas de main sur
- *     une égalité (D-3), la frise ne le dit donc pas ;
- *  2. LES TEXTES D-1, EXACTS, en français et en anglais : titre (« Némésis : X »), puis phrase
+ *     une égalité, la frise ne le dit donc pas ;
+ *  2. LES TEXTES, EXACTS, en français et en anglais : titre (« Némésis : X »), puis phrase
  *     (première prise, ou dépassement avec l'ancien tenant et son compte) ;
  *  3. LA GÉOMÉTRIE : le ratio est celui des marques de la frise (`ratioOfMs`), l'image à viser est
  *     celle des portes de présence (`Math.round(t / frameIntervalMs)`) ; une prise hors de la
@@ -77,7 +77,7 @@ describe('buildAntagonistBand — la place sur l axe', () => {
   })
 })
 
-describe('buildAntagonistBand — textes D-1 en français', () => {
+describe('buildAntagonistBand — textes en français', () => {
   it('première prise de la némésis', () => {
     expect(band('fr')[0]).toMatchObject({ title: 'Némésis : Rival', phrase: 'Premier adversaire à éliminer JGtm.' })
   })
@@ -101,7 +101,7 @@ describe('buildAntagonistBand — textes D-1 en français', () => {
   })
 })
 
-describe('buildAntagonistBand — textes D-1 en anglais', () => {
+describe('buildAntagonistBand — textes en anglais', () => {
   it('première prise de la némésis', () => {
     expect(band('en')[0]).toMatchObject({ title: 'Nemesis: Rival', phrase: 'First opponent to eliminate JGtm.' })
   })

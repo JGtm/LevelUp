@@ -1,7 +1,7 @@
 /**
  * Tests — les deux actions de la tuile d'un joueur (rangée des équipes, forme « fiches ») : Suivre (la cible) et
  * l'œil (Masquer / Afficher), qui apparaissent au survol ou au focus de la tuile et restent visibles quand elles
- * sont actives (D-6).
+ * sont actives.
  *
  * Ce qu'ils protègent :
  *  1. OPT-IN : sans `tileActions`, la tuile n'a aucun bouton de plus.

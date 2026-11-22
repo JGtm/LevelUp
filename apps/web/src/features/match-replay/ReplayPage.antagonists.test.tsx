@@ -61,7 +61,7 @@ describe('ReplayPage : les cadres reçoivent la fabrique des antagonistes', () =
   })
 })
 
-describe('ReplayPage : la bande des titres de la frise (C.2)', () => {
+describe('ReplayPage : la bande des titres de la frise', () => {
   it('la barre complète du Standard porte la bande, la barre d une ligne du Cinéma n en porte pas', async () => {
     await mountReplayPage()
     act(() => goToFrame('standard'))
