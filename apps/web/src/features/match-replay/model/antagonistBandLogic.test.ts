@@ -7,12 +7,12 @@
  *  2. LES TEXTES, EXACTS, en français et en anglais : titre (« Némésis : X »), puis phrase
  *     (première prise, ou dépassement avec l'ancien tenant et son compte) ;
  *  3. LA GÉOMÉTRIE : le ratio est celui des marques de la frise (`ratioOfMs`), l'image à viser est
- *     celle des portes de présence (`Math.round(t / frameIntervalMs)`) ; une prise hors de la
+ *     la première image dont l'instant n'est pas antérieur à la prise (`frameAtOrAfter`) ; une prise hors de la
  *     fenêtre n'a pas de place sur l'axe et n'est pas posée.
  */
 import { describe, expect, it } from 'vitest'
 
-import type { AntagonistChange } from '@/lib/antagonists/antagonists'
+import { buildAntagonists, type AntagonistChange } from '@/lib/antagonists/antagonists'
 
 import { ANTAGONISTS_TEXT } from '../i18n/antagonists.i18n'
 import { buildAntagonistBand } from './antagonistBandLogic'
@@ -61,7 +61,7 @@ describe('buildAntagonistBand — une icône par prise, aucune pour une égalit�
 })
 
 describe('buildAntagonistBand — la place sur l axe', () => {
-  it('le ratio est celui de la frise, l image celle des portes de présence', () => {
+  it('le ratio est celui de la frise, l image celle de la prise', () => {
     const [premier] = band('fr')
     expect(premier.ratio).toBeCloseTo(0.1)
     expect(premier.frame).toBe(100)
@@ -122,5 +122,28 @@ describe('buildAntagonistBand — textes en anglais', () => {
       title: 'Bully target: Rival',
       phrase: 'Eliminated 2 times by JGtm, moves ahead of Fantome (1).',
     })
+  })
+})
+
+describe('buildAntagonistBand — l image visée montre déjà le nouveau tenant', () => {
+  // Les instants du fil ne sont pas alignés sur les images : arrondir vers le bas viserait une image
+  // AVANT l'élimination, où la carte et la fiche montreraient encore l'ancien tenant, même en pause.
+  const bandeDe = (t: number) => {
+    const index = buildAntagonists([{ killer: 'foe-1', victim: 'me-1', t }], 'me-1', (key) => key.startsWith('foe'))
+    const [item] = buildAntagonistBand(index.changes, {
+      nameOf, viewpointName: 'JGtm', frameIntervalMs: 100, scale: { from: 0, span: 1000 }, text: ANTAGONISTS_TEXT.fr,
+    })
+    return { index, item }
+  }
+
+  it.each([10_000, 10_040, 10_060, 10_099])('prise à %i ms : l image visée lue à son instant donne le nouveau tenant', (t) => {
+    const { index, item } = bandeDe(t)
+    expect(item.frame * 100).toBeGreaterThanOrEqual(t)
+    expect(index.at(item.frame * 100).nemesis?.holder).toBe('foe-1')
+  })
+
+  it('une prise dans la première moitié du pas vise l image suivante, pas la précédente', () => {
+    expect(bandeDe(10_040).item.frame).toBe(101)
+    expect(bandeDe(10_000).item.frame).toBe(100)
   })
 })
