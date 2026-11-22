@@ -194,16 +194,35 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 4ter — état de l'historique (D-15)
 
-- [ ] 4t.1 Port + lecture `platform/duckdb` : nombre de matchs et date du plus ancien par joueur et
-  titre (fuseau canonique, fragment partagé `sqlfrag`), état et marque-page par `historystate`.
-- [ ] 4t.2 Dernière passe et prochaine passe lues de l'ordonnanceur (issue par joueur déjà tenue,
-  heure du prochain cycle), derrière un port.
-- [ ] 4t.3 Route de lecture (handler sans logique), réponse localisée sans paire `_fr`/`_en`,
-  `make generate-types`.
-- [ ] 4t.4 Encadré dans l'onglet « Données & Médias », avec le bouton de l'étape 4bis : skills
+- [x] 4t.1 Port + lecture `platform/duckdb` : nombre de matchs et date du plus ancien par joueur et
+  titre (fuseau canonique, fragment partagé `sqlfrag`), état et marque-page par `historystate`. Fait :
+  `port.HistoryProgressReader`, `platform/duckdb/historyrepo` (`ReadHistoryProgress` : base partagée par
+  le fournisseur du titre, `SQLStartTimeCanonical`, Campagne retirée par `SQLExcludeCampaignVariants` comme
+  dans les autres lectures d'historique ; clé de fin par `OpenReadForQuery`, base absente = incomplet).
+  Le marque-page (D-13, étape 2.0) n'existe pas encore sur cette branche : l'état lu est la seule clé de
+  fin ; l'intégration pourra ajouter la position du marque-page à `HistoryProgress` sans changer la route.
+- [x] 4t.2 Dernière passe et prochaine passe lues de l'ordonnanceur (issue par joueur déjà tenue,
+  heure du prochain cycle), derrière un port. Fait : `port.SyncActivity` (`LastPass`, `NextCycleAt`,
+  `AutoSyncEnabled`). Écart au plan : `PlayerOutcomeDetail` ne porte pas les joueurs du pipeline V2 (le
+  diag et la notification Discord les compteraient deux fois s'ils y entraient) ; la dernière passe vit
+  donc dans une table à part (`scheduler/auto_sync_passes.go`), alimentée par l'issue du cycle V2 et par
+  `syncPlayer`. Mémoire seule : après un redémarrage, l'écran dit « Aucune passe depuis le démarrage ».
+  L'erreur d'une passe n'est pas servie en texte (le texte d'une erreur ne part pas au client) : l'écran
+  dit l'issue (réussie, partielle, échec, différée) et le nombre de matchs ajoutés.
+- [x] 4t.3 Route de lecture (handler sans logique), réponse localisée sans paire `_fr`/`_en`,
+  `make generate-types`. Fait : `GET /api/v1/players/{player_slug}/sync/history` (200
+  `HistorySyncStatus`), sous le groupe `/players/{player_slug}` (garde de propriété héritée), service
+  `service.HistorySyncService`, libellés d'état et d'issue du catalogue `sync.history.*`
+  (`internal/i18n/messages/sync.toml`).
+- [x] 4t.4 Encadré dans l'onglet « Données & Médias », avec le bouton de l'étape 4bis : skills
   `frontend-patterns`, `color-tokens`, `foundations-usage` ; query key dans `lib/query/keys.ts` ;
   rafraîchissement périodique seulement pendant un rattrapage ; état vide et état d'erreur ; FR/EN.
-- [ ] 4t.5 Tests : repo sur DuckDB `:memory:`, handler `httptest`, composant vitest.
+  Fait (`SyncNowCard.tsx`, `HistoryState.tsx`, `syncNowQueries.ts`, `syncNowLogic.ts`,
+  `syncNowText.ts`) ; clé `historySyncStatus(playerSlug, locale)` ; relecture toutes les 5 s pendant un
+  cycle, toutes les 30 s pendant un rattrapage, jamais au repos, une fois à la fin de chaque cycle.
+- [x] 4t.5 Tests : repo sur DuckDB `:memory:`, handler `httptest`, composant vitest. Fait (dépôt,
+  service, handler, ordonnanceur, logique pure et composant : complet / rattrapage / échec de passe / cycle
+  en cours / désactivé / EN / vide / erreur / chargement).
 - Gate : celui de l'étape 4bis.
 
 ### Étape 5bis — mesure d'une passe (D-14)
@@ -271,3 +290,22 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   peut pas ranger la fin (base `nil`) : `HistoryPending` reste vrai, la passe suivante rattrape.
 - Étape 1 : une passe V1 qui sort en erreur avant la fin (chargement des connus, bail) rend
   `HistoryPending` faux (valeur par défaut) ; l'ordonnanceur (étape 4) lit aussi l'erreur du cycle.
+- Étape 4 : `POST /admin/actions/auto-sync/run` (et la commande `sync` du menu de la zone de notification)
+  appellent `RunOnceTrigger` ; depuis le garde « jamais deux cycles à la fois », un appel pendant un cycle
+  rend un résultat vide (`busy`) que le job admin rapporte comme réussi avec zéro joueur : un 409 serait
+  plus juste (non traité, hors périmètre).
+- Étape 4bis : « Synchroniser maintenant » est ouvert à tout joueur connecté et lance un cycle pour TOUS les
+  joueurs suivis, sans délai minimal entre deux cycles (le sync manuel d'un seul joueur, lui, a un
+  `cooldown_retry_after_s`) : sur une instance hébergée, un compte peut enchaîner les cycles. À arbitrer
+  par l'utilisateur (un délai minimal serait une ligne dans l'ordonnanceur).
+- Étape 4bis : le gate de l'étape (api, scheduler) ne joue pas `archlint` ; le garde-rail
+  `TestDeploymentSingleResolver_LecturesDesTroisReglages` (plafond des lectures de `.DemoMode` /
+  `.AuthMode` dans `server_apiv1.go`) a refusé le second `RequireAuth(cfg.DemoMode, cfg.AuthMode)` du
+  commit 4bis. Corrigé dans le commit 4ter : « Synchroniser maintenant » est monté dans le groupe
+  `RequireAuth` existant, le groupe administrateur (`RequireAdmin`) y est imbriqué, sans nouvelle lecture.
+- Étape 4ter : le compte « matchs enregistrés » exclut la Campagne des titres qui la masquent
+  (`SQLExcludeCampaignVariants`), comme les autres lectures de l'historique du joueur ; il peut donc être
+  inférieur au nombre de lignes de `match_participants`.
+- Étape 4ter : `fix/822-e` n'a pas les étapes 2 et 3 : `PlayerOutcome.HistoryPending` n'est pas encore
+  rempli par le pipeline V2 ni par le runner Halo 5 ; la cadence de rattrapage ne s'active, tant que ce
+  n'est pas intégré, que par un joueur en échec (clé de fin absente) ou par le moteur V1 (filet de boot).

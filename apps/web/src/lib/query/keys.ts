@@ -59,6 +59,10 @@ export const queryKeys = {
   dataStatus: ['data-status'] as const,
   // Un cycle de synchronisation tourne-t-il (GET /sync/cycle) : un booléen, global (tous les joueurs suivis).
   syncCycle: ['sync-cycle'] as const,
+  // État de l'historique d'un joueur, par titre suivi (GET /players/{slug}/sync/history) : le serveur résout
+  // les libellés d'état dans la langue de la requête, donc la langue est le dernier segment. Sans titre : la
+  // réponse porte tous les titres suivis du joueur.
+  historySyncStatus: (playerSlug: string, locale: string) => ['history-sync-status', playerSlug, locale] as const,
   // Décompte et état de la file de régénération des rejeux (GET /desktop/replay-regen) : codes et nombres seulement.
   replayRegen: ['replay-regen'] as const,
   // État du paquet de ressources de l'application de bureau (GET /desktop/resources) : phase, pourcentage et code d'erreur seulement.

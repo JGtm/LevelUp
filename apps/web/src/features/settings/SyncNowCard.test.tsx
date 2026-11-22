@@ -92,3 +92,138 @@ describe('SyncNowCard', () => {
     expect(container).toBeEmptyDOMElement()
   })
 })
+
+
+// ─── État de l'historique ────────────────────────────────────────────────────────────────────────────────
+
+const JOUEUR = { player_slug: 'JGtm', gamertag: 'JGtm' } as unknown as ReturnType<typeof useAppShellStore.getState>['currentPlayer']
+
+const TITRE_RATTRAPAGE = {
+  title_slug: 'halo_infinite',
+  title_name: 'Halo Infinite',
+  state: 'catching_up',
+  state_label: 'Rattrapage en cours',
+  match_count: 6812,
+  oldest_match_at: '2019-09-03T18:20:00Z',
+  last_pass: { at: '2026-11-22T14:00:00Z', matches_added: 200, status: 'ok', status_label: 'Réussie' },
+}
+
+let historyReads = 0
+
+function serveurHistorique(body: unknown | { status: number }, opts: { running?: boolean } = {}) {
+  server.use(
+    http.get(`${API}/sync/cycle`, () => HttpResponse.json({ running: opts.running ?? false })),
+    http.get(`${API}/players/JGtm/sync/history`, () => {
+      historyReads += 1
+      if (body && typeof body === 'object' && 'status' in body && Object.keys(body).length === 1) {
+        return HttpResponse.json({ code: 'history_sync_failed', message: 'x', retryable: false }, { status: (body as { status: number }).status })
+      }
+      return HttpResponse.json(body)
+    }),
+  )
+}
+
+describe('SyncNowCard — état de l’historique', () => {
+  beforeEach(() => {
+    historyReads = 0
+    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_run_sync: true }), currentPlayer: JOUEUR })
+  })
+  afterEach(() => {
+    useAppShellStore.setState({ locale: 'fr', capabilities: null, currentPlayer: null })
+  })
+
+  it('rattrapage en cours : état, matchs enregistrés, plus ancien, dernière et prochaine passe', async () => {
+    serveurHistorique({
+      auto_sync_enabled: true,
+      next_cycle_at: '2026-11-22T14:10:00Z',
+      titles: [TITRE_RATTRAPAGE],
+    })
+    renderWithProviders(<SyncNowCard />)
+    const bloc = await screen.findByTestId('history-title-halo_infinite')
+    expect(bloc).toHaveTextContent('Halo Infinite')
+    expect(screen.getByTestId('history-state')).toHaveTextContent('Rattrapage en cours')
+    expect(screen.getByTestId('history-matches')).toHaveTextContent(/6\s?812/)
+    expect(screen.getByTestId('history-oldest')).toHaveTextContent('2019')
+    expect(screen.getByTestId('history-last-pass')).toHaveTextContent(/Réussie, le .*2026/)
+    expect(screen.getByTestId('history-last-pass')).toHaveTextContent('Matchs ajoutés : 200')
+    expect(screen.getByTestId('history-next-pass')).toHaveTextContent(/Vers .*2026/)
+  })
+
+  it('historique complet : le libellé du serveur, et une seule lecture au repos', async () => {
+    serveurHistorique({
+      auto_sync_enabled: true,
+      titles: [{ ...TITRE_RATTRAPAGE, state: 'complete', state_label: 'Complet', last_pass: undefined }],
+    })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByTestId('history-state')).toHaveTextContent('Complet')
+    expect(screen.getByTestId('history-last-pass')).toHaveTextContent('Aucune passe depuis le démarrage')
+    expect(screen.getByTestId('history-next-pass')).toHaveTextContent('Pas encore planifiée')
+    await new Promise((r) => setTimeout(r, 150))
+    expect(historyReads).toBe(1)
+  })
+
+  it('une passe en échec se signale, sans compte de matchs ajoutés', async () => {
+    serveurHistorique({
+      auto_sync_enabled: true,
+      titles: [
+        { ...TITRE_RATTRAPAGE, last_pass: { at: '2026-11-22T14:00:00Z', matches_added: 0, status: 'failed', status_label: 'Échec' } },
+      ],
+    })
+    renderWithProviders(<SyncNowCard />)
+    const passe = await screen.findByTestId('history-last-pass')
+    expect(passe).toHaveTextContent(/Échec, le/)
+    expect(passe).not.toHaveTextContent('Matchs ajoutés')
+    expect(passe.querySelector('.text-destructive')).not.toBeNull()
+  })
+
+  it('un cycle en cours se lit dans la prochaine passe, la synchronisation automatique coupée aussi', async () => {
+    serveurHistorique({ auto_sync_enabled: false, titles: [TITRE_RATTRAPAGE] }, { running: true })
+    renderWithProviders(<SyncNowCard />)
+    await screen.findByTestId('history-title-halo_infinite')
+    await waitFor(() => expect(screen.getByTestId('history-next-pass')).toHaveTextContent('Synchronisation en cours'))
+  })
+
+  it('synchronisation automatique désactivée hors cycle', async () => {
+    serveurHistorique({ auto_sync_enabled: false, titles: [TITRE_RATTRAPAGE] })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByTestId('history-next-pass')).toHaveTextContent('Synchronisation automatique désactivée')
+  })
+
+  it('en anglais, les rangées et les dates suivent la langue de l’interface', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    serveurHistorique({
+      auto_sync_enabled: true,
+      titles: [{ ...TITRE_RATTRAPAGE, state_label: 'Catching up', last_pass: { at: '2026-11-22T14:00:00Z', matches_added: 200, status: 'ok', status_label: 'Succeeded' } }],
+    })
+    renderWithProviders(<SyncNowCard />)
+    const bloc = await screen.findByTestId('history-title-halo_infinite')
+    expect(bloc).toHaveTextContent('Recorded matches')
+    expect(bloc).toHaveTextContent('Oldest match')
+    expect(screen.getByTestId('history-state')).toHaveTextContent('Catching up')
+    expect(screen.getByTestId('history-matches')).toHaveTextContent('6,812')
+    expect(screen.getByTestId('history-last-pass')).toHaveTextContent(/Succeeded, on .*2026/)
+  })
+
+  it('aucun titre suivi : un bloc d’état vide, sans action', async () => {
+    serveurHistorique({ auto_sync_enabled: true, titles: [] })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByText('Aucun titre suivi')).toBeInTheDocument()
+    expect(screen.queryByTestId('history-state')).toBeNull()
+  })
+
+  it('lecture en échec : le dit, le bouton reste utilisable', async () => {
+    serveurHistorique({ status: 500 })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByText("L'état de l'historique n'a pas pu être lu.")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Synchroniser maintenant' })).toBeEnabled()
+  })
+
+  it('pendant la lecture : un texte de chargement', async () => {
+    server.use(
+      http.get(`${API}/sync/cycle`, () => HttpResponse.json({ running: false })),
+      http.get(`${API}/players/JGtm/sync/history`, () => new Promise(() => {})),
+    )
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByText("Lecture de l'état de l'historique…")).toBeInTheDocument()
+  })
+})

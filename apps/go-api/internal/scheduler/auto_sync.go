@@ -24,7 +24,6 @@ import (
 	"context"
 	"log/slog"
 	gosync "sync"
-	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -87,14 +86,10 @@ type RunOnceResult struct {
 	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
 	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
 	newMatchPlayers []notify.PlayerSyncResult
-
-	// historyPending liste les gamertags des joueurs dont l'historique reste incomplet à la fin du
-	// cycle : la boucle de Run en tire la cadence du cycle suivant (catchUpCycleInterval). Non
-	// exporté : l'état de l'historique d'un joueur se lit par le port de l'état de l'historique.
+	// historyPending : gamertags des joueurs à l'historique incomplet en fin de cycle (cadence de Run) ;
+	// busy : le cycle n'a pas tourné, un autre tournait déjà.
 	historyPending []string
-
-	// busy : le cycle demandé n'a pas tourné parce qu'un autre tournait déjà (RunOnceTrigger).
-	busy bool
+	busy           bool
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -261,25 +256,7 @@ type AutoSyncScheduler struct {
 	// catchUpCh porte les demandes de rattrapage (RequestCatchUp) jusqu'à la boucle de Run.
 	catchUpCh chan string
 
-	// historyReader dit si l'historique d'un joueur est complet quand sa passe a échoué avant de
-	// pouvoir le dire (WithHistoryReader). Nil : un joueur en échec ne compte pas comme en rattrapage.
-	historyReader port.HistoryCompletionReader
-
-	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
-	newTicker func(time.Duration) cycleTicker
-	now       func() time.Time
-	// cycleRunning : un cycle tourne (RunOnceTrigger). Source de « jamais deux cycles à la fois » et du
-	// refus d'un clic « Synchroniser maintenant » pendant un cycle.
-	cycleRunning atomic.Bool
-	// manualCtx et manualWG portent les cycles demandés à la main (BindManualCycles) : annulés à
-	// l'arrêt, attendus avant la fermeture des bases. replanCh porte l'issue d'un cycle hors tick
-	// jusqu'à la boucle de Run.
-	manualCtx context.Context
-	manualWG  *gosync.WaitGroup
-	replanCh  chan []string
-	// nextCycleAt : instant (horloge murale) du prochain cycle périodique, mis à jour par la boucle de
-	// Run ; zéro tant que la boucle n'a pas démarré. Protégé par snapshotMu.
-	nextCycleAt time.Time
+	cycleState // cadence de Run, cycles demandés, dernière passe par joueur (auto_sync_loop.go)
 
 	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
 	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
@@ -305,9 +282,9 @@ func New(
 		postSyncHistory: make(map[string][]int64),
 		// Défaut no-op : pas de dédup cross-source tant que main.go n'injecte pas
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
-		SyncGate:  sync.NopSyncGate{},
-		catchUpCh: make(chan string, catchUpQueue),
-		replanCh:  make(chan []string, 1),
+		SyncGate:   sync.NopSyncGate{},
+		catchUpCh:  make(chan string, catchUpQueue),
+		cycleState: cycleState{replanCh: make(chan []string, 1)},
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner
@@ -368,13 +345,6 @@ func (s *AutoSyncScheduler) WithPrestigeHook(hook func(ctx context.Context, play
 // Doit être appelé depuis cmd/server/main.go au boot, avant Run.
 func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *AutoSyncScheduler {
 	s.cycleOrchestrator = o
-	return s
-}
-
-// WithHistoryReader branche la lecture de l'état de l'historique (clé de fin d'historique de la base
-// joueur) dont l'ordonnanceur se sert pour un joueur dont la passe a échoué avant de pouvoir le dire.
-func (s *AutoSyncScheduler) WithHistoryReader(r port.HistoryCompletionReader) *AutoSyncScheduler {
-	s.historyReader = r
 	return s
 }
 
@@ -526,6 +496,7 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 	if err != nil {
 		return nil, err
 	}
+	s.recordV2Passes(players, cycleRes.PerPlayer)
 
 	res := &RunOnceResult{
 		Total:          len(players),

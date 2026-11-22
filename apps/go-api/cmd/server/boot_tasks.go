@@ -83,7 +83,7 @@ func initScheduler(st *bootState) {
 	// sert pour un joueur dont la passe a échoué avant de pouvoir dire où il en est.
 	historyReader := historyrepo.New(func(titleSlug, gamertag string) string {
 		return config.PlayerDBPath(cfg, titleSlug, gamertag)
-	})
+	}, nil)
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
 		WithFriendStore(friendStore).
 		WithHistoryReader(historyReader)

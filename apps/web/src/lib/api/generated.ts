@@ -3732,6 +3732,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/sync/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historique d'un joueur, par titre suivi */
+        get: operations["getPlayerSyncHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/sync/status": {
         parameters: {
             query?: never;
@@ -8257,6 +8274,36 @@ export interface components {
             /** Format: int64 */
             count: number;
             value: string;
+        };
+        HistoryPass: {
+            /**
+             * Format: date-time
+             * @description Fin de la passe.
+             */
+            at: string;
+            /**
+             * Format: int64
+             * @description Matchs ajoutés par la passe.
+             */
+            matches_added: number;
+            /**
+             * @description Issue de la passe.
+             * @enum {string}
+             */
+            status: "ok" | "partial" | "failed" | "skipped";
+            /** @description Libellé de l'issue, dans la langue de la requête. */
+            status_label: string;
+        };
+        HistorySyncStatus: {
+            /** @description La synchronisation automatique est activée dans les réglages. */
+            auto_sync_enabled: boolean;
+            /**
+             * Format: date-time
+             * @description Instant du prochain cycle périodique ; absent tant que la boucle n'a pas démarré.
+             */
+            next_cycle_at?: string;
+            /** @description Un élément par titre suivi pour ce joueur. */
+            titles: components["schemas"]["TitleHistoryStatus"][] | null;
         };
         HomeCareerRankSummary: {
             adornment_image_url?: string;
@@ -14563,6 +14610,30 @@ export interface components {
             title_slug: string;
             /** Format: int64 */
             warn_count: number;
+        };
+        TitleHistoryStatus: {
+            /** @description Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur. */
+            last_pass?: components["schemas"]["HistoryPass"];
+            /**
+             * Format: int64
+             * @description Matchs du joueur enregistrés dans la base partagée du titre.
+             */
+            match_count: number;
+            /**
+             * Format: date-time
+             * @description Début du plus ancien match enregistré.
+             */
+            oldest_match_at?: string;
+            /**
+             * @description complete : fin de l'historique vue ; catching_up : rattrapage en cours ; paused : titre en pause ; unknown : lecture en échec.
+             * @enum {string}
+             */
+            state: "complete" | "catching_up" | "paused" | "unknown";
+            /** @description Libellé de l'état, dans la langue de la requête. */
+            state_label: string;
+            /** @description Nom du titre, tel que le registre le déclare. */
+            title_name: string;
+            title_slug: string;
         };
         TitlePurgeOutputBody: {
             data_removed: boolean;
@@ -23221,6 +23292,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerSyncHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistorySyncStatus"];
                 };
             };
             /** @description Error */

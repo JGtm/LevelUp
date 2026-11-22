@@ -8,11 +8,14 @@ package scheduler
 import (
 	"context"
 	"log/slog"
+	gosync "sync"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/adminstate"
+	"levelup/go-api/internal/port"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -22,6 +25,34 @@ import (
 // réglé est plus court, il garde la main : le rattrapage ne ralentit jamais la synchronisation.
 // Le compte à rebours part de la fin du cycle, pas de son début.
 const catchUpCycleInterval = 10 * time.Minute
+
+// cycleState regroupe l'état de la boucle de Run et des cycles hors tick ; AutoSyncScheduler l'embarque.
+// Les champs protégés par snapshotMu le sont par celui de l'ordonnanceur.
+type cycleState struct {
+	// historyReader dit si l'historique d'un joueur est complet quand sa passe a échoué avant de pouvoir le
+	// dire (WithHistoryReader). Nil : un joueur en échec ne compte pas comme en rattrapage.
+	historyReader port.HistoryCompletionReader
+
+	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
+	newTicker func(time.Duration) cycleTicker
+	now       func() time.Time
+	// nextCycleAt : instant (horloge murale) du prochain cycle périodique, mis à jour par la boucle de
+	// Run ; zéro tant que la boucle n'a pas démarré. Protégé par snapshotMu.
+	nextCycleAt time.Time
+
+	// cycleRunning : un cycle tourne (RunOnceTrigger). Source de « jamais deux cycles à la fois » et du
+	// refus d'un clic « Synchroniser maintenant » pendant un cycle.
+	cycleRunning atomic.Bool
+	// manualCtx et manualWG portent les cycles demandés à la main (BindManualCycles) : annulés à l'arrêt,
+	// attendus avant la fermeture des bases. replanCh porte l'issue d'un cycle hors tick jusqu'à la boucle
+	// de Run.
+	manualCtx context.Context
+	manualWG  *gosync.WaitGroup
+	replanCh  chan []string
+
+	// lastPasses : dernière passe par (titre, joueur) depuis le démarrage. Protégé par snapshotMu.
+	lastPasses map[string]port.SyncPass
+}
 
 // cycleTicker est l'horloge de la boucle de Run : *time.Ticker en production, un faux dans les tests.
 type cycleTicker interface {
@@ -60,8 +91,8 @@ func (s *AutoSyncScheduler) makeTicker(d time.Duration) cycleTicker {
 }
 
 // NextCycleAt rend l'instant (horloge murale) du prochain cycle périodique, zéro tant que la boucle
-// de Run n'a pas démarré. Un cycle demandé à la main ne le déplace pas. Il ne dit pas si l'auto-sync
-// est activée : un cycle n'a lieu que si le réglage l'est à ce moment-là.
+// de Run n'a pas démarré. La fin d'un cycle, périodique ou demandé à la main, le recale. Il ne dit pas
+// si l'auto-sync est activée : un cycle n'a lieu que si le réglage l'est à ce moment-là.
 func (s *AutoSyncScheduler) NextCycleAt() time.Time {
 	s.snapshotMu.RLock()
 	defer s.snapshotMu.RUnlock()
@@ -242,7 +273,7 @@ func (s *AutoSyncScheduler) pendingHistoryAfterV2(ctx context.Context, players [
 	for _, p := range players {
 		o, ok := per[p.PlayerSlug]
 		var pending bool
-		if ok && o.Status != "failed" {
+		if ok && o.Status != statusFailed {
 			pending = o.HistoryPending
 		} else {
 			pending = s.historyIncomplete(ctx, p)
@@ -252,4 +283,11 @@ func (s *AutoSyncScheduler) pendingHistoryAfterV2(ctx context.Context, players [
 		}
 	}
 	return out
+}
+
+// WithHistoryReader branche la lecture de l'état de l'historique (clé de fin d'historique de la base
+// joueur) dont l'ordonnanceur se sert pour un joueur dont la passe a échoué avant de pouvoir le dire.
+func (s *AutoSyncScheduler) WithHistoryReader(r port.HistoryCompletionReader) *AutoSyncScheduler {
+	s.historyReader = r
+	return s
 }

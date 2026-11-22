@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/historyrepo"
 	"levelup/go-api/internal/platform/duckdb/profilerepo"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
@@ -685,22 +686,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// n'importe quel joueur. Protégées par RequireAuth + RequireAdmin comme le
 	// groupe /admin. En mode demo/single-user les middlewares no-opent (onboarding
 	// préservé) ; en multi-user, seul un admin peut déclencher.
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
-		syncH.MountInitialAndAll(r, apiOpt) // POST /sync/initial, /sync/all (Huma)
-		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
-		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
-		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
-		// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
-		handlers.NewBackfillHandler(syncJobs).Mount(r, apiOpt) // POST /backfill/start
-	})
-
 	// « Synchroniser maintenant » (Réglages › Données & Médias) : lance le cycle de l'ordonnanceur, le même
-	// que le cycle périodique, pour tous les joueurs suivis. Ouvert à tout joueur connecté (RequireAuth, sans
-	// RequireAdmin : le cycle ne prend aucun paramètre, il ne vise aucun joueur choisi par l'appelant) ;
-	// refusé en démo par RequireAuth. Sans ordonnanceur câblé (démo, rendu du contrat), la route est montée et
-	// répond 503.
+	// que le cycle périodique, pour tous les joueurs suivis. Ouvert à tout joueur connecté (RequireAuth seul :
+	// le cycle ne prend aucun paramètre, il ne vise aucun joueur choisi par l'appelant) ; refusé en démo par
+	// RequireAuth. Sans ordonnanceur câblé (démo, rendu du contrat), la route est montée et répond 503.
 	var syncNow port.SyncNowService
 	if autoSyncScheduler != nil {
 		syncNow = autoSyncScheduler
@@ -708,7 +697,37 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		handlers.NewSyncNowHandler(syncNow).Mount(r, apiOpt) // POST /sync/now, GET /sync/cycle
+		// Le reste du groupe est réservé à l'administrateur (RequireAuth puis RequireAdmin).
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
+			syncH.MountInitialAndAll(r, apiOpt) // POST /sync/initial, /sync/all (Huma)
+			// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
+			// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
+			// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
+			// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
+			handlers.NewBackfillHandler(syncJobs).Mount(r, apiOpt) // POST /backfill/start
+		})
 	})
+
+	// État de l'historique d'un joueur, par titre suivi (nombre de matchs rangés, plus ancien, rattrapage en
+	// cours ou complet, dernière passe, prochaine passe) : lecture seule, montée sous /players/{player_slug}
+	// (garde de propriété héritée). Sans ordonnanceur câblé (démo, rendu du contrat), la route est montée et
+	// répond 503.
+	var historySvc port.HistorySyncService
+	if autoSyncScheduler != nil {
+		historyRepo := historyrepo.New(
+			func(titleSlug, gamertag string) string { return config.PlayerDBPath(cfg, titleSlug, gamertag) },
+			func(titleSlug string) platform_duckdb.SharedReader {
+				return playerresolve.SharedReaderForTitle(cfg, titleSlug)
+			})
+		historySvc = service.NewHistorySyncService(cfg, historyRepo, autoSyncScheduler, func(titleSlug string) string {
+			if desc := titleRegistry.Get(titleSlug); desc != nil {
+				return desc.Name
+			}
+			return ""
+		})
+	}
+	syncHistoryH := handlers.NewSyncHistoryHandler(historySvc)
 
 	// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
 	// multipart upload du .db SQLite OpenSpartan, validation XUID via session
@@ -1202,7 +1221,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		leaderboard.Mount(r, playerOpt)
 
 		// Sync delta par joueur
-		syncH.MountDelta(r, playerOpt) // POST /sync (Huma, sous /players/{player_slug})
+		syncH.MountDelta(r, playerOpt)   // POST /sync (Huma, sous /players/{player_slug})
+		syncHistoryH.Mount(r, playerOpt) // GET /sync/history (Huma, sous /players/{player_slug})
 	})
 
 	// Endpoints P1 : répertoire gamertags

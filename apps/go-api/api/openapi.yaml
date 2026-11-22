@@ -6757,6 +6757,31 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/sync/history:
+    get:
+      operationId: getPlayerSyncHistory
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistorySyncStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Historique d'un joueur, par titre suivi
+      tags:
+        - sync
   /players/{player_slug}/sync/status:
     get:
       operationId: getPlayerSyncStatus
@@ -17002,6 +17027,55 @@ components:
       required:
         - value
         - count
+      type: object
+    HistoryPass:
+      additionalProperties: false
+      properties:
+        at:
+          description: Fin de la passe.
+          format: date-time
+          type: string
+        matches_added:
+          description: Matchs ajoutés par la passe.
+          format: int64
+          type: integer
+        status:
+          description: Issue de la passe.
+          enum:
+            - ok
+            - partial
+            - failed
+            - skipped
+          type: string
+        status_label:
+          description: Libellé de l'issue, dans la langue de la requête.
+          type: string
+      required:
+        - at
+        - matches_added
+        - status
+        - status_label
+      type: object
+    HistorySyncStatus:
+      additionalProperties: false
+      properties:
+        auto_sync_enabled:
+          description: La synchronisation automatique est activée dans les réglages.
+          type: boolean
+        next_cycle_at:
+          description: Instant du prochain cycle périodique ; absent tant que la boucle n'a pas démarré.
+          format: date-time
+          type: string
+        titles:
+          description: Un élément par titre suivi pour ce joueur.
+          items:
+            $ref: '#/components/schemas/TitleHistoryStatus'
+          type:
+            - array
+            - "null"
+      required:
+        - auto_sync_enabled
+        - titles
       type: object
     HomeCareerRankSummary:
       additionalProperties: false
@@ -32496,6 +32570,43 @@ components:
         - players
         - warn_count
         - critical_count
+      type: object
+    TitleHistoryStatus:
+      additionalProperties: false
+      properties:
+        last_pass:
+          $ref: '#/components/schemas/HistoryPass'
+          description: Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur.
+        match_count:
+          description: Matchs du joueur enregistrés dans la base partagée du titre.
+          format: int64
+          type: integer
+        oldest_match_at:
+          description: Début du plus ancien match enregistré.
+          format: date-time
+          type: string
+        state:
+          description: 'complete : fin de l''historique vue ; catching_up : rattrapage en cours ; paused : titre en pause ; unknown : lecture en échec.'
+          enum:
+            - complete
+            - catching_up
+            - paused
+            - unknown
+          type: string
+        state_label:
+          description: Libellé de l'état, dans la langue de la requête.
+          type: string
+        title_name:
+          description: Nom du titre, tel que le registre le déclare.
+          type: string
+        title_slug:
+          type: string
+      required:
+        - title_slug
+        - title_name
+        - state
+        - state_label
+        - match_count
       type: object
     TitlePurgeOutputBody:
       additionalProperties: false

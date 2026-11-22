@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/adminstate"
+	"levelup/go-api/internal/port"
 )
 
 // RunOnce exécute un cycle de sync pour tous les joueurs configurés.
@@ -101,6 +102,7 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 				"err", v2Err)
 			// runOnceV2 renvoie nil sur erreur globale : aucun joueur n'a pu dire où en est son historique.
 			v2Res = &RunOnceResult{historyPending: s.pendingHistoryOf(ctx, orchPlayers)}
+			s.recordFailedPasses(orchPlayers)
 		}
 		liveSynced, liveSkipped, liveFailed, livePending := s.syncPlayersConcurrent(ctx, livePlayers)
 		v2Res.historyPending = append(v2Res.historyPending, livePending...)
@@ -192,6 +194,19 @@ const (
 	outcomeFailed                     // erreur bloquante pendant RunDelta
 )
 
+// outcomeName est le nom d'une issue dans PlayerOutcomeDetail.Outcome.
+func outcomeName(o syncOutcome) string {
+	switch o {
+	case outcomeOK:
+		return "ok"
+	case outcomeSkipped:
+		return "skipped"
+	case outcomeFailed:
+		return statusFailed
+	}
+	return ""
+}
+
 // syncPlayer lance une sync delta pour un joueur et rend son issue (voir syncPlayerWithHistory).
 func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
 	outcome, _ := s.syncPlayerWithHistory(ctx, p)
@@ -234,20 +249,14 @@ func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.
 		ConsecutiveZeroInserts: prevZeroInserts, // défaut : préserver (cas skipped/failed)
 	}
 	defer func() {
-		switch outcome {
-		case outcomeOK:
-			detail.Outcome = "ok"
-		case outcomeSkipped:
-			detail.Outcome = "skipped"
-		case outcomeFailed:
-			detail.Outcome = "failed"
-		}
+		detail.Outcome = outcomeName(outcome)
 		detail.DurationMs = time.Since(startedAt).Milliseconds()
 		s.recordOutcome(detail)
-	}()
-	// Une passe en échec n'a pas pu dire où en est l'historique : sans fin rangée, le cycle suivant
-	// doit venir vite (cadence de rattrapage).
-	defer func() {
+		s.recordPass(resolveTitleSlug(p), p.Gamertag, port.SyncPass{
+			At: time.Now(), MatchesInserted: detail.MatchesInserted, Status: passStatusOfSync(outcome, detail),
+		})
+		// Une passe en échec n'a pas pu dire où en est l'historique : sans fin rangée, le cycle suivant
+		// doit venir vite (cadence de rattrapage).
 		if outcome == outcomeFailed {
 			pending = s.historyIncomplete(ctx, p)
 		}

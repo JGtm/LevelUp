@@ -206,6 +206,7 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   career: () => queryKeys.career(PL, TI, L),
   careerHighlightMatches: () => queryKeys.careerHighlightMatches(PL, TI, 'f', L),
   careerCSRs: () => queryKeys.careerCSRs(PL, TI, L),
+  historySyncStatus: () => queryKeys.historySyncStatus(PL, L),
   achievements: () => queryKeys.achievements(PL, TI, L),
   matchHistory: () => queryKeys.matchHistory(PL, TI, 'h', 1, [], L),
   explorer: () => queryKeys.explorer(PL, TI, 'h', [], [], '', [], '', L),
