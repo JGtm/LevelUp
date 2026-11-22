@@ -13326,65 +13326,6 @@ export interface components {
             first_deaths: components["schemas"]["ImpactEventSummary"];
             last_kills: components["schemas"]["ImpactEventSummary"];
         };
-        SquadImpactBadgeCount: {
-            badge_key: string;
-            /** Format: int64 */
-            count: number;
-        };
-        SquadImpactCell: {
-            badge_keys: string[] | null;
-            match_id: string;
-            player: string;
-        };
-        SquadImpactEvening: {
-            /** Format: int64 */
-            matches: number;
-            players: components["schemas"]["SquadImpactEveningPlayer"][] | null;
-            session_label: string;
-            start_time: string;
-            /** Format: int64 */
-            wins: number;
-        };
-        SquadImpactEveningPlayer: {
-            player: string;
-            /** Format: double */
-            points: number;
-            roles: components["schemas"]["SquadImpactRoleCount"][] | null;
-        };
-        SquadImpactHistory: {
-            evenings: components["schemas"]["SquadImpactEvening"][] | null;
-            players: string[] | null;
-            scale: components["schemas"]["SquadImpactRoleWeight"][] | null;
-        };
-        SquadImpactMatchHeader: {
-            match_id: string;
-            /** Format: int64 */
-            outcome: number;
-        };
-        SquadImpactMatrix: {
-            badge_ord: string[] | null;
-            cells: components["schemas"]["SquadImpactCell"][] | null;
-            matches: components["schemas"]["SquadImpactMatchHeader"][] | null;
-            players: components["schemas"]["SquadImpactPlayerSummary"][] | null;
-        };
-        SquadImpactPlayerSummary: {
-            counts: components["schemas"]["SquadImpactBadgeCount"][] | null;
-            player: string;
-            /** Format: double */
-            score: number;
-        };
-        SquadImpactRoleCount: {
-            /** Format: int64 */
-            count: number;
-            /** Format: double */
-            points: number;
-            role: string;
-        };
-        SquadImpactRoleWeight: {
-            /** Format: double */
-            points: number;
-            role: string;
-        };
         SquadImpactSessions: {
             players: string[] | null;
             role_order: string[] | null;
@@ -14600,7 +14541,6 @@ export interface components {
             /** Format: int64 */
             friends_count: number;
             header?: components["schemas"]["SquadHeader"];
-            impact_matrix?: components["schemas"]["SquadImpactMatrix"];
             intensity_profile?: components["schemas"]["SquadIntensityProfile"];
             latest_composition_session?: string;
             lead_share_series?: components["schemas"]["SquadLeadSharePoint"][] | null;
@@ -14622,7 +14562,6 @@ export interface components {
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
             squad_emprise?: components["schemas"]["SquadEmpriseBlock"];
-            squad_impact_history?: components["schemas"]["SquadImpactHistory"];
             squad_impact_sessions?: components["schemas"]["SquadImpactSessions"];
             squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;

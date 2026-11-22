@@ -1066,21 +1066,6 @@ export type SquadMapHeatmapCell = components['schemas']['SquadMapHeatmapCell']
 
 export type SquadMapHeatmap = components['schemas']['SquadMapHeatmap']
 
-export type SquadImpactBadgeCount = components['schemas']['SquadImpactBadgeCount']
-
-export type SquadImpactPlayerSummary = components['schemas']['SquadImpactPlayerSummary']
-
-export type SquadImpactMatchHeader = components['schemas']['SquadImpactMatchHeader']
-
-export type SquadImpactCell = components['schemas']['SquadImpactCell']
-
-/** Données du scoreboard impact teammates.07. */
-export type SquadImpactMatrix = components['schemas']['SquadImpactMatrix']
-
-/** Points d'impact par soirée et par rôle (même barème que la matrice, calculé côté Go). */
-export type SquadImpactHistory = components['schemas']['SquadImpactHistory']
-export type SquadImpactEvening = components['schemas']['SquadImpactEvening']
-
 /** Impact des coéquipiers par session (une ligne par session, matrice dépliable, décompte de toutes les sessions). */
 export type SquadImpactSessions = components['schemas']['SquadImpactSessions']
 export type SquadImpactSessionsRoleWeight = components['schemas']['SquadImpactSessionsRoleWeight']
