@@ -6,8 +6,10 @@
  * fabrique du rejeu (`replayAntagonists`), qui rend les changements aux clés du FILM. Ce fichier ne
  * fait que trois choses :
  *  - ne garder que les PRISES de titre : une égalité ne change pas de main, la frise ne la dit pas ;
- *  - poser chaque prise sur l'axe, avec la géométrie des marques (`ratioOfMs`) et l'image que visent
- *    les portes de présence (`Math.round(t / frameIntervalMs)`) ; une prise hors de la fenêtre de jeu
+ *  - poser chaque prise sur l'axe, avec la géométrie des marques (`ratioOfMs`) et, pour le clic,
+ *    la première image dont l'instant n'est pas antérieur à la prise (`frameAtOrAfter`, comme le clic sur une
+ *    ligne de frag) : les instants du fil ne sont pas alignés sur les images, et une image arrondie vers le bas
+ *    montrerait encore l'ancien tenant, même en pause ; une prise hors de la fenêtre de jeu
  *    n'a pas de place et n'est pas posée, comme un frag hors fenêtre ;
  *  - écrire le texte : titre, puis phrase (première prise, ou dépassement de l'ancien tenant).
  *
@@ -17,6 +19,7 @@
 import type { AntagonistChange, AntagonistRole } from '@/lib/antagonists/antagonists'
 
 import type { AntagonistsText } from '../i18n/antagonists.i18n'
+import { frameAtOrAfter } from './killFocusLogic'
 import { ratioOfMs, type TrackScale } from './replayTimelineTracksLogic'
 
 /** Une prise de titre posée sur la frise. */
@@ -69,7 +72,7 @@ export function buildAntagonistBand(
     items.push({
       key: `${change.role}-${change.t}-${change.holder}`,
       ratio,
-      frame: Math.round(change.t / ctx.frameIntervalMs),
+      frame: frameAtOrAfter(change.t, { frameIntervalMs: ctx.frameIntervalMs }),
       role: change.role,
       holder: change.holder,
       title: ctx.text.band[change.role].titleFmt(ctx.nameOf(change.holder)),
