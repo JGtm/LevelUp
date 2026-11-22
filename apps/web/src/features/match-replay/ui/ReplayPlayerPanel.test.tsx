@@ -25,6 +25,7 @@ import {
   INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers,
 } from '../test/instantFixture'
 import { testReplayDoc } from '../test/testDoc'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPanel, type ReplayPlayerPanelProps } from './ReplayPlayerPanel'
 
 const DOC = testReplayDoc({
@@ -50,6 +51,7 @@ function props(over: Partial<ReplayPlayerPanelProps> = {}): ReplayPlayerPanelPro
     players: [PLAYER],
     feed: [],
     weaponIcons: new Map(),
+    antagonists: createReplayAntagonists([], []),
     column: {
       picker: <div data-testid="selecteur">sélecteur</div>,
       footer: (close) => (
@@ -256,7 +258,7 @@ describe('fiche de la colonne — le corps commun, enrichi', () => {
     })
     const titres = [...zone().querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label'))
     expect(titres).toEqual([
-      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
+      "À l'instant", 'Antagonistes', 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Grenades lancées',
       'Ramassages', 'Équipement', 'Médailles', 'Totaux du match', 'Gestes',
     ])
     expect(zone().contains(screen.getByTestId('pied'))).toBe(false)

@@ -13,12 +13,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
+import type { Antagonists, AntagonistsAt } from '@/lib/antagonists/antagonists'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import {
   INSTANT_ICONS, INSTANT_LAST_FRAME, instantDoc, instantFeed, instantPlayer, instantPlayers, instantSheet,
 } from '../test/instantFixture'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPanelBody, type ReplayPlayerPanelBodyProps } from './ReplayPlayerPanelBody'
 
 const DOC = instantDoc()
@@ -28,6 +30,7 @@ const ALLEGIANCE = filmAllegianceOf(DOC, [], 'A')
 /** Les sections de la fiche, dans l'ordre où elles sont écrites. */
 const SECTIONS_COMPLETES = [
   "À l'instant",
+  'Antagonistes',
   'Depuis le début du match',
   'Éliminations par arme',
   'Tirs et dégâts',
@@ -54,6 +57,7 @@ function bodyProps(over: Partial<ReplayPlayerPanelBodyProps> = {}, sheet = insta
     players,
     feed: FEED,
     weaponIcons: INSTANT_ICONS,
+    antagonists: createReplayAntagonists([], []),
     ...over,
   }
 }
@@ -198,7 +202,7 @@ describe('ReplayPlayerPanelBody — un joueur dont tout est lu, à la fin du mat
   it('en anglais, les titres et les libellés suivent', () => {
     const { container } = setup({ locale: 'en' })
     expect(sections(container)).toEqual([
-      'Right now', 'Since the start of the match', 'Kills by weapon', 'Shots and damage', 'Grenades thrown',
+      'Right now', 'Antagonists', 'Since the start of the match', 'Kills by weapon', 'Shots and damage', 'Grenades thrown',
       'Pickups', 'Equipment', 'Medals', 'Match totals', 'Moves',
     ])
   })
@@ -223,7 +227,7 @@ describe('ReplayPlayerPanelBody — la fiche suit l’image lue', () => {
   it('au début du match : des zéros mesurés dans les tableaux, presque aucune autre section', () => {
     const { container } = setup({ frame: 0, nowMs: 0 })
     expect(sections(container)).toEqual([
-      "À l'instant", 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Totaux du match',
+      "À l'instant", 'Antagonistes', 'Depuis le début du match', 'Éliminations par arme', 'Tirs et dégâts', 'Totaux du match',
     ])
     const kills = screen.getByRole('table', { name: 'Éliminations par arme' })
     expect(within(kills).getAllByRole('row')[1].textContent).toContain('0')
@@ -277,10 +281,33 @@ describe('ReplayPlayerPanelBody — rien d’inventé', () => {
     expect(sections(container)).toContain('Éliminations par arme')
   })
 
-  it('un document sans aucune donnée (fil vide, pas de tirs) : l’identité, les actions et le bloc seuls', () => {
+  it('un document sans aucune donnée (fil vide, pas de tirs) : l’identité, les actions, le bloc et les antagonistes (état vide)', () => {
     const doc = instantDoc({ scoreTimeline: undefined, shotStats: [], stances: [], pickups: [], grenades: [], equipmentChanges: [] })
     const { player, players } = joueur('A', [])
     const { container } = setup({ doc, player, players, feed: [], frame: 0, nowMs: 0 }, [])
-    expect(sections(container)).toEqual(["À l'instant", 'Depuis le début du match'])
+    expect(sections(container)).toEqual(["À l'instant", 'Antagonistes', 'Depuis le début du match'])
+  })
+})
+
+describe('ReplayPlayerPanelBody — la section « Antagonistes » (D.2)', () => {
+  it('se pose après « À l’instant » et avant « Depuis le début du match »', () => {
+    const { container } = setup()
+    const titres = sections(container)
+    expect(titres.indexOf('Antagonistes')).toBe(titres.indexOf("À l'instant") + 1)
+    expect(titres.indexOf('Antagonistes')).toBe(titres.indexOf('Depuis le début du match') - 1)
+  })
+
+  it('lit l’index du joueur de la fiche à l’instant lu', () => {
+    const at = vi.fn<(t: number) => AntagonistsAt>(() => ({ nemesis: { holder: 'E', count: 2, tiedWith: [] }, victim: null }))
+    const forSubject = vi.fn<(key: string | null) => Antagonists>(() => ({ changes: [], at }))
+    setup({ nowMs: 4_200, antagonists: { forSubject, forViewpoint: () => ({ changes: [], at }) } })
+    expect(forSubject).toHaveBeenCalledWith('A')
+    expect(at).toHaveBeenCalledWith(4_200)
+    expect(screen.getByRole('region', { name: 'Antagonistes' }).textContent).toContain('Echo, 2 éliminations')
+  })
+
+  it('sans adversaire à l’instant, la section existe et le dit', () => {
+    setup()
+    expect(screen.getByRole('region', { name: 'Antagonistes' }).textContent).toContain('Aucun antagoniste à cet instant.')
   })
 })

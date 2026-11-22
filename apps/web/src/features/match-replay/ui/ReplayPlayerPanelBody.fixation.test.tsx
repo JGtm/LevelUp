@@ -31,6 +31,7 @@ import {
 } from '../test/instantFixture'
 import { scoreboardRow } from '../test/scoreboardRow'
 import { testReplayDoc } from '../test/testDoc'
+import { createReplayAntagonists } from '../model/replayAntagonists'
 import { ReplayPlayerPanelBody } from './ReplayPlayerPanelBody'
 
 /** Alpha vit sur [0, 100] ; Echo meurt à l'image 30 et ne revient qu'à 130 ; Marc est un bot vivant. */
@@ -102,6 +103,7 @@ function htmlDuCorps(who: { player: ReplayPlayer; players: ReplayPlayer[] }, fra
       players={who.players}
       feed={[]}
       weaponIcons={new Map()}
+      antagonists={createReplayAntagonists([], [])}
       solo={over.solo ?? false}
       onSolo={vi.fn()}
       doc={DOC}
@@ -165,6 +167,7 @@ describe('ReplayPlayerPanelBody — fixations du corps', () => {
         players={players}
         feed={instantFeed()}
         weaponIcons={INSTANT_ICONS}
+        antagonists={createReplayAntagonists([], [])}
         solo={false}
         onSolo={vi.fn()}
         doc={doc}
