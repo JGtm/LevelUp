@@ -133,7 +133,7 @@
                 ]
             }
         },
-        "adversarial-review": {
+        "anthropic-skills:adversarial-review": {
             "priority": "critical",
             "description": "Revue adversariale d'un diff avant merge — contexte frais, contrat, constats reproductibles, bornes de boucle (+ complément levelup-revue)",
             "promptTriggers": {
@@ -164,7 +164,7 @@
                 ]
             }
         },
-        "adversarial-audit": {
+        "anthropic-skills:adversarial-audit": {
             "priority": "critical",
             "description": "Audit adversarial du code existant — perimetre x axe, fan-out aveugle, verification adverse, registre date (+ complément levelup-revue)",
             "promptTriggers": {
@@ -195,7 +195,7 @@
                 ]
             }
         },
-        "plan-review": {
+        "anthropic-skills:plan-review": {
             "priority": "critical",
             "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison (+ complément levelup-plan)",
             "promptTriggers": {
@@ -213,7 +213,7 @@
                 ]
             }
         },
-        "delivery-checklist": {
+        "anthropic-skills:delivery-checklist": {
             "priority": "critical",
             "description": "Go/no-go avant livraison — tests, logging, multi-titres, thought_log (+ complément levelup-livraison)",
             "promptTriggers": {

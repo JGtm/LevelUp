@@ -52,7 +52,8 @@ trimestrielle** : quand un trimestre est clos, déplacer ses entrées vers
 trimestre courant + le précédent.
 
 **Skills agent** — invoquer le skill AVANT d'agir dans son domaine. Les cinq skills de méthode
-sont généraux et vivent au niveau utilisateur (`~/.claude/skills/`, communs à tous les projets) ;
+sont généraux et vivent sur le compte claude.ai de l'utilisateur, communs à tous les projets
+(synchronisés, invoqués sous le nom `anthropic-skills:<nom>`) ;
 leur complément LevelUp vit ici (`.claude/skills/levelup-*`) et se lit avec eux. Les autres skills
 sont propres à LevelUp (`.claude/skills/*/SKILL.md`).
 
