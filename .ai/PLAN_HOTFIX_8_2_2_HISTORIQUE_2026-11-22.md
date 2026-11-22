@@ -35,7 +35,7 @@ page.
 - **D-2** Une seule règle, une seule source : un paquet `internal/sync/historystate` porte la clé
   `history_complete_at` (nom inchangé : les joueurs déjà marqués par V1 restent marqués), sa lecture
   (`Complete(ctx, db) bool`, lecture en échec = complet, journalisé, comme aujourd'hui), son écriture
-  (`MarkComplete`), le budget par passe et la borne de sûreté. V1, V2 et Halo 5 l'appellent ; plus
+  (`MarkComplete`), le budget par passe et la borne de sûreté. V2 et Halo 5 l'appellent (V1 seulement pour la borne de profondeur du RunFull : D-18) ; plus
   aucune copie de la clé ni de la logique ailleurs (garde-rail grep, D-9).
 - **D-3** Budget par passe de rattrapage : 200 matchs inconnus, `domain.DefaultSyncOptions().MaxMatches`
   (valeur unique, pas de nouvelle constante). Borne de sûreté de profondeur : 50 000 matchs (constante
@@ -59,8 +59,8 @@ page.
   l'intervalle réglé ; dès que tous sont complets, retour à l'intervalle réglé. Tous les profils de
   déploiement. Le résultat de cycle porte l'information par joueur (`HistoryPending`). Journal :
   une ligne par cycle qui dit combien de joueurs rattrapent et l'intervalle choisi.
-- **D-8** Le tick du suivi en direct (watcher, 25 matchs) reste tel quel : il passe par V1, qui suit
-  déjà la règle (via `historystate` après migration).
+- **D-8** (remplacée par D-18, 22/11) Le tick du suivi en direct (watcher, 25 matchs) passait par V1, supposé
+  suivre déjà la règle : faux, voir D-18.
 - **D-9** Garde-rail : un test `archlint` interdit le littéral `"history_complete_at"` hors de
   `internal/sync/historystate`.
 - **D-10** (révisée le 22/11 par l'utilisateur) Bouton « Synchroniser maintenant » dans Réglages ›
@@ -103,6 +103,19 @@ page.
   fin est vue et que les seuls inconnus restants sont abandonnés ; le journal de fin dit combien. Un 404/410 reste
   « introuvable » : jamais compté comme échec. Un match abandonné qui sort de la liste (borne de 200) redevient un inconnu
   ordinaire.
+- **D-18** (pilote, 22/11) UN SEUL moteur fait le rattrapage de l'historique : le cycle de l'ordonnanceur
+  (pipeline V2 pour Halo Infinite, runner Halo 5). Le moteur V1 (`internal/sync/engine.go`), utilisé par
+  le suivi en direct (`MaxMatches` 25), la synchronisation manuelle d'un joueur, la synchronisation initiale
+  et le filet `syncPlayer` de l'ordonnanceur (orchestrateur V2 non câblé), redevient un delta pur : il ne
+  lit plus ni n'écrit l'état de l'historique (`historystate`), ne bascule plus en mode full sur historique
+  incomplet, ne range plus la fin (`MarkComplete`) et ne remplit plus `SyncResult.HistoryPending` (V2 et Halo 5
+  le remplissent). `HistoryExhausted`, sans plus aucun lecteur de production, est supprimé du résultat. Un
+  `RunFull` explicite garde son comportement de full (parcours jusqu'au plafond ou à la page vide, connus
+  sautés) mais ne range plus la fin. Cause : le V1 rangeait la fin avec un match en échec (les échecs de
+  récupération sont des avertissements, pas des erreurs, contraire à D-5) et rebalayait la liste depuis le
+  haut à chaque passe (862 appels de liste pour 1 000 matchs par pas de 25). La première synchronisation
+  (aucun match connu) garde son résultat : le delta récupère jusqu'à `MaxMatches` (200 ou
+  `initial_max_matches`), comme le full. L'aide n'est pas concernée.
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - Réservé à l'utilisateur : squash dans `main`, tag `v8.2.2`, publication de la release et de la mise à
   jour de l'application, réponse publique sur #213 (texte validé par lui le 22/11).
@@ -272,7 +285,7 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 - [x] 5.1 Fait. `cmd/server/sync_v2_convergence_env_integration_test.go` (banc) et `sync_v2_convergence_integration_test.go` (scénarios) : l orchestrateur est construit par `buildSyncV2Orchestrator` ; la file de persistance et son worker par `openPersistQueue` ; les bases par les migrations du démarrage (`runMigrations`, `RunPlayerMigrations`) ; les cycles sont joués PAR L ordonnanceur (`RunOnceTrigger`, boucle `Run` vivante, cadence lue sur `NextCycleAt`). Le faux client Halo est un faux `http.DefaultTransport` (le client de production `PooledHaloClient` -> brique `halo-api` fait ses vraies requêtes HTTP, qui répondent en mémoire : aucune connexion). 1 000 matchs, pages de 25, 2 arrivées de matchs neufs en haut : +200 par cycle, fin rangée au 6e cycle, appels `GetMatchHistory` par cycle [8 11 11 11 11 4], cycle suivant = 1 page, cadence 10 min puis 6 h. Variantes : match en 500 durable (demandé aux cycles 2 à 4, abandonné à la 3e passe, fin rangée au cycle 4), match 404 (ne coûte aucune passe). Écarts à la fabrique : `Settings`, `Friends`, `PostSyncRunner`, `PrestigeHook`, `ReplayEnqueue` nuls (médias, rejeux, notifications, défis ; hors du contrat de découverte, de persistance et de fin).
 - [x] 5.2 Fait. `internal/games/halo_5/livesync/catchup_convergence_integration_test.go` : `Runner.RunDelta` avec capture de pages simulée (`historyWorld` du paquet) et vraie base joueur DuckDB temporaire pour l état (clé de fin, marque-page, compte d échecs) ; 1 000 matchs, matchs neufs en haut, fin rangée au cycle 6, pages lues par cycle [8 10 10 10 10 3], delta d une page ensuite ; variante page en échec durable abandonnée à la 3e passe. La persistance des matchs est simulée (écart assumé : la base partagée Halo 5 n a pas de rôle dans le contrat de fin).
-- [x] 5.3 Fait. `internal/sync/engine_convergence_integration_test.go` : `SyncEngine.RunDelta` avec le `MaxMatches` de 25 du suivi en direct, vraies bases sous le fournisseur B-swap ; 1 000 matchs, 3 arrivées en haut, fin rangée puis delta d une page. Défaut trouvé et gardé sauté (`engine_convergence_defaut_integration_test.go`) : voir Découvertes.
+- [x] 5.3 Fait, puis révisé par D-18 (22/11). Le test de convergence V1 en 41 passes et le test du défaut (gardé sauté) sont remplacés, dans `internal/sync/engine_convergence_integration_test.go`, par le contrat de delta pur : sur un historique incomplet avec un match en échec durable, V1 ne touche à aucune clé de `historystate` et s'arrête au premier connu (une page lue par passe, matchs neufs du dessus pris) ; la première synchronisation (aucun connu) récupère jusqu'au plafond (200, 50) ; ni `RunDelta` ni `RunFull` ne rangent la fin. Supprimés avec le comportement : `engine_history_complete_test.go`, `engine_history_pending_integration_test.go`, `engine_convergence_defaut_integration_test.go`.
 - Gate : `go test -tags=integration -run Convergence ./internal/...`.
 
 ### Étape 6 — aide, version, notes (Haiku)
@@ -373,8 +386,9 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   donc lui aussi, avec son `MaxMatches` serré comme budget.
 - Étape 3 : une passe au budget atteint pile sur une page pleine ne voit la fin qu'à la passe suivante
   (une page vide, zéro match inséré) : comportement voulu, testé.
-- Étape 5 : le moteur V1 (suivi en direct) verse l échec de récupération d un match dans les avertissements, pas dans les erreurs : la fin d historique se range avec un match perdu pour toujours (contraire à D-5), alors que D-8 le disait conforme. Test gardé sauté : `TestConvergence_V1_SuiviEnDirect_MatchEnEchecNeDoitPasRangerLaFin`. La correction demande l abandon (D-16) côté V1.
-- Étape 5 : le moteur V1 reparcourt la liste depuis le haut à chaque passe de rattrapage (pas de marque-page, D-13 ne le couvre pas) : avec 25 matchs par passe, 1 000 matchs coûtent 41 passes et jusqu à 40 pages lues par passe. Hors périmètre.
+- Étape 5 (réglé par D-18) : le moteur V1 versait l'échec de récupération d'un match dans les avertissements, pas dans les erreurs, rangeait la fin avec un match perdu pour toujours (contraire à D-5) et rebalayait la liste depuis le haut à chaque passe (862 appels de liste pour 1 000 matchs). V1 ne rattrape plus : le rattrapage est fait par le seul cycle de l'ordonnanceur.
+- D-18 : le filet `syncPlayer` de l'ordonnanceur (orchestrateur V2 non câblé) passe par V1 pour Halo Infinite : il ne rattrape donc plus l'historique de ce titre (delta pur, `HistoryPending` jamais rempli, pas de cadence de rattrapage). Le serveur câble toujours l'orchestrateur V2 : le filet ne sert qu'à un montage sans V2. Halo 5 garde son rattrapage dans le runner, même par le filet. Écrit dans le commentaire de contrat de `syncPlayer`.
+- D-18 : le suivi en direct, la synchronisation manuelle d'un joueur et la synchronisation initiale (V1, delta pur) ne rattrapent plus l'historique : seul le cycle de l'ordonnanceur (et le bouton « Synchroniser maintenant », qui le lance) le fait. `SyncResult.HistoryExhausted` supprimé (aucun lecteur de production après la fin du rangement par V1) ; son écriture et ses assertions de test côté Halo 5 (`livesync/catchup.go`) sont retirées avec lui.
 - Étape 4 : `POST /admin/actions/auto-sync/run` (et la commande `sync` du menu de la zone de notification)
   appellent `RunOnceTrigger` ; depuis le garde « jamais deux cycles à la fois », un appel pendant un cycle
   rend un résultat vide (`busy`) que le job admin rapporte comme réussi avec zéro joueur : un 409 serait
