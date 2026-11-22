@@ -66,6 +66,9 @@ type SyncActivity interface {
 	NextCycleAt() time.Time
 	// LastPass rend la dernière passe du joueur sur le titre depuis le démarrage ; faux si aucune.
 	LastPass(titleSlug, gamertag string) (SyncPass, bool)
+	// FilmsPending dit si le titre a un arriéré de films (source des frags, artefacts de rejeu) que les
+	// étapes film du post-sync n'ont pas fini de traiter.
+	FilmsPending(titleSlug string) bool
 }
 
 // HistorySyncService compose l'état de l'historique d'un joueur : base, ordonnanceur et libellés.

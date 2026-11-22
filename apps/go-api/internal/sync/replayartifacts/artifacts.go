@@ -52,14 +52,19 @@ import (
 	settingsPkg "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/sync/filmfetch"
+	"levelup/go-api/internal/sync/killcollector"
 )
 
-// maxPerCycle borne le nombre d'artefacts construits par cycle : un sync initial insère
-// des centaines de matchs, et décoder des centaines de films dans le post-sync bloquerait
-// le cycle pendant des heures. Le solde relève du backfill CLI (levelup backfill-replay),
-// idempotent et repris par SchemaVersion.
-const maxPerCycle = 5
+// maxPerCycle : le GARDE-FOU du nombre d'artefacts construits par cycle, et non sa limite. La
+// limite d'une passe est son TEMPS ([BudgetParCycle]) : un match synchronisé l'est en totalité, film
+// traité compris, et le coût d'un film varie trop pour qu'un nombre le dise. La borne n'est que le
+// plafond d'une liste de travail sans fin ; elle a la valeur de celle de la source des frags
+// ([killcollector.GardeFouFilmsParCycle]), pour que les deux étapes film ne divergent pas. Le solde
+// repart au cycle suivant, ou au backfill CLI (levelup backfill-replay), idempotent et repris par
+// SchemaVersion.
+const maxPerCycle = killcollector.GardeFouFilmsParCycle
 
 // EnqueueFunc met la construction du rejeu d'un match dans la FILE DURABLE (le
 // travail part alors à un ouvrier, éventuellement sur une autre machine), à la priorité donnée
@@ -360,8 +365,10 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
 	// JAUGE, PAS COMPTEUR : ce qui reste à rattraper APRÈS ce cycle. Publiée MÊME À ZÉRO —
 	// une clé absente de /debug/vars ne se distingue pas d'une étape qui ne tourne pas, et
-	// c'est précisément l'ambiguïté que ce lot ferme.
-	observability.SetIntT(titre, CompteurRetard, int64(retard))
+	// c'est précisément l'ambiguïté que ce lot ferme. Elle est publiée à la SORTIE, sur toutes
+	// les sorties : `retard` est ce que la sélection a laissé de côté, et chaque chemin y ajoute ce
+	// que la passe n'a pas atteint (budget de temps, report à la fin d'une partie).
+	defer func() { publierRetard(d, titre, retard) }()
 	if len(work) == 0 {
 		// SÉLECTION VIDE ≠ ÉTAPE MUETTE. Sans cette ligne, « la fenêtre de rétention a tout
 		// écarté » et « l'étape n'a jamais tourné » s'écrivent pareil dans le journal : rien.
@@ -385,12 +392,13 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 		// EN PLACEMENT « OUVRIER » CE PROCESS NE CUIT RIEN, mais les artefacts que l'ouvrier a
 		// déposés sont bien sur le disque : leur rattrapage est posé en `defer` par [Run], et
 		// il vaut donc pour cette sortie-ci comme pour toutes les autres.
-		enqueueAll(ctx, d, work)
+		retard += enqueueAll(ctx, d, work)
 		return
 	}
 	if len(work) > maxPerCycle {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D — lot borné, solde au cycle suivant",
+		slog.InfoContext(ctx, "post-sync: rejeu 2D — garde-fou du lot atteint, solde au cycle suivant",
 			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
+		retard += len(work) - maxPerCycle
 		work = work[:maxPerCycle]
 	}
 	// SONDE DE TITRE, PAS UN CONSTRUCTEUR : depuis le lot BUILDALL la cuisson se fait dans un
@@ -405,16 +413,25 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	b := buildAll(ctx, d, work)
+	if d.BuildOne != nil {
+		// Sans construction câblée (dégradation voulue, déjà journalisée), aucun passage suivant ne
+		// ferait avancer un match : il n'est pas un retard qu'une cadence courte résorbe.
+		retard += b.aReprendre(len(work))
+	}
 	// LES DÉRIVATIONS VIENNENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui garantit
 	// que les bursts writer ne recouvrent aucun décodage. UN SEUL POINT D'ENTRÉE, le même que
 	// celui du dépôt d'ouvrier (cf. derivations.go — constat A1). Les rasters tactiques
 	// (cf. raster.go) sont la QUATRIÈME famille dérivée : mêmes artefacts rangés, même
 	// point d'entrée — voir Deriver.
-	Deriver(ctx, DerivationsDeps{
-		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
-		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
-	}, b.ranges)
+	deriverParLots(ctx, d, b.ranges)
 	publierBilan(ctx, d, b, len(work))
+}
+
+// publierRetard publie le retard qui reste APRÈS le cycle : la jauge expvar, et l'arriéré de rejeux
+// que lisent l'ordonnanceur et l'écran d'état de l'historique (`filmbacklog`).
+func publierRetard(d Deps, titre string, retard int) {
+	observability.SetIntT(titre, CompteurRetard, int64(retard))
+	filmbacklog.Publier(d.TitleSlug, filmbacklog.Rejeux, retard)
 }
 
 // selectionnerLeTravail compose le lot du cycle et rend le retard qui subsiste après lui.

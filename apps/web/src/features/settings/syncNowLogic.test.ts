@@ -12,6 +12,7 @@ import {
   HISTORY_POLL_RUNNING_MS,
   SYNC_CYCLE_POLL_MS,
   historyRefetchMs,
+  historyStateLabel,
   lastPassAddedLine,
   lastPassLine,
   nextPassText,
@@ -25,7 +26,7 @@ const T_FR = getSyncNowText('fr')
 const T_EN = getSyncNowText('en')
 
 function title(state: TitleHistoryStatus['state']): TitleHistoryStatus {
-  return { title_slug: 'halo_infinite', title_name: 'Halo Infinite', state, state_label: state, match_count: 10 }
+  return { title_slug: 'halo_infinite', title_name: 'Halo Infinite', state, state_label: state, match_count: 10, films_pending: false }
 }
 
 function status(over: Partial<HistorySyncStatus> = {}): HistorySyncStatus {
@@ -49,6 +50,25 @@ describe('cadence de relecture', () => {
     expect(historyRefetchMs(status({ titles: [title('paused'), title('unknown')] }), false)).toBe(false)
     expect(historyRefetchMs(status({ titles: [] }), false)).toBe(false)
     expect(historyRefetchMs(undefined, false)).toBe(false)
+  })
+})
+
+describe('films à analyser', () => {
+  it('un titre au historique complet mais aux films en retard se relit lentement', () => {
+    const enRetard = { ...title('complete'), films_pending: true }
+    expect(historyRefetchMs(status({ titles: [enRetard] }), false)).toBe(HISTORY_POLL_CATCHING_UP_MS)
+  })
+
+  it('« complet » seulement sans film en retard : sinon l’indication d’analyse des tuiles de match', () => {
+    const complet = title('complete')
+    const enRetard = { ...complet, films_pending: true }
+    expect(historyStateLabel(complet, 'fr', false)).toBe('complete')
+    expect(historyStateLabel(enRetard, 'fr', false)).toBe('Analyse en attente')
+    expect(historyStateLabel(enRetard, 'fr', true)).toBe('Analyse en cours')
+    expect(historyStateLabel(enRetard, 'en', false)).toBe('Analysis pending')
+    expect(historyStateLabel(enRetard, 'en', true)).toBe('Analysis in progress')
+    // Le rattrapage de l’historique garde son libellé : il passe avant l’analyse des films.
+    expect(historyStateLabel({ ...title('catching_up'), films_pending: true }, 'fr', false)).toBe('catching_up')
   })
 })
 

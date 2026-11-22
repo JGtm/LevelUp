@@ -24,11 +24,11 @@ package replayartifacts
 //	                        s'arrête d'elle-même. Sans cette borne, un dépôt de plusieurs
 //	                        milliers de matchs verrait le fil de l'eau réclamer indéfiniment
 //	                        des films expirés depuis des années. Le solde historique relève de
-//	                        `levelup backfill-replay`, et c'est déjà ce que dit `maxPerCycle`.
+//	                        `levelup backfill-replay`, et c'est déjà ce que dit le garde-fou `maxPerCycle`.
 //	présence du FICHIER     Le prédicat le moins cher qui existe : un `os.Stat` (par la porte, sous l'une ou l'autre forme). Le prédicat
 //	                        complet (version de schéma + compteurs de joueur) lit et
 //	                        désérialise l'artefact ENTIER — acceptable sur les quelques matchs
-//	                        insérés d'un cycle, ruineux sur soixante-quatre à chaque cycle.
+//	                        insérés d'un cycle, ruineux sur tout l'horizon à chaque cycle.
 //	                        Le rattrapage répond donc à « ce match n'a AUCUN rejeu », qui est
 //	                        exactement le défaut mesuré ; la réparation des artefacts appauvris
 //	                        reste au chemin des matchs insérés, qui a les faits sous la main.
@@ -38,9 +38,8 @@ package replayartifacts
 // # RÉSIDU ASSUMÉ
 //
 // Un match récent dont le film n'existera jamais mais que rien n'a encore marqué est retenté à
-// chaque cycle, jusqu'à ce que soixante-quatre matchs plus récents l'aient chassé de
-// l'horizon. Le coût d'une tentative est UN appel qui rend « absent », et le lot est plafonné :
-// le pire cas est cinq appels stériles par cycle.
+// chaque cycle, jusqu'à ce que des matchs plus récents l'aient chassé de l'horizon. Le coût d'une tentative est UN appel qui rend « absent », et la passe est bornée par
+// son budget de temps : le pire cas est un cycle d'appels stériles, jamais un cycle sans fin.
 
 import (
 	"context"
@@ -59,19 +58,24 @@ import (
 	"levelup/go-api/internal/sync/matchflags"
 )
 
-// BacklogHorizon borne la LECTURE du retard, pas le travail (c'est maxPerCycle qui borne le
-// travail). Même valeur que `killcollector.PostSyncBacklogHorizon`, pour la même raison :
-// ramener des centaines d'identifiants pour en traiter cinq est du gaspillage.
-const BacklogHorizon = 64
+// BacklogHorizon borne la LECTURE du retard, pas le travail (le travail est borné par le temps, puis
+// par maxPerCycle). Il décide pourtant jusqu'où le rattrapage voit : le prédicat « l'artefact existe
+// sur disque » s'applique APRÈS la lecture du registre, donc une fois les matchs les plus récents
+// cuits, la fenêtre ne glisse pas vers les plus anciens. L'horizon doit donc couvrir l'historique
+// qu'un joueur synchronise (plus de mille matchs mesurés) et dépasser [maxPerCycle], sans quoi le
+// garde-fou ne serait jamais atteint et le retard publié plafonnerait à sa différence avec lui. Une
+// lecture coûte les identifiants et un `os.Stat` par match, pas un décodage. Le solde plus ancien que
+// l'horizon relève de `levelup backfill-replay`.
+const BacklogHorizon = 2000
 
-// BudgetParCycle : LE GARDE-FOU DE DURÉE, et il n'est pas négociable.
+// BudgetParCycle : LA LIMITE DE DURÉE de la passe, et la seule qui la borne vraiment.
 //
-// `maxPerCycle` compte des matchs, pas des secondes — or un film coûte de quelques secondes à
-// plus d'une minute de décodage, et le pont disque télécharge en plus des dizaines de Mo. Sans
-// budget, cinq gros films suffiraient à rallonger un cycle de synchronisation, et tout ce qui
-// vient après (PSA, agrégats, médias) attendrait derrière. Le budget arrête la passe ENTRE
-// deux matchs ; le solde repart au cycle suivant, l'étape étant idempotente (l'artefact déjà
-// à jour n'est pas reconstruit). Valeur alignée sur `killcollector.PostSyncBudget`.
+// Un film coûte de quelques secondes à plus d'une minute de décodage, et le pont disque télécharge
+// en plus des dizaines de Mo : le nombre de films ne dit rien de la durée. Sans budget, un lot de
+// gros films rallongerait un cycle de synchronisation, et tout ce qui vient après (PSA, agrégats,
+// médias) attendrait derrière. Le budget arrête la passe ENTRE deux matchs ; le solde repart au
+// cycle suivant, l'étape étant idempotente (l'artefact déjà à jour n'est pas reconstruit). Valeur
+// alignée sur `killcollector.PostSyncBudget` ; `maxPerCycle` n'est qu'un garde-fou derrière lui.
 const BudgetParCycle = 5 * time.Minute
 
 // bitFilmAbsent : le marqueur terminal « film 404/expiré, 0 chunk disponible » du registre.
@@ -171,7 +175,7 @@ func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[st
 // ⚠ LE `IS NOT NULL` DU FRAGMENT RESSERRE CETTE REQUÊTE quand la rétention est ILLIMITÉE
 // (2026-09-07, lot 7.10.3) : un match sans aucun horodatage n'entre plus dans la file. Il
 // n'y avait rien à en faire — `ORDER BY <canonique> DESC` ne sait pas le placer, et
-// `LIMIT 64` le laissait de toute façon au hasard du tri. Sous une fenêtre bornée, la
+// `LIMIT` de l'horizon le laissait de toute façon au hasard du tri. Sous une fenêtre bornée, la
 // comparaison l'excluait déjà.
 //
 // ORDRE DESCENDANT, comme `killcollector.requeteBacklog` et pour la même raison : un film déjà

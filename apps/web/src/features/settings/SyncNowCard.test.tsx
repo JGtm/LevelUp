@@ -104,6 +104,7 @@ const TITRE_RATTRAPAGE = {
   state: 'catching_up',
   state_label: 'Rattrapage en cours',
   match_count: 6812,
+  films_pending: false,
   oldest_match_at: '2019-09-03T18:20:00Z',
   last_pass: { at: '2026-11-22T14:00:00Z', matches_added: 200, status: 'ok', status_label: 'Réussie' },
 }
@@ -160,6 +161,27 @@ describe('SyncNowCard — état de l’historique', () => {
     expect(screen.getByTestId('history-next-pass')).toHaveTextContent('Pas encore planifiée')
     await new Promise((r) => setTimeout(r, 150))
     expect(historyReads).toBe(1)
+  })
+
+  it('historique complet mais films en retard : l’indication d’analyse des tuiles, pas « Complet »', async () => {
+    serveurHistorique({
+      auto_sync_enabled: true,
+      titles: [{ ...TITRE_RATTRAPAGE, state: 'complete', state_label: 'Complet', films_pending: true, last_pass: undefined }],
+    })
+    renderWithProviders(<SyncNowCard />)
+    const etat = await screen.findByTestId('history-state')
+    expect(etat).toHaveTextContent('Analyse en attente')
+    expect(etat).not.toHaveTextContent('Complet')
+  })
+
+  it('en anglais, le même texte que la pastille d’une tuile de match', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    serveurHistorique({
+      auto_sync_enabled: true,
+      titles: [{ ...TITRE_RATTRAPAGE, state: 'complete', state_label: 'Complete', films_pending: true, last_pass: undefined }],
+    })
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByTestId('history-state')).toHaveTextContent('Analysis pending')
   })
 
   it('une passe en échec se signale, sans compte de matchs ajoutés', async () => {

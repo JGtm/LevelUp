@@ -32582,6 +32582,9 @@ components:
     TitleHistoryStatus:
       additionalProperties: false
       properties:
+        films_pending:
+          description: 'Des films du titre restent à analyser (source des frags, rejeux) : tant que c''est vrai, l''historique n''est pas affiché comme complet.'
+          type: boolean
         last_pass:
           $ref: '#/components/schemas/HistoryPass'
           description: Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur.
@@ -32615,6 +32618,7 @@ components:
         - state
         - state_label
         - match_count
+        - films_pending
       type: object
     TitlePurgeOutputBody:
       additionalProperties: false

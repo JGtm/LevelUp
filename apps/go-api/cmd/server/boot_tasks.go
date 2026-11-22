@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb/historyrepo"
 	"levelup/go-api/internal/scheduler"
+	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/watcher"
 )
 
@@ -86,7 +87,10 @@ func initScheduler(st *bootState) {
 	}, nil)
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
 		WithFriendStore(friendStore).
-		WithHistoryReader(historyReader)
+		WithHistoryReader(historyReader).
+		// L'arriéré de films publié par les étapes film du post-sync tient la cadence de rattrapage et
+		// l'écran d'état de l'historique : sans lui, l'historique se dirait complet avec des films en retard.
+		WithFilmBacklogReader(filmbacklog.Reader{})
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 	// Les cycles demandés à la main (« Synchroniser maintenant ») suivent le cycle de vie du serveur :
 	// annulés avec schedulerCtx, attendus par l'arrêt avant la fermeture des bases.

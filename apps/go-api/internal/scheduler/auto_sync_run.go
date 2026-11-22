@@ -43,7 +43,7 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 	defer s.cycleRunning.Store(false)
 	res := s.runCycle(ctx, trigger)
 	if trigger != adminstate.TriggerCron {
-		s.signalReplan(res.historyPending)
+		s.signalReplan(res.debt)
 	}
 	return res
 }
@@ -101,11 +101,12 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 			slog.ErrorContext(ctx, "auto_sync: cycle V2 en échec (pas de fallback V1 — re-tenté au prochain cycle)",
 				"err", v2Err)
 			// runOnceV2 renvoie nil sur erreur globale : aucun joueur n'a pu dire où en est son historique.
-			v2Res = &RunOnceResult{historyPending: s.pendingHistoryOf(ctx, orchPlayers)}
+			v2Res = &RunOnceResult{debt: cycleDebt{history: s.pendingHistoryOf(ctx, orchPlayers)}}
 			s.recordFailedPasses(orchPlayers)
 		}
 		liveSynced, liveSkipped, liveFailed, livePending := s.syncPlayersConcurrent(ctx, livePlayers)
-		v2Res.historyPending = append(v2Res.historyPending, livePending...)
+		v2Res.debt.history = append(v2Res.debt.history, livePending...)
+		v2Res.debt.films = s.filmBacklogOf(players)
 		v2Res.Synced += liveSynced
 		v2Res.Skipped += liveSkipped
 		v2Res.Failed += liveFailed
@@ -124,7 +125,8 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 	// mais une sécurité de démarrage — en prod l'orchestrator est toujours câblé.
 	slog.WarnContext(ctx, "auto_sync: orchestrator V2 non câblé — sync directe via syncPlayer (filet de boot)",
 		"player_count", res.Total)
-	res.Synced, res.Skipped, res.Failed, res.historyPending = s.syncPlayersConcurrent(ctx, players)
+	res.Synced, res.Skipped, res.Failed, res.debt.history = s.syncPlayersConcurrent(ctx, players)
+	res.debt.films = s.filmBacklogOf(players)
 
 	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
 	// customRefresher.RefreshAll(ctx) supprimé. La customisation est désormais

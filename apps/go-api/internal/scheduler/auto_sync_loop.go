@@ -1,8 +1,10 @@
 // Package scheduler — auto_sync_loop.go : la boucle périodique de l'auto-sync et sa cadence.
 //
 // La boucle tire un cycle à chaque tick. Tant qu'au moins un joueur du cycle a un historique incomplet,
-// le cycle suivant vient après catchUpCycleInterval au lieu de l'intervalle réglé : le rattrapage de
-// l'historique avance par passes bornées (sync/historystate) et n'attend pas des heures entre deux.
+// OU qu'un arriéré de films reste à traiter sur un titre du cycle (source des frags, artefacts de
+// rejeu), le cycle suivant vient après catchUpCycleInterval au lieu de l'intervalle réglé : le
+// rattrapage avance par passes bornées (sync/historystate pour l'historique, budget de temps par
+// étape pour les films) et n'attend pas des heures entre deux.
 package scheduler
 
 import (
@@ -19,12 +21,25 @@ import (
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
-// catchUpCycleInterval est l'intervalle entre deux cycles tant qu'au moins un joueur du cycle précédent
-// a un historique incomplet (passe en échec, ou fin d'historique pas encore vue). Dès que tous les
-// joueurs sont complets, la boucle revient à l'intervalle réglé (resolveInterval). Quand l'intervalle
-// réglé est plus court, il garde la main : le rattrapage ne ralentit jamais la synchronisation.
-// Le compte à rebours part de la fin du cycle, pas de son début.
+// catchUpCycleInterval est l'intervalle entre deux cycles tant que le cycle précédent laisse une dette
+// (cycleDebt) : au moins un joueur à l'historique incomplet (passe en échec, ou fin d'historique pas
+// encore vue), ou un arriéré de films sur un titre du cycle. Dès que tout est à jour, la boucle revient
+// à l'intervalle réglé (resolveInterval). Quand l'intervalle réglé est plus court, il garde la main : le
+// rattrapage ne ralentit jamais la synchronisation. Le compte à rebours part de la fin du cycle, pas de
+// son début.
 const catchUpCycleInterval = 10 * time.Minute
+
+// cycleDebt est ce qu'un cycle laisse à rattraper : de quoi décider si le cycle suivant vient vite.
+type cycleDebt struct {
+	// history : gamertags des joueurs dont l'historique est incomplet en fin de cycle.
+	history []string
+	// films : arriéré de films des titres du cycle (somme des titres), tel que les étapes film du
+	// post-sync l'ont publié à la fin de leur dernière passe.
+	films port.FilmBacklog
+}
+
+// pending dit s'il reste quelque chose à rattraper.
+func (d cycleDebt) pending() bool { return len(d.history) > 0 || d.films.Pending() }
 
 // cycleState regroupe l'état de la boucle de Run et des cycles hors tick ; AutoSyncScheduler l'embarque.
 // Les champs protégés par snapshotMu le sont par celui de l'ordonnanceur.
@@ -32,6 +47,9 @@ type cycleState struct {
 	// historyReader dit si l'historique d'un joueur est complet quand sa passe a échoué avant de pouvoir le
 	// dire (WithHistoryReader). Nil : un joueur en échec ne compte pas comme en rattrapage.
 	historyReader port.HistoryCompletionReader
+	// filmBacklog dit l'arriéré de films d'un titre (WithFilmBacklogReader) : la cadence de rattrapage
+	// tient tant qu'il n'est pas vide. Nil : aucun arriéré connu, la cadence ne suit que l'historique.
+	filmBacklog port.FilmBacklogReader
 
 	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
 	newTicker func(time.Duration) cycleTicker
@@ -48,7 +66,7 @@ type cycleState struct {
 	// de Run.
 	manualCtx context.Context
 	manualWG  *gosync.WaitGroup
-	replanCh  chan []string
+	replanCh  chan cycleDebt
 
 	// lastPasses : dernière passe par (titre, joueur) depuis le démarrage. Protégé par snapshotMu.
 	lastPasses map[string]port.SyncPass
@@ -124,10 +142,10 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 		select {
 		case <-ticker.C():
 			s.runTick(ctx, st, ticker, "")
-		case pending := <-s.replanCh:
+		case debt := <-s.replanCh:
 			// Un cycle demandé hors tick (clic « Synchroniser maintenant ») vient de finir : la
 			// cadence suit son issue, comme après un tick.
-			s.replanFromCycle(ctx, st, ticker, pending)
+			s.replanFromCycle(ctx, st, ticker, debt)
 		case reason := <-s.catchUpCh:
 			// Rattrapage demandé (RequestCatchUp) : le même tick, exécuté dans CETTE boucle, donc
 			// jamais en même temps qu'un tick périodique.
@@ -187,20 +205,24 @@ func (s *AutoSyncScheduler) runTick(ctx context.Context, st *tickState, ticker c
 			"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
 		)
 	}
-	s.planNextCycle(tickCtx, st, ticker, res.historyPending)
+	s.planNextCycle(tickCtx, st, ticker, res.debt)
 }
 
-// planNextCycle recale le ticker après un cycle : catchUpCycleInterval si au moins un joueur reste en
-// rattrapage (sans dépasser l'intervalle réglé), l'intervalle réglé sinon. Une ligne de journal par
-// cycle dit combien de joueurs rattrapent et l'intervalle retenu.
-func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ticker cycleTicker, pending []string) {
+// planNextCycle recale le ticker après un cycle : catchUpCycleInterval s'il reste une dette (joueur en
+// rattrapage d'historique ou arriéré de films), sans dépasser l'intervalle réglé ; l'intervalle réglé
+// sinon. Une ligne de journal par cycle dit combien de joueurs rattrapent, combien de films sont en
+// retard et l'intervalle retenu.
+func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ticker cycleTicker, debt cycleDebt) {
 	next := st.configured
-	if len(pending) > 0 && catchUpCycleInterval < next {
+	if debt.pending() && catchUpCycleInterval < next {
 		next = catchUpCycleInterval
 	}
 	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié",
-		"joueurs_en_rattrapage", len(pending),
-		"gamertags", pending,
+		"joueurs_en_rattrapage", len(debt.history),
+		"gamertags", debt.history,
+		"films_en_retard", debt.films.Total(),
+		"films_frags", debt.films.Frags,
+		"films_rejeux", debt.films.Rejeux,
 		"intervalle", next,
 		"intervalle_regle", st.configured,
 	)
@@ -211,7 +233,7 @@ func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ti
 
 // replanFromCycle recale la cadence après un cycle demandé hors tick. Auto-sync désactivée : rien ne
 // change (aucun cycle périodique n'a lieu, et la cadence se relira à l'activation).
-func (s *AutoSyncScheduler) replanFromCycle(ctx context.Context, st *tickState, ticker cycleTicker, pending []string) {
+func (s *AutoSyncScheduler) replanFromCycle(ctx context.Context, st *tickState, ticker cycleTicker, debt cycleDebt) {
 	cfg, err := s.settings.Load()
 	if err != nil {
 		slog.WarnContext(ctx, "auto_sync: lecture settings échouée — cadence inchangée après le cycle demandé", "err", err)
@@ -221,20 +243,47 @@ func (s *AutoSyncScheduler) replanFromCycle(ctx context.Context, st *tickState, 
 		return
 	}
 	st.configured = resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours)
-	s.planNextCycle(ctx, st, ticker, pending)
+	s.planNextCycle(ctx, st, ticker, debt)
 }
 
-// signalReplan transmet à la boucle de Run les joueurs restés en rattrapage à la fin d'un cycle hors
-// tick ; une issue plus récente remplace celle qui attend encore. Ne bloque jamais.
-func (s *AutoSyncScheduler) signalReplan(pending []string) {
+// signalReplan transmet à la boucle de Run la dette laissée par un cycle hors tick ; une issue plus
+// récente remplace celle qui attend encore. Ne bloque jamais.
+func (s *AutoSyncScheduler) signalReplan(debt cycleDebt) {
 	select {
 	case <-s.replanCh:
 	default:
 	}
 	select {
-	case s.replanCh <- pending:
+	case s.replanCh <- debt:
 	default:
 	}
+}
+
+// filmBacklogOf rend l'arriéré de films des titres des joueurs d'un cycle (somme des titres, chaque
+// titre compté une fois), lu après le post-sync : c'est la fin de la dernière passe des étapes film
+// qui l'a publié. Sans lecteur câblé, l'arriéré est vide.
+func (s *AutoSyncScheduler) filmBacklogOf(players []domain.PlayerSummary) port.FilmBacklog {
+	var total port.FilmBacklog
+	if s.filmBacklog == nil {
+		return total
+	}
+	seen := make(map[string]bool, 2)
+	for _, p := range players {
+		slug := resolveTitleSlug(p)
+		if seen[slug] {
+			continue
+		}
+		seen[slug] = true
+		b := s.filmBacklog.FilmBacklog(slug)
+		total.Frags += b.Frags
+		total.Rejeux += b.Rejeux
+	}
+	return total
+}
+
+// FilmsPending dit si le titre a un arriéré de films (port.SyncActivity).
+func (s *AutoSyncScheduler) FilmsPending(titleSlug string) bool {
+	return s.filmBacklog != nil && s.filmBacklog.FilmBacklog(titleSlug).Pending()
 }
 
 // historyIncomplete dit si l'historique du joueur est incomplet, lu sans écrire. Sans lecteur câblé, ou
@@ -283,6 +332,13 @@ func (s *AutoSyncScheduler) pendingHistoryAfterV2(ctx context.Context, players [
 		}
 	}
 	return out
+}
+
+// WithFilmBacklogReader branche la lecture de l'arriéré de films par titre, que la cadence de rattrapage
+// et l'écran d'état de l'historique consultent.
+func (s *AutoSyncScheduler) WithFilmBacklogReader(r port.FilmBacklogReader) *AutoSyncScheduler {
+	s.filmBacklog = r
+	return s
 }
 
 // WithHistoryReader branche la lecture de l'état de l'historique (clé de fin d'historique de la base

@@ -1,3 +1,9 @@
+## [2026-11-22] Films : le temps seul borne les passes, la cadence de 10 minutes suit l'arriéré de films — Complété (branche `fix/822-k`)
+
+- **Décision** : D-17 et D-20 du hotfix 8.2.2. Les deux étapes film du post-sync (source des frags, artefacts de rejeu) sont bornées par leur budget de temps de 5 minutes ; le plafond en nombre (8 et 5) devient un garde-fou unique de 200. Chaque étape publie son arriéré par titre à la fin de sa passe ; l'ordonnanceur tient la cadence de 10 minutes tant que l'historique ou cet arriéré n'est pas vide ; l'écran d'état de l'historique reprend la pastille « Analyse en cours / en attente » des tuiles de match tant que des films attendent.
+- **Résultats observés** : tests d'arrêt sur le budget de temps (20 films sous un budget large : tous traités ; sous un budget court : arrêt entre deux films, arriéré publié = reste), cadence testée sur le cycle V2 et le filet, composant testé en FR et EN.
+- **Suite** : fusion de `release/v8.2.2`, puis revue ; mesure du coût de lecture de l'horizon des rejeux (2000) sur la base réelle (étape de mesure).
+
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 
 - **Décision** : version 8.2.1 posée (coquille Windows, notes FR/EN, changelogs datés du 2026-11-16) ; ajout du fond plan transparent (brique map-images v1.3.1, 111 images refaites) et des défis de l'axe Objectif aux notes ; ligne de backlog des défis close.

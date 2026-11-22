@@ -14622,6 +14622,8 @@ export interface components {
             warn_count: number;
         };
         TitleHistoryStatus: {
+            /** @description Des films du titre restent à analyser (source des frags, rejeux) : tant que c'est vrai, l'historique n'est pas affiché comme complet. */
+            films_pending: boolean;
             /** @description Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur. */
             last_pass?: components["schemas"]["HistoryPass"];
             /**

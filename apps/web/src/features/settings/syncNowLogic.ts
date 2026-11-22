@@ -3,11 +3,14 @@
  * l'historique, texte du refus d'un lancement, lignes « dernière passe » et « prochaine passe ».
  * Aucune dépendance React.
  */
+import { analysisPendingLabelKey } from '@/components/ui/match-card-presentation'
 import { apiErrorCode } from '@/lib/api/client'
 import { formatDate, intlLocale } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
 import { fillTemplate } from '@/lib/i18n/template'
-import type { HistoryPass, HistorySyncStatus } from './syncNowQueries'
+import type { HistoryPass, HistorySyncStatus, TitleHistoryStatus } from './syncNowQueries'
 import type { SyncNowText } from './syncNowText'
 
 /** Relecture de l'état du cycle, en ms : toutes les 3 s tant qu'un cycle tourne, jamais au repos. */
@@ -23,12 +26,24 @@ export function syncCycleRefetchMs(state: { running: boolean } | undefined): num
 
 /**
  * Cadence de relecture de l'état de l'historique : rapide tant qu'un cycle tourne, lente tant qu'au moins un
- * titre rattrape son historique, aucune au repos (une seule lecture).
+ * titre rattrape son historique ou a des films à analyser, aucune au repos (une seule lecture).
  */
 export function historyRefetchMs(status: HistorySyncStatus | undefined, cycleRunning: boolean): number | false {
   if (cycleRunning) return HISTORY_POLL_RUNNING_MS
-  const catchingUp = status?.titles?.some((title) => title.state === 'catching_up') ?? false
+  const catchingUp = status?.titles?.some((title) => title.state === 'catching_up' || title.films_pending) ?? false
   return catchingUp ? HISTORY_POLL_CATCHING_UP_MS : false
+}
+
+/**
+ * Libellé de l'état d'un titre. L'historique n'est dit complet que si aucun film n'attend son analyse : sinon
+ * l'écran reprend l'indication des tuiles de match (« Analyse en cours » pendant un cycle, « Analyse en
+ * attente » sinon), le même texte dans la même langue. Les autres états gardent le libellé du serveur.
+ */
+export function historyStateLabel(title: TitleHistoryStatus, locale: Locale, cycleRunning: boolean): string {
+  if (title.state === 'complete' && title.films_pending) {
+    return formatMessage(commonManifest, analysisPendingLabelKey('badge', cycleRunning), locale)
+  }
+  return title.state_label
 }
 
 /** Code du refus d'un lancement trop tôt après un cycle : l'écran n'en fait pas une erreur, il montre le délai. */

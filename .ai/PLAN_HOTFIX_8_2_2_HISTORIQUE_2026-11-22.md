@@ -295,6 +295,37 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
   (règle 18).
 - [x] 4f.5 `disk-hygiene.ps1 -Lot 822e -Apply` lancé (voir le rapport de l'étape).
 
+### Étape 4g — films : le temps seul borne la passe, la cadence suit l'arriéré (D-17, D-20)
+
+- [x] 4g.1 (D-17) Les deux étapes film ne sont plus bornées par un nombre mais par leur budget de temps
+  (5 min chacune, inchangé). `DefaultPostSyncPerCycle` (8) et `maxPerCycle` (5) deviennent une même borne de
+  sécurité `killcollector.GardeFouFilmsParCycle = 200` (`maxPerCycle` la reprend, une seule valeur). Parallélisme
+  de décodage, jeton d'écriture unique, limite par film : inchangés. Adaptations vérifiées sur pièces :
+  `replayartifacts.BacklogHorizon` 64 -> 2000 (le filtre « artefact présent » s'applique après la lecture du
+  registre : à 64 la fenêtre n'aurait jamais dépassé les 64 matchs les plus récents, et le garde-fou n'aurait
+  jamais mordu) ; `PostSyncBacklogHorizon` (64, taille d'une page) et `PostSyncBacklogPagesMax` (8 pages = 512
+  candidats, pour 200 retenus) inchangés ; dérivations : le garde-fou vaut aussi 200, mais `Deriver` lit tous les
+  documents de son lot en mémoire, donc `deriverParLots` les passe par lots de 5 et s'arrête entre deux lots sur
+  le budget de temps. Tests : arrêt sur le budget de temps (killcollector et replayartifacts, base réelle ;
+  `enLots`), tous les matchs traités sous un budget large (20 > 8 et > 5).
+- [x] 4g.2 (D-20) La cadence de 10 min tient tant que l'historique OU l'arriéré de films n'est pas vide. Chemin de
+  l'indicateur : chaque étape film publie à la fin de sa passe `filmbacklog.Publier(titre, étape, restant)`
+  (`internal/sync/filmbacklog`, par titre : l'arriéré est celui du registre partagé du titre) ; l'ordonnanceur le
+  lit par le port `port.FilmBacklogReader` (`WithFilmBacklogReader`, câblé dans `cmd/server/boot_tasks.go`, garde
+  `boot_film_backlog_test.go`) via `filmBacklogOf` en fin de cycle, pour le cycle V2 ET pour le filet `syncPlayer`.
+  L'arriéré est celui d'APRÈS la passe (non atteint faute de temps, reportés) ; il ne compte pas les matchs essayés
+  et non résolus (échec, film mis de côté) ni les matchs sans carte, pour que la cadence courte ne tourne pas sans
+  fin sur des films qui ne progressent pas. Halo 5 n'a aucune étape film : son titre ne publie jamais d'arriéré
+  (rien à remonter). Journal `auto_sync: cycle suivant planifié` : `films_en_retard` (+ `films_frags`,
+  `films_rejeux`). Tests : historique complet + arriéré -> 10 min, arriéré vide -> intervalle réglé, V2 et filet.
+- [x] 4g.3 (D-15/D-20) État à l'écran : `GET /players/{slug}/sync/history` sert `films_pending` par titre
+  (`port.SyncActivity.FilmsPending`) ; l'encadré réutilise la pastille des tuiles de match (mêmes textes du
+  manifeste commun, « Analyse en cours » pendant un cycle, « Analyse en attente » sinon) au lieu de « Historique
+  complet » tant que des films attendent ; relecture lente tant que c'est vrai. FR et EN (textes existants).
+- Gate : `go test ./internal/sync/killcollector/... ./internal/sync/replayartifacts/... ./internal/sync/filmbacklog/...
+  ./internal/scheduler/... ./internal/service/... ./cmd/server/...` (+ `-tags=integration`), `npx vitest run
+  src/features/settings`, `npx tsc --noEmit -p .`.
+
 ### Étape 5bis — mesure d'une passe (D-14)
 
 - [ ] 5b.1 Sur une COPIE de la base locale (règle : neutraliser les chemins des réglages avant de lancer
@@ -353,6 +384,13 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 ## Découvertes
 
 (Les correctifs hors périmètre sont interdits : les noter ici.)
+
+- Étape 4g : le filet `engine.run` (`runConditionalPostSync`) ne lance le post-sync complet, films compris, que si
+  des matchs sont insérés ou si `hasConvergenceBacklog` (enrichissement, PSA, événements) est non vide : un arriéré
+  de films seul ne le déclenche pas. Sans effet sur le cycle V2 (`RunPostSyncForV2Shared` lance toujours le pipeline
+  complet) ; à traiter si le filet doit un jour résorber les films.
+- Étape 4g : `BacklogHorizon` à 2000 fait lire jusqu'à 2000 identifiants et autant de `os.Stat` par cycle et par
+  joueur pour le rattrapage des rejeux et des dérivés ; à mesurer sur la base réelle (étape 5bis).
 
 - Étape 1 : `sync/match_recomputer.go` lit `sync_meta` par sa propre requête (clé `scoring_revision`),
   copie de `syncmeta.Get` ; à aligner plus tard, hors périmètre.

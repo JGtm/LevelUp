@@ -55,9 +55,10 @@ func (s *AutoSyncScheduler) StartSyncNow() error {
 			}
 		}()
 		res := s.runCycle(ctx, adminstate.TriggerManual)
-		s.signalReplan(res.historyPending)
+		s.signalReplan(res.debt)
 		slog.InfoContext(ctx, "auto_sync: cycle demandé terminé", "total", res.Total, "synced", res.Synced,
-			"failed", res.Failed, "joueurs_en_rattrapage", len(res.historyPending),
+			"failed", res.Failed, "joueurs_en_rattrapage", len(res.debt.history),
+			"films_en_retard", res.debt.films.Total(),
 			"duration", res.Duration.Round(time.Millisecond))
 	}()
 	return nil
