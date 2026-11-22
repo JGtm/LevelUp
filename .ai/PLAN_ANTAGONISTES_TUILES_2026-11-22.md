@@ -264,7 +264,7 @@ jetons (`color-tokens`), aucun `fetch` hors `lib/api`.
 - [ ] I.2 `npx vitest run` complet une fois (`--maxWorkers=4`), `make check-types`, `make gate-push`.
 - [ ] I.3 Témoins APRÈS comparés à 0.4 ; chaque écart rattaché à un item ou déclaré défaut.
 - [x] I.6 (fait, `a6963dbb20` : 42 fichiers, commentaires et titres de tests ; contrôle du pilote : grep vide) (né du contrôle du pilote, règle 17) Commentaires et titres de tests du diff : remplacer les renvois aux identifiants de ce plan (D-10, D-15, DU-3…) par la règle elle-même ; contrôle : `git diff --name-only release/v8.3.0 -- apps | xargs grep -nE "DU-[0-9]|D-1[0-9]|.ai/"` vide.
-- [ ] I.4 `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
+- [x] I.4 (fait : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md`, section 8.3.0 : deux ajouts, deux changements, un retrait) `docs/CHANGELOG.md` et notes de la 8.3.0, en français et en anglais.
 - [ ] I.5 Artefact des vérifications du user (collection `verifs`) : critères 1 à 5 de la section 0 sur un match réel
       nommé par le user, avec les textes anglais de D-14.
 
@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — I.2, premier passage : typecheck vert ; suite web complète 15 568 tests verts, 2 gardes de `src/lib` en échec nées de B (plafond des fonctions à plus de 5 paramètres : 47 pour 46 ; chemin d'icône écrit à la main hors `themedIcon`), renvoyées à l'agent de B. I.4 faite.
 - 2026-11-22 — I.1 et I.6 closes ; I.2 lancée (suite web complète).
 - 2026-11-22 — piste B close et fusionnée (agent : 6 196 tests verts). Toutes les pistes de code sont closes ; I.6 en cours.
 - 2026-11-22 — pistes C et D closes et fusionnées (agent : 6 279 tests du dossier et de l'i18n verts). B : écart à D-12 renvoyé (pulsation sur l'axe du rejeu au lieu du temps réel), correction en cours.
