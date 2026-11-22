@@ -73,20 +73,22 @@ func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
 				t.Fatalf("cycle %d : le match neuf du dessus %s n'a pas été pris", cycle, id)
 			}
 		}
-		// Lectures de pages bornées : page 0 (delta du dessus), page de recouvrement lue deux fois, puis
-		// budget/25 pages ; jamais un rebalayage de la liste.
-		if bound := 3 + budget/convergencePageSize + 2; len(reads) > bound {
+		// Lectures de pages bornées : page 0 (le haut, jusqu'à l'ancre), la page de contrôle à la position
+		// du marque-page translaté, puis budget/25 pages ; jamais un rebalayage de la liste.
+		if bound := 2 + budget/convergencePageSize + 1; len(reads) > bound {
 			t.Fatalf("cycle %d : %d pages d'historique lues %v, borne %d", cycle, len(reads), reads, bound)
 		}
 		if hadCursorBefore {
-			overlap := max(0, cursorBefore.Offset+len(fresh)-convergencePageSize)
-			if len(reads) < 2 || reads[0] != 0 || reads[1] != overlap || overlap == 0 {
-				t.Fatalf("cycle %d : lectures %v, attendu la page 0 puis la page de recouvrement %d (marque-page %+v, %d neufs)",
-					cycle, reads, overlap, cursorBefore, len(fresh))
+			// Les neufs du dessus sont dans la page 0 ; l'ancre donne leur nombre exact, la reprise est
+			// à marque-page + neufs, lue d'une page dont la première entrée est le marque-page.
+			resume := cursorBefore.Offset + len(fresh) - 1
+			if len(reads) < 2 || reads[0] != 0 || reads[1] != resume {
+				t.Fatalf("cycle %d : lectures %v, attendu la page 0 puis la reprise à %d (marque-page %+v, %d neufs)",
+					cycle, reads, resume, cursorBefore, len(fresh))
 			}
 			for _, start := range reads[2:] {
-				if start < overlap {
-					t.Fatalf("cycle %d : lecture à %d, en deçà de la page de recouvrement %d : rebalayage", cycle, start, overlap)
+				if start < resume {
+					t.Fatalf("cycle %d : lecture à %d, en deçà de la reprise %d : rebalayage", cycle, start, resume)
 				}
 			}
 		}
@@ -124,7 +126,7 @@ func TestConvergence_V2_Ordonnanceur_Infinite_1000Matchs(t *testing.T) {
 	if got, want := len(e.registryIDs()), e.fake.listLen(); got != want {
 		t.Fatalf("à la fin, %d matchs au registre sur %d listés", got, want)
 	}
-	if bound := e.fake.listLen()/convergencePageSize + endCycle*5; totalReads > bound {
+	if bound := e.fake.listLen()/convergencePageSize + endCycle*3; totalReads > bound {
 		t.Errorf("%d pages lues au total, borne %d : le rattrapage rebalaye l'historique", totalReads, bound)
 	}
 	t.Logf("V2/ordonnanceur : fin rangée au cycle %d ; appels GetMatchHistory par cycle %v (total %d)", endCycle, readsByPass, totalReads)
