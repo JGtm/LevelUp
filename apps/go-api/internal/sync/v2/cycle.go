@@ -237,6 +237,12 @@ func (o *CycleOrchestratorImpl) Run(
 
 	// ─── Phase 5 — Persist ──────────────────────────────────────────────
 	persistRes := RunPersist(ctx, fetched, enrichments, playerBySlug, o.persister)
+	var proof persistProof
+	if dt := drainTimeoutOf(persistRes.Err); dt != nil {
+		// Attente de la file expirée : le cycle continue avec les matchs prouvés rangés (persist_pending.go).
+		proof = o.proveAfterDrainTimeout(ctx, players, disc, fetched, dt)
+		persistRes.MatchesPersisted, persistRes.Err = len(proof.proven), nil
+	}
 	res.PhaseDurations[PhasePersist] = persistRes.Duration
 	observability.RecordDurationMST(ctxkeys.TitleSlug(ctx), "sync_v2_phase_duration_ms_persist", persistRes.Duration.Milliseconds())
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "sync_v2_matches_persisted_total", int64(persistRes.MatchesPersisted))
@@ -261,10 +267,12 @@ func (o *CycleOrchestratorImpl) Run(
 
 	// Mettre à jour PerPlayer avec les compteurs Phase 1-5.
 	for _, p := range players {
-		o.populateOutcome(res.PerPlayer, p, playerBySlug, disc, dedup)
+		o.populateOutcome(res.PerPlayer, p, proof.queued, disc, dedup)
 	}
+	noteQueued(res.PerPlayer, players, disc, proof.queued)
 
 	// Persistance réussie : fin d'historique ou marque-page des joueurs au rattrapage.
+	hist.queued = proof.queued
 	o.settleHistory(ctx, hist, players, disc, fetched)
 
 	// ─── Phase 6 — Post-sync ────────────────────────────────────────────
@@ -272,6 +280,9 @@ func (o *CycleOrchestratorImpl) Run(
 	// weapon_kills/dominance sur les nouveaux matchs.
 	insertedByPlayer := make(map[string][]string, len(players))
 	for mID := range fetched.Matches {
+		if !proof.persisted(mID) {
+			continue // encore dans la file d'écriture : rangé en arrière-plan, après ce cycle
+		}
 		for _, slug := range dedup.ParticipantsByMatch[mID] {
 			insertedByPlayer[slug] = append(insertedByPlayer[slug], mID)
 		}
@@ -397,11 +408,12 @@ func (o *CycleOrchestratorImpl) markFailed(
 }
 
 // populateOutcome remplit les compteurs Phase 1-5 d'un joueur, sans
-// écraser un status "failed" déjà positionné par markFailed.
+// écraser un status "failed" déjà positionné par markFailed. queued : les matchs soumis dont le
+// rangement n'est pas encore prouvé (attente de la file expirée), non comptés insérés.
 func (o *CycleOrchestratorImpl) populateOutcome(
 	per map[string]PlayerOutcome,
 	p PlayerProfile,
-	byProfile map[string]PlayerProfile,
+	queued map[string]bool,
 	disc DiscoveryResult,
 	dedup DedupResult,
 ) {
@@ -416,6 +428,9 @@ func (o *CycleOrchestratorImpl) populateOutcome(
 	// pondéré : son MatchesInserted = matchs où ses participants
 	// existent (proxy correct pour V2 où on persist en batch).
 	for _, mID := range disc.PerPlayer[p.PlayerSlug] {
+		if queued[mID] {
+			continue // pas encore rangé : compté quand la file l'aura fini
+		}
 		participants := dedup.ParticipantsByMatch[mID]
 		for _, s := range participants {
 			if s == p.PlayerSlug {
@@ -425,7 +440,6 @@ func (o *CycleOrchestratorImpl) populateOutcome(
 		}
 	}
 	per[p.PlayerSlug] = out
-	_ = byProfile // signature consistante, byProfile peut servir future
 }
 
 // mergePostSyncOutcome ajoute les warnings + propage l'erreur post-sync

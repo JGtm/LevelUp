@@ -8,6 +8,8 @@
 //     marque-page ; un match résolu sort de cette liste ;
 //   - à maxCatchUpAttempts passes en échec, le match est ABANDONNÉ : journalisé et compté une fois, il
 //     ne bloque plus rien (la découverte ne le liste plus : history.go) ;
+//   - un match encore dans la file d'écriture (attente expirée, persist_pending.go) n'est ni résolu ni un
+//     échec : il ne compte aucune passe, et retient la fin et le marque-page jusqu'à la passe suivante ;
 //   - la fin d'historique se range quand la fin est vue et qu'il ne reste aucun échec non abandonné ;
 //   - sinon le marque-page avance (position proposée par la découverte) quand il ne reste aucun échec
 //     non abandonné, et la liste des échecs est rangée si elle a changé.
@@ -28,21 +30,46 @@ import (
 // relecture de l'ensemble connu ne retrouve pas.
 const notPersistedReason = "non persisté (absent de l'ensemble connu relu après la persistance)"
 
+// settleInput est ce que le cycle sait d'un joueur au rattrapage après la persistance : ses matchs
+// listés, les erreurs de récupération par match, et les matchs encore dans la file d'écriture.
+type settleInput struct {
+	listed    []string
+	fetchErrs map[string]error
+	queued    map[string]bool
+}
+
+// withoutQueued rend les matchs listés qui ne sont pas dans la file d'écriture, et le nombre de ceux
+// qui y sont.
+func (in settleInput) withoutQueued() (listed []string, queued int) {
+	if len(in.queued) == 0 {
+		return in.listed, 0
+	}
+	listed = make([]string, 0, len(in.listed))
+	for _, id := range in.listed {
+		if in.queued[id] {
+			queued++
+			continue
+		}
+		listed = append(listed, id)
+	}
+	return listed, queued
+}
+
 // settlePlayerHistory range l'état de rattrapage d'un joueur (règle du fichier). Rend vrai quand la
 // fin d'historique est rangée.
 func (o *CycleOrchestratorImpl) settlePlayerHistory(
 	ctx context.Context,
 	p PlayerProfile,
 	ph PlayerHistory,
-	listed []string,
-	fetchErrs map[string]error,
+	in settleInput,
 ) bool {
-	unresolved, ok := o.unresolvedListed(ctx, p, listed, fetchErrs)
+	listed, queued := in.withoutQueued()
+	unresolved, ok := o.unresolvedListed(ctx, p, listed, in.fetchErrs)
 	if !ok {
 		return false
 	}
-	failures, blocking := trackFailures(ctx, p, ph.Failures, passOutcome{listed: listed, unresolved: unresolved, fetchErrs: fetchErrs})
-	canAdvance := blocking == 0
+	failures, blocking := trackFailures(ctx, p, ph.Failures, passOutcome{listed: listed, unresolved: unresolved, fetchErrs: in.fetchErrs})
+	canAdvance := blocking == 0 && queued == 0
 	complete := canAdvance && ph.EndSeen
 	saveCursor := !complete && canAdvance && ph.Proposed != nil
 	saveFailures := !complete && !slices.Equal(failures, ph.Failures)
@@ -81,7 +108,7 @@ func (o *CycleOrchestratorImpl) settlePlayerHistory(
 		observability.IncCounterT(title, counterHistoryCursorSaved)
 		slog.InfoContext(ctx, "sync.v2: rattrapage d'historique — marque-page rangé",
 			"event", "sync.v2.history.cursor_saved", "player", p.PlayerSlug,
-			"offset", ph.Proposed.Offset, "listed", len(listed))
+			"offset", ph.Proposed.Offset, "listed", len(in.listed))
 	}
 	return false
 }

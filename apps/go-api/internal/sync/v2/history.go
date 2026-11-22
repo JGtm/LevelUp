@@ -110,6 +110,10 @@ type PlayerHistory struct {
 // de PlayerOutcome.HistoryPending, y compris sur les sorties anticipées du cycle.
 type historyTracker struct {
 	pending map[string]bool // PlayerSlug -> historique incomplet en fin de cycle
+	// queued : matchs soumis à la file d'écriture dont le rangement n'est pas encore prouvé
+	// (attente expirée, persist_pending.go) ; ni rangés ni échecs, ils retiennent la fin et le
+	// marque-page.
+	queued map[string]bool
 }
 
 // newHistoryTracker part de l'état lu au début du cycle : incomplet = en attente.
@@ -158,7 +162,8 @@ func (o *CycleOrchestratorImpl) settleHistory(
 		if disc.Errors[p.PlayerSlug] != nil {
 			continue // découverte en échec : rien n'a été listé, la passe suivante reprend
 		}
-		if o.settlePlayerHistory(ctx, p, ph, disc.PerPlayer[p.PlayerSlug], fetched.Errors) {
+		in := settleInput{listed: disc.PerPlayer[p.PlayerSlug], fetchErrs: fetched.Errors, queued: tr.queued}
+		if o.settlePlayerHistory(ctx, p, ph, in) {
 			tr.pending[p.PlayerSlug] = false
 		}
 	}
