@@ -53,8 +53,10 @@ func TestDifficile_HistoriqueDejaComplet_CasNormalInchange(t *testing.T) {
 
 	fresh := fa.addOnTop(1)
 	c := b.cycle()
-	if out := c.player(difficileA); len(c.reads[difficileA.xuid]) != 1 || out.MatchesInserted != 1 || !b.registryIDs()[fresh[0]] || out.HistoryPending {
-		t.Errorf("delta d'un match neuf : lectures %v, issue %+v", c.reads[difficileA.xuid], out)
+	// D-23 : le delta s'arrête après une page de connus d'affilée ; un match neuf en tête fait lire deux pages.
+	if reads, out := c.reads[difficileA.xuid], c.player(difficileA); len(reads) != 2 || reads[0] != 0 || reads[1] != convergencePageSize ||
+		out.MatchesInserted != 1 || !b.registryIDs()[fresh[0]] || out.HistoryPending {
+		t.Errorf("delta d'un match neuf : lectures %v, issue %+v, attendu deux pages et un match inséré", reads, out)
 	}
 	if got := b.cleDeFin(difficileA); got != cle0 {
 		t.Errorf("après le delta : clé de fin %q, attendu inchangée %q", got, cle0)
@@ -109,8 +111,9 @@ func TestDifficile_DeuxJoueurs_UnCompletUnEnRattrapage(t *testing.T) {
 	communs := monde.partagerEnHaut(difficileA, difficileB, 3)
 	c2 := b.cycle()
 	outA, outB := c2.player(difficileA), c2.player(difficileB)
-	if reads := c2.reads[difficileA.xuid]; len(reads) != 1 || reads[0] != 0 {
-		t.Errorf("cycle partagé : A a lu les pages %v, attendu une seule (la première)", reads)
+	// D-23 : les trois matchs communs neufs en tête de A font lire deux pages (la seconde ne porte que des connus).
+	if reads := c2.reads[difficileA.xuid]; len(reads) != 2 || reads[0] != 0 || reads[1] != convergencePageSize {
+		t.Errorf("cycle partagé : A a lu les pages %v, attendu les deux premières", reads)
 	}
 	if outA.Status != "ok" || outA.HistoryPending {
 		t.Errorf("cycle partagé : A %+v, attendu complet", outA)
@@ -291,13 +294,14 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 	sort.Strings(repetes)
 	t.Logf("introuvables demandés plus d'une fois pendant le rattrapage : %d sur 30 %v", len(repetes), repetes)
 
-	// Après la fin : delta d'une page ; les introuvables encore en haut de liste sont-ils redemandés ?
+	// Après la fin (D-23) : un introuvable encore dans les 25 premières entrées garde le delta à deux pages et est
+	// redemandé à chaque cycle, jusqu'à ce que 25 matchs plus récents l'éloignent.
 	b.waitCadence(time.Duration(e.intervalH) * time.Hour)
 	for i := 1; i <= 2; i++ {
 		c := b.cycle()
 		t.Logf("après la fin, cycle %d : lectures %v, %d demandes de stats, issue %+v", i, c.reads[difficileA.xuid], c.statsTotal(), c.player(difficileA))
-		if reads := c.reads[difficileA.xuid]; len(reads) != 1 {
-			t.Errorf("après la fin, cycle %d : %d pages lues %v, attendu une", i, len(reads), reads)
+		if reads := c.reads[difficileA.xuid]; len(reads) != 2 {
+			t.Errorf("après la fin, cycle %d : %d pages lues %v, attendu deux (introuvable en tête de liste)", i, len(reads), reads)
 		}
 	}
 }
