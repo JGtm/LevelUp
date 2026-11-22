@@ -29,6 +29,15 @@
 - **Un étage à la fois** — dans le rejeu, la Tactique et l'Occupation du terrain, on choisit un étage (ou « Tout », ou une hauteur) et les autres s'estompent ; dans le rejeu, « Suivre le joueur ouvert » déplace la coupe avec lui.
 - **Des marqueurs lisibles sur tous les fonds** — chaque marqueur reçoit une bande sombre bordée d'un filet clair, pour se détacher du Plan, du Rendu et du Relief, dans les quatre palettes de couleurs.
 - **Live Fire, complète** — son fond est refait d'après le maillage de navigation du jeu : elle gagne son plan des murs, son Relief et les zones praticables qui lui manquaient.
+- **Rechargements et temps de déplacement dans la fiche du joueur** — la section « Gestes » gagne « Déplacement, temps cumulé » et « Rechargements », affichés seulement quand le film les a lus, avec la mention « estimation » ou « minimum » quand il n'a pas tout montré
+- **Tir à la tête et frag parfait dans le fil** — une ligne d'élimination montre une icône de tir à la tête et une icône de frag parfait, tirées des compteurs du jeu
+- **Huit événements d'objectif de plus dans le fil** — éliminations d'un joueur qui rend le drapeau, en rendant ou en portant le drapeau, d'un défenseur ou d'un attaquant de base, du VIP adverse, aides contre le VIP et éliminations en étant VIP ; le filtre du fil les couvre et l'infobulle d'une ligne les énumère
+- **Anneaux d'objectif seulement pour les actions d'objectif** — sur la carte, un anneau s'ouvre pour une capture, une sécurisation, une prise, un retour, un vol ou une détonation ; une élimination liée à l'objectif n'en ouvre plus
+- **Tourelles rattachées à leur véhicule, plus de tirs lus** — une tourelle montée est rattachée à son véhicule, et les tirs sont lus en plus grand nombre
+- **Des scores plus justes** — quand le film montre plus de points qu'on ne sait en expliquer, la fiche n'affiche ni score ni rang à l'instant ; les scores sont justes en Grande bataille sur une ancienne version du jeu, et un faux porteur de drapeau en Grande bataille est corrigé
+- **Coup d'envoi lu à l'horloge du jeu** — le début d'un match tombe 0,3 à 0,9 s plus tôt qu'avant, et le temps de jeu suit
+- **Mise à jour, pour l'exploitant** — au premier démarrage de la version, le coup d'envoi de tous les matchs est rattrapé, puis les notes de tous les joueurs sont recalculées ; les rejeux se régénèrent avec le décodeur v1.5.0 avant ce premier démarrage, puis `levelup backfill-usage-summary` est relancé
+- **Précision par arme calculée sur le film retirée** — l'ancien calcul, jamais affiché à l'écran, disparaît
 
 **v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
 

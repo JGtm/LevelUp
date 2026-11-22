@@ -29,6 +29,15 @@
 - **One floor at a time** — in the replay, Tactics and Terrain occupation, pick a floor (or "All", or a height) and the others fade; in the replay, "Follow the open player" moves the cut with them.
 - **Markers readable on every background** — each marker gets a dark band edged with a light rim, so it stands out on Plan, Rendu and Relief, in the four colour palettes.
 - **Live Fire, complete** — its background is redone from the game's navigation mesh: it gains its wall plan, its Relief and the walkable areas that were missing.
+- **Reloads and movement time in the player card** — the "Gestures" section gains "Movement, total time" and "Reloads", shown only when the film has read them, with "estimate" or "minimum" when it did not show everything
+- **Headshot and perfect icons in the feed** — an elimination line shows a headshot icon and a perfect-kill icon, read from the game's own counters
+- **Eight more objective events in the feed** — kills of a flag returner, kills while returning or carrying the flag, kills of a stronghold defender or attacker, kills of the enemy VIP, VIP assists and kills as the VIP; the feed filter covers them and the hover tip of a line lists them
+- **Objective rings only for objective actions** — on the map, rings open for captures, secures, grabs, returns, steals and detonations, no longer for an objective kill
+- **Turrets follow their vehicle, more shots read** — a mounted turret is attached to its vehicle, and the shots are read in greater number
+- **Truer scores** — when the film shows more points than can be explained, the card shows neither a score nor a rank at the instant; scores are right in Big Team Battle on an older game build, and a false flag carrier in Big Team Battle is gone
+- **Kickoff read on the game clock** — the start of a match falls 0.3 to 0.9 s earlier than before, and the time played follows
+- **Update, for the operator** — on the first start of the version, the kickoff of every match is caught up, then the ratings of every player are recomputed; the replays are regenerated with decoder v1.5.0 before that first start, then `levelup backfill-usage-summary` is run again
+- **Per-film weapon accuracy removed** — the old computation, never shown on screen, is gone
 
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 
