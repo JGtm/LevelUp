@@ -308,27 +308,6 @@
   --ac-range-role-front:       #D9480F;
   --ac-range-role-mid:         #868E96;
   --ac-range-role-far:         #1C7ED6;
-  /* Rôles d'impact — rampes ordinales, thème clair (cf. palettes/_impactRoleColors.ts) */
-  --ac-impact-gain-1: #003412;
-  --ac-impact-gain-2: #1D6131;
-  --ac-impact-gain-3: #3C9253;
-  --ac-impact-gain-4: #5DC677;
-  --ac-impact-loss-1: #901E20;
-  --ac-impact-loss-2: #C45852;
-  --ac-impact-loss-3: #F98F86;
-}
-
-/* Rôles d'impact en thème sombre : seuls jetons --ac-* qui changent avec le fond (la rampe
-   s'inverse en clarté). Repli sans JS (palette par défaut) ; applyPalette() écrit sinon les
-   valeurs de la palette active (paletteForTheme). */
-:root[data-theme='dark'] {
-  --ac-impact-gain-1: #9DF6AF;
-  --ac-impact-gain-2: #6DBF7F;
-  --ac-impact-gain-3: #3E8B51;
-  --ac-impact-gain-4: #085A27;
-  --ac-impact-loss-1: #FE9B93;
-  --ac-impact-loss-2: #C9605A;
-  --ac-impact-loss-3: #942223;
 }
 
 /* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */

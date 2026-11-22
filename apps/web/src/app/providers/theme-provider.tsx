@@ -1,7 +1,7 @@
 import { type ReactNode, useLayoutEffect } from 'react'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { UiTheme } from '@/stores/settingsDraftStore'
-import { applyPalette, paletteForTheme } from '@/lib/accessibility'
+import { applyPalette } from '@/lib/accessibility'
 import { pickPalette } from './palette-picker'
 import { findOutlineColor } from '@/lib/halo/outline-colors'
 
@@ -19,19 +19,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyDocumentTheme(theme)
   }, [theme])
 
-  // La palette suit aussi le thème : quelques jetons (rampes des rôles d'impact) changent de
-  // valeur avec le fond (`paletteForTheme`). Effet posé APRÈS celui du thème : les graphes qui
-  // se reconstruisent au changement de `data-theme` lisent déjà les valeurs du nouveau thème.
+  // Les jetons ne dépendent que de la palette choisie : les deux thèmes partagent leurs valeurs.
   useLayoutEffect(() => {
-    const palette = paletteForTheme(pickPalette(colorPalette), theme)
-    applyPalette(palette, `${colorPalette}:${theme}`)
+    const palette = pickPalette(colorPalette)
+    applyPalette(palette, colorPalette)
     // Apply user outline color overrides — always explicit so reset-to-default works.
     const root = document.documentElement
     const ally = findOutlineColor(allyTeamColor)
     const enemy = findOutlineColor(enemyTeamColor)
     root.style.setProperty('--ac-team-ally', ally?.hex ?? palette['team-ally'])
     root.style.setProperty('--ac-team-enemy', enemy?.hex ?? palette['team-enemy'])
-  }, [colorPalette, theme, allyTeamColor, enemyTeamColor])
+  }, [colorPalette, allyTeamColor, enemyTeamColor])
 
   return <>{children}</>
 }
