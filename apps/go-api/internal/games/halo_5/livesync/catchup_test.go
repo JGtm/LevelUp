@@ -229,8 +229,8 @@ func TestRunDelta_Rattrapage_PasseBorneeAuBudget(t *testing.T) {
 	if w.deltaCalls != 0 {
 		t.Errorf("le delta a tourné %d fois sans marque-page", w.deltaCalls)
 	}
-	if w.marked != 0 || !res.HistoryPending || res.HistoryExhausted {
-		t.Errorf("fin rangée=%d pending=%v exhausted=%v, attendu 0/true/false", w.marked, res.HistoryPending, res.HistoryExhausted)
+	if w.marked != 0 || !res.HistoryPending {
+		t.Errorf("fin rangée=%d pending=%v, attendu 0/true", w.marked, res.HistoryPending)
 	}
 	if w.cursor == nil || w.cursor.Offset != 50 || w.cursor.LastMatchID != "m0049" {
 		t.Errorf("marque-page = %+v, attendu {50 m0049}", w.cursor)
@@ -420,9 +420,6 @@ func TestRunDelta_Rattrapage_ErreurDePersistanceDurableAbandonnee(t *testing.T) 
 		if w.marked != 0 || !res.HistoryPending || (pass == 1 && res.Status() != "partial_success") {
 			t.Fatalf("passe %d : fin rangée=%d pending=%v statut=%s", pass, w.marked, res.HistoryPending, res.Status())
 		}
-		if !res.HistoryExhausted {
-			t.Errorf("passe %d : la fin de liste est vue même si la fin n'est pas rangée", pass)
-		}
 	}
 	res := w.run(t, domain.SyncOptions{})
 	if w.marked != 1 || res.HistoryPending {
@@ -442,9 +439,6 @@ func TestRunDelta_Rattrapage_ErreurDePersistanceNeRangePasLaFin(t *testing.T) {
 
 	if w.marked != 0 || !res.HistoryPending || res.Status() != "partial_success" {
 		t.Errorf("fin rangée=%d pending=%v statut=%s, attendu 0/true/partial_success", w.marked, res.HistoryPending, res.Status())
-	}
-	if !res.HistoryExhausted {
-		t.Error("la fin de liste a été vue : HistoryExhausted doit être vrai même si la fin n'est pas rangée")
 	}
 	if w.cursor != nil {
 		t.Errorf("la page 0 est en erreur : aucun marque-page ne doit être rangé, %+v", w.cursor)
