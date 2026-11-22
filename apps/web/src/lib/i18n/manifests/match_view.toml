@@ -262,18 +262,6 @@ en = "No skill API for this title: expected kills and deaths come from a local m
 fr = "Coéquipier bot présent dans ce match"
 en = "Bot teammate present in this match"
 
-[match_view.cards.kd_vs_nemesis]
-fr = "K/D vs nemesis"
-en = "K/D vs nemesis"
-
-[match_view.cards.nemesis_versus]
-fr = "contre {name}"
-en = "vs {name}"
-
-[match_view.cards.nemesis_counts]
-fr = "{killed} frags · {died} morts"
-en = "{killed} kills · {died} deaths"
-
 [match_view.cards.mmr_team_vs_enemy]
 fr = "MMR"
 en = "MMR"

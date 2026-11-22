@@ -3,7 +3,7 @@
  * même fonction que le rejeu (`lib/antagonists`) sur les éliminations de `highlight_events`.
  *
  * Ce qui est protégé : le départage par le TENANT (pas par l'ordre d'une liste), l'immunité aux
- * doublons du fil, l'exclusion des bots (DU-5) et des trahisons, l'état vide.
+ * doublons du fil, l'exclusion des bots et des trahisons, l'état vide.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -37,7 +37,7 @@ function kill(
 describe('readMatchAntagonists : départage par le tenant', () => {
   it('némésis : sur une égalité finale, le premier à atteindre le compte garde le titre, pas le premier de la liste', () => {
     // e1 prend le titre (1), e2 le dépasse (2 contre 1), puis e1 revient à 2 : e2 reste tenant.
-    // Le scoreboard et la liste nomment e1 avant e2 : l'ancien départage « premier de la liste » rendait e1.
+    // Le scoreboard et la liste nomment e1 avant e2 : un départage par la liste rendrait e1, pas le tenant.
     const events = [kill('e1', ME, 1000), kill('e2', ME, 2000), kill('e2', ME, 3000), kill('e1', ME, 4000)]
     const r = readMatchAntagonists(events, SCOREBOARD, ME)
     expect(r.nemesis).toEqual({ xuid: 'e2', gamertag: 'E2', count: 2 })
@@ -79,7 +79,7 @@ describe('readMatchAntagonists : doublons du fil', () => {
 })
 
 describe('readMatchAntagonists : bots, trahisons, adversaires', () => {
-  it("un bot victime (sans xuid) n'est jamais un souffre-douleur (DU-5)", () => {
+  it("un bot victime (sans xuid) n'est jamais un souffre-douleur", () => {
     const bot = { victim_gamertag: 'Bot Un [bot]' }
     const events = [
       kill(ME, undefined, 1000, bot),
@@ -103,7 +103,7 @@ describe('readMatchAntagonists : bots, trahisons, adversaires', () => {
     expect(r.bully).toEqual({ xuid: 'e3', gamertag: 'E3', count: 1 })
   })
 
-  it("sans équipe connue pour le joueur, tout autre joueur est un adversaire (règle d'avant)", () => {
+  it("sans équipe connue pour le joueur, tout autre joueur est un adversaire", () => {
     const sb = [row(ME, undefined), row('a', undefined)]
     const r = readMatchAntagonists([kill('a', ME, 1000)], sb, ME)
     expect(r.nemesis).toEqual({ xuid: 'a', gamertag: 'A', count: 1 })

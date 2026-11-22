@@ -3,14 +3,12 @@
  *
  * Calculés par la fonction commune `lib/antagonists` (celle du rejeu) sur les éliminations du
  * fil `combat_tab.highlight_events`, au dernier instant : la dernière image du rejeu et les
- * cartes de la page ne peuvent pas diverger. Le fil n'est pas dédoublonné par le serveur
- * (172 matchs sur 1 462 portent chaque élimination deux fois) : la fonction commune écarte
- * les doublons (même tueur, même victime, même instant).
+ * cartes de la page ne peuvent pas diverger. Le fil peut porter une même élimination en
+ * double : la fonction commune écarte les doublons (même tueur, même victime, même instant).
  *
  * Règles de lecture du fil :
  *  - seule une élimination (`kill`) qui nomme son tueur ET sa victime par un xuid est comptée ;
- *  - un bot n'a pas de xuid : il n'est ni némésis ni souffre-douleur (DU-5), comme dans les
- *    duels que le serveur sert (`buildNemesisMap`) ;
+ *  - un bot n'a pas de xuid : il n'est jamais un antagoniste (ni némésis ni souffre-douleur) ;
  *  - est adversaire tout autre joueur que le joueur de la page qui n'est pas de son camp
  *    (`team_side` du tableau de score) ; sans camp connu pour le joueur, tout autre joueur ;
  *    un joueur absent du tableau de score n'est pas du camp du joueur.

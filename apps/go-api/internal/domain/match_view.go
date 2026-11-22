@@ -764,7 +764,6 @@ type MatchEncounterBadge struct {
 type MatchTeamTab struct {
 	Roster     []MatchRosterRow     `json:"roster"`
 	Scoreboard []MatchScoreboardRow `json:"scoreboard"`
-	Nemesis    []MatchNemesisRow    `json:"nemesis"`
 	Encounters []MatchEncounterRow  `json:"encounters"`
 }
 
