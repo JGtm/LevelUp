@@ -221,7 +221,7 @@ export const FR_TEXT = {
       top_gun: 'Premier membre de l\'équipe à atteindre 10 frags',
       kamikaze: 'Joueur le plus tué dans les 1,5 s qui suivent ses frags',
       thief: 'Joueur avec le plus de frags volés à un ami : assisté par cet ami, 10 % des dégâts ou moins, ami vivant juste avant et juste après le frag',
-      glass_jaw: 'Allié dont le bouclier a été brisé le plus souvent dans le match (−0,5).',
+      glass_jaw: 'Joueur dont le bouclier a été brisé le plus souvent dans le match',
     },
   },
   perMinute: {

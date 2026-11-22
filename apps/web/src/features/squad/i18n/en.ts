@@ -220,7 +220,7 @@ export const EN_TEXT = {
       top_gun: 'First squad member to reach 10 kills',
       kamikaze: 'Player killed within 1.5 s after one of their own frags (most frequent in the match)',
       thief: 'Player with the most kills stolen from a friend: assisted by that friend, 10% of the damage or less, friend alive just before and just after the kill',
-      glass_jaw: 'Teammate whose shield was broken most often in the match (−0.5).',
+      glass_jaw: 'Player whose shield was broken most often in the match',
     },
   },
   perMinute: {

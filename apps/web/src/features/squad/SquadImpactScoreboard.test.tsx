@@ -133,10 +133,10 @@ describe('SquadImpactScoreboard', () => {
     expect(getSquadText('fr').impact.badgeNames.glass_jaw).toBe('Os de verre')
     expect(getSquadText('en').impact.badgeNames.glass_jaw).toBe('Glass Jaw')
     expect(getSquadText('fr').impact.badgeDescriptions.glass_jaw).toBe(
-      'Allié dont le bouclier a été brisé le plus souvent dans le match (−0,5).',
+      'Joueur dont le bouclier a été brisé le plus souvent dans le match',
     )
     expect(getSquadText('en').impact.badgeDescriptions.glass_jaw).toBe(
-      'Teammate whose shield was broken most often in the match (−0.5).',
+      'Player whose shield was broken most often in the match',
     )
   })
 
