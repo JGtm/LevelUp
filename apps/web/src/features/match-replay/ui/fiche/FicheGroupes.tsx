@@ -1,8 +1,8 @@
 /**
  * FicheGroupes — LES DEUX GROUPES DU BAS DE LA FICHE, séparés d'un filet : « TOTAUX DU MATCH » (les chiffres
  * officiels de fin de match lus sur la feuille : précision, dégâts, score, éliminations à la tête — pas d'armes,
- * elles sont dans le tableau des éliminations) et « GESTES » (temps cumulé de sprint, sauts estimés, avec l'instant
- * lu à côté du titre).
+ * elles sont dans le tableau des éliminations) et « GESTES » (temps cumulé de sprint et de déplacement, sauts estimés,
+ * rechargements, avec l'instant lu à côté du titre).
  *
  * Une valeur que la feuille ou le film ne donne pas n'a pas de ligne ; le zéro d'un geste non plus. Le rendu ne
  * lit rien.
@@ -52,9 +52,18 @@ export function FicheGestes({ gestures, clock, locale }: { gestures: GesturesVie
     >
       <FicheRows>
         {gestures.sprintMs !== null && <FicheRow label={t.sprintTotal}>{formatDuration(gestures.sprintMs)}</FicheRow>}
+        {gestures.moveMs !== null && <FicheRow label={t.moveTotal}>{formatDuration(gestures.moveMs)}</FicheRow>}
         {gestures.jumps !== null && (
           <FicheRow label={t.jumps} aside={<EstimateCapsule text={t.estimate} hint={t.estimateHint} />}>
             {formatCount(gestures.jumps, locale)}
+          </FicheRow>
+        )}
+        {gestures.reloads !== null && (
+          <FicheRow
+            label={t.reloads}
+            aside={gestures.reloadsMinimum ? <EstimateCapsule text={t.estimate} hint={t.reloadsHint} /> : undefined}
+          >
+            {formatCount(gestures.reloads, locale)}
           </FicheRow>
         )}
       </FicheRows>

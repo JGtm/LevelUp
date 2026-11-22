@@ -185,15 +185,8 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchEventsTimeline:  games.CapDegraded,
 		games.CapMatchKillfeedPerKill: games.CapDegraded,
 		games.CapMatchEventsSpatial:   games.CapNotExposed,
-		// Précision par arme : REMISÉE le 2026-09-01 (not_exposed). Le numérateur film
-		// (touches, reconstruit par l'appariement tir↔dégât — passe killcollector/hits.go)
-		// s'est révélé NON FIABLE au recalage : le pairing rate ~40 %+ des touches et les
-		// armes automatiques ressortent à 0,9-3,3 % vs ~40 % côté API
-		// (RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). On REMISE : le code
-		// backend (décodeur, mapper, persister, table match_weapon_hit_distance) est
-		// conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur
-		// film (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite.
-		// La précision GLOBALE reste servie par l'API. Reprise : piste compteur ECS.
+		// Précision par arme : non exposée pour Infinite (le film ne donne pas un numérateur assez
+		// fiable ; aucune passe de LevelUp ne le calcule). La précision GLOBALE reste servie par l'API.
 		// Cf. capabilities.toml.
 		games.CapWeaponAccuracy: games.CapNotExposed,
 		// Libellés de playlist préfixés d'une catégorie matchmaking à retirer pour

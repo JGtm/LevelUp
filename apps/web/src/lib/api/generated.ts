@@ -6572,6 +6572,7 @@ export interface components {
             continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
+            eliminations?: components["schemas"]["EliminationCoverage"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
             fallbacks?: components["schemas"]["FallbackHit"][] | null;
@@ -6595,6 +6596,7 @@ export interface components {
             pickups?: components["schemas"]["PickupCoverage"];
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             projectiles?: components["schemas"]["ProjectileCoverage"];
+            reloads?: components["schemas"]["ReloadCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
             scoreActions?: components["schemas"]["ScoreActionCoverage"];
             seats?: components["schemas"]["SeatCoverage"];
@@ -6874,6 +6876,42 @@ export interface components {
             /** Format: double */
             p95: number;
             symetrique: boolean;
+        };
+        Elimination: {
+            headshot?: boolean;
+            perfect?: boolean;
+            /** Format: int64 */
+            t: number;
+            victim?: string;
+            xuid: string;
+        };
+        EliminationCoverage: {
+            /** Format: int64 */
+            eliminations: number;
+            /** Format: int64 */
+            headAmbiguous: number;
+            /** Format: int64 */
+            headGuarded: number;
+            /** Format: int64 */
+            headNo: number;
+            /** Format: int64 */
+            headNoCounter: number;
+            /** Format: int64 */
+            headOrphanRises: number;
+            /** Format: int64 */
+            headUnknown: number;
+            /** Format: int64 */
+            headYes: number;
+            /** Format: int64 */
+            perfectAmbiguous: number;
+            /** Format: int64 */
+            perfectOrphans: number;
+            /** Format: int64 */
+            perfectUnknown: number;
+            /** Format: int64 */
+            perfectYes: number;
+            /** Format: int64 */
+            withVictim: number;
         };
         EmpriseEquipment: {
             families: components["schemas"]["EmpriseEquipmentFamily"][] | null;
@@ -11827,6 +11865,32 @@ export interface components {
             overview: components["schemas"]["RelationsOverview"];
             relations: components["schemas"]["RelationInsight"][] | null;
         };
+        Reload: {
+            /** Format: int64 */
+            place: number;
+            /** Format: int64 */
+            t: number;
+        };
+        ReloadCoverage: {
+            /** Format: int64 */
+            afterEnd: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            closedFrames: number;
+            /** Format: int64 */
+            copies: number;
+            /** Format: int64 */
+            frames: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            stoppedFrames: number;
+            /** Format: int64 */
+            withoutPlayer: number;
+        };
         ReplayBuildEnqueueResponse: {
             created: boolean;
             job: components["schemas"]["BuildQueueJob"];
@@ -11849,6 +11913,7 @@ export interface components {
             damage?: components["schemas"]["Damage"][] | null;
             /** Format: int64 */
             durationMs?: number;
+            eliminations?: components["schemas"]["Elimination"][] | null;
             equipmentChanges?: components["schemas"]["EquipmentChange"][] | null;
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
@@ -11891,6 +11956,7 @@ export interface components {
             padPickups?: components["schemas"]["PadPickup"][] | null;
             pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
+            reloads?: components["schemas"]["Reload"][] | null;
             respawnCountdowns?: components["schemas"]["RespawnCountdown"][] | null;
             riftPoses?: components["schemas"]["RiftPose"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
@@ -12091,9 +12157,17 @@ export interface components {
             /** Format: int64 */
             scoreMessages: number;
             /** Format: int64 */
+            scoreboardBehind: number;
+            /** Format: int64 */
+            scoreboardCompared: number;
+            /** Format: int64 */
+            scoreboardMissing: number;
+            /** Format: int64 */
             scored: number;
             /** Format: int64 */
             stoppedFrames: number;
+            /** Format: int64 */
+            treeShift: number;
             /** Format: int64 */
             unconfirmedRank: number;
             /** Format: int64 */
@@ -13700,11 +13774,30 @@ export interface components {
             /** Format: int64 */
             t1: number;
         };
+        StanceControlCoverage: {
+            /** Format: int64 */
+            entries: number;
+            /** Format: int64 */
+            holds: number;
+            /** Format: int64 */
+            innerHoles: number;
+            /** Format: int64 */
+            intervals: number;
+            /** Format: int64 */
+            noPlayer: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            withHole: number;
+        };
         StanceCoverage: {
             absent?: boolean;
             byKind?: {
                 [key: string]: number;
             };
+            control?: components["schemas"]["StanceControlCoverage"];
             /** Format: int64 */
             desyncs: number;
             /** Format: int64 */
@@ -14086,15 +14179,15 @@ export interface components {
         };
         T0FilmCoverage: {
             /** Format: int64 */
-            burst: number;
+            burst?: number;
             detected: boolean;
             /** Format: int64 */
             marginMs: number;
             /** Format: int64 */
-            moving: number;
+            moving?: number;
             reason?: string;
             /** Format: int64 */
-            tracks: number;
+            tracks?: number;
         };
         TableStatus: {
             exists: boolean;

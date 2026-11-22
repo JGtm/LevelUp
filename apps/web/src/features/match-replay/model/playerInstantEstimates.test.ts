@@ -121,6 +121,20 @@ describe('playerInstantEstimates — score : les trois gardes', () => {
     }
   })
 
+  it('un tableau du film au-dessus des points publiés rend le verdict faux : ni score ni rang, et aucun texte à la place', () => {
+    const coverage = {
+      originResolved: true,
+      scoreActions: { complete: false, scoreboardCompared: 4, scoreboardMissing: 2, scoreboardBehind: 0, treeShift: 0 },
+    } as never
+    const { at } = lobby(docWith({ coverage }))
+    for (const who of [A, B, C, BOT]) {
+      const e = at(who, 100)
+      expect(e.score).toBeNull()
+      expect(e.absences.score).toBe('score-incomplet')
+      expect(e.rank).toBeNull()
+    }
+  })
+
   it('document sans couverture du score par action : incomplet', () => {
     const e = lobby(docWith({ coverage: undefined })).at(A, 100)
     expect(e.score).toBeNull()

@@ -3,7 +3,7 @@
 // pour un match DEJA insere.
 //
 // POURQUOI UN PERSISTER DEDIE, ET PAS `SharedPersister` : meme raison que [KillPositionPersister]
-// et [WeaponHitDistancePersister] — `SharedPersister.Persist` est un no-op des que le match existe
+// — `SharedPersister.Persist` est un no-op des que le match existe
 // deja dans `match_registry`, et le resume se derive de l ARTEFACT de rejeu, qui n existe qu APRES
 // le sync primaire (etape post-sync replaybuild, ou backfill CLI sur les artefacts en cache).
 //

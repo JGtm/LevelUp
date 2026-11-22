@@ -34,8 +34,8 @@ var sharedTablesNotExtracted = map[string]string{
 	"match_weapon_shots": "écrite par le collecteur de kills et le rejeu de films, aucun lecteur " +
 		"applicatif (recherche du nom et de sa vue dans internal/ et cmd/ au 2026-10-19 : écrivains, " +
 		"migrations et commentaires seuls)",
-	"match_weapon_hit_distance": "écrite à la cuisson du film, aucun lecteur applicatif (même " +
-		"recherche, 2026-10-19)",
+	"match_weapon_hit_distance": "aucun écrivain ni lecteur applicatif : la passe qui l'écrivait est retirée " +
+		"(montée du décodeur v1.5.0, 2026-11-22), la table reste au schéma",
 }
 
 // colonnesNommeesSansIdentite : les colonnes dont le nom contient `xuid` ou `gamertag` sans porter

@@ -280,7 +280,6 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 	debut = time.Now()
 	col.collectShots(ctx, film, chunks, ids)
 	col.collectPositions(ctx, film, decode, res, ids, fusionne)
-	col.collectHits(ctx, film, chunks, ids)
 	c.annexes = time.Since(debut)
 
 	var m runtime.MemStats

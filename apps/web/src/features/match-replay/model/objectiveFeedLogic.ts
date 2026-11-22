@@ -34,7 +34,7 @@ import { objectiveFamilyOf, type ObjectiveFamily } from './objectiveFamilies'
 
 /**
  * Les actions d'objectif nommées par le décodeur, dans l'ordre de `named.go` : drapeau (CTF),
- * zone (Bases), VIP, bombe (Assaut).
+ * zone (Bases), VIP, bombe (Assaut), puis les éliminations et assistances liées à l'objectif.
  */
 export const OBJECTIVE_FEED_STATS = [
   'flag_captures',
@@ -48,9 +48,51 @@ export const OBJECTIVE_FEED_STATS = [
   'zone_secures',
   'vip_selected',
   'bomb_detonations',
+  'flag_returners_killed',
+  'flag_kills_as_returner',
+  'flag_kills_as_carrier',
+  'zone_offensive_kills',
+  'zone_defensive_kills',
+  'vip_kills',
+  'vip_assists',
+  'vip_kills_as_vip',
 ] as const
 
 export type ObjectiveFeedStat = (typeof OBJECTIVE_FEED_STATS)[number]
+
+/**
+ * Les actions qui se posent SUR l'objectif : une capture, une sécurisation, une prise, un retour, un vol, une
+ * détonation. Seules elles ouvrent un anneau sur la zone ou le drapeau (`buildObjectivePulses`) : une élimination
+ * liée à l'objectif (les huit noms de `OBJECTIVE_KILL_STATS` et `vip_assists`), une désignation de VIP ou une
+ * assistance de capture n'ont rien à annoncer sur l'élément le plus proche de leur auteur. Liste BLANCHE : une action
+ * future du décodeur n'ouvre pas d'anneau tant qu'elle n'est pas nommée ici.
+ */
+export const OBJECTIVE_PULSE_STATS: ReadonlySet<string> = new Set<ObjectiveFeedStat>([
+  'flag_captures',
+  'flag_grabs',
+  'flag_secures',
+  'flag_returns',
+  'flag_steals',
+  'zone_captures',
+  'zone_secures',
+  'bomb_detonations',
+])
+
+/**
+ * Les actions du décodeur qui sont une ÉLIMINATION de leur auteur : le frag du fil dit déjà tueur, arme et victime, la
+ * ligne d'objectif en serait le doublon. Elles se replient en badge sur le frag du même tueur (`foldCarrierKills`) ;
+ * une action sans frag apparié garde sa ligne. `vip_assists` n'y est pas : une assistance n'a pas de frag à elle.
+ */
+export const OBJECTIVE_KILL_STATS: ReadonlySet<string> = new Set<ObjectiveFeedStat>([
+  'flag_carriers_killed',
+  'flag_returners_killed',
+  'flag_kills_as_returner',
+  'flag_kills_as_carrier',
+  'zone_offensive_kills',
+  'zone_defensive_kills',
+  'vip_kills',
+  'vip_kills_as_vip',
+])
 
 const KNOWN_STATS: ReadonlySet<string> = new Set(OBJECTIVE_FEED_STATS)
 

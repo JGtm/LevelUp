@@ -30,5 +30,22 @@ type StanceCoverage struct {
 	RefusedNewFalseReads  int            `json:"refusedNewFalseReads,omitempty"`
 	RefusedNewLostCreates int            `json:"refusedNewLostCreations,omitempty"`
 	RefusedNewUndecided   int            `json:"refusedNewUndecided,omitempty"`
-	MapWidths             [3]uint        `json:"mapWidths,omitempty"`
+	// Control dit ce que la lecture de la commande de déplacement tenue a rendu (genre `moveCommand`) ; absent
+	// quand la vue de contrôle n'a pas été lue.
+	Control   *StanceControlCoverage `json:"control,omitempty"`
+	MapWidths [3]uint                `json:"mapWidths,omitempty"`
+}
+
+// StanceControlCoverage dit ce que la lecture des commandes de déplacement tenues a rendu et ce que la publication
+// en a fait : `holds` = `published` + `noTrack` + `noPlayer`. Une commande publiée donne un intervalle par vie et par
+// passage lu ; `intervals` les compte.
+type StanceControlCoverage struct {
+	Holds      int `json:"holds"`
+	WithHole   int `json:"withHole"`
+	InnerHoles int `json:"innerHoles"`
+	Entries    int `json:"entries"`
+	Published  int `json:"published"`
+	Intervals  int `json:"intervals"`
+	NoTrack    int `json:"noTrack"`
+	NoPlayer   int `json:"noPlayer"`
 }

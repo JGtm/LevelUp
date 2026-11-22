@@ -117,14 +117,9 @@ type KillSourceCollector struct {
 	timeout time.Duration
 	// mapNames / mapBounds : cablage OPTIONNEL de la RESOLUTION DE CARTE du collecteur — cf.
 	// WithPositionCapture. Les deux sont necessaires ensemble ; nil = positions desactivees,
-	// degradation journalisee PAR MATCH (configuration, pas panne). DEUX passes les partagent
-	// depuis le lot 1.9.4 : les positions (G.2bis) ET les distances de touche (`map_identity.go`).
+	// degradation journalisee PAR MATCH (configuration, pas panne).
 	mapNames  port.ReplayMapNameRepo
 	mapBounds *decfilm.MapQuantCatalog
-	// filmDir : la CONFIGURATION du numerateur film (precision par arme + distance, collectHits
-	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
-	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
-	filmDir FilmDirResolver
 	// observateur : le SUIVI de la passe, film par film (lot 5.24.3). nil = aucun suivi, et
 	// c est le defaut de tous les appelants sauf le backfill CLI. Il n a AUCUN effet sur ce qui
 	// est decode ni sur ce qui est ecrit — voir `collector_ouvriers.go`.
@@ -137,25 +132,6 @@ type KillSourceCollector struct {
 	// AvecPorteeDuRadar) — cf. placement_des_vies.go. Vide = porteurs du drapeau sans socles,
 	// lignes sans portee.
 	placement depsDuPlacement
-}
-
-// FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
-// grammar.ReadFilmChunk), ou "" si le film n est pas sur disque pour ce match. Le numerateur de
-// precision par arme (collectHits) est DIR-BASE : il rejoue le film avec les scanners filmdec
-// (positions bipedes, damage_aftermath) qui lisent des fichiers chunk. Le cache disque local
-// (data/cache/film_chunks/{matchID}) satisfait ce format ; le chemin live (chunks en memoire,
-// hors cache) n a pas de repertoire -> la passe est alors sautee proprement.
-type FilmDirResolver func(matchID string) string
-
-// ConfigureFilmAccuracy branche le numerateur film (collectHits). `dir` resout le repertoire de
-// chunks d un match. Sans cet appel, la passe de precision par arme ne tourne pas (degradation
-// gracieuse).
-//
-// ELLE NE PREND PLUS DE CHEMIN DE CATALOGUE DEPUIS LE LOT 1.9.4 : le collecteur n en a qu UN,
-// celui de [KillSourceCollector.WithPositionCapture]. Deux configurations du meme catalogue, ce
-// seraient deux verites possibles pour la meme carte (`map_identity.go`).
-func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver) {
-	c.filmDir = dir
 }
 
 // NewKillSourceCollector construit le collecteur.

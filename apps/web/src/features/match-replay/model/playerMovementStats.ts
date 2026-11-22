@@ -1,5 +1,5 @@
 /**
- * playerMovementStats.ts — LE SPRINT ET LES SAUTS D'UN JOUEUR DU DÉBUT DU MATCH JUSQU'À L'IMAGE LUE, sans React.
+ * playerMovementStats.ts — LE SPRINT, LES SAUTS ET LE TEMPS EN COMMANDE DE DÉPLACEMENT D'UN JOUEUR DU DÉBUT DU MATCH JUSQU'À L'IMAGE LUE, sans React.
  *
  * DEUX TEMPS, comme `playerInstantStats`. `readMovementSeries` lit une fois par document les états de mouvement
  * (`doc.stances`), attribue chaque intervalle au joueur qui occupe son slot à son premier instant et range, par
@@ -9,6 +9,10 @@
  * (le slot migre aux réapparitions : le joueur est celui qui occupe le slot à `t0`, `buildSlotOwnership`), sur
  * l'axe d'images des pistes, bornés à la fenêtre de la vie : un état ne court jamais pendant la mort.
  *  - `sprint` est LU dans un composant du film : un intervalle est un sprint mesuré.
+ *  - `moveCommand` est LU dans la vue de contrôle du film : la commande de déplacement tenue (le joueur pousse le
+ *    stick), bornée à chaque vie du joueur. Ce n'est pas un mouvement du corps : un joueur qui pousse contre un mur
+ *    tient la commande. Il n'est établi que si `coverage.stances.control` existe (la vue de contrôle a été lue) ;
+ *    le temps cumulé s'écrit « temps en déplacement » et jamais « distance ».
  *  - `jumpDerived` est DÉRIVÉ de l'intégrale de la vitesse verticale et reconnu à sa hauteur : le document ne
  *    publie AUCUN compte de sauts lu, seulement ces intervalles dérivés. Tout compte de sauts est donc une
  *    estimation (`jumpsEstimated`) : l'écran doit le dire. Les intervalles dérivés se comptent un par un.
@@ -34,6 +38,8 @@ import { identityKeys } from './playerInstantStats'
 
 /** Genre d'un intervalle de sprint (`stances[].kind`), LU dans un composant du film. */
 export const STANCE_KIND_SPRINT = 'sprint'
+/** Genre d'un intervalle de commande de déplacement tenue (`stances[].kind`), LU dans la vue de contrôle du film. */
+export const STANCE_KIND_MOVE_COMMAND = 'moveCommand'
 /** Genre d'un intervalle de saut (`stances[].kind`), DÉRIVÉ de la vitesse verticale : une estimation. */
 export const STANCE_KIND_JUMP_DERIVED = 'jumpDerived'
 
@@ -56,6 +62,12 @@ export interface PlayerMovementStats {
    * dérivation (`jumpDerived`) et se lit « estimation ». Faux quand `jumps` est `null` (rien à estimer).
    */
   jumpsEstimated: boolean
+  /**
+   * Temps cumulé, en millisecondes, pendant lequel le joueur a tenu une commande de déplacement jusqu'à l'image ;
+   * une commande EN COURS compte jusqu'à elle. `0` = « aucune commande tenue » MESURÉ. `null` = la vue de contrôle n'a
+   * pas été lue sur ce document (`coverage.stances.control` absente) ou le joueur n'a aucune vie.
+   */
+  moveMs: number | null
 }
 
 /** Un intervalle de sprint fusionné, daté à son début (`t`), avec les images de sprint des intervalles qui le précèdent. */
@@ -80,6 +92,8 @@ export interface PlayerMovementSeries {
   readonly sprint: readonly SprintRun[] | null
   /** Sauts du joueur, triés. */
   readonly jumps: readonly Jump[] | null
+  /** Intervalles de commande de déplacement du joueur, fusionnés et triés. */
+  readonly move: readonly SprintRun[] | null
 }
 
 /** Les séries de tous les joueurs, sous leur clé de roster et sous le xuid de leur ligne de feuille. */
@@ -89,16 +103,16 @@ export type MovementSeriesIndex = ReadonlyMap<string, PlayerMovementSeries>
 export type MovementSeriesSource = Pick<ReplayDocumentReady, 'stances' | 'coverage' | 'frameIntervalMs'>
 
 /** Aucune des deux grandeurs n'est établie : la réponse d'un joueur sans série, partagée (elle est immuable). */
-const NOT_ESTABLISHED: PlayerMovementStats = { sprintMs: null, jumps: null, jumpsEstimated: false }
+const NOT_ESTABLISHED: PlayerMovementStats = { sprintMs: null, jumps: null, jumpsEstimated: false, moveMs: null }
 
 /** Ce que la couverture des états de mouvement établit pour tout le document. */
-function establishedOf(doc: MovementSeriesSource): { sprint: boolean; jumps: boolean } {
+function establishedOf(doc: MovementSeriesSource): { sprint: boolean; jumps: boolean; move: boolean } {
   const cov = doc.coverage?.stances
   const sprint = cov?.scanned === true && cov.absent !== true
-  return { sprint, jumps: sprint && (cov?.jumpEpisodes ?? 0) > 0 }
+  return { sprint, jumps: sprint && (cov?.jumpEpisodes ?? 0) > 0, move: cov?.scanned === true && cov.control != null }
 }
 
-/** Fusionne les intervalles de sprint d'un joueur (déjà triés par début) et cumule les images qui précèdent chacun. */
+/** Fusionne les intervalles tenus d'un joueur (déjà triés par début) et cumule les images qui précèdent chacun. */
 function sprintRuns(intervals: readonly { t0: number; t1: number }[]): SprintRun[] {
   const runs: SprintRun[] = []
   for (const iv of intervals) {
@@ -144,6 +158,7 @@ export function readMovementSeries(doc: MovementSeriesSource, players: readonly 
   const ownerAt = buildSlotOwnership(players).ownerAtFrame
   const sprints = established.sprint ? intervalsByOwner(doc, STANCE_KIND_SPRINT, ownerAt) : null
   const jumps = established.jumps ? intervalsByOwner(doc, STANCE_KIND_JUMP_DERIVED, ownerAt) : null
+  const moves = established.move ? intervalsByOwner(doc, STANCE_KIND_MOVE_COMMAND, ownerAt) : null
   const index = new Map<string, PlayerMovementSeries>()
   for (const player of players) {
     if (player.lives.length === 0) continue
@@ -151,6 +166,7 @@ export function readMovementSeries(doc: MovementSeriesSource, players: readonly 
       doc,
       sprint: sprints ? sprintRuns(sprints.get(player.xuid) ?? []) : null,
       jumps: jumps ? (jumps.get(player.xuid) ?? []).map((j) => ({ t: j.t0 })) : null,
+      move: moves ? sprintRuns(moves.get(player.xuid) ?? []) : null,
     }
     for (const key of identityKeys(player)) index.set(key, series)
   }
@@ -189,5 +205,6 @@ export function playerMovementStatsAt(series: PlayerMovementSeries | null, frame
     sprintMs: series.sprint ? frameToMs(sprintFramesAt(series.sprint, frame), series.doc) : null,
     jumps,
     jumpsEstimated: jumps !== null,
+    moveMs: series.move ? frameToMs(sprintFramesAt(series.move, frame), series.doc) : null,
   }
 }

@@ -10,7 +10,7 @@ package killcollector
 // candidates sont essayees dans l'ordre et la PREMIERE qui resout gagne, sans arbitrage ».
 // Mutation jouee le 2026-09-15 sur la base `34fa53da5` — la boucle parcourue A L'ENVERS — et TOUT
 // restait vert : `killcollector`, `film/...` et `archlint` compris. Deux raisons, et il faut les
-// dire ensemble : aucun temoin de `hits_carte_par_nom_test.go` ne donne DEUX noms qui resolvent
+// dire ensemble : aucun temoin de `carte_par_nom_test.go` ne donne DEUX noms qui resolvent
 // (le seul a deux candidats commence par une carte absente du catalogue), et l'empreinte de
 // `TestKillsourceRevSuitLaSortie` hache le perimetre de `film/internal/facts/killsource`,
 // jamais `killcollector`.
@@ -33,7 +33,6 @@ package killcollector
 // est consignee au §4 du plan, entree « Revue M1 — L6 ».
 
 import (
-	"context"
 	"testing"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
@@ -82,27 +81,5 @@ func TestLePremierNomQuiResoutGagne(t *testing.T) {
 					got.Range(), c.noms, c.noms[0], c.attendu.Range(), c.perdant)
 			}
 		})
-	}
-}
-
-// TestLesDeuxPassesSuiventLeMemeOrdreDeCandidats : les deux consommateurs du repli — la passe des
-// positions et celle des touches — tirent la MEME carte d'une liste a deux candidats resolvants.
-// C'est l'invariant du site unique pose au lot 1.9.4, verifie la ou il peut se rompre : quand les
-// candidats ne s'accordent pas.
-func TestLesDeuxPassesSuiventLeMemeOrdreDeCandidats(t *testing.T) {
-	c := collecteurAvecCarte(t, jumelleDeLaCarteTemoin, carteTemoinDesJumelles)
-
-	positions, err := c.resolveMapBounds(context.Background(), "m-1")
-	if err != nil {
-		t.Fatalf("resolution des positions : %v", err)
-	}
-	touches, ok := c.entreeDeCarteDesTouches(context.Background(), "m-1")
-	if !ok {
-		t.Fatal("resolution des touches refusee la ou celle des positions a abouti")
-	}
-	attendu := bornesDeLaCarte(t, jumelleDeLaCarteTemoin)
-	if positions.Range() != attendu.Range() || touches.Range() != attendu.Range() {
-		t.Errorf("positions %v et touches %v, attendues toutes deux celles de %q %v (le PREMIER "+
-			"candidat)", positions.Range(), touches.Range(), jumelleDeLaCarteTemoin, attendu.Range())
 	}
 }

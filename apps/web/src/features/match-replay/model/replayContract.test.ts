@@ -99,6 +99,7 @@ const NULLABLE_ARRAYS = [
   // `hits`, `damage` et `shotStats` (schéma 125) : les touches, les dégâts en points et le bilan de tirs par joueur,
   // des estimations comblées à vide par la frontière ; aucun tableau imbriqué.
   'damage',
+  'eliminations',
   'hits',
   'shotStats',
   'inventory',
@@ -231,6 +232,10 @@ const NULLABLE_ARRAYS = [
   // n'écrit aucun minuteur de réapparition de véhicule, le cycle se DÉDUIT de la mort datée à la
   // naissance suivante au même endroit.
   'vehicleCycles',
+  // `reloads` (schéma 126) : un rechargement par trame et par joueur ; `eliminations` (schéma 126) : une ligne par
+  // élimination, avec sa marque de tir à la tête et de frag parfait. Le premier se lit dans la fiche du joueur, le
+  // second dans le fil ; la frontière les comble dès le schéma.
+  'reloads',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -287,6 +292,7 @@ const NULLABLE_ARRAY_PATHS = [
   'grenadeLabels',
   'grenadeReads',
   'damage',
+  'eliminations',
   'grenades',
   'hits',
   'inventory',
@@ -351,6 +357,7 @@ const NULLABLE_ARRAY_PATHS = [
   'bombStats.players',
   'vehicles',
   'vehicleCycles',
+  'reloads',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // TROISIÈME NIVEAU (schéma 63) : LA JAUGE DE RETOUR d'un drapeau au sol — la série datée

@@ -60,17 +60,27 @@ func TestDocumentShapeTwinsAgree(t *testing.T) {
 	for _, pb := range testutil.ReplayServisSeulsIncoherents(inventaireServi(servi)) {
 		t.Error(pb)
 	}
-	if msg := ecartDesFormesJumelles(stocke, servi, testutil.ReplayChampsServisSeuls, testutil.ReplayTypesServisSeuls); msg != "" {
+	if msg := ecartDesFormesJumelles(stocke, servi, exceptionsDeForme{
+		servisSeulsChamps: testutil.ReplayChampsServisSeuls, servisSeulsTypes: testutil.ReplayTypesServisSeuls,
+		nonServisChamps: testutil.ReplayChampsNonServis, nonServisTypes: testutil.ReplayTypesNonServis,
+	}); msg != "" {
 		t.Error(msg)
 	}
 }
 
-// ecartDesFormesJumelles rend le message d'ecart entre la forme serialisee de `stocke` et celle de `servi`
-// privee des champs (`Type.Champ`) et des types `servisSeuls` nommes, ou "" quand elles coincident. Les
-// listes ne retirent rien de la forme stockee.
-func ecartDesFormesJumelles(stocke, servi reflect.Type, champsServisSeuls, typesServisSeuls map[string]string) string {
-	a := documentShapeRenderSerialise(stocke, nil, nil)
-	b := documentShapeRenderSerialise(servi, champsServisSeuls, typesServisSeuls)
+// exceptionsDeForme porte les decisions ecrites qui separent les deux formes : les champs et types SERVIS SEULS
+// (retires de la forme servie) et les champs et types NON SERVIS (retires de la forme stockee), par `Type.Champ`
+// et par nom de type.
+type exceptionsDeForme struct {
+	servisSeulsChamps, servisSeulsTypes map[string]string
+	nonServisChamps, nonServisTypes     map[string]string
+}
+
+// ecartDesFormesJumelles rend le message d'ecart entre la forme serialisee de `stocke` et celle de `servi`, chacune
+// privee de ses exceptions ecrites, ou "" quand elles coincident. Une exception ne retire rien de l'autre forme.
+func ecartDesFormesJumelles(stocke, servi reflect.Type, ex exceptionsDeForme) string {
+	a := documentShapeRenderSerialise(stocke, ex.nonServisChamps, ex.nonServisTypes)
+	b := documentShapeRenderSerialise(servi, ex.servisSeulsChamps, ex.servisSeulsTypes)
 	if a == b {
 		return ""
 	}
