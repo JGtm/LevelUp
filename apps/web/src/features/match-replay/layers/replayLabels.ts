@@ -17,6 +17,7 @@
  */
 import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { XY } from '../../../lib/replay/replayLogic'
+import { drawTitleRun, titleRunWidth, type LabelTitle } from './antagonistMarks'
 
 /** Corps de la police, en pixels d'ÉCRAN (comme tout ce qui s'adresse à l'œil ici). */
 const LABEL_FONT_PX = 8.5
@@ -26,6 +27,8 @@ const LABEL_WEIGHT = 600
 const LABEL_STROKE_PX = 2.6
 /** Écart entre le bord externe du marqueur et le haut du texte. */
 const LABEL_GAP_PX = 2.5
+/** Où tombe le centre optique d'une ligne de texte posée par son haut, en fraction du corps. */
+const LABEL_MID_RATIO = 0.6
 
 /**
  * Ce que l'étiquette emprunte au style du calque. Structurel à dessein : `MarkerStyle` le
@@ -36,6 +39,11 @@ export interface LabelStyle {
   k: number
   /** Encre du contour des lettres. Vide = le thème ne porte pas la variable : pas de contour. */
   labelStroke: string
+  /**
+   * Les titres d'antagoniste du joueur (icône et compte), écrits devant le nom ; l'ensemble est centré sous
+   * le marqueur. Absents ou vides = le nom seul, centré, comme toujours.
+   */
+  titles?: readonly LabelTitle[]
 }
 
 /**
@@ -56,17 +64,40 @@ export function drawNameLabel(
   markerEdge: number,
 ): void {
   const k = style.k
+  const titles = style.titles?.length ? style.titles : null
   ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${CANVAS_FONT_FAMILY}`
-  ctx.textAlign = 'center'
+  if (!titles) ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
   const y = c.y + markerEdge + LABEL_GAP_PX * k
   ctx.globalAlpha = 1
+  if (!titles) {
+    strokeAndFill(ctx, name, c.x, y, style, color)
+    return
+  }
+  // LES TITRES D'ABORD, puis le nom, l'ensemble centré : la suite « icône, compte » se dessine depuis la
+  // gauche, le nom prend l'abscisse où elle s'arrête.
+  const left = c.x - (titleRunWidth(ctx, titles, k) + ctx.measureText(name).width) / 2
+  const x = drawTitleRun(ctx, titles, { x: left, y: y + LABEL_MID_RATIO * LABEL_FONT_PX * k }, style, color)
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  strokeAndFill(ctx, name, x, y, style, color)
+}
+
+/** Le texte au double trait : le contour s'il y a une encre, puis le remplissage. */
+function strokeAndFill(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  style: LabelStyle,
+  color: string,
+): void {
   if (style.labelStroke) {
     ctx.lineJoin = 'round'
-    ctx.lineWidth = LABEL_STROKE_PX * k
+    ctx.lineWidth = LABEL_STROKE_PX * style.k
     ctx.strokeStyle = style.labelStroke
-    ctx.strokeText(name, c.x, y)
+    ctx.strokeText(text, x, y)
   }
   ctx.fillStyle = color
-  ctx.fillText(name, c.x, y)
+  ctx.fillText(text, x, y)
 }

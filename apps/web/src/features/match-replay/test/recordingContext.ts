@@ -27,8 +27,11 @@ export interface CanvasOp {
  * LES SEULES LECTURES À TRAITER sont les dégradés : le rendu attend un objet portant
  * `addColorStop`. On rend donc un jeton inerte, et l'appel reste dans la trace — c'est le
  * comportement qu'on veut, pas une émulation.
+ *
+ * `charWidth` : largeur déterministe de `measureText` (largeur du caractère, en pixels), pour les
+ * tests d'une mise en page qui mesure du texte. Absent, `measureText` n'est qu'un appel noté.
  */
-export function recordingContext(): { ops: CanvasOp[]; ctx: CanvasRenderingContext2D } {
+export function recordingContext(options: { charWidth?: number } = {}): { ops: CanvasOp[]; ctx: CanvasRenderingContext2D } {
   const ops: CanvasOp[] = []
   const state: Record<string, unknown> = {}
   const proxy = new Proxy(
@@ -40,6 +43,13 @@ export function recordingContext(): { ops: CanvasOp[]; ctx: CanvasRenderingConte
           return (...args: unknown[]) => {
             ops.push({ op: prop, args })
             return { addColorStop: (...a: unknown[]) => ops.push({ op: 'addColorStop', args: a }) }
+          }
+        }
+        if (prop === 'measureText' && options.charWidth !== undefined) {
+          const charWidth = options.charWidth
+          return (text: string) => {
+            ops.push({ op: prop, args: [text] })
+            return { width: String(text).length * charWidth }
           }
         }
         if (prop in state) return state[prop]

@@ -24,6 +24,7 @@
  */
 import { CANVAS_FONT_FAMILY } from '@/lib/replay/canvasFont'
 import type { XY } from '../../../lib/replay/replayLogic'
+import { drawTitleRun, titleRunWidth, type LabelTitle } from './antagonistMarks'
 
 /**
  * Le gabarit normalisé, pointant +X — quatre sommets, dans l'ORDRE où `ctx.lineTo` les trace :
@@ -90,6 +91,8 @@ export interface OffscreenLabelStyle {
   k: number
   /** Encre du contour de lisibilité. Vide = le thème ne porte pas la variable : pas de contour. */
   labelStroke: string
+  /** Les titres d'antagoniste du joueur (icône et compte), écrits devant le texte, l'ensemble centré sur l'ancre. */
+  titles?: readonly LabelTitle[]
 }
 
 /**
@@ -109,16 +112,25 @@ export function drawOffscreenLabel(
 ): void {
   const k = style.k
   const anchor = offscreenLabelAnchor(at, angle, k)
+  const titles = style.titles?.length ? style.titles : null
   ctx.font = `${LABEL_WEIGHT} ${LABEL_FONT_PX * k}px ${CANVAS_FONT_FAMILY}`
-  ctx.textAlign = 'center'
+  if (!titles) ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.globalAlpha = 1
+  let x = anchor.x
+  if (titles) {
+    // Les titres d'abord, le texte à leur suite, l'ensemble centré sur l'ancre.
+    const left = anchor.x - (titleRunWidth(ctx, titles, k) + ctx.measureText(text).width) / 2
+    x = drawTitleRun(ctx, titles, { x: left, y: anchor.y }, style, color)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+  }
   if (style.labelStroke) {
     ctx.lineJoin = 'round'
     ctx.lineWidth = LABEL_STROKE_PX * k
     ctx.strokeStyle = style.labelStroke
-    ctx.strokeText(text, anchor.x, anchor.y)
+    ctx.strokeText(text, x, anchor.y)
   }
   ctx.fillStyle = color
-  ctx.fillText(text, anchor.x, anchor.y)
+  ctx.fillText(text, x, anchor.y)
 }
