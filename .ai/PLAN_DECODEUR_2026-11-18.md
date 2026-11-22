@@ -414,7 +414,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Étape L — publication, montée, régénération (pilote)
 
-- [ ] L.1 Intégration des pistes dans `feat/v1.5.0`, une à une (règle R-4) ; schéma 126, chronique,
+- [x] L.1 (fait le 2026-11-22, quatre intégrations, tête `990cdf7`) Intégration des pistes dans `feat/v1.5.0`, une à une (règle R-4) ; schéma 126, chronique,
       révisions de couche, goldens, fixtures de contrat (annexe, gestes 3 à 7).
 - [ ] L.2 Équivalence finale refigée, 20 identiques ; gate du corpus ; registre des replis ; documentation
       du format (gestes 8 à 11).
@@ -441,6 +441,15 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-22 — quatrième intégration commitée et poussée (`990cdf7`) : règle du drapeau par la table du mode prouvée
+  (compteurs de zones de nouveau égaux à l'API sur 14 joueurs, faux portage de 94 s toujours absent, aucun compteur
+  d'objectif ne s'éloigne de l'API sur les 20 films), suite complète verte (33 paquets, code 0), équivalence 20
+  identiques et deux passes identiques, chronique 126 à quinze apports. PR du décodeur ouverte (n° 33). Lancés ensemble :
+  l'alignement final de la montée dans LevelUp (Sonnet ; miroirs fusionnés dans `chore/830-decodeur-v150`, pseudo-version
+  du décodeur) et la relecture adversariale du diff du décodeur (Fable, R.1 avancée avant le tag). À surveiller : le
+  compte des émissions jetées gonfle sur des films hors Drapeau, sans effet sur les compteurs ; `coverage.objectives.available`
+  baisse sur deux films.
 
 - 2026-11-22 — quatrième intégration ARRÊTÉE à l'attribution, à juste titre : la règle de la piste e, écrite sur une liste de
   composants, jetait 46 émissions sur 54 d'un compteur de zones sur un film et éloignait deux films de l'API. Décision du
