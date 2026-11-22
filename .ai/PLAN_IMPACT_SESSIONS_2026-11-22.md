@@ -101,7 +101,7 @@ couverte par la cartographie du 2026-11-22 (agent d'exploration, rapport recopi�
 
 ## Découvertes
 
-- `squadimpact.MatchIDs` (evenings.go) n'a aucun appelant de production ni de test : code mort préexistant, non traité (hors périmètre G.2).
+- `squadimpact.MatchIDs` (evenings.go) n'avait plus aucun appelant après la suppression de l'historique : supprimé par le pilote (règle « 0 code mort », la fonction servait le préchargement des soirées retiré avec l'historique).
 
 ## Reprise de session
 

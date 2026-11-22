@@ -60,17 +60,6 @@ func SelectEvenings(current, timeline []EveningMatch) []Evening {
 	return out
 }
 
-// MatchIDs rend les identifiants des matchs des soirées.
-func MatchIDs(evenings []Evening) []string {
-	var out []string
-	for _, e := range evenings {
-		for _, m := range e.Matches {
-			out = append(out, m.MatchID)
-		}
-	}
-	return out
-}
-
 // groupEvenings groupe les matchs par libellé de session, dans l'ordre chronologique du premier
 // match ; un identifiant de match répété ne compte qu'une fois.
 func groupEvenings(matches []EveningMatch) []Evening {
