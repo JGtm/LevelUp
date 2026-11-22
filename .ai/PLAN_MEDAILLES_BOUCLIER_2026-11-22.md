@@ -105,7 +105,7 @@ et que son commit est fait.
 
 ### Piste A — données (Sonnet) — chemin critique — lourd
 
-- [ ] A.1 Fonctions pures : `analysis` bris et recharges par joueur (instants compris, entrée = pistes
+- [x] A.1 Fonctions pures : `analysis` bris et recharges par joueur (instants compris, entrée = pistes
   du document) et Vengeur par joueur (entrée = frags). Tests unitaires purs, cas limites de D-1 à D-3.
 - [ ] A.2 Migration des trois colonnes + vue `_latest` recréée ; dérivation qui les pose ; persister ;
   révision du résumé d'usage montée. Tests d'intégration du persister et de la migration.
@@ -373,3 +373,10 @@ le worktree.
   points à trancher avant la piste A : la révision du résumé d'usage vit dans le décodeur (D-9 contre
   D-8), et la fiche calcule déjà « Boucliers perdus » côté web (C.2 le remplace). Instruments
   `research` gardés comme témoins du lot B.3.
+- 2026-11-22 : A.1 close. Paquets `internal/analysis/shieldcycle` (`Cycles(lives []Life) map[string][]Event`,
+  `Totals`, types `Life`, `Measure`, `Event`, `Kind` = `Break` | `Recharge` ; instant = image du film, clé
+  présente = joueur mesuré) et `internal/analysis/revenge` (`Count(frags []Frag, teamOf map[string]int)
+  map[string]int`). `analysis/` ne peut pas importer le décodeur : l'adaptateur document -> vies est
+  `internal/replayshield` (`Lives(*replay.ReplayDocument)`, `FrameMS(frame, intervalMS)`), appelé par A.2
+  (dérivation) et C.1 (vue du rejeu). L'entrée n'a pas d'image de début ni de fin de vie : les règles D-2
+  et D-3 n'en ont pas besoin.
