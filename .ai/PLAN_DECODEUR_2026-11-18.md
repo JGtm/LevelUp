@@ -433,6 +433,21 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — C.5, VERDICT rendu (`annexes_decodeur_1118/emplacements_tableau_verdict.md`, 58 films, chaîne étalonnée
+  à 100 % sur tirs à la tête et grenades). Trois régimes : VIVANT (réécrit à chaque événement, 99 % et plus
+  d'accord avec l'API : éliminations, morts, assistances, score, tête, mêlée, grenade, arme lourde, série,
+  compteurs d'objectif d'événement) ; TRAÎNANT (écrit seulement quand son jumeau de la paire est réécrit : juste à
+  l'instant de l'émission, périmé à la fin : `ShotsFired`, `DamageDone`, `DamageTaken`, `KDA`,
+  `AverageLifeDuration`, `FlagCarryTime`) ; JAMAIS ÉCRIT en direct (`ShotsHit`, `AccuracyPercentage`, `RoundsWon`,
+  `RoundsTied` : Den avait raison). Le film écrit aussi, à chaque manche TERMINÉE, les valeurs figées de la manche
+  (composants 28 à 55), tirs au but et précision compris ; la dernière manche n'est jamais figée, donc un match
+  à une manche n'en a aucune. Hypothèse du user sur les tirs : ni tirs tirés ni tirs au but ne sont comptés en
+  direct par le tableau ; l'estimation reste la seule voie (piste D). CANDIDATS À PUBLIER, écrits et justes :
+  compteurs de mode non nommés (Drapeau : éliminations de ceux qui ramènent, Bases : éliminations offensives et
+  défensives et tics de score, VIP : six compteurs, Extraction : cinq, noms supposés) ; valeurs figées par manche
+  terminée (qui améliorent aussi les totaux des matchs à manches : éliminations 29 sur 39 contre 21). Non établi :
+  Balle (aucun film à une manche), versions 1.11 et moins (définitions illisibles). Crédit à Den. À écrire au plan
+  avant tout code : item de publication des compteurs de mode et des valeurs figées.
 - 2026-11-22 — H.7, MESURE D'APPARIEMENT rendue (`annexes_decodeur_1118/appariement_tete_parfait.md`, 1 455 rejeux,
   sans décodage). Tirs à la tête : la montée du compteur et celle des éliminations sont écrites par le même
   enregistrement du tableau : 36 839 montées sur 36 847 (99,98 %) ont exactement une élimination du même joueur
