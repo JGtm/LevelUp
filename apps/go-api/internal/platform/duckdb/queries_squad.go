@@ -86,15 +86,9 @@ SELECT
     p1.accuracy,
     COALESCE(p1.time_played_seconds, 0)                          AS time_played_seconds,
     COALESCE(r.duration_seconds, 0)                              AS duration_seconds,
-    -- Vraie durée de gameplay (countdown pré-match retranché via real_start_time).
-    GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
-        WHEN r.real_start_time IS NOT NULL THEN CAST(round(
-            (` + sqlfrag.SQLRealStartOffsetMs("r") + `) / 1000.0
-        ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
-    -- T0 offset (Match Timeline T0, §4.A-bis) : countdown pré-match en ms.
-    -- NULL si real_start_time absent → fallback runtime T0=0. Même formule
-    -- canonique que player_matches_repo (propagation Phase 3).
-    ` + T0MsSQL("r") + `                                                          AS t0_ms,
+    -- Coup d'envoi du match (ms depuis son début canonique), NULL = inconnu ; la durée de
+    -- jeu se déduit en Go (timeline.ForMatch), jamais ici.
+    ` + sqlfrag.SQLT0Ms("r") + `                                                          AS t0_ms,
     COALESCE(` + analysis.SQLKnownMMR("p1.team_mmr") + `, 0.0)                                   AS team_mmr,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
     COALESCE((

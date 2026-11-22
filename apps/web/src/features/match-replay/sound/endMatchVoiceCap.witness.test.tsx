@@ -61,7 +61,7 @@ import { useReplaySound } from './useReplaySound'
 /** Le témoin dense : Slayer sur Cliffhanger, JGtm équipe 0. */
 const TEMOIN = '000d5950'
 /** L'en-tête mesuré du témoin (cf. `replayWindow.test.ts`). */
-const TEMOIN_HEADER = { t0_ms: 18_465, playable_duration_seconds: 478 }
+const TEMOIN_HEADER = { t0_ms: 18_465, gameplay_duration_seconds: 478 }
 const SOUNDS_DIR = resolve(racineDuDepot(), 'static', 'sounds', 'halo_infinite')
 const VICTOIRE_FR: EndMatchSoundSpec = { outcome: 'win', ffa: false, locale: 'fr' }
 /** Pas de la boucle d'animation simulée : 60 images par seconde. */

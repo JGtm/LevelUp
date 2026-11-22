@@ -14,7 +14,7 @@
 // Un rejeu PRÉSENT qui publie un coup d'envoi donne la source `film` ; un rejeu PRÉSENT qui n'en
 // publie pas dit qu'il n'y en a pas : la source suivante décide. Un rejeu ABSENT (jamais généré,
 // purgé par la rétention) ou ILLISIBLE ne dit rien de neuf : un match dont le coup d'envoi rangé est
-// de source `film` le garde tel quel (coup d'envoi, source et temps de jeu), les autres se résolvent
+// de source `film` le garde tel quel (coup d'envoi et source ; le temps de jeu des joueurs se calcule sur lui), les autres se résolvent
 // normalement.
 //
 // # UNE ÉCRITURE
@@ -98,7 +98,7 @@ type Plan struct {
 	// TimePlayed : les joueurs dont le temps de jeu change.
 	TimePlayed []TimePlayedChange
 	// FilmKept : le coup d'envoi rangé, de source `film`, est conservé parce que le rejeu n'a rien
-	// dit de neuf (absent ou illisible) ; le plan ne change rien.
+	// dit de neuf (absent ou illisible) ; le registre n'est pas réécrit, le temps de jeu suit ce coup d'envoi.
 	FilmKept bool
 }
 
@@ -116,22 +116,23 @@ func (p Plan) Unchanged() bool { return !p.KickoffChanged() && len(p.TimePlayed)
 
 // Resolve décide ce que le match doit porter, d'après ce que son rejeu dit (f). Fonction pure.
 func Resolve(m Match, f Film) Plan {
+	p := Plan{MatchID: m.MatchID, Before: m.RealStart, BeforeSource: m.Source}
 	if f.State != FilmRead && m.Source == timeline.KickoffSourceFilm {
-		return keptFilm(m)
+		// Le rejeu n'a rien dit de neuf : le coup d'envoi rangé reste, et le temps de jeu des joueurs
+		// se calcule sur lui comme pour tout autre match.
+		p.Kickoff, p.RealStart, p.FilmKept = keptFilm(m), m.RealStart, true
+	} else {
+		var filmT0 *int64
+		if f.State == FilmRead {
+			filmT0 = f.T0Ms
+		}
+		p.Kickoff = timeline.ResolveKickoff(timeline.KickoffInput{
+			StartUTC: m.StartUTC, FilmT0Ms: filmT0, DurationSeconds: m.DurationSeconds,
+			Participations: estimateInputs(m.Participants),
+		})
+		p.RealStart = p.Kickoff.RealStart(m.StartUTC)
 	}
-	var filmT0 *int64
-	if f.State == FilmRead {
-		filmT0 = f.T0Ms
-	}
-	k := timeline.ResolveKickoff(timeline.KickoffInput{
-		StartUTC: m.StartUTC, FilmT0Ms: filmT0, DurationSeconds: m.DurationSeconds,
-		Participations: estimateInputs(m.Participants),
-	})
-	p := Plan{
-		MatchID: m.MatchID, Kickoff: k, RealStart: k.RealStart(m.StartUTC),
-		Before: m.RealStart, BeforeSource: m.Source,
-	}
-	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, m.DurationSeconds, k)
+	tl, hasWindow := timeline.GameplayTimeline(m.StartUTC, m.DurationSeconds, p.Kickoff)
 	for _, part := range m.Participants {
 		if part.FirstJoined == nil {
 			continue // présence inconnue : la valeur rangée reste
@@ -147,16 +148,14 @@ func Resolve(m Match, f Film) Plan {
 	return p
 }
 
-// keptFilm : le plan d'un match dont le coup d'envoi rangé, de source `film`, reste tel quel.
-func keptFilm(m Match) Plan {
+// keptFilm : le coup d'envoi rangé d'un match de source `film`, repris tel quel (décalage = coup
+// d'envoi rangé moins le début canonique).
+func keptFilm(m Match) timeline.Kickoff {
 	k := timeline.Kickoff{Source: timeline.KickoffSourceFilm}
 	if m.RealStart != nil {
 		k.OffsetMs = m.RealStart.Sub(m.StartUTC).Milliseconds()
 	}
-	return Plan{
-		MatchID: m.MatchID, Kickoff: k, RealStart: m.RealStart,
-		Before: m.RealStart, BeforeSource: m.Source, FilmKept: true,
-	}
+	return k
 }
 
 // Write rend l'écriture du persisteur pour ce plan (vide quand rien ne change).

@@ -1,7 +1,6 @@
 # ADR 0050 — Match kickoff: one source order, one write, one catch-up
 
-Status: accepted (2026-11-18), write side implemented on the same date; the readers move in a later step of the same
-work.
+Status: accepted (2026-11-18), write side and readers implemented on the same date.
 Relates to: ADR 0019 and ADR 0030 (writes go through `internal/persist`), ADR 0013 and ADR 0016 (single writer per
 database, short writer bursts), ADR 0026 (ART-safe write forms), ADR 0047 (revision replayed at startup), ADR 0006
 (per-minute rates read the time played).
@@ -27,7 +26,8 @@ computed once, at sync, on the estimate, and never again when the replay brought
 - **D-1b — What the replay says, in three states** (`sync/kickoff.Film`). PRESENT and publishing a kickoff: source
   `film`, the document's value. PRESENT and publishing none (or an out-of-window one): the film says there is none, the
   next source decides. ABSENT (never generated, purged by retention) or UNREADABLE (locked, being replaced, damaged):
-  nothing new is known; a match whose stored source is `film` keeps its kickoff, source and time played untouched,
+  nothing new is known; a match whose stored source is `film` keeps its stored kickoff and source (the registry is not
+  rewritten) and its players' time played is still computed on that stored kickoff, so a formula change reaches it;
   any other match resolves normally. An UNREADABLE replay on a match stored `film` or unknown also counts as a failed
   match for the revision (not stored, retried); an ABSENT one does not. During a catch-up the stored state is read under
   the writer of the batch, so a publication that wrote `film` between the file read and the burst is seen and kept.
@@ -71,12 +71,40 @@ computed once, at sync, on the estimate, and never again when the replay brought
   scoring fingerprints hash `timeline.KickoffRev` (`TestScoringParametersMatchRevision`): changing the kickoff revision
   without moving the two scoring revisions fails.
 
+- **D-7 — One reading, for every reader.** `timeline.ForMatch` (`internal/analysis/timeline/build.go`) is the only rule
+  that reads a stored kickoff: a known kickoff = the chronology starts from it; an unknown one (`nil`: Halo 5, a refused
+  estimate, missing data) = the chronology starts at the match start and the gameplay duration equals the match duration.
+  The write side (`GameplayTimeline`), the builders of per-match timelines (`BuildTimelinesFromPlayerMatches`,
+  `BuildTimelinesFromSquadRows`), the match page (`service.matchViewTimeline`: header, event realignment, Dominance
+  binning, "Overtime" flag), the squad history rows and the match events source all go through it. On the SQL side two
+  fragments in `platform/duckdb/sqlfrag` carry the same rule: `SQLT0Ms` (the kickoff, NULL = unknown) and
+  `SQLGameplayDurationMs` (match duration minus kickoff, floored at 0), read by the squad query, the "Overtime" flag of
+  the history and the LUSR loader. No reader replaces an absent kickoff by `0`, no reader chooses between two durations:
+  the four competing durations of the audit (registry duration, API playable duration, "duration minus kickoff"
+  recomputed on the spot, the median of the players' time played) are one gameplay duration, truncated to the second
+  like `MatchTimeline.GameplayDurationSeconds` (so a header can differ by one second from the value it served before, which
+  subtracted a truncated kickoff). A time played that is absent stays absent (no fall-back to the match duration in the
+  per-minute rates, no fall-back to the API playable duration on the home page).
+  The match header serves it as `gameplay_duration_seconds` (it was `playable_duration_seconds`, a misleading name: the
+  value already was the duration minus the kickoff). The web reads the header only (`header.t0_ms`, one reading of an
+  absent value: `matchKickoffMs`): the replay window no longer prefers the document's kickoff to the match's, since the
+  match's already is the replay's when the match has one. The replay publication of the lead-share window refuses a
+  document kickoff outside the match window like the resolution does (`timeline.FilmWithinMatch`).
+- **D-8 — The API playable duration has no reader and no writer.** `match_registry.playable_duration_seconds` is no
+  longer inserted by the sync, the OpenSpartan import or the demo corpus, no longer read, and its backfill scope
+  (`--playable-duration`) is gone. The column stays in the table (see the known limits).
+
 ## Guard rails
 
 - `archlint/kickoff_write_guard_test.go`: no `UPDATE` of `real_start_time`, `real_start_source` or `time_played_seconds`
   outside `internal/persist/kickoff_persister.go`; no insertion of these columns outside the sync insertion
   (`persist/shared_persister.go`) and a dated exemption list (demo corpus, Halo 5 roster rebuild); the names
   `t0_quality` and `film_match_start_ms` appear nowhere outside the migrations.
+- `archlint/kickoff_read_guard_test.go`: `real_start_time`, `playable_duration_seconds`, `t0_quality` and
+  `film_match_start_ms` are named only by the two fragments, the resolution (`sync/kickoff`), the persister and the
+  migrations, plus a dated exemption list (the table definition of a fresh database and its test fixture);
+  `archlint/no_raw_real_start_offset_test.go` keeps the kickoff expression in `SQLT0Ms` alone. Web:
+  `lib/replay/matchKickoff.guard.test.ts` (one replacement of an absent kickoff by zero, `matchKickoffMs`).
 - `timeline.TestKickoffParametersMatchRevision`: the estimate thresholds, the source order and the replay window rule
   are fingerprinted per `KickoffRev`; changing one without a new revision fails.
 - Unchanged and still green: `archlint/no_raw_real_start_offset_test.go`, the anti-ART guards of
@@ -88,8 +116,8 @@ computed once, at sync, on the estimate, and never again when the replay brought
 - `t0_quality`, `film_match_start_ms` and `playable_duration_seconds` stay in the table: DuckDB refuses
   `ALTER TABLE … DROP COLUMN` on `match_registry` (primary key, indexes, dependent views), verified in memory and on a
   copy of the real schema, and a rebuild of the shared registry is not taken for a column name. The first two have no
-  writer and no reader; `playable_duration_seconds` is still written at sync because readers still read it until they
-  move to the match chronology.
+  writer and no reader; `playable_duration_seconds` has no writer and no reader since D-8 (rows written before keep their
+  value, new rows leave it NULL). A rebuild of the registry would drop the three: not worth the risk for a column name.
 - A match without a replay keeps the estimate, which on old matches can sit in the first seconds of a countdown of about
   twenty: their per-minute rates stay slightly low. No typical value is invented.
 - The time played keeps its truncation to the second, and a player whose presence is known but whose window is empty

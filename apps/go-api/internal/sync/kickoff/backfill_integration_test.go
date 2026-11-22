@@ -258,3 +258,28 @@ func TestRunLot_MatchDisparuNestPasUnEchec(t *testing.T) {
 		t.Fatalf("echecs=%d absents=%d, attendu 0 et 1", rep.Failures, rep.Missing)
 	}
 }
+
+// Rangé `film`, rejeu ABSENT, temps de jeu d'un joueur périmé : le registre n'est pas réécrit, le temps
+// de jeu est corrigé sur le coup d'envoi rangé ; un second passage n'écrit rien.
+func TestBackfill_RangeFilmRejeuAbsent_TempsDeJeuCorrige(t *testing.T) {
+	db := baseMigree(t)
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	semer(t, db, start)
+	semerFilmRange(t, db, start)
+	exec(t, db, `UPDATE match_participants SET time_played_seconds = 580 WHERE match_id = 'film' AND xuid = '2603225103667623'`)
+	writes := 0
+	dir := t.TempDir()
+	rep, err := Backfill(context.Background(), acces(db, &writes), optionsVers(dir))
+	// Les deux autres matchs semés (`api`, `faux`) se résolvent normalement : leur changement de source
+	// ou de valeur est dans le bilan global ; seul le match `film` est contrôlé ligne à ligne ci-dessous.
+	if err != nil || rep.KeptFilm != 1 || rep.PlayersChanged != 1 {
+		t.Fatalf("err=%v bilan=%+v, attendu le film garde et un joueur corrige", err, rep)
+	}
+	if rst, src, tp := etat(t, db, "film"); src != "film" || !rst.Time.UTC().Equal(start.Add(26304*time.Millisecond)) || tp != 573 {
+		t.Fatalf("film = (%v, %q, %d), attendu registre intact et temps de jeu 573", rst, src, tp)
+	}
+	rep, err = Backfill(context.Background(), acces(db, &writes), optionsVers(dir))
+	if err != nil || rep.Written != 0 || rep.PlayersChanged != 0 || rep.KeptFilm != 1 {
+		t.Fatalf("second passage : err=%v bilan=%+v, attendu zero ecriture", err, rep)
+	}
+}

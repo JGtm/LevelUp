@@ -5,7 +5,9 @@ package leadshare
 type Clock struct {
 	// OriginMS : instant de l'image zéro du film sur l'axe du match. Nil = non établie.
 	OriginMS *int64
-	// T0FilmMS : coup d'envoi MESURÉ dans le film, sur l'axe du match. Nil = non mesuré.
+	// T0FilmMS : coup d'envoi du match publié par le film (source `film` de la résolution), sur
+	// l'axe du match. Nil = non mesuré, ou refusé par la résolution (hors de la fenêtre du match) :
+	// la fenêtre n'invente aucun coup d'envoi, elle refuse.
 	T0FilmMS *int64
 	// DurationSeconds : durée du match au registre, countdown compris, sur l'axe du match.
 	DurationSeconds *int64

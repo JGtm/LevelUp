@@ -24,21 +24,20 @@ func replayFixture() *countingMatchViewRepo {
 	start := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
 	joined, left := start.Add(90*time.Second), start.Add(400*time.Second)
 	gv, pair, mapName, pl := "Slayer", "Slayer:Live Fire", "Live Fire", "Ranked Arena"
-	dur, playable, t0 := 620.0, int64(600), int64(15_000)
+	dur, t0 := 675.0, int64(15_000) // 675 s moins le coup d'envoi de 15 s : 660 s de jeu, 60 s au-delà des 600 s réglementaires : prolongation
 	me, friend, adv, bot := "me", "fr", "adv", "bid(1.0)"
 	ms := func(v int64) *int64 { return &v }
 	str := func(v string) *string { return &v }
 	f64 := func(v float64) *float64 { return &v }
 	tru := true
 	i16 := func(v int16) *int16 { return &v }
-	elapsed := 660 // 60 s au-delà des 600 s réglementaires : prolongation
 	return &countingMatchViewRepo{
 		calls: map[string]int{},
 		mockMatchViewRepo: &mockMatchViewRepo{
 			meta: &domain.MatchMetaRaw{
-				MatchID: "m1", StartTime: &start, DurationSeconds: &dur, PlayableDurationSeconds: &playable,
+				MatchID: "m1", StartTime: &start, DurationSeconds: &dur,
 				T0Ms: &t0, GameVariantName: &gv, PairName: &pair, MapName: &mapName, PlaylistName: &pl, IsRanked: true,
-				ElapsedSeconds: &elapsed, Team0Score: i16(50), Team1Score: i16(48),
+				Team0Score: i16(50), Team1Score: i16(48),
 				Team0RoundsWon: i16(3), Team1RoundsWon: i16(1), RoundsTotal: i16(4),
 			},
 			stats: &domain.PlayerMatchStatsRaw{OutcomeCode: 2, TeamID: ptrIk(0), Kills: 2, Deaths: 1, Assists: 1, DamageDealt: f64(900)},

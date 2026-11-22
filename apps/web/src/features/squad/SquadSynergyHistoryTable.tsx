@@ -321,8 +321,8 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       },
       {
         id: 'duration',
-        // Durée réelle de gameplay (countdown retranché) préférée, fallback brut.
-        accessorFn: (r) => r.gameplay_duration_seconds ?? r.duration_seconds,
+        // Durée de jeu du match (countdown retranché), servie par le serveur : la même que celle de l'en-tête.
+        accessorFn: (r) => r.gameplay_duration_seconds,
         header: labels.duration,
         ...NUMERIC_SORT,
         cell: (ctx) => (

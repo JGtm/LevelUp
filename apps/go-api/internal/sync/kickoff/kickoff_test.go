@@ -141,3 +141,20 @@ func TestResolve_RangeApiRejeuAbsent(t *testing.T) {
 		t.Fatalf("plan = %+v", p)
 	}
 }
+
+// Rangé `film`, rejeu absent ou illisible, un temps de jeu périmé : le registre reste (aucune
+// écriture du coup d'envoi), le temps de jeu se recalcule sur le coup d'envoi rangé.
+func TestResolve_RangeFilmRejeuAbsent_TempsDeJeuCorrige(t *testing.T) {
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	for nom, f := range map[string]Film{"absent": {State: FilmAbsent}, "illisible": {State: FilmUnreadable}} {
+		m := matchFilm(start)
+		m.Participants[0].TimePlayed = ip(580) // périmé : calculé sur l'estimation à 20 s
+		p := Resolve(m, f)
+		if !p.FilmKept || p.KickoffChanged() || p.Write().Kickoff != nil {
+			t.Fatalf("%s : plan = %+v, attendu le registre intact", nom, p)
+		}
+		if len(p.TimePlayed) != 1 || p.TimePlayed[0].XUID != m.Participants[0].XUID || p.TimePlayed[0].After != 573 {
+			t.Fatalf("%s : temps de jeu = %+v, attendu un seul changement, a 573", nom, p.TimePlayed)
+		}
+	}
+}

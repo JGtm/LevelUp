@@ -403,20 +403,6 @@ func TestFindMatchesMissingData_ForceParticipantsScope(t *testing.T) {
 	}
 }
 
-func TestFindMatchesMissingData_PlayableDurationScope(t *testing.T) {
-	pdb := openPlayerForAll(t)
-	sdb := openSharedForAll(t)
-	scope := &SyncScope{PlayableDuration: true}
-	// All matches have NULL playable_duration_seconds → all returned
-	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result) != 3 {
-		t.Fatalf("expected 3 for playable_duration, got %d", len(result))
-	}
-}
-
 func TestFindMatchesMissingData_ForceAliases(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)

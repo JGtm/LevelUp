@@ -22,26 +22,25 @@ import "time"
 // Le champ SeasonID est NULL pour les anciens matchs (la migration
 // `shared_backfill_is_ranked_and_season` populate via dérivation start_time).
 type MatchRegistryRow struct {
-	MatchID                 string
-	StartTime               time.Time
-	EndTime                 *time.Time
-	PlaylistID              *string
-	PlaylistName            *string
-	PlaylistVersionID       *string
-	MapID                   *string
-	MapName                 *string
-	MapVersionID            *string
-	PairID                  *string
-	PairName                *string
-	PairVersionID           *string
-	GameVariantID           *string
-	GameVariantName         *string
-	GameVariantVersionID    *string
-	ModeCategory            string
-	IsRanked                bool
-	IsFirefight             bool
-	DurationSeconds         *int
-	PlayableDurationSeconds *int
+	MatchID              string
+	StartTime            time.Time
+	EndTime              *time.Time
+	PlaylistID           *string
+	PlaylistName         *string
+	PlaylistVersionID    *string
+	MapID                *string
+	MapName              *string
+	MapVersionID         *string
+	PairID               *string
+	PairName             *string
+	PairVersionID        *string
+	GameVariantID        *string
+	GameVariantName      *string
+	GameVariantVersionID *string
+	ModeCategory         string
+	IsRanked             bool
+	IsFirefight          bool
+	DurationSeconds      *int
 	// RealStartTime / RealStartSource : le coup d'envoi du match et sa source (`film`, `api`,
 	// vide = inconnu), posés ensemble par la résolution unique (kickoff.ApplyToRows,
 	// timeline.ResolveKickoff) avant l'insertion. Nil / vide = inconnu.

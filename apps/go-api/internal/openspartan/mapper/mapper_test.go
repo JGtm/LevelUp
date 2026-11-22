@@ -24,7 +24,6 @@ func sampleMatch(t *testing.T) openspartan.MatchStats {
 			StartTime:           time.Date(2026, 1, 2, 20, 18, 1, 0, time.UTC),
 			EndTime:             time.Date(2026, 1, 2, 20, 30, 0, 0, time.UTC),
 			Duration:            "PT11M59.25S",
-			PlayableDuration:    "PT11M59.25S",
 			LifecycleMode:       3,
 			GameVariantCategory: 6,
 			LevelID:             "level-1",
@@ -196,7 +195,7 @@ func TestMapRegistry_RejectsFutureStartTime(t *testing.T) {
 		MatchID: "future-1",
 		MatchInfo: openspartan.MatchInfo{
 			StartTime: now.AddDate(0, 1, 0), // a month ahead
-			Duration:  "PT10M", PlayableDuration: "PT10M",
+			Duration:  "PT10M",
 		},
 	}
 	if _, err := MapRegistry(ms, MapOptions{Now: now}); !errors.Is(err, ErrFutureMatch) {
@@ -209,7 +208,7 @@ func TestMapRegistry_HandlesMissingOptionalAssets(t *testing.T) {
 		MatchID: "x",
 		MatchInfo: openspartan.MatchInfo{
 			StartTime: time.Now().Add(-1 * time.Hour),
-			Duration:  "PT5M", PlayableDuration: "PT5M",
+			Duration:  "PT5M",
 			// No Playlist, no PlaylistMapModePair, no Teams.
 			MapVariant:     openspartan.AssetRef{AssetID: "map-1"},
 			UgcGameVariant: openspartan.AssetRef{AssetID: "var-1"},

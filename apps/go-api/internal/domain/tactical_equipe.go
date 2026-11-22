@@ -210,6 +210,5 @@ type TacticalPiste struct {
 type TacticalPistes struct {
 	FrameIntervalMS int             `json:"frameIntervalMs"`
 	OriginMs        *int64          `json:"originMs"`
-	T0FilmMs        *int64          `json:"t0FilmMs"`
 	Tracks          []TacticalPiste `json:"tracks"`
 }

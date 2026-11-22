@@ -46,6 +46,14 @@
 # supprimées `cmd/backfill_t0`, `cmd/backfill_t0_film` et `cmd/backfill_time_played` n'avaient aucune paire. Aucune
 # paire réinscrite : TestDeriverSansArtefactLisibleNeFaitRien garde son paquet et son nom. Vérifié par différence des
 # paires de la baseline contre `go test -tags=integration -list '.*'` des 18 paquets touchés (0 paire manquante après).
+# Suite du même retrait (les lecteurs passent par `timeline.ForMatch`, ADR 0050 D-7 et D-8) : 12 paires (Package, Test), 49
+# lignes JSONL. `internal/analysis/timeline` (4) : TestBuildFromRegistry_* (3) et TestBuildForMatchMs_UsesT0Ms, les deux
+# constructeurs remplacés par `ForMatch`. `internal/games/canonical` (6) : TestMatchSummary_GameplayDurationSeconds et ses
+# 5 sous-tests, la méthode supprimée (la durée de jeu se lit sur la chronologie). `internal/sync` (2) :
+# TestFindMatchesMissingData_PlayableDurationScope et le sous-test ForcePlayableDuration de
+# TestSyncScope_Resolve_ForceAllGranular, la portée `--playable-duration` du rattrapage supprimée avec la colonne lue.
+# Aucune paire réinscrite. Vérifié par différence des paires (Package, Test) de la baseline contre les événements d'un
+# `go test -tags=integration -json` des 47 paquets touchés ou voisins (12 manquantes, toutes ci-dessus).
 #
 # RELOCALISATION DU 2026-11-14 (plan architecture, étapes 4.2, 5.7 et 5.8 réinscrites) : 49 paires (Package, Test), 282
 # lignes JSONL, réinscrites sous leur nouveau paquet ; les retraits des trois étapes les avaient sorties de la baseline

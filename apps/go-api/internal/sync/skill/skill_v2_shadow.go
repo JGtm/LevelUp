@@ -438,11 +438,8 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		       COALESCE(mr.pair_name, ''),
 		       COALESCE(mp.outcome, 0),
 		       mp.team_id,
-		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
-		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
-		           WHEN mr.real_start_time IS NOT NULL THEN
-		               `+sqlfrag.SQLRealStartOffsetMs("mr")+`
-		           ELSE 0 END) AS gameplay_dur_ms
+		       -- durée de jeu en ms : le fragment unique (countdown retranché)
+		       `+sqlfrag.SQLGameplayDurationMs("mr")+` AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?

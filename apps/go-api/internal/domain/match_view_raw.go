@@ -26,16 +26,15 @@ type MatchHistAvgRow struct {
 
 // MatchMetaRaw : données brutes de la requête Q13 (match_registry).
 type MatchMetaRaw struct {
-	MatchID                 string
-	StartTime               *time.Time
-	DurationSeconds         *float64
-	MapName                 *string
-	PairName                *string
-	PlaylistName            *string
-	IsFirefight             bool
-	IsRanked                bool
-	PlayableDurationSeconds *int64
-	MapAssetID              *string
+	MatchID         string
+	StartTime       *time.Time
+	DurationSeconds *float64
+	MapName         *string
+	PairName        *string
+	PlaylistName    *string
+	IsFirefight     bool
+	IsRanked        bool
+	MapAssetID      *string
 	// MapVersionID : version de la map jouée (match_registry.map_version_id), pour
 	// le fetch DiscoveryUGC de l'image (endpoint /api/v1/assets/maps/.../image?v=).
 	MapVersionID    *string
@@ -77,15 +76,9 @@ type MatchMetaRaw struct {
 	Team0RoundsWon *int16
 	Team1RoundsWon *int16
 	RoundsTotal    *int16
-	// T0Ms : offset countdown pré-match en ms (Match Timeline T0, Phase 3).
-	// Dérivé de `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time)`.
-	// Nil si real_start_time absent → BuildForMatchMs retombe sur T0=0.
+	// T0Ms : coup d'envoi du match en ms depuis son début canonique (sqlfrag.SQLT0Ms). Nil =
+	// inconnu : la chronologie part du début du match (timeline.ForMatch).
 	T0Ms *int64
-	// ElapsedSeconds : durée de JEU observée du match (médiane du temps joué des
-	// participants présents du début à la fin ; repli MAX). Chargée séparément de
-	// Q13 et best-effort (cf. duckdb/elapsed_seconds.go). Nil = non estimable →
-	// aucun flag « Prolongation ».
-	ElapsedSeconds *int
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).

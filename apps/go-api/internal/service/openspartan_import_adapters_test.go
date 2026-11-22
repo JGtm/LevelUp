@@ -9,11 +9,10 @@ import (
 
 func TestToSyncRegistry_DefaultsModeCategoryWhenNil(t *testing.T) {
 	m := mapper.MatchRegistryRow{
-		MatchID:                 "m1",
-		StartTime:               time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		DurationSeconds:         60,
-		PlayableDurationSeconds: 59,
-		FirstSyncBy:             "test",
+		MatchID:         "m1",
+		StartTime:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		DurationSeconds: 60,
+		FirstSyncBy:     "test",
 	}
 	got := toSyncRegistry(m, false)
 	if got.ModeCategory != "Other" {
@@ -21,9 +20,6 @@ func TestToSyncRegistry_DefaultsModeCategoryWhenNil(t *testing.T) {
 	}
 	if got.DurationSeconds == nil || *got.DurationSeconds != 60 {
 		t.Errorf("DurationSeconds: want *60, got %v", got.DurationSeconds)
-	}
-	if got.PlayableDurationSeconds == nil || *got.PlayableDurationSeconds != 59 {
-		t.Errorf("PlayableDurationSeconds: want *59, got %v", got.PlayableDurationSeconds)
 	}
 }
 

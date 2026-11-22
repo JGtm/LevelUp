@@ -103,7 +103,6 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 
 	// Durées
 	row.DurationSeconds = parsePTDuration(asString(matchInfo["Duration"]))
-	row.PlayableDurationSeconds = parsePTDuration(asString(matchInfo["PlayableDuration"]))
 
 	// end_time
 	if et, err2 := parseISO(asString(matchInfo["EndTime"])); err2 == nil {

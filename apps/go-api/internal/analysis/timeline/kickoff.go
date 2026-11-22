@@ -80,7 +80,7 @@ type KickoffInput struct {
 func ResolveKickoff(in KickoffInput) Kickoff {
 	outOfBounds := false
 	if in.FilmT0Ms != nil {
-		if filmWithinMatch(*in.FilmT0Ms, in.DurationSeconds) {
+		if FilmWithinMatch(*in.FilmT0Ms, in.DurationSeconds) {
 			return Kickoff{Source: KickoffSourceFilm, OffsetMs: *in.FilmT0Ms}
 		}
 		outOfBounds = true
@@ -92,28 +92,30 @@ func ResolveKickoff(in KickoffInput) Kickoff {
 	return Kickoff{Source: KickoffSourceAPI, OffsetMs: t0, Estimate: q, FilmOutOfBounds: outOfBounds}
 }
 
-// filmWithinMatch dit si un coup d'envoi du rejeu tombe dans la fenêtre du match : [0, durée], ou
-// [0, ∞[ quand la durée est inconnue.
-func filmWithinMatch(t0Ms int64, durationSeconds *int) bool {
+// FilmWithinMatch dit si un coup d'envoi du rejeu tombe dans la fenêtre du match : [0, durée], ou
+// [0, ∞[ quand la durée est inconnue. C'est la règle de la résolution ([ResolveKickoff]) ; tout
+// lecteur qui prend le coup d'envoi directement dans le document (fenêtre jouée de la Mainmise)
+// l'applique aussi, pour ne jamais retenir une valeur que le registre a refusée.
+func FilmWithinMatch(t0Ms int64, durationSeconds *int) bool {
 	if t0Ms < 0 {
 		return false
 	}
 	return durationSeconds == nil || *durationSeconds <= 0 || t0Ms <= int64(*durationSeconds)*1000
 }
 
-// GameplayTimeline rend la chronologie de jeu d'un match : début canonique, durée du match et
-// coup d'envoi. Coup d'envoi inconnu : la chronologie part du début du match et la durée de jeu
-// vaut la durée du match ; cette règle est écrite ici et nulle part ailleurs à l'écriture.
-// ok=false quand la durée est absente ou nulle : le match n'a pas de fenêtre de jeu.
+// GameplayTimeline rend la chronologie de jeu d'un match résolu : début canonique, durée du
+// match et coup d'envoi, par la règle de lecture [ForMatch] (coup d'envoi inconnu : la
+// chronologie part du début du match). ok=false quand la durée est absente ou nulle : le match
+// n'a pas de fenêtre de jeu.
 func GameplayTimeline(startUTC time.Time, durationSeconds *int, k Kickoff) (domain.MatchTimeline, bool) {
 	if durationSeconds == nil || *durationSeconds <= 0 {
 		return domain.MatchTimeline{}, false
 	}
-	var t0 int64
+	var off *int64
 	if k.Known() {
-		t0 = k.OffsetMs
+		off = &k.OffsetMs
 	}
-	return domain.NewMatchTimelineAt(startUTC, int64(*durationSeconds)*1000, t0), true
+	return ForMatch(startUTC, int64(*durationSeconds)*1000, off), true
 }
 
 // PlayedSeconds rend le temps de jeu à ranger pour un joueur sur la chronologie du match, par la
