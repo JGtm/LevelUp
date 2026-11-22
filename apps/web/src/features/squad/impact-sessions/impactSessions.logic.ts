@@ -16,7 +16,7 @@ import type { SquadImpactSessions } from '@/lib/api/types'
 /** Clé de la ligne « Toutes les sessions ». */
 export const ALL_SESSIONS_KEY = 'all'
 
-export type MatchOutcomeKind = 'win' | 'loss' | 'other'
+type MatchOutcomeKind = 'win' | 'loss' | 'other'
 
 export interface ImpactMatchView {
   matchId: string
@@ -70,7 +70,7 @@ function outcomeKind(code: number): MatchOutcomeKind {
 }
 
 /** Le net par match d'un joueur : `null` quand il n'a joué aucun match. */
-export function netPerMatch(points: number, matchesPlayed: number): number | null {
+function netPerMatch(points: number, matchesPlayed: number): number | null {
   return matchesPlayed > 0 ? points / matchesPlayed : null
 }
 
@@ -228,7 +228,7 @@ export function netSign(value: number): 'gain' | 'loss' | 'zero' {
 }
 
 /** Le net par match est borné à ±`NET_BAR_RANGE` points pour la mini-barre. */
-export const NET_BAR_RANGE = 2
+const NET_BAR_RANGE = 2
 
 /** La longueur de la mini-barre, de -1 à 1. */
 export function netBarRatio(value: number): number {
