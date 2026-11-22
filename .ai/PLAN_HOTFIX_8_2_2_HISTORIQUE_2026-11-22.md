@@ -88,6 +88,17 @@ page.
   gains du décodeur passent sans retoucher le code. Parallélisme de décodage inchangé, jeton d'écriture
   unique inchangé. L'état de l'historique réutilise l'indication existante des films en cours de
   traitement. Valeurs fixées après la mesure 5bis (temps par film, pic mémoire).
+- **D-19** (utilisateur, 22/11, après la mesure 5bis) Le délai d'attente de la persistance du cycle V2
+  (60 s fixes, `persist_v1bridge.go`) devient proportionnel au lot ; mesuré : ~1 s par match, 200
+  matchs ≈ 3,7 min, d'où l'échec des passes. Le nombre de matchs persistés rapporté est juste même en
+  cas d'échec (relecture). Budget de 200 par passe conservé.
+- **D-20** (utilisateur, 22/11) La cadence de 10 min tient tant que l'historique OU l'arriéré de films
+  (source des frags, artefacts de rejeu) n'est pas vide ; l'état de l'historique réutilise l'indication
+  existante des films en cours de traitement.
+- **D-21** (utilisateur, 22/11) Ancre du marque-page : il retient aussi le match en tête de liste à la
+  passe précédente ; le décalage des nouveaux matchs = position de cette ancienne tête dans la liste
+  (exact, quels que soient les introuvables, Warzone ou Campagne). Reprise depuis 0 seulement si
+  l'ancienne tête n'est pas retrouvée dans les premières pages. Infinite et Halo 5.
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
