@@ -5,6 +5,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   HISTORY_POLL_CATCHING_UP_MS,
+  buttonLabel,
+  formatRemaining,
+  manualStatusLine,
+  remainingSeconds,
   HISTORY_POLL_RUNNING_MS,
   SYNC_CYCLE_POLL_MS,
   historyRefetchMs,
@@ -92,5 +96,46 @@ describe('prochaine passe', () => {
   it('heure prévue, ou pas encore planifiée', () => {
     expect(nextPassText(T_FR, 'fr', status({ next_cycle_at: '2026-11-22T14:10:00Z' }), false)).toMatch(/^Vers .*2026/)
     expect(nextPassText(T_FR, 'fr', status(), false)).toBe(T_FR.nextPassUnknown)
+  })
+})
+
+describe('délai minimal avant un lancement manuel', () => {
+  const NOW = Date.parse('2026-11-22T14:02:30Z')
+
+  it('secondes restantes : arrondies au-dessus, zéro une fois l’heure passée ou sans heure', () => {
+    expect(remainingSeconds('2026-11-22T14:04:10Z', NOW)).toBe(100)
+    expect(remainingSeconds('2026-11-22T14:02:30.400Z', NOW)).toBe(1)
+    expect(remainingSeconds('2026-11-22T14:02:30Z', NOW)).toBe(0)
+    expect(remainingSeconds('2026-11-22T14:00:00Z', NOW)).toBe(0)
+    expect(remainingSeconds(undefined, NOW)).toBe(0)
+    expect(remainingSeconds('pas une date', NOW)).toBe(0)
+  })
+
+  it('« 1 min 40 » au-delà d’une minute, « 40 s » en dessous', () => {
+    expect(formatRemaining(100)).toBe('1 min 40')
+    expect(formatRemaining(125)).toBe('2 min 05')
+    expect(formatRemaining(60)).toBe('1 min 00')
+    expect(formatRemaining(59)).toBe('59 s')
+    expect(formatRemaining(1)).toBe('1 s')
+  })
+
+  it('libellé du bouton : en cours, délai, ou action', () => {
+    expect(buttonLabel(T_FR, true, 0)).toBe('Synchronisation en cours…')
+    expect(buttonLabel(T_FR, true, 40)).toBe('Synchronisation en cours…')
+    expect(buttonLabel(T_FR, false, 100)).toBe('Disponible dans 1 min 40')
+    expect(buttonLabel(T_EN, false, 100)).toBe('Available in 1 min 40')
+    expect(buttonLabel(T_EN, false, 0)).toBe('Sync now')
+  })
+
+  it('ligne sous le bouton : cycle en cours, délai, ou rien', () => {
+    const cycle = { last_cycle_at: '2026-11-22T14:02:00Z', manual_available_at: '2026-11-22T14:04:00Z' }
+    expect(manualStatusLine(T_FR, 'fr', cycle, true, 0)).toBe('Synchronisation en cours.')
+    expect(manualStatusLine(T_EN, 'en', cycle, true, 0)).toBe('Sync in progress.')
+    expect(manualStatusLine(T_FR, 'fr', cycle, false, 0)).toBeNull()
+    expect(manualStatusLine(T_FR, 'fr', undefined, false, 0)).toBeNull()
+    expect(manualStatusLine(T_FR, 'fr', cycle, false, 90)).toMatch(
+      /^Dernière synchronisation terminée à \d{2}:\d{2}\. Prochain lancement possible à \d{2}:\d{2}\.$/,
+    )
+    expect(manualStatusLine(T_EN, 'en', cycle, false, 90)).toMatch(/^Last sync finished at .+\. Next run available at .+\.$/)
   })
 })

@@ -3,7 +3,7 @@
  * tant que le serveur dit qu'un cycle tourne, et dit le refus d'un lancement dans la langue de l'interface.
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { toast } from 'sonner'
 import { renderWithProviders } from '@/test/render-utils'
@@ -225,5 +225,107 @@ describe('SyncNowCard — état de l’historique', () => {
     )
     renderWithProviders(<SyncNowCard />)
     expect(await screen.findByText("Lecture de l'état de l'historique…")).toBeInTheDocument()
+  })
+})
+
+// ─── Les trois états du bouton : disponible, en cours, délai minimal ─────────────────────────────────────────
+
+/** Un instant décalé de `ms` par rapport à maintenant, en ISO. */
+const IN = (ms: number) => new Date(Date.now() + ms).toISOString()
+
+function serveurCycle(state: () => Record<string, unknown>, opts: { refus?: { status: number; code: string } } = {}) {
+  server.use(
+    http.get(`${API}/sync/cycle`, () => HttpResponse.json(state())),
+    http.post(`${API}/sync/now`, () => {
+      launches += 1
+      if (opts.refus) {
+        return HttpResponse.json(
+          { status: opts.refus.status, code: opts.refus.code, message: 'MESSAGE DU SERVEUR', retryable: false },
+          { status: opts.refus.status },
+        )
+      }
+      return HttpResponse.json({ status: 'started' }, { status: 202 })
+    }),
+  )
+}
+
+describe('SyncNowCard — état du bouton', () => {
+  beforeEach(() => {
+    launches = 0
+    vi.clearAllMocks()
+    useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities({ can_run_sync: true }) })
+  })
+  afterEach(() => {
+    useAppShellStore.setState({ locale: 'fr', capabilities: null })
+  })
+
+  it('disponible : le bouton propose l’action, aucune ligne de statut', async () => {
+    serveurCycle(() => ({ running: false, last_cycle_at: IN(-600_000) }))
+    renderWithProviders(<SyncNowCard />)
+    const bouton = await screen.findByRole('button', { name: 'Synchroniser maintenant' })
+    expect(bouton).toBeEnabled()
+    expect(screen.queryByTestId('sync-now-status')).toBeNull()
+  })
+
+  it('en cours : libellé et ligne dans les deux langues, bouton désactivé', async () => {
+    serveurCycle(() => ({ running: true }))
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByRole('button', { name: 'Synchronisation en cours…' })).toBeDisabled()
+    expect(screen.getByTestId('sync-now-status')).toHaveTextContent('Synchronisation en cours.')
+
+    act(() => useAppShellStore.setState({ locale: 'en' }))
+    expect(await screen.findByRole('button', { name: 'Sync in progress…' })).toBeDisabled()
+    expect(screen.getByTestId('sync-now-status')).toHaveTextContent('Sync in progress.')
+  })
+
+  it('délai minimal : « Disponible dans 1 min 40 », fin du dernier cycle et prochain lancement, sans clic possible', async () => {
+    serveurCycle(() => ({ running: false, last_cycle_at: IN(-20_000), manual_available_at: IN(100_500) }))
+    renderWithProviders(<SyncNowCard />)
+    const bouton = await screen.findByRole('button', { name: /^Disponible dans 1 min \d\d$/ })
+    expect(bouton).toBeDisabled()
+    const ligne = screen.getByTestId('sync-now-status')
+    expect(ligne).toHaveTextContent(/^Dernière synchronisation terminée à \d{2}:\d{2}\. Prochain lancement possible à \d{2}:\d{2}\.$/)
+    expect(ligne.className).not.toMatch(/destructive|warning/)
+    fireEvent.click(bouton)
+    expect(launches).toBe(0)
+  })
+
+  it('délai minimal en anglais', async () => {
+    useAppShellStore.setState({ locale: 'en' })
+    serveurCycle(() => ({ running: false, last_cycle_at: IN(-20_000), manual_available_at: IN(100_500) }))
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByRole('button', { name: /^Available in 1 min \d\d$/ })).toBeDisabled()
+    expect(screen.getByTestId('sync-now-status')).toHaveTextContent(/^Last sync finished at .+\. Next run available at .+\.$/)
+  })
+
+  it('compte à rebours à la seconde, puis retour seul à « Synchroniser maintenant »', async () => {
+    serveurCycle(() => ({ running: false, last_cycle_at: IN(-119_000), manual_available_at: IN(1_500) }))
+    renderWithProviders(<SyncNowCard />)
+    expect(await screen.findByRole('button', { name: /^Disponible dans [12] s$/ })).toBeDisabled()
+    const bouton = await screen.findByRole('button', { name: 'Synchroniser maintenant' }, { timeout: 4000 })
+    expect(bouton).toBeEnabled()
+    expect(screen.queryByTestId('sync-now-status')).toBeNull()
+  })
+
+  it('un 429 malgré tout (deux onglets) : la ligne du délai, pas de toast d’erreur', async () => {
+    let apresRefus = false
+    serveurCycle(() =>
+      apresRefus
+        ? { running: false, last_cycle_at: IN(-10_000), manual_available_at: IN(110_000) }
+        : { running: false },
+    )
+    server.use(
+      http.post(`${API}/sync/now`, () => {
+        launches += 1
+        apresRefus = true
+        return HttpResponse.json({ code: 'sync_cycle_cooldown', message: 'MESSAGE DU SERVEUR', retryable: false }, { status: 429 })
+      }),
+    )
+    renderWithProviders(<SyncNowCard />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Synchroniser maintenant' }))
+    expect(await screen.findByRole('button', { name: /^Disponible dans 1 min \d\d$/ })).toBeDisabled()
+    expect(screen.getByTestId('sync-now-status')).toHaveTextContent(/Prochain lancement possible à/)
+    expect(launches).toBe(1)
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })

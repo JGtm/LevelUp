@@ -45,6 +45,12 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 	}
 }
 
+// advanceClock avance l'horloge injectée de l'ordonnanceur de d.
+func advanceClock(s *AutoSyncScheduler, d time.Duration) {
+	now := s.clock().Add(d)
+	s.now = func() time.Time { return now }
+}
+
 func bindManual(t *testing.T, s *AutoSyncScheduler) (*sync.WaitGroup, context.CancelFunc) {
 	t.Helper()
 	var wg sync.WaitGroup
@@ -106,6 +112,7 @@ func TestStartSyncNow_JamaisDeuxCyclesALaFois(t *testing.T) {
 
 	orch2 := &scriptedOrch{outcome: okOutcome(false)}
 	s.cycleOrchestrator = orch2
+	advanceClock(s, manualCycleMinGap) // le délai minimal après le cycle précédent est écoulé
 	if err := s.StartSyncNow(); err != nil {
 		t.Errorf("clic après le cycle = %v, attendu nil", err)
 	}
@@ -206,4 +213,92 @@ func TestRunTick_PendantUnCycleDemande(t *testing.T) {
 	}
 	close(orch.release)
 	wg.Wait()
+}
+
+// Délai minimal : un cycle terminé il y a moins de manualCycleMinGap, de n'importe quelle origine, fait
+// refuser le clic avec le délai restant ; le délai écoulé, le clic passe seul. Le drapeau « cycle en cours »
+// n'est pas laissé levé par le refus.
+func TestStartSyncNow_DelaiMinimalApresUnCycle(t *testing.T) {
+	for _, origine := range []string{"tick", "manual"} {
+		t.Run("cycle terminé : "+origine, func(t *testing.T) {
+			s := newCadenceScheduler(t, settings6h, false)
+			orch := &scriptedOrch{outcome: okOutcome(false)}
+			s.cycleOrchestrator = orch
+			wg, _ := bindManual(t, s)
+
+			if got := s.CooldownRemaining(); got != 0 {
+				t.Fatalf("avant tout cycle : délai restant = %v, attendu 0", got)
+			}
+			s.RunOnceTrigger(context.Background(), origine)
+
+			var cd *port.SyncCooldownError
+			err := s.StartSyncNow()
+			if !errors.As(err, &cd) || !errors.Is(err, port.ErrSyncCycleCooldown) {
+				t.Fatalf("clic juste après le cycle = %v, attendu *SyncCooldownError", err)
+			}
+			if cd.RetryAfter != manualCycleMinGap {
+				t.Errorf("délai restant = %v, attendu %v", cd.RetryAfter, manualCycleMinGap)
+			}
+			if s.CycleRunning() {
+				t.Error("le refus a laissé le drapeau « cycle en cours » levé")
+			}
+			if orch.calls != 1 {
+				t.Errorf("cycles = %d, attendu 1 (le clic refusé ne lance rien)", orch.calls)
+			}
+
+			advanceClock(s, 90*time.Second)
+			if got := s.CooldownRemaining(); got != 30*time.Second {
+				t.Errorf("après 90 s : délai restant = %v, attendu 30s", got)
+			}
+			advanceClock(s, 30*time.Second)
+			if got := s.CooldownRemaining(); got != 0 {
+				t.Errorf("délai écoulé : délai restant = %v, attendu 0", got)
+			}
+			if err := s.StartSyncNow(); err != nil {
+				t.Fatalf("clic après le délai = %v, attendu nil", err)
+			}
+			wg.Wait()
+			if orch.calls != 2 {
+				t.Errorf("cycles = %d, attendu 2", orch.calls)
+			}
+		})
+	}
+}
+
+// Le tick périodique et la commande du menu de la zone de notification (RunOnceTrigger) ne sont pas soumis
+// au délai : ils tournent juste après un cycle.
+func TestRunOnceTrigger_NestPasSoumisAuDelaiMinimal(t *testing.T) {
+	s := newCadenceScheduler(t, settings6h, false)
+	orch := &scriptedOrch{outcome: okOutcome(false)}
+	s.cycleOrchestrator = orch
+	s.RunOnceTrigger(context.Background(), "manual")
+	if res := s.RunOnceTrigger(context.Background(), "tick"); res.busy {
+		t.Error("un tick juste après un cycle doit tourner")
+	}
+	if res := s.RunOnceTrigger(context.Background(), "manual"); res.busy {
+		t.Error("la commande de la zone de notification juste après un cycle doit tourner")
+	}
+	if orch.calls != 3 {
+		t.Errorf("cycles = %d, attendu 3", orch.calls)
+	}
+}
+
+// ManualWindow rend la fin du dernier cycle et l'heure de disponibilité du lancement manuel (absente une
+// fois le délai écoulé) : c'est ce que l'écran affiche sans clic.
+func TestManualWindow(t *testing.T) {
+	s := newCadenceScheduler(t, settings6h, false)
+	s.cycleOrchestrator = &scriptedOrch{outcome: okOutcome(false)}
+	if last, avail := s.ManualWindow(); !last.IsZero() || !avail.IsZero() {
+		t.Fatalf("avant tout cycle : (%v, %v), attendu deux zéros", last, avail)
+	}
+	s.RunOnceTrigger(context.Background(), "tick")
+	last, avail := s.ManualWindow()
+	if !last.Equal(cadenceNow) || !avail.Equal(cadenceNow.Add(manualCycleMinGap)) {
+		t.Errorf("juste après le cycle : (%v, %v), attendu (%v, %v)", last, avail, cadenceNow, cadenceNow.Add(manualCycleMinGap))
+	}
+	advanceClock(s, manualCycleMinGap)
+	last, avail = s.ManualWindow()
+	if !last.Equal(cadenceNow) || !avail.IsZero() {
+		t.Errorf("délai écoulé : (%v, %v), attendu la fin du cycle et pas d'heure de disponibilité", last, avail)
+	}
 }

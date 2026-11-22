@@ -199,3 +199,43 @@ func TestReadHistoryProgress_Erreurs(t *testing.T) {
 		}
 	})
 }
+
+// Marque-page présent : l'état ne dépend que de la clé de fin. Un rattrapage interrompu (marque-page rangé,
+// clé de fin absente) reste « en cours » ; la clé de fin rangée (qui efface le marque-page) le dit complet.
+func TestHistoryComplete_AvecMarquePage(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "stats.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at TIMESTAMP)`); err != nil {
+		t.Fatalf("create sync_meta: %v", err)
+	}
+	if !historystate.SaveCursor(ctx, db, historystate.Cursor{Offset: 400, LastMatchID: "match-400"}) {
+		t.Fatal("le marque-page n'a pas été rangé")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	r := New(func(string, string) string { return path }, nil)
+
+	got, err := r.ReadHistoryProgress(ctx, "halo_infinite", "JGtm", "")
+	if err != nil || got.Complete {
+		t.Fatalf("marque-page rangé, clé de fin absente : (%+v, %v), attendu rattrapage en cours", got, err)
+	}
+
+	db, err = sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if !historystate.MarkComplete(ctx, db, "JGtm") || !historystate.ClearCursor(ctx, db) {
+		t.Fatal("la fin d'historique n'a pas été rangée")
+	}
+	_ = db.Close()
+	if got, err := r.ReadHistoryProgress(ctx, "halo_infinite", "JGtm", ""); err != nil || !got.Complete {
+		t.Errorf("clé de fin rangée : (%+v, %v), attendu complet", got, err)
+	}
+}

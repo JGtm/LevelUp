@@ -13678,6 +13678,16 @@ export interface components {
             zb: number;
         };
         SyncCycleState: {
+            /**
+             * Format: date-time
+             * @description Fin du dernier cycle connu, de n'importe quelle origine.
+             */
+            last_cycle_at?: string;
+            /**
+             * Format: date-time
+             * @description Instant à partir duquel un lancement manuel est permis ; absent quand il l'est tout de suite.
+             */
+            manual_available_at?: string;
             /** @description Un cycle de synchronisation tourne (périodique ou demandé). */
             running: boolean;
         };

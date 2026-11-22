@@ -30213,6 +30213,14 @@ components:
     SyncCycleState:
       additionalProperties: false
       properties:
+        last_cycle_at:
+          description: Fin du dernier cycle connu, de n'importe quelle origine.
+          format: date-time
+          type: string
+        manual_available_at:
+          description: Instant à partir duquel un lancement manuel est permis ; absent quand il l'est tout de suite.
+          format: date-time
+          type: string
         running:
           description: Un cycle de synchronisation tourne (périodique ou demandé).
           type: boolean

@@ -9,7 +9,9 @@ type SyncNowResponse struct {
 
 // SyncCycleState dit si un cycle de synchronisation tourne en ce moment.
 type SyncCycleState struct {
-	Running bool `json:"running" doc:"Un cycle de synchronisation tourne (périodique ou demandé)."`
+	Running           bool       `json:"running" doc:"Un cycle de synchronisation tourne (périodique ou demandé)."`
+	LastCycleAt       *time.Time `json:"last_cycle_at,omitempty" doc:"Fin du dernier cycle connu, de n'importe quelle origine."`
+	ManualAvailableAt *time.Time `json:"manual_available_at,omitempty" doc:"Instant à partir duquel un lancement manuel est permis ; absent quand il l'est tout de suite."`
 }
 
 // Valeurs de TitleHistoryStatus.State.

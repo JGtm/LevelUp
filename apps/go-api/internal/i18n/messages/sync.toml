@@ -5,6 +5,11 @@
 fr = "Une synchronisation est déjà en cours."
 en = "A sync is already running."
 
+# « Synchroniser maintenant » refusé : un cycle vient de se terminer, le délai minimal n'est pas écoulé.
+[sync.now.cooldown]
+fr = "Une synchronisation vient de se terminer : réessayer dans {seconds} s."
+en = "A sync has just finished: try again in {seconds} s."
+
 # État de l'historique d'un joueur sur un titre (écran « Synchronisation »).
 [sync.history.state.complete]
 fr = "Complet"
