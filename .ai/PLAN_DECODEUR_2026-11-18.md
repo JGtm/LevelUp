@@ -645,3 +645,4 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
   document, pour la hauteur et la pleine cadence des projectiles : notre 126 désigne autre chose. Ses canaux
   (pistes à pleine cadence, visée des tirs, arme en main, causes des morts, munitions, gestes, postures)
   remonteront en v1.6.0, rebasés sur la v1.5.0, numéros de schéma réattribués (user, 2026-11-22 ; plan 3D, D-18).
+- 2026-11-22 — vitesse : le user retient comme direction, après la v1.5.0, les méthodes du parseur `halo_api` de nuzzles (décompression et lecture des chunks sur plusieurs fils, état du monde à la demande, lecture au choix des canaux), sans objectif chiffré, avec un relevé de vitesse par version sur un jeu de films fixe. Détail et chiffres : `.ai/BACKLOG.md`, entrée « Comparaison avec les parseurs voisins ». Rien à traiter dans la v1.5.0.

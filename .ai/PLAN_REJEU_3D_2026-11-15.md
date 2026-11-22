@@ -79,7 +79,7 @@ réécrites quand le contributeur aura répondu sur le découpage (D-15) ; d'ici
   - Aucune interface de pilotage par un hôte n'existe : routes de données, origine locale seule, routeur par
     fragment d'URL.
 - **Attendu.** Du contributeur : son accord sur D-15 et sur la remontée de ses changements dans les trois
-  briques. La note destinée à ses agents est `annexes_rejeu_3d/brief_contributeur_integration_2026-11-22.md`.
+  briques. La note destinée à ses agents lui a été transmise le 2026-11-22 puis retirée du dépôt ; elle se relit dans le commit `d65dadaa39`.
 
 Constats relus sur pièces le 2026-11-15 sur `origin/release/v8.2.0` (`0ccbed4e2c`) et sur le binaire
 `infinite-theater-3d-0.1.0-test.8` du contributeur llampwall (lu, non lancé). L'exécutant les RE-VÉRIFIE
