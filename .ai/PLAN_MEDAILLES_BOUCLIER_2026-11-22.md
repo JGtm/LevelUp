@@ -117,7 +117,7 @@ et que son commit est fait.
 
 ### Piste B — matrice d'impact (Sonnet) — après A.2 (colonnes) — moyen
 
-- [ ] B.1 Barème D-7 et rôle Os de verre D-6 (`squadimpact` : clé, poids, ordre des colonnes et
+- [x] B.1 Barème D-7 et rôle Os de verre D-6 (`squadimpact` : clé, poids, ordre des colonnes et
   d'empilement) ; lecture des bris par match derrière un port (`platform/duckdb`).
 - [ ] B.2 Libellés serveur (`internal/i18n/messages/impact.toml`), libellés web fr/en, icône Fluent
   « os » sous `apps/web/src/assets/badges/fluent-flat/` (validée par l'utilisateur), textes du barème ;
@@ -425,3 +425,4 @@ le worktree.
   bloquait le lint) : De Morgan dans `revenge.vengeable`.
 
 - 2026-11-22 : piste C fusionnée (`da64d02f26` C.1, `e9b59a7b0d` C.2). Champ servi `shieldCycles` (xuid -> `{breaks, recharges}` en ms sur l'axe du document, origine non retranchée) ; bots servis sous la clé `bot:<nom>` du roster (règle « les bots comptent partout »). Gate de la piste : `go test` service/api/replayshield/archlint/contracttest verts, vitest `match-replay` 5802 verts, typecheck, lint, couleurs, imports croisés et knip verts ; test du service relancé par le pilote après gofmt : vert.
+- 2026-11-22 : B.1 close. `squadimpact` : clé `glass_jaw` (−0,5), Première victime / Touriste / Kamikaze à −0,5 (D-7). `stackOrder` suit la règle écrite (pertes de la plus forte à la plus faible, maquette à barème égal) : Boulet, Faux-frère, Voleur (−1, qui passe devant les trois à −0,5), Première victime, Touriste, Kamikaze, Os de verre. `roleOrder` (colonnes de la matrice) n'a pas de règle écrite au-delà de « canonique » : Os de verre est placé après Voleur, avant Bourreau (choix du lot, à redire si la maquette en veut un autre). Attribution D-6 dans `squadimpact.GlassJaw` (pur) : parmi l'équipe alliée complète, le plus de bris, puis moins de recharges, puis xuid croissant ; aucun rôle sans mesure (`MatchInput.Shields` vide) ni sans bris allié ; `RolesOfMatch` l'émet avant le Voleur. Lecture : port `SquadRepository.LoadMatchShields` (à côté de `LoadSquadKillLog`), Q32f sur `match_usage_players_latest` seule, lignes dont les deux colonnes sont NULL écartées (un match est mesuré dès qu'une ligne porte une valeur), dégradation journalisée en (nil, nil) ; lue UNE fois pour tous les matchs dans `rolesDesMatchs` (`teammates_squad_impact_shields.go`), donc par le même chemin pour la matrice et les points par soirée (même map de rôles, `BuildHistory`). Tests : purs (`roles_test.go`), service avec port simulé (parité matrice / soirée, match non mesuré, lecture en échec), repo sur DuckDB mémoire au schéma livré (`squad_repo_shields_test.go`).

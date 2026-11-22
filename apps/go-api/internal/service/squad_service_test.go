@@ -82,6 +82,9 @@ func (m *mockSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) (
 func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
 	return nil, nil
 }
+func (m *mockSquadRepo) LoadMatchShields(_ context.Context, _ []string) ([]domain.MatchShieldRow, error) {
+	return nil, nil
+}
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr
 }

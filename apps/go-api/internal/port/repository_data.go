@@ -67,6 +67,12 @@ type SquadRepository interface {
 	// Source du badge d'impact « Voleur ». Titre sans décodeur de film → (nil, nil).
 	LoadSquadKillLog(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadKillLogRow, error)
 
+	// LoadMatchShields charge, par match et par joueur, les bris de bouclier et les recharges
+	// complètes tirés du film (match_usage_players_latest). Source du rôle d'impact « Os de verre ».
+	// Un match absent du résultat n'est pas mesuré (sans rejeu, ou mode sans bouclier). Titre sans
+	// résumé d'usage → (nil, nil).
+	LoadMatchShields(ctx context.Context, matchIDs []string) ([]domain.MatchShieldRow, error)
+
 	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
 	// team-wide). Pour chaque match dans matchIDs, retourne les rows
@@ -344,6 +350,9 @@ func (n *noopSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) (
 	return nil, 0, nil
 }
 func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadMatchShields(_ context.Context, _ []string) ([]domain.MatchShieldRow, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
