@@ -62,11 +62,6 @@ export function heightGrey(z: number, meta: Pick<ReliefHeightMeta, 'low' | 'high
   return GREY_BASE + GREY_RANGE * t
 }
 
-/** Le gris (octet) d'une hauteur sur un sol plat, comme `shadeRelief` le poserait. */
-export function heightGreyByte(z: number, meta: Pick<ReliefHeightMeta, 'low' | 'high'>): number {
-  return Math.round(Math.min(1, heightGrey(z, meta)) * 255)
-}
-
 /**
  * shadeRelief calcule le gris ombré de chaque pixel CONNU (0 ailleurs) pour une orientation.
  * `mpp` est l'échelle du fond en unités par pixel : elle donne la pente en unités par unité.

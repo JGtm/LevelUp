@@ -169,6 +169,8 @@ export const tacticalManifest = {
   "tactical.reapp.held_caption": { fr: "Zone tenue", en: "Held zone" },
   "tactical.reapp.held_counts": { fr: "{matchs, plural, one {# match} other {# matchs}} · {n, plural, one {# réapparition} other {# réapparitions}}", en: "{matchs, plural, one {# match} other {# matches}} · {n, plural, one {# respawn} other {# respawns}}" },
   "tactical.reapp.held_none": { fr: "Aucune", en: "None" },
+  "tactical.reapp.held_off_floor": { fr: "{zone} (hors de l'étage affiché)", en: "{zone} (outside the shown floor)" },
+  "tactical.reapp.held_off_floor_hint": { fr: "Cette zone n'est pas sur l'étage de la coupe : elle n'est pas dessinée sur le plan, la lecture reste celle de cette zone. Choisir « Tout » ou son étage la montre.", en: "This zone is not on the floor of the cut: it is not drawn on the plan, and the reading stays that of this zone. Choosing “All” or its floor shows it." },
   "tactical.reapp.label_held": { fr: "{zone} · zone tenue", en: "{zone} · held zone" },
   "tactical.reapp.legend_delta": { fr: "écart en points à la répartition sans condition", en: "gap in points from the unconditional split" },
   "tactical.reapp.legend_gradient": { fr: "Part des réapparitions adverses, de 0 à {max}", en: "Share of opposing respawns, from 0 to {max}" },

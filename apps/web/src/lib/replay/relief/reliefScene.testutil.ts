@@ -51,6 +51,9 @@ export interface RawReliefOptions {
   mpp?: number
   rects?: FloorRect[]
   levels?: number[]
+  /** Bornes du curseur quand elles ne se déduisent pas des étages (étages absents, hauteurs présentes). */
+  min?: number
+  max?: number
   z0?: number
   low?: number
   high?: number
@@ -79,8 +82,8 @@ export function rawRelief(o: RawReliefOptions): Record<string, unknown> {
     height: { z0: o.z0 ?? -7, step: 1 / 256, low: o.low ?? 0, high: o.high ?? 4 },
     floors: {
       levels: o.levels ?? [],
-      min: o.levels?.[0],
-      max: o.levels?.[o.levels.length - 1],
+      min: o.min ?? o.levels?.[0],
+      max: o.max ?? o.levels?.[o.levels.length - 1],
       merge: o.merge ?? 0.4,
       tolerance: o.tolerance ?? 0.3,
       meshShare: o.meshShare,

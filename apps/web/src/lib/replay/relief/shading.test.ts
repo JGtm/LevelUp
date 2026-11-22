@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { QuarterTurns } from '../orientation'
 import { QUARTER_TURNS } from '../orientation'
-import { heightGrey, heightGreyByte, lightForTurns, shadeRelief } from './shading'
+import { heightGrey, lightForTurns, shadeRelief } from './shading'
 import { reliefImage } from './reliefScene.testutil'
 import type { ReliefHeights } from './types'
 
@@ -34,7 +34,6 @@ describe('shadeRelief : la clarté suit la hauteur', () => {
     const grey = shadeRelief(reliefImage(20, 20, (i) => ({ z: i * 0.5 })), RAMP, MPP, 0)
     expect(grey[10 * 20 + 2]).toBeLessThanOrEqual(grey[10 * 20 + 9])
     expect(heightGrey(10, RAMP)).toBeGreaterThan(heightGrey(0, RAMP))
-    expect(heightGreyByte(0, RAMP)).toBe(92)
   })
 
   it('une rampe de moins d’une unité ne divise pas par zéro', () => {

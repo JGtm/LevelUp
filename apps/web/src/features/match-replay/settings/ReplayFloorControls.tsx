@@ -27,7 +27,10 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReliefText } from '../i18n/relief.i18n'
 import { InfoMark, SettingsToggle } from './ReplaySettingsToggle'
 
-/** Au-delà de ce nombre de pastilles d'étage, la rangée défile horizontalement. */
+/**
+ * Au-delà de ce nombre de pastilles d'étage, la rangée défile horizontalement. La brique ne cuit aujourd'hui que cinq
+ * étages au plus : la branche attend un plafond plus haut, et jusque-là la rangée passe toujours à la ligne.
+ */
 export const FLOOR_CHIPS_WRAP_MAX = 6
 
 /** La commande d'étage : l'état de la commande, la coupe retenue et les gestes qui la changent. */
@@ -74,6 +77,8 @@ export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: Rep
   const { chips, min, max } = state
   const cut = floor.cut
   const named = cut === null ? null : nearestChip(chips, cut)
+  // Sans étage détecté, une hauteur libre n'a pas de rang à nommer (D-14 : jamais de mètres).
+  const value = cut === null ? t.floorAll : named === null ? '' : t.floorRankFmt(named.rank)
   const note = followNote(t, floor.follow, named)
   return (
     <div className="col-span-2 space-y-1">
@@ -115,7 +120,7 @@ export function FloorGroup({ locale, floor }: { locale: ReplayLocale; floor: Rep
           className="min-w-0 flex-1 accent-primary"
         />
         <output className="min-w-[6ch] shrink-0 text-right tabular-nums">
-          {named === null ? t.floorAll : t.floorRankFmt(named.rank)}
+          {value}
         </output>
       </label>
       <SettingsToggle

@@ -20,7 +20,7 @@ import { isReadyMessage, type ReliefRequest, type ReliefReply, type ReliefWorker
 import { handleReliefRequest } from './workerHandler'
 
 /** Où tourne le calcul. */
-export type ReliefMode = 'worker' | 'inline'
+type ReliefMode = 'worker' | 'inline'
 
 /** Ce que le client utilise d'un `Worker` (le vrai, ou un faux dans les tests). */
 export interface ReliefWorkerLike {
@@ -35,8 +35,6 @@ export interface ReliefWorkerLike {
 export interface ReliefComputerOptions {
   /** Fabrique du worker ; défaut : le worker du relief. Un échec bascule sur le repli. */
   workerFactory?: () => ReliefWorkerLike
-  /** Ne pas essayer le worker. */
-  forceInline?: boolean
   /** Délai de démarrage du worker avant repli (ms). */
   startTimeoutMs?: number
 }
@@ -151,7 +149,6 @@ class WorkerTransport implements Transport {
 }
 
 async function openTransport(options: ReliefComputerOptions): Promise<Transport> {
-  if (options.forceInline) return new InlineTransport()
   try {
     const worker = (options.workerFactory ?? defaultWorkerFactory)()
     return await WorkerTransport.open(worker, options.startTimeoutMs ?? DEFAULT_START_TIMEOUT_MS)
@@ -181,11 +178,6 @@ export class ReliefComputer {
 
   constructor(options: ReliefComputerOptions = {}) {
     this.transport = openTransport(options)
-  }
-
-  /** Où le calcul tourne : `'worker'`, ou `'inline'` quand le repli est en service. */
-  mode(): Promise<ReliefMode> {
-    return this.transport.then((t) => t.mode)
   }
 
   /**

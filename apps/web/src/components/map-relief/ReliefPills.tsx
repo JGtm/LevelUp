@@ -17,7 +17,10 @@ import { isCutAtLevel, nearestChip } from '@/lib/replay/reliefViewLogic'
 import { BOUTON_REGLAGE, ETIQUETTE, PILULE, VALEUR } from './pillStyles'
 import type { ReliefViewText } from './text'
 
-/** Au-delà de ce nombre de pastilles d'étage, la rangée défile horizontalement. */
+/**
+ * Au-delà de ce nombre de pastilles d'étage, la rangée défile horizontalement. La brique ne cuit aujourd'hui que cinq
+ * étages au plus : la branche attend un plafond plus haut, et jusque-là la rangée passe toujours en entier.
+ */
 export const FLOOR_CHIPS_SCROLL_MIN = 6
 
 export interface ReliefBackgroundPillProps {
@@ -86,6 +89,8 @@ export function ReliefFloorPill({ text, floor, testId }: ReliefFloorPillProps) {
   if (state.state !== 'ready') return null
   const { chips, min, max } = state
   const named = cut === null ? null : nearestChip(chips, cut)
+  // Sans étage détecté, une hauteur libre n'a pas de rang à nommer (D-14 : jamais de mètres).
+  const value = cut === null ? text.floorAll : named === null ? '' : text.floorRankFmt(named.rank)
   return (
     <span role="group" aria-label={text.floorLabel} className={PILULE} data-testid={testId}>
       <span className={ETIQUETTE} title={text.floorInfo}>
@@ -119,7 +124,7 @@ export function ReliefFloorPill({ text, floor, testId }: ReliefFloorPillProps) {
           className="h-1 w-[84px] accent-primary"
         />
         <output className="min-w-[4.5ch] text-right tabular-nums text-foreground">
-          {named === null ? text.floorAll : text.floorRankFmt(named.rank)}
+          {value}
         </output>
       </label>
     </span>

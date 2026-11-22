@@ -74,20 +74,12 @@ describe('createReliefComputer : repli synchrone', () => {
     expect(typeof Worker).toBe('undefined')
     expect(() => defaultWorkerFactory()).toThrow('Worker indisponible')
     const computer = createReliefComputer()
-    expect(await computer.mode()).toBe('inline')
-    expect(console.warn).toHaveBeenCalledTimes(1)
     const info = await computer.load(fourBlocksScene())
+    expect(console.warn).toHaveBeenCalledTimes(1)
     expect(info).toEqual({ width: 40, height: 10, hasMesh: true })
     const frame = await computer.render(request())
     expect(frame?.cut).toBe(2.25)
     computer.dispose()
-  })
-
-  it('forceInline n’essaie pas le worker', async () => {
-    const factory = vi.fn(() => new LoopbackWorker())
-    const computer = createReliefComputer({ forceInline: true, workerFactory: factory })
-    expect(await computer.mode()).toBe('inline')
-    expect(factory).not.toHaveBeenCalled()
   })
 
   it('une fabrique qui lève bascule sur le repli, en le journalisant', async () => {
@@ -96,25 +88,27 @@ describe('createReliefComputer : repli synchrone', () => {
         throw new Error('CSP')
       },
     })
-    expect(await computer.mode()).toBe('inline')
+    await computer.load(fourBlocksScene())
     expect(vi.mocked(console.warn).mock.calls[0][0]).toContain('CSP')
+    expect((await computer.render(request()))?.cut).toBe(2.25)
   })
 
   it('un script qui ne charge pas (erreur avant « ready ») bascule sur le repli et ferme le worker', async () => {
     const worker = new LoopbackWorker(false)
     queueMicrotask(() => worker.onerror?.(({}) as ErrorEvent))
     const computer = createReliefComputer({ workerFactory: () => worker })
-    expect(await computer.mode()).toBe('inline')
-    expect(worker.terminated).toBe(true)
     await computer.load(fourBlocksScene())
+    expect(worker.terminated).toBe(true)
     expect((await computer.render(request()))?.cut).toBe(2.25)
   })
 
   it('un worker qui n’annonce pas son démarrage dans le délai bascule sur le repli', async () => {
     const worker = new LoopbackWorker(false)
     const computer = createReliefComputer({ workerFactory: () => worker, startTimeoutMs: 20 })
-    expect(await computer.mode()).toBe('inline')
+    await computer.load(fourBlocksScene())
     expect(worker.terminated).toBe(true)
+    expect(worker.posted).toHaveLength(0)
+    expect(console.warn).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -124,12 +118,16 @@ describe('createReliefComputer : worker', () => {
   it('utilise le worker quand il annonce son démarrage ; le résultat est celui du repli', async () => {
     const worker = new LoopbackWorker()
     const computer = createReliefComputer({ workerFactory: () => worker })
-    expect(await computer.mode()).toBe('worker')
     await computer.load(fourBlocksScene())
+    expect(worker.posted.some((p) => p.message.op === 'load')).toBe(true)
     const viaWorker = await computer.render(request())
 
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const inline = createReliefComputer({ forceInline: true })
+    const inline = createReliefComputer({
+      workerFactory: () => {
+        throw new Error('pas de worker')
+      },
+    })
     await inline.load(fourBlocksScene())
     const viaInline = await inline.render(request())
 
@@ -152,7 +150,6 @@ describe('createReliefComputer : worker', () => {
 
   it('une erreur du moteur rejette la demande avec son code', async () => {
     const computer = createReliefComputer({ workerFactory: () => new LoopbackWorker() })
-    await computer.mode()
     const err = await computer.render(request()).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ReliefError)
     expect((err as ReliefError).code).toBe('not-loaded')
@@ -209,7 +206,7 @@ describe('createReliefComputer : worker', () => {
   it('dispose ferme le worker', async () => {
     const worker = new LoopbackWorker()
     const computer = createReliefComputer({ workerFactory: () => worker })
-    await computer.mode()
+    await computer.load(fourBlocksScene())
     computer.dispose()
     await flush()
     expect(worker.terminated).toBe(true)

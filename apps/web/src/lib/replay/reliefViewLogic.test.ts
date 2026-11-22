@@ -58,9 +58,20 @@ describe('viewFloorState : l’état de la commande d’étage', () => {
     expect(viewFloorState(data)).toEqual({ state: 'noMesh' })
   })
 
-  it('un maillage sans étage détecté vaut « sans maillage »', () => {
-    const data = reliefData({ width: 4, height: 4, levels: [] })
-    expect(viewFloorState(data)).toEqual({ state: 'noMesh' })
+  it('un maillage sans étage détecté n’est pas « sans maillage » : pas de pastille, le curseur reste', () => {
+    const data = reliefData({
+      width: 4,
+      height: 4,
+      levels: [],
+      min: -1,
+      max: 6,
+      rects: [{ i0: 0, j0: 0, i1: 3, j1: 3, z: 1 }],
+    })
+    expect(viewFloorState(data)).toEqual({ state: 'ready', chips: [], min: -1, max: 6 })
+  })
+
+  it('sans maillage ni bornes de hauteur, la commande reste « sans maillage »', () => {
+    expect(viewFloorState(reliefData({ width: 4, height: 4, levels: [] }))).toEqual({ state: 'noMesh' })
   })
 })
 
