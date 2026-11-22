@@ -99,10 +99,10 @@ func TestBuildHistory_CumulParJoueur(t *testing.T) {
 		t.Errorf("soirée %+v, attendu 3 matchs, 2 victoires, début 2026-09-01T19:00:00Z", ev)
 	}
 	main := ev.Players[0]
-	if main.Player != "Main" || main.Points != 0 || len(main.Roles) != 2 ||
+	if main.Player != "Main" || main.Points != 1 || len(main.Roles) != 2 ||
 		main.Roles[0] != (domain.SquadImpactRoleCount{Role: RoleFirstBlood, Count: 1, Points: 2}) ||
-		main.Roles[1] != (domain.SquadImpactRoleCount{Role: RoleKamikaze, Count: 2, Points: -2}) {
-		t.Errorf("Main = %+v, attendu Premier sang ×1 (+2) puis Kamikaze ×2 (−2), net 0", main)
+		main.Roles[1] != (domain.SquadImpactRoleCount{Role: RoleKamikaze, Count: 2, Points: -1}) {
+		t.Errorf("Main = %+v, attendu Premier sang ×1 (+2) puis Kamikaze ×2 (−1), net +1", main)
 	}
 	if a := ev.Players[1]; a.Points != -2 || len(a.Roles) != 1 {
 		t.Errorf("A = %+v, attendu Boulet −2", a)

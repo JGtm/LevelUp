@@ -6,6 +6,7 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { SquadImpactMatrix } from '@/lib/api/types'
+import { getSquadText } from './i18n'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 
 beforeEach(() => {
@@ -97,7 +98,7 @@ describe('SquadImpactScoreboard', () => {
     expect(screen.getByTitle('m1')).toBeInTheDocument()
     expect(screen.getByTitle('m2')).toBeInTheDocument()
 
-    // Score Champ = +4, WeakLink = -4 (incl. kamikaze à -1).
+    // Score Champ = +4, WeakLink = -4 (scores servis par le serveur).
     expect(screen.getByText('+4')).toBeInTheDocument()
     expect(screen.getByText('-4')).toBeInTheDocument()
 
@@ -118,6 +119,25 @@ describe('SquadImpactScoreboard', () => {
     expect(screen.getAllByAltText('kamikaze').length).toBeGreaterThanOrEqual(2)
     // Voleur : picto vendoré (img), pas le repli « · » d'une clé inconnue.
     expect(screen.getAllByAltText('thief').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('Os de verre : colonne servie par badge_ord, picto vendoré, infobulle au barème dans chaque langue', () => {
+    const m = matrix()
+    m.badge_ord = [...(m.badge_ord ?? []), 'glass_jaw']
+    m.cells = [...(m.cells ?? []), { player: 'Champ', match_id: 'm1', badge_keys: ['glass_jaw'] }]
+    renderWithProviders(<SquadImpactScoreboard matrix={m} />)
+    const icons = screen.getAllByAltText('glass_jaw')
+    expect(icons.length).toBeGreaterThanOrEqual(2)
+    expect(icons[0].tagName).toBe('IMG')
+    expect(icons[0].getAttribute('src')).toMatch(/glass_jaw/)
+    expect(getSquadText('fr').impact.badgeNames.glass_jaw).toBe('Os de verre')
+    expect(getSquadText('en').impact.badgeNames.glass_jaw).toBe('Glass Jaw')
+    expect(getSquadText('fr').impact.badgeDescriptions.glass_jaw).toBe(
+      'Joueur dont le bouclier a été brisé le plus souvent dans le match',
+    )
+    expect(getSquadText('en').impact.badgeDescriptions.glass_jaw).toBe(
+      'Player whose shield was broken most often in the match',
+    )
   })
 
   it('cellule agrégat à 0 affiche "—"', () => {

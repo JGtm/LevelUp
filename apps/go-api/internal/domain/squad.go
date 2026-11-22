@@ -136,6 +136,16 @@ type SquadKillLogRow struct {
 	KillerDamagePct *int
 }
 
+// MatchShieldRow : les bris de bouclier et les recharges complètes d'un joueur sur un match, tirés
+// du film (match_usage_players_latest), lus pour le rôle d'impact « Os de verre ». Une ligne n'existe
+// que si le film a mesuré le bouclier du match : sans ligne, le match n'est pas mesuré.
+type MatchShieldRow struct {
+	MatchID   string
+	XUID      string
+	Breaks    int
+	Recharges int
+}
+
 // AllyParticipant est une ligne participant côté équipe alliée d'un match.
 // Chargé par SquadRepository.LoadMainTeamParticipants pour alimenter le calcul
 // des badges d'impact (analysis.ComputeMatchImpactFull) en périmètre team-wide

@@ -87,6 +87,7 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 		// Vues root-level pour les queries via SharedReader.
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM shared.medals_earned`,
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
 		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
@@ -188,6 +189,7 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 		// Vues root-level pour les queries via SharedReader.
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW v_medals_earned AS SELECT match_id, xuid, medal_name_id, count FROM shared.medals_earned`,
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
 		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,

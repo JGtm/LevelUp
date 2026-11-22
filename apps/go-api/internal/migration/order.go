@@ -80,6 +80,9 @@ var canonicalOrder = []string{
 	// Noms d'armes par langue (ADR 0040 D-5, plan i18n 8.4) : reconstruit weapon_labels, créée par
 	// add_weapon_labels (cf. order_dependency_test.go).
 	"metadata_weapon_names_to_translations_v1", // metadata
+	// Médaille custom Cible difficile : SUIT metadata_definition_texts_to_translations_v1 (les colonnes
+	// de texte de medal_definitions n'existent plus, ses textes s'écrivent dans medal_translations).
+	"seed_custom_hard_target_medal", // metadata
 	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
 	// remplace les 33 steps title-owned contigus create_base_player_schema..
 	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.
@@ -337,6 +340,8 @@ var canonicalOrder = []string{
 	// du plan équipement, 2026-09-09). Enregistrée juste après lui, dans le même fichier.
 	"shared_match_usage_players_outcomes_v1",   // shared (les trois issues d'un objet pris, par famille)
 	"shared_match_usage_players_shieldless_v1", // shared (frags sans bouclier, citation « Presque, ça ne compte pas »)
+	"shared_match_usage_levelup_v1",            // shared (bris, recharges de bouclier et vengeances calculés par LevelUp + révision du calcul)
+	"shared_medals_earned_view_v1",             // shared (vue v_medals_earned : medals_earned + médailles Vengeur et Cible difficile dérivées du film)
 	// Ressource vehicules de l Emprise (plan vehicules L7.2, 2026-09-30) : position dictee par l ordre
 	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
 	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

@@ -11,7 +11,7 @@ import { useMemo } from 'react'
 
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { ReplayDocumentReady } from '@/lib/replay/replayNormalize'
-import type { ReplayPlayer, VitalityPresence } from '@/lib/replay/rosterLogic'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
@@ -27,8 +27,6 @@ export interface PlayerInstantInput {
   players: readonly ReplayPlayer[]
   /** Le fil du rejeu (`ReplayModel.feed`). */
   feed: readonly ReplayFeedEntry[]
-  /** Quels champs de vitalité le document publie (`useReadingAges`). */
-  presence: VitalityPresence
   /** Première image du match (`ReplayWindowBounds.startFrame`), ou `null`. */
   matchStartFrame: number | null
   weaponIcons: WeaponIconsByKey
@@ -36,15 +34,15 @@ export interface PlayerInstantInput {
 }
 
 export function usePlayerInstant(input: PlayerInstantInput, frame: number): PlayerInstantView {
-  const { doc, player, players, feed, presence, matchStartFrame, weaponIcons, locale } = input
+  const { doc, player, players, feed, matchStartFrame, weaponIcons, locale } = input
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
   const docSeries = useMemo(() => readInstantDocSeries(doc, players), [doc, players])
   const sources = useMemo(
     () =>
       readPlayerInstantSources({
-        doc, player, players, feed, scoreTimeline, presence, matchStartFrame, weaponIcons, locale, docSeries,
+        doc, player, players, feed, scoreTimeline, matchStartFrame, weaponIcons, locale, docSeries,
       }),
-    [doc, player, players, feed, scoreTimeline, presence, matchStartFrame, weaponIcons, locale, docSeries],
+    [doc, player, players, feed, scoreTimeline, matchStartFrame, weaponIcons, locale, docSeries],
   )
   return useMemo(() => playerInstantViewAt(sources, frame), [sources, frame])
 }

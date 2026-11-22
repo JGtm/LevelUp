@@ -159,6 +159,8 @@ export const replayDocumentSchema = z.strictObject({
   schemaVersion: z.number(),
   scoreActions: calque<Elem<'scoreActions'>>(),
   scoreTimeline: bloc<NonNullable<ReplayDocument['scoreTimeline']>>(),
+  // Bris et recharges de bouclier par xuid (instants en ms de l'axe du document), calculés à la requête.
+  shieldCycles: table<Valeur<'shieldCycles'>>(),
   shotStats: calque<Elem<'shotStats'>>(),
   shots: calque<Elem<'shots'>>(),
   skullCarries: calque<Elem<'skullCarries'>>(),

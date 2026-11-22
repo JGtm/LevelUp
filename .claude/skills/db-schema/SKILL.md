@@ -161,6 +161,21 @@ sans série de score : ils concourent à zéro, ne mènent jamais). Invariant d'
 un camp muet que le roster désigne porte sa propre ligne de camp à `lead_ms = 0` (part nulle mesurée), et un camp SANS ligne ne se lit pas : le compte `silent_camps` seul ne prouve pas qu'un identifiant est au match. `lead_changes` = retournements de la fenêtre jouée. Un match non mesuré n'entre ni au
 numérateur ni au dénominateur d'une moyenne. **Lecture : vue `match_lead_share_latest` UNIQUEMENT.**
 
+### match_usage_players / match_usage_films — mesures de LevelUp sur le film et vue `v_medals_earned`
+Trois colonnes NULLABLES de `match_usage_players` (NULL = non mesuré, distinct de zéro) : `shield_breaks`,
+`shield_recharges` (cycles de bouclier, `analysis/shieldcycle`) et `revenge_kills` (vengeances,
+`analysis/revenge`). La révision de leur calcul est `match_usage_films.levelup_rev`
+(`replayartifacts.UsageLevelUpRev`, comparée par `levelup backfill-usage-summary` en plus de `summary_rev`).
+Un calcul unique, `replayartifacts.AttacherMesuresLevelUp`, sert le fil de l'eau et le rattrapage ; le persister
+les range avec la passe (`persist.UsageLevelUp`). Lecture : `match_usage_players_latest` / `match_usage_films_latest`.
+
+Les médailles custom dérivées du film (Vengeur `9000000001`, Cible difficile `9000000002`) ne s'écrivent PAS dans
+`medals_earned`. **Les lecteurs d'affichage des médailles lisent la vue `v_medals_earned`** (match_id, xuid,
+medal_name_id, count), qui fusionne `medals_earned` et ces colonnes : Vengeur dérivé remplace les lignes héritées
+dès que le match porte une valeur dérivée, Cible difficile = `shield_recharges` > 0. La table brute reste réservée à
+la liste fermée et datée de `archlint/medals_earned_lecture_brute_test.go` (ingestion, validation, transfert,
+éliminations parfaites, notification « première médaille », valeur d'exploit).
+
 ### match_kill_heads / match_kill_pairs / match_assist_pairs — résumés par match du journal des morts (append-only, ADR 0039, 2026-10-21)
 Écrits DANS LA TRANSACTION de chaque passe de `match_kill_events`, au même horodatage, par
 `persist.insertKillSummaryRows` (appelée par `insertKillEventRows` ; passes relues en base :

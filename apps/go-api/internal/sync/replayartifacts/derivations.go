@@ -110,6 +110,9 @@ type artefactLu struct {
 	// frags : le fil des morts du match, lu AVANT tout segment d'ecriture (usage_frags.go) pour
 	// les frags sans bouclier du resume d'usage. Read faux = non lu.
 	frags replay.ShieldlessKillsInput
+	// equipes : l'equipe de chaque participant du match (`match_participants.team_id`), lue avec le
+	// fil des morts pour les vengeances du resume d'usage. Vide = non lue.
+	equipes map[string]int
 }
 
 // Deriver applique TOUTES les derivations post-rangement a un lot d'artefacts.

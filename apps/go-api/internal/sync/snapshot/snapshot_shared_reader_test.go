@@ -72,7 +72,7 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 		max_killing_spree INTEGER, grenade_kills INTEGER, melee_kills INTEGER,
 		power_weapon_kills INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
 		kills_expected DOUBLE, deaths_expected DOUBLE, backfill_bits BIGINT)`)
-	snapExec(t, shared, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_id BIGINT)`)
+	snapExec(t, shared, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count SMALLINT)`)
 	snapExec(t, shared, `CREATE TABLE highlight_events (match_id VARCHAR, xuid VARCHAR, event_type VARCHAR)`)
 	snapExec(t, shared, `CREATE TABLE killer_victim_pairs (match_id VARCHAR, killer_xuid VARCHAR, killer_gamertag VARCHAR, victim_xuid VARCHAR, victim_gamertag VARCHAR)`)
 	snapExec(t, shared, `CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`)
@@ -87,6 +87,10 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 	// et OpenSnapshotShared refuse le snapshot → ce test servirait le live à tort.
 	if err := migration.EnsureMatchKillEvents(shared); err != nil {
 		t.Fatalf("mke: %v", err)
+	}
+	// Requis depuis l'ajout du résumé d'usage au snapshot (la vue v_medals_earned s'y définit).
+	if err := migration.EnsureMatchUsageSummary(shared); err != nil {
+		t.Fatalf("usage: %v", err)
 	}
 	now := time.Now()
 	snapExec(t, shared, `INSERT INTO match_registry (match_id, start_time, start_time_utc, is_ranked, is_firefight) VALUES ('m1', ?, ?, FALSE, FALSE)`, now, now)

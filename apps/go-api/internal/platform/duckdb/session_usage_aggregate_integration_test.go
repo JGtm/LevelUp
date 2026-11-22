@@ -123,13 +123,13 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 
 	// Écritures par le persister RÉEL : deux passes sur m1 (la re-passe fait foi).
 	persister := persist.NewUsageSummaryPersister(sharedDB.SQLDb())
-	if err := persister.PersistPass(ctx, "m1", passeM1Fausse()); err != nil {
+	if err := persister.PersistPass(ctx, "m1", passeM1Fausse(), persist.UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass m1 (passe A): %v", err)
 	}
-	if err := persister.PersistPass(ctx, "m1", passeM1()); err != nil {
+	if err := persister.PersistPass(ctx, "m1", passeM1(), persist.UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass m1 (passe B): %v", err)
 	}
-	if err := persister.PersistPass(ctx, "m2", passeM2()); err != nil {
+	if err := persister.PersistPass(ctx, "m2", passeM2(), persist.UsageLevelUp{}); err != nil {
 		t.Fatalf("PersistPass m2: %v", err)
 	}
 

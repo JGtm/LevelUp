@@ -208,7 +208,7 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 			COALESCE(SUM(count), 0)                  AS total,
 			COALESCE(COUNT(DISTINCT medal_name_id), 0) AS unique_count,
 			COALESCE(SUM(CASE WHEN %s THEN count ELSE 0 END), 0) AS perfect_kills
-		FROM medals_earned
+		FROM v_medals_earned
 		WHERE xuid = ? AND match_id IN (%s)
 	`, perfectClause, placeholders)
 
