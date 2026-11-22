@@ -218,7 +218,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       requête » ; golden de forme refigé ; aucune sortie cuite ne change.
 - [x] J.3 Deux replis tenus par l'hôte : les deux entrées du registre retirées, constantes gardées et
       marquées dépréciées ; décompte de `FORMAT.md` corrigé. Aucun changement de sortie.
-- [ ] J.4 `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
+- [x] J.4 (fait le 2026-11-22 à la troisième intégration : étapes `scoreTimeline` et `eliminations` observées) `cmd/replay-equiv` (dans LevelUp) : étape `scoreTimeline` (joueurs du tableau et leurs compteurs),
       nom inscrit aux étapes observées ; les 20 références refigées dans le clone, 20 identiques ensuite.
 - [x] J.5 Commentaire faux de `Stances` (`document.go:168-181`) corrigé ; `FORMAT.md` et `GLOSSARY.md` à
       jour pour ce que cette piste touche.
@@ -270,7 +270,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       attendue : les 44 rejeux faux passent à « incomplet », aucun rejeu exact ne bascule.
 - [!] B.2 Scripts inconnus des groupes : comptés et publiés en couverture au lieu d'être ignorés en silence
       (cas de l'Assaut).
-- [ ] B.3 Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
+- [x] B.3 (fait le 2026-11-22 : PROUVÉ, et ce n'est pas un barème : sur `HI_1_11_0` en Grande bataille le rang d'une réponse désigne celle du rang +1 de la table, rangs 179 à 263, puis +2, rangs 447 à 460 ; correction codée, `reponsesdejeu/decalages.go`, compteur `coverage.scoreActions.treeShift`, commit `652beeb` ; sur 23 films : rangs non confirmés 278 → 0, joueurs au-dessus des points publiés 41 → 0, verdict complet 12 → 18 films ; les 100 points sont la pénalité de suicide ou de trahison, que la courbe publiée ne rend pas ; non étendu à `HI_1_10_0`, égalité non testable) Recherche (une session) : le barème des véhicules du build `HI_1_11_0` (12 films, 313 joueurs,
       écarts multiples de 25) et la réponse de 100 points hors arbre (24 rejeux). Sortie : une table par build
       PROUVÉE par le tableau, ou `[!]`. Jamais un barème ajusté par régression.
 - [x] B.4 Mesure APRÈS contre le score personnel de l'API (export 0.3).
@@ -325,7 +325,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       dont le compte du film est à 10 % des tirs tirés, la part à 10 % des tirs au but, et la distribution du
       rapport film / tirs tirés et film / tirs au but. Si le film suit les tirs au but, le dire, avec ce que cela
       change pour la précision (qui ne se calculerait alors plus par le film seul). Verdict écrit, quel qu'il soit.
-- [ ] D.3 Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
+- [x] D.3 (fait le 2026-11-22 pour la part prouvée : tirs lus à tout rang d'une trame, 85 % → 100 % du témoin, règle du numéro de tir en retard ; BR75 moins 2 joueurs accepté par le user le 2026-11-22 ; le créateur des projectiles et la précision des armes à énergie partent dans le chantier « précision » annoncé par le user ce jour-là) Relever la part des joueurs bien lus, par la grammaire seulement : tirs portés par un objet
       projectile ajoutés aux événements de tir s'ils ne se recoupent pas (preuve par D.2) ; messages
       multiples d'une même touche reconnus par ce que le film écrit (même auteur, même victime, même image),
       jamais par une fenêtre de temps. Chaque règle est écrite ici, datée, avant son code. Cible : fixée au
@@ -335,14 +335,14 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste E — drapeau en Grande bataille (Opus pour E.1 ; Sonnet)
 
-- [ ] E.1 Recherche (une session) sur `390b1de5` et les 19 portages qui commencent loin du drapeau : d'où
+- [x] E.1 (fait le 2026-11-22 : cause PROUVÉE ; un relevé mal aligné du tableau des compteurs, lu sur le seul côté plausible, composant 24 A = 12 et B = 7 034, ouvrait un portage de 94,3 s ; le nommage du porteur est hors de cause, 1 161 événements nommés pareil par les deux voies ; rapport `dec-v150-recup/e/rapport.md`) Recherche (une session) sur `390b1de5` et les 19 portages qui commencent loin du drapeau : d'où
       vient l'événement d'ouverture ; ce que disent la seconde chaîne (marqueur de portage) et les messages
       de jeu du drapeau que le témoin lit. Sortie : cause prouvée, ou `[!]`.
-- [ ] E.2 AMENDÉ LE 2026-11-22 AVANT SON CODE, après le gate d'attribution : la liste de composants dégradait `zone_defensive_kills` sur deux films à zones (le canal B du composant 22 y est une durée ; un joueur 9 → 2 pour 9 à l'API). Règle corrigée : le canal frère n'est jugé que si la table du mode le NOMME comme compteur ; plus aucune liste de composants. Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
+- [x] E.2 (fait le 2026-11-22, commits `55e9541` puis `990cdf7` ; première règle, écrite avant son code : une émission des composants à deux compteurs, 2, 12, 20 à 24, jetée en entier dès qu'un côté sort du domaine) AMENDÉ LE 2026-11-22 AVANT SON CODE, après le gate d'attribution : la liste de composants dégradait `zone_defensive_kills` sur deux films à zones (le canal B du composant 22 y est une durée ; un joueur 9 → 2 pour 9 à l'API). Règle corrigée : le canal frère n'est jugé que si la table du mode le NOMME comme compteur ; plus aucune liste de composants. Si E.1 conclut : la correction qu'il prescrit, écrite ici d'abord. À défaut de cause, AUCUN veto
       par distance n'est ajouté.
-- [ ] E.3 Ouverture de la bande au-delà de 8 joueurs, seulement si E.1 a rendu juste la bande livrée et si
+- [!] E.3 (2026-11-22 : non ouverte. Condition du plan non tenue : au-delà de 8 joueurs le temps de porteur n'est à 2 s de l'API que pour 85,7 % des joueurs ; 16 portages gardent un état « au socle » faux avant eux, pour trois causes inscrites au backlog) Ouverture de la bande au-delà de 8 joueurs, seulement si E.1 a rendu juste la bande livrée et si
       le temps de porteur s'accorde à l'API sur les 9 films de Grande bataille à drapeau (export 0.3).
-- [ ] E.4 Mesure APRÈS : temps de porteur contre l'API, par joueur, sur les 186 films à drapeau.
+- [x] E.4 (2026-11-22, par simulation sur les 186 films : à 2 s de l'API, 88,11 % → 88,23 % des joueurs, 85,50 % → 85,70 % au-delà de 8 joueurs ; à rejouer sur le parc régénéré en L.7) Mesure APRÈS : temps de porteur contre l'API, par joueur, sur les 186 films à drapeau.
 - **Gate E** : aucun porteur juste avant ne devient faux ; équivalence attribuée.
 
 ## Piste F — départs et résumés d'usage (Sonnet)
@@ -357,10 +357,10 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Piste G — lettre réelle des zones (Opus pour G.1 ; Sonnet)
 
-- [ ] G.1 Recherche (une session), sur 5 films de Bases : l'état du groupe de lettre du marqueur se lit-il,
+- [x] G.1 (fait le 2026-11-22 : la lettre SE LIT, marqueur `ti=12 i23`, groupe d'états « control_point », état = empreinte de la lettre, 77 films sur 77 ; le lien du marqueur à la zone publiée ne s'établit PAS par un identifiant, seulement par concordance des changements de propriétaire ; `letterRank` égale la lettre lue sur 231 zones sur 231) Recherche (une session), sur 5 films de Bases : l'état du groupe de lettre du marqueur se lit-il,
       et le lien du marqueur à une zone déjà publiée s'établit-il par le film seul. Sortie : oui avec la
       lecture, ou `[!]`.
-- [ ] G.2 Si oui : champ `letter` ajouté à côté de `letterRank` (gardé), sur les 77 films de Bases ; accord
+- [!] G.2 (2026-11-22 : pas de champ `letter`. Sans identifiant, le remplir ferait décider une sortie par une concordance, ce que R-2 interdit ; le rang publié est déjà la vraie lettre. La lettre lue comme contrôle, deux compteurs de couverture, est au backlog) Si oui : champ `letter` ajouté à côté de `letterRank` (gardé), sur les 77 films de Bases ; accord
       avec le rang mesuré et écrit au registre.
 - **Gate G** : équivalence attribuée.
 
@@ -374,7 +374,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       commande non nulle), jamais la série brute des valeurs.
 - [!] H.4 Diagnostic : pourquoi ni accroupissement ni glissade ne sont publiés sur 200 rejeux ; correction
       si la cause est une lecture, entrée au backlog sinon.
-- [ ] H.5 Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
+- [!] H.5 (2026-11-22 : lien établi pour l'AUDIO, 201 identifiants de son sur 201 menés à un fichier de voix français du jeu installé, pas pour le TEXTE, introuvable dans le jeu ; DD-4 demande les deux : rien n'est publié. Le user signale le « chatter » de la page de Den : vérifié, son outil ne porte ni texte ni nom de son, seulement 16 noms de priorité ; décision du user attendue sur le son seul avec une étiquette de genre, version suivante ; rapport `dec-v150-recup/h5/rapport.md`) Répliques, selon DD-4 : recherche bornée (une session), dans les fichiers du jeu installé et hors
       décodeur, du texte ET de l'audio d'une réplique à partir de l'identifiant de son et de l'indice que le
       film porte (point de départ : la chaîne des sons d'armes de `LU apps/go-api/cmd/weapon-sounds`). Si le
       lien s'établit : publication de l'événement par le décodeur, et côté LevelUp une table des répliques
@@ -433,7 +433,7 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Étape R — relecture et clôture
 
-- [ ] R.1 Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
+- [x] R.1 (2026-11-22, diff du décodeur relu par Fable avant le tag : aucun P0, trois P1, quatre P2, trois P3 ; le diff de la montée reste à relire) Relecture adversariale (skill `adversarial-review`, Fable) du diff du décodeur et du diff de la
       montée ; axes imposés : heuristique déguisée, repli neuf, identifiant réel, sortie changée sans ligne
       au registre.
 - [ ] R.2 P0 et P1 corrigés en une ronde ; P2 au backlog seulement s'ils valent le coup.
@@ -441,6 +441,21 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
       par entrée ; worktrees retirés un à un après recherche de jonction.
 
 ## Journal d'exécution
+
+- 2026-11-22 — relecture adversariale du diff du décodeur (Fable, `v1.4.1..990cdf7`) : aucun P0. P1 : deux constantes
+  publiques retirées (promesse semver : à rétablir dépréciées) ; `emissionHorsDomaine` juge un canal nommé seul au-delà de
+  250 alors que ses textes disent « les deux côtés nommés » ; les lignes de la troisième intégration manquaient au registre
+  principal (une écriture du pilote avait échoué en silence : statuts du plan et registre réécrits ce jour, vérifiés par
+  relecture du fichier). P2 retenus au backlog : victime d'une élimination appariée au plus proche sans compte
+  d'ambiguïté ; compteur des émissions jetées gonflé hors Drapeau. P2 de texte corrigés avec les P1. Une ronde de
+  corrections lancée (Sonnet), avec les trois remarques de lint de la CI.
+- 2026-11-22 — troisième intégration commitée et poussée (`7f36cca`) : schéma des faits 30, `grammar-2026-11-22.2`,
+  `us8`, chronique 126 à treize apports, équivalence 20 identiques et deux passes identiques à l'octet, chaque
+  écart attribué à l'une des cinq fusions. À la demande du user (« c'est lent, tu peux pas paralléliser un peu ? »),
+  les quatre recherches ont tourné ensemble pendant l'intégration : B.3 et E.1 prouvées et codées (`652beeb`,
+  `55e9541`, fusionnées en `f443fc8` et `3296c81`), G.1 conclut que le rang publié est déjà la lettre, H.5 trouve
+  l'audio sans le texte. Relecture du pilote sur B.3 : la signature publiée de `GroupeDesScripts` est gardée,
+  `GroupeDuFilm` prend le build.
 
 - 2026-11-22 — quatrième intégration commitée et poussée (`990cdf7`) : règle du drapeau par la table du mode prouvée
   (compteurs de zones de nouveau égaux à l'API sur 14 joueurs, faux portage de 94 s toujours absent, aucun compteur

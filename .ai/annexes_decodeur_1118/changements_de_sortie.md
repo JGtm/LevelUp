@@ -18,6 +18,27 @@ Mesures sur les 20 films du corpus d'équivalence, sauf mention.
 | `identity.statborgSlots` | un faux enregistrement disparaît (une équipe en trop, une ligne `non_resolu`) | 2 films sans joueur au tableau |
 | marque `headshot` | passe de faux à inconnu quand la courbe de tirs à la tête manque | 2 films |
 
+## Troisième intégration (2026-11-22)
+
+Mesures sur les 20 films du corpus d'équivalence, un passage par fusion.
+
+| Champ | Changement | Films touchés |
+|---|---|---|
+| `coverage.scoreActions.scoreboardCompared`, `scoreboardMissing`, `scoreboardBehind` | champs neufs : joueurs comparés au tableau du film (202), dont le score du tableau est au-dessus de la somme des points publiés (71) ou en dessous (26) | 20 sur 20 (écrits) ; 16 comparent des joueurs, 5 en ont au-dessus, 10 en dessous |
+| `coverage.scoreActions.complete` | devient faux quand le tableau montre des points que le calque ne publie pas (`scoreboardMissing` > 0) | 1 sur 20 (`9f57c612`) |
+| `reloads[]`, `coverage.reloads`, `layers.reloads` | calque neuf : un rechargement par (image, auteur, références), 9 026 publiés sur 12 708 messages lus (3 653 copies écartées) ; les films dont la vue A s'arrête tôt n'en lisent aucun | 16 sur 20 portent des lignes ; 20 la couverture |
+| `stances[]` (genre `moveCommand`), `coverage.stances.control`, `coverage.stances.byKind.moveCommand`, `coverage.stances.intervals` | commande de déplacement tenue : 27 166 commandes publiées en 30 541 intervalles (`stances[]` de 35 836 à 66 377 lignes) ; 159 commandes sans joueur | 17 sur 20 portent des intervalles ; 20 la couverture |
+| `coverage.stances.lives` | une vie de plus par film touché (une commande couvre une vie que la posture seule ne couvrait pas) | 11 sur 20 |
+| `shots[]`, `coverage.shots` (`available`, `attached`, `byUnit`, `noSlot`, visée) | les tirs se lisent à tout rang d'une trame : tirs publiés 52 348 → 66 406 (+14 058), disponibles 54 006 → 68 418 | 16 sur 20 (les 4 films dont la vue A s'arrête tôt ne changent pas) |
+| `shotStats[].shots`, `shotEvents`, `coverage`, `sufficient` | un numéro de tir en retard n'ajoute rien (un numéro 117 écrit après le 121 ajoutait 252 tirs) ; les tirs comptés changent (`01e1f945` : 22 683 → 2 973) ; joueurs aux données suffisantes 64 → 81 (`coverage.hits.sufficient`) | 16 sur 20 |
+| `hits[]`, `damage[]` (`attacker`, `victim`, `w`, `effect`, `shield`, `body`), `coverage.hits` | l'auteur d'un dégât est le joueur de l'unité responsable ; l'arme d'une touche est celle du joueur à l'instant (par l'index pour un bot) ; touches publiées 18 632 → 19 266, sans auteur 800 → 36 | 7 sur 20 (nombre et auteur), 11 sur 20 (arme) |
+| `projectiles[].shot`, `coverage.projectiles.shotLinked`, `shotAmbiguous` | davantage de tirs à lier : liés 1 567 → 2 052, ambigus 132 → 214 | 15 sur 20 |
+| `coverage.vehicles` (`shots`, `shotsByUnit`, `shotsVehicleWeapon`, `shotsNoRide`, `shotsOnCarrier`), `coverage.seats.tirsParPlace` | suivent les tirs lus : tirs de véhicule 497 → 821, tirs par place 1 306 → 1 866 | 7 sur 20 (`shotsNoRide` : 9) |
+| `vehicles[].carrier`, `coverage.vehicles.turretsByRead`, `turretParentUnknown`, `turretsOnCarrier` | le porteur d'une pièce montée est lu à sa création : 142 pièces sur 142 lues, aucune au parent inconnu ; 3 pièces gagnent un porteur (`turretsOnCarrier` 139 → 142) | champs écrits sur 20 ; 9 portent des pièces ; 1 gagne 3 porteurs |
+| `coverage.fallbacks[]` (`repli_tourelle_porteur_voisin_de_slot`) | le repli du voisinage de slot ne se déclenche plus (139 → 0) | 9 sur 20 |
+| `coverage.decoder.grammarRev` | `grammar-2026-11-22` → `grammar-2026-11-22.2` | 20 sur 20 |
+| résumés d'usage (`UsageSummaryRev` `us7` → `us8`) | un objet lâché à la mort est crédité à la vie qui s'achève, pas au repreneur de la place ; aucun champ du document ne change | 0 sur 20 (résumés à reprendre par `backfill-usage-summary`) |
+
 ## Quatrième intégration (2026-11-22)
 
 # Décodeur v1.5.0 : changements de sortie ajoutés par la quatrième intégration (schéma 126)
