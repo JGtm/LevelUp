@@ -63,10 +63,10 @@ regroupait sous « Fiesta »). Ne pas revenir en arrière.
 
 ## Miroir web
 
-`apps/web/src/lib/halo/modeLabel.ts` (`normalizeModeLabel`) reprend la normalisation côté web.
-Attention : il diverge du Go sur les identités de playlist et la forme inversée
-(`Super Fiesta:Slayer` rend « Slayer » côté web, « Super Fiesta » côté Go). Constat connu,
-non corrigé.
+Le serveur résout le libellé (`analysis.ResolveModeUI*`) avant de le servir dans `mode_ui` :
+le web reçoit « Super Fiesta », jamais le `pair_name` brut. `apps/web/src/lib/halo/modeLabel.ts`
+(`normalizeModeLabel`) ne fait qu'un nettoyage de surface (suffixe de carte, ` - Forge`). Il ne gère
+ni les identités de playlist ni la forme inversée : ne jamais lui passer un `pair_name` brut.
 
 ## Format pair_name — DEUX grammaires
 
