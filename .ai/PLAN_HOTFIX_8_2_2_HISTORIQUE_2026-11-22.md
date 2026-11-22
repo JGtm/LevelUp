@@ -131,7 +131,7 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 2 — piste A : découverte V2 (Halo Infinite)
 
-- [ ] 2.0 Marque-page (D-13) ajouté à `historystate` (lecture, écriture, effacement), tests.
+- [x] 2.0 Marque-page (D-13) ajouté à `historystate` (`LoadCursor`, `SaveCursor`, `ClearCursor`, type `Cursor`, clé `history_catchup_cursor`), tests. Commit `beb37a3eb8` (fix/822-a), à fusionner tôt : la piste Halo 5 en dépend.
 - [ ] 2.1 `KnownLoader` rend aussi l'état de l'historique du joueur (lu dans la base joueur déjà ouverte).
 - [ ] 2.2 `ListUnknownMatches` : deux modes (D-4), rend un indicateur « fin vue ».
 - [ ] 2.3 `cycle.go` : après une persistance réussie, range la fin pour chaque joueur qui remplit D-5 ;
