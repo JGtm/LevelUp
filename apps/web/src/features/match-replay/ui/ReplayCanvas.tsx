@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
+import type { Antagonists } from '@/lib/antagonists/antagonists'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
@@ -52,6 +53,7 @@ import { useReplayFlagCarries } from '../layers/useReplayFlagCarries'
 import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
+import { useReplayAntagonistMarks } from '../layers/useReplayAntagonistMarks'
 import { useReplayLives } from '../layers/useReplayLives'
 import { useReplayRespawnForecast } from '../layers/useReplayRespawnForecast'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
@@ -211,6 +213,8 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
+  /** LES ANTAGONISTES DU POINT DE VUE (`ReplayAntagonists.forViewpoint`) : icône et compte devant le nom de la némésis et du souffre-douleur ; absent = aucun titre. */
+  antagonists?: Antagonists
   /** LA FICHE OUVERTE (anneau du pion, « Suivre le joueur ouvert » du relief) et LES JOUEURS MASQUÉS, qui filtrent le dessin (cf. `useReplayPlayerFocus`) ; absents = rien n'est filtré. */
   playerFocus?: PlayerFocus | null
   hiddenPlayers?: HiddenPlayers | null
@@ -233,7 +237,7 @@ export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, frameControl, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, hiddenPlayers = null, cameraFollow = NO_CAMERA_FOLLOW, onFollowStop,
-  playerSlug, matchId, transport, blockOverlays, planFeed = false,
+  playerSlug, matchId, transport, blockOverlays, planFeed = false, antagonists,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -288,7 +292,7 @@ export function ReplayCanvas({
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
   const distinctColors = useDistinctPlayerColors(markerColors === 'player' ? doc.roster.length : null, paletteVersion)
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, ownerKeyOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
     players,
     allegiance,
@@ -373,6 +377,8 @@ export function ReplayCanvas({
     doc, view: canvasView, store: playbackStore, scrimInk: scrim, labelInk: labelStroke,
     seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, shownAtSlot, redraw,
   })
+  // LES TITRES D'ANTAGONISTE du point de vue, devant le nom des deux joueurs qui les tiennent (cf. le hook).
+  const antagonistMarks = useReplayAntagonistMarks({ doc, antagonists, ownerKeyOfSlot, reducedMotion, redraw })
   const planDuFond = mapImage?.zonesClip ?? null // image plan (null sans vue plan) : rogne zones nommées et probabilité, quel que soit le fond
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
@@ -497,6 +503,7 @@ export function ReplayCanvas({
       },
       identity: { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, campOfSlot, seatedAtSlot },
       focus: { shownAtSlot, shownProjectile, shown: focusShown, openPlayer },
+      antagonists: antagonistMarks,
       fx: { shotFx, fireMarks, killFx, objectivePulses },
       zones,
       placements: {
@@ -518,7 +525,7 @@ export function ReplayCanvas({
       showZones, showShotFx, showPlacements, showKillFx, showModeObjectives, wallPlanOn, showAim, showTrail,
       geometryColor, grenadeColor, shotColor, fxInk, floorStyle.edge, wallInk, riftInk, shroudInk, selfInk, labelStroke, markerOutline,
       colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot,
-      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer,
+      campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown, openPlayer, antagonistMarks,
       shotFx, fireMarks, killFx, objectivePulses, zones,
       placements.all, placements.windowTime, placements.toggles, placements.rift, placements.counts.drawable,
       weaponPads, groundWeapons, vehicles, abilityFx, grenadeRest, flags, objectiveObjects,

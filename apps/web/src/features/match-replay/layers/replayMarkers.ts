@@ -40,6 +40,7 @@ import {
   markerOuterEdge,
   type MarkerOutlineInk,
 } from './markerOutline'
+import { drawTitlePulse, labelStyleOf, titleDrawOf, type AntagonistMarks } from './antagonistMarks'
 import { drawNameLabel } from './replayLabels'
 import { drawSpawnRing, drawTrail } from './markerTrail'
 import { drawSelfHalo, drawSelfRings, selfRingsEdge } from './selfMarkerRings'
@@ -189,6 +190,8 @@ export interface MarkerStyle {
    * joueur hors cadre garde le sien, et le pion reste dessiné. Absent = tous les noms s'écrivent.
    */
   nameHiddenAtSlot?: (slot: number) => boolean
+  /** Les titres d'antagoniste du point de vue : icône et compte devant le nom, pulsation à la prise. Absent = aucun. */
+  antagonists?: AntagonistMarks
   /**
    * SEUL ET MASQUER (panneau de joueur) : faux quand la vie d'un slot est retirée de la carte — pion, nom,
    * cône de visée, traînée ET croix de mort d'un seul geste. La croix est lue à la DERNIÈRE image de la vie
@@ -336,12 +339,13 @@ function drawLivingTrack(
   const head = positionAt(track.points, style.frame)
   if (!head) return
   const mark = edgeMarkFor(head, view, OFFSCREEN_MARGIN_PX, style.k)
+  const titles = titleDrawOf(style, track.slot, color)
   if (mark) {
     drawOffscreenChevron(ctx, mark.at, mark.angle, style.k, color)
     const name = style.nameOfSlot(track.slot, style.frame)
     if (name) {
       const text = style.offscreenLabelOf(name, mark.distanceM)
-      drawOffscreenLabel(ctx, mark.at, mark.angle, text, { k: style.k, labelStroke: style.labelStroke }, color)
+      drawOffscreenLabel(ctx, mark.at, mark.angle, text, labelStyleOf(style, titles), color)
     }
     return
   }
@@ -357,11 +361,12 @@ function drawLivingTrack(
   // de CETTE vie (les vies d'un slot sont disjointes).
   const shape = shapeOfMark(style.markOfSlot(track.slot, style.frame))
   drawMarker(ctx, c, style, color, fl, shape, alpha)
+  drawTitlePulse(ctx, c, titles, markerEdge(fl, style.k, shape))
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
   const name = style.nameOfSlot(track.slot, style.frame)
   if (name && !style.nameHiddenAtSlot?.(track.slot)) {
-    drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
+    drawNameLabel(ctx, c, name, labelStyleOf(style, titles), color, markerEdge(fl, style.k, shape))
   }
 }
 

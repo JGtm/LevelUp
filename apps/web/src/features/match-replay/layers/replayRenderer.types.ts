@@ -13,6 +13,7 @@
 import type { RefObject } from 'react'
 
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { AntagonistMarks } from './antagonistMarks'
 import type { ReplayPlayerFocusLayers } from '../hooks/useReplayPlayerFocus'
 import type { ReplayTiming } from '../hooks/useReplayTiming'
 import type { ReplayMapBackgroundLayer } from '../hooks/useReplayView'
@@ -134,6 +135,8 @@ export interface ReplaySceneInputs {
     'colorOfSlot' | 'colorOfSlotOrLast' | 'markOfSlot' | 'nameOfSlot' | 'campOfSlot' | 'seatedAtSlot'
   >
   focus: ReplayPlayerFocusLayers
+  /** Les titres d'antagoniste du point de vue, par slot et par image ; absent = aucun titre à porter. */
+  antagonists?: AntagonistMarks
   fx: Pick<Fx, 'shotFx' | 'fireMarks' | 'killFx' | 'objectivePulses'>
   zones: ReplayZoneStates
   placements: ScenePlacements

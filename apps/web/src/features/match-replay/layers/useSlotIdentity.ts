@@ -70,6 +70,11 @@ export interface SlotIdentity {
   markOfSlot: (slot: number, frame: number) => PlayerMarkKind | undefined
   nameOfSlot: (slot: number, frame: number) => string | null
   /**
+   * La clé du film (`ReplayPlayer.xuid`) du propriétaire du slot à l'image ; `null` = slot libre. C'est la clé
+   * des antagonistes du point de vue (`useReplayAntagonistMarks`).
+   */
+  ownerKeyOfSlot: (slot: number, frame: number) => string | null
+  /**
    * Nom d'affichage d'un joueur DÉSIGNÉ PAR SON XUID — indépendant du slot et de l'image.
    *
    * Pour les consommateurs qui tiennent l'identité de leur côté plutôt que par le pont
@@ -233,6 +238,7 @@ export function useSlotIdentity({
   )
   const markOfSlot = useMemo(() => markResolver(ownership, marks ?? NO_MARKS), [ownership, marks])
   const nameOfSlot = useMemo(() => nameResolver(ownership), [ownership])
+  const ownerKeyOfSlot = useMemo(() => (slot: number, frame: number) => ownership.ownerAtFrame(slot, frame)?.xuid ?? null, [ownership])
   const nameOfXuid = useMemo(() => nameByXuidResolver(players), [players])
   const colorOfXuid = useMemo(
     () =>
@@ -244,7 +250,7 @@ export function useSlotIdentity({
   const campOfSlot = useMemo(() => campResolver(ownership), [ownership])
 
   return {
-    colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot,
+    colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, ownerKeyOfSlot, nameOfXuid, campOfSlot,
     seatedAtSlot, seatedOfXuid: seated.isSeated,
   }
 }

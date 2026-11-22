@@ -234,6 +234,7 @@ function trackPainters(
         deathInk: shotColor,
         labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, shownAtSlot, // PION EMBARQUÉ (C7) ; PION SANS FICHE ; SEUL / MASQUER.
         nameHiddenAtSlot: killFocus.nameHiddenAtSlot,
+        antagonists: s.antagonists,
         // BORNAGE HORS CADRE : la flèche porte le nom ET la distance ; le texte est résolu ICI
         // (langue de la toile), le calque ne connaît aucune locale.
         offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),

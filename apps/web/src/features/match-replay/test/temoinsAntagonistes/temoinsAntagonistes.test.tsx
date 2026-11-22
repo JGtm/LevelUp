@@ -29,6 +29,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { formatClock } from '@/lib/replay/replayLogic'
 
+import type { CanvasOp } from '../recordingContext'
+
 import { reduceFeed } from '../../hooks/useReplayTimeline'
 import { buildEventTracks, trackScale, type EventTracks } from '../../model/replayTimelineTracksLogic'
 import { ReplayMarkTrack } from '../../ui/ReplayMarkTrack'
@@ -153,6 +155,23 @@ describe('témoins des antagonistes : la toile', () => {
     cleanup()
     expect(peindre(scene, frame)).toEqual(ops)
     sorties.set(nom, serialiserToile({ film: scene.film, genre, image: frame, duelsAvant: duelsJusqua(frame) }, ops))
+  }, DELAI_MS)
+
+  it.each(cas)('$nom : les antagonistes n’ajoutent des icônes et des comptes qu’aux images où un titre existe', ({ genre, i }) => {
+    const frame = images[genre][i]
+    const avec = peindre(scene, frame)
+    cleanup()
+    const sans = peindre(scene, frame, null, false)
+    const nombre = (ops: CanvasOp[], op: string) => ops.filter((o) => o.op === op).length
+    if (genre === 'sans') {
+      expect(avec).toEqual(sans)
+      return
+    }
+    // Une icône teintée (une toile) par titre porté, et son compte écrit : un à deux titres, jamais plus de deux.
+    const icones = nombre(avec, 'drawImage') - nombre(sans, 'drawImage')
+    expect(icones).toBeGreaterThanOrEqual(1)
+    expect(icones).toBeLessThanOrEqual(2)
+    expect(nombre(avec, 'fillText') - nombre(sans, 'fillText')).toBe(icones)
   }, DELAI_MS)
 
   it.each(['seul', 'masquer'] as const)('toile-%s.json : la toile se peint sous le filtre d’un joueur', (mode) => {
