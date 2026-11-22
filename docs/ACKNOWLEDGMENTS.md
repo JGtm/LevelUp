@@ -16,6 +16,8 @@ art we learned from, not code we ship, except the data files named below:
 - **Den Delimarsky** ([dend](https://github.com/dend)) for [Grunt](https://github.com/dend/grunt)
   and [OpenSpartan](https://github.com/OpenSpartan) — community documentation of the Halo
   services, and the import path for OpenSpartan data.
+- **Den Delimarsky** ([dend](https://github.com/dend)) for [OpenSpartan Cartographer](https://github.com/OpenSpartan/cartographer) and [films-ui](https://github.com/OpenSpartan/films-ui) —
+  the principles of the Relief background (height-tinted terrain, vector lines, cut by storey); MIT licence, no code copied.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) for [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   its reading of the Halo map file formats is the reference behind our geometry decoder
   (`halo-infinite-map-images/himap/`: SBSP sections, mesh filters, SDDT groups).

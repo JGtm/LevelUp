@@ -152,24 +152,16 @@ complement of the existing backgrounds, not a replacement, and a way to look at 
 
 ## Current state
 
-Counted on the published directory `data/titles/halo_infinite/reference/map_backgrounds/` at the commit that records this ADR
-(350 files):
+Counted on the published directory `data/titles/halo_infinite/reference/map_backgrounds/` of the `feat/fonds-relief` work,
+on 2026-11-22 (568 files; 114 backgrounds, each with its `.json` sidecar):
 
-- 5 maps hold a relief: the four witness maps and Live Fire; 10 files, 1.19 MB in all (images 77 to 490 KB, data 23 to 81 KB).
-  The 109 other sidecars carry none and fall back on the Plan (D-1).
-
-  | Map | Storeys (u) | Share from the mesh |
-  |---|---|---|
-  | Recharge (`sgh_blueprint`) | 0, 2.21, 4.40 | 13.7 % |
-  | Streets (`sgh_streets`) | 0.51, 2.31, 4.45 | 19.1 % |
-  | Behemoth (`va_behemoth`) | 3.76, 8.53 | 46.2 % |
-  | Lattice - Ranked (`1a6cfc2e-...`) | 50.03, 51.80, 54.09 | 37.0 % |
-  | Live Fire - Ranked (`sgh_interlock`) | 0, 1.5 | 42.7 % |
-
-- The set of published backgrounds without a wall plan is fixed at two, the Thunderhead variants (`28a3ac28-...`, `37bc3df6-...`);
-  Live Fire has a plan from its mesh (`navmesh module any`).
-- The weight added to the directory is estimated at 40 to 55 MB for the 114 maps, from the four witness maps, and accepted without
-  a lightening lever; the figure is replaced by the measure after the baking of the whole park.
+- **114 of 114** sidecars name a relief (`reliefImage` and `reliefData`); each has its `<key>.relief.webp` and its
+  `<key>.relief.json.gz`. The Plan (D-1) is the fallback only where the relief fails to read.
+- **2 reliefs carry the degradation `sans-maillage`** (D-9): Thunderhead (`28a3ac28-f69d-4fa9-9ebf-a0449c89c8da`) and
+  Thunderhead Heavies (`37bc3df6-93e8-4d74-b16e-5ceaa30ebc23`). They are the two backgrounds without a wall plan.
+- **Weight of the relief files**: 114 images and 114 data files, 51.1 MiB (53.6 MB) in all.
+- **Thunderhead**: 13% of its published background has no height in the relief (the published background holds matter that today's bake does not have);
+  a full re-bake of that map would close it. Thunderhead Heavies: 0% of its background has no height.
 
 ## Consequences
 
