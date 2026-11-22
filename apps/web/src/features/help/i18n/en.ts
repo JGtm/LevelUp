@@ -229,7 +229,7 @@ export const EN_TEXT = {
             term: 'Refresh Frequencies',
             definition: 'LevelUp uses several data freshness levels depending on the page.',
             example:
-              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered from the Sync button in Settings.\nAuto background: media is re-indexed after every sync.',
+              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered by the "Sync now" button in Settings › Data & Media.\nAuto background: media is re-indexed after every sync.',
           },
         ],
       },
