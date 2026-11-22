@@ -1,0 +1,40 @@
+# Textes de la synchronisation composés par le serveur.
+
+# « Synchroniser maintenant » refusé : un cycle de synchronisation tourne déjà.
+[sync.now.busy]
+fr = "Une synchronisation est déjà en cours."
+en = "A sync is already running."
+
+# État de l'historique d'un joueur sur un titre (écran « Synchronisation »).
+[sync.history.state.complete]
+fr = "Complet"
+en = "Complete"
+
+[sync.history.state.catching_up]
+fr = "Rattrapage en cours"
+en = "Catching up"
+
+[sync.history.state.paused]
+fr = "Synchronisation en pause"
+en = "Sync paused"
+
+[sync.history.state.unknown]
+fr = "Inconnu"
+en = "Unknown"
+
+# Issue de la dernière passe de synchronisation d'un joueur.
+[sync.history.pass.ok]
+fr = "Réussie"
+en = "Succeeded"
+
+[sync.history.pass.partial]
+fr = "Partielle"
+en = "Partial"
+
+[sync.history.pass.failed]
+fr = "Échec"
+en = "Failed"
+
+[sync.history.pass.skipped]
+fr = "Différée"
+en = "Deferred"

@@ -86,6 +86,10 @@ type RunOnceResult struct {
 	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
 	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
 	newMatchPlayers []notify.PlayerSyncResult
+	// historyPending : gamertags des joueurs à l'historique incomplet en fin de cycle (cadence de Run) ;
+	// busy : le cycle n'a pas tourné, un autre tournait déjà.
+	historyPending []string
+	busy           bool
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -252,6 +256,8 @@ type AutoSyncScheduler struct {
 	// catchUpCh porte les demandes de rattrapage (RequestCatchUp) jusqu'à la boucle de Run.
 	catchUpCh chan string
 
+	cycleState // cadence de Run, cycles demandés, dernière passe par joueur (auto_sync_loop.go)
+
 	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
 	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
 	// placement « worker » dégrade en « aucune construction ».
@@ -276,8 +282,9 @@ func New(
 		postSyncHistory: make(map[string][]int64),
 		// Défaut no-op : pas de dédup cross-source tant que main.go n'injecte pas
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
-		SyncGate:  sync.NopSyncGate{},
-		catchUpCh: make(chan string, catchUpQueue),
+		SyncGate:   sync.NopSyncGate{},
+		catchUpCh:  make(chan string, catchUpQueue),
+		cycleState: cycleState{replanCh: make(chan []string, 1)},
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner
@@ -489,10 +496,12 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 	if err != nil {
 		return nil, err
 	}
+	s.recordV2Passes(players, cycleRes.PerPlayer)
 
 	res := &RunOnceResult{
-		Total:    len(players),
-		Duration: time.Since(start),
+		Total:          len(players),
+		Duration:       time.Since(start),
+		historyPending: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer),
 	}
 	for _, outcome := range cycleRes.PerPlayer {
 		switch outcome.Status {
