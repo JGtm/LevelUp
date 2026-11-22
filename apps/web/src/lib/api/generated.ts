@@ -11895,6 +11895,9 @@ export interface components {
             schemaVersion: number;
             scoreActions?: components["schemas"]["ScoreAction"][] | null;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
+            shieldCycles?: {
+                [key: string]: components["schemas"]["ShieldCycle"];
+            };
             shotStats?: components["schemas"]["ShotStat"][] | null;
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
@@ -12746,6 +12749,10 @@ export interface components {
             user_timezone: string;
             watcher_presence_enabled: boolean;
             watcher_subscribed_players: string[];
+        };
+        ShieldCycle: {
+            breaks: number[] | null;
+            recharges: number[] | null;
         };
         Shot: {
             /** Format: float */
