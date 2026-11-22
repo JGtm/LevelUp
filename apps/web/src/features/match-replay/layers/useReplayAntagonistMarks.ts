@@ -21,7 +21,7 @@
  * le calque des pions se dessine exactement comme sans titres. Le point de vue qui change donne un
  * autre index, donc de nouveaux titres, sans recharger les images.
  */
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import type { Antagonists } from '@/lib/antagonists/antagonists'
 import { frameToMs } from '../../../lib/replay/replayLogic'
@@ -52,6 +52,8 @@ export interface AntagonistMarksInput {
 export interface AntagonistLayer extends AntagonistMarks {
   /** La lecture vient de parcourir les images `from` à `to` (`ReplayPlaybackOptions.onAdvance`). */
   advance: (from: number, to: number) => void
+  /** Arrête la boucle de repeinte (démontage ou calque remplacé). */
+  stop: () => void
 }
 
 const wallClock = (): number => performance.now()
@@ -94,27 +96,18 @@ export function useReplayAntagonistMarks({
     })
   }, [antagonists, active, ownerKeyOfSlot, doc, reducedMotion, now])
 
-  // LA BOUCLE DE REPEINTE d'une pulsation : une seule à la fois, arrêtée au démontage ou au changement d'index.
-  const raf = useRef(0)
-  useEffect(
-    () => () => {
-      cancelAnimationFrame(raf.current)
-      raf.current = 0
-    },
-    [reader],
-  )
-
-  return useMemo(
-    () => (reader ? withRepaintLoop({ reader, icons, raf, now, redraw }) : undefined),
+  const layer = useMemo(
+    () => (reader ? withRepaintLoop({ reader, icons, now, redraw }) : undefined),
     [reader, icons, now, redraw],
   )
+  // LA BOUCLE DE REPEINTE s'arrête au démontage et quand le calque est remplacé (autre index, autre document).
+  useEffect(() => () => layer?.stop(), [layer])
+  return layer
 }
 
 interface RepaintLoopInput {
   reader: SlotTitlesReader
   icons: TitleIcons
-  /** L'identifiant de l'image d'animation en attente ; 0 = aucune boucle. */
-  raf: { current: number }
   now: () => number
   redraw: () => void
 }
@@ -123,7 +116,9 @@ interface RepaintLoopInput {
  * withRepaintLoop : le calque que lit le canevas, avec la boucle de repeinte qui mène une pulsation à son terme
  * quand la lecture est en pause (cf. l'en-tête).
  */
-function withRepaintLoop({ reader, icons, raf, now, redraw }: RepaintLoopInput): AntagonistLayer {
+function withRepaintLoop({ reader, icons, now, redraw }: RepaintLoopInput): AntagonistLayer {
+  // L'image d'animation en attente ; 0 = aucune boucle.
+  let pending = 0
   // LES TRACÉS DE LA LECTURE SEULS font taire la boucle : son propre repeint lit les titres lui aussi, il ne
   // doit pas lui faire croire qu'une image vient d'être peinte (elle sauterait une image sur deux, et le tracé
   // de repos de la fin).
@@ -143,16 +138,16 @@ function withRepaintLoop({ reader, icons, raf, now, redraw }: RepaintLoopInput):
   const loop = () => {
     if (reader.pulsing()) {
       if (now() - paintedAt > RECENT_PAINT_MS) repaint()
-      raf.current = requestAnimationFrame(loop)
+      pending = requestAnimationFrame(loop)
       return
     }
     // LA PULSATION EST FINIE : un dernier tracé, toujours, pose l'état de repos (l'ancien tenant n'a plus d'icône).
-    raf.current = 0
+    pending = 0
     repaint()
   }
   const advance = (from: number, to: number) => {
     reader.advance(from, to)
-    if (raf.current === 0 && reader.pulsing()) raf.current = requestAnimationFrame(loop)
+    if (pending === 0 && reader.pulsing()) pending = requestAnimationFrame(loop)
   }
   return {
     titlesOfSlot: (slot: number, frame: number) => {
@@ -165,5 +160,9 @@ function withRepaintLoop({ reader, icons, raf, now, redraw }: RepaintLoopInput):
     },
     icons,
     advance,
+    stop: () => {
+      cancelAnimationFrame(pending)
+      pending = 0
+    },
   }
 }
