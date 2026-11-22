@@ -64,6 +64,7 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 		Total:    len(players),
 		Duration: time.Since(start),
 		debt:     cycleDebt{history: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer)},
+		inserted: make(map[string]int, len(cycleRes.PerPlayer)),
 	}
 	for _, outcome := range cycleRes.PerPlayer {
 		switch outcome.Status {
@@ -74,13 +75,14 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 		default:
 			res.Skipped++
 		}
-		// Collecter les joueurs moteur ayant reçu de nouveaux matchs pour la
-		// notification Discord de fin de cycle (le pipeline V2 n'enregistre pas
-		// dans playerOutcomes — seul syncPlayer le fait pour les joueurs live/filet).
-		if outcome.MatchesInserted > 0 {
+		res.inserted[outcome.Gamertag] += outcome.MatchesInserted
+		// Collecter les joueurs moteur ayant reçu de NOUVEAUX matchs (arrivés par le delta du dessus, hors
+		// rattrapage de l'historique) pour la notification Discord de fin de cycle (le pipeline V2 n'enregistre
+		// pas dans playerOutcomes — seul syncPlayer le fait pour les joueurs live/filet).
+		if n := newMatchesOf(outcome.MatchesInserted, outcome.CatchUpInserted); n > 0 {
 			res.newMatchPlayers = append(res.newMatchPlayers, notify.PlayerSyncResult{
 				Gamertag:      outcome.Gamertag,
-				MatchesSynced: outcome.MatchesInserted,
+				MatchesSynced: n,
 			})
 		}
 	}

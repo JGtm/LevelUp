@@ -7,6 +7,10 @@ type FilmBacklog struct {
 	Frags int
 	// Rejeux : matchs dont l'artefact de rejeu reste à construire.
 	Rejeux int
+	// Ecrits : films que les passes film du titre ont écrits depuis le démarrage (source des frags lue,
+	// film archivé ou artefact de rejeu construit), cumul jamais remis à zéro. Ce n'est pas de l'arriéré :
+	// Total et Pending l'ignorent ; l'ordonnanceur compare deux lectures pour savoir si les films avancent.
+	Ecrits int
 }
 
 // Total est le nombre de films en retard, toutes étapes confondues.

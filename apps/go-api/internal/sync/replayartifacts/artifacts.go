@@ -456,6 +456,7 @@ func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int)
 	observability.AddIntT(titre, CompteurConstruits, int64(b.construits))
 	observability.AddIntT(titre, CompteurFilmsPersistes, int64(b.filmsSauves))
 	observability.AddIntT(titre, CompteurDejaAJour, int64(b.dejaAJour))
+	filmbacklog.AjouterEcrits(d.TitleSlug, b.construits+b.filmsSauves)
 	slog.InfoContext(ctx, "post-sync: rejeu 2D",
 		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
 		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "reportes_non_finalises", b.reportes,

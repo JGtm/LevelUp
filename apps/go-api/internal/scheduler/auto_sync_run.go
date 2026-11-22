@@ -67,6 +67,8 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 	// V2 (runOnceV2 reçoit la slice déjà filtrée).
 	players = domain.SyncablePlayers(players)
 	res.Total = len(players)
+	// Position de l'historique et cumul de films avant le cycle : la garde de progrès les compare à ceux d'après.
+	watch := s.watchProgress(ctx, players)
 
 	// Détection de claim fuité : le cycle auto-sync sert de heartbeat. Un claim
 	// du gate tenu anormalement longtemps signale un release jamais appelé (le
@@ -104,12 +106,14 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 			v2Res = &RunOnceResult{debt: cycleDebt{history: s.pendingHistoryOf(ctx, orchPlayers)}}
 			s.recordFailedPasses(orchPlayers)
 		}
-		liveSynced, liveSkipped, liveFailed, livePending := s.syncPlayersConcurrent(ctx, livePlayers)
-		v2Res.debt.history = append(v2Res.debt.history, livePending...)
+		live := s.syncPlayersConcurrent(ctx, livePlayers)
+		v2Res.debt.history = append(v2Res.debt.history, live.pending...)
 		v2Res.debt.films = s.filmBacklogOf(players)
-		v2Res.Synced += liveSynced
-		v2Res.Skipped += liveSkipped
-		v2Res.Failed += liveFailed
+		v2Res.Synced += live.synced
+		v2Res.Skipped += live.skipped
+		v2Res.Failed += live.failed
+		v2Res.addInserted(s.insertedSince(start))
+		v2Res.debt.progressed = s.progressedSince(ctx, watch, players, v2Res)
 		v2Res.Total = len(players)
 		// Duration couvre le cycle COMPLET (orchestrator + sync live-only) —
 		// runOnceV2 ne mesure que l'orchestrator (parité avec le filet ci-dessous).
@@ -129,8 +133,11 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 	// toujours, dans son runner.
 	slog.WarnContext(ctx, "auto_sync: orchestrator V2 non câblé — sync directe via syncPlayer (filet de boot)",
 		"player_count", res.Total)
-	res.Synced, res.Skipped, res.Failed, res.debt.history = s.syncPlayersConcurrent(ctx, players)
+	all := s.syncPlayersConcurrent(ctx, players)
+	res.Synced, res.Skipped, res.Failed, res.debt.history = all.synced, all.skipped, all.failed, all.pending
 	res.debt.films = s.filmBacklogOf(players)
+	res.addInserted(s.insertedSince(start))
+	res.debt.progressed = s.progressedSince(ctx, watch, players, res)
 
 	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
 	// customRefresher.RefreshAll(ctx) supprimé. La customisation est désormais
@@ -144,33 +151,57 @@ func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOn
 	return res
 }
 
+// playersTally agrège l'issue d'un lot de joueurs passés par syncPlayer.
+type playersTally struct {
+	synced, skipped, failed int
+	// pending : gamertags dont l'historique reste incomplet après la passe (cadence de rattrapage), triés.
+	pending []string
+}
+
 // syncPlayersConcurrent lance syncPlayer pour chaque joueur en parallèle (errgroup
 // borné par la taille du pool de tokens) et agrège synced/skipped/failed. Extrait
 // de la boucle de cycle (Phase 3.4) pour être réutilisé par le path V2 (joueurs
 // live-only, non gérés par l'orchestrator) ET le path V1 (tous les joueurs).
+//
+// Les joueurs d'un titre live-only en rattrapage se partagent le budget du titre (planLiveCatchUp) : chacun
+// reçoit sa part en opts.MaxMatches, et ceux que le budget ne couvre pas attendent le cycle suivant (ils
+// restent en rattrapage, donc dans pending).
 //
 // Best-effort : un échec syncPlayer n'annule pas les autres goroutines (l'erreur
 // est déjà loggée + reflétée dans le compteur failed). Safety : syncPlayer met à
 // jour s.playerOutcomes via recordOutcome (protégé par s.snapshotMu) ; les writes
 // shared sont sérialisés par dblease + singleflight ; les compteurs locaux sont
 // protégés par atomic.Int32.
-func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players []domain.PlayerSummary) (synced, skipped, failed int, pending []string) {
+func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players []domain.PlayerSummary) playersTally {
+	var out playersTally
 	if len(players) == 0 {
-		return 0, 0, 0, nil
+		return out
 	}
 	parallelism := s.poolSizeSafe()
 	if parallelism < 1 {
 		parallelism = 1
 	}
+	plan := s.planLiveCatchUp(ctx, players)
 	var syncedN, skippedN, failedN atomic.Int32
 	var pendingMu gosync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(parallelism)
 	for _, p := range players {
 		p := p
+		if plan.waits(p) {
+			// Le budget de rattrapage du titre est réparti sans lui ce cycle : le joueur reste en rattrapage
+			// et passera parmi les premiers au cycle suivant.
+			skippedN.Add(1)
+			pendingMu.Lock()
+			out.pending = append(out.pending, p.Gamertag)
+			pendingMu.Unlock()
+			s.deferCatchUp(ctx, p)
+			continue
+		}
+		opts := plan.optionsFor(p)
 		eg.Go(func() error {
-			out, hist := s.syncPlayerWithHistory(egCtx, p)
-			switch out {
+			outcome, hist := s.syncPlayerWithHistory(egCtx, p, opts)
+			switch outcome {
 			case outcomeOK:
 				syncedN.Add(1)
 			case outcomeSkipped:
@@ -180,15 +211,16 @@ func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players [
 			}
 			if hist {
 				pendingMu.Lock()
-				pending = append(pending, p.Gamertag)
+				out.pending = append(out.pending, p.Gamertag)
 				pendingMu.Unlock()
 			}
 			return nil
 		})
 	}
 	_ = eg.Wait()
-	sort.Strings(pending)
-	return int(syncedN.Load()), int(skippedN.Load()), int(failedN.Load()), pending
+	sort.Strings(out.pending)
+	out.synced, out.skipped, out.failed = int(syncedN.Load()), int(skippedN.Load()), int(failedN.Load())
+	return out
 }
 
 // syncOutcome encode le résultat d'une tentative de sync par joueur.
@@ -213,9 +245,10 @@ func outcomeName(o syncOutcome) string {
 	return ""
 }
 
-// syncPlayer lance une sync delta pour un joueur et rend son issue (voir syncPlayerWithHistory).
+// syncPlayer lance une sync delta pour un joueur, avec les options par défaut, et rend son issue (voir
+// syncPlayerWithHistory).
 func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
-	outcome, _ := s.syncPlayerWithHistory(ctx, p)
+	outcome, _ := s.syncPlayerWithHistory(ctx, p, domain.DefaultSyncOptions())
 	return outcome
 }
 
@@ -237,7 +270,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 // dupliquer le state PlayerOutcomeDetail dans les sous-fonctions.
 //
 //nolint:funlen // Orchestrateur sync-per-player : guards (cooldown, watcher, DB
-func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.PlayerSummary) (outcome syncOutcome, pending bool) {
+func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.PlayerSummary, opts domain.SyncOptions) (outcome syncOutcome, pending bool) {
 	// Sprint B1 commit 17 : event_id par joueur (sous-événement du tick).
 	// Permet de filtrer logs/*.log pour reconstituer le timeline d'un user
 	// donné indépendamment des autres en cours de sync.
@@ -335,7 +368,7 @@ func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.
 		}
 	}
 
-	syncResult, err := runner.RunDelta(ctx, domain.DefaultSyncOptions())
+	syncResult, err := runner.RunDelta(ctx, opts)
 	if err != nil {
 		slog.ErrorContext(ctx, "auto_sync: RunDelta échoué",
 			"gamertag", p.Gamertag, "err", err)
@@ -347,6 +380,7 @@ func (s *AutoSyncScheduler) syncPlayerWithHistory(ctx context.Context, p domain.
 
 	pending = syncResult.HistoryPending
 	detail.MatchesInserted = syncResult.MatchesInserted
+	detail.CatchUpInserted = syncResult.CatchUpInserted
 	detail.MatchesSkipped = syncResult.MatchesSkipped
 	detail.MedalsInserted = syncResult.MedalsInserted
 	detail.SyncStatus = syncResult.Status()

@@ -23,6 +23,9 @@ type RunOnceResult struct {
 	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
 	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
 	newMatchPlayers []notify.PlayerSyncResult
+	// inserted : matchs insérés ce cycle par gamertag (nouveaux et rattrapés), toutes voies confondues ; lu par la
+	// garde de progrès (auto_sync_progress.go). Non exporté : jamais sérialisé.
+	inserted map[string]int
 	// debt : ce que le cycle laisse à rattraper (historique incomplet, arriéré de films), pour la cadence de
 	// Run ; busy : le cycle n'a pas tourné, un autre tournait déjà.
 	debt cycleDebt
@@ -59,6 +62,10 @@ type PlayerOutcomeDetail struct {
 	// (ancien → récent), pour la sparkline de tendance. Rempli par Snapshot
 	// depuis le ring postSyncHistory.
 	PostSyncHistoryMs []int64 `json:"post_sync_history_ms,omitempty"`
+	// CatchUpInserted : parmi MatchesInserted, les matchs rangés par le rattrapage de l'historique ; les autres
+	// sont les nouveaux matchs, seuls annoncés par la notification de fin de cycle (domain.SyncResult). Interne :
+	// ni servi par le diagnostic ni rangé dans l'instantané persisté.
+	CatchUpInserted int `json:"-"`
 }
 
 // ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler

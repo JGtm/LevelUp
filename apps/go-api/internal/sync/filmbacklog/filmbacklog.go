@@ -51,6 +51,20 @@ func Publier(titre string, etape Etape, restant int) {
 	parTitre[titre] = b
 }
 
+// AjouterEcrits ajoute au cumul du titre les films qu'une passe vient d'écrire ; une valeur négative ou
+// nulle est sans effet. Le cumul n'est pas de l'arriéré : il dit seulement que les films avancent
+// ([port.FilmBacklog.Ecrits]).
+func AjouterEcrits(titre string, n int) {
+	if n <= 0 {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	b := parTitre[titre]
+	b.Ecrits += n
+	parTitre[titre] = b
+}
+
 // Lire rend l'arriéré publié pour un titre.
 func Lire(titre string) port.FilmBacklog {
 	mu.Lock()

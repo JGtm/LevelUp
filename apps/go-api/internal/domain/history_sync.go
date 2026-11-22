@@ -38,7 +38,7 @@ type TitleHistoryStatus struct {
 	StateLabel    string       `json:"state_label" doc:"Libellé de l'état, dans la langue de la requête."`
 	MatchCount    int          `json:"match_count" doc:"Matchs du joueur enregistrés dans la base partagée du titre."`
 	OldestMatchAt *time.Time   `json:"oldest_match_at,omitempty" doc:"Début du plus ancien match enregistré."`
-	LastPass      *HistoryPass `json:"last_pass,omitempty" doc:"Dernière passe de synchronisation du joueur sur ce titre depuis le démarrage du serveur."`
+	LastPass      *HistoryPass `json:"last_pass,omitempty" doc:"Dernière passe de synchronisation connue du joueur sur ce titre, conservée d'un redémarrage du serveur à l'autre ; absente si aucune n'est enregistrée."`
 	FilmsPending  bool         `json:"films_pending" doc:"Des films du titre restent à analyser (source des frags, rejeux) : tant que c'est vrai, l'historique n'est pas affiché comme complet."`
 }
 

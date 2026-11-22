@@ -36,7 +36,7 @@ func (s *AutoSyncScheduler) recordPass(titleSlug, gamertag string, pass port.Syn
 	s.lastPasses[passKey(titleSlug, gamertag)] = pass
 }
 
-// LastPass rend la dernière passe du joueur sur le titre depuis le démarrage (port.SyncActivity).
+// LastPass rend la dernière passe connue du joueur sur le titre, relue du disque au démarrage (port.SyncActivity).
 func (s *AutoSyncScheduler) LastPass(titleSlug, gamertag string) (port.SyncPass, bool) {
 	s.snapshotMu.RLock()
 	defer s.snapshotMu.RUnlock()

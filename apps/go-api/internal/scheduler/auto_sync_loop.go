@@ -4,7 +4,9 @@
 // OU qu'un arriéré de films reste à traiter sur un titre du cycle (source des frags, artefacts de
 // rejeu), le cycle suivant vient après catchUpCycleInterval au lieu de l'intervalle réglé : le
 // rattrapage avance par passes bornées (sync/historystate pour l'historique, budget de temps par
-// étape pour les films) et n'attend pas des heures entre deux.
+// étape pour les films) et n'attend pas des heures entre deux. La cadence courte ne tient que si les cycles
+// progressent (auto_sync_progress.go) et un démarrage avec une dette avance le premier cycle
+// (auto_sync_startup.go).
 package scheduler
 
 import (
@@ -26,7 +28,7 @@ import (
 // encore vue), ou un arriéré de films sur un titre du cycle. Dès que tout est à jour, la boucle revient
 // à l'intervalle réglé (resolveInterval). Quand l'intervalle réglé est plus court, il garde la main : le
 // rattrapage ne ralentit jamais la synchronisation. Le compte à rebours part de la fin du cycle, pas de
-// son début.
+// son début. Après catchUpStallLimit cycles sans progrès, l'intervalle réglé reprend la main.
 const catchUpCycleInterval = 10 * time.Minute
 
 // cycleDebt est ce qu'un cycle laisse à rattraper : de quoi décider si le cycle suivant vient vite.
@@ -36,6 +38,9 @@ type cycleDebt struct {
 	// films : arriéré de films des titres du cycle (somme des titres), tel que les étapes film du
 	// post-sync l'ont publié à la fin de leur dernière passe.
 	films port.FilmBacklog
+	// progressed : le cycle a fait avancer le rattrapage (garde de progrès, auto_sync_progress.go). Sans lui,
+	// un joueur en échec permanent tiendrait la cadence courte pour toujours.
+	progressed bool
 }
 
 // pending dit s'il reste quelque chose à rattraper.
@@ -50,6 +55,9 @@ type cycleState struct {
 	// filmBacklog dit l'arriéré de films d'un titre (WithFilmBacklogReader) : la cadence de rattrapage
 	// tient tant qu'il n'est pas vide. Nil : aucun arriéré connu, la cadence ne suit que l'historique.
 	filmBacklog port.FilmBacklogReader
+	// markerReader dit la position de l'historique d'un joueur (WithHistoryMarkerReader) : la garde de progrès
+	// en compare deux lectures autour d'un cycle. Nil : le progrès ne se lit que sur les films et les matchs rangés.
+	markerReader port.HistoryMarkerReader
 
 	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
 	newTicker func(time.Duration) cycleTicker
@@ -68,7 +76,7 @@ type cycleState struct {
 	manualWG  *gosync.WaitGroup
 	replanCh  chan cycleDebt
 
-	// lastPasses : dernière passe par (titre, joueur) depuis le démarrage. Protégé par snapshotMu.
+	// lastPasses : dernière passe connue par (titre, joueur), relue du disque au démarrage (persistence.go). Protégé par snapshotMu.
 	lastPasses map[string]port.SyncPass
 }
 
@@ -87,10 +95,13 @@ func (w wallTicker) Reset(d time.Duration) { w.t.Reset(d) }
 func (w wallTicker) Stop()                 { w.t.Stop() }
 
 // tickState est l'état de cadence de la boucle de Run : l'intervalle réglé dans les settings, et la
-// période du ticker en ce moment (celle du rattrapage pendant un rattrapage).
+// période du ticker en ce moment (celle du rattrapage pendant un rattrapage), et le compte des cycles
+// de rattrapage sans progrès.
 type tickState struct {
 	configured time.Duration
 	period     time.Duration
+	// stalled : cycles d'affilée, dette ouverte, sans progrès (garde de progrès, auto_sync_progress.go).
+	stalled int
 }
 
 // clock rend l'heure murale de l'ordonnanceur.
@@ -127,10 +138,12 @@ func (s *AutoSyncScheduler) setNextCycleAt(t time.Time) {
 // Se termine proprement à l'annulation de ctx.
 func (s *AutoSyncScheduler) Run(ctx context.Context) {
 	interval := s.CurrentInterval()
-	ticker := s.makeTicker(interval)
+	// Une dette au démarrage (historique incomplet, arriéré de films) avance le premier cycle (firstCycleDelay).
+	first := s.firstCycleDelay(ctx, interval)
+	ticker := s.makeTicker(first)
 	defer ticker.Stop()
-	st := &tickState{configured: interval, period: interval}
-	s.setNextCycleAt(s.clock().Add(interval))
+	st := &tickState{configured: interval, period: first}
+	s.setNextCycleAt(s.clock().Add(first))
 
 	slog.InfoContext(ctx, "auto_sync: scheduler démarré",
 		"interval", interval,
@@ -173,6 +186,12 @@ func (s *AutoSyncScheduler) runTick(ctx context.Context, st *tickState, ticker c
 	}
 	if !cfg.SpnkrAutoSyncEnabled {
 		slog.DebugContext(tickCtx, "auto_sync: désactivé dans les settings, tick ignoré")
+		// Aucun cycle ne tourne : le ticker ne garde pas la période courte d'un rattrapage ou d'un démarrage
+		// avec dette, il reprend l'intervalle réglé jusqu'à la réactivation.
+		if st.period < st.configured {
+			ticker.Reset(st.configured)
+			st.period = st.configured
+		}
 		s.setNextCycleAt(s.clock().Add(st.period))
 		return
 	}
@@ -209,23 +228,24 @@ func (s *AutoSyncScheduler) runTick(ctx context.Context, st *tickState, ticker c
 }
 
 // planNextCycle recale le ticker après un cycle : catchUpCycleInterval s'il reste une dette (joueur en
-// rattrapage d'historique ou arriéré de films), sans dépasser l'intervalle réglé ; l'intervalle réglé
-// sinon. Une ligne de journal par cycle dit combien de joueurs rattrapent, combien de films sont en
-// retard et l'intervalle retenu.
+// rattrapage d'historique ou arriéré de films) ET que les cycles progressent, sans dépasser l'intervalle
+// réglé ; l'intervalle réglé sinon, y compris après catchUpStallLimit cycles d'affilée sans progrès
+// (advanceStall). Une ligne de journal par cycle dit combien de joueurs rattrapent, combien de films sont en
+// retard, si le cycle a progressé et l'intervalle retenu.
 func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ticker cycleTicker, debt cycleDebt) {
 	next := st.configured
-	if debt.pending() && catchUpCycleInterval < next {
+	if st.advanceStall(ctx, debt) && catchUpCycleInterval < next {
 		next = catchUpCycleInterval
 	}
-	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié",
+	attrs := []any{
 		"joueurs_en_rattrapage", len(debt.history),
 		"gamertags", debt.history,
-		"films_en_retard", debt.films.Total(),
-		"films_frags", debt.films.Frags,
-		"films_rejeux", debt.films.Rejeux,
+		"progres", debt.progressed,
+		"cycles_sans_progres", st.stalled,
 		"intervalle", next,
 		"intervalle_regle", st.configured,
-	)
+	}
+	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié", append(attrs, s.filmBacklogAttrs(debt.films)...)...)
 	ticker.Reset(next)
 	st.period = next
 	s.setNextCycleAt(s.clock().Add(next))
@@ -243,6 +263,9 @@ func (s *AutoSyncScheduler) replanFromCycle(ctx context.Context, st *tickState, 
 		return
 	}
 	st.configured = resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours)
+	// Un cycle demandé à la main remet à zéro le compteur de cycles sans progrès : la cadence repart de la
+	// dette, comme après un tick qui progresse.
+	debt.progressed = true
 	s.planNextCycle(ctx, st, ticker, debt)
 }
 
@@ -347,4 +370,14 @@ func (s *AutoSyncScheduler) WithFilmBacklogReader(r port.FilmBacklogReader) *Aut
 func (s *AutoSyncScheduler) WithHistoryReader(r port.HistoryCompletionReader) *AutoSyncScheduler {
 	s.historyReader = r
 	return s
+}
+
+// filmBacklogAttrs rend les attributs de journal de l'arriéré de films d'un cycle : ses comptes quand le
+// lecteur d'arriéré est branché, la mention « non suivi » sinon (site hébergé, dev), pour qu'un arriéré
+// simplement non suivi ne se lise pas « aucun film en retard ».
+func (s *AutoSyncScheduler) filmBacklogAttrs(b port.FilmBacklog) []any {
+	if s.filmBacklog == nil {
+		return []any{"films", "non_suivi"}
+	}
+	return []any{"films_en_retard", b.Total(), "films_frags", b.Frags, "films_rejeux", b.Rejeux}
 }

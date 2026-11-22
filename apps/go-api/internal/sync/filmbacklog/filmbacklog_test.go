@@ -50,3 +50,25 @@ func TestReaderFor_SuitLaCapaciteFilmCatchUp(t *testing.T) {
 		t.Errorf("arriéré lu = %+v, attendu 4 frags", got)
 	}
 }
+
+func TestAjouterEcrits_CumulParTitreSansToucherLArriere(t *testing.T) {
+	Reset()
+	Publier("halo_infinite", Frags, 10)
+	AjouterEcrits("halo_infinite", 3)
+	AjouterEcrits("halo_infinite", 0)
+	AjouterEcrits("halo_infinite", -4)
+	AjouterEcrits("halo_infinite", 2)
+	// Une publication d'arriéré ne remet pas le cumul à zéro.
+	Publier("halo_infinite", Rejeux, 1)
+
+	got := Lire("halo_infinite")
+	if got.Ecrits != 5 {
+		t.Errorf("Ecrits = %d, attendu 5 (3 + 2, le zéro et le négatif sont sans effet)", got.Ecrits)
+	}
+	if got.Frags != 10 || got.Rejeux != 1 || got.Total() != 11 {
+		t.Errorf("arriéré = %+v : le cumul ne doit pas modifier l'arriéré", got)
+	}
+	if Lire("halo_5").Ecrits != 0 {
+		t.Error("le cumul est par titre")
+	}
+}

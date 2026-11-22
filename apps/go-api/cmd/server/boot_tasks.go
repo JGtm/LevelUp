@@ -88,6 +88,9 @@ func initScheduler(st *bootState) {
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
 		WithFriendStore(friendStore).
 		WithHistoryReader(historyReader).
+		// La garde de progrès de la cadence de rattrapage compare la position de l'historique (marque-page,
+		// fin) avant et après chaque cycle : sans progrès, la cadence courte ne tient pas.
+		WithHistoryMarkerReader(historyReader).
 		// L'arriéré de films publié par les étapes film du post-sync tient la cadence de rattrapage et
 		// l'écran d'état de l'historique sous la capacité FilmCatchUp : sans lui, l'historique se dirait
 		// complet avec des films en retard. Sans la capacité (serveur hébergé), aucun lecteur : la cadence ne suit
