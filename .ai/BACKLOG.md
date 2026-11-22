@@ -530,6 +530,14 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 **Relevé le 2026-11-18** (décision D-11 de `.ai/PLAN_FONDS_RELIEF_2026-11-18.md`). Principe de Cartographer (Den) : découper le plan d'une carte selon le mode joué (volumes mortels et de sécurité, points d'apparition de la variante, voir `libfilmshell` `NavMesh::rings_within`). **Version visée : 8.3.1**, décision du user du 2026-11-18 (« le temps que je comprenne mieux comment il fait »). **Reprise : après la sortie de la 8.3.0.** Recherche faite le 2026-11-18 : `.ai/annexes_plan_par_mode/recherche.md` (étiquettes de mode `<mode>_include` / `<mode>_exclude` des objets des variantes, murs invisibles dans les instances physiques sans rendu du `sbsp`, volumes de mort natifs dans le tag `levl` ; fermetures de Den retrouvées sur Live Fire et Streets ; méthode et lots proposés).
 
+**À surveiller (relevé le 2026-11-22).** La demande n° 1 ouverte le 2026-11-17 sur `OpenSpartan/cartographer` (« Initial Minimap and App Startup Flow Improvements », encore ouverte) propose de retoucher à la main les minicartes des cartes les plus jouées en compétition (Aquarius : triangles à 19 m, zone basse inaccessible en bas au milieu). Certaines de ces zones ne sont fermées que dans certains modes : la recherche du 2026-11-18 le montre sur Aquarius (86 Player Blocker `infection_include`, 2 Projectile Blocker `infection_exclude`). Relire la demande et la réponse de Den avant de lancer le plan par mode. État au 2026-11-22 : aucun code ne découpe le plan selon le mode ; une carte affiche le même plan quel que soit le mode joué.
+
+---
+
+### [fonds de carte/Relief] Passages couverts : montrer le sol qui passe sous l'étage affiché
+
+**Relevé le 2026-11-22** (relecture des dépôts de Den depuis le 2026-11-18). `OpenSpartan/films-ui` (MIT), `src/floor.ts`, commits du 18 et du 19/11 (demande de fusion n° 8) : la vue de dessus trace les murs du sol praticable qui passe sous l'étage affiché (tunnel sous la carte, passage sous un pont ou sous l'étage d'un bâtiment). Trait en tirets de 2 px (6 pleins, 4 vides) dans la couleur des ruptures de hauteur, sur un liseré plein de 4 px d'une teinte sombre du sol bas, à 0,85 de leur force, pour rester lisible sur sol bas comme haut. La donnée (`under`) sort du générateur privé de Den (`film-assets`) : chez nous, à calculer depuis le maillage de navigation à la cuisson du fond Relief (brique `halo-infinite-map-images`). Le fond Relief et la coupe par étage de la 8.3.0 n'affichent pas ces passages. Créditer Den si le style est repris. **Reprise :** après la sortie de la 8.3.0, avec ou après le plan par mode. **Effort : moyen (brique et dessin web).**
+
 ---
 
 ### [unités] Les « mètres » de l'application sont des unités du jeu d'environ 3 m
