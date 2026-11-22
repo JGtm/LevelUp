@@ -192,22 +192,6 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 	},
 }
 
-// pairedCounterComps : les composants du statborg dont les DEUX canaux (A et B) sont des compteurs d'une manche,
-// donc des entiers positifs que le jeu ne porte jamais au-dela de [statMaxModeScore].
-//
-// CE QU'ELLE GARANTIT. [emissionHorsDomaine] jette une emission de ces composants EN ENTIER des qu'un de ses deux
-// canaux est negatif ou depasse [statMaxModeScore] : les deux canaux sortent de la meme emission, un canal hors
-// domaine prouve qu'elle est mal alignee, et la valeur de l'autre ne vaut rien non plus. Sans cela, le canal lu
-// d'une emission dont le canal frere est aberrant (`12` d'un cote, `7034` de l'autre) entrait dans la serie comme
-// un saut de compteur, et le deroulage en faisait autant d'actions publiees au meme instant.
-//
-// POURQUOI `3` ET `25` N'Y SONT PAS. Leur canal B n'est pas un compteur : il depasse [statMaxModeScore] de facon
-// reguliere sur des emissions saines, et les jeter ensemble retirerait des valeurs justes du canal A. Un composant
-// n'entre ici que si ses deux canaux sont des compteurs.
-//
-// Le composant du score de mode (`0`) a sa propre regle, plus stricte ([modeScoreComp]).
-var pairedCounterComps = map[int]bool{2: true, 12: true, 20: true, 21: true, 22: true, 23: true, 24: true}
-
 // Noms canoniques des STATISTIQUES, tels que `match_objective_stats` les nomme et que le
 // binaire les declare (`CtfStats_FlagGrabs`, `StrongholdsStats_StrongholdCaptures`...).
 //

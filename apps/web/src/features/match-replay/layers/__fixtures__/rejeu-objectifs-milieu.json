@@ -1,4 +1,4 @@
-{"variant":"objectifs","instant":"milieu","frame":11466,"opCount":3054}
+{"variant":"objectifs","instant":"milieu","frame":11466,"opCount":3136}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,354]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":354,"ops":5433,"sha":"74734f23a5185dc805584e9db506ec6660cfc4556a0ab1a212820dd220099091"}},-2.842170943040401e-14,0,960,354]}
@@ -2750,11 +2750,33 @@
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineWidth","args":[1.1]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[288.87750000000005,148.603125]}
+{"op":"lineTo","args":[288.87750000000005,150.303125]}
+{"op":"stroke","args":[]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[288.87750000000005,152.503125,0.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#7604ad"]}
+{"op":"set fillStyle","args":["#7604ad"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set lineWidth","args":[1.1]}
+{"op":"beginPath","args":[]}
 {"op":"moveTo","args":[73.75312500000004,163.90312500000002]}
 {"op":"lineTo","args":[73.75312500000004,165.603125]}
 {"op":"stroke","args":[]}
 {"op":"beginPath","args":[]}
 {"op":"arc","args":[73.75312500000004,167.80312500000002,0.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"set strokeStyle","args":["#7604ad"]}
+{"op":"set fillStyle","args":["#7604ad"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set lineWidth","args":[1.1]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[288.87750000000005,148.603125]}
+{"op":"lineTo","args":[288.87750000000005,150.303125]}
+{"op":"stroke","args":[]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[288.87750000000005,152.503125,0.6,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"save","args":[]}
 {"op":"set globalCompositeOperation","args":["source-over"]}
@@ -2913,6 +2935,36 @@
 {"op":"set strokeStyle","args":["#49c670"]}
 {"op":"set fillStyle","args":["#49c670"]}
 {"op":"save","args":[]}
+{"op":"translate","args":[277.741616973277,154.81125333752183]}
+{"op":"rotate","args":[-3.2183871406775437]}
+{"op":"scale","args":[1.7,0.45]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,13]}
+{"op":"addColorStop","args":[0,"#49c670"]}
+{"op":"addColorStop","args":[0.35,"#49c670"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.2716822592662245]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,13,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,4.6]}
+{"op":"addColorStop","args":[0,"#be4280"]}
+{"op":"addColorStop","args":[0.35,"#be4280"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.3018691769624717]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,4.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"restore","args":[]}
+{"op":"restore","args":[]}
+{"op":"save","args":[]}
+{"op":"set globalCompositeOperation","args":["source-over"]}
+{"op":"set lineCap","args":["round"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set strokeStyle","args":["#49c670"]}
+{"op":"set fillStyle","args":["#49c670"]}
+{"op":"save","args":[]}
 {"op":"translate","args":[276.14786697327696,154.65187833752185]}
 {"op":"rotate","args":[-3.2183871406775437]}
 {"op":"scale","args":[1.7,0.45]}
@@ -2990,6 +3042,36 @@
 {"op":"addColorStop","args":[0.35,"#be4280"]}
 {"op":"addColorStop","args":[1,"transparent"]}
 {"op":"set globalAlpha","args":[0.6888773475735721]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,4.6,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"restore","args":[]}
+{"op":"restore","args":[]}
+{"op":"save","args":[]}
+{"op":"set globalCompositeOperation","args":["source-over"]}
+{"op":"set lineCap","args":["round"]}
+{"op":"set lineJoin","args":["round"]}
+{"op":"set strokeStyle","args":["#49c670"]}
+{"op":"set fillStyle","args":["#49c670"]}
+{"op":"save","args":[]}
+{"op":"translate","args":[276.13617925886075,151.13786123435173]}
+{"op":"rotate","args":[-3.204424506661589]}
+{"op":"scale","args":[1.7,0.45]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,13]}
+{"op":"addColorStop","args":[0,"#49c670"]}
+{"op":"addColorStop","args":[0.35,"#49c670"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.755661888677734]}
+{"op":"set fillStyle","args":["[Object]"]}
+{"op":"beginPath","args":[]}
+{"op":"arc","args":[0,0,13,0,6.283185307179586]}
+{"op":"fill","args":[]}
+{"op":"createRadialGradient","args":[0,0,0,0,0,4.6]}
+{"op":"addColorStop","args":[0,"#be4280"]}
+{"op":"addColorStop","args":[0.35,"#be4280"]}
+{"op":"addColorStop","args":[1,"transparent"]}
+{"op":"set globalAlpha","args":[0.8396243207530377]}
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"beginPath","args":[]}
 {"op":"arc","args":[0,0,4.6,0,6.283185307179586]}

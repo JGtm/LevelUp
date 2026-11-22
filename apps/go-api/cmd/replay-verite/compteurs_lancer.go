@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -31,19 +30,17 @@ func lireRejeu(chemin string) (*documentCompteurs, error) {
 func fichiersRejeux(args []string) ([]string, error) {
 	var out []string
 	for _, a := range args {
-		st, err := os.Stat(a)
-		if err != nil {
-			return nil, err
-		}
-		if !st.IsDir() {
+		if replayartifact.Exists(a) {
 			out = append(out, a)
 			continue
 		}
-		pris, err := filepath.Glob(filepath.Join(a, "*.json.gz"))
+		pris, err := replayartifact.List(a)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, pris...)
+		for _, e := range pris {
+			out = append(out, filepath.Join(a, e.Name))
+		}
 	}
 	sort.Strings(out)
 	if len(out) == 0 {

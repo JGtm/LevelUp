@@ -1,7 +1,7 @@
 {"variant":"vehicules","instant":"fin","frame":10292,"opCount":2844}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,720]}
-{"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":29279,"sha":"807bafcddbe52687d70e12d22cf51158ed1e1986dc4dcaf84e26f634d32f517e"}},3.552713678800501e-15,-1.7763568394002505e-14,960,720]}
+{"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":29325,"sha":"ce2b4dc3f70ff61615c27fd518404cb694c381035205c7cd6d158c23421c25fb"}},3.552713678800501e-15,-1.7763568394002505e-14,960,720]}
 {"op":"set strokeStyle","args":["#e51769"]}
 {"op":"set lineWidth","args":[1.2]}
 {"op":"set globalAlpha","args":[1]}

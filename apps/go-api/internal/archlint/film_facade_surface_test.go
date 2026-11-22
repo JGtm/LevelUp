@@ -163,10 +163,12 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // pas se poser dans `killsource` (toute modification de la couche monte `killsource.Rev` et perime les faits
 // du parc entier, decision du 2026-11-09) ; elle vit hors couche, dans `decfilm/bots_sans_kill_feed.go`, et
 // ce renvoi est le seul symbole qu un appelant hors du module en cite.
-// 180 LE 2026-11-22 (montee du decodeur v1.5.0 : les deux constantes `NomPrecisionParArmePasseSautee` et
-// `NomDistancesDeToucheDesactivees` quittent `decfilm.go` pour `replis_obsoletes.go`, marquees obsoletes) : -2,
-// famille `fallback`. Aucun consommateur ne les cite plus depuis le retrait de la precision par film.
-const plafondSurfaceFacade = 180 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (deux noms de repli obsoletes) ; cf. l historique ci-dessus
+// 180 LE 2026-11-22 (montee du decodeur v1.5.0, premiere etape) : les deux constantes `NomPrecisionParArmePasseSautee` et
+// `NomDistancesDeToucheDesactivees` quittent la facade avec le retrait de la precision par film : -2, famille `fallback`.
+// 181 LE 2026-11-22 (montee du decodeur v1.5.0, version finale) : UNE constante neuve, `ObjectiveTypeVip`, famille
+// `objectives` : la cuisson (`replaybuild.objectiveFamilyOfVariant`) la passe a `NamedEventsFrom` sur une variante VIP,
+// que `ObjectiveTypeOf` ne reconnait pas ; le VIP nomme ainsi ses actions dans `objectives[]`.
+const plafondSurfaceFacade = 181 // 2026-11-22 — decodeur v1.5.0 : 182 - 2 (deux noms de repli retires) + 1 (ObjectiveTypeVip) ; cf. l historique ci-dessus
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -482,9 +484,9 @@ const plafondSurfaceReplay = 341 // 2026-11-22 — decodeur v1.5.0 : 335 + 6 ; c
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    45, // 2026-09-30 — J12.4 : -1 (BuildBipedTracks) ; 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
-	"objectives": 39, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation) ; 2026-10-03 — lot 2.6 de la RI sur 129512162 : -1 (CaptureBurstTimes, re-exporte depuis signaux ; total inchange)
+	"objectives": 40, // 2026-11-22 — decodeur v1.5.0 : +1 (ObjectiveTypeVip, famille VIP des actions nommees) ; 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs) ; 2026-09-28 — J8.7-bis : +1 (ReplisALaConsultation) ; 2026-10-03 — lot 2.6 de la RI sur 129512162 : -1 (CaptureBurstTimes, re-exporte depuis signaux ; total inchange)
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`) ; 2026-10-02 — retrait des replis nuls (DU-7) : -1 (`XUIDNamePrefix`)
-	"fallback":   21, // 2026-11-22 — decodeur v1.5.0 : -2 (NomPrecisionParArmePasseSautee, NomDistancesDeToucheDesactivees, deplacees en obsoletes) ; 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
+	"fallback":   21, // 2026-11-22 — decodeur v1.5.0 : -2 (NomPrecisionParArmePasseSautee, NomDistancesDeToucheDesactivees, retires de la facade) ; 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
 	"types":      10,
 	"profile":    10, // 2026-11-08 — item 4.6b : +2 (ErrUnknownBuild, ErrUnknownFormat)
 	"source":     6,  // 2026-09-26 — J4.5 : -1 (Paquets)

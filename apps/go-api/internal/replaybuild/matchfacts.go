@@ -231,7 +231,7 @@ func chunksDuManifeste(film *decfilm.Film) []decfilm.ChunkMeta {
 func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []decfilm.StatRecord, facts port.MatchFacts,
 	pont *replay.PontParManche) ([]decfilm.IdentifiedEvent, int, int) {
-	named := decfilm.NamedEventsFrom(recs, decfilm.ObjectiveTypeOf(facts.GameVariantName), pont.Consultations())
+	named := decfilm.NamedEventsFrom(recs, objectiveFamilyOfVariant(facts.GameVariantName), pont.Consultations())
 	if len(named) == 0 {
 		return nil, 0, 0
 	}
@@ -258,6 +258,23 @@ func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 		"nonNommees", nonNommes, "siegeNonProuve", actionsSurSiegeNonProuve(named, id),
 		"lignes", len(facts.Players))
 	return out, nonNommes, 0
+}
+
+// objectiveFamilyOfVariant rend la famille d'objectif dont le film nomme les actions.
+//
+// Le VIP n'est PAS la famille d'une variante pour le décodeur (`decfilm.ObjectiveTypeOf` rend
+// "" pour un mode VIP) : sa table nommée (`vip_selected`, `vip_kills`, `vip_assists`,
+// `vip_kills_as_vip`) ne se lit que si l'appelant la demande, sur la garde de variante des
+// calques de porteur. `decfilm.ObjectiveTypeOf` reste seul juge du reste (le badge de
+// retournement de `sync/comeback.go` ne s'applique donc pas aux matchs VIP).
+func objectiveFamilyOfVariant(variant string) string {
+	if family := decfilm.ObjectiveTypeOf(variant); family != "" {
+		return family
+	}
+	if replay.GardesDeLaVariante(variant).VIP {
+		return decfilm.ObjectiveTypeVip
+	}
+	return ""
 }
 
 // siegesAuCoupDEnvoi compte les SIEGES qu'un match ouvre, et non les lignes de sa feuille.
