@@ -15,7 +15,7 @@
  *    son `paint` et `bindPainters` en dérive la liaison. La faute n'est plus écrivable — ce
  *    fichier vérifie que la dérivation MARCHE (oracle sur `bindPainters`) et que le canvas
  *    ne renomme aucun d'eux à la main.
- *  - TREIZE calques sont des fermetures écrites dans la table. Leur peintre nomme une
+ *  - SEIZE calques sont des fermetures écrites dans la table. Leur peintre nomme une
  *    fonction de dessin (ou une cuisson) : la table attendue est écrite À LA MAIN ci-dessous
  *    et confrontée à la source. Un swap y déplace le nom de la fonction appelée.
  */
@@ -70,12 +70,13 @@ const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
 ]
 
 /**
- * Les quinze fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
+ * Les seize fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
  * main : chaque id est suivi du symbole que son peintre doit nommer.
  */
 const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
   ['fond-carte', 'drawMapBackground('],
   ['sol-forge', 'drawGeometryLayer('],
+  ['traits-relief', 'cuit(reliefLinesRef.current)'],
   ['plan-murs', 'cuit(wallPlanRef.current)'],
   ['chaleur', 'cuit(heatRef.current)'],
   ['zones-nommees', 'cuit(zonesRef.current)'],
@@ -188,7 +189,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     expect(moteur()).toContain('...bindPainters(')
   })
 
-  it('chacune des quinze fermetures peint bien ce que son id annonce', () => {
+  it('chacune des seize fermetures peint bien ce que son id annonce', () => {
     const table = tableDeLiaison()
     for (const [id, attendu] of FERMETURES) {
       expect(entreeDeTable(table, id), `l'entrée ${id} ne peint pas ${attendu}`).toContain(attendu)

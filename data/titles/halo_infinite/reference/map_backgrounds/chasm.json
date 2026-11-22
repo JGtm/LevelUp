@@ -38,6 +38,8 @@
     "eau : aucun volume d'eau dans le sddt de chasm-rtx-new.module"
   ],
   "planImage": "chasm.plan.webp",
+  "reliefImage": "chasm.relief.webp",
+  "reliefData": "chasm.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 3113,

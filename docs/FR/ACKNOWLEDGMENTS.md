@@ -16,6 +16,8 @@ des références dont nous avons appris, pas du code que nous embarquons, sauf l
 - **Den Delimarsky** ([dend](https://github.com/dend)) pour [Grunt](https://github.com/dend/grunt)
   et [OpenSpartan](https://github.com/OpenSpartan) — la documentation communautaire des services
   Halo, et la voie d'import des données OpenSpartan.
+- **Den Delimarsky** ([dend](https://github.com/dend)) pour [OpenSpartan Cartographer](https://github.com/OpenSpartan/cartographer) et [films-ui](https://github.com/OpenSpartan/films-ui) —
+  les principes du fond Relief (terrain teinté selon la hauteur, traits vectoriels, coupe par étage) ; licence MIT, aucun code repris.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) pour [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   sa lecture des formats de fichiers de cartes Halo est la référence derrière notre décodeur de
   géométrie (`halo-infinite-map-images/himap/` : sections SBSP, filtres de maillage, groupes SDDT).

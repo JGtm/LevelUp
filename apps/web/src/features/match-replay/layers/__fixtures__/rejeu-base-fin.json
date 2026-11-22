@@ -1,4 +1,4 @@
-{"variant":"base","instant":"fin","frame":15103,"opCount":3736}
+{"variant":"base","instant":"fin","frame":15103,"opCount":3752}
 {"op":"setTransform","args":[1,0,0,1,0,0]}
 {"op":"clearRect","args":[0,0,960,720]}
 {"op":"drawImage","args":[{"canvas":{"w":960,"h":720,"ops":8665,"sha":"f02a3bec2d803907fc22b66aa87314631d03adb177ce03a828027505953efe3c"}},1.0658141036401503e-14,1.0658141036401503e-14,960,720]}
@@ -2615,9 +2615,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[514.5885564966661,339.8363669129573]}
+{"op":"arc","args":[509.4885564966661,339.8363669129573,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[513.6385564966661,339.8363669129573]}
+{"op":"arc","args":[509.4885564966661,339.8363669129573,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[513.8885564966661,339.8363669129573]}
 {"op":"arc","args":[509.4885564966661,339.8363669129573,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -2633,9 +2641,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["Joueur000007",509.4885564966661,346.7363669129573]}
+{"op":"strokeText","args":["Joueur000007",509.4885564966661,347.43636691295734]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["Joueur000007",509.4885564966661,346.7363669129573]}
+{"op":"fillText","args":["Joueur000007",509.4885564966661,347.43636691295734]}
 {"op":"set strokeStyle","args":["#bfbb46"]}
 {"op":"set lineWidth","args":[1.6]}
 {"op":"set globalAlpha","args":[0.08259433962264151]}
@@ -3710,9 +3718,17 @@
 {"op":"set fillStyle","args":["[Object]"]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
-{"op":"set globalAlpha","args":[0.62]}
-{"op":"set fillStyle","args":["#f4b0d0"]}
+{"op":"set globalAlpha","args":[1]}
+{"op":"set fillStyle","args":["#4ea8a1"]}
 {"op":"beginPath","args":[]}
+{"op":"moveTo","args":[503.68929536853494,280.4959452153541]}
+{"op":"arc","args":[498.5892953685349,280.4959452153541,5.1,0,6.283185307179586]}
+{"op":"moveTo","args":[502.7392953685349,280.4959452153541]}
+{"op":"arc","args":[498.5892953685349,280.4959452153541,4.15,0,6.283185307179586]}
+{"op":"fill","args":["evenodd"]}
+{"op":"set fillStyle","args":["#63fd4f"]}
+{"op":"beginPath","args":[]}
+{"op":"moveTo","args":[502.9892953685349,280.4959452153541]}
 {"op":"arc","args":[498.5892953685349,280.4959452153541,4.4,0,6.283185307179586]}
 {"op":"fill","args":[]}
 {"op":"set globalAlpha","args":[1]}
@@ -3728,9 +3744,9 @@
 {"op":"set lineJoin","args":["round"]}
 {"op":"set lineWidth","args":[2.6]}
 {"op":"set strokeStyle","args":["#7604ad"]}
-{"op":"strokeText","args":["J00 0086",498.5892953685349,287.39594521535406]}
+{"op":"strokeText","args":["J00 0086",498.5892953685349,288.0959452153541]}
 {"op":"set fillStyle","args":["#bfbb46"]}
-{"op":"fillText","args":["J00 0086",498.5892953685349,287.39594521535406]}
+{"op":"fillText","args":["J00 0086",498.5892953685349,288.0959452153541]}
 {"op":"set globalAlpha","args":[1]}
 {"op":"set lineCap","args":["round"]}
 {"op":"set globalAlpha","args":[1]}

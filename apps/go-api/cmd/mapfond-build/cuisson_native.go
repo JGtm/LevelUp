@@ -25,40 +25,59 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 	return out
 }
 
-// cuitNative cuit une carte native : son maillage de navigation d'abord (rognage et plan des
-// murs), puis le rendu. Une carte dont le module n'a pas de maillage est cuite comme avant et
-// le porte en dégradation.
+// carteCuite est une carte cuite en mémoire, avant toute écriture : sa cible (maillage et origine du
+// plan posés), son rendu et son bilan.
+type carteCuite struct {
+	c     cible
+	rendu *himap.Rendu
+	bilan himap.BilanCuisson
+}
+
+// cuitNative cuit une carte native et la publie.
 func (e *environnement) cuitNative(ctx context.Context, c cible) bilanAsset {
-	maillage, degradation, err := e.maillageNatif(ctx, c.cle)
+	cc, err := e.renduNatif(ctx, c, 0)
+	if err != nil {
+		return bilanAsset{Cle: c.cle, Noms: c.noms, Err: err, NonCuisinable: errors.Is(err, himap.ErrAucunTagSbsp)}
+	}
+	return e.publie(ctx, cc.c, cc.rendu, cc.bilan)
+}
+
+// renduNatif cuit une carte native en mémoire : son maillage de navigation d'abord (rognage et plan
+// des murs), puis le rendu. Une carte dont le module n'a pas de maillage est cuite comme avant et le
+// porte en dégradation. Une carte sans géométrie rend une erreur qui satisfait himap.ErrAucunTagSbsp.
+// `echelle` est le côté du pixel imposé en mètres (celui du fond publié, pour `-relief-seul`) ; zéro
+// laisse la cuisson la choisir (`echelleDe`). Les échecs sont journalisés ici.
+func (e *environnement) renduNatif(ctx context.Context, c cible, echelle float64) (carteCuite, error) {
+	maillage, degradation, err := e.maillageNatif(ctx, c)
 	if err != nil {
 		slog.ErrorContext(ctx, "maillage de navigation", "err", err, "carte", c.cle)
-		return bilanAsset{Cle: c.cle, Noms: c.noms, Err: err}
+		return carteCuite{}, err
 	}
-	rendu, bilan, err := himap.CuitCarteNative(ctx, e.optionsNative(c, maillage))
+	rendu, bilan, err := himap.CuitCarteNative(ctx, e.optionsNative(c, maillage, echelle))
+	if errors.Is(err, himap.ErrAucunTagSbsp) {
+		slog.WarnContext(ctx, "carte non cuisinable", "err", err, "carte", c.cle)
+		return carteCuite{}, err
+	}
 	if err != nil {
-		if errors.Is(err, himap.ErrAucunTagSbsp) {
-			slog.WarnContext(ctx, "carte non cuisinable", "err", err, "carte", c.cle)
-			return bilanAsset{Cle: c.cle, Noms: c.noms, Err: err, NonCuisinable: true}
-		}
 		slog.ErrorContext(ctx, "cuisson", "err", err, "carte", c.cle)
-		return bilanAsset{Cle: c.cle, Noms: c.noms, Err: err}
+		return carteCuite{}, err
 	}
 	if degradation != "" {
 		bilan.Degradations = append(bilan.Degradations, degradation)
 	}
 	c.maillage, c.sourcePlan = maillage, sourcePlanNatif
-	return e.publie(ctx, c, rendu, bilan)
+	return carteCuite{c: c, rendu: rendu, bilan: bilan}, nil
 }
 
 // optionsNative assemble les options de cuisson d'une carte native. Les leviers sont les mêmes que
-// sur la chaîne Forge (`optionsForge`).
-func (e *environnement) optionsNative(c cible, maillage *hinavmesh.Maillage) himap.OptionsCuisson {
+// sur la chaîne Forge (`optionsForge`). Une `echelle` non nulle l'emporte sur l'échelle de la carte.
+func (e *environnement) optionsNative(c cible, maillage *hinavmesh.Maillage, echelle float64) himap.OptionsCuisson {
 	cle := c.cle
 	return himap.OptionsCuisson{
 		RacineDeploy:               e.racineJeu,
 		CheminModule:               e.moduleDeCuisson(c),
 		Ancres:                     c.ancres,
-		Echelle:                    e.echelleDe(cle),
+		Echelle:                    e.echelleImposeeOuDe(cle, echelle),
 		CibleCadrePx:               himap.CibleCadrePx,
 		EcreteToits:                valeurDe(e, cle, levierEcreteToits),
 		PlafondArene:               valeurDe(e, cle, levierPlafondArene),

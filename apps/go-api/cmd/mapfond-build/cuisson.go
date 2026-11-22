@@ -165,6 +165,11 @@ func (e *environnement) ciblesNatives() []cible {
 // publie écrit le PNG et son sidecar de calage.
 func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu, b himap.BilanCuisson) bilanAsset {
 	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b}
+	if err := e.verifieLeMaillageAvantPublication(ctx, c.cle, c.maillage); err != nil {
+		ba.Err = err
+		slog.ErrorContext(ctx, "mapfond: carte non publiee", "err", err, "carte", c.cle)
+		return ba
+	}
 	img := himap.FondPNG(rendu, rendu.NX, rendu.NY, nil, e.styleDe(c.cle))
 	// LE CADRE PUBLIÉ EST CELUI DE LA MATIÈRE, pas celui de la grille : la coquille de mort a
 	// effacé hors frontière et personne ne recalculait le cadre après elle (cadre_utile.go).
@@ -188,8 +193,9 @@ func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu,
 	}
 	ba.OctetsPNG = octets
 	pf := e.planDeCible(ctx, c, b, img, cal)
+	rf := reliefDeCible(ctx, c.cle, entreesDeCible(c, rendu, img, cal, pf))
 	ba.Suivi = suiviFond{Decision: e.decisionFond(c.cle), Action: actionRecuite, Plan: pf, PartRognee: partRognee(b, img)}
-	if err := e.ecritSidecar(ctx, c, b, cal, pf); err != nil {
+	if err := e.ecritSidecar(ctx, c, b, cal, annexesFond{Plan: pf, Relief: rf}); err != nil {
 		ba.Err = err
 		slog.ErrorContext(ctx, "écriture sidecar", "err", err, "carte", c.cle)
 		return ba
@@ -222,10 +228,17 @@ func ecritPNG(chemin string, img image.Image) (int64, error) {
 	return st.Size(), nil
 }
 
-// ecritSidecar écrit le calage et les stats à côté du PNG, plan des murs et image plan compris.
+// annexesFond est ce qui se publie avec un fond sans en être le fond : son plan des murs et son relief
+// (nil : la carte n'en a pas).
+type annexesFond struct {
+	Plan   *planFond
+	Relief *reliefFond
+}
+
+// ecritSidecar écrit le calage et les stats à côté du PNG, plan des murs, image plan et relief compris.
 // `cal` est le calage du PNG publié, rogné à la matière : l'origine suit le rognage, l'échelle non
 // (cadre_utile.go).
-func (e *environnement) ecritSidecar(ctx context.Context, c cible, b himap.BilanCuisson, cal himap.CalageFond, pf *planFond) error {
+func (e *environnement) ecritSidecar(ctx context.Context, c cible, b himap.BilanCuisson, cal himap.CalageFond, a annexesFond) error {
 	meta := mapfondsidecar.MapBackground{MapBackground: replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
@@ -241,7 +254,8 @@ func (e *environnement) ecritSidecar(ctx context.Context, c cible, b himap.Bilan
 		Stats:        statsDeBilan(b),
 		Degradations: sansCheminAbsolu(b.Degradations, e.racineJeu, e.repoRoot),
 	}}
-	poseLePlan(ctx, e.sortieDir, c.cle, pf, &meta)
+	poseLePlan(ctx, e.sortieDir, c.cle, a.Plan, &meta)
+	poseLeRelief(ctx, e.sortieDir, c.cle, a.Relief, &meta)
 	return mapfondsidecar.Write(filepath.Join(e.sortieDir, c.cle+".json"), meta)
 }
 

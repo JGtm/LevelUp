@@ -40,6 +40,8 @@
     "forgeDeathVolumes": 20
   },
   "planImage": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1.plan.webp",
+  "reliefImage": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1.relief.webp",
+  "reliefData": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1.relief.json.gz",
   "plan": {
     "source": "navmesh.blob",
     "vertices": 10864,

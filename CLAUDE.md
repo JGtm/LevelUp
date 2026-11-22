@@ -512,6 +512,17 @@ git commit -m "refactor(phase2): ..."
   unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
   nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
   `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet) ·
+  `0049` **fond Relief et coupe par étage** (troisième fond de carte, le Plan restant le défaut : hauteur du dessus par
+  pixel, drapeaux, étages, sols du maillage et traits calculés UNE fois à la cuisson par la brique
+  `halo-infinite-map-images` v1.4.0, teintés, ombrés, coupés et dessinés par le navigateur dans un Web Worker ; fichiers
+  `<clé>.relief.webp` et `<clé>.relief.json.gz`, JAMAIS `.json`, que l'index des fonds du décodeur prendrait pour un
+  sidecar ; `mapfond-build --relief-seul` projette dans le calage PUBLIÉ du sidecar et n'y ajoute que `reliefImage` et
+  `reliefData` ; dessus relevé au sol praticable du maillage, sol sans géométrie tiré du maillage ; coupe par étage dans
+  les trois vues 2D, avec suivi de l'étage du joueur ouvert dans le rejeu ; relief périmé (calage différent) = relief
+  absent, repli sur le Plan ; une teinte par palette d'accessibilité ; cerne deux tons des marqueurs ; étages en rangs,
+  unités du jeu d'environ 3 m ; lumière en haut à gauche de l'écran ; maillage de Live Fire lu dans le module partagé,
+  frontière et eau partagées non appliquées ; crédit OpenSpartan Cartographer, Den, MIT ; amende 0048 D-3, D-4, D-5 et
+  D-8) ·
   `0050` **coup d'envoi du match : une résolution, une écriture** (`timeline.ResolveKickoff` seul point de décision,
   ordre fixe `film` (coup d'envoi publié par le rejeu, tel quel) > `api` (estimation par les arrivées, un appel) > inconnu ;
   source rangée dans `match_registry.real_start_source` ; temps de jeu recalculé sur ce coup d'envoi ; hors des insertions

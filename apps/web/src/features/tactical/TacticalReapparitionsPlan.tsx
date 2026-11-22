@@ -18,7 +18,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
-
+import { zonesInCut } from '@/lib/replay/reliefViewLogic'
 
 import type { TacticalText } from './i18n'
 import { cadrageDuFond, MARGE_LEGENDE, type EtatDuPlan } from './plan.logic'
@@ -33,7 +33,7 @@ import {
   type LectureReapparitions,
   type ZoneProposee,
 } from './reapparitions.logic'
-import { TacticalPiluleFond } from './TacticalPiluleFond'
+import { TacticalPilulesFond } from './TacticalPilulesFond'
 import { PuceDEcart } from './TacticalReapparitionsPuce'
 import { TacticalReapparitionsZones } from './TacticalReapparitionsZones'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
@@ -42,6 +42,7 @@ import { aspectDuPlan, dimensionsDuPlan, ESTOMPE } from './tacticalLecture.logic
 import { repereDuPlan } from './tacticalView.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useOrientationDuPlan } from './useOrientationDuPlan'
+import { useTacticalRelief } from './useTacticalRelief'
 
 export interface TacticalReapparitionsPlanProps {
   t: TacticalText
@@ -94,6 +95,11 @@ export function TacticalReapparitionsPlan({
   const { scene, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const cadrage = cadrageDuFond(scene, fenetre, turns)
   const cadre = useMemo(() => cadreDeLaCouche(cadreFond, lue?.bornes), [cadreFond, lue?.bornes])
+  // LE RELIEF ET LA COUPE PAR ÉTAGE : le fond les suit, et les zones nommées (teinte et étiquettes) portent une hauteur.
+  const relief = useTacticalRelief(playerSlug, mapId, turns)
+  const zonesCoupees = useMemo(() => zonesInCut(zones, relief.floor.cut), [zones, relief.floor.cut])
+  // Les zones que la coupe retire du plan : la pilule « Zone tenue » les dit, elle ne les présente pas comme tenues.
+  const horsCoupe = useMemo(() => zonesHorsCoupe(zones, zonesCoupees), [zones, zonesCoupees])
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const surLePlan = !!(repere && cadre && zones.length > 0 && etat !== 'echec')
   const info = modele
@@ -109,8 +115,8 @@ export function TacticalReapparitionsPlan({
           trailing: (
             <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
               {pilule}
-              <PiluleZoneTenue t={t} zones={zonesProposees} choisie={choisie} onChoisir={onChoisir} />
-              <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
+              <PiluleZoneTenue t={t} zones={zonesProposees} horsCoupe={horsCoupe} choisie={choisie} onChoisir={onChoisir} />
+              <TacticalPilulesFond locale={locale} relief={relief} />
               {modele && (
                 <span className="whitespace-nowrap text-[11.5px] font-normal text-muted-foreground">
                   {t.reappMeta(modele.reference.matchs, modele.reference.reapparitions)}
@@ -130,11 +136,12 @@ export function TacticalReapparitionsPlan({
             hauteurMax={hauteurMax}
             cadreRef={cadreRef}
             cadrage={cadrage}
+            surface={relief.surface}
           >
             {surLePlan && repere && cadre && (
               <>
                 <TacticalReapparitionsZones
-                  zones={zones}
+                  zones={zonesCoupees}
                   lecture={modele}
                   cadre={cadre}
                   cadrage={cadrage}
@@ -144,7 +151,7 @@ export function TacticalReapparitionsPlan({
                   onChoisir={(volume) => onChoisir(volume === choisie ? null : volume)}
                   estompe={estompe}
                 />
-                <EtiquettesDeZones t={t} locale={locale} zones={zones} modele={modele} repere={repere} estompe={estompe} />
+                <EtiquettesDeZones t={t} locale={locale} zones={zonesCoupees} modele={modele} repere={repere} estompe={estompe} />
               </>
             )}
             <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
@@ -166,32 +173,50 @@ export function TacticalReapparitionsPlan({
   )
 }
 
-/** PiluleZoneTenue — la pilule « Zone tenue » : le choix de la zone, au clavier comme à la souris. */
+/** Les indices de volume des zones que la coupe retire du plan : aucune sans coupe (la liste filtrée est alors la même). */
+function zonesHorsCoupe(zones: readonly CalloutZoneReady[], gardees: readonly CalloutZoneReady[]): ReadonlySet<number> {
+  if (gardees === zones) return new Set()
+  const restent = new Set(gardees.map((z) => z.volumeIndex))
+  return new Set(zones.filter((z) => !restent.has(z.volumeIndex)).map((z) => z.volumeIndex))
+}
+
+/**
+ * PiluleZoneTenue — la pilule « Zone tenue » : le choix de la zone, au clavier comme à la souris.
+ *
+ * LA COUPE PAR ÉTAGE NE DÉFAIT PAS LE CHOIX : la zone tenue pilote la lecture (la répartition, la colonne de droite),
+ * et un curseur qui glisse croiserait des étages sans que l'on veuille la perdre. Quand la coupe retire du plan la zone
+ * choisie, la pilule le DIT (« … (hors de l'étage affiché) », grisée, avec son explication) au lieu de la présenter
+ * comme tenue alors que ni sa teinte ni son étiquette ne sont à l'écran ; lever la coupe ou choisir son étage la rend.
+ */
 function PiluleZoneTenue({
   t,
   zones,
+  horsCoupe,
   choisie,
   onChoisir,
 }: {
   t: TacticalText
   zones: readonly ZoneProposee[]
+  horsCoupe: ReadonlySet<number>
   choisie: number | null
   onChoisir: (volumeIndex: number | null) => void
 }) {
+  const choisieHorsCoupe = choisie !== null && horsCoupe.has(choisie)
   return (
-    <label className={PILULE}>
+    <label className={PILULE} title={choisieHorsCoupe ? t.reappHeldOffFloorHint : undefined}>
       <span className={ETIQUETTE}>{t.reappPillHeld}</span>
       <select
         value={choisie === null ? '' : String(choisie)}
         onChange={(e) => onChoisir(e.target.value === '' ? null : Number(e.target.value))}
         aria-label={t.reappPillHeld}
-        className="w-[150px] bg-transparent pl-1.5 pr-0.5 text-foreground"
+        aria-description={choisieHorsCoupe ? t.reappHeldOffFloorHint : undefined}
+        className={`w-[150px] bg-transparent pl-1.5 pr-0.5 ${choisieHorsCoupe ? 'text-muted-foreground' : 'text-foreground'}`}
         data-testid="tactical-reapp-zone-select"
       >
         <option value="">{t.reappHeldNone}</option>
         {zones.map((z) => (
           <option key={z.volumeIndex} value={z.volumeIndex}>
-            {z.nom}
+            {horsCoupe.has(z.volumeIndex) ? t.reappHeldOffFloor(z.nom) : z.nom}
           </option>
         ))}
       </select>

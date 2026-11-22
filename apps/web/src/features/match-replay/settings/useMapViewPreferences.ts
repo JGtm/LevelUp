@@ -1,6 +1,6 @@
 /**
  * useMapViewPreferences — LES RÉGLAGES DE LA CARTE QUE TOUTES LES VUES 2D PARTAGENT : l'orientation
- * de la carte, l'interrupteur du plan des murs et le style du fond (rendu ou plan).
+ * de la carte, l'interrupteur du plan des murs et le style du fond (plan, rendu ou relief).
  *
  * Une carte tournée dans le rejeu est tournée partout (onglet Tactique, « Occupation du terrain »),
  * et le plan des murs s'allume et s'éteint d'un seul geste : ces pages n'ont AUCUN réglage propre, elles
@@ -43,8 +43,10 @@ export interface MapViewPreferences {
   /** Le plan des murs doit-il être tracé ? */
   showWallPlan: boolean
   /**
-   * Le style de fond voulu : `rendu` ou `plan`. C'est un VOULOIR : il ne vaut que pour un fond qui a
-   * une image plan (`resolveBackgroundVariant`) ; le plan des murs, lui, est déjà dans cette image.
+   * Le style de fond voulu : `plan`, `rendu` ou `relief`. C'est un VOULOIR : il ne vaut que pour un fond qui a
+   * l'image demandée (`resolveBackgroundVariant`) ; le plan des murs, lui, est déjà dans l'image plan. Les trois vues 2D
+   * (rejeu, Tactique, « Occupation du terrain ») le lisent avec ce que leur fond offre : sans relief lisible, un `relief`
+   * voulu se lit `plan`, puis `rendu`.
    */
   backgroundStyle: MapBackgroundVariant
   /** Change et retient le style du fond : la MÊME clé que le panneau « Vue » du rejeu (une seule source, lue et écrite des deux côtés). */

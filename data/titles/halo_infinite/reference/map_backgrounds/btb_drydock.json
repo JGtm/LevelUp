@@ -36,6 +36,8 @@
     "covered": false
   },
   "planImage": "btb_drydock.plan.webp",
+  "reliefImage": "btb_drydock.relief.webp",
+  "reliefData": "btb_drydock.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 15907,

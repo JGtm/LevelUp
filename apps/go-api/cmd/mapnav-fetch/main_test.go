@@ -114,3 +114,34 @@ func TestPageSansBlocJSONEchoue(t *testing.T) {
 
 // srvURL reconstitue l origine du serveur de test depuis la requete recue.
 func srvURL(r *http.Request) string { return "http://" + r.Host }
+
+// TestNomEcritSuitLeCatalogueDeCuisson — sans l option, le nom reste <map_id><ext> ; avec elle,
+// c est le nom EXACT que la cuisson lit (Absolution : un nom, pas son map_id), et une carte que
+// le catalogue ignore est refusee plutot que posee sous un nom que personne ne lirait.
+func TestNomEcritSuitLeCatalogueDeCuisson(t *testing.T) {
+	const absolution = "78da545f-a168-4a5e-9c8d-dd379067c352"
+	if got, err := nomEcrit(absolution, ".mvar", false); err != nil || got != absolution+".mvar" {
+		t.Fatalf("sans option : %q, %v", got, err)
+	}
+	if got, err := nomEcrit(absolution, ".mvar", true); err != nil || got != "absolution_map.mvar" {
+		t.Fatalf("avec option : %q, %v, attendu absolution_map.mvar", got, err)
+	}
+	if _, err := nomEcrit("inconnue-du-catalogue", ".mvar", true); err == nil {
+		t.Fatal("carte absente du catalogue acceptee")
+	}
+}
+
+// TestCarteInconnueCompteeEnEchecSansRequete — le refus du nom precede toute requete : une
+// carte hors catalogue echoue meme sans reseau, et rien n est ecrit dans le depot.
+func TestCarteInconnueCompteeEnEchecSansRequete(t *testing.T) {
+	dest := t.TempDir()
+	err := executer(context.Background(), options{
+		mapIDs: []string{"inconnue-du-catalogue"}, sortie: dest, fichier: "map.mvar", nomCuisson: true,
+	})
+	if err == nil {
+		t.Fatal("campagne en echec declaree reussie")
+	}
+	if restes, _ := os.ReadDir(dest); len(restes) != 0 {
+		t.Fatalf("fichiers ecrits malgre l echec : %d", len(restes))
+	}
+}

@@ -79,13 +79,16 @@ import {
 import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import type { EtatDeLaSequence } from './sequenceCause.logic'
 import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
+import { zonesInCut } from '@/lib/replay/reliefViewLogic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useOrientationDuPlan } from './useOrientationDuPlan'
-import { useTacticalFondVariante } from './useTacticalFondVariante'
+import { useTacticalRelief, type TacticalRelief } from './useTacticalRelief'
 import { SCENE_VIDE } from './mort.logic'
 import { ETIQUETTE, PILULE } from './pilules'
 import { LECTURE_REAPPARITIONS } from './reapparitions.logic'
-import { TacticalPiluleFond } from './TacticalPiluleFond'
+import { TacticalPilulesFond } from './TacticalPilulesFond'
+import { TacticalPlanMentions } from './TacticalPlanMentions'
+import { calquesSansHauteur } from './reliefPlan.logic'
 import { PiluleLecture } from './TacticalPiluleLecture'
 import { PilulesDeReapparition } from './TacticalPlanVies'
 import type { TacticalVies } from './vies.logic'
@@ -190,8 +193,10 @@ export function TacticalPlanCard({
     cadreRef,
   )
   const planDesMurs = useTacticalMapBackgroundPlan(playerSlug, mapId)
-  // En mode plan, les murs sont déjà dans l'image du fond : le calque des murs se retire.
-  const { variante } = useTacticalFondVariante(playerSlug, mapId)
+  // LE RELIEF, SES TRAITS ET LA COUPE PAR ÉTAGE. Le fond posé (`relief.drawn`) décide des murs : en mode plan ils sont
+  // déjà dans l'image du fond, le calque des murs se retire.
+  const relief = useTacticalRelief(playerSlug, mapId, turns)
+  const coupe = relief.floor.cut
   const repere = useMemo(
     () => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null),
     [cadreFond, lue, turns],
@@ -199,7 +204,9 @@ export function TacticalPlanCard({
   const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
-  const zonesPeintes = reglages.zonesVisibles ? zones : AUCUNE_ZONE
+  // Les zones nommées portent une hauteur : la coupe les filtre (liste fermée, `reliefPlan.logic`).
+  const zonesCoupees = useMemo(() => zonesInCut(zones, coupe), [zones, coupe])
+  const zonesPeintes = reglages.zonesVisibles ? zonesCoupees : AUCUNE_ZONE
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
@@ -219,6 +226,14 @@ export function TacticalPlanCard({
   // Une mort choisie (`vue`) : le nom de la zone (déjà en tête de la colonne de droite) se retire du plan.
   const mortSelectionnee = vue !== null
   // La toile suit la tête de lecture tant qu'une étape de la séquence est affichée (et non l'instantané).
+  // Les calques que la coupe laisse entiers, nommés au pied du plan quand une coupe est choisie.
+  const murs = isWallPlanDrawn(showWallPlan, relief.drawn) && planDesMurs !== null
+  const mentions = calquesSansHauteur(coupe, {
+    chaleur: !!lue && raisonVide === null,
+    murs,
+    tueurs: pointsTueurs.length > 0,
+    coequipiers: sceneMort.marques.length > 0 || sceneMort.cercle !== null,
+  })
   const sequenceLue = vue?.sequence ?? null
   const lectureDeVue = vue?.lecture ?? null
   const enSequence = vue?.etape !== null && vue?.etape !== undefined
@@ -233,7 +248,7 @@ export function TacticalPlanCard({
         title={titre}
         label={titre || undefined}
         titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} playerSlug={playerSlug} mapId={mapId} {...reglages} />,
+          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} locale={locale} relief={relief} {...reglages} />,
           testId: 'tactical-plan-title',
         })}
       >
@@ -252,6 +267,7 @@ export function TacticalPlanCard({
             hauteurMax={hauteurMax}
             cadreRef={cadreRef}
             cadrage={cadrageDuFond(scene, fenetre, turns)}
+            surface={relief.surface}
           >
             {lue && raisonVide === null && (
               <CalqueDuPlan
@@ -261,7 +277,8 @@ export function TacticalPlanCard({
                 zoom={zoom}
                 ramp={peinture.ramp}
                 zones={zonesPeintes}
-                plan={isWallPlanDrawn(showWallPlan, variante) ? planDesMurs : null}
+                plan={murs ? planDesMurs : null}
+                reliefLines={relief.linesLayer}
                 locale={locale}
                 selected={selected}
                 onPointSelect={onPointSelect}
@@ -304,6 +321,7 @@ export function TacticalPlanCard({
           />
         </div>
         <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} etatSequence={etatSequence} />
+        <TacticalPlanMentions t={t} calques={mentions} />
       </SectionCard>
     </div>
   )
@@ -338,9 +356,9 @@ function ReglagesEnPilules({
   reapparitionsDisponibles = false,
   onReapparitions,
   zonesDisponibles,
-  playerSlug,
-  mapId,
-}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean; playerSlug: string; mapId: string }) {
+  locale,
+  relief,
+}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean; locale: Locale; relief: TacticalRelief }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
@@ -381,7 +399,7 @@ function ReglagesEnPilules({
         vies={vies}
         onViesChange={onViesChange}
       />
-      <TacticalPiluleFond t={t} playerSlug={playerSlug} mapId={mapId} />
+      <TacticalPilulesFond locale={locale} relief={relief} />
       {zonesDisponibles && (
         <button
           type="button"

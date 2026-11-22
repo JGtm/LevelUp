@@ -55,7 +55,7 @@ function singlePointTrack(
 function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
   return {
     colorOfSlot: () => "rgb(1 2 3)",
-    ink: "rgb(9 9 9)",
+    outline: { band: "rgb(9 9 9)", rim: "rgb(250 250 250)" },
     // Frame LOIN du départ de la vie : l'anneau d'apparition ne doit pas s'ajouter aux
     // comptages d'arcs (il vit 0,8 s après le spawn).
     frame: 50,

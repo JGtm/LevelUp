@@ -54,6 +54,8 @@ type mockReplayService struct {
 	vuMapID             string
 	// planErr : l'erreur des deux images plan (par match et par carte).
 	planErr error
+	// reliefErr : l'erreur des quatre lectures du relief (images et données, par match et par carte).
+	reliefErr error
 }
 
 // contentTypeOuDefaut rend "image/png" quand aucun type n'a été fixé explicitement — le
@@ -96,6 +98,26 @@ func (m *mockReplayService) MapBackgroundPlanImage(_ context.Context, _ string) 
 func (m *mockReplayService) MapBackgroundPlanImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
 	m.vuMapID = mapID
 	return []byte("plan-carte"), "image/webp", m.planErr
+}
+
+// Les quatre lectures du relief rendent des octets distincts de ceux du fond et du plan : un handler
+// qui servirait le fond ou le plan à la place du relief se verrait.
+func (m *mockReplayService) MapBackgroundReliefImage(_ context.Context, _ string) ([]byte, string, error) {
+	return []byte("relief-match"), "image/webp", m.reliefErr
+}
+
+func (m *mockReplayService) MapBackgroundReliefImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
+	m.vuMapID = mapID
+	return []byte("relief-carte"), "image/webp", m.reliefErr
+}
+
+func (m *mockReplayService) MapBackgroundReliefData(_ context.Context, _ string) ([]byte, error) {
+	return []byte(`{"donnees":"match"}`), m.reliefErr
+}
+
+func (m *mockReplayService) MapBackgroundReliefDataForMap(_ context.Context, mapID string) ([]byte, error) {
+	m.vuMapID = mapID
+	return []byte(`{"donnees":"carte"}`), m.reliefErr
 }
 
 func (m *mockReplayService) SpawnForecast(_ context.Context, _ string) (replaydoc.SpawnForecast, error) {

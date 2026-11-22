@@ -125,6 +125,19 @@ ajoute, jamais par un `isDark` dans un graphe. Garde-fous : `lib/accessibility/i
 et sous daltonisme, teinte) et `app/providers/theme-provider-impact.test.tsx` (valeurs écrites sur
 `:root` au basculement).
 
+## Fond « Relief » et cerne des pions — trois jetons
+
+- `map-relief-base` : teinte de base de la rampe du fond Relief, UNE valeur par palette et la même dans les
+  deux thèmes (Graphite `#6B7078` par défaut, Violet `#7559B5` Okabe-Ito et Tol Bright, Vert `#3F8C4F`
+  Cividis). La rampe de clarté s'en tire par `lib/accessibility/reliefRamp.ts` (`reliefRampHex`) : pas de
+  jeton par palier.
+- `marker-outline-band` (bande sombre) et `marker-outline-rim` (filet clair) : le cerne deux tons des
+  pions du rejeu (`features/match-replay/layers/markerOutline.ts`), mêmes valeurs partout
+  (`palettes/_mapMarkerOutline.ts`, étalées dans chaque palette). Le noyau du pion garde la couleur d'équipe.
+- Garde-fou : `lib/accessibility/mapReliefTokens.test.ts` (par palette, thème et vision : paliers voisins de la
+  rampe à ΔE ≥ 6, meilleur des deux tons du cerne à 3:1 contre la rampe du Relief, le fond Plan, le fond Rendu
+  et la carte du thème).
+
 ## Exceptions tolérées
 
 Une exception est un commentaire `color-allow(<genre>[, <genre>]): <raison>` sur la MÊME ligne.

@@ -40,6 +40,8 @@
     "eau : aucun volume d'eau dans le sddt de btb_fragmentation-rtx-new.module"
   ],
   "planImage": "btb_fragmentation.plan.webp",
+  "reliefImage": "btb_fragmentation.relief.webp",
+  "reliefData": "btb_fragmentation.relief.json.gz",
   "plan": {
     "source": "navmesh module any",
     "vertices": 18171,

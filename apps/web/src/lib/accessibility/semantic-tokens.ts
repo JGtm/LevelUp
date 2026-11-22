@@ -221,6 +221,16 @@ export type SemanticToken =
   | 'heatmap-freq-low'
   | 'heatmap-freq-high'
 
+  // ── Fond de carte « Relief » et cerne des pions (3) — rejeu 2D, Tactique, Occupation ──
+  // `map-relief-base` : la teinte de base de la rampe du fond Relief,
+  // UNE valeur par palette et la même dans les deux thèmes ; la rampe de clarté (bas sombre, haut
+  // clair) s'en tire par `reliefRamp.ts`, jamais en jetons de plus. Les deux autres sont le CERNE
+  // DEUX TONS des pions : bande sombre contre le noyau, filet clair au bord ; mêmes
+  // valeurs partout (`palettes/_mapMarkerOutline.ts`). Garde-fou : mapReliefTokens.test.ts.
+  | 'map-relief-base'
+  | 'marker-outline-band'
+  | 'marker-outline-rim'
+
   // ── Équipes (2) — couleurs configurables via les settings d'accessibilité ─
   // Correspondent aux couleurs d'outline choisies par l'utilisateur in-game.
   | 'team-ally'
@@ -275,5 +285,6 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'impact-loss-1', 'impact-loss-2', 'impact-loss-3',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'heatmap-freq-low', 'heatmap-freq-high',
+  'map-relief-base', 'marker-outline-band', 'marker-outline-rim',
   'team-ally', 'team-enemy',
 ] as const
