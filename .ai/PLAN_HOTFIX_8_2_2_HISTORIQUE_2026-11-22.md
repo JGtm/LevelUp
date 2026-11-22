@@ -113,6 +113,13 @@ page.
     Tests : 30 introuvables en haut sur 3 passes (exact, zéro reprise depuis 0), N neufs, ancre perdue, contrôle raté, budget avant l'ancre, sans ancre.
   - [x] D-21.3 Test de convergence `cmd/server` mis à jour : appels `GetMatchHistory` par cycle [8 11 11 11 11 4] (56) -> [8 9 10 9 10 2] (48).
   - [ ] D-21.4 Halo 5 : à brancher par la piste Halo 5 sur l'API D-21.1 (`catchup.go` range `Cursor{Offset, LastMatchID}` sans `HeadID`).
+- **D-22** (utilisateur, 22/11) Site hébergé : ancien comportement des films (8 frags et 5 rejeux par
+  cycle, cadence non liée à l'arriéré de films), pour ménager le serveur de prod (2 vCPU, 2 Go). Le
+  comportement D-17/D-20 ne vaut que sur le bureau, décidé par une capacité du profil de déploiement
+  (ADR 0044), jamais par le profil lui-même. Le rattrapage des matchs (200 par passe, 10 min) vaut partout.
+- **D-23** (utilisateur, 22/11) Le delta des nouveaux matchs ne s'arrête plus au premier match connu mais
+  après une page entière (25) de matchs connus d'affilée : un match rangé d'abord par un coéquipier
+  (connu par ses participants) ne cache plus les matchs inconnus juste en dessous. Infinite (V2) et Halo 5.
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
