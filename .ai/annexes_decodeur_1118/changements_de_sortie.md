@@ -71,4 +71,14 @@ manches figées, fenêtres des éliminations en millisecondes, replis nommés, n
 
 Surface publique de `decfilm` : `ObjectiveTypeVip` ajoutée ; `NomPrecisionParArmePasseSautee` et `NomDistancesDeToucheDesactivees` retirées (le registre ne les déclare plus).
 
+## Après le gate du corpus (2026-11-22)
+
+| Champ | Changement | Films touchés |
+|---|---|---|
+| `coverage.fallbacks` (`repli_emission_hors_domaine_jetee`) | REMPLACE la ligne de la quatrième intégration : une émission jetée ne se compte que sur un film que la table du Drapeau reconnaît ; hors Drapeau le compte revient à zéro ou sous sa valeur de v1.4.1 (les valeurs négatives vues par le seul verdict de mode ne se comptent plus) | 6 des 20 films de l'équivalence (1 952 → 0, 1 838 → 0, 515 → 11, 44 → 4, 38 → 0, 36 → 0) |
+| `coverage.fallbacks` (`repli_identite_premier_occupant_du_siege`) | baisse : correction des trajets de véhicule | 7 témoins du gate (par exemple 283 → 192) |
+| `coverage.objectives.available`, `refusedByRoster` | CAUSE CORRIGÉE : sur deux films de zones d'anciens builds, les candidats à canal négatif ne sont plus comptés (100 → 76, 104 → 83) ; `objectives[]` y est vide avant comme après (garde d'effectif) | 2 témoins |
+| `score` (courbe d'équipe) | un point initial à zéro d'une équipe disparaît avec le faux enregistrement qui le portait | 2 témoins |
+| `coverage.eliminations.perfectOrphans`, `selfHits`, `selfDamages` | champs de couverture neufs ou recomptés, non nommés plus haut | 2 à 5 témoins |
+
 À mesurer sur le parc régénéré : chaque ligne ci-dessus (gate de l'étape L).

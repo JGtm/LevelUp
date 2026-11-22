@@ -442,6 +442,20 @@ puis L, puis R. Les recherches Opus (B.3, C.3, E.1, G.1) partent dès l'étape 0
 
 ## Journal d'exécution
 
+- 2026-11-22 — GATE DU CORPUS ROUGE sur la tête `f72779d` (17 témoins en perte, 2 FAUX), tag suspendu. Les 2 FAUX : le
+  compte des émissions jetées gonflait hors Drapeau (0 → 1 838 sur un film de crâne), constat de la relecture que le pilote
+  avait rangé au backlog comme mineur, à tort : corrigé (`e703301`, une émission jetée ne se compte que sur un film que sa
+  table reconnaît ; équivalence 20 identiques après refigeage de 6 références, suite verte). Deux baisses instruites, sans
+  défaut de cette version : les candidats d'objectif de deux films de zones d'anciens builds (100 → 76, 104 → 83) perdent
+  des valeurs à canal négatif, `objectives[]` y est vide avant comme après ; les points de score perdus (2 à 8 sur 8
+  témoins) sont des points faux, 3 couples se rapprochent de l'API, 0 s'éloigne. Autres familles de perte classées :
+  effets du coup d'envoi par l'horloge et des tirs lus en plus grand nombre ; parts en hausse à instruire sur
+  `shots.aim.none`, `projectiles.shotAmbiguous`, et sur quelques témoins pour `shots.noSlot` et `vehicles.shotsNoRide`.
+  Montée LevelUp : fusion de la branche de version et corrections de la relecture Fable (`407109bec1`), révisions du coup
+  d'envoi, des notes et des dérivations montées ensemble ; ordre de déploiement : régénération du parc AVANT le premier
+  démarrage de la version. Gate relancé sur `d88b026716` contre `8f610daf1b`. Les décisions d'acceptation du manifeste du
+  gate sont au user.
+
 - 2026-11-22 — relecture adversariale du diff du décodeur (Fable, `v1.4.1..990cdf7`) : aucun P0. P1 : deux constantes
   publiques retirées (promesse semver : à rétablir dépréciées) ; `emissionHorsDomaine` juge un canal nommé seul au-delà de
   250 alors que ses textes disent « les deux côtés nommés » ; les lignes de la troisième intégration manquaient au registre
