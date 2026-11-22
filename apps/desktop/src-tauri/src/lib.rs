@@ -20,6 +20,7 @@
 //! - `updater_decision` : l'arret propre qui autorise l'installation et les messages d'apres-arret (re-exportes par [`updater`]).
 //! - [`folder_pick`] : le dossier de depart de la boite « Parcourir » demandee par la page (commande `pick_folder`, la seule que la page appelle).
 //! - [`resources`] : le paquet de ressources livre a part du moteur (L24) : le bloc de `latest.json` et l'attente de sa preparation par le serveur.
+//! - [`refresh_only`] : le relais de la tache planifiee, `LevelUp.exe --refresh-only`, qui lance le serveur sans fenetre et sort avec son code (L21.e).
 //! - [`roots`], [`secret`], [`logfile`], [`linereader`], [`navigation`] : petits outils.
 
 pub mod autostart;
@@ -33,6 +34,7 @@ pub mod linereader;
 pub mod logfile;
 pub mod native_notice;
 pub mod navigation;
+pub mod refresh_only;
 pub mod render;
 pub mod resources;
 pub mod roots;

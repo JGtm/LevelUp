@@ -29,7 +29,9 @@ function taskStatusText(t: DesktopIntegrationText, task: { state: string; error_
     case 'absent':
       return t.taskAbsent
     case 'error':
-      return task.error_code === 'unsupported_path' ? t.taskErrorPath : t.taskError
+      if (task.error_code === 'unsupported_path') return t.taskErrorPath
+      if (task.error_code === 'shell_unknown') return t.taskErrorShell
+      return t.taskError
     default:
       return t.taskUnknown
   }

@@ -29,6 +29,7 @@ use levelup_desktop::lifecycle::Timeouts;
 use levelup_desktop::logfile::{LogSink, MAX_LOG_BYTES, Source};
 use levelup_desktop::native_notice;
 use levelup_desktop::navigation::{self, ExternalOpen, Navigation, NewWindowDecision, OPEN_EXTERNAL_ENV};
+use levelup_desktop::refresh_only;
 use levelup_desktop::render::{self, SCHEME};
 use levelup_desktop::resources;
 use levelup_desktop::roots::{self, Roots};
@@ -71,6 +72,10 @@ struct Shell {
 }
 
 fn main() {
+    // Relais de la tache planifiee : avant tout (ni instance unique, ni fenetre, ni plugin).
+    if refresh_only::requested(std::env::args_os().skip(1)) {
+        std::process::exit(refresh_only::run(std::env::args_os().skip(1), SERVER_EXE));
+    }
     let locale = catalogue::resolve_locale(&sys_locale::get_locale().unwrap_or_default());
     // Demarrage avec Windows (L21.d) : l'entree de demarrage ajoute `--minimized`, la fenetre reste cachee.
     let initial = launch::initial_window(launch::started_minimized(std::env::args()));
@@ -277,6 +282,7 @@ fn start_server(
     let config = ShellConfig {
         spec: SidecarSpec {
             exe,
+            shell_exe: std::env::current_exe().map_err(|e| format!("chemin de l'executable : {e}"))?,
             roots,
             secret,
             extra_env: resources::pubkey_env(updater_pubkey(app).as_deref()),

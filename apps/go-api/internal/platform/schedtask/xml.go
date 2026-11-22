@@ -8,58 +8,78 @@ import (
 	"strings"
 	"time"
 	"unicode/utf16"
-
-	"levelup/go-api/internal/config"
 )
 
-// forbiddenPathChars : ce qu'un chemin ne peut pas porter pour que la ligne de commande de la tâche reste
-// exacte sous cmd.exe (guillemet, expansion %, enchaînements, échappement, redirections, retours à la ligne).
-const forbiddenPathChars = "\"%&^!<>|\r\n"
+// Les drapeaux de la coquille que la tâche lance (`LevelUp.exe --refresh-only ...`) : la coquille les lit
+// (module refresh_only de apps/desktop) et relaie au serveur voisin.
+const (
+	flagRefreshOnly = "--refresh-only"
+	flagDataDir     = "--data-dir"
+	flagResourceDir = "--resources-dir"
+	flagLogsDir     = "--logs-dir"
+)
 
-// validatePath refuse un chemin vide, relatif ou portant un caractère que cmd.exe interpréterait.
+// validatePath refuse un chemin que la ligne de commande de la tâche ne sait pas porter. La coquille la découpe
+// par la règle de CommandLineToArgvW : un chemin vide ou relatif ne désigne rien de stable, un guillemet ou un
+// retour à la ligne rompt l'argument, et une barre oblique inverse finale échapperait le guillemet fermant. Les
+// autres caractères (% & ^ ! < > |) passent tels quels : aucun interpréteur de commandes ne lit cette ligne.
 func validatePath(label, p string) error {
 	switch {
 	case strings.TrimSpace(p) == "":
 		return fmt.Errorf("%w : %s est vide", ErrUnsupportedPath, label)
 	case !filepath.IsAbs(p):
 		return fmt.Errorf("%w : %s n'est pas absolu", ErrUnsupportedPath, label)
-	case strings.ContainsAny(p, forbiddenPathChars):
-		return fmt.Errorf("%w : %s porte un caractère réservé", ErrUnsupportedPath, label)
+	case strings.ContainsAny(p, "\"\r\n"):
+		return fmt.Errorf("%w : %s porte un guillemet ou un retour à la ligne", ErrUnsupportedPath, label)
+	case strings.HasSuffix(p, `\`):
+		return fmt.Errorf("%w : %s se termine par une barre oblique inverse", ErrUnsupportedPath, label)
 	}
 	return nil
 }
 
-// commandArguments rend les arguments de cmd.exe : les trois racines dans l'environnement, puis le serveur en
-// mode refresh-only. `/s` retire le premier et le dernier guillemet de la commande, ce qui laisse les guillemets
-// intérieurs intacts.
+// commandArguments rend les arguments de la coquille : le mode, puis les trois racines (LEVELUP_DATA_DIR,
+// LEVELUP_RESOURCES_DIR, LEVELUP_LOGS_DIR du serveur) entre guillemets. Les chemins ont passé [validatePath].
 func commandArguments(spec Spec) string {
-	return fmt.Sprintf(`/d /s /c "set "%s=%s" && set "%s=%s" && set "%s=%s" && "%s" -mode refresh-only"`,
-		config.EnvDataDir, spec.DataRoot, config.EnvResourcesDir, spec.ResourcesRoot, config.EnvLogsDir, spec.LogsRoot,
-		spec.ExePath)
+	return fmt.Sprintf(`%s %s "%s" %s "%s" %s "%s"`,
+		flagRefreshOnly, flagDataDir, spec.DataRoot, flagResourceDir, spec.ResourcesRoot, flagLogsDir, spec.LogsRoot)
 }
 
 // taskXML rend la définition de la tâche (schéma Task Scheduler 1.2), encodée en UTF-16 petit-boutiste avec
 // son BOM, la seule forme que `schtasks /Create /XML` accepte partout. now donne le premier déclenchement.
+//
+// L'action lance la coquille (LevelUp.exe, sous-système graphique) et non le serveur : un programme console lancé
+// par le planificateur ouvre une fenêtre visible au premier plan, la coquille n'en ouvre aucune et lance le serveur
+// sans fenêtre.
 //
 // Ce que la définition pose, et pourquoi : une répétition toutes les 6 heures ; un compte interactif sans
 // élévation (LeastPrivilege) ; `StartWhenAvailable` (une exécution manquée parce que le poste dormait part au
 // réveil) ; aucune condition de batterie (un portable sur batterie rafraîchit aussi) ; `IgnoreNew` (jamais deux
 // exécutions) ; `Hidden` ; une limite de 15 minutes (le mode refresh-only se borne déjà à 10).
 func taskXML(spec Spec, now time.Time) ([]byte, error) {
+	if spec.ShellExe == "" {
+		return nil, ErrShellUnknown
+	}
 	for _, check := range []struct{ label, path string }{
-		{"l'exécutable", spec.ExePath}, {"la racine des données", spec.DataRoot},
+		{"la coquille", spec.ShellExe}, {"la racine des données", spec.DataRoot},
 		{"la racine des ressources", spec.ResourcesRoot}, {"la racine des journaux", spec.LogsRoot},
 	} {
 		if err := validatePath(check.label, check.path); err != nil {
 			return nil, err
 		}
 	}
-	var args, workdir bytes.Buffer
-	if err := xml.EscapeText(&args, []byte(commandArguments(spec))); err != nil {
-		return nil, fmt.Errorf("schedtask: arguments : %w", err)
-	}
-	if err := xml.EscapeText(&workdir, []byte(spec.ResourcesRoot)); err != nil {
-		return nil, fmt.Errorf("schedtask: dossier de travail : %w", err)
+	var command, args, workdir bytes.Buffer
+	for _, field := range []struct {
+		out   *bytes.Buffer
+		label string
+		text  string
+	}{
+		{&command, "commande", spec.ShellExe},
+		{&args, "arguments", commandArguments(spec)},
+		{&workdir, "dossier de travail", filepath.Dir(spec.ShellExe)},
+	} {
+		if err := xml.EscapeText(field.out, []byte(field.text)); err != nil {
+			return nil, fmt.Errorf("schedtask: %s : %w", field.label, err)
+		}
 	}
 	doc := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -96,13 +116,13 @@ func taskXML(spec Spec, now time.Time) ([]byte, error) {
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>cmd.exe</Command>
+      <Command>%s</Command>
       <Arguments>%s</Arguments>
       <WorkingDirectory>%s</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
-`, int(Interval/time.Hour), now.Format("2006-01-02T15:04:05"), args.String(), workdir.String())
+`, int(Interval/time.Hour), now.Format("2006-01-02T15:04:05"), command.String(), args.String(), workdir.String())
 	return encodeUTF16LE(doc), nil
 }
 

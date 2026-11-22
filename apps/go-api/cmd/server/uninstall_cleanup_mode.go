@@ -91,7 +91,7 @@ func newUninstallCleanupDeps(exe string, roots title.Roots, startup startupentry
 		deps.DataRoot = roots.Data
 		deps.Tasks = &schedtask.Manager{
 			Runner: runner,
-			Spec:   schedtask.Spec{ExePath: exe, DataRoot: roots.Data, ResourcesRoot: roots.Resources, LogsRoot: roots.Logs},
+			Spec:   schedtask.Spec{DataRoot: roots.Data, ResourcesRoot: roots.Resources, LogsRoot: roots.Logs},
 		}
 	}
 	return deps

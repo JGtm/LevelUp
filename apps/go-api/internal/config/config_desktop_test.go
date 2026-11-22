@@ -90,3 +90,27 @@ func TestLoad_UpdatePublicKey(t *testing.T) {
 		t.Errorf("UpdatePublicKey = %q, attendu la valeur sans espaces de bord", cfg.UpdatePublicKey)
 	}
 }
+
+// LEVELUP_SHELL_EXE (posée par la coquille : son propre chemin) alimente ShellExe, espaces de bord retirés ; absente,
+// elle reste vide : la tâche planifiée n'est alors pas posée.
+func TestLoad_ShellExe(t *testing.T) {
+	t.Setenv("LEVELUP_REPO_ROOT", t.TempDir())
+
+	t.Setenv(EnvShellExe, "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() : %v", err)
+	}
+	if cfg.ShellExe != "" {
+		t.Errorf("ShellExe = %q sans variable, attendu vide", cfg.ShellExe)
+	}
+
+	t.Setenv(EnvShellExe, `  C:\Programs\LevelUp\LevelUp.exe `+"\n")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() : %v", err)
+	}
+	if cfg.ShellExe != `C:\Programs\LevelUp\LevelUp.exe` {
+		t.Errorf("ShellExe = %q, attendu le chemin sans espaces de bord", cfg.ShellExe)
+	}
+}

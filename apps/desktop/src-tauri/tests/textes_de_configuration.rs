@@ -339,3 +339,40 @@ fn le_serveur_retire_l_entree_de_demarrage_sous_le_nom_que_la_coquille_pose() {
         "startupentry.EntryName doit valoir \"{nom}\", le nom pose par autostart::ENTRY_NAME"
     );
 }
+
+/// Le coeur du correctif de la tache planifiee : le serveur que le relais lance n'ouvre aucune console. Un test
+/// de comportement ne le voit pas (le drapeau de creation n'est pas lisible sur une `Command`) : `command` doit
+/// appeler `hide_window`, et `hide_window` doit poser `CREATE_NO_WINDOW` sous Windows.
+#[test]
+fn le_relais_de_la_tache_planifiee_lance_le_serveur_sans_fenetre() {
+    let relais = lire("src/refresh_only.rs");
+    let commande = entre(
+        &relais,
+        "pub fn command(",
+        "
+}
+",
+    );
+    assert!(
+        lignes_de_code(commande).contains(&"hide_window(&mut cmd);"),
+        "refresh_only::command doit appeler `hide_window(&mut cmd);`:
+{commande}"
+    );
+    let sidecar = lire("src/sidecar.rs");
+    let masque = entre(
+        &sidecar,
+        "pub fn hide_window(",
+        "
+}
+",
+    );
+    assert!(
+        lignes_de_code(masque).contains(&"cmd.creation_flags(CREATE_NO_WINDOW);"),
+        "hide_window doit poser `CREATE_NO_WINDOW`:
+{masque}"
+    );
+    assert!(
+        lignes_de_code(&sidecar).contains(&"const CREATE_NO_WINDOW: u32 = 0x0800_0000;"),
+        "CREATE_NO_WINDOW doit valoir 0x0800_0000 (winbase.h)"
+    );
+}
