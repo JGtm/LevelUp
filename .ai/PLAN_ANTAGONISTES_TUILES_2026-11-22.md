@@ -286,6 +286,7 @@ piste la plus en amont.
 ## Journal d'exécution
 
 - 2026-11-22 — plan écrit ; DU-1 à DU-4 confirmées par le user.
+- 2026-11-22 — `origin/release/v8.3.0` (26 commits : médailles et bouclier, décodeur, synchronisation) fusionnée dans la branche (`ff5dd02121`) ; conflits : backlog et plan maître (union), cinq fixations de la fiche (régénérées, écart limité à la section Antagonistes et au retrait de Suivre et Masquer). Gates rejoués : go build, openapi-gen -check, go test service, api, contracttest, golden, types générés inchangés, typecheck, lint web, vitest complet 15 624 verts.
 - 2026-11-22 — I.2, I.3, I.5 et R.1 closes. Backlog : quatre entrées (R1-e, doublons de `highlight_events`, éliminations des bots absentes du fil, `nemesis_duels` sans lecteur). Reste : R.2 (validation à l'écran) et R.3 (fusion dans la release, accord du user), R.4.
 - 2026-11-22 — revue R.1 rendue ; R1-a à R1-d renvoyées aux agents B, E et C ; `make gate-push` en cours sur `e06f458032`.
 - 2026-11-22 — I.2, premier passage : typecheck vert ; suite web complète 15 568 tests verts, 2 gardes de `src/lib` en échec nées de B (plafond des fonctions à plus de 5 paramètres : 47 pour 46 ; chemin d'icône écrit à la main hors `themedIcon`), renvoyées à l'agent de B. I.4 faite.
