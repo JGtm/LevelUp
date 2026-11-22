@@ -352,7 +352,9 @@ func TestCycleHistory_MarquePageSeulementSiToutEstResolu(t *testing.T) {
 	})
 }
 
-// Historique complet au départ : aucune lecture ni écriture de l'état, HistoryPending faux, delta.
+// Historique complet au départ : aucune lecture ni écriture de l'état, HistoryPending faux, delta. Cinq matchs
+// neufs en haut : le delta lit la page 0 puis la page 1, qui complète la suite de 25 connus (D-23 ; un delta
+// arrêté au premier connu ne lisait que la page 0).
 func TestCycleHistory_HistoriqueComplet_Delta(t *testing.T) {
 	e := newHistEnv(t, 300)
 	if !historystate.MarkComplete(context.Background(), e.db, "alice") {
@@ -365,8 +367,8 @@ func TestCycleHistory_HistoriqueComplet_Delta(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.HistoryPending || len(e.client.starts) != 1 || e.knownCount() != 300 {
-		t.Errorf("HistoryPending %v, %d lectures, %d connus : want faux, 1 page, 300", out.HistoryPending, len(e.client.starts), e.knownCount())
+	if out.HistoryPending || len(e.client.starts) != 2 || e.knownCount() != 300 {
+		t.Errorf("HistoryPending %v, %d lectures, %d connus : want faux, 2 pages, 300", out.HistoryPending, len(e.client.starts), e.knownCount())
 	}
 }
 

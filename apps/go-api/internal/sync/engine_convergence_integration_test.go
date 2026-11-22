@@ -6,8 +6,8 @@
 // le fournisseur B-swap, base joueur migrée).
 //
 // Contrat vérifié (D-18 du plan 8.2.2) : le moteur V1 ne rattrape pas l'historique. Il ne lit ni
-// n'écrit les clés de l'état de l'historique (historystate), s'arrête au premier match connu, ne
-// remplit pas HistoryPending, et sans match connu (première synchronisation) récupère jusqu'au
+// n'écrit les clés de l'état de l'historique (historystate), s'arrête après domain.DeltaKnownRun matchs
+// connus d'affilée (D-23), ne remplit pas HistoryPending, et sans match connu (première synchronisation) récupère jusqu'au
 // plafond demandé. Le rattrapage est fait par le cycle de l'ordonnanceur : sa convergence est
 // testée côté V2 (cmd/server) et Halo 5 (livesync).
 package sync
@@ -169,11 +169,12 @@ func requireHistoryUntouched(t *testing.T, env *e2eTestEnv, when string) {
 }
 
 // Un historique incomplet dont un match échoue de façon durable (statut 500 à chaque lecture) : le
-// moteur V1 reste un delta. Il s'arrête au premier match connu (une seule page lue par passe), ne
-// rattrape pas le match en échec ni rien derrière lui, ne remplit pas HistoryPending et ne touche
+// moteur V1 reste un delta. Il s'arrête après 25 matchs connus d'affilée (deux pages lues par passe :
+// le match en échec, retenté à chaque passe, remet la suite à zéro dans la première page), ne
+// rattrape ni le match en échec ni rien derrière la zone connue, ne remplit pas HistoryPending et ne touche
 // jamais aux clés de l'état de l'historique. C'est le cycle de l'ordonnanceur qui rattrape (et
 // abandonne un match durable, D-16).
-func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxClesEtSArreteAuPremierConnu(t *testing.T) {
+func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxClesEtSArreteApresUneSuiteDeConnus(t *testing.T) {
 	env, client, w := newConvergenceV1(t)
 	ctx := t.Context()
 	failing := w.ids[10]
@@ -196,7 +197,7 @@ func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxC
 		t.Fatalf("le scénario suppose un historique resté incomplet, registre à %d", known)
 	}
 
-	// Passes suivantes, avec des matchs neufs en haut de la liste : une page lue, aucun rattrapage.
+	// Passes suivantes, avec des matchs neufs en haut de la liste : deux pages lues, aucun rattrapage.
 	for pass := 2; pass <= 6; pass++ {
 		var fresh []string
 		if pass%2 == 0 {
@@ -209,8 +210,8 @@ func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxC
 		if err != nil {
 			t.Fatalf("passe %d : %v", pass, err)
 		}
-		if calls := client.callsGetHistory.Load() - callsBefore; calls != 1 {
-			t.Errorf("passe %d : %d lectures de pages d'historique, attendu 1 (arrêt au premier connu)", pass, calls)
+		if calls := client.callsGetHistory.Load() - callsBefore; calls != 2 {
+			t.Errorf("passe %d : %d lectures de pages d'historique, attendu 2 (suite de 25 connus complétée sur la page 2 ; avant : 1)", pass, calls)
 		}
 		if res.MatchesInserted != len(fresh) {
 			t.Errorf("passe %d : %d matchs insérés, attendu %d (les matchs neufs du dessus, rien d'ancien)", pass, res.MatchesInserted, len(fresh))
@@ -224,7 +225,7 @@ func TestConvergence_V1_DeltaPur_HistoriqueIncompletMatchEnEchec_NeTouchePasAuxC
 			}
 		}
 		if registryHas(t, env, failing) {
-			t.Errorf("passe %d : le delta ne doit pas rattraper le match en échec, derrière un match connu", pass)
+			t.Errorf("passe %d : le delta ne doit pas rattraper le match en échec", pass)
 		}
 		if res.HistoryPending {
 			t.Errorf("passe %d : le moteur V1 ne remplit pas HistoryPending", pass)
@@ -287,5 +288,47 @@ func TestConvergence_V1_FinDHistoriqueVue_NeRangeJamaisLaFin(t *testing.T) {
 			}
 			requireHistoryUntouched(t, env, "après "+name)
 		})
+	}
+}
+
+// Le joueur joue A seul, puis B avec un coéquipier ; le coéquipier range B en premier : B est connu du
+// joueur, A non. La liste est [B, A, ...] : le delta ne s'arrête plus sur B et prend A (D-23). Une
+// passe sans nouveau match, ensuite, ne lit toujours qu'une page.
+func TestConvergence_V1_Delta_ConnuRangeParUnCoequipier_LInconnuEnDessousEstPris(t *testing.T) {
+	env, client, w := newConvergenceV1(t)
+	ctx := t.Context()
+	if _, err := env.engine.RunDelta(ctx, convergenceV1Opts()); err != nil {
+		t.Fatalf("passe 1 : %v", err)
+	}
+
+	b := w.addOnTop(client, 1)[0]
+	if _, err := env.engine.RunDelta(ctx, convergenceV1Opts()); err != nil {
+		t.Fatalf("passe B : %v", err)
+	}
+	if !registryHas(t, env, b) {
+		t.Fatal("B devrait être rangé : le scénario est faux")
+	}
+
+	// A, joué avant B, que la synchronisation n'a jamais vu : placé juste sous B.
+	a := convergenceID(w.next)
+	w.next++
+	client.statsBody[a] = w.stats(a)
+	w.ids = append([]string{w.ids[0], a}, w.ids[1:]...)
+	client.history = makeHistory(w.ids...)
+
+	if _, err := env.engine.RunDelta(ctx, convergenceV1Opts()); err != nil {
+		t.Fatalf("passe A : %v", err)
+	}
+	if !registryHas(t, env, a) {
+		t.Fatal("A, joué seul sous le match B déjà connu, n'a pas été pris par le delta")
+	}
+	requireHistoryUntouched(t, env, "après la passe A")
+
+	callsBefore := client.callsGetHistory.Load()
+	if _, err := env.engine.RunDelta(ctx, convergenceV1Opts()); err != nil {
+		t.Fatalf("passe sans nouveau match : %v", err)
+	}
+	if calls := client.callsGetHistory.Load() - callsBefore; calls != 1 {
+		t.Errorf("sans nouveau match : %d lectures de pages d'historique, attendu 1 (comme avant)", calls)
 	}
 }

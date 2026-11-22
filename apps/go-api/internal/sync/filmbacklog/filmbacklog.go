@@ -72,3 +72,14 @@ var _ port.FilmBacklogReader = Reader{}
 
 // FilmBacklog rend l'arriéré publié pour le titre.
 func (Reader) FilmBacklog(titleSlug string) port.FilmBacklog { return Lire(titleSlug) }
+
+// ReaderFor rend le lecteur d'arriéré que l'ordonnanceur et l'écran d'état de l'historique consultent, selon la
+// capacité FilmCatchUp du profil de déploiement : le [Reader] publié quand elle est vraie ; rien (nil) quand elle
+// est fausse, car la cadence de rattrapage et l'état affiché ne suivent alors que l'historique, jamais l'arriéré
+// de films. Les étapes film publient dans les deux cas.
+func ReaderFor(filmCatchUp bool) port.FilmBacklogReader {
+	if !filmCatchUp {
+		return nil
+	}
+	return Reader{}
+}

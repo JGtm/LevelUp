@@ -2,7 +2,7 @@ package livesync
 
 // catchup.go — rattrapage de l'historique Halo 5 par la synchronisation automatique.
 //
-// Un delta (CollectRecentMatches) s'arrête au premier match connu : une première synchronisation
+// Un delta (CollectRecentMatches) s'arrête après domain.DeltaKnownRun matchs connus d'affilée : une première synchronisation
 // interrompue laisserait un trou définitif derrière les matchs déjà rangés. Tant que la fin de
 // l'historique n'a pas été vue pour le joueur (internal/sync/historystate), Runner.RunDelta fait donc
 // une passe de rattrapage par la mécanique du backfill (RunBackfill : connus sautés, persistance page
@@ -10,10 +10,13 @@ package livesync
 // passe a vu la fin de la liste sans erreur de page ni de persistance.
 //
 // Marque-page : la passe range la position où elle s'est arrêtée (historystate.Cursor : décalage dans la
-// liste de l'API et dernier match traité). La suivante (1) fait le delta du dessus, jusqu'au premier
-// match connu, qui compte N nouveaux matchs ; (2) reprend au décalage rangé + N moins une page de
-// recouvrement ; (3) exige l'identifiant rangé sur la page de recouvrement, sinon repart du début
-// (journalisé, compté). Une page qui échoue maxCatchUpAttempts passes de suite est abandonnée
+// liste de l'API, dernier match traité et ancre, l'entrée en tête de liste à cette passe). La suivante
+// (1) fait le delta du dessus, jusqu'à une suite de matchs connus (domain.DeltaKnownRun), et compte N, le nombre d'entrées arrivées
+// en tête : la position de l'ancre dans la liste relue (catchup_anchor.go), toutes entrées comptées,
+// écartées comprises ; sans ancre, le nombre d'entrées vues jusqu'à la dernière entrée non connue (CaptureStats.TopSpan) ; (2) reprend au
+// décalage rangé + N moins une page de recouvrement ; (3) exige l'identifiant rangé sur la page de
+// recouvrement, sinon repart du début (journalisé, compté) ; une ancre introuvable en tête de liste
+// repart du début aussi. Une page qui échoue maxCatchUpAttempts passes de suite est abandonnée
 // (historystate.Streak), pour qu'un échec durable ne garde pas le joueur en rattrapage pour toujours.
 
 import (
@@ -73,6 +76,7 @@ type catchUpPass struct {
 	res     *domain.SyncResult
 	stats   halo5.CaptureStats   // cumul du delta du dessus et de la reprise
 	saved   *historystate.Cursor // dernier marque-page rangé pendant la passe
+	head    string               // entrée en tête de liste lue par le delta du dessus : l'ancre à ranger
 }
 
 // runCatchUp exécute une passe de rattrapage et range ses compteurs dans res. known est l'ensemble
@@ -89,20 +93,22 @@ func (r *Runner) runCatchUp(ctx context.Context, src halo5.CaptureSource, resolv
 // run enchaîne le delta du dessus (avec un marque-page) puis la reprise, et range la fin quand elle est vue.
 func (p *catchUpPass) run(ctx context.Context, budget int) bool {
 	resume := &BackfillResume{MaxAttempts: maxCatchUpAttempts, Save: p.saveCursor}
-	subject, remaining, topClean := originSubject, budget, true
+	subject, remaining, topClean, restart := originSubject, budget, true, false
 	if cur, ok := p.store.LoadCursor(ctx); ok {
 		subject = cur.LastMatchID
 		top := p.topDelta(ctx, cur, budget, resume)
 		if top.stop {
 			return top.marked
 		}
-		remaining, topClean = budget-top.inserted, top.clean
+		remaining, topClean, restart = budget-top.inserted, top.clean, top.restart
 	}
 	if remaining <= 0 {
 		return false
 	}
-	streak := p.store.LoadStreak(ctx, subject)
-	resume.Skip, resume.Attempts = streak.Skipped, streak.Attempts
+	if !restart { // reprise depuis 0 : les pages abandonnées et les échecs comptés visaient l'ancienne position
+		streak := p.store.LoadStreak(ctx, subject)
+		resume.Skip, resume.Attempts = streak.Skipped, streak.Attempts
+	}
 	bs, err := RunBackfill(ctx, BackfillDeps{
 		CapturePage: p.capturePage(),
 		Viewer:      p.r.deps.Viewer,
@@ -182,17 +188,22 @@ type topDeltaResult struct {
 	clean    bool // aucune erreur de page ni de persistance
 	stop     bool // la passe s'arrête là (marked : la fin est rangée)
 	marked   bool
+	restart  bool // ancre perdue : la reprise repart du début de la liste
 }
 
-// topDelta ramasse les matchs plus récents que le premier match connu (le delta ordinaire, borné au
-// budget), compte N, le nombre d'entrées au-dessus de lui, et décale le marque-page de N : ce sont
-// autant d'entrées de plus entre le haut de la liste et lui. N peut compter des matchs écartés
-// (Warzone, campagne) déjà comptés par le marque-page : la page de recouvrement absorbe cette marge.
+// topDelta ramasse les matchs plus récents qu'une suite de matchs connus, domain.DeltaKnownRun (le delta ordinaire, borné au
+// budget), compte N, le nombre d'entrées arrivées en tête depuis le marque-page, et décale le
+// marque-page de N : ce sont autant d'entrées de plus entre le haut de la liste et lui. N est la
+// position de l'ancre du marque-page dans la liste (locateAnchor), exacte quelles que soient les
+// entrées arrivées, écartées (Warzone, campagne) comprises ; sans ancre, le nombre d'entrées vues
+// jusqu'à la dernière entrée non connue, et la page de recouvrement absorbe le surcompte des écartées. Une ancre
+// perdue (plus d'AnchorMaxPages pages arrivées) renvoie la reprise au début de la liste.
 // Le marque-page n'est décalé qu'après un delta propre : un match du dessus resté en échec ne doit pas
 // être déclaré traité.
 func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, budget int, resume *BackfillResume) topDeltaResult {
 	batches, stats, err := p.r.deps.Capture(ctx, p.src, p.r.deps.Viewer, p.resolve,
-		mapContains(p.known), halo5.CaptureOptions{MaxMatches: budget})
+		mapContains(p.known), halo5.CaptureOptions{
+			MaxMatches: budget, TopLimit: historystate.AnchorScanLimit(backfillDefaultPageSize)})
 	if err != nil {
 		p.res.AddError("h5 collect: " + err.Error())
 	}
@@ -205,6 +216,7 @@ func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, bud
 		}
 	}
 	addCapture(&p.stats, stats)
+	p.head = stats.HeadID
 	top := topDeltaResult{inserted: len(done), clean: err == nil && len(errs) == 0}
 	switch {
 	case err != nil:
@@ -214,24 +226,46 @@ func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, bud
 		top.stop = true
 		top.marked = top.clean && p.store.MarkComplete(ctx)
 	case !stats.StoppedOnKnown:
-		top.stop = true // budget atteint avant le premier match connu : la suite au prochain passage
-		p.shiftCursor(ctx, cur, stats.MatchesSeen, top.clean)
+		// Budget atteint avant la suite de connus : la suite au prochain passage.
+		top.stop = true
+		if a := p.locateAnchor(ctx, cur, stats); a.kind == anchorLost {
+			p.noteAnchorLost(ctx, cur) // marque-page laissé tel quel : le prochain passage le jugera
+		} else {
+			p.shiftCursor(ctx, cur, shiftOf(a, stats.MatchesSeen), top.clean)
+		}
 	default:
-		shift := stats.MatchesSeen - 1
-		p.shiftCursor(ctx, cur, shift, top.clean)
-		resume.Start = max(0, cur.Offset+shift-backfillDefaultPageSize)
-		resume.ExpectID = cur.LastMatchID
+		a := p.locateAnchor(ctx, cur, stats)
+		if a.kind == anchorLost {
+			p.noteAnchorLost(ctx, cur)
+			resume.Start, resume.ExpectID, top.restart = 0, "", true
+		} else {
+			shift := shiftOf(a, stats.TopSpan)
+			p.shiftCursor(ctx, cur, shift, top.clean)
+			resume.Start = max(0, cur.ResumeOffset(shift)-backfillDefaultPageSize)
+			resume.ExpectID = cur.LastMatchID
+		}
 		top.stop = top.inserted >= budget
 	}
+	resume.HeadID = p.head
 	return top
 }
 
-// shiftCursor décale le marque-page de n entrées nouvelles au-dessus de lui, si le delta est propre.
+// shiftOf rend le décalage du marque-page : N exact quand l'ancre est retrouvée, sinon fallback, le
+// nombre d'entrées vues au-dessus du marque-page selon la règle sans ancre.
+func shiftOf(a anchorResult, fallback int) int {
+	if a.kind == anchorFound {
+		return a.n
+	}
+	return fallback
+}
+
+// shiftCursor décale le marque-page de n entrées nouvelles au-dessus de lui, si le delta est propre, et
+// y range l'ancre lue à cette passe (la tête de liste actuelle).
 func (p *catchUpPass) shiftCursor(ctx context.Context, cur historystate.Cursor, n int, clean bool) {
 	if n <= 0 || !clean {
 		return
 	}
-	p.saveCursor(ctx, historystate.Cursor{Offset: cur.Offset + n, LastMatchID: cur.LastMatchID})
+	p.saveCursor(ctx, historystate.Cursor{Offset: cur.ResumeOffset(n), LastMatchID: cur.LastMatchID, HeadID: p.head})
 }
 
 // addCapture ajoute les compteurs d'une capture à un cumul.

@@ -94,15 +94,18 @@ type CaptureOptions struct {
 	PageSize    int                             // taille de page GetPlayerMatches (<=0 -> défaut 25)
 	Source      string                          // libellé source du batch ("" -> "h5_capture")
 	Classifier  classification.RankedClassifier // verdicts ranked/PvE depuis le HopperId (peut être nil)
-	StopOnKnown bool                            // delta-stop au 1er match connu (sync live) ; false = skip-known SANS stop (backfill profond)
+	StopOnKnown bool                            // delta-stop après domain.DeltaKnownRun matchs connus d'affilée (sync live) ; false = skip-known SANS stop (backfill profond)
+	// TopLimit : nombre d'entrées de tête de liste dont CaptureStats.TopIDs retient l'identifiant (<=0 :
+	// aucune). Toutes les entrées comptent, écartées comprises : c'est la liste de l'API qui est mesurée.
+	TopLimit int
 }
 
 // CaptureStats résume une passe de collecte (alimente le domain.SyncResult downstream + logs).
 type CaptureStats struct {
 	MatchesSeen      int  // résumés parcourus
 	MatchesCollected int  // batches produits (matchs nouveaux)
-	MatchesSkipped   int  // matchs déjà connus sautés (backfill : skip-known SANS stop)
-	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu, mode StopOnKnown)
+	MatchesSkipped   int  // matchs déjà connus sautés (backfill : skip-known SANS stop, et delta : les connus d'avant la suite qui l'arrête)
+	StoppedOnKnown   bool // delta-stop atteint (domain.DeltaKnownRun matchs connus d'affilée, mode StopOnKnown)
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
 	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
 	ExcludedCampaign int  // matchs Campaign écartés à la collecte (cf. isExcludedH5GameMode)
@@ -115,6 +118,19 @@ type CaptureStats struct {
 	// LastMatchID : identifiant du dernier résumé de la liste traité (connu, écarté ou collecté). Après
 	// une page pleine, c'est la dernière entrée de la page : la preuve de position du marque-page.
 	LastMatchID string
+	// HeadID : identifiant de l'entrée en position 0 de la liste, quand la capture a lu la page de
+	// tête (start == 0) ; "" sinon.
+	HeadID string
+	// KnownRun : matchs connus d'affilée à la fin de la collecte (mode StopOnKnown : le delta s'arrête à
+	// domain.DeltaKnownRun ; une entrée écartée, Warzone ou campagne, ni ne l'allonge ni ne le remet à zéro).
+	KnownRun int
+	// TopSpan : nombre d'entrées de la liste vues jusqu'à la dernière qui n'est pas un match connu (collectée
+	// ou écartée), toutes entrées comptées : l'estimation, sans ancre, du nombre d'entrées de tête arrivées.
+	TopSpan int
+	// TopIDs : identifiants des premières entrées de la liste, dans l'ordre de l'API, de la position 0 à
+	// la dernière entrée vue, au plus CaptureOptions.TopLimit. Une entrée y est notée avant le test
+	// « connu » : l'entrée où le delta s'arrête en fait partie.
+	TopIDs []string
 }
 
 // GameMode Halo 5 (cf. mapping_carnage.h5GameModeSegment + sonde) :
@@ -146,9 +162,11 @@ func isExcludedH5GameMode(gameMode int) bool {
 //     doit être l'xuid Xbox RÉSOLU en amont (l'API h5 ne le fournit jamais).
 //   - resolveXUID : gamertag -> xuid Xbox (CachingResolver câblé live ; "" toléré, l'identité
 //     reste dans le gamertag pour le kill-feed). nil -> tout "".
-//   - isKnown     : matchID -> déjà persisté (delta-stop au 1er connu). nil -> tout nouveau.
+//   - isKnown     : matchID -> déjà persisté (delta-stop après une suite de connus). nil -> tout nouveau.
 //
-// Délta-stop : on s'arrête au 1er match déjà connu (miroir du known-set Infinite).
+// Delta-stop : on s'arrête après domain.DeltaKnownRun matchs déjà connus d'affilée (règle D-23, même constante que
+// Halo Infinite) ; un inconnu rencontré avant est pris et remet la suite à zéro, les matchs écartés (Warzone,
+// campagne) ne comptent ni ne remettent à zéro.
 // Idempotence garantie en aval par match_registry (un re-collect d'un match déjà
 // persisté est no-opé par SharedPersister).
 func CollectRecentMatches(
@@ -167,7 +185,7 @@ func CollectRecentMatches(
 	if maxMatches <= 0 {
 		maxMatches = h5CaptureDefaultMaxMatches
 	}
-	// Sync live = delta-stop au 1er connu (préserve le comportement historique).
+	// Sync live = delta-stop après une suite de connus (préserve le comportement historique).
 	opts.StopOnKnown = true
 	resolveXUID = resolveXUIDOrEmpty(resolveXUID)
 	isKnown = isKnownOrFalse(isKnown)
@@ -261,14 +279,19 @@ func capturePage(
 		seen[s.MatchID] = struct{}{}
 		stats.LastMatchID = s.MatchID
 		stats.MatchesSeen++
+		noteListEntry(stats, opts.TopLimit, start+i, s.MatchID)
 		if isKnown(s.MatchID) {
-			if opts.StopOnKnown {
-				stats.StoppedOnKnown = true
-				return batches, false, nil // delta-stop (live)
-			}
 			stats.MatchesSkipped++
-			continue // backfill : sauter le connu, mais continuer à paginer plus profond
+			if opts.StopOnKnown {
+				stats.KnownRun++
+				if stats.KnownRun >= domain.DeltaKnownRun {
+					stats.StoppedOnKnown = true
+					return batches, false, nil // delta-stop (live) : une suite de connus complète
+				}
+			}
+			continue // sauter le connu, mais continuer à paginer plus profond
 		}
+		stats.TopSpan = stats.MatchesSeen
 		// Campagne + Warzone exclus de la collecte (produit + anti-storm PeopleHub) :
 		// on saute AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
 		if gm := resp.Results[i].Id.GameMode; isExcludedH5GameMode(gm) {
@@ -279,6 +302,7 @@ func capturePage(
 			}
 			continue
 		}
+		stats.KnownRun = 0
 		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)
 		participants, commendations, team0, team1 := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
 		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, resolveXUID))
@@ -292,6 +316,38 @@ func capturePage(
 		return batches, false, nil // dernière page (page incomplète)
 	}
 	return batches, true, nil // page pleine -> il reste probablement des pages
+}
+
+// noteListEntry retient l'identifiant d'une entrée de tête de liste : la tête (position 0) et, tant que
+// la limite n'est pas atteinte, la suite contiguë des entrées lues dans l'ordre.
+func noteListEntry(stats *CaptureStats, topLimit, position int, matchID string) {
+	if position == 0 {
+		stats.HeadID = matchID
+	}
+	if position == len(stats.TopIDs) && len(stats.TopIDs) < topLimit {
+		stats.TopIDs = append(stats.TopIDs, matchID)
+	}
+}
+
+// ListMatchIDs lit UNE page de la liste de l'API à l'offset start et rend les identifiants de ses
+// entrées, dans l'ordre, SANS rien capturer ni filtrer (écartées comprises) : un seul appel
+// GetPlayerMatches. Sert à mesurer la liste (position d'une ancre), pas à ingérer.
+func ListMatchIDs(ctx context.Context, src CaptureSource, gamertag string, start, pageSize int) ([]string, error) {
+	if pageSize <= 0 {
+		pageSize = h5CaptureDefaultPageSize
+	}
+	resp, err := src.GetPlayerMatches(ctx, gamertag, start, pageSize)
+	if err != nil {
+		return nil, fmt.Errorf("h5 list: GetPlayerMatches(%s, start=%d): %w", gamertag, start, err)
+	}
+	if resp == nil {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(resp.Results))
+	for i := range resp.Results {
+		ids = append(ids, resp.Results[i].Id.MatchId)
+	}
+	return ids, nil
 }
 
 // resolveXUIDOrEmpty garantit un resolver non-nil (tout "" si nil).

@@ -236,7 +236,7 @@ func TestListCatchUp_RepriseAuMarquePage(t *testing.T) {
 		if l.Proposed == nil || *l.Proposed != wantCur {
 			t.Errorf("Proposed = %+v, want %+v (position dans la liste d'aujourd'hui)", l.Proposed, wantCur)
 		}
-		if got := c.startsBetween(25, 575); got != 0 {
+		if got := c.startsBetween(50, 575); got != 0 {
 			t.Errorf("%d lectures entre les positions 25 et 575 : la liste a été reparcourue", got)
 		}
 	})

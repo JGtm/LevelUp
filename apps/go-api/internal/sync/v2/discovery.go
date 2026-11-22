@@ -3,10 +3,10 @@
 // Phase 1 = découverte parallèle, read-only. Pour chaque joueur :
 //  1. LoadKnown : lecture des match_ids déjà connus (règle internal/sync/knownset :
 //     présents au registre partagé pour le joueur).
-//  2. ListUnknownMatches : pagination API jusqu'au 1er match connu (delta), ou, tant que
+//  2. ListUnknownMatches : pagination API jusqu'à domain.DeltaKnownRun matchs connus d'affilée (delta), ou, tant que
 //     l'historique du joueur est incomplet, rattrapage qui saute les connus (history.go).
 //  3. Orphelins de l'ensemble connu (knownset.Set.Recover) : ajoutés à la liste du joueur, donc
-//     récupérés PAR match_id par les phases suivantes, même plus anciens que le 1er connu.
+//     récupérés PAR match_id par les phases suivantes, même plus anciens que la zone déjà connue.
 //
 // Aucune écriture, aucun shared writer lease pris. Les N joueurs tournent
 // en goroutines indépendantes via errgroup (parallélisme = len(players)).
@@ -41,10 +41,9 @@ type KnownLoader interface {
 
 // MatchListProvider retourne la liste des match_ids retournés par l'API
 // pour un joueur : en mode delta (historique complet), pagination en ordre
-// reverse-chronologique jusqu'à rencontrer un match présent dans known, tous les matchs
-// nouveaux précédant le premier connu (ordre API préservé) ; en mode rattrapage
-// (hist.Incomplete), les connus sont sautés (cf. Listing, history.go).
-//
+// reverse-chronologique jusqu'à domain.DeltaKnownRun matchs présents dans known d'affilée ; tous les
+// matchs inconnus rencontrés avant, y compris ceux qui suivent un match connu, sont rendus (ordre API
+// préservé) ; en mode rattrapage (hist.Incomplete), les connus sont sautés (cf. Listing, history.go).
 // L'implémentation V1-bridge wrappe HaloClient pinné via le pool. Les
 // tests utilisent un mock.
 type MatchListProvider interface {

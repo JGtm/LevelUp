@@ -58,7 +58,7 @@ import (
 	"levelup/go-api/internal/sync/matchflags"
 )
 
-// BacklogHorizon borne la LECTURE du retard, pas le travail (le travail est borné par le temps, puis
+// BacklogHorizon : l'horizon de lecture SOUS LA CAPACITÉ FilmCatchUp ([BacklogHorizonHeberge] sinon). Il borne la LECTURE du retard, pas le travail (le travail est borné par le temps, puis
 // par maxPerCycle). Il décide pourtant jusqu'où le rattrapage voit : le prédicat « l'artefact existe
 // sur disque » s'applique APRÈS la lecture du registre, donc une fois les matchs les plus récents
 // cuits, la fenêtre ne glisse pas vers les plus anciens. L'horizon doit donc couvrir l'historique
@@ -67,6 +67,13 @@ import (
 // lecture coûte les identifiants et un `os.Stat` par match, pas un décodage. Le solde plus ancien que
 // l'horizon relève de `levelup backfill-replay`.
 const BacklogHorizon = 2000
+
+// BacklogHorizonHeberge : l'horizon de lecture du retard HORS de la capacité FilmCatchUp (serveur hébergé). Une
+// lecture coûte les identifiants et un `os.Stat` par match, à chaque cycle et pour chaque joueur, deux fois
+// (rattrapage de la cuisson, puis des dérivés) : 2000 matchs y pèseraient sans que la borne de
+// [RejeuxParCycleHeberge] leur laisse de quoi servir. La fenêtre des matchs les plus récents suffit à qui ne
+// rattrape pas l'arriéré.
+const BacklogHorizonHeberge = 64
 
 // BudgetParCycle : LA LIMITE DE DURÉE de la passe, et la seule qui la borne vraiment.
 //
@@ -138,7 +145,7 @@ func nomsDeCarte(ctx context.Context, metaDB *sql.DB, c candidatARattraper) []st
 // artefact. L'ordre du registre (du plus récent au plus vieux) est conservé.
 func lireQueueRecente(ctx context.Context, sharedDB *sql.DB, d Deps, deja map[string]bool) []candidatARattraper {
 	sqlQueue, args := requeteQueueRecente(d.RetentionMonths)
-	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, BacklogHorizon)...)
+	rows, err := sharedDB.QueryContext(ctx, sqlQueue, append(args, horizonDuRetard(d))...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: rejeu 2D — retard illisible", "err", err)
 		return nil
@@ -205,6 +212,22 @@ func artefactPresent(path string) bool {
 // 0 = le contrat de production, [BudgetParCycle]. Une valeur NÉGATIVE veut dire « déjà
 // épuisé » : c'est ainsi que les tests prouvent que la garde existe et qu'elle s'applique AVANT
 // le premier match, sans attendre cinq minutes ni décoder quoi que ce soit.
+// perCycle rend le plafond de matchs du cycle : celui des Deps, sinon [maxPerCycle].
+func perCycle(d Deps) int {
+	if d.PerCycle > 0 {
+		return d.PerCycle
+	}
+	return maxPerCycle
+}
+
+// horizonDuRetard rend le nombre de matchs lus au registre : celui des Deps, sinon [BacklogHorizon].
+func horizonDuRetard(d Deps) int {
+	if d.Horizon > 0 {
+		return d.Horizon
+	}
+	return BacklogHorizon
+}
+
 func budgetDuCycle(d Deps) time.Duration {
 	if d.Budget != 0 {
 		return d.Budget

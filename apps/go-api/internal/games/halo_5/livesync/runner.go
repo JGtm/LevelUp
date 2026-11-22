@@ -95,6 +95,10 @@ type Deps struct {
 	// CapturePage : capture d'UNE page de la passe de rattrapage. nil → halo5.CapturePageAt sur la
 	// source du cycle (injectable en test, comme Capture).
 	CapturePage CapturePageFunc
+	// ListIDs : lecture légère d'UNE page de la liste de l'API (identifiants seulement), pour retrouver
+	// l'ancre du marque-page au-delà de ce que le delta a vu. nil → halo5.ListMatchIDs sur la source du
+	// cycle (injectable en test).
+	ListIDs ListIDsFunc
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -118,7 +122,7 @@ func NewRunner(deps Deps, logger *slog.Logger) *Runner {
 // absent / known-set KO / erreur de fetch n'avortent pas le cycle (best-effort,
 // erreurs remontées dans le SyncResult). opts.MaxMatches borne la collecte.
 //
-// Historique complet : delta (arrêt au premier match connu). Historique incomplet (fin jamais vue,
+// Historique complet : delta (arrêt après domain.DeltaKnownRun matchs connus d'affilée). Historique incomplet (fin jamais vue,
 // historystate) : passe de rattrapage bornée (catchup.go), qui range la fin d'historique quand elle
 // l'a vue sans erreur ; res.HistoryPending dit si le cycle laisse l'historique incomplet.
 func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error) {
@@ -231,7 +235,7 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	return res, nil
 }
 
-// runDeltaPass est le delta ordinaire : collecte jusqu'au premier match connu (borne opts.MaxMatches)
+// runDeltaPass est le delta ordinaire : collecte jusqu'à une suite de matchs connus, domain.DeltaKnownRun (borne opts.MaxMatches)
 // puis persiste en une fois. Range les compteurs dans res et rend ceux de la capture.
 func (r *Runner) runDeltaPass(ctx context.Context, src halo5.CaptureSource, resolveXUID func(string) string,
 	known map[string]bool, opts domain.SyncOptions, res *domain.SyncResult) halo5.CaptureStats {

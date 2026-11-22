@@ -33,3 +33,20 @@ func TestLire_TitreInconnuVide(t *testing.T) {
 		t.Error("le lecteur suit Lire")
 	}
 }
+
+func TestReaderFor_SuitLaCapaciteFilmCatchUp(t *testing.T) {
+	Reset()
+	t.Cleanup(Reset)
+	Publier("halo_infinite", Frags, 4)
+
+	if r := ReaderFor(false); r != nil {
+		t.Errorf("sans la capacité, aucun lecteur n'est branché : %T", r)
+	}
+	r := ReaderFor(true)
+	if r == nil {
+		t.Fatal("avec la capacité, le lecteur de l'arriéré publié est branché")
+	}
+	if got := r.FilmBacklog("halo_infinite"); got.Frags != 4 || !got.Pending() {
+		t.Errorf("arriéré lu = %+v, attendu 4 frags", got)
+	}
+}

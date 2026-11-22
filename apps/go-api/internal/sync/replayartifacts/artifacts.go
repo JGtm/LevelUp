@@ -54,17 +54,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmbacklog"
 	"levelup/go-api/internal/sync/filmfetch"
-	"levelup/go-api/internal/sync/killcollector"
 )
-
-// maxPerCycle : le GARDE-FOU du nombre d'artefacts construits par cycle, et non sa limite. La
-// limite d'une passe est son TEMPS ([BudgetParCycle]) : un match synchronisé l'est en totalité, film
-// traité compris, et le coût d'un film varie trop pour qu'un nombre le dise. La borne n'est que le
-// plafond d'une liste de travail sans fin ; elle a la valeur de celle de la source des frags
-// ([killcollector.GardeFouFilmsParCycle]), pour que les deux étapes film ne divergent pas. Le solde
-// repart au cycle suivant, ou au backfill CLI (levelup backfill-replay), idempotent et repris par
-// SchemaVersion.
-const maxPerCycle = killcollector.GardeFouFilmsParCycle
 
 // EnqueueFunc met la construction du rejeu d'un match dans la FILE DURABLE (le
 // travail part alors à un ouvrier, éventuellement sur une autre machine), à la priorité donnée
@@ -101,6 +91,9 @@ type Hook struct {
 	// BuildOne : la strategie de cuisson, cablee par NewHook (cf. buildone.go). Elle voyage
 	// avec le hook pour que les DEUX sites de wiring la recoivent sans la redeclarer.
 	BuildOne BuildOneFunc
+	// FilmCatchUp : la capacité FilmCatchUp du profil (NewHook la lit sur la configuration) : bornes du cycle (bornes.go),
+	// et celles de la source des frags (`SyncEngine.WithReplayArtifacts`).
+	FilmCatchUp bool
 }
 
 // SettingsReader : la lecture des réglages vivants dont le hook a besoin.
@@ -150,7 +143,8 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 		FilmRoot:  cfg.PathResolver().FilmArchiveDir,
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
-		BuildOne: SpawnBuildOne,
+		BuildOne:    SpawnBuildOne,
+		FilmCatchUp: cfg.Capabilities.FilmCatchUp,
 	}
 }
 
@@ -245,6 +239,9 @@ type Deps struct {
 	RetentionMonths int
 	// Placement : la décision du cycle (Hook.Placement()).
 	Placement replaybuild.Placement
+	// PerCycle et Horizon : plafond de matchs par cycle et matchs lus au registre (Hook.PerCycle, Hook.Horizon) ;
+	// 0 = [maxPerCycle] et [BacklogHorizon], les valeurs sous la capacité FilmCatchUp.
+	PerCycle, Horizon int
 	// Budget : durée maximale d'une passe de cycle. 0 = BudgetParCycle (le contrat de
 	// production) ; négatif = « déjà épuisé ». N'est renseigné que par les tests.
 	Budget time.Duration
@@ -395,11 +392,11 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 		retard += enqueueAll(ctx, d, work)
 		return
 	}
-	if len(work) > maxPerCycle {
+	if plafond := perCycle(d); len(work) > plafond {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D — garde-fou du lot atteint, solde au cycle suivant",
-			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
-		retard += len(work) - maxPerCycle
-		work = work[:maxPerCycle]
+			"gamertag", d.Gamertag, "selected", len(work), "cap", plafond)
+		retard += len(work) - plafond
+		work = work[:plafond]
 	}
 	// SONDE DE TITRE, PAS UN CONSTRUCTEUR : depuis le lot BUILDALL la cuisson se fait dans un
 	// ENFANT, qui monte le sien. Ce que cet appel garde, c'est la degradation par ABSENCE de
@@ -477,7 +474,7 @@ func placeDuRattrapage(d Deps, inseres int) int {
 	if d.Placement == replaybuild.PlacementLocal && inseres > 0 {
 		return 0
 	}
-	return maxPerCycle - inseres
+	return perCycle(d) - inseres
 }
 
 // armee dit si l'étape peut travailler, et DIT POURQUOI quand elle ne le peut pas.

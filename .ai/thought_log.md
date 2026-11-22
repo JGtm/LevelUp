@@ -1,3 +1,15 @@
+## [2026-11-22] Films : bornes d'avant sur le site hébergé, comportement D-17/D-20 sur le bureau seulement (D-22) — Complété (branche `fix/822-m`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : nouvelle capacité `FilmCatchUp` du profil de déploiement (vraie en desktop, fausse en hosted, dev et demo). Sous la capacité : le temps borne les passes de films (garde-fou 200), le retard se lit sur 2000 matchs, la cadence de 10 minutes et l'état « Analyse en cours » suivent l'arriéré de films. Sans elle : 8 films de frags et 5 rejeux par cycle, retard lu sur 64 matchs, aucun lecteur d'arriéré (cadence et écran ne suivent que l'historique). Le hook des rejeux (`replayartifacts.NewHook`) lit la capacité et la porte à la source des frags par `SyncEngine.WithReplayArtifacts` ; le démarrage branche le lecteur d'arriéré par `filmbacklog.ReaderFor`.
+- **Résultats observés** : tests par profil (bornes 8/5/64 en hosted et dev, 200/200/2000 en desktop ; cadence : intervalle réglé en hosted avec un arriéré non vide, 10 minutes en desktop) ; intégration killcollector et replayartifacts verts, bornes hébergées exercées sur une base réelle. `postsync.go` (506 lignes depuis 4g) repassé sous 500 par l'extraction de `postsync_bornes.go`.
+- **Suite** : mesure du coût réel des 2000 lectures sur le bureau (étape 5bis) ; contrôle en prod hébergée à la publication.
+## [2026-11-22] Hotfix 8.2.2 : le delta ne s'arrête plus au premier match connu, mais après 25 connus d'affilée (D-23) — Complété (branche `fix/822-n`)
+
+- **Décision** : une constante unique `domain.DeltaKnownRun = 25` ; V2 (historique complet et delta du dessus du rattrapage sans ancre), Halo 5 (capture, historique complet et delta du dessus) et moteur V1 prennent les inconnus rencontrés entre des connus et s'arrêtent après 25 connus d'affilée ; avec ancre, le delta du dessus V2 lisait déjà jusqu'à l'ancre ; Halo 5 : les Warzone et la campagne ne comptent ni ne remettent à zéro la suite. Sans ancre, N = entrées vues jusqu'à la dernière inconnue.
+- **Résultats observés** : un match rangé d'abord par un coéquipier ne cache plus le match inconnu juste en dessous (tests V2, Halo 5 et V1). Pages lues : sans nouveau match 1 -> 1, avec un nouveau match 1 -> 2 ; convergence Halo 5 [8 10 10 10 10 3] -> [8 11 10 11 10 3], convergence V2 [8 9 10 9 10 2] inchangée (seul le delta d'un match neuf passe de 1 à 2 pages).
+- **Suite** : intégration dans la release par le pilote.
+
 ## [2026-11-22] 8.2.2 : délai de la file de persistance et ancre du marque-page (V2) — Complété (branche `fix/822-i`)
 
 - **Décision** : le cycle V2 attend la file de persistance 60 s + 4 s par match (plafond 20 min) au lieu de 60 s fixes ; si l'attente expire, il relit l'ensemble connu et continue avec les matchs prouvés rangés, sans compter d'échec pour ceux encore en file. Le marque-page retient la tête de liste (`HeadID`) : la reprise est à marque-page + position de l'ancienne tête, contrôlée par l'identifiant rangé.
@@ -8,6 +20,12 @@
 - **Décision** : D-17 et D-20 du hotfix 8.2.2. Les deux étapes film du post-sync (source des frags, artefacts de rejeu) sont bornées par leur budget de temps de 5 minutes ; le plafond en nombre (8 et 5) devient un garde-fou unique de 200. Chaque étape publie son arriéré par titre à la fin de sa passe ; l'ordonnanceur tient la cadence de 10 minutes tant que l'historique ou cet arriéré n'est pas vide ; l'écran d'état de l'historique reprend la pastille « Analyse en cours / en attente » des tuiles de match tant que des films attendent.
 - **Résultats observés** : tests d'arrêt sur le budget de temps (20 films sous un budget large : tous traités ; sous un budget court : arrêt entre deux films, arriéré publié = reste), cadence testée sur le cycle V2 et le filet, composant testé en FR et EN.
 - **Suite** : fusion de `release/v8.2.2`, puis revue ; mesure du coût de lecture de l'horizon des rejeux (2000) sur la base réelle (étape de mesure).
+## [2026-11-22] Hotfix 8.2.2 : ancre du marque-page du rattrapage Halo 5 (D-21) — Complété (branche `fix/822-j`)
+
+- **Statut** : Complété, non poussé.
+- **Décision technique** : le marque-page range aussi la tête de liste lue à la passe (`HeadID`) ; le décalage des matchs arrivés se lit comme la position de cette tête dans la liste relue (au plus 200 entrées, toutes entrées comptées), au lieu du nombre d'entrées vues jusqu'au premier match connu. Ancre absente : règle d'avant ; ancre perdue : reprise depuis 0, journalisée et comptée.
+- **Résultats** : monde simulé de 1 000 matchs avec 40 parties Warzone en tête : pages lues par cycle `[10 22 10 10 9]` (une reprise depuis 0) avant, `[10 11 10 10 10]` après, aucune reprise depuis 0. Scénario tout Arena inchangé. Gate du paquet Halo 5 (build, vet, tests, tests integration, lint sur le diff) vert.
+- **Suite** : l'étape équivalente côté Halo Infinite (pipeline V2) est une autre piste.
 
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 

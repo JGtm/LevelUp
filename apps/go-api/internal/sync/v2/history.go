@@ -92,7 +92,7 @@ type Listing struct {
 	// s'arrêter sur le budget ni sur la borne de profondeur. Toujours faux en mode delta.
 	EndSeen bool
 	// Proposed : marque-page à ranger si tous les inconnus listés sont résolus ; nil = pas de
-	// position fiable à proposer (mode delta, fin vue, ou arrêt avant le premier match connu).
+	// position fiable à proposer (mode delta, fin vue, ou arrêt avant la suite de matchs connus).
 	Proposed *historystate.Cursor
 }
 

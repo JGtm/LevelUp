@@ -173,7 +173,7 @@ type TacticalRaster struct {
 	// rien n'allait faire. Une promesse plus large que ce que la file tient est pire que
 	// pas de promesse du tout.
 	//
-	// `BacklogHorizon` (64 matchs par cycle) NE FIGURE PAS dans le predicat : c'est une
+	// L horizon de lecture du retard (`BacklogHorizon`, par cycle) NE FIGURE PAS dans le predicat : c'est une
 	// borne de DEBIT, pas d'eligibilite. Un match eligible au-dela de l'horizon sera repris
 	// a un cycle suivant — il est bien « en attente », simplement pas de ce cycle-ci.
 	//

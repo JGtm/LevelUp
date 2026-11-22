@@ -113,6 +113,35 @@ page.
     Tests : 30 introuvables en haut sur 3 passes (exact, zéro reprise depuis 0), N neufs, ancre perdue, contrôle raté, budget avant l'ancre, sans ancre.
   - [x] D-21.3 Test de convergence `cmd/server` mis à jour : appels `GetMatchHistory` par cycle [8 11 11 11 11 4] (56) -> [8 9 10 9 10 2] (48).
   - [ ] D-21.4 Halo 5 : à brancher par la piste Halo 5 sur l'API D-21.1 (`catchup.go` range `Cursor{Offset, LastMatchID}` sans `HeadID`).
+- **D-22** (utilisateur, 22/11) Site hébergé : ancien comportement des films (8 frags et 5 rejeux par
+  cycle, cadence non liée à l'arriéré de films), pour ménager le serveur de prod (2 vCPU, 2 Go). Le
+  comportement D-17/D-20 ne vaut que sur le bureau, décidé par une capacité du profil de déploiement
+  (ADR 0044), jamais par le profil lui-même. Le rattrapage des matchs (200 par passe, 10 min) vaut partout.
+  - [x] D-22.1 Capacité `FilmCatchUp` de `config.DeploymentCapabilities` (vraie en desktop seulement ; fausse en hosted, dev et demo ;
+    `TestDeployment_CapacitesParProfil`). Sans elle : 8 films de frags (`killcollector.FragsParCycleHeberge`), 5 rejeux
+    (`replayartifacts.RejeuxParCycleHeberge`), retard lu sur 64 matchs (`BacklogHorizonHeberge`) ; avec elle : garde-fou 200, horizon 2000.
+    Branchement : `replayartifacts.NewHook` lit la capacité (`Hook.PerCycle`, `Hook.Horizon`, copiés dans `Deps`), `SyncEngine.WithReplayArtifacts`
+    la porte à la source des frags (`PostSyncHook.WithFilmCatchUp` ; un moteur non câblé part des bornes hébergées).
+  - [x] D-22.2 Cadence et état à l'écran : `filmbacklog.ReaderFor(cfg.Capabilities.FilmCatchUp)` dans `cmd/server/boot_tasks.go` ; hors capacité, aucun
+    lecteur d'arriéré, donc la cadence ne suit que l'historique et l'écran n'affiche pas « Analyse en cours » pour des films (décision prise avec D-22).
+    Tests par profil : `TestEngine_BornesDesFilmsSuiventLeProfil` (hosted 8/5/64, dev idem, desktop 200/200/2000),
+    `TestCadence_ArriereDeFilmsSuitLaCapaciteDuProfil` (hosted et dev : intervalle réglé ; desktop : 10 min), tests d'intégration des bornes hébergées.
+- **D-23** (utilisateur, 22/11) Le delta des nouveaux matchs ne s'arrête plus au premier match connu mais
+  après une page entière (25) de matchs connus d'affilée : un match rangé d'abord par un coéquipier
+  (connu par ses participants) ne cache plus les matchs inconnus juste en dessous. Infinite (V2) et Halo 5.
+  - [x] D-23.1 Constante unique `domain.DeltaKnownRun = 25` (commentaire de contrat : pourquoi une page de connus d'affilée),
+    lue par tous les delta : V2 historique complet (`v2/fetchers.go` `listDelta`), V2 rattrapage sans ancre (`scanNew`, N =
+    `topSpan` : toutes entrées jusqu'à la dernière inconnue, abandonnés exclus ; avec ancre `scanTop` ne s'arrête déjà pas
+    au premier connu, il lit jusqu'à l'ancre : rien à changer, test ajouté), Halo 5 delta et delta du dessus
+    (`halo_5/capture.go` `capturePage` : `CaptureStats.KnownRun` / `TopSpan`, entrées écartées neutres ; `catchup.go`
+    `topDelta` : N sans ancre = `TopSpan`), moteur V1 (`engine.go` `paginateAndPersistHistory`, même règle, `allKnown` retiré).
+    Bornes de pages inchangées (20 pages V2 en mode complet, `MaxDepth`).
+  - [x] D-23.2 Tests : scénario A/B (V2 complet, V2 rattrapage avec et sans ancre, Halo 5 capture et RunDelta avec/sans ancre
+    et complet, V1 intégration), 24 connus puis un inconnu, 25 connus d'affilée, entrée écartée neutre (Halo 5), appels d'API.
+    Appels de pages d'historique, avant -> après : historique complet sans nouveau match 1 -> 1 ; avec un nouveau match 1 -> 2
+    (V2, Halo 5, V1) ; V2 convergence `[8 9 10 9 10 2]` (48) inchangée, delta d'un match neuf après la fin 1 -> 2 pages ; Halo 5 convergence `[8 10 10 10 10 3]` (51)
+    -> `[8 11 10 11 10 3]` (53) ; Halo 5 40 Warzone en tête `[10 11 10 10 10]` (51) -> `[10 12 12 12 12]` (58, les Warzone
+    n'arrêtent ni ne remettent à zéro : 40 + 25 entrées = 3 pages au lieu de 2).
 - **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
   de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
   (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
@@ -224,6 +253,18 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
   `historystate.MaxDepth`. Tests : reprise avec N neufs, recouvrement raté, page durable abandonnée à la 3e
   passe puis fin rangée, page en échec une fois puis réussie (compte remis à zéro), erreur de persistance
   durable abandonnée.
+- [x] 3.5 Ancre du marque-page Halo 5 (D-21) : `HeadID` rangé à chaque marque-page (tête de la liste lue à la
+  passe) ; N = `ArrivedSince` sur au plus `AnchorScanLimit(25)` = 200 entrées, toutes entrées comptées
+  (écartées comprises), reprise à `ResumeOffset(N)` moins une page, `LastMatchID` gardé comme garde-fou ;
+  marque-page sans ancre = règle « jusqu'au premier connu » ; ancre perdue = reprise depuis 0, journalisée et
+  comptée (`h5_history_cursor_missed_total`). Code : `livesync/catchup_anchor.go`, `catchup.go` (`topDelta`),
+  `backfill_walk.go` (`advance` range l'ancre), `halo_5/capture.go` (`CaptureStats.HeadID` / `TopIDs`,
+  `CaptureOptions.TopLimit`, `ListMatchIDs`). Tests : `catchup_anchor_test.go` (30 Warzone en tête à deux
+  passes, neufs mêlés Arena / Warzone, ancre perdue, connu au-dessus de l'ancre, lecture de liste en échec,
+  marque-page sans ancre), `capture_test.go`, convergence
+  `TestConvergence_Halo5_RunDelta_WarzoneEnTeteNeFaitJamaisRepartirDe0` : pages lues par cycle `[10 22 10 10 9]`
+  (total 61, une reprise depuis 0 au cycle 2) avant, `[10 11 10 10 10]` (total 51, aucune reprise depuis 0)
+  après ; le scénario tout Arena est inchangé (`[8 10 10 10 10 3]`).
 - Gate : `go test ./internal/games/halo_5/...`.
 
 ### Étape 4 — piste C : cadence de l'ordonnanceur
@@ -461,6 +502,8 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   complet) ; à traiter si le filet doit un jour résorber les films.
 - Étape 4g : `BacklogHorizon` à 2000 fait lire jusqu'à 2000 identifiants et autant de `os.Stat` par cycle et par
   joueur pour le rattrapage des rejeux et des dérivés ; à mesurer sur la base réelle (étape 5bis).
+  Sur le site hébergé il est ramené à 64 par la capacité `FilmCatchUp` (D-22) : le coût de 2000 lectures par cycle et par joueur ne s'y applique pas.
+- D-22 : `killcollector/postsync.go` dépassait 500 lignes (506) depuis l'étape 4g et faisait échouer `TestTailleDesFichiersDuFilmNeCroitPas` (le gate de 4g ne lançait pas archlint) ; les bornes sont extraites dans `postsync_bornes.go` (474 lignes).
 
 - Étape 1 : `sync/match_recomputer.go` lit `sync_meta` par sa propre requête (clé `scoring_revision`),
   copie de `syncmeta.Get` ; à aligner plus tard, hors périmètre.
@@ -506,6 +549,14 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
   tant que le rattrapage n'est pas fini.
 - Étape 3 (suite) : `backfillMaxPages` supprimé, la boucle s'arrête à `historystate.MaxDepth` (décalage) :
   une seule source pour la profondeur.
+- Étape 3 (D-21) : le delta s'arrête au premier match connu ; un match connu arrivé en tête depuis la passe
+  précédente (rangé par un coéquipier dans la base partagée) arrête le delta avant des matchs neufs inconnus
+  plus bas, qui ne sont alors jamais pris par le delta. Comportement d'avant l'ancre, non traité ici. L'ancre
+  compte exactement ces entrées dans N, et la tête de liste est relue (un appel par page, au plus 8) pour la
+  retrouver au-delà du match connu.
+- Étape 3 (D-21) : un marque-page rangé par une passe sans cursor dont la première page est abandonnée n'a pas
+  d'ancre (la tête n'a pas été lue) ; la passe suivante retombe sur la règle sans ancre, puis les marque-pages
+  suivants en portent une.
 - Étape 3 : un match rangé sans timeline ou sans carnage (`EventsFailed`, `CarnageFailed`) est connu
   ensuite : le rebalayage ne le retente jamais (le commentaire de `captureMatchTimeline` dit le contraire).
   Hors périmètre.
@@ -541,3 +592,5 @@ fichier, `git log --oneline -10` dans chaque worktree, `ListAgents`.
 - Étape 5ter : un cycle annulé en pleine récupération ne s'arrête pas avant la persistance : la phase de récupération rend les matchs déjà récupérés (les autres sont des erreurs de récupération), la persistance les soumet à la file puis le vidage échoue sur le contexte annulé ; les matchs soumis finissent en arrière-plan ou au journal d'écriture. Sans conséquence sur la convergence (marque-page non avancé, connus sautés), mais le travail soumis après l'annulation est inutile.
 - Étape 5ter : la séquence d'arrêt vide la file de persistance dans une phase bornée à 5 s (`phaseBatchDrainCap`) ; une passe de rattrapage laisse jusqu'à 200 journaux d'écriture (environ 0,2 s par match sur ce banc, 1,1 s mesuré en production) : l'arrêt n'est alors pas « propre » et les bases se ferment sous le worker, le reste est rejoué au démarrage suivant (testé : aucun doublon, aucune perte). Comportement voulu du journal d'écriture, noté pour mémoire.
 - Étape 5ter : lire l'état d'une base joueur (`OpenReadForQuery`) pendant qu'un worker de persistance l'écrit peut rendre `sql: database is closed` (poignée en cache fermée par le worker) ; `historystate.Complete` rend alors « complet ». Observé seulement par les lectures du test (après un arrêt, pendant le rejeu du journal), jamais dans le cycle ; non investigué.
+- D-23 : un match inconnu proche du haut de liste qui échoue toujours (stats en 500) est maintenant retenté à chaque delta tant qu'il reste à moins de 25 entrées de connus au-dessus de lui (il remet la suite à zéro) ; en V1 et en V2 historique complet le delta lit alors deux pages au lieu d'une, jusqu'à ce que 25 matchs plus récents l'aient éloigné. Pas d'abandon hors rattrapage (D-16). Hors périmètre, noté.
+- D-23 : sans ancre (marque-page rangé avant D-21), N compte les entrées jusqu'à la dernière inconnue ; un connu arrivé plus bas n'est pas compté (page de recouvrement ratée, reprise depuis 0 journalisée et comptée) : état transitoire d'une passe.

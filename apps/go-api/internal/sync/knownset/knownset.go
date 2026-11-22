@@ -1,6 +1,6 @@
 // Package knownset — l'ensemble des matchs « déjà connus » d'un joueur, LA règle qui décide,
 // pour la sync Halo Infinite (moteur V1 `SyncEngine` et pipeline V2 `KnownLoader`), si un match
-// de l'historique est re-récupéré ou sauté. Delta : arrêt au premier connu ; full : un connu est
+// de l'historique est re-récupéré ou sauté. Delta : arrêt après domain.DeltaKnownRun connus d'affilée ; full : un connu est
 // sauté. Ce paquet est la SEULE construction de cet ensemble : garde-rail
 // `internal/archlint/known_set_single_source_test.go`.
 //
@@ -19,7 +19,7 @@
 // partagée restaurée depuis une copie plus ancienne). Un enrichissement sans ligne au registre
 // désignait alors un match « connu » que la base partagée n'avait pas : delta et full le
 // sautaient indéfiniment. Ces enrichissements ORPHELINS sont INCONNUS, et la pagination seule ne
-// les reprend pas (un delta s'arrête au premier connu, souvent plus récent qu'eux). `Set.Recover`
+// les reprend pas (un delta s'arrête après une suite de connus, souvent plus récent qu'eux). `Set.Recover`
 // en porte donc au plus `OrphanRecoveryPerCycle` par chargement, que les deux moteurs récupèrent
 // PAR match_id en plus de la pagination, par leur chemin normal de persistance : la sync converge
 // seule, sans sync complète. Une ligne de journal agrégée par chargement et deux compteurs expvar
