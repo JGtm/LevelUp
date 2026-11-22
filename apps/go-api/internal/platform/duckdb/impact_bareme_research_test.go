@@ -6,6 +6,12 @@ package duckdb
 // points par match et par joueur d'une escouade, sous le barème en vigueur (squadimpact.Weight) et
 // sous un barème candidat (table `baremeCandidat` ci-dessous), avec le rôle « Os de verre ».
 //
+// Depuis la livraison du lot B (barème rééquilibré et rôle « Os de verre » dans squadimpact), la
+// table candidate est VIDE : les colonnes « ancien » et « candidat seul » rendent toutes deux le
+// barème livré sans Os de verre (« D-7 seul » du plan), et « candidat + Os de verre » le barème
+// livré avec le rôle (« D-6 + D-7 »). L'attribution de l'Os de verre est calculée deux fois, par ce
+// fichier et par squadimpact.RolesOfMatch (code livré) : un écart échoue le test.
+//
 // Les entrées sont celles du service (`teammates.rolesDesMatchs`) : Q32 (événements, repli des
 // frags reconstitués compris), Q32b (équipe alliée complète du joueur principal), Q32e (journal
 // des morts, badge « Voleur »), puis squadimpact.RolesOfMatch. Écarts avec le service :
@@ -42,17 +48,16 @@ import (
 )
 
 const (
-	impactRoleOsDeVerre  = "glass_jaw"
-	impactPoidsOsDeVerre = -0.5
-	impactNbCoequipiers  = 3
+	impactRoleOsDeVerre = squadimpact.RoleGlassJaw
+	impactNbCoequipiers = 3
 )
 
-// baremeCandidat : les poids qui changent ; un rôle absent garde squadimpact.Weight.
-var baremeCandidat = map[string]float64{
-	squadimpact.RoleFirstGroupDeath: -0.5,
-	squadimpact.RoleLastGroupKill:   -0.5,
-	squadimpact.RoleKamikaze:        -0.5,
-}
+// baremeCandidat : les poids qui changent ; un rôle absent garde squadimpact.Weight. Vide depuis la
+// livraison du lot B : le barème candidat est le barème livré.
+var baremeCandidat = map[string]float64{}
+
+// impactPoidsOsDeVerre : le poids livré du rôle.
+var impactPoidsOsDeVerre, _ = squadimpact.Weight(impactRoleOsDeVerre)
 
 type impactBris struct{ bris, recharges int }
 
@@ -136,7 +141,7 @@ func TestImpactBareme(t *testing.T) {
 	for _, x := range ordre {
 		complet[x] = &impactCumul{roles: map[string]int{}}
 	}
-	matchsMesures, osAttribues, osHorsEscouade := 0, 0, 0
+	matchsMesures, osAttribues, osHorsEscouade, ecartsOsDeVerre := 0, 0, 0, 0
 	for _, mid := range matchIDs {
 		presents := 0
 		for _, a := range allies[mid] {
@@ -162,6 +167,9 @@ func TestImpactBareme(t *testing.T) {
 		attrs := squadimpact.RolesOfMatch(squadimpact.MatchInput{
 			Events: events[mid], Allies: allies[mid], Thief: voleurs[mid],
 		}, impactIdentite(squad))
+		if impactOsDeVerreLivre(events[mid], allies[mid], voleurs[mid], squad, bris[mid]) != impactOsDeVerreAttendu(verre, squad) {
+			ecartsOsDeVerre++
+		}
 		for _, c := range cibles {
 			for _, a := range allies[mid] {
 				if j := c[a.XUID]; j != nil {
@@ -187,6 +195,9 @@ func TestImpactBareme(t *testing.T) {
 			}
 		}
 	}
+	if ecartsOsDeVerre > 0 {
+		t.Errorf("attribution de l Os de verre : %d matchs ou squadimpact.RolesOfMatch et ce fichier different", ecartsOsDeVerre)
+	}
 	t.Logf("matchs avec mesure de bouclier : %d sur %d ; Os de verre sur l escouade : %d ; sur un allie hors escouade : %d",
 		matchsMesures, len(matchIDs), osAttribues, osHorsEscouade)
 	for _, bloc := range []struct {
@@ -201,7 +212,7 @@ func TestImpactBareme(t *testing.T) {
 				squad[x], j.matchs, j.matchsMesures, j.ancien/n, j.candidat/n, (j.candidat+j.osDeVerre)/n,
 				j.ancien, j.candidat, j.candidat+j.osDeVerre)
 			var parts []string
-			for _, r := range append(squadimpact.RoleOrder(), impactRoleOsDeVerre) {
+			for _, r := range squadimpact.RoleOrder() {
 				parts = append(parts, fmt.Sprintf("%s=%d", r, j.roles[r]))
 			}
 			t.Logf("    roles : %s", strings.Join(parts, " "))
@@ -337,4 +348,32 @@ func impactOsDeVerre(allies []analysis.ParticipantSnap, bris map[string]impactBr
 		}
 	}
 	return best, true
+}
+
+// impactOsDeVerreAttendu : le joueur de l escouade (nom de ligne = xuid) à qui l Os de verre tombe selon
+// ce fichier, vide si le rôle tombe hors escouade ou nulle part.
+func impactOsDeVerreAttendu(verre string, squad map[string]string) string {
+	if _, ok := squad[verre]; ok {
+		return verre
+	}
+	return ""
+}
+
+// impactOsDeVerreLivre : le joueur de l escouade à qui squadimpact.RolesOfMatch (code livré) attribue
+// l Os de verre, vide si aucun.
+func impactOsDeVerreLivre(events []analysis.ImpactEvent, allies []analysis.ParticipantSnap,
+	voleur *analysis.ImpactBadge, squad map[string]string, bris map[string]impactBris,
+) string {
+	shields := make(map[string]squadimpact.ShieldCount, len(bris))
+	for x, b := range bris {
+		shields[x] = squadimpact.ShieldCount{Breaks: b.bris, Recharges: b.recharges}
+	}
+	for _, a := range squadimpact.RolesOfMatch(squadimpact.MatchInput{
+		Events: events, Allies: allies, Thief: voleur, Shields: shields,
+	}, impactIdentite(squad)) {
+		if a.Role == impactRoleOsDeVerre {
+			return a.Player
+		}
+	}
+	return ""
 }
