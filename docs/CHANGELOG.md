@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.2] - Unreleased
+
+> Fix to automatic sync: the older history of each player comes back, not only the new matches.
+
+### Fixed
+- **Older matches back on automatic sync** — in 8.2.1, automatic syncs only fetched new matches, so the older history of a player stayed out of reach (issue #213). Each automatic sync now catches up to 200 older matches per pass, one pass every 10 minutes until the whole history is stored, for Halo Infinite and Halo 5; then only new matches are fetched. Custom games are not synced.
+- **Help on sync** — the help describes this behaviour and no longer mentions a full sync in Settings.
+
 ## [8.2.1] - 2026-11-16
 
 > The film decoder moves to v1.3.9 (`SchemaVersion` 124): medals, scoreboard, presence, clocks and ends of life are read; the web side types and normalises them; the only new thing on screen is the cross of deaths with no cause, in the replay.

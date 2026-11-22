@@ -1,5 +1,9 @@
 ## What's new
 
+**v8.2.2 — Older matches come back on automatic sync**
+
+- **The older history is caught up** — the automatic sync fetches older matches too, up to 200 per pass and one pass every 10 minutes, until the whole history is in LevelUp. After that only new matches are fetched. Custom games are not synced.
+
 **v8.2.1 — The film read more completely: medals, scoreboard, presence and bots**
 
 - **Every medal named** — the 157 medals of the game are read from the film with their real names. The replay does not show them yet

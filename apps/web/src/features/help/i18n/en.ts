@@ -207,7 +207,7 @@ export const EN_TEXT = {
           {
             term: 'Sync',
             definition:
-              'Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. Delta mode (default) only fetches new matches not yet recorded. A full sync can be forced from Settings.',
+              'Process that fetches matches from the Halo Waypoint API and writes them to the local DuckDB database. Once a player\'s history is complete, only new matches are fetched. Until then, each automatic sync catches up to 200 older matches, one pass every 10 minutes, until the whole history is stored. Custom games are not synced.',
             example:
               'With 5 matches played since the last sync, delta sync fetches only those 5 matches, leaving the 500 already stored untouched.',
           },
@@ -229,7 +229,7 @@ export const EN_TEXT = {
             term: 'Refresh Frequencies',
             definition: 'LevelUp uses several data freshness levels depending on the page.',
             example:
-              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered from the Sync button in Settings.\nAuto background: media is re-indexed after every sync.',
+              'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered by the "Sync now" button in Settings › Data & Media.\nAuto background: media is re-indexed after every sync.',
           },
         ],
       },

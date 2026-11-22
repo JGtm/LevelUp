@@ -8,6 +8,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.2] - Non publié
+
+> Correctif de la synchronisation automatique : l'historique ancien revient, pas seulement les nouveaux matchs.
+
+### Corrigé
+- **Anciens matchs rapatriés par la synchronisation automatique** — en 8.2.1, la synchronisation automatique ne récupérait que les nouveaux matchs, et l'historique ancien d'un joueur restait hors d'atteinte (issue #213). Chaque synchronisation automatique rattrape désormais jusqu'à 200 matchs plus anciens par passe, une passe toutes les 10 minutes tant que l'historique n'est pas complet, pour Halo Infinite et Halo 5 ; ensuite, seuls les nouveaux matchs sont récupérés. Les parties personnalisées ne sont pas synchronisées.
+- **Aide sur la synchronisation** — l'aide décrit ce comportement et ne parle plus d'une synchronisation complète dans les Paramètres.
+
 ## [8.2.1] - 2026-11-16
 
 > Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise ; seule la croix des morts sans cause s'ajoute à l'écran, dans le rejeu.
