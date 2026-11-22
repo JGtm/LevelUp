@@ -57,6 +57,8 @@ export const queryKeys = {
   desktopStatus: ['desktop-status'] as const,
   // État de la sauvegarde périodique et de la mémoire (GET /settings/data) : codes seulement, pas de libellé localisé.
   dataStatus: ['data-status'] as const,
+  // Un cycle de synchronisation tourne-t-il (GET /sync/cycle) : un booléen, global (tous les joueurs suivis).
+  syncCycle: ['sync-cycle'] as const,
   // Décompte et état de la file de régénération des rejeux (GET /desktop/replay-regen) : codes et nombres seulement.
   replayRegen: ['replay-regen'] as const,
   // État du paquet de ressources de l'application de bureau (GET /desktop/resources) : phase, pourcentage et code d'erreur seulement.

@@ -696,6 +696,20 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		handlers.NewBackfillHandler(syncJobs).Mount(r, apiOpt) // POST /backfill/start
 	})
 
+	// « Synchroniser maintenant » (Réglages › Données & Médias) : lance le cycle de l'ordonnanceur, le même
+	// que le cycle périodique, pour tous les joueurs suivis. Ouvert à tout joueur connecté (RequireAuth, sans
+	// RequireAdmin : le cycle ne prend aucun paramètre, il ne vise aucun joueur choisi par l'appelant) ;
+	// refusé en démo par RequireAuth. Sans ordonnanceur câblé (démo, rendu du contrat), la route est montée et
+	// répond 503.
+	var syncNow port.SyncNowService
+	if autoSyncScheduler != nil {
+		syncNow = autoSyncScheduler
+	}
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+		handlers.NewSyncNowHandler(syncNow).Mount(r, apiOpt) // POST /sync/now, GET /sync/cycle
+	})
+
 	// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
 	// multipart upload du .db SQLite OpenSpartan, validation XUID via session
 	// SSO, exécution asynchrone via jobStore. Skipped en mode démo.

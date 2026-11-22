@@ -272,6 +272,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   filmArchive: "occupation de l'archive des films (nombres et chemins, aucun libellé)",
   desktopStatus: "état vivant de l'intégration au poste (un booléen : le jeu tourne, aucun libellé)",
   dataStatus: 'sauvegarde et mémoire du poste (nombres, dates et codes fixes ; aucun libellé)',
+  syncCycle: 'un cycle de synchronisation tourne (un booléen ; aucun libellé)',
   replayRegen: 'décompte et état de la file de régénération des rejeux (nombres et booléens ; aucun libellé)',
   desktopResources: 'état du paquet de ressources (phase, pourcentage, code d’erreur ; aucun libellé : le texte est écrit par la page)',
   siteImport: "progression de l'import depuis le site (phase, code fixe et nombre ; aucun libellé)",

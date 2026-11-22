@@ -24,6 +24,7 @@ import (
 	"context"
 	"log/slog"
 	gosync "sync"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -91,6 +92,9 @@ type RunOnceResult struct {
 	// cycle : la boucle de Run en tire la cadence du cycle suivant (catchUpCycleInterval). Non
 	// exporté : l'état de l'historique d'un joueur se lit par le port de l'état de l'historique.
 	historyPending []string
+
+	// busy : le cycle demandé n'a pas tourné parce qu'un autre tournait déjà (RunOnceTrigger).
+	busy bool
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -264,6 +268,15 @@ type AutoSyncScheduler struct {
 	// newTicker et now sont les horloges de la boucle de Run ; nil = horloge réelle (tests : injectées).
 	newTicker func(time.Duration) cycleTicker
 	now       func() time.Time
+	// cycleRunning : un cycle tourne (RunOnceTrigger). Source de « jamais deux cycles à la fois » et du
+	// refus d'un clic « Synchroniser maintenant » pendant un cycle.
+	cycleRunning atomic.Bool
+	// manualCtx et manualWG portent les cycles demandés à la main (BindManualCycles) : annulés à
+	// l'arrêt, attendus avant la fermeture des bases. replanCh porte l'issue d'un cycle hors tick
+	// jusqu'à la boucle de Run.
+	manualCtx context.Context
+	manualWG  *gosync.WaitGroup
+	replanCh  chan []string
 	// nextCycleAt : instant (horloge murale) du prochain cycle périodique, mis à jour par la boucle de
 	// Run ; zéro tant que la boucle n'a pas démarré. Protégé par snapshotMu.
 	nextCycleAt time.Time
@@ -294,6 +307,7 @@ func New(
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
 		SyncGate:  sync.NopSyncGate{},
 		catchUpCh: make(chan string, catchUpQueue),
+		replanCh:  make(chan []string, 1),
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner

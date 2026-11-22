@@ -171,13 +171,24 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 4bis — bouton « Synchroniser maintenant » (Réglages › Données)
 
-- [ ] 4b.1 Route serveur qui lance le cycle de l'ordonnanceur (`RunOnceTrigger`, raison `manual`),
+- [x] 4b.1 Route serveur qui lance le cycle de l'ordonnanceur (`RunOnceTrigger`, raison `manual`),
   refus propre si un cycle tourne déjà (409 + message i18n), auto-sync désactivée = le bouton lance
   quand même un cycle (décision : un clic explicite passe outre le réglage). Pas de logique dans le
-  handler (port vers l'ordonnanceur).
-- [ ] 4b.2 Bouton dans l'onglet `data` des réglages, visible pour tout joueur et tout profil de
-  déploiement sauf démo ; textes FR/EN ; état « en cours » tant que le cycle tourne.
-- [ ] 4b.3 Tests : handler `httptest`, composant (vitest).
+  handler (port vers l'ordonnanceur). Fait : `POST /api/v1/sync/now` (202 `SyncNowResponse`, 409
+  `sync_cycle_busy` avec message du catalogue `sync.now.busy`, 503 `scheduler_unavailable`) et
+  `GET /api/v1/sync/cycle` (200 `SyncCycleState{running}`), `RequireAuth` sans `RequireAdmin` (tout
+  joueur connecté ; la démo est refusée par `RequireAuth`). Aucune route existante ne convenait :
+  `POST /sync/all` et `POST /admin/actions/auto-sync/run` sont réservées à l'administrateur,
+  `POST /players/{slug}/sync` lance le moteur V1 d'un seul joueur. Le port `port.SyncNowService` est
+  porté par l'ordonnanceur (`StartSyncNow`, `CycleRunning`) ; `RunOnceTrigger` refuse désormais un
+  second cycle simultané (résultat vide `busy`), et un cycle hors tick recale la cadence de `Run`
+  (`replanFromCycle`). Cycle lancé sous le contexte et le `WaitGroup` du serveur (`BindManualCycles`).
+- [x] 4b.2 Bouton dans l'onglet `data` des réglages, visible pour tout joueur et tout profil de
+  déploiement sauf démo ; textes FR/EN ; état « en cours » tant que le cycle tourne. Fait
+  (`features/settings/SyncNowCard.tsx`, gardé par la capacité `can_run_sync` du bootstrap, jamais par
+  le profil) ; « en cours » lu sur `GET /sync/cycle`, relu toutes les 3 s tant qu'il tourne.
+- [x] 4b.3 Tests : handler `httptest` (202, 409 FR/EN, 503, démo 403, joueur connecté / visiteur),
+  ordonnanceur (jamais deux cycles, auto-sync désactivée, cadence recalée), composant vitest.
 - Gate : `go test ./internal/api/... ./internal/scheduler/...`, `make generate-types` sans diff
   résiduel, `npx vitest run src/features/settings --maxWorkers=2`, `npx tsc --noEmit -p .`.
 

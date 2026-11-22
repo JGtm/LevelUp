@@ -178,6 +178,7 @@ const agnosticKeys = new Set<string>([
   'filmArchive', // archive des films : une par instance, tous titres confondus
   'desktopStatus', // intégration au poste : état du poste, indépendant du titre
   'dataStatus', // sauvegarde et mémoire du processus : état du poste, indépendant du titre
+  'syncCycle', // cycle de synchronisation : un seul pour tous les joueurs et titres suivis
   'replayRegen', // régénération des rejeux : état du poste, tous titres confondus
   'desktopResources', // paquet de ressources de l'application : état du poste, tous titres confondus
   'siteImport', // import depuis le site : une instance, tous titres confondus

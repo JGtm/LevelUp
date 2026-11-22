@@ -1,0 +1,6 @@
+# Textes de la synchronisation composés par le serveur.
+
+# « Synchroniser maintenant » refusé : un cycle de synchronisation tourne déjà.
+[sync.now.busy]
+fr = "Une synchronisation est déjà en cours."
+en = "A sync is already running."

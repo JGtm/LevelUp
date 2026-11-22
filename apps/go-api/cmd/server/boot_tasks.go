@@ -88,6 +88,9 @@ func initScheduler(st *bootState) {
 		WithFriendStore(friendStore).
 		WithHistoryReader(historyReader)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
+	// Les cycles demandés à la main (« Synchroniser maintenant ») suivent le cycle de vie du serveur :
+	// annulés avec schedulerCtx, attendus par l'arrêt avant la fermeture des bases.
+	autoScheduler.BindManualCycles(schedulerCtx, &st.schedulerWG)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
 	// pour guérir l'amnésie du dashboard au reboot : snapshot post-sync (timeline +

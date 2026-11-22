@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/adminstate"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -92,6 +93,10 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 		select {
 		case <-ticker.C():
 			s.runTick(ctx, st, ticker, "")
+		case pending := <-s.replanCh:
+			// Un cycle demandé hors tick (clic « Synchroniser maintenant ») vient de finir : la
+			// cadence suit son issue, comme après un tick.
+			s.replanFromCycle(ctx, st, ticker, pending)
 		case reason := <-s.catchUpCh:
 			// Rattrapage demandé (RequestCatchUp) : le même tick, exécuté dans CETTE boucle, donc
 			// jamais en même temps qu'un tick périodique.
@@ -127,7 +132,12 @@ func (s *AutoSyncScheduler) runTick(ctx context.Context, st *tickState, ticker c
 		st.configured = newInterval
 	}
 	slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID, "rattrapage", catchUpReason)
-	res := s.RunOnceTrigger(tickCtx, "tick")
+	res := s.RunOnceTrigger(tickCtx, adminstate.TriggerCron)
+	if res.busy {
+		// Un cycle demandé à la main tourne : il recalera la cadence à sa fin.
+		s.setNextCycleAt(s.clock().Add(st.period))
+		return
+	}
 	slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
 		"total", res.Total,
 		"synced", res.Synced,
@@ -146,26 +156,54 @@ func (s *AutoSyncScheduler) runTick(ctx context.Context, st *tickState, ticker c
 			"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
 		)
 	}
-	s.planNextCycle(tickCtx, st, ticker, res)
+	s.planNextCycle(tickCtx, st, ticker, res.historyPending)
 }
 
 // planNextCycle recale le ticker après un cycle : catchUpCycleInterval si au moins un joueur reste en
 // rattrapage (sans dépasser l'intervalle réglé), l'intervalle réglé sinon. Une ligne de journal par
 // cycle dit combien de joueurs rattrapent et l'intervalle retenu.
-func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ticker cycleTicker, res *RunOnceResult) {
+func (s *AutoSyncScheduler) planNextCycle(ctx context.Context, st *tickState, ticker cycleTicker, pending []string) {
 	next := st.configured
-	if len(res.historyPending) > 0 && catchUpCycleInterval < next {
+	if len(pending) > 0 && catchUpCycleInterval < next {
 		next = catchUpCycleInterval
 	}
 	slog.InfoContext(ctx, "auto_sync: cycle suivant planifié",
-		"joueurs_en_rattrapage", len(res.historyPending),
-		"gamertags", res.historyPending,
+		"joueurs_en_rattrapage", len(pending),
+		"gamertags", pending,
 		"intervalle", next,
 		"intervalle_regle", st.configured,
 	)
 	ticker.Reset(next)
 	st.period = next
 	s.setNextCycleAt(s.clock().Add(next))
+}
+
+// replanFromCycle recale la cadence après un cycle demandé hors tick. Auto-sync désactivée : rien ne
+// change (aucun cycle périodique n'a lieu, et la cadence se relira à l'activation).
+func (s *AutoSyncScheduler) replanFromCycle(ctx context.Context, st *tickState, ticker cycleTicker, pending []string) {
+	cfg, err := s.settings.Load()
+	if err != nil {
+		slog.WarnContext(ctx, "auto_sync: lecture settings échouée — cadence inchangée après le cycle demandé", "err", err)
+		return
+	}
+	if !cfg.SpnkrAutoSyncEnabled {
+		return
+	}
+	st.configured = resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours)
+	s.planNextCycle(ctx, st, ticker, pending)
+}
+
+// signalReplan transmet à la boucle de Run les joueurs restés en rattrapage à la fin d'un cycle hors
+// tick ; une issue plus récente remplace celle qui attend encore. Ne bloque jamais.
+func (s *AutoSyncScheduler) signalReplan(pending []string) {
+	select {
+	case <-s.replanCh:
+	default:
+	}
+	select {
+	case s.replanCh <- pending:
+	default:
+	}
 }
 
 // historyIncomplete dit si l'historique du joueur est incomplet, lu sans écrire. Sans lecteur câblé, ou

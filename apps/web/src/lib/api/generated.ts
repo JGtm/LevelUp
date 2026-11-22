@@ -4214,6 +4214,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sync/cycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Un cycle de synchronisation tourne-t-il */
+        get: operations["getSyncCycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sync/initial": {
         parameters: {
             query?: never;
@@ -4231,6 +4248,23 @@ export interface paths {
          *     puis 200.
          */
         post: operations["postSyncInitial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sync/now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lancer tout de suite le cycle de synchronisation */
+        post: operations["postSyncNow"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13595,6 +13629,17 @@ export interface components {
             z: number;
             /** Format: float */
             zb: number;
+        };
+        SyncCycleState: {
+            /** @description Un cycle de synchronisation tourne (périodique ou demandé). */
+            running: boolean;
+        };
+        SyncNowResponse: {
+            /**
+             * @description Le cycle de synchronisation tourne en arrière-plan.
+             * @enum {string}
+             */
+            status: "started";
         };
         SynthesisBreakdowns: {
             top_maps: components["schemas"]["SynthesisMapEntry"][] | null;
@@ -24088,6 +24133,35 @@ export interface operations {
             };
         };
     };
+    getSyncCycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncCycleState"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postSyncInitial: {
         parameters: {
             query?: never;
@@ -24148,6 +24222,35 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postSyncNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncNowResponse"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

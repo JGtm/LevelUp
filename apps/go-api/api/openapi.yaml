@@ -7516,6 +7516,25 @@ paths:
       summary: Sync delta global (tous les joueurs configurés)
       tags:
         - sync
+  /sync/cycle:
+    get:
+      operationId: getSyncCycle
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncCycleState'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Un cycle de synchronisation tourne-t-il
+      tags:
+        - sync
   /sync/initial:
     post:
       description: |
@@ -7578,6 +7597,25 @@ paths:
                 $ref: '#/components/schemas/ApiError'
           description: Error
       summary: Lancer la synchronisation initiale
+      tags:
+        - sync
+  /sync/now:
+    post:
+      operationId: postSyncNow
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncNowResponse'
+          description: Accepted
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Lancer tout de suite le cycle de synchronisation
       tags:
         - sync
   /titles/{slug}/capabilities:
@@ -30097,6 +30135,26 @@ components:
         - y1
         - z
         - zb
+      type: object
+    SyncCycleState:
+      additionalProperties: false
+      properties:
+        running:
+          description: Un cycle de synchronisation tourne (périodique ou demandé).
+          type: boolean
+      required:
+        - running
+      type: object
+    SyncNowResponse:
+      additionalProperties: false
+      properties:
+        status:
+          description: Le cycle de synchronisation tourne en arrière-plan.
+          enum:
+            - started
+          type: string
+      required:
+        - status
       type: object
     SynthesisBreakdowns:
       additionalProperties: false

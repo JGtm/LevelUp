@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/adminstate"
 )
 
 // RunOnce exécute un cycle de sync pour tous les joueurs configurés.
@@ -29,7 +30,25 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 // RunOnceTrigger est RunOnce avec la provenance du déclenchement ("tick" pour
 // la boucle périodique, "manual" pour HTTP/diag/job) — tracée dans
 // l'historique des cycles du dashboard monitoring.
+//
+// Jamais deux cycles à la fois : si un cycle tourne déjà, la demande est ignorée et journalisée, et le
+// résultat rendu est vide (busy). Un cycle qui n'est pas le tick de la boucle de Run signale son issue à
+// la boucle, qui recale alors sa cadence (replanFromCycle).
 func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) *RunOnceResult {
+	if !s.cycleRunning.CompareAndSwap(false, true) {
+		slog.InfoContext(ctx, "auto_sync: un cycle tourne déjà, demande ignorée", "trigger", trigger)
+		return &RunOnceResult{busy: true}
+	}
+	defer s.cycleRunning.Store(false)
+	res := s.runCycle(ctx, trigger)
+	if trigger != adminstate.TriggerCron {
+		s.signalReplan(res.historyPending)
+	}
+	return res
+}
+
+// runCycle exécute le cycle ; l'appelant tient le drapeau cycleRunning.
+func (s *AutoSyncScheduler) runCycle(ctx context.Context, trigger string) *RunOnceResult {
 	start := time.Now()
 	// Cumuls process-wide capturés AVANT le cycle : les deltas après cycle
 	// attribuent au cycle sa fenêtre d'indispo lectures, ses 503, son temps
