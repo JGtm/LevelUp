@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -82,9 +83,9 @@ func NewMatchListProvider(factory HaloClientFactory, matchType string, pageSize,
 // `xuid(NNN)` requis (anti-régression incident mai 2026 — gamertag brut → réponse stale).
 //
 // Deux modes, selon l'état de l'historique du joueur (hist) :
-//   - complet : delta. Pagination en ordre reverse-chronologique, arrêt dès le 1er match connu
-//     (ordre API préservé), au plus maxPages pages (garde-rail : V1 n'en a pas, peut paginer
-//     1000 pages en cas de known set vide) ;
+//   - complet : delta. Pagination en ordre reverse-chronologique, arrêt après
+//     domain.DeltaKnownRun matchs connus d'affilée (ordre API préservé), au plus maxPages pages
+//     (garde-rail : V1 n'en a pas, peut paginer 1000 pages en cas de known set vide) ;
 //   - incomplet : rattrapage (fetchers_history.go), qui saute les connus au lieu de s'arrêter
 //     dessus et reprend au marque-page.
 func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof PlayerProfile, known map[string]bool, hist HistoryState) (Listing, error) {
@@ -105,9 +106,12 @@ func (p *matchListProviderV2) ListUnknownMatches(ctx context.Context, prof Playe
 	return Listing{Unknown: unknown}, nil
 }
 
-// listDelta pagine /matches et s'arrête dès qu'un match connu est rencontré.
+// listDelta pagine /matches et s'arrête après domain.DeltaKnownRun matchs connus d'affilée (les
+// inconnus rencontrés avant, y compris entre deux connus, sont pris : un match rangé par un
+// coéquipier ne cache pas les inconnus qui le suivent), à la fin de la liste ou après maxPages pages.
 func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, gamertag, histArg string, known map[string]bool) ([]string, error) {
 	unknown := make([]string, 0, p.pageSize)
+	run := 0 // matchs connus d'affilée, jusqu'à l'entrée courante
 	for page := 0; page < p.maxPages; page++ {
 		start := page * p.pageSize
 		entries, err := client.GetMatchHistory(ctx, histArg, p.matchType, start, p.pageSize)
@@ -117,21 +121,22 @@ func (p *matchListProviderV2) listDelta(ctx context.Context, client HaloClient, 
 		if len(entries) == 0 {
 			break // fin de l'historique
 		}
-		foundKnown := false
 		for _, e := range entries {
 			if known[e.MatchID] {
-				foundKnown = true
-				break
+				if run++; run >= domain.DeltaKnownRun {
+					break
+				}
+				continue
 			}
+			run = 0
 			unknown = append(unknown, e.MatchID)
 		}
-		if foundKnown {
+		if run >= domain.DeltaKnownRun {
 			break
 		}
-		// Si on a consommé toute la page sans trouver de match connu et
-		// que la page est pleine, on continue à la suivante.
+		// Page partielle = fin de l'historique ; page pleine : on continue à la suivante.
 		if len(entries) < p.pageSize {
-			break // page partielle = fin de l'historique
+			break
 		}
 	}
 	slog.DebugContext(ctx, "v2 ListUnknownMatches",

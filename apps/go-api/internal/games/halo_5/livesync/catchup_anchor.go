@@ -3,7 +3,7 @@ package livesync
 // catchup_anchor.go — l'ancre du marque-page du rattrapage Halo 5 (historystate.Cursor.HeadID) : le
 // nombre de matchs arrivés en tête de liste depuis la passe précédente se lit comme la position de
 // l'ancienne tête dans la liste relue, toutes entrées comptées (Arena, mais aussi Warzone et Campagne,
-// écartées et donc jamais connues). Sans ancre, la passe garde sa règle « jusqu'au premier connu ».
+// écartées et donc jamais connues). Sans ancre, N est le nombre d'entrées vues jusqu'à la dernière non connue (D-23).
 
 import (
 	"context"

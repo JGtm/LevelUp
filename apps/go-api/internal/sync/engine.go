@@ -230,9 +230,9 @@ type historyPaginationInputs struct {
 // paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
 // page, filtre les matchs connus, fetche en parallèle les inconnus puis les persiste
 // (fetchAndPersistMatches). Arrêts : MaxMatches atteint, page vide, match connu rencontré
-// en delta (APRÈS flush des unknowns déjà collectés de la page), ou page entièrement connue
-// en delta. Mute `result` (compteurs + warnings). Rend les match_id dont la récupération a
-// été tentée (réussie ou non).
+// en delta après domain.DeltaKnownRun connus d'affilée (APRÈS flush des unknowns déjà collectés de la
+// page ; un inconnu rencontré avant est pris et remet le compte à zéro). Mute `result` (compteurs +
+// warnings). Rend les match_id dont la récupération a été tentée (réussie ou non).
 //
 // la découper disperserait l'état partagé processed/toFetch/stopAfterFlush et nuirait à
 // la lisibilité du critère d'arrêt delta (bug 2026-05-21 : flush-avant-stop).
@@ -242,6 +242,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 	attempted := map[string]bool{}
 	processed := 0
 	start := 0
+	knownRun := 0 // matchs connus d'affilée, d'une page à l'autre (delta)
 
 	for processed < in.opts.MaxMatches {
 		// Respecter le contexte d'annulation.
@@ -292,11 +293,9 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 			)
 		}
 
-		allKnown := true
-
 		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
 		var toFetch []string // MatchIDs à fetcher (l'ordre suit `entries`)
-		// stopAfterFlush : on a rencontré un match connu en mode delta. On
+		// stopAfterFlush : la suite de connus du mode delta est complète. On
 		// arrête après avoir fetché/inséré les nouveaux déjà collectés —
 		// ne PAS goto done direct sinon on perd les entries unknown qui
 		// précèdent le connu dans la même page (bug 2026-05-21 : page
@@ -311,17 +310,20 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 			if in.known[entry.MatchID] {
 				result.MatchesSkipped++
 				if in.isDelta {
-					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta après flush",
-						"gamertag", e.gamertag, "match_id", entry.MatchID,
-						"processed", processed, "skipped", result.MatchesSkipped,
-						"pending_fetch", len(toFetch),
-					)
-					stopAfterFlush = true
-					break
+					if knownRun++; knownRun >= domain.DeltaKnownRun {
+						slog.InfoContext(ctx, "sync: suite de matchs connus rencontrée — arrêt delta après flush",
+							"gamertag", e.gamertag, "match_id", entry.MatchID,
+							"processed", processed, "skipped", result.MatchesSkipped,
+							"pending_fetch", len(toFetch),
+							"known_run", knownRun,
+						)
+						stopAfterFlush = true
+						break
+					}
 				}
 				continue
 			}
-			allKnown = false
+			knownRun = 0
 			toFetch = append(toFetch, entry.MatchID)
 		}
 
@@ -335,15 +337,12 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 			// fetchés/insérés ci-dessus. On peut sortir.
 			break
 		}
-		if in.isDelta && allKnown {
-			break
-		}
 		start += len(entries)
 	}
 	return attempted
 }
 
-// run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
+// run est le cœur du moteur de sync. isDelta=true → stop après domain.DeltaKnownRun matchs connus d'affilée.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	// mode + sa forme titre-case pour le nom d'event (remplace strings.Title,

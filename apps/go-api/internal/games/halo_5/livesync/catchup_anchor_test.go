@@ -111,22 +111,24 @@ func TestRunDelta_Ancre_PerdueRepartDe0Comptee(t *testing.T) {
 	}
 }
 
-// Le delta s'arrête sur un match déjà connu (rangé par un coéquipier) AVANT l'ancre : la tête de liste
-// est relue page à page jusqu'à l'ancre, et le décalage est exact.
+// Le delta s'arrête après 25 matchs déjà connus d'affilée (rangés par un coéquipier) AVANT l'ancre : la tête
+// de liste est relue page à page jusqu'à l'ancre, et le décalage est exact.
 func TestRunDelta_Ancre_ConnuAuDessusDeLAncreRelitLaTete(t *testing.T) {
 	w := newHistoryWorld(450)
 	w.run(t, domain.SyncOptions{})
 	before := *w.cursor
 
-	fresh := idsOf("a", 5)
-	w.stored[fresh[0]] = true // connu : le delta s'arrête dès la première entrée
+	fresh := idsOf("a", 30)
+	for _, id := range fresh {
+		w.stored[id] = true // connus : 25 d'affilée arrêtent le delta avant l'ancre, 30 entrées plus bas
+	}
 	w.prependIDs(fresh...)
 	w.pageStarts, w.listStarts = nil, nil
 	missedBefore := observability.LoadCounter(metricCursorMissed)
 	w.run(t, domain.SyncOptions{})
 
-	if len(w.listStarts) != 1 || w.listStarts[0] != 0 {
-		t.Errorf("lectures de tête de liste = %v, attendu une page à 0", w.listStarts)
+	if len(w.listStarts) != 1 || w.listStarts[0] != backfillDefaultPageSize {
+		t.Errorf("lectures de tête de liste = %v, attendu une page à %d (la suite de la tête déjà lue)", w.listStarts, backfillDefaultPageSize)
 	}
 	if want := before.Offset + len(fresh) - backfillDefaultPageSize; len(w.pageStarts) == 0 || w.pageStarts[0] != want {
 		t.Fatalf("pages de reprise = %v, attendu une première page à %d", w.pageStarts, want)
@@ -137,14 +139,16 @@ func TestRunDelta_Ancre_ConnuAuDessusDeLAncreRelitLaTete(t *testing.T) {
 }
 
 // Lecture de tête de liste en échec : pas de panique, pas de reprise depuis 0 sur un doute ; la passe
-// retombe sur la règle sans ancre (décalage = entrées vues jusqu'au premier connu).
+// retombe sur la règle sans ancre (décalage = entrées vues jusqu'à la dernière non connue).
 func TestRunDelta_Ancre_LectureDeTeteEnEchecRetombeSurLaRegleSansAncre(t *testing.T) {
 	w := newHistoryWorld(450)
 	w.run(t, domain.SyncOptions{})
 	before := *w.cursor
 
-	fresh := idsOf("a", 5)
-	w.stored[fresh[0]] = true
+	fresh := idsOf("a", 30)
+	for _, id := range fresh {
+		w.stored[id] = true
+	}
 	w.prependIDs(fresh...)
 	w.pageStarts = nil
 	deps := w.deps()
@@ -154,14 +158,14 @@ func TestRunDelta_Ancre_LectureDeTeteEnEchecRetombeSurLaRegleSansAncre(t *testin
 	if _, err := NewRunner(deps, nil).RunDelta(context.Background(), domain.SyncOptions{}); err != nil {
 		t.Fatalf("RunDelta: %v", err)
 	}
-	// Règle sans ancre : un seul match vu (le connu), décalage 1 - 1 = 0.
+	// Règle sans ancre : aucune entrée non connue vue, décalage 0.
 	if want := before.Offset - backfillDefaultPageSize; len(w.pageStarts) == 0 || w.pageStarts[0] != want {
 		t.Errorf("pages de reprise = %v, attendu une première page à %d (règle sans ancre)", w.pageStarts, want)
 	}
 }
 
-// Marque-page ancien, sans ancre : comportement d'avant (décalage = entrées vues jusqu'au premier
-// connu), aucune lecture de plus ; le marque-page rangé ensuite porte l'ancre.
+// Marque-page ancien, sans ancre : comportement sans ancre (décalage = entrées vues jusqu'à la dernière non
+// connue), aucune lecture de plus ; le marque-page rangé ensuite porte l'ancre.
 func TestRunDelta_Ancre_MarquePageSansAncreGardeLaRegleActuelle(t *testing.T) {
 	w := newHistoryWorld(450)
 	w.run(t, domain.SyncOptions{})
@@ -201,5 +205,56 @@ func TestRunDelta_Ancre_SansAncreTrenteWarzoneRepartDe0(t *testing.T) {
 	}
 	if got := observability.LoadCounter(metricCursorMissed) - missedBefore; got != 1 {
 		t.Errorf("compteur h5_history_cursor_missed_total +%d, attendu +1", got)
+	}
+}
+
+// Un coéquipier range B (arrivé après A) en premier : la liste est [B, A, ...], B est connu, A non. Le delta
+// du dessus prend A (D-23), avec ancre comme sans ancre, et situe le marque-page sans repartir de 0.
+func TestRunDelta_ConnuRangeParUnCoequipier_LInconnuEnDessousEstPris(t *testing.T) {
+	for _, anchored := range []bool{true, false} {
+		t.Run(fmt.Sprintf("ancre=%v", anchored), func(t *testing.T) {
+			w := newHistoryWorld(450)
+			w.run(t, domain.SyncOptions{})
+			if !anchored {
+				w.cursor.HeadID = ""
+			}
+			before := *w.cursor
+
+			w.stored["b0000"] = true
+			w.prependIDs("b0000", "a0000")
+			w.pageStarts, w.listStarts = nil, nil
+			missedBefore := observability.LoadCounter(metricCursorMissed)
+			w.run(t, domain.SyncOptions{})
+
+			if !w.stored["a0000"] {
+				t.Fatal("A, joué seul sous le match B rangé par un coéquipier, n'a pas été pris")
+			}
+			if want := before.Offset + 2 - backfillDefaultPageSize; len(w.pageStarts) == 0 || w.pageStarts[0] != want {
+				t.Fatalf("pages de reprise = %v, attendu une première page à %d (marque-page %d + 2 arrivés - une page)", w.pageStarts, want, before.Offset)
+			}
+			for _, s := range w.pageStarts {
+				if s == 0 {
+					t.Errorf("la passe est repartie de 0 : pages %v", w.pageStarts)
+				}
+			}
+			if got := observability.LoadCounter(metricCursorMissed) - missedBefore; got != 0 {
+				t.Errorf("compteur h5_history_cursor_missed_total +%d, attendu +0", got)
+			}
+		})
+	}
+}
+
+// Historique complet : le delta ordinaire prend lui aussi A sous le connu B.
+func TestRunDelta_Complet_ConnuRangeParUnCoequipier_LInconnuEnDessousEstPris(t *testing.T) {
+	w := newHistoryWorld(450)
+	w.complete = true
+	for _, id := range w.ids {
+		w.stored[id] = true
+	}
+	w.stored["b0000"] = true
+	w.prependIDs("b0000", "a0000")
+	w.run(t, domain.SyncOptions{})
+	if !w.stored["a0000"] {
+		t.Fatal("A, joué seul sous le match B rangé par un coéquipier, n'a pas été pris")
 	}
 }

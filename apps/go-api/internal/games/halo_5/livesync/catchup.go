@@ -2,7 +2,7 @@ package livesync
 
 // catchup.go — rattrapage de l'historique Halo 5 par la synchronisation automatique.
 //
-// Un delta (CollectRecentMatches) s'arrête au premier match connu : une première synchronisation
+// Un delta (CollectRecentMatches) s'arrête après domain.DeltaKnownRun matchs connus d'affilée : une première synchronisation
 // interrompue laisserait un trou définitif derrière les matchs déjà rangés. Tant que la fin de
 // l'historique n'a pas été vue pour le joueur (internal/sync/historystate), Runner.RunDelta fait donc
 // une passe de rattrapage par la mécanique du backfill (RunBackfill : connus sautés, persistance page
@@ -11,9 +11,9 @@ package livesync
 //
 // Marque-page : la passe range la position où elle s'est arrêtée (historystate.Cursor : décalage dans la
 // liste de l'API, dernier match traité et ancre, l'entrée en tête de liste à cette passe). La suivante
-// (1) fait le delta du dessus, jusqu'au premier match connu, et compte N, le nombre d'entrées arrivées
+// (1) fait le delta du dessus, jusqu'à une suite de matchs connus (domain.DeltaKnownRun), et compte N, le nombre d'entrées arrivées
 // en tête : la position de l'ancre dans la liste relue (catchup_anchor.go), toutes entrées comptées,
-// écartées comprises ; sans ancre, le nombre d'entrées vues jusqu'au premier connu ; (2) reprend au
+// écartées comprises ; sans ancre, le nombre d'entrées vues jusqu'à la dernière entrée non connue (CaptureStats.TopSpan) ; (2) reprend au
 // décalage rangé + N moins une page de recouvrement ; (3) exige l'identifiant rangé sur la page de
 // recouvrement, sinon repart du début (journalisé, compté) ; une ancre introuvable en tête de liste
 // repart du début aussi. Une page qui échoue maxCatchUpAttempts passes de suite est abandonnée
@@ -191,12 +191,12 @@ type topDeltaResult struct {
 	restart  bool // ancre perdue : la reprise repart du début de la liste
 }
 
-// topDelta ramasse les matchs plus récents que le premier match connu (le delta ordinaire, borné au
+// topDelta ramasse les matchs plus récents qu'une suite de matchs connus, domain.DeltaKnownRun (le delta ordinaire, borné au
 // budget), compte N, le nombre d'entrées arrivées en tête depuis le marque-page, et décale le
 // marque-page de N : ce sont autant d'entrées de plus entre le haut de la liste et lui. N est la
 // position de l'ancre du marque-page dans la liste (locateAnchor), exacte quelles que soient les
 // entrées arrivées, écartées (Warzone, campagne) comprises ; sans ancre, le nombre d'entrées vues
-// jusqu'au premier connu, et la page de recouvrement absorbe le surcompte des écartées. Une ancre
+// jusqu'à la dernière entrée non connue, et la page de recouvrement absorbe le surcompte des écartées. Une ancre
 // perdue (plus d'AnchorMaxPages pages arrivées) renvoie la reprise au début de la liste.
 // Le marque-page n'est décalé qu'après un delta propre : un match du dessus resté en échec ne doit pas
 // être déclaré traité.
@@ -226,7 +226,7 @@ func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, bud
 		top.stop = true
 		top.marked = top.clean && p.store.MarkComplete(ctx)
 	case !stats.StoppedOnKnown:
-		// Budget atteint avant le premier match connu : la suite au prochain passage.
+		// Budget atteint avant la suite de connus : la suite au prochain passage.
 		top.stop = true
 		if a := p.locateAnchor(ctx, cur, stats); a.kind == anchorLost {
 			p.noteAnchorLost(ctx, cur) // marque-page laissé tel quel : le prochain passage le jugera
@@ -239,7 +239,7 @@ func (p *catchUpPass) topDelta(ctx context.Context, cur historystate.Cursor, bud
 			p.noteAnchorLost(ctx, cur)
 			resume.Start, resume.ExpectID, top.restart = 0, "", true
 		} else {
-			shift := shiftOf(a, stats.MatchesSeen-1)
+			shift := shiftOf(a, stats.TopSpan)
 			p.shiftCursor(ctx, cur, shift, top.clean)
 			resume.Start = max(0, cur.ResumeOffset(shift)-backfillDefaultPageSize)
 			resume.ExpectID = cur.LastMatchID

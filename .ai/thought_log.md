@@ -1,3 +1,9 @@
+## [2026-11-22] Hotfix 8.2.2 : le delta ne s'arrête plus au premier match connu, mais après 25 connus d'affilée (D-23) — Complété (branche `fix/822-n`)
+
+- **Décision** : une constante unique `domain.DeltaKnownRun = 25` ; V2 (historique complet et delta du dessus du rattrapage sans ancre), Halo 5 (capture, historique complet et delta du dessus) et moteur V1 prennent les inconnus rencontrés entre des connus et s'arrêtent après 25 connus d'affilée ; avec ancre, le delta du dessus V2 lisait déjà jusqu'à l'ancre ; Halo 5 : les Warzone et la campagne ne comptent ni ne remettent à zéro la suite. Sans ancre, N = entrées vues jusqu'à la dernière inconnue.
+- **Résultats observés** : un match rangé d'abord par un coéquipier ne cache plus le match inconnu juste en dessous (tests V2, Halo 5 et V1). Pages lues : sans nouveau match 1 -> 1, avec un nouveau match 1 -> 2 ; convergence Halo 5 [8 10 10 10 10 3] -> [8 11 10 11 10 3], convergence V2 [8 9 10 9 10 2] inchangée (seul le delta d'un match neuf passe de 1 à 2 pages).
+- **Suite** : intégration dans la release par le pilote.
+
 ## [2026-11-22] 8.2.2 : délai de la file de persistance et ancre du marque-page (V2) — Complété (branche `fix/822-i`)
 
 - **Décision** : le cycle V2 attend la file de persistance 60 s + 4 s par match (plafond 20 min) au lieu de 60 s fixes ; si l'attente expire, il relit l'ensemble connu et continue avec les matchs prouvés rangés, sans compter d'échec pour ceux encore en file. Le marque-page retient la tête de liste (`HeadID`) : la reprise est à marque-page + position de l'ancienne tête, contrôlée par l'identifiant rangé.

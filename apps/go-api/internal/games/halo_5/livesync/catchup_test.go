@@ -17,7 +17,7 @@ import (
 // historyWorld simule un historique Halo 5 (liste de match_ids, du plus récent au plus ancien), la
 // base partagée (matchs rangés) et l'état du rattrapage du joueur (HistoryStore). Ses captures
 // reproduisent le contrat de halo5 : la page connus sautés sans arrêt, HistoryEnd sur page vide ou
-// incomplète, LastMatchID ; le delta s'arrête au premier connu (CollectRecentMatches).
+// incomplète, LastMatchID ; le delta s'arrête après domain.DeltaKnownRun connus d'affilée (CollectRecentMatches).
 type historyWorld struct {
 	ids        []string
 	stored     map[string]bool
@@ -101,7 +101,8 @@ func (w *historyWorld) capturePage(_ context.Context, viewer canonical.PlayerIde
 	return batches, true, nil
 }
 
-// capture simule CollectRecentMatches : delta-stop au premier connu, plafond MaxMatches.
+// capture simule CollectRecentMatches : delta-stop après domain.DeltaKnownRun connus d'affilée (les entrées
+// écartées ne comptent ni ne remettent à zéro), plafond MaxMatches.
 func (w *historyWorld) capture(_ context.Context, _ halo5.CaptureSource, viewer canonical.PlayerIdentity, _ func(string) string,
 	isKnown func(string) bool, opts halo5.CaptureOptions) ([]*persist.MatchBatch, halo5.CaptureStats, error) {
 	w.deltaCalls++
@@ -120,13 +121,19 @@ func (w *historyWorld) capture(_ context.Context, _ halo5.CaptureSource, viewer 
 			stats.MatchesSeen++
 			noteEntry(&stats, opts.TopLimit, start+i, id)
 			if isKnown(id) {
-				stats.StoppedOnKnown = true
-				return batches, stats, nil
+				stats.MatchesSkipped++
+				if stats.KnownRun++; stats.KnownRun >= domain.DeltaKnownRun {
+					stats.StoppedOnKnown = true
+					return batches, stats, nil
+				}
+				continue
 			}
+			stats.TopSpan = stats.MatchesSeen
 			if w.excluded[id] {
 				stats.ExcludedWarzone++
 				continue
 			}
+			stats.KnownRun = 0
 			batches = append(batches, batchFor(id, viewer))
 			stats.MatchesCollected++
 			if opts.MaxMatches > 0 && stats.MatchesCollected >= opts.MaxMatches {
