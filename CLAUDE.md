@@ -265,7 +265,7 @@ cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist 
 make go-api-test-gamefiles  # corpus cartes (paquet himap de la brique images de carte, par chemin d import) + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
-make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies briques et DuckDB en parallèle ; GOWORK=off) ; la CI reste le gate d'autorité
+make gate-push              # filet local avant merge vers main UNIQUEMENT, jamais avant une fusion dans la release (~40 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies briques et DuckDB en parallèle ; GOWORK=off) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
 

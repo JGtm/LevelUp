@@ -2022,11 +2022,15 @@ d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG
 et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
 (`halo5Images.guard.test.ts`) échoue si un PNG revient.
 
-### Gate local avant merge (`gate-push`)
+### Gate local avant `main` (`gate-push`)
 
 ```bash
 make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
+
+Il se lance UNE fois, sur la branche de release, avant la fusion de la release dans `main`. Jamais avant la
+fusion d'une branche de travail dans `release/vX.Y.Z` : là, les paquets touchés, une suite `vitest` complète et la
+CI font le gate. Depuis un worktree, `replay-equiv` lit seul le parc de films et la liste des originaux du dépôt principal.
 
 `make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu) : les références de
 `replay/testdata/equivalence` du décodeur de film (lues à la version qu'exige `go.mod`) ont dérivé sans bruit de la

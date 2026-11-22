@@ -317,8 +317,14 @@ replay-corpus-gate:
 ## (local, hors depot ; sinon -originaux ou LEVELUP_IDENTITES_ORIGINALES). Re-figer les references
 ## (`-update`) se fait sur un clone du decodeur (ou qu il soit sur le disque) designe par un espace de travail local
 ## (scripts/briques-workspace.sh), puis par une nouvelle version publiee.
+## Depuis un worktree, le parc et la liste des originaux sont lus dans le depot PRINCIPAL (celui qui porte
+## le .git commun) : un worktree n a pas de donnees, et sans cette regle les 20 films echouaient en code 11.
+## LEVELUP_REPO_ROOT et LEVELUP_IDENTITES_ORIGINALES, s ils sont poses, priment.
 replay-equiv:
-	cd $(GO_API_DIR) && go run ./cmd/replay-equiv
+	@REPO="$${LEVELUP_REPO_ROOT:-$$(cd "$$(git rev-parse --path-format=absolute --git-common-dir)/.." && (pwd -W 2>/dev/null || pwd))}"; \
+	IDS="$${LEVELUP_IDENTITES_ORIGINALES:-$$REPO/data/film_identites/xuids_originaux.txt}"; \
+	echo "[replay-equiv] parc lu sous $$REPO"; \
+	cd $(GO_API_DIR) && LEVELUP_REPO_ROOT="$$REPO" LEVELUP_IDENTITES_ORIGINALES="$$IDS" go run ./cmd/replay-equiv
 
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:
@@ -345,7 +351,7 @@ go-api-lint:
 	cd $(GO_API_DIR) && \
 	if command -v golangci-lint >/dev/null 2>&1; then \
 		echo "golangci-lint présent — lint complet (ratchet CI, dette gelée exclue)."; \
-		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
+		golangci-lint run --timeout 15m --new-from-merge-base=origin/main; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
 		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... \
@@ -424,7 +430,7 @@ gate-push:
 		echo "  Installation : https://golangci-lint.run/usage/install/ (version CI : v2.12.2)"; \
 		exit 1; \
 	}
-	cd $(GO_API_DIR) && golangci-lint run --timeout 5m --new-from-merge-base=origin/main
+	cd $(GO_API_DIR) && golangci-lint run --timeout 15m --new-from-merge-base=origin/main
 	"$(MAKE)" replay-equiv
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint

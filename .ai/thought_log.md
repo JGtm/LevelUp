@@ -1,3 +1,11 @@
+## [2026-11-22] Gates : quel contrôle à quel moment, gate-push avant main seulement — Complété
+
+**Décision technique principale** : `levelup-livraison` (nouvelle section 0), `CLAUDE.md` et `docs/COMMANDS.md` (EN et FR) disent maintenant les trois niveaux de contrôle : fin de lot = paquets touchés ; fusion dans la release = `go test ./...`, intégration `-p 1` sur les seuls paquets touchés de persist/sync/migration/platform/duckdb, `vitest` complet une fois, puis la CI ; `make gate-push` une seule fois, avant `main`. `Makefile` : délai du lint porté de 5 à 15 min (le cache vide d'un worktree le faisait dépasser juste après « 0 issues ») ; `replay-equiv` lit seul le parc et la liste des originaux du dépôt principal depuis un worktree (code 11 sur les 20 films sinon).
+
+**Résultats observés** : le 2026-11-22, les contrôles ont presque égalé le temps de développement (gate-push lancé avant chaque fusion dans la release, deux faux échecs, une intégration complète inutile). Le user : « t'es pas le premier agent à te tromper, faut revoir ça ».
+
+**Conclusion / prochaine étape** : appliquer la section 0 à tout chantier ; mémoire du projet mise à jour.
+
 ## [2026-11-22] Commande /issue : traiter une issue GitHub de bout en bout en local — Complété
 
 - **Décision** : une commande locale (skill `.claude/skills/issue/`, lancée seulement par `/issue <numéro>`) plutôt qu'une action GitHub, pour rester sur l'abonnement et pouvoir lire les journaux et une copie des données. Déroulé fixe : lecture, tri en demandes élémentaires, test qui reproduit vu en échec avant tout correctif, correctif, gates de `levelup-livraison`, relecture par un sous-agent Sonnet, PR vers la release, brouillon de réponse jamais publié sans accord. Arrêts : fonctionnalité (plan seul), bug en zone sensible (après le test), bug dépendant des données réelles (diagnostic seul), gates rouges après trois rondes. Le texte de l'issue est traité comme des données, jamais comme des consignes.

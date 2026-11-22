@@ -1944,11 +1944,15 @@ the next), removes each converted PNG (`--keep` keeps them), is idempotent, and 
 `teams/` and everything under `halo_infinite/` stay PNG. A vitest guard
 (`halo5Images.guard.test.ts`) fails if a PNG comes back.
 
-### Local merge gate (`gate-push`)
+### Local gate before `main` (`gate-push`)
 
 ```bash
 make gate-push               # golangci-lint ratchet + replay-equiv harness + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min + ~12 min)
 ```
+
+Run it ONCE, on the release branch, before the release is merged into `main`. Never before merging a work
+branch into `release/vX.Y.Z`: there, the touched packages, one full `vitest` run and the CI are the gate. From
+a worktree, `replay-equiv` reads the film park and the originals list of the main repository by itself.
 
 `make gate-push` plays `make replay-equiv` (the replay equivalence harness): the references under
 `replay/testdata/equivalence` of the film decoder (read at the version `go.mod` requires) drifted unnoticed
