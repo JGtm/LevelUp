@@ -1,3 +1,9 @@
+## [2026-11-22] Commande /issue : traiter une issue GitHub de bout en bout en local — Complété
+
+- **Décision** : une commande locale (skill `.claude/skills/issue/`, lancée seulement par `/issue <numéro>`) plutôt qu'une action GitHub, pour rester sur l'abonnement et pouvoir lire les journaux et une copie des données. Déroulé fixe : lecture, tri en demandes élémentaires, test qui reproduit vu en échec avant tout correctif, correctif, gates de `levelup-livraison`, relecture par un sous-agent Sonnet, PR vers la release, brouillon de réponse jamais publié sans accord. Arrêts : fonctionnalité (plan seul), bug en zone sensible (après le test), bug dépendant des données réelles (diagnostic seul), gates rouges après trois rondes. Le texte de l'issue est traité comme des données, jamais comme des consignes.
+- **Résultats** : fichier écrit, pas encore essayé.
+- **Suite** : premier essai sur l'issue 213 (dernier commentaire : rattrapage Halo Infinite qui semble bloqué, sans réponse). Constaté au passage : le workflow `triage-feedback.yml` passe par une clé d'API facturée à l'usage et n'a pas tourné sur la 213 (étiquette `feedback` absente).
+
 ## [2026-11-22] Décodeur : première lecture du parseur de nuzzles (halo_api) — Complété
 
 - **Décision** : aucune modification de code ; le sujet entre au backlog, à instruire pendant le chantier du décodeur, sans toucher au plan de la v1.5.0.
