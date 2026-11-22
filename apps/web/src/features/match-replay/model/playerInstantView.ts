@@ -27,6 +27,7 @@ import { playerInstantStatsAt, type PlayerInstantStats } from './playerInstantSt
 import { playerEquipmentStatsAt, type EquipmentFamilyStats } from './playerEquipmentStats'
 import { playerMovementStatsAt } from './playerMovementStats'
 import { playerThrowsPickupsAt } from './playerThrowsPickups'
+import type { ShieldReading } from './playerShield'
 
 /** Frags, morts, assistances de l'identité : ceux du film à l'instant, sinon les totaux de la feuille (`fromFilm` faux). */
 export interface IdentityCounters {
@@ -47,7 +48,8 @@ export interface SinceView {
   respawns: number | null
   currentLifeMs: number | null
   averageLifeMs: number | null
-  shieldsLost: number | null
+  /** Bris, recharges complètes et différentiel à l'instant, avec les totaux du match ; `null` = bouclier non mesuré. */
+  shield: ShieldReading | null
   score: number | null
   rank: PlayerRank | null
 }
@@ -144,7 +146,7 @@ function sinceOf(
     respawns: stats.respawns,
     currentLifeMs: stats.currentLifeMs,
     averageLifeMs: stats.averageLifeMs,
-    shieldsLost: stats.shieldsLost,
+    shield: stats.shield,
     score,
     rank: score === null ? null : rank,
   }

@@ -2,15 +2,15 @@
  * playerInstantStats.test.ts — CE QU'UN JOUEUR A FAIT DU DÉBUT DU MATCH À L'IMAGE LUE.
  *
  * Deux familles de preuves. Un match écrit à la main (pas de 100 ms) donne les valeurs exactes de chaque
- * grandeur : début de match, joueur mort, bot, coup fatal non mesuré, deux boucliers perdus dans une vie, fin
- * de match égale à la feuille. Les huit documents publiés par Go (`fixtures/go/`) prouvent, sur des films
- * réels, que les médailles, les vies et le bouclier se lisent sans lacune ni rupture de cohérence.
+ * grandeur : début de match, joueur mort, bot, coup fatal non mesuré, bris et recharges de bouclier datés par le
+ * serveur, fin de match égale à la feuille. Les huit documents publiés par Go (`fixtures/go/`) prouvent, sur des films
+ * réels, que les médailles et les vies se lisent sans lacune ni rupture de cohérence.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
 import { matchFda } from '@/lib/fda'
-import { buildPlayers, vitalityPresence, type ReplayPlayer } from '@/lib/replay/rosterLogic'
+import { buildPlayers, type ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { scoreboardRow } from '../test/scoreboardRow'
@@ -59,6 +59,13 @@ const MEDALS_DECLARED = { medals: { decoded: 0, published: 0, noOrigin: 0, befor
 
 const DOC = testReplayDoc({
   frameIntervalMs: STEP_MS,
+  // Ce que le serveur date (`analysis/shieldcycle`, testé côté Go), en ms de l'axe du document : A brise quatre fois
+  // et recharge une fois, B est plein tout le match, le bot brise une fois. `bot:Marc` est la clé d'un bot.
+  shieldCycles: {
+    A: { breaks: [3_000, 6_000, 20_000, 36_000], recharges: [9_000] },
+    B: { breaks: [], recharges: [] },
+    'bot:Marc': { breaks: [5_000], recharges: [] },
+  },
   frameCount: 600,
   coverage: MEDALS_DECLARED,
   roster: [
@@ -87,7 +94,6 @@ const DOC = testReplayDoc({
     },
   ],
 })
-const PRESENCE = vitalityPresence(DOC)
 const [A, B, BOT_BY_ROSTER] = buildPlayers(DOC, [
   scoreboardRow('A', 'Alpha', 'Eagle'), scoreboardRow('B', 'Bravo', 'Cobra'), scoreboardRow('bid(7.0)', 'Marc', 'Cobra', { is_bot: true }),
 ])
@@ -118,7 +124,7 @@ const FEED: ReplayFeedEntry[] = [
 ]
 
 function input(player: ReplayPlayer, over: Partial<PlayerInstantInput> = {}): PlayerInstantInput {
-  return { doc: DOC, player, presence: PRESENCE, scoreTimeline: TIMELINE, feed: FEED, ...over }
+  return { doc: DOC, player, scoreTimeline: TIMELINE, feed: FEED, ...over }
 }
 const lire = (player: ReplayPlayer, frame: number, over: Partial<PlayerInstantInput> = {}) =>
   playerInstantStatsAt(readPlayerInstantSeries(input(player, over)), frame)
@@ -132,9 +138,9 @@ describe('playerInstantStats — début de match', () => {
     expect([s.currentStreak, s.bestStreak]).toEqual([0, 0])
   })
 
-  it('aucune médaille ni bouclier perdu ; vie en cours depuis la naissance ; aucune moyenne', () => {
+  it('aucune médaille ni bris de bouclier ; vie en cours depuis la naissance ; aucune moyenne', () => {
     expect([s.perfects, s.medals]).toEqual([0, []])
-    expect([s.shieldsLost, s.respawns, s.currentLifeMs, s.averageLifeMs]).toEqual([0, 0, 0, null])
+    expect([s.shield?.breaks, s.respawns, s.currentLifeMs, s.averageLifeMs]).toEqual([0, 0, 0, null])
   })
 
   it('la première vie se mesure depuis le début du match quand il est donné', () => {
@@ -199,29 +205,43 @@ describe('playerInstantStats — joueur mort', () => {
     expect(playerInstantStatsAt(tard, 50).respawns).toBe(0)
   })
 
-  it('un joueur sans aucune vie : ni réapparition, ni vie, ni bouclier affirmés', () => {
+  it('un joueur sans aucune vie : ni réapparition, ni vie affirmées', () => {
     const s = lire({ ...A, lives: [] }, 100)
-    expect([s.respawns, s.currentLifeMs, s.averageLifeMs, s.shieldsLost]).toEqual([null, null, null, null])
+    expect([s.respawns, s.currentLifeMs, s.averageLifeMs]).toEqual([null, null, null])
   })
 })
 
-describe('playerInstantStats — boucliers perdus', () => {
-  it('une recharge puis une nouvelle chute dans la même vie comptent deux', () => {
-    expect(lire(A, 25).shieldsLost).toBe(0)
-    expect(lire(A, 35).shieldsLost).toBe(1)
-    expect(lire(A, 50).shieldsLost).toBe(1)
-    expect(lire(A, 65).shieldsLost).toBe(2)
-    // un second point à zéro d'affilée n'est pas une nouvelle chute
-    expect(lire(A, 90).shieldsLost).toBe(2)
+describe('playerInstantStats — bouclier (les instants que le serveur date)', () => {
+  it('compte les bris et les recharges jusqu’à l’image comprise, et donne les totaux du match', () => {
+    expect(lire(A, 25).shield).toEqual({
+      breaks: 0, recharges: 0, differential: 0, matchBreaks: 4, matchRecharges: 1, matchDifferential: -3,
+    })
+    expect(lire(A, 30).shield).toMatchObject({ breaks: 1, recharges: 0, differential: -1 })
+    expect(lire(A, 65).shield).toMatchObject({ breaks: 2, recharges: 0, differential: -2 })
+    expect(lire(A, 90).shield).toMatchObject({ breaks: 2, recharges: 1, differential: -1 })
   })
 
-  it('on réapparaît à plein : la vie suivante compte sa propre chute ; une première mesure à zéro à la naissance ne compte pas', () => {
-    expect(lire(A, 250).shieldsLost).toBe(3)
-    expect(lire(A, 450).shieldsLost).toBe(3)
+  it('le total du match ne dépend pas de l’image : il est celui de la fin', () => {
+    expect(lire(A, 250).shield).toMatchObject({ breaks: 3, recharges: 1, matchBreaks: 4, matchRecharges: 1 })
+    expect(lire(A, 450).shield).toMatchObject({ breaks: 4, recharges: 1, matchBreaks: 4, matchRecharges: 1 })
   })
 
-  it('un document qui ne publie jamais de bouclier n’affirme aucun compte', () => {
-    expect(lire(A, 90, { presence: { shield: false, health: false } }).shieldsLost).toBeNull()
+  it('un joueur mesuré sans événement est à zéro (une mesure) ; un joueur absent du calque est ABSENT, pas à zéro', () => {
+    expect(lire(B, 300).shield).toEqual({
+      breaks: 0, recharges: 0, differential: 0, matchBreaks: 0, matchRecharges: 0, matchDifferential: 0,
+    })
+    const sansLui = { ...DOC, shieldCycles: { B: { breaks: [], recharges: [] } } }
+    expect(lire(A, 90, { doc: sansLui }).shield).toBeNull()
+  })
+
+  it('un document sans le calque n’affirme aucun compte', () => {
+    const sansCalque = { ...DOC, shieldCycles: undefined }
+    expect(lire(A, 90, { doc: sansCalque }).shield).toBeNull()
+  })
+
+  it('la lecture suit la tête de lecture du document : l’image fois le pas', () => {
+    expect(lire(A, 29).shield?.breaks).toBe(0)
+    expect(lire(A, 30).shield?.breaks).toBe(1)
   })
 })
 
@@ -339,7 +359,7 @@ describe('playerInstantStats — bot', () => {
   it('ses vies et son bouclier comptent comme ceux de tout joueur', () => {
     const feed = [killEntry(killOf(3_500, 'bid(7.0)', true)), killEntry(killOf(3_600, 'A', true))]
     const s = lire(BOT, 60, { feed })
-    expect(s.shieldsLost).toBe(1)
+    expect(s.shield?.breaks).toBe(1)
     expect(s.currentLifeMs).toBe(6_000)
   })
 
@@ -356,7 +376,7 @@ describe('playerInstantStats — bot', () => {
   it('un joueur que le calque de score ne publie pas n’a ni compteur, ni FDA, ni série', () => {
     const s = lire(BOT, 160, { scoreTimeline: { ...TIMELINE, players: [] } as ReplayScoreTimelineReady })
     expect([s.counters, s.fda, s.currentStreak, s.bestStreak]).toEqual([null, null, null, null])
-    expect(s.shieldsLost).toBe(1)
+    expect(s.shield?.breaks).toBe(1)
   })
 })
 
@@ -383,21 +403,20 @@ describe('playerInstantStats — fin de match égale à la feuille', () => {
     const s = lire(A, DOC.frameCount)
     expect(s.bestStreak).toBe(4)
     expect(s.bestStreak!).toBeGreaterThanOrEqual(s.currentStreak!)
-    expect(s.shieldsLost).toBe(3)
+    expect(s.shield?.breaks).toBe(4)
     expect(B.lives).toHaveLength(1)
   })
 })
 
 describe('playerInstantStats — documents réels publiés par Go', () => {
   for (const entry of goFixtureEntries()) {
-    it(`${entry.film} (${entry.build}) : médailles, vies et bouclier cohérents sur tout le film`, () => {
+    it(`${entry.film} (${entry.build}) : médailles et vies cohérentes sur tout le film`, () => {
       const doc = testReplayDoc(loadGoFixture(entry).doc)
       const players = buildPlayers(doc, [])
-      const presence = vitalityPresence(doc)
       const feed = buildFeedEntries([], readMatchMedals(doc, 'fr'), 0, doc)
       const last = doc.frameCount + 1_000
       for (const p of players) {
-        const read = readPlayerInstantSeries({ doc, player: p, presence, feed })
+        const read = readPlayerInstantSeries({ doc, player: p, feed })
         const end = playerInstantStatsAt(read, last)
         // Médailles : toutes celles que le document date au joueur, nommées, rien d'autre.
         if (!p.bot) {
@@ -408,13 +427,12 @@ describe('playerInstantStats — documents réels publiés par Go', () => {
         // Vies : la naissance n'est pas une réapparition.
         if (p.lives.length > 0) {
           expect(end.respawns, p.xuid).toBe(p.lives.length - 1)
-          expect(end.shieldsLost).not.toBeNull()
         }
         // Le temps ne fait que cumuler : jamais un compte qui recule d'une image à l'autre.
         let previous = { shields: 0, respawns: 0, medals: 0 }
         for (let f = 0; f <= doc.frameCount; f += 97) {
           const s = playerInstantStatsAt(read, f)
-          const now = { shields: s.shieldsLost ?? 0, respawns: s.respawns ?? 0, medals: s.medals?.length ?? 0 }
+          const now = { shields: s.shield?.breaks ?? 0, respawns: s.respawns ?? 0, medals: s.medals?.length ?? 0 }
           expect(now.shields).toBeGreaterThanOrEqual(previous.shields)
           expect(now.respawns).toBeGreaterThanOrEqual(previous.respawns)
           expect(now.medals).toBeGreaterThanOrEqual(previous.medals)
