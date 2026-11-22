@@ -101,6 +101,7 @@ func (s *HistorySyncService) titleStatus(ctx context.Context, loc i18n.Locale, p
 		state = domain.HistoryStatePaused
 	}
 	st.State, st.StateLabel = state, stateLabel(loc, state)
+	st.FilmsPending = s.activity.FilmsPending(slug)
 
 	if pass, ok := s.activity.LastPass(slug, p.Gamertag); ok {
 		st.LastPass = &domain.HistoryPass{

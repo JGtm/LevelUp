@@ -9,7 +9,7 @@ import type { ReactNode } from 'react'
 import { formatDate, formatNumber, intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 import type { HistorySyncStatus, TitleHistoryStatus } from './syncNowQueries'
-import { lastPassAddedLine, lastPassLine, nextPassText } from './syncNowLogic'
+import { historyStateLabel, lastPassAddedLine, lastPassLine, nextPassText } from './syncNowLogic'
 import type { SyncNowText } from './syncNowText'
 
 interface HistoryStateProps {
@@ -44,7 +44,7 @@ function TitleHistory({
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title.title_name}</h3>
       <dl className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
         <Row label={t.rowHistory} testId="history-state">
-          {title.state_label}
+          {historyStateLabel(title, locale, cycleRunning)}
         </Row>
         <Row label={t.rowMatches} testId="history-matches">
           {title.match_count > 0 ? formatNumber(title.match_count, intlLocale(locale)) : t.noMatches}

@@ -3,6 +3,11 @@
 - **Décision** : le cycle V2 attend la file de persistance 60 s + 4 s par match (plafond 20 min) au lieu de 60 s fixes ; si l'attente expire, il relit l'ensemble connu et continue avec les matchs prouvés rangés, sans compter d'échec pour ceux encore en file. Le marque-page retient la tête de liste (`HeadID`) : la reprise est à marque-page + position de l'ancienne tête, contrôlée par l'identifiant rangé.
 - **Résultats observés** : une passe de 200 matchs ne fait plus échouer le cycle ; appels `GetMatchHistory` par cycle de la convergence 1 000 matchs [8 11 11 11 11 4] -> [8 9 10 9 10 2]. 30 matchs introuvables en haut de liste : reprise exacte, aucune reprise depuis 0.
 - **Suite** : la piste Halo 5 branche l'ancre sur l'API `historystate` (D-21.4).
+## [2026-11-22] Films : le temps seul borne les passes, la cadence de 10 minutes suit l'arriéré de films — Complété (branche `fix/822-k`)
+
+- **Décision** : D-17 et D-20 du hotfix 8.2.2. Les deux étapes film du post-sync (source des frags, artefacts de rejeu) sont bornées par leur budget de temps de 5 minutes ; le plafond en nombre (8 et 5) devient un garde-fou unique de 200. Chaque étape publie son arriéré par titre à la fin de sa passe ; l'ordonnanceur tient la cadence de 10 minutes tant que l'historique ou cet arriéré n'est pas vide ; l'écran d'état de l'historique reprend la pastille « Analyse en cours / en attente » des tuiles de match tant que des films attendent.
+- **Résultats observés** : tests d'arrêt sur le budget de temps (20 films sous un budget large : tous traités ; sous un budget court : arrêt entre deux films, arriéré publié = reste), cadence testée sur le cycle V2 et le filet, composant testé en FR et EN.
+- **Suite** : fusion de `release/v8.2.2`, puis revue ; mesure du coût de lecture de l'horizon des rejeux (2000) sur la base réelle (étape de mesure).
 
 ## [2026-11-16] Version 8.2.1 : numéro, notes et changelog datés, fond plan transparent — En cours (release/v8.2.1)
 

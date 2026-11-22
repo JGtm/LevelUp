@@ -38,7 +38,10 @@ type fakeSyncActivity struct {
 	enabled bool
 	next    time.Time
 	passes  map[string]port.SyncPass
+	films   map[string]bool
 }
+
+func (f fakeSyncActivity) FilmsPending(title string) bool { return f.films[title] }
 
 func (f fakeSyncActivity) AutoSyncEnabled() bool  { return f.enabled }
 func (f fakeSyncActivity) NextCycleAt() time.Time { return f.next }
@@ -205,5 +208,31 @@ func TestHistorySyncStatus_LibellesDesPasses(t *testing.T) {
 				t.Errorf("titre par défaut = %+v", got.Titles[0])
 			}
 		}
+	}
+}
+
+// Un titre à l'historique complet mais dont des films restent à analyser le dit : l'écran ne l'affiche pas
+// comme complet. L'arriéré est celui du titre.
+func TestHistorySyncStatus_FilmsEnRetard(t *testing.T) {
+	players := []domain.PlayerSummary{
+		historyProfile("JGtm", "halo_5", "JGtm", "2533"),
+		historyProfile("JGtm", "halo_infinite", "JGtm", "2533"),
+	}
+	prog := &fakeHistoryProgress{byTitle: map[string]port.HistoryProgress{
+		"halo_infinite": {MatchCount: 900, OldestAt: histOldest, Complete: true},
+		"halo_5":        {MatchCount: 120, OldestAt: histOldest, Complete: true},
+	}}
+	svc := newHistoryService(players, prog, fakeSyncActivity{films: map[string]bool{"halo_infinite": true}})
+
+	got, err := svc.HistorySyncStatus(context.Background(), "JGtm")
+	if err != nil {
+		t.Fatalf("HistorySyncStatus: %v", err)
+	}
+	h5, hi := got.Titles[0], got.Titles[1]
+	if !hi.FilmsPending || hi.State != domain.HistoryStateComplete {
+		t.Errorf("halo_infinite = %+v, attendu historique complet ET films en retard", hi)
+	}
+	if h5.FilmsPending {
+		t.Errorf("halo_5 = %+v, aucun arriéré de films sur ce titre", h5)
 	}
 }

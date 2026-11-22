@@ -56,26 +56,36 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 )
 
-// DefaultPostSyncPerCycle borne le nombre de films decodes par cycle.
+// GardeFouFilmsParCycle : le nombre maximal de films qu'une passe de film du post-sync traite par
+// cycle. C'EST UN GARDE-FOU, PAS LA LIMITE : la limite d'une passe est son TEMPS ([PostSyncBudget],
+// `replayartifacts.BudgetParCycle`), parce qu'un match synchronise l'est en totalite, film traite
+// compris, et que le cout d'un film varie d'un facteur dix. La borne ne mord que si une passe
+// enchainait des centaines de films plus vite que le budget — elle empeche alors une liste de
+// travail sans fin, pas un debit.
 //
-// MEME RAISON QUE `replayartifacts.maxPerCycle` : un sync initial insere des centaines de
-// matchs, et decoder des centaines de films dans le post-sync bloquerait le cycle pendant des
-// heures. Le solde est repris au cycle suivant (l etape est idempotente, `decoder_rev` fait
-// foi) ou par `levelup backfill-killsource --online`.
+// UNE SEULE VALEUR POUR LES DEUX ETAPES FILM (cette source des frags et les artefacts de rejeu,
+// `replayartifacts.maxPerCycle`) : deux copies auraient diverge. Elle borne aussi la LISTE de travail
+// lue, donc la lecture de `perCycle` cartes avant le premier telechargement : la relever n'est pas
+// gratuit, c'est une resolution de carte par match retenu.
+const GardeFouFilmsParCycle = 200
+
+// DefaultPostSyncPerCycle borne le nombre de films decodes par cycle : [GardeFouFilmsParCycle]. Le
+// solde eventuel est repris au cycle suivant (l'etape est idempotente, `decoder_rev` fait foi) ou par
+// `levelup backfill-killsource --online`.
 //
 // C EST UNE BORNE PAR CYCLE ET PAR TITRE, PAS PAR JOUEUR. Elle ne l est que parce qu une seule
 // passe tourne par (processus, titre) — cf. `postsync_exclusivite.go`. Avant cette exclusivite
 // (OPS-3), chaque joueur du cycle lancait sa propre passe sur le meme arriere, et la borne
-// valait N x 8 films pour N joueurs synchronises ensemble.
-const DefaultPostSyncPerCycle = 8
+// valait N fois la borne pour N joueurs synchronises ensemble.
+const DefaultPostSyncPerCycle = GardeFouFilmsParCycle
 
-// PostSyncBudget : LE GARDE-FOU DE DUREE DU CYCLE, et il n est pas negociable.
+// PostSyncBudget : LA LIMITE DE DUREE DU CYCLE, et la seule qui borne vraiment la passe.
 //
-// La borne `perCycle` compte des matchs, pas des secondes — or le cout d un film varie d un
-// facteur dix. Sans budget, huit gros films suffiraient a rallonger un cycle de sync de
-// plusieurs dizaines de minutes, et le reste du post-sync (PSA, agregats, medias) attendrait
-// derriere. Le budget arrete la passe ENTRE deux matchs : ce qui reste est repris au cycle
-// suivant, l etape etant idempotente (`decoder_rev` fait foi).
+// Le cout d un film varie d un facteur dix : le nombre de films ne dit rien de la duree. Sans
+// budget, un lot de gros films rallongerait un cycle de sync de plusieurs dizaines de minutes, et
+// le reste du post-sync (PSA, agregats, medias) attendrait derriere. Le budget arrete la passe ENTRE
+// deux matchs : ce qui reste est repris au cycle suivant, l etape etant idempotente (`decoder_rev`
+// fait foi). La borne en nombre ([GardeFouFilmsParCycle]) n est qu un garde-fou derriere lui.
 const PostSyncBudget = 5 * time.Minute
 
 // PostSyncMatchTimeout : la limite PAR MATCH de cette etape.
@@ -121,6 +131,9 @@ type PostSyncHook struct {
 	// peut changer d'emplacement à chaud (title.SetFilmArchiveRuntime). Nil : `cacheRoot` seul.
 	archiveRoot func() string
 	perCycle    int
+	// budget : la duree maximale d une passe ([PostSyncBudget]). Un champ et non la constante en dur,
+	// pour que les tests prouvent l arret sur le temps sans attendre cinq minutes.
+	budget time.Duration
 	// horizon : la taille d une PAGE de backlog lue par cycle ([PostSyncBacklogHorizon]). Un champ
 	// et non la constante en dur, pour que les tests exercent la pagination sans inscrire 64 matchs.
 	horizon int
@@ -147,6 +160,7 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 		repoRoot:    repoRoot,
 		archiveRoot: titlePkg.NewPathResolver(repoRoot).FilmArchiveDir,
 		perCycle:    perCycle,
+		budget:      PostSyncBudget,
 		horizon:     PostSyncBacklogHorizon,
 	}
 }
@@ -295,8 +309,7 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	// Le backlog est PUBLIE meme a zero : une cle absente de /debug/vars ne se distingue pas
 	// d une etape qui ne tourne pas, et c est exactement l ambiguite qui a dure cinq mois.
 	if len(backlog) == 0 {
-		observability.SetInt(CompteurPostSyncRetard, int64(total))
-		observability.SetInt(CompteurPostSyncSansCarte, 0)
+		publierArriere(d.TitleSlug, total, 0)
 		return 0
 	}
 
@@ -306,27 +319,32 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	capture := h.capture(ctx, d)
 	col := NewKillSourceCollector(
 		source, rosterParSegment{withRead: d.WithRead}, d.AcquireWriter, caps, PostSyncMatchTimeout,
-	).WithBudget(PostSyncBudget).AvecCapture(capture)
+	).WithBudget(h.budget).AvecCapture(capture)
 	// LA CARTE AVANT LA BORNE ET AVANT LE TELECHARGEMENT (2026-09-27, cf. postsync_travail.go) :
 	// un match sans carte ne prend ni une place du cycle ni un telechargement, et un match DEJA
 	// constate sans carte n est pas relu (cf. postsync_sans_carte.go).
 	reg := registreDuCycle(ctx, d.TitleSlug, capture)
 	travail := h.travailDuCycle(ctx, col, reg,
 		sourceDuBacklog{premiere: backlog, lire: lectureDesPages(ctx, d, h.horizon)}, insertedIDs)
-	restant := max(0, total-len(travail))
-	observability.SetInt(CompteurPostSyncRetard, int64(restant))
-	publierSansCarte(reg, restant)
+	horsTravail := max(0, total-len(travail))
 	if len(travail) == 0 {
+		publierArriere(d.TitleSlug, horsTravail, nbSansCarte(reg, horsTravail))
 		return 0
 	}
 	// LE VERROU SOLO AVANT TOUT DECODAGE (postsync_verrou_decodage.go) : occupe = la passe se reporte au cycle suivant.
 	liberer, ok := h.prendreLeVerrouDeDecodage(ctx, d)
 	if !ok {
+		publierArriere(d.TitleSlug, horsTravail+len(travail), nbSansCarte(reg, horsTravail+len(travail)))
 		return 0
 	}
 	defer liberer()
 	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
+	// CE QUI RESTE APRES LA PASSE : le hors-travail, plus ce que la passe n a pas atteint (budget de
+	// temps, arret) — la jauge de retard decrit l etat de la base une fois la passe finie, pas celui
+	// d avant.
+	restant := horsTravail + max(0, len(travail)-sum.Traites())
+	publierArriere(d.TitleSlug, restant, nbSansCarte(reg, restant))
 
 	slog.InfoContext(ctx, "post-sync: kill source",
 		"gamertag", d.Gamertag, "positions", col.CaptureCablee(),
@@ -430,9 +448,10 @@ func ordonnancer(backlog, insertedIDs []string, perCycle int) (travail []string,
 // `start_time_utc` par le COALESCE canonique (regle 8) — un `start_time` brut trierait faux.
 // PostSyncBacklogHorizon borne la liste de travail lue par cycle.
 //
-// Elle n est pas la borne de TRAVAIL (c est `perCycle`) mais celle de la LECTURE : ramener
-// 999 identifiants pour en traiter 8 est du gaspillage. La TAILLE du backlog reste comptee
-// separement, sans borne — un compteur tronque mentirait sur le retard.
+// C est la taille d une PAGE de lecture, pas la borne de TRAVAIL (c est `perCycle`, avec le budget de
+// temps) : un cycle lit autant de pages qu il en faut pour remplir sa liste de travail, dans la limite
+// de [PostSyncBacklogPagesMax]. La TAILLE du backlog reste comptee separement, sans borne — un
+// compteur tronque mentirait sur le retard.
 const PostSyncBacklogHorizon = 64
 
 // conditionBacklog : le predicat commun a la liste et a la jauge. UNE seule copie, parce que

@@ -86,10 +86,10 @@ type RunOnceResult struct {
 	// diag ni l'historique. Les joueurs live-only (Halo 5) / filet de boot passent
 	// par recordOutcome → Snapshot(), fusionnés à l'émission (auto_sync_notify.go).
 	newMatchPlayers []notify.PlayerSyncResult
-	// historyPending : gamertags des joueurs à l'historique incomplet en fin de cycle (cadence de Run) ;
-	// busy : le cycle n'a pas tourné, un autre tournait déjà.
-	historyPending []string
-	busy           bool
+	// debt : ce que le cycle laisse à rattraper (historique incomplet, arriéré de films), pour la cadence de
+	// Run ; busy : le cycle n'a pas tourné, un autre tournait déjà.
+	debt cycleDebt
+	busy bool
 }
 
 // PlayerOutcomeDetail capture le résultat détaillé d'une tentative de sync pour
@@ -284,7 +284,7 @@ func New(
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
 		SyncGate:   sync.NopSyncGate{},
 		catchUpCh:  make(chan string, catchUpQueue),
-		cycleState: cycleState{replanCh: make(chan []string, 1)},
+		cycleState: cycleState{replanCh: make(chan cycleDebt, 1)},
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner
@@ -499,9 +499,9 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 	s.recordV2Passes(players, cycleRes.PerPlayer)
 
 	res := &RunOnceResult{
-		Total:          len(players),
-		Duration:       time.Since(start),
-		historyPending: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer),
+		Total:    len(players),
+		Duration: time.Since(start),
+		debt:     cycleDebt{history: s.pendingHistoryAfterV2(ctx, players, cycleRes.PerPlayer)},
 	}
 	for _, outcome := range cycleRes.PerPlayer {
 		switch outcome.Status {

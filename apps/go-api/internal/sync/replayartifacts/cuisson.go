@@ -38,15 +38,19 @@ import (
 // Le lot n'est pas borné comme le local (maxPerCycle) : enfiler coûte une
 // résolution de manifeste, pas 50 s de CPU. La file, elle, est faite pour
 // s'allonger — un ouvrier absent ne casse rien.
-func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
+//
+// Rend le nombre de matchs du lot que la passe n'a PAS examinés (budget de temps, annulation) : ils
+// restent à rattraper au cycle suivant.
+func enqueueAll(ctx context.Context, d Deps, work []buildWork) (nonExamines int) {
 	if d.Enqueue == nil {
-		return
+		return 0
 	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
 	debut, budget := time.Now(), budgetDuCycle(d)
 	queued, skipped, appauvris, refuses := 0, 0, 0, 0
-	for _, w := range work {
+	for i, w := range work {
 		if ctx.Err() != nil {
+			nonExamines = len(work) - i
 			break
 		}
 		// Enfiler coûte une résolution de manifeste — donc un aller-retour RÉSEAU par match.
@@ -54,6 +58,7 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 		if time.Since(debut) >= budget {
 			slog.InfoContext(ctx, "post-sync: rejeu 2D — budget de cycle épuisé, solde au cycle suivant",
 				"gamertag", d.Gamertag, "budget", budget, "enfiles", queued)
+			nonExamines = len(work) - i
 			break
 		}
 		pourAppauvrissement := false
@@ -111,6 +116,7 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped,
 			"appauvris_re_enfiles", appauvris, "refuses", refuses, "selected", len(work))
 	}
+	return nonExamines
 }
 
 // bilanCuisson : ce que le cycle a fait, et POURQUOI il n'a rien fait quand c'est le cas.
@@ -187,6 +193,18 @@ func signalerCartesHorsCatalogue(ctx context.Context, d Deps, parCarte map[strin
 // reportés, en échec) — la ligne « traites » des journaux de budget.
 func (b bilanCuisson) traites() int {
 	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.reportesModeJeu + b.reportesVerrou + b.echecs
+}
+
+// aReprendre : les matchs d'un lot de `selectionnes` que la passe laisse à reprendre au cycle suivant,
+// et que le cycle suivant PEUT traiter — ceux qu'elle n'a pas atteints (budget de temps, annulation)
+// et ceux qu'elle a reportés (film pas encore finalisé, partie en cours, autre décodage en cours).
+//
+// Un match essayé et non résolu n'y figure pas : échec de cuisson, film mis de côté (profil
+// inconnu), carte hors catalogue. La cadence courte qui le reprendrait sans fin ne le ferait pas
+// avancer ; il se reprend à la cadence réglée.
+func (b bilanCuisson) aReprendre(selectionnes int) int {
+	pasAtteints := selectionnes - b.traites() - b.ecartes
+	return max(0, pasAtteints) + b.reportes + b.reportesModeJeu + b.reportesVerrou
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
