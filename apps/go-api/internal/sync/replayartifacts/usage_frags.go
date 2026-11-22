@@ -68,19 +68,25 @@ func preparerFragsDuResume(ctx context.Context, d Deps, lus []artefactLu) {
 		return
 	}
 	var frags map[string]replay.ShieldlessKillsInput
+	var equipes map[string]map[string]int
 	var lecture error
 	ouvert := false
 	d.WithRead(ctx, "fil des morts du résumé d'usage", func(sharedDB *sql.DB) {
 		ouvert = true
-		frags, lecture = LireFragsDuFilDesMorts(ctx, sharedDB, matchIDsDuLot(lus))
+		ids := matchIDsDuLot(lus)
+		if frags, lecture = LireFragsDuFilDesMorts(ctx, sharedDB, ids); lecture != nil {
+			return
+		}
+		equipes, lecture = LireEquipesDesMatchs(ctx, sharedDB, ids)
 	})
 	if !ouvert || lecture != nil {
-		slog.ErrorContext(ctx, "post-sync: résumé d'usage — fil des morts illisible, frags sans bouclier non mesurés "+
-			"(backfill-usage-summary les rejouera)",
+		slog.ErrorContext(ctx, "post-sync: résumé d'usage — fil des morts ou équipes illisibles, frags sans bouclier "+
+			"et vengeances non mesurés (backfill-usage-summary les rejouera)",
 			"titleSlug", d.TitleSlug, "matchs", len(lus), "segment_ouvert", ouvert, "err", lecture)
 		return
 	}
 	for i := range lus {
 		lus[i].frags = frags[lus[i].matchID]
+		lus[i].equipes = equipes[lus[i].matchID]
 	}
 }

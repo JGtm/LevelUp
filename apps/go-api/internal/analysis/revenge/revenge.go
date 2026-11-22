@@ -55,5 +55,5 @@ func vengeable(f Frag, teamOf map[string]int) bool {
 	}
 	tk, okK := teamOf[f.Killer]
 	tv, okV := teamOf[f.Victim]
-	return !(okK && okV && tk == tv && tk >= 0)
+	return !okK || !okV || tk != tv || tk < 0
 }

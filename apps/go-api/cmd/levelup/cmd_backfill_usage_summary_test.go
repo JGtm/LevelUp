@@ -5,7 +5,7 @@ package main
 // « la reprise n est prouvee par rien » — l inverser en silence servirait des resumes d un
 // vieux schema a vie, ou re-ecrirait tout le corpus a chaque lancement).
 //
-// `projeterUnArtefact` se teste sans DB : la cle est (summary_rev courant, schema de
+// `projeterUnArtefact` se teste sans DB : la cle est (summary_rev courant, levelup_rev courant, schema de
 // l artefact SUR DISQUE) contre ce que la vue `_latest` a dit du match (passe en map).
 
 import (
@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/sync/replayartifacts"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -31,7 +32,7 @@ func artefactUsageDeTest(t *testing.T, schema int) string {
 
 func TestProjeterUnArtefact_CleDeReprise(t *testing.T) {
 	aJour := map[string]passeCouranteUsage{
-		"m1": {rev: replay.UsageSummaryRev, schema: replay.SchemaVersion},
+		"m1": {rev: replay.UsageSummaryRev, levelUpRev: replayartifacts.UsageLevelUpRev, schema: replay.SchemaVersion},
 	}
 	cas := []struct {
 		nom    string
@@ -56,6 +57,18 @@ func TestProjeterUnArtefact_CleDeReprise(t *testing.T) {
 			opts: usageSummaryOptions{},
 			passes: map[string]passeCouranteUsage{
 				"m1": {rev: "us0-perimee", schema: replay.SchemaVersion},
+			},
+			want: usageAProjeter,
+		},
+		{
+			// La revision du calcul de LevelUp (bouclier, vengeances) est une cle de reprise a part
+			// entiere : une passe ecrite avant ce calcul (NULL en base, "" ici) ou a une autre
+			// revision est re-derivee, la revision du decodeur etant pourtant a jour.
+			nom:  "revision du calcul de LevelUp absente ou changee : re-resume",
+			path: artefactUsageDeTest(t, replay.SchemaVersion),
+			opts: usageSummaryOptions{},
+			passes: map[string]passeCouranteUsage{
+				"m1": {rev: replay.UsageSummaryRev, levelUpRev: "", schema: replay.SchemaVersion},
 			},
 			want: usageAProjeter,
 		},
@@ -134,7 +147,8 @@ func TestProjeterUnArtefact_LePasEstUneMarqueDeFraicheur(t *testing.T) {
 	}
 	resumeAuPas := func(pas int) map[string]passeCouranteUsage {
 		return map[string]passeCouranteUsage{
-			"m1": {rev: replay.UsageSummaryRev, schema: replay.SchemaVersion, frameIntervalMs: pas},
+			"m1": {rev: replay.UsageSummaryRev, levelUpRev: replayartifacts.UsageLevelUpRev,
+				schema: replay.SchemaVersion, frameIntervalMs: pas},
 		}
 	}
 	cas := []struct {

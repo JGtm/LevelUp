@@ -65,6 +65,12 @@ func init() {
 		Description: "Colonne shieldless_kills sur match_usage_players (frags bouclier a 0 suivis de la survie du tueur, citation Presque ca ne compte pas) + recreation de la vue _latest",
 		ApplySchema: applyMatchUsageShieldless,
 	})
+	Register(Migration{
+		Name:        "shared_match_usage_levelup_v1",
+		TargetDB:    TargetShared,
+		Description: "Colonnes shield_breaks, shield_recharges, revenge_kills sur match_usage_players et levelup_rev sur match_usage_films (mesures calculees par LevelUp sur le film : bris, recharges de bouclier, vengeances) + recreation des vues _latest",
+		ApplySchema: applyMatchUsageLevelUp,
+	})
 }
 
 // applyMatchUsageOutcomes ajoute les quatre ventilations d'issue au grain (match,
@@ -251,4 +257,30 @@ func applyMatchUsageShieldless(db *sql.DB) error {
 		return err
 	}
 	return execScript(db, ddlMatchUsagePlayersLatest)
+}
+
+// applyMatchUsageLevelUp ajoute les trois mesures que LevelUp calcule sur le film (bris de
+// bouclier, recharges complètes, vengeances) et la révision de ce calcul, puis recrée les deux
+// vues, qui figent leur SELECT * à la création (films_latest avant players_latest, la seconde se
+// définit sur la première).
+//
+//   - match_usage_players.shield_breaks / shield_recharges / revenge_kills : NULLABLES et sans
+//     défaut. NULL dit « non mesuré » (passe antérieure à cette migration, match sans mesure de
+//     bouclier, fil des morts non lu) et reste distinct de zéro, comme shieldless_kills.
+//   - match_usage_films.levelup_rev : révision du calcul de ces trois colonnes, propre à LevelUp
+//     (le décodeur ne la porte pas). NULL = passe écrite avant le calcul. Le rattrapage
+//     `backfill-usage-summary` re-dérive un match dont la révision diffère de la courante.
+//
+// Aucun backfill SQL : une passe se rattrape par une re-projection en INSERT purs, jamais par un
+// UPDATE (ADR 0019/0026/0030).
+func applyMatchUsageLevelUp(db *sql.DB) error {
+	for _, col := range []string{"shield_breaks", "shield_recharges", "revenge_kills"} {
+		if err := addColumnIfMissing(db, "match_usage_players", col, "INTEGER"); err != nil {
+			return err
+		}
+	}
+	if err := addColumnIfMissing(db, "match_usage_films", "levelup_rev", "VARCHAR"); err != nil {
+		return err
+	}
+	return execScript(db, ddlMatchUsageFilmsLatest+ddlMatchUsagePlayersLatest)
 }

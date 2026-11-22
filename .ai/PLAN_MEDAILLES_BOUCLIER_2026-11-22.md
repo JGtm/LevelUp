@@ -107,7 +107,7 @@ et que son commit est fait.
 
 - [x] A.1 Fonctions pures : `analysis` bris et recharges par joueur (instants compris, entrée = pistes
   du document) et Vengeur par joueur (entrée = frags). Tests unitaires purs, cas limites de D-1 à D-3.
-- [ ] A.2 Migration des trois colonnes + vue `_latest` recréée ; dérivation qui les pose ; persister ;
+- [x] A.2 Migration des trois colonnes + vue `_latest` recréée ; dérivation qui les pose ; persister ;
   révision du résumé d'usage montée. Tests d'intégration du persister et de la migration.
 - [ ] A.3 Médaille `9000000002` : définition et traductions fr/en (forme actuelle des seeds, aucune
   colonne `_fr`/`_en` neuve), image, catégorie ; vue de fusion D-10 ; bascule des lecteurs « vue » ;
@@ -382,3 +382,21 @@ le worktree.
   `internal/replayshield` (`Lives(*replay.ReplayDocument)`, `FrameMS(frame, intervalMS)`), appelé par A.2
   (dérivation) et C.1 (vue du rejeu). L'entrée n'a pas d'image de début ni de fin de vie : les règles D-2
   et D-3 n'en ont pas besoin.
+- 2026-11-22 : A.2 close. Migration `shared_match_usage_levelup_v1` : `shield_breaks`, `shield_recharges`,
+  `revenge_kills` (INTEGER nullables) sur `match_usage_players`, `levelup_rev` (VARCHAR nullable) sur
+  `match_usage_films`, les deux vues `_latest` recréées. Forme de la révision D-12 : COLONNE NEUVE
+  `match_usage_films.levelup_rev`, constante `replayartifacts.UsageLevelUpRev = "lu1"` (à changer dès qu'une
+  règle de `shieldcycle`/`revenge` ou leur jointure change). Raison : le rattrapage est le seul lecteur de
+  `summary_rev` et il le compare à l'égalité stricte (`cmd_backfill_usage_summary.go`), donc un suffixe
+  aurait mêlé deux révisions indépendantes dans une chaîne ; une colonne se compare séparément et se lit
+  NULL sur les passes d'avant (re-dérivées). Une seule fonction partagée,
+  `replayartifacts.AttacherMesuresLevelUp` (fil de l'eau `usage.go` ET rattrapage), rend
+  `persist.UsageLevelUp` (révision + mesures par xuid) ; `PersistPass` prend ce 4e argument (valeur zéro =
+  tout NULL). Lectures neuves avant tout writer : `LireEquipesDesMatchs` (`match_participants.team_id`,
+  même segment de lecture que le fil des morts). NULL quand non mesuré : bouclier = match dont aucune piste
+  ne porte `Sh`, ou joueur sans piste ; vengeances = fil des morts non lu OU équipes non lues (les
+  trahisons ne s'écarteraient pas). Dans un match mesuré, un joueur avec piste et sans mesure `Sh` vaut 0
+  (son bouclier n'a jamais bougé). Un joueur sans ligne de résumé reçoit une ligne neuve seulement s'il a
+  une valeur non nulle (précédent `AttachShieldlessKills`) ; un joueur à zéro partout n'en reçoit pas, et
+  le lecteur B lira « match mesuré » par les autres lignes. `canonicalOrderFloor` relevé à 241.
+
