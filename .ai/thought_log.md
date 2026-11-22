@@ -1,3 +1,9 @@
+## [2026-11-22] Impact des coéquipiers par session : lot G.1, contrat du tableau — Complété (branche feat/impact-sessions, non poussée)
+**Statut :** Complété pour G.1 ; G.2 (calcul et suppression des anciens champs) et W (tableau web) restent. Plan : `.ai/PLAN_IMPACT_SESSIONS_2026-11-22.md`.
+**Décision technique principale :** payload neuf `squad_impact_sessions` sur la réponse de `/pages/teammates` (types `SquadImpactSessions*` dans `internal/domain/squad_impact_sessions.go`), à côté des anciens champs encore servis. Le barème (`scale`) est servi : le web en tire le sens d'un rôle (points négatifs : plus grand compte = pire) pour le surlignage, au lieu de garder une seconde table de rôles négatifs.
+**Résultats observés :** `make openapi-gen` et `make generate-types` régénérés, ré-exports dans `lib/api/types.ts`, instantané de surface de contrat mis à jour (ajouts seulement ; il portait aussi du retard sur des routes d'autres branches). Champ à nil tant que G.2 ne le remplit pas.
+**Conclusion / prochaine étape :** G.2 remplit le payload (`squadimpact.BuildSessions`) ; W construit le tableau.
+
 ## [2026-11-22] Médailles du bouclier : corrections P0 et P1 de la revue adversariale — Complété (sur `feat/medailles-bouclier`, non poussé)
 **Statut :** Complété. Plan : `.ai/PLAN_MEDAILLES_BOUCLIER_2026-11-22.md` (journal).
 **Décision technique principale :** le snapshot exporte `match_usage_players` et `match_usage_films` (tables requises) et pose `v_medals_earned` à la lecture par les fonctions canoniques de la migration ; la vue des médailles est réécrite pour qu'une lecture bornée à des matchs (égalité ou liste) lie ses matchs sous la fenêtre du résumé d'usage (ADR 0036 I2) : branches dérivées parties de `match_usage_films_latest`, règle du Vengeur par fenêtre `PARTITION BY match_id` au lieu d'un `NOT EXISTS`.

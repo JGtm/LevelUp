@@ -563,6 +563,11 @@ type TeammatesPageResponse struct {
 	// journalisée côté service) : le front garde alors la carte avec un constat pour un titre qui
 	// déclare la capability match.events.timeline, et la retire sinon.
 	SquadImpactHistory *SquadImpactHistory `json:"squad_impact_history,omitempty"`
+	// SquadImpactSessions alimente « Impact des coéquipiers » par session (onglet Contributions) :
+	// un tableau d'une ligne par session, avec la matrice de rôles de chaque session et le décompte
+	// de toutes les sessions affichées (squad_impact_sessions.go). Nil dans les mêmes cas que
+	// SquadImpactHistory (aucun coéquipier sélectionné, aucune session, aucun rôle sur l'escouade).
+	SquadImpactSessions *SquadImpactSessions `json:"squad_impact_sessions,omitempty"`
 	// PerMinuteStats alimente teammates.14 (bars groupées K/D/A par minute par joueur).
 	PerMinuteStats []SquadPerMinuteEntry `json:"per_minute_stats,omitempty"`
 	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les

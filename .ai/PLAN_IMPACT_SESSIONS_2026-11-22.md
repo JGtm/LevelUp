@@ -58,7 +58,7 @@ couverte par la cartographie du 2026-11-22 (agent d'exploration, rapport recopi�
 
 ### Lot G.1 — contrat (Sonnet) — rapide — chemin critique
 
-- [ ] Types `domain.SquadImpactSessions` (joueurs ; barème ; sessions : libellé, début, matchs
+- [x] Types `domain.SquadImpactSessions` (joueurs ; barème ; sessions : libellé, début, matchs
   {match_id, issue}, par joueur {matchs joués, points, comptes par rôle, rôles par match} ; totaux) ;
   champ sur `TeammatesPageResponse` ; `make openapi-gen` + `make generate-types`. Anciens champs encore
   présents à ce stade.
@@ -108,6 +108,7 @@ Lire ce fichier puis `git log --oneline -10` dans le worktree.
 ## Journal
 
 - 2026-11-22 : plan ouvert ; décisions D-1 à D-10 tirées de la maquette validée par l'utilisateur.
+- 2026-11-22 : G.1 close. Go (`internal/domain/squad_impact_sessions.go`) : `SquadImpactSessions` {`players`, `scale`, `role_order`, `sessions`, `totals`} ; `SquadImpactSessionsRoleWeight` {`role`, `points`} ; `SquadImpactSessionsSession` {`session_label`, `start_time`, `matches`, `players`} ; `SquadImpactSessionsMatch` {`match_id`, `outcome`} ; `SquadImpactSessionsPlayer` {`player`, `matches_played`, `points`, `counts`, `per_match`} ; `SquadImpactSessionsRoleCount` {`role`, `count`} ; `SquadImpactSessionsPerMatch` {`match_id`, `roles`} ; `SquadImpactSessionsTotal` {`player`, `matches_played`, `points`, `counts`}. Champ `squad_impact_sessions` (omitempty, pointeur) sur `TeammatesPageResponse`, nil jusqu'à G.2. Barème servi : lecteur = sens du rôle (points < 0) pour le surlignage, qui remplace la table `BADGE_INVERTED` du web (une seule définition, D-8) ; le nom et la description des infobulles restent ceux du texte web. `counts` porte une entrée par rôle de `role_order` (0 compris), pour les sessions comme pour `totals` ; `per_match` ne porte que les matchs où le joueur a un rôle. Contrat régénéré (`openapi.yaml`, `generated.ts`, ré-exports `types.ts`, `contract-surface.snapshot.json`).
 
 ## Annexe A — cartographie (2026-11-22, chemins relatifs à la racine du dépôt)
 
