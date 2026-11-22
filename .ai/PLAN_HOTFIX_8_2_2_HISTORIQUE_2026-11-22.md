@@ -63,10 +63,29 @@ page.
   déjà la règle (via `historystate` après migration).
 - **D-9** Garde-rail : un test `archlint` interdit le littéral `"history_complete_at"` hors de
   `internal/sync/historystate`.
-- **D-10** Hors périmètre (noté, non traité ici) : bouton « Synchroniser maintenant » et état
-  « historique complet / en rattrapage » dans Réglages › Données (promis dans la réponse du 22/11 à
-  #213) : 8.3.0. Seule l'aide est corrigée ici (étape 6), parce qu'elle décrit un bouton qui n'existe
-  pas.
+- **D-10** (révisée le 22/11 par l'utilisateur) Bouton « Synchroniser maintenant » dans Réglages ›
+  Données, visible par tout joueur, DANS la 8.2.2 : il lance le même cycle que l'automatique
+  (`RunOnceTrigger`), donc le rattrapage compris (étape 4bis). L'état de l'historique à l'écran :
+  décision de l'utilisateur en attente (D-15). L'aide est corrigée (étape 6) et renvoie à ce bouton.
+- **D-12** (utilisateur, 22/11) Tout l'historique, sans limite de date ni de nombre. Le choix d'une
+  limite est une ligne du backlog.
+- **D-13** (utilisateur, 22/11) Marque-page au lieu du rebalayage : `historystate` range, par joueur,
+  la position où la passe de rattrapage s'est arrêtée (décalage dans la liste de l'API et identifiant du
+  dernier match traité, clé `sync_meta` à côté de `history_complete_at`). La passe suivante : (1) delta
+  du dessus jusqu'au premier connu, qui compte N nouveaux matchs ; (2) reprise au marque-page + N moins
+  une page de recouvrement ; (3) la page de recouvrement doit contenir l'identifiant rangé, sinon
+  reprise depuis le début (lente, sûre), journalisée et comptée. Un match en échec ramène le marque-page
+  avant lui. Fin vue = les deux clés : fin rangée, marque-page effacé. Halo 5 suit la même règle si sa
+  liste se pagine par décalage ; sinon écart écrit dans le rapport, rebalayage gardé pour Halo 5 seul.
+- **D-14** Avant de figer le budget (200) et la cadence (10 min) : mesure d'UNE passe de rattrapage de
+  200 matchs sur une copie de base (durée, appels API, pic mémoire, disque des films), étape 5bis. Si
+  la passe dépasse 5 minutes ou 1,5 Go de pic, le budget ou la cadence se règlent sur la mesure (le
+  pilote propose, l'utilisateur tranche).
+- **D-15** (utilisateur, 22/11) État de l'historique à l'écran, version simple, élégante, aux normes UI
+  de l'app (étape 4ter) : dans l'onglet « Données & Médias », à côté du bouton, par titre suivi : état
+  (complet / rattrapage en cours), matchs enregistrés, date du plus ancien, dernière passe (heure,
+  matchs ajoutés, erreur éventuelle), prochaine passe. Texte seul, pas de graphique. Mise à jour
+  automatique tant qu'un rattrapage tourne. Lecture seule côté serveur.
 - **D-11** Rien ne change dans la base : aucune migration, aucune table. Clé `sync_meta` existante.
 - Réservé à l'utilisateur : squash dans `main`, tag `v8.2.2`, publication de la release et de la mise à
   jour de l'application, réponse publique sur #213 (texte validé par lui le 22/11).
@@ -81,6 +100,8 @@ Chemin critique : étape 1 (paquet partagé), puis pistes A, B, C en parallèle,
 | 2 | A Infinite V2 | Sonnet | `LevelUp-wt-822-a` / `fix/822-a` | moyen |
 | 3 | B Halo 5 | Sonnet | `LevelUp-wt-822-b` / `fix/822-b` | moyen |
 | 4 | C cadence | Sonnet | `LevelUp-wt-822-c` / `fix/822-c` | rapide |
+| 4bis + 4ter | E bouton et état de l'historique | Sonnet | `LevelUp-wt-822-e` / `fix/822-e` | moyen |
+| 5bis | mesure d'une passe | Sonnet | copie de base dans le scratchpad | rapide |
 | 5 | convergence bout en bout | Sonnet | `LevelUp-wt-822` (intégration) | moyen |
 | 6 | aide, version, notes | Haiku | `LevelUp-wt-822-d` / `fix/822-d` | rapide |
 | 7 | revue adversariale du diff cumulé | Fable | lecture seule | moyen |
@@ -108,6 +129,7 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 
 ### Étape 2 — piste A : découverte V2 (Halo Infinite)
 
+- [ ] 2.0 Marque-page (D-13) ajouté à `historystate` (lecture, écriture, effacement), tests.
 - [ ] 2.1 `KnownLoader` rend aussi l'état de l'historique du joueur (lu dans la base joueur déjà ouverte).
 - [ ] 2.2 `ListUnknownMatches` : deux modes (D-4), rend un indicateur « fin vue ».
 - [ ] 2.3 `cycle.go` : après une persistance réussie, range la fin pour chaque joueur qui remplit D-5 ;
@@ -135,6 +157,39 @@ Caches : chaque agent pose `GOCACHE=%LOCALAPPDATA%\go-build-822<piste>` et
 - [ ] 4.2 Ligne de journal par cycle ; auto-sync désactivée = aucun cycle, comme aujourd'hui.
 - [ ] 4.3 Tests avec horloge ou ticker injecté : bascule 6 h -> 10 min -> 6 h.
 - Gate : `go test ./internal/scheduler/...`.
+
+### Étape 4bis — bouton « Synchroniser maintenant » (Réglages › Données)
+
+- [ ] 4b.1 Route serveur qui lance le cycle de l'ordonnanceur (`RunOnceTrigger`, raison `manual`),
+  refus propre si un cycle tourne déjà (409 + message i18n), auto-sync désactivée = le bouton lance
+  quand même un cycle (décision : un clic explicite passe outre le réglage). Pas de logique dans le
+  handler (port vers l'ordonnanceur).
+- [ ] 4b.2 Bouton dans l'onglet `data` des réglages, visible pour tout joueur et tout profil de
+  déploiement sauf démo ; textes FR/EN ; état « en cours » tant que le cycle tourne.
+- [ ] 4b.3 Tests : handler `httptest`, composant (vitest).
+- Gate : `go test ./internal/api/... ./internal/scheduler/...`, `make generate-types` sans diff
+  résiduel, `npx vitest run src/features/settings --maxWorkers=2`, `npx tsc --noEmit -p .`.
+
+### Étape 4ter — état de l'historique (D-15)
+
+- [ ] 4t.1 Port + lecture `platform/duckdb` : nombre de matchs et date du plus ancien par joueur et
+  titre (fuseau canonique, fragment partagé `sqlfrag`), état et marque-page par `historystate`.
+- [ ] 4t.2 Dernière passe et prochaine passe lues de l'ordonnanceur (issue par joueur déjà tenue,
+  heure du prochain cycle), derrière un port.
+- [ ] 4t.3 Route de lecture (handler sans logique), réponse localisée sans paire `_fr`/`_en`,
+  `make generate-types`.
+- [ ] 4t.4 Encadré dans l'onglet « Données & Médias », avec le bouton de l'étape 4bis : skills
+  `frontend-patterns`, `color-tokens`, `foundations-usage` ; query key dans `lib/query/keys.ts` ;
+  rafraîchissement périodique seulement pendant un rattrapage ; état vide et état d'erreur ; FR/EN.
+- [ ] 4t.5 Tests : repo sur DuckDB `:memory:`, handler `httptest`, composant vitest.
+- Gate : celui de l'étape 4bis.
+
+### Étape 5bis — mesure d'une passe (D-14)
+
+- [ ] 5b.1 Sur une COPIE de la base locale (règle : neutraliser les chemins des réglages avant de lancer
+  un serveur sur copie), clé `history_complete_at` retirée pour un joueur de plus de 1 000 matchs, une
+  passe : durée, appels API par type, pic mémoire, octets écrits sous l'archive des films. Résultat
+  écrit dans ce plan.
 
 ### Étape 5 — convergence de bout en bout (le test qui manquait)
 
