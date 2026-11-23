@@ -622,6 +622,18 @@ Relevé le 2026-11-15 par levelup-1f à la montée v1.3.9 : l'étape `score` de 
 
 ---
 
+### [films/prod] Le calcul des frags archive chaque film téléchargé sans lire le réglage « archiver les films »
+
+Relevé le 2026-11-23. `internal/sync/killcollector/remote_films.go` (`archiver`) écrit tout film téléchargé dans l'archive (`filmarchive.Write`) ; seul `replayartifacts` lit le réglage `archive_films`. Sur le site hébergé, ça a rempli le disque du serveur (environ 20 Go par semaine, 5 425 films de frags en retard). L'archive y a été vidée et le réglage coupé le 2026-11-23 ; une tâche planifiée du serveur (unité systemd `levelup-purge-films.timer`, script `/usr/local/bin/levelup-purge-films.sh`) retire chaque heure les films archivés depuis plus de 24 h, en attendant le correctif. **À faire en 8.3.0 :** le calcul des frags respecte `archive_films` ; le site hébergé n'archive plus les films par défaut (capacité du profil de déploiement, ADR 0044) ; l'application Windows continue d'archiver ; puis retirer la tâche planifiée du serveur.
+
+---
+
+### [release] Reporter la 8.2.2 dans la 8.3.0
+
+Relevé le 2026-11-23. La 8.2.2 (rattrapage de l'historique, issue #213) est dans `main` ; `release/v8.3.0` a été créée avant. **Décision du user du 2026-11-23 :** fusionner `main` dans `release/v8.3.0` au début de la reprise de la 8.3.0. Un essai donne 16 conflits, dont `apps/go-api/internal/sync/engine.go`, `writes.go`, `internal/games/halo_5/livesync/runner.go` et `capture.go`, l'aide, `SettingsPage.tsx`, `openapi.yaml`, `generated.ts` et les changelogs. Conception de la refonte du rattrapage pour la 8.3.0 : `.ai/CONCEPTION_RATTRAPAGE_HISTORIQUE_8_3_0.md` (dans `main`).
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
