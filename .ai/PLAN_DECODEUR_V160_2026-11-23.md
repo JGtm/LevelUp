@@ -78,20 +78,20 @@ parseur voisin par `gh` (tête `03291129df`, 2026-11-22 : arborescence et notice
 | Constat | Pièce |
 |---|---|
 | Le film se charge chunk après chunk, sur un seul fil : lecture du fichier, décompression, découpage en paquets, dans un seul appel | `DEC/internal/source/film.go:103-128` (`Load`) ; façade `decfilm.Load`, `decfilm.LoadDir` (`decfilm/decfilm.go:467,470`) |
-| Décompression : bibliothèque standard pour zlib (`film.go:217-246`), `klauspost/compress` pour zstd (`internal/source/zstd.go`). `decfilm.Inflate` est public (`decfilm.go:466`) : la décompression d'un chunk se chronomètre à part, pas à l'intérieur d'un chargement | idem |
+| Décompression : bibliothèque standard pour zlib (`film.go:188`, `Decompresser` ; le choix zstd ou zlib se fait dans `inflate`, `film.go:217-246`), `klauspost/compress` pour zstd (`internal/source/zstd.go`). `decfilm.Inflate` est public (`decfilm.go:466`) : la décompression d'un chunk se chronomètre à part, pas à l'intérieur d'un chargement | idem |
 | Aucun fil lancé en production, hors la sentinelle de mémoire | `DEC/memguard/memguard.go:175` (seul `go` hors tests) |
-| La marche des trames porte UN état du monde d'un bout à l'autre du film : un chunk dépend de ceux qui le précèdent (table d'entités, liaisons des images-clés, table anticipée). Ce monde sert à LIRE les trames | `DEC/internal/grammar/marche_trames.go:109-150` (`NewWorld`, `parcourir`, `PoserChunkCourant`) |
-| Une marche, N canaux : chaque canal déclare ses intérêts, la marche distribue. Le choix des canaux par l'appelant n'existe pas | `DEC/internal/grammar/distribuer.go:1-70` ; `DEC/replay/options.go:27` (`Options` sans sélection) |
+| La marche des trames porte UN état du monde d'un bout à l'autre du film : un chunk dépend de ceux qui le précèdent (table d'entités, liaisons des images-clés, table anticipée). Ce monde sert à LIRE les trames | `DEC/internal/grammar/marche_trames.go:109,132` (`marcheurDesTramesDepuis`, `parcourir`), `DEC/internal/grammar/world.go:94,120` (`NewWorld`, `PoserChunkCourant`) |
+| Une marche, N canaux : chaque canal déclare ses intérêts, la marche distribue. Le choix des canaux par l'appelant n'existe pas | `DEC/internal/grammar/distribuer.go:142` (`Distribuer` ; en-tête lignes 1-70) ; `DEC/replay/options.go:27` (`Options` sans sélection) |
 | La marche commune de la source de dégât et de la cuisson est DÉJÀ en production | `DEC/internal/facts/killsource/decode.go:360` (`LireLaMarcheCommune`) ; `DEC/replay/build_from_film.go:98` (`PrendrePourLaCuisson`) |
-| Trois entrées publiques de l'assemblage : film vers document, film vers document et faits, faits vers document. Un observateur date chaque étape (`Options.Observe`) : la dernière étape du balayage, `clockOrigin`, sépare le décodage de la publication | `DEC/replay/build_from_film.go:51,63`, `build_from_facts.go:52`, `options.go:461-464`, `observe.go:97` |
+| Trois entrées publiques de l'assemblage : film vers document, film vers document et faits, faits vers document. Un observateur date chaque étape (`Options.Observe`) : la dernière étape du balayage, `clockOrigin`, sépare le décodage de la publication | `DEC/replay/build_from_film.go:51,63`, `build_from_facts.go:52`, `options.go:461-464`, `observe.go:92` (`clockOrigin` ; liste fermée lignes 47-92 ; émission dans `replay/film_scan_pont.go:175`) |
 | Un instrument de durée existe, jetable, sous l'étiquette `research` : chargement, décodage, publication, pic de mémoire ; options MINIMALES (carte seule : ni source de dégât, ni tableau, ni objectifs, ni zones) | `DEC/research/duree/duree_research_test.go` |
 | Six bancs `Benchmark*` dans quatre fichiers, tous de micro-lecture ; aucun de bout en bout | `DEC/internal/grammar/bench_*_test.go` |
-| Le déterminisme de la marche est déjà testé (deux marches, même empreinte ; deux films en parallèle sous `-race`) | `DEC/internal/grammar/marche_determinisme_test.go` ; CI `film-race`, `.github/workflows/ci.yml:66-78` |
+| Le déterminisme de la marche est déjà testé (deux marches, même empreinte ; deux films en parallèle sous `-race`) | `DEC/internal/grammar/marche_determinisme_test.go` (`TestLaStructureEstDeterministe`, ligne 75) ; `DEC/internal/grammar/deux_films_parallele_test.go:51` (`TestDeuxFilmsEnParallele`, le test `-race`) ; CI `film-race`, `.github/workflows/ci.yml:66-78` |
 | La révision d'une couche est tenue par une empreinte des JETONS de ses sources (commentaires et mise en page écartés) : toucher `internal/source` ou `internal/grammar` fait rougir le test de révision, même sans changer la lecture. La v1.5.0 a déjà refigé une empreinte sans monter la valeur | `DEC/internal/grammar/rev_test.go:1-45` ; journal v1.5.0, seconde intégration |
 | Les faits décodés se gardent sous `<racine>/data/cache/film_facts/<titre>/` et sont réemployés quand leurs révisions sont celles du code : deux branches aux mêmes révisions se servent le même cache (incident de la v1.5.0) | `LU apps/go-api/internal/domain/title/registry_film_facts.go:52-77` ; journal v1.5.0, 2026-11-22 |
 | `replay-equiv` sans `-deux-passes` compare aux références du clone ; avec `-deux-passes`, il compare deux passes du MÊME commit (décodage, puis rejeu depuis les faits) et ne lit AUCUNE référence. Ni lui, ni `replay-build`, ni le gate du corpus n'ont de réglage du niveau de fils | `LU apps/go-api/cmd/replay-equiv/main.go:136-163`, `cmd/replay-build/main.go:59-72`, `cmd/replay-corpus-gate/main.go:117-132` |
 | Le dépôt du décodeur n'a aucun dossier `cmd/` ; aucun catalogue de bornes de carte n'y a été trouvé | arborescence de `DEC` |
-| Plafond de mémoire par film : 3 Gio en production, 2 Gio pour une mesure sur le poste, 4 Gio dans le gate | `DEC/memguard/memguard.go` ; `LU .../replaychild/replaychild.go:68-121` ; `cmd/replay-corpus-gate/bake.go:72` |
+| Plafond de mémoire par film : 3 Gio en production, 2 Gio pour une mesure sur le poste, 4 Gio dans le gate | `DEC/memguard/memguard.go` ; `LU apps/go-api/internal/replaychild/replaychild.go:68-121` ; `cmd/replay-corpus-gate/bake.go:72` |
 | Dix témoins de durée existent (2026-11-10) : builds 1.12 et 1.13, six modes, 25 à 67 chunks, dont une Grande bataille à 33 joueurs. AUCUN n'est dans le corpus d'équivalence : leurs identifiants courts ne sont pas dans le dépôt public | `.ai/annexes_marche_complete/temoins_duree.txt` ; `DEC/replay/testdata/equivalence/` |
 | Deux reports de vitesse mesurés attendent : trois lecteurs d'images-clés qui cherchent chacun (environ 30 % du décodage seul) ; sonde de calibration hors de la marche (1,5 %) | `.ai/REGISTRE_REPORTS.md:362-363` |
 | Bruit connu : `replay-equiv -deux-passes` signale « 1 écart à classer : kill » dès la v1.4.1 ; un soupçon de non-déterminisme sur `joinSegments` n'a pas été observé | plan v1.5.0, Découvertes ; `DEC/replay/score_timeline_players.go:181-188` |
@@ -151,6 +151,16 @@ touchent aussi : `replay/options.go`, `observe.go`, `film_scan_mouvement.go`, `f
 `internal/grammar/vue_a_lecture.go`, `distribuer_tetes.go`, `movement_states.go`,
 `keyframe_etat_complet_bipede.go`, les fichiers de révision ; `filmcache/filmcache.go` ; `decfilm/` ; tous
 les goldens. C'est la liste des collisions de la piste P.
+
+**Inventaire du 2026-11-23** (`.ai/annexes_decodeur_v160/inventaire_contributeur.md`, lecture seule par `gh api`, tête `a66b791460` lue, arbres non tronqués). Ce qui est marqué « supposé » se déduit des noms de fichiers et des en-têtes, sans vérification ligne à ligne.
+
+- Versions de départ : décodeur v1.3.6 (`5d63c67`), cartes v1.0.1 (`95547a3`), lecteur v1.0.1 (`01ec0fd`). Schémas de la copie : document 130, faits 25 (le README de la copie annonce encore 125 et 23 : périmé).
+- Décodeur (copie 2 607 fichiers ; v1.3.6 : 2 534 ; v1.5.0 : 2 629). Contre v1.3.6 : 73 fichiers ajoutés et 249 modifiés (comparaison par empreinte). Contre v1.5.0 : 186 fichiers présents seulement dans la copie (68 ajouts du contributeur, 118 retirés ou renommés par l'amont, surtout des tests de recherche), 208 présents seulement en v1.5.0, 420 de même chemin au contenu différent (mélange non exploitable). Sur les 186, 33 sont du code de production.
+- Cartes (copie 320 fichiers). Contre v1.0.1 : 195 ajoutés, 27 modifiés. Contre v1.4.0 : 57 fichiers absents de la copie. Le README annonce 117 fichiers neufs et 15 modifiés : chiffre non retenu, à trancher.
+- Lecteur de fichiers (copie 92 fichiers). Contre v1.0.1 : 6 ajoutés (surtout des tests), 20 modifiés, 5 absents (fixtures de jeu omises).
+- Canaux neufs probables (supposé, à confirmer sur tout l'arbre de la v1.5.0) : pistes à pleine cadence (`FullRate`), projectiles collés et détonations, munitions portées, gestes du joueur, codec `REPLAYINPUTS30`, table des scores cibles par variante (table par variante, refusée par R-2 sauf décision).
+- Recouvrements (lus sur pièces) : `reloads[]` de la v1.5.0 contre les gestes de la copie (`replay/document_gestes.go`, genre 38) : recouvrement direct. `moveCommand` (`replay/document_stances_commandes.go`, intervalles tenus) contre `replay/stick_de_deplacement.go` (valeurs brutes par vie). Fichiers communs modifiés des deux côtés, à comparer : `replay/tirs_par_place.go`, `replay/shots_visee.go`, `internal/grammar/tir_continu.go`, `replay/match_clock.go` (contenu non examiné).
+- Non vérifié : le contenu des 425 fichiers modifiés (décodeur, cartes et lecteur), les traductions de messages annoncées par le README, et l'ordre des tags des trois briques (exigé par P.1).
 
 ### 1.4 Entrées du backlog qui concernent le décodeur, et leur sort
 
@@ -586,19 +596,32 @@ items S ; un item B de chaque piste parmi V, A, B, C, D, E, F, dans la limite de
 Fichiers attendus par piste (à confirmer en 0.6 ; deux pistes sur un même fichier = l'une après l'autre,
 écrit au journal) :
 
-| Piste | Écrit dans `DEC` | Ne touche pas |
+| Piste | Écrit dans `DEC` (et `LU` quand indiqué) | Ne touche pas |
 |---|---|---|
-| V0 | `cmd/film-bench/` (neuf), `bench/` (neuf) ; V0.6 : la structure d'options ajoutée (`replay/options.go`, `decfilm/`) | tout le reste |
-| V1 | `internal/source/film.go`, `source.go`, `zstd.go`, `filmcache/` (lecture des chunks), `decfilm/` (une entrée de chargement ajoutée, `LoadDir` inchangée) | `internal/grammar/`, `replay/` |
-| V4 | `replay/film_scan*.go`, `build_from_film.go`, `internal/grammar/movement_states.go` et les appelants de `Distribuer` (inscription des canaux) ; lit `layers.go` | `internal/source/`, `distribuer*.go` (le distributeur lui-même), `marche_*.go` |
-| V3 | `internal/grammar/marche_images_cles*.go`, `keyframe_etat_complet_*.go`, `keyframe_loadout.go`, `replay/film_scan_images_cles.go` (après V4) | `marche_trames*.go`, `keyframe_liaison.go`, `internal/source/` |
-| V2 | `internal/grammar/marche_trames*.go`, `marche_commune.go`, `marche_de_killsource.go`, `distribuer*.go`, `world.go`, `keyframe_liaison.go`, `keyframe_anticipe.go` | `internal/source/`, `replay/` |
-| A | `reponsesdejeu/`, `replay/document_score_actions*.go`, `score_timeline*.go`, `internal/facts/objectives/score.go` | drapeau, zones |
-| B | `replay/flag_*.go`, `porteurs_*.go`, `zone_states_*.go`, `internal/grammar/components_navpoint*.go` | score |
+| V0 | `cmd/film-bench/` (neuf), `bench/` (neuf) ; V0.6 : `replay/options.go` (structure d'options ajoutée), `decfilm/` (V0.6 seul) ; lu : `internal/depottest/` (gate V0, à confirmer si l'on y écrit) ; LU : `cmd/replay-equiv`, `cmd/replay-build`, `cmd/replay-corpus-gate` (V0.7) | le reste |
+| V1 | `internal/source/film.go`, `internal/source/source.go`, `internal/source/zstd.go`, `filmcache/` (lecture des chunks), `decfilm/` (une entrée de chargement ajoutée, `LoadDir` inchangée) ; lu : `replay/options.go` | `internal/grammar/`, `replay/` |
+| V4 | `replay/film_scan*.go` sauf `replay/film_scan_images_cles.go` (V3), `replay/build_from_film.go`, `internal/grammar/movement_states.go`, appelants de `Distribuer` : `internal/grammar/equipement_porte.go`, `internal/grammar/lectures_bipedes.go`, `internal/grammar/objets_du_monde_lus.go`, `internal/grammar/marche_de_killsource.go` ; lus : `replay/observe.go`, `replay/layers.go` (écrivain unique : le pilote) ; V4.5 : fragments de `README.md` et `NOTICE.md` | `internal/source/`, `internal/grammar/distribuer*.go` (le distributeur lui-même) |
+| V3 | `internal/grammar/marche_images_cles*.go`, `internal/grammar/keyframe_etat_complet_*.go`, `internal/grammar/keyframe_loadout.go`, `replay/film_scan_images_cles.go` (après V4) | `internal/grammar/marche_trames*.go`, `internal/grammar/keyframe_liaison.go`, `internal/source/` |
+| V2 | `internal/grammar/marche_trames*.go`, `internal/grammar/marche_commune.go`, `internal/grammar/marche_de_killsource.go` (après V4), `internal/grammar/distribuer*.go` (glob : `distribuer_tetes.go` et `distribuer_crochets.go` inclus), `internal/grammar/world.go`, `internal/grammar/keyframe_liaison.go`, `internal/grammar/keyframe_anticipe.go` ; lu, écrit si l'ordre des étapes change : `replay/observe.go` | `internal/source/`, `replay/` (sauf `observe.go`) |
+| A | `reponsesdejeu/`, `replay/document_score_actions*.go`, `replay/score_timeline*.go`, `replay/score_timeline_players.go` (`joinSegments`, A.5), `internal/facts/objectives/score.go` | drapeau, zones |
+| B | `replay/flag_*.go` (dont `replay/flag_assign.go`), `replay/porteurs_*.go` (dont `replay/porteurs_entrees.go`, B.5), `replay/zone_states_*.go` (dont `replay/zone_states_lettres.go`), `internal/grammar/components_navpoint*.go`, `internal/facts/objectives/named*.go` (B.4, avant E.2) ; `replay/coverage.go` : fragment seulement, le pilote assemble (C15) | score |
 | C | `internal/grammar/frame_vue_controle.go`, `replay/document_stances*.go` | vue A |
-| D | `internal/grammar/vue_a_genres.go`, `vue_a_lecture.go`, fichiers neufs `replay/document_repliques*.go` | vue de contrôle |
-| E | `replay/document_eliminations.go`, `eliminations.go`, `internal/grammar/film_variante_de_partie.go`, `internal/facts/objectives/named*.go` (E.2, après A) | drapeau |
-| Contributeur | liste de la section 1.3 : `replay/options.go`, `film_scan_*.go`, `document_stances.go`, `shots*.go`, `projectiles.go`, `vue_a_lecture.go`, `distribuer_tetes.go`, `movement_states.go`, `keyframe_etat_complet_bipede.go`, `filmcache/`, `decfilm/`, schéma, chronique, faits, goldens | — |
+| D | `internal/grammar/vue_a_genres.go`, `internal/grammar/vue_a_lecture.go`, fichiers neufs `replay/document_repliques*.go` ; fragments de `FORMAT.md`, `GLOSSARY.md`, `NOTICE.md` (R-15) ; LU : `cmd/` des répliques (neuf, à côté de `cmd/weapon-sounds`, D.5) | vue de contrôle |
+| E | `replay/document_eliminations.go`, `replay/eliminations.go`, `internal/grammar/film_variante_de_partie.go`, `internal/facts/objectives/named*.go` (E.2, après A et B.4), `replay/score_timeline*.go` (E.2, après A.5) ; lus : `internal/facts/objectives/extract.go`, `decfilm/decfilm.go` (`ObjectiveTypeVip`) | drapeau |
+| F | `internal/facts/fallback/` (`registre.go`, `compteur.go`, `noms.go`, `registre_filmdec.go`) ; LU : `scripts/briques-workspace.sh` (F.1), `config/replay_corpus.toml` (F.2) | — |
+| Contributeur (copie publique, reçue par la piste P) | DEC, ajoutés (73) : `replay` 47, `internal/grammar` 17, `internal/facts/fallback` 4, `types` 2, `decfilm` 1, `filmcache` 1, `internal/grammar/lecture` 1. DEC, modifiés (249, contre v1.3.6) : `replay` 138, `internal/grammar` 61, `revision` 8, `filmcache` 4, `internal/facts/fallback` 3, `internal/facts/killsource` 3, `internal/facts/objectives` 3, `internal/source` 3, autres 26. LU cartes : ajoutés 195 (`himap` 191, `bitmapdecode` 4), modifiés 27 (`himap` 24, racine 3). LU lecteur : ajoutés 6 (`mapvar` 4, `himodule` 1, `ooz` LICENSE 1), modifiés 20 (`hinavmesh` 7, `mapvar` 6, `himodule` 5, `ooz` 2) | — |
+
+**Conflits relevés le 2026-11-23** (contrôle 0.5 et 0.6, section 2.2). Règle commune : un fichier revendiqué par deux pistes passe l'une après l'autre, dans l'ordre des vagues, et l'ordre est écrit au journal.
+
+- `replay/film_scan_images_cles.go` : V4 (motif `replay/film_scan*.go`) et V3. V4 d'abord (code en vague 3), V3 ensuite (vague 4) ; la ligne de V4 exclut ce fichier.
+- `decfilm/` : V0.6 et V1. V0.6 d'abord (seul écrivain de la structure d'options) ; V1 n'y ajoute qu'une entrée.
+- `internal/facts/objectives/named*.go` : B.4 et E.2. B.4 d'abord (vague 4), E.2 ensuite (vague 5).
+- `replay/score_timeline*.go` : A.5 et E.2. A.5 d'abord, E.2 ensuite.
+- `internal/grammar/marche_de_killsource.go` : V4 (appelant de `Distribuer`, ligne 104) et V2. V4 d'abord, V2 ensuite (V2.3, vague 6) ; la phrase de V4 « ne touche pas `marche_*.go` » est retirée.
+- `FORMAT.md`, `GLOSSARY.md`, `NOTICE.md`, `README.md` : D (D.4) et V4 (V4.5). Aucun agent n'écrit ces fichiers communs (R-15) : chaque piste rend un fragment, le pilote assemble. La phrase de V4.5 « `FORMAT.md` n'est pas touché » reste vraie : seul le fragment de D.4 concerne `FORMAT.md`.
+- `replay/coverage.go` : B.6 et l'écrivain unique (pilote). B.6 rend un fragment que le pilote assemble.
+
+Conflits avec le contributeur (après le gel, piste P) : `internal/grammar/movement_states.go` (V4) ; `replay/film_scan*.go` (V4) ; `replay/document_stances*.go` (C) ; `internal/grammar/vue_a_lecture.go` (D) ; `internal/grammar/keyframe_etat_complet_bipede.go` (V3, par le glob) ; `internal/grammar/distribuer_tetes.go` (V2, par le glob) et `distribuer_crochets.go` (V2) ; `replay/options.go` (V0.6). Ordre : les pistes d'abord (vagues 1 à 7), gel (P.4), puis ses PR (P.7).
 
 Dépendances entre pistes de vitesse, dites : V1, V2 et V4 lisent toutes la structure d'options de V0.6 et
 aucune ne l'écrit ; V2 et V4 touchent toutes deux la distribution aux canaux (V4 les inscriptions, V2 le
@@ -629,13 +652,13 @@ Aucun agent ne monte le schéma ni ne régénère un golden : il rend la liste e
       qui ordonne une sortie sont relevés, fichier et ligne. Sortie : zéro écart à classer en double passe
       sur la v1.5.0, ou un item de correction écrit ici (il changerait la sortie : il rejoint alors la
       vague 6, celle des intégrations du backlog, et la phase vitesse se prouve avec ce bruit nommé et borné à son étape).
-- [ ] 0.5 Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
+- [~] 0.5 (2026-11-23 : références de la section 1.1 contrôlées et corrigées ; le compteur des émissions jetées au tag reste à contrôler par décodage, avec 0.2) Contrôles sur pièces : le compteur des émissions jetées est juste hors Drapeau au tag
       (`e703301`) ; chaque référence `fichier:ligne` de la section 1.1 rouverte sur la tête du clone.
-- [ ] 0.6 Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
+- [ ] 0.6 (2026-11-23, fait en partie : table des fichiers confirmée et corrigée ; étapes observées des tirs `fire`, `continuousFire`, des dégâts `damages`, `damages.stats`, des touches `gameEvents`, `gameEvents.stats` (lien des touches à confirmer) ; `gorelease` et `apidiff` absents du poste, `benchstat` présent ; restent l'essai de l'outil de compatibilité et celui de `replay-equiv -repo-root`) Table des fichiers par piste confirmée sur la tête du clone, conflits écrits au journal ; noms des
       étapes de tirs, de touches et de dégâts de `replay-equiv` relevés (R-14) ; outil de G-compat essayé et
       sa version épinglée, ou repli retenu et capture `go doc -all` de `v1.5.0` rangée hors dépôt ;
       `replay-equiv -repo-root` essayé sur une racine de données distincte (R-13).
-- [ ] 0.7 Liste fermée des appelants de LevelUp qui ne lisent qu'une partie du film (candidats : rattrapage
+- [x] 0.7 (fait le 2026-11-23 : 21 sites de production, 5 lisent tout, 16 une partie ; table dans `.ai/annexes_decodeur_v160/appelants_partiels_0_7.md` ; à tracer par V4.1 avant la conception : que la génération complète consomme bien tous les canaux) Liste fermée des appelants de LevelUp qui ne lisent qu'une partie du film (candidats : rattrapage
       de la source de dégât, coup d'envoi du film, rasters tactiques), avec fichier et ligne : elle fixe ce
       que V4 doit servir et ce que L.4 branche. Écrite ici avant la vague 1.
 - [ ] 0.8 Vérité de l'API et faits des matchs : export unique en lecture sur une COPIE de la base partagée,
@@ -940,7 +963,7 @@ n'écrit sur la branche ; seules y entrent ses PR, une à une, puis les correcti
 correctif de notre côté après le gel lui est annoncé avant d'être poussé. Avant le gel, il peut travailler
 sur le tag `v1.5.0` ; il sait qu'un seul rebase l'attend, sur le commit de gel.
 
-- [ ] P.1 Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
+- [ ] P.1 (2026-11-23 : inventaire rendu dans `.ai/annexes_decodeur_v160/inventaire_contributeur.md` ; non coché : l'ordre des tags des trois briques et la table par canal, exigés ci-dessous, ne figurent pas encore dans ce rendu) Inventaire en lecture seule de ses copies, en deux parts confiées à deux agents (P.1a le
       décodeur, P.1b les deux autres briques), pour PRÉPARER l'accueil (aucun code, aucune PR), sur la
       tête de son dépôt au jour de l'item : pour le décodeur, diff de `third_party/film-decoder` contre
       v1.3.6 puis contre v1.5.0 ; pour les deux autres briques, diff à trois voies contre nos v1.4.0 et
@@ -1066,6 +1089,12 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Journal d'exécution
 
+- 2026-11-23 — GO du user. Clone `Scripts/dec-v160` sur `feat/v1.6.0` (tag `v1.5.0`, `dc967c2`), poussé ; worktree `Scripts/LevelUp-wt-dec160` sur `chore/830-decodeur-v160` depuis `93a4744e7b`, `npm ci` fait.
+  Trois contrôles en lecture seule rendus par des agents Haiku : 0.5 et 0.6 (`controle_0_5_0_6.md`), 0.7 (`appelants_partiels_0_7.md`), inventaire du contributeur (`inventaire_contributeur.md`).
+  Sept collisions de fichiers entre pistes (et avec le pilote) relevées et inscrites sous la table « Fichiers attendus par piste » ; sept autres avec le contributeur, arbitrées après le gel.
+  Dossier d'accueil du contributeur (P.2) en cours d'écriture.
+  Les items qui décodent des films (0.2, 0.4, 0.8) attendent la fin des gates de la v1.5.0.
+
 - 2026-11-23 — plan écrit, puis relu par un second agent contre la grille `plan-review` ; corrections
   appliquées le même jour : preuve d'identité en commandes distinctes et niveau de fils réglable dans les
   outils de LevelUp ; règle des révisions de couche et des caches par piste ; deux relevés de vitesse ;
@@ -1084,4 +1113,5 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Découvertes (consignées, non traitées)
 
-(vide)
+- 2026-11-23 — L'en-tête de `LU apps/go-api/cmd/killsource/main.go` (lignes 3 à 8) affirme qu'aucun chemin de l'application n'utilise le décodeur killsource : faux (appels de production dans `internal/replaybuild/kills.go:57` et `internal/sync/killcollector/collector_run.go:215`).
+- 2026-11-23 — Un commentaire du test de surface de la façade, `LU apps/go-api/internal/archlint/film_facade_surface_test.go` (ligne 166), dit que `NomPrecisionParArmePasseSautee` et `NomDistancesDeToucheDesactivees` ont quitté la façade en v1.5.0 ; ils y restent, marqués `Deprecated` (`decfilm/replis_obsoletes.go`). Incohérence à trancher.
