@@ -530,7 +530,7 @@ vue B de `feat/v75` (RI 2.7.c) ne retire rien de ce que les lecteurs du lot ouvr
 Dans `feat/v75`, killsource lit ses dead-states par la marche des trames (RI 2.7.c). Les lecteurs
 du lot prolongent la vue B de paquets où la marche ne passait pas : trois morts des témoins sont
 désormais lues par la marche au lieu du balayage — `e5adf7b2` à 05:29 (`joueur_117`), `1c4c63c2` à
-08:15 (`joueur_1045`) et à 13:38 (`Luxiy XCV`). Tout le reste de chaque mort est identique (victime,
+08:15 (`joueur_1045`) et à 13:38 (`joueur_1219`). Tout le reste de chaque mort est identique (victime,
 tueur, instant, source, assistances, divergence ; comparaison par `jq` hors du bloc `lecture`) ;
 les comptes `gate_par_voie` et `concordance` suivent. `c75f33b8` ne diffère que par le score et la
 médiane de l'oracle de `calibration` (décision inchangée), comme au §2.

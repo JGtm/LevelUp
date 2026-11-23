@@ -95,7 +95,7 @@ ref	084a804d	61124	joueur_368	marche	les deux verites concordent	0bece71e	VALIDE
 ref	084a804d	65964	joueur_462	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
 ref	084a804d	66001	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ref	084a804d	68235	joueur_351	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_434
-ref	084a804d	69335	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ref	084a804d	69335	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ref	084a804d	70172	joueur_033	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ref	084a804d	73306	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
 ref	084a804d	77377	joueur_010	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
@@ -105,22 +105,22 @@ ref	084a804d	82314	joueur_368	marche	les deux verites concordent	0000b29c	SOUS_R
 ref	084a804d	84820	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ref	084a804d	86621	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ref	084a804d	89318	joueur_182	marche	les deux verites concordent	00426796	VALIDE	joueur_351
-ref	084a804d	94761	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ref	084a804d	94761	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ref	084a804d	94961	joueur_464	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ref	084a804d	97602	joueur_351	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
-ref	084a804d	99001	joueur_589	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ref	084a804d	99001	joueur_589	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ref	084a804d	99135	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
 ref	084a804d	100970	joueur_117	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ref	084a804d	102406	joueur_287	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ref	084a804d	104067	joueur_111	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
-ref	084a804d	104201	Prime IK	marche	les deux verites concordent	00426796	VALIDE	joueur_368
+ref	084a804d	104201	joueur_1245	marche	les deux verites concordent	00426796	VALIDE	joueur_368
 ref	084a804d	104371	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ref	084a804d	112942	joueur_434	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_005
 ref	084a804d	116416	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	120360	joueur_117	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
 ref	084a804d	124724	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
 ref	084a804d	125161	JOUEUR_451	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
-ref	084a804d	125163	Prime IK	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ref	084a804d	125163	joueur_1245	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ref	084a804d	125356	joueur_329	scan	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_005
 ref	084a804d	125522	joueur_033	marche	les deux verites concordent	0000d57f	SOUS_RESERVE	joueur_531
 ref	084a804d	135274	joueur_117	marche	les deux verites concordent	0000005f	INCONNU	joueur_462
@@ -134,7 +134,7 @@ ref	084a804d	152420	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_
 ref	084a804d	161226	joueur_462	scan	les deux verites concordent	19bd6810	VALIDE	JOUEUR_451
 ref	084a804d	171037	joueur_088	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ref	084a804d	171472	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
-ref	084a804d	181582	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	181582	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	183288	joueur_329	marche	les deux verites concordent	13ff7bdf	SOUS_RESERVE	joueur_010
 ref	084a804d	183788	joueur_033	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_111
 ref	084a804d	184085	joueur_010	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_434
@@ -149,7 +149,7 @@ ref	084a804d	205776	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_
 ref	084a804d	211953	joueur_439	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ref	084a804d	216057	joueur_841	marche	les deux verites concordent	ab06203c	VALIDE	joueur_351
 ref	084a804d	228529	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
-ref	084a804d	230735	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
+ref	084a804d	230735	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ref	084a804d	231767	joueur_351	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_434
 ref	084a804d	237275	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	238205	joueur_005	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
@@ -158,7 +158,7 @@ ref	084a804d	241112	joueur_182	marche	les deux verites concordent	0000b238	SOUS_
 ref	084a804d	241348	joueur_589	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ref	084a804d	242242	joueur_563	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_434
 ref	084a804d	243714	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
-ref	084a804d	247217	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	Prime IK
+ref	084a804d	247217	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_1245
 ref	084a804d	247250	joueur_287	marche	les deux verites concordent	daa03c35	VALIDE	joueur_531
 ref	084a804d	254922	joueur_329	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ref	084a804d	261168	joueur_540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
@@ -174,11 +174,11 @@ ref	084a804d	284656	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_
 ref	084a804d	287324	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	287888	joueur_117	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ref	084a804d	289323	joueur_351	marche	les deux verites concordent	fa4fad21	VALIDE	joueur_462
-ref	084a804d	296467	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	296467	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	300168	joueur_287	marche	les deux verites concordent	da3b5ba4	VALIDE	JOUEUR_099
 ref	084a804d	303905	joueur_540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
 ref	084a804d	314252	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ref	084a804d	316555	joueur_841	scan	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ref	084a804d	316555	joueur_841	scan	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ref	084a804d	320158	JOUEUR_842	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_010
 ref	084a804d	321926	joueur_287	marche	les deux verites concordent	0000005f	INCONNU	joueur_462
 ref	084a804d	324196	joueur_088	marche	les deux verites concordent	038ad14c	SOUS_RESERVE	joueur_111
@@ -187,11 +187,11 @@ ref	084a804d	326998	joueur_117	marche	les deux verites concordent	7d012346	SOUS_
 ref	084a804d	334202	joueur_760	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ref	084a804d	337611	joueur_540	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ref	084a804d	341878	joueur_434	marche	les deux verites concordent	c14e9cea	VALIDE	joueur_010
-ref	084a804d	343483	joueur_111	marche	les deux verites concordent	2ff92041	VALIDE	Prime IK
+ref	084a804d	343483	joueur_111	marche	les deux verites concordent	2ff92041	VALIDE	joueur_1245
 ref	084a804d	346052	joueur_841	marche	les deux verites concordent	2ff92041	VALIDE	joueur_563
 ref	084a804d	346054	joueur_563	marche	les deux verites concordent	2ff92041	VALIDE	joueur_841
 ref	084a804d	346984	joueur_351	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
-ref	084a804d	347253	Prime IK	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
+ref	084a804d	347253	joueur_1245	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ref	084a804d	350261	joueur_010	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ref	084a804d	353893	joueur_117	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ref	084a804d	354794	joueur_387	marche	les deux verites concordent	daa03c35	VALIDE	joueur_439
@@ -217,7 +217,7 @@ ref	084a804d	409082	joueur_368	marche	les deux verites concordent	daa03c35	VALID
 ref	084a804d	409850	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	411422	joueur_387	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	414821	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ref	084a804d	415019	Prime IK	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
+ref	084a804d	415019	joueur_1245	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
 ref	084a804d	418355	joueur_760	marche	les deux verites concordent	0c64b43f	SOUS_RESERVE	joueur_841
 ref	084a804d	419657	joueur_351	marche	les deux verites concordent	19bd6810	VALIDE	joueur_111
 ref	084a804d	421425	joueur_287	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_841
@@ -233,15 +233,15 @@ ref	084a804d	440150	joueur_760	marche	les deux verites concordent	7d012346	SOUS_
 ref	084a804d	442416	joueur_439	marche	les deux verites concordent	daa03c35	VALIDE	joueur_033
 ref	084a804d	448818	joueur_351	marche	les deux verites concordent	f712c64a	VALIDE	joueur_462
 ref	084a804d	457497	joueur_540	marche	les deux verites concordent	0000b238	SOUS_RESERVE	JOUEUR_842
-ref	084a804d	458465	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	458465	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	458995	joueur_531	marche	les deux verites concordent	00404748	VALIDE	joueur_540
 ref	084a804d	464037	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
 ref	084a804d	468642	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ref	084a804d	469876	joueur_589	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_387
-ref	084a804d	470143	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	470143	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	473079	joueur_117	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_842
 ref	084a804d	473113	JOUEUR_842	marche	les deux verites concordent	f3c1f9a8	SOUS_RESERVE	joueur_117
-ref	084a804d	473743	Prime IK	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ref	084a804d	473743	joueur_1245	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ref	084a804d	488595	joueur_760	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ref	084a804d	488659	joueur_462	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ref	084a804d	491792	joueur_563	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
@@ -252,8 +252,8 @@ ref	084a804d	507847	joueur_329	marche	les deux verites concordent	0ff7b934	SOUS_
 ref	084a804d	509082	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ref	084a804d	513547	joueur_117	marche	les deux verites concordent	ffebe84e	SOUS_RESERVE	joueur_434
 ref	084a804d	517555	joueur_589	marche	les deux verites concordent	daa03c35	VALIDE	joueur_563
-ref	084a804d	519687	Prime IK	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	JOUEUR_842
-ref	084a804d	519693	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	519687	joueur_1245	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	JOUEUR_842
+ref	084a804d	519693	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	521158	joueur_351	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ref	084a804d	528533	joueur_531	marche	les deux verites concordent	2ff92041	VALIDE	joueur_563
 ref	084a804d	528667	joueur_033	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
@@ -270,9 +270,9 @@ ref	084a804d	556831	joueur_387	marche	les deux verites concordent	0000b238	SOUS_
 ref	084a804d	559635	joueur_088	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ref	084a804d	563674	joueur_287	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ref	084a804d	569940	joueur_563	marche	les deux verites concordent	ffebe84e	SOUS_RESERVE	joueur_111
-ref	084a804d	570512	joueur_439	marche	les deux verites concordent	0000b238	SOUS_RESERVE	Prime IK
+ref	084a804d	570512	joueur_439	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_1245
 ref	084a804d	571977	joueur_351	marche	les deux verites concordent	0c64b43f	SOUS_RESERVE	JOUEUR_842
-ref	084a804d	573683	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
+ref	084a804d	573683	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
 ref	084a804d	575184	joueur_841	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	JOUEUR_451
 ref	084a804d	575187	joueur_368	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	JOUEUR_451
 ref	084a804d	576921	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
@@ -288,7 +288,7 @@ ref	084a804d	595207	joueur_387	marche	les deux verites concordent	99d98aef	VALID
 ref	084a804d	599478	joueur_329	marche	les deux verites concordent	f712c64a	VALIDE	joueur_351
 ref	084a804d	601910	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ref	084a804d	603245	joueur_287	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ref	084a804d	617292	Prime IK	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
+ref	084a804d	617292	joueur_1245	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ref	084a804d	618864	joueur_117	marche	les deux verites concordent	5a4450e4	VALIDE	joueur_462
 ref	084a804d	619932	joueur_563	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ref	084a804d	622902	joueur_368	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
@@ -299,28 +299,28 @@ ref	084a804d	634405	joueur_351	marche	les deux verites concordent	e9941862	SOUS_
 ref	084a804d	635072	JOUEUR_842	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_760
 ref	084a804d	636815	joueur_287	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ref	084a804d	639147	joueur_841	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
-ref	084a804d	651061	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ref	084a804d	651061	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ref	084a804d	651589	joueur_439	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_010
 ref	084a804d	653091	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	661036	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	664072	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_563
 ref	084a804d	665069	joueur_589	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
 ref	084a804d	669377	joueur_563	marche	les deux verites concordent	2ff92041	VALIDE	joueur_531
-ref	084a804d	671342	JOUEUR_842	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ref	084a804d	671342	JOUEUR_842	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ref	084a804d	671547	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_088
-ref	084a804d	672551	joueur_841	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ref	084a804d	672551	joueur_841	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ref	084a804d	675054	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	677215	joueur_287	marche	les deux verites concordent	003ce738	SOUS_RESERVE	joueur_329
 ref	084a804d	682760	JOUEUR_451	scan	les deux verites concordent	19bd6810	VALIDE	joueur_111
 ref	084a804d	686825	joueur_033	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	691469	joueur_563	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	691566	joueur_117	marche	les deux verites concordent	daa03c35	VALIDE	joueur_329
-ref	084a804d	694137	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
+ref	084a804d	694137	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ref	084a804d	694732	JOUEUR_451	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	696667	joueur_287	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ref	084a804d	699203	joueur_111	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_540
 ref	084a804d	702444	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_841
-ref	084a804d	712259	Prime IK	scan	les deux verites concordent	00426796	VALIDE	joueur_368
+ref	084a804d	712259	joueur_1245	scan	les deux verites concordent	00426796	VALIDE	joueur_368
 ref	084a804d	712688	joueur_088	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ref	084a804d	713154	JOUEUR_842	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
 ref	084a804d	715860	joueur_434	scan	les deux verites concordent	da3b5ba4	VALIDE	joueur_563
@@ -333,7 +333,7 @@ ref	084a804d	724099	joueur_462	scan	les deux verites concordent	2ff92041	VALIDE	
 ref	084a804d	728336	joueur_439	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_387
 ref	084a804d	739848	joueur_841	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_451
 ref	084a804d	740585	JOUEUR_842	scan	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_010
-ref	084a804d	740782	Prime IK	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
+ref	084a804d	740782	joueur_1245	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
 ref	084a804d	743084	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_563
 ref	084a804d	743484	joueur_010	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ref	084a804d	746587	joueur_434	marche	les deux verites concordent	0000b238	SOUS_RESERVE	JOUEUR_451
@@ -347,7 +347,7 @@ ref	084a804d	764005	joueur_387	marche	les deux verites concordent	fa4fad21	VALID
 ref	084a804d	766512	joueur_287	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ref	084a804d	777024	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ref	084a804d	781127	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ref	084a804d	781193	Prime IK	marche	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_434
+ref	084a804d	781193	joueur_1245	marche	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_434
 ref	084a804d	781462	joueur_329	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_033
 ref	084a804d	783657	joueur_841	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_540
 ref	084a804d	786697	joueur_540	marche	les deux verites concordent	daa03c35	VALIDE	joueur_434
@@ -358,13 +358,13 @@ ref	084a804d	802113	JOUEUR_451	marche	les deux verites concordent	daa03c35	VALID
 ref	084a804d	804618	joueur_368	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_563
 ref	084a804d	805652	JOUEUR_842	marche	source appartenant a la victime	00403594	VALIDE	joueur_088
 ref	084a804d	807685	joueur_387	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
-ref	084a804d	810688	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
-ref	084a804d	813221	Prime IK	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
+ref	084a804d	810688	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
+ref	084a804d	813221	joueur_1245	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
 ref	084a804d	816524	joueur_111	marche	les deux verites concordent	15cdba9d	VALIDE	joueur_010
 ref	084a804d	819263	joueur_117	scan	les deux verites concordent	f3c1f9a8	SOUS_RESERVE	joueur_841
 ref	084a804d	819430	joueur_462	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_563
 ref	084a804d	832043	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ref	084a804d	834012	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ref	084a804d	834012	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ref	084a804d	838686	joueur_760	marche	les deux verites concordent	f712c64a	VALIDE	joueur_111
 ref	084a804d	839150	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_010
 ref	084a804d	842553	joueur_540	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
@@ -376,7 +376,7 @@ ref	084a804d	867879	joueur_531	scan	les deux verites concordent	daa03c35	VALIDE	
 ref	084a804d	868076	joueur_760	marche	les deux verites concordent	f712c64a	VALIDE	joueur_368
 ref	084a804d	868082	joueur_563	marche	les deux verites concordent	daa03c35	VALIDE	joueur_841
 ref	084a804d	868414	joueur_439	marche	les deux verites concordent	59255106	VALIDE	joueur_540
-ref	084a804d	871549	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
+ref	084a804d	871549	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ref	084a804d	876524	joueur_182	scan	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_088
 ref	084a804d	883799	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ref	084a804d	889202	joueur_351	scan	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_111
@@ -398,7 +398,7 @@ ref	084a804d	942924	joueur_287	scan	les deux verites concordent	e9941862	SOUS_RE
 ref	084a804d	946361	joueur_111	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_540
 ref	084a804d	947322	JOUEUR_451	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
 ref	084a804d	947458	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ref	084a804d	950432	Prime IK	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ref	084a804d	950432	joueur_1245	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ref	084a804d	954800	joueur_760	marche	les deux verites concordent	15cdba9d	VALIDE	JOUEUR_099
 ref	084a804d	958974	joueur_351	marche	les deux verites concordent	fa4fad21	VALIDE	joueur_329
 ref	084a804d	960538	joueur_033	marche	les deux verites concordent	0000005f	INCONNU	joueur_368
@@ -427,7 +427,7 @@ ref	084a804d	1023868	joueur_563	marche	les deux verites concordent	003f582d	VALI
 ref	084a804d	1026767	joueur_088	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ref	084a804d	1029011	joueur_368	marche	les deux verites concordent	00426796	VALIDE	joueur_351
 ref	084a804d	1030041	joueur_351	marche	les deux verites concordent	daa03c35	VALIDE	joueur_329
-ref	084a804d	1031543	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
+ref	084a804d	1031543	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ref	084a804d	1031576	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_010
 ref	084a804d	1034947	joueur_540	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ref	084a804d	1039353	joueur_182	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_760
@@ -435,7 +435,7 @@ ref	084a804d	1043387	joueur_841	scan	les deux verites concordent	59255106	VALIDE
 ref	084a804d	1045489	joueur_287	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ref	084a804d	1049461	joueur_387	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ref	084a804d	1051566	JOUEUR_842	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
-ref	084a804d	1053171	Prime IK	scan	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
+ref	084a804d	1053171	joueur_1245	scan	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ref	084a804d	1056609	joueur_531	marche	les deux verites concordent	0000005f	INCONNU	joueur_563
 ref	084a804d	1058372	joueur_033	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ref	084a804d	1060174	joueur_434	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_760
@@ -2479,7 +2479,7 @@ ref	a349fea8	937442	joueur_653	marche	les deux verites concordent	da3b5ba4	VALID
 ref	a349fea8	937445	joueur_850	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_158
 ref	a349fea8	944385	joueur_586	marche	les deux verites concordent	0bece71e	VALIDE	joueur_391
 ref	a349fea8	950696	joueur_295	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_377
-ref	a521164d	70996	GET FREE NOW	marche	les deux verites concordent	7c4f8a28	VALIDE	joueur_250
+ref	a521164d	70996	JOUEUR_1112	marche	les deux verites concordent	7c4f8a28	VALIDE	joueur_250
 ref	a521164d	76609	joueur_237	marche	les deux verites concordent	2ff92041	VALIDE	joueur_294
 ref	a521164d	80174	JOUEUR_286	scan	les deux verites concordent	00015cd1	VALIDE	joueur_806
 ref	a521164d	87148	joueur_294	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_519
@@ -2489,12 +2489,12 @@ ref	a521164d	92189	joueur_651	marche	les deux verites concordent	deffdc6b	VALIDE
 ref	a521164d	92193	joueur_762	marche	les deux verites concordent	deffdc6b	VALIDE	joueur_250
 ref	a521164d	92641	joueur_529	scan	les deux verites concordent	0bece71e	VALIDE	joueur_849
 ref	a521164d	93162	joueur_849	scan	les deux verites concordent	88f1034c	AMBIGU	joueur_529
-ref	a521164d	97751	joueur_458	marche	les deux verites concordent	0bece71e	VALIDE	GET FREE NOW
+ref	a521164d	97751	joueur_458	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_1112
 ref	a521164d	98819	joueur_463	marche	les deux verites concordent	19bd6810	VALIDE	joueur_150
 ref	a521164d	99609	joueur_758	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_065
 ref	a521164d	104229	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_150
 ref	a521164d	108828	JOUEUR_286	marche	les deux verites concordent	0bece71e	VALIDE	joueur_150
-ref	a521164d	119561	joueur_638	marche	les deux verites concordent	19bd6810	VALIDE	GET FREE NOW
+ref	a521164d	119561	joueur_638	marche	les deux verites concordent	19bd6810	VALIDE	JOUEUR_1112
 ref	a521164d	120061	joueur_406	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_150
 ref	a521164d	122209	joueur_306	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_250
 ref	a521164d	127772	joueur_065	marche	les deux verites concordent	daa03c35	VALIDE	joueur_294
@@ -2511,7 +2511,7 @@ ref	a521164d	139996	joueur_529	marche	les deux verites concordent	0000b29c	SOUS_
 ref	a521164d	141928	joueur_458	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_519
 ref	a521164d	142758	joueur_294	marche	les deux verites concordent	003f582d	VALIDE	joueur_763
 ref	a521164d	144604	joueur_519	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_286
-ref	a521164d	145160	GET FREE NOW	marche	les deux verites concordent	daa03c35	VALIDE	joueur_275
+ref	a521164d	145160	JOUEUR_1112	marche	les deux verites concordent	daa03c35	VALIDE	joueur_275
 ref	a521164d	153677	joueur_762	marche	les deux verites concordent	daa03c35	VALIDE	joueur_758
 ref	a521164d	153913	JOUEUR_286	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_150
 ref	a521164d	164157	joueur_150	marche	les deux verites concordent	7654f890	SOUS_RESERVE	joueur_758
@@ -2519,7 +2519,7 @@ ref	a521164d	171256	joueur_294	scan	les deux verites concordent	e9941862	SOUS_RE
 ref	a521164d	171964	JOUEUR_702	marche	les deux verites concordent	e1f38ea2	SOUS_RESERVE	joueur_275
 ref	a521164d	177608	joueur_275	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
 ref	a521164d	177764	joueur_519	scan	les deux verites concordent	119861b4	VALIDE	joueur_463
-ref	a521164d	179578	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	GET FREE NOW
+ref	a521164d	179578	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_1112
 ref	a521164d	185166	joueur_250	marche	les deux verites concordent	003f582d	VALIDE	joueur_763
 ref	a521164d	188793	joueur_117	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
 ref	a521164d	190430	joueur_463	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
@@ -2559,17 +2559,17 @@ ref	a521164d	295736	joueur_448	scan	les deux verites concordent	da3b5ba4	VALIDE	
 ref	a521164d	296037	JOUEUR_286	marche	les deux verites concordent	ef5d9e6c	SOUS_RESERVE	joueur_806
 ref	a521164d	296603	joueur_150	marche	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_117
 ref	a521164d	301160	joueur_294	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_762
-ref	a521164d	305355	GET FREE NOW	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_758
+ref	a521164d	305355	JOUEUR_1112	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_758
 ref	a521164d	306395	joueur_117	scan	les deux verites concordent	7c4f8a28	VALIDE	joueur_237
 ref	a521164d	306424	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
-ref	a521164d	307425	joueur_651	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Brauhausmann
+ref	a521164d	307425	joueur_651	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1287
 ref	a521164d	310328	joueur_758	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
 ref	a521164d	316620	joueur_463	marche	les deux verites concordent	557a2b6c	VALIDE	joueur_237
 ref	a521164d	317824	JOUEUR_286	marche	les deux verites concordent	19bd6810	VALIDE	joueur_762
 ref	a521164d	321056	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_762
 ref	a521164d	325839	joueur_458	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
 ref	a521164d	326800	joueur_237	marche	les deux verites concordent	88f1034c	AMBIGU	joueur_294
-ref	a521164d	332469	joueur_762	marche	les deux verites concordent	7654f890	SOUS_RESERVE	Brauhausmann
+ref	a521164d	332469	joueur_762	marche	les deux verites concordent	7654f890	SOUS_RESERVE	joueur_1287
 ref	a521164d	332613	joueur_519	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_758
 ref	a521164d	334356	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_763
 ref	a521164d	336471	JOUEUR_286	marche	les deux verites concordent	ebcbab64	SOUS_RESERVE	joueur_827
@@ -3641,28 +3641,28 @@ ref	c75f33b8	421982	joueur_342	scan	les deux verites concordent	d468178e	SOUS_RE
 ref	c75f33b8	424450	JGtm	scan	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_766
 ref	c75f33b8	436512	joueur_342	scan	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_766
 ref	c75f33b8	447691	343 Robot Hoida [bot]	scan	mort de bot (absente du kill-feed)	0000b238	SOUS_RESERVE	joueur_766
-ref	d1a18847	49935	slash snack	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
+ref	d1a18847	49935	joueur_1540	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ref	d1a18847	52605	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ref	d1a18847	57393	joueur_098	marche	les deux verites concordent	83225b95	SOUS_RESERVE	JGtm
 ref	d1a18847	65168	joueur_741	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
-ref	d1a18847	67886	slash snack	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_588
+ref	d1a18847	67886	joueur_1540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_588
 ref	d1a18847	72024	JOUEUR_232	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ref	d1a18847	72208	joueur_098	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
 ref	d1a18847	80432	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ref	d1a18847	86555	JOUEUR_232	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ref	d1a18847	88574	joueur_588	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_098
-ref	d1a18847	90426	joueur_127	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	slash snack
-ref	d1a18847	90428	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	slash snack
-ref	d1a18847	95130	slash snack	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
+ref	d1a18847	90426	joueur_127	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_1540
+ref	d1a18847	90428	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_1540
+ref	d1a18847	95130	joueur_1540	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
 ref	d1a18847	100571	JGtm	marche	les deux verites concordent	69fd30b9	SOUS_RESERVE	joueur_741
 ref	d1a18847	100603	joueur_741	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
 ref	d1a18847	103723	JOUEUR_232	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ref	d1a18847	115102	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ref	d1a18847	116586	joueur_491	marche	les deux verites concordent	7d012346	SOUS_RESERVE	slash snack
-ref	d1a18847	121341	slash snack	marche	les deux verites concordent	ba5ac78e	SOUS_RESERVE	JGtm
+ref	d1a18847	116586	joueur_491	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1540
+ref	d1a18847	121341	joueur_1540	marche	les deux verites concordent	ba5ac78e	SOUS_RESERVE	JGtm
 ref	d1a18847	126314	joueur_098	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_127
 ref	d1a18847	126629	joueur_127	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_098
-ref	d1a18847	135722	slash snack	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
+ref	d1a18847	135722	joueur_1540	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
 ref	d1a18847	136590	joueur_491	marche	les deux verites concordent	594095ac	SOUS_RESERVE	JOUEUR_232
 ref	d1a18847	138708	JGtm	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_741
 ref	d1a18847	140143	JOUEUR_232	marche	les deux verites concordent	4fbad006	SOUS_RESERVE	joueur_127
@@ -3671,41 +3671,41 @@ ref	d1a18847	148553	joueur_098	marche	les deux verites concordent	2f9b7b5f	SOUS_
 ref	d1a18847	153189	JGtm	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_741
 ref	d1a18847	155692	joueur_741	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ref	d1a18847	157845	JOUEUR_232	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
-ref	d1a18847	158278	slash snack	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
+ref	d1a18847	158278	joueur_1540	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ref	d1a18847	169455	joueur_491	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_741
-ref	d1a18847	169924	JGtm	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ref	d1a18847	169924	JGtm	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ref	d1a18847	171109	joueur_741	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_127
-ref	d1a18847	174744	joueur_588	marche	source appartenant a la victime	acd1cff4	SOUS_RESERVE	slash snack
+ref	d1a18847	174744	joueur_588	marche	source appartenant a la victime	acd1cff4	SOUS_RESERVE	joueur_1540
 ref	d1a18847	174746	JOUEUR_232	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_588
 ref	d1a18847	176146	joueur_127	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	joueur_098
 ref	d1a18847	187308	joueur_098	marche	les deux verites concordent	83225b95	SOUS_RESERVE	JGtm
-ref	d1a18847	193748	joueur_588	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ref	d1a18847	193748	joueur_588	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ref	d1a18847	195416	joueur_741	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_127
 ref	d1a18847	198685	joueur_127	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_098
 ref	d1a18847	208112	joueur_098	marche	les deux verites concordent	7d012346	SOUS_RESERVE	JGtm
 ref	d1a18847	213500	joueur_741	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_491
-ref	d1a18847	214268	joueur_491	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ref	d1a18847	214268	joueur_491	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ref	d1a18847	223711	joueur_512	marche	les deux verites concordent	0000d627	VALIDE	joueur_127
-ref	d1a18847	224295	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ref	d1a18847	224295	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ref	d1a18847	225947	joueur_098	marche	les deux verites concordent	7d012346	SOUS_RESERVE	JGtm
-ref	d1a18847	227382	slash snack	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
+ref	d1a18847	227382	joueur_1540	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ref	d1a18847	230584	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_741
 ref	d1a18847	233270	joueur_741	marche	les deux verites concordent	59255106	VALIDE	JGtm
 ref	d1a18847	239261	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_512
 ref	d1a18847	239359	JGtm	marche	les deux verites concordent	d8cea1aa	VALIDE	joueur_512
-ref	d1a18847	242646	slash snack	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
+ref	d1a18847	242646	joueur_1540	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ref	d1a18847	250287	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
-ref	d1a18847	257145	slash snack	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_491
+ref	d1a18847	257145	joueur_1540	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_491
 ref	d1a18847	259881	joueur_098	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	JGtm
 ref	d1a18847	261717	joueur_491	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_512
 ref	d1a18847	262650	joueur_512	marche	les deux verites concordent	0000d627	VALIDE	joueur_491
-ref	d1a18847	274345	joueur_127	marche	les deux verites concordent	c8681ecf	VALIDE	slash snack
+ref	d1a18847	274345	joueur_127	marche	les deux verites concordent	c8681ecf	VALIDE	joueur_1540
 ref	d1a18847	276633	joueur_491	marche	les deux verites concordent	4fbad006	SOUS_RESERVE	joueur_512
 ref	d1a18847	290528	joueur_098	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_127
 ref	d1a18847	294616	joueur_127	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
 ref	d1a18847	295250	joueur_512	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
 ref	d1a18847	305961	joueur_098	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ref	d1a18847	313452	joueur_491	marche	les deux verites concordent	67db304a	SOUS_RESERVE	slash snack
+ref	d1a18847	313452	joueur_491	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_1540
 ref	d1a18847	316220	joueur_588	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_512
 ref	d1a18847	317956	joueur_512	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	JGtm
 ref	d1a18847	329835	joueur_127	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_512
@@ -3717,19 +3717,19 @@ ref	d1a18847	348353	joueur_741	marche	les deux verites concordent	8c1a1ef4	SOUS_
 ref	d1a18847	348621	joueur_512	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_127
 ref	d1a18847	349622	joueur_098	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_491
 ref	d1a18847	360682	joueur_512	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
-ref	d1a18847	361650	joueur_491	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	slash snack
+ref	d1a18847	361650	joueur_491	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_1540
 ref	d1a18847	365237	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_127
 ref	d1a18847	370075	joueur_127	marche	les deux verites concordent	daa03c35	VALIDE	joueur_098
 ref	d1a18847	378103	JGtm	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_098
 ref	d1a18847	385975	joueur_098	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ref	d1a18847	390880	slash snack	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
+ref	d1a18847	390880	joueur_1540	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ref	d1a18847	391379	joueur_491	marche	mort infligee par un bot (kill absent du kill-feed)	67db304a	SOUS_RESERVE	343 Nando [bot]
 ref	d1a18847	396386	JGtm	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
 ref	d1a18847	396869	343 Nando [bot]	scan	mort de bot (absente du kill-feed)	f81f1a01	SOUS_RESERVE	joueur_588
 ref	d1a18847	401524	joueur_588	marche	les deux verites concordent	877da252	SOUS_RESERVE	joueur_098
 ref	d1a18847	403476	joueur_127	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
-ref	d1a18847	410649	joueur_491	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	slash snack
-ref	d1a18847	410852	slash snack	marche	les deux verites concordent	64ab85c4	VALIDE	joueur_491
+ref	d1a18847	410649	joueur_491	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	joueur_1540
+ref	d1a18847	410852	joueur_1540	marche	les deux verites concordent	64ab85c4	VALIDE	joueur_491
 ref	d1a18847	413168	JGtm	marche	les deux verites concordent	13ff7bdf	SOUS_RESERVE	joueur_741
 ref	d1a18847	417973	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_127
 ref	d9781168	53577	joueur_323	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_766
@@ -4461,7 +4461,7 @@ ls	084a804d	61124	joueur_368	marche	les deux verites concordent	0bece71e	VALIDE	
 ls	084a804d	65964	joueur_462	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
 ls	084a804d	66001	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ls	084a804d	68235	joueur_351	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_434
-ls	084a804d	69335	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ls	084a804d	69335	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ls	084a804d	70172	joueur_033	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ls	084a804d	73306	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
 ls	084a804d	77377	joueur_010	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
@@ -4471,22 +4471,22 @@ ls	084a804d	82314	joueur_368	marche	les deux verites concordent	0000b29c	SOUS_RE
 ls	084a804d	84820	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ls	084a804d	86621	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ls	084a804d	89318	joueur_182	marche	les deux verites concordent	00426796	VALIDE	joueur_351
-ls	084a804d	94761	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ls	084a804d	94761	JOUEUR_842	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ls	084a804d	94961	joueur_464	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ls	084a804d	97602	joueur_351	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
-ls	084a804d	99001	joueur_589	marche	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ls	084a804d	99001	joueur_589	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ls	084a804d	99135	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
 ls	084a804d	100970	joueur_117	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ls	084a804d	102406	joueur_287	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ls	084a804d	104067	joueur_111	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
-ls	084a804d	104201	Prime IK	marche	les deux verites concordent	00426796	VALIDE	joueur_368
+ls	084a804d	104201	joueur_1245	marche	les deux verites concordent	00426796	VALIDE	joueur_368
 ls	084a804d	104371	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ls	084a804d	112942	joueur_434	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_005
 ls	084a804d	116416	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	120360	joueur_117	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
 ls	084a804d	124724	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
 ls	084a804d	125161	JOUEUR_451	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
-ls	084a804d	125163	Prime IK	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ls	084a804d	125163	joueur_1245	scan	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ls	084a804d	125356	joueur_329	scan	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_005
 ls	084a804d	125522	joueur_033	marche	les deux verites concordent	0000d57f	SOUS_RESERVE	joueur_531
 ls	084a804d	135274	joueur_117	marche	les deux verites concordent	0000005f	INCONNU	joueur_462
@@ -4500,7 +4500,7 @@ ls	084a804d	152420	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_R
 ls	084a804d	161226	joueur_462	scan	les deux verites concordent	19bd6810	VALIDE	JOUEUR_451
 ls	084a804d	171037	joueur_088	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ls	084a804d	171472	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
-ls	084a804d	181582	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	181582	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	183288	joueur_329	marche	les deux verites concordent	13ff7bdf	SOUS_RESERVE	joueur_010
 ls	084a804d	183788	joueur_033	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_111
 ls	084a804d	184085	joueur_010	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_434
@@ -4515,7 +4515,7 @@ ls	084a804d	205776	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_R
 ls	084a804d	211953	joueur_439	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ls	084a804d	216057	joueur_841	marche	les deux verites concordent	ab06203c	VALIDE	joueur_351
 ls	084a804d	228529	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
-ls	084a804d	230735	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
+ls	084a804d	230735	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ls	084a804d	231767	joueur_351	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_434
 ls	084a804d	237275	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	238205	joueur_005	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
@@ -4524,7 +4524,7 @@ ls	084a804d	241112	joueur_182	marche	les deux verites concordent	0000b238	SOUS_R
 ls	084a804d	241348	joueur_589	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ls	084a804d	242242	joueur_563	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_434
 ls	084a804d	243714	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
-ls	084a804d	247217	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	Prime IK
+ls	084a804d	247217	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_1245
 ls	084a804d	247250	joueur_287	marche	les deux verites concordent	daa03c35	VALIDE	joueur_531
 ls	084a804d	254922	joueur_329	marche	les deux verites concordent	f712c64a	VALIDE	joueur_540
 ls	084a804d	261168	joueur_540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
@@ -4540,11 +4540,11 @@ ls	084a804d	284656	joueur_589	marche	les deux verites concordent	0000b29c	SOUS_R
 ls	084a804d	287324	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	287888	joueur_117	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ls	084a804d	289323	joueur_351	marche	les deux verites concordent	fa4fad21	VALIDE	joueur_462
-ls	084a804d	296467	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	296467	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	300168	joueur_287	marche	les deux verites concordent	da3b5ba4	VALIDE	JOUEUR_099
 ls	084a804d	303905	joueur_540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
 ls	084a804d	314252	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ls	084a804d	316555	joueur_841	scan	les deux verites concordent	7d012346	SOUS_RESERVE	Prime IK
+ls	084a804d	316555	joueur_841	scan	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1245
 ls	084a804d	320158	JOUEUR_842	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_010
 ls	084a804d	321926	joueur_287	marche	les deux verites concordent	0000005f	INCONNU	joueur_462
 ls	084a804d	324196	joueur_088	marche	les deux verites concordent	038ad14c	SOUS_RESERVE	joueur_111
@@ -4553,11 +4553,11 @@ ls	084a804d	326998	joueur_117	marche	les deux verites concordent	7d012346	SOUS_R
 ls	084a804d	334202	joueur_760	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ls	084a804d	337611	joueur_540	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ls	084a804d	341878	joueur_434	marche	les deux verites concordent	c14e9cea	VALIDE	joueur_010
-ls	084a804d	343483	joueur_111	marche	les deux verites concordent	2ff92041	VALIDE	Prime IK
+ls	084a804d	343483	joueur_111	marche	les deux verites concordent	2ff92041	VALIDE	joueur_1245
 ls	084a804d	346052	joueur_841	marche	les deux verites concordent	2ff92041	VALIDE	joueur_563
 ls	084a804d	346054	joueur_563	marche	les deux verites concordent	2ff92041	VALIDE	joueur_841
 ls	084a804d	346984	joueur_351	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
-ls	084a804d	347253	Prime IK	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
+ls	084a804d	347253	joueur_1245	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ls	084a804d	350261	joueur_010	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ls	084a804d	353893	joueur_117	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_589
 ls	084a804d	354794	joueur_387	marche	les deux verites concordent	daa03c35	VALIDE	joueur_439
@@ -4583,7 +4583,7 @@ ls	084a804d	409082	joueur_368	marche	les deux verites concordent	daa03c35	VALIDE
 ls	084a804d	409850	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	411422	joueur_387	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	414821	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ls	084a804d	415019	Prime IK	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
+ls	084a804d	415019	joueur_1245	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_439
 ls	084a804d	418355	joueur_760	marche	les deux verites concordent	0c64b43f	SOUS_RESERVE	joueur_841
 ls	084a804d	419657	joueur_351	marche	les deux verites concordent	19bd6810	VALIDE	joueur_111
 ls	084a804d	421425	joueur_287	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_841
@@ -4599,15 +4599,15 @@ ls	084a804d	440150	joueur_760	marche	les deux verites concordent	7d012346	SOUS_R
 ls	084a804d	442416	joueur_439	marche	les deux verites concordent	daa03c35	VALIDE	joueur_033
 ls	084a804d	448818	joueur_351	marche	les deux verites concordent	f712c64a	VALIDE	joueur_462
 ls	084a804d	457497	joueur_540	marche	les deux verites concordent	0000b238	SOUS_RESERVE	JOUEUR_842
-ls	084a804d	458465	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	458465	joueur_841	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	458995	joueur_531	marche	les deux verites concordent	00404748	VALIDE	joueur_540
 ls	084a804d	464037	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
 ls	084a804d	468642	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ls	084a804d	469876	joueur_589	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_387
-ls	084a804d	470143	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	470143	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	473079	joueur_117	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_842
 ls	084a804d	473113	JOUEUR_842	marche	les deux verites concordent	f3c1f9a8	SOUS_RESERVE	joueur_117
-ls	084a804d	473743	Prime IK	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ls	084a804d	473743	joueur_1245	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ls	084a804d	488595	joueur_760	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ls	084a804d	488659	joueur_462	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ls	084a804d	491792	joueur_563	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
@@ -4618,8 +4618,8 @@ ls	084a804d	507847	joueur_329	marche	les deux verites concordent	0ff7b934	SOUS_R
 ls	084a804d	509082	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ls	084a804d	513547	joueur_117	marche	les deux verites concordent	ffebe84e	SOUS_RESERVE	joueur_434
 ls	084a804d	517555	joueur_589	marche	les deux verites concordent	daa03c35	VALIDE	joueur_563
-ls	084a804d	519687	Prime IK	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	JOUEUR_842
-ls	084a804d	519693	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	519687	joueur_1245	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	JOUEUR_842
+ls	084a804d	519693	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	521158	joueur_351	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ls	084a804d	528533	joueur_531	marche	les deux verites concordent	2ff92041	VALIDE	joueur_563
 ls	084a804d	528667	joueur_033	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
@@ -4636,9 +4636,9 @@ ls	084a804d	556831	joueur_387	marche	les deux verites concordent	0000b238	SOUS_R
 ls	084a804d	559635	joueur_088	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ls	084a804d	563674	joueur_287	marche	les deux verites concordent	ab06203c	VALIDE	joueur_329
 ls	084a804d	569940	joueur_563	marche	les deux verites concordent	ffebe84e	SOUS_RESERVE	joueur_111
-ls	084a804d	570512	joueur_439	marche	les deux verites concordent	0000b238	SOUS_RESERVE	Prime IK
+ls	084a804d	570512	joueur_439	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_1245
 ls	084a804d	571977	joueur_351	marche	les deux verites concordent	0c64b43f	SOUS_RESERVE	JOUEUR_842
-ls	084a804d	573683	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
+ls	084a804d	573683	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_099
 ls	084a804d	575184	joueur_841	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	JOUEUR_451
 ls	084a804d	575187	joueur_368	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	JOUEUR_451
 ls	084a804d	576921	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
@@ -4654,7 +4654,7 @@ ls	084a804d	595207	joueur_387	marche	les deux verites concordent	99d98aef	VALIDE
 ls	084a804d	599478	joueur_329	marche	les deux verites concordent	f712c64a	VALIDE	joueur_351
 ls	084a804d	601910	joueur_088	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ls	084a804d	603245	joueur_287	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ls	084a804d	617292	Prime IK	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
+ls	084a804d	617292	joueur_1245	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ls	084a804d	618864	joueur_117	marche	les deux verites concordent	5a4450e4	VALIDE	joueur_462
 ls	084a804d	619932	joueur_563	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ls	084a804d	622902	joueur_368	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
@@ -4665,28 +4665,28 @@ ls	084a804d	634405	joueur_351	marche	les deux verites concordent	e9941862	SOUS_R
 ls	084a804d	635072	JOUEUR_842	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_760
 ls	084a804d	636815	joueur_287	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_439
 ls	084a804d	639147	joueur_841	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
-ls	084a804d	651061	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ls	084a804d	651061	joueur_368	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ls	084a804d	651589	joueur_439	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_010
 ls	084a804d	653091	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	661036	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	664072	JOUEUR_099	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_563
 ls	084a804d	665069	joueur_589	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_451
 ls	084a804d	669377	joueur_563	marche	les deux verites concordent	2ff92041	VALIDE	joueur_531
-ls	084a804d	671342	JOUEUR_842	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ls	084a804d	671342	JOUEUR_842	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ls	084a804d	671547	joueur_531	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_088
-ls	084a804d	672551	joueur_841	marche	les deux verites concordent	f712c64a	VALIDE	Prime IK
+ls	084a804d	672551	joueur_841	marche	les deux verites concordent	f712c64a	VALIDE	joueur_1245
 ls	084a804d	675054	joueur_760	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	677215	joueur_287	marche	les deux verites concordent	003ce738	SOUS_RESERVE	joueur_329
 ls	084a804d	682760	JOUEUR_451	scan	les deux verites concordent	19bd6810	VALIDE	joueur_111
 ls	084a804d	686825	joueur_033	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	691469	joueur_563	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	691566	joueur_117	marche	les deux verites concordent	daa03c35	VALIDE	joueur_329
-ls	084a804d	694137	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
+ls	084a804d	694137	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ls	084a804d	694732	JOUEUR_451	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	696667	joueur_287	marche	les deux verites concordent	0bece71e	VALIDE	joueur_111
 ls	084a804d	699203	joueur_111	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_540
 ls	084a804d	702444	joueur_760	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_841
-ls	084a804d	712259	Prime IK	scan	les deux verites concordent	00426796	VALIDE	joueur_368
+ls	084a804d	712259	joueur_1245	scan	les deux verites concordent	00426796	VALIDE	joueur_368
 ls	084a804d	712688	joueur_088	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ls	084a804d	713154	JOUEUR_842	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
 ls	084a804d	715860	joueur_434	scan	les deux verites concordent	da3b5ba4	VALIDE	joueur_563
@@ -4699,7 +4699,7 @@ ls	084a804d	724099	joueur_462	scan	les deux verites concordent	2ff92041	VALIDE	j
 ls	084a804d	728336	joueur_439	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_387
 ls	084a804d	739848	joueur_841	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_451
 ls	084a804d	740585	JOUEUR_842	scan	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_010
-ls	084a804d	740782	Prime IK	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
+ls	084a804d	740782	joueur_1245	marche	les deux verites concordent	0000005f	INCONNU	joueur_329
 ls	084a804d	743084	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_563
 ls	084a804d	743484	joueur_010	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_531
 ls	084a804d	746587	joueur_434	marche	les deux verites concordent	0000b238	SOUS_RESERVE	JOUEUR_451
@@ -4713,7 +4713,7 @@ ls	084a804d	764005	joueur_387	marche	les deux verites concordent	fa4fad21	VALIDE
 ls	084a804d	766512	joueur_287	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
 ls	084a804d	777024	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_760
 ls	084a804d	781127	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ls	084a804d	781193	Prime IK	marche	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_434
+ls	084a804d	781193	joueur_1245	marche	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_434
 ls	084a804d	781462	joueur_329	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_033
 ls	084a804d	783657	joueur_841	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_540
 ls	084a804d	786697	joueur_540	marche	les deux verites concordent	daa03c35	VALIDE	joueur_434
@@ -4724,13 +4724,13 @@ ls	084a804d	802113	JOUEUR_451	marche	les deux verites concordent	daa03c35	VALIDE
 ls	084a804d	804618	joueur_368	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_563
 ls	084a804d	805652	JOUEUR_842	marche	source appartenant a la victime	00403594	VALIDE	joueur_088
 ls	084a804d	807685	joueur_387	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
-ls	084a804d	810688	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
-ls	084a804d	813221	Prime IK	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
+ls	084a804d	810688	joueur_434	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
+ls	084a804d	813221	joueur_1245	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
 ls	084a804d	816524	joueur_111	marche	les deux verites concordent	15cdba9d	VALIDE	joueur_010
 ls	084a804d	819263	joueur_117	scan	les deux verites concordent	f3c1f9a8	SOUS_RESERVE	joueur_841
 ls	084a804d	819430	joueur_462	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_563
 ls	084a804d	832043	joueur_033	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
-ls	084a804d	834012	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Prime IK
+ls	084a804d	834012	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1245
 ls	084a804d	838686	joueur_760	marche	les deux verites concordent	f712c64a	VALIDE	joueur_111
 ls	084a804d	839150	joueur_531	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_010
 ls	084a804d	842553	joueur_540	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_439
@@ -4742,7 +4742,7 @@ ls	084a804d	867879	joueur_531	scan	les deux verites concordent	daa03c35	VALIDE	j
 ls	084a804d	868076	joueur_760	marche	les deux verites concordent	f712c64a	VALIDE	joueur_368
 ls	084a804d	868082	joueur_563	marche	les deux verites concordent	daa03c35	VALIDE	joueur_841
 ls	084a804d	868414	joueur_439	marche	les deux verites concordent	59255106	VALIDE	joueur_540
-ls	084a804d	871549	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
+ls	084a804d	871549	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_111
 ls	084a804d	876524	joueur_182	scan	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_088
 ls	084a804d	883799	JOUEUR_451	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_434
 ls	084a804d	889202	joueur_351	scan	les deux verites concordent	0ff7b934	SOUS_RESERVE	joueur_111
@@ -4764,7 +4764,7 @@ ls	084a804d	942924	joueur_287	scan	les deux verites concordent	e9941862	SOUS_RES
 ls	084a804d	946361	joueur_111	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_540
 ls	084a804d	947322	JOUEUR_451	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_462
 ls	084a804d	947458	joueur_182	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_117
-ls	084a804d	950432	Prime IK	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
+ls	084a804d	950432	joueur_1245	marche	les deux verites concordent	53b1e6c5	VALIDE	joueur_329
 ls	084a804d	954800	joueur_760	marche	les deux verites concordent	15cdba9d	VALIDE	JOUEUR_099
 ls	084a804d	958974	joueur_351	marche	les deux verites concordent	fa4fad21	VALIDE	joueur_329
 ls	084a804d	960538	joueur_033	marche	les deux verites concordent	0000005f	INCONNU	joueur_368
@@ -4793,7 +4793,7 @@ ls	084a804d	1023868	joueur_563	marche	les deux verites concordent	003f582d	VALID
 ls	084a804d	1026767	joueur_088	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_111
 ls	084a804d	1029011	joueur_368	marche	les deux verites concordent	00426796	VALIDE	joueur_351
 ls	084a804d	1030041	joueur_351	marche	les deux verites concordent	daa03c35	VALIDE	joueur_329
-ls	084a804d	1031543	Prime IK	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
+ls	084a804d	1031543	joueur_1245	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ls	084a804d	1031576	joueur_329	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_010
 ls	084a804d	1034947	joueur_540	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_182
 ls	084a804d	1039353	joueur_182	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_760
@@ -4801,7 +4801,7 @@ ls	084a804d	1043387	joueur_841	scan	les deux verites concordent	59255106	VALIDE	
 ls	084a804d	1045489	joueur_287	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ls	084a804d	1049461	joueur_387	marche	les deux verites concordent	0bece71e	VALIDE	joueur_439
 ls	084a804d	1051566	JOUEUR_842	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_033
-ls	084a804d	1053171	Prime IK	scan	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
+ls	084a804d	1053171	joueur_1245	scan	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ls	084a804d	1056609	joueur_531	marche	les deux verites concordent	0000005f	INCONNU	joueur_563
 ls	084a804d	1058372	joueur_033	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_111
 ls	084a804d	1060174	joueur_434	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_760
@@ -6845,7 +6845,7 @@ ls	a349fea8	937442	joueur_653	marche	les deux verites concordent	da3b5ba4	VALIDE
 ls	a349fea8	937445	joueur_850	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_158
 ls	a349fea8	944385	joueur_586	marche	les deux verites concordent	0bece71e	VALIDE	joueur_391
 ls	a349fea8	950696	joueur_295	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_377
-ls	a521164d	70996	GET FREE NOW	marche	les deux verites concordent	7c4f8a28	VALIDE	joueur_250
+ls	a521164d	70996	JOUEUR_1112	marche	les deux verites concordent	7c4f8a28	VALIDE	joueur_250
 ls	a521164d	76609	joueur_237	marche	les deux verites concordent	2ff92041	VALIDE	joueur_294
 ls	a521164d	80174	JOUEUR_286	scan	les deux verites concordent	00015cd1	VALIDE	joueur_806
 ls	a521164d	87148	joueur_294	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_519
@@ -6855,12 +6855,12 @@ ls	a521164d	92189	joueur_651	marche	les deux verites concordent	deffdc6b	VALIDE	
 ls	a521164d	92193	joueur_762	marche	les deux verites concordent	deffdc6b	VALIDE	joueur_250
 ls	a521164d	92641	joueur_529	scan	les deux verites concordent	0bece71e	VALIDE	joueur_849
 ls	a521164d	93162	joueur_849	scan	les deux verites concordent	88f1034c	AMBIGU	joueur_529
-ls	a521164d	97751	joueur_458	marche	les deux verites concordent	0bece71e	VALIDE	GET FREE NOW
+ls	a521164d	97751	joueur_458	marche	les deux verites concordent	0bece71e	VALIDE	JOUEUR_1112
 ls	a521164d	98819	joueur_463	marche	les deux verites concordent	19bd6810	VALIDE	joueur_150
 ls	a521164d	99609	joueur_758	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_065
 ls	a521164d	104229	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_150
 ls	a521164d	108828	JOUEUR_286	marche	les deux verites concordent	0bece71e	VALIDE	joueur_150
-ls	a521164d	119561	joueur_638	marche	les deux verites concordent	19bd6810	VALIDE	GET FREE NOW
+ls	a521164d	119561	joueur_638	marche	les deux verites concordent	19bd6810	VALIDE	JOUEUR_1112
 ls	a521164d	120061	joueur_406	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_150
 ls	a521164d	122209	joueur_306	scan	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_250
 ls	a521164d	127772	joueur_065	marche	les deux verites concordent	daa03c35	VALIDE	joueur_294
@@ -6877,7 +6877,7 @@ ls	a521164d	139996	joueur_529	marche	les deux verites concordent	0000b29c	SOUS_R
 ls	a521164d	141928	joueur_458	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_519
 ls	a521164d	142758	joueur_294	marche	les deux verites concordent	003f582d	VALIDE	joueur_763
 ls	a521164d	144604	joueur_519	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_286
-ls	a521164d	145160	GET FREE NOW	marche	les deux verites concordent	daa03c35	VALIDE	joueur_275
+ls	a521164d	145160	JOUEUR_1112	marche	les deux verites concordent	daa03c35	VALIDE	joueur_275
 ls	a521164d	153677	joueur_762	marche	les deux verites concordent	daa03c35	VALIDE	joueur_758
 ls	a521164d	153913	JOUEUR_286	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_150
 ls	a521164d	164157	joueur_150	marche	les deux verites concordent	7654f890	SOUS_RESERVE	joueur_758
@@ -6885,7 +6885,7 @@ ls	a521164d	171256	joueur_294	scan	les deux verites concordent	e9941862	SOUS_RES
 ls	a521164d	171964	JOUEUR_702	marche	les deux verites concordent	e1f38ea2	SOUS_RESERVE	joueur_275
 ls	a521164d	177608	joueur_275	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
 ls	a521164d	177764	joueur_519	scan	les deux verites concordent	119861b4	VALIDE	joueur_463
-ls	a521164d	179578	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	GET FREE NOW
+ls	a521164d	179578	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	JOUEUR_1112
 ls	a521164d	185166	joueur_250	marche	les deux verites concordent	003f582d	VALIDE	joueur_763
 ls	a521164d	188793	joueur_117	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
 ls	a521164d	190430	joueur_463	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
@@ -6925,17 +6925,17 @@ ls	a521164d	295736	joueur_448	scan	les deux verites concordent	da3b5ba4	VALIDE	j
 ls	a521164d	296037	JOUEUR_286	marche	les deux verites concordent	ef5d9e6c	SOUS_RESERVE	joueur_806
 ls	a521164d	296603	joueur_150	marche	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_117
 ls	a521164d	301160	joueur_294	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_762
-ls	a521164d	305355	GET FREE NOW	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_758
+ls	a521164d	305355	JOUEUR_1112	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_758
 ls	a521164d	306395	joueur_117	scan	les deux verites concordent	7c4f8a28	VALIDE	joueur_237
 ls	a521164d	306424	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_651
-ls	a521164d	307425	joueur_651	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	Brauhausmann
+ls	a521164d	307425	joueur_651	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_1287
 ls	a521164d	310328	joueur_758	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
 ls	a521164d	316620	joueur_463	marche	les deux verites concordent	557a2b6c	VALIDE	joueur_237
 ls	a521164d	317824	JOUEUR_286	marche	les deux verites concordent	19bd6810	VALIDE	joueur_762
 ls	a521164d	321056	joueur_117	marche	les deux verites concordent	0bece71e	VALIDE	joueur_762
 ls	a521164d	325839	joueur_458	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_529
 ls	a521164d	326800	joueur_237	marche	les deux verites concordent	88f1034c	AMBIGU	joueur_294
-ls	a521164d	332469	joueur_762	marche	les deux verites concordent	7654f890	SOUS_RESERVE	Brauhausmann
+ls	a521164d	332469	joueur_762	marche	les deux verites concordent	7654f890	SOUS_RESERVE	joueur_1287
 ls	a521164d	332613	joueur_519	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_758
 ls	a521164d	334356	joueur_849	marche	les deux verites concordent	0000b29c	SOUS_RESERVE	joueur_763
 ls	a521164d	336471	JOUEUR_286	marche	les deux verites concordent	ebcbab64	SOUS_RESERVE	joueur_827
@@ -8007,28 +8007,28 @@ ls	c75f33b8	421982	joueur_342	marche	les deux verites concordent	d468178e	SOUS_R
 ls	c75f33b8	424450	JGtm	marche	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_766
 ls	c75f33b8	436512	joueur_342	marche	les deux verites concordent	d468178e	SOUS_RESERVE	joueur_766
 ls	c75f33b8	447691	343 Robot Hoida [bot]	scan	mort de bot (absente du kill-feed)	0000b238	SOUS_RESERVE	joueur_766
-ls	d1a18847	49935	slash snack	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
+ls	d1a18847	49935	joueur_1540	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ls	d1a18847	52605	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ls	d1a18847	57393	joueur_098	marche	les deux verites concordent	83225b95	SOUS_RESERVE	JGtm
 ls	d1a18847	65168	joueur_741	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
-ls	d1a18847	67886	slash snack	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_588
+ls	d1a18847	67886	joueur_1540	marche	les deux verites concordent	130c4b61	SOUS_RESERVE	joueur_588
 ls	d1a18847	72024	JOUEUR_232	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ls	d1a18847	72208	joueur_098	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
 ls	d1a18847	80432	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ls	d1a18847	86555	JOUEUR_232	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ls	d1a18847	88574	joueur_588	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_098
-ls	d1a18847	90426	joueur_127	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	slash snack
-ls	d1a18847	90428	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	slash snack
-ls	d1a18847	95130	slash snack	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
+ls	d1a18847	90426	joueur_127	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_1540
+ls	d1a18847	90428	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_1540
+ls	d1a18847	95130	joueur_1540	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
 ls	d1a18847	100571	JGtm	marche	les deux verites concordent	69fd30b9	SOUS_RESERVE	joueur_741
 ls	d1a18847	100603	joueur_741	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	JGtm
 ls	d1a18847	103723	JOUEUR_232	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ls	d1a18847	115102	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ls	d1a18847	116586	joueur_491	marche	les deux verites concordent	7d012346	SOUS_RESERVE	slash snack
-ls	d1a18847	121341	slash snack	marche	les deux verites concordent	ba5ac78e	SOUS_RESERVE	JGtm
+ls	d1a18847	116586	joueur_491	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_1540
+ls	d1a18847	121341	joueur_1540	marche	les deux verites concordent	ba5ac78e	SOUS_RESERVE	JGtm
 ls	d1a18847	126314	joueur_098	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_127
 ls	d1a18847	126629	joueur_127	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_098
-ls	d1a18847	135722	slash snack	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
+ls	d1a18847	135722	joueur_1540	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
 ls	d1a18847	136590	joueur_491	marche	les deux verites concordent	594095ac	SOUS_RESERVE	JOUEUR_232
 ls	d1a18847	138708	JGtm	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_741
 ls	d1a18847	140143	JOUEUR_232	marche	les deux verites concordent	4fbad006	SOUS_RESERVE	joueur_127
@@ -8037,41 +8037,41 @@ ls	d1a18847	148553	joueur_098	marche	les deux verites concordent	2f9b7b5f	SOUS_R
 ls	d1a18847	153189	JGtm	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_741
 ls	d1a18847	155692	joueur_741	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ls	d1a18847	157845	JOUEUR_232	marche	les deux verites concordent	2f9b7b5f	SOUS_RESERVE	joueur_491
-ls	d1a18847	158278	slash snack	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
+ls	d1a18847	158278	joueur_1540	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_127
 ls	d1a18847	169455	joueur_491	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_741
-ls	d1a18847	169924	JGtm	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ls	d1a18847	169924	JGtm	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ls	d1a18847	171109	joueur_741	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_127
-ls	d1a18847	174744	joueur_588	marche	source appartenant a la victime	acd1cff4	SOUS_RESERVE	slash snack
+ls	d1a18847	174744	joueur_588	marche	source appartenant a la victime	acd1cff4	SOUS_RESERVE	joueur_1540
 ls	d1a18847	174746	JOUEUR_232	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_588
 ls	d1a18847	176146	joueur_127	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	joueur_098
 ls	d1a18847	187308	joueur_098	marche	les deux verites concordent	83225b95	SOUS_RESERVE	JGtm
-ls	d1a18847	193748	joueur_588	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ls	d1a18847	193748	joueur_588	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ls	d1a18847	195416	joueur_741	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_127
 ls	d1a18847	198685	joueur_127	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_098
 ls	d1a18847	208112	joueur_098	marche	les deux verites concordent	7d012346	SOUS_RESERVE	JGtm
 ls	d1a18847	213500	joueur_741	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_491
-ls	d1a18847	214268	joueur_491	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ls	d1a18847	214268	joueur_491	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ls	d1a18847	223711	joueur_512	marche	les deux verites concordent	0000d627	VALIDE	joueur_127
-ls	d1a18847	224295	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	slash snack
+ls	d1a18847	224295	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_1540
 ls	d1a18847	225947	joueur_098	marche	les deux verites concordent	7d012346	SOUS_RESERVE	JGtm
-ls	d1a18847	227382	slash snack	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
+ls	d1a18847	227382	joueur_1540	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ls	d1a18847	230584	joueur_491	marche	les deux verites concordent	acd1cff4	SOUS_RESERVE	joueur_741
 ls	d1a18847	233270	joueur_741	marche	les deux verites concordent	59255106	VALIDE	JGtm
 ls	d1a18847	239261	joueur_127	marche	les deux verites concordent	fc1ca9c2	SOUS_RESERVE	joueur_512
 ls	d1a18847	239359	JGtm	marche	les deux verites concordent	d8cea1aa	VALIDE	joueur_512
-ls	d1a18847	242646	slash snack	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
+ls	d1a18847	242646	joueur_1540	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
 ls	d1a18847	250287	joueur_741	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
-ls	d1a18847	257145	slash snack	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_491
+ls	d1a18847	257145	joueur_1540	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_491
 ls	d1a18847	259881	joueur_098	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	JGtm
 ls	d1a18847	261717	joueur_491	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_512
 ls	d1a18847	262650	joueur_512	marche	les deux verites concordent	0000d627	VALIDE	joueur_491
-ls	d1a18847	274345	joueur_127	marche	les deux verites concordent	c8681ecf	VALIDE	slash snack
+ls	d1a18847	274345	joueur_127	marche	les deux verites concordent	c8681ecf	VALIDE	joueur_1540
 ls	d1a18847	276633	joueur_491	marche	les deux verites concordent	4fbad006	SOUS_RESERVE	joueur_512
 ls	d1a18847	290528	joueur_098	marche	les deux verites concordent	da3b5ba4	VALIDE	joueur_127
 ls	d1a18847	294616	joueur_127	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
 ls	d1a18847	295250	joueur_512	marche	les deux verites concordent	eea85c26	SOUS_RESERVE	joueur_491
 ls	d1a18847	305961	joueur_098	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ls	d1a18847	313452	joueur_491	marche	les deux verites concordent	67db304a	SOUS_RESERVE	slash snack
+ls	d1a18847	313452	joueur_491	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_1540
 ls	d1a18847	316220	joueur_588	marche	les deux verites concordent	4a555df8	SOUS_RESERVE	joueur_512
 ls	d1a18847	317956	joueur_512	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	JGtm
 ls	d1a18847	329835	joueur_127	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_512
@@ -8083,19 +8083,19 @@ ls	d1a18847	348353	joueur_741	marche	les deux verites concordent	8c1a1ef4	SOUS_R
 ls	d1a18847	348621	joueur_512	marche	les deux verites concordent	67db304a	SOUS_RESERVE	joueur_127
 ls	d1a18847	349622	joueur_098	marche	les deux verites concordent	f81f1a01	SOUS_RESERVE	joueur_491
 ls	d1a18847	360682	joueur_512	marche	les deux verites concordent	2d2cdd58	SOUS_RESERVE	joueur_491
-ls	d1a18847	361650	joueur_491	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	slash snack
+ls	d1a18847	361650	joueur_491	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_1540
 ls	d1a18847	365237	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_127
 ls	d1a18847	370075	joueur_127	marche	les deux verites concordent	daa03c35	VALIDE	joueur_098
 ls	d1a18847	378103	JGtm	marche	les deux verites concordent	7d012346	SOUS_RESERVE	joueur_098
 ls	d1a18847	385975	joueur_098	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
-ls	d1a18847	390880	slash snack	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
+ls	d1a18847	390880	joueur_1540	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_491
 ls	d1a18847	391379	joueur_491	marche	mort infligee par un bot (kill absent du kill-feed)	67db304a	SOUS_RESERVE	343 Nando [bot]
 ls	d1a18847	396386	JGtm	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
 ls	d1a18847	396869	343 Nando [bot]	scan	mort de bot (absente du kill-feed)	f81f1a01	SOUS_RESERVE	joueur_588
 ls	d1a18847	401524	joueur_588	marche	les deux verites concordent	877da252	SOUS_RESERVE	joueur_098
 ls	d1a18847	403476	joueur_127	marche	les deux verites concordent	17d6bd23	SOUS_RESERVE	joueur_741
-ls	d1a18847	410649	joueur_491	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	slash snack
-ls	d1a18847	410852	slash snack	marche	les deux verites concordent	64ab85c4	VALIDE	joueur_491
+ls	d1a18847	410649	joueur_491	marche	les deux verites concordent	bebe70df	SOUS_RESERVE	joueur_1540
+ls	d1a18847	410852	joueur_1540	marche	les deux verites concordent	64ab85c4	VALIDE	joueur_491
 ls	d1a18847	413168	JGtm	marche	les deux verites concordent	13ff7bdf	SOUS_RESERVE	joueur_741
 ls	d1a18847	417973	joueur_741	marche	les deux verites concordent	594095ac	SOUS_RESERVE	joueur_127
 ls	d9781168	53577	joueur_323	marche	les deux verites concordent	0000b238	SOUS_RESERVE	joueur_766

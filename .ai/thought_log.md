@@ -112,7 +112,7 @@
 ## [2026-11-22] Fenêtres de console du bureau et historique de synchronisation (issue #213) — Complété (reste la vérification à l'écran du user)
 **Statut :** Complété ; plan `.ai/PLAN_FENETRES_ET_SYNC_2026-11-22.md` statué (A5 et la carte à l'écran restent au user).
 **Décision technique principale :** (A) la tâche planifiée refresh-only lance la coquille graphique et non `cmd.exe` : seul lancement de console du code livré, après balayage des dépendances Go du serveur (283 paquets), de la coquille et de ses 541 crates. (B) Halo 5 rattrape l'historique comme Infinite (clé `history_complete_at`), `history_complete` servi et mémorisé, carte Synchronisation dans Paramètres › Données & Médias, aide corrigée. Réponse postée sur l'issue #213 après validation du texte par le user.
-**Résultats observés :** trois revues adverses Sonnet (A ; B Go ; B web), 0 P0 ; retenus et corrigés : absence de fenêtre non tenue par un test, erreurs du relais perdues, texte faux en pause, bouton actif pendant un sync lancé ailleurs, lecture RO du statut à chaque sondage. Branche intégrée : lint Go 0 issue, base de tests Go et briques sans échec, typecheck et lint web, vitest complet, `make desktop-test` verts ; `replay-equiv` non jouable dans un worktree sans archive des films (diff sans rejeu ni décodeur). Prod lue : synchronisation automatique active, `generalgrant14` absent (rapport venu du bureau).
+**Résultats observés :** trois revues adverses Sonnet (A ; B Go ; B web), 0 P0 ; retenus et corrigés : absence de fenêtre non tenue par un test, erreurs du relais perdues, texte faux en pause, bouton actif pendant un sync lancé ailleurs, lecture RO du statut à chaque sondage. Branche intégrée : lint Go 0 issue, base de tests Go et briques sans échec, typecheck et lint web, vitest complet, `make desktop-test` verts ; `replay-equiv` non jouable dans un worktree sans archive des films (diff sans rejeu ni décodeur). Prod lue : synchronisation automatique active, `joueur_1194` absent (rapport venu du bureau).
 **Conclusion / prochaine étape :** au déploiement 8.3.0, les 6 profils Halo 5 de la prod rattrapent leur historique (surveiller mémoire et journaux). Découvertes au plan (garde childproc sur `libs/` disparu, restic hors garde, alerte zero-insert bruyante, matchs Halo 5 dégradés jamais repris).
 
 ## [2026-11-22] Bureau : la tache planifiee ne lance plus de console (piste A du plan fenetres et synchronisation) - En cours
@@ -1436,7 +1436,7 @@
 
 **Décision technique principale** : `spawnedObjectPlacements` borne la fin de la pose `sensor` par deux règles (`model/spawnedObjects.ts`). (1) Le lancer suivant du même joueur met fin au précédent : fin = au plus `tracked.t0` de l'objet suivant. Le joueur se lit par la vie qui occupe le slot à l'instant du lancer (`buildLivesBySlot` / `lifeOfSlotAt`, canoniques de `livesPosition.ts`) : clé `xuid:` quand la vie en porte un, sinon `slot:`, espace de clés distinct ; sans vie qui couvre l'image, le slot seul. Tous les capteurs du joueur comptent, de n'importe quel objet porté, situés ou non (le geste a eu lieu) ; deux lancers à la même image ne se coupent pas. (2) La fin lue ne dépasse pas `land` + `SENSOR_READ_END_MAX_MS` (20 600 ms, `threatSensor.ts`, distincte de `SENSOR_DURATION_MS` qui reste le repli sans fin lue) : la clé (slot, génération) se réutilise, une suppression lue tardive peut être celle d'un objet ultérieur. Un capteur sans fin lue garde le repli de 15 s, que le lancer suivant coupe aussi ; une fin coupée ou plafonnée est marquée `endRead` (fin affirmée). Jamais avant le repos. `SpawnedSource` et `drawablePlacements` gagnent `tracks` et `frameIntervalMs` (appelants : `useReplayPlacements`, `ReplayTeams`, tests, tous passent le document entier) ; `spawnedObjectDeployments`, les sons et les autres familles ne changent pas. Aucun changement Go ni de schéma.
 
-**Résultats observés** : 12 tests neufs dans `spawnedObjects.test.ts` ; 5 mutations jouées (retirer la coupure, retirer le plafond, joueur = slot seul, première vie du slot sans fenêtre, vies sans xuid toutes confondues) : chacune rougit au moins un test, vert après rétablissement. Témoin réel `bc4bde17` (schéma 107, normalisé) : 31 poses `sensor` avant comme après ; JGtm (slot 518) 0:09, 0:32, 0:56, 1:16 inchangées sur l'horloge affichée, la dernière finit à 1:28 (lancer suivant, après la mort) au lieu de 1:36 ; le détecteur de StarScreammZ posé à 3:30 finit à 3:51 (20,6 s) au lieu de 7:34.
+**Résultats observés** : 12 tests neufs dans `spawnedObjects.test.ts` ; 5 mutations jouées (retirer la coupure, retirer le plafond, joueur = slot seul, première vie du slot sans fenêtre, vies sans xuid toutes confondues) : chacune rougit au moins un test, vert après rétablissement. Témoin réel `bc4bde17` (schéma 107, normalisé) : 31 poses `sensor` avant comme après ; JGtm (slot 518) 0:09, 0:32, 0:56, 1:16 inchangées sur l'horloge affichée, la dernière finit à 1:28 (lancer suivant, après la mort) au lieu de 1:36 ; le détecteur de joueur_1375 posé à 3:30 finit à 3:51 (20,6 s) au lieu de 7:34.
 
 **Conclusion / suite** : rien n'est commité. Le plafond ne s'applique qu'avec un `frameIntervalMs` au document (sans pas de temps, pas d'horloge non plus).
 
@@ -1444,7 +1444,7 @@
 
 **Decision technique principale** : la fin de la DERNIERE vie d un joueur, quand aucune mort ecrite ne la clot et que l API le declare present a la fin (`match_participants.present_at_completion` vrai, `left_in_progress` faux), est la derniere frame du film, bornee STRICTEMENT avant l ouverture de la vie suivante du slot ; aucun point fabrique (`libs/film/replay/tracks_fin_de_vie_presence.go`, regle de `tracks_fin_de_vie.go`). « A quitte » se lit sur l API, jamais sur l arret des positions. `replay.Participant` gagne `PresentAtCompletion`, `LeftInProgress`, `Deaths` (tous nil = non declare, aucun defaut qui affirme la presence) ; `domain.MatchPlayerFact` : `LeftInProgress` devient `*bool` (plus de COALESCE FALSE), `PresentAtCompletion *bool`, `DeathsDeclared bool`, remplis par la lecture existante `ReplayFactsRepo.playerFacts` (colonnes ajoutees a la meme requete, pas de seconde) puis `replaybuild.participantsDuTableau` ; le collecteur de sync (`killcollector/roster.go`, seconde copie de la meme projection) la porte aussi, par `colonnesDuTableau.participant`, pour que le document interne des porteurs au sync suive la meme regle que la cuisson. Cas qui n etendent pas et se comptent (replis nommes, registre `facts/fallback`) : `repli_fin_de_vie_sans_tableau_api` (participant introuvable, drapeau ou morts NULL, vie sans xuid de cause `film_end`), `repli_fin_de_vie_mort_manquante` (API compte plus de morts que `types.Death` du joueur, aucune tolerance). Une mort ecrite apres l ouverture decide seule (regle existante) ; sans calage, un joueur sans aucune mort ecrite est prolonge, un joueur avec des morts non datables ne se decide pas. Web : aucun changement de code (`lifeEndsOf` lit `endFrame` : une fin a l horizon n est plus une fin close, donc plus de mort neutre) ; deux tests dans `killFeedLogic.test.ts`.
 
-**Resultats observes** : temoins reels (film decode une fois en memoire, documents avant/apres rejoues depuis les faits, base copiee en lecture seule, rien ecrit) : `008e1bba` joueur_565 dernier point 636, fin 636 -> 1700 (derniere frame 1700) ; `1e26f641` xPIPExGODx 2096, 2096 -> 3092 (3092) ; `15d8d850` JGtm 5620, 5620 -> 5772 (5772). Sur 26 films : 3 245 vies publiees, 113 vies changees (3 %), delta de fin min 1 / mediane 17 / p90 60 / max 1 064 frames, 23 cas sans tableau (vies sans xuid), 0 cas mort manquante, 0 chevauchement de vies (par slot et par joueur). `UsageSummaryRev` NON montee : la regle d attribution est inchangee ; sur ces 26 films seul `CamoMS` change, pour 6 joueurs (+0,3 s a +3 s : un episode de camo ouvert au dernier point court jusqu a la fin prolongee), et la cle de reprise (rev, schema 107 non publie) refait deja tout resume. Goldens d assemblage, fixtures de contrat web et manifeste regeneres par leur procedure ; schema reste 107, chronique v107 completee.
+**Resultats observes** : temoins reels (film decode une fois en memoire, documents avant/apres rejoues depuis les faits, base copiee en lecture seule, rien ecrit) : `008e1bba` joueur_565 dernier point 636, fin 636 -> 1700 (derniere frame 1700) ; `1e26f641` joueur_1344 2096, 2096 -> 3092 (3092) ; `15d8d850` JGtm 5620, 5620 -> 5772 (5772). Sur 26 films : 3 245 vies publiees, 113 vies changees (3 %), delta de fin min 1 / mediane 17 / p90 60 / max 1 064 frames, 23 cas sans tableau (vies sans xuid), 0 cas mort manquante, 0 chevauchement de vies (par slot et par joueur). `UsageSummaryRev` NON montee : la regle d attribution est inchangee ; sur ces 26 films seul `CamoMS` change, pour 6 joueurs (+0,3 s a +3 s : un episode de camo ouvert au dernier point court jusqu a la fin prolongee), et la cle de reprise (rev, schema 107 non publie) refait deja tout resume. Goldens d assemblage, fixtures de contrat web et manifeste regeneres par leur procedure ; schema reste 107, chronique v107 completee.
 
 **Conclusion / suite** : instrument `apps/go-api/internal/replaybuild/fin_de_vie_presence_research_test.go` (tag research). A trancher par l utilisateur : le sync (porteurs) suit desormais la regle ; ses lignes deja ecrites ne se refont qu au prochain passage. Le seuil de 0 « mort manquante » sur 26 films n est pas une preuve que la garde ne sert jamais : elle est testee en unitaire.
 
@@ -4415,7 +4415,7 @@ fidèle à 1 match mesuré écrasait joueur_165 (250 assistances). Décision : l
 échelle log commune à toute la page (`assistVolumeMax` sur toutes les relations,
 `Math.log1p(n)/Math.log1p(max)`), tranches au prorata ; les parts restent en chiffres et
 infobulles. Mesuré à 1440 px (demi-barre 99 px) : joueur_075 422 → 99, joueur_165 250 → 91,
-joueur_006 15 → 47, SirAvlas 3 → 22 ; binôme JOUEUR_825 3 → 43/189 px au lieu de pleine.
+joueur_006 15 → 47, joueur_1460 3 → 22 ; binôme JOUEUR_825 3 → 43/189 px au lieu de pleine.
 
 **Découvertes (non traitées)** : au boot local, `data_health` signale l'index `match_skill_rank`
 désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
@@ -4450,7 +4450,7 @@ désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 1. **Vehicules.** Orientation : l orientation propre du film est REFUTEE (5.2b.2 : `ti=40 i2 object-forward-and-up` porte le vecteur HAUT, |z| median 0,96-0,98 ; medianes 54-105 deg contre la velocite, temoin par permutation ~90 ; chemin exact « deux vec3 » jamais emprunte : 0 record) ; six champs de capture retires apres la mesure (0 code mort). Decision utilisateur « le chassis s oriente la ou l ARME pointe » portee cote rendu (5.2a.6) : cap = visee du CONDUCTEUR (siege 0) pour `FAMILLES_ARME_FIXE` (ghost, banshee, wraith, wasp, chopper, shade, tourelle montee, mongoose, gungoose), velocite en repli ; 4f77afc1 : 17,6 % des echantillons par la visee, cap par defaut 23 % -> 8 % sur 5676a9ba ; l eclair de tir suit le cap dessine. Taille : modele en ESPACE ECRAN decide par l utilisateur le 20/09 a la place du +20 % (« independent resolution waypoint ») : `echelle = max(echelle_carte, ancien PX_PER_MM x 1,2)`, plancher sur l ECHELLE donc proportions conservees, un seul fichier `model/screenSizes.ts` ; Flood Gulch = ancien x 1,200 sur 15/18 familles (3 au plafond doux inchange), Snowbound jusqu a x 1,46, aucune famille plus petite qu avant sur aucune carte (test 18 x 4). Effets de tir : le diagnostic avait lu la demande a l envers (l utilisateur en VEUT) ; cause = le cap de regard du bipede n est plus replique une fois embarque (1 tir sur 286 lisible) ; correctifs de rendu : direction des tirs de vehicule 0 -> 26 % (74/286 sur 4f77afc1), montage inconnu conserve ; 100 tirs de tourelle Warthog restent sans direction (visee du tourelleur non lue : §4).
 2. **Sons des bases** (5.2a.1) : `rampesDeJauge` demarre au premier point non nul (avance mediane du son « capture en cours » 20,1 s -> 0,0 s sur 241 rampes / 8 documents, 207 -> 0 rampes > 2 s trop tot) ; `zone_captures` dedupliquee par (stat, instant, camp) : 259 -> 160 emissions ; `newZone` par deplacement de colline : 351 -> 18 ; instant exact par `filmMsOfMatchMs` ; `zone_secures` reste muet (decision produit).
 3. **Couleur de capture** (5.2a.3, SCHEMA 63 -> 64) : le document ne portait pas le camp qui pousse ; publie en couche de publication : `ZoneState.gaugeRamps[] {t0, t1, capturingTeam?}`, camp = proprietaire a l issue d une rampe qui aboutit (seuil 0,95, marge mesuree 0,038 : sommets 0,976-0,999 contre <= 0,938), cle absente sinon ; verifie sur 396cfc92 : 29/30 rampes abouties conformes au proprietaire suivant, 0 desaccord, 9 avortees sans camp. Web : remplissage a la couleur du camp, base neutre OU adverse, test « progression neutre » retourne. Chaine complete du commit de schema (chronique v64, structure_test, goldens, 8 fixtures `replay_schema_64_*`, jumeaux replaydoc/replayview, OpenAPI en dernier).
-4. **Match b1ad85eb** (5.2b.1 + 5.2a.4) : racine = la table de `chunk_00` nomme 8 sieges, le kill feed nomme un 9e humain (Claudors, indice 10) ; troisieme lecture d identite (5 bits avant le motif xuid dans les chunks, par le MEME resolveur que `PlayerIndexTable` : une seule table) ; `OutOfRoster` DEGRADE ligne par ligne au lieu d eteindre le match ; b1ad85eb `publishable` false -> TRUE (77 lignes, 63 armes nommees), 4f77afc1 sources nommees 144 -> 190, temoins sans remplacement identiques ; bots successifs sur un slot comptes ; negatif a349fea8 (xuids -> index 0 : un desaccord de motif = pas d epinglage, perte 289 -> 261 eteinte). Web : cle de camp feuille -> film quand le film se tait (le bot remplacant rejoint `f1`), garde-rail « jamais deux groupes sous le meme libelle ».
+4. **Match b1ad85eb** (5.2b.1 + 5.2a.4) : racine = la table de `chunk_00` nomme 8 sieges, le kill feed nomme un 9e humain (joueur_1304, indice 10) ; troisieme lecture d identite (5 bits avant le motif xuid dans les chunks, par le MEME resolveur que `PlayerIndexTable` : une seule table) ; `OutOfRoster` DEGRADE ligne par ligne au lieu d eteindre le match ; b1ad85eb `publishable` false -> TRUE (77 lignes, 63 armes nommees), 4f77afc1 sources nommees 144 -> 190, temoins sans remplacement identiques ; bots successifs sur un slot comptes ; negatif a349fea8 (xuids -> index 0 : un desaccord de motif = pas d epinglage, perte 289 -> 261 eteinte). Web : cle de camp feuille -> film quand le film se tait (le bot remplacant rejoint `f1`), garde-rail « jamais deux groupes sous le meme libelle ».
 
 **Revisions** : `grammar-2026-09-18.3 -> grammar-2026-09-20`, `killsource-2026-09-18 -> killsource-2026-09-20` (5.2-B) : BACKLOG killsource a jouer UNE fois (backfill du parc, serveur arrete) puis republication des artefacts au schema 64 sur accord de l utilisateur. `SchemaDesFaits` inchange par 5.2-A.
 
@@ -5700,7 +5700,7 @@ changement (150 -> 158 fichiers haches, `film_table.go` neuf) ; accepte par le p
 **Resultats observes.** Mesure avant / apres (30 films, 8 builds) : 314 accords sur 322 sieges
 entre la table et la bijection inferee ; les 8 ecarts en deux familles, aucune contradiction
 entre deux lectures fiables : 6 gamertags ABSENTS du kill feed (le feed ne nomme que qui tue ou
-meurt ; l'inference mettait un autre joueur sur leur indice — `FlukiestGolf` 111fa685 i10,
+meurt ; l'inference mettait un autre joueur sur leur indice — `joueur_1441` 111fa685 i10,
 `joueur_680` e5adf7b2 i13, `manistoff` a521164d i18, `Iskra 20252993` 11de8353 i23,
 `probablybxllets` 1c5c10cc i22, `Alpha122092` 23ffd885 i4) et 2 sur des films a marge de
 bijection nulle (l'inference se declarait elle-meme ambigue). Les 13 films a vacant intercale
@@ -8620,7 +8620,7 @@ eventuelles en worktree, `make gate-push`, push de `feat/v75` = CI de la vague 4
 ## [2026-09-10] Master plan, lot 4.5 — la chute mesuree au film sort en « environnement » sur la vue match (provenance recopiee) — Complete
 
 **Decision technique principale.** Le temoin de chute du plan (match `1eedd3c8`, Nemesis,
-Theater 02:04, EIcRriizz tue par JGtm) EST en base : `match_kill_events_latest` a la ligne a
+Theater 02:04, joueur_1230 tue par JGtm) EST en base : `match_kill_events_latest` a la ligne a
 124 140 ms, source_tag 0x00403594 (classe `DEGAT_GLOBAL`, VALIDE), lecture « source-victime »,
 diverges = vrai. Le registre la traduit bien en `hinf_environment` (voie 2), et `weapons` de
 metadata connait la cle. La perte etait en aval, dans la SEULE vue match : le lecteur film
@@ -8693,7 +8693,7 @@ aussi (bases fermees pendant le lot).
 une enigme : il est LU, et la mesure sur `4f77afc1` (balayage `ScanBipedCreations` du film en
 cache, 330 records) donne sa ventilation exacte pour les 18 vies `index_hors_table` — index 25
 (2 vies, bot « 343 Donos » declare par BOT_METADATA, aucun humain sur ce siege), index 26
-(8 vies, SIEGE PARTAGE : le bot « 343 Doomfruit » ET l'humain « Narotlcs » arrive en cours a
+(8 vies, SIEGE PARTAGE : le bot « 343 Doomfruit » ET l'humain « joueur_1379 » arrive en cours a
 2:46 ; les records d'index 26 courent jusqu'a 4:35 du match), index 24 (8 vies, participant que
 ni la table ni BOT_METADATA ne nomme). Le tableau de l'API (`match_participants`) apporte deux
 choses que le film ne porte pas : l'IDENTIFIANT publiable d'un bot (`bid(N.0)`) et les BORNES DE
@@ -23674,7 +23674,7 @@ GRENADE 4 534, VEHICULE 1 227, INCONNU 575, **OBJET_EXPLOSIF (bobines) 547**, **
 valide le sequencement D7 (vue match d abord, agregats seulement avec le denominateur affiche).
 
 **LE RESULTAT DECISIF** : **UN SEUL kill au repulseur dans toute la base** (`0x07104b31`), sur
-74 569 sources mesurees — match `215e7022`, 2026-02-03, Argyle, t = 325 526 ms, joueur_622 -> aK2fResHv3,
+74 569 sources mesurees — match `215e7022`, 2026-02-03, Argyle, t = 325 526 ms, joueur_622 -> joueur_1138,
 passe non publiable. La classe `equipment` de la decision D1 vaudrait donc 1 kill : une poussiere, pas
 un arc. D1 est rouverte, trois options ecrites au §10 du plan (recommandee : garder la classe sans arc —
 cout marginal, comptee automatiquement le jour ou un kill arrive). Le lot garde tout son sens pour les
@@ -24667,7 +24667,7 @@ Mecanique du VIDE : mort hors-zone -> crane au SOCLE, mais n'affecte PAS l'attri
 identifient le porteur ou que le crane retombe) — position seulement.
 
 **Resultats** : confrontation verite terrain manche 1 : prises 9/9, porteurs d'intervalle 8/9 (gate
-8/9 tenu). Gate oracle : porteur PRINCIPAL correct 7/7 films (d9781168 joueur_829, c88ec007 Ratsolla)
+8/9 tenu). Gate oracle : porteur PRINCIPAL correct 7/7 films (d9781168 joueur_829, c88ec007 joueur_1392)
 reproduit PAR LE CODE DE PRODUCTION, 3 manches gerees. Calque `skullCarrierLayer` web au patron
 couronne VIP, garde de mode par capability. Golden mono-manche = 1 ligne (schema). Gates verts (build,
 contracttest 40->41, replay/objectiveevents/replaybuild, tsc, vitest 1556, lint). REVUE ADVERSARIALE
@@ -38697,7 +38697,7 @@ chiffre près : 134 866 / 1 343 sur Infinite, 268 337 / 2 754 sur Halo 5.
    le filtre que le plan attendait. Q27 sur JGtm : 3 370 couples des deux côtés,
    15 741 → 10 486 frags, le groupe NULL (71 frags) correctement exclu par `opp_xuid <> ?`.
    Q26 est protégé structurellement (jointure à `encounter_stats`, déjà filtré des bots).
-   **Duel de contrôle retrouvé au chiffre près : `Luigi Numba 01 → JGtm` 101 → 29.**
+   **Duel de contrôle retrouvé au chiffre près : `joueur_1187 → JGtm` 101 → 29.**
 3. **Voie de lecture unique par match** — le préambule sous-estimait : **379 matchs portent
    TROIS `read_path` distincts**, pas deux. Sans conséquence : **aucun lecteur de production ne
    consomme `read_path`** ; ses seuls consommateurs sont les trois producteurs et la migration,
@@ -38724,7 +38724,7 @@ sur octets bruts, les deux fichiers générés (`openapi.yaml`, `generated.ts`) 
 fusionnés à la main (les deux endpoints concurrents coexistent, vérifié). Build vert.
 
 **CE QUE LA BASCULE A RENDU, MESURÉ AVANT/APRÈS PAR LECTEUR** (copies post-inversion) :
-duel de contrôle `Luigi Numba 01 → JGtm` **101 → 29**, le chiffre annoncé par le plan retrouvé
+duel de contrôle `joueur_1187 → JGtm` **101 → 29**, le chiffre annoncé par le plan retrouvé
 sans être cherché ; Q27 sur JGtm **mêmes 3 370 couples**, 15 741 → 10 486 frags ; journal de
 match (Q20, squad, engagement, pénalité LUSR) **1 832 → 458 lignes pour 458 instants distincts**
 — la déduplication n'a retiré QUE des doublons, pas une mort ; sonde de présence **1 343 → 1 343
@@ -59252,7 +59252,7 @@ un archétype cible connu (grammaire) pour quand le décodeur frame atteindra ce
   IDENTIQUE sur les 2 captures (sections différentes) ⇒ **constante de désalignement, PAS une arme**. Décalage
   data-dépendant (composants i1..i10 avant le dead-state pas tous bit-exacts sur les records de mort) → un pré-skip
   constant ne suffit pas.
-- **Info utilisateur décisive** : « seul le POV a les events du kill feed affichés » (POV = hawkzsocer29). Les données
+- **Info utilisateur décisive** : « seul le POV a les events du kill feed affichés » (POV = joueur_1358). Les données
   fiables tueur/victime/arme sont dans le flux du POV (entité "possédée", chemin `FUN_1406cbaa0`), pas dans les
   dead-states génériques des bipeds victimes (répliqués à tous). Cohérent avec `reference_killfeed_deadstate_fields`
   (record d'event spécifique "0xd2 attaquant R5 bit 36", pas le dead-state générique).
@@ -68815,7 +68815,7 @@ Les helpers de séries (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSe
 - `npm run test -- src/features/match-view` : 58 tests passants (49 anciens + 9 nouveaux pour `kdCumulSeries`/`tugOfWarStackedSeries`/`cadenceTeamSeries`).
 - `npm run lint` : aucun nouveau warning sur les fichiers ajoutés (les warnings restants sont préexistants dans la codebase).
 - Aucun nouveau hex ni classe Tailwind couleur introduits dans `features/`.
-- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang Duke748biposto 0:44, Boulet joueur_165 9:51, Touriste joueur_165 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
+- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang joueur_1420 0:44, Boulet joueur_165 9:51, Touriste joueur_165 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
 
 **Prochaine étape** : commit + PR.
 
@@ -91030,7 +91030,7 @@ Le byte b5 de chaque fire event (nibble-shifted bitstream, offset +32 bits depui
 - f2f81265 (Quick Play) : 98 kills, 87 conf (89%), Skewer/Sniper identifiés
 - d9329229 (Quick Play) : 97 kills, 92 conf (95%), BR75 dominant (ranked-style), Stalker Rifle/Fuel Rod identifiés
 
-**Cas non résolu** : TypeRsamurai (pi=9 dans PLAYER_METADATA mais b5>>4 ne retourne que 0-7 sur ce match — peut-être joueur arrivé tard ou cas edge des 9 joueurs).
+**Cas non résolu** : joueur_1105 (pi=9 dans PLAYER_METADATA mais b5>>4 ne retourne que 0-7 sur ce match — peut-être joueur arrivé tard ou cas edge des 9 joueurs).
 
 **Fichiers** :
 - `scripts/experimental/inv133_fire_seq_attribution.py` : ancienne approche fire_seq % n
@@ -93142,9 +93142,9 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 **Bug #18 — Recherche gamertag "Fadet..." sans résultat (2 couches) :**
 - **Diagnostic initial (faux)** : Problème de leetspeak (0↔o). Fix appliqué : normalisation leetspeak dans `fuzzy_search_gamertags()`.
 - **Couche 1 — UI** : `_render_player_search()` utilisait un `st.selectbox` avec la liste brute de gamertags. Le selectbox Streamlit ne fait que du filtrage par préfixe — pas de recherche substring ni fuzzy. Fix : Remplacé par `st.text_input` + `fuzzy_search_gamertags()` + `st.selectbox` pour les résultats.
-- **Couche 2 — Données** (fix session suivante) : `get_all_gamertags()` ne requêtait que `xuid_aliases` (14 677 gamertags). Or 255 gamertags présents dans `highlight_events` n'existaient pas dans `xuid_aliases` (dont "Fadetonull"). Le scoreboard fonctionnait car `GamertagResolverMixin` cascade sur 3 sources (match_participants → xuid_aliases → highlight_events).
+- **Couche 2 — Données** (fix session suivante) : `get_all_gamertags()` ne requêtait que `xuid_aliases` (14 677 gamertags). Or 255 gamertags présents dans `highlight_events` n'existaient pas dans `xuid_aliases` (dont "joueur_1156"). Le scoreboard fonctionnait car `GamertagResolverMixin` cascade sur 3 sources (match_participants → xuid_aliases → highlight_events).
 - **Fix couche 2** : `get_all_gamertags()` → requête UNION `xuid_aliases + highlight_events` (14 677 → 14 932 gamertags). `resolve_gamertag_to_xuid()` → fallback highlight_events quand xuid_aliases ne trouve rien. Fichier modifié : `explorer_data.py`.
-- **Validation** : "Fadetonull" trouvé, résolu vers XUID 2652806099316905. fuzzy_search("Fadet") retourne ["Fadestars", "Fadetonull", ...]. 47/47 tests explorer passent.
+- **Validation** : "joueur_1156" trouvé, résolu vers XUID 2652806099316905. fuzzy_search("Fadet") retourne ["joueur_1145", "joueur_1156", ...]. 47/47 tests explorer passent.
 
 **Bug #25 — Modes manquants page Victoires/Défaites :**
 - **Mauvais diagnostic initial** : Conclu que "pas de composant mode sur page Escouade" → non traitable.
@@ -93247,7 +93247,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 8. **Validation sur match 147ffd4d** :
    - `build_weapon_timeline` (raw) → 48 snapshots, 0% résolution b2→pi
    - `build_weapon_timeline_ns` (NS layer) → 33 snapshots, **21% résolution** (255/1177 fire events)
-   - Pi=6 (shoxyy) : 179 fire events résolus vs API 182 shots_fired (quasi-exact ✓)
+   - Pi=6 (joueur_1083) : 179 fire events résolus vs API 182 shots_fired (quasi-exact ✓)
    - Pi=1 (AceHellRaiser13) : 76 fire events résolus (attribution partielle, POV utilise un autre chemin)
    - 69 b2 valeurs non résolues = joueurs peu visibles dans le film (non-observés en Section 1)
 
@@ -93262,7 +93262,7 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
   3. Fallback T1 → `_attribute_t1_kills()` via Formula A (inchangé)
 
 **Résultat observé :**
-- T2 attribution opérationnelle pour joueurs visibles (pi=6 = shoxyy très bien couvert)
+- T2 attribution opérationnelle pour joueurs visibles (pi=6 = joueur_1083 très bien couvert)
 - 8 autres joueurs continuent sur T1 (Formula A snapshot) — acceptable
 - 203 tests weapon passent — aucune régression
 
@@ -102423,7 +102423,7 @@ Aucune etape commune. La question est close pour l'octet de zoom.
 **CE QUI RESTE HONNETEMENT OUVERT** : que le film ne porte pas l'octet ne dit pas qu'il ne porte
 aucun PROXY de la lunette. Et la premisse visuelle — « on voit l'epaulement dans Theater » — n'a
 jamais ete testee. D'ou `TestViseeMedaillesScenes`, qui fabrique des rendez-vous : le film
-`02d39fa0` porte deux No Scope de JGtm (02:20.978, 02:26.817) et un Counter-snipe de Wratty
+`02d39fa0` porte deux No Scope de JGtm (02:20.978, 02:26.817) et un Counter-snipe de joueur_1527
 (02:53.261) dans la MEME partie. Regarder la pose du tueur sur l'un et l'autre repond en deux
 minutes a une question que le decodage n'a pas tranchee. En attente de l'utilisateur.
 
@@ -102855,8 +102855,8 @@ pour le fichier.
 donnee dense a partir de `0x0CE6A8`. **Ce n'est pas un flux de paquets** (le decoupage a en-tete de
 16 octets ne couvre que 2,3 % du volume), **pas de zlib imbrique** (27 en-tetes plausibles la ou le
 hasard en donnerait 131), **aucun pas de structure** (17,0 % a 15,1 % d'octets egaux du pas 2 au
-pas 1024, sans pic). **Mais elle porte l'identite des joueurs, en UTF-16LE** : `vamprym`,
-`joueur_165`, `RAZOR BLADE LEO` sur 00162144 ; `joueur_283`, `JOUEUR_731` sur 000d5950.
+pas 1024, sans pic). **Mais elle porte l'identite des joueurs, en UTF-16LE** : `joueur_1208`,
+`joueur_165`, `JOUEUR_1319` sur 00162144 ; `joueur_283`, `JOUEUR_731` sur 000d5950.
 `joueur_165` est un joueur suivi par le projet : ce sont des participants, pas du hasard.
 
 **D1a — AUCUN nom d'evenement dans le film, avec temoin positif.** Les 13 noms du catalogue de
@@ -110409,9 +110409,9 @@ NULLE PART : 3 slots nommes par les deux a l'identique, 2 que seul le triplet no
 pont par morts nomme. Ce sont deux couvertures COMPLEMENTAIRES, et le commit a remplace l'une par
 l'autre au lieu de les additionner. Le pont par morts exige `deathInstantMin` = 3 instants
 coincidents : joueur_631 (2 morts, 7 frags, auteur de LA capture et DU vol de drapeau du match)
-et DiegoGamer8K (1 mort) lui echappent PAR CONSTRUCTION — ce sont, par definition, les joueurs qui
+et joueur_1242 (1 mort) lui echappent PAR CONSTRUCTION — ce sont, par definition, les joueurs qui
 meurent le moins. Controle croise independant : les progressions de mort du slot 22 coincident
-avec le fil de joueur_631 et de LUI SEUL (2 sur 2), celles du slot 20 avec DiegoGamer8K et lui
+avec le fil de joueur_631 et de LUI SEUL (2 sur 2), celles du slot 20 avec joueur_1242 et lui
 seul (1 sur 1). Verdict : REGRESSION, pas arbitrage. Le commit annoncait une « neutralite
 mono-manche prouvee par construction » — vraie contre le pont PLAT PAR MORTS, mais ce calque-la
 n'etait pas sur ce pont : il etait sur le triplet. La neutralite a ete prouvee contre le mauvais
@@ -113381,7 +113381,7 @@ morts en Grand Combat contre 9 % du corpus (x8) ; cartes Fragmentation / Insolen
 / Obituary / Breaker **Heavies** ; tueurs concentrant 24, 18, 15 morts dans UN SEUL match
 (signature d'un pilote de char). VERIFICATION HUMAINE, seule chose qui tranche vraiment :
 match `5faa6b74-0026-4e60-aaca-34522d75050c`, Fragmentation Heavies, 2026-01-28 19:20 UTC,
-B1GDADDYDUFF 24 obus — l'utilisateur a regarde le film : « il a massacre tout le monde avec le
+JOUEUR_1190 24 obus — l'utilisateur a regarde le film : « il a massacre tout le monde avec le
 scorpion sur cette partie ». Une fois nomme, le Scorpion devient la DEUXIEME arme de vehicule
 du corpus, derriere le Ghost (391) et devant le Banshee (238).
 
@@ -115187,7 +115187,7 @@ contention ne s'est pas reproduit.
 **Action prod (2026-09-15 19:44 UTC, feu vert explicite)** : `instance_locked=true` écrit EN PLACE
 dans `/opt/levelup/app_settings.json` (inode 263613 conservé — `sed -i` aurait laissé le conteneur
 sur l'ancien inode), sauvegarde `app_settings.json.bak-20260915194349`, vérifié hôte + conteneur +
-`GET /bootstrap`. Origine : intrusion SSO du 2026-07-23 17:44 UTC (`XxGdakilla187xX`, xuid
+`GET /bootstrap`. Origine : intrusion SSO du 2026-07-23 17:44 UTC (`joueur_1421`, xuid
 `2676423891261051`), instance jamais verrouillée depuis la livraison du verrou (2026-06-08).
 
 **Conclusion / prochaine étape** : (a) commit de clôture sur `wt/player-directory` après feu vert
@@ -116334,7 +116334,7 @@ touches et son compteur le sont (S3 Ghidra, branche `feat/rr-ghidra` : il est da
 P2 : la marche d'image-clé perd les bipèdes par élection d'une fausse ancre de slot bas, et la fenêtre de
 120 000 bits coupe un suffixe. P3 : les armes de naissance sont dans le record NEW du bipède
 (i43/i44/i46), la marche ne l'atteint pas. P4 : sur b1ad85eb, trois entités ti=9 d'index 8, index 1
-absent des f3213, aucune d'index 5 ; BOT_METADATA date les bots ; les tirs donnent la place 5 à Claudors.
+absent des f3213, aucune d'index 5 ; BOT_METADATA date les bots ; les tirs donnent la place 5 à joueur_1304.
 
 **Suite.** M3.1 réécrit, M3.2 et M2 précisés d'après P2-P4 ; M4b après M3 (plan §4.5).
 
@@ -119675,7 +119675,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : diagnostiquer chaque reste par la grammaire avant toute règle. Deux instruments : sur les faits et les artefacts (`film/replay/rejeu_fiches_en_trop_research_test.go`), et la marche des trames rejouée sous le contexte de la cuisson (profil calibré des faits, carte), gardée hors dépôt parce qu'elle importe `grammar/lecture` (ADR 0037 IR-9). Aucune correction proposée ne touche les faits : D2 et D3 se republient depuis les faits au schéma des faits 6 ; seules les voies « source » monteraient `SchemaDesFaits`.
 
-**Résultats observés** : D2 (`859da825`) : la vie [3167..3170] nommée joueur_1029 n'est celle de personne — 5 échantillons du balayage par ancrage sur un slot que la marche ne lit plus depuis 1534 ; tous les paquets des frames 3164 à 3172 ferment (verdict « fermé ») sans record du slot 548 ; la prémisse « la nommer correctement » ne tient pas ; 1 vie de ce genre sur les 19 témoins. D3 (`bf2a9f05`) : cause confirmée (lecture par déclaration limitée aux index sans humain et exigeant une déclaration qui couvre la création, 1004 < 1008 ; l'entité d'joueur_1021 naît à 1640) ; correction de publication prête à écrire. D6 (`d1dfbc02`) : aucune suppression d'entité de participant des 8 humains avant la fin ; NerdGaiden joue jusqu'à 5932 (dead-state de bipède, mort absente du fil des morts) ; seul le délai de réapparition (97 écarts de 80 à 90 frames) désigne `stitch vs all`, mort à 5845 et non réapparu en 141 frames : une déduction. Découvertes D11 (fil des morts sans les deux dernières morts de `d1dfbc02`) et D12 (créations et suppressions d'entités de participant lisibles à la frame près dans la marche, absentes des faits).
+**Résultats observés** : D2 (`859da825`) : la vie [3167..3170] nommée joueur_1029 n'est celle de personne — 5 échantillons du balayage par ancrage sur un slot que la marche ne lit plus depuis 1534 ; tous les paquets des frames 3164 à 3172 ferment (verdict « fermé ») sans record du slot 548 ; la prémisse « la nommer correctement » ne tient pas ; 1 vie de ce genre sur les 19 témoins. D3 (`bf2a9f05`) : cause confirmée (lecture par déclaration limitée aux index sans humain et exigeant une déclaration qui couvre la création, 1004 < 1008 ; l'entité d'joueur_1021 naît à 1640) ; correction de publication prête à écrire. D6 (`d1dfbc02`) : aucune suppression d'entité de participant des 8 humains avant la fin ; joueur_1268 joue jusqu'à 5932 (dead-state de bipède, mort absente du fil des morts) ; seul le délai de réapparition (97 écarts de 80 à 90 frames) désigne `joueur_1277`, mort à 5845 et non réapparu en 141 frames : une déduction. Découvertes D11 (fil des morts sans les deux dernières morts de `d1dfbc02`) et D12 (créations et suppressions d'entités de participant lisibles à la frame près dans la marche, absentes des faits).
 
 **Conclusion / prochaine étape** : décisions demandées au superviseur : D2 (P2 recommandée : vie non publiée et comptée ; P1 : sans présence), D3 (go), D6 (a laisser compté, b déduction par le délai de réapparition, c source). Puis implémentation, tests par cas, relecture adversariale au premier plan, push, CI, CR. Mesure au parc : redécodage de 126 films en processus, pas fait sans go.
 
@@ -120342,7 +120342,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Résultats observés** (copie du 08/10, 2 threads / 512 Mo) : 9,6-9,8 s → 0,43-0,67 s, réponses identiques octet pour octet ; Q28c JGtm 615 → 170 ms. Effets voulus : pics CSR/LUSR d'une cible suivie réapparaissent (le blocage les masquait) ; bannière d'une cible non suivie choisie dans le pool complet. Gates vet/tests/integration duckdb/archlint, golangci-lint 0, vitest explorer 261/261.
 
-**Conclusion / prochaine étape** : appels réseau Halo du premier passage non mesurés (1-2 s attendus). Découvertes : pool de bannières relit 5 identités par requête (~90 ms) ; « Partycz » présent 1 880 fois dans le journal des frags sans être participant.
+**Conclusion / prochaine étape** : appels réseau Halo du premier passage non mesurés (1-2 s attendus). Découvertes : pool de bannières relit 5 identités par requête (~90 ms) ; « joueur_1470 » présent 1 880 fois dans le journal des frags sans être participant.
 
 ## [2026-10-09] Recuisson du parc au schéma 90 et rattrapages (lots film de levelup-2c et arrêts vue B suite de levelup-5c) — Complété (accord du user « oui » du 09/10)
 
@@ -121019,7 +121019,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 ## [2026-10-21] Contrôles v8, lot rejeu (L3 son et grenades, L5 BTB, L6 lectures, morts neutres de 396cfc92) — Complété avec un item ouvert (branche `fix/controles-v8-rejeu`)
 
-**Décision technique principale** : (1) Contrôle n° 7 : la voix « manche terminée » est produite à la bonne image (2 événements sur `d9781168`, fichier servi) mais restait sous le plafond de 8 voix ; à la 1re fin de manche de `d9781168`, 7 voix sont déjà tenues sans compter les sons de frag. Règle : une voix d'annonceur échappe au plafond, à la page (`playAnnouncer`) comme à l'export (`planAudioMix` / `applyVoiceCap`) ; amende la seconde moitié de D-1 du plan backlog du 2026-09-26. (2) Contrôle n° 24 : compté dans le film (banc `grenade_vol_research_test.go`) : chaque lancer est suivi d'une vie ti=41 lue par la marche et d'un message `projectile_detonate` de la vue A, mais `pistesDerriereLaMarche` jetait les records de projectile hors de la bande des images-clés. Règle : le projectile que la table d'entités de la marche nomme se garde quel que soit son slot (`laMarcheDesigneSeule`) ; `grammar-2026-10-21`, killsource et objectives à révision constante, `SchemaVersion` 100 inchangé. (3) Contrôle n° 3 (interface) : le power-up prend l'encre `warning` des armes spéciales. (4) Contrôle n° 8 (BTB `4f77afc1`, 13 places Eagle) : instruit, NON corrigé — la capacité d'équipe n'est pas lue dans le film, et l'estimation (13) vient de deux faits mesurés : la table du début porte 13 sièges de l'équipe 0 (un partant d'avant le coup d'envoi, `ln AsyIum`, et `Truly Elusive`, absent puis revenu à la 1014e seconde sur l'index 1) et le film montre 13 entités de l'équipe 0 pendant 40 s (bot `343 Razzle` gardé jusqu'à sa mort après l'arrivée d'JOUEUR_456 sur l'index 14). Le correctif demande une règle « tuile = place d'équipe, successeur sur la place libérée » et une source de capacité : décision à prendre.
+**Décision technique principale** : (1) Contrôle n° 7 : la voix « manche terminée » est produite à la bonne image (2 événements sur `d9781168`, fichier servi) mais restait sous le plafond de 8 voix ; à la 1re fin de manche de `d9781168`, 7 voix sont déjà tenues sans compter les sons de frag. Règle : une voix d'annonceur échappe au plafond, à la page (`playAnnouncer`) comme à l'export (`planAudioMix` / `applyVoiceCap`) ; amende la seconde moitié de D-1 du plan backlog du 2026-09-26. (2) Contrôle n° 24 : compté dans le film (banc `grenade_vol_research_test.go`) : chaque lancer est suivi d'une vie ti=41 lue par la marche et d'un message `projectile_detonate` de la vue A, mais `pistesDerriereLaMarche` jetait les records de projectile hors de la bande des images-clés. Règle : le projectile que la table d'entités de la marche nomme se garde quel que soit son slot (`laMarcheDesigneSeule`) ; `grammar-2026-10-21`, killsource et objectives à révision constante, `SchemaVersion` 100 inchangé. (3) Contrôle n° 3 (interface) : le power-up prend l'encre `warning` des armes spéciales. (4) Contrôle n° 8 (BTB `4f77afc1`, 13 places Eagle) : instruit, NON corrigé — la capacité d'équipe n'est pas lue dans le film, et l'estimation (13) vient de deux faits mesurés : la table du début porte 13 sièges de l'équipe 0 (un partant d'avant le coup d'envoi, `joueur_1103`, et `joueur_1301`, absent puis revenu à la 1014e seconde sur l'index 1) et le film montre 13 entités de l'équipe 0 pendant 40 s (bot `343 Razzle` gardé jusqu'à sa mort après l'arrivée d'JOUEUR_456 sur l'index 14). Le correctif demande une règle « tuile = place d'équipe, successeur sur la place libérée » et une source de capacité : décision à prendre.
 
 **Résultats observés** : lancers liés à une piste de production avant -> après : d6918972 135 -> 174/174, d9781168 131 -> 172/172, bfecd02b 67 -> 95/95, 4f77afc1 190 -> 210/215, 72b0a25e 2 -> 81/81, 92c950ee 72 -> 76/76 ; recuisson du seul `d6918972` dans le worktree : 194 pistes, 173/173 grenades liées. Parc (lecture des artefacts) : 13 films dont une équipe tient une ou deux places de trop (4v4 à 5 places : 9, 4v4 à 6 : 1, BTB à 13 : 2, plus `4f77afc1`). Lectures sans correctif : surbouclier de joueur_459 pris à 0,6 m et 0,5 m du centre du socle (rayon de ramassage, même horloge ; la 2e prise est le surbouclier lâché à sa mort), socle passé à « incertain » à la dernière image-clé avant la prise ; joueur_646 prend le surbouclier 2,5 s après le coup d'envoi, né à 3,4 m du socle ; médias : l'ingestion range toujours l'instant extrait (nom de fichier, mtime) en DÉBUT de capture alors que les captures « Replay »/« record that » et les mtime datent la FIN (un clip posé une durée trop tard, cas 72b0a25e) ; 396cfc92 : le fil du film porte 67 morts, toutes avec tueur, aucune orpheline, donc rien à typer (artefact à jour) — les points médians viennent de fins de vie sans mort du film (vie d'un point de joueur_291 à l'image 2541, dernière vie de joueur_165 close 5,5 s avant l'horizon). Gates : `go test` film/..., archlint, replaybuild, sync/killcollector, service/replayview verts ; golangci-lint grammar + replay 0 issue ; web tsc (cache purgé), vitest match-replay + lib/replay 3649 verts, eslint des fichiers touchés sans erreur.
 
@@ -121039,7 +121039,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : décisions utilisateur du 2026-10-21 (« impossible d'avoir 5 joueurs en même temps, même s'il y a un bot » ; la règle est symétrique). Une fiche est une place d'équipe ; `sieges_a_la_taille.go` réaffecte chaque intervalle de présence, dans l'ordre de son début, aux places gardées de son équipe (coloriage glouton) : sa place si libre, sinon la place gardée libérée le plus tard (le remplaçant, humain ou bot, prend la fiche du partant), sinon pour un humain la place des bots déjà là (il les relève s'il joue pendant leur présence, les attend sinon, n'est plus affiché s'il part avant eux), sinon pour un bot la fiche d'un humain qui a joué avant lui et n'a aucune vie pendant sa présence (absence tenue, présence de l'humain coupée autour). Les arrivants que le chaînage laissait sans place entrent dans la même affectation. Place publiée par intervalle (`roster[].presence[].seat`), lue par `seatLogic.buildSeats` (rangement par place d'intervalle). Compteurs neufs `coverage.seats.botsRelevesEnJeu`, `absencesTenuesParUnBot`. Schéma 101 complété (non fusionné : golden de forme reposé depuis le 100 puis régénéré, fixtures de contrat, openapi, generated.ts) ; deux tests de succession réécrits (l'humain qui jouait à côté du bot le relève désormais, celui lu au début du bot l'attend).
 
-**Résultats observés** : cause établie sur cinq films (`3d58eb37`, `6effe27b`, `ac313879`, `d35e9169`, `dc0d9e19`) : la cinquième présence est un bot nommé par le tableau de l'API ; le film ne lui écrit aucun tir indexé, et l'index de tireur de l'arrivant est la place du partant (joueur_258 tire sous l'index de KkungeN, Tachie sous celui de mr thirteen). En revanche, les événements de mort écrits par le jeu nomment encore le bot après l'arrivée des humains (`3d58eb37` : BERRYHILL passeur à 2:20, 4:32, 5:40, 6:13) : contradiction comptée (`botsRelevesEnJeu`, 11 bots sur le parc), la règle des places prime. Banc sur les 2 499 artefacts à roster : 13 places en trop avant, 0 après, 0 instant où une équipe dépasse sa taille, 25 intervalles ramenés. Les 13 films témoins tiennent leur taille. Recuits un par un dans le worktree : `4f77afc1`, `3d58eb37`, `f235e2f1`, `400bb628` (`placesEnTrop` 0, `depassements` 0 ; joueur_717 part vers 1:38 et revient à 2:49 sur une autre fiche ; `343 Brew Dog` tient la fiche d'Extinet Hunter pendant son absence). Gates : `go test` replay, fallback, mappings, replaybuild, replayview, api, archlint verts ; golangci-lint 0 ; web tsc, eslint, vitest match-replay (3 255) verts.
+**Résultats observés** : cause établie sur cinq films (`3d58eb37`, `6effe27b`, `ac313879`, `d35e9169`, `dc0d9e19`) : la cinquième présence est un bot nommé par le tableau de l'API ; le film ne lui écrit aucun tir indexé, et l'index de tireur de l'arrivant est la place du partant (joueur_258 tire sous l'index de joueur_1321, Tachie sous celui de mr thirteen). En revanche, les événements de mort écrits par le jeu nomment encore le bot après l'arrivée des humains (`3d58eb37` : BERRYHILL passeur à 2:20, 4:32, 5:40, 6:13) : contradiction comptée (`botsRelevesEnJeu`, 11 bots sur le parc), la règle des places prime. Banc sur les 2 499 artefacts à roster : 13 places en trop avant, 0 après, 0 instant où une équipe dépasse sa taille, 25 intervalles ramenés. Les 13 films témoins tiennent leur taille. Recuits un par un dans le worktree : `4f77afc1`, `3d58eb37`, `f235e2f1`, `400bb628` (`placesEnTrop` 0, `depassements` 0 ; joueur_717 part vers 1:38 et revient à 2:49 sur une autre fiche ; `343 Brew Dog` tient la fiche d'joueur_1337 pendant son absence). Gates : `go test` replay, fallback, mappings, replaybuild, replayview, api, archlint verts ; golangci-lint 0 ; web tsc, eslint, vitest match-replay (3 255) verts.
 
 **Conclusion / prochaine étape** : recuisson unique du parc par le superviseur (verdict `redecoder` : `grammar-2026-10-21`, schéma 101 ; killsource et objectives à révision constante). Rien poussé.
 
@@ -121525,7 +121525,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Conclusion / prochaine étape** : aucune action sur ce chantier avant la fin du desktop ; les dettes sont au `.ai/REGISTRE_REPORTS.md` (section du 2026-11-01).
 ## [2026-10-28] Rejeu Bazaar CTF : socle du surbouclier « invisible » et ramassage attribué à joueur_117 — diagnostic En cours (aucun code modifié)
 
-**Décision technique principale** : diagnostic seul, sur l'artefact de prod copié en lecture (schéma 104). Le ramassage de joueur_117 est un FAIT lu, pas une erreur : trois signaux indépendants concordent — l'événement natif de ramassage (14,5 s), sa position (0,8 m du point où YaMaMasFlaps est mort avec le surbouclier non activé à 11,4 s) et la pose `dropped` du surbouclier tombée de son corps à sa mort (15,3 s), reprise 0,1 s plus tard par joueur_348 sur ce corps. Jamais activé (énergie restée pleine sur les trois porteurs) ; joueur_075 l'a tenu 0,8 s.
+**Décision technique principale** : diagnostic seul, sur l'artefact de prod copié en lecture (schéma 104). Le ramassage de joueur_117 est un FAIT lu, pas une erreur : trois signaux indépendants concordent — l'événement natif de ramassage (14,5 s), sa position (0,8 m du point où joueur_1391 est mort avec le surbouclier non activé à 11,4 s) et la pose `dropped` du surbouclier tombée de son corps à sa mort (15,3 s), reprise 0,1 s plus tard par joueur_348 sur ce corps. Jamais activé (énergie restée pleine sur les trois porteurs) ; joueur_075 l'a tenu 0,8 s.
 
 **Résultats observés** : le socle est publié (`weaponPads[3]`, `powerup_overshield`, croisé à l'emplacement `powerup` du catalogue Bazaar à 4 mm) ; la chaîne web (normalisation, croisement, datation native, raffinement, état, compte à rebours) rejouée sur l'artefact de prod le rend plein / vide / compte à rebours selon l'instant. Cause de l'invisibilité NON trouvée dans le code : vérification visuelle nécessaire. Découverte annexe : chaque apparition « majeure » du socle (0, 90, 210, 330 s) est suivie 30 s plus tard d'une seconde (1,2, 120, 240, 360 s) ; seule la seconde est ramassée ou activée. Le calque montre donc le socle plein ~30 s trop tôt et un compte à rebours faux de 30 s. Hypothèse non vérifiée : le premier objet n'est pas le surbouclier ramassable.
 
@@ -121638,7 +121638,7 @@ production) ; 15 variables exportées modifiables dans `filmshell`, 12 `slog` sa
 ## [2026-11-08] Rejeu : mort sans icône, compteur d'usages rogné, capteur de réapparition invisible — diagnostic En cours (aucun code modifié)
 
 **Décision technique principale.** Diagnostic seul, sur artefacts (schéma 106) et faits de film locaux, sonde `research` injectée par `-overlay` (rien dans le dépôt).
-1. `20c703a7`, ligne sans icône à 6:09 : la piste de Like15Ninjaz s'arrête à la frame 3920 (`EndFrame` = dernier point, immobile depuis ~3908), son kill réel (M41 SPNKr, Pwr opps) est 3,8 s plus tard, au-delà de `KILL_MATCH_TOL_MS` : `alignFeedByOrigin` produit une mort neutre à 6:09 EN PLUS du kill à 6:13.
+1. `20c703a7`, ligne sans icône à 6:09 : la piste de joueur_1291 s'arrête à la frame 3920 (`EndFrame` = dernier point, immobile depuis ~3908), son kill réel (M41 SPNKr, joueur_1524) est 3,8 s plus tard, au-delà de `KILL_MATCH_TOL_MS` : `alignFeedByOrigin` produit une mort neutre à 6:09 EN PLUS du kill à 6:13.
 2. Fiche normale : 213 px utiles, 204 px de cellules fixes + 5 de gap = 4 px pour « ×N » (~12 px) ou « plein » ; la rangée clippe. Indépendant de la longueur des icônes (cellule fixe 40 px). Calcul sur les cotes, non mesuré au navigateur.
 3. `bc4bde17`, JGtm : rang 22 = détecteur de menaces (pas traqueur), kit de réapparition, 4 activations (frames 75, 323, 552, 755), 4 objets situés. Écarté par `rangDe` : création avant l'origine (première vie) et `AmbiguousRank` (la réapparition crée DEUX ti=37 attachés dans le paquet). Publication absente = ni dessin ni son ni compte.
 

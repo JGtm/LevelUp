@@ -228,16 +228,16 @@ class Component extends DCLogic {
       { n: 'joueur_023', t: 'a', k: 7, d: 4, a: 4, v: 64, g: 1, e: false, x: 39, y: 44 },
       { n: 'joueur_117', t: 'a', k: 8, d: 5, a: 2, v: 100, g: 2, e: true, x: 49, y: 52 },
       { n: 'JGtm', t: 'a', k: 1, d: 4, a: 1, v: 100, g: 2, e: true, f: true, x: 41, y: 22 },
-      { n: 'WDW Eclipse', t: 'b', k: 4, d: 6, a: 3, v: 0, g: 0, e: false, dead: '5,8 s' },
+      { n: 'joueur_1075', t: 'b', k: 4, d: 6, a: 3, v: 0, g: 0, e: false, dead: '5,8 s' },
       { n: 'joueur_749', t: 'b', k: 3, d: 6, a: 0, v: 35, g: 2, e: false, x: 74, y: 53 },
       { n: 'joueur_1044', t: 'b', k: 3, d: 7, a: 1, v: 100, g: 2, e: false, x: 18, y: 49 },
-      { n: 'DubsDay', t: 'b', k: 5, d: 4, a: 1, v: 88, g: 2, e: true, x: 40, y: 80 }
+      { n: 'joueur_1263', t: 'b', k: 5, d: 4, a: 1, v: 88, g: 2, e: true, x: 40, y: 80 }
     ].map((p) => ({ ...p, f: !!p.f, cls: 'hr' + (p.dead ? ' dead' : '') + (p.f ? ' follow' : ''), gcls: 'ic' + (p.g ? '' : ' off'), ecls: 'ic' + (p.e ? '' : ' off'), vw: p.v + '%', alive: !p.dead, isDead: !!p.dead, resp: p.dead || '' }));
     const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
     const F = [
-      ['3:49', 'joueur_117', 'a', 'WDW Eclipse', 'Îlot'],
+      ['3:49', 'joueur_117', 'a', 'joueur_1075', 'Îlot'],
       ['3:42', 'joueur_749', 'b', 'JGtm', 'Passerelle nord'],
-      ['3:37', 'joueur_117', 'a', 'WDW Eclipse', 'Atrium'],
+      ['3:37', 'joueur_117', 'a', 'joueur_1075', 'Atrium'],
       ['3:34', 'joueur_117', 'a', 'joueur_1044', 'Couloir ouest']
     ].map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'JGtm' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'JGtm' ? ' me' : '') }));
     const T = [[18,'a'],[29,'b'],[44,'a'],[52,'a'],[70,'b'],[83,'a'],[97,'a'],[110,'b'],[121,'a'],[135,'a'],[150,'b'],[162,'a'],[169,'a'],[181,'a'],[182,'b'],[193,'a'],[202,'b'],[214,'a'],[217,'a'],[222,'b'],[229,'a'],[247,'a'],[256,'b'],[268,'a'],[281,'a'],[300,'b'],[312,'a'],[333,'a'],[351,'b'],[366,'a'],[384,'a'],[401,'b'],[420,'a'],[437,'a'],[455,'b']];

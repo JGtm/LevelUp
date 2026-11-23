@@ -420,7 +420,7 @@ await (await fetch('/api/v1/settings/sessions/recalculate', {method: 'POST', cre
 ### R9 — token-pool consent grandfathering (server may stay up)
 
 `ADR 0038`: a token joins the shared pool only on a recorded consent. Nine players gave theirs
-outside the application; record exactly those, **never `XxGdakilla187xX`, never `--all`**. Simulation
+outside the application; record exactly those, **never `joueur_1421`, never `--all`**. Simulation
 first, then `--yes`. The command only writes `data/auth/watcher_tokens/`, never a DuckDB file; the
 running pool applies it at its next scan.
 

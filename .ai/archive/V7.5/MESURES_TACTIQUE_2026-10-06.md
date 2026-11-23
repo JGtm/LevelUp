@@ -317,16 +317,16 @@ SELECT kp.match_id, COALESCE(kp.killer_xuid, '') AS killer_xuid, COALESCE(min(e.
 Illusion (`ex/illu_pos.tsv`, 4 540 lignes sur les 56 matchs de la carte, 55 matchs) :
 ```
 match_id	killer_xuid	victim_xuid	killer_x	killer_y	victim_x	victim_y	time_ms	killer_z	victim_z	kgt	vgt	tag	cat
-05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2554621309956496	0.19298546016216278	11.730963706970215	0.4377475082874298	-12.851893424987793	41145	-0.0014723148196935654	-0.0014723148196935654	joueur_498	jkrebornX	64ab85c4	None
-05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2533274823110022	-0.7201652526855469	12.774290084838867	-0.28712472319602966	12.981231689453125	50504	-0.0014723148196935654	-0.0014723148196935654	Crashbanana0	JGtm	daa03c35	None
-05ebe184-07af-461e-976a-50062fe495e2	2600894387871549	2626667294937950	3.054818630218506	-4.013791561126709	3.6008262634277344	-4.513898849487305	53606	7.210720062255859	6.3224711418151855	HopingGamerXBOX	TUG103	1fc1a4e6	None
-05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2554621309956496	8.05361270904541	-0.9096778035163879	4.372767925262451	2.5910727977752686	64750	3.47428297996521	0.423342227935791	joueur_498	jkrebornX	ba5ac78e	None
-05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2600894387871549	-2.74415922164917	-0.6510016322135925	-3.9114859104156494	-3.608532190322876	72792	-0.0014723148196935654	1.533652901649475	Crashbanana0	HopingGamerXBOX	119861b4	AttachedDamage
-05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2626667294937950	7.695883750915527	14.964415550231934	7.573502540588379	19.663698196411133	78931	2.489485740661621	3.0687782764434814	joueur_498	TUG103	00404748	None
-05ebe184-07af-461e-976a-50062fe495e2	2533274823110022	2554621309956496	-4.419837951660156	-5.324417591094971	-3.4125478267669678	3.625777244567871	82802	-0.802827000617981	2.9046452045440674	JGtm	jkrebornX	fc1ca9c2	Headshot
-05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2533274823110022	-12.873542785644531	2.409999370574951	-10.463577270507812	-2.634185552597046	92061	2.0743260383605957	1.0026347637176514	Crashbanana0	JGtm	4a555df8	AttachedDamage
-05ebe184-07af-461e-976a-50062fe495e2	2626667294937950	2600894387871549	14.44566822052002	-12.446634292602539	11.913322448730469	-12.843271255493164	103323	1.1957322359085083	1.6302016973495483	TUG103	HopingGamerXBOX	bebe70df	None
-05ebe184-07af-461e-976a-50062fe495e2	2709474327730795	2626667294937950	12.449915885925293	-12.489747047424316	12.223981857299805	-12.541481971740723	105475	1.215041995048523	1.3405554294586182	makus1me2443	TUG103	166ba62b	None
+05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2554621309956496	0.19298546016216278	11.730963706970215	0.4377475082874298	-12.851893424987793	41145	-0.0014723148196935654	-0.0014723148196935654	joueur_498	joueur_1390	64ab85c4	None
+05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2533274823110022	-0.7201652526855469	12.774290084838867	-0.28712472319602966	12.981231689453125	50504	-0.0014723148196935654	-0.0014723148196935654	joueur_1119	JGtm	daa03c35	None
+05ebe184-07af-461e-976a-50062fe495e2	2600894387871549	2626667294937950	3.054818630218506	-4.013791561126709	3.6008262634277344	-4.513898849487305	53606	7.210720062255859	6.3224711418151855	joueur_1336	JOUEUR_1143	1fc1a4e6	None
+05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2554621309956496	8.05361270904541	-0.9096778035163879	4.372767925262451	2.5910727977752686	64750	3.47428297996521	0.423342227935791	joueur_498	joueur_1390	ba5ac78e	None
+05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2600894387871549	-2.74415922164917	-0.6510016322135925	-3.9114859104156494	-3.608532190322876	72792	-0.0014723148196935654	1.533652901649475	joueur_1119	joueur_1336	119861b4	AttachedDamage
+05ebe184-07af-461e-976a-50062fe495e2	2580187774540811	2626667294937950	7.695883750915527	14.964415550231934	7.573502540588379	19.663698196411133	78931	2.489485740661621	3.0687782764434814	joueur_498	JOUEUR_1143	00404748	None
+05ebe184-07af-461e-976a-50062fe495e2	2533274823110022	2554621309956496	-4.419837951660156	-5.324417591094971	-3.4125478267669678	3.625777244567871	82802	-0.802827000617981	2.9046452045440674	JGtm	joueur_1390	fc1ca9c2	Headshot
+05ebe184-07af-461e-976a-50062fe495e2	2656404892849466	2533274823110022	-12.873542785644531	2.409999370574951	-10.463577270507812	-2.634185552597046	92061	2.0743260383605957	1.0026347637176514	joueur_1119	JGtm	4a555df8	AttachedDamage
+05ebe184-07af-461e-976a-50062fe495e2	2626667294937950	2600894387871549	14.44566822052002	-12.446634292602539	11.913322448730469	-12.843271255493164	103323	1.1957322359085083	1.6302016973495483	JOUEUR_1143	joueur_1336	bebe70df	None
+05ebe184-07af-461e-976a-50062fe495e2	2709474327730795	2626667294937950	12.449915885925293	-12.489747047424316	12.223981857299805	-12.541481971740723	105475	1.215041995048523	1.3405554294586182	joueur_1494	JOUEUR_1143	166ba62b	None
 05ebe184-07af-461e-976a-50062fe495e2	2714064201313356	2580187774540811	4.598702430725098	3.444704055786133	6.829802513122559	10.187528610229492	106743	-0.802827000617981	2.1998393535614014	joueur_609	joueur_498	4a555df8	AttachedDamage
 …
 (4540 rows)
@@ -334,16 +334,16 @@ match_id	killer_xuid	victim_xuid	killer_x	killer_y	victim_x	victim_y	time_ms	kil
 Bazaar (`ex/baz_pos.tsv`, 4 016 lignes, 49 matchs) :
 ```
 match_id	killer_xuid	victim_xuid	killer_x	killer_y	victim_x	victim_y	time_ms	killer_z	victim_z	kgt	vgt	tag	cat
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2613794097632809	2571794392609270	-5.467294216156006	-4.93788480758667	-2.0270626544952393	-7.151477813720703	57427	0.04174726456403732	2.20251727104187	jalejandropb25	AvoidinNorml	4a555df8	AttachedDamage
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2727457571362944	2613794097632809	-3.2324633598327637	4.518240451812744	-5.440898418426514	-6.345558166503906	58128	0.13836707174777985	0.05053088441491127	joueur_1050	jalejandropb25	4fbad006	None
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2608604971630610	-12.356554985046387	-5.453673362731934	-12.321361541748047	-3.4335014820098877	65606	3.2038497924804688	3.581545352935791	OH OH Digo Yo	BadWolf	fc1ca9c2	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2613794097632809	2571794392609270	-5.467294216156006	-4.93788480758667	-2.0270626544952393	-7.151477813720703	57427	0.04174726456403732	2.20251727104187	joueur_1282	joueur_1544	4a555df8	AttachedDamage
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2727457571362944	2613794097632809	-3.2324633598327637	4.518240451812744	-5.440898418426514	-6.345558166503906	58128	0.13836707174777985	0.05053088441491127	joueur_1050	joueur_1282	4fbad006	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2608604971630610	-12.356554985046387	-5.453673362731934	-12.321361541748047	-3.4335014820098877	65606	3.2038497924804688	3.581545352935791	joueur_1164	joueur_1378	fc1ca9c2	None
 00502e52-50cf-43dc-9c29-38e40ec3ab5a	2727457571362944	2550615170702966	-4.270691871643066	7.333586692810059	-3.3908371925354004	-0.7148653864860535	68358	2.4133241176605225	2.1585991382598877	joueur_1050	joueur_239	4a555df8	AttachedDamage
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2613794097632809	-14.441810607910156	-5.1635422706604	-17.82925033569336	7.172402858734131	69226	3.0720953941345215	2.949124813079834	OH OH Digo Yo	jalejandropb25	fc1ca9c2	None
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2533274823110022	-13.949091911315918	7.086437702178955	-9.998544692993164	6.259027004241943	78538	2.817370653152466	2.817370653152466	OH OH Digo Yo	JGtm	fc1ca9c2	None
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2608604971630610	-14.916932106018066	7.312095642089844	-13.861106872558594	3.733811616897583	81641	2.808587074279785	2.9930429458618164	OH OH Digo Yo	BadWolf	fc1ca9c2	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2613794097632809	-14.441810607910156	-5.1635422706604	-17.82925033569336	7.172402858734131	69226	3.0720953941345215	2.949124813079834	joueur_1164	joueur_1282	fc1ca9c2	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2533274823110022	-13.949091911315918	7.086437702178955	-9.998544692993164	6.259027004241943	78538	2.817370653152466	2.817370653152466	joueur_1164	JGtm	fc1ca9c2	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2608604971630610	-14.916932106018066	7.312095642089844	-13.861106872558594	3.733811616897583	81641	2.808587074279785	2.9930429458618164	joueur_1164	joueur_1378	fc1ca9c2	None
 00502e52-50cf-43dc-9c29-38e40ec3ab5a	2550615170702966	2727457571362944	3.102489471435547	5.14148473739624	2.88252592086792	8.913188934326172	86029	0.13836707174777985	0.4018756151199341	joueur_239	joueur_1050	69fd30b9	None
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2571794392609270	2550615170702966	5.249334812164307	-2.06881046295166	4.413472652435303	6.506175518035889	87346	0.05053088441491127	0.2789049446582794	AvoidinNorml	joueur_239	13ff7bdf	None
-00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2613794097632809	-9.998544692993164	3.8627588748931885	14.179858207702637	4.453766822814941	95048	2.817370653152466	2.7998032569885254	OH OH Digo Yo	jalejandropb25	7d012346	Headshot
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2571794392609270	2550615170702966	5.249334812164307	-2.06881046295166	4.413472652435303	6.506175518035889	87346	0.05053088441491127	0.2789049446582794	joueur_1544	joueur_239	13ff7bdf	None
+00502e52-50cf-43dc-9c29-38e40ec3ab5a	2686986595471989	2613794097632809	-9.998544692993164	3.8627588748931885	14.179858207702637	4.453766822814941	95048	2.817370653152466	2.7998032569885254	joueur_1164	joueur_1282	7d012346	Headshot
 00502e52-50cf-43dc-9c29-38e40ec3ab5a	2533274823110022	2584642693152329	12.3761568069458	-5.582620620727539	16.12433624267578	-5.378454208374023	106728	3.2038497924804688	3.0984463691711426	JGtm	joueur_634	17d6bd23	None
 …
 (4016 rows)
@@ -818,17 +818,17 @@ ZONE seul/moi (6,1) x 12..14 y 2..4 : Canon blindé — polygone et tranche de z
 ZONE seul/adv (2,-11) x 4..6 y -22..-20 : Grenier camouflé — polygone et tranche de z — z médian 3.30 m (8 événements, polygones contenant le centre : 1)
 Zone la plus chaude (Morts, Moi) : col -7 lig 2 (x -14..-12 m, y 4..6 m)
 Lignes « Rejeu » (zone la plus chaude, Morts, Moi) — champs trouvés / manquants :
-  Assassin 31 – 50 Défaite | 16/07/2026 · 21:49 | 05:07 | Tué par Jaeger Akagy · M41 SPNKr | près · 7 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 7
-  Assassin 50 – 46 Victoire | 09/06/2026 · 20:52 | 06:22 | Tué par PBoysen · Rayon de Sentinelle | près · 14 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 11
+  Assassin 31 – 50 Défaite | 16/07/2026 · 21:49 | 05:07 | Tué par joueur_1090 · M41 SPNKr | près · 7 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 7
+  Assassin 50 – 46 Victoire | 09/06/2026 · 20:52 | 06:22 | Tué par joueur_1345 · Rayon de Sentinelle | près · 14 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 11
   Assassin 50 – 27 Victoire | 05/03/2026 · 20:50 | 04:13 | Tué par joueur_609 · MK50 Sidekick | seul · 19 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 4
   Assassin 35 – 50 Défaite | 27/02/2026 · 19:34 | 06:53 | Tué par joueur_862 · Marteau antigravité | près · 1 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 9
-  Assassin 42 – 50 Défaite | 17/02/2026 · 22:19 | 05:58 | Tué par valsked · M41 SPNKr | seul · 20 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 7
+  Assassin 42 – 50 Défaite | 17/02/2026 · 22:19 | 05:58 | Tué par joueur_1300 · M41 SPNKr | seul · 20 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 7
   Assassin 46 – 50 Défaite | 11/02/2026 · 18:11 | 02:23 | Tué par Atomic joueur_510 · Marteau antigravité | près · 12 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 9
   Assassin en équipe 50 – 44 Victoire | 06/02/2026 · 19:05 | 01:57 | Tué par joueur_292 · Mêlée | près · 9 m | manquants : aucun | brut : gv Team Slayer:Arena, tag 0
   Assassin 50 – 38 Victoire | 24/01/2026 · 19:11 | 09:05 | Tué par joueur_1051 · Mutilateur | près · 11 m | manquants : aucun | brut : gv Slayer:Arena, tag 19
-  Assassin 50 – 45 Victoire | 22/12/2025 · 17:26 | 07:46 | Tué par Stay Classy · Marteau antigravité | près · 17 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 9
-  Assassin en équipe 50 – 39 Victoire | 29/11/2025 · 20:59 | 04:10 | Tué par xACcommando9x · BR75 | près · 16 m | manquants : aucun | brut : gv Team Slayer:Arena, tag 18
-  Assassin 50 – 45 Victoire | 03/11/2025 · 20:48 | 00:57 | Tué par MiniKumaKikai · Bandit EVO | près · 6 m | manquants : aucun | brut : gv Slayer:Arena, tag 27
+  Assassin 50 – 45 Victoire | 22/12/2025 · 17:26 | 07:46 | Tué par joueur_1330 · Marteau antigravité | près · 17 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 9
+  Assassin en équipe 50 – 39 Victoire | 29/11/2025 · 20:59 | 04:10 | Tué par joueur_1313 · BR75 | près · 16 m | manquants : aucun | brut : gv Team Slayer:Arena, tag 18
+  Assassin 50 – 45 Victoire | 03/11/2025 · 20:48 | 00:57 | Tué par joueur_1367 · Bandit EVO | près · 6 m | manquants : aucun | brut : gv Slayer:Arena, tag 27
   2025-11-03 20:48 · Victoire · 00:57 · 18ad5c88-6c49-4882-8c99-76e836e80b60 · Slayer:Arena · accompagné
   2025-11-29 20:59 · Victoire · 04:10 · 652907bb-7bf2-4539-9a03-b610d73ab265 · Team Slayer:Arena · accompagné
   2025-12-22 17:26 · Victoire · 07:46 · e13b44cc-494e-45a5-a3cd-f73f6b10a325 · Slayer:Arena Super Fiesta · accompagné
@@ -936,13 +936,13 @@ Zone la plus chaude (Morts, Moi) : col -4 lig -1 (x -8..-6 m, y -2..0 m)
 Lignes « Rejeu » (zone la plus chaude, Morts, Moi) — champs trouvés / manquants :
   Assassin 50 – 41 Victoire | 21/03/2026 · 20:13 | 07:40 | Tué par joueur_189 · S7 Sniper | près · 14 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 5
   Assassin 49 – 50 issue 4 | 05/03/2026 · 20:29 | 00:50 | Tué par joueur_436 · Rayon de Sentinelle | près · 1 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 6
-  Assassin 50 – 47 Victoire | 20/02/2026 · 17:35 | 01:41 | Tué par SirAvlas · Mêlée | seul · 22 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 14
+  Assassin 50 – 47 Victoire | 20/02/2026 · 17:35 | 01:41 | Tué par joueur_1460 · Mêlée | seul · 22 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 14
   Assassin 49 – 50 Défaite | 01/02/2026 · 18:52 | 07:11 | Tué par joueur_243 · Rayon de Sentinelle | près · 8 m | manquants : aucun | brut : gv Slayer:Arena Super Fiesta, tag 6
   Drapeau 0 – 3 Défaite | 21/01/2026 · 21:17 | 08:10 | Tué par joueur_695 · Grenade frag | près · 1 m | manquants : aucun | brut : gv CTF:Arena, tag 23
-  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 00:36 | Tué par TheeFatherD · BR75 | près · 6 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
-  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 00:55 | Tué par TheeFatherD · BR75 | près · 10 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
+  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 00:36 | Tué par joueur_1099 · BR75 | près · 6 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
+  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 00:55 | Tué par joueur_1099 · BR75 | près · 10 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
   Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 02:50 | Tué par joueur_707 · BR75 | près · 0 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
-  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 05:34 | Tué par CRANEOLEGEND · BR75 | près · 10 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
+  Assassin 39 – 50 Défaite | 03/11/2025 · 21:39 | 05:34 | Tué par JOUEUR_1377 · BR75 | près · 10 m | manquants : aucun | brut : gv Slayer:Arena Tactical, tag 27
   2025-11-03 21:39 · Défaite · 00:36 · f65627bd-313c-41f0-8f25-111b88d3276a · Slayer:Arena Tactical · accompagné
   2025-11-03 21:39 · Défaite · 00:55 · f65627bd-313c-41f0-8f25-111b88d3276a · Slayer:Arena Tactical · accompagné
   2025-11-03 21:39 · Défaite · 02:50 · f65627bd-313c-41f0-8f25-111b88d3276a · Slayer:Arena Tactical · accompagné
@@ -1008,14 +1008,14 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 292,
     "l2fixe": 222,
     "txt1": "Assassin · 31 – 50 · Défaite · 16/07/2026 · 21:49",
-    "txt2": "05:07 Tué par Jaeger Akagy · M41 SPNKr près · 7 m"
+    "txt2": "05:07 Tué par joueur_1090 · M41 SPNKr près · 7 m"
    },
    {
     "l1": 239,
     "l2": 314,
     "l2fixe": 203,
     "txt1": "Assassin · 50 – 46 · Victoire · 09/06/2026 · 20:52",
-    "txt2": "06:22 Tué par PBoysen · Rayon de Sentinelle près · 14 m"
+    "txt2": "06:22 Tué par joueur_1345 · Rayon de Sentinelle près · 14 m"
    },
    {
     "l1": 239,
@@ -1036,7 +1036,7 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 266,
     "l2fixe": 196,
     "txt1": "Assassin · 42 – 50 · Défaite · 17/02/2026 · 22:19",
-    "txt2": "05:58 Tué par valsked · M41 SPNKr seul · 20 m"
+    "txt2": "05:58 Tué par joueur_1300 · M41 SPNKr seul · 20 m"
    },
    {
     "l1": 236,
@@ -1064,21 +1064,21 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 328,
     "l2fixe": 218,
     "txt1": "Assassin · 50 – 45 · Victoire · 22/12/2025 · 17:26",
-    "txt2": "07:46 Tué par Stay Classy · Marteau antigravité près · 17 m"
+    "txt2": "07:46 Tué par joueur_1330 · Marteau antigravité près · 17 m"
    },
    {
     "l1": 297,
     "l2": 288,
     "l2fixe": 250,
     "txt1": "Assassin en équipe · 50 – 39 · Victoire · 29/11/2025 · 20:59",
-    "txt2": "04:10 Tué par xACcommando9x · BR75 près · 16 m"
+    "txt2": "04:10 Tué par joueur_1313 · BR75 près · 16 m"
    },
    {
     "l1": 239,
     "l2": 298,
     "l2fixe": 229,
     "txt1": "Assassin · 50 – 45 · Victoire · 03/11/2025 · 20:48",
-    "txt2": "00:57 Tué par MiniKumaKikai · Bandit EVO près · 6 m"
+    "txt2": "00:57 Tué par joueur_1367 · Bandit EVO près · 6 m"
    }
   ]
  },
@@ -1105,7 +1105,7 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 241,
     "l2fixe": 199,
     "txt1": "Assassin · 50 – 47 · Victoire · 20/02/2026 · 17:35",
-    "txt2": "01:41 Tué par SirAvlas · Mêlée seul · 22 m"
+    "txt2": "01:41 Tué par joueur_1460 · Mêlée seul · 22 m"
    },
    {
     "l1": 236,
@@ -1126,14 +1126,14 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 256,
     "l2fixe": 218,
     "txt1": "Assassin · 39 – 50 · Défaite · 03/11/2025 · 21:39",
-    "txt2": "00:36 Tué par TheeFatherD · BR75 près · 6 m"
+    "txt2": "00:36 Tué par joueur_1099 · BR75 près · 6 m"
    },
    {
     "l1": 236,
     "l2": 262,
     "l2fixe": 224,
     "txt1": "Assassin · 39 – 50 · Défaite · 03/11/2025 · 21:39",
-    "txt2": "00:55 Tué par TheeFatherD · BR75 près · 10 m"
+    "txt2": "00:55 Tué par joueur_1099 · BR75 près · 10 m"
    },
    {
     "l1": 236,
@@ -1147,7 +1147,7 @@ joueur_862 · Marteau antigravité · près · 1 m » = 343 px (dépasse de 43 p
     "l2": 284,
     "l2fixe": 246,
     "txt1": "Assassin · 39 – 50 · Défaite · 03/11/2025 · 21:39",
-    "txt2": "05:34 Tué par CRANEOLEGEND · BR75 près · 10 m"
+    "txt2": "05:34 Tué par JOUEUR_1377 · BR75 près · 10 m"
    }
   ]
  },

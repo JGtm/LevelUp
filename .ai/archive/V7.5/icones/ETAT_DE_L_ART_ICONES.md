@@ -460,8 +460,8 @@ juillet, le plus recent du corpus : c est le temoin a tenter en premier.
 notamment `f712c64a` avec 37 occurrences a 08:29, et `674a7d69` avec 11 a 02:33.
 
 **Environnement** : un seul tag, `00403594`. Temoin : `1eedd3c8`, Nemesis, 2026-04-06 22:49,
-**02:04, JGtm -> EIcRriizz** ; deux autres dans le meme film a 04:53 et 05:04
-(El sir jorge -> TriksyFTW, puis -> JGtm). C est le candidat naturel pour l icone de CHUTE
+**02:04, JGtm -> joueur_1230** ; deux autres dans le meme film a 04:53 et 05:04
+(joueur_1193 -> joueur_1189, puis -> JGtm). C est le candidat naturel pour l icone de CHUTE
 (index 52, etiquetee « Fall » par l utilisateur).
 
 **Le tueur est donne parce qu il rend le temoin trouvable** : dans Theater on cherche un

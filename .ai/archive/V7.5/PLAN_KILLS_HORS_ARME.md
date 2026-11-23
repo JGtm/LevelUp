@@ -382,7 +382,7 @@ Volumetrie de reference : 136 900 morts decodees, 74 569 a source mesuree (54,5 
 
     match 215e7022-9959-4a1e-85aa-861161b588f4 — 2026-02-03 16:13 UTC — Argyle
     Quick Play / Team Slayer:Arena — t = 325 526 ms (5 min 25 s)
-    tueur joueur_622 -> victime aK2fResHv3 — publishable=false, diverges=false
+    tueur joueur_622 -> victime joueur_1138 — publishable=false, diverges=false
 
 La classe `equipment` de la decision D1 vaudrait donc **1 kill**, porte par un joueur
 hors roster. Ce n'est pas un arc de sunburst, c'est une poussiere. **D1 EST A REOUVRIR** —

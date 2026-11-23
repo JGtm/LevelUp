@@ -24,8 +24,8 @@ score est celui que sert l'API : la requête Q12 (`platform/duckdb/queries_match
 
 | Instant affiché (frame) | Eagle (f0) | Cobra (f1) |
 |---|---|---|
-| 0:00 (227), préambule compris (217) | **3** : MONEY x BUTTER, joueur_1013, joueur_595 | 4 : joueur_539, joueur_117, joueur_165, JGtm |
-| 2:14 (1567) | **5** : MONEY x BUTTER, joueur_1013, joueur_595, **« Joueur inconnu »** (fantôme), Claudors | 4 : idem |
+| 0:00 (227), préambule compris (217) | **3** : joueur_1151, joueur_1013, joueur_595 | 4 : joueur_539, joueur_117, joueur_165, JGtm |
+| 2:14 (1567) | **5** : joueur_1151, joueur_1013, joueur_595, **« Joueur inconnu »** (fantôme), joueur_1304 | 4 : idem |
 | 6:24 (4067) | **5** : idem 2:14 | **5** : **joueur_539** (fantôme), joueur_117, joueur_165, JGtm, 343 Brew Dog |
 
 Frise des bascules (même instrument) : Eagle 3 → 4 à 0:44.0 (f661), 4 → 5 à 1:36.0 (f1185) ;
@@ -40,7 +40,7 @@ Cobra 4 → 5 à 5:27.0 (f3497). Les trois constats de l'utilisateur sont exacts
   `v_gamertag_lookup`, mais sa ligne 0/0/0/0 est filtrée par Q12 et le film ne lui écrit aucun nom).
   Sa seule vie publiée dure 0,2 s (slot 523, f661–662, 5 positions) ; ensuite la règle
   `seatOccupantAt` le garde **`present`** jusqu'à la fin parce qu'aucun successeur n'occupe SON siège
-  (siège 9) — Claudors est assis au siège 10.
+  (siège 9) — joueur_1304 est assis au siège 10.
 - **Le 5e de Cobra à 6:24** : joueur_539, dernière vie finie à 4:49.0 (f3117, tuée par MONEY),
   gardée `present` pour la même raison (siège 1 sans successeur) ; 343 Brew Dog est au siège 8.
 
@@ -48,11 +48,11 @@ Cobra 4 → 5 à 5:27.0 (f3497). Les trois constats de l'utilisateur sont exacts
 
 API (`SP/db/shared_matches_v2.duckdb`, `match_participants`), toujours 4 contre 4 : Eagle = MONEY,
 joueur_1013, joueur_595 + la 4e place tenue successivement par Hundy (−0:01.7 → 0:34.0), joueur_270
-(0:33.9 → 1:16.1), PardonMy (1:16.1 → 1:29.8), Claudors (1:29.7 → fin) ; Cobra = joueur_075, joueur_165,
+(0:33.9 → 1:16.1), PardonMy (1:16.1 → 1:29.8), joueur_1304 (1:29.7 → fin) ; Cobra = joueur_075, joueur_165,
 JGtm + FairyNectar (→ 5:22.3) puis Brew Dog (5:22.4 → fin).
 
 Faits persistés du film (sonde Go, `sonde_faits.txt`) — **MESURÉ** :
-- table de `chunk_00` : 8 sièges, dont **WNBA Fan A5 au siège 5** ; il n'a **aucun** corps (aucun
+- table de `chunk_00` : 8 sièges, dont **joueur_1521 au siège 5** ; il n'a **aucun** corps (aucun
   record de création d'index 5), aucun tir, et il est absent de l'API : un joueur du salon parti avant
   le coup d'envoi, dont la place a été prise par Hundy.
 - BOT_METADATA (roster killsource) : `{Slot:8 BotID:16 343 Hundy}`, `{Slot:8 BotID:7 343 PardonMy}`,
@@ -83,7 +83,7 @@ Capacité = taille d'équipe du mode, MESURÉE sur les 111 matchs (`present_at_b
 | Participants API exclus du tableau de score (Q12, « tout à zéro ») | 64 (31 docs) | — |
 
 Le « moins que l'API » a deux familles : les joueurs présents dont la première vie n'est pas encore
-dans le film (ex. `3ba5a548` : Cobra affiche **0** tuile à 0:00, première vie d'ooSilentDeathoo à
+dans le film (ex. `3ba5a548` : Cobra affiche **0** tuile à 0:00, première vie d'joueur_1399 à
 1:00) et les bots sans vie nommée (b1ad85eb : Eagle 3/4 de 0:00 à 0:43.9).
 
 ---
@@ -107,9 +107,9 @@ FairyNectar (siège 1, présence 0–3117) restent affichés jusqu'à la fin ; 8
 ne chaîne que (a) des partants ORIGINES de la table de départ, (b) dont l'équipe est LUE, (c) qui ont
 des vies, et (d) dont la présence (enveloppe des vies) finit AVANT l'arrivée. Sur b1ad85eb
 (**DÉDUIT** ligne à ligne, `coverage.seats.apparies = 0` **MESURÉ**) :
-- la place réellement libérée (siège 5, WNBA Fan A5) n'a ni vie ni équipe → jamais partante ;
+- la place réellement libérée (siège 5, joueur_1521) n'a ni vie ni équipe → jamais partante ;
 - Hundy / PardonMy (bots, index 8) n'ont pas d'équipe → exclus ;
-- joueur_270 (index 9) est un ARRIVANT → ne peut pas être partant pour Claudors (index 10) ;
+- joueur_270 (index 9) est un ARRIVANT → ne peut pas être partant pour joueur_1304 (index 10) ;
 - les seuls partants d'Eagle sont MONEY (5042) et joueur_595 (5050), « partis » parce que morts avant
   la dernière frame : ils ne sont libres qu'après l'arrivée de 9 et 10.
 Résultat : Eagle a 5 sièges (0, 3, 6, 9, 10), Cobra 5 (1, 2, 4, 7, 8). Le film réutilise l'index d'un
@@ -121,7 +121,7 @@ partant 2 fois sur 35 arrivées (lot 1.7) ; la règle « siège = index » ne pe
 `grammar/player_teams.go:128-166, 240-262` : les lectures du désignateur (composant i0 de ti=9) sont
 accumulées par **index de joueur** ; un index qui porte deux désignateurs est « divergent » et n'est
 pas publié. **Preuve par élimination (MESURÉ + DÉDUIT)** : 12 entités, 9 index publiés
-(0,1,2,3,4,6,7,9,10), `divEntite=0`, `divIndex=1`. Si WNBA Fan A5 (index 5) avait une entité, elle
+(0,1,2,3,4,6,7,9,10), `divEntite=0`, `divIndex=1`. Si joueur_1521 (index 5) avait une entité, elle
 aurait un désignateur unique et l'index 5 serait publié : il ne l'est pas, donc WNBA n'a aucune entité
 et les **3 entités restantes portent l'index 8**, avec au moins deux désignateurs (sinon 8 serait
 publié). Les trois bots déclarent l'index 8 et l'API les met en t0, t0, t1. Conséquence : les trois
@@ -145,7 +145,7 @@ ENTITÉ, désignateur stable : 88/88 entités au lot 1.9.14) ; c'est l'agrégati
   63 relais de bot datés par l'API, 45 ont une vie de bot qui naît AVANT l'heure API, médiane
   **−22,3 s**, 18 entre −15 et −31 s. **DÉDUIT** : l'heure de participation API d'un relais est en
   retard d'environ 20 s sur le film.
-- `sansPresence 3` = WNBA Fan A5 (jamais joué), Hundy (corps 512 anonyme), PardonMy (corps 526
+- `sansPresence 3` = joueur_1521 (jamais joué), Hundy (corps 512 anonyme), PardonMy (corps 526
   anonyme). **La présence n'est publiée nulle part** : le web la reconstruit comme l'enveloppe des
   vies NOMMÉES, et `coverage.seats.presencesCloses` (9) compte indistinctement départs et morts de fin
   de partie (le code le dit, `sieges.go:95-101`).
@@ -158,12 +158,12 @@ l'index de participant : c'est la **place**, et le remplaçant hérite de celle 
 
 | Film | Index de tireur | Tirs | Tombés dans les vies de… | Index de participant du tireur |
 |---|---|---|---|---|
-| b1ad85eb | 5 (siège de WNBA Fan A5) | 84 | **Claudors 100 %** | 10 |
+| b1ad85eb | 5 (siège de joueur_1521) | 84 | **joueur_1304 100 %** | 10 |
 | 43716616 | 5 (siège de joueur_721, parti) | 65 | **joueur_608 100 %** | 9 |
-| 43e96765 | 0 (siège de LeodaganQC, parti) | 38 | joueur_697 89 % (le reste = LeodaganQC avant son départ) | 9 |
+| 43e96765 | 0 (siège de joueur_1265, parti) | 38 | joueur_697 89 % (le reste = joueur_1265 avant son départ) | 9 |
 
 Chaque autre index de tireur tombe à 89–100 % dans les vies du joueur de la table au même numéro.
-Sur b1ad85eb, Claudors a donc **0 tir publié** : ses 84 tirs sont rangés `noSlot` (144 au total),
+Sur b1ad85eb, joueur_1304 a donc **0 tir publié** : ses 84 tirs sont rangés `noSlot` (144 au total),
 parce que `buildShots` (`shots.go:75-117`) joint l'index de tireur à l'index de participant.
 
 ---
@@ -231,11 +231,11 @@ Go :
 Tests et garde-rails :
 - Go, ROUGE aujourd'hui : un témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots
   index 8 de désignateurs 0/0/1, arrivants 9 et 10) — places Eagle 5 : Hundy → joueur_270 → PardonMy
-  → Claudors, Cobra 1 : FairyNectar → Brew Dog ; équipe de chaque bot ; au plus 4 occupants par équipe
+  → joueur_1304, Cobra 1 : FairyNectar → Brew Dog ; équipe de chaque bot ; au plus 4 occupants par équipe
   à chaque frame. Mutation : réagréger par index → rouge.
 - Web, ROUGE aujourd'hui : réécrire le témoin `seatLogic.test.ts:125` (qui fige `[3, 5]`) avec les
   tuiles attendues à f227 / f1567 / f4067 :
-  Eagle {MONEY x BUTTER, joueur_1013, joueur_595, 343 Hundy} → {…, Claudors} ;
+  Eagle {joueur_1151, joueur_1013, joueur_595, 343 Hundy} → {…, joueur_1304} ;
   Cobra {joueur_539, joueur_117, joueur_165, JGtm} → {343 Brew Dog, joueur_117, joueur_165, JGtm}.
 - Garde-rail : test de propriété sur toutes les fixtures de contrat et goldens d'assemblage —
   « à aucune frame une équipe n'a plus d'occupants que de places » ; test que `seatOccupantAt` rend
@@ -306,7 +306,7 @@ le re-décodage du parc est refusé pour l'instant, avec ses replis nommés, com
 ## 6. Hors périmètre découvert (noté, non traité)
 
 1. **Tirs des remplaçants perdus** : l'index de tireur (type 105) est la place, pas l'index de
-   participant — `shots.go:75-117` les range `noSlot` (b1ad85eb : Claudors 84 tirs, 0 publié ;
+   participant — `shots.go:75-117` les range `noSlot` (b1ad85eb : joueur_1304 84 tirs, 0 publié ;
    `noSlot` 144). À vérifier : `shared.match_weapon_shots` / `resolvePlayerIndices` (précision par
    arme, clés sur l'index de tireur 5 bits) imputeraient ces tirs au joueur qui a QUITTÉ la place.
 2. **Heure API des relais en retard d'environ 20 s** sur le film (médiane −22,3 s sur 45 relais ;
@@ -314,7 +314,7 @@ le re-décodage du parc est refusé pour l'instant, avec ses replis nommés, com
    remplaçant ; `presenceFeed.ts` date les lignes « a rejoint / a quitté » avec le même retard.
 3. **Q12 exclut les participants « tout à zéro »** (64 sur 31 documents) : le rejeu perd leur nom
    (joueur_270 → « Joueur inconnu ») et leurs lignes de présence.
-4. `43e96765` : index 0 (LeodaganQC) divergent (`divIndex=1`) — une seconde entité d'index 0 d'un
+4. `43e96765` : index 0 (joueur_1265) divergent (`divIndex=1`) — une seconde entité d'index 0 d'un
    autre désignateur, à instruire.
 5. Bots présents moins de 20 s : aucune équipe lue (`43716616`, `72b0a25e`, `d1dfbc02`, `f2966f08`,
    `divergences 0`) — `ScanPlayerTeams` ne lit que les images-clés.

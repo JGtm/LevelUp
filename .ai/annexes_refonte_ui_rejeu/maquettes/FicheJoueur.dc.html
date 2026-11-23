@@ -231,15 +231,15 @@ class Component extends DCLogic {
       { n: 'joueur_023', t: 'a', x: 39, y: 44 },
       { n: 'joueur_117', t: 'a', x: 49, y: 52, f: true },
       { n: 'JGtm', t: 'a', x: 41, y: 22 },
-      { n: 'WDW Eclipse', t: 'b', dead: true },
+      { n: 'joueur_1075', t: 'b', dead: true },
       { n: 'joueur_749', t: 'b', x: 74, y: 53 },
       { n: 'joueur_1044', t: 'b', x: 18, y: 49 },
-      { n: 'DubsDay', t: 'b', x: 40, y: 80 }
+      { n: 'joueur_1263', t: 'b', x: 40, y: 80 }
     ];
     const pins = P.filter((p) => !p.dead).map((p) => ({ n: p.n, x: p.x + '%', y: p.y + '%', cls: 'pin ' + p.t + (p.f ? ' f' : '') }));
     const picks = P.map((p, i) => ({ n: p.n, i: p.n.slice(0, 2).toUpperCase(), cls: 'pk ' + p.t + (p.dead ? ' dead' : '') + (p.f ? ' sel' : ''), gapAfter: i === 3 }));
     const F = [
-      ['3:49', 'joueur_117', 'a', 'WDW Eclipse', 'Îlot'],
+      ['3:49', 'joueur_117', 'a', 'joueur_1075', 'Îlot'],
       ['3:42', 'joueur_749', 'b', 'JGtm', 'Passerelle nord']
     ];
     const feed = F.map((f) => ({ t: f[0], k: f[1], v: f[3], z: f[4], kc: (f[2] === 'a' ? 'ka' : 'kb') + (f[1] === 'joueur_117' ? ' me' : ''), vc: (f[2] === 'a' ? 'kb' : 'ka') + (f[3] === 'joueur_117' ? ' me' : '') }));

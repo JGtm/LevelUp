@@ -57,8 +57,8 @@ verts ; items de la séquence Notion cochés.
 - **D4 (17/10)** : aucun travail de code avant que la session « backlog des 12 corrections » ait
   fini et fusionné.
 - Rappels antérieurs : tout en local puis copie, aucune passe sur le VPS (23/09) ; les 24 matchs
-  présents seulement en prod (XxGdakilla187xX, hors de tout profil) sont perdus à la copie,
-  assumé (23/09) ; mise en commun : 9 comptes désignés, **jamais XxGdakilla187xX** (16/10) ; droit
+  présents seulement en prod (joueur_1421, hors de tout profil) sont perdus à la copie,
+  assumé (23/09) ; mise en commun : 9 comptes désignés, **jamais joueur_1421** (16/10) ; droit
   applicable des conditions non précisé (16/10).
 
 ### Décisions de conception proposées par ce plan (l'utilisateur peut s'y opposer)
@@ -411,7 +411,7 @@ ses nouvelles captures d'écran (annoncées le 2026-10-18).
       et PAS dans la démo ; aucun conflit de verrou de la base joueur au premier post-sync.
 - [x] 5.8 (20/10, voir journal) **Mise en commun des jetons** (juste après le boot) : `pool-sharing list` ;
       `pool-sharing grandfather --players JGtm,joueur_165,joueur_291,joueur_117,joueur_1016,joueur_1017,joueur_1018,QuiteSiren,UppedJoker`
-      (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, XxGdakilla187xX `undecided` ;
+      (simulation), puis la même avec `--yes` ; `list` = 9 `granted`, joueur_1421 `undecided` ;
       `docker compose restart levelup`.
 - [x] 5.9 (20/10 soir : déclaré par l'admin, profil écrit à la main après l'échec EBUSY, D-24) **joueur_074** (D2) : onboarding admin (xuid `2543518745364847`), aucun ami, hors du groupe.
 - [x] 5.10 (20/10 ; premier job de bout en bout -> 6.7b) **Ouvrier** (D’ABORD, en root sur csstat, une fois le déploiement de l’ouvrier passé : `install -o root -g root -m 0644 /opt/levelup/packaging/systemd/levelup-worker.service /etc/systemd/system/levelup-worker.service && systemctl daemon-reload && systemd-analyze verify …`, cf. 4.2 ; puis séquence de `RUNBOOK_REPLAY_WORKER.md` §4, qui fait foi) : test d'accès à `/api/v1/internal/build-queue/claim` (503 sans jeton, 401
@@ -728,7 +728,7 @@ non close. État git : `git log --oneline -10 feat/release-v8`. État des passes
     jamais mis à jour, D-21) → checkout de csstat remis à `origin/main` (en `deploy`), rerun : OK.
   - 5.8 : `pool-sharing grandfather` échoue en `root` (`permission denied` sur
     `watcher_tokens/*.json.tmp`, conteneur durci) → relancé avec `-u appuser` : 9 `granted`
-    (`grandfathered_explicit`), XxGdakilla187xX `undecided` (D-22 : runbook et Notion à corriger).
+    (`grandfathered_explicit`), joueur_1421 `undecided` (D-22 : runbook et Notion à corriger).
   - 5.10 : jetons prod et csstat identiques (empreinte) ; pré-vol 401/401 ; nginx : la conf ACTIVE est
     `sites-enabled/levelup` (fichier, pas lien ; `sites-available/levelup` est périmé) : `allow
     <ip-vps>; deny all;` ajoutés dans `location /api/v1/internal/` (sauvegarde

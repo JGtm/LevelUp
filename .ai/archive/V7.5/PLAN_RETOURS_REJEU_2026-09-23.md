@@ -103,8 +103,8 @@
 
 ### 1.4 Équipes b1ad85eb (annexe `RAPPORT_equipes_b1ad85eb.md`)
 
-- Rejeu fidèle de la logique web : Eagle {MONEY x BUTTER, joueur_1013, joueur_595} au départ ;
-  + « Joueur inconnu » (joueur_270, 2700529065230693, parti à 1:16) + Claudors à 2:14 ; Cobra à 6:24
+- Rejeu fidèle de la logique web : Eagle {joueur_1151, joueur_1013, joueur_595} au départ ;
+  + « Joueur inconnu » (joueur_270, 2700529065230693, parti à 1:16) + joueur_1304 à 2:14 ; Cobra à 6:24
   avec joueur_539 (partie à 5:22) + 343 Brew Dog.
 - C1 web : `seatOccupantAt` rend `present` un occupant fini sans successeur sur le même siège `[V]`.
 - C2 Go : `seat = filmIndex` ; l'appariement de repli ne chaîne presque jamais (0 sur ce match).
@@ -113,7 +113,7 @@
 - C4 : corps de bots sur index partagé refusés (`index_hors_table`, libellé trompeur) ; l'heure API des
   relais retarde d'environ 21 s sur le film (médiane −22,3 s sur 45 relais).
 - Le fait qui ouvre la solution : l'index de tireur des tirs est la PLACE, et le remplaçant en hérite
-  (3 remplacements sur 3) — aujourd'hui les 84 tirs de Claudors sont perdus (`noSlot`).
+  (3 remplacements sur 3) — aujourd'hui les 84 tirs de joueur_1304 sont perdus (`noSlot`).
 - Parc : 14 documents dépassent la taille d'équipe (5 630 s), 76 affichent moins de joueurs que
   l'API, 22 montrent des joueurs partis (8 376 tuile-s).
 
@@ -559,7 +559,7 @@ hors de ce périmètre.
 - [x] P3 (`90381fc90`, `SONDE_P3_armes_naissance.md`) : le record NEW du bipède porte les armes de
   naissance (i43/i44/i46), aucun chemin de production ne les lit → M3.2 précisé.
 - [x] P4 (`a49237d3d`, `SONDE_P4_equipes_places.md`) : CONFIRMÉ (trois entités d'index 8, index 1
-  absent, aucune entité d'index 5 ; les tirs donnent la place 5 à Claudors) → M2 précisé.
+  absent, aucune entité d'index 5 ; les tirs donnent la place 5 à joueur_1304) → M2 précisé.
 
 ### 4.4 Vague C — montée 69, republication DEPUIS LES FAITS (aucun décodage)
 
@@ -748,7 +748,7 @@ botmeta.go`, faits (`film_inputs.go`, `filmfacts_encode.go`, `filmfacts_decode.g
   PREMIÈRE image-clé qui porte des entités (la toute première peut être vide) ; un trou au milieu de la
   fenêtre d'une entité n'est pas un départ (MONEY à f613 = perte de marche, cf. P2) ; BOT_METADATA doit
   garder l'instant de chaque paquet ; liens bot → entité par intersection avec la fenêtre STRICTE,
-  corps → entité par création dans la fenêtre LARGE ; place de Claudors = 5 lue dans ses tirs.
+  corps → entité par création dans la fenêtre LARGE ; place de joueur_1304 = 5 lue dans ses tirs.
 - [x] M2.1 Balayage `ti=9` par ENTITÉ (slot, index, désignateur, première/dernière image-clé) ; la
   table par index devient un contrôle ; BOT_METADATA garde l'instant de ses paquets pour lier chaque
   bot à SON entité.
@@ -764,7 +764,7 @@ botmeta.go`, faits (`film_inputs.go`, `filmfacts_encode.go`, `filmfacts_decode.g
   supprimée ; regroupement par `roster[].team` ; états Q20-Q22 (FR + EN).
 - [x] Tests (M2 ; `occupants_temoin_test.go`, `occupants_doutes_test.go`,
   `identity_registry_entites_test.go`, `seatLogic.test.ts`) : témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots index 8 de désignateurs
-  0/0/1, arrivants 9 et 10) → places Eagle 5 : Hundy → joueur_270 → PardonMy → Claudors, Cobra 1 :
+  0/0/1, arrivants 9 et 10) → places Eagle 5 : Hundy → joueur_270 → PardonMy → joueur_1304, Cobra 1 :
   FairyNectar → Brew Dog, ≤ 4 occupants par équipe à chaque frame (mutation : réagréger par index →
   rouge) ; réécriture de `seatLogic.test.ts:125` (qui fige `[3, 5]`) ; garde-rail de propriété « à
   aucune frame une équipe n'a plus d'occupants que de places » sur toutes les fixtures.

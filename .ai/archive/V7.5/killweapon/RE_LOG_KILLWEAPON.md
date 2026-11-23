@@ -643,7 +643,7 @@ Demande user : re-chiffrer grenade/mêlée + fournir des kills à vérifier en T
 - **KILLS SANS KILL-EVENT (ABSENT)** = kills chunk_27 dont la paire (tueur,victime) n'a AUCUN kill-event
   décodable (déf. « vraiment introuvable » de runGap au niveau paire). Fournis à l'utilisateur avec date+map+
   timecode (horloge jeu chunk_27 = timeline Theater) pour diagnostic manuel de ce qu'on rate. Ex : 034200db
-  joueur_165→joueur_1024 @00:49 (Detachment, Arena:CTF, 2026-03-03) ; 00761d27 Alex43LUFC→EddySuperman @04:55
+  joueur_165→joueur_1024 @00:49 (Detachment, Arena:CTF, 2026-03-03) ; 00761d27 joueur_1202→joueur_1177 @04:55
   (Bazaar, Arena:VIP, 2026-02-03).
 - Outils ajoutés (branche RE) : `verifkills <film>` (cmd/tmp_kwval/verifkills.go) + `cmd/tmp_datemap` (film_id→
   date/map/mode, DuckDB read-only). Temps kill = horloge JEU chunk_27 (KVPair.TimeMS→mm:ss).
@@ -1237,7 +1237,7 @@ JGtm apparaissaient dans `killtype`. Avec `roster2`, les profils tombent juste :
 joueur_165 10 vs 10, XPronex 10 vs 10, joueur_1042 2 vs 2, joueur_075 20 vs 21, joueur_1035 9 vs 10, joueur_1049 9 vs 8.
 Sur 9b191a7f, `roster2` est legerement en dessous sur la metrique de recouvrement (64% vs 69%) — attendu,
 puisque `solveRoster` optimise precisement cette metrique — mais ses profils sont tres coherents (JGtm K 14 vs 15,
-joueur_1002 21 vs 22, joueur_165 5 vs 5, Duke748biposto 10 vs 10, LockeH2 7 vs 6) et son 14 correspond
+joueur_1002 21 vs 22, joueur_165 5 vs 5, joueur_1420 10 vs 10, LockeH2 7 vs 6) et son 14 correspond
 exactement au nombre de kills de la verite terrain Theater de JGtm.
 
 **A FAIRE** : basculer les modes consommateurs (killtype, assistdump, weaponfeed, fatalfeed) sur `roster2`, ou
@@ -3023,7 +3023,7 @@ dead-states Mort=1                    ...        95 | BIPEDES CREDIBLES 59 | att
 gate (b) couples justes               n/a        56/59 = 94.9%  (2e bijection 39, 10e 32, MEDIANE 1)
 ```
 Bijection obtenue par enumeration exhaustive des 8! permutations :
-`0=joueur_1033 1=joueur_117 2=JGtm 3=joueur_1002 4=joueur_051 5=joueur_165 6=LockeH2 YT 7=Duke748biposto`.
+`0=joueur_1033 1=joueur_117 2=JGtm 3=joueur_1002 4=joueur_051 5=joueur_165 6=joueur_1269 7=joueur_1420`.
 Le chantier n est donc plus mono-film.
 
 **(3) GATE (c) — CONFRONTATION AUX 14 KILLS DE JGtm VERIFIES EN THEATER.**
@@ -3033,7 +3033,7 @@ temps  victime decodee -> joueur       tag+0x00    ARME REELLE (Theater)     ver
 00:50  0 = joueur_1033                 5eaa815c    Fuel Rod SPNKr            OK
 01:27  4 = joueur_051              5eaa815c    Fuel Rod                  OK
 01:41  3 = joueur_1002                  5eaa815c    Fuel Rod                  OK
-02:49  7 = Duke748biposto              da3b5ba4    GRENADE FRAG              OK (tag DISTINCT)
+02:49  7 = joueur_1420              da3b5ba4    GRENADE FRAG              OK (tag DISTINCT)
 03:03  0 = joueur_1033                 7e6a7461    Disruptor                 OK (tag DISTINCT)
 03:55  0 = joueur_1033                 daa03c35    MELEE                     OK (tag DISTINCT)
 04:07  4 = joueur_051              5eaa815c    Fuel Rod                  OK
@@ -3225,7 +3225,7 @@ de reference. L annonce correcte est : *le decodage de l arme est etabli ; la co
 MORTS de JGtm dans `9b191a7f` (verifiables en Theater depuis sa propre vue) et testent la table de nommage
 sur des points qui n ont servi a rien :
 ```
-9b191a7f  02:28  Duke748biposto -> JGtm   tag daa03c35   PREDIT : MELEE
+9b191a7f  02:28  joueur_1420 -> JGtm   tag daa03c35   PREDIT : MELEE
 9b191a7f  03:02  joueur_1033    -> JGtm   tag daa03c35   PREDIT : MELEE
 9b191a7f  03:16  joueur_1002     -> JGtm   tag 0000b29c   PREDIT : arme de PRECISION (headshot), et
 9b191a7f  06:18  joueur_1033    -> JGtm   tag 0000b29c   PREDIT : la MEME arme qu a 03:16 et 06:36
@@ -3426,7 +3426,7 @@ C. NON-ARMES — les cas qui font tomber la table s ils sont faux
    000d5950 03:58  JOUEUR_156 -> joueur_362   MELEE (tag 2ff92041, 2e effet de melee)
    9b191a7f 02:36 / 03:06 / 06:09 / 08:55            MELEE (tag 2ff92041)
    9b191a7f 04:49  joueur_1002 -> joueur_117         NEEDLER (tag 0000d57f, AttachedDamage)
-   9b191a7f 02:56  joueur_1033 -> LockeH2 YT         FUEL ROD SPNKr (tag d7314bef)
+   9b191a7f 02:56  joueur_1033 -> joueur_1269         FUEL ROD SPNKr (tag d7314bef)
 D. PRECISION DES PREDICTIONS EN ATTENTE DE 7ter.38
    9b191a7f 03:16 / 06:18 / 06:36 (morts de JGtm)    l arme de precision est un BR75
 ```
@@ -3836,7 +3836,7 @@ P1 — KILLS EXISTANT UNIQUEMENT GRACE AU CHANTIER 7ter.40 (n ont servi a rien)
   000d5950 06:34  joueur_283 -> JOUEUR_156   Sentinel Beam
   000d5950 06:57  joueur_362    -> joueur_389      Sentinel Beam [HeadshotMultiplier]
   9b191a7f 06:27  joueur_1002      -> joueur_117       MA40 AR
-  9b191a7f 07:31  Duke748biposto  -> joueur_117       BR75 [Headshot]
+  9b191a7f 07:31  joueur_1420  -> joueur_117       BR75 [Headshot]
   9b191a7f 08:18  joueur_1033     -> joueur_117       BR75 [Headshot]
 P2 — LE TEST DECISIF << le tag n est pas un proxy de tueur >>
   9b191a7f 07:14  joueur_1002 -> joueur_117  tag 5eaa815c  PREDIT : FUEL ROD SPNKr
@@ -4015,7 +4015,7 @@ bloqueur n1 annonce en 7ter.40 (10) n est pas universel, il etait propre aux deu
 
 **(4) LE ROSTER EST RESOLU SANS AMBIGUITE SUR LES DEUX FILMS.**
 ```
-78919882  0=JGtm 1=joueur_165 2=Zeus Herd 3=joueur_1040 4=joueur_1037 5=joueur_1038
+78919882  0=JGtm 1=joueur_165 2=joueur_1534 3=joueur_1040 4=joueur_1037 5=joueur_1038
           6=joueur_1014 7=joueur_1039                  89 vs 56 (x1.59), mediane 1
 fccc61cd  0=JGtm 1=JOUEUR_1031 2=JOUEUR_1032 3=joueur_719 4=joueur_1015 5=joueur_593
           6=joueur_1022 7=joueur_117                  82 vs 60 (x1.37), mediane 1
@@ -4122,7 +4122,7 @@ JGtm sur le Fiesta.
   texte d `evtl` et la table de noms. **Il ne DECODE rien** — deliberement, pour qu aucune logique
   ne soit dupliquee et qu aucune divergence silencieuse avec la passe de reference ne soit possible.
   Controle : il retrouve exactement le 89/99 et le 82/95 d `evtl`.
-- **PIEGE : UN GAMERTAG CONTIENT DES ESPACES** (<< Zeus Herd >>, << joueur_1040 >>). Decouper la
+- **PIEGE : UN GAMERTAG CONTIENT DES ESPACES** (<< joueur_1534 >>, << joueur_1040 >>). Decouper la
   ligne `bijection indice -> joueur` sur les blancs perd la moitie des noms et fait tomber
   l appariement de **89 a 47 sur 99** sans aucun message d erreur. Tout parseur de roster doit
   decouper sur les marqueurs `<chiffre>=`. Corrige.
@@ -4235,7 +4235,7 @@ tranchees en mode Theater. Protocole : le decodeur avait publie ses etiquettes A
 
 ```
 #  film      temps  ligne                                 ETIQUETTE PUBLIEE          REPONSE THEATER              verdict
-1  78919882  09:35  JGtm -> Zeus Herd                     M41 SPNKr                  lance-roquettes M41 SPNKr    JUSTE
+1  78919882  09:35  JGtm -> joueur_1534                     M41 SPNKr                  lance-roquettes M41 SPNKr    JUSTE
           +  09:44  JGtm -> joueur_1014                       (meme tag d468178e)        idem                         JUSTE
           +  09:54  JGtm -> joueur_1038               (meme tag d468178e)        idem                         JUSTE
 2  78919882  02:35  joueur_1038 -> JGtm               GRENADE gggl rang 6        GRENADE PLASMA collante      JUSTE
@@ -4541,10 +4541,10 @@ AUCUNE ne tombe sur une ligne marquee `>>` ou `**` : les 5 tags vises ne concern
 ni aucune mort de JGtm. Elles restent verifiables, le POV de JGtm affichant le kill-feed global.
 ```
 P1  78919882  05:53, 06:08, 06:32 (joueur_1040 -> joueur_1039) et 07:56 (joueur_1039 ->
-    Zeus Herd), tag f712c64a : ARME MONTEE SUR UN VEHICULE, classe `fixed`, chassis 0000d3dc
+    joueur_1534), tag f712c64a : ARME MONTEE SUR UN VEHICULE, classe `fixed`, chassis 0000d3dc
     (5 configurations d arme declarees pour ce chassis).
     FALSIFIEE SI le tueur est a pied avec une arme tenue en main sur l une de ces 4 morts.
-P2  78919882  02:54 et 10:31 (joueur_1039 -> joueur_1014), 10:33 (joueur_1039 -> Zeus Herd),
+P2  78919882  02:54 et 10:31 (joueur_1039 -> joueur_1014), 10:33 (joueur_1039 -> joueur_1534),
     tag 003f582d : ARME DE TOURELLE, classe `turret`, declaree par les vehi 003f00c7 et
     b857fb95, et c est un MATERIEL DIFFERENT de celui de P1.
     FALSIFIEE SI c est une arme tenue, ou si c est le meme materiel qu en P1.
@@ -7552,10 +7552,10 @@ QUATRE non atteints avec leur arme reelle. Le scan les recupere tous les quatre 
 ```
 temps  ligne du feed                   tag du scan   NOM (table 7ter.39)   THEATER (7ter.37)
 01:00  JGtm -> joueur_1002              5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
-03:41  JGtm -> Duke748biposto          0000b29c      precision BR75/Bandit BR75        JUSTE
+03:41  JGtm -> joueur_1420          0000b29c      precision BR75/Bandit BR75        JUSTE
        (categorie decodee = 1 Headshot, a un AUTRE offset comp+0x0c)
 04:50  JGtm -> joueur_1033             5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
-05:12  JGtm -> Duke748biposto          5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
+05:12  JGtm -> joueur_1420          5eaa815c      Fuel Rod SPNKr        Fuel Rod    JUSTE
 ```
 **4/4.** Ces quatre lignes n ont servi a RIEN dans la construction du scan (ni le catalogue
 `jpt!`, ni les quatre tests, ni la bijection ne les ont jamais vues), et la reponse etait
@@ -9586,7 +9586,7 @@ ms=504984  v=5(joueur_165)  k=8(343 Aloysius [bot])  a=-1                kPct=10
 Aucun des trois ne s attache, et la cause est **structurelle** : le chunk HIGHLIGHT est HUMAIN-SEUL
 (7ter.59), donc une mort infligee **PAR** un bot ne produit **aucune paire** au kill-feed. Verifie
 sur le fil : a `346875` les deux seules morts publiees a moins de 3 s sont d autres couples
-(`344860 joueur_1002/JGtm`, `346080 LockeH2 YT/joueur_1033`) ; a `483679` et `504984`, **aucune mort
+(`344860 joueur_1002/JGtm`, `346080 joueur_1269/joueur_1033`) ; a `483679` et `504984`, **aucune mort
 publiee ni aucune paire de feed a plus ou moins 3 s**.
 
 **DEUX ASSISTANCES REELLES SONT DONC LUES DANS LE FILM ET PERDUES A LA PUBLICATION.**
@@ -9788,7 +9788,7 @@ explicite du lot, et ces deux films n ont aucun bot, donc aucune ligne neuve.
 La reserve arithmetique de `9b191a7f` **reste ouverte, mais elle change de nature** : le plafond
 honnete vaut toujours 27 (24 nommes + 3 morts DU bot sans kill-event trouve), sauf qu il n est
 plus atteint par des lignes qu on renonce a publier. L ecart de 3 se localise en clair :
-joueur_165 6 pour 9, joueur_117 3 pour 5, Duke748biposto 2 pour 3.
+joueur_165 6 pour 9, joueur_117 3 pour 5, joueur_1420 2 pour 3.
 
 #### (5) UNE COHERENCE INTERNE QUE PERSONNE N A CHERCHEE, ET C EST LA MEILLEURE JAMBE DU LOT
 
@@ -16035,9 +16035,9 @@ publiables ligne par ligne) :
   05:53.788  joueur_1040   -> joueur_1039  Ghost                             None
   06:08.520  joueur_1040   -> joueur_1039  Ghost                             None
   06:32.111  joueur_1040   -> joueur_1039  Ghost                             HeadshotMultiplier
-  07:56.193  joueur_1039 -> Zeus Herd       Ghost                             HeadshotMultiplier
+  07:56.193  joueur_1039 -> joueur_1534       Ghost                             HeadshotMultiplier
   10:31.083  joueur_1039 -> joueur_1014         tourelle UNSC (AMBIGU 3 banques)  HeadshotMultiplier
-  10:33.670  joueur_1039 -> Zeus Herd       tourelle UNSC (AMBIGU 3 banques)  None
+  10:33.670  joueur_1039 -> joueur_1534       tourelle UNSC (AMBIGU 3 banques)  None
 ```
 
 La sequence est coherente comme RECIT (un Ghost qui tue trois fois le meme joueur, puis ce joueur
@@ -17472,9 +17472,9 @@ l accord est exact **joueur par joueur** :
 
 ```
   78919882   API : JGtm 19 ; joueur_1040 16 ; joueur_1038 15 ; joueur_165 14 ;
-                   joueur_1037 10 ; joueur_1014 9 ; Zeus Herd 9 ; joueur_1039 7
+                   joueur_1037 10 ; joueur_1014 9 ; joueur_1534 9 ; joueur_1039 7
              DEC : JGtm 19 ; joueur_1040 16 ; joueur_1038 15 ; joueur_165 14 ;
-                   joueur_1037 10 ; Zeus Herd 9 ; joueur_1014 9 ; joueur_1039 7        -> 8 / 8
+                   joueur_1037 10 ; joueur_1534 9 ; joueur_1014 9 ; joueur_1039 7        -> 8 / 8
   fccc61cd   API : joueur_719 16 ; joueur_1022 15 ; joueur_117 15 ; joueur_593 14 ;
                    JGtm 13 ; JOUEUR_1031 11 ; JOUEUR_1032 7 ; joueur_1015 6
              DEC : idem, plus `343 PardonMy [bot]` a 1 (absent de l API : les bots n ont pas
@@ -18197,10 +18197,10 @@ gelee (`opts = nil`) :
   05:53.788  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a
   06:08.520  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a
   06:32.111  joueur_1040   -> joueur_1039  Ghost                     tag f712c64a  tir a la tete
-  07:56.193  joueur_1039 -> Zeus Herd       Ghost                     tag f712c64a  tir a la tete
+  07:56.193  joueur_1039 -> joueur_1534       Ghost                     tag f712c64a  tir a la tete
   10:31.083  joueur_1039 -> joueur_1014         sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
                                                lance-roquettes)          tag 003f582d  tir a la tete
-  10:33.670  joueur_1039 -> Zeus Herd       sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
+  10:33.670  joueur_1039 -> joueur_1534       sans nom (tourelle UNSC : Gauss OU mitrailleuse OU
                                                lance-roquettes)          tag 003f582d
 ```
 

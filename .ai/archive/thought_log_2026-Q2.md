@@ -1066,7 +1066,7 @@ Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
 
 **RÉSOLU (capture XHR navigateur sous login waypoint, puis validé headless)** : le backend MCC = **`mccapi.svc.halowaypoint.com`**, préfixe `/hmcc/`, convention **`users/gt(GAMERTAG)/…`** (wrapper `gt(...)`, ni `players/` ni `xuid()` — d'où l'échec de toutes mes sondes). Auth = même header `x-343-authorization-spartan` v4 **de notre pool** (pas de clearance, pas de `?auth=st`), CORS `*`. Validé en **headless** (`cmd/probe-mcc`, round G) : matches/service-record/achievements = 200 avec notre token, SANS navigateur. JGtm = 3 matchs (Halo2/Halo4/HaloReach, déc. 2019), service-record agrégé (gamesPlayed 3, K/D 30/52, campagne missionsCompleted 86…). Endpoints vus : `users/gt(GT)/{matches?page&pageSize, service-record, service-record/{h1,h2,h3,h4,odst,reach}/campaign, inventory, achievements?lang}`, + `hmcc/{ranks,maps,seasons,seasons/{id},playlists}?lang`. Limite notée : la liste `matches` n'a PAS de `matchId` (pas de drill-down per-match détaillé évident) ; granularité = ligne agrégée par match (score/kills/deaths/standing/medals/haloTitleId/mapId). **Donc fetch MCC = faisable avec l'infra existante** (même pattern que Halo 5 : nouveau dossier `config/titles/halo_mcc/` + adapter `internal/games/halo_mcc/`).
 
-**SURFACE API COMPLÈTE documentée** (minage bundle JS `chunk 2303` = client officiel 12 fonctions `getHaloMcc*` + validation headless `cmd/probe-mcc`, owner JGtm / subject KiingBooty) → **`.ai/MCC_UNOFFICIAL_API_REFERENCE.md`**. Points clés : 12 endpoints GET sur `mccapi.svc.halowaypoint.com/hmcc/users/gt(GT)/…` ; **public cross-joueur** (service-record/matches/achievements/campaign/skill-ranks) sauf **inventory = owner-only (403)** ; catalogues `ranks/maps/seasons/seasons/{id}` OK, `playlists` = 500, `skill-ranks` exige `hoppers`, `matches?title=` format inconnu (400) ; **pagination matchs plafonnée ~100 récents** (maxPage 4 @ pageSize 25, pageSize 100 rejeté) ; **AUCUN détail per-match / roster / per-arme** (≠ H5 `/h5/{mode}/matches/{id}` & Infinite `/{t}/matches/{id}/stats`) → la remarque user « regarder un match avec joueurs croisés » est sans objet (l'API ne l'expose pas, indépendamment du nb de matchs du joueur). Registre hosts `__NEXT_DATA__.props.settings` capturé (mccGatewayService=mccapi, + legacyGatewayService, profile/comms/wpcontent). **Prochaine étape** : décision utilisateur (commit sonde+doc ; activer ou non le titre MCC).
+**SURFACE API COMPLÈTE documentée** (minage bundle JS `chunk 2303` = client officiel 12 fonctions `getHaloMcc*` + validation headless `cmd/probe-mcc`, owner JGtm / subject joueur_1450) → **`.ai/MCC_UNOFFICIAL_API_REFERENCE.md`**. Points clés : 12 endpoints GET sur `mccapi.svc.halowaypoint.com/hmcc/users/gt(GT)/…` ; **public cross-joueur** (service-record/matches/achievements/campaign/skill-ranks) sauf **inventory = owner-only (403)** ; catalogues `ranks/maps/seasons/seasons/{id}` OK, `playlists` = 500, `skill-ranks` exige `hoppers`, `matches?title=` format inconnu (400) ; **pagination matchs plafonnée ~100 récents** (maxPage 4 @ pageSize 25, pageSize 100 rejeté) ; **AUCUN détail per-match / roster / per-arme** (≠ H5 `/h5/{mode}/matches/{id}` & Infinite `/{t}/matches/{id}/stats`) → la remarque user « regarder un match avec joueurs croisés » est sans objet (l'API ne l'expose pas, indépendamment du nb de matchs du joueur). Registre hosts `__NEXT_DATA__.props.settings` capturé (mccGatewayService=mccapi, + legacyGatewayService, profile/comms/wpcontent). **Prochaine étape** : décision utilisateur (commit sonde+doc ; activer ou non le titre MCC).
 ## [2026-06-26] Hub Relations — Phase 3b badge cross-jeu « Aussi sur {game} » (branche feat/relations-hub)
 
 **Statut** : Complété (worktree, non committé). ADDITIF / BEST-EFFORT / LECTURE SEULE.
@@ -6090,7 +6090,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 
 **Design (retour user « pas beau »)** : cellules `py-2 pr-4` → `px-3 py-2` (padding gauche+droite, le texte Joueur/# n'était plus collé aux bordures). Couleur (tokens sémantiques, skill color-tokens) : podium top-3 rang en `text-primary` + ligne `bg-primary/5` ; taux de victoire coloré par seuil (`tokenCssVar('success')` ≥55%, `'destructive'` ≤45%) via `winRateColor`.
 
-**Constat « beaucoup de vide » sur 13-2/Duo (investigué)** : ce n'est PAS une erreur. Le LEADERBOARD scrappé (200/playlist) et l'ENRICHISSEMENT (stats backfillées) sont 2 étapes distinctes. Couverture 13-2 : Arena 144/200, Slayer 115/200, Duo 120/200. Checkpoint 13-2 : done=573, completed=True. Deux causes des cases vides : (a) xuid NON résolu (ex. AoRaaw rang 3 → ligne 100% vide, pas même de cumulé) ; (b) joueur résolu mais sans ligne 13-2 (ex. TW0 PUFFS rang 1 : a un cumulé 352 mais pas de stats 13-2 → le backfill 13-2 est un instantané plus ancien que le snapshot leaderboard courant ; les nouveaux tops ne sont pas enrichis). « 0 erreurs » = pas de crash, ≠ tous enrichis.
+**Constat « beaucoup de vide » sur 13-2/Duo (investigué)** : ce n'est PAS une erreur. Le LEADERBOARD scrappé (200/playlist) et l'ENRICHISSEMENT (stats backfillées) sont 2 étapes distinctes. Couverture 13-2 : Arena 144/200, Slayer 115/200, Duo 120/200. Checkpoint 13-2 : done=573, completed=True. Deux causes des cases vides : (a) xuid NON résolu (ex. joueur_1312 rang 3 → ligne 100% vide, pas même de cumulé) ; (b) joueur résolu mais sans ligne 13-2 (ex. JOUEUR_1296 rang 1 : a un cumulé 352 mais pas de stats 13-2 → le backfill 13-2 est un instantané plus ancien que le snapshot leaderboard courant ; les nouveaux tops ne sont pas enrichis). « 0 erreurs » = pas de crash, ≠ tous enrichis.
 
 **Fix proposé (non fait, user lance)** : re-enrichir 13-2 sur le snapshot courant via un checkpoint séparé + `-force` (sans toucher le checkpoint principal ni le cache xuid) : `-season csrseason13-2 -all-tokens -force -checkpoint data/refresh13-2.json`. Retentera aussi les xuid non résolus (certains gamertags restent irrésolvables via PeopleHub).
 
@@ -6525,7 +6525,7 @@ Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage
 3. **Cache persistant** : `checkpoint.ResolvedXUIDs` (gamertag→xuid) amorce le `CachingResolver` et persiste les nouvelles résolutions → on ne re-résout JAMAIS un joueur déjà vu (fort recouvrement entre saisons). Sauvé juste après `PrepareWorldPlayers` (résilient au Ctrl-C).
 4. Tri saisons récent-d'abord (`seasonRank` numérique, commit précédent).
 
-**Résultats observés** : test csrseason11-1, 3 joueurs, multi-token : **4 lignes réelles en base** (Abature arena 478 matchs ; AURELIONIX × 3 playlists), 0 × 429 PeopleHub, 3 associations cachées. Tests : `TestAggregatePlayer_DateWindowSkipsFetch` (prouve le skip sans fetch), agrégateur + backfill verts.
+**Résultats observés** : test csrseason11-1, 3 joueurs, multi-token : **4 lignes réelles en base** (joueur_1236 arena 478 matchs ; JOUEUR_1306 × 3 playlists), 0 × 429 PeopleHub, 3 associations cachées. Tests : `TestAggregatePlayer_DateWindowSkipsFetch` (prouve le skip sans fetch), agrégateur + backfill verts.
 
 5. **Dichotomie de l'offset** (`findWindowStartOffset`) : au lieu de paginer linéairement des dizaines/centaines de pages de matchs récents pour atteindre une vieille saison, on sonde `GetMatchHistory(start=mid, count=1)` par recherche binaire sur l'offset (l'historique étant récent-d'abord, le `StartTime` décroît avec l'offset) → on saute directement à `startPage` = 1re entrée `<= SeasonEnd`, puis le filtre date gère les bords. ~log2(profondeur) requêtes au lieu de O(profondeur/25) pages. Garde-fou de date illisible → repli scan linéaire depuis `lo`.
 
@@ -7787,14 +7787,14 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Diagnostic précis (où vit la donnée)** :
 - PRODUITE : le gamertag est décodé des films (`decodeEventBytes`/`ParseHighlightEvents` → `ev.Gamertag`). FONCTIONNE pour les films récents — preuve : `killer_victim_pairs.{killer,victim}_gamertag` (même `ev.Gamertag`) est rempli à 100% tous mois (juin 1021/1021).
-- ÉCRITE : le gamertag atterrit dans `killer_victim_pairs` (table shared) — ex. xuid 2808881783914865 = "trippysponge". MAIS l'écriture vers `xuid_aliases` s'est arrêtée (shared source highlight_events figée 07/04 ; global xbox_aliases figé 29/04). [JSON abandonné pour raisons techniques — la colonne raw_json n'est plus une source.]
+- ÉCRITE : le gamertag atterrit dans `killer_victim_pairs` (table shared) — ex. xuid 2808881783914865 = "joueur_1530". MAIS l'écriture vers `xuid_aliases` s'est arrêtée (shared source highlight_events figée 07/04 ; global xbox_aliases figé 29/04). [JSON abandonné pour raisons techniques — la colonne raw_json n'est plus une source.]
 - LUE : `v_gamertag_lookup` (chokepoint unique) = `xuid_aliases ∪ match_participants.gamertag`. Ne lisait PAS `killer_victim_pairs` → nom présent en base mais invisible au lookup → masqué.
 
 **Décision (fix de la vue, pas d'ATTACH)** : `killer_victim_pairs` est dans la MÊME DB shared que la vue → ajout d'un cascade dans `GamertagLookupViewSQL` (identity.go) : bot → xuid_aliases → match_participants → **killer_victim_pairs (killer ∪ victim)** → masqué. Zéro ATTACH, zéro nouvelle table.
 
 **Robustesse (DuckDB bind les vues à la création → la table doit préexister)** : `killer_victim_pairs` (créée seulement par migration jusqu'ici) ajoutée à `sharedSchemaSQL` (boot) ET garantie via `CREATE TABLE IF NOT EXISTS` dans `applyResolutionViews` (chemin migration + RebuildMatchParticipantsART). Sinon le boot fresh / le rebuild ART crashaient (constaté et corrigé).
 
-**Résultats** : sur données réelles, masqués récents 78 → 5 (les 5 restants n'ont aucun kill/death enregistré). trippysponge & co résolus. Test `TestGamertagLookupView_NeverLeaksRawXuid` étendu (cas cascade killer + victime). Piège rencontré : un `;` dans un commentaire SQL cassait `splitSQL` (corrigé).
+**Résultats** : sur données réelles, masqués récents 78 → 5 (les 5 restants n'ont aucun kill/death enregistré). joueur_1530 & co résolus. Test `TestGamertagLookupView_NeverLeaksRawXuid` étendu (cas cascade killer + victime). Piège rencontré : un `;` dans un commentaire SQL cassait `splitSQL` (corrigé).
 
 **Prochaine étape** : commit sur autorisation. Note : la cause amont (pourquoi xuid_aliases ne reçoit plus les events) reste ouverte mais contournée — la vue lit désormais la source vivante (killer_victim_pairs).
 
@@ -10145,7 +10145,7 @@ Résultats observés :
   rel=161 final=3 (team1) et rel=273 final=2 (team0) — finissent EXACTEMENT aux finals DB.
   Captures team1 ~520/700/820s, team0 ~780/800s. Pas de flux d'events (chunk type-9 absent).
 - 53ce4390 (DB team0=1, team1=2) : NON matérialisé dans TYPE_2. Aucun compteur final=2 ne passe
-  0->1 au chunk couvrant la capture connue (t=655000ms, TheRaeSide team1 -> 1-1 ; usable-idx 31/32).
+  0->1 au chunk couvrant la capture connue (t=655000ms, joueur_1380 team1 -> 1-1 ; usable-idx 31/32).
   La capture connue est confirmée par l'event th=10 t=656558 + un burst de frame 1081B @656561.
   Les events th=10 = interactions drapeau (grab/return/capture) SANS sous-type lisible (re-confirmé
   par analyse colonne des blocs 60o). 53ce a le flux d'events mais 64e8 ne l'a pas.
@@ -11520,8 +11520,8 @@ En attente : timings CTF/Strongholds de l'utilisateur (53ce4390 Behemoth / 7344d
 Vagabond) pour verrouiller la semantique des events objectif th=10.
 
 Suite (meme jour) — ground-truth utilisateur recu, events objectif th=10 VALIDES :
-- b37/b38 = team_id (CONFIRME vs roster DB : team0 joueur_508/CnR/TAURUS/Oilycrusader,
-  team1 JGtm/TheRaeSide/Atrezik/Glad). Mon hypothese "grab/secure" precedente ETAIT
+- b37/b38 = team_id (CONFIRME vs roster DB : team0 joueur_508/CnR/TAURUS/joueur_1154,
+  team1 JGtm/joueur_1380/Atrezik/Glad). Mon hypothese "grab/secure" precedente ETAIT
   FAUSSE, corrigee par le ground-truth.
 - b[0:32] = gamertag de l'acteur (UTF-16). b36 = slot joueur. prefixe marqueur = 0x2d
   constant. AUCUN champ ne distingue l'action (grab/return/capture CTF) ni la zone
@@ -28400,7 +28400,7 @@ Total v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentée
 
 **Itération v2.4 — pépites Onyx / Pro depuis Reddit (sources locales)** :
 - L'utilisateur a sauvegardé les 7 threads Reddit en local (`<poste>\Downloads\Perso\*.html`) après avoir constaté que Reddit était bloqué par WebFetch. Un sous-agent `general-purpose` a parsé les HTML via PowerShell (regex sur `post-rtjson-content` + strip tags + decode entités) et synthétisé ~78 000 caractères de texte utile.
-- Tips issus du consensus pluri-threads + pépites Onyx (Marathon RB CSR 1658, THEFuentes, autres D5-D6) :
+- Tips issus du consensus pluri-threads + pépites Onyx (joueur_1170 CSR 1658, THEFuentes, autres D5-D6) :
   - **Combat ingame.4** : Halo Infinite est un jeu de visée au stick gauche (guide réticule via mouvement Spartan, stick droit pour micro-ajustements). Inverse de l'instinct CoD.
   - **Combat tactical.3** : Ne saute pas en duel — consensus le plus fort (5 mentions). Sauter coupe l'aim assist, trajectoire prévisible.
   - **Combat tactical.4** : N'ADS pas par défaut. Le zoom ne change pas bloom/magnétisme, baisse juste la sensi.
@@ -28418,7 +28418,7 @@ Total v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentée
   - **Impact strategic.1** : Map control > kills — à chaque respawn, demande « où je dois être » pas « où je tue ». Le killboard = conséquence, pas l'objectif.
   - **Impact strategic.4** : Présence vs contrôle (pépite Onyx « Fundamentals ») — rat-tunneler pour KD ≠ créer de la présence.
   - **Impact strategic.5** (enrichi) : Curb slide ajouté (sprint depuis rebord + crouch atterrissage = boost vitesse).
-  - **Impact routine.1** (enrichi) : revue depuis POV coéquipier en plus du sien (pépite Marathon RB).
+  - **Impact routine.1** (enrichi) : revue depuis POV coéquipier en plus du sien (pépite joueur_1170).
 
 Total final v2.4 : **~60 tips** FR/EN, ~500 lignes.
 

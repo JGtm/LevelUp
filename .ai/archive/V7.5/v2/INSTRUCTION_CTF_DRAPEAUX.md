@@ -269,12 +269,12 @@ lecture seule) contre la cuisson du **film complet du cache** au HEAD (`cmd/repl
 | xuid | nom | courbe de score, parc | actions, parc (schéma 20) | courbe, HEAD | actions, HEAD (avant correctif) |
 |---|---|---|---|---|---|
 | 2533274823110022 | JGtm | non | — | non | `kills=2 assists=1` |
-| 2630521749790773 | GEK XD | oui | `kills=1 assists=2` | oui | `kills=1 assists=2` |
+| 2630521749790773 | JOUEUR_1528 | oui | `kills=1 assists=2` | oui | `kills=1 assists=2` |
 | 2588623217004373 | joueur_658 | oui | `kills=1` | oui | `kills=1` |
 | 2639041738602226 | joueur_1023 | oui | `kills=2` | oui | `kills=2` |
 | **2569104772637498** | **joueur_631** | oui | **`kills=7 assists=1 flag_captures=1 flag_steals=1`** | oui | **—** |
-| 2805158871119453 | DiegoGamer8K | oui | `assists=1` | oui | **—** |
-| 2715607967843624 | EwN1W | non | — | non | `kills=2 assists=1` |
+| 2805158871119453 | joueur_1242 | oui | `assists=1` | oui | **—** |
+| 2715607967843624 | joueur_1537 | non | — | non | `kills=2 assists=1` |
 
 Totaux : **17 actions au parc** (11 `kills`, 4 `assists`, 1 `flag_captures`, 1 `flag_steals`)
 contre **12 au HEAD** (8 `kills`, 4 `assists`, **aucune famille `flag`**). La couverture du
@@ -292,8 +292,8 @@ MANCHE (fil des morts) »). Cuisson du même film complet de part et d'autre, **
 
 | commit | actions | familles | joueurs porteurs d'actions |
 |---|---|---|---|
-| `d173b1a8c^` (`ed5c378b8`) | **17** | `kills=11 assists=4 flag_captures=1 flag_steals=1` | GEK XD, joueur_658, joueur_1023, **joueur_631**, DiegoGamer8K |
-| **`d173b1a8c`** | **12** | `kills=8 assists=4` | JGtm, GEK XD, joueur_658, joueur_1023, EwN1W |
+| `d173b1a8c^` (`ed5c378b8`) | **17** | `kills=11 assists=4 flag_captures=1 flag_steals=1` | JOUEUR_1528, joueur_658, joueur_1023, **joueur_631**, joueur_1242 |
+| **`d173b1a8c`** | **12** | `kills=8 assists=4` | JGtm, JOUEUR_1528, joueur_658, joueur_1023, joueur_1537 |
 
 **Ligne** : `apps/go-api/internal/replaybuild/matchfacts.go`, `identifiedEvents` — l'appel
 `objectiveevents.SlotIdentityFrom(recs, lines)` (pont par **TRIPLET**, exige les lignes de match)
@@ -307,11 +307,11 @@ Les deux ponts, mesurés **sur le même film**, slot par slot :
 |---|---|---|---|
 | 10 | joueur_1023 | joueur_1023 | accord |
 | 14 | — | JGtm | le triplet se tait |
-| 16 | GEK XD | GEK XD | accord |
+| 16 | JOUEUR_1528 | JOUEUR_1528 | accord |
 | 18 | joueur_658 | joueur_658 | accord |
-| 20 | DiegoGamer8K | — | **les morts se taisent** |
+| 20 | joueur_1242 | — | **les morts se taisent** |
 | 22 | **joueur_631** | — | **les morts se taisent** |
-| 24 | — | EwN1W | le triplet se tait |
+| 24 | — | joueur_1537 | le triplet se tait |
 
 **ZÉRO CONTRADICTION.** Chacun nomme 5 slots, 3 en commun et à l'identique ; chacun nomme 2 slots
 que l'autre laisse tomber. Ce ne sont pas deux réponses concurrentes, ce sont **deux couvertures
@@ -319,7 +319,7 @@ complémentaires** — et `d173b1a8c` a remplacé l'une par l'autre au lieu de l
 
 **Pourquoi le pont par morts se tait sur les slots 20 et 22** : `deathInstantMin = 3`
 (`objectiveevents/slotidentity_deaths.go`). Un slot n'est nommé que s'il aligne au moins **trois**
-instants de mort coïncidents. joueur_631 meurt **2** fois, DiegoGamer8K **1** fois. Ils sont
+instants de mort coïncidents. joueur_631 meurt **2** fois, joueur_1242 **1** fois. Ils sont
 hors de portée **par construction** — et ce sont, par définition, les joueurs qui meurent le
 moins, c'est-à-dire les meilleurs, c'est-à-dire ceux qui portent le drapeau.
 
@@ -327,7 +327,7 @@ moins, c'est-à-dire les meilleurs, c'est-à-dire ceux qui portent le drapeau.
 de l'autre) :
 
 ```
-slot 20 : 1 progression de mort [59881]        -> 2805158871119453 (DiegoGamer8K)  1 sur 1, et LUI SEUL
+slot 20 : 1 progression de mort [59881]        -> 2805158871119453 (joueur_1242)  1 sur 1, et LUI SEUL
 slot 22 : 2 progressions de mort [46451 70141] -> 2569104772637498 (joueur_631)  2 sur 2, et LUI SEUL
 ```
 
@@ -363,8 +363,8 @@ propriété que `d173b1a8c` avait gagnée est conservée.
 Câblé dans `replaybuild.identifiedEvents`, qui recevait déjà les faits pour la courbe de score.
 
 **Résultat mesuré sur le film complet** : **23 actions**, **7 joueurs pontés sur 7 présents au
-film**, et chacun publie **EXACTEMENT sa ligne de la feuille de match** (JGtm 2/1, GEK XD 1/2,
-joueur_658 1/0, joueur_1023 2/0, joueur_631 7/1, DiegoGamer8K 0/1, EwN1W 2/1 — total
+film**, et chacun publie **EXACTEMENT sa ligne de la feuille de match** (JGtm 2/1, JOUEUR_1528 1/2,
+joueur_658 1/0, joueur_1023 2/0, joueur_631 7/1, joueur_1242 0/1, joueur_1537 2/1 — total
 15 `kills`, 6 `assists`, conforme à l'API). Les deux actions de drapeau sont revenues, sur
 joueur_631, aux mêmes instants qu'au parc. Le 8e joueur de la feuille (5 frags, 0 mort) n'a
 aucune trajectoire dans le film : il n'a pas de slot à nommer.

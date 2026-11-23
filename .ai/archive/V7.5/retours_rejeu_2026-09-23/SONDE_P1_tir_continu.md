@@ -95,7 +95,7 @@ avance de 1 par tir, traverse morts et corps (JOUEUR_441 : c204 sur le corps 532
 | 81c02726 | les 7 autres | 0 à 5 sur tout le match | — |
 | 8a485699 | joueur_1052 (4) | **+23** (t 555-1500) | son Ghost 745-1169 (0 touche) |
 | 8a485699 | joueur_1001 (7) | **+37** (2194-2661) ; +6 (2692-3424) | sa Banshee 2334-2449 ; son Chopper 3099-3205 |
-| 8a485699 | xmatt3434x (0) | **+54, +107, +30** entre ses tirs ENREGISTRÉS `11725DC4` de 4508, 4605, 4655, 4777 | son Wasp 4454-4943 |
+| 8a485699 | joueur_1089 (0) | **+54, +107, +30** entre ses tirs ENREGISTRÉS `11725DC4` de 4508, 4605, 4655, 4777 | son Wasp 4454-4943 |
 | 8a485699 | 0, 1, 2, 4 | +48, +181, +183, +210 | après la prise du Rayon de Sentinelle (1998, 4205, 5612, 5132) |
 | 8a485699 | 3, 5 | 0 | — |
 

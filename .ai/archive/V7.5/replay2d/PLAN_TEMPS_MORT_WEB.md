@@ -164,7 +164,7 @@ seuls joueurs mesurés :
   120,9 s / 130,7 s / 159,2 s (02:00 à 02:39), médiane par mort 10,1 s, plus long trou
   18,3 s ; cumul des mesurés 411 s sur 40 trous ;
 - `64e8adfa` (834 s, 8 joueurs, 11 vies non rattachées) : **1 mesuré / 7 en « — »** ;
-  Bel homme 21 à 92,4 s (01:32), médiane par mort 10,2 s. flamesamurai, le cas du
+  joueur_1424 à 92,4 s (01:32), médiane par mort 10,2 s. joueur_1150, le cas du
   relecteur, est bien REFUSÉ (il aurait affiché 311,1 s, soit 05:11).
 
 Les médianes des joueurs mesurés restent dans la fourchette 8-10 s du registre, et le cas
@@ -217,7 +217,7 @@ Plausibilité — AVANT (règle large, ronde 1) puis APRÈS (règle contenue, ro
 | TOTAL | 5 / 19 | **13 mesurés / 11 refus** | | |
 
 VÉRIFIÉ NOMMÉMENT (assertions de la sonde, pas une lecture à l'oeil) : `JGtm` sur `000d5950`
-et `flamesamurai` sur `64e8adfa` restent REFUSÉS — les deux cas prouvés par la revue.
+et `joueur_1150` sur `64e8adfa` restent REFUSÉS — les deux cas prouvés par la revue.
 `7344d24f` passe à zéro refus : ses 5 traces anonymes courent toutes jusqu'à la dernière
 image (5 647 à 5 688 sur 5 689), donc aucune n'est contenue dans un trou. C'est exactement le
 motif « caméra de fin de match » que l'affinement devait cesser de punir. Les 11 refus qui

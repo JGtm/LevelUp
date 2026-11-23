@@ -117,13 +117,13 @@ regardait la victime au moment ou elle part (1,00 = pile dessus, 0 = de cote).
 |---|---|---|---|---|---|---|---|---|
 | C1 | `af3500aa` · `af3500aa-d13b-4ae6-858e-2416576e5212` | **1:34** | joueur_117 | **JGtm** | 2,6 → 11,0 m/s | 2,4 m | 0,99 | **Le meilleur candidat** : c'est vous qui partez, a bout portant, et le porteur vous regarde. Coup d'envoi du film a 1:18. |
 | C2 | `a03a5e65` · `a03a5e65-ede1-4a35-95ef-1bb6e07c6faa` | **2:38** | joueur_165 | **JGtm** | 2,6 → 6,8 m/s | 0,3 m | 0,97 | Corps a corps. Coup d'envoi 0:28. |
-| C3 | `af3500aa` · (idem C1) | **3:48** | Seb4Slay3r | **JGtm** | 2,4 → 6,5 m/s | 2,0 m | 1,00 | Vous partez exactement dans l'axe du porteur. |
+| C3 | `af3500aa` · (idem C1) | **3:48** | joueur_1270 | **JGtm** | 2,4 → 6,5 m/s | 2,0 m | 1,00 | Vous partez exactement dans l'axe du porteur. |
 | C4 | `4577fcc4` · `4577fcc4-174c-47fc-a3ab-91140dd03486` | **3:25** | joueur_117 | joueur_165 | 2,3 → 9,9 m/s | 4,5 m | 0,89 | La plus forte projection hors JGtm. Coup d'envoi 0:29. |
 | C5 | `d9781168` · `d9781168-5fd6-4b00-a862-56e3a0a1f956` | **7:10** | (non nomme) | JOUEUR_198 | 2,6 → 8,5 m/s | 5,8 m | 1,00 | A la limite de portee. Coup d'envoi 0:40. |
 | C6 | `9f57c612` · `9f57c612-0a93-4c6e-8955-c1caf0a23833` | **4:47** | joueur_829 | joueur_641 | 1,7 → 7,9 m/s | 1,9 m | 0,97 | Coup d'envoi 0:38. |
-| C7 | `3d58eb37` · `3d58eb37-8efe-4042-8315-5b6a0e3a7525` | **5:36** | joueur_258 | Sizzlechest0 | 2,1 → 7,3 m/s | 2,2 m | 0,92 | Coup d'envoi 0:30. |
+| C7 | `3d58eb37` · `3d58eb37-8efe-4042-8315-5b6a0e3a7525` | **5:36** | joueur_258 | joueur_1444 | 2,1 → 7,3 m/s | 2,2 m | 0,92 | Coup d'envoi 0:30. |
 | C8 | `a36c8bed` · `a36c8bed-e6a0-4ba2-be69-916074e8df6f` | **0:41** | joueur_054 | joueur_401 | 2,9 → 6,6 m/s | 4,3 m | inconnu | Tout debut de partie. Coup d'envoi 0:37. |
-| C9 | `879a4dba` · `879a4dba-8228-4920-83ff-814c5061a3d7` | **4:07** | F0up0udav3851 | seasonedbacon2 | 2,9 → 6,5 m/s | 4,0 m | 0,07 | **Le plus faible** : le porteur regardait ailleurs. Garde pour l'ecart de qualite. |
+| C9 | `879a4dba` · `879a4dba-8228-4920-83ff-814c5061a3d7` | **4:07** | joueur_1111 | joueur_1096 | 2,9 → 6,5 m/s | 4,0 m | 0,07 | **Le plus faible** : le porteur regardait ailleurs. Garde pour l'ecart de qualite. |
 
 *Neuf candidats seulement sur tout le parc : la regle est severe (elle rejette notamment les
 sauts de position a 90 m/s, qui sont des reapparitions et non des poussees).*

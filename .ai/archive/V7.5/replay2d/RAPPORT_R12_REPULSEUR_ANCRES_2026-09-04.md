@@ -77,7 +77,7 @@ ecrite au depot, anterieure au releve et independante de lui.
 lot kills-hors-arme du 2026-08-29) consigne l'UNIQUE kill au repulseur de toute la base :
 
 > match `215e7022-9959-4a1e-85aa-861161b588f4`, 2026-02-03 16:13 UTC, Argyle,
-> Quick Play/Team Slayer, **t = 325 526 ms**, joueur_622 -> aK2fResHv3
+> Quick Play/Team Slayer, **t = 325 526 ms**, joueur_622 -> joueur_1138
 
 `killsource.Kill.TimeMS` est documente mot pour mot comme « instant de la mort, en
 **millisecondes depuis le debut du film** ». Or **325 526 ms = 5:25,5**, et le releve place
@@ -212,12 +212,12 @@ Instrument : `killsource/r12_ancre_kill_research_test.go`, `TestR12AncreKill`. I
 chemin de PRODUCTION `killsource.Decode` (gele) sur le film et publie ses 51 kills.
 
 ```
-5:25.5   tag=07104b31 Repulsor   cls=ARME SOUS_RESERVE   tueur=joueur_622   victime=aK2fResHv3
+5:25.5   tag=07104b31 Repulsor   cls=ARME SOUS_RESERVE   tueur=joueur_622   victime=joueur_1138
 ANCRE U1 : t=325526 ms  origine=credit-concordant  voie=marche  — fenetre [323000,328000] : true
 ```
 
 **Verdict pre-inscrit : PASSE.** Un seul kill au tag `0x07104b31` dans tout le film, a
-**325 526 ms**, tueur **joueur_622**, victime **aK2fResHv3**, origine `credit-concordant`, voie
+**325 526 ms**, tueur **joueur_622**, victime **joueur_1138**, origine `credit-concordant`, voie
 `marche` (la voie a 98,2 % de justesse de couple). C'est EXACTEMENT la ligne que le registre
 des reports consigne depuis le 2026-08-29, rejouee ici.
 
@@ -242,7 +242,7 @@ NOMS ligne a ligne ne sont pas publiables en toute rigueur. Ce qui tient malgre 
 TAG et l'INSTANT ne passent pas par la bijection (ils viennent du dead-state et du kill-feed),
 et le nom `joueur_622` est ici corrobore par une source externe — le releve Theater. Trois autres
 lignes du meme decodage coincident d'ailleurs avec le releve sans avoir ete cherchees :
-JGtm tue Bot ziker en melee a 8:20,2 (le releve dit « il meurt vers 8:22 »), et Bot ziker tue
+JGtm tue joueur_1067 en melee a 8:20,2 (le releve dit « il meurt vers 8:22 »), et joueur_1067 tue
 en melee a 9:50,3 (le releve situe la un ramassage d'joueur_622).
 
 ### 2.2 Mesure A2 — i48 retrouve les QUATRE ramassages, avec un ecart CONSTANT
@@ -258,7 +258,7 @@ bipede. Palette **famille A** (31 lectures a rang sur 31 portent ses marqueurs) 
 |---|---|---|
 | P1 JGtm 3:48 | **3:49,3** slot 549 | **+1 348 ms** |
 | P2 joueur_622 4:55 | **4:56,9** slot 560 | **+1 968 ms** |
-| P3 Bot ziker 8:14 | **8:15,4** slot 592 | **+1 429 ms** |
+| P3 joueur_1067 8:14 | **8:15,4** slot 592 | **+1 429 ms** |
 | P4 joueur_622 9:50 | **9:51,5** slot 608 | **+1 553 ms** |
 
 **4/4 apparies** (seuil pre-inscrit : 2). Et le fait qui vaut plus que le compte : **les
@@ -418,7 +418,7 @@ Et le journal des instants, qui vaut plus que les taux :
 **Les DEUX seules occurrences du type 104 de tout le film tombent a 5:25,5 et 5:25,6 —
 c'est-a-dire a l'instant du kill au repulseur d'joueur_622 (325 526 ms, mesure A1), a 100 ms
 pres.** Et quatre des dix occurrences du type 105 sont dans les fenetres, dont trois au meme
-instant et deux a **8:16,0** — c'est-a-dire 600 ms apres le ramassage de Bot ziker mesure par
+instant et deux a **8:16,0** — c'est-a-dire 600 ms apres le ramassage de joueur_1067 mesure par
 i48 (8:15,4), la ou le releve dit « il l'utilise quasi immediatement ».
 
 **Le report n°1 de R9 — le type 14 `PlayEffectOnObject` — est REFUTE comme canal du

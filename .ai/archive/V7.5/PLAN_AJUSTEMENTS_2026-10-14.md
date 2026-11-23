@@ -201,7 +201,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   les ajoute à la planche d'écoute, le user choisit.
 
 ### Lot F — Film : poussée du répulseur et pose de faille (Opus ; après fusion images-clés)
-- [x] F1 (canal ÉTABLI le 14/10 : 104 ref0 = slot poussé, impulsion portée depuis l exe, 105 ref1 = auteur ; 0d9a9af9 : JGtm à 0:54,8 et 1:04,4 par joueur_1026, joueur_161 à 3:59,0 par Clearshields ; ancre 215e7022 à la ms du kill ; contrôle trajectoire 14/14 contre 1/14 au témoin ; rappel 7/9 dont 2 faux positifs du détecteur (fentes de corps-à-corps), 7/7 sur les vraies poussées ; 104 jamais en tête de liste) Instruction répulseur, seuil écrit d'avance : lire les 104/105/119 par la grammaire de
+- [x] F1 (canal ÉTABLI le 14/10 : 104 ref0 = slot poussé, impulsion portée depuis l exe, 105 ref1 = auteur ; 0d9a9af9 : JGtm à 0:54,8 et 1:04,4 par joueur_1026, joueur_161 à 3:59,0 par joueur_1385 ; ancre 215e7022 à la ms du kill ; contrôle trajectoire 14/14 contre 1/14 au témoin ; rappel 7/9 dont 2 faux positifs du détecteur (fentes de corps-à-corps), 7/7 sur les vraies poussées ; 104 jamais en tête de liste) Instruction répulseur, seuil écrit d'avance : lire les 104/105/119 par la grammaire de
   PRODUCTION (vue A), pas le harnais R12 (palette non classée sur ce build), sur 215e7022 et
   a6ae19fb (ancres Theater) puis 0d9a9af9 ; critère de validité : la poussée tombe sur le slot
   qui accélère dans 0-300 ms (contrôle trajectoire), ≥ 80 % des poussées détectées près d'un
@@ -301,7 +301,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 
 ## 5. Suite du 15/10 (après clôture)
 - [ ] Position des poses de faille depuis l objet ti=38 né à la pose (levelup-80 ; 123/123 positions au parc, écart au porteur 4 cm) — repli porteur compté, échange retiré.
-- [ ] K-A (fix/ks-a-doublons, Sonnet) : temps forts dédoublonnés par marqueur de fin (34db6b33, Partycz : 86 matchs), tri stable killer_victim, passe 2 sans mort fantôme, contrôle des morts officielles (sans troncature arbitraire, en reprise), `repair-highlight-phantoms` documentée.
+- [ ] K-A (fix/ks-a-doublons, Sonnet) : temps forts dédoublonnés par marqueur de fin (34db6b33, joueur_1470 : 86 matchs), tri stable killer_victim, passe 2 sans mort fantôme, contrôle des morts officielles (sans troncature arbitraire, en reprise), `repair-highlight-phantoms` documentée.
 - [ ] K-B (fix/ks-b-equipe-bots, Opus) : équipe des bots par build (octet 4 en 1.10-1.12), fragments « 43 X » écartés.
 - [ ] K-C (fix/ks-c-vies-nommees, Opus) : registre d identité partagé sync/cuisson, vies sans nom des artefacts publiés (Firefight hors périmètre, décision user).
 - [x] Armes au sol (feat/armes-sol-depart, fusionné le 15/10 ; 31/90 sur 0d9a9af9, 87/221 sur 1b2d9e08) : armes de départ lâchées masquées par défaut, option dans les réglages (décision user 15/10).

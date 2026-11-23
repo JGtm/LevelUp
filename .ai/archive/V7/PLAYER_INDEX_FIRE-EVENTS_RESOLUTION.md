@@ -136,7 +136,7 @@ Ancien comportement de `correlate_kills_global` : pool unique de tous les events
 claim-and-remove par proximité temporelle sans filtrage par joueur.
 
 **Symptôme observé (match `82f3af9f`) :** 4 fire events de joueur_154 attribués
-aux kills de JGtm (×1), NewFlipBobCat (×2), alpal capone (×1).
+aux kills de JGtm (×1), joueur_1285 (×2), joueur_1331 (×1).
 
 **Supprimé le 2026-03-18** — remplacé par le filtre `ev["player_index"] == killer_pi`.
 
@@ -456,11 +456,11 @@ comme quota pour marquer les kills les plus incertains (plus grand gap film) :
 
 ## Cas edge documentés
 
-### TypeRsamurai — pi=9 dans PLAYER_METADATA, absent de b5>>4
+### joueur_1105 — pi=9 dans PLAYER_METADATA, absent de b5>>4
 
-Sur match `a974fdeb` (9 joueurs humains), TypeRsamurai apparaît avec `pi=9` dans
+Sur match `a974fdeb` (9 joueurs humains), joueur_1105 apparaît avec `pi=9` dans
 PLAYER_METADATA. Or b5>>4 ne retourne que des valeurs 0–7 sur ce match (8 slots).
-Résultat : 0 fire event trouvé pour TypeRsamurai, son unique kill → no_event → sentinel
+Résultat : 0 fire event trouvé pour joueur_1105, son unique kill → no_event → sentinel
 grenade (API confirme : `grenade_kills=1`).
 
 Hypothèse : joueur arrivé après le début du match (slot 9 dans PLAYER_METADATA mais

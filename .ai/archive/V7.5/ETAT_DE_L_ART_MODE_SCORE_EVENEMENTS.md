@@ -188,7 +188,7 @@ Extrait verifie sur `696a9d7c` — le premier evenement du match et la rafale de
 ```
 t=  48.90s  equipe 0  joueur_780          <- releve terrain : « 0:48 joueur_780 capture la base B »
 t=  53.56s  equipe 1  joueur_117
-t=  53.56s  equipe 1  AG x GibsoN Zz
+t=  53.56s  equipe 1  joueur_1305
 t=  72.94s  equipe 0  joueur_780
 t=  89.29s  equipe 0  joueur_657
 t=  89.29s  equipe 0  joueur_115
@@ -1239,7 +1239,7 @@ candidat toujours loin derriere (0 a 4) :
 
 | slot | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 |
 |---|---|---|---|---|---|---|---|---|
-| joueur | joueur_780 | joueur_115 | AG x GibsoN Zz | joueur_379 | joueur_657 | joueur_117 | JGtm | NeonKnight3166 |
+| joueur | joueur_780 | joueur_115 | joueur_1305 | joueur_379 | joueur_657 | joueur_117 | JGtm | NeonKnight3166 |
 | frags expliques | 6/8 | 14/15 | 15/15 | 8/9 | 14/15 | 14/15 | 8/9 | 16/16 |
 
 La meme operation avec les evenements d'objectif attribue a chaque slot un **xuid**, ce qui

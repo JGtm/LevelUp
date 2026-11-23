@@ -277,7 +277,7 @@ décodeur.
 > information n'est pas exploitée par le pont. **C'est LA piste, et elle reste à instruire.**
 
 **Second constat, distinct, sur le même panneau :** à `0:00` la colonne COBRA n'affiche que 4
-fiches alors que le camp en compte 5. « Ady 01 » n'apparaît qu'en fin de match, à la place de
+fiches alors que le camp en compte 5. « joueur_1361 » n'apparaît qu'en fin de match, à la place de
 « joueur_828 ». C'est le **relais de siège** (`model/seatLogic.ts:82`) : un arrivant apparié à
 un partant disparaît de la liste des sièges et vit dans celui de son prédécesseur. Intentionnel et
 documenté, mais rien à l'écran ne dit qu'un siège est partagé.

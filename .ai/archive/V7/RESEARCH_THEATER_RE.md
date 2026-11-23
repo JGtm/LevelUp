@@ -531,11 +531,11 @@ Exploration pure (aucune source). Le doc note depuis le début que `type_hint=10
 Chaque event th=10 porte (comme les kill/death) : **xuid acteur + time_ms précis**. Structure du bloc (VALIDÉE par ground-truth utilisateur sur CTF 53ce4390, 2026-06-01) :
 - `b[55]` (is_medal) = 0 ; `b[59]` = **2** (constant pour tous les th=10) — discriminant "event de mode".
 - `b[36]` = **slot joueur 0-3, constant par xuid** (slot dans la structure).
-- `b[37]/b[38]` = **team_id du joueur** (`00 00` = team 0, `01 01` = team 1). CONFIRMÉ : le split 4/4 des events colle exactement au roster DB (CTF 53ce4390 : team 0 = joueur_508/CnR SPACE XV/oo TAURUS oo/Oilycrusader ; team 1 = JGtm/TheRaeSide/x Atrezik/II Glad). **Correction** : ce n'était PAS un sous-type grab/capture (hypothèse infirmée par le ground-truth).
+- `b[37]/b[38]` = **team_id du joueur** (`00 00` = team 0, `01 01` = team 1). CONFIRMÉ : le split 4/4 des events colle exactement au roster DB (CTF 53ce4390 : team 0 = joueur_508/joueur_1215/joueur_1428/joueur_1154 ; team 1 = JGtm/joueur_1380/x Atrezik/II Glad). **Correction** : ce n'était PAS un sous-type grab/capture (hypothèse infirmée par le ground-truth).
 
-**Validé end-to-end (CTF 53ce4390, timings Theater = time_ms film)** : les events th=10 = **interactions de drapeau** (grab/return/capture) horodatées + joueur (xuid→gamertag). Mappings confirmés : grabs de TheRaeSide (flag runner team 1, 8 events) et Oilycrusader (team 0) vers ~2:13/3:04 ; double return à 5:21 par CnR SPACE XV + oo TAURUS oo ; **capture par joueur_508 à 5:41** (en cluster simultané avec les resets de drapeau). Score final 2-1 team 0 (3 captures totales, cohérent avec le timeout).
+**Validé end-to-end (CTF 53ce4390, timings Theater = time_ms film)** : les events th=10 = **interactions de drapeau** (grab/return/capture) horodatées + joueur (xuid→gamertag). Mappings confirmés : grabs de joueur_1380 (flag runner team 1, 8 events) et joueur_1154 (team 0) vers ~2:13/3:04 ; double return à 5:21 par joueur_1215 + joueur_1428 ; **capture par joueur_508 à 5:41** (en cluster simultané avec les resets de drapeau). Score final 2-1 team 0 (3 captures totales, cohérent avec le timeout).
 
-**Strongholds aussi validé (7344d24f)** : les th=10 = **captures de zone**, timings = ground-truth utilisateur (JGtm capture 0:52 et 3:16 → events portent le xuid de JGtm 2533274823110022 ; base B 1:24 ; etc.). `b[0:32]` = gamertag de l'acteur (confirmé : "Oilycrusader", "TheRaeSide", "joueur_508"…).
+**Strongholds aussi validé (7344d24f)** : les th=10 = **captures de zone**, timings = ground-truth utilisateur (JGtm capture 0:52 et 3:16 → events portent le xuid de JGtm 2533274823110022 ; base B 1:24 ; etc.). `b[0:32]` = gamertag de l'acteur (confirmé : "joueur_1154", "joueur_1380", "joueur_508"…).
 
 **Reste ouvert — le sous-type/zone n'est dans AUCUN champ lisible** : vérifié exhaustivement sur CTF (ground-truth grab/return/capture) que `b[0:32]`=gamertag, `b36`=slot, `b37/b38`=team, `b59`=2, **préfixe marqueur=0x2d (constant)** — aucun ne distingue grab/return/capture (CTF) ni la zone A/B/C (Strongholds). L'action/zone n'est donc PAS encodée dans l'event highlight ; elle nécessite la machine d'état drapeau/zone (replication). Heuristique : les CAPTURES apparaissent en **clusters simultanés** d'une même équipe (la capture reset les drapeaux/zones → burst). 
 
@@ -620,7 +620,7 @@ préfixes `a4 00 00 00`, `03 48 00 00 01`, `06 90 00 00 02`, `0d 20 00 00 05`, `
 (la valeur gauche double ; préfixes **constants inter-match**, seul l'octet d'instance final varie). **Détecteur =
 frame avec `tiers==6`** (≥3× baseline ; `tiers≥4` sur-compte). Distinct des bursts de mort (`38 68 e4`) / respawn
 (`2d 20 71 22`). **COUNT + TIMING = rock-solid** : 0 manque / 0 faux positif sur 4 matchs (counts = DB exactement :
-0f9550e5=5, 53ce4390=3, dcf44b35=9, 64e8adfa=5), ms-précis. Ancre or validée : 53ce4390 capture TheRaeSide à
+0f9550e5=5, 53ce4390=3, dcf44b35=9, 64e8adfa=5), ms-précis. Ancre or validée : 53ce4390 capture joueur_1380 à
 t=656554 (burst 1081o) = th=10 t=656558 team1. **ÉQUIPE par capture** : fiable via l'**event th=10 `b55`(team)
 coïncident ±5ms** — MAIS seulement si le **chunk type-3 footer (events) est en cache** (53ce4390 footer chunk_40 →
 3/3 avec équipe ; dcf44b35/64e8adfa footer non-caché → timing OK mais équipe partielle/inconnue). Le compteur 0x7B6

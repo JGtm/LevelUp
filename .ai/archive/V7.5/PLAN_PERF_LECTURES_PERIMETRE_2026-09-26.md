@@ -463,7 +463,7 @@ supprimée) :
   Q21 1 311 594, Q23 / Q23b 2 625, RG 1 853, Relations 12 289, heatmap 1 265 : ZÉRO écart trié avec
   l'avant ; Q12 et Q21 identiques octet pour octet au balayage de f576df10e (ordre compris). Les 11
   couples Q12 (« joueur_615 », « joueur_1034 », « joueur_1048 », « joueur_1036 »,
-  « Symbolicdeth », « FUGMO », « Viridianvoid », « joueur_871 ») et les 2 lignes Relations de
+  « joueur_1260 », « JOUEUR_1318 », « joueur_1192 », « joueur_871 ») et les 2 lignes Relations de
   joueur_074 gardent leur nom. Aucun nom perdu.
 - Gate (code A.10, rejoué en entier) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
   `go vet ./...` 0 ; `go test ./internal/service/... ./internal/platform/duckdb/...
