@@ -870,11 +870,35 @@ Mesure (`.ai/annexes_decodeur_v160/profil_films_recents.md`) : sur un film réce
 
 Ordre : K.0 et K.C ensemble ; puis les items de K.1 et K.2 tels que la conception relue les découpe, écrits ICI avant leur code.
 
-- [ ] K.0 (lancé le 2026-11-23 : agent Sonnet, branche `piste/k0`) Rejet par mot de 64 bits dans la table des datums, puis dans les en-têtes d'équipes : même famille que G.4, gain sur un fil, indépendant du nombre de cœurs de l'hôte. Gain estimé : −6 à −10 % sur un film récent. Preuve : test différentiel contre la forme bit à bit, empreintes des 13 films identiques à la v1.5.0.
-- [ ] K.C (lancé le 2026-11-23 : agent Sonnet, sans code) Conception des deux chantiers, sur pièces : pureté réelle des quatre parcours, état muté (largeurs posées puis restaurées sur le contexte, mémos sans verrou), place du pré-passage, entrée publique qui porte le nombre de fils, graphe des balayages, découpage en petits items. Relue par le pilote avant tout code.
-- [ ] K.1 Pré-décodage des images-clés sur plusieurs fils avant la marche (items à écrire ici après K.C). Gain estimé : −18 / −28 / −33 % à 2 / 4 / 8 fils.
-- [ ] K.2 Balayages d'après la marche en parallèle (items à écrire ici après K.C ; reprend G.3). Gain estimé : −15 à −18 % à 2 fils, −23 à −28 % à 4.
-- [ ] K.3 Mesure machine seule à 1, 2, 4 et 8 fils sur les 13 films, pic de mémoire par niveau ; V0.7 (niveau de fils dans les outils de LevelUp) suit.
+- [x] K.0 (2026-11-23 : intégré dans `feat/v1.6.0`, tête `daac986` ; preuve : test différentiel contre la forme bit à bit sur 823 millions de positions de payloads réels, cas construits aux frontières, empreintes du document et des faits identiques à la v1.5.0 sur les 13 films ; empreinte de la grammaire refigée à révision constante) Rejet par mot de 64 bits dans la table des datums et dans les en-têtes de joueur. Durée à mesurer machine seule (K.3).
+- [x] K.C (2026-11-23 : rendue, relue par le pilote, rangée dans `.ai/annexes_decodeur_v160/parallelisme_conception.md`) Conception. Elle fait foi pour le détail des items ci-dessous (sa section 5) ; elle a été écrite sur la tête `785c38e`, les agents partent de `daac986` (K.0 a sorti `slotsDEntetesExacts` de la liste des balayages nommés).
+
+Constats de la conception : les quatre parcours des images-clés sont des fonctions pures ; deux seulement ont déjà un mémo ; les largeurs posées puis restaurées sur le contexte ne gênent pas le chantier 1 ; le pré-passage part au premier accès aux images-clés, là où la preuve des ancres se fige aujourd'hui, et range ses résultats depuis le fil appelant, sans verrou sur un chemin de lecture. Entrée publique : `FilmContext.PoserFils(n)`, nourrie par un champ `Vitesse` de `replay.Options`. À un fil : le chemin d'aujourd'hui, aucun fil lancé, garanti par un test. Le chantier 2 se scinde : 2a, les lectures qui ne dépendent que du film, tournent pendant la marche (gain estimé −8 à −10 %, risque faible) ; 2b, les voies sur un contexte dérivé, se décide après la mesure du chantier 1.
+
+Décisions du pilote (2026-11-23) : chantier 1 et chantier 2a lancés ; chantier 2b (J3 à J10) décidé sur la mesure I5, avec le user (il vise deux hôtes : un serveur à peu de cœurs et l'app de bureau) ; le nombre de fils est toujours choisi par l'hôte, jamais par le décodeur ; `killsource` ne reçoit pas de champ propre tant que l'hôte partage le contexte (à vérifier dans LevelUp avec V0.7).
+
+Fondations, sans changement de comportement (un agent Sonnet, à la suite, branche `piste/k-fondations`) :
+- [ ] K.F1 Assistant de fils (`internal/grammar/fils.go`) : exécute dans l'appelant à un fil, relaie une panique, seule source de goroutines du module (garde-rail).
+- [ ] K.F2 Porteur sur le contexte : `PoserFils`, `Fils`, défaut 1.
+- [ ] K.F3 Champ `Vitesse` de `replay.Options`, posé avant le profil et la carte.
+- [ ] K.F4 `film-bench -fils N` et `-etapes` (suite ordonnée des étapes et de leurs empreintes : preuve de l'ordre publié).
+
+Chantier 1, pré-décodage des images-clés (après les fondations) :
+- [ ] K.I1 Cadre du pré-passage et ancres.
+- [ ] K.I2 Table des datums.
+- [ ] K.I3 En-têtes exacts de joueur (mémo neuf).
+- [ ] K.I4 Mots par record, au début du balayage des états (mémo dans le canal) ; lemme des records muets prouvé par test.
+- [ ] K.I5 Mesure machine seule à 1, 2, 4 et 8 fils, pic de mémoire, CI `-race` élargie ; décision sur le chantier 2b.
+
+Chantier 2a, lectures qui ne dépendent que du film :
+- [ ] K.J1 (lancé le 2026-11-23, branche `piste/k-j1`) Extraire du pont la lecture « film seul » (temps forts, médailles, index des joueurs, origine d'horloge), sorties identiques.
+- [ ] K.J2 Tâche de fond de `replay` pendant la marche (après K.F3 et K.J1).
+
+Chantier 2b, voies sur contexte dérivé (J3 à J10 de la conception) :
+- [ ] K.J4 Gardes de caractérisation à un fil (tests sur le corpus) : à faire tôt, elles transforment les « déduit » de la conception en « vérifié ».
+- [ ] K.2b J3, J5, J6a à J6c, J7 à J10 : à décider après K.I5 ; items écrits ici s'ils sont retenus.
+
+- [ ] K.3 Relevé final machine seule sur les 13 films, quatre niveaux de fils ; V0.7 (niveau de fils dans les outils de LevelUp) suit.
 
 Gate de la piste K : à tout niveau de fils, empreintes du document et des faits identiques à un fil sur les 13 films et 20 identiques contre les références ; à un fil, aucun fil lancé ; tests neufs sous `-race -count=3` ; G-rev ; G-compat (ajouts seulement) ; aucun film au-dessus de 3 Gio à aucun niveau.
 
@@ -937,7 +961,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       hausse, aucun joueur exact avant ne devient inexact.
 - [ ] A.6 Révision de couche pour la table des réponses de jeu : une ligne ajoutée à la table rend un rejeu
       « à redécoder ».
-- [ ] A.7 (ajouté le 2026-11-23, issu de 0.4) `joinSegments` (`replay/score_timeline_players.go`) : le comparateur
+- [ ] A.7 (2026-11-23 : codé sur `piste/a7`, `7701999`, comparateur instant de début puis slot, test neuf ; non coché : preuve d'équivalence sur les 20 films à l'intégration) (ajouté le 2026-11-23, issu de 0.4) `joinSegments` (`replay/score_timeline_players.go`) : le comparateur
       devient total, instant de début PUIS slot ; test unitaire à deux segments de même début, ordre d'insertion
       inversé ; effet attendu sur les 20 films : aucun ; change le cas d'égalité, aujourd'hui indéterminé.
       Sonnet, effort bas, classe B.
@@ -981,7 +1005,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste D — répliques des Spartans (Sonnet ; dans la v1.6.0, DD-4)
 
-- [ ] D.1 Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
+- [ ] D.1 (2026-11-23 : codé sur `piste/d1`, `cc1caf1` ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
 - [ ] D.2 Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
@@ -1015,7 +1039,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 - [ ] E.2 VIP : temps en VIP, plus long temps en VIP, meilleure série en VIP, publiés en courbes par joueur
       comme les compteurs du tableau. L'hôte dit que le match est un VIP par la constante déjà exportée
       (`decfilm.ObjectiveTypeVip`). Après la piste A (mêmes fichiers).
-- [ ] E.3 Nom des options de variante : le document publie le nom à côté du hachage quand le FILM ou les
+- [ ] E.3 (2026-11-23 : instruit sans code, `dec-v160-recup/pistes/e3/instruction.md` hors dépôt ; le film ne porte que le hachage, vérifié sur deux films à tous les décalages de bit ; les archives lisibles du jeu ne rendent aucun des 30 hachages testés ; les noms sont très probablement dans l'exécutable, non lu ; aucun code tant que la source n'est pas établie) Nom des options de variante : le document publie le nom à côté du hachage quand le FILM ou les
       fichiers du JEU le donnent (chaîne lue, contrôlée par son hachage). La table du parseur voisin n'est
       ni copiée ni consultée comme source. Une option sans nom lu reste un hachage, comptée.
 - [ ] E.4 Apparence enregistrée des Spartans (armure, revêtement) : recherche bornée (une session), sur 3
@@ -1197,6 +1221,8 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 — K.0 intégré (tête `daac986`). Conception du parallélisme rendue et relue : chantier 1 sans refonte préalable, chantier 2 scindé en 2a (pendant la marche, risque faible) et 2b (à décider sur mesure). Fondations et K.J1 lancés. Le user précise sa cible : le serveur a peu de cœurs, l'app de bureau en aura davantage, les deux comptent. Pistes du backlog démarrées en parallèle, comme le plan le prévoit : A.7 fait sur `piste/a7` (à intégrer après preuve d'équivalence), D.1 fait sur `piste/d1` (lecture des répliques, rien de publié), A.1 en mesure, E.3 instruit : ni le film ni les fichiers lisibles du jeu ne donnent le nom des options ; source non établie, aucun code.
 
 - 2026-11-23 — Sixième gain (G.4) intégré, tête `785c38e`, relevé à six gains pris machine seule. Profil des films récents rendu : pas de gain majeur sur un fil, la piste K (parallélisme) s'ouvre selon la priorité fixée par le user ; K.0 (rejet par mot, un fil) et K.C (conception, sans code) lancés ensemble. Le parallélisme par morceau, mesuré à blanc, reste écarté.
 
