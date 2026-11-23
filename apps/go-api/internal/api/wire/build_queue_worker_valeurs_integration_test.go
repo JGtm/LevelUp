@@ -177,7 +177,8 @@ var valeurJoueursApparies = []string{
 
 // valeursDeGrille : ce que la grille du document change sur ce film, mesuré à chaque pas de cuisson que LevelUp a
 // pratiqué. FrameCount et DurationMS suivent le pas ; T0FilmMS est le coup d envoi mesuré dans le film (le premier
-// mouvement, daté à l image du pas) ; Courbe est la SEULE courbe d équipe publiée sur ce film, frame par frame — les
+// mouvement, daté à l image du pas ; depuis le décodeur v1.5.0, le coup d envoi est lu à l horloge de la première manche,
+// 348 ms plus tôt sur ce film : écart voulu, décision du corpus `t0FilmMs`) ; Courbe est la SEULE courbe d équipe publiée sur ce film, frame par frame — les
 // trois captures, dont le dernier point vaut le score du vainqueur à l API (3). Un pas sans mesure fait échouer le
 // test : la figer avant de changer la cadence.
 type valeursDeGrille struct {
@@ -189,7 +190,7 @@ type valeursDeGrille struct {
 
 var valeursParPas = map[int]valeursDeGrille{
 	100: {781, 78100, 35170, []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}},
-	33:  {2366, 78078, 35167, []replaydoc.ScoreTick{{T: 591, V: 1}, {T: 1470, V: 2}, {T: 2141, V: 3}}},
+	33:  {2366, 78078, 34819, []replaydoc.ScoreTick{{T: 591, V: 1}, {T: 1470, V: 2}, {T: 2141, V: 3}}},
 }
 
 // valeursDeLaCuisson rend les valeurs figées du pas de cuisson courant.

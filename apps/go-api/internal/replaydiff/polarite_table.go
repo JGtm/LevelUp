@@ -174,10 +174,25 @@ var tablePolarites = []blocPolarites{
 		Succes:  "published",
 		Neutres: "decoded"},
 	{Blocs: []string{"coverage.scoreActions."},
-		Echecs: "stoppedFrames unconfirmedRank noRecipient notPresent noOrigin beforeOrigin afterEnd noTarget",
+		Echecs: "stoppedFrames unconfirmedRank noRecipient notPresent noOrigin beforeOrigin afterEnd noTarget " +
+			"scoreboardMissing",
 		Succes: "published closedFrames",
 		Neutres: "frames messages copies scoreMessages unrelated namedWithoutPoints outsideTree " +
-			"scored"},
+			"scored scoreboardCompared scoreboardBehind treeShift"},
+	// Les rechargements (schema 126) : meme famille que les actions a points. La lecture arretee et les messages sans
+	// joueur ou hors de l'axe sont ce que le calque n'a pas su poser ; `copies` est le double que le jeu ecrit.
+	{Blocs: []string{"coverage.reloads."},
+		Echecs:  "stoppedFrames withoutPlayer beforeOrigin afterEnd",
+		Succes:  "read published closedFrames",
+		Neutres: "frames copies"},
+	// Les eliminations (schema 126) : les etats de `headshot` et de `perfect` sont des marques lues ; l'inconnu et ses
+	// causes, les montees orphelines et les medailles sans pas sont des echecs. `perfectUnknown` est l'etat par defaut
+	// (`perfect` n'est jamais faux) : un denominateur.
+	{Blocs: []string{"coverage.eliminations."},
+		Echecs: "headUnknown headNoCounter headAmbiguous headGuarded headOrphanRises " +
+			"perfectAmbiguous perfectOrphans",
+		Succes:  "withVictim headYes headNo perfectYes",
+		Neutres: "eliminations perfectUnknown"},
 	// Les touches (schema 125) : une estimation. Les seuils de suffisance sont un reglage de l outil ; la lecture
 	// arretee et les touches non posees sont ce que le calque n a pas su faire ; les unites sans piste et les touches
 	// ou degats sur soi sont des faits du jeu, comptes a part.
@@ -186,10 +201,14 @@ var tablePolarites = []blocPolarites{
 		Succes:     "published sufficient damages damagesMeasured",
 		Neutres:    "frames messages weaponMessages hits damagesOffUnit selfHits selfDamages players",
 		Telemetrie: "minCoverage maxDuplicates maxStoppedShare"},
+	// Valeurs figees (schema 126) : `read` est ce qui est lu, `expected` le denominateur (manches retenues moins la
+	// derniere), `playersWithout` et `discarded` ce que la lecture n'a pas su publier ; `statsGuarded.*` (une cle par
+	// compteur nomme) compte les emissions impossibles que la garde ecarte, comme `statsWithheld`.
 	{Blocs: []string{"coverage.score."},
-		Echecs:  "roundsContradicted/n roundsContradictedRecords statsWithheld",
-		Succes:  "points",
-		Neutres: "rounds roundsWritten/n roundsUnplayed/n"},
+		Echecs: "roundsContradicted/n roundsContradictedRecords statsWithheld statsGuarded.* " +
+			"frozenRounds.playersWithout frozenRounds.discarded",
+		Succes:  "points frozenRounds.read",
+		Neutres: "rounds roundsWritten/n roundsUnplayed/n frozenRounds.expected"},
 	{Blocs: []string{"coverage.seats."},
 		Echecs: "bornesDifferees botsRelevesEnJeu chevauchements depassements entitesContestees entitesNonLiees " +
 			"identitesHorsRoster imagesClesDouteuses placesEnTrop placesOuvertes " +
@@ -203,8 +222,9 @@ var tablePolarites = []blocPolarites{
 		Neutres: "grabs trains"},
 	{Blocs: []string{"coverage.stances."},
 		Echecs: "desyncs dropped eventPacketsUnlocated forgottenBindings refusedNews " +
-			"refusedNewFalseReads refusedNewLostCreations refusedNewUndecided",
-		Succes:     "intervals jumpsDerived lives reads records",
+			"refusedNewFalseReads refusedNewLostCreations refusedNewUndecided " +
+			"control.withHole control.innerHoles control.noTrack control.noPlayer",
+		Succes:     "intervals jumpsDerived lives reads records control.holds control.entries control.published control.intervals",
 		Neutres:    "byKind.* jumpEpisodes tracksTotal",
 		Telemetrie: "mapWidths/n"},
 	{Blocs: []string{"coverage.t0Film."},
@@ -237,10 +257,10 @@ var tablePolarites = []blocPolarites{
 			"noPosition samplesAfterEnd shotsAmbiguous shotsNoRide shotsUnplaced " +
 			"silencesNonTranches spawnsHorsEmprise turretCarrierBirthMismatch " +
 			"turretRidesAlreadyAboard turretRidesDropped " +
-			"turretRidesOutOfWindow unknownChassis.*",
+			"turretRidesOutOfWindow turretParentUnknown unknownChassis.*",
 		Succes: "aimReads aimSamples cycleGaps cycles deathsMatched deathsRead endDestroyed " +
 			"familyResolved lives published rides ridesNamed ridesRead ridesWithAim ridesWithSeat " +
-			"samples shots shotsByUnit shotsVehicleWeapon turretRides turrets turretsOnCarrier " +
+			"samples shots shotsByUnit shotsVehicleWeapon turretRides turrets turretsOnCarrier turretsByRead " +
 			"variants vehiclesRidden withChassis withHeading withSpawn",
 		Neutres: "aimRideFrames cycleLocations endFilmEnd endsPastEmptiedKeyframe merged ridesProximity shotsByUnitNoRide " +
 			"shotsOnCarrier"},
