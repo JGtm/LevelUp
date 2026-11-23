@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -199,30 +198,6 @@ func TestBackfill_RangeFilmRejeuAbsent_RienNEstEcrit(t *testing.T) {
 	}
 	if rst, src, tp := etat(t, db, "film"); src != "film" || !rst.Time.UTC().Equal(start.Add(26304*time.Millisecond)) || tp != 573 {
 		t.Fatalf("film = (%v, %q, %d), attendu inchange", rst, src, tp)
-	}
-}
-
-// Rangé `film`, rejeu ILLISIBLE : rien n'est écrit, et la révision n'est pas rangée (on réessaiera).
-func TestApplyRevision_RangeFilmRejeuIllisible_RienNiRevision(t *testing.T) {
-	db := baseMigree(t)
-	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
-	semer(t, db, start)
-	semerFilmRange(t, db, start)
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "film.json.gz"), []byte("pas du gzip"), 0o600); err != nil {
-		t.Fatalf("artefact: %v", err)
-	}
-	writes := 0
-	applied, rep, err := ApplyRevision(context.Background(), acces(db, &writes), optionsVers(dir))
-	if applied || !errors.Is(err, ErrPartial) || rep.UnreadableArtifacts != 1 || rep.FailedExample != "film" {
-		t.Fatalf("applied=%v err=%v bilan=%+v, attendu un echec partiel nommant le match", applied, err, rep)
-	}
-	if rst, src, tp := etat(t, db, "film"); src != "film" || !rst.Time.UTC().Equal(start.Add(26304*time.Millisecond)) || tp != 573 {
-		t.Fatalf("film = (%v, %q, %d), attendu inchange", rst, src, tp)
-	}
-	var n int
-	if err := db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM sync_meta WHERE key = ?`, SyncMetaKey).Scan(&n); err != nil || n != 0 {
-		t.Fatalf("revision rangee malgre l'echec (%d, err %v)", n, err)
 	}
 }
 

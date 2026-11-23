@@ -138,8 +138,8 @@ func syntheseCoupDEnvoi(r kickoff.Report, o kickoffOptions, duree time.Duration)
 		mode = "SIMULATION (rien d'ecrit)"
 	}
 	s := fmt.Sprintf("=== Coup d'envoi — %s — %s — %s ===\n", o.titleSlug, mode, o.dbPath)
-	s += fmt.Sprintf("matchs resolus : %d   (rejeux presents : %d, illisibles : %d)\n",
-		r.Matches, r.Artifacts, r.UnreadableArtifacts)
+	s += fmt.Sprintf("matchs resolus : %d   (rejeux presents : %d, illisibles : %d dont %d film garde, %d resolus sans le rejeu)\n",
+		r.Matches, r.Artifacts, r.UnreadableArtifacts, r.UnreadableKeptFilm, r.UnreadableFellBack)
 	s += fmt.Sprintf("  source film : %d   api : %d   inconnue : %d\n", r.BySource[timeline.KickoffSourceFilm],
 		r.BySource[timeline.KickoffSourceAPI], r.BySource[timeline.KickoffSourceUnknown])
 	s += "  estimation jouee : " + issues(r.Estimates) + "\n"
@@ -151,7 +151,7 @@ func syntheseCoupDEnvoi(r kickoff.Report, o kickoffOptions, duree time.Duration)
 	s += "  ecart nouveau - ancien (s) : " + distribution(kickoff.Summarize(r.PlayerGapsSeconds, 2), "2 s") + "\n"
 	s += fmt.Sprintf("film garde (rejeu absent ou illisible) : %d   rejeu hors de la fenetre du match : %d   "+
 		"absents du registre : %d\n", r.KeptFilm, r.FilmOutOfBounds, r.Missing)
-	s += fmt.Sprintf("ecrits : %d match(s)   echecs : %d%s   duree : %s\n", r.Written, r.Failures, exempleDEchec(r), duree)
+	s += fmt.Sprintf("ecrits : %d match(s)   echecs d ecriture : %d%s   duree : %s\n", r.Written, r.Failures, exempleDEchec(r), duree)
 	return s
 }
 

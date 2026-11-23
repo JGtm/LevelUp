@@ -1,3 +1,9 @@
+## [2026-11-23] Rattrapage du coup d'envoi : un rejeu illisible ne bloque plus, la valeur se lit dans le fichier d'en-tête — Complété
+
+- **Décision** : un rejeu illisible se traite comme un rejeu absent (la valeur rangée d'un film est gardée, sinon repli sur la source suivante), seul un échec d'écriture retient la révision ; le coup d'envoi est rangé dans le fichier d'en-tête de l'artefact par son écrivain, la lecture complète ne sert plus que de repli et complète l'en-tête.
+- **Résultats** : tests du rattrapage, de la lecture par l'en-tête et garde-rails verts ; la révision du coup d'envoi ne monte pas, la règle de résolution étant inchangée.
+- **Suite** : mesure sur le parc à la régénération.
+
 ## [2026-11-22] Montée du décodeur v1.5.0 dans LevelUp : fusion de la branche de version et corrections de relecture — En cours
 
 - **Décision** : la branche de montée fusionne la branche de version avant ses corrections ; les compteurs de couverture que rien ne lit sortent des miroirs servis ; le coup d'envoi changeant de source, sa révision et les deux révisions de notation montent ensemble (ADR 0050 D-6), la révision des dérivations aussi.

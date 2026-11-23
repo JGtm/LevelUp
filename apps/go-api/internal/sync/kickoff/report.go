@@ -16,6 +16,10 @@ type Report struct {
 	// Artifacts : rejeux présents ; UnreadableArtifacts : rejeux présents mais illisibles.
 	Artifacts           int
 	UnreadableArtifacts int
+	// UnreadableKeptFilm : rejeux illisibles dont le match, rangé `film`, garde son coup d'envoi ;
+	// UnreadableFellBack : les autres, résolus sur la source suivante comme si le rejeu était absent.
+	UnreadableKeptFilm int
+	UnreadableFellBack int
 	// ValueChanged / SourceChanged : matchs dont l'instant ou la source du coup d'envoi change ;
 	// BecameUnknown : matchs dont le coup d'envoi rangé disparaît (estimation refusée, sans rejeu) ;
 	// KickoffShiftsMs : écart nouveau − ancien des matchs dont les deux valeurs existent.
@@ -36,8 +40,7 @@ type Report struct {
 	FilmOutOfBounds int
 	// Missing : matchs disparus du registre entre la liste et leur lot (rien à rattraper).
 	Missing int
-	// Written : matchs écrits ; Failures : matchs en échec (écriture refusée, ou rejeu illisible
-	// sur un coup d'envoi rangé `film` ou inconnu) ; FailedExample : le premier d'entre eux.
+	// Written : matchs écrits ; Failures : matchs dont l'écriture a échoué ; FailedExample : le premier d'entre eux.
 	Written       int
 	Failures      int
 	FailedExample string
@@ -49,6 +52,15 @@ func (r *Report) fail(matchID string) {
 		r.FailedExample = matchID
 	}
 	r.Failures++
+}
+
+// addUnreadable verse au bilan le plan d'un match dont le rejeu est illisible.
+func (r *Report) addUnreadable(p Plan) {
+	if p.FilmKept {
+		r.UnreadableKeptFilm++
+		return
+	}
+	r.UnreadableFellBack++
 }
 
 func newReport() Report {

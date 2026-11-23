@@ -67,6 +67,14 @@ type artifactMeta struct {
 	Bytes int64 `json:"bytes"`
 	// AppVersion : la version de l'application du processus qui a ecrit l'artefact ; vide = inconnue.
 	AppVersion string `json:"appVersion,omitempty"`
+	// Kickoff : le coup d'envoi que le document publie, lu par le rattrapage (ADR 0050) ; nil = non établi (en-tete
+	// d'avant ce champ : le rattrapage lit l'artefact une fois et le complete).
+	Kickoff *metaKickoff `json:"kickoff,omitempty"`
+}
+
+// metaKickoff : `t0FilmMs` du document ; nil = le document n'en publie pas (une reponse etablie, pas une inconnue).
+type metaKickoff struct {
+	T0FilmMs *int64 `json:"t0FilmMs"`
 }
 
 // Header : ce que le decompte lit d'un artefact — ses marques et la version de l'application qui l'a produit.
@@ -114,24 +122,34 @@ func ArtifactHeader(ctx context.Context, path string) (Header, bool) {
 
 // lireEntete lit le fichier d'en-tete s'il fait foi pour l'artefact decrit par st.
 func lireEntete(path string, st os.FileInfo) (Header, bool) {
-	mp := MetaPath(path)
-	mst, err := os.Stat(mp)
-	if err != nil || mst.ModTime().Before(st.ModTime()) {
-		return Header{}, false // absent, ou plus ancien que l'artefact : il decrit un autre document
-	}
-	raw, err := os.ReadFile(mp)
-	if err != nil {
-		return Header{}, false
-	}
-	observability.AddInt(CompteurOctetsLusEntetes, int64(len(raw)))
-	var m artifactMeta
-	if json.Unmarshal(raw, &m) != nil || m.Bytes != st.Size() || m.SchemaVersion == 0 {
+	m, ok := lireMeta(path, st)
+	if !ok {
 		return Header{}, false
 	}
 	return Header{
 		Digest:     Digest{MatchID: m.MatchID, SchemaVersion: m.SchemaVersion, FrameIntervalMS: m.FrameIntervalMS, Layers: m.Layers, Bytes: int(m.Bytes)},
 		AppVersion: m.AppVersion,
 	}, true
+}
+
+// lireMeta lit le fichier d'en-tete tel qu'il est rangé, quand il fait foi pour l'artefact decrit par st : present, pas plus
+// ancien que l'artefact, de la taille declaree.
+func lireMeta(path string, st os.FileInfo) (artifactMeta, bool) {
+	mp := MetaPath(path)
+	mst, err := os.Stat(mp)
+	if err != nil || mst.ModTime().Before(st.ModTime()) {
+		return artifactMeta{}, false // absent, ou plus ancien que l'artefact : il decrit un autre document
+	}
+	raw, err := os.ReadFile(mp)
+	if err != nil {
+		return artifactMeta{}, false
+	}
+	observability.AddInt(CompteurOctetsLusEntetes, int64(len(raw)))
+	var m artifactMeta
+	if json.Unmarshal(raw, &m) != nil || m.Bytes != st.Size() || m.SchemaVersion == 0 {
+		return artifactMeta{}, false
+	}
+	return m, true
 }
 
 // metaDejaAvertie : un seul WARN par processus quand le fichier d'en-tete ne s'ecrit pas (dossier en lecture
@@ -142,10 +160,19 @@ var metaDejaAvertie atomic.Bool
 // echec n'empeche pas l'artefact d'etre servi (le decompte relira l artefact entier), mais il se compte et
 // se journalise.
 func ecrireEntete(ctx context.Context, artifactPath string, d Digest, appVersion string) {
-	blob, err := json.Marshal(artifactMeta{
+	m := artifactMeta{
 		MatchID: d.MatchID, SchemaVersion: d.SchemaVersion, FrameIntervalMS: d.FrameIntervalMS, Layers: d.Layers,
 		Bytes: int64(d.Bytes), AppVersion: appVersion,
-	})
+	}
+	if d.T0Read {
+		m.Kickoff = &metaKickoff{T0FilmMs: d.T0FilmMs}
+	}
+	ecrireMeta(ctx, artifactPath, m)
+}
+
+// ecrireMeta range le fichier d'en-tete m ; meme regle de signalement que [ecrireEntete].
+func ecrireMeta(ctx context.Context, artifactPath string, m artifactMeta) {
+	blob, err := json.Marshal(m)
 	if err == nil {
 		err = atomicfile.WriteFile(ctx, MetaPath(artifactPath), blob, 0o644)
 	}

@@ -340,8 +340,9 @@ go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit
 #    court chacun ; un second passage n'écrit rien. --dry-run ouvre la base en LECTURE SEULE (aucune
 #    migration ; cohabite avec un serveur en marche) et imprime les écarts : matchs par source, matchs
 #    dont la valeur ou la source du coup d'envoi change, joueurs dont le temps de jeu change et
-#    répartition de l'écart. Sans --dry-run : SERVEUR ARRÊTÉ, migrations jouées, puis la révision est
-#    rangée après un passage complet sans échec. --db et --replays-dir visent une copie de la base et
+#    répartition de l'écart. Un rejeu illisible ne fait pas échouer le passage : il est compté (film gardé / résolu sans
+#    le rejeu) et traité comme absent. Sans --dry-run : SERVEUR ARRÊTÉ, migrations jouées, puis la révision est
+#    rangée après un passage complet sans échec d'écriture. --db et --replays-dir visent une copie de la base et
 #    un autre dossier d'artefacts.
 go run ./cmd/levelup backfill-kickoff --dry-run [--db CHEMIN] [--replays-dir DOSSIER] [--title S]
 go run ./cmd/levelup backfill-kickoff [--lot N] [--db CHEMIN] [--replays-dir DOSSIER] [--title S]

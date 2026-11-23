@@ -327,7 +327,8 @@ go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit
 #    they are. Batches of --lot matches, one short writer burst each; a second run writes nothing.
 #    --dry-run opens the database READ-ONLY (no migration; coexists with a running server) and prints
 #    the gaps: matches per source, matches whose kickoff value or source changes, players whose time
-#    played changes and the distribution of the gap. Without --dry-run: SERVER STOPPED, migrations
+#    played changes and the distribution of the gap. An unreadable replay does not fail the run: it is
+#    counted (kept film / resolved without the replay) and treated as absent. Without --dry-run: SERVER STOPPED, migrations
 #    played, then the revision is stored after a complete run without failure. --db and
 #    --replays-dir point at a copy of the database and another artifact folder.
 go run ./cmd/levelup backfill-kickoff --dry-run [--db PATH] [--replays-dir DIR] [--title S]
