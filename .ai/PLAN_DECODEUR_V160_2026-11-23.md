@@ -888,7 +888,12 @@ Chantier 1, pré-décodage des images-clés (après les fondations). Preuve de l
 - [x] K.I2 (2026-11-23 : intégré ; même clé que le lecteur existant) Table des datums.
 - [x] K.I3 (2026-11-23 : intégré ; mémo neuf, consulté par le canal des équipes, jamais écrit hors du pré-passage) En-têtes exacts de joueur (mémo neuf).
 - [x] K.I4 (2026-11-23 : intégré ; lemme des records muets prouvé par test ; calcul fait pour tout payload à bipède, le travail en trop reste à mesurer en K.I5) Mots par record, au début du balayage des états (mémo dans le canal) ; lemme des records muets prouvé par test.
-- [ ] K.I5 Mesure machine seule à 1, 2, 4 et 8 fils, pic de mémoire, CI `-race` élargie ; décision sur le chantier 2b.
+- [x] K.I5 (2026-11-23 : mesuré, 13 films, 5 passes, machine au repos, aucun test d'une autre session pendant les passes ; relevés `.ai/annexes_decodeur_v160/releve_parallelisme_fils{1,2,4,8}.tsv` ; 52 empreintes identiques à la v1.5.0) Mesure à 1, 2, 4 et 8 fils et pic de mémoire.
+      Total cumulé des 13 films : v1.5.0 71,6 s ; un fil 34,8 s (−51 %) ; deux fils 29,0 s (−59 %) ; quatre fils 27,0 s (−62 %) ; huit fils 26,2 s (−63 %).
+      Films récents, total par film, v1.5.0 puis 1 / 2 / 4 / 8 fils : Slayer 1 123 ms → 826 / 622 / 570 / 550 ; Bases 1 586 → 1 191 / 891 / 803 / 766 ; Colline 1 371 → 1 048 / 776 / 705 / 675 ; Drapeau d'arène 525 → 399 / 271 / 247 / 236 ; Bombe 1 197 → 903 / 648 / 579 / 547. Soit, sur un film récent, environ −26 % à un fil (effet de K.0), −45 % à deux fils, −50 % à quatre.
+      Films anciens : le plus ancien 18,1 s → 5,5 s à un fil, 4,6 s à quatre ; le plus gros 19,6 s → 10,1 s à un fil, 8,8 s à quatre.
+      Pic de mémoire : inchangé d'un niveau de fils à l'autre (plus gros film 1 965 à 2 022 Mio contre 2 198 en v1.5.0 ; film récent 235 à 256 Mio). Le gain plafonne après quatre fils. La publication ne bouge pas (environ +4 % contre le relevé de référence, à contrôler au relevé final).
+- [ ] K.I6 Job de CI de détection de courses élargi aux tests neufs (préfixes `TestFils`, `TestVoie`, `ExecuterEnParallele`) ; `bench/README.md` : les durées par étape ne sont pas significatives à plus d'un fil. Haiku, effort bas.
 
 Chantier 2a, lectures qui ne dépendent que du film :
 - [x] K.J1 (2026-11-23 : intégré dans `feat/v1.6.0` ; `LireLesFaitsDuFilmSeul` prend le film et une fonction de roster, le pont verse les replis au même endroit ; test d'égalité avec le pont seul) Extraire du pont la lecture « film seul » (temps forts, médailles, index des joueurs, origine d'horloge), sorties identiques.
@@ -896,7 +901,7 @@ Chantier 2a, lectures qui ne dépendent que du film :
 
 Chantier 2b, voies sur contexte dérivé (J3 à J10 de la conception) :
 - [ ] K.J4 Gardes de caractérisation à un fil (tests sur le corpus) : à faire tôt, elles transforment les « déduit » de la conception en « vérifié ».
-- [ ] K.2b J3, J5, J6a à J6c, J7 à J10 : à décider après K.I5 ; items écrits ici s'ils sont retenus.
+- [ ] K.2b J3, J5, J6a à J6c, J7 à J10 : à décider après K.I5 ; items écrits ici s'ils sont retenus. Avis du pilote après la mesure (2026-11-23) : ne pas les faire dans la v1.6.0. Sur un film récent à quatre fils il reste environ 570 ms, dont 90 de publication ; les voies viseraient au mieux 10 % de plus, pour huit items dont un lourd et le risque le plus élevé de la piste. Décision demandée au user.
 
 - [ ] K.3 Relevé final machine seule sur les 13 films, quatre niveaux de fils ; V0.7 (niveau de fils dans les outils de LevelUp) suit.
 
@@ -1225,6 +1230,8 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 — Mesure du parallélisme faite machine au repos : un film récent passe de 1,1 s (v1.5.0) à 0,83 s à un fil, 0,62 s à deux, 0,57 s à quatre ; total des 13 films de 71,6 s à 34,8 / 29,0 / 27,0 / 26,2 s ; mémoire inchangée. L'attente d'une machine au repos par l'indicateur de charge de Windows était fausse (36 % affichés pour une machine inoccupée) : remplacée par le relevé des processus de test avant et après chaque niveau.
 
 - 2026-11-23 — Chantier 1 du parallélisme (K.I1 à K.I4) et tâche de fond (K.J2) intégrés, tête `bf69129` : sorties identiques à tous les niveaux de fils, ordre des étapes identique. Un conflit de fusion résolu (la même méthode de liste des payloads écrite par deux agents). A.2a et A.2c prouvés sur films, sur leurs branches ; A.2b en preuve. Reste K.I5 : la mesure machine seule, à lancer quand plus aucun test d'une autre session ne tourne.
 
