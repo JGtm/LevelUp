@@ -225,7 +225,7 @@ par nom. La liste ci-dessus est celle que la marche émet.
 
 - `gorelease` : non installé. Absent du PATH (`which`) et de `le dossier des binaires Go du poste`.
 - `apidiff` : non installé. Même constat.
-- `GOBIN` : vide. `GOPATH` : `C:\Users\Guillaume\go`. `go version` : go1.26.11 windows/amd64.
+- `GOBIN` : vide. `GOPATH` : le dossier Go du poste. `go version` : go1.26.11 windows/amd64.
 - Présents dans `go\bin` : air, benchstat, gitleaks, goimports, golangci-lint, govulncheck, lefthook, oapi-codegen.
 - Le cache de modules contient `golang.org/x/exp@v0.0.0-20260112195511-716be5621a96` et `golang.org/x/tools@...`. Non vérifié si l'un contient les sources de `gorelease` ou d'`apidiff` ; rien n'a été installé.
 - Conclusion : G-compat exige une installation (ou le repli du plan, non décidé ici). Rien n'a été installé.
