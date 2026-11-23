@@ -1,3 +1,10 @@
+## [2026-11-23] Correctif 8.2.3 : la recherche des matchs sous 429 (site hébergé) — Complété (branche `fix/823-a`, items 1 à 7)
+
+- **Statut** : Complété, non poussé ; reste l'item 8 du plan (publication), à la main du pilote.
+- **Décision technique** : pour un joueur à l'historique incomplet, la découverte V2 lit d'abord le delta du dessus (au plus 25 inconnus, `listDelta`), puis le rattrapage ; une erreur de lecture du rattrapage ne fait plus échouer le joueur (nouveaux matchs gardés, rien de rangé pour le rattrapage, joueur en attente). Chaque page passe par `historyretry.Page`. Les rattrapages d'un cycle se lisent un joueur à la fois (jeton de lecture du fournisseur) ; les pages déjà lues par le delta ne sont pas relues (`pageCache`). Halo 5 : déjà sûr (le delta du dessus est rangé avant la reprise), prouvé par un test, aucun changement de code.
+- **Résultats observés** : banc de production à six joueurs (cinq en rattrapage) avec 429 sur les pages profondes pendant trois cycles : nouveaux matchs rangés à chaque cycle, aucun joueur en échec, marque-pages inchangés, rattrapage fini ensuite sans repli ; le test échoue (joueurs « failed ») sans l'absorption de l'erreur. Les deux tests de rattrapage qui comptaient les pages lues tolèrent le delta du dessus. Item 6 (lecture seule) : voir le plan, section Découvertes.
+- **Conclusion / prochaine étape** : item 8 du plan ; confirmer la cause de l'erreur `EnsurePlayerSchema` sur le journal de prod.
+
 ## [2026-11-23] Hotfix 8.2.2 : CI verte, tests de rattrapage plus courts et paquet `cmd/server` en quatre lots (822-21) — Complété (branche `fix/822-t`)
 
 - **Statut** : Complété, non poussé.

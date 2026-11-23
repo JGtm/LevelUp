@@ -71,7 +71,8 @@ type DiscoveryResult struct {
 //   - deux temps : lecture de l'ensemble connu et de l'état de l'historique de TOUS les joueurs, puis
 //     répartition du budget de rattrapage du cycle entre ceux qui rattrapent (budget.go), puis liste de
 //     chacun avec son budget ;
-//   - errgroup avec parallélisme = len(players) (pas de bottleneck artificiel).
+//   - errgroup avec parallélisme = len(players) (pas de bottleneck artificiel) ; seule la lecture d'un
+//     rattrapage d'historique est prise à tour de rôle par le provider (fetchers_history.go).
 //   - Échec d'un joueur capturé dans Errors, n'annule pas les autres.
 //   - Retourne err != nil uniquement sur échec global (ctx annulé). Les
 //     échecs par-joueur sont accessibles via Errors.

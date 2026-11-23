@@ -217,9 +217,15 @@ func TestCycleHistory_FinRangeeSeulementSousD5(t *testing.T) {
 			wantComplete: true, wantStatus: "ok",
 		},
 		{
-			name:        "erreur de découverte (liste d'API en échec)",
-			arrange:     func(e *histEnv) { e.client.failAt, e.client.failErr = budget-1, errors.New("api 500") },
+			name:        "erreur de lecture du delta (haut de la liste en échec)",
+			arrange:     func(e *histEnv) { e.client.failAt, e.client.failErr = 0, errors.New("api 500") },
 			wantPending: true, wantStatus: "failed",
+		},
+		{
+			// Le rattrapage seul échoue : le joueur n'est pas en échec (ses nouveaux matchs passent), rien n'est rangé.
+			name:        "erreur de lecture du rattrapage (liste d'API en échec)",
+			arrange:     func(e *histEnv) { e.client.failAt, e.client.failErr = budget-1, errors.New("api 500") },
+			wantPending: true, wantStatus: "ok",
 		},
 		{
 			name:        "erreur de récupération (500)",
