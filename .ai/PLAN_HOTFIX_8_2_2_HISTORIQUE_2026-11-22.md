@@ -603,9 +603,9 @@ Réutilisés du banc de base : faux client Halo (`fakeHalo`), `fakeTokenPool`, `
   `npx vitest run` sur les dossiers touchés, `tsc`, eslint des fichiers touchés. Puis CI verte.
 - [x] 8.2 ADR 0027 : amendement court (EN) « history catch-up applies to every sync path ».
 - [x] 8.3 Entrée `.ai/thought_log.md`.
-- [ ] 8.4 Poussée de `release/v8.2.2`, CI verte (`gh run list --branch release/v8.2.2 --workflow CI
+- [x] 8.4 (CI 45108369805 et Release verts, PR #214) Poussée de `release/v8.2.2`, CI verte (`gh run list --branch release/v8.2.2 --workflow CI
   --limit 1`), PR vers `main` (squash par l'utilisateur).
-- [ ] 8.5 Texte de réponse à #213 prêt (validé par l'utilisateur le 22/11), publié après la PR.
+- [~] 8.5 (texte prêt, publié par le pilote à la sortie de la 8.2.2, sur accord du user du 23/11) Texte de réponse à #213 prêt (validé par l'utilisateur le 22/11), publié après la PR.
 
 ## Statuts, ordre, reprise
 
