@@ -1,3 +1,9 @@
+## [2026-11-23] Décodeur 1.6.0 : vitesse doublée sur un fil, ouverture du parallélisme — En cours
+
+- **Décision** : la priorité de vitesse va aux films de la dernière version (message du user). Le profil de ces films ne montre aucun gain majeur sur un fil : le parallélisme s'ouvre, en deux chantiers (pré-décodage des images-clés, puis balayages d'après la marche), après une conception écrite et relue. Le parallélisme par morceau de la marche reste écarté, sur mesure.
+- **Résultats** : six gains sans changement de sortie intégrés ; décodage cumulé des 13 films de 68,2 s à 34,7 s, 130 empreintes identiques à la version 1.5.0 ; sur un film récent le gain reste faible (environ 10 %), d'où la suite.
+- **Suite** : rejet par mot dans deux recherches des images-clés (un fil), conception du parallélisme, puis ses items un par un ; mesure à 1, 2, 4 et 8 fils machine seule.
+
 ## [2026-11-23] Anonymisation des documents, troisième passe : prénom du propriétaire — Complété (documents)
 
 - **Décision** : dans les documents sous `.ai/` et `docs/`, le prénom du propriétaire devient son pseudo public ; un propriétaire de fichier dans une sortie de commande devient « utilisateur ». La ligne de crédit citée d'un dépôt tiers, qui porte son nom complet public, reste, comme les fichiers d'attribution.
