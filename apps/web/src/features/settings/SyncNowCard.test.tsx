@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { act, screen, fireEvent, waitFor } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { toast } from 'sonner'
 import { renderWithProviders } from '@/test/render-utils'
 import { testCapabilities } from '@/test/capabilities'
@@ -129,7 +129,7 @@ const TITRE_RATTRAPAGE = {
 
 let historyReads = 0
 
-function serveurHistorique(body: unknown | { status: number }, opts: { running?: boolean } = {}) {
+function serveurHistorique(body: JsonBodyType | { status: number }, opts: { running?: boolean } = {}) {
   server.use(
     http.get(`${API}/sync/cycle`, () => HttpResponse.json({ running: opts.running ?? false })),
     http.get(`${API}/players/JGtm/sync/history`, () => {
