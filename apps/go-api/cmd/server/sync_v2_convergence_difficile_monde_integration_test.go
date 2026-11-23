@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing/iotest"
@@ -52,6 +53,10 @@ type difficileMonde struct {
 	onStats     func(id string, nth int) // crochet appelé avant la réponse, nth = rang de la demande
 	unexpected  []string
 	postStats   int // demandes de stats du post-sync depuis la dernière remise à zéro
+	// refuserPage : statut HTTP à rendre à la lecture d'une page de la liste (xuid, décalage), 0 = la servir ;
+	// pages refusées : nombre de lectures refusées depuis la dernière remise à zéro.
+	refuserPage   func(xuid string, start int) int
+	pagesRefusees int
 }
 
 func newDifficileMonde() *difficileMonde {
@@ -123,6 +128,21 @@ func (m *difficileMonde) resetCounters() {
 	m.statsCalls = map[string]int{}
 	m.postStats = 0
 	m.statsTotal = 0
+	m.pagesRefusees = 0
+}
+
+// setRefuserPage pose (nil : retire) la règle qui refuse la lecture d'une page de la liste d'un joueur.
+func (m *difficileMonde) setRefuserPage(h func(xuid string, start int) int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.refuserPage = h
+}
+
+// pagesRefuseesDepuisRaz rend le nombre de lectures de page refusées depuis la dernière remise à zéro.
+func (m *difficileMonde) pagesRefuseesDepuisRaz() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.pagesRefusees
 }
 
 // reads rend, par xuid, les décalages des pages d'historique demandées depuis la dernière remise à zéro.
@@ -163,11 +183,21 @@ func (m *difficileMonde) serve(req *http.Request) *http.Response {
 	path := req.URL.Path
 	switch {
 	case strings.Contains(path, "/players/") && strings.HasSuffix(path, "/matches"):
+		xuid := between(path, "xuid(", ")")
 		m.mu.Lock()
-		f := m.listes[between(path, "xuid(", ")")]
+		f, refuser := m.listes[xuid], m.refuserPage
 		m.mu.Unlock()
 		if f == nil {
 			return replyJSON(req, map[string]any{"Results": []any{}})
+		}
+		if refuser != nil {
+			start, _ := strconv.Atoi(req.URL.Query().Get("start"))
+			if status := refuser(xuid, start); status != 0 {
+				m.mu.Lock()
+				m.pagesRefusees++
+				m.mu.Unlock()
+				return reply(req, status, "limite de débit simulée")
+			}
 		}
 		return f.history(req)
 	case strings.Contains(path, "/matches/") && strings.HasSuffix(path, "/stats"):

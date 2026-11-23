@@ -1,5 +1,9 @@
 ## What's new
 
+**v8.2.3 — New matches keep arriving when Halo is rate-limited**
+
+- **New matches no longer wait for the older history** — on the hosted site, a "too many requests" answer from Halo while an older history was being read stopped the automatic sync of that player. New matches now arrive first, and the older history resumes on the next cycle.
+
 **v8.2.2 — Older matches come back on automatic sync**
 
 - **The older history is caught up** — the automatic sync fetches older matches too, up to 200 per pass and one pass every 10 minutes, back to the first match, for Halo Infinite and Halo 5. After that only new matches are fetched. Custom games are not synced.

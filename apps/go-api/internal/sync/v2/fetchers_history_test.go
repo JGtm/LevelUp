@@ -274,19 +274,16 @@ func TestListCatchUp_MarquePageSansPremierConnu(t *testing.T) {
 	}
 }
 
-// Une erreur de l'API en cours de rattrapage est rendue (le cycle note l'échec de découverte du
-// joueur et ne range rien).
-func TestListCatchUp_ErreurAPI(t *testing.T) {
-	ids := matchIDs("m", 500)
+// Une erreur de l'API sur le haut de la liste (delta) est rendue : le cycle note l'échec de découverte du
+// joueur et ne range rien.
+func TestListCatchUp_ErreurAPI_SurLeDelta(t *testing.T) {
+	c := newPagedClient(matchIDs("m", 500))
 	boom := errors.New("api 500")
-	for _, failAt := range []int{0, 100} {
-		c := newPagedClient(ids)
-		c.failAt, c.failErr = failAt, boom
-		_, err := catchUpProvider(c).ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"},
-			map[string]bool{}, HistoryState{Incomplete: true})
-		if !errors.Is(err, boom) {
-			t.Errorf("failAt=%d : err = %v, want l'erreur de l'API enveloppée", failAt, err)
-		}
+	c.failAt, c.failErr = 0, boom
+	_, err := catchUpProvider(c).ListUnknownMatches(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"},
+		map[string]bool{}, HistoryState{Incomplete: true})
+	if !errors.Is(err, boom) {
+		t.Errorf("err = %v, want l'erreur de l'API enveloppée", err)
 	}
 }
 
@@ -357,7 +354,7 @@ func TestListCatchUp_AbandonneEnHautNeDecalePasLaReprise(t *testing.T) {
 	if !equalSlice(l.Unknown, ids[600:600+historystate.PassBudget()]) {
 		t.Fatalf("Unknown = %d ids, want %d ids à partir de la position 600", len(l.Unknown), historystate.PassBudget())
 	}
-	if c.startsBetween(25, 599) != 0 || c.startsBetween(599, 600) != 1 {
+	if c.startsBetween(50, 599) != 0 || c.startsBetween(599, 600) != 1 {
 		t.Errorf("lectures %v : la reprise devait se faire à 599 (aucun nouveau match), sans lire le milieu", c.starts)
 	}
 }

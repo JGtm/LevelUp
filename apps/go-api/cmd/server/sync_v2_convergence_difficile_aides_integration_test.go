@@ -14,6 +14,23 @@ const (
 
 var difficileTous = []difficileJoueur{difficileA}
 
+// deltaDuHautLu rend le nombre de pages du haut de la liste lues avant la reprise à `resume` : le delta des
+// nouveaux matchs lit les pages 0, 25... jusqu'à 25 connus d'affilée (au plus trois pages ici), de suite et sans
+// trou ; rend 0 quand les lectures qui précèdent la reprise ne sont pas ce haut de liste (rebalayage).
+func deltaDuHautLu(reads []int, resume int) int {
+	top := 0
+	for top < len(reads) && reads[top] < resume {
+		if reads[top] != top*convergencePageSize {
+			return 0
+		}
+		top++
+	}
+	if top > 3 {
+		return 0
+	}
+	return top
+}
+
 func difficileIDs(f *fakeHalo) []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

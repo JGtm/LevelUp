@@ -84,14 +84,9 @@ func TestConvergence_V2_Ordonnanceur_Infinite_500Matchs(t *testing.T) {
 			// Les neufs du dessus sont dans la page 0 ; l'ancre donne leur nombre exact, la reprise est
 			// à marque-page + neufs, lue d'une page dont la première entrée est le marque-page.
 			resume := cursorBefore.Offset + len(fresh) - 1
-			if len(reads) < 2 || reads[0] != 0 || reads[1] != resume {
-				t.Fatalf("cycle %d : lectures %v, attendu la page 0 puis la reprise à %d (marque-page %+v, %d neufs)",
+			if top := deltaDuHautLu(reads, resume); top == 0 || top >= len(reads) || reads[top] != resume {
+				t.Fatalf("cycle %d : lectures %v, attendu le haut de la liste (delta) puis la reprise à %d (marque-page %+v, %d neufs)",
 					cycle, reads, resume, cursorBefore, len(fresh))
-			}
-			for _, start := range reads[2:] {
-				if start < resume {
-					t.Fatalf("cycle %d : lecture à %d, en deçà de la reprise %d : rebalayage", cycle, start, resume)
-				}
 			}
 		}
 

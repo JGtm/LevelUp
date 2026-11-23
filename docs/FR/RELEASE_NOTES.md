@@ -1,5 +1,9 @@
 ## Dernières nouveautés
 
+**v8.2.3 — Les nouveaux matchs arrivent même quand Halo limite les requêtes**
+
+- **Les nouveaux matchs n'attendent plus l'historique ancien** — sur le site hébergé, une réponse « trop de requêtes » de Halo pendant la lecture d'un historique ancien bloquait la synchronisation automatique du joueur. Les nouveaux matchs arrivent désormais en premier, et l'historique ancien reprend au cycle suivant.
+
 **v8.2.2 — Les anciennes parties reviennent avec la synchronisation automatique**
 
 - **L'historique ancien est rattrapé** — la synchronisation automatique récupère aussi les parties plus anciennes, jusqu'à 200 par passe et une passe toutes les 10 minutes, jusqu'au premier match, pour Halo Infinite et Halo 5. Ensuite, seules les nouvelles parties sont récupérées. Les parties personnalisées ne sont pas synchronisées.
