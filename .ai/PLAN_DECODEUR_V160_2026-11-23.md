@@ -140,7 +140,7 @@ heurtent les règles du dépôt : le saut « tiré de la vitesse verticale » es
 (règle R-2) ; la table des scores cibles par variante est une table par variante (R-2). Ses traductions de
 messages ne remontent pas (la note du 2026-11-22 le dit déjà).
 
-État au 2026-11-23 (user : « Oui Jordan s'en occupe seul ») : le contributeur reporte LUI-MÊME ses ajouts
+État au 2026-11-23 (user : « Oui [le contributeur] s'en occupe seul ») : le contributeur reporte LUI-MÊME ses ajouts
 sur la v1.5.0, pour le décodeur et pour ses copies de la brique des cartes et du lecteur de fichiers. Son
 retour est attendu « dans tous les cas » (user, même message) ; son accord sur le découpage D-15 (paquet
 web, module Go des constructeurs) relève du plan du rejeu 3D. Fichiers que sa copie du décodeur touche,
@@ -212,17 +212,17 @@ les goldens. C'est la liste des collisions de la piste P.
 
 ## 2. Décisions
 
-Toutes tranchées. Message du user du 2026-11-23, cité tel quel : « Oui Jordan s'en occupe seul. Je suis ok
+Toutes tranchées. Message du user du 2026-11-23, cité tel quel : « Oui [le contributeur] s'en occupe seul. Je suis ok
 avec tes recommandations pour tout sauf sur le fait d'attendre une 1.7.0 pour certains trucs. On doit
-attendre le retour de Jordan dans tous les cas donc on peut faire le tout patiemment et à notre rythme. Et
-tout faire pour la 1.6 je veux dire. » (Jordan = le contributeur du lecteur 3D.)
+attendre le retour de [le contributeur] dans tous les cas donc on peut faire le tout patiemment et à notre rythme. Et
+tout faire pour la 1.6 je veux dire. » ([le contributeur] = le contributeur du lecteur 3D.)
 
 ### Tranché par le user
 
 - **DD-1 — le point 1 : on attend le contributeur, une seule version, une seule régénération.** Tranchée le
-  2026-11-23 (« On doit attendre le retour de Jordan dans tous les cas […] tout faire pour la 1.6 »). Aucune
+  2026-11-23 (« On doit attendre le retour de [le contributeur] dans tous les cas […] tout faire pour la 1.6 »). Aucune
   v1.7.0 : la v1.6.0 n'est pas taguée sans ses canaux. Le contributeur reporte lui-même ses ajouts sur la
-  v1.5.0, pour les trois briques (« Oui Jordan s'en occupe seul ») : nos agents n'écrivent pas ce code.
+  v1.5.0, pour les trois briques (« Oui [le contributeur] s'en occupe seul ») : nos agents n'écrivent pas ce code.
   Notre part est la piste P : préparer, remettre, synchroniser, vérifier, intégrer.
 - **DD-2 — chantier « précision » : HORS PÉRIMÈTRE de la v1.6.0.** Tranchée le 2026-11-23 (« En effet les
   items qui touchent à la précision sont hors périmètre »). Rien de la section « Chantier précision » du
@@ -244,7 +244,7 @@ tout faire pour la 1.6 je veux dire. » (Jordan = le contributeur du lecteur 3D.
   sur `chore/830-decodeur-v150-miroirs`, que le pilote avancera sur `chore/830-decodeur-v150`), reçoit
   `release/v8.3.0` par fusion régulière, et tout entre dans la release en une fois, autour de la
   régénération unique.
-- **DD-6 — copies des briques des cartes et du lecteur de fichiers.** Tranchée le 2026-11-23 (« Oui Jordan
+- **DD-6 — copies des briques des cartes et du lecteur de fichiers.** Tranchée le 2026-11-23 (« Oui [le contributeur]
   s'en occupe seul », et même phrase). Le contributeur les reporte lui-même, dans leurs dépôts ; elles sont
   reçues par la piste P. Le décodeur dépend de ces deux briques : ce qu'un de ses canaux exige du lecteur de
   fichiers ou de la brique des cartes est tagué AVANT ce canal.
@@ -1102,7 +1102,7 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   tranchée par le pilote ; DD-7 et DD-8 ajoutées. Aucun code, aucun commit.
 
 - 2026-11-23 — DÉCISIONS DU USER, plan mis à jour sur place, aucun code : le contributeur reporte lui-même
-  ses ajouts sur la v1.5.0 dans les trois briques (« Oui Jordan s'en occupe seul ») ; tout se fait dans la
+  ses ajouts sur la v1.5.0 dans les trois briques (« Oui [le contributeur] s'en occupe seul ») ; tout se fait dans la
   v1.6.0, sans échéance, aucune v1.7.0 ; DD-1 à DD-8 tranchées (section 2). Les pistes P et M deviennent la
   piste P « accueil du travail du contributeur », avec une règle de gel ; R-3 ne renvoie plus rien à une
   autre version ; vagues réduites à une intégration à la fois.
