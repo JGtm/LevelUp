@@ -788,17 +788,17 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
 
 ## Piste V4 — lecture au choix des canaux (Sonnet)
 
-- [ ] V4.1 (2026-11-23 : conception rendue, `.ai/annexes_decodeur_v160/v4_conception.md` ; elle déconseille le chantier pour la v1.6.0 : environ 73 % du temps est incompressible quel que soit le choix, le gain d'une sélection est de 22 à 30 %, aucun appelant de LevelUp ne choisirait de sélection, et le chantier touche les mêmes fichiers que le parallélisme ; décision demandée au user, V4.2 à V4.4 suspendus) Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
+- [x] V4.1 (2026-11-23 : conception rendue ; ABANDON de la piste décidé par le user le 2026-11-23, « ok on abandonne le choix des canaux » ; détail : `.ai/annexes_decodeur_v160/v4_conception.md` ; elle déconseille le chantier pour la v1.6.0 : environ 73 % du temps est incompressible quel que soit le choix, le gain d'une sélection est de 22 à 30 %, aucun appelant de LevelUp ne choisirait de sélection, et le chantier touche les mêmes fichiers que le parallélisme ; décision demandée au user, V4.2 à V4.4 suspendus) Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
       calques = comportement actuel) ; table des dépendances entre calques, tirée de `layers.go` et des
       étapes de `observe.go` (un calque demandé entraîne ceux dont il se nourrit : identité, pont, fil des
       morts) ; ce que la marche peut ne pas distribuer quand aucun calque demandé n'y a d'intérêt. Les
       appelants à servir sont ceux de 0.7.
-- [ ] V4.2 Code : clôture des dépendances, canaux non demandés non inscrits à la marche. Le document partiel
+- [!] V4.2 (abandonné le 2026-11-23, décision du user sur la conception V4.1 : gain de 22 à 30 % pour une sélection que nul appelant ne demande, conflit de fichiers avec le parallélisme) Code : clôture des dépendances, canaux non demandés non inscrits à la marche. Le document partiel
       porte les MÊMES octets pour les calques demandés ; les calques non demandés sont absents, et `layers`
       le dit par ce qui existe déjà (aucun champ neuf).
-- [ ] V4.3 Garde-rail : un test échoue si un calque est ajouté à `layers.go` sans ligne dans la table des
+- [!] V4.3 (abandonné le 2026-11-23, avec V4.2) Garde-rail : un test échoue si un calque est ajouté à `layers.go` sans ligne dans la table des
       dépendances.
-- [ ] V4.4 Mesure par le relevé A : document complet (inchangé) ; puis positions seules, tirs seuls, fil des
+- [!] V4.4 (abandonné le 2026-11-23, avec V4.2) Mesure par le relevé A : document complet (inchangé) ; puis positions seules, tirs seuls, fil des
       morts seul : décodage, publication, total, pic.
 - [ ] V4.5 Crédit à nuzzles, fragment rendu pour les pistes V (R-15) : `README.md` (section « Speed »,
       méthodes reprises, lien vers son dépôt), `NOTICE.md` (remerciement, licence de sa source, révision
@@ -1021,7 +1021,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       plus.
 - [ ] D.4 Fragments de documentation (R-15) : `FORMAT.md`, `GLOSSARY.md` ; crédit à Den (méthode et table de
       textes, libfilmshell, MIT) pour `NOTICE.md`.
-- [ ] D.5 HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
+- [ ] D.5 (décision du user du 2026-11-23 : textes ET voix, en français et en anglais, versés au dépôt comme les sons d'armes ; estimation donnée au user : textes environ 40 Ko, voix 12 à 30 Mo pour les deux langues, à MESURER avant de verser ; deux inconnues à lever : nombre de voix de Spartan enregistrées par réplique, et la voix anglaise n'est pas installée sur le poste) HORS DÉCODEUR (DD-4) : côté LevelUp, à la montée, commande qui bâtit
       la table des répliques depuis le jeu installé (identifiant du son vers textes français et anglais et
       fichiers de voix), faite comme celle des sons d'armes (`cmd/weapon-sounds`), derrière le tag
       `gamefiles` ; aucun fichier du jeu au dépôt.
@@ -1224,6 +1224,8 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   LevelUp verte sur `release/v8.3.0`.
 
 ## Journal d'exécution
+
+- 2026-11-23 — Décisions du user : la lecture au choix des canaux est abandonnée pour la v1.6.0 ; les répliques auront leurs textes et leurs voix en français et en anglais au dépôt (D.5), le poids étant bien plus faible qu'il ne le pensait. K.I1 et K.J2 codés, intégration en cours.
 
 - 2026-11-23 — Fondations du parallélisme, K.J1 et D.1 intégrés (tête `cd8f560`), empreintes des 13 films identiques à chaque intégration. A.1 rend trois causes prouvées ; A.2 se découpe en trois corrections de lecture, A.2a lancée. K.I1, K.I4 et K.J2 lancés ensemble. F.1 et F.2 faits côté LevelUp. C.4 et E.5 rendus. V4 : conception rendue, chantier déconseillé, décision demandée au user. Piste V3 statuée : couverte par les profils et les pistes G et K.
 
