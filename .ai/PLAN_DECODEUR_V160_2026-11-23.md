@@ -788,7 +788,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
 
 ## Piste V4 — lecture au choix des canaux (Sonnet)
 
-- [ ] V4.1 Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
+- [ ] V4.1 (2026-11-23 : conception rendue, `.ai/annexes_decodeur_v160/v4_conception.md` ; elle déconseille le chantier pour la v1.6.0 : environ 73 % du temps est incompressible quel que soit le choix, le gain d'une sélection est de 22 à 30 %, aucun appelant de LevelUp ne choisirait de sélection, et le chantier touche les mêmes fichiers que le parallélisme ; décision demandée au user, V4.2 à V4.4 suspendus) Conception écrite ICI avant le code : le choix des canaux de V0.6 (valeur zéro = tous les
       calques = comportement actuel) ; table des dépendances entre calques, tirée de `layers.go` et des
       étapes de `observe.go` (un calque demandé entraîne ceux dont il se nourrit : identité, pont, fil des
       morts) ; ce que la marche peut ne pas distribuer quand aucun calque demandé n'y a d'intérêt. Les
@@ -812,7 +812,7 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
 
 ## Piste V3 — lectures refaites et état à la demande, réduit par DD-7 (Sonnet)
 
-- [ ] V3.1 Instruction sans code : liste fermée des états construits d'office pour des lecteurs qui ne les
+- [~] V3.1 (2026-11-23 : couvert par les trois profils `profil.md`, `profil2.md`, `profil_films_recents.md` et par la piste K ; aucun candidat hors de ces pièces) Instruction sans code : liste fermée des états construits d'office pour des lecteurs qui ne les
       demandent pas, et des lectures refaites, avec leur coût dans le profil V0.5 et leurs lecteurs ;
       méthode du parseur voisin relue (`src/theater/runtime/mod.rs`) ; motif d'abandon de sa forme littérale
       écrit (DD-7). Sortie : candidats écrits ici.
@@ -820,9 +820,9 @@ ABANDONNÉE le 2026-11-23 sur mesure : gain mesuré de 0,1 à 0,8 % du total (pr
       naissance, équipes).
 - [ ] V3.3 (2026-11-23 : la partie équipement est gardée, reprise par G.7 ; la sonde de calibration n'est pas retenue : 1,5 % sur film01 seulement, moins de 1 % ailleurs, décision du pilote ; `[!]` à poser avec ce chiffre) Sonde de calibration et récupération d'équipement passées derrière la marche, seulement si le
       profil V0.5 les montre au-dessus de 1 % du total ; sinon `[!]` avec le chiffre.
-- [ ] V3.4 Les candidats de V3.1 retenus par le pilote, un item écrit ici par candidat avant son code ; un
+- [~] V3.4 (2026-11-23 : couvert par les pistes G et K) Les candidats de V3.1 retenus par le pilote, un item écrit ici par candidat avant son code ; un
       candidat qui toucherait l'état du monde de la marche est refusé ici (il appartient à V2).
-- [ ] V3.5 Mesure par les relevés A et B : décodage, publication, total, pic.
+- [~] V3.5 (2026-11-23 : couvert par K.I5 et K.3) Mesure par les relevés A et B : décodage, publication, total, pic.
 - **Gate V3** : preuve d'identité (points 1 à 4, 6 ; un seul niveau si la piste ne lance aucun fil) ;
   G-clone sur `./internal/grammar/ ./replay/ -run 'ImagesCles|Keyframe'` (nombre de `PASS` au moins égal à
   celui de la tête avant la piste, relevé par l'agent) ; G-rev ; G-compat.
@@ -877,22 +877,22 @@ Constats de la conception : les quatre parcours des images-clés sont des foncti
 
 Décisions du pilote (2026-11-23) : chantier 1 et chantier 2a lancés ; chantier 2b (J3 à J10) décidé sur la mesure I5, avec le user (il vise deux hôtes : un serveur à peu de cœurs et l'app de bureau) ; le nombre de fils est toujours choisi par l'hôte, jamais par le décodeur ; `killsource` ne reçoit pas de champ propre tant que l'hôte partage le contexte (à vérifier dans LevelUp avec V0.7).
 
-Fondations, sans changement de comportement (un agent Sonnet, à la suite, branche `piste/k-fondations`) :
-- [ ] K.F1 Assistant de fils (`internal/grammar/fils.go`) : exécute dans l'appelant à un fil, relaie une panique, seule source de goroutines du module (garde-rail).
-- [ ] K.F2 Porteur sur le contexte : `PoserFils`, `Fils`, défaut 1.
-- [ ] K.F3 Champ `Vitesse` de `replay.Options`, posé avant le profil et la carte.
-- [ ] K.F4 `film-bench -fils N` et `-etapes` (suite ordonnée des étapes et de leurs empreintes : preuve de l'ordre publié).
+Fondations, sans changement de comportement (un agent Sonnet, à la suite, branche `piste/k-fondations`). Preuve de l'état intégré avec K.J1 (tête `2f22fb2`) : `go vet` avec et sans l'étiquette de recherche, tests des paquets touchés code 0, compatibilité publique contre la v1.5.0 (ajouts seulement : `Options.Vitesse`, `OptionsVitesse`, `MaxFils`), empreintes du document et des faits des 13 films identiques à la v1.5.0 à 1 et à 4 fils demandés (rien ne lance encore de fil). Écart à la conception : l'appel passe par un assistant `poserLesFils`, testé à part. Limite connue de `-etapes` : trois étapes par film ne s'écrivent pas en JSON, leur ordre est prouvé, leur contenu ne l'est que par l'empreinte du document :
+- [x] K.F1 (2026-11-23 : intégré dans `feat/v1.6.0`) Assistant de fils (`internal/grammar/fils.go`) : exécute dans l'appelant à un fil, relaie une panique, seule source de goroutines du module (garde-rail).
+- [x] K.F2 (2026-11-23 : intégré dans `feat/v1.6.0`) Porteur sur le contexte : `PoserFils`, `Fils`, défaut 1.
+- [x] K.F3 (2026-11-23 : intégré dans `feat/v1.6.0`) Champ `Vitesse` de `replay.Options`, posé avant le profil et la carte.
+- [x] K.F4 (2026-11-23 : intégré dans `feat/v1.6.0`) `film-bench -fils N` et `-etapes` (suite ordonnée des étapes et de leurs empreintes : preuve de l'ordre publié).
 
 Chantier 1, pré-décodage des images-clés (après les fondations) :
-- [ ] K.I1 Cadre du pré-passage et ancres.
+- [ ] K.I1 (lancé le 2026-11-23, branche `piste/k-i1`) Cadre du pré-passage et ancres.
 - [ ] K.I2 Table des datums.
 - [ ] K.I3 En-têtes exacts de joueur (mémo neuf).
-- [ ] K.I4 Mots par record, au début du balayage des états (mémo dans le canal) ; lemme des records muets prouvé par test.
+- [ ] K.I4 (lancé le 2026-11-23, branche `piste/k-i4`) Mots par record, au début du balayage des états (mémo dans le canal) ; lemme des records muets prouvé par test.
 - [ ] K.I5 Mesure machine seule à 1, 2, 4 et 8 fils, pic de mémoire, CI `-race` élargie ; décision sur le chantier 2b.
 
 Chantier 2a, lectures qui ne dépendent que du film :
-- [ ] K.J1 (lancé le 2026-11-23, branche `piste/k-j1`) Extraire du pont la lecture « film seul » (temps forts, médailles, index des joueurs, origine d'horloge), sorties identiques.
-- [ ] K.J2 Tâche de fond de `replay` pendant la marche (après K.F3 et K.J1).
+- [x] K.J1 (2026-11-23 : intégré dans `feat/v1.6.0` ; `LireLesFaitsDuFilmSeul` prend le film et une fonction de roster, le pont verse les replis au même endroit ; test d'égalité avec le pont seul) Extraire du pont la lecture « film seul » (temps forts, médailles, index des joueurs, origine d'horloge), sorties identiques.
+- [ ] K.J2 (lancé le 2026-11-23, branche `piste/k-j2`) Tâche de fond de `replay` pendant la marche (après K.F3 et K.J1).
 
 Chantier 2b, voies sur contexte dérivé (J3 à J10 de la conception) :
 - [ ] K.J4 Gardes de caractérisation à un fil (tests sur le corpus) : à faire tôt, elles transforment les « déduit » de la conception en « vérifié ».
@@ -946,11 +946,14 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste A — score et tableau (Sonnet ; Opus pour A.3)
 
-- [ ] A.1 Mesure sans code, sur les films du parc par le harnais : les cinq Grandes batailles restées
+- [x] A.1 (2026-11-23 : trois causes prouvées, rapport `.ai/annexes_decodeur_v160/a1_verdicts_du_score.md`) Mesure sans code, sur les films du parc par le harnais : les cinq Grandes batailles restées
       « incomplètes » sans rang non confirmé ni manque ; la Grande bataille « complète » à tort (points
       publiés au-dessus du tableau) ; le film dont le tableau cesse de monter dans les dernières secondes.
       Cause par film, ou `[!]`.
-- [ ] A.2 Selon A.1 : correction du verdict, écrite ici avant son code.
+- [ ] A.2 Selon A.1 : corrections, écrites ici avant leur code (2026-11-23). Le verdict lui-même est juste : ce sont trois lectures qui se corrigent.
+  - [ ] A.2a (lancé le 2026-11-23, branche `piste/a2a`) Lecteurs de charge des genres 13, 27, 93 et 117 de la vue A, qui arrêtent aujourd'hui la lecture d'une trame (cinq Grandes batailles « incomplètes » alors que leurs points égalent l'API pour 128 joueurs ; environ 180 rejeux du parc, estimation). Largeurs à établir : témoin, puis preuve par le film (la trame se poursuit jusqu'à sa fin sur toutes les occurrences). Un genre non prouvé reste arrêtant. Sortie changée sur les films concernés : écart à attribuer à l'intégration.
+  - [ ] A.2b Trame renvoyée en entier par le jeu (un film : une élimination comptée deux fois, +100 points) : écarter une trame dont TOUS les messages, au moins deux, répètent à clé identique (rang, charge, destinataires, numéro de séquence) ceux d'une trame de moins de 3 s ; la fenêtre d'une seconde reste pour un message isolé. Fichier : `internal/grammar/evenements_de_jeu.go`. Preuve : test avec les deux trames du film ; aucun changement sur les autres films relus.
+  - [ ] A.2c Dernière manche courte refusée (un film : 1 125 points absents du tableau) : la manche est écrite dans le film avec la remise à zéro simultanée de tous les joueurs présents. Décision du pilote : admettre une manche par ce FAIT (remise à zéro de tous les joueurs présents dans la même seconde) plutôt qu'abaisser le seuil de part d'enregistrements de 10 à 7 % ; le seuil n'est abaissé que si le fait ne se lit pas. Fichiers : `internal/facts/objectives/statborg.go`, `rounds_decision.go`. Preuve : le film réglé, aucun autre changement sur l'échantillon de 220 films, les 4 films à manche manquante de la section Découvertes examinés.
 - [ ] A.3 Recherche (une session) : arbre des actions décalé sur le build qui précède `HI_1_11_0` (31
       lectures concordantes, égalité non testable sur des films à trames arrêtées) et les 34 Grandes
       batailles à drapeau sans groupe de scripts. Sortie : décalage PROUVÉ par le tableau du film, ou `[!]`.
@@ -998,14 +1001,14 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
       de ces builds ; publication du bouton seulement à 90 % d'accord sur tous les builds, sinon `[!]`.
 - [ ] C.3 Sens des quatre booléens d'un rechargement : mesure contre les munitions lues ; nommés s'ils sont
       prouvés, sinon laissés tels quels.
-- [ ] C.4 Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
+- [x] C.4 (2026-11-23 : table rendue, `.ai/annexes_decodeur_v160/c4_e5_recoupements.md` ; le contributeur apporte coup de mêlée, lancer, rechargement et déplacement brut ; désaccord sur le bit du saut à trancher par un film récent, avec C.2) Recoupement avec les canaux du contributeur (manche, postures de contrôle, gestes), sans code :
       table « son champ, notre champ, lequel reste », versée à l'inventaire P.1 et au dossier P.2.
 - **Gate C** : équivalence attribuée ; poids ajouté au document sous 1 % sur 20 films ; G-clone sur
   `./replay/ ./internal/grammar/` ; G-rev ; G-compat.
 
 ## Piste D — répliques des Spartans (Sonnet ; dans la v1.6.0, DD-4)
 
-- [ ] D.1 (2026-11-23 : codé sur `piste/d1`, `cc1caf1` ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
+- [ ] D.1 (2026-11-23 : intégré dans `feat/v1.6.0`, tête `cd8f560`, empreintes des 13 films identiques ; genre 75 = réplique d'un Spartan, genre 76 = annonce ; lus seulement quand un canal le demande, rien de publié ; essai sur un film : 365 répliques, 951 annonces, aucune trame arrêtée ; non coché : contrôle des comptes contre le témoin sur 3 films, à la file des mesures) Lecture par la grammaire des genres 75 et 76 de la vue A (locuteur, identifiant du son, priorité,
       indice de réplique ; annonceur : identifiant du son, destinataires), aujourd'hui traversés sans valeur.
       Contrôle : mêmes comptes que le témoin sur 3 films.
 - [ ] D.2 Nom court de la réplique, DANS le décodeur (cadrage du user) : recherche bornée de la
@@ -1045,7 +1048,7 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 - [ ] E.4 Apparence enregistrée des Spartans (armure, revêtement) : recherche bornée (une session), sur 3
       films ; publication si la lecture est prouvée contre la personnalisation publique de l'API ; sinon
       `[!]`. À remettre à la session du rejeu 3D dans les deux cas.
-- [ ] E.5 Zoom et coup de mêlée sans mort : contrôle sur pièces de ce qui est déjà publié (visée) et de ce
+- [x] E.5 (2026-11-23 : zoom déjà publié chez nous, sorties de lunette sous-comptées ; coup de mêlée sans mort couvert par le contributeur seulement ; même annexe que C.4) Zoom et coup de mêlée sans mort : contrôle sur pièces de ce qui est déjà publié (visée) et de ce
       que les gestes du contributeur couvrent (coup) ; sort écrit, versé à l'inventaire P.1.
 - [ ] E.6 Victime d'une élimination appariée au plus proche : victime absente et compteur d'ambiguïté quand
       une action a plusieurs candidats.
@@ -1054,9 +1057,9 @@ ABANDONNÉE le 2026-11-23 sur analyse : le monde est unique pour tout le film, l
 
 ## Piste F — contrôles et petites entrées (Haiku ; Sonnet)
 
-- [ ] F.1 `scripts/briques-workspace.sh` (LevelUp) : sous Windows, l'entrée `use` du clone s'écrit avec des
+- [x] F.1 (2026-11-23 : fait sur `chore/830-decodeur-v150`, `aab869c44e` ; témoin joué : `go test` d'un sous-paquet du clone passe avec l'espace de travail engendré) `scripts/briques-workspace.sh` (LevelUp) : sous Windows, l'entrée `use` du clone s'écrit avec des
       barres inverses ; témoin : `go test` d'un sous-paquet du clone passe avec le `GOWORK` engendré.
-- [ ] F.2 Les sept décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16) retirées
+- [x] F.2 (2026-11-23 : fait, même commit ; sept blocs retirés, liste dans `dec-v160-recup/pistes/f2_retraits.md` ; restent 20 décisions du 2026-11-22 et `coverage.hits.noVictim` du 2026-11-16, hors liste ; test du manifeste vert) Les sept décisions devenues sans effet de `config/replay_corpus.toml` (2026-11-16) retirées
       (DD-8) ; leur liste est écrite au journal et montrée dans le rapport d'exécution. Précision du
       2026-11-23 : le retrait ne porte que sur les 7 décisions du 2026-11-16 : `coverage.hits.{noShooter,
       stoppedFrames, vitalsUnread}`, `coverage.flagCarries.{seatsBeyondBand, gaugePoints}`,
@@ -1222,6 +1225,8 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
 
 ## Journal d'exécution
 
+- 2026-11-23 — Fondations du parallélisme, K.J1 et D.1 intégrés (tête `cd8f560`), empreintes des 13 films identiques à chaque intégration. A.1 rend trois causes prouvées ; A.2 se découpe en trois corrections de lecture, A.2a lancée. K.I1, K.I4 et K.J2 lancés ensemble. F.1 et F.2 faits côté LevelUp. C.4 et E.5 rendus. V4 : conception rendue, chantier déconseillé, décision demandée au user. Piste V3 statuée : couverte par les profils et les pistes G et K.
+
 - 2026-11-23 — K.0 intégré (tête `daac986`). Conception du parallélisme rendue et relue : chantier 1 sans refonte préalable, chantier 2 scindé en 2a (pendant la marche, risque faible) et 2b (à décider sur mesure). Fondations et K.J1 lancés. Le user précise sa cible : le serveur a peu de cœurs, l'app de bureau en aura davantage, les deux comptent. Pistes du backlog démarrées en parallèle, comme le plan le prévoit : A.7 fait sur `piste/a7` (à intégrer après preuve d'équivalence), D.1 fait sur `piste/d1` (lecture des répliques, rien de publié), A.1 en mesure, E.3 instruit : ni le film ni les fichiers lisibles du jeu ne donnent le nom des options ; source non établie, aucun code.
 
 - 2026-11-23 — Sixième gain (G.4) intégré, tête `785c38e`, relevé à six gains pris machine seule. Profil des films récents rendu : pas de gain majeur sur un fil, la piste K (parallélisme) s'ouvre selon la priorité fixée par le user ; K.0 (rejet par mot, un fil) et K.C (conception, sans code) lancés ensemble. Le parallélisme par morceau, mesuré à blanc, reste écarté.
@@ -1284,6 +1289,11 @@ Ordre imposé : R.1, R.2, puis L.1, L.2, L.3. Toute correction après L.1 fait r
   table des vagues réécrite avec ce qui tourne en même temps. Aucun item n'est lancé par cette mise à jour.
 
 ## Découvertes (consignées, non traitées)
+
+- 2026-11-23 (A.1) — Quatre films sur 220 ont une manche écrite non retenue (29 à 38 enregistrements de joueurs, 8,7 à 13,1 %) et les manches 0 et 2 sans la 1 : manche réelle perdue ou numérotation, à examiner avec A.2c.
+- 2026-11-23 (A.1) — Les builds `HI_1_10_0` et `HI_1_8_0` ont des centaines à des milliers de trames arrêtées sur de nombreux genres : table des genres non lisible sur ces builds.
+- 2026-11-23 (A.1) — Le verdict ne distingue pas un tableau en retard par la pénalité de −100 d'un tableau en retard par une action de trop.
+- 2026-11-23 (K.F4) — `film-bench -etapes` : trois étapes par film (`placements.stats`, `pads`, `vehicles`) ne s'écrivent pas en JSON ; leur empreinte est celle du texte de l'erreur.
 
 - 2026-11-23 — L'en-tête de `LU apps/go-api/cmd/killsource/main.go` (lignes 3 à 8) affirme qu'aucun chemin de l'application n'utilise le décodeur killsource : faux (appels de production dans `internal/replaybuild/kills.go:57` et `internal/sync/killcollector/collector_run.go:215`).
 - 2026-11-23 — Un commentaire du test de surface de la façade, `LU apps/go-api/internal/archlint/film_facade_surface_test.go` (ligne 166), dit que `NomPrecisionParArmePasseSautee` et `NomDistancesDeToucheDesactivees` ont quitté la façade en v1.5.0 ; ils y restent, marqués `Deprecated` (`decfilm/replis_obsoletes.go`). Incohérence à trancher.
