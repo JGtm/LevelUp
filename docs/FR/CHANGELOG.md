@@ -8,6 +8,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.3] - 2026-11-23
+
+> Correctif de la synchronisation automatique du site hébergé : un Halo qui limite les requêtes n'empêche plus les nouveaux matchs d'arriver.
+
+### Corrigé
+- **Nouveaux matchs gardés pendant le rattrapage** — quand Halo répondait « trop de requêtes » (HTTP 429) pendant la lecture de l'historique ancien d'un joueur, toute la synchronisation automatique de ce joueur échouait et ses nouveaux matchs n'arrivaient pas. Les nouveaux matchs sont désormais lus et rangés en premier ; un échec de lecture de l'historique ancien ne fait que reporter ce rattrapage au cycle suivant. Chaque page de la liste des matchs est retentée quelques fois avant d'abandonner, et les rattrapages de plusieurs joueurs se lisent l'un après l'autre au lieu de tous en même temps.
+
 ## [8.2.2] - 2026-11-23
 
 > Correctif de la synchronisation automatique : l'historique ancien revient, pas seulement les nouveaux matchs.

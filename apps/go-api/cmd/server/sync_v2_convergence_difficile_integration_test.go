@@ -253,13 +253,8 @@ func TestDifficile_MatchsNeufsEtIntrouvables_RepriseExacte(t *testing.T) {
 		reads := c.reads[difficileA.xuid]
 		if curAvant != nil {
 			resume := curAvant.Offset + len(fresh) - 1
-			if len(reads) < 2 || reads[0] != 0 || reads[1] != resume {
-				t.Fatalf("cycle %d : lectures %v, attendu la page 0 puis la reprise exacte à %d (marque-page %+v, %d neufs)", n, reads, resume, *curAvant, len(fresh))
-			}
-			for _, start := range reads[2:] {
-				if start < resume {
-					t.Fatalf("cycle %d : lecture à %d, en deçà de la reprise %d : rebalayage", n, start, resume)
-				}
+			if top := deltaDuHautLu(reads, resume); top == 0 || top >= len(reads) || reads[top] != resume {
+				t.Fatalf("cycle %d : lectures %v, attendu le haut de la liste (delta) puis la reprise exacte à %d (marque-page %+v, %d neufs)", n, reads, resume, *curAvant, len(fresh))
 			}
 		}
 		var cc bool

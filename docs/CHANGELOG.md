@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.3] - 2026-11-23
+
+> Fix to automatic sync on the hosted site: a rate-limited Halo no longer stops new matches from arriving.
+
+### Fixed
+- **New matches kept while the history catches up** — when Halo answered "too many requests" (HTTP 429) while a player's older history was being read, the whole automatic sync of that player failed and their new matches did not arrive. The new matches are now read and stored first; a failure reading the older history only postpones that catch-up to the next cycle. Every page of the match list is retried a few times before giving up, and the catch-ups of several players are read one after the other instead of all at once.
+
 ## [8.2.2] - 2026-11-23
 
 > Fix to automatic sync: the older history of each player comes back, not only the new matches.

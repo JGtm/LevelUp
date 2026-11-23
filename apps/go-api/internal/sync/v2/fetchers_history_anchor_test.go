@@ -38,9 +38,10 @@ func TestListCatchUp_Ancre_NMatchsNeufs_RepriseExacte(t *testing.T) {
 	if l.Proposed == nil || *l.Proposed != wantCur {
 		t.Errorf("Proposed = %+v, want %+v", l.Proposed, wantCur)
 	}
-	// Le marque-page 600 devient la position 607 : la lecture reprend à 606 (l'entrée de contrôle).
-	if got := c.startsBetween(25, 606); got != 0 {
-		t.Errorf("%d lectures entre 25 et 606 : la liste a été reparcourue (%v)", got, c.starts)
+	// Le marque-page 600 devient la position 607 : la lecture reprend à 606 (l'entrée de contrôle). Le delta
+	// du dessus lit les pages 0 et 25 (25 connus d'affilée) ; rien d'autre avant la reprise.
+	if got := c.startsBetween(50, 606); got != 0 {
+		t.Errorf("%d lectures entre 50 et 606 : la liste a été reparcourue (%v)", got, c.starts)
 	}
 	if c.startsBetween(606, 607) != 1 {
 		t.Errorf("lectures %v : la reprise devait se faire à 606, une seule fois", c.starts)
@@ -106,7 +107,8 @@ func TestCycleHistory_Ancre_TrenteIntrouvablesEnHaut_ReprisesExactes(t *testing.
 	if !ok || c.Offset != wantOffset+budget {
 		t.Fatalf("passe 3 : marque-page %+v (%v), want offset %d", c, ok, wantOffset+budget)
 	}
-	if e.client.startsBetween(25, wantOffset-1) != 0 {
+	// Le delta du dessus saute les 30 introuvables puis lit 25 connus : pages 0, 25 et 50.
+	if e.client.startsBetween(75, wantOffset-1) != 0 {
 		t.Errorf("passe 3 : lectures %v, la liste a été reparcourue", e.client.starts)
 	}
 	if got := fallbackCount() - before; got != 0 {

@@ -17,6 +17,11 @@
 // du joueur (HistoryState.Budget, au plus `historystate.PassBudget()`, N compris), et s'arrête sur une
 // page VIDE (fin vue : une page partielle ne dit rien, l'API peut en rendre une avant la fin), sur le
 // budget, ou sur `historystate.MaxDepth` (avertissement).
+//
+// Le delta du dessus (listDelta) se lit AVANT le rattrapage et se garde même si le rattrapage échoue : une
+// erreur de lecture du rattrapage n'arrête que lui (rien n'est rangé pour lui à cette passe, le joueur reste en
+// attente) et ne fait pas échouer le joueur. Les rattrapages d'un cycle se lisent un joueur à la fois ; les
+// pages déjà lues par le delta ne sont pas relues.
 package v2
 
 import (
@@ -26,6 +31,7 @@ import (
 	"log/slog"
 
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/historyretry"
 	"levelup/go-api/internal/sync/historystate"
 )
 
@@ -58,6 +64,98 @@ type catchUpScan struct {
 	endSeen   bool // fin de la liste vue (page vide)
 	budgetHit bool // budget atteint : la lecture s'est arrêtée avec des inconnus possibles derrière
 	depthHit  bool // borne de profondeur atteinte
+}
+
+// pageCache garde, le temps de la découverte d'un joueur, les pages de la liste déjà lues : le delta et le
+// rattrapage lisent le haut de la même liste, et un appel de plus est un 429 de plus. Une page en erreur
+// n'est pas gardée ; `count` fait partie de la clé.
+type pageCache struct {
+	HaloClient
+	pages map[pageKey][]syncpkg.MatchHistoryEntry
+}
+
+type pageKey struct{ start, count int }
+
+func newPageCache(c HaloClient) *pageCache {
+	return &pageCache{HaloClient: c, pages: map[pageKey][]syncpkg.MatchHistoryEntry{}}
+}
+
+// GetMatchHistory rend la page gardée, sinon la lit.
+func (c *pageCache) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	key := pageKey{start, count}
+	if entries, ok := c.pages[key]; ok {
+		return entries, nil
+	}
+	entries, err := c.HaloClient.GetMatchHistory(ctx, gamertag, matchType, start, count)
+	if err == nil {
+		c.pages[key] = entries
+	}
+	return entries, err
+}
+
+// listWithCatchUp est la découverte d'un joueur à l'historique incomplet : le delta du dessus d'abord (au plus
+// catchUpMinBudget inconnus : un joueur sans connus n'y lit pas toute sa liste), puis le rattrapage.
+//   - delta en erreur : le joueur échoue, comme à l'historique complet ;
+//   - rattrapage en erreur : les nouveaux matchs du delta sont rendus, sans marque-page ni fin vue ; ils sont
+//     annoncés comme nouveaux (Arrived) quand le delta a rejoint la zone connue ;
+//   - sinon : la liste du rattrapage, complétée des inconnus du delta qu'elle n'a pas listés.
+func (p *matchListProviderV2) listWithCatchUp(
+	ctx context.Context,
+	client HaloClient,
+	prof PlayerProfile,
+	known map[string]bool,
+	hist HistoryState,
+) (Listing, error) {
+	client = newPageCache(client)
+	top, err := p.listDelta(ctx, client, deltaArgs{prof: prof, known: known, skip: hist.skipped(), limit: catchUpMinBudget})
+	if err != nil {
+		return Listing{}, err
+	}
+	listing, err := p.listCatchUpAlone(ctx, client, prof, known, hist)
+	if err != nil {
+		if ctx.Err() != nil {
+			return Listing{}, err
+		}
+		slog.WarnContext(ctx, "sync.v2: lecture du rattrapage d'historique en échec — nouveaux matchs gardés, rattrapage repris au cycle suivant",
+			"event", "sync.v2.history.read_failed", "gamertag", prof.Gamertag, "new_matches", len(top.unknown), "err", err)
+		out := Listing{Unknown: top.unknown}
+		if top.closed {
+			out.Arrived = top.unknown
+		}
+		return out, nil
+	}
+	listing.Unknown = withUnknown(top.unknown, listing.Unknown)
+	return listing, nil
+}
+
+// withUnknown rend `first` suivi des identifiants de `rest` qui n'y figurent pas.
+func withUnknown(first, rest []string) []string {
+	out := append(make([]string, 0, len(first)+len(rest)), first...)
+	seen := toSet(first)
+	for _, id := range rest {
+		if !seen[id] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// listCatchUpAlone lit le rattrapage d'un joueur une fois le jeton de lecture pris : un seul rattrapage se lit
+// à la fois dans un cycle. L'attente du jeton s'arrête avec le contexte.
+func (p *matchListProviderV2) listCatchUpAlone(
+	ctx context.Context,
+	client HaloClient,
+	prof PlayerProfile,
+	known map[string]bool,
+	hist HistoryState,
+) (Listing, error) {
+	select {
+	case p.catchUp <- struct{}{}:
+		defer func() { <-p.catchUp }()
+	case <-ctx.Done():
+		return Listing{}, ctx.Err()
+	}
+	return p.listCatchUp(ctx, client, prof, known, hist)
 }
 
 // listCatchUp est la découverte d'un joueur à l'historique incomplet.
@@ -148,9 +246,11 @@ func (sc *catchUpScan) scanFrom(ctx context.Context, start int, guard string) er
 	}
 }
 
-// page lit une page de la liste de l'API à la position `pos`.
+// page lit une page de la liste de l'API à la position `pos`, par historyretry.Page.
 func (sc *catchUpScan) page(ctx context.Context, pos int) ([]syncpkg.MatchHistoryEntry, error) {
-	entries, err := sc.client.GetMatchHistory(ctx, sc.histArg, sc.p.matchType, pos, sc.p.pageSize)
+	entries, err := historyretry.Page(ctx, sc.gamertag, pos, func() ([]syncpkg.MatchHistoryEntry, error) {
+		return sc.client.GetMatchHistory(ctx, sc.histArg, sc.p.matchType, pos, sc.p.pageSize)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("GetMatchHistory offset %d for %s: %w", pos, sc.gamertag, err)
 	}
